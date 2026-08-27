@@ -220,7 +220,8 @@ describe('AgenticChatUpdateOntoTaskMutationAdapter', () => {
 				entity_id: TASK_ID,
 				action: 'updated',
 				change_source: 'agent_call',
-				agent_call_session_id: SESSION_ID
+				chat_session_id: SESSION_ID,
+				agent_call_session_id: null
 			})
 		});
 		expect(taskSync.syncTaskEvents).toHaveBeenCalledWith(
@@ -230,10 +231,7 @@ describe('AgenticChatUpdateOntoTaskMutationAdapter', () => {
 			{
 				activityLog: {
 					changeSource: 'agent_call',
-					actorContext: {
-						externalAgentCallerId: null,
-						agentCallSessionId: SESSION_ID
-					}
+					actorContext: undefined
 				}
 			}
 		);
@@ -274,7 +272,7 @@ describe('AgenticChatUpdateOntoTaskMutationAdapter', () => {
 			expect.objectContaining({
 				userId: USER_ID,
 				op: 'onto.task.update',
-				callSessionId: SESSION_ID,
+				chatSessionId: SESSION_ID,
 				args: {
 					task_id: TASK_ID,
 					title: 'Updated task',

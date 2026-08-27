@@ -83,6 +83,7 @@ export async function runGatewayReadOp(params: {
 	op: string;
 	args?: Record<string, unknown>;
 	callSessionId?: string;
+	chatSessionId?: string;
 	calendar?: CalendarPort;
 	taskSync?: TaskSyncPort;
 	signal?: AbortSignal;
@@ -108,6 +109,7 @@ export async function runGatewayReadOp(params: {
 		userId: params.userId,
 		callerId: undefined,
 		callSessionId: params.callSessionId,
+		chatSessionId: params.chatSessionId,
 		scope: params.scope,
 		calendar: params.calendar,
 		taskSync: params.taskSync,
@@ -153,6 +155,7 @@ export async function runGatewayWriteOp(params: {
 	op: string;
 	args?: Record<string, unknown>;
 	callSessionId?: string;
+	chatSessionId?: string;
 	calendar?: CalendarPort;
 	taskSync?: TaskSyncPort;
 	downstreamIdempotencyKey?: string;
@@ -182,6 +185,7 @@ export async function runGatewayWriteOp(params: {
 		userId: params.userId,
 		callerId: undefined,
 		callSessionId: params.callSessionId,
+		chatSessionId: params.chatSessionId,
 		scope: params.scope,
 		calendar: params.calendar,
 		taskSync: params.taskSync,

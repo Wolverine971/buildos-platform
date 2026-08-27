@@ -368,7 +368,31 @@ describe('Agentic Chat tool execution graph runner', () => {
 			});
 
 			await vi.advanceTimersByTimeAsync(100);
-			await run;
+			await expect(run).resolves.toMatchObject({
+				actualExecutionMs: 100,
+				estimatedSerialExecutionMs: 300,
+				parallelSavingsMs: 200,
+				callTimings: [
+					{
+						providerToolCallId: 'a',
+						layerIndex: 0,
+						startedOffsetMs: 0,
+						durationMs: 100
+					},
+					{
+						providerToolCallId: 'b',
+						layerIndex: 0,
+						startedOffsetMs: 0,
+						durationMs: 100
+					},
+					{
+						providerToolCallId: 'c',
+						layerIndex: 0,
+						startedOffsetMs: 0,
+						durationMs: 100
+					}
+				]
+			});
 			expect(Date.now() - startedAt).toBe(100);
 		} finally {
 			vi.useRealTimers();
@@ -399,7 +423,7 @@ describe('Agentic Chat tool execution graph runner', () => {
 		gates.get('b')!.resolve('B');
 		gates.get('a')!.resolve('A');
 
-		await expect(run).resolves.toEqual({
+		await expect(run).resolves.toMatchObject({
 			maxObservedConcurrency: 3,
 			results: [
 				{ providerToolCallId: 'a', status: 'fulfilled', value: 'A' },

@@ -83,7 +83,7 @@ export class AgenticChatGatewayDocumentRelationshipMutationAdapter
 				},
 				op: spec.operationName,
 				args: dispatch.gatewayArguments,
-				callSessionId: input.executionInput.claim.sessionId
+				chatSessionId: input.executionInput.claim.sessionId
 			});
 		} catch (error) {
 			throw uncertainFailure(

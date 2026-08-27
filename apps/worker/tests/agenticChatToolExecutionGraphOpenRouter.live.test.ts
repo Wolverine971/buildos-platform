@@ -23,6 +23,7 @@ const minimumPassRate =
 	requestedMinimumPassRate <= 1
 		? requestedMinimumPassRate
 		: 1;
+const measureSchemaCost = process.env.OPENROUTER_TOOL_GRAPH_MEASURE_SCHEMA_COST === 'true';
 
 type OpenRouterToolCall = {
 	id: string;
@@ -51,7 +52,13 @@ function normalizeToolCall(call: OpenRouterToolCall): ToolGraphModelToolCall {
 	};
 }
 
-async function openRouterChat(messages: OpenRouterMessage[]): Promise<OpenRouterMessage> {
+async function openRouterChat(
+	messages: OpenRouterMessage[],
+	tools: unknown = TOOL_GRAPH_MODEL_TOOLS
+): Promise<{
+	message: OpenRouterMessage;
+	usage: { promptTokens: number | null; completionTokens: number | null };
+}> {
 	const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 		method: 'POST',
 		headers: {
@@ -63,7 +70,7 @@ async function openRouterChat(messages: OpenRouterMessage[]): Promise<OpenRouter
 		body: JSON.stringify({
 			model,
 			messages,
-			tools: TOOL_GRAPH_MODEL_TOOLS,
+			tools,
 			tool_choice: 'auto',
 			parallel_tool_calls: true,
 			temperature: 0,
@@ -79,13 +86,26 @@ async function openRouterChat(messages: OpenRouterMessage[]): Promise<OpenRouter
 	const payload = (await response.json()) as {
 		error?: { message?: string };
 		choices?: Array<{ message?: OpenRouterMessage }>;
+		usage?: { prompt_tokens?: number; completion_tokens?: number };
 	};
 	if (!response.ok || payload.error) {
 		throw new Error(payload.error?.message || `OpenRouter failed with HTTP ${response.status}`);
 	}
 	const message = payload.choices?.[0]?.message;
 	if (!message) throw new Error('OpenRouter returned no assistant message');
-	return message;
+	return {
+		message,
+		usage: {
+			promptTokens:
+				typeof payload.usage?.prompt_tokens === 'number'
+					? payload.usage.prompt_tokens
+					: null,
+			completionTokens:
+				typeof payload.usage?.completion_tokens === 'number'
+					? payload.usage.completion_tokens
+					: null
+		}
+	};
 }
 
 async function runScenario(userPrompt: string): Promise<ToolGraphModelTrace> {
@@ -97,7 +117,7 @@ async function runScenario(userPrompt: string): Promise<ToolGraphModelTrace> {
 	let finalContent = '';
 
 	for (let round = 0; round < 4; round += 1) {
-		const assistant = await openRouterChat(messages);
+		const { message: assistant } = await openRouterChat(messages);
 		messages.push(assistant);
 		const rawCalls = assistant.tool_calls ?? [];
 		if (rawCalls.length === 0) {
@@ -117,6 +137,50 @@ async function runScenario(userPrompt: string): Promise<ToolGraphModelTrace> {
 
 	return { toolCallRounds, finalContent };
 }
+
+function withoutSchedulingSidecars(): unknown {
+	const tools = JSON.parse(JSON.stringify(TOOL_GRAPH_MODEL_TOOLS)) as Array<{
+		function: { parameters: { properties: Record<string, unknown> } };
+	}>;
+	for (const tool of tools) {
+		delete tool.function.parameters.properties.call_ref;
+		delete tool.function.parameters.properties.after;
+	}
+	return tools;
+}
+
+describe.runIf(Boolean(model && apiKey && measureSchemaCost))(
+	'opt-in OpenRouter tool execution graph schema cost',
+	() => {
+		it('measures the real prompt-token delta of scheduling sidecars', async () => {
+			const messages: OpenRouterMessage[] = [
+				{ role: 'system', content: TOOL_GRAPH_MODEL_SYSTEM_PROMPT },
+				{
+					role: 'user',
+					content: TOOL_GRAPH_MODEL_SCENARIOS[0]!.userPrompt
+				}
+			];
+			const withScheduling = await openRouterChat(messages);
+			const withoutScheduling = await openRouterChat(messages, withoutSchedulingSidecars());
+			expect(withScheduling.usage.promptTokens).not.toBeNull();
+			expect(withoutScheduling.usage.promptTokens).not.toBeNull();
+			const delta =
+				(withScheduling.usage.promptTokens ?? 0) -
+				(withoutScheduling.usage.promptTokens ?? 0);
+			console.info(
+				JSON.stringify({
+					event: 'tool_graph_scheduling_schema_cost',
+					model,
+					with_scheduling_prompt_tokens: withScheduling.usage.promptTokens,
+					without_scheduling_prompt_tokens: withoutScheduling.usage.promptTokens,
+					delta_prompt_tokens: delta,
+					tool_count: TOOL_GRAPH_MODEL_TOOLS.length
+				})
+			);
+			expect(delta).toBeGreaterThan(0);
+		}, 180_000);
+	}
+);
 
 describe.runIf(Boolean(model && apiKey))(
 	'opt-in OpenRouter tool execution graph capability',

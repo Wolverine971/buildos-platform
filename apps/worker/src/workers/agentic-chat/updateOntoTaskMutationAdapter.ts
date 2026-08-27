@@ -36,9 +36,7 @@ type GatewayRunner = typeof runGatewayWriteOp;
  * The effect executor therefore invokes this adapter once and treats an
  * ambiguous gateway failure as an uncertain external commit.
  */
-export class AgenticChatUpdateOntoTaskMutationAdapter
-	implements AgenticChatMutatingToolPortV1
-{
+export class AgenticChatUpdateOntoTaskMutationAdapter implements AgenticChatMutatingToolPortV1 {
 	private readonly runGateway: GatewayRunner;
 	private readonly taskSync: TaskSyncPort;
 
@@ -90,7 +88,7 @@ export class AgenticChatUpdateOntoTaskMutationAdapter
 				},
 				op: MUTATION_SPEC.operationName,
 				args: gatewayArguments,
-				callSessionId: input.executionInput.claim.sessionId,
+				chatSessionId: input.executionInput.claim.sessionId,
 				taskSync: this.taskSync
 			});
 		} catch (error) {

@@ -52,6 +52,8 @@ export type ToolExecutionContext = {
 	oauthGrantId?: string;
 	projectScopeMode?: BuildosAgentProjectScopeMode;
 	callSessionId?: string;
+	/** Internal BuildOS chat session; never an external agent_call_sessions id. */
+	chatSessionId?: string;
 	scope: AgentCallScope;
 	calendar?: CalendarPort;
 	taskSync?: TaskSyncPort;

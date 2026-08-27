@@ -109,7 +109,7 @@ export async function syncCreatedTaskSideEffects(params: {
 		},
 		params.context.userId,
 		'agent_call',
-		undefined,
+		params.context.chatSessionId,
 		getExternalAgentActivityContext(params.context)
 	);
 }
@@ -226,7 +226,7 @@ export async function syncUpdatedTaskSideEffects(params: {
 		},
 		params.context.userId,
 		'agent_call',
-		undefined,
+		params.context.chatSessionId,
 		getExternalAgentActivityContext(params.context)
 	);
 }

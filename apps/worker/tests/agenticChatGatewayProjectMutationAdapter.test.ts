@@ -116,7 +116,7 @@ describe('AgenticChatGatewayProjectMutationAdapter', () => {
 				end_at: null,
 				props: { color: 'blue' }
 			},
-			callSessionId: SESSION_ID
+			chatSessionId: SESSION_ID
 		});
 	});
 

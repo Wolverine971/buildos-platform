@@ -173,7 +173,7 @@ export function buildBaseProviderRequest(
 		messages.push({
 			role: 'system',
 			content:
-				'Tool execution batching: independent calls returned in one response may run in parallel. When a call must wait for another call in the same response, give each a unique call_ref and list prerequisite refs in after. Use after only when all dependent arguments are already known. If a later call needs a value returned by an earlier call, wait for that tool result and issue the dependent call in the next response. The worker may serialize calls that touch conflicting resources.'
+				'Tool execution batching: independent calls returned in one response may run in parallel. When a call must wait for another call in the same response, give each a unique call_ref and list prerequisite refs in after. Use after only when all dependent arguments are already known. Never reference a call_ref from an earlier response; completed earlier calls need no after dependency. If a later call needs a value returned by an earlier call, wait for that tool result and issue the dependent call in the next response. The worker may serialize calls that touch conflicting resources.'
 		});
 	}
 	messages.push({ role: 'user', content: userMessage });

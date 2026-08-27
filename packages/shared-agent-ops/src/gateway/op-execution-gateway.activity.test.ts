@@ -32,6 +32,41 @@ import {
 } from './op-execution-gateway.activity';
 
 describe('syncCreatedTaskSideEffects assignment coalescing', () => {
+	it('attributes internal worker activity to chat_session_id without an external call session', async () => {
+		vi.clearAllMocks();
+		resolveEntityMentionUserIdsMock.mockResolvedValue([]);
+		notifyTaskAssignmentAddedMock.mockResolvedValue({ recipientUserIds: [] });
+		notifyEntityMentionsAddedMock.mockResolvedValue({ notifiedUserIds: [] });
+
+		await syncCreatedTaskSideEffects({
+			context: {
+				admin: {},
+				userId: 'user-actor',
+				chatSessionId: 'chat-session-1',
+				scope: { mode: 'read_write' }
+			},
+			project: {
+				id: 'project-1',
+				name: 'Launch plan',
+				owner_actor_id: 'actor-owner'
+			} as never,
+			actorId: 'actor-owner',
+			task: { id: 'task-1', title: 'New task', state_key: 'todo' }
+		});
+
+		expect(logCreateAsyncMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'task',
+			'task-1',
+			expect.anything(),
+			'user-actor',
+			'agent_call',
+			'chat-session-1',
+			undefined
+		);
+	});
+
 	it('sends assignment before mentions and records the create activity', async () => {
 		vi.clearAllMocks();
 		resolveEntityMentionUserIdsMock.mockResolvedValue(['user-assigned', 'user-mentioned']);

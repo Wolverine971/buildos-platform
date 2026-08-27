@@ -75,9 +75,7 @@ type GatewayRunner = typeof runGatewayWriteOp;
  * several writes without a durable domain effect key. Any thrown or malformed
  * post-dispatch outcome is therefore uncertain and must never be replayed.
  */
-export class AgenticChatCreateOntoProjectMutationAdapter
-	implements AgenticChatMutatingToolPortV1
-{
+export class AgenticChatCreateOntoProjectMutationAdapter implements AgenticChatMutatingToolPortV1 {
 	private readonly runGateway: GatewayRunner;
 
 	constructor(
@@ -121,7 +119,7 @@ export class AgenticChatCreateOntoProjectMutationAdapter
 				},
 				op: MUTATION_SPEC.operationName,
 				args: gatewayArguments,
-				callSessionId: input.executionInput.claim.sessionId
+				chatSessionId: input.executionInput.claim.sessionId
 			});
 		} catch (error) {
 			throw uncertainFailure(

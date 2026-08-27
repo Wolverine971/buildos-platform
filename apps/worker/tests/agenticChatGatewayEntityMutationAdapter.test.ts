@@ -286,7 +286,7 @@ describe('AgenticChatGatewayEntityMutationAdapter', () => {
 				},
 				op: testCase.operationName,
 				args: testCase.gatewayArguments ?? testCase.arguments,
-				callSessionId: SESSION_ID
+				chatSessionId: SESSION_ID
 			});
 		}
 	);

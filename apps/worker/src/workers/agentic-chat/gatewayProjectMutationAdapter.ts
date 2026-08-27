@@ -30,9 +30,7 @@ type GatewayRunner = typeof runGatewayWriteOp;
  * archival aliases, and graph/facet convenience fields remain separate
  * contracts; this path admits only the signed legacy tool surface.
  */
-export class AgenticChatGatewayProjectMutationAdapter
-	implements AgenticChatMutatingToolPortV1
-{
+export class AgenticChatGatewayProjectMutationAdapter implements AgenticChatMutatingToolPortV1 {
 	private readonly runGateway: GatewayRunner;
 
 	constructor(
@@ -80,7 +78,7 @@ export class AgenticChatGatewayProjectMutationAdapter
 				},
 				op: reviewedSpec.operationName,
 				args: gatewayArguments,
-				callSessionId: input.executionInput.claim.sessionId
+				chatSessionId: input.executionInput.claim.sessionId
 			});
 		} catch (error) {
 			throw uncertainFailure(

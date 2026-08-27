@@ -8036,6 +8036,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(requireTextContent(systemMessages.at(-1), 'Final context system message')).toContain(
 			'do not gather more context'
 		);
+		expect(requireTextContent(systemMessages[1], 'Tool batching system message')).toContain(
+			'Never reference a call_ref from an earlier response; completed earlier calls need no after dependency.'
+		);
 		expect(
 			systemMessages.some((message) =>
 				requireTextContent(message, 'Context system message').includes('Read-loop nudge')

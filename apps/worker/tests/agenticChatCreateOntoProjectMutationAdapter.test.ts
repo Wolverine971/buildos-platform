@@ -154,7 +154,7 @@ describe('AgenticChatCreateOntoProjectMutationAdapter', () => {
 					}
 				}
 			},
-			callSessionId: SESSION_ID
+			chatSessionId: SESSION_ID
 		});
 	});
 

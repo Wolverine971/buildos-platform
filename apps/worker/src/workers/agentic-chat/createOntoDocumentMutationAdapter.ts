@@ -32,9 +32,7 @@ type GatewayRunner = typeof runGatewayWriteOp;
  * query. A thrown/ambiguous outcome must therefore reconcile as uncertain and
  * must never be retried automatically by the effect executor.
  */
-export class AgenticChatCreateOntoDocumentMutationAdapter
-	implements AgenticChatMutatingToolPortV1
-{
+export class AgenticChatCreateOntoDocumentMutationAdapter implements AgenticChatMutatingToolPortV1 {
 	private readonly runGateway: GatewayRunner;
 
 	constructor(
@@ -106,7 +104,7 @@ export class AgenticChatCreateOntoDocumentMutationAdapter
 				},
 				op: MUTATION_SPEC.operationName,
 				args: gatewayArguments,
-				callSessionId: input.executionInput.claim.sessionId
+				chatSessionId: input.executionInput.claim.sessionId
 			});
 		} catch (error) {
 			throw uncertainFailure(

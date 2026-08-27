@@ -619,7 +619,7 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 		},
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 
@@ -989,7 +989,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		},
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 
@@ -1312,7 +1312,7 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 			},
 			context.userId,
 			'agent_call',
-			undefined,
+			context.chatSessionId,
 			getExternalAgentActivityContext(context)
 		);
 	}
@@ -1480,7 +1480,7 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 		},
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 

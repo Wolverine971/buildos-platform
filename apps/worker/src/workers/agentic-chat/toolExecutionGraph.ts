@@ -250,6 +250,17 @@ export type AgenticChatToolExecutionResultV1<T> =
 export type AgenticChatToolExecutionRunV1<T> = {
 	results: readonly AgenticChatToolExecutionResultV1<T>[];
 	maxObservedConcurrency: number;
+	callTimings: readonly AgenticChatToolExecutionCallTimingV1[];
+	actualExecutionMs: number;
+	estimatedSerialExecutionMs: number;
+	parallelSavingsMs: number;
+};
+
+export type AgenticChatToolExecutionCallTimingV1 = {
+	providerToolCallId: string;
+	layerIndex: number;
+	startedOffsetMs: number;
+	durationMs: number;
 };
 
 export type AgenticChatToolExecutionLayerStartV1 = {
@@ -277,6 +288,7 @@ export function executeAgenticChatToolExecutionGraphV1<T>(_input: {
 	}
 
 	return (async () => {
+		const runStartedAt = Date.now();
 		const callsById = new Map(
 			input.graph.calls.map((call) => [call.providerToolCallId, call] as const)
 		);
@@ -288,6 +300,7 @@ export function executeAgenticChatToolExecutionGraphV1<T>(_input: {
 			modelDependencies.set(edge.toProviderToolCallId, dependencies);
 		}
 		const results = new Map<string, AgenticChatToolExecutionResultV1<T>>();
+		const callTimings = new Map<string, AgenticChatToolExecutionCallTimingV1>();
 		let active = 0;
 		let maxObservedConcurrency = 0;
 
@@ -339,6 +352,7 @@ export function executeAgenticChatToolExecutionGraphV1<T>(_input: {
 					const callIndex = cursor;
 					cursor += 1;
 					const call = readyCalls[callIndex]!;
+					const callStartedAt = Date.now();
 					active += 1;
 					maxObservedConcurrency = Math.max(maxObservedConcurrency, active);
 					try {
@@ -363,6 +377,12 @@ export function executeAgenticChatToolExecutionGraphV1<T>(_input: {
 									}
 						);
 					} finally {
+						callTimings.set(call.providerToolCallId, {
+							providerToolCallId: call.providerToolCallId,
+							layerIndex: layer.index,
+							startedOffsetMs: Math.max(0, callStartedAt - runStartedAt),
+							durationMs: Math.max(0, Date.now() - callStartedAt)
+						});
 						active -= 1;
 					}
 				}
@@ -378,6 +398,15 @@ export function executeAgenticChatToolExecutionGraphV1<T>(_input: {
 			}
 		}
 
+		const orderedCallTimings = input.graph.calls.flatMap((call) => {
+			const timing = callTimings.get(call.providerToolCallId);
+			return timing ? [timing] : [];
+		});
+		const actualExecutionMs = Math.max(0, Date.now() - runStartedAt);
+		const estimatedSerialExecutionMs = orderedCallTimings.reduce(
+			(total, timing) => total + timing.durationMs,
+			0
+		);
 		return {
 			results: input.graph.calls.map((call) => {
 				const executionResult = results.get(call.providerToolCallId);
@@ -388,7 +417,11 @@ export function executeAgenticChatToolExecutionGraphV1<T>(_input: {
 				}
 				return executionResult;
 			}),
-			maxObservedConcurrency
+			maxObservedConcurrency,
+			callTimings: orderedCallTimings,
+			actualExecutionMs,
+			estimatedSerialExecutionMs,
+			parallelSavingsMs: Math.max(0, estimatedSerialExecutionMs - actualExecutionMs)
 		};
 	})();
 }

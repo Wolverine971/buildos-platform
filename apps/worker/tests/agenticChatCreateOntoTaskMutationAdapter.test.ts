@@ -108,7 +108,7 @@ describe('AgenticChatCreateOntoTaskMutationAdapter', () => {
 			expect.objectContaining({
 				userId: USER_ID,
 				op: 'onto.task.create',
-				callSessionId: SESSION_ID,
+				chatSessionId: SESSION_ID,
 				downstreamIdempotencyKey: `chat-effect:${EFFECT_ID}`,
 				args: {
 					project_id: PROJECT_ID,

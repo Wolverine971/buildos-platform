@@ -37,9 +37,7 @@ type GatewayRunner = typeof runGatewayWriteOp;
  * retry. Notifications/calendar/activity remain post-commit and are skipped on
  * an RPC replay, matching the legacy task-create contract.
  */
-export class AgenticChatCreateOntoTaskMutationAdapter
-	implements AgenticChatMutatingToolPortV1
-{
+export class AgenticChatCreateOntoTaskMutationAdapter implements AgenticChatMutatingToolPortV1 {
 	private readonly runGateway: GatewayRunner;
 	private readonly taskSync: TaskSyncPort;
 
@@ -81,7 +79,7 @@ export class AgenticChatCreateOntoTaskMutationAdapter
 				},
 				op: MUTATION_SPEC.operationName,
 				args: { ...input.arguments },
-				callSessionId: input.executionInput.claim.sessionId,
+				chatSessionId: input.executionInput.claim.sessionId,
 				taskSync: this.taskSync,
 				downstreamIdempotencyKey: input.downstreamIdempotencyKey
 			});

@@ -126,7 +126,7 @@ describe('AgenticChatGatewayDocumentRelationshipMutationAdapter', () => {
 			},
 			op: 'onto.document.tree.move',
 			args: MOVE_CASE.arguments,
-			callSessionId: SESSION_ID
+			chatSessionId: SESSION_ID
 		});
 	});
 

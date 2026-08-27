@@ -172,7 +172,7 @@ export async function createEdge(
 		{ src_kind: data.src_kind, dst_kind: data.dst_kind, rel: data.rel },
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 
@@ -232,7 +232,7 @@ export async function unlinkOntoEdge(context: ToolExecutionContext, args: Record
 		{ deleted: true },
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 

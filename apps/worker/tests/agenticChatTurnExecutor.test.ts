@@ -188,6 +188,12 @@ function executionBoundaryLogs(processingJob: ReturnType<typeof job>) {
 		.filter((record) => record.event === 'agentic_chat_execution_boundary');
 }
 
+function toolExecutionGraphLogs(processingJob: ReturnType<typeof job>) {
+	return processingJob.log.mock.calls
+		.map(([message]) => JSON.parse(message) as Record<string, unknown>)
+		.filter((record) => record.event === 'agentic_chat_tool_execution_graph');
+}
+
 function typedExecutionFailureLog(processingJob: ReturnType<typeof job>) {
 	return processingJob.log.mock.calls
 		.map(([message]) => JSON.parse(message) as Record<string, unknown>)
@@ -3671,7 +3677,8 @@ describe('AgenticChatTurnExecutor', () => {
 		});
 
 		try {
-			const execution = harness.executor.execute(job());
+			const processingJob = job();
+			const execution = harness.executor.execute(processingJob);
 			await vi.waitFor(() => expect(starts).toHaveLength(2));
 			completions.get('parallel-b')?.();
 			completions.get('parallel-a')?.();
@@ -3779,7 +3786,8 @@ describe('AgenticChatTurnExecutor', () => {
 		});
 
 		try {
-			const execution = harness.executor.execute(job());
+			const processingJob = job();
+			const execution = harness.executor.execute(processingJob);
 			await vi.waitFor(() => expect(starts).toHaveLength(2));
 			completions.get('parallel-write-b')?.();
 			completions.get('parallel-write-a')?.();
@@ -3793,6 +3801,29 @@ describe('AgenticChatTurnExecutor', () => {
 				])
 			);
 			expect(sequenceByCall).toEqual({ 'parallel-write-a': 1, 'parallel-write-b': 2 });
+			expect(toolExecutionGraphLogs(processingJob)).toEqual([
+				expect.objectContaining({
+					requested_mode: 'parallel_default',
+					max_observed_concurrency: 2,
+					graph_execution_ms: expect.any(Number),
+					estimated_serial_execution_ms: expect.any(Number),
+					parallel_savings_ms: expect.any(Number),
+					call_timings: [
+						expect.objectContaining({
+							provider_tool_call_id: 'parallel-write-a',
+							layer_index: 0,
+							started_offset_ms: expect.any(Number),
+							duration_ms: expect.any(Number)
+						}),
+						expect.objectContaining({
+							provider_tool_call_id: 'parallel-write-b',
+							layer_index: 0,
+							started_offset_ms: expect.any(Number),
+							duration_ms: expect.any(Number)
+						})
+					]
+				})
+			]);
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -3852,10 +3883,18 @@ describe('AgenticChatTurnExecutor', () => {
 		});
 
 		try {
-			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			const processingJob = job();
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
 				outcome: 'completed'
 			});
 			expect(starts).toEqual(['sequential-a', 'sequential-b']);
+			expect(toolExecutionGraphLogs(processingJob)).toEqual([
+				expect.objectContaining({
+					requested_mode: 'explicit_dependencies',
+					layer_widths: [1, 1],
+					max_observed_concurrency: 1
+				})
+			]);
 		} finally {
 			await harness.publisher.stop();
 		}

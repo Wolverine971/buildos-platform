@@ -120,7 +120,7 @@ describe('AgenticChatGatewayEdgeMutationAdapter', () => {
 				rel: 'supports_goal',
 				props: { weight: 2, original_rel: 'helps_with' }
 			},
-			callSessionId: SESSION_ID
+			chatSessionId: SESSION_ID
 		});
 	});
 

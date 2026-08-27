@@ -1297,6 +1297,18 @@ export class AgenticChatTurnExecutor {
 							(result) => result.status === 'skipped'
 						).length,
 						max_observed_concurrency: run.maxObservedConcurrency,
+						requested_mode: graph.edges.some((edge) => edge.source === 'model_after')
+							? 'explicit_dependencies'
+							: 'parallel_default',
+						call_timings: run.callTimings.map((timing) => ({
+							provider_tool_call_id: timing.providerToolCallId,
+							layer_index: timing.layerIndex,
+							started_offset_ms: timing.startedOffsetMs,
+							duration_ms: timing.durationMs
+						})),
+						graph_execution_ms: run.actualExecutionMs,
+						estimated_serial_execution_ms: run.estimatedSerialExecutionMs,
+						parallel_savings_ms: run.parallelSavingsMs,
 						actual_critical_path_ms: elapsedMs(batchStartedAt)
 					})
 				)

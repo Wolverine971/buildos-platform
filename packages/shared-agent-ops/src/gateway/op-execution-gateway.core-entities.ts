@@ -241,7 +241,7 @@ export async function createGoal(context: ToolExecutionContext, args: Record<str
 		{ name: data.name, type_key: data.type_key, state_key: data.state_key },
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 
@@ -381,7 +381,7 @@ export async function createPlan(context: ToolExecutionContext, args: Record<str
 		{ name: data.name, type_key: data.type_key, state_key: data.state_key },
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 
@@ -510,7 +510,7 @@ export async function createMilestone(
 		{ title: data.title, state_key: data.state_key },
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 
@@ -634,7 +634,7 @@ export async function createRisk(context: ToolExecutionContext, args: Record<str
 		{ title: data.title, impact: data.impact, state_key: data.state_key },
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 
@@ -781,7 +781,7 @@ async function updateCoreEntity(
 		data as Record<string, unknown>,
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 

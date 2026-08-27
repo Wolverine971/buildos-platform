@@ -216,7 +216,7 @@ export async function updateProject(context: ToolExecutionContext, args: Record<
 		data as Record<string, unknown>,
 		context.userId,
 		'agent_call',
-		undefined,
+		context.chatSessionId,
 		getExternalAgentActivityContext(context)
 	);
 

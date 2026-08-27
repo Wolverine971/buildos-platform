@@ -116,6 +116,7 @@ export const TOOL_GRAPH_MODEL_SYSTEM_PROMPT = [
 	'One assistant response containing tool calls is one execution batch.',
 	'Calls in the same response run in parallel by default, so put independent work in that response together.',
 	'Use call_ref and after only when a same-response call must wait for another side effect and every domain argument is already known.',
+	'Never reference a call_ref from an earlier response; once that response has completed, omit after.',
 	'When a call needs a value returned by another call, do not guess or use a placeholder: emit the prerequisite alone, wait for its tool result, then emit the dependent call in a later response.',
 	'Do not serialize independent work. Do not write a prose plan in place of tool calls. After all requested tools finish, answer briefly.'
 ].join(' ');

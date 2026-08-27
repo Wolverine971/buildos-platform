@@ -126,7 +126,7 @@ describe('AgenticChatCreateOntoDocumentMutationAdapter', () => {
 				parent_document_id: '77777777-7777-4777-8777-777777777777',
 				position: 2
 			},
-			callSessionId: SESSION_ID
+			chatSessionId: SESSION_ID
 		});
 	});
 

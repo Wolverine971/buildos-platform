@@ -113,9 +113,7 @@ export const AGENTIC_CHAT_GATEWAY_ENTITY_MUTATION_TOOL_NAMES_V1 = Object.freeze(
  * One-attempt adapter for reviewed shared-gateway entity writes that have no
  * domain-level effect-key persistence or exact replay query.
  */
-export class AgenticChatGatewayEntityMutationAdapter
-	implements AgenticChatMutatingToolPortV1
-{
+export class AgenticChatGatewayEntityMutationAdapter implements AgenticChatMutatingToolPortV1 {
 	private readonly runGateway: GatewayRunner;
 
 	constructor(
@@ -178,7 +176,7 @@ export class AgenticChatGatewayEntityMutationAdapter
 				},
 				op: reviewedSpec.operationName,
 				args: gatewayArguments,
-				callSessionId: input.executionInput.claim.sessionId
+				chatSessionId: input.executionInput.claim.sessionId
 			});
 		} catch (error) {
 			throw uncertainFailure(
