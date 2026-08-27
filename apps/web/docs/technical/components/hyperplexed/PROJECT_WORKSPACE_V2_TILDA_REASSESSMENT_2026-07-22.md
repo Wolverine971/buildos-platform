@@ -640,3 +640,5 @@ stack covered the lower quarter of the mobile viewport.
 - Focused Vitest: **5 files / 15 tests pass**. The official Svelte analyzer reports zero issues in
   the route, progress, recent-chat, and notification components; its remaining Task board output is
   mature state/effect and mutable-collection guidance unrelated to this heading-only change.
+- Full web `svelte-check`: **0 errors and 0 warnings**. Scoped ESLint, Prettier, and
+  `git diff --check` also pass.
