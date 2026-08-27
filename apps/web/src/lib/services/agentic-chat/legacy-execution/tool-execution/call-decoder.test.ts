@@ -6,26 +6,45 @@ import { isToolArgumentRecord } from './argument-values';
 import { decodeToolArguments, resolveToolCall } from './call-decoder';
 
 describe('call-decoder', () => {
-	it('resolves nested calls first and falls back to legacy direct arguments', () => {
-		const nested = {
+	it('resolves canonical provider calls', () => {
+		const canonical: ChatToolCall = {
 			id: 'nested',
-			function: { name: '  web_search  ', arguments: '{"query":"nested"}' },
-			name: 'legacy_name',
-			arguments: { query: 'legacy' }
-		} as unknown as ChatToolCall;
-		const legacyFallback = {
-			id: 'legacy',
-			function: { name: ' web_search ', arguments: '   ' },
-			arguments: { query: 'legacy' }
-		} as unknown as ChatToolCall;
+			type: 'function',
+			function: { name: '  web_search  ', arguments: '{"query":"nested"}' }
+		};
 
-		expect(resolveToolCall(nested)).toEqual({
+		expect(resolveToolCall(canonical)).toEqual({
 			name: 'web_search',
 			rawArguments: '{"query":"nested"}'
 		});
-		expect(resolveToolCall(legacyFallback)).toEqual({
-			name: 'web_search',
-			rawArguments: { query: 'legacy' }
+	});
+
+	describe('legacy flat call compatibility', () => {
+		it('accepts unknown flat calls without broadening ChatToolCall', () => {
+			const legacyCall: unknown = {
+				id: 'legacy',
+				name: ' web_search ',
+				arguments: { query: 'legacy' }
+			};
+
+			expect(resolveToolCall(legacyCall)).toEqual({
+				name: 'web_search',
+				rawArguments: { query: 'legacy' }
+			});
+		});
+
+		it('prefers canonical fields when a historical payload contains both shapes', () => {
+			const mixedCall: unknown = {
+				id: 'mixed',
+				function: { name: 'web_search', arguments: '{"query":"nested"}' },
+				name: 'legacy_name',
+				arguments: { query: 'legacy' }
+			};
+
+			expect(resolveToolCall(mixedCall)).toEqual({
+				name: 'web_search',
+				rawArguments: '{"query":"nested"}'
+			});
 		});
 	});
 

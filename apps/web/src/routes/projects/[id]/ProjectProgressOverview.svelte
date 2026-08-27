@@ -1,21 +1,18 @@
 <!-- apps/web/src/routes/projects/[id]/ProjectProgressOverview.svelte -->
 <script lang="ts">
 	import {
-		AlertTriangle,
-		Calendar,
 		CalendarRange,
 		CheckCircle2,
 		CircleAlert,
 		Flag,
 		ListChecks,
-		Target,
 		TrendingUp
 	} from '$lib/icons/lucide';
-	import type { Goal, Milestone, Plan, Project, Risk } from '$lib/types/onto';
+	import type { Milestone, Project, Risk } from '$lib/types/onto';
 	import type { ProjectTasksCoverage } from '$lib/types/project-full-data';
 
 	type TaskSegment = {
-		key: keyof ProjectTasksCoverage['buckets'];
+		key: 'not_started' | 'in_progress' | 'attention' | 'done';
 		label: string;
 		count: number;
 		colorClass: string;
@@ -33,24 +30,14 @@
 	interface Props {
 		project: Project;
 		tasksCoverage: ProjectTasksCoverage;
-		goals: Goal[];
-		plans: Plan[];
 		milestones: Milestone[];
 		risks: Risk[];
 		onOpenTasks: () => void;
 		onOpenMilestone: (milestoneId: string) => void;
 	}
 
-	let {
-		project,
-		tasksCoverage,
-		goals,
-		plans,
-		milestones,
-		risks,
-		onOpenTasks,
-		onOpenMilestone
-	}: Props = $props();
+	let { project, tasksCoverage, milestones, risks, onOpenTasks, onOpenMilestone }: Props =
+		$props();
 
 	const snapshotMs = $derived.by(() => {
 		const coverageTime = Date.parse(tasksCoverage.as_of);
@@ -70,9 +57,9 @@
 
 	const taskSegments = $derived.by<TaskSegment[]>(() => [
 		{
-			key: 'backlog',
-			label: 'Backlog',
-			count: tasksCoverage.buckets.backlog.total,
+			key: 'not_started',
+			label: 'Not started',
+			count: tasksCoverage.buckets.backlog.total + tasksCoverage.buckets.scheduled.total,
 			colorClass: 'bg-muted-foreground/35'
 		},
 		{
@@ -82,22 +69,10 @@
 			colorClass: 'bg-info'
 		},
 		{
-			key: 'scheduled',
-			label: 'Scheduled',
-			count: tasksCoverage.buckets.scheduled.total,
-			colorClass: 'bg-accent/55'
-		},
-		{
-			key: 'overdue',
-			label: 'Overdue',
-			count: tasksCoverage.buckets.overdue.total,
+			key: 'attention',
+			label: 'Needs attention',
+			count: tasksCoverage.buckets.overdue.total + tasksCoverage.buckets.blocked.total,
 			colorClass: 'bg-warning'
-		},
-		{
-			key: 'blocked',
-			label: 'Blocked',
-			count: tasksCoverage.buckets.blocked.total,
-			colorClass: 'bg-destructive'
 		},
 		{
 			key: 'done',
@@ -106,15 +81,7 @@
 			colorClass: 'bg-success'
 		}
 	]);
-
-	const activeGoalsCount = $derived(
-		goals.filter(
-			(goal) => !goal.deleted_at && !['achieved', 'abandoned'].includes(goal.state_key)
-		).length
-	);
-	const activePlansCount = $derived(
-		plans.filter((plan) => !plan.deleted_at && plan.state_key !== 'completed').length
-	);
+	const visibleTaskSegments = $derived(taskSegments.filter((segment) => segment.count > 0));
 	const openRisks = $derived(
 		risks.filter(
 			(risk) => !risk.deleted_at && !['mitigated', 'closed'].includes(risk.state_key)
@@ -263,40 +230,33 @@
 	}
 </script>
 
-<section class="trajectory-surface" aria-labelledby="project-trajectory-title">
-	<header class="flex flex-wrap items-start justify-between gap-3 px-1">
-		<div class="flex min-w-0 items-center gap-3">
-			<div class="section-icon bg-info/10">
-				<TrendingUp class="h-4 w-4 text-info" />
+<section class="trajectory-surface" aria-labelledby="project-progress-title">
+	<header class="trajectory-header">
+		<div class="trajectory-status">
+			<div
+				class={[
+					'trajectory-icon',
+					trajectory.tone === 'success' && 'bg-success/10 text-success',
+					trajectory.tone === 'attention' && 'bg-warning/10 text-warning',
+					trajectory.tone === 'clear' && 'bg-info/10 text-info',
+					trajectory.tone === 'neutral' && 'bg-muted text-muted-foreground'
+				]}
+			>
+				{#if trajectory.tone === 'success'}
+					<CheckCircle2 class="h-4 w-4" />
+				{:else if trajectory.tone === 'attention'}
+					<CircleAlert class="h-4 w-4" />
+				{:else}
+					<TrendingUp class="h-4 w-4" />
+				{/if}
 			</div>
 			<div class="min-w-0">
-				<h2 id="project-trajectory-title" class="text-base font-semibold">
-					Project trajectory
-				</h2>
-				<p class="text-sm text-muted-foreground">
-					Task momentum and the commitments ahead.
+				<h2 id="project-progress-title" class="text-base font-semibold">Progress</h2>
+				<p class="trajectory-detail">
+					<span class="font-semibold text-foreground">{trajectory.label}</span>
+					<span aria-hidden="true"> · </span>
+					{trajectory.detail}
 				</p>
-			</div>
-		</div>
-		<div
-			class={[
-				'trajectory-status',
-				trajectory.tone === 'success' && 'border-success/30 bg-success/10',
-				trajectory.tone === 'attention' && 'border-warning/30 bg-warning/10',
-				trajectory.tone === 'clear' && 'border-info/30 bg-info/10',
-				trajectory.tone === 'neutral' && 'border-border bg-muted/45'
-			]}
-		>
-			{#if trajectory.tone === 'success'}
-				<CheckCircle2 class="h-4 w-4 shrink-0 text-success" />
-			{:else if trajectory.tone === 'attention'}
-				<CircleAlert class="h-4 w-4 shrink-0 text-warning" />
-			{:else}
-				<TrendingUp class="h-4 w-4 shrink-0 text-info" />
-			{/if}
-			<div class="min-w-0">
-				<p class="text-xs font-semibold text-foreground">{trajectory.label}</p>
-				<p class="truncate text-2xs text-muted-foreground">{trajectory.detail}</p>
 			</div>
 		</div>
 	</header>
@@ -352,7 +312,7 @@
 				{#if taskTotal === 0}
 					<div class="h-full w-full bg-muted"></div>
 				{:else}
-					{#each taskSegments.filter((segment) => segment.count > 0) as segment (segment.key)}
+					{#each visibleTaskSegments as segment (segment.key)}
 						<div
 							class={['task-segment', segment.colorClass]}
 							style:flex-grow={segment.count}
@@ -363,7 +323,7 @@
 			</div>
 
 			<div class="task-legend">
-				{#each taskSegments as segment (segment.key)}
+				{#each visibleTaskSegments as segment (segment.key)}
 					<div class="flex min-w-0 items-center gap-1.5">
 						<span class={['h-2 w-2 shrink-0 rounded-full', segment.colorClass]}></span>
 						<span class="truncate text-2xs text-muted-foreground">{segment.label}</span>
@@ -371,22 +331,9 @@
 							{segment.count}
 						</strong>
 					</div>
+				{:else}
+					<p class="col-span-full text-xs text-muted-foreground">No tasks yet</p>
 				{/each}
-			</div>
-
-			<div class="signal-row">
-				<div>
-					<Target class="h-3.5 w-3.5 text-warning" />
-					<span>{activeGoalsCount} goals</span>
-				</div>
-				<div>
-					<Calendar class="h-3.5 w-3.5 text-accent" />
-					<span>{activePlansCount} plans</span>
-				</div>
-				<div>
-					<AlertTriangle class="h-3.5 w-3.5 text-destructive" />
-					<span>{openRisks.length} risks</span>
-				</div>
 			</div>
 		</div>
 	</div>
@@ -446,7 +393,7 @@
 </section>
 
 <style>
-	.section-icon {
+	.trajectory-icon {
 		display: flex;
 		height: 2.25rem;
 		width: 2.25rem;
@@ -458,27 +405,36 @@
 
 	.trajectory-surface {
 		min-width: 0;
-		border-top: 1px solid hsl(var(--border));
 		border-bottom: 1px solid hsl(var(--border));
-		padding: 1rem 0;
+		padding: 0.25rem 0 1rem;
+	}
+
+	.trajectory-header {
+		min-width: 0;
+		padding: 0 0.25rem 0.75rem;
 	}
 
 	.trajectory-status {
 		display: flex;
-		max-width: min(100%, 24rem);
-		min-height: 44px;
+		min-width: 0;
 		align-items: center;
-		gap: 0.5rem;
-		border-width: 1px;
-		border-radius: 0.5rem;
-		padding: 0.5rem 0.625rem;
+		gap: 0.625rem;
+	}
+
+	.trajectory-detail {
+		margin-top: 0.125rem;
+		max-width: 48rem;
+		font-size: 0.75rem;
+		line-height: 1.4;
+		color: hsl(var(--muted-foreground));
+		overflow-wrap: anywhere;
 	}
 
 	.trajectory-grid {
 		display: grid;
 		min-width: 0;
-		gap: 1rem;
-		padding-top: 1rem;
+		gap: 0.75rem;
+		padding-top: 0.75rem;
 	}
 
 	.completion-summary,
@@ -566,23 +522,6 @@
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 0.4rem 0.75rem;
 		margin-top: 0.875rem;
-	}
-
-	.signal-row {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem 1rem;
-		border-top: 1px solid hsl(var(--border) / 0.6);
-		margin-top: 0.875rem;
-		padding-top: 0.75rem;
-	}
-
-	.signal-row > div {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.375rem;
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
 	}
 
 	.timeline-section {
@@ -689,7 +628,7 @@
 		}
 
 		.task-legend {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
+			grid-template-columns: repeat(4, minmax(0, 1fr));
 		}
 	}
 

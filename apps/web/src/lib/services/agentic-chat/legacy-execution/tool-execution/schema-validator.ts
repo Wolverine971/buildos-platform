@@ -47,14 +47,19 @@ export interface ToolValidation {
 
 export function getValidationToolDefinitions(
 	toolName: string,
-	availableTools: ChatToolDefinition[] | undefined
+	availableTools: readonly unknown[] | undefined
 ): ChatToolDefinition[] {
-	const providedTools = Array.isArray(availableTools) ? availableTools : [];
+	const providedTools = Array.isArray(availableTools)
+		? availableTools.flatMap((tool) => {
+				const parsed = parseToolDefinition(tool);
+				return parsed ? [parsed] : [];
+			})
+		: [];
 	if (!isGatewayToolName(toolName)) return providedTools;
 
 	const resolved = [...GATEWAY_TOOL_DEFINITIONS];
 	for (const providedTool of providedTools) {
-		const providedName = getDefinitionName(providedTool);
+		const providedName = providedTool.function.name;
 		if (!providedName || !isGatewayToolName(providedName)) resolved.push(providedTool);
 	}
 	return resolved;
@@ -62,28 +67,22 @@ export function getValidationToolDefinitions(
 
 export function getToolDefinition(
 	toolName: string,
-	availableTools: ChatToolDefinition[] | undefined
+	availableTools: readonly unknown[] | undefined
 ): ChatToolDefinition | undefined {
 	if (!Array.isArray(availableTools) || availableTools.length === 0) return undefined;
-	return availableTools.find((tool) => getDefinitionName(tool) === toolName);
+	for (const tool of availableTools) {
+		const definition = parseToolDefinition(tool);
+		if (definition?.function.name === toolName) return definition;
+	}
+	return undefined;
 }
 
-export function getToolParameterSchema(
-	toolDefinition: ChatToolDefinition | undefined
-): SupportedToolSchema | undefined {
-	if (!toolDefinition) return undefined;
-	const nestedFunction: unknown = Reflect.get(toolDefinition, 'function');
-	const nestedParameters = isToolArgumentRecord(nestedFunction)
-		? nestedFunction.parameters
-		: undefined;
-	const directParameters: unknown = Reflect.get(toolDefinition, 'parameters');
-	const schema = nestedParameters ?? directParameters;
-	return isToolArgumentRecord(schema) ? (schema as SupportedToolSchema) : undefined;
+export function getToolParameterSchema(toolDefinition: unknown): SupportedToolSchema | undefined {
+	const definition = parseToolDefinition(toolDefinition);
+	return definition ? (definition.function.parameters as SupportedToolSchema) : undefined;
 }
 
-export function toolDefinitionSupportsProjectId(
-	toolDefinition: ChatToolDefinition | undefined
-): boolean {
+export function toolDefinitionSupportsProjectId(toolDefinition: unknown): boolean {
 	const parameterSchema = getToolParameterSchema(toolDefinition);
 	if (!parameterSchema) return false;
 	const properties = isToolArgumentRecord(parameterSchema.properties)
@@ -98,7 +97,7 @@ export function toolDefinitionSupportsProjectId(
 export function validateToolArguments(
 	toolName: string,
 	args: ToolArguments,
-	availableTools: ChatToolDefinition[] | undefined
+	availableTools: readonly unknown[] | undefined
 ): ToolValidation {
 	const errors: string[] = [];
 	const toolDefinitions = getValidationToolDefinitions(toolName, availableTools);
@@ -255,12 +254,45 @@ function validateSupportedSchema(
 	});
 }
 
-function getDefinitionName(toolDefinition: ChatToolDefinition): string | undefined {
-	const directName: unknown = Reflect.get(toolDefinition, 'name');
-	if (typeof directName === 'string') return directName;
-	const nestedFunction: unknown = Reflect.get(toolDefinition, 'function');
-	if (!isToolArgumentRecord(nestedFunction)) return undefined;
-	return typeof nestedFunction.name === 'string' ? nestedFunction.name : undefined;
+/** Explicit compatibility parser for canonical and historical flat definitions. */
+function parseToolDefinition(toolDefinition: unknown): ChatToolDefinition | undefined {
+	if (isCanonicalToolDefinition(toolDefinition)) return toolDefinition;
+	if (!isToolArgumentRecord(toolDefinition)) return undefined;
+
+	const { name, description, parameters } = toolDefinition;
+	if (
+		typeof name !== 'string' ||
+		typeof description !== 'string' ||
+		!isToolParameterSchema(parameters)
+	) {
+		return undefined;
+	}
+
+	return {
+		type: 'function',
+		function: { name, description, parameters }
+	};
+}
+
+function isCanonicalToolDefinition(value: unknown): value is ChatToolDefinition {
+	if (!isToolArgumentRecord(value) || value.type !== 'function') return false;
+	const nestedFunction = value.function;
+	return (
+		isToolArgumentRecord(nestedFunction) &&
+		typeof nestedFunction.name === 'string' &&
+		typeof nestedFunction.description === 'string' &&
+		isToolParameterSchema(nestedFunction.parameters)
+	);
+}
+
+function isToolParameterSchema(
+	value: unknown
+): value is ChatToolDefinition['function']['parameters'] {
+	return (
+		isToolArgumentRecord(value) &&
+		value.type === 'object' &&
+		isToolArgumentRecord(value.properties)
+	);
 }
 
 function getSupportedSchema(value: unknown): SupportedToolSchema | undefined {

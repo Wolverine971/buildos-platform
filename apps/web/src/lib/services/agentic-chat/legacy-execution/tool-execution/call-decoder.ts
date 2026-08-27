@@ -1,7 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/call-decoder.ts
-import type { ChatToolCall } from '@buildos/shared-types';
 import { ToolExecutionError } from '../../shared/types';
-import { cloneToolArguments, type ToolArguments } from './argument-values';
+import { cloneToolArguments, isToolArgumentRecord, type ToolArguments } from './argument-values';
 
 export interface ResolvedToolCall {
 	name: string;
@@ -23,12 +22,20 @@ export type ArgumentDecodeResult =
 	| { ok: true; args: ToolArguments; diagnostics: ArgumentDecodeDiagnostic[] }
 	| { ok: false; error: ToolExecutionError; diagnostics: ArgumentDecodeDiagnostic[] };
 
-export function resolveToolCall(toolCall: ChatToolCall): ResolvedToolCall {
-	const legacyName: unknown = Reflect.get(toolCall, 'name');
-	const legacyArguments: unknown = Reflect.get(toolCall, 'arguments');
-	const rawName = toolCall.function?.name ?? legacyName ?? '';
+/**
+ * Compatibility parser for canonical provider calls and historical flat calls.
+ * Keep untrusted/replayed data unknown until it crosses this boundary.
+ */
+export function resolveToolCall(toolCall: unknown): ResolvedToolCall {
+	const callRecord = isToolArgumentRecord(toolCall) ? toolCall : {};
+	const nestedFunction = isToolArgumentRecord(callRecord.function)
+		? callRecord.function
+		: undefined;
+	const legacyName = callRecord.name;
+	const legacyArguments = callRecord.arguments;
+	const rawName = nestedFunction?.name ?? legacyName ?? '';
 	const name = typeof rawName === 'string' ? rawName.trim() : '';
-	const primaryArgs = toolCall.function?.arguments;
+	const primaryArgs = nestedFunction?.arguments;
 	const hasPrimaryArgs =
 		primaryArgs !== undefined &&
 		primaryArgs !== null &&

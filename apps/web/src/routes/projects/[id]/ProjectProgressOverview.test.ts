@@ -76,8 +76,6 @@ describe('ProjectProgressOverview', () => {
 			props: {
 				project,
 				tasksCoverage,
-				goals: [],
-				plans: [],
 				milestones: [milestone],
 				risks: [highRisk],
 				onOpenTasks,
@@ -87,8 +85,13 @@ describe('ProjectProgressOverview', () => {
 
 		expect(screen.getByText('40%')).toBeInTheDocument();
 		expect(screen.getByText('4 of 10 tracked tasks are done.')).toBeInTheDocument();
-		expect(screen.getByText('Needs attention')).toBeInTheDocument();
+		expect(screen.getAllByText('Needs attention').length).toBeGreaterThan(0);
 		expect(screen.getByText('1 overdue · 1 blocked · 1 high-impact risk')).toBeInTheDocument();
+		expect(
+			screen.getByRole('img', {
+				name: 'Not started: 2, In progress: 2, Needs attention: 2, Done: 4'
+			})
+		).toBeInTheDocument();
 
 		await fireEvent.click(
 			screen.getByRole('button', {

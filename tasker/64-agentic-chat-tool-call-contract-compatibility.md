@@ -4,7 +4,7 @@
 
 **Created:** 2026-08-26
 
-**Status:** Open
+**Status:** Complete
 
 **Priority:** P1
 **Type:** Live contract investigation and test normalization
@@ -41,6 +41,44 @@ read legacy fields with `Reflect.get`.
     - unreachable and safe to remove.
 4. Keep malformed/legacy data typed as `unknown` until it crosses an explicit compatibility parser.
    Do not broaden the canonical shared types merely to make fixtures compile.
+
+## Production trace (2026-08-26)
+
+- `ToolExecutionService` has one production construction site:
+  `apps/web/src/routes/api/agent/v2/stream/+server.ts`. Its single-call adapter passes the
+  orchestrator's `ChatToolCall` directly to `executeTool`; its batch adapter applies
+  `maybeInjectProjectId` and passes the resulting `ChatToolCall[]` to `batchExecuteTools`.
+- Provider events cross `FastAgentStreamEvent` as canonical `ChatToolCall` values. Before execution,
+  `stream-orchestrator/llm-pass-runner.ts` reads and rewrites only
+  `toolCall.function.name`/`toolCall.function.arguments`. The live route contract test also asserts
+  canonical nested calls and definitions at both execution adapters.
+- Tool definitions originate in the typed Agentic Chat catalog and remain
+  `ChatToolDefinition[]` through turn preparation, gateway materialization, and skill
+  materialization. No flat definition producer reaches the service.
+- `validateToolCall` has no production caller outside the service facade; current direct callers are
+  tests. Live execution validates through the service's argument pipeline using the same canonical
+  definitions.
+- Persisted `chat_messages.tool_calls`, prepared-prompt history, and worker frozen-history artifacts
+  are replay inputs for provider history, not calls into `ToolExecutionService`. The worker uses its
+  own runtime/execution path and never constructs this service.
+- No reachable flat production caller was found. Flat call/definition support is retained
+  temporarily behind the explicit `unknown` compatibility parsers because persisted JSON validation
+  is intentionally shallow and historical payload provenance is not versioned. Review removal by
+  **2026-09-09** in a separate change after sampling persisted payloads; do not broaden the shared
+  canonical types in the meantime.
+
+## Implementation result (2026-08-26)
+
+- The broad service suite now builds canonical nested calls and definitions. Object arguments are
+  serialized once into `function.arguments`, matching provider ingress; intentionally malformed
+  strings remain strings for decoder/error coverage.
+- Flat compatibility is isolated in clearly named decoder and schema-validator suites. Legacy
+  fixtures stay `unknown` until the parser normalizes them, with no double casts.
+- The service suite's 209 diagnostics are eliminated. The web test-type debt now measures 540 and
+  the baseline is pinned to 540.
+- Verification passed: 127 focused execution/decoder/schema tests, 45 live stream route tests,
+  production `svelte-check` with 0 errors and 0 warnings, and the web test-type gate at its new
+  baseline.
 
 ## Recommended implementation
 

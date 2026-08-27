@@ -630,13 +630,9 @@
 	>
 		<div class="flex min-w-0 items-center gap-2">
 			<ListChecks class="h-4 w-4 shrink-0 text-muted-foreground" />
-			<div class="min-w-0">
-				<p class="text-sm font-semibold text-foreground">Task board</p>
-				<p class="truncate text-xs text-muted-foreground">
-					{activeTaskCount()}
-					tasks · move work from Backlog to Done
-				</p>
-			</div>
+			<p class="truncate text-sm font-semibold text-foreground">
+				{activeTaskCount()} tasks
+			</p>
 		</div>
 
 		<div class="flex items-center gap-1.5">

@@ -16,21 +16,32 @@ const context: ServiceContext = {
 	conversationHistory: []
 };
 
+function canonicalToolDefinition(
+	name: string,
+	parameters: ChatToolDefinition['function']['parameters']
+): ChatToolDefinition {
+	return {
+		type: 'function',
+		function: {
+			name,
+			description: `${name} test definition`,
+			parameters
+		}
+	};
+}
+
 describe('argument-pipeline', () => {
 	it('preserves defaults → context → aliases → ID normalization order', () => {
-		const definition = {
-			name: 'list_calendar_events',
-			parameters: {
-				type: 'object',
-				properties: {
-					project_id: { type: 'string' },
-					query: { type: 'string' },
-					mode: { type: 'string', default: 'agenda' },
-					event_id: { type: 'string' }
-				},
-				required: ['project_id', 'query']
-			}
-		} as unknown as ChatToolDefinition;
+		const definition = canonicalToolDefinition('list_calendar_events', {
+			type: 'object',
+			properties: {
+				project_id: { type: 'string' },
+				query: { type: 'string' },
+				mode: { type: 'string', default: 'agenda' },
+				event_id: { type: 'string' }
+			},
+			required: ['project_id', 'query']
+		});
 
 		const result = runArgumentPipeline({
 			toolName: 'list_calendar_events',
@@ -63,18 +74,15 @@ describe('argument-pipeline', () => {
 			}
 		};
 		const defaultSettings = { display: { density: 'compact' } };
-		const definition = {
-			name: 'create_onto_document',
-			parameters: {
-				type: 'object',
-				properties: {
-					project_id: { type: 'string' },
-					title: { type: 'string' },
-					content: { type: 'string' },
-					settings: { type: 'object', default: defaultSettings }
-				}
+		const definition = canonicalToolDefinition('create_onto_document', {
+			type: 'object',
+			properties: {
+				project_id: { type: 'string' },
+				title: { type: 'string' },
+				content: { type: 'string' },
+				settings: { type: 'object', default: defaultSettings }
 			}
-		} as unknown as ChatToolDefinition;
+		});
 		const callerSnapshot = structuredClone(callerArguments);
 		const definitionSnapshot = structuredClone(definition);
 
@@ -125,17 +133,14 @@ describe('argument-pipeline', () => {
 	});
 
 	it('uses a single generic id only after the project default is injected', () => {
-		const definition = {
-			name: 'move_document_in_tree',
-			parameters: {
-				type: 'object',
-				properties: {
-					project_id: { type: 'string' },
-					document_id: { type: 'string' }
-				},
-				required: ['project_id', 'document_id']
-			}
-		} as unknown as ChatToolDefinition;
+		const definition = canonicalToolDefinition('move_document_in_tree', {
+			type: 'object',
+			properties: {
+				project_id: { type: 'string' },
+				document_id: { type: 'string' }
+			},
+			required: ['project_id', 'document_id']
+		});
 
 		const result = runArgumentPipeline({
 			toolName: 'move_document_in_tree',

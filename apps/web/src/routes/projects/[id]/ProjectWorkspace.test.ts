@@ -273,9 +273,10 @@ describe('ProjectWorkspace edge states', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Open document' }));
 		expect(pushState).toHaveBeenCalledOnce();
 		const briefUrl = vi.mocked(pushState).mock.calls[0]?.[0];
-		expect(briefUrl).toBeInstanceOf(URL);
-		expect((briefUrl as URL).searchParams.get('entity')).toBe('document');
-		expect((briefUrl as URL).searchParams.get('entity_id')).toBe(CONTEXT_DOCUMENT_ID);
+		expect(typeof briefUrl).toBe('string');
+		const parsedBriefUrl = new URL(briefUrl as string, window.location.origin);
+		expect(parsedBriefUrl.searchParams.get('entity')).toBe('document');
+		expect(parsedBriefUrl.searchParams.get('entity_id')).toBe(CONTEXT_DOCUMENT_ID);
 	});
 
 	it('defaults to Overview when the URL does not select a workspace view', async () => {
@@ -342,19 +343,14 @@ describe('ProjectWorkspace edge states', () => {
 		expect(document.title).toBe(`${LONG_NAME} · BuildOS`);
 
 		const overview = screen.getByRole('tabpanel', { name: 'Overview' });
-		expect(within(overview).getByRole('heading', { name: 'Project map' })).toBeInTheDocument();
 		expect(
-			within(overview).getByText(
-				"See the project's direction, milestones, and risks in one place."
-			)
-		).toBeInTheDocument();
+			within(overview).queryByRole('heading', { name: 'Project map' })
+		).not.toBeInTheDocument();
 		expect(within(overview).queryByText(LONG_BRIEF)).not.toBeInTheDocument();
 		expect(within(overview).queryByText('PROJECT BRIEF')).not.toBeInTheDocument();
 		expect(within(overview).queryByText('STATUS')).not.toBeInTheDocument();
 		expect(within(overview).queryByText('TARGET')).not.toBeInTheDocument();
-		expect(
-			within(overview).getByRole('heading', { name: 'Project trajectory' })
-		).toBeInTheDocument();
+		expect(within(overview).getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
 		expect(within(overview).getByText('Task completion')).toBeInTheDocument();
 		expect(within(overview).getByText('Milestone timeline')).toBeInTheDocument();
 	});
@@ -446,8 +442,8 @@ describe('ProjectWorkspace edge states', () => {
 			within(docs).getByRole('heading', { name: 'Project documents' })
 		).toBeInTheDocument();
 		expect(
-			within(docs).getByText('Find, open, and organize the knowledge behind this project.')
-		).toBeInTheDocument();
+			within(docs).queryByText('Find, open, and organize the knowledge behind this project.')
+		).not.toBeInTheDocument();
 		expect(await within(docs).findByLabelText('Project document tree')).toBeInTheDocument();
 		expect(within(docs).getByText('Launch research')).toBeInTheDocument();
 		expect(within(docs).queryByText('RECENTLY UPDATED')).not.toBeInTheDocument();
@@ -480,8 +476,10 @@ describe('ProjectWorkspace edge states', () => {
 			within(activity).getByRole('heading', { name: 'Project activity' })
 		).toBeInTheDocument();
 		expect(
-			within(activity).getByText('See recent chats, project changes, and what is scheduled.')
-		).toBeInTheDocument();
+			within(activity).queryByText(
+				'See recent chats, project changes, and what is scheduled.'
+			)
+		).not.toBeInTheDocument();
 		expect(
 			await within(activity).findByRole('heading', { name: 'Recent chats' })
 		).toBeInTheDocument();

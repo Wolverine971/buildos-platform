@@ -85,7 +85,7 @@
 				<MessagesSquare class="h-4 w-4 text-accent" />
 			</div>
 			<div class="min-w-0">
-				<h3 id="recent-project-chats-title" class="text-sm font-semibold">Recent chats</h3>
+				<h2 id="recent-project-chats-title" class="text-sm font-semibold">Recent chats</h2>
 				<p class="text-xs text-muted-foreground">
 					Reopen conversations held in this project.
 				</p>

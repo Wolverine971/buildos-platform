@@ -24,6 +24,25 @@ function genericNotification(index: number): GenericNotification {
 describe('NotificationStack', () => {
 	afterEach(cleanup);
 
+	it('collapses the mobile stack into a single review control', async () => {
+		const items = Array.from({ length: 2 }, (_, index) => genericNotification(index + 1));
+		const notifications = new Map<string, Notification>(items.map((item) => [item.id, item]));
+		const stack = items.map((item) => item.id);
+
+		render(NotificationStack, {
+			props: { stack, notifications, expandedId: null }
+		});
+
+		const toggle = screen.getByRole('button', { name: 'Review 2 updates' });
+		expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+		await fireEvent.click(toggle);
+		expect(screen.getByRole('button', { name: 'Hide notifications' })).toHaveAttribute(
+			'aria-expanded',
+			'true'
+		);
+	});
+
 	it('lets pointer and keyboard users reveal and collapse older notifications', async () => {
 		const items = Array.from({ length: 6 }, (_, index) => genericNotification(index + 1));
 		const notifications = new Map<string, Notification>(items.map((item) => [item.id, item]));

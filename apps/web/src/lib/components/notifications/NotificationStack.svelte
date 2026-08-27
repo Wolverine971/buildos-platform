@@ -13,6 +13,7 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import type { Notification } from '$lib/types/notification.types';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { Bell } from '$lib/icons/lucide';
 	import MinimizedNotification from './MinimizedNotification.svelte';
 
 	// Props
@@ -29,13 +30,10 @@
 	// Show max 5 notifications, collapse older ones
 	const MAX_VISIBLE = 5;
 	let showAll = $state(false);
+	let mobileExpanded = $state(false);
 	let visibleStack = $derived(showAll ? stack : stack.slice(-MAX_VISIBLE));
 	let hiddenCount = $derived(showAll ? 0 : Math.max(0, stack.length - MAX_VISIBLE));
 	let canCollapse = $derived(showAll && stack.length > MAX_VISIBLE);
-
-	$effect(() => {
-		if (stack.length <= MAX_VISIBLE && showAll) showAll = false;
-	});
 
 	function stackMotion(): { y: number; duration: number } {
 		return prefersReducedMotion.current ? { y: 0, duration: 0 } : { y: 20, duration: 180 };
@@ -44,41 +42,60 @@
 
 {#if visibleStack.length > 0 || hiddenCount > 0}
 	<div
-		class="pointer-events-auto fixed inset-x-3 bottom-3 z-50 flex max-h-[calc(100dvh-1.5rem)] flex-col gap-2 overflow-y-auto overscroll-contain sm:left-auto sm:right-4 sm:bottom-4 sm:w-auto sm:max-h-[calc(100dvh-2rem)]"
+		class="pointer-events-auto fixed inset-x-3 bottom-3 z-50 flex flex-col gap-2 sm:left-auto sm:right-4 sm:bottom-4 sm:w-auto"
 		role="region"
 		aria-label="Notification stack"
 	>
-		<!-- Older notifications are reachable instead of being a dead count badge. -->
-		{#if hiddenCount > 0}
-			<Button
-				variant="outline"
-				size="md"
-				class="pointer-events-auto w-full shadow-ink-strong"
-				aria-expanded="false"
-				onclick={() => (showAll = true)}
-			>
-				Show {hiddenCount} older notification{hiddenCount === 1 ? '' : 's'}
-			</Button>
-		{:else if canCollapse}
-			<Button
-				variant="outline"
-				size="md"
-				class="pointer-events-auto w-full shadow-ink-strong"
-				aria-expanded="true"
-				onclick={() => (showAll = false)}
-			>
-				Show newest {MAX_VISIBLE}
-			</Button>
-		{/if}
+		<Button
+			variant="outline"
+			size="md"
+			icon={Bell}
+			class="w-full bg-card shadow-ink-strong sm:hidden"
+			aria-expanded={mobileExpanded}
+			onclick={() => (mobileExpanded = !mobileExpanded)}
+		>
+			{mobileExpanded
+				? 'Hide notifications'
+				: `Review ${stack.length} ${stack.length === 1 ? 'update' : 'updates'}`}
+		</Button>
 
-		<!-- Visible notifications (bottom to top) -->
-		{#each visibleStack as notificationId (notificationId)}
-			{@const notification = notifications.get(notificationId)}
-			{#if notification && notificationId !== expandedId}
-				<div transition:fly={stackMotion()}>
-					<MinimizedNotification {notification} />
-				</div>
+		<div
+			class="max-h-[calc(100dvh-5.5rem)] flex-col gap-2 overflow-y-auto overscroll-contain {mobileExpanded
+				? 'flex'
+				: 'hidden'} sm:flex sm:max-h-[calc(100dvh-2rem)]"
+		>
+			<!-- Older notifications are reachable instead of being a dead count badge. -->
+			{#if hiddenCount > 0}
+				<Button
+					variant="outline"
+					size="md"
+					class="pointer-events-auto w-full shadow-ink-strong"
+					aria-expanded="false"
+					onclick={() => (showAll = true)}
+				>
+					Show {hiddenCount} older notification{hiddenCount === 1 ? '' : 's'}
+				</Button>
+			{:else if canCollapse}
+				<Button
+					variant="outline"
+					size="md"
+					class="pointer-events-auto w-full shadow-ink-strong"
+					aria-expanded="true"
+					onclick={() => (showAll = false)}
+				>
+					Show newest {MAX_VISIBLE}
+				</Button>
 			{/if}
-		{/each}
+
+			<!-- Visible notifications (bottom to top) -->
+			{#each visibleStack as notificationId (notificationId)}
+				{@const notification = notifications.get(notificationId)}
+				{#if notification && notificationId !== expandedId}
+					<div transition:fly={stackMotion()}>
+						<MinimizedNotification {notification} />
+					</div>
+				{/if}
+			{/each}
+		</div>
 	</div>
 {/if}

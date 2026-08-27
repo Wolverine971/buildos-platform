@@ -9,16 +9,19 @@ import {
 	validateToolArguments
 } from './schema-validator';
 
-function directDefinition(
+function canonicalDefinition(
 	name: string,
-	properties: Record<string, unknown>,
+	properties: ChatToolDefinition['function']['parameters']['properties'],
 	required?: string[]
 ): ChatToolDefinition {
 	return {
-		name,
-		description: `${name} test definition`,
-		parameters: { type: 'object', properties, required }
-	} as unknown as ChatToolDefinition;
+		type: 'function',
+		function: {
+			name,
+			description: `${name} test definition`,
+			parameters: { type: 'object', properties, required }
+		}
+	};
 }
 
 describe('schema-validator', () => {
@@ -32,7 +35,7 @@ describe('schema-validator', () => {
 	});
 
 	it('lets canonical gateway definitions win over stale supplied definitions', () => {
-		const stale = directDefinition('tool_schema', {});
+		const stale = canonicalDefinition('tool_schema', {});
 		const resolved = getValidationToolDefinitions('tool_schema', [stale]);
 		const definition = getToolDefinition('tool_schema', resolved);
 
@@ -43,32 +46,54 @@ describe('schema-validator', () => {
 		]);
 	});
 
-	it('resolves direct and nested definitions without mutating them', () => {
-		const direct = directDefinition('direct_tool', { query: { type: 'string' } });
-		const nested = {
-			type: 'function',
-			function: {
-				name: 'nested_tool',
-				description: 'Nested test definition',
+	it('resolves canonical definitions without mutating them', () => {
+		const first = canonicalDefinition('first_tool', { query: { type: 'string' } });
+		const second = canonicalDefinition('second_tool', {
+			project_id: { type: 'string' }
+		});
+		const before = JSON.stringify([first, second]);
+
+		expect(getToolDefinition('first_tool', [first, second])).toBe(first);
+		expect(getToolDefinition('second_tool', [first, second])).toBe(second);
+		expect(toolDefinitionSupportsProjectId(second)).toBe(true);
+		expect(
+			toolDefinitionSupportsProjectId(
+				canonicalDefinition('required_scope', {}, ['project_id'])
+			)
+		).toBe(true);
+		expect(JSON.stringify([first, second])).toBe(before);
+	});
+
+	describe('legacy flat definition compatibility', () => {
+		it('normalizes unknown flat definitions without broadening ChatToolDefinition', () => {
+			const legacyDefinition: unknown = {
+				name: 'legacy_tool',
+				description: 'Historical flat definition',
 				parameters: {
 					type: 'object',
 					properties: { project_id: { type: 'string' } }
 				}
-			}
-		} as ChatToolDefinition;
-		const before = JSON.stringify([direct, nested]);
+			};
 
-		expect(getToolDefinition('direct_tool', [direct, nested])).toBe(direct);
-		expect(getToolDefinition('nested_tool', [direct, nested])).toBe(nested);
-		expect(toolDefinitionSupportsProjectId(nested)).toBe(true);
-		expect(
-			toolDefinitionSupportsProjectId(directDefinition('required_scope', {}, ['project_id']))
-		).toBe(true);
-		expect(JSON.stringify([direct, nested])).toBe(before);
+			const definition = getToolDefinition('legacy_tool', [legacyDefinition]);
+
+			expect(definition).toEqual({
+				type: 'function',
+				function: {
+					name: 'legacy_tool',
+					description: 'Historical flat definition',
+					parameters: {
+						type: 'object',
+						properties: { project_id: { type: 'string' } }
+					}
+				}
+			});
+			expect(toolDefinitionSupportsProjectId(legacyDefinition)).toBe(true);
+		});
 	});
 
 	it('enforces the supported object, array, string, number, integer, and boolean types', () => {
-		const definition = directDefinition('typed_tool', {
+		const definition = canonicalDefinition('typed_tool', {
 			object_value: { type: 'object' },
 			array_value: { type: 'array' },
 			string_value: { type: 'string' },
@@ -116,7 +141,7 @@ describe('schema-validator', () => {
 	});
 
 	it('preserves required, enum, minItems, null-union, and nested-schema behavior', () => {
-		const definition = directDefinition(
+		const definition = canonicalDefinition(
 			'bounded_tool',
 			{
 				kind: { type: 'string', enum: ['read', 'write'] },
@@ -150,7 +175,7 @@ describe('schema-validator', () => {
 	});
 
 	it('enforces published string, array, and numeric bounds', () => {
-		const definition = directDefinition('constrained_tool', {
+		const definition = canonicalDefinition('constrained_tool', {
 			code: { type: 'string', maxLength: 5, pattern: '^ok' },
 			email: { type: 'string', format: 'email' },
 			items: { type: 'array', maxItems: 2 },
@@ -188,7 +213,7 @@ describe('schema-validator', () => {
 	});
 
 	it('preserves UUID and graph-specific validation strings', () => {
-		const updateDefinition = directDefinition('update_onto_task', {
+		const updateDefinition = canonicalDefinition('update_onto_task', {
 			task_id: { type: 'string' },
 			description: { type: 'string' }
 		});
@@ -200,7 +225,7 @@ describe('schema-validator', () => {
 			).errors
 		).toEqual(['Invalid task_id: expected UUID']);
 
-		const graphDefinition = directDefinition(
+		const graphDefinition = canonicalDefinition(
 			'reorganize_onto_project_graph',
 			{ project_id: { type: 'string' }, nodes: { type: 'array', minItems: 1 } },
 			['project_id', 'nodes']
@@ -221,11 +246,11 @@ describe('schema-validator', () => {
 	});
 
 	it('requires an event identity and at least one calendar update field', () => {
-		const getDefinition = directDefinition('get_calendar_event_details', {
+		const getDefinition = canonicalDefinition('get_calendar_event_details', {
 			onto_event_id: { type: 'string' },
 			event_id: { type: 'string' }
 		});
-		const updateDefinition = directDefinition('update_calendar_event', {
+		const updateDefinition = canonicalDefinition('update_calendar_event', {
 			onto_event_id: { type: 'string' },
 			event_id: { type: 'string' },
 			title: { type: 'string' }

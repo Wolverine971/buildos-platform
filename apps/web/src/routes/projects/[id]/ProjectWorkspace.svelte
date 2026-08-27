@@ -12,9 +12,10 @@
 	editors. It is a live prototype, not a static mock.
 -->
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { pushState, replaceState } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -359,10 +360,16 @@
 
 	function selectTab(tab: WorkspaceTab, updateUrl = true) {
 		activeTab = tab;
+		const tabIndex = TAB_ORDER.indexOf(tab);
+		void tick().then(() => {
+			tabButtons[tabIndex]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+		});
 		if (!browser || !updateUrl) return;
 		const url = new URL(window.location.href);
 		url.searchParams.set('view', tab);
-		replaceState(url, { ...page.state });
+		replaceState(resolve(`${url.pathname}${url.search}${url.hash}` as `/projects/${string}`), {
+			...page.state
+		});
 	}
 
 	function focusTab(index: number) {
@@ -447,9 +454,19 @@
 			url.searchParams.set('entity_id', resolution.action.entityId);
 			url.searchParams.delete('id');
 			if (replacingExistingEntity) {
-				replaceState(url, { ...page.state });
+				replaceState(
+					resolve(`${url.pathname}${url.search}${url.hash}` as `/projects/${string}`),
+					{
+						...page.state
+					}
+				);
 			} else {
-				pushState(url, { ...page.state });
+				pushState(
+					resolve(`${url.pathname}${url.search}${url.hash}` as `/projects/${string}`),
+					{
+						...page.state
+					}
+				);
 				entityHistoryOwned = true;
 			}
 		}
@@ -477,7 +494,12 @@
 			url.searchParams.delete('entity');
 			url.searchParams.delete('entity_id');
 			url.searchParams.delete('id');
-			replaceState(url, { ...page.state });
+			replaceState(
+				resolve(`${url.pathname}${url.search}${url.hash}` as `/projects/${string}`),
+				{
+					...page.state
+				}
+			);
 		}
 		queueMicrotask(() => {
 			entityClosePending = false;
@@ -750,7 +772,11 @@
 				class="workspace-tabs -mx-2 overflow-x-auto border-t border-border/80 bg-background/45 px-2 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6"
 				aria-label="Project workspace views"
 			>
-				<div class="flex min-w-max gap-1" role="tablist" aria-orientation="horizontal">
+				<div
+					class="workspace-tablist flex min-w-max gap-1"
+					role="tablist"
+					aria-orientation="horizontal"
+				>
 					<button
 						bind:this={tabButtons[0]}
 						type="button"
@@ -765,7 +791,7 @@
 							? 'workspace-tab-active'
 							: ''}"
 					>
-						<LayoutDashboard class="h-4 w-4" />
+						<LayoutDashboard class="hidden h-4 w-4 sm:block" />
 						Overview
 					</button>
 					<button
@@ -780,7 +806,7 @@
 						onkeydown={(event) => handleTabKeydown(event, 1)}
 						class="workspace-tab {activeTab === 'work' ? 'workspace-tab-active' : ''}"
 					>
-						<ListChecks class="h-4 w-4" />
+						<ListChecks class="hidden h-4 w-4 sm:block" />
 						Tasks
 						<span class="tab-count">{taskCount}</span>
 					</button>
@@ -796,7 +822,7 @@
 						onkeydown={(event) => handleTabKeydown(event, 2)}
 						class="workspace-tab {activeTab === 'docs' ? 'workspace-tab-active' : ''}"
 					>
-						<FileText class="h-4 w-4" />
+						<FileText class="hidden h-4 w-4 sm:block" />
 						Docs
 						<span class="tab-count">
 							{isHydrating ? initialCounts.document_count : documents.length}
@@ -816,7 +842,7 @@
 							? 'workspace-tab-active'
 							: ''}"
 					>
-						<Activity class="h-4 w-4" />
+						<Activity class="hidden h-4 w-4 sm:block" />
 						Activity
 					</button>
 				</div>
@@ -954,21 +980,10 @@
 				aria-labelledby="workspace-tab-overview"
 				tabindex="0"
 			>
-				<div class="space-y-6">
-					<section class="overview-intro" aria-labelledby="overview-map-title">
-						<h2 id="overview-map-title" class="text-lg font-semibold tracking-tight">
-							Project map
-						</h2>
-						<p class="mt-1 text-sm text-muted-foreground">
-							See the project's direction, milestones, and risks in one place.
-						</p>
-					</section>
-
+				<div class="space-y-5">
 					<ProjectProgressOverview
 						{project}
 						{tasksCoverage}
-						{goals}
-						{plans}
 						{milestones}
 						{risks}
 						onOpenTasks={() => selectTab('work')}
@@ -976,35 +991,30 @@
 					/>
 
 					<div
-						class="grid gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]"
+						class="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]"
 					>
-						<div class="min-w-0 space-y-6">
+						<div class="min-w-0 space-y-5">
 							<section
 								class="overview-section"
 								aria-labelledby="overview-direction-title"
 							>
 								<header class="overview-section-header">
-									<div class="flex min-w-0 items-center gap-3">
-										<div class="section-icon bg-warning/10">
-											<Target class="h-4 w-4 text-warning" />
-										</div>
-										<div class="min-w-0">
-											<h2
-												id="overview-direction-title"
-												class="text-sm font-semibold"
-											>
-												Direction
-											</h2>
-											<p class="text-xs text-muted-foreground">
-												Goals and the plans that connect them
-											</p>
-										</div>
+									<div class="flex min-w-0 items-center gap-2">
+										<Target class="h-4 w-4 shrink-0 text-warning" />
+										<h2
+											id="overview-direction-title"
+											class="text-sm font-semibold"
+										>
+											Direction
+										</h2>
 									</div>
-									<span
-										class="shrink-0 text-2xs font-medium text-muted-foreground"
-									>
-										{activeGoals.length} goals · {activePlans.length} plans
-									</span>
+									{#if activeGoals.length > 0 || activePlans.length > 0}
+										<span
+											class="shrink-0 text-2xs font-medium text-muted-foreground"
+										>
+											{activeGoals.length} goals · {activePlans.length} plans
+										</span>
+									{/if}
 								</header>
 								{#if activeGoals.length === 0 && activePlans.length === 0}
 									<div class="section-empty-state">
@@ -1171,28 +1181,26 @@
 							</section>
 						</div>
 
-						<aside class="min-w-0 space-y-6">
+						<aside class="min-w-0 space-y-5">
 							<section
 								class="overview-section"
 								aria-labelledby="overview-milestones-title"
 							>
 								<header class="overview-section-header">
-									<div class="flex min-w-0 items-center gap-3">
-										<div class="section-icon bg-accent/10">
-											<Flag class="h-4 w-4 text-accent" />
-										</div>
-										<div class="min-w-0">
-											<h2
-												id="overview-milestones-title"
-												class="text-sm font-semibold"
-											>
-												Milestones
-											</h2>
-											<p class="text-xs text-muted-foreground">
-												Upcoming milestones
-											</p>
-										</div>
+									<div class="flex min-w-0 items-center gap-2">
+										<Flag class="h-4 w-4 shrink-0 text-accent" />
+										<h2
+											id="overview-milestones-title"
+											class="text-sm font-semibold"
+										>
+											Milestones
+										</h2>
 									</div>
+									{#if upcomingMilestones.length > 0}
+										<span class="text-2xs font-medium text-muted-foreground">
+											{upcomingMilestones.length} upcoming
+										</span>
+									{/if}
 								</header>
 								<div class="pt-2">
 									{#if visibleMilestones.length > 0}
@@ -1276,22 +1284,17 @@
 								aria-labelledby="overview-risks-title"
 							>
 								<header class="overview-section-header">
-									<div class="flex min-w-0 items-center gap-3">
-										<div class="section-icon bg-destructive/10">
-											<AlertTriangle class="h-4 w-4 text-destructive" />
-										</div>
-										<div class="min-w-0">
-											<h2
-												id="overview-risks-title"
-												class="text-sm font-semibold"
-											>
-												Risks
-											</h2>
-											<p class="text-xs text-muted-foreground">
-												Open project risks
-											</p>
-										</div>
+									<div class="flex min-w-0 items-center gap-2">
+										<AlertTriangle class="h-4 w-4 shrink-0 text-destructive" />
+										<h2 id="overview-risks-title" class="text-sm font-semibold">
+											Risks
+										</h2>
 									</div>
+									{#if openRisks.length > 0}
+										<span class="text-2xs font-medium text-muted-foreground">
+											{openRisks.length} open
+										</span>
+									{/if}
 								</header>
 								<div class="pt-2">
 									{#if visibleRisks.length > 0}
@@ -1380,19 +1383,7 @@
 				aria-labelledby="workspace-tab-docs"
 				tabindex="0"
 			>
-				<div class="mb-3 flex items-center gap-3 px-1 py-1">
-					<div class="flex min-w-0 items-center gap-3">
-						<div class="section-icon bg-info/10">
-							<FileText class="h-4 w-4 text-info" />
-						</div>
-						<div class="min-w-0">
-							<h2 class="text-base font-semibold">Project documents</h2>
-							<p class="text-sm text-muted-foreground">
-								Find, open, and organize the knowledge behind this project.
-							</p>
-						</div>
-					</div>
-				</div>
+				<h2 class="sr-only">Project documents</h2>
 
 				<div class="min-w-0">
 					{#if isHydrating}
@@ -1438,17 +1429,7 @@
 				aria-labelledby="workspace-tab-activity"
 				tabindex="0"
 			>
-				<div class="mb-3 flex items-center gap-3">
-					<div class="section-icon bg-success/10">
-						<Activity class="h-4 w-4 text-success" />
-					</div>
-					<div>
-						<h2 class="text-base font-semibold">Project activity</h2>
-						<p class="text-sm text-muted-foreground">
-							See recent chats, project changes, and what is scheduled.
-						</p>
-					</div>
-				</div>
+				<h2 class="sr-only">Project activity</h2>
 
 				{#if isHydrating}
 					<div
@@ -1685,25 +1666,9 @@
 		outline-offset: -2px;
 	}
 
-	.section-icon {
-		display: flex;
-		height: 2.25rem;
-		width: 2.25rem;
-		flex-shrink: 0;
-		align-items: center;
-		justify-content: center;
-		border-radius: 0.5rem;
-	}
-
 	.micro-label {
 		color: hsl(var(--muted-foreground));
 		font-weight: 600;
-	}
-
-	.overview-intro {
-		min-width: 0;
-		border-bottom: 1px solid hsl(var(--border));
-		padding: 0.25rem 0.25rem 1rem;
 	}
 
 	.overview-section {
@@ -1847,6 +1812,29 @@
 	.workspace-panel:focus-visible {
 		outline: 2px solid hsl(var(--ring));
 		outline-offset: 3px;
+	}
+
+	@media (max-width: 639px) {
+		.workspace-tabs {
+			scroll-padding-inline: 0.5rem;
+			scrollbar-width: none;
+		}
+
+		.workspace-tabs::-webkit-scrollbar {
+			display: none;
+		}
+
+		.workspace-tablist {
+			min-width: 100%;
+			justify-content: space-between;
+			gap: 0;
+		}
+
+		.workspace-tab {
+			gap: 0.375rem;
+			padding-inline: 0.625rem;
+			font-size: 0.8125rem;
+		}
 	}
 
 	@keyframes workspace-panel-in {

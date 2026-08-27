@@ -5,10 +5,10 @@
 > Last updated: 2026-08-26
 
 **Status:** Vision written, design-reviewed against production, scope revised, direction ratified
-2026-08-26. **Step 1 is implemented. Step 1.5 WS-1 (shared guarded document writes) is implemented;
-the WS-2 patch/anchor ADR is ratified by DJ (2026-08-26), and WS-3 is next.** Steps 2–7 are
-unstarted. The base ontology migration already contains the canonical `(document_id, number)`
-uniqueness constraint; there is no P0 index prerequisite for WS-1.
+2026-08-26. **Step 1 and all three Step 1.5 structural prerequisites are implemented; the WS-2
+patch/anchor ADR was ratified by DJ on 2026-08-26. Step 2 is next.** Steps 2–7 are unstarted. The
+base ontology migration already contains the canonical `(document_id, number)` uniqueness
+constraint; there is no P0 index prerequisite for WS-1.
 
 > **Implementing agent, start here:**
 > [`STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md`](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md).
@@ -23,9 +23,9 @@ true, and the work is safe enough to hold things you cannot afford to lose.
 
 ## Start here
 
-- [Step 1.5 structural handoff](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md) — **the active work
-  item.** WS-1 is complete; the patch/anchor ADR (WS-2) is ratified; per-turn document mutation
-  events (WS-3) are the remaining prerequisite. Blocks Step 2.
+- [Step 1.5 structural handoff](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md) — **complete
+  2026-08-26.** Shared guarded writes, the ratified patch/anchor contract, and per-turn
+  document-scoped mutation events are all in place. Step 2 is now unblocked.
 - [Switching Bar and revised roadmap](./SWITCHING_BAR_AND_REVISED_ROADMAP_2026-08-26.md) — **the
   current plan.** Closed 24-item Switching Bar, deferral list, revised 7-step sequence, the P0
   trust fix, the missing-import finding, and the self-migration eval. Supersedes the workstream
@@ -64,11 +64,12 @@ Ordered by the revised sequence (roadmap §8).
 
 1. ~~**P0 trust fix**~~ — ✅ done 2026-08-26. The canonical uniqueness constraint was verified in
    `20250601000001_ontology_system.sql`; the later add/drop migrations have no net schema effect.
-2. **Step 1.5** — ✅ WS-1 unified document write path; ✅ **WS-2 patch/anchor ADR ratified by DJ
-   2026-08-26**; 🟡 WS-3 per-turn mutation events remain. Specified in the handoff doc above.
+2. **Step 1.5** — ✅ complete 2026-08-26: WS-1 unified document writes, WS-2 ratified the
+   patch/anchor contract, and WS-3 added per-turn document mutation events with dirty-editor
+   conflict protection.
 3. **Proposal-and-apply contract** — ✅ ratified 2026-08-26. Anchors, patch representation, and the
    direct-apply threshold (none in v1 — every LLM-authored interactive edit is a proposal) are
-   settled by the WS-2 ADR; implementation waits only on WS-3.
+   settled by the WS-2 ADR. **Implementing the Step 2 interaction is next.**
 4. **START HERE index design** — the maintained project README, built on the existing
    `<!-- managed:* -->` region primitive (Step 3).
 5. **Managed-region ratification** is included in the ratified patch/anchor ADR rather than a

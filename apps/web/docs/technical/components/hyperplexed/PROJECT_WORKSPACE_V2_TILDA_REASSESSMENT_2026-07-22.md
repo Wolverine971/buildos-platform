@@ -594,3 +594,49 @@ visible to every project member.
 - Scoped ESLint and Prettier checks pass. The full web check reaches an unrelated existing
   `cycles.profile_settings` `FeatureName` mismatch in `admin/feature-flags/+page.svelte`; the search
   files introduce no reported diagnostic.
+
+## Mobile hierarchy and obstruction cleanup — shipped 2026-08-26
+
+An independent adversarial review and a live phone-width pass found that the right information was
+present, but the page repeated its structure before revealing it. The Overview intro repeated the
+selected tab, six task buckets competed with the completion visual, the signal row restated the
+Direction/Risks sections, Docs and Activity repeated their tab names, and the global notification
+stack covered the lower quarter of the mobile viewport.
+
+- Removed the visible `Project map`, `Project documents`, and `Project activity` introductions.
+  Screen-reader-only panel headings preserve the tabpanel outline where needed, while visible
+  content now begins with `Progress`, the document tree, or `Recent chats` (**P4, P6, P22**).
+- Renamed the visual surface from `Project trajectory` to the direct `Progress`, moved its status
+  into one wrapping line, and removed the duplicate goal/plan/risk signal row (**P4, P6**).
+- Collapsed the six implementation buckets into four exact, mutually exclusive business segments:
+  Done, In progress, Needs attention (blocked + overdue), and Not started (backlog + scheduled).
+  Zero-value segments stay in the chart's accessible label but do not consume visual legend space
+  (**P4, P9, P19, P22**).
+- Made the four workspace tabs label-only below `sm`, distributed them across the available width,
+  hid the scrollbar, and scrolls the selected tab into view after keyboard or pointer selection.
+  The tab semantics, roving keys, and 44px-plus targets remain intact (**P1, P9, P13**).
+- Reduced the Direction, Milestones, Risks, and Task board headings to one useful line each. Counts
+  are retained when they carry information; explanatory subtitles and decorative icon containers
+  were removed (**P4, P6, P22**).
+- Replaced the mobile notification card stack with one `Review N updates` control. It expands to the
+  full, scroll-contained stack on demand and leaves the existing desktop stack unchanged (**P1,
+  P11, P13, P20**).
+- Resolved all workspace shallow-history destinations through SvelteKit's `resolve()` helper while
+  preserving the existing query parameters and modal back-stack behavior (**P13, P20**).
+
+### Mobile cleanup verification
+
+- Independent review agreed on the Tier 1 priorities: remove duplicate introductions and signals,
+  use four task segments, allow status text to wrap, compact the board header, and guarantee the tab
+  row can reveal its active item.
+- At the audited phone viewport, the tab row has **zero internal overflow**, the page has **zero
+  horizontal overflow**, and the Progress surface fell from **689 px to 532 px**. The milestone
+  timeline now enters the first viewport and the full Overview fell from **1932 px to 1618 px**.
+- The collapsed notification surface measures **45 px** high; expansion to **276 px** remains
+  reachable and scroll-contained. Docs, Tasks, and Activity also retain zero page-level horizontal
+  overflow.
+- Authenticated desktop dark, desktop light, and phone dark captures pass. The live populated Tasks
+  search returned the correct `twitter` matches and cleared its loading state in **318 ms**.
+- Focused Vitest: **5 files / 15 tests pass**. The official Svelte analyzer reports zero issues in
+  the route, progress, recent-chat, and notification components; its remaining Task board output is
+  mature state/effect and mutable-collection guidance unrelated to this heading-only change.

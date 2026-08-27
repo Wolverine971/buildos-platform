@@ -8,8 +8,8 @@
 
 # Document Service: The Switching Bar and Revised Roadmap
 
-**Status:** Direction ratified by DJ 2026-08-26. Scope revised. **P0 trust fix and Step 1.5 WS-1
-implemented 2026-08-26; WS-2 ADR ratified by DJ 2026-08-26** (§5, §8.1); WS-3 follows.
+**Status:** Direction ratified by DJ 2026-08-26. Scope revised. **P0 trust fix and all Step 1.5
+workstreams implemented or ratified 2026-08-26** (§5, §8.1); Step 2 is next.
 **Supersedes:** the workstream list and phase sequence in §11–§12 of the original vision doc.
 **Preserves:** the domain model (§4), relationship authorities (§5), risks (§15), and non-goals (§17)
 of the original vision doc, which remain correct.
@@ -409,8 +409,9 @@ first, then rounds — with import and collaboration as the final two rounds per
 **Step 1 — Trust fix (P0). ✅ Done 2026-08-26.** Tier 0.1–0.3. No new uniqueness prerequisite;
 the base constraint was verified and the redundant audit index is removed by the cleanup migration.
 
-**Step 1.5 — Structural prerequisites. 🔄 WS-1 complete; WS-2 ratified 2026-08-26; WS-3 remains.** Three things
-Step 2 cannot be built on top of, one of which was a live bug. Specified in full in
+**Step 1.5 — Structural prerequisites. ✅ Complete 2026-08-26.** WS-1 unified guarded writes, WS-2
+ratified the patch/anchor contract, and WS-3 added immediate document-scoped mutation events. These
+were three things Step 2 could not be built on top of, one of which was a live bug. Specified in full in
 [`STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md`](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md);
 summarised in §8.1 below. 2–4 days.
 
@@ -466,10 +467,12 @@ chooses hybrid exact-text patches, deterministic local re-anchoring, a generated
 and proposal-first interactive edits. **DJ ratified it 2026-08-26**; WS-3 is the remaining
 prerequisite before Step 2 code begins.
 
-**WS-3 — No per-turn document event.** `DocumentInteractDock` only fires `onClose(summary)`, and
-the `projectDataMutations` store is explicitly session-close-scoped and coarse. Step 2's "watch it
-land without losing your place" needs per-turn, document-scoped events. Additive — the per-tool
-tracking it needs already exists in `agent-chat-tool-presenter.ts`.
+**WS-3 — No per-turn document event. ✅ Fixed 2026-08-26.** Successful document mutations now emit
+an immediate typed event with document, project, tool, and turn identity through the presenter →
+chat modal → document dock callback. A clean open editor refreshes only that document and restores
+its CodeMirror selection, focus, and scroll. A dirty or saving editor enters the existing conflict
+flow without replacing local text. The coarse close-time `projectDataMutations` broadcast is
+unchanged for other surfaces.
 
 **Not blockers, confirmed present:** the CodeMirror decoration precedent (`voice-widget.ts`), the
 diff renderer (`document-diff.ts`), and a review/apply pipeline to borrow from (`proposal-context/`).
@@ -608,12 +611,12 @@ which **DJ ratified 2026-08-26** as a whole rather than item by item. See the
 
 ### 11.3 Closed
 
-| Decision                                | Resolution                                          |
-| --------------------------------------- | --------------------------------------------------- |
-| Revision boundary / open-window display | **Option A**, decided and shipped 2026-08-26 — §5.3 |
+| Decision                                | Resolution                                                                                                     |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Revision boundary / open-window display | **Option A**, decided and shipped 2026-08-26 — §5.3                                                            |
 | Direct-apply threshold                  | **Closed** — none in v1; every LLM-authored interactive edit is a proposal. WS-2 ADR ratified by DJ 2026-08-26 |
-| Entity-reference trigger                | **Closed** — `@`-picker leads, syntax follows, §6.2 |
-| Document library scope                  | **Closed** — folded into Tier 2, §4                 |
+| Entity-reference trigger                | **Closed** — `@`-picker leads, syntax follows, §6.2                                                            |
+| Document library scope                  | **Closed** — folded into Tier 2, §4                                                                            |
 
 ### 11.4 Deferred with their workstream
 

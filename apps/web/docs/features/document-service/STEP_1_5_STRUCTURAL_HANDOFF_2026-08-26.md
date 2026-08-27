@@ -7,8 +7,7 @@
 
 # Step 1.5 — Structural Prerequisites for the Proposal Interaction
 
-**Status:** In progress. **WS-1 implemented 2026-08-26; WS-2 ADR ratified by DJ 2026-08-26;
-WS-3 not started.**
+**Status:** Complete 2026-08-26. **WS-1 and WS-3 implemented; WS-2 ADR ratified by DJ.**
 **Owner:** unassigned (written for an implementing agent).
 **Blocks:** roadmap Step 2 (select → propose → apply → revision).
 **Roadmap:** [`SWITCHING_BAR_AND_REVISED_ROADMAP_2026-08-26.md`](./SWITCHING_BAR_AND_REVISED_ROADMAP_2026-08-26.md) §8.
@@ -354,6 +353,24 @@ embedded modals) depend on it, as the store's comment explains. This is additive
 event arrives. Reuse the existing conflict-detection behavior rather than force-replacing the
 buffer.
 
+### Implementation result — 2026-08-26
+
+WS-3 is complete:
+
+- `agent-chat-tool-presenter.ts` emits a typed document mutation event immediately after a
+  successful document tool mutation is recorded. It includes document id, project id, tool name,
+  and the durable turn id supplied by the SSE layer.
+- `AgentChatModal` and `DocumentInteractDock` forward the event through an optional scoped callback;
+  the existing `notifyDataMutation(summary)` close-time broadcasts remain unchanged.
+- `DocumentModal` ignores other documents, refreshes the current clean document immediately, and
+  preserves CodeMirror selection, focus, and scroll position across the server refresh.
+- If local edits are dirty or saving, the modal cancels queued autosave and enters the existing
+  conflict UI instead of replacing the buffer. A clean agent deletion closes the deleted document.
+- Focused presenter, result-ordering, mutation-decision, editor-state, and modal coverage is green.
+
+This is infrastructure for Switching Bar item 3.3, not completion of the signature interaction;
+that row correctly remains unshipped until Step 2 implements proposal review and apply.
+
 ---
 
 ## Definition of done
@@ -363,10 +380,10 @@ buffer.
       overwrite.
 - [x] Agent `append` under concurrent edit appends to current content after retry.
 - [x] Patch/anchor ADR written, reviewed, and linked from the document-service README.
-- [ ] A document-scoped mutation event fires per turn, and the close-time broadcast still works.
+- [x] A document-scoped mutation event fires per turn, and the close-time broadcast still works.
 - [ ] `pnpm typecheck`, `pnpm lint`, `pnpm test:run` green.
-- [ ] `node scripts/docs/check-doc-health.mjs --strict` green.
-- [ ] Switching Bar rows in the roadmap updated to reflect what actually shipped.
+- [x] `node scripts/docs/check-doc-health.mjs --strict` green.
+- [x] Switching Bar rows and roadmap status updated to reflect what actually shipped.
 
 ---
 
