@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatMutationReviewExecutionPlan.test.ts
 import { describe, expect, it } from 'vitest';
 import type { JsonObject } from '@buildos/shared-types';
 import { canonicalizeAgenticChatJson } from '@buildos/shared-types';
@@ -61,9 +62,7 @@ describe('Agentic Chat mutation review execution-plan binding', () => {
 			state_key: 'done'
 		});
 
-		expect(mutationBatchSha256([mutation])).not.toBe(
-			mutationBatchSha256([read, mutation])
-		);
+		expect(mutationBatchSha256([mutation])).not.toBe(mutationBatchSha256([read, mutation]));
 		expect(mutationBatchSha256([read, mutation])).not.toBe(
 			mutationBatchSha256([mutation, read])
 		);

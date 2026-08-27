@@ -5690,25 +5690,15 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			invocation.continueWithToolResults!({
 				round: 2,
 				results: [
-					durableReadFeedbackFor(
-						'scheduled-read-a',
-						'get_workspace_overview',
-						{}
-					),
-					durableReadFeedbackFor(
-						'scheduled-read-b',
-						'get_workspace_overview',
-						{}
-					)
+					durableReadFeedbackFor('scheduled-read-a', 'get_workspace_overview', {}),
+					durableReadFeedbackFor('scheduled-read-b', 'get_workspace_overview', {})
 				]
 			})
 		);
 		const assistantCalls = client.stream.mock.calls[1]?.[0].messages.findLast(
 			(message) => message.role === 'assistant' && message.tool_calls
 		)?.tool_calls;
-		expect(
-			assistantCalls?.map((call) => JSON.parse(String(call.function.arguments)))
-		).toEqual([
+		expect(assistantCalls?.map((call) => JSON.parse(String(call.function.arguments)))).toEqual([
 			{ call_ref: 'first' },
 			{ after: ['first'], call_ref: 'second' }
 		]);

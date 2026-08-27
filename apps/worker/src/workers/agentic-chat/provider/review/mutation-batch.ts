@@ -270,13 +270,13 @@ function describeBatchRequiredArguments(
 
 function mutationBatchPayload(calls: readonly CompletedProviderToolCall[]): JsonObject[] {
 	return calls.map((call, providerCallIndex) => ({
-			provider_call_index: providerCallIndex,
-			provider_tool_call_id: call.id,
-			tool_name: call.name,
-			execution_kind: reviewedAgenticChatMutationSpecV1(call.name) ? 'mutation' : 'read',
-			arguments: call.arguments,
-			scheduling: call.scheduling
-				? { call_ref: call.scheduling.callRef, after: [...call.scheduling.after] }
-				: null
-		}));
+		provider_call_index: providerCallIndex,
+		provider_tool_call_id: call.id,
+		tool_name: call.name,
+		execution_kind: reviewedAgenticChatMutationSpecV1(call.name) ? 'mutation' : 'read',
+		arguments: call.arguments,
+		scheduling: call.scheduling
+			? { call_ref: call.scheduling.callRef, after: [...call.scheduling.after] }
+			: null
+	}));
 }

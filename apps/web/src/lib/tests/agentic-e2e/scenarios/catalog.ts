@@ -21,6 +21,7 @@ import { projectCatchupColdScenario } from './project-catchup-cold.scenario';
 import { bookWritingJourneyScenario } from './book-writing-journey.scenario';
 import { semanticContractCancellationScenario } from './semantic-contract-cancellation.scenario';
 import { projectCreateContractScenario } from './project-create-contract.scenario';
+import { toolGraphParallelReadsScenario } from './tool-graph-parallel-reads.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
@@ -40,5 +41,6 @@ export const scenarioCatalog: Scenario[] = [
 	projectCatchupColdScenario,
 	semanticContractCancellationScenario,
 	projectCreateContractScenario,
+	toolGraphParallelReadsScenario,
 	bookWritingJourneyScenario
 ];

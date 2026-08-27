@@ -186,6 +186,8 @@ export type AgenticChatTurnExecutionResultV1 = {
 type ProjectionState = {
 	currentActivity: string;
 	semanticEvents: AgentStreamEventV1[];
+	/** Tool adapters may run concurrently; projection persistence must remain one-at-a-time. */
+	semanticPublishTail: Promise<void>;
 };
 
 type TerminalContextState = {
@@ -1291,8 +1293,9 @@ export class AgenticChatTurnExecutor {
 						failed_call_count: run.results.filter(
 							(result) => result.status === 'failed' || result.status === 'rejected'
 						).length,
-						skipped_call_count: run.results.filter((result) => result.status === 'skipped')
-							.length,
+						skipped_call_count: run.results.filter(
+							(result) => result.status === 'skipped'
+						).length,
 						max_observed_concurrency: run.maxObservedConcurrency,
 						actual_critical_path_ms: elapsedMs(batchStartedAt)
 					})
@@ -2381,50 +2384,55 @@ export class AgenticChatTurnExecutor {
 		if (step.eventPayload.type !== step.eventType) {
 			throw new Error('Fixture semantic payload type mismatch');
 		}
-		const claim = executionInput.claim;
-		const sequence = this.ports.publisher.getSnapshot(claim.turnRunId).durableSequence + 1;
-		const event = {
-			...step.eventPayload,
-			contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
-			event_id: createAgentStreamEventIdV1(
-				claim.turnRunId,
-				claim.executionGeneration,
-				sequence
-			),
-			stream_run_id: executionInput.streamRunId,
-			client_turn_id: executionInput.clientTurnId,
-			session_id: claim.sessionId,
-			turn_run_id: claim.turnRunId,
-			execution_generation: claim.executionGeneration,
-			sequence_index: sequence,
-			phase: step.phase,
-			event_type: step.eventType,
-			durable: true
-		} as AgentStreamEventV1;
-		const priorActivity = projection.currentActivity;
-		const priorEvents = projection.semanticEvents.slice();
-		projection.currentActivity = step.currentActivity;
-		projection.semanticEvents.push(event);
-		if (projection.semanticEvents.length > MAX_UI_PROJECTION_EVENTS) {
-			projection.semanticEvents.shift();
-		}
+		const publication = projection.semanticPublishTail.then(async () => {
+			throwIfAborted(signal);
+			const claim = executionInput.claim;
+			const sequence = this.ports.publisher.getSnapshot(claim.turnRunId).durableSequence + 1;
+			const event = {
+				...step.eventPayload,
+				contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+				event_id: createAgentStreamEventIdV1(
+					claim.turnRunId,
+					claim.executionGeneration,
+					sequence
+				),
+				stream_run_id: executionInput.streamRunId,
+				client_turn_id: executionInput.clientTurnId,
+				session_id: claim.sessionId,
+				turn_run_id: claim.turnRunId,
+				execution_generation: claim.executionGeneration,
+				sequence_index: sequence,
+				phase: step.phase,
+				event_type: step.eventType,
+				durable: true
+			} as AgentStreamEventV1;
+			const priorActivity = projection.currentActivity;
+			const priorEvents = projection.semanticEvents.slice();
+			projection.currentActivity = step.currentActivity;
+			projection.semanticEvents.push(event);
+			if (projection.semanticEvents.length > MAX_UI_PROJECTION_EVENTS) {
+				projection.semanticEvents.shift();
+			}
 
-		try {
-			await abortable(
-				this.ports.publisher.publishSemantic(claim.turnRunId, {
-					transitionId: step.transitionId,
-					phase: step.phase,
-					eventType: step.eventType,
-					projection: toProjectionJson(projection),
-					eventPayload: step.eventPayload
-				}),
-				signal
-			);
-		} catch (error) {
-			projection.semanticEvents = priorEvents;
-			projection.currentActivity = priorActivity;
-			throw error;
-		}
+			try {
+				await abortable(
+					this.ports.publisher.publishSemantic(claim.turnRunId, {
+						transitionId: step.transitionId,
+						phase: step.phase,
+						eventType: step.eventType,
+						projection: toProjectionJson(projection),
+						eventPayload: step.eventPayload
+					}),
+					signal
+				);
+			} catch (error) {
+				projection.semanticEvents = priorEvents;
+				projection.currentActivity = priorActivity;
+				throw error;
+			}
+		});
+		projection.semanticPublishTail = publication.catch(() => undefined);
+		await publication;
 	}
 
 	private async recover(
@@ -3056,7 +3064,11 @@ function validateClaimEnvelope(
 }
 
 function emptyProjection(): ProjectionState {
-	return { currentActivity: DEFAULT_RUNNING_ACTIVITY, semanticEvents: [] };
+	return {
+		currentActivity: DEFAULT_RUNNING_ACTIVITY,
+		semanticEvents: [],
+		semanticPublishTail: Promise.resolve()
+	};
 }
 
 function toProjectionJson(projection: ProjectionState): JsonObject {

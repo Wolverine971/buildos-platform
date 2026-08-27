@@ -269,6 +269,7 @@ function createHarness(
 		statedFutureCaptureError?: Error;
 		consumptionBillingError?: Error;
 		beforeFlushTextBatches?: (inputs: Array<Record<string, unknown>>) => Promise<void>;
+		beforePersistSemantic?: (input: Record<string, unknown>) => Promise<void>;
 	} = {}
 ) {
 	let sequence = 0;
@@ -319,6 +320,7 @@ function createHarness(
 			};
 		},
 		async persistSemantic(input: Record<string, unknown>) {
+			await options.beforePersistSemantic?.(input);
 			semanticInputs.push(input);
 			const payload = input.event_payload as Record<string, unknown>;
 			log.push(`semantic:${String(payload.type)}:${String(payload.turn_phase ?? '')}`);
@@ -3594,9 +3596,21 @@ describe('AgenticChatTurnExecutor', () => {
 	});
 
 	it('executes independent same-response reads concurrently when the read rollout is enabled', async () => {
+		let releaseFirstToolResult!: () => void;
+		const firstToolResultGate = new Promise<void>((resolve) => {
+			releaseFirstToolResult = resolve;
+		});
+		let blockedFirstToolResult = false;
 		const harness = createHarness([], {
 			concurrentReadsEnabled: true,
-			maxToolConcurrency: 2
+			maxToolConcurrency: 2,
+			beforePersistSemantic: async (input) => {
+				const payload = input.event_payload as Record<string, unknown>;
+				if (payload.type === 'tool_result' && !blockedFirstToolResult) {
+					blockedFirstToolResult = true;
+					await firstToolResultGate;
+				}
+			}
 		});
 		const starts: string[] = [];
 		const completions = new Map<string, () => void>();
@@ -3661,6 +3675,8 @@ describe('AgenticChatTurnExecutor', () => {
 			await vi.waitFor(() => expect(starts).toHaveLength(2));
 			completions.get('parallel-b')?.();
 			completions.get('parallel-a')?.();
+			await vi.waitFor(() => expect(blockedFirstToolResult).toBe(true));
+			releaseFirstToolResult();
 			await expect(execution).resolves.toMatchObject({ outcome: 'completed' });
 			expect(starts).toEqual(['parallel-a', 'parallel-b']);
 			expect(continueWithToolResults).toHaveBeenCalledOnce();
@@ -3671,6 +3687,19 @@ describe('AgenticChatTurnExecutor', () => {
 				])
 			);
 			expect(sequenceByCall).toEqual({ 'parallel-a': 1, 'parallel-b': 2 });
+			const resultProjections = harness.semanticInputs
+				.filter((input) => input.event_type === 'tool_result')
+				.map(
+					(input) =>
+						input.projection as { semantic_events: Array<{ sequence_index: number }> }
+				);
+			expect(resultProjections).toHaveLength(2);
+			for (const projection of resultProjections) {
+				const sequences = projection.semantic_events.map((event) => event.sequence_index);
+				expect(sequences).toEqual(
+					[...new Set(sequences)].sort((left, right) => left - right)
+				);
+			}
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -3694,7 +3723,8 @@ describe('AgenticChatTurnExecutor', () => {
 								id === 'parallel-write-a'
 									? 'd1000000-0000-5000-8000-00000000001d'
 									: 'd2000000-0000-5000-8000-00000000002d',
-							canonicalArgumentHash: id === 'parallel-write-a' ? 'a'.repeat(64) : 'b'.repeat(64),
+							canonicalArgumentHash:
+								id === 'parallel-write-a' ? 'a'.repeat(64) : 'b'.repeat(64),
 							downstreamIdempotencyKey: `chat-effect:${id}`,
 							downstreamReceipt: { task_id: id },
 							replayed: false
