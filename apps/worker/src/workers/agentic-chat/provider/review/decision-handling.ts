@@ -14,7 +14,7 @@ import {
 } from './disposition';
 
 export type PendingProposalRevision = {
-	kind: 'contract' | 'mutation_batch';
+	kind: 'contract' | 'mutation_batch' | 'implicit_mutation_batch';
 	reason: string;
 	requiredCorrection: string;
 };
@@ -39,6 +39,7 @@ export function buildReviewFallbackClarification(
 		name: REQUEST_TURN_CLARIFICATION_TOOL_NAME,
 		arguments: argumentsValue,
 		canonicalArguments: canonicalizeAgenticChatJson(argumentsValue),
+		canonicalProviderArguments: canonicalizeAgenticChatJson(argumentsValue),
 		decidedBy: 'harness_review_fallback'
 	};
 }
@@ -95,7 +96,17 @@ export function findAmbiguousReferenceCandidates(
 	argumentsValue: JsonObject,
 	contract: TurnContract
 ): ReferenceCandidateGroup | null {
-	const contractTargets = new Set(contract.outcomes.flatMap((outcome) => outcome.targetIds));
+	return findAmbiguousReferenceCandidatesForTargetIds(
+		argumentsValue,
+		contract.outcomes.flatMap((outcome) => outcome.targetIds)
+	);
+}
+
+export function findAmbiguousReferenceCandidatesForTargetIds(
+	argumentsValue: JsonObject,
+	targetIds: readonly string[]
+): ReferenceCandidateGroup | null {
+	const contractTargets = new Set(targetIds);
 	for (const group of readReferenceCandidates(argumentsValue.reference_candidates)) {
 		if (group.candidates.length < 2) continue;
 		const covered = group.candidates.filter((candidate) =>
@@ -132,6 +143,7 @@ export function buildCandidateGateClarification(
 		name: REQUEST_TURN_CLARIFICATION_TOOL_NAME,
 		arguments: argumentsValue,
 		canonicalArguments: canonicalizeAgenticChatJson(argumentsValue),
+		canonicalProviderArguments: canonicalizeAgenticChatJson(argumentsValue),
 		decidedBy: 'harness_candidate_gate'
 	};
 }
@@ -176,6 +188,28 @@ export function buildMutationBatchRevisionRequest(
 			`Reason: ${revision.reason || 'not stated'}.`,
 			`Required correction: ${revision.requiredCorrection || 'not stated'}.`,
 			'Propose the corrected mutation calls now using only the approved contract targets and values the user stated or delegated. Do not re-declare the contract, do not add unstated values, and do not narrate this correction to the user.'
+		].join(' ')
+	);
+}
+
+export function buildImplicitMutationBatchRevisionRequest(
+	request: AgenticChatTurnProviderRequestV1,
+	availableTools: readonly AgenticChatTurnProviderToolV1[],
+	revision: PendingProposalRevision
+): AgenticChatTurnProviderRequestV1 {
+	return appendSystemInstruction(
+		buildPostSemanticDispositionRequest(
+			request,
+			availableTools,
+			DECLARE_TURN_CONTRACT_TOOL_NAME
+		),
+		[
+			'Independent review returned your proposed direct mutation for correction; it did not reach the user and no mutation executed.',
+			`Reason: ${revision.reason || 'not stated'}.`,
+			`Required correction: ${revision.requiredCorrection || 'not stated'}.`,
+			'If one corrected call fully satisfies one clear, bounded user-commissioned effect, propose only that exact mutation call now.',
+			'If the user commissioned multiple effects, multiple targets, dependent writes, or nontrivial organization, declare the complete outcome contract with declare_turn_contract before proposing any mutation.',
+			'Request clarification only when a choice genuinely belongs to the user. Do not narrate this correction to the user.'
 		].join(' ')
 	);
 }

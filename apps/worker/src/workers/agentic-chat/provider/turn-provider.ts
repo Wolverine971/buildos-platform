@@ -64,6 +64,7 @@ import {
 import {
 	type PendingProposalRevision,
 	buildContractRevisionRequest,
+	buildImplicitMutationBatchRevisionRequest,
 	buildMutationBatchRevisionRequest,
 	readProposalRevision
 } from './review/decision-handling';
@@ -87,6 +88,8 @@ import {
 import {
 	type PendingMutationBatchReview,
 	buildMutationBatchReviewRequest,
+	implicitMutationTargetIds,
+	isImplicitSimpleMutationBatch,
 	mutationBatchSha256
 } from './review/mutation-batch';
 import { buildTurnContractReviewRequest } from './review/turn-contract';
@@ -218,9 +221,10 @@ type ToolRoundStreamState = {
  *
  * The reviewed surface is the immutable admission artifact intersected with
  * the worker's shared read allowlist and explicit mutation capabilities. The
- * default capability set is empty. Provider calls stay sequential and every
- * durable tool result crosses the shared payload and round policies before
- * another provider pass begins.
+ * default capability set is empty. One provider response is an execution
+ * batch: the executor validates its graph and schedules ready calls, while
+ * every durable result still crosses the shared payload and round policies
+ * before another provider pass begins.
  */
 export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1 {
 	constructor(
@@ -417,10 +421,15 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					if (call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME) {
 						const revision = readProposalRevision(call.arguments);
 						if (pendingMutationBatchReview) {
-							// The contract stays approved; only the exact batch is withdrawn.
+							const revisionKind =
+								pendingMutationBatchReview.authorization.kind === 'implicit'
+									? 'implicit_mutation_batch'
+									: 'mutation_batch';
+							// A declared contract stays approved; an implicit proposal has no
+							// authority until a corrected exact call or full contract passes review.
 							pendingMutationBatchReview = null;
 							mutationBatchRevisionCount += 1;
-							pendingProposalRevision = { kind: 'mutation_batch', ...revision };
+							pendingProposalRevision = { kind: revisionKind, ...revision };
 						} else {
 							// The declared contract is void; the acting model must re-declare
 							// through the disposition gate, then pass review again.
@@ -484,6 +493,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					mutationRoundReached ||
 					!calls.some((call) => reviewedAgenticChatMutationSpecV1(call.name))
 				) {
+					return null;
+				}
+				// Exactly one held mutation can be classified and reviewed at the
+				// existing SHA-bound execution boundary. Without an independent
+				// reviewer, keep the legacy disposition gate fail-closed.
+				if (semanticReviewRequired && isImplicitSimpleMutationBatch(calls)) {
 					return null;
 				}
 				const gate = buildSemanticTurnDispositionGateRequest(
@@ -561,6 +576,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// Production assembly refuses mutation capabilities without this lane.
 				// Keep reviewer-less deterministic/provider fixtures backward-compatible.
 				if (!semanticReviewRequired) return [];
+				if (!turnContract && isImplicitSimpleMutationBatch(calls)) return [];
 				return validateApprovedTurnContractMutations(
 					calls,
 					turnContract,
@@ -575,20 +591,34 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				) {
 					return null;
 				}
-				if (!turnContract || !approvedContractSha256) {
-					throw providerError('provider_mutation_review_without_contract', 'permanent');
-				}
 				if (pendingMutationBatchReview) {
 					throw providerError('provider_mutation_review_reused', 'permanent');
 				}
 				const batchSha256 = mutationBatchSha256(calls);
+				const authorization: PendingMutationBatchReview['authorization'] =
+					turnContract && approvedContractSha256
+						? {
+								kind: 'declared',
+								contract: turnContract,
+								contractSha256: approvedContractSha256,
+								labelBindings
+							}
+						: isImplicitSimpleMutationBatch(calls)
+							? {
+									kind: 'implicit',
+									targetIds: implicitMutationTargetIds(calls)
+								}
+							: (() => {
+									throw providerError(
+										'provider_mutation_review_without_contract',
+										'permanent'
+									);
+								})();
 				pendingMutationBatchReview = {
 					batchSha256,
 					calls,
 					blockedToolCalls,
-					contract: turnContract,
-					contractSha256: approvedContractSha256,
-					labelBindings,
+					authorization,
 					reviewTools: request.tools,
 					request: value,
 					usage
@@ -781,11 +811,17 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 									request.tools,
 									proposalRevision
 								)
-							: buildMutationBatchRevisionRequest(
-									currentRequest,
-									request.tools,
-									proposalRevision
-								);
+							: proposalRevision.kind === 'implicit_mutation_batch'
+								? buildImplicitMutationBatchRevisionRequest(
+										currentRequest,
+										request.tools,
+										proposalRevision
+									)
+								: buildMutationBatchRevisionRequest(
+										currentRequest,
+										request.tools,
+										proposalRevision
+									);
 					pendingToolRound = null;
 					toolRoundCompleted = false;
 					nextProviderRound += 1;
@@ -1700,7 +1736,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				finishedReason: reviewFinishedReason,
 				fallbackReason,
 				batchSha256: pending.batchSha256,
-				allowRevision
+				allowRevision,
+				...(pending.authorization.kind === 'implicit'
+					? { implicitTargetIds: pending.authorization.targetIds }
+					: {})
 			});
 			const blockedToolCalls = observeSupervisorToolCalls(state, calls);
 			yield* drainSupervisorSteps(state.supervisor);

@@ -25,7 +25,8 @@ import { validateCompletedProviderCalls } from '../validation';
 import {
 	buildCandidateGateClarification,
 	buildReviewFallbackClarification,
-	findAmbiguousReferenceCandidates
+	findAmbiguousReferenceCandidates,
+	findAmbiguousReferenceCandidatesForTargetIds
 } from './decision-handling';
 
 type ReviewDecisionCompletionInput = {
@@ -113,6 +114,7 @@ export function completeMutationBatchReviewDecision(
 	input: ReviewDecisionCompletionInput & {
 		batchSha256: string;
 		allowRevision: boolean;
+		implicitTargetIds?: readonly string[];
 	}
 ): CompletedProviderToolCall[] {
 	let { calls, fallbackReason } = completeSingleReviewDecision(
@@ -131,6 +133,17 @@ export function completeMutationBatchReviewDecision(
 			validateCompletedProviderCalls(calls, input.reviewRequest).length > 0
 		) {
 			fallbackReason = 'Independent mutation review returned an invalid or unbound decision.';
+		} else if (approval && input.implicitTargetIds) {
+			// The lightweight lane skips the separate contract review, so carry its
+			// deterministic candidate gate to the exact-call boundary. Reviewer prose
+			// cannot override an enumerated ambiguous reference.
+			const ambiguity = findAmbiguousReferenceCandidatesForTargetIds(
+				call.arguments,
+				input.implicitTargetIds
+			);
+			if (ambiguity) {
+				calls = [buildCandidateGateClarification(input.actingRequest, ambiguity)];
+			}
 		}
 	}
 	if (fallbackReason) {

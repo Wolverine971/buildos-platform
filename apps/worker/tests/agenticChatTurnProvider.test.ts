@@ -13,6 +13,7 @@ import {
 import { parseDeclaredTurnContract } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import { reviewedAgenticChatMutationSpecV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
 import {
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderMutationSynthesisInputV1,
@@ -145,15 +146,30 @@ function clientWithRounds(rounds: AgenticChatTurnProviderClientEventV1[][]) {
 }
 
 function mutationBatchReviewSha256(
-	calls: Array<{ id: string; name: string; arguments: JsonObject }>
+	calls: Array<{
+		id: string;
+		name: string;
+		arguments: JsonObject;
+		scheduling?: { callRef: string | null; after: readonly string[] };
+	}>
 ): string {
 	return createHash('sha256')
 		.update(
 			canonicalizeAgenticChatJson(
-				calls.map((call) => ({
+				calls.map((call, providerCallIndex) => ({
+					provider_call_index: providerCallIndex,
 					provider_tool_call_id: call.id,
 					tool_name: call.name,
-					arguments: call.arguments
+					execution_kind: reviewedAgenticChatMutationSpecV1(call.name)
+						? 'mutation'
+						: 'read',
+					arguments: call.arguments,
+					scheduling: call.scheduling
+						? {
+								call_ref: call.scheduling.callRef,
+								after: [...call.scheduling.after]
+							}
+						: null
 				})) as never
 			),
 			'utf8'
@@ -170,6 +186,38 @@ function readToolDefinition(name: string, description = `Read with ${name}.`): C
 			parameters: {
 				type: 'object',
 				properties: { marker: { type: 'string', description: name } }
+			}
+		}
+	};
+}
+
+const schedulingProperties = {
+	call_ref: {
+		type: 'string',
+		minLength: 1,
+		maxLength: 128,
+		description: 'Optional stable name for this call within the current tool-call response.'
+	},
+	after: {
+		type: 'array',
+		maxItems: 40,
+		uniqueItems: true,
+		items: { type: 'string', minLength: 1, maxLength: 128 },
+		description: 'Optional same-response call_ref dependencies that must finish first.'
+	}
+} as const;
+
+function withSchedulingSidecars(definition: ChatToolDefinition): ChatToolDefinition {
+	return {
+		...definition,
+		function: {
+			...definition.function,
+			parameters: {
+				...definition.function.parameters,
+				properties: {
+					...(definition.function.parameters.properties as JsonObject),
+					...schedulingProperties
+				}
 			}
 		}
 	};
@@ -3114,9 +3162,358 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(client.stream).toHaveBeenCalledTimes(4);
 	});
 
-	it("lets an independent reviewer reject the acting model's ambiguous write contract", async () => {
+	it('reviews one direct mutation at the exact-call boundary without a declared contract', async () => {
 		const taskId = '41000000-0000-4000-8000-000000000004';
 		const mutationArguments = { task_id: taskId, state_key: 'done' };
+		const batchSha256 = mutationBatchReviewSha256([
+			{ id: 'provider-update-1', name: 'update_onto_task', arguments: mutationArguments }
+		]);
+		const approvalArguments = {
+			reason: 'The user commissioned this one uniquely identified task completion.',
+			batch_sha256: batchSha256,
+			reference_candidates: [
+				{
+					reference: 'the launch email task',
+					candidates: [{ id: taskId, title: 'Launch email' }]
+				}
+			]
+		};
+		const client = clientWithRounds([
+			providerReadRound('provider-update-1', mutationArguments, 'update_onto_task'),
+			[
+				{ type: 'text', content: 'Marked the launch email task complete.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-batch-approval-1',
+				approvalArguments,
+				'approve_mutation_batch_review'
+			)
+		]);
+		const providerInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				updateTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'update_onto_task'
+			]
+		);
+		providerInput.requestPayload = {
+			...providerInput.requestPayload,
+			message: 'Mark the launch email task complete.'
+		};
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: providerInput,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const reviewSteps = await collect(invocation.stream());
+		expect(reviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(reviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'reviewer-batch-approval-1',
+					toolName: 'approve_mutation_batch_review',
+					decidedBy: 'mutation_batch_reviewer'
+				})
+			])
+		);
+		expect(
+			reviewSteps.some(
+				(step) => step.type === 'read_tool' && step.toolName === 'declare_turn_contract'
+			)
+		).toBe(false);
+		const reviewRequest = semanticReviewer.stream.mock.calls[0]?.[0];
+		expect(
+			requireTextContent(reviewRequest?.messages[0], 'implicit review system prompt')
+		).toContain('lightweight implicit contract');
+		expect(
+			requireTextContent(reviewRequest?.messages[1], 'implicit review evidence')
+		).toContain('Authorization mode: implicit_single_mutation');
+		expect(reviewRequest?.tools[0]?.function.parameters.required).toEqual(
+			expect.arrayContaining(['batch_sha256', 'reference_candidates'])
+		);
+
+		const mutationSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-batch-approval-1',
+						'approve_mutation_batch_review',
+						approvalArguments,
+						{ status: 'mutation_batch_review_approved', batch_sha256: batchSha256 }
+					)
+				]
+			})
+		);
+		const updateStep = mutationSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(updateStep).toMatchObject({
+			providerToolCallId: 'provider-update-1',
+			toolName: 'update_onto_task',
+			arguments: mutationArguments
+		});
+		if (!updateStep) throw new Error('Expected the exact reviewed mutation');
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: [
+						durableMutationFeedback({
+							providerToolCallId: 'provider-update-1',
+							logicalOperationId: updateStep.logicalOperationId,
+							arguments: mutationArguments
+						})
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'Marked the launch email task complete.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps ambiguous direct mutations held with a deterministic candidate gate', async () => {
+		const taskId = '41000000-0000-4000-8000-000000000004';
+		const otherTaskId = '41000000-0000-4000-8000-000000000005';
+		const mutationArguments = { task_id: taskId, state_key: 'done' };
+		const batchSha256 = mutationBatchReviewSha256([
+			{ id: 'provider-update-1', name: 'update_onto_task', arguments: mutationArguments }
+		]);
+		const approvalArguments = {
+			reason: 'The first loaded email task looks like the intended target.',
+			batch_sha256: batchSha256,
+			reference_candidates: [
+				{
+					reference: 'the email task',
+					candidates: [
+						{ id: taskId, title: 'Launch email' },
+						{ id: otherTaskId, title: 'Investor email' }
+					]
+				}
+			]
+		};
+		const client = clientWithRounds([
+			providerReadRound('provider-update-1', mutationArguments, 'update_onto_task'),
+			[
+				{
+					type: 'text',
+					content:
+						'Which one did you mean by "the email task"? Launch email · Investor email'
+				},
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-batch-approval-1',
+				approvalArguments,
+				'approve_mutation_batch_review'
+			)
+		]);
+		const providerInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				updateTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'update_onto_task'
+			]
+		);
+		providerInput.requestPayload = {
+			...providerInput.requestPayload,
+			message: 'Mark the email task complete.'
+		};
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: providerInput,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const clarificationSteps = await collect(invocation.stream());
+		expect(clarificationSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		const clarificationStep = clarificationSteps.find(
+			(step) => step.type === 'read_tool' && step.toolName === 'request_turn_clarification'
+		);
+		expect(clarificationStep).toMatchObject({
+			decidedBy: 'harness_candidate_gate',
+			arguments: expect.objectContaining({
+				question: expect.stringContaining('Launch email · Investor email')
+			})
+		});
+		if (!clarificationStep || clarificationStep.type !== 'read_tool') {
+			throw new Error('Expected deterministic ambiguity clarification');
+		}
+		const clarificationFeedback = durableReadFeedbackFor(
+			clarificationStep.providerToolCallId,
+			'request_turn_clarification',
+			clarificationStep.arguments,
+			{ status: 'clarification_required', requires_user_action: true }
+		);
+		clarificationFeedback.execution.requiresUserAction = true;
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [clarificationFeedback]
+				})
+			)
+		).resolves.toEqual([
+			{
+				type: 'text_delta',
+				text: 'Which one did you mean by "the email task"? Launch email · Investor email'
+			},
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+	});
+
+	it('returns a partial direct write to the acting model for a full multi-effect contract', async () => {
+		const firstTaskId = '41000000-0000-4000-8000-000000000004';
+		const secondTaskId = '41000000-0000-4000-8000-000000000005';
+		const mutationArguments = { task_id: firstTaskId, state_key: 'done' };
+		const revisionArguments = {
+			reason: 'The user commissioned two task completions; one direct call would be partial.',
+			required_correction:
+				'Declare one complete outcome contract covering both task IDs before any mutation.'
+		};
+		const contractArguments: JsonObject = {
+			outcomes: [
+				{
+					action: 'complete',
+					entity_kind: 'task',
+					target_ids: [firstTaskId, secondTaskId],
+					required_fields: ['state_key'],
+					minimum_successful_effects: 2
+				}
+			]
+		};
+		const client = clientWithRounds([
+			providerReadRound('provider-update-1', mutationArguments, 'update_onto_task'),
+			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract')
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-batch-revision-1',
+				revisionArguments,
+				'request_proposal_revision'
+			)
+		]);
+		const providerInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				updateTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'update_onto_task'
+			]
+		);
+		providerInput.requestPayload = {
+			...providerInput.requestPayload,
+			message: 'Mark both the launch email and investor email tasks complete.'
+		};
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: providerInput,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const revisionSteps = await collect(invocation.stream());
+		expect(revisionSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(revisionSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'reviewer-batch-revision-1',
+					toolName: 'request_proposal_revision'
+				})
+			])
+		);
+		const contractSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-batch-revision-1',
+						'request_proposal_revision',
+						revisionArguments,
+						{ status: 'revision_required', ...revisionArguments }
+					)
+				]
+			})
+		);
+		expect(contractSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(contractSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'provider-contract-1',
+					toolName: 'declare_turn_contract'
+				})
+			])
+		);
+		const correctionRequest = client.stream.mock.calls[1]?.[0];
+		expect(correctionRequest).toMatchObject({ toolChoice: 'auto' });
+		expect(
+			requireTextContent(correctionRequest?.messages.at(-1), 'implicit correction prompt')
+		).toContain('multiple effects, multiple targets, dependent writes');
+		expect(
+			requireTextContent(correctionRequest?.messages.at(-1), 'implicit correction prompt')
+		).toContain('Declare one complete outcome contract covering both task IDs');
+		invocation.release();
+	});
+
+	it("lets an independent reviewer reject the acting model's ambiguous write contract", async () => {
+		const taskId = '41000000-0000-4000-8000-000000000004';
 		const contractArguments: JsonObject = {
 			outcomes: [
 				{
@@ -3133,7 +3530,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			question: 'Which task should I complete: Launch email, Investor email, or Press email?'
 		};
 		const mainStreams: AgenticChatTurnProviderClientEventV1[][] = [
-			providerReadRound('withheld-update-1', mutationArguments, 'update_onto_task'),
 			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
 			[
 				{ type: 'text', content: clarificationArguments.question },
@@ -3237,7 +3633,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			{ type: 'text_delta', text: clarificationArguments.question },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
-		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(client.stream).toHaveBeenCalledTimes(2);
 		expect(semanticReviewer.stream).toHaveBeenCalledOnce();
 	});
 
@@ -5178,7 +5574,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(client.stream).toHaveBeenCalledWith(
 			expect.objectContaining({
 				toolChoice: 'auto',
-				tools: [workspace, project, tasks, webSearch, webVisit]
+				tools: [workspace, project, tasks, webSearch, webVisit].map(withSchedulingSidecars)
 			})
 		);
 		const surfaceOverride = client.stream.mock.calls[0]?.[0].messages.find(
@@ -5218,6 +5614,104 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(client.stream).toHaveBeenCalledWith(
 			expect.objectContaining({ toolChoice: 'none', tools: [] })
 		);
+	});
+
+	it('keeps scheduling sidecars in provider history while stripping them from domain steps', async () => {
+		let providerPass = 0;
+		const client = {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() =>
+				(async function* () {
+					providerPass += 1;
+					if (providerPass === 1) {
+						yield {
+							type: 'tool_call',
+							toolCall: [
+								{
+									index: 0,
+									id: 'scheduled-read-a',
+									type: 'function',
+									function: {
+										name: 'get_workspace_overview',
+										arguments: JSON.stringify({ call_ref: 'first' })
+									}
+								},
+								{
+									index: 1,
+									id: 'scheduled-read-b',
+									type: 'function',
+									function: {
+										name: 'get_workspace_overview',
+										arguments: JSON.stringify({
+											call_ref: 'second',
+											after: ['first']
+										})
+									}
+								}
+							]
+						} as const;
+						yield { type: 'done', finishedReason: 'tool_calls' } as const;
+						return;
+					}
+					yield { type: 'text', content: 'Scheduled reads completed.' } as const;
+					yield { type: 'done', finishedReason: 'stop' } as const;
+				})()
+			)
+		};
+		const definitions = [readToolDefinition('get_workspace_overview')];
+		const adapter = new AgenticChatTurnProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+		});
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface(
+				definitions,
+				definitions.map((definition) => definition.function.name)
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const firstRound = await collect(invocation.stream());
+		expect(firstRound.slice(1)).toEqual([
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'scheduled-read-a',
+				arguments: {},
+				scheduling: { callRef: 'first', after: [] }
+			}),
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'scheduled-read-b',
+				arguments: {},
+				scheduling: { callRef: 'second', after: ['first'] }
+			})
+		]);
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'scheduled-read-a',
+						'get_workspace_overview',
+						{}
+					),
+					durableReadFeedbackFor(
+						'scheduled-read-b',
+						'get_workspace_overview',
+						{}
+					)
+				]
+			})
+		);
+		const assistantCalls = client.stream.mock.calls[1]?.[0].messages.findLast(
+			(message) => message.role === 'assistant' && message.tool_calls
+		)?.tool_calls;
+		expect(
+			assistantCalls?.map((call) => JSON.parse(String(call.function.arguments)))
+		).toEqual([
+			{ call_ref: 'first' },
+			{ after: ['first'], call_ref: 'second' }
+		]);
 	});
 
 	it('bridges an explicitly enabled mixed read/write round in provider order', async () => {
@@ -5300,8 +5794,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			})
 		]);
 		expect(client.stream.mock.calls[0]?.[0].tools).toEqual([
-			readDefinition,
-			{
+			withSchedulingSidecars(readDefinition),
+			withSchedulingSidecars({
 				...updateDefinition,
 				function: {
 					...updateDefinition.function,
@@ -5319,7 +5813,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						required: ['task_id']
 					}
 				}
-			}
+			})
 		]);
 
 		invocation.invalidateReadMemo?.();
@@ -5400,7 +5894,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			})
 		]);
 		expect(client.stream.mock.calls[0]?.[0].tools).toEqual([
-			{
+			withSchedulingSidecars({
 				...definition,
 				function: {
 					...definition.function,
@@ -5418,7 +5912,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						required: ['project_id', 'title']
 					}
 				}
-			}
+			})
 		]);
 	});
 
@@ -5471,7 +5965,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			})
 		]);
 		expect(client.stream.mock.calls[0]?.[0].tools).toEqual([
-			{
+			withSchedulingSidecars({
 				...definition,
 				function: {
 					...definition.function,
@@ -5491,7 +5985,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						required: ['project_id', 'title', 'description']
 					}
 				}
-			}
+			})
 		]);
 	});
 
@@ -5801,7 +6295,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		for (const [name, fields] of Object.entries(reviewedFields)) {
 			const definition = definitionFor(name);
 			expect(definition.function.parameters.additionalProperties).toBe(false);
-			expect(Object.keys(propertiesFor(name)).sort()).toEqual([...fields].sort());
+			expect(Object.keys(propertiesFor(name)).sort()).toEqual(
+				[...fields, 'call_ref', 'after'].sort()
+			);
 		}
 		expect(propertiesFor('update_onto_document').update_strategy).toMatchObject({
 			enum: ['replace', 'append'],
@@ -7542,6 +8038,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			systemMessages.map((message) => requireTextContent(message, 'Context system message'))
 		).toEqual([
 			'System prompt\n',
+			expect.stringContaining('Tool execution batching:'),
 			expect.stringContaining('Context gathering: narrowing.'),
 			expect.stringContaining('Context gathering: saturated.'),
 			expect.stringContaining('Context gathering: must synthesize.')

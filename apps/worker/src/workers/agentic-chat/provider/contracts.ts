@@ -104,6 +104,18 @@ export type AgenticChatControlDecisionAuthorV1 =
 	| 'harness_review_fallback'
 	| 'harness_candidate_gate';
 
+export type AgenticChatProviderToolSchedulingV1 = {
+	/** Stable model-authored identity scoped to one provider tool-call response. */
+	callRef: string | null;
+	/** Same-response call refs that must finish successfully before this call starts. */
+	after: readonly string[];
+};
+
+type AgenticChatProviderScheduledToolStepV1 = {
+	/** Worker protocol metadata; never forwarded to a domain adapter. */
+	scheduling?: AgenticChatProviderToolSchedulingV1;
+};
+
 export type AgenticChatProviderStepV1 =
 	| { type: 'text_delta'; text: string }
 	| {
@@ -114,7 +126,7 @@ export type AgenticChatProviderStepV1 =
 			currentActivity: string;
 			eventPayload: JsonObject;
 	  }
-	| ({
+	| (AgenticChatProviderScheduledToolStepV1 & {
 			type: 'read_tool';
 			callTransitionId: string;
 			resultTransitionId: string;
@@ -124,30 +136,30 @@ export type AgenticChatProviderStepV1 =
 			/** Present on control-tool calls; absent on ordinary reads. */
 			decidedBy?: AgenticChatControlDecisionAuthorV1;
 	  } & (
-			| {
-					/**
-					 * A provider call rejected before execution. The executor records the
-					 * failed call behind the same durable/public fence as a normal read, but
-					 * never invokes the read adapter or returns it through the round bridge.
-					 */
-					validationFailure: {
-						error: string;
-						toolCategory: string | null;
-					};
-					memoServed?: never;
-			  }
-			| {
-					/**
-					 * An exact successful pure read already completed in this turn. The
-					 * executor skips the read adapter but still persists and publishes this
-					 * call-specific execution before returning it to the provider.
-					 */
-					memoServed: AgenticChatReadToolExecutionV1;
-					validationFailure?: never;
-			  }
-			| { validationFailure?: never; memoServed?: never }
-	  ))
-	| {
+				| {
+						/**
+						 * A provider call rejected before execution. The executor records the
+						 * failed call behind the same durable/public fence as a normal read, but
+						 * never invokes the read adapter or returns it through the round bridge.
+						 */
+						validationFailure: {
+							error: string;
+							toolCategory: string | null;
+						};
+						memoServed?: never;
+				  }
+				| {
+						/**
+						 * An exact successful pure read already completed in this turn. The
+						 * executor skips the read adapter but still persists and publishes this
+						 * call-specific execution before returning it to the provider.
+						 */
+						memoServed: AgenticChatReadToolExecutionV1;
+						validationFailure?: never;
+				  }
+				| { validationFailure?: never; memoServed?: never }
+			))
+	| (AgenticChatProviderScheduledToolStepV1 & {
 			type: 'mutating_tool';
 			callTransitionId: string;
 			resultTransitionId: string;
@@ -157,8 +169,8 @@ export type AgenticChatProviderStepV1 =
 			operationName: string;
 			arguments: JsonObject;
 			downstreamIdempotencySupported: boolean;
-	  }
-	| {
+	  })
+	| (AgenticChatProviderScheduledToolStepV1 & {
 			/**
 			 * A supervisor-rejected call that must cross the same ledger/publication
 			 * fence as other tool results without invoking a tool adapter.
@@ -175,7 +187,7 @@ export type AgenticChatProviderStepV1 =
 				toolCategory: string | null;
 				modelPayload: JsonObject;
 			};
-	  }
+	  })
 	| {
 			/** Best-effort supervisor evaluation telemetry; never a public stream event. */
 			type: 'supervisor_evaluation';
@@ -301,7 +313,7 @@ export type AgenticChatProviderFailedToolSynthesisInputV1 = {
 	toolName: string;
 	arguments: JsonObject;
 	failure: {
-		kind: 'supervisor_block' | 'known_execution_failure';
+		kind: 'supervisor_block' | 'known_execution_failure' | 'dependency_failed';
 		error: string;
 		toolCategory: string | null;
 		modelPayload: JsonObject;

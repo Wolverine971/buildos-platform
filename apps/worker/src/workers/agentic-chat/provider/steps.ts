@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/provider/steps.ts
 import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/catalog';
 import type { ToolValidationIssue } from '@buildos/agentic-chat-runtime/loop';
 import { createStableAgenticChatMutationLogicalOperationIdV1 } from '../effectIdentity';
@@ -96,8 +97,10 @@ export function buildProviderToolStep(
 	call: AgenticChatFeedbackToolCall,
 	context: ProviderToolStepContext
 ): AgenticChatProviderStepV1 {
+	const scheduling = call.scheduling ? { scheduling: call.scheduling } : {};
 	if (call.supervisorFailure) {
 		return {
+			...scheduling,
 			type: 'pre_execution_tool_failure',
 			callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
 				turnRunId,
@@ -124,6 +127,7 @@ export function buildProviderToolStep(
 		return buildReadToolStep(turnRunId, call, context.resolveMemoServed(call));
 	}
 	return {
+		...scheduling,
 		type: 'mutating_tool',
 		callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
 			turnRunId,
@@ -160,6 +164,7 @@ export function buildValidationFailureReadToolStep(
 
 function buildReadToolStepBase(turnRunId: string, call: CompletedProviderToolCall) {
 	return {
+		...(call.scheduling ? { scheduling: call.scheduling } : {}),
 		type: 'read_tool',
 		callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
 			turnRunId,

@@ -326,6 +326,9 @@ function createDefaultComposition(
 		providerBudgetMs: input.config.providerBudgetMs,
 		maxProviderRounds: input.config.maxProviderRounds,
 		maxToolCalls: input.config.maxToolCalls,
+		maxToolConcurrency: input.config.maxToolConcurrency,
+		concurrentReadsEnabled: input.config.concurrentReadsEnabled,
+		concurrentMutationsEnabled: input.config.concurrentMutationsEnabled,
 		onExecutionObservationError: input.onUsageError,
 		onConsumptionBillingError: input.onConsumptionBillingError ?? input.onUsageError
 	});

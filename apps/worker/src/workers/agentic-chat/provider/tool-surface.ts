@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/provider/tool-surface.ts
 import { AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1 } from '@buildos/agentic-chat-runtime/catalog';
 import { provideAgenticChatLoopToolCatalog } from '@buildos/agentic-chat-runtime/loop';
 import {
@@ -97,7 +98,7 @@ export function productionToolsFor(
 		const reviewedTool = reviewedProviderToolDefinition(tool);
 		if (!reviewedTool) continue;
 		seen.add(tool.function.name);
-		tools.push(reviewedTool);
+		tools.push(withToolSchedulingSidecars(reviewedTool));
 	}
 
 	// Standard controls carry no data-mutation capability. Mutation-capable
@@ -114,10 +115,49 @@ export function productionToolsFor(
 			const control = readArtifactToolDefinition(definition);
 			if (!control || !isAgenticChatProductionReadToolNameV1(control.function.name)) continue;
 			seen.add(control.function.name);
-			tools.push(control);
+			tools.push(withToolSchedulingSidecars(control));
 		}
 	}
 	return tools;
+}
+
+function withToolSchedulingSidecars(
+	tool: AgenticChatTurnProviderToolV1
+): AgenticChatTurnProviderToolV1 {
+	const parameters = tool.function.parameters as Record<string, JsonValue>;
+	const properties =
+		parameters.properties &&
+		typeof parameters.properties === 'object' &&
+		!Array.isArray(parameters.properties)
+			? (parameters.properties as JsonObject)
+			: {};
+	return {
+		...tool,
+		function: {
+			...tool.function,
+			parameters: {
+				...tool.function.parameters,
+				properties: {
+					...properties,
+					call_ref: {
+						type: 'string',
+						minLength: 1,
+						maxLength: 128,
+						description:
+							'Optional stable name for this call within the current tool-call response.'
+					},
+					after: {
+						type: 'array',
+						maxItems: 40,
+						uniqueItems: true,
+						items: { type: 'string', minLength: 1, maxLength: 128 },
+						description:
+							'Optional same-response call_ref dependencies that must finish first.'
+					}
+				}
+			}
+		}
+	};
 }
 
 function reviewedProviderToolDefinition(

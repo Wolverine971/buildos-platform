@@ -197,6 +197,9 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			providerBudgetMs: 300_000,
 			maxProviderRounds: 16,
 			maxToolCalls: 40,
+			maxToolConcurrency: 4,
+			concurrentReadsEnabled: false,
+			concurrentMutationsEnabled: false,
 			provider: { routes: [expect.objectContaining({ model: 'provider/primary' })] }
 		});
 	});
@@ -296,7 +299,10 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			CHAT_STALLED_TIMEOUT_MS: '3000',
 			CHAT_DRAIN_TIMEOUT_MS: '1000',
 			CHAT_MAX_TOOL_ROUNDS: '4',
-			CHAT_MAX_TOOL_CALLS: '9'
+			CHAT_MAX_TOOL_CALLS: '9',
+			CHAT_MAX_TOOL_CONCURRENCY: '3',
+			AGENTIC_CHAT_CONCURRENT_READS_ENABLED: 'true',
+			AGENTIC_CHAT_CONCURRENT_MUTATIONS_ENABLED: 'false'
 		});
 
 		expect(config).toEqual({
@@ -317,6 +323,9 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			providerBudgetMs: 1200,
 			maxProviderRounds: 4,
 			maxToolCalls: 9,
+			maxToolConcurrency: 3,
+			concurrentReadsEnabled: true,
+			concurrentMutationsEnabled: false,
 			provider: {
 				routes: [
 					{

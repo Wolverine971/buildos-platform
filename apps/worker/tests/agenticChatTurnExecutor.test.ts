@@ -260,6 +260,9 @@ function createHarness(
 		overheadTimeoutMs?: number;
 		maxProviderRounds?: number;
 		maxToolCalls?: number;
+		maxToolConcurrency?: number;
+		concurrentReadsEnabled?: boolean;
+		concurrentMutationsEnabled?: boolean;
 		failSemanticType?: string;
 		supervisorCheckpointError?: Error;
 		researchCaptureError?: Error;
@@ -774,7 +777,10 @@ function createHarness(
 			providerBudgetMs: options.providerBudgetMs,
 			overheadTimeoutMs: options.overheadTimeoutMs,
 			maxProviderRounds: options.maxProviderRounds,
-			maxToolCalls: options.maxToolCalls
+			maxToolCalls: options.maxToolCalls,
+			maxToolConcurrency: options.maxToolConcurrency,
+			concurrentReadsEnabled: options.concurrentReadsEnabled,
+			concurrentMutationsEnabled: options.concurrentMutationsEnabled
 		}
 	);
 
@@ -3422,6 +3428,88 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
+	it('skips an explicit dependency after a durable known mutation failure', async () => {
+		const harness = createHarness([], {
+			concurrentReadsEnabled: true,
+			concurrentMutationsEnabled: true
+		});
+		harness.mutation.execute.mockRejectedValueOnce(
+			new AgenticChatEffectExecutionError('permanent', EFFECT_ID, 'Task not found')
+		);
+		const continueWithToolResults = vi.fn(
+			({ results }: AgenticChatProviderToolRoundInputV1) => {
+				expect(results).toEqual([
+					expect.objectContaining({
+						providerToolCallId: 'failed-prerequisite',
+						failure: expect.objectContaining({ kind: 'known_execution_failure' })
+					}),
+					expect.objectContaining({
+						providerToolCallId: 'blocked-dependent',
+						failure: expect.objectContaining({
+							kind: 'dependency_failed',
+							modelPayload: expect.objectContaining({
+								blocked_by_provider_tool_call_ids: ['failed-prerequisite']
+							})
+						})
+					})
+				]);
+				return (async function* () {
+					yield { type: 'text_delta', text: 'The prerequisite failed.' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			}
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'failed-prerequisite',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: { task_id: 'task-a', state_key: 'done' },
+							downstreamIdempotencySupported: false,
+							scheduling: { callRef: 'first', after: [] }
+						} as const;
+						yield {
+							type: 'read_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							providerToolCallId: 'blocked-dependent',
+							toolName: 'fixture_task_read',
+							arguments: { task_id: 'task-a' },
+							scheduling: { callRef: 'second', after: ['first'] }
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo: vi.fn(),
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed'
+			});
+			expect(harness.readTool.execute).not.toHaveBeenCalled();
+			expect(
+				harness.toolExecutions.persistFailure.mock.calls.map(([input]) => [
+					input.sequenceIndex,
+					input.providerToolCallId
+				])
+			).toEqual([
+				[1, 'failed-prerequisite'],
+				[2, 'blocked-dependent']
+			]);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('persists parallel provider reads sequentially before replaying the ordered round', async () => {
 		const harness = createHarness([]);
 		const continueWithToolResults = vi.fn(
@@ -3500,6 +3588,374 @@ describe('AgenticChatTurnExecutor', () => {
 					})
 				})
 			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('executes independent same-response reads concurrently when the read rollout is enabled', async () => {
+		const harness = createHarness([], {
+			concurrentReadsEnabled: true,
+			maxToolConcurrency: 2
+		});
+		const starts: string[] = [];
+		const completions = new Map<string, () => void>();
+		harness.readTool.execute.mockImplementation(
+			(input) =>
+				new Promise((resolve) => {
+					starts.push(input.providerToolCallId);
+					completions.set(input.providerToolCallId, () =>
+						resolve({
+							result: { call_id: input.providerToolCallId },
+							executionTimeMs: null,
+							tokensConsumed: null,
+							affectedEntities: [],
+							toolCategory: 'read',
+							resultCount: 1,
+							zeroResult: false,
+							requiresUserAction: false
+						})
+					);
+				})
+		);
+		const continueWithToolResults = vi.fn(
+			({ results }: AgenticChatProviderToolRoundInputV1) => {
+				expect(results.map((result) => result.providerToolCallId)).toEqual([
+					'parallel-a',
+					'parallel-b'
+				]);
+				return (async function* () {
+					yield { type: 'text_delta', text: 'Parallel reads completed.' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			}
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'parallel-a',
+							toolName: 'fixture_project_read',
+							arguments: { marker: 'a' }
+						} as const;
+						yield {
+							type: 'read_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							providerToolCallId: 'parallel-b',
+							toolName: 'fixture_task_read',
+							arguments: { marker: 'b' }
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			const execution = harness.executor.execute(job());
+			await vi.waitFor(() => expect(starts).toHaveLength(2));
+			completions.get('parallel-b')?.();
+			completions.get('parallel-a')?.();
+			await expect(execution).resolves.toMatchObject({ outcome: 'completed' });
+			expect(starts).toEqual(['parallel-a', 'parallel-b']);
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+			const sequenceByCall = Object.fromEntries(
+				harness.toolExecutions.persistRead.mock.calls.map(([input]) => [
+					input.providerToolCallId,
+					input.sequenceIndex
+				])
+			);
+			expect(sequenceByCall).toEqual({ 'parallel-a': 1, 'parallel-b': 2 });
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('executes audited independent row-local mutations concurrently when enabled', async () => {
+		const harness = createHarness([], {
+			concurrentMutationsEnabled: true,
+			maxToolConcurrency: 2
+		});
+		const starts: string[] = [];
+		const completions = new Map<string, () => void>();
+		harness.mutation.execute.mockImplementation(
+			(input) =>
+				new Promise((resolve) => {
+					const id = input.step.providerToolCallId;
+					starts.push(id);
+					completions.set(id, () =>
+						resolve({
+							effectId:
+								id === 'parallel-write-a'
+									? 'd1000000-0000-5000-8000-00000000001d'
+									: 'd2000000-0000-5000-8000-00000000002d',
+							canonicalArgumentHash: id === 'parallel-write-a' ? 'a'.repeat(64) : 'b'.repeat(64),
+							downstreamIdempotencyKey: `chat-effect:${id}`,
+							downstreamReceipt: { task_id: id },
+							replayed: false
+						})
+					);
+				})
+		);
+		const continueWithToolResults = vi.fn(
+			({ results }: AgenticChatProviderToolRoundInputV1) => {
+				expect(results.map((result) => result.providerToolCallId)).toEqual([
+					'parallel-write-a',
+					'parallel-write-b'
+				]);
+				return (async function* () {
+					yield { type: 'text_delta', text: 'Both tasks were updated.' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			}
+		);
+		const invalidateReadMemo = vi.fn();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'parallel-write-a',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: { task_id: 'task-a', state_key: 'done' },
+							downstreamIdempotencySupported: false
+						} as const;
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							logicalOperationId: 'c1000000-0000-4000-8000-00000000001c',
+							providerToolCallId: 'parallel-write-b',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: { task_id: 'task-b', state_key: 'done' },
+							downstreamIdempotencySupported: false
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			const execution = harness.executor.execute(job());
+			await vi.waitFor(() => expect(starts).toHaveLength(2));
+			completions.get('parallel-write-b')?.();
+			completions.get('parallel-write-a')?.();
+			await expect(execution).resolves.toMatchObject({ outcome: 'completed' });
+			expect(starts).toEqual(['parallel-write-a', 'parallel-write-b']);
+			expect(invalidateReadMemo).toHaveBeenCalledOnce();
+			const sequenceByCall = Object.fromEntries(
+				harness.toolExecutions.persistMutation.mock.calls.map(([input]) => [
+					input.providerToolCallId,
+					input.sequenceIndex
+				])
+			);
+			expect(sequenceByCall).toEqual({ 'parallel-write-a': 1, 'parallel-write-b': 2 });
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('honors an explicit sequential dependency chain before continuation', async () => {
+		const harness = createHarness([], {
+			concurrentReadsEnabled: true,
+			maxToolConcurrency: 4
+		});
+		const starts: string[] = [];
+		harness.readTool.execute.mockImplementation(async (input) => {
+			starts.push(input.providerToolCallId);
+			return {
+				result: { call_id: input.providerToolCallId },
+				executionTimeMs: null,
+				tokensConsumed: null,
+				affectedEntities: [],
+				toolCategory: 'read',
+				resultCount: 1,
+				zeroResult: false,
+				requiresUserAction: false
+			};
+		});
+		const continueWithToolResults = vi.fn(() =>
+			(async function* () {
+				yield { type: 'text_delta', text: 'Sequential reads completed.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})()
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'sequential-a',
+							toolName: 'fixture_project_read',
+							arguments: { marker: 'a' },
+							scheduling: { callRef: 'first', after: [] }
+						} as const;
+						yield {
+							type: 'read_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							providerToolCallId: 'sequential-b',
+							toolName: 'fixture_task_read',
+							arguments: { marker: 'b' },
+							scheduling: { callRef: 'second', after: ['first'] }
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed'
+			});
+			expect(starts).toEqual(['sequential-a', 'sequential-b']);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('rejects an invalid batch graph before dispatching any sibling call', async () => {
+		const harness = createHarness([], {
+			concurrentReadsEnabled: true,
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'permanent' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'provider_tool_execution_graph_invalid'
+				})
+			]
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'valid-sibling',
+							toolName: 'fixture_project_read',
+							arguments: { marker: 'a' }
+						} as const;
+						yield {
+							type: 'read_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							providerToolCallId: 'invalid-dependent',
+							toolName: 'fixture_task_read',
+							arguments: { marker: 'b' },
+							scheduling: { callRef: 'second', after: ['missing-ref'] }
+						} as const;
+					})(),
+				continueWithToolResults: vi.fn(),
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed'
+			});
+			expect(harness.readTool.execute).not.toHaveBeenCalled();
+			expect(harness.toolExecutions.persistRead).not.toHaveBeenCalled();
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({ failureCode: 'provider_tool_execution_graph_invalid' })
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('runs a mixed fan-out/fan-in batch without starting the dependent read early', async () => {
+		const harness = createHarness([], {
+			concurrentReadsEnabled: true,
+			maxToolConcurrency: 3
+		});
+		const starts: string[] = [];
+		const completions = new Map<string, () => void>();
+		harness.readTool.execute.mockImplementation((input) => {
+			starts.push(input.providerToolCallId);
+			const execution = {
+				result: { call_id: input.providerToolCallId },
+				executionTimeMs: null,
+				tokensConsumed: null,
+				affectedEntities: [],
+				toolCategory: 'read',
+				resultCount: 1,
+				zeroResult: false,
+				requiresUserAction: false
+			};
+			if (input.providerToolCallId === 'fanin-summary') return Promise.resolve(execution);
+			return new Promise((resolve) =>
+				completions.set(input.providerToolCallId, () => resolve(execution))
+			);
+		});
+		const continueWithToolResults = vi.fn(() =>
+			(async function* () {
+				yield { type: 'text_delta', text: 'Mixed graph completed.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})()
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						const transitions = [
+							[CALL_TRANSITION_ID, RESULT_TRANSITION_ID],
+							[SECOND_CALL_TRANSITION_ID, SECOND_RESULT_TRANSITION_ID],
+							[THIRD_CALL_TRANSITION_ID, THIRD_RESULT_TRANSITION_ID]
+						] as const;
+						for (const [index, id] of [
+							'fanin-a',
+							'fanin-b',
+							'fanin-summary'
+						].entries()) {
+							yield {
+								type: 'read_tool',
+								callTransitionId: transitions[index]![0],
+								resultTransitionId: transitions[index]![1],
+								providerToolCallId: id,
+								toolName: 'fixture_project_read',
+								arguments: { marker: id },
+								scheduling: {
+									callRef: id,
+									after: id === 'fanin-summary' ? ['fanin-a', 'fanin-b'] : []
+								}
+							} as const;
+						}
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			const execution = harness.executor.execute(job());
+			await vi.waitFor(() => expect(starts).toEqual(['fanin-a', 'fanin-b']));
+			completions.get('fanin-a')?.();
+			await Promise.resolve();
+			expect(starts).not.toContain('fanin-summary');
+			completions.get('fanin-b')?.();
+			await expect(execution).resolves.toMatchObject({ outcome: 'completed' });
+			expect(starts).toEqual(['fanin-a', 'fanin-b', 'fanin-summary']);
 		} finally {
 			await harness.publisher.stop();
 		}

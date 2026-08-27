@@ -9,6 +9,7 @@ import {
 import type { AgenticChatOpenAiCompatibleRouteV1 } from './provider/openrouter-client';
 import {
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
+	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY,
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS,
 	DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS
 } from './turn-executor';
@@ -60,6 +61,9 @@ type AgenticChatBaseConfig = {
 	providerBudgetMs: number;
 	maxProviderRounds: number;
 	maxToolCalls: number;
+	maxToolConcurrency: number;
+	concurrentReadsEnabled: boolean;
+	concurrentMutationsEnabled: boolean;
 };
 
 export type AgenticChatConfig = AgenticChatBaseConfig & {
@@ -155,6 +159,21 @@ export function loadAgenticChatConfig(
 		DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
 		'CHAT_MAX_TOOL_CALLS'
 	);
+	const maxToolConcurrency = parsePositiveInteger(
+		environment.CHAT_MAX_TOOL_CONCURRENCY,
+		DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY,
+		'CHAT_MAX_TOOL_CONCURRENCY'
+	);
+	const concurrentReadsEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_CONCURRENT_READS_ENABLED,
+		false,
+		'AGENTIC_CHAT_CONCURRENT_READS_ENABLED'
+	);
+	const concurrentMutationsEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_CONCURRENT_MUTATIONS_ENABLED,
+		false,
+		'AGENTIC_CHAT_CONCURRENT_MUTATIONS_ENABLED'
+	);
 
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
@@ -170,6 +189,9 @@ export function loadAgenticChatConfig(
 		providerBudgetMs,
 		maxProviderRounds,
 		maxToolCalls,
+		maxToolConcurrency,
+		concurrentReadsEnabled,
+		concurrentMutationsEnabled,
 		provider: loadProviderConfig(environment)
 	};
 }

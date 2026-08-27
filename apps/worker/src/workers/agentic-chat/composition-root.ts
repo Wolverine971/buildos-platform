@@ -195,6 +195,9 @@ export function createAgenticChatCompositionRoot(options: {
 	providerBudgetMs?: number;
 	maxProviderRounds?: number;
 	maxToolCalls?: number;
+	maxToolConcurrency?: number;
+	concurrentReadsEnabled?: boolean;
+	concurrentMutationsEnabled?: boolean;
 	/** Injectable for tests; production reuses the worker's SSRF-safe native web port. */
 	webResearch?: WebResearchPort;
 	/** Separate provider-advertisement gate. Requires the matching adapter gate. */
@@ -442,7 +445,10 @@ export function createAgenticChatCompositionRoot(options: {
 		{
 			providerBudgetMs: options.providerBudgetMs,
 			maxProviderRounds: options.maxProviderRounds,
-			maxToolCalls: options.maxToolCalls
+			maxToolCalls: options.maxToolCalls,
+			maxToolConcurrency: options.maxToolConcurrency,
+			concurrentReadsEnabled: options.concurrentReadsEnabled,
+			concurrentMutationsEnabled: options.concurrentMutationsEnabled
 		}
 	);
 	const consumer = createAgenticChatConsumer(executor, {

@@ -169,6 +169,13 @@ export function buildBaseProviderRequest(
 	if (semanticMutationOrdering) {
 		messages.push({ role: 'system', content: semanticMutationOrdering });
 	}
+	if (tools.length > 0) {
+		messages.push({
+			role: 'system',
+			content:
+				'Tool execution batching: independent calls returned in one response may run in parallel. When a call must wait for another call in the same response, give each a unique call_ref and list prerequisite refs in after. Use after only when all dependent arguments are already known. If a later call needs a value returned by an earlier call, wait for that tool result and issue the dependent call in the next response. The worker may serialize calls that touch conflicting resources.'
+		});
+	}
 	messages.push({ role: 'user', content: userMessage });
 	return {
 		messages,
@@ -252,7 +259,7 @@ export function buildContinuationRequest(
 				tool_calls: calls.map((call) => ({
 					id: call.id,
 					type: 'function',
-					function: { name: call.name, arguments: call.canonicalArguments }
+					function: { name: call.name, arguments: call.canonicalProviderArguments }
 				}))
 			},
 			...toolMessages
@@ -279,7 +286,7 @@ export function buildSynthesisRequest(
 					{
 						id: call.id,
 						type: 'function',
-						function: { name: call.name, arguments: call.canonicalArguments }
+						function: { name: call.name, arguments: call.canonicalProviderArguments }
 					}
 				]
 			},
@@ -333,7 +340,7 @@ export function buildValidationRepairRequest(
 					tool_calls: calls.map((call) => ({
 						id: call.id,
 						type: 'function',
-						function: { name: call.name, arguments: call.canonicalArguments }
+						function: { name: call.name, arguments: call.canonicalProviderArguments }
 					}))
 				},
 				...toolMessages

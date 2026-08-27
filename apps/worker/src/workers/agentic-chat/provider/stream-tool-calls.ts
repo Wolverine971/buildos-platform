@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/provider/stream-tool-calls.ts
 import { createHash } from 'node:crypto';
 import {
 	type JsonObject,
@@ -8,6 +9,7 @@ import {
 	type AgenticChatControlDecisionAuthorV1,
 	type AgenticChatProviderExecutionDiagnosticV1,
 	AgenticChatProviderExecutionError,
+	type AgenticChatProviderToolSchedulingV1,
 	type AgenticChatTurnProviderRequestV1,
 	type AgenticChatTurnProviderToolV1
 } from './contracts';
@@ -19,7 +21,11 @@ export type CompletedProviderToolCall = {
 	id: string;
 	name: string;
 	arguments: JsonObject;
+	/** Canonical domain-only arguments used by validation, review, and adapters. */
 	canonicalArguments: string;
+	/** Exact canonical provider arguments, including worker scheduling sidecars. */
+	canonicalProviderArguments: string;
+	scheduling?: AgenticChatProviderToolSchedulingV1;
 	decidedBy?: AgenticChatControlDecisionAuthorV1;
 };
 
@@ -219,15 +225,63 @@ export function completeToolCalls(
 		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
 			throw rejectedToolArgumentsError(call, 'json_shape', null, context);
 		}
-		const canonicalArguments = canonicalizeAgenticChatJson(parsed as JsonValue);
+		const canonicalProviderArguments = canonicalizeAgenticChatJson(parsed as JsonValue);
+		const scheduling = parseSchedulingMetadata(parsed as JsonObject);
+		const domainArguments = Object.fromEntries(
+			Object.entries(parsed as JsonObject).filter(
+				([name]) => name !== 'call_ref' && name !== 'after'
+			)
+		) as JsonObject;
+		const canonicalArguments = canonicalizeAgenticChatJson(domainArguments);
 		calls.push({
 			id: call.id,
 			name: normalizeRepeatedAdvertisedToolName(call.name, advertisedTools),
 			arguments: JSON.parse(canonicalArguments) as JsonObject,
-			canonicalArguments
+			canonicalArguments,
+			canonicalProviderArguments,
+			...(scheduling ? { scheduling } : {})
 		});
 	}
 	return calls;
+}
+
+function parseSchedulingMetadata(
+	arguments_: JsonObject
+): AgenticChatProviderToolSchedulingV1 | undefined {
+	const rawCallRef = arguments_.call_ref;
+	const rawAfter = arguments_.after;
+	if (rawCallRef === undefined && rawAfter === undefined) return undefined;
+	if (
+		rawCallRef !== undefined &&
+		(typeof rawCallRef !== 'string' ||
+			rawCallRef.length === 0 ||
+			rawCallRef.length > 128 ||
+			rawCallRef !== rawCallRef.trim())
+	) {
+		throw providerError('provider_tool_scheduling_invalid', 'permanent');
+	}
+	if (
+		rawAfter !== undefined &&
+		(!Array.isArray(rawAfter) ||
+			rawAfter.length > MAX_PROVIDER_TOOL_CALLS_PER_ROUND ||
+			rawAfter.some(
+				(value) =>
+					typeof value !== 'string' ||
+					value.length === 0 ||
+					value.length > 128 ||
+					value !== value.trim()
+			))
+	) {
+		throw providerError('provider_tool_scheduling_invalid', 'permanent');
+	}
+	const after = (rawAfter ?? []) as string[];
+	if (new Set(after).size !== after.length) {
+		throw providerError('provider_tool_scheduling_invalid', 'permanent');
+	}
+	return {
+		callRef: typeof rawCallRef === 'string' ? rawCallRef : null,
+		after
+	};
 }
 
 function normalizeRepeatedAdvertisedToolName(

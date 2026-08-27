@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/provider/review/controls.ts
 import type { AgenticChatTurnProviderToolV1 } from '../contracts';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
@@ -22,6 +23,44 @@ export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
 	'A priority, scheduling, or completion instruction commissions only that change. Do not add workflow-state transitions the user did not state (for example in_progress because something became top priority).'
 ]);
 
+/**
+ * Shared reviewer evidence shape for descriptive entity references. Contract
+ * review and the lightweight exact-call lane both need the same deterministic
+ * ambiguity floor; keeping one schema prevents the two write paths from
+ * drifting apart.
+ */
+export const REFERENCE_CANDIDATES_PROPERTY = Object.freeze({
+	type: 'array',
+	maxItems: 20,
+	description:
+		'Enumerate before judging. One entry per descriptive reference in the current user message that points at an existing entity ("the email one", "the beta list thing", "the resume update"): list every loaded entity whose title or content plausibly fits those words, not only the entity the proposal chose. Use an empty array only when the request names no existing entity descriptively (pure creation or an explicit exhaustive set).',
+	items: {
+		type: 'object',
+		additionalProperties: false,
+		required: ['reference', 'candidates'],
+		properties: {
+			reference: {
+				type: 'string',
+				maxLength: 160,
+				description: "The user's words for the entity."
+			},
+			candidates: {
+				type: 'array',
+				maxItems: 20,
+				items: {
+					type: 'object',
+					additionalProperties: false,
+					required: ['id', 'title'],
+					properties: {
+						id: { type: 'string' },
+						title: { type: 'string', maxLength: 160 }
+					}
+				}
+			}
+		}
+	}
+});
+
 export const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
 	type: 'function',
 	function: {
@@ -43,35 +82,7 @@ export const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 =
 					description: 'Exact SHA-256 supplied in the review request.'
 				},
 				reference_candidates: {
-					type: 'array',
-					maxItems: 20,
-					description:
-						'Enumerate before judging. One entry per descriptive reference in the current user message that points at an existing entity ("the email one", "the beta list thing", "the resume update"): list every loaded entity whose title or content plausibly fits those words, not only the entity the contract chose. Use an empty array only when the request names no existing entity descriptively (pure creation, or an explicit set the contract targets in full).',
-					items: {
-						type: 'object',
-						additionalProperties: false,
-						required: ['reference', 'candidates'],
-						properties: {
-							reference: {
-								type: 'string',
-								maxLength: 160,
-								description: "The user's words for the entity."
-							},
-							candidates: {
-								type: 'array',
-								maxItems: 20,
-								items: {
-									type: 'object',
-									additionalProperties: false,
-									required: ['id', 'title'],
-									properties: {
-										id: { type: 'string' },
-										title: { type: 'string', maxLength: 160 }
-									}
-								}
-							}
-						}
-					}
+					...REFERENCE_CANDIDATES_PROPERTY
 				}
 			}
 		}

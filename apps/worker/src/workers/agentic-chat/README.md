@@ -29,11 +29,29 @@ Gmail, Calendar, browser OAuth handoff, and worker-disabled image execution rema
 - `request-builders.ts` owns base provider requests, admission-context projection, continuation, synthesis, validation repair, snapshots, usage, and client-request construction.
 - `supervisor-runtime.ts` owns provider-facing supervisor state, directives, observations, and step draining.
 - `review/controls.ts` owns worker-only reviewer tool definitions and immutable guidance.
-- `review/decision-completion.ts` owns deterministic reviewer call completion, identity binding, and lane-specific fallback decisions.
+- `review/decision-completion.ts` owns deterministic reviewer call completion, identity binding, candidate-ambiguity enforcement, and lane-specific fallback decisions.
 - `review/contract-execution.ts` owns approved-contract completion and write-only carve-out request surfaces.
 - `review/decision-handling.ts` owns reviewer fallback clarification, candidate ambiguity restraint, and bounded proposal-correction requests.
 - `review/disposition.ts` owns read-only review, semantic disposition gates, post-disposition surfaces, and disposition call-shape enforcement.
 - `review/turn-contract.ts` owns contract-review requests, schema-derived field semantics, and project-create contract guidance.
-- `review/mutation-batch.ts` owns SHA-bound mutation-batch evidence, pending-review state, and final pre-execution review requests.
+- `review/mutation-batch.ts` owns SHA-bound mutation-batch evidence, the one-call implicit-contract lane, pending-review state, and final pre-execution review requests. Multi-effect and dependent writes remain on the declared-contract path.
 
 These modules are worker-private implementation details unless exported through the agentic-chat root. They must not import the turn coordinator back, and structural moves must preserve provider request JSON, prompt text, tool ordering, hashes, usage accounting, and terminal behavior.
+
+## Tool execution batches
+
+One multi-result provider response is one execution batch. Optional `call_ref`/`after` fields express
+same-response dependencies; they are preserved in provider history and removed before domain
+validation or adapter dispatch. `toolExecutionGraph.ts` validates and layers the batch, while
+`toolExecutionPolicy.ts` adds worker-owned resource conflicts and keeps unknown-scope mutations
+serial.
+
+Concurrency is staged independently from graph validation:
+
+- `AGENTIC_CHAT_CONCURRENT_READS_ENABLED=false`
+- `AGENTIC_CHAT_CONCURRENT_MUTATIONS_ENABLED=false`
+- `CHAT_MAX_TOOL_CONCURRENCY=4`
+
+The graph still compiles when both gates are off, producing the existing serial behavior. Enabling
+mutation concurrency affects only the audited row-local tools in the policy; it does not make every
+mutation parallel-safe.

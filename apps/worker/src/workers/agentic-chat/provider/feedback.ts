@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/provider/feedback.ts
 import {
 	type ChatToolCall,
 	type ChatToolResult,
@@ -73,6 +74,17 @@ export function validateToolFeedback(
 		return;
 	}
 	if (isFailedToolFeedback(feedback)) {
+		if (feedback.failure.kind === 'dependency_failed') {
+			if (
+				!isCanonicalProviderText(feedback.failure.error, 4_000) ||
+				feedback.failure.toolCategory !== null ||
+				feedback.failure.modelPayload.error !== feedback.failure.error
+			) {
+				throw providerError('provider_tool_feedback_kind_mismatch', 'unknown');
+			}
+			canonicalizeAgenticChatJson(feedback.failure.modelPayload as JsonValue);
+			return;
+		}
 		if (
 			call.kind !== 'mutation' ||
 			feedback.failure.kind !== 'known_execution_failure' ||
