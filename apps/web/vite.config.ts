@@ -15,6 +15,9 @@ export const agenticChatRuntimeSourceAliases = createAgenticChatRuntimeSourceAli
 export default defineConfig(({ mode }) => {
 	const isDev = mode === 'development';
 	const isProd = mode === 'production';
+	// Vercel handles transport compression at the edge. Emitting compressed SSR artifacts makes
+	// the adapter trace transient .gz/.br files and can fail packaging after a successful bundle.
+	const isVercel = Boolean(process.env.VERCEL);
 	const isAnalyze = process.env.ANALYZE === 'true';
 	// Each dev server needs its own dependency cache. Multiple local/Codex
 	// servers can run from this directory at once, and sharing node_modules/.vite
@@ -60,6 +63,7 @@ export default defineConfig(({ mode }) => {
 			sveltekit(),
 			// Gzip compression for production (fallback for older browsers)
 			isProd &&
+				!isVercel &&
 				viteCompression({
 					verbose: true,
 					disable: false,
@@ -70,6 +74,7 @@ export default defineConfig(({ mode }) => {
 				}),
 			// Brotli compression for production (better compression, ~15-25% smaller than gzip)
 			isProd &&
+				!isVercel &&
 				viteCompression({
 					verbose: true,
 					disable: false,

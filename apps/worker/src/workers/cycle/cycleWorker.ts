@@ -56,10 +56,12 @@ class SupabaseCycleRunStore implements CycleRunStore {
 		if (error) throw new Error(`claim_cycle_run failed: ${error.message}`);
 		try {
 			return parseCycleRunClaim(data);
-		} catch {
+		} catch (error) {
 			throw new PermanentQueueError(
 				'cycle_claim_contract_invalid',
-				'claim_cycle_run returned an invalid response.'
+				error instanceof Error
+					? `claim_cycle_run returned an invalid response: ${error.message}`
+					: 'claim_cycle_run returned an invalid response.'
 			);
 		}
 	}

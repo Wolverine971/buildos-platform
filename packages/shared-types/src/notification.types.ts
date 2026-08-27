@@ -59,11 +59,45 @@ export type NotificationStatus =
 
 export type NotificationPriority = "urgent" | "normal" | "low";
 
+export type NotificationJsonObject = { [key: string]: Json | undefined };
+
+function isNotificationJsonValue(value: unknown, ancestors: WeakSet<object>): value is Json {
+	if (value === null || typeof value === "string" || typeof value === "boolean") return true;
+	if (typeof value === "number") return Number.isFinite(value);
+	if (typeof value !== "object") return false;
+	if (ancestors.has(value)) return false;
+	if (
+		!Array.isArray(value) &&
+		Object.getPrototypeOf(value) !== Object.prototype &&
+		Object.getPrototypeOf(value) !== null
+	) {
+		return false;
+	}
+
+	ancestors.add(value);
+	const isJson = Array.isArray(value)
+		? value.every((item) => isNotificationJsonValue(item, ancestors))
+		: Object.entries(value).every(
+				([, item]) => item === undefined || isNotificationJsonValue(item, ancestors)
+			);
+	ancestors.delete(value);
+	return isJson;
+}
+
+export function isNotificationJsonObject(value: unknown): value is NotificationJsonObject {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		!Array.isArray(value) &&
+		isNotificationJsonValue(value, new WeakSet())
+	);
+}
+
 // =====================================================
 // CORE INTERFACES
 // =====================================================
 
-export interface NotificationEvent<T = any> {
+export interface NotificationEvent<T = NotificationJsonObject> {
   id?: string;
   event_type: EventType;
   event_source: EventSource;
@@ -72,7 +106,7 @@ export interface NotificationEvent<T = any> {
   actor_user_id?: string;
   target_user_id?: string;
   payload: T;
-  metadata?: Record<string, any>;
+  metadata?: NotificationJsonObject;
   created_at?: string;
 }
 
@@ -82,7 +116,7 @@ export interface NotificationSubscription {
   event_type: EventType;
   is_active: boolean;
   admin_only: boolean;
-  filters?: Record<string, any>;
+  filters?: NotificationJsonObject;
   created_at: string;
   updated_at: string;
   created_by?: string;
@@ -120,12 +154,6 @@ export interface UserNotificationPreferences {
 
   created_at?: string;
   updated_at?: string;
-}
-
-export type NotificationJsonObject = { [key: string]: Json | undefined };
-
-export function isNotificationJsonObject(value: unknown): value is NotificationJsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function getNotificationPayloadValue(
@@ -360,7 +388,7 @@ export interface EventTypeMetrics {
 // API REQUEST/RESPONSE TYPES
 // =====================================================
 
-export interface EmitEventRequest<T = any> {
+export interface EmitEventRequest<T = NotificationJsonObject> {
   event_type: EventType;
   event_source: EventSource;
   /** Optional origin link; notification preferences never control whether the Cycle runs. */
@@ -368,7 +396,7 @@ export interface EmitEventRequest<T = any> {
   actor_user_id?: string;
   target_user_id?: string;
   payload: T;
-  metadata?: Record<string, any>;
+  metadata?: NotificationJsonObject;
 }
 
 export interface EmitEventResponse {
@@ -384,7 +412,7 @@ export interface UpdatePreferencesRequest {
 
 export interface SubscribeToEventRequest {
   event_type: EventType;
-  filters?: Record<string, any>;
+  filters?: NotificationJsonObject;
 }
 
 export interface UnsubscribeFromEventRequest {

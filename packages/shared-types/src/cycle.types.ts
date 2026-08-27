@@ -640,15 +640,18 @@ function parseCycleRun(value: Json | undefined, path: string): CycleRun {
 	] as const) {
 		requireCycleNullableString(run, key, path);
 	}
-	for (const key of ['cycle_version', 'attempt_count'] as const) {
-		const number = requireCycleNumber(run, key, path);
-		if (!Number.isInteger(number) || number < 0) {
-			throw new TypeError(`${path}.${key} must be a non-negative integer`);
-		}
+	const cycleVersion = requireCycleNumber(run, 'cycle_version', path);
+	if (!Number.isInteger(cycleVersion) || cycleVersion < 1) {
+		throw new TypeError(`${path}.cycle_version must be a positive integer`);
+	}
+	const attemptCount = requireCycleNumber(run, 'attempt_count', path);
+	if (!Number.isInteger(attemptCount) || attemptCount < 0) {
+		throw new TypeError(`${path}.attempt_count must be a non-negative integer`);
 	}
 	if (!['schedule', 'event', 'threshold', 'relative', 'manual', 'catch_up'].includes(String(run.trigger))) {
 		throw new TypeError(`${path}.trigger is invalid`);
 	}
+	const trigger = String(run.trigger) as CycleRunTrigger;
 	if (!['queued', 'running', 'completed', 'failed', 'cancelled', 'skipped'].includes(String(run.status))) {
 		throw new TypeError(`${path}.status is invalid`);
 	}
@@ -657,8 +660,26 @@ function parseCycleRun(value: Json | undefined, path: string): CycleRun {
 	if (requireCycleString(definition, 'kind', `${path}.definition_snapshot`) !== kind) {
 		throw new TypeError(`${path}.definition_snapshot.kind does not match ${path}.kind`);
 	}
-	requireCycleNumber(definition, 'version', `${path}.definition_snapshot`);
+	const definitionVersion = requireCycleNumber(
+		definition,
+		'version',
+		`${path}.definition_snapshot`
+	);
+	if (!Number.isInteger(definitionVersion) || definitionVersion < 1) {
+		throw new TypeError(`${path}.definition_snapshot.version must be a positive integer`);
+	}
+	if (definitionVersion !== cycleVersion) {
+		throw new TypeError(
+			`${path}.definition_snapshot.version does not match ${path}.cycle_version`
+		);
+	}
 	validateCycleTargetJson(definition.target, kind, `${path}.definition_snapshot.target`);
+	const target = requireCycleObject(definition.target, `${path}.definition_snapshot.target`);
+	if (target.project_id !== run.project_id) {
+		throw new TypeError(
+			`${path}.definition_snapshot.target.project_id does not match ${path}.project_id`
+		);
+	}
 	validateCycleConfigJson(definition.config, kind, `${path}.definition_snapshot.config`);
 	validateCyclePolicyJson(definition.policy, `${path}.definition_snapshot.policy`);
 	if (!['silent', 'exceptions', 'always'].includes(String(definition.attention_policy))) {
@@ -666,6 +687,18 @@ function parseCycleRun(value: Json | undefined, path: string): CycleRun {
 	}
 
 	validateCycleTriggerSnapshotJson(run.trigger_snapshot, `${path}.trigger_snapshot`);
+	if (trigger === 'manual' || trigger === 'catch_up') {
+		if (run.trigger_id !== null || run.trigger_snapshot !== null) {
+			throw new TypeError(
+				`${path}.trigger_id and ${path}.trigger_snapshot must be null for ${trigger} runs`
+			);
+		}
+	} else {
+		const triggerSnapshot = requireCycleObject(run.trigger_snapshot, `${path}.trigger_snapshot`);
+		if (run.trigger_id === null || triggerSnapshot.type !== trigger) {
+			throw new TypeError(`${path}.trigger identity does not match ${path}.trigger_snapshot`);
+		}
+	}
 	validateCycleExecutionInputJson(run.execution_input, kind, `${path}.execution_input`);
 	validateCycleDeliveryIntentJson(run.delivery_intent, `${path}.delivery_intent`);
 	validateCycleOutcomeJson(run.outcome, `${path}.outcome`);
@@ -674,7 +707,7 @@ function parseCycleRun(value: Json | undefined, path: string): CycleRun {
 	}
 
 	// The complete database row and each structured execution field have been validated above.
-	return run as unknown as CycleRun;
+	return run as CycleRun & typeof run;
 }
 
 /** Decode the JSON response from claim_cycle_run before worker execution. */
@@ -683,9 +716,25 @@ export function parseCycleRunClaim(value: Json): CycleRunClaim {
 	if (claim.disposition !== 'claimed' && claim.disposition !== 'already_terminal') {
 		throw new TypeError('cycle claim.disposition is invalid');
 	}
+	const run = parseCycleRun(claim.run, 'cycle claim.run');
+	if (claim.disposition === 'claimed' && run.status !== 'running') {
+		throw new TypeError('cycle claim.run.status must be running for a claimed run');
+	}
+	if (
+		claim.disposition === 'claimed' &&
+		(run.processing_token === null || run.queue_job_record_id === null)
+	) {
+		throw new TypeError('cycle claim.run must carry its queue fencing identity when claimed');
+	}
+	if (
+		claim.disposition === 'already_terminal' &&
+		!['completed', 'failed', 'cancelled', 'skipped'].includes(run.status)
+	) {
+		throw new TypeError('cycle claim.run.status must be terminal for an already-terminal run');
+	}
 	return {
 		disposition: claim.disposition,
-		run: parseCycleRun(claim.run, 'cycle claim.run')
+		run
 	};
 }
 

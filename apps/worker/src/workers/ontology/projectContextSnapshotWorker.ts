@@ -33,8 +33,23 @@ const COMPLETE_STATE_KEYS = new Set([
 const PROJECT_ICON_GENERATION_ENABLED =
 	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
 
-function asJson(value: unknown): Json {
-	return value as Json;
+function serializeJson(value: unknown, path = 'value'): Json {
+	if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+	if (typeof value === 'number') {
+		if (Number.isFinite(value)) return value;
+		throw new TypeError(`${path} contains a non-finite number`);
+	}
+	if (Array.isArray(value)) {
+		return value.map((item, index) => serializeJson(item, `${path}[${index}]`));
+	}
+	if (typeof value === 'object') {
+		const result: { [key: string]: Json | undefined } = {};
+		for (const [key, item] of Object.entries(value)) {
+			if (item !== undefined) result[key] = serializeJson(item, `${path}.${key}`);
+		}
+		return result;
+	}
+	throw new TypeError(`${path} is not JSON serializable`);
 }
 
 function isReadyForAutoIcon(project: {
@@ -118,7 +133,7 @@ async function queueAutoProjectIconGeneration(params: {
 	const { error: queueError } = await supabase.rpc('add_queue_job', {
 		p_user_id: params.userId,
 		p_job_type: 'generate_project_icon',
-		p_metadata: asJson({
+		p_metadata: serializeJson({
 			generationId,
 			projectId: params.projectId,
 			requestedByUserId: params.userId,
@@ -166,7 +181,7 @@ export async function queueProjectContextSnapshot(params: {
 		const { error } = await supabase.rpc('add_queue_job', {
 			p_user_id: params.userId,
 			p_job_type: 'build_project_context_snapshot',
-			p_metadata: asJson({
+			p_metadata: serializeJson({
 				projectId: params.projectId,
 				reason: params.reason ?? 'unspecified',
 				force: params.force ?? false
@@ -466,17 +481,6 @@ function isCompleteState(value: unknown): boolean {
 	return COMPLETE_STATE_KEYS.has(stateKey(value));
 }
 
-function getProjectFacet(project: Record<string, unknown>, key: string): string | null {
-	const direct = project[`facet_${key}`];
-	if (typeof direct === 'string' && direct.trim()) return direct.trim();
-	const props = project.props;
-	if (!props || typeof props !== 'object' || Array.isArray(props)) return null;
-	const facets = (props as Record<string, unknown>).facets;
-	if (!facets || typeof facets !== 'object' || Array.isArray(facets)) return null;
-	const value = (facets as Record<string, unknown>)[key];
-	return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
 function parseDateMs(value: unknown): number | null {
 	if (typeof value !== 'string' || !value) return null;
 	const parsed = Date.parse(value);
@@ -497,12 +501,12 @@ function buildStartHereStatusFromGraph(graph: ProjectGraphContext): string {
 		.map((milestone) => ({ milestone, dueMs: parseDateMs(milestone.due_at) }))
 		.filter((entry) => entry.dueMs !== null && entry.dueMs >= now)
 		.sort((left, right) => (left.dueMs ?? 0) - (right.dueMs ?? 0))[0]?.milestone;
-	const project = graph.project as Record<string, unknown>;
+	const project = graph.project;
 
 	return renderStartHereStatusContent({
-		state: typeof project.state_key === 'string' ? project.state_key : null,
-		scale: getProjectFacet(project, 'scale'),
-		stage: getProjectFacet(project, 'stage'),
+		state: project.state_key,
+		scale: project.facet_scale,
+		stage: project.facet_stage,
 		openTasks: openTasks.length,
 		overdueTasks: overdueTasks.length,
 		nextMilestoneTitle:
@@ -513,7 +517,7 @@ function buildStartHereStatusFromGraph(graph: ProjectGraphContext): string {
 			typeof nextMilestone?.due_at === 'string' && nextMilestone.due_at.trim()
 				? nextMilestone.due_at.slice(0, 10)
 				: null,
-		nextStep: typeof project.next_step_short === 'string' ? project.next_step_short : null,
+		nextStep: project.next_step_short,
 		refreshedAt: new Date().toISOString()
 	});
 }
@@ -695,7 +699,7 @@ export async function processProjectContextSnapshotJob(
 
 		const { error: upsertError } = await supabase.from('project_context_snapshot').upsert({
 			project_id: projectId,
-			snapshot: asJson(context),
+			snapshot: serializeJson(context),
 			snapshot_version: SNAPSHOT_VERSION,
 			source_updated_at: projectRow?.updated_at ?? graph.project.updated_at ?? null,
 			computed_at: new Date().toISOString(),

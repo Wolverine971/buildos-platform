@@ -280,6 +280,76 @@ describe('cycle contract', () => {
 		expect(parsed.run.definition_snapshot.policy.max_attempts).toBe(3);
 	});
 
+	it('rejects internally inconsistent Cycle claim envelopes', () => {
+		const run = {
+			id: 'run-1',
+			cycle_id: 'cycle-1',
+			cycle_version: 2,
+			user_id: 'user-1',
+			project_id: null,
+			kind: 'daily_brief',
+			trigger: 'manual',
+			trigger_id: null,
+			status: 'queued',
+			triggered_at: '2026-08-26T12:58:00.000Z',
+			scheduled_for: null,
+			occurrence_key: 'manual:request-1',
+			idempotency_key: 'cycle-1:manual:request-1',
+			definition_snapshot: {
+				kind: 'daily_brief',
+				version: 1,
+				target: { type: 'user', project_id: null },
+				config: {},
+				policy: { overlap: 'skip', misfire: 'run_once', max_attempts: 3 },
+				attention_policy: 'always'
+			},
+			trigger_snapshot: null,
+			execution_input: {
+				mode: 'manual',
+				brief_date: '2026-08-26',
+				timezone: 'America/New_York',
+				force_regenerate: false
+			},
+			delivery_intent: { mode: 'evaluate', not_before: null },
+			queue_job_record_id: 'queue-row-1',
+			queue_job_id: 'run_cycle_queue-row-1',
+			processing_token: null,
+			attempt_count: 0,
+			outcome: null,
+			result: null,
+			error_code: null,
+			error_message: null,
+			created_at: '2026-08-26T12:58:00.000Z',
+			queued_at: '2026-08-26T12:58:00.000Z',
+			started_at: null,
+			finished_at: null,
+			updated_at: '2026-08-26T12:58:00.000Z'
+		} satisfies Json;
+
+		expect(() => parseCycleRunClaim({ disposition: 'claimed', run })).toThrow(
+			'definition_snapshot.version does not match'
+		);
+
+		const consistentVersion = {
+			...run,
+			definition_snapshot: { ...run.definition_snapshot, version: 2 }
+		} satisfies Json;
+		expect(() =>
+			parseCycleRunClaim({ disposition: 'claimed', run: consistentVersion })
+		).toThrow('must be running for a claimed run');
+		expect(() =>
+			parseCycleRunClaim({ disposition: 'already_terminal', run: consistentVersion })
+		).toThrow('must be terminal for an already-terminal run');
+
+		const mismatchedTarget = {
+			...consistentVersion,
+			project_id: 'project-1'
+		} satisfies Json;
+		expect(() => parseCycleRunClaim({ disposition: 'claimed', run: mismatchedTarget })).toThrow(
+			'definition_snapshot.target.project_id does not match'
+		);
+	});
+
 	it('serializes a Cycle outcome as explicit JSON', () => {
 		const outcome = {
 			status: 'artifact_created',

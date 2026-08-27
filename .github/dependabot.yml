@@ -17,3 +17,8 @@ updates:
           - dependency-name: '*'
             update-types:
                 - version-update:semver-major
+          # sanitize-html >=2.17.6 pulls htmlparser2 12, which is ESM-only and
+          # crashes the CommonJS Vercel server bundle at runtime.
+          - dependency-name: sanitize-html
+            versions:
+                - '>=2.17.6'

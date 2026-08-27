@@ -211,3 +211,26 @@ test('REST type generation preserves enriched overload and unnamed-argument cont
 	assert.match(rendered, /\| \{ Args: \{ id: string; mode\?: string \}; Returns: boolean \}/);
 	assert.match(rendered, /unnamed_rpc: \{ Args: \{ "": string \}; Returns: string \}/);
 });
+
+test('REST type generation applies audited return types omitted by PostgREST', () => {
+	const document: SupabaseOpenApiDocument = {
+		swagger: '2.0',
+		definitions: {
+			widgets: {
+				type: 'object',
+				required: ['id'],
+				properties: { id: { type: 'string' } }
+			}
+		},
+		paths: {
+			'/widgets': { post: {} },
+			'/rpc/live_rpc': { post: { parameters: [] } }
+		}
+	};
+
+	const rendered = renderDatabaseTypesFromOpenApi(document, existingTypes, existingTypes, {
+		functionReturnTypes: { live_rpc: 'boolean' }
+	}).content;
+
+	assert.match(rendered, /live_rpc:\s*\{\s*Args: never\s*Returns: boolean\s*\}/);
+});

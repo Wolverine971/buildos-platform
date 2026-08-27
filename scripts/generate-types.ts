@@ -34,6 +34,15 @@ const projectId = process.env.PUBLIC_SUPABASE_PROJECT_ID?.trim();
 const supabaseUrl = process.env.PUBLIC_SUPABASE_URL?.trim();
 const serviceKey = process.env.PRIVATE_SUPABASE_SERVICE_KEY?.trim();
 const sharedTypesOutputPath = './packages/shared-types/src/database.types.ts';
+// PostgREST does not publish SQL return schemas for these JSON-body RPCs. Keep
+// these audited overrides aligned with the Cycle service-role wrappers and
+// implementations in the 20260826 Cycle migrations.
+const auditedRpcReturnTypes = {
+	complete_cycle_run: 'boolean',
+	complete_cycle_run_impl: 'boolean',
+	fail_cycle_run: 'boolean',
+	fail_cycle_run_impl: 'boolean'
+} as const;
 
 function hasExistingTypes(): boolean {
 	return existsSync(sharedTypesOutputPath);
@@ -61,6 +70,13 @@ function keepStaleOrExit(message: string): never {
 
 	console.error(`❌ ${message}.`);
 	process.exit(1);
+}
+
+function commandErrorOutput(error: unknown, key: 'stderr' | 'stdout'): string {
+	if (typeof error !== 'object' || error === null || !(key in error)) return '';
+	const value = Reflect.get(error, key);
+	if (typeof value === 'string') return value;
+	return Buffer.isBuffer(value) ? value.toString() : '';
 }
 
 async function generateFromRest(): Promise<void> {
@@ -91,7 +107,9 @@ async function generateFromRest(): Promise<void> {
 
 	const document = (await response.json()) as SupabaseOpenApiDocument;
 	const existingTypes = hasExistingTypes() ? await readFile(sharedTypesOutputPath, 'utf8') : '';
-	const rendered = renderDatabaseTypesFromOpenApi(document, existingTypes);
+	const rendered = renderDatabaseTypesFromOpenApi(document, existingTypes, existingTypes, {
+		functionReturnTypes: auditedRpcReturnTypes
+	});
 	await writeFile(sharedTypesOutputPath, rendered.content);
 
 	console.log(
@@ -166,10 +184,10 @@ async function generateFromCli(): Promise<void> {
 
 		console.log('✅ Types generated successfully to:');
 		console.log(`   - ${sharedTypesOutputPath}`);
-	} catch (error: any) {
-		const stdout = error?.stdout?.toString?.() ?? '';
-		const stderr = error?.stderr?.toString?.() ?? '';
-		const message = error?.message ?? 'Unknown error';
+	} catch (error: unknown) {
+		const stdout = commandErrorOutput(error, 'stdout');
+		const stderr = commandErrorOutput(error, 'stderr');
+		const message = error instanceof Error ? error.message : 'Unknown error';
 		const details = [stderr, stdout, message].filter(Boolean).join('\n');
 
 		if (allowStaleTypes && hasExistingTypes()) {

@@ -20,8 +20,10 @@ import type {
 	ProjectInviteAcceptedEventPayload,
 	ProjectPhaseScheduledEventPayload,
 	CalendarSyncFailedEventPayload,
-	UserSignupEventPayload
+	UserSignupEventPayload,
+	NotificationJsonObject
 } from './notification.types';
+import { isNotificationJsonObject } from './notification.types';
 
 // =====================================================
 // TRANSFORMER INTERFACE
@@ -37,7 +39,7 @@ export type EventPayload =
 	| ProjectPhaseScheduledEventPayload
 	| CalendarSyncFailedEventPayload
 	| UserSignupEventPayload
-	| Record<string, any>;
+	| Record<string, unknown>;
 
 export interface TransformResult {
 	success: boolean;
@@ -302,7 +304,7 @@ function transformUserSignup(payload: UserSignupEventPayload): NotificationPaylo
 /**
  * Transform user.trial_expired event payload
  */
-function transformTrialExpired(payload: Record<string, any>): NotificationPayload {
+function transformTrialExpired(payload: NotificationJsonObject): NotificationPayload {
 	return {
 		title: 'Trial Expired',
 		body: 'Your free trial has ended. Upgrade to continue using BuildOS.',
@@ -315,7 +317,7 @@ function transformTrialExpired(payload: Record<string, any>): NotificationPayloa
 /**
  * Transform payment.failed event payload
  */
-function transformPaymentFailed(payload: Record<string, any>): NotificationPayload {
+function transformPaymentFailed(payload: NotificationJsonObject): NotificationPayload {
 	return {
 		title: 'Payment Failed',
 		body: "We couldn't process your payment. Please update your payment method.",
@@ -328,10 +330,24 @@ function transformPaymentFailed(payload: Record<string, any>): NotificationPaylo
 /**
  * Transform error.critical event payload (admin notification)
  */
-function transformCriticalError(payload: Record<string, any>): NotificationPayload {
+function readPayloadString(payload: NotificationJsonObject, key: string): string | undefined {
+	const value = payload[key];
+	return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function requireJsonPayload(payload: EventPayload): NotificationJsonObject {
+	if (!isNotificationJsonObject(payload)) {
+		throw new TypeError('Notification event payload must be a JSON object');
+	}
+	return payload;
+}
+
+function transformCriticalError(payload: NotificationJsonObject): NotificationPayload {
 	return {
 		title: 'Critical System Error',
-		body: payload.error_message || 'A critical error occurred in the system.',
+		body:
+			readPayloadString(payload, 'error_message') ||
+			'A critical error occurred in the system.',
 		action_url: '/admin/errors',
 		icon_url: '/AppImages/android/android-launchericon-192-192.png',
 		data: payload
@@ -340,15 +356,21 @@ function transformCriticalError(payload: Record<string, any>): NotificationPaylo
 
 function buildTrackedPayload(
 	eventType: EventType,
-	payload: Record<string, any>,
+	payload: NotificationJsonObject,
 	defaultTitle: string,
 	defaultBody: string,
 	defaultActionUrl = '/'
 ): NotificationPayload {
 	return {
-		title: payload.title || defaultTitle,
-		body: payload.body || payload.message || defaultBody,
-		action_url: payload.action_url || payload.url || defaultActionUrl,
+		title: readPayloadString(payload, 'title') || defaultTitle,
+		body:
+			readPayloadString(payload, 'body') ||
+			readPayloadString(payload, 'message') ||
+			defaultBody,
+		action_url:
+			readPayloadString(payload, 'action_url') ||
+			readPayloadString(payload, 'url') ||
+			defaultActionUrl,
 		icon_url: '/AppImages/android/android-launchericon-192-192.png',
 		data: {
 			event_type: eventType,
@@ -357,45 +379,50 @@ function buildTrackedPayload(
 	};
 }
 
-function transformTaskAssigned(payload: Record<string, any>): NotificationPayload {
-	const taskTitle = payload.task_title || payload.entity_title || 'a task';
-	const projectName = payload.project_name || 'your project';
+function transformTaskAssigned(payload: NotificationJsonObject): NotificationPayload {
+	const taskTitle =
+		readPayloadString(payload, 'task_title') ||
+		readPayloadString(payload, 'entity_title') ||
+		'a task';
+	const projectName = readPayloadString(payload, 'project_name') || 'your project';
+	const taskId = readPayloadString(payload, 'task_id');
+	const projectId = readPayloadString(payload, 'project_id');
 	return buildTrackedPayload(
 		'task.assigned',
 		payload,
 		'Task assigned to you',
 		`You were assigned ${taskTitle} in ${projectName}.`,
-		payload.task_id && payload.project_id
-			? `/projects/${payload.project_id}/tasks/${payload.task_id}`
-			: '/projects'
+		taskId && projectId ? `/projects/${projectId}/tasks/${taskId}` : '/projects'
 	);
 }
 
-function transformEntityTagged(payload: Record<string, any>): NotificationPayload {
-	const entityType = payload.entity_type || 'item';
-	const projectName = payload.project_name || 'your project';
+function transformEntityTagged(payload: NotificationJsonObject): NotificationPayload {
+	const entityType = readPayloadString(payload, 'entity_type') || 'item';
+	const projectName = readPayloadString(payload, 'project_name') || 'your project';
+	const projectId = readPayloadString(payload, 'project_id');
 	return buildTrackedPayload(
 		'entity.tagged',
 		payload,
 		'You were tagged',
 		`You were tagged in a ${entityType} in ${projectName}.`,
-		payload.project_id ? `/projects/${payload.project_id}` : '/projects'
+		projectId ? `/projects/${projectId}` : '/projects'
 	);
 }
 
-function transformCommentMentioned(payload: Record<string, any>): NotificationPayload {
-	const entityType = payload.entity_type || 'item';
-	const projectName = payload.project_name || 'your project';
+function transformCommentMentioned(payload: NotificationJsonObject): NotificationPayload {
+	const entityType = readPayloadString(payload, 'entity_type') || 'item';
+	const projectName = readPayloadString(payload, 'project_name') || 'your project';
+	const projectId = readPayloadString(payload, 'project_id');
 	return buildTrackedPayload(
 		'comment.mentioned',
 		payload,
 		'You were mentioned',
 		`You were mentioned in a comment on a ${entityType} in ${projectName}.`,
-		payload.project_id ? `/projects/${payload.project_id}` : '/projects'
+		projectId ? `/projects/${projectId}` : '/projects'
 	);
 }
 
-function transformPaymentWarning(payload: Record<string, any>): NotificationPayload {
+function transformPaymentWarning(payload: NotificationJsonObject): NotificationPayload {
 	return buildTrackedPayload(
 		'payment.warning',
 		payload,
@@ -405,7 +432,7 @@ function transformPaymentWarning(payload: Record<string, any>): NotificationPayl
 	);
 }
 
-function transformTrialReminder(payload: Record<string, any>): NotificationPayload {
+function transformTrialReminder(payload: NotificationJsonObject): NotificationPayload {
 	const daysUntilEnd =
 		typeof payload.days_until_end === 'number' ? payload.days_until_end : undefined;
 	const defaultBody =
@@ -423,7 +450,7 @@ function transformTrialReminder(payload: Record<string, any>): NotificationPaylo
 	);
 }
 
-function transformBillingOpsAnomaly(payload: Record<string, any>): NotificationPayload {
+function transformBillingOpsAnomaly(payload: NotificationJsonObject): NotificationPayload {
 	return buildTrackedPayload(
 		'billing_ops_anomaly',
 		payload,
@@ -435,16 +462,19 @@ function transformBillingOpsAnomaly(payload: Record<string, any>): NotificationP
 
 function transformHomeworkRun(
 	eventType: EventType,
-	payload: Record<string, any>
+	payload: NotificationJsonObject
 ): NotificationPayload {
-	const status = payload.status || eventType.replace('homework.run_', '').replace(/_/g, ' ');
-	const title = `Homework ${String(status).charAt(0).toUpperCase()}${String(status).slice(1)}`;
+	const status =
+		readPayloadString(payload, 'status') ||
+		eventType.replace('homework.run_', '').replace(/_/g, ' ');
+	const title = `Homework ${status.charAt(0).toUpperCase()}${status.slice(1)}`;
+	const runId = readPayloadString(payload, 'run_id');
 	return buildTrackedPayload(
 		eventType,
 		payload,
 		title,
 		`Your homework run status changed to ${status}.`,
-		payload.run_id ? `/homework/runs/${payload.run_id}` : '/homework'
+		runId ? `/homework/runs/${runId}` : '/homework'
 	);
 }
 
@@ -465,6 +495,7 @@ export function transformEventPayload(
 	eventPayload: EventPayload
 ): NotificationPayload {
 	try {
+		const jsonPayload = requireJsonPayload(eventPayload);
 		switch (eventType) {
 			case 'brief.completed':
 				return transformBriefCompleted(eventPayload as BriefCompletedEventPayload);
@@ -499,41 +530,41 @@ export function transformEventPayload(
 				return transformCalendarSyncFailed(eventPayload as CalendarSyncFailedEventPayload);
 
 			case 'task.assigned':
-				return transformTaskAssigned(eventPayload);
+				return transformTaskAssigned(jsonPayload);
 
 			case 'entity.tagged':
-				return transformEntityTagged(eventPayload);
+				return transformEntityTagged(jsonPayload);
 
 			case 'comment.mentioned':
-				return transformCommentMentioned(eventPayload);
+				return transformCommentMentioned(jsonPayload);
 
 			case 'payment.warning':
-				return transformPaymentWarning(eventPayload);
+				return transformPaymentWarning(jsonPayload);
 
 			case 'user.trial_reminder':
-				return transformTrialReminder(eventPayload);
+				return transformTrialReminder(jsonPayload);
 
 			case 'billing_ops_anomaly':
-				return transformBillingOpsAnomaly(eventPayload);
+				return transformBillingOpsAnomaly(jsonPayload);
 
 			case 'homework.run_completed':
 			case 'homework.run_stopped':
 			case 'homework.run_failed':
 			case 'homework.run_canceled':
 			case 'homework.run_updated':
-				return transformHomeworkRun(eventType, eventPayload);
+				return transformHomeworkRun(eventType, jsonPayload);
 
 			case 'user.signup':
 				return transformUserSignup(eventPayload as UserSignupEventPayload);
 
 			case 'user.trial_expired':
-				return transformTrialExpired(eventPayload);
+				return transformTrialExpired(jsonPayload);
 
 			case 'payment.failed':
-				return transformPaymentFailed(eventPayload);
+				return transformPaymentFailed(jsonPayload);
 
 			case 'error.critical':
-				return transformCriticalError(eventPayload);
+				return transformCriticalError(jsonPayload);
 
 			default:
 				throw new Error(`No transformer found for event type: ${eventType}`);
@@ -558,10 +589,10 @@ export function safeTransformEventPayload(
 	try {
 		const payload = transformEventPayload(eventType, eventPayload);
 		return { success: true, payload };
-	} catch (error: any) {
+	} catch (error: unknown) {
 		return {
 			success: false,
-			error: error.message || 'Unknown transformation error'
+			error: error instanceof Error ? error.message : 'Unknown transformation error'
 		};
 	}
 }

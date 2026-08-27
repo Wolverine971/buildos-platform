@@ -26,6 +26,8 @@ apps/worker/
     app.ts
     worker.ts
     scheduler.ts
+    scheduler/
+      agentOperatives.ts
     config/
       queueConfig.ts
       projectLoops.ts
@@ -126,7 +128,12 @@ truth.
 
 ### Scheduler
 
-`apps/worker/src/scheduler.ts` owns recurring work:
+`apps/worker/src/scheduler.ts` owns cron registration and startup triggers. Scheduler-domain
+modules own the persistence and queue-admission behavior behind those triggers. The first extracted
+domain is `apps/worker/src/scheduler/agentOperatives.ts`, which owns Saved Operative timing,
+stale-lock reclaim, database claims, Agent Run creation, and queue admission.
+
+Recurring work currently includes:
 
 - Daily brief scheduling
 - Daily SMS reminder scheduling

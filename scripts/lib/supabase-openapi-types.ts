@@ -50,6 +50,11 @@ export type RenderedDatabaseTypes = {
 	viewCount: number;
 };
 
+export type RenderDatabaseTypesOptions = {
+	/** Audited SQL return types for RPCs whose PostgREST OpenAPI response omits a schema. */
+	functionReturnTypes?: Readonly<Record<string, string>>;
+};
+
 const IDENTIFIER_PATTERN = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 function renderKey(key: string): string {
@@ -458,7 +463,8 @@ function renderFunction(
 	name: string,
 	pathDefinition: OpenApiPath,
 	enums: Map<string, string[]>,
-	existing?: string
+	existing?: string,
+	returnTypeOverride?: string
 ): string {
 	const lines = [`      ${renderKey(name)}: {`, ...renderFunctionArgs(pathDefinition, enums)];
 	const existingReturnTail = existing ? existingFunctionReturnTail(existing) : undefined;
@@ -466,7 +472,12 @@ function renderFunction(
 	// PostgREST intentionally omits SQL return signatures from its OpenAPI document.
 	// Preserve an existing/CLI-enriched return contract while refreshing arguments
 	// from the live OpenAPI schema. Json remains the safe fallback for new RPCs.
-	lines.push(...(existingReturnTail ?? ['        Returns: Json']), '      }');
+	lines.push(
+		...(returnTypeOverride
+			? [`        Returns: ${returnTypeOverride}`]
+			: (existingReturnTail ?? ['        Returns: Json'])),
+		'      }'
+	);
 	return lines.join('\n');
 }
 
@@ -635,7 +646,8 @@ ${enumLines}    },
 export function renderDatabaseTypesFromOpenApi(
 	document: SupabaseOpenApiDocument,
 	existingTypes: string,
-	compatibilityTypes = existingTypes
+	compatibilityTypes = existingTypes,
+	options: RenderDatabaseTypesOptions = {}
 ): RenderedDatabaseTypes {
 	if (document.swagger !== '2.0' || !document.definitions || !document.paths) {
 		throw new Error('Supabase REST API returned an unsupported OpenAPI document.');
@@ -691,8 +703,10 @@ export function renderDatabaseTypesFromOpenApi(
 		const existing = existingFunctions.get(name);
 		const compatibility = compatibilityFunctions.get(name);
 		const preservedContract = compatibility ?? existing;
+		const returnTypeOverride = options.functionReturnTypes?.[name];
 		if (!preservedContract) addedFunctions.push(name);
 		if (
+			!returnTypeOverride &&
 			preservedContract &&
 			equalStringArrays(
 				existingFunctionArgumentNames(preservedContract),
@@ -701,7 +715,7 @@ export function renderDatabaseTypesFromOpenApi(
 		) {
 			return preservedContract;
 		}
-		return renderFunction(name, pathDefinition, enums, preservedContract);
+		return renderFunction(name, pathDefinition, enums, preservedContract, returnTypeOverride);
 	});
 
 	const content = `export type Json =

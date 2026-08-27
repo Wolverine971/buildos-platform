@@ -10,7 +10,7 @@ composes the HTTP surface.
 
 1. **API server** (`src/app.ts` and `src/routes/`) — REST endpoints for queueing, inspecting, and cleaning jobs.
 2. **Worker** (`src/worker.ts`) — long-running consumer that pulls jobs off the Supabase-backed queue and dispatches them to per-domain processors.
-3. **Scheduler** (`src/scheduler.ts`) — cron-driven scheduling of recurring work (timezone-aware daily briefs with engagement backoff, daily SMS windows, ontology/chat maintenance, etc.).
+3. **Scheduler** (`src/scheduler.ts`, `src/scheduler/`) — cron composition plus domain-owned recurring work (timezone-aware daily briefs with engagement backoff, Saved Operatives, daily SMS windows, ontology/chat maintenance, etc.).
 
 > For the monorepo overview, see the root [README](../../README.md) and [CLAUDE.md](../../CLAUDE.md).
 

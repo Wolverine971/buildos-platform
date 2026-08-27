@@ -18177,7 +18177,7 @@ export type Database = {
           p_processing_token: string
           p_result?: Json
         }
-        Returns: Json
+        Returns: boolean
       }
       complete_cycle_run_impl: {
         Args: {
@@ -18186,7 +18186,7 @@ export type Database = {
           p_processing_token: string
           p_result?: Json
         }
-        Returns: Json
+        Returns: boolean
       }
       complete_email_sequence_send: {
         Args: {
@@ -18636,7 +18636,7 @@ export type Database = {
           p_processing_token: string
           p_terminal: boolean
         }
-        Returns: Json
+        Returns: boolean
       }
       fail_cycle_run_impl: {
         Args: {
@@ -18646,7 +18646,7 @@ export type Database = {
           p_processing_token: string
           p_terminal: boolean
         }
-        Returns: Json
+        Returns: boolean
       }
       fail_queue_job: {
         Args: {

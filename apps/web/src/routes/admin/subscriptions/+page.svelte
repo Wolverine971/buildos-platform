@@ -354,7 +354,11 @@
 
 	// Actions that need extra input (cancel reason, discount code, unfreeze note)
 	// open a FormModal instead of a native prompt(). The rest run immediately.
-	function openActionPrompt(kind: ActionPromptKind, userId: string, subscriptionId?: string) {
+	function openActionPrompt(
+		kind: ActionPromptKind,
+		userId: string,
+		subscriptionId: string | undefined
+	) {
 		showActionMenu = null;
 		actionPrompt = { kind, userId, subscriptionId };
 	}
@@ -475,7 +479,7 @@
 		await loadBillingTimeline(selectedUser.id);
 	}
 
-	async function runManualUnfreeze(userId: string, note?: string) {
+	async function runManualUnfreeze(userId: string, note: string | undefined) {
 		const response = await fetch('/api/admin/subscriptions/billing', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -825,7 +829,8 @@
 							{/if}
 
 							<Button
-								onclick={() => openActionPrompt('manual_unfreeze', user.id)}
+								onclick={() =>
+									openActionPrompt('manual_unfreeze', user.id, undefined)}
 								variant="ghost"
 								size="sm"
 								icon={Unlock}
