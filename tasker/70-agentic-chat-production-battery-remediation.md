@@ -363,6 +363,20 @@ to measure these control loops.
   that “The Beta list email one” receives both exact task UUIDs/labels in the frozen artifact; a
   stale-state fixture proves the ledger disappears after a later user message has already answered
   it. The focused 26 web tests pass and web test types remain at the accepted `538/538` baseline.
+- **WP-4 next-turn candidate rehydration is deployed and proven on the live server without model
+  spend.** Commit `a8e51b51b3930d8df222d7c996355aa1802e9b26` deployed through Vercel production
+  deployment `dpl_4Q56bGyQ6vnzfUekv4GDTpKrAkEu`. `build-os.com` returned HTTP 200, while the
+  code-compatible worker release `09460c9ecea3f62b72e0dd58c3a79de02d9fa90e` remained healthy,
+  idle at zero active turns, Realtime healthy, and aligned on all 20 provider/adapter mutation
+  capabilities. The standard production worker-realtime preflight for reschedule plus project
+  create passed with model execution disabled. A separate zero-spend live proof seeded one exact
+  clarification result under the dedicated test user and called the deployed prewarm endpoint:
+  prepared prompt `6070a54e-8aaa-4b62-b845-88dfdd7c5b95` reloaded candidate IDs
+  `a99fcc2e-fb93-405d-8c4f-b3d60659bd18` and
+  `7f5b92c8-e0bb-4f78-b93f-9bad0416a0d8`, both labels, and the no-rediscovery instruction. The exact
+  test session `e33b2895-2156-4a39-b2fd-24e89d127b7f`, prepared prompt, messages, and tool execution
+  were then deleted; follow-up counts were `[0,0,0,0]`. No provider was called and no paid repetition
+  was needed for this server-owned history change.
 - **WP-3 typed correction is locally implemented for the newly reproduced reschedule loop.** A
   contract reviewer revision now includes a complete `corrected_contract` in the durable
   `request_proposal_revision` receipt. The worker parses that exact contract, binds its canonical
@@ -677,12 +691,13 @@ source/tests also passes.
 
 ### Next gate after review
 
-1. Review the WP-4 pending-choice ledger trust boundary and latest-message expiry invariant.
-2. Deploy the web history change and rerun the zero-spend health/preflight gate.
-3. Exercise one isolated two-turn production clarification only if a safe deterministic candidate
-   fixture can be created without contaminating user data; otherwise retain the exact server-owned
-   admission fixture as the release proof.
-4. Move to WP-5 provider-pass telemetry and bounded efficiency work.
+1. Review the WP-4 pending-choice ledger trust boundary and latest-message expiry invariant. The
+   production worker/prewarm path is now proven; decide separately whether the retiring legacy
+   atomic SSE snapshot needs parity.
+2. Move to WP-5 provider-pass telemetry: verify the acting/review/repair/retry counters against the
+   retained Tasker 70 turns and fix the known zero-validation-failure aggregate defect.
+3. Use those trustworthy counters to pick one bounded control-loop optimization; do not pay for a
+   repeated production turn until its before/after metric can be interpreted.
 
 ## Work packages
 
