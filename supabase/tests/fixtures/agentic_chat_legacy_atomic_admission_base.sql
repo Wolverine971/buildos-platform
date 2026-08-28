@@ -64,6 +64,7 @@ CREATE TABLE public.chat_turn_runs (
 	tool_round_count integer NOT NULL DEFAULT 0,
 	tool_call_count integer NOT NULL DEFAULT 0,
 	validation_failure_count integer NOT NULL DEFAULT 0,
+	llm_pass_count integer NOT NULL DEFAULT 0,
 	finished_reason text NULL,
 	finished_at timestamptz NULL,
 	created_at timestamptz NOT NULL DEFAULT clock_timestamp(),

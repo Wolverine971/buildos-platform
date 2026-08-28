@@ -135,6 +135,7 @@ export function buildTurnContractReviewRequest(
 		],
 		toolChoice: 'required',
 		providerRound: 'synthesis',
+		passRole: 'contract_review',
 		semanticDispositionGate: false
 	};
 }

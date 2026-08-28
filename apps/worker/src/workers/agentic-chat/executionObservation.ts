@@ -69,6 +69,11 @@ export class SupabaseAgenticChatExecutionObservationAdapter
 		signal: AbortSignal
 	): Promise<void> {
 		validateInput(input);
+		const operation =
+			input.eventType === 'provider_attempt_started' ||
+			input.eventType === 'provider_attempt_ended'
+				? 'persist_agentic_chat_provider_attempt_observation'
+				: 'persist_agentic_chat_execution_observation';
 		const { data, error } = await runWithAbortableDeadline({
 			parentSignal: signal,
 			timeoutMs: this.timeoutMs,
@@ -78,7 +83,7 @@ export class SupabaseAgenticChatExecutionObservationAdapter
 					`Agentic Chat execution observation exceeded its ${this.timeoutMs}ms deadline`
 				),
 			run: (deadlineSignal) => {
-				const request = this.client.rpc('persist_agentic_chat_execution_observation', {
+				const request = this.client.rpc(operation, {
 					...agenticChatGenerationWriteFenceArgsV1(input),
 					p_user_id: input.userId,
 					p_observation_key: input.observationKey,
@@ -92,7 +97,7 @@ export class SupabaseAgenticChatExecutionObservationAdapter
 		if (error) {
 			throw new AgenticChatExecutionObservationError(
 				error.code ?? '',
-				`persist_agentic_chat_execution_observation failed: ${error.message}`
+				`${operation} failed: ${error.message}`
 			);
 		}
 		const receipt = requireRecord(data);

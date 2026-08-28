@@ -144,6 +144,7 @@ export function buildMutationBatchReviewRequest(
 		],
 		toolChoice: 'required',
 		providerRound: 'synthesis',
+		passRole: 'mutation_review',
 		semanticDispositionGate: false
 	};
 }

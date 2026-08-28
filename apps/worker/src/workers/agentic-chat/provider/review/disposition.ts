@@ -84,6 +84,7 @@ export function buildSemanticTurnDispositionGateRequest(
 		tools,
 		toolChoice: 'required',
 		providerRound: 'synthesis',
+		passRole: 'acting',
 		semanticDispositionGate: true
 	};
 }

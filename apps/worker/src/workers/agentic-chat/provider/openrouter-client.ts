@@ -12,6 +12,7 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type {
+	AgenticChatProviderPassRoleV1,
 	AgenticChatTurnProviderClientEventV1,
 	AgenticChatTurnProviderClientPortV1,
 	AgenticChatTurnProviderMessageV1,
@@ -38,7 +39,7 @@ const DEFAULT_MAX_SSE_BUFFER_BYTES = 256 * 1024;
 const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
 const TURN_ROUTE_HEALTH_TTL_MS = 10 * 60_000;
 const MAX_TURN_ROUTE_HEALTH_ENTRIES = 256;
-const USAGE_LOG_IDENTITY_VERSION = 'agentic_chat_provider_usage_v1';
+const USAGE_LOG_IDENTITY_VERSION = 'agentic_chat_provider_usage_v2';
 const REJECTED_TOOL_NAME_PATTERN = /^[A-Za-z0-9_.:-]{1,256}$/;
 // Mirrors the consumer's accumulator bounds; past them the consumer rejects the
 // pass without a name-level diagnostic, so the receipt must stay silent too.
@@ -85,6 +86,7 @@ export type AgenticChatProviderUsageObservationV1 = {
 	entityId: string | null;
 	projectId: string | null;
 	logicalProviderRound: number;
+	passRole: AgenticChatProviderPassRoleV1;
 	providerAttempt: number;
 	attemptedRouteIds: string[];
 	routeId: string | null;
@@ -275,6 +277,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		validateToolSurface(input);
 		throwIfAborted(input.signal);
 		const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
+		const passRole = canonicalProviderPassRole(input.passRole);
 		const inputChars =
 			JSON.stringify(input.messages).length + JSON.stringify(input.tools).length;
 		const requestStartedAtMs = Date.now();
@@ -283,6 +286,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		let lastAttemptedRoute: AgenticChatOpenAiCompatibleRouteV1 | null = null;
 		let active: ActiveResponse | null = null;
 		let activeAttemptStartedAtMs: number | null = null;
+		let activeAttemptKind: 'primary' | 'retry' | null = null;
 		let activeAttemptEnded = false;
 		let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 		let accounted = false;
@@ -332,6 +336,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 						turnRunId: input.turnRunId,
 						executionGeneration: input.executionGeneration,
 						logicalProviderRound: input.logicalProviderRound,
+						passRole,
 						providerAttempt,
 						routeId
 					}),
@@ -347,6 +352,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					entityId: input.entityId,
 					projectId: input.projectId,
 					logicalProviderRound: input.logicalProviderRound,
+					passRole,
 					providerAttempt,
 					attemptedRouteIds: [...attemptedRouteIds],
 					routeId: routeId === 'none' ? null : routeId,
@@ -391,16 +397,22 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				const route = this.applyTurnRouteHealth(configuredRoute, input.turnRunId);
 				lastAttemptedRoute = route;
 				attemptedRouteIds.push(route.id);
+				const attemptKind: 'primary' | 'retry' =
+					providerAttempt > 1 || attemptedRouteIds.length > 1 ? 'retry' : 'primary';
 				const attemptStartedAtMs = Date.now();
 				await this.observeProviderAttempt(input, route, 'provider_attempt_started', {
 					round: input.providerRound,
 					logical_provider_round: input.logicalProviderRound,
+					pass_role: passRole,
+					provider_attempt: providerAttempt,
+					attempt_kind: attemptKind,
 					route_id: route.id,
 					model_requested: route.model
 				});
 				try {
 					active = await this.openRoute(route, input);
 					activeAttemptStartedAtMs = attemptStartedAtMs;
+					activeAttemptKind = attemptKind;
 					break;
 				} catch (error) {
 					if (input.signal.aborted) throwAbort(input.signal);
@@ -410,6 +422,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					await this.observeProviderAttempt(input, route, 'provider_attempt_ended', {
 						round: input.providerRound,
 						logical_provider_round: input.logicalProviderRound,
+						pass_role: passRole,
+						provider_attempt: providerAttempt,
+						attempt_kind: attemptKind,
 						route_id: route.id,
 						model_requested: route.model,
 						status: 'failure',
@@ -518,6 +533,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 				round: input.providerRound,
 				logical_provider_round: input.logicalProviderRound,
+				pass_role: passRole,
+				provider_attempt: providerAttempt,
+				attempt_kind: activeAttemptKind ?? (providerAttempt > 1 ? 'retry' : 'primary'),
 				route_id: active.route.id,
 				model_requested: active.route.model,
 				model_used: state.modelUsed ?? active.route.model,
@@ -576,6 +594,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 					round: input.providerRound,
 					logical_provider_round: input.logicalProviderRound,
+					pass_role: passRole,
+					provider_attempt: providerAttempt,
+					attempt_kind: activeAttemptKind ?? (providerAttempt > 1 ? 'retry' : 'primary'),
 					route_id: active.route.id,
 					model_requested: active.route.model,
 					model_used: state.modelUsed ?? active.route.model,
@@ -898,7 +919,8 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 							observationKey: createStableAgenticChatExecutionObservationKeyV1({
 								turnRunId: input.turnRunId,
 								scope:
-									`provider:${input.logicalProviderRound}:${input.providerRound}:` +
+									`provider:${input.logicalProviderRound}:` +
+									`${canonicalProviderPassRole(input.passRole)}:${input.providerRound}:` +
 									`${route.id}` +
 									(providerAttempt === 1 ? '' : `:attempt:${providerAttempt}`),
 								boundary: eventType
@@ -962,6 +984,7 @@ export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObse
 				entityId: observation.entityId,
 				routeId: observation.routeId,
 				logicalProviderRound: observation.logicalProviderRound,
+				passRole: observation.passRole,
 				providerAttempt: observation.providerAttempt,
 				attemptedRouteIds: observation.attemptedRouteIds,
 				estimatedUsage: observation.estimated,
@@ -1271,10 +1294,12 @@ export function createStableAgenticChatProviderUsageLogIdV1(input: {
 	turnRunId: string;
 	executionGeneration: number;
 	logicalProviderRound: number;
+	passRole?: AgenticChatProviderPassRoleV1;
 	providerAttempt?: number;
 	routeId: string;
 }): string {
 	const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
+	const passRole = canonicalProviderPassRole(input.passRole);
 	if (
 		!Number.isSafeInteger(input.executionGeneration) ||
 		input.executionGeneration < 1 ||
@@ -1288,7 +1313,7 @@ export function createStableAgenticChatProviderUsageLogIdV1(input: {
 	const bytes = createHash('sha256')
 		.update(
 			`${USAGE_LOG_IDENTITY_VERSION}:${input.turnRunId}:${input.executionGeneration}:` +
-				`${input.logicalProviderRound}:${input.routeId}` +
+				`${input.logicalProviderRound}:${passRole}:${input.routeId}` +
 				(providerAttempt === 1 ? '' : `:attempt:${providerAttempt}`),
 			'utf8'
 		)
@@ -1640,6 +1665,7 @@ function copyTool(tool: AgenticChatTurnProviderToolV1) {
 
 function validateToolSurface(input: ClientInput): void {
 	canonicalProviderAttempt(input.providerAttempt);
+	canonicalProviderPassRole(input.passRole);
 	if (!Array.isArray(input.tools)) {
 		throw new Error('Agentic Chat provider tool surface must be an array');
 	}
@@ -1670,6 +1696,22 @@ function canonicalProviderAttempt(value: number | undefined): number {
 		throw new Error('Agentic Chat provider attempt must be between 1 and 8');
 	}
 	return attempt;
+}
+
+function canonicalProviderPassRole(
+	value: AgenticChatProviderPassRoleV1 | undefined
+): AgenticChatProviderPassRoleV1 {
+	const role = value ?? 'acting';
+	if (
+		role !== 'acting' &&
+		role !== 'contract_review' &&
+		role !== 'mutation_review' &&
+		role !== 'repair' &&
+		role !== 'final_response'
+	) {
+		throw new Error('Agentic Chat provider pass role is invalid');
+	}
+	return role;
 }
 
 function validateReadToolDefinition(

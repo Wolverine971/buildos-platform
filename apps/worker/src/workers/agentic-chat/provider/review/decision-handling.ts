@@ -191,7 +191,7 @@ export function buildContractRevisionRequest(
 			DECLARE_TURN_CONTRACT_TOOL_NAME
 		);
 	return appendSystemInstruction(
-		base,
+		{ ...base, passRole: 'repair' },
 		[
 			'Independent review returned your proposed contract to you for correction; it did not reach the user.',
 			`Reason: ${revision.reason || 'not stated'}.`,
@@ -208,11 +208,14 @@ export function buildMutationBatchRevisionRequest(
 	revision: PendingProposalRevision
 ): AgenticChatTurnProviderRequestV1 {
 	return appendSystemInstruction(
-		buildPostSemanticDispositionRequest(
-			request,
-			availableTools,
-			DECLARE_TURN_CONTRACT_TOOL_NAME
-		),
+		{
+			...buildPostSemanticDispositionRequest(
+				request,
+				availableTools,
+				DECLARE_TURN_CONTRACT_TOOL_NAME
+			),
+			passRole: 'repair'
+		},
 		[
 			'Independent review returned your exact mutation batch to you for correction; it did not reach the user. The approved contract still stands.',
 			`Reason: ${revision.reason || 'not stated'}.`,

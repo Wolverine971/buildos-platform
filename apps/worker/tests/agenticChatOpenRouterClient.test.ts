@@ -43,6 +43,7 @@ function input(signal = new AbortController().signal) {
 		executionGeneration: 2,
 		providerRound: 'initial' as const,
 		logicalProviderRound: 1,
+		passRole: 'acting' as const,
 		signal
 	};
 }
@@ -186,6 +187,15 @@ describe('AgenticChatOpenRouterClient', () => {
 				turnRunId: TURN_RUN_ID,
 				executionGeneration: 2,
 				logicalProviderRound: 1,
+				passRole: 'mutation_review',
+				routeId: 'openrouter'
+			})
+		).not.toBe(first);
+		expect(
+			createStableAgenticChatProviderUsageLogIdV1({
+				turnRunId: TURN_RUN_ID,
+				executionGeneration: 2,
+				logicalProviderRound: 1,
 				providerAttempt: 2,
 				routeId: 'openrouter'
 			})
@@ -277,6 +287,7 @@ describe('AgenticChatOpenRouterClient', () => {
 				usageLogId: expect.stringMatching(/^[0-9a-f-]{36}$/),
 				status: 'success',
 				logicalProviderRound: 1,
+				passRole: 'acting',
 				attemptedRouteIds: ['openrouter'],
 				routeId: 'openrouter',
 				modelRequested: 'provider/primary',
@@ -307,6 +318,9 @@ describe('AgenticChatOpenRouterClient', () => {
 				payload: {
 					round: 'initial',
 					logical_provider_round: 1,
+					pass_role: 'acting',
+					provider_attempt: 1,
+					attempt_kind: 'primary',
 					route_id: 'openrouter',
 					model_requested: 'provider/primary'
 				}
@@ -317,6 +331,9 @@ describe('AgenticChatOpenRouterClient', () => {
 				payload: expect.objectContaining({
 					round: 'initial',
 					logical_provider_round: 1,
+					pass_role: 'acting',
+					provider_attempt: 1,
+					attempt_kind: 'primary',
 					route_id: 'openrouter',
 					status: 'success',
 					finish_reason: 'stop',
@@ -394,13 +411,34 @@ describe('AgenticChatOpenRouterClient', () => {
 			test.lifecycleObservations.map(({ eventType, payload }) => ({
 				eventType,
 				routeId: payload.route_id,
+				attemptKind: payload.attempt_kind,
 				status: payload.status ?? null
 			}))
 		).toEqual([
-			{ eventType: 'provider_attempt_started', routeId: 'primary', status: null },
-			{ eventType: 'provider_attempt_ended', routeId: 'primary', status: 'failure' },
-			{ eventType: 'provider_attempt_started', routeId: 'direct', status: null },
-			{ eventType: 'provider_attempt_ended', routeId: 'direct', status: 'success' }
+			{
+				eventType: 'provider_attempt_started',
+				routeId: 'primary',
+				attemptKind: 'primary',
+				status: null
+			},
+			{
+				eventType: 'provider_attempt_ended',
+				routeId: 'primary',
+				attemptKind: 'primary',
+				status: 'failure'
+			},
+			{
+				eventType: 'provider_attempt_started',
+				routeId: 'direct',
+				attemptKind: 'retry',
+				status: null
+			},
+			{
+				eventType: 'provider_attempt_ended',
+				routeId: 'direct',
+				attemptKind: 'retry',
+				status: 'success'
+			}
 		]);
 	});
 
@@ -1471,6 +1509,7 @@ describe('AgenticChatOpenRouterClient', () => {
 			entityId: 'project-1',
 			projectId: '40000000-0000-4000-8000-000000000004',
 			logicalProviderRound: 3,
+			passRole: 'repair',
 			providerAttempt: 2,
 			attemptedRouteIds: ['openrouter', 'direct'],
 			routeId: 'direct',
@@ -1533,6 +1572,7 @@ describe('AgenticChatOpenRouterClient', () => {
 				entityId: 'project-1',
 				routeId: 'direct',
 				logicalProviderRound: 3,
+				passRole: 'repair',
 				providerAttempt: 2,
 				attemptedRouteIds: ['openrouter', 'direct'],
 				estimatedUsage: true,
@@ -1760,13 +1800,16 @@ describe('rejected tool-call receipt', () => {
 		expect(Object.keys(payload).sort()).toEqual(
 			[
 				'advertised_tool_count',
+				'attempt_kind',
 				'duration_ms',
 				'error_class',
 				'finish_reason',
 				'logical_provider_round',
 				'model_requested',
 				'model_used',
+				'pass_role',
 				'provider',
+				'provider_attempt',
 				'provider_timing',
 				'rejected_tool_name',
 				'round',

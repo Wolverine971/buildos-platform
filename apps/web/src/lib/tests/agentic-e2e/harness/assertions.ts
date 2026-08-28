@@ -113,6 +113,10 @@ export function assertTurnRunCompleted(row: TurnRunRow | null): void {
 		telemetryFail(
 			`chat_turn_runs.status was "${row.status}" (finished_reason=${row.finished_reason})`
 		);
+		return;
+	}
+	if (row.execution_mode === 'worker_realtime' && row.llm_pass_count < 1) {
+		telemetryFail('completed worker_realtime turn has no classified logical provider passes');
 	}
 }
 

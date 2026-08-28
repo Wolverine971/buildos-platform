@@ -18,6 +18,8 @@ export interface TurnRunRow {
 	finished_reason: string | null;
 	tool_call_count: number;
 	tool_round_count: number;
+	llm_pass_count: number;
+	validation_failure_count: number;
 	first_canonical_op: string | null;
 	assistant_message_id: string | null;
 	user_message_id: string | null;
@@ -179,7 +181,7 @@ export async function getTurnRun(
 	const { data } = await admin
 		.from('chat_turn_runs')
 		.select(
-			'id, session_id, execution_mode, transport_contract_version, status, created_at, started_at, finished_at, finished_reason, tool_call_count, tool_round_count, first_canonical_op, assistant_message_id, user_message_id, timing_metric_id'
+			'id, session_id, execution_mode, transport_contract_version, status, created_at, started_at, finished_at, finished_reason, tool_call_count, tool_round_count, llm_pass_count, validation_failure_count, first_canonical_op, assistant_message_id, user_message_id, timing_metric_id'
 		)
 		.eq('stream_run_id', streamRunId)
 		.maybeSingle();

@@ -33,7 +33,8 @@ describePostgres('agentic-chat P3 live-vision resolution PostgreSQL contract', (
 	let dataDir = '';
 	let socketDir = '';
 	let port = 0;
-	let output = '';
+	let liveVisionOutput = '';
+	let providerPassOutput = '';
 
 	const applySqlFile = (path: string): string =>
 		execFileSync(
@@ -146,10 +147,21 @@ describePostgres('agentic-chat P3 live-vision resolution PostgreSQL contract', (
 				'supabase/migrations/20260812040000_agentic_chat_live_vision_resolution_receipts.sql'
 			)
 		);
-		output = applySqlFile(
+		liveVisionOutput = applySqlFile(
 			sqlPath(
 				'supabase/tests/20260812040000_agentic_chat_live_vision_resolution_receipts.test.sql'
 			)
+		);
+		for (const migration of [
+			'20260815173000_agentic_chat_provider_observation_logical_round.sql',
+			'20260817020000_agentic_chat_provider_attempt_timing_receipts.sql',
+			'20260822010000_agentic_chat_execution_observation_rejected_tool.sql',
+			'20260828221405_agentic_chat_provider_pass_telemetry.sql'
+		]) {
+			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
+		}
+		providerPassOutput = applySqlFile(
+			sqlPath('supabase/tests/20260828221405_agentic_chat_provider_pass_telemetry.test.sql')
 		);
 	}, 60_000);
 
@@ -160,6 +172,10 @@ describePostgres('agentic-chat P3 live-vision resolution PostgreSQL contract', (
 	});
 
 	it('validates bounded policy and persists only a fenced redacted media receipt', () => {
-		expect(output).toContain('agentic_chat_live_vision_resolution_receipts_ok');
+		expect(liveVisionOutput).toContain('agentic_chat_live_vision_resolution_receipts_ok');
+	});
+
+	it('counts successful logical provider roles without counting replay or retry', () => {
+		expect(providerPassOutput).toContain('agentic_chat_provider_pass_telemetry_ok');
 	});
 });

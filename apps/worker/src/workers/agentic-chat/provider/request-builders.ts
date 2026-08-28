@@ -62,7 +62,13 @@ export function appendSystemInstruction(
 export function forceToolFreeRequest(
 	request: AgenticChatTurnProviderRequestV1
 ): AgenticChatTurnProviderRequestV1 {
-	return { ...request, tools: [], toolChoice: 'none', providerRound: 'synthesis' };
+	return {
+		...request,
+		tools: [],
+		toolChoice: 'none',
+		providerRound: 'synthesis',
+		passRole: 'final_response'
+	};
 }
 
 export function latestToolPayloadChars(request: AgenticChatTurnProviderRequestV1): number {
@@ -208,6 +214,7 @@ export function buildBaseProviderRequest(
 			executionGeneration: input.claim.executionGeneration,
 			logicalProviderRound: 1,
 			providerRound: 'initial',
+			passRole: 'acting',
 			signal,
 			...(liveVisionEnabled && currentTurn?.liveVision?.requested
 				? {
@@ -266,6 +273,7 @@ export function buildContinuationRequest(
 		...request,
 		logicalProviderRound: request.logicalProviderRound + 1,
 		providerRound: 'synthesis',
+		passRole: 'acting',
 		messages: [
 			...request.messages,
 			{
@@ -292,6 +300,7 @@ export function buildSynthesisRequest(
 	return {
 		...request,
 		providerRound: 'synthesis',
+		passRole: 'final_response',
 		messages: [
 			...request.messages,
 			{
@@ -347,6 +356,7 @@ export function buildValidationRepairRequest(
 			...request,
 			logicalProviderRound: request.logicalProviderRound + 1,
 			providerRound: 'synthesis',
+			passRole: 'repair',
 			messages: [
 				...request.messages,
 				{

@@ -830,6 +830,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			executionGeneration: 1,
 			providerRound: 'initial',
 			logicalProviderRound: 1,
+			passRole: 'acting',
 			providerAttempt: 1,
 			signal
 		});
@@ -1257,6 +1258,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		);
 		const contractReviewRequest = semanticReviewer.stream.mock.calls[0]?.[0];
 		expect(contractReviewRequest).toMatchObject({
+			passRole: 'contract_review',
 			toolChoice: 'required',
 			tools: [
 				expect.objectContaining({
@@ -1902,6 +1904,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(client.stream).toHaveBeenCalledTimes(6);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
 		expect(semanticReviewer.stream.mock.calls[0]?.[0]).toMatchObject({
+			passRole: 'contract_review',
 			toolChoice: 'required',
 			tools: [
 				expect.objectContaining({
@@ -1919,6 +1922,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		});
 		expect(semanticReviewer.stream.mock.calls[1]?.[0]).toMatchObject({
+			passRole: 'mutation_review',
 			toolChoice: 'required',
 			tools: [
 				expect.objectContaining({
@@ -2306,12 +2310,14 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(client.stream.mock.calls[2]?.[0]).toMatchObject({
 			tools: [],
 			toolChoice: 'none',
-			providerRound: 'synthesis'
+			providerRound: 'synthesis',
+			passRole: 'final_response'
 		});
 		expect(client.stream.mock.calls[3]?.[0]).toMatchObject({
 			tools: [],
 			toolChoice: 'none',
-			providerRound: 'synthesis'
+			providerRound: 'synthesis',
+			passRole: 'final_response'
 		});
 		expect(
 			client.stream.mock.calls[2]?.[0].messages.some(

@@ -61,7 +61,8 @@ export function buildContractCompletionRequest(
 		),
 		tools: writeTools,
 		toolChoice: 'auto',
-		providerRound: 'synthesis'
+		providerRound: 'synthesis',
+		passRole: 'acting'
 	};
 }
 
@@ -97,6 +98,7 @@ export function buildTurnContractWriteCarveOutRequest(
 		...next,
 		tools: writeTools,
 		toolChoice: 'auto',
-		providerRound: 'synthesis'
+		providerRound: 'synthesis',
+		passRole: 'acting'
 	};
 }

@@ -566,6 +566,28 @@ to measure these control loops.
   aggregates are deliberately not guessed or backfilled; provider observations remain the source
   for old-turn analysis. A future naturally occurring validation failure should be used as the
   live counter receipt rather than paying for an intentionally invalid model turn.
+- **WP-6 logical provider-pass telemetry is implemented database-first and awaiting the worker
+  release.** Every provider request now carries one bounded pass role: `acting`, `contract_review`,
+  `mutation_review`, `repair`, or `final_response`. Physical transport work is classified
+  separately as `primary` or `retry`, with the existing provider-attempt number retained. The
+  canonical aggregate is the count of distinct successful
+  `(logical_provider_round, pass_role)` pairs in the durable execution-observation ledger; route
+  fallback, physical retry, failure, and exact replay cannot inflate it. A new service-only
+  `persist_agentic_chat_provider_attempt_observation` RPC wraps the existing generation/lease-fenced
+  writer, then reconciles `chat_turn_runs.llm_pass_count` from the durable rows while the turn is
+  running. Historical unclassified rows are deliberately ignored rather than guessed. Provider
+  attempt identities and usage-log identities now include the role, preventing an acting pass and
+  an independent reviewer sharing a logical round from colliding. Provider-media receipts retain
+  the generic observation RPC. The production database migration is live as
+  `20260828221405_agentic_chat_provider_pass_telemetry`; the wrapper exists, only `service_role` can
+  execute it, and the underlying allowlist recognizes all three new classification fields. The
+  disposable PostgreSQL contract proves first success `0→1`, exact replay remains `1`, a failed
+  retry remains `1`, and an independently successful mutation-review pass sharing the same logical
+  round produces `2`. The 129 focused worker tests and touched-file lint pass. The cumulative
+  PostgreSQL harness passes both tests. The repository-wide worker typecheck is temporarily blocked
+  by separate in-progress Tasker 71 semantic-discovery imports in the shared worktree; none of those
+  files belong to this release and they must not be staged with it. The E2E harness now fetches both
+  aggregate counters and rejects a completed `worker_realtime` turn with zero logical passes.
 
 ## Review handoff — post-deploy status and current review target
 
@@ -717,10 +739,10 @@ source/tests also passes.
 1. Review the WP-4 pending-choice ledger trust boundary and latest-message expiry invariant. The
    production worker/prewarm path is now proven; decide separately whether the retiring legacy
    atomic SSE snapshot needs parity.
-2. Move to WP-5 provider-pass telemetry: verify the acting/review/repair/retry counters against the
-   retained Tasker 70 turns and fix the known zero-validation-failure aggregate defect.
-3. Use those trustworthy counters to pick one bounded control-loop optimization; do not pay for a
-   repeated production turn until its before/after metric can be interpreted.
+2. Finish the WP-6 worker release and verify one bounded natural production turn has classified
+   provider observations and a matching nonzero `llm_pass_count`; do not backfill historical turns.
+3. Use the now-trustworthy validation and provider-pass counters to pick one bounded WP-5
+   control-loop optimization. Keep retry counts distinct from logical pass roles in every report.
 
 ## Work packages
 

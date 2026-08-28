@@ -56,6 +56,13 @@ export type AgenticChatTurnProviderClientEventV1 =
 	| { type: 'tool_call'; toolCall: unknown }
 	| { type: 'error'; error: string; retryable: boolean };
 
+export type AgenticChatProviderPassRoleV1 =
+	| 'acting'
+	| 'contract_review'
+	| 'mutation_review'
+	| 'repair'
+	| 'final_response';
+
 export type AgenticChatTurnProviderClientRequestV1 = {
 	messages: readonly AgenticChatTurnProviderMessageV1[];
 	tools: readonly AgenticChatTurnProviderToolV1[];
@@ -73,6 +80,7 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	executionGeneration: number;
 	providerRound: 'initial' | 'synthesis';
 	logicalProviderRound: number;
+	passRole?: AgenticChatProviderPassRoleV1;
 	providerAttempt?: number;
 	signal: AbortSignal;
 };

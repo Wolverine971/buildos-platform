@@ -28,6 +28,10 @@ const input: AgenticChatExecutionObservationInputV1 = {
 	eventType: 'provider_attempt_started',
 	payload: {
 		round: 'initial',
+		logical_provider_round: 1,
+		pass_role: 'acting',
+		provider_attempt: 1,
+		attempt_kind: 'primary',
 		route_id: 'openrouter',
 		model_requested: 'provider/model'
 	}
@@ -58,7 +62,7 @@ describe('Agentic Chat private execution observations', () => {
 		const adapter = new SupabaseAgenticChatExecutionObservationAdapter({ rpc });
 
 		await expect(adapter.observe(input, new AbortController().signal)).resolves.toBeUndefined();
-		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_execution_observation', {
+		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_provider_attempt_observation', {
 			p_turn_run_id: TURN_RUN_ID,
 			p_user_id: USER_ID,
 			p_queue_job_id: QUEUE_JOB_ID,
@@ -127,6 +131,10 @@ describe('Agentic Chat private execution observations', () => {
 				new AbortController().signal
 			)
 		).resolves.toBeUndefined();
+		expect(rpc).toHaveBeenCalledWith(
+			'persist_agentic_chat_execution_observation',
+			expect.objectContaining({ p_event_type: 'provider_media_resolved' })
+		);
 	});
 
 	it('forwards the rejected-tool receipt keys unchanged on a provider attempt', async () => {
@@ -142,6 +150,9 @@ describe('Agentic Chat private execution observations', () => {
 			payload: {
 				round: 'initial',
 				logical_provider_round: 1,
+				pass_role: 'acting',
+				provider_attempt: 1,
+				attempt_kind: 'primary',
 				route_id: 'openrouter',
 				model_requested: 'provider/model',
 				model_used: 'provider/model',
@@ -169,7 +180,7 @@ describe('Agentic Chat private execution observations', () => {
 			)
 		).resolves.toBeUndefined();
 		expect(rpc).toHaveBeenCalledWith(
-			'persist_agentic_chat_execution_observation',
+			'persist_agentic_chat_provider_attempt_observation',
 			expect.objectContaining({
 				p_event_type: 'provider_attempt_ended',
 				p_payload: expect.objectContaining({

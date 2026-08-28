@@ -42,6 +42,7 @@ export function buildUnavailableSkillRepairRequest(
 		tools: admittedTools,
 		toolChoice: 'required',
 		providerRound: 'synthesis',
+		passRole: 'repair',
 		semanticDispositionGate: false
 	};
 	if (!canRequirePreMutationSemanticDisposition(restoredRequest)) return null;
@@ -82,6 +83,7 @@ export function buildReviewerMimicryRepairRequest(
 		{
 			...request,
 			logicalProviderRound: request.logicalProviderRound + 1,
+			passRole: 'repair',
 			unavailableSkillRepairAttempted: true
 		},
 		[
