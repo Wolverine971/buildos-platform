@@ -51,6 +51,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let clarificationContractResetOutput = '';
 	let clarificationMissingPrerequisiteOutput = '';
 	let terminalDomainMetadataOutput = '';
+	let sessionHandoffOutput = '';
 
 	const applySqlFile = (path: string): string =>
 		execFileSync(
@@ -284,7 +285,9 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			),
 			sqlPath(
 				'supabase/tests/20260815010000_agentic_chat_clarification_contract_reset.test.sql'
-			)
+			),
+			sqlPath('supabase/migrations/20260828040905_agentic_chat_worker_session_handoff.sql'),
+			sqlPath('supabase/tests/20260828040905_agentic_chat_worker_session_handoff.test.sql')
 		]);
 		timingOutput = terminalParityOutput;
 		partialCancellationOutput = terminalParityOutput;
@@ -299,6 +302,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		terminalPendingContractOutput = terminalParityOutput;
 		terminalPendingContractHardeningOutput = terminalParityOutput;
 		clarificationContractResetOutput = terminalParityOutput;
+		sessionHandoffOutput = terminalParityOutput;
 	}, 60_000);
 
 	afterAll(() => {
@@ -415,5 +419,9 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 
 	it('accepts truthful streamed-turn timing drafts and rejects microsecond drift', () => {
 		expect(readToolLedgerOutput).toContain('timing_evidence_repair_ok');
+	});
+
+	it('persists an idempotent session handoff before public context-shift delivery', () => {
+		expect(sessionHandoffOutput).toContain('agentic_chat_worker_session_handoff_ok');
 	});
 });

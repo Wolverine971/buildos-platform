@@ -74,6 +74,7 @@ const THIRD_CALL_TRANSITION_ID = 'a2000000-0000-4000-8000-00000000002a';
 const THIRD_RESULT_TRANSITION_ID = 'b2000000-0000-4000-8000-00000000002b';
 const LOGICAL_OPERATION_ID = 'c0000000-0000-4000-8000-00000000000c';
 const EFFECT_ID = 'd0000000-0000-5000-8000-00000000000d';
+const SHIFT_PROJECT_ID = 'e0000000-0000-4000-8000-00000000000e';
 const EXECUTION_GENERATION = 1;
 
 provideAgenticChatLoopToolCatalog(() => ({ ops: {}, byToolName: {} }));
@@ -704,6 +705,11 @@ function createHarness(
 			};
 		})
 	};
+	const sessionHandoff = {
+		persist: vi.fn(async () => {
+			log.push('session_handoff');
+		})
+	};
 	const mutation = {
 		execute: vi.fn(async () => ({
 			effectId: EFFECT_ID,
@@ -763,6 +769,7 @@ function createHarness(
 			readTool,
 			toolExecutions,
 			supervisorCheckpoints,
+			sessionHandoff,
 			researchCapture,
 			statedFutureCapture,
 			consumptionBilling,
@@ -809,6 +816,7 @@ function createHarness(
 		executionObservations,
 		executionObservationInputs,
 		supervisorCheckpoints,
+		sessionHandoff,
 		researchCapture,
 		statedFutureCapture,
 		consumptionBilling,
@@ -4374,7 +4382,7 @@ describe('AgenticChatTurnExecutor', () => {
 				arguments: {
 					task_id: 'task-1',
 					expected_source_project_id: 'project-1',
-					destination_project_id: 'project-2'
+					destination_project_id: SHIFT_PROJECT_ID
 				},
 				downstreamIdempotencySupported: false
 			},
@@ -4388,7 +4396,7 @@ describe('AgenticChatTurnExecutor', () => {
 				status: 'moved',
 				context_shift: {
 					new_context: 'project',
-					entity_id: 'project-2',
+					entity_id: SHIFT_PROJECT_ID,
 					entity_name: 'Destination',
 					entity_type: 'project',
 					message: 'Task moved successfully. Context switched to Destination.'
@@ -4413,6 +4421,26 @@ describe('AgenticChatTurnExecutor', () => {
 			expect(harness.log.indexOf('mutation_ledger')).toBeLessThan(
 				harness.log.indexOf('semantic:tool_result:')
 			);
+			expect(harness.sessionHandoff.persist).toHaveBeenCalledWith(
+				{
+					turnRunId: TURN_RUN_ID,
+					queueJobId: QUEUE_JOB_ID,
+					processingToken: PROCESSING_TOKEN,
+					userId: USER_ID,
+					sessionId: SESSION_ID,
+					executionGeneration: 1,
+					contextType: 'project',
+					entityId: SHIFT_PROJECT_ID,
+					projectId: SHIFT_PROJECT_ID
+				},
+				expect.any(AbortSignal)
+			);
+			expect(harness.log.indexOf('mutation_ledger')).toBeLessThan(
+				harness.log.indexOf('session_handoff')
+			);
+			expect(harness.log.indexOf('session_handoff')).toBeLessThan(
+				harness.log.indexOf('semantic:context_shift:')
+			);
 			expect(
 				harness.semanticInputs.find(
 					(input) =>
@@ -4422,7 +4450,7 @@ describe('AgenticChatTurnExecutor', () => {
 				type: 'context_shift',
 				context_shift: {
 					new_context: 'project',
-					entity_id: 'project-2',
+					entity_id: SHIFT_PROJECT_ID,
 					entity_name: 'Destination',
 					entity_type: 'project',
 					message: 'Task moved successfully. Context switched to Destination.'

@@ -3,8 +3,8 @@
 # 48 — Decompose `DocumentModal` around a document session controller
 
 **Created:** 2026-08-04  
-**Updated:** 2026-08-26  
-**Status:** Deferred by owner direction — ready, but intentionally skipped in the current cleanup pass  
+**Updated:** 2026-08-26
+**Status:** Deferred by owner direction — ready, but intentionally skipped in the current cleanup pass
 **Mission:** Make the document editor safe to change by separating document-session state, typed API operations, feature workflows, and presentation while preserving the current component contract and desktop/mobile experience.
 
 > Do not start this task as incidental cleanup. The owner explicitly chose to defer it on
@@ -13,7 +13,7 @@
 
 ## Why this work exists
 
-`apps/web/src/lib/components/ontology/DocumentModal.svelte` is 4,561 lines with 43 imports, 91 `$state` declarations/usages, 33 `$derived` declarations/usages, five effects, and 19 direct `fetch` calls. Its script currently owns:
+As of the deferred-work refresh, `apps/web/src/lib/components/ontology/DocumentModal.svelte` is 4,647 lines with 44 imports, 92 `$state` declarations/usages, 33 `$derived` declarations/usages, five effects, and 19 direct `fetch` calls. Its script currently owns:
 
 - create/load/save/autosave/conflict/archive/restore/delete document lifecycle;
 - request cancellation and stale-continuation protection using request IDs, `AbortController`, mutation IDs, and a document-session epoch;
@@ -179,7 +179,7 @@ Manual smoke at desktop and mobile widths:
 
 ## Deferral receipt — 2026-08-26
 
-- Confirmed the public component remains 4,561 lines with 19 direct `fetch` calls.
+- Confirmed the public component is 4,647 lines with 19 direct `fetch` calls after concurrent document-proposal work landed in the active worktree.
 - Confirmed the focused suite currently contains 11 behavior tests.
-- Ran the Svelte 5 autofixer against `DocumentModal.svelte`; it reported no findings.
+- Ran the Svelte 5 autofixer against the refreshed component. It reported the known `{@html}` warning plus effect/state and `bind:this` decomposition suggestions. The HTML path remains sanitized through `renderMarkdown`; the suggestions reinforce W2/W5 and are intentionally not applied during this deferral.
 - Deferred implementation by explicit owner direction in favor of P1.4 worker ownership decomposition.

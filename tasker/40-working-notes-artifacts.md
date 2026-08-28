@@ -154,7 +154,8 @@ Options, cheapest first:
    passive cost, but relies on the model choosing to look — and the measured `skill_load` rate is
    **1 call in 10 turns**, so "the model will look" is not a safe assumption.
 3. **Situational injection** — inject note summaries only when the turn looks like continuation of
-   prior work. Ties directly to tracker [39](39-prompt-instruction-architecture-audit.md)'s
+   prior work. Ties directly to the
+   [prompt-instruction architecture audit](../docs/architecture/agent-first-orchestration/PROMPT_INSTRUCTION_ARCHITECTURE_AUDIT_2026-07-26.md)'s
    situational-blocks design.
 
 Leaning: **1 + 2 together.** Summaries passively (so the agent knows notes exist), payloads by tool.
@@ -231,5 +232,5 @@ response to this, not a belt-and-braces extra.
 - `apps/web/src/routes/api/onto/tasks/[id]/documents/` — the existing task scratch pad + promote
 - `apps/web/src/lib/services/ontology-context-loader.ts:641` — the exclusion that blocks read-back
 - `apps/web/src/lib/services/agentic-chat/tools/skills/definitions/research_capture/SKILL.md` — written, unreachable
-- [39](39-prompt-instruction-architecture-audit.md) — situational instruction blocks; D3 depends on it
+- [Prompt-instruction architecture audit](../docs/architecture/agent-first-orchestration/PROMPT_INSTRUCTION_ARCHITECTURE_AUDIT_2026-07-26.md) — situational instruction blocks; D3 depends on it
 - `docs/architecture/agent-first-orchestration/research/SYNTHESIS.md` §3 — why unbudgeted retrieval hurts

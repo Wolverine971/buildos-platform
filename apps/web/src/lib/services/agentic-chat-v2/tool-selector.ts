@@ -202,11 +202,14 @@ function looksLikeExternalEmailReadTurn(latestUserMessage?: string | null): bool
 	if (/\b(?:(?:my|the|an?|connected|linked)\s+)+(?:e-?mail|mail)\s+accounts?\b/i.test(text)) {
 		return true;
 	}
-	// Retrieval language must govern the email object. Looking for a read-ish
-	// word anywhere in the turn made "email the beta list" look like an inbox
-	// request because the distribution-list noun accidentally satisfied `list`.
+	// Retrieval language must govern the email object. `list` needs a stronger
+	// imperative boundary than the other retrieval verbs because it is also a
+	// common noun inside task titles ("the beta list email thing").
 	return (
-		/\b(?:search|find|look\s+(?:for|through)|pull\s+up|get|check|read|open|list|show|scan)\s+(?:(?:me|my|the|that|this|these|those|all|any|new|recent|latest|unread|connected|linked|through|for|in|up)\s+){0,5}(?:e-?mails?|mail|email\s+messages?|messages?)\b/i.test(
+		/\b(?:search|find|look\s+(?:for|through)|pull\s+up|get|check|read|open|show|scan)\s+(?:(?:me|my|the|that|this|these|those|all|any|new|recent|latest|unread|connected|linked|through|for|in|up)\s+){0,5}(?:e-?mails?|mail|email\s+messages?|messages?)\b/i.test(
+			text
+		) ||
+		/(?:^|[.!?]\s+)(?:(?:please|kindly)\s+|(?:can|could|would|will)\s+you\s+(?:please\s+)?|(?:i(?:'d|\s+would)?\s+like|i\s+(?:want|need))\s+(?:you\s+)?to\s+)?list\s+(?:(?:me|my|the|that|this|these|those|all|any|new|recent|latest|unread|connected|linked|through|for|in|up)\s+){0,5}(?:e-?mails?|mail|email\s+messages?|messages?)\b/i.test(
 			text
 		) ||
 		/\b(?:what|which|whose|how\s+many)\s+(?:(?:new|recent|latest|unread)\s+){0,2}e-?mails?\b/i.test(

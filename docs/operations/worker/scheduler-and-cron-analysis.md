@@ -4,17 +4,17 @@
 
 **Created:** 2025-10-27  
 **Location:** `apps/worker/src/scheduler.ts` and `apps/worker/src/worker.ts`  
-**Status:** COMPLETE DOCUMENTATION
+**Status:** Historical scheduler analysis — entrypoint references refreshed 2026-08-26
 
 ---
 
 ## 1. Scheduler Overview
 
-The BuildOS worker uses **node-cron** (library: `import cron from 'node-cron'`) for scheduling recurring jobs. The scheduler is **initialized in `src/index.ts`** and **started in `src/scheduler.ts`**.
+The BuildOS worker uses **node-cron** (library: `import cron from 'node-cron'`) for scheduling recurring jobs. The scheduler is started by `src/bootstrap.ts`; cron definitions and scheduler-domain behavior remain in `src/scheduler.ts`.
 
 ### Entry Point
 
-- File: `apps/worker/src/index.ts` (line 10, 478)
+- File: `apps/worker/src/bootstrap.ts`
 - Imports: `import { startScheduler } from './scheduler'`
 - Called: `startScheduler()` after worker starts
 
@@ -132,7 +132,7 @@ Stage 2: Worker Processing (dailySmsWorker.ts)
 Issue 1: Scheduler Not Started
 
 - Check worker logs for "📅 Starting scheduler..."
-- Verify startScheduler() is called in src/index.ts line 478
+- Verify `startScheduler()` is called in `src/bootstrap.ts` after `startWorker()`
 
 Issue 2: No Users with Event Reminders Enabled
 
@@ -208,7 +208,8 @@ SMS-Related:
 - apps/worker/src/scheduler.ts - Cron definitions & scheduling logic
 - apps/worker/src/worker.ts - Job processor registrations
 - apps/worker/src/workers/dailySmsWorker.ts - SMS scheduling job handler
-- apps/worker/src/index.ts - Entry point, scheduler startup
+- apps/worker/src/index.ts - Environment-first entrypoint
+- apps/worker/src/bootstrap.ts - Process and scheduler startup
 - apps/worker/src/config/queueConfig.ts - Queue configuration
 - apps/worker/src/routes/sms/scheduled.ts - SMS management API
 

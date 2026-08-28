@@ -98,6 +98,13 @@ import {
 } from './supervisorCheckpoint';
 import type { AgenticChatResearchCapturePortV1 } from './researchCapture';
 import type { AgenticChatStatedFutureCapturePortV1 } from './statedFutureCapture';
+import {
+	AgenticChatSessionHandoffFenceError,
+	type AgenticChatSessionHandoffPortV1,
+	AgenticChatSessionHandoffProtocolError,
+	AgenticChatSessionHandoffRpcError,
+	AgenticChatSessionHandoffTimeoutError
+} from './sessionHandoff';
 import { enforceAgenticChatTerminalTextIntegrityV1 } from './terminalTextIntegrity';
 import type { AgenticChatConsumptionBillingPortV1 } from './consumptionBilling';
 import {
@@ -261,6 +268,7 @@ export class AgenticChatTurnExecutor {
 			readTool: AgenticChatReadToolPortV1;
 			toolExecutions: AgenticChatToolExecutionPortV1;
 			supervisorCheckpoints: AgenticChatSupervisorCheckpointPortV1;
+			sessionHandoff: AgenticChatSessionHandoffPortV1;
 			mutation: MutationPort;
 			researchCapture?: AgenticChatResearchCapturePortV1;
 			statedFutureCapture?: AgenticChatStatedFutureCapturePortV1;
@@ -561,14 +569,21 @@ export class AgenticChatTurnExecutor {
 						continue;
 					}
 					if (step.type === 'semantic') {
+						const contextShift = extractContextShift(step.eventPayload);
+						if (contextShift) {
+							await this.persistSessionHandoff(
+								executionInput,
+								envelope.processingToken,
+								contextShift
+							);
+						}
 						await this.publishSemantic(
 							executionInput,
 							projection,
 							step,
 							combined.signal
 						);
-						terminalContext.contextShift =
-							extractContextShift(step.eventPayload) ?? terminalContext.contextShift;
+						terminalContext.contextShift = contextShift ?? terminalContext.contextShift;
 						if (isSemanticReviewStart(step)) {
 							this.captureRuntimeTiming(runtimeTiming, (timing) =>
 								timing.markSemanticReviewStarted()
@@ -1505,6 +1520,10 @@ export class AgenticChatTurnExecutor {
 			chatToolResult
 		);
 		markToolExecution();
+		const contextShift = extractContextShiftPayload(chatToolResult);
+		if (contextShift) {
+			await this.persistSessionHandoff(executionInput, processingToken, contextShift);
+		}
 		throwIfAborted(signal);
 		await this.publishSemantic(
 			executionInput,
@@ -1533,7 +1552,6 @@ export class AgenticChatTurnExecutor {
 			},
 			signal
 		);
-		const contextShift = extractContextShiftPayload(chatToolResult);
 		if (contextShift) {
 			terminalContext.contextShift = contextShift;
 			await this.publishSemantic(
@@ -2117,6 +2135,10 @@ export class AgenticChatTurnExecutor {
 			chatToolResult
 		);
 		markToolExecution();
+		const contextShift = extractContextShiftPayload(chatToolResult);
+		if (contextShift) {
+			await this.persistSessionHandoff(executionInput, processingToken, contextShift);
+		}
 		await this.observeToolExecution(
 			executionInput,
 			processingToken,
@@ -2173,7 +2195,6 @@ export class AgenticChatTurnExecutor {
 				},
 				signal
 			);
-			const contextShift = extractContextShiftPayload(chatToolResult);
 			if (contextShift) {
 				terminalContext.contextShift = contextShift;
 				await this.publishSemantic(
@@ -2788,6 +2809,39 @@ export class AgenticChatTurnExecutor {
 			claim.executionGeneration,
 			terminal.status,
 			queueReconciled
+		);
+	}
+
+	private async persistSessionHandoff(
+		executionInput: AgenticChatWorkerExecutionInputV1,
+		processingToken: string,
+		contextShift: ContextShiftPayload
+	): Promise<void> {
+		const projectId = contextShift.new_context === 'project' ? contextShift.entity_id : null;
+		if (
+			contextShift.new_context === 'project' &&
+			(contextShift.entity_type !== 'project' || projectId === null)
+		) {
+			throw new AgenticChatSessionHandoffProtocolError(
+				'project shift does not identify a project'
+			);
+		}
+		const claim = executionInput.claim;
+		await this.ports.sessionHandoff.persist(
+			{
+				turnRunId: claim.turnRunId,
+				queueJobId: claim.queueJobId,
+				processingToken,
+				userId: claim.userId,
+				sessionId: claim.sessionId,
+				executionGeneration: claim.executionGeneration,
+				contextType: contextShift.new_context,
+				entityId: contextShift.entity_id,
+				projectId
+			},
+			// Session persistence is the delivery prerequisite. Cancellation must
+			// not leave a subsequently published context shift ahead of that state.
+			new AbortController().signal
 		);
 	}
 
@@ -3410,6 +3464,9 @@ function classifyFailure(
 	if (error instanceof AgenticChatEffectExecutionError) return error.failureClass;
 	if (error instanceof AgenticChatToolExecutionFenceError) return error.failureClass;
 	if (error instanceof AgenticChatToolExecutionTimeoutError) return error.failureClass;
+	if (error instanceof AgenticChatSessionHandoffFenceError) return error.failureClass;
+	if (error instanceof AgenticChatSessionHandoffRpcError) return error.failureClass;
+	if (error instanceof AgenticChatSessionHandoffTimeoutError) return error.failureClass;
 	if (error instanceof AgenticChatSupervisorCheckpointFenceError) return error.failureClass;
 	if (error instanceof AgenticChatSupervisorCheckpointTimeoutError) return error.failureClass;
 	if (error instanceof AgenticChatProviderExecutionError) return error.failureClass;

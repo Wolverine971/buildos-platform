@@ -53,8 +53,12 @@ describe('selectFastChatTools', () => {
 	it.each([
 		'Add a high-priority task to email the beta list by this Friday.',
 		'Create a task to email the customer list after launch.',
-		'Email Jordan the revised project plan.'
-	])('does not mistake an email action for a connected-inbox read: %s', (message) => {
+		'Email Jordan the revised project plan.',
+		"push the beta list email thing to friday, i'm not gonna get to it before then",
+		'Reschedule the beta list email task for Friday.',
+		'Move the customer list email follow-up to next week.',
+		'Push my beta list email reminder to tomorrow.'
+	])('keeps email-action tasks on the worker surface: %s', (message) => {
 		const names = selectFastChatTools({
 			contextType: 'project',
 			latestUserMessage: message
@@ -65,6 +69,7 @@ describe('selectFastChatTools', () => {
 		expect(names).not.toContain('list_email_accounts');
 		expect(names).not.toContain('search_email_messages');
 		expect(names).not.toContain('get_email_message');
+		expect(names).toContain('update_onto_task');
 	});
 
 	it.each([
@@ -72,7 +77,11 @@ describe('selectFastChatTools', () => {
 		'List my recent emails about the beta launch.',
 		'Check my connected email account for a reply from Jordan.',
 		'Look through my emails for the launch receipt.',
-		'Who emailed me about the beta launch?'
+		'Who emailed me about the beta launch?',
+		'Please list my unread email messages.',
+		'Can you list the latest emails from Jordan?',
+		'Show me what is in my mailbox.',
+		'Which connected email accounts can you search?'
 	])('hot-loads connected-email reads for explicit retrieval intent: %s', (message) => {
 		const names = selectFastChatTools({
 			contextType: 'global',

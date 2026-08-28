@@ -108,6 +108,11 @@ import {
 	SupabaseAgenticChatSupervisorCheckpointAdapter
 } from './supervisorCheckpoint';
 import {
+	type AgenticChatSessionHandoffPortV1,
+	type AgenticChatSessionHandoffRpcClient,
+	SupabaseAgenticChatSessionHandoffAdapter
+} from './sessionHandoff';
+import {
 	type AgenticChatResearchCapturePortV1,
 	type AgenticChatResearchCaptureRpcClient,
 	SupabaseAgenticChatResearchCaptureAdapter
@@ -137,6 +142,7 @@ export type AgenticChatCompositionRoot = {
 	toolExecutions: AgenticChatToolExecutionPortV1;
 	executionObservations: AgenticChatExecutionObservationPortV1;
 	supervisorCheckpoints: AgenticChatSupervisorCheckpointPortV1;
+	sessionHandoff: AgenticChatSessionHandoffPortV1;
 	researchCapture: AgenticChatResearchCapturePortV1;
 	statedFutureCapture: AgenticChatStatedFutureCapturePortV1;
 	consumptionBilling: AgenticChatConsumptionBillingPortV1 | null;
@@ -242,6 +248,7 @@ export function createAgenticChatCompositionRoot(options: {
 		AgenticChatToolExecutionRpcClient &
 		AgenticChatExecutionObservationRpcClient &
 		AgenticChatSupervisorCheckpointRpcClient &
+		AgenticChatSessionHandoffRpcClient &
 		AgenticChatResearchCaptureRpcClient &
 		AgenticChatStatedFutureCaptureRpcClient &
 		AgenticChatConsumptionBillingRpcClient;
@@ -251,6 +258,7 @@ export function createAgenticChatCompositionRoot(options: {
 	const toolExecutions = new SupabaseAgenticChatToolExecutionAdapter(rpcClient);
 	const executionObservations = new SupabaseAgenticChatExecutionObservationAdapter(rpcClient);
 	const supervisorCheckpoints = new SupabaseAgenticChatSupervisorCheckpointAdapter(rpcClient);
+	const sessionHandoff = new SupabaseAgenticChatSessionHandoffAdapter(rpcClient);
 	const researchCapture = new SupabaseAgenticChatResearchCaptureAdapter(rpcClient);
 	const statedFutureCapture = new SupabaseAgenticChatStatedFutureCaptureAdapter(
 		rpcClient,
@@ -422,6 +430,7 @@ export function createAgenticChatCompositionRoot(options: {
 			readTool,
 			toolExecutions,
 			supervisorCheckpoints,
+			sessionHandoff,
 			researchCapture,
 			statedFutureCapture,
 			consumptionBilling: consumptionBilling ?? undefined,
@@ -497,6 +506,7 @@ export function createAgenticChatCompositionRoot(options: {
 		toolExecutions,
 		executionObservations,
 		supervisorCheckpoints,
+		sessionHandoff,
 		researchCapture,
 		statedFutureCapture,
 		consumptionBilling,

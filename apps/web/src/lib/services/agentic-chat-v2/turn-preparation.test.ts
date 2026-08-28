@@ -81,28 +81,37 @@ describe('resolveFastChatTurnPreparation', () => {
 		expect(result.toolSelectionMs).toBe(7);
 	});
 
-	it('keeps the scheduled email-action task on the ordinary project worker surface', () => {
-		const result = resolveFastChatTurnPreparation({
-			contextType: 'project',
-			entityId: 'project-1',
-			projectId: 'project-1',
-			latestUserMessage: 'Add a high-priority task to email the beta list by this Friday.',
-			conversationSummary: null,
-			agentMetadata: null,
-			contextShiftHintTtlMs: 120_000,
-			nowMs: NOW_MS
-		});
+	it.each([
+		'Add a high-priority task to email the beta list by this Friday.',
+		"push the beta list email thing to friday, i'm not gonna get to it before then",
+		'Reschedule the beta list email task for Friday.',
+		'Move the customer list email follow-up to next week.'
+	])(
+		'keeps the scheduled email-action task on the ordinary project worker surface: %s',
+		(message) => {
+			const result = resolveFastChatTurnPreparation({
+				contextType: 'project',
+				entityId: 'project-1',
+				projectId: 'project-1',
+				latestUserMessage: message,
+				conversationSummary: null,
+				agentMetadata: null,
+				contextShiftHintTtlMs: 120_000,
+				nowMs: NOW_MS
+			});
 
-		expect(result.selectedSurfaceProfile).toBe('project_write_document');
-		expect(toolNames(result)).toContain('create_onto_task');
-		expect(toolNames(result)).not.toEqual(
-			expect.arrayContaining([
-				'list_email_accounts',
-				'search_email_messages',
-				'get_email_message'
-			])
-		);
-	});
+			expect(result.selectedSurfaceProfile).toBe('project_write_document');
+			expect(toolNames(result)).toContain('update_onto_task');
+			expect(toolNames(result)).toContain('create_onto_task');
+			expect(toolNames(result)).not.toEqual(
+				expect.arrayContaining([
+					'list_email_accounts',
+					'search_email_messages',
+					'get_email_message'
+				])
+			);
+		}
+	);
 
 	it('mounts document organization tools without lexical routing', () => {
 		const result = resolveFastChatTurnPreparation({
@@ -199,7 +208,9 @@ describe('resolveFastChatTurnPreparation', () => {
 					context_type: 'global',
 					entity_id: null,
 					project_id: null,
-					shifted_at: '2026-07-09T15:59:50.000Z'
+					shifted_at: '2026-07-09T15:59:50.000Z',
+					turn_run_id: '30000000-0000-4000-8000-000000000003',
+					execution_generation: 1
 				}
 			},
 			contextShiftHintTtlMs: 120_000,

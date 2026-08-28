@@ -24,9 +24,8 @@ test-contract/timing failures recorded in the implementation update below.
 
 **The cost is not cosmetic.** Every commit for the last six days has landed on a red `main`, which
 means a genuine regression has nowhere to show up — a reviewer cannot tell a real break from the
-standing failure. This was surfaced during the Phase 4 review (see
-[51](51-worker-behavioral-parity-phase4.md)); roughly a dozen agentic-chat commits shipped into
-that blind spot. **Nothing should ramp to users while this signal is dead.**
+standing failure. The completed Phase 4 review surfaced this after roughly a dozen agentic-chat
+commits had shipped into that blind spot. **Nothing should ramp to users while this signal is dead.**
 
 ### How it got here
 
