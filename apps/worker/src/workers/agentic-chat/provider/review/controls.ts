@@ -120,12 +120,20 @@ export const CONTRACT_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Ob
 	function: {
 		...PROPOSAL_REVISION_TOOL.function,
 		description:
-			"Return the acting model's contract for an exact machine-readable correction when the user's commission is clear but the proposal misstates it. The corrected contract is durably recorded and independently re-reviewed; it never reaches execution merely because this tool supplied it. Do not use this when a choice genuinely belongs to the user.",
+			"Return the acting model's contract for an exact machine-readable correction when the user's commission is clear but the proposal misstates it. Enumerate reference_candidates before judging. The corrected contract is durably recorded and independently re-reviewed; it never reaches execution merely because this tool supplied it. Do not use this when a choice genuinely belongs to the user.",
 		parameters: {
 			...PROPOSAL_REVISION_TOOL.function.parameters,
-			required: ['reason', 'required_correction', 'corrected_contract'],
+			required: [
+				'reason',
+				'required_correction',
+				'corrected_contract',
+				'reference_candidates'
+			],
 			properties: {
 				...(PROPOSAL_REVISION_TOOL.function.parameters.properties as JsonObject),
+				reference_candidates: {
+					...REFERENCE_CANDIDATES_PROPERTY
+				},
 				corrected_contract: {
 					...(TURN_CONTRACT_TOOL_DEFINITION.function.parameters as unknown as JsonObject),
 					description:

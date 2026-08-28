@@ -390,18 +390,43 @@ to measure these control loops.
   the acting model for contract regeneration. Runtime/worker typechecks and the focused 84 runtime,
   164 worker, and 34 web tests pass.
 
+- **The representation-boundary patch is deployed, and its release gate exposed a second exact
+  reviewer-schema defect.** Commit `f188cc6dfa92f75654590f5002c3b86c4e50c687` deployed as Railway
+  deployment `0c00a596-b59e-40bb-b999-59830bb87050`; `/health` reported that exact release,
+  healthy realtime, zero active turns, and all 20 provider/adapter mutation capabilities aligned.
+  The zero-spend reschedule/project-create preflight passed. One paid, zero-retry reschedule then
+  failed safely, so project-create was not run: turn `85573d6f-f1b5-457e-ab37-a15f2b4ea0b8`, stream
+  `c300de2e-735a-43f2-9653-38cba6ba7fb2`, session
+  `8520374f-c949-450d-9f3f-c7528e92b44c` took 30.218 seconds, five provider attempts, 54,326
+  tokens, and $0.00617625. The acting model uniquely resolved the existing beta-list task but
+  declared an incomplete update contract without `due_at` in `required_fields` or `changes`; the
+  semantic reviewer then returned a decision the worker rejected as invalid or unbound, producing
+  the durable fail-closed clarification. Trace inspection found a direct protocol contradiction:
+  the reviewer prompt requires `reference_candidates` before every judgment, while the contract
+  `request_proposal_revision` schema used `additionalProperties: false` and neither permitted nor
+  required that field. A reviewer following the prompt on a typed correction was therefore invalid
+  before the correction could be parsed.
+- **The reviewer candidate-schema alignment is local and not yet deployed.** Contract revisions now
+  require the same bounded `reference_candidates` evidence as approvals. The deterministic
+  candidate ambiguity floor now evaluates the corrected contract as well as an approved original:
+  one unique candidate can proceed to typed re-review, but a correction that chooses only one of
+  several plausible loaded entities becomes a structured durable clarification. This aligns the
+  prompt and tool schema without weakening ambiguity safety. Worker lint/typecheck and 89 focused
+  provider/candidate-gate tests pass.
+
 ## Review handoff — post-deploy status and next local patch
 
 This section is the handoff for an independent review. The deployed release and current local tree
 are intentionally different:
 
-- **Deployed and health-verified:** commit `02ef0b404aa92e81f528a2a3466a6685a4b17248`
-  contains WP-1/WP-2 plus the WP-3 typed reviewer-correction and WP-4 terminal-output/clarification
-  work described below. Its zero-spend realtime preflight passed, but its first paid reschedule gate
-  exposed the invalid-reviewer-decision fallback described in the progress section.
-- **Local and not yet deployed:** the provider/internal contract representation fix described in the
-  latest progress bullet. No database migration is involved. Do not run another paid production
-  repetition until this patch is independently reviewed and deployed.
+- **Deployed and health-verified:** commit `f188cc6dfa92f75654590f5002c3b86c4e50c687`
+  contains WP-1/WP-2, typed reviewer correction, durable clarification/final-output gates, and the
+  provider/internal contract representation fix. Its zero-spend realtime preflight passed, but the
+  first paid reschedule gate exposed the prompt/revision-schema contradiction described above.
+- **Local and not yet deployed:** the contract revision schema now permits and requires
+  `reference_candidates`, and typed corrections pass through the same deterministic ambiguity gate
+  as approvals. No database migration is involved. Do not run another paid production repetition
+  until this patch is deployed.
 
 ### Kernel and intended invariants
 
@@ -514,9 +539,9 @@ suites all pass. Prettier checking on the touched source/tests and `git diff --c
 
 ### Next gate after review
 
-1. Review the provider/internal contract serializer, conditional normalization, canonical feedback
-   identity, and exact camelCase reschedule regression.
-2. Deploy the reviewed representation-boundary patch.
+1. Review the contract-revision `reference_candidates` schema and the ambiguity floor on corrected
+   contracts.
+2. Deploy the reviewer candidate-schema alignment.
 3. Re-run the zero-spend worker-realtime preflight for `task-reschedule-cold-reference` and
    `project-create-contract`.
 4. Run exactly one paid, zero-retry reschedule repetition and require one existing-task update with

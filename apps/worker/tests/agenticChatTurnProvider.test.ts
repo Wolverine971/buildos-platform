@@ -8163,7 +8163,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			reason: 'The single update outcome lumps the Halcyon task into the completion set.',
 			required_correction:
 				'Declare two outcomes: complete resume and LinkedIn; update Halcyon priority only.',
-			corrected_contract: correctedContractArguments
+			corrected_contract: correctedContractArguments,
+			reference_candidates: []
 		};
 		const approvalArguments = {
 			reason: 'Two outcomes now match the three stated clauses.',
@@ -8459,7 +8460,15 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			// Production regression: the old review prompt exposed this internal
 			// camelCase representation and the worker rejected it against the
 			// provider-facing correction schema.
-			corrected_contract: reviewerCamelCaseCorrection
+			corrected_contract: reviewerCamelCaseCorrection,
+			reference_candidates: [
+				{
+					reference: 'the beta list email thing',
+					candidates: [
+						{ id: betaListId, title: 'Send the launch email to the beta list' }
+					]
+				}
+			]
 		};
 		const normalizedRevisionArguments = {
 			...reviewerRevisionArguments,
@@ -8551,6 +8560,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		);
 		expect(firstReviewPrompt).toContain('"entity_kind":"task"');
 		expect(firstReviewPrompt).not.toContain('"entityKind":"task"');
+		const revisionTool = semanticReviewer.stream.mock.calls[0]?.[0].tools.find(
+			(tool) => tool.function.name === 'request_proposal_revision'
+		);
+		expect(revisionTool?.function.parameters.required).toContain('reference_candidates');
 		const approvalSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 3,
@@ -8951,6 +8964,115 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(semanticReviewer.stream).toHaveBeenCalledOnce();
 		expect(client.stream).toHaveBeenCalledTimes(2);
 	});
+
+	it('applies the candidate ambiguity floor to a typed contract correction', async () => {
+		const betaId = '41000000-0000-4000-8000-000000000034';
+		const investorId = '41000000-0000-4000-8000-000000000035';
+		const proposedContract: JsonObject = {
+			outcomes: [
+				{
+					action: 'update',
+					entity_kind: 'task',
+					target_ids: [betaId, investorId],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const correctedContract: JsonObject = {
+			outcomes: [
+				{
+					action: 'complete',
+					entity_kind: 'task',
+					target_ids: [betaId],
+					required_fields: ['state_key'],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const revisionArguments = {
+			reason: 'Only one email task should be completed.',
+			required_correction: 'Complete only the email task the user meant.',
+			corrected_contract: correctedContract,
+			reference_candidates: [
+				{
+					reference: 'the email one',
+					candidates: [
+						{ id: betaId, title: 'Send the launch email to the beta list' },
+						{ id: investorId, title: 'Draft the investor update email' }
+					]
+				}
+			]
+		};
+		const client = clientWith(
+			providerReadRound('provider-contract-1', proposedContract, 'declare_turn_contract')
+		);
+		const semanticReviewer = clientWith(
+			providerReadRound('reviewer-revision-1', revisionArguments, 'request_proposal_revision')
+		);
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					updateTaskToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'update_onto_task'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const gateSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						proposedContract,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		expect(
+			gateSteps.some(
+				(step) => step.type === 'read_tool' && step.toolName === 'request_proposal_revision'
+			)
+		).toBe(false);
+		const clarificationStep = gateSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> =>
+				step.type === 'read_tool' && step.toolName === 'request_turn_clarification'
+		);
+		expect(clarificationStep).toMatchObject({
+			decidedBy: 'harness_candidate_gate',
+			arguments: {
+				candidates: [
+					{ id: betaId, label: 'Send the launch email to the beta list', kind: 'entity' },
+					{ id: investorId, label: 'Draft the investor update email', kind: 'entity' }
+				]
+			}
+		});
+		expect(semanticReviewer.stream).toHaveBeenCalledOnce();
+		expect(client.stream).toHaveBeenCalledOnce();
+	});
+
 	it('short-circuits a contract declared on a surface with no write tool into a read-only continuation without reviewer passes', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const contractArguments: JsonObject = {
@@ -9486,7 +9608,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const revisionArguments = {
 			reason: 'fixture: asks for a correction the model will ignore',
 			required_correction: 'fixture correction',
-			corrected_contract: contractArguments
+			corrected_contract: contractArguments,
+			reference_candidates: []
 		};
 		const client = clientWithRounds([
 			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract')

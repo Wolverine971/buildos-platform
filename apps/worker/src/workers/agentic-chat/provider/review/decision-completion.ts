@@ -91,11 +91,15 @@ export function completeTurnContractReviewDecision(
 			validationIssues.length > 0
 		) {
 			fallbackReason = 'Independent semantic review returned an invalid or unbound decision.';
-		} else if (approval) {
+		} else if (approval || (revision && correctedContract)) {
 			// Models propose; code disposes. If the reviewer enumerated several
-			// plausible entities and the contract chose only some, the user owns the
-			// remaining choice regardless of how confident the approval reads.
-			const ambiguity = findAmbiguousReferenceCandidates(call.arguments, input.contract);
+			// plausible entities and the reviewed contract chose only some, the user
+			// owns the remaining choice regardless of whether the reviewer approved
+			// the original contract or supplied a typed correction.
+			const reviewedContract = approval ? input.contract : correctedContract;
+			const ambiguity = reviewedContract
+				? findAmbiguousReferenceCandidates(call.arguments, reviewedContract)
+				: null;
 			if (ambiguity) {
 				calls = [buildCandidateGateClarification(input.actingRequest, ambiguity)];
 			}
