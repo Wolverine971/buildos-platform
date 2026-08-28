@@ -295,13 +295,11 @@ export const projectCreateContractScenario: Scenario = {
 				assertTurnSucceeded(turn);
 				assertCleanText(turn);
 				assertToolNotCalled(turn, 'create_onto_project');
-				assertToolCalled(turn, 'declare_turn_contract');
-				assertToolCalledForExecutionMode(
-					turn,
-					'approve_turn_contract_review',
-					ctx.executionMode,
-					'worker_realtime'
-				);
+				// One explicitly named task inside the durable focused project is the
+				// bounded direct-write lane. Requiring a fresh contract here would test
+				// against the worker's routing contract and add avoidable latency.
+				assertToolNotCalled(turn, 'declare_turn_contract');
+				assertToolNotCalled(turn, 'approve_turn_contract_review');
 				assertToolCalled(turn, 'create_onto_task');
 
 				const streamRunId = requireStreamRunId(turn);
@@ -331,6 +329,14 @@ export const projectCreateContractScenario: Scenario = {
 					name: 'follow-up-stream-health',
 					category: 'transport',
 					check: (turn) => assertTurnSucceeded(turn)
+				},
+				{
+					name: 'follow-up-used-focused-project-direct-lane',
+					category: 'contract',
+					check: (turn) => {
+						assertToolNotCalled(turn, 'declare_turn_contract');
+						assertToolNotCalled(turn, 'approve_turn_contract_review');
+					}
 				},
 				{
 					name: 'follow-up-task-executed',

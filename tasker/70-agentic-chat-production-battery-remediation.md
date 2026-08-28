@@ -488,28 +488,51 @@ to measure these control loops.
   The shortened name fell outside prefix cleanup. Exact ID/name/creator-scoped cleanup removed test
   project `15319b2e-db6d-4a30-8693-74c9b1c6c178` and its cascading test children; a follow-up query
   confirms that exact project is absent.
-- **An explicit project-name preservation guard is local and not yet deployed.** In
+- **The explicit project-name preservation guard deployed in release `841fbe501`.** In
   `project_create` context, a syntactically explicit `project called …` or `project named …` value
   is now compared with `create_onto_project.project.name` after Unicode/whitespace normalization.
   A mismatch is returned to the acting model as a bounded provider-call validation error before
   mutation review or execution. The composite regression first proposes the shortened production
   value, proves it is rejected, then preserves the exact name and proceeds through the existing
-  reviewed child-creation path. Worker check and all 87 focused provider tests pass.
+  reviewed child-creation path. Worker check and all 87 focused provider tests pass. Commit
+  `841fbe5019b5c11a98f2b5dbbcb0af30786b64fb` deployed as Railway deployment
+  `efc2732b-0664-4594-9260-e86764d0f688`; exact-release health reported healthy realtime, zero
+  active turns, and all 20 provider/adapter mutation capabilities aligned. The zero-spend
+  reschedule/project-create preflight passed.
+- **Release `841fbe501` satisfies the complete project-create behavior; the remaining failure was a
+  stale harness assertion.** The first turn `954b7931-b854-4a1f-9d11-9ad0fed48e76`, stream
+  `8b0b6d38-bc48-4fe9-be57-f471484cc173`, session
+  `1d135cad-c4a5-4a8c-9f5d-95601d8dee31` completed in 52.829 seconds with nine tool calls across
+  six rounds, seven provider attempts, 52,765 tokens, and $0.00961339. It preserved the exact
+  harness name, obtained contract and two mutation-batch approvals, created project
+  `ab3694fd-1bee-4050-8b2f-e606e9cf181a`, one goal dated September 15, 2026, and all three tasks.
+  The generation-fenced session handoff persisted at `2026-08-28T21:05:02.521206Z` before terminal
+  completion. The same-session follow-up turn `685598ea-8e22-4050-ae42-22a8760cd242`, stream
+  `15ccaaaa-47db-4cd9-b110-f8678374f99f`, completed in 18.751 seconds with one tool call in one
+  round, two provider attempts, 19,451 tokens, and $0.00177570. It created exactly one distribution
+  research task in that durable project and did not duplicate the project. The test
+  failed only because its 2026-08-23 assertion required a second `declare_turn_contract`; the
+  bounded focused-project direct-write lane was introduced on 2026-08-27 and intentionally permits
+  up to three independent new records without reviewer latency. The harness now asserts that the
+  follow-up uses this direct lane. Cleanup removed the exact test project and cascading children;
+  an exact-ID query confirms the project is absent.
 
-## Review handoff — post-deploy status and next local patch
+## Review handoff — post-deploy status and current review target
 
 This section is the handoff for an independent review. The deployed release and current local tree
 are intentionally different:
 
-- **Deployed and health-verified:** commit `02e4de41d8cd775895ff01e876838b1f99ab2016`
+- **Deployed and health-verified:** commit `841fbe5019b5c11a98f2b5dbbcb0af30786b64fb`
   contains WP-1/WP-2, typed reviewer correction, durable clarification/final-output gates,
   provider/internal normalization, aligned candidate evidence, and action-aware symbolic-field
-  cleanup, plus canonical goal fields and outcome-scoped reviewer semantics. The isolated
-  reschedule gate passes. The project-create gate proves reviewed project/goal/task execution and
-  exposes the explicit-name preservation defect described above.
-- **Local and not yet deployed:** deterministic validation preserves an explicit project name before
-  project mutation review/execution. No database migration is involved. Do not run another paid
-  project-create repetition until this patch is deployed.
+  cleanup, canonical goal fields, outcome-scoped reviewer semantics, and explicit project-name
+  preservation. The isolated reschedule gate passes. Production evidence now proves reviewed
+  project/goal/task execution, durable session handoff, and the correctly scoped direct follow-up.
+- **Current test-only follow-up:** the project-create scenario no longer requires contract review
+  for its single focused-project follow-up create. It asserts the documented direct-write lane and
+  still requires one successful task effect in the exact shifted project. No production code or
+  database migration is involved, and the captured production receipt already proves the corrected
+  assertion; do not spend on a duplicate paid repetition for this test-only correction.
 
 ### Kernel and intended invariants
 
@@ -623,14 +646,14 @@ and the full worker check. Prettier checking on the touched source/tests also pa
 
 ### Next gate after review
 
-1. Review the explicit project-name extraction boundary and pre-mutation comparison.
-2. Deploy the project-name preservation patch.
-3. Re-run the zero-spend worker-realtime preflight for `task-reschedule-cold-reference` and
-   `project-create-contract`.
-4. Keep the passing `0ace56a2c` reschedule receipt as the isolated proof; this project-name-only
-   patch does not require another paid reschedule repetition.
-5. Run one paid, zero-retry project-create repetition and require the goal plus all three tasks,
-   the exact explicit project name, and the same-session project-scoped follow-up.
+1. Review the focused-project direct-write assertion against `assessDirectWriteBatch` and its
+   maximum-three/new-entity boundary.
+2. Commit the test-only scenario correction; do not repeat the paid production run because both
+   turn effects and their durable receipts already satisfy the corrected gate.
+3. Keep the passing `0ace56a2c` reschedule receipt and `841fbe501` project-create receipt as isolated
+   production proof.
+4. Continue WP-3 with the next missing deterministic contract trace: Northwind completion, the
+   three-task update, or labelled organization creation.
 
 ## Work packages
 
