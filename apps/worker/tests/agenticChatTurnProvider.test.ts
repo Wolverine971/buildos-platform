@@ -349,10 +349,13 @@ function createGoalToolDefinition(): ChatToolDefinition {
 				type: 'object',
 				required: ['project_id', 'name'],
 				properties: {
-					project_id: { type: 'string' },
-					name: { type: 'string' },
+					project_id: { type: 'string', description: 'Project UUID' },
+					name: { type: 'string', description: 'Goal name' },
 					description: { type: 'string' },
-					target_date: { type: 'string' }
+					target_date: {
+						type: 'string',
+						description: 'Goal target date; ISO timestamps and dates are accepted.'
+					}
 				}
 			}
 		}
@@ -5634,7 +5637,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					id: 'launch_goal',
 					action: 'create',
 					entity_kind: 'goal',
-					changes: [{ field: 'target_date', value: '2026-09-15' }],
+					required_fields: ['title', 'project_id', 'due_at'],
 					minimum_successful_effects: 1
 				},
 				{
@@ -5674,6 +5677,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		};
 		const normalizedContract = parseDeclaredTurnContract(contractArguments);
 		if (!normalizedContract) throw new Error('Expected a valid composite contract');
+		expect(normalizedContract.outcomes[1]?.requiredFields).toEqual([
+			'name',
+			'project_id',
+			'target_date'
+		]);
 		const contractSha256 = createHash('sha256')
 			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
 			.digest('hex');
@@ -5844,6 +5852,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				})
 			])
 		);
+		const contractReviewPrompt = String(
+			semanticReviewer.stream.mock.calls[0]?.[0].messages[1]?.content
+		);
+		expect(contractReviewPrompt).toContain('create_onto_goal.target_date: Goal target date');
+		expect(contractReviewPrompt).not.toContain('create_onto_task.due_at');
 
 		const batchReviewSteps = await collect(
 			invocation.continueWithToolResults!({

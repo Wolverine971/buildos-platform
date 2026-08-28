@@ -430,28 +430,62 @@ to measure these control loops.
   meaningful on creates; `parent_label` is likewise valid only for move/organize, and `date` would
   not be fulfilled by `update_onto_task.due_at`. The captured replay used 9,387 tokens and cost
   $0.00068270.
-- **The action-aware correction normalization is local and not yet deployed.** Before parsing and
+- **The action-aware correction normalization deployed in release `0ace56a2c`.** Before parsing and
   canonical re-review, the worker now removes only symbolic fields that the declared action can
   never consume: `label` outside creates and `parent_label` outside move/organize. The reviewer
   prompt and correction-tool description now bind moving/pushing a task, its deadline, or its due
   date to `due_at`, reserve `start_at` for explicit start requests, and prohibit a generic `date`
   field. The exact regression supplies the live placeholder fields and proves the durable corrected
   contract omits them. Worker lint/typecheck and 89 focused provider/candidate-gate tests pass.
+- **Release `0ace56a2c` passes the isolated reschedule gate.** Commit
+  `0ace56a2c17f0fd07090d111d797d6680a133a4e` deployed as Railway deployment
+  `6eea8840-e1e0-4157-a483-b04f8612f635`; exact-release health and the zero-spend two-scenario
+  preflight passed. The one paid, zero-retry reschedule passed all harness assertions: turn
+  `8d6e6cca-0acb-438e-b73e-9525bd3c1f01`, stream
+  `d659b51e-94c4-4823-bb06-d6777d7a28e2`, session
+  `60249dcc-e3de-4353-bf88-52f0e18d1c9d` completed in 45.367 seconds with five durable calls,
+  seven provider attempts, 87,823 tokens, and $0.01416853. The reviewer returned one typed
+  `due_at=2026-09-04T15:00:00+00:00` correction with the unique beta-list candidate, the corrected
+  SHA was independently approved, the exact mutation batch was approved, and one existing
+  `update_onto_task` succeeded. The task remained `todo`, its prior 15:00 time carried over, no
+  duplicate was created, and cleanup left zero harness projects.
+- **The first `project-create-contract` repetition on `0ace56a2c` proves WP-2 but fails WP-3 child
+  creation.** Turn `4cd64f28-84e6-46ac-ad72-f86cb93066ab`, stream
+  `287cf187-9587-45f7-9909-da3251060f09`, session
+  `e342e272-302a-4290-a213-b5034c6c7fef` took 75.727 seconds, eleven provider attempts, 91,896
+  tokens, and $0.01651632. The approved contract contained one project, one goal, and three task
+  outcomes. Project creation succeeded with project `b7e81607-7e9f-4c8f-85d5-24eafa969c2f`.
+  Before terminal completion, the durable session row correctly changed to `context_type=project`,
+  that exact `entity_id`, and a generation-fenced `fastchat_last_context_shift`; this is production
+  proof of the WP-2 handoff ordering. Child creation then failed: the acting contract used generic
+  goal postconditions `title` / `due_at`, while `create_onto_goal` uses `name` / `target_date`.
+  Reviewer field semantics pooled fields across every mutation tool, so it borrowed task
+  `due_at` and incorrectly rejected the acting model's valid goal `target_date` twice before asking
+  the user to confirm the already-stated date. No goal or task child executed. Cleanup removed the
+  created harness project.
+- **Goal field canonicalization and outcome-scoped reviewer semantics are local and not yet
+  deployed.** Goal contract fields now deterministically normalize `title→name` and
+  `due_at→target_date`, including declared changes, because those are the unambiguous goal
+  persistence/tool names. Contract field descriptions are now drawn only from the write tools that
+  can satisfy each specific outcome; a task's `due_at` can no longer masquerade as a goal field.
+  The composite project-create fixture now begins with the exact live generic goal fields, proves
+  their canonical form, and proves the review prompt includes `create_onto_goal.target_date` but not
+  `create_onto_task.due_at`. Runtime typecheck/build and 61 runtime plus 89 focused worker tests
+  pass.
 
 ## Review handoff — post-deploy status and next local patch
 
 This section is the handoff for an independent review. The deployed release and current local tree
 are intentionally different:
 
-- **Deployed and health-verified:** commit `3572aedbb3f36bfdf3d9f4ce7fbce29e215f3041`
-  contains WP-1/WP-2, typed reviewer correction, durable clarification/final-output gates, the
-  provider/internal representation fix, and aligned candidate evidence on corrections. Its
-  zero-spend realtime preflight passed; the paid reschedule exposed action-inapplicable optional
-  fields in the live typed correction.
-- **Local and not yet deployed:** the worker removes only action-inapplicable symbolic decorations
-  before parsing a reviewer correction, then canonicalizes and independently re-reviews the result.
-  Reviewer guidance maps task due-date reschedules to `due_at` and explicit starts to `start_at`. No
-  database migration is involved. Do not run another paid production repetition until this patch is
+- **Deployed and health-verified:** commit `0ace56a2c17f0fd07090d111d797d6680a133a4e`
+  contains WP-1/WP-2, typed reviewer correction, durable clarification/final-output gates,
+  provider/internal normalization, aligned candidate evidence, and action-aware symbolic-field
+  cleanup. The isolated reschedule gate passes. The project-create gate proves the durable session
+  handoff and exposes the goal-field/reviewer-semantics defect described above.
+- **Local and not yet deployed:** goal postcondition aliases canonicalize to `name` / `target_date`,
+  and reviewer field semantics are scoped to the tools that can fulfill each outcome. No database
+  migration is involved. Do not run another paid project-create repetition until this patch is
   deployed.
 
 ### Kernel and intended invariants
@@ -565,15 +599,14 @@ suites all pass. Prettier checking on the touched source/tests and `git diff --c
 
 ### Next gate after review
 
-1. Review the narrow action-aware stripping of `label` / `parent_label` and the task schedule-field
-   guidance.
-2. Deploy the action-aware correction normalization.
+1. Review goal field aliasing and the outcome-to-write-tool scoping of reviewer field semantics.
+2. Deploy the goal-field/reviewer-semantics patch.
 3. Re-run the zero-spend worker-realtime preflight for `task-reschedule-cold-reference` and
    `project-create-contract`.
-4. Run exactly one paid, zero-retry reschedule repetition and require one existing-task update with
-   no duplicate and no allowlist failure.
-5. Only if that passes, run the project-create paid repetition and verify the same-session durable
-   project context before its follow-up.
+4. Keep the passing `0ace56a2c` reschedule receipt as the isolated proof; this goal-only patch does
+   not require another paid reschedule repetition.
+5. Run one paid, zero-retry project-create repetition and require the goal plus all three tasks,
+   then verify the same-session project-scoped follow-up.
 
 ## Work packages
 

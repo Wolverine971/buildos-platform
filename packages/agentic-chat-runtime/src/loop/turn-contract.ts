@@ -279,6 +279,31 @@ function normalizeFieldName(value: string): string {
 	return normalized;
 }
 
+const OUTCOME_FIELD_ALIASES: Readonly<
+	Partial<Record<TurnContractEntityKind, Readonly<Record<string, string>>>>
+> = Object.freeze({
+	// Goal persistence and its provider tools use name/target_date. Models often
+	// borrow title/due_at from task creates when one project-create contract
+	// contains both entity kinds; these aliases are unambiguous for goals.
+	goal: Object.freeze({ title: 'name', due_at: 'target_date' })
+});
+
+function normalizeOutcomeFieldName(value: string, entityKind: TurnContractEntityKind): string {
+	const normalized = normalizeFieldName(value);
+	return OUTCOME_FIELD_ALIASES[entityKind]?.[normalized] ?? normalized;
+}
+
+function normalizeOutcomeChanges(
+	changes: readonly TurnContractChange[],
+	entityKind: TurnContractEntityKind
+): TurnContractChange[] {
+	const valuesByField = new Map<string, string>();
+	for (const change of changes) {
+		valuesByField.set(normalizeOutcomeFieldName(change.field, entityKind), change.value);
+	}
+	return Array.from(valuesByField, ([field, value]) => ({ field, value }));
+}
+
 const MAX_CHANGES_PER_OUTCOME = 20;
 
 function readLabel(value: unknown): string | undefined {
@@ -381,7 +406,7 @@ function normalizeOutcome(
 	const rawRequiredFields = record.required_fields ?? record.requiredFields;
 	const parsedTargetIds = readStringArray(rawTargetIds ?? []);
 	const parsedRequiredFields = readStringArray(rawRequiredFields ?? [], 30);
-	const changes = readChanges(record.changes);
+	const parsedChanges = readChanges(record.changes);
 	if (!parsedTargetIds) {
 		return rejectOutcome(
 			issues,
@@ -396,13 +421,14 @@ function normalizeOutcome(
 			'required_fields must be an array of at most 30 non-empty field-name strings.'
 		);
 	}
-	if (!changes) {
+	if (!parsedChanges) {
 		return rejectOutcome(
 			issues,
 			index,
 			`changes must be an array of at most ${MAX_CHANGES_PER_OUTCOME} objects, each with a non-empty "field" and a string, number, boolean, or null "value".`
 		);
 	}
+	const changes = normalizeOutcomeChanges(parsedChanges, entityKind);
 	// A create has no durable entity id until after it executes. Models sometimes
 	// put the containing project id in target_ids, but target_ids means existing
 	// entity ids and would make both pre-execution authorization and completion
@@ -413,7 +439,7 @@ function normalizeOutcome(
 	// each counted target, so it joins required_fields for fulfillment.
 	const requiredFields = Array.from(
 		new Set([
-			...parsedRequiredFields.map(normalizeFieldName),
+			...parsedRequiredFields.map((field) => normalizeOutcomeFieldName(field, entityKind)),
 			...changes.map((change) => change.field)
 		])
 	);

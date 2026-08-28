@@ -88,6 +88,41 @@ describe('semantic turn contracts', () => {
 		expect(parseDeclaredTurnContract(declaration)).toEqual(contract);
 	});
 
+	it('canonicalizes task-shaped goal fields to the goal persistence vocabulary', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'goal',
+					required_fields: ['title', 'project_id', 'due_at'],
+					changes: [
+						{ field: 'title', value: 'Publish the first three episodes' },
+						{ field: 'due_at', value: '2026-09-15' }
+					],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		if (!contract) throw new Error('Expected a valid goal contract');
+
+		expect(serializeTurnContractForDeclaration(contract)).toEqual({
+			outcomes: [
+				{
+					id: 'outcome_1',
+					action: 'create',
+					entity_kind: 'goal',
+					target_ids: [],
+					required_fields: ['name', 'project_id', 'target_date'],
+					changes: [
+						{ field: 'name', value: 'Publish the first three episodes' },
+						{ field: 'target_date', value: '2026-09-15' }
+					],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+	});
+
 	it('publishes canonical schemas for every standard semantic control', () => {
 		const definitions = new Map(
 			AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1.map((definition) => [

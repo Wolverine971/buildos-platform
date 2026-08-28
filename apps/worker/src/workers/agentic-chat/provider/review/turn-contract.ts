@@ -12,6 +12,7 @@ import {
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	type TurnContract,
+	getSafeWriteToolNamesForTurnContract,
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import { reviewedAgenticChatMutationSpecV1 } from '../../mutationToolCatalog';
@@ -149,29 +150,42 @@ export function describeContractValueSemantics(
 	contract: TurnContract,
 	availableTools: readonly AgenticChatTurnProviderToolV1[]
 ): string | null {
-	const fields = new Set<string>();
-	for (const outcome of contract.outcomes) {
-		for (const field of outcome.requiredFields) fields.add(field);
-		for (const change of outcome.changes ?? []) fields.add(change.field);
-	}
-	if (fields.size === 0) return null;
 	const lines: string[] = [];
 	const seen = new Set<string>();
-	for (const tool of availableTools) {
-		if (!reviewedAgenticChatMutationSpecV1(tool.function.name)) continue;
-		const parameters = tool.function.parameters as JsonObject | undefined;
-		const properties = parameters?.properties;
-		if (!properties || typeof properties !== 'object' || Array.isArray(properties)) continue;
-		for (const field of fields) {
-			for (const alias of FIELD_SEMANTICS_ALIASES[field] ?? [field]) {
-				const schema = (properties as JsonObject)[alias];
-				if (!schema || typeof schema !== 'object' || Array.isArray(schema)) continue;
-				const description = (schema as JsonObject).description;
-				if (typeof description !== 'string' || !description.trim()) continue;
-				const key = `${tool.function.name}.${alias}`;
-				if (seen.has(key)) continue;
-				seen.add(key);
-				lines.push(`- ${key}: ${description.trim().replace(/\s+/g, ' ')}`);
+	for (const outcome of contract.outcomes) {
+		const fields = new Set<string>();
+		for (const field of outcome.requiredFields) fields.add(field);
+		for (const change of outcome.changes ?? []) fields.add(change.field);
+		if (fields.size === 0) continue;
+		const outcomeContract: TurnContract = {
+			version: contract.version,
+			source: contract.source,
+			outcomes: [outcome]
+		};
+		const relevantToolNames = new Set(getSafeWriteToolNamesForTurnContract(outcomeContract));
+		for (const tool of availableTools) {
+			if (
+				!relevantToolNames.has(tool.function.name) ||
+				!reviewedAgenticChatMutationSpecV1(tool.function.name)
+			) {
+				continue;
+			}
+			const parameters = tool.function.parameters as JsonObject | undefined;
+			const properties = parameters?.properties;
+			if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
+				continue;
+			}
+			for (const field of fields) {
+				for (const alias of FIELD_SEMANTICS_ALIASES[field] ?? [field]) {
+					const schema = (properties as JsonObject)[alias];
+					if (!schema || typeof schema !== 'object' || Array.isArray(schema)) continue;
+					const description = (schema as JsonObject).description;
+					if (typeof description !== 'string' || !description.trim()) continue;
+					const key = `${tool.function.name}.${alias}`;
+					if (seen.has(key)) continue;
+					seen.add(key);
+					lines.push(`- ${key}: ${description.trim().replace(/\s+/g, ' ')}`);
+				}
 			}
 		}
 	}
