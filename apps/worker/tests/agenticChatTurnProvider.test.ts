@@ -527,6 +527,7 @@ function durableMutationFeedback(input: {
 	arguments: JsonObject;
 	toolName?: string;
 	operationName?: string;
+	effectId?: string;
 }): AgenticChatProviderMutationSynthesisInputV1 {
 	return {
 		providerToolCallId: input.providerToolCallId,
@@ -543,7 +544,7 @@ function durableMutationFeedback(input: {
 			requiresUserAction: false
 		},
 		mutation: {
-			effectId: 'a3000000-0000-4000-8000-00000000003a',
+			effectId: input.effectId ?? 'a3000000-0000-4000-8000-00000000003a',
 			logicalOperationId: input.logicalOperationId,
 			operationName: input.operationName ?? 'onto.task.update',
 			replayed: false
@@ -8151,7 +8152,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(() => reused.stream()).toThrow('released before streaming');
 	});
 
-	it('durably re-reviews a typed contract correction without acting-model regeneration', async () => {
+	it('durably re-reviews and executes the exact three-task correction trace', async () => {
 		const resumeId = '41000000-0000-4000-8000-000000000011';
 		const linkedinId = '41000000-0000-4000-8000-000000000012';
 		const halcyonId = '41000000-0000-4000-8000-000000000013';
@@ -8174,6 +8175,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					entity_kind: 'task',
 					target_ids: [resumeId, linkedinId],
 					required_fields: ['state_key'],
+					changes: [{ field: 'state_key', value: 'done' }],
 					minimum_successful_effects: 2
 				},
 				{
@@ -8181,6 +8183,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					entity_kind: 'task',
 					target_ids: [halcyonId],
 					required_fields: ['priority'],
+					changes: [{ field: 'priority', value: 1 }],
 					minimum_successful_effects: 1
 				}
 			]
@@ -8190,24 +8193,56 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const correctedSha256 = createHash('sha256')
 			.update(canonicalizeAgenticChatJson(correctedContract as never), 'utf8')
 			.digest('hex');
+		const referenceCandidates = [
+			{
+				reference: 'the resume update',
+				candidates: [{ id: resumeId, title: 'Update resume with the orchestration work' }]
+			},
+			{
+				reference: 'the linkedin thing',
+				candidates: [
+					{ id: linkedinId, title: 'Refresh the LinkedIn headline and about section' }
+				]
+			},
+			{
+				reference: 'the halcyon prep',
+				candidates: [
+					{ id: halcyonId, title: 'Prep system design answers for Halcyon Labs' }
+				]
+			}
+		];
 		const revisionArguments = {
 			reason: 'The single update outcome lumps the Halcyon task into the completion set.',
 			required_correction:
 				'Declare two outcomes: complete resume and LinkedIn; update Halcyon priority only.',
 			corrected_contract: correctedContractArguments,
-			reference_candidates: []
+			reference_candidates: referenceCandidates
 		};
 		const approvalArguments = {
 			reason: 'Two outcomes now match the three stated clauses.',
 			contract_sha256: correctedSha256,
-			reference_candidates: []
+			reference_candidates: referenceCandidates
 		};
-		const mutationArguments = { task_id: resumeId, state_key: 'done' };
-		const batchSha256 = mutationBatchReviewSha256([
-			{ id: 'provider-update-1', name: 'update_onto_task', arguments: mutationArguments }
-		]);
+		const mutationCalls = [
+			{
+				id: 'provider-update-resume',
+				name: 'update_onto_task',
+				arguments: { task_id: resumeId, state_key: 'done' }
+			},
+			{
+				id: 'provider-update-linkedin',
+				name: 'update_onto_task',
+				arguments: { task_id: linkedinId, state_key: 'done' }
+			},
+			{
+				id: 'provider-update-halcyon',
+				name: 'update_onto_task',
+				arguments: { task_id: halcyonId, priority: 1 }
+			}
+		] as const;
+		const batchSha256 = mutationBatchReviewSha256(mutationCalls);
 		const batchApprovalArguments = {
-			reason: 'The update is inside the approved completion outcome.',
+			reason: 'The three updates exactly implement the two approved outcomes.',
 			batch_sha256: batchSha256
 		};
 		const client = clientWithRounds([
@@ -8216,17 +8251,25 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				lumpedContractArguments,
 				'declare_turn_contract'
 			),
-			providerReadRound('provider-update-1', mutationArguments, 'update_onto_task'),
 			[
-				{ type: 'text', content: 'Done: resume marked done.' },
-				{ type: 'done', finishedReason: 'stop' }
+				{
+					type: 'tool_call',
+					toolCall: mutationCalls.map((call, index) => ({
+						index,
+						id: call.id,
+						type: 'function' as const,
+						function: {
+							name: call.name,
+							arguments: JSON.stringify(call.arguments)
+						}
+					}))
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
 			],
-			// Only one of three approved targets was written, so the worker withholds
-			// that answer and sends the model back once; this is its second answer.
 			[
 				{
 					type: 'text',
-					content: 'Done: resume marked done; LinkedIn and Halcyon still pending.'
+					content: 'Done: resume and LinkedIn are complete; Halcyon is top priority.'
 				},
 				{ type: 'done', finishedReason: 'stop' }
 			]
@@ -8248,6 +8291,26 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'approve_mutation_batch_review'
 			)
 		]);
+		const providerInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				updateTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'update_onto_task'
+			]
+		);
+		providerInput.requestPayload = {
+			...providerInput.requestPayload,
+			message:
+				'ok so i knocked out the resume update and the linkedin thing this morning, ' +
+				'and the halcyon prep needs to be top priority now, they moved the onsite up'
+		};
 		const invocation = await new AgenticChatTurnProviderAdapter(
 			{
 				client,
@@ -8258,20 +8321,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			16,
 			{ updateOntoTask: true }
 		).prepare({
-			executionInput: executionInputWithReadSurface(
-				[
-					turnContractToolDefinition(),
-					readOnlyTurnToolDefinition(),
-					clarificationToolDefinition(),
-					updateTaskToolDefinition()
-				],
-				[
-					'declare_turn_contract',
-					'declare_read_only_turn',
-					'request_turn_clarification',
-					'update_onto_task'
-				]
-			),
+			executionInput: providerInput,
 			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
@@ -8401,41 +8451,38 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		const updateStep = mutationSteps.find(
+		const updateSteps = mutationSteps.filter(
 			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
 				step.type === 'mutating_tool'
 		);
-		expect(updateStep).toMatchObject({
-			providerToolCallId: 'provider-update-1',
-			toolName: 'update_onto_task'
-		});
-		if (!updateStep) throw new Error('Expected the approved mutation');
+		expect(updateSteps.map((step) => step.providerToolCallId)).toEqual(
+			mutationCalls.map((call) => call.id)
+		);
+		expect(updateSteps.map((step) => step.arguments)).toEqual(
+			mutationCalls.map((call) => call.arguments)
+		);
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
 					round: 6,
-					results: [
+					results: mutationCalls.map((call, index) =>
 						durableMutationFeedback({
-							providerToolCallId: 'provider-update-1',
-							logicalOperationId: updateStep.logicalOperationId,
-							arguments: mutationArguments
+							providerToolCallId: call.id,
+							logicalOperationId: updateSteps[index]!.logicalOperationId,
+							arguments: call.arguments,
+							effectId: `a3000000-0000-4000-8000-00000000004${index}`
 						})
-					]
+					)
 				})
 			)
 		).resolves.toEqual([
 			{
 				type: 'text_delta',
-				text: 'Done: resume marked done; LinkedIn and Halcyon still pending.'
+				text: 'Done: resume and LinkedIn are complete; Halcyon is top priority.'
 			},
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
-		// The untouched outcomes (LinkedIn, Halcyon) triggered one completion
-		// continuation before the answer was accepted.
-		expect(client.stream).toHaveBeenCalledTimes(4);
-		expect(String(client.stream.mock.calls[3]?.[0].messages.at(-1)?.content)).toContain(
-			'is not finished'
-		);
+		expect(client.stream).toHaveBeenCalledTimes(3);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(3);
 	});
 
@@ -9778,6 +9825,18 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			reason: 'The folder is inside the approved contract.',
 			batch_sha256: createBatchSha256
 		};
+		const moveArguments = {
+			project_id: projectId,
+			document_id: documentId,
+			new_parent_id: folderId
+		};
+		const moveBatchSha256 = mutationBatchReviewSha256([
+			{ id: 'provider-move-1', name: 'move_document_in_tree', arguments: moveArguments }
+		]);
+		const moveBatchApproval = {
+			reason: 'The move uses the folder ID bound by the approved create outcome.',
+			batch_sha256: moveBatchSha256
+		};
 		const client = clientWithRounds([
 			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
 			providerReadRound('provider-create-1', createArguments, 'create_onto_document'),
@@ -9792,6 +9851,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			providerReadRound(
 				'reviewer-batch-approval-1',
 				createBatchApproval,
+				'approve_mutation_batch_review'
+			),
+			providerReadRound(
+				'reviewer-move-approval-1',
+				moveBatchApproval,
 				'approve_mutation_batch_review'
 			)
 		]);
@@ -9915,8 +9979,94 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			);
 			return { invocation, afterCreate };
 		};
-		return { client, semanticReviewer, runThroughCreate, folderId, documentId };
+		return {
+			client,
+			semanticReviewer,
+			runThroughCreate,
+			folderId,
+			documentId,
+			moveArguments,
+			moveBatchApproval,
+			moveBatchSha256
+		};
 	}
+
+	it('executes a labelled folder create and its bound move before terminal output', async () => {
+		const fixture = labelledOrganizeFixture([
+			providerReadRound(
+				'provider-move-1',
+				{
+					project_id: '40000000-0000-4000-8000-000000000004',
+					document_id: '42000000-0000-4000-8000-000000000004',
+					new_parent_id: '42000000-0000-4000-8000-000000000077'
+				},
+				'move_document_in_tree'
+			),
+			[
+				{ type: 'text', content: 'Created Meeting notes and moved the document into it.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const { invocation, afterCreate } = await fixture.runThroughCreate();
+		expect(afterCreate).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-move-approval-1',
+					toolName: 'approve_mutation_batch_review'
+				})
+			])
+		);
+
+		const moveSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 6,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-move-approval-1',
+						'approve_mutation_batch_review',
+						fixture.moveBatchApproval,
+						{
+							status: 'mutation_batch_review_approved',
+							batch_sha256: fixture.moveBatchSha256
+						}
+					)
+				]
+			})
+		);
+		const moveStep = moveSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(moveStep).toMatchObject({
+			providerToolCallId: 'provider-move-1',
+			toolName: 'move_document_in_tree',
+			arguments: fixture.moveArguments
+		});
+		if (!moveStep) throw new Error('Expected the bound move to reach execution');
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 7,
+					results: [
+						durableMoveMutationFeedback({
+							providerToolCallId: 'provider-move-1',
+							logicalOperationId: moveStep.logicalOperationId,
+							arguments: fixture.moveArguments
+						})
+					]
+				})
+			)
+		).resolves.toEqual([
+			{
+				type: 'text_delta',
+				text: 'Created Meeting notes and moved the document into it.'
+			},
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(fixture.semanticReviewer.stream).toHaveBeenCalledTimes(3);
+	});
 
 	it('sends the model back to finish an approved contract when it tries to answer after the first mutation round', async () => {
 		const fixture = labelledOrganizeFixture([

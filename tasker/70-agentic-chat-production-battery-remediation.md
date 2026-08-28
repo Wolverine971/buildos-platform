@@ -528,11 +528,22 @@ are intentionally different:
   cleanup, canonical goal fields, outcome-scoped reviewer semantics, and explicit project-name
   preservation. The isolated reschedule gate passes. Production evidence now proves reviewed
   project/goal/task execution, durable session handoff, and the correctly scoped direct follow-up.
-- **Current test-only follow-up:** the project-create scenario no longer requires contract review
-  for its single focused-project follow-up create. It asserts the documented direct-write lane and
-  still requires one successful task effect in the exact shifted project. No production code or
-  database migration is involved, and the captured production receipt already proves the corrected
-  assertion; do not spend on a duplicate paid repetition for this test-only correction.
+- **The project follow-up harness correction is pushed in `bca515378`.** The project-create scenario
+  no longer requires contract review for its single focused-project follow-up create. It asserts the
+  documented direct-write lane and still requires one successful task effect in the exact shifted
+  project. No production code or database migration is involved, and the captured production
+  receipt already proves the corrected assertion; do not spend on a duplicate paid repetition for
+  this test-only correction. Web test type-check remains at its accepted 538/538 baseline.
+- **The four named deterministic contract traces are now complete locally.** Existing fixtures
+  already cover the exact dictated Northwind completion through contract approval, mutation-batch
+  approval, one `state_key=done` effect, and terminal output; labelled folder contracts already bind
+  a create receipt to `parent_label`; and the composite project fixture covers reviewed project,
+  goal, and three-task creation. The three-task fixture now uses the exact resume/LinkedIn/Halcyon
+  prompt, a typed reviewer correction with three unique candidate sets, fresh SHA approval, one
+  three-call mutation-batch approval, two completion receipts, one `priority=1` receipt, and terminal
+  output only after all three effects. The labelled organization fixture now continues from the
+  created-folder receipt through a separately SHA-approved bound move, its mutation receipt, and
+  terminal output. All 88 focused provider tests pass.
 
 ### Kernel and intended invariants
 
@@ -632,28 +643,30 @@ Primary files:
   current `declare_turn_contract` catalog shape that had already drifted from the checked-in
   snapshot at this HEAD. Inspect that full snapshot diff rather than assuming every changed line is
   caused by WP-4.
-- **Coverage still missing:** the broader deterministic Northwind completion, three-task update,
-  labelled organization-create, and project-create traces remain WP-3 work. Do not call WP-3
-  complete based only on the reschedule regression.
+- **Coverage now pinned:** deterministic provider traces cover Northwind completion, the exact
+  three-task dictated update, labelled organization-create with a bound move, and composite project
+  creation. Review their complete pass graphs and receipt cardinality before marking WP-3 complete;
+  do not infer completion from the reschedule receipt alone.
 
 ### Verification already run
 
 The local runtime and worker typechecks pass. The focused runtime suites for turn contracts, repair
 instructions, and finalization; worker suites for the provider, execution adapter, terminal text
 integrity, provider boundary, catalog policy, and OpenRouter client; and web catalog/preparation
-suites all pass. The current explicit-name patch additionally passes all 87 focused provider tests
-and the full worker check. Prettier checking on the touched source/tests also passes.
+suites all pass. The deployed explicit-name patch passes its full worker check; the subsequent
+project/direct-lane and deterministic-trace changes pass web test type-check at baseline and all 88
+focused provider tests. Prettier checking on the touched source/tests also passes.
 
 ### Next gate after review
 
-1. Review the focused-project direct-write assertion against `assessDirectWriteBatch` and its
-   maximum-three/new-entity boundary.
-2. Commit the test-only scenario correction; do not repeat the paid production run because both
-   turn effects and their durable receipts already satisfy the corrected gate.
-3. Keep the passing `0ace56a2c` reschedule receipt and `841fbe501` project-create receipt as isolated
-   production proof.
-4. Continue WP-3 with the next missing deterministic contract trace: Northwind completion, the
-   three-task update, or labelled organization creation.
+1. Review the exact three-task trace: typed correction, unique candidates, corrected SHA, one
+   three-write batch approval, three distinct effect receipts, and no premature terminal output.
+2. Review the labelled organization trace: the create receipt must bind the contract label before a
+   separately reviewed move can use that UUID.
+3. Commit the deterministic trace completion. No deployment or paid repetition is required because
+   it changes tests only.
+4. Move to WP-4's remaining open gate: prove that a durable clarification candidate set reloads in
+   the next turn without rediscovery.
 
 ## Work packages
 
@@ -665,7 +678,7 @@ and the full worker check. Prettier checking on the touched source/tests also pa
       renegotiate before worker admission.
 - [x] Add a two-turn project-create fixture that asserts both the public shift event and the durable
       session context before admitting the follow-up.
-- [ ] Add deterministic contract traces for Northwind completion, the three-task update, labelled
+- [x] Add deterministic contract traces for Northwind completion, the three-task update, labelled
       organization creates, and project creation.
 - [x] Add a finalization regression: an ambiguous commissioned write cannot finish with prose only;
       no succeeded effect means no completion claim.
