@@ -1,10 +1,15 @@
 // apps/worker/src/workers/agentic-chat/provider/review/decision-completion.ts
 
+import { type JsonObject, canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import {
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
-import { type TurnContract, parseDeclaredTurnContract } from '@buildos/agentic-chat-runtime/loop';
+import {
+	type TurnContract,
+	parseDeclaredTurnContract,
+	serializeTurnContractForDeclaration
+} from '@buildos/agentic-chat-runtime/loop';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
@@ -52,7 +57,7 @@ export function completeTurnContractReviewDecision(
 		'Independent semantic review'
 	);
 	if (!fallbackReason) {
-		const call = calls[0]!;
+		let call = calls[0]!;
 		const approval = call.name === APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME;
 		const readOnly = call.name === DECLARE_READ_ONLY_TURN_TOOL_NAME;
 		const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
@@ -60,12 +65,30 @@ export function completeTurnContractReviewDecision(
 		const correctedContract = revision
 			? parseDeclaredTurnContract(call.arguments.corrected_contract)
 			: null;
+		let validationIssues = validateCompletedProviderCalls(calls, input.reviewRequest);
+		if (
+			revision &&
+			correctedContract &&
+			(usesInternalContractFieldNames(call.arguments.corrected_contract) ||
+				validationIssues.length > 0)
+		) {
+			const normalizedCall = normalizeCorrectedContractCall(call, correctedContract);
+			const normalizedIssues = validateCompletedProviderCalls(
+				[normalizedCall],
+				input.reviewRequest
+			);
+			if (normalizedIssues.length === 0) {
+				call = normalizedCall;
+				calls = [call];
+				validationIssues = [];
+			}
+		}
 		if (
 			(!approval && !readOnly && !clarification && !revision) ||
 			(revision && !input.allowRevision) ||
 			(revision && !correctedContract) ||
 			(approval && call.arguments.contract_sha256 !== input.contractReviewSha256) ||
-			validateCompletedProviderCalls(calls, input.reviewRequest).length > 0
+			validationIssues.length > 0
 		) {
 			fallbackReason = 'Independent semantic review returned an invalid or unbound decision.';
 		} else if (approval) {
@@ -82,6 +105,47 @@ export function completeTurnContractReviewDecision(
 		calls = [buildReviewFallbackClarification(input.actingRequest, fallbackReason)];
 	}
 	return withDecisionAuthor(calls, 'contract_reviewer');
+}
+
+function usesInternalContractFieldNames(value: unknown): boolean {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+	const record = value as Record<string, unknown>;
+	if ('source' in record || 'version' in record) return true;
+	if (!Array.isArray(record.outcomes)) return false;
+	return record.outcomes.some(
+		(outcome) =>
+			Boolean(outcome) &&
+			typeof outcome === 'object' &&
+			!Array.isArray(outcome) &&
+			[
+				'entityKind',
+				'targetIds',
+				'requiredFields',
+				'minimumSuccessfulEffects',
+				'parentLabel'
+			].some((field) => field in outcome)
+	);
+}
+
+function normalizeCorrectedContractCall(
+	call: CompletedProviderToolCall,
+	correctedContract: TurnContract
+): CompletedProviderToolCall {
+	const argumentsValue: JsonObject = {
+		...call.arguments,
+		corrected_contract: serializeTurnContractForDeclaration(correctedContract)
+	};
+	const providerArguments: JsonObject = { ...argumentsValue };
+	if (call.scheduling?.callRef) providerArguments.call_ref = call.scheduling.callRef;
+	if (call.scheduling && call.scheduling.after.length > 0) {
+		providerArguments.after = [...call.scheduling.after];
+	}
+	return {
+		...call,
+		arguments: argumentsValue,
+		canonicalArguments: canonicalizeAgenticChatJson(argumentsValue),
+		canonicalProviderArguments: canonicalizeAgenticChatJson(providerArguments)
+	};
 }
 
 export function completeMutationBatchReviewDecision(

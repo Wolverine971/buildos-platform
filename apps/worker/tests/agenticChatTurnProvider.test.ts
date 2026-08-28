@@ -11,7 +11,10 @@ import {
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
 import { TURN_CONTRACT_TOOL_DEFINITION } from '@buildos/agentic-chat-runtime/catalog';
-import { parseDeclaredTurnContract } from '@buildos/agentic-chat-runtime/loop';
+import {
+	parseDeclaredTurnContract,
+	serializeTurnContractForDeclaration
+} from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import { reviewedAgenticChatMutationSpecV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
@@ -8437,11 +8440,30 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const correctedSha256 = createHash('sha256')
 			.update(canonicalizeAgenticChatJson(correctedContract as never), 'utf8')
 			.digest('hex');
-		const revisionArguments = {
+		const reviewerCamelCaseCorrection: JsonObject = {
+			summary: correctedContract.summary ?? '',
+			outcomes: correctedContract.outcomes.map((outcome) => ({
+				id: outcome.id,
+				action: outcome.action,
+				entityKind: outcome.entityKind,
+				targetIds: [...outcome.targetIds],
+				requiredFields: [...outcome.requiredFields],
+				changes: outcome.changes?.map((change) => ({ ...change })) ?? [],
+				minimumSuccessfulEffects: outcome.minimumSuccessfulEffects
+			}))
+		};
+		const reviewerRevisionArguments = {
 			reason: 'The proposal targets both loaded email tasks and omits the resolved Friday due date.',
 			required_correction:
 				'Target only Send the launch email to the beta list and set due_at to Friday while preserving state.',
-			corrected_contract: correctedContractArguments
+			// Production regression: the old review prompt exposed this internal
+			// camelCase representation and the worker rejected it against the
+			// provider-facing correction schema.
+			corrected_contract: reviewerCamelCaseCorrection
+		};
+		const normalizedRevisionArguments = {
+			...reviewerRevisionArguments,
+			corrected_contract: serializeTurnContractForDeclaration(correctedContract)
 		};
 		const approvalArguments = {
 			reason: 'The corrected contract targets the unique beta-list task and exact Friday value.',
@@ -8458,7 +8480,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const semanticReviewer = clientWithRounds([
 			providerReadRound(
 				'reviewer-reschedule-revision-1',
-				revisionArguments,
+				reviewerRevisionArguments,
 				'request_proposal_revision'
 			),
 			providerReadRound(
@@ -8519,10 +8541,16 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				expect.objectContaining({
 					type: 'read_tool',
 					providerToolCallId: 'reviewer-reschedule-revision-1',
-					toolName: 'request_proposal_revision'
+					toolName: 'request_proposal_revision',
+					arguments: normalizedRevisionArguments
 				})
 			])
 		);
+		const firstReviewPrompt = String(
+			semanticReviewer.stream.mock.calls[0]?.[0].messages[1]?.content
+		);
+		expect(firstReviewPrompt).toContain('"entity_kind":"task"');
+		expect(firstReviewPrompt).not.toContain('"entityKind":"task"');
 		const approvalSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 3,
@@ -8530,8 +8558,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					durableReadFeedbackFor(
 						'reviewer-reschedule-revision-1',
 						'request_proposal_revision',
-						revisionArguments,
-						{ status: 'revision_required', ...revisionArguments }
+						normalizedRevisionArguments,
+						{ status: 'revision_required', ...normalizedRevisionArguments }
 					)
 				]
 			})

@@ -18,6 +18,7 @@ import {
 	readFastChatPendingTurnContract,
 	resolveTurnContractFromExecutions,
 	resolveTurnContractOutcome,
+	serializeTurnContractForDeclaration,
 	bindTurnContractLabels,
 	titleKey,
 	type TurnContract,
@@ -52,6 +53,41 @@ function execution(
 }
 
 describe('semantic turn contracts', () => {
+	it('serializes normalized contracts back to the provider declaration schema', () => {
+		const contract = parseDeclaredTurnContract({
+			summary: 'Move the beta task to Friday.',
+			outcomes: [
+				{
+					action: 'schedule',
+					entity_kind: 'task',
+					target_ids: ['41000000-0000-4000-8000-000000000041'],
+					changes: [{ field: 'due_at', value: '2026-09-04T15:00:00-04:00' }],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		if (!contract) throw new Error('Expected a valid contract');
+
+		const declaration = serializeTurnContractForDeclaration(contract);
+
+		expect(declaration).toEqual({
+			summary: 'Move the beta task to Friday.',
+			outcomes: [
+				{
+					id: 'outcome_1',
+					action: 'schedule',
+					entity_kind: 'task',
+					target_ids: ['41000000-0000-4000-8000-000000000041'],
+					required_fields: ['due_at'],
+					changes: [{ field: 'due_at', value: '2026-09-04T15:00:00-04:00' }],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		expect(JSON.stringify(declaration)).not.toContain('entityKind');
+		expect(parseDeclaredTurnContract(declaration)).toEqual(contract);
+	});
+
 	it('publishes canonical schemas for every standard semantic control', () => {
 		const definitions = new Map(
 			AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1.map((definition) => [

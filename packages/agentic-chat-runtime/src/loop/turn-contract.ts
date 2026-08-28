@@ -1,5 +1,5 @@
 // packages/agentic-chat-runtime/src/loop/turn-contract.ts
-import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
+import type { ChatToolCall, ChatToolResult, JsonObject } from '@buildos/shared-types';
 import {
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
@@ -138,6 +138,39 @@ export type TurnContract = {
 	summary?: string;
 	outcomes: TurnContractOutcome[];
 };
+
+/**
+ * Serializes normalized contract state back into the exact provider-facing
+ * declaration schema. Review prompts and typed reviewer corrections must use
+ * this shape: showing the internal camelCase representation teaches a reviewer
+ * to emit arguments that the advertised JSON schema rejects.
+ */
+export function serializeTurnContractForDeclaration(contract: TurnContract): JsonObject {
+	return {
+		...(contract.summary ? { summary: contract.summary } : {}),
+		outcomes: contract.outcomes.map(
+			(outcome): JsonObject => ({
+				id: outcome.id,
+				action: outcome.action,
+				entity_kind: outcome.entityKind,
+				...(outcome.description ? { description: outcome.description } : {}),
+				target_ids: [...outcome.targetIds],
+				required_fields: [...outcome.requiredFields],
+				...(outcome.changes
+					? {
+							changes: outcome.changes.map((change) => ({
+								field: change.field,
+								value: change.value
+							}))
+						}
+					: {}),
+				minimum_successful_effects: outcome.minimumSuccessfulEffects,
+				...(outcome.label ? { label: outcome.label } : {}),
+				...(outcome.parentLabel ? { parent_label: outcome.parentLabel } : {})
+			})
+		)
+	};
+}
 
 export type TurnContractOutcomeResult = {
 	id: string;
