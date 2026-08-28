@@ -314,8 +314,11 @@ export class AgenticChatTurnExecutor {
 		if (!Number.isSafeInteger(this.maxToolConcurrency) || this.maxToolConcurrency < 1) {
 			throw new Error('Agentic Chat tool concurrency must be a positive safe integer');
 		}
-		this.concurrentReadsEnabled = options.concurrentReadsEnabled ?? false;
-		this.concurrentMutationsEnabled = options.concurrentMutationsEnabled ?? false;
+		// The staged rollout completed in production. Keep explicit false values as
+		// a deterministic serial-control seam, but make the reviewed graph policy
+		// the normal runtime behavior instead of depending on deployment flags.
+		this.concurrentReadsEnabled = options.concurrentReadsEnabled ?? true;
+		this.concurrentMutationsEnabled = options.concurrentMutationsEnabled ?? true;
 	}
 
 	async execute(

@@ -40,17 +40,36 @@ export type AgenticChatMutationOperationNameV1 =
 
 const BUILDOS_AGENT_ALLOWED_OP_SET = new Set<string>(BUILDOS_AGENT_SUPPORTED_OPS);
 
-export type AgenticChatReviewedMutationSpecV1 = {
+type AgenticChatReviewedMutationSpecBaseV1 = {
 	capability: AgenticChatMutationCapabilityNameV1;
 	operationName: AgenticChatMutationOperationNameV1;
 	downstreamIdempotencySupported: boolean;
-	/** Whether one bounded same-round batch may execute without a turn contract/reviewer. */
-	directWriteClass: 'ordinary' | 'contract_required';
 	requiredNames: readonly string[];
 	reviewedArgumentNames: readonly string[];
 	descriptionOverride?: string;
 	propertyOverrides?: Readonly<Record<string, JsonObject>>;
 };
+
+export type AgenticChatReviewedMutationSpecV1 = AgenticChatReviewedMutationSpecBaseV1 &
+	(
+		| {
+				/** One bounded same-round batch may execute without a turn contract/reviewer. */
+				directWriteClass: 'ordinary';
+				/**
+				 * How the ordinary write resolves its durable target. Existing entities
+				 * selected from a collection still need semantic review: an exact UUID
+				 * proves adapter scope, not that the user's words identified that row.
+				 */
+				directWriteSelectionPolicy: 'new_entity' | 'focused_project' | 'resolved_existing';
+				/** Existing-entity arguments that make a new-entity create selection-sensitive. */
+				directWriteExistingReferenceNames?: readonly string[];
+		  }
+		| {
+				directWriteClass: 'contract_required';
+				directWriteSelectionPolicy?: never;
+				directWriteExistingReferenceNames?: never;
+		  }
+	);
 
 /**
  * Single reviewed mutation catalog shared by provider projection, assembly
@@ -64,6 +83,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.document.create',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
+		directWriteExistingReferenceNames: ['parent_id'],
 		requiredNames: ['project_id', 'title', 'description'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -81,6 +102,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.document.update',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
 		requiredNames: ['document_id'],
 		reviewedArgumentNames: [
 			'document_id',
@@ -124,6 +146,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.task.docs.create_or_attach',
 		downstreamIdempotencySupported: true,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
 			'Attach an existing document to a task workspace using exact task and document UUIDs from reads. This worker tool does not create a new document.',
 		requiredNames: ['task_id', 'document_id'],
@@ -134,6 +157,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.edge.link',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
 			'Create one relationship between two existing non-project ontology entities using exact UUIDs from reads. Project endpoints are not available in the worker. Relationship aliases are normalized to their canonical direction.',
 		requiredNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel'],
@@ -164,6 +188,13 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.task.create',
 		downstreamIdempotencySupported: true,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
+		directWriteExistingReferenceNames: [
+			'plan_id',
+			'goal_id',
+			'supporting_milestone_id',
+			'parent'
+		],
 		requiredNames: ['project_id', 'title'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -188,6 +219,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.task.update',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
 		requiredNames: ['task_id'],
 		reviewedArgumentNames: [
 			'task_id',
@@ -235,6 +267,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'x.misc.tag_onto_entity',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
 			'Send one explicit notification-only tag to active members of the focused project. Use exact user UUIDs returned by project-member reads and always pass mode "ping". This worker tool never edits entity content and does not resolve @handles.',
 		requiredNames: ['project_id', 'entity_type', 'entity_id', 'mode', 'mentioned_user_ids'],
@@ -282,6 +315,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.goal.create',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
 		requiredNames: ['project_id', 'name'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -300,6 +334,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.goal.update',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
 		requiredNames: ['goal_id'],
 		reviewedArgumentNames: [
 			'goal_id',
@@ -318,6 +353,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.plan.create',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
 		requiredNames: ['project_id', 'name'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -336,6 +372,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.plan.update',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
 		requiredNames: ['plan_id'],
 		reviewedArgumentNames: [
 			'plan_id',
@@ -354,6 +391,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.milestone.create',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
+		directWriteExistingReferenceNames: ['goal_id'],
 		requiredNames: ['project_id', 'title', 'goal_id'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -370,6 +409,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.milestone.update',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
 		requiredNames: ['milestone_id'],
 		reviewedArgumentNames: [
 			'milestone_id',
@@ -385,6 +425,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.risk.create',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
 		requiredNames: ['project_id', 'title', 'impact'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -402,6 +443,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.risk.update',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
 		requiredNames: ['risk_id'],
 		reviewedArgumentNames: [
 			'risk_id',
@@ -516,6 +558,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.project.update',
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'focused_project',
 		requiredNames: ['project_id'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -617,6 +660,18 @@ export const AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1 = Object.freeze(
 				string
 			]
 	)
+);
+
+/**
+ * The production worker exposes every mutation that has crossed the reviewed
+ * catalog boundary. Rollout selection belongs in this catalog now, rather
+ * than in two independently configurable environment allowlists that can
+ * drift apart.
+ */
+export const ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1 = Object.freeze(
+	Object.fromEntries(
+		AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.map(([capability]) => [capability, true])
+	) as AgenticChatProviderMutationCapabilitiesV1
 );
 
 export function reviewedAgenticChatMutationSpecV1(

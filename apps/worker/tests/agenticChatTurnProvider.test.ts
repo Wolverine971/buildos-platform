@@ -518,10 +518,12 @@ function durableMutationFeedback(input: {
 	providerToolCallId: string;
 	logicalOperationId: string;
 	arguments: JsonObject;
+	toolName?: string;
+	operationName?: string;
 }): AgenticChatProviderMutationSynthesisInputV1 {
 	return {
 		providerToolCallId: input.providerToolCallId,
-		toolName: 'update_onto_task',
+		toolName: input.toolName ?? 'update_onto_task',
 		arguments: input.arguments,
 		execution: {
 			result: { message: 'Task updated successfully.' },
@@ -536,7 +538,7 @@ function durableMutationFeedback(input: {
 		mutation: {
 			effectId: 'a3000000-0000-4000-8000-00000000003a',
 			logicalOperationId: input.logicalOperationId,
-			operationName: 'onto.task.update',
+			operationName: input.operationName ?? 'onto.task.update',
 			replayed: false
 		}
 	};
@@ -2313,13 +2315,12 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(client.stream).toHaveBeenCalledTimes(4);
 	});
 
-	it('executes one ordinary direct mutation without an independent review pass', async () => {
-		const taskId = '41000000-0000-4000-8000-000000000004';
-		const mutationArguments = { task_id: taskId, state_key: 'done' };
+	it('executes one target-free create without an independent review pass', async () => {
+		const mutationArguments = { project_id: 'project-1', title: 'Send the launch email' };
 		const client = clientWithRounds([
-			providerReadRound('provider-update-1', mutationArguments, 'update_onto_task'),
+			providerReadRound('provider-create-1', mutationArguments, 'create_onto_task'),
 			[
-				{ type: 'text', content: 'Marked the launch email task complete.' },
+				{ type: 'text', content: 'Created the launch email task.' },
 				{ type: 'done', finishedReason: 'stop' }
 			]
 		]);
@@ -2329,18 +2330,18 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				turnContractToolDefinition(),
 				readOnlyTurnToolDefinition(),
 				clarificationToolDefinition(),
-				updateTaskToolDefinition()
+				createTaskToolDefinition()
 			],
 			[
 				'declare_turn_contract',
 				'declare_read_only_turn',
 				'request_turn_clarification',
-				'update_onto_task'
+				'create_onto_task'
 			]
 		);
 		providerInput.requestPayload = {
 			...providerInput.requestPayload,
-			message: 'Mark the launch email task complete.'
+			message: 'Create a task called Send the launch email.'
 		};
 		const invocation = await new AgenticChatTurnProviderAdapter(
 			{
@@ -2350,7 +2351,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			},
 			2_000,
 			16,
-			{ updateOntoTask: true }
+			{ createOntoTask: true }
 		).prepare({
 			executionInput: providerInput,
 			processingToken: PROCESSING_TOKEN,
@@ -2363,8 +2364,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				step.type === 'mutating_tool'
 		);
 		expect(updateStep).toMatchObject({
-			providerToolCallId: 'provider-update-1',
-			toolName: 'update_onto_task',
+			providerToolCallId: 'provider-create-1',
+			toolName: 'create_onto_task',
 			arguments: mutationArguments
 		});
 		if (!updateStep) throw new Error('Expected the exact reviewed mutation');
@@ -2374,15 +2375,17 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					round: 2,
 					results: [
 						durableMutationFeedback({
-							providerToolCallId: 'provider-update-1',
+							providerToolCallId: 'provider-create-1',
 							logicalOperationId: updateStep.logicalOperationId,
-							arguments: mutationArguments
+							arguments: mutationArguments,
+							toolName: 'create_onto_task',
+							operationName: 'onto.task.create'
 						})
 					]
 				})
 			)
 		).resolves.toEqual([
-			{ type: 'text_delta', text: 'Marked the launch email task complete.' },
+			{ type: 'text_delta', text: 'Created the launch email task.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
 		expect(client.stream).toHaveBeenCalledTimes(2);
@@ -2993,7 +2996,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		);
 	});
 
-	it('advertises simple versus complex routing and admits an ordinary direct write', async () => {
+	it('advertises simple versus complex routing and withholds collection-resolved writes', async () => {
 		const taskId = '41000000-0000-4000-8000-000000000004';
 		const mutationArguments = { task_id: taskId, state_key: 'done' };
 		const clarificationArguments = {
@@ -3064,13 +3067,14 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(firstRound).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					type: 'mutating_tool',
-					providerToolCallId: 'withheld-update-1',
-					toolName: 'update_onto_task'
+					type: 'read_tool',
+					providerToolCallId: 'provider-clarification-1',
+					toolName: 'request_turn_clarification'
 				})
 			])
 		);
-		expect(client.stream).toHaveBeenCalledTimes(1);
+		expect(firstRound.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(client.stream).toHaveBeenCalledTimes(2);
 		invocation.release();
 	});
 
@@ -7437,7 +7441,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
-	it('restores the admitted surface after skill repair and admits an ordinary direct mutation', async () => {
+	it('restores the admitted surface after skill repair and still reviews target selection', async () => {
 		const taskId = '41000000-0000-4000-8000-000000000004';
 		const mutationArguments = { task_id: taskId, state_key: 'done' };
 		const clarificationArguments = {
@@ -7488,13 +7492,14 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(steps).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					type: 'mutating_tool',
-					providerToolCallId: 'withheld-update-1',
-					toolName: 'update_onto_task'
+					type: 'read_tool',
+					providerToolCallId: 'provider-clarification-1',
+					toolName: 'request_turn_clarification'
 				})
 			])
 		);
-		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(client.stream).toHaveBeenCalledTimes(3);
 		const repairRequest = client.stream.mock.calls[1]?.[0];
 		expect(repairRequest).toMatchObject({
 			toolChoice: 'required',
@@ -7508,6 +7513,15 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(repairRequest?.tools.some((tool) => tool.function.name === 'skill_load')).toBe(
 			false
 		);
+		expect(client.stream.mock.calls[2]?.[0]).toMatchObject({
+			toolChoice: 'required',
+			providerRound: 'synthesis',
+			tools: expect.arrayContaining([
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'request_turn_clarification' })
+				})
+			])
+		});
 		expect(
 			repairRequest?.messages.some(
 				(message) =>

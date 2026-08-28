@@ -47,12 +47,8 @@ validation or adapter dispatch. `toolExecutionGraph.ts` validates and layers the
 `toolExecutionPolicy.ts` adds worker-owned resource conflicts and keeps unknown-scope mutations
 serial.
 
-Concurrency is staged independently from graph validation:
-
-- `AGENTIC_CHAT_CONCURRENT_READS_ENABLED=false`
-- `AGENTIC_CHAT_CONCURRENT_MUTATIONS_ENABLED=false`
-- `CHAT_MAX_TOOL_CONCURRENCY=4`
-
-The graph still compiles when both gates are off, producing the existing serial behavior. Enabling
-mutation concurrency affects only the audited row-local tools in the policy; it does not make every
-mutation parallel-safe.
+Concurrent execution is the production default after the staged rollout. `CHAT_MAX_TOOL_CONCURRENCY=4`
+remains the operational fan-out limit. Only audited row-local mutations can run concurrently;
+worker-owned dependency and resource-conflict barriers keep unknown-scope or conflicting mutations
+serial. Executor tests can still pass explicit false controls when they need to compare serial
+behavior.

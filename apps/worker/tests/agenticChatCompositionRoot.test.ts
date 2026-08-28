@@ -6,7 +6,10 @@ import {
 	reportAgenticChatRuntimeTiming,
 	reportAgenticChatStalledRecovery
 } from '../src/workers/agentic-chat/composition-root';
-import { normalizeAgenticChatMutationCapabilitiesV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
+import {
+	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
+	normalizeAgenticChatMutationCapabilitiesV1
+} from '../src/workers/agentic-chat/mutationToolCatalog';
 
 function supabaseClient() {
 	return {
@@ -111,17 +114,6 @@ describe('createAgenticChatCompositionRoot', () => {
 		).toThrow('must match CHAT_CONCURRENCY');
 	});
 
-	it('fails closed when the provider mutation surface is enabled without its adapter', () => {
-		expect(() =>
-			createAgenticChatCompositionRoot({
-				client: supabaseClient() as never,
-				providerClient: { stream: vi.fn() } as never,
-				providerConfigured: true,
-				mutationProviderCapabilities: { updateOntoTask: true }
-			})
-		).toThrow('update_onto_task provider capability requires its mutation adapter');
-	});
-
 	it('fails closed when an enabled adapter capability has no installed router entry', () => {
 		expect(() =>
 			assertAgenticChatMutationAdapterCoverageV1(
@@ -131,97 +123,25 @@ describe('createAgenticChatCompositionRoot', () => {
 		).toThrow('missing=update_onto_task');
 	});
 
-	it('fails closed when create_onto_task is advertised without its adapter', () => {
-		expect(() =>
-			createAgenticChatCompositionRoot({
-				client: supabaseClient() as never,
-				providerClient: { stream: vi.fn() } as never,
-				providerConfigured: true,
-				mutationProviderCapabilities: { createOntoTask: true }
-			})
-		).toThrow('create_onto_task provider capability requires its mutation adapter');
-	});
-
-	it('fails closed when create_onto_document is advertised without its adapter', () => {
-		expect(() =>
-			createAgenticChatCompositionRoot({
-				client: supabaseClient() as never,
-				providerClient: { stream: vi.fn() } as never,
-				providerConfigured: true,
-				mutationProviderCapabilities: { createOntoDocument: true }
-			})
-		).toThrow('create_onto_document provider capability requires its mutation adapter');
-	});
-
-	it('fails closed when move_onto_task is advertised without its adapter', () => {
-		expect(() =>
-			createAgenticChatCompositionRoot({
-				client: supabaseClient() as never,
-				providerClient: { stream: vi.fn() } as never,
-				providerConfigured: true,
-				mutationProviderCapabilities: { moveOntoTask: true }
-			})
-		).toThrow('move_onto_task provider capability requires its mutation adapter');
-	});
-
-	it('fails closed when tag_onto_entity is advertised without its adapter', () => {
-		expect(() =>
-			createAgenticChatCompositionRoot({
-				client: supabaseClient() as never,
-				providerClient: { stream: vi.fn() } as never,
-				providerConfigured: true,
-				mutationProviderCapabilities: { tagOntoEntity: true }
-			})
-		).toThrow('tag_onto_entity provider capability requires its mutation adapter');
-	});
-
-	it('fails closed when a straightforward entity mutation is advertised without its adapter', () => {
-		expect(() =>
-			createAgenticChatCompositionRoot({
-				client: supabaseClient() as never,
-				providerClient: { stream: vi.fn() } as never,
-				providerConfigured: true,
-				mutationProviderCapabilities: { createOntoMilestone: true }
-			})
-		).toThrow('create_onto_milestone provider capability requires its mutation adapter');
-	});
-
-	it('can compose the adapter while keeping provider advertisement separately disabled', () => {
-		const assembly = createAgenticChatCompositionRoot({
-			client: supabaseClient() as never,
-			providerClient: { stream: vi.fn() } as never,
-			providerConfigured: true,
-			mutationAdapterCapabilities: { updateOntoTask: true }
-		});
-
-		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });
-	});
-
-	it('requires both explicit gates before composing the advertised mutation path', () => {
+	it('uses one capability map for provider advertisement and adapter installation', () => {
 		const assembly = createAgenticChatCompositionRoot({
 			client: supabaseClient() as never,
 			providerClient: { stream: vi.fn() } as never,
 			semanticReviewerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
-			mutationProviderCapabilities: { updateOntoTask: true },
-			mutationAdapterCapabilities: { updateOntoTask: true }
+			mutationCapabilities: { updateOntoTask: true }
 		});
 
 		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });
 	});
 
-	it('composes independently gated task and document adapters behind the router', () => {
+	it('composes selected task and document adapters behind the router', () => {
 		const assembly = createAgenticChatCompositionRoot({
 			client: supabaseClient() as never,
 			providerClient: { stream: vi.fn() } as never,
 			semanticReviewerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
-			mutationProviderCapabilities: {
-				createOntoDocument: true,
-				createOntoTask: true,
-				updateOntoTask: true
-			},
-			mutationAdapterCapabilities: {
+			mutationCapabilities: {
 				createOntoDocument: true,
 				createOntoTask: true,
 				updateOntoTask: true
@@ -231,36 +151,13 @@ describe('createAgenticChatCompositionRoot', () => {
 		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });
 	});
 
-	it('composes every reviewed mutation when both independent gates match', () => {
-		const capabilities = {
-			createOntoDocument: true,
-			updateOntoDocument: true,
-			moveDocumentInTree: true,
-			createTaskDocument: true,
-			linkOntoEntities: true,
-			unlinkOntoEdge: true,
-			createOntoTask: true,
-			updateOntoTask: true,
-			moveOntoTask: true,
-			tagOntoEntity: true,
-			createOntoGoal: true,
-			updateOntoGoal: true,
-			createOntoPlan: true,
-			updateOntoPlan: true,
-			createOntoMilestone: true,
-			updateOntoMilestone: true,
-			createOntoRisk: true,
-			updateOntoRisk: true,
-			createOntoProject: true,
-			updateOntoProject: true
-		} as const;
+	it('composes every reviewed mutation from the code-owned catalog', () => {
 		const assembly = createAgenticChatCompositionRoot({
 			client: supabaseClient() as never,
 			providerClient: { stream: vi.fn() } as never,
 			semanticReviewerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
-			mutationProviderCapabilities: capabilities,
-			mutationAdapterCapabilities: capabilities
+			mutationCapabilities: ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1
 		});
 
 		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });
@@ -272,8 +169,7 @@ describe('createAgenticChatCompositionRoot', () => {
 				client: supabaseClient() as never,
 				providerClient: { stream: vi.fn() } as never,
 				providerConfigured: true,
-				mutationProviderCapabilities: { updateOntoTask: true },
-				mutationAdapterCapabilities: { updateOntoTask: true }
+				mutationCapabilities: { updateOntoTask: true }
 			})
 		).toThrow('require an independent semantic reviewer client');
 	});

@@ -2,7 +2,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from '../src/workers/agentic-chat/capacity';
 import type { AgenticChatConsumerRuntimeHealth } from '../src/workers/agentic-chat/consumerRuntime';
-import { AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1 } from '../src/workers/agentic-chat/mutationToolCatalog';
+import {
+	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
+	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1
+} from '../src/workers/agentic-chat/mutationToolCatalog';
 import {
 	buildAgenticChatSemanticReviewerRoutes,
 	createAgenticChatBootstrap,
@@ -15,6 +18,8 @@ function environment(): NodeJS.ProcessEnv {
 		PRIVATE_OPENROUTER_API_KEY: 'provider-secret',
 		AGENTIC_CHAT_OPENROUTER_MODEL: 'provider/primary',
 		AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback',
+		// Retired rollout values may remain during the compatible deployment.
+		// The code-owned reviewed catalog must win regardless of their contents.
 		AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: 'updateOntoTask,moveDocumentInTree',
 		AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'updateOntoTask,moveDocumentInTree'
 	};
@@ -158,14 +163,6 @@ describe('Agentic Chat operational bootstrap', () => {
 			expect.objectContaining({
 				config: expect.objectContaining({
 					enabled: true,
-					mutationProviderCapabilities: {
-						updateOntoTask: true,
-						moveDocumentInTree: true
-					},
-					mutationAdapterCapabilities: {
-						updateOntoTask: true,
-						moveDocumentInTree: true
-					},
 					consumer: expect.objectContaining({ concurrency: 1 }),
 					provider: {
 						routes: [
@@ -186,10 +183,12 @@ describe('Agentic Chat operational bootstrap', () => {
 			state: 'ready',
 			reason: 'ready'
 		});
+		const names = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.map(([capability]) => capability);
+		const toolNames = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.map(([, toolName]) => toolName);
 		expect(bootstrap.getHealth().mutationCapabilities).toEqual({
-			provider: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
-			adapter: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
-			advertisedMutationToolNames: ['move_document_in_tree', 'update_onto_task']
+			provider: { count: 20, names },
+			adapter: { count: 20, names },
+			advertisedMutationToolNames: toolNames
 		});
 		const firstStart = bootstrap.start();
 		const secondStart = bootstrap.start();
@@ -295,13 +294,8 @@ describe('summarizeAgenticChatMutationCapabilitiesV1', () => {
 	const updateOntoTask = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.find(
 		([capability]) => capability === 'updateOntoTask'
 	)?.[1];
-	const createOntoTask = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.find(
-		([capability]) => capability === 'createOntoTask'
-	)?.[1];
-
-	it('reports counts and catalog-ordered names for a matched provider/adapter pair', () => {
-		const provider = { updateOntoTask: true, moveDocumentInTree: true };
-		const adapter = { updateOntoTask: true, moveDocumentInTree: true };
+	it('reports counts and catalog-ordered names for the unified capability surface', () => {
+		const capabilities = { updateOntoTask: true, moveDocumentInTree: true };
 
 		const expectedNames = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
 			([capability]) => capability === 'updateOntoTask' || capability === 'moveDocumentInTree'
@@ -310,34 +304,32 @@ describe('summarizeAgenticChatMutationCapabilitiesV1', () => {
 			([capability]) => capability === 'updateOntoTask' || capability === 'moveDocumentInTree'
 		).map(([, toolName]) => toolName);
 
-		expect(summarizeAgenticChatMutationCapabilitiesV1(provider, adapter)).toEqual({
+		expect(summarizeAgenticChatMutationCapabilitiesV1(capabilities)).toEqual({
 			provider: { count: 2, names: expectedNames },
 			adapter: { count: 2, names: expectedNames },
 			advertisedMutationToolNames: expectedToolNames
 		});
-		expect(summarizeAgenticChatMutationCapabilitiesV1(provider, adapter)).toEqual({
+		expect(summarizeAgenticChatMutationCapabilitiesV1(capabilities)).toEqual({
 			provider: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
 			adapter: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
 			advertisedMutationToolNames: [moveDocumentInTree, updateOntoTask]
 		});
 	});
 
-	it('excludes a capability the adapter has but the provider lacks from advertised tool names', () => {
-		const provider = { updateOntoTask: true };
-		const adapter = { updateOntoTask: true, createOntoTask: true };
+	it('keeps provider advertisement and adapter installation identical by construction', () => {
+		const summary = summarizeAgenticChatMutationCapabilitiesV1(
+			ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1
+		);
 
-		const summary = summarizeAgenticChatMutationCapabilitiesV1(provider, adapter);
-
-		expect(summary.provider).toEqual({ count: 1, names: ['updateOntoTask'] });
-		expect(summary.adapter.count).toBe(2);
-		expect(summary.adapter.names).toContain('createOntoTask');
-		expect(summary.adapter.names).toContain('updateOntoTask');
-		expect(summary.advertisedMutationToolNames).toEqual([updateOntoTask]);
-		expect(summary.advertisedMutationToolNames).not.toContain(createOntoTask);
+		expect(summary.provider).toEqual(summary.adapter);
+		expect(summary.provider.count).toBe(AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.length);
+		expect(summary.advertisedMutationToolNames).toHaveLength(
+			AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.length
+		);
 	});
 
-	it('treats an undefined provider or adapter map as no capabilities enabled', () => {
-		expect(summarizeAgenticChatMutationCapabilitiesV1(undefined, undefined)).toEqual({
+	it('treats an undefined capability map as no capabilities enabled', () => {
+		expect(summarizeAgenticChatMutationCapabilitiesV1(undefined)).toEqual({
 			provider: { count: 0, names: [] },
 			adapter: { count: 0, names: [] },
 			advertisedMutationToolNames: []

@@ -200,10 +200,12 @@ export function createAgenticChatCompositionRoot(options: {
 	concurrentMutationsEnabled?: boolean;
 	/** Injectable for tests; production reuses the worker's SSRF-safe native web port. */
 	webResearch?: WebResearchPort;
-	/** Separate provider-advertisement gate. Requires the matching adapter gate. */
-	mutationProviderCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
-	/** Separate irreversible-adapter gate. Production configuration defaults this off. */
-	mutationAdapterCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
+	/**
+	 * One surface controls both provider advertisement and installed adapters.
+	 * Production passes the complete reviewed catalog; partial maps remain useful
+	 * for isolated assembly tests without permitting the two sides to drift.
+	 */
+	mutationCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
 	onPromptSnapshotError?: (error: unknown) => void;
 	onExecutionObservationError?: (error: unknown) => void;
 	onResearchCaptureError?: (error: unknown) => void;
@@ -224,21 +226,10 @@ export function createAgenticChatCompositionRoot(options: {
 	) {
 		throw new Error('Agentic Chat cancellation concurrency must match CHAT_CONCURRENCY');
 	}
-	const mutationProviderCapabilities = normalizeAgenticChatMutationCapabilitiesV1(
-		options.mutationProviderCapabilities
+	const mutationCapabilities = normalizeAgenticChatMutationCapabilitiesV1(
+		options.mutationCapabilities
 	);
-	const mutationAdapterCapabilities = normalizeAgenticChatMutationCapabilitiesV1(
-		options.mutationAdapterCapabilities
-	);
-	for (const [capability, toolName] of AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1) {
-		if (mutationProviderCapabilities[capability] && !mutationAdapterCapabilities[capability]) {
-			throw new Error(`${toolName} provider capability requires its mutation adapter`);
-		}
-	}
-	if (
-		Object.values(mutationProviderCapabilities).some(Boolean) &&
-		!options.semanticReviewerClient
-	) {
+	if (Object.values(mutationCapabilities).some(Boolean) && !options.semanticReviewerClient) {
 		throw new Error(
 			'Agentic Chat mutation provider capabilities require an independent semantic reviewer client'
 		);
@@ -308,49 +299,49 @@ export function createAgenticChatCompositionRoot(options: {
 		},
 		options.providerCooldownMs,
 		options.maxProviderRounds,
-		mutationProviderCapabilities
+		mutationCapabilities
 	);
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort()
 	});
 	const mutationAdapters: AgenticChatMutationAdapterEntry[] = [];
-	if (mutationAdapterCapabilities.createOntoDocument) {
+	if (mutationCapabilities.createOntoDocument) {
 		mutationAdapters.push([
 			'create_onto_document',
 			new AgenticChatCreateOntoDocumentMutationAdapter(options.client)
 		]);
 	}
-	if (mutationAdapterCapabilities.createOntoTask) {
+	if (mutationCapabilities.createOntoTask) {
 		mutationAdapters.push([
 			'create_onto_task',
 			new AgenticChatCreateOntoTaskMutationAdapter(options.client)
 		]);
 	}
-	if (mutationAdapterCapabilities.updateOntoTask) {
+	if (mutationCapabilities.updateOntoTask) {
 		mutationAdapters.push([
 			'update_onto_task',
 			new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
 		]);
 	}
-	if (mutationAdapterCapabilities.moveOntoTask) {
+	if (mutationCapabilities.moveOntoTask) {
 		mutationAdapters.push([
 			'move_onto_task',
 			new AgenticChatMoveOntoTaskMutationAdapter(options.client)
 		]);
 	}
-	if (mutationAdapterCapabilities.tagOntoEntity) {
+	if (mutationCapabilities.tagOntoEntity) {
 		mutationAdapters.push([
 			'tag_onto_entity',
 			new AgenticChatTagOntoEntityPingMutationAdapter(options.client)
 		]);
 	}
-	if (mutationAdapterCapabilities.updateOntoProject) {
+	if (mutationCapabilities.updateOntoProject) {
 		mutationAdapters.push([
 			'update_onto_project',
 			new AgenticChatGatewayProjectMutationAdapter(options.client)
 		]);
 	}
-	if (mutationAdapterCapabilities.createOntoProject) {
+	if (mutationCapabilities.createOntoProject) {
 		mutationAdapters.push([
 			'create_onto_project',
 			new AgenticChatCreateOntoProjectMutationAdapter(options.client)
@@ -361,7 +352,7 @@ export function createAgenticChatCompositionRoot(options: {
 	);
 	const enabledGatewayEntityTools = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
 		([capability, toolName]) =>
-			mutationAdapterCapabilities[capability] && gatewayEntityToolNames.has(toolName)
+			mutationCapabilities[capability] && gatewayEntityToolNames.has(toolName)
 	).map(([, toolName]) => toolName);
 	if (enabledGatewayEntityTools.length > 0) {
 		const gatewayEntityAdapter = new AgenticChatGatewayEntityMutationAdapter(options.client);
@@ -374,7 +365,7 @@ export function createAgenticChatCompositionRoot(options: {
 	);
 	const enabledDocumentRelationshipTools = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
 		([capability, toolName]) =>
-			mutationAdapterCapabilities[capability] && documentRelationshipToolNames.has(toolName)
+			mutationCapabilities[capability] && documentRelationshipToolNames.has(toolName)
 	).map(([, toolName]) => toolName);
 	if (enabledDocumentRelationshipTools.length > 0) {
 		const documentRelationshipAdapter =
@@ -385,8 +376,7 @@ export function createAgenticChatCompositionRoot(options: {
 	}
 	const edgeToolNames = new Set<string>(AGENTIC_CHAT_EDGE_MUTATION_TOOL_NAMES_V1);
 	const enabledEdgeTools = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
-		([capability, toolName]) =>
-			mutationAdapterCapabilities[capability] && edgeToolNames.has(toolName)
+		([capability, toolName]) => mutationCapabilities[capability] && edgeToolNames.has(toolName)
 	).map(([, toolName]) => toolName);
 	if (enabledEdgeTools.length > 0) {
 		const edgeAdapter = new AgenticChatGatewayEdgeMutationAdapter(options.client);
@@ -394,7 +384,7 @@ export function createAgenticChatCompositionRoot(options: {
 			mutationAdapters.push([toolName, edgeAdapter]);
 		}
 	}
-	assertAgenticChatMutationAdapterCoverageV1(mutationAdapterCapabilities, mutationAdapters);
+	assertAgenticChatMutationAdapterCoverageV1(mutationCapabilities, mutationAdapters);
 	const mutation =
 		mutationAdapters.length > 0
 			? new AgenticChatMutationExecutor({

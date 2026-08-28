@@ -218,10 +218,10 @@ export function buildWorkerSemanticMutationOrdering(
 	}
 	return [
 		'Worker write routing: classify a commissioned durable change as simple or complex before proposing mutations.',
-		'Simple means one response containing at most three independent ordinary creates, updates, links, attachments, or tags; every target is exact, every value is requested or reasonably delegated, no call depends on another, and no further mutation round will be needed. For a simple request, call the mutation tools directly without declare_turn_contract.',
-		'Examples of simple requests: complete this exact task; rename this exact project; create these three explicitly named tasks; set the same requested due date on two exact tasks.',
-		'Complex means more than three mutations, multiple rounds or dependencies, project creation, move or organize work, unlinking or destructive effects, high-impact operations, model-selected scope, or any ambiguous required target/value. For a complex request, call declare_turn_contract with the complete outcome set before any mutation.',
-		'Examples of complex requests: organize these documents; clean up duplicates; update everything that looks outdated; create a project and then populate it; change an ambiguous item reference.',
+		'Simple means one response containing at most three independent ordinary creates inside the currently focused project with no other existing-entity references, or an update to that focused project itself; every value is requested or reasonably delegated, no call depends on another, and no further mutation round will be needed. For a simple request, call the mutation tools directly without declare_turn_contract.',
+		'Examples of simple requests: rename this focused project; create these three explicitly named tasks in this project; create a new goal with the requested name.',
+		'Complex means selecting any existing child entity from project or global context, more than three mutations, multiple rounds or dependencies, project creation, move or organize work, unlinking or destructive effects, high-impact operations, model-selected scope, or any ambiguous required target/value. For a complex request, call declare_turn_contract with the complete outcome set before any mutation.',
+		'Examples of complex requests: complete a task selected from this project; organize these documents; clean up duplicates; update everything that looks outdated; create a project and then populate it; change an ambiguous item reference.',
 		'Call request_turn_clarification when a commissioned durable change still has an unresolved required user choice. For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
 		'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
 		...SEMANTIC_COMMISSION_GUIDANCE,

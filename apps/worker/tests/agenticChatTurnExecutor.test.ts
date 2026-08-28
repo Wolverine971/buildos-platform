@@ -3601,14 +3601,13 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
-	it('executes independent same-response reads concurrently when the read rollout is enabled', async () => {
+	it('executes independent same-response reads concurrently by default', async () => {
 		let releaseFirstToolResult!: () => void;
 		const firstToolResultGate = new Promise<void>((resolve) => {
 			releaseFirstToolResult = resolve;
 		});
 		let blockedFirstToolResult = false;
 		const harness = createHarness([], {
-			concurrentReadsEnabled: true,
 			maxToolConcurrency: 2,
 			beforePersistSemantic: async (input) => {
 				const payload = input.event_payload as Record<string, unknown>;
@@ -3712,9 +3711,8 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
-	it('executes audited independent row-local mutations concurrently when enabled', async () => {
+	it('executes audited independent row-local mutations concurrently by default', async () => {
 		const harness = createHarness([], {
-			concurrentMutationsEnabled: true,
 			maxToolConcurrency: 2
 		});
 		const starts: string[] = [];

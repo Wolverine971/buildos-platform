@@ -190,16 +190,12 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			liveVisionEnabled: false,
 			supervisorEnabled: false,
 			consumptionBillingEnabled: false,
-			mutationProviderCapabilities: {},
-			mutationAdapterCapabilities: {},
 			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
 			publisher: DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,
 			providerBudgetMs: 300_000,
 			maxProviderRounds: 16,
 			maxToolCalls: 40,
 			maxToolConcurrency: 4,
-			concurrentReadsEnabled: false,
-			concurrentMutationsEnabled: false,
 			provider: { routes: [expect.objectContaining({ model: 'provider/primary' })] }
 		});
 	});
@@ -239,53 +235,20 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 		).toThrow('PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE must be exactly true or false');
 	});
 
-	it('keeps mutation capabilities default-off and requires exact dual-gate configuration', () => {
-		const capabilities = 'updateOntoTask,moveDocumentInTree';
-		expect(
-			loadAgenticChatConfig(
-				configuredEnvironment({
-					AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: capabilities,
-					AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: capabilities
-				})
-			)
-		).toMatchObject({
-			mutationProviderCapabilities: {
-				updateOntoTask: true,
-				moveDocumentInTree: true
-			},
-			mutationAdapterCapabilities: {
-				updateOntoTask: true,
-				moveDocumentInTree: true
-			}
-		});
-		expect(() =>
-			loadAgenticChatConfig(
-				configuredEnvironment({
-					AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: 'updateOntoTask'
-				})
-			)
-		).toThrow('update_onto_task provider capability requires its mutation adapter');
-		expect(() =>
-			loadAgenticChatConfig(
-				configuredEnvironment({
-					AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'updateOntoTask,updateOntoTask'
-				})
-			)
-		).toThrow('AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES must not contain duplicates');
-		expect(() =>
-			loadAgenticChatConfig(
-				configuredEnvironment({
-					AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'updateOntoTask, moveDocumentInTree'
-				})
-			)
-		).toThrow('must be a comma-separated canonical capability list');
-		expect(() =>
-			loadAgenticChatConfig(
-				configuredEnvironment({
-					AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'update_onto_task'
-				})
-			)
-		).toThrow('AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES contains an unknown capability');
+	it('ignores retired mutation and concurrency rollout variables during a safe deploy transition', () => {
+		const config = loadAgenticChatConfig(
+			configuredEnvironment({
+				AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: 'retired-invalid-value',
+				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: '',
+				AGENTIC_CHAT_CONCURRENT_READS_ENABLED: 'retired-invalid-value',
+				AGENTIC_CHAT_CONCURRENT_MUTATIONS_ENABLED: 'retired-invalid-value'
+			})
+		);
+
+		expect(config).not.toHaveProperty('mutationProviderCapabilities');
+		expect(config).not.toHaveProperty('mutationAdapterCapabilities');
+		expect(config).not.toHaveProperty('concurrentReadsEnabled');
+		expect(config).not.toHaveProperty('concurrentMutationsEnabled');
 	});
 
 	it('parses an independently bounded two-slot queue policy', () => {
@@ -300,9 +263,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			CHAT_DRAIN_TIMEOUT_MS: '1000',
 			CHAT_MAX_TOOL_ROUNDS: '4',
 			CHAT_MAX_TOOL_CALLS: '9',
-			CHAT_MAX_TOOL_CONCURRENCY: '3',
-			AGENTIC_CHAT_CONCURRENT_READS_ENABLED: 'true',
-			AGENTIC_CHAT_CONCURRENT_MUTATIONS_ENABLED: 'false'
+			CHAT_MAX_TOOL_CONCURRENCY: '3'
 		});
 
 		expect(config).toEqual({
@@ -310,8 +271,6 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			liveVisionEnabled: false,
 			supervisorEnabled: false,
 			consumptionBillingEnabled: false,
-			mutationProviderCapabilities: {},
-			mutationAdapterCapabilities: {},
 			consumer: {
 				concurrency: 2,
 				pollIntervalMs: 1500,
@@ -324,8 +283,6 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			maxProviderRounds: 4,
 			maxToolCalls: 9,
 			maxToolConcurrency: 3,
-			concurrentReadsEnabled: true,
-			concurrentMutationsEnabled: false,
 			provider: {
 				routes: [
 					{

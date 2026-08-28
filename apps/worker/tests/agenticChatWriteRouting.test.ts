@@ -29,13 +29,65 @@ function call(
 
 describe('direct write routing', () => {
 	it('accepts one same-round batch of up to three ordinary mutations', () => {
+		const focused = { contextType: 'project', entityId: '2', projectId: '2' };
 		expect(
 			assessDirectWriteBatch([
-				call('update_onto_task', { task_id: '1', state_key: 'done' }),
 				call('create_onto_task', { project_id: '2', title: 'Ship' }),
-				call('tag_onto_entity', { project_id: '2', entity_type: 'task', entity_id: '1' })
-			])
+				call('create_onto_goal', { project_id: '2', name: 'Launch' }),
+				call('create_onto_risk', { project_id: '2', title: 'Delay', impact: 'high' })
+			], focused)
 		).toEqual({ kind: 'simple', mutationCount: 3 });
+	});
+
+	it('requires semantic review when a mutation selects an existing entity', () => {
+		expect(
+			assessDirectWriteBatch([
+				call('update_onto_task', { task_id: '1', state_key: 'done' })
+			])
+		).toEqual({
+			kind: 'contract_required',
+			reason: 'target_resolution_requires_review',
+			mutationCount: 1
+		});
+		expect(
+			assessDirectWriteBatch([
+				call('create_onto_task', { project_id: '2', title: 'Ship', goal_id: '3' })
+			])
+		).toMatchObject({
+			kind: 'contract_required',
+			reason: 'target_resolution_requires_review'
+		});
+	});
+
+	it('admits only an update to the already focused project', () => {
+		const focused = { contextType: 'project', entityId: '2', projectId: '2' };
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_project', { project_id: '2', name: 'New' })],
+				focused
+			)
+		).toEqual({ kind: 'simple', mutationCount: 1 });
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_project', { project_id: '3', name: 'Other' })],
+				focused
+			)
+		).toMatchObject({
+			kind: 'contract_required',
+			reason: 'target_resolution_requires_review'
+		});
+	});
+
+	it('requires review when a create selects its parent project from global context', () => {
+		expect(
+			assessDirectWriteBatch(
+				[call('create_onto_task', { project_id: '2', title: 'Ship' })],
+				{ contextType: 'global', entityId: null, projectId: null }
+			)
+		).toMatchObject({
+			kind: 'contract_required',
+			reason: 'target_resolution_requires_review'
+		});
 	});
 
 	it('requires a contract when the batch exceeds the hard count floor', () => {

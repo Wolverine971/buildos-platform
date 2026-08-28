@@ -16,6 +16,7 @@ import {
 } from './provider/openrouter-client';
 import {
 	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1,
+	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 	type AgenticChatMutationCapabilityNameV1,
 	type AgenticChatProviderMutationCapabilitiesV1
 } from './mutationToolCatalog';
@@ -55,26 +56,25 @@ export type AgenticChatBootstrapHealth = {
 };
 
 /**
- * Reduce the raw provider/adapter mutation-capability maps to the surface an
- * operator or the e2e harness actually needs to read back: which capability
- * names are turned on for each side, and which mutation tool names the
- * provider can advertise because both the provider and its adapter agree the
- * capability is live. Names only — this never touches env values.
+ * Reduce the unified mutation capability surface to the backwards-compatible
+ * health shape operators and the e2e harness read back. Provider advertisement
+ * and adapter installation intentionally report the same code-owned catalog.
+ * Names only — this never touches environment values.
  */
 export function summarizeAgenticChatMutationCapabilitiesV1(
-	providerCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>> | undefined,
-	adapterCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>> | undefined
+	capabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>> | undefined
 ): AgenticChatMutationCapabilitiesSummaryV1 {
 	const providerNames: AgenticChatMutationCapabilityNameV1[] = [];
 	const adapterNames: AgenticChatMutationCapabilityNameV1[] = [];
 	const advertisedMutationToolNames: string[] = [];
 
 	for (const [capability, toolName] of AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1) {
-		const providerEnabled = providerCapabilities?.[capability] === true;
-		const adapterEnabled = adapterCapabilities?.[capability] === true;
-		if (providerEnabled) providerNames.push(capability);
-		if (adapterEnabled) adapterNames.push(capability);
-		if (providerEnabled && adapterEnabled) advertisedMutationToolNames.push(toolName);
+		const enabled = capabilities?.[capability] === true;
+		if (enabled) {
+			providerNames.push(capability);
+			adapterNames.push(capability);
+			advertisedMutationToolNames.push(toolName);
+		}
 	}
 
 	return {
@@ -127,8 +127,7 @@ export function createAgenticChatBootstrap(
 ): AgenticChatBootstrap {
 	const config = loadAgenticChatConfig(options.environment);
 	const mutationCapabilities = summarizeAgenticChatMutationCapabilitiesV1(
-		config.mutationProviderCapabilities,
-		config.mutationAdapterCapabilities
+		ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1
 	);
 	// One-line, JSON-ish startup record of the write surface — capability and
 	// tool names/counts only, never env values — so operators and the e2e
@@ -318,8 +317,7 @@ function createDefaultComposition(
 		liveVisionEnabled: input.config.liveVisionEnabled,
 		supervisorEnabled: input.config.supervisorEnabled,
 		consumptionBillingEnabled: input.config.consumptionBillingEnabled,
-		mutationProviderCapabilities: input.config.mutationProviderCapabilities,
-		mutationAdapterCapabilities: input.config.mutationAdapterCapabilities,
+		mutationCapabilities: ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 		liveVisionFetchImpl: input.fetchImpl,
 		consumerConfig: input.config.consumer,
 		publisherConfig: input.config.publisher,
@@ -327,8 +325,6 @@ function createDefaultComposition(
 		maxProviderRounds: input.config.maxProviderRounds,
 		maxToolCalls: input.config.maxToolCalls,
 		maxToolConcurrency: input.config.maxToolConcurrency,
-		concurrentReadsEnabled: input.config.concurrentReadsEnabled,
-		concurrentMutationsEnabled: input.config.concurrentMutationsEnabled,
 		onExecutionObservationError: input.onUsageError,
 		onConsumptionBillingError: input.onConsumptionBillingError ?? input.onUsageError
 	});

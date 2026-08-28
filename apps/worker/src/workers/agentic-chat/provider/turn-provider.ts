@@ -474,7 +474,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				) {
 					return null;
 				}
-				const directWrite = assessDirectWriteBatch(calls);
+				const directWrite = assessDirectWriteBatch(calls, value);
 				if (directWrite.kind === 'simple') return null;
 				const gate = buildSemanticTurnDispositionGateRequest(
 					{
@@ -529,7 +529,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// Production assembly refuses mutation capabilities without this lane.
 				// Keep reviewer-less deterministic/provider fixtures backward-compatible.
 				if (!semanticReviewRequired) return [];
-				if (!turnContract && assessDirectWriteBatch(calls).kind === 'simple') return [];
+				if (!turnContract && assessDirectWriteBatch(calls, currentRequest).kind === 'simple') {
+					return [];
+				}
 				return validateApprovedTurnContractMutations(
 					calls,
 					turnContract,
@@ -547,7 +549,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (pendingMutationBatchReview) {
 					throw providerError('provider_mutation_review_reused', 'permanent');
 				}
-				if (!turnContract && assessDirectWriteBatch(calls).kind === 'simple') {
+				if (!turnContract && assessDirectWriteBatch(calls, value).kind === 'simple') {
 					return null;
 				}
 				const batchSha256 = mutationBatchSha256(calls);
