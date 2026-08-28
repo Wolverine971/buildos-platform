@@ -566,8 +566,8 @@ to measure these control loops.
   aggregates are deliberately not guessed or backfilled; provider observations remain the source
   for old-turn analysis. A future naturally occurring validation failure should be used as the
   live counter receipt rather than paying for an intentionally invalid model turn.
-- **WP-6 logical provider-pass telemetry is implemented database-first and awaiting the worker
-  release.** Every provider request now carries one bounded pass role: `acting`, `contract_review`,
+- **WP-6 logical provider-pass telemetry is deployed and has a reconciled production receipt.**
+  Every provider request now carries one bounded pass role: `acting`, `contract_review`,
   `mutation_review`, `repair`, or `final_response`. Physical transport work is classified
   separately as `primary` or `retry`, with the existing provider-attempt number retained. The
   canonical aggregate is the count of distinct successful
@@ -584,22 +584,55 @@ to measure these control loops.
   disposable PostgreSQL contract proves first success `0→1`, exact replay remains `1`, a failed
   retry remains `1`, and an independently successful mutation-review pass sharing the same logical
   round produces `2`. The 129 focused worker tests and touched-file lint pass. The cumulative
-  PostgreSQL harness passes both tests. The repository-wide worker typecheck is temporarily blocked
-  by separate in-progress Tasker 71 semantic-discovery imports in the shared worktree; none of those
-  files belong to this release and they must not be staged with it. The E2E harness now fetches both
-  aggregate counters and rejects a completed `worker_realtime` turn with zero logical passes.
+  PostgreSQL harness passes both tests, and Railway's isolated checkout passed the complete worker
+  build. The E2E harness now fetches both aggregate counters and rejects a completed
+  `worker_realtime` turn with zero logical passes. Commit
+  `edeb943add8a26b3d1e540bde1b980b051697523` deployed as Railway deployment
+  `51bee5fc-bd07-4df4-8923-1461e111f7f0`; exact-release health reported a running worker, connected
+  database, healthy idle Realtime, zero active turns, and all 20 provider/adapter mutation
+  capabilities aligned. Vercel production deployment `dpl_6U4HbX5ipC7og4p9D8gPP7pMGigQ` is
+  Ready. The zero-spend two-scenario worker preflight passed all 77 active tests. One paid,
+  zero-retry `read-default-global-status` receipt then passed every harness assertion: turn
+  `2c1ecb7b-396f-4c6e-9e05-62be0ac7df06`, stream
+  `349309f6-9022-478a-a9b2-ba9552dd51a3`, session
+  `5b849247-0a30-464b-be27-c3e847b90ccd` completed in 10.932 seconds with one tool call in one round.
+  Its four provider observations are two primary, successful `acting` passes at logical rounds 1
+  and 2, with no retry. The durable distinct-pair derivation is `2` and
+  `chat_turn_runs.llm_pass_count=2`. Its two DeepSeek requests used 9,030 tokens and cost
+  $0.00053003. Historical unclassified turns remain untouched.
+- **The first bounded WP-5 optimization is implemented locally and awaiting independent review.**
+  The retained successful reschedule turn `8d6e6cca-0acb-438e-b73e-9525bd3c1f01` took 45.367
+  seconds, seven provider attempts, 87,823 tokens, and $0.01416853. Its pass graph paid an acting
+  model to re-express the exact single-task `due_at` value immediately after a fresh contract-SHA
+  approval, then paid the mutation reviewer to adjudicate that same exact batch. The worker now
+  deterministically compiles only this narrow approved shape: exactly one outcome, `action=update`,
+  `entity_kind=task`, one canonical UUID target, one required effect, and only nonempty RFC 3339
+  `due_at` / `start_at` changes whose required-field set matches exactly. Everything else falls
+  through to the existing acting path. The compiled call still crosses the ordinary allowlist,
+  schema validator, approved-contract validator, supervisor, SHA-bound independent mutation
+  reviewer, and durable execution fence. Reviewer prompts now record whether a batch came from the
+  acting model or deterministic contract compiler instead of falsely attributing compiler output
+  to the model. The exact corrected reschedule trace proves that the acting client remains at one
+  call through mutation approval, while three reviewer decisions still occur and the compiled
+  `update_onto_task` carries the exact target and date. Eleven compiler eligibility/decline tests,
+  all 88 provider tests, and the three provider-boundary tests pass (102 focused tests total);
+  touched production source lint is clean. This should reduce the retained trace from seven to six
+  logical provider passes without weakening either independent review gate. It is not deployed and
+  no paid before/after run has been made yet.
 
 ## Review handoff — post-deploy status and current review target
 
 This section is the handoff for an independent review. The deployed release and current local tree
 are intentionally different:
 
-- **Deployed and health-verified:** commit `841fbe5019b5c11a98f2b5dbbcb0af30786b64fb`
+- **Deployed and health-verified:** commit `edeb943add8a26b3d1e540bde1b980b051697523`
   contains WP-1/WP-2, typed reviewer correction, durable clarification/final-output gates,
   provider/internal normalization, aligned candidate evidence, and action-aware symbolic-field
   cleanup, canonical goal fields, outcome-scoped reviewer semantics, and explicit project-name
-  preservation. The isolated reschedule gate passes. Production evidence now proves reviewed
-  project/goal/task execution, durable session handoff, and the correctly scoped direct follow-up.
+  preservation, validation-failure counting, and classified logical provider-pass reconciliation.
+  The isolated reschedule gate passes. Production evidence now proves reviewed project/goal/task
+  execution, durable session handoff, the correctly scoped direct follow-up, and a nonzero provider
+  aggregate that exactly matches its classified durable rows.
 - **The project follow-up harness correction is pushed in `bca515378`.** The project-create scenario
   no longer requires contract review for its single focused-project follow-up create. It asserts the
   documented direct-write lane and still requires one successful task effect in the exact shifted
@@ -616,6 +649,12 @@ are intentionally different:
   output only after all three effects. The labelled organization fixture now continues from the
   created-folder receipt through a separately SHA-approved bound move, its mutation receipt, and
   terminal output. All 88 focused provider tests pass.
+- **The current local review target is the single-task schedule contract compiler.** Review the
+  eligibility predicate, stable system-authored tool-call identity, validation fallback, provider
+  round accounting, and mutation-review provenance. In particular, verify that the compiler cannot
+  accept free text, enums, creates, multiple targets/effects, noncanonical IDs, extra required
+  fields, relative dates, or impossible calendar timestamps, and that rejection preserves the old
+  acting-model path.
 
 ### Kernel and intended invariants
 
@@ -739,10 +778,12 @@ source/tests also passes.
 1. Review the WP-4 pending-choice ledger trust boundary and latest-message expiry invariant. The
    production worker/prewarm path is now proven; decide separately whether the retiring legacy
    atomic SSE snapshot needs parity.
-2. Finish the WP-6 worker release and verify one bounded natural production turn has classified
-   provider observations and a matching nonzero `llm_pass_count`; do not backfill historical turns.
-3. Use the now-trustworthy validation and provider-pass counters to pick one bounded WP-5
-   control-loop optimization. Keep retry counts distinct from logical pass roles in every report.
+2. Review the locally rehearsed WP-5 single-task schedule compiler boundary. Confirm that the exact
+   approved contract is the only source of compiled arguments and that the ordinary independent
+   mutation reviewer remains mandatory.
+3. After review, release the optimization and run one zero-retry reschedule receipt. Require the
+   classified provider observations to reconcile to `llm_pass_count` and demonstrate the expected
+   seven-to-six logical-pass reduction; do not backfill historical unclassified turns.
 
 ## Work packages
 
@@ -828,21 +869,24 @@ clarification, lists the candidates, and makes no completion claim.
 
 ### WP-5 — Reduce control-loop latency, tokens, and cost
 
-- Record acting, contract-review, mutation-review, repair, retry, and final-response passes
-  separately.
-- Remove repeated full-prompt/full-contract work where a compact typed correction is sufficient.
+- [x] Record acting, contract-review, mutation-review, repair, retry, and final-response passes
+      separately.
+- [x] Remove the repeated acting proposal pass when a freshly approved contract completely defines
+      one single-task `due_at` / `start_at` update. Keep every other shape on the existing path.
+- [ ] Release and measure one classified, zero-retry reschedule before/after receipt.
 - Preserve batched evidence and mutation widths; do not trade provider-pass savings for serial tool
   execution.
 - Compare each candidate against the exact production baselines in this tracker.
 
 Initial release targets, subject to one measured local rehearsal:
 
-| Scenario                       | Release target                                                                                                                               |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `project-organize`             | Correct tree; zero contract validation failures; no repeated reviewer correction; ≤10 provider attempts, <120k tokens, and <90s durable time |
-| `task-multi-update`            | Exactly three changes in one final batch; ≤1 contract correction, ≤6 provider attempts, <80k tokens, and <40s                                |
-| `task-complete-cold-reference` | Correct completion/forward carry in the same turn; no user clarification; ≤6 provider attempts                                               |
-| `project-create-contract`      | Valid first declaration, correct create, persisted shift, and completed follow-up                                                            |
+| Scenario                         | Release target                                                                                                                               |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `task-reschedule-cold-reference` | One exact task-date update; both reviewers retained; ≤6 successful logical provider passes; zero validation failures                         |
+| `project-organize`               | Correct tree; zero contract validation failures; no repeated reviewer correction; ≤10 provider attempts, <120k tokens, and <90s durable time |
+| `task-multi-update`              | Exactly three changes in one final batch; ≤1 contract correction, ≤6 provider attempts, <80k tokens, and <40s                                |
+| `task-complete-cold-reference`   | Correct completion/forward carry in the same turn; no user clarification; ≤6 provider attempts                                               |
+| `project-create-contract`        | Valid first declaration, correct create, persisted shift, and completed follow-up                                                            |
 
 If a threshold proves structurally impossible while every pass is necessary, record the pass graph
 and ratify a new target rather than silently weakening the gate.

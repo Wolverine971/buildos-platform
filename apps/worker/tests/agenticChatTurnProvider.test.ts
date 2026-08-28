@@ -32,6 +32,7 @@ import type { AgenticChatLiveVisionResolverPortV1 } from '../src/workers/agentic
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/readToolIdentity';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
+import { compileApprovedSingleTaskScheduleMutation } from '../src/workers/agentic-chat/provider/review/contract-mutation-compiler';
 import {
 	AgenticChatWorkerSupervisorBridge,
 	type AgenticChatWorkerSupervisorDecisionRecordV1,
@@ -305,6 +306,8 @@ function updateTaskToolDefinition(): ChatToolDefinition {
 				required: ['task_id'],
 				properties: {
 					task_id: { type: 'string' },
+					start_at: { type: ['string', 'null'] },
+					due_at: { type: ['string', 'null'] },
 					state_key: { type: 'string' },
 					assignee_actor_ids: { type: 'array', items: { type: 'string' } },
 					assignee_handles: { type: 'array', items: { type: 'string' } },
@@ -4957,6 +4960,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						additionalProperties: false,
 						properties: {
 							task_id: { type: 'string' },
+							start_at: { type: ['string', 'null'] },
+							due_at: { type: ['string', 'null'] },
 							state_key: { type: 'string' },
 							assignee_actor_ids: { type: 'array', items: { type: 'string' } },
 							assignee_handles: { type: 'array', items: { type: 'string' } },
@@ -8511,7 +8516,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			summary: 'Push only the beta list email task to Friday.',
 			outcomes: [
 				{
-					action: 'schedule',
+					action: 'update',
 					entity_kind: 'task',
 					target_ids: [betaListId],
 					required_fields: ['due_at'],
@@ -8568,6 +8573,13 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			contract_sha256: correctedSha256,
 			reference_candidates: []
 		};
+		const compiledMutation = compileApprovedSingleTaskScheduleMutation(correctedContract);
+		if (!compiledMutation) throw new Error('Expected the approved reschedule to compile');
+		const batchSha256 = mutationBatchReviewSha256([compiledMutation]);
+		const batchApprovalArguments = {
+			reason: 'The compiled update exactly implements the approved due date.',
+			batch_sha256: batchSha256
+		};
 		const client = clientWithRounds([
 			providerReadRound(
 				'provider-reschedule-contract-1',
@@ -8585,6 +8597,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'reviewer-reschedule-approval-1',
 				approvalArguments,
 				'approve_turn_contract_review'
+			),
+			providerReadRound(
+				'reviewer-reschedule-batch-approval-1',
+				batchApprovalArguments,
+				'approve_mutation_batch_review'
 			)
 		]);
 		const providerInput = executionInputWithReadSurface(
@@ -8683,6 +8700,72 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(
 			semanticReviewer.stream.mock.calls[1]?.[0].tools.map((tool) => tool.function.name)
 		).not.toContain('declare_read_only_turn');
+
+		const batchReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-reschedule-approval-1',
+						'approve_turn_contract_review',
+						approvalArguments,
+						{
+							status: 'turn_contract_review_approved',
+							contract_sha256: correctedSha256
+						}
+					)
+				]
+			})
+		);
+		expect(batchReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-reschedule-batch-approval-1',
+					toolName: 'approve_mutation_batch_review',
+					decidedBy: 'mutation_batch_reviewer'
+				})
+			])
+		);
+		expect(client.stream).toHaveBeenCalledOnce();
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(3);
+		const batchReviewRequest = semanticReviewer.stream.mock.calls[2]?.[0];
+		expect(String(batchReviewRequest?.messages[0]?.content)).toContain(
+			'worker deterministically compiled'
+		);
+		expect(String(batchReviewRequest?.messages[0]?.content)).not.toContain(
+			'The acting model proposed every tool name'
+		);
+
+		const mutationSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 5,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-reschedule-batch-approval-1',
+						'approve_mutation_batch_review',
+						batchApprovalArguments,
+						{
+							status: 'mutation_batch_review_approved',
+							batch_sha256: batchSha256
+						}
+					)
+				]
+			})
+		);
+		expect(mutationSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'mutating_tool',
+					providerToolCallId: compiledMutation.id,
+					toolName: 'update_onto_task',
+					arguments: {
+						task_id: betaListId,
+						due_at: '2026-09-04T17:00:00-04:00'
+					}
+				})
+			])
+		);
 	});
 
 	it('returns an invented batch value to the acting model once before approving the corrected batch', async () => {

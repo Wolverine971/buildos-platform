@@ -61,6 +61,7 @@ import {
 	buildContractCompletionRequest,
 	buildTurnContractWriteCarveOutRequest
 } from './review/contract-execution';
+import { compileApprovedSingleTaskScheduleMutation } from './review/contract-mutation-compiler';
 import {
 	type PendingProposalRevision,
 	buildContractRevisionRequest,
@@ -204,7 +205,8 @@ type ToolRoundStreamState = {
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[],
 		blockedToolCalls: ReadonlyMap<string, AgenticChatSupervisorBlockedToolCallV1>,
-		usage: AgenticChatProviderUsageV1 | null
+		usage: AgenticChatProviderUsageV1 | null,
+		proposalSource?: PendingMutationBatchReview['proposalSource']
 	): PendingMutationBatchReview | null;
 };
 
@@ -569,7 +571,13 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					labelBindings
 				);
 			},
-			stageMutationBatchReview(value, calls, blockedToolCalls, usage) {
+			stageMutationBatchReview(
+				value,
+				calls,
+				blockedToolCalls,
+				usage,
+				proposalSource = 'acting_model'
+			) {
 				if (
 					!semanticReviewRequired ||
 					!calls.some((call) => reviewedAgenticChatMutationSpecV1(call.name))
@@ -587,6 +595,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					throw providerError('provider_mutation_review_without_contract', 'permanent');
 				}
 				pendingMutationBatchReview = {
+					proposalSource,
 					batchSha256,
 					calls,
 					blockedToolCalls,
@@ -873,6 +882,19 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						currentRequest = appendSystemInstruction(
 							currentRequest,
 							organizeInstruction
+						);
+					}
+					const compiledMutation =
+						compileApprovedSingleTaskScheduleMutation(turnContract);
+					if (compiledMutation) {
+						pendingToolRound = null;
+						toolRoundCompleted = false;
+						nextProviderRound += 1;
+						return this.streamCompiledContractMutation(
+							currentRequest,
+							compiledMutation,
+							completedToolRound.usage,
+							state
 						);
 					}
 				} else if (
@@ -1569,6 +1591,53 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			pendingReviewTool = true;
 		} finally {
 			if (!pendingReviewTool) state.release();
+		}
+	}
+
+	/**
+	 * A single-target schedule contract already contains the complete mutation
+	 * arguments. Compile that narrow shape without another acting-model pass,
+	 * then cross the same validation, supervisor, independent review, and durable
+	 * execution boundaries as a model-proposed batch.
+	 */
+	private async *streamCompiledContractMutation(
+		request: ClientRequest,
+		call: CompletedProviderToolCall,
+		priorUsage: AgenticChatProviderUsageV1 | null,
+		state: ToolRoundStreamState
+	): AsyncGenerator<AgenticChatProviderStepV1> {
+		let keepLeaseForReview = false;
+		try {
+			assertAllowlistedCall(call, request.tools);
+			const validationIssues = [
+				...validateCompletedProviderCalls([call], request, state.getAdmittedTools()),
+				...state.validateApprovedMutations([call])
+			];
+			if (validationIssues.length > 0) {
+				// Eligibility is intentionally narrower than ordinary tool validation.
+				// If those layers ever diverge, preserve behavior by returning to the
+				// acting model instead of emitting a system-authored invalid call.
+				keepLeaseForReview = true;
+				yield* this.streamContinuation(request, priorUsage, state);
+				return;
+			}
+			const blockedToolCalls = observeSupervisorToolCalls(state, [call]);
+			yield* drainSupervisorSteps(state.supervisor);
+			const pending = state.stageMutationBatchReview(
+				request,
+				[call],
+				blockedToolCalls,
+				priorUsage,
+				'contract_compiler'
+			);
+			if (!pending) {
+				throw providerError('provider_compiled_mutation_review_missing', 'permanent');
+			}
+			state.setCurrentRequest(request);
+			keepLeaseForReview = true;
+			yield* this.streamMutationBatchReview(pending, state);
+		} finally {
+			if (!keepLeaseForReview) state.release();
 		}
 	}
 
