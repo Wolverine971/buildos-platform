@@ -5700,6 +5700,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			entities: [],
 			relationships: []
 		};
+		const wrongProjectArguments = {
+			...projectArguments,
+			project: { ...projectArguments.project, name: 'Agentic Worker' }
+		};
 		const batchSha256 = mutationBatchReviewSha256([
 			{
 				id: 'provider-create-composite-project',
@@ -5765,6 +5769,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'declare_turn_contract'
 			),
 			providerReadRound(
+				'provider-create-composite-project-wrong-name',
+				wrongProjectArguments,
+				'create_onto_project'
+			),
+			providerReadRound(
 				'provider-create-composite-project',
 				projectArguments,
 				'create_onto_project'
@@ -5794,7 +5803,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		);
 		input.requestPayload.context = { type: 'project_create' };
 		input.requestPayload.message =
-			'Create Agentic Worker PC1 with a September 15 goal and three starter tasks.';
+			'Create a project called Agentic Worker PC1. The goal is due September 15, with three starter tasks.';
 		const invocation = await new AgenticChatTurnProviderAdapter(
 			{
 				client,
@@ -5877,6 +5886,15 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(batchReviewSteps).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
+					providerToolCallId: 'provider-create-composite-project-wrong-name',
+					toolName: 'create_onto_project',
+					validationFailure: expect.objectContaining({
+						error: expect.stringContaining(
+							'create_onto_project.project.name must preserve that exact name'
+						)
+					})
+				}),
+				expect.objectContaining({
 					providerToolCallId: 'reviewer-composite-project-batch',
 					toolName: 'approve_mutation_batch_review'
 				})
@@ -5952,7 +5970,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				})
 			])
 		);
-		expect(client.stream.mock.calls[3]?.[0].tools.map((tool) => tool.function.name)).toEqual([
+		expect(client.stream.mock.calls[4]?.[0].tools.map((tool) => tool.function.name)).toEqual([
 			'create_onto_goal',
 			'create_onto_task'
 		]);

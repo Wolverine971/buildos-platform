@@ -43,6 +43,7 @@ export function validateCompletedProviderCalls(
 		}
 	);
 	validateProjectCreateShellContracts(calls, request, admittedTools, issues);
+	validateExplicitProjectCreateName(calls, request, issues);
 	// Hosted ontology ids are canonical UUIDs. A contract target typo previously
 	// survived semantic parsing, then made the candidate gate ask the user which
 	// member of an explicitly exhaustive set they meant. On a canonical
@@ -76,6 +77,63 @@ export function validateCompletedProviderCalls(
 		}
 	}
 	return issues;
+}
+
+function validateExplicitProjectCreateName(
+	calls: readonly CompletedProviderToolCall[],
+	request: AgenticChatTurnProviderRequestV1,
+	issues: ToolValidationIssue[]
+): void {
+	if (request.contextType !== 'project_create') return;
+	const expectedName = explicitProjectCreateName(request);
+	if (!expectedName) return;
+	for (const call of calls) {
+		if (call.name !== 'create_onto_project') continue;
+		const project = call.arguments.project;
+		const proposedName =
+			project && typeof project === 'object' && !Array.isArray(project)
+				? (project as JsonObject).name
+				: null;
+		if (
+			typeof proposedName === 'string' &&
+			canonicalDisplayName(proposedName) === canonicalDisplayName(expectedName)
+		) {
+			continue;
+		}
+		const error =
+			`The user explicitly named this project ${JSON.stringify(expectedName)}. ` +
+			`create_onto_project.project.name must preserve that exact name; received ${JSON.stringify(proposedName ?? null)}.`;
+		const existing = issues.find((issue) => issue.toolCall.id === call.id);
+		if (existing) {
+			existing.errors.push(error);
+		} else {
+			issues.push({
+				toolCall: completedProviderCallToChatToolCall(call),
+				toolName: call.name,
+				errors: [error]
+			});
+		}
+	}
+}
+
+function explicitProjectCreateName(request: AgenticChatTurnProviderRequestV1): string | null {
+	const currentUserMessage = [...request.messages]
+		.reverse()
+		.find((message) => message.role === 'user');
+	if (!currentUserMessage || typeof currentUserMessage.content !== 'string') return null;
+	const text = currentUserMessage.content;
+	const quoted = text.match(
+		/\bcreate\s+(?:a\s+)?project\s+(?:called|named)\s+(["'])(.{1,300}?)\1/i
+	);
+	const unquoted = text.match(
+		/\bcreate\s+(?:a\s+)?project\s+(?:called|named)\s+(.{1,300}?)(?=\.\s+(?:the|its|with|goal|tasks?|i)\b)/i
+	);
+	const name = (quoted?.[2] ?? unquoted?.[1])?.trim();
+	return name ? name.slice(0, 300) : null;
+}
+
+function canonicalDisplayName(value: string): string {
+	return value.normalize('NFC').trim().replace(/\s+/g, ' ');
 }
 
 function validateProjectCreateShellContracts(

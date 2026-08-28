@@ -463,8 +463,8 @@ to measure these control loops.
   `due_at` and incorrectly rejected the acting model's valid goal `target_date` twice before asking
   the user to confirm the already-stated date. No goal or task child executed. Cleanup removed the
   created harness project.
-- **Goal field canonicalization and outcome-scoped reviewer semantics are local and not yet
-  deployed.** Goal contract fields now deterministically normalize `title→name` and
+- **Goal field canonicalization and outcome-scoped reviewer semantics deployed in release
+  `02e4de41d`.** Goal contract fields now deterministically normalize `title→name` and
   `due_at→target_date`, including declared changes, because those are the unambiguous goal
   persistence/tool names. Contract field descriptions are now drawn only from the write tools that
   can satisfy each specific outcome; a task's `due_at` can no longer masquerade as a goal field.
@@ -472,21 +472,44 @@ to measure these control loops.
   their canonical form, and proves the review prompt includes `create_onto_goal.target_date` but not
   `create_onto_task.due_at`. Runtime typecheck/build and 61 runtime plus 89 focused worker tests
   pass.
+- **Release `02e4de41d` passes child creation but exposes explicit project-name loss.** Commit
+  `02e4de41d8cd775895ff01e876838b1f99ab2016` deployed as Railway deployment
+  `6bb356ab-809e-482e-8358-c2888bf6144c`; exact-release health and the zero-spend two-scenario
+  preflight passed. The paid, zero-retry project-create turn
+  `bda910b0-4ea6-4321-a6f1-d55731013791`, stream
+  `18eebf23-11d0-4f04-8d62-50c6366a3d79`, session
+  `ce77ddd7-1b38-4e51-99ff-a8b5a42fef4a` completed in 64.667 seconds with nine tool calls across
+  six rounds, seven provider attempts, 52,790 tokens, and $0.00957792. Contract approval, project
+  mutation review, project creation, child mutation review, one goal create, and all three task
+  creates succeeded. Goal `dc77355c-56ce-4929-878a-0b6ce88a00a7` retained
+  `target_date=2026-09-15`. However, the model shortened the explicitly requested harness name
+  `AE2E · run=tasker70-02e4-project-cr-bbfbf2c1-59f · Project Create Contract · 4e323bb1` to
+  `AE2E`, so the harness correctly failed its exact-name assertion before the same-session follow-up.
+  The shortened name fell outside prefix cleanup. Exact ID/name/creator-scoped cleanup removed test
+  project `15319b2e-db6d-4a30-8693-74c9b1c6c178` and its cascading test children; a follow-up query
+  confirms that exact project is absent.
+- **An explicit project-name preservation guard is local and not yet deployed.** In
+  `project_create` context, a syntactically explicit `project called …` or `project named …` value
+  is now compared with `create_onto_project.project.name` after Unicode/whitespace normalization.
+  A mismatch is returned to the acting model as a bounded provider-call validation error before
+  mutation review or execution. The composite regression first proposes the shortened production
+  value, proves it is rejected, then preserves the exact name and proceeds through the existing
+  reviewed child-creation path. Worker check and all 87 focused provider tests pass.
 
 ## Review handoff — post-deploy status and next local patch
 
 This section is the handoff for an independent review. The deployed release and current local tree
 are intentionally different:
 
-- **Deployed and health-verified:** commit `0ace56a2c17f0fd07090d111d797d6680a133a4e`
+- **Deployed and health-verified:** commit `02e4de41d8cd775895ff01e876838b1f99ab2016`
   contains WP-1/WP-2, typed reviewer correction, durable clarification/final-output gates,
   provider/internal normalization, aligned candidate evidence, and action-aware symbolic-field
-  cleanup. The isolated reschedule gate passes. The project-create gate proves the durable session
-  handoff and exposes the goal-field/reviewer-semantics defect described above.
-- **Local and not yet deployed:** goal postcondition aliases canonicalize to `name` / `target_date`,
-  and reviewer field semantics are scoped to the tools that can fulfill each outcome. No database
-  migration is involved. Do not run another paid project-create repetition until this patch is
-  deployed.
+  cleanup, plus canonical goal fields and outcome-scoped reviewer semantics. The isolated
+  reschedule gate passes. The project-create gate proves reviewed project/goal/task execution and
+  exposes the explicit-name preservation defect described above.
+- **Local and not yet deployed:** deterministic validation preserves an explicit project name before
+  project mutation review/execution. No database migration is involved. Do not run another paid
+  project-create repetition until this patch is deployed.
 
 ### Kernel and intended invariants
 
@@ -595,18 +618,19 @@ Primary files:
 The local runtime and worker typechecks pass. The focused runtime suites for turn contracts, repair
 instructions, and finalization; worker suites for the provider, execution adapter, terminal text
 integrity, provider boundary, catalog policy, and OpenRouter client; and web catalog/preparation
-suites all pass. Prettier checking on the touched source/tests and `git diff --check` also pass.
+suites all pass. The current explicit-name patch additionally passes all 87 focused provider tests
+and the full worker check. Prettier checking on the touched source/tests also passes.
 
 ### Next gate after review
 
-1. Review goal field aliasing and the outcome-to-write-tool scoping of reviewer field semantics.
-2. Deploy the goal-field/reviewer-semantics patch.
+1. Review the explicit project-name extraction boundary and pre-mutation comparison.
+2. Deploy the project-name preservation patch.
 3. Re-run the zero-spend worker-realtime preflight for `task-reschedule-cold-reference` and
    `project-create-contract`.
-4. Keep the passing `0ace56a2c` reschedule receipt as the isolated proof; this goal-only patch does
-   not require another paid reschedule repetition.
+4. Keep the passing `0ace56a2c` reschedule receipt as the isolated proof; this project-name-only
+   patch does not require another paid reschedule repetition.
 5. Run one paid, zero-retry project-create repetition and require the goal plus all three tasks,
-   then verify the same-session project-scoped follow-up.
+   the exact explicit project name, and the same-session project-scoped follow-up.
 
 ## Work packages
 
