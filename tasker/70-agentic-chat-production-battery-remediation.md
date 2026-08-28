@@ -556,11 +556,16 @@ to measure these control loops.
   only `validation` through the counted RPC. The disposable PostgreSQL contract proves `0→1`,
   replay stays `1`, and a generic operational failure stays `1`; its full 21-test Phase 2C suite,
   the focused worker adapter tests, and worker lint/typecheck pass. The migration
-  `agentic_chat_validation_failure_count` is applied to production Supabase, where the exact RPC
-  signature exists, `service_role` can execute it, and `authenticated` / `anon` cannot. Historical
+  `agentic_chat_validation_failure_count` is applied to production Supabase as version
+  `20260828214734`, where the exact RPC signature exists, `service_role` can execute it, and
+  `authenticated` / `anon` cannot. Commit
+  `7b15ff664acb87870f66c5b21c428ca42d97a544` deployed as Railway deployment
+  `9532021e-8648-405c-823d-4d28db27ca2e`; exact-release health reports a running worker, healthy
+  Realtime, zero active turns, and all 20 provider/adapter mutation capabilities aligned. The
+  reschedule/project-create worker preflight then passed with model execution disabled. Historical
   aggregates are deliberately not guessed or backfilled; provider observations remain the source
-  for old-turn analysis. The worker code still needs its Railway release and one no-spend/runtime
-  proof before this telemetry defect is considered deployed end to end.
+  for old-turn analysis. A future naturally occurring validation failure should be used as the
+  live counter receipt rather than paying for an intentionally invalid model turn.
 
 ## Review handoff — post-deploy status and current review target
 

@@ -247,8 +247,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			sqlPath(
 				'supabase/tests/20260808130000_agentic_chat_tool_validation_failure_ledger.test.sql'
 			),
-			sqlPath('supabase/migrations/20260828130000_agentic_chat_validation_failure_count.sql'),
-			sqlPath('supabase/tests/20260828130000_agentic_chat_validation_failure_count.test.sql'),
+			sqlPath('supabase/migrations/20260828214734_agentic_chat_validation_failure_count.sql'),
+			sqlPath('supabase/tests/20260828214734_agentic_chat_validation_failure_count.test.sql'),
 			sqlPath('supabase/tests/20260808140000_agentic_chat_true_tool_round_count.test.sql'),
 			sqlPath(
 				'supabase/tests/20260809010000_agentic_chat_mutation_tool_execution_ledger.test.sql'
