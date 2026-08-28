@@ -3,8 +3,40 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildGatewayRequiredFieldRepairInstruction,
 	buildProjectCreateNoExecutionRepairInstruction,
-	buildToolValidationRepairInstruction
+	buildToolValidationRepairInstruction,
+	classifyReceiptGroundedAssistantDisposition
 } from './repair-instructions';
+
+describe('receipt-grounded assistant disposition', () => {
+	it('classifies the exact unreceipted production completion claim', () => {
+		expect(
+			classifyReceiptGroundedAssistantDisposition(
+				'Got it — marking the usage-based pricing migration done. And just to make sure I follow: when you say "the email one," are you referring to Fix the email verification bug or Send the launch email?'
+			)
+		).toBe('mutation_claim');
+	});
+
+	it('classifies an unresolved target question but leaves optional offers alone', () => {
+		expect(
+			classifyReceiptGroundedAssistantDisposition(
+				'Which matching task should I mark complete?'
+			)
+		).toBe('clarification_question');
+		expect(
+			classifyReceiptGroundedAssistantDisposition(
+				'Here is the current project status. Would you like me to summarize the risks too?'
+			)
+		).toBeNull();
+	});
+
+	it('does not mistake suggested wording for a completed mutation', () => {
+		expect(
+			classifyReceiptGroundedAssistantDisposition(
+				'Perhaps suggest updating it or marking tasks done.'
+			)
+		).toBeNull();
+	});
+});
 
 describe('tool validation repair instructions', () => {
 	it('repairs web project relationships without switching execution workflows', () => {

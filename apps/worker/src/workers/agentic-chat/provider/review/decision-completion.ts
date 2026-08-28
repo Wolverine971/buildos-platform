@@ -4,7 +4,7 @@ import {
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
-import type { TurnContract } from '@buildos/agentic-chat-runtime/loop';
+import { type TurnContract, parseDeclaredTurnContract } from '@buildos/agentic-chat-runtime/loop';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
@@ -57,9 +57,13 @@ export function completeTurnContractReviewDecision(
 		const readOnly = call.name === DECLARE_READ_ONLY_TURN_TOOL_NAME;
 		const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
 		const revision = call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME;
+		const correctedContract = revision
+			? parseDeclaredTurnContract(call.arguments.corrected_contract)
+			: null;
 		if (
 			(!approval && !readOnly && !clarification && !revision) ||
 			(revision && !input.allowRevision) ||
+			(revision && !correctedContract) ||
 			(approval && call.arguments.contract_sha256 !== input.contractReviewSha256) ||
 			validateCompletedProviderCalls(calls, input.reviewRequest).length > 0
 		) {

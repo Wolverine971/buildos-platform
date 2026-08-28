@@ -19980,6 +19980,19 @@ export type Database = {
         }
         Returns: Json
       }
+      persist_agentic_chat_session_handoff: {
+        Args: {
+          p_context_type: string
+          p_entity_id: string
+          p_execution_generation: number
+          p_processing_token: string
+          p_project_id: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       persist_agentic_chat_supervisor_question_checkpoint: {
         Args: {
           p_checkpoint_id: string

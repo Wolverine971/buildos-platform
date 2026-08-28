@@ -72,6 +72,9 @@ describe('semantic turn contracts', () => {
 		expect(definitions.get('request_turn_clarification')?.function.parameters.required).toEqual(
 			['reason', 'question']
 		);
+		expect(
+			definitions.get('request_turn_clarification')?.function.parameters.properties.candidates
+		).toMatchObject({ minItems: 2, maxItems: 20 });
 	});
 
 	it('executes structured standard controls without a provider-specific tool-call envelope', () => {
@@ -80,7 +83,11 @@ describe('semantic turn contracts', () => {
 				toolName: 'request_turn_clarification',
 				arguments: {
 					reason: 'Two tasks remain plausible.',
-					question: 'Which task should I update?'
+					question: 'Should I update Alpha task or Beta task?',
+					candidates: [
+						{ id: 'task-alpha', label: 'Alpha task', kind: 'task' },
+						{ id: 'task-beta', label: 'Beta task', kind: 'task' }
+					]
 				}
 			})
 		).toMatchObject({
@@ -88,7 +95,11 @@ describe('semantic turn contracts', () => {
 			requiresUserAction: true,
 			result: {
 				status: 'clarification_required',
-				requires_user_action: true
+				requires_user_action: true,
+				candidates: [
+					{ id: 'task-alpha', label: 'Alpha task', kind: 'task' },
+					{ id: 'task-beta', label: 'Beta task', kind: 'task' }
+				]
 			}
 		});
 		expect(
@@ -226,12 +237,38 @@ describe('semantic turn contracts', () => {
 	it('records a clarification disposition as requiring user action without creating a contract', () => {
 		const clarification = call('request_turn_clarification', {
 			reason: 'More than one accessible task is a plausible referent.',
-			question: 'Which of the matching tasks should I update?'
+			question: 'Should I update Alpha task or Beta task?',
+			candidates: [
+				{ id: 'task-alpha', label: 'Alpha task', kind: 'task' },
+				{ id: 'task-beta', label: 'Beta task', kind: 'task' }
+			]
 		});
 		expect(executeRequestTurnClarification(clarification)).toMatchObject({
 			success: true,
 			requires_user_action: true,
-			result: { status: 'clarification_required', requires_user_action: true }
+			result: {
+				status: 'clarification_required',
+				requires_user_action: true,
+				candidates: [
+					{ id: 'task-alpha', label: 'Alpha task', kind: 'task' },
+					{ id: 'task-beta', label: 'Beta task', kind: 'task' }
+				]
+			}
+		});
+		expect(
+			executeRequestTurnClarification(
+				call('request_turn_clarification', {
+					reason: 'Two choices.',
+					question: 'Which task?',
+					candidates: [
+						{ id: 'task-alpha', label: 'Alpha task' },
+						{ id: 'task-beta', label: 'Beta task' }
+					]
+				})
+			)
+		).toMatchObject({
+			success: false,
+			error: 'Turn clarification failed: the question must name every supplied candidate label verbatim; missing "Alpha task", "Beta task".'
 		});
 		expect(
 			executeRequestTurnClarification(call('request_turn_clarification', { reason: 'x' }))

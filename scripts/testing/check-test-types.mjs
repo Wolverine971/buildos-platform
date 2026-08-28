@@ -23,17 +23,27 @@ if (!workspace || !config) {
 	process.exit(2);
 }
 
+// Some workspaces intentionally install both stable TypeScript and the native
+// preview. Their packages expose the same `tsc` bin name, so the generated
+// `.bin/tsc` shim depends on install order. Resolve the configured compiler
+// package directly to keep the debt baseline reproducible after every install.
+const compilerPackage = config.compiler ?? 'typescript';
 const executable = resolve(
 	process.cwd(),
 	'node_modules',
-	'.bin',
-	process.platform === 'win32' ? 'tsc.cmd' : 'tsc'
+	...compilerPackage.split('/'),
+	'bin',
+	'tsc'
 );
-const result = spawnSync(executable, ['-p', config.tsconfig, '--noEmit', '--pretty', 'false'], {
-	cwd: process.cwd(),
-	encoding: 'utf8',
-	maxBuffer: 64 * 1024 * 1024
-});
+const result = spawnSync(
+	process.execPath,
+	[executable, '-p', config.tsconfig, '--noEmit', '--pretty', 'false'],
+	{
+		cwd: process.cwd(),
+		encoding: 'utf8',
+		maxBuffer: 64 * 1024 * 1024
+	}
+);
 
 if (result.error) {
 	console.error(`Unable to run the ${workspace} test typecheck:`, result.error.message);

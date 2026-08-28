@@ -1,3 +1,4 @@
+// packages/agentic-chat-runtime/src/catalog/definitions/controls.ts
 import type { ChatToolDefinition } from '@buildos/shared-types';
 
 export const DECLARE_TURN_CONTRACT_TOOL_NAME = 'declare_turn_contract';
@@ -199,6 +200,37 @@ export const REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION: ChatToolDefinition = {
 					type: 'string',
 					maxLength: 500,
 					description: 'A concise question that lets the user resolve the choice.'
+				},
+				candidates: {
+					type: 'array',
+					minItems: 2,
+					maxItems: 20,
+					description:
+						'Every known plausible target or value for the unresolved choice. Include this when loaded context identifies a finite candidate set, and name every label in the question.',
+					items: {
+						type: 'object',
+						additionalProperties: false,
+						properties: {
+							id: {
+								type: 'string',
+								maxLength: 160,
+								description:
+									'Stable entity ID when this is an existing durable target.'
+							},
+							label: {
+								type: 'string',
+								maxLength: 200,
+								description: 'Human-readable choice named verbatim in the question.'
+							},
+							kind: {
+								type: 'string',
+								maxLength: 40,
+								description:
+									'Optional entity or value kind, such as task, document, or date.'
+							}
+						},
+						required: ['label']
+					}
 				}
 			},
 			required: ['reason', 'question']

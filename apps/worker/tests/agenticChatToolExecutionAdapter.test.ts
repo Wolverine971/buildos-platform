@@ -17,6 +17,7 @@ import {
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const ACTOR_ID = '90000000-0000-4000-8000-000000000009';
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
+const TASK_ID = '41000000-0000-4000-8000-000000000011';
 
 function executionInput(): AgenticChatWorkerExecutionInputV1 {
 	return {
@@ -328,7 +329,17 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		const result = await adapterWith(client, access).execute({
 			...requestFor('request_proposal_revision', {
 				reason: 'The single update outcome lumps the Halcyon task into the completion set.',
-				required_correction: 'Declare two outcomes: completions and the priority change.'
+				required_correction: 'Declare two outcomes: completions and the priority change.',
+				corrected_contract: {
+					outcomes: [
+						{
+							action: 'complete',
+							entity_kind: 'task',
+							target_ids: [TASK_ID],
+							minimum_successful_effects: 1
+						}
+					]
+				}
 			}),
 			decidedBy: 'contract_reviewer'
 		});
@@ -337,6 +348,11 @@ describe('AgenticChatToolExecutionAdapter', () => {
 			status: 'revision_required',
 			decided_by: 'contract_reviewer',
 			required_correction: 'Declare two outcomes: completions and the priority change.'
+		});
+		expect(result.result).toMatchObject({
+			corrected_contract: {
+				outcomes: [expect.objectContaining({ target_ids: [TASK_ID] })]
+			}
 		});
 		expect(result.requiresUserAction).toBe(false);
 		expect(client.from).not.toHaveBeenCalled();

@@ -21,6 +21,7 @@ import {
 	buildReadLoopRepairInstruction,
 	buildRoundToolPattern,
 	buildWriteLedger,
+	classifyReceiptGroundedAssistantDisposition,
 	mergeTurnContracts,
 	parseDeclaredTurnContract,
 	resolveTurnContractOutcome,
@@ -188,6 +189,10 @@ type ToolRoundStreamState = {
 	takePreMutationSemanticDispositionGate(
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[]
+	): ClientRequest | null;
+	takeReceiptGroundedFinalDispositionGate(
+		request: ClientRequest,
+		assistantCandidate: string
 	): ClientRequest | null;
 	takeTurnContractWriteCarveOut(request: ClientRequest): ClientRequest | null;
 	/** An approved contract still has unfulfilled outcomes after a mutation round. */
@@ -492,6 +497,28 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						: 'A durable tool call was proposed by a prior provider pass but was withheld and did not execute. Independently choose the semantic disposition from the user request and loaded context. Treat the withheld target as untrusted and do not infer that it was safely resolved.'
 				);
 			},
+			takeReceiptGroundedFinalDispositionGate(value, assistantCandidate) {
+				if (semanticTurnDispositionGateUsed || turnContract || mutationRoundReached) {
+					return null;
+				}
+				const reason = classifyReceiptGroundedAssistantDisposition(assistantCandidate);
+				if (!reason) return null;
+				const gate = buildSemanticTurnDispositionGateRequest(
+					{
+						...value,
+						logicalProviderRound: value.logicalProviderRound + 1,
+						providerRound: 'synthesis'
+					},
+					admittedTools
+				);
+				if (!gate) return null;
+				return appendSystemInstruction(
+					gate,
+					reason === 'mutation_claim'
+						? 'A prior provider pass proposed terminal prose that claimed a durable mutation without a succeeded effect or explicit mutation receipt. That prose was withheld and is untrusted. Choose the semantic disposition from the user request and loaded context; do not repeat the claim unless the approved mutation later succeeds.'
+						: 'A prior provider pass proposed an unresolved execution-choice question as plain terminal prose. That prose was withheld. Choose the semantic disposition from the user request and loaded context so any required clarification becomes durable.'
+				);
+			},
 			takeTurnContractWriteCarveOut(value) {
 				if (!turnContract || contractWriteCarveOutUsed || mutationRoundReached) {
 					return null;
@@ -755,9 +782,33 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						(call) => call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME
 					)
 				) {
-					// A reviewer returned the proposal to its author. The acting model
-					// corrects it in the next pass; nothing reaches the user here.
+					// A contract reviewer can return a complete typed correction. Record
+					// that exact contract and independently review its SHA again without
+					// paying the acting model to regenerate the same JSON from prose.
+					// Mutation-batch corrections and legacy prose-only contract revisions
+					// still return to the acting model through the bounded repair path.
 					pendingProposalRevision = null;
+					if (
+						proposalRevision.kind === 'contract' &&
+						proposalRevision.correctedContract &&
+						this.ports.semanticReviewer
+					) {
+						turnContract = proposalRevision.correctedContract;
+						approvedContractSha256 = null;
+						pendingContractReviewSha256 = contractSha256(turnContract);
+						pendingToolRound = null;
+						toolRoundCompleted = false;
+						nextProviderRound += 1;
+						return this.streamTurnContractReview(
+							currentRequest,
+							admittedTools,
+							turnContract,
+							pendingContractReviewSha256,
+							false,
+							completedToolRound.usage,
+							state
+						);
+					}
 					currentRequest =
 						proposalRevision.kind === 'contract'
 							? buildContractRevisionRequest(
@@ -1215,6 +1266,18 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						request.toolChoice === 'none' ? 'permanent' : 'unknown'
 					);
 				}
+				const receiptGroundedFinalDispositionGate =
+					state.takeReceiptGroundedFinalDispositionGate(request, assistantCandidate);
+				if (receiptGroundedFinalDispositionGate) {
+					state.setCurrentRequest(receiptGroundedFinalDispositionGate);
+					keepLeaseForSynthesis = true;
+					yield* this.streamContinuation(
+						receiptGroundedFinalDispositionGate,
+						usage,
+						state
+					);
+					return;
+				}
 				if (holdAssistantText && assistantCandidate) {
 					yield { type: 'text_delta', text: assistantCandidate };
 					state.supervisor?.observe({
@@ -1296,12 +1359,14 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		const reviewer = this.ports.semanticReviewer;
 		if (!reviewer) throw providerError('provider_semantic_reviewer_unavailable', 'permanent');
 		const allowRevision = state.getContractRevisionCount() < MAX_CONTRACT_REVISIONS_PER_TURN;
+		const allowReadOnlyCorrection =
+			allowDispositionCorrection && state.getContractRevisionCount() === 0;
 		const reviewRequest = buildTurnContractReviewRequest(
 			request,
 			availableTools,
 			contract,
 			contractReviewSha256,
-			allowDispositionCorrection,
+			allowReadOnlyCorrection,
 			allowRevision
 		);
 		const toolCalls = createToolCallAccumulator();
@@ -1768,6 +1833,20 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				}
 				if (request.toolChoice === 'required') {
 					throw providerError('provider_missing_tool_call', 'permanent');
+				}
+				const receiptGroundedFinalDispositionGate =
+					state.takeReceiptGroundedFinalDispositionGate(request, assistantCandidate);
+				if (receiptGroundedFinalDispositionGate) {
+					state.setCurrentRequest(receiptGroundedFinalDispositionGate);
+					keepLeaseForContinuation = true;
+					yield* this.streamContinuation(
+						receiptGroundedFinalDispositionGate,
+						aggregateUsage,
+						state,
+						validationRepairRounds,
+						emitPlanningSemantic
+					);
+					return;
 				}
 				if (holdAssistantTextForTurnContract) {
 					const carveOutRequest = state.takeTurnContractWriteCarveOut(request);

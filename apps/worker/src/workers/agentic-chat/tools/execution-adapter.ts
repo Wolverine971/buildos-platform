@@ -124,6 +124,9 @@ const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
 			status: 'revision_required',
 			reason,
 			required_correction: requiredCorrection,
+			...(args.corrected_contract && typeof args.corrected_contract === 'object'
+				? { corrected_contract: args.corrected_contract }
+				: {}),
 			instruction:
 				'Independent review returned this proposal to the acting model for correction. Correct it; do not ask the user.'
 		});

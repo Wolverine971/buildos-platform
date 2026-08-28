@@ -15,7 +15,7 @@ import { reviewedAgenticChatMutationSpecV1 } from '../../mutationToolCatalog';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from '../contracts';
 import { providerError } from '../protocol';
 import {
-	PROPOSAL_REVISION_TOOL,
+	CONTRACT_PROPOSAL_REVISION_TOOL,
 	SEMANTIC_COMMISSION_GUIDANCE,
 	TURN_CONTRACT_REVIEW_APPROVAL_TOOL
 } from './controls';
@@ -87,19 +87,27 @@ export function buildTurnContractReviewRequest(
 					'Information gathering, research, comparison, analysis, and advice remain read-only when the user says they are meant to inform a later possible change. Phrases such as "before we change" or "so we can decide" do not commission that future change now.',
 					...SEMANTIC_COMMISSION_GUIDANCE,
 					...projectCreateShellGuidance(request.contextType, availableTools),
-					'If the current request commissions no durable change, choose declare_read_only_turn instead of inventing a contract or asking the user to clarify a change they did not request.',
+					...(allowDispositionCorrection
+						? [
+								'If the current request commissions no durable change, choose declare_read_only_turn instead of inventing a contract or asking the user to clarify a change they did not request.'
+							]
+						: [
+								'A prior independent review already established that this turn commissions a durable change. Read-only correction is no longer available; judge only whether this revised exact contract matches that commission or whether a genuine unresolved user choice remains.'
+							]),
 					'Target IDs are existing entity IDs that bound the eligible scope; create outcomes have no target ID before execution. minimum_successful_effects is the required cardinality. Approve a minimum smaller than the target set only when the user commission genuinely allows that bounded partial result; require the full cardinality when every listed target must change.',
 					"A create outcome may carry a label and a move outcome may carry parent_label: the move's destination is the entity that labelled create will produce, and the system binds the id after the create executes. Treat such a destination as resolved; do not ask for its id.",
 					'If multiple loaded entities plausibly match one descriptive reference, or a required value is absent from both the request and the loaded context and the field semantics, the choice belongs to the user: request clarification.',
 					...(allowRevision
 						? [
-								'If the user commission is clear but the proposed contract misstates it — wrong cardinality, targets that need different values lumped into one outcome, an outcome the user did not commission, or a required value the turn record already resolves but the contract omits — call request_proposal_revision with the exact correction. That returns the contract to the acting model, not the user. If any descriptive reference has several plausible candidates, clarify instead; never revise around an ambiguous target.'
+								'If the user commission is clear but the proposed contract misstates it — wrong cardinality, targets that need different values lumped into one outcome, an outcome the user did not commission, or a required value the turn record already resolves but the contract omits — call request_proposal_revision with the complete corrected_contract plus a concise explanation. The corrected contract is durably recorded and independently re-reviewed; it is not approved by the revision call itself. If any descriptive reference has several plausible candidates, clarify instead; never revise around an ambiguous target.'
 							]
 						: [
 								'The acting model has used every correction allowed this turn; approve, correct to read-only, or ask the user.'
 							]),
 					'For clarification, ask one concise user-facing question and name the plausible human-readable choices from the loaded evidence when available.',
-					'Choose exactly one tool. You may correct a false contract to read-only or return a misstated contract for revision; never rewrite, broaden, or substitute a durable contract yourself.'
+					allowDispositionCorrection
+						? 'Choose exactly one tool. You may correct a false contract to read-only or return a misstated contract for typed revision; never broaden or substitute the user commission.'
+						: 'Choose exactly one available tool. Approve the exact contract, return a complete typed correction while revisions remain, or request clarification only for a genuine unresolved user choice. Never broaden or substitute the user commission.'
 				].join(' ')
 			},
 			{
@@ -115,7 +123,7 @@ export function buildTurnContractReviewRequest(
 		tools: [
 			approvalTool,
 			...(readOnlyDispositionTool ? [readOnlyDispositionTool] : []),
-			...(allowRevision ? [PROPOSAL_REVISION_TOOL] : []),
+			...(allowRevision ? [CONTRACT_PROPOSAL_REVISION_TOOL] : []),
 			clarificationTool
 		],
 		toolChoice: 'required',
@@ -220,7 +228,7 @@ export function buildWorkerSemanticMutationOrdering(
 			'Worker write routing: the large complex-write contract route is deferred in this opening pass.',
 			'For a clear commissioned durable change, propose the complete concrete mutation batch with the available mutation tools. The worker deterministically executes only an eligible simple batch; it withholds any complex batch before execution and opens the independently reviewed contract route in the next pass.',
 			'Do not split, shrink, or serialize a complex request merely to fit the simple lane. Include the complete commissioned batch that can be expressed with the available tools.',
-			'Call request_turn_clarification instead when a required target or value has multiple plausible choices. Never guess among loaded candidates.',
+			'Call request_turn_clarification instead when a required target or value has multiple plausible choices. Never guess among loaded candidates. Include every known candidate with its stable ID when available and name every candidate label in the question.',
 			'For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
 			'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
 			...SEMANTIC_COMMISSION_GUIDANCE
@@ -232,7 +240,7 @@ export function buildWorkerSemanticMutationOrdering(
 		'Examples of simple requests: rename this focused project; create these three explicitly named tasks in this project; create a new goal with the requested name.',
 		'Complex means selecting any existing child entity from project or global context, more than three mutations, multiple rounds or dependencies, project creation, move or organize work, unlinking or destructive effects, high-impact operations, model-selected scope, or any ambiguous required target/value. For a complex request, call declare_turn_contract with the complete outcome set before any mutation.',
 		'Examples of complex requests: complete a task selected from this project; organize these documents; clean up duplicates; update everything that looks outdated; create a project and then populate it; change an ambiguous item reference.',
-		'Call request_turn_clarification when a commissioned durable change still has an unresolved required user choice. For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
+		'Call request_turn_clarification when a commissioned durable change still has an unresolved required user choice. Include every known candidate with its stable ID when available and name every candidate label in the question. For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
 		'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
 		...SEMANTIC_COMMISSION_GUIDANCE,
 		...projectCreateShellGuidance(contextType, tools),

@@ -4,7 +4,7 @@ import {
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
-import type { TurnContract } from '@buildos/agentic-chat-runtime/loop';
+import { type TurnContract, parseDeclaredTurnContract } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from '../contracts';
 import { appendSystemInstruction } from '../request-builders';
 import type { CompletedProviderToolCall } from '../stream-tool-calls';
@@ -17,6 +17,7 @@ export type PendingProposalRevision = {
 	kind: 'contract' | 'mutation_batch';
 	reason: string;
 	requiredCorrection: string;
+	correctedContract: TurnContract | null;
 };
 
 export type ReferenceCandidateGroup = {
@@ -47,6 +48,7 @@ export function buildReviewFallbackClarification(
 export function readProposalRevision(argumentsValue: JsonObject): {
 	reason: string;
 	requiredCorrection: string;
+	correctedContract: TurnContract | null;
 } {
 	const reason =
 		typeof argumentsValue.reason === 'string' ? argumentsValue.reason.trim().slice(0, 400) : '';
@@ -54,7 +56,11 @@ export function readProposalRevision(argumentsValue: JsonObject): {
 		typeof argumentsValue.required_correction === 'string'
 			? argumentsValue.required_correction.trim().slice(0, 400)
 			: '';
-	return { reason, requiredCorrection };
+	return {
+		reason,
+		requiredCorrection,
+		correctedContract: parseDeclaredTurnContract(argumentsValue.corrected_contract)
+	};
 }
 
 function readReferenceCandidates(value: unknown): ReferenceCandidateGroup[] {
@@ -125,18 +131,42 @@ export function findAmbiguousReferenceCandidatesForTargetIds(
 	return null;
 }
 
+const CANDIDATE_GATE_QUESTION_MAX_LENGTH = 500;
+const CANDIDATE_GATE_LABEL_SEPARATOR = ' · ';
+
 export function buildCandidateGateClarification(
 	request: AgenticChatTurnProviderRequestV1,
 	group: ReferenceCandidateGroup
 ): CompletedProviderToolCall {
 	const id = `candidate-gate:${request.turnRunId}:${request.logicalProviderRound}`;
-	const titles = group.candidates.map((candidate) => candidate.title).join(' · ');
+	// The deterministic clarification executor rejects a question that does not
+	// contain every supplied candidate label verbatim, so the question prefix and
+	// every label must share one truncation budget instead of slicing the
+	// assembled question afterwards.
+	const questionPrefix = `Which one did you mean by "${group.reference}"? `;
+	const labelBudget = Math.floor(
+		(CANDIDATE_GATE_QUESTION_MAX_LENGTH -
+			questionPrefix.length -
+			CANDIDATE_GATE_LABEL_SEPARATOR.length * (group.candidates.length - 1)) /
+			group.candidates.length
+	);
+	const candidates = group.candidates.map((candidate) => {
+		const label = candidate.title.slice(0, labelBudget).trim();
+		return {
+			id: candidate.id,
+			label: label || candidate.id.slice(0, labelBudget),
+			kind: 'entity'
+		};
+	});
 	const argumentsValue: JsonObject = {
 		reason: `Independent review listed ${group.candidates.length} loaded entities that plausibly match "${group.reference}" but the contract targets only some of them; the choice belongs to the user.`.slice(
 			0,
 			240
 		),
-		question: `Which one did you mean by "${group.reference}"? ${titles}`.slice(0, 500)
+		question: `${questionPrefix}${candidates
+			.map((candidate) => candidate.label)
+			.join(CANDIDATE_GATE_LABEL_SEPARATOR)}`,
+		candidates
 	};
 	return {
 		id,

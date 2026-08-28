@@ -7,6 +7,7 @@ import {
 	doesToolExecutionRequireUserAction,
 	isDuplicateWriteSkippedExecution
 } from '../loop/tool-classification';
+import { classifyReceiptGroundedAssistantDisposition } from '../loop/repair-instructions';
 
 export type FinalizationGuardReason =
 	| 'empty_after_tools'
@@ -537,8 +538,14 @@ export function applyFinalizationGuard(
 		successfulWrites === 0 && successfulReads > 0 && candidate && isLikelyLeadIn(candidate);
 	const shouldReplaceMutationLeadIn =
 		mutationIncomplete && Boolean(candidate) && isLikelyLeadIn(candidate);
+	const shouldReplaceMutationClaim =
+		mutationIncomplete &&
+		classifyReceiptGroundedAssistantDisposition(candidate) === 'mutation_claim';
 	const shouldReplaceLeadIn =
-		shouldReplaceWriteLeadIn || shouldReplaceReadLeadIn || shouldReplaceMutationLeadIn;
+		shouldReplaceWriteLeadIn ||
+		shouldReplaceReadLeadIn ||
+		shouldReplaceMutationLeadIn ||
+		shouldReplaceMutationClaim;
 	const shouldSynthesizeEmpty = !candidate;
 
 	if (!shouldReplaceLeadIn && !shouldSynthesizeEmpty) {

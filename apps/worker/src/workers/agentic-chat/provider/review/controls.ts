@@ -1,4 +1,6 @@
 // apps/worker/src/workers/agentic-chat/provider/review/controls.ts
+import type { JsonObject } from '@buildos/shared-types';
+import { TURN_CONTRACT_TOOL_DEFINITION } from '@buildos/agentic-chat-runtime/catalog';
 import type { AgenticChatTurnProviderToolV1 } from '../contracts';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
@@ -107,6 +109,27 @@ export const PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Object.free
 					maxLength: 400,
 					description:
 						'The exact correction the acting model must make so the proposal matches the user commission.'
+				}
+			}
+		}
+	}
+});
+
+export const CONTRACT_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
+	...PROPOSAL_REVISION_TOOL,
+	function: {
+		...PROPOSAL_REVISION_TOOL.function,
+		description:
+			"Return the acting model's contract for an exact machine-readable correction when the user's commission is clear but the proposal misstates it. The corrected contract is durably recorded and independently re-reviewed; it never reaches execution merely because this tool supplied it. Do not use this when a choice genuinely belongs to the user.",
+		parameters: {
+			...PROPOSAL_REVISION_TOOL.function.parameters,
+			required: ['reason', 'required_correction', 'corrected_contract'],
+			properties: {
+				...(PROPOSAL_REVISION_TOOL.function.parameters.properties as JsonObject),
+				corrected_contract: {
+					...(TURN_CONTRACT_TOOL_DEFINITION.function.parameters as unknown as JsonObject),
+					description:
+						'The complete corrected turn contract. It must contain only outcomes already commissioned and values resolved by the turn evidence.'
 				}
 			}
 		}

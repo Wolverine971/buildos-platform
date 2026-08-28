@@ -4,11 +4,13 @@
 	"workspaces": {
 		"web": {
 			"tsconfig": "tsconfig.tests.json",
-			"maxErrors": 540,
+			"compiler": "typescript",
+			"maxErrors": 538,
 			"note": "Remaining web test fixture debt after canonicalizing the Agentic Chat tool-execution suite on 2026-08-26. Lower this ceiling whenever errors are fixed."
 		},
 		"worker": {
 			"tsconfig": "tsconfig.tests.json",
+			"compiler": "@typescript/native",
 			"maxErrors": 221,
 			"note": "Remaining worker test fixture debt after provider harness cleanup on 2026-08-26. Lower this ceiling whenever errors are fixed."
 		}

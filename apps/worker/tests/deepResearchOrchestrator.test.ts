@@ -1,5 +1,6 @@
 // apps/worker/tests/deepResearchOrchestrator.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import type { Database } from '@buildos/shared-types';
 import {
 	DEEP_RESEARCH_ALLOWED_OPS,
 	DEEP_RESEARCH_CHILD_COUNT,
@@ -22,6 +23,7 @@ import type {
 const ROOT_ID = '10000000-0000-4000-8000-000000000001';
 const USER_ID = '90000000-0000-4000-8000-000000000001';
 const CHILD_IDS = ['20000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002'];
+type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
 
 function dispatchingState() {
 	return {
@@ -68,24 +70,44 @@ function rootRun(
 }
 
 function coordinatorRun(
-	state: Record<string, unknown>,
+	state: AgentRunRow['orchestration_state'],
 	budgets: Record<string, number> = {
 		max_cost_usd: 0.5,
 		max_tool_calls: 10,
 		max_tokens: 60_000,
 		wall_clock_ms: 600_000
 	}
-) {
+): AgentRunRow {
+	const timestamp = '2026-07-21T12:00:00.000Z';
 	return {
 		...rootRun(budgets),
+		allowed_ops: null,
+		change_set: null,
+		commit_started_at: null,
+		completed_at: null,
+		created_at: timestamp,
 		run_template: 'deep_research',
 		depth: 0,
 		scope_mode: 'read_only',
 		effort: 'deep',
+		error: null,
+		execution_generation: 1,
 		review_required: false,
 		instructions: 'Prefer primary sources.',
 		expected_output: 'A sourced recommendation.',
-		orchestration_state: state
+		label: 'Deep research',
+		metrics: null,
+		operative_id: null,
+		orchestration_state: state,
+		parent_message_id: null,
+		parent_run_id: null,
+		parent_session_id: null,
+		result: null,
+		source_decision: null,
+		source_suggestion_id: null,
+		started_at: null,
+		status: 'running',
+		updated_at: timestamp
 	};
 }
 
@@ -820,7 +842,7 @@ describe('deep research coordinator lifecycle contract', () => {
 			proseOnlyChild
 		]);
 		const llm = {
-			getJSONResponse: vi.fn(async () => ({
+			getJSONResponse: vi.fn(async (_options: Record<string, unknown>) => ({
 				summary: 'Only validated evidence was used.',
 				report_markdown: '# Partial report',
 				confidence: 0.3
@@ -882,7 +904,7 @@ describe('deep research coordinator lifecycle contract', () => {
 			invalidPacketChild
 		]);
 		const llm = {
-			getJSONResponse: vi.fn(async () => ({
+			getJSONResponse: vi.fn(async (_options: Record<string, unknown>) => ({
 				summary: 'Only validated evidence was used.',
 				report_markdown: '# Partial report',
 				confidence: 0.3

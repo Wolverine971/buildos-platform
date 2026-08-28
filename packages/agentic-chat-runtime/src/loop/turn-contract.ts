@@ -188,6 +188,27 @@ function readStringArray(value: unknown, maxItems = 50): string[] | null {
 	return Array.from(new Set(strings as string[]));
 }
 
+function readClarificationCandidates(
+	value: unknown
+): Array<{ id?: string; label: string; kind?: string }> | null {
+	if (value === undefined) return [];
+	if (!Array.isArray(value) || value.length < 2 || value.length > 20) return null;
+	const candidates: Array<{ id?: string; label: string; kind?: string }> = [];
+	const seen = new Set<string>();
+	for (const item of value) {
+		const record = asRecord(item);
+		const label = readString(record?.label, 200);
+		if (!record || !label) return null;
+		const id = readString(record.id, 160);
+		const kind = readString(record.kind, 40);
+		const key = `${id ?? ''}\u0000${label.toLowerCase()}\u0000${kind ?? ''}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		candidates.push({ ...(id ? { id } : {}), label, ...(kind ? { kind } : {}) });
+	}
+	return candidates.length >= 2 ? candidates : null;
+}
+
 function readPositiveInteger(value: unknown, fallback: number): number | null {
 	if (value === undefined) return fallback;
 	return typeof value === 'number' && Number.isSafeInteger(value) && value >= 1 && value <= 100
@@ -712,9 +733,26 @@ export function executeAgenticChatStandardControlToolV1(input: {
 		case REQUEST_TURN_CLARIFICATION_TOOL_NAME: {
 			const reason = readString(args.reason, 240);
 			const question = readString(args.question, 500);
-			if (error || !reason || !question) {
+			const candidates = readClarificationCandidates(args.candidates);
+			if (error || !reason || !question || !candidates) {
 				return standardControlFailure(
-					'Turn clarification failed: provide the unresolved semantic choice and a concise question for the user.'
+					'Turn clarification failed: provide the unresolved semantic choice and a concise question that names every supplied candidate.'
+				);
+			}
+			const missingLabels = candidates
+				.filter(
+					(candidate) => !question.toLowerCase().includes(candidate.label.toLowerCase())
+				)
+				.map((candidate) => candidate.label);
+			if (missingLabels.length > 0) {
+				const named = missingLabels
+					.slice(0, 3)
+					.map((label) => `"${label.slice(0, 80)}"`)
+					.join(', ');
+				const overflow =
+					missingLabels.length > 3 ? ` and ${missingLabels.length - 3} more` : '';
+				return standardControlFailure(
+					`Turn clarification failed: the question must name every supplied candidate label verbatim; missing ${named}${overflow}.`
 				);
 			}
 			return {
@@ -723,6 +761,7 @@ export function executeAgenticChatStandardControlToolV1(input: {
 					status: 'clarification_required',
 					reason,
 					question,
+					...(candidates.length > 0 ? { candidates } : {}),
 					requires_user_action: true,
 					instruction:
 						'Ask the question and wait for the user. Do not perform a durable mutation in this turn.'

@@ -3114,14 +3114,29 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		invocation.release();
 	});
 
-	it('returns final prose directly without forcing a semantic disposition pass', async () => {
+	it('withholds an unreceipted completion claim until its clarification is durable', async () => {
 		const clarificationArguments = {
 			reason: 'Several loaded tasks fit the user’s descriptive reference.',
-			question: 'Which matching task should I mark complete?'
+			question:
+				'Are you referring to Fix the email verification bug or Send the launch email?',
+			candidates: [
+				{
+					id: 'e1ff583d-de10-4887-80ab-cb8892d0d082',
+					label: 'Fix the email verification bug',
+					kind: 'task'
+				},
+				{
+					id: '89f88057-8216-4d86-a6bc-7edc191c94e8',
+					label: 'Send the launch email',
+					kind: 'task'
+				}
+			]
 		};
+		const unreceiptedCandidate =
+			'Got it — marking the usage-based pricing migration done. Are you referring to Fix the email verification bug or Send the launch email?';
 		const streams: AgenticChatTurnProviderClientEventV1[][] = [
 			[
-				{ type: 'text', content: 'Which matching task should I mark complete?' },
+				{ type: 'text', content: unreceiptedCandidate },
 				{ type: 'done', finishedReason: 'stop' }
 			],
 			providerReadRound(
@@ -3130,7 +3145,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'request_turn_clarification'
 			),
 			[
-				{ type: 'text', content: 'Which matching task should I mark complete?' },
+				{ type: 'text', content: clarificationArguments.question },
 				{ type: 'done', finishedReason: 'stop' }
 			]
 		];
@@ -3170,8 +3185,76 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		});
 
 		const firstRound = await collect(invocation.stream());
-		expect(firstRound).toEqual([
-			{ type: 'text_delta', text: 'Which matching task should I mark complete?' },
+		expect(firstRound).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-clarification-1',
+					toolName: 'request_turn_clarification'
+				})
+			])
+		);
+		expect(firstRound.some((step) => step.type === 'text_delta')).toBe(false);
+		expect(
+			client.stream.mock.calls[1]?.[0].messages.some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'claimed a durable mutation without a succeeded effect'
+					)
+			)
+		).toBe(true);
+
+		const clarificationFeedback = durableReadFeedbackFor(
+			'provider-clarification-1',
+			'request_turn_clarification',
+			clarificationArguments,
+			{ status: 'clarification_required', requires_user_action: true }
+		);
+		clarificationFeedback.execution.requiresUserAction = true;
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [clarificationFeedback]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: clarificationArguments.question },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+	});
+
+	it('keeps ordinary final prose on the direct fast path', async () => {
+		const client = clientWith([
+			{ type: 'text', content: 'Here is the current workspace status.' },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					clarificationToolDefinition(),
+					updateTaskToolDefinition()
+				],
+				['declare_turn_contract', 'request_turn_clarification', 'update_onto_task']
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: 'Here is the current workspace status.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
 		expect(client.stream).toHaveBeenCalledTimes(1);
@@ -8034,7 +8117,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(() => reused.stream()).toThrow('released before streaming');
 	});
 
-	it('returns a misstated contract to the acting model for one bounded revision before approving', async () => {
+	it('durably re-reviews a typed contract correction without acting-model regeneration', async () => {
 		const resumeId = '41000000-0000-4000-8000-000000000011';
 		const linkedinId = '41000000-0000-4000-8000-000000000012';
 		const halcyonId = '41000000-0000-4000-8000-000000000013';
@@ -8076,7 +8159,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const revisionArguments = {
 			reason: 'The single update outcome lumps the Halcyon task into the completion set.',
 			required_correction:
-				'Declare two outcomes: complete resume and LinkedIn; update Halcyon priority only.'
+				'Declare two outcomes: complete resume and LinkedIn; update Halcyon priority only.',
+			corrected_contract: correctedContractArguments
 		};
 		const approvalArguments = {
 			reason: 'Two outcomes now match the three stated clauses.',
@@ -8095,11 +8179,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			providerReadRound(
 				'provider-contract-1',
 				lumpedContractArguments,
-				'declare_turn_contract'
-			),
-			providerReadRound(
-				'provider-contract-2',
-				correctedContractArguments,
 				'declare_turn_contract'
 			),
 			providerReadRound('provider-update-1', mutationArguments, 'update_onto_task'),
@@ -8202,7 +8281,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			)
 		).toBe(false);
 
-		const redeclareSteps = await collect(
+		const approvalSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 3,
 				results: [
@@ -8211,41 +8290,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						'request_proposal_revision',
 						revisionArguments,
 						{ status: 'revision_required', ...revisionArguments }
-					)
-				]
-			})
-		);
-		expect(redeclareSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'provider-contract-2',
-					toolName: 'declare_turn_contract',
-					decidedBy: 'acting_model'
-				})
-			])
-		);
-		// The correction pass goes back through the disposition gate to the acting
-		// model; nothing about it reaches the user.
-		const revisionRequest = client.stream.mock.calls[1]?.[0];
-		expect(revisionRequest).toMatchObject({ toolChoice: 'required' });
-		const revisionInstruction = [...(revisionRequest?.messages ?? [])]
-			.reverse()
-			.find((message) => message.role === 'system');
-		expect(String(revisionInstruction?.content)).toContain(
-			'Required correction: Declare two outcomes'
-		);
-		expect(String(revisionInstruction?.content)).toContain('did not reach the user');
-
-		const approvalSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 4,
-				results: [
-					durableReadFeedbackFor(
-						'provider-contract-2',
-						'declare_turn_contract',
-						correctedContractArguments,
-						{ status: 'declared' }
 					)
 				]
 			})
@@ -8260,7 +8304,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				})
 			])
 		);
-		// One revision per turn: the first review may bounce, the second cannot.
+		// The first review may correct a false contract to read-only. Once that
+		// reviewer instead establishes a commissioned write and emits a typed
+		// correction, later reviews cannot erase the commission as read-only.
 		expect(
 			semanticReviewer.stream.mock.calls[0]?.[0].tools.map((tool) => tool.function.name)
 		).toEqual([
@@ -8269,20 +8315,21 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			'request_proposal_revision',
 			'request_turn_clarification'
 		]);
-		// Two corrections are allowed per lane per turn, so the second review still
-		// offers the revision exit; only a third review would withdraw it.
 		expect(
 			semanticReviewer.stream.mock.calls[1]?.[0].tools.map((tool) => tool.function.name)
 		).toEqual([
 			'approve_turn_contract_review',
-			'declare_read_only_turn',
 			'request_proposal_revision',
 			'request_turn_clarification'
 		]);
+		expect(String(semanticReviewer.stream.mock.calls[1]?.[0].messages[0]?.content)).toContain(
+			'prior independent review already established'
+		);
+		expect(client.stream).toHaveBeenCalledTimes(1);
 
 		const batchReviewSteps = await collect(
 			invocation.continueWithToolResults!({
-				round: 5,
+				round: 4,
 				results: [
 					durableReadFeedbackFor(
 						'reviewer-approval-1',
@@ -8308,7 +8355,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		);
 		const mutationSteps = await collect(
 			invocation.continueWithToolResults!({
-				round: 6,
+				round: 5,
 				results: [
 					durableReadFeedbackFor(
 						'reviewer-batch-approval-1',
@@ -8331,7 +8378,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
-					round: 7,
+					round: 6,
 					results: [
 						durableMutationFeedback({
 							providerToolCallId: 'provider-update-1',
@@ -8350,11 +8397,159 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		]);
 		// The untouched outcomes (LinkedIn, Halcyon) triggered one completion
 		// continuation before the answer was accepted.
-		expect(client.stream).toHaveBeenCalledTimes(5);
-		expect(String(client.stream.mock.calls[4]?.[0].messages.at(-1)?.content)).toContain(
+		expect(client.stream).toHaveBeenCalledTimes(4);
+		expect(String(client.stream.mock.calls[3]?.[0].messages.at(-1)?.content)).toContain(
 			'is not finished'
 		);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(3);
+	});
+
+	it('compiles the exact reschedule reviewer correction without losing the commission', async () => {
+		const betaListId = '41000000-0000-4000-8000-000000000041';
+		const verificationId = '41000000-0000-4000-8000-000000000042';
+		const incorrectContractArguments: JsonObject = {
+			summary: 'Push the beta list email task to Friday.',
+			outcomes: [
+				{
+					action: 'update',
+					entity_kind: 'task',
+					target_ids: [betaListId, verificationId],
+					required_fields: ['due_at'],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const correctedContractArguments: JsonObject = {
+			summary: 'Push only the beta list email task to Friday.',
+			outcomes: [
+				{
+					action: 'schedule',
+					entity_kind: 'task',
+					target_ids: [betaListId],
+					required_fields: ['due_at'],
+					changes: [{ field: 'due_at', value: '2026-09-04T17:00:00-04:00' }],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const correctedContract = parseDeclaredTurnContract(correctedContractArguments);
+		if (!correctedContract) throw new Error('Expected a valid reschedule correction');
+		const correctedSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(correctedContract as never), 'utf8')
+			.digest('hex');
+		const revisionArguments = {
+			reason: 'The proposal targets both loaded email tasks and omits the resolved Friday due date.',
+			required_correction:
+				'Target only Send the launch email to the beta list and set due_at to Friday while preserving state.',
+			corrected_contract: correctedContractArguments
+		};
+		const approvalArguments = {
+			reason: 'The corrected contract targets the unique beta-list task and exact Friday value.',
+			contract_sha256: correctedSha256,
+			reference_candidates: []
+		};
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-reschedule-contract-1',
+				incorrectContractArguments,
+				'declare_turn_contract'
+			)
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-reschedule-revision-1',
+				revisionArguments,
+				'request_proposal_revision'
+			),
+			providerReadRound(
+				'reviewer-reschedule-approval-1',
+				approvalArguments,
+				'approve_turn_contract_review'
+			)
+		]);
+		const providerInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				updateTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'update_onto_task'
+			]
+		);
+		providerInput.requestPayload = {
+			...providerInput.requestPayload,
+			message: "push the beta list email thing to friday, i'm not gonna get to it before then"
+		};
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: providerInput,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const revisionSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-reschedule-contract-1',
+						'declare_turn_contract',
+						incorrectContractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		expect(revisionSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-reschedule-revision-1',
+					toolName: 'request_proposal_revision'
+				})
+			])
+		);
+		const approvalSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-reschedule-revision-1',
+						'request_proposal_revision',
+						revisionArguments,
+						{ status: 'revision_required', ...revisionArguments }
+					)
+				]
+			})
+		);
+		expect(approvalSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-reschedule-approval-1',
+					toolName: 'approve_turn_contract_review'
+				})
+			])
+		);
+		expect(client.stream).toHaveBeenCalledOnce();
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+		expect(
+			semanticReviewer.stream.mock.calls[1]?.[0].tools.map((tool) => tool.function.name)
+		).not.toContain('declare_read_only_turn');
 	});
 
 	it('returns an invented batch value to the acting model once before approving the corrected batch', async () => {
@@ -8697,6 +8892,15 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(question).toContain('Send the launch email to the beta list');
 		expect(question).toContain('Draft the investor update email');
 		expect(question).toContain('Fix the email verification bug on signup');
+		expect(clarificationStep.arguments.candidates).toEqual([
+			{ id: betaId, label: 'Send the launch email to the beta list', kind: 'entity' },
+			{ id: investorId, label: 'Draft the investor update email', kind: 'entity' },
+			{
+				id: verificationId,
+				label: 'Fix the email verification bug on signup',
+				kind: 'entity'
+			}
+		]);
 
 		const clarificationFeedback = durableReadFeedbackFor(
 			clarificationStep.providerToolCallId,
@@ -9238,7 +9442,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			'Never return a batch to remove a required argument'
 		);
 	});
-	it('gives an identical re-declaration after a revision a distinct review transition id', async () => {
+	it('gives an identical typed correction re-review a distinct transition id', async () => {
 		const halcyonId = '41000000-0000-4000-8000-000000000013';
 		const contractArguments: JsonObject = {
 			outcomes: [
@@ -9253,11 +9457,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		};
 		const revisionArguments = {
 			reason: 'fixture: asks for a correction the model will ignore',
-			required_correction: 'fixture correction'
+			required_correction: 'fixture correction',
+			corrected_contract: contractArguments
 		};
 		const client = clientWithRounds([
-			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
-			providerReadRound('provider-contract-2', contractArguments, 'declare_turn_contract')
+			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract')
 		]);
 		const semanticReviewer = clientWithRounds([
 			providerReadRound(
@@ -9320,7 +9524,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		await collect(
+		const secondReview = await collect(
 			invocation.continueWithToolResults!({
 				round: 3,
 				results: [
@@ -9329,19 +9533,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						'request_proposal_revision',
 						revisionArguments,
 						{ status: 'revision_required', ...revisionArguments }
-					)
-				]
-			})
-		);
-		const secondReview = await collect(
-			invocation.continueWithToolResults!({
-				round: 4,
-				results: [
-					durableReadFeedbackFor(
-						'provider-contract-2',
-						'declare_turn_contract',
-						contractArguments,
-						{ status: 'declared' }
 					)
 				]
 			})

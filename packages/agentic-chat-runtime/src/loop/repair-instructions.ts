@@ -1389,6 +1389,36 @@ function looksLikePureClarifyingQuestion(text: string): boolean {
 	return text.includes('?') && !looksLikeActionSuccessClaim(text);
 }
 
+export type ReceiptGroundedAssistantDisposition = 'mutation_claim' | 'clarification_question';
+
+/**
+ * Identify terminal prose that cannot safely be authoritative on its own.
+ *
+ * This intentionally inspects only the assistant candidate, never the user's
+ * message. The provider's semantic-disposition gate remains responsible for
+ * deciding whether the turn is a write, a real ambiguity, or neither. This
+ * helper only prevents an unreceipted completion claim or unresolved-choice
+ * question from bypassing that gate as plain text.
+ */
+export function classifyReceiptGroundedAssistantDisposition(
+	text: string
+): ReceiptGroundedAssistantDisposition | null {
+	const candidate = text.replace(/\s+/g, ' ').trim();
+	if (!candidate) return null;
+	if (looksLikeActionSuccessClaim(candidate)) return 'mutation_claim';
+	if (!candidate.includes('?')) return null;
+	return UNRESOLVED_CHOICE_QUESTION_PATTERNS.some((pattern) => pattern.test(candidate))
+		? 'clarification_question'
+		: null;
+}
+
+const UNRESOLVED_CHOICE_QUESTION_PATTERNS = [
+	/\b(?:are|were)\s+you\s+(?:referring\s+to|talking\s+about)\b[^?]*\?/i,
+	/\b(?:do|did)\s+you\s+mean\b[^?]*\?/i,
+	/\b(?:can|could|would)\s+you\s+(?:clarify|specify|choose|tell\s+me\s+which)\b[^?]*\?/i,
+	/\bwhich\b[^?]{0,160}\b(?:one|task|project|document|goal|plan|milestone|risk|event|email|target|item|record|date|time|priority|status|state)\b[^?]*\?/i
+];
+
 function looksLikeActionSuccessClaim(text: string): boolean {
 	return (
 		looksLikeMutationSuccessClaim(text) ||
@@ -1748,6 +1778,7 @@ const BULK_MUTATION_SUCCESS_CLAIM_PATTERNS = [
 const MUTATION_SUCCESS_CLAIM_PATTERNS = [
 	/^\s*done\b/i,
 	/\bmarked(?:\s+\w+){0,4}\s+(?:done|complete|completed)\b/i,
+	/(?:^\s*marking|\b(?:i(?:['’]?m| am)|we(?:['’]?re| are))\s+marking|\b(?:got it|okay|ok|sure)\b[^.!?\n]{0,40}\bmarking)\b[^.!?\n]{0,120}\b(?:done|complete|completed)\b/i,
 	/\b(?:i|we)(?:'ve| have)?\s+(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set)\b/i,
 	/\b(?:i|we)(?:'ve| have)?\s+(?:merged|archived)\b/i,
 	/\b(?:created|updated|deleted|removed|moved|merged|archived|linked|unlinked|scheduled|rescheduled|set)\s+successfully\b/i,

@@ -283,6 +283,26 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).toContain('nothing was updated');
 	});
 
+	it('replaces an unreceipted completion claim when a requested write never ran', () => {
+		const call = toolCall('search_project', { query: 'email task' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText:
+				'Got it — marking the usage-based pricing migration done. Are you referring to the signup email or launch email?',
+			assistantText:
+				'Got it — marking the usage-based pricing migration done. Are you referring to the signup email or launch email?',
+			mutationRequested: true,
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true, { results: [] }) }]
+		});
+
+		expect(guard).toMatchObject({
+			applied: true,
+			reason: 'incomplete_mutation_after_reads',
+			finishedReason: 'mutation_unfulfilled'
+		});
+		expect(guard.text).not.toContain('marking the usage-based pricing migration done');
+		expect(guard.text).toContain('nothing was updated');
+	});
+
 	it('preserves an explicit user-action question even when it contains a write verb', () => {
 		const readCall = toolCall('search_project', { query: 'email task' });
 		const clarificationCall = toolCall('request_turn_clarification', {

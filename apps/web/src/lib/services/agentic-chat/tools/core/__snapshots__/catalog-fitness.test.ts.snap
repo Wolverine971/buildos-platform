@@ -2,13 +2,13 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "fef2689f55210ac9304832ec24a46db27453dc583a4f190a44c4d7d19822b4db",
+  "catalogSerializedSha256": "874e77be4ed29aeae98b197a90ddfcf65fb469d4a08a9531d06f2d4304202e5e",
   "contextSurfaces": [
     {
       "contextType": "global",
-      "estimatedTokens": 2284,
+      "estimatedTokens": 2364,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "bbd4ffc0a68213a57a95deeb37e4fbca1a3c5e48752eb4b52f445a3f696948d6",
+      "serializedDefinitionsSha256": "7b46eab059b2d0a49251b50f3afbe4d248d98f5339763497a59b2a3891b11084",
       "toolCount": 11,
       "toolNames": [
         "skill_search",
@@ -23,13 +23,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "search_onto_projects",
         "search_all_projects",
       ],
-      "totalChars": 9135,
+      "totalChars": 9455,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 4920,
+      "estimatedTokens": 5000,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "44389fec6e36c37fb2002c81213cbf9e1a44e3309f035532e8eb69bc3bc0233c",
+      "serializedDefinitionsSha256": "8ecf9578db6ee10b81a40a409260f0c389d3dd7d2fe1c1a2db8c722b5a28dc18",
       "toolCount": 20,
       "toolNames": [
         "skill_search",
@@ -53,7 +53,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_document_tree",
         "move_document_in_tree",
       ],
-      "totalChars": 19677,
+      "totalChars": 19997,
     },
     {
       "contextType": "project_create",
@@ -68,9 +68,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "calendar",
-      "estimatedTokens": 2973,
+      "estimatedTokens": 3053,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "d1adb13d4b3f2d251041286504c3033a0ff4f7aa4b9548582819866a6beb713a",
+      "serializedDefinitionsSha256": "be12d60a84e9d99d42533429649699bd2583d0faf230f1b2f65daf6c8c868236",
       "toolCount": 13,
       "toolNames": [
         "skill_search",
@@ -87,13 +87,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 11891,
+      "totalChars": 12211,
     },
     {
       "contextType": "daily_brief",
-      "estimatedTokens": 4579,
+      "estimatedTokens": 4659,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "352e5f25c334509de95db995b38580b6cf7a1cc342e0933f401c031786464ad2",
+      "serializedDefinitionsSha256": "c48a26ab5b49809d7a7d9aa77c5be029fbde12170b513f7eae728f01ce4d3cfe",
       "toolCount": 18,
       "toolNames": [
         "skill_search",
@@ -115,13 +115,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_calendar_event",
         "update_calendar_event",
       ],
-      "totalChars": 18313,
+      "totalChars": 18633,
     },
     {
       "contextType": "general",
-      "estimatedTokens": 2284,
+      "estimatedTokens": 2364,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "bbd4ffc0a68213a57a95deeb37e4fbca1a3c5e48752eb4b52f445a3f696948d6",
+      "serializedDefinitionsSha256": "7b46eab059b2d0a49251b50f3afbe4d248d98f5339763497a59b2a3891b11084",
       "toolCount": 11,
       "toolNames": [
         "skill_search",
@@ -136,13 +136,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "search_onto_projects",
         "search_all_projects",
       ],
-      "totalChars": 9135,
+      "totalChars": 9455,
     },
     {
       "contextType": "ontology",
-      "estimatedTokens": 4920,
+      "estimatedTokens": 5000,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "44389fec6e36c37fb2002c81213cbf9e1a44e3309f035532e8eb69bc3bc0233c",
+      "serializedDefinitionsSha256": "8ecf9578db6ee10b81a40a409260f0c389d3dd7d2fe1c1a2db8c722b5a28dc18",
       "toolCount": 20,
       "toolNames": [
         "skill_search",
@@ -166,13 +166,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_document_tree",
         "move_document_in_tree",
       ],
-      "totalChars": 19677,
+      "totalChars": 19997,
     },
     {
       "contextType": "daily_brief_update",
-      "estimatedTokens": 2284,
+      "estimatedTokens": 2364,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "bbd4ffc0a68213a57a95deeb37e4fbca1a3c5e48752eb4b52f445a3f696948d6",
+      "serializedDefinitionsSha256": "7b46eab059b2d0a49251b50f3afbe4d248d98f5339763497a59b2a3891b11084",
       "toolCount": 11,
       "toolNames": [
         "skill_search",
@@ -187,7 +187,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "search_onto_projects",
         "search_all_projects",
       ],
-      "totalChars": 9135,
+      "totalChars": 9455,
     },
   ],
   "definitions": [
@@ -277,9 +277,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "declare_turn_contract",
-      "serialized": "{"type":"function","function":{"name":"declare_turn_contract","description":"Declare durable outcomes when reads must precede writes; call alongside the first reads. Omit for answer-only turns, research for a possible later change, or an immediate direct write. This records intent, not a mutation. After reading, request clarification only for an unresolved required choice; otherwise complete every outcome or report the blocker. Separate outcomes when targets receive different values.","parameters":{"type":"object","properties":{"summary":{"type":"string","maxLength":300,"description":"A short description of the user-visible durable result."},"outcomes":{"type":"array","minItems":1,"maxItems":20,"description":"Required durable effects, described as outcomes rather than steps or tool names. Use separate outcomes for targets receiving different values (e.g. A/B state_key=done versus C priority=1).","items":{"type":"object","properties":{"id":{"type":"string","maxLength":80,"description":"Optional stable label for this outcome."},"action":{"type":"string","enum":["create","update","move","organize","link","unlink","delete","schedule","set","assign","complete","archive","restore","tag"]},"entity_kind":{"type":"string","enum":["project","task","document","event","goal","plan","milestone","risk","relationship","calendar","entity"]},"description":{"type":"string","maxLength":240},"target_ids":{"type":"array","maxItems":50,"items":{"type":"string"},"description":"Known canonical IDs eligible for this outcome. Omit for creates and until targets are discovered; minimum_successful_effects is bounded by this list."},"required_fields":{"type":"array","maxItems":30,"items":{"type":"string"},"description":"Required durable postconditions, not tool arguments. For document-tree placement use parent_id and position."},"changes":{"type":"array","maxItems":20,"items":{"type":"object","properties":{"field":{"type":"string","maxLength":80},"value":{"type":"string","maxLength":160}},"required":["field","value"]},"description":"The durable field values this outcome sets on every target, e.g. [{\\"field\\":\\"state_key\\",\\"value\\":\\"done\\"}] or [{\\"field\\":\\"priority\\",\\"value\\":\\"1\\"}]. Targets that receive different values belong in separate outcomes."},"minimum_successful_effects":{"type":"integer","minimum":1,"maximum":100,"description":"Distinct targets that must change. Multiple fields on one target count once; never exceed target_ids.length."},"label":{"type":"string","maxLength":40,"pattern":"^[a-z0-9][a-z0-9_-]{0,39}$","description":"Create only: symbolic name for one new entity so later outcomes can reference it before it has an ID. Set minimum_successful_effects=1 and declare its title in changes."},"parent_label":{"type":"string","maxLength":40,"pattern":"^[a-z0-9][a-z0-9_-]{0,39}$","description":"Move/organize only: label of a destination created by this contract. For an existing parent, put its ID in changes as parent_id; omit when using new_parent_title."}},"required":["action","entity_kind","minimum_successful_effects"]}}},"required":["outcomes"]}}}",
-      "serializedChars": 3092,
-      "serializedSha256": "35ffda5b77e11e4422ceaf8303c16aa06a7d7c8fccdc4a6026f6981476244dcb",
+      "serialized": "{"type":"function","function":{"name":"declare_turn_contract","description":"Declare the complete durable outcomes for an active complex-write route. This records intent, not a mutation. Describe outcomes rather than tool steps, include the real cardinality, and separate targets that receive different values.","parameters":{"type":"object","properties":{"summary":{"type":"string","maxLength":300,"description":"A short description of the user-visible durable result."},"outcomes":{"type":"array","minItems":1,"maxItems":20,"description":"Complete durable effects, described as outcomes rather than tool steps. Separate targets that receive different values.","items":{"type":"object","properties":{"id":{"type":"string","maxLength":80,"description":"Optional stable label for this outcome."},"action":{"type":"string","enum":["create","update","move","organize","link","unlink","delete","schedule","set","assign","complete","archive","restore","tag"]},"entity_kind":{"type":"string","enum":["project","task","document","event","goal","plan","milestone","risk","relationship","calendar","entity"]},"description":{"type":"string","maxLength":240},"target_ids":{"type":"array","maxItems":50,"items":{"type":"string"},"description":"Known canonical IDs eligible for this outcome. Omit for creates and until targets are discovered; minimum_successful_effects is bounded by this list."},"required_fields":{"type":"array","maxItems":30,"items":{"type":"string"},"description":"Required durable postconditions, not tool arguments. For document-tree placement use parent_id and position."},"changes":{"type":"array","maxItems":20,"items":{"type":"object","properties":{"field":{"type":"string","maxLength":80},"value":{"type":"string","maxLength":160}},"required":["field","value"]},"description":"Durable field/value pairs applied to every target. Targets receiving different values require separate outcomes."},"minimum_successful_effects":{"type":"integer","minimum":1,"maximum":100,"description":"Distinct targets that must change. Multiple fields on one target count once; never exceed target_ids.length."},"label":{"type":"string","maxLength":40,"pattern":"^[a-z0-9][a-z0-9_-]{0,39}$","description":"Create only: symbolic name for one new entity so later outcomes can reference it before it has an ID. Set minimum_successful_effects=1 and declare its title in changes."},"parent_label":{"type":"string","maxLength":40,"pattern":"^[a-z0-9][a-z0-9_-]{0,39}$","description":"Move/organize only: label of a destination created by this contract. For an existing parent, put its ID in changes as parent_id; omit when using new_parent_title."}},"required":["action","entity_kind","minimum_successful_effects"]}}},"required":["outcomes"]}}}",
+      "serializedChars": 2732,
+      "serializedSha256": "335e35b8a3d01779e89acb71471c054f3fcfafa959c8ea1932792141af2a1a5b",
     },
     {
       "name": "delegate_task",
@@ -613,9 +613,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "request_turn_clarification",
-      "serialized": "{"type":"function","function":{"name":"request_turn_clarification","description":"Ask when a commissioned durable change still has an ambiguous required target or value after reading context. Do not postpone safe work or ask about a merely possible later change.","parameters":{"type":"object","properties":{"reason":{"type":"string","maxLength":240,"description":"The unresolved choice."},"question":{"type":"string","maxLength":500,"description":"A concise question that lets the user resolve the choice."}},"required":["reason","question"]}}}",
-      "serializedChars": 545,
-      "serializedSha256": "c167bc5b6d0c832ca92075eb15462d4aca165a431a65ca2fa0069457d1ff6224",
+      "serialized": "{"type":"function","function":{"name":"request_turn_clarification","description":"Ask when a commissioned durable change still has an ambiguous required target or value after reading context. Do not postpone safe work or ask about a merely possible later change.","parameters":{"type":"object","properties":{"reason":{"type":"string","maxLength":240,"description":"The unresolved choice."},"question":{"type":"string","maxLength":500,"description":"A concise question that lets the user resolve the choice."},"candidates":{"type":"array","minItems":2,"maxItems":20,"description":"Every known plausible target or value for the unresolved choice. Include this when loaded context identifies a finite candidate set, and name every label in the question.","items":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string","maxLength":160,"description":"Stable entity ID when this is an existing durable target."},"label":{"type":"string","maxLength":200,"description":"Human-readable choice named verbatim in the question."},"kind":{"type":"string","maxLength":40,"description":"Optional entity or value kind, such as task, document, or date."}},"required":["label"]}}},"required":["reason","question"]}}}",
+      "serializedChars": 1225,
+      "serializedSha256": "be2c4a8a276b1a6621a8dc4d03140cb402ff916c4a2e55445fe84eaac8f36444",
     },
     {
       "name": "resolve_user_contact_candidate",
@@ -843,9 +843,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "staticProfiles": [
     {
       "contextType": "global_basic",
-      "estimatedTokens": 2284,
+      "estimatedTokens": 2364,
       "profile": "global_basic",
-      "serializedDefinitionsSha256": "bbd4ffc0a68213a57a95deeb37e4fbca1a3c5e48752eb4b52f445a3f696948d6",
+      "serializedDefinitionsSha256": "7b46eab059b2d0a49251b50f3afbe4d248d98f5339763497a59b2a3891b11084",
       "toolCount": 11,
       "toolNames": [
         "skill_search",
@@ -860,13 +860,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "search_onto_projects",
         "search_all_projects",
       ],
-      "totalChars": 9135,
+      "totalChars": 9455,
     },
     {
       "contextType": "global_write",
-      "estimatedTokens": 4579,
+      "estimatedTokens": 4659,
       "profile": "global_write",
-      "serializedDefinitionsSha256": "352e5f25c334509de95db995b38580b6cf7a1cc342e0933f401c031786464ad2",
+      "serializedDefinitionsSha256": "c48a26ab5b49809d7a7d9aa77c5be029fbde12170b513f7eae728f01ce4d3cfe",
       "toolCount": 18,
       "toolNames": [
         "skill_search",
@@ -888,13 +888,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_calendar_event",
         "update_calendar_event",
       ],
-      "totalChars": 18313,
+      "totalChars": 18633,
     },
     {
       "contextType": "project_basic",
-      "estimatedTokens": 2656,
+      "estimatedTokens": 2736,
       "profile": "project_basic",
-      "serializedDefinitionsSha256": "f402e42b04fcfeadd423bdf47c77d09cc60986064e65b52adbb1a84677bdc0a5",
+      "serializedDefinitionsSha256": "04cc48884ec45a0d36c327008934fa78fbb307423c76db78bb41d66bdcf6bb6b",
       "toolCount": 14,
       "toolNames": [
         "skill_search",
@@ -912,13 +912,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_document_outline",
         "read_document_section",
       ],
-      "totalChars": 10623,
+      "totalChars": 10943,
     },
     {
       "contextType": "project_write",
-      "estimatedTokens": 4432,
+      "estimatedTokens": 4512,
       "profile": "project_write",
-      "serializedDefinitionsSha256": "1872caeba4d8bc760bc469e99cfa8cd62584a1c8515b28f1c86aea0b4c960dd2",
+      "serializedDefinitionsSha256": "54528cdf9169f66c04b6684d48dd2ff2b162ce3feea5371120ba7f7a978b46ed",
       "toolCount": 18,
       "toolNames": [
         "skill_search",
@@ -940,13 +940,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_document",
         "update_onto_document",
       ],
-      "totalChars": 17725,
+      "totalChars": 18045,
     },
     {
       "contextType": "project_document",
-      "estimatedTokens": 3968,
+      "estimatedTokens": 4048,
       "profile": "project_document",
-      "serializedDefinitionsSha256": "a13448fbdafa8729e820023f85497ea036a01ffd6cd779e0bbe5ed1b957dac66",
+      "serializedDefinitionsSha256": "8549be734fad2976079bcfccd545f619d0b2fa3b363241e63bbb53e095b71bb4",
       "toolCount": 18,
       "toolNames": [
         "skill_search",
@@ -968,13 +968,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_document_tree",
         "move_document_in_tree",
       ],
-      "totalChars": 15870,
+      "totalChars": 16190,
     },
     {
       "contextType": "project_write_document",
-      "estimatedTokens": 4920,
+      "estimatedTokens": 5000,
       "profile": "project_write_document",
-      "serializedDefinitionsSha256": "44389fec6e36c37fb2002c81213cbf9e1a44e3309f035532e8eb69bc3bc0233c",
+      "serializedDefinitionsSha256": "8ecf9578db6ee10b81a40a409260f0c389d3dd7d2fe1c1a2db8c722b5a28dc18",
       "toolCount": 20,
       "toolNames": [
         "skill_search",
@@ -998,13 +998,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_document_tree",
         "move_document_in_tree",
       ],
-      "totalChars": 19677,
+      "totalChars": 19997,
     },
     {
       "contextType": "project_calendar",
-      "estimatedTokens": 2973,
+      "estimatedTokens": 3053,
       "profile": "project_calendar",
-      "serializedDefinitionsSha256": "d1adb13d4b3f2d251041286504c3033a0ff4f7aa4b9548582819866a6beb713a",
+      "serializedDefinitionsSha256": "be12d60a84e9d99d42533429649699bd2583d0faf230f1b2f65daf6c8c868236",
       "toolCount": 13,
       "toolNames": [
         "skill_search",
@@ -1021,7 +1021,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 11891,
+      "totalChars": 12211,
     },
     {
       "contextType": "project_create_compound",
@@ -1036,9 +1036,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "project_create_minimal",
-      "estimatedTokens": 3309,
+      "estimatedTokens": 3389,
       "profile": "project_create_minimal",
-      "serializedDefinitionsSha256": "1c1818a07a713f1041fdba3eb3d77a6de8debee462cd7b254f80812b19465c9d",
+      "serializedDefinitionsSha256": "b8c68aa7a035d0a0e2570576bb906efc1dcc3eb8983ac6fdf1f2d36a5363cd2f",
       "toolCount": 7,
       "toolNames": [
         "declare_turn_contract",
@@ -1049,7 +1049,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_goal",
         "create_onto_task",
       ],
-      "totalChars": 13235,
+      "totalChars": 13555,
     },
   ],
 }
