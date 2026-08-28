@@ -1,5 +1,8 @@
 // packages/agentic-chat-runtime/src/worker-tool-policy.ts
-import { AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1 } from './catalog/definitions/controls';
+import {
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
+	DECLARE_READ_ONLY_TURN_TOOL_NAME
+} from './catalog/definitions/controls';
 import { TOOL_METADATA } from './catalog/metadata';
 import { AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1 } from './tools';
 
@@ -76,18 +79,26 @@ export const AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1 = Object.freeze([
 ] as const);
 
 /**
- * Dynamic skill discovery is omitted from the worker prompt only after the
- * trusted preload gate has resolved. These names are not executable, but are
- * explicitly classified so they cannot become a generic unknown-tool escape.
+ * Tools intentionally removed before the acting worker artifact is signed.
+ * Dynamic skill discovery is omitted only after the trusted preload gate has
+ * resolved; the retired read-only disposition control is never mounted on the
+ * acting provider. Explicit classification prevents either case from becoming
+ * a generic unknown-tool escape.
  */
 export const AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1 = Object.freeze([
+	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	'domain_search',
 	'skill_search',
 	'skill_load'
 ] as const);
 
+const AGENTIC_CHAT_WORKER_ACTING_CONTROL_TOOL_NAMES_V1 =
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1.filter(
+		(name) => name !== DECLARE_READ_ONLY_TURN_TOOL_NAME
+	);
+
 export const AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1 = Object.freeze([
-	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
+	...AGENTIC_CHAT_WORKER_ACTING_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
 	'change_chat_context',
 	'web_search',

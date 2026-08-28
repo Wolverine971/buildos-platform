@@ -195,9 +195,23 @@ function looksLikeExternalEmailReadTurn(latestUserMessage?: string | null): bool
 	const text = latestUserMessage?.trim() ?? '';
 	if (!text) return false;
 	if (/\b(?:gmail|inbox|mailbox)\b/i.test(text)) return true;
-	if (!/\be-?mail(?:s|ed|ing)?\b/i.test(text)) return false;
-	return /\b(?:account|connected|search|find|look|check|read|open|list|show|scan|message|inbox|what|who|when)\b/i.test(
-		text
+	if (/\b(?:who|when|has|have|did)\b[\s\S]{0,60}\be-?mailed\s+(?:me|us)\b/i.test(text)) {
+		return true;
+	}
+	if (!/\be-?mails?\b/i.test(text)) return false;
+	if (/\b(?:(?:my|the|an?|connected|linked)\s+)+(?:e-?mail|mail)\s+accounts?\b/i.test(text)) {
+		return true;
+	}
+	// Retrieval language must govern the email object. Looking for a read-ish
+	// word anywhere in the turn made "email the beta list" look like an inbox
+	// request because the distribution-list noun accidentally satisfied `list`.
+	return (
+		/\b(?:search|find|look\s+(?:for|through)|pull\s+up|get|check|read|open|list|show|scan)\s+(?:(?:me|my|the|that|this|these|those|all|any|new|recent|latest|unread|connected|linked|through|for|in|up)\s+){0,5}(?:e-?mails?|mail|email\s+messages?|messages?)\b/i.test(
+			text
+		) ||
+		/\b(?:what|which|whose|how\s+many)\s+(?:(?:new|recent|latest|unread)\s+){0,2}e-?mails?\b/i.test(
+			text
+		)
 	);
 }
 

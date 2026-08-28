@@ -37,10 +37,12 @@ import {
 	type TurnInputArtifactContentV1
 } from '@buildos/shared-types';
 import {
+	AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1,
 	findAgenticChatWorkerUnavailableToolNamesV1,
 	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1
 } from '@buildos/agentic-chat-runtime';
 import {
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	getToolDiscoveryPolicyVersion,
 	getToolRegistry
 } from '@buildos/agentic-chat-runtime/catalog';
@@ -183,6 +185,9 @@ const WORKER_PROMPT_SCAFFOLD = {
 	dynamicSkillTools: false
 } as const;
 const WORKER_OMITTED_TOOL_NAMES = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
+const WORKER_MUTATION_TOOL_NAMES = new Set<string>(
+	AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1
+);
 // Prepared-prompt admission is byte-bound in the database to the stored legacy
 // prompt. Until prewarm stores a separate worker-capability variant, accepting
 // that lineage would either preserve the impossible skill instructions or make
@@ -416,9 +421,20 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const workerPromptDomainSensing = workerSkillGatePreload
 		? turnPreparation.turnDomainSensing
 		: null;
-	const workerPromptTools = turnPreparation.tools.filter(
+	const workerCandidateTools = turnPreparation.tools.filter(
 		(tool) => !WORKER_OMITTED_TOOL_NAMES.has(tool.function?.name ?? '')
 	);
+	const hasWorkerMutation = workerCandidateTools.some((tool) =>
+		WORKER_MUTATION_TOOL_NAMES.has(tool.function?.name ?? '')
+	);
+	// A complex-write contract cannot be honored without an executable mutation.
+	// Removing it before prompt and artifact construction avoids commissioning a
+	// dead write route and keeps read-only signed surfaces honest.
+	const workerPromptTools = hasWorkerMutation
+		? workerCandidateTools
+		: workerCandidateTools.filter(
+				(tool) => tool.function?.name !== DECLARE_TURN_CONTRACT_TOOL_NAME
+			);
 	const unavailableWorkerTools = findAgenticChatWorkerUnavailableToolNamesV1(
 		workerPromptTools.map((tool) => tool.function?.name ?? '').filter(Boolean)
 	);

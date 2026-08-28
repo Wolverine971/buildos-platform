@@ -450,6 +450,100 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
+	it('omits retired and impossible write controls from a read-only worker artifact', async () => {
+		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+			...mocks.resolveFastChatTurnPreparation(),
+			selectedSurfaceProfile: 'global_basic',
+			tools: [
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'get_workspace_overview'
+			].map((name) => ({
+				type: 'function',
+				function: {
+					name,
+					description: name,
+					parameters: { type: 'object', properties: {} }
+				}
+			}))
+		});
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command() as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			toolSurface: {
+				toolNames: ['request_turn_clarification', 'get_workspace_overview']
+			}
+		});
+		expect(mocks.buildLitePromptEnvelope).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tools: expect.not.arrayContaining([
+					expect.objectContaining({
+						function: expect.objectContaining({ name: 'declare_turn_contract' })
+					}),
+					expect.objectContaining({
+						function: expect.objectContaining({ name: 'declare_read_only_turn' })
+					})
+				])
+			})
+		);
+	});
+
+	it('keeps the complex contract on a mutation-capable worker artifact', async () => {
+		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+			...mocks.resolveFastChatTurnPreparation(),
+			selectedSurfaceProfile: 'project_write_document',
+			tools: [
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'create_onto_task'
+			].map((name) => ({
+				type: 'function',
+				function: {
+					name,
+					description: name,
+					parameters: { type: 'object', properties: {} }
+				}
+			}))
+		});
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command() as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			toolSurface: {
+				toolNames: [
+					'declare_turn_contract',
+					'request_turn_clarification',
+					'create_onto_task'
+				]
+			}
+		});
+	});
+
 	it.each([
 		{
 			label: 'an ASCII message over 1,500 characters with whitespace at the former clip edge',

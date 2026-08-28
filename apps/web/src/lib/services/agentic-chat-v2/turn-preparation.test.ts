@@ -81,6 +81,29 @@ describe('resolveFastChatTurnPreparation', () => {
 		expect(result.toolSelectionMs).toBe(7);
 	});
 
+	it('keeps the scheduled email-action task on the ordinary project worker surface', () => {
+		const result = resolveFastChatTurnPreparation({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			latestUserMessage: 'Add a high-priority task to email the beta list by this Friday.',
+			conversationSummary: null,
+			agentMetadata: null,
+			contextShiftHintTtlMs: 120_000,
+			nowMs: NOW_MS
+		});
+
+		expect(result.selectedSurfaceProfile).toBe('project_write_document');
+		expect(toolNames(result)).toContain('create_onto_task');
+		expect(toolNames(result)).not.toEqual(
+			expect.arrayContaining([
+				'list_email_accounts',
+				'search_email_messages',
+				'get_email_message'
+			])
+		);
+	});
+
 	it('mounts document organization tools without lexical routing', () => {
 		const result = resolveFastChatTurnPreparation({
 			contextType: 'project',

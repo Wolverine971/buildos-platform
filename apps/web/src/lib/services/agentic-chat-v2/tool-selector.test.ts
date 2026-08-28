@@ -50,6 +50,46 @@ describe('selectFastChatTools', () => {
 		expect(names).not.toContain('search_email_messages');
 	});
 
+	it.each([
+		'Add a high-priority task to email the beta list by this Friday.',
+		'Create a task to email the customer list after launch.',
+		'Email Jordan the revised project plan.'
+	])('does not mistake an email action for a connected-inbox read: %s', (message) => {
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage: message
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).not.toContain('list_email_accounts');
+		expect(names).not.toContain('search_email_messages');
+		expect(names).not.toContain('get_email_message');
+	});
+
+	it.each([
+		'Find the email from Jordan about the revised project plan.',
+		'List my recent emails about the beta launch.',
+		'Check my connected email account for a reply from Jordan.',
+		'Look through my emails for the launch receipt.',
+		'Who emailed me about the beta launch?'
+	])('hot-loads connected-email reads for explicit retrieval intent: %s', (message) => {
+		const names = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage: message
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toEqual(
+			expect.arrayContaining([
+				'list_email_accounts',
+				'search_email_messages',
+				'get_email_message'
+			])
+		);
+	});
+
 	it('hot-loads the legacy-only calendar read surface for explicit calendar requests', () => {
 		const names = selectFastChatTools({
 			contextType: 'global',

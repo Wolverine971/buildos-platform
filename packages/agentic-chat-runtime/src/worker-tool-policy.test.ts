@@ -33,6 +33,10 @@ describe('Agentic Chat worker tool policy', () => {
 	it('executes context changes and explicitly omits preloaded domain discovery', () => {
 		expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1).toContain('change_chat_context');
 		expect(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1).toContain('domain_search');
+		expect(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1).toContain('declare_read_only_turn');
+		expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1).not.toContain(
+			'declare_read_only_turn'
+		);
 		expect(findAgenticChatWorkerUnavailableToolNamesV1(['change_chat_context'])).toEqual([]);
 	});
 });
