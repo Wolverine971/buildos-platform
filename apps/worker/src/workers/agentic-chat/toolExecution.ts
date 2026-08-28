@@ -51,6 +51,7 @@ export type AgenticChatToolExecutionPersistInputV1 = AgenticChatExecutionIdentit
 export type AgenticChatToolFailurePersistInputV1 = AgenticChatExecutionIdentityV1 & {
 	userId: string;
 	executionGeneration: number;
+	failureKind: 'validation' | 'mutation' | 'supervisor_block' | 'dependency_failed';
 	toolExecutionId: string;
 	sequenceIndex: number;
 	providerToolCallId: string;
@@ -166,16 +167,19 @@ export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolE
 		signal: AbortSignal = new AbortController().signal
 	): Promise<void> {
 		validateFailureInput(input);
-		// The hosted RPC retains its historical validation-specific name, but its
-		// fenced row contract is the generic failed/no-result tool-attempt shape.
-		// S2 reuses that exact shape for known mutation failures and supervisor
-		// pre-execution blocks without changing hosted SQL.
+		// The historical RPC became the generic failed/no-result tool-attempt
+		// ledger. Only actual validation failures use the counted wrapper so
+		// operational failures cannot inflate validation telemetry.
+		const operation =
+			input.failureKind === 'validation'
+				? 'persist_agentic_chat_counted_tool_validation_failure'
+				: 'persist_agentic_chat_tool_validation_failure';
 		const { data, error } = await runWithAbortableDeadline({
 			parentSignal: signal,
 			timeoutMs: this.timeoutMs,
 			createTimeoutError: () => new AgenticChatToolExecutionTimeoutError(this.timeoutMs),
 			run: (deadlineSignal) => {
-				const request = this.client.rpc('persist_agentic_chat_tool_validation_failure', {
+				const request = this.client.rpc(operation, {
 					...agenticChatGenerationWriteFenceArgsV1(input),
 					p_user_id: input.userId,
 					p_tool_execution_id: input.toolExecutionId,
@@ -190,11 +194,7 @@ export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolE
 			}
 		});
 		if (error) {
-			throw new AgenticChatToolExecutionRpcError(
-				error.code ?? '',
-				error.message,
-				'persist_agentic_chat_tool_validation_failure'
-			);
+			throw new AgenticChatToolExecutionRpcError(error.code ?? '', error.message, operation);
 		}
 		validatePersistReceipt(data, input);
 	}
@@ -298,6 +298,14 @@ function validateInput(input: AgenticChatToolExecutionPersistInputV1): void {
 
 function validateFailureInput(input: AgenticChatToolFailurePersistInputV1): void {
 	validateCommonInput(input);
+	if (
+		input.failureKind !== 'validation' &&
+		input.failureKind !== 'mutation' &&
+		input.failureKind !== 'supervisor_block' &&
+		input.failureKind !== 'dependency_failed'
+	) {
+		throw protocolError('failureKind is invalid');
+	}
 	if (input.toolCategory !== null) canonicalText(input.toolCategory, 128, 'toolCategory');
 	canonicalText(input.error, 4_000, 'error');
 }

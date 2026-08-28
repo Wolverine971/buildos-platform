@@ -41,6 +41,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let providerFailureOutput = '';
 	let readToolLedgerOutput = '';
 	let validationFailureLedgerOutput = '';
+	let validationFailureCountOutput = '';
 	let trueToolRoundCountOutput = '';
 	let mutationToolLedgerOutput = '';
 	let effectScopeNullGuardOutput = '';
@@ -246,6 +247,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			sqlPath(
 				'supabase/tests/20260808130000_agentic_chat_tool_validation_failure_ledger.test.sql'
 			),
+			sqlPath('supabase/migrations/20260828130000_agentic_chat_validation_failure_count.sql'),
+			sqlPath('supabase/tests/20260828130000_agentic_chat_validation_failure_count.test.sql'),
 			sqlPath('supabase/tests/20260808140000_agentic_chat_true_tool_round_count.test.sql'),
 			sqlPath(
 				'supabase/tests/20260809010000_agentic_chat_mutation_tool_execution_ledger.test.sql'
@@ -294,6 +297,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		providerFailureOutput = terminalParityOutput;
 		readToolLedgerOutput = terminalParityOutput;
 		validationFailureLedgerOutput = terminalParityOutput;
+		validationFailureCountOutput = terminalParityOutput;
 		trueToolRoundCountOutput = terminalParityOutput;
 		mutationToolLedgerOutput = terminalParityOutput;
 		effectScopeNullGuardOutput = terminalParityOutput;
@@ -358,6 +362,10 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		expect(validationFailureLedgerOutput).toContain(
 			'phase4_slice18_validation_failure_ledger_ok'
 		);
+	});
+
+	it('counts only newly persisted validation failures and remains replay-safe', () => {
+		expect(validationFailureCountOutput).toContain('agentic_chat_validation_failure_count_ok');
 	});
 
 	it('retains the executor-owned provider round count behind the durable call-count fence', () => {

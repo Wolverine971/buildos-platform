@@ -543,6 +543,24 @@ to measure these control loops.
   up to three independent new records without reviewer latency. The harness now asserts that the
   follow-up uses this direct lane. Cleanup removed the exact test project and cascading children;
   an exact-ID query confirms the project is absent.
+- **The known zero-validation aggregate defect is fixed and its database half is live.** A retained
+  production query confirmed the mismatch without another model turn: turn
+  `bdbfc878-917b-4aca-b2b7-fd458c55460a` has a durable failed `declare_turn_contract` row whose
+  error is the contract validator's canonical-UUID rejection, while
+  `chat_turn_runs.validation_failure_count` remains `0`. The historical
+  `persist_agentic_chat_tool_validation_failure` RPC is also used for known mutation failures,
+  supervisor blocks, and dependency skips, so it was not changed in place. New service-only RPC
+  `persist_agentic_chat_counted_tool_validation_failure` wraps that fenced/idempotent ledger and
+  increments the aggregate only when a new validation row returns `outcome=persisted`; an exact
+  replay remains counted once. Worker failure persistence now carries an explicit kind and routes
+  only `validation` through the counted RPC. The disposable PostgreSQL contract proves `0→1`,
+  replay stays `1`, and a generic operational failure stays `1`; its full 21-test Phase 2C suite,
+  the focused worker adapter tests, and worker lint/typecheck pass. The migration
+  `agentic_chat_validation_failure_count` is applied to production Supabase, where the exact RPC
+  signature exists, `service_role` can execute it, and `authenticated` / `anon` cannot. Historical
+  aggregates are deliberately not guessed or backfilled; provider observations remain the source
+  for old-turn analysis. The worker code still needs its Railway release and one no-spend/runtime
+  proof before this telemetry defect is considered deployed end to end.
 
 ## Review handoff — post-deploy status and current review target
 

@@ -1621,6 +1621,7 @@ export class AgenticChatTurnExecutor {
 				processingToken,
 				userId: executionInput.claim.userId,
 				executionGeneration: executionInput.claim.executionGeneration,
+				failureKind: 'mutation',
 				toolExecutionId: createStableAgenticChatToolExecutionIdV1({
 					turnRunId: executionInput.claim.turnRunId,
 					sequenceIndex
@@ -1750,6 +1751,7 @@ export class AgenticChatTurnExecutor {
 					processingToken,
 					userId: executionInput.claim.userId,
 					executionGeneration: executionInput.claim.executionGeneration,
+					failureKind: 'supervisor_block',
 					toolExecutionId: createStableAgenticChatToolExecutionIdV1({
 						turnRunId: executionInput.claim.turnRunId,
 						sequenceIndex
@@ -1856,6 +1858,7 @@ export class AgenticChatTurnExecutor {
 					processingToken,
 					userId: executionInput.claim.userId,
 					executionGeneration: executionInput.claim.executionGeneration,
+					failureKind: 'dependency_failed',
 					toolExecutionId: createStableAgenticChatToolExecutionIdV1({
 						turnRunId: executionInput.claim.turnRunId,
 						sequenceIndex
@@ -2269,6 +2272,7 @@ export class AgenticChatTurnExecutor {
 					processingToken,
 					userId: executionInput.claim.userId,
 					executionGeneration: executionInput.claim.executionGeneration,
+					failureKind: 'validation',
 					toolExecutionId: createStableAgenticChatToolExecutionIdV1({
 						turnRunId: executionInput.claim.turnRunId,
 						sequenceIndex

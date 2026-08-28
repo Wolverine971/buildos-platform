@@ -48,6 +48,7 @@ const validationFailureInput: AgenticChatToolFailurePersistInputV1 = {
 	queueJobId: QUEUE_JOB_ID,
 	processingToken: PROCESSING_TOKEN,
 	executionGeneration: 2,
+	failureKind: 'validation',
 	toolExecutionId: TOOL_EXECUTION_ID,
 	sequenceIndex: 1,
 	providerToolCallId: 'read-tool-call-1',
@@ -134,7 +135,7 @@ describe('Agentic Chat read-tool execution ledger', () => {
 		const { adapter, rpc } = adapterFor(receipt());
 
 		await expect(adapter.persistFailure(validationFailureInput)).resolves.toBeUndefined();
-		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_tool_validation_failure', {
+		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_counted_tool_validation_failure', {
 			p_turn_run_id: TURN_RUN_ID,
 			p_user_id: USER_ID,
 			p_queue_job_id: QUEUE_JOB_ID,
@@ -148,6 +149,18 @@ describe('Agentic Chat read-tool execution ledger', () => {
 			p_arguments: {},
 			p_error_message: 'Tool validation failed: Missing required parameter: project_id'
 		});
+	});
+
+	it('keeps operational failures out of the validation counter', async () => {
+		const { adapter, rpc } = adapterFor(receipt());
+
+		await expect(
+			adapter.persistFailure({ ...validationFailureInput, failureKind: 'supervisor_block' })
+		).resolves.toBeUndefined();
+		expect(rpc).toHaveBeenCalledWith(
+			'persist_agentic_chat_tool_validation_failure',
+			expect.any(Object)
+		);
 	});
 
 	it('persists a succeeded mutation through its effect-linked fenced RPC', async () => {
