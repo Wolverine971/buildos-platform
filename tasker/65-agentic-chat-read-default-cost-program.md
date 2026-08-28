@@ -66,7 +66,10 @@ Ordered sub-steps (order matters — see Landmines):
 The pre-worker `TRANSPORT_RENEGOTIATE` exposed by the older scheduled/prioritized task canary is
 tracked separately in [tasker 69](69-agentic-chat-worker-email-action-false-renegotiation.md). Its
 root cause is connected-email lexical enrichment misreading “email the beta list,” not the Tasker 65
-worker write boundary.
+worker write boundary. Tasker 69 is now production-closed on release `8f30ae511`: the canonical
+scheduled/prioritized task passed, the retired read-only control was removed from newly signed
+worker artifacts, and a genuine connected-Gmail request still renegotiated with zero durable worker
+admission.
 
 ### WP-4 — Prompt correctness + dedup (independent of WP-3, can run parallel)
 

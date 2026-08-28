@@ -5,9 +5,9 @@
 **Created 2026-08-27.** Split from the Tasker 65 production closeout after the established
 `task-create` canary failed before worker admission.
 
-**Status: implemented and locally verified; production canary pending.** Root cause reproduced from
-the exact canary prompt, fixed without weakening the unavailable-tool gate, and covered at selector,
-turn-preparation, worker-artifact, and worker-policy boundaries.
+**Status: complete and production-verified (2026-08-27).** Root cause reproduced from the exact
+canary prompt, fixed without weakening the unavailable-tool gate, and covered at selector,
+turn-preparation, worker-artifact, worker-policy, and live transport boundaries.
 
 ## Kernel
 
@@ -60,14 +60,39 @@ the lexical enrichment feeding it is producing a false positive.
 
 - [x] Run selector, turn-preparation, worker-admission, prompt-budget, and worker provider tests.
 - [x] Run web and worker package checks, followed by the broad worker suite.
-- [ ] Deploy both web admission and worker hardening together.
-- [ ] Re-run `task-create` and one genuine legacy-only email/calendar admission check in
+- [x] Deploy both web admission and worker hardening together.
+- [x] Re-run `task-create` and one genuine legacy-only email/calendar admission check in
       production.
 
 Local receipt: 93 focused web tests, 279 shared runtime tests, 84 focused worker-provider tests, and
 the complete 1,335-case worker suite are green. Four localhost HTTP tests initially hit sandbox
 `EPERM`; their entire five-test file passed with local binding permitted. Web `svelte-check` reports
 zero errors and zero warnings, and both worker lint/typecheck guardrails pass.
+
+### Production closeout
+
+Commit `8f30ae511e625bc7146ae20a24d0fddfe0fc3817` deployed successfully to Vercel production
+(`dpl_785MikbqLnMbvYvyKYQmfD5xTDsv`) and Railway
+(`78589184-410a-4a5b-84ed-e4cb86f3ae9e`). The public worker health endpoint reported the exact
+release, database and Realtime healthy, 20 provider/20 adapter mutations, zero active turns, and no
+claim or recovery failures.
+
+The canonical `task-create` scenario passed in 27.635s. Its retained worker turn
+`4d99ce96-345c-4f11-9bb7-cb3e14c464fd` completed in 20.623s with one successful
+`get_project_overview`, one successful `create_onto_task`, and one succeeded durable effect. The
+database assertions proved the created task had both the requested high priority and Friday due
+date. All three LLM calls were acting-model calls; no semantic reviewer operation ran.
+
+The signed write-capable artifact retained `declare_turn_contract` for a later complex redirect but
+contained no `declare_read_only_turn` and no legacy email tools. Its opening provider snapshot had
+16 tools, 21,138 serialized tool characters, no contract, no read-only control, and no legacy email
+tools. This preserves Tasker 65's deferred-contract token boundary while removing the dead control
+one layer earlier.
+
+The positive fallback check requested “Search my connected Gmail accounts for the latest beta
+launch reply.” It first received a valid worker lease, then returned exact HTTP 409
+`TRANSPORT_RENEGOTIATE` during admission. A service-role count confirmed zero durable
+`chat_turn_runs` rows for that request.
 
 ## Exit
 
