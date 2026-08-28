@@ -2,7 +2,6 @@
 import type { AgenticChatTurnProviderToolV1 } from '../contracts';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../../tools/execution-adapter';
@@ -25,9 +24,7 @@ export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
 
 /**
  * Shared reviewer evidence shape for descriptive entity references. Contract
- * review and the lightweight exact-call lane both need the same deterministic
- * ambiguity floor; keeping one schema prevents the two write paths from
- * drifting apart.
+ * review uses this deterministic ambiguity floor on top of reviewer judgment.
  */
 export const REFERENCE_CANDIDATES_PROPERTY = Object.freeze({
 	type: 'array',
@@ -110,31 +107,6 @@ export const PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Object.free
 					maxLength: 400,
 					description:
 						'The exact correction the acting model must make so the proposal matches the user commission.'
-				}
-			}
-		}
-	}
-});
-
-export const READ_ONLY_TURN_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
-	type: 'function',
-	function: {
-		name: APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
-		description:
-			'Approve the exact read-only disposition only when the current user request commissions no durable data change.',
-		parameters: {
-			type: 'object',
-			additionalProperties: false,
-			required: ['reason', 'disposition_sha256'],
-			properties: {
-				reason: {
-					type: 'string',
-					description:
-						'Concise semantic evidence that the current user requested information only.'
-				},
-				disposition_sha256: {
-					type: 'string',
-					description: 'Exact SHA-256 supplied in the review request.'
 				}
 			}
 		}

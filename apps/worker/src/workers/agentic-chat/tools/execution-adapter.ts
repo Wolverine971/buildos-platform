@@ -33,7 +33,6 @@ import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
 const CHANGE_CHAT_CONTEXT_TOOL_NAME = 'change_chat_context';
 export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
-export const APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME = 'approve_read_only_turn_review';
 export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_review';
 /**
  * Reviewer-only exit that returns a flawed proposal to the acting model instead
@@ -45,7 +44,6 @@ export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_r
 export const REQUEST_PROPOSAL_REVISION_TOOL_NAME = 'request_proposal_revision';
 const WORKER_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 ] as const);
@@ -78,23 +76,6 @@ function isWorkerReviewControlToolNameV1(value: unknown): value is WorkerReviewC
 const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
 	Record<WorkerReviewControlToolNameV1, WorkerReviewControlToolRunnerV1>
 > = Object.freeze({
-	[APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME]: (args) => {
-		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
-		const dispositionSha256 =
-			typeof args.disposition_sha256 === 'string' ? args.disposition_sha256.trim() : '';
-		if (!reason || !/^[0-9a-f]{64}$/.test(dispositionSha256)) {
-			throw new Error(
-				'Read-only turn review approval failed: provide a reason and the exact reviewed disposition SHA-256.'
-			);
-		}
-		return Promise.resolve({
-			status: 'read_only_turn_review_approved',
-			reason,
-			disposition_sha256: dispositionSha256,
-			instruction:
-				'The independently reviewed read-only disposition may proceed without durable mutations.'
-		});
-	},
 	[APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME]: (args) => {
 		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
 		const batchSha256 = typeof args.batch_sha256 === 'string' ? args.batch_sha256.trim() : '';

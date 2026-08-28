@@ -32,9 +32,10 @@ Gmail, Calendar, browser OAuth handoff, and worker-disabled image execution rema
 - `review/decision-completion.ts` owns deterministic reviewer call completion, identity binding, candidate-ambiguity enforcement, and lane-specific fallback decisions.
 - `review/contract-execution.ts` owns approved-contract completion and write-only carve-out request surfaces.
 - `review/decision-handling.ts` owns reviewer fallback clarification, candidate ambiguity restraint, and bounded proposal-correction requests.
-- `review/disposition.ts` owns read-only review, semantic disposition gates, post-disposition surfaces, and disposition call-shape enforcement.
+- `review/disposition.ts` owns complex-write contract/clarification gates, post-disposition surfaces, and disposition call-shape enforcement. Answer-only turns no longer declare or independently review a read-only disposition.
 - `review/turn-contract.ts` owns contract-review requests, schema-derived field semantics, and project-create contract guidance.
-- `review/mutation-batch.ts` owns SHA-bound mutation-batch evidence, the one-call implicit-contract lane, pending-review state, and final pre-execution review requests. Multi-effect and dependent writes remain on the declared-contract path.
+- `write-routing.ts` owns the direct-write floor: one batch, at most three independent operations classified as ordinary in the mutation catalog. Direct calls are the acting model's simple-route declaration; contract-only, dependent, mixed, or larger batches are withheld for `declare_turn_contract`.
+- `review/mutation-batch.ts` owns SHA-bound mutation-batch evidence, pending-review state, and final pre-execution review requests for the declared complex-write path.
 
 These modules are worker-private implementation details unless exported through the agentic-chat root. They must not import the turn coordinator back, and structural moves must preserve provider request JSON, prompt text, tool ordering, hashes, usage accounting, and terminal behavior.
 

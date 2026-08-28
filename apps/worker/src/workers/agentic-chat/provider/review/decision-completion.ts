@@ -2,13 +2,11 @@
 
 import {
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
-	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
 import type { TurnContract } from '@buildos/agentic-chat-runtime/loop';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../../tools/execution-adapter';
@@ -25,8 +23,7 @@ import { validateCompletedProviderCalls } from '../validation';
 import {
 	buildCandidateGateClarification,
 	buildReviewFallbackClarification,
-	findAmbiguousReferenceCandidates,
-	findAmbiguousReferenceCandidatesForTargetIds
+	findAmbiguousReferenceCandidates
 } from './decision-handling';
 
 type ReviewDecisionCompletionInput = {
@@ -42,33 +39,6 @@ type SingleReviewDecision = {
 	calls: CompletedProviderToolCall[];
 	fallbackReason: string | null;
 };
-
-export function completeReadOnlyReviewDecision(
-	input: ReviewDecisionCompletionInput & { dispositionReviewSha256: string }
-): CompletedProviderToolCall[] {
-	let { calls, fallbackReason } = completeSingleReviewDecision(
-		input,
-		'Independent read-only review'
-	);
-	if (!fallbackReason) {
-		const call = calls[0]!;
-		const approval = call.name === APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME;
-		const contract = call.name === DECLARE_TURN_CONTRACT_TOOL_NAME;
-		const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
-		if (
-			(!approval && !contract && !clarification) ||
-			(approval && call.arguments.disposition_sha256 !== input.dispositionReviewSha256) ||
-			validateCompletedProviderCalls(calls, input.reviewRequest).length > 0
-		) {
-			fallbackReason =
-				'Independent read-only review returned an invalid or unbound decision.';
-		}
-	}
-	if (fallbackReason) {
-		calls = [buildReviewFallbackClarification(input.actingRequest, fallbackReason)];
-	}
-	return withDecisionAuthor(calls, 'read_only_reviewer');
-}
 
 export function completeTurnContractReviewDecision(
 	input: ReviewDecisionCompletionInput & {
@@ -114,7 +84,6 @@ export function completeMutationBatchReviewDecision(
 	input: ReviewDecisionCompletionInput & {
 		batchSha256: string;
 		allowRevision: boolean;
-		implicitTargetIds?: readonly string[];
 	}
 ): CompletedProviderToolCall[] {
 	let { calls, fallbackReason } = completeSingleReviewDecision(
@@ -133,17 +102,6 @@ export function completeMutationBatchReviewDecision(
 			validateCompletedProviderCalls(calls, input.reviewRequest).length > 0
 		) {
 			fallbackReason = 'Independent mutation review returned an invalid or unbound decision.';
-		} else if (approval && input.implicitTargetIds) {
-			// The lightweight lane skips the separate contract review, so carry its
-			// deterministic candidate gate to the exact-call boundary. Reviewer prose
-			// cannot override an enumerated ambiguous reference.
-			const ambiguity = findAmbiguousReferenceCandidatesForTargetIds(
-				call.arguments,
-				input.implicitTargetIds
-			);
-			if (ambiguity) {
-				calls = [buildCandidateGateClarification(input.actingRequest, ambiguity)];
-			}
 		}
 	}
 	if (fallbackReason) {

@@ -1,5 +1,8 @@
 // apps/worker/src/workers/agentic-chat/provider/tool-surface.ts
-import { AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1 } from '@buildos/agentic-chat-runtime/catalog';
+import {
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
+	DECLARE_READ_ONLY_TURN_TOOL_NAME
+} from '@buildos/agentic-chat-runtime/catalog';
 import { provideAgenticChatLoopToolCatalog } from '@buildos/agentic-chat-runtime/loop';
 import {
 	type JsonObject,
@@ -88,6 +91,7 @@ export function productionToolsFor(
 		const tool = readArtifactToolDefinition(definition);
 		if (
 			!tool ||
+			tool.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME ||
 			!selectedNames.has(tool.function.name) ||
 			(!isAgenticChatProductionReadToolNameV1(tool.function.name) &&
 				!isEnabledMutationTool(tool.function.name, mutationCapabilities)) ||
@@ -111,6 +115,7 @@ export function productionToolsFor(
 		tools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
 	) {
 		for (const definition of AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1) {
+			if (definition.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME) continue;
 			if (seen.has(definition.function.name)) continue;
 			const control = readArtifactToolDefinition(definition);
 			if (!control || !isAgenticChatProductionReadToolNameV1(control.function.name)) continue;

@@ -379,25 +379,6 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		expect(access.getActorId).not.toHaveBeenCalled();
 	});
 
-	it('records an independently bound read-only approval without touching project data', async () => {
-		const access = accessStub();
-		const client = fakeSharedClient();
-		const dispositionSha256 = 'c'.repeat(64);
-		const result = await adapterWith(client, access).execute(
-			requestFor('approve_read_only_turn_review', {
-				reason: 'The user requested project information only.',
-				disposition_sha256: dispositionSha256
-			})
-		);
-
-		expect(result.result).toMatchObject({
-			status: 'read_only_turn_review_approved',
-			disposition_sha256: dispositionSha256
-		});
-		expect(client.from).not.toHaveBeenCalled();
-		expect(access.getActorId).not.toHaveBeenCalled();
-	});
-
 	it('records an independently bound mutation-batch approval without touching project data', async () => {
 		const access = accessStub();
 		const client = fakeSharedClient();

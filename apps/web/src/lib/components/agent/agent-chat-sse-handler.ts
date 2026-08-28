@@ -45,6 +45,20 @@ import { appendUniqueThinkingActivity } from './agent-chat-thinking-state';
 const TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_LIMIT = 8;
 const TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_MAX_STRING_LENGTH = 240;
 const TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_MAX_DEPTH = 3;
+const INTERNAL_AGENTIC_CONTROL_TOOL_NAMES = new Set([
+	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
+	'cancel_turn_contract',
+	'approve_turn_contract_review',
+	'approve_read_only_turn_review',
+	'approve_mutation_batch_review',
+	'request_proposal_revision'
+]);
+
+export function isInternalAgenticControlToolName(toolName: string | undefined): boolean {
+	return Boolean(toolName && INTERNAL_AGENTIC_CONTROL_TOOL_NAMES.has(toolName));
+}
 
 /** Compute the user-visible `currentActivity` label for an `agent_state` event. */
 export function computeAgentStateActivity(state: AgentLoopState, details?: string): string {
@@ -65,7 +79,7 @@ export function normalizeContextShiftContext(
 }
 
 export interface ToolCallActivityBuildResult {
-	activity: ActivityEntry;
+	activity: ActivityEntry | null;
 	toolCallId: string | undefined;
 }
 
@@ -81,6 +95,9 @@ export function buildToolCallActivity(
 	const toolCallId = event.tool_call?.id;
 	const args = event.tool_call?.function?.arguments || '';
 	const displayPayload = presenter.normalizeToolDisplayPayload(rawToolName, args);
+	if (isInternalAgenticControlToolName(displayPayload.toolName)) {
+		return { activity: null, toolCallId };
+	}
 
 	const displayMessage = presenter.formatToolMessage(
 		displayPayload.toolName,
@@ -406,6 +423,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 
 	// Entities created during the current turn; flushed to a card message on `done`.
 	let createdEntitiesBuffer: CreatedEntityRef[] = [];
+	const internalControlToolCallIds = new Set<string>();
 
 	function applyToolResultSideEffects(params: {
 		toolName: string | undefined;
@@ -502,6 +520,14 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			}
 			deps.processedToolCallIds.add(result.toolCallId);
 		}
+		const activity = result.activity;
+		if (!activity) {
+			if (result.toolCallId) {
+				internalControlToolCallIds.add(result.toolCallId);
+				deps.pendingToolResults.delete(result.toolCallId);
+			}
+			return;
+		}
 
 		if (isDev) {
 			const rawToolName = event.tool_call?.function?.name || 'unknown';
@@ -519,7 +545,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		const blockId = thinking.ensure();
 		thinking.update(blockId, (block) => ({
 			...block,
-			activities: appendUniqueThinkingActivity(block.activities, result.activity)
+			activities: appendUniqueThinkingActivity(block.activities, activity)
 		}));
 
 		if (result.toolCallId && deps.pendingToolResults.has(result.toolCallId)) {
@@ -554,6 +580,17 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		const toolResult = event.result;
 		const info = computeToolResultInfo(toolResult, presenter);
 		const resultKey = info.resultToolCallId;
+		if (
+			isInternalAgenticControlToolName(info.rawResultToolName) ||
+			Boolean(resultKey && internalControlToolCallIds.has(resultKey))
+		) {
+			if (resultKey) {
+				deps.processedToolResultIds.add(resultKey);
+				deps.pendingToolResults.delete(resultKey);
+				internalControlToolCallIds.delete(resultKey);
+			}
+			return;
+		}
 
 		if (resultKey) {
 			if (deps.processedToolResultIds.has(resultKey)) {
@@ -784,6 +821,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 
 	handleSSEMessage.resetTurnState = () => {
 		createdEntitiesBuffer = [];
+		internalControlToolCallIds.clear();
 	};
 
 	return handleSSEMessage;

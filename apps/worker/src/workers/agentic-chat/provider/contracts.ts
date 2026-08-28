@@ -100,7 +100,6 @@ export type AgenticChatControlDecisionAuthorV1 =
 	| 'acting_model'
 	| 'contract_reviewer'
 	| 'mutation_batch_reviewer'
-	| 'read_only_reviewer'
 	| 'harness_review_fallback'
 	| 'harness_candidate_gate';
 

@@ -122,6 +122,31 @@ describe('buildToolCallActivity', () => {
 		expect(result.activity?.metadata?.skillAction).toBe('requested');
 	});
 
+	it.each([
+		'declare_turn_contract',
+		'declare_read_only_turn',
+		'request_turn_clarification',
+		'approve_turn_contract_review',
+		'approve_mutation_batch_review',
+		'request_proposal_revision'
+	])('does not build user-visible activity for internal control %s', (toolName) => {
+		const result = buildToolCallActivity(
+			{
+				type: 'tool_call',
+				tool_call: {
+					id: `control-${toolName}`,
+					type: 'function',
+					function: { name: toolName, arguments: '{}' }
+				} as any
+			},
+			makePresenter()
+		);
+		expect(result).toEqual({
+			activity: null,
+			toolCallId: `control-${toolName}`
+		});
+	});
+
 	it('returns an empty toolCallId when one is not provided', () => {
 		const presenter = makePresenter();
 		const event: Extract<AgentSSEMessage, { type: 'tool_call' }> = {
@@ -653,28 +678,50 @@ describe('createSSEHandler — routing', () => {
 		expect(h.snapshot.currentActivity).toBe('Reading project');
 	});
 
-	it('preserves activity-log visibility for first-tool planning cues', () => {
+	it('keeps the generic first-tool working cue out of the activity log', () => {
 		const h = createHarness();
 		h.handler({
 			type: 'agent_state',
 			state: 'thinking',
 			contextType: 'project' as any,
-			details: 'Planning the first step...',
-			activity_visibility: 'activity_log'
+			details: 'Working...'
 		});
 		expect(h.calls.addActivity).toEqual([
 			{
-				content: 'Planning the first step...',
+				content: 'Working...',
 				activityType: 'state_change',
 				metadata: {
 					state: 'thinking',
-					details: 'Planning the first step...',
-					activityVisibility: 'activity_log'
+					details: 'Working...'
 				},
 				status: undefined
 			}
 		]);
-		expect(h.snapshot.currentActivity).toBe('Planning the first step...');
+		expect(h.snapshot.currentActivity).toBe('Working...');
+	});
+
+	it('drops internal control calls and results without leaving pending activity state', () => {
+		const h = createHarness();
+		h.handler({
+			type: 'tool_call',
+			tool_call: {
+				id: 'contract-control-1',
+				type: 'function',
+				function: { name: 'declare_turn_contract', arguments: '{}' }
+			} as any
+		});
+		h.handler({
+			type: 'tool_result',
+			result: {
+				tool_call_id: 'contract-control-1',
+				tool_name: 'declare_turn_contract',
+				result: { status: 'declared' }
+			} as any
+		});
+
+		expect(h.calls.updateBlocks).toEqual([]);
+		expect(h.calls.updateActivityStatus).toEqual([]);
+		expect(h.pendingToolResults.size).toBe(0);
 	});
 
 	it('handles waiting_on_user without details', () => {

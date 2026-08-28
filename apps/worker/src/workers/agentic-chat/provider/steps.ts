@@ -35,13 +35,12 @@ export function buildPlanningStep(
 		}),
 		phase: 'stream',
 		eventType: 'agent_state',
-		currentActivity: 'Planning the first step...',
+		currentActivity: 'Working...',
 		eventPayload: {
 			type: 'agent_state',
 			state: 'thinking',
 			contextType: request.contextType,
-			details: 'Planning the first step...',
-			activity_visibility: 'activity_log'
+			details: 'Working...'
 		}
 	};
 }

@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatCatalogPolicy.test.ts
 import {
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY,
@@ -12,7 +13,6 @@ import {
 import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../src/workers/agentic-chat/tools/execution-adapter';
@@ -28,7 +28,6 @@ describe('Agentic Chat worker/catalog policy compatibility', () => {
 	it('keeps production read names catalog-backed or explicitly worker-owned', () => {
 		const workerReviewControls = [
 			APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-			APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
 			APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 			REQUEST_PROPOSAL_REVISION_TOOL_NAME
 		].sort();

@@ -42,7 +42,6 @@ import { AgenticChatProviderCapacity, AgenticChatProviderCapacityError } from '.
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../readToolIdentity';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../tools/execution-adapter';
@@ -64,32 +63,26 @@ import {
 import {
 	type PendingProposalRevision,
 	buildContractRevisionRequest,
-	buildImplicitMutationBatchRevisionRequest,
 	buildMutationBatchRevisionRequest,
 	readProposalRevision
 } from './review/decision-handling';
 import {
 	completeMutationBatchReviewDecision,
-	completeReadOnlyReviewDecision,
 	completeTurnContractReviewDecision
 } from './review/decision-completion';
 import {
 	assertSemanticDispositionCalls,
 	buildPostSemanticDispositionRequest,
 	buildProjectCreateInitialContractGateRequest,
-	buildReadOnlyTurnReviewRequest,
 	buildSemanticTurnDispositionGateRequest,
 	callsIncludeSemanticDisposition,
 	canRequirePreMutationSemanticDisposition,
 	isSemanticDispositionToolName,
-	readOnlyDispositionSha256,
 	requestOffersSemanticDisposition
 } from './review/disposition';
 import {
 	type PendingMutationBatchReview,
 	buildMutationBatchReviewRequest,
-	implicitMutationTargetIds,
-	isImplicitSimpleMutationBatch,
 	mutationBatchSha256
 } from './review/mutation-batch';
 import { buildTurnContractReviewRequest } from './review/turn-contract';
@@ -159,6 +152,7 @@ import {
 	validationFailureError,
 	validationIssuesForCall
 } from './validation';
+import { assessDirectWriteBatch, directWriteContractInstruction } from './write-routing';
 
 const DEFAULT_MAX_PROVIDER_ROUNDS = 16;
 const MAX_VALIDATION_REPAIR_ROUNDS = 2;
@@ -194,11 +188,6 @@ type ToolRoundStreamState = {
 	takePreMutationSemanticDispositionGate(
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[]
-	): ClientRequest | null;
-	takePreFinalSemanticDispositionGate(request: ClientRequest): ClientRequest | null;
-	takeSemanticTurnDispositionGate(
-		request: ClientRequest,
-		options?: { allowReads?: boolean }
 	): ClientRequest | null;
 	takeTurnContractWriteCarveOut(request: ClientRequest): ClientRequest | null;
 	/** An approved contract still has unfulfilled outcomes after a mutation round. */
@@ -310,7 +299,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		let contractCompletionContinuationUsed = false;
 		let turnContract: TurnContract | null = null;
 		let pendingContractReviewSha256: string | null = null;
-		let pendingReadOnlyReviewSha256: string | null = null;
 		let approvedContractSha256: string | null = null;
 		let pendingMutationBatchReview: PendingMutationBatchReview | null = null;
 		let pendingProposalRevision: PendingProposalRevision | null = null;
@@ -411,31 +399,24 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			setPendingToolRound(value) {
 				pendingToolRound = value;
 				for (const call of value.calls) {
-					// A voluntary control declaration before any read satisfies the
-					// one-disposition requirement just as surely as a declaration forced
-					// by the later gate. Remember it so a reviewed read-only turn is not
-					// classified and paid for twice after its first read round.
+					// A voluntary complex-write declaration satisfies the gate just as
+					// surely as one requested after a withheld contract-only proposal.
 					if (isSemanticDispositionToolName(call.name)) {
 						semanticTurnDispositionGateUsed = true;
 					}
 					if (call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME) {
 						const revision = readProposalRevision(call.arguments);
 						if (pendingMutationBatchReview) {
-							const revisionKind =
-								pendingMutationBatchReview.authorization.kind === 'implicit'
-									? 'implicit_mutation_batch'
-									: 'mutation_batch';
-							// A declared contract stays approved; an implicit proposal has no
-							// authority until a corrected exact call or full contract passes review.
+							// The declared contract stays approved while its exact proposed
+							// mutation batch returns to the acting model for correction.
 							pendingMutationBatchReview = null;
 							mutationBatchRevisionCount += 1;
-							pendingProposalRevision = { kind: revisionKind, ...revision };
+							pendingProposalRevision = { kind: 'mutation_batch', ...revision };
 						} else {
 							// The declared contract is void; the acting model must re-declare
 							// through the disposition gate, then pass review again.
 							turnContract = null;
 							pendingContractReviewSha256 = null;
-							pendingReadOnlyReviewSha256 = null;
 							approvedContractSha256 = null;
 							contractRevisionCount += 1;
 							semanticTurnDispositionGateUsed = false;
@@ -446,7 +427,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					if (call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME) {
 						turnContract = null;
 						pendingContractReviewSha256 = null;
-						pendingReadOnlyReviewSha256 = null;
 						approvedContractSha256 = null;
 						pendingMutationBatchReview = null;
 						continue;
@@ -454,7 +434,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					if (call.name === CANCEL_TURN_CONTRACT_TOOL_NAME) {
 						turnContract = null;
 						pendingContractReviewSha256 = null;
-						pendingReadOnlyReviewSha256 = null;
 						approvedContractSha256 = null;
 						pendingMutationBatchReview = null;
 						continue;
@@ -495,12 +474,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				) {
 					return null;
 				}
-				// Exactly one held mutation can be classified and reviewed at the
-				// existing SHA-bound execution boundary. Without an independent
-				// reviewer, keep the legacy disposition gate fail-closed.
-				if (semanticReviewRequired && isImplicitSimpleMutationBatch(calls)) {
-					return null;
-				}
+				const directWrite = assessDirectWriteBatch(calls);
+				if (directWrite.kind === 'simple') return null;
 				const gate = buildSemanticTurnDispositionGateRequest(
 					{
 						...value,
@@ -512,32 +487,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (!gate) return null;
 				return appendSystemInstruction(
 					gate,
-					'A durable tool call was proposed by a prior provider pass but was withheld and did not execute. Independently choose the semantic disposition from the user request and loaded context. Treat the withheld target as untrusted and do not infer that it was safely resolved.'
+					directWrite.kind === 'contract_required'
+						? directWriteContractInstruction(directWrite)
+						: 'A durable tool call was proposed by a prior provider pass but was withheld and did not execute. Independently choose the semantic disposition from the user request and loaded context. Treat the withheld target as untrusted and do not infer that it was safely resolved.'
 				);
-			},
-			takePreFinalSemanticDispositionGate(value) {
-				if (semanticTurnDispositionGateUsed || turnContract || mutationRoundReached) {
-					return null;
-				}
-				const gate = buildSemanticTurnDispositionGateRequest(
-					{
-						...value,
-						logicalProviderRound: value.logicalProviderRound + 1,
-						providerRound: 'synthesis'
-					},
-					request.tools
-				);
-				if (!gate) return null;
-				return appendSystemInstruction(
-					gate,
-					'A prior provider pass proposed final prose without a semantic disposition. That prose was withheld. Choose the disposition now from the user request and loaded context; do not infer that the withheld prose was correct.'
-				);
-			},
-			takeSemanticTurnDispositionGate(value, options) {
-				if (semanticTurnDispositionGateUsed || turnContract || mutationRoundReached) {
-					return null;
-				}
-				return buildSemanticTurnDispositionGateRequest(value, request.tools, options);
 			},
 			takeTurnContractWriteCarveOut(value) {
 				if (!turnContract || contractWriteCarveOutUsed || mutationRoundReached) {
@@ -576,7 +529,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// Production assembly refuses mutation capabilities without this lane.
 				// Keep reviewer-less deterministic/provider fixtures backward-compatible.
 				if (!semanticReviewRequired) return [];
-				if (!turnContract && isImplicitSimpleMutationBatch(calls)) return [];
+				if (!turnContract && assessDirectWriteBatch(calls).kind === 'simple') return [];
 				return validateApprovedTurnContractMutations(
 					calls,
 					turnContract,
@@ -594,31 +547,22 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (pendingMutationBatchReview) {
 					throw providerError('provider_mutation_review_reused', 'permanent');
 				}
+				if (!turnContract && assessDirectWriteBatch(calls).kind === 'simple') {
+					return null;
+				}
 				const batchSha256 = mutationBatchSha256(calls);
-				const authorization: PendingMutationBatchReview['authorization'] =
-					turnContract && approvedContractSha256
-						? {
-								kind: 'declared',
-								contract: turnContract,
-								contractSha256: approvedContractSha256,
-								labelBindings
-							}
-						: isImplicitSimpleMutationBatch(calls)
-							? {
-									kind: 'implicit',
-									targetIds: implicitMutationTargetIds(calls)
-								}
-							: (() => {
-									throw providerError(
-										'provider_mutation_review_without_contract',
-										'permanent'
-									);
-								})();
+				if (!turnContract || !approvedContractSha256) {
+					throw providerError('provider_mutation_review_without_contract', 'permanent');
+				}
 				pendingMutationBatchReview = {
 					batchSha256,
 					calls,
 					blockedToolCalls,
-					authorization,
+					authorization: {
+						contract: turnContract,
+						contractSha256: approvedContractSha256,
+						labelBindings
+					},
 					reviewTools: request.tools,
 					request: value,
 					usage
@@ -724,19 +668,24 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				const roundContainsMutation = completedToolRound.calls.some(
 					(call) => call.kind === 'mutation'
 				);
+				// A contract-free mutation round is the one bounded direct-write lane.
+				// Its continuation is tool-free so the model cannot split a complex
+				// request into several individually small batches.
+				const directSimpleMutationCompleted =
+					!turnContract &&
+					completedToolRound.calls.some(
+						(call, index) =>
+							call.kind === 'mutation' && isMutationFeedback(input.results[index]!)
+					);
 				const semanticDispositionToolName = completedToolRound.calls.find((call) =>
 					isSemanticDispositionToolName(call.name)
 				)?.name;
 				const contractReviewApproval = completedToolRound.calls.find(
 					(call) => call.name === APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME
 				);
-				const readOnlyReviewApproval = completedToolRound.calls.find(
-					(call) => call.name === APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME
-				);
 				const mutationBatchReviewApproval = completedToolRound.calls.find(
 					(call) => call.name === APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME
 				);
-				const roundContainsSemanticDisposition = Boolean(semanticDispositionToolName);
 				if (roundContainsMutation) {
 					turnReadMemo.clear();
 					mutationRoundReached = true;
@@ -811,53 +760,17 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 									request.tools,
 									proposalRevision
 								)
-							: proposalRevision.kind === 'implicit_mutation_batch'
-								? buildImplicitMutationBatchRevisionRequest(
-										currentRequest,
-										request.tools,
-										proposalRevision
-									)
-								: buildMutationBatchRevisionRequest(
-										currentRequest,
-										request.tools,
-										proposalRevision
-									);
+							: buildMutationBatchRevisionRequest(
+									currentRequest,
+									request.tools,
+									proposalRevision
+								);
 					pendingToolRound = null;
 					toolRoundCompleted = false;
 					nextProviderRound += 1;
 					return this.streamContinuation(currentRequest, completedToolRound.usage, state);
 				}
-				if (readOnlyReviewApproval) {
-					const approvalIndex = completedToolRound.calls.indexOf(readOnlyReviewApproval);
-					const approvalFeedback = input.results[approvalIndex];
-					const approvalResult =
-						approvalFeedback &&
-						!isFailedToolFeedback(approvalFeedback) &&
-						!isMutationFeedback(approvalFeedback)
-							? approvalFeedback.execution.result
-							: null;
-					if (
-						!pendingReadOnlyReviewSha256 ||
-						readOnlyReviewApproval.arguments.disposition_sha256 !==
-							pendingReadOnlyReviewSha256 ||
-						approvalResult?.status !== 'read_only_turn_review_approved' ||
-						approvalResult.disposition_sha256 !== pendingReadOnlyReviewSha256
-					) {
-						throw providerError(
-							'provider_read_only_review_identity_mismatch',
-							'permanent'
-						);
-					}
-					pendingReadOnlyReviewSha256 = null;
-					currentRequest = appendSystemInstruction(
-						buildPostSemanticDispositionRequest(
-							currentRequest,
-							request.tools,
-							DECLARE_READ_ONLY_TURN_TOOL_NAME
-						),
-						'Independent semantic review confirmed that the current user requested information only. Continue without durable mutations.'
-					);
-				} else if (contractReviewApproval) {
+				if (contractReviewApproval) {
 					const approvalIndex = completedToolRound.calls.indexOf(contractReviewApproval);
 					const approvalFeedback = input.results[approvalIndex];
 					const approvalResult =
@@ -935,18 +848,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						pendingMutationBatchReview = null;
 						semanticDispositionCorrectionUsed = true;
 					}
-					if (
-						semanticDispositionToolName === DECLARE_TURN_CONTRACT_TOOL_NAME &&
-						pendingReadOnlyReviewSha256
-					) {
-						// The symmetric false-negative case: an independent reviewer may
-						// find that a proposed read-only turn would silently drop a safe,
-						// delegated mutation. The reviewer proposes an exact contract, then
-						// the normal SHA-bound contract reviewer must approve it before any
-						// write surface is restored.
-						pendingReadOnlyReviewSha256 = null;
-						semanticDispositionCorrectionUsed = true;
-					}
 					currentRequest = buildPostSemanticDispositionRequest(
 						currentRequest,
 						request.tools,
@@ -967,35 +868,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						request.tools,
 						turnContract,
 						pendingContractReviewSha256,
-						!semanticDispositionCorrectionUsed,
-						completedToolRound.usage,
-						state
-					);
-				}
-				if (
-					semanticDispositionToolName === DECLARE_READ_ONLY_TURN_TOOL_NAME &&
-					this.ports.semanticReviewer
-				) {
-					const readOnlyDisposition = completedToolRound.calls.find(
-						(call) => call.name === DECLARE_READ_ONLY_TURN_TOOL_NAME
-					);
-					if (!readOnlyDisposition) {
-						throw providerError(
-							'provider_read_only_review_disposition_missing',
-							'permanent'
-						);
-					}
-					pendingToolRound = null;
-					toolRoundCompleted = false;
-					nextProviderRound += 1;
-					pendingReadOnlyReviewSha256 = readOnlyDispositionSha256(
-						readOnlyDisposition.arguments
-					);
-					return this.streamReadOnlyTurnReview(
-						currentRequest,
-						request.tools,
-						readOnlyDisposition.arguments,
-						pendingReadOnlyReviewSha256,
 						!semanticDispositionCorrectionUsed,
 						completedToolRound.usage,
 						state
@@ -1081,6 +953,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					);
 				}
 				const forceNoToolSynthesis =
+					directSimpleMutationCompleted ||
 					ledgerObservation.forceSynthesis ||
 					readLoopRepairRank >= READ_LOOP_REPAIR_RANK.must_synthesize;
 				const clarificationRequiresToolFreeSynthesis =
@@ -1097,18 +970,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					forceNoToolSynthesis && !contractWriteCarveOut
 						? state.takeContractCompletionContinuation(currentRequest)
 						: null;
-				const semanticDispositionGate =
-					pattern.readOps.length > 0 && !roundContainsSemanticDisposition
-						? state.takeSemanticTurnDispositionGate(currentRequest, {
-								allowReads: !forceNoToolSynthesis
-							})
-						: null;
 				if (contractWriteCarveOut) {
 					currentRequest = contractWriteCarveOut;
 				} else if (contractCompletion) {
 					currentRequest = contractCompletion;
-				} else if (semanticDispositionGate) {
-					currentRequest = semanticDispositionGate;
 				} else if (forceNoToolSynthesis) {
 					currentRequest = forceToolFreeRequest(currentRequest);
 				}
@@ -1117,10 +982,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				toolRoundCompleted = false;
 				nextProviderRound += 1;
 				return clarificationRequiresToolFreeSynthesis ||
-					(forceNoToolSynthesis &&
-						!contractWriteCarveOut &&
-						!contractCompletion &&
-						!semanticDispositionGate)
+					(forceNoToolSynthesis && !contractWriteCarveOut && !contractCompletion)
 					? this.streamForcedSynthesis(currentRequest, completedToolRound.usage, state)
 					: this.streamContinuation(currentRequest, completedToolRound.usage, state);
 			},
@@ -1348,14 +1210,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						request.toolChoice === 'none' ? 'permanent' : 'unknown'
 					);
 				}
-				const preFinalSemanticDispositionGate =
-					state.takePreFinalSemanticDispositionGate(request);
-				if (preFinalSemanticDispositionGate) {
-					state.setCurrentRequest(preFinalSemanticDispositionGate);
-					keepLeaseForSynthesis = true;
-					yield* this.streamContinuation(preFinalSemanticDispositionGate, usage, state);
-					return;
-				}
 				if (holdAssistantText && assistantCandidate) {
 					yield { type: 'text_delta', text: assistantCandidate };
 					state.supervisor?.observe({
@@ -1417,121 +1271,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			}))
 		];
 		return { ...request, messages };
-	}
-
-	/**
-	 * Read-only is also an untrusted semantic claim: without review it can hide a
-	 * commissioned mutation behind a safe-sounding answer or question. A
-	 * distinct model therefore binds approval to the exact declaration or emits
-	 * a durable clarification before the acting model may continue.
-	 */
-	private async *streamReadOnlyTurnReview(
-		request: ClientRequest,
-		availableTools: readonly AgenticChatTurnProviderToolV1[],
-		disposition: JsonObject,
-		dispositionReviewSha256: string,
-		allowDispositionCorrection: boolean,
-		priorUsage: AgenticChatProviderUsageV1 | null,
-		state: ToolRoundStreamState
-	): AsyncGenerator<AgenticChatProviderStepV1> {
-		const reviewer = this.ports.semanticReviewer;
-		if (!reviewer) throw providerError('provider_semantic_reviewer_unavailable', 'permanent');
-		const reviewRequest = buildReadOnlyTurnReviewRequest(
-			request,
-			availableTools,
-			disposition,
-			dispositionReviewSha256,
-			allowDispositionCorrection
-		);
-		const toolCalls = createToolCallAccumulator();
-		let finished = false;
-		let reviewerUsage: AgenticChatProviderUsageV1 | null = null;
-		let fallbackReason: string | null = null;
-		let reviewFinishedReason: string | null = null;
-		let pendingReviewTool = false;
-		try {
-			yield {
-				type: 'semantic',
-				transitionId: createStableAgenticChatReadToolTransitionIdV1({
-					turnRunId: request.turnRunId,
-					// Keyed by attempt as well as content: a disposition re-declared
-					// verbatim after a reviewer correction must not collide with the
-					// earlier review's durable transition (semantic_write_transition_conflict).
-					providerToolCallId: `read-only-review:${dispositionReviewSha256}:${request.logicalProviderRound}`,
-					stage: 'planning'
-				}),
-				phase: 'stream',
-				eventType: 'agent_state',
-				currentActivity: 'Checking whether this is read-only...',
-				eventPayload: {
-					type: 'agent_state',
-					state: 'thinking',
-					contextType: request.contextType,
-					details: 'Checking whether this is read-only...',
-					activity_visibility: 'activity_log',
-					semantic_review: { read_only_disposition_sha256: dispositionReviewSha256 }
-				}
-			};
-			for await (const event of this.providerPass(reviewRequest, reviewer)) {
-				throwIfAborted(request.signal);
-				if (finished) throw providerError('provider_event_after_done', 'unknown');
-				if (event.type === 'reasoning' || event.type === 'text') continue;
-				if (event.type === 'tool_call') {
-					appendToolCallDelta(toolCalls, event.toolCall);
-					continue;
-				}
-				if (event.type === 'error') {
-					fallbackReason = `Independent read-only review was unavailable: ${canonicalError(event.error)}`;
-					break;
-				}
-
-				finished = true;
-				reviewerUsage = normalizeUsage(event.usage);
-				const finishedReason = canonicalFinishedReason(event.finishedReason);
-				reviewFinishedReason = finishedReason;
-				state.supervisor?.observe({
-					type: 'llm_pass_completed',
-					pass: reviewRequest.logicalProviderRound,
-					finishedReason,
-					usage: supervisorUsage(reviewerUsage)
-				});
-				yield* drainSupervisorSteps(state.supervisor);
-				if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
-					fallbackReason =
-						'Independent read-only review did not return a control decision.';
-				}
-			}
-
-			const calls = completeReadOnlyReviewDecision({
-				actingRequest: request,
-				reviewRequest,
-				toolCalls,
-				finished,
-				finishedReason: reviewFinishedReason,
-				fallbackReason,
-				dispositionReviewSha256
-			});
-			const blockedToolCalls = observeSupervisorToolCalls(state, calls);
-			yield* drainSupervisorSteps(state.supervisor);
-			const normalizedCalls = normalizeCompletedProviderCalls(
-				reviewRequest,
-				calls,
-				blockedToolCalls
-			);
-			state.setPendingToolRound({
-				calls: normalizedCalls,
-				usage: combineUsage(priorUsage, reviewerUsage)
-			});
-			state.setCurrentRequest(request);
-			yield buildPlanningStep(reviewRequest, normalizedCalls[0]!.id);
-			for (const call of normalizedCalls) {
-				yield buildProviderToolStep(request.turnRunId, call, state);
-			}
-			state.markToolRoundCompleted();
-			pendingReviewTool = true;
-		} finally {
-			if (!pendingReviewTool) state.release();
-		}
 	}
 
 	/**
@@ -1736,10 +1475,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				finishedReason: reviewFinishedReason,
 				fallbackReason,
 				batchSha256: pending.batchSha256,
-				allowRevision,
-				...(pending.authorization.kind === 'implicit'
-					? { implicitTargetIds: pending.authorization.targetIds }
-					: {})
+				allowRevision
 			});
 			const blockedToolCalls = observeSupervisorToolCalls(state, calls);
 			yield* drainSupervisorSteps(state.supervisor);

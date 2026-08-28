@@ -5,6 +5,7 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import {
+	DECLARE_READ_ONLY_TURN_TOOL_DEFINITION,
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
@@ -37,7 +38,17 @@ export function buildTurnContractReviewRequest(
 		(tool) => tool.function.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME
 	);
 	const readOnlyDispositionTool = allowDispositionCorrection
-		? availableTools.find((tool) => tool.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME)
+		? (availableTools.find(
+				(tool) => tool.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME
+			) ?? {
+				type: 'function' as const,
+				function: {
+					name: DECLARE_READ_ONLY_TURN_TOOL_DEFINITION.function.name,
+					description: DECLARE_READ_ONLY_TURN_TOOL_DEFINITION.function.description,
+					parameters: DECLARE_READ_ONLY_TURN_TOOL_DEFINITION.function
+						.parameters as unknown as JsonObject
+				}
+			})
 		: undefined;
 	if (!clarificationTool || (allowDispositionCorrection && !readOnlyDispositionTool)) {
 		throw providerError('provider_semantic_reviewer_surface_invalid', 'permanent');
@@ -200,18 +211,21 @@ export function buildWorkerSemanticMutationOrdering(
 	const toolNames = new Set(tools.map((tool) => tool.function.name));
 	if (
 		!toolNames.has(DECLARE_TURN_CONTRACT_TOOL_NAME) ||
-		!toolNames.has(DECLARE_READ_ONLY_TURN_TOOL_NAME) ||
 		!toolNames.has(REQUEST_TURN_CLARIFICATION_TOOL_NAME) ||
 		!tools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
 	) {
 		return null;
 	}
 	return [
-		'Worker semantic ordering: before any durable mutation can execute or any final answer can be returned on this mutation-capable surface, first choose a semantic disposition.',
-		'Call declare_turn_contract when the user commissioned a change and the target and values are safe; call request_turn_clarification when a required user choice remains; call declare_read_only_turn only when no change was commissioned.',
+		'Worker write routing: classify a commissioned durable change as simple or complex before proposing mutations.',
+		'Simple means one response containing at most three independent ordinary creates, updates, links, attachments, or tags; every target is exact, every value is requested or reasonably delegated, no call depends on another, and no further mutation round will be needed. For a simple request, call the mutation tools directly without declare_turn_contract.',
+		'Examples of simple requests: complete this exact task; rename this exact project; create these three explicitly named tasks; set the same requested due date on two exact tasks.',
+		'Complex means more than three mutations, multiple rounds or dependencies, project creation, move or organize work, unlinking or destructive effects, high-impact operations, model-selected scope, or any ambiguous required target/value. For a complex request, call declare_turn_contract with the complete outcome set before any mutation.',
+		'Examples of complex requests: organize these documents; clean up duplicates; update everything that looks outdated; create a project and then populate it; change an ambiguous item reference.',
+		'Call request_turn_clarification when a commissioned durable change still has an unresolved required user choice. For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
 		'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
 		...SEMANTIC_COMMISSION_GUIDANCE,
 		...projectCreateShellGuidance(contextType, tools),
-		'Do not combine the first disposition with a mutation call. Reads may accompany a contract when they are needed to resolve executable details; a read-only disposition may accompany reads.'
+		'Do not combine declare_turn_contract with a mutation call. Reads may accompany a contract when they are needed to resolve executable details.'
 	].join(' ');
 }

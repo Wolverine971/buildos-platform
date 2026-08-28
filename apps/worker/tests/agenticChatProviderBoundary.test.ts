@@ -54,7 +54,6 @@ describe('Agentic Chat provider boundaries', () => {
 			'function buildPlanningStep(',
 			'function buildPromptSnapshot(',
 			'function buildMutationBatchReviewRequest(',
-			'function buildReadOnlyTurnReviewRequest(',
 			'function buildSemanticTurnDispositionGateRequest(',
 			'function buildTurnContractReviewRequest(',
 			'function buildWorkerSemanticMutationOrdering(',
@@ -66,10 +65,8 @@ describe('Agentic Chat provider boundaries', () => {
 			'function validateReadFeedback(',
 			'function mutationBatchSha256(',
 			'function completeMutationBatchReviewDecision(',
-			'function completeReadOnlyReviewDecision(',
 			'function completeTurnContractReviewDecision(',
 			'function contextSaturationRepairRank(',
-			'function readOnlyDispositionSha256(',
 			'function streamBufferedProviderPass(',
 			'const TURN_CONTRACT_REVIEW_APPROVAL_TOOL'
 		] as const;

@@ -3,7 +3,6 @@
 import { READ_LOOP_REPAIR_RANK } from '@buildos/agentic-chat-runtime/loop';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../tools/execution-adapter';
@@ -15,7 +14,6 @@ import type { CompletedProviderToolCall } from './stream-tool-calls';
 const UNAVAILABLE_SKILL_REPAIR_TOOL_NAMES = new Set(['skill_load', 'skill_search']);
 const REVIEWER_ONLY_CONTROL_TOOL_NAMES = new Set([
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 ]);
@@ -56,7 +54,7 @@ export function buildUnavailableSkillRepairRequest(
 		[
 			`Unavailable worker skill repair: the previous pass called an unavailable skill tool, but ${unavailableSkillDescription}`,
 			`Do not call ${rejectedSkillNames.join(' or ')} again. The exact admitted worker surface has been restored; use only the tools present in this request.`,
-			'Choose a semantic disposition control before any mutation. Use an available read only when durable context is genuinely missing, and request clarification only when a required user choice remains unresolved.'
+			'For one bounded batch of at most three independent ordinary mutations, call the mutations directly. For a complex, dependent, organizational, destructive, or larger write, declare the complete turn contract first. Use an available read only when durable context is genuinely missing, and request clarification only when a required user choice remains unresolved.'
 		].join(' ')
 	);
 }
@@ -88,7 +86,7 @@ export function buildReviewerMimicryRepairRequest(
 		},
 		[
 			`${names.join(', ')} ${names.length === 1 ? 'is a reviewer-only control and was' : 'are reviewer-only controls and were'} rejected without execution: the independent reviewer calls it, never you.`,
-			'You propose mutation calls; the reviewer approves them. Continue with the tools present in this request: propose the remaining mutations for the approved contract, or finish with your answer if every outcome is already executed.'
+			'For an approved complex contract, you propose mutation calls and the reviewer approves the exact batch. Continue with the tools present in this request: propose the remaining mutations for the approved contract, or finish with your answer if every outcome is already executed.'
 		].join(' ')
 	);
 }

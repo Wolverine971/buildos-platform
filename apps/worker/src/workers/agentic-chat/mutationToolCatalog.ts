@@ -44,6 +44,8 @@ export type AgenticChatReviewedMutationSpecV1 = {
 	capability: AgenticChatMutationCapabilityNameV1;
 	operationName: AgenticChatMutationOperationNameV1;
 	downstreamIdempotencySupported: boolean;
+	/** Whether one bounded same-round batch may execute without a turn contract/reviewer. */
+	directWriteClass: 'ordinary' | 'contract_required';
 	requiredNames: readonly string[];
 	reviewedArgumentNames: readonly string[];
 	descriptionOverride?: string;
@@ -61,6 +63,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoDocument',
 		operationName: 'onto.document.create',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['project_id', 'title', 'description'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -77,6 +80,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoDocument',
 		operationName: 'onto.document.update',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['document_id'],
 		reviewedArgumentNames: [
 			'document_id',
@@ -103,6 +107,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'moveDocumentInTree',
 		operationName: 'onto.document.tree.move',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'contract_required',
 		descriptionOverride:
 			'Move an existing document in the current project document tree. To group documents under a parent, prefer new_parent_title with a short category name (e.g. "Pricing", "Meeting notes"): the server reuses the existing document with that title or creates the parent, so grouping is one call per document with no parent UUID needed. Reuse the exact same new_parent_title for every document in a category. Pass new_parent_id only for a parent UUID returned by a tree/document read; never invent a UUID. Omit both for root placement.',
 		requiredNames: ['project_id', 'document_id'],
@@ -118,6 +123,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createTaskDocument',
 		operationName: 'onto.task.docs.create_or_attach',
 		downstreamIdempotencySupported: true,
+		directWriteClass: 'ordinary',
 		descriptionOverride:
 			'Attach an existing document to a task workspace using exact task and document UUIDs from reads. This worker tool does not create a new document.',
 		requiredNames: ['task_id', 'document_id'],
@@ -127,6 +133,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'linkOntoEntities',
 		operationName: 'onto.edge.link',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		descriptionOverride:
 			'Create one relationship between two existing non-project ontology entities using exact UUIDs from reads. Project endpoints are not available in the worker. Relationship aliases are normalized to their canonical direction.',
 		requiredNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel'],
@@ -146,6 +153,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'unlinkOntoEdge',
 		operationName: 'onto.edge.unlink',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'contract_required',
 		descriptionOverride:
 			'Remove one existing ontology relationship by the exact edge UUID returned by a project graph or relationship read.',
 		requiredNames: ['edge_id'],
@@ -155,6 +163,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoTask',
 		operationName: 'onto.task.create',
 		downstreamIdempotencySupported: true,
+		directWriteClass: 'ordinary',
 		requiredNames: ['project_id', 'title'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -178,6 +187,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoTask',
 		operationName: 'onto.task.update',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['task_id'],
 		reviewedArgumentNames: [
 			'task_id',
@@ -200,6 +210,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'moveOntoTask',
 		operationName: 'onto.task.move',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'contract_required',
 		descriptionOverride:
 			'Move one standalone task from the focused source project to another writable project while preserving its ID, comments, and eligible assignees. Clean moves execute immediately. If relationships, project-local links, or incompatible assignees must be removed, the tool returns an exact impact preview and confirmation_token. Ask the user to confirm those effects, then call this tool in a later turn with that token. Never confirm or retry with the token in the same turn. Scheduled, recurring, asset-linked, and archived-destination moves are blocked.',
 		requiredNames: ['task_id', 'expected_source_project_id', 'destination_project_id'],
@@ -223,6 +234,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'tagOntoEntity',
 		operationName: 'x.misc.tag_onto_entity',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		descriptionOverride:
 			'Send one explicit notification-only tag to active members of the focused project. Use exact user UUIDs returned by project-member reads and always pass mode "ping". This worker tool never edits entity content and does not resolve @handles.',
 		requiredNames: ['project_id', 'entity_type', 'entity_id', 'mode', 'mentioned_user_ids'],
@@ -269,6 +281,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoGoal',
 		operationName: 'onto.goal.create',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['project_id', 'name'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -286,6 +299,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoGoal',
 		operationName: 'onto.goal.update',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['goal_id'],
 		reviewedArgumentNames: [
 			'goal_id',
@@ -303,6 +317,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoPlan',
 		operationName: 'onto.plan.create',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['project_id', 'name'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -320,6 +335,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoPlan',
 		operationName: 'onto.plan.update',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['plan_id'],
 		reviewedArgumentNames: [
 			'plan_id',
@@ -337,6 +353,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoMilestone',
 		operationName: 'onto.milestone.create',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['project_id', 'title', 'goal_id'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -352,6 +369,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoMilestone',
 		operationName: 'onto.milestone.update',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['milestone_id'],
 		reviewedArgumentNames: [
 			'milestone_id',
@@ -366,6 +384,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoRisk',
 		operationName: 'onto.risk.create',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['project_id', 'title', 'impact'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -382,6 +401,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoRisk',
 		operationName: 'onto.risk.update',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['risk_id'],
 		reviewedArgumentNames: [
 			'risk_id',
@@ -400,6 +420,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoProject',
 		operationName: 'onto.project.create',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'contract_required',
 		descriptionOverride:
 			'Create one standard project and its generated Context document. Pass empty entities and relationships arrays. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support fiction/living-reference projects, custom Context documents, clarifications, embedded child records, or relationships.',
 		requiredNames: ['project', 'entities', 'relationships'],
@@ -494,6 +515,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoProject',
 		operationName: 'onto.project.update',
 		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
 		requiredNames: ['project_id'],
 		reviewedArgumentNames: [
 			'project_id',
