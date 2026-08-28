@@ -51,14 +51,16 @@ const WORKER_LOOP_CATALOG = Object.freeze({
 	)
 });
 
-// These are the versioned production launch surfaces that intentionally carry
-// write capability on every turn. Their acting model can propose a concrete
-// batch first; the deterministic direct-write classifier opens the larger
-// contract route only when that batch is complex. Legacy/custom profiles keep
-// their historical eager contract surface during the artifact retention
-// window, and project creation remains contract-first by design.
+// These are versioned production launch surfaces. Write-capable surfaces can
+// propose a concrete batch first; the deterministic direct-write classifier
+// opens the larger contract route only when that batch is complex. Read-only
+// surfaces omit the schema because no admitted mutation could ever honor it.
+// Legacy/custom profiles keep their historical eager contract surface during
+// the artifact retention window, and project creation remains contract-first.
 const LAZY_COMPLEX_WRITE_CONTRACT_SURFACE_PROFILES = new Set([
+	'global_basic',
 	'global_write',
+	'project_basic',
 	'project_write',
 	'project_document',
 	'project_write_document',
@@ -93,9 +95,9 @@ export function buildWorkerToolSurfaceOverride(
 
 /**
  * Keep the large durable-outcome schema out of common production opening
- * passes. The full immutable/admitted surface remains available to the worker
- * and is mounted by the deterministic complex-write redirect before the model
- * can declare a contract.
+ * passes. On a write-capable surface the full immutable/admitted surface stays
+ * available to the worker and is mounted by the deterministic complex-write
+ * redirect. On a read-only surface it remains unreachable by construction.
  */
 export function deferComplexWriteContractForInitialPass(
 	input: AgenticChatWorkerExecutionInputV1,
@@ -107,7 +109,6 @@ export function deferComplexWriteContractForInitialPass(
 	if (
 		!decoded.ok ||
 		!LAZY_COMPLEX_WRITE_CONTRACT_SURFACE_PROFILES.has(decoded.surface.surfaceProfile) ||
-		!tools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name)) ||
 		!tools.some((tool) => tool.function.name === DECLARE_TURN_CONTRACT_TOOL_NAME)
 	) {
 		return tools;

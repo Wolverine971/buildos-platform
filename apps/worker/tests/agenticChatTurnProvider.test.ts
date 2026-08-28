@@ -3177,6 +3177,50 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(client.stream).toHaveBeenCalledTimes(1);
 	});
 
+	it('omits the complex contract schema from a versioned read-only production surface', async () => {
+		const client = clientWith([
+			{ type: 'text', content: 'Here is the current workspace status.' },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const semanticReviewer = clientWithRounds([]);
+		const invocation = await new AgenticChatTurnProviderAdapter({
+			client,
+			semanticReviewer,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+		}).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					TURN_CONTRACT_TOOL_DEFINITION,
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					readToolDefinition('get_workspace_overview')
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'get_workspace_overview'
+				],
+				undefined,
+				'global_basic'
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: 'Here is the current workspace status.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		const openingTools = client.stream.mock.calls[0]?.[0].tools;
+		expect(openingTools?.map((tool) => tool.function.name)).toEqual([
+			'request_turn_clarification',
+			'get_workspace_overview'
+		]);
+		expect(JSON.stringify(openingTools)).not.toContain('minimum_successful_effects');
+		expect(semanticReviewer.stream).not.toHaveBeenCalled();
+	});
+
 	it('allows a read result to flow directly into final prose without a disposition control', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const streams: AgenticChatTurnProviderClientEventV1[][] = [

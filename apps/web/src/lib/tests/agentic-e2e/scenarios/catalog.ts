@@ -6,6 +6,7 @@ import { documentCreateScenario } from './document-create.scenario';
 import { documentEditContextScenario } from './document-edit-context.scenario';
 import { projectOrganizeScenario } from './project-organize.scenario';
 import { taskCreateScenario } from './task-create.scenario';
+import { taskCreateSimpleWorkerScenario } from './task-create-simple-worker.scenario';
 import { calendarMoveScenario } from './calendar-move.scenario';
 import { emailReadScenario } from './email-read.scenario';
 // Tier 1 breadth, added 2026-07-25 from DJ's failure-mode interview.
@@ -22,12 +23,14 @@ import { bookWritingJourneyScenario } from './book-writing-journey.scenario';
 import { semanticContractCancellationScenario } from './semantic-contract-cancellation.scenario';
 import { projectCreateContractScenario } from './project-create-contract.scenario';
 import { toolGraphParallelReadsScenario } from './tool-graph-parallel-reads.scenario';
+import { readDefaultGlobalStatusScenario } from './read-default-global-status.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
 	documentEditContextScenario,
 	projectOrganizeScenario,
 	taskCreateScenario,
+	taskCreateSimpleWorkerScenario,
 	calendarMoveScenario,
 	emailReadScenario,
 	taskCompleteColdReferenceScenario,
@@ -42,5 +45,6 @@ export const scenarioCatalog: Scenario[] = [
 	semanticContractCancellationScenario,
 	projectCreateContractScenario,
 	toolGraphParallelReadsScenario,
+	readDefaultGlobalStatusScenario,
 	bookWritingJourneyScenario
 ];
