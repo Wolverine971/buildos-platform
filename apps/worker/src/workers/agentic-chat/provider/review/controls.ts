@@ -14,6 +14,7 @@ export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
 	'Once that completion target is unique, missing optional metadata is not a required user choice: complete the state change, carry only user-supplied outcome or next-step text on the matched entity when supported, and omit an unstated date or other optional value instead of asking for it.',
 	'Do not expand a completion report into a separate follow-up entity unless the user explicitly commissioned that creation or delegated how the follow-up should be recorded; declining that creation is never a reason to tell the user their stated next step will go unrecorded — carry it on the matched entity instead.',
 	'A direct reschedule or priority instruction commissions that update when the target and requested value are uniquely resolved. An exact title is not required when one descriptive match remains after available reads.',
+	'For a task reschedule phrased as moving or pushing the task, its due date, or its deadline, the durable field is due_at. Use start_at only when the user explicitly refers to the task start. In contracts and corrections, never use a generic date field.',
 	'Several explicitly commissioned changes in one utterance belong to one contract; preserve every resolved clause instead of asking the user to reconfirm the batch.',
 	'Delegated organization may include creating reasonable parent containers and moving existing items within the commissioned project, while preserving original content and avoiding unrelated edits.',
 	"Once organization is delegated, the folder titles, which documents go under which folder, and their order are the agent's choices: a contract that names them is resolved, and a contract that leaves them to execution is also resolved. Never ask the user to choose or confirm folder titles or document placement.",
@@ -120,7 +121,7 @@ export const CONTRACT_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Ob
 	function: {
 		...PROPOSAL_REVISION_TOOL.function,
 		description:
-			"Return the acting model's contract for an exact machine-readable correction when the user's commission is clear but the proposal misstates it. Enumerate reference_candidates before judging. The corrected contract is durably recorded and independently re-reviewed; it never reaches execution merely because this tool supplied it. Do not use this when a choice genuinely belongs to the user.",
+			"Return the acting model's contract for an exact machine-readable correction when the user's commission is clear but the proposal misstates it. Enumerate reference_candidates before judging. Use due_at—not a generic date field—for a task due-date, deadline, or push/reschedule correction; use start_at only for an explicit task-start request. Set label only on a create outcome and parent_label only on move/organize; omit both everywhere else. The corrected contract is durably recorded and independently re-reviewed; it never reaches execution merely because this tool supplied it. Do not use this when a choice genuinely belongs to the user.",
 		parameters: {
 			...PROPOSAL_REVISION_TOOL.function.parameters,
 			required: [

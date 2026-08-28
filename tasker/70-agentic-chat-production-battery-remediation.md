@@ -406,27 +406,53 @@ to measure these control loops.
   `request_proposal_revision` schema used `additionalProperties: false` and neither permitted nor
   required that field. A reviewer following the prompt on a typed correction was therefore invalid
   before the correction could be parsed.
-- **The reviewer candidate-schema alignment is local and not yet deployed.** Contract revisions now
+- **The reviewer candidate-schema alignment deployed in release `3572aedbb`.** Contract revisions
   require the same bounded `reference_candidates` evidence as approvals. The deterministic
   candidate ambiguity floor now evaluates the corrected contract as well as an approved original:
   one unique candidate can proceed to typed re-review, but a correction that chooses only one of
   several plausible loaded entities becomes a structured durable clarification. This aligns the
   prompt and tool schema without weakening ambiguity safety. Worker lint/typecheck and 89 focused
   provider/candidate-gate tests pass.
+- **The `3572aedbb` release gate exposed action-inapplicable fields in the live typed correction.**
+  Commit `3572aedbb3f36bfdf3d9f4ce7fbce29e215f3041` deployed as Railway deployment
+  `45f4271a-5d86-4461-82e4-1258c5f34929`; exact-release health and the zero-spend two-scenario
+  preflight passed. The one paid, zero-retry reschedule failed safely, so project-create was not
+  run. Turn `75862b79-2099-4f52-a057-5082263cf26a`, stream
+  `408a57bf-d020-4e3c-a6ca-2264b9ad087b`, session
+  `27129ec9-70e5-4eba-85ef-22a5622085c5` completed in 19.770 seconds with two durable control calls,
+  four provider attempts, 40,486 tokens, and $0.00581243. The reviewer fallback remained
+  invalid/unbound; no mutation ran and the cleanup query found zero harness projects.
+- **A read-only reviewer replay recovered the rejected shape without another user-data mutation.**
+  Luna correctly returned `request_proposal_revision`, the unique task candidate, and the exact
+  carried-over `2026-09-04T15:00:00+00:00` date. It also filled optional `label="result"` and
+  `parent_label="destination"` fields on an ordinary task update and named the durable field
+  `date`. The contract parser correctly rejected the first symbolic field because labels are only
+  meaningful on creates; `parent_label` is likewise valid only for move/organize, and `date` would
+  not be fulfilled by `update_onto_task.due_at`. The captured replay used 9,387 tokens and cost
+  $0.00068270.
+- **The action-aware correction normalization is local and not yet deployed.** Before parsing and
+  canonical re-review, the worker now removes only symbolic fields that the declared action can
+  never consume: `label` outside creates and `parent_label` outside move/organize. The reviewer
+  prompt and correction-tool description now bind moving/pushing a task, its deadline, or its due
+  date to `due_at`, reserve `start_at` for explicit start requests, and prohibit a generic `date`
+  field. The exact regression supplies the live placeholder fields and proves the durable corrected
+  contract omits them. Worker lint/typecheck and 89 focused provider/candidate-gate tests pass.
 
 ## Review handoff — post-deploy status and next local patch
 
 This section is the handoff for an independent review. The deployed release and current local tree
 are intentionally different:
 
-- **Deployed and health-verified:** commit `f188cc6dfa92f75654590f5002c3b86c4e50c687`
-  contains WP-1/WP-2, typed reviewer correction, durable clarification/final-output gates, and the
-  provider/internal contract representation fix. Its zero-spend realtime preflight passed, but the
-  first paid reschedule gate exposed the prompt/revision-schema contradiction described above.
-- **Local and not yet deployed:** the contract revision schema now permits and requires
-  `reference_candidates`, and typed corrections pass through the same deterministic ambiguity gate
-  as approvals. No database migration is involved. Do not run another paid production repetition
-  until this patch is deployed.
+- **Deployed and health-verified:** commit `3572aedbb3f36bfdf3d9f4ce7fbce29e215f3041`
+  contains WP-1/WP-2, typed reviewer correction, durable clarification/final-output gates, the
+  provider/internal representation fix, and aligned candidate evidence on corrections. Its
+  zero-spend realtime preflight passed; the paid reschedule exposed action-inapplicable optional
+  fields in the live typed correction.
+- **Local and not yet deployed:** the worker removes only action-inapplicable symbolic decorations
+  before parsing a reviewer correction, then canonicalizes and independently re-reviews the result.
+  Reviewer guidance maps task due-date reschedules to `due_at` and explicit starts to `start_at`. No
+  database migration is involved. Do not run another paid production repetition until this patch is
+  deployed.
 
 ### Kernel and intended invariants
 
@@ -539,9 +565,9 @@ suites all pass. Prettier checking on the touched source/tests and `git diff --c
 
 ### Next gate after review
 
-1. Review the contract-revision `reference_candidates` schema and the ambiguity floor on corrected
-   contracts.
-2. Deploy the reviewer candidate-schema alignment.
+1. Review the narrow action-aware stripping of `label` / `parent_label` and the task schedule-field
+   guidance.
+2. Deploy the action-aware correction normalization.
 3. Re-run the zero-spend worker-realtime preflight for `task-reschedule-cold-reference` and
    `project-create-contract`.
 4. Run exactly one paid, zero-retry reschedule repetition and require one existing-task update with

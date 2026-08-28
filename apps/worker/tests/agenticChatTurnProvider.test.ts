@@ -8450,7 +8450,12 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				targetIds: [...outcome.targetIds],
 				requiredFields: [...outcome.requiredFields],
 				changes: outcome.changes?.map((change) => ({ ...change })) ?? [],
-				minimumSuccessfulEffects: outcome.minimumSuccessfulEffects
+				minimumSuccessfulEffects: outcome.minimumSuccessfulEffects,
+				// Production reviewer regression: tool models may fill optional
+				// symbolic-tree fields with placeholders on an ordinary task update.
+				// They are action-inapplicable decoration, not a user ambiguity.
+				label: 'result',
+				parentLabel: 'destination'
 			}))
 		};
 		const reviewerRevisionArguments = {
@@ -8560,6 +8565,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		);
 		expect(firstReviewPrompt).toContain('"entity_kind":"task"');
 		expect(firstReviewPrompt).not.toContain('"entityKind":"task"');
+		expect(firstReviewPrompt).toContain(
+			'the durable field is due_at. Use start_at only when the user explicitly refers to the task start'
+		);
 		const revisionTool = semanticReviewer.stream.mock.calls[0]?.[0].tools.find(
 			(tool) => tool.function.name === 'request_proposal_revision'
 		);

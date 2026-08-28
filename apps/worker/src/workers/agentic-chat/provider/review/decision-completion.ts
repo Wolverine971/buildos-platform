@@ -62,14 +62,18 @@ export function completeTurnContractReviewDecision(
 		const readOnly = call.name === DECLARE_READ_ONLY_TURN_TOOL_NAME;
 		const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
 		const revision = call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME;
+		const normalizedCorrection = revision
+			? normalizeReviewerCorrectedContractValue(call.arguments.corrected_contract)
+			: { value: null, changed: false };
 		const correctedContract = revision
-			? parseDeclaredTurnContract(call.arguments.corrected_contract)
+			? parseDeclaredTurnContract(normalizedCorrection.value)
 			: null;
 		let validationIssues = validateCompletedProviderCalls(calls, input.reviewRequest);
 		if (
 			revision &&
 			correctedContract &&
-			(usesInternalContractFieldNames(call.arguments.corrected_contract) ||
+			(normalizedCorrection.changed ||
+				usesInternalContractFieldNames(call.arguments.corrected_contract) ||
 				validationIssues.length > 0)
 		) {
 			const normalizedCall = normalizeCorrectedContractCall(call, correctedContract);
@@ -109,6 +113,44 @@ export function completeTurnContractReviewDecision(
 		calls = [buildReviewFallbackClarification(input.actingRequest, fallbackReason)];
 	}
 	return withDecisionAuthor(calls, 'contract_reviewer');
+}
+
+/**
+ * Reviewer schemas expose symbolic create/move fields because organization
+ * corrections need them. Tool models can still populate optional fields with
+ * generic placeholders on unrelated outcomes. Those decorations have no user
+ * semantics and the contract parser rightly rejects them, so discard only the
+ * fields that the declared action can never consume before canonical re-review.
+ */
+function normalizeReviewerCorrectedContractValue(value: unknown): {
+	value: unknown;
+	changed: boolean;
+} {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return { value, changed: false };
+	}
+	const record = value as Record<string, unknown>;
+	if (!Array.isArray(record.outcomes)) return { value, changed: false };
+	let changed = false;
+	const outcomes = record.outcomes.map((outcome) => {
+		if (!outcome || typeof outcome !== 'object' || Array.isArray(outcome)) return outcome;
+		const normalized = { ...(outcome as Record<string, unknown>) };
+		const action =
+			typeof normalized.action === 'string' ? normalized.action.trim().toLowerCase() : null;
+		if (action && action !== 'create' && Object.hasOwn(normalized, 'label')) {
+			delete normalized.label;
+			changed = true;
+		}
+		if (action && action !== 'move' && action !== 'organize') {
+			for (const field of ['parent_label', 'parentLabel']) {
+				if (!Object.hasOwn(normalized, field)) continue;
+				delete normalized[field];
+				changed = true;
+			}
+		}
+		return normalized;
+	});
+	return changed ? { value: { ...record, outcomes }, changed } : { value, changed: false };
 }
 
 function usesInternalContractFieldNames(value: unknown): boolean {
