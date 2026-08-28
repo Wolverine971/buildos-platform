@@ -157,6 +157,49 @@ export const taskMultiUpdateScenario: Scenario = {
 				const control = byId(seed.entityIds.control, 'control');
 				assertTaskState(control.state_key, 'todo', `control task "${CONTROL_TITLE}"`);
 
+				if (ctx.executionMode === 'worker_realtime') {
+					if (!turn.sessionId) {
+						throw new Error('[assert] worker turn did not expose a chat session ID');
+					}
+					const expectedActivityEntityIds = new Set([
+						seed.entityIds.resume,
+						seed.entityIds.linkedin,
+						seed.entityIds.halcyon
+					]);
+					const { data: activityRows, error: activityError } = await ctx.db.admin
+						.from('onto_project_logs')
+						.select(
+							'id, action, entity_type, entity_id, chat_session_id, agent_call_session_id'
+						)
+						.eq('project_id', seed.projectId!)
+						.eq('chat_session_id', turn.sessionId)
+						.eq('entity_type', 'task')
+						.eq('action', 'updated');
+					if (activityError) {
+						throw new Error(
+							`[assert] failed to read worker activity attribution: ${activityError.message}`
+						);
+					}
+					const mutationActivityRows = (activityRows ?? []).filter((row) =>
+						expectedActivityEntityIds.has(row.entity_id)
+					);
+					if (mutationActivityRows.length !== 3) {
+						throw new Error(
+							`[assert] expected 3 chat-attributed task activity rows, received ${mutationActivityRows.length}`
+						);
+					}
+					for (const row of mutationActivityRows) {
+						if (
+							row.chat_session_id !== turn.sessionId ||
+							row.agent_call_session_id !== null
+						) {
+							throw new Error(
+								`[assert] task activity ${row.id} mixed internal chat and external agent-call attribution`
+							);
+						}
+					}
+				}
+
 				const seededIds = new Set(seed.notes.seededTaskIds as string[]);
 				const created = tasks.filter((t) => !seededIds.has(t.id));
 				if (created.length > 0) {

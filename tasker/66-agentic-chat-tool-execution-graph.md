@@ -6,6 +6,11 @@
 [tasker 65](65-agentic-chat-read-default-cost-program.md) so mutation-review policy and tool
 execution concurrency can evolve independently.
 
+**Status: complete (2026-08-27).** The graph runtime, staged production rollout, safety matrix,
+model-capability decision, telemetry, mutation concurrency, and activity-attribution follow-up are
+all verified. Redundant cross-round reads remain explicitly separated into
+[tasker 67](67-agentic-chat-redundant-read-round-planning.md).
+
 ## Kernel
 
 One model response can contain several tool calls, but the worker currently yields and awaits those
@@ -165,6 +170,34 @@ The mutation-canary activity-log defect is separated and fixed under
 [tasker 68](68-agentic-chat-worker-activity-log-session-attribution.md). Internal worker mutations
 now populate `chat_session_id` and leave the external `agent_call_session_id` null; no foreign-key or
 RLS weakening is part of the fix.
+
+### Final production closeout (2026-08-27)
+
+Railway deployment `d811be48-7747-4c5d-b1f0-1439562ba2c8` is successful on exact release
+`c014b5ff4bcd74e99ef1c87457dee99c88156e8e`, matching `origin/main`. All four chat-worker instances
+reported running.
+
+The first closeout canary stopped with `provider_stream_error` after a contract-review revision. It
+failed closed before mutation reservation: zero `chat_turn_effects` existed and no domain mutation
+ran. The next two isolated `task-multi-update` runs passed without harness retries. The final run
+(`49949e5b-29de-4a19-8297-c7401d32df93`) recorded:
+
+- three distinct `update_onto_task` effects, all `succeeded`, with no failure codes;
+- one mutation layer with widths `[3]`, observed concurrency three, and no failed or skipped calls;
+- per-call durations of 1.471s, 1.723s, and 2.495s;
+- 2.495s actual graph time versus 5.689s estimated serial time, a 3.194s (56%) saving;
+- exactly three pre-teardown task activity rows attributed to the internal `chat_session_id`, each
+  with `agent_call_session_id = null`;
+- no `AsyncActivityLogger` errors in the deployment-wide 30-minute scan.
+
+The production worker reports the exact release healthy, database and realtime connected, zero
+active turns, zero recovery candidates, zero attention-required turns, and zero consecutive claim
+or recovery failures. Final production settings are concurrent reads on, concurrent mutations on,
+and maximum tool concurrency four.
+
+The activity-attribution assertion now lives permanently in the `task-multi-update` production E2E
+scenario and executes before fixture teardown. Web `svelte-check` passes with zero errors and zero
+warnings.
 
 Rollout configuration defaults safe/off:
 

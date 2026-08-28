@@ -6,6 +6,9 @@
 [tasker 66](66-agentic-chat-tool-execution-graph.md) after serial and concurrent production mutation
 canaries exposed the same best-effort activity-log failure.
 
+**Status: complete (2026-08-27).** Local gateway/adapter coverage and the production mutation
+canary both verify the corrected attribution contract.
+
 ## Kernel
 
 Internal agentic-chat mutations use `chat_sessions.id`, but worker mutation adapters passed that UUID
@@ -55,4 +58,10 @@ green; the activity row is queryable by `chat_session_id`; the worker error scan
 
 Local verification is green: all worker mutation-adapter attribution tests, the shared activity-log
 tests, the 171-test shared-agent-ops suite, the 1,325-test worker suite, and both package typechecks
-pass. Production verification remains the final exit gate.
+pass.
+
+Production verification is also green on release
+`c014b5ff4bcd74e99ef1c87457dee99c88156e8e`. The permanent pre-teardown assertion in
+`task-multi-update` observed exactly three updated-task activity rows for the canary's internal chat
+session, all with `agent_call_session_id = null`. All three authoritative effects succeeded, and a
+deployment-wide 30-minute log scan contained no `AsyncActivityLogger` error.
