@@ -110,6 +110,18 @@ export type InterruptedToolExecutionSummaryRow = {
 
 export type LoadedSkillExecutionSummaryRow = InterruptedToolExecutionSummaryRow;
 
+type PendingClarificationCandidate = {
+	id?: string;
+	label: string;
+	kind?: string;
+};
+
+type PendingClarificationSummary = {
+	reason: string | null;
+	question: string;
+	candidates: PendingClarificationCandidate[];
+};
+
 type LoadedSkillSummary = {
 	id: string;
 	name: string | null;
@@ -150,6 +162,12 @@ function truncateBlock(value: string, maxLength: number): string {
 function stringifyPreview(value: unknown, maxLength: number): string | null {
 	const text = typeof value === 'string' ? value : JSON.stringify(value);
 	return previewText(text, maxLength);
+}
+
+function boundedStoredText(value: unknown, maxLength: number): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed ? trimmed.slice(0, maxLength) : null;
 }
 
 function stringArray(value: unknown): string[] {
@@ -256,6 +274,83 @@ export function buildLoadedSkillHistorySummary(
 		].join(' ')
 	];
 	return truncateBlock(lines.join('\n'), 2400);
+}
+
+export const PENDING_CLARIFICATION_LEDGER_PREFIX =
+	'Pending clarification from the immediately prior assistant turn:';
+
+function extractPendingClarificationCandidate(
+	value: unknown
+): PendingClarificationCandidate | null {
+	if (!isRecord(value)) return null;
+	const label = boundedStoredText(value.label, 200);
+	if (!label) return null;
+	const id = boundedStoredText(value.id, 160);
+	const kind = boundedStoredText(value.kind, 40);
+	return {
+		...(id ? { id } : {}),
+		label,
+		...(kind ? { kind } : {})
+	};
+}
+
+function extractPendingClarificationSummary(
+	row: LoadedSkillExecutionSummaryRow
+): PendingClarificationSummary | null {
+	if (
+		!row.success ||
+		row.tool_name !== 'request_turn_clarification' ||
+		!isRecord(row.result) ||
+		row.result.status !== 'clarification_required'
+	) {
+		return null;
+	}
+	const question = boundedStoredText(row.result.question, 500);
+	if (!question) return null;
+	const reason = boundedStoredText(row.result.reason, 240);
+	const rawCandidates = row.result.candidates;
+	const candidates = Array.isArray(rawCandidates)
+		? rawCandidates
+				.slice(0, 20)
+				.map(extractPendingClarificationCandidate)
+				.filter((candidate): candidate is PendingClarificationCandidate =>
+					Boolean(candidate)
+				)
+		: [];
+	return { reason, question, candidates };
+}
+
+/**
+ * Rehydrates the one clarification that is still pending. Restricting this to
+ * the latest assistant message prevents an answered choice from leaking into
+ * later turns while preserving exact candidate IDs across the immediate reply.
+ */
+export function buildPendingClarificationHistorySummary(params: {
+	executions: LoadedSkillExecutionSummaryRow[];
+	pendingAssistantMessageId: string | null;
+}): string | null {
+	if (!params.pendingAssistantMessageId) return null;
+	const pending = params.executions
+		.filter((row) => row.message_id === params.pendingAssistantMessageId)
+		.slice()
+		.sort((left, right) => (right.sequence_index ?? 0) - (left.sequence_index ?? 0))
+		.map(extractPendingClarificationSummary)
+		.find((summary): summary is PendingClarificationSummary => Boolean(summary));
+	if (!pending) return null;
+
+	const lines = [
+		PENDING_CLARIFICATION_LEDGER_PREFIX,
+		'This is durable control state. Resolve the current user reply against it without searching solely to rediscover these choices.',
+		...(pending.reason ? [`Unresolved choice: ${pending.reason}`] : []),
+		`Question: ${pending.question}`
+	];
+	if (pending.candidates.length > 0) {
+		lines.push(
+			'Candidates (preserve these exact IDs and labels):',
+			...pending.candidates.map((candidate) => `- ${JSON.stringify(candidate)}`)
+		);
+	}
+	return lines.join('\n');
 }
 
 function normalizeAttachmentAsset(
@@ -495,13 +590,20 @@ function projectFallbackHistorySnapshotWithLineage(
 		executionsByMessageId.set(row.message_id, existing);
 	}
 
-	const orderedSkillExecutionRows = snapshot.loaded_skill_executions.slice().sort((a, b) => {
+	const orderedContinuityExecutionRows = snapshot.loaded_skill_executions.slice().sort((a, b) => {
 		const aMessageOrder = messageOrderById.get(a.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
 		const bMessageOrder = messageOrderById.get(b.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
 		if (aMessageOrder !== bMessageOrder) return aMessageOrder - bMessageOrder;
 		return (a.sequence_index ?? 0) - (b.sequence_index ?? 0);
 	});
-	const loadedSkillHistorySummary = buildLoadedSkillHistorySummary(orderedSkillExecutionRows);
+	const loadedSkillHistorySummary = buildLoadedSkillHistorySummary(
+		orderedContinuityExecutionRows
+	);
+	const latestMessage = orderedMessages.at(-1);
+	const pendingClarificationHistorySummary = buildPendingClarificationHistorySummary({
+		executions: orderedContinuityExecutionRows,
+		pendingAssistantMessageId: latestMessage?.role === 'assistant' ? latestMessage.id : null
+	});
 
 	const historyMessages = orderedMessages.flatMap((message) => {
 		const msg = message as RecentChatMessageRow;
@@ -530,6 +632,13 @@ function projectFallbackHistorySnapshotWithLineage(
 		historyMessages.push({
 			role: 'system',
 			content: loadedSkillHistorySummary,
+			sourceMessageId: null
+		});
+	}
+	if (pendingClarificationHistorySummary) {
+		historyMessages.push({
+			role: 'system',
+			content: pendingClarificationHistorySummary,
 			sourceMessageId: null
 		});
 	}
@@ -882,31 +991,31 @@ export function createFastChatSessionService(
 			}
 		}
 
-		let loadedSkillExecutionRows: LoadedSkillExecutionSummaryRow[] = [];
+		let continuityExecutionRows: LoadedSkillExecutionSummaryRow[] = [];
 		const assistantMessageIds = orderedMessages
 			.filter((msg) => msg.role === 'assistant')
 			.map((msg) => msg.id)
 			.filter((id): id is string => Boolean(id));
 		if (assistantMessageIds.length > 0) {
-			const { data: skillExecutionRows, error: skillExecutionError } = await supabase
+			const { data: continuityRows, error: continuityError } = await supabase
 				.from('chat_tool_executions')
 				.select(
 					'message_id, provider_tool_call_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
 				)
 				.in('message_id', assistantMessageIds)
-				.eq('tool_name', 'skill_load')
+				.in('tool_name', ['skill_load', 'request_turn_clarification'])
 				.eq('success', true)
 				.order('sequence_index', { ascending: true })
 				.limit(limit * 6);
 
-			if (skillExecutionError) {
-				logger.warn('Failed to load completed skill history', {
-					error: skillExecutionError,
+			if (continuityError) {
+				logger.warn('Failed to load completed continuity tool history', {
+					error: continuityError,
 					sessionId
 				});
 				logFastChatSessionError({
-					error: skillExecutionError,
-					operationType: 'fastchat_loaded_skill_history_load',
+					error: continuityError,
+					operationType: 'fastchat_continuity_tool_history_load',
 					tableName: 'chat_tool_executions',
 					recordId: sessionId,
 					metadata: {
@@ -916,7 +1025,7 @@ export function createFastChatSessionService(
 					}
 				});
 			} else {
-				loadedSkillExecutionRows = (skillExecutionRows ??
+				continuityExecutionRows = (continuityRows ??
 					[]) as LoadedSkillExecutionSummaryRow[];
 			}
 		}
@@ -925,7 +1034,7 @@ export function createFastChatSessionService(
 			messages: orderedMessages,
 			attachments: fallbackAttachmentRows as LegacyFallbackHistorySnapshot['attachments'],
 			interrupted_tool_executions: interruptedExecutionRows,
-			loaded_skill_executions: loadedSkillExecutionRows
+			loaded_skill_executions: continuityExecutionRows
 		});
 	}
 

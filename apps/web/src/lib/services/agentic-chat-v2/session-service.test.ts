@@ -3,9 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	buildInterruptedToolHistorySummary,
 	buildLoadedSkillHistorySummary,
+	buildPendingClarificationHistorySummary,
 	createFastChatSessionService,
 	extractLoadedSkillIdsFromHistory,
 	historyIncludesLoadedSkillsLedger,
+	PENDING_CLARIFICATION_LEDGER_PREFIX,
 	projectLegacyFallbackHistorySnapshot
 } from './session-service';
 
@@ -342,6 +344,90 @@ describe('fast chat session service helpers', () => {
 				loaded_skill_executions: []
 			})
 		).toEqual([]);
+	});
+
+	it('rehydrates only the still-pending durable clarification candidate set', () => {
+		const execution = {
+			message_id: 'message-assistant',
+			tool_name: 'request_turn_clarification',
+			gateway_op: null,
+			sequence_index: 3,
+			success: true,
+			error_message: null,
+			arguments: {},
+			result: {
+				status: 'clarification_required',
+				reason: 'Two email tasks match.',
+				question: 'Did you mean Beta list email or Renewal email?',
+				candidates: [
+					{ id: 'task-beta-list', label: 'Beta list email', kind: 'task' },
+					{ id: 'task-renewal', label: 'Renewal email', kind: 'task' }
+				]
+			}
+		};
+
+		const summary = buildPendingClarificationHistorySummary({
+			executions: [execution],
+			pendingAssistantMessageId: 'message-assistant'
+		});
+		expect(summary).toContain(PENDING_CLARIFICATION_LEDGER_PREFIX);
+		expect(summary).toContain('task-beta-list');
+		expect(summary).toContain('Beta list email');
+		expect(summary).toContain('task-renewal');
+		expect(summary).toContain('without searching solely to rediscover');
+		expect(
+			buildPendingClarificationHistorySummary({
+				executions: [execution],
+				pendingAssistantMessageId: null
+			})
+		).toBeNull();
+	});
+
+	it('does not replay a clarification after a later user message has answered it', () => {
+		const projected = projectLegacyFallbackHistorySnapshot({
+			messages: [
+				{
+					id: 'message-assistant',
+					role: 'assistant',
+					content: 'Did you mean Beta list email or Renewal email?',
+					metadata: null,
+					created_at: '2026-08-28T10:00:00.000Z'
+				},
+				{
+					id: 'message-user',
+					role: 'user',
+					content: 'Beta list email.',
+					metadata: null,
+					created_at: '2026-08-28T10:01:00.000Z'
+				}
+			],
+			attachments: [],
+			interrupted_tool_executions: [],
+			loaded_skill_executions: [
+				{
+					message_id: 'message-assistant',
+					tool_name: 'request_turn_clarification',
+					gateway_op: null,
+					sequence_index: 1,
+					success: true,
+					error_message: null,
+					arguments: {},
+					result: {
+						status: 'clarification_required',
+						question: 'Did you mean Beta list email or Renewal email?',
+						candidates: [
+							{ id: 'task-beta-list', label: 'Beta list email', kind: 'task' },
+							{ id: 'task-renewal', label: 'Renewal email', kind: 'task' }
+						]
+					}
+				}
+			]
+		});
+
+		expect(projected).toHaveLength(2);
+		expect(projected.some((message) => message.content.includes('durable control state'))).toBe(
+			false
+		);
 	});
 
 	it('projects an admission snapshot with attachments, interrupted tools, and loaded skills', () => {

@@ -974,14 +974,13 @@ async function loadOwnedWorkerHistory(params: {
 	const interruptedToolExecutions = await loadHistoryToolExecutions({
 		serviceClient: params.serviceClient,
 		messageIds: interruptedMessageIds,
-		limit: Math.min(Math.max(params.limit * 32, 64), 1600),
-		skillLoadsOnly: false
+		limit: Math.min(Math.max(params.limit * 32, 64), 1600)
 	});
-	const loadedSkillExecutions = await loadHistoryToolExecutions({
+	const continuityToolExecutions = await loadHistoryToolExecutions({
 		serviceClient: params.serviceClient,
 		messageIds: assistantMessageIds,
 		limit: params.limit * 6,
-		skillLoadsOnly: true
+		toolNames: ['skill_load', 'request_turn_clarification']
 	});
 
 	return projectWorkerFrozenHistorySnapshot({
@@ -994,7 +993,7 @@ async function loadOwnedWorkerHistory(params: {
 		})),
 		attachments: attachmentRows,
 		interrupted_tool_executions: interruptedToolExecutions,
-		loaded_skill_executions: loadedSkillExecutions
+		loaded_skill_executions: continuityToolExecutions
 	});
 }
 
@@ -1002,7 +1001,7 @@ async function loadHistoryToolExecutions(params: {
 	serviceClient: FastChatSupabaseClient;
 	messageIds: string[];
 	limit: number;
-	skillLoadsOnly: boolean;
+	toolNames?: string[];
 }): Promise<LegacyFallbackHistorySnapshot['interrupted_tool_executions']> {
 	if (params.messageIds.length === 0) return [];
 	let query = params.serviceClient
@@ -1011,8 +1010,8 @@ async function loadHistoryToolExecutions(params: {
 			'message_id, provider_tool_call_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
 		)
 		.in('message_id', params.messageIds);
-	if (params.skillLoadsOnly) {
-		query = query.eq('tool_name', 'skill_load').eq('success', true);
+	if (params.toolNames) {
+		query = query.in('tool_name', params.toolNames).eq('success', true);
 	}
 	const { data, error } = await query
 		.order('sequence_index', { ascending: true })

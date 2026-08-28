@@ -350,6 +350,19 @@ to measure these control loops.
   to repair it. The gate now derives the question and candidate labels from one shared truncation
   budget, the executor's label failure names the exact missing labels for one-shot repair, and
   `agenticChatReviewCandidateGate.test.ts` holds the regression.
+- **WP-4 next-turn candidate rehydration is now implemented locally.** The successful
+  `request_turn_clarification` execution was already durable and attached to the terminal assistant
+  message, but completed control executions were not part of ordinary next-turn history: only
+  completed `skill_load` rows and tools from interrupted turns were reloaded. The web history loader
+  now retrieves successful clarification controls alongside skill continuity, and the shared
+  projector appends one bounded system ledger only when the clarification-owning assistant message
+  is still the latest durable message. That ledger preserves the exact question, reason, candidate
+  IDs, labels, and kinds and explicitly tells the acting model not to search solely to rediscover
+  them. Because both worker admission and prepared-prompt prewarm use this projection, the immediate
+  reply path is covered with no session-metadata write or new RPC. A worker-admission fixture proves
+  that “The Beta list email one” receives both exact task UUIDs/labels in the frozen artifact; a
+  stale-state fixture proves the ledger disappears after a later user message has already answered
+  it. The focused 26 web tests pass and web test types remain at the accepted `538/538` baseline.
 - **WP-3 typed correction is locally implemented for the newly reproduced reschedule loop.** A
   contract reviewer revision now includes a complete `corrected_contract` in the durable
   `request_proposal_revision` receipt. The worker parses that exact contract, binds its canonical
@@ -629,10 +642,13 @@ Primary files:
   contract correction is the right invariant for every path. If a legitimate post-revision
   read-only outcome exists, it needs a safe explicit representation rather than reopening the live
   contradictory exit.
-- **Candidate persistence across turns:** candidates are durable in the clarification tool ledger
-  and result, but this slice did not add session metadata or a new RPC. Confirm with an end-to-end
-  next-turn fixture that resume history actually reloads those IDs/labels without rediscovery before
-  marking the WP-4 persistence item complete.
+- **Candidate persistence across turns:** the worker-admission and prewarm history paths now reload
+  the durable clarification control into an exact pending-choice ledger, and the next-turn fixture
+  proves both IDs/labels arrive without rediscovery. Review the “latest durable message must be the
+  clarification assistant” expiry rule. The legacy atomic SSE admission snapshot still selects only
+  completed skill loads in its historical `loaded_skill_executions` field; do not infer worker-route
+  regression from that compatibility path, but decide whether legacy parity is required before
+  legacy retirement.
 - **Classifier scope:** the terminal gate targets the known unsafe shapes; it is not a universal
   semantic verifier. Review false positives around harmless status language and optional offer
   questions, and false negatives for other mutation-claim phrasing.
@@ -655,18 +671,18 @@ instructions, and finalization; worker suites for the provider, execution adapte
 integrity, provider boundary, catalog policy, and OpenRouter client; and web catalog/preparation
 suites all pass. The deployed explicit-name patch passes its full worker check; the subsequent
 project/direct-lane and deterministic-trace changes pass web test type-check at baseline and all 88
-focused provider tests. Prettier checking on the touched source/tests also passes.
+focused provider tests. The WP-4 next-turn history slice passes all 26 focused session/preparation
+tests and web test type-check at the accepted `538/538` baseline. Prettier checking on the touched
+source/tests also passes.
 
 ### Next gate after review
 
-1. Review the exact three-task trace: typed correction, unique candidates, corrected SHA, one
-   three-write batch approval, three distinct effect receipts, and no premature terminal output.
-2. Review the labelled organization trace: the create receipt must bind the contract label before a
-   separately reviewed move can use that UUID.
-3. Commit the deterministic trace completion. No deployment or paid repetition is required because
-   it changes tests only.
-4. Move to WP-4's remaining open gate: prove that a durable clarification candidate set reloads in
-   the next turn without rediscovery.
+1. Review the WP-4 pending-choice ledger trust boundary and latest-message expiry invariant.
+2. Deploy the web history change and rerun the zero-spend health/preflight gate.
+3. Exercise one isolated two-turn production clarification only if a safe deterministic candidate
+   fixture can be created without contaminating user data; otherwise retain the exact server-owned
+   admission fixture as the release proof.
+4. Move to WP-5 provider-pass telemetry and bounded efficiency work.
 
 ## Work packages
 
@@ -739,6 +755,8 @@ schema-validation cycle; project create emits a valid first declaration. No safe
 - When a commissioned durable change still has multiple plausible targets, require
   `request_turn_clarification`; a plain-text question cannot be the terminal disposition.
 - Persist the candidate set and pending question so the next turn can resume without rediscovery.
+  The production worker/prewarm history projector now rehydrates the successful clarification
+  control only for the immediate unanswered reply and freezes exact IDs/labels into admission.
 - Ensure the user-facing question names all plausible candidates and asks only for the unresolved
   choice.
 - Gate mutation-completion claims on succeeded effects or explicit mutation receipts. Sanitize or

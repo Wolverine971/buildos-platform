@@ -934,6 +934,113 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
+	it('reloads pending clarification IDs into the immediate next-turn artifact without rediscovery', async () => {
+		const priorUserMessageId = 'e3000000-0000-4000-8000-000000000001';
+		const clarificationMessageId = 'e4000000-0000-4000-8000-000000000001';
+		const betaTaskId = 'e5000000-0000-4000-8000-000000000001';
+		const renewalTaskId = 'e6000000-0000-4000-8000-000000000001';
+		const serviceClient = serviceClientWithTables({
+			chat_sessions: [
+				{
+					id: SESSION_ID,
+					user_id: USER_ID,
+					context_type: 'global',
+					entity_id: null,
+					summary: null,
+					agent_metadata: {}
+				}
+			],
+			chat_messages: [
+				{
+					id: priorUserMessageId,
+					session_id: SESSION_ID,
+					user_id: USER_ID,
+					role: 'user',
+					content: 'Mark the email one done.',
+					metadata: null,
+					created_at: '2026-08-03T10:00:00.000Z'
+				},
+				{
+					id: clarificationMessageId,
+					session_id: SESSION_ID,
+					user_id: USER_ID,
+					role: 'assistant',
+					content: 'Did you mean Beta list email or Renewal email?',
+					metadata: null,
+					created_at: '2026-08-03T10:01:00.000Z'
+				}
+			],
+			chat_message_attachments: [],
+			chat_tool_executions: [
+				{
+					message_id: clarificationMessageId,
+					provider_tool_call_id: 'clarification-call-1',
+					tool_name: 'request_turn_clarification',
+					gateway_op: null,
+					sequence_index: 1,
+					success: true,
+					error_message: null,
+					arguments: {},
+					result: {
+						status: 'clarification_required',
+						reason: 'Two email tasks match.',
+						question: 'Did you mean Beta list email or Renewal email?',
+						candidates: [
+							{ id: betaTaskId, label: 'Beta list email', kind: 'task' },
+							{ id: renewalTaskId, label: 'Renewal email', kind: 'task' }
+						]
+					}
+				}
+			]
+		});
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: serviceClient as never,
+			userId: USER_ID,
+			command: command({
+				sessionId: SESSION_ID,
+				message: 'The Beta list email one.'
+			}) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		const history = result.args.p_artifact_history as Array<{
+			role: string;
+			content: string;
+			sourceMessageId: string | null;
+		}>;
+		const clarificationLedger = history.find(
+			(message) =>
+				message.role === 'system' &&
+				message.content.startsWith(
+					'Pending clarification from the immediately prior assistant turn:'
+				)
+		);
+		expect(result.args.p_request_message).toBe('The Beta list email one.');
+		expect(clarificationLedger).toMatchObject({ sourceMessageId: null });
+		expect(clarificationLedger?.content).toContain(betaTaskId);
+		expect(clarificationLedger?.content).toContain('Beta list email');
+		expect(clarificationLedger?.content).toContain(renewalTaskId);
+		expect(clarificationLedger?.content).toContain('Renewal email');
+		expect(clarificationLedger?.content).toContain(
+			'without searching solely to rediscover these choices'
+		);
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			historyState: {
+				strategy: 'raw_history',
+				compressed: false,
+				rawHistoryCount: 3,
+				historyForModelCount: 3
+			}
+		});
+	});
+
 	it('keeps null prepared-prompt lineage stable while worker prompt reuse is disabled', async () => {
 		const preparedId = 'f1000000-0000-4000-8000-000000000001';
 		const contextSha = 'c'.repeat(64);
