@@ -10,6 +10,7 @@ import {
 	type JsonObject,
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
+import { TURN_CONTRACT_TOOL_DEFINITION } from '@buildos/agentic-chat-runtime/catalog';
 import { parseDeclaredTurnContract } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
@@ -613,13 +614,14 @@ function durableProjectCreateMutationFeedback(input: {
 function executionInputWithReadSurface(
 	definitions: ChatToolDefinition[] = [readToolDefinition('get_project_overview')],
 	toolNames = definitions.map((definition) => definition.function.name),
-	version?: 1
+	version?: 1,
+	surfaceProfile = 'project_default'
 ): AgenticChatWorkerExecutionInputV1 {
 	const input = executionInput();
 	const toolSurface =
 		version === 1
-			? { version, surfaceProfile: 'project_default', toolNames, definitions }
-			: { surfaceProfile: 'project_default', toolNames, definitions };
+			? { version, surfaceProfile, toolNames, definitions }
+			: { surfaceProfile, toolNames, definitions };
 	return {
 		...input,
 		artifact: withPreparedArtifactPatch(input.artifact, { toolSurface })
@@ -2327,7 +2329,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const semanticReviewer = clientWithRounds([]);
 		const providerInput = executionInputWithReadSurface(
 			[
-				turnContractToolDefinition(),
+				TURN_CONTRACT_TOOL_DEFINITION,
 				readOnlyTurnToolDefinition(),
 				clarificationToolDefinition(),
 				createTaskToolDefinition()
@@ -2337,7 +2339,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'declare_read_only_turn',
 				'request_turn_clarification',
 				'create_onto_task'
-			]
+			],
+			undefined,
+			'project_write_document'
 		);
 		providerInput.requestPayload = {
 			...providerInput.requestPayload,
@@ -2359,6 +2363,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		});
 
 		const mutationSteps = await collect(invocation.stream());
+		expect(
+			client.stream.mock.calls[0]?.[0].tools.map((tool) => tool.function.name)
+		).not.toContain('declare_turn_contract');
 		const updateStep = mutationSteps.find(
 			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
 				step.type === 'mutating_tool'
@@ -2412,7 +2419,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const semanticReviewer = clientWithRounds([]);
 		const providerInput = executionInputWithReadSurface(
 			[
-				turnContractToolDefinition(),
+				TURN_CONTRACT_TOOL_DEFINITION,
 				readOnlyTurnToolDefinition(),
 				clarificationToolDefinition(),
 				updateTaskToolDefinition()
@@ -2422,7 +2429,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'declare_read_only_turn',
 				'request_turn_clarification',
 				'update_onto_task'
-			]
+			],
+			undefined,
+			'project_write_document'
 		);
 		providerInput.requestPayload = {
 			...providerInput.requestPayload,
@@ -2444,6 +2453,20 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		});
 
 		const clarificationSteps = await collect(invocation.stream());
+		const openingRequest = client.stream.mock.calls[0]?.[0];
+		expect(openingRequest?.tools.map((tool) => tool.function.name)).not.toContain(
+			'declare_turn_contract'
+		);
+		expect(JSON.stringify(openingRequest?.tools)).not.toContain('minimum_successful_effects');
+		expect(
+			openingRequest?.messages.some(
+				(message) =>
+					message.role === 'system' &&
+					message.content.includes(
+						'large complex-write contract route is deferred in this opening pass'
+					)
+			)
+		).toBe(true);
 		expect(clarificationSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
 		const clarificationStep = clarificationSteps.find(
 			(step) => step.type === 'read_tool' && step.toolName === 'request_turn_clarification'
@@ -3029,6 +3052,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const invocation = await new AgenticChatTurnProviderAdapter(
 			{
 				client,
+				semanticReviewer: clientWithRounds([]),
 				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
 			},
 			2_000,
@@ -3037,7 +3061,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		).prepare({
 			executionInput: executionInputWithReadSurface(
 				[
-					turnContractToolDefinition(),
+					TURN_CONTRACT_TOOL_DEFINITION,
 					readOnlyTurnToolDefinition(),
 					clarificationToolDefinition(),
 					updateTaskToolDefinition()
@@ -3047,23 +3071,35 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					'declare_read_only_turn',
 					'request_turn_clarification',
 					'update_onto_task'
-				]
+				],
+				undefined,
+				'project_write_document'
 			),
 			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 
 		const firstRound = await collect(invocation.stream());
+		const openingRequest = client.stream.mock.calls[0]?.[0];
+		expect(openingRequest?.tools.map((tool) => tool.function.name)).not.toContain(
+			'declare_turn_contract'
+		);
 		expect(
-			client.stream.mock.calls[0]?.[0].messages.some(
+			openingRequest?.messages.some(
 				(message) =>
 					message.role === 'system' &&
 					typeof message.content === 'string' &&
 					message.content.includes(
-						'Worker write routing: classify a commissioned durable change as simple or complex'
+						'large complex-write contract route is deferred in this opening pass'
 					)
 			)
 		).toBe(true);
+		const complexGateRequest = client.stream.mock.calls[1]?.[0];
+		expect(complexGateRequest?.toolChoice).toBe('required');
+		expect(complexGateRequest?.tools.map((tool) => tool.function.name)).toContain(
+			'declare_turn_contract'
+		);
+		expect(JSON.stringify(complexGateRequest?.tools)).toContain('minimum_successful_effects');
 		expect(firstRound).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -5934,19 +5970,19 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		).toMatchObject({
 			function: {
 				description: expect.stringContaining(
-					'Separate outcomes when targets receive different values.'
+					'Declare the complete durable outcomes for an active complex-write route.'
 				),
 				parameters: {
 					properties: {
 						outcomes: {
 							description: expect.stringContaining(
-								'Use separate outcomes for targets receiving different values'
+								'Complete durable effects, described as outcomes rather than tool steps.'
 							),
 							items: {
 								properties: {
 									changes: {
 										description: expect.stringContaining(
-											'The durable field values this outcome sets on every target'
+											'Durable field/value pairs applied to every target.'
 										)
 									},
 									label: {

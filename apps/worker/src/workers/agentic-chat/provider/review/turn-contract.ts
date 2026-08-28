@@ -210,11 +210,21 @@ export function buildWorkerSemanticMutationOrdering(
 ): string | null {
 	const toolNames = new Set(tools.map((tool) => tool.function.name));
 	if (
-		!toolNames.has(DECLARE_TURN_CONTRACT_TOOL_NAME) ||
 		!toolNames.has(REQUEST_TURN_CLARIFICATION_TOOL_NAME) ||
 		!tools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
 	) {
 		return null;
+	}
+	if (!toolNames.has(DECLARE_TURN_CONTRACT_TOOL_NAME)) {
+		return [
+			'Worker write routing: the large complex-write contract route is deferred in this opening pass.',
+			'For a clear commissioned durable change, propose the complete concrete mutation batch with the available mutation tools. The worker deterministically executes only an eligible simple batch; it withholds any complex batch before execution and opens the independently reviewed contract route in the next pass.',
+			'Do not split, shrink, or serialize a complex request merely to fit the simple lane. Include the complete commissioned batch that can be expressed with the available tools.',
+			'Call request_turn_clarification instead when a required target or value has multiple plausible choices. Never guess among loaded candidates.',
+			'For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
+			'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
+			...SEMANTIC_COMMISSION_GUIDANCE
+		].join(' ');
 	}
 	return [
 		'Worker write routing: classify a commissioned durable change as simple or complex before proposing mutations.',

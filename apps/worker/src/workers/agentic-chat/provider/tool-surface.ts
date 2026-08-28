@@ -1,7 +1,8 @@
 // apps/worker/src/workers/agentic-chat/provider/tool-surface.ts
 import {
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
-	DECLARE_READ_ONLY_TURN_TOOL_NAME
+	DECLARE_READ_ONLY_TURN_TOOL_NAME,
+	DECLARE_TURN_CONTRACT_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
 import { provideAgenticChatLoopToolCatalog } from '@buildos/agentic-chat-runtime/loop';
 import {
@@ -50,6 +51,20 @@ const WORKER_LOOP_CATALOG = Object.freeze({
 	)
 });
 
+// These are the versioned production launch surfaces that intentionally carry
+// write capability on every turn. Their acting model can propose a concrete
+// batch first; the deterministic direct-write classifier opens the larger
+// contract route only when that batch is complex. Legacy/custom profiles keep
+// their historical eager contract surface during the artifact retention
+// window, and project creation remains contract-first by design.
+const LAZY_COMPLEX_WRITE_CONTRACT_SURFACE_PROFILES = new Set([
+	'global_write',
+	'project_write',
+	'project_document',
+	'project_write_document',
+	'project_calendar'
+]);
+
 // Worker and web are separate hosts. Web installs its full registry; the
 // worker installs reviewed reads plus capability-gated mutation identities.
 provideAgenticChatLoopToolCatalog(() => WORKER_LOOP_CATALOG);
@@ -69,11 +84,35 @@ export function buildWorkerToolSurfaceOverride(
 		return null;
 	}
 	return [
-		'Worker execution surface override: the callable tools in this turn are exactly:',
+		'Worker execution surface override: the callable tools in this provider pass are exactly:',
 		callableNames.length > 0 ? callableNames.join(', ') : 'none',
-		'Any earlier routing or tool-surface instruction that names an absent tool is inactive for this turn.',
+		'Any earlier routing or tool-surface instruction that names an absent tool is inactive for this pass unless a later worker routing instruction explicitly expands the surface.',
 		'Do not delay a safe direct action merely because an absent discovery, skill, or context tool was suggested; use the callable tools that are present.'
 	].join(' ');
+}
+
+/**
+ * Keep the large durable-outcome schema out of common production opening
+ * passes. The full immutable/admitted surface remains available to the worker
+ * and is mounted by the deterministic complex-write redirect before the model
+ * can declare a contract.
+ */
+export function deferComplexWriteContractForInitialPass(
+	input: AgenticChatWorkerExecutionInputV1,
+	tools: readonly AgenticChatTurnProviderToolV1[],
+	enabled: boolean
+): readonly AgenticChatTurnProviderToolV1[] {
+	if (!enabled) return tools;
+	const decoded = decodeAgenticChatToolSurfaceV1(input.artifact.prepared.toolSurface);
+	if (
+		!decoded.ok ||
+		!LAZY_COMPLEX_WRITE_CONTRACT_SURFACE_PROFILES.has(decoded.surface.surfaceProfile) ||
+		!tools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name)) ||
+		!tools.some((tool) => tool.function.name === DECLARE_TURN_CONTRACT_TOOL_NAME)
+	) {
+		return tools;
+	}
+	return tools.filter((tool) => tool.function.name !== DECLARE_TURN_CONTRACT_TOOL_NAME);
 }
 
 export function productionToolsFor(

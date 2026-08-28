@@ -20,7 +20,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: DECLARE_TURN_CONTRACT_TOOL_NAME,
 		description:
-			'Declare durable outcomes when reads must precede writes; call alongside the first reads. Omit for answer-only turns, research for a possible later change, or an immediate direct write. This records intent, not a mutation. After reading, request clarification only for an unresolved required choice; otherwise complete every outcome or report the blocker. Separate outcomes when targets receive different values.',
+			'Declare the complete durable outcomes for an active complex-write route. This records intent, not a mutation. Describe outcomes rather than tool steps, include the real cardinality, and separate targets that receive different values.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -34,7 +34,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 					minItems: 1,
 					maxItems: 20,
 					description:
-						'Required durable effects, described as outcomes rather than steps or tool names. Use separate outcomes for targets receiving different values (e.g. A/B state_key=done versus C priority=1).',
+						'Complete durable effects, described as outcomes rather than tool steps. Separate targets that receive different values.',
 					items: {
 						type: 'object',
 						properties: {
@@ -108,7 +108,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 									required: ['field', 'value']
 								},
 								description:
-									'The durable field values this outcome sets on every target, e.g. [{"field":"state_key","value":"done"}] or [{"field":"priority","value":"1"}]. Targets that receive different values belong in separate outcomes.'
+									'Durable field/value pairs applied to every target. Targets receiving different values require separate outcomes.'
 							},
 							minimum_successful_effects: {
 								type: 'integer',

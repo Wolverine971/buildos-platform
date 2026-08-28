@@ -252,7 +252,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 	): AgenticChatPreparedProviderInvocationV1 {
 		throwIfAborted(input.signal);
 		const executionInput = input.executionInput;
-		const request = buildBaseProviderRequest(
+		const { request, admittedTools } = buildBaseProviderRequest(
 			executionInput,
 			input.processingToken,
 			input.signal,
@@ -318,7 +318,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		// description tells the model to call declare_turn_contract early), but a
 		// declaration on such a surface is answered with a read-only continuation
 		// instead of two reviewer passes and a doomed write.
-		const surfaceCanWrite = request.tools.some((tool) =>
+		const surfaceCanWrite = admittedTools.some((tool) =>
 			reviewedAgenticChatMutationSpecV1(tool.function.name)
 		);
 		// After the first mutation round the write carve-out is spent, yet the
@@ -389,7 +389,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			turnRunId: request.turnRunId,
 			supervisor,
 			release,
-			getAdmittedTools: () => request.tools,
+			getAdmittedTools: () => admittedTools,
 			recordProviderToolCalls(count) {
 				providerToolCallCount += count;
 			},
@@ -482,7 +482,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						logicalProviderRound: value.logicalProviderRound + 1,
 						providerRound: 'synthesis'
 					},
-					request.tools
+					admittedTools
 				);
 				if (!gate) return null;
 				return appendSystemInstruction(
@@ -498,7 +498,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				}
 				const carveOut = buildTurnContractWriteCarveOutRequest(
 					value,
-					request.tools,
+					admittedTools,
 					turnContract
 				);
 				if (!carveOut) return null;
@@ -516,7 +516,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (!resolution || !turnContract) return null;
 				const continuation = buildContractCompletionRequest(
 					value,
-					request.tools,
+					admittedTools,
 					turnContract,
 					resolution,
 					labelBindings
@@ -529,7 +529,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// Production assembly refuses mutation capabilities without this lane.
 				// Keep reviewer-less deterministic/provider fixtures backward-compatible.
 				if (!semanticReviewRequired) return [];
-				if (!turnContract && assessDirectWriteBatch(calls, currentRequest).kind === 'simple') {
+				if (
+					!turnContract &&
+					assessDirectWriteBatch(calls, currentRequest).kind === 'simple'
+				) {
 					return [];
 				}
 				return validateApprovedTurnContractMutations(
@@ -565,7 +568,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						contractSha256: approvedContractSha256,
 						labelBindings
 					},
-					reviewTools: request.tools,
+					reviewTools: admittedTools,
 					request: value,
 					usage
 				};
@@ -759,12 +762,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						proposalRevision.kind === 'contract'
 							? buildContractRevisionRequest(
 									currentRequest,
-									request.tools,
+									admittedTools,
 									proposalRevision
 								)
 							: buildMutationBatchRevisionRequest(
 									currentRequest,
-									request.tools,
+									admittedTools,
 									proposalRevision
 								);
 					pendingToolRound = null;
@@ -798,14 +801,14 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					approvedContractSha256 = approvalResult.contract_sha256;
 					const approvedExecutionRequest = buildPostSemanticDispositionRequest(
 						currentRequest,
-						request.tools,
+						admittedTools,
 						DECLARE_TURN_CONTRACT_TOOL_NAME
 					);
 					const projectCreateShellRequest =
 						approvedExecutionRequest.contextType === 'project_create'
 							? buildTurnContractWriteCarveOutRequest(
 									approvedExecutionRequest,
-									request.tools,
+									admittedTools,
 									turnContract
 								)
 							: null;
@@ -828,7 +831,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					currentRequest = appendSystemInstruction(
 						buildPostSemanticDispositionRequest(
 							currentRequest,
-							request.tools,
+							admittedTools,
 							DECLARE_READ_ONLY_TURN_TOOL_NAME
 						),
 						'This surface cannot change project data: no write tool is available in this turn. Answer from the loaded reads, and if the user asked for a change, say plainly that it was not made and what they can do instead. Do not call or mention any write tool.'
@@ -852,7 +855,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					}
 					currentRequest = buildPostSemanticDispositionRequest(
 						currentRequest,
-						request.tools,
+						admittedTools,
 						semanticDispositionToolName
 					);
 				}
@@ -867,7 +870,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					pendingContractReviewSha256 = contractSha256(turnContract);
 					return this.streamTurnContractReview(
 						currentRequest,
-						request.tools,
+						admittedTools,
 						turnContract,
 						pendingContractReviewSha256,
 						!semanticDispositionCorrectionUsed,

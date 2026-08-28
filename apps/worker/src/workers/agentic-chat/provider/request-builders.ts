@@ -42,7 +42,11 @@ import {
 } from './protocol';
 import { buildWorkerSemanticMutationOrdering } from './review/turn-contract';
 import type { CompletedProviderToolCall } from './stream-tool-calls';
-import { buildWorkerToolSurfaceOverride, productionToolsFor } from './tool-surface';
+import {
+	buildWorkerToolSurfaceOverride,
+	deferComplexWriteContractForInitialPass,
+	productionToolsFor
+} from './tool-surface';
 import { validationFailureError, validationIssuesForCall } from './validation';
 
 export function appendSystemInstruction(
@@ -87,7 +91,10 @@ export function buildBaseProviderRequest(
 	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>,
 	liveVisionEnabled: boolean,
 	semanticReviewEnabled: boolean
-): AgenticChatTurnProviderRequestV1 {
+): {
+	request: AgenticChatTurnProviderRequestV1;
+	admittedTools: readonly AgenticChatTurnProviderToolV1[];
+} {
 	const systemPrompt = requiredContent(input.artifact.prepared.systemPrompt, 'system prompt');
 	const requestMessage = requiredContent(input.requestPayload.message, 'user message');
 	const requestAttachments = input.requestPayload.attachments;
@@ -160,7 +167,12 @@ export function buildBaseProviderRequest(
 
 	const context = requireRecord(input.requestPayload.context, 'request context');
 	const contextType = canonicalRequiredText(context.type, 'context type');
-	const tools = productionToolsFor(input, mutationCapabilities, semanticReviewEnabled);
+	const admittedTools = productionToolsFor(input, mutationCapabilities, semanticReviewEnabled);
+	const tools = deferComplexWriteContractForInitialPass(
+		input,
+		admittedTools,
+		semanticReviewEnabled && contextType !== 'project_create'
+	);
 	const workerToolSurfaceOverride = buildWorkerToolSurfaceOverride(input, tools);
 	if (workerToolSurfaceOverride) {
 		messages.push({ role: 'system', content: workerToolSurfaceOverride });
@@ -178,36 +190,39 @@ export function buildBaseProviderRequest(
 	}
 	messages.push({ role: 'user', content: userMessage });
 	return {
-		messages,
-		tools,
-		toolChoice: tools.length > 0 ? 'auto' : 'none',
-		userId: input.claim.userId,
-		sessionId: input.claim.sessionId,
-		turnRunId: input.claim.turnRunId,
-		streamRunId: input.streamRunId,
-		clientTurnId: input.clientTurnId,
-		contextType,
-		entityId: nullableString(context.entityId, 'context entity id'),
-		projectId: nullableString(context.projectId, 'context project id'),
-		queueJobId: input.claim.queueJobId,
-		processingToken,
-		executionGeneration: input.claim.executionGeneration,
-		logicalProviderRound: 1,
-		providerRound: 'initial',
-		signal,
-		...(liveVisionEnabled && currentTurn?.liveVision?.requested
-			? {
-					liveVisionRequest: {
-						turnRunId: input.claim.turnRunId,
-						queueJobId: input.claim.queueJobId,
-						processingToken,
-						userId: input.claim.userId,
-						executionGeneration: input.claim.executionGeneration,
-						policy: currentTurn.liveVision,
-						attachments: currentTurn.attachments
+		admittedTools,
+		request: {
+			messages,
+			tools,
+			toolChoice: tools.length > 0 ? 'auto' : 'none',
+			userId: input.claim.userId,
+			sessionId: input.claim.sessionId,
+			turnRunId: input.claim.turnRunId,
+			streamRunId: input.streamRunId,
+			clientTurnId: input.clientTurnId,
+			contextType,
+			entityId: nullableString(context.entityId, 'context entity id'),
+			projectId: nullableString(context.projectId, 'context project id'),
+			queueJobId: input.claim.queueJobId,
+			processingToken,
+			executionGeneration: input.claim.executionGeneration,
+			logicalProviderRound: 1,
+			providerRound: 'initial',
+			signal,
+			...(liveVisionEnabled && currentTurn?.liveVision?.requested
+				? {
+						liveVisionRequest: {
+							turnRunId: input.claim.turnRunId,
+							queueJobId: input.claim.queueJobId,
+							processingToken,
+							userId: input.claim.userId,
+							executionGeneration: input.claim.executionGeneration,
+							policy: currentTurn.liveVision,
+							attachments: currentTurn.attachments
+						}
 					}
-				}
-			: {})
+				: {})
+		}
 	};
 }
 
