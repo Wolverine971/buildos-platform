@@ -45,7 +45,7 @@ function accessDeniedCtx(): {
 			if (fn === 'get_onto_project_summaries_v1') return { data: [], error: null };
 			throw new Error(`unexpected rpc: ${fn}`);
 		}
-	} as AgentOpContext['admin'];
+	} as unknown as AgentOpContext['admin'];
 
 	return {
 		calls,
@@ -64,7 +64,7 @@ function emptyProjectReadCtx(): AgentOpContext {
 			if (fn === 'get_onto_project_summaries_v1') return { data: [], error: null };
 			throw new Error(`unexpected rpc: ${fn}`);
 		}
-	} as AgentOpContext['admin'];
+	} as unknown as AgentOpContext['admin'];
 
 	return {
 		admin,
@@ -180,7 +180,7 @@ function stageUpdateCtx(params: {
 			throw new Error(`unexpected rpc: ${fn}`);
 		},
 		from: (table: string) => new Query(table)
-	} as AgentOpContext['admin'];
+	} as unknown as AgentOpContext['admin'];
 
 	return {
 		calls,
@@ -258,7 +258,7 @@ function projectRestoreCtx(params: {
 			throw new Error(`unexpected rpc: ${fn}`);
 		},
 		from: (table: string) => new Query(table)
-	} as AgentOpContext['admin'];
+	} as unknown as AgentOpContext['admin'];
 
 	return { admin, calls };
 }

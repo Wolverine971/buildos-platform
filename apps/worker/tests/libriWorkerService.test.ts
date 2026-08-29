@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
@@ -225,16 +226,16 @@ function healthyBootstrap(): LibriWorkerBootstrapHealth {
 }
 
 function fakeServer() {
-	const server = {
-		address: vi.fn(() => ({ address: '127.0.0.1', family: 'IPv4', port: 4313 })),
-		closeIdleConnections: vi.fn(),
-		close: vi.fn((callback?: () => void) => {
-			callback?.();
-			return server;
-		}),
-		once: vi.fn(),
-		off: vi.fn(),
-		listen: vi.fn()
-	};
+	const server = createServer();
+	vi.spyOn(server, 'address').mockReturnValue({
+		address: '127.0.0.1',
+		family: 'IPv4',
+		port: 4313
+	});
+	vi.spyOn(server, 'closeIdleConnections').mockImplementation(() => undefined);
+	vi.spyOn(server, 'close').mockImplementation((callback) => {
+		callback?.();
+		return server;
+	});
 	return server;
 }
