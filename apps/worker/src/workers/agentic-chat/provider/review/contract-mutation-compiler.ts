@@ -79,6 +79,52 @@ export function compileApprovedSingleTaskScheduleMutation(
 	};
 }
 
+/**
+ * Convert one withheld existing-task schedule proposal into an untrusted typed
+ * contract for independent review. The candidate itself never executes, and
+ * approval of this contract still cannot bypass exact mutation-batch review.
+ */
+export function compileSingleTaskScheduleContractFromMutation(
+	call: CompletedProviderToolCall
+): TurnContract | null {
+	if (call.name !== 'update_onto_task' || call.scheduling) return null;
+	const argumentNames = Object.keys(call.arguments);
+	if (
+		argumentNames.length < 2 ||
+		argumentNames.some((name) => name !== 'task_id' && !COMPILED_TASK_SCHEDULE_FIELDS.has(name))
+	) {
+		return null;
+	}
+	const taskId = call.arguments.task_id;
+	if (typeof taskId !== 'string' || !CANONICAL_UUID_PATTERN.test(taskId)) return null;
+	const changes = argumentNames
+		.filter((name) => COMPILED_TASK_SCHEDULE_FIELDS.has(name))
+		.sort()
+		.map((field) => {
+			const value = call.arguments[field];
+			return typeof value === 'string' && isValidRfc3339Timestamp(value)
+				? { field, value }
+				: null;
+		});
+	if (changes.length === 0 || changes.some((change) => change === null)) return null;
+	const exactChanges = changes as Array<{ field: string; value: string }>;
+	return {
+		version: 1,
+		source: 'implicit',
+		outcomes: [
+			{
+				id: 'outcome_1',
+				action: 'update',
+				entityKind: 'task',
+				targetIds: [taskId],
+				requiredFields: exactChanges.map((change) => change.field),
+				changes: exactChanges,
+				minimumSuccessfulEffects: 1
+			}
+		]
+	};
+}
+
 function isValidRfc3339Timestamp(value: string): boolean {
 	const match = RFC_3339_TIMESTAMP_PATTERN.exec(value);
 	if (!match) return false;

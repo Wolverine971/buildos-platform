@@ -600,7 +600,8 @@ to measure these control loops.
   and 2, with no retry. The durable distinct-pair derivation is `2` and
   `chat_turn_runs.llm_pass_count=2`. Its two DeepSeek requests used 9,030 tokens and cost
   $0.00053003. Historical unclassified turns remain untouched.
-- **The first bounded WP-5 optimization is implemented locally and awaiting independent review.**
+- **The first bounded WP-5 optimization is deployed; its production receipt proves the compiler
+  boundary but not the six-pass target.**
   The retained successful reschedule turn `8d6e6cca-0acb-438e-b73e-9525bd3c1f01` took 45.367
   seconds, seven provider attempts, 87,823 tokens, and $0.01416853. Its pass graph paid an acting
   model to re-express the exact single-task `due_at` value immediately after a fresh contract-SHA
@@ -616,23 +617,41 @@ to measure these control loops.
   call through mutation approval, while three reviewer decisions still occur and the compiled
   `update_onto_task` carries the exact target and date. Eleven compiler eligibility/decline tests,
   all 88 provider tests, and the three provider-boundary tests pass (102 focused tests total);
-  touched production source lint is clean. This should reduce the retained trace from seven to six
-  logical provider passes without weakening either independent review gate. It is not deployed and
-  no paid before/after run has been made yet.
+  touched production source lint is clean. Commit
+  `b879d3fb7952b1e07caa807c2d20e7ffb0bf56c3` deployed as Railway deployment
+  `607d2cc9-6e9c-4ff0-ae52-c9a20e7a9c25`; its isolated build passed all eight Turbo tasks, and
+  exact-release health reported a connected database, healthy idle Realtime, zero active turns,
+  and 20/20 capability alignment. The zero-spend two-scenario preflight passed all 77 active tests.
+  One paid, zero-retry reschedule then passed every harness assertion: turn
+  `67015082-ec56-4f47-8860-72494c760238`, stream
+  `ed19f45e-69ed-4c09-84d5-ad0fdc8e9fe1`, session
+  `7cfbb312-646b-4ffc-bd60-aa83c658d454`. The exact `update_onto_task` used provider call ID
+  `contract-compiled-task-schedule:f4f943a774e71dfcada7b68532cb7e0ee9f781a5376f2b5fead023252df64969`,
+  set only the approved task's `due_at`, and produced one successful effect. Both reviewers
+  approved, validation failures remained zero, and all seven attempts were primary successes with
+  no retry. However, the live turn added an initial task-list read before the prior control graph,
+  so `llm_pass_count=7`: acting rounds 1, 2, 3, and 8; contract-review rounds 4 and 5; and
+  mutation-review round 6. The deployed compiler did remove the post-approval acting mutation
+  proposal, but the added pre-review read kept the total at seven. Durable time was 190.041 seconds,
+  94,497 tokens, and $0.01603428; two unusually slow reviewer calls (73.030s contract review and
+  63.679s mutation review) dominate the wall-time regression. Treat this as a structurally correct
+  compiler receipt and a failed efficiency threshold, not as proof of 7→6 production reduction.
+  Do not pay for another repetition until the pre-contract graph has a deterministic rehearsal.
 
 ## Review handoff — post-deploy status and current review target
 
 This section is the handoff for an independent review. The deployed release and current local tree
 are intentionally different:
 
-- **Deployed and health-verified:** commit `edeb943add8a26b3d1e540bde1b980b051697523`
+- **Deployed and health-verified:** commit `b879d3fb7952b1e07caa807c2d20e7ffb0bf56c3`
   contains WP-1/WP-2, typed reviewer correction, durable clarification/final-output gates,
   provider/internal normalization, aligned candidate evidence, and action-aware symbolic-field
   cleanup, canonical goal fields, outcome-scoped reviewer semantics, and explicit project-name
-  preservation, validation-failure counting, and classified logical provider-pass reconciliation.
-  The isolated reschedule gate passes. Production evidence now proves reviewed project/goal/task
-  execution, durable session handoff, the correctly scoped direct follow-up, and a nonzero provider
-  aggregate that exactly matches its classified durable rows.
+  preservation, validation-failure counting, classified logical provider-pass reconciliation, and
+  the narrow post-contract task-schedule compiler. The isolated reschedule gate passes. Production
+  evidence now proves reviewed project/goal/task execution, durable session handoff, the correctly
+  scoped direct follow-up, exact compiled schedule execution through both review gates, and a
+  nonzero provider aggregate that exactly matches its classified durable rows.
 - **The project follow-up harness correction is pushed in `bca515378`.** The project-create scenario
   no longer requires contract review for its single focused-project follow-up create. It asserts the
   documented direct-write lane and still requires one successful task effect in the exact shifted
@@ -649,12 +668,34 @@ are intentionally different:
   output only after all three effects. The labelled organization fixture now continues from the
   created-folder receipt through a separately SHA-approved bound move, its mutation receipt, and
   terminal output. All 88 focused provider tests pass.
-- **The current local review target is the single-task schedule contract compiler.** Review the
+- **The current review target is the single-task schedule contract compiler and its missed aggregate
+  target.** Review the
   eligibility predicate, stable system-authored tool-call identity, validation fallback, provider
   round accounting, and mutation-review provenance. In particular, verify that the compiler cannot
   accept free text, enums, creates, multiple targets/effects, noncanonical IDs, extra required
   fields, relative dates, or impossible calendar timestamps, and that rejection preserves the old
-  acting-model path.
+  acting-model path. The first production receipt proves the compiled mutation boundary and both
+  review gates, but an extra initial read kept the total at seven passes. The next bounded candidate
+  is to deterministically turn an exact, withheld single-task schedule mutation into the untrusted
+  contract submitted to the existing contract reviewer, eliminating the acting declaration pass;
+  it must be rehearsed locally before another paid run.
+- **That next pre-contract candidate is now implemented and locally rehearsed, but not deployed.**
+  It accepts only one policy-withheld `update_onto_task` candidate with a canonical task UUID, no
+  scheduling sidecar or extra fields, and one or both exact RFC 3339 `due_at` / `start_at` values.
+  The worker derives an `implicit` one-outcome contract, marks its provenance as
+  `mutation_candidate_compiler`, and sends its SHA directly to the existing independent contract
+  reviewer. The candidate never executes. Contract approval still leads to the deployed
+  post-contract compiler, then the independent mutation-batch reviewer, then the ordinary durable
+  executor. Every rejected shape retains the old acting declaration path. Both the initial-pass and
+  post-read continuation paths are covered; the latter is the production-shaped cold-reference
+  trace. The first interrupted test run exposed missing continuation wiring, and the full worker
+  lint then exposed continuation-only variable names in the initial path; both defects were fixed
+  before handoff. The compiler/provider/boundary slice now passes 113/113 tests, including 90/90
+  provider tests; full worker check and TypeScript pass with only two unrelated Tasker 71 warnings.
+  The full worker suite passed 1,348 tests and failed only two unrelated date-sensitive inbox-index
+  fixtures; four localhost HTTP tests initially hit sandbox `EPERM` and passed 5/5 when rerun with
+  localhost binding allowed. Do not infer production pass reduction until review and one final
+  classified zero-retry receipt.
 
 ### Kernel and intended invariants
 
@@ -731,6 +772,29 @@ Primary files:
 - `apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts`
 - the adjacent runtime and worker test files for those modules
 
+#### WP-5 — exact withheld schedule candidate to reviewed contract
+
+- A pure compiler converts only one exact withheld `update_onto_task` schedule candidate into an
+  untrusted typed contract. It rejects noncanonical IDs, relative or impossible timestamps, null
+  clears, extra fields, other tools, multiple calls, and scheduling metadata.
+- Eligibility additionally requires the existing direct-write router to classify the candidate as
+  `target_resolution_requires_review`; this does not broaden the direct-write surface.
+- The contract-review prompt records that the worker, not the acting model, derived the proposal and
+  explicitly tells the reviewer that neither the candidate nor the contract is prior approval.
+- Approval remains SHA-bound and cannot execute the withheld call. The separately reviewed stable
+  system-authored mutation is the only write that can reach the durable executor.
+- The same guarded transition is wired into initial and continuation provider passes. The complete
+  post-read regression proves: read receipt → withheld candidate → contract review → compiled batch
+  review → exact durable mutation → terminal text, with no acting `declare_turn_contract` call.
+
+Primary files:
+
+- `apps/worker/src/workers/agentic-chat/provider/review/contract-mutation-compiler.ts`
+- `apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts`
+- `apps/worker/src/workers/agentic-chat/provider/turn-provider.ts`
+- `apps/worker/tests/agenticChatContractMutationCompiler.test.ts`
+- `apps/worker/tests/agenticChatTurnProvider.test.ts`
+
 ### Reviewer focus and known open questions
 
 - **Typed-correction trust boundary:** verify that a corrected contract can never inherit write
@@ -761,6 +825,9 @@ Primary files:
   three-task dictated update, labelled organization-create with a bound move, and composite project
   creation. Review their complete pass graphs and receipt cardinality before marking WP-3 complete;
   do not infer completion from the reschedule receipt alone.
+- **Pre-contract compiler boundary:** verify that eligibility cannot grow beyond one exact schedule
+  update through argument normalization or routing changes, that the reviewer sees honest compiler
+  provenance, and that the derived contract never inherits authorization from the withheld call.
 
 ### Verification already run
 
@@ -771,19 +838,29 @@ suites all pass. The deployed explicit-name patch passes its full worker check; 
 project/direct-lane and deterministic-trace changes pass web test type-check at baseline and all 88
 focused provider tests. The WP-4 next-turn history slice passes all 26 focused session/preparation
 tests and web test type-check at the accepted `538/538` baseline. Prettier checking on the touched
-source/tests also passes.
+source/tests also passes. For the current undeployed WP-5 follow-on, worker lint/typecheck passes;
+the compiler/provider/boundary slice passes 113/113 tests. The full worker suite passed 1,348 tests,
+with only two unrelated date-sensitive inbox-index fixtures failing; the HTTP composition slice
+passes 5/5 when localhost binding is allowed. The repository-wide test-type checker remains red on
+pre-existing/concurrent generated database and fixture typing debt, but reports no error in either
+Tasker 70 test file.
 
 ### Next gate after review
 
 1. Review the WP-4 pending-choice ledger trust boundary and latest-message expiry invariant. The
    production worker/prewarm path is now proven; decide separately whether the retiring legacy
    atomic SSE snapshot needs parity.
-2. Review the locally rehearsed WP-5 single-task schedule compiler boundary. Confirm that the exact
+2. Review the deployed WP-5 single-task schedule compiler boundary. Confirm that the exact
    approved contract is the only source of compiled arguments and that the ordinary independent
    mutation reviewer remains mandatory.
-3. After review, release the optimization and run one zero-retry reschedule receipt. Require the
-   classified provider observations to reconcile to `llm_pass_count` and demonstrate the expected
-   seven-to-six logical-pass reduction; do not backfill historical unclassified turns.
+3. Review the locally rehearsed pre-contract optimization: when the acting model proposes one exact
+   existing-task `due_at` / `start_at` mutation and target-resolution policy withholds it, the worker
+   derives an untrusted typed contract and sends that SHA directly to the existing contract
+   reviewer. Confirm the candidate itself cannot execute and both reviews remain mandatory.
+4. After review, deploy this bounded follow-on and run one classified zero-retry reschedule receipt.
+   Require the complete trace to remain correct, reconcile every classified pass to
+   `llm_pass_count`, keep validation failures at zero, and meet the ≤6-pass release target before
+   calling WP-5 complete.
 
 ## Work packages
 
@@ -873,7 +950,12 @@ clarification, lists the candidates, and makes no completion claim.
       separately.
 - [x] Remove the repeated acting proposal pass when a freshly approved contract completely defines
       one single-task `due_at` / `start_at` update. Keep every other shape on the existing path.
-- [ ] Release and measure one classified, zero-retry reschedule before/after receipt.
+- [x] Release and measure one classified, zero-retry reschedule receipt. The compiler executed and
+      both review gates remained intact, but an added initial read kept the aggregate at seven, so
+      the efficiency threshold remains open.
+- [x] Remove the redundant acting declaration pass for an exact withheld single-task schedule
+      candidate without weakening contract review; the complete deterministic trace passes locally.
+- [ ] After independent review, deploy it and measure one final classified zero-retry receipt.
 - Preserve batched evidence and mutation widths; do not trade provider-pass savings for serial tool
   execution.
 - Compare each candidate against the exact production baselines in this tracker.

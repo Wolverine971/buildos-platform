@@ -61,7 +61,10 @@ import {
 	buildContractCompletionRequest,
 	buildTurnContractWriteCarveOutRequest
 } from './review/contract-execution';
-import { compileApprovedSingleTaskScheduleMutation } from './review/contract-mutation-compiler';
+import {
+	compileApprovedSingleTaskScheduleMutation,
+	compileSingleTaskScheduleContractFromMutation
+} from './review/contract-mutation-compiler';
 import {
 	type PendingProposalRevision,
 	buildContractRevisionRequest,
@@ -191,6 +194,10 @@ type ToolRoundStreamState = {
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[]
 	): ClientRequest | null;
+	takePreMutationContractReview(
+		request: ClientRequest,
+		calls: readonly CompletedProviderToolCall[]
+	): { contract: TurnContract; contractSha256: string } | null;
 	takeReceiptGroundedFinalDispositionGate(
 		request: ClientRequest,
 		assistantCandidate: string
@@ -471,6 +478,34 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			},
 			hasPendingTurnContractWrite() {
 				return Boolean(turnContract && !contractWriteCarveOutUsed && !mutationRoundReached);
+			},
+			takePreMutationContractReview(value, calls) {
+				if (
+					!semanticReviewRequired ||
+					semanticTurnDispositionGateUsed ||
+					turnContract ||
+					mutationRoundReached ||
+					calls.length !== 1
+				) {
+					return null;
+				}
+				const directWrite = assessDirectWriteBatch(calls, value);
+				if (
+					directWrite.kind !== 'contract_required' ||
+					directWrite.reason !== 'target_resolution_requires_review'
+				) {
+					return null;
+				}
+				const compiledContract = compileSingleTaskScheduleContractFromMutation(calls[0]!);
+				if (!compiledContract) return null;
+				semanticTurnDispositionGateUsed = true;
+				turnContract = compiledContract;
+				approvedContractSha256 = null;
+				pendingContractReviewSha256 = contractSha256(compiledContract);
+				return {
+					contract: compiledContract,
+					contractSha256: pendingContractReviewSha256
+				};
 			},
 			takePreMutationSemanticDispositionGate(value, calls) {
 				if (
@@ -1181,6 +1216,25 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
 					assertSemanticDispositionCalls(calls, request.semanticDispositionGate === true);
+					const compiledContractReview = state.takePreMutationContractReview(
+						request,
+						calls
+					);
+					if (compiledContractReview) {
+						state.setCurrentRequest(request);
+						keepLeaseForSynthesis = true;
+						yield* this.streamTurnContractReview(
+							request,
+							state.getAdmittedTools(),
+							compiledContractReview.contract,
+							compiledContractReview.contractSha256,
+							true,
+							usage,
+							state,
+							'mutation_candidate_compiler'
+						);
+						return;
+					}
 					const preMutationSemanticDispositionGate =
 						state.takePreMutationSemanticDispositionGate(request, calls);
 					if (preMutationSemanticDispositionGate) {
@@ -1376,7 +1430,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		contractReviewSha256: string,
 		allowDispositionCorrection: boolean,
 		priorUsage: AgenticChatProviderUsageV1 | null,
-		state: ToolRoundStreamState
+		state: ToolRoundStreamState,
+		proposalSource: 'acting_model' | 'mutation_candidate_compiler' = 'acting_model'
 	): AsyncGenerator<AgenticChatProviderStepV1> {
 		const reviewer = this.ports.semanticReviewer;
 		if (!reviewer) throw providerError('provider_semantic_reviewer_unavailable', 'permanent');
@@ -1389,7 +1444,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			contract,
 			contractReviewSha256,
 			allowReadOnlyCorrection,
-			allowRevision
+			allowRevision,
+			proposalSource
 		);
 		const toolCalls = createToolCallAccumulator();
 		let finished = false;
@@ -1775,6 +1831,25 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
 					assertSemanticDispositionCalls(calls, request.semanticDispositionGate === true);
+					const compiledContractReview = state.takePreMutationContractReview(
+						request,
+						calls
+					);
+					if (compiledContractReview) {
+						state.setCurrentRequest(request);
+						keepLeaseForContinuation = true;
+						yield* this.streamTurnContractReview(
+							request,
+							state.getAdmittedTools(),
+							compiledContractReview.contract,
+							compiledContractReview.contractSha256,
+							true,
+							aggregateUsage,
+							state,
+							'mutation_candidate_compiler'
+						);
+						return;
+					}
 					const preMutationSemanticDispositionGate =
 						state.takePreMutationSemanticDispositionGate(request, calls);
 					if (preMutationSemanticDispositionGate) {

@@ -32,7 +32,10 @@ import type { AgenticChatLiveVisionResolverPortV1 } from '../src/workers/agentic
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/readToolIdentity';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
-import { compileApprovedSingleTaskScheduleMutation } from '../src/workers/agentic-chat/provider/review/contract-mutation-compiler';
+import {
+	compileApprovedSingleTaskScheduleMutation,
+	compileSingleTaskScheduleContractFromMutation
+} from '../src/workers/agentic-chat/provider/review/contract-mutation-compiler';
 import {
 	AgenticChatWorkerSupervisorBridge,
 	type AgenticChatWorkerSupervisorDecisionRecordV1,
@@ -8495,6 +8498,307 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		]);
 		expect(client.stream).toHaveBeenCalledTimes(3);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(3);
+	});
+
+	it('submits an exact withheld task schedule directly for contract review', async () => {
+		const taskId = '41000000-0000-4000-8000-000000000051';
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const listArguments = { project_id: projectId, limit: 10 };
+		const mutationArguments = {
+			task_id: taskId,
+			due_at: '2026-09-04T15:00:00Z'
+		};
+		const candidateCall = {
+			id: 'provider-schedule-candidate-1',
+			name: 'update_onto_task',
+			arguments: mutationArguments,
+			canonicalArguments: canonicalizeAgenticChatJson(mutationArguments as never),
+			canonicalProviderArguments: canonicalizeAgenticChatJson(mutationArguments as never)
+		};
+		const compiledContract = compileSingleTaskScheduleContractFromMutation(candidateCall);
+		if (!compiledContract) throw new Error('Expected the exact schedule candidate to compile');
+		const contractSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(compiledContract as never), 'utf8')
+			.digest('hex');
+		const contractApproval = {
+			reason: 'The exact task and Friday timestamp match the user commission.',
+			contract_sha256: contractSha256,
+			reference_candidates: [
+				{
+					reference: 'the beta list email thing',
+					candidates: [{ id: taskId, title: 'Send the launch email to the beta list' }]
+				}
+			]
+		};
+		const compiledMutation = compileApprovedSingleTaskScheduleMutation(compiledContract);
+		if (!compiledMutation) throw new Error('Expected the approved schedule to compile');
+		const batchSha256 = mutationBatchReviewSha256([compiledMutation]);
+		const batchApproval = {
+			reason: 'The exact compiled update matches the approved contract.',
+			batch_sha256: batchSha256
+		};
+		const client = clientWithRounds([
+			providerReadRound('provider-task-list-1', listArguments, 'list_onto_tasks'),
+			providerReadRound(
+				'provider-schedule-candidate-1',
+				mutationArguments,
+				'update_onto_task'
+			),
+			[
+				{ type: 'text', content: 'Done — the beta-list email task is due Friday.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-compiled-contract-approval-1',
+				contractApproval,
+				'approve_turn_contract_review'
+			),
+			providerReadRound(
+				'reviewer-compiled-batch-approval-1',
+				batchApproval,
+				'approve_mutation_batch_review'
+			)
+		]);
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					readToolDefinition('list_onto_tasks'),
+					updateTaskToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'list_onto_tasks',
+					'update_onto_task'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const initialSteps = await collect(invocation.stream());
+		expect(initialSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-task-list-1',
+					toolName: 'list_onto_tasks'
+				})
+			])
+		);
+		const contractReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-task-list-1',
+						'list_onto_tasks',
+						listArguments,
+						{
+							tasks: [
+								{
+									id: taskId,
+									title: 'Send the launch email to the beta list',
+									due_at: '2026-09-02T15:00:00Z'
+								}
+							]
+						}
+					)
+				]
+			})
+		);
+		expect(contractReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-compiled-contract-approval-1',
+					toolName: 'approve_turn_contract_review',
+					decidedBy: 'contract_reviewer'
+				})
+			])
+		);
+		expect(
+			contractReviewSteps.some(
+				(step) => step.type === 'read_tool' && step.toolName === 'declare_turn_contract'
+			)
+		).toBe(false);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(semanticReviewer.stream).toHaveBeenCalledOnce();
+		const contractReviewRequest = semanticReviewer.stream.mock.calls[0]?.[0];
+		expect(String(contractReviewRequest?.messages[0]?.content)).toContain(
+			'worker deterministically derived'
+		);
+		expect(String(contractReviewRequest?.messages[0]?.content)).not.toContain(
+			'The acting model chose the contract'
+		);
+
+		const batchReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-compiled-contract-approval-1',
+						'approve_turn_contract_review',
+						contractApproval,
+						{
+							status: 'turn_contract_review_approved',
+							contract_sha256: contractSha256
+						}
+					)
+				]
+			})
+		);
+		expect(batchReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-compiled-batch-approval-1',
+					toolName: 'approve_mutation_batch_review'
+				})
+			])
+		);
+
+		const mutationSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-compiled-batch-approval-1',
+						'approve_mutation_batch_review',
+						batchApproval,
+						{
+							status: 'mutation_batch_review_approved',
+							batch_sha256: batchSha256
+						}
+					)
+				]
+			})
+		);
+		const mutationStep = mutationSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(mutationStep).toMatchObject({
+			providerToolCallId: compiledMutation.id,
+			toolName: 'update_onto_task',
+			arguments: mutationArguments
+		});
+		if (!mutationStep) throw new Error('Expected the compiled mutation step');
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 5,
+					results: [
+						durableMutationFeedback({
+							providerToolCallId: compiledMutation.id,
+							logicalOperationId: mutationStep.logicalOperationId,
+							arguments: mutationArguments
+						})
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'Done — the beta-list email task is due Friday.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+	});
+
+	it('submits an initial exact task schedule directly for contract review', async () => {
+		const taskId = '41000000-0000-4000-8000-000000000052';
+		const mutationArguments = {
+			task_id: taskId,
+			start_at: '2026-09-04T13:00:00Z'
+		};
+		const compiledContract = compileSingleTaskScheduleContractFromMutation({
+			id: 'provider-initial-schedule-candidate-1',
+			name: 'update_onto_task',
+			arguments: mutationArguments,
+			canonicalArguments: canonicalizeAgenticChatJson(mutationArguments as never),
+			canonicalProviderArguments: canonicalizeAgenticChatJson(mutationArguments as never)
+		});
+		if (!compiledContract)
+			throw new Error('Expected the initial schedule candidate to compile');
+		const contractSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(compiledContract as never), 'utf8')
+			.digest('hex');
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-initial-schedule-candidate-1',
+				mutationArguments,
+				'update_onto_task'
+			)
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-initial-compiled-contract-approval-1',
+				{
+					reason: 'The exact task and timestamp match the user commission.',
+					contract_sha256: contractSha256,
+					reference_candidates: []
+				},
+				'approve_turn_contract_review'
+			)
+		]);
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					updateTaskToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'update_onto_task'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const reviewSteps = await collect(invocation.stream());
+		expect(reviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-initial-compiled-contract-approval-1',
+					toolName: 'approve_turn_contract_review',
+					decidedBy: 'contract_reviewer'
+				})
+			])
+		);
+		expect(client.stream).toHaveBeenCalledOnce();
+		expect(semanticReviewer.stream).toHaveBeenCalledOnce();
+		invocation.release();
 	});
 
 	it('compiles the exact reschedule reviewer correction without losing the commission', async () => {
