@@ -24,6 +24,7 @@ import {
 	readableProjectIdsFromSummaries,
 	type AgenticChatToolAccessPortV1
 } from './access-port';
+import type { AgenticChatEmbeddingsPortV1 } from './embeddings-port';
 import { pickStartHereDocument } from './start-here-selector';
 import { prepareAgenticChatSearchTerm } from './search-term';
 import { normalizeAgenticChatProjectStateV1 } from '../loop/project-semantics';
@@ -35,11 +36,14 @@ import { normalizeAgenticChatProjectStateV1 } from '../loop/project-semantics';
 /**
  * Host-injected context for the shared read tools: the Supabase client the
  * host reads with (web: RLS user client; worker: service-role client) plus the
- * access port that carries the host's actor/membership semantics.
+ * access port that carries the host's actor/membership semantics. The optional
+ * embeddings port powers semantic discovery (explore_project); hosts without
+ * an embeddings provider leave it unset.
  */
 export type AgenticChatSharedReadContextV1 = {
 	client: SupabaseClient<Database>;
 	access: AgenticChatToolAccessPortV1;
+	embeddings?: AgenticChatEmbeddingsPortV1;
 };
 
 // ============================================

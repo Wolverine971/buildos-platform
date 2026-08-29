@@ -21,6 +21,7 @@ export type ToolRegistry = {
 const OP_EXCEPTIONS: Record<string, string> = {
 	search_all_projects: 'x.search.all_projects',
 	search_project: 'x.search.project',
+	explore_project: 'x.search.explore',
 	search_ontology: 'onto.search',
 	get_document_tree: 'onto.document.tree.get',
 	move_document_in_tree: 'onto.document.tree.move',

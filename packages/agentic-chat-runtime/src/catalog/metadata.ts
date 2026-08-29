@@ -23,6 +23,16 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		timeoutMs: 45000,
 		category: 'search'
 	},
+	explore_project: {
+		summary: 'Semantic discovery of entities related to a concept or theme.',
+		capabilities: [
+			'Finds related entities even without keyword overlap (vector similarity)',
+			'Best for gathering everything about a topic before a multi-entity change'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 45000,
+		category: 'search'
+	},
 	search_buildos: {
 		summary: 'Compatibility alias for broad search across accessible projects.',
 		capabilities: [

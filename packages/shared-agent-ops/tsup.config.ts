@@ -56,7 +56,9 @@ export default defineConfig({
 		'src/utils/search-filter.ts',
 		'src/utils/entity-reference-parser.ts',
 		'src/utils/validation-utils.ts',
-		'src/utils/document-outline.ts'
+		'src/utils/document-outline.ts',
+		'src/embeddings/entity-embedding.ts',
+		'src/embeddings/openai-embeddings.ts'
 	],
 	format: ['cjs', 'esm'],
 	// Rollup's declaration bundler builds every entrypoint in one worker. This

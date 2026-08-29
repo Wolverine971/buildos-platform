@@ -347,6 +347,58 @@ Do not call for plain task metadata updates (title/state/priority) unless docume
 	{
 		type: 'function',
 		function: {
+			name: 'explore_project',
+			description:
+				'Semantic discovery: finds entities RELATED to a concept or direction even without keyword overlap (theme "marketing" surfaces a customer-segments doc). Use to gather "everything about X" before a broad change; for one known item use search_project/search_all_projects. Omitting project_id searches all accessible projects, grouped by project.',
+			parameters: {
+				type: 'object',
+				properties: {
+					theme: {
+						type: 'string',
+						minLength: 1,
+						description:
+							'A concept, topic, or direction as a short phrase (e.g. "marketing strategy"), not an entity title.'
+					},
+					project_id: {
+						type: 'string',
+						description:
+							'Optional. Scope to one project; omit for all accessible projects.'
+					},
+					types: {
+						type: 'array',
+						description: 'Optional entity type filters for narrowing results',
+						items: {
+							type: 'string',
+							enum: [
+								'project',
+								'task',
+								'goal',
+								'plan',
+								'milestone',
+								'document',
+								'risk',
+								'requirement',
+								'event',
+								'image'
+							]
+						}
+					},
+					limit: {
+						type: 'integer',
+						default: 15,
+						minimum: 1,
+						maximum: 30,
+						description: 'Maximum results.'
+					}
+				},
+				required: ['theme']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
 			name: 'search_onto_tasks',
 			description:
 				'Task-only keyword search with project context. Prefer search_project/search_all_projects unless task state/archive filters are needed. Multi-word terms match in any order; explicit "A OR B" matches alternatives.',

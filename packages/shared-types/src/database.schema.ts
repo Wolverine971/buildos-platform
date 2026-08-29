@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-28T17:32:52.362Z
+// Generated on: 2026-08-29T16:39:41.396Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2292,6 +2292,19 @@ export type DatabaseSchema = {
 		src_id: string;
 		src_kind: string;
 	};
+	onto_embeddings: {
+		chunk_anchor: string | null;
+		chunk_index: number;
+		content_hash: string;
+		content_text: string;
+		embedding: string;
+		embedding_model: string;
+		entity_id: string;
+		entity_type: string;
+		id: string;
+		project_id: string;
+		updated_at: string;
+	};
 	onto_event_sync: {
 		calendar_id: string | null;
 		calendar_source_id: string | null;
@@ -4384,6 +4397,7 @@ export const tableNames = [
 	'onto_document_versions',
 	'onto_documents',
 	'onto_edges',
+	'onto_embeddings',
 	'onto_event_sync',
 	'onto_events',
 	'onto_facet_definitions',

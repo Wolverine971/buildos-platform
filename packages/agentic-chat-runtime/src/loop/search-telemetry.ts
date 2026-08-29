@@ -14,6 +14,7 @@ export const SEARCH_RESULT_ARRAY_KEYS: Record<string, string> = {
 	search_buildos: 'results',
 	search_project: 'results',
 	search_ontology: 'results',
+	explore_project: 'results',
 	search_onto_tasks: 'tasks',
 	search_onto_projects: 'projects',
 	search_onto_documents: 'documents',
@@ -43,12 +44,16 @@ const SMART_SEARCH_TOOLS = new Set([
 	'search_ontology'
 ]);
 
+/** Vector-similarity discovery tools (pgvector via onto_search_semantic). */
+const SEMANTIC_SEARCH_TOOLS = new Set(['explore_project']);
+
 /**
  * Which search family a tool belongs to, for telemetry that answers the spec's
  * "should the two families collapse to one?" question. Returns null for non-search tools.
  */
-export function searchToolFamily(toolName: string): 'smart' | 'legacy' | null {
+export function searchToolFamily(toolName: string): 'smart' | 'legacy' | 'semantic' | null {
 	if (!isSearchTool(toolName)) return null;
+	if (SEMANTIC_SEARCH_TOOLS.has(toolName)) return 'semantic';
 	return SMART_SEARCH_TOOLS.has(toolName) ? 'smart' : 'legacy';
 }
 

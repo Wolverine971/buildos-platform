@@ -3,6 +3,7 @@ import type {
 	AgentRunJobMetadata,
 	AssetOcrJobMetadata,
 	CycleQueueJobMetadata,
+	EmbedOntoEntityJobMetadata,
 	GenerateBriefAudioJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	ProjectIconGenerationJobMetadata,
@@ -30,6 +31,7 @@ import type {
 } from './workers/shared/queueUtils';
 import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
 import { processAssetOcrJob } from './workers/assets/assetOcrWorker';
+import { processEmbedOntoEntity } from './workers/embeddings/embedEntityWorker';
 import { processAgentRunJob } from './workers/agent-run/agentRunWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
@@ -310,6 +312,19 @@ async function processAssetOcr(job: ProcessingJob<AssetOcrJobMetadata>) {
 	}
 }
 
+/**
+ * Semantic discovery embedding processor (embed_onto_entity)
+ */
+async function processEmbedEntity(job: ProcessingJob<EmbedOntoEntityJobMetadata>) {
+	try {
+		const legacyJob = createLegacyJob<EmbedOntoEntityJobMetadata>(job);
+		return await processEmbedOntoEntity(legacyJob);
+	} catch (error) {
+		await job.log(`Entity embedding job failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
 async function processAgentRun(job: ProcessingJob<AgentRunJobMetadata>) {
 	await job.log('Agent Run job received');
 
@@ -439,6 +454,9 @@ export async function startWorker() {
 
 	// Register ontology asset OCR processor
 	queue.process('extract_onto_asset_ocr', processAssetOcr);
+
+	// Register semantic discovery embedding processor
+	queue.process('embed_onto_entity', processEmbedEntity);
 
 	// Register Agent Run processor
 	queue.process('agent_run', processAgentRun);

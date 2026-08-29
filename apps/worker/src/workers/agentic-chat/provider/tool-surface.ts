@@ -292,6 +292,7 @@ function workerReadOpForToolName(toolName: string): string {
 	const exceptions: Readonly<Record<string, string>> = {
 		search_all_projects: 'x.search.all_projects',
 		search_project: 'x.search.project',
+		explore_project: 'x.search.explore',
 		search_ontology: 'onto.search',
 		get_document_tree: 'onto.document.tree.get',
 		get_document_path: 'onto.document.path.get',

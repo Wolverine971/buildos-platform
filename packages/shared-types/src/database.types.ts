@@ -9236,6 +9236,56 @@ export type Database = {
           },
         ]
       }
+      onto_embeddings: {
+        Row: {
+          chunk_anchor: string | null
+          chunk_index: number
+          content_hash: string
+          content_text: string
+          embedding: string
+          embedding_model: string
+          entity_id: string
+          entity_type: string
+          id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          chunk_anchor?: string | null
+          chunk_index?: number
+          content_hash: string
+          content_text: string
+          embedding: string
+          embedding_model?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          chunk_anchor?: string | null
+          chunk_index?: number
+          content_hash?: string
+          content_text?: string
+          embedding?: string
+          embedding_model?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_embeddings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_event_sync: {
         Row: {
           calendar_id: string | null
@@ -19770,6 +19820,28 @@ export type Database = {
           type_key: string
         }[]
       }
+      onto_search_semantic: {
+        Args: {
+          p_actor_id: string
+          p_limit?: number
+          p_min_similarity?: number
+          p_project_id?: string
+          p_query_embedding: string
+          p_types?: string[]
+        }
+        Returns: {
+          chunk_anchor: string
+          id: string
+          project_id: string
+          project_name: string
+          score: number
+          snippet: string
+          state_key: string
+          title: string
+          type: string
+          type_key: string
+        }[]
+      }
       onto_task_create_atomic: {
         Args: {
           p_assigned_by_actor_id?: string
@@ -19847,6 +19919,23 @@ export type Database = {
         Args: {
           p_cycle_id: string
           p_expected_version: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      persist_agentic_chat_counted_tool_validation_failure: {
+        Args: {
+          p_arguments: Json
+          p_error_message: string
+          p_execution_generation: number
+          p_processing_token: string
+          p_provider_tool_call_id: string
+          p_queue_job_id: string
+          p_sequence_index: number
+          p_tool_category: string
+          p_tool_execution_id: string
+          p_tool_name: string
+          p_turn_run_id: string
           p_user_id: string
         }
         Returns: Json
@@ -19937,6 +20026,20 @@ export type Database = {
           p_system_prompt_sha256: string
           p_tool_definitions: Json
           p_tools_sha256: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      persist_agentic_chat_provider_attempt_observation: {
+        Args: {
+          p_event_type: string
+          p_execution_generation: number
+          p_observation_key: string
+          p_payload: Json
+          p_phase: string
+          p_processing_token: string
+          p_queue_job_id: string
           p_turn_run_id: string
           p_user_id: string
         }
@@ -21016,6 +21119,7 @@ export type Database = {
         | "agentic_chat_turn"
         | "admin_question_tree"
         | "run_cycle"
+        | "embed_onto_entity"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -21261,6 +21365,7 @@ export const Constants = {
         "agentic_chat_turn",
         "admin_question_tree",
         "run_cycle",
+        "embed_onto_entity",
       ],
       recurrence_end_reason: [
         "indefinite",

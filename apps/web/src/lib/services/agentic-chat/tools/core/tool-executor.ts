@@ -421,6 +421,9 @@ export class ChatToolExecutor {
 			case 'search_project':
 				return this.readExecutor.searchProject(args);
 
+			case 'explore_project':
+				return this.readExecutor.exploreProject(args);
+
 			case 'list_onto_tasks':
 				return this.readExecutor.listOntoTasks(args);
 

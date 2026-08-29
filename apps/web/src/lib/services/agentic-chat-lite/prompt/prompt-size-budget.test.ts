@@ -212,7 +212,11 @@ describe('total assembled prompt size budget', () => {
 		// Per-turn multiplier guard: ratchet this down when WP-3 removes the two
 		// read-only disposition/reviewer passes instead of hiding pass-count drift.
 		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(30_960);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(15_000);
+		// 2026-08-28: 15,000 → 15,900. explore_project (semantic discovery,
+		// tasker/71) now mounts on the project surfaces; its ~300-token schema is
+		// multiplied by the per-turn pass count (measured 15,804). Deliberate spend
+		// per the ratified discovery UX; the definition is already trimmed.
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(15_900);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		expect(largestToolSchemaTokens).toBeLessThanOrEqual(1_600);

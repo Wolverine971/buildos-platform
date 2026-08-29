@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 244 tables, grouped by domain.
+Complete column listing for all 245 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-08-28T17:32:52.362Z
+**Schema generated:** 2026-08-29T16:39:41.396Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -15,7 +15,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 
 - [Users & Auth](#users--auth) (6 tables)
 - [People & Contacts](#people--contacts) (6 tables)
-- [Ontology System](#ontology-system) (40 tables)
+- [Ontology System](#ontology-system) (41 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
 - [Chat & Agents](#chat--agents) (33 tables)
 - [Calendar](#calendar) (13 tables)
@@ -137,6 +137,10 @@ archived_at `string?` · children `Json?` · content `string?` · content_hash `
 ### onto_edges
 
 created_at `string` · dst_id `string` · dst_kind `string` · id `string` · project_id `string` · props `Json` · rel `string` · src_id `string` · src_kind `string`
+
+### onto_embeddings
+
+chunk_anchor `string?` · chunk_index `number` · content_hash `string` · content_text `string` · embedding `string` · embedding_model `string` · entity_id `string` · entity_type `string` · id `string` · project_id `string` · updated_at `string`
 
 ### onto_event_sync
 

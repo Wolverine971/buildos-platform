@@ -74,7 +74,8 @@ const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'get_workspace_overview',
 	'get_project_overview',
 	'search_onto_projects',
-	'search_all_projects'
+	'search_all_projects',
+	'explore_project'
 ] as const;
 
 // Cross-project action surface for contexts whose whole point is acting on
@@ -102,6 +103,7 @@ const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
 	'get_project_overview',
 	'get_onto_project_details',
 	'search_project',
+	'explore_project',
 	'list_onto_tasks',
 	'list_onto_documents',
 	// Document reading is ungated on every project turn (Project Knowledge Layer L2):

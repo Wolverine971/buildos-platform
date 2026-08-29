@@ -68,6 +68,11 @@ describe('searchToolFamily', () => {
 		expect(searchToolFamily('search_onto_risks')).toBe('legacy');
 	});
 
+	it('classifies semantic discovery', () => {
+		expect(searchToolFamily('explore_project')).toBe('semantic');
+		expect(isSearchTool('explore_project')).toBe(true);
+	});
+
 	it('returns null for non-search tools', () => {
 		expect(searchToolFamily('create_onto_task')).toBeNull();
 		expect(searchToolFamily('update_onto_project')).toBeNull();

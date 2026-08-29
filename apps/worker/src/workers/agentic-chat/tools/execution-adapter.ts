@@ -14,12 +14,14 @@ import {
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+	type AgenticChatEmbeddingsPortV1,
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1,
 	changeChatContext,
 	executeAgenticChatSharedReadToolV1,
 	isAgenticChatSharedReadToolNameV1
 } from '@buildos/agentic-chat-runtime/tools';
+import { createOpenAiEmbeddingsClient } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import {
 	executeAgenticChatStandardControlToolV1,
 	isAgenticChatStandardControlToolNameV1,
@@ -56,6 +58,18 @@ const AGENTIC_CHAT_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(AGENTIC_CHAT_CONTR
 export function isAgenticChatControlToolNameV1(value: unknown): value is string {
 	return typeof value === 'string' && AGENTIC_CHAT_CONTROL_TOOL_NAME_SET_V1.has(value);
 }
+/**
+ * Semantic discovery (explore_project) embeds the query text via direct OpenAI
+ * (OpenRouter has no embeddings endpoint). Without a key the port stays unset
+ * and explore_project reports itself unavailable instead of failing the turn.
+ */
+function createWorkerEmbeddingsPortFromEnv(): AgenticChatEmbeddingsPortV1 | undefined {
+	const apiKey = process.env.OPENAI_API_KEY?.trim() || process.env.PRIVATE_OPENAI_API_KEY?.trim();
+	if (!apiKey) return undefined;
+	const client = createOpenAiEmbeddingsClient({ apiKey });
+	return { embedQuery: (text) => client.embedOne(text) };
+}
+
 const MAX_RESULT_BYTES = 480 * 1024;
 export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS = 60_000;
@@ -181,6 +195,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	 * growing without limit.
 	 */
 	private readonly accessAdapters = new Map<string, AgenticChatToolAccessPortV1>();
+	private readonly embeddings: AgenticChatEmbeddingsPortV1 | undefined;
 
 	constructor(
 		private readonly client: SupabaseClient<Database>,
@@ -190,6 +205,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			webResearchTimeoutMs?: number;
 			webResearch?: WebResearchPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
+			embeddings?: AgenticChatEmbeddingsPortV1;
 		} = {}
 	) {
 		this.now = options.now ?? Date.now;
@@ -200,6 +216,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		this.createAccessAdapter =
 			options.createAccessAdapter ??
 			((userId) => new WorkerAgenticChatToolAccessAdapter({ client: this.client, userId }));
+		this.embeddings = options.embeddings ?? createWorkerEmbeddingsPortFromEnv();
 	}
 
 	async execute(
@@ -236,7 +253,8 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			sharedReadTool || contextChangeTool
 				? {
 						client: this.client,
-						access: this.accessAdapterFor(input.executionInput.claim.userId)
+						access: this.accessAdapterFor(input.executionInput.claim.userId),
+						embeddings: this.embeddings
 					}
 				: null;
 		const startedAt = this.now();

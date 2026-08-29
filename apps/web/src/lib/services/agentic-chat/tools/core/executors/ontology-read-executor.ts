@@ -49,9 +49,14 @@ import type {
 	GetDocumentOutlineArgs,
 	ReadDocumentSectionArgs
 } from './types';
+import { env as privateEnv } from '$env/dynamic/private';
+import { createOpenAiEmbeddingsClient } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import {
+	type AgenticChatEmbeddingsPortV1,
 	type AgenticChatSharedReadContextV1,
 	applyKeywordSearch as sharedApplyKeywordSearch,
+	exploreProject as sharedExploreProject,
+	type SharedExploreProjectArgs,
 	getDocumentPath as sharedGetDocumentPath,
 	getDocumentOutline as sharedGetDocumentOutline,
 	getDocumentTree as sharedGetDocumentTree,
@@ -85,6 +90,18 @@ import {
 } from '@buildos/agentic-chat-runtime/tools';
 
 /**
+ * Semantic discovery (explore_project) embeds the theme via direct OpenAI
+ * (OpenRouter has no embeddings endpoint). Without a key the port stays unset
+ * and explore_project reports itself unavailable instead of failing the turn.
+ */
+function createWebEmbeddingsPortFromEnv(): AgenticChatEmbeddingsPortV1 | undefined {
+	const apiKey = privateEnv.PRIVATE_OPENAI_API_KEY?.trim();
+	if (!apiKey) return undefined;
+	const client = createOpenAiEmbeddingsClient({ apiKey });
+	return { embedQuery: (text) => client.embedOne(text) };
+}
+
+/**
  * Executor for ontology read operations.
  *
  * All methods return structured data with a message field for LLM consumption.
@@ -97,7 +114,8 @@ export class OntologyReadExecutor extends BaseExecutor {
 		super(context);
 		this.sharedReadContext = {
 			client: this.supabase as AgenticChatSharedReadContextV1['client'],
-			access: this.accessAdapter
+			access: this.accessAdapter,
+			embeddings: createWebEmbeddingsPortFromEnv()
 		};
 	}
 
@@ -250,6 +268,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 		message: string;
 	}> {
 		return sharedSearchAllProjects(this.sharedReadContext, args);
+	}
+
+	async exploreProject(args: SharedExploreProjectArgs) {
+		return sharedExploreProject(this.sharedReadContext, args);
 	}
 
 	async searchProject(args: SearchProjectArgs): Promise<{

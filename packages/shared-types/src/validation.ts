@@ -20,6 +20,7 @@ import type {
 	ProjectIconGenerationJobMetadata,
 	ProjectActivityBatchFlushJobMetadata,
 	AssetOcrJobMetadata,
+	EmbedOntoEntityJobMetadata,
 	AgentRunJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	OntoBraindumpProcessingJobMetadata
@@ -746,6 +747,52 @@ export function validateAssetOcrMetadata(metadata: unknown): AssetOcrJobMetadata
 	return meta as unknown as AssetOcrJobMetadata;
 }
 
+const EMBED_ONTO_ENTITY_TYPES = [
+	'project',
+	'task',
+	'goal',
+	'plan',
+	'milestone',
+	'document',
+	'risk',
+	'requirement',
+	'event',
+	'image'
+] as const;
+
+export function validateEmbedOntoEntityMetadata(metadata: unknown): EmbedOntoEntityJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+
+	const meta = metadata as Record<string, unknown>;
+
+	if (
+		typeof meta.entityType !== 'string' ||
+		!(EMBED_ONTO_ENTITY_TYPES as readonly string[]).includes(meta.entityType)
+	) {
+		throw new ValidationError('entityType', meta.entityType, 'ontology entity type');
+	}
+
+	if (typeof meta.entityId !== 'string' || !isValidUUID(meta.entityId)) {
+		throw new ValidationError('entityId', meta.entityId, 'valid UUID');
+	}
+
+	if (typeof meta.projectId !== 'string' || !isValidUUID(meta.projectId)) {
+		throw new ValidationError('projectId', meta.projectId, 'valid UUID');
+	}
+
+	if (typeof meta.userId !== 'string' || !isValidUUID(meta.userId)) {
+		throw new ValidationError('userId', meta.userId, 'valid UUID');
+	}
+
+	if (meta.deleted !== undefined && typeof meta.deleted !== 'boolean') {
+		throw new ValidationError('deleted', meta.deleted, 'boolean');
+	}
+
+	return meta as unknown as EmbedOntoEntityJobMetadata;
+}
+
 export function validateAgentRunMetadata(metadata: unknown): AgentRunJobMetadata {
 	if (!metadata || typeof metadata !== 'object') {
 		throw new ValidationError('metadata', metadata, 'object');
@@ -1015,6 +1062,8 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateProjectIconGenerationMetadata(metadata) as JobMetadataMap[T];
 		case 'extract_onto_asset_ocr':
 			return validateAssetOcrMetadata(metadata) as JobMetadataMap[T];
+		case 'embed_onto_entity':
+			return validateEmbedOntoEntityMetadata(metadata) as JobMetadataMap[T];
 		case 'project_activity_batch_flush':
 			return validateProjectActivityBatchFlushMetadata(metadata) as JobMetadataMap[T];
 		case 'agent_run':

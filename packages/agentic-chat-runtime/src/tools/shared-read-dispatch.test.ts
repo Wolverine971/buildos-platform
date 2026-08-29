@@ -15,7 +15,7 @@ describe('shared read dispatch', () => {
 		expect(new Set(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).size).toBe(
 			AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1.length
 		);
-		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(34);
+		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(35);
 		for (const toolName of AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1) {
 			expect(TOOL_METADATA[toolName], `${toolName} is missing TOOL_METADATA`).toBeDefined();
 			expect(isAgenticChatSharedReadToolNameV1(toolName)).toBe(true);

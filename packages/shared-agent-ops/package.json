@@ -256,6 +256,16 @@
 			"types": "./dist/policy.d.ts",
 			"import": "./dist/policy.mjs",
 			"require": "./dist/policy.js"
+		},
+		"./embeddings/entity-embedding": {
+			"types": "./dist/embeddings/entity-embedding.d.ts",
+			"import": "./dist/embeddings/entity-embedding.mjs",
+			"require": "./dist/embeddings/entity-embedding.js"
+		},
+		"./embeddings/openai-embeddings": {
+			"types": "./dist/embeddings/openai-embeddings.d.ts",
+			"import": "./dist/embeddings/openai-embeddings.mjs",
+			"require": "./dist/embeddings/openai-embeddings.js"
 		}
 	},
 	"scripts": {

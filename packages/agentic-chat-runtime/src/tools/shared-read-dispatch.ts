@@ -27,6 +27,7 @@ import {
 	searchOntoTasks,
 	type AgenticChatSharedReadContextV1
 } from './ontology-reads';
+import { exploreProject } from './ontology-explore';
 import { searchAllProjects, searchOntology, searchProject } from './ontology-search';
 import { getDocumentPath, getDocumentTree, getOntoProjectGraph } from './ontology-structure-reads';
 import { getOntoTaskDetails } from './ontology-task-detail';
@@ -63,6 +64,7 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	search_buildos: searchAllProjects,
 	search_project: searchProject,
 	search_ontology: searchOntology,
+	explore_project: exploreProject,
 	get_onto_project_details: getOntoProjectDetails,
 	get_onto_project_graph: getOntoProjectGraph,
 	get_onto_document_details: getOntoDocumentDetails,

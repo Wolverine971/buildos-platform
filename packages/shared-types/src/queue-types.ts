@@ -251,6 +251,39 @@ export interface AssetOcrJobMetadata {
 	forceOverwrite?: boolean;
 }
 
+/**
+ * Semantic discovery embedding refresh for one ontology entity
+ * (docs/architecture/semantic-discovery/README.md). Enqueued by the
+ * enqueue_onto_entity_embedding DB trigger on every text-changing write.
+ */
+export interface EmbedOntoEntityJobMetadata {
+	entityType:
+		| 'project'
+		| 'task'
+		| 'goal'
+		| 'plan'
+		| 'milestone'
+		| 'document'
+		| 'risk'
+		| 'requirement'
+		| 'event'
+		| 'image';
+	entityId: string;
+	projectId: string;
+	userId: string;
+	/** True when the source row was (soft-)deleted: clear stored embeddings. */
+	deleted?: boolean;
+}
+
+export interface EmbedOntoEntityResult {
+	success: boolean;
+	entityType: string;
+	entityId: string;
+	chunksWritten: number;
+	chunksDeleted: number;
+	skippedUnchanged: boolean;
+}
+
 export interface AdminQuestionTreeJobMetadata {
 	run_id: string;
 	advance_sequence: number;
@@ -282,6 +315,7 @@ export interface JobMetadataMap {
 	generate_project_icon: ProjectIconGenerationJobMetadata;
 	project_activity_batch_flush: ProjectActivityBatchFlushJobMetadata;
 	extract_onto_asset_ocr: AssetOcrJobMetadata;
+	embed_onto_entity: EmbedOntoEntityJobMetadata;
 	admin_question_tree: AdminQuestionTreeJobMetadata;
 	run_cycle: CycleQueueJobMetadata;
 	other: Record<string, unknown>;
@@ -410,6 +444,7 @@ export interface JobResultMap {
 	generate_project_icon: ProjectIconGenerationResult;
 	project_activity_batch_flush: ProjectActivityBatchFlushResult;
 	extract_onto_asset_ocr: AssetOcrResult;
+	embed_onto_entity: EmbedOntoEntityResult;
 	run_cycle: CycleQueueJobResult;
 	other: unknown;
 }
@@ -562,6 +597,8 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isProjectContextSnapshotMetadata(metadata);
 		case 'extract_onto_asset_ocr':
 			return isAssetOcrMetadata(metadata);
+		case 'embed_onto_entity':
+			return isEmbedOntoEntityMetadata(metadata);
 		case 'generate_project_icon':
 			return isProjectIconGenerationMetadata(metadata);
 		case 'project_activity_batch_flush':
@@ -728,6 +765,17 @@ function isAssetOcrMetadata(obj: unknown): obj is AssetOcrJobMetadata {
 	const meta = obj as Record<string, unknown>;
 	return (
 		typeof meta.assetId === 'string' &&
+		typeof meta.projectId === 'string' &&
+		typeof meta.userId === 'string'
+	);
+}
+
+function isEmbedOntoEntityMetadata(obj: unknown): obj is EmbedOntoEntityJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return (
+		typeof meta.entityType === 'string' &&
+		typeof meta.entityId === 'string' &&
 		typeof meta.projectId === 'string' &&
 		typeof meta.userId === 'string'
 	);
