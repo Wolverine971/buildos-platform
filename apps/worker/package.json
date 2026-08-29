@@ -1,14 +1,16 @@
 {
 	"name": "@buildos/worker",
 	"version": "1.0.0",
-	"description": "General background queues and the dedicated Agentic Chat worker service",
+	"description": "General background queues plus dedicated Agentic Chat and Libri worker services",
 	"main": "dist/index.js",
 	"scripts": {
 		"build": "node ./node_modules/@typescript/native/bin/tsc",
 		"start": "node dist/index.js",
 		"start:chat": "node dist/chat-worker.js",
+		"start:libri": "node dist/libri-worker.js",
 		"dev": "NODE_OPTIONS=\"$NODE_OPTIONS --conditions=development\" tsx watch src/index.ts",
 		"dev:chat": "NODE_OPTIONS=\"$NODE_OPTIONS --conditions=development\" tsx watch src/chat-worker.ts",
+		"dev:libri": "NODE_OPTIONS=\"$NODE_OPTIONS --conditions=development\" tsx watch src/libri-worker.ts",
 		"worker": "NODE_OPTIONS=\"$NODE_OPTIONS --conditions=development\" tsx watch src/worker.ts",
 		"scheduler": "tsx watch src/scheduler.ts",
 		"lint": "eslint \"src/**/*.ts\" && pnpm run guardrails:http-modules",
