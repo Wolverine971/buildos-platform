@@ -427,6 +427,7 @@ export type Database = {
           library_id: string
           owner_user_id: string | null
           search_vector: unknown
+          source_chunk_id: string | null
           updated_at: string
           visibility: string
         }
@@ -439,6 +440,7 @@ export type Database = {
           library_id: string
           owner_user_id?: string | null
           search_vector?: unknown
+          source_chunk_id?: string | null
           updated_at?: string
           visibility?: string
         }
@@ -451,6 +453,7 @@ export type Database = {
           library_id?: string
           owner_user_id?: string | null
           search_vector?: unknown
+          source_chunk_id?: string | null
           updated_at?: string
           visibility?: string
         }
@@ -475,6 +478,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "libraries"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_source_chunk_book_library_fk"
+            columns: ["library_id", "book_id", "source_chunk_id"]
+            isOneToOne: false
+            referencedRelation: "source_chunks"
+            referencedColumns: ["library_id", "book_id", "id"]
           },
         ]
       }
@@ -518,6 +528,348 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "people_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_book_links: {
+        Row: {
+          book_id: string
+          context_excerpt: string | null
+          context_title: string | null
+          created_at: string
+          discovered_at: string
+          discovered_by: string
+          library_id: string
+          relationship: string
+          source_document_id: string | null
+          source_id: string
+        }
+        Insert: {
+          book_id: string
+          context_excerpt?: string | null
+          context_title?: string | null
+          created_at?: string
+          discovered_at?: string
+          discovered_by?: string
+          library_id: string
+          relationship?: string
+          source_document_id?: string | null
+          source_id: string
+        }
+        Update: {
+          book_id?: string
+          context_excerpt?: string | null
+          context_title?: string | null
+          created_at?: string
+          discovered_at?: string
+          discovered_by?: string
+          library_id?: string
+          relationship?: string
+          source_document_id?: string | null
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_book_links_book_library_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "source_book_links_document_source_fk"
+            columns: ["library_id", "source_id", "source_document_id"]
+            isOneToOne: false
+            referencedRelation: "source_documents"
+            referencedColumns: ["library_id", "source_id", "id"]
+          },
+          {
+            foreignKeyName: "source_book_links_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "source_book_links_source_library_fk"
+            columns: ["library_id", "source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
+      source_chunks: {
+        Row: {
+          archived_at: string | null
+          book_id: string | null
+          chapter_id: string | null
+          chunk_type: string
+          content: string
+          content_sha256: string
+          created_at: string
+          end_ms: number | null
+          id: string
+          idempotency_key: string
+          is_archived: boolean
+          language: string | null
+          library_id: string
+          merged_at: string | null
+          merged_into_chunk_id: string | null
+          metadata: Json
+          page_label: string | null
+          person_id: string | null
+          search_vector: unknown
+          sequence: number | null
+          source_document_id: string | null
+          source_id: string | null
+          speaker: string | null
+          start_ms: number | null
+          topics: string[]
+          updated_at: string
+          verification_notes: string | null
+          verification_status: string | null
+          verification_updated_at: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          book_id?: string | null
+          chapter_id?: string | null
+          chunk_type: string
+          content: string
+          content_sha256: string
+          created_at?: string
+          end_ms?: number | null
+          id?: string
+          idempotency_key: string
+          is_archived?: boolean
+          language?: string | null
+          library_id: string
+          merged_at?: string | null
+          merged_into_chunk_id?: string | null
+          metadata?: Json
+          page_label?: string | null
+          person_id?: string | null
+          search_vector?: unknown
+          sequence?: number | null
+          source_document_id?: string | null
+          source_id?: string | null
+          speaker?: string | null
+          start_ms?: number | null
+          topics?: string[]
+          updated_at?: string
+          verification_notes?: string | null
+          verification_status?: string | null
+          verification_updated_at?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          book_id?: string | null
+          chapter_id?: string | null
+          chunk_type?: string
+          content?: string
+          content_sha256?: string
+          created_at?: string
+          end_ms?: number | null
+          id?: string
+          idempotency_key?: string
+          is_archived?: boolean
+          language?: string | null
+          library_id?: string
+          merged_at?: string | null
+          merged_into_chunk_id?: string | null
+          metadata?: Json
+          page_label?: string | null
+          person_id?: string | null
+          search_vector?: unknown
+          sequence?: number | null
+          source_document_id?: string | null
+          source_id?: string | null
+          speaker?: string | null
+          start_ms?: number | null
+          topics?: string[]
+          updated_at?: string
+          verification_notes?: string | null
+          verification_status?: string | null
+          verification_updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_chunks_book_library_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "source_chunks_chapter_book_library_fk"
+            columns: ["library_id", "book_id", "chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["library_id", "book_id", "id"]
+          },
+          {
+            foreignKeyName: "source_chunks_document_source_fk"
+            columns: ["library_id", "source_id", "source_document_id"]
+            isOneToOne: false
+            referencedRelation: "source_documents"
+            referencedColumns: ["library_id", "source_id", "id"]
+          },
+          {
+            foreignKeyName: "source_chunks_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "source_chunks_merged_library_fk"
+            columns: ["library_id", "merged_into_chunk_id"]
+            isOneToOne: false
+            referencedRelation: "source_chunks"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "source_chunks_person_library_fk"
+            columns: ["library_id", "person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "source_chunks_source_library_fk"
+            columns: ["library_id", "source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
+      source_documents: {
+        Row: {
+          cleaned_at: string | null
+          cleaned_content: string | null
+          content_sha256: string
+          created_at: string
+          extractor: string | null
+          fetched_at: string | null
+          id: string
+          idempotency_key: string
+          library_id: string
+          metadata: Json
+          raw_content: string | null
+          source_id: string
+          version: number
+        }
+        Insert: {
+          cleaned_at?: string | null
+          cleaned_content?: string | null
+          content_sha256: string
+          created_at?: string
+          extractor?: string | null
+          fetched_at?: string | null
+          id?: string
+          idempotency_key: string
+          library_id: string
+          metadata?: Json
+          raw_content?: string | null
+          source_id: string
+          version?: number
+        }
+        Update: {
+          cleaned_at?: string | null
+          cleaned_content?: string | null
+          content_sha256?: string
+          created_at?: string
+          extractor?: string | null
+          fetched_at?: string | null
+          id?: string
+          idempotency_key?: string
+          library_id?: string
+          metadata?: Json
+          raw_content?: string | null
+          source_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_documents_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "source_documents_source_library_fk"
+            columns: ["library_id", "source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
+      sources: {
+        Row: {
+          author_name: string | null
+          canonical_url: string | null
+          created_at: string
+          discovered_at: string
+          discovered_by: string
+          id: string
+          library_id: string
+          metadata: Json
+          published_at: string | null
+          search_vector: unknown
+          site_name: string | null
+          source_key: string
+          source_type: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_name?: string | null
+          canonical_url?: string | null
+          created_at?: string
+          discovered_at?: string
+          discovered_by?: string
+          id?: string
+          library_id: string
+          metadata?: Json
+          published_at?: string | null
+          search_vector?: unknown
+          site_name?: string | null
+          source_key: string
+          source_type: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_name?: string | null
+          canonical_url?: string | null
+          created_at?: string
+          discovered_at?: string
+          discovered_by?: string
+          id?: string
+          library_id?: string
+          metadata?: Json
+          published_at?: string | null
+          search_vector?: unknown
+          site_name?: string | null
+          source_key?: string
+          source_type?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sources_library_id_fkey"
             columns: ["library_id"]
             isOneToOne: false
             referencedRelation: "libraries"
