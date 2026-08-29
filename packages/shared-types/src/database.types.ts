@@ -323,6 +323,101 @@ export type Database = {
           },
         ]
       }
+      images: {
+        Row: {
+          book_id: string
+          bucket_id: string
+          byte_size: number
+          chapter_id: string | null
+          content_sha256: string
+          created_at: string
+          description: string | null
+          id: string
+          image_type: string
+          library_id: string
+          mime_type: string
+          object_path: string
+          ocr_metadata: Json
+          ocr_status: string
+          ocr_version: number
+          original_filename: string
+          page_label: string | null
+          source_id: string
+          updated_at: string
+        }
+        Insert: {
+          book_id: string
+          bucket_id?: string
+          byte_size: number
+          chapter_id?: string | null
+          content_sha256: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_type: string
+          library_id: string
+          mime_type: string
+          object_path: string
+          ocr_metadata?: Json
+          ocr_status?: string
+          ocr_version?: number
+          original_filename: string
+          page_label?: string | null
+          source_id: string
+          updated_at?: string
+        }
+        Update: {
+          book_id?: string
+          bucket_id?: string
+          byte_size?: number
+          chapter_id?: string | null
+          content_sha256?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_type?: string
+          library_id?: string
+          mime_type?: string
+          object_path?: string
+          ocr_metadata?: Json
+          ocr_status?: string
+          ocr_version?: number
+          original_filename?: string
+          page_label?: string | null
+          source_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "images_book_library_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "images_chapter_book_library_fk"
+            columns: ["library_id", "book_id", "chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["library_id", "book_id", "id"]
+          },
+          {
+            foreignKeyName: "images_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "images_source_library_fk"
+            columns: ["library_id", "source_id"]
+            isOneToOne: true
+            referencedRelation: "sources"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
       libraries: {
         Row: {
           created_at: string
@@ -615,6 +710,7 @@ export type Database = {
           end_ms: number | null
           id: string
           idempotency_key: string
+          image_id: string | null
           is_archived: boolean
           language: string | null
           library_id: string
@@ -646,6 +742,7 @@ export type Database = {
           end_ms?: number | null
           id?: string
           idempotency_key: string
+          image_id?: string | null
           is_archived?: boolean
           language?: string | null
           library_id: string
@@ -677,6 +774,7 @@ export type Database = {
           end_ms?: number | null
           id?: string
           idempotency_key?: string
+          image_id?: string | null
           is_archived?: boolean
           language?: string | null
           library_id?: string
@@ -718,6 +816,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "source_documents"
             referencedColumns: ["library_id", "source_id", "id"]
+          },
+          {
+            foreignKeyName: "source_chunks_image_source_book_library_fk"
+            columns: ["library_id", "book_id", "image_id", "source_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["library_id", "book_id", "id", "source_id"]
           },
           {
             foreignKeyName: "source_chunks_library_id_fkey"
