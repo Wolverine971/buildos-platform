@@ -5,7 +5,7 @@ Status: implemented and locally live-smoked; Railway deployment pending
 
 ## Outcome
 
-Phase 3A introduces a physically isolated `libri-worker` process and Railway configuration without
+Phase 3A introduces a physically isolated `libri-worker` process and Railway service profile without
 claiming production work. It owns no general BuildOS scheduler, general queue processor, Agentic
 Chat runtime, or non-Libri processor import.
 
@@ -36,14 +36,18 @@ predicate into a second poller.
 
 ## Verification
 
-The focused worker tests cover healthy/failed/recovered database probes, queue-disabled health,
-idempotent start/drain, bounded HTTP close, strict hosted configuration, isolated source imports,
-and exact Railway entrypoint/profile configuration.
+The focused worker tests cover healthy/failed/recovered database probes, containment of scheduled
+probe failures, queue-disabled health, idempotent start/drain, bounded HTTP close, strict hosted
+configuration, isolated source imports, and the exact Railway entrypoint.
 
 The production build passed. A local production-profile process then reached the hosted Supabase
 database and returned HTTP 200 from `/health`, with database connected, zero probe failures, all
 four declared queue families, concurrency two, zero active jobs, and queue claims disabled. SIGINT
 completed the bounded drain and exited zero.
 
-Deployment must create a separate Railway service using `/railway.libri.toml`, copy only the
-minimum Supabase variables required for the health probe, and keep `LIBRI_WORKER_ENABLED=false`.
+Deployment must create a separate Railway service, set the build/start/health settings directly on
+that service, copy only the minimum Supabase variables required for the health probe, and keep
+`LIBRI_WORKER_ENABLED=false`. Railway no longer permits a new service to opt into legacy Config as
+Code, and repository config overrides service settings when enabled, so the new service must not
+select the root general-worker `railway.toml`. See Railway's
+[Config as Code migration notice](https://docs.railway.com/config-as-code).

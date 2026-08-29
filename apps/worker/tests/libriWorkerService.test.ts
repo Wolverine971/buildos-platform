@@ -19,7 +19,6 @@ import {
 
 const TEST_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const WORKER_DIRECTORY = resolve(TEST_DIRECTORY, '..');
-const REPOSITORY_ROOT = resolve(WORKER_DIRECTORY, '../..');
 
 describe('dedicated Libri worker bootstrap', () => {
 	it('reports a healthy database while keeping queue claims disabled', async () => {
@@ -164,12 +163,11 @@ describe('dedicated Libri worker service', () => {
 		expect(entrypoint).not.toContain('startWorker(');
 	});
 
-	it('ships a dedicated Railway config with the safe disabled profile', () => {
-		const config = readFileSync(join(REPOSITORY_ROOT, 'railway.libri.toml'), 'utf8');
-		expect(config).toContain('node apps/worker/dist/libri-worker.js');
-		expect(config).toContain('healthcheckPath = "/health"');
-		expect(config).toContain('LIBRI_WORKER_PROFILE = "production"');
-		expect(config).toContain('LIBRI_WORKER_ENABLED = "false"');
+	it('exposes the exact isolated entrypoint used by Railway service settings', () => {
+		const packageJson = JSON.parse(
+			readFileSync(join(WORKER_DIRECTORY, 'package.json'), 'utf8')
+		) as { scripts: Record<string, string> };
+		expect(packageJson.scripts['start:libri']).toBe('node dist/libri-worker.js');
 	});
 
 	it('requires the strict disabled profile for hosted production', () => {
