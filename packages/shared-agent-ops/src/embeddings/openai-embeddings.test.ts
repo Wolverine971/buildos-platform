@@ -1,6 +1,12 @@
 // packages/shared-agent-ops/src/embeddings/openai-embeddings.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { createOpenAiEmbeddingsClient, OpenAiEmbeddingsError } from './openai-embeddings';
+import {
+	OPENAI_EMBEDDINGS_URL,
+	OPENROUTER_EMBEDDINGS_URL,
+	createEmbeddingsClientFromEnv,
+	createOpenAiEmbeddingsClient,
+	OpenAiEmbeddingsError
+} from './openai-embeddings';
 
 function okResponse(embeddings: number[][]) {
 	return {
@@ -72,5 +78,37 @@ describe('createOpenAiEmbeddingsClient', () => {
 		const result = await client.embed(texts);
 		expect(result).toHaveLength(100);
 		expect(fetchImpl).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('createEmbeddingsClientFromEnv', () => {
+	it('routes through OpenRouter with the namespaced model when its key exists', async () => {
+		const fetchImpl = vi.fn(async () => okResponse([[1]]));
+		const client = createEmbeddingsClientFromEnv(
+			{ PRIVATE_OPENROUTER_API_KEY: 'or-key', PRIVATE_OPENAI_API_KEY: 'oa-key' },
+			{ fetchImpl, sleep: noSleep }
+		);
+		await client!.embedOne('x');
+		expect(fetchImpl.mock.calls[0]![0]).toBe(OPENROUTER_EMBEDDINGS_URL);
+		const body = JSON.parse((fetchImpl.mock.calls[0]![1] as any).body as string);
+		expect(body.model).toBe('openai/text-embedding-3-small');
+		expect((fetchImpl.mock.calls[0]![1] as any).headers.Authorization).toBe('Bearer or-key');
+	});
+
+	it('falls back to direct OpenAI with the bare model name', async () => {
+		const fetchImpl = vi.fn(async () => okResponse([[1]]));
+		const client = createEmbeddingsClientFromEnv(
+			{ PRIVATE_OPENAI_API_KEY: 'oa-key' },
+			{ fetchImpl, sleep: noSleep }
+		);
+		await client!.embedOne('x');
+		expect(fetchImpl.mock.calls[0]![0]).toBe(OPENAI_EMBEDDINGS_URL);
+		const body = JSON.parse((fetchImpl.mock.calls[0]![1] as any).body as string);
+		expect(body.model).toBe('text-embedding-3-small');
+	});
+
+	it('returns null when no key is configured', () => {
+		expect(createEmbeddingsClientFromEnv({})).toBeNull();
+		expect(createEmbeddingsClientFromEnv({ PRIVATE_OPENROUTER_API_KEY: '  ' })).toBeNull();
 	});
 });

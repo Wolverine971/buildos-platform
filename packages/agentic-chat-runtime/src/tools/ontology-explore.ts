@@ -149,12 +149,29 @@ export async function exploreProject(
 		rows.map((row) => [`${row.type}:${row.id}`, row.chunk_anchor ?? null])
 	);
 
+	// Discovery ordering: cosine similarity leads. Negative ranking factors
+	// (done/archived/cancelled downrankings) apply in full, but the
+	// targeted-search POSITIVE boosts are damped to a quarter — at full
+	// strength (+0.38 for an in-progress task) they are ~2x the similarity
+	// spread at discovery scale and invert semantic order: the Tier-1 battery
+	// caught an in-progress decoy outranking a more-similar hit and
+	// requirement/risk entities buried under boosted task noise. Damped, they
+	// still nudge actionable work above equally-similar passive material.
+	const POSITIVE_BOOST_DAMPING = 0.25;
+	const discoveryRank = (row: ReturnType<typeof rankSearchResult>): number =>
+		row.score +
+		row.ranking_factors.reduce(
+			(sum, factor) =>
+				sum + (factor.weight < 0 ? factor.weight : factor.weight * POSITIVE_BOOST_DAMPING),
+			0
+		);
+
 	const results = dedupeSearchRows(rows)
 		.map((row) => normalizeSearchResult(row))
 		.map((row) => rankSearchResult(row, nowMs))
 		.sort(
 			(a, b) =>
-				b.rank_score - a.rank_score ||
+				discoveryRank(b) - discoveryRank(a) ||
 				b.score - a.score ||
 				(a.title ?? '').localeCompare(b.title ?? '')
 		)

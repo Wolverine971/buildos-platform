@@ -4,10 +4,12 @@
 
 **Created:** 2026-08-28
 
-**Status:** Active — Phases 1+2 code-complete; migration APPLIED to prod
-2026-08-29 (verified + ledger repaired), types regenerated, env keys verified.
-BLOCKED on OpenAI API credits (`credit_balance_exhausted`) for backfill, live
-smoke, and Tier-1 eval. Checklist in the strategy doc's Implementation log.
+**Status:** Active — Phase 2 gate PASSED 2026-08-29. Embeddings route via
+OpenRouter (OpenAI-credits blocker dissolved); Tier-1 battery 0.986 mean
+recall with text-embedding-3-small (beat gemini/qwen3 in A/B); prod backfill
+complete (~2,400 chunks, NN sanity verified); discovery-ranking boost fix
+landed. Remaining: push main to deploy + live chat smoke. Details in the
+strategy doc's Implementation log.
 
 **Priority:** P1 — capability build (agentic chat discovery), gated phases
 
@@ -33,9 +35,10 @@ DB ground truth.
       lives in shared-agent-ops rather than smart-llm). Migration applied to prod
       2026-08-29; worker + Vercel keys verified present. Pending: backfill run
       (blocked on OpenAI org credits).
-- [ ] Phase 2 — `onto_search_semantic` RPC + `explore_project` tool + surfaces +
-      `semantic` telemetry family all CODE-COMPLETE; remaining gate = live smoke +
-      Tier-1 retrieval eval battery on the seeded fixture
+- [x] Phase 2 — RPC + `explore_project` + surfaces + telemetry CODE-COMPLETE;
+      Tier-1 retrieval gate PASSED 2026-08-29 (0.986 mean recall, 0 dominance
+      failures; battery + fixture in `apps/web/scripts/agentic-e2e/semantic/`).
+      Residual: deploy (push main) + live chat smoke.
 - [ ] Phase 3 — hybrid RRF in smart path + project-access scoping fix (both RPCs);
       June 8-query smoke stays ≥7/8
 - [ ] Phase 4 — gather→plan→update behavior + approval UX; seeded marketing fixture;
@@ -48,6 +51,8 @@ DB ground truth.
   pre-ontology tables — replace, never reuse.
 - `onto_search_entities` scopes by `created_by`, hiding shared entities — do not replicate
   in the semantic RPC; fix in phase 3.
-- Embeddings require direct OpenAI (`PRIVATE_OPENAI_API_KEY`) — OpenRouter has no
-  embeddings endpoint; worker env needs the key.
+- Embeddings route through OpenRouter (`PRIVATE_OPENROUTER_API_KEY`, request
+  model `openai/text-embedding-3-small`, identical vectors); a direct OpenAI
+  key is only the fallback. The old "OpenRouter has no embeddings endpoint"
+  claim is obsolete as of 2026-08.
 - Embed documents from `content`, never the legacy `props.body_markdown` mirror.

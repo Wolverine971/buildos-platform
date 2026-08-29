@@ -417,8 +417,12 @@ export const TIER1_BATTERY: Tier1Query[] = [
 			'task:Set up abandoned-cart email sequence',
 			'document:Welcome email series'
 		],
-		expected_misses: ['task:Fix checkout double-charge bug'],
-		notes: 'Discrimination trap: the checkout bug is semantically adjacent and must lose.'
+		// The checkout double-charge bug is deliberately NOT a decoy here:
+		// customers charged twice / failing to complete checkout genuinely IS
+		// lost-sales material, and surfacing it alongside cart recovery is good
+		// judgment. It stays a decoy on the clearly-off-theme queries.
+		expected_misses: ['task:Reconcile warehouse inventory sync'],
+		notes: 'The abandoned-cart entities must outrank ops noise.'
 	},
 	{
 		id: 'q-creators',

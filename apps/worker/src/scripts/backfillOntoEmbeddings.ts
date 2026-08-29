@@ -6,7 +6,9 @@
 // comparison makes reruns cheap — only new/changed chunks hit OpenAI.
 //
 // Usage: pnpm --filter=@buildos/worker backfill:embeddings
-// Env:   PRIVATE_SUPABASE_* (service role) + OPENAI_API_KEY/PRIVATE_OPENAI_API_KEY
+// Env:   PRIVATE_SUPABASE_* (service role) + PRIVATE_OPENROUTER_API_KEY
+//        (OpenRouter routes the same text-embedding-3-small; a direct OpenAI
+//        key works as fallback)
 
 import {
 	ONTO_EMBEDDING_ENTITY_TYPES,
@@ -18,18 +20,20 @@ import {
 } from '@buildos/shared-agent-ops/embeddings/entity-embedding';
 import {
 	ONTO_EMBEDDING_MODEL,
-	createOpenAiEmbeddingsClient
+	createEmbeddingsClientFromEnv
 } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import { supabase } from '../lib/supabase';
 
 const BATCH_SIZE = 100;
 
-const apiKey = process.env.OPENAI_API_KEY?.trim() || process.env.PRIVATE_OPENAI_API_KEY?.trim();
-if (!apiKey) {
-	console.error('[embeddings-backfill] OPENAI_API_KEY / PRIVATE_OPENAI_API_KEY is required');
+const resolvedEmbeddings = createEmbeddingsClientFromEnv(process.env);
+if (!resolvedEmbeddings) {
+	console.error(
+		'[embeddings-backfill] PRIVATE_OPENROUTER_API_KEY (or an OpenAI key fallback) is required'
+	);
 	process.exit(1);
 }
-const embeddings = createOpenAiEmbeddingsClient({ apiKey });
+const embeddings = resolvedEmbeddings;
 
 type PendingChunk = {
 	entityType: OntoEmbeddingEntityType;

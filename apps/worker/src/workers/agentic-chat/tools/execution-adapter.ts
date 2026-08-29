@@ -21,7 +21,7 @@ import {
 	executeAgenticChatSharedReadToolV1,
 	isAgenticChatSharedReadToolNameV1
 } from '@buildos/agentic-chat-runtime/tools';
-import { createOpenAiEmbeddingsClient } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
+import { createEmbeddingsClientFromEnv } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import {
 	executeAgenticChatStandardControlToolV1,
 	isAgenticChatStandardControlToolNameV1,
@@ -59,14 +59,14 @@ export function isAgenticChatControlToolNameV1(value: unknown): value is string 
 	return typeof value === 'string' && AGENTIC_CHAT_CONTROL_TOOL_NAME_SET_V1.has(value);
 }
 /**
- * Semantic discovery (explore_project) embeds the query text via direct OpenAI
- * (OpenRouter has no embeddings endpoint). Without a key the port stays unset
- * and explore_project reports itself unavailable instead of failing the turn.
+ * Semantic discovery (explore_project) embeds the query text via OpenRouter's
+ * embeddings endpoint (same underlying text-embedding-3-small; direct OpenAI
+ * is the fallback route). Without any key the port stays unset and
+ * explore_project reports itself unavailable instead of failing the turn.
  */
 function createWorkerEmbeddingsPortFromEnv(): AgenticChatEmbeddingsPortV1 | undefined {
-	const apiKey = process.env.OPENAI_API_KEY?.trim() || process.env.PRIVATE_OPENAI_API_KEY?.trim();
-	if (!apiKey) return undefined;
-	const client = createOpenAiEmbeddingsClient({ apiKey });
+	const client = createEmbeddingsClientFromEnv(process.env);
+	if (!client) return undefined;
 	return { embedQuery: (text) => client.embedOne(text) };
 }
 

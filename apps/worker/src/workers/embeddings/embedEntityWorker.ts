@@ -18,7 +18,7 @@ import {
 import {
 	ONTO_EMBEDDING_MODEL,
 	type OpenAiEmbeddingsClient,
-	createOpenAiEmbeddingsClient
+	createEmbeddingsClientFromEnv
 } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import { supabase } from '../../lib/supabase';
 import type { LegacyJob } from '../shared/jobAdapter';
@@ -27,14 +27,12 @@ let cachedEmbeddingsClient: OpenAiEmbeddingsClient | null = null;
 
 function embeddingsClient(): OpenAiEmbeddingsClient {
 	if (!cachedEmbeddingsClient) {
-		const apiKey =
-			process.env.OPENAI_API_KEY?.trim() || process.env.PRIVATE_OPENAI_API_KEY?.trim();
-		if (!apiKey) {
+		cachedEmbeddingsClient = createEmbeddingsClientFromEnv(process.env);
+		if (!cachedEmbeddingsClient) {
 			throw new Error(
-				'embed_onto_entity requires OPENAI_API_KEY or PRIVATE_OPENAI_API_KEY (OpenRouter has no embeddings endpoint)'
+				'embed_onto_entity requires PRIVATE_OPENROUTER_API_KEY (or an OpenAI key fallback)'
 			);
 		}
-		cachedEmbeddingsClient = createOpenAiEmbeddingsClient({ apiKey });
 	}
 	return cachedEmbeddingsClient;
 }
