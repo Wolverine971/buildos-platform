@@ -14,6 +14,81 @@ export type Database = {
   }
   libri: {
     Tables: {
+      agent_profiles: {
+        Row: {
+          book_id: string | null
+          configuration: Json
+          created_at: string
+          default_tools: string[]
+          enabled_tools: string[]
+          id: string
+          is_active: boolean
+          kind: string
+          library_id: string
+          max_tokens: number | null
+          name: string
+          primary_model: string
+          secondary_model: string | null
+          slug: string
+          temperature: number | null
+          tertiary_model: string | null
+          updated_at: string
+        }
+        Insert: {
+          book_id?: string | null
+          configuration?: Json
+          created_at?: string
+          default_tools?: string[]
+          enabled_tools?: string[]
+          id?: string
+          is_active?: boolean
+          kind: string
+          library_id: string
+          max_tokens?: number | null
+          name: string
+          primary_model: string
+          secondary_model?: string | null
+          slug: string
+          temperature?: number | null
+          tertiary_model?: string | null
+          updated_at?: string
+        }
+        Update: {
+          book_id?: string | null
+          configuration?: Json
+          created_at?: string
+          default_tools?: string[]
+          enabled_tools?: string[]
+          id?: string
+          is_active?: boolean
+          kind?: string
+          library_id?: string
+          max_tokens?: number | null
+          name?: string
+          primary_model?: string
+          secondary_model?: string | null
+          slug?: string
+          temperature?: number | null
+          tertiary_model?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_profiles_book_library_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "agent_profiles_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       book_domains: {
         Row: {
           book_id: string
@@ -285,6 +360,219 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "libraries"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      derived_artifact_evidence: {
+        Row: {
+          artifact_id: string
+          created_at: string
+          excerpt: string | null
+          library_id: string
+          metadata: Json
+          rank: number | null
+          role: string
+          source_chunk_id: string
+        }
+        Insert: {
+          artifact_id: string
+          created_at?: string
+          excerpt?: string | null
+          library_id: string
+          metadata?: Json
+          rank?: number | null
+          role?: string
+          source_chunk_id: string
+        }
+        Update: {
+          artifact_id?: string
+          created_at?: string
+          excerpt?: string | null
+          library_id?: string
+          metadata?: Json
+          rank?: number | null
+          role?: string
+          source_chunk_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "derived_artifact_evidence_artifact_library_fk"
+            columns: ["library_id", "artifact_id"]
+            isOneToOne: false
+            referencedRelation: "derived_artifacts"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "derived_artifact_evidence_chunk_library_fk"
+            columns: ["library_id", "source_chunk_id"]
+            isOneToOne: false
+            referencedRelation: "source_chunks"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "derived_artifact_evidence_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      derived_artifacts: {
+        Row: {
+          agent_profile_id: string | null
+          artifact_type: string
+          book_id: string | null
+          chapter_id: string | null
+          content: string | null
+          content_sha256: string
+          created_at: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          idempotency_key: string
+          input_snapshot: Json
+          is_current: boolean
+          library_id: string
+          model: string | null
+          person_id: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          scope_id: string | null
+          scope_type: string | null
+          search_vector: unknown
+          source_fingerprint: string | null
+          status: string
+          structured_data: Json
+          supersedes_artifact_id: string | null
+          title: string | null
+          updated_at: string
+          version: number
+          youtube_video_id: string | null
+        }
+        Insert: {
+          agent_profile_id?: string | null
+          artifact_type: string
+          book_id?: string | null
+          chapter_id?: string | null
+          content?: string | null
+          content_sha256: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          idempotency_key: string
+          input_snapshot?: Json
+          is_current?: boolean
+          library_id: string
+          model?: string | null
+          person_id?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          scope_id?: string | null
+          scope_type?: string | null
+          search_vector?: unknown
+          source_fingerprint?: string | null
+          status?: string
+          structured_data?: Json
+          supersedes_artifact_id?: string | null
+          title?: string | null
+          updated_at?: string
+          version?: number
+          youtube_video_id?: string | null
+        }
+        Update: {
+          agent_profile_id?: string | null
+          artifact_type?: string
+          book_id?: string | null
+          chapter_id?: string | null
+          content?: string | null
+          content_sha256?: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          idempotency_key?: string
+          input_snapshot?: Json
+          is_current?: boolean
+          library_id?: string
+          model?: string | null
+          person_id?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          scope_id?: string | null
+          scope_type?: string | null
+          search_vector?: unknown
+          source_fingerprint?: string | null
+          status?: string
+          structured_data?: Json
+          supersedes_artifact_id?: string | null
+          title?: string | null
+          updated_at?: string
+          version?: number
+          youtube_video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "derived_artifacts_agent_profile_library_fk"
+            columns: ["library_id", "agent_profile_id"]
+            isOneToOne: false
+            referencedRelation: "agent_profiles"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "derived_artifacts_book_library_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "derived_artifacts_chapter_book_library_fk"
+            columns: ["library_id", "book_id", "chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["library_id", "book_id", "id"]
+          },
+          {
+            foreignKeyName: "derived_artifacts_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "derived_artifacts_person_library_fk"
+            columns: ["library_id", "person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "derived_artifacts_supersedes_same_scope_fk"
+            columns: [
+              "library_id",
+              "scope_type",
+              "scope_id",
+              "artifact_type",
+              "supersedes_artifact_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "derived_artifacts"
+            referencedColumns: [
+              "library_id",
+              "scope_type",
+              "scope_id",
+              "artifact_type",
+              "id",
+            ]
+          },
+          {
+            foreignKeyName: "derived_artifacts_youtube_video_library_fk"
+            columns: ["library_id", "youtube_video_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_videos"
+            referencedColumns: ["library_id", "id"]
           },
         ]
       }
