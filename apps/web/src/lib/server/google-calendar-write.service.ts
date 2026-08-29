@@ -593,6 +593,7 @@ export class GoogleCalendarWriteService {
 		end: Date;
 		timeZone?: string;
 		colorId?: string;
+		recurrence?: string[];
 		ontoEventId?: string;
 	}): Promise<GoogleCalendarWriteResult> {
 		return this.createEvent({
@@ -604,7 +605,8 @@ export class GoogleCalendarWriteService {
 				description: params.description,
 				start: { dateTime: params.start.toISOString(), timeZone: params.timeZone },
 				end: { dateTime: params.end.toISOString(), timeZone: params.timeZone },
-				colorId: params.colorId
+				colorId: params.colorId,
+				recurrence: params.recurrence
 			}
 		});
 	}

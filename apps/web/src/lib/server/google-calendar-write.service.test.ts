@@ -130,6 +130,35 @@ describe('GoogleCalendarWriteService', () => {
 		});
 	});
 
+	it('forwards ontology recurrence rules to Google when creating a standalone event', async () => {
+		const provider = createProvider();
+		const { admin } = createAdmin({
+			onto_event_sync: { data: { id: 'sync-1' }, error: null }
+		});
+		const service = new GoogleCalendarWriteService(admin, {
+			targetService: targetService() as any,
+			connectionService: { getAuthenticatedClient: vi.fn().mockResolvedValue({}) },
+			createCalendarApi: () => ({ events: provider }) as any
+		});
+
+		await service.createStandaloneEvent({
+			userId: 'user-1',
+			summary: 'Weekly planning',
+			start: new Date('2026-08-31T19:00:00.000Z'),
+			end: new Date('2026-08-31T19:30:00.000Z'),
+			recurrence: ['RRULE:FREQ=WEEKLY;UNTIL=20260914T000000Z'],
+			ontoEventId: 'onto-event-1'
+		});
+
+		expect(provider.insert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				requestBody: expect.objectContaining({
+					recurrence: ['RRULE:FREQ=WEEKLY;UNTIL=20260914T000000Z']
+				})
+			})
+		);
+	});
+
 	it('updates through the event mapping source and never consults the current default', async () => {
 		const mappedTarget = target({
 			connectionId: 'connection-b',

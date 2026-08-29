@@ -104,6 +104,7 @@ export interface CreateOntoEventResult {
 		provider?: string;
 		externalEventId?: string | null;
 		calendarId?: string | null;
+		calendarSourceId?: string | null;
 		error?: string;
 	};
 }
@@ -177,6 +178,24 @@ function isProbablyGoogleCalendarLink(text: string): boolean {
 		normalized.includes('www.google.com/calendar') ||
 		normalized.includes('google.com/calendar')
 	);
+}
+
+function providerRecurrenceRules(recurrence: Json | null): string[] | undefined {
+	if (!recurrence || typeof recurrence !== 'object' || Array.isArray(recurrence)) {
+		return undefined;
+	}
+
+	const value = recurrence as Record<string, Json | undefined>;
+	const providerRules = value.provider_rules;
+	if (Array.isArray(providerRules)) {
+		const rules = providerRules.filter(
+			(rule): rule is string => typeof rule === 'string' && rule.trim().length > 0
+		);
+		if (rules.length > 0) return rules;
+	}
+
+	const rrule = value.rrule;
+	return typeof rrule === 'string' && rrule.trim().length > 0 ? [rrule] : undefined;
 }
 
 function parseGoogleEventMappingFromExternalLink(link: string | null | undefined): {
@@ -856,6 +875,7 @@ export class OntoEventSyncService {
 						end: new Date(event.end_at ?? event.start_at),
 						timeZone: event.timezone ?? undefined,
 						colorId: projectCalendar.color_id ?? undefined,
+						recurrence: providerRecurrenceRules(event.recurrence),
 						ontoEventId: event.id
 					});
 					externalEventId = calendarEvent.providerEventId;
@@ -928,7 +948,8 @@ export class OntoEventSyncService {
 						success: true,
 						provider: 'google',
 						externalEventId,
-						calendarId: projectCalendar.id
+						calendarId: projectCalendar.id,
+						calendarSourceId
 					}
 				};
 			} catch (error) {
@@ -969,6 +990,7 @@ export class OntoEventSyncService {
 					start: new Date(event.start_at),
 					end: new Date(event.end_at ?? event.start_at),
 					timeZone: event.timezone ?? undefined,
+					recurrence: providerRecurrenceRules(event.recurrence),
 					ontoEventId: event.id
 				});
 				externalEventId = calendarEvent.providerEventId;
@@ -1018,7 +1040,8 @@ export class OntoEventSyncService {
 					success: true,
 					provider: 'google',
 					externalEventId,
-					calendarId: providerCalendarId
+					calendarId: providerCalendarId,
+					calendarSourceId
 				}
 			};
 		} catch (error) {
@@ -1096,7 +1119,8 @@ export class OntoEventSyncService {
 						end: {
 							dateTime: event.end_at ?? event.start_at,
 							timeZone: event.timezone ?? undefined
-						}
+						},
+						recurrence: providerRecurrenceRules(event.recurrence)
 					}
 				});
 			} else {

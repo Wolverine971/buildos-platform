@@ -10,6 +10,8 @@ const {
 	writeCreateMock,
 	writeUpdateMock,
 	writeDeleteMock,
+	ontoCreateEventMock,
+	ontoDeleteEventMock,
 	recurrenceBuildMock,
 	createAdminMock,
 	adminClient
@@ -24,6 +26,8 @@ const {
 		writeCreateMock: vi.fn(),
 		writeUpdateMock: vi.fn(),
 		writeDeleteMock: vi.fn(),
+		ontoCreateEventMock: vi.fn(),
+		ontoDeleteEventMock: vi.fn(),
 		recurrenceBuildMock: vi.fn(),
 		createAdminMock: vi.fn(() => adminClient),
 		adminClient
@@ -56,6 +60,13 @@ vi.mock('$lib/services/recurrence-pattern.service', () => ({
 	recurrencePatternBuilder: {
 		buildRRule: recurrenceBuildMock
 	}
+}));
+
+vi.mock('$lib/services/ontology/onto-event-sync.service', () => ({
+	OntoEventSyncService: vi.fn().mockImplementation(() => ({
+		createEvent: ontoCreateEventMock,
+		deleteEvent: ontoDeleteEventMock
+	}))
 }));
 
 vi.mock('$lib/server/google-calendar-read.service', () => ({
@@ -94,6 +105,23 @@ function eventFor(body: Record<string, unknown>, supabase: Record<string, unknow
 			})
 		}
 	} as any;
+}
+
+function scheduleSupabase(task: Record<string, unknown>) {
+	const taskQuery: any = {
+		select: vi.fn(() => taskQuery),
+		eq: vi.fn(() => taskQuery),
+		is: vi.fn(() => taskQuery),
+		single: vi.fn().mockResolvedValue({ data: task, error: null })
+	};
+	const edgeInsert = vi.fn().mockResolvedValue({ error: null });
+	return {
+		rpc: vi.fn().mockResolvedValue({ data: 'actor-1', error: null }),
+		from: vi.fn((table: string) =>
+			table === 'onto_tasks' ? taskQuery : { insert: edgeInsert }
+		),
+		edgeInsert
+	};
 }
 
 describe('multi-account /api/calendar mutations', () => {
@@ -194,36 +222,27 @@ describe('multi-account /api/calendar mutations', () => {
 	});
 
 	it('creates and tracks a scheduled task on the selected source', async () => {
-		writeCreateMock.mockResolvedValue({
-			calendarSourceId: 'ca300000-0000-4000-8000-000000000001',
-			connectionId: 'connection-a',
-			providerCalendarId: 'work@example.com',
-			providerEventId: 'provider-event-1',
-			taskCalendarEventId: 'task-event-1',
+		ontoCreateEventMock.mockResolvedValue({
 			event: {
-				id: 'provider-event-1',
-				summary: 'Write brief',
-				htmlLink: 'https://calendar.google.com/event?eid=one',
-				start: { dateTime: '2026-08-13T14:00:00.000Z' },
-				end: { dateTime: '2026-08-13T15:00:00.000Z' }
+				id: 'onto-event-1',
+				title: 'Write brief',
+				external_link: 'https://calendar.google.com/event?eid=one'
+			},
+			sync: {
+				success: true,
+				externalEventId: 'provider-event-1',
+				calendarId: 'work@example.com',
+				calendarSourceId: 'ca300000-0000-4000-8000-000000000001'
 			}
 		});
-		const query: any = {
-			select: vi.fn(() => query),
-			eq: vi.fn(() => query),
-			is: vi.fn(() => query),
-			single: vi.fn().mockResolvedValue({
-				data: {
-					id: 'ca400000-0000-4000-8000-000000000001',
-					title: 'Write brief',
-					description: 'Draft the brief',
-					project_id: null,
-					project: null,
-					props: {}
-				},
-				error: null
-			})
-		};
+		const supabase = scheduleSupabase({
+			id: 'ca400000-0000-4000-8000-000000000001',
+			title: 'Write brief',
+			description: 'Draft the brief',
+			project_id: 'project-1',
+			project: { id: 'project-1', name: 'Launch' },
+			props: {}
+		});
 
 		const response = await POST(
 			eventFor(
@@ -235,26 +254,32 @@ describe('multi-account /api/calendar mutations', () => {
 						calendarSourceId: 'ca300000-0000-4000-8000-000000000001'
 					}
 				},
-				{ from: vi.fn(() => query) }
+				supabase
 			)
 		);
 		const payload = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(writeCreateMock).toHaveBeenCalledWith(
+		expect(ontoCreateEventMock).toHaveBeenCalledWith(
+			'user-1',
 			expect.objectContaining({
-				userId: 'user-1',
-				selector: expect.objectContaining({
-					calendarSourceId: 'ca300000-0000-4000-8000-000000000001'
-				}),
-				taskTracking: expect.objectContaining({
-					taskId: 'ca400000-0000-4000-8000-000000000001'
-				})
+				owner: { type: 'task', id: 'ca400000-0000-4000-8000-000000000001' },
+				calendarSourceId: 'ca300000-0000-4000-8000-000000000001',
+				syncToCalendar: true
 			})
 		);
+		expect(supabase.edgeInsert).toHaveBeenCalledWith({
+			project_id: 'project-1',
+			src_id: 'ca400000-0000-4000-8000-000000000001',
+			src_kind: 'task',
+			dst_id: 'onto-event-1',
+			dst_kind: 'event',
+			rel: 'has_event'
+		});
 		expect(payload.data).toEqual({
 			success: true,
 			event_id: 'provider-event-1',
+			onto_event_id: 'onto-event-1',
 			event_link: 'https://calendar.google.com/event?eid=one',
 			calendar_id: 'work@example.com',
 			calendarSourceId: 'ca300000-0000-4000-8000-000000000001',
@@ -307,36 +332,23 @@ describe('multi-account /api/calendar mutations', () => {
 
 	it('builds and tracks recurrence when scheduling a recurring task', async () => {
 		recurrenceBuildMock.mockReturnValue('RRULE:FREQ=WEEKLY;UNTIL=20261001T000000Z');
-		writeCreateMock.mockResolvedValue({
-			calendarSourceId: 'ca300000-0000-4000-8000-000000000001',
-			connectionId: 'connection-a',
-			providerCalendarId: 'work@example.com',
-			providerEventId: 'provider-recurring-event',
-			taskCalendarEventId: 'task-event-1',
-			event: {
-				id: 'provider-recurring-event',
-				summary: 'Weekly planning',
-				recurrence: ['RRULE:FREQ=WEEKLY;UNTIL=20261001T000000Z'],
-				start: { dateTime: '2026-08-13T14:00:00.000Z' },
-				end: { dateTime: '2026-08-13T14:45:00.000Z' }
+		ontoCreateEventMock.mockResolvedValue({
+			event: { id: 'onto-event-1', title: 'Weekly planning', external_link: null },
+			sync: {
+				success: true,
+				externalEventId: 'provider-recurring-event',
+				calendarId: 'work@example.com',
+				calendarSourceId: 'ca300000-0000-4000-8000-000000000001'
 			}
 		});
-		const query: any = {
-			select: vi.fn(() => query),
-			eq: vi.fn(() => query),
-			is: vi.fn(() => query),
-			single: vi.fn().mockResolvedValue({
-				data: {
-					id: 'ca400000-0000-4000-8000-000000000001',
-					title: 'Weekly planning',
-					description: null,
-					project_id: null,
-					project: null,
-					props: {}
-				},
-				error: null
-			})
-		};
+		const supabase = scheduleSupabase({
+			id: 'ca400000-0000-4000-8000-000000000001',
+			title: 'Weekly planning',
+			description: null,
+			project_id: null,
+			project: null,
+			props: {}
+		});
 
 		const response = await POST(
 			eventFor(
@@ -352,7 +364,7 @@ describe('multi-account /api/calendar mutations', () => {
 						recurrence_ends: '2026-10-01'
 					}
 				},
-				{ from: vi.fn(() => query) }
+				supabase
 			)
 		);
 		const payload = await response.json();
@@ -363,26 +375,28 @@ describe('multi-account /api/calendar mutations', () => {
 			endOption: { type: 'date', value: '2026-10-01' },
 			startDate: '2026-08-13T14:00:00.000Z'
 		});
-		expect(writeCreateMock).toHaveBeenCalledWith(
+		expect(ontoCreateEventMock).toHaveBeenCalledWith(
+			'user-1',
 			expect.objectContaining({
-				requestBody: expect.objectContaining({
-					recurrence: ['RRULE:FREQ=WEEKLY;UNTIL=20261001T000000Z']
-				}),
-				taskTracking: expect.objectContaining({
-					isMasterEvent: true,
-					recurrenceRule: 'RRULE:FREQ=WEEKLY;UNTIL=20261001T000000Z'
-				})
+				recurrence: { rrule: 'RRULE:FREQ=WEEKLY;UNTIL=20261001T000000Z' }
 			})
 		);
 		expect(payload.data).toEqual({
 			success: true,
 			event_id: 'provider-recurring-event',
+			onto_event_id: 'onto-event-1',
 			calendar_id: 'work@example.com',
 			calendarSourceId: 'ca300000-0000-4000-8000-000000000001',
 			task_id: 'ca400000-0000-4000-8000-000000000001',
 			summary: 'Weekly planning',
-			start: { dateTime: '2026-08-13T14:00:00.000Z' },
-			end: { dateTime: '2026-08-13T14:45:00.000Z' },
+			start: {
+				dateTime: '2026-08-13T14:00:00.000Z',
+				timeZone: 'America/New_York'
+			},
+			end: {
+				dateTime: '2026-08-13T14:45:00.000Z',
+				timeZone: 'America/New_York'
+			},
 			recurrence: ['RRULE:FREQ=WEEKLY;UNTIL=20261001T000000Z'],
 			timeZone: 'America/New_York'
 		});

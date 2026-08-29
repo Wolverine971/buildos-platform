@@ -1,9 +1,8 @@
 // apps/web/src/lib/server/calendar-proxy/schedule-task.handler.ts
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import { GoogleCalendarWriteService } from '$lib/server/google-calendar-write.service';
 import type { CalendarService } from '$lib/services/calendar-service';
+import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import { recurrencePatternBuilder } from '$lib/services/recurrence-pattern.service';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 import { recurrencePatternSchema, scheduleTaskParamsSchema } from './request-schemas';
 
@@ -84,41 +83,81 @@ export async function handleScheduleTask({
 						startDate: value.start_time
 					})
 				: undefined;
-		const service = new GoogleCalendarWriteService(createAdminSupabaseClient());
-		const result = await service.createEvent({
-			userId: user.id,
-			selector: {
-				calendarSourceId: value.calendarSourceId,
-				calendarId: value.calendar_id
-			},
-			requestBody: {
-				summary: task.title,
-				description: descriptionSections.join('\n\n'),
-				start: { dateTime: start.toISOString(), timeZone: value.timeZone },
-				end: { dateTime: end.toISOString(), timeZone: value.timeZone },
-				colorId: value.color_id,
-				recurrence: recurrenceRule ? [recurrenceRule] : undefined
-			},
-			taskTracking: {
-				taskId: value.task_id,
-				eventStart: start.toISOString(),
-				eventEnd: end.toISOString(),
-				eventTitle: task.title,
-				isMasterEvent: Boolean(recurrenceRule),
-				recurrenceRule
-			}
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: user.id
 		});
+		if (actorError || !actorId) {
+			throw actorError ?? new Error('Failed to resolve the current actor');
+		}
+
+		// Ontology tasks cannot be persisted in the legacy task_calendar_events table: its task_id
+		// foreign key intentionally still points at legacy tasks. Model the calendar block as an
+		// ontology event and map that event to Google instead. Keeping the event projectless preserves
+		// the user-calendar ownership semantics while the project-scoped edge retains task context.
+		const eventService = new OntoEventSyncService(supabase);
+		const result = await eventService.createEvent(user.id, {
+			projectId: null,
+			owner: { type: 'task', id: value.task_id },
+			typeKey: 'event.task_work',
+			title: task.title,
+			description: descriptionSections.join('\n\n') || null,
+			startAt: start.toISOString(),
+			endAt: end.toISOString(),
+			timezone: value.timeZone ?? null,
+			recurrence: recurrenceRule ? { rrule: recurrenceRule } : {},
+			props: {
+				task_id: value.task_id,
+				task_title: task.title,
+				project_id: projectId,
+				task_event_kind: 'range',
+				color_id: value.color_id ?? null
+			},
+			createdBy: actorId as string,
+			calendarScope: value.calendarSourceId || value.calendar_id ? 'calendar_id' : 'user',
+			calendarId: value.calendar_id ?? null,
+			calendarSourceId: value.calendarSourceId ?? null,
+			syncToCalendar: true,
+			createProjectCalendarIfMissing: false
+		});
+
+		if (!result.sync?.success || !result.sync.externalEventId) {
+			await eventService.deleteEvent(user.id, {
+				eventId: result.event.id,
+				syncToCalendar: false
+			});
+			throw new Error(result.sync?.error ?? 'Calendar event sync did not return an event id');
+		}
+
+		if (projectId) {
+			const { error: edgeError } = await supabase.from('onto_edges').insert({
+				project_id: projectId,
+				src_id: value.task_id,
+				src_kind: 'task',
+				dst_id: result.event.id,
+				dst_kind: 'event',
+				rel: 'has_event'
+			});
+			if (edgeError) {
+				await eventService.deleteEvent(user.id, {
+					eventId: result.event.id,
+					syncToCalendar: true
+				});
+				throw edgeError;
+			}
+		}
+
 		return ApiResponse.success({
 			success: true,
-			event_id: result.providerEventId,
-			event_link: result.event.htmlLink ?? undefined,
-			calendar_id: result.providerCalendarId,
-			calendarSourceId: result.calendarSourceId,
+			event_id: result.sync.externalEventId,
+			onto_event_id: result.event.id,
+			event_link: result.event.external_link ?? undefined,
+			calendar_id: result.sync.calendarId ?? value.calendar_id ?? 'primary',
+			calendarSourceId: result.sync.calendarSourceId ?? undefined,
 			task_id: value.task_id,
-			summary: result.event.summary ?? undefined,
-			start: result.event.start ?? undefined,
-			end: result.event.end ?? undefined,
-			recurrence: result.event.recurrence ?? undefined,
+			summary: result.event.title,
+			start: { dateTime: start.toISOString(), timeZone: value.timeZone },
+			end: { dateTime: end.toISOString(), timeZone: value.timeZone },
+			recurrence: recurrenceRule ? [recurrenceRule] : undefined,
 			timeZone: value.timeZone
 		});
 	}

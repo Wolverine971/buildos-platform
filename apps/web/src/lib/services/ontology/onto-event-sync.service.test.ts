@@ -571,6 +571,7 @@ describe('OntoEventSyncService source-qualified routing', () => {
 			start_at: '2026-08-12T14:00:00.000Z',
 			end_at: '2026-08-12T14:30:00.000Z',
 			timezone: 'America/New_York',
+			recurrence: { rrule: 'RRULE:FREQ=WEEKLY;COUNT=3' },
 			props: {},
 			updated_at: '2026-08-12T12:00:00.000Z'
 		};
@@ -611,6 +612,7 @@ describe('OntoEventSyncService source-qualified routing', () => {
 			expect.objectContaining({
 				userId: 'user-1',
 				selector: { projectId: 'project-1' },
+				recurrence: ['RRULE:FREQ=WEEKLY;COUNT=3'],
 				ontoEventId: 'event-1'
 			})
 		);
