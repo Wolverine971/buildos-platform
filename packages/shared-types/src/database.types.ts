@@ -12,6 +12,533 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
   }
+  libri: {
+    Tables: {
+      book_domains: {
+        Row: {
+          book_id: string
+          created_at: string
+          domain_id: string
+          library_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          domain_id: string
+          library_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          domain_id?: string
+          library_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_domains_book_library_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "book_domains_domain_library_fk"
+            columns: ["library_id", "domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "book_domains_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      book_people: {
+        Row: {
+          book_id: string
+          created_at: string
+          library_id: string
+          person_id: string
+          position: number | null
+          role: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          library_id: string
+          person_id: string
+          position?: number | null
+          role: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          library_id?: string
+          person_id?: string
+          position?: number | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_people_book_library_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "book_people_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "book_people_person_library_fk"
+            columns: ["library_id", "person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
+      books: {
+        Row: {
+          author_names_search: string | null
+          completeness: Json | null
+          created_at: string
+          edition: string | null
+          folder: string | null
+          id: string
+          indexing: Json
+          isbn10: string | null
+          isbn10_normalized: string | null
+          isbn13: string | null
+          isbn13_normalized: string | null
+          library_id: string
+          list_metadata: Json | null
+          ownership: string
+          page_count: number | null
+          publisher: string | null
+          search_vector: unknown
+          slug: string | null
+          subtitle: string | null
+          title: string
+          title_normalized: string | null
+          toc: Json | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          author_names_search?: string | null
+          completeness?: Json | null
+          created_at?: string
+          edition?: string | null
+          folder?: string | null
+          id?: string
+          indexing?: Json
+          isbn10?: string | null
+          isbn10_normalized?: string | null
+          isbn13?: string | null
+          isbn13_normalized?: string | null
+          library_id: string
+          list_metadata?: Json | null
+          ownership?: string
+          page_count?: number | null
+          publisher?: string | null
+          search_vector?: unknown
+          slug?: string | null
+          subtitle?: string | null
+          title: string
+          title_normalized?: string | null
+          toc?: Json | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          author_names_search?: string | null
+          completeness?: Json | null
+          created_at?: string
+          edition?: string | null
+          folder?: string | null
+          id?: string
+          indexing?: Json
+          isbn10?: string | null
+          isbn10_normalized?: string | null
+          isbn13?: string | null
+          isbn13_normalized?: string | null
+          library_id?: string
+          list_metadata?: Json | null
+          ownership?: string
+          page_count?: number | null
+          publisher?: string | null
+          search_vector?: unknown
+          slug?: string | null
+          subtitle?: string | null
+          title?: string
+          title_normalized?: string | null
+          toc?: Json | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapters: {
+        Row: {
+          book_id: string
+          created_at: string
+          enrichment_payload: Json
+          enrichment_phase: string | null
+          enrichment_updated_at: string | null
+          enrichment_version: number
+          estimated_word_count: number | null
+          id: string
+          library_id: string
+          number: string
+          page_end: string | null
+          page_start: string | null
+          position: number
+          research_confidence: number | null
+          research_model: string | null
+          research_payload: Json
+          research_status: string
+          research_updated_at: string | null
+          research_version: number
+          search_vector: unknown
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          enrichment_payload?: Json
+          enrichment_phase?: string | null
+          enrichment_updated_at?: string | null
+          enrichment_version?: number
+          estimated_word_count?: number | null
+          id?: string
+          library_id: string
+          number: string
+          page_end?: string | null
+          page_start?: string | null
+          position: number
+          research_confidence?: number | null
+          research_model?: string | null
+          research_payload?: Json
+          research_status?: string
+          research_updated_at?: string | null
+          research_version?: number
+          search_vector?: unknown
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          enrichment_payload?: Json
+          enrichment_phase?: string | null
+          enrichment_updated_at?: string | null
+          enrichment_version?: number
+          estimated_word_count?: number | null
+          id?: string
+          library_id?: string
+          number?: string
+          page_end?: string | null
+          page_start?: string | null
+          position?: number
+          research_confidence?: number | null
+          research_model?: string | null
+          research_payload?: Json
+          research_status?: string
+          research_updated_at?: string | null
+          research_version?: number
+          search_vector?: unknown
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_book_library_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "chapters_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domains: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          library_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          library_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          library_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domains_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      libraries: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      library_members: {
+        Row: {
+          created_at: string
+          library_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          library_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          library_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_members_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      migration_id_map: {
+        Row: {
+          imported_at: string
+          library_id: string
+          source_hash: string | null
+          source_id: string
+          source_table: string
+          target_id: string
+        }
+        Insert: {
+          imported_at?: string
+          library_id: string
+          source_hash?: string | null
+          source_id: string
+          source_table: string
+          target_id: string
+        }
+        Update: {
+          imported_at?: string
+          library_id?: string
+          source_hash?: string | null
+          source_id?: string
+          source_table?: string
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_id_map_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes: {
+        Row: {
+          book_id: string
+          chapter_id: string | null
+          content: string
+          created_at: string
+          id: string
+          library_id: string
+          owner_user_id: string | null
+          search_vector: unknown
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          book_id: string
+          chapter_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          library_id: string
+          owner_user_id?: string | null
+          search_vector?: unknown
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          book_id?: string
+          chapter_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          library_id?: string
+          owner_user_id?: string | null
+          search_vector?: unknown
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_book_library_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "notes_chapter_book_library_fk"
+            columns: ["library_id", "book_id", "chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["library_id", "book_id", "id"]
+          },
+          {
+            foreignKeyName: "notes_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people: {
+        Row: {
+          bio: string | null
+          created_at: string
+          id: string
+          library_id: string
+          links: Json
+          name: string
+          name_normalized: string | null
+          search_vector: unknown
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          library_id: string
+          links?: Json
+          name: string
+          name_normalized?: string | null
+          search_vector?: unknown
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          library_id?: string
+          links?: Json
+          name?: string
+          name_normalized?: string | null
+          search_vector?: unknown
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_deletion_requests: {
@@ -1323,7 +1850,7 @@ export type Database = {
         Insert: {
           event_type: string
           execution_generation: number
-          id: number
+          id?: never
           observation_key: string
           observed_at?: string
           payload: Json
@@ -1335,7 +1862,7 @@ export type Database = {
         Update: {
           event_type?: string
           execution_generation?: number
-          id?: number
+          id?: never
           observation_key?: string
           observed_at?: string
           payload?: Json
@@ -3780,7 +4307,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_turn_effects_turn_scope"
+            columns: ["turn_run_id", "session_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id", "session_id", "user_id"]
+          },
+        ]
       }
       chat_turn_events: {
         Row: {
@@ -3901,7 +4436,15 @@ export type Database = {
           turn_run_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_turn_input_artifacts_turn_scope"
+            columns: ["turn_run_id", "session_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id", "session_id", "user_id"]
+          },
+        ]
       }
       chat_turn_runs: {
         Row: {
@@ -4016,7 +4559,7 @@ export type Database = {
           request_hash?: string | null
           request_hash_version?: string | null
           request_message: string
-          request_payload: Json
+          request_payload?: Json
           request_payload_version?: string
           request_prewarmed_context?: boolean | null
           session_id: string
@@ -4114,13 +4657,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "chat_turn_runs_input_artifact_id_fkey"
-            columns: ["input_artifact_id"]
-            isOneToOne: false
-            referencedRelation: "chat_turn_input_artifacts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "chat_turn_runs_prepared_prompt_id_fkey"
             columns: ["prepared_prompt_id"]
             isOneToOne: false
@@ -4153,6 +4689,13 @@ export type Database = {
             columns: ["user_message_id"]
             isOneToOne: false
             referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_chat_turn_runs_input_artifact"
+            columns: ["input_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_input_artifacts"
             referencedColumns: ["id"]
           },
         ]
@@ -4197,7 +4740,15 @@ export type Database = {
           turn_run_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_turn_signals_turn_scope"
+            columns: ["turn_run_id", "session_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id", "session_id", "user_id"]
+          },
+        ]
       }
       chat_turn_stream_state: {
         Row: {
@@ -4227,7 +4778,7 @@ export type Database = {
           last_text_batch_id?: string | null
           last_text_end_bytes?: number | null
           last_text_sequence?: number | null
-          projection: Json
+          projection?: Json
           projection_durable_sequence?: number
           reconcile_required?: boolean
           session_id: string
@@ -4254,7 +4805,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_turn_stream_state_turn_scope"
+            columns: ["turn_run_id", "session_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id", "session_id", "user_id"]
+          },
+        ]
       }
       cron_logs: {
         Row: {
@@ -4483,7 +5042,7 @@ export type Database = {
           {
             foreignKeyName: "cycle_runs_queue_job_record_id_fkey"
             columns: ["queue_job_record_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "queue_jobs"
             referencedColumns: ["id"]
           },
@@ -4584,7 +5143,7 @@ export type Database = {
         }
         Insert: {
           attention_policy?: string
-          config: Json
+          config?: Json
           create_request_fingerprint: string
           create_request_id: string
           created_at?: string
@@ -4596,7 +5155,7 @@ export type Database = {
           last_run_at?: string | null
           last_run_id?: string | null
           next_run_at?: string | null
-          policy: Json
+          policy?: Json
           project_id?: string | null
           state?: string
           target_type: string
@@ -7077,17 +7636,17 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "external_agent_project_permission_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "external_agent_project_permissions_agent_oauth_grant_id_fkey"
             columns: ["agent_oauth_grant_id"]
             isOneToOne: false
             referencedRelation: "agent_oauth_grants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "external_agent_project_permissions_external_agent_caller_id_fkey"
-            columns: ["external_agent_caller_id"]
-            isOneToOne: false
-            referencedRelation: "external_agent_callers"
             referencedColumns: ["id"]
           },
           {
@@ -13143,7 +13702,7 @@ export type Database = {
           event_type: string
           id?: string
           node_id?: string | null
-          payload: Json
+          payload?: Json
           run_id: string
           seq: number
         }
@@ -13287,6 +13846,13 @@ export type Database = {
             referencedRelation: "question_tree_runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "question_tree_nodes_run_id_parent_node_id_fkey"
+            columns: ["run_id", "parent_node_id"]
+            isOneToOne: false
+            referencedRelation: "question_tree_nodes"
+            referencedColumns: ["run_id", "id"]
+          },
         ]
       }
       question_tree_proposals: {
@@ -13372,6 +13938,13 @@ export type Database = {
             referencedRelation: "question_tree_runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "question_tree_proposals_run_id_source_node_id_fkey"
+            columns: ["run_id", "source_node_id"]
+            isOneToOne: false
+            referencedRelation: "question_tree_nodes"
+            referencedColumns: ["run_id", "id"]
+          },
         ]
       }
       question_tree_runs: {
@@ -13409,7 +13982,7 @@ export type Database = {
         Insert: {
           advance_sequence?: number
           completed_at?: string | null
-          config: Json
+          config?: Json
           created_at?: string
           created_by: string
           deepest_depth?: number
@@ -13435,7 +14008,7 @@ export type Database = {
           synthesis?: Json | null
           synthesis_model_requested: string
           updated_at?: string
-          usage: Json
+          usage?: Json
         }
         Update: {
           advance_sequence?: number
@@ -13475,6 +14048,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_migration_stats"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "question_tree_runs_root_node_fk"
+            columns: ["id", "root_node_id"]
+            isOneToOne: false
+            referencedRelation: "question_tree_nodes"
+            referencedColumns: ["run_id", "id"]
           },
         ]
       }
@@ -16969,7 +17549,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "web_page_evidence_chunks_page_version_id_fkey"
+            foreignKeyName: "web_page_evidence_chunks_version_fk"
             columns: ["page_version_id"]
             isOneToOne: false
             referencedRelation: "web_page_versions"
@@ -17058,7 +17638,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "web_page_versions_web_page_visit_id_fkey"
+            foreignKeyName: "web_page_versions_visit_fk"
             columns: ["web_page_visit_id"]
             isOneToOne: false
             referencedRelation: "web_page_visits"
@@ -17163,7 +17743,15 @@ export type Database = {
           url?: string
           visit_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "web_page_visits_current_version_fk"
+            columns: ["id", "current_version_id"]
+            isOneToOne: false
+            referencedRelation: "web_page_versions"
+            referencedColumns: ["web_page_visit_id", "id"]
+          },
+        ]
       }
       webhook_events: {
         Row: {
@@ -17670,14 +18258,14 @@ export type Database = {
       }
       admit_legacy_agentic_chat_turn: {
         Args: {
-          p_client_turn_id: string | null
+          p_client_turn_id: string
           p_context_type: string
           p_detached_turn_max_duration_ms: number
-          p_entity_id: string | null
+          p_entity_id: string
           p_gateway_enabled: boolean
           p_history_limit: number
           p_progress_stale_reclaim_ms: number
-          p_project_id: string | null
+          p_project_id: string
           p_recent_progress_grace_ms: number
           p_request_hash: string
           p_request_hash_version: string
@@ -17715,79 +18303,44 @@ export type Database = {
         Returns: Json
       }
       admit_question_tree_proposals: {
-        Args: {
-          p_proposal_ids: string[]
-          p_run_id: string
-        }
+        Args: { p_proposal_ids: string[]; p_run_id: string }
         Returns: Json
       }
       agentic_chat_contract_effect_target_id_v1: {
-        Args: {
-          p_arguments: Json
-          p_result: Json
-          p_tool_name: string
-        }
+        Args: { p_arguments: Json; p_result: Json; p_tool_name: string }
         Returns: string
       }
       agentic_chat_contract_tool_semantics_v1: {
-        Args: {
-          p_tool_name: string
-        }
+        Args: { p_tool_name: string }
         Returns: Json
       }
       agentic_chat_domain_reference_map_v1_is_valid: {
-        Args: {
-          p_map: Json
-        }
-        Returns: Json
+        Args: { p_map: Json }
+        Returns: boolean
       }
-      agentic_chat_epoch_ms: {
-        Args: {
-          ts: string
-        }
-        Returns: Json
-      }
+      agentic_chat_epoch_ms: { Args: { ts: string }; Returns: number }
       agentic_chat_expected_write_tool_names_v1: {
-        Args: {
-          p_intent: Json
-        }
+        Args: { p_intent: Json }
         Returns: Json
       }
       agentic_chat_frozen_attachment_v1_is_valid: {
-        Args: {
-          p_attachment: Json
-          p_require_resolution: boolean
-        }
-        Returns: Json
+        Args: { p_attachment: Json; p_require_resolution: boolean }
+        Returns: boolean
       }
       agentic_chat_frozen_attachments_v1_are_valid: {
-        Args: {
-          p_attachments: Json
-          p_require_resolution: boolean
-        }
-        Returns: Json
+        Args: { p_attachments: Json; p_require_resolution: boolean }
+        Returns: boolean
       }
       agentic_chat_jsonb_array_of_objects_v1_is_valid: {
-        Args: {
-          p_array: Json
-          p_limit: number
-        }
-        Returns: Json
+        Args: { p_array: Json; p_limit: number }
+        Returns: boolean
       }
       agentic_chat_merge_domain_gap_v1: {
-        Args: {
-          p_candidate: Json
-          p_observed_at: string
-          p_state: Json
-        }
+        Args: { p_candidate: Json; p_observed_at: string; p_state: Json }
         Returns: Json
       }
       agentic_chat_merge_domain_ids_v1: {
-        Args: {
-          p_left: Json
-          p_limit?: number
-          p_right: Json
-        }
+        Args: { p_left: Json; p_limit?: number; p_right: Json }
         Returns: Json
       }
       agentic_chat_merge_used_domain_signal_v1: {
@@ -17808,17 +18361,12 @@ export type Database = {
         Returns: Json
       }
       agentic_chat_research_log_entries: {
-        Args: {
-          p_content: string
-        }
-        Returns: Json
+        Args: { p_content: string }
+        Returns: string[]
       }
       agentic_chat_research_result_urls: {
-        Args: {
-          p_depth?: number
-          p_value: Json
-        }
-        Returns: Json
+        Args: { p_depth?: number; p_value: Json }
+        Returns: string[]
       }
       apply_agentic_chat_research_capture: {
         Args: {
@@ -18140,12 +18688,48 @@ export type Database = {
         }[]
       }
       claim_question_tree_batch: {
-        Args: {
-          p_limit?: number
-          p_run_id: string
-          p_worker_id: string
+        Args: { p_limit?: number; p_run_id: string; p_worker_id: string }
+        Returns: {
+          answer: string | null
+          attempt_count: number
+          completed_at: string | null
+          completion_tokens: number
+          confidence: number | null
+          cost_usd: number
+          created_at: string
+          depth: number
+          epistemic_assessment: Json | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          latency_ms: number
+          lease_expires_at: string | null
+          lease_owner: string | null
+          model_requested: string | null
+          model_used: string | null
+          node_kind: string
+          node_number: number
+          normalized_question: string
+          parent_node_id: string | null
+          prompt_tokens: number
+          provider_request_id: string | null
+          question: string
+          reasoning_tokens: number
+          run_id: string
+          search_document: unknown
+          sibling_index: number | null
+          started_at: string | null
+          status: string
+          stop_reason: string | null
+          thesis: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "question_tree_nodes"
+          isOneToOne: false
+          isSetofReturn: true
         }
-        Returns: Json
       }
       claim_specific_email_sequence_send: {
         Args: { p_enrollment_id: string }
@@ -18281,7 +18865,7 @@ export type Database = {
           p_response: Json
           p_ttl_seconds?: number
         }
-        Returns: Json
+        Returns: boolean
       }
       complete_question_tree_run: {
         Args: {
@@ -18290,7 +18874,7 @@ export type Database = {
           p_telemetry: Json
           p_usage: Json
         }
-        Returns: Json
+        Returns: boolean
       }
       complete_queue_job: {
         Args: { p_job_id: string; p_processing_token?: string; p_result?: Json }
@@ -18304,7 +18888,7 @@ export type Database = {
         }
         Returns: {
           code_verifier: string
-          connection_id: string | null
+          connection_id: string
           nonce: string
           redirect_path: string
           state_id: string
@@ -18333,10 +18917,7 @@ export type Database = {
         Returns: string
       }
       control_question_tree_run: {
-        Args: {
-          p_action: string
-          p_run_id: string
-        }
+        Args: { p_action: string; p_run_id: string }
         Returns: Json
       }
       create_agent_run_with_job: {
@@ -18396,7 +18977,34 @@ export type Database = {
           p_triggers: Json
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       create_cycle_impl: {
         Args: {
@@ -18412,7 +19020,34 @@ export type Database = {
           p_triggers: Json
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       create_email_relevance_scan_run: {
         Args: {
@@ -18463,13 +19098,11 @@ export type Database = {
           p_state: string
           p_target_type: string
         }
-        Returns: Json
+        Returns: boolean
       }
       cycle_trigger_input_is_valid: {
-        Args: {
-          p_trigger: Json
-        }
-        Returns: Json
+        Args: { p_trigger: Json }
+        Returns: boolean
       }
       decline_project_invite: {
         Args: { p_invite_id: string }
@@ -18522,7 +19155,34 @@ export type Database = {
           p_expected_version: number
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       delete_cycle_impl: {
         Args: {
@@ -18530,7 +19190,34 @@ export type Database = {
           p_expected_version: number
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       delete_old_completed_queue_jobs: {
         Args: {
@@ -18810,9 +19497,7 @@ export type Database = {
         Returns: string
       }
       flush_agentic_chat_text_batches: {
-        Args: {
-          p_batches: Json
-        }
+        Args: { p_batches: Json }
         Returns: Json
       }
       flush_project_activity_notification_batch: {
@@ -19008,9 +19693,7 @@ export type Database = {
         }[]
       }
       get_current_web_page_evidence: {
-        Args: {
-          p_web_page_visit_id: string
-        }
+        Args: { p_web_page_visit_id: string }
         Returns: Json
       }
       get_daily_active_users: {
@@ -19513,10 +20196,8 @@ export type Database = {
         Returns: undefined
       }
       invalidate_native_search_cache: {
-        Args: {
-          p_cache_key: string
-        }
-        Returns: Json
+        Args: { p_cache_key: string }
+        Returns: boolean
       }
       is_admin:
         | { Args: never; Returns: boolean }
@@ -19626,10 +20307,7 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
-      log_client_error: {
-        Args: { p_entry: Json }
-        Returns: string
-      }
+      log_client_error: { Args: { p_entry: Json }; Returns: string }
       log_notification_event: {
         Args: {
           p_context?: Json
@@ -19677,9 +20355,7 @@ export type Database = {
         Returns: string
       }
       observe_agentic_chat_turn_cancellations: {
-        Args: {
-          p_turns: Json
-        }
+        Args: { p_turns: Json }
         Returns: Json
       }
       onto_apply_relationship_plan_atomic: {
@@ -19687,11 +20363,7 @@ export type Database = {
         Returns: Json
       }
       onto_apply_task_update_relationship_plan_atomic: {
-        Args: {
-          p_plan: Json
-          p_project_id: string
-          p_task_id: string
-        }
+        Args: { p_plan: Json; p_project_id: string; p_task_id: string }
         Returns: Json
       }
       onto_check_guard: {
@@ -19750,11 +20422,7 @@ export type Database = {
         Returns: Json
       }
       onto_goal_update_atomic: {
-        Args: {
-          p_goal_id: string
-          p_relationship_plan?: Json
-          p_updates: Json
-        }
+        Args: { p_goal_id: string; p_relationship_plan?: Json; p_updates: Json }
         Returns: Json
       }
       onto_jsonb_extract: {
@@ -19774,11 +20442,7 @@ export type Database = {
         Returns: Json
       }
       onto_plan_update_atomic: {
-        Args: {
-          p_plan_id: string
-          p_relationship_plan?: Json
-          p_updates: Json
-        }
+        Args: { p_plan_id: string; p_relationship_plan?: Json; p_updates: Json }
         Returns: Json
       }
       onto_project_doc_structure_update_atomic: {
@@ -19793,12 +20457,8 @@ export type Database = {
         Returns: Json
       }
       onto_relationship_entity_in_project: {
-        Args: {
-          p_entity_id: string
-          p_kind: string
-          p_project_id: string
-        }
-        Returns: Json
+        Args: { p_entity_id: string; p_kind: string; p_project_id: string }
+        Returns: boolean
       }
       onto_search_entities: {
         Args: {
@@ -19855,9 +20515,9 @@ export type Database = {
       }
       onto_task_create_with_relationships_atomic: {
         Args: {
-          p_assigned_by_actor_id?: string | null
-          p_assignee_actor_ids?: string[] | null
-          p_idempotency_key?: string | null
+          p_assigned_by_actor_id?: string
+          p_assignee_actor_ids?: string[]
+          p_idempotency_key?: string
           p_relationship_plan: Json
           p_source?: string
           p_sync_assignees?: boolean
@@ -19897,8 +20557,8 @@ export type Database = {
       }
       onto_task_update_with_relationships_atomic: {
         Args: {
-          p_assigned_by_actor_id: string | null
-          p_assignee_actor_ids: string[] | null
+          p_assigned_by_actor_id: string
+          p_assignee_actor_ids: string[]
           p_relationship_plan?: Json
           p_source?: string
           p_sync_assignees: boolean
@@ -19913,7 +20573,34 @@ export type Database = {
           p_expected_version: number
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       pause_cycle_impl: {
         Args: {
@@ -19921,7 +20608,34 @@ export type Database = {
           p_expected_version: number
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       persist_agentic_chat_counted_tool_validation_failure: {
         Args: {
@@ -20187,7 +20901,7 @@ export type Database = {
           p_cache_key: string
           p_response_version: string
         }
-        Returns: Json
+        Returns: boolean
       }
       prune_stale_profile_fragments: {
         Args: { p_older_than_days?: number }
@@ -20201,10 +20915,8 @@ export type Database = {
         }[]
       }
       question_tree_normalize_question: {
-        Args: {
-          p_question: string
-        }
-        Returns: Json
+        Args: { p_question: string }
+        Returns: string
       }
       queue_deep_research_synthesis: {
         Args: { p_parent_run_id: string }
@@ -20335,22 +21047,16 @@ export type Database = {
         Returns: Json
       }
       release_cycle_trigger_claim: {
-        Args: {
-          p_claim_token: string
-          p_trigger_id: string
-        }
-        Returns: Json
+        Args: { p_claim_token: string; p_trigger_id: string }
+        Returns: boolean
       }
       release_migration_platform_lock: {
         Args: { p_run_id: string }
         Returns: boolean
       }
       release_native_search_cache: {
-        Args: {
-          p_cache_key: string
-          p_owner_token: string
-        }
-        Returns: Json
+        Args: { p_cache_key: string; p_owner_token: string }
+        Returns: boolean
       }
       reorder_phases_with_tasks: {
         Args: {
@@ -20368,7 +21074,34 @@ export type Database = {
           p_triggers: Json
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       replace_cycle_triggers_impl: {
         Args: {
@@ -20377,7 +21110,34 @@ export type Database = {
           p_triggers: Json
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       request_account_deletion: {
         Args: { p_user_id: string }
@@ -20397,10 +21157,7 @@ export type Database = {
         }
         Returns: Json
       }
-      require_cycle_service_role: {
-        Args: never
-        Returns: Json
-      }
+      require_cycle_service_role: { Args: never; Returns: undefined }
       reserve_agent_run_cost: {
         Args: {
           p_attempt_key: string
@@ -20442,22 +21199,112 @@ export type Database = {
         Args: { p_actor_id: string }
         Returns: string
       }
-      resume_cycle: {
-        Args: {
-          p_cycle_id: string
-          p_expected_version: number
-          p_trigger_projections: Json
-          p_user_id: string
-        }
-        Returns: Json
-      }
+      resume_cycle:
+        | {
+            Args: {
+              p_cycle_id: string
+              p_expected_version: number
+              p_user_id: string
+            }
+            Returns: {
+              attention_policy: string
+              config: Json
+              create_request_fingerprint: string
+              create_request_id: string
+              created_at: string
+              deleted_at: string | null
+              id: string
+              kind: string
+              label: string
+              last_error: string | null
+              last_run_at: string | null
+              last_run_id: string | null
+              next_run_at: string | null
+              policy: Json
+              project_id: string | null
+              state: string
+              target_type: string
+              updated_at: string
+              user_id: string
+              version: number
+            }
+            SetofOptions: {
+              from: "*"
+              to: "cycles"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_cycle_id: string
+              p_expected_version: number
+              p_trigger_projections: Json
+              p_user_id: string
+            }
+            Returns: {
+              attention_policy: string
+              config: Json
+              create_request_fingerprint: string
+              create_request_id: string
+              created_at: string
+              deleted_at: string | null
+              id: string
+              kind: string
+              label: string
+              last_error: string | null
+              last_run_at: string | null
+              last_run_id: string | null
+              next_run_at: string | null
+              policy: Json
+              project_id: string | null
+              state: string
+              target_type: string
+              updated_at: string
+              user_id: string
+              version: number
+            }
+            SetofOptions: {
+              from: "*"
+              to: "cycles"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       resume_cycle_impl: {
         Args: {
           p_cycle_id: string
           p_expected_version: number
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       resume_cycle_with_projections_impl: {
         Args: {
@@ -20466,7 +21313,34 @@ export type Database = {
           p_trigger_projections: Json
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       retry_or_fail_email_sequence_send: {
         Args: { p_enrollment_id: string; p_error: string }
@@ -20497,10 +21371,7 @@ export type Database = {
         }
       }
       retry_question_tree_node: {
-        Args: {
-          p_node_id: string
-          p_run_id: string
-        }
+        Args: { p_node_id: string; p_run_id: string }
         Returns: Json
       }
       rollup_security_events: {
@@ -20512,13 +21383,86 @@ export type Database = {
           summary_start_date: string
         }[]
       }
-      rotate_gmail_read_credentials: {
+      rotate_gmail_read_credentials:
+        | {
+            Args: {
+              p_access_token_ciphertext: string
+              p_access_token_expires_at: string
+              p_connection_id: string
+              p_granted_scopes: string[]
+              p_key_version: number
+              p_refresh_token_ciphertext: string
+              p_token_type: string
+              p_user_id: string
+            }
+            Returns: {
+              account_label: string
+              connected_at: string
+              created_at: string
+              deleted_at: string | null
+              display_name: string | null
+              email_address: string
+              id: string
+              last_used_at: string | null
+              last_verified_at: string | null
+              provider: string
+              provider_account_id: string
+              read_enabled: boolean
+              status: string
+              updated_at: string
+              user_id: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "user_email_connections"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_access_token_ciphertext: string
+              p_access_token_expires_at: string
+              p_connection_id: string
+              p_granted_scopes: string[]
+              p_key_version: number
+              p_refresh_token_ciphertext: string
+              p_refresh_token_expires_at: string
+              p_token_type: string
+              p_user_id: string
+            }
+            Returns: {
+              account_label: string
+              connected_at: string
+              created_at: string
+              deleted_at: string | null
+              display_name: string | null
+              email_address: string
+              id: string
+              last_used_at: string | null
+              last_verified_at: string | null
+              provider: string
+              provider_account_id: string
+              read_enabled: boolean
+              status: string
+              updated_at: string
+              user_id: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "user_email_connections"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+      rotate_google_calendar_credentials: {
         Args: {
           p_access_token_ciphertext: string
           p_access_token_expires_at: string
           p_connection_id: string
           p_granted_scopes: string[]
           p_key_version: number
+          p_oauth_client_kind: string
           p_refresh_token_ciphertext: string
           p_refresh_token_expires_at: string
           p_token_type: string
@@ -20536,32 +21480,10 @@ export type Database = {
           last_verified_at: string | null
           provider: string
           provider_account_id: string
-          read_enabled: boolean
           status: string
           updated_at: string
           user_id: string
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "user_email_connections"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      rotate_google_calendar_credentials: {
-        Args: {
-          p_access_token_ciphertext: string
-          p_access_token_expires_at: string | null
-          p_connection_id: string
-          p_granted_scopes: string[]
-          p_key_version: number
-          p_oauth_client_kind: string
-          p_refresh_token_ciphertext: string
-          p_refresh_token_expires_at: string | null
-          p_token_type: string | null
-          p_user_id: string
-        }
-        Returns: Database["public"]["Tables"]["user_calendar_connections"]["Row"][]
         SetofOptions: {
           from: "*"
           to: "user_calendar_connections"
@@ -20569,12 +21491,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      safe_inet: {
-        Args: {
-          p_value: string
-        }
-        Returns: Json
-      }
+      safe_inet: { Args: { p_value: string }; Returns: unknown }
       search_all_content: {
         Args: {
           current_user_id: string
@@ -20635,14 +21552,40 @@ export type Database = {
       }
       set_calendar_source_preferences: {
         Args: {
-          p_analysis_enabled?: boolean | null
-          p_availability_enabled?: boolean | null
+          p_analysis_enabled?: boolean
+          p_availability_enabled?: boolean
           p_calendar_source_id: string
-          p_read_enabled?: boolean | null
-          p_sync_enabled?: boolean | null
+          p_read_enabled?: boolean
+          p_sync_enabled?: boolean
           p_user_id: string
         }
-        Returns: Database["public"]["Tables"]["user_calendar_sources"]["Row"][]
+        Returns: {
+          access_role: string
+          analysis_enabled: boolean
+          availability_enabled: boolean
+          background_color: string | null
+          color_id: string | null
+          connection_id: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          foreground_color: string | null
+          id: string
+          is_hidden: boolean
+          is_primary: boolean
+          is_selected_in_google: boolean
+          last_discovered_at: string
+          last_seen_at: string
+          provider_calendar_id: string
+          provider_deleted_at: string | null
+          read_enabled: boolean
+          summary: string
+          summary_override: string | null
+          sync_enabled: boolean
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }[]
         SetofOptions: {
           from: "*"
           to: "user_calendar_sources"
@@ -20876,7 +21819,34 @@ export type Database = {
           p_patch: Json
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_cycle_impl: {
         Args: {
@@ -20885,7 +21855,34 @@ export type Database = {
           p_patch: Json
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_llm_usage_summary: {
         Args: { p_date: string; p_user_id: string }
@@ -20922,17 +21919,100 @@ export type Database = {
         }
         Returns: string
       }
-      upsert_gmail_read_connection: {
+      upsert_gmail_read_connection:
+        | {
+            Args: {
+              p_access_token_ciphertext: string
+              p_access_token_expires_at: string
+              p_consent_policy_version: string
+              p_default_account_label: string
+              p_display_name: string
+              p_email_address: string
+              p_expected_connection_id: string
+              p_granted_scopes: string[]
+              p_key_version: number
+              p_provider_account_id: string
+              p_refresh_token_ciphertext: string
+              p_token_type: string
+              p_user_id: string
+            }
+            Returns: {
+              account_label: string
+              connected_at: string
+              created_at: string
+              deleted_at: string | null
+              display_name: string | null
+              email_address: string
+              id: string
+              last_used_at: string | null
+              last_verified_at: string | null
+              provider: string
+              provider_account_id: string
+              read_enabled: boolean
+              status: string
+              updated_at: string
+              user_id: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "user_email_connections"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_access_token_ciphertext: string
+              p_access_token_expires_at: string
+              p_consent_policy_version: string
+              p_default_account_label: string
+              p_display_name: string
+              p_email_address: string
+              p_expected_connection_id: string
+              p_granted_scopes: string[]
+              p_key_version: number
+              p_provider_account_id: string
+              p_refresh_token_ciphertext: string
+              p_refresh_token_expires_at: string
+              p_token_type: string
+              p_user_id: string
+            }
+            Returns: {
+              account_label: string
+              connected_at: string
+              created_at: string
+              deleted_at: string | null
+              display_name: string | null
+              email_address: string
+              id: string
+              last_used_at: string | null
+              last_verified_at: string | null
+              provider: string
+              provider_account_id: string
+              read_enabled: boolean
+              status: string
+              updated_at: string
+              user_id: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "user_email_connections"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+      upsert_google_calendar_connection: {
         Args: {
           p_access_token_ciphertext: string
           p_access_token_expires_at: string
-          p_consent_policy_version: string
           p_default_account_label: string
           p_display_name: string
           p_email_address: string
           p_expected_connection_id: string
           p_granted_scopes: string[]
           p_key_version: number
+          p_new_connection_id: string
+          p_oauth_client_kind: string
           p_provider_account_id: string
           p_refresh_token_ciphertext: string
           p_refresh_token_expires_at: string
@@ -20951,37 +22031,10 @@ export type Database = {
           last_verified_at: string | null
           provider: string
           provider_account_id: string
-          read_enabled: boolean
           status: string
           updated_at: string
           user_id: string
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "user_email_connections"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      upsert_google_calendar_connection: {
-        Args: {
-          p_access_token_ciphertext: string
-          p_access_token_expires_at: string | null
-          p_default_account_label: string | null
-          p_display_name: string | null
-          p_email_address: string
-          p_expected_connection_id: string | null
-          p_granted_scopes: string[]
-          p_key_version: number
-          p_new_connection_id: string | null
-          p_oauth_client_kind: string
-          p_provider_account_id: string
-          p_refresh_token_ciphertext: string
-          p_refresh_token_expires_at: string | null
-          p_token_type: string | null
-          p_user_id: string
-        }
-        Returns: Database["public"]["Tables"]["user_calendar_connections"]["Row"][]
         SetofOptions: {
           from: "*"
           to: "user_calendar_connections"
@@ -20992,21 +22045,47 @@ export type Database = {
       upsert_google_calendar_source: {
         Args: {
           p_access_role: string
-          p_background_color: string | null
-          p_color_id: string | null
+          p_background_color: string
+          p_color_id: string
           p_connection_id: string
-          p_description: string | null
-          p_foreground_color: string | null
+          p_description: string
+          p_foreground_color: string
           p_is_hidden: boolean
           p_is_primary: boolean
           p_is_selected_in_google: boolean
           p_provider_calendar_id: string
           p_summary: string
-          p_summary_override: string | null
-          p_timezone: string | null
+          p_summary_override: string
+          p_timezone: string
           p_user_id: string
         }
-        Returns: Database["public"]["Tables"]["user_calendar_sources"]["Row"][]
+        Returns: {
+          access_role: string
+          analysis_enabled: boolean
+          availability_enabled: boolean
+          background_color: string | null
+          color_id: string | null
+          connection_id: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          foreground_color: string | null
+          id: string
+          is_hidden: boolean
+          is_primary: boolean
+          is_selected_in_google: boolean
+          last_discovered_at: string
+          last_seen_at: string
+          provider_calendar_id: string
+          provider_deleted_at: string | null
+          read_enabled: boolean
+          summary: string
+          summary_override: string | null
+          sync_enabled: boolean
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }[]
         SetofOptions: {
           from: "*"
           to: "user_calendar_sources"
@@ -21065,6 +22144,21 @@ export type Database = {
         | "stopped"
         | "canceled"
         | "failed"
+      llm_operation_type:
+        | "brain_dump"
+        | "brain_dump_short"
+        | "brain_dump_context"
+        | "brain_dump_tasks"
+        | "daily_brief"
+        | "project_brief"
+        | "phase_generation"
+        | "task_scheduling"
+        | "calendar_analysis"
+        | "project_synthesis"
+        | "email_generation"
+        | "question_generation"
+        | "embedding"
+        | "other"
       llm_request_status:
         | "success"
         | "failure"
@@ -21074,6 +22168,7 @@ export type Database = {
       milestone_state: "pending" | "in_progress" | "completed" | "missed"
       onto_actor_kind: "human" | "agent"
       onto_braindump_status: "pending" | "processing" | "processed" | "failed"
+      output_state: "draft" | "in_progress" | "review" | "published"
       plan_state: "draft" | "active" | "completed"
       priority_level: "low" | "medium" | "high"
       project_state:
@@ -21278,6 +22373,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  libri: {
+    Enums: {},
+  },
   public: {
     Enums: {
       agent_run_signal_kind: ["steer", "pause", "resume", "cancel"],
@@ -21314,6 +22412,22 @@ export const Constants = {
         "canceled",
         "failed",
       ],
+      llm_operation_type: [
+        "brain_dump",
+        "brain_dump_short",
+        "brain_dump_context",
+        "brain_dump_tasks",
+        "daily_brief",
+        "project_brief",
+        "phase_generation",
+        "task_scheduling",
+        "calendar_analysis",
+        "project_synthesis",
+        "email_generation",
+        "question_generation",
+        "embedding",
+        "other",
+      ],
       llm_request_status: [
         "success",
         "failure",
@@ -21324,6 +22438,7 @@ export const Constants = {
       milestone_state: ["pending", "in_progress", "completed", "missed"],
       onto_actor_kind: ["human", "agent"],
       onto_braindump_status: ["pending", "processing", "processed", "failed"],
+      output_state: ["draft", "in_progress", "review", "published"],
       plan_state: ["draft", "active", "completed"],
       priority_level: ["low", "medium", "high"],
       project_state: ["planning", "active", "paused", "completed", "cancelled"],

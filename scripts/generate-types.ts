@@ -107,6 +107,11 @@ async function generateFromRest(): Promise<void> {
 
 	const document = (await response.json()) as SupabaseOpenApiDocument;
 	const existingTypes = hasExistingTypes() ? await readFile(sharedTypesOutputPath, 'utf8') : '';
+	if (/^  libri: \{/m.test(existingTypes)) {
+		keepStaleOrExit(
+			'REST type generation only refreshes the public schema and would erase Libri types; set BUILDOS_SUPABASE_TYPES_SOURCE=cli'
+		);
+	}
 	const rendered = renderDatabaseTypesFromOpenApi(document, existingTypes, existingTypes, {
 		functionReturnTypes: auditedRpcReturnTypes
 	});
@@ -144,7 +149,7 @@ async function generateFromCli(): Promise<void> {
 
 	const command = hasLocalCli ? 'supabase' : 'npx';
 	const commandArgs = hasLocalCli
-		? ['gen', 'types', 'typescript', '--project-id', projectId, '--schema', 'public']
+		? ['gen', 'types', 'typescript', '--project-id', projectId, '--schema', 'public,libri']
 		: [
 				'--yes',
 				requestedCliVersion ? `supabase@${requestedCliVersion}` : 'supabase',
@@ -154,7 +159,7 @@ async function generateFromCli(): Promise<void> {
 				'--project-id',
 				projectId,
 				'--schema',
-				'public'
+				'public,libri'
 			];
 
 	const output = execFileSync(command, commandArgs, {

@@ -81,6 +81,55 @@ jobs:
                   if-no-files-found: warn
                   retention-days: 14
 
+    libri-migration-safety:
+        name: Libri migration safety
+        needs: checks
+        if: always()
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        services:
+            postgres:
+                image: postgres:15
+                env:
+                    POSTGRES_PASSWORD: postgres
+                options: >-
+                    --health-cmd "pg_isready -U postgres"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+                ports:
+                    - 5432:5432
+        steps:
+            - name: Require the full BuildOS verification job
+              run: test "${{ needs.checks.result }}" = "success"
+
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - uses: pnpm/action-setup@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Add PostgreSQL tools to PATH
+              run: |
+                  PG_BIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1)"
+                  test -n "$PG_BIN" || { echo "::error::no postgres binaries on runner"; exit 1; }
+                  echo "$PG_BIN" >> "$GITHUB_PATH"
+
+            - name: Run the Libri static and PostgreSQL 15 contract gate
+              env:
+                  BUILDOS_EXPECTED_POSTGRES_MAJOR: '15'
+                  BUILDOS_SQL_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+                  MIGRATION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+              run: pnpm verify:libri-migrations
+
     supabase-schema-drift:
         name: Supabase RPC schema drift
         # Production is migrated after code review/merge, so comparing a schema-

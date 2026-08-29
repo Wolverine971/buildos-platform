@@ -2,7 +2,7 @@
 
 # Tasker — Open Work
 
-**Audited 2026-08-28.** Fourteen completed trackers were removed; 31 active, parked, or explicitly
+**Audited 2026-08-29.** Fourteen completed trackers were removed; 32 active, parked, or explicitly
 deferred trackers remain.
 
 This folder is an active-work queue, not a build log. Completed work belongs in feature docs,
@@ -57,6 +57,7 @@ live verification, or a named exit gate is still pending.
 | [65 — Read-default and cost program](65-agentic-chat-read-default-cost-program.md) | WP-3 is live; WP-1, WP-2, WP-4, WP-5, and the remaining DJ decisions are still open. |
 | [67 — Redundant read-round planning](67-agentic-chat-redundant-read-round-planning.md) | Baseline is corrected; add exact-read telemetry, trace result contracts, run bounded experiments, and canary the winner. |
 | [70 — Production battery remediation](70-agentic-chat-production-battery-remediation.md) | Fix false email renegotiation, persist project context shifts, require durable clarification, make contract repair converge, repair pass telemetry, and rerun the zero-retry production battery. |
+| [73 — Libri post-migration safety audit](73-libri-post-migration-safety-audit.md) | Activate after Libri cutover; prove data reconciliation, BuildOS isolation/performance, and Railway worker recovery before Convex retirement. |
 
 ### Product, IA, and experiments
 
