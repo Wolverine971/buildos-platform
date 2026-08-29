@@ -323,6 +323,193 @@ export type Database = {
           },
         ]
       }
+      entity_edges: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          created_by: string | null
+          detected_by: string | null
+          end_ms: number | null
+          evidence_chunk_id: string | null
+          evidence_start_ms: number | null
+          evidence_text: string | null
+          evidence_url: string | null
+          from_book_id: string | null
+          from_entity_id: string | null
+          from_entity_type: string | null
+          from_person_id: string | null
+          from_source_id: string | null
+          from_youtube_channel_id: string | null
+          from_youtube_video_id: string | null
+          id: string
+          library_id: string
+          metadata: Json
+          relationship_type: string
+          role: string | null
+          start_ms: number | null
+          status: string
+          to_book_id: string | null
+          to_entity_id: string | null
+          to_entity_type: string | null
+          to_person_id: string | null
+          to_source_id: string | null
+          to_youtube_channel_id: string | null
+          to_youtube_video_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          detected_by?: string | null
+          end_ms?: number | null
+          evidence_chunk_id?: string | null
+          evidence_start_ms?: number | null
+          evidence_text?: string | null
+          evidence_url?: string | null
+          from_book_id?: string | null
+          from_entity_id?: string | null
+          from_entity_type?: string | null
+          from_person_id?: string | null
+          from_source_id?: string | null
+          from_youtube_channel_id?: string | null
+          from_youtube_video_id?: string | null
+          id?: string
+          library_id: string
+          metadata?: Json
+          relationship_type: string
+          role?: string | null
+          start_ms?: number | null
+          status?: string
+          to_book_id?: string | null
+          to_entity_id?: string | null
+          to_entity_type?: string | null
+          to_person_id?: string | null
+          to_source_id?: string | null
+          to_youtube_channel_id?: string | null
+          to_youtube_video_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          detected_by?: string | null
+          end_ms?: number | null
+          evidence_chunk_id?: string | null
+          evidence_start_ms?: number | null
+          evidence_text?: string | null
+          evidence_url?: string | null
+          from_book_id?: string | null
+          from_entity_id?: string | null
+          from_entity_type?: string | null
+          from_person_id?: string | null
+          from_source_id?: string | null
+          from_youtube_channel_id?: string | null
+          from_youtube_video_id?: string | null
+          id?: string
+          library_id?: string
+          metadata?: Json
+          relationship_type?: string
+          role?: string | null
+          start_ms?: number | null
+          status?: string
+          to_book_id?: string | null
+          to_entity_id?: string | null
+          to_entity_type?: string | null
+          to_person_id?: string | null
+          to_source_id?: string | null
+          to_youtube_channel_id?: string | null
+          to_youtube_video_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_edges_evidence_chunk_library_fk"
+            columns: ["library_id", "evidence_chunk_id"]
+            isOneToOne: false
+            referencedRelation: "source_chunks"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_from_book_library_fk"
+            columns: ["library_id", "from_book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_from_person_library_fk"
+            columns: ["library_id", "from_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_from_source_library_fk"
+            columns: ["library_id", "from_source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_from_youtube_channel_library_fk"
+            columns: ["library_id", "from_youtube_channel_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_channels"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_from_youtube_video_library_fk"
+            columns: ["library_id", "from_youtube_video_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_videos"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entity_edges_to_book_library_fk"
+            columns: ["library_id", "to_book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_to_person_library_fk"
+            columns: ["library_id", "to_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_to_source_library_fk"
+            columns: ["library_id", "to_source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_to_youtube_channel_library_fk"
+            columns: ["library_id", "to_youtube_channel_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_channels"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "entity_edges_to_youtube_video_library_fk"
+            columns: ["library_id", "to_youtube_video_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_videos"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
       images: {
         Row: {
           book_id: string
@@ -979,6 +1166,144 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "libraries"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      youtube_channels: {
+        Row: {
+          channel_key: string
+          created_at: string
+          description: string | null
+          handle: string | null
+          id: string
+          identity_status: string
+          library_id: string
+          metadata: Json
+          search_vector: unknown
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          channel_key: string
+          created_at?: string
+          description?: string | null
+          handle?: string | null
+          id?: string
+          identity_status?: string
+          library_id: string
+          metadata?: Json
+          search_vector?: unknown
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          channel_key?: string
+          created_at?: string
+          description?: string | null
+          handle?: string | null
+          id?: string
+          identity_status?: string
+          library_id?: string
+          metadata?: Json
+          search_vector?: unknown
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_channels_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      youtube_videos: {
+        Row: {
+          analysis: Json
+          channel_id: string | null
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          enriched: boolean
+          entity_links_suggested: boolean
+          has_metadata: boolean
+          has_transcript: boolean
+          id: string
+          library_id: string
+          metadata: Json
+          source_id: string
+          source_type: string
+          thumbnail_url: string | null
+          transcript_segmented: boolean
+          updated_at: string
+          youtube_video_id: string
+        }
+        Insert: {
+          analysis?: Json
+          channel_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          enriched?: boolean
+          entity_links_suggested?: boolean
+          has_metadata?: boolean
+          has_transcript?: boolean
+          id?: string
+          library_id: string
+          metadata?: Json
+          source_id: string
+          source_type?: string
+          thumbnail_url?: string | null
+          transcript_segmented?: boolean
+          updated_at?: string
+          youtube_video_id: string
+        }
+        Update: {
+          analysis?: Json
+          channel_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          enriched?: boolean
+          entity_links_suggested?: boolean
+          has_metadata?: boolean
+          has_transcript?: boolean
+          id?: string
+          library_id?: string
+          metadata?: Json
+          source_id?: string
+          source_type?: string
+          thumbnail_url?: string | null
+          transcript_segmented?: boolean
+          updated_at?: string
+          youtube_video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_videos_channel_library_fk"
+            columns: ["library_id", "channel_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_channels"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "youtube_videos_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "youtube_videos_source_library_type_fk"
+            columns: ["library_id", "source_id", "source_type"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["library_id", "id", "source_type"]
           },
         ]
       }
