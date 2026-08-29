@@ -1,7 +1,7 @@
 # Libri Worker Phase 3A: Isolated Railway Bootstrap
 
 Date: 2026-08-29
-Status: implemented and locally live-smoked; Railway deployment pending
+Status: deployed and health-gated on Railway; queue consumption remains disabled
 
 ## Outcome
 
@@ -51,3 +51,18 @@ that service, copy only the minimum Supabase variables required for the health p
 Code, and repository config overrides service settings when enabled, so the new service must not
 select the root general-worker `railway.toml`. See Railway's
 [Config as Code migration notice](https://docs.railway.com/config-as-code).
+
+## Hosted deployment
+
+The dedicated Railway service `libri-worker` is deployed in the existing `queue-worker` project.
+Deployment `ee48a407-0459-4e5f-9548-3f6401b58e08` reached `SUCCESS` from BuildOS commit
+`f875aac2cfc36ed6246597aa8cba47c5f70fe884` with the exact start command
+`node apps/worker/dist/libri-worker.js` and `/health` as its health gate.
+
+No public domain was added. Railway's health gate can return HTTP 200 from this process only while
+the Libri bootstrap is running and its Supabase probe is connected. The strict hosted profile also
+rejects startup if `LIBRI_WORKER_ENABLED` is anything other than `false`.
+
+The existing `agentic-chat-worker` and `daily-brief-worker` deployments also reached `SUCCESS` on
+the same commit with their original `chat-worker.js` and `index.js` entrypoints respectively.
+See the [Phase 3A deployment receipt](./LIBRI_WORKER_PHASE_3A_DEPLOYMENT_RECEIPT_2026-08-29.md).
