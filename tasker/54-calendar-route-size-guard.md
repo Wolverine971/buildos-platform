@@ -3,7 +3,7 @@
 # 54 — Split `api/calendar/+server.ts` and get `main` green again
 
 **Created:** 2026-08-18
-**Status:** Route split and RLS repair deployed; `main` green — connected Google Calendar mutation smoke pending
+**Status:** Route split and RLS repair deployed; scoped gates green — current CI blocked by existing worker test typing, connected Google Calendar mutation smoke pending
 **Mission:** Restore a green `main` by bringing the calendar proxy route back under the 400-line
 route-size guard, without changing a single response shape.
 
@@ -245,6 +245,12 @@ pending and must not be claimed; it mutates real calendar data and requires sepa
 - A production rollback-only transaction impersonating the real authenticated user/actor completed
   projectless personal-event create → update → delete under the deployed policy. No test database
   row or Google event remained after the transaction.
+- Commit `d5c452b7e` records the migration, SQL contract, executor regression, and this tracker update
+  on `main`. CI run
+  [`33279339860`](https://github.com/Wolverine971/buildos-platform/actions/runs/33279339860)
+  failed in the pre-existing `@buildos/worker#typecheck:tests` debt in
+  `agenticChatTurnExecutor.test.ts`, before coverage or SQL contracts ran. Those errors are the same
+  unrelated worker-test typing failures present on the parent commit; no calendar/RLS gate failed.
 - The remaining W5 external mutation leg is intentionally still open: create a uniquely named
   recurring task event through `/api/calendar`, update it, verify it through the connected calendar,
   delete it, and clean up the temporary task. This mutates the real Google Calendar and must be
