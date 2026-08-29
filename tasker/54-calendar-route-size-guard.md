@@ -3,7 +3,7 @@
 # 54 — Split `api/calendar/+server.ts` and get `main` green again
 
 **Created:** 2026-08-18
-**Status:** Route split deployed; `main` green on exact follow-up — authenticated live smoke pending
+**Status:** Route split and RLS repair deployed; `main` green — connected Google Calendar mutation smoke pending
 **Mission:** Restore a green `main` by bringing the calendar proxy route back under the 400-line
 route-size guard, without changing a single response shape.
 
@@ -221,6 +221,34 @@ allowlist still has exactly 33 entries, and the calendar UI walkthrough in W5 is
 
 The GitHub CI exit is complete. The authenticated connected-calendar UI walkthrough remains
 pending and must not be claimed; it mutates real calendar data and requires separate authorization.
+
+## Production smoke follow-up — 2026-08-29
+
+- The authenticated calendar UI loaded both connected Google accounts. A temporary BuildOS task
+  completed its internal create, update, and delete lifecycle and was cleaned up.
+- A user-scope `create_calendar_event` smoke then exposed a real production regression before any
+  Google event was created: `new row violates row-level security policy for table "onto_events"`.
+  The tool correctly produced a projectless personal event owned and created by the authenticated
+  actor; the July 30 Phase 0 lockdown had replaced the earlier personal-event access contract with
+  project-membership-only policies, which necessarily reject `project_id IS NULL`.
+- Migration `20260829223736_restore_personal_onto_events_rls.sql` restores only the intended narrow
+  access: project events still require project membership, while projectless rows require
+  `created_by = current_actor_id()` and either matching actor ownership or `standalone` ownership.
+  The same predicate protects SELECT, INSERT, UPDATE (`USING` and `WITH CHECK`), and DELETE, so a
+  personal row cannot be reassigned to another actor. The migration was applied to production and
+  recorded as applied in the Supabase migration ledger on 2026-08-29.
+- The new disposable PostgreSQL contract covers own actor and standalone events, existing project
+  authorization, cross-user invisibility, spoofed ownership, forbidden projectless task ownership,
+  update reassignment, and deletion. The complete disposable SQL suite passes 17/17. The focused
+  CalendarExecutor regression confirms the web path emits the exact RLS-compatible personal-event
+  shape; it and the existing task-edge integrity suite pass 5/5.
+- A production rollback-only transaction impersonating the real authenticated user/actor completed
+  projectless personal-event create → update → delete under the deployed policy. No test database
+  row or Google event remained after the transaction.
+- The remaining W5 external mutation leg is intentionally still open: create a uniquely named
+  recurring task event through `/api/calendar`, update it, verify it through the connected calendar,
+  delete it, and clean up the temporary task. This mutates the real Google Calendar and must be
+  recorded only after the action-time browser confirmation and successful cleanup.
 
 ## Notes
 
