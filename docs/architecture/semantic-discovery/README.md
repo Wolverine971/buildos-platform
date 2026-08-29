@@ -316,16 +316,31 @@ lesson: gates trigger from ground truth, not model text).
   platform.openai.com/settings/organization/billing — a few dollars covers the
   whole backfill (~cents) plus months of steady state.
 
-### Remaining before Phase 2 is DONE (in order, once credits exist)
+### 2026-08-29 (later) — Tier-1 eval harness BUILT + fixture seeded
 
-1. Run the backfill (`pnpm --filter=@buildos/worker backfill:embeddings`),
+`apps/web/scripts/agentic-e2e/semantic/`: `fixture.ts` (the "Driftline Supply
+Co." ProjectSpec — marketing landscape + ops/eng decoys — and an 18-query
+labeled battery with vocabulary-mismatch cases and reverse-direction ops
+queries), `seed.ts` (guardrailed seed under the demo account; SEEDED —
+project `095d5155-06a8-4aed-a309-cc26f9238f72`, and the live DB triggers
+enqueued 26 pending embed jobs, proving the trigger path), `run-tier1.ts`
+(drives the REAL `exploreProject` tool path; `--embed` embeds the fixture
+directly through the shared module so the eval needs neither worker deploy
+nor full backfill; gate = mean recall ≥ 0.75 AND zero decoy violations in the
+top-max(5,|hits|) window; exit code enforces it). Dry-run verified: fixture +
+all 24 expectation labels resolve; stops exactly at the credits wall.
+
+### Remaining before Phase 2 is DONE (in order, once OpenAI credits exist)
+
+1. `cd apps/web && pnpm exec tsx scripts/agentic-e2e/semantic/run-tier1.ts
+   --embed` — embeds the fixture and runs the Tier-1 battery (the phase gate).
+2. Run the full backfill (`pnpm --filter=@buildos/worker backfill:embeddings`),
    spot-check nearest-neighbor sanity on real data.
-2. Commit is prepared locally — push to main to deploy worker + web
-   (Railway `daily-brief-worker` picks up the embed processor; Vercel mounts
-   `explore_project`).
-3. Live smoke: explore_project from chat (global + project scope), confirm
+3. Push main to deploy worker + web (commits are prepared locally; Railway
+   `daily-brief-worker` picks up the embed processor and drains the pending
+   jobs; Vercel mounts `explore_project`).
+4. Live smoke: explore_project from chat (global + project scope), confirm
    `chat_tool_executions` rows show family `semantic` with result counts.
-4. Tier-1 retrieval eval battery (the phase gate) on the seeded fixture.
 
 ## UX decisions (ratified with DJ, 2026-08-28)
 
