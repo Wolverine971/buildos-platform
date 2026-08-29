@@ -65,6 +65,32 @@ describe('dedicated Libri worker bootstrap', () => {
 		});
 		await bootstrap.stop();
 	});
+
+	it('degrades health without leaking a rejected scheduled probe', async () => {
+		vi.useFakeTimers();
+		try {
+			const database = {
+				probe: vi
+					.fn<() => Promise<void>>()
+					.mockResolvedValueOnce(undefined)
+					.mockRejectedValueOnce(new Error('offline'))
+			};
+			const bootstrap = new LibriWorkerBootstrap(database, loadLibriWorkerConfig({}));
+
+			await bootstrap.start();
+			await vi.advanceTimersByTimeAsync(15_000);
+
+			expect(database.probe).toHaveBeenCalledTimes(2);
+			expect(bootstrap.getHealth()).toMatchObject({
+				healthy: false,
+				reason: 'database_probe_failed',
+				database: { connected: false, consecutiveProbeFailures: 1 }
+			});
+			await bootstrap.stop();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 });
 
 describe('dedicated Libri worker service', () => {

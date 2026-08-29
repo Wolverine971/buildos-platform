@@ -118,19 +118,20 @@ export class LibriWorkerBootstrap {
 			this.startedAtMs = Date.now();
 			await this.probeNow();
 			if (this.state !== 'starting') return;
-			this.probeInterval = setInterval(() => {
-				void this.probeNow();
-			}, this.config.databaseProbeIntervalMs);
-			this.probeInterval.unref();
+			this.startProbeInterval();
 			this.state = 'running';
 		} catch {
 			if (this.state !== 'starting') return;
-			this.probeInterval = setInterval(() => {
-				void this.probeNow();
-			}, this.config.databaseProbeIntervalMs);
-			this.probeInterval.unref();
+			this.startProbeInterval();
 			this.state = 'running';
 		}
+	}
+
+	private startProbeInterval(): void {
+		this.probeInterval = setInterval(() => {
+			void this.probeNow().catch(() => undefined);
+		}, this.config.databaseProbeIntervalMs);
+		this.probeInterval.unref();
 	}
 
 	private async stopRuntime(): Promise<void> {
