@@ -42,10 +42,20 @@ type OcrOutput = {
 	language?: string;
 };
 
+// OCR routes through OpenRouter (one provider, one bill — same pattern as the
+// embeddings pipeline); a direct OpenAI key is only the fallback route. An
+// IMAGE_OCR_MODEL override is used verbatim, so on the OpenRouter route it
+// must carry the provider prefix (e.g. openai/gpt-4o-mini).
+const OPENROUTER_API_KEY =
+	process.env.PRIVATE_OPENROUTER_API_KEY?.trim() || process.env.OPENROUTER_API_KEY?.trim();
 const OPENAI_API_KEY =
 	process.env.OPENAI_API_KEY?.trim() || process.env.PRIVATE_OPENAI_API_KEY?.trim();
-const OCR_MODEL = process.env.IMAGE_OCR_MODEL || 'gpt-4o-mini';
-const CHAT_COMPLETIONS_URL = 'https://api.openai.com/v1/chat/completions';
+const OCR_API_KEY = OPENROUTER_API_KEY || OPENAI_API_KEY;
+const CHAT_COMPLETIONS_URL = OPENROUTER_API_KEY
+	? 'https://openrouter.ai/api/v1/chat/completions'
+	: 'https://api.openai.com/v1/chat/completions';
+const OCR_MODEL =
+	process.env.IMAGE_OCR_MODEL || (OPENROUTER_API_KEY ? 'openai/gpt-4o-mini' : 'gpt-4o-mini');
 
 function trimToLimit(text: string, maxLength: number): string {
 	if (text.length <= maxLength) return text;
@@ -53,14 +63,16 @@ function trimToLimit(text: string, maxLength: number): string {
 }
 
 async function extractOcrFromImageUrl(imageUrl: string): Promise<OcrOutput> {
-	if (!OPENAI_API_KEY) {
-		throw new Error('Missing OpenAI API key for asset OCR');
+	if (!OCR_API_KEY) {
+		throw new Error(
+			'Missing PRIVATE_OPENROUTER_API_KEY (or an OpenAI key fallback) for asset OCR'
+		);
 	}
 
 	const response = await fetch(CHAT_COMPLETIONS_URL, {
 		method: 'POST',
 		headers: {
-			Authorization: `Bearer ${OPENAI_API_KEY}`,
+			Authorization: `Bearer ${OCR_API_KEY}`,
 			'Content-Type': 'application/json'
 		},
 		body: JSON.stringify({

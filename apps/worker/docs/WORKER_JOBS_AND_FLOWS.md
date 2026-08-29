@@ -23,6 +23,7 @@ legacy compatibility values, not active processors.
 | `process_onto_braindump`         | `workers/braindump/braindumpProcessor.ts`             | `POST /queue/braindump/process`               |
 | `transcribe_voice_note`          | `workers/voice-notes/voiceNoteTranscriptionWorker.ts` | Voice note flow                               |
 | `extract_onto_asset_ocr`         | `workers/assets/assetOcrWorker.ts`                    | Ontology asset flow                           |
+| `embed_onto_entity`              | `workers/embeddings/embedEntityWorker.ts`             | DB triggers on ontology writes                |
 | `agent_run`                      | `workers/agent-run/agentRunWorker.ts`                 | Chat, manual agent runs, scheduled Operatives |
 | `build_project_context_snapshot` | `workers/ontology/projectContextSnapshotWorker.ts`    | Web project context snapshot service          |
 | `generate_project_icon`          | `workers/project-icon/projectIconWorker.ts`           | Web project icon service, snapshot worker     |

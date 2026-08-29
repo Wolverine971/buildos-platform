@@ -117,6 +117,7 @@ The live source of truth is `queue.process(...)` registrations in
 | `process_onto_braindump`         | `workers/braindump/braindumpProcessor.ts`             |
 | `transcribe_voice_note`          | `workers/voice-notes/voiceNoteTranscriptionWorker.ts` |
 | `extract_onto_asset_ocr`         | `workers/assets/assetOcrWorker.ts`                    |
+| `embed_onto_entity`              | `workers/embeddings/embedEntityWorker.ts`             |
 | `agent_run`                      | `workers/agent-run/agentRunWorker.ts`                 |
 | `build_project_context_snapshot` | `workers/ontology/projectContextSnapshotWorker.ts`    |
 | `generate_project_icon`          | `workers/project-icon/projectIconWorker.ts`           |

@@ -96,6 +96,7 @@ require `Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN`.
 | `process_onto_braindump`         | `POST /queue/braindump/process`                     |
 | `transcribe_voice_note`          | Voice note upload flow                              |
 | `extract_onto_asset_ocr`         | Ontology asset flow                                 |
+| `embed_onto_entity`              | DB triggers on ontology writes (semantic discovery) |
 | `agent_run`                      | Chat/manual/scheduled Operatives                    |
 | `build_project_context_snapshot` | Web project context snapshot service                |
 | `generate_project_icon`          | Project icon generation service and snapshot worker |

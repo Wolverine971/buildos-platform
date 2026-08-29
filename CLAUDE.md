@@ -103,12 +103,12 @@ SvelteKit app with path aliases: `$components` → `src/lib/components`, `$ui` �
 Express server with three main components:
 
 - **API Server** (`src/index.ts`) — REST endpoints for job management
-- **Worker** (`src/worker.ts`) — Supabase queue consumer processing jobs (briefs + audio narration, braindumps, notifications, chat classification, voice transcription, OCR, ontology, agent runs, Project Reviews, project icons, SMS)
+- **Worker** (`src/worker.ts`) — Supabase queue consumer processing jobs (briefs + audio narration, braindumps, notifications, chat classification, voice transcription, OCR, ontology, semantic-discovery embeddings, agent runs, Project Reviews, project icons, SMS)
 - **Scheduler** (`src/scheduler.ts`) — Cron-based job scheduling with timezone-aware brief generation and engagement backoff
 
 **Queue system:** Redis-free. Jobs live in `queue_jobs`; workers claim rows atomically via Supabase RPCs (`add_queue_job`, `claim_pending_jobs`, `complete_queue_job`, `fail_queue_job`) using `FOR UPDATE SKIP LOCKED`. `SupabaseQueue` defaults: `pollInterval=5s`, `batchSize=5`, `stalledTimeout=5min`. The `JobAdapter` in `workers/shared/jobAdapter.ts` bridges the legacy BullMQ-style processor interface to the Supabase queue.
 
-**Active job types** (registered in `src/worker.ts`): `generate_daily_brief`, `onboarding_analysis`, `send_notification`, `project_activity_batch_flush`, `schedule_daily_sms`, `send_sms`, `classify_chat_session`, `process_onto_braindump`, `transcribe_voice_note`, `generate_brief_audio`, `extract_onto_asset_ocr`, `agent_run`, `build_project_context_snapshot`, `generate_project_icon`, `buildos_project_loop`, `sync_calendar`, `admin_question_tree`.
+**Active job types** (registered in `src/worker.ts`): `generate_daily_brief`, `onboarding_analysis`, `send_notification`, `project_activity_batch_flush`, `schedule_daily_sms`, `send_sms`, `classify_chat_session`, `process_onto_braindump`, `transcribe_voice_note`, `generate_brief_audio`, `extract_onto_asset_ocr`, `embed_onto_entity`, `agent_run`, `build_project_context_snapshot`, `generate_project_icon`, `buildos_project_loop`, `sync_calendar`, `admin_question_tree`.
 
 ### LLM Integration (`packages/smart-llm`)
 
