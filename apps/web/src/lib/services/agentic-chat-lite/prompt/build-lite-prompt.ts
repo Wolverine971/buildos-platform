@@ -368,7 +368,8 @@ function buildSituationalRulesSection(
 		source: 'lite.situational_rules',
 		slots: {
 			writeIntent: Boolean(turnSituation?.writeIntent),
-			webResearch: Boolean(turnSituation?.webResearch)
+			webResearch: Boolean(turnSituation?.webResearch),
+			reviewDelegation: Boolean(turnSituation?.reviewDelegation)
 		},
 		content
 	});

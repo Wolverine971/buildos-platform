@@ -23,6 +23,7 @@ import { isWriteToolName } from '@buildos/agentic-chat-runtime/catalog';
 export type LitePromptTurnSituation = {
 	writeIntent: boolean;
 	webResearch: boolean;
+	reviewDelegation?: boolean;
 	livingWorkspace?: boolean;
 	livingWorkspaceCapture?: boolean;
 	domainProfile?: string | null;
@@ -53,6 +54,12 @@ export const LIVING_WORKSPACE_RULE_LINES = [
 export const LIVING_WORKSPACE_CAPTURE_RULE_LINE =
 	'- This is an implicit capture turn: perform the smallest relevant durable document write before replying. Do not merely acknowledge or promise an update. Stop for clarification only when a contradiction or genuinely ambiguous target makes a safe write impossible.';
 
+export const REVIEW_DELEGATION_RULE_LINES = [
+	'- Gather and read the relevant project entities first, then call delegate_task once with the exact focused project ID, the exact discovered entity IDs, and the intended outcome for each entity.',
+	'- A prose plan, chat table, or proposal document is not a staged change set. Do not finish with only a plan and do not ask whether to delegate; this turn already commissions the review-only handoff.',
+	'- delegate_task stages changes for later user review. It does not approve or apply them, so never substitute direct writes and never claim the proposal is staged until that tool succeeds.'
+];
+
 // Conservative on purpose: web-tool mounting is the primary trigger, this
 // regex only buys the block (and early web-tool mount, via the tool selector)
 // for turns that name web research before any tool exists on the surface.
@@ -79,6 +86,7 @@ export function resolveLitePromptTurnSituation(params: {
 	toolNames: string[];
 	turnIntentRequiresWrite?: boolean | null;
 	latestUserMessage?: string | null;
+	reviewDelegation?: boolean | null;
 	livingWorkspace?: boolean | null;
 	livingWorkspaceCapture?: boolean | null;
 	domainProfile?: string | null;
@@ -89,6 +97,7 @@ export function resolveLitePromptTurnSituation(params: {
 	return {
 		writeIntent: Boolean(params.turnIntentRequiresWrite) || writeToolsMounted,
 		webResearch: webToolsMounted || looksLikeWebResearchTurn(params.latestUserMessage),
+		reviewDelegation: params.reviewDelegation === true,
 		livingWorkspace: params.livingWorkspace === true,
 		livingWorkspaceCapture: params.livingWorkspaceCapture === true,
 		domainProfile: params.domainProfile ?? null,
@@ -101,6 +110,7 @@ export function hasActiveSituation(situation: LitePromptTurnSituation | null | u
 		situation &&
 			(situation.writeIntent ||
 				situation.webResearch ||
+				situation.reviewDelegation ||
 				situation.livingWorkspace ||
 				situation.livingWorkspaceCapture)
 	);
@@ -121,6 +131,13 @@ export function renderSituationalRulesContent(
 	}
 	if (situation?.webResearch) {
 		blocks.push(['This turn involves web research:', ...WEB_RESEARCH_RULE_LINES].join('\n'));
+	}
+	if (situation?.reviewDelegation) {
+		blocks.push(
+			['This turn requires a review-staged Agent Run:', ...REVIEW_DELEGATION_RULE_LINES].join(
+				'\n'
+			)
+		);
 	}
 	if (situation?.livingWorkspace) {
 		const affinity = situation.domainAffinity

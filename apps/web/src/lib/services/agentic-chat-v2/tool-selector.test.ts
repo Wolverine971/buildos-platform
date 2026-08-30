@@ -389,6 +389,32 @@ describe('selectFastChatTools', () => {
 		expect(globalNames).not.toContain('delegate_task');
 	});
 
+	it('keeps delegate_task mounted for an explicit review-staging follow-up', () => {
+		const projectNames = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				'Stage the exact proposal as one review-required background change set for this project. Do not apply it.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+		const adviceOnlyNames = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage: 'Show me a proposal for the launch copy.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+		const globalNames = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage: 'Stage this as a review-required background change set.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(projectNames).toContain('delegate_task');
+		expect(adviceOnlyNames).not.toContain('delegate_task');
+		expect(globalNames).not.toContain('delegate_task');
+	});
+
 	it('mounts only skill_search + domain_search at launch under FASTCHAT_LEAN_DISCOVERY', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		vi.stubEnv('FASTCHAT_LEAN_DISCOVERY', 'true');

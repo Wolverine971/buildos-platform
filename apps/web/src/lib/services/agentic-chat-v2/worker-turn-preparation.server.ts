@@ -86,6 +86,7 @@ import { resolveMaterializedFastChatContext } from './materialized-context-cache
 import { loadValidatedChatAttachments } from './stream-attachments';
 import { buildPendingTurnContractSystemMessage } from './turn-contract';
 import { resolveFastChatTurnPreparation } from './turn-preparation';
+import { looksLikeBroadProjectChangeTurn, looksLikeReviewStagingTurn } from './tool-selector';
 import type { FastChatHistoryMessage } from './types';
 import type { LegacyFallbackHistorySnapshot } from './turn-admission';
 import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.server';
@@ -534,6 +535,10 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		const turnSituation = resolveLitePromptTurnSituation({
 			toolNames: workerPromptTools.map((tool) => tool.function?.name ?? '').filter(Boolean),
 			latestUserMessage: messageForModel,
+			reviewDelegation:
+				workerPromptTools.some((tool) => tool.function?.name === 'delegate_task') &&
+				(looksLikeBroadProjectChangeTurn(contextType, messageForModel) ||
+					looksLikeReviewStagingTurn(contextType, messageForModel)),
 			livingWorkspace: agentWorkspace?.mode === LIVING_REFERENCE_MODE,
 			// The semantic disposition gate decides whether this particular message
 			// is a capture; admission does not classify it from its wording.

@@ -99,6 +99,22 @@ describe('renderSituationalRulesContent', () => {
 		expect(content).toContain('This turn involves web research:');
 	});
 
+	it('requires the review-only delegate handoff instead of a prose proposal', () => {
+		const situation = resolveLitePromptTurnSituation({
+			toolNames: ['get_document_tree', 'delegate_task'],
+			latestUserMessage: 'Stage one coherent change set for review.',
+			reviewDelegation: true
+		});
+		const content = renderSituationalRulesContent(situation);
+
+		expect(situation.reviewDelegation).toBe(true);
+		expect(content).toContain('This turn requires a review-staged Agent Run:');
+		expect(content).toContain('then call delegate_task once');
+		expect(content).toContain('proposal document is not a staged change set');
+		expect(content).toContain('does not approve or apply');
+		expect(hasActiveSituation(situation)).toBe(true);
+	});
+
 	it('renders the living-reference agreement without turning brainstorming into canon', () => {
 		const content = renderSituationalRulesContent({
 			writeIntent: true,

@@ -136,6 +136,43 @@ async function openPrewarmedModal(
 	return { dialog, prewarmRequest, prewarmResponse, sessionBootstrapResponsePromise };
 }
 
+async function openPrewarmedExistingSession(page: Page, sessionId: string, prompt: string) {
+	const matchesSessionPrewarm = (request: import('@playwright/test').Request): boolean => {
+		if (
+			request.method() !== 'POST' ||
+			new URL(request.url()).pathname !== '/api/agent/v2/prewarm'
+		) {
+			return false;
+		}
+		const body = request.postDataJSON() as {
+			session_id?: string;
+			ensure_session?: boolean;
+		};
+		return body.session_id === sessionId && body.ensure_session !== true;
+	};
+	const prewarmRequestPromise = page.waitForRequest(matchesSessionPrewarm, { timeout: 60_000 });
+	const prewarmResponsePromise = page.waitForResponse(
+		(response) => matchesSessionPrewarm(response.request()),
+		{ timeout: 60_000 }
+	);
+
+	await page.goto(`/history?id=${encodeURIComponent(sessionId)}&itemType=chat_session`);
+	await page
+		.getByRole('button', { name: 'Use necessary only' })
+		.click({ timeout: 3_000 })
+		.catch(() => undefined);
+	const dialog = page.getByRole('dialog', { name: 'BuildOS chat assistant dialog' });
+	await expect(dialog).toBeVisible({ timeout: 60_000 });
+	const composer = dialog.locator('textarea').first();
+	await expect(composer).toBeEnabled();
+	await composer.fill(prompt);
+	const [prewarmRequest, prewarmResponse] = await Promise.all([
+		prewarmRequestPromise,
+		prewarmResponsePromise
+	]);
+	return { dialog, prewarmRequest, prewarmResponse };
+}
+
 async function readBootstrappedSessionId(
 	responsePromise: Promise<import('@playwright/test').Response> | null
 ): Promise<string> {
@@ -147,12 +184,16 @@ async function readBootstrappedSessionId(
 	return sessionId!;
 }
 
-async function seedModalProject(admin: SupabaseClient, actorId: string): Promise<string> {
+async function seedModalProject(
+	admin: SupabaseClient,
+	actorId: string,
+	name = `AE2E · Modal wiring · ${randomUUID().slice(0, 8)}`
+): Promise<string> {
 	const { data, error } = await admin
 		.from('onto_projects')
 		.insert({
 			created_by: actorId,
-			name: `AE2E · Modal wiring · ${randomUUID().slice(0, 8)}`,
+			name,
 			description: 'Disposable project that unlocks the real modal context chooser.',
 			state_key: 'active',
 			type_key: 'project.business.product_launch'
@@ -160,6 +201,55 @@ async function seedModalProject(admin: SupabaseClient, actorId: string): Promise
 		.select('id')
 		.single();
 	if (error) throw new Error(`Failed to seed modal E2E project: ${error.message}`);
+	return data.id;
+}
+
+async function seedModalSession(admin: SupabaseClient, userId: string): Promise<string> {
+	const nowMs = Date.now();
+	const now = new Date(nowMs).toISOString();
+	const { data, error } = await admin
+		.from('chat_sessions')
+		.insert({
+			user_id: userId,
+			context_type: 'global',
+			status: 'active',
+			title: `AE2E · Prepared lease · ${randomUUID().slice(0, 8)}`,
+			last_message_at: now,
+			message_count: 3
+		})
+		.select('id')
+		.single();
+	if (error) throw new Error(`Failed to seed modal E2E session: ${error.message}`);
+	const { error: messageError } = await admin.from('chat_messages').insert([
+		{
+			session_id: data.id,
+			user_id: userId,
+			role: 'user',
+			content: 'Prior canary context.',
+			created_at: new Date(nowMs - 2_000).toISOString(),
+			metadata: { source: 'agentic_modal_e2e_fixture' }
+		},
+		{
+			session_id: data.id,
+			user_id: userId,
+			role: 'assistant',
+			content: 'Prior canary acknowledgement.',
+			created_at: new Date(nowMs - 1_000).toISOString(),
+			metadata: { source: 'agentic_modal_e2e_fixture' }
+		},
+		{
+			session_id: data.id,
+			user_id: userId,
+			role: 'user',
+			content: 'Ready for the prepared-lease canary.',
+			created_at: now,
+			metadata: { source: 'agentic_modal_e2e_fixture' }
+		}
+	]);
+	if (messageError) {
+		await admin.from('chat_sessions').delete().eq('id', data.id);
+		throw new Error(`Failed to seed modal E2E history: ${messageError.message}`);
+	}
 	return data.id;
 }
 
@@ -178,6 +268,25 @@ async function cleanupModalSession(
 		.select('id')
 		.maybeSingle();
 	if (!error && data) return;
+	const retainedWorkerEvidence =
+		error?.message.includes('agentic_chat_') &&
+		(error.message.includes('cannot_be_deleted') ||
+			error.message.includes('retention_not_elapsed'));
+	if (retainedWorkerEvidence) {
+		const { error: archiveError } = await admin
+			.from('chat_sessions')
+			.update({ archived_at: new Date().toISOString() })
+			.eq('id', sessionId)
+			.eq('user_id', userId);
+		if (!archiveError) return;
+		if (!testFailed) {
+			throw new Error(
+				`Failed to archive retained modal E2E session: ${archiveError.message}`
+			);
+		}
+		console.error(archiveError);
+		return;
+	}
 
 	const cleanupError = new Error(
 		error
@@ -205,6 +314,43 @@ async function findSessionIdForClientTurn(
 		await new Promise((resolve) => setTimeout(resolve, 250));
 	}
 	throw new Error(`Modal E2E turn ${clientTurnId} did not persist a session id`);
+}
+
+async function readPreparedAdmissionReceipt(
+	admin: SupabaseClient,
+	userId: string,
+	clientTurnId: string
+): Promise<{
+	sessionId: string;
+	preparedPromptId: string;
+	inspectionMs: number;
+}> {
+	for (let attempt = 0; attempt < 10; attempt += 1) {
+		const { data, error } = await admin
+			.from('chat_turn_runs')
+			.select('session_id, prepared_prompt_id, prepared_prompt_hit, request_payload')
+			.eq('user_id', userId)
+			.eq('client_turn_id', clientTurnId)
+			.maybeSingle();
+		if (error) throw new Error(`Failed to read prepared-admission receipt: ${error.message}`);
+		if (data) {
+			const requestPayload = data.request_payload as Record<string, unknown>;
+			const lease = requestPayload.preparedAdmissionLease as
+				| Record<string, unknown>
+				| undefined;
+			expect(data.prepared_prompt_hit).toBe(true);
+			expect(data.prepared_prompt_id).toMatch(/^[0-9a-f-]{36}$/i);
+			expect(lease).toMatchObject({ requested: true, hit: true, missReason: null });
+			expect(lease?.inspectionMs).toEqual(expect.any(Number));
+			return {
+				sessionId: data.session_id,
+				preparedPromptId: data.prepared_prompt_id!,
+				inspectionMs: lease!.inspectionMs as number
+			};
+		}
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+	throw new Error(`Modal E2E turn ${clientTurnId} did not persist an admission receipt`);
 }
 
 async function cleanupModalProject(
@@ -259,7 +405,7 @@ async function cleanupModalFixtures(params: {
 	if (cleanupError) throw cleanupError;
 }
 
-test('@live real modal prewarms, sends the canonical request, and renders the streamed reply', async ({
+test('@live existing modal session consumes its prewarmed lease through the worker', async ({
 	page
 }) => {
 	const { admin, userId, actorId } = await authenticateHarnessUser(page);
@@ -269,40 +415,69 @@ test('@live real modal prewarms, sends the canonical request, and renders the st
 	let testFailed = false;
 
 	try {
-		projectId = await seedModalProject(admin, actorId);
-		const streamRequestPromise = page.waitForRequest(
-			(request) =>
-				request.method() === 'POST' && request.url().endsWith('/api/agent/v2/stream')
-		);
-
-		const setup = await openPrewarmedModal(page, PROMPT);
-		const { dialog, prewarmRequest } = setup;
-		expect(prewarmRequest.postDataJSON()).toMatchObject({
-			context_type: 'global',
-			ensure_session: false
+		sessionId = await seedModalSession(admin, userId);
+		const setup = await openPrewarmedExistingSession(page, sessionId, PROMPT);
+		const { dialog, prewarmRequest, prewarmResponse } = setup;
+		const prewarmBody = prewarmRequest.postDataJSON() as Record<string, unknown>;
+		expect(prewarmBody).toMatchObject({
+			session_id: sessionId,
+			context_type: 'global'
 		});
+		expect(prewarmBody.ensure_session).toBeUndefined();
+		const prewarmPayload = (await prewarmResponse.json()) as {
+			data?: { prepared_prompt?: { key?: string; cache_key?: string } | null };
+		};
+		const preparedPromptKey = prewarmPayload.data?.prepared_prompt?.key ?? null;
+		expect(preparedPromptKey).toMatch(/^pp_v1\./);
+		expect(prewarmPayload.data?.prepared_prompt?.cache_key).toBe('v2|global|none|none|none');
 
 		const composer = dialog.locator('textarea').first();
 		await expect(composer).toBeEnabled();
 		await expect(composer).toHaveValue(PROMPT);
+		const admissionRequestPromise = page.waitForRequest(
+			(request) =>
+				request.method() === 'POST' &&
+				new URL(request.url()).pathname === '/api/agent/v2/turns'
+		);
+		const admissionResponsePromise = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' &&
+				new URL(response.url()).pathname === '/api/agent/v2/turns'
+		);
 		await dialog.getByRole('button', { name: 'Send message' }).click();
 
-		const streamRequest = await streamRequestPromise;
-		const body = streamRequest.postDataJSON() as Record<string, unknown>;
-		sessionId = typeof body.session_id === 'string' ? body.session_id : null;
-		clientTurnId = typeof body.client_turn_id === 'string' ? body.client_turn_id : null;
+		const [admissionRequest, admissionResponse] = await Promise.all([
+			admissionRequestPromise,
+			admissionResponsePromise
+		]);
+		const body = admissionRequest.postDataJSON() as Record<string, unknown>;
+		sessionId = typeof body.sessionId === 'string' ? body.sessionId : null;
+		clientTurnId = typeof body.clientTurnId === 'string' ? body.clientTurnId : null;
 		expect(body).toMatchObject({
 			message: PROMPT,
-			context_type: 'global',
+			context: { type: 'global', entityId: null, projectId: null },
 			attachments: [],
-			projectFocus: null
+			projectFocus: null,
+			preparedPromptKey
 		});
-		expect(body.client_turn_id).toMatch(/^[0-9a-f-]{36}$/i);
-		expect(body.stream_run_id).toMatch(/^[0-9a-f-]{36}$/i);
+		expect(body.clientTurnId).toMatch(/^[0-9a-f-]{36}$/i);
+		expect(body.streamRunId).toMatch(/^[0-9a-f-]{36}$/i);
 		expect(body).toHaveProperty('lastTurnContext');
-		expect(body).toHaveProperty('preparedPromptKey');
+		expect(admissionResponse.ok()).toBe(true);
+		const serverTiming = admissionResponse.headers()['server-timing'] ?? '';
+		expect(serverTiming).toContain('prepared-admission');
+		expect(serverTiming).toContain('desc="hit"');
+		expect(serverTiming).toContain('worker-preparation');
+		expect(serverTiming).toContain('worker-admission');
+		if (!clientTurnId)
+			throw new Error('Worker admission request did not include a client turn id');
+		const receipt = await readPreparedAdmissionReceipt(admin, userId, clientTurnId);
+		sessionId ??= receipt.sessionId;
+		console.log(
+			`[agentic-modal-e2e] prepared lease hit: ${serverTiming}; durable_inspection_ms=${receipt.inspectionMs}`
+		);
 
-		await expect(dialog.getByTestId('agent-chat-user-message')).toContainText(PROMPT);
+		await expect(dialog.getByTestId('agent-chat-user-message').last()).toContainText(PROMPT);
 		const stopButton = dialog.getByRole('button', { name: 'Stop response' });
 		await expect(stopButton).toBeVisible();
 		await expect(stopButton).toBeHidden({
@@ -329,6 +504,102 @@ test('@live real modal prewarms, sends the canonical request, and renders the st
 			userId,
 			actorId,
 			sessionId,
+			projectId,
+			testFailed
+		});
+	}
+});
+
+test('@prewarm project selection materializes a project-scoped prepared prompt', async ({
+	page
+}) => {
+	const { admin, userId, actorId } = await authenticateHarnessUser(page);
+	const projectName = `AE2E · Project prewarm · ${randomUUID().slice(0, 8)}`;
+	let projectId: string | null = null;
+	let testFailed = false;
+
+	try {
+		projectId = await seedModalProject(admin, actorId, projectName);
+		const projectPrewarmRequestPromise = page.waitForRequest(
+			(request) => {
+				if (
+					request.method() !== 'POST' ||
+					new URL(request.url()).pathname !== '/api/agent/v2/prewarm'
+				) {
+					return false;
+				}
+				const body = request.postDataJSON() as {
+					context_type?: string;
+					entity_id?: string;
+					ensure_session?: boolean;
+				};
+				return (
+					body.context_type === 'project' &&
+					body.entity_id === projectId &&
+					body.ensure_session === false
+				);
+			},
+			{ timeout: 60_000 }
+		);
+		const projectPrewarmResponsePromise = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' &&
+				new URL(response.url()).pathname === '/api/agent/v2/prewarm' &&
+				(response.request().postDataJSON() as { entity_id?: string }).entity_id ===
+					projectId,
+			{ timeout: 60_000 }
+		);
+
+		await page.goto('/dashboard');
+		await page
+			.getByRole('button', { name: 'Use necessary only' })
+			.click({ timeout: 3_000 })
+			.catch(() => undefined);
+		await page.getByRole('button', { name: 'Open BuildOS chat' }).click();
+		const dialog = page.getByRole('dialog', { name: 'BuildOS chat assistant dialog' });
+		await expect(dialog).toBeVisible();
+		await dialog.getByRole('button', { name: /Chat inside a project/ }).click();
+		await dialog.getByRole('textbox', { name: 'Search projects' }).fill(projectName);
+		await dialog.getByRole('button', { name: new RegExp(projectName) }).click();
+		await dialog.getByRole('button', { name: /Project-wide chat/ }).click();
+
+		const [prewarmRequest, prewarmResponse] = await Promise.all([
+			projectPrewarmRequestPromise,
+			projectPrewarmResponsePromise
+		]);
+		expect(prewarmRequest.postDataJSON()).toMatchObject({
+			context_type: 'project',
+			entity_id: projectId,
+			ensure_session: false,
+			projectFocus: {
+				focusType: 'project-wide',
+				focusEntityId: null,
+				projectId
+			}
+		});
+		expect(prewarmResponse.ok()).toBe(true);
+		const payload = (await prewarmResponse.json()) as {
+			data?: {
+				cache_source?: string;
+				prepared_prompt?: { key?: string; cache_key?: string } | null;
+			};
+		};
+		expect(payload.data?.prepared_prompt?.key).toMatch(/^pp_v1\./);
+		expect(payload.data?.prepared_prompt?.cache_key).toBe(
+			`v2|project|${projectId}|project-wide|none`
+		);
+		console.log(
+			`[agentic-modal-e2e] project prewarm ready: cache_source=${payload.data?.cache_source ?? 'unknown'}`
+		);
+	} catch (error) {
+		testFailed = true;
+		throw error;
+	} finally {
+		await cleanupModalFixtures({
+			admin,
+			userId,
+			actorId,
+			sessionId: null,
 			projectId,
 			testFailed
 		});

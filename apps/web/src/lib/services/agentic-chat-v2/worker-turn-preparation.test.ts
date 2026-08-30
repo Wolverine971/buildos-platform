@@ -464,6 +464,55 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
+	it('adds the review-delegation situation for a broad project change', async () => {
+		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+			...mocks.resolveFastChatTurnPreparation(),
+			selectedSurfaceProfile: 'project_write_document',
+			tools: ['get_document_tree', 'delegate_task'].map((name) => ({
+				type: 'function',
+				function: {
+					name,
+					description: name,
+					parameters: { type: 'object', properties: {} }
+				}
+			}))
+		});
+		mocks.loadFastChatPromptContext.mockResolvedValueOnce({
+			contextType: 'project',
+			entityId: 'd9000000-0000-4000-8000-000000000001',
+			projectId: 'd9000000-0000-4000-8000-000000000001',
+			data: { source: 'server' }
+		});
+
+		await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command({
+				context: {
+					type: 'project',
+					entityId: 'd9000000-0000-4000-8000-000000000001',
+					projectId: 'd9000000-0000-4000-8000-000000000001'
+				},
+				message:
+					'Reorient our whole marketing direction and update every relevant document, goal, and task.'
+			}) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				turnSituation: expect.objectContaining({ reviewDelegation: true })
+			})
+		);
+	});
+
 	it('omits retired and impossible write controls from a read-only worker artifact', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),

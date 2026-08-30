@@ -114,7 +114,8 @@ export function selectFastChatTools(params: {
 		.join('\n');
 	const delegationTools =
 		looksLikeDelegatedResearchTurn(delegationIntentText) ||
-		looksLikeBroadProjectChangeTurn(params.contextType, delegationIntentText)
+		looksLikeBroadProjectChangeTurn(params.contextType, delegationIntentText) ||
+		looksLikeReviewStagingTurn(params.contextType, delegationIntentText)
 			? ['delegate_task']
 			: [];
 	// tasker/39 stage 3: turns that plainly ask for web research get web tools
@@ -195,7 +196,7 @@ function looksLikeDelegatedResearchTurn(latestUserMessage?: string | null): bool
  * one coherent project change that needs discovery, several reads, and a staged
  * multi-entity proposal. Keep ordinary single-entity edits on the direct path.
  */
-function looksLikeBroadProjectChangeTurn(
+export function looksLikeBroadProjectChangeTurn(
 	contextType: ChatContextType,
 	latestUserMessage?: string | null
 ): boolean {
@@ -232,6 +233,30 @@ function looksLikeBroadProjectChangeTurn(
 		);
 
 	return hasBroadWorkingSet || hasStrategicReorientation || hasCampaignInsertion;
+}
+
+/**
+ * Keep the review bridge mounted across the explicit follow-up that often comes
+ * after chat has presented a gathered plan. This is intentionally narrower than
+ * generic "proposal" language: the user must ask to stage/dispatch a change set
+ * or name the review-required background handoff.
+ */
+export function looksLikeReviewStagingTurn(
+	contextType: ChatContextType,
+	latestUserMessage?: string | null
+): boolean {
+	if (contextType !== 'project' && contextType !== 'ontology') return false;
+	const text = latestUserMessage?.trim() ?? '';
+	if (!text) return false;
+
+	return (
+		/\b(?:stage|dispatch)\b[\s\S]{0,140}\b(?:change[-\s]?set|background\s+(?:agent|delegate|run))\b/i.test(
+			text
+		) ||
+		/\b(?:change[-\s]?set|background\s+(?:agent|delegate|run))\b[\s\S]{0,140}\b(?:stage|dispatch|review[-\s]?required)\b/i.test(
+			text
+		)
+	);
 }
 
 function looksLikeExternalEmailReadTurn(latestUserMessage?: string | null): boolean {

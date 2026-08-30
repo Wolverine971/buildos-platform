@@ -579,7 +579,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'new_entity',
 		descriptionOverride:
-			'Prepare one reviewable project change proposal in a background Agent Run. Use only after gathering and reading the relevant project entities. Pass their exact UUIDs and the intended per-entity outcomes in instructions. This worker path is deliberately narrow: it always runs project-scoped, read-write, and review-required, so it stages a change set and cannot apply ontology changes before user approval.',
+			'Prepare one reviewable project change proposal in a background Agent Run. For a broad multi-entity change or an explicit request to stage a change set, gather and read the relevant project entities, then call this tool in the same turn. Pass their exact UUIDs and the intended per-entity outcomes in instructions. A prose plan or proposal document is not a staged change set, and the user does not need to approve delegation when they already requested review-only staging. This worker path is deliberately narrow: it always runs project-scoped, read-write, and review-required, so it stages a change set and cannot apply ontology changes before user approval.',
 		requiredNames: ['goal', 'project_id'],
 		reviewedArgumentNames: [
 			'goal',

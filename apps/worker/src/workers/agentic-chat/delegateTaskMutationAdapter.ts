@@ -1,5 +1,4 @@
 // apps/worker/src/workers/agentic-chat/delegateTaskMutationAdapter.ts
-import { randomUUID } from 'node:crypto';
 import {
 	type Database,
 	type Json,
@@ -58,11 +57,10 @@ export class AgenticChatDelegateTaskMutationAdapter implements AgenticChatMutati
 	) {
 		this.dispatch =
 			options.dispatch ??
-			((args) =>
-				(this.client as any).rpc(
-					'create_agent_run_with_job',
-					args
-				) as ReturnType<AtomicDispatch>);
+			(async (args) => {
+				const { data, error } = await this.client.rpc('create_agent_run_with_job', args);
+				return { data, error };
+			});
 		this.assertProjectWriteAccess =
 			options.assertProjectWriteAccess ??
 			((userId, projectId) =>
