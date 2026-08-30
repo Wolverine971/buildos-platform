@@ -55,6 +55,8 @@ export type LibriMaintenanceConsumerOptions = {
 	processor: LibriMaintenanceProcessorPort;
 	workerId: string;
 	config?: Partial<LibriMaintenanceConsumerConfig>;
+	claimStepIds?: readonly string[];
+	claimDeadlineMs?: number;
 };
 
 export class LibriMaintenanceProcessorError extends Error {
@@ -124,6 +126,12 @@ export class LibriMaintenanceConsumer {
 		if (!options.workerId.trim() || options.workerId.length > 200) {
 			throw new Error('Libri maintenance workerId must contain 1 to 200 characters');
 		}
+		if (
+			options.claimDeadlineMs !== undefined &&
+			(!Number.isSafeInteger(options.claimDeadlineMs) || options.claimDeadlineMs < 1)
+		) {
+			throw new Error('Libri maintenance claim deadline must be a positive timestamp');
+		}
 	}
 
 	start(): Promise<void> {
@@ -189,6 +197,7 @@ export class LibriMaintenanceConsumer {
 	}
 
 	private async poll(): Promise<void> {
+		if (this.claimWindowExpired()) return;
 		let inspected = 0;
 		const inspectionLimit = Math.max(4, this.config.concurrency * 4);
 		try {
@@ -201,18 +210,24 @@ export class LibriMaintenanceConsumer {
 				const receipt = await this.options.lifecycle.claimNextStep({
 					workerId: this.options.workerId,
 					leaseDurationMs: this.config.leaseDurationMs,
-					queueTypes: MAINTENANCE_QUEUE_TYPES
+					queueTypes: MAINTENANCE_QUEUE_TYPES,
+					...(this.options.claimStepIds ? { stepIds: this.options.claimStepIds } : {})
 				});
 				this.consecutiveClaimFailures = 0;
 				this.lastError = null;
-					if (!receipt) break;
-					if (receipt.kind === 'quarantined') {
-						this.quarantinedJobs += 1;
-						continue;
-					}
-					this.lastSuccessfulClaimAtMs = Date.now();
-					this.startClaim(receipt, this.state !== 'running');
-					if (this.state !== 'running') break;
+				if (!receipt) break;
+				if (this.claimWindowExpired()) {
+					if (receipt.kind === 'quarantined') this.quarantinedJobs += 1;
+					else this.startClaim(receipt, true);
+					break;
+				}
+				if (receipt.kind === 'quarantined') {
+					this.quarantinedJobs += 1;
+					continue;
+				}
+				this.lastSuccessfulClaimAtMs = Date.now();
+				this.startClaim(receipt, this.state !== 'running');
+				if (this.state !== 'running') break;
 			}
 		} catch (error) {
 			this.consecutiveClaimFailures += 1;
@@ -350,6 +365,19 @@ export class LibriMaintenanceConsumer {
 		if (!this.timer) return;
 		clearTimeout(this.timer);
 		this.timer = null;
+	}
+
+	private claimWindowExpired(): boolean {
+		if (
+			this.options.claimDeadlineMs === undefined ||
+			Date.now() < this.options.claimDeadlineMs
+		) {
+			return false;
+		}
+		this.lastError = 'synthetic_canary_expired';
+		this.state = 'failed';
+		this.clearTimer();
+		return true;
 	}
 }
 

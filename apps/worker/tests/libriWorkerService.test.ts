@@ -261,7 +261,9 @@ describe('dedicated Libri worker service', () => {
 		expect(packageJson.scripts['start:libri']).toBe('node dist/libri-worker.js');
 	});
 
-	it('requires the strict disabled profile for hosted production', () => {
+	it('allows hosted activation only for one exact, expiring synthetic canary step', () => {
+		const canaryStepId = '30000000-0000-4000-8000-000000000001';
+		const canaryExpiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
 		expect(() =>
 			requireDedicatedLibriWorkerProductionProfile({ RAILWAY_SERVICE_ID: 'service-id' })
 		).toThrow(
@@ -273,7 +275,75 @@ describe('dedicated Libri worker service', () => {
 				LIBRI_WORKER_PROFILE: 'production',
 				LIBRI_WORKER_ENABLED: 'true'
 			})
-		).toThrow('LIBRI_WORKER_ENABLED must remain false');
+		).toThrow('LIBRI_WORKER_ACTIVATION_MODE=synthetic_canary');
+		expect(() =>
+			requireDedicatedLibriWorkerProductionProfile({
+				NODE_ENV: 'production',
+				LIBRI_WORKER_PROFILE: 'production',
+				LIBRI_WORKER_ENABLED: 'true',
+				LIBRI_WORKER_ACTIVATION_MODE: 'synthetic_canary',
+				LIBRI_WORKER_CANARY_STEP_ID: canaryStepId,
+				LIBRI_WORKER_CANARY_EXPIRES_AT: canaryExpiresAt
+			})
+		).toThrow('requires concurrency 1');
+		expect(() =>
+			requireDedicatedLibriWorkerProductionProfile({
+				NODE_ENV: 'production',
+				LIBRI_WORKER_PROFILE: 'production',
+				LIBRI_WORKER_ENABLED: 'true',
+				LIBRI_WORKER_ACTIVATION_MODE: 'synthetic_canary',
+				LIBRI_WORKER_CONCURRENCY: '1',
+				LIBRI_WORKER_CANARY_STEP_ID: canaryStepId,
+				LIBRI_WORKER_CANARY_EXPIRES_AT: canaryExpiresAt
+			})
+		).not.toThrow();
+		expect(
+			loadLibriWorkerConfig({
+				LIBRI_WORKER_ENABLED: 'true',
+				LIBRI_WORKER_ACTIVATION_MODE: 'synthetic_canary',
+				LIBRI_WORKER_CONCURRENCY: '1',
+				LIBRI_WORKER_CANARY_STEP_ID: canaryStepId,
+				LIBRI_WORKER_CANARY_EXPIRES_AT: canaryExpiresAt
+			})
+		).toMatchObject({
+			queueEnabled: true,
+			activationMode: 'synthetic_canary',
+			concurrency: 1,
+			canaryStepId,
+			canaryExpiresAtMs: Date.parse(canaryExpiresAt)
+		});
+		expect(() =>
+			requireDedicatedLibriWorkerProductionProfile({
+				NODE_ENV: 'production',
+				LIBRI_WORKER_PROFILE: 'production',
+				LIBRI_WORKER_ENABLED: 'true',
+				LIBRI_WORKER_ACTIVATION_MODE: 'synthetic_canary',
+				LIBRI_WORKER_CONCURRENCY: '1',
+				LIBRI_WORKER_CANARY_EXPIRES_AT: canaryExpiresAt
+			})
+		).toThrow('requires one canary step UUID');
+		expect(() =>
+			requireDedicatedLibriWorkerProductionProfile({
+				NODE_ENV: 'production',
+				LIBRI_WORKER_PROFILE: 'production',
+				LIBRI_WORKER_ENABLED: 'true',
+				LIBRI_WORKER_ACTIVATION_MODE: 'synthetic_canary',
+				LIBRI_WORKER_CONCURRENCY: '1',
+				LIBRI_WORKER_CANARY_STEP_ID: canaryStepId,
+				LIBRI_WORKER_CANARY_EXPIRES_AT: new Date(Date.now() - 1).toISOString()
+			})
+		).toThrow('expiry must be 1 to 30 minutes ahead');
+		expect(() =>
+			requireDedicatedLibriWorkerProductionProfile({
+				NODE_ENV: 'production',
+				LIBRI_WORKER_PROFILE: 'production',
+				LIBRI_WORKER_ENABLED: 'true',
+				LIBRI_WORKER_ACTIVATION_MODE: 'synthetic_canary',
+				LIBRI_WORKER_CONCURRENCY: '1',
+				LIBRI_WORKER_CANARY_STEP_ID: canaryStepId,
+				LIBRI_WORKER_CANARY_EXPIRES_AT: new Date(Date.now() + 31 * 60_000).toISOString()
+			})
+		).toThrow('expiry must be 1 to 30 minutes ahead');
 		expect(() =>
 			requireDedicatedLibriWorkerProductionProfile({
 				NODE_ENV: 'production',
@@ -281,6 +351,15 @@ describe('dedicated Libri worker service', () => {
 				LIBRI_WORKER_ENABLED: 'false'
 			})
 		).not.toThrow();
+		expect(() => loadLibriWorkerConfig({ LIBRI_WORKER_ACTIVATION_MODE: 'unbounded' })).toThrow(
+			'LIBRI_WORKER_ACTIVATION_MODE'
+		);
+		expect(() => loadLibriWorkerConfig({ LIBRI_WORKER_CANARY_STEP_ID: 'not-a-uuid' })).toThrow(
+			'LIBRI_WORKER_CANARY_STEP_ID'
+		);
+		expect(() =>
+			loadLibriWorkerConfig({ LIBRI_WORKER_CANARY_EXPIRES_AT: 'not-a-timestamp' })
+		).toThrow('LIBRI_WORKER_CANARY_EXPIRES_AT');
 	});
 });
 

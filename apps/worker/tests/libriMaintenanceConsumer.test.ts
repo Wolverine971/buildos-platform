@@ -63,7 +63,8 @@ describe('Libri maintenance consumer', () => {
 		const consumer = new LibriMaintenanceConsumer({
 			lifecycle,
 			processor: createSyntheticLibriMaintenanceProcessor(),
-			workerId: 'libri-worker:test'
+			workerId: 'libri-worker:test',
+			claimStepIds: [CLAIM.stepId]
 		});
 
 		await consumer.start();
@@ -73,7 +74,8 @@ describe('Libri maintenance consumer', () => {
 		expect(lifecycle.claimNextStep).toHaveBeenCalledWith({
 			workerId: 'libri-worker:test',
 			leaseDurationMs: 30_000,
-			queueTypes: ['libri_maintenance']
+			queueTypes: ['libri_maintenance'],
+			stepIds: [CLAIM.stepId]
 		});
 		expect(lifecycle.completeStep).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -223,6 +225,73 @@ describe('Libri maintenance consumer', () => {
 			consecutiveClaimFailures: 1
 		});
 		await consumer.stop();
+	});
+
+	it('fails closed without claiming after the synthetic canary deadline', async () => {
+		const lifecycle = fakeLifecycle();
+		const consumer = new LibriMaintenanceConsumer({
+			lifecycle,
+			processor: createSyntheticLibriMaintenanceProcessor(),
+			workerId: 'libri-worker:test',
+			claimStepIds: [CLAIM.stepId],
+			claimDeadlineMs: Date.now() - 1
+		});
+
+		await consumer.start();
+		await consumer.wake();
+
+		expect(lifecycle.claimNextStep).not.toHaveBeenCalled();
+		expect(consumer.getHealth()).toMatchObject({
+			healthy: false,
+			state: 'failed',
+			reason: 'synthetic_canary_expired'
+		});
+		await expect(consumer.stop()).rejects.toThrow('synthetic_canary_expired');
+	});
+
+	it('returns a claim that arrives after the canary deadline through the interrupted path', async () => {
+		const lifecycle = fakeLifecycle();
+		let resolveClaim: ((claim: ClaimedLibriStep) => void) | undefined;
+		lifecycle.claimNextStep.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveClaim = resolve;
+			})
+		);
+		const processor = createSyntheticLibriMaintenanceProcessor();
+		const execute = vi.spyOn(processor, 'execute');
+		const nowMs = Date.now();
+		const now = vi.spyOn(Date, 'now').mockReturnValue(nowMs);
+		const consumer = new LibriMaintenanceConsumer({
+			lifecycle,
+			processor,
+			workerId: 'libri-worker:test',
+			claimStepIds: [CLAIM.stepId],
+			claimDeadlineMs: nowMs + 1_000
+		});
+
+		try {
+			await consumer.start();
+			const poll = consumer.wake();
+			await vi.waitFor(() => expect(lifecycle.claimNextStep).toHaveBeenCalledOnce());
+			now.mockReturnValue(nowMs + 1_001);
+			resolveClaim?.(CLAIM);
+			await poll;
+			await vi.waitFor(() => expect(lifecycle.failStep).toHaveBeenCalledOnce());
+
+			expect(execute).toHaveBeenCalledOnce();
+			expect(lifecycle.completeStep).not.toHaveBeenCalled();
+			expect(lifecycle.failStep).toHaveBeenCalledWith(
+				expect.objectContaining({ errorClass: 'worker_interrupted', retry: true })
+			);
+			expect(consumer.getHealth()).toMatchObject({
+				healthy: false,
+				state: 'failed',
+				reason: 'synthetic_canary_expired'
+			});
+			await expect(consumer.stop()).rejects.toThrow('synthetic_canary_expired');
+		} finally {
+			now.mockRestore();
+		}
 	});
 
 	it('fails closed when both terminal lifecycle writes are unavailable', async () => {

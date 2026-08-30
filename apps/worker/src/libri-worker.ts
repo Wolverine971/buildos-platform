@@ -25,7 +25,9 @@ const maintenanceConsumer = new LibriMaintenanceConsumer({
 	lifecycle: database,
 	processor: createSyntheticLibriMaintenanceProcessor(),
 	workerId: resolveWorkerId(process.env),
-	config: { concurrency: config.concurrency }
+	config: { concurrency: config.concurrency },
+	claimStepIds: config.canaryStepId ? [config.canaryStepId] : undefined,
+	claimDeadlineMs: config.canaryExpiresAtMs ?? undefined
 });
 const bootstrap = new LibriWorkerBootstrap(database, config, maintenanceConsumer);
 const service = createLibriWorkerService({

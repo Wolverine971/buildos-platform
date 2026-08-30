@@ -22,6 +22,8 @@ const RECOVERY_RUN_ID = '81000000-0000-4000-8000-000000000004';
 const RECOVERY_STEP_ID = '82000000-0000-4000-8000-000000000004';
 const CONSUMER_RUN_ID = '81000000-0000-4000-8000-000000000005';
 const CONSUMER_STEP_ID = '82000000-0000-4000-8000-000000000005';
+const CONSUMER_DECOY_RUN_ID = '81000000-0000-4000-8000-000000000006';
+const CONSUMER_DECOY_STEP_ID = '82000000-0000-4000-8000-000000000006';
 
 const postgresAvailable = ['initdb', 'pg_ctl', 'psql'].every(hasCommand);
 const describePostgres = postgresAvailable ? describe : describe.skip;
@@ -113,6 +115,10 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 			(
 				'${CONSUMER_RUN_ID}', '${LIBRARY_ID}', 'worker-consumer-run',
 				'libri_maintenance', 'synthetic_consumer', 'maintenance', 'system', 1
+			),
+			(
+				'${CONSUMER_DECOY_RUN_ID}', '${LIBRARY_ID}', 'worker-consumer-decoy-run',
+				'libri_maintenance', 'synthetic_consumer_decoy', 'maintenance', 'system', 1
 			);
 			INSERT INTO libri.research_steps (
 				id, library_id, run_id, idempotency_key, queue_family, kind,
@@ -142,6 +148,12 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 				'${CONSUMER_STEP_ID}', '${LIBRARY_ID}', '${CONSUMER_RUN_ID}', 'worker-consumer-step',
 				'libri_maintenance', 'synthetic_consumer', 'maintenance', 0,
 				'{"version":1,"kind":"synthetic_smoke","nonce":"postgres-contract"}'::jsonb, 1
+			),
+			(
+				'${CONSUMER_DECOY_STEP_ID}', '${LIBRARY_ID}', '${CONSUMER_DECOY_RUN_ID}',
+				'worker-consumer-decoy-step', 'libri_maintenance', 'synthetic_consumer_decoy',
+				'maintenance', 0,
+				'{"version":1,"kind":"synthetic_smoke","nonce":"must-remain-pending"}'::jsonb, 1
 			);
 			INSERT INTO public.queue_jobs (
 				id, queue_job_id, user_id, job_type, status, priority, scheduled_for
@@ -428,12 +440,14 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 	}, 15_000);
 
 	it('runs the maintenance consumer end to end through the restricted login', async () => {
+		await lifecycle.enqueueStep({ stepId: CONSUMER_DECOY_STEP_ID, priority: 1 });
 		await lifecycle.enqueueStep({ stepId: CONSUMER_STEP_ID, priority: 5 });
 		const consumer = new LibriMaintenanceConsumer({
 			lifecycle,
 			processor: createSyntheticLibriMaintenanceProcessor(),
 			workerId: 'libri-worker:postgres-consumer',
-			config: { concurrency: 1, pollIntervalMs: 1_000 }
+			config: { concurrency: 1, pollIntervalMs: 1_000 },
+			claimStepIds: [CONSUMER_STEP_ID]
 		});
 
 		await consumer.start();
@@ -458,15 +472,23 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 			staleOwnershipJobs: 0
 		});
 		const result = await adminPool?.query<{
+			decoy_queue_status: string;
+			decoy_step_status: string;
 			queue_status: string;
 			step_result: Record<string, unknown>;
 		}>(`
 			SELECT
 				(SELECT status::text FROM public.queue_jobs
+				 WHERE metadata->>'researchStepId' = '${CONSUMER_DECOY_STEP_ID}') AS decoy_queue_status,
+				(SELECT status FROM libri.research_steps
+				 WHERE id = '${CONSUMER_DECOY_STEP_ID}') AS decoy_step_status,
+				(SELECT status::text FROM public.queue_jobs
 				 WHERE metadata->>'researchStepId' = '${CONSUMER_STEP_ID}') AS queue_status,
 				(SELECT result FROM libri.research_steps WHERE id = '${CONSUMER_STEP_ID}') AS step_result
 		`);
 		expect(result?.rows[0]).toEqual({
+			decoy_queue_status: 'pending',
+			decoy_step_status: 'queued',
 			queue_status: 'completed',
 			step_result: {
 				kind: 'synthetic_smoke',
