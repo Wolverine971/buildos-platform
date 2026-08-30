@@ -1,9 +1,21 @@
 -- supabase/tests/fixtures/member_rls_policy_scope_base.sql
 -- Minimal schema for the member-only RLS policy scope regression contract.
 
-CREATE ROLE anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
-CREATE ROLE service_role NOLOGIN BYPASSRLS;
+-- Roles are cluster-scoped, while the external SQL-contract runner creates one
+-- database per contract in a shared PostgreSQL 15 cluster.
+DO $$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+		CREATE ROLE anon NOLOGIN;
+	END IF;
+	IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+		CREATE ROLE authenticated NOLOGIN;
+	END IF;
+	IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+		CREATE ROLE service_role NOLOGIN BYPASSRLS;
+	END IF;
+END;
+$$;
 
 CREATE SCHEMA storage;
 
