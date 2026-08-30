@@ -141,7 +141,7 @@ function renderPreloadedSkillPromptContent(
 	if (allowFollowupSkillLoad) {
 		lines.push(
 			'',
-			`Need more depth? Call skill_load with reference '${payload.id}' and format 'full' for the complete playbook.`
+			`Need more depth? Call skill_load with {"skill":"${payload.id}","format":"full"} for the complete playbook.`
 		);
 	}
 	if (remainingCandidates.length) {

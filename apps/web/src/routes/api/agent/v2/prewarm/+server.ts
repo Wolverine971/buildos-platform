@@ -1,4 +1,13 @@
 // apps/web/src/routes/api/agent/v2/prewarm/+server.ts
+// Prewarm is best-effort but can legitimately cross the app-wide 10 second
+// function default while loading project context. Give it a dedicated Vercel
+// function and keep an application deadline well inside this platform limit.
+export const config = {
+	maxDuration: 60,
+	memory: 1024,
+	split: true
+};
+
 import type { RequestHandler } from './$types';
 import type { ChatContextType, ChatSession, Json, ProjectFocus } from '@buildos/shared-types';
 import { randomUUID } from 'node:crypto';
@@ -50,6 +59,11 @@ import { agenticChatProjectFocusSchema } from '$lib/services/agentic-chat-v2/str
 
 const logger = createLogger('API:AgentPrewarmV2');
 const FASTCHAT_SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
+const PREWARM_BUDGET_EXCEEDED = Symbol('prewarm_budget_exceeded');
+const PREWARM_RESPONSE_BUDGET_MS = Math.min(
+	parsePositiveInt(process.env.FASTCHAT_PREWARM_RESPONSE_BUDGET_MS, 20_000),
+	config.maxDuration * 1000 - 5_000
+);
 const fastAgentPrewarmRequestSchema = z
 	.object({
 		context_type: z.string().optional(),
@@ -110,6 +124,21 @@ function trimOptionalString(value: unknown): string | undefined {
 	if (typeof value !== 'string') return undefined;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : undefined;
+}
+
+async function runWithPrewarmResponseBudget<T>(
+	operation: Promise<T>
+): Promise<T | typeof PREWARM_BUDGET_EXCEEDED> {
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<typeof PREWARM_BUDGET_EXCEEDED>((resolve) => {
+		timeoutId = setTimeout(() => resolve(PREWARM_BUDGET_EXCEEDED), PREWARM_RESPONSE_BUDGET_MS);
+	});
+
+	try {
+		return await Promise.race([operation, timeout]);
+	} finally {
+		if (timeoutId) clearTimeout(timeoutId);
+	}
 }
 
 async function checkProjectAccess(
@@ -305,7 +334,10 @@ async function buildPreparedPrompt(params: {
 	});
 }
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+const handlePrewarmRequest: RequestHandler = async ({
+	request,
+	locals: { supabase, safeGetSession }
+}) => {
 	const { user } = await safeGetSession();
 	if (!user?.id) {
 		return ApiResponse.unauthorized();
@@ -471,5 +503,21 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		session,
 		prewarmed_context: prewarmedContext,
 		prepared_prompt: preparedPrompt
+	});
+};
+
+export const POST: RequestHandler = async (event) => {
+	const result = await runWithPrewarmResponseBudget(Promise.resolve(handlePrewarmRequest(event)));
+	if (result !== PREWARM_BUDGET_EXCEEDED) return result;
+
+	logger.warn(
+		'V2 prewarm exceeded its response budget; returning the normal cold-path fallback',
+		{
+			budgetMs: PREWARM_RESPONSE_BUDGET_MS
+		}
+	);
+	return ApiResponse.success({
+		warmed: false,
+		reason: 'time_budget_exceeded'
 	});
 };

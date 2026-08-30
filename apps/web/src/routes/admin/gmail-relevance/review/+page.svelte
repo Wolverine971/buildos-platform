@@ -4,365 +4,341 @@
 
 	let { data, form }: PageProps = $props();
 
-	const pendingQueue = $derived(data.queue.filter((item) => item.state === 'pending'));
+	const quickQueue = $derived(
+		data.queue
+			.filter((item) => item.quick_review_order !== null)
+			.sort((left, right) => left.quick_review_order! - right.quick_review_order!)
+	);
+	const pendingQueue = $derived(quickQueue.filter((item) => item.state === 'pending'));
+	const reviewedCount = $derived(quickQueue.filter((item) => item.state === 'reviewed').length);
+	const expiredCount = $derived(quickQueue.filter((item) => item.state === 'expired').length);
 	const opened = $derived(form?.kind === 'opened' ? form.review_context : null);
-	const adjudicated = $derived(form?.kind === 'adjudicated' && form.variant_reveal ? form : null);
+	const adjudicated = $derived(form?.kind === 'adjudicated' ? form : null);
 	const nextSample = $derived(pendingQueue[0] ?? null);
-
-	function percent(value: number | null): string {
-		return value === null ? '—' : `${(value * 100).toFixed(1)}%`;
-	}
+	const reviewComplete = $derived(quickQueue.length > 0 && reviewedCount === quickQueue.length);
 </script>
 
 <svelte:head>
-	<title>Gmail Relevance Review · BuildOS Admin</title>
-	<meta
-		name="description"
-		content="Variant-blinded human review for the bounded Gmail relevance pilot."
-	/>
+	<title>Email Suggestions · BuildOS</title>
+	<meta name="description" content="Review a small set of project-related email suggestions." />
 </svelte:head>
 
-<main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+<main id="main-content" class="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6">
 	<header class="space-y-2">
-		<p class="text-xs font-semibold tracking-[0.18em] text-violet-600 uppercase">
-			Phase A · Slice 4
+		<p class="text-xs font-semibold tracking-[0.18em] text-accent uppercase">
+			Email suggestions
 		</p>
-		<h1 class="text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
-			Blinded relevance review
+		<h1 class="text-3xl font-semibold tracking-tight text-foreground">
+			Does this email belong to this project?
 		</h1>
-		<p class="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-			Review one request-lifetime metadata snapshot at a time. Variants remain hidden until
-			the decision is recorded.
+		<p class="max-w-2xl text-sm leading-6 text-muted-foreground">
+			Review up to 20 suggestions. Your answers measure the match—they do not change your
+			email or your projects.
 		</p>
 	</header>
 
 	<section
-		class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100"
-		aria-label="Safety boundary"
+		class="rounded-2xl border border-border bg-muted/40 p-4 text-sm text-foreground"
+		aria-label="Privacy boundary"
 	>
-		<strong>Review-only boundary active.</strong>
-		<span class="ml-1">
-			No bodies, storage cache, models, Gmail mutations, project mutations, queue, or scan
-			controls.
+		<strong>Read-only preview.</strong>
+		<span class="ml-1 text-muted-foreground">
+			BuildOS opens one email’s subject, snippet, and participants only when you request it.
+			Bodies and attachments are not read or stored.
 		</span>
 	</section>
 
 	{#if form?.kind === 'error'}
 		<section
-			class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-950 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100"
+			class="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
 			aria-live="polite"
 		>
-			Review action failed with fixed code: <code>{form.error_code}</code>
+			That action did not complete. Try again, or stop if the source has expired.
 		</section>
 	{:else if form?.kind === 'prepared'}
 		<section
-			class="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-950"
+			class="rounded-2xl border border-accent/30 bg-accent/10 p-4 text-sm text-foreground"
 			aria-live="polite"
 		>
-			Prepared {form.total_samples} blinded samples across {form.scope_count} accounts.
+			Your suggestion set is ready. Open the first email when you’re ready to review.
 		</section>
 	{:else if adjudicated}
 		<section
-			class="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-950 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-100"
+			class="rounded-2xl border border-success/30 bg-success/10 p-4 text-sm text-foreground"
 			aria-live="polite"
 		>
-			<p class="font-semibold">
-				Decision recorded{adjudicated.replayed ? ' (idempotent replay)' : ''}.
-			</p>
-			<p class="mt-1">
-				Variant reveal: {adjudicated.variant_reveal.stratum.replace('_', ' ')} · A score
-				{adjudicated.variant_reveal.a?.score ?? '—'} · B score {adjudicated.variant_reveal.b
-					?.score ?? '—'}
-			</p>
+			<strong>Answer saved.</strong>
+			<span class="ml-1 text-muted-foreground">The next suggestion is ready below.</span>
 		</section>
 	{/if}
 
 	{#if data.runs.length === 0}
-		<section
-			class="rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-800 dark:bg-slate-950"
-		>
-			<h2 class="font-semibold text-slate-950 dark:text-white">No completed pilot run</h2>
-			<p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-				This review surface only accepts completed runs owned by the exact allowlisted user.
+		<section class="rounded-2xl border border-border bg-card p-8 shadow-ink">
+			<h2 class="font-semibold text-foreground">No completed email scan yet</h2>
+			<p class="mt-2 text-sm text-muted-foreground">
+				Suggestions will appear here after the bounded read-only scan finishes.
 			</p>
 		</section>
 	{:else}
-		<form
-			method="GET"
-			class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-end dark:border-slate-800 dark:bg-slate-950"
-		>
-			<label class="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-				Completed run
-				<select
-					name="run_id"
-					class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
-				>
-					{#each data.runs as run (run.id)}
-						<option value={run.id} selected={run.id === data.selected_run_id}>
-							{run.label} · {new Date(run.created_at).toLocaleString()}
-						</option>
-					{/each}
-				</select>
-			</label>
-			<button
-				type="submit"
-				class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white dark:bg-white dark:text-slate-950"
+		{#if data.runs.length > 1}
+			<form
+				method="GET"
+				class="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-ink sm:flex-row sm:items-end"
 			>
-				Load review
-			</button>
-		</form>
+				<label class="flex-1 text-sm font-medium text-foreground">
+					Email scan
+					<select
+						name="run_id"
+						class="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2"
+					>
+						{#each data.runs as run (run.id)}
+							<option value={run.id} selected={run.id === data.selected_run_id}>
+								{run.label} · {new Date(run.created_at).toLocaleString()}
+							</option>
+						{/each}
+					</select>
+				</label>
+				<button
+					type="submit"
+					class="rounded-xl bg-foreground px-4 py-2 text-sm font-semibold text-background"
+				>
+					Load
+				</button>
+			</form>
+		{/if}
 
 		{#if data.selected_run_id && data.queue.length === 0}
 			<form
 				method="POST"
 				action="?/prepare"
-				class="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30"
+				class="rounded-2xl border border-accent/30 bg-accent/10 p-6"
 			>
 				<input type="hidden" name="run_id" value={data.selected_run_id} />
-				<h2 class="font-semibold text-amber-950 dark:text-amber-100">
-					Lock the 300-item sample
-				</h2>
-				<p class="mt-2 text-sm text-amber-900 dark:text-amber-200">
-					Creates 100 deterministic, variant-aware samples per account. No Gmail call
-					occurs.
+				<h2 class="text-lg font-semibold text-foreground">Create 20 suggestions</h2>
+				<p class="mt-2 max-w-2xl text-sm text-muted-foreground">
+					BuildOS will select a fixed set of candidate matches from the completed scan.
+					This does not make another Gmail request.
 				</p>
 				<button
 					type="submit"
-					class="mt-4 rounded-xl bg-amber-900 px-4 py-2 text-sm font-semibold text-white"
+					class="mt-4 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-ink"
 				>
-					Prepare blinded sample
+					Prepare suggestions
 				</button>
 			</form>
-		{:else if data.metrics}
-			<section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Review progress">
-				<div
-					class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
-				>
-					<p class="text-xs text-slate-500">Progress</p>
-					<p class="mt-1 text-2xl font-semibold">
-						{data.metrics.adjudicated} / {data.metrics.target}
-					</p>
-				</div>
-				<div
-					class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
-				>
-					<p class="text-xs text-slate-500">Variant A precision / recall</p>
-					<p class="mt-1 text-xl font-semibold">
-						{percent(data.metrics.variant_a.precision)} / {percent(
-							data.metrics.variant_a.recall
-						)}
-					</p>
-				</div>
-				<div
-					class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
-				>
-					<p class="text-xs text-slate-500">Variant B precision / recall</p>
-					<p class="mt-1 text-xl font-semibold">
-						{percent(data.metrics.variant_b.precision)} / {percent(
-							data.metrics.variant_b.recall
-						)}
-					</p>
-				</div>
-				<div
-					class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
-				>
-					<p class="text-xs text-slate-500">Source retention</p>
-					<p class="mt-1 text-sm font-semibold">
-						{data.source_retention_expires_at
-							? new Date(data.source_retention_expires_at).toLocaleString()
-							: '—'}
-					</p>
-				</div>
-			</section>
-
-			<section class="grid gap-4 lg:grid-cols-3">
-				{#each data.metrics.account_progress as account (account.account_label)}
-					<div
-						class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
-					>
-						<p class="text-sm font-medium">{account.account_label}</p>
-						<p class="mt-1 text-2xl font-semibold">
-							{account.reviewed} / {account.target}
+		{:else if quickQueue.length > 0}
+			<section class="rounded-2xl border border-border bg-card p-5 shadow-ink">
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div>
+						<p class="text-sm font-medium text-muted-foreground">Review progress</p>
+						<p class="mt-1 text-3xl font-semibold text-foreground">
+							{reviewedCount} / {quickQueue.length}
 						</p>
 					</div>
-				{/each}
-			</section>
-
-			<section
-				class="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
-				aria-label="Segment quality metrics"
-			>
-				<div class="border-b border-slate-200 p-4 dark:border-slate-800">
-					<h2 class="font-semibold">Quality by account and project</h2>
-					<p class="mt-1 text-xs text-slate-500">
-						Weighted estimates; ambiguous decisions are excluded from precision and
-						recall.
+					{#if data.source_retention_expires_at}
+						<p class="text-xs text-muted-foreground">
+							Available until {new Date(
+								data.source_retention_expires_at
+							).toLocaleString()}
+						</p>
+					{/if}
+				</div>
+				<div class="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+					<div
+						class="h-full rounded-full bg-accent transition-[width] duration-300 motion-reduce:transition-none"
+						style:width={`${(reviewedCount / quickQueue.length) * 100}%`}
+					></div>
+				</div>
+				{#if expiredCount > 0}
+					<p class="mt-3 text-sm text-warning">
+						{expiredCount} suggestion{expiredCount === 1 ? '' : 's'} expired before review.
 					</p>
-				</div>
-				<div class="overflow-x-auto">
-					<table
-						class="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800"
-					>
-						<thead class="bg-slate-50 text-xs text-slate-500 dark:bg-slate-900">
-							<tr>
-								<th class="px-4 py-3 font-medium">Segment</th>
-								<th class="px-4 py-3 font-medium">Reviewed</th>
-								<th class="px-4 py-3 font-medium">A precision / recall</th>
-								<th class="px-4 py-3 font-medium">B precision / recall</th>
-								<th class="px-4 py-3 font-medium">A / B yield per 100</th>
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-slate-100 dark:divide-slate-900">
-							{#each [...data.metrics.segments.accounts, ...data.metrics.segments.projects] as segment (`${segment.label}:${segment.id}`)}
-								<tr>
-									<td class="px-4 py-3 font-medium">{segment.label}</td>
-									<td class="px-4 py-3">{segment.reviewed}</td>
-									<td class="px-4 py-3"
-										>{percent(segment.variant_a.precision)} / {percent(
-											segment.variant_a.recall
-										)}</td
-									>
-									<td class="px-4 py-3"
-										>{percent(segment.variant_b.precision)} / {percent(
-											segment.variant_b.recall
-										)}</td
-									>
-									<td class="px-4 py-3"
-										>{segment.candidate_yield_per_100_observations.a ?? '—'} / {segment
-											.candidate_yield_per_100_observations.b ?? '—'}</td
-									>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
+				{/if}
+			</section>
+		{:else if data.queue.length > 0}
+			<section class="rounded-2xl border border-border bg-card p-8 shadow-ink">
+				<h2 class="font-semibold text-foreground">No candidate suggestions found</h2>
+				<p class="mt-2 text-sm text-muted-foreground">
+					The scan completed, but neither matching approach produced a reviewable project
+					candidate in the sample.
+				</p>
 			</section>
 		{/if}
 
 		{#if opened && data.selected_run_id}
-			<section
-				class="space-y-5 rounded-2xl border border-violet-200 bg-white p-5 dark:border-violet-900 dark:bg-slate-950"
-			>
-				<div>
-					<p class="text-xs font-semibold tracking-[0.16em] text-violet-600 uppercase">
-						Blinded sample
-					</p>
-					<h2 class="mt-1 text-xl font-semibold">{opened.project_label}</h2>
-					<p class="mt-1 text-xs text-slate-500">
+			<section class="space-y-5 rounded-2xl border border-accent/30 bg-card p-5 shadow-ink">
+				<div class="flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<p class="text-xs font-semibold tracking-[0.16em] text-accent uppercase">
+							Suggested project
+						</p>
+						<h2 class="mt-1 text-xl font-semibold text-foreground">
+							{opened.project_label}
+						</h2>
+					</div>
+					<p class="text-xs text-muted-foreground">
 						{new Date(opened.internal_date).toLocaleString()} · {opened
 							.mailbox_categories.sent
 							? 'Sent'
 							: 'Inbox'}
 					</p>
 				</div>
-				<div class="space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-900">
-					<p class="font-medium text-slate-950 dark:text-white">
-						{opened.subject || '(No subject)'}
-					</p>
-					<p class="text-sm text-slate-600 dark:text-slate-300">
+
+				<div class="space-y-3 rounded-xl bg-muted/60 p-4">
+					<p class="font-medium text-foreground">{opened.subject || '(No subject)'}</p>
+					<p class="text-sm leading-6 text-muted-foreground">
 						{opened.snippet || '(No snippet)'}
 					</p>
-					<p class="break-words text-xs text-slate-500">
+					<p class="break-words text-xs text-muted-foreground">
 						Participants: {opened.participant_addresses.join(', ') || 'None available'}
 					</p>
 				</div>
 
-				<form method="POST" action="?/adjudicate" class="grid gap-4 sm:grid-cols-2">
-					<input type="hidden" name="run_id" value={data.selected_run_id} />
-					<input type="hidden" name="sample_id" value={opened.sample_id} />
-					<input type="hidden" name="idempotency_key" value={opened.idempotency_key} />
-					<label class="text-sm font-medium">
-						Decision
-						<select
-							name="decision"
-							required
-							class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+				<div class="grid gap-3 sm:grid-cols-3">
+					<form method="POST" action="?/adjudicate">
+						<input type="hidden" name="run_id" value={data.selected_run_id} />
+						<input type="hidden" name="sample_id" value={opened.sample_id} />
+						<input
+							type="hidden"
+							name="idempotency_key"
+							value={opened.idempotency_key}
+						/>
+						<input type="hidden" name="decision" value="correct_project" />
+						<input type="hidden" name="correction_reason" value="" />
+						<input type="hidden" name="corrected_project_id" value="" />
+						<input type="hidden" name="rule_proposal" value="" />
+						<button
+							type="submit"
+							class="min-h-12 w-full rounded-xl bg-success px-4 py-3 text-sm font-semibold text-white shadow-ink"
 						>
-							<option value="correct_project">Correct project</option>
-							<option value="wrong_project">Wrong project</option>
-							<option value="relevant_missing_project"
-								>Relevant, but missing another project</option
-							>
-							<option value="not_project_relevant">Not project-relevant</option>
-							<option value="ambiguous">Ambiguous / insufficient context</option>
-						</select>
-					</label>
-					<label class="text-sm font-medium">
-						Bounded correction reason
-						<select
+							Yes, related
+						</button>
+					</form>
+
+					<form method="POST" action="?/adjudicate">
+						<input type="hidden" name="run_id" value={data.selected_run_id} />
+						<input type="hidden" name="sample_id" value={opened.sample_id} />
+						<input
+							type="hidden"
+							name="idempotency_key"
+							value={opened.idempotency_key}
+						/>
+						<input type="hidden" name="decision" value="not_project_relevant" />
+						<input
+							type="hidden"
 							name="correction_reason"
-							class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+							value="negative_signal_missed"
+						/>
+						<input type="hidden" name="corrected_project_id" value="" />
+						<input type="hidden" name="rule_proposal" value="" />
+						<button
+							type="submit"
+							class="min-h-12 w-full rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive"
 						>
-							<option value="">None</option>
-							<option value="wrong_actor">Wrong actor</option>
-							<option value="wrong_domain">Wrong domain</option>
-							<option value="wrong_artifact">Wrong artifact</option>
-							<option value="wrong_identifier">Wrong identifier</option>
-							<option value="lexical_false_positive">Lexical false positive</option>
-							<option value="negative_signal_missed">Negative signal missed</option>
-							<option value="missing_profile_signal">Missing profile signal</option>
-							<option value="cross_project_ambiguity">Cross-project ambiguity</option>
-							<option value="insufficient_metadata">Insufficient metadata</option>
-						</select>
-					</label>
-					<label class="text-sm font-medium">
-						Corrected / additional project
-						<select
-							name="corrected_project_id"
-							class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+							No, unrelated
+						</button>
+					</form>
+
+					<form method="POST" action="?/adjudicate">
+						<input type="hidden" name="run_id" value={data.selected_run_id} />
+						<input type="hidden" name="sample_id" value={opened.sample_id} />
+						<input
+							type="hidden"
+							name="idempotency_key"
+							value={opened.idempotency_key}
+						/>
+						<input type="hidden" name="decision" value="ambiguous" />
+						<input
+							type="hidden"
+							name="correction_reason"
+							value="insufficient_metadata"
+						/>
+						<input type="hidden" name="corrected_project_id" value="" />
+						<input type="hidden" name="rule_proposal" value="" />
+						<button
+							type="submit"
+							class="min-h-12 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground"
 						>
-							<option value="">None</option>
-							{#each data.projects.filter((project) => project.id !== opened.project_id) as project (project.id)}
-								<option value={project.id}>{project.label}</option>
-							{/each}
-						</select>
-					</label>
-					<label class="text-sm font-medium">
-						Optional rule proposal
-						<select
-							name="rule_proposal"
-							class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
-						>
-							<option value="">None</option>
-							<option value="always_sender">Always sender</option>
-							<option value="always_domain">Always domain</option>
-							<option value="always_thread">Always thread</option>
-							<option value="never_sender">Never sender</option>
-							<option value="never_domain">Never domain</option>
-							<option value="never_thread">Never thread</option>
-						</select>
-					</label>
-					<button
-						type="submit"
-						class="rounded-xl bg-violet-700 px-4 py-2 text-sm font-semibold text-white sm:col-span-2"
+							Not sure
+						</button>
+					</form>
+				</div>
+
+				<details class="rounded-xl border border-border bg-background p-4">
+					<summary class="cursor-pointer text-sm font-semibold text-foreground">
+						It belongs to a different project
+					</summary>
+					<form
+						method="POST"
+						action="?/adjudicate"
+						class="mt-4 flex flex-col gap-3 sm:flex-row"
 					>
-						Record blinded decision
-					</button>
-				</form>
+						<input type="hidden" name="run_id" value={data.selected_run_id} />
+						<input type="hidden" name="sample_id" value={opened.sample_id} />
+						<input
+							type="hidden"
+							name="idempotency_key"
+							value={opened.idempotency_key}
+						/>
+						<input type="hidden" name="decision" value="wrong_project" />
+						<input
+							type="hidden"
+							name="correction_reason"
+							value="cross_project_ambiguity"
+						/>
+						<input type="hidden" name="rule_proposal" value="" />
+						<label class="flex-1 text-sm font-medium text-foreground">
+							Correct project
+							<select
+								name="corrected_project_id"
+								required
+								class="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2"
+							>
+								<option value="">Choose a project</option>
+								{#each data.projects.filter((project) => project.id !== opened.project_id) as project (project.id)}
+									<option value={project.id}>{project.label}</option>
+								{/each}
+							</select>
+						</label>
+						<button
+							type="submit"
+							class="self-end rounded-xl bg-foreground px-4 py-2 text-sm font-semibold text-background"
+						>
+							Save different project
+						</button>
+					</form>
+				</details>
 			</section>
 		{:else if data.selected_run_id && nextSample}
-			<section
-				class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
-			>
-				<div class="flex items-center justify-between gap-4">
+			<section class="rounded-2xl border border-border bg-card p-5 shadow-ink">
+				<div class="flex flex-wrap items-center justify-between gap-4">
 					<div>
-						<h2 class="font-semibold">Next blinded sample</h2>
-						<p class="mt-1 text-sm text-slate-500">
-							{nextSample.account_label} · {nextSample.project_label} · item
-							{nextSample.sample_order}
+						<p class="text-sm font-medium text-muted-foreground">
+							Suggestion {nextSample.quick_review_order} of {quickQueue.length}
 						</p>
+						<h2 class="mt-1 text-lg font-semibold text-foreground">
+							Potential match for {nextSample.project_label}
+						</h2>
 					</div>
 					<form method="POST" action="?/open">
 						<input type="hidden" name="run_id" value={data.selected_run_id} />
 						<input type="hidden" name="sample_id" value={nextSample.id} />
 						<button
 							type="submit"
-							class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white dark:bg-white dark:text-slate-950"
+							class="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-ink"
 						>
-							Open metadata
+							Open email preview
 						</button>
 					</form>
 				</div>
+			</section>
+		{:else if reviewComplete}
+			<section class="rounded-2xl border border-success/30 bg-success/10 p-8 text-center">
+				<h2 class="text-xl font-semibold text-foreground">Twenty suggestions reviewed</h2>
+				<p class="mt-2 text-sm text-muted-foreground">
+					That is enough for a directional read. BuildOS will not scan again
+					automatically.
+				</p>
 			</section>
 		{/if}
 	{/if}

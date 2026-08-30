@@ -8,6 +8,14 @@
 		{
 			"path": "/api/cron/renew-webhooks",
 			"schedule": "15 * * * *"
+		},
+		{
+			"path": "/api/cron/gmail-relevance-retention",
+			"schedule": "30 * * * *"
+		},
+		{
+			"path": "/api/cron/agentic-chat-stale-turns",
+			"schedule": "* * * * *"
 		}
 	]
 }

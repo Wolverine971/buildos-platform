@@ -95,6 +95,7 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
 	}
 
 	return {
+		rows,
 		insertedRows,
 		insertCalls,
 		updatedRows,
@@ -371,6 +372,33 @@ describe('TurnObservabilityWriter', () => {
 				finished_reason: 'stop'
 			})
 		]);
+	});
+
+	it('does not let a thawed legacy turn overwrite a reaper cancellation', async () => {
+		const supabase = createSupabaseMock({
+			initialRows: {
+				chat_turn_runs: [
+					{
+						id: 'turn-1',
+						user_id: 'user-1',
+						status: 'cancelled',
+						finished_reason: 'stale_running_turn_reaper'
+					}
+				]
+			}
+		});
+		const { writer } = createWriter({ supabase });
+
+		await writer.persistFinalState(
+			{ status: 'completed', finished_reason: 'stop' },
+			'completed'
+		);
+
+		expect(supabase.updatedRows.chat_turn_runs).toEqual([]);
+		expect(supabase.rows.chat_turn_runs[0]).toMatchObject({
+			status: 'cancelled',
+			finished_reason: 'stale_running_turn_reaper'
+		});
 	});
 
 	it('queues the timing metric insert once', async () => {

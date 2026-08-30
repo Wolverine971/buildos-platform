@@ -1,5 +1,10 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_INDEPENDENT_EVALUATOR_HANDOFF_2026-08-13.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Worker Phase 4 — Independent Evaluator Handoff
 
 **Prepared:** 2026-08-13

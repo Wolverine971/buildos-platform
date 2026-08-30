@@ -4,6 +4,11 @@
 	"buildCommand": "turbo build --filter=@buildos/web...",
 	"redirects": [
 		{
+			"source": "/apple-touch-icon-precomposed.png",
+			"destination": "/apple-touch-icon.png",
+			"permanent": true
+		},
+		{
 			"source": "/apple-touch-icon-120x120.png",
 			"destination": "/AppImages/ios/120.png",
 			"permanent": true

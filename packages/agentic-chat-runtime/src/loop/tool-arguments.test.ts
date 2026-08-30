@@ -4,6 +4,7 @@ import type { ChatToolCall } from '@buildos/shared-types';
 import {
 	backfillCommissionedDocumentUpdateContent,
 	logToolArgumentAnomaly,
+	normalizeToolCallDefaults,
 	REDACTED_DURABLE_TEXT,
 	sanitizeToolCallsForReplay,
 	stampProjectCreateGenerationModel
@@ -65,6 +66,23 @@ describe('sanitizeToolCallsForReplay', () => {
 		expect(sanitizedArgs.props['chapter.notes']).toBe(REDACTED_DURABLE_TEXT);
 		expect(JSON.stringify(sanitizedCall)).not.toContain('<parameter');
 		expect(originalArgs.props['chapter.notes']).toContain('<parameter');
+	});
+});
+
+describe('normalizeToolCallDefaults', () => {
+	it('maps the legacy skill_load reference argument to the canonical skill field', () => {
+		const normalized = normalizeToolCallDefaults(
+			toolCall('skill_load', {
+				reference: 'calendar_management',
+				format: 'full'
+			})
+		);
+
+		expect(JSON.parse(normalized.function.arguments)).toMatchObject({
+			reference: 'calendar_management',
+			skill: 'calendar_management',
+			format: 'full'
+		});
 	});
 });
 

@@ -1,5 +1,6 @@
 // apps/web/src/routes/+layout.server.ts
 import type { LayoutServerLoad } from './$types';
+import { env as privateEnv } from '$env/dynamic/private';
 import { OnboardingProgressService } from '$lib/services/onboardingProgress.service';
 import { StripeService } from '$lib/services/stripe-service';
 import { fetchBillingContext } from '$lib/server/billing-context';
@@ -9,6 +10,7 @@ import {
 	type CachedBillingContext
 } from '$lib/server/billing-context-cache';
 import { recordAuthenticatedUserActivity } from '$lib/server/authenticated-user-activity';
+import { isGmailRelevancePhaseAReviewUserAllowed } from '$lib/server/gmail-relevance/config';
 
 const clampProgress = (progress?: number | null) => {
 	if (typeof progress !== 'number' || Number.isNaN(progress)) {
@@ -134,7 +136,8 @@ export const load: LayoutServerLoad = async ({
 			onboardingProgress: 100,
 			billingContext: createEmptyBillingContext(false),
 			pendingInvites: [],
-			hasConnectedAgents: false
+			hasConnectedAgents: false,
+			emailSuggestionsEnabled: false
 		};
 	}
 
@@ -260,6 +263,7 @@ export const load: LayoutServerLoad = async ({
 		onboardingProgress,
 		billingContext,
 		pendingInvites: pendingInvitesResult,
-		hasConnectedAgents: agentConnectionStatus
+		hasConnectedAgents: agentConnectionStatus,
+		emailSuggestionsEnabled: isGmailRelevancePhaseAReviewUserAllowed(user.id, privateEnv)
 	};
 };

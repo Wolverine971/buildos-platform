@@ -21,6 +21,7 @@
 		Moon,
 		Activity,
 		Inbox,
+		Mail,
 		Bot,
 		CreditCard
 	} from '$lib/icons/lucide';
@@ -60,6 +61,7 @@
 		stripeEnabled?: boolean;
 		subscription?: any;
 		hasConnectedAgents?: boolean;
+		emailSuggestionsEnabled?: boolean;
 	};
 
 	type IdleWindow = Window & {
@@ -74,7 +76,8 @@
 		element = $bindable<HTMLElement | null>(null),
 		stripeEnabled = false,
 		subscription = null,
-		hasConnectedAgents = false
+		hasConnectedAgents = false,
+		emailSuggestionsEnabled = false
 	}: Props = $props();
 
 	let showUserMenu = $state(false);
@@ -900,6 +903,21 @@
 					</button>
 
 					<!-- AI Inbox: the durable queue for proposals and other reviewable changes. -->
+					{#if emailSuggestionsEnabled}
+						<a
+							href="/admin/gmail-relevance/review"
+							onclick={() => handleMenuItemClick('/admin/gmail-relevance/review')}
+							class="relative flex h-9 w-9 items-center justify-center rounded-md border bg-card text-muted-foreground shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent {currentPath ===
+							'/admin/gmail-relevance/review'
+								? 'border-accent/50 text-accent'
+								: 'border-border'}"
+							aria-label="Review email suggestions"
+							title="Email suggestions"
+						>
+							<Mail class="h-4 w-4" />
+						</a>
+					{/if}
+
 					<button
 						type="button"
 						onclick={openAiInbox}
@@ -1434,6 +1452,17 @@
 								</span>
 							{/if}
 						</button>
+
+						{#if emailSuggestionsEnabled}
+							<a
+								href="/admin/gmail-relevance/review"
+								onclick={() => handleMenuItemClick('/admin/gmail-relevance/review')}
+								class="flex items-center rounded-md px-3 py-1.5 text-base font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							>
+								<Mail class="mr-3 h-5 w-5" />
+								Email suggestions
+							</a>
+						{/if}
 
 						{#if showAgentConnectionCta}
 							<a

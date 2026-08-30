@@ -1,5 +1,10 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PROJECT_CREATION_FAILURE_AND_REMEDIATION_2026-08-22.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Worker Project-Creation Failure and Remediation
 
 **Test date:** 2026-08-22 ET (2026-08-23 UTC)  

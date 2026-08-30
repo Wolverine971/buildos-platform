@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-30T04:47:59.337Z
+// Generated on: 2026-08-30T16:33:30.957Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -4229,6 +4229,7 @@ export type DatabaseSchema = {
 		title: string | null;
 		updated_at: string;
 		url: string;
+		user_id: string | null;
 		visit_count: number;
 	};
 	webhook_events: {

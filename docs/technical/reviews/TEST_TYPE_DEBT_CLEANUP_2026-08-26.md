@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/TEST_TYPE_DEBT_CLEANUP_2026-08-26.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Test type-debt cleanup — 2026-08-26
 
 ## Baseline
@@ -60,3 +65,97 @@ The live/legacy tool-call decision is documented independently in
 This bounded pass removed 473 diagnostics and lowered the combined ratchet from 1,443 to 970. The
 remaining prioritized work was not started. Tasker 64 is ready for an independent agent to resolve
 the important live/legacy tool-call contract loose end.
+
+## Follow-up production lint pass
+
+The repository lint pipeline initially stopped before ESLint because document-patch reanchoring
+returned the full conflict union, including the apply-only `WRITE_RACE` reason. The resolver now
+advertises only conflicts it can actually produce, and the shared package builds successfully.
+
+Worker lint warnings fell from 176 to 110. All non-`any` warnings are resolved: import ordering,
+fake-async callbacks, stale promise wrapping, and the optional-chain branch. Catch boundaries now
+use `unknown` plus guarded error-message/status extraction, and database update/cleanup payloads use
+their generated row contracts where those contracts already exist.
+
+The remaining 110 warnings were all explicit-`any` debt:
+
+- 86 casts around untyped or stale Supabase table/RPC seams.
+- 14 arrays returned by JSON project-graph/context RPCs without runtime decoders.
+- 9 permissive notification payload records rooted in the shared `NotificationDelivery.payload`
+  contract.
+- 1 remaining bespoke annotation.
+
+They were handled as boundary projects rather than by replacing `any` with decorative local types:
+
+- Removed stale Supabase table/RPC casts where the generated database contract was already correct.
+  This included scheduler, OCR, braindump, voice-note, profile/contact signal, Agent Run, Brief,
+  project-loop, and notification paths.
+- Added a shared, runtime-validated `ProjectGraphContext` contract matching the
+  `load_project_graph_context` SQL projection. Snapshot and project-loop workers now decode the JSON
+  response before consuming it, and the worker test harness supplies the real RPC shape.
+- Replaced the permissive notification delivery record with a JSON-safe shared payload contract.
+  A delivery is promoted to a sendable notification only after title/body validation; shared
+  accessors narrow legacy direct-or-nested payload values for email and SMS.
+- Added a shared Cycle claim decoder and outcome serializer. The worker no longer casts the RPC
+  method or claim response.
+- Deleted the unused worker-local tracked in-app notification service and fixed the active
+  shared-agent-ops implementation to use the typed Supabase client and JSON-safe payload contract.
+  Keeping a second unreferenced copy was drift risk, not unfinished UI.
+
+Result: worker lint fell from 110 warnings to zero warnings and zero errors.
+
+### Loose ends surfaced by the cleanup
+
+- Resolved: `complete_cycle_run`, `complete_cycle_run_impl`, `fail_cycle_run`, and
+  `fail_cycle_run_impl` return `boolean` in SQL, but PostgREST omits RPC return schemas from its
+  OpenAPI document. The REST type generator now applies audited return overrides for these four
+  Cycle RPCs. A live regeneration reproduces the four `boolean` signatures without unrelated
+  generated-type churn.
+- The snapshot worker previously fell back to `graph.project.icon_svg`, although the graph RPC does
+  not select that field. The worker already requires and loads the project row with `icon_svg`, so
+  the impossible fallback was removed. No icon-generation behavior was missing.
+- Libri session/entity contracts had been duplicated locally. They now come from shared types, with
+  JSON serializers kept at their persistence boundaries.
+
+## Final verification
+
+- The worker lint pipeline passes with zero ESLint errors or warnings, including the HTTP module-size
+  guard.
+- Shared-types and worker production typechecks pass.
+- Shared contract tests pass: 57 tests across 6 files, including the new project-graph decoder and
+  Cycle RPC decoder/serializer coverage.
+- Focused worker behavior tests pass: 33 tests covering Cycle processing/adversarial cases,
+  notification retry semantics, and degraded project-loop execution.
+- Repository lint passes all 11 workspaces. The full production typecheck passes all 19 tasks with
+  Svelte reporting zero errors and zero warnings. Both test-debt ratchets remain at their existing
+  ceilings (web 540, worker 221); neither baseline increased.
+- Production typechecks pass, including `svelte-check` with zero errors and zero warnings.
+- The test-debt ratchets pass at web 540 and worker 221; neither ceiling was increased.
+- A newly added document-proposal test briefly raised web debt to 541 by supplying a type argument to
+  a non-generic Vitest matcher. The test now verifies both the custom error class and its `NO_CHANGE`
+  code, and all five focused proposal-service tests pass.
+- One combined Turbo run observed generated `shared-agent-ops` JavaScript while its declarations were
+  being rebuilt and emitted transient check diagnostics. A stable standalone web check immediately
+  passed cleanly. If this recurs without concurrent package work, the package build/typecheck task
+  ordering should be audited rather than suppressing generated-file diagnostics.
+
+## Second-pass audit — 2026-08-27
+
+- Tightened the Cycle claim decoder so it rejects cross-field drift, not just malformed individual
+  fields: positive/matching definition versions, matching project targets, matching trigger identity,
+  valid claim-disposition/status pairs, and queue fencing identity on claimed runs. Contract errors
+  now retain the rejected field path in the permanent queue error.
+- Removed the snapshot worker's blanket `unknown`-to-`Json` cast. Snapshot and queue payloads now pass
+  through a recursive serializer that rejects non-finite numbers and non-JSON values. The stale
+  project-facet fallback through unprojected `props` was deleted; Start Here reads the typed RPC
+  projection directly.
+- Removed the remaining shared notification `any` defaults and permissive record parameters.
+  Notification payloads accept unknown records at the external seam, then recursively validate JSON
+  values before transformation. Direct tests cover both tracked payload construction and rejection of
+  non-JSON values.
+- Live Supabase RPC names are aligned (306 functions). Migration ledger, SQL contract inventory, and
+  schema-generator tests pass. Repository lint passes all 11 workspaces; Svelte reports zero errors
+  and zero warnings; test-debt ratchets remain web 540 and worker 221.
+- Shared contracts now pass 60 tests across 7 files. Focused Cycle worker behavior remains 21/21.
+- The complete worker suite passes with local HTTP binding enabled: 143 files and 1,245 tests passed;
+  the opt-in Phase A workflow evaluation remains skipped as designed.

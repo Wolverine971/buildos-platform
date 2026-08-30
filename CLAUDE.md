@@ -1,212 +1,79 @@
 <!-- CLAUDE.md -->
+<!--
+CLAUDE.md
 
-# CLAUDE.md
+Maintenance note (2026-08-30): Claude Code's user-level auto-compact capacity is set to 600,000
+tokens at ~/.claude/settings.json -> env.CLAUDE_CODE_AUTO_COMPACT_WINDOW. With the default trigger
+percentage, compaction should begin near 570,000 tokens. Change that setting to retune the window.
+This HTML comment is stripped when Claude loads project instructions.
+-->
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+@AGENTS.md
 
-## Commands
+# BuildOS Repository Guide
+
+BuildOS is a thinking environment for people making complex things. Users turn messy text or voice
+into projects, tasks, context, daily briefs, calendar plans, and agent-assisted work.
+
+## Start here
+
+- Use `pnpm` for every package operation.
+- Read the nearest instructions and relevant docs before editing. For web work, start with
+  `apps/web/AGENTS.md`; for marketing, start with `docs/marketing/START_HERE.md`.
+- Inspect the real implementation and call sites before changing behavior.
+- Run the narrowest check that proves the change; use `pnpm pre-push` only when full validation is
+  warranted.
+
+Common commands:
 
 ```bash
-# Install dependencies (ALWAYS pnpm, NEVER npm)
 pnpm install
-
-# Development
-pnpm dev                          # All apps via Turborepo
-pnpm dev --filter=@buildos/web    # SvelteKit web app only (localhost:5173)
-pnpm dev --filter=@buildos/worker # Worker service only (localhost:3001)
-
-# Testing
-pnpm test                         # All tests across monorepo
-pnpm test:run                     # Run once without watch
-cd apps/web && pnpm test path/to/file.test.ts   # Single test file
-cd apps/web && pnpm test:llm      # LLM prompt tests (uses real API, costs money)
-cd apps/worker && pnpm test:run   # Worker tests once
-cd apps/worker && pnpm test:scheduler  # Scheduler-specific tests
-
-# Code quality
-pnpm typecheck                    # Type checking all apps
-pnpm lint                         # Lint all apps
-pnpm lint:fix                     # Auto-fix lint issues
-pnpm format                       # Prettier formatting
-pnpm pre-push                     # Full validation: typecheck + test + lint + build
-
-# Building
-pnpm build                        # Build all apps
-pnpm build --filter=@buildos/web    # Build web only
-pnpm build --filter=@buildos/worker # Build worker only
-
-# Type/schema generation
-pnpm gen:types                    # Generate Supabase types
-pnpm gen:schema                   # Extract database schema
-pnpm gen:all                      # Full regeneration pipeline (types + schema + web assets + typecheck)
+pnpm dev
+pnpm test:run
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm pre-push
+pnpm gen:all
 ```
 
-### TypeScript Compiler Lanes
+## System map
 
-This repository intentionally uses two TypeScript compiler generations. Do not replace the
-workspace's TypeScript 5 dependency with TypeScript 7 globally.
+- `apps/web` — SvelteKit 2/Svelte 5 app on Vercel.
+- `apps/worker` — Express queue worker and scheduler on Railway.
+- `packages/shared-types` — generated database and API types.
+- `packages/smart-llm` — model routing through OpenRouter with provider fallbacks.
+- `packages/shared-agent-ops`, `packages/agentic-chat-runtime`, and
+  `packages/agent-orchestrator` — shared agent operations, runtime contracts, and orchestration.
+- `packages/buildos-mcp-server` — local bridge to the remote BuildOS MCP connector.
+- `supabase/migrations` — PostgreSQL schema changes; Supabase Auth and RLS protect user data.
 
-- **TypeScript 5.9** remains the compatibility compiler for SvelteKit/Svelte tooling and `tsup`
-  declaration generation.
-- **Native TypeScript 7** is installed as the npm alias `@typescript/native` in
-  `apps/worker`, `packages/shared-types`, and `packages/buildos-mcp-server`.
-- The worker uses native TypeScript 7 for both `build` and `typecheck`. Shared types and the
-  MCP server use it for `typecheck` while retaining TypeScript 5.9-backed `tsup` builds.
-- Native scripts use `node ./node_modules/@typescript/native/bin/tsc` explicitly so the
-  aliased compiler cannot collide with the regular `typescript` binary.
+Architecture details live in `docs/architecture/`, `apps/web/docs/technical/architecture/`, and
+`apps/worker/docs/`. Generated types live in `packages/shared-types/src/`; regenerate them with
+`pnpm gen:all`.
 
-Turborepo is pinned at `^2.10.5`. Keep it at 2.9.7 or newer so it can parse pnpm 11's flat
-`patchedDependencies` lockfile format.
+## Repository-wide constraints
 
-## Architecture
+- Keep the existing dual TypeScript compiler lanes: TypeScript 5.9 for SvelteKit and `tsup` builds,
+  and `@typescript/native` where already configured. Turborepo must remain compatible with pnpm 11's
+  flat patched-dependency lockfile.
+- Use user-scoped Supabase clients for normal requests and the admin client only for explicit
+  privileged operations.
+- JSON API endpoints use `ApiResponse` from `$lib/utils/api-response`; protocol responses such as
+  SSE, downloads, pixels, and webhooks may return raw responses.
+- Use `docs/product/PROJECT_REVIEW_TAXONOMY.md` for Project Review terminology.
+- BuildOS marketing leads with relief, not AI. Public category: “thinking environment for people
+  making complex things.” Core promise: “turn messy thinking into structured work.”
 
-**BuildOS** is an AI-powered productivity platform. Users write stream-of-consciousness "brain dumps" and AI extracts projects, tasks, and context. The platform includes daily brief generation, calendar integration, ontology-driven project management, and an agentic chat system.
+## Web-specific routing
 
-### Monorepo Layout (Turborepo + pnpm workspaces)
-
-- **`apps/web`** — SvelteKit 2 + Svelte 5 frontend, deployed to **Vercel** (nodejs22.x runtime)
-- **`apps/worker`** — Node.js + Express background worker, deployed to **Railway**
-- **`packages/shared-types`** — TypeScript types (database schema, queue types, API types)
-- **`packages/shared-utils`** — Logging and metrics utilities
-- **`packages/smart-llm`** — LLM abstraction layer (OpenRouter primary, OpenAI/Anthropic fallback, Moonshot for Kimi models)
-- **`packages/supabase-client`** — Shared Supabase client configuration
-- **`packages/twilio-service`** — SMS/Twilio integration
-- **`packages/shared-agent-ops`** — Agent operation layer shared by the web agent-call gateway and the worker Agent Run runner (op policy/scope, ontology mutation core, task/document state normalizers)
-- **`packages/agentic-chat-runtime`** — Transport-neutral contracts, ports, loop/supervisor logic, and parity fixtures for the agentic chat runtime (consumed by both web and worker)
-- **`packages/agent-orchestrator`** — Agent-first orchestration core and the web app's Phase A/open-brief evaluation harness (see `docs/architecture/agent-first-orchestration/`)
-- **`packages/buildos-mcp-server`** — Local stdio MCP bridge (`@buildos/mcp-server`) that proxies a local MCP client to the remote BuildOS connector at `/mcp/buildos`
-
-### Web App (`apps/web`)
-
-SvelteKit app with path aliases: `$components` → `src/lib/components`, `$ui` → `src/lib/components/ui`, `$utils` → `src/lib/utils`.
-
-**Key directories:**
-
-- `src/routes/api/` — ~50 API route groups (REST + SSE endpoints)
-- `src/routes/(public)/` — Public-facing pages
-- `src/lib/services/` — Business logic services (brain dump, calendar, chat, dashboard, etc.)
-- `src/lib/server/` — Server-only modules (billing, braindump processing, onboarding, OCR, ontology classification, agent runs, Project Reviews, welcome/retargeting sequences)
-- `src/lib/stores/` — Svelte stores (dashboard, navigation, notifications, brain dump, etc.)
-- `src/lib/components/` — UI components organized by feature domain
-- `src/lib/config/` — Feature configuration (calendar colors, billing, forms, onboarding, trial)
-- `src/lib/supabase/` — Supabase clients (`index.ts` server, `admin.ts` service role, `authenticated.ts`)
-- `src/lib/types/` — App-specific TypeScript types
-- `src/lib/components/ui/` — Design-system primitives (`$ui` alias)
-- `src/lib/utils/` — Helpers incl. `ApiResponse` (`$utils` alias)
-
-**Auth flow:** Supabase Auth + Google OAuth. `hooks.server.ts` creates the Supabase client per-request, validates JWT via `safeGetSession()`, and attaches `user`/`session`/`supabase` to `event.locals`. Consumption billing guards block mutations for frozen accounts (402 response).
-
-**Server timing:** `hooks.server.ts` instruments request performance via `Server-Timing` headers. Set `PERF_TIMING=true` and `PERF_LOG_SLOW=true` in env to enable.
-
-### Worker (`apps/worker`)
-
-Express server with three main components:
-
-- **API Server** (`src/index.ts`) — REST endpoints for job management
-- **Worker** (`src/worker.ts`) — Supabase queue consumer processing jobs (briefs + audio narration, braindumps, notifications, chat classification, voice transcription, OCR, ontology, semantic-discovery embeddings, agent runs, Project Reviews, project icons, SMS)
-- **Scheduler** (`src/scheduler.ts`) — Cron-based job scheduling with timezone-aware brief generation and engagement backoff
-
-**Queue system:** Redis-free. Jobs live in `queue_jobs`; workers claim rows atomically via Supabase RPCs (`add_queue_job`, `claim_pending_jobs`, `complete_queue_job`, `fail_queue_job`) using `FOR UPDATE SKIP LOCKED`. `SupabaseQueue` defaults: `pollInterval=5s`, `batchSize=5`, `stalledTimeout=5min`. The `JobAdapter` in `workers/shared/jobAdapter.ts` bridges the legacy BullMQ-style processor interface to the Supabase queue.
-
-**Active job types** (registered in `src/worker.ts`): `generate_daily_brief`, `onboarding_analysis`, `send_notification`, `project_activity_batch_flush`, `schedule_daily_sms`, `send_sms`, `classify_chat_session`, `process_onto_braindump`, `transcribe_voice_note`, `generate_brief_audio`, `extract_onto_asset_ocr`, `embed_onto_entity`, `agent_run`, `build_project_context_snapshot`, `generate_project_icon`, `buildos_project_loop`, `sync_calendar`, `admin_question_tree`.
-
-### LLM Integration (`packages/smart-llm`)
-
-Routes through **OpenRouter** as the primary provider with model selection based on task complexity (speed/smartness/cost scoring). Models are defined in `model-config.ts` with JSON and text profiles. Supports streaming, tool calling, and JSON mode. Falls back to direct OpenAI/Anthropic. Optional Moonshot direct routing for Kimi models.
-
-### Database
-
-**Supabase (PostgreSQL + RLS).** Generated types live in `packages/shared-types/src/database.types.ts`; the schema snapshot lives alongside as `database.schema.ts`. Large Supabase OpenAPI dumps match `supabase.openapi*.json` and are ignored local artifacts, not checked-in source. Migrations are in `supabase/migrations/`.
-
-API routes access Supabase via `locals.supabase` (user-scoped, respects RLS). Admin operations use `createAdminSupabaseClient()` from `$lib/supabase/admin`. Regenerate types + schema + web assets with `pnpm gen:all`.
-
-## Key Conventions
-
-### Project Review Terminology
-
-Use `docs/product/PROJECT_REVIEW_TAXONOMY.md` for product and architecture language:
-
-- **Project Review** is the capability; one bounded execution is a **project review pass**.
-- The recurring activity -> review -> human decision -> feedback lifecycle is the
-  **project review cycle**.
-- **Agent loop** is reserved for iterative model/tool execution in which the model observes
-  results and chooses another action.
-- Existing names such as `buildos_project_loop`, `project_loop_runs`, routes, flags, and
-  worker symbols are legacy/internal identifiers and do not imply an agent loop.
-
-### Svelte 5 Runes
-
-Always use Svelte 5 runes syntax. Never use the old reactive syntax.
-
-```svelte
-let count = $state(0);
-let doubled = $derived(count * 2);
-$effect(() => { /* side effects */ });
-```
-
-### API Response Pattern
-
-All JSON API endpoints must use `ApiResponse` from `$lib/utils/api-response`:
-
-```typescript
-import { ApiResponse, requireAuth } from '$lib/utils/api-response';
-
-// Success
-return ApiResponse.success(data);
-
-// Auth check
-const auth = await requireAuth(locals);
-if ('error' in auth) return auth.error;
-
-// Errors
-return ApiResponse.badRequest('message');
-return ApiResponse.unauthorized();
-return ApiResponse.notFound('Resource');
-return ApiResponse.databaseError(error);
-```
-
-Protocol endpoints (SSE streams, file downloads, tracking pixels, webhooks) may return raw responses.
-
-### Design System: Inkprint
-
-The current design system is **Inkprint** (see `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`). Uses synesthetic texture-based design language inspired by halftone printing and field notes. Key tokens: `bg-card`, `text-foreground`, `shadow-ink`, texture classes like `tx-bloom`, `tx-grain`. All components must support light and dark modes with `dark:` prefix.
-
-Lucide root imports are Vite-aliased through `apps/web/src/lib/icons/lucide.ts`; when adding a new `lucide-svelte` icon, verify the exact installed icon subpath and add the matching re-export there before using it.
-
-### Formatting
-
-Prettier config: tabs, single quotes, no trailing commas, 100 char print width. Svelte files use the `svelte` parser via `prettier-plugin-svelte`.
-
-### Environment Variables
-
-Prefix conventions: `PUBLIC_` for client-accessible, `PRIVATE_` for server-only. See `.env.example` for the complete list. Key groups: Supabase, AI/LLM (OpenRouter primary + OpenAI fallback, optional Moonshot for Kimi), Google OAuth, Stripe (optional via `PRIVATE_ENABLE_STRIPE`), Worker communication (`PUBLIC_RAILWAY_WORKER_URL` + `PRIVATE_RAILWAY_WORKER_TOKEN`), Twilio/SMS, PostHog analytics (`PUBLIC_POSTHOG_KEY` + `PUBLIC_POSTHOG_HOST`, optional — no-ops without a key).
-
-Notable feature flags:
-
-- `PRIVATE_ENABLE_STRIPE` — enable payment processing; off = graceful degradation, trial system still works.
-- `PERF_TIMING=true` + `PERF_LOG_SLOW=true` — enable `Server-Timing` headers and slow-request logs.
+Before changing `apps/web`, read `apps/web/AGENTS.md`. It contains the current Svelte 5 workflow and
+validation gate. The Inkprint design system lives at
+`apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`; preserve its tokens, light/dark
+support, accessibility conventions, and centralized Lucide exports.
 
 ## Deployment
 
-- **Web → Vercel.** `vercel.json` defines the build (`turbo build --filter=@buildos/web...`), security headers, long-cache asset rules, and ~10 cron jobs (billing/trial lifecycle, welcome/reactivation sequences, Gmail maintenance, webhook renewal, account deletions, retention cleanup — see `vercel.json` for the current list). Adapter: `@sveltejs/adapter-vercel` pinned to `nodejs22.x`.
-- **Worker → Railway.** Railway root directory must be `/`. Repo-root `railway.toml` +
-  `nixpacks.toml` install dev dependencies with frozen `pnpm@11.7.0`, build the worker and its
-  workspace dependencies through Turbo, and start `node apps/worker/dist/index.js` on Node 22.
-  Healthcheck: `GET /health`.
-- **CI → GitHub Actions.** `.github/workflows/ci.yml` runs `turbo typecheck`, `turbo lint`, and `turbo test:run` on pushes to `main` and all PRs, seeding placeholder env from the `.env.example` files (no real secrets in CI).
-
-## Documentation
-
-- `apps/web/docs/` — Web app feature docs, technical architecture, components, API
-- `apps/worker/docs/` — Worker features, daily briefs, queue system, scheduler analysis
-- `docs/` — Cross-cutting docs (architecture diagrams, integrations, operations, marketing)
-- `apps/web/docs/technical/architecture/` — Architecture decisions (ADRs), system flows
-- `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` — Design system reference
-- `docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` — Cross-service topology
-- `docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md` — Queue internals
-
-## Marketing Documentation
-
-**Start here:** `docs/marketing/START_HERE.md` — single entry point for all marketing work, with current campaign status and reading order. `docs/marketing/INDEX.md` has the full index (brand, investors, growth, social, segments). Don't duplicate marketing reading lists here — they drift out of sync with START_HERE.md, which is the maintained source of truth.
-
-BuildOS uses an **anti-AI marketing strategy**: do not lead with AI, lead with relief. Public category: **"thinking environment for people making complex things."** Core promise: **"turn messy thinking into structured work."**
+- Web: Vercel, configured by `vercel.json`.
+- Worker: Railway, configured by `railway.toml` and `nixpacks.toml`.
+- CI: `.github/workflows/ci.yml` runs typecheck, lint, and tests.

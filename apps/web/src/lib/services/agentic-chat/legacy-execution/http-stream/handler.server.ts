@@ -18,6 +18,7 @@ export const LEGACY_AGENT_STREAM_CONFIG = {
 
 import type { RequestHandler } from '@sveltejs/kit';
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
 import { GLM_53_FLASH_MODEL } from '@buildos/smart-llm';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SSEResponse } from '$lib/utils/sse-response';
@@ -267,6 +268,11 @@ import {
 } from '$lib/services/agentic-chat-v2/stream-route/prompt-context';
 import { FastChatCancellationMonitor } from '$lib/services/agentic-chat-v2/stream-route/cancellation-monitor.server';
 import { FastChatErrorReporter } from '$lib/services/agentic-chat-v2/stream-route/error-reporter.server';
+import {
+	isLegacyDetachedLifecycleEnabled,
+	registerLegacyTurnPromise,
+	shouldCloseLegacySseSink
+} from './lifecycle.server';
 
 const logger = createLogger('API:AgentStreamV2');
 const STREAM_CONFIG = FastChatStreamConfig.fromEnvironment();
@@ -716,7 +722,8 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 		}
 	);
 
-	void (async () => {
+	let detachedLifecycleRegistered = false;
+	const turnPromise = (async () => {
 		const contextType = normalizeFastContextType(streamRequest.context_type);
 		const projectFocus = streamRequest.projectFocus ?? undefined;
 		const entityId = resolveEffectiveEntityId({
@@ -4201,7 +4208,12 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 					}
 				});
 			}
-			if (streamDetached) {
+			if (
+				!shouldCloseLegacySseSink({
+					streamDetached,
+					detachedLifecycleRegistered
+				})
+			) {
 				return;
 			}
 			try {
@@ -4220,6 +4232,28 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 			}
 		}
 	})();
+
+	const detachedLifecycleEnabled = isLegacyDetachedLifecycleEnabled(
+		env.AGENT_CHAT_LEGACY_WAIT_UNTIL_ENABLED
+	);
+	try {
+		detachedLifecycleRegistered = registerLegacyTurnPromise(turnPromise, {
+			enabled: detachedLifecycleEnabled
+		});
+		if (detachedLifecycleEnabled && !detachedLifecycleRegistered) {
+			logger.warn(
+				'Legacy Agent Stream waitUntil context unavailable; preserving open stream',
+				{
+					streamRunId
+				}
+			);
+		}
+	} catch (error) {
+		logger.warn('Legacy Agent Stream waitUntil registration failed; preserving open stream', {
+			error,
+			streamRunId
+		});
+	}
 
 	return eventSink.response;
 };

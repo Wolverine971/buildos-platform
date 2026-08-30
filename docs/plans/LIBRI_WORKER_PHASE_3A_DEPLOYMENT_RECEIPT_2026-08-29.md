@@ -1,3 +1,9 @@
+<!-- docs/plans/LIBRI_WORKER_PHASE_3A_DEPLOYMENT_RECEIPT_2026-08-29.md -->
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-29; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Libri Worker Phase 3A Railway Deployment Receipt
 
 Date: 2026-08-29
@@ -8,11 +14,11 @@ Project: `queue-worker`
 
 The isolated Libri bootstrap is deployed and healthy with queue consumption disabled.
 
-| Service | Deployment | Commit | Status | Entrypoint |
-| --- | --- | --- | --- | --- |
-| `libri-worker` | `ee48a407-0459-4e5f-9548-3f6401b58e08` | `f875aac2cfc36ed6246597aa8cba47c5f70fe884` | `SUCCESS` | `node apps/worker/dist/libri-worker.js` |
-| `agentic-chat-worker` | `b65596f9-ddab-4ef8-bd60-02a4670be57c` | `f875aac2cfc36ed6246597aa8cba47c5f70fe884` | `SUCCESS` | `node apps/worker/dist/chat-worker.js` |
-| `daily-brief-worker` | `40fcc975-81d6-4601-8d41-8152e94c4737` | `f875aac2cfc36ed6246597aa8cba47c5f70fe884` | `SUCCESS` | `node apps/worker/dist/index.js` |
+| Service               | Deployment                             | Commit                                     | Status    | Entrypoint                              |
+| --------------------- | -------------------------------------- | ------------------------------------------ | --------- | --------------------------------------- |
+| `libri-worker`        | `ee48a407-0459-4e5f-9548-3f6401b58e08` | `f875aac2cfc36ed6246597aa8cba47c5f70fe884` | `SUCCESS` | `node apps/worker/dist/libri-worker.js` |
+| `agentic-chat-worker` | `b65596f9-ddab-4ef8-bd60-02a4670be57c` | `f875aac2cfc36ed6246597aa8cba47c5f70fe884` | `SUCCESS` | `node apps/worker/dist/chat-worker.js`  |
+| `daily-brief-worker`  | `40fcc975-81d6-4601-8d41-8152e94c4737` | `f875aac2cfc36ed6246597aa8cba47c5f70fe884` | `SUCCESS` | `node apps/worker/dist/index.js`        |
 
 ## Libri service contract
 

@@ -2,55 +2,39 @@
 
 # BuildOS Collaboration Preferences
 
-These preferences apply across the repository. Treat them as defaults unless the user asks for
-something different.
+These are repository-wide defaults unless the user asks for a different approach.
 
-## Find the kernel and make it visible
+## Make the idea tangible
 
-- Raw ideas usually contain a specific insight worth testing. Identify that kernel and keep it at
-  the center of the work.
-- Take the shortest credible path to a prototype that makes the idea tangible.
-- Default to frontend-first implementation. When the real system cannot be frontend-first, create
-  the smallest useful visual or interactive simulation of how it will work.
-- Prefer a working, inspectable artifact over a long explanation or speculative plan.
+- Find the specific insight inside the request and keep it central.
+- Take the shortest credible path to a working, inspectable artifact.
+- Default to frontend-first work. When that is impractical, build the smallest useful visual or
+  interactive simulation.
+- Finish the requested change before considering nearby simplification. Expand scope only when it
+  removes meaningful duplication, steps, or future complexity.
+- Revisit boundaries and abstractions at genuine complexity inflection points; early prototype code
+  may optimize for learning first.
 
 ## Communicate for fast scanning
 
-- Keep routine updates compact. Lead with what is visible, working, risky, or newly learned.
-- Use longer explanations only when the decision is important, subtle, or hard to reverse.
-- Surface landmines early, but treat them as constraints to work around before treating them as
-  reasons to abandon the user's intended direction.
-- Do not foreground table-stakes implementation details such as authentication unless they block
-  the prototype, create material risk, or require a real product decision. Handle them appropriately
-  in the background.
-
-## Evolve the abstraction
-
-- Early prototype code may be rough. Optimize first for learning and a visible result.
-- As features accumulate, pause at genuine complexity inflection points to reconsider the model,
-  boundaries, and abstractions.
-- Prefer simplifications that make future complexity cheaper rather than preserving an abstraction
-  merely because it already exists.
-- When revisiting an existing flow, complete the requested change and look for nearby opportunities
-  to remove steps, duplication, or unnecessary complexity without turning the task into an unrelated
-  refactor.
+- Keep routine updates compact and lead with what is visible, working, risky, or newly learned.
+- Explain decisions at length only when they are important, subtle, or hard to reverse.
+- Surface landmines early and work around them where possible.
+- Handle table-stakes implementation details in the background unless they block the prototype,
+  create material risk, or require a product decision.
 
 ## Treat performance as product work
 
-- Look for ways to eliminate an API call, round trip, repeated computation, or user step.
-- Performance experiments are welcome, including nonstandard patterns when they produce a meaningful
-  gain.
-- If a performance choice looks unusual or makes the code less conventionally tidy, document why it
-  exists and record the measured or expected gain. Do not trade clarity for an unverified micro-
-  optimization.
+- Prefer fewer API calls, round trips, repeated computations, and user steps.
+- Use unconventional optimizations when the gain is meaningful and document the expected or
+  measured benefit.
+- Preserve clarity unless evidence justifies the tradeoff.
 
-## Default decision order
+## Decision order
 
-When tradeoffs are otherwise close, prefer:
-
-1. The clearest test of the idea's core insight.
-2. The fastest visible prototype.
-3. Early discovery of fatal constraints.
-4. A simple abstraction that can absorb the next layer of complexity.
+1. Clearest test of the core insight.
+2. Fastest visible prototype.
+3. Earliest discovery of fatal constraints.
+4. Simplest abstraction that can absorb the next layer.
 5. Fewer calls, steps, and round trips.
-6. Baseline production hardening once the idea has earned it.
+6. Production hardening after the idea earns it.

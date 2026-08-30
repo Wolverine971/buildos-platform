@@ -17,7 +17,7 @@
 - `timing_metrics` has no RLS — create migration `20260130_235900` + the only other migration touching it (`20260428000015`, adds a column) confirm no `ENABLE ROW LEVEL SECURITY`. ✅
 - `prompt_cache_key` is never sent on the streaming path — `openrouter-v2-service.ts:1576-1588` omits it; it appears only on JSON/text/moonshot paths (`:905, :1226, :1432, :1681`). ✅
 
-**Status (updated 2026-08-29):** Waves 1 and 2 are committed. Wave 3 security is implemented in source; the bootstrap migration is applied and its production encryption key is configured. The final Track I migration (`20260830010000_agentic_chat_track_i_hardening.sql`) still needs production apply before that slice deploys. One Wave 2 tail item (D4b, lambda lifecycle) remains intentionally held for a go/no-go. Findings marked **FIXED/IMPLEMENTED** carry a one-line note on what shipped.
+**Status (updated 2026-08-30):** Waves 1 and 2 are committed. Wave 3 security is implemented in source; all three security/recovery migrations are applied in production, the bootstrap encryption key is configured, and fresh `public` + `libri` database types are generated. D4b is implemented with a service-only stale-turn cron, while the detached-lifecycle flag remains off in Production pending a Preview detach/reconcile smoke. Findings marked **FIXED/IMPLEMENTED** carry a one-line note on what shipped.
 
 ---
 
@@ -51,7 +51,7 @@ The auth/scope _core_ is genuinely well-built (fail-closed op allowlists, grant-
 | S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | **IMPLEMENTED (W3, pending deploy)** — external-content write review   |
 | S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | **IMPLEMENTED (W3, pending deploy)** — agent-only remote image block   |
 | S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | **IMPLEMENTED (W3, pending deploy)** — scoped materialization gate     |
-| S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | **FIXED (W1)** — RLS migration (verify live)                           |
+| S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | **FIXED (W1, live verified 2026-08-30)** — owner/admin RLS             |
 | S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | **IMPLEMENTED (W3, migration applied; pending deploy)**                |
 | C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | **IMPLEMENTED (W3, pending deploy)** — authorize any projectId         |
 | C2  | Client-supplied prewarm context trusted verbatim into system prompt + persisted (session poisoning)                                   | HIGH         | **FIXED (W3, verified 2026-08-29)** — unsigned payload ignored         |
@@ -84,7 +84,7 @@ Result: an op-level write failure (`success:true, ok:false`) → guard synthesiz
 
 **Fix:** use `didGatewayExecSucceed(execution)` everywhere success is judged (`finalization-guard.ts:442`, `index.ts:1774`, `:1515`).
 
-### D7. Multi-entity creates are non-transactional → partial state reported as failure → duplicates on retry — HIGH, CONFIRMED — FIXED (W2, task-create; instantiate deferred; tests pending)
+### D7. Multi-entity creates are non-transactional → partial state reported as failure → duplicates on retry — HIGH, CONFIRMED — FIXED (W2, task-create; instantiate deferred; tests verified)
 
 - **`create_onto_task`** — `routes/api/onto/tasks/create/+server.ts:281-307`: task row inserted first, then `autoOrganizeConnections` (`:301-307`) + assignee sync (`:320-340`). An `AutoOrganizeError`/`TaskAssignmentValidationError` is caught (`:405-435`) and returned as an **error** — but the task row persists (no cleanup). Model told "failed" → retries → duplicate tasks, each missing plan/goal edges. (The _update_ path was fixed with `onto_task_update_atomic`, `tasks/[id]/+server.ts:525-560` — create was not.)
 - **`create_onto_project` (instantiate)** — `packages/shared-agent-ops/src/ontology/instantiation.service.ts:316-339`: project row inserted first, then goals/plans/tasks/docs/edges sequentially; compensation (`cleanupPartialInstantiation:1125-1163`) is best-effort and relies on FK cascade; a mid-way lambda death leaves a fully-visible half-built project.
@@ -152,11 +152,22 @@ The client's supersede flow waits **≤120ms** for the cancel ack before sending
 
 **Fix:** persist each tool execution incrementally right after `onToolResult` (the callback already exists, `:3285`), keyed idempotently by `(turn_run_id, sequence)`; add a `last_progress_at` heartbeat on `chat_turn_runs` so a sweeper can distinguish dead vs alive.
 
-### D4b. Detached-turn survival is accidental — no `waitUntil`; detach path never closes the stream; sessions hard-block up to 285s — HIGH, code CONFIRMED / freeze behavior SUSPECTED
+### D4b. Detached-turn survival is accidental — no `waitUntil`; detach path never closes the stream; sessions hard-block up to 285s — HIGH, CONFIRMED — IMPLEMENTED / PRODUCTION FLAG OFF
 
 The turn runs in `void (async ()=>{})()` (`stream/+server.ts:1913`) after `return agentStream.response`. The only thing keeping the invocation alive is the un-closed `TransformStream` readable — **no `waitUntil` anywhere** in the agent stream path (the codebase knows the pattern; this route doesn't use it). On client disconnect the `finally` deliberately skips `agentStream.close()` (`:4337-4339`). A stuck `running` row blocks every new message ("still finishing the previous response") until age ≥ `FASTCHAT_DETACHED_TURN_MAX_DURATION_MS` (285s) — and only because the _next_ POST sweeps it; the client has no handler for `active_turn_running`.
 
-**Fix:** register the IIFE promise with `event.platform?.context?.waitUntil`; close the stream even when detached; add a cron sweeper keyed off the D4 heartbeat.
+**2026-08-30 implementation:** the pinned Vercel adapter exposes
+`event.platform.context.waitUntil` only for Edge functions, so the `nodejs22.x` host now uses pinned
+`@vercel/functions@3.9.5`. It registers a named turn promise only when the real Vercel request
+context exposes `waitUntil`, and only then closes a detached sink; unavailable/failed registration
+preserves the old behavior. A `CRON_SECRET`-protected one-minute route calls the applied
+`20260830155952_agentic_chat_stale_legacy_turn_reaper.sql` service-only RPC. The RPC uses a
+120-second floor, bounded `FOR UPDATE SKIP LOCKED` candidates, and excludes worker/fresh turns.
+Legacy terminal updates are fenced to rows still `running`, preventing a thawed invocation from
+overwriting a reaper cancellation.
+Preview has `AGENT_CHAT_LEGACY_WAIT_UNTIL_ENABLED=true` staged for the runtime canary. Production
+intentionally has no such variable, so only the reaper ships active there until the Preview
+detach/reconcile smoke proves the lifecycle behavior on Vercel.
 
 ### D4c. `TurnObservabilityWriter.flush()` is dead code on the live path → nondeterministic loss of the rows D4's recovery depends on — MEDIUM, CONFIRMED — FIXED (W2)
 
@@ -179,7 +190,7 @@ The `finally` awaits only `flushTurnEvents()` (`stream/+server.ts:4336`), never 
 - **F5. Supersede structurally races the running-turn guard** — MEDIUM-HIGH, CONFIRMED. Sending a message while streaming → 120ms ack cap, then the new POST is rejected by the active-turn lookup / unique-index conflict before turn A finishes cancelling; the user's message disappears from the composer. Combined with D5, turn A may not even be cancelled. **Fix:** have the new POST cancel the prior turn server-side (it already finds `activeTurn` at `:2137`), or make the client retry on `active_turn_running`.
 - **F7. User message persistence is fire-and-forget** — MEDIUM, CONFIRMED. `stream/+server.ts:2547-2577` `void`-detaches the user-row insert; failure only logs. An assistant reply can persist against a user message that doesn't exist → all future history is missing the user's actual request. Idempotency is check-then-insert, not a unique constraint. **Fix:** await the user insert before the LLM stream; add a unique index on `(session_id, idempotency_key)`.
 - **F8. Transient cancel-hint channel is per-lambda module memory** — MEDIUM-LOW, CONFIRMED. `cancel-reason-channel.ts:25` is a module-level `Map`; the cancel POST and the streaming turn usually run on different instances, so it's best-effort; a first-turn cancel before the `session` SSE event has no `session_id` and never reaches the turn. **Fix:** make DB (or a `stream_run_id`-keyed signals table) primary.
-- **F9. Zombie turn vs stale sweep** — LOW, SUSPECTED (needs freeze/thaw). The age-based sweep marks an old row `cancelled`; a thawed zombie then runs `persistFinalState` with no status guard (`turn-observability-writer.ts:216-220`), overwriting `cancelled` with `completed` and interleaving two turns' messages. **Fix:** guard terminal updates with `.eq('status','running')`.
+- **F9. Zombie turn vs stale sweep** — LOW, PARTIALLY MITIGATED (freeze/thaw smoke pending). The D4b implementation now guards `persistFinalState` with `.eq('status','running')`, so a thawed zombie cannot overwrite a reaper cancellation with `completed`/`failed`. A real Preview freeze/detach smoke still needs to confirm that no late assistant message interleaves with a replacement turn.
 - **F10. Prewarm mutates live session scope mid-turn** — LOW, CONFIRMED. Prewarm's `resolveSession` can flip `context_type`/`entity_id` on the session row while a turn streams. **Fix:** prewarm should be read-only on session scope.
 
 ---
@@ -243,15 +254,15 @@ scheduled from worker cleanup. Legacy plaintext rows remain readable only for th
 
 ### Other security (medium/low)
 
-- **S6. No rate limiting / per-user concurrency cap — MEDIUM, IMPLEMENTED (W3; migration pending).** Authenticated turn admission now consumes a shared per-user token bucket. Legacy admission atomically caps two running turns under the existing per-user database advisory lock; worker admission already caps two running/twenty queued. Bootstrap and BuildOS agent-call gateway requests are IP-limited before parsing/auth security-event work.
+- **S6. No rate limiting / per-user concurrency cap — MEDIUM, IMPLEMENTED (W3; migration applied).** Authenticated turn admission now consumes a shared per-user token bucket. Legacy admission atomically caps two running turns under the existing per-user database advisory lock; worker admission already caps two running/twenty queued. Bootstrap and BuildOS agent-call gateway requests are IP-limited before parsing/auth security-event work.
 - **S7. Archived/out-of-scope project fence bypass on `onto.project.update`** — MEDIUM, **FIXED (W3, verified 2026-08-29).** The archived-project fallback now requires membership in an explicit `scope.project_ids` list, `includeArchived` retains `deleted_at IS NULL`, and ordinary write-access enforcement still runs after fallback resolution. Direct gateway regressions cover out-of-scope rejection and the in-scope archived/soft-delete-filter path.
 - **S9. Full tool arguments/search text logged to prod — MEDIUM, FIXED (W3).** Validation anomalies and route failures now keep only a 280-character preview plus identities; search telemetry records query length rather than the text.
 - **S10/S12. Prompt/prepared artifacts retained indefinitely — MEDIUM, FIXED (W3).** Scheduled bounded cleanup removes expired prepared prompts, deletes prompt snapshots after 14 days, and clears historic rendered dumps after two days. New snapshots permanently leave the duplicate `rendered_dump_text` null.
-- **S11. Tool executions/turn events retained indefinitely — MEDIUM, IMPLEMENTED (W3; migration pending).** A service-only scheduled cleanup deletes terminal tool arguments/results and remaining turn-event payloads after at least 30 days; active turns are excluded.
+- **S11. Tool executions/turn events retained indefinitely — MEDIUM, IMPLEMENTED (W3; migration applied).** A service-only scheduled cleanup deletes terminal tool arguments/results and remaining turn-event payloads after at least 30 days; active turns are excluded.
 - **S13. Postgres `details`/`hint` forwarded to the model — LOW/MEDIUM, FIXED (W3).** Object errors no longer concatenate or stringify database details/hints/arbitrary fields; tests cover a cross-tenant unique-value example.
 - **S14. Worker external results lack an untrusted-data notice — MEDIUM, FIXED (W3).** Live and reconstructed Agent Run transcripts wrap web and Google Calendar read results in an explicit data-only boundary.
 - **S15. Observability INSERT policies lacked ownership checks — LOW, FIXED (verified W3).** The worker trust-foundation migration removed authenticated observability INSERT/UPDATE policies and revoked end-user DML; these records are service-role-only, stronger than an ownership predicate.
-- **S16. `web_page_visits` cross-user shared body cache — MEDIUM, IMPLEMENTED (W3; migration pending).** Interactive chat and Agent Runs now read/write page bodies by `(user_id, normalized_url)`; RLS is owner-only and legacy unowned rows are inaccessible.
+- **S16. `web_page_visits` cross-user shared body cache — MEDIUM, IMPLEMENTED (W3; migration applied).** Interactive chat and Agent Runs now read/write page bodies by `(user_id, normalized_url)`; RLS is owner-only and legacy unowned rows are inaccessible.
 - **S17. Production prompt-dump escape hatch — LOW/MEDIUM, FIXED (W3).** Filesystem prompt dumps fail closed whenever `dev` is false, regardless of environment flags.
 
 ### C1. Ontology-context chats bypass the member-access gate — HIGH, IMPLEMENTED (W3, pending deploy)
@@ -406,10 +417,10 @@ Implemented in three parallel tracks, all validated (51 targeted tests pass, `sv
 **Batch 3 — SHIPPED (committed), with two named gaps:**
 
 - **D7 + D3-idempotency — SHIPPED.** New `onto_task_create_atomic` RPC (migration `20260702010000`) mirrors `onto_task_update_atomic`: task + edges + assignees in one transaction; the create route calls it so a failure rolls back (no orphan task). Idempotency: a nullable `idempotency_key` column + partial unique index; the RPC returns the existing row on key match, and `base-executor.apiRequest` attaches an `Idempotency-Key` header. No key ⇒ no dedup ⇒ non-chat callers unaffected.
-    - **Gap 1:** no dedicated D7 tests (the agent hit a session limit before writing them) — the RPC-rollback and idempotency-replay paths are unverified by tests. **Add these in the next pass.**
-    - **Gap 2:** the **project-instantiate** mitigation (`instantiation.service.ts` — project-row-last / finalize-flag) was **deferred**, not done. A mid-way crash there can still leave a visible half-built project.
+    - **Gap 1 closed 2026-08-30:** dedicated disposable PostgreSQL regressions now verify that relationship/assignee failure rolls back the task and that an idempotency replay returns the original task without duplicate rows/edges.
+    - **Gap 2 explicitly deferred:** the **project-instantiate** mitigation remains a broader design change. Child rows require the project FK/RLS parent to exist first, so project-row-last is not viable; a finalize flag needs a migration plus a fence in every project reader. Best-effort compensating cleanup remains.
 - **Carry-overs — SHIPPED.** D4 incremental persistence now gated on `buildRoundToolPattern([...]).hasWriteOps` (mutations only; per-read round-trip removed); the duplicate substring `isAbortLikeError` in `+server.ts` is deleted (outer handler relies on `signal.aborted`).
-- **D4b — NOT done (held for go/no-go).** Register the detached IIFE with `event.platform?.context?.waitUntil`; close the stream even when detached; Vercel cron sweeper that fails turns stuck `running` past `last_progress_at + N`. _Needs:_ cron entry in `vercel.json` + sweeper route. _Risk:_ higher — changes lambda lifecycle; validate `waitUntil` on the pinned runtime first. This is the only unstarted Wave 2 item.
+- **D4b — IMPLEMENTED; PRODUCTION LIFECYCLE FLAG OFF.** The Node host uses pinned `@vercel/functions` `waitUntil`, detached closure requires confirmed registration, and a one-minute authenticated Vercel cron calls the applied bounded service-only reaper keyed by `COALESCE(last_progress_at, started_at)`. Automated contracts are green; a real Preview detach/reconcile smoke remains before enabling the Production flag.
 
 **Wave 2 tail to close before/with the next pass (small, do first):**
 
@@ -420,7 +431,7 @@ Implemented in three parallel tracks, all validated (51 targeted tests pass, `sv
 
 ---
 
-### Wave 3 — Security hardening (IMPLEMENTED IN SOURCE — final Track I migration pending)
+### Wave 3 — Security hardening (IMPLEMENTED IN SOURCE — migrations applied)
 
 **Why this is next:** with the data-integrity/durability cluster done, the highest-severity remaining findings are all security — including the only two remaining **CRITICALs** (S1) and the zero-click exfiltration (S2). The theme: _the action side of interactive chat lacks the policy layer that Agent Runs already have._ Run as three tracks. Track G (the injection chain) is the flagship and should be designed as one piece; Tracks H and I can parallelize once G's approach is set.
 
@@ -437,11 +448,11 @@ Implemented in three parallel tracks, all validated (51 targeted tests pass, `sv
 - **C2 (HIGH) — FIXED (W3, verified 2026-08-29):** unsigned client-carried prewarm data is ignored; only nonce-protected prepared prompts or server-owned/reloaded context can enter the prompt/cache path.
 - **S7 (MEDIUM) — FIXED (W3, verified 2026-08-29):** archived fallback requires explicit project scope and retains the soft-delete filter; direct gateway regressions cover both fences.
 
-**Track I — Abuse limits & secrets/PII hygiene (implemented; migration pending).**
+**Track I — Abuse limits & secrets/PII hygiene (implemented; migration applied).**
 
-- **S6 (MEDIUM) — IMPLEMENTED (W3; migration pending):** per-user turn token bucket, atomic legacy running cap, existing worker capacity ceiling, and pre-auth IP limits for bootstrap/gateway.
+- **S6 (MEDIUM) — IMPLEMENTED (W3; migration applied):** per-user turn token bucket, atomic legacy running cap, existing worker capacity ceiling, and pre-auth IP limits for bootstrap/gateway.
 - **S5 / S8 (HIGH/MEDIUM) — IMPLEMENTED (W3, migration applied; pending deploy):** encrypted bearer payload, atomic single-use redemption, hardened response headers, and scheduled bounded cleanup.
-- **Hygiene sweep — IMPLEMENTED (W3; S11/S16 migration pending):** bounded/no-content logs, safe model errors, external-data transcript wrappers, scheduled prompt/tool/event retention, retired duplicate dumps, service-only observability DML, per-user page-body cache, and dev-only filesystem prompt dumps.
+- **Hygiene sweep — IMPLEMENTED (W3; S11/S16 migration applied):** bounded/no-content logs, safe model errors, external-data transcript wrappers, scheduled prompt/tool/event retention, retired duplicate dumps, service-only observability DML, per-user page-body cache, and dev-only filesystem prompt dumps.
 
 **Suggested Wave 3 sequencing:** close the Wave 2 tail (above) → **S2** (immediate) → design + build **S1+S3** (flagship, one PR or a tight set) → Tracks H and I in parallel. Keep S1's policy-layer change and each migration in their own reviewable PRs. Consider pulling **Wave 5 observability** forward to run alongside, so the injection-defense and rate-limit changes are measurable.
 

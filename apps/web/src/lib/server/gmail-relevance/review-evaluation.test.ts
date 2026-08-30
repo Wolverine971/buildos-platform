@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/gmail-relevance/review-evaluation.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	computeEmailRelevanceReviewMetrics,
@@ -175,6 +176,7 @@ describe('EmailRelevanceReviewService', () => {
 				account_label: 'Account 1',
 				project_label: 'Synthetic Project',
 				sample_order: 1,
+				quick_review_order: 1,
 				state: 'pending'
 			}
 		]);
@@ -184,6 +186,37 @@ describe('EmailRelevanceReviewService', () => {
 			candidate_yield_per_100_observations: { a: 2, b: 0 }
 		});
 		expect(JSON.stringify(dashboard)).not.toContain('synthetic_ciphertext');
+	});
+
+	it('marks a fixed maximum of 20 candidate-positive rows for the quick review', async () => {
+		const input = service();
+		const positiveSamples = Array.from({ length: 22 }, (_, index) =>
+			sample({
+				id: `50000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				source_observation_id: `60000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				candidate_a_id: `90000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				sample_order: index + 1
+			})
+		);
+		const negativeControl = sample({
+			id: '50000000-0000-4000-8000-000000000099',
+			source_observation_id: '60000000-0000-4000-8000-000000000099',
+			candidate_a_id: null,
+			sampling_stratum: 'none',
+			sample_order: 23,
+			a_score: null,
+			a_confidence: null
+		});
+		input.repository.loadSamples.mockResolvedValue([...positiveSamples, negativeControl]);
+
+		const dashboard = await input.service.dashboard(USER_ID, RUN_ID);
+		const quickRows = dashboard.queue.filter((row) => row.quick_review_order !== null);
+
+		expect(quickRows).toHaveLength(20);
+		expect(quickRows.map((row) => row.quick_review_order)).toEqual(
+			Array.from({ length: 20 }, (_, index) => index + 1)
+		);
+		expect(dashboard.queue.slice(20).every((row) => row.quick_review_order === null)).toBe(true);
 	});
 
 	it('re-fetches exactly one metadata-only message for an explicitly opened sample', async () => {

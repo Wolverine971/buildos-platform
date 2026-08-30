@@ -273,16 +273,28 @@ export interface BulkDeleteResponse {
 	deletedCount: number;
 }
 
+export interface CalendarServiceOptions {
+	/**
+	 * Server-only client used exclusively for calendar token/webhook cleanup.
+	 * calendar_webhook_channels is intentionally service-role-only.
+	 */
+	privilegedSupabase?: SupabaseClient;
+}
+
 export class CalendarService {
 	private supabase: SupabaseClient;
 	private activityLogger: ActivityLogger;
 	private oAuthService: GoogleOAuthService;
+	private disconnectOAuthService: GoogleOAuthService;
 	private errorLogger: ErrorLoggerService;
 
-	constructor(supabase: SupabaseClient) {
+	constructor(supabase: SupabaseClient, options: CalendarServiceOptions = {}) {
 		this.supabase = supabase;
 		this.activityLogger = new ActivityLogger(supabase);
 		this.oAuthService = new GoogleOAuthService(supabase);
+		this.disconnectOAuthService = options.privilegedSupabase
+			? new GoogleOAuthService(options.privilegedSupabase)
+			: this.oAuthService;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
@@ -329,7 +341,7 @@ export class CalendarService {
 				timestamp: new Date().toISOString()
 			});
 
-			await this.oAuthService.disconnectCalendar(userId);
+			await this.disconnectOAuthService.disconnectCalendar(userId);
 			console.log(`Calendar automatically disconnected for user ${userId}: ${reason}`);
 		} catch (error) {
 			console.error('Error handling calendar connection failure:', error);
@@ -498,7 +510,7 @@ export class CalendarService {
 				timestamp: new Date().toISOString()
 			});
 
-			await this.oAuthService.disconnectCalendar(userId);
+			await this.disconnectOAuthService.disconnectCalendar(userId);
 		} catch (error) {
 			console.error('Error disconnecting calendar:', error);
 			throw error;

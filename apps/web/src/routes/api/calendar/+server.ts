@@ -39,11 +39,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = parsed.data as CalendarRequest;
 		const { method, params = {} } = body;
 
-		// Webhook rows are service-only. Legacy disconnects therefore need the
-		// trusted server client after the multi-calendar RLS lockdown.
-		const calendarService = new CalendarService(
-			method === 'disconnectCalendar' ? createAdminSupabaseClient() : locals.supabase
-		);
+		// Keep normal calendar reads/writes under the user's RLS authority while
+		// reserving the service client for token/webhook cleanup. Automatic
+		// disconnects can happen from any method after an invalid OAuth grant.
+		const calendarService = new CalendarService(locals.supabase, {
+			privilegedSupabase: createAdminSupabaseClient()
+		});
 		const multiCalendarEnabled = isMultiCalendarUserAllowed(user.id, privateEnv);
 
 		// Await extracted handlers so rejected promises stay inside this route's shared catch.
@@ -249,7 +250,9 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}
 		const { user } = authResult;
 
-		const calendarService = new CalendarService(locals.supabase);
+		const calendarService = new CalendarService(locals.supabase, {
+			privilegedSupabase: createAdminSupabaseClient()
+		});
 		const isConnected = await calendarService.hasValidConnection(user.id);
 
 		return ApiResponse.success({

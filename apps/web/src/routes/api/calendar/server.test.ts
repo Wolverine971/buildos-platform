@@ -5,6 +5,7 @@ const {
 	legacyUpdateMock,
 	legacyDeleteMock,
 	legacyDisconnectMock,
+	legacyHasValidConnectionMock,
 	legacyShareMock,
 	legacyUnshareMock,
 	writeCreateMock,
@@ -21,6 +22,7 @@ const {
 		legacyUpdateMock: vi.fn(),
 		legacyDeleteMock: vi.fn(),
 		legacyDisconnectMock: vi.fn(),
+		legacyHasValidConnectionMock: vi.fn(),
 		legacyShareMock: vi.fn(),
 		legacyUnshareMock: vi.fn(),
 		writeCreateMock: vi.fn(),
@@ -46,8 +48,10 @@ vi.mock('$lib/supabase/admin', () => ({
 }));
 
 vi.mock('$lib/services/calendar-service', () => ({
-	CalendarService: vi.fn().mockImplementation((client) => ({
+	CalendarService: vi.fn().mockImplementation((client, options) => ({
 		client,
+		options,
+		hasValidConnection: legacyHasValidConnectionMock,
 		updateCalendarEvent: legacyUpdateMock,
 		deleteCalendarEvent: legacyDeleteMock,
 		disconnectCalendar: legacyDisconnectMock,
@@ -86,7 +90,7 @@ vi.mock('$lib/server/google-calendar-write.service', async (importOriginal) => {
 	};
 });
 
-import { POST } from './+server';
+import { GET, POST } from './+server';
 import { CalendarService } from '$lib/services/calendar-service';
 import { GoogleCalendarWriteError } from '$lib/server/google-calendar-write.service';
 
@@ -210,15 +214,33 @@ describe('multi-account /api/calendar mutations', () => {
 
 	it('uses the service client for legacy disconnect cleanup', async () => {
 		legacyDisconnectMock.mockResolvedValue(undefined);
+		const event = eventFor({ method: 'disconnectCalendar' });
 
-		const response = await POST(eventFor({ method: 'disconnectCalendar' }));
+		const response = await POST(event);
 		const payload = await response.json();
 
 		expect(response.status).toBe(200);
 		expect(createAdminMock).toHaveBeenCalledTimes(1);
-		expect(CalendarService).toHaveBeenCalledWith(adminClient);
+		expect(CalendarService).toHaveBeenCalledWith(event.locals.supabase, {
+			privilegedSupabase: adminClient
+		});
 		expect(legacyDisconnectMock).toHaveBeenCalledWith('user-1');
 		expect(payload.data).toEqual({ disconnected: true });
+	});
+
+	it('provides privileged cleanup authority for automatic disconnects', async () => {
+		legacyHasValidConnectionMock.mockResolvedValue(false);
+		const event = eventFor({});
+
+		const response = await GET(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(CalendarService).toHaveBeenCalledWith(event.locals.supabase, {
+			privilegedSupabase: adminClient
+		});
+		expect(legacyHasValidConnectionMock).toHaveBeenCalledWith('user-1');
+		expect(payload.data).toEqual({ connected: false, userId: 'user-1' });
 	});
 
 	it('creates and tracks a scheduled task on the selected source', async () => {

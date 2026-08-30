@@ -1,5 +1,10 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_6_POST_DEPLOY_ISOLATED_TEST_REPORT_2026-08-21.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Worker Phase 6 — Post-deploy isolated test report
 
 **Date:** 2026-08-21  

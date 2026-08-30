@@ -259,7 +259,8 @@ export class TurnObservabilityWriter {
 			.from('chat_turn_runs')
 			.update(patch)
 			.eq('id', turnRunId)
-			.eq('user_id', this.params.userId);
+			.eq('user_id', this.params.userId)
+			.eq('status', 'running');
 		if (!error) return;
 
 		const timingState = this.params.getTimingState();

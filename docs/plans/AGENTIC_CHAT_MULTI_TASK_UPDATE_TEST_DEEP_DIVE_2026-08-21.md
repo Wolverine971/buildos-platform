@@ -1,5 +1,10 @@
 <!-- docs/plans/AGENTIC_CHAT_MULTI_TASK_UPDATE_TEST_DEEP_DIVE_2026-08-21.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat `task-multi-update` Test Deep Dive
 
 **Date:** 2026-08-21  

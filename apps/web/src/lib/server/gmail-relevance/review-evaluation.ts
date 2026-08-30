@@ -12,6 +12,7 @@ import {
 export const EMAIL_RELEVANCE_REVIEW_SAMPLING_VERSION = 'email-relevance-review-sampling-v1';
 export const EMAIL_RELEVANCE_REVIEW_CONTRACT_VERSION = 'email-relevance-review-contract-v1';
 export const EMAIL_RELEVANCE_REVIEW_TARGET_PER_ACCOUNT = 100;
+export const EMAIL_RELEVANCE_QUICK_REVIEW_TARGET = 20;
 
 export const EMAIL_RELEVANCE_REVIEW_DECISIONS = [
 	'correct_project',
@@ -150,6 +151,7 @@ export type EmailRelevanceReviewQueueItem = {
 	account_label: string;
 	project_label: string;
 	sample_order: number;
+	quick_review_order: number | null;
 	state: 'pending' | 'reviewed' | 'expired';
 };
 export type EmailRelevanceReviewContext = {
@@ -854,6 +856,20 @@ export class EmailRelevanceReviewService {
 		const projectLabel = new Map(projects.map((project) => [project.id, project.label]));
 		const scopeIds = [...new Set(samples.map((sample) => sample.connection_scope_id))].sort();
 		const scopeLabel = new Map(scopeIds.map((id, index) => [id, `Account ${index + 1}`]));
+		const quickReviewOrder = new Map(
+			samples
+				.filter(
+					(sample) => sample.candidate_a_id !== null || sample.candidate_b_id !== null
+				)
+				.sort(
+					(left, right) =>
+						left.sample_order - right.sample_order ||
+						left.connection_scope_id.localeCompare(right.connection_scope_id) ||
+						left.id.localeCompare(right.id)
+				)
+				.slice(0, EMAIL_RELEVANCE_QUICK_REVIEW_TARGET)
+				.map((sample, index) => [sample.id, index + 1])
+		);
 		return {
 			runs: labeledRuns,
 			selected_run_id: selected.id,
@@ -863,6 +879,7 @@ export class EmailRelevanceReviewService {
 				account_label: scopeLabel.get(sample.connection_scope_id) ?? 'Account',
 				project_label: projectLabel.get(sample.project_id) ?? 'Project',
 				sample_order: sample.sample_order,
+				quick_review_order: quickReviewOrder.get(sample.id) ?? null,
 				state: sample.state
 			})),
 			metrics: computeEmailRelevanceReviewMetrics({

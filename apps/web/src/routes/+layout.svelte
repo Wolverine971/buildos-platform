@@ -99,6 +99,7 @@
 		syncPostHogUser(user);
 	});
 	let hasConnectedAgents = $derived(Boolean(data.hasConnectedAgents));
+	let emailSuggestionsEnabled = $derived(Boolean(data.emailSuggestionsEnabled));
 	type BillingContext = {
 		subscription: any | null;
 		trialStatus: any | null;
@@ -958,7 +959,8 @@
 		user,
 		completedOnboarding,
 		onboardingProgress,
-		hasConnectedAgents
+		hasConnectedAgents,
+		emailSuggestionsEnabled
 	}));
 	let footerProps = $derived.by(() => ({ user }));
 	let onboardingModalProps = $derived.by(() => ({

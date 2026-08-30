@@ -106,11 +106,13 @@ export function normalizeToolCallDefaults(
 			const skill =
 				typeof args.skill === 'string'
 					? args.skill.trim()
-					: typeof args.id === 'string'
-						? args.id.trim()
-						: typeof args.path === 'string'
-							? args.path.trim()
-							: '';
+					: typeof args.reference === 'string'
+						? args.reference.trim()
+						: typeof args.id === 'string'
+							? args.id.trim()
+							: typeof args.path === 'string'
+								? args.path.trim()
+								: '';
 			if (!skill) {
 				return toolCall;
 			}
@@ -186,11 +188,13 @@ export function normalizeToolCallDefaults(
 		const skill =
 			typeof fallbackArgs.skill === 'string'
 				? fallbackArgs.skill.trim()
-				: typeof fallbackArgs.id === 'string'
-					? fallbackArgs.id.trim()
-					: typeof fallbackArgs.path === 'string'
-						? fallbackArgs.path.trim()
-						: '';
+				: typeof fallbackArgs.reference === 'string'
+					? fallbackArgs.reference.trim()
+					: typeof fallbackArgs.id === 'string'
+						? fallbackArgs.id.trim()
+						: typeof fallbackArgs.path === 'string'
+							? fallbackArgs.path.trim()
+							: '';
 		if (!skill) {
 			return toolCall;
 		}
@@ -715,11 +719,13 @@ function buildGatewayFallbackArgs(toolName: string, rawArgs: string): Record<str
 			const skill =
 				typeof recoveredObject.skill === 'string'
 					? recoveredObject.skill.trim()
-					: typeof recoveredObject.id === 'string'
-						? recoveredObject.id.trim()
-						: typeof recoveredObject.path === 'string'
-							? recoveredObject.path.trim()
-							: '';
+					: typeof recoveredObject.reference === 'string'
+						? recoveredObject.reference.trim()
+						: typeof recoveredObject.id === 'string'
+							? recoveredObject.id.trim()
+							: typeof recoveredObject.path === 'string'
+								? recoveredObject.path.trim()
+								: '';
 			if (skill) {
 				return { ...recoveredObject, skill };
 			}

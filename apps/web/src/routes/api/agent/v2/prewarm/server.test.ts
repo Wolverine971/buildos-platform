@@ -59,7 +59,7 @@ vi.mock('$lib/services/agentic-chat-v2/context-cache', () => ({
 	isFastChatContextCacheFresh: () => true
 }));
 
-import { POST } from './+server';
+import { config, POST } from './+server';
 
 describe('POST /api/agent/v2/prewarm', () => {
 	beforeEach(() => {
@@ -85,6 +85,50 @@ describe('POST /api/agent/v2/prewarm', () => {
 		});
 		loadRecentMessagesMock.mockResolvedValue([]);
 		mergeRpcMock.mockResolvedValue({ error: null });
+	});
+
+	it('runs as a dedicated function with room beyond the app-wide ten-second default', () => {
+		expect(config).toEqual({
+			maxDuration: 60,
+			memory: 1024,
+			split: true
+		});
+	});
+
+	it('returns a cold-path fallback before the Vercel function duration is exhausted', async () => {
+		vi.useFakeTimers();
+		try {
+			loadPromptContextMock.mockImplementation(() => new Promise(() => undefined));
+			const responsePromise = POST({
+				request: new Request('http://localhost/api/agent/v2/prewarm', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						context_type: 'global',
+						prepare_prompt: false
+					})
+				}),
+				locals: {
+					safeGetSession: async () => ({ user: { id: 'user-1' } }),
+					supabase: { rpc: mergeRpcMock }
+				}
+			} as any);
+
+			await vi.advanceTimersByTimeAsync(20_000);
+			const response = await responsePromise;
+
+			expect(response.status).toBe(200);
+			expect(await response.json()).toEqual(
+				expect.objectContaining({
+					data: {
+						warmed: false,
+						reason: 'time_budget_exceeded'
+					}
+				})
+			);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('ensures a session when ensure_session is requested', async () => {

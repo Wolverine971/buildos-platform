@@ -3,7 +3,7 @@
 Complete column listing for all 245 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-08-30T00:50:17.366Z
+**Schema generated:** 2026-08-30T16:33:30.957Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -896,7 +896,7 @@ bytes `number?` · canonical_url `string?` · content `string` · content_format
 
 ### web_page_visits
 
-bytes `number?` · canonical_url `string?` · content_hash `string?` · content_type `string?` · created_at `string` · current_version_id `string?` · error_message `string?` · etag `string?` · excerpt `string?` · final_url `string` · first_visited_at `string` · id `string` · last_fetch_ms `number?` · last_fetched_at `string` · last_llm_model `string?` · last_llm_ms `number?` · last_modified `string?` · last_visited_at `string` · llm_completion_tokens `number?` · llm_prompt_tokens `number?` · llm_total_tokens `number?` · markdown `string?` · meta `Json?` · normalized_url `string` · status_code `number` · structured_data `Json?` · title `string?` · updated_at `string` · url `string` · visit_count `number`
+bytes `number?` · canonical_url `string?` · content_hash `string?` · content_type `string?` · created_at `string` · current_version_id `string?` · error_message `string?` · etag `string?` · excerpt `string?` · final_url `string` · first_visited_at `string` · id `string` · last_fetch_ms `number?` · last_fetched_at `string` · last_llm_model `string?` · last_llm_ms `number?` · last_modified `string?` · last_visited_at `string` · llm_completion_tokens `number?` · llm_prompt_tokens `number?` · llm_total_tokens `number?` · markdown `string?` · meta `Json?` · normalized_url `string` · status_code `number` · structured_data `Json?` · title `string?` · updated_at `string` · url `string` · user_id `string?` · visit_count `number`
 
 ### webhook_events
 

@@ -29,6 +29,10 @@ describe('resolveSkillGatePreload', () => {
 		expect(preload?.promptContent).toContain('Workflow:');
 		expect(preload?.promptContent).toContain('do NOT call skill_load');
 		expect(preload?.promptContent).toContain(preload!.skillId);
+		expect(preload?.promptContent).toContain(
+			`skill_load with {"skill":"${preload!.skillId}","format":"full"}`
+		);
+		expect(preload?.promptContent).not.toContain('skill_load with reference');
 	});
 
 	it('renders a preload without follow-up skill calls for worker-only execution', () => {

@@ -1,5 +1,10 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_TASKER58_ISOLATED_TWO_SCENARIO_RERUN_2026-08-21.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Worker — Tasker 58 Isolated Two-Scenario Rerun
 
 **Date:** 2026-08-21  
