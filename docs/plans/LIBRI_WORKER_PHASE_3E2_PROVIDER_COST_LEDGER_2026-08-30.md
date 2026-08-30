@@ -1,7 +1,7 @@
 # Libri Worker Phase 3E.2: Provider Cost Ledger
 
 Date: 2026-08-30
-Status: implemented and locally verified; awaiting CI, deployment, and migration; not activated
+Status: deployed and production-verified; worker remains disabled; provider remains unwired
 
 ## Decision
 
@@ -74,12 +74,29 @@ not add a provider credential, OCR queue registration, asset access, or a produc
   The default parallel web run exhausted the local macOS shared-memory ID limit before 16 PostgreSQL
   fixtures could start; rerunning the complete 646-file web suite with two workers passed 646/646.
 
+## Production receipt
+
+- Commit `27d3e0d7b` deployed successfully to the agentic-chat, daily-brief, and dedicated Libri
+  Railway services. The Libri service remained `LIBRI_WORKER_ENABLED=false`, concurrency 2,
+  activation mode disabled, with no activation target, provider key, or broad Supabase service key.
+- Main CI run `33341602911` passed the complete repository job in 26m58s and the dependent Libri
+  migration-safety job in 1m2s.
+- Migration `20260830224500_libri_provider_cost_ledger` was applied transactionally to project
+  `iwifjtlebphefldmwbkh` from SHA-256
+  `aef3be06e0b838ae4057a6247bcd377da52447ae540b1b5f7a6ca0f98f9d15ca`.
+- Production verification found one migration ledger row, zero provider-cost rows, five invoker-safe
+  routines, two enabled triggers, forced RLS, and the exact worker select/insert/update policies.
+- The worker still cannot delete ledger rows, alter reserved amounts, or alter run budgets. It
+  remains non-superuser, non-RLS-bypass, and capped at three database connections.
+- Existing state remained one Libri library, zero research runs, zero research steps, and zero Libri
+  queue rows. No BuildOS queue control was mutated.
+- The database startup probe now requires all four cost routines and the exact ledger permissions,
+  while rejecting delete, reservation-rewrite, and budget-rewrite authority.
+
 ## Remaining gates before OCR wiring
 
-1. Pass the complete worker and repository suites and the test-debt baseline.
-2. Commit and push only after the prior OCR-boundary CI run and Railway release are healthy.
-3. Pass the new main-branch BuildOS and Libri migration-safety jobs.
-4. Apply exactly this migration to production, re-probe the restricted role, and verify the empty
-   provider ledger appears without mutating existing Libri rows or BuildOS controls.
-5. Deploy and keep `LIBRI_WORKER_ENABLED=false`; do not add an OpenRouter key.
-6. Build the lease-validating private asset broker before any real image can be fetched.
+Completed gates: complete suites and debt baselines; healthy Railway release; main-branch BuildOS and
+Libri migration-safety jobs; exact production migration and restricted-role verification; disabled
+deployment without an OpenRouter key.
+
+Next: build the lease-validating private asset broker before any real image can be fetched.

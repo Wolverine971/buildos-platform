@@ -30,6 +30,8 @@ describe('Libri restricted PostgreSQL connection', () => {
 		expect(queryMock).toHaveBeenCalledOnce();
 		expect(queryMock.mock.calls[0]?.[0]).toContain('pg_catalog.pg_auth_members');
 		expect(queryMock.mock.calls[0]?.[0]).toContain("'public.queue_jobs'");
+		expect(queryMock.mock.calls[0]?.[0]).toContain("'libri.provider_cost_reservations'");
+		expect(queryMock.mock.calls[0]?.[0]).toContain('libri.reserve_provider_cost');
 
 		await database.close();
 		expect(endMock).toHaveBeenCalledOnce();
@@ -66,6 +68,27 @@ describe('Libri restricted PostgreSQL connection', () => {
 		await expect(database.probe()).rejects.toThrow('approved restricted role');
 	});
 
+	it.each([
+		['can_select_provider_cost_reservations', false],
+		['can_insert_provider_cost_amount', false],
+		['can_update_provider_cost_status', false],
+		['can_delete_provider_cost_reservations', true],
+		['can_change_provider_cost_reservation', true],
+		['can_change_research_run_budget', true],
+		['can_reserve_provider_cost', false],
+		['can_start_provider_cost', false],
+		['can_settle_provider_cost', false],
+		['can_release_provider_cost', false]
+	] as const)('rejects provider ledger privilege drift in %s', async (capability, value) => {
+		const { pool } = fakePool({ ...approvedRole(), [capability]: value });
+		const database = createLibriDatabase(DATABASE_URL, {
+			caCertificate: CA_CERTIFICATE,
+			poolFactory: () => pool
+		});
+
+		await expect(database.probe()).rejects.toThrow('approved restricted role');
+	});
+
 	it.each([0, 4, 1.5])('rejects pool size %s outside the database cap', (limit) => {
 		expect(() =>
 			createLibriDatabase(DATABASE_URL, {
@@ -90,7 +113,17 @@ function approvedRole() {
 		connection_limit: 3,
 		has_memberships: false,
 		can_delete_queue_jobs: false,
-		can_retag_queue_jobs: false
+		can_retag_queue_jobs: false,
+		can_select_provider_cost_reservations: true,
+		can_insert_provider_cost_amount: true,
+		can_update_provider_cost_status: true,
+		can_delete_provider_cost_reservations: false,
+		can_change_provider_cost_reservation: false,
+		can_change_research_run_budget: false,
+		can_reserve_provider_cost: true,
+		can_start_provider_cost: true,
+		can_settle_provider_cost: true,
+		can_release_provider_cost: true
 	};
 }
 
