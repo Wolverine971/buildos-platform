@@ -3,6 +3,7 @@ import cors from 'cors';
 import express, { type Application } from 'express';
 
 import { isWorkerAuthorized } from './http/auth';
+import type { GeneralWorkerRuntimeLifecycleHealth } from './lib/generalWorkerRuntimeLifecycle';
 import { createRequestCorrelationId, runWithRequestCorrelation } from './lib/queueCorrelation';
 import type { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
 import { jsonParseErrorHandler } from './middleware/jsonError';
@@ -13,13 +14,12 @@ import { registerBriefQueueRoute } from './routes/queue/brief';
 import { registerGeneralEnqueueRoutes } from './routes/queue/enqueue';
 import { registerQueueInspectionRoutes } from './routes/queue/inspection';
 import smsScheduledRoutes from './routes/sms/scheduled';
-import { getWorkerHealth } from './worker';
 
 const PUBLIC_WORKER_PATHS = new Set(['/health']);
 
 type GeneralWorkerAppOptions = {
 	eventLoopLagMonitor: Pick<WorkerEventLoopLagMonitor, 'getSnapshot'>;
-	getWorkerHealth?: typeof getWorkerHealth;
+	getWorkerHealth: () => GeneralWorkerRuntimeLifecycleHealth;
 };
 
 /**
@@ -28,7 +28,7 @@ type GeneralWorkerAppOptions = {
  */
 export function createGeneralWorkerApp({
 	eventLoopLagMonitor,
-	getWorkerHealth: readWorkerHealth = getWorkerHealth
+	getWorkerHealth: readWorkerHealth
 }: GeneralWorkerAppOptions): Application {
 	const app = express();
 	const allowedOrigins = getAllowedOrigins();

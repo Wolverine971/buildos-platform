@@ -234,12 +234,16 @@ describe('Brief Scheduler', () => {
 				'cleanup_agentic_chat_prompt_artifacts'
 			);
 			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
+				'cleanup_agentic_chat_sensitive_transcripts'
+			);
+			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
 				'cleanup_expired_agent_call_bootstrap_links',
 				{ p_batch_size: 500 }
 			);
 			expect(schedulerMocks.supabaseRpc.mock.calls.map(([name]) => name)).toEqual([
 				'cleanup_agentic_chat_worker_artifacts',
 				'cleanup_agentic_chat_prompt_artifacts',
+				'cleanup_agentic_chat_sensitive_transcripts',
 				'cleanup_expired_agent_call_bootstrap_links'
 			]);
 		});
@@ -257,6 +261,7 @@ describe('Brief Scheduler', () => {
 			expect(schedulerMocks.supabaseRpc.mock.calls.map(([name]) => name)).toEqual([
 				'cleanup_agentic_chat_worker_artifacts',
 				'cleanup_agentic_chat_prompt_artifacts',
+				'cleanup_agentic_chat_sensitive_transcripts',
 				'cleanup_expired_agent_call_bootstrap_links'
 			]);
 		});

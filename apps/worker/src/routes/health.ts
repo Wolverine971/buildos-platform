@@ -6,19 +6,19 @@ import {
 	WorkerEventLoopLagMonitor,
 	buildWorkerOperationalHealthChecks
 } from '../lib/workerOperationalHealth';
-import { getWorkerHealth as getDefaultWorkerHealth } from '../worker';
+import type { GeneralWorkerRuntimeLifecycleHealth } from '../lib/generalWorkerRuntimeLifecycle';
 import { getCycleCoordinatorHealthSnapshot } from '../workers/cycle/cycleObservability';
 import { getDailyBriefCycleShadowHealthSnapshot } from '../workers/cycle/dailyBriefCycleShadow';
 
 type HealthRouteDependencies = {
 	eventLoopLagMonitor: Pick<WorkerEventLoopLagMonitor, 'getSnapshot'>;
-	getWorkerHealth?: typeof getDefaultWorkerHealth;
+	getWorkerHealth: () => GeneralWorkerRuntimeLifecycleHealth;
 };
 
 /** Railway health contract for the general queue process. */
 export function registerHealthRoute(
 	app: Application,
-	{ eventLoopLagMonitor, getWorkerHealth = getDefaultWorkerHealth }: HealthRouteDependencies
+	{ eventLoopLagMonitor, getWorkerHealth }: HealthRouteDependencies
 ): void {
 	app.get('/health', (_req, res) => {
 		const workerHealth = getWorkerHealth();

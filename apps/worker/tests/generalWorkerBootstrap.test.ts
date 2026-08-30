@@ -16,6 +16,7 @@ const harness = vi.hoisted(() => {
 		server,
 		signalHandlers,
 		createGeneralWorkerApp: vi.fn(),
+		getWorkerHealth: vi.fn(),
 		logProjectLoopProviderConfiguration: vi.fn(),
 		logQueueConfiguration: vi.fn(),
 		logWorkerError: vi.fn(),
@@ -64,6 +65,7 @@ vi.mock('../src/scheduler', () => ({
 }));
 
 vi.mock('../src/worker', () => ({
+	getWorkerHealth: harness.getWorkerHealth,
 	startWorker: harness.startWorker,
 	shutdownWorker: harness.shutdownWorker
 }));
@@ -80,6 +82,7 @@ beforeEach(() => {
 	process.env.PORT = '4107';
 
 	harness.createGeneralWorkerApp.mockReset().mockReturnValue(harness.app);
+	harness.getWorkerHealth.mockReset();
 	harness.logProjectLoopProviderConfiguration.mockReset();
 	harness.logQueueConfiguration.mockReset();
 	harness.logWorkerError.mockReset().mockResolvedValue(undefined);
@@ -144,6 +147,10 @@ describe('general worker process bootstrap', () => {
 		await startGeneralWorkerProcess();
 
 		expect(harness.events).toEqual(['worker-start', 'scheduler-start', 'http-listen']);
+		expect(harness.createGeneralWorkerApp).toHaveBeenCalledWith({
+			eventLoopLagMonitor: expect.any(Object),
+			getWorkerHealth: harness.getWorkerHealth
+		});
 		expect(harness.app.listen).toHaveBeenCalledWith(4107, '0.0.0.0', expect.any(Function));
 		expect([...harness.signalHandlers.keys()]).toEqual([
 			'uncaughtException',
