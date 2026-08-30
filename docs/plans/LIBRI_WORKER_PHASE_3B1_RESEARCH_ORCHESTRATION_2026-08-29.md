@@ -1,7 +1,7 @@
 # Libri Worker Phase 3B.1: Research Orchestration Foundation
 
 Date: 2026-08-29
-Status: implemented locally; production migration pending
+Status: deployed and verified in production on 2026-08-30
 
 ## Outcome
 
@@ -47,3 +47,20 @@ The next slices must add and independently prove:
 4. the synthetic maintenance job through every lifecycle state.
 
 No activation flag may change in Phase 3B.1.
+
+## Production receipt
+
+- Supabase project: `iwifjtlebphefldmwbkh`
+- Migration: `20260829232231_libri_research_orchestration.sql`
+- SHA-256: `f24697fc997a93dc802ce745b960961af489c94f88f1380d50a7dc555c673a7a`
+- Release gate: GitHub Actions run `33326085278` passed the complete BuildOS job and the dedicated
+  PostgreSQL 15 Libri migration-safety job.
+- Migration ledger: the local and hosted receipts match, and the post-apply dry run reports the
+  remote database is up to date.
+- Isolation proof: the non-Libri catalog signature remained exactly `9625` objects with fingerprint
+  `43c6ed371bfe648af6fd924bf00f9844` before and after the migration.
+- Postconditions: all ten schema, RLS, grant, emptiness, queue-isolation, and BuildOS core-table
+  checks passed. Both research tables are empty and no Libri queue jobs exist.
+- Advisors: no Libri-specific security or performance warnings were reported.
+- Railway: all worker services were healthy after the migration. `libri-worker` remained running in
+  health-only mode with `LIBRI_WORKER_ENABLED=false`; queue poll and claim flags were unset.

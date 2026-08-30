@@ -47,12 +47,12 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
 			if (error) {
 				return Promise.resolve({ data: null, error });
 			}
-			insertCalls[this.table].push(value);
+			insertCalls[this.table]!.push(value);
 			const values = Array.isArray(value) ? value : [value];
 			for (const item of values) {
 				const row = { ...item };
 				ensureRows(this.table).push(row);
-				insertedRows[this.table].push(row);
+				insertedRows[this.table]!.push(row);
 			}
 			return Promise.resolve({ data: values, error: null });
 		}
@@ -87,7 +87,7 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
 			if (this.patch) {
 				for (const row of matchingRows) {
 					Object.assign(row, this.patch);
-					updatedRows[this.table].push({ ...row });
+					updatedRows[this.table]!.push({ ...row });
 				}
 			}
 			return { data: matchingRows, error: null };
@@ -110,13 +110,17 @@ function buildTimingState(overrides: Partial<TurnObservabilityTimingState> = {})
 		projectId: 'project-1',
 		entityId: 'entity-1',
 		sessionResolvedAtMs: 1_010,
+		activeTurnLookupMs: null,
+		turnAdmissionMs: null,
 		historyLoadStartedAtMs: 1_020,
 		historyLoadedAtMs: 1_030,
 		historyComposeStartedAtMs: 1_030,
 		historyComposedAtMs: 1_040,
 		toolSelectionMs: 8,
+		preparedPromptConsumeMs: null,
 		contextBuildStartedAtMs: 1_050,
 		contextReadyAtMs: 1_090,
+		promptSnapshotInsertMs: null,
 		firstEventAtMs: 1_100,
 		firstResponseAtMs: 1_120,
 		assistantPersistStartedAtMs: 1_220,
@@ -232,7 +236,7 @@ describe('TurnObservabilityWriter', () => {
 			}
 		]);
 		expect(supabase.insertCalls.chat_turn_events).toHaveLength(1);
-		expect(supabase.insertCalls.chat_turn_events[0]).toHaveLength(2);
+		expect(supabase.insertCalls.chat_turn_events![0]).toHaveLength(2);
 	});
 
 	it('can flush only turn events without awaiting detached tasks', async () => {
@@ -247,7 +251,7 @@ describe('TurnObservabilityWriter', () => {
 		await writer.flushTurnEvents();
 
 		expect(supabase.insertedRows.chat_turn_events).toHaveLength(1);
-		expect(supabase.insertedRows.chat_turn_events[0]).toMatchObject({
+		expect(supabase.insertedRows.chat_turn_events![0]).toMatchObject({
 			sequence_index: 1,
 			event_type: 'prompt_snapshot_created'
 		});
@@ -395,7 +399,7 @@ describe('TurnObservabilityWriter', () => {
 		);
 
 		expect(supabase.updatedRows.chat_turn_runs).toEqual([]);
-		expect(supabase.rows.chat_turn_runs[0]).toMatchObject({
+		expect(supabase.rows.chat_turn_runs![0]).toMatchObject({
 			status: 'cancelled',
 			finished_reason: 'stale_running_turn_reaper'
 		});
@@ -411,7 +415,7 @@ describe('TurnObservabilityWriter', () => {
 		expect(firstSummary?.finished_reason).toBe('stop');
 		expect(secondSummary?.finished_reason).toBe('error');
 		expect(supabase.insertedRows.timing_metrics).toHaveLength(1);
-		expect(supabase.insertedRows.timing_metrics[0]).toEqual(
+		expect(supabase.insertedRows.timing_metrics![0]).toEqual(
 			expect.objectContaining({
 				id: 'metric-1',
 				user_id: 'user-1',
@@ -425,7 +429,7 @@ describe('TurnObservabilityWriter', () => {
 				tool_selection_ms: 8
 			})
 		);
-		expect(supabase.insertedRows.timing_metrics[0].metadata).toEqual(
+		expect(supabase.insertedRows.timing_metrics![0]!.metadata).toEqual(
 			expect.objectContaining({
 				stream_version: 'v2',
 				client_turn_id: 'client-turn-1',

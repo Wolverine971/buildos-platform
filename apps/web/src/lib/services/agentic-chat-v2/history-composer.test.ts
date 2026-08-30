@@ -53,12 +53,12 @@ describe('composeFastChatHistory', () => {
 		const result = composeFastChatHistory({ history });
 		expect(result.rawHistoryCount).toBe(2);
 		expect(result.historyForModel).toHaveLength(2);
-		expect(result.historyForModel[1].content).toContain('Write the fantasy novel');
-		expect(result.historyForModel[1].content).toContain("Now we're focused here");
-		expect(result.historyForModel[1].content).not.toContain('The tool result confirms');
-		expect(result.historyForModel[1].content).not.toContain('write_ledger');
-		expect(result.historyForModel[1].content).not.toContain('Safety rules');
-		expect(result.historyForModel[1].content).not.toContain('User-facing response');
+		expect(result.historyForModel[1]!.content).toContain('Write the fantasy novel');
+		expect(result.historyForModel[1]!.content).toContain("Now we're focused here");
+		expect(result.historyForModel[1]!.content).not.toContain('The tool result confirms');
+		expect(result.historyForModel[1]!.content).not.toContain('write_ledger');
+		expect(result.historyForModel[1]!.content).not.toContain('Safety rules');
+		expect(result.historyForModel[1]!.content).not.toContain('User-facing response');
 	});
 
 	it('uses continuity only when no history exists', () => {
@@ -72,8 +72,8 @@ describe('composeFastChatHistory', () => {
 		expect(result.compressed).toBe(false);
 		expect(result.strategy).toBe('continuity_only');
 		expect(result.historyForModel).toHaveLength(1);
-		expect(result.historyForModel[0].role).toBe('system');
-		expect(result.historyForModel[0].content).toContain('Conversation continuity hint');
+		expect(result.historyForModel[0]!.role).toBe('system');
+		expect(result.historyForModel[0]!.content).toContain('Conversation continuity hint');
 		expect(result.continuityHintUsed).toBe(true);
 	});
 
@@ -95,10 +95,10 @@ describe('composeFastChatHistory', () => {
 		expect(result.rawHistoryCount).toBe(10);
 		expect(result.tailMessagesKept).toBe(4);
 		expect(result.historyForModel).toHaveLength(5);
-		expect(result.historyForModel[0].role).toBe('system');
-		expect(result.historyForModel[0].content).toContain('Conversation memory (compressed):');
-		expect(result.historyForModel[0].content).toContain('Session summary:');
-		expect(result.historyForModel[0].content).toContain('Conversation continuity hint');
+		expect(result.historyForModel[0]!.role).toBe('system');
+		expect(result.historyForModel[0]!.content).toContain('Conversation memory (compressed):');
+		expect(result.historyForModel[0]!.content).toContain('Session summary:');
+		expect(result.historyForModel[0]!.content).toContain('Conversation continuity hint');
 		expect(result.continuityHintUsed).toBe(true);
 	});
 
@@ -155,7 +155,7 @@ describe('composeFastChatHistory', () => {
 		});
 
 		expect(result.compressed).toBe(true);
-		expect(result.historyForModel[1].content.length).toBeLessThanOrEqual(150);
-		expect(result.historyForModel[1].content.endsWith('...')).toBe(true);
+		expect(result.historyForModel[1]!.content.length).toBeLessThanOrEqual(150);
+		expect(result.historyForModel[1]!.content.endsWith('...')).toBe(true);
 	});
 });
