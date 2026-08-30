@@ -13,6 +13,7 @@ import { registerOntologyClassificationRoute } from './routes/ontology-classific
 import { registerBriefQueueRoute } from './routes/queue/brief';
 import { registerGeneralEnqueueRoutes } from './routes/queue/enqueue';
 import { registerQueueInspectionRoutes } from './routes/queue/inspection';
+import type { GeneralWorkerHttpQueue } from './routes/queue/queuePort';
 import smsScheduledRoutes from './routes/sms/scheduled';
 
 const PUBLIC_WORKER_PATHS = new Set(['/health']);
@@ -20,6 +21,7 @@ const PUBLIC_WORKER_PATHS = new Set(['/health']);
 type GeneralWorkerAppOptions = {
 	eventLoopLagMonitor: Pick<WorkerEventLoopLagMonitor, 'getSnapshot'>;
 	getWorkerHealth: () => GeneralWorkerRuntimeLifecycleHealth;
+	queue: GeneralWorkerHttpQueue;
 };
 
 /**
@@ -28,7 +30,8 @@ type GeneralWorkerAppOptions = {
  */
 export function createGeneralWorkerApp({
 	eventLoopLagMonitor,
-	getWorkerHealth: readWorkerHealth
+	getWorkerHealth: readWorkerHealth,
+	queue
 }: GeneralWorkerAppOptions): Application {
 	const app = express();
 	const allowedOrigins = getAllowedOrigins();
@@ -73,9 +76,9 @@ export function createGeneralWorkerApp({
 		getWorkerHealth: readWorkerHealth
 	});
 	registerOntologyClassificationRoute(app);
-	registerBriefQueueRoute(app);
-	registerGeneralEnqueueRoutes(app);
-	registerQueueInspectionRoutes(app);
+	registerBriefQueueRoute(app, queue);
+	registerGeneralEnqueueRoutes(app, queue);
+	registerQueueInspectionRoutes(app, queue);
 
 	return app;
 }

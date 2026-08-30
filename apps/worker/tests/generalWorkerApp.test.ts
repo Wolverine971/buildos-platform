@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createGeneralWorkerApp } from '../src/app';
 import type { GeneralWorkerRuntimeLifecycleHealth } from '../src/lib/generalWorkerRuntimeLifecycle';
 import smsScheduledRoutes from '../src/routes/sms/scheduled';
+import type { GeneralWorkerHttpQueue } from '../src/routes/queue/queuePort';
 
 const originalWorkerToken = process.env.PRIVATE_RAILWAY_WORKER_TOKEN;
 
@@ -122,7 +123,8 @@ function createTestApp(): Application {
 		eventLoopLagMonitor: {
 			getSnapshot: () => ({ meanMs: 1, p99Ms: 2, maxMs: 3 })
 		},
-		getWorkerHealth: () => healthyWorkerState()
+		getWorkerHealth: () => healthyWorkerState(),
+		queue: {} as GeneralWorkerHttpQueue
 	});
 }
 

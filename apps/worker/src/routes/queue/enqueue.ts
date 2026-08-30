@@ -5,18 +5,21 @@ import { getErrorMessage } from '../../http/errors';
 import { logWorkerError } from '../../lib/errorLogger';
 import { getQueueCorrelationId } from '../../lib/queueCorrelation';
 import { supabase } from '../../lib/supabase';
-import { queue } from '../../worker';
+import type { GeneralWorkerHttpQueue } from './queuePort';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Register the general worker's small enqueue-only HTTP contracts. */
-export function registerGeneralEnqueueRoutes(app: Application): void {
-	registerOnboardingRoute(app);
-	registerChatClassificationRoute(app);
-	registerBraindumpRoute(app);
+export function registerGeneralEnqueueRoutes(
+	app: Application,
+	queue: GeneralWorkerHttpQueue
+): void {
+	registerOnboardingRoute(app, queue);
+	registerChatClassificationRoute(app, queue);
+	registerBraindumpRoute(app, queue);
 }
 
-function registerOnboardingRoute(app: Application): void {
+function registerOnboardingRoute(app: Application, queue: GeneralWorkerHttpQueue): void {
 	app.post('/queue/onboarding', async (req, res) => {
 		try {
 			const { userId, userContext, options } = req.body;
@@ -80,7 +83,7 @@ function registerOnboardingRoute(app: Application): void {
 	});
 }
 
-function registerChatClassificationRoute(app: Application): void {
+function registerChatClassificationRoute(app: Application, queue: GeneralWorkerHttpQueue): void {
 	app.post('/queue/chat/classify', async (req, res) => {
 		try {
 			const { sessionId, userId } = req.body;
@@ -147,7 +150,7 @@ function registerChatClassificationRoute(app: Application): void {
 	});
 }
 
-function registerBraindumpRoute(app: Application): void {
+function registerBraindumpRoute(app: Application, queue: GeneralWorkerHttpQueue): void {
 	app.post('/queue/braindump/process', async (req, res) => {
 		try {
 			const { braindumpId, userId } = req.body;

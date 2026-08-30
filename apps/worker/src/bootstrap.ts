@@ -8,7 +8,7 @@ import { logWorkerError } from './lib/errorLogger';
 import { shutdownPostHog } from './lib/posthog';
 import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
 import { startScheduler } from './scheduler';
-import { getWorkerHealth, shutdownWorker, startWorker } from './worker';
+import { getWorkerHealth, queue, shutdownWorker, startWorker } from './worker';
 
 const DEFAULT_PORT = 3001;
 const CRASH_DRAIN_TIMEOUT_MS = 5_000;
@@ -24,7 +24,7 @@ export async function startGeneralWorkerProcess(): Promise<void> {
 
 	const port = parsePort(process.env.PORT);
 	const eventLoopLagMonitor = new WorkerEventLoopLagMonitor();
-	const app = createGeneralWorkerApp({ eventLoopLagMonitor, getWorkerHealth });
+	const app = createGeneralWorkerApp({ eventLoopLagMonitor, getWorkerHealth, queue });
 	let server: Server | null = null;
 	let shuttingDown = false;
 

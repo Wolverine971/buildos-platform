@@ -9,14 +9,14 @@ import { getSafeTimezone } from '../../http/timezone';
 import { logWorkerError } from '../../lib/errorLogger';
 import { getQueueCorrelationId } from '../../lib/queueCorrelation';
 import { supabase } from '../../lib/supabase';
-import { queue } from '../../worker';
 import {
 	type BriefNotificationSuppressionReason,
 	resolveImmediateBriefNotification
 } from '../../workers/brief/briefNotificationSchedule';
+import type { GeneralWorkerHttpQueue } from './queuePort';
 
 /** Queue a daily brief, including catch-up notification and dedup-promotion rules. */
-export function registerBriefQueueRoute(app: Application): void {
+export function registerBriefQueueRoute(app: Application, queue: GeneralWorkerHttpQueue): void {
 	app.post('/queue/brief', async (req, res) => {
 		try {
 			const {

@@ -9,6 +9,7 @@ const harness = vi.hoisted(() => {
 		close: vi.fn()
 	};
 	const app = { listen: vi.fn() };
+	const queue = {};
 
 	return {
 		app,
@@ -17,6 +18,7 @@ const harness = vi.hoisted(() => {
 		signalHandlers,
 		createGeneralWorkerApp: vi.fn(),
 		getWorkerHealth: vi.fn(),
+		queue,
 		logProjectLoopProviderConfiguration: vi.fn(),
 		logQueueConfiguration: vi.fn(),
 		logWorkerError: vi.fn(),
@@ -66,6 +68,7 @@ vi.mock('../src/scheduler', () => ({
 
 vi.mock('../src/worker', () => ({
 	getWorkerHealth: harness.getWorkerHealth,
+	queue: harness.queue,
 	startWorker: harness.startWorker,
 	shutdownWorker: harness.shutdownWorker
 }));
@@ -149,7 +152,8 @@ describe('general worker process bootstrap', () => {
 		expect(harness.events).toEqual(['worker-start', 'scheduler-start', 'http-listen']);
 		expect(harness.createGeneralWorkerApp).toHaveBeenCalledWith({
 			eventLoopLagMonitor: expect.any(Object),
-			getWorkerHealth: harness.getWorkerHealth
+			getWorkerHealth: harness.getWorkerHealth,
+			queue: harness.queue
 		});
 		expect(harness.app.listen).toHaveBeenCalledWith(4107, '0.0.0.0', expect.any(Function));
 		expect([...harness.signalHandlers.keys()]).toEqual([

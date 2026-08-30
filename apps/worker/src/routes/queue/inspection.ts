@@ -5,16 +5,19 @@ import type { Application } from 'express';
 import { queueConfig } from '../../config/queueConfig';
 import { getErrorMessage } from '../../http/errors';
 import { logWorkerError } from '../../lib/errorLogger';
-import { queue } from '../../worker';
+import type { GeneralWorkerHttpQueue } from './queuePort';
 
 /** Register job inspection, queue health, and manual cleanup endpoints. */
-export function registerQueueInspectionRoutes(app: Application): void {
-	registerJobLookupRoutes(app);
-	registerQueueStatsRoutes(app);
+export function registerQueueInspectionRoutes(
+	app: Application,
+	queue: GeneralWorkerHttpQueue
+): void {
+	registerJobLookupRoutes(app, queue);
+	registerQueueStatsRoutes(app, queue);
 	registerQueueCleanupRoute(app);
 }
 
-function registerJobLookupRoutes(app: Application): void {
+function registerJobLookupRoutes(app: Application, queue: GeneralWorkerHttpQueue): void {
 	app.get('/jobs/:jobId', async (req, res) => {
 		try {
 			const { jobId } = req.params;
@@ -79,7 +82,7 @@ function registerJobLookupRoutes(app: Application): void {
 	});
 }
 
-function registerQueueStatsRoutes(app: Application): void {
+function registerQueueStatsRoutes(app: Application, queue: GeneralWorkerHttpQueue): void {
 	app.get('/queue/stats', async (_req, res) => {
 		try {
 			const stats = await queue.getStats();
