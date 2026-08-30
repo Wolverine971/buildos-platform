@@ -6,27 +6,18 @@ import {
 	requireDedicatedLibriWorkerProductionProfile
 } from './config/libriWorkerProfile';
 import { type LibriWorkerService, createLibriWorkerService } from './lib/libriWorkerService';
-import { supabase } from './lib/supabase';
 import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
 import { LibriWorkerBootstrap } from './workers/libri/bootstrap';
+import { createLibriDatabase } from './workers/libri/database';
 
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 28_000;
 
 requireDedicatedLibriWorkerProductionProfile(process.env);
 const config = loadLibriWorkerConfig(process.env);
-const bootstrap = new LibriWorkerBootstrap(
-	{
-		probe: async () => {
-			const { error } = await supabase
-				.schema('libri')
-				.from('libraries')
-				.select('id', { count: 'exact', head: true })
-				.limit(1);
-			if (error) throw new Error(`Libri database probe failed: ${error.message}`);
-		}
-	},
-	config
-);
+const database = createLibriDatabase(requireEnvironment(process.env, 'LIBRI_DATABASE_URL'), {
+	caCertificate: requireEnvironment(process.env, 'LIBRI_DATABASE_CA_CERT')
+});
+const bootstrap = new LibriWorkerBootstrap(database, config);
 const service = createLibriWorkerService({
 	bootstrap,
 	eventLoopLagMonitor: new WorkerEventLoopLagMonitor(),
@@ -97,4 +88,10 @@ function resolveRelease(environment: NodeJS.ProcessEnv): string {
 		environment.npm_package_version?.trim() ||
 		'unknown'
 	);
+}
+
+function requireEnvironment(environment: NodeJS.ProcessEnv, name: string): string {
+	const value = environment[name]?.trim();
+	if (!value) throw new Error(`${name} is required`);
+	return value;
 }

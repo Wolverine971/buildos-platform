@@ -23,7 +23,10 @@ const WORKER_DIRECTORY = resolve(TEST_DIRECTORY, '..');
 
 describe('dedicated Libri worker bootstrap', () => {
 	it('reports a healthy database while keeping queue claims disabled', async () => {
-		const database = { probe: vi.fn(async () => undefined) };
+		const database = {
+			probe: vi.fn(async () => undefined),
+			close: vi.fn(async () => undefined)
+		};
 		const bootstrap = new LibriWorkerBootstrap(database, loadLibriWorkerConfig({}));
 
 		await bootstrap.start();
@@ -43,6 +46,7 @@ describe('dedicated Libri worker bootstrap', () => {
 		});
 
 		await bootstrap.stop();
+		expect(database.close).toHaveBeenCalledOnce();
 		expect(bootstrap.getHealth()).toMatchObject({ state: 'stopped', healthy: false });
 	});
 
@@ -160,6 +164,10 @@ describe('dedicated Libri worker service', () => {
 			expect(importedPath).toMatch(/^libri\//);
 		}
 		expect(entrypoint).toContain("from './workers/libri/bootstrap'");
+		expect(entrypoint).toContain("from './workers/libri/database'");
+		expect(entrypoint).not.toContain("from './lib/supabase'");
+		expect(entrypoint).toContain("requireEnvironment(process.env, 'LIBRI_DATABASE_URL')");
+		expect(entrypoint).toContain("requireEnvironment(process.env, 'LIBRI_DATABASE_CA_CERT')");
 		expect(entrypoint).not.toContain('startScheduler(');
 		expect(entrypoint).not.toContain('startWorker(');
 	});
