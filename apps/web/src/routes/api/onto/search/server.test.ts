@@ -1,12 +1,14 @@
 // apps/web/src/routes/api/onto/search/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureActorIdMock } = vi.hoisted(() => ({
-	ensureActorIdMock: vi.fn()
+const { ensureActorIdMock, fetchProjectSummariesMock } = vi.hoisted(() => ({
+	ensureActorIdMock: vi.fn(),
+	fetchProjectSummariesMock: vi.fn()
 }));
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
-	ensureActorId: ensureActorIdMock
+	ensureActorId: ensureActorIdMock,
+	fetchProjectSummaries: fetchProjectSummariesMock
 }));
 
 import { POST } from './+server';
@@ -101,6 +103,7 @@ describe('/api/onto/search', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		ensureActorIdMock.mockResolvedValue('actor-1');
+		fetchProjectSummariesMock.mockResolvedValue([]);
 	});
 
 	it('treats the string none as an absent optional project_id', async () => {
@@ -112,7 +115,7 @@ describe('/api/onto/search', () => {
 		const response = await POST(event as any);
 		const payload = await response.json();
 
-		expect(response.status).toBe(200);
+		expect(response.status, JSON.stringify(payload)).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(payload.data).toMatchObject({
 			query: 'Cadre content operations',
@@ -143,7 +146,10 @@ describe('/api/onto/search', () => {
 				p_project_id: undefined
 			})
 		);
-		expect(event.locals.supabase.eventLookup.eq).toHaveBeenCalledWith('created_by', 'actor-1');
+		expect(event.locals.supabase.eventLookup.eq).toHaveBeenCalledWith(
+			'project_id',
+			'00000000-0000-0000-0000-000000000000'
+		);
 	});
 
 	it('returns 400 for malformed non-sentinel project ids', async () => {
