@@ -39,6 +39,43 @@ Google Calendar sync with bidirectional updates for task scheduling and availabi
 - `/src/routes/api/calendar/` - Calendar API endpoints
 - `/src/routes/api/webhooks/calendar/` - Webhook endpoints
 
+## Production Route Verification — 2026-08-29
+
+The authenticated connected-calendar route completed a real create, read, update, and delete
+lifecycle against the primary Google Calendar source. The smoke scheduled a temporary weekly event,
+read all three occurrences (August 31, September 7, and September 14), shifted the series from
+3:00–3:30 PM to 3:15–3:45 PM, then deleted the Google series and its temporary BuildOS task.
+Cleanup verification found zero live ontology events, zero non-cancelled mappings, and zero pending
+orphans.
+
+Two production defects were fixed during the smoke:
+
+- Migration `20260829223736_restore_personal_onto_events_rls.sql` restores narrow RLS access for
+  projectless personal events while keeping project events membership-scoped and preventing actor
+  or ownership reassignment. It is applied and recorded in the production migration ledger.
+- Commit `12af23f7c` routes ontology task schedules through `onto_events`, `onto_event_sync`, and a
+  project-scoped `task -> has_event -> event` edge instead of the legacy `task_calendar_events`
+  foreign key. Vercel deployment `dpl_4Ca3vHThfJUJFNWYnU98Gx2v5BrE` is Ready and aliased to
+  `build-os.com`.
+- Migration `20260829235830_add_onto_event_sync_event_user_provider_uniqueness.sql` adds the unique
+  `(event_id, user_id, provider)` conflict target used by source-aware mapping upserts. It is applied
+  and recorded in the production migration ledger.
+
+Verification evidence:
+
+- Focused calendar tests pass 41/41; the personal-event SQL contracts pass 17/17.
+- `svelte-check` reports 0 errors and 0 warnings for the calendar implementation, the test-type
+  debt gate remains at its accepted 538/538 baseline, and the server-route guard passes with 31
+  grandfathered routes.
+- CI run `33281881278` fails only on the same seven typecheck errors already present on parent run
+  `33281310226`, in `gmail-database.types.ts` and the two ontology task route files. No calendar
+  check failed.
+
+The smoke also exposed two separate legacy-surface defects: `/time-blocks` reports no calendar
+connection while the multi-source dashboard has two connected accounts, and the task recurrence
+editor writes the removed `onto_tasks.plan_id` column. These remain tracked in Tasker 74 and do not
+invalidate the verified calendar route lifecycle.
+
 ## Related Documentation
 
 - Architecture: `/apps/web/docs/technical/architecture/calendar-sync.md`

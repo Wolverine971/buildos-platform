@@ -26,8 +26,8 @@ live verification, or a named exit gate is still pending.
   Agentic Chat security wave.
 - **Time-sensitive evaluation:** [36](36-gmail-project-relevance-phase-a.md) needs its review surface
   deployed and the 300-item sample adjudicated before source retention expires.
-- **Closest to deletion:** [54](54-calendar-route-size-guard.md) needs one authenticated live smoke;
-  [45](45-legacy-agent-chat-retirement.md) needs the web caller-cutover deployment; and
+- **Closest to deletion:** [45](45-legacy-agent-chat-retirement.md) needs the web caller-cutover
+  deployment; and
   [50](50-worker-provider-execution-hardening-slice16.md) needs its follow-up canary and two operator
   gates.
 - **Largest active Agentic Chat program:** [65](65-agentic-chat-read-default-cost-program.md) has its
@@ -49,7 +49,6 @@ live verification, or a named exit gate is still pending.
 | [38 — Live verification debt](38-live-verification-debt.md) | Batch the manual pentest, calendar, audit, onboarding, rotation, and inbox smokes and record each result. |
 | [45 — Legacy agent-chat retirement](45-legacy-agent-chat-retirement.md) | The production database is retired; deploy and verify the remaining web caller cutover. |
 | [50 — Worker execution hardening](50-worker-provider-execution-hardening-slice16.md) | Deploy/canary the follow-up and run the constraint-diff and deliberate budget-overrun gates. |
-| [54 — Calendar route-size guard](54-calendar-route-size-guard.md) | Route split is deployed and `main` is green; run the authenticated live smoke, then delete the tracker. |
 | [60 — Fair-share queue claiming](60-agentic-chat-fair-share-queue-claiming.md) | Measure starvation risk and choose a fair claiming policy without weakening durable admission. |
 | [61 — Multi-replica capacity observability](61-agentic-chat-multi-replica-capacity-observability.md) | Add fleet-level heartbeat and capacity attribution across worker replicas. |
 | [62 — Agent Chat modal decomposition](62-agent-chat-modal-state-orchestration-decomposition.md) | Separate state/orchestration boundaries with transition coverage. |
@@ -58,6 +57,7 @@ live verification, or a named exit gate is still pending.
 | [67 — Redundant read-round planning](67-agentic-chat-redundant-read-round-planning.md) | Baseline is corrected; add exact-read telemetry, trace result contracts, run bounded experiments, and canary the winner. |
 | [70 — Production battery remediation](70-agentic-chat-production-battery-remediation.md) | Fix false email renegotiation, persist project context shifts, require durable clarification, make contract repair converge, repair pass telemetry, and rerun the zero-retry production battery. |
 | [73 — Libri post-migration safety audit](73-libri-post-migration-safety-audit.md) | Activate after Libri cutover; prove data reconciliation, BuildOS isolation/performance, and Railway worker recovery before Convex retirement. |
+| [74 — Calendar legacy-surface cleanup](74-calendar-legacy-surface-cleanup.md) | Reconcile legacy connection status and task recurrence editing with the multi-source ontology calendar model. |
 
 ### Product, IA, and experiments
 

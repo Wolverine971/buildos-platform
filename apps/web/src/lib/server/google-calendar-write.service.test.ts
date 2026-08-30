@@ -114,6 +114,7 @@ describe('GoogleCalendarWriteService', () => {
 		expect(upserts).toContainEqual(
 			expect.objectContaining({
 				table: 'onto_event_sync',
+				options: { onConflict: 'event_id,user_id,provider' },
 				value: expect.objectContaining({
 					event_id: 'onto-event-1',
 					calendar_source_id: 'source-a',
