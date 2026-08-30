@@ -11,6 +11,7 @@ describe('Libri OCR provider boundary', () => {
 	it('sends one bounded OpenRouter vision request and normalizes usage', async () => {
 		const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
 			jsonResponse({
+				id: 'openrouter-request-1',
 				model: MODEL,
 				choices: [
 					{
@@ -36,6 +37,7 @@ describe('Libri OCR provider boundary', () => {
 		});
 
 		await expect(provider.execute(request())).resolves.toEqual({
+			providerRequestId: 'openrouter-request-1',
 			extractedText: 'Chapter One',
 			summary: 'A chapter page.',
 			confidence: 0.97,
@@ -205,6 +207,21 @@ describe('Libri OCR provider boundary', () => {
 			code: 'provider_response_invalid',
 			retryable: true
 		});
+
+		const missingRequestIdProvider = createOpenRouterLibriOcrProvider({
+			apiKey: 'key',
+			allowedModels: [MODEL],
+			fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(
+				jsonResponse({
+					...responsePayload({ extracted_text: 'text', summary: 'summary' }),
+					id: undefined
+				})
+			)
+		});
+		await expect(missingRequestIdProvider.execute(request())).rejects.toMatchObject({
+			code: 'provider_response_invalid',
+			retryable: true
+		});
 	});
 
 	it('classifies aborted and network requests as bounded transient failures', async () => {
@@ -246,6 +263,7 @@ function request(overrides: Partial<LibriOcrProviderRequest> = {}): LibriOcrProv
 
 function responsePayload(output: Record<string, unknown>): Record<string, unknown> {
 	return {
+		id: 'openrouter-request-fixture',
 		model: MODEL,
 		choices: [{ message: { content: JSON.stringify(output) } }],
 		usage: { prompt_tokens: 1, completion_tokens: 1, cost: 0 }

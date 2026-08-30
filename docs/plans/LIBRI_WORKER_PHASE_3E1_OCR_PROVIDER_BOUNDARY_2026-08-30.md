@@ -40,7 +40,7 @@ routing hint rather than authority.
 - The adapter accepts one short-lived HTTPS image URL, an allowed image MIME type, an explicit model,
   a bounded output-token limit, and an `AbortSignal`.
 - It returns normalized OCR text, a short summary, optional language/confidence, provider/model,
-  token counts, and provider-reported or separately reconciled cost.
+  the provider request ID, token counts, and provider-reported or separately reconciled cost.
 - Empty text, malformed JSON, unsupported MIME types, unexpected response fields, non-finite usage,
   and over-limit output fail closed.
 - HTTP 408, 409, 425, 429, and 5xx responses are transient; authentication, validation, and other

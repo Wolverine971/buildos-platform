@@ -19,6 +19,7 @@ export type LibriOcrProviderRequest = {
 };
 
 export type LibriOcrProviderResult = {
+	providerRequestId: string;
 	extractedText: string;
 	summary: string;
 	confidence?: number;
@@ -256,6 +257,7 @@ function parseProviderResponse(
 	const confidence = readOptionalConfidence(output.confidence);
 	const language = readOptionalText(output.language, MAX_LANGUAGE_CHARS, 'language');
 	const usage = readObject(root.usage, 'provider usage');
+	const providerRequestId = readBoundedText(root.id, 256, 'request id');
 	const promptTokens = readNonnegativeInteger(usage.prompt_tokens, 'prompt_tokens');
 	const completionTokens = readNonnegativeInteger(usage.completion_tokens, 'completion_tokens');
 	const estimatedCostMicrousd = readOptionalCostMicrousd(usage.cost);
@@ -265,6 +267,7 @@ function parseProviderResponse(
 	}
 
 	return {
+		providerRequestId,
 		extractedText,
 		summary,
 		...(confidence === undefined ? {} : { confidence }),

@@ -1,5 +1,17 @@
 import { Pool, type PoolConfig, type QueryResult } from 'pg';
 import {
+	type AuthorizeLibriProviderCostInput,
+	type AuthorizeLibriProviderCostReceipt,
+	type LibriCostLedgerPort,
+	type ReleaseLibriProviderCostInput,
+	type ReleaseLibriProviderCostReceipt,
+	type ReserveLibriProviderCostInput,
+	type ReserveLibriProviderCostReceipt,
+	type SettleLibriProviderCostInput,
+	type SettleLibriProviderCostReceipt,
+	createLibriCostLedger
+} from './costLedger';
+import {
 	type CancelLibriRunInput,
 	type CancelLibriRunReceipt,
 	type ClaimLibriStepInput,
@@ -44,10 +56,11 @@ export type LibriPgPool = {
 	end: () => Promise<void>;
 };
 
-export type LibriDatabasePort = LibriLifecyclePort & {
-	probe: () => Promise<void>;
-	close: () => Promise<void>;
-};
+export type LibriDatabasePort = LibriLifecyclePort &
+	LibriCostLedgerPort & {
+		probe: () => Promise<void>;
+		close: () => Promise<void>;
+	};
 
 type LibriPoolFactory = (config: PoolConfig) => LibriPgPool;
 
@@ -95,9 +108,35 @@ function normalizeCaCertificate(value: string): string {
 
 class LibriDatabase implements LibriDatabasePort {
 	private readonly lifecycle: LibriLifecyclePort;
+	private readonly costLedger: LibriCostLedgerPort;
 
 	constructor(private readonly pool: LibriPgPool) {
 		this.lifecycle = createLibriLifecycle(pool);
+		this.costLedger = createLibriCostLedger(pool);
+	}
+
+	reserveProviderCost(
+		input: ReserveLibriProviderCostInput
+	): Promise<ReserveLibriProviderCostReceipt> {
+		return this.costLedger.reserveProviderCost(input);
+	}
+
+	authorizeProviderCall(
+		input: AuthorizeLibriProviderCostInput
+	): Promise<AuthorizeLibriProviderCostReceipt> {
+		return this.costLedger.authorizeProviderCall(input);
+	}
+
+	settleProviderCost(
+		input: SettleLibriProviderCostInput
+	): Promise<SettleLibriProviderCostReceipt> {
+		return this.costLedger.settleProviderCost(input);
+	}
+
+	releaseProviderCost(
+		input: ReleaseLibriProviderCostInput
+	): Promise<ReleaseLibriProviderCostReceipt> {
+		return this.costLedger.releaseProviderCost(input);
 	}
 
 	enqueueStep(input: EnqueueLibriStepInput): Promise<EnqueueLibriStepReceipt> {
