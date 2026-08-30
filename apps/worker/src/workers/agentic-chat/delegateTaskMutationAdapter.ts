@@ -1,5 +1,4 @@
 // apps/worker/src/workers/agentic-chat/delegateTaskMutationAdapter.ts
-import { randomUUID } from 'node:crypto';
 import {
 	type Database,
 	type Json,
