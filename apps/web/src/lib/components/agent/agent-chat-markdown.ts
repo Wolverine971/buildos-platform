@@ -1,6 +1,6 @@
 // apps/web/src/lib/components/agent/agent-chat-markdown.ts
 import type { Attachment } from 'svelte/attachments';
-import { renderMarkdown } from '$lib/utils/markdown';
+import { renderAgentMarkdownContent } from '$lib/utils/markdown';
 
 const TABLE_OPEN_TAG = /<table(\s[^>]*)?>/g;
 const TABLE_CLOSE_TAG = /<\/table>/g;
@@ -14,7 +14,7 @@ const SCROLL_EPSILON_PX = 1;
  * so its classes and accessibility attributes cannot be supplied by the model.
  */
 export function renderAgentMarkdown(text: string | null | undefined): string {
-	return renderMarkdown(text)
+	return renderAgentMarkdownContent(text)
 		.replace(
 			TABLE_OPEN_TAG,
 			'<div class="agent-markdown-table-shell"><div class="agent-markdown-table-scroll" data-scrollable="false" data-at-end="true" tabindex="-1"><table$1>'

@@ -221,7 +221,7 @@ describe('/notifications activity timeline', () => {
 	});
 
 	it('refetches scoped to a lane when a filter is chosen', async () => {
-		const fetchMock = vi.fn(async () => ({
+		const fetchMock = vi.fn(async (_input: RequestInfo | URL) => ({
 			ok: true,
 			json: async () => ({
 				success: true,
@@ -237,7 +237,7 @@ describe('/notifications activity timeline', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
 
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-		expect(String(fetchMock.mock.calls[0][0])).toContain('lanes=ping');
+		expect(String(fetchMock.mock.calls[0]![0])).toContain('lanes=ping');
 		await waitFor(() => expect(screen.getByText('Brief ready')).toBeInTheDocument());
 		expect(screen.queryByText('Project audit — BuildOS')).not.toBeInTheDocument();
 	});

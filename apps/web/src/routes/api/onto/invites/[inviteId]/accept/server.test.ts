@@ -91,7 +91,7 @@ describe('POST /api/onto/invites/[inviteId]/accept', () => {
 				supabase: { rpc: vi.fn(), from: vi.fn() },
 				safeGetSession: vi.fn().mockResolvedValue({ user: null })
 			}
-		} as Partial<RequestEvent>);
+		} as unknown as Partial<RequestEvent>);
 
 		const response = await POST(event);
 		const payload = await response.json();

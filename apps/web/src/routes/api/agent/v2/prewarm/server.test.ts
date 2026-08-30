@@ -133,6 +133,52 @@ describe('POST /api/agent/v2/prewarm', () => {
 		);
 	});
 
+	it('denies ontology prewarm before context loading when project membership is missing', async () => {
+		const projectId = '11111111-1111-4111-8111-111111111111';
+		const rpc = vi.fn(async (fn: string) => {
+			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
+			if (fn === 'current_actor_has_project_member_access') {
+				return { data: false, error: null };
+			}
+			return { data: null, error: null };
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/prewarm', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					context_type: 'ontology',
+					entity_id: projectId,
+					projectFocus: {
+						focusType: 'project-wide',
+						focusEntityId: null,
+						focusEntityName: null,
+						projectId,
+						projectName: 'Private project'
+					},
+					prepare_prompt: false
+				})
+			}),
+			locals: {
+				safeGetSession: async () => ({ user: { id: 'user-1' } }),
+				supabase: { rpc }
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual(
+			expect.objectContaining({
+				data: { warmed: false, reason: 'project_not_accessible' }
+			})
+		);
+		expect(rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
+			p_project_id: projectId,
+			p_required_access: 'read'
+		});
+		expect(loadPromptContextMock).not.toHaveBeenCalled();
+	});
+
 	it('builds a missing prepared prompt from fresh session context cache without reloading context', async () => {
 		const cachedContext = {
 			version: 1,

@@ -269,8 +269,9 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup && tsc --emitDeclarationOnly --declarationMap false",
-		"dev": "tsup --watch --dts",
+		"build": "tsup && pnpm run build:types",
+		"build:types": "tsc --emitDeclarationOnly --declarationMap false",
+		"dev": "tsup --watch --onSuccess \"pnpm run build:types\"",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest",

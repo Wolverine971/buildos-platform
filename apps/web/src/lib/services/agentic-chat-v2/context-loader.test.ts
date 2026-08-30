@@ -1258,7 +1258,7 @@ describe('loadFastChatPromptContext fallback bounds and focus safety', () => {
 		};
 	}
 
-	it('records RPC-null fallback source and applies SQL limits on project fallback queries', async () => {
+	it('fails closed on an empty project RPC instead of querying RLS-visible fallback rows', async () => {
 		const supabase = createContextFallbackSupabaseMock({
 			tables: createProjectFallbackTables({
 				onto_goals: Array.from({ length: 80 }, (_, index) => ({
@@ -1310,37 +1310,17 @@ describe('loadFastChatPromptContext fallback bounds and focus safety', () => {
 			onError
 		});
 
-		const data = context.data as Record<string, any>;
 		expect(context.contextLoadSource).toBe('rpc_null_fallback');
-		expect(data.context_meta.source).toBe('fallback');
+		expect(context.data).toBeNull();
 		expect(onError).toHaveBeenCalledWith(
 			expect.objectContaining({
 				stage: 'rpc.load_fastchat_context.empty_payload'
 			})
 		);
-
-		const goalCall = supabase.calls.find(
-			(call: QueryCallRecord) => call.table === 'onto_goals'
-		);
-		const taskCall = supabase.calls.find(
-			(call: QueryCallRecord) => call.table === 'onto_tasks'
-		);
-		const documentCall = supabase.calls.find(
-			(call: QueryCallRecord) =>
-				call.table === 'onto_documents' &&
-				call.selectColumns === 'id, title, state_key, created_at, updated_at'
-		);
-		expect(goalCall?.limitCalls).toContain(48);
-		expect(taskCall?.limitCalls).toContain(72);
-		expect(documentCall?.limitCalls).toContain(60);
-		expect(goalCall?.orderCalls.length).toBeGreaterThan(0);
-		expect(taskCall?.orderCalls.length).toBeGreaterThan(0);
-		expect(documentCall?.orderCalls.length).toBeGreaterThan(0);
-		expect(data.tasks.length).toBeLessThanOrEqual(18);
-		expect(JSON.stringify(data).length).toBeLessThan(80_000);
+		expect(supabase.calls.map((call: QueryCallRecord) => call.table)).toEqual(['users']);
 	});
 
-	it('does not load a cross-project fallback focus entity', async () => {
+	it('does not query a cross-project focus entity after the project RPC fails closed', async () => {
 		const supabase = createContextFallbackSupabaseMock({
 			tables: createProjectFallbackTables({
 				onto_tasks: [
@@ -1376,16 +1356,13 @@ describe('loadFastChatPromptContext fallback bounds and focus safety', () => {
 			}
 		});
 
-		const data = context.data as Record<string, any>;
-		expect(data.focus_entity_full).toEqual({});
-		const focusCall = supabase.calls.find(
-			(call: QueryCallRecord) =>
-				call.table === 'onto_tasks' && call.eqCalls.some(([column]) => column === 'id')
+		expect(context.data).toBeNull();
+		expect(supabase.calls.some((call: QueryCallRecord) => call.table === 'onto_tasks')).toBe(
+			false
 		);
-		expect(focusCall?.eqCalls).toContainEqual(['project_id', projectId]);
 	});
 
-	it('sanitizes document focus payloads to a bounded preview', async () => {
+	it('does not query document focus payloads after the project RPC fails closed', async () => {
 		const documentId = '44444444-4444-4444-8444-444444444444';
 		const longContent = 'Document body '.repeat(300);
 		const supabase = createContextFallbackSupabaseMock({
@@ -1423,18 +1400,10 @@ describe('loadFastChatPromptContext fallback bounds and focus safety', () => {
 			}
 		});
 
-		const data = context.data as Record<string, any>;
-		expect(data.focus_entity_full).toMatchObject({
-			id: documentId,
-			project_id: projectId,
-			title: 'Strategy Doc',
-			content_length: longContent.length
-		});
-		expect(data.focus_entity_full.content_preview.length).toBeLessThanOrEqual(
-			START_HERE_CONTEXT_LOAD_MAX_CHARS
-		);
-		expect(data.focus_entity_full).not.toHaveProperty('content');
-		expect(data.focus_entity_full).not.toHaveProperty('props');
+		expect(context.data).toBeNull();
+		expect(
+			supabase.calls.some((call: QueryCallRecord) => call.table === 'onto_documents')
+		).toBe(false);
 	});
 
 	it('ignores non-UUID focus ids before linked-edge loading', async () => {

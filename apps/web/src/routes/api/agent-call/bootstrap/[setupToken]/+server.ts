@@ -7,12 +7,59 @@ import {
 	serializeBootstrapDocumentAsText
 } from '$lib/server/agent-call/bootstrap-link.service';
 import { logRouteError } from '$lib/server/route-error';
+import {
+	consumePublicEndpointRateLimit,
+	OAUTH_RATE_LIMITS
+} from '$lib/server/agent-call/oauth-rate-limit';
+
+function bootstrapHeaders(extra: Record<string, string> = {}): Record<string, string> {
+	return {
+		'Cache-Control': 'no-store',
+		'Referrer-Policy': 'no-referrer',
+		'X-Content-Type-Options': 'nosniff',
+		...extra
+	};
+}
+
+function bootstrapErrorResponse(
+	format: 'json' | 'text',
+	message: string,
+	status: number,
+	extraHeaders: Record<string, string> = {}
+): Response {
+	const headers = bootstrapHeaders(extraHeaders);
+	if (format === 'json') {
+		return json({ error: message }, { status, headers });
+	}
+	return new Response(message, {
+		status,
+		headers: {
+			...headers,
+			'Content-Type': 'text/plain; charset=utf-8'
+		}
+	});
+}
 
 export const GET: RequestHandler = async (event) => {
-	const { params, url } = event;
+	const { params, url, getClientAddress } = event;
 	const service = new AgentCallBootstrapLinkService();
 	const baseUrl = url.origin;
 	const format = url.searchParams.get('format')?.toLowerCase() === 'json' ? 'json' : 'text';
+	const rateLimit = consumePublicEndpointRateLimit(
+		`agent-call:bootstrap:${getClientAddress()}`,
+		OAUTH_RATE_LIMITS.bootstrap
+	);
+	if (!rateLimit.allowed) {
+		return bootstrapErrorResponse(
+			format,
+			'Too many bootstrap requests. Try again shortly.',
+			429,
+			{
+				...rateLimit.headers,
+				'Retry-After': String(rateLimit.retryAfterSeconds)
+			}
+		);
+	}
 
 	try {
 		const document = await service.loadBootstrapDocument({
@@ -22,42 +69,20 @@ export const GET: RequestHandler = async (event) => {
 
 		if (format === 'json') {
 			return json(document, {
-				headers: {
-					'Cache-Control': 'no-store'
-				}
+				headers: bootstrapHeaders(rateLimit.headers)
 			});
 		}
 
 		return new Response(serializeBootstrapDocumentAsText(document), {
 			status: 200,
-			headers: {
+			headers: bootstrapHeaders({
 				'Content-Type': 'text/plain; charset=utf-8',
-				'Cache-Control': 'no-store'
-			}
+				...rateLimit.headers
+			})
 		});
 	} catch (error) {
 		if (error instanceof AgentCallBootstrapError) {
-			if (format === 'json') {
-				return json(
-					{
-						error: error.message
-					},
-					{
-						status: error.status,
-						headers: {
-							'Cache-Control': 'no-store'
-						}
-					}
-				);
-			}
-
-			return new Response(error.message, {
-				status: error.status,
-				headers: {
-					'Content-Type': 'text/plain; charset=utf-8',
-					'Cache-Control': 'no-store'
-				}
-			});
+			return bootstrapErrorResponse(format, error.message, error.status, rateLimit.headers);
 		}
 
 		await logRouteError(event, error, {
@@ -69,32 +94,11 @@ export const GET: RequestHandler = async (event) => {
 			}
 		});
 
-		if (format === 'json') {
-			return json(
-				{
-					error:
-						error instanceof Error
-							? error.message
-							: 'Failed to load bootstrap instructions'
-				},
-				{
-					status: 500,
-					headers: {
-						'Cache-Control': 'no-store'
-					}
-				}
-			);
-		}
-
-		return new Response(
-			error instanceof Error ? error.message : 'Failed to load bootstrap instructions',
-			{
-				status: 500,
-				headers: {
-					'Content-Type': 'text/plain; charset=utf-8',
-					'Cache-Control': 'no-store'
-				}
-			}
+		return bootstrapErrorResponse(
+			format,
+			'Failed to load bootstrap instructions',
+			500,
+			rateLimit.headers
 		);
 	}
 };

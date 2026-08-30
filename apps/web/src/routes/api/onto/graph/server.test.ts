@@ -245,7 +245,7 @@ describe('GET /api/onto/graph', () => {
 			['project-1', 'project-0'],
 			{ excludeCompletedTasks: true }
 		);
-		expect(loadMultipleProjectGraphsMock.mock.calls[0][1]).not.toContain('project-2');
+		expect(loadMultipleProjectGraphsMock.mock.calls[0]![1]).not.toContain('project-2');
 	});
 
 	it('does not let admin-wide project access expand single-project graph access', async () => {

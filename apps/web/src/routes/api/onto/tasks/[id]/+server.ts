@@ -534,8 +534,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				p_task_id: params.id,
 				p_updates: atomicUpdatePayload as Json,
 				p_sync_assignees: hasAssigneeInput,
-				p_assignee_actor_ids: hasAssigneeInput ? assigneeActorIds : null,
-				p_assigned_by_actor_id: hasAssigneeInput ? actorId : null,
+				p_assignee_actor_ids: hasAssigneeInput ? assigneeActorIds : [],
+				p_assigned_by_actor_id: actorId,
 				p_relationship_plan: relationshipPlan as unknown as Json,
 				p_source: 'manual'
 			}

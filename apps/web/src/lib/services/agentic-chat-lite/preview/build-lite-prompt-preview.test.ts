@@ -103,13 +103,13 @@ describe('buildLitePromptPreview', () => {
 			'identity_mission',
 			'capabilities_skills_tools',
 			'operating_strategy',
+			'final_response_contract',
 			'safety_data_rules',
 			'tool_surface_dynamic',
 			'focus_purpose',
 			'location_loaded_context',
 			'timeline_recent_activity',
-			'context_inventory_retrieval',
-			'final_response_contract'
+			'context_inventory_retrieval'
 		]);
 		// WP-7 (2026-07-10): the variant lives in envelope metadata, not model input.
 		expect(preview.lite.system_prompt).not.toContain('Prompt variant:');

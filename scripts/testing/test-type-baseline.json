@@ -5,7 +5,7 @@
 		"web": {
 			"tsconfig": "tsconfig.tests.json",
 			"compiler": "typescript",
-			"maxErrors": 538,
+			"maxErrors": 495,
 			"note": "Remaining web test fixture debt after canonicalizing the Agentic Chat tool-execution suite on 2026-08-26. Lower this ceiling whenever errors are fixed."
 		},
 		"worker": {

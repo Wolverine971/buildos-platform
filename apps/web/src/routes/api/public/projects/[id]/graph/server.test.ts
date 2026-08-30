@@ -252,8 +252,8 @@ describe('GET /api/public/projects/[id]/graph', () => {
 			})
 		]);
 
-		const sourceArg = buildGraphDataMock.mock.calls[0][0];
-		expect(sourceArg.tasks[0]).not.toHaveProperty('props');
+		const sourceArg = buildGraphDataMock.mock.calls[0]![0];
+		expect(sourceArg.tasks[0]!).not.toHaveProperty('props');
 		expect(sourceArg.edges).toHaveLength(1);
 	});
 

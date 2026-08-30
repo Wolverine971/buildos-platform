@@ -27,6 +27,8 @@ type PublicSchema = Database['public'];
 type Table<Name extends keyof PublicSchema['Tables']> = PublicSchema['Tables'][Name];
 type Function<Name extends keyof PublicSchema['Functions']> = PublicSchema['Functions'][Name];
 type FunctionArgs<Name extends keyof PublicSchema['Functions']> = Function<Name>['Args'];
+type FunctionArgsWithRefreshTokenExpiry<Name extends keyof PublicSchema['Functions']> =
+	Extract<FunctionArgs<Name>, { p_refresh_token_expires_at: string }>;
 type NullableArgs<Args, Keys extends keyof Args> = Omit<Args, Keys> & {
 	[Key in Keys]: Args[Key] | null;
 };
@@ -82,7 +84,7 @@ export type ConsumedEmailOauthState = Omit<
 };
 
 type UpsertGmailReadConnectionArgs = NullableArgs<
-	FunctionArgs<'upsert_gmail_read_connection'>,
+	FunctionArgsWithRefreshTokenExpiry<'upsert_gmail_read_connection'>,
 	| 'p_access_token_expires_at'
 	| 'p_default_account_label'
 	| 'p_display_name'
@@ -92,7 +94,7 @@ type UpsertGmailReadConnectionArgs = NullableArgs<
 >;
 
 type RotateGmailReadCredentialsArgs = NullableArgs<
-	FunctionArgs<'rotate_gmail_read_credentials'>,
+	FunctionArgsWithRefreshTokenExpiry<'rotate_gmail_read_credentials'>,
 	'p_access_token_expires_at' | 'p_refresh_token_expires_at' | 'p_token_type'
 >;
 

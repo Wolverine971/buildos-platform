@@ -34,10 +34,7 @@ export function isOntoEmbeddingEntityType(value: unknown): value is OntoEmbeddin
 }
 
 /** Source table + the columns the composition reads, per entity type. */
-export const ONTO_EMBEDDING_SOURCES: Record<
-	OntoEmbeddingEntityType,
-	{ table: string; columns: string[] }
-> = {
+export const ONTO_EMBEDDING_SOURCES = {
 	project: {
 		table: 'onto_projects',
 		columns: ['id', 'name', 'description', 'next_step_short', 'next_step_long']
@@ -71,7 +68,10 @@ export const ONTO_EMBEDDING_SOURCES: Record<
 			'extracted_text'
 		]
 	}
-};
+} as const satisfies Record<
+	OntoEmbeddingEntityType,
+	{ table: string; columns: readonly string[] }
+>;
 
 export type OntoEmbeddingChunk = {
 	chunk_index: number;

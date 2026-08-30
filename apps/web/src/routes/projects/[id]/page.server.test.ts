@@ -13,6 +13,12 @@ import { load } from './+page.server';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 
+async function loadProjectPage(event: Parameters<typeof load>[0]) {
+	const result = await load(event);
+	if (!result) throw new Error('Expected project page data');
+	return result;
+}
+
 type BundleAccess = {
 	can_edit?: boolean;
 	can_admin?: boolean;
@@ -143,7 +149,7 @@ describe('projects/[id] +page.server load', () => {
 			}
 		});
 
-		const result = await load(event);
+		const result = await loadProjectPage(event);
 
 		expect(result.access).toEqual({
 			canEdit: true,
@@ -176,7 +182,7 @@ describe('projects/[id] +page.server load', () => {
 			)
 		});
 
-		const result = await load(event);
+		const result = await loadProjectPage(event);
 
 		expect(await result.deferredFullData).toEqual({
 			ok: false,
@@ -196,7 +202,7 @@ describe('projects/[id] +page.server load', () => {
 			}
 		});
 
-		const result = await load(event);
+		const result = await loadProjectPage(event);
 
 		expect(result.access).toEqual({
 			canEdit: true,
@@ -221,7 +227,7 @@ describe('projects/[id] +page.server load', () => {
 			}
 		});
 
-		const result = await load(event);
+		const result = await loadProjectPage(event);
 
 		expect(result.access).toEqual({
 			canEdit: false,
@@ -237,7 +243,7 @@ describe('projects/[id] +page.server load', () => {
 	it('anonymous requests return skeleton data without any fan-out queries', async () => {
 		const { event, operations, from, safeGetSession } = createHarness({ userId: null });
 
-		const result = await load(event);
+		const result = await loadProjectPage(event);
 
 		expect(result.skeleton).toBe(true);
 		expect(result.access).toEqual({

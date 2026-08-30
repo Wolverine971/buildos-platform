@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-	logUpdateAsync: vi.fn(async () => undefined),
+	logUpdateAsync: vi.fn(async (..._args: unknown[]) => undefined),
 	queueProjectLoopBurstAsync: vi.fn(),
 	shouldSkipProjectLoopBurst: vi.fn(() => false),
 	captureServerEvent: vi.fn(async () => undefined)

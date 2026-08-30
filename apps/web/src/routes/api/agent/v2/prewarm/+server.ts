@@ -46,19 +46,37 @@ import {
 import { writePreparedPromptContent } from '$lib/services/agentic-chat-v2/prepared-prompt-store.server';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
+import { agenticChatProjectFocusSchema } from '$lib/services/agentic-chat-v2/stream-request';
 
 const logger = createLogger('API:AgentPrewarmV2');
 const FASTCHAT_SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
 const fastAgentPrewarmRequestSchema = z
 	.object({
 		context_type: z.string().optional(),
-		projectFocus: z.record(z.unknown()).nullable().optional(),
+		projectFocus: agenticChatProjectFocusSchema.nullable().optional(),
 		entity_id: z.string().nullable().optional(),
 		prepare_prompt: z.boolean().optional(),
 		session_id: z.string().optional(),
 		ensure_session: z.boolean().optional()
 	})
-	.strict();
+	.strict()
+	.superRefine((value, context) => {
+		const contextType = normalizeFastContextType(value.context_type);
+		const entityId = value.entity_id?.trim();
+		if (
+			entityId &&
+			(isProjectScopedContext(contextType) ||
+				contextType === 'ontology' ||
+				contextType === 'daily_brief') &&
+			!z.string().uuid().safeParse(entityId).success
+		) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['entity_id'],
+				message: 'Project and focus entity identifiers must be UUIDs'
+			});
+		}
+	});
 
 const FASTCHAT_HISTORY_LOOKBACK_MESSAGES = parsePositiveInt(
 	process.env.FASTCHAT_HISTORY_LOOKBACK_MESSAGES,
@@ -312,7 +330,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		return ApiResponse.success({ warmed: false, reason: 'missing_entity' });
 	}
 
-	if (isProjectScopedContext(contextType) && projectId) {
+	if (projectId) {
 		const allowed = await checkProjectAccess(supabase, projectId, user.id);
 		if (!allowed) {
 			return ApiResponse.success({ warmed: false, reason: 'project_not_accessible' });

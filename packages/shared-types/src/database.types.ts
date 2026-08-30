@@ -19846,6 +19846,10 @@ export type Database = {
         }
         Returns: Json
       }
+      cleanup_expired_agent_call_bootstrap_links: {
+        Args: { p_batch_size?: number }
+        Returns: number
+      }
       cleanup_expired_agentic_chat_prepared_prompts: {
         Args: never
         Returns: number

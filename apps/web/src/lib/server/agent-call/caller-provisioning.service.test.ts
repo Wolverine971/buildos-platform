@@ -891,7 +891,10 @@ describe('CallerProvisioningService', () => {
 		);
 		expect(state.bootstrapRows).toHaveLength(1);
 		expect(state.bootstrapRows[0]?.payload).toMatchObject({
-			bearer_token: response.credentials.bearer_token
+			bearer_token_ciphertext: expect.stringMatching(/^enc:v1\./)
 		});
+		expect(JSON.stringify(state.bootstrapRows[0]?.payload)).not.toContain(
+			response.credentials.bearer_token
+		);
 	});
 });

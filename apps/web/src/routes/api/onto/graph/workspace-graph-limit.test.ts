@@ -177,7 +177,7 @@ describe('buildWorkspaceGraphPayload', () => {
 		expect(filtered.plans.map((item) => item.id)).toEqual(['plan-0']);
 		expect(filtered.goals.map((item) => item.id)).toEqual(['goal-0']);
 		expect(filtered.milestones.map((item) => item.id)).toEqual(['milestone-0']);
-		expect(filtered.risks.map((item) => item.id)).toEqual(['risk-0']);
+		expect(filtered.risks?.map((item) => item.id)).toEqual(['risk-0']);
 	});
 
 	it('includes opted-in terminal graph data', () => {

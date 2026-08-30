@@ -6,6 +6,12 @@ import { load } from './+page.server';
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const TASK_ID = '22222222-2222-4222-8222-222222222222';
 
+async function loadTaskPage(event: Parameters<typeof load>[0]) {
+	const result = await load(event);
+	if (!result) throw new Error('Expected task page data');
+	return result;
+}
+
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -105,7 +111,7 @@ describe('task focus page load', () => {
 			return jsonResponse({ data: { linkedEntities: { events: [{ id: 'linked' }] } } });
 		});
 
-		const result = await load(createEvent(fetchMock));
+		const result = await loadTaskPage(createEvent(fetchMock));
 
 		expect(result.task).toEqual(task);
 		expect(result.events).toEqual([

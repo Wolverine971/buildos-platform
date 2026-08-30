@@ -16,6 +16,9 @@ import {
 
 type Row = Record<string, any>;
 
+const recentSourceTimestamp = () =>
+	new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
 function createSupabaseMock(tables: Record<string, Row[]>) {
 	const upserts: Row[] = [];
 	const updates: Row[] = [];
@@ -440,7 +443,7 @@ describe('inbox index mappers', () => {
 						}
 					],
 					unresolved_suggestion_count: 1,
-					created_at: '2026-08-14T12:00:00.000Z'
+					created_at: recentSourceTimestamp()
 				}
 			],
 			inbox_items: [
@@ -475,7 +478,7 @@ describe('inbox index mappers', () => {
 					project_id: 'project-1',
 					user_id: 'user-1',
 					status: 'waiting_review',
-					created_at: '2026-08-14T12:00:00.000Z',
+					created_at: recentSourceTimestamp(),
 					brief: {
 						version: 2,
 						attention_level: 'decision',

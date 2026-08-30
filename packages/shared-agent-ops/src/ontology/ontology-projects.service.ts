@@ -3,7 +3,7 @@
  * Shared helpers for ontology project data used across API routes and page loads.
  */
 
-import { Database, Json } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 // Minimal structural type (avoids depending on the SvelteKit Server-Timing helper).
 interface ServerTiming {
 	measure<T>(name: string, fn: () => Promise<T> | T): Promise<T>;

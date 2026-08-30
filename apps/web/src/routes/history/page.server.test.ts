@@ -4,6 +4,12 @@ import { load } from './+page.server';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 
+async function loadHistoryPage(event: Parameters<typeof load>[0]) {
+	const result = await load(event);
+	if (!result) throw new Error('Expected history page data');
+	return result;
+}
+
 function createLoadEvent(options: {
 	url?: string;
 	rpcPayload?: Record<string, unknown>;
@@ -93,7 +99,7 @@ describe('history +page.server load', () => {
 			}
 		});
 
-		const result = await load(event);
+		const result = await loadHistoryPage(event);
 
 		expect(depends).toHaveBeenCalledWith('history:data');
 		expect(result.itemCount).toBe(12);
@@ -141,7 +147,7 @@ describe('history +page.server load', () => {
 			url: 'https://app.test/history?search=ai&status=unknown&type=chats&limit=20'
 		});
 
-		const result = await load(event);
+		const result = await loadHistoryPage(event);
 		await result.historyData;
 
 		expect(result.itemCount).toBe(12);
@@ -170,7 +176,7 @@ describe('history +page.server load', () => {
 			url: `https://app.test/history?search=${longSearch}&id=${selectedId}&itemType=braindump`
 		});
 
-		const result = await load(event);
+		const result = await loadHistoryPage(event);
 		await result.historyData;
 
 		expect(result.filters.selectedId).toBe(selectedId);

@@ -2,17 +2,52 @@
 /**
  * Boundary validation for POST /api/agent/v2/stream request bodies.
  *
- * Deliberately permissive: every field is optional, unknown keys pass
- * through, and nested payloads (projectFocus, lastTurnContext) are only
- * shape-checked here — their deeper validation already lives in dedicated
- * normalizers and entity-resolution heuristics. `prewarmedContext` remains in
- * the schema as a legacy compatibility field, but the stream route does not
- * trust unsigned client-carried prompt context.
+ * Deliberately forward-compatible: every field is optional and unknown
+ * top-level keys pass through. Project identifiers are the exception: they
+ * cross an authorization boundary, so project focus is validated strictly and
+ * database entity identifiers must be UUIDs. `prewarmedContext` remains in the
+ * schema as a legacy compatibility field, but the stream route does not trust
+ * unsigned client-carried prompt context.
  */
 import { z } from 'zod';
 import type { FastAgentStreamRequestInput } from './types';
+import { isProjectScopedContext, normalizeAgenticChatContextType } from './scope';
 
 const looseRecord = z.record(z.unknown());
+const uuidString = z
+	.string()
+	.uuid()
+	.transform((value) => value.toLowerCase());
+
+export const agenticChatProjectFocusSchema = z
+	.object({
+		focusType: z.enum([
+			'project-wide',
+			'task',
+			'goal',
+			'plan',
+			'document',
+			'milestone',
+			'risk',
+			'requirement'
+		]),
+		focusEntityId: uuidString.nullable(),
+		focusEntityName: z.string().max(1000).nullable(),
+		projectId: uuidString,
+		projectName: z.string().min(1).max(1000)
+	})
+	.strict();
+
+function requiresUuidEntityId(contextType: unknown): boolean {
+	const normalized = normalizeAgenticChatContextType(
+		typeof contextType === 'string' ? contextType : undefined
+	);
+	return (
+		isProjectScopedContext(normalized) ||
+		normalized === 'ontology' ||
+		normalized === 'daily_brief'
+	);
+}
 
 const fastAgentStreamRequestBodySchema = z
 	.object({
@@ -21,7 +56,7 @@ const fastAgentStreamRequestBodySchema = z
 		context_type: z.string().optional(),
 		entity_id: z.string().optional(),
 		attachments: z.array(looseRecord).optional(),
-		projectFocus: looseRecord.nullish(),
+		projectFocus: agenticChatProjectFocusSchema.nullish(),
 		lastTurnContext: looseRecord.nullish(),
 		stream_run_id: z.union([z.string(), z.number()]).optional(),
 		client_turn_id: z.string().optional(),
@@ -35,7 +70,21 @@ const fastAgentStreamRequestBodySchema = z
 		prewarmed_context: looseRecord.nullish(),
 		prepared_prompt_key: z.string().nullish()
 	})
-	.passthrough();
+	.passthrough()
+	.superRefine((value, context) => {
+		const entityId = value.entity_id?.trim();
+		if (
+			entityId &&
+			requiresUuidEntityId(value.context_type) &&
+			!uuidString.safeParse(entityId).success
+		) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['entity_id'],
+				message: 'Project and focus entity identifiers must be UUIDs'
+			});
+		}
+	});
 
 export type ParseFastAgentStreamRequestBodyResult =
 	| { ok: true; input: FastAgentStreamRequestInput }

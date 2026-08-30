@@ -1,0 +1,4 @@
+interface:
+    display_name: 'Personal Negative Space'
+    short_description: 'Find overlooked leverage around a person'
+    default_prompt: 'Use $map-personal-negative-space to map the overlooked opportunities around my particular skills, relationships, and position.'

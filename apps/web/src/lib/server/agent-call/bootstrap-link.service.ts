@@ -18,6 +18,11 @@ import {
 	inferAgentClientProfileId
 } from '$lib/agent-call/agent-client-profiles';
 import { ensureUserBuildosAgent } from './callee-resolution';
+import {
+	decryptCalendarToken,
+	encryptCalendarToken,
+	isEncryptedCalendarToken
+} from '$lib/server/calendar-token-crypto';
 
 const BOOTSTRAP_TTL_MS = 1000 * 60 * 30;
 const INSTRUCTIONS_VERSION = 'agent_profile_bootstrap_v1';
@@ -122,16 +127,30 @@ function formatBootstrapDocumentAsText(document: BuildosAgentBootstrapDocument):
 	].join('\n');
 }
 
-type BootstrapPayload = {
-	bearer_token: string;
-};
-
-function parseBootstrapPayload(payload: unknown): BootstrapPayload {
+function parseBootstrapPayload(payload: unknown): { bearer_token: string } {
 	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
 		throw new AgentCallBootstrapError('Bootstrap payload is invalid', 500);
 	}
 
-	const candidate = payload as { bearer_token?: unknown };
+	const candidate = payload as {
+		bearer_token_ciphertext?: unknown;
+		bearer_token?: unknown;
+	};
+	if (typeof candidate.bearer_token_ciphertext === 'string') {
+		if (!isEncryptedCalendarToken(candidate.bearer_token_ciphertext)) {
+			throw new AgentCallBootstrapError('Bootstrap credential payload is invalid', 500);
+		}
+		try {
+			const decrypted = decryptCalendarToken(candidate.bearer_token_ciphertext).value;
+			if (!decrypted) {
+				throw new Error('decrypted credential is empty');
+			}
+			return { bearer_token: decrypted };
+		} catch {
+			throw new AgentCallBootstrapError('Bootstrap credential could not be decrypted', 500);
+		}
+	}
+
 	if (typeof candidate.bearer_token !== 'string' || !candidate.bearer_token.trim()) {
 		throw new AgentCallBootstrapError('Bootstrap payload is missing bearer token', 500);
 	}
@@ -163,6 +182,17 @@ export class AgentCallBootstrapLinkService {
 		const setupToken = generateBootstrapToken();
 		const setupTokenHash = hashBootstrapToken(setupToken);
 		const expiresAt = new Date(Date.now() + BOOTSTRAP_TTL_MS).toISOString();
+		let bearerTokenCiphertext: string;
+		try {
+			const encrypted = encryptCalendarToken(params.bearerToken);
+			if (!encrypted) throw new Error('encrypted credential is empty');
+			bearerTokenCiphertext = encrypted;
+		} catch {
+			throw new AgentCallBootstrapError(
+				'Bootstrap credential encryption is unavailable',
+				500
+			);
+		}
 
 		const { error: deleteError } = await this.admin
 			.from('agent_call_bootstrap_links')
@@ -178,7 +208,7 @@ export class AgentCallBootstrapLinkService {
 			external_agent_caller_id: params.caller.id,
 			setup_token_hash: setupTokenHash,
 			payload: {
-				bearer_token: params.bearerToken
+				bearer_token_ciphertext: bearerTokenCiphertext
 			},
 			expires_at: expiresAt
 		});
@@ -213,27 +243,29 @@ export class AgentCallBootstrapLinkService {
 			throw new AgentCallBootstrapError('setup token is required', 400);
 		}
 
+		// Delete-and-return is one PostgREST statement, so only one concurrent
+		// request can redeem the link. A failed setup can be recovered by
+		// generating a fresh link from the existing caller setup UI.
 		const { data, error } = await this.admin
 			.from('agent_call_bootstrap_links')
-			.select('*')
+			.delete()
 			.eq('setup_token_hash', hashBootstrapToken(params.setupToken))
+			.gt('expires_at', new Date().toISOString())
+			.select('*')
 			.maybeSingle();
 
 		if (error) {
-			throw new AgentCallBootstrapError('Failed to load bootstrap link', 500);
+			throw new AgentCallBootstrapError('Failed to redeem bootstrap link', 500);
 		}
 
 		if (!data) {
-			throw new AgentCallBootstrapError('Bootstrap link not found', 404);
+			throw new AgentCallBootstrapError(
+				'Bootstrap link not found, expired, or already used',
+				404
+			);
 		}
 
 		const bootstrapLink = data as AgentCallBootstrapLinkRecord;
-		const now = Date.now();
-		const expiresAtMs = Date.parse(bootstrapLink.expires_at);
-		if (Number.isNaN(expiresAtMs) || expiresAtMs <= now) {
-			throw new AgentCallBootstrapError('Bootstrap link has expired', 410);
-		}
-
 		const { data: callerData, error: callerError } = await this.admin
 			.from('external_agent_callers')
 			.select('*')
@@ -269,11 +301,6 @@ export class AgentCallBootstrapLinkService {
 			scopeMode,
 			allowedOps
 		});
-
-		await this.admin
-			.from('agent_call_bootstrap_links')
-			.update({ last_accessed_at: new Date().toISOString() })
-			.eq('id', bootstrapLink.id);
 
 		return {
 			provider: caller.provider,

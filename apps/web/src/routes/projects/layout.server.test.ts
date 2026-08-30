@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { load } from './+layout.server';
 
+async function loadProjectsLayout(event: Parameters<typeof load>[0]) {
+	const result = await load(event);
+	if (!result) throw new Error('Expected projects layout data');
+	return result;
+}
+
 describe('projects layout authentication', () => {
 	it('preserves a direct document destination when redirecting to login', async () => {
 		const event = {
@@ -20,7 +26,7 @@ describe('projects layout authentication', () => {
 	});
 
 	it('returns the signed-in email for project access messaging', async () => {
-		const result = await load({
+		const result = await loadProjectsLayout({
 			locals: {
 				safeGetSession: vi.fn().mockResolvedValue({
 					user: { id: 'user-1', email: 'member@example.com', name: 'Member' }

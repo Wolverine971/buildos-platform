@@ -640,8 +640,8 @@ export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): Inbo
 	const recommendations = readAuditInboxRecommendations(audit);
 	// Audit reports remain useful project history, but the inbox is reserved for
 	// concrete asks. Queued/running audits and clean audits must not create noise.
-	if (recommendations.length === 0) return null;
-	const leadRecommendation = recommendations[0];
+	const [leadRecommendation] = recommendations;
+	if (!leadRecommendation) return null;
 
 	const inboxStatus: InboxItemStatus = status === 'ready' ? 'pending' : 'decided';
 	const summary = auditRecommendationSummary({

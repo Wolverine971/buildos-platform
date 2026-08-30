@@ -1,9 +1,8 @@
 // apps/web/src/lib/server/agent-call/oauth-rate-limit.ts
 //
-// Per-IP rate limiting for the public OAuth endpoints. These endpoints are
-// unauthenticated (token exchange, dynamic client registration) and the global
-// rate-limit middleware is currently disabled, so without this an attacker can
-// spam `agent_oauth_clients` via DCR or brute the token endpoint. Backed by the
+// Per-IP rate limiting for public agent-call endpoints. OAuth token exchange,
+// dynamic client registration, and bootstrap redemption are unauthenticated,
+// while the global rate-limit middleware is currently disabled. Backed by the
 // existing in-memory `rateLimiter` singleton; limits are env-overridable.
 import { json } from '@sveltejs/kit';
 import { rateLimiter } from '$lib/utils/rate-limiter';
@@ -31,8 +30,36 @@ function ruleFromEnv(prefix: string, defaults: OAuthRateLimitRule): OAuthRateLim
  */
 export const OAUTH_RATE_LIMITS = {
 	token: ruleFromEnv('OAUTH_RL_TOKEN', { requests: 120, windowMs: 60_000 }),
-	register: ruleFromEnv('OAUTH_RL_REGISTER', { requests: 20, windowMs: 60 * 60_000 })
+	register: ruleFromEnv('OAUTH_RL_REGISTER', { requests: 20, windowMs: 60 * 60_000 }),
+	bootstrap: ruleFromEnv('AGENT_CALL_BOOTSTRAP_RL', { requests: 30, windowMs: 60_000 })
 } as const;
+
+export type PublicRateLimitDecision =
+	| { allowed: true; headers: Record<string, string> }
+	| {
+			allowed: false;
+			headers: Record<string, string>;
+			retryAfterSeconds: number;
+	  };
+
+export function consumePublicEndpointRateLimit(
+	identifier: string,
+	rule: OAuthRateLimitRule
+): PublicRateLimitDecision {
+	const result = rateLimiter.check(identifier, rule);
+	const headers: Record<string, string> = {
+		'X-RateLimit-Limit': String(rule.requests),
+		'X-RateLimit-Remaining': String(result.remaining),
+		'X-RateLimit-Reset': String(Math.ceil(result.resetTime / 1000))
+	};
+	if (result.allowed) return { allowed: true, headers };
+
+	return {
+		allowed: false,
+		headers,
+		retryAfterSeconds: Math.max(1, Math.ceil((result.resetTime - Date.now()) / 1000))
+	};
+}
 
 export type OAuthRateLimitResult =
 	| { allowed: true; headers: Record<string, string> }
@@ -47,18 +74,12 @@ export function checkOAuthRateLimit(
 	identifier: string,
 	rule: OAuthRateLimitRule
 ): OAuthRateLimitResult {
-	const result = rateLimiter.check(identifier, rule);
-	const baseHeaders: Record<string, string> = {
-		'X-RateLimit-Limit': String(rule.requests),
-		'X-RateLimit-Remaining': String(result.remaining),
-		'X-RateLimit-Reset': String(Math.ceil(result.resetTime / 1000))
-	};
+	const result = consumePublicEndpointRateLimit(identifier, rule);
 
 	if (result.allowed) {
-		return { allowed: true, headers: baseHeaders };
+		return result;
 	}
 
-	const retryAfter = Math.max(1, Math.ceil((result.resetTime - Date.now()) / 1000));
 	return {
 		allowed: false,
 		response: json(
@@ -69,8 +90,8 @@ export function checkOAuthRateLimit(
 			{
 				status: 429,
 				headers: {
-					...baseHeaders,
-					'Retry-After': String(retryAfter),
+					...result.headers,
+					'Retry-After': String(result.retryAfterSeconds),
 					'Cache-Control': 'no-store',
 					'Access-Control-Allow-Origin': '*'
 				}

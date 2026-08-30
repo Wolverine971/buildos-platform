@@ -1,0 +1,4 @@
+interface:
+    display_name: 'Idea Negative Space'
+    short_description: 'Reveal what an idea leaves unseen'
+    default_prompt: 'Use $map-idea-negative-space to uncover the missing relationships, assumptions, and implications inside this idea.'

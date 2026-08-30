@@ -847,7 +847,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 				}
 			}
 
-			if (isProjectScopedContext(contextType) && projectIdForLogs) {
+			if (projectIdForLogs) {
 				const accessResult = await checkProjectAccess(
 					supabase,
 					projectIdForLogs,

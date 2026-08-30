@@ -135,7 +135,7 @@ describe('DELETE /api/onto/projects/[id]/members/me', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 
-		const updatePayload = update.mock.calls[0][0];
+		const updatePayload = update.mock.calls[0]![0];
 		expect(updatePayload.removed_by_actor_id).toBe('actor-1');
 		expect(typeof updatePayload.removed_at).toBe('string');
 	});

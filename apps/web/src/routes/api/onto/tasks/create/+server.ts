@@ -308,10 +308,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				p_task: taskData as Json,
 				p_relationship_plan: relationshipPlan as unknown as Json,
 				p_sync_assignees: hasAssigneeInput,
-				p_assignee_actor_ids: hasAssigneeInput ? assigneeActorIds : null,
-				p_assigned_by_actor_id: hasAssigneeInput ? actorId : null,
+				...(hasAssigneeInput
+					? {
+							p_assignee_actor_ids: assigneeActorIds,
+							p_assigned_by_actor_id: actorId
+						}
+					: {}),
 				p_source: 'manual',
-				p_idempotency_key: idempotencyKey
+				...(idempotencyKey ? { p_idempotency_key: idempotencyKey } : {})
 			}
 		);
 		if (atomicError || !atomicResult) {

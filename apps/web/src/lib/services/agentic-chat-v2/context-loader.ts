@@ -3313,6 +3313,17 @@ async function loadFastChatPromptContextBody(
 				fallbackContextLoadSource = 'rpc_null_fallback';
 			}
 		}
+
+		// A project RPC is the authorization boundary. Falling back to ordinary
+		// RLS-visible project rows here would widen member-only chat context to
+		// authenticated users who can merely read a public project.
+		if (rpcContextType === 'project') {
+			return {
+				...baseContext,
+				contextLoadSource: fallbackContextLoadSource,
+				data: null
+			};
+		}
 	}
 
 	if (contextType === 'global') {

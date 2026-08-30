@@ -151,11 +151,13 @@ export function pickProjectStartHereDocument<T extends StartHereDocumentCandidat
 	const candidates = explicit.length > 0 ? explicit : documents;
 	if (candidates.length === 0) return null;
 
-	return [...candidates].sort((left, right) => {
-		const rightMs = timestampMs(right.updated_at) || timestampMs(right.created_at);
-		const leftMs = timestampMs(left.updated_at) || timestampMs(left.created_at);
-		return rightMs - leftMs;
-	})[0];
+	return (
+		[...candidates].sort((left, right) => {
+			const rightMs = timestampMs(right.updated_at) || timestampMs(right.created_at);
+			const leftMs = timestampMs(left.updated_at) || timestampMs(left.created_at);
+			return rightMs - leftMs;
+		})[0] ?? null
+	);
 }
 
 export function renderStartHereManagedRegion(input: StartHereManagedRegionInput): string {
@@ -635,7 +637,7 @@ export function parseStartHereStatusRegion(body: string): StartHereStatusSnapsho
 
 		const refreshedMatch = /^_Last refreshed (.+?) from project snapshot\._$/.exec(line);
 		if (refreshedMatch) {
-			refreshedAt = refreshedMatch[1].trim() || null;
+			refreshedAt = refreshedMatch[1]?.trim() || null;
 			continue;
 		}
 

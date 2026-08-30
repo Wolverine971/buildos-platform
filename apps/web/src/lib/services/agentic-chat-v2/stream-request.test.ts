@@ -73,6 +73,29 @@ describe('parseFastAgentStreamRequestBody', () => {
 		}
 	});
 
+	it('rejects non-UUID project and focus identifiers at the legacy boundary', () => {
+		const invalidProject = parseFastAgentStreamRequestBody({
+			message: 'Open this project',
+			context_type: 'project',
+			entity_id: 'project-1'
+		});
+		const invalidFocus = parseFastAgentStreamRequestBody({
+			message: 'Open this task',
+			context_type: 'ontology',
+			entity_id: '11111111-1111-4111-8111-111111111111',
+			projectFocus: {
+				focusType: 'task',
+				focusEntityId: 'not-a-uuid',
+				focusEntityName: 'Task',
+				projectId: '11111111-1111-4111-8111-111111111111',
+				projectName: 'Project'
+			}
+		});
+
+		expect(invalidProject.ok).toBe(false);
+		expect(invalidFocus.ok).toBe(false);
+	});
+
 	it('caps reported issues at five', () => {
 		const result = parseFastAgentStreamRequestBody({
 			message: 1,

@@ -223,7 +223,7 @@ describe('Brief Scheduler', () => {
 	});
 
 	describe('runQueueRetentionCleanup', () => {
-		it('runs worker and prompt artifact cleanup RPCs on the queue retention path', async () => {
+		it('runs worker, prompt, and bootstrap cleanup RPCs on the queue retention path', async () => {
 			await runQueueRetentionCleanup();
 
 			expect(schedulerMocks.cleanupStaleJobs).toHaveBeenCalledOnce();
@@ -233,9 +233,14 @@ describe('Brief Scheduler', () => {
 			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
 				'cleanup_agentic_chat_prompt_artifacts'
 			);
+			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
+				'cleanup_expired_agent_call_bootstrap_links',
+				{ p_batch_size: 500 }
+			);
 			expect(schedulerMocks.supabaseRpc.mock.calls.map(([name]) => name)).toEqual([
 				'cleanup_agentic_chat_worker_artifacts',
-				'cleanup_agentic_chat_prompt_artifacts'
+				'cleanup_agentic_chat_prompt_artifacts',
+				'cleanup_expired_agent_call_bootstrap_links'
 			]);
 		});
 
@@ -251,7 +256,8 @@ describe('Brief Scheduler', () => {
 
 			expect(schedulerMocks.supabaseRpc.mock.calls.map(([name]) => name)).toEqual([
 				'cleanup_agentic_chat_worker_artifacts',
-				'cleanup_agentic_chat_prompt_artifacts'
+				'cleanup_agentic_chat_prompt_artifacts',
+				'cleanup_expired_agent_call_bootstrap_links'
 			]);
 		});
 

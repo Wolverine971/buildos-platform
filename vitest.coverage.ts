@@ -14,7 +14,9 @@ export const coverageExclude = [
 export function coverageConfig(include: string[]) {
 	return {
 		provider: 'v8' as const,
-		reporter: ['text-summary', 'json-summary', 'lcov', 'html'] as const,
+		reporter: ['text-summary', 'json-summary', 'lcov', 'html'] as Array<
+			'text-summary' | 'json-summary' | 'lcov' | 'html'
+		>,
 		reportsDirectory: './coverage',
 		all: true,
 		include,

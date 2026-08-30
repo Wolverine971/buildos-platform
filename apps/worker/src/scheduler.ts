@@ -568,6 +568,27 @@ async function runPreparedPromptRetentionCleanup(): Promise<void> {
 	}
 }
 
+async function runAgentCallBootstrapRetentionCleanup(): Promise<void> {
+	try {
+		const { data, error } = await supabase.rpc('cleanup_expired_agent_call_bootstrap_links', {
+			p_batch_size: 500
+		});
+		if (error) {
+			console.warn('⚠️ Scheduled agent-call bootstrap cleanup failed:', error);
+			return;
+		}
+
+		const deleted = typeof data === 'number' ? data : 0;
+		if (deleted > 0) {
+			console.log(
+				`✅ Scheduled agent-call bootstrap cleanup removed ${deleted} expired link(s)`
+			);
+		}
+	} catch (error) {
+		console.error('❌ Scheduled agent-call bootstrap cleanup failed:', error);
+	}
+}
+
 export async function runQueueRetentionCleanup() {
 	try {
 		console.log('🧹 Running scheduled queue retention cleanup...');
@@ -600,6 +621,7 @@ export async function runQueueRetentionCleanup() {
 
 	await runAgenticChatWorkerRetentionCleanup();
 	await runPreparedPromptRetentionCleanup();
+	await runAgentCallBootstrapRetentionCleanup();
 }
 
 /**

@@ -87,6 +87,20 @@ const sanitizeOptions = {
 	}
 };
 
+// Assistant output is untrusted and renders automatically in the user's browser.
+// Keep first-party relative images and embedded data images available, but never
+// let model-authored markdown trigger a request to an arbitrary remote host.
+const agentSanitizeOptions = {
+	...sanitizeOptions,
+	allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+	allowedSchemesByTag: {
+		img: ['data']
+	},
+	allowProtocolRelative: false,
+	exclusiveFilter: (frame: { tag: string; attribs: Record<string, string> }) =>
+		frame.tag === 'img' && !frame.attribs.src
+};
+
 // Permissive sanitization for FIRST-PARTY blog content only.
 //
 // Blog posts live in apps/web/src/content/blogs/ and ship through git review, so
@@ -262,6 +276,23 @@ export function renderMarkdown(text: string | null | undefined): string {
 	} catch (error) {
 		console.error('Error rendering markdown:', error);
 		// Fallback to escaped plain text
+		return escapeHtml(text);
+	}
+}
+
+/**
+ * Convert untrusted assistant markdown to safe HTML without zero-click remote
+ * image loads. Relative BuildOS image URLs and embedded data images remain
+ * available; ordinary links are unaffected and still require a user click.
+ */
+export function renderAgentMarkdownContent(text: string | null | undefined): string {
+	if (!text || typeof text !== 'string') return '';
+
+	try {
+		const html = marked.parse(normalizeMarkdownTables(text.trim())) as string;
+		return sanitizeHtml(html, agentSanitizeOptions);
+	} catch (error) {
+		console.error('Error rendering agent markdown:', error);
 		return escapeHtml(text);
 	}
 }

@@ -1,0 +1,4 @@
+interface:
+    display_name: 'Industry Negative Space'
+    short_description: 'Find unseen paths through a market'
+    default_prompt: 'Use $map-industry-negative-space to find observer-dependent blind spots and avenues of approach in this industry or niche.'

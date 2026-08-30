@@ -70,11 +70,12 @@ export async function processEmbedOntoEntity(
 	}
 
 	const source = ONTO_EMBEDDING_SOURCES[entityType];
-	const { data: row, error: fetchError } = await (supabase as any)
+	const { data: row, error: fetchError } = await supabase
 		.from(source.table)
 		.select([...source.columns, 'deleted_at'].join(', '))
 		.eq('id', entityId)
-		.maybeSingle();
+		.maybeSingle()
+		.overrideTypes<Record<string, unknown> | null, { merge: false }>();
 	if (fetchError) {
 		throw new Error(`Failed to load ${source.table} ${entityId}: ${fetchError.message}`);
 	}
@@ -91,7 +92,7 @@ export async function processEmbedOntoEntity(
 		return result;
 	}
 
-	const chunks = composeOntoEmbeddingChunks(entityType, row as Record<string, unknown>);
+	const chunks = composeOntoEmbeddingChunks(entityType, row);
 	if (chunks.length === 0) {
 		result.chunksDeleted = await deleteEntityEmbeddings(entityType, entityId);
 		return result;

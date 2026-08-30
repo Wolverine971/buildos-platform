@@ -1,6 +1,6 @@
 // apps/web/src/lib/server/agent-call/bootstrap-link.service.test.ts
 import { createHash } from 'crypto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
 	AgentCallBootstrapLinkRecord,
 	ExternalAgentCallerRecord,
@@ -9,6 +9,7 @@ import type {
 import { BUILDOS_AGENT_READ_OPS } from '@buildos/shared-types';
 
 const ensureUserBuildosAgentMock = vi.fn();
+const originalCalendarEncryptionKey = process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY;
 
 vi.mock('./callee-resolution', () => ({
 	ensureUserBuildosAgent: ensureUserBuildosAgentMock
@@ -48,6 +49,7 @@ class ExternalAgentCallersQueryBuilderMock {
 class AgentCallBootstrapLinksQueryBuilderMock {
 	private action: 'select' | 'insert' | 'update' | 'delete' | null = null;
 	private filters = new Map<string, unknown>();
+	private greaterThanFilters = new Map<string, string>();
 	private insertPayload: Record<string, unknown> | null = null;
 	private updatePayload: Record<string, unknown> | null = null;
 
@@ -83,7 +85,28 @@ class AgentCallBootstrapLinksQueryBuilderMock {
 		return this;
 	}
 
+	gt(field: string, value: string) {
+		this.greaterThanFilters.set(field, value);
+		return this;
+	}
+
 	maybeSingle() {
+		if (this.action === 'delete') {
+			const index = this.state.bootstrapRows.findIndex(
+				(entry) =>
+					Array.from(this.filters.entries()).every(
+						([field, value]) =>
+							entry[field as keyof AgentCallBootstrapLinkRecord] === value
+					) &&
+					Array.from(this.greaterThanFilters.entries()).every(
+						([field, value]) =>
+							String(entry[field as keyof AgentCallBootstrapLinkRecord]) > value
+					)
+			);
+			const row = index >= 0 ? this.state.bootstrapRows.splice(index, 1)[0] : null;
+			return Promise.resolve({ data: row ?? null, error: null });
+		}
+
 		if (this.action === 'select') {
 			const row =
 				this.state.bootstrapRows.find((entry) =>
@@ -199,7 +222,16 @@ function createBuildosAgent(
 describe('AgentCallBootstrapLinkService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY = 'test-agent-bootstrap-encryption-key';
 		ensureUserBuildosAgentMock.mockResolvedValue(createBuildosAgent());
+	});
+
+	afterAll(() => {
+		if (originalCalendarEncryptionKey === undefined) {
+			delete process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY;
+		} else {
+			process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY = originalCalendarEncryptionKey;
+		}
 	});
 
 	it('creates a bootstrap link and returns a pasteable prompt', async () => {
@@ -224,8 +256,24 @@ describe('AgentCallBootstrapLinkService', () => {
 		expect(response.paste_prompt).toContain('use get_onto_project_status first');
 		expect(state.bootstrapRows).toHaveLength(1);
 		expect(state.bootstrapRows[0]?.payload).toMatchObject({
-			bearer_token: 'boca_test_secret'
+			bearer_token_ciphertext: expect.stringMatching(/^enc:v1\./)
 		});
+		expect(JSON.stringify(state.bootstrapRows[0]?.payload)).not.toContain('boca_test_secret');
+
+		const setupToken = response.instructions_url.split('/').at(-1);
+		expect(setupToken).toBeTruthy();
+		const document = await service.loadBootstrapDocument({
+			setupToken: setupToken!,
+			baseUrl: 'https://build-os.com'
+		});
+		expect(document.buildos.agent_token).toBe('boca_test_secret');
+		expect(state.bootstrapRows).toHaveLength(0);
+		await expect(
+			service.loadBootstrapDocument({
+				setupToken: setupToken!,
+				baseUrl: 'https://build-os.com'
+			})
+		).rejects.toMatchObject({ status: 404 });
 	});
 
 	it('loads a bootstrap document with env instructions and fallback call flow', async () => {
@@ -292,7 +340,7 @@ describe('AgentCallBootstrapLinkService', () => {
 		expect(serializeBootstrapDocumentAsText(document)).toContain(
 			'BuildOS OpenClaw Bootstrap Instructions'
 		);
-		expect(state.bootstrapRows[0]?.last_accessed_at).toBeDefined();
+		expect(state.bootstrapRows).toHaveLength(0);
 	});
 
 	it('marks browser and cloud profiles as OAuth-required', async () => {

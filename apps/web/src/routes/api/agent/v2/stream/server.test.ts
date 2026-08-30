@@ -1119,6 +1119,52 @@ describe('/api/agent/v2/stream', () => {
 		expect(mocks.streamFastChat).not.toHaveBeenCalled();
 	});
 
+	it('denies ontology project access before durable turn admission', async () => {
+		const projectId = '22222222-2222-4222-8222-222222222222';
+		const supabase = createStreamingSupabase({}, { projectAccessAllowed: false });
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Do not hydrate this project',
+					context_type: 'ontology',
+					entity_id: projectId,
+					projectFocus: {
+						focusType: 'project-wide',
+						focusEntityId: null,
+						focusEntityName: null,
+						projectId,
+						projectName: 'Private project'
+					},
+					stream_run_id: 'stream-run-ontology-access-denied'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		const events = parseSseEvents(await response.text());
+		expect(events).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'error', turn_rejected: true }),
+				expect.objectContaining({ type: 'done', finished_reason: 'error' })
+			])
+		);
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
+			p_project_id: projectId,
+			p_required_access: 'read'
+		});
+		expect(supabase.rpc).not.toHaveBeenCalledWith(
+			'admit_legacy_agentic_chat_turn',
+			expect.anything()
+		);
+		expect(mocks.streamFastChat).not.toHaveBeenCalled();
+	});
+
 	it('passes frozen prior history and the current user message exactly once to the runtime', async () => {
 		const priorHistory = [
 			{ role: 'user', content: 'Earlier question', metadata: null },
@@ -4650,7 +4696,7 @@ describe('/api/agent/v2/stream', () => {
 				body: JSON.stringify({
 					message: 'What are we trying to do?',
 					context_type: 'project',
-					entity_id: 'project-1',
+					entity_id: '11111111-1111-4111-8111-111111111111',
 					stream_run_id: 'stream-run-inbox',
 					client_turn_id: 'client-turn-inbox'
 				})
@@ -4727,7 +4773,7 @@ describe('/api/agent/v2/stream', () => {
 				body: JSON.stringify({
 					message: 'What is this run trying to do?',
 					context_type: 'project',
-					entity_id: 'project-1',
+					entity_id: '11111111-1111-4111-8111-111111111111',
 					stream_run_id: 'stream-run-agent-run-context',
 					client_turn_id: 'client-turn-agent-run-context'
 				})

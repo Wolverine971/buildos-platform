@@ -6,6 +6,12 @@ import { load } from './+page.server';
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const DOCUMENT_ID = '22222222-2222-4222-8222-222222222222';
 
+async function loadDocumentPage(event: Parameters<typeof load>[0]) {
+	const result = await load(event);
+	if (!result) throw new Error('Expected document page data');
+	return result;
+}
+
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -56,7 +62,7 @@ describe('document focus page load', () => {
 			return jsonResponse({ data: { events: [], linkedEntities: {} } });
 		});
 
-		const result = await load({
+		const result = await loadDocumentPage({
 			params: { id: PROJECT_ID, document_id: DOCUMENT_ID },
 			fetch: fetchMock,
 			locals: { supabase: { rpc: vi.fn() } },

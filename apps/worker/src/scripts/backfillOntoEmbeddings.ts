@@ -73,15 +73,16 @@ async function backfillEntityType(entityType: OntoEmbeddingEntityType): Promise<
 	let skipped = 0;
 
 	for (;;) {
-		const { data, error } = await (supabase as any)
+		const { data, error } = await supabase
 			.from(source.table)
 			.select([...source.columns, 'deleted_at'].join(', '))
 			.is('deleted_at', null)
 			.order('id', { ascending: true })
-			.range(offset, offset + BATCH_SIZE - 1);
+			.range(offset, offset + BATCH_SIZE - 1)
+			.overrideTypes<Array<Record<string, unknown>>, { merge: false }>();
 		if (error) throw new Error(`Scan ${source.table} failed: ${error.message}`);
 
-		const rows = (data ?? []) as Array<Record<string, unknown>>;
+		const rows = data ?? [];
 		if (rows.length === 0) break;
 		scanned += rows.length;
 
