@@ -1,7 +1,7 @@
 # Libri Worker Phase 3B.3: Transaction Lifecycle
 
 Date: 2026-08-30
-Status: implementation and disposable-PostgreSQL contract complete; production canary pending
+Status: deployed, production-canary verified, and complete; queue polling remains disabled
 
 ## Outcome
 
@@ -53,11 +53,56 @@ idempotent enqueue, RLS visibility, claim/heartbeat/complete, retry and exhauste
 cancellation and stale-worker rejection, stale-lease retry and exhaustion, and an unchanged hidden
 non-Libri BuildOS queue control row.
 
-## Activation remains blocked
+## Production release receipt
 
-Before queue polling is enabled:
+Commit `9bf48617119616468f292abf844d14734901aa9b` deployed the lifecycle while preserving the
+health-only production profile. Railway deployment `35447a10-cfba-46a7-97f3-9203941f824e`
+passed the restricted database `/health` check. The same commit also reached `SUCCESS` on the
+existing BuildOS services:
 
-1. deploy this disabled lifecycle image and pass full BuildOS plus Libri CI;
-2. run one synthetic `libri_maintenance` production lifecycle canary through the restricted role;
-3. prove a non-Libri queue control row and the BuildOS catalog fingerprint are unchanged; and
-4. add the permanent shared-database migration safety task/gate requested for future Libri changes.
+- `agentic-chat-worker`: deployment `37aea6a9-13d5-4c38-8e21-64f4324b6804`;
+- `daily-brief-worker`: deployment `b3233bf3-040c-41dd-a4a0-d6abedb129fa`; and
+- `libri-worker`: deployment `35447a10-cfba-46a7-97f3-9203941f824e`.
+
+A presence-only environment audit confirmed `LIBRI_WORKER_PROFILE=production`,
+`LIBRI_WORKER_ENABLED=false`, the restricted URL and CA present, and both legacy Supabase service
+variables absent.
+
+## Production canary receipt
+
+The canary first required zero active Libri queue work, then privileged setup inserted five
+one-step `libri_maintenance` runs and one completed `other` queue row as a non-Libri isolation
+control. The lifecycle itself ran only through Railway's strict-TLS `libri_worker` credential. It
+passed:
+
+- restricted-role attestation and RLS hiding of the non-Libri control;
+- idempotent enqueue;
+- claim, heartbeat, completion, replay rejection, and stale-token rejection;
+- immediate retry, monotonic generation fencing, and exhausted dead letter;
+- durable idempotent cancellation and rejection of the cancelled worker's completion; and
+- stale-lease retry plus stale-lease exhaustion.
+
+The durable postcheck matched every expected queue, step, and run state. The non-Libri control row
+remained byte-for-byte identical at MD5 `a2fd8304e7e5c8955d5c298a53547bae`. A broader non-Libri
+catalog signature remained exactly `14,694` entries / MD5
+`7bf9f63dedec1a651fe7e76b1630a804` before and after the canary. Cleanup was guarded by exact target
+counts and restored production to zero research runs, zero research steps, and zero Libri queue
+jobs; the existing library was not modified.
+
+## Permanent shared-database safety gate
+
+The requested BuildOS regression task is a required GitHub Actions job named
+`Libri migration safety`. It runs on every push and pull request, cannot pass unless the complete
+BuildOS typecheck/lint/test/build/coverage/SQL job passes first, and then executes the Libri static
+scope guard plus all self-contained contracts on PostgreSQL 15. The static guard forbids global
+DDL, dynamic SQL, `SECURITY DEFINER`, unreviewed destructive changes, and unallowlisted mutations
+outside `libri`; the database contracts retain a non-Libri queue control and cross-schema dependency
+checks. This is a release gate, not an optional follow-up checklist.
+
+## Next activation boundary
+
+Phase 3B.3 is complete, but the service still has no business processor or queue poll loop and the
+production profile intentionally rejects `LIBRI_WORKER_ENABLED=true`. The next implementation slice
+must define one bounded `libri_maintenance` processor, add a drain-safe polling loop around this
+lifecycle, and prove it with a disabled deployment plus an exact one-job activation canary before
+any recurring research flow is admitted.
