@@ -1,16 +1,16 @@
 export type LibriWorkerConfig = {
 	concurrency: number;
 	databaseProbeIntervalMs: number;
-	queueEnabled: false;
+	queueEnabled: boolean;
 };
 
 const DEFAULT_CONCURRENCY = 2;
 const DEFAULT_DATABASE_PROBE_INTERVAL_MS = 15_000;
 
 /**
- * The first Railway slice is intentionally health-only. A hosted process must
- * opt into the strict profile and must not enable claims before the domain
- * step schema and least-privilege database credential are deployed.
+ * Hosted production remains health-only while the maintenance consumer ships
+ * disabled and completes its exact one-job activation canary. Local tests may
+ * enable the consumer to prove the owned start/drain path.
  */
 export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS.ProcessEnv): void {
 	if (!isHostedProduction(environment)) return;
@@ -21,23 +21,20 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 	}
 	if (environment.LIBRI_WORKER_ENABLED === 'true') {
 		throw new Error(
-			'LIBRI_WORKER_ENABLED must remain false until the domain-step and least-privilege queue gates pass'
+			'LIBRI_WORKER_ENABLED must remain false until the maintenance consumer activation canary passes'
 		);
 	}
 }
 
 export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWorkerConfig {
 	const enabled = parseBoolean(environment.LIBRI_WORKER_ENABLED, false);
-	if (enabled) {
-		throw new Error('The Phase 3A Libri worker bootstrap cannot claim queue jobs');
-	}
 
 	return {
 		concurrency: parseInteger(
 			environment.LIBRI_WORKER_CONCURRENCY,
 			DEFAULT_CONCURRENCY,
 			1,
-			8,
+			2,
 			'LIBRI_WORKER_CONCURRENCY'
 		),
 		databaseProbeIntervalMs: parseInteger(
@@ -47,7 +44,7 @@ export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWork
 			300_000,
 			'LIBRI_WORKER_DATABASE_PROBE_INTERVAL_MS'
 		),
-		queueEnabled: false
+		queueEnabled: enabled
 	};
 }
 

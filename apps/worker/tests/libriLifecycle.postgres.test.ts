@@ -4,6 +4,10 @@ import { join, resolve } from 'node:path';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createLibriLifecycle, type LibriLifecyclePort } from '../src/workers/libri/lifecycle';
+import {
+	LibriMaintenanceConsumer,
+	createSyntheticLibriMaintenanceProcessor
+} from '../src/workers/libri/maintenanceConsumer';
 
 const LIBRARY_ID = '8aaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
 const RUN_ID = '81000000-0000-4000-8000-000000000001';
@@ -16,6 +20,8 @@ const CANCEL_RUN_ID = '81000000-0000-4000-8000-000000000003';
 const CANCEL_STEP_ID = '82000000-0000-4000-8000-000000000003';
 const RECOVERY_RUN_ID = '81000000-0000-4000-8000-000000000004';
 const RECOVERY_STEP_ID = '82000000-0000-4000-8000-000000000004';
+const CONSUMER_RUN_ID = '81000000-0000-4000-8000-000000000005';
+const CONSUMER_STEP_ID = '82000000-0000-4000-8000-000000000005';
 
 const postgresAvailable = ['initdb', 'pg_ctl', 'psql'].every(hasCommand);
 const describePostgres = postgresAvailable ? describe : describe.skip;
@@ -103,6 +109,10 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 			(
 				'${RECOVERY_RUN_ID}', '${LIBRARY_ID}', 'worker-recovery-run',
 				'libri_maintenance', 'synthetic_recovery', 'maintenance', 'system', 1
+			),
+			(
+				'${CONSUMER_RUN_ID}', '${LIBRARY_ID}', 'worker-consumer-run',
+				'libri_maintenance', 'synthetic_consumer', 'maintenance', 'system', 1
 			);
 			INSERT INTO libri.research_steps (
 				id, library_id, run_id, idempotency_key, queue_family, kind,
@@ -127,6 +137,11 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 				'${RECOVERY_STEP_ID}', '${LIBRARY_ID}', '${RECOVERY_RUN_ID}', 'worker-recovery-step',
 				'libri_maintenance', 'synthetic_recovery', 'maintenance', 0,
 				'{"recovery":true}'::jsonb, 2
+			),
+			(
+				'${CONSUMER_STEP_ID}', '${LIBRARY_ID}', '${CONSUMER_RUN_ID}', 'worker-consumer-step',
+				'libri_maintenance', 'synthetic_consumer', 'maintenance', 0,
+				'{"version":1,"kind":"synthetic_smoke","nonce":"postgres-contract"}'::jsonb, 1
 			);
 			INSERT INTO public.queue_jobs (
 				id, queue_job_id, user_id, job_type, status, priority, scheduled_for
@@ -412,6 +427,56 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 		expect(terminal?.rows[0]).toEqual({ step_status: 'dead_letter', run_status: 'failed' });
 	}, 15_000);
 
+	it('runs the maintenance consumer end to end through the restricted login', async () => {
+		await lifecycle.enqueueStep({ stepId: CONSUMER_STEP_ID, priority: 5 });
+		const consumer = new LibriMaintenanceConsumer({
+			lifecycle,
+			processor: createSyntheticLibriMaintenanceProcessor(),
+			workerId: 'libri-worker:postgres-consumer',
+			config: { concurrency: 1, pollIntervalMs: 1_000 }
+		});
+
+		await consumer.start();
+		await consumer.wake();
+		await waitFor(async () => {
+			const state = await adminPool?.query<{ run_status: string; step_status: string }>(`
+				SELECT
+					(SELECT status FROM libri.research_runs WHERE id = '${CONSUMER_RUN_ID}') AS run_status,
+					(SELECT status FROM libri.research_steps WHERE id = '${CONSUMER_STEP_ID}') AS step_status
+			`);
+			return (
+				state?.rows[0]?.run_status === 'completed' &&
+				state.rows[0].step_status === 'completed'
+			);
+		});
+		await consumer.stop();
+
+		expect(consumer.getHealth()).toMatchObject({
+			state: 'stopped',
+			completedJobs: 1,
+			failedJobs: 0,
+			staleOwnershipJobs: 0
+		});
+		const result = await adminPool?.query<{
+			queue_status: string;
+			step_result: Record<string, unknown>;
+		}>(`
+			SELECT
+				(SELECT status::text FROM public.queue_jobs
+				 WHERE metadata->>'researchStepId' = '${CONSUMER_STEP_ID}') AS queue_status,
+				(SELECT result FROM libri.research_steps WHERE id = '${CONSUMER_STEP_ID}') AS step_result
+		`);
+		expect(result?.rows[0]).toEqual({
+			queue_status: 'completed',
+			step_result: {
+				kind: 'synthetic_smoke',
+				version: 1,
+				ok: true,
+				nonce: 'postgres-contract'
+			}
+		});
+	}, 15_000);
+
 	function applySqlFile(path: string): void {
 		execFileSync(
 			'psql',
@@ -454,6 +519,18 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 		);
 	}
 });
+
+async function waitFor(
+	predicate: () => Promise<boolean>,
+	timeoutMs: number = 5_000
+): Promise<void> {
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		if (await predicate()) return;
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	}
+	throw new Error(`Condition was not met within ${timeoutMs}ms`);
+}
 
 function hasCommand(command: string): boolean {
 	return spawnSync(command, ['--version'], { stdio: 'ignore' }).status === 0;

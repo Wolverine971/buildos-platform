@@ -256,7 +256,10 @@ function unavailableBootstrapHealth(): LibriWorkerBootstrapHealth {
 			registeredJobTypes: [],
 			activeJobs: 0,
 			availableConcurrency: 0,
-			concurrency: 0
+			concurrency: 0,
+			consumerHealthy: null,
+			lastSuccessfulClaimAt: null,
+			consecutiveClaimFailures: 0
 		}
 	};
 }

@@ -1,4 +1,5 @@
 import type { LibriWorkerConfig } from '../../config/libriWorkerProfile';
+import type { LibriMaintenanceConsumerHealth } from './maintenanceConsumer';
 
 export const LIBRI_QUEUE_TYPES = [
 	'libri_ingest',
@@ -33,12 +34,21 @@ export type LibriWorkerBootstrapHealth = {
 		consecutiveProbeFailures: number;
 	};
 	queue: {
-		enabled: false;
+		enabled: boolean;
 		registeredJobTypes: readonly LibriQueueType[];
-		activeJobs: 0;
+		activeJobs: number;
 		availableConcurrency: number;
 		concurrency: number;
+		consumerHealthy: boolean | null;
+		lastSuccessfulClaimAt: string | null;
+		consecutiveClaimFailures: number;
 	};
+};
+
+export type LibriMaintenanceConsumerPort = {
+	start: () => Promise<void>;
+	stop: () => Promise<void>;
+	getHealth: () => LibriMaintenanceConsumerHealth;
 };
 
 export class LibriWorkerBootstrap {
@@ -54,8 +64,13 @@ export class LibriWorkerBootstrap {
 
 	constructor(
 		private readonly database: LibriDatabaseProbePort,
-		private readonly config: LibriWorkerConfig
-	) {}
+		private readonly config: LibriWorkerConfig,
+		private readonly consumer?: LibriMaintenanceConsumerPort
+	) {
+		if (config.queueEnabled && !consumer) {
+			throw new Error('Enabled Libri bootstrap requires the isolated maintenance consumer');
+		}
+	}
 
 	start(): Promise<void> {
 		if (this.startPromise) return this.startPromise;
@@ -85,11 +100,13 @@ export class LibriWorkerBootstrap {
 	getHealth(): LibriWorkerBootstrapHealth {
 		const connected =
 			this.lastSuccessfulProbeAtMs !== null && this.consecutiveProbeFailures === 0;
-		const healthy = this.state === 'running' && connected;
+		const consumerHealth = this.safeConsumerHealth();
+		const consumerHealthy = this.config.queueEnabled ? consumerHealth?.healthy === true : true;
+		const healthy = this.state === 'running' && connected && consumerHealthy;
 		const reason = healthy
 			? undefined
 			: this.state === 'running'
-				? (this.lastError ?? 'database_probe_pending')
+				? (this.lastError ?? consumerHealth?.reason ?? 'database_probe_pending')
 				: this.state;
 
 		return {
@@ -107,9 +124,15 @@ export class LibriWorkerBootstrap {
 			queue: {
 				enabled: this.config.queueEnabled,
 				registeredJobTypes: LIBRI_QUEUE_TYPES,
-				activeJobs: 0,
-				availableConcurrency: this.config.concurrency,
-				concurrency: this.config.concurrency
+				activeJobs: consumerHealth?.activeJobs ?? 0,
+				availableConcurrency:
+					consumerHealth?.availableConcurrency ?? this.config.concurrency,
+				concurrency: consumerHealth?.concurrency ?? this.config.concurrency,
+				consumerHealthy: this.config.queueEnabled
+					? (consumerHealth?.healthy ?? false)
+					: null,
+				lastSuccessfulClaimAt: consumerHealth?.lastSuccessfulClaimAt ?? null,
+				consecutiveClaimFailures: consumerHealth?.consecutiveClaimFailures ?? 0
 			}
 		};
 	}
@@ -119,10 +142,15 @@ export class LibriWorkerBootstrap {
 			this.startedAtMs = Date.now();
 			await this.probeNow();
 			if (this.state !== 'starting') return;
+			if (this.config.queueEnabled) await this.consumer?.start();
 			this.startProbeInterval();
 			this.state = 'running';
-		} catch {
+		} catch (error) {
 			if (this.state !== 'starting') return;
+			if (this.config.queueEnabled) {
+				this.state = 'failed';
+				throw error;
+			}
 			this.startProbeInterval();
 			this.state = 'running';
 		}
@@ -145,9 +173,19 @@ export class LibriWorkerBootstrap {
 			clearInterval(this.probeInterval);
 			this.probeInterval = null;
 		}
-		await this.probePromise?.catch(() => undefined);
+		const results = await Promise.allSettled([
+			this.consumer?.stop(),
+			this.probePromise?.catch(() => undefined)
+		]);
 		await this.database.close?.();
 		this.state = 'stopped';
+		const errors = results.flatMap((result) =>
+			result.status === 'rejected' ? [result.reason] : []
+		);
+		if (errors.length > 0) {
+			this.state = 'failed';
+			throw new AggregateError(errors, 'Libri bootstrap shutdown was incomplete');
+		}
 	}
 
 	private async runProbe(): Promise<void> {
@@ -160,6 +198,15 @@ export class LibriWorkerBootstrap {
 			this.consecutiveProbeFailures += 1;
 			this.lastError = 'database_probe_failed';
 			throw error;
+		}
+	}
+
+	private safeConsumerHealth(): LibriMaintenanceConsumerHealth | null {
+		if (!this.config.queueEnabled || !this.consumer) return null;
+		try {
+			return this.consumer.getHealth();
+		} catch {
+			return null;
 		}
 	}
 }

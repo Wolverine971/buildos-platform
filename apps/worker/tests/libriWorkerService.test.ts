@@ -95,6 +95,88 @@ describe('dedicated Libri worker bootstrap', () => {
 			vi.useRealTimers();
 		}
 	});
+
+	it('starts and drains the isolated maintenance consumer only when locally enabled', async () => {
+		const database = {
+			probe: vi.fn(async () => undefined),
+			close: vi.fn(async () => undefined)
+		};
+		const consumer = {
+			start: vi.fn(async () => undefined),
+			stop: vi.fn(async () => undefined),
+			getHealth: vi.fn(() => ({
+				healthy: true,
+				state: 'running' as const,
+				activeJobs: 1,
+				availableConcurrency: 1,
+				concurrency: 2,
+				lastSuccessfulClaimAt: '2026-08-30T20:00:00.000Z',
+				consecutiveClaimFailures: 0,
+				completedJobs: 1,
+				failedJobs: 0,
+				staleOwnershipJobs: 0,
+				quarantinedJobs: 0
+			}))
+		};
+		const bootstrap = new LibriWorkerBootstrap(
+			database,
+			loadLibriWorkerConfig({ LIBRI_WORKER_ENABLED: 'true' }),
+			consumer
+		);
+
+		await bootstrap.start();
+		expect(consumer.start).toHaveBeenCalledOnce();
+		expect(bootstrap.getHealth()).toMatchObject({
+			healthy: true,
+			queue: {
+				enabled: true,
+				consumerHealthy: true,
+				activeJobs: 1,
+				availableConcurrency: 1
+			}
+		});
+
+		await bootstrap.stop();
+		expect(consumer.stop).toHaveBeenCalledOnce();
+		expect(database.close).toHaveBeenCalledOnce();
+	});
+
+	it('fails closed before queue startup when an enabled initial database probe fails', async () => {
+		const database = {
+			probe: vi.fn(async () => {
+				throw new Error('offline');
+			}),
+			close: vi.fn(async () => undefined)
+		};
+		const consumer = {
+			start: vi.fn(async () => undefined),
+			stop: vi.fn(async () => undefined),
+			getHealth: vi.fn(() => ({
+				healthy: false,
+				state: 'idle' as const,
+				reason: 'consumer_idle',
+				activeJobs: 0,
+				availableConcurrency: 1,
+				concurrency: 1,
+				lastSuccessfulClaimAt: null,
+				consecutiveClaimFailures: 0,
+				completedJobs: 0,
+				failedJobs: 0,
+				staleOwnershipJobs: 0,
+				quarantinedJobs: 0
+			}))
+		};
+		const bootstrap = new LibriWorkerBootstrap(
+			database,
+			loadLibriWorkerConfig({ LIBRI_WORKER_ENABLED: 'true' }),
+			consumer
+		);
+
+		await expect(bootstrap.start()).rejects.toThrow('offline');
+		expect(consumer.start).not.toHaveBeenCalled();
+		expect(bootstrap.getHealth()).toMatchObject({ state: 'failed', healthy: false });
+		await bootstrap.stop();
+	});
 });
 
 describe('dedicated Libri worker service', () => {
@@ -228,7 +310,10 @@ function healthyBootstrap(): LibriWorkerBootstrapHealth {
 			registeredJobTypes: LIBRI_QUEUE_TYPES,
 			activeJobs: 0,
 			availableConcurrency: 2,
-			concurrency: 2
+			concurrency: 2,
+			consumerHealthy: null,
+			lastSuccessfulClaimAt: null,
+			consecutiveClaimFailures: 0
 		}
 	};
 }
