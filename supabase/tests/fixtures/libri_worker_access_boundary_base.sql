@@ -13,7 +13,13 @@ BEGIN
 END;
 $$;
 
-CREATE TYPE public.queue_status AS ENUM ('pending', 'processing', 'completed', 'failed');
+CREATE TYPE public.queue_status AS ENUM (
+	'pending',
+	'processing',
+	'completed',
+	'failed',
+	'cancelled'
+);
 
 CREATE TABLE public.queue_jobs (
 	id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

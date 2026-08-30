@@ -21,7 +21,7 @@ describe('Libri restricted PostgreSQL connection', () => {
 
 		await database.probe();
 
-			expect(config).toMatchObject({
+		expect(config).toMatchObject({
 			application_name: 'buildos-libri-worker',
 			max: 2,
 			connectionTimeoutMillis: 5_000,
@@ -100,6 +100,7 @@ function fakePool(row: ReturnType<typeof approvedRole>) {
 		void values;
 	});
 	const endMock = vi.fn(async () => undefined);
+	const releaseMock = vi.fn();
 	const pool: LibriPgPool = {
 		async query<T extends Record<string, unknown> = Record<string, unknown>>(
 			text: string,
@@ -108,7 +109,13 @@ function fakePool(row: ReturnType<typeof approvedRole>) {
 			queryMock(text, values);
 			return { rows: [row] } as unknown as QueryResult<T>;
 		},
+		async connect() {
+			return {
+				query: pool.query,
+				release: releaseMock
+			};
+		},
 		end: endMock
 	};
-	return { pool, queryMock, endMock };
+	return { pool, queryMock, endMock, releaseMock };
 }

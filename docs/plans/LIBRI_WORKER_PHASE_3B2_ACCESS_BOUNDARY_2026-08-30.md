@@ -1,7 +1,7 @@
 # Libri Worker Phase 3B.2: Least-Privilege Access Boundary
 
 Date: 2026-08-30
-Status: production database boundary deployed and verified; disabled Railway credential cutover pending
+Status: production database boundary and disabled Railway credential cutover deployed and verified
 
 ## Outcome
 
@@ -59,7 +59,16 @@ root CA with strict certificate verification. The real restricted login passed i
 probe, saw zero queue rows under RLS, and received SQLSTATE `42501` when reading `public.projects`.
 The root certificate expires in 2031 and has SHA-256 fingerprint
 `CE:0E:FC:EA:51:5B:10:4C:22:2E:F0:F1:06:1D:73:32:39:6D:BD:78:05:64:27:CD:70:77:9B:FD:31:03:A9:6C`.
-Both verified secrets are staged in Railway without deploying, and `LIBRI_WORKER_ENABLED=false`.
+Both verified secrets were staged in Railway without an immediate deploy while
+`LIBRI_WORKER_ENABLED=false`.
+
+The health runtime cutover shipped in commit `3a21a52c3` and passed Railway's configured `/health`
+check as deployment `e847fc37-b752-49f7-ad36-491eb3457011`. The obsolete
+`PRIVATE_SUPABASE_SERVICE_KEY` and `PUBLIC_SUPABASE_URL` variables were then deleted from the Libri
+service. Deployment `2da34dc5-d1ff-408a-ba82-1a48c20277fc`, from gate-repair commit `319a3627e`,
+rebuilt and passed health checks with only `LIBRI_DATABASE_URL` and `LIBRI_DATABASE_CA_CERT` as its
+database credentials. The service remains in the production profile with
+`LIBRI_WORKER_ENABLED=false`.
 
 The Supabase security advisor reports 329 warnings and zero Libri warnings. The performance advisor
 reports 739 warnings; 62 new `multiple_permissive_policies` entries name `libri_worker` on unrelated
@@ -70,10 +79,10 @@ sets used by BuildOS roles. These are advisor fan-out entries, not new executabl
 ## Activation remains blocked
 
 `LIBRI_WORKER_ENABLED` must remain `false`. The production role, access migration, strict-TLS
-credential, and non-Libri fingerprint proof are complete. Before activation, the next slice must:
+credential, restricted health deployment, legacy-key removal, and non-Libri fingerprint proof are
+complete. Before activation, the next slice must:
 
-1. switch the Railway health probe from the Supabase service key to the capped direct credential;
-2. implement transactional enqueue, claim, heartbeat, complete, retry, cancel, and stale-lease
-   recovery over this restricted connection; and
-3. pass the synthetic `libri_maintenance` lifecycle canary, including stale-token rejection and
+1. implement and deploy transactional enqueue, claim, heartbeat, complete, retry, cancel, and
+   stale-lease recovery over this restricted connection; and
+2. pass the synthetic `libri_maintenance` lifecycle canary, including stale-token rejection and
    proof that a non-Libri queue row is unchanged.

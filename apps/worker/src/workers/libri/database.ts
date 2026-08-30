@@ -1,4 +1,21 @@
 import { Pool, type PoolConfig, type QueryResult } from 'pg';
+import {
+	type CancelLibriRunInput,
+	type CancelLibriRunReceipt,
+	type ClaimLibriStepInput,
+	type ClaimLibriStepReceipt,
+	type CompleteLibriStepInput,
+	type EnqueueLibriStepInput,
+	type EnqueueLibriStepReceipt,
+	type FailLibriStepInput,
+	type FailLibriStepReceipt,
+	type HeartbeatLibriStepInput,
+	type LibriLifecyclePort,
+	type LibriTransactionClient,
+	type RecoverStaleLibriLeasesInput,
+	type RecoverStaleLibriLeasesReceipt,
+	createLibriLifecycle
+} from './lifecycle';
 
 const LIBRI_DATABASE_ROLE = 'libri_worker';
 const MAX_LIBRI_DATABASE_CONNECTIONS = 3;
@@ -23,10 +40,11 @@ export type LibriPgPool = {
 		text: string,
 		values?: readonly unknown[]
 	) => Promise<QueryResult<T>>;
+	connect: () => Promise<LibriTransactionClient>;
 	end: () => Promise<void>;
 };
 
-export type LibriDatabasePort = {
+export type LibriDatabasePort = LibriLifecyclePort & {
 	probe: () => Promise<void>;
 	close: () => Promise<void>;
 };
@@ -76,7 +94,41 @@ function normalizeCaCertificate(value: string): string {
 }
 
 class LibriDatabase implements LibriDatabasePort {
-	constructor(private readonly pool: LibriPgPool) {}
+	private readonly lifecycle: LibriLifecyclePort;
+
+	constructor(private readonly pool: LibriPgPool) {
+		this.lifecycle = createLibriLifecycle(pool);
+	}
+
+	enqueueStep(input: EnqueueLibriStepInput): Promise<EnqueueLibriStepReceipt> {
+		return this.lifecycle.enqueueStep(input);
+	}
+
+	claimNextStep(input: ClaimLibriStepInput): Promise<ClaimLibriStepReceipt> {
+		return this.lifecycle.claimNextStep(input);
+	}
+
+	heartbeatStep(input: HeartbeatLibriStepInput): Promise<boolean> {
+		return this.lifecycle.heartbeatStep(input);
+	}
+
+	completeStep(input: CompleteLibriStepInput): Promise<boolean> {
+		return this.lifecycle.completeStep(input);
+	}
+
+	failStep(input: FailLibriStepInput): Promise<FailLibriStepReceipt> {
+		return this.lifecycle.failStep(input);
+	}
+
+	cancelRun(input: CancelLibriRunInput): Promise<CancelLibriRunReceipt> {
+		return this.lifecycle.cancelRun(input);
+	}
+
+	recoverStaleLeases(
+		input?: RecoverStaleLibriLeasesInput
+	): Promise<RecoverStaleLibriLeasesReceipt> {
+		return this.lifecycle.recoverStaleLeases(input);
+	}
 
 	async probe(): Promise<void> {
 		const result = await this.pool.query<RoleProbeRow>(`
@@ -142,16 +194,16 @@ function assertDatabaseUrl(value: string): void {
 function isApprovedRole(role: RoleProbeRow): boolean {
 	return Boolean(
 		role.role_name === LIBRI_DATABASE_ROLE &&
-		role.can_login &&
-		!role.is_superuser &&
-		!role.can_create_database &&
-		!role.can_create_role &&
-		!role.inherits_roles &&
-		!role.can_replicate &&
-		!role.bypasses_rls &&
-		role.connection_limit === MAX_LIBRI_DATABASE_CONNECTIONS &&
-		!role.has_memberships &&
-		!role.can_delete_queue_jobs &&
-		!role.can_retag_queue_jobs
+			role.can_login &&
+			!role.is_superuser &&
+			!role.can_create_database &&
+			!role.can_create_role &&
+			!role.inherits_roles &&
+			!role.can_replicate &&
+			!role.bypasses_rls &&
+			role.connection_limit === MAX_LIBRI_DATABASE_CONNECTIONS &&
+			!role.has_memberships &&
+			!role.can_delete_queue_jobs &&
+			!role.can_retag_queue_jobs
 	);
 }
