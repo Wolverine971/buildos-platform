@@ -11,8 +11,8 @@ import {
 describe('Agentic Chat mutation surface policy', () => {
 	it('partitions every signed write into the reviewed or explicitly deferred surface', () => {
 		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.signedToolNames).toHaveLength(39);
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(20);
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.deferredToolNames).toHaveLength(19);
+		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(21);
+		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.deferredToolNames).toHaveLength(18);
 		expect(AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1.request_email_account_connection).toBe(
 			'browser_user_action_handoff'
 		);
@@ -30,7 +30,7 @@ describe('Agentic Chat mutation surface policy', () => {
 	it('keeps all reviewed mutation capabilities disabled unless explicitly supplied', () => {
 		const capabilities = normalizeAgenticChatMutationCapabilitiesV1(undefined);
 
-		expect(Object.keys(capabilities)).toHaveLength(20);
+		expect(Object.keys(capabilities)).toHaveLength(21);
 		expect(Object.values(capabilities).every((enabled) => enabled === false)).toBe(true);
 	});
 

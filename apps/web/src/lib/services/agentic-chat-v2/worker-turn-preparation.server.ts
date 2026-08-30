@@ -74,6 +74,10 @@ import {
 	inspectPreparedPromptAdmissionLineage,
 	inspectPreparedPromptForWorkerAdmission
 } from './prepared-prompt-consumer.server';
+import {
+	inspectPreparedAdmissionLease,
+	inspectPreparedAdmissionLeaseContent
+} from './prepared-admission-lease.server';
 import { buildPreparedPromptSurfaceKey } from './prepared-prompt-cache';
 import { resolveFastChatScaffoldConfigFromEnv } from './scaffold-variant';
 import { projectWorkerFrozenHistorySnapshot } from './session-service';
@@ -198,6 +202,12 @@ export type AgenticChatWorkerLeaseAuthority = {
 export type AgenticChatWorkerPreparationResult = {
 	args: AgenticChatWorkerAdmissionRpcArgs;
 	preparedPromptUsed: boolean;
+	preparedAdmissionLease: {
+		requested: boolean;
+		hit: boolean;
+		missReason: string | null;
+		inspectionMs: number;
+	};
 };
 
 export type AgenticChatWorkerPreparationErrorCode =
@@ -264,13 +274,31 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		throw invalidCommand('Daily brief context requires an entity');
 	}
 
-	await verifyContextAccess({
-		userClient: input.userClient,
+	const preparedAdmissionLeaseStartedAt = Date.now();
+	const preparedAdmissionLease = await inspectPreparedAdmissionLease({
+		client: input.serviceClient,
+		key: input.command.preparedPromptKey,
 		userId: input.userId,
+		sessionId: input.command.sessionId,
 		contextType,
 		entityId,
-		projectId
+		projectId,
+		attachmentCount: input.command.attachments.length,
+		nowMs
 	});
+	const preparedAdmissionLeaseInspectionMs = Math.max(
+		0,
+		Date.now() - preparedAdmissionLeaseStartedAt
+	);
+	if (!preparedAdmissionLease.hit) {
+		await verifyContextAccess({
+			userClient: input.userClient,
+			userId: input.userId,
+			contextType,
+			entityId,
+			projectId
+		});
+	}
 
 	const attachmentValidation = await loadValidatedChatAttachments({
 		supabase: input.userClient,
@@ -309,22 +337,25 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		rawMediaPassedToModel: false
 	});
 
-	const sessionIntent = await resolveWorkerSessionIntent({
-		serviceClient: input.serviceClient,
-		userId: input.userId,
-		requestedSessionId: input.command.sessionId,
-		contextType,
-		entityId,
-		projectFocus: input.command.projectFocus
-	});
-	const resumeCheckpoint = sessionIntent.session
-		? await (input.dependencies?.loadResumeCheckpoint ?? loadWorkerResumeCheckpoint)({
+	const sessionIntent: WorkerSessionIntent = preparedAdmissionLease.hit
+		? { session: preparedAdmissionLease.session, inlineMetadata: {} }
+		: await resolveWorkerSessionIntent({
 				serviceClient: input.serviceClient,
 				userId: input.userId,
-				sessionId: sessionIntent.session.id,
-				nowMs
-			})
-		: null;
+				requestedSessionId: input.command.sessionId,
+				contextType,
+				entityId,
+				projectFocus: input.command.projectFocus
+			});
+	const resumeCheckpoint =
+		sessionIntent.session && !preparedAdmissionLease.hit
+			? await (input.dependencies?.loadResumeCheckpoint ?? loadWorkerResumeCheckpoint)({
+					serviceClient: input.serviceClient,
+					userId: input.userId,
+					sessionId: sessionIntent.session.id,
+					nowMs
+				})
+			: null;
 	const conversationSummary =
 		typeof sessionIntent.session?.summary === 'string' ? sessionIntent.session.summary : null;
 	const agentMetadata = sessionIntent.session?.agent_metadata ?? sessionIntent.inlineMetadata;
@@ -355,14 +386,19 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	);
 
 	const preparedAdmissionLineage = sessionIntent.session
-		? await inspectPreparedPromptAdmissionLineage({
-				supabase: input.serviceClient,
-				key: input.command.preparedPromptKey,
-				userId: input.userId,
-				sessionId: sessionIntent.session.id,
-				cacheKey: turnPreparation.cacheKey,
-				surfaceProfile: preparedWorkerSurfaceKey
-			})
+		? preparedAdmissionLease.hit
+			? {
+					id: preparedAdmissionLease.row.id,
+					acceptedSurfaceProfile: preparedWorkerSurfaceKey
+				}
+			: await inspectPreparedPromptAdmissionLineage({
+					supabase: input.serviceClient,
+					key: input.command.preparedPromptKey,
+					userId: input.userId,
+					sessionId: sessionIntent.session.id,
+					cacheKey: turnPreparation.cacheKey,
+					surfaceProfile: preparedWorkerSurfaceKey
+				})
 		: null;
 	const requestHash = await hashCanonicalAdmissionRequestV1({
 		version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
@@ -383,18 +419,27 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	});
 
 	const preparedInspection = sessionIntent.session
-		? await inspectPreparedPromptForWorkerAdmission({
-				supabase: input.serviceClient,
-				key: input.command.preparedPromptKey,
-				userId: input.userId,
-				sessionId: sessionIntent.session.id,
-				cacheKey: turnPreparation.cacheKey,
-				surfaceProfile: preparedWorkerSurfaceKey,
-				contextType,
-				tools: workerPromptTools,
-				scaffold: WORKER_PROMPT_SCAFFOLD,
-				nowMs
-			})
+		? preparedAdmissionLease.hit
+			? inspectPreparedAdmissionLeaseContent({
+					inspection: preparedAdmissionLease,
+					cacheKey: turnPreparation.cacheKey,
+					surfaceProfile: preparedWorkerSurfaceKey,
+					contextType,
+					tools: workerPromptTools,
+					scaffold: WORKER_PROMPT_SCAFFOLD
+				})
+			: await inspectPreparedPromptForWorkerAdmission({
+					supabase: input.serviceClient,
+					key: input.command.preparedPromptKey,
+					userId: input.userId,
+					sessionId: sessionIntent.session.id,
+					cacheKey: turnPreparation.cacheKey,
+					surfaceProfile: preparedWorkerSurfaceKey,
+					contextType,
+					tools: workerPromptTools,
+					scaffold: WORKER_PROMPT_SCAFFOLD,
+					nowMs
+				})
 		: ({ hit: false, reason: 'missing_key' } as const);
 
 	const requestLastTurnContext = input.command.lastTurnContext;
@@ -653,6 +698,12 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		userMessageMetadata.supervisor_resume_original_turn_run_id =
 			resumeCheckpoint.originalTurnRunId;
 	}
+	const preparedAdmissionLeaseMetadata = {
+		requested: input.command.preparedPromptKey !== null,
+		hit: preparedAdmissionLease.hit,
+		missReason: preparedAdmissionLease.hit ? null : preparedAdmissionLease.reason,
+		inspectionMs: preparedAdmissionLeaseInspectionMs
+	};
 	const requestPayload = toJsonObject({
 		message: storedUserMessageContent,
 		sessionId: sessionIntent.session?.id ?? null,
@@ -665,7 +716,8 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		voiceNoteGroupId: input.command.voiceNoteGroupId,
 		promptVariant: LITE_PROMPT_VARIANT,
 		surfaceProfile: turnPreparation.selectedSurfaceProfile,
-		preparedPromptId
+		preparedPromptId,
+		preparedAdmissionLease: preparedAdmissionLeaseMetadata
 	});
 	return {
 		args: {
@@ -708,7 +760,8 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			// Admission no longer treats transient worker pressure as a rejection.
 			p_capacity_available: true
 		},
-		preparedPromptUsed: preparedPromptId !== null
+		preparedPromptUsed: preparedPromptId !== null,
+		preparedAdmissionLease: preparedAdmissionLeaseMetadata
 	};
 }
 

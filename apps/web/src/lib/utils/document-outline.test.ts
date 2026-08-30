@@ -43,14 +43,14 @@ End.`;
 		expect(nodes).toHaveLength(1);
 		expect(nodes[0]).toMatchObject({ level: 1, text: 'Title', anchor: 'title' });
 
-		const top = nodes[0].children ?? [];
+		const top = nodes[0]!.children ?? [];
 		expect(top.map((n) => n.text)).toEqual(['Section A', 'Section B']);
 
-		const sectionA = top[0];
+		const sectionA = top[0]!;
 		expect(sectionA.children?.map((n) => n.text)).toEqual(['Sub A1']);
-		expect(sectionA.children?.[0].level).toBe(3);
+		expect(sectionA.children?.[0]?.level).toBe(3);
 		// Section B has no children
-		expect(top[1].children).toBeUndefined();
+		expect(top[1]!.children).toBeUndefined();
 	});
 
 	it('produces anchors that match gfm heading ids (incl. dedupe)', () => {
@@ -124,7 +124,7 @@ four five`;
 		const md = `# Top\n\n### Deep\n\n## Mid`;
 		const { nodes } = extractOutline(md);
 		expect(nodes).toHaveLength(1);
-		const children = nodes[0].children ?? [];
+		const children = nodes[0]!.children ?? [];
 		expect(children.map((n) => n.text)).toEqual(['Deep', 'Mid']);
 	});
 

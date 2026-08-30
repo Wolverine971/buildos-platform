@@ -28,6 +28,7 @@ const REVIEWED_MUTATION_ADAPTER_FILES = Object.freeze([
 	'createOntoDocumentMutationAdapter.ts',
 	'createOntoProjectMutationAdapter.ts',
 	'createOntoTaskMutationAdapter.ts',
+	'delegateTaskMutationAdapter.ts',
 	'gatewayDocumentRelationshipMutationAdapter.ts',
 	'gatewayEdgeMutationAdapter.ts',
 	'gatewayEntityMutationAdapter.ts',
@@ -76,7 +77,7 @@ describe('Agentic Chat Phase 5 reliability contract audit', () => {
 				/assertMutationAdapterBoundary\(/
 			);
 		}
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(20);
+		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(21);
 	});
 
 	it('limits automatic uncertain-commit replay to the reviewed idempotent downstreams', () => {
@@ -85,6 +86,6 @@ describe('Agentic Chat Phase 5 reliability contract audit', () => {
 			.map(([toolName]) => toolName)
 			.sort();
 		expect(retryable).toEqual(['create_onto_task', 'create_task_document']);
-		expect(Object.keys(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)).toHaveLength(20);
+		expect(Object.keys(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)).toHaveLength(21);
 	});
 });

@@ -1096,7 +1096,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 	});
 
 	it('logs non-streaming JSON usage with turn attribution', async () => {
-		const insertMock = vi.fn(async () => ({ error: null }));
+		const insertMock = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
 		const fetchMock = vi.fn(
 			async () =>
 				new Response(
@@ -1923,7 +1923,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		// D11: an upstream `{ error }` frame has no `choices`, so it used to be
 		// silently skipped and the stream ended as a successful `done`, shipping the
 		// truncated buffer as a complete answer. It must now surface as an error.
-		const insertMock = vi.fn(async () => ({ error: null }));
+		const insertMock = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
 		const routeObservations: unknown[] = [];
 		const encoder = new TextEncoder();
 		const fetchMock = vi.fn(async () => {
@@ -1985,7 +1985,9 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			models: [ACTIVE_EXPERIMENT_MODEL],
 			chatSessionId: '22222222-2222-4222-8222-222222222222',
 			operationType: 'agentic_chat_v2_stream',
-			onRouteObserved: (observation) => routeObservations.push(observation)
+			onRouteObserved: (observation) => {
+				routeObservations.push(observation);
+			}
 		})) {
 			events.push(event);
 		}
@@ -2009,6 +2011,6 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			}
 		});
 		await vi.waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
-		expect(insertMock.mock.calls[0]?.[0]).toMatchObject({ status: 'failure' });
+		expect(insertMock.mock.calls[0]![0]).toMatchObject({ status: 'failure' });
 	});
 });

@@ -166,11 +166,11 @@ describe('Question Tree export', () => {
 		expect(files['research-tree.md']).toContain('The root contains the final answer.');
 		expect(files['research-tree.md']).toContain('The pilot evidence.');
 		expect(files['proposals.md']).toContain('Not Selected');
-		expect(files['events.md'].indexOf('## 1. node.completed')).toBeLessThan(
-			files['events.md'].indexOf('## 2. run.completed')
+		expect(files['events.md']!.indexOf('## 1. node.completed')).toBeLessThan(
+			files['events.md']!.indexOf('## 2. run.completed')
 		);
 
-		const raw = JSON.parse(files['raw/complete-export.json']);
+		const raw = JSON.parse(files['raw/complete-export.json']!);
 		expect(raw.schema_version).toBe('question-tree-export-v1');
 		expect(raw.nodes).toHaveLength(1);
 		expect(raw.proposals).toHaveLength(1);
@@ -188,10 +188,10 @@ describe('Question Tree export', () => {
 
 		expect(folder).toBe('question-tree-will-this-research-approach-work-2026-08-02-12345678');
 		expect(Object.keys(entries)).toContain(`${folder}/README.md`);
-		expect(strFromU8(entries[`${folder}/synthesis.md`])).toContain(
+		expect(strFromU8(entries[`${folder}/synthesis.md`]!)).toContain(
 			'The approach is viable with safeguards.'
 		);
-		expect(JSON.parse(strFromU8(entries[`${folder}/raw/events.json`]))).toHaveLength(2);
+		expect(JSON.parse(strFromU8(entries[`${folder}/raw/events.json`]!))).toHaveLength(2);
 	});
 
 	it('explains when a run has no final synthesis yet', () => {

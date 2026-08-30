@@ -47,6 +47,8 @@ const mocks = vi.hoisted(() => ({
 	checkDailyBriefAccess: vi.fn(),
 	checkProjectAccess: vi.fn(),
 	loadValidatedChatAttachments: vi.fn(),
+	inspectPreparedAdmissionLease: vi.fn(),
+	inspectPreparedAdmissionLeaseContent: vi.fn(),
 	inspectPreparedPromptAdmissionLineage: vi.fn(),
 	inspectPreparedPromptForWorkerAdmission: vi.fn(),
 	resolveFastChatTurnPreparation: vi.fn(),
@@ -66,6 +68,10 @@ vi.mock('./stream-attachments', () => ({
 vi.mock('./prepared-prompt-consumer.server', () => ({
 	inspectPreparedPromptAdmissionLineage: mocks.inspectPreparedPromptAdmissionLineage,
 	inspectPreparedPromptForWorkerAdmission: mocks.inspectPreparedPromptForWorkerAdmission
+}));
+vi.mock('./prepared-admission-lease.server', () => ({
+	inspectPreparedAdmissionLease: mocks.inspectPreparedAdmissionLease,
+	inspectPreparedAdmissionLeaseContent: mocks.inspectPreparedAdmissionLeaseContent
 }));
 vi.mock('./turn-preparation', () => ({
 	resolveFastChatTurnPreparation: mocks.resolveFastChatTurnPreparation
@@ -195,6 +201,14 @@ describe('Agentic Chat worker turn preparation', () => {
 		mocks.checkDailyBriefAccess.mockResolvedValue({ allowed: true });
 		mocks.checkProjectAccess.mockResolvedValue({ allowed: true });
 		mocks.loadValidatedChatAttachments.mockResolvedValue({ attachments: [], assets: [] });
+		mocks.inspectPreparedAdmissionLease.mockResolvedValue({
+			hit: false,
+			reason: 'ineligible'
+		});
+		mocks.inspectPreparedAdmissionLeaseContent.mockReturnValue({
+			hit: false,
+			reason: 'not_found'
+		});
 		mocks.inspectPreparedPromptAdmissionLineage.mockResolvedValue(null);
 		mocks.inspectPreparedPromptForWorkerAdmission.mockResolvedValue({
 			hit: false,
@@ -799,6 +813,129 @@ describe('Agentic Chat worker turn preparation', () => {
 			}
 		});
 		expect(result.args.p_request_hash).toBe(expectedHash);
+	});
+
+	it('uses one prepared-admission receipt without repeating access, session, checkpoint, or prepared reads', async () => {
+		const preparedId = 'd8000000-0000-4000-8000-000000000001';
+		const projectId = 'd9000000-0000-4000-8000-000000000001';
+		const session = {
+			id: SESSION_ID,
+			user_id: USER_ID,
+			context_type: 'project',
+			entity_id: projectId,
+			summary: 'Prepared project summary',
+			agent_metadata: { trusted: true }
+		};
+		const preparedRow = {
+			id: preparedId,
+			user_id: USER_ID,
+			session_id: SESSION_ID,
+			context_type: 'project',
+			entity_id: projectId,
+			project_id: projectId,
+			cache_key: `v2|project|${projectId}|project-wide|${projectId}`,
+			context_payload: { contextType: 'project', data: { source: 'prepared-lease' } },
+			context_payload_sha256: 'a'.repeat(64),
+			conversation_summary: 'Prepared project summary',
+			history_for_model: [{ role: 'assistant', content: 'Earlier project answer' }],
+			history_compressed: false,
+			history_strategy: 'raw_history',
+			raw_history_count: 1,
+			history_for_model_count: 1
+		};
+		mocks.resolveFastChatTurnPreparation.mockReturnValue({
+			sessionMetadata: { trusted: true },
+			pendingTurnContract: null,
+			turnIntent: {
+				version: 1,
+				requiresWrite: false,
+				action: null,
+				entityKind: 'unknown',
+				operations: [],
+				source: 'none',
+				originalRequestText: null,
+				originatingTurnRunId: null,
+				clearPending: false
+			},
+			priorDomainIds: [],
+			priorOutcomeCardIds: [],
+			turnDomainSensing: null,
+			cacheKey: preparedRow.cache_key,
+			cachedContext: undefined,
+			bypassContextCacheForShiftHint: false,
+			selectedSurfaceProfile: 'project_write_document',
+			tools: []
+		});
+		mocks.inspectPreparedAdmissionLease.mockResolvedValue({
+			hit: true,
+			row: preparedRow,
+			session,
+			validatedAt: new Date(NOW).toISOString()
+		});
+		mocks.inspectPreparedAdmissionLeaseContent.mockReturnValue({
+			hit: true,
+			ageSeconds: 2,
+			history: {
+				ok: true,
+				history: [{ role: 'assistant', content: 'Earlier project answer' }],
+				state: {
+					strategy: 'raw_history',
+					compressed: false,
+					rawHistoryCount: 1,
+					historyForModelCount: 1
+				}
+			},
+			row: preparedRow,
+			surface: {
+				system_prompt: 'Prepared project system prompt',
+				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
+			},
+			surfaceKey: 'worker_realtime:project_write_document'
+		});
+		const deps = dependencies();
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command({
+				sessionId: SESSION_ID,
+				context: { type: 'project', entityId: projectId, projectId },
+				projectFocus: {
+					focusType: 'project-wide',
+					focusEntityId: projectId,
+					projectId
+				},
+				preparedPromptKey: `pp_v1.${preparedId}.opaque-nonce`
+			}) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: deps
+		});
+
+		expect(result.preparedPromptUsed).toBe(true);
+		expect(result.args).toMatchObject({
+			p_session_id: SESSION_ID,
+			p_history_source: 'prepared_prompt',
+			p_prepared_prompt_id: preparedId,
+			p_prepared_surface_profile: 'worker_realtime:project_write_document'
+		});
+		expect(mocks.inspectPreparedAdmissionLease).toHaveBeenCalledTimes(1);
+		expect(mocks.checkProjectAccess).not.toHaveBeenCalled();
+		expect(deps.loadResumeCheckpoint).not.toHaveBeenCalled();
+		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
+		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
+		expect(mocks.loadFastChatPromptContext).not.toHaveBeenCalled();
+		expect(result.args.p_request_payload).toMatchObject({
+			preparedAdmissionLease: {
+				requested: true,
+				hit: true,
+				missReason: null,
+				inspectionMs: expect.any(Number)
+			}
+		});
 	});
 
 	it('freezes the selected checkpoint and canonical resume message into the hashed artifact', async () => {

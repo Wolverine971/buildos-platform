@@ -26,7 +26,8 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'createOntoRisk'
 	| 'updateOntoRisk'
 	| 'createOntoProject'
-	| 'updateOntoProject';
+	| 'updateOntoProject'
+	| 'delegateTask';
 
 export type AgenticChatProviderMutationCapabilitiesV1 = Record<
 	AgenticChatMutationCapabilityNameV1,
@@ -36,7 +37,8 @@ export type AgenticChatProviderMutationCapabilitiesV1 = Record<
 export type AgenticChatMutationOperationNameV1 =
 	| BuildosAgentAllowedOp
 	| 'onto.task.move'
-	| 'x.misc.tag_onto_entity';
+	| 'x.misc.tag_onto_entity'
+	| 'util.agent.delegate';
 
 const BUILDOS_AGENT_ALLOWED_OP_SET = new Set<string>(BUILDOS_AGENT_SUPPORTED_OPS);
 
@@ -569,6 +571,46 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'end_at',
 			'props'
 		]
+	},
+	delegate_task: {
+		capability: 'delegateTask',
+		operationName: 'util.agent.delegate',
+		downstreamIdempotencySupported: false,
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
+		descriptionOverride:
+			'Prepare one reviewable project change proposal in a background Agent Run. Use only after gathering and reading the relevant project entities. Pass their exact UUIDs and the intended per-entity outcomes in instructions. This worker path is deliberately narrow: it always runs project-scoped, read-write, and review-required, so it stages a change set and cannot apply ontology changes before user approval.',
+		requiredNames: ['goal', 'project_id'],
+		reviewedArgumentNames: [
+			'goal',
+			'label',
+			'instructions',
+			'expected_output',
+			'project_id',
+			'max_tool_calls',
+			'max_cost_usd'
+		],
+		propertyOverrides: {
+			project_id: {
+				type: 'string',
+				pattern:
+					'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+				description:
+					'Exact focused project UUID. The background proposal cannot cross project scope.'
+			},
+			max_tool_calls: {
+				type: 'integer',
+				minimum: 1,
+				maximum: 40,
+				description: 'Bounded operation budget for gathering and staging the proposal.'
+			},
+			max_cost_usd: {
+				type: 'number',
+				exclusiveMinimum: 0,
+				maximum: 1,
+				description: 'Observed LLM-usage ceiling in USD; defaults to $0.50.'
+			}
+		}
 	}
 } as const satisfies Record<string, AgenticChatReviewedMutationSpecV1>;
 
@@ -586,7 +628,7 @@ export type AgenticChatDeferredMutationReasonV1 =
 
 /**
  * Explicit P2 boundary for signed writes that are not worker-admitted. Keeping
- * this beside the reviewed catalog turns the 39/20/19 inventory into a
+ * this beside the reviewed catalog turns the 39/21/18 inventory into a
  * fail-closed executable contract: a newly signed write must be reviewed or
  * deliberately deferred before the worker can start.
  */
@@ -594,7 +636,6 @@ export const AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1 = Object.freeze({
 	call_corsair_mcp_tool: 'opaque_external_mutation',
 	commit_change_set: 'compound_partial_commit',
 	create_calendar_event: 'calendar_provider_reconciliation',
-	delegate_task: 'control_plane_effect_mapping',
 	delete_calendar_event: 'irreversible_delete_without_tombstone',
 	delete_onto_document: 'irreversible_delete_without_tombstone',
 	delete_onto_goal: 'irreversible_delete_without_tombstone',

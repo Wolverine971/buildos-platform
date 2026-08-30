@@ -75,6 +75,7 @@ import {
 import { AgenticChatCreateOntoDocumentMutationAdapter } from './createOntoDocumentMutationAdapter';
 import { AgenticChatCreateOntoProjectMutationAdapter } from './createOntoProjectMutationAdapter';
 import { AgenticChatCreateOntoTaskMutationAdapter } from './createOntoTaskMutationAdapter';
+import { AgenticChatDelegateTaskMutationAdapter } from './delegateTaskMutationAdapter';
 import { AgenticChatMoveOntoTaskMutationAdapter } from './moveOntoTaskMutationAdapter';
 import { AgenticChatTagOntoEntityPingMutationAdapter } from './tagOntoEntityPingMutationAdapter';
 import {
@@ -353,6 +354,12 @@ export function createAgenticChatCompositionRoot(options: {
 		mutationAdapters.push([
 			'create_onto_project',
 			new AgenticChatCreateOntoProjectMutationAdapter(options.client)
+		]);
+	}
+	if (mutationCapabilities.delegateTask) {
+		mutationAdapters.push([
+			'delegate_task',
+			new AgenticChatDelegateTaskMutationAdapter(options.client)
 		]);
 	}
 	const gatewayEntityToolNames = new Set<string>(

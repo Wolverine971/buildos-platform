@@ -49,9 +49,16 @@ const AGENTIC_SEARCH_TYPES = new Set(
 );
 const NULLISH_PROJECT_ID_SENTINELS = new Set(['none', 'null', 'undefined']);
 // Targeted search favors precision over the broader explore_project surface.
-// The Phase 3 eight-query regression separates the known-irrelevant tail
-// (0.150–0.178) from the vocabulary-mismatch recovery case (0.451).
-const TARGETED_SEMANTIC_MIN_SIMILARITY = 0.2;
+// A workspace has far more opportunities for an unrelated vector to clear a
+// weak floor, so it uses the stricter threshold. Production calibration puts
+// the global true-empty tail at <=0.262 and the stuffed-query recovery at 0.451.
+const PROJECT_TARGETED_SEMANTIC_MIN_SIMILARITY = 0.2;
+const WORKSPACE_TARGETED_SEMANTIC_MIN_SIMILARITY = 0.3;
+// The lexical RPC deliberately admits description-only trigram candidates at
+// a raw score of ~0.042. That is useful inside one project, but a workspace-sized
+// corpus produces unrelated tail matches. Keep the broader scope above the
+// observed production false-positive score (0.046) without weakening project recall.
+const WORKSPACE_TARGETED_LEXICAL_MIN_SCORE = 0.05;
 
 export type SharedOntologySearchRequest = {
 	query?: string;
@@ -213,7 +220,9 @@ async function searchSemanticForQuery(input: {
 			p_project_id: input.projectId ?? undefined,
 			p_types: input.types && input.types.length > 0 ? input.types : undefined,
 			p_limit: input.limit,
-			p_min_similarity: TARGETED_SEMANTIC_MIN_SIMILARITY
+			p_min_similarity: input.projectId
+				? PROJECT_TARGETED_SEMANTIC_MIN_SIMILARITY
+				: WORKSPACE_TARGETED_SEMANTIC_MIN_SIMILARITY
 		});
 		if (error) {
 			console.warn('[ontology-search] semantic channel unavailable; using lexical fallback', {
@@ -381,10 +390,17 @@ export async function searchOntologyEntities(
 			: Promise.resolve([])
 	]);
 
+	const precisionCalibratedRpcResults = projectId
+		? rpcResults
+		: rpcResults.filter(
+				(result) =>
+					typeof result.score !== 'number' ||
+					result.score >= WORKSPACE_TARGETED_LEXICAL_MIN_SCORE
+			);
 	const hybridRpcResults =
 		semanticResults && semanticResults.length > 0
-			? reciprocalRankFuseSearchRows([rpcResults, semanticResults])
-			: rpcResults;
+			? reciprocalRankFuseSearchRows([precisionCalibratedRpcResults, semanticResults])
+			: precisionCalibratedRpcResults;
 
 	const rawResults = dedupeSearchRows([
 		...hybridRpcResults,
@@ -404,7 +420,7 @@ export async function searchOntologyEntities(
 	const searchScope = projectId ? 'project' : 'workspace';
 	const maybeMore =
 		rawResults.length > limit ||
-		rpcResults.length >= candidateLimit ||
+		precisionCalibratedRpcResults.length >= candidateLimit ||
 		(semanticResults?.length ?? 0) >= candidateLimit ||
 		taskBucketResults.length >= candidateLimit ||
 		eventResults.length >= candidateLimit;

@@ -436,7 +436,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 		const payload = await response.json();
 		expect(insertPreparedPrompt).toHaveBeenCalledOnce();
 		expect(preparedPromptFrom).toHaveBeenCalledWith('agentic_chat_prepared_prompts');
-		const row = insertedRows[0];
+		const row = insertedRows[0]!;
 		const serializedRow = JSON.stringify(row);
 		const focus = row.context_payload.data.focus_entity_full;
 		expect(Object.keys(row.prepared_surfaces).sort()).toEqual(
@@ -461,7 +461,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 		expect(serializedRow).not.toContain('full body full body');
 		expect(serializedRow.length).toBeLessThan(180_000);
 
-		for (const surface of Object.values(row.prepared_surfaces)) {
+		for (const surface of Object.values(row.prepared_surfaces as Record<string, any>)) {
 			expect(surface.system_prompt).toEqual(expect.any(String));
 			expect(surface.sections.length).toBeGreaterThan(0);
 			expect(JSON.stringify(surface.sections)).not.toContain('"content"');

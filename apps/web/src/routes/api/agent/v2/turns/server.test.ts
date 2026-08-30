@@ -137,7 +137,13 @@ describe('GET /api/agent/v2/turns', () => {
 		mocks.prepareAgenticChatWorkerAdmission.mockResolvedValue({
 			args: { p_user_id: USER_ID },
 			capacity: { available: true, retryAfterSeconds: 2, reason: 'open' },
-			preparedPromptUsed: false
+			preparedPromptUsed: false,
+			preparedAdmissionLease: {
+				requested: true,
+				hit: true,
+				missReason: null,
+				inspectionMs: 12
+			}
 		});
 		mocks.admitAgenticChatWorkerTurn.mockResolvedValue(admitted());
 	});
@@ -192,7 +198,13 @@ describe('POST /api/agent/v2/turns', () => {
 		mocks.prepareAgenticChatWorkerAdmission.mockResolvedValue({
 			args: { p_user_id: USER_ID },
 			capacity: { available: true, retryAfterSeconds: 2, reason: 'open' },
-			preparedPromptUsed: false
+			preparedPromptUsed: false,
+			preparedAdmissionLease: {
+				requested: true,
+				hit: true,
+				missReason: null,
+				inspectionMs: 12
+			}
 		});
 		mocks.admitAgenticChatWorkerTurn.mockResolvedValue(admitted());
 	});
@@ -321,6 +333,9 @@ describe('POST /api/agent/v2/turns', () => {
 		expect(response.status).toBe(202);
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
 		expect(response.headers.get('vary')).toBe('Authorization');
+		expect(response.headers.get('server-timing')).toContain(
+			'prepared-admission;dur=12;desc="hit"'
+		);
 		expect(payload.data).toEqual({
 			outcome: 'newly_admitted',
 			handle: {

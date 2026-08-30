@@ -128,6 +128,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 
 	const serviceClient = createAdminSupabaseClient();
 	try {
+		const preparationStartedAt = Date.now();
 		const preparation = await prepareAgenticChatWorkerAdmission({
 			userClient: supabase as SupabaseClient<Database>,
 			serviceClient,
@@ -150,10 +151,19 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				contractVersion: 'agentic_chat_worker_v1'
 			}
 		});
+		const preparationMs = Math.max(0, Date.now() - preparationStartedAt);
+		const admissionStartedAt = Date.now();
 		const result = await admitAgenticChatWorkerTurn({
 			client: serviceClient as unknown as AgenticChatWorkerAdmissionRpcClient,
 			args: preparation.args
 		});
+		const admissionMs = Math.max(0, Date.now() - admissionStartedAt);
+		const timedResponse = (response: Response) =>
+			withWorkerAdmissionTiming(response, {
+				preparationMs,
+				admissionMs,
+				preparedAdmissionLease: preparation.preparedAdmissionLease
+			});
 
 		if (result.outcome === 'capacity_exceeded') {
 			logger.warn('Worker turn emergency queue safety ceiling reached', {
@@ -170,18 +180,20 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				'WORKER_CAPACITY_EXCEEDED'
 			);
 			response.headers.set('Retry-After', String(result.retryAfterSeconds));
-			return privateResponse(response);
+			return timedResponse(privateResponse(response));
 		}
 		if (
 			result.outcome === 'active_turn_conflict' ||
 			result.outcome === 'idempotency_conflict' ||
 			(result.outcome === 'matching_duplicate' && result.executionMode !== 'worker_realtime')
 		) {
-			return privateResponse(
-				ApiResponse.error(
-					'Worker turn admission conflicts with an existing turn',
-					HttpStatus.CONFLICT,
-					'WORKER_ADMISSION_CONFLICT'
+			return timedResponse(
+				privateResponse(
+					ApiResponse.error(
+						'Worker turn admission conflicts with an existing turn',
+						HttpStatus.CONFLICT,
+						'WORKER_ADMISSION_CONFLICT'
+					)
 				)
 			);
 		}
@@ -198,14 +210,16 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			},
 			status: result.status
 		};
-		return privateResponse(
-			json(
-				{
-					success: true,
-					data: payload,
-					timestamp: new Date().toISOString()
-				},
-				{ status: result.outcome === 'newly_admitted' ? 202 : 200 }
+		return timedResponse(
+			privateResponse(
+				json(
+					{
+						success: true,
+						data: payload,
+						timestamp: new Date().toISOString()
+					},
+					{ status: result.outcome === 'newly_admitted' ? 202 : 200 }
+				)
 			)
 		);
 	} catch (error) {
@@ -259,5 +273,30 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 function privateResponse(response: Response): Response {
 	response.headers.set('Cache-Control', 'private, no-store');
 	response.headers.set('Vary', 'Authorization');
+	return response;
+}
+
+function withWorkerAdmissionTiming(
+	response: Response,
+	timing: {
+		preparationMs: number;
+		admissionMs: number;
+		preparedAdmissionLease?: {
+			hit: boolean;
+			missReason: string | null;
+			inspectionMs: number;
+		};
+	}
+): Response {
+	const lease = timing.preparedAdmissionLease;
+	const leaseDescription = lease?.hit ? 'hit' : (lease?.missReason ?? 'unavailable');
+	response.headers.set(
+		'Server-Timing',
+		[
+			`prepared-admission;dur=${Math.max(0, lease?.inspectionMs ?? 0)};desc="${leaseDescription}"`,
+			`worker-preparation;dur=${Math.max(0, timing.preparationMs)}`,
+			`worker-admission;dur=${Math.max(0, timing.admissionMs)}`
+		].join(', ')
+	);
 	return response;
 }

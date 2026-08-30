@@ -134,6 +134,7 @@ describe('Authenticated Pages', () => {
 				},
 				depends
 			} as any);
+			if (!result) throw new Error('Expected authenticated projects page data');
 
 			expect(depends).toHaveBeenCalledWith('ontology:projects');
 			expect(result.actorId).toBe('actor-1');

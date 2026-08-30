@@ -591,6 +591,7 @@ It responds with a structured guide that walks through onboarding, planning, aut
 		function: {
 			name: 'delegate_task',
 			description: `Dispatch a self-contained background Agent Run that reports back here without blocking chat. Use when the user asks for background work or the task is better completed autonomously; answer inline when it fits one turn.
+For a broad, coherent project change that spans several entities, first gather and read the current working set in chat. Then dispatch a project-scoped read_write run with review=true, passing the exact discovered entity IDs and intended per-entity outcomes in the instructions. That run stages one reviewable change set; it must not apply anything before the user approves the proposal.
 The tool returns { run_ids }; announce dispatch, then do not poll because completion posts automatically. Use read_write only for explicitly requested changes. Scope project work with context_type=project and project_id, otherwise global.
 Use deep only for genuinely difficult analysis. Use deep_research for multi-source work with two bounded read-only researchers and synthesis; it must be read-only, costs at least $0.25, defaults to $0.50, and cannot exceed $1.`,
 			parameters: {

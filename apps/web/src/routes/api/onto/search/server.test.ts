@@ -1,12 +1,14 @@
 // apps/web/src/routes/api/onto/search/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureActorIdMock } = vi.hoisted(() => ({
-	ensureActorIdMock: vi.fn()
+const { ensureActorIdMock, fetchProjectSummariesMock } = vi.hoisted(() => ({
+	ensureActorIdMock: vi.fn(),
+	fetchProjectSummariesMock: vi.fn()
 }));
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
-	ensureActorId: ensureActorIdMock
+	ensureActorId: ensureActorIdMock,
+	fetchProjectSummaries: fetchProjectSummariesMock
 }));
 
 import { POST } from './+server';
@@ -42,6 +44,7 @@ function createSupabase() {
 	const eventLookup = {
 		select: vi.fn().mockReturnThis(),
 		is: vi.fn().mockReturnThis(),
+		in: vi.fn().mockReturnThis(),
 		or: vi.fn().mockReturnThis(),
 		order: vi.fn().mockReturnThis(),
 		limit: vi.fn().mockReturnThis(),
@@ -101,6 +104,14 @@ describe('/api/onto/search', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		ensureActorIdMock.mockResolvedValue('actor-1');
+		fetchProjectSummariesMock.mockResolvedValue([
+			{
+				id: '31021625-1377-4715-9fb4-f93102974628',
+				name: 'Cadre',
+				state_key: 'active',
+				access_level: 'read'
+			}
+		]);
 	});
 
 	it('treats the string none as an absent optional project_id', async () => {
@@ -143,7 +154,10 @@ describe('/api/onto/search', () => {
 				p_project_id: undefined
 			})
 		);
-		expect(event.locals.supabase.eventLookup.eq).toHaveBeenCalledWith('created_by', 'actor-1');
+		expect(fetchProjectSummariesMock).toHaveBeenCalledWith(event.locals.supabase, 'actor-1');
+		expect(event.locals.supabase.eventLookup.in).toHaveBeenCalledWith('project_id', [
+			'31021625-1377-4715-9fb4-f93102974628'
+		]);
 	});
 
 	it('returns 400 for malformed non-sentinel project ids', async () => {

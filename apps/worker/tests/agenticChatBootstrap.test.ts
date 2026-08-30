@@ -186,8 +186,8 @@ describe('Agentic Chat operational bootstrap', () => {
 		const names = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.map(([capability]) => capability);
 		const toolNames = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.map(([, toolName]) => toolName);
 		expect(bootstrap.getHealth().mutationCapabilities).toEqual({
-			provider: { count: 20, names },
-			adapter: { count: 20, names },
+			provider: { count: 21, names },
+			adapter: { count: 21, names },
 			advertisedMutationToolNames: toolNames
 		});
 		const firstStart = bootstrap.start();

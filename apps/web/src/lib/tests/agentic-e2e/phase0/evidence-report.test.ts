@@ -282,8 +282,10 @@ describe('Phase 0 evidence report', () => {
 		});
 
 		const [firstTurn] = report.turns;
-		expect(firstTurn.toolExecutions[0].decidedBy).toBeNull();
-		expect(firstTurn.toolExecutions[1].decidedBy).toBe('contract_reviewer');
+		expect(firstTurn).toBeDefined();
+		if (!firstTurn) throw new Error('Expected the first report turn');
+		expect(firstTurn.toolExecutions[0]!.decidedBy).toBeNull();
+		expect(firstTurn.toolExecutions[1]!.decidedBy).toBe('contract_reviewer');
 		expect(firstTurn.controlDecisions).toEqual([
 			{ name: 'declare_turn_contract', decidedBy: 'contract_reviewer', sequenceIndex: 2 }
 		]);

@@ -370,7 +370,7 @@ function createStreamingSupabase(
 		rows[table] ??= [];
 		insertedRows[table] ??= [];
 		updatedRows[table] ??= [];
-		return rows[table];
+		return rows[table]!;
 	};
 
 	class QueryBuilder {
@@ -407,7 +407,7 @@ function createStreamingSupabase(
 					updated_at: item.updated_at ?? now
 				};
 				ensureRows(this.table).push(row);
-				insertedRows[this.table].push(row);
+				insertedRows[this.table]!.push(row);
 				return row;
 			});
 			return this;
@@ -449,7 +449,7 @@ function createStreamingSupabase(
 					updated_at: item.updated_at ?? now
 				};
 				ensureRows(this.table).push(row);
-				insertedRows[this.table].push(row);
+				insertedRows[this.table]!.push(row);
 				return row;
 			});
 			return this;
@@ -508,9 +508,12 @@ function createStreamingSupabase(
 			return this.execute(true);
 		}
 
-		then<TResult1 = { data: Row[]; error: null }, TResult2 = never>(
+		then<TResult1 = { data: Row[]; error: unknown | null }, TResult2 = never>(
 			onfulfilled?:
-				| ((value: { data: Row[]; error: null }) => TResult1 | PromiseLike<TResult1>)
+				| ((value: {
+						data: Row[];
+						error: unknown | null;
+				  }) => TResult1 | PromiseLike<TResult1>)
 				| null,
 			onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
 		) {
@@ -519,7 +522,9 @@ function createStreamingSupabase(
 
 		private async execute(single: true): Promise<{ data: Row | null; error: unknown | null }>;
 		private async execute(single: false): Promise<{ data: Row[]; error: unknown | null }>;
-		private async execute(single: boolean) {
+		private async execute(
+			single: boolean
+		): Promise<{ data: Row | Row[] | null; error: unknown | null }> {
 			let data: Row[];
 			if (this.mode === 'insert' || this.mode === 'upsert') {
 				const insertError = options.insertErrors?.[this.table];
@@ -536,7 +541,7 @@ function createStreamingSupabase(
 				if (this.mode === 'update' && this.patch) {
 					for (const row of data) {
 						Object.assign(row, this.patch, { updated_at: new Date().toISOString() });
-						updatedRows[this.table].push({ ...row });
+						updatedRows[this.table]!.push({ ...row });
 					}
 				}
 			}
@@ -689,9 +694,9 @@ function createStreamingSupabase(
 			updated_at: now
 		};
 		ensureRows('chat_turn_runs').push(turnRow);
-		insertedRows.chat_turn_runs.push({ ...turnRow });
+		insertedRows.chat_turn_runs!.push({ ...turnRow });
 		ensureRows('chat_messages').push(messageRow);
-		insertedRows.chat_messages.push({ ...messageRow });
+		insertedRows.chat_messages!.push({ ...messageRow });
 
 		return {
 			data: {
@@ -1240,7 +1245,7 @@ describe('/api/agent/v2/stream', () => {
 		]);
 		expect(supabase.insertedRows.chat_turn_runs).toEqual([
 			expect.objectContaining({
-				user_message_id: supabase.insertedRows.chat_messages[0]?.id
+				user_message_id: supabase.insertedRows.chat_messages?.[0]?.id
 			})
 		]);
 		expect(mocks.persistMessage.mock.calls.some(([params]) => params.role === 'user')).toBe(
@@ -2442,7 +2447,7 @@ describe('/api/agent/v2/stream', () => {
 
 		expect(response.status).toBe(200);
 		await response.text();
-		const admittedUserMessage = supabase.insertedRows.chat_messages[0];
+		const admittedUserMessage = supabase.insertedRows.chat_messages?.[0];
 		expect(admittedUserMessage).toEqual(
 			expect.objectContaining({
 				role: 'user',
@@ -2453,6 +2458,7 @@ describe('/api/agent/v2/stream', () => {
 				})
 			})
 		);
+		if (!admittedUserMessage) throw new Error('Expected an admitted user message');
 		expect(capturedMessage).toContain('Attachment context: diagram.png');
 		expect(mocks.persistMessageAttachments).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -2460,7 +2466,7 @@ describe('/api/agent/v2/stream', () => {
 				attachments: [attachment]
 			})
 		);
-		expect(supabase.insertedRows.chat_turn_runs[0]).toEqual(
+		expect(supabase.insertedRows.chat_turn_runs?.[0]).toEqual(
 			expect.objectContaining({ user_message_id: admittedUserMessage.id })
 		);
 		expect(mocks.persistMessage.mock.calls.some(([params]) => params.role === 'user')).toBe(
@@ -2899,7 +2905,7 @@ describe('/api/agent/v2/stream', () => {
 					Boolean(args?.p_patch?.fastchat_domain_state)
 				);
 			})
-			.map(([, args]) => args.p_patch.fastchat_domain_state);
+			.map(([, args]) => args!.p_patch.fastchat_domain_state);
 		const finalDomainState = domainStatePatches.at(-1);
 		expect(finalDomainState).toMatchObject({
 			used_domains: [
@@ -4023,7 +4029,7 @@ describe('/api/agent/v2/stream', () => {
 
 			expect(executeSpy).toHaveBeenCalledTimes(1);
 			const [singleCall, singleContext, singleDefinitions, singleOptions] =
-				executeSpy.mock.calls[0];
+				executeSpy.mock.calls[0]!;
 			expect(singleCall).toEqual(singleToolCall);
 			expect(singleContext).toEqual(
 				expect.objectContaining({
@@ -4047,13 +4053,14 @@ describe('/api/agent/v2/stream', () => {
 
 			expect(batchSpy).toHaveBeenCalledTimes(1);
 			const [batchCalls, batchContext, batchDefinitions, maxConcurrency, batchOptions] =
-				batchSpy.mock.calls[0];
+				batchSpy.mock.calls[0]!;
 			expect(batchCalls).toHaveLength(1);
-			expect(batchCalls[0]).toMatchObject({
+			const batchCall = batchCalls[0]!;
+			expect(batchCall).toMatchObject({
 				id: 'call-batch-contract',
 				function: { name: 'list_onto_tasks' }
 			});
-			expect(JSON.parse(batchCalls[0].function.arguments)).toEqual({ project_id: projectId });
+			expect(JSON.parse(batchCall.function.arguments)).toEqual({ project_id: projectId });
 			expect(batchContext).toEqual(
 				expect.objectContaining({
 					contextScope: { projectId, projectName: 'Launch Project' }
@@ -4325,8 +4332,11 @@ describe('/api/agent/v2/stream', () => {
 
 			expect(response.status).toBe(200);
 			await response.text();
+			const context = capturedContext as Row | null;
+			expect(context).not.toBeNull();
+			if (!context) throw new Error('Expected tool execution context');
 
-			expect(capturedContext?.contextScope).toEqual({
+			expect(context.contextScope).toEqual({
 				projectId,
 				projectName: 'Launch Project',
 				focus: {
@@ -4335,12 +4345,12 @@ describe('/api/agent/v2/stream', () => {
 					name: 'Focused task'
 				}
 			});
-			expect(capturedContext?.projectFocus).toMatchObject({
+			expect(context.projectFocus).toMatchObject({
 				focusType: 'task',
 				focusEntityId: focusTaskId,
 				projectId
 			});
-			const entities = capturedContext?.ontologyContext?.entities ?? {};
+			const entities = context.ontologyContext?.entities ?? {};
 			expect(entities.project).toEqual(
 				expect.objectContaining({ id: projectId, name: 'Launch Project' })
 			);
@@ -4355,7 +4365,7 @@ describe('/api/agent/v2/stream', () => {
 			]);
 			expect(JSON.stringify(entities)).not.toContain(unrelatedTaskId);
 			expect(JSON.stringify(entities)).not.toContain('Unrelated goal');
-			expect(capturedContext?.ontologyContext?.metadata?.document_tree).toBeUndefined();
+			expect(context.ontologyContext?.metadata?.document_tree).toBeUndefined();
 		} finally {
 			executeSpy.mockRestore();
 		}
@@ -4516,7 +4526,10 @@ describe('/api/agent/v2/stream', () => {
 					})
 				])
 			);
-			expect(capturedContext?.contextScope).toEqual({
+			const context = capturedContext as Row | null;
+			expect(context).not.toBeNull();
+			if (!context) throw new Error('Expected tool execution context');
+			expect(context.contextScope).toEqual({
 				projectId,
 				projectName: 'Launch Project',
 				focus: {
@@ -4525,17 +4538,17 @@ describe('/api/agent/v2/stream', () => {
 					name: 'Focused spec'
 				}
 			});
-			expect(capturedContext?.projectFocus).toMatchObject({
+			expect(context.projectFocus).toMatchObject({
 				focusType: 'document',
 				focusEntityId: focusedDocumentId,
 				projectId
 			});
-			const entities = capturedContext?.ontologyContext?.entities ?? {};
+			const entities = context.ontologyContext?.entities ?? {};
 			expect(entities.documents).toEqual([
 				expect.objectContaining({ id: focusedDocumentId, title: 'Focused spec' })
 			]);
 			expect(JSON.stringify(entities)).not.toContain(unrelatedTaskId);
-			expect(capturedContext?.ontologyContext?.metadata?.document_tree).toEqual(
+			expect(context.ontologyContext?.metadata?.document_tree).toEqual(
 				expect.objectContaining({
 					root: expect.arrayContaining([
 						expect.objectContaining({ id: focusedDocumentId })
@@ -4670,24 +4683,27 @@ describe('/api/agent/v2/stream', () => {
 			expect(response.status).toBe(200);
 			await response.text();
 
-			expect(capturedContext?.contextScope).toEqual({
+			const context = capturedContext as Row | null;
+			expect(context).not.toBeNull();
+			if (!context) throw new Error('Expected tool execution context');
+			expect(context.contextScope).toEqual({
 				projectId: shiftedProjectId,
 				projectName: 'Shifted Project'
 			});
-			expect(capturedContext?.projectFocus).toMatchObject({
+			expect(context.projectFocus).toMatchObject({
 				focusType: 'project-wide',
 				projectId: shiftedProjectId,
 				projectName: 'Shifted Project'
 			});
-			expect(capturedContext?.ontologyContext?.scope?.projectId).toBe(shiftedProjectId);
-			expect(capturedContext?.ontologyContext?.entities?.project).toEqual({
+			expect(context.ontologyContext?.scope?.projectId).toBe(shiftedProjectId);
+			expect(context.ontologyContext?.entities?.project).toEqual({
 				id: shiftedProjectId,
 				name: 'Shifted Project'
 			});
-			expect(JSON.stringify(capturedContext?.ontologyContext?.entities ?? {})).not.toContain(
+			expect(JSON.stringify(context.ontologyContext?.entities ?? {})).not.toContain(
 				originalProjectId
 			);
-			expect(JSON.stringify(capturedContext?.ontologyContext?.entities ?? {})).not.toContain(
+			expect(JSON.stringify(context.ontologyContext?.entities ?? {})).not.toContain(
 				staleTaskId
 			);
 		} finally {

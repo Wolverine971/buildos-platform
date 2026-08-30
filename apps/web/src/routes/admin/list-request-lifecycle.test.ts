@@ -175,7 +175,7 @@ describe('admin feedback request lifecycle', () => {
 		await waitFor(() => expect(requests).toHaveLength(1));
 		await new Promise((resolve) => window.setTimeout(resolve, 20));
 		expect(requests).toHaveLength(1);
-		const staleRequest = requests[0];
+		const staleRequest = requests[0]!;
 
 		await fireEvent.input(
 			screen.getByPlaceholderText('Search feedback text or user email...'),
@@ -184,7 +184,7 @@ describe('admin feedback request lifecycle', () => {
 
 		await waitFor(() => expect(staleRequest.signal?.aborted).toBe(true));
 		await waitFor(() => expect(requests).toHaveLength(2), { timeout: 1_000 });
-		const currentRequest = requests[1];
+		const currentRequest = requests[1]!;
 		expect(currentRequest.url).toContain('search=current');
 
 		await settleResponse(
@@ -208,16 +208,16 @@ describe('admin users request lifecycle', () => {
 		render(UsersPage);
 
 		await waitFor(() => expect(requests).toHaveLength(1));
-		await settleResponse(requests[0], usersResponse('page-one-user', 'Page One User', 1));
+		await settleResponse(requests[0]!, usersResponse('page-one-user', 'Page One User', 1));
 		await waitFor(() => expect(screen.getAllByText('Page One User').length).toBeGreaterThan(0));
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 		await waitFor(() => expect(requests).toHaveLength(2));
 		await new Promise((resolve) => window.setTimeout(resolve, 20));
 		expect(requests).toHaveLength(2);
-		expect(requests[1].url).toContain('page=2');
+		expect(requests[1]!.url).toContain('page=2');
 
-		await settleResponse(requests[1], usersResponse('page-two-user', 'Page Two User', 2));
+		await settleResponse(requests[1]!, usersResponse('page-two-user', 'Page Two User', 2));
 		await waitFor(() => expect(screen.getAllByText('Page Two User').length).toBeGreaterThan(0));
 	});
 
@@ -226,15 +226,15 @@ describe('admin users request lifecycle', () => {
 		render(UsersPage);
 
 		await waitFor(() => expect(requests).toHaveLength(1));
-		await settleResponse(requests[0], usersResponse('initial-user', 'Initial User', 1));
+		await settleResponse(requests[0]!, usersResponse('initial-user', 'Initial User', 1));
 		await fireEvent.click(screen.getByRole('button', { name: 'Filters & Sort' }));
 		await fireEvent.change(screen.getByLabelText('Sort by'), {
 			target: { value: 'project_count' }
 		});
 
 		await waitFor(() => expect(requests).toHaveLength(2));
-		expect(requests[1].url).toContain('limit=1000');
-		await settleResponse(requests[1], clientSortedUsersResponse(21));
+		expect(requests[1]!.url).toContain('limit=1000');
+		await settleResponse(requests[1]!, clientSortedUsersResponse(21));
 		await waitFor(() =>
 			expect(screen.getAllByText('Client User 20').length).toBeGreaterThan(0)
 		);

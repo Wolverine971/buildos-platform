@@ -66,7 +66,7 @@ class QueryBuilderMock {
 		if (!this.limitCalls[this.table]) {
 			this.limitCalls[this.table] = [];
 		}
-		this.limitCalls[this.table].push(value);
+		this.limitCalls[this.table]!.push(value);
 		return this;
 	}
 

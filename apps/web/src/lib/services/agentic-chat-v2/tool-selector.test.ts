@@ -355,6 +355,40 @@ describe('selectFastChatTools', () => {
 		expect(quickLookupNames).not.toContain('delegate_task');
 	});
 
+	it('hot-loads the reviewable Agent Run bridge for broad coherent project changes only', () => {
+		const reorientationNames = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				'Reorient our whole marketing direction toward weekend hikers and update every relevant document, goal, and task.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+		const campaignNames = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				'Add a marketing campaign targeting Instagram and integrate it into our current strategy.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+		const singleEditNames = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage: 'Update the launch task title to Ship the beta.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+		const globalNames = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage: 'Reorient our whole marketing direction toward weekend hikers.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(reorientationNames).toContain('delegate_task');
+		expect(campaignNames).toContain('delegate_task');
+		expect(singleEditNames).not.toContain('delegate_task');
+		expect(globalNames).not.toContain('delegate_task');
+	});
+
 	it('mounts only skill_search + domain_search at launch under FASTCHAT_LEAN_DISCOVERY', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		vi.stubEnv('FASTCHAT_LEAN_DISCOVERY', 'true');

@@ -31,7 +31,8 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1 = Object.free
 	'create_onto_risk',
 	'update_onto_risk',
 	'create_onto_project',
-	'update_onto_project'
+	'update_onto_project',
+	'delegate_task'
 ] as const);
 
 /**
@@ -74,7 +75,6 @@ export const AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1 = Object.freeze([
 	'call_corsair_mcp_tool',
 	'get_buildos_overview',
 	'get_buildos_usage_guide',
-	'delegate_task',
 	'commit_change_set'
 ] as const);
 

@@ -249,7 +249,7 @@ describe('admin chat user analytics routes', () => {
 
 		const response = await listGET(event);
 		const payload = await response.json();
-		const searchParams = parseAdminChatUsersQueryMock.mock.calls[0][0] as URLSearchParams;
+		const searchParams = parseAdminChatUsersQueryMock.mock.calls[0]![0] as URLSearchParams;
 
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
@@ -284,7 +284,7 @@ describe('admin chat user analytics routes', () => {
 
 		const response = await detailGET(event);
 		const payload = await response.json();
-		const searchParams = parseAdminChatUserDetailQueryMock.mock.calls[0][0] as URLSearchParams;
+		const searchParams = parseAdminChatUserDetailQueryMock.mock.calls[0]![0] as URLSearchParams;
 
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
@@ -334,7 +334,7 @@ describe('admin chat user analytics routes', () => {
 		);
 		const payload = await response.json();
 		const searchParams = parseAdminChatRedactedSessionQueryMock.mock
-			.calls[0][0] as URLSearchParams;
+			.calls[0]![0] as URLSearchParams;
 
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);

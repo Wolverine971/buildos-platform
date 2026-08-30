@@ -498,7 +498,7 @@ describe('POST /api/inbox/decide', () => {
 			status: 'decided',
 			source_status: 'rejected'
 		});
-		expect(admin.updates[0].payload).toMatchObject({
+		expect(admin.updates[0]!.payload).toMatchObject({
 			status: 'decided',
 			source_status: 'rejected'
 		});
@@ -532,7 +532,7 @@ describe('POST /api/inbox/decide', () => {
 			source_status: 'delegated',
 			decided_at: null
 		});
-		expect(admin.updates[0].payload).toMatchObject({
+		expect(admin.updates[0]!.payload).toMatchObject({
 			status: 'deciding',
 			source_status: 'delegated',
 			decided_at: null
@@ -579,7 +579,7 @@ describe('POST /api/inbox/decide', () => {
 			status: 'decided',
 			source_status: 'accepted'
 		});
-		expect(admin.updates[0].payload).toMatchObject({
+		expect(admin.updates[0]!.payload).toMatchObject({
 			status: 'decided',
 			source_status: 'accepted'
 		});
@@ -622,7 +622,7 @@ describe('POST /api/inbox/decide', () => {
 			status: 'decided',
 			source_status: 'completed'
 		});
-		expect(admin.updates[0].payload).toMatchObject({
+		expect(admin.updates[0]!.payload).toMatchObject({
 			status: 'decided',
 			source_status: 'completed'
 		});

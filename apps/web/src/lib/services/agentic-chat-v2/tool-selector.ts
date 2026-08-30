@@ -104,20 +104,19 @@ export function selectFastChatTools(params: {
 	)
 		? ['move_onto_task']
 		: [];
-	const delegatedResearchTools = looksLikeDelegatedResearchTurn(
-		[
-			params.latestUserMessage,
-			params.turnIntent?.source === 'pending_continuation'
-				? params.turnIntent.originalRequestText
-				: null
-		]
-			.filter(
-				(value): value is string => typeof value === 'string' && value.trim().length > 0
-			)
-			.join('\n')
-	)
-		? ['delegate_task']
-		: [];
+	const delegationIntentText = [
+		params.latestUserMessage,
+		params.turnIntent?.source === 'pending_continuation'
+			? params.turnIntent.originalRequestText
+			: null
+	]
+		.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+		.join('\n');
+	const delegationTools =
+		looksLikeDelegatedResearchTurn(delegationIntentText) ||
+		looksLikeBroadProjectChangeTurn(params.contextType, delegationIntentText)
+			? ['delegate_task']
+			: [];
 	// tasker/39 stage 3: turns that plainly ask for web research get web tools
 	// at launch (and with them the situational research rules), instead of
 	// spending a discovery round finding web_search first.
@@ -136,7 +135,7 @@ export function selectFastChatTools(params: {
 		: [];
 	return materializeGatewayTools(tools, [
 		...crossProjectTools,
-		...delegatedResearchTools,
+		...delegationTools,
 		...webResearchTools,
 		...externalEmailReadTools,
 		...externalCalendarTools
@@ -189,6 +188,50 @@ function looksLikeDelegatedResearchTurn(latestUserMessage?: string | null): bool
 			text
 		)
 	);
+}
+
+/**
+ * Hot-load the review-required Agent Run bridge for the Phase 4 class of work:
+ * one coherent project change that needs discovery, several reads, and a staged
+ * multi-entity proposal. Keep ordinary single-entity edits on the direct path.
+ */
+function looksLikeBroadProjectChangeTurn(
+	contextType: ChatContextType,
+	latestUserMessage?: string | null
+): boolean {
+	if (contextType !== 'project' && contextType !== 'ontology') return false;
+	const text = latestUserMessage?.trim() ?? '';
+	if (!text) return false;
+
+	const hasChangeIntent =
+		/\b(?:add|align|change|create|insert|integrate|launch|pivot|realign|refocus|reorient|restructure|revise|rewrite|shift|update)\b/i.test(
+			text
+		);
+	if (!hasChangeIntent) return false;
+
+	const hasBroadWorkingSet =
+		/\b(?:all|entire|every|everything|whole)\b[\s\S]{0,100}\b(?:campaigns?|docs?|documents?|entities|goals?|materials?|milestones?|plans?|project|risks?|strategy|tasks?|working set)\b/i.test(
+			text
+		) ||
+		/\b(?:across|throughout)\b[\s\S]{0,80}\b(?:campaigns?|docs?|documents?|goals?|materials?|plans?|project|tasks?)\b/i.test(
+			text
+		) ||
+		/\b(?:relevant|related)\b[\s\S]{0,80}\b(?:campaigns?|docs?|documents?|entities|goals?|materials?|plans?|tasks?)\b/i.test(
+			text
+		);
+	const hasStrategicReorientation =
+		/\b(?:pivot|realign|refocus|reorient|restructure|shift)\b[\s\S]{0,100}\b(?:brand|campaign|direction|marketing|positioning|strategy)\b/i.test(
+			text
+		) ||
+		/\b(?:brand|campaign|direction|marketing|positioning|strategy)\b[\s\S]{0,100}\b(?:pivot|realign|refocus|reorient|restructure|shift)\b/i.test(
+			text
+		);
+	const hasCampaignInsertion =
+		/\b(?:add|create|insert|integrate|launch)\b[\s\S]{0,80}\b(?:campaign|initiative)\b[\s\S]{0,120}\b(?:audience|channel|instagram|positioning|segment|strategy|target|targeting)\b/i.test(
+			text
+		);
+
+	return hasBroadWorkingSet || hasStrategicReorientation || hasCampaignInsertion;
 }
 
 function looksLikeExternalEmailReadTurn(latestUserMessage?: string | null): boolean {

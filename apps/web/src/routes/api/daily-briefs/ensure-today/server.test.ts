@@ -229,7 +229,7 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 				})
 			})
 		);
-		const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+		const body = JSON.parse(fetchMock.mock.calls[0]![1].body);
 		expect(body).toMatchObject({
 			userId: 'user-1',
 			briefDate: '2026-07-06',
@@ -286,7 +286,7 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 			job: { queue_job_id: 'queue-existing', status: 'pending' }
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+		const body = JSON.parse(fetchMock.mock.calls[0]![1].body);
 		expect(body).toMatchObject({
 			userId: 'user-1',
 			briefDate: '2026-07-06',
@@ -326,7 +326,7 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 
 		expect(response.status).toBe(200);
 		expect(payload.data.briefDate).toBe('2026-07-06');
-		const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+		const body = JSON.parse(fetchMock.mock.calls[0]![1].body);
 		expect(body.briefDate).toBe('2026-07-06');
 	});
 

@@ -138,11 +138,11 @@ describe('Progressive Disclosure Flow', () => {
 				}
 			];
 
-			expect(calls[0].function.name).toBe('search_onto_projects');
-			expect(calls[1].function.name).toBe('get_onto_project_details');
-			expect(calls[2].function.name).toBe('list_onto_tasks');
-			expect(calls[1].function.arguments.length).toBeGreaterThanOrEqual(
-				calls[0].function.arguments.length
+			expect(calls[0]!.function.name).toBe('search_onto_projects');
+			expect(calls[1]!.function.name).toBe('get_onto_project_details');
+			expect(calls[2]!.function.name).toBe('list_onto_tasks');
+			expect(calls[1]!.function.arguments.length).toBeGreaterThanOrEqual(
+				calls[0]!.function.arguments.length
 			);
 		});
 	});

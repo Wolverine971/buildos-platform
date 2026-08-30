@@ -52,6 +52,37 @@ create table public.onto_project_members (
 	removed_at timestamptz
 );
 
+create table public.chat_sessions (
+	id uuid primary key,
+	user_id uuid not null references public.users(id) on delete cascade,
+	context_type text not null,
+	entity_id uuid,
+	summary text,
+	agent_metadata jsonb not null default '{}'::jsonb,
+	status text not null default 'active',
+	created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
+);
+
+create table public.chat_messages (
+	id uuid primary key,
+	session_id uuid not null references public.chat_sessions(id) on delete cascade,
+	user_id uuid not null references public.users(id) on delete cascade,
+	role text not null,
+	content text not null,
+	created_at timestamptz not null default now()
+);
+
+create table public.chat_turn_checkpoints (
+	id uuid primary key,
+	session_id uuid not null references public.chat_sessions(id) on delete cascade,
+	user_id uuid not null references public.users(id) on delete cascade,
+	status text not null,
+	expires_at timestamptz,
+	resume_started_at timestamptz,
+	created_at timestamptz not null default now()
+);
+
 do $$
 declare
 	v_table text;
@@ -80,11 +111,29 @@ $$;
 create table public.agentic_chat_prepared_prompts (
 	id uuid primary key,
 	user_id uuid not null references public.users(id) on delete cascade,
+	session_id uuid references public.chat_sessions(id) on delete cascade,
 	context_type text not null,
+	entity_id uuid,
 	project_id uuid,
+	project_focus jsonb,
+	cache_key text not null default 'fixture-cache-key',
+	nonce_sha256 text not null default repeat('a', 64),
+	prompt_variant text not null default 'lite_seed_v1',
+	context_cache_version integer not null default 2,
+	context_payload jsonb not null default '{}'::jsonb,
+	conversation_summary text,
+	history_for_model jsonb not null default '[]'::jsonb,
+	history_strategy text,
+	history_compressed boolean,
+	raw_history_count integer,
+	history_for_model_count integer,
+	prepared_surfaces jsonb not null default '{}'::jsonb,
+	default_surface_profile text not null default 'global_basic',
+	context_payload_sha256 text not null default repeat('b', 64),
 	consumed_at timestamptz,
 	expires_at timestamptz not null,
-	created_at timestamptz not null default now()
+	created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 create table public.chat_prompt_snapshots (
@@ -170,4 +219,8 @@ grant execute on function public.actor_has_project_member_access(uuid, uuid, tex
 	to service_role;
 grant execute on function public.current_actor_has_project_member_access(uuid, text)
 	to authenticated, service_role;
-
+grant select, insert, update, delete on table public.agentic_chat_prepared_prompts
+	to service_role;
+grant select on table public.chat_sessions, public.chat_messages, public.chat_turn_checkpoints,
+	public.onto_actors, public.onto_projects, public.onto_project_members
+	to service_role;

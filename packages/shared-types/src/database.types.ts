@@ -21358,6 +21358,19 @@ export type Database = {
         Args: { p_cache_key: string }
         Returns: boolean
       }
+      inspect_agentic_chat_prepared_admission: {
+        Args: {
+          p_context_type: string
+          p_entity_id?: string | null
+          p_nonce_sha256: string
+          p_now?: string
+          p_prepared_prompt_id: string
+          p_project_id?: string | null
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_id: string }; Returns: boolean }

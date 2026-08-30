@@ -15,6 +15,8 @@ describe('ToolCallAssembler', () => {
 		assembler.ingest({ index: 0, function: { arguments: ':5}' } });
 
 		const [toolCall] = assembler.drain();
+		expect(toolCall).toBeDefined();
+		if (!toolCall) throw new Error('Expected one assembled tool call');
 		expect(toolCall.id).toBe('call_1');
 		expect(toolCall.function.name).toBe('list_onto_tasks');
 		expect(toolCall.function.arguments).toBe('{"limit":5}');
@@ -27,6 +29,8 @@ describe('ToolCallAssembler', () => {
 		assembler.ingest({ id: 'call_abc', function: { arguments: ':"onto.task.update"}' } });
 
 		const [toolCall] = assembler.drain();
+		expect(toolCall).toBeDefined();
+		if (!toolCall) throw new Error('Expected one assembled tool call');
 		expect(toolCall.id).toBe('call_abc');
 		expect(toolCall.function.arguments).toBe('{"op":"onto.task.update"}');
 	});

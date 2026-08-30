@@ -177,6 +177,36 @@ describe('shared ontology search', () => {
 		);
 	});
 
+	it('drops weak workspace trigram tails without weakening project-scoped recall', async () => {
+		const weakTrigramRow = {
+			type: 'risk',
+			id: 'risk-1',
+			project_id: PROJECT_ID,
+			title: 'Unrelated risk',
+			score: 0.046
+		};
+		const rpc = vi.fn(async () => ({ data: [weakTrigramRow], error: null }));
+		const { context: workspaceContext } = contextWith({ rpc });
+		const { context: projectContext } = contextWith({
+			rpc,
+			tables: { onto_projects: [{ id: PROJECT_ID }] }
+		});
+
+		await expect(
+			searchOntologyEntities(workspaceContext, {
+				query: 'quantum entanglement',
+				types: ['risk']
+			})
+		).resolves.toMatchObject({ total_returned: 0, results: [] });
+		await expect(
+			searchOntologyEntities(projectContext, {
+				query: 'quantum entanglement',
+				project_id: PROJECT_ID,
+				types: ['risk']
+			})
+		).resolves.toMatchObject({ total_returned: 1, results: [{ id: 'risk-1' }] });
+	});
+
 	it('hybrid-RRF merges lexical and semantic RPC ranks when embeddings are available', async () => {
 		const rpc = vi.fn(async (fn: string) => {
 			if (fn === 'onto_search_entities') {
@@ -217,6 +247,30 @@ describe('shared ontology search', () => {
 				p_query_embedding: '[0.1,0.2,0.3]',
 				p_types: ['document'],
 				p_limit: 30,
+				p_min_similarity: 0.3
+			})
+		);
+	});
+
+	it('uses the lower semantic floor for an explicitly scoped project', async () => {
+		const rpc = vi.fn(async () => ({ data: [], error: null }));
+		const { context } = contextWith({
+			rpc,
+			tables: { onto_projects: [{ id: PROJECT_ID }] },
+			embeddings: { embedQuery: vi.fn(async () => [0.1, 0.2, 0.3]) }
+		});
+
+		await searchOntologyEntities(context, {
+			query: 'vocabulary mismatch',
+			project_id: PROJECT_ID,
+			types: ['document'],
+			limit: 10
+		});
+
+		expect(rpc).toHaveBeenCalledWith(
+			'onto_search_semantic',
+			expect.objectContaining({
+				p_project_id: PROJECT_ID,
 				p_min_similarity: 0.2
 			})
 		);

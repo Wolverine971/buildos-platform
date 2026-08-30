@@ -234,27 +234,28 @@ describe('buildSessionDetailPayload', () => {
 		});
 
 		expect(payload.turn_runs).toHaveLength(1);
-		expect(payload.turn_runs[0]).toMatchObject({
+		const turnRun = payload.turn_runs[0]!;
+		expect(turnRun).toMatchObject({
 			id: 'run-1',
 			turn_index: 1,
 			stream_run_id: 'stream-1',
 			first_lane: 'overview',
 			first_canonical_op: 'util.project.overview'
 		});
-		expect(payload.turn_runs[0].prompt_snapshot).toMatchObject({
+		expect(turnRun.prompt_snapshot).toMatchObject({
 			id: 'snapshot-1',
 			approx_prompt_tokens: 1030
 		});
-		expect(payload.turn_runs[0].events).toHaveLength(2);
-		expect(payload.turn_runs[0].events[1]?.payload).toMatchObject({
+		expect(turnRun.events).toHaveLength(2);
+		expect(turnRun.events[1]?.payload).toMatchObject({
 			tool_result: { ok: true },
 			tool_arguments: {
 				query: '9takes'
 			},
 			tool_result_source: 'chat_tool_executions'
 		});
-		expect(payload.turn_runs[0].eval_runs).toHaveLength(1);
-		expect(payload.turn_runs[0].eval_runs[0]).toMatchObject({
+		expect(turnRun.eval_runs).toHaveLength(1);
+		expect(turnRun.eval_runs[0]).toMatchObject({
 			id: 'eval-1',
 			scenario_slug: 'project.named_status',
 			status: 'passed'
