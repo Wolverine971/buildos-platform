@@ -259,30 +259,36 @@ describe('AgenticChatStreamPublisher', () => {
 	});
 
 	it('flushes ready text for multiple turns through one worker-level batch', async () => {
-		const first = turn('batch-a');
-		const second = turn('batch-b');
-		const persistence = createPersistence([first, second]);
-		const publisher = new AgenticChatStreamPublisher(
-			{ persistence, broadcast: createBroadcast() },
-			{ flushIntervalMs: 5, textBatchTargetBytes: 100 }
-		);
-		publisher.start();
-		publisher.registerTurn(first);
-		publisher.registerTurn(second);
-		await Promise.all([
-			publisher.appendText(first.turnRunId, 'A').delivery,
-			publisher.appendText(second.turnRunId, 'B').delivery
-		]);
+		vi.useFakeTimers();
+		try {
+			const first = turn('batch-a');
+			const second = turn('batch-b');
+			const persistence = createPersistence([first, second]);
+			const publisher = new AgenticChatStreamPublisher(
+				{ persistence, broadcast: createBroadcast() },
+				{ flushIntervalMs: 5, textBatchTargetBytes: 100 }
+			);
+			publisher.start();
+			publisher.registerTurn(first);
+			publisher.registerTurn(second);
+			await Promise.all([
+				publisher.appendText(first.turnRunId, 'A').delivery,
+				publisher.appendText(second.turnRunId, 'B').delivery
+			]);
 
-		const firstSteady = publisher.appendText(first.turnRunId, '1');
-		const secondSteady = publisher.appendText(second.turnRunId, '2');
-		await Promise.all([firstSteady.delivery, secondSteady.delivery]);
+			const firstSteady = publisher.appendText(first.turnRunId, '1');
+			const secondSteady = publisher.appendText(second.turnRunId, '2');
+			await vi.advanceTimersByTimeAsync(5);
+			await Promise.all([firstSteady.delivery, secondSteady.delivery]);
 
-		expect(persistence.textCalls.at(-1)?.map((input) => input.turn_run_id)).toEqual([
-			first.turnRunId,
-			second.turnRunId
-		]);
-		await publisher.stop();
+			expect(persistence.textCalls.at(-1)?.map((input) => input.turn_run_id)).toEqual([
+				first.turnRunId,
+				second.turnRunId
+			]);
+			await publisher.stop();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('enters reconcile-only mode on replay and never Broadcasts without authority', async () => {
