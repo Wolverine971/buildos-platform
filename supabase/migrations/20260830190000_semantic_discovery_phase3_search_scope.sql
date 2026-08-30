@@ -1,5 +1,5 @@
--- packages/shared-types/src/functions/onto_search_entities.sql
--- Source of truth for the ontology cross-entity search RPC used by agentic chat.
+-- supabase/migrations/20260830190000_semantic_discovery_phase3_search_scope.sql
+-- Phase 3 semantic discovery: make lexical search match semantic owner/member scope.
 
 CREATE OR REPLACE FUNCTION public.onto_search_entities(
 	p_actor_id uuid,

@@ -312,10 +312,34 @@ describe('PrewarmController — orchestrate', () => {
 		expect(h.prewarm).not.toHaveBeenCalled();
 	});
 
-	it('skips drafting when no session exists AND no draft signal is present', () => {
+	it('starts prewarm as soon as a project scope is selected without creating a session', () => {
 		const h = createHarness({ currentSession: null, canPrimeActiveChatSession: true });
 		h.controller.orchestrate();
-		expect(h.prewarm).not.toHaveBeenCalled();
+		expect(h.prewarm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				context_type: 'project',
+				entity_id: 'project-1',
+				ensure_session: false
+			}),
+			expect.anything()
+		);
+	});
+
+	it('materializes global context when global is explicitly selected', () => {
+		const h = createHarness({
+			currentSession: null,
+			selectedContextType: 'global',
+			selectedEntityId: undefined,
+			resolvedProjectFocus: null
+		});
+		h.controller.orchestrate();
+		expect(h.prewarm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				context_type: 'global',
+				ensure_session: false
+			}),
+			expect.anything()
+		);
 	});
 
 	it('fires prewarm when session exists and key is novel', () => {

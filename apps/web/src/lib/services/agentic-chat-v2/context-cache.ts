@@ -40,6 +40,10 @@ export type FastChatContextCache = {
 	version: number;
 	key: string;
 	created_at: string;
+	/** Source generation used to reject a snapshot after project/global writes. */
+	invalidation_token?: string | null;
+	/** When the reusable server-side snapshot was originally materialized. */
+	materialized_at?: string | null;
 	context: FastChatPromptContextSnapshot;
 };
 
@@ -149,6 +153,8 @@ export function normalizeFastChatContextCache(raw: unknown): FastChatContextCach
 		version,
 		key,
 		created_at: createdAt,
+		invalidation_token: readString(record, 'invalidationToken', 'invalidation_token'),
+		materialized_at: readString(record, 'materializedAt', 'materialized_at'),
 		context
 	};
 }
@@ -157,11 +163,15 @@ export function buildFastChatContextCacheEntry(params: {
 	cacheKey: string;
 	context: FastChatPromptContextSnapshot;
 	createdAt?: string;
+	invalidationToken?: string | null;
+	materializedAt?: string | null;
 }): FastChatContextCache {
 	return {
 		version: FASTCHAT_CONTEXT_CACHE_VERSION,
 		key: params.cacheKey,
 		created_at: params.createdAt ?? new Date().toISOString(),
+		invalidation_token: params.invalidationToken ?? null,
+		materialized_at: params.materializedAt ?? null,
 		context: {
 			contextType: params.context.contextType,
 			entityId: params.context.entityId ?? null,

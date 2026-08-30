@@ -673,7 +673,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		);
 	});
 
-	it('bypasses legacy prepared-prompt lineage until a byte-bound worker prompt variant exists', async () => {
+	it('uses a byte-bound worker prepared-prompt surface without rebuilding context or system prompt', async () => {
 		const preparedId = 'd8000000-0000-4000-8000-000000000001';
 		const serviceClient = serviceClientWithTables({
 			chat_sessions: [
@@ -692,7 +692,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		mocks.inspectPreparedPromptAdmissionLineage.mockResolvedValue({
 			id: preparedId,
-			acceptedSurfaceProfile: 'global_basic'
+			acceptedSurfaceProfile: 'worker_realtime:global_basic'
 		});
 		mocks.inspectPreparedPromptForWorkerAdmission.mockResolvedValue({
 			hit: true,
@@ -721,7 +721,8 @@ describe('Agentic Chat worker turn preparation', () => {
 			surface: {
 				system_prompt: 'Prepared system prompt',
 				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
-			}
+			},
+			surfaceKey: 'worker_realtime:global_basic'
 		});
 		const result = await prepareAgenticChatWorkerAdmission({
 			userClient: {} as never,
@@ -739,24 +740,26 @@ describe('Agentic Chat worker turn preparation', () => {
 			dependencies: dependencies()
 		});
 
-		expect(result.preparedPromptUsed).toBe(false);
+		expect(result.preparedPromptUsed).toBe(true);
 		expect(result.args).toMatchObject({
 			p_session_id: SESSION_ID,
-			p_history_source: 'admission_window',
-			p_prepared_prompt_id: null,
-			p_prepared_context_payload_sha256: null,
-			p_prepared_surface_profile: null
+			p_history_source: 'prepared_prompt',
+			p_prepared_prompt_id: preparedId,
+			p_prepared_context_payload_sha256: 'a'.repeat(64),
+			p_prepared_surface_profile: 'worker_realtime:global_basic'
 		});
-		expect(result.args.p_artifact_history).toEqual([]);
+		expect(result.args.p_artifact_history).toEqual([
+			expect.objectContaining({ role: 'assistant', content: 'Earlier answer' })
+		]);
 		expect(result.args.p_artifact_prepared).toMatchObject({
-			sourcePreparedPromptId: null,
-			systemPrompt: 'Trusted system prompt',
-			surfaceProfile: 'global_basic',
+			sourcePreparedPromptId: preparedId,
+			systemPrompt: 'Prepared system prompt',
+			surfaceProfile: 'worker_realtime:global_basic',
 			historyState: {
 				strategy: 'raw_history',
 				compressed: false,
-				rawHistoryCount: 0,
-				historyForModelCount: 0
+				rawHistoryCount: 1,
+				historyForModelCount: 1
 			},
 			sessionSnapshot: {
 				user_id: USER_ID,
@@ -771,15 +774,17 @@ describe('Agentic Chat worker turn preparation', () => {
 				status: 'ok'
 			}
 		});
-		expect(mocks.buildLitePromptEnvelope).toHaveBeenCalledWith(
+		expect(mocks.buildLitePromptEnvelope).not.toHaveBeenCalled();
+		expect(mocks.loadFastChatPromptContext).not.toHaveBeenCalled();
+		expect(mocks.inspectPreparedPromptAdmissionLineage).toHaveBeenCalledWith(
+			expect.objectContaining({ surfaceProfile: 'worker_realtime:global_basic' })
+		);
+		expect(mocks.inspectPreparedPromptForWorkerAdmission).toHaveBeenCalledWith(
 			expect.objectContaining({
-				currentUserMessage: 'Ship the next slice',
-				projectCreateWorkflow: 'reviewed_shell',
+				surfaceProfile: 'worker_realtime:global_basic',
 				scaffold: expect.objectContaining({ dynamicSkillTools: false })
 			})
 		);
-		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
-		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
 		const expectedHash = await hashCanonicalAdmissionRequestV1({
 			version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
 			clientTurnId: 'client-turn-1',
@@ -788,7 +793,10 @@ describe('Agentic Chat worker turn preparation', () => {
 			message: 'Ship the next slice',
 			attachments: [],
 			voiceNoteGroupId: null,
-			preparedPromptLineage: { id: null, acceptedSurfaceProfile: null }
+			preparedPromptLineage: {
+				id: preparedId,
+				acceptedSurfaceProfile: 'worker_realtime:global_basic'
+			}
 		});
 		expect(result.args.p_request_hash).toBe(expectedHash);
 	});
@@ -1041,7 +1049,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
-	it('keeps null prepared-prompt lineage stable while worker prompt reuse is disabled', async () => {
+	it('keeps prepared-prompt request lineage stable when a lost-response retry finds it consumed', async () => {
 		const preparedId = 'f1000000-0000-4000-8000-000000000001';
 		const contextSha = 'c'.repeat(64);
 		const serviceClient = serviceClientWithTables({
@@ -1061,7 +1069,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		mocks.inspectPreparedPromptAdmissionLineage.mockResolvedValue({
 			id: preparedId,
-			acceptedSurfaceProfile: 'global_basic'
+			acceptedSurfaceProfile: 'worker_realtime:global_basic'
 		});
 		mocks.inspectPreparedPromptForWorkerAdmission
 			.mockResolvedValueOnce({
@@ -1088,7 +1096,8 @@ describe('Agentic Chat worker turn preparation', () => {
 					raw_history_count: 0,
 					history_for_model_count: 0
 				},
-				surface: { system_prompt: 'Prepared prompt', sections: [] }
+				surface: { system_prompt: 'Prepared prompt', sections: [] },
+				surfaceKey: 'worker_realtime:global_basic'
 			})
 			.mockResolvedValueOnce({ hit: false, reason: 'consumed' });
 
@@ -1111,11 +1120,11 @@ describe('Agentic Chat worker turn preparation', () => {
 		const first = await prepare();
 		const retry = await prepare();
 
-		expect(first.preparedPromptUsed).toBe(false);
+		expect(first.preparedPromptUsed).toBe(true);
 		expect(retry.preparedPromptUsed).toBe(false);
 		expect(first.args.p_request_hash).toBe(retry.args.p_request_hash);
-		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
-		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
+		expect(mocks.inspectPreparedPromptAdmissionLineage).toHaveBeenCalledTimes(2);
+		expect(mocks.inspectPreparedPromptForWorkerAdmission).toHaveBeenCalledTimes(2);
 	});
 
 	it('freezes server-resolved current-turn attachment evidence and the authored message', async () => {

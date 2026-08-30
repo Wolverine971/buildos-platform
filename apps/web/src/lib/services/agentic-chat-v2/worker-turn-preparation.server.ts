@@ -37,12 +37,6 @@ import {
 	type TurnInputArtifactContentV1
 } from '@buildos/shared-types';
 import {
-	AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1,
-	findAgenticChatWorkerUnavailableToolNamesV1,
-	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1
-} from '@buildos/agentic-chat-runtime';
-import {
-	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	getToolDiscoveryPolicyVersion,
 	getToolRegistry
 } from '@buildos/agentic-chat-runtime/catalog';
@@ -65,11 +59,6 @@ import { getDomainIdsForSkillReference } from '$lib/services/agentic-chat/tools/
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import { resolveSkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 import { buildEntityResolutionHint } from './entity-resolution';
-import {
-	FASTCHAT_CONTEXT_CACHE_VERSION,
-	isFastChatContextCacheFresh,
-	normalizeFastChatContextSnapshot
-} from './context-cache';
 import { checkDailyBriefAccess, checkProjectAccess } from './access-checks';
 import {
 	appendAttachmentContextToMessage,
@@ -85,9 +74,11 @@ import {
 	inspectPreparedPromptAdmissionLineage,
 	inspectPreparedPromptForWorkerAdmission
 } from './prepared-prompt-consumer.server';
+import { buildPreparedPromptSurfaceKey } from './prepared-prompt-cache';
 import { resolveFastChatScaffoldConfigFromEnv } from './scaffold-variant';
 import { projectWorkerFrozenHistorySnapshot } from './session-service';
 import { loadFastChatPromptContext } from './context-loader';
+import { resolveMaterializedFastChatContext } from './materialized-context-cache.server';
 import { loadValidatedChatAttachments } from './stream-attachments';
 import { buildPendingTurnContractSystemMessage } from './turn-contract';
 import { resolveFastChatTurnPreparation } from './turn-preparation';
@@ -99,6 +90,7 @@ import {
 	loadLatestActiveCheckpoint,
 	recoverCheckpointResumeLifecycle
 } from './turn-supervisor/checkpoint-service.server';
+import { buildWorkerPromptScaffold, resolveWorkerPromptTools } from './worker-prompt-surface';
 
 const WORKER_TURNS_ENDPOINT = '/api/agent/v2/turns';
 const HISTORY_LIMIT = positiveInt(process.env.FASTCHAT_HISTORY_LOOKBACK_MESSAGES, 10, 50);
@@ -180,20 +172,7 @@ const SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
 // cannot run the web-owned dynamic skill discovery tools, so its prompt must
 // never commission those calls. Trusted server-selected skill preloads remain
 // available through the per-turn domain overlay below.
-const WORKER_PROMPT_SCAFFOLD = {
-	...SCAFFOLD.prompt,
-	dynamicSkillTools: false
-} as const;
-const WORKER_OMITTED_TOOL_NAMES = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
-const WORKER_MUTATION_TOOL_NAMES = new Set<string>(
-	AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1
-);
-// Prepared-prompt admission is byte-bound in the database to the stored legacy
-// prompt. Until prewarm stores a separate worker-capability variant, accepting
-// that lineage would either preserve the impossible skill instructions or make
-// the atomic admission reject a rebuilt prompt. Session context caching remains
-// available, so prefer correct per-turn assembly over an invalid cache claim.
-const WORKER_PREPARED_PROMPT_REUSE_ENABLED: boolean = false;
+const WORKER_PROMPT_SCAFFOLD = buildWorkerPromptScaffold(SCAFFOLD.prompt);
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
 
@@ -362,18 +341,29 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		projectCreateWorkflow: 'reviewed_shell',
 		scaffold: SCAFFOLD
 	});
+	const workerToolResolution = resolveWorkerPromptTools(turnPreparation.tools);
+	const workerPromptTools = workerToolResolution.tools;
+	if (workerToolResolution.unavailableToolNames.length > 0) {
+		throw new AgenticChatWorkerPreparationError(
+			'transport_renegotiate',
+			`Worker tool surface is unavailable: ${workerToolResolution.unavailableToolNames.join(', ')}`
+		);
+	}
+	const preparedWorkerSurfaceKey = buildPreparedPromptSurfaceKey(
+		turnPreparation.selectedSurfaceProfile,
+		'worker_realtime'
+	);
 
-	const preparedAdmissionLineage =
-		sessionIntent.session && WORKER_PREPARED_PROMPT_REUSE_ENABLED
-			? await inspectPreparedPromptAdmissionLineage({
-					supabase: input.serviceClient,
-					key: input.command.preparedPromptKey,
-					userId: input.userId,
-					sessionId: sessionIntent.session.id,
-					cacheKey: turnPreparation.cacheKey,
-					surfaceProfile: turnPreparation.selectedSurfaceProfile
-				})
-			: null;
+	const preparedAdmissionLineage = sessionIntent.session
+		? await inspectPreparedPromptAdmissionLineage({
+				supabase: input.serviceClient,
+				key: input.command.preparedPromptKey,
+				userId: input.userId,
+				sessionId: sessionIntent.session.id,
+				cacheKey: turnPreparation.cacheKey,
+				surfaceProfile: preparedWorkerSurfaceKey
+			})
+		: null;
 	const requestHash = await hashCanonicalAdmissionRequestV1({
 		version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
 		clientTurnId: input.command.clientTurnId,
@@ -392,21 +382,20 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		}
 	});
 
-	const preparedInspection =
-		sessionIntent.session && WORKER_PREPARED_PROMPT_REUSE_ENABLED
-			? await inspectPreparedPromptForWorkerAdmission({
-					supabase: input.serviceClient,
-					key: input.command.preparedPromptKey,
-					userId: input.userId,
-					sessionId: sessionIntent.session.id,
-					cacheKey: turnPreparation.cacheKey,
-					surfaceProfile: turnPreparation.selectedSurfaceProfile,
-					contextType,
-					tools: turnPreparation.tools,
-					scaffold: SCAFFOLD.prompt,
-					nowMs
-				})
-			: ({ hit: false, reason: 'missing_key' } as const);
+	const preparedInspection = sessionIntent.session
+		? await inspectPreparedPromptForWorkerAdmission({
+				supabase: input.serviceClient,
+				key: input.command.preparedPromptKey,
+				userId: input.userId,
+				sessionId: sessionIntent.session.id,
+				cacheKey: turnPreparation.cacheKey,
+				surfaceProfile: preparedWorkerSurfaceKey,
+				contextType,
+				tools: workerPromptTools,
+				scaffold: WORKER_PROMPT_SCAFFOLD,
+				nowMs
+			})
+		: ({ hit: false, reason: 'missing_key' } as const);
 
 	const requestLastTurnContext = input.command.lastTurnContext;
 	const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
@@ -421,29 +410,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const workerPromptDomainSensing = workerSkillGatePreload
 		? turnPreparation.turnDomainSensing
 		: null;
-	const workerCandidateTools = turnPreparation.tools.filter(
-		(tool) => !WORKER_OMITTED_TOOL_NAMES.has(tool.function?.name ?? '')
-	);
-	const hasWorkerMutation = workerCandidateTools.some((tool) =>
-		WORKER_MUTATION_TOOL_NAMES.has(tool.function?.name ?? '')
-	);
-	// A complex-write contract cannot be honored without an executable mutation.
-	// Removing it before prompt and artifact construction avoids commissioning a
-	// dead write route and keeps read-only signed surfaces honest.
-	const workerPromptTools = hasWorkerMutation
-		? workerCandidateTools
-		: workerCandidateTools.filter(
-				(tool) => tool.function?.name !== DECLARE_TURN_CONTRACT_TOOL_NAME
-			);
-	const unavailableWorkerTools = findAgenticChatWorkerUnavailableToolNamesV1(
-		workerPromptTools.map((tool) => tool.function?.name ?? '').filter(Boolean)
-	);
-	if (unavailableWorkerTools.length > 0) {
-		throw new AgenticChatWorkerPreparationError(
-			'transport_renegotiate',
-			`Worker tool surface is unavailable: ${unavailableWorkerTools.join(', ')}`
-		);
-	}
 	let modelHistory: HistoryWithLineage[];
 	let historySource: 'admission_window' | 'prepared_prompt';
 	let preparedArtifact: TurnInputArtifactContentV1['prepared'];
@@ -463,7 +429,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		preparedContextPayloadSha256 = canonicalSha256(
 			preparedInspection.row.context_payload_sha256
 		);
-		preparedSurfaceProfile = turnPreparation.selectedSurfaceProfile;
+		preparedSurfaceProfile = preparedInspection.surfaceKey;
 		preparedArtifact = {
 			sourcePreparedPromptId: preparedPromptId,
 			contextPayload: toJsonObject(preparedInspection.row.context_payload),
@@ -506,9 +472,11 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		};
 		const trustedPromptContext = await resolveTrustedPromptContext({
 			userClient: input.userClient,
+			serviceClient: input.serviceClient,
 			userId: input.userId,
 			contextType,
 			entityId,
+			projectId,
 			projectFocus: input.command.projectFocus,
 			turnPreparation
 		});
@@ -1033,31 +1001,35 @@ function isInterruptedMessageMetadata(value: unknown): boolean {
 
 async function resolveTrustedPromptContext(params: {
 	userClient: FastChatSupabaseClient;
+	serviceClient: FastChatSupabaseClient;
 	userId: string;
 	contextType: ChatContextType;
 	entityId: string | null;
+	projectId: string | null;
 	projectFocus: ProjectFocus | null;
 	turnPreparation: ReturnType<typeof resolveFastChatTurnPreparation>;
 }) {
 	const cached = params.turnPreparation.cachedContext;
-	const canUseCache = Boolean(
-		cached &&
-			!params.turnPreparation.bypassContextCacheForShiftHint &&
-			cached.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
-			cached.key === params.turnPreparation.cacheKey &&
-			isFastChatContextCacheFresh(cached)
-	);
-	if (cached && canUseCache) {
-		const normalized = normalizeFastChatContextSnapshot(cached.context);
-		if (normalized) return normalized;
-	}
-	return loadFastChatPromptContext({
-		supabase: params.userClient,
+	const resolution = await resolveMaterializedFastChatContext({
+		sourceSupabase: params.userClient,
+		storeSupabase: params.serviceClient,
 		userId: params.userId,
 		contextType: params.contextType,
-		entityId: params.entityId ?? undefined,
-		projectFocus: params.projectFocus ?? undefined
+		entityId: params.entityId,
+		projectId: params.projectId,
+		projectFocus: params.projectFocus,
+		cacheKey: params.turnPreparation.cacheKey,
+		sessionCache: params.turnPreparation.bypassContextCacheForShiftHint ? null : cached,
+		loadFresh: () =>
+			loadFastChatPromptContext({
+				supabase: params.userClient,
+				userId: params.userId,
+				contextType: params.contextType,
+				entityId: params.entityId ?? undefined,
+				projectFocus: params.projectFocus ?? undefined
+			})
 	});
+	return resolution.cache.context;
 }
 
 function freezeHistory(history: HistoryWithLineage[]): FrozenHistoryMessageV1[] {

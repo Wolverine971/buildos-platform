@@ -84,7 +84,11 @@ describe('POST /api/agent/v2/prewarm', () => {
 			data: { summary: 'ready' }
 		});
 		loadRecentMessagesMock.mockResolvedValue([]);
-		mergeRpcMock.mockResolvedValue({ error: null });
+		mergeRpcMock.mockImplementation(async (fn: string) =>
+			fn === 'get_agentic_chat_context_invalidation_token'
+				? { data: 'global:v1:test', error: null }
+				: { error: null }
+		);
 	});
 
 	it('runs as a dedicated function with room beyond the app-wide ten-second default', () => {
@@ -227,6 +231,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 		const cachedContext = {
 			version: 1,
 			key: 'global:none',
+			invalidation_token: 'global:v1:test',
 			warmed_at: '2026-03-12T00:00:00.000Z',
 			context: {
 				contextType: 'global',
@@ -335,6 +340,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 		const cachedContext = {
 			version: 1,
 			key: `project:${projectId}`,
+			invalidation_token: `project:v1:${projectId}:1`,
 			warmed_at: '2026-03-12T00:00:00.000Z',
 			context: {
 				contextType: 'project',
@@ -385,6 +391,9 @@ describe('POST /api/agent/v2/prewarm', () => {
 			if (fn === 'current_actor_has_project_member_access') {
 				return { data: true, error: null };
 			}
+			if (fn === 'get_agentic_chat_context_invalidation_token') {
+				return { data: `project:v1:${projectId}:1`, error: null };
+			}
 			return mergeRpcMock(fn, args);
 		});
 		resolveSessionMock.mockResolvedValue({ session });
@@ -431,11 +440,13 @@ describe('POST /api/agent/v2/prewarm', () => {
 		const serializedRow = JSON.stringify(row);
 		const focus = row.context_payload.data.focus_entity_full;
 		expect(Object.keys(row.prepared_surfaces).sort()).toEqual(
-			['project_basic', 'project_document', 'project_write', 'project_write_document'].sort()
+			['project_write_document', 'worker_realtime:project_write_document'].sort()
 		);
 		expect(payload.data.prepared_prompt.prepared_surface_profiles.sort()).toEqual(
-			['project_basic', 'project_document', 'project_write', 'project_write_document'].sort()
+			['project_write_document', 'worker_realtime:project_write_document'].sort()
 		);
+		expect(payload.data.prepared_prompt.default_surface_profile).toBe('project_write_document');
+		expect(payload.data.prepared_prompt.system_prompt_sha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(focus).toMatchObject({
 			id: '22222222-2222-4222-8222-222222222222',
 			project_id: projectId,

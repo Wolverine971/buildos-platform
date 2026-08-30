@@ -34,9 +34,7 @@ import {
 } from '$lib/services/agentic-chat-lite/prompt';
 import {
 	FASTCHAT_CONTEXT_CACHE_VERSION,
-	buildFastChatContextCacheEntry,
 	buildFastChatContextCacheKey,
-	isFastChatContextCacheFresh,
 	type FastChatContextCache
 } from '$lib/services/agentic-chat-v2/context-cache';
 import {
@@ -48,6 +46,7 @@ import {
 	isPreparedPromptPrewarmEnabled,
 	resolveDefaultPreparedSurfaceProfile,
 	resolvePreparedSurfaceProfiles,
+	resolveWorkerPreparedSurfaceProfiles,
 	sha256Json,
 	type PreparedPromptResponse,
 	type PreparedPromptSurface
@@ -56,6 +55,11 @@ import { writePreparedPromptContent } from '$lib/services/agentic-chat-v2/prepar
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
 import { agenticChatProjectFocusSchema } from '$lib/services/agentic-chat-v2/stream-request';
+import { resolveMaterializedFastChatContext } from '$lib/services/agentic-chat-v2/materialized-context-cache.server';
+import {
+	buildWorkerPromptScaffold,
+	resolveWorkerPromptTools
+} from '$lib/services/agentic-chat-v2/worker-prompt-surface';
 
 const logger = createLogger('API:AgentPrewarmV2');
 const FASTCHAT_SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
@@ -216,6 +220,7 @@ async function buildPreparedPrompt(params: {
 	projectFocus?: ProjectFocus | null;
 	cacheKey: string;
 	prewarmedContext: FastChatContextCache;
+	contextInvalidationToken?: string | null;
 }): Promise<PreparedPromptResponse | null> {
 	const rowId = randomUUID();
 	const { key, nonceSha256 } = buildPreparedPromptKey(rowId);
@@ -267,8 +272,9 @@ async function buildPreparedPrompt(params: {
 			domainSensingResult: null,
 			scaffold: FASTCHAT_SCAFFOLD.prompt
 		});
-		preparedSurfaces[surfaceProfile] = buildPreparedPromptSurface({
+		const surface = buildPreparedPromptSurface({
 			surfaceProfile,
+			executionMode: 'legacy_sse',
 			contextType: params.contextType,
 			contextPayload: preparedContextPayload,
 			conversationSummary,
@@ -277,6 +283,47 @@ async function buildPreparedPrompt(params: {
 			scaffold: FASTCHAT_SCAFFOLD.prompt,
 			createdAt: createdAt.toISOString()
 		});
+		preparedSurfaces[surface.surface_profile] = surface;
+	}
+
+	const workerScaffold = buildWorkerPromptScaffold(FASTCHAT_SCAFFOLD.prompt);
+	for (const surfaceProfile of resolveWorkerPreparedSurfaceProfiles(params.contextType)) {
+		const selectedTools = selectFastChatTools({
+			contextType: params.contextType,
+			surfaceProfile,
+			leanDiscovery: FASTCHAT_SCAFFOLD.routing.leanDiscovery,
+			projectCreateWorkflow: 'reviewed_shell'
+		});
+		const workerToolResolution = resolveWorkerPromptTools(selectedTools);
+		if (workerToolResolution.unavailableToolNames.length > 0) {
+			logger.warn('Skipping unavailable worker prepared-prompt surface', {
+				contextType: params.contextType,
+				surfaceProfile,
+				unavailableToolNames: workerToolResolution.unavailableToolNames
+			});
+			continue;
+		}
+		const envelope = buildLitePromptEnvelope({
+			...promptContext,
+			tools: workerToolResolution.tools,
+			projectCreateWorkflow: 'reviewed_shell',
+			productSurface: '/api/agent/v2/turns',
+			conversationPosition: `worker prepared prompt ${rowId}`,
+			domainSensingResult: null,
+			scaffold: workerScaffold
+		});
+		const surface = buildPreparedPromptSurface({
+			surfaceProfile,
+			executionMode: 'worker_realtime',
+			contextType: params.contextType,
+			contextPayload: preparedContextPayload,
+			conversationSummary,
+			tools: workerToolResolution.tools,
+			envelope,
+			scaffold: workerScaffold,
+			createdAt: createdAt.toISOString()
+		});
+		preparedSurfaces[surface.surface_profile] = surface;
 	}
 
 	const { error } = await writePreparedPromptContent({
@@ -310,6 +357,7 @@ async function buildPreparedPrompt(params: {
 			prepared_surfaces: preparedSurfaces as unknown as Json,
 			default_surface_profile: defaultSurfaceProfile,
 			context_payload_sha256: sha256Json(preparedContextPayload),
+			context_invalidation_token: params.contextInvalidationToken ?? null,
 			expires_at: expiresAt
 		}
 	});
@@ -356,7 +404,8 @@ const handlePrewarmRequest: RequestHandler = async ({
 	});
 	const projectId = resolveEffectiveProjectId({ contextType, entityId, projectFocus });
 	const shouldPreparePrompt = isPreparedPromptPrewarmEnabled() && body.prepare_prompt !== false;
-	const preparedPromptStore = shouldPreparePrompt ? createAdminSupabaseClient() : null;
+	const serverStore = createAdminSupabaseClient();
+	const preparedPromptStore = shouldPreparePrompt ? serverStore : null;
 	const requiresEntityId = isProjectScopedContext(contextType) || contextType === 'daily_brief';
 	if (requiresEntityId && !entityId) {
 		return ApiResponse.success({ warmed: false, reason: 'missing_entity' });
@@ -413,56 +462,28 @@ const handlePrewarmRequest: RequestHandler = async ({
 	});
 	const cachedContext = (session?.agent_metadata as Record<string, unknown> | null | undefined)
 		?.fastchat_context_cache as FastChatContextCache | undefined;
-	if (
-		cachedContext &&
-		cachedContext.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
-		cachedContext.key === cacheKey &&
-		isFastChatContextCacheFresh(cachedContext)
-	) {
-		const preparedPrompt =
-			shouldPreparePrompt && preparedPromptStore
-				? await buildPreparedPrompt({
-						sourceSupabase: supabase,
-						storeSupabase: preparedPromptStore,
-						session,
-						userId: user.id,
-						contextType,
-						entityId,
-						projectFocus,
-						cacheKey,
-						prewarmedContext: cachedContext
-					})
-				: null;
-		return ApiResponse.success({
-			warmed: true,
-			cache_source: 'session_cache',
-			session,
-			prewarmed_context: cachedContext,
-			prepared_prompt: preparedPrompt
-		});
-	}
-
-	const promptContext = await loadFastChatPromptContext({
-		supabase,
+	const contextResolution = await resolveMaterializedFastChatContext({
+		sourceSupabase: supabase,
+		storeSupabase: serverStore,
 		userId: user.id,
 		contextType,
 		entityId,
-		projectFocus
-	});
-	const prewarmedContext = buildFastChatContextCacheEntry({
+		projectId,
+		projectFocus,
 		cacheKey,
-		context: {
-			contextType: promptContext.contextType,
-			entityId: promptContext.entityId ?? null,
-			projectId: promptContext.projectId ?? null,
-			projectName: promptContext.projectName ?? null,
-			focusEntityType: promptContext.focusEntityType ?? null,
-			focusEntityId: promptContext.focusEntityId ?? null,
-			focusEntityName: promptContext.focusEntityName ?? null,
-			contextLoadSource: promptContext.contextLoadSource ?? undefined,
-			data: promptContext.data ?? null
-		}
+		sessionCache: cachedContext,
+		loadFresh: () =>
+			loadFastChatPromptContext({
+				supabase,
+				userId: user.id,
+				contextType,
+				entityId,
+				projectFocus
+			}),
+		onWarning: (message, error) =>
+			logger.warn(message, { error, contextType, projectId, cacheKey })
 	});
+	const prewarmedContext = contextResolution.cache;
 
 	if (session) {
 		await mergeFastChatContextCache({
@@ -486,7 +507,8 @@ const handlePrewarmRequest: RequestHandler = async ({
 				entityId,
 				projectFocus,
 				cacheKey,
-				prewarmedContext
+				prewarmedContext,
+				contextInvalidationToken: contextResolution.invalidationToken
 			});
 		} catch (error) {
 			logger.warn('Prepared prompt build failed during v2 prewarm; continuing without it', {
@@ -499,7 +521,7 @@ const handlePrewarmRequest: RequestHandler = async ({
 
 	return ApiResponse.success({
 		warmed: true,
-		cache_source: 'fresh_load',
+		cache_source: contextResolution.cacheSource,
 		session,
 		prewarmed_context: prewarmedContext,
 		prepared_prompt: preparedPrompt

@@ -3,7 +3,12 @@
 
 import { buildSearchFilter } from '@buildos/shared-agent-ops/utils/search-filter';
 import { isValidUUID } from '@buildos/shared-agent-ops/utils/validation-utils';
+import { formatPgVectorLiteral } from '@buildos/shared-agent-ops/embeddings/entity-embedding';
 import { inferMaterializedToolsFromEntityResults } from '../loop/entity-result-materialization';
+import {
+	AGENTIC_CHAT_NO_READABLE_PROJECTS_SENTINEL,
+	readableProjectIdsFromSummaries
+} from './access-port';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import { prepareAgenticChatSearchTerm } from './search-term';
 import {
@@ -12,6 +17,7 @@ import {
 	eventSearchSnippet,
 	normalizeSearchResult,
 	rankSearchResult,
+	reciprocalRankFuseSearchRows,
 	taskBucketFor,
 	taskBucketsForQuery,
 	taskBucketSearchScore,
@@ -42,6 +48,10 @@ const AGENTIC_SEARCH_TYPES = new Set(
 	[...ONTOLOGY_SEARCH_ALLOWED_TYPES].filter((type) => type !== 'event')
 );
 const NULLISH_PROJECT_ID_SENTINELS = new Set(['none', 'null', 'undefined']);
+// Targeted search favors precision over the broader explore_project surface.
+// The Phase 3 eight-query regression separates the known-irrelevant tail
+// (0.150–0.178) from the vocabulary-mismatch recovery case (0.451).
+const TARGETED_SEMANTIC_MIN_SIMILARITY = 0.2;
 
 export type SharedOntologySearchRequest = {
 	query?: string;
@@ -138,8 +148,7 @@ function normalizeAgenticSearchTypes(types?: string[]): string[] | undefined {
 }
 
 async function searchEventsForQuery(input: {
-	client: AgenticChatSharedReadContextV1['client'];
-	actorId: string;
+	context: AgenticChatSharedReadContextV1;
 	projectId: string | null;
 	query: string;
 	limit: number;
@@ -147,7 +156,7 @@ async function searchEventsForQuery(input: {
 	const eventFilter = buildSearchFilter(input.query, ['title', 'description', 'location']);
 	if (!eventFilter) return [];
 
-	let eventQuery = (input.client as any)
+	let eventQuery = (input.context.client as any)
 		.from('onto_events')
 		.select('id, project_id, title, description, location, start_at, state_key, type_key')
 		.is('deleted_at', null)
@@ -158,8 +167,15 @@ async function searchEventsForQuery(input: {
 	if (input.projectId) {
 		eventQuery = eventQuery.eq('project_id', input.projectId);
 	} else {
-		// Intentional parity constraint: workspace events remain creator-scoped.
-		eventQuery = eventQuery.eq('created_by', input.actorId);
+		// The worker uses a service-role client, so RLS alone cannot scope this
+		// direct table read. Reuse the host access port's visible-project set so
+		// workspace event search has the same owner/member semantics as both RPCs.
+		const summaries = await input.context.access.resolveProjectSummaries();
+		const readableProjectIds = readableProjectIdsFromSummaries(summaries);
+		eventQuery =
+			readableProjectIds.length > 0
+				? eventQuery.in('project_id', readableProjectIds)
+				: eventQuery.eq('project_id', AGENTIC_CHAT_NO_READABLE_PROJECTS_SENTINEL);
 	}
 
 	const { data, error } = await eventQuery;
@@ -177,6 +193,45 @@ async function searchEventsForQuery(input: {
 		type_key: event.type_key,
 		start_at: event.start_at
 	}));
+}
+
+async function searchSemanticForQuery(input: {
+	context: AgenticChatSharedReadContextV1;
+	actorId: string;
+	projectId: string | null;
+	query: string;
+	types: string[] | null;
+	limit: number;
+}): Promise<OntologySearchRow[] | null> {
+	if (!input.context.embeddings) return null;
+
+	try {
+		const queryEmbedding = await input.context.embeddings.embedQuery(input.query);
+		const { data, error } = await (input.context.client as any).rpc('onto_search_semantic', {
+			p_actor_id: input.actorId,
+			p_query_embedding: formatPgVectorLiteral(queryEmbedding),
+			p_project_id: input.projectId ?? undefined,
+			p_types: input.types && input.types.length > 0 ? input.types : undefined,
+			p_limit: input.limit,
+			p_min_similarity: TARGETED_SEMANTIC_MIN_SIMILARITY
+		});
+		if (error) {
+			console.warn('[ontology-search] semantic channel unavailable; using lexical fallback', {
+				code: typeof error.code === 'string' ? error.code : undefined,
+				message: typeof error.message === 'string' ? error.message : 'semantic RPC failed'
+			});
+			return null;
+		}
+		return ((data as OntologySearchRow[] | null) ?? []).filter(Boolean);
+	} catch (error) {
+		// Targeted search must remain available when the optional embedding
+		// provider is degraded. explore_project retains the strict error path;
+		// the hybrid smart path falls back to its proven lexical channel.
+		console.warn('[ontology-search] semantic channel unavailable; using lexical fallback', {
+			message: error instanceof Error ? error.message : String(error)
+		});
+		return null;
+	}
 }
 
 async function searchTaskBucketsForQuery(input: {
@@ -284,40 +339,55 @@ export async function searchOntologyEntities(
 		if (!project) throw new AgenticChatOntologySearchProjectNotFoundError();
 	}
 
-	let rpcResults: OntologySearchRow[] = [];
-	if (rpcTypes === null || rpcTypes.length > 0) {
-		const { data, error } = await (context.client as any).rpc('onto_search_entities', {
-			p_actor_id: actorId,
-			p_query: query,
-			p_project_id: projectId ?? undefined,
-			p_types: rpcTypes && rpcTypes.length > 0 ? rpcTypes : undefined,
-			p_limit: candidateLimit
-		});
-		if (error) throw new AgenticChatOntologySearchQueryError('rpc', error);
-		rpcResults = ((data as OntologySearchRow[] | null) ?? []).filter(Boolean);
-	}
+	const shouldSearchRpcTypes = rpcTypes === null || rpcTypes.length > 0;
+	const [rpcResults, semanticResults, taskBucketResults, eventResults] = await Promise.all([
+		shouldSearchRpcTypes
+			? (async () => {
+					const { data, error } = await (context.client as any).rpc(
+						'onto_search_entities',
+						{
+							p_actor_id: actorId,
+							p_query: query,
+							p_project_id: projectId ?? undefined,
+							p_types: rpcTypes && rpcTypes.length > 0 ? rpcTypes : undefined,
+							p_limit: candidateLimit
+						}
+					);
+					if (error) throw new AgenticChatOntologySearchQueryError('rpc', error);
+					return ((data as OntologySearchRow[] | null) ?? []).filter(Boolean);
+				})()
+			: Promise.resolve([]),
+		shouldSearchRpcTypes
+			? searchSemanticForQuery({
+					context,
+					actorId,
+					projectId,
+					query,
+					types: rpcTypes,
+					limit: candidateLimit
+				})
+			: Promise.resolve(null),
+		shouldSearchTaskBuckets
+			? searchTaskBucketsForQuery({
+					client: context.client,
+					projectId,
+					query,
+					limit: candidateLimit,
+					nowMs
+				})
+			: Promise.resolve([]),
+		shouldSearchEvents
+			? searchEventsForQuery({ context, projectId, query, limit: candidateLimit })
+			: Promise.resolve([])
+	]);
 
-	const taskBucketResults = shouldSearchTaskBuckets
-		? await searchTaskBucketsForQuery({
-				client: context.client,
-				projectId,
-				query,
-				limit: candidateLimit,
-				nowMs
-			})
-		: [];
-	const eventResults = shouldSearchEvents
-		? await searchEventsForQuery({
-				client: context.client,
-				actorId,
-				projectId,
-				query,
-				limit: candidateLimit
-			})
-		: [];
+	const hybridRpcResults =
+		semanticResults && semanticResults.length > 0
+			? reciprocalRankFuseSearchRows([rpcResults, semanticResults])
+			: rpcResults;
 
 	const rawResults = dedupeSearchRows([
-		...rpcResults,
+		...hybridRpcResults,
 		...taskBucketResults,
 		...eventResults
 	]).filter(Boolean);
@@ -335,6 +405,7 @@ export async function searchOntologyEntities(
 	const maybeMore =
 		rawResults.length > limit ||
 		rpcResults.length >= candidateLimit ||
+		(semanticResults?.length ?? 0) >= candidateLimit ||
 		taskBucketResults.length >= candidateLimit ||
 		eventResults.length >= candidateLimit;
 

@@ -335,22 +335,13 @@ export class PrewarmController {
 		const prewarmEntityId = this.#deps.getSelectedEntityId() ?? focus?.projectId;
 		if (isProjectContext(contextType) && !prewarmEntityId) return;
 
-		const shouldPrewarmDraftContext =
-			this.#deps.getCanPrimeActiveChatSession() &&
-			(this.#deps.getHasDraftInput() ||
-				this.#deps.getIsVoiceBusy() ||
-				this.#deps.getIsVoicePending());
-
 		const key = this.resolveCurrentKey();
 		if (!key) return;
 
-		// Keep draft-time prewarm cache-only. Creating a session while the user is typing
-		// briefly disabled the composer, which caused mobile blur/keyboard thrash on the
-		// first character. Session creation still happens on send.
+		// A selected scope is enough to start materializing context. Keep the request
+		// sessionless so opening/selecting chat never disables the composer or causes
+		// mobile keyboard thrash; session binding still happens during send bootstrap.
 		const currentSession = this.#deps.getCurrentSession();
-		if (!currentSession?.id && !shouldPrewarmDraftContext) {
-			return;
-		}
 
 		const readiness = this.resolveReadiness(key);
 		if (

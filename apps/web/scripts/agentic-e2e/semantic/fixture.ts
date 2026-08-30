@@ -138,7 +138,8 @@ Budget: 20 units + shipping. Success looks like 8+ organic clips in six weeks.`
 				description:
 					'Shift mix away from wholesale by growing the email list and getting first-time buyers to a second order within 90 days.',
 				target_date: fromNow(120),
-				measurement_criteria: 'DTC share of monthly revenue ≥ 40% for two consecutive months.',
+				measurement_criteria:
+					'DTC share of monthly revenue ≥ 40% for two consecutive months.',
 				priority: 'high'
 			},
 			{
@@ -146,7 +147,8 @@ Budget: 20 units + shipping. Success looks like 8+ organic clips in six weeks.`
 				kind: 'milestone',
 				title: 'Spring launch live',
 				due_at: fromNow(35),
-				description: 'Product pages up, launch emails scheduled, Reels queued, posters placed.'
+				description:
+					'Product pages up, launch emails scheduled, Reels queued, posters placed.'
 			},
 			{
 				temp_id: 'plan-q2',
@@ -280,7 +282,8 @@ check its logs first for any charge weirdness.`
 				kind: 'milestone',
 				title: 'Warehouse move complete',
 				due_at: fromNow(50),
-				description: 'New unit racked, bins labeled, carrier pickup rescheduled to the new dock.'
+				description:
+					'New unit racked, bins labeled, carrier pickup rescheduled to the new dock.'
 			},
 			{
 				temp_id: 'r-supply',
@@ -338,6 +341,9 @@ export type Tier1Query = {
 	id: string;
 	theme: string;
 	limit?: number;
+	workspace?: boolean;
+	types?: string[];
+	expect_empty?: boolean;
 	expected_hits: string[];
 	expected_misses: string[];
 	notes?: string;
@@ -427,7 +433,10 @@ export const TIER1_BATTERY: Tier1Query[] = [
 	{
 		id: 'q-creators',
 		theme: 'influencer and creator partnerships',
-		expected_hits: ['document:Creator seeding program', 'task:Shortlist 20 hiking micro-creators'],
+		expected_hits: [
+			'document:Creator seeding program',
+			'task:Shortlist 20 hiking micro-creators'
+		],
 		expected_misses: ['task:Interview part-time warehouse associate'],
 		notes: 'People-trap: hiring interview is the adjacent decoy.'
 	},
@@ -486,7 +495,10 @@ export const TIER1_BATTERY: Tier1Query[] = [
 	{
 		id: 'q-site-reliability',
 		theme: 'website bugs and store reliability',
-		expected_hits: ['task:Fix checkout double-charge bug', 'document:Storefront platform notes'],
+		expected_hits: [
+			'task:Fix checkout double-charge bug',
+			'document:Storefront platform notes'
+		],
 		expected_misses: ['document:Brand positioning — Driftline', 'document:Campaigns']
 	},
 	{
@@ -508,5 +520,67 @@ export const TIER1_BATTERY: Tier1Query[] = [
 			'risk:Buckle supplier lead times slip past 6 weeks'
 		],
 		expected_misses: ['document:Creator seeding program']
+	}
+];
+
+/**
+ * Phase 3 regression battery modeled on the June eight-query search smoke.
+ * It covers workspace/project scope, query-stuffing, multi-word order, typo
+ * tolerance, a true empty, entity-type bait, and a broad rare-token lookup.
+ */
+export const PHASE3_TARGETED_BATTERY: Tier1Query[] = [
+	{
+		id: 't1-project-name',
+		theme: 'Driftline Supply Co.',
+		workspace: true,
+		expected_hits: ['project:Driftline Supply Co.'],
+		expected_misses: []
+	},
+	{
+		id: 't2-stuffed-audience',
+		theme: 'Driftline Supply Co target audience',
+		workspace: true,
+		expected_hits: ['document:Who we serve'],
+		expected_misses: ['task:Fix checkout double-charge bug'],
+		notes: 'Rockwool-class regression: project-name terms poison lexical AND search.'
+	},
+	{
+		id: 't3-photo-phrase',
+		theme: 'Patapsco product photoshoot',
+		expected_hits: ['task:Book product photoshoot for spring line'],
+		expected_misses: ['task:Reconcile warehouse inventory sync']
+	},
+	{
+		id: 't4-any-order',
+		theme: 'creators hiking shortlist',
+		expected_hits: ['task:Shortlist 20 hiking micro-creators'],
+		expected_misses: ['task:Interview part-time warehouse associate']
+	},
+	{
+		id: 't5-typo',
+		theme: 'abandond cart email',
+		expected_hits: ['task:Set up abandoned-cart email sequence'],
+		expected_misses: ['task:Reconcile warehouse inventory sync']
+	},
+	{
+		id: 't6-true-empty',
+		theme: 'quantum entanglement',
+		expect_empty: true,
+		expected_hits: [],
+		expected_misses: []
+	},
+	{
+		id: 't7-task-bait',
+		theme: 'abandoned cart email',
+		types: ['task'],
+		expected_hits: ['task:Set up abandoned-cart email sequence'],
+		expected_misses: ['task:Fix checkout double-charge bug']
+	},
+	{
+		id: 't8-rare-token',
+		theme: 'supplier lead times',
+		workspace: true,
+		expected_hits: ['risk:Buckle supplier lead times slip past 6 weeks'],
+		expected_misses: ['risk:Discount-heavy launch erodes brand']
 	}
 ];

@@ -1,16 +1,18 @@
 // apps/web/scripts/agentic-e2e/semantic/run-tier1.ts
 //
-// Tier-1 semantic-discovery retrieval eval — the Phase 2 gate
+// Tier-1 semantic-discovery retrieval eval — the Phase 2/3 retrieval gate
 // (docs/architecture/semantic-discovery/README.md §Eval plan, tasker/71).
 //
-// Drives the REAL tool path: each labeled theme goes through exploreProject()
-// from @buildos/agentic-chat-runtime (query embedding → onto_search_semantic
-// RPC → shared dedupe/normalize/rank), scoped to the seeded Driftline fixture.
+// Drives the REAL tool paths from @buildos/agentic-chat-runtime, scoped to the
+// seeded Driftline fixture. Default mode calls exploreProject() (query embedding
+// → onto_search_semantic → discovery rank); --targeted calls
+// searchOntologyEntities() (lexical + semantic RPCs → hybrid RRF → targeted rank).
 //
 //   cd apps/web
 //   pnpm exec tsx scripts/agentic-e2e/semantic/run-tier1.ts            # eval only
 //   pnpm exec tsx scripts/agentic-e2e/semantic/run-tier1.ts --embed    # embed fixture first
 //   pnpm exec tsx scripts/agentic-e2e/semantic/run-tier1.ts --verbose  # show per-query results
+//   pnpm exec tsx scripts/agentic-e2e/semantic/run-tier1.ts --targeted # Phase 3 hybrid path
 //
 // --embed composes + embeds the fixture's entities directly through the same
 // shared-agent-ops module the worker job uses (hash-skip upserts), so the eval
@@ -23,7 +25,8 @@
 //                retrieval long-tail on a ~25-entity corpus)
 //   DOMINANCE  = a decoy above the TOP-ranked found hit, or ≥2 violations in
 //                one query — the agent's entry into the results is polluted.
-// Gate: mean recall ≥ 0.75, no query recall < 0.5, zero dominance failures.
+// Discovery gate: mean recall ≥ 0.75, no query recall < 0.5, zero dominance
+// failures. Targeted Phase 3 gate: at least 7/8 historical-smoke analogs pass.
 // Calibration history (2026-08-29): started as zero-violations in a
 // top-max(5,|hits|) window; that bar demanded better-than-model-possible
 // separation on a 25-entity corpus (all of 3-small/gemini/qwen3 fail it,
@@ -37,6 +40,7 @@
 
 import {
 	exploreProject,
+	searchOntologyEntities,
 	type AgenticChatSharedReadContextV1
 } from '@buildos/agentic-chat-runtime/tools';
 import { ensureActorId } from '@buildos/shared-agent-ops';
@@ -55,7 +59,7 @@ import {
 import { createCustomClient } from '@buildos/supabase-client';
 import dotenv from 'dotenv';
 import path from 'path';
-import { FIXTURE_PROJECT_NAME, TIER1_BATTERY } from './fixture';
+import { FIXTURE_PROJECT_NAME, PHASE3_TARGETED_BATTERY, TIER1_BATTERY } from './fixture';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
@@ -64,6 +68,8 @@ const SERVICE_KEY = process.env.PRIVATE_SUPABASE_SERVICE_KEY || process.env.SUPA
 const DEMO_EMAIL = process.env.DEMO_USER_EMAIL || 'demo-author@build-os.com';
 const EMBED = process.argv.includes('--embed');
 const VERBOSE = process.argv.includes('--verbose');
+const TARGETED = process.argv.includes('--targeted');
+const BATTERY = TARGETED ? PHASE3_TARGETED_BATTERY : TIER1_BATTERY;
 // A/B a candidate model on the same battery: --model=<openrouter-request-model>
 // (e.g. google/gemini-embedding-001, qwen/qwen3-embedding-8b). Fixture rows
 // are re-embedded when their stored embedding_model differs, and 1536-dim MRL
@@ -170,8 +176,10 @@ async function embedFixture(projectId: string): Promise<void> {
 			])
 		);
 
-		const pending: Array<{ entityId: string; chunk: ReturnType<typeof composeOntoEmbeddingChunks>[number] }> =
-			[];
+		const pending: Array<{
+			entityId: string;
+			chunk: ReturnType<typeof composeOntoEmbeddingChunks>[number];
+		}> = [];
 		for (const row of rows) {
 			const entityId = String(row.id);
 			for (const chunk of composeOntoEmbeddingChunks(entityType, row)) {
@@ -212,7 +220,7 @@ async function embedFixture(projectId: string): Promise<void> {
 /** Resolve every "kind:title" expectation key to "type:entity_id". */
 async function resolveExpectationIds(projectId: string): Promise<Map<string, string>> {
 	const keys = new Set<string>();
-	for (const query of TIER1_BATTERY) {
+	for (const query of BATTERY) {
 		for (const key of [...query.expected_hits, ...query.expected_misses]) keys.add(key);
 	}
 	const resolved = new Map<string, string>();
@@ -259,6 +267,7 @@ async function main() {
 		);
 	}
 	console.log(`Fixture embeddings present: ${count} chunks`);
+	console.log(`Retrieval mode: ${TARGETED ? 'targeted hybrid-RRF' : 'semantic discovery'}`);
 
 	const context: AgenticChatSharedReadContextV1 = {
 		client: admin as never,
@@ -275,27 +284,41 @@ async function main() {
 	let totalViolations = 0;
 	let dominanceFailures = 0;
 	let lowRecallQueries = 0;
+	let passedQueries = 0;
 	const failures: string[] = [];
 
 	console.log('');
 	console.log('query                    recall   violations');
 	console.log('─'.repeat(60));
 
-	for (const query of TIER1_BATTERY) {
+	for (const query of BATTERY) {
 		// Default matches the shipped tool default (DEFAULT_EXPLORE_LIMIT = 15)
 		// so the instrument measures the surface agents actually get.
-		const payload = await exploreProject(context, {
-			theme: query.theme,
-			project_id: projectId,
-			limit: query.limit ?? 15
-		});
+		const payload = TARGETED
+			? await searchOntologyEntities(context, {
+					query: query.theme,
+					project_id: query.workspace ? undefined : projectId,
+					types: query.types,
+					limit: query.limit ?? 15
+				})
+			: await exploreProject(context, {
+					theme: query.theme,
+					project_id: projectId,
+					limit: query.limit ?? 15
+				});
 		const returnedKeys = payload.results.map((row) => `${row.type}:${row.id}`);
 
 		const hitIds = query.expected_hits.map((key) => expectationIds.get(key)!);
 		const missIds = new Set(query.expected_misses.map((key) => expectationIds.get(key)!));
 
 		const found = hitIds.filter((id) => returnedKeys.includes(id));
-		const recall = hitIds.length === 0 ? 1 : found.length / hitIds.length;
+		const recall = query.expect_empty
+			? returnedKeys.length === 0
+				? 1
+				: 0
+			: hitIds.length === 0
+				? 1
+				: found.length / hitIds.length;
 
 		// A decoy violates when it outranks a found expected hit; it DOMINATES
 		// when it sits above the top-ranked hit or two pile up in one query.
@@ -306,6 +329,7 @@ async function main() {
 			.slice(0, Math.max(lastFoundRank, 0))
 			.filter((id) => missIds.has(id));
 		const dominance =
+			(query.expect_empty === true && returnedKeys.length > 0) ||
 			violations.length >= 2 ||
 			(topFoundRank >= 0 &&
 				returnedKeys.slice(0, topFoundRank).some((id) => missIds.has(id)));
@@ -314,6 +338,7 @@ async function main() {
 		totalViolations += violations.length;
 		if (dominance) dominanceFailures += 1;
 		if (recall < 0.5) lowRecallQueries += 1;
+		if (recall >= 0.5 && !dominance) passedQueries += 1;
 
 		const marker = recall >= RECALL_GATE && violations.length === 0 && !dominance ? ' ' : '✗';
 		console.log(
@@ -325,14 +350,17 @@ async function main() {
 				.filter((id) => !returnedKeys.includes(id))
 				.map(
 					(id) =>
-						[...expectationIds.entries()].find(([, resolvedId]) => resolvedId === id)?.[0] ?? id
+						[...expectationIds.entries()].find(
+							([, resolvedId]) => resolvedId === id
+						)?.[0] ?? id
 				);
 			failures.push(
 				`${query.id}: recall=${recall.toFixed(2)} missing=[${missing.join('; ')}] violations=[${violations
 					.map(
 						(id) =>
-							[...expectationIds.entries()].find(([, resolvedId]) => resolvedId === id)?.[0] ??
-							id
+							[...expectationIds.entries()].find(
+								([, resolvedId]) => resolvedId === id
+							)?.[0] ?? id
 					)
 					.join('; ')}]${query.notes ? ` — ${query.notes}` : ''}`
 			);
@@ -349,8 +377,10 @@ async function main() {
 		}
 	}
 
-	const meanRecall = totalRecall / TIER1_BATTERY.length;
-	const pass = meanRecall >= RECALL_GATE && lowRecallQueries === 0 && dominanceFailures === 0;
+	const meanRecall = totalRecall / BATTERY.length;
+	const pass = TARGETED
+		? passedQueries >= 7
+		: meanRecall >= RECALL_GATE && lowRecallQueries === 0 && dominanceFailures === 0;
 
 	console.log('─'.repeat(60));
 	console.log(
@@ -359,7 +389,9 @@ async function main() {
 			`dominance failures ${dominanceFailures} (gate 0)   ` +
 			`tail-adjacency violations ${totalViolations} (visibility only)`
 	);
-	console.log(pass ? '\nTIER-1 GATE: PASS' : '\nTIER-1 GATE: FAIL');
+	if (TARGETED)
+		console.log(`targeted queries passed ${passedQueries}/${BATTERY.length} (gate ≥ 7/8)`);
+	console.log(pass ? '\nRETRIEVAL GATE: PASS' : '\nRETRIEVAL GATE: FAIL');
 	if (failures.length > 0) {
 		console.log('\nFailures:');
 		for (const line of failures) console.log(`  - ${line}`);

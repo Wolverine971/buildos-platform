@@ -19,6 +19,8 @@ export const PREPARED_PROMPT_KEY_PREFIX = 'pp_v1';
 export const PREPARED_PROMPT_TTL_MS = 90 * 1000;
 const PREPARED_PROMPT_FOCUS_STRING_MAX_CHARS = 1_500;
 
+export type PreparedPromptExecutionMode = 'legacy_sse' | 'worker_realtime';
+
 export type PreparedPromptSectionSummary = Omit<LitePromptSection, 'content'> & {
 	content_sha256: string;
 	content_chars: number;
@@ -36,6 +38,7 @@ export type PreparedPromptCacheMissReason =
 	| 'session_mismatch'
 	| 'scope_mismatch'
 	| 'stale_harness'
+	| 'stale_context'
 	| 'stale_history'
 	| 'history_check_failed'
 	| 'invalid_history'
@@ -44,7 +47,10 @@ export type PreparedPromptCacheMissReason =
 	| 'parse_error';
 
 export type PreparedPromptSurface = {
-	surface_profile: GatewaySurfaceProfileName;
+	/** Storage identity. Worker variants use `worker_realtime:<profile>`. */
+	surface_profile: string;
+	base_surface_profile: GatewaySurfaceProfileName;
+	execution_mode: PreparedPromptExecutionMode;
 	tool_names: string[];
 	tools_sha256: string | null;
 	tool_definitions_sha256: string | null;
@@ -72,7 +78,7 @@ export type PreparedPromptResponse = {
 	cache_key: string;
 	prompt_variant: string;
 	default_surface_profile: GatewaySurfaceProfileName;
-	prepared_surface_profiles: GatewaySurfaceProfileName[];
+	prepared_surface_profiles: string[];
 	system_prompt_sha256: string;
 };
 
@@ -279,19 +285,44 @@ export function resolvePreparedSurfaceProfiles(
 	contextType: ChatContextType
 ): GatewaySurfaceProfileName[] {
 	if (contextType === 'project' || contextType === 'ontology') {
-		return ['project_basic', 'project_write', 'project_document', 'project_write_document'];
+		// Turn routing now deterministically selects the common project surface.
+		// Avoid serializing three unreachable full system-prompt variants.
+		return ['project_write_document'];
 	}
 	return [resolveGatewaySurfaceProfileForContextType(contextType)];
+}
+
+export function resolveWorkerPreparedSurfaceProfiles(
+	contextType: ChatContextType
+): GatewaySurfaceProfileName[] {
+	if (contextType === 'project' || contextType === 'ontology') {
+		return ['project_write_document'];
+	}
+	if (contextType === 'project_create') return ['project_create_minimal'];
+	return [resolveGatewaySurfaceProfileForContextType(contextType)];
+}
+
+export function buildPreparedPromptSurfaceKey(
+	surfaceProfile: GatewaySurfaceProfileName,
+	executionMode: PreparedPromptExecutionMode
+): string {
+	return executionMode === 'worker_realtime'
+		? `worker_realtime:${surfaceProfile}`
+		: surfaceProfile;
 }
 
 export function resolveDefaultPreparedSurfaceProfile(
 	contextType: ChatContextType
 ): GatewaySurfaceProfileName {
+	if (contextType === 'project' || contextType === 'ontology') {
+		return 'project_write_document';
+	}
 	return resolveGatewaySurfaceProfileForContextType(contextType);
 }
 
 export function buildPreparedPromptSurface(params: {
 	surfaceProfile: GatewaySurfaceProfileName;
+	executionMode?: PreparedPromptExecutionMode;
 	contextType: ChatContextType;
 	contextPayload: Record<string, unknown>;
 	conversationSummary?: string | null;
@@ -300,11 +331,14 @@ export function buildPreparedPromptSurface(params: {
 	scaffold?: LitePromptScaffoldOptions | null;
 	createdAt?: string;
 }): PreparedPromptSurface {
+	const executionMode = params.executionMode ?? 'legacy_sse';
 	const toolNames = params.tools
 		.map((tool) => tool.function?.name)
 		.filter((name): name is string => Boolean(name));
 	return {
-		surface_profile: params.surfaceProfile,
+		surface_profile: buildPreparedPromptSurfaceKey(params.surfaceProfile, executionMode),
+		base_surface_profile: params.surfaceProfile,
+		execution_mode: executionMode,
 		tool_names: toolNames,
 		tools_sha256: toolNames.length > 0 ? sha256Json(toolNames) : null,
 		tool_definitions_sha256: sha256ToolDefinitions(params.tools),
@@ -326,7 +360,7 @@ export function buildPreparedPromptSurface(params: {
 
 export function getPreparedPromptSurface(
 	row: PreparedPromptRow,
-	surfaceProfile: GatewaySurfaceProfileName
+	surfaceProfile: string
 ): PreparedPromptSurface | null {
 	const surface = row.prepared_surfaces?.[surfaceProfile];
 	if (!surface?.system_prompt) return null;
@@ -388,9 +422,7 @@ export function buildPreparedPromptResponse(params: {
 		cache_key: params.cacheKey,
 		prompt_variant: params.promptVariant,
 		default_surface_profile: params.defaultSurfaceProfile,
-		prepared_surface_profiles: Object.keys(
-			params.preparedSurfaces
-		) as GatewaySurfaceProfileName[],
+		prepared_surface_profiles: Object.keys(params.preparedSurfaces),
 		system_prompt_sha256: defaultSurface?.system_prompt_sha256 ?? ''
 	};
 }

@@ -18,6 +18,8 @@ export type OntologySearchRow = {
 	bucket_key?: string | null;
 };
 
+export const RECIPROCAL_RANK_FUSION_K = 60;
+
 export type EventSearchRow = {
 	id: string;
 	project_id: string | null;
@@ -434,6 +436,48 @@ export function dedupeSearchRows(rows: OntologySearchRow[]): OntologySearchRow[]
 	}
 
 	return Array.from(byKey.values());
+}
+
+/**
+ * Merge independently ranked result lists without comparing their unrelated
+ * raw score scales. Scores are normalized against the best possible RRF score
+ * for the number of non-empty channels, keeping the downstream ranking boosts
+ * on the same approximate 0..1 relevance scale as the legacy lexical RPC.
+ */
+export function reciprocalRankFuseSearchRows(
+	resultLists: readonly (readonly OntologySearchRow[])[],
+	k = RECIPROCAL_RANK_FUSION_K
+): OntologySearchRow[] {
+	const safeK = Number.isFinite(k) && k >= 0 ? k : RECIPROCAL_RANK_FUSION_K;
+	const activeLists = resultLists
+		.map((rows) => dedupeSearchRows([...rows]))
+		.filter((rows) => rows.length > 0);
+	if (activeLists.length === 0) return [];
+
+	const representatives = new Map(
+		dedupeSearchRows(activeLists.flat()).map((row) => [`${row.type}:${row.id}`, row])
+	);
+	const scores = new Map<string, number>();
+
+	for (const rows of activeLists) {
+		rows.forEach((row, index) => {
+			if (typeof row.type !== 'string' || typeof row.id !== 'string') return;
+			const key = `${row.type}:${row.id}`;
+			scores.set(key, (scores.get(key) ?? 0) + 1 / (safeK + index + 1));
+		});
+	}
+
+	const maximumScore = activeLists.length / (safeK + 1);
+	return [...scores.entries()]
+		.map(([key, score]) => ({
+			...representatives.get(key)!,
+			score: Math.round((score / maximumScore) * 1_000_000) / 1_000_000
+		}))
+		.sort(
+			(a, b) =>
+				Number(b.score ?? 0) - Number(a.score ?? 0) ||
+				(a.title ?? '').localeCompare(b.title ?? '')
+		);
 }
 
 export function eventSearchScore(event: EventSearchRow, query: string): number {

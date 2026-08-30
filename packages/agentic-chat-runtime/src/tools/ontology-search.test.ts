@@ -11,11 +11,13 @@ import {
 	dedupeSearchRows,
 	normalizeSearchResult,
 	rankSearchResult,
+	reciprocalRankFuseSearchRows,
 	taskBucketsForQuery
 } from './ontology-search-ranking';
 
 const ACTOR_ID = '90000000-0000-4000-8000-000000000009';
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
+const SHARED_PROJECT_ID = '50000000-0000-4000-8000-000000000005';
 const NOW = new Date('2026-08-08T12:00:00.000Z').getTime();
 
 function makeBuilder(rows: unknown[]) {
@@ -34,6 +36,8 @@ function makeBuilder(rows: unknown[]) {
 function contextWith(input: {
 	rpc?: ReturnType<typeof vi.fn>;
 	tables?: Record<string, unknown[]>;
+	projectSummaries?: Array<{ id: string; state_key?: string | null }>;
+	embeddings?: { embedQuery: ReturnType<typeof vi.fn> };
 }) {
 	const builders = new Map<string, ReturnType<typeof makeBuilder>>();
 	const client = {
@@ -55,10 +59,11 @@ function contextWith(input: {
 		client: client as never,
 		access: {
 			getActorId,
-			resolveProjectSummaries: vi.fn(async () => []),
+			resolveProjectSummaries: vi.fn(async () => input.projectSummaries ?? []),
 			assertProjectAccess,
 			assertEntityAccess: vi.fn(async () => {})
-		}
+		},
+		...(input.embeddings ? { embeddings: input.embeddings as never } : {})
 	};
 	return { context, client, builders, assertProjectAccess, getActorId };
 }
@@ -103,6 +108,23 @@ describe('ontology search ranking', () => {
 			'blocked'
 		]);
 	});
+
+	it('RRF rewards cross-channel agreement without comparing raw score scales', () => {
+		const fused = reciprocalRankFuseSearchRows([
+			[
+				{ type: 'document', id: 'shared', title: 'Shared', score: 0.08 },
+				{ type: 'document', id: 'lexical', title: 'Lexical only', score: 0.95 }
+			],
+			[
+				{ type: 'document', id: 'semantic', title: 'Semantic only', score: 0.91 },
+				{ type: 'document', id: 'shared', title: 'Shared', score: 0.62 }
+			]
+		]);
+
+		expect(fused.map((row) => row.id)).toEqual(['shared', 'semantic', 'lexical']);
+		expect(fused[0]?.score).toBeCloseTo(0.992, 3);
+		expect(fused[1]?.score).toBeCloseTo(0.5, 3);
+	});
 });
 
 describe('shared ontology search', () => {
@@ -112,7 +134,7 @@ describe('shared ontology search', () => {
 		).toBe('invalid');
 	});
 
-	it('keeps workspace RPC search creator-scoped through the actor argument', async () => {
+	it('keeps workspace RPC search actor-scoped through the hardened actor argument', async () => {
 		const rpc = vi.fn(async (fn: string) => {
 			if (fn !== 'onto_search_entities') throw new Error(`Unexpected rpc: ${fn}`);
 			return {
@@ -153,6 +175,105 @@ describe('shared ontology search', () => {
 				p_limit: 30
 			})
 		);
+	});
+
+	it('hybrid-RRF merges lexical and semantic RPC ranks when embeddings are available', async () => {
+		const rpc = vi.fn(async (fn: string) => {
+			if (fn === 'onto_search_entities') {
+				return {
+					data: [
+						{ type: 'document', id: 'shared', title: 'Shared', score: 0.08 },
+						{ type: 'document', id: 'lexical', title: 'Lexical only', score: 0.95 }
+					],
+					error: null
+				};
+			}
+			if (fn === 'onto_search_semantic') {
+				return {
+					data: [
+						{ type: 'document', id: 'semantic', title: 'Semantic only', score: 0.91 },
+						{ type: 'document', id: 'shared', title: 'Shared', score: 0.62 }
+					],
+					error: null
+				};
+			}
+			throw new Error(`Unexpected rpc: ${fn}`);
+		});
+		const embedQuery = vi.fn(async () => [0.1, 0.2, 0.3]);
+		const { context } = contextWith({ rpc, embeddings: { embedQuery } });
+
+		const payload = await searchOntologyEntities(
+			context,
+			{ query: 'vocabulary mismatch', types: ['document'], limit: 10 },
+			{ now: () => NOW }
+		);
+
+		expect(payload.results.map((row) => row.id)).toEqual(['shared', 'semantic', 'lexical']);
+		expect(embedQuery).toHaveBeenCalledWith('vocabulary mismatch');
+		expect(rpc).toHaveBeenCalledWith(
+			'onto_search_semantic',
+			expect.objectContaining({
+				p_actor_id: ACTOR_ID,
+				p_query_embedding: '[0.1,0.2,0.3]',
+				p_types: ['document'],
+				p_limit: 30,
+				p_min_similarity: 0.2
+			})
+		);
+	});
+
+	it('falls back to lexical results when the optional embedding channel fails', async () => {
+		const rpc = vi.fn(async (fn: string) => {
+			if (fn !== 'onto_search_entities') throw new Error(`Unexpected rpc: ${fn}`);
+			return {
+				data: [{ type: 'document', id: 'lexical', title: 'Lexical', score: 0.9 }],
+				error: null
+			};
+		});
+		const { context } = contextWith({
+			rpc,
+			embeddings: { embedQuery: vi.fn(async () => Promise.reject(new Error('offline'))) }
+		});
+
+		await expect(
+			searchOntologyEntities(
+				context,
+				{ query: 'launch', types: ['document'], limit: 10 },
+				{ now: () => NOW }
+			)
+		).resolves.toMatchObject({ results: [{ id: 'lexical', score: 0.9 }] });
+	});
+
+	it('scopes workspace event reads to owner/member project summaries', async () => {
+		const { context, builders } = contextWith({
+			projectSummaries: [{ id: PROJECT_ID }, { id: SHARED_PROJECT_ID }],
+			tables: {
+				onto_events: [
+					{
+						id: 'event-1',
+						project_id: SHARED_PROJECT_ID,
+						title: 'Launch review',
+						description: null,
+						location: null,
+						start_at: '2026-08-09T12:00:00.000Z',
+						state_key: 'scheduled',
+						type_key: 'event.meeting'
+					}
+				]
+			}
+		});
+
+		await searchOntologyEntities(
+			context,
+			{ query: 'launch', types: ['event'], limit: 10 },
+			{ now: () => NOW }
+		);
+
+		expect(builders.get('onto_events')?.in).toHaveBeenCalledWith('project_id', [
+			PROJECT_ID,
+			SHARED_PROJECT_ID
+		]);
+		expect(builders.get('onto_events')?.eq).not.toHaveBeenCalledWith('created_by', ACTOR_ID);
 	});
 
 	it('gates project search before loading active project and task bucket rows', async () => {

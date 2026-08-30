@@ -2904,6 +2904,62 @@ export type Database = {
           },
         ]
       }
+      agentic_chat_context_snapshots: {
+        Row: {
+          cache_key: string
+          context_cache_version: number
+          context_payload: Json
+          context_payload_sha256: string
+          context_type: string
+          created_at: string
+          entity_id: string | null
+          expires_at: string
+          invalidation_token: string
+          project_focus: Json | null
+          project_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cache_key: string
+          context_cache_version: number
+          context_payload: Json
+          context_payload_sha256: string
+          context_type: string
+          created_at?: string
+          entity_id?: string | null
+          expires_at: string
+          invalidation_token: string
+          project_focus?: Json | null
+          project_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cache_key?: string
+          context_cache_version?: number
+          context_payload?: Json
+          context_payload_sha256?: string
+          context_type?: string
+          created_at?: string
+          entity_id?: string | null
+          expires_at?: string
+          invalidation_token?: string
+          project_focus?: Json | null
+          project_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_context_snapshots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agentic_chat_execution_observations: {
         Row: {
           event_type: string
@@ -2963,6 +3019,7 @@ export type Database = {
           cache_key: string
           consumed_at: string | null
           context_cache_version: number
+          context_invalidation_token: string | null
           context_payload: Json
           context_payload_sha256: string
           context_type: string
@@ -2990,6 +3047,7 @@ export type Database = {
           cache_key: string
           consumed_at?: string | null
           context_cache_version: number
+          context_invalidation_token?: string | null
           context_payload: Json
           context_payload_sha256: string
           context_type: string
@@ -3017,6 +3075,7 @@ export type Database = {
           cache_key?: string
           consumed_at?: string | null
           context_cache_version?: number
+          context_invalidation_token?: string | null
           context_payload?: Json
           context_payload_sha256?: string
           context_type?: string
@@ -19847,6 +19906,10 @@ export type Database = {
         }
         Returns: Json
       }
+      cleanup_expired_agentic_chat_context_snapshots: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_agentic_chat_sensitive_transcripts: {
         Args: { p_batch_size?: number; p_retention_days?: number }
         Returns: Json
@@ -20734,6 +20797,14 @@ export type Database = {
           guards: Json
           to_state: string
         }[]
+      }
+      get_agentic_chat_context_invalidation_token: {
+        Args: {
+          p_context_type: string
+          p_project_id?: string | null
+          p_user_id: string
+        }
+        Returns: string
       }
       get_brief_generation_stats: {
         Args: { end_date: string; start_date: string }
