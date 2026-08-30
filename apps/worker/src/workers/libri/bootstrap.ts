@@ -11,6 +11,7 @@ export type LibriQueueType = (typeof LIBRI_QUEUE_TYPES)[number];
 
 export type LibriDatabaseProbePort = {
 	probe: () => Promise<void>;
+	close?: () => Promise<void>;
 };
 
 export type LibriWorkerBootstrapState =
@@ -145,6 +146,7 @@ export class LibriWorkerBootstrap {
 			this.probeInterval = null;
 		}
 		await this.probePromise?.catch(() => undefined);
+		await this.database.close?.();
 		this.state = 'stopped';
 	}
 
