@@ -64,12 +64,11 @@ export function shouldWriteLocalPromptDump(params: {
 	const env = params.env ?? process.env;
 	const explicitToggle = parseBooleanEnv(env.FASTCHAT_LOCAL_PROMPT_DUMPS);
 	if (explicitToggle === false) return false;
+	// Prompt dumps contain full rendered prompts. Never let an environment flag
+	// turn filesystem dumping on in a production build.
+	if (!params.dev) return false;
 
 	if (isTestLikeEnv(env) && explicitToggle !== true) {
-		return false;
-	}
-
-	if (!params.dev && explicitToggle !== true) {
 		return false;
 	}
 

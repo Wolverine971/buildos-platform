@@ -52,6 +52,10 @@ That makes changes harder to reason about and raises the odds of subtle regressi
   Shared read/write/discovery classification, gateway success semantics, duplicate-write skip detection, and trace classification.
 - `tool-round-runner.ts`
   Tool-round terminal preparation, single-call dispatch, materialization-on-miss, duplicate-write skips, result recording, and model replay messages.
+- `turn-security-policy.ts`
+  The retained synchronous execution boundary: shared Agent Ops read/write classification,
+  external-content review latching, destructive-operation confirmation, and write-materialization
+  authorization. Policy is checked before both materialization and final dispatch.
 - `llm-pass-runner.ts`
   LLM stream event loop, per-pass timeout, bounded retry for transient stream failures, text/reasoning/tool-call event capture, usage/pass metadata, no-tool synthesis suppression, and incomplete-stream guard.
 - `finalization-runner.ts`
@@ -102,6 +106,8 @@ Importers point directly at `./stream-orchestrator/index` via the barrel in `age
 - Prefer extracting pure functions before moving stateful logic.
 - Every refactor step should be covered by the existing orchestrator test suite before proceeding.
 - If a helper depends on orchestration-local state, do not force the extraction yet.
+- Treat tool discovery as a capability suggestion, never authorization. Any new materialization or
+  execution path must pass through `turn-security-policy.ts` before exposing or invoking a write.
 
 ## Current Verification Baseline
 

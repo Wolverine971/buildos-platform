@@ -29,6 +29,7 @@ import {
 	getRequestIdFromHeaders,
 	getUserAgentFromHeaders
 } from '$lib/server/error-tracking';
+import { consumeAgenticChatTurnRateLimit } from '$lib/server/agentic-chat-turn-rate-limit';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type {
@@ -341,6 +342,18 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 
 	if (!user?.id) {
 		return ApiResponse.unauthorized();
+	}
+	const turnRateLimit = consumeAgenticChatTurnRateLimit(user.id);
+	if (!turnRateLimit.allowed) {
+		return new Response(JSON.stringify({ error: 'Too many chat turns. Try again shortly.' }), {
+			status: 429,
+			headers: {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Cache-Control': 'private, no-store',
+				...turnRateLimit.headers,
+				'Retry-After': String(turnRateLimit.retryAfterSeconds ?? 1)
+			}
+		});
 	}
 
 	// Turn admission, observability, and supervisor checkpoints are trusted
@@ -1059,6 +1072,21 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 			turnAdmissionMs = Math.max(0, Date.now() - admissionStartedAtMs);
 			activeTurnLookupMs = null;
 
+			if (turnAdmission.outcome === 'capacity_exceeded') {
+				await emitErrorThenDone({
+					error: 'Two responses are already running for this account. Try again in a moment.',
+					finishedReason: 'user_turn_capacity_exceeded',
+					projectId: projectIdForLogs,
+					errorMetadata: {
+						contextType,
+						runningCount: turnAdmission.runningCount,
+						retryAfterSeconds: turnAdmission.retryAfterSeconds
+					}
+				});
+				cancellationMonitor?.stop();
+				cancellationMonitor = null;
+				return;
+			}
 			if (turnAdmission.outcome === 'matching_duplicate') {
 				await emitErrorThenDone({
 					error: 'This response is already in progress. Reopen the chat to continue with the existing response.',
@@ -2358,6 +2386,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 				completionOutcome,
 				turnContract,
 				turnContractResolution,
+				securityReview,
 				orchestrationInterventions
 			} = await streamFastChat({
 				llm,
@@ -2653,7 +2682,10 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 							logger.info('[search] agent search executed', {
 								tool: patchedCall.function.name,
 								family: searchToolFamily(patchedCall.function.name),
-								query: argRecord.query ?? argRecord.search ?? null,
+								queryChars:
+									typeof (argRecord.query ?? argRecord.search) === 'string'
+										? String(argRecord.query ?? argRecord.search).length
+										: 0,
 								projectScoped: Boolean(argRecord.project_id),
 								types: Array.isArray(argRecord.types) ? argRecord.types : undefined,
 								resultCount: searchTelemetry.result_count,
@@ -2752,7 +2784,6 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 							if (isExpectedToolValidationFailure(result.error)) {
 								logger.warn('FastChat tool validation failure', {
 									...toolFailureMetadata,
-									toolArgsRaw: patchedCall.function.arguments,
 									toolArgsPreview: previewToolArguments(
 										patchedCall.function.arguments
 									)
@@ -3126,15 +3157,25 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 			// Compatibility aliases for persistence/checkpoint columns whose schema
 			// names predate semantic contracts.
 			const turnOutcomeStatus = semanticTurnOutcome.status;
-			const nextPendingTurnContract = buildFastChatPendingTurnContract({
-				resolution: semanticTurnOutcome,
-				contextType,
-				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-				turnRunId,
-				finishedReason
-			});
+			// A security-review stop must never become an auto-resuming mutation
+			// contract. The next user message has to explicitly confirm the proposed
+			// write, after which the model can declare a fresh bounded contract.
+			const nextPendingTurnContract = securityReview?.required
+				? null
+				: buildFastChatPendingTurnContract({
+						resolution: semanticTurnOutcome,
+						contextType,
+						projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+						turnRunId,
+						finishedReason
+					});
 			let pendingContractMetadataPersisted = false;
-			if (turnContract || pendingTurnContract || pendingTurnIntent) {
+			if (
+				turnContract ||
+				pendingTurnContract ||
+				pendingTurnIntent ||
+				securityReview?.required
+			) {
 				pendingContractMetadataPersisted = await updateAgentMetadata(
 					supabase,
 					session.id,
@@ -3159,6 +3200,9 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 				contract_source: semanticTurnOutcome.contract?.source ?? null,
 				contract_fulfilled: semanticTurnOutcome.fulfilled,
 				contract_outcomes: semanticTurnOutcome.outcomes,
+				security_review_required: securityReview?.required === true,
+				security_review_reasons: securityReview?.reasons ?? [],
+				security_review_tools: securityReview?.toolNames ?? [],
 				lexical_intent_shadow: turnIntent,
 				pending_contract_persisted:
 					nextPendingTurnContract !== null && pendingContractMetadataPersisted

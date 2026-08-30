@@ -496,7 +496,10 @@ async function runAgenticChatWorkerRetentionCleanup(): Promise<void> {
 			return;
 		}
 
-		const summary = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+		const summary: Record<string, unknown> =
+			data && typeof data === 'object' && !Array.isArray(data)
+				? (data as Record<string, unknown>)
+				: {};
 		const eventsDeleted = numericSummaryValue(summary, 'turn_events_deleted');
 		const streamStatesDeleted = numericSummaryValue(summary, 'stream_states_deleted');
 		const signalsDeleted = numericSummaryValue(summary, 'turn_signals_deleted');
@@ -568,6 +571,36 @@ async function runPreparedPromptRetentionCleanup(): Promise<void> {
 	}
 }
 
+async function runAgenticChatSensitiveTranscriptCleanup(): Promise<void> {
+	try {
+		const client = supabase as unknown as {
+			rpc(
+				name: 'cleanup_agentic_chat_sensitive_transcripts',
+				args?: { p_retention_days?: number; p_batch_size?: number }
+			): Promise<{ data: unknown; error: unknown }>;
+		};
+		const { data, error } = await client.rpc('cleanup_agentic_chat_sensitive_transcripts');
+		if (error) {
+			console.warn('⚠️ Scheduled Agentic Chat sensitive transcript cleanup failed:', error);
+			return;
+		}
+
+		const summary: Record<string, unknown> =
+			data && typeof data === 'object' && !Array.isArray(data)
+				? (data as Record<string, unknown>)
+				: {};
+		const toolExecutionsDeleted = numericSummaryValue(summary, 'tool_executions_deleted');
+		const turnEventsDeleted = numericSummaryValue(summary, 'turn_events_deleted');
+		if (toolExecutionsDeleted > 0 || turnEventsDeleted > 0) {
+			console.log(
+				`✅ Scheduled Agentic Chat sensitive transcript cleanup complete: toolExecutions=${toolExecutionsDeleted}, turnEvents=${turnEventsDeleted}`
+			);
+		}
+	} catch (error) {
+		console.error('❌ Scheduled Agentic Chat sensitive transcript cleanup failed:', error);
+	}
+}
+
 async function runAgentCallBootstrapRetentionCleanup(): Promise<void> {
 	try {
 		const { data, error } = await supabase.rpc('cleanup_expired_agent_call_bootstrap_links', {
@@ -621,6 +654,7 @@ export async function runQueueRetentionCleanup() {
 
 	await runAgenticChatWorkerRetentionCleanup();
 	await runPreparedPromptRetentionCleanup();
+	await runAgenticChatSensitiveTranscriptCleanup();
 	await runAgentCallBootstrapRetentionCleanup();
 }
 

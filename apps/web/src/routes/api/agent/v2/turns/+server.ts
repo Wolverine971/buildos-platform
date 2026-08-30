@@ -25,6 +25,7 @@ import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { consumeAgenticChatTurnRateLimit } from '$lib/server/agentic-chat-turn-rate-limit';
 
 const logger = createLogger('API:AgentWorkerTurnsV2');
 import { workerAdmissionRequestSchema } from './worker-admission-schema';
@@ -69,6 +70,19 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 	if (!user?.id) return privateResponse(ApiResponse.unauthorized());
+	const turnRateLimit = consumeAgenticChatTurnRateLimit(user.id);
+	if (!turnRateLimit.allowed) {
+		const response = ApiResponse.error(
+			'Too many chat turns. Try again shortly.',
+			HttpStatus.TOO_MANY_REQUESTS,
+			'AGENTIC_CHAT_RATE_LIMITED'
+		);
+		for (const [name, value] of Object.entries(turnRateLimit.headers)) {
+			response.headers.set(name, value);
+		}
+		response.headers.set('Retry-After', String(turnRateLimit.retryAfterSeconds ?? 1));
+		return privateResponse(response);
+	}
 
 	const parsed = await parseJsonRequest(request, workerAdmissionRequestSchema, {
 		invalidBodyMessage: 'Invalid worker turn request'

@@ -4,10 +4,6 @@
  */
 
 function extractErrorMessage(error: unknown): string {
-	if (error instanceof Error && error.message) {
-		return error.message;
-	}
-
 	if (typeof error === 'string') {
 		return error;
 	}
@@ -15,31 +11,30 @@ function extractErrorMessage(error: unknown): string {
 	if (error && typeof error === 'object') {
 		const typed = error as {
 			message?: unknown;
-			details?: unknown;
-			hint?: unknown;
 			code?: unknown;
 			status?: unknown;
 		};
 
-		if (typeof typed.message === 'string' && typed.message.trim().length > 0) {
-			return typed.message;
-		}
-
 		const parts: string[] = [];
-		if (typed.code) parts.push(String(typed.code));
-		if (typed.status) parts.push(String(typed.status));
-		if (typed.details) parts.push(String(typed.details));
-		if (typed.hint) parts.push(String(typed.hint));
+		if (typeof typed.code === 'string' && typed.code.trim()) {
+			parts.push(`database error ${typed.code.trim()}`);
+		}
+		if (
+			(typeof typed.status === 'string' && typed.status.trim()) ||
+			(typeof typed.status === 'number' && Number.isFinite(typed.status))
+		) {
+			parts.push(`status ${String(typed.status).trim()}`);
+		}
 
 		if (parts.length > 0) {
 			return parts.join(' - ');
 		}
 
-		try {
-			return JSON.stringify(error);
-		} catch {
-			return String(error);
+		if (typeof typed.message === 'string' && typed.message.trim().length > 0) {
+			return typed.message;
 		}
+
+		return 'Unknown error';
 	}
 
 	return error ? String(error) : 'Unknown error';

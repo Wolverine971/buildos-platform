@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	getGatewayDirectToolNamesForProfile,
 	getGatewaySurfaceForContextType,
-	getGatewaySurfaceForProfile
+	getGatewaySurfaceForProfile,
+	materializeGatewayTools
 } from './surfaces';
 
 describe('project-create gateway surface', () => {
@@ -33,5 +34,17 @@ describe('project-create gateway surface', () => {
 			reviewedSurface.find((tool) => tool.function.name === 'create_onto_task')?.function
 				.parameters.required
 		).toEqual(['project_id', 'title']);
+	});
+});
+
+describe('gateway materialization policy', () => {
+	it('keeps denied discoveries out of the callable surface and reports them', () => {
+		const result = materializeGatewayTools([], ['get_onto_task_details', 'delete_onto_task'], {
+			allowToolName: (toolName) => toolName !== 'delete_onto_task'
+		});
+
+		expect(result.tools.map((tool) => tool.function.name)).toEqual(['get_onto_task_details']);
+		expect(result.addedToolNames).toEqual(['get_onto_task_details']);
+		expect(result.blockedToolNames).toEqual(['delete_onto_task']);
 	});
 });

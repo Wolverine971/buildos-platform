@@ -483,6 +483,7 @@ export class ExternalExecutor extends BaseExecutor {
 					'last_fetched_at'
 				].join(', ')
 			)
+			.eq('user_id', this.userId)
 			.eq('normalized_url', normalizedUrl)
 			.maybeSingle()) as any;
 
@@ -500,7 +501,7 @@ export class ExternalExecutor extends BaseExecutor {
 				typeof candidate === 'string' && candidate.length > 0
 		);
 		if (!cachedUrls.every((candidate) => isGlobalWebPageCacheEligible(candidate))) {
-			logger.warn('Ignoring ineligible global page cache entry', { visitId: data.id });
+			logger.warn('Ignoring ineligible scoped page cache entry', { visitId: data.id });
 			return null;
 		}
 
@@ -587,7 +588,8 @@ export class ExternalExecutor extends BaseExecutor {
 		const { error } = await admin
 			.from('web_page_visits')
 			.update(update as any)
-			.eq('id', cached.id);
+			.eq('id', cached.id)
+			.eq('user_id', this.userId);
 		if (error) {
 			logger.warn('Failed to record cached web visit use', {
 				visitId: cached.id,
@@ -621,11 +623,11 @@ export class ExternalExecutor extends BaseExecutor {
 	> {
 		if (!this.isFetchedVisitCacheEligible(fetched)) return { stored: false };
 		const admin = this.getAdminSupabase();
-		// SECURITY: web_page_visits is a GLOBAL cross-user cache keyed by
-		// normalized_url. Only key/store by the page's declared canonical_url when
+		// SECURITY: web_page_visits is scoped by (user_id, normalized_url). Only
+		// key/store by the page's declared canonical_url when
 		// it shares the final_url's registrable domain; otherwise a page could
-		// claim another site's canonical and poison that URL's cache entry for
-		// every user. (parser.ts already strips cross-site canonicals — this is
+		// claim another site's canonical and poison that URL's cache entry for the
+		// current user. (parser.ts already strips cross-site canonicals — this is
 		// defense-in-depth at the cache-key boundary.)
 		const cacheKeyUrl =
 			fetched.canonical_url &&
@@ -642,6 +644,7 @@ export class ExternalExecutor extends BaseExecutor {
 			const { data: existing, error: selectError } = await admin
 				.from('web_page_visits')
 				.select('id, visit_count, first_visited_at')
+				.eq('user_id', this.userId)
 				.eq('normalized_url', normalizedUrl)
 				.maybeSingle();
 
@@ -680,6 +683,7 @@ export class ExternalExecutor extends BaseExecutor {
 						error_message: responseContent.errorMessage ?? null
 					} as any)
 					.eq('id', existing.id)
+					.eq('user_id', this.userId)
 					.select('id')
 					.maybeSingle();
 
@@ -693,6 +697,7 @@ export class ExternalExecutor extends BaseExecutor {
 			const { data, error } = await admin
 				.from('web_page_visits')
 				.insert({
+					user_id: this.userId,
 					url: fetched.url,
 					final_url: fetched.final_url,
 					canonical_url: fetched.canonical_url ?? null,

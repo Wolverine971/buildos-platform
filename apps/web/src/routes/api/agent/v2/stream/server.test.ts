@@ -18,6 +18,7 @@ import {
 	createAgenticChatLegacyParityCoverageTrackerV1,
 	normalizeAgenticChatParityRunV1
 } from '@buildos/agentic-chat-runtime';
+import { resetAgenticChatTurnRateLimitForTests } from '$lib/server/agentic-chat-turn-rate-limit';
 
 const parityCoverage = createAgenticChatLegacyParityCoverageTrackerV1();
 
@@ -916,6 +917,7 @@ function buildPreparedPromptRow(overrides: Row = {}): { key: string; row: Row } 
 }
 
 beforeEach(() => {
+	resetAgenticChatTurnRateLimitForTests();
 	vi.clearAllMocks();
 	mocks.logError.mockResolvedValue(null);
 	for (const key of Object.keys(runtimeEnv.values)) {
@@ -3041,6 +3043,53 @@ describe('/api/agent/v2/stream', () => {
 			expect(mocks.streamFastChat).not.toHaveBeenCalled();
 		}
 	);
+
+	it('does not execute or consume prepared content when the account turn capacity is exhausted', async () => {
+		const preparedPrompt = buildPreparedPromptRow();
+		const supabase = createStreamingSupabase(
+			{ agentic_chat_prepared_prompts: [preparedPrompt.row] },
+			{
+				admissionResult: {
+					outcome: 'capacity_exceeded',
+					execution_may_start: false,
+					running_count: 2,
+					retry_after_seconds: 5
+				}
+			}
+		);
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Hello',
+					context_type: 'global',
+					stream_run_id: 'stream-run-capacity-exceeded',
+					client_turn_id: 'client-turn-capacity-exceeded',
+					preparedPromptKey: preparedPrompt.key
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		const events = parseSseEvents(await response.text());
+		expect(events.find((event) => event.type === 'error')).toEqual(
+			expect.objectContaining({
+				error: 'Two responses are already running for this account. Try again in a moment.'
+			})
+		);
+		expect(events.find((event) => event.type === 'done')).toEqual(
+			expect.objectContaining({ finished_reason: 'user_turn_capacity_exceeded' })
+		);
+		expect(supabase.insertedRows.chat_messages ?? []).toHaveLength(0);
+		expect(supabase.updatedRows.agentic_chat_prepared_prompts ?? []).toHaveLength(0);
+		expect(mocks.loadPromptContext).not.toHaveBeenCalled();
+		expect(mocks.streamFastChat).not.toHaveBeenCalled();
+	});
 
 	it('defers prompt snapshot persistence until after the first model delta is emitted', async () => {
 		const supabase = createStreamingSupabase();

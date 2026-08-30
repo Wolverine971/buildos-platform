@@ -18747,6 +18747,7 @@ export type Database = {
           title: string | null
           updated_at: string
           url: string
+          user_id: string | null
           visit_count: number
         }
         Insert: {
@@ -18779,6 +18780,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           url: string
+          user_id?: string | null
           visit_count?: number
         }
         Update: {
@@ -18811,6 +18813,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           url?: string
+          user_id?: string | null
           visit_count?: number
         }
         Relationships: [
@@ -18820,6 +18823,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "web_page_versions"
             referencedColumns: ["web_page_visit_id", "id"]
+          },
+          {
+            foreignKeyName: "web_page_visits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -19835,6 +19845,10 @@ export type Database = {
           p_prompt_snapshot_retention_days?: number
           p_rendered_dump_retention_days?: number
         }
+        Returns: Json
+      }
+      cleanup_agentic_chat_sensitive_transcripts: {
+        Args: { p_batch_size?: number; p_retention_days?: number }
         Returns: Json
       }
       cleanup_agentic_chat_worker_artifacts: {

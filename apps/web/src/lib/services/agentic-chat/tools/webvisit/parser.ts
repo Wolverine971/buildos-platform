@@ -145,7 +145,7 @@ function isSameHostOrSubdomain(hostA: string, hostB: string): boolean {
 /**
  * True when both URLs share an exact host hierarchy. This is intentionally
  * stricter than an approximate eTLD+1 comparison: the web_page_visits cache is
- * global, and sibling tenants on private suffixes like github.io must not be
+ * user-scoped, but sibling sites on private suffixes like github.io still must not be
  * allowed to canonicalize into each other's cache keys.
  */
 export function isSameRegistrableDomain(urlA: string, urlB: string): boolean {
@@ -475,8 +475,8 @@ function extractCanonicalUrl(html: string, baseUrl: string): string | undefined 
 		// SECURITY: only honor a canonical URL within the page's own
 		// registrable domain. A cross-site canonical (e.g. evil.com declaring
 		// <link rel=canonical href="https://nytimes.com/x">) must be ignored —
-		// otherwise it poisons the shared web_page_visits cache key for another
-		// site and serves attacker content to every later visitor of that URL.
+		// otherwise it poisons the scoped web_page_visits cache key for another
+		// site and serves attacker content to later visits in the same account.
 		if (!isSameRegistrableDomain(resolved, baseUrl)) continue;
 		return resolved;
 	}

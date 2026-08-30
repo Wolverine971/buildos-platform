@@ -68,6 +68,7 @@ import {
 	maybeQueueDeepResearchParent,
 	processDeepResearchCoordinator
 } from './deepResearchOrchestrator';
+import { formatAgentRunTranscriptResult } from './transcript-security';
 import {
 	type DeepResearchObservations,
 	mergeDeepResearchObservations,
@@ -146,7 +147,17 @@ const WEB_TRANSCRIPT_RESULT_CHARS = 12_500;
 // (agent_run_cost_entries) remains the enforcement record.
 const paidToolUsageLogger = new LLMUsageLogger({ supabase });
 
-async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence) {
+function isMissingScopedWebCacheColumn(error: unknown): boolean {
+	if (!error || typeof error !== 'object' || Array.isArray(error)) return false;
+	const record = error as { code?: unknown; message?: unknown };
+	return (
+		record.code === '42703' ||
+		record.code === 'PGRST204' ||
+		(typeof record.message === 'string' && record.message.includes('web_page_visits.user_id'))
+	);
+}
+
+async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence, userId: string) {
 	if (![page.requestedUrl, page.finalUrl].every((url) => isGlobalWebPageCacheEligible(url))) {
 		return undefined;
 	}
@@ -162,11 +173,18 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence) {
 	const { data: existing, error: selectError } = await supabase
 		.from('web_page_visits')
 		.select('id, visit_count')
+		.eq('user_id', userId)
 		.eq('normalized_url', normalizedUrl)
 		.maybeSingle();
+	// Rolling-deploy safety: research still returns live evidence if the worker
+	// reaches production before the account-scope migration.
+	if (selectError && isMissingScopedWebCacheColumn(selectError)) return undefined;
 	if (selectError) throw selectError;
 
-	const mutableSnapshot: Database['public']['Tables']['web_page_visits']['Insert'] = {
+	const mutableSnapshot: Database['public']['Tables']['web_page_visits']['Insert'] & {
+		user_id: string;
+	} = {
+		user_id: userId,
 		url: page.requestedUrl,
 		final_url: page.finalUrl,
 		canonical_url: null,
@@ -196,6 +214,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence) {
 				visit_count: visitCount + 1
 			})
 			.eq('id', id)
+			.eq('user_id', userId)
 			.select('id')
 			.maybeSingle();
 		if (error) throw error;
@@ -219,6 +238,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence) {
 			const { data: raced, error: raceError } = await supabase
 				.from('web_page_visits')
 				.select('id, visit_count')
+				.eq('user_id', userId)
 				.eq('normalized_url', normalizedUrl)
 				.maybeSingle();
 			if (raceError || !raced?.id) throw raceError ?? error;
@@ -736,7 +756,11 @@ async function reconstructPriorState(
 		toolCalls += 1;
 		const op = e.gateway_op ?? e.tool_name ?? 'op';
 		const resultText = e.success
-			? JSON.stringify(e.result ?? {}).slice(0, transcriptResultCharsForOp(op))
+			? formatAgentRunTranscriptResult({
+					op,
+					result: e.result,
+					maxChars: transcriptResultCharsForOp(op)
+				})
 			: `ERROR: ${e.error_message ?? 'failed'}`;
 		items.push({
 			at: e.created_at,
@@ -1344,7 +1368,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		visitMaxBytes: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_MAX_BYTES'),
 		tavilyCreditCostUsd,
 		searchCacheStore,
-		pageEvidenceSink: persistAgentRunPageEvidence,
+		pageEvidenceSink: (page) => persistAgentRunPageEvidence(page, run.user_id),
 		onSearchDispatched: async (charge) => {
 			if (!activePaidToolAttemptKey) {
 				throw new AgentRunCostLedgerError(
@@ -2305,7 +2329,11 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 
 		const resultText = result.ok
 			? execution.recorded
-				? JSON.stringify(execution.persistedResult).slice(0, transcriptResultCharsForOp(op))
+				? formatAgentRunTranscriptResult({
+						op,
+						result: execution.persistedResult,
+						maxChars: transcriptResultCharsForOp(op)
+					})
 				: 'RESULT NOT DURABLY RECORDED: do not cite or rely on this operation result.'
 			: `ERROR ${result.error?.code}: ${result.error?.message}`;
 		transcript.push(`OP ${op} ${JSON.stringify(args)} -> ${resultText}`);

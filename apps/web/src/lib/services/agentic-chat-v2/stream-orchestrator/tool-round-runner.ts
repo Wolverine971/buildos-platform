@@ -266,6 +266,10 @@ export type ToolExecutionDispatchResult = {
 	executedToolCallDelta: number;
 };
 
+export type ToolCallSecurityAuthorization =
+	| { allowed: true }
+	| { allowed: false; result: ChatToolResult };
+
 export async function executeToolCallPair(params: {
 	originalToolCall: ChatToolCall;
 	toolCall: ChatToolCall;
@@ -286,6 +290,10 @@ export async function executeToolCallPair(params: {
 	) => string[];
 	findDuplicateSuccessfulWrite: (toolCall: ChatToolCall) => FastToolExecution | undefined;
 	startToolExecutionHeartbeat: (details: { toolName: string; toolCallId: string }) => () => void;
+	authorizeToolCall?: (
+		toolCall: ChatToolCall,
+		phase: 'execution' | 'materialization'
+	) => ToolCallSecurityAuthorization;
 }): Promise<ToolExecutionDispatchResult> {
 	const { originalToolCall, toolCall } = params;
 	let result: ChatToolResult;
@@ -296,7 +304,14 @@ export async function executeToolCallPair(params: {
 		knownEntitiesById: params.knownEntitiesById
 	});
 
-	if (entityKindRepairResult) {
+	const securityAuthorization = params.authorizeToolCall?.(
+		toolCall,
+		params.getAllowedToolNames().has(toolCall.function.name) ? 'execution' : 'materialization'
+	);
+
+	if (securityAuthorization && !securityAuthorization.allowed) {
+		result = securityAuthorization.result;
+	} else if (entityKindRepairResult) {
 		result = entityKindRepairResult;
 	} else if (!params.getAllowedToolNames().has(toolCall.function.name)) {
 		const dispatch = await dispatchUnavailableToolCall({

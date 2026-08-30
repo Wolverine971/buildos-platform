@@ -10,6 +10,10 @@ import {
 } from '$lib/server/agent-call/agent-call-service';
 import { getSecurityEventLogOptions } from '$lib/server/security-event-logger';
 import { logRouteError } from '$lib/server/route-error';
+import {
+	consumePublicEndpointRateLimit,
+	OAUTH_RATE_LIMITS
+} from '$lib/server/agent-call/oauth-rate-limit';
 
 function isBuildosAgentRequest(value: unknown): value is BuildosAgentRequest {
 	return (
@@ -36,7 +40,29 @@ async function readBuildosAgentRequest(request: Request): Promise<BuildosAgentRe
 }
 
 export const POST: RequestHandler = async (event) => {
-	const { request, platform } = event;
+	const { request, platform, getClientAddress } = event;
+	const rateLimit = consumePublicEndpointRateLimit(
+		`agent-call:gateway:${getClientAddress()}`,
+		OAUTH_RATE_LIMITS.gateway
+	);
+	if (!rateLimit.allowed) {
+		return json(
+			{
+				error: {
+					code: -32029,
+					message: 'Too many agent gateway requests. Try again shortly.'
+				}
+			},
+			{
+				status: 429,
+				headers: {
+					...rateLimit.headers,
+					'Retry-After': String(rateLimit.retryAfterSeconds),
+					'Cache-Control': 'no-store'
+				}
+			}
+		);
+	}
 	const service = new BuildosAgentCallService(
 		createAdminSupabaseClient(),
 		getSecurityEventLogOptions(platform)

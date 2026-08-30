@@ -134,6 +134,15 @@ import {
 	type TurnContract,
 	type TurnContractResolution
 } from '@buildos/agentic-chat-runtime/loop';
+import {
+	buildInteractiveChatToolSecurityResult,
+	evaluateInteractiveChatToolSecurity,
+	hasExplicitWriteReviewConfirmation,
+	isPotentiallyUntrustedContentToolCall,
+	isPotentiallyUntrustedContentToolName,
+	isTrustedUserWriteCommission,
+	type InteractiveChatToolSecurityReason
+} from './turn-security-policy';
 
 type StreamFastChatParams = {
 	llm: SmartLLMService;
@@ -365,6 +374,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	completionOutcome?: FastChatCompletionOutcome;
 	turnContract?: TurnContract | null;
 	turnContractResolution?: TurnContractResolution;
+	securityReview?: {
+		required: true;
+		reasons: InteractiveChatToolSecurityReason[];
+		toolNames: string[];
+	};
 	orchestrationInterventions: FastChatOrchestrationInterventions;
 }> {
 	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
@@ -414,6 +428,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let allowedToolNames = new Set(
 		tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
 	);
+	const trustedUserWriteCommission = isTrustedUserWriteCommission(message);
+	const reviewConfirmationTurn = hasExplicitWriteReviewConfirmation({ history, message });
+	let externalContentIngested = false;
+	let currentRoundContainsExternalContent = false;
+	const securityReviewBlocks = new Map<string, InteractiveChatToolSecurityReason>();
 	const commissionedWriteToolNames = Array.from(
 		new Set(
 			(params.commissionedWriteToolNames ?? [])
@@ -459,6 +478,22 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			0
 		) ?? 0;
 	refreshTurnContract();
+	const evaluateToolSecurity = (toolName: string, phase: 'execution' | 'materialization') =>
+		evaluateInteractiveChatToolSecurity({
+			toolName,
+			phase,
+			externalContentIngested,
+			roundContainsExternalContent: currentRoundContainsExternalContent,
+			isCurrentExternalContentSource: isPotentiallyUntrustedContentToolName(toolName),
+			reviewConfirmationTurn,
+			writeReviewConfirmed: hasExplicitWriteReviewConfirmation({
+				history,
+				message,
+				toolName
+			}),
+			trustedUserWriteCommission,
+			turnContractDeclared: turnContract !== null
+		});
 	// "Gateway mode" arms on-demand tool materialization (on-miss + discover-then-load)
 	// and the gateway recovery/repair machinery. It must key off discovery tools that
 	// actually remain on the launch surface. Under lean discovery (Tier 2 item 4) only
@@ -744,7 +779,41 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		reason: string,
 		source: GatewayToolMaterializationSource = 'discovery'
 	): string[] => {
-		const materialized = materializeGatewayTools(tools, toolNames);
+		const blockedDecisions = new Map<
+			string,
+			Extract<ReturnType<typeof evaluateToolSecurity>, { allowed: false }>
+		>();
+		const materialized = materializeGatewayTools(tools, toolNames, {
+			allowToolName: (toolName) => {
+				const decision = evaluateToolSecurity(toolName, 'materialization');
+				if (!decision.allowed) blockedDecisions.set(toolName, decision);
+				return decision.allowed;
+			}
+		});
+		if (materialized.blockedToolNames.length > 0) {
+			const needsContract = materialized.blockedToolNames.filter(
+				(toolName) =>
+					blockedDecisions.get(toolName)?.reason ===
+					'write_materialization_contract_required'
+			);
+			const needsReview = materialized.blockedToolNames.filter(
+				(toolName) =>
+					blockedDecisions.get(toolName)?.reason !==
+					'write_materialization_contract_required'
+			);
+			if (needsContract.length > 0) {
+				const notice = `Security policy withheld uncommissioned write tools from this turn: ${needsContract.join(', ')}. Declare a bounded turn contract before loading them, or ask the user when the intended change is unresolved.`;
+				if (!pendingMaterializationNotices.includes(notice)) {
+					pendingMaterializationNotices.push(notice);
+				}
+			}
+			if (needsReview.length > 0) {
+				const notice = `Security policy withheld write tools pending a later user confirmation: ${needsReview.join(', ')}. Do not execute or retry them in this turn.`;
+				if (!pendingMaterializationNotices.includes(notice)) {
+					pendingMaterializationNotices.push(notice);
+				}
+			}
+		}
 		if (materialized.addedToolNames.length === 0) {
 			return [];
 		}
@@ -1317,6 +1386,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (supervisorStopRequested) {
 				break;
 			}
+			currentRoundContainsExternalContent = false;
 
 			const writeIntentToolPass = consumeForcedWriteIntentToolPass();
 			let reservedWriteToolCallsUsed = 0;
@@ -1755,6 +1825,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					});
 				}
 			}
+			currentRoundContainsExternalContent = pendingToolCalls.some(
+				isPotentiallyUntrustedContentToolCall
+			);
 
 			const validationProjectId =
 				typeof params.projectId === 'string' && isValidUUID(params.projectId)
@@ -1937,6 +2010,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				originalToolCall: ChatToolCall,
 				execution: FastToolExecution
 			): Promise<void> => {
+				if (
+					execution.result.success &&
+					isPotentiallyUntrustedContentToolCall(execution.toolCall)
+				) {
+					externalContentIngested = true;
+				}
 				const recorded = await recordToolExecutionForRound({
 					originalToolCall,
 					execution,
@@ -2144,7 +2223,21 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					materializeDirectTools,
 					findDuplicateSuccessfulWrite,
 					startToolExecutionHeartbeat: (details) =>
-						startLongRunningOperationHeartbeat('tool_execution', details)
+						startLongRunningOperationHeartbeat('tool_execution', details),
+					authorizeToolCall: (candidate, phase) => {
+						const decision = evaluateToolSecurity(candidate.function.name, phase);
+						if (decision.allowed) return { allowed: true };
+						if (decision.requiresUserAction) {
+							securityReviewBlocks.set(candidate.function.name, decision.reason);
+						}
+						return {
+							allowed: false,
+							result: buildInteractiveChatToolSecurityResult({
+								toolCall: candidate,
+								decision
+							})
+						};
+					}
 				});
 				toolCallsExecuted += dispatchResult.executedToolCallDelta;
 				if (
@@ -2495,15 +2588,26 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		throw error;
 	}
 
+	const securityReviewPrompt =
+		securityReviewBlocks.size > 0
+			? `Security review required; no write executed.\n\n${Array.from(
+					securityReviewBlocks.keys(),
+					(toolName) => `Proposed operation: \`${toolName}\``
+				).join(
+					'\n'
+				)}\n\nPlease confirm in a new message if you want me to proceed after reviewing the proposed change.`
+			: undefined;
 	const terminalFinalization = await runTerminalFinalization({
 		assistantText,
 		finalAssistantText,
 		finishedReason,
 		toolLimitNotice,
 		answerTruncated,
+		contextType: normalizedContext,
 		latestUserText: message,
 		mutationRequested,
 		expectedWriteToolNames,
+		securityReviewPrompt,
 		synthesisTransportFailure: synthesisTransportRecovery !== undefined,
 		toolExecutions,
 		emitAssistantDelta,
@@ -2591,6 +2695,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			toolExecutions,
 			finishedReason
 		}),
+		...(securityReviewBlocks.size > 0
+			? {
+					securityReview: {
+						required: true as const,
+						reasons: Array.from(new Set(securityReviewBlocks.values())),
+						toolNames: Array.from(securityReviewBlocks.keys())
+					}
+				}
+			: {}),
 		orchestrationInterventions: buildOrchestrationInterventions()
 	};
 }

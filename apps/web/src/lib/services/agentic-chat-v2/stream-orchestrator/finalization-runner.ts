@@ -554,9 +554,11 @@ export async function runTerminalFinalization(params: {
 	finishedReason?: string;
 	toolLimitNotice: string | null;
 	answerTruncated: boolean;
+	contextType?: ChatContextType;
 	latestUserText: string;
 	mutationRequested?: boolean;
 	expectedWriteToolNames?: string[];
+	securityReviewPrompt?: string;
 	synthesisTransportFailure?: boolean;
 	toolExecutions: FastToolExecution[];
 	emitAssistantDelta: (content: string) => Promise<void>;
@@ -571,6 +573,28 @@ export async function runTerminalFinalization(params: {
 	const mutationRequested =
 		params.mutationRequested === true ||
 		didTurnHaveUnfulfilledMutationIntent(params.toolExecutions);
+	if (params.securityReviewPrompt) {
+		const candidate = sanitizeAssistantFinalText(finalAssistantText || assistantText);
+		const safeCandidate = candidate
+			? enforceMutationOutcomeIntegrity(candidate, {
+					contextType: params.contextType ?? 'global',
+					toolExecutions: params.toolExecutions,
+					latestUserText: params.latestUserText,
+					explicitMutationRequested: mutationRequested,
+					expectedWriteToolNames: params.expectedWriteToolNames
+				})
+			: '';
+		finalAssistantText = safeCandidate.includes(params.securityReviewPrompt)
+			? safeCandidate
+			: [safeCandidate, params.securityReviewPrompt].filter(Boolean).join('\n\n');
+		if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
+			await params.emitAssistantRemainder(finalAssistantText);
+		}
+		return {
+			finalAssistantText,
+			finishedReason: params.answerTruncated ? 'length' : finishedReason
+		};
+	}
 
 	if (params.toolLimitNotice) {
 		const toolLimitFinalizationGuard = applyFinalizationGuard({

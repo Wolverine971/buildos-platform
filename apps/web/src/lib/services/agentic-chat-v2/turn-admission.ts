@@ -67,6 +67,12 @@ export type LegacyAgenticChatAdmissionResult =
 			reclaimedTurnRunId: string | null;
 			fallbackSnapshot: LegacyFallbackHistorySnapshot;
 	  }
+	| {
+			outcome: 'capacity_exceeded';
+			executionMayStart: false;
+			runningCount: number;
+			retryAfterSeconds: number;
+	  }
 	| (LegacyAgenticChatAdmissionCommon & {
 			outcome: 'matching_duplicate';
 	  })
@@ -200,6 +206,32 @@ function parseLegacyAdmissionResult(value: unknown): LegacyAgenticChatAdmissionR
 
 	const outcome = value.outcome;
 	const executionMayStart = value.execution_may_start === true;
+	if (outcome === 'capacity_exceeded') {
+		const runningCount = value.running_count;
+		const retryAfterSeconds = value.retry_after_seconds;
+		if (
+			executionMayStart ||
+			typeof runningCount !== 'number' ||
+			!Number.isSafeInteger(runningCount) ||
+			runningCount < 2 ||
+			typeof retryAfterSeconds !== 'number' ||
+			!Number.isSafeInteger(retryAfterSeconds) ||
+			retryAfterSeconds < 1 ||
+			retryAfterSeconds > 300
+		) {
+			throw new LegacyAgenticChatAdmissionError(
+				'invalid_result',
+				'Legacy admission returned an invalid capacity result',
+				value
+			);
+		}
+		return {
+			outcome,
+			executionMayStart: false,
+			runningCount,
+			retryAfterSeconds
+		};
+	}
 	const common = {
 		turnRunId: requiredString(value.turn_run_id, 'turn_run_id', value),
 		sessionId: requiredString(value.session_id, 'session_id', value),

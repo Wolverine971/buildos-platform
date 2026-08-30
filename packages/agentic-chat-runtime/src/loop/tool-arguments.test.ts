@@ -1,8 +1,9 @@
 // packages/agentic-chat-runtime/src/loop/tool-arguments.test.ts
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall } from '@buildos/shared-types';
 import {
 	backfillCommissionedDocumentUpdateContent,
+	logToolArgumentAnomaly,
 	REDACTED_DURABLE_TEXT,
 	sanitizeToolCallsForReplay,
 	stampProjectCreateGenerationModel
@@ -18,6 +19,31 @@ function toolCall(name: string, args: Record<string, unknown>): ChatToolCall {
 		}
 	};
 }
+
+describe('logToolArgumentAnomaly', () => {
+	it('logs only a bounded preview rather than full tool arguments', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const hiddenTail = 'TAIL_SECRET_victim@example.com';
+		const rawArgs = JSON.stringify({ content: `${'x'.repeat(500)}${hiddenTail}` });
+
+		logToolArgumentAnomaly({
+			sessionId: 'session-1',
+			anomaly: {
+				kind: 'malformed',
+				toolCallId: 'call-1',
+				toolName: 'update_onto_document',
+				rawArgs,
+				parseError: 'invalid JSON'
+			}
+		});
+
+		const metadata = warn.mock.calls[0]?.[1] as { argsPreview?: string };
+		expect(metadata.argsPreview?.length).toBeLessThanOrEqual(280);
+		expect(metadata.argsPreview).toMatch(/\.\.\.$/);
+		expect(JSON.stringify(warn.mock.calls)).not.toContain(hiddenTail);
+		warn.mockRestore();
+	});
+});
 
 describe('sanitizeToolCallsForReplay', () => {
 	it('redacts invalid durable text in nested args without relying on path parsing', () => {

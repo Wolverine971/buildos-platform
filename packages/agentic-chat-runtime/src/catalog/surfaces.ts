@@ -272,6 +272,15 @@ type GatewaySurfaceOptions = {
 	leanDiscovery?: boolean;
 };
 
+export type GatewayToolMaterializationOptions = {
+	/**
+	 * Optional execution-boundary policy. Catalog discovery may suggest a tool,
+	 * but the caller still decides whether that capability belongs in the
+	 * current turn's authorized surface.
+	 */
+	allowToolName?: (toolName: string) => boolean;
+};
+
 function getGatewayDiscoveryTools(options: GatewaySurfaceOptions = {}): ChatToolDefinition[] {
 	const leanDiscovery = options.leanDiscovery ?? isLeanDiscoveryEnabled();
 	const names = leanDiscovery
@@ -382,20 +391,26 @@ export function extractGatewayToolMaterializations(payload: unknown): GatewayToo
 
 export function materializeGatewayTools(
 	currentTools: ChatToolDefinition[],
-	toolNames: string[]
-): { tools: ChatToolDefinition[]; addedToolNames: string[] } {
+	toolNames: string[],
+	options: GatewayToolMaterializationOptions = {}
+): { tools: ChatToolDefinition[]; addedToolNames: string[]; blockedToolNames: string[] } {
 	const currentNames = new Set(
 		extractToolNamesFromDefinitions(currentTools).map(normalizeGatewayToolName)
 	);
-	const nextNames = toolNames
+	const requestedNames = toolNames
 		.map((name) => name.trim())
 		.filter((name) => name.length > 0)
 		.map(normalizeGatewayToolName)
 		.filter(isGatewayToolEnabled)
 		.filter((name) => !currentNames.has(name))
 		.filter((name, index, names) => names.indexOf(name) === index);
+	const blockedToolNames = options.allowToolName
+		? requestedNames.filter((name) => !options.allowToolName!(name))
+		: [];
+	const blockedToolNameSet = new Set(blockedToolNames);
+	const nextNames = requestedNames.filter((name) => !blockedToolNameSet.has(name));
 	if (nextNames.length === 0) {
-		return { tools: currentTools, addedToolNames: [] };
+		return { tools: currentTools, addedToolNames: [], blockedToolNames };
 	}
 
 	const addedTools = nextNames
@@ -403,11 +418,12 @@ export function materializeGatewayTools(
 		.filter((tool): tool is ChatToolDefinition => Boolean(tool));
 	const addedToolNames = extractToolNamesFromDefinitions(addedTools);
 	if (addedToolNames.length === 0) {
-		return { tools: currentTools, addedToolNames: [] };
+		return { tools: currentTools, addedToolNames: [], blockedToolNames };
 	}
 
 	return {
 		tools: [...currentTools, ...addedTools],
-		addedToolNames
+		addedToolNames,
+		blockedToolNames
 	};
 }

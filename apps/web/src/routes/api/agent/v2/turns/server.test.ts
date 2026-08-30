@@ -49,6 +49,7 @@ vi.mock('$lib/utils/logger', () => ({
 }));
 
 import { issueAgenticChatTransportLease } from '$lib/services/agentic-chat-v2/transport-lease.server';
+import { resetAgenticChatTurnRateLimitForTests } from '$lib/server/agentic-chat-turn-rate-limit';
 import { GET, POST } from './+server';
 
 function event(options: { userId?: string | null; query?: string } = {}) {
@@ -127,6 +128,7 @@ function admitted(overrides: Record<string, unknown> = {}) {
 
 describe('GET /api/agent/v2/turns', () => {
 	beforeEach(() => {
+		resetAgenticChatTurnRateLimitForTests();
 		vi.clearAllMocks();
 		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET = SECRET;
 		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
@@ -182,6 +184,7 @@ describe('GET /api/agent/v2/turns', () => {
 
 describe('POST /api/agent/v2/turns', () => {
 	beforeEach(() => {
+		resetAgenticChatTurnRateLimitForTests();
 		vi.clearAllMocks();
 		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET = SECRET;
 		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';

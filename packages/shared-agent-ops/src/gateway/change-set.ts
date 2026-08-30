@@ -281,12 +281,6 @@ function normalizeStartHereDriftSnapshots(
 // commit — a concurrent live commit keeps the timestamp fresh and stays protected.
 const STALE_COMMIT_MS = 2 * 60 * 1000;
 
-function readCommitStartedAt(run: unknown): string | null {
-	if (!run || typeof run !== 'object') return null;
-	const value = (run as { commit_started_at?: unknown }).commit_started_at;
-	return typeof value === 'string' ? value : null;
-}
-
 // Rebuild an EntityTouch for a change we know applied in a prior (crashed) commit
 // attempt, from the change + the entity_id recorded on its agent_tool_executions row.
 // Mirrors the fallback branch of the live apply loop (which prefers the gateway
@@ -356,7 +350,7 @@ export async function commitChangeSet(params: {
 	// other reason — an in-flight commit whose heartbeat is still fresh, or original
 	// run execution (which never sets commit_started_at) — stays protected.
 	let isStalledCommitReentry = false;
-	const staleCommitStartedAt = readCommitStartedAt(run);
+	const staleCommitStartedAt = run.commit_started_at;
 	if (run.status !== 'proposal_ready') {
 		if (run.status === 'completed' || run.status === 'partial') {
 			const committedChangeSet = asChangeSet(run.change_set, runId);
@@ -416,14 +410,12 @@ export async function commitChangeSet(params: {
 	// proposal_ready -> running here means the loser's claim affects 0 rows. A
 	// stalled-commit re-entry instead compare-and-swaps on commit_started_at so two
 	// concurrent re-entries can't both proceed.
-	// Typed as any so the commit_started_at CAS filters (a column absent from the
-	// generated types until gen:types runs) don't trip the compiler.
-	let claimQuery: any = admin
+	let claimQuery = admin
 		.from('agent_runs')
 		.update(
-			(isStalledCommitReentry
+			isStalledCommitReentry
 				? { commit_started_at: commitHeartbeat }
-				: { status: 'running', commit_started_at: commitHeartbeat }) as never
+				: { status: 'running', commit_started_at: commitHeartbeat }
 		)
 		.eq('id', runId)
 		.eq('user_id', userId)
@@ -634,7 +626,7 @@ export async function commitChangeSet(params: {
 		// commit is live — only a genuinely dead commit goes stale and is re-entered.
 		await admin
 			.from('agent_runs')
-			.update({ commit_started_at: new Date().toISOString() } as never)
+			.update({ commit_started_at: new Date().toISOString() })
 			.eq('id', runId)
 			.eq('user_id', userId)
 			.eq('status', 'running');

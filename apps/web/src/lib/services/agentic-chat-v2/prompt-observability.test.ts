@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-observability.test.ts
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
 import {
 	buildLitePromptEnvelope,
@@ -18,11 +18,6 @@ import { buildPromptCostBreakdown } from './prompt-cost-breakdown';
 import { FASTCHAT_PROMPT_VARIANT } from './prompt-variant';
 
 describe('prompt observability helpers', () => {
-	afterEach(() => {
-		delete process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_ENABLED;
-		delete process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS;
-	});
-
 	it('builds a stable prompt snapshot row', () => {
 		const tools: ChatToolDefinition[] = [
 			{
@@ -151,7 +146,7 @@ describe('prompt observability helpers', () => {
 		expect(row.rendered_dump_text).toBeNull();
 	});
 
-	it('stores a bounded rendered prompt dump only when explicitly enabled', () => {
+	it('never stores the retired duplicate rendered prompt dump', () => {
 		process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_ENABLED = 'true';
 		process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS = '240';
 
@@ -177,9 +172,9 @@ describe('prompt observability helpers', () => {
 			]
 		});
 
-		expect(row.rendered_dump_text).toContain('FASTCHAT V2 PROMPT SNAPSHOT');
-		expect(row.rendered_dump_text).toContain('[rendered_dump_text truncated at 240 chars]');
-		expect(row.rendered_dump_text?.length).toBeLessThanOrEqual(300);
+		expect(row.rendered_dump_text).toBeNull();
+		delete process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_ENABLED;
+		delete process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS;
 	});
 
 	it('estimates costs for prompt sections and provider tool definitions', () => {

@@ -254,6 +254,30 @@ describe('admitLegacyAgenticChatTurn', () => {
 		expect(result.executionMayStart).toBe(false);
 	});
 
+	it('maps a bounded per-user capacity result without requiring turn identities', async () => {
+		const result = await admitLegacyAgenticChatTurn({
+			...rpcParams,
+			supabase: {
+				rpc: vi.fn().mockResolvedValue({
+					data: {
+						outcome: 'capacity_exceeded',
+						execution_may_start: false,
+						running_count: 2,
+						retry_after_seconds: 5
+					},
+					error: null
+				})
+			} as any
+		});
+
+		expect(result).toEqual({
+			outcome: 'capacity_exceeded',
+			executionMayStart: false,
+			runningCount: 2,
+			retryAfterSeconds: 5
+		});
+	});
+
 	it('maps database and malformed-result failures to a typed admission error', async () => {
 		await expect(
 			admitLegacyAgenticChatTurn({

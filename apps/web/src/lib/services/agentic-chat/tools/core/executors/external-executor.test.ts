@@ -23,6 +23,7 @@ describe('ExternalExecutor page cache revalidation', () => {
 			last_fetched_at: '2026-07-31T12:00:00.000Z'
 		};
 		const updates: Array<Record<string, unknown>> = [];
+		const equalityFilters: Array<[string, unknown]> = [];
 		const rpc = vi.fn(async () => ({
 			data: {
 				page_visit_id: cachedRow.id,
@@ -52,13 +53,14 @@ describe('ExternalExecutor page cache revalidation', () => {
 			from: vi.fn(() => {
 				const chain: Record<string, any> = {};
 				chain.select = vi.fn(() => chain);
-				chain.eq = vi.fn(() => chain);
+				chain.eq = vi.fn((column: string, value: unknown) => {
+					equalityFilters.push([column, value]);
+					return chain;
+				});
 				chain.maybeSingle = vi.fn(async () => ({ data: cachedRow, error: null }));
 				chain.update = vi.fn((value: Record<string, unknown>) => {
 					updates.push(value);
-					return {
-						eq: vi.fn(async () => ({ error: null }))
-					};
+					return chain;
 				});
 				return chain;
 			})
@@ -110,6 +112,7 @@ describe('ExternalExecutor page cache revalidation', () => {
 			visit_count: 5,
 			etag: '"cached-v1"'
 		});
+		expect(equalityFilters).toContainEqual(['user_id', 'user-1']);
 	});
 
 	it('never reads or writes the global cache for signed URLs', async () => {

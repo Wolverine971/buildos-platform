@@ -703,7 +703,7 @@ export class ChatToolExecutor {
 			logger.info('[ChatToolExecutor] search executed', {
 				sessionId: this.sessionId,
 				tool: toolName,
-				query: searchQuery,
+				queryChars: searchQuery?.length ?? 0,
 				projectScoped: Boolean(argumentsPayload?.project_id),
 				types: Array.isArray(argumentsPayload?.types) ? argumentsPayload.types : undefined,
 				resultCount,

@@ -58,6 +58,18 @@ describe('shouldWriteLocalPromptDump', () => {
 			})
 		).toBe(true);
 	});
+
+	it('cannot be enabled by an environment toggle outside dev', () => {
+		expect(
+			shouldWriteLocalPromptDump({
+				dev: false,
+				sessionId: '6039158b-0b23-4446-a584-06b2d48439b2',
+				historyCount: 0,
+				message: 'What is happening with my projects?',
+				env: { FASTCHAT_LOCAL_PROMPT_DUMPS: 'true' }
+			})
+		).toBe(false);
+	});
 });
 
 describe('pruneLocalPromptDumps', () => {

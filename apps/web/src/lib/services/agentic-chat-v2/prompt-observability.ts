@@ -16,7 +16,6 @@ import { FASTCHAT_PROMPT_VARIANT, type FastChatPromptVariant } from './prompt-va
 import type { FastChatHistoryMessage } from './types';
 
 export const FASTCHAT_PROMPT_SNAPSHOT_VERSION = 'fastchat_prompt_v1';
-export const FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS = 80_000;
 
 type JsonRecord = Record<string, Json | undefined>;
 
@@ -77,33 +76,6 @@ function sha256(value: string): string {
 	return createHash('sha256').update(value).digest('hex');
 }
 
-function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
-	if (!value) return fallback;
-	const normalized = value.trim().toLowerCase();
-	if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-	if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
-	return fallback;
-}
-
-function parsePositiveIntEnv(value: string | undefined, fallback: number): number {
-	if (!value) return fallback;
-	const parsed = Number.parseInt(value, 10);
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-export function shouldStorePromptSnapshotRenderedDump(): boolean {
-	return parseBooleanEnv(process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_ENABLED, false);
-}
-
-function truncateRenderedPromptDump(value: string): string {
-	const maxChars = parsePositiveIntEnv(
-		process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS,
-		FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS
-	);
-	if (value.length <= maxChars) return value;
-	return `${value.slice(0, maxChars)}\n\n[rendered_dump_text truncated at ${maxChars} chars]`;
-}
-
 function toJsonRecord(value: Record<string, unknown>): Json {
 	return JSON.parse(JSON.stringify(value)) as Json;
 }
@@ -129,126 +101,6 @@ function parseToolArguments(rawArgs: unknown): { args: Json; error: string | nul
 		args: (toJsonValue(rawArgs) ?? ({} as Json)) as Json,
 		error: null
 	};
-}
-
-function buildRenderedPromptDump(params: {
-	streamRunId: string;
-	sessionId: string;
-	contextType: string;
-	entityId?: string | null;
-	projectId?: string | null;
-	promptVariant?: FastChatPromptVariant | string | null;
-	systemPrompt: string;
-	modelMessages: FastChatHistoryMessage[];
-	tools?: ChatToolDefinition[];
-	liteSections?: unknown;
-	liteContextInventory?: unknown;
-	liteToolsSummary?: unknown;
-	toolSurfaceReport?: unknown;
-}): string {
-	const toolNames = (params.tools ?? []).map((tool) => tool.function?.name).filter(Boolean);
-	const lines: string[] = [
-		'========================================',
-		'FASTCHAT V2 PROMPT SNAPSHOT',
-		`Stream run: ${params.streamRunId}`,
-		`Session:    ${params.sessionId}`,
-		`Context:    ${params.contextType}`,
-		`Entity ID:  ${params.entityId ?? 'none'}`,
-		`Project ID: ${params.projectId ?? 'none'}`,
-		`Prompt variant: ${params.promptVariant ?? FASTCHAT_PROMPT_VARIANT}`,
-		`Tools (${toolNames.length}): ${toolNames.join(', ') || 'none'}`,
-		`Message count: ${params.modelMessages.length}`,
-		`System prompt length: ${params.systemPrompt.length} chars (~${estimateTokensFromText(params.systemPrompt)} tokens)`,
-		'========================================',
-		'',
-		'────────────────────────────────────────',
-		'SYSTEM PROMPT',
-		'────────────────────────────────────────',
-		params.systemPrompt,
-		''
-	];
-
-	const liteSectionLines = formatLiteSectionDump(params.liteSections);
-	if (liteSectionLines.length > 0) {
-		lines.push(
-			'────────────────────────────────────────',
-			'LITE SECTION BREAKDOWN',
-			'────────────────────────────────────────',
-			...liteSectionLines,
-			''
-		);
-	}
-
-	const liteMetadataLines = formatLiteMetadataDump({
-		contextInventory: params.liteContextInventory,
-		toolsSummary: params.liteToolsSummary,
-		toolSurfaceReport: params.toolSurfaceReport
-	});
-	if (liteMetadataLines.length > 0) {
-		lines.push(
-			'────────────────────────────────────────',
-			'LITE METADATA',
-			'────────────────────────────────────────',
-			...liteMetadataLines,
-			''
-		);
-	}
-
-	lines.push(
-		'────────────────────────────────────────',
-		'MODEL MESSAGES',
-		'────────────────────────────────────────'
-	);
-
-	params.modelMessages.forEach((entry, index) => {
-		lines.push(`[${index + 1}] role=${entry.role}`);
-		lines.push(entry.content);
-		if (entry.tool_call_id) {
-			lines.push(`tool_call_id=${entry.tool_call_id}`);
-		}
-		if (Array.isArray(entry.tool_calls) && entry.tool_calls.length > 0) {
-			lines.push(`tool_calls=${stableStringify(entry.tool_calls)}`);
-		}
-		lines.push('');
-	});
-
-	return lines.join('\n');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
-
-function formatLiteSectionDump(sections: unknown): string[] {
-	if (!Array.isArray(sections) || sections.length === 0) return [];
-
-	return sections.map((section, index) => {
-		const record = isRecord(section) ? section : {};
-		const id = typeof record.id === 'string' ? record.id : `section_${index + 1}`;
-		const title = typeof record.title === 'string' ? record.title : id;
-		const kind = typeof record.kind === 'string' ? record.kind : 'unknown';
-		const source = typeof record.source === 'string' ? record.source : 'unknown';
-		const chars = typeof record.chars === 'number' ? record.chars : 0;
-		const tokens = typeof record.estimatedTokens === 'number' ? record.estimatedTokens : 0;
-		return `${index + 1}. ${id} - ${title} [${kind}, ${source}] ${chars} chars (~${tokens} tokens)`;
-	});
-}
-
-function formatJsonPreview(label: string, value: unknown): string[] {
-	if (value === undefined || value === null) return [];
-	return [`${label}:`, stableStringify(value)];
-}
-
-function formatLiteMetadataDump(params: {
-	contextInventory?: unknown;
-	toolsSummary?: unknown;
-	toolSurfaceReport?: unknown;
-}): string[] {
-	return [
-		...formatJsonPreview('Context inventory', params.contextInventory),
-		...formatJsonPreview('Tools summary', params.toolsSummary),
-		...formatJsonPreview('Tool surface report', params.toolSurfaceReport)
-	];
 }
 
 export function buildPromptSnapshotSections(params: {
@@ -342,25 +194,6 @@ export function buildPromptSnapshotRow(params: {
 			: params.contextPayload && typeof params.contextPayload === 'object'
 				? (toJsonRecord(params.contextPayload as Record<string, unknown>) as Json)
 				: null;
-	const renderedDumpText = shouldStorePromptSnapshotRenderedDump()
-		? truncateRenderedPromptDump(
-				buildRenderedPromptDump({
-					streamRunId: params.streamRunId,
-					sessionId: params.sessionId,
-					contextType: params.contextType,
-					entityId: params.entityId,
-					projectId: params.projectId,
-					promptVariant: params.promptVariant ?? FASTCHAT_PROMPT_VARIANT,
-					systemPrompt: params.systemPrompt,
-					modelMessages,
-					tools: params.tools,
-					liteSections: params.liteSections,
-					liteContextInventory: params.liteContextInventory,
-					liteToolsSummary: params.liteToolsSummary,
-					toolSurfaceReport: params.toolSurfaceReport
-				})
-			)
-		: null;
 	const messageChars = modelMessages.reduce(
 		(sum, entry) => sum + (entry.content?.length ?? 0),
 		0
@@ -407,7 +240,10 @@ export function buildPromptSnapshotRow(params: {
 		request_payload: requestPayloadJson,
 		prompt_sections: promptSectionsWithCostJson,
 		context_payload: contextPayloadJson,
-		rendered_dump_text: renderedDumpText,
+		// Retired: this duplicated system_prompt + model_messages and widened the
+		// blast radius of prompt snapshots. Keep the column null for compatibility
+		// with historical admin exports while retention clears old values.
+		rendered_dump_text: null,
 		system_prompt_sha256: sha256(params.systemPrompt),
 		messages_sha256: sha256(stableStringify(modelMessages)),
 		tools_sha256: toolsJson ? sha256(stableStringify(params.tools)) : null,

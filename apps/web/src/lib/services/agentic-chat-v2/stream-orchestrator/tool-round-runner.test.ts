@@ -192,6 +192,45 @@ describe('executeToolCallPair', () => {
 		});
 		expect(JSON.stringify(dispatched.execution.result.result)).not.toContain('large_payload');
 	});
+
+	it('blocks an unavailable write before materialization or execution when policy denies it', async () => {
+		const call = toolCall('delete_calendar_event', { onto_event_id: 'event-1' }, 'delete-call');
+		const materializeDirectTools = vi.fn(() => ['delete_calendar_event']);
+		const toolExecutor = vi.fn();
+
+		const dispatched = await executeToolCallPair({
+			originalToolCall: call,
+			toolCall: call,
+			getTools: () => [],
+			getAllowedToolNames: () => new Set(),
+			allowedToolNamesAtRoundStart: new Set(),
+			gatewayModeActive: true,
+			validationProjectId: null,
+			knownEntitiesById: new Map(),
+			toolExecutor,
+			materializeDirectTools,
+			findDuplicateSuccessfulWrite: vi.fn(),
+			startToolExecutionHeartbeat: vi.fn(() => vi.fn()),
+			authorizeToolCall: vi.fn(() => ({
+				allowed: false as const,
+				result: {
+					tool_call_id: call.id,
+					result: { type: 'security_review_required' },
+					success: false,
+					error: 'Explicit confirmation required.',
+					requires_user_action: true
+				}
+			}))
+		});
+
+		expect(dispatched.executedToolCallDelta).toBe(0);
+		expect(dispatched.execution.result).toMatchObject({
+			success: false,
+			requires_user_action: true
+		});
+		expect(materializeDirectTools).not.toHaveBeenCalled();
+		expect(toolExecutor).not.toHaveBeenCalled();
+	});
 });
 
 describe('recordToolExecutionForRound', () => {

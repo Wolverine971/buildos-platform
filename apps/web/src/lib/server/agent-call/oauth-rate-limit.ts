@@ -31,7 +31,8 @@ function ruleFromEnv(prefix: string, defaults: OAuthRateLimitRule): OAuthRateLim
 export const OAUTH_RATE_LIMITS = {
 	token: ruleFromEnv('OAUTH_RL_TOKEN', { requests: 120, windowMs: 60_000 }),
 	register: ruleFromEnv('OAUTH_RL_REGISTER', { requests: 20, windowMs: 60 * 60_000 }),
-	bootstrap: ruleFromEnv('AGENT_CALL_BOOTSTRAP_RL', { requests: 30, windowMs: 60_000 })
+	bootstrap: ruleFromEnv('AGENT_CALL_BOOTSTRAP_RL', { requests: 30, windowMs: 60_000 }),
+	gateway: ruleFromEnv('AGENT_CALL_GATEWAY_RL', { requests: 120, windowMs: 60_000 })
 } as const;
 
 export type PublicRateLimitDecision =
