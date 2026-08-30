@@ -146,8 +146,8 @@ describe('loadActivityTimeline', () => {
 			'chat_session',
 			'entity_changes'
 		]);
-		expect(page.entries[0].lane).toBe('agent');
-		expect(page.entries[0].project_name).toBe('BuildOS');
+		expect(page.entries[0]!.lane).toBe('agent');
+		expect(page.entries[0]!.project_name).toBe('BuildOS');
 	});
 
 	it('routes entity changes to a lane and actor based on change_source', async () => {
@@ -195,9 +195,9 @@ describe('loadActivityTimeline', () => {
 		const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
 		expect(page.entries).toHaveLength(1);
-		expect(page.entries[0].title).toBe('Updated 2 tasks and 1 document in BuildOS');
-		expect(page.entries[0].count).toBe(3);
-		expect(page.entries[0].children).toHaveLength(3);
+		expect(page.entries[0]!.title).toBe('Updated 2 tasks and 1 document in BuildOS');
+		expect(page.entries[0]!.count).toBe(3);
+		expect(page.entries[0]!.children).toHaveLength(3);
 	});
 
 	it('starts a new group when the edits cross the grouping window', async () => {
@@ -235,9 +235,9 @@ describe('loadActivityTimeline', () => {
 		const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
 		expect(page.entries).toHaveLength(1);
-		expect(page.entries[0].title).toBe('Reviewed 2 projects');
-		expect(page.entries[0].count).toBe(2);
-		expect(page.entries[0].stats).toContainEqual({ label: 'Suggestions', value: 4 });
+		expect(page.entries[0]!.title).toBe('Reviewed 2 projects');
+		expect(page.entries[0]!.count).toBe(2);
+		expect(page.entries[0]!.stats).toContainEqual({ label: 'Suggestions', value: 4 });
 	});
 
 	describe('failure handling', () => {
@@ -282,8 +282,8 @@ describe('loadActivityTimeline', () => {
 			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
 			expect(page.entries).toHaveLength(1);
-			expect(page.entries[0].status).toBe('error');
-			expect(page.entries[0].body).toBe(
+			expect(page.entries[0]!.status).toBe('error');
+			expect(page.entries[0]!.body).toBe(
 				'Failed to generate valid JSON: The operation was aborted due to timeout'
 			);
 		});
@@ -299,10 +299,10 @@ describe('loadActivityTimeline', () => {
 			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
 			expect(page.entries).toHaveLength(1);
-			expect(page.entries[0].body).toBe(
+			expect(page.entries[0]!.body).toBe(
 				'The review pass could not finish. It will retry on the next pass.'
 			);
-			expect(page.entries[0].body).not.toContain(errorMessage);
+			expect(page.entries[0]!.body).not.toContain(errorMessage);
 		});
 
 		it('still counts dropped runs toward saturation so pagination stays correct', async () => {
@@ -348,7 +348,7 @@ describe('loadActivityTimeline', () => {
 
 			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
-			expect(page.entries[0].href).toBe('/briefs?date=2026-07-24');
+			expect(page.entries[0]!.href).toBe('/briefs?date=2026-07-24');
 		});
 
 		it('reads a brief date nested under `data`', async () => {
@@ -358,7 +358,7 @@ describe('loadActivityTimeline', () => {
 
 			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
-			expect(page.entries[0].href).toBe('/briefs?date=2026-07-20');
+			expect(page.entries[0]!.href).toBe('/briefs?date=2026-07-20');
 		});
 
 		it('falls back to the briefs list when the ping carries no date', async () => {
@@ -366,7 +366,7 @@ describe('loadActivityTimeline', () => {
 
 			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
-			expect(page.entries[0].href).toBe('/briefs');
+			expect(page.entries[0]!.href).toBe('/briefs');
 		});
 
 		it('opens a chat transcript instead of only its project', async () => {
@@ -390,9 +390,9 @@ describe('loadActivityTimeline', () => {
 
 			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
-			expect(page.entries[0].href).toBe('/history?id=chat-1&itemType=chat_session');
+			expect(page.entries[0]!.href).toBe('/history?id=chat-1&itemType=chat_session');
 			// The project is still carried so the card can link it separately.
-			expect(page.entries[0].project_id).toBe('project-1');
+			expect(page.entries[0]!.project_id).toBe('project-1');
 		});
 
 		it('opens the specific brain dump rather than the history list', async () => {
@@ -413,7 +413,7 @@ describe('loadActivityTimeline', () => {
 
 			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
-			expect(page.entries[0].href).toBe('/history?id=bd-1&itemType=braindump');
+			expect(page.entries[0]!.href).toBe('/history?id=bd-1&itemType=braindump');
 		});
 
 		it('sends a failed brief to that day rather than the list', async () => {
@@ -433,7 +433,7 @@ describe('loadActivityTimeline', () => {
 
 			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
-			expect(page.entries[0].href).toBe('/briefs?date=2026-07-22');
+			expect(page.entries[0]!.href).toBe('/briefs?date=2026-07-22');
 		});
 	});
 
@@ -465,9 +465,9 @@ describe('loadActivityTimeline', () => {
 		const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
 
 		expect(page.entries).toHaveLength(1);
-		expect(page.entries[0].lane).toBe('ping');
-		expect(page.entries[0].count).toBe(3);
-		expect(page.entries[0].stats[0]).toEqual({
+		expect(page.entries[0]!.lane).toBe('ping');
+		expect(page.entries[0]!.count).toBe(3);
+		expect(page.entries[0]!.stats[0]!).toEqual({
 			label: 'Sent via',
 			value: 'email, in-app, sms'
 		});
@@ -544,7 +544,7 @@ describe('loadActivityTimeline', () => {
 
 			expect(page.entries).toHaveLength(10);
 			expect(page.hasMore).toBe(true);
-			expect(page.nextCursor).toBe(page.entries[9].occurred_at);
+			expect(page.nextCursor).toBe(page.entries[9]!.occurred_at);
 		});
 
 		it('passes the cursor to every source as an inclusive upper bound', async () => {
