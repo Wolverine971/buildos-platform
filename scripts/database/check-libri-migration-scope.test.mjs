@@ -1,10 +1,27 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { referencesLibri, validateLibriMigration } from './check-libri-migration-scope.mjs';
 
 const filename = '20260829010000_libri_foundation.sql';
 const safeTimeouts = `set lock_timeout = '5s';
 set statement_timeout = '60s';`;
+
+test('keeps the out-of-band Libri worker role powerless until secret provisioning', () => {
+	const sql = readFileSync(
+		new URL('./provision-libri-worker-role.sql', import.meta.url),
+		'utf8'
+	);
+	const normalized = sql.replace(/--[^\n]*/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+
+	assert.match(normalized, /create role libri_worker login nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls connection limit 3/);
+	assert.match(normalized, /pg_auth_members/);
+	assert.doesNotMatch(normalized, /\bpassword\b/);
+	assert.doesNotMatch(normalized, /\b(?:grant|revoke)\s+[a-z_][a-z0-9_]*\s+to\b/);
+	for (const match of normalized.matchAll(/\b(?:create|alter|drop)\s+role\s+([a-z_][a-z0-9_]*)/g)) {
+		assert.equal(match[1], 'libri_worker');
+	}
+});
 
 test('accepts an additive, schema-qualified Libri migration', () => {
 	const failures = validateLibriMigration(

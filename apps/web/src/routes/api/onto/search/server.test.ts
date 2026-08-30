@@ -123,7 +123,7 @@ describe('/api/onto/search', () => {
 		const response = await POST(event as any);
 		const payload = await response.json();
 
-		expect(response.status).toBe(200);
+		expect(response.status, JSON.stringify(payload)).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(payload.data).toMatchObject({
 			query: 'Cadre content operations',
@@ -158,6 +158,23 @@ describe('/api/onto/search', () => {
 		expect(event.locals.supabase.eventLookup.in).toHaveBeenCalledWith('project_id', [
 			'31021625-1377-4715-9fb4-f93102974628'
 		]);
+	});
+
+	it('uses an impossible project id when workspace event search has no readable projects', async () => {
+		fetchProjectSummariesMock.mockResolvedValueOnce([]);
+		const event = createEvent({
+			query: 'Cadre content operations',
+			types: ['event']
+		});
+
+		const response = await POST(event as any);
+		const payload = await response.json();
+
+		expect(response.status, JSON.stringify(payload)).toBe(200);
+		expect(event.locals.supabase.eventLookup.eq).toHaveBeenCalledWith(
+			'project_id',
+			'00000000-0000-0000-0000-000000000000'
+		);
 	});
 
 	it('returns 400 for malformed non-sentinel project ids', async () => {
