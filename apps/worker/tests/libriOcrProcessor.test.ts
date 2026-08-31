@@ -240,7 +240,7 @@ function dependencies() {
 			model: MODEL
 		};
 	});
-	const provider = vi.fn(async () => {
+	const provider = vi.fn<LibriOcrProcessorDependencies['provider']['execute']>(async () => {
 		calls.push('provider');
 		return {
 			providerRequestId: 'openrouter-request-1',
@@ -255,21 +255,23 @@ function dependencies() {
 			estimatedCostMicrousd: 1_234
 		};
 	});
-	const complete = vi.fn(async () => {
-		calls.push('complete');
-		return {
-			accepted: true,
-			outcome: 'settled' as const,
-			sourceChunkId: SOURCE_CHUNK_ID,
-			ocrVersion: 1,
-			provider: 'openrouter',
-			model: MODEL,
-			contentSha256: 'a'.repeat(64),
-			overBudget: false,
-			totalSpentMicrousd: 1_234n,
-			remainingMicrousd: 998_766n
-		};
-	});
+	const complete = vi.fn<LibriOcrProcessorDependencies['execution']['completeOcrStep']>(
+		async () => {
+			calls.push('complete');
+			return {
+				accepted: true,
+				outcome: 'settled' as const,
+				sourceChunkId: SOURCE_CHUNK_ID,
+				ocrVersion: 1,
+				provider: 'openrouter',
+				model: MODEL,
+				contentSha256: 'a'.repeat(64),
+				overBudget: false,
+				totalSpentMicrousd: 1_234n,
+				remainingMicrousd: 998_766n
+			};
+		}
+	);
 	const ports: LibriOcrProcessorDependencies = {
 		costLedger: { reserveProviderCost: reserve, releaseProviderCost: release },
 		assetGrants: { issueOcrAssetGrant: grant },
