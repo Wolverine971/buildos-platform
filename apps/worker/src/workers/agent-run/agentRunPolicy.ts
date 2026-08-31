@@ -17,6 +17,7 @@ export type AgentRunCancellationSource = 'run' | 'parent' | null;
 type AgentRunStatus = Database['public']['Enums']['agent_run_status'];
 
 export const REVIEW_STAGE_NO_CHANGES_ERROR = 'review_run_no_proposed_changes';
+export const REVIEW_STAGE_SUBMISSION_REPAIR_LIMIT = 1;
 
 export function buildReviewStageSystemRules(params: {
 	mutationMode: AgentRunMutationMode;
@@ -56,6 +57,22 @@ export function enforceReviewStageCompletion(params: {
 			error: REVIEW_STAGE_NO_CHANGES_ERROR
 		}
 	};
+}
+
+export function shouldRepairReviewStageSubmission(params: {
+	mutationMode: AgentRunMutationMode;
+	proposedChangeCount: number;
+	status: AgentRunStatus;
+	repairAttempts: number;
+	forceSubmitResult: boolean;
+}): boolean {
+	return Boolean(
+		params.mutationMode === 'stage' &&
+			params.proposedChangeCount === 0 &&
+			params.status === 'completed' &&
+			params.repairAttempts < REVIEW_STAGE_SUBMISSION_REPAIR_LIMIT &&
+			!params.forceSubmitResult
+	);
 }
 
 export function resolveAgentRunCancellationSource(params: {

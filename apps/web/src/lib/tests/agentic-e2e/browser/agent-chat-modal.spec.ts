@@ -4,6 +4,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const PROMPT = 'Reply with exactly "MODAL E2E OK" and do not use tools.';
+const CAPTURE_ANALYTICS = process.env.AGENTIC_E2E_CAPTURE_ANALYTICS === 'true';
+const TRACKING_CONSENT_BUTTON = CAPTURE_ANALYTICS ? 'Accept all' : 'Use necessary only';
+const TRACKING_PREFERENCES_STORAGE_KEY = 'buildos_tracking_preferences_v1';
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -17,6 +20,31 @@ function required(name: string): string {
 	const value = process.env[name]?.trim();
 	if (!value) throw new Error(`[agentic-modal-e2e] Missing ${name} in apps/web/.env`);
 	return value;
+}
+
+async function chooseTrackingConsent(page: Page): Promise<void> {
+	const click = page
+		.getByRole('button', { name: TRACKING_CONSENT_BUTTON })
+		.click({ timeout: 3_000 });
+	if (!CAPTURE_ANALYTICS) {
+		await click.catch(() => undefined);
+		return;
+	}
+
+	await click;
+	await expect
+		.poll(() =>
+			page.evaluate((key) => {
+				const raw = localStorage.getItem(key);
+				if (!raw) return false;
+				try {
+					return (JSON.parse(raw) as { analytics?: unknown }).analytics === true;
+				} catch {
+					return false;
+				}
+			}, TRACKING_PREFERENCES_STORAGE_KEY)
+		)
+		.toBe(true);
 }
 
 async function authenticateHarnessUser(
@@ -92,10 +120,7 @@ async function openPrewarmedModal(
 	}
 
 	await page.goto('/dashboard');
-	await page
-		.getByRole('button', { name: 'Use necessary only' })
-		.click({ timeout: 3_000 })
-		.catch(() => undefined);
+	await chooseTrackingConsent(page);
 	const prewarmRequestPromise = page.waitForRequest(
 		(request) =>
 			request.method() === 'POST' &&
@@ -157,10 +182,7 @@ async function openPrewarmedExistingSession(page: Page, sessionId: string, promp
 	);
 
 	await page.goto(`/history?id=${encodeURIComponent(sessionId)}&itemType=chat_session`);
-	await page
-		.getByRole('button', { name: 'Use necessary only' })
-		.click({ timeout: 3_000 })
-		.catch(() => undefined);
+	await chooseTrackingConsent(page);
 	const dialog = page.getByRole('dialog', { name: 'BuildOS chat assistant dialog' });
 	await expect(dialog).toBeVisible({ timeout: 60_000 });
 	const composer = dialog.locator('textarea').first();
@@ -551,10 +573,7 @@ test('@prewarm project selection materializes a project-scoped prepared prompt',
 		);
 
 		await page.goto('/dashboard');
-		await page
-			.getByRole('button', { name: 'Use necessary only' })
-			.click({ timeout: 3_000 })
-			.catch(() => undefined);
+		await chooseTrackingConsent(page);
 		await page.getByRole('button', { name: 'Open BuildOS chat' }).click();
 		const dialog = page.getByRole('dialog', { name: 'BuildOS chat assistant dialog' });
 		await expect(dialog).toBeVisible();

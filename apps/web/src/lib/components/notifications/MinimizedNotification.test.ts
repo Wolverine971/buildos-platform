@@ -160,4 +160,17 @@ describe('MinimizedNotification', () => {
 
 		expect(card.querySelector('button')).toBeNull();
 	});
+
+	it('uses one in-bounds status border instead of a clipped outer ring', async () => {
+		render(MinimizedNotification, {
+			props: { notification: projectSynthesisNotification() }
+		});
+
+		const card = await screen.findByRole('button', {
+			name: 'Open Author Training: Review project synthesis — Analysis. Consolidate overlapping onboarding work.'
+		});
+
+		expect(card).toHaveClass('border-success/50');
+		expect(card).not.toHaveClass('border-border', 'ring-2', 'ring-success/50');
+	});
 });

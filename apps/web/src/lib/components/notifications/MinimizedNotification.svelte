@@ -199,6 +199,13 @@
 	}
 
 	let subtitle = $derived(resolveSubtitle());
+	let statusBorderClass = $derived(
+		notification.status === 'success'
+			? 'border-success/50'
+			: notification.status === 'error'
+				? 'border-destructive/50'
+				: 'border-border'
+	);
 	let accessibleLabel = $derived.by(() => {
 		if (
 			notification.type === 'agent-run' ||
@@ -288,12 +295,7 @@
 
 {#if notification.type === 'chat-session'}
 	<div
-		class="pointer-events-auto w-full min-w-0 rounded-lg border border-border bg-card shadow-ink-strong transition-all duration-200 hover:shadow-ink-strong motion-reduce:transition-none sm:min-w-[320px] sm:max-w-[400px]
-		{notification.status === 'success'
-			? 'ring-2 ring-success/50'
-			: notification.status === 'error'
-				? 'ring-2 ring-destructive/50'
-				: ''}"
+		class="pointer-events-auto w-full min-w-0 rounded-lg border {statusBorderClass} bg-card shadow-ink-strong transition-all duration-200 hover:shadow-ink-strong motion-reduce:transition-none sm:min-w-[320px] sm:max-w-[400px]"
 		role="group"
 		aria-label={accessibleLabel}
 	>
@@ -301,12 +303,7 @@
 	</div>
 {:else}
 	<div
-		class="pointer-events-auto w-full min-w-0 cursor-pointer rounded-lg border border-border bg-card shadow-ink-strong transition-all duration-200 hover:shadow-ink-strong motion-reduce:transition-none sm:min-w-[320px] sm:max-w-[400px]
-		{notification.status === 'success'
-			? 'ring-2 ring-success/50'
-			: notification.status === 'error'
-				? 'ring-2 ring-destructive/50'
-				: ''}"
+		class="pointer-events-auto w-full min-w-0 cursor-pointer rounded-lg border {statusBorderClass} bg-card shadow-ink-strong transition-all duration-200 hover:shadow-ink-strong motion-reduce:transition-none sm:min-w-[320px] sm:max-w-[400px]"
 		onclick={handleClick}
 		onkeydown={handleKeyDown}
 		role="button"

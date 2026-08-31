@@ -100,7 +100,8 @@ import {
 	buildReviewStageSystemRules,
 	enforceReviewStageCompletion,
 	resolveAgentRunCancellationSource,
-	resolveAgentRunModelPolicy
+	resolveAgentRunModelPolicy,
+	shouldRepairReviewStageSubmission
 } from './agentRunPolicy';
 import {
 	type AgentRunFetchedPageEvidence,
@@ -881,6 +882,15 @@ function booleanEnv(name: string): boolean {
 	return ['1', 'true', 'yes'].includes((trimmedEnv(name) ?? '').toLowerCase());
 }
 
+function resolveExecutorRelease(): string {
+	return (
+		trimmedEnv('RAILWAY_GIT_COMMIT_SHA') ??
+		trimmedEnv('SOURCE_REVISION') ??
+		trimmedEnv('VERCEL_GIT_COMMIT_SHA') ??
+		'unknown'
+	);
+}
+
 async function createCalendarPortForRun(userId: string) {
 	const clientId = trimmedEnv('PRIVATE_GOOGLE_CLIENT_ID') ?? trimmedEnv('GOOGLE_CLIENT_ID');
 	const clientSecret =
@@ -1272,6 +1282,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	let tavilyCreditsTotal = 0;
 	let uncertainTokenExposureTotal = 0;
 	let toolCalls = 0;
+	let reviewStageSubmissionRepairAttempts = 0;
 	let researchObservations: DeepResearchObservations = {
 		searchQueries: [],
 		searchResults: [],
@@ -1447,6 +1458,14 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		web
 	});
 	const proposedChanges: ProposedChange[] = [];
+	const executorRelease = resolveExecutorRelease();
+	await emitEvent(runId, 'run.policy', {
+		review_required: run.review_required,
+		scope_mode: scope.mode,
+		mutation_mode: mutationMode,
+		has_write_ops: runnableOps.some((op) => isWriteOp(op)),
+		executor_release: executorRelease
+	});
 
 	const llm = new SmartLLMService({
 		httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
@@ -1520,13 +1539,16 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			paid_tool_cost_usd: paidToolCostTotal,
 			tavily_credits: tavilyCreditsTotal,
 			tool_calls: toolCalls,
+			review_stage_submission_repair_attempts: reviewStageSubmissionRepairAttempts,
+			executor_release: executorRelease,
 			duration_ms: Date.now() - startedAtMs
 		};
 
 		// A review run that staged at least one write ends as
 		// 'proposal_ready' with a pending Change Set, regardless of the LLM's
-		// requested terminal status (it doesn't know writes were staged). A review
-		// run that staged nothing finalizes normally (no proposal).
+		// requested terminal status (it doesn't know writes were staged). A
+		// completed review run that staged nothing fails closed as partial; the
+		// database completion guard independently enforces the same invariant.
 		const reviewStageCompletion = enforceReviewStageCompletion({
 			mutationMode,
 			proposedChangeCount: proposedChanges.length,
@@ -2100,6 +2122,26 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				open_questions: openQuestions,
 				confidence: turn.confidence
 			};
+			if (
+				shouldRepairReviewStageSubmission({
+					mutationMode,
+					proposedChangeCount: proposedChanges.length,
+					status,
+					repairAttempts: reviewStageSubmissionRepairAttempts,
+					forceSubmitResult: Boolean(turnTokenPlan?.forceSubmitResult)
+				})
+			) {
+				reviewStageSubmissionRepairAttempts += 1;
+				transcript.push(
+					'SUBMIT_RESULT REJECTED: This review-required run has zero durable ProposedChanges. Do not describe the proposal in prose. Call the relevant write operation now for every entity change; those calls stage the reviewable change set without mutating live data.'
+				);
+				await emitEvent(runId, 'run.narration', {
+					note: 'review staging repair required',
+					repair_attempt: reviewStageSubmissionRepairAttempts,
+					proposed_change_count: proposedChanges.length
+				});
+				continue;
+			}
 			if (isResearchEvidenceChild) {
 				const validation = normalizeDeepResearchEvidencePacket({
 					raw: turn.evidence_packet,

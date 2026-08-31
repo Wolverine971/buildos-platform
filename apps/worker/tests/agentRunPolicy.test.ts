@@ -2,10 +2,12 @@
 import { describe, expect, it } from 'vitest';
 import {
 	REVIEW_STAGE_NO_CHANGES_ERROR,
+	REVIEW_STAGE_SUBMISSION_REPAIR_LIMIT,
 	buildReviewStageSystemRules,
 	enforceReviewStageCompletion,
 	resolveAgentRunCancellationSource,
-	resolveAgentRunModelPolicy
+	resolveAgentRunModelPolicy,
+	shouldRepairReviewStageSubmission
 } from '../src/workers/agent-run/agentRunPolicy';
 
 describe('resolveAgentRunModelPolicy', () => {
@@ -132,5 +134,33 @@ describe('review-required Agent Run staging contract', () => {
 				result
 			})
 		).toEqual({ status: 'completed', result });
+	});
+
+	it('repairs the first premature completed submission before failing closed', () => {
+		expect(REVIEW_STAGE_SUBMISSION_REPAIR_LIMIT).toBe(1);
+		expect(
+			shouldRepairReviewStageSubmission({
+				mutationMode: 'stage',
+				proposedChangeCount: 0,
+				status: 'completed',
+				repairAttempts: 0,
+				forceSubmitResult: false
+			})
+		).toBe(true);
+	});
+
+	it('does not repair repeatedly, after a staged write, or during forced finalization', () => {
+		const base = {
+			mutationMode: 'stage' as const,
+			proposedChangeCount: 0,
+			status: 'completed' as const,
+			repairAttempts: 0,
+			forceSubmitResult: false
+		};
+
+		expect(shouldRepairReviewStageSubmission({ ...base, repairAttempts: 1 })).toBe(false);
+		expect(shouldRepairReviewStageSubmission({ ...base, proposedChangeCount: 1 })).toBe(false);
+		expect(shouldRepairReviewStageSubmission({ ...base, forceSubmitResult: true })).toBe(false);
+		expect(shouldRepairReviewStageSubmission({ ...base, mutationMode: 'commit' })).toBe(false);
 	});
 });
