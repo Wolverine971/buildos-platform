@@ -10,3 +10,8 @@ ALTER EXTENSION pgcrypto SET SCHEMA extensions;
 GRANT USAGE ON SCHEMA extensions TO PUBLIC;
 
 \ir ../../migrations/20260831220245_libri_ocr_atomic_completion.sql
+
+-- Production intentionally withholds this shared schema from the worker. Exercise
+-- the corrective function definitions under the same least-privilege boundary.
+REVOKE USAGE ON SCHEMA extensions FROM PUBLIC, libri_worker;
+\ir ../../migrations/20260831223000_libri_ocr_core_sha256.sql

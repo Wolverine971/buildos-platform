@@ -70,6 +70,7 @@ type RoleProbeRow = {
 	can_settle_provider_cost: boolean;
 	can_release_provider_cost: boolean;
 	can_use_extensions_schema: boolean;
+	can_use_pg_catalog_sha256: boolean;
 	can_select_image_object_path: boolean;
 	can_update_image_ocr_status: boolean;
 	can_update_image_object_path: boolean;
@@ -313,6 +314,11 @@ class LibriDatabase implements LibriDatabasePort {
 					'extensions',
 					'USAGE'
 				) AS can_use_extensions_schema,
+				pg_catalog.has_function_privilege(
+					current_user,
+					'pg_catalog.sha256(bytea)',
+					'EXECUTE'
+				) AS can_use_pg_catalog_sha256,
 				pg_catalog.has_column_privilege(
 					current_user,
 					'libri.images',
@@ -420,7 +426,8 @@ function isApprovedRole(role: RoleProbeRow): boolean {
 			role.can_start_provider_cost &&
 			role.can_settle_provider_cost &&
 			role.can_release_provider_cost &&
-			role.can_use_extensions_schema &&
+			!role.can_use_extensions_schema &&
+			role.can_use_pg_catalog_sha256 &&
 			!role.can_select_image_object_path &&
 			role.can_update_image_ocr_status &&
 			!role.can_update_image_object_path &&
