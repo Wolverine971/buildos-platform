@@ -2,17 +2,22 @@
 // general worker, scheduler, or any non-Libri processor tree.
 import 'dotenv/config';
 import {
+	type LibriWorkerConfig,
+	loadLibriOcrRuntimeConfig,
 	loadLibriWorkerConfig,
 	requireDedicatedLibriWorkerProductionProfile
 } from './config/libriWorkerProfile';
 import { type LibriWorkerService, createLibriWorkerService } from './lib/libriWorkerService';
 import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
 import { LibriWorkerBootstrap } from './workers/libri/bootstrap';
-import { createLibriDatabase } from './workers/libri/database';
+import { createLibriAssetBroker } from './workers/libri/assetBroker';
+import { type LibriDatabasePort, createLibriDatabase } from './workers/libri/database';
 import {
 	LibriMaintenanceConsumer,
 	createSyntheticLibriMaintenanceProcessor
 } from './workers/libri/maintenanceConsumer';
+import { createLibriOcrProcessor } from './workers/libri/ocrProcessor';
+import { createOpenRouterLibriOcrProvider } from './workers/libri/ocrProvider';
 
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 28_000;
 
@@ -21,15 +26,8 @@ const config = loadLibriWorkerConfig(process.env);
 const database = createLibriDatabase(requireEnvironment(process.env, 'LIBRI_DATABASE_URL'), {
 	caCertificate: requireEnvironment(process.env, 'LIBRI_DATABASE_CA_CERT')
 });
-const maintenanceConsumer = new LibriMaintenanceConsumer({
-	lifecycle: database,
-	processor: createSyntheticLibriMaintenanceProcessor(),
-	workerId: resolveWorkerId(process.env),
-	config: { concurrency: config.concurrency },
-	claimStepIds: config.canaryStepId ? [config.canaryStepId] : undefined,
-	claimDeadlineMs: config.canaryExpiresAtMs ?? undefined
-});
-const bootstrap = new LibriWorkerBootstrap(database, config, maintenanceConsumer);
+const consumer = createConsumer(config, database, process.env);
+const bootstrap = new LibriWorkerBootstrap(database, config, consumer);
 const service = createLibriWorkerService({
 	bootstrap,
 	eventLoopLagMonitor: new WorkerEventLoopLagMonitor(),
@@ -108,6 +106,56 @@ function resolveWorkerId(environment: NodeJS.ProcessEnv): string {
 		environment.RAILWAY_DEPLOYMENT_ID?.trim() ||
 		String(process.pid);
 	return `libri-worker:${identity}`.slice(0, 200);
+}
+
+function createConsumer(
+	config: LibriWorkerConfig,
+	database: LibriDatabasePort,
+	environment: NodeJS.ProcessEnv
+): LibriMaintenanceConsumer {
+	const shared = {
+		lifecycle: database,
+		workerId: resolveWorkerId(environment),
+		config: { concurrency: config.concurrency },
+		claimStepIds: config.canaryStepId ? [config.canaryStepId] : undefined,
+		claimDeadlineMs: config.canaryExpiresAtMs ?? undefined
+	};
+	if (config.queueEnabled && config.activationMode === 'ocr_canary') {
+		const ocr = loadLibriOcrRuntimeConfig(environment);
+		const processor = createLibriOcrProcessor(
+			{
+				costLedger: database,
+				assetGrants: database,
+				assetBroker: createLibriAssetBroker({
+					endpointUrl: ocr.assetBrokerUrl,
+					bearerToken: ocr.assetBrokerToken,
+					timeoutMs: ocr.assetBrokerTimeoutMs
+				}),
+				execution: database,
+				provider: createOpenRouterLibriOcrProvider({
+					apiKey: ocr.openRouterApiKey,
+					allowedModels: [ocr.model],
+					httpReferer: 'https://build-os.com',
+					appName: 'BuildOS Libri'
+				})
+			},
+			{
+				model: ocr.model,
+				maxOutputTokens: ocr.maxOutputTokens,
+				reservedMicrousd: ocr.reservedMicrousd
+			}
+		);
+		return new LibriMaintenanceConsumer({
+			...shared,
+			processor,
+			claimQueueTypes: ['libri_ingest'],
+			processorManagesCompletion: true
+		});
+	}
+	return new LibriMaintenanceConsumer({
+		...shared,
+		processor: createSyntheticLibriMaintenanceProcessor()
+	});
 }
 
 function requireEnvironment(environment: NodeJS.ProcessEnv, name: string): string {

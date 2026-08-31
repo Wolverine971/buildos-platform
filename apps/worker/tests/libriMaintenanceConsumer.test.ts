@@ -99,6 +99,47 @@ describe('Libri maintenance consumer', () => {
 		expect(consumer.getHealth()).toMatchObject({ healthy: true, state: 'stopped' });
 	});
 
+	it('lets an exact ingest processor own atomic completion without completing twice', async () => {
+		const lifecycle = fakeLifecycle();
+		const ingestClaim: ClaimedLibriStep = {
+			...CLAIM,
+			queueJobId: 'libri_ingest_ocr_test',
+			queueType: 'libri_ingest',
+			payload: {
+				version: 1,
+				kind: 'ocr_image',
+				imageId: '70000000-0000-4000-8000-000000000001',
+				expectedOcrVersion: 1,
+				maxOutputChars: 100000
+			}
+		};
+		lifecycle.claimNextStep.mockResolvedValueOnce(ingestClaim).mockResolvedValue(null);
+		const processor = { execute: vi.fn(async () => undefined) };
+		const consumer = new LibriMaintenanceConsumer({
+			lifecycle,
+			processor,
+			workerId: 'libri-worker:ocr-test',
+			claimQueueTypes: ['libri_ingest'],
+			claimStepIds: [ingestClaim.stepId],
+			processorManagesCompletion: true
+		});
+
+		await consumer.start();
+		await consumer.wake();
+		await vi.waitFor(() => expect(consumer.getHealth().completedJobs).toBe(1));
+
+		expect(lifecycle.claimNextStep).toHaveBeenCalledWith({
+			workerId: 'libri-worker:ocr-test',
+			leaseDurationMs: 30_000,
+			queueTypes: ['libri_ingest'],
+			stepIds: [ingestClaim.stepId]
+		});
+		expect(processor.execute).toHaveBeenCalledOnce();
+		expect(lifecycle.completeStep).not.toHaveBeenCalled();
+		expect(lifecycle.failStep).not.toHaveBeenCalled();
+		await consumer.stop();
+	});
+
 	it('terminally rejects an unsupported maintenance payload without retrying', async () => {
 		const lifecycle = fakeLifecycle();
 		lifecycle.claimNextStep

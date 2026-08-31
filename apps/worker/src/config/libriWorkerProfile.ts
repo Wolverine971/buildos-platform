@@ -2,9 +2,19 @@ export type LibriWorkerConfig = {
 	concurrency: number;
 	databaseProbeIntervalMs: number;
 	queueEnabled: boolean;
-	activationMode: 'disabled' | 'synthetic_canary';
+	activationMode: 'disabled' | 'synthetic_canary' | 'ocr_canary';
 	canaryStepId: string | null;
 	canaryExpiresAtMs: number | null;
+};
+
+export type LibriOcrRuntimeConfig = {
+	assetBrokerUrl: string;
+	assetBrokerToken: string;
+	assetBrokerTimeoutMs: number;
+	openRouterApiKey: string;
+	model: string;
+	maxOutputTokens: number;
+	reservedMicrousd: bigint;
 };
 
 const DEFAULT_CONCURRENCY = 2;
@@ -26,16 +36,16 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 	}
 	const config = loadLibriWorkerConfig(environment);
 	if (!config.queueEnabled) return;
-	if (config.activationMode !== 'synthetic_canary') {
+	if (!['synthetic_canary', 'ocr_canary'].includes(config.activationMode)) {
 		throw new Error(
-			'Enabled production Libri worker requires LIBRI_WORKER_ACTIVATION_MODE=synthetic_canary'
+			'Enabled production Libri worker requires an exact synthetic_canary or ocr_canary activation mode'
 		);
 	}
 	if (config.concurrency !== 1) {
-		throw new Error('Enabled production Libri synthetic canary requires concurrency 1');
+		throw new Error('Enabled production Libri canary requires concurrency 1');
 	}
 	if (!config.canaryStepId) {
-		throw new Error('Enabled production Libri synthetic canary requires one canary step UUID');
+		throw new Error('Enabled production Libri canary requires one canary step UUID');
 	}
 	const nowMs = Date.now();
 	if (
@@ -43,10 +53,44 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 		config.canaryExpiresAtMs <= nowMs ||
 		config.canaryExpiresAtMs > nowMs + MAX_CANARY_WINDOW_MS
 	) {
-		throw new Error(
-			'Enabled production Libri synthetic canary expiry must be 1 to 30 minutes ahead'
-		);
+		throw new Error('Enabled production Libri canary expiry must be 1 to 30 minutes ahead');
 	}
+	if (config.activationMode === 'ocr_canary') loadLibriOcrRuntimeConfig(environment);
+}
+
+export function loadLibriOcrRuntimeConfig(environment: NodeJS.ProcessEnv): LibriOcrRuntimeConfig {
+	const reservedMicrousd = parsePositiveBigint(
+		requireValue(environment.LIBRI_OCR_RESERVED_MICROUSD, 'LIBRI_OCR_RESERVED_MICROUSD'),
+		1_000_000n,
+		'LIBRI_OCR_RESERVED_MICROUSD'
+	);
+	return {
+		assetBrokerUrl: requireValue(environment.LIBRI_ASSET_BROKER_URL, 'LIBRI_ASSET_BROKER_URL'),
+		assetBrokerToken: requireValue(
+			environment.PRIVATE_LIBRI_ASSET_BROKER_TOKEN,
+			'PRIVATE_LIBRI_ASSET_BROKER_TOKEN'
+		),
+		assetBrokerTimeoutMs: parseInteger(
+			environment.LIBRI_ASSET_BROKER_TIMEOUT_MS,
+			5_000,
+			250,
+			10_000,
+			'LIBRI_ASSET_BROKER_TIMEOUT_MS'
+		),
+		openRouterApiKey: requireValue(
+			environment.PRIVATE_OPENROUTER_API_KEY,
+			'PRIVATE_OPENROUTER_API_KEY'
+		),
+		model: requireValue(environment.LIBRI_OCR_MODEL, 'LIBRI_OCR_MODEL'),
+		maxOutputTokens: parseInteger(
+			environment.LIBRI_OCR_MAX_OUTPUT_TOKENS,
+			2_048,
+			1,
+			4_096,
+			'LIBRI_OCR_MAX_OUTPUT_TOKENS'
+		),
+		reservedMicrousd
+	};
 }
 
 export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWorkerConfig {
@@ -93,8 +137,10 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
 
 function parseActivationMode(value: string | undefined): LibriWorkerConfig['activationMode'] {
 	if (value === undefined || value.trim() === '' || value === 'disabled') return 'disabled';
-	if (value === 'synthetic_canary') return value;
-	throw new Error('LIBRI_WORKER_ACTIVATION_MODE must be disabled or synthetic_canary');
+	if (value === 'synthetic_canary' || value === 'ocr_canary') return value;
+	throw new Error(
+		'LIBRI_WORKER_ACTIVATION_MODE must be disabled, synthetic_canary, or ocr_canary'
+	);
 }
 
 function parseOptionalUuid(value: string | undefined): string | null {
@@ -123,6 +169,21 @@ function parseInteger(
 	const parsed = Number(value);
 	if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
 		throw new Error(`${name} must be an integer between ${minimum} and ${maximum}`);
+	}
+	return parsed;
+}
+
+function requireValue(value: string | undefined, name: string): string {
+	const normalized = value?.trim();
+	if (!normalized) throw new Error(`${name} is required for Libri OCR activation`);
+	return normalized;
+}
+
+function parsePositiveBigint(value: string, maximum: bigint, name: string): bigint {
+	if (!/^\d+$/.test(value)) throw new Error(`${name} must be a positive integer`);
+	const parsed = BigInt(value);
+	if (parsed < 1n || parsed > maximum) {
+		throw new Error(`${name} must be between 1 and ${maximum.toString()}`);
 	}
 	return parsed;
 }

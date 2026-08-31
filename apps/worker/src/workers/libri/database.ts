@@ -34,6 +34,14 @@ import {
 	type RecoverStaleLibriLeasesReceipt,
 	createLibriLifecycle
 } from './lifecycle';
+import {
+	type AuthorizeLibriOcrProviderInput,
+	type AuthorizeLibriOcrProviderReceipt,
+	type CompleteLibriOcrStepInput,
+	type CompleteLibriOcrStepReceipt,
+	type LibriOcrExecutionPort,
+	createLibriOcrExecution
+} from './ocrExecution';
 
 const LIBRI_DATABASE_ROLE = 'libri_worker';
 const MAX_LIBRI_DATABASE_CONNECTIONS = 3;
@@ -61,6 +69,16 @@ type RoleProbeRow = {
 	can_start_provider_cost: boolean;
 	can_settle_provider_cost: boolean;
 	can_release_provider_cost: boolean;
+	can_use_extensions_schema: boolean;
+	can_select_image_object_path: boolean;
+	can_update_image_ocr_status: boolean;
+	can_update_image_object_path: boolean;
+	can_insert_ocr_chunk_content: boolean;
+	can_insert_chunk_verification: boolean;
+	can_update_source_chunks: boolean;
+	can_delete_source_chunks: boolean;
+	can_authorize_ocr_provider_call: boolean;
+	can_persist_and_settle_ocr_result: boolean;
 };
 
 export type LibriPgPool = {
@@ -75,6 +93,8 @@ export type LibriPgPool = {
 export type LibriDatabasePort = LibriLifecyclePort &
 	LibriCostLedgerPort &
 	LibriAssetGrantPort & {
+		[key in keyof LibriOcrExecutionPort]: LibriOcrExecutionPort[key];
+	} & {
 		probe: () => Promise<void>;
 		close: () => Promise<void>;
 	};
@@ -127,17 +147,29 @@ class LibriDatabase implements LibriDatabasePort {
 	private readonly lifecycle: LibriLifecyclePort;
 	private readonly costLedger: LibriCostLedgerPort;
 	private readonly assetGrants: LibriAssetGrantPort;
+	private readonly ocrExecution: LibriOcrExecutionPort;
 
 	constructor(private readonly pool: LibriPgPool) {
 		this.lifecycle = createLibriLifecycle(pool);
 		this.costLedger = createLibriCostLedger(pool);
 		this.assetGrants = createLibriAssetGrantIssuer(pool);
+		this.ocrExecution = createLibriOcrExecution(pool);
 	}
 
 	issueOcrAssetGrant(
 		input: IssueLibriOcrAssetGrantInput
 	): Promise<IssueLibriOcrAssetGrantReceipt> {
 		return this.assetGrants.issueOcrAssetGrant(input);
+	}
+
+	authorizeOcrProviderCall(
+		input: AuthorizeLibriOcrProviderInput
+	): Promise<AuthorizeLibriOcrProviderReceipt> {
+		return this.ocrExecution.authorizeOcrProviderCall(input);
+	}
+
+	completeOcrStep(input: CompleteLibriOcrStepInput): Promise<CompleteLibriOcrStepReceipt> {
+		return this.ocrExecution.completeOcrStep(input);
 	}
 
 	reserveProviderCost(
@@ -275,7 +307,62 @@ class LibriDatabase implements LibriDatabasePort {
 					current_user,
 					'libri.release_provider_cost(uuid,integer,uuid,text)',
 					'EXECUTE'
-				) AS can_release_provider_cost
+				) AS can_release_provider_cost,
+				pg_catalog.has_schema_privilege(
+					current_user,
+					'extensions',
+					'USAGE'
+				) AS can_use_extensions_schema,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.images',
+					'object_path',
+					'SELECT'
+				) AS can_select_image_object_path,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.images',
+					'ocr_status',
+					'UPDATE'
+				) AS can_update_image_ocr_status,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.images',
+					'object_path',
+					'UPDATE'
+				) AS can_update_image_object_path,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.source_chunks',
+					'content',
+					'INSERT'
+				) AS can_insert_ocr_chunk_content,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.source_chunks',
+					'verification_status',
+					'INSERT'
+				) AS can_insert_chunk_verification,
+				pg_catalog.has_table_privilege(
+					current_user,
+					'libri.source_chunks',
+					'UPDATE'
+				) AS can_update_source_chunks,
+				pg_catalog.has_table_privilege(
+					current_user,
+					'libri.source_chunks',
+					'DELETE'
+				) AS can_delete_source_chunks,
+				pg_catalog.has_function_privilege(
+					current_user,
+					'libri.authorize_ocr_provider_call(uuid,uuid,uuid,integer,uuid,uuid,uuid)',
+					'EXECUTE'
+				) AS can_authorize_ocr_provider_call,
+				pg_catalog.has_function_privilege(
+					current_user,
+					'libri.persist_and_settle_ocr_result(uuid,uuid,uuid,integer,uuid,uuid,uuid,text,text,numeric,text,bigint,bigint,bigint,text)',
+					'EXECUTE'
+				) AS can_persist_and_settle_ocr_result
 			FROM pg_catalog.pg_roles role
 			WHERE role.rolname = current_user
 		`);
@@ -332,6 +419,16 @@ function isApprovedRole(role: RoleProbeRow): boolean {
 			role.can_reserve_provider_cost &&
 			role.can_start_provider_cost &&
 			role.can_settle_provider_cost &&
-			role.can_release_provider_cost
+			role.can_release_provider_cost &&
+			role.can_use_extensions_schema &&
+			!role.can_select_image_object_path &&
+			role.can_update_image_ocr_status &&
+			!role.can_update_image_object_path &&
+			role.can_insert_ocr_chunk_content &&
+			!role.can_insert_chunk_verification &&
+			!role.can_update_source_chunks &&
+			!role.can_delete_source_chunks &&
+			role.can_authorize_ocr_provider_call &&
+			role.can_persist_and_settle_ocr_result
 	);
 }

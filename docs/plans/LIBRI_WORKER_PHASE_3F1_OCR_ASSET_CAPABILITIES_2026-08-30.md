@@ -1,7 +1,7 @@
 # Libri Worker Phase 3F.1: OCR Asset Capabilities
 
 Date: 2026-08-30
-Status: implemented and locally verified; awaiting CI, deployment, and migration; not activated
+Status: deployed and production-verified; Phase 3F.2 broker implemented locally; not activated
 
 ## Decision
 
@@ -55,6 +55,18 @@ authority.
 - No service-role key, Storage S3 key, or JWT signing secret in Railway.
 - No direct object bytes, bucket, path, or signed URL in durable step/queue payloads.
 - No multi-image orchestration, recursive research, source-chunk write, or OCR completion write yet.
+
+## Production receipt
+
+- Migration `20260831145458_libri_ocr_asset_grants.sql` is applied in production with a matching
+  local/remote ledger and an empty post-apply dry run.
+- The production privilege proof passed for the restricted `libri_worker`, `service_role`, `anon`,
+  and `authenticated` boundaries. The one-time consume RPC remained service-role-only.
+- The BuildOS queue control checksum and the pre/post BuildOS table counts were unchanged.
+- Push CI run `33432715053` passed both the full BuildOS job and Libri migration-safety job; all
+  three Railway services remained healthy with the Libri worker disabled.
+- The server-side redemption endpoint is tracked separately in
+  `LIBRI_WORKER_PHASE_3F2_OCR_ASSET_BROKER_2026-08-31.md`.
 
 ## Local verification receipt
 

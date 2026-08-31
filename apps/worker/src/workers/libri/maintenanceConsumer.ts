@@ -4,6 +4,7 @@ import type {
 	FailLibriStepInput,
 	LibriLifecyclePort
 } from './lifecycle';
+import type { LibriQueueType } from './bootstrap';
 
 const MAINTENANCE_QUEUE_TYPES = ['libri_maintenance'] as const;
 
@@ -25,7 +26,10 @@ export type LibriMaintenanceExecutionResult = Pick<
 >;
 
 export type LibriMaintenanceProcessorPort = {
-	execute(claim: ClaimedLibriStep, signal: AbortSignal): Promise<LibriMaintenanceExecutionResult>;
+	execute(
+		claim: ClaimedLibriStep,
+		signal: AbortSignal
+	): Promise<LibriMaintenanceExecutionResult | void>;
 };
 
 export type LibriMaintenanceConsumerState = 'idle' | 'running' | 'stopping' | 'stopped' | 'failed';
@@ -57,6 +61,8 @@ export type LibriMaintenanceConsumerOptions = {
 	config?: Partial<LibriMaintenanceConsumerConfig>;
 	claimStepIds?: readonly string[];
 	claimDeadlineMs?: number;
+	claimQueueTypes?: readonly LibriQueueType[];
+	processorManagesCompletion?: boolean;
 };
 
 export class LibriMaintenanceProcessorError extends Error {
@@ -103,6 +109,7 @@ export function createSyntheticLibriMaintenanceProcessor(): LibriMaintenanceProc
 
 export class LibriMaintenanceConsumer {
 	private readonly config: LibriMaintenanceConsumerConfig;
+	private readonly queueTypes: readonly LibriQueueType[];
 	private state: LibriMaintenanceConsumerState = 'idle';
 	private timer: NodeJS.Timeout | null = null;
 	private pollPromise: Promise<void> | null = null;
@@ -122,6 +129,7 @@ export class LibriMaintenanceConsumer {
 			...DEFAULT_LIBRI_MAINTENANCE_CONSUMER_CONFIG,
 			...options.config
 		};
+		this.queueTypes = normalizeConsumerQueueTypes(options.claimQueueTypes);
 		validateConsumerConfig(this.config);
 		if (!options.workerId.trim() || options.workerId.length > 200) {
 			throw new Error('Libri maintenance workerId must contain 1 to 200 characters');
@@ -210,7 +218,7 @@ export class LibriMaintenanceConsumer {
 				const receipt = await this.options.lifecycle.claimNextStep({
 					workerId: this.options.workerId,
 					leaseDurationMs: this.config.leaseDurationMs,
-					queueTypes: MAINTENANCE_QUEUE_TYPES,
+					queueTypes: this.queueTypes,
 					...(this.options.claimStepIds ? { stepIds: this.options.claimStepIds } : {})
 				});
 				this.consecutiveClaimFailures = 0;
@@ -296,6 +304,17 @@ export class LibriMaintenanceConsumer {
 			if (ownershipLost) {
 				this.staleOwnershipJobs += 1;
 				return;
+			}
+			if (this.options.processorManagesCompletion) {
+				this.completedJobs += 1;
+				return;
+			}
+			if (!executionResult) {
+				throw new LibriMaintenanceProcessorError(
+					'missing_completion_result',
+					'Libri processor did not return lifecycle completion data',
+					false
+				);
 			}
 			const completed = await this.options.lifecycle.completeStep({
 				...ownership(claim),
@@ -486,6 +505,20 @@ function validateConsumerConfig(config: LibriMaintenanceConsumerConfig): void {
 	if (config.workerTimeoutMs >= config.leaseDurationMs) {
 		throw new Error('Libri maintenance worker timeout must be below the lease duration');
 	}
+}
+
+function normalizeConsumerQueueTypes(
+	queueTypes: readonly LibriQueueType[] | undefined
+): readonly LibriQueueType[] {
+	if (queueTypes === undefined) return MAINTENANCE_QUEUE_TYPES;
+	if (queueTypes.length < 1 || queueTypes.length > 4) {
+		throw new Error('Libri consumer claimQueueTypes must contain 1 to 4 values');
+	}
+	const normalized = [...new Set(queueTypes)];
+	if (normalized.length !== queueTypes.length) {
+		throw new Error('Libri consumer claimQueueTypes must be unique');
+	}
+	return normalized;
 }
 
 function canonicalErrorCode(error: unknown, fallback: string): string {

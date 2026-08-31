@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	loadLibriWorkerConfig,
+	loadLibriOcrRuntimeConfig,
 	requireDedicatedLibriWorkerProductionProfile
 } from '../src/config/libriWorkerProfile';
 import {
@@ -275,7 +276,7 @@ describe('dedicated Libri worker service', () => {
 				LIBRI_WORKER_PROFILE: 'production',
 				LIBRI_WORKER_ENABLED: 'true'
 			})
-		).toThrow('LIBRI_WORKER_ACTIVATION_MODE=synthetic_canary');
+		).toThrow('exact synthetic_canary or ocr_canary');
 		expect(() =>
 			requireDedicatedLibriWorkerProductionProfile({
 				NODE_ENV: 'production',
@@ -360,6 +361,55 @@ describe('dedicated Libri worker service', () => {
 		expect(() =>
 			loadLibriWorkerConfig({ LIBRI_WORKER_CANARY_EXPIRES_AT: 'not-a-timestamp' })
 		).toThrow('LIBRI_WORKER_CANARY_EXPIRES_AT');
+	});
+
+	it('requires bounded paid and broker settings only for the exact OCR canary', () => {
+		const canaryStepId = '30000000-0000-4000-8000-000000000001';
+		const canaryExpiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+		const base = {
+			NODE_ENV: 'production',
+			LIBRI_WORKER_PROFILE: 'production',
+			LIBRI_WORKER_ENABLED: 'true',
+			LIBRI_WORKER_ACTIVATION_MODE: 'ocr_canary',
+			LIBRI_WORKER_CONCURRENCY: '1',
+			LIBRI_WORKER_CANARY_STEP_ID: canaryStepId,
+			LIBRI_WORKER_CANARY_EXPIRES_AT: canaryExpiresAt
+		};
+		expect(() => requireDedicatedLibriWorkerProductionProfile(base)).toThrow(
+			'LIBRI_OCR_RESERVED_MICROUSD'
+		);
+
+		const ocrEnvironment = {
+			...base,
+			LIBRI_OCR_RESERVED_MICROUSD: '50000',
+			LIBRI_ASSET_BROKER_URL: 'https://build-os.com/api/internal/libri/ocr-assets/redeem',
+			PRIVATE_LIBRI_ASSET_BROKER_TOKEN: 'x'.repeat(64),
+			PRIVATE_OPENROUTER_API_KEY: 'openrouter-key',
+			LIBRI_OCR_MODEL: 'openai/gpt-4.1-mini',
+			LIBRI_OCR_MAX_OUTPUT_TOKENS: '2048'
+		};
+		expect(() => requireDedicatedLibriWorkerProductionProfile(ocrEnvironment)).not.toThrow();
+		expect(loadLibriOcrRuntimeConfig(ocrEnvironment)).toEqual({
+			assetBrokerUrl: 'https://build-os.com/api/internal/libri/ocr-assets/redeem',
+			assetBrokerToken: 'x'.repeat(64),
+			assetBrokerTimeoutMs: 5_000,
+			openRouterApiKey: 'openrouter-key',
+			model: 'openai/gpt-4.1-mini',
+			maxOutputTokens: 2_048,
+			reservedMicrousd: 50_000n
+		});
+		expect(() =>
+			loadLibriOcrRuntimeConfig({
+				...ocrEnvironment,
+				LIBRI_OCR_RESERVED_MICROUSD: '1000001'
+			})
+		).toThrow('between 1 and 1000000');
+		expect(() =>
+			loadLibriOcrRuntimeConfig({
+				...ocrEnvironment,
+				LIBRI_OCR_MAX_OUTPUT_TOKENS: '4097'
+			})
+		).toThrow('LIBRI_OCR_MAX_OUTPUT_TOKENS');
 	});
 });
 

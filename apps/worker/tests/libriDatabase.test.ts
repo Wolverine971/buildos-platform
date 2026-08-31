@@ -32,6 +32,8 @@ describe('Libri restricted PostgreSQL connection', () => {
 		expect(queryMock.mock.calls[0]?.[0]).toContain("'public.queue_jobs'");
 		expect(queryMock.mock.calls[0]?.[0]).toContain("'libri.provider_cost_reservations'");
 		expect(queryMock.mock.calls[0]?.[0]).toContain('libri.reserve_provider_cost');
+		expect(queryMock.mock.calls[0]?.[0]).toContain('libri.authorize_ocr_provider_call');
+		expect(queryMock.mock.calls[0]?.[0]).toContain('libri.persist_and_settle_ocr_result');
 
 		await database.close();
 		expect(endMock).toHaveBeenCalledOnce();
@@ -78,8 +80,18 @@ describe('Libri restricted PostgreSQL connection', () => {
 		['can_reserve_provider_cost', false],
 		['can_start_provider_cost', false],
 		['can_settle_provider_cost', false],
-		['can_release_provider_cost', false]
-	] as const)('rejects provider ledger privilege drift in %s', async (capability, value) => {
+		['can_release_provider_cost', false],
+		['can_use_extensions_schema', false],
+		['can_select_image_object_path', true],
+		['can_update_image_ocr_status', false],
+		['can_update_image_object_path', true],
+		['can_insert_ocr_chunk_content', false],
+		['can_insert_chunk_verification', true],
+		['can_update_source_chunks', true],
+		['can_delete_source_chunks', true],
+		['can_authorize_ocr_provider_call', false],
+		['can_persist_and_settle_ocr_result', false]
+	] as const)('rejects Libri worker privilege drift in %s', async (capability, value) => {
 		const { pool } = fakePool({ ...approvedRole(), [capability]: value });
 		const database = createLibriDatabase(DATABASE_URL, {
 			caCertificate: CA_CERTIFICATE,
@@ -123,7 +135,17 @@ function approvedRole() {
 		can_reserve_provider_cost: true,
 		can_start_provider_cost: true,
 		can_settle_provider_cost: true,
-		can_release_provider_cost: true
+		can_release_provider_cost: true,
+		can_use_extensions_schema: true,
+		can_select_image_object_path: false,
+		can_update_image_ocr_status: true,
+		can_update_image_object_path: false,
+		can_insert_ocr_chunk_content: true,
+		can_insert_chunk_verification: false,
+		can_update_source_chunks: false,
+		can_delete_source_chunks: false,
+		can_authorize_ocr_provider_call: true,
+		can_persist_and_settle_ocr_result: true
 	};
 }
 
