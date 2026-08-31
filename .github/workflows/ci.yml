@@ -145,6 +145,9 @@ jobs:
               with:
                   node-version-file: .nvmrc
 
+            - name: Test generated RPC parser
+              run: node --test scripts/security/check-supabase-rpc-drift.test.mjs
+
             - name: Compare live and generated RPC names
               env:
                   PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}

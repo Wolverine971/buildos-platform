@@ -160,12 +160,13 @@ export function normalizeGatewayOpArgs(
 	op: BuildosAgentAllowedOp,
 	args: Record<string, unknown>
 ): Record<string, unknown> {
-	if (op !== 'onto.edge.link') {
+	const groups = GATEWAY_ARG_ALIAS_GROUPS[op] ?? [];
+	if (groups.length === 0) {
 		return args;
 	}
 
 	const normalized = { ...args };
-	for (const group of GATEWAY_ARG_ALIAS_GROUPS[op] ?? []) {
+	for (const group of groups) {
 		if (group.normalize) {
 			mapGatewayArgAlias(normalized, group);
 		}

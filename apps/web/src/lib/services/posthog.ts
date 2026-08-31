@@ -295,8 +295,8 @@ export async function captureEvent(
 		const result = client.capture(
 			event,
 			properties,
-			delivery === 'immediate_beacon'
-				? { transport: 'sendBeacon', send_instantly: true }
+			delivery === 'immediate_fetch'
+				? { transport: 'fetch', send_instantly: true }
 				: undefined
 		);
 		return completeCaptureReceipt({

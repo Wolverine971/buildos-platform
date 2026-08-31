@@ -1,7 +1,7 @@
 export const POSTHOG_CAPTURE_RECEIPT_DOM_EVENT = 'buildos:posthog-capture-receipt';
 export const AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT = 'agentic_chat_admission_completed';
 
-export type PostHogCaptureDelivery = 'batched' | 'immediate_beacon';
+export type PostHogCaptureDelivery = 'batched' | 'immediate_fetch';
 export type PostHogCaptureReceiptStatus = 'skipped' | 'accepted' | 'dropped' | 'error';
 export type PostHogCaptureReceiptReason =
 	| 'not_configured'

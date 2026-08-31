@@ -139,7 +139,7 @@ function captureWorkerAdmissionTiming(input: {
 			has_attachments: input.command.attachments.length > 0
 		},
 		{
-			delivery: 'immediate_beacon'
+			delivery: 'immediate_fetch'
 		}
 	);
 }

@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { AGENTIC_CHAT_WORKER_CONTRACT_VERSION } from '@buildos/shared-types';
 import {
 	AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT,
 	POSTHOG_CAPTURE_RECEIPT_DOM_EVENT,
@@ -12,6 +13,7 @@ const PROMPT = 'Reply with exactly "MODAL E2E OK" and do not use tools.';
 const CAPTURE_ANALYTICS = process.env.AGENTIC_E2E_CAPTURE_ANALYTICS === 'true';
 const TRACKING_CONSENT_BUTTON = CAPTURE_ANALYTICS ? 'Accept all' : 'Use necessary only';
 const TRACKING_PREFERENCES_STORAGE_KEY = 'buildos_tracking_preferences_v1';
+const TRACKING_PREFERENCES_OPEN_EVENT = 'buildos:open-tracking-preferences';
 const POSTHOG_CAPTURE_RECEIPT_SLOT = '__buildosAgenticPostHogCaptureReceiptV1';
 
 function deferred<T>() {
@@ -29,15 +31,21 @@ function required(name: string): string {
 }
 
 async function chooseTrackingConsent(page: Page): Promise<void> {
-	const click = page
-		.getByRole('button', { name: TRACKING_CONSENT_BUTTON })
-		.click({ timeout: 3_000 });
 	if (!CAPTURE_ANALYTICS) {
-		await click.catch(() => undefined);
+		await page
+			.locator('button')
+			.filter({ hasText: TRACKING_CONSENT_BUTTON })
+			.click({ timeout: 3_000 })
+			.catch(() => undefined);
 		return;
 	}
 
-	await click;
+	await page.evaluate((eventName) => {
+		window.dispatchEvent(new CustomEvent(eventName));
+	}, TRACKING_PREFERENCES_OPEN_EVENT);
+	const acceptAllButton = page.locator('button').filter({ hasText: TRACKING_CONSENT_BUTTON });
+	await expect(acceptAllButton).toBeVisible({ timeout: 15_000 });
+	await acceptAllButton.click();
 	await expect
 		.poll(() =>
 			page.evaluate((key) => {
@@ -103,6 +111,39 @@ async function readPostHogCaptureReceipt(page: Page): Promise<PostHogCaptureRece
 async function authenticateHarnessUser(
 	page: Page
 ): Promise<{ admin: SupabaseClient; userId: string; actorId: string }> {
+	if (CAPTURE_ANALYTICS) {
+		await page.addInitScript(() => {
+			// PostHog deliberately suppresses automation UAs. Sanitize Playwright-only markers so
+			// the explicitly opted-in analytics canary exercises the production capture path.
+			Object.defineProperty(Navigator.prototype, 'webdriver', {
+				configurable: true,
+				get: () => false
+			});
+
+			const navigatorWithUaData = navigator as Navigator & {
+				userAgentData?: { brands?: Array<{ brand: string; version: string }> };
+			};
+			const userAgentData = navigatorWithUaData.userAgentData;
+			if (userAgentData?.brands) {
+				const brands = userAgentData.brands.map((brand) => ({
+					...brand,
+					brand: brand.brand === 'HeadlessChrome' ? 'Google Chrome' : brand.brand
+				}));
+				const sanitizedUserAgentData = new Proxy(userAgentData, {
+					get(target, property) {
+						if (property === 'brands') return brands;
+						const value = Reflect.get(target, property, target);
+						return typeof value === 'function' ? value.bind(target) : value;
+					}
+				});
+				Object.defineProperty(navigator, 'userAgentData', {
+					configurable: true,
+					get: () => sanitizedUserAgentData
+				});
+			}
+		});
+	}
+
 	const email = required('AGENTIC_TEST_USER_EMAIL');
 	const password = required('AGENTIC_TEST_USER_PASSWORD');
 	const supabaseUrl = required('PUBLIC_SUPABASE_URL');
@@ -215,6 +256,9 @@ async function openPrewarmedModal(
 }
 
 async function openPrewarmedExistingSession(page: Page, sessionId: string, prompt: string) {
+	await page.goto('/dashboard');
+	await chooseTrackingConsent(page);
+
 	const matchesSessionPrewarm = (request: import('@playwright/test').Request): boolean => {
 		if (
 			request.method() !== 'POST' ||
@@ -235,7 +279,6 @@ async function openPrewarmedExistingSession(page: Page, sessionId: string, promp
 	);
 
 	await page.goto(`/history?id=${encodeURIComponent(sessionId)}&itemType=chat_session`);
-	await chooseTrackingConsent(page);
 	const dialog = page.getByRole('dialog', { name: 'BuildOS chat assistant dialog' });
 	await expect(dialog).toBeVisible({ timeout: 60_000 });
 	const composer = dialog.locator('textarea').first();
@@ -554,7 +597,7 @@ test('@live existing modal session consumes its prewarmed lease through the work
 			expect(posthogCaptureReceipt).toEqual({
 				event: AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT,
 				status: 'accepted',
-				delivery: 'immediate_beacon',
+				delivery: 'immediate_fetch',
 				reason: null
 			});
 			console.log(
@@ -587,6 +630,100 @@ test('@live existing modal session consumes its prewarmed lease through the work
 				console.error(error);
 			}
 		}
+		await cleanupModalFixtures({
+			admin,
+			userId,
+			actorId,
+			sessionId,
+			projectId,
+			testFailed
+		});
+	}
+});
+
+test('@analytics admission capture reaches PostHog without a model call', async ({ page }) => {
+	const { admin, userId, actorId } = await authenticateHarnessUser(page);
+	const admissionIntercepted = deferred<void>();
+	let sessionId: string | null = null;
+	let projectId: string | null = null;
+	let testFailed = false;
+	let legacyStreamIntercepted = false;
+
+	await page.route('**/api/agent/v2/turns*', async (route) => {
+		const request = route.request();
+		if (
+			request.method() !== 'POST' ||
+			new URL(request.url()).pathname !== '/api/agent/v2/turns'
+		) {
+			await route.continue();
+			return;
+		}
+
+		const body = request.postDataJSON() as {
+			clientTurnId: string;
+			streamRunId: string;
+			sessionId: string;
+		};
+		admissionIntercepted.resolve();
+		await route.fulfill({
+			status: 202,
+			contentType: 'application/json',
+			headers: {
+				'server-timing': [
+					'prepared-admission;dur=1;desc="hit"',
+					'worker-preparation;dur=2',
+					'worker-admission;dur=3'
+				].join(', ')
+			},
+			body: JSON.stringify({
+				success: true,
+				data: {
+					outcome: 'newly_admitted',
+					status: 'queued',
+					handle: {
+						contractVersion: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+						executionMode: 'worker_realtime',
+						turnRunId: randomUUID(),
+						sessionId: body.sessionId,
+						streamRunId: body.streamRunId,
+						clientTurnId: body.clientTurnId
+					}
+				}
+			})
+		});
+	});
+	await page.route('**/api/agent/v2/stream*', async (route) => {
+		legacyStreamIntercepted = true;
+		await route.fulfill({
+			status: 200,
+			contentType: 'text/event-stream',
+			body: `data: ${JSON.stringify({ type: 'done', finished_reason: 'test_intercepted' })}\n\n`
+		});
+	});
+
+	try {
+		sessionId = await seedModalSession(admin, userId);
+		const { dialog } = await openPrewarmedExistingSession(page, sessionId, PROMPT);
+		await armPostHogCaptureReceipt(page);
+		await dialog.getByRole('button', { name: 'Send message' }).click();
+		await admissionIntercepted.promise;
+
+		const receipt = await readPostHogCaptureReceipt(page);
+		expect(receipt).toEqual({
+			event: AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT,
+			status: 'accepted',
+			delivery: 'immediate_fetch',
+			reason: null
+		});
+		// Give the fire-and-forget request a bounded delivery window before fixture teardown.
+		await page.waitForTimeout(2_000);
+		console.log(
+			`[agentic-modal-e2e] no-model PostHog capture accepted; legacy_stream_intercepted=${legacyStreamIntercepted}`
+		);
+	} catch (error) {
+		testFailed = true;
+		throw error;
+	} finally {
 		await cleanupModalFixtures({
 			admin,
 			userId,

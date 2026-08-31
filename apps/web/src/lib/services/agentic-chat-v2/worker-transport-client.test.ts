@@ -293,7 +293,7 @@ describe('Agentic Chat worker transport client', () => {
 				context_type: 'project',
 				has_attachments: false
 			},
-			{ delivery: 'immediate_beacon' }
+			{ delivery: 'immediate_fetch' }
 		);
 		const properties = mocks.captureEvent.mock.calls[0]?.[1] ?? {};
 		expect(JSON.stringify(properties)).not.toContain('Sensitive prompt');

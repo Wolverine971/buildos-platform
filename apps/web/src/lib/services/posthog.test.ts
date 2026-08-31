@@ -78,13 +78,13 @@ describe('PostHog browser capture receipts', () => {
 		const receipt = await captureEvent(
 			'agentic_chat_admission_completed',
 			{ response_ok: true },
-			{ delivery: 'immediate_beacon' }
+			{ delivery: 'immediate_fetch' }
 		);
 
 		expect(receipt).toEqual({
 			event: 'agentic_chat_admission_completed',
 			status: 'skipped',
-			delivery: 'immediate_beacon',
+			delivery: 'immediate_fetch',
 			reason: 'analytics_consent_disabled'
 		});
 		expect(mocks.init).not.toHaveBeenCalled();
@@ -97,12 +97,12 @@ describe('PostHog browser capture receipts', () => {
 		]);
 	});
 
-	it('bypasses batching with a nonblocking beacon and reports SDK acceptance', async () => {
+	it('bypasses batching with a nonblocking immediate fetch and reports SDK acceptance', async () => {
 		const { captureEvent } = await import('./posthog');
 		const properties = { response_ok: true, worker_admission_ms: 144 };
 
 		const receipt = await captureEvent('agentic_chat_admission_completed', properties, {
-			delivery: 'immediate_beacon'
+			delivery: 'immediate_fetch'
 		});
 
 		expect(mocks.init).toHaveBeenCalledWith(
@@ -115,13 +115,13 @@ describe('PostHog browser capture receipts', () => {
 		);
 		expect(mocks.optInCapturing).toHaveBeenCalledWith({ captureEventName: false });
 		expect(mocks.capture).toHaveBeenCalledWith('agentic_chat_admission_completed', properties, {
-			transport: 'sendBeacon',
+			transport: 'fetch',
 			send_instantly: true
 		});
 		expect(receipt).toEqual({
 			event: 'agentic_chat_admission_completed',
 			status: 'accepted',
-			delivery: 'immediate_beacon',
+			delivery: 'immediate_fetch',
 			reason: null
 		});
 		expect(dispatched).toEqual([
@@ -142,7 +142,7 @@ describe('PostHog browser capture receipts', () => {
 
 		await expect(
 			captureEvent('agentic_chat_admission_completed', undefined, {
-				delivery: 'immediate_beacon'
+				delivery: 'immediate_fetch'
 			})
 		).resolves.toMatchObject({
 			status: 'skipped',
@@ -160,7 +160,7 @@ describe('PostHog browser capture receipts', () => {
 		const { captureEvent } = await import('./posthog');
 
 		const receipt = await captureEvent('agentic_chat_admission_completed', undefined, {
-			delivery: 'immediate_beacon'
+			delivery: 'immediate_fetch'
 		});
 
 		expect(receipt).toMatchObject({
@@ -178,7 +178,7 @@ describe('PostHog browser capture receipts', () => {
 
 		await expect(
 			captureEvent('agentic_chat_admission_completed', undefined, {
-				delivery: 'immediate_beacon'
+				delivery: 'immediate_fetch'
 			})
 		).resolves.toMatchObject({
 			status: 'error',
