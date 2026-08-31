@@ -1,5 +1,17 @@
 import { Pool, type PoolConfig, type QueryResult } from 'pg';
 import {
+	type AuthorizeLibriProviderCostInput,
+	type AuthorizeLibriProviderCostReceipt,
+	type LibriCostLedgerPort,
+	type ReleaseLibriProviderCostInput,
+	type ReleaseLibriProviderCostReceipt,
+	type ReserveLibriProviderCostInput,
+	type ReserveLibriProviderCostReceipt,
+	type SettleLibriProviderCostInput,
+	type SettleLibriProviderCostReceipt,
+	createLibriCostLedger
+} from './costLedger';
+import {
 	type CancelLibriRunInput,
 	type CancelLibriRunReceipt,
 	type ClaimLibriStepInput,
@@ -33,6 +45,16 @@ type RoleProbeRow = {
 	has_memberships: boolean;
 	can_delete_queue_jobs: boolean;
 	can_retag_queue_jobs: boolean;
+	can_select_provider_cost_reservations: boolean;
+	can_insert_provider_cost_amount: boolean;
+	can_update_provider_cost_status: boolean;
+	can_delete_provider_cost_reservations: boolean;
+	can_change_provider_cost_reservation: boolean;
+	can_change_research_run_budget: boolean;
+	can_reserve_provider_cost: boolean;
+	can_start_provider_cost: boolean;
+	can_settle_provider_cost: boolean;
+	can_release_provider_cost: boolean;
 };
 
 export type LibriPgPool = {
@@ -44,10 +66,11 @@ export type LibriPgPool = {
 	end: () => Promise<void>;
 };
 
-export type LibriDatabasePort = LibriLifecyclePort & {
-	probe: () => Promise<void>;
-	close: () => Promise<void>;
-};
+export type LibriDatabasePort = LibriLifecyclePort &
+	LibriCostLedgerPort & {
+		probe: () => Promise<void>;
+		close: () => Promise<void>;
+	};
 
 type LibriPoolFactory = (config: PoolConfig) => LibriPgPool;
 
@@ -95,9 +118,35 @@ function normalizeCaCertificate(value: string): string {
 
 class LibriDatabase implements LibriDatabasePort {
 	private readonly lifecycle: LibriLifecyclePort;
+	private readonly costLedger: LibriCostLedgerPort;
 
 	constructor(private readonly pool: LibriPgPool) {
 		this.lifecycle = createLibriLifecycle(pool);
+		this.costLedger = createLibriCostLedger(pool);
+	}
+
+	reserveProviderCost(
+		input: ReserveLibriProviderCostInput
+	): Promise<ReserveLibriProviderCostReceipt> {
+		return this.costLedger.reserveProviderCost(input);
+	}
+
+	authorizeProviderCall(
+		input: AuthorizeLibriProviderCostInput
+	): Promise<AuthorizeLibriProviderCostReceipt> {
+		return this.costLedger.authorizeProviderCall(input);
+	}
+
+	settleProviderCost(
+		input: SettleLibriProviderCostInput
+	): Promise<SettleLibriProviderCostReceipt> {
+		return this.costLedger.settleProviderCost(input);
+	}
+
+	releaseProviderCost(
+		input: ReleaseLibriProviderCostInput
+	): Promise<ReleaseLibriProviderCostReceipt> {
+		return this.costLedger.releaseProviderCost(input);
 	}
 
 	enqueueStep(input: EnqueueLibriStepInput): Promise<EnqueueLibriStepReceipt> {
@@ -157,7 +206,61 @@ class LibriDatabase implements LibriDatabasePort {
 					'public.queue_jobs',
 					'job_type',
 					'UPDATE'
-				) AS can_retag_queue_jobs
+				) AS can_retag_queue_jobs,
+				pg_catalog.has_table_privilege(
+					current_user,
+					'libri.provider_cost_reservations',
+					'SELECT'
+				) AS can_select_provider_cost_reservations,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.provider_cost_reservations',
+					'reserved_microusd',
+					'INSERT'
+				) AS can_insert_provider_cost_amount,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.provider_cost_reservations',
+					'status',
+					'UPDATE'
+				) AS can_update_provider_cost_status,
+				pg_catalog.has_table_privilege(
+					current_user,
+					'libri.provider_cost_reservations',
+					'DELETE'
+				) AS can_delete_provider_cost_reservations,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.provider_cost_reservations',
+					'reserved_microusd',
+					'UPDATE'
+				) AS can_change_provider_cost_reservation,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.research_runs',
+					'cost_budget_microusd',
+					'UPDATE'
+				) AS can_change_research_run_budget,
+				pg_catalog.has_function_privilege(
+					current_user,
+					'libri.reserve_provider_cost(uuid,integer,uuid,text,text,text,bigint)',
+					'EXECUTE'
+				) AS can_reserve_provider_cost,
+				pg_catalog.has_function_privilege(
+					current_user,
+					'libri.start_provider_cost(uuid,integer,uuid)',
+					'EXECUTE'
+				) AS can_start_provider_cost,
+				pg_catalog.has_function_privilege(
+					current_user,
+					'libri.settle_provider_cost(uuid,integer,uuid,bigint,bigint,bigint,text)',
+					'EXECUTE'
+				) AS can_settle_provider_cost,
+				pg_catalog.has_function_privilege(
+					current_user,
+					'libri.release_provider_cost(uuid,integer,uuid,text)',
+					'EXECUTE'
+				) AS can_release_provider_cost
 			FROM pg_catalog.pg_roles role
 			WHERE role.rolname = current_user
 		`);
@@ -204,6 +307,16 @@ function isApprovedRole(role: RoleProbeRow): boolean {
 			role.connection_limit === MAX_LIBRI_DATABASE_CONNECTIONS &&
 			!role.has_memberships &&
 			!role.can_delete_queue_jobs &&
-			!role.can_retag_queue_jobs
+			!role.can_retag_queue_jobs &&
+			role.can_select_provider_cost_reservations &&
+			role.can_insert_provider_cost_amount &&
+			role.can_update_provider_cost_status &&
+			!role.can_delete_provider_cost_reservations &&
+			!role.can_change_provider_cost_reservation &&
+			!role.can_change_research_run_budget &&
+			role.can_reserve_provider_cost &&
+			role.can_start_provider_cost &&
+			role.can_settle_provider_cost &&
+			role.can_release_provider_cost
 	);
 }

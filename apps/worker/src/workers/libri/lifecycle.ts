@@ -36,6 +36,8 @@ export type EnqueueLibriStepReceipt = {
 export type ClaimLibriStepInput = {
 	workerId: string;
 	leaseDurationMs: number;
+	queueTypes?: readonly LibriQueueType[];
+	stepIds?: readonly string[];
 };
 
 export type ClaimedLibriStep = {
@@ -323,6 +325,8 @@ class LibriLifecycle implements LibriLifecyclePort {
 	claimNextStep(input: ClaimLibriStepInput): Promise<ClaimLibriStepReceipt> {
 		assertWorkerId(input.workerId);
 		assertLeaseDuration(input.leaseDurationMs);
+		const queueTypes = normalizeQueueTypes(input.queueTypes);
+		const stepIds = normalizeStepIds(input.stepIds);
 		const processingToken = randomUUID();
 		const leaseToken = randomUUID();
 		const leaseExpiresAt = new Date(Date.now() + input.leaseDurationMs);
@@ -331,13 +335,14 @@ class LibriLifecycle implements LibriLifecyclePort {
 			const queueResult = await client.query<QueueJobRow>(
 				`SELECT id, queue_job_id, job_type::text, metadata, status::text, processing_token
 				FROM public.queue_jobs
-				WHERE status = 'pending'
-					AND job_type = ANY($1::public.queue_type[])
-					AND scheduled_for <= now()
+					WHERE status = 'pending'
+						AND job_type = ANY($1::public.queue_type[])
+						AND ($2::text[] IS NULL OR metadata->>'researchStepId' = ANY($2::text[]))
+						AND scheduled_for <= now()
 				ORDER BY priority ASC, scheduled_for ASC
 				LIMIT 1
 				FOR UPDATE SKIP LOCKED`,
-				[LIBRI_QUEUE_TYPES]
+				[queueTypes, stepIds]
 			);
 			const queueJob = queueResult.rows[0];
 			if (!queueJob) return null;
@@ -1169,6 +1174,33 @@ async function finalizeRunIfDone(client: LibriTransactionClient, runId: string):
 
 function retryDelayMs(attempts: number): number {
 	return Math.min(60 * 60_000, 60_000 * 2 ** Math.max(0, attempts - 1));
+}
+
+function normalizeQueueTypes(queueTypes: readonly LibriQueueType[] | undefined): LibriQueueType[] {
+	if (queueTypes === undefined) return [...LIBRI_QUEUE_TYPES];
+	if (queueTypes.length === 0)
+		throw new Error('queueTypes must contain at least one Libri queue type');
+	const normalized = [...new Set(queueTypes)];
+	if (
+		normalized.length !== queueTypes.length ||
+		normalized.some((queueType) => !LIBRI_QUEUE_TYPES.includes(queueType))
+	) {
+		throw new Error('queueTypes must contain unique registered Libri queue types');
+	}
+	return normalized;
+}
+
+function normalizeStepIds(stepIds: readonly string[] | undefined): string[] | null {
+	if (stepIds === undefined) return null;
+	if (stepIds.length === 0 || stepIds.length > 10) {
+		throw new Error('stepIds must contain 1 to 10 Libri research step UUIDs');
+	}
+	const normalized = [...new Set(stepIds)];
+	if (normalized.length !== stepIds.length) {
+		throw new Error('stepIds must contain unique Libri research step UUIDs');
+	}
+	for (const stepId of normalized) assertUuid(stepId, 'stepId');
+	return normalized;
 }
 
 async function quarantineQueueJob(

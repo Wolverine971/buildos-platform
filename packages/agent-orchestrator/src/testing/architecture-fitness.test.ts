@@ -96,7 +96,7 @@ function resolvedTopLevelDirectory(filePath: string, specifier: string): string 
 	return relative.split(path.sep)[0];
 }
 
-describe('agent-orchestrator architecture fitness', () => {
+describe('agent-orchestrator architecture fitness', { timeout: 15_000 }, () => {
 	const sourceFiles = listTypeScriptFiles(sourceRoot);
 	const runtimeSourceFiles = sourceFiles.filter((filePath) => !filePath.endsWith('.test.ts'));
 

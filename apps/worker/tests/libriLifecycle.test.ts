@@ -110,7 +110,9 @@ describe('Libri transactional lifecycle', () => {
 
 		const receipt = await lifecycle.claimNextStep({
 			workerId: 'libri-worker:test',
-			leaseDurationMs: 60_000
+			leaseDurationMs: 60_000,
+			queueTypes: ['libri_maintenance'],
+			stepIds: [STEP_ID]
 		});
 
 		expect(receipt).toMatchObject({
@@ -124,6 +126,15 @@ describe('Libri transactional lifecycle', () => {
 			payload: { canary: true }
 		});
 		expect(harness.joinedSql()).toContain('job_type = ANY($1::public.queue_type[])');
+		expect(
+			harness.statements.find((statement) => statement.sql.includes('SKIP LOCKED'))
+				?.values?.[0]
+		).toEqual(['libri_maintenance']);
+		expect(
+			harness.statements.find((statement) => statement.sql.includes('SKIP LOCKED'))
+				?.values?.[1]
+		).toEqual([STEP_ID]);
+		expect(harness.joinedSql()).toContain("metadata->>'researchStepId' = ANY($2::text[])");
 		expect(harness.joinedSql()).toContain('FOR UPDATE SKIP LOCKED');
 		expect(harness.joinedSql()).toContain('execution_generation = execution_generation + 1');
 		expect(harness.statements.at(-1)?.sql).toBe('COMMIT');
@@ -256,6 +267,41 @@ describe('Libri transactional lifecycle', () => {
 		expect(() => lifecycle.claimNextStep({ workerId: '', leaseDurationMs: 60_000 })).toThrow(
 			'workerId'
 		);
+		expect(() =>
+			lifecycle.claimNextStep({
+				workerId: 'worker',
+				leaseDurationMs: 60_000,
+				queueTypes: []
+			})
+		).toThrow('queueTypes');
+		expect(() =>
+			lifecycle.claimNextStep({
+				workerId: 'worker',
+				leaseDurationMs: 60_000,
+				stepIds: []
+			})
+		).toThrow('stepIds');
+		expect(() =>
+			lifecycle.claimNextStep({
+				workerId: 'worker',
+				leaseDurationMs: 60_000,
+				stepIds: [STEP_ID, STEP_ID]
+			})
+		).toThrow('stepIds');
+		expect(() =>
+			lifecycle.claimNextStep({
+				workerId: 'worker',
+				leaseDurationMs: 60_000,
+				stepIds: ['not-a-uuid']
+			})
+		).toThrow('stepId');
+		expect(() =>
+			lifecycle.claimNextStep({
+				workerId: 'worker',
+				leaseDurationMs: 60_000,
+				queueTypes: ['libri_maintenance', 'libri_maintenance']
+			})
+		).toThrow('queueTypes');
 		expect(() =>
 			lifecycle.heartbeatStep({
 				queueRowId: 'not-a-uuid',

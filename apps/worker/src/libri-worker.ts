@@ -9,6 +9,10 @@ import { type LibriWorkerService, createLibriWorkerService } from './lib/libriWo
 import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
 import { LibriWorkerBootstrap } from './workers/libri/bootstrap';
 import { createLibriDatabase } from './workers/libri/database';
+import {
+	LibriMaintenanceConsumer,
+	createSyntheticLibriMaintenanceProcessor
+} from './workers/libri/maintenanceConsumer';
 
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 28_000;
 
@@ -17,7 +21,15 @@ const config = loadLibriWorkerConfig(process.env);
 const database = createLibriDatabase(requireEnvironment(process.env, 'LIBRI_DATABASE_URL'), {
 	caCertificate: requireEnvironment(process.env, 'LIBRI_DATABASE_CA_CERT')
 });
-const bootstrap = new LibriWorkerBootstrap(database, config);
+const maintenanceConsumer = new LibriMaintenanceConsumer({
+	lifecycle: database,
+	processor: createSyntheticLibriMaintenanceProcessor(),
+	workerId: resolveWorkerId(process.env),
+	config: { concurrency: config.concurrency },
+	claimStepIds: config.canaryStepId ? [config.canaryStepId] : undefined,
+	claimDeadlineMs: config.canaryExpiresAtMs ?? undefined
+});
+const bootstrap = new LibriWorkerBootstrap(database, config, maintenanceConsumer);
 const service = createLibriWorkerService({
 	bootstrap,
 	eventLoopLagMonitor: new WorkerEventLoopLagMonitor(),
@@ -88,6 +100,14 @@ function resolveRelease(environment: NodeJS.ProcessEnv): string {
 		environment.npm_package_version?.trim() ||
 		'unknown'
 	);
+}
+
+function resolveWorkerId(environment: NodeJS.ProcessEnv): string {
+	const identity =
+		environment.RAILWAY_REPLICA_ID?.trim() ||
+		environment.RAILWAY_DEPLOYMENT_ID?.trim() ||
+		String(process.pid);
+	return `libri-worker:${identity}`.slice(0, 200);
 }
 
 function requireEnvironment(environment: NodeJS.ProcessEnv, name: string): string {
