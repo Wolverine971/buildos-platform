@@ -33,7 +33,17 @@ import {
 } from '../executionObservation';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
-const DEFAULT_MAX_TOKENS = 2_000;
+/**
+ * Acting passes can spend hidden reasoning tokens before writing a tool call.
+ *
+ * The 2026-08-31 Phase 4 production gate reached the previous 2_000-token cap
+ * twice on logical round three while composing `delegate_task` after seven
+ * successful discovery reads. OpenRouter reported 2_001 completion tokens in
+ * both runs, and the truncation guard correctly rejected the incomplete call.
+ * This matches the reviewed semantic-reviewer ceiling and keeps a firm bound;
+ * calls that already fit are billed only for the tokens they generate.
+ */
+export const AGENTIC_CHAT_ACTING_MAX_TOKENS = 4_000;
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_SSE_BUFFER_BYTES = 256 * 1024;
 const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
@@ -248,7 +258,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			360_000
 		);
 		this.maxTokens = boundedInteger(
-			options.maxTokens ?? DEFAULT_MAX_TOKENS,
+			options.maxTokens ?? AGENTIC_CHAT_ACTING_MAX_TOKENS,
 			'maxTokens',
 			1,
 			32_768

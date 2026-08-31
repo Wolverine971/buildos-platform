@@ -6,6 +6,7 @@ import type {
 	LastTurnContext,
 	ProjectFocus
 } from '@buildos/shared-types';
+import { captureEvent } from '$lib/services/posthog';
 
 const TRANSPORT_ENDPOINT = '/api/agent/v2/transport';
 const WORKER_TURNS_ENDPOINT = '/api/agent/v2/turns';
@@ -87,7 +88,10 @@ async function isLegacyTransportUnavailableResponse(response: Response): Promise
 export async function requestAgenticChatWorkerAdmission(input: {
 	command: AgenticChatWorkerCommand;
 	fetchImpl?: typeof fetch;
+	nowMs?: () => number;
 }): Promise<{ response: Response; payload: unknown | null }> {
+	const nowMs = input.nowMs ?? (() => performance.now());
+	const requestStartedAt = nowMs();
 	const response = await (input.fetchImpl ?? fetch)(WORKER_TURNS_ENDPOINT, {
 		method: 'POST',
 		headers: {
@@ -98,8 +102,84 @@ export async function requestAgenticChatWorkerAdmission(input: {
 		cache: 'no-store',
 		body: JSON.stringify(buildWorkerAdmissionBody(input.command))
 	});
+	captureWorkerAdmissionTiming({
+		command: input.command,
+		response,
+		clientRoundTripMs: Math.max(0, nowMs() - requestStartedAt)
+	});
 	if (!response.ok) return { response, payload: null };
 	return { response, payload: await response.json() };
+}
+
+function captureWorkerAdmissionTiming(input: {
+	command: AgenticChatWorkerCommand;
+	response: Response;
+	clientRoundTripMs: number;
+}): void {
+	const timing = parseWorkerAdmissionServerTiming(input.response.headers.get('server-timing'));
+	const workerServerTotalMs =
+		timing.workerPreparationMs !== null && timing.workerAdmissionMs !== null
+			? timing.workerPreparationMs + timing.workerAdmissionMs
+			: null;
+	captureEvent('agentic_chat_admission_completed', {
+		client_admission_round_trip_ms: finiteDuration(input.clientRoundTripMs),
+		prepared_inspection_ms: timing.preparedInspectionMs,
+		worker_preparation_ms: timing.workerPreparationMs,
+		worker_admission_ms: timing.workerAdmissionMs,
+		worker_server_total_ms: workerServerTotalMs,
+		prepared_admission_outcome: timing.preparedOutcome,
+		prepared_admission_hit: timing.preparedOutcome === 'hit',
+		prepared_prompt_requested: input.command.preparedPromptKey !== null,
+		response_status: input.response.status,
+		response_ok: input.response.ok,
+		context_type: input.command.context.type,
+		has_attachments: input.command.attachments.length > 0
+	});
+}
+
+function parseWorkerAdmissionServerTiming(header: string | null): {
+	preparedInspectionMs: number | null;
+	workerPreparationMs: number | null;
+	workerAdmissionMs: number | null;
+	preparedOutcome: string | null;
+} {
+	const entries = new Map(
+		(header ?? '')
+			.split(',')
+			.map((entry) => entry.trim())
+			.filter(Boolean)
+			.map((entry) => {
+				const [name = '', ...parameters] = entry.split(';').map((part) => part.trim());
+				return [name, parameters] as const;
+			})
+	);
+	const prepared = entries.get('prepared-admission') ?? [];
+	const preparation = entries.get('worker-preparation') ?? [];
+	const admission = entries.get('worker-admission') ?? [];
+	return {
+		preparedInspectionMs: timingDuration(prepared),
+		workerPreparationMs: timingDuration(preparation),
+		workerAdmissionMs: timingDuration(admission),
+		preparedOutcome: timingDescription(prepared)
+	};
+}
+
+function timingDuration(parameters: string[]): number | null {
+	const raw = parameters.find((parameter) => parameter.startsWith('dur='))?.slice(4);
+	return raw === undefined ? null : finiteDuration(Number(raw));
+}
+
+function finiteDuration(value: number): number | null {
+	return Number.isFinite(value) && value >= 0 && value <= 120_000
+		? Math.round(value * 10) / 10
+		: null;
+}
+
+function timingDescription(parameters: string[]): string | null {
+	const raw = parameters.find((parameter) => parameter.startsWith('desc='))?.slice(5);
+	if (!raw) return null;
+	const value = raw.replace(/^"|"$/g, '');
+	return /^[a-z0-9_:-]{1,64}$/.test(value) ? value : null;
 }
 
 function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {

@@ -73,7 +73,7 @@ function handle(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-function client(result: { data: unknown; error: null | { message: string } }) {
+function client(result: { data: unknown; error: null | { code?: string; message?: string } }) {
 	const rpc = vi.fn(async () => result);
 	return { value: { rpc } as AgenticChatWorkerAdmissionRpcClient, rpc };
 }

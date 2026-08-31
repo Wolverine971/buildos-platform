@@ -1,5 +1,13 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-transport-client.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+	captureEvent: vi.fn()
+}));
+
+vi.mock('$lib/services/posthog', () => ({
+	captureEvent: mocks.captureEvent
+}));
 import {
 	AgenticChatWorkerUnavailableResponseError,
 	requestAgenticChatTransportLease,
@@ -27,6 +35,10 @@ const workerLease = {
 };
 
 describe('Agentic Chat worker transport client', () => {
+	beforeEach(() => {
+		mocks.captureEvent.mockReset();
+	});
+
 	it('requests a private server-selected lease and accepts an exact response', async () => {
 		const fetchImpl = vi.fn<typeof fetch>(async () =>
 			Response.json({ success: true, data: workerLease, timestamp: new Date().toISOString() })
@@ -229,5 +241,57 @@ describe('Agentic Chat worker transport client', () => {
 			}
 		});
 		expect(result).toEqual({ response, payload: null });
+	});
+
+	it('captures non-blocking prepared-admission timings without identifiers or prompt content', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			Response.json(
+				{ success: true, data: { outcome: 'newly_admitted' } },
+				{
+					status: 202,
+					headers: {
+						'Server-Timing':
+							'prepared-admission;dur=171;desc="hit", worker-preparation;dur=246, worker-admission;dur=144'
+					}
+				}
+			)
+		);
+		const nowMs = vi.fn().mockReturnValueOnce(100).mockReturnValueOnce(615.4);
+
+		await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			nowMs,
+			command: {
+				leaseToken: workerLease.token,
+				clientTurnId: request.clientTurnId,
+				streamRunId: request.streamRunId,
+				sessionId: SESSION_ID,
+				context: { type: 'project', entityId: SESSION_ID, projectId: SESSION_ID },
+				message: 'Sensitive prompt must not be captured',
+				attachments: [],
+				projectFocus: null,
+				lastTurnContext: null,
+				voiceNoteGroupId: null,
+				preparedPromptKey: 'pp_v1.opaque'
+			}
+		});
+
+		expect(mocks.captureEvent).toHaveBeenCalledWith('agentic_chat_admission_completed', {
+			client_admission_round_trip_ms: 515.4,
+			prepared_inspection_ms: 171,
+			worker_preparation_ms: 246,
+			worker_admission_ms: 144,
+			worker_server_total_ms: 390,
+			prepared_admission_outcome: 'hit',
+			prepared_admission_hit: true,
+			prepared_prompt_requested: true,
+			response_status: 202,
+			response_ok: true,
+			context_type: 'project',
+			has_attachments: false
+		});
+		const properties = mocks.captureEvent.mock.calls[0]?.[1] ?? {};
+		expect(JSON.stringify(properties)).not.toContain('Sensitive prompt');
+		expect(JSON.stringify(properties)).not.toContain(SESSION_ID);
 	});
 });

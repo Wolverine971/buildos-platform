@@ -3,7 +3,7 @@
 Complete column listing for all 246 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-08-30T20:19:43.660Z
+**Schema generated:** 2026-08-31T14:43:40.956Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -916,7 +916,7 @@ event_type `string` · execution_generation `number` · id `number` · observati
 
 ### agentic_chat_prepared_prompts
 
-cache_key `string` · consumed_at `string?` · context_cache_version `number` · context_invalidation_token `string?` · context_payload `Json` · context_payload_sha256 `string` · context_type `string` · conversation_summary `string?` · created_at `string` · default_surface_profile `string` · entity_id `string?` · expires_at `string` · history_compressed `boolean?` · history_for_model `Json` · history_for_model_count `number?` · history_strategy `string?` · id `string` · nonce_sha256 `string` · prepared_surfaces `Json` · project_focus `Json?` · project_id `string?` · prompt_variant `string` · raw_history_count `number?` · session_id `string?` · updated_at `string` · user_id `string`
+cache_key `string` · consumed_at `string?` · context_cache_version `number` · context_invalidation_token `string?` · context_payload `Json` · context_payload_sha256 `string` · context_type `string` · conversation_summary `string?` · created_at `string` · default_surface_profile `string` · entity_id `string?` · expires_at `string` · history_compressed `boolean?` · history_cutoff_at `string?` · history_for_model `Json` · history_for_model_count `number?` · history_strategy `string?` · id `string` · nonce_sha256 `string` · prepared_surfaces `Json` · project_focus `Json?` · project_id `string?` · prompt_variant `string` · raw_history_count `number?` · session_id `string?` · updated_at `string` · user_id `string`
 
 ### cycle_runs
 

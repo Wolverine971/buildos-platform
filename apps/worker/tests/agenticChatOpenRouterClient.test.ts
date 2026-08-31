@@ -1,6 +1,7 @@
 // apps/worker/tests/agenticChatOpenRouterClient.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+	AGENTIC_CHAT_ACTING_MAX_TOKENS,
 	AgenticChatLlmUsageObserver,
 	AgenticChatOpenRouterClient,
 	createStableAgenticChatProviderUsageLogIdV1,
@@ -268,6 +269,7 @@ describe('AgenticChatOpenRouterClient', () => {
 		expect(body).toMatchObject({
 			model: 'provider/primary',
 			models: ['provider/fallback'],
+			max_tokens: AGENTIC_CHAT_ACTING_MAX_TOKENS,
 			messages: [
 				{ role: 'system', content: 'System prompt' },
 				{ role: 'user', content: 'Current request' }

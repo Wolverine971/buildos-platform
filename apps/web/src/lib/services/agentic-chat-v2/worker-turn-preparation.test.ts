@@ -5,6 +5,7 @@ import {
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
 	hashCanonicalAdmissionRequestV1,
 	validateTurnInputArtifactV1,
+	type AgenticChatResumeCheckpointSnapshotV1,
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
 import { senseDomains } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
@@ -96,10 +97,7 @@ vi.mock('$lib/services/agentic-chat-lite/prompt', async (importOriginal) => {
 	};
 });
 
-import {
-	AgenticChatWorkerPreparationError,
-	prepareAgenticChatWorkerAdmission
-} from './worker-turn-preparation.server';
+import { prepareAgenticChatWorkerAdmission } from './worker-turn-preparation.server';
 
 function command(overrides: Record<string, unknown> = {}) {
 	return {
@@ -122,7 +120,9 @@ function dependencies() {
 	return {
 		createId: () => IDS[index++]!,
 		nowMs: () => NOW,
-		loadResumeCheckpoint: vi.fn(async () => null)
+		loadResumeCheckpoint: vi.fn(
+			async (): Promise<AgenticChatResumeCheckpointSnapshotV1 | null> => null
+		)
 	};
 }
 
@@ -410,7 +410,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				},
 				dependencies: dependencies()
 			})
-		).rejects.toMatchObject<Partial<AgenticChatWorkerPreparationError>>({
+		).rejects.toMatchObject({
 			code: 'transport_renegotiate'
 		});
 	});

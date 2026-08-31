@@ -575,7 +575,8 @@ describe('PrewarmController — orchestrate', () => {
 		cleanup!();
 		expect(signal?.aborted).toBe(false);
 
-		resolvePrewarm?.({
+		expect(resolvePrewarm).not.toBeNull();
+		(resolvePrewarm as NonNullable<typeof resolvePrewarm>)({
 			session: null,
 			prewarmedContext: cache,
 			preparedPrompt: prepared
