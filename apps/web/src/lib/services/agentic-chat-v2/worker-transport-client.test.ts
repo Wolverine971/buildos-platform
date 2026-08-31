@@ -244,6 +244,7 @@ describe('Agentic Chat worker transport client', () => {
 	});
 
 	it('captures non-blocking prepared-admission timings without identifiers or prompt content', async () => {
+		mocks.captureEvent.mockReturnValue(new Promise(() => {}));
 		const fetchImpl = vi.fn<typeof fetch>(async () =>
 			Response.json(
 				{ success: true, data: { outcome: 'newly_admitted' } },
@@ -276,20 +277,24 @@ describe('Agentic Chat worker transport client', () => {
 			}
 		});
 
-		expect(mocks.captureEvent).toHaveBeenCalledWith('agentic_chat_admission_completed', {
-			client_admission_round_trip_ms: 515.4,
-			prepared_inspection_ms: 171,
-			worker_preparation_ms: 246,
-			worker_admission_ms: 144,
-			worker_server_total_ms: 390,
-			prepared_admission_outcome: 'hit',
-			prepared_admission_hit: true,
-			prepared_prompt_requested: true,
-			response_status: 202,
-			response_ok: true,
-			context_type: 'project',
-			has_attachments: false
-		});
+		expect(mocks.captureEvent).toHaveBeenCalledWith(
+			'agentic_chat_admission_completed',
+			{
+				client_admission_round_trip_ms: 515.4,
+				prepared_inspection_ms: 171,
+				worker_preparation_ms: 246,
+				worker_admission_ms: 144,
+				worker_server_total_ms: 390,
+				prepared_admission_outcome: 'hit',
+				prepared_admission_hit: true,
+				prepared_prompt_requested: true,
+				response_status: 202,
+				response_ok: true,
+				context_type: 'project',
+				has_attachments: false
+			},
+			{ delivery: 'immediate_beacon' }
+		);
 		const properties = mocks.captureEvent.mock.calls[0]?.[1] ?? {};
 		expect(JSON.stringify(properties)).not.toContain('Sensitive prompt');
 		expect(JSON.stringify(properties)).not.toContain(SESSION_ID);

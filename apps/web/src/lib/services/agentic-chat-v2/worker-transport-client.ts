@@ -7,6 +7,7 @@ import type {
 	ProjectFocus
 } from '@buildos/shared-types';
 import { captureEvent } from '$lib/services/posthog';
+import { AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT } from '$lib/services/posthog-capture-receipt';
 
 const TRANSPORT_ENDPOINT = '/api/agent/v2/transport';
 const WORKER_TURNS_ENDPOINT = '/api/agent/v2/turns';
@@ -121,20 +122,26 @@ function captureWorkerAdmissionTiming(input: {
 		timing.workerPreparationMs !== null && timing.workerAdmissionMs !== null
 			? timing.workerPreparationMs + timing.workerAdmissionMs
 			: null;
-	captureEvent('agentic_chat_admission_completed', {
-		client_admission_round_trip_ms: finiteDuration(input.clientRoundTripMs),
-		prepared_inspection_ms: timing.preparedInspectionMs,
-		worker_preparation_ms: timing.workerPreparationMs,
-		worker_admission_ms: timing.workerAdmissionMs,
-		worker_server_total_ms: workerServerTotalMs,
-		prepared_admission_outcome: timing.preparedOutcome,
-		prepared_admission_hit: timing.preparedOutcome === 'hit',
-		prepared_prompt_requested: input.command.preparedPromptKey !== null,
-		response_status: input.response.status,
-		response_ok: input.response.ok,
-		context_type: input.command.context.type,
-		has_attachments: input.command.attachments.length > 0
-	});
+	void captureEvent(
+		AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT,
+		{
+			client_admission_round_trip_ms: finiteDuration(input.clientRoundTripMs),
+			prepared_inspection_ms: timing.preparedInspectionMs,
+			worker_preparation_ms: timing.workerPreparationMs,
+			worker_admission_ms: timing.workerAdmissionMs,
+			worker_server_total_ms: workerServerTotalMs,
+			prepared_admission_outcome: timing.preparedOutcome,
+			prepared_admission_hit: timing.preparedOutcome === 'hit',
+			prepared_prompt_requested: input.command.preparedPromptKey !== null,
+			response_status: input.response.status,
+			response_ok: input.response.ok,
+			context_type: input.command.context.type,
+			has_attachments: input.command.attachments.length > 0
+		},
+		{
+			delivery: 'immediate_beacon'
+		}
+	);
 }
 
 function parseWorkerAdmissionServerTiming(header: string | null): {

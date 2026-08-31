@@ -5,6 +5,15 @@
 import { browser, dev } from '$app/environment';
 import { PUBLIC_POSTHOG_HOST, PUBLIC_POSTHOG_KEY } from '$env/static/public';
 import { hasAnalyticsConsent } from './tracking-consent';
+import {
+	AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT,
+	isPostHogCaptureReceiptEvent,
+	POSTHOG_CAPTURE_RECEIPT_DOM_EVENT,
+	type PostHogCaptureDelivery,
+	type PostHogCaptureReceipt,
+	type PostHogCaptureReceiptReason,
+	type PostHogCaptureReceiptStatus
+} from './posthog-capture-receipt';
 
 const FIRST_TOUCH_STORAGE_KEY = 'buildos_first_touch';
 const FUNNEL_EVENTS = new Set([
@@ -31,6 +40,11 @@ const FUNNEL_EVENTS = new Set([
 	'start_here_opened',
 	'memory_update_started'
 ]);
+const CAPTURE_HEALTH_EVENTS = new Set([...FUNNEL_EVENTS, AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT]);
+
+export type CaptureEventOptions = {
+	delivery?: PostHogCaptureDelivery;
+};
 
 export interface FirstTouchAttribution {
 	utm_source: string | null;
@@ -54,7 +68,7 @@ function logHealth(
 	event: string,
 	details?: Record<string, unknown>
 ): void {
-	if (!FUNNEL_EVENTS.has(event)) return;
+	if (!CAPTURE_HEALTH_EVENTS.has(event)) return;
 	console.info('[posthog-health]', {
 		runtime: 'web-client',
 		status,
@@ -72,6 +86,58 @@ function isConfigured(): boolean {
 
 function isEnabled(): boolean {
 	return isConfigured() && hasAnalyticsConsent();
+}
+
+function captureBlockedReason(): Exclude<
+	PostHogCaptureReceiptReason,
+	'initialization_unavailable' | 'sdk_rejected' | 'capture_exception' | null
+> | null {
+	if (!isConfigured()) return 'not_configured';
+	if (!hasAnalyticsConsent()) return 'analytics_consent_disabled';
+	return null;
+}
+
+function completeCaptureReceipt(input: {
+	event: string;
+	status: PostHogCaptureReceiptStatus;
+	delivery: PostHogCaptureDelivery;
+	reason: PostHogCaptureReceiptReason;
+}): PostHogCaptureReceipt | null {
+	if (input.status === 'accepted') {
+		logHealth('captured', input.event, { delivery: input.delivery });
+	} else if (input.status === 'skipped') {
+		logHealth('skipped', input.event, {
+			delivery: input.delivery,
+			reason: input.reason
+		});
+	} else {
+		logHealth('error', input.event, {
+			delivery: input.delivery,
+			reason: input.reason
+		});
+	}
+
+	if (!isPostHogCaptureReceiptEvent(input.event)) return null;
+	const receipt: PostHogCaptureReceipt = {
+		event: input.event,
+		status: input.status,
+		delivery: input.delivery,
+		reason: input.reason
+	};
+
+	if (browser && typeof window !== 'undefined') {
+		try {
+			window.dispatchEvent(
+				new CustomEvent<PostHogCaptureReceipt>(POSTHOG_CAPTURE_RECEIPT_DOM_EVENT, {
+					detail: receipt
+				})
+			);
+		} catch {
+			// The receipt is diagnostic-only and must never affect product behavior.
+		}
+	}
+
+	return receipt;
 }
 
 function applyPendingIdentify(): void {
@@ -199,28 +265,55 @@ export function disablePostHog(): void {
 	}
 }
 
-export function captureEvent(event: string, properties?: Record<string, unknown>): void {
-	if (!isEnabled()) {
-		logHealth('skipped', event, { reason: 'not_initialized' });
-		return;
+export async function captureEvent(
+	event: string,
+	properties?: Record<string, unknown>,
+	options: CaptureEventOptions = {}
+): Promise<PostHogCaptureReceipt | null> {
+	const delivery = options.delivery ?? 'batched';
+	const blockedReason = captureBlockedReason();
+	if (blockedReason) {
+		return completeCaptureReceipt({
+			event,
+			status: 'skipped',
+			delivery,
+			reason: blockedReason
+		});
 	}
 
-	void ensurePostHogInitialized().then((client) => {
-		if (!client || !initialized) {
-			logHealth('skipped', event, { reason: 'not_initialized' });
-			return;
-		}
+	const client = await ensurePostHogInitialized();
+	if (!client || !initialized) {
+		return completeCaptureReceipt({
+			event,
+			status: 'skipped',
+			delivery,
+			reason: 'initialization_unavailable'
+		});
+	}
 
-		try {
-			client.capture(event, properties);
-			logHealth('captured', event);
-		} catch (error) {
-			logHealth('error', event, {
-				message: error instanceof Error ? error.message : String(error)
-			});
-			console.error(`[posthog] failed to capture ${event}:`, error);
-		}
-	});
+	try {
+		const result = client.capture(
+			event,
+			properties,
+			delivery === 'immediate_beacon'
+				? { transport: 'sendBeacon', send_instantly: true }
+				: undefined
+		);
+		return completeCaptureReceipt({
+			event,
+			status: result ? 'accepted' : 'dropped',
+			delivery,
+			reason: result ? null : 'sdk_rejected'
+		});
+	} catch (error) {
+		console.error(`[posthog] failed to capture ${event}:`, error);
+		return completeCaptureReceipt({
+			event,
+			status: 'error',
+			delivery,
+			reason: 'capture_exception'
+		});
+	}
 }
 
 /**

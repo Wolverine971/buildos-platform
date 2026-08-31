@@ -3,7 +3,7 @@
 Complete column listing for all 246 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-08-31T15:53:43.108Z
+**Schema generated:** 2026-08-31T19:17:13.726Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).

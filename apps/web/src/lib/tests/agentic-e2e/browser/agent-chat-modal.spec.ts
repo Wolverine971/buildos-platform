@@ -2,11 +2,17 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+	AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT,
+	POSTHOG_CAPTURE_RECEIPT_DOM_EVENT,
+	type PostHogCaptureReceipt
+} from '../../../services/posthog-capture-receipt';
 
 const PROMPT = 'Reply with exactly "MODAL E2E OK" and do not use tools.';
 const CAPTURE_ANALYTICS = process.env.AGENTIC_E2E_CAPTURE_ANALYTICS === 'true';
 const TRACKING_CONSENT_BUTTON = CAPTURE_ANALYTICS ? 'Accept all' : 'Use necessary only';
 const TRACKING_PREFERENCES_STORAGE_KEY = 'buildos_tracking_preferences_v1';
+const POSTHOG_CAPTURE_RECEIPT_SLOT = '__buildosAgenticPostHogCaptureReceiptV1';
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -45,6 +51,53 @@ async function chooseTrackingConsent(page: Page): Promise<void> {
 			}, TRACKING_PREFERENCES_STORAGE_KEY)
 		)
 		.toBe(true);
+}
+
+async function armPostHogCaptureReceipt(page: Page): Promise<void> {
+	if (!CAPTURE_ANALYTICS) return;
+
+	await page.evaluate(
+		({ domEvent, eventName, slot }) => {
+			const state: { receipt: PostHogCaptureReceipt | null } = { receipt: null };
+			Object.defineProperty(window, slot, {
+				value: state,
+				configurable: true
+			});
+
+			const handler = (event: Event) => {
+				const detail = (event as CustomEvent<PostHogCaptureReceipt>).detail;
+				if (!detail || detail.event !== eventName) return;
+				state.receipt = {
+					event: detail.event,
+					status: detail.status,
+					delivery: detail.delivery,
+					reason: detail.reason
+				};
+				window.removeEventListener(domEvent, handler);
+			};
+			window.addEventListener(domEvent, handler);
+		},
+		{
+			domEvent: POSTHOG_CAPTURE_RECEIPT_DOM_EVENT,
+			eventName: AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT,
+			slot: POSTHOG_CAPTURE_RECEIPT_SLOT
+		}
+	);
+}
+
+async function readPostHogCaptureReceipt(page: Page): Promise<PostHogCaptureReceipt | null> {
+	if (!CAPTURE_ANALYTICS) return null;
+
+	const readReceipt = () =>
+		page.evaluate(
+			(slot) =>
+				(window as unknown as Record<string, { receipt?: PostHogCaptureReceipt | null }>)[
+					slot
+				]?.receipt ?? null,
+			POSTHOG_CAPTURE_RECEIPT_SLOT
+		);
+	await expect.poll(readReceipt, { timeout: 15_000 }).not.toBeNull();
+	return readReceipt();
 }
 
 async function authenticateHarnessUser(
@@ -456,6 +509,7 @@ test('@live existing modal session consumes its prewarmed lease through the work
 		const composer = dialog.locator('textarea').first();
 		await expect(composer).toBeEnabled();
 		await expect(composer).toHaveValue(PROMPT);
+		await armPostHogCaptureReceipt(page);
 		const admissionRequestPromise = page.waitForRequest(
 			(request) =>
 				request.method() === 'POST' &&
@@ -495,6 +549,18 @@ test('@live existing modal session consumes its prewarmed lease through the work
 			throw new Error('Worker admission request did not include a client turn id');
 		const receipt = await readPreparedAdmissionReceipt(admin, userId, clientTurnId);
 		sessionId ??= receipt.sessionId;
+		const posthogCaptureReceipt = await readPostHogCaptureReceipt(page);
+		if (posthogCaptureReceipt) {
+			expect(posthogCaptureReceipt).toEqual({
+				event: AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT,
+				status: 'accepted',
+				delivery: 'immediate_beacon',
+				reason: null
+			});
+			console.log(
+				`[agentic-modal-e2e] PostHog capture accepted: delivery=${posthogCaptureReceipt.delivery}`
+			);
+		}
 		console.log(
 			`[agentic-modal-e2e] prepared lease hit: ${serverTiming}; durable_inspection_ms=${receipt.inspectionMs}`
 		);
