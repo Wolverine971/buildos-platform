@@ -1,6 +1,6 @@
 // apps/web/scripts/agentic-e2e/semantic/golden-standard.test.ts
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import {
 	GOLDEN_SCENARIOS,
 	gradeGoldenRun,
