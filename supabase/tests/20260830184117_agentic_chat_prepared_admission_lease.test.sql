@@ -217,6 +217,96 @@ end;
 $$;
 
 delete from public.chat_messages where id = '99999999-9999-4999-8999-999999999999';
+
+-- A message that landed during prompt assembly is older than the prepared
+-- row's created_at (now() - 5s) but newer than the explicit history cutoff;
+-- the created_at comparison alone would wrongly admit it.
+update public.agentic_chat_prepared_prompts
+set history_cutoff_at = now() - interval '20 seconds'
+where id = '77777777-7777-4777-8777-777777777777';
+insert into public.chat_messages (
+	id, session_id, user_id, role, content, created_at
+) values (
+	'99999999-9999-4999-8999-000000000001',
+	'55555555-5555-4555-8555-555555555555',
+	'22222222-2222-4222-8222-222222222222',
+	'user', 'Landed during prompt assembly', now() - interval '10 seconds'
+);
+
+do $$
+declare
+	v_receipt jsonb;
+begin
+	v_receipt := public.inspect_agentic_chat_prepared_admission(
+		'22222222-2222-4222-8222-222222222222',
+		'77777777-7777-4777-8777-777777777777', repeat('c', 64),
+		'55555555-5555-4555-8555-555555555555', 'project',
+		'33333333-3333-4333-8333-333333333333',
+		'33333333-3333-4333-8333-333333333333', now()
+	);
+	if v_receipt->>'reason' <> 'stale_history' then
+		raise exception 'assembly-window message did not fail closed: %', v_receipt;
+	end if;
+end;
+$$;
+
+-- Execute the redefined artifact-insert currency trigger against the same
+-- assembly-window message: the fixture has no chat_turn_input_artifacts
+-- table, so stand up the columns the trigger touches.
+create table public.chat_turn_input_artifacts (
+	id uuid primary key,
+	session_id uuid,
+	user_id uuid,
+	source_prepared_prompt_id uuid,
+	history_source text not null
+);
+create trigger trg_chat_turn_input_artifacts_prepared_history_currency
+before insert on public.chat_turn_input_artifacts
+for each row
+execute function public.validate_agentic_chat_prepared_history_currency();
+
+do $$
+begin
+	begin
+		insert into public.chat_turn_input_artifacts (
+			id, session_id, user_id, source_prepared_prompt_id, history_source
+		) values (
+			'cccccccc-1111-4111-8111-111111111111',
+			'55555555-5555-4555-8555-555555555555',
+			'22222222-2222-4222-8222-222222222222',
+			'77777777-7777-4777-8777-777777777777',
+			'prepared_prompt'
+		);
+		raise exception 'artifact trigger admitted an assembly-window message';
+	exception
+		when others then
+			if sqlerrm <> 'agentic_chat_input_prepared_history_stale' then
+				raise;
+			end if;
+	end;
+end;
+$$;
+
+delete from public.chat_messages where id = '99999999-9999-4999-8999-000000000001';
+
+do $$
+begin
+	insert into public.chat_turn_input_artifacts (
+		id, session_id, user_id, source_prepared_prompt_id, history_source
+	) values (
+		'cccccccc-2222-4222-8222-222222222222',
+		'55555555-5555-4555-8555-555555555555',
+		'22222222-2222-4222-8222-222222222222',
+		'77777777-7777-4777-8777-777777777777',
+		'prepared_prompt'
+	);
+end;
+$$;
+
+drop table public.chat_turn_input_artifacts;
+update public.agentic_chat_prepared_prompts
+set history_cutoff_at = null
+where id = '77777777-7777-4777-8777-777777777777';
 insert into public.chat_turn_checkpoints (
 	id, session_id, user_id, status
 ) values (

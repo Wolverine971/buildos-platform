@@ -85,6 +85,11 @@ describePostgres('agentic-chat materialized context cache database contract', ()
 		);
 		applySqlFile(migrationPath);
 		applySqlFile(migrationPath);
+		const hardeningPath = sqlPath(
+			'supabase/migrations/20260830213000_agentic_chat_prepared_admission_hardening.sql'
+		);
+		applySqlFile(hardeningPath);
+		applySqlFile(hardeningPath);
 		proofOutput = applySqlFile(
 			sqlPath(
 				'supabase/tests/20260830173250_agentic_chat_materialized_context_cache.test.sql'

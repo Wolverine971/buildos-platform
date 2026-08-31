@@ -3029,6 +3029,7 @@ export type Database = {
           entity_id: string | null
           expires_at: string
           history_compressed: boolean | null
+          history_cutoff_at: string | null
           history_for_model: Json
           history_for_model_count: number | null
           history_strategy: string | null
@@ -3057,6 +3058,7 @@ export type Database = {
           entity_id?: string | null
           expires_at: string
           history_compressed?: boolean | null
+          history_cutoff_at?: string | null
           history_for_model?: Json
           history_for_model_count?: number | null
           history_strategy?: string | null
@@ -3085,6 +3087,7 @@ export type Database = {
           entity_id?: string | null
           expires_at?: string
           history_compressed?: boolean | null
+          history_cutoff_at?: string | null
           history_for_model?: Json
           history_for_model_count?: number | null
           history_strategy?: string | null

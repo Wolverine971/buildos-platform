@@ -50,6 +50,7 @@ vi.mock('$lib/utils/logger', () => ({
 
 import { issueAgenticChatTransportLease } from '$lib/services/agentic-chat-v2/transport-lease.server';
 import { resetAgenticChatTurnRateLimitForTests } from '$lib/server/agentic-chat-turn-rate-limit';
+import { AgenticChatWorkerAdmissionGatewayError } from '$lib/services/agentic-chat-v2/worker-turn-admission.server';
 import { GET, POST } from './+server';
 
 function event(options: { userId?: string | null; query?: string } = {}) {
@@ -348,6 +349,88 @@ describe('POST /api/agent/v2/turns', () => {
 			},
 			status: 'queued'
 		});
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(1);
+		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledTimes(1);
+	});
+
+	it('retries once without the prepared prompt when durable admission races an invalidation', async () => {
+		const preparedPromptId = 'da000000-0000-4000-8000-000000000001';
+		mocks.prepareAgenticChatWorkerAdmission
+			.mockResolvedValueOnce({
+				args: {
+					p_user_id: USER_ID,
+					p_prepared_prompt_id: preparedPromptId,
+					p_request_payload: { preparedAdmissionLease: { requested: true, hit: true } }
+				},
+				preparedPromptUsed: true,
+				preparedAdmissionLease: {
+					requested: true,
+					hit: true,
+					missReason: null,
+					inspectionMs: 12
+				}
+			})
+			.mockResolvedValueOnce({
+				args: {
+					p_user_id: USER_ID,
+					p_prepared_prompt_id: null,
+					p_request_payload: {
+						preparedAdmissionLease: { requested: false, hit: false }
+					}
+				},
+				preparedPromptUsed: false,
+				preparedAdmissionLease: {
+					requested: false,
+					hit: false,
+					missReason: 'ineligible',
+					inspectionMs: 0
+				}
+			});
+		mocks.admitAgenticChatWorkerTurn
+			.mockRejectedValueOnce(
+				new AgenticChatWorkerAdmissionGatewayError(
+					'database_error',
+					'Worker turn admission failed: P0001 agentic_chat_worker_admission_prepared_scope_mismatch'
+				)
+			)
+			.mockResolvedValueOnce(admitted());
+
+		const response = await POST(
+			postEvent({
+				body: admissionBody({ preparedPromptKey: `pp_v1.${TURN_ID}.nonce` })
+			}) as never
+		);
+		const payload = await response.json();
+
+		expect(response.status).toBe(202);
+		expect(payload.data.outcome).toBe('newly_admitted');
+		expect(response.headers.get('server-timing')).toContain('desc="admission_race_retry"');
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(2);
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				command: expect.objectContaining({ preparedPromptKey: null })
+			})
+		);
+		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledTimes(2);
+		const retryArgs = mocks.admitAgenticChatWorkerTurn.mock.calls[1]?.[0]?.args;
+		expect(retryArgs.p_prepared_prompt_id).toBeNull();
+		expect(retryArgs.p_request_payload.preparedAdmissionLease).toEqual({
+			requested: true,
+			hit: false,
+			missReason: 'admission_race_retry',
+			inspectionMs: expect.any(Number)
+		});
+	});
+
+	it('does not retry a non-prepared admission failure', async () => {
+		mocks.admitAgenticChatWorkerTurn.mockRejectedValueOnce(
+			new AgenticChatWorkerAdmissionGatewayError(
+				'database_error',
+				'Worker turn admission failed: connection reset'
+			)
+		);
+		const response = await POST(postEvent() as never);
+		expect(response.status).toBe(503);
 		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(1);
 		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledTimes(1);
 	});

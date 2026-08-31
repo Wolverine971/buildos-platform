@@ -890,7 +890,13 @@ describe('Agentic Chat worker turn preparation', () => {
 			history_compressed: false,
 			history_strategy: 'raw_history',
 			raw_history_count: 1,
-			history_for_model_count: 1
+			history_for_model_count: 1,
+			prepared_surfaces: {
+				'worker_realtime:project_write_document': {
+					surface_profile: 'worker_realtime:project_write_document',
+					system_prompt: 'Prepared project system prompt'
+				}
+			}
 		};
 		mocks.resolveFastChatTurnPreparation.mockReturnValue({
 			sessionMetadata: { trusted: true },
@@ -985,6 +991,110 @@ describe('Agentic Chat worker turn preparation', () => {
 				inspectionMs: expect.any(Number)
 			}
 		});
+	});
+
+	it('hashes a lease hit with a divergent cache key exactly like the legacy lineage path', async () => {
+		const preparedId = 'd8000000-0000-4000-8000-000000000002';
+		const projectId = 'd9000000-0000-4000-8000-000000000002';
+		const session = {
+			id: SESSION_ID,
+			user_id: USER_ID,
+			context_type: 'project',
+			entity_id: projectId,
+			summary: null,
+			agent_metadata: {}
+		};
+		mocks.resolveFastChatTurnPreparation.mockReturnValue({
+			sessionMetadata: {},
+			pendingTurnContract: null,
+			turnIntent: {
+				version: 1,
+				requiresWrite: false,
+				action: null,
+				entityKind: 'unknown',
+				operations: [],
+				source: 'none',
+				originalRequestText: null,
+				originatingTurnRunId: null,
+				clearPending: false
+			},
+			priorDomainIds: [],
+			priorOutcomeCardIds: [],
+			turnDomainSensing: null,
+			cacheKey: `v2|project|${projectId}|task-focus|${projectId}`,
+			cachedContext: undefined,
+			bypassContextCacheForShiftHint: false,
+			selectedSurfaceProfile: 'project_write_document',
+			tools: []
+		});
+		mocks.inspectPreparedAdmissionLease.mockResolvedValue({
+			hit: true,
+			row: {
+				id: preparedId,
+				user_id: USER_ID,
+				session_id: SESSION_ID,
+				context_type: 'project',
+				entity_id: projectId,
+				project_id: projectId,
+				// The prewarm ran under a different focus, so the row's cache key no
+				// longer matches this turn. Legacy lineage would return null here;
+				// the lease path must hash identically for retry idempotency.
+				cache_key: `v2|project|${projectId}|project-wide|${projectId}`,
+				context_payload: { contextType: 'project', data: {} },
+				context_payload_sha256: 'a'.repeat(64),
+				conversation_summary: null,
+				history_for_model: [],
+				prepared_surfaces: {
+					'worker_realtime:project_write_document': {
+						surface_profile: 'worker_realtime:project_write_document',
+						system_prompt: 'Prepared project system prompt'
+					}
+				}
+			},
+			session,
+			validatedAt: new Date(NOW).toISOString()
+		});
+		mocks.inspectPreparedAdmissionLeaseContent.mockReturnValue({
+			hit: false,
+			reason: 'scope_mismatch'
+		});
+		const serviceClient = serviceClientWithTables({
+			chat_messages: [],
+			chat_message_attachments: [],
+			chat_tool_executions: []
+		});
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: serviceClient as never,
+			userId: USER_ID,
+			command: command({
+				sessionId: SESSION_ID,
+				context: { type: 'project', entityId: projectId, projectId },
+				preparedPromptKey: `pp_v1.${preparedId}.opaque-nonce`
+			}) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.preparedPromptUsed).toBe(false);
+		expect(result.args.p_prepared_prompt_id).toBeNull();
+		expect(result.args.p_history_source).toBe('admission_window');
+		const expectedHash = await hashCanonicalAdmissionRequestV1({
+			version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
+			clientTurnId: 'client-turn-1',
+			streamRunId: 'stream-run-1',
+			context: { type: 'project', entityId: projectId, projectId },
+			message: 'Ship the next slice',
+			attachments: [],
+			voiceNoteGroupId: null,
+			preparedPromptLineage: { id: null, acceptedSurfaceProfile: null }
+		});
+		expect(result.args.p_request_hash).toBe(expectedHash);
 	});
 
 	it('freezes the selected checkpoint and canonical resume message into the hashed artifact', async () => {

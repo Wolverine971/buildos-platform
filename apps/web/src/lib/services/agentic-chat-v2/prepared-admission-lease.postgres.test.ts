@@ -90,6 +90,11 @@ describePostgres('agentic-chat prepared-admission lease database contract', () =
 		);
 		applySqlFile(migrationPath);
 		applySqlFile(migrationPath);
+		const hardeningPath = sqlPath(
+			'supabase/migrations/20260830213000_agentic_chat_prepared_admission_hardening.sql'
+		);
+		applySqlFile(hardeningPath);
+		applySqlFile(hardeningPath);
 		proofOutput = applySqlFile(
 			sqlPath('supabase/tests/20260830184117_agentic_chat_prepared_admission_lease.test.sql')
 		);

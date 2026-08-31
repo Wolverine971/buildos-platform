@@ -75,12 +75,33 @@ export async function admitAgenticChatWorkerTurn(input: {
 }): Promise<AgenticChatWorkerAdmissionResultV1> {
 	const { data, error } = await input.client.rpc('create_agentic_chat_turn_with_job', input.args);
 	if (error) {
+		// The Postgres exception name (e.g. agentic_chat_worker_admission_prepared_*)
+		// is the only signal separating a prepared-lease race from a real outage.
+		// It stays server-side: the route logs it and returns a generic response.
+		const detail = [error.code, error.message]
+			.filter((part): part is string => typeof part === 'string' && part.length > 0)
+			.join(' ');
 		throw new AgenticChatWorkerAdmissionGatewayError(
 			'database_error',
-			'Worker turn admission failed'
+			detail ? `Worker turn admission failed: ${detail}` : 'Worker turn admission failed'
 		);
 	}
 	return parseAdmissionReceipt(data, input.args);
+}
+
+/**
+ * True when a durable-admission failure names one of the prepared-prompt
+ * guards (scope/consumed/expired/integrity/copy/claim/history-currency).
+ * These are inspection→admission races — an invalidation, consumption, or
+ * newer message landed in between — and the turn is safe to re-admit once
+ * without the prepared fast path.
+ */
+export function isPreparedAdmissionRaceError(error: unknown): boolean {
+	return (
+		error instanceof AgenticChatWorkerAdmissionGatewayError &&
+		error.code === 'database_error' &&
+		/prepared/.test(error.message)
+	);
 }
 
 function parseAdmissionReceipt(

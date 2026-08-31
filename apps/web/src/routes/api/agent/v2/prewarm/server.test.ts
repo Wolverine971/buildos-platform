@@ -319,8 +319,14 @@ describe('POST /api/agent/v2/prewarm', () => {
 				cache_key: 'global:none',
 				context_payload: cachedContext.context,
 				conversation_summary: 'fresh session summary',
-				history_for_model_count: expect.any(Number)
+				history_for_model_count: expect.any(Number),
+				history_cutoff_at: expect.any(String)
 			})
+		);
+		// The cutoff must predate the row itself: guards compare message
+		// timestamps against it, and it is captured before the history load.
+		expect(Date.parse(insertedRows[0]!.history_cutoff_at as string)).toBeLessThanOrEqual(
+			Date.now()
 		);
 		expect(payload.data).toEqual(
 			expect.objectContaining({

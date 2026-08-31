@@ -226,6 +226,11 @@ async function buildPreparedPrompt(params: {
 	const { key, nonceSha256 } = buildPreparedPromptKey(rowId);
 	const createdAt = new Date();
 	const expiresAt = new Date(createdAt.getTime() + getPreparedPromptTtlMs()).toISOString();
+	// Captured BEFORE the history query below: the history-currency guards
+	// compare persisted message timestamps against this cutoff, and the row's
+	// own created_at lands after surface assembly — late enough to hide a
+	// message that arrived while this prompt was being built.
+	const historyCutoffAt = createdAt.toISOString();
 	const sessionService = createFastChatSessionService(params.sourceSupabase, {
 		endpoint: '/api/agent/v2/prewarm',
 		httpMethod: 'POST'
@@ -358,6 +363,7 @@ async function buildPreparedPrompt(params: {
 			default_surface_profile: defaultSurfaceProfile,
 			context_payload_sha256: sha256Json(preparedContextPayload),
 			context_invalidation_token: params.contextInvalidationToken ?? null,
+			history_cutoff_at: historyCutoffAt,
 			expires_at: expiresAt
 		}
 	});

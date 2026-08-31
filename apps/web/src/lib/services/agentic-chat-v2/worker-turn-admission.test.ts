@@ -2,6 +2,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	admitAgenticChatWorkerTurn,
+	AgenticChatWorkerAdmissionGatewayError,
+	isPreparedAdmissionRaceError,
 	type AgenticChatWorkerAdmissionRpcArgs,
 	type AgenticChatWorkerAdmissionRpcClient
 } from './worker-turn-admission.server';
@@ -185,7 +187,9 @@ describe('Agentic Chat worker admission gateway', () => {
 		}
 	});
 
-	it('keeps database details private behind a typed error', async () => {
+	it('carries the database exception detail for server-side race triage', async () => {
+		// The detail stays in-process: the turns route logs it and returns a
+		// generic response, and it is what isPreparedAdmissionRaceError inspects.
 		await expect(
 			admitAgenticChatWorkerTurn({
 				client: client({ data: null, error: { message: 'private database detail' } }).value,
@@ -193,7 +197,52 @@ describe('Agentic Chat worker admission gateway', () => {
 			})
 		).rejects.toMatchObject({
 			code: 'database_error',
+			message: 'Worker turn admission failed: private database detail'
+		});
+		await expect(
+			admitAgenticChatWorkerTurn({
+				client: client({ data: null, error: {} }).value,
+				args
+			})
+		).rejects.toMatchObject({
+			code: 'database_error',
 			message: 'Worker turn admission failed'
 		});
+	});
+
+	it('classifies only prepared-guard database failures as admission races', async () => {
+		expect(
+			isPreparedAdmissionRaceError(
+				new AgenticChatWorkerAdmissionGatewayError(
+					'database_error',
+					'Worker turn admission failed: P0001 agentic_chat_worker_admission_prepared_already_consumed'
+				)
+			)
+		).toBe(true);
+		expect(
+			isPreparedAdmissionRaceError(
+				new AgenticChatWorkerAdmissionGatewayError(
+					'database_error',
+					'Worker turn admission failed: agentic_chat_input_prepared_history_stale'
+				)
+			)
+		).toBe(true);
+		expect(
+			isPreparedAdmissionRaceError(
+				new AgenticChatWorkerAdmissionGatewayError(
+					'database_error',
+					'Worker turn admission failed: connection reset'
+				)
+			)
+		).toBe(false);
+		expect(
+			isPreparedAdmissionRaceError(
+				new AgenticChatWorkerAdmissionGatewayError(
+					'protocol_error',
+					'prepared receipt shape mismatch'
+				)
+			)
+		).toBe(false);
+		expect(isPreparedAdmissionRaceError(new Error('prepared'))).toBe(false);
 	});
 });

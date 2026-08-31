@@ -11,6 +11,7 @@ import {
 } from '$lib/services/agentic-chat-v2/transport-lease.server';
 import {
 	admitAgenticChatWorkerTurn,
+	isPreparedAdmissionRaceError,
 	type AgenticChatWorkerAdmissionRpcClient
 } from '$lib/services/agentic-chat-v2/worker-turn-admission.server';
 import {
@@ -128,35 +129,83 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 
 	const serviceClient = createAdminSupabaseClient();
 	try {
+		const command = {
+			clientTurnId: parsed.data.clientTurnId,
+			streamRunId: parsed.data.streamRunId,
+			sessionId: parsed.data.sessionId,
+			context: parsed.data.context,
+			message: parsed.data.message,
+			attachments: parsed.data.attachments,
+			projectFocus: parsed.data.projectFocus as ProjectFocus | null,
+			lastTurnContext: parsed.data.lastTurnContext as LastTurnContext | null,
+			voiceNoteGroupId: parsed.data.voiceNoteGroupId,
+			preparedPromptKey: parsed.data.preparedPromptKey
+		};
+		const leaseAuthority = {
+			decisionId: lease.decisionId,
+			mode: 'worker_realtime' as const,
+			contractVersion: 'agentic_chat_worker_v1' as const
+		};
 		const preparationStartedAt = Date.now();
-		const preparation = await prepareAgenticChatWorkerAdmission({
+		let preparation = await prepareAgenticChatWorkerAdmission({
 			userClient: supabase as SupabaseClient<Database>,
 			serviceClient,
 			userId: user.id,
-			command: {
-				clientTurnId: parsed.data.clientTurnId,
-				streamRunId: parsed.data.streamRunId,
-				sessionId: parsed.data.sessionId,
-				context: parsed.data.context,
-				message: parsed.data.message,
-				attachments: parsed.data.attachments,
-				projectFocus: parsed.data.projectFocus as ProjectFocus | null,
-				lastTurnContext: parsed.data.lastTurnContext as LastTurnContext | null,
-				voiceNoteGroupId: parsed.data.voiceNoteGroupId,
-				preparedPromptKey: parsed.data.preparedPromptKey
-			},
-			lease: {
-				decisionId: lease.decisionId,
-				mode: 'worker_realtime',
-				contractVersion: 'agentic_chat_worker_v1'
-			}
+			command,
+			lease: leaseAuthority
 		});
-		const preparationMs = Math.max(0, Date.now() - preparationStartedAt);
+		let preparationMs = Math.max(0, Date.now() - preparationStartedAt);
 		const admissionStartedAt = Date.now();
-		const result = await admitAgenticChatWorkerTurn({
-			client: serviceClient as unknown as AgenticChatWorkerAdmissionRpcClient,
-			args: preparation.args
-		});
+		let result;
+		try {
+			result = await admitAgenticChatWorkerTurn({
+				client: serviceClient as unknown as AgenticChatWorkerAdmissionRpcClient,
+				args: preparation.args
+			});
+		} catch (admissionError) {
+			// A context invalidation, key consumption, or newer message can land
+			// between the prepared inspection and durable admission; that must cost
+			// one slow-path retry, never a failed send. Nothing durable exists yet —
+			// the admission transaction rolled back — so re-preparing without the
+			// prepared key and re-admitting is safe and hashes as a fresh request.
+			if (
+				!preparation.args.p_prepared_prompt_id ||
+				!isPreparedAdmissionRaceError(admissionError)
+			) {
+				throw admissionError;
+			}
+			logger.warn('Prepared admission raced an invalidation; retrying without it', {
+				error: admissionError,
+				userId: user.id,
+				clientTurnId: parsed.data.clientTurnId,
+				preparedPromptId: preparation.args.p_prepared_prompt_id
+			});
+			const retryStartedAt = Date.now();
+			preparation = await prepareAgenticChatWorkerAdmission({
+				userClient: supabase as SupabaseClient<Database>,
+				serviceClient,
+				userId: user.id,
+				command: { ...command, preparedPromptKey: null },
+				lease: leaseAuthority
+			});
+			// Reflect the race in both the response timing and the durable turn
+			// payload; the retry preparation itself never requested the lease. The
+			// request hash does not cover the payload, so this stays consistent.
+			const raceMetadata = {
+				requested: true,
+				hit: false,
+				missReason: 'admission_race_retry',
+				inspectionMs: preparation.preparedAdmissionLease.inspectionMs
+			};
+			preparation.preparedAdmissionLease = raceMetadata;
+			(preparation.args.p_request_payload as Record<string, unknown>).preparedAdmissionLease =
+				raceMetadata;
+			preparationMs += Math.max(0, Date.now() - retryStartedAt);
+			result = await admitAgenticChatWorkerTurn({
+				client: serviceClient as unknown as AgenticChatWorkerAdmissionRpcClient,
+				args: preparation.args
+			});
+		}
 		const admissionMs = Math.max(0, Date.now() - admissionStartedAt);
 		const timedResponse = (response: Response) =>
 			withWorkerAdmissionTiming(response, {

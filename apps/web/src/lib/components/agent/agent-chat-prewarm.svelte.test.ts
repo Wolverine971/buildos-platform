@@ -300,6 +300,27 @@ describe('PrewarmController — orchestrate', () => {
 		expect(h.prewarm).not.toHaveBeenCalled();
 	});
 
+	it('pauses in a hidden tab and re-runs when the tab becomes visible again', () => {
+		// This suite runs without a DOM; give the controller a minimal document.
+		const documentStub = Object.assign(new EventTarget(), {
+			visibilityState: 'hidden' as DocumentVisibilityState
+		});
+		(globalThis as Record<string, unknown>).document = documentStub;
+		try {
+			const h = createHarness();
+			const cleanup = h.controller.orchestrate();
+			expect(h.prewarm).not.toHaveBeenCalled();
+
+			const tickBefore = h.controller.refreshTick;
+			documentStub.visibilityState = 'visible';
+			documentStub.dispatchEvent(new Event('visibilitychange'));
+			expect(h.controller.refreshTick).toBe(tickBefore + 1);
+			cleanup?.();
+		} finally {
+			delete (globalThis as Record<string, unknown>).document;
+		}
+	});
+
 	it('skips when no context type is selected', () => {
 		const h = createHarness({ selectedContextType: null });
 		h.controller.orchestrate();

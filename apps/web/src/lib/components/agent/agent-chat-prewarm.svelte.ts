@@ -326,6 +326,16 @@ export class PrewarmController {
 		// retry window or prepared-prompt TTL lapses (see #scheduleRefreshTick).
 		void this.refreshTick;
 		if (!this.#deps.getIsBrowser() || !this.#deps.getIsOpen()) return;
+		// Don't burn a prewarm cycle in a hidden tab — the TTL timer would
+		// otherwise re-POST every ~90s for as long as the modal stays open in
+		// the background. Visibility isn't reactive, so re-run on return.
+		if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+			const onVisibilityChange = () => {
+				if (document.visibilityState === 'visible') this.refreshTick += 1;
+			};
+			document.addEventListener('visibilitychange', onVisibilityChange);
+			return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+		}
 		const contextType = this.#deps.getSelectedContextType();
 		if (!contextType) return;
 		if (this.#deps.getIsPreparingSession()) return;

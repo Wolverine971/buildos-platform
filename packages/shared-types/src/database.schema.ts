@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-30T20:19:43.660Z
+// Generated on: 2026-08-31T00:16:23.029Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -348,6 +348,7 @@ export type DatabaseSchema = {
 		entity_id: string | null;
 		expires_at: string;
 		history_compressed: boolean | null;
+		history_cutoff_at: string | null;
 		history_for_model: Json;
 		history_for_model_count: number | null;
 		history_strategy: string | null;

@@ -159,6 +159,55 @@ begin
 end;
 $$;
 
+-- Statement-level invalidation: one multi-row statement bumps the project
+-- generation exactly once, not once per modified row.
+do $$
+declare
+	v_before text;
+	v_after text;
+begin
+	v_before := public.get_agentic_chat_context_invalidation_token(
+		'project',
+		'11111111-1111-4111-8111-111111111111',
+		'33333333-3333-4333-8333-333333333333'
+	);
+	insert into public.onto_goals (id, project_id, name) values
+		(
+			'88888888-1111-4111-8111-111111111111',
+			'33333333-3333-4333-8333-333333333333',
+			'Bulk goal one'
+		),
+		(
+			'88888888-2222-4222-8222-222222222222',
+			'33333333-3333-4333-8333-333333333333',
+			'Bulk goal two'
+		);
+	v_after := public.get_agentic_chat_context_invalidation_token(
+		'project',
+		'11111111-1111-4111-8111-111111111111',
+		'33333333-3333-4333-8333-333333333333'
+	);
+	if split_part(v_after, ':', 4)::bigint <> split_part(v_before, ':', 4)::bigint + 1 then
+		raise exception 'bulk statement did not bump the generation exactly once: % -> %',
+			v_before, v_after;
+	end if;
+
+	update public.onto_goals
+	set name = name || ' (edited)'
+	where project_id = '33333333-3333-4333-8333-333333333333';
+	v_before := v_after;
+	v_after := public.get_agentic_chat_context_invalidation_token(
+		'project',
+		'11111111-1111-4111-8111-111111111111',
+		'33333333-3333-4333-8333-333333333333'
+	);
+	if split_part(v_after, ':', 4)::bigint <> split_part(v_before, ':', 4)::bigint + 1 then
+		raise exception 'bulk update did not bump the generation exactly once: % -> %',
+			v_before, v_after;
+	end if;
+end;
+$$;
+
 do $$
 begin
 	if has_table_privilege('authenticated', 'public.agentic_chat_context_snapshots', 'select') then

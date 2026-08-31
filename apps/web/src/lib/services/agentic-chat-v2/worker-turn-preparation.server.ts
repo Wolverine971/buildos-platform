@@ -78,7 +78,7 @@ import {
 	inspectPreparedAdmissionLease,
 	inspectPreparedAdmissionLeaseContent
 } from './prepared-admission-lease.server';
-import { buildPreparedPromptSurfaceKey } from './prepared-prompt-cache';
+import { buildPreparedPromptSurfaceKey, getPreparedPromptSurface } from './prepared-prompt-cache';
 import { resolveFastChatScaffoldConfigFromEnv } from './scaffold-variant';
 import { projectWorkerFrozenHistorySnapshot } from './session-service';
 import { loadFastChatPromptContext } from './context-loader';
@@ -386,12 +386,17 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		'worker_realtime'
 	);
 
+	// Both lineage paths must apply the same acceptance conditions so a retry
+	// of one clientTurnId hashes identically no matter which path resolves it.
 	const preparedAdmissionLineage = sessionIntent.session
 		? preparedAdmissionLease.hit
-			? {
-					id: preparedAdmissionLease.row.id,
-					acceptedSurfaceProfile: preparedWorkerSurfaceKey
-				}
+			? preparedAdmissionLease.row.cache_key === turnPreparation.cacheKey &&
+				getPreparedPromptSurface(preparedAdmissionLease.row, preparedWorkerSurfaceKey)
+				? {
+						id: preparedAdmissionLease.row.id,
+						acceptedSurfaceProfile: preparedWorkerSurfaceKey
+					}
+				: null
 			: await inspectPreparedPromptAdmissionLineage({
 					supabase: input.serviceClient,
 					key: input.command.preparedPromptKey,
