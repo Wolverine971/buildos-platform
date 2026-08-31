@@ -1,5 +1,11 @@
 import { Pool, type PoolConfig, type QueryResult } from 'pg';
 import {
+	type IssueLibriOcrAssetGrantInput,
+	type IssueLibriOcrAssetGrantReceipt,
+	type LibriAssetGrantPort,
+	createLibriAssetGrantIssuer
+} from './assetGrant';
+import {
 	type AuthorizeLibriProviderCostInput,
 	type AuthorizeLibriProviderCostReceipt,
 	type LibriCostLedgerPort,
@@ -67,7 +73,8 @@ export type LibriPgPool = {
 };
 
 export type LibriDatabasePort = LibriLifecyclePort &
-	LibriCostLedgerPort & {
+	LibriCostLedgerPort &
+	LibriAssetGrantPort & {
 		probe: () => Promise<void>;
 		close: () => Promise<void>;
 	};
@@ -119,10 +126,18 @@ function normalizeCaCertificate(value: string): string {
 class LibriDatabase implements LibriDatabasePort {
 	private readonly lifecycle: LibriLifecyclePort;
 	private readonly costLedger: LibriCostLedgerPort;
+	private readonly assetGrants: LibriAssetGrantPort;
 
 	constructor(private readonly pool: LibriPgPool) {
 		this.lifecycle = createLibriLifecycle(pool);
 		this.costLedger = createLibriCostLedger(pool);
+		this.assetGrants = createLibriAssetGrantIssuer(pool);
+	}
+
+	issueOcrAssetGrant(
+		input: IssueLibriOcrAssetGrantInput
+	): Promise<IssueLibriOcrAssetGrantReceipt> {
+		return this.assetGrants.issueOcrAssetGrant(input);
 	}
 
 	reserveProviderCost(
