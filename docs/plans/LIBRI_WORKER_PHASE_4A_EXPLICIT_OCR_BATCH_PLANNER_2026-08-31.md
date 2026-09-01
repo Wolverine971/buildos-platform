@@ -29,10 +29,12 @@ explicitly enqueue this already-reviewed manifest.
 - Execution mode: manual exact batch, with recurring polling and successor enqueue explicitly
   false in the versioned run plan.
 
-The manifest records input order, image content SHA-256, and the exact next OCR version. A unique
-`(library_id, image_id, expected_ocr_version)` constraint prevents two runs from planning the same
-paid OCR generation. Repeating the same library/idempotency key and exact contract returns the
-original run and ordered step IDs; reusing the key for a different contract is rejected.
+The manifest records input order, image content SHA-256, and the exact next OCR version. Image-row
+locks plus an active-manifest check prevent two executable runs from planning the same paid OCR
+generation. Historical manifests remain immutable, while a terminally failed, cancelled, skipped,
+or dead-lettered generation may be deliberately replanned under a fresh idempotency key. Repeating
+the same library/idempotency key and exact contract returns the original run and ordered step IDs;
+reusing the key for a different contract is rejected.
 
 ## Access boundary
 
@@ -60,8 +62,8 @@ the queue row count remains unchanged afterward.
 
 - Libri migration scope and immutable-ledger gates pass.
 - All disposable PostgreSQL contracts pass, including exact creation, idempotent replay, owner/
-  editor authorization, viewer denial, state denial, duplicate denial, overlapping-generation
-  denial, rollback, and BuildOS queue isolation.
+  editor authorization, viewer denial, state denial, duplicate denial, active overlapping-generation
+  denial, terminal-failure replanning, rollback, and BuildOS queue isolation.
 - A linked migration dry run identifies only this migration before production apply and reports
   current afterward.
 - Production pre/post receipts preserve the existing BuildOS queue control and show zero active

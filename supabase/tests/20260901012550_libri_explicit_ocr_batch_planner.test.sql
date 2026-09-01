@@ -410,4 +410,40 @@ SELECT pg_temp.assert_true(
 	'rejected requests must roll back every run, step, manifest, and queue write'
 );
 
+UPDATE libri.research_steps
+SET
+	status = 'failed',
+	completed_at = now(),
+	error_class = 'synthetic_terminal_failure',
+	error_message = 'contract retry fixture'
+WHERE run_id = (SELECT run_id FROM first_receipt);
+
+UPDATE libri.research_runs
+SET
+	status = 'failed',
+	failed_steps = 2,
+	finished_at = now(),
+	error_class = 'synthetic_terminal_failure',
+	error_message = 'contract retry fixture'
+WHERE id = (SELECT run_id FROM first_receipt);
+
+CREATE TEMP TABLE retry_receipt AS
+SELECT *
+FROM libri.plan_explicit_ocr_batch(
+	'daaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+	'dbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
+	ARRAY['dd000000-0000-4000-8000-000000000001']::uuid[],
+	'ocr-batch:terminal-failure-retry',
+	'd2222222-2222-4222-8222-222222222222'
+);
+
+SELECT pg_temp.assert_true(
+	(SELECT created AND cardinality(step_ids) = 1 FROM retry_receipt)
+		AND (SELECT count(*) = 2 FROM libri.research_runs)
+		AND (SELECT count(*) = 3 FROM libri.research_steps)
+		AND (SELECT count(*) = 3 FROM libri.ocr_batch_items)
+		AND (SELECT count(*) = 1 FROM public.queue_jobs),
+	'a terminally failed OCR generation must be explicitly replannable without queue mutation'
+);
+
 RESET ROLE;
