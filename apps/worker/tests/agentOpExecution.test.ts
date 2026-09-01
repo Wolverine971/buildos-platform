@@ -76,6 +76,7 @@ function emptyProjectReadCtx(): AgentOpContext {
 const PROJECT_A_ID = '11111111-1111-4111-8111-111111111111';
 const PROJECT_B_ID = '22222222-2222-4222-8222-222222222222';
 const TASK_ID = '33333333-3333-4333-8333-333333333333';
+const TARGET_TASK_ID = '44444444-4444-4444-8444-444444444444';
 
 function projectSummaryRow(
 	id: string,
@@ -111,6 +112,57 @@ function projectSummaryRow(
 		next_step_source: null,
 		next_step_updated_at: null,
 		...overrides
+	};
+}
+
+function stageEdgeCtx(): AgentOpContext {
+	class Query {
+		private id: unknown;
+
+		select() {
+			return this;
+		}
+
+		eq(column: string, value: unknown) {
+			if (column === 'id') this.id = value;
+			return this;
+		}
+
+		is() {
+			return this;
+		}
+
+		async maybeSingle() {
+			if (this.id !== TASK_ID && this.id !== TARGET_TASK_ID) {
+				return { data: null, error: null };
+			}
+			return { data: { id: this.id, project_id: PROJECT_A_ID }, error: null };
+		}
+	}
+
+	const admin = {
+		rpc: async (fn: string) => {
+			if (fn === 'ensure_actor_for_user') {
+				return { data: '55555555-5555-4555-8555-555555555555', error: null };
+			}
+			if (fn === 'get_onto_project_summaries_v1') {
+				return { data: [projectSummaryRow(PROJECT_A_ID)], error: null };
+			}
+			throw new Error(`unexpected rpc: ${fn}`);
+		},
+		from: () => new Query()
+	} as unknown as AgentOpContext['admin'];
+
+	return {
+		admin,
+		userId: '00000000-0000-4000-8000-000000000000',
+		scope: {
+			mode: 'read_write',
+			allowed_ops: ['onto.edge.link'],
+			project_ids: [PROJECT_A_ID],
+			write_project_ids: [PROJECT_A_ID]
+		},
+		mutationMode: 'stage'
 	};
 }
 
@@ -463,7 +515,7 @@ describe('executeAgentOp policy + dispatch', () => {
 
 		expect(r.ok).toBe(false);
 		expect(r.error?.code).toBe('VALIDATION_ERROR');
-		expect(r.error?.message).toContain('task_id must be a valid UUID');
+		expect(r.error?.message).toContain('src_id must be a valid UUID');
 		expect(r.error?.message).not.toContain('src_kind must be a string');
 		expect(r.error?.message).not.toContain('dst_kind must be a string');
 	});
@@ -473,39 +525,36 @@ describe('executeAgentOp policy + dispatch', () => {
 		const r = await executeAgentOp(
 			{ ...ctx(), scope: { mode: 'read_write' }, mutationMode: 'stage' },
 			'onto.task.create',
-			{ project_id: 'project-1', title: 'Draft task' }
+			{ project_id: PROJECT_A_ID, title: 'Draft task' }
 		);
 		expect(r.ok).toBe(true);
 		expect(r.proposedChange).toBeDefined();
 		expect(r.proposedChange?.action).toBe('create');
 		expect(r.proposedChange?.entity_type).toBe('task');
 		expect(r.proposedChange?.after).toMatchObject({
-			project_id: 'project-1',
+			project_id: PROJECT_A_ID,
 			title: 'Draft task'
 		});
 		expect((r.data as { staged?: boolean }).staged).toBe(true);
 	});
 
 	it('normalizes legacy edge-link aliases in staged proposals', async () => {
-		const r = await executeAgentOp(
-			{ ...ctx(), scope: { mode: 'read_write' }, mutationMode: 'stage' },
-			'onto.edge.link',
-			{
-				from_kind: 'task',
-				from_id: 'source-task-id',
-				tgt_kind: 'task',
-				to_id: 'target-task-id',
-				type: 'blocks',
-				metadata: { origin: 'test' }
-			}
-		);
+		const r = await executeAgentOp(stageEdgeCtx(), 'onto.edge.link', {
+			from_kind: 'task',
+			from_id: TASK_ID,
+			tgt_kind: 'task',
+			to_id: TARGET_TASK_ID,
+			type: 'blocks',
+			metadata: { origin: 'test' }
+		});
 
 		expect(r.ok).toBe(true);
 		expect(r.proposedChange?.after).toMatchObject({
+			project_id: PROJECT_A_ID,
 			src_kind: 'task',
-			src_id: 'source-task-id',
+			src_id: TASK_ID,
 			dst_kind: 'task',
-			dst_id: 'target-task-id',
+			dst_id: TARGET_TASK_ID,
 			rel: 'blocks',
 			props: { origin: 'test' }
 		});

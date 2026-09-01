@@ -81,8 +81,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession }, url, se
 };
 
 export const actions: Actions = {
-	prepare: async ({ request, locals: { safeGetSession }, setHeaders }) => {
-		noStore(setHeaders);
+	prepare: async ({ request, locals: { safeGetSession } }) => {
 		const userId = await requireReviewUser(safeGetSession);
 		const form = await request.formData();
 		if (!hasExactFields(form, ['run_id'])) {
@@ -98,8 +97,7 @@ export const actions: Actions = {
 		}
 	},
 
-	open: async ({ request, locals: { safeGetSession }, setHeaders }) => {
-		noStore(setHeaders);
+	open: async ({ request, locals: { safeGetSession } }) => {
 		const userId = await requireReviewUser(safeGetSession);
 		const form = await request.formData();
 		if (!hasExactFields(form, ['run_id', 'sample_id'])) {
@@ -122,8 +120,7 @@ export const actions: Actions = {
 		}
 	},
 
-	adjudicate: async ({ request, locals: { safeGetSession }, setHeaders }) => {
-		noStore(setHeaders);
+	adjudicate: async ({ request, locals: { safeGetSession } }) => {
 		const userId = await requireReviewUser(safeGetSession);
 		const form = await request.formData();
 		if (

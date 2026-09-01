@@ -150,8 +150,8 @@ export type GoldenGrade = {
 	changes: GoldenChange[];
 };
 
-const UUID_PATTERN =
-	/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
+const UUID_PATTERN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+const UUID_EXACT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function collectUuidStrings(
 	value: unknown,
@@ -258,7 +258,10 @@ export function gradeGoldenRun(input: GoldenGradeInput): GoldenGrade {
 	});
 
 	const stagedExecutions = executions.filter(
-		(execution) => execution.tool_category === 'write' && execution.success
+		(execution) =>
+			execution.tool_category === 'write' &&
+			execution.success &&
+			execution.mutation_mode === 'stage'
 	);
 	const commitExecutions = executions.filter(
 		(execution) => execution.tool_category === 'write' && execution.mutation_mode === 'commit'
@@ -268,6 +271,54 @@ export function gradeGoldenRun(input: GoldenGradeInput): GoldenGrade {
 			.filter((execution) => execution.proposed_change_id)
 			.map((execution) => [execution.proposed_change_id!, execution])
 	);
+	const changeIds = new Set(changes.map((change) => change.id));
+	const stagedReceiptIds = new Set(
+		stagedExecutions
+			.map((execution) => execution.proposed_change_id)
+			.filter((id): id is string => Boolean(id))
+	);
+	const missingStagedReceipts = changes
+		.filter((change) => !stagedReceiptIds.has(change.id))
+		.map((change) => change.id);
+	const orphanStagedReceipts = stagedExecutions
+		.filter(
+			(execution) =>
+				!execution.proposed_change_id || !changeIds.has(execution.proposed_change_id)
+		)
+		.map((execution) => execution.id);
+	const invalidIdReferences: string[] = [];
+	for (const change of changes) {
+		const visit = (value: unknown, path: string): void => {
+			if (Array.isArray(value)) {
+				for (const [index, entry] of value.entries()) visit(entry, `${path}[${index}]`);
+				return;
+			}
+			if (!value || typeof value !== 'object') return;
+			for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+				const entryPath = `${path}.${key}`;
+				if (
+					key.endsWith('_id') &&
+					entry !== null &&
+					(typeof entry !== 'string' || !UUID_EXACT_PATTERN.test(entry))
+				) {
+					invalidIdReferences.push(`${entryPath}=${entry}`);
+				}
+				if (key.endsWith('_ids') && entry !== null) {
+					if (!Array.isArray(entry)) {
+						invalidIdReferences.push(`${entryPath}=${String(entry)}`);
+					} else {
+						for (const [index, id] of entry.entries()) {
+							if (typeof id !== 'string' || !UUID_EXACT_PATTERN.test(id)) {
+								invalidIdReferences.push(`${entryPath}[${index}]=${String(id)}`);
+							}
+						}
+					}
+				}
+				visit(entry, entryPath);
+			}
+		};
+		visit(change.after, change.id);
+	}
 	const ungroundedChanges: string[] = [];
 	for (const change of changes) {
 		const execution = executionByChangeId.get(change.id);
@@ -314,8 +365,17 @@ export function gradeGoldenRun(input: GoldenGradeInput): GoldenGrade {
 		),
 		check(
 			'staged_only',
-			stagedExecutions.length === changes.length && commitExecutions.length === 0,
-			`${stagedExecutions.length} staged receipts, ${commitExecutions.length} commit receipts`
+			missingStagedReceipts.length === 0 &&
+				orphanStagedReceipts.length === 0 &&
+				commitExecutions.length === 0,
+			`${stagedExecutions.length} staged receipts cover ${stagedReceiptIds.size}/${changes.length} changes; ${commitExecutions.length} commit receipts`
+		),
+		check(
+			'valid_id_references',
+			invalidIdReferences.length === 0,
+			invalidIdReferences.length === 0
+				? 'all proposed id fields contain real UUIDs'
+				: invalidIdReferences.join(', ')
 		),
 		check(
 			'read_coverage',

@@ -1,3 +1,4 @@
+// apps/web/src/routes/admin/gmail-relevance/review/page.server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
@@ -118,6 +119,30 @@ describe('/admin/gmail-relevance/review', () => {
 				'referrer-policy': 'no-referrer'
 			})
 		);
+	});
+
+	it('sets cache headers only during load so enhanced actions can safely rerun load', async () => {
+		const prepareEvent = event({ form: form({ run_id: RUN_ID }) });
+		const openEvent = event({ form: form({ run_id: RUN_ID, sample_id: SAMPLE_ID }) });
+		const adjudicateEvent = event({
+			form: form({
+				run_id: RUN_ID,
+				sample_id: SAMPLE_ID,
+				idempotency_key: '50000000-0000-4000-8000-000000000001',
+				decision: 'correct_project',
+				correction_reason: '',
+				corrected_project_id: '',
+				rule_proposal: ''
+			})
+		});
+
+		await (actions.prepare as never as Function)(prepareEvent);
+		await (actions.open as never as Function)(openEvent);
+		await (actions.adjudicate as never as Function)(adjudicateEvent);
+
+		expect(prepareEvent.setHeaders).not.toHaveBeenCalled();
+		expect(openEvent.setHeaders).not.toHaveBeenCalled();
+		expect(adjudicateEvent.setHeaders).not.toHaveBeenCalled();
 	});
 
 	it('prepares only the session-owned run and rejects extra fields', async () => {

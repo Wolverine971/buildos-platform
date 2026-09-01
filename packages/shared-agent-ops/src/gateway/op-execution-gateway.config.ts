@@ -316,6 +316,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 		properties: {
 			project_id: {
 				type: 'string',
+				format: 'uuid',
 				description: 'Project UUID for the new task.'
 			},
 			title: {
@@ -332,10 +333,13 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			state_key: {
 				type: 'string',
+				enum: ['todo', 'in_progress', 'blocked', 'done'],
 				description: 'Initial task state: todo, in_progress, blocked, or done.'
 			},
 			priority: {
 				type: 'number',
+				minimum: 1,
+				maximum: 5,
 				// The scale is INVERTED relative to the intuitive reading, and models
 				// get it backwards without being told: asked to make a task "top
 				// priority", the production model wrote 5 (the lowest) and demoted it.
@@ -346,7 +350,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			assignee_actor_ids: {
 				type: 'array',
-				items: { type: 'string' },
+				items: { type: 'string', format: 'uuid' },
 				description:
 					'Optional initial assignee actor UUID list. Actors must be active project members; maximum 10.'
 			},
@@ -358,14 +362,17 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			plan_id: {
 				type: 'string',
+				format: 'uuid',
 				description: 'Optional plan UUID containment parent.'
 			},
 			goal_id: {
 				type: 'string',
+				format: 'uuid',
 				description: 'Optional goal UUID containment parent.'
 			},
 			supporting_milestone_id: {
 				type: 'string',
+				format: 'uuid',
 				description: 'Optional supporting milestone UUID relationship.'
 			},
 			parent: {
@@ -373,7 +380,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 				additionalProperties: false,
 				properties: {
 					kind: { type: 'string' },
-					id: { type: 'string' },
+					id: { type: 'string', format: 'uuid' },
 					is_primary: { type: 'boolean' }
 				},
 				required: ['kind', 'id'],
@@ -400,6 +407,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 		properties: {
 			project_id: {
 				type: 'string',
+				format: 'uuid',
 				description: 'Project UUID the document belongs to.'
 			},
 			title: {
@@ -421,10 +429,12 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			state_key: {
 				type: 'string',
+				enum: [...DOCUMENT_STATES],
 				description: `Optional document state. Valid: ${DOCUMENT_STATES.join(', ')}. Defaults to draft.`
 			},
 			parent_document_id: {
 				type: ['string', 'null'],
+				format: 'uuid',
 				description: 'Optional parent document UUID for tree placement.'
 			},
 			position: {
@@ -444,6 +454,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 		properties: {
 			document_id: {
 				type: 'string',
+				format: 'uuid',
 				description: 'Document UUID.'
 			},
 			title: {
@@ -464,6 +475,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			state_key: {
 				type: 'string',
+				enum: [...DOCUMENT_STATES],
 				description: `Optional state update. Valid: ${DOCUMENT_STATES.join(', ')}.`
 			},
 			archived: {
@@ -495,6 +507,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 		properties: {
 			task_id: {
 				type: 'string',
+				format: 'uuid',
 				description: 'Task UUID.'
 			},
 			title: {
@@ -511,6 +524,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			state_key: {
 				type: 'string',
+				enum: ['todo', 'in_progress', 'blocked', 'done'],
 				description: 'Optional state update: todo, in_progress, blocked, or done.'
 			},
 			archived: {
@@ -520,6 +534,8 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			priority: {
 				type: ['number', 'null'],
+				minimum: 1,
+				maximum: 5,
 				// See the create-task note: 1 is highest. Raising priority means
 				// moving the number DOWN.
 				description:
@@ -529,7 +545,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			assignee_actor_ids: {
 				type: 'array',
-				items: { type: 'string' },
+				items: { type: 'string', format: 'uuid' },
 				description:
 					'Optional full replacement assignee actor UUID list. Use [] to clear; maximum 10.'
 			},
@@ -541,10 +557,12 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			goal_id: {
 				type: ['string', 'null'],
+				format: 'uuid',
 				description: 'Optional goal UUID relationship. Use null to clear.'
 			},
 			supporting_milestone_id: {
 				type: ['string', 'null'],
+				format: 'uuid',
 				description: 'Optional milestone UUID relationship. Use null to clear.'
 			},
 			start_at: {
@@ -561,6 +579,58 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			}
 		},
 		required: ['task_id']
+	},
+	'onto.edge.link': {
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			project_id: {
+				type: 'string',
+				format: 'uuid',
+				description: 'Optional project UUID; both endpoints must belong to it.'
+			},
+			src_kind: {
+				type: 'string',
+				enum: Object.keys(LINK_ENTITY_TABLES),
+				description: 'Existing source entity kind.'
+			},
+			src_id: {
+				type: 'string',
+				format: 'uuid',
+				description: 'Existing source entity UUID. Never use a placeholder.'
+			},
+			dst_kind: {
+				type: 'string',
+				enum: Object.keys(LINK_ENTITY_TABLES),
+				description: 'Existing destination entity kind.'
+			},
+			dst_id: {
+				type: 'string',
+				format: 'uuid',
+				description: 'Existing destination entity UUID. Never use a placeholder.'
+			},
+			rel: {
+				type: 'string',
+				description: 'Relationship name; the gateway normalizes supported synonyms.'
+			},
+			props: {
+				type: 'object',
+				description: 'Optional edge metadata.'
+			}
+		},
+		required: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel']
+	},
+	'onto.edge.unlink': {
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			edge_id: {
+				type: 'string',
+				format: 'uuid',
+				description: 'Existing edge UUID.'
+			}
+		},
+		required: ['edge_id']
 	}
 };
 

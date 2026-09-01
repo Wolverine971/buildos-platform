@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/gateway/op-execution-gateway.edges.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -170,6 +171,22 @@ describe('edge gateway handlers', () => {
 			edge: fixture.inserted,
 			message: 'Linked entities successfully.'
 		});
+	});
+
+	it('rejects an explicit project id that does not match the edge endpoints', async () => {
+		const fixture = linkAdmin(null);
+
+		await expect(
+			EXTERNAL_OP_HANDLERS['onto.edge.link'](context(fixture.admin), {
+				project_id: '00000000-0000-4000-8000-000000000099',
+				src_kind: 'task',
+				src_id: TASK_ID,
+				dst_kind: 'goal',
+				dst_id: GOAL_ID,
+				rel: 'supports_goal'
+			})
+		).rejects.toThrow('Edge project_id does not match its endpoints');
+		expect(fixture.insert).not.toHaveBeenCalled();
 	});
 
 	it('deletes one exact edge after enforcing its project write scope', async () => {

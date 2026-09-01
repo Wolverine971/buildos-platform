@@ -102,6 +102,7 @@ import {
 import {
 	buildReviewStageSystemRules,
 	enforceReviewStageCompletion,
+	findReplaceableStagedCreateIndex,
 	resolveAgentRunCancellationSource,
 	resolveAgentRunModelPolicy,
 	shouldRepairReviewStageSubmission
@@ -2388,15 +2389,23 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			// it so `proposed_changes` and `agent_tool_executions` stay consistent.
 			let proposedChangeId: string | undefined;
 			if (result.ok && result.proposedChange) {
-				proposedChangeId = randomUUID();
-				proposedChanges.push({ id: proposedChangeId, ...result.proposedChange });
+				const replaceIndex = findReplaceableStagedCreateIndex(
+					proposedChanges,
+					result.proposedChange
+				);
+				const replaced = replaceIndex >= 0;
+				proposedChangeId = replaced ? proposedChanges[replaceIndex]!.id : randomUUID();
+				const proposedChange = { id: proposedChangeId, ...result.proposedChange };
+				if (replaced) proposedChanges[replaceIndex] = proposedChange;
+				else proposedChanges.push(proposedChange);
 				result.data = {
 					...(result.data &&
 					typeof result.data === 'object' &&
 					!Array.isArray(result.data)
 						? result.data
 						: {}),
-					proposed_change_id: proposedChangeId
+					proposed_change_id: proposedChangeId,
+					proposed_change_replaced: replaced
 				};
 			}
 			if (

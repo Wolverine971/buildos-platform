@@ -29,11 +29,12 @@
 			Email suggestions
 		</p>
 		<h1 class="text-3xl font-semibold tracking-tight text-foreground">
-			Does this email belong to this project?
+			Review project matches
 		</h1>
 		<p class="max-w-2xl text-sm leading-6 text-muted-foreground">
-			Review up to 20 suggestions. Your answers measure the match—they do not change your
-			email or your projects.
+			For each suggestion, BuildOS shows one email and the project it may belong to. Choose
+			Yes, No, Not sure, or a different project. Your answers do not change your email or your
+			projects.
 		</p>
 	</header>
 
@@ -310,15 +311,20 @@
 				</details>
 			</section>
 		{:else if data.selected_run_id && nextSample}
-			<section class="rounded-2xl border border-border bg-card p-5 shadow-ink">
-				<div class="flex flex-wrap items-center justify-between gap-4">
-					<div>
-						<p class="text-sm font-medium text-muted-foreground">
+			<section class="rounded-2xl border border-accent/30 bg-card p-5 shadow-ink">
+				<div class="flex flex-wrap items-start justify-between gap-5">
+					<div class="max-w-2xl space-y-2">
+						<p class="text-xs font-semibold tracking-[0.16em] text-accent uppercase">
 							Suggestion {nextSample.quick_review_order} of {quickQueue.length}
 						</p>
-						<h2 class="mt-1 text-lg font-semibold text-foreground">
-							Potential match for {nextSample.project_label}
+						<h2 class="text-xl font-semibold text-foreground">
+							We think this email belongs to {nextSample.project_label}
 						</h2>
+						<p class="text-sm leading-6 text-muted-foreground">
+							Account: {nextSample.account_label}. Open the read-only preview to see
+							the subject, date, participants, and snippet, then tell us whether the
+							match is right.
+						</p>
 					</div>
 					<form method="POST" action="?/open">
 						<input type="hidden" name="run_id" value={data.selected_run_id} />
@@ -327,7 +333,7 @@
 							type="submit"
 							class="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-ink"
 						>
-							Open email preview
+							Show email and choices
 						</button>
 					</form>
 				</div>

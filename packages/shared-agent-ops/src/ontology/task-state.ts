@@ -2,6 +2,7 @@
 import { TASK_STATES, type TaskState } from './onto';
 
 const TASK_STATE_ALIASES: Record<string, TaskState> = {
+	draft: 'todo',
 	pending: 'todo',
 	not_started: 'todo',
 	backlog: 'todo',

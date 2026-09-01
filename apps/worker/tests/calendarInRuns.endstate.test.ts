@@ -50,6 +50,7 @@ const CAL_PORT_METHODS = [
 ] as const;
 
 const USER_ID = '00000000-0000-4000-8000-000000000000';
+const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 
 // A chainable no-op so a port/executor can be CONSTRUCTED with this as its
 // supabase client without touching the network. Any property access or call
@@ -257,7 +258,7 @@ describe('END STATE — calendar staging policy (no calendar writes in review ru
 				mutationMode: 'stage'
 			},
 			'onto.task.create',
-			{ project_id: 'project-1', title: 'Draft task' }
+			{ project_id: PROJECT_ID, title: 'Draft task' }
 		);
 		expect(r.ok).toBe(true);
 		expect(r.proposedChange).toBeDefined();

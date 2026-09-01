@@ -45,15 +45,11 @@ export async function createOptionalParentEdges(
 	}
 }
 
-export async function createEdge(
+export async function prepareEdgeMutation(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>,
 	knownProject?: OntologyProjectSummary
-): Promise<{
-	created: number;
-	edge: Record<string, unknown> | null;
-	project: OntologyProjectSummary;
-}> {
+) {
 	const srcKind = normalizeEntityKind(args.src_kind, 'src_kind');
 	const dstKind = normalizeEntityKind(args.dst_kind, 'dst_kind');
 	const relInput = requireTrimmedString(args.rel, 'rel') ?? '';
@@ -73,6 +69,12 @@ export async function createEdge(
 		throw new ExternalToolGatewayError(
 			'VALIDATION_ERROR',
 			'Edge project does not match the expected project'
+		);
+	}
+	if (args.project_id !== undefined && args.project_id !== srcProjectId) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'Edge project_id does not match its endpoints'
 		);
 	}
 
@@ -122,10 +124,27 @@ export async function createEdge(
 					return normalizedEdge;
 				})();
 
+	return {
+		normalized,
+		project: knownProject ?? src.project
+	};
+}
+
+export async function createEdge(
+	context: ToolExecutionContext,
+	args: Record<string, unknown>,
+	knownProject?: OntologyProjectSummary
+): Promise<{
+	created: number;
+	edge: Record<string, unknown> | null;
+	project: OntologyProjectSummary;
+}> {
+	const prepared = await prepareEdgeMutation(context, args, knownProject);
+	const { normalized, project } = prepared;
 	const { data: existing, error: existingError } = await context.admin
 		.from('onto_edges')
 		.select(ONTO_EDGE_SELECT)
-		.eq('project_id', srcProjectId)
+		.eq('project_id', project.id)
 		.eq('src_kind', normalized.src_kind)
 		.eq('src_id', normalized.src_id)
 		.eq('dst_kind', normalized.dst_kind)
@@ -142,14 +161,14 @@ export async function createEdge(
 		return {
 			created: 0,
 			edge: existing as Record<string, unknown>,
-			project: knownProject ?? src.project
+			project
 		};
 	}
 
 	const { data, error } = await context.admin
 		.from('onto_edges')
 		.insert({
-			project_id: srcProjectId,
+			project_id: project.id,
 			src_kind: normalized.src_kind,
 			src_id: normalized.src_id,
 			dst_kind: normalized.dst_kind,
@@ -166,7 +185,7 @@ export async function createEdge(
 
 	await logCreateAsync(
 		context.admin,
-		srcProjectId,
+		project.id,
 		'edge',
 		String(data.id),
 		{ src_kind: data.src_kind, dst_kind: data.dst_kind, rel: data.rel },
@@ -179,7 +198,7 @@ export async function createEdge(
 	return {
 		created: 1,
 		edge: data as Record<string, unknown>,
-		project: knownProject ?? src.project
+		project
 	};
 }
 

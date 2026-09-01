@@ -153,6 +153,19 @@ describe('semantic golden-standard grader', () => {
 					results: scenario.requiredReadKeys.map((key) => ({ id: entities.get(key) }))
 				}
 			}),
+			execution({
+				id: 'campaign-initial-draft',
+				tool_category: 'write',
+				gateway_op: 'onto.document.create',
+				arguments: {
+					project_id: projectId,
+					title: 'City Miles Instagram Series'
+				},
+				result: { staged: true, proposed_change_replaced: false },
+				mutation_mode: 'stage',
+				proposed_change_id: 'campaign-change',
+				created_at: '2026-08-31T12:00:00.500000Z'
+			}),
 			...stagedExecutions(changes)
 		];
 		const grade = gradeGoldenRun({
@@ -178,6 +191,10 @@ describe('semantic golden-standard grader', () => {
 				.filter((entry) => !entry.pass)
 				.map((entry) => entry.detail)
 				.join('\n')
+		);
+		assert.match(
+			grade.checks.find((entry) => entry.id === 'staged_only')?.detail ?? '',
+			/5 staged receipts cover 4\/4 changes/
 		);
 	});
 
@@ -221,5 +238,43 @@ describe('semantic golden-standard grader', () => {
 			grade.checks.find((entry) => entry.id === 'no_duplicate_updates')?.pass,
 			false
 		);
+	});
+
+	it('fails when a staged relationship contains a placeholder instead of a UUID', () => {
+		const scenario = GOLDEN_SCENARIOS.gs2;
+		const entities = entityMap();
+		const projectId = uuid(999);
+		const change: GoldenChange = {
+			id: 'placeholder-edge',
+			op: 'onto.edge.link',
+			entity_type: 'edge',
+			action: 'create',
+			after: {
+				project_id: projectId,
+				src_kind: 'task',
+				src_id: 'PLACEHOLDER_FOR_TASK_ID',
+				dst_kind: 'goal',
+				dst_id: entities.get('goal:Grow direct sales to 40% of revenue'),
+				rel: 'supports_goal'
+			}
+		};
+		const grade = gradeGoldenRun({
+			scenario,
+			projectId,
+			entityIds: entities,
+			run: {
+				id: uuid(803),
+				status: 'proposal_ready',
+				review_required: true,
+				scope_mode: 'read_write',
+				project_id: projectId,
+				change_set: { status: 'pending', changes: [change] }
+			},
+			executions: stagedExecutions([change]),
+			liveStateUnchanged: true
+		});
+
+		assert.equal(grade.pass, false);
+		assert.equal(grade.checks.find((entry) => entry.id === 'valid_id_references')?.pass, false);
 	});
 });

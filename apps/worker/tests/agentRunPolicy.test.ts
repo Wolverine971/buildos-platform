@@ -5,6 +5,7 @@ import {
 	REVIEW_STAGE_SUBMISSION_REPAIR_LIMIT,
 	buildReviewStageSystemRules,
 	enforceReviewStageCompletion,
+	findReplaceableStagedCreateIndex,
 	resolveAgentRunCancellationSource,
 	resolveAgentRunModelPolicy,
 	shouldRepairReviewStageSubmission
@@ -99,6 +100,76 @@ describe('review-required Agent Run staging contract', () => {
 		expect(rules.join('\n')).toContain(
 			'Describing proposed JSON in submit_result does not stage'
 		);
+		expect(rules.join('\n')).toContain('never use onto.edge.link to connect a staged create');
+		expect(rules.join('\n')).toContain('task plan_id, goal_id, and supporting_milestone_id');
+		expect(rules.join('\n')).toContain('strict refinement replaces the earlier draft');
+	});
+
+	it('identifies a corrected staged task or document create by project and title', () => {
+		const existing = [
+			{
+				id: 'change-1',
+				op: 'onto.document.create',
+				entity_type: 'document',
+				action: 'create' as const,
+				after: {
+					project_id: '00000000-0000-4000-8000-000000000001',
+					title: 'City Miles Instagram Series'
+				},
+				rationale: 'Initial draft',
+				decision: 'pending' as const
+			}
+		];
+		const corrected = {
+			op: 'onto.document.create',
+			entity_type: 'document',
+			action: 'create' as const,
+			after: {
+				project_id: '00000000-0000-4000-8000-000000000001',
+				title: ' city miles instagram series ',
+				parent_document_id: '00000000-0000-4000-8000-000000000002'
+			},
+			rationale: 'Corrected placement',
+			decision: 'pending' as const
+		};
+
+		expect(findReplaceableStagedCreateIndex(existing, corrected)).toBe(0);
+		expect(
+			findReplaceableStagedCreateIndex(existing, {
+				...corrected,
+				after: { ...corrected.after, title: 'Different campaign' }
+			})
+		).toBe(-1);
+		expect(
+			findReplaceableStagedCreateIndex(existing, {
+				...corrected,
+				op: 'onto.edge.link',
+				entity_type: 'edge'
+			})
+		).toBe(-1);
+		expect(
+			findReplaceableStagedCreateIndex(existing, {
+				...corrected,
+				after: { ...corrected.after, description: 'Added campaign description' }
+			})
+		).toBe(0);
+		expect(
+			findReplaceableStagedCreateIndex(
+				[
+					{
+						...existing[0],
+						after: { ...existing[0]!.after, description: 'Initial concept' }
+					}
+				],
+				{
+					...corrected,
+					after: {
+						...corrected.after,
+						description: 'Different concept'
+					}
+				}
+			)
+		).toBe(-1);
 	});
 
 	it('does not add staging rules to ordinary commit or read-only surfaces', () => {
