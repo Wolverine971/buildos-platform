@@ -54,6 +54,11 @@ deadlock-resistant. Run, steps, and manifest are inserted within the function's 
 transaction. Any invalid image, duplicate image/version, or manifest conflict rolls back all three.
 No external call occurs while locks are held.
 
+The terminal-retry correction is carried by the append-only
+`20260901014021_libri_ocr_batch_retry_guard.sql` follow-up rather than rewriting the already
+committed planner migration. Its insert trigger takes the same image lock before replacing the
+permanent image/version uniqueness rule with an active-generation exclusion.
+
 This migration touches only the `libri` schema. The disposable contract stores a non-Libri
 `public.queue_jobs` control signature before planning and proves the row remains byte-identical and
 the queue row count remains unchanged afterward.

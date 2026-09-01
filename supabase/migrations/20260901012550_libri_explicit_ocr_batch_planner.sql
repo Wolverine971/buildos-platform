@@ -24,15 +24,17 @@ CREATE TABLE libri.ocr_batch_items (
 		REFERENCES libri.images(library_id, id)
 		ON DELETE RESTRICT,
 	CONSTRAINT ocr_batch_items_run_position_unique UNIQUE (library_id, run_id, position),
+	CONSTRAINT ocr_batch_items_image_version_unique UNIQUE (
+		library_id,
+		image_id,
+		expected_ocr_version
+	),
 	CONSTRAINT ocr_batch_items_position_nonnegative CHECK (position >= 0),
 	CONSTRAINT ocr_batch_items_expected_version_positive CHECK (expected_ocr_version > 0),
 	CONSTRAINT ocr_batch_items_sha256_valid CHECK (
 		image_content_sha256 ~ '^[0-9a-f]{64}$'
 	)
 );
-
-CREATE INDEX ocr_batch_items_image_version_idx
-	ON libri.ocr_batch_items (library_id, image_id, expected_ocr_version);
 
 ALTER TABLE libri.ocr_batch_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE libri.ocr_batch_items FORCE ROW LEVEL SECURITY;
@@ -194,35 +196,6 @@ BEGIN
 	IF matched_images <> batch_size THEN
 		RAISE EXCEPTION 'every OCR batch image must be pending or failed in the requested book'
 			USING ERRCODE = '22023';
-	END IF;
-
-	-- The image locks serialize planners for the same inputs. Preserve every
-	-- historical manifest, but only reject an expected OCR generation while its
-	-- prior step/run can still run. A terminally failed generation may be
-	-- deliberately replanned under a fresh idempotency key.
-	IF EXISTS (
-		SELECT 1
-		FROM libri.images AS image
-		JOIN libri.ocr_batch_items AS item
-			ON item.library_id = image.library_id
-			AND item.image_id = image.id
-			AND item.expected_ocr_version = image.ocr_version + 1
-		JOIN libri.research_steps AS prior_step
-			ON prior_step.library_id = item.library_id
-			AND prior_step.run_id = item.run_id
-			AND prior_step.id = item.step_id
-		JOIN libri.research_runs AS prior_run
-			ON prior_run.library_id = prior_step.library_id
-			AND prior_run.id = prior_step.run_id
-		WHERE image.library_id = p_library_id
-			AND image.id = ANY(p_image_ids)
-			AND NOT (
-				prior_step.status IN ('failed', 'cancelled', 'skipped', 'dead_letter')
-				AND prior_run.status IN ('partial', 'failed', 'cancelled', 'budget_exhausted')
-			)
-	) THEN
-		RAISE EXCEPTION 'an active OCR batch already owns an expected image version'
-			USING ERRCODE = '23505';
 	END IF;
 
 	INSERT INTO libri.research_runs (
