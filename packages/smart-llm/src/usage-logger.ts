@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { ErrorLogger } from './types';
 import { resolveModelPricingProfile } from './model-config';
+import { safeLlmErrorDiagnostic, safeLlmErrorForLogging } from './errors';
 
 export type UsageLogParams = {
 	/** Stable caller-owned identity for replay-safe accounting inserts. */
@@ -198,7 +199,10 @@ export class LLMUsageLogger {
 					if (this.failureMode === 'throw') {
 						throw usageInsertError(error);
 					}
-					console.error('Failed to log LLM usage to database:', error);
+					console.error(
+						'Failed to log LLM usage to database:',
+						safeLlmErrorDiagnostic(error)
+					);
 					return;
 				}
 
@@ -213,11 +217,11 @@ export class LLMUsageLogger {
 			console.error(exhaustedError.message);
 		} catch (error) {
 			if (this.failureMode === 'swallow') {
-				console.error('Exception while logging LLM usage:', error);
+				console.error('Exception while logging LLM usage:', safeLlmErrorDiagnostic(error));
 			}
 			if (this.errorLogger?.logDatabaseError) {
 				await this.errorLogger.logDatabaseError(
-					error,
+					safeLlmErrorForLogging(error, 'LLM usage persistence'),
 					'INSERT',
 					'llm_usage_logs',
 					params.userId,

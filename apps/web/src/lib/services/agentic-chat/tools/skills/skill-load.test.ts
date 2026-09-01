@@ -38,6 +38,16 @@ describe('skill loading', () => {
 		expect(forecast?.whenToUse.join(' ')).toContain('context type is `project`');
 	});
 
+	it('keeps Calendar skills aligned with source-aware event identity', () => {
+		for (const skillId of ['calendar_management', 'google_calendar']) {
+			const result = loadSkill(skillId, { format: 'full' }) as Record<string, unknown>;
+			const markdown = String(result.markdown ?? '');
+			expect(markdown).toContain('calendar_source_id');
+			expect(markdown).toContain('event_id');
+			expect(markdown).toMatch(/inseparable|carry both fields together/i);
+		}
+	});
+
 	it('includes the output contract in short-format loads', () => {
 		const result = loadSkill('ui_ux_quality_review', { format: 'short' }) as Record<
 			string,

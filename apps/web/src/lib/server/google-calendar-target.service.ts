@@ -221,6 +221,10 @@ export class GoogleCalendarTargetService {
 		return this.listTargets(userId, 'analysis');
 	}
 
+	async hasActiveTarget(userId: string, capability: CalendarTargetCapability): Promise<boolean> {
+		return (await this.listTargets(userId, capability)).length > 0;
+	}
+
 	async resolveExplicitSource(
 		userId: string,
 		calendarSourceId: string,

@@ -124,6 +124,7 @@ describe('reschedule no-op update loop (incident 2026-07-31)', () => {
 			message: INCIDENT_MESSAGE,
 			initialTurnContract: RESCHEDULE_CONTRACT,
 			tools: tools(['update_onto_task']),
+			commissionedWriteToolNames: ['update_onto_task'],
 			toolExecutor,
 			onDelta: async () => {}
 		});
@@ -192,6 +193,7 @@ describe('reschedule no-op update loop (incident 2026-07-31)', () => {
 			message: INCIDENT_MESSAGE,
 			initialTurnContract: RESCHEDULE_CONTRACT,
 			tools: tools(['update_onto_task']),
+			commissionedWriteToolNames: ['update_onto_task'],
 			toolExecutor,
 			onDelta: async () => {}
 		});

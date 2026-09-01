@@ -68,7 +68,7 @@
 		twMerge(
 			// Base classes - Inkprint design
 			'w-full rounded-md resize-y',
-			'border transition-all duration-200',
+			'border transition-[border-color,box-shadow,background-color,color] duration-150 motion-reduce:transition-none',
 			'focus:outline-none',
 			'disabled:cursor-not-allowed disabled:opacity-50 disabled:resize-none',
 

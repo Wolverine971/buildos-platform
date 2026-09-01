@@ -91,6 +91,7 @@ function runConditionalMutationTurn(params: {
 		message: MESSAGE,
 		initialTurnContract: CONDITIONAL_CREATE_CONTRACT,
 		tools: tools(params.toolNames),
+		commissionedWriteToolNames: ['create_onto_task'],
 		toolExecutor: vi.fn(params.toolExecutor),
 		onDelta: async () => {}
 	});

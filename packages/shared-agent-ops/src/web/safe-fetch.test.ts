@@ -30,6 +30,71 @@ describe('fetchPublicUrl', () => {
 		expect(fetchFn).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		'http://[::127.0.0.1]/',
+		'http://[64:ff9b::127.0.0.1]/',
+		'http://[64:ff9b:1::7f00:1]/',
+		'http://[100::1]/'
+	])('rejects special-purpose IPv6 literal %s before making a request', async (url) => {
+		const fetchFn = vi.fn();
+		await expect(fetchPublicUrl(url, { fetchFn: fetchFn as typeof fetch })).rejects.toThrow(
+			'Blocked private or reserved IP address'
+		);
+		expect(fetchFn).not.toHaveBeenCalled();
+	});
+
+	it('rejects a DNS answer in NAT64 special-purpose space before making a request', async () => {
+		const fetchFn = vi.fn();
+		const dnsLookup = vi.fn(async () => [{ address: '64:ff9b::127.0.0.1', family: 6 }]);
+		await expect(
+			fetchPublicUrl('https://research.example/page', {
+				fetchFn: fetchFn as typeof fetch,
+				dnsLookup
+			})
+		).rejects.toThrow('Blocked private or reserved IP address');
+		expect(fetchFn).not.toHaveBeenCalled();
+	});
+
+	it('propagates parent cancellation to the in-flight request', async () => {
+		const controller = new AbortController();
+		let capturedSignal: AbortSignal | undefined;
+		const fetchFn = vi.fn((_url: unknown, init?: RequestInit) => {
+			capturedSignal = init?.signal ?? undefined;
+			return new Promise<Response>((_resolve, reject) => {
+				capturedSignal?.addEventListener(
+					'abort',
+					() => reject(capturedSignal?.reason ?? new Error('aborted')),
+					{ once: true }
+				);
+			});
+		});
+		const promise = fetchPublicUrl('https://research.example/page', {
+			fetchFn: fetchFn as unknown as typeof fetch,
+			dnsLookup: vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]),
+			signal: controller.signal
+		});
+		await vi.waitFor(() => expect(capturedSignal).toBeDefined());
+		controller.abort(new Error('parent cancelled'));
+		await expect(promise).rejects.toThrow('parent cancelled');
+		expect(capturedSignal?.aborted).toBe(true);
+	});
+
+	it('bounds and aborts a DNS lookup that never settles', async () => {
+		const controller = new AbortController();
+		const fetchFn = vi.fn();
+		const dnsLookup = vi.fn(() => new Promise<never>(() => {}));
+		const promise = fetchPublicUrl('https://research.example/page', {
+			fetchFn: fetchFn as typeof fetch,
+			dnsLookup,
+			signal: controller.signal,
+			timeoutMs: 10_000
+		});
+		await vi.waitFor(() => expect(dnsLookup).toHaveBeenCalledTimes(1));
+		controller.abort(new Error('parent cancelled during DNS'));
+		await expect(promise).rejects.toThrow('parent cancelled during DNS');
+		expect(fetchFn).not.toHaveBeenCalled();
+	});
+
 	it('allows a public DNS answer and enforces the streamed response size limit', async () => {
 		const dnsLookup = vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]);
 		const fetchFn = vi.fn(async () => {

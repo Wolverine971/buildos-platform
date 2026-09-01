@@ -18,11 +18,24 @@ import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { createLogger } from '$lib/utils/logger';
 import { env as privateEnv } from '$env/dynamic/private';
 import { GoogleCalendarReadService } from '$lib/server/google-calendar-read.service';
+import type { AggregatedGoogleCalendarEvent } from '$lib/server/google-calendar-read.service';
+import { GoogleCalendarWriteService } from '$lib/server/google-calendar-write.service';
 import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 
 const logger = createLogger('CalendarExecutor');
 
 type CalendarScope = 'user' | 'project' | 'calendar_id';
+type SourceAwareCalendarEvent = CalendarEvent &
+	Partial<
+		Pick<
+			AggregatedGoogleCalendarEvent,
+			| 'calendarSourceId'
+			| 'connectionId'
+			| 'providerCalendarId'
+			| 'providerEventId'
+			| 'contributingSourceEvents'
+		>
+	>;
 
 interface ListCalendarEventsArgs {
 	timeMin?: string;
@@ -53,6 +66,7 @@ interface GetCalendarEventDetailsArgs {
 	calendarScope?: CalendarScope;
 	project_id?: string;
 	projectId?: string;
+	calendar_source_id?: string;
 }
 
 interface CreateCalendarEventArgs {
@@ -80,6 +94,7 @@ interface UpdateCalendarEventArgs {
 	calendarScope?: CalendarScope;
 	project_id?: string;
 	projectId?: string;
+	calendar_source_id?: string;
 	title?: string;
 	start_at?: string;
 	end_at?: string | null;
@@ -99,6 +114,7 @@ interface DeleteCalendarEventArgs {
 	calendarScope?: CalendarScope;
 	project_id?: string;
 	projectId?: string;
+	calendar_source_id?: string;
 	sync_to_calendar?: boolean;
 }
 
@@ -128,21 +144,51 @@ const DEFAULT_LIST_LOOKAHEAD_DAYS = 90;
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 200;
 const MAX_LIST_FETCH = 300;
-const MAX_LIST_OFFSET = 5000;
+const MAX_LIST_OFFSET = MAX_LIST_FETCH - 1;
+
+export interface CalendarExecutorDependencies {
+	googleCalendarWriteService?: GoogleCalendarWriteService;
+}
 
 export class CalendarExecutor extends BaseExecutor {
 	private readonly calendarService: CalendarService;
 	private readonly eventSyncService: OntoEventSyncService;
 	private readonly projectCalendarService: ProjectCalendarService;
 	private readonly googleOAuthService: GoogleOAuthService;
+	private readonly googleCalendarWriteService: GoogleCalendarWriteService;
 	private cachedUserTimezone: string | null = null;
 
-	constructor(context: ConstructorParameters<typeof BaseExecutor>[0]) {
+	constructor(
+		context: ConstructorParameters<typeof BaseExecutor>[0],
+		dependencies: CalendarExecutorDependencies = {}
+	) {
 		super(context);
 		this.calendarService = new CalendarService(this.supabase as any);
 		this.eventSyncService = new OntoEventSyncService(this.supabase as any);
 		this.projectCalendarService = new ProjectCalendarService(this.supabase as any);
 		this.googleOAuthService = new GoogleOAuthService(this.supabase as any);
+		this.googleCalendarWriteService =
+			dependencies.googleCalendarWriteService ??
+			new GoogleCalendarWriteService(this.getAdminSupabase());
+	}
+
+	private async resolveSourceAwareEventRoute(
+		calendarSourceId: string | undefined,
+		capability: 'read' | 'write'
+	): Promise<{ sourceAware: boolean; selector: { calendarSourceId?: string } }> {
+		if (calendarSourceId) {
+			return { sourceAware: true, selector: { calendarSourceId } };
+		}
+		if (isMultiCalendarUserAllowed(this.userId, privateEnv)) {
+			return { sourceAware: true, selector: {} };
+		}
+		return {
+			sourceAware: await this.googleCalendarWriteService.hasActiveTarget(
+				this.userId,
+				capability
+			),
+			selector: {}
+		};
 	}
 
 	private buildEventActivityLog(actorId?: string | null): OntoEventActivityLogOptions {
@@ -343,7 +389,11 @@ export class CalendarExecutor extends BaseExecutor {
 		if (rawOffset === undefined) {
 			return 0;
 		}
-		return Math.min(Math.max(Math.floor(rawOffset), 0), MAX_LIST_OFFSET);
+		const offset = Math.floor(rawOffset);
+		if (offset < 0 || offset > MAX_LIST_OFFSET) {
+			throw new Error(`offset must be between 0 and ${MAX_LIST_OFFSET}`);
+		}
+		return offset;
 	}
 
 	private async resolveListCalendarRange(
@@ -457,9 +507,10 @@ export class CalendarExecutor extends BaseExecutor {
 		const offset = this.normalizeListOffset(this.getNumericArg(args.offset));
 		const fetchLimit = Math.min(limit + offset, MAX_LIST_FETCH);
 
-		let googleEvents: CalendarEvent[] = [];
+		let googleEvents: SourceAwareCalendarEvent[] = [];
 		let googleError: string | null = null;
 		let googleCalendarId: string | null = null;
+		let googleCalendarSourceId: string | null = null;
 		let googleRead = {
 			mode: 'none' as 'none' | 'legacy_single_account' | 'source_aware',
 			source_count: 0,
@@ -479,13 +530,14 @@ export class CalendarExecutor extends BaseExecutor {
 
 			const { data: projectCalendar } = await this.supabase
 				.from('project_calendars')
-				.select('id, calendar_id, sync_enabled')
+				.select('id, calendar_id, calendar_source_id, sync_enabled')
 				.eq('project_id', projectId)
 				.eq('user_id', this.userId)
 				.maybeSingle();
 
 			if (projectCalendar?.calendar_id && projectCalendar.sync_enabled !== false) {
 				googleCalendarId = projectCalendar.calendar_id;
+				googleCalendarSourceId = projectCalendar.calendar_source_id ?? null;
 			}
 		} else if (scope === 'calendar_id') {
 			if (!requestedCalendarId) {
@@ -505,6 +557,7 @@ export class CalendarExecutor extends BaseExecutor {
 						this.getAdminSupabase()
 					).listEvents({
 						userId: this.userId,
+						calendarSourceId: googleCalendarSourceId ?? undefined,
 						// An implicit user/primary scope means every enabled read source in
 						// the multi-account model. Explicit/project calendar ids still resolve
 						// to one exact source through the compatibility target resolver.
@@ -583,6 +636,7 @@ export class CalendarExecutor extends BaseExecutor {
 					onto_event_sync (
 						id,
 						project_calendar_id,
+						calendar_source_id,
 						user_id,
 						provider,
 						external_event_id,
@@ -661,11 +715,33 @@ export class CalendarExecutor extends BaseExecutor {
 			}
 		}
 
-		const googleById = new Map<string, CalendarEvent>();
-		const googleByTitle = new Map<string, CalendarEvent[]>();
+		const googleEventKey = (event: SourceAwareCalendarEvent): string =>
+			`${event.calendarSourceId ?? 'legacy'}\u0000${event.providerEventId ?? event.id}`;
+		const googlePrimaryById = new Map<string, SourceAwareCalendarEvent>();
+		const googleByQualifiedIdentity = new Map<string, SourceAwareCalendarEvent>();
+		const googleByProviderEventId = new Map<string, Set<SourceAwareCalendarEvent>>();
+		const googleByTitle = new Map<string, SourceAwareCalendarEvent[]>();
 		for (const event of googleEvents) {
 			if (!event.id) continue;
-			googleById.set(event.id, event);
+			googlePrimaryById.set(googleEventKey(event), event);
+			const identities = [
+				{
+					calendarSourceId: event.calendarSourceId,
+					providerEventId: event.providerEventId ?? event.id
+				},
+				...(event.contributingSourceEvents ?? [])
+			];
+			for (const identity of identities) {
+				if (!identity.calendarSourceId || !identity.providerEventId) continue;
+				googleByQualifiedIdentity.set(
+					`${identity.calendarSourceId}\u0000${identity.providerEventId}`,
+					event
+				);
+				const providerBucket =
+					googleByProviderEventId.get(identity.providerEventId) ?? new Set();
+				providerBucket.add(event);
+				googleByProviderEventId.set(identity.providerEventId, providerBucket);
+			}
 			const summaryKey = normalizeTitle(event.summary);
 			if (summaryKey) {
 				const bucket = googleByTitle.get(summaryKey) ?? [];
@@ -678,15 +754,23 @@ export class CalendarExecutor extends BaseExecutor {
 
 		for (const event of ontoEvents) {
 			const syncRows = event.onto_event_sync || [];
-			const externalId =
-				syncRows.find((syncRow: any) => syncRow.user_id === this.userId)
-					?.external_event_id ?? null;
-			let matchedGoogle: CalendarEvent | undefined;
+			const syncRow = syncRows.find((candidate: any) => candidate.user_id === this.userId);
+			const externalId = syncRow?.external_event_id ?? null;
+			const calendarSourceId = syncRow?.calendar_source_id ?? null;
+			let matchedGoogle: SourceAwareCalendarEvent | undefined;
 
 			if (externalId) {
-				matchedGoogle = googleById.get(externalId);
+				matchedGoogle = calendarSourceId
+					? googleByQualifiedIdentity.get(`${calendarSourceId}\u0000${externalId}`)
+					: Array.from(googleByProviderEventId.get(externalId) ?? []).filter(
+								(candidate) => googlePrimaryById.has(googleEventKey(candidate))
+						  ).length === 1
+						? Array.from(googleByProviderEventId.get(externalId) ?? []).find(
+								(candidate) => googlePrimaryById.has(googleEventKey(candidate))
+							)
+						: undefined;
 				if (matchedGoogle) {
-					googleById.delete(externalId);
+					googlePrimaryById.delete(googleEventKey(matchedGoogle));
 				}
 			}
 
@@ -701,9 +785,11 @@ export class CalendarExecutor extends BaseExecutor {
 				if (canMatchByTitle) {
 					const bucket = googleByTitle.get(titleKey);
 					if (bucket && bucket.length > 0) {
-						matchedGoogle = bucket.shift();
+						matchedGoogle = bucket.find((candidate) =>
+							googlePrimaryById.has(googleEventKey(candidate))
+						);
 						if (matchedGoogle?.id) {
-							googleById.delete(matchedGoogle.id);
+							googlePrimaryById.delete(googleEventKey(matchedGoogle));
 						}
 					}
 				}
@@ -718,11 +804,20 @@ export class CalendarExecutor extends BaseExecutor {
 						  event.owner_entity_id
 						? `/projects/${event.project_id}/tasks/${event.owner_entity_id}`
 						: null;
+			const matchedTopLevelSource =
+				matchedGoogle &&
+				(calendarSourceId === null || calendarSourceId === matchedGoogle.calendarSourceId);
 
 			merged.push({
 				source: 'ontology',
 				is_synced: Boolean(externalId),
-				external_event_id: externalId ?? matchedGoogle?.id ?? null,
+				external_event_id:
+					externalId ?? matchedGoogle?.providerEventId ?? matchedGoogle?.id ?? null,
+				calendar_source_id: calendarSourceId ?? matchedGoogle?.calendarSourceId ?? null,
+				connection_id: matchedTopLevelSource ? (matchedGoogle?.connectionId ?? null) : null,
+				provider_calendar_id: matchedTopLevelSource
+					? (matchedGoogle?.providerCalendarId ?? null)
+					: null,
 				onto_event_id: event.id,
 				title: event.title,
 				start_at: event.start_at,
@@ -736,13 +831,16 @@ export class CalendarExecutor extends BaseExecutor {
 			});
 		}
 
-		for (const event of googleById.values()) {
+		for (const event of googlePrimaryById.values()) {
 			const startAt = event.start?.dateTime || event.start?.date || null;
 			const endAt = event.end?.dateTime || event.end?.date || null;
 			merged.push({
 				source: 'google',
 				is_synced: false,
-				external_event_id: event.id ?? null,
+				external_event_id: event.providerEventId ?? event.id ?? null,
+				calendar_source_id: event.calendarSourceId ?? null,
+				connection_id: event.connectionId ?? null,
+				provider_calendar_id: event.providerCalendarId ?? null,
 				title: event.summary,
 				start_at: startAt,
 				end_at: endAt,
@@ -817,6 +915,26 @@ export class CalendarExecutor extends BaseExecutor {
 			throw new Error(
 				'Provide onto_event_id (the UUID from list_calendar_events results) or event_id (the external_event_id value for Google events).'
 			);
+		}
+
+		const route = await this.resolveSourceAwareEventRoute(
+			this.getStringArg(args.calendar_source_id),
+			'read'
+		);
+		if (route.sourceAware) {
+			const result = await this.googleCalendarWriteService.getEvent({
+				userId: this.userId,
+				providerEventId: eventId,
+				selector: route.selector
+			});
+			return {
+				source: 'google',
+				calendar_source_id: result.calendarSourceId,
+				connection_id: result.connectionId,
+				provider_calendar_id: result.providerCalendarId,
+				external_event_id: result.providerEventId,
+				event: result.event
+			};
 		}
 
 		const calendarId = await this.resolveCalendarIdForScope({
@@ -1178,6 +1296,57 @@ export class CalendarExecutor extends BaseExecutor {
 				? resolvedTimezone
 				: undefined;
 
+		const descriptionForGoogleUpdate = Object.prototype.hasOwnProperty.call(args, 'description')
+			? (args.description ?? undefined)
+			: undefined;
+		const locationForGoogleUpdate = Object.prototype.hasOwnProperty.call(args, 'location')
+			? (args.location ?? undefined)
+			: undefined;
+		const route = await this.resolveSourceAwareEventRoute(
+			this.getStringArg(args.calendar_source_id),
+			'write'
+		);
+		if (route.sourceAware) {
+			const updated = await this.googleCalendarWriteService.updateEvent({
+				userId: this.userId,
+				providerEventId: googleEventId,
+				selector: route.selector,
+				requestBody: {
+					...(args.title !== undefined ? { summary: args.title } : {}),
+					...(Object.prototype.hasOwnProperty.call(args, 'description')
+						? { description: args.description ?? '' }
+						: {}),
+					...(Object.prototype.hasOwnProperty.call(args, 'location')
+						? { location: args.location ?? '' }
+						: {}),
+					...(normalizedStart
+						? {
+								start: {
+									dateTime: normalizedStart.iso,
+									timeZone: timezoneForUpdate
+								}
+							}
+						: {}),
+					...(normalizedEnd
+						? {
+								end: {
+									dateTime: normalizedEnd.iso,
+									timeZone: timezoneForUpdate
+								}
+							}
+						: {})
+				},
+				sendUpdates: 'none'
+			});
+			return {
+				source: 'google',
+				calendar_source_id: updated.calendarSourceId,
+				connection_id: updated.connectionId,
+				provider_calendar_id: updated.providerCalendarId,
+				external_event_id: updated.providerEventId,
+				event: updated.event
+			};
+		}
 		const calendarId = await this.resolveCalendarIdForScope({
 			calendarScope: this.getStringArg(args.calendar_scope, args.calendarScope) as
 				| CalendarScope
@@ -1186,12 +1355,6 @@ export class CalendarExecutor extends BaseExecutor {
 			projectId: this.getStringArg(args.project_id, args.projectId),
 			access: 'write'
 		});
-		const descriptionForGoogleUpdate = Object.prototype.hasOwnProperty.call(args, 'description')
-			? (args.description ?? undefined)
-			: undefined;
-		const locationForGoogleUpdate = Object.prototype.hasOwnProperty.call(args, 'location')
-			? (args.location ?? undefined)
-			: undefined;
 		const updated = await this.calendarService.updateCalendarEvent(this.userId, {
 			event_id: googleEventId,
 			calendar_id: calendarId,
@@ -1224,6 +1387,28 @@ export class CalendarExecutor extends BaseExecutor {
 		const googleEventId = this.getStringArg(args.event_id, args.external_event_id);
 		if (!googleEventId) {
 			throw new Error('event_id is required for Google event delete');
+		}
+
+		const route = await this.resolveSourceAwareEventRoute(
+			this.getStringArg(args.calendar_source_id),
+			'write'
+		);
+		if (route.sourceAware) {
+			const result = await this.googleCalendarWriteService.deleteEvent({
+				userId: this.userId,
+				providerEventId: googleEventId,
+				selector: route.selector,
+				sendUpdates: 'none'
+			});
+			return {
+				source: 'google',
+				calendar_source_id: result.calendarSourceId,
+				connection_id: result.connectionId,
+				provider_calendar_id: result.providerCalendarId,
+				external_event_id: result.providerEventId,
+				deleted: result.deleted,
+				already_missing: result.alreadyMissing
+			};
 		}
 
 		const calendarId = await this.resolveCalendarIdForScope({

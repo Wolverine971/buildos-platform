@@ -27,6 +27,7 @@ type WriteServiceOptions = {
 		| 'resolveEventTarget'
 		| 'resolveExternalEventTarget'
 		| 'resolveLegacyCalendarId'
+		| 'hasActiveTarget'
 	>;
 	createCalendarApi?: (auth: unknown) => CalendarApi;
 	compensationTimeoutMs?: number;
@@ -115,6 +116,7 @@ export class GoogleCalendarWriteService {
 		| 'resolveEventTarget'
 		| 'resolveExternalEventTarget'
 		| 'resolveLegacyCalendarId'
+		| 'hasActiveTarget'
 	>;
 	private readonly createCalendarApi: (auth: unknown) => CalendarApi;
 	private readonly compensationTimeoutMs: number;
@@ -133,6 +135,10 @@ export class GoogleCalendarWriteService {
 			((auth) => google.calendar({ version: 'v3', auth: auth as OAuth2Client }));
 		this.compensationTimeoutMs = options.compensationTimeoutMs ?? COMPENSATION_TIMEOUT_MS;
 		this.now = options.now ?? (() => new Date());
+	}
+
+	hasActiveTarget(userId: string, capability: 'read' | 'write'): Promise<boolean> {
+		return this.targetService.hasActiveTarget(userId, capability);
 	}
 
 	private async resolveCreateTarget(

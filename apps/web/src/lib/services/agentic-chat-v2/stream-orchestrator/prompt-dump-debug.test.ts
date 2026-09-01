@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/prompt-dump-debug.test.ts
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { LITE_PROMPT_VARIANT } from '$lib/services/agentic-chat-lite/prompt';
@@ -76,6 +76,8 @@ describe('writeInitialPromptDump', () => {
 		expect(dumpText).toContain('DUMP-ONLY LITE METADATA (NOT SENT TO MODEL)');
 		expect(dumpText).toContain('Context inventory');
 		expect(dumpText).toContain('Tools summary');
+		expect(statSync(dumpPath as string).mode & 0o777).toBe(0o600);
+		expect(statSync(join(cwd, '.prompt-dumps')).mode & 0o777).toBe(0o700);
 	});
 
 	it('names fastchat dumps with the variant slug and current turn number', () => {

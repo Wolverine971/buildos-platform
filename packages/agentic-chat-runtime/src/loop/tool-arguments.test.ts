@@ -22,7 +22,7 @@ function toolCall(name: string, args: Record<string, unknown>): ChatToolCall {
 }
 
 describe('logToolArgumentAnomaly', () => {
-	it('logs only a bounded preview rather than full tool arguments', () => {
+	it('logs only argument shape rather than content or correlation identifiers', () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 		const hiddenTail = 'TAIL_SECRET_victim@example.com';
 		const rawArgs = JSON.stringify({ content: `${'x'.repeat(500)}${hiddenTail}` });
@@ -38,9 +38,10 @@ describe('logToolArgumentAnomaly', () => {
 			}
 		});
 
-		const metadata = warn.mock.calls[0]?.[1] as { argsPreview?: string };
-		expect(metadata.argsPreview?.length).toBeLessThanOrEqual(280);
-		expect(metadata.argsPreview).toMatch(/\.\.\.$/);
+		const metadata = warn.mock.calls[0]?.[1] as Record<string, unknown>;
+		expect(metadata.argsShape).toEqual({ type: 'string', chars: rawArgs.length });
+		expect(metadata).not.toHaveProperty('sessionId');
+		expect(metadata).not.toHaveProperty('toolCallId');
 		expect(JSON.stringify(warn.mock.calls)).not.toContain(hiddenTail);
 		warn.mockRestore();
 	});

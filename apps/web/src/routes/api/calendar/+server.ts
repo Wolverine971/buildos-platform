@@ -1,13 +1,13 @@
 // apps/web/src/routes/api/calendar/+server.ts
 // Direct proxy endpoint for CalendarService methods
 
-import { env as privateEnv } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { googleCalendarRuntimeErrorResponse } from '$lib/server/google-calendar-api-errors';
-import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import { GoogleCalendarReadService } from '$lib/server/google-calendar-read.service';
+import { GoogleCalendarTargetService } from '$lib/server/google-calendar-target.service';
+import { hasUsableGoogleCalendarConnection } from '$lib/server/google-calendar-connection-status';
 import {
 	handleDeleteCalendarEvent,
 	handleUpdateCalendarEvent
@@ -45,17 +45,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const calendarService = new CalendarService(locals.supabase, {
 			privilegedSupabase: createAdminSupabaseClient()
 		});
-		const multiCalendarEnabled = isMultiCalendarUserAllowed(user.id, privateEnv);
+		let targetService: GoogleCalendarTargetService | undefined;
+		const getTargetService = () =>
+			(targetService ??= new GoogleCalendarTargetService(createAdminSupabaseClient()));
+		const hasConnection = () =>
+			hasUsableGoogleCalendarConnection({
+				userId: user.id,
+				capability: 'read',
+				legacy: calendarService,
+				sourceAware: getTargetService()
+			});
 
 		// Await extracted handlers so rejected promises stay inside this route's shared catch.
 		// Route to appropriate CalendarService method
 		switch (method) {
 			case 'hasValidConnection': {
-				const isConnected = await calendarService.hasValidConnection(user.id);
+				const isConnected = await hasConnection();
 				return ApiResponse.success(isConnected);
 			}
 
 			case 'getCalendarEvents': {
+				const multiCalendarEnabled = await getTargetService().hasActiveTarget(
+					user.id,
+					'read'
+				);
 				if (multiCalendarEnabled) {
 					const readParams = eventReadParamsSchema.safeParse(params);
 					if (!readParams.success) {
@@ -76,6 +89,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			case 'findAvailableSlots': {
+				const multiCalendarEnabled = await getTargetService().hasActiveTarget(
+					user.id,
+					'availability'
+				);
 				if (multiCalendarEnabled) {
 					const availabilityParams = availabilityParamsSchema.safeParse(params);
 					if (!availabilityParams.success) {
@@ -103,6 +120,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			case 'scheduleTask': {
+				const multiCalendarEnabled = await getTargetService().hasActiveTarget(
+					user.id,
+					'write'
+				);
 				return await handleScheduleTask({
 					calendarService,
 					multiCalendarEnabled,
@@ -113,6 +134,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			case 'updateCalendarEvent': {
+				const multiCalendarEnabled = await getTargetService().hasActiveTarget(
+					user.id,
+					'write'
+				);
 				return await handleUpdateCalendarEvent({
 					calendarService,
 					multiCalendarEnabled,
@@ -122,6 +147,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			case 'deleteCalendarEvent': {
+				const multiCalendarEnabled = await getTargetService().hasActiveTarget(
+					user.id,
+					'write'
+				);
 				return await handleDeleteCalendarEvent({
 					calendarService,
 					multiCalendarEnabled,
@@ -253,7 +282,12 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const calendarService = new CalendarService(locals.supabase, {
 			privilegedSupabase: createAdminSupabaseClient()
 		});
-		const isConnected = await calendarService.hasValidConnection(user.id);
+		const isConnected = await hasUsableGoogleCalendarConnection({
+			userId: user.id,
+			capability: 'read',
+			legacy: calendarService,
+			sourceAware: new GoogleCalendarTargetService(createAdminSupabaseClient())
+		});
 
 		return ApiResponse.success({
 			connected: isConnected,

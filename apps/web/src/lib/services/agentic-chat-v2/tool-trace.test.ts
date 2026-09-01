@@ -32,13 +32,17 @@ describe('previewToolArguments', () => {
 		expect(previewToolArguments(null)).toBe('null');
 	});
 
-	it('stringifies objects and collapses whitespace', () => {
-		expect(previewToolArguments({ a: 1 })).toBe('{"a":1}');
-		expect(previewToolArguments('a   b\n c')).toBe('a b c');
+	it('records shape without serializing values', () => {
+		expect(previewToolArguments({ a: 1 })).toBe(
+			'{"type":"object","fields":1,"string_fields":0,"array_fields":0,"object_fields":0}'
+		);
+		expect(previewToolArguments('a   b\n c')).toBe(
+			'{"type":"string","chars":8,"valid_json":false}'
+		);
 	});
 
-	it('truncates to maxChars with ellipsis', () => {
-		expect(previewToolArguments('abcdefghij', 8)).toBe('abcde...');
+	it('honors a bounded metadata length', () => {
+		expect(previewToolArguments('abcdefghij', 20)).toHaveLength(20);
 	});
 });
 
@@ -66,7 +70,7 @@ describe('buildPersistedToolTrace', () => {
 		expect(buildPersistedToolTrace(executions)).toHaveLength(12);
 	});
 
-	it('captures name, success, previews, duration, and truncated error', () => {
+	it('captures name, success, content-free shapes, duration, and error size', () => {
 		const trace = buildPersistedToolTrace([
 			{
 				toolCall: toolCall('update_onto_task', { task_id: 'x' }, 'c1'),
@@ -82,11 +86,33 @@ describe('buildPersistedToolTrace', () => {
 			tool_call_id: 'c1',
 			tool_name: 'update_onto_task',
 			success: false,
-			error: 'boom',
+			error: 'Tool failed (4 error characters).',
 			duration_ms: 42,
-			arguments_preview: '{"task_id":"x"}',
-			result_preview: '{"ok":false}'
+			arguments_preview:
+				'{"type":"object","fields":1,"string_fields":1,"array_fields":0,"object_fields":0}',
+			result_preview:
+				'{"type":"object","fields":1,"string_fields":0,"array_fields":0,"object_fields":0}'
 		});
+	});
+
+	it('never persists private values from calendar, workspace, document, or web tools', () => {
+		const secret = 'SENTINEL_PRIVATE_ROADMAP_8472';
+		const trace = buildPersistedToolTrace(
+			[
+				'list_calendar_events',
+				'get_project_overview',
+				'read_document_section',
+				'web_visit'
+			].map((name) => ({
+				toolCall: toolCall(name, { query: secret, description: secret }),
+				result: result({
+					success: false,
+					error: `failed around ${secret}`,
+					result: { content: secret, title: secret }
+				})
+			}))
+		);
+		expect(JSON.stringify(trace)).not.toContain(secret);
 	});
 
 	it('omits duration_ms when not finite', () => {

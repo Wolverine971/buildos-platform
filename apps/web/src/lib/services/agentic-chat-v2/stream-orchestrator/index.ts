@@ -5,7 +5,8 @@ import type {
 	ChatToolCall,
 	ChatToolDefinition,
 	ChatToolResult,
-	ContextUsageSnapshot
+	ContextUsageSnapshot,
+	JsonObject
 } from '@buildos/shared-types';
 import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
@@ -128,19 +129,26 @@ import {
 import * as readLoopEscalation from './read-loop-escalation';
 import type { ReadLoopRepairEscalation as ReadLoopRepairEscalationLevel } from './read-loop-escalation';
 import {
+	evaluateAgenticChatWebEgressProvenance,
 	getSafeWriteToolNamesForTurnContract,
+	isAgenticChatWebEgressToolName,
 	resolveTurnContractFromExecutions,
 	resolveTurnContractOutcome,
 	type TurnContract,
 	type TurnContractResolution
 } from '@buildos/agentic-chat-runtime/loop';
 import {
+	buildWriteReviewProposal,
 	buildInteractiveChatToolSecurityResult,
 	evaluateInteractiveChatToolSecurity,
 	hasExplicitWriteReviewConfirmation,
+	hasSignedWriteReviewMaterializationConfirmation,
 	isPotentiallyUntrustedContentToolCall,
 	isPotentiallyUntrustedContentToolName,
+	isPrivateOrStoredContentToolCall,
 	isTrustedUserWriteCommission,
+	isWriteToolCommissionedByUserMessage,
+	isWriteToolReviewCommissionedByUserMessage,
 	type InteractiveChatToolSecurityReason
 } from './turn-security-policy';
 
@@ -156,6 +164,10 @@ type StreamFastChatParams = {
 	clientTurnId?: string | null;
 	history: FastChatHistoryMessage[];
 	message: string;
+	/** Raw user-typed text only; excludes OCR, extracted attachments, and model context. */
+	trustedUserMessage?: string;
+	/** True when currentTurnContent includes attachment/OCR or other untrusted source data. */
+	currentTurnContainsUntrustedContent?: boolean;
 	currentTurnContent?: string | OpenRouterContentPart[];
 	signal?: AbortSignal;
 	onDelta: (delta: string) => Promise<void> | void;
@@ -200,6 +212,8 @@ type StreamFastChatParams = {
 	 * successful write from the set rather than every listed tool.
 	 */
 	commissionedWriteToolNames?: string[];
+	/** Server-only HMAC key for binding a confirmation to one exact proposal. */
+	writeReviewSigningSecret?: string;
 	/** Minimum successful calls needed to fulfill the server-owned commission. */
 	commissionedWriteMinimumCount?: number;
 	debugContext?: FastChatDebugContext;
@@ -383,14 +397,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 }> {
 	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
 		params;
+	const trustedUserMessage = params.trustedUserMessage ?? message;
 
 	const normalizedContext = normalizeFastContextType(contextType);
+	const focusedProjectId =
+		params.projectId ?? (normalizedContext === 'project' ? entityId : null);
 	const systemPrompt =
 		params.systemPrompt ??
 		buildLitePromptEnvelope({
 			contextType: normalizedContext,
 			entityId: entityId ?? null,
-			currentUserMessage: message
+			currentUserMessage: trustedUserMessage
 		}).systemPrompt;
 
 	const messages: FastChatModelMessage[] = [
@@ -428,16 +445,39 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let allowedToolNames = new Set(
 		tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
 	);
-	const trustedUserWriteCommission = isTrustedUserWriteCommission(message);
-	const reviewConfirmationTurn = hasExplicitWriteReviewConfirmation({ history, message });
-	let externalContentIngested = false;
+	const trustedUserWriteCommission = isTrustedUserWriteCommission(trustedUserMessage);
+	const supervisorEntityIndex = buildTurnSupervisorEntityIndexFromContextData(
+		params.supervisorContextData
+	);
+	const writeReviewSigningSecret =
+		params.writeReviewSigningSecret ??
+		process.env.PRIVATE_AGENTIC_CHAT_REVIEW_SIGNING_KEY ??
+		process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET ??
+		null;
+	const reviewConfirmationTurn = hasExplicitWriteReviewConfirmation({
+		history,
+		message: trustedUserMessage
+	});
+	let externalContentIngested = params.currentTurnContainsUntrustedContent === true;
+	let privateContentIngested = params.currentTurnContainsUntrustedContent === true;
 	let currentRoundContainsExternalContent = false;
-	const securityReviewBlocks = new Map<string, InteractiveChatToolSecurityReason>();
+	const securityReviewBlocks = new Map<
+		string,
+		{
+			toolName: string;
+			reason: InteractiveChatToolSecurityReason;
+			arguments: JsonObject;
+			fingerprint: string;
+			canonicalArguments: string;
+			authorization: string | null;
+		}
+	>();
+	const consumedWriteReviewProposals = new Set<string>();
 	const commissionedWriteToolNames = Array.from(
 		new Set(
 			(params.commissionedWriteToolNames ?? [])
 				.map((name) => name.trim())
-				.filter((name) => name.length > 0 && allowedToolNames.has(name))
+				.filter((name) => name.length > 0)
 		)
 	);
 	const commissionedWriteMinimumCount =
@@ -478,22 +518,107 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			0
 		) ?? 0;
 	refreshTurnContract();
-	const evaluateToolSecurity = (toolName: string, phase: 'execution' | 'materialization') =>
-		evaluateInteractiveChatToolSecurity({
+	const evaluateToolSecurity = (
+		tool: string | ChatToolCall,
+		phase: 'execution' | 'materialization'
+	) => {
+		const requestedToolName = typeof tool === 'string' ? tool : tool.function.name;
+		const toolName =
+			getToolRegistry().ops[normalizeGatewayOpName(requestedToolName)]?.tool_name ??
+			requestedToolName;
+		const parsedArguments =
+			typeof tool === 'string'
+				? ({} as JsonObject)
+				: parseToolArguments(tool.function.arguments).args;
+		const writeReviewConfirmed =
+			phase === 'materialization'
+				? hasSignedWriteReviewMaterializationConfirmation({
+						history,
+						message: trustedUserMessage,
+						toolName,
+						signingSecret: writeReviewSigningSecret,
+						userId,
+						sessionId
+					})
+				: hasExplicitWriteReviewConfirmation({
+						history,
+						message: trustedUserMessage,
+						toolName,
+						arguments: parsedArguments,
+						signingSecret: writeReviewSigningSecret,
+						userId,
+						sessionId
+					});
+		const reviewProposal = writeReviewConfirmed
+			? buildWriteReviewProposal({
+					toolName,
+					arguments: parsedArguments,
+					signingSecret: writeReviewSigningSecret,
+					userId,
+					sessionId
+				})
+			: null;
+		const unconsumedWriteReviewConfirmed =
+			writeReviewConfirmed &&
+			(reviewProposal === null ||
+				!consumedWriteReviewProposals.has(reviewProposal.fingerprint));
+		const writeReviewCommissioned = isWriteToolReviewCommissionedByUserMessage({
+			toolName,
+			message: trustedUserMessage,
+			arguments: parsedArguments,
+			focusedEntityId: entityId,
+			focusedProjectId,
+			knownEntities: supervisorEntityIndex
+		});
+		const writeExecutionAuthorized =
+			commissionedWriteToolNames.includes(toolName) ||
+			(normalizedContext === 'project_create' &&
+				toolName === 'create_onto_project' &&
+				hasActionableProjectCreateInput(trustedUserMessage)) ||
+			isWriteToolCommissionedByUserMessage({
+				toolName,
+				message: trustedUserMessage,
+				arguments: parsedArguments,
+				focusedEntityId: entityId,
+				focusedProjectId,
+				knownEntities: supervisorEntityIndex
+			}) ||
+			unconsumedWriteReviewConfirmed;
+		const egressProvenanceAllowed =
+			phase !== 'execution' ||
+			!isAgenticChatWebEgressToolName(toolName) ||
+			(typeof tool !== 'string' &&
+				evaluateAgenticChatWebEgressProvenance({
+					toolName,
+					arguments: parsedArguments,
+					userMessage: trustedUserMessage
+				}).allowed);
+		const decision = evaluateInteractiveChatToolSecurity({
 			toolName,
 			phase,
 			externalContentIngested,
+			privateContentIngested,
+			egressProvenanceAllowed,
 			roundContainsExternalContent: currentRoundContainsExternalContent,
 			isCurrentExternalContentSource: isPotentiallyUntrustedContentToolName(toolName),
 			reviewConfirmationTurn,
-			writeReviewConfirmed: hasExplicitWriteReviewConfirmation({
-				history,
-				message,
-				toolName
-			}),
-			trustedUserWriteCommission,
+			writeReviewConfirmed: unconsumedWriteReviewConfirmed,
+			writeExecutionAuthorized,
+			writeReviewCommissioned,
+			trustedUserWriteCommission:
+				phase === 'materialization' ? writeReviewCommissioned : trustedUserWriteCommission,
 			turnContractDeclared: turnContract !== null
 		});
+		if (
+			phase === 'execution' &&
+			decision.allowed &&
+			unconsumedWriteReviewConfirmed &&
+			reviewProposal
+		) {
+			consumedWriteReviewProposals.add(reviewProposal.fingerprint);
+		}
+		return decision;
+	};
 	// "Gateway mode" arms on-demand tool materialization (on-miss + discover-then-load)
 	// and the gateway recovery/repair machinery. It must key off discovery tools that
 	// actually remain on the launch surface. Under lean discovery (Tier 2 item 4) only
@@ -580,9 +705,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const contextGatheringLedger = new ContextGatheringLedger();
 	const knownEntitiesById = new Map<string, KnownEntity>();
 	const successfulWriteExecutionsByKey = new Map<string, FastToolExecution>();
-	const supervisorEntityIndex = buildTurnSupervisorEntityIndexFromContextData(
-		params.supervisorContextData
-	);
 	const supervisor =
 		params.turnSupervisor ??
 		createDeterministicTurnSupervisor({
@@ -592,7 +714,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			contextType: normalizedContext,
 			entityId: entityId ?? null,
 			projectId: params.projectId ?? null,
-			userMessage: message,
+			userMessage: trustedUserMessage,
 			entityIndex: supervisorEntityIndex,
 			config: {
 				maxToolRounds
@@ -847,7 +969,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	};
 	function buildResearchCaptureToolPass(): ForcedWriteIntentToolPass | null {
 		if (writeIntentCarveOutUsed || countWebResearchCalls(toolExecutions) < 2) return null;
-		if (RESEARCH_PERSISTENCE_OPT_OUT.test(message ?? '')) return null;
+		if (RESEARCH_PERSISTENCE_OPT_OUT.test(trustedUserMessage)) return null;
 		const effectiveProjectId =
 			params.projectId ?? (normalizedContext === 'project' ? entityId : null);
 		if (!effectiveProjectId || !isValidUUID(effectiveProjectId)) return null;
@@ -960,7 +1082,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						successfulDocumentIds:
 							collectSuccessfulCommissionedDocumentIds(toolExecutions),
 						entityIndex: supervisorEntityIndex,
-						message
+						message: trustedUserMessage
 					})
 				: null;
 		return {
@@ -1413,7 +1535,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				toolRounds === 0 &&
 				passTools.length === 1 &&
 				passTools[0]?.function?.name === 'create_onto_project' &&
-				hasActionableProjectCreateInput(message);
+				hasActionableProjectCreateInput(trustedUserMessage);
 			const modelRouting = applyTurnRouteHealth(
 				resolveFastChatPassModelRouting({
 					passNumber,
@@ -1441,7 +1563,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			});
 			const passMessages: FastChatModelMessage[] = noToolSynthesisPass
 				? buildForcedSynthesisMessages({
-						latestUserText: message,
+						latestUserText: trustedUserMessage,
 						// Lexical intent remains telemetry-only. The write ledger and
 						// semantic turn contract are the completion authority.
 						turnIntent: null,
@@ -1648,7 +1770,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					noToolSynthesisRetryCount,
 					contextType: normalizedContext,
 					toolExecutions,
-					latestUserText: message,
+					latestUserText: trustedUserMessage,
 					mutationRequested,
 					expectedWriteToolNames,
 					assistantText,
@@ -1678,7 +1800,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					carriedTruncatedText,
 					contextType: normalizedContext,
 					toolExecutions,
-					latestUserText: message,
+					latestUserText: trustedUserMessage,
 					mutationRequested,
 					expectedWriteToolNames,
 					allowClarifyingQuestionWithoutWrite:
@@ -1862,7 +1984,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				const seenDocumentIds = collectSuccessfulCommissionedDocumentIds(toolExecutions);
 				const candidateHint = buildMentionedDocumentTargetHint({
 					entityIndex: supervisorEntityIndex,
-					message,
+					message: trustedUserMessage,
 					excludedDocumentIds: seenDocumentIds
 				});
 				for (const toolCall of pendingToolCalls) {
@@ -2016,6 +2138,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				) {
 					externalContentIngested = true;
 				}
+				if (
+					execution.result.success &&
+					isPrivateOrStoredContentToolCall(execution.toolCall)
+				) {
+					privateContentIngested = true;
+				}
 				const recorded = await recordToolExecutionForRound({
 					originalToolCall,
 					execution,
@@ -2053,6 +2181,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				executable: ChatToolCall;
 			}): boolean => {
 				if (!params.batchToolExecutor) return false;
+				// Web egress carries per-call provenance and ordered search receipts;
+				// keep it on the individually authorized path.
+				if (isAgenticChatWebEgressToolName(pair.executable.function.name)) return false;
 				return isDispatchablePureReadPair(pair);
 			};
 
@@ -2225,10 +2356,23 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					startToolExecutionHeartbeat: (details) =>
 						startLongRunningOperationHeartbeat('tool_execution', details),
 					authorizeToolCall: (candidate, phase) => {
-						const decision = evaluateToolSecurity(candidate.function.name, phase);
+						const decision = evaluateToolSecurity(candidate, phase);
 						if (decision.allowed) return { allowed: true };
-						if (decision.requiresUserAction) {
-							securityReviewBlocks.set(candidate.function.name, decision.reason);
+						if (decision.requiresUserAction && decision.isWrite) {
+							const parsed = parseToolArguments(candidate.function.arguments).args;
+							const proposal = buildWriteReviewProposal({
+								toolName: candidate.function.name,
+								arguments: parsed,
+								signingSecret: writeReviewSigningSecret,
+								userId,
+								sessionId
+							});
+							securityReviewBlocks.set(proposal.fingerprint, {
+								toolName: candidate.function.name,
+								reason: decision.reason,
+								arguments: parsed,
+								...proposal
+							});
 						}
 						return {
 							allowed: false,
@@ -2590,9 +2734,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 	const securityReviewPrompt =
 		securityReviewBlocks.size > 0
-			? `Security review required; no write executed.\n\n${Array.from(
-					securityReviewBlocks.keys(),
-					(toolName) => `Proposed operation: \`${toolName}\``
+			? `Security review required; no write executed. Review the exact target and values below.\n\n${Array.from(
+					securityReviewBlocks.values(),
+					(proposal) =>
+						`Proposed operation: \`${proposal.toolName}\`\nProposed arguments: \`${proposal.canonicalArguments}\`\nProposal fingerprint: \`${proposal.fingerprint}\`${proposal.authorization ? `\nProposal authorization: \`${proposal.authorization}\`` : '\nProposal authorization unavailable; this operation cannot be confirmed until the server signing key is configured.'}`
 				).join(
 					'\n'
 				)}\n\nPlease confirm in a new message if you want me to proceed after reviewing the proposed change.`
@@ -2604,7 +2749,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		toolLimitNotice,
 		answerTruncated,
 		contextType: normalizedContext,
-		latestUserText: message,
+		latestUserText: trustedUserMessage,
 		mutationRequested,
 		expectedWriteToolNames,
 		securityReviewPrompt,
@@ -2634,7 +2779,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			finalAssistantText = enforceMutationOutcomeIntegrity(finalAssistantText, {
 				contextType: normalizedContext,
 				toolExecutions,
-				latestUserText: message,
+				latestUserText: trustedUserMessage,
 				explicitMutationRequested: mutationRequested,
 				expectedWriteToolNames
 			});
@@ -2699,8 +2844,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			? {
 					securityReview: {
 						required: true as const,
-						reasons: Array.from(new Set(securityReviewBlocks.values())),
-						toolNames: Array.from(securityReviewBlocks.keys())
+						reasons: Array.from(
+							new Set(
+								Array.from(securityReviewBlocks.values(), (entry) => entry.reason)
+							)
+						),
+						toolNames: Array.from(
+							new Set(
+								Array.from(securityReviewBlocks.values(), (entry) => entry.toolName)
+							)
+						)
 					}
 				}
 			: {}),

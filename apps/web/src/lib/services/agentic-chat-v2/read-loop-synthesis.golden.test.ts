@@ -49,6 +49,7 @@ async function runScriptedLoop(opts: {
 	launchTools: string[];
 	plan: (round: number) => RoundPlan;
 	safetyCap?: number;
+	commissionedWriteToolNames?: string[];
 }): Promise<{
 	toolRounds: number;
 	forcedSynthesisPassIndex: number;
@@ -100,6 +101,7 @@ async function runScriptedLoop(opts: {
 		history: [],
 		message: 'Look into this project.',
 		tools: tools(opts.launchTools),
+		commissionedWriteToolNames: opts.commissionedWriteToolNames,
 		toolExecutor,
 		onDelta: async () => {}
 	});
@@ -208,8 +210,9 @@ describe('force-synthesis golden behavior (Tier 3 item 8 baseline)', () => {
 	it('a write round resets read-loop pressure (gateway block sticky-disabled after a write)', async () => {
 		const out = await runScriptedLoop({
 			launchTools: ['skill_search', ...READ_TOOLS, 'update_onto_task'],
+			commissionedWriteToolNames: ['update_onto_task'],
 			plan: (round) => {
-				if (round === 3) {
+				if (round === 1) {
 					return {
 						call: toolCall(
 							'update_onto_task',
@@ -223,7 +226,7 @@ describe('force-synthesis golden behavior (Tier 3 item 8 baseline)', () => {
 			}
 		});
 
-		// Fires much later than the pure read loop (8): the write at round 3 reset the
+		// Fires much later than the pure read loop (8): the opening write reset the
 		// counters and sticky-disabled the gateway read-loop block, so only the
 		// always-on supervisor remains to force synthesis.
 		expect(out.forcedSynthesisPassIndex).toBeGreaterThanOrEqual(0);

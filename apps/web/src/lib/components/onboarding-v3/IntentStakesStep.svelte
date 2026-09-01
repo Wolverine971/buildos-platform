@@ -8,7 +8,7 @@
 		Briefcase,
 		Heart,
 		Coffee
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		ONBOARDING_V3_CONFIG,
@@ -18,6 +18,7 @@
 	import { captureEvent } from '$lib/services/posthog';
 	import { toastService } from '$lib/stores/toast.store';
 	import { untrack } from 'svelte';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import { fade, fly } from 'svelte/transition';
 
 	interface Props {
@@ -60,9 +61,20 @@
 		selectedIntent = id;
 		captureEvent('intent_selected', { intent: id });
 		// Auto-advance to stakes question after a brief pause
-		setTimeout(() => {
-			currentQuestion = 'stakes';
-		}, 300);
+		setTimeout(
+			() => {
+				currentQuestion = 'stakes';
+			},
+			prefersReducedMotion.current ? 0 : 300
+		);
+	}
+
+	function fadeIn(duration = 200) {
+		return { duration: prefersReducedMotion.current ? 0 : duration };
+	}
+
+	function flyIn() {
+		return prefersReducedMotion.current ? { y: 0, duration: 0 } : { y: 20, duration: 260 };
 	}
 
 	function selectStakes(id: OnboardingStakes) {
@@ -104,7 +116,7 @@
 <div class="max-w-2xl mx-auto px-4 py-8 sm:py-16">
 	<!-- Intent Question -->
 	{#if currentQuestion === 'intent'}
-		<div in:fade={{ duration: 200 }}>
+		<div in:fade={fadeIn()}>
 			<div class="text-center mb-10">
 				<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">
 					What brings you to BuildOS?
@@ -116,13 +128,12 @@
 				{#each ONBOARDING_V3_CONFIG.intents as intent}
 					{@const Icon = intentIcons[intent.id]}
 					<button
-						class="group relative text-left p-5 rounded-xl border-2 transition-all duration-200 pressable
+						class="group relative overflow-hidden rounded-lg border-2 p-5 text-left tx tx-frame tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
 							{selectedIntent === intent.id
 							? 'border-accent bg-accent/5 shadow-ink-strong'
 							: 'border-border bg-card shadow-ink hover:border-accent/50 hover:shadow-ink-strong'}"
 						onclick={() => selectIntent(intent.id as OnboardingIntent)}
 					>
-						<div class="tx tx-frame tx-weak rounded-xl absolute inset-0"></div>
 						<div class="relative flex items-start gap-4">
 							<div
 								class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
@@ -149,7 +160,7 @@
 
 	<!-- Stakes Question -->
 	{#if currentQuestion === 'stakes'}
-		<div in:fly={{ y: 20, duration: 300 }}>
+		<div in:fly={flyIn()}>
 			<div class="text-center mb-10">
 				<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">
 					How important is this to you?
@@ -161,13 +172,12 @@
 				{#each ONBOARDING_V3_CONFIG.stakes as stakes}
 					{@const Icon = stakesIcons[stakes.id]}
 					<button
-						class="group relative w-full text-left p-5 rounded-xl border-2 transition-all duration-200 pressable
+						class="group relative w-full overflow-hidden rounded-lg border-2 p-5 text-left tx tx-frame tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
 							{selectedStakes === stakes.id
 							? 'border-accent bg-accent/5 shadow-ink-strong'
 							: 'border-border bg-card shadow-ink hover:border-accent/50 hover:shadow-ink-strong'}"
 						onclick={() => selectStakes(stakes.id as OnboardingStakes)}
 					>
-						<div class="tx tx-frame tx-weak rounded-xl absolute inset-0"></div>
 						<div class="relative flex items-center gap-4">
 							<div
 								class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
@@ -191,7 +201,7 @@
 			<!-- Back button to change intent -->
 			<div class="mt-6 text-center">
 				<button
-					class="text-sm text-muted-foreground hover:text-foreground transition-colors"
+					class="inline-flex min-h-11 items-center rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					onclick={() => (currentQuestion = 'intent')}
 				>
 					Change my answer
@@ -202,14 +212,14 @@
 
 	<!-- Continue button -->
 	{#if canContinue}
-		<div class="mt-10 text-center" in:fade={{ duration: 200 }}>
+		<div class="mt-10 text-center" in:fade={fadeIn()}>
 			<Button
 				variant="primary"
 				size="lg"
 				onclick={saveAndContinue}
 				loading={isSaving}
 				disabled={isSaving}
-				class="px-10 py-3 text-lg shadow-ink-strong pressable"
+				class="px-10 py-3 text-lg shadow-ink-strong"
 			>
 				{isSaving ? 'Saving...' : 'Continue'}
 			</Button>

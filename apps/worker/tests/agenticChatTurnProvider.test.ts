@@ -4740,12 +4740,26 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		});
 
 		await collect(invocation.stream());
-		expect(client.stream).toHaveBeenCalledWith(
-			expect.objectContaining({
-				toolChoice: 'auto',
-				tools: [workspace, project, tasks, webSearch, webVisit].map(withSchedulingSidecars)
-			})
+		expect(client.stream).toHaveBeenCalledWith(expect.objectContaining({ toolChoice: 'auto' }));
+		const sentTools = client.stream.mock.calls[0]?.[0].tools ?? [];
+		expect(sentTools.map((tool) => tool.function.name)).toEqual([
+			'get_workspace_overview',
+			'get_project_overview',
+			'list_onto_tasks',
+			'web_search',
+			'web_visit'
+		]);
+		expect(sentTools.slice(0, 3)).toEqual(
+			[workspace, project, tasks].map(withSchedulingSidecars)
 		);
+		expect(sentTools.find((tool) => tool.function.name === 'web_visit')).toMatchObject({
+			function: {
+				parameters: {
+					additionalProperties: false,
+					required: ['url']
+				}
+			}
+		});
 		const surfaceOverride = client.stream.mock.calls[0]?.[0].messages.find(
 			(message) =>
 				message.role === 'system' &&

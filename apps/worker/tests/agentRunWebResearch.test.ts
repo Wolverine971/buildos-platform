@@ -44,18 +44,11 @@ describe('Agent Run web research port', () => {
 		expect(withSearch.search).toBeTypeOf('function');
 	});
 
-	it('normalizes Tavily search results into bounded, source-bearing evidence', async () => {
+	it('returns bounded provider snippets and URLs without eagerly fetching result pages', async () => {
 		const dispatchOrder: string[] = [];
 		const fetchFn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
 			if (String(input) !== 'https://api.tavily.com/search') {
-				dispatchOrder.push('page-fetch');
-				return new Response(
-					'<html><title>Fetched page</title><main>Verified page text.</main></html>',
-					{
-						status: 200,
-						headers: { 'content-type': 'text/html' }
-					}
-				);
+				throw new Error('Search must not fetch result pages');
 			}
 			dispatchOrder.push('search-fetch');
 			const request = JSON.parse(String(init?.body)) as Record<string, unknown>;
@@ -125,12 +118,13 @@ describe('Agent Run web research port', () => {
 			title: 'Primary source',
 			url: 'https://93.184.216.34/research'
 		});
-		expect(result.results[0]?.page_content).toContain('Verified page text.');
+		expect(result.results[0]?.page_content).toBeUndefined();
 		expect(result.results[0]?.snippet.length).toBeLessThanOrEqual(1_603);
 		expect(result.security_notice).toContain('untrusted');
 		expect(result.info.fetched_at).toBe(NOW.toISOString());
 		expect(result.info.adapter_version).toBe('tavily-v1');
-		expect(dispatchOrder).toEqual(['reserved:0.016', 'search-fetch', 'page-fetch']);
+		expect(dispatchOrder).toEqual(['reserved:0.016', 'search-fetch']);
+		expect(result.info).toMatchObject({ pages_requested: 0, pages_fetched: 0 });
 		expect(result.info.billing).toEqual({
 			provider: 'tavily',
 			credits: 2,
@@ -141,10 +135,7 @@ describe('Agent Run web research port', () => {
 		});
 	});
 
-	it('fetches only the best two of four result pages concurrently', async () => {
-		let activePageFetches = 0;
-		let maxActivePageFetches = 0;
-		const waiting: Array<() => void> = [];
+	it('does not fan one search out into automatic page fetches', async () => {
 		const fetchFn = vi.fn(async (input: string | URL | Request) => {
 			if (String(input) === 'https://api.tavily.com/search') {
 				return new Response(
@@ -160,17 +151,7 @@ describe('Agent Run web research port', () => {
 				);
 			}
 
-			activePageFetches += 1;
-			maxActivePageFetches = Math.max(maxActivePageFetches, activePageFetches);
-			await new Promise<void>((resolve) => {
-				waiting.push(resolve);
-				if (waiting.length === 2) waiting.splice(0).forEach((release) => release());
-			});
-			activePageFetches -= 1;
-			return new Response(`<html><main>Content for ${String(input)}</main></html>`, {
-				status: 200,
-				headers: { 'content-type': 'text/html' }
-			});
+			throw new Error(`Unexpected page fetch: ${String(input)}`);
 		});
 		const port = createAgentRunWebResearchPort({
 			apiKey: 'test-key',
@@ -183,11 +164,10 @@ describe('Agent Run web research port', () => {
 			info: { pages_requested: number; pages_fetched: number };
 		};
 
-		expect(maxActivePageFetches).toBe(2);
-		expect(fetchFn).toHaveBeenCalledTimes(3);
-		expect(result.info).toMatchObject({ pages_requested: 2, pages_fetched: 2 });
-		expect(result.results[0]?.page_content).toContain('/page-1');
-		expect(result.results[1]?.page_content).toContain('/page-2');
+		expect(fetchFn).toHaveBeenCalledTimes(1);
+		expect(result.info).toMatchObject({ pages_requested: 0, pages_fetched: 0 });
+		expect(result.results[0]?.page_content).toBeUndefined();
+		expect(result.results[1]?.page_content).toBeUndefined();
 		expect(result.results[2]?.page_content).toBeUndefined();
 		expect(result.results[3]?.page_content).toBeUndefined();
 	});
@@ -232,6 +212,92 @@ describe('Agent Run web research port', () => {
 		expect(readPaidToolCharge(second)).toBeNull();
 	});
 
+	it('does not let an initiating caller abort a shared search needed by another caller', async () => {
+		let releaseSearch: (() => void) | undefined;
+		const searchStarted = new Promise<void>((resolve) => {
+			releaseSearch = resolve;
+		});
+		let providerDispatched: (() => void) | undefined;
+		const providerStarted = new Promise<void>((resolve) => {
+			providerDispatched = resolve;
+		});
+		const fetchFn = vi.fn(async (input: string | URL | Request) => {
+			if (String(input) !== 'https://api.tavily.com/search') {
+				throw new Error('Unexpected page fetch');
+			}
+			providerDispatched?.();
+			await searchStarted;
+			return new Response(JSON.stringify({ results: [] }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			});
+		});
+		const port = createAgentRunWebResearchPort({
+			apiKey: 'test-key',
+			fetchFn: fetchFn as typeof fetch,
+			now: () => NOW
+		});
+		const ownerController = new AbortController();
+		const waiterController = new AbortController();
+		const args = { query: 'abort owner singleflight unique 2026-09-01' };
+		const owner = port.search!(args, ownerController.signal);
+		await providerStarted;
+		const waiter = port.search!(args, waiterController.signal);
+		ownerController.abort(new Error('owner cancelled'));
+		await expect(owner).rejects.toThrow('owner cancelled');
+		releaseSearch?.();
+		await expect(waiter).resolves.toMatchObject({ results: [] });
+		expect(fetchFn).toHaveBeenCalledTimes(1);
+	});
+
+	it('never creates or caches user evidence receipts during search', async () => {
+		const fetchFn = vi.fn(async (input: string | URL | Request) => {
+			if (String(input) === 'https://api.tavily.com/search') {
+				return new Response(
+					JSON.stringify({
+						results: [
+							{
+								title: 'Shared public page',
+								url: 'https://93.184.216.34/tenant-cache-proof',
+								content: 'Public snippet'
+							}
+						]
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				);
+			}
+			throw new Error('Search must not fetch result pages');
+		});
+		const sinkA = vi.fn();
+		const sinkB = vi.fn();
+		const portA = createAgentRunWebResearchPort({
+			apiKey: 'test-key',
+			fetchFn: fetchFn as typeof fetch,
+			now: () => NOW,
+			pageEvidenceSink: sinkA
+		});
+		const portB = createAgentRunWebResearchPort({
+			apiKey: 'test-key',
+			fetchFn: fetchFn as typeof fetch,
+			now: () => NOW,
+			pageEvidenceSink: sinkB
+		});
+		const query = 'cross tenant evidence receipt isolation 20260901';
+
+		const first = (await portA.search!({ query })) as {
+			results: Array<{ page_visit_id?: string }>;
+		};
+		const second = (await portB.search!({ query })) as {
+			results: Array<{ page_visit_id?: string }>;
+		};
+
+		expect(sinkA).not.toHaveBeenCalled();
+		expect(sinkB).not.toHaveBeenCalled();
+		expect(first.results[0]?.page_visit_id).toBeUndefined();
+		expect(second.results[0]?.page_visit_id).toBeUndefined();
+		expect(fetchFn).toHaveBeenCalledTimes(1);
+	});
+
 	it('uses a durable discovery hit without reserving or dispatching Tavily', async () => {
 		const onSearchDispatched = vi.fn();
 		const entry = createNativeSearchDiscoveryCacheEntry(
@@ -255,7 +321,7 @@ describe('Agent Run web research port', () => {
 		);
 		const searchCacheStore: NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry> = {
 			probe: vi.fn(async () => true),
-			claim: vi.fn(async () => ({ state: 'hit', value: entry })),
+			claim: vi.fn(async () => ({ state: 'hit' as const, value: entry })),
 			complete: vi.fn(),
 			release: vi.fn(),
 			invalidate: vi.fn()
@@ -289,8 +355,8 @@ describe('Agent Run web research port', () => {
 		};
 
 		expect(onSearchDispatched).not.toHaveBeenCalled();
-		expect(fetchFn).toHaveBeenCalledTimes(1);
-		expect(result.results[0]?.page_content).toContain('Fetched durable evidence');
+		expect(fetchFn).not.toHaveBeenCalled();
+		expect(result.results[0]?.page_content).toBeUndefined();
 		expect(result.info).toMatchObject({
 			cache_status: 'hit',
 			fetched_at: '2026-08-02T11:00:00.000Z'
@@ -433,7 +499,8 @@ describe('Agent Run web research port', () => {
 				requestedUrl: 'https://93.184.216.34/research',
 				finalUrl: 'https://93.184.216.34/research',
 				parser: 'html_text'
-			})
+			}),
+			undefined
 		);
 	});
 

@@ -32,6 +32,173 @@ export class OpenRouterEmptyContentError extends Error {
 	}
 }
 
+export type SafeLlmErrorDiagnostic = {
+	name: string;
+	category:
+		| 'cancelled'
+		| 'timeout'
+		| 'rate_limited'
+		| 'client_error'
+		| 'server_error'
+		| 'network_error'
+		| 'invalid_response'
+		| 'provider_error';
+	status?: number;
+	code?: string | number;
+};
+
+const SAFE_LLM_ERROR_NAMES = new Set([
+	'AbortError',
+	'Error',
+	'FetchError',
+	'LLMRequestCancelledError',
+	'LLMRequestTimeoutError',
+	'OpenRouterEmptyContentError',
+	'SyntaxError',
+	'TimeoutError',
+	'TranscriptionTimeoutError',
+	'TypeError'
+]);
+const SAFE_LLM_ERROR_CODES = new Set([
+	'ABORT_ERR',
+	'EAI_AGAIN',
+	'ECONNREFUSED',
+	'ECONNRESET',
+	'ENOTFOUND',
+	'ETIMEDOUT',
+	'UND_ERR_ABORTED',
+	'UND_ERR_CONNECT_TIMEOUT',
+	'UND_ERR_HEADERS_TIMEOUT',
+	'UND_ERR_SOCKET',
+	'insufficient_quota',
+	'invalid_request_error',
+	'model_not_found',
+	'rate_limit_exceeded'
+]);
+const SAFE_LLM_NETWORK_CODES = new Set([
+	'EAI_AGAIN',
+	'ECONNREFUSED',
+	'ECONNRESET',
+	'ENOTFOUND',
+	'ETIMEDOUT',
+	'UND_ERR_CONNECT_TIMEOUT',
+	'UND_ERR_HEADERS_TIMEOUT',
+	'UND_ERR_SOCKET'
+]);
+const SAFE_LLM_CLIENT_CODES = new Set([
+	'insufficient_quota',
+	'invalid_request_error',
+	'model_not_found'
+]);
+
+function classifySafeLlmError(
+	error: unknown,
+	name: string,
+	status: number | undefined,
+	code: string | number | undefined
+): SafeLlmErrorDiagnostic['category'] {
+	if (error instanceof LLMRequestCancelledError || name === 'LLMRequestCancelledError') {
+		return 'cancelled';
+	}
+	if (
+		error instanceof LLMRequestTimeoutError ||
+		name === 'LLMRequestTimeoutError' ||
+		name === 'AbortError' ||
+		name === 'TimeoutError' ||
+		name === 'TranscriptionTimeoutError'
+	) {
+		return 'timeout';
+	}
+	if (status === 429 || code === 'rate_limit_exceeded') return 'rate_limited';
+	if (typeof status === 'number' && status >= 500) return 'server_error';
+	if (
+		(typeof status === 'number' && status >= 400) ||
+		(typeof code === 'string' && SAFE_LLM_CLIENT_CODES.has(code))
+	) {
+		return 'client_error';
+	}
+	if (typeof code === 'string' && SAFE_LLM_NETWORK_CODES.has(code)) return 'network_error';
+	if (
+		error instanceof SyntaxError ||
+		error instanceof OpenRouterEmptyContentError ||
+		name === 'SyntaxError' ||
+		name === 'OpenRouterEmptyContentError'
+	) {
+		return 'invalid_response';
+	}
+	return 'provider_error';
+}
+
+/**
+ * Provider errors may retain request headers, request bodies, prompts, or raw
+ * response data. Reduce them to a fixed semantic allowlist before logging,
+ * persisting, or returning them to an interactive client.
+ */
+export function safeLlmErrorDiagnostic(error: unknown): SafeLlmErrorDiagnostic {
+	const candidate =
+		error && typeof error === 'object'
+			? (error as {
+					name?: unknown;
+					code?: unknown;
+					status?: unknown;
+					openrouter?: { httpStatus?: unknown; errorCode?: unknown };
+				})
+			: null;
+	const rawName = candidate?.name;
+	const name =
+		typeof rawName === 'string' && SAFE_LLM_ERROR_NAMES.has(rawName)
+			? rawName
+			: 'ProviderError';
+	const rawStatus = candidate?.status ?? candidate?.openrouter?.httpStatus;
+	const status =
+		typeof rawStatus === 'number' &&
+		Number.isInteger(rawStatus) &&
+		rawStatus >= 100 &&
+		rawStatus <= 599
+			? rawStatus
+			: undefined;
+	const rawCode = candidate?.code ?? candidate?.openrouter?.errorCode;
+	const code =
+		(typeof rawCode === 'number' && Number.isFinite(rawCode)) ||
+		(typeof rawCode === 'string' && SAFE_LLM_ERROR_CODES.has(rawCode))
+			? rawCode
+			: undefined;
+	const category = classifySafeLlmError(error, name, status, code);
+
+	return {
+		name,
+		category,
+		...(status !== undefined ? { status } : {}),
+		...(code !== undefined ? { code } : {})
+	};
+}
+
+export function safeLlmErrorMessage(error: unknown, operation: string): string {
+	const diagnostic = safeLlmErrorDiagnostic(error);
+	const attributes = [
+		diagnostic.category,
+		diagnostic.status === undefined ? null : `status=${diagnostic.status}`,
+		diagnostic.code === undefined ? null : `code=${diagnostic.code}`
+	].filter(Boolean);
+	return `${operation} failed (${attributes.join(', ')})`;
+}
+
+export function safeLlmErrorForLogging(error: unknown, operation: string): Error {
+	const diagnostic = safeLlmErrorDiagnostic(error);
+	const safeError = new Error(safeLlmErrorMessage(error, operation));
+	safeError.name = diagnostic.name;
+	return safeError;
+}
+
+/** Keep provider correlation identifiers useful without retaining arbitrary header text. */
+export function safeProviderIdentifier(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 && trimmed.length <= 200 && /^[A-Za-z0-9._:/-]+$/.test(trimmed)
+		? trimmed
+		: null;
+}
+
 export type OpenRouterErrorMetadata = {
 	status?: number;
 	message?: string;
@@ -96,6 +263,13 @@ export function parseOpenRouterErrorMetadata(error: unknown): OpenRouterErrorMet
 }
 
 export function isOpenRouterProviderError(error: unknown): boolean {
+	if (
+		error &&
+		typeof error === 'object' &&
+		(error as { openrouter?: { providerError?: unknown } }).openrouter?.providerError === true
+	) {
+		return true;
+	}
 	const metadata = parseOpenRouterErrorMetadata(error);
 	const message = typeof metadata.message === 'string' ? metadata.message.toLowerCase() : '';
 
@@ -186,6 +360,14 @@ const MODEL_FAILOVER_MESSAGE_PATTERNS = [
 ];
 
 export function isOpenRouterModelAvailabilityError(error: unknown): boolean {
+	if (
+		error &&
+		typeof error === 'object' &&
+		(error as { openrouter?: { modelAvailabilityError?: unknown } }).openrouter
+			?.modelAvailabilityError === true
+	) {
+		return true;
+	}
 	const metadata = parseOpenRouterErrorMetadata(error);
 	const status = metadata.status;
 	const message = typeof metadata.message === 'string' ? metadata.message : '';
@@ -236,9 +418,9 @@ export function isOpenRouterDefinitivePreGenerationRejection(error: unknown): bo
 				: undefined;
 	const generationId = candidate.openrouter?.generationId;
 	const message = parseOpenRouterErrorMetadata(error).message ?? '';
-	const explicitlyRouteRejected = MODEL_FAILOVER_MESSAGE_PATTERNS.some((pattern) =>
-		pattern.test(message)
-	);
+	const explicitlyRouteRejected =
+		candidate.openrouter?.modelAvailabilityError === true ||
+		MODEL_FAILOVER_MESSAGE_PATTERNS.some((pattern) => pattern.test(message));
 	return (
 		(status === 404 || status === 410) &&
 		(typeof generationId !== 'string' || generationId.trim().length === 0) &&

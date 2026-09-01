@@ -124,7 +124,11 @@ export function emitToolCall(
 			options.onMessageSent?.();
 		})
 		.catch((error) => {
-			logger.warn('Failed to emit tool_call', { error, toolCall });
+			logger.warn('Failed to emit tool_call', {
+				error,
+				toolName: toolCall.function.name,
+				toolCallId: toolCall.id
+			});
 			options.onError?.(error);
 		});
 }

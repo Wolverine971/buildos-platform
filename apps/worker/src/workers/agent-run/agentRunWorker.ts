@@ -78,6 +78,12 @@ import {
 	normalizeDeepResearchEvidencePacket,
 	observeDeepResearchToolResult
 } from './deepResearchEvidence';
+import { createAgentRunWebUrlCapabilityLedger } from './webUrlCapabilityLedger';
+import {
+	isAgentRunWebSearch,
+	pinAgentRunWebSearchArgs,
+	resolveSegregatedAgentRunAllowedOps
+} from './webSecurityPolicy';
 import {
 	classifyAgentRunTokenUsage,
 	renderDeepResearchFinalizationContext,
@@ -170,7 +176,12 @@ function isMissingScopedWebCacheColumn(error: unknown): boolean {
 	);
 }
 
-async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence, userId: string) {
+async function persistAgentRunPageEvidence(
+	page: AgentRunFetchedPageEvidence,
+	userId: string,
+	signal?: AbortSignal
+) {
+	if (signal?.aborted) throw signal.reason ?? new Error('Page evidence persistence aborted');
 	if (![page.requestedUrl, page.finalUrl].every((url) => isGlobalWebPageCacheEligible(url))) {
 		return undefined;
 	}
@@ -188,6 +199,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence, us
 		.select('id, visit_count')
 		.eq('user_id', userId)
 		.eq('normalized_url', normalizedUrl)
+		.abortSignal(signal ?? new AbortController().signal)
 		.maybeSingle();
 	// Rolling-deploy safety: research still returns live evidence if the worker
 	// reaches production before the account-scope migration.
@@ -229,6 +241,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence, us
 			.eq('id', id)
 			.eq('user_id', userId)
 			.select('id')
+			.abortSignal(signal ?? new AbortController().signal)
 			.maybeSingle();
 		if (error) throw error;
 		return data?.id;
@@ -246,6 +259,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence, us
 				first_visited_at: page.fetchedAt
 			})
 			.select('id')
+			.abortSignal(signal ?? new AbortController().signal)
 			.maybeSingle();
 		if (error?.code === '23505') {
 			const { data: raced, error: raceError } = await supabase
@@ -253,6 +267,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence, us
 				.select('id, visit_count')
 				.eq('user_id', userId)
 				.eq('normalized_url', normalizedUrl)
+				.abortSignal(signal ?? new AbortController().signal)
 				.maybeSingle();
 			if (raceError || !raced?.id) throw raceError ?? error;
 			pageVisitId = await updateExisting(raced.id, raced.visit_count ?? 0);
@@ -262,6 +277,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence, us
 		}
 	}
 	if (!pageVisitId) throw new Error('Web page cache did not return a visit identity');
+	if (signal?.aborted) throw signal.reason ?? new Error('Page evidence persistence aborted');
 
 	return persistNativeSearchPageEvidence(supabase as unknown as NativeSearchEvidenceRpcClient, {
 		pageVisitId,
@@ -936,6 +952,30 @@ async function createCalendarPortForRun(userId: string) {
 		return null;
 	}
 
+	// Agent Run still uses the legacy single-account token port. Once a user has
+	// an active source-aware connection, silently falling back to that row could
+	// read or mutate the wrong Google account. Fail closed until this worker port
+	// accepts an explicit calendar source identity.
+	const { data: sourceAwareConnections, error: sourceAwareConnectionError } = await supabase
+		.from('user_calendar_connections')
+		.select('id')
+		.eq('user_id', userId)
+		.eq('provider', 'google_calendar')
+		.eq('status', 'active')
+		.is('deleted_at', null)
+		.limit(1);
+
+	if (sourceAwareConnectionError) {
+		console.error('[agentRunWorker] failed to check source-aware calendar availability', {
+			error: sourceAwareConnectionError.message
+		});
+		return null;
+	}
+
+	if ((sourceAwareConnections?.length ?? 0) > 0) {
+		return null;
+	}
+
 	const { data: tokenRow, error: tokenError } = await supabase
 		.from('user_calendar_tokens')
 		.select('access_token, refresh_token')
@@ -944,7 +984,6 @@ async function createCalendarPortForRun(userId: string) {
 
 	if (tokenError) {
 		console.error('[agentRunWorker] failed to check calendar token availability', {
-			userId,
 			error: tokenError.message
 		});
 		return null;
@@ -1265,9 +1304,13 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	};
 	await emitEvent(runId, 'run.status', { status: 'running' });
 
+	const segregatedScope = resolveSegregatedAgentRunAllowedOps({
+		mode: run.scope_mode === 'read_write' ? 'read_write' : 'read_only',
+		allowedOps: run.allowed_ops
+	});
 	const scope: AgentOpScope = {
 		mode: run.scope_mode === 'read_write' ? 'read_write' : 'read_only',
-		allowed_ops: run.allowed_ops
+		allowed_ops: segregatedScope.allowedOps
 	};
 	// The evidence-packet contract is applied only when the dispatcher explicitly
 	// marked this run as a deep-research child. The read-only web-only shape is
@@ -1425,7 +1468,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		visitMaxBytes: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_MAX_BYTES'),
 		tavilyCreditCostUsd,
 		searchCacheStore,
-		pageEvidenceSink: (page) => persistAgentRunPageEvidence(page, run.user_id),
+		pageEvidenceSink: (page, signal) => persistAgentRunPageEvidence(page, run.user_id, signal),
 		onSearchDispatched: async (charge) => {
 			if (!activePaidToolAttemptKey) {
 				throw new AgentRunCostLedgerError(
@@ -1503,6 +1546,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		scope_mode: scope.mode,
 		mutation_mode: mutationMode,
 		has_write_ops: runnableOps.some((op) => isWriteOp(op)),
+		web_scope_removed: segregatedScope.webScopeRemoved,
 		executor_release: executorRelease
 	});
 
@@ -1522,6 +1566,11 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		usesDurableResearchContext
 	);
 	const committedEntityTouches: EntityTouch[] = [];
+	const webUrlCapabilities = createAgentRunWebUrlCapabilityLedger([
+		run.goal,
+		run.instructions,
+		run.expected_output
+	]);
 
 	if (isResume) {
 		const prior = await reconstructPriorState(
@@ -1536,6 +1585,13 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		tokensTotal = prior.tokens;
 		costTotal = prior.cost;
 		researchObservations = prior.researchObservations;
+		webUrlCapabilities.observeSearchResult({ results: researchObservations.searchResults });
+		for (const source of researchObservations.visitedSources) {
+			webUrlCapabilities.observeVisitResult({
+				url: source.requestedUrl,
+				final_url: source.finalUrl
+			});
+		}
 		const priorMetrics =
 			run.metrics && typeof run.metrics === 'object' && !Array.isArray(run.metrics)
 				? (run.metrics as Record<string, unknown>)
@@ -2243,7 +2299,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			if (exhaustedBeforeOp) return finalizeBudgetExhausted(exhaustedBeforeOp);
 
 			const op = call.op;
-			const args = call.args;
+			const args = isAgentRunWebSearch(op) ? pinAgentRunWebSearchArgs(call.args) : call.args;
 			const searchIsPermitted =
 				!scope.allowed_ops || scope.allowed_ops.includes(AGENT_OP_WEB_SEARCH);
 			const searchRequiresDispatch =
@@ -2281,24 +2337,42 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 					: null;
 			let result: Awaited<ReturnType<typeof executeAgentOp>>;
 			try {
-				result = await executeAgentOp(
-					{
-						admin: supabase as SupabaseClient<Database>,
-						userId: run.user_id,
-						scope,
-						runContext: {
-							context_type: run.context_type === 'project' ? 'project' : 'global',
-							project_id: run.project_id
+				if (op === AGENT_OP_WEB_VISIT && !webUrlCapabilities.allowsVisit(args.url)) {
+					result = {
+						ok: false,
+						op,
+						error: {
+							code: 'FORBIDDEN',
+							message:
+								"Web visit URL is not authorized by the user or this run's search results"
+						}
+					};
+				} else {
+					result = await executeAgentOp(
+						{
+							admin: supabase as SupabaseClient<Database>,
+							userId: run.user_id,
+							scope,
+							runContext: {
+								context_type: run.context_type === 'project' ? 'project' : 'global',
+								project_id: run.project_id
+							},
+							mutationMode,
+							calendar: calendar ?? undefined,
+							web
 						},
-						mutationMode,
-						calendar: calendar ?? undefined,
-						web
-					},
-					op,
-					args
-				);
+						op,
+						args
+					);
+				}
 			} finally {
 				activePaidToolAttemptKey = null;
+			}
+			if (result.ok && op === AGENT_OP_WEB_SEARCH) {
+				webUrlCapabilities.observeSearchResult(result.data);
+			}
+			if (result.ok && op === AGENT_OP_WEB_VISIT) {
+				webUrlCapabilities.observeVisitResult(result.data);
 			}
 			const durationMs = Date.now() - opStart;
 			const dispatchedPaidTool = paidToolDispatches.at(-1);

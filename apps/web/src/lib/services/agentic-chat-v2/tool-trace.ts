@@ -30,8 +30,6 @@ export type ToolTraceCategory = 'write' | 'read_discovery' | 'other';
 
 const MAX_PERSISTED_TOOL_TRACE_ITEMS = 12;
 const MAX_PERSISTED_TOOL_ERROR_CHARS = 180;
-const MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS = 420;
-const MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS = 600;
 
 const EMAIL_TOOL_NAMES = new Set([
 	'get_external_account_status',
@@ -161,25 +159,28 @@ function buildEmailResultPreview(toolName: string, raw: unknown): string {
 }
 
 export function previewToolArguments(raw: unknown, maxChars = 280): string {
-	if (raw === undefined || raw === null) {
-		return 'null';
-	}
-
-	let value: string;
-	if (typeof raw === 'string') {
-		value = raw;
+	if (raw === undefined || raw === null) return 'null';
+	const parsed = parseToolValue(raw);
+	let summary: Record<string, unknown>;
+	if (Array.isArray(parsed)) {
+		summary = { type: 'array', items: parsed.length };
+	} else if (parsed && typeof parsed === 'object') {
+		const values = Object.values(parsed);
+		summary = {
+			type: 'object',
+			fields: values.length,
+			string_fields: values.filter((value) => typeof value === 'string').length,
+			array_fields: values.filter(Array.isArray).length,
+			object_fields: values.filter(
+				(value) => value !== null && typeof value === 'object' && !Array.isArray(value)
+			).length
+		};
+	} else if (typeof raw === 'string') {
+		summary = { type: 'string', chars: raw.length, valid_json: parsed !== null };
 	} else {
-		try {
-			value = JSON.stringify(raw);
-		} catch {
-			value = String(raw);
-		}
+		summary = { type: parsed === null ? 'null' : typeof parsed };
 	}
-	const normalized = value.replace(/\s+/g, ' ').trim();
-	if (normalized.length <= maxChars) {
-		return normalized;
-	}
-	return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
+	return truncateToolTraceText(JSON.stringify(summary), maxChars);
 }
 
 export function truncateToolTraceText(value: string, maxChars: number): string {
@@ -203,20 +204,17 @@ export function buildPersistedToolTrace(
 			typeof result.error === 'string'
 				? isEmailTool
 					? 'Email account tool failed.'
-					: result.error
+					: `Tool failed (${result.error.length} error characters).`
 				: '';
 		const argumentsPreview = isEmailTool
 			? buildEmailArgumentsPreview(toolCall.function.name, toolCall.function.arguments)
-			: previewToolArguments(
-					toolCall.function.arguments,
-					MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS
-				);
+			: previewToolArguments(toolCall.function.arguments);
 		const resultPreview =
 			result.result === undefined
 				? undefined
 				: isEmailTool
 					? buildEmailResultPreview(toolCall.function.name, result.result)
-					: previewToolArguments(result.result, MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS);
+					: previewToolArguments(result.result);
 		const durationMs =
 			typeof result.duration_ms === 'number' && Number.isFinite(result.duration_ms)
 				? result.duration_ms

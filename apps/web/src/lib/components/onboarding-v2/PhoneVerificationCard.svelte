@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/onboarding-v2/PhoneVerificationCard.svelte -->
 <script lang="ts">
-	import { Phone, LoaderCircle, CheckCircle, AlertCircle } from 'lucide-svelte';
+	import { Phone, LoaderCircle, CheckCircle, AlertCircle } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import { smsService } from '$lib/services/sms.service';
@@ -190,11 +190,11 @@
 </script>
 
 <div
-	class="bg-card rounded-xl border border-border p-6 shadow-ink hover:shadow-ink-strong transition-shadow duration-200 tx tx-frame tx-weak"
+	class="rounded-lg border border-border bg-card p-4 shadow-ink transition-shadow duration-150 hover:shadow-ink-strong motion-reduce:transition-none tx tx-frame tx-weak sm:p-6"
 >
 	<div class="flex items-start gap-4">
 		<div
-			class="flex-shrink-0 w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center shadow-ink"
+			class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-success/10 shadow-ink"
 		>
 			<Phone class="w-6 h-6 text-success" />
 		</div>
@@ -210,7 +210,7 @@
 				<!-- Loading State -->
 				<div class="flex items-center gap-2 p-3 bg-muted rounded-lg tx tx-pulse tx-weak">
 					<LoaderCircle
-						class="w-5 h-5 text-muted-foreground animate-spin flex-shrink-0"
+						class="h-5 w-5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none"
 					/>
 					<p class="text-sm text-muted-foreground">
 						Checking for existing phone number...
@@ -224,7 +224,7 @@
 					<CheckCircle class="w-5 h-5 text-success flex-shrink-0" />
 					<div class="flex-1">
 						<p class="font-medium text-success">Phone verified!</p>
-						<p class="text-xs text-success mt-0.5">
+						<p class="mt-0.5 text-xs text-foreground">
 							{phoneNumber}
 						</p>
 					</div>
@@ -266,7 +266,7 @@
 							class="flex items-start gap-2 p-3 bg-destructive/10 rounded-lg border border-destructive/30 tx tx-static tx-weak"
 						>
 							<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-							<p class="text-sm text-destructive">{error}</p>
+							<p class="text-sm text-foreground">{error}</p>
 						</div>
 					{/if}
 
@@ -276,7 +276,7 @@
 							onclick={sendVerificationCode}
 							loading={isSending}
 							disabled={phoneNumber.replace(/\D/g, '').length < 10}
-							class="flex-1 min-w-[120px] shadow-ink pressable"
+							class="min-w-[120px] flex-1 shadow-ink"
 						>
 							{#if isSending}
 								Sending...
@@ -303,7 +303,7 @@
 							<button
 								type="button"
 								onclick={changePhoneNumber}
-								class="text-xs text-accent hover:text-accent/80 hover:underline"
+								class="inline-flex min-h-11 items-center rounded-md px-2 text-xs text-accent hover:bg-accent/10 hover:text-accent/80 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								disabled={isVerifying}
 							>
 								Change number
@@ -333,7 +333,7 @@
 							class="flex items-start gap-2 p-3 bg-destructive/10 rounded-lg border border-destructive/30 tx tx-static tx-weak"
 						>
 							<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-							<p class="text-sm text-destructive">{error}</p>
+							<p class="text-sm text-foreground">{error}</p>
 						</div>
 					{/if}
 
@@ -343,7 +343,7 @@
 							onclick={confirmVerification}
 							loading={isVerifying}
 							disabled={verificationCode.length !== 6}
-							class="flex-1 min-w-[120px] shadow-ink pressable"
+							class="min-w-[120px] flex-1 shadow-ink"
 						>
 							{#if isVerifying}
 								Verifying...

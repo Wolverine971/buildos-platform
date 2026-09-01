@@ -33,11 +33,26 @@ const IPV4_BLOCKED_CIDRS: Array<[string, number]> = [
 const IPV6_BLOCKED_CIDRS: Array<[string, number]> = [
 	['::', 128],
 	['::1', 128],
+	// IPv4-compatible, IPv4-mapped/translated, and NAT64 spaces can encode a
+	// private IPv4 destination in their low 32 bits. Treat the special-purpose
+	// prefixes themselves as non-public so routing environment cannot change the
+	// policy outcome.
+	['::', 96],
+	['::ffff:0:0', 96],
+	['::ffff:0:0:0', 96],
+	['64:ff9b::', 96],
+	['64:ff9b:1::', 48],
+	['100::', 64],
 	['fc00::', 7],
 	['fe80::', 10],
 	['fec0::', 10],
 	['ff00::', 8],
-	['2001:db8::', 32]
+	['2001::', 23],
+	['2001:db8::', 32],
+	['2002::', 16],
+	['2620:4f:8000::', 48],
+	['3fff::', 20],
+	['5f00::', 16]
 ];
 
 type DnsLookup = (
@@ -56,6 +71,8 @@ export interface FetchPublicUrlOptions {
 	userAgent?: string;
 	ifNoneMatch?: string;
 	ifModifiedSince?: string;
+	/** Parent cancellation for the entire redirect chain and response body. */
+	signal?: AbortSignal;
 }
 
 export interface FetchPublicUrlResult {
@@ -172,7 +189,11 @@ interface VettedTarget {
 	pinnable: boolean;
 }
 
-async function assertPublicUrl(url: URL, dnsLookup: DnsLookup): Promise<VettedTarget> {
+async function assertPublicUrl(
+	url: URL,
+	dnsLookup: DnsLookup,
+	signal: AbortSignal
+): Promise<VettedTarget> {
 	if (!['http:', 'https:'].includes(url.protocol)) {
 		throw new Error('Only http/https URLs are supported.');
 	}
@@ -200,7 +221,10 @@ async function assertPublicUrl(url: URL, dnsLookup: DnsLookup): Promise<VettedTa
 		};
 	}
 
-	const records = await dnsLookup(hostname, { all: true, verbatim: true });
+	const records = await waitForAbortable(
+		dnsLookup(hostname, { all: true, verbatim: true }),
+		signal
+	);
 	if (!records.length) throw new Error('DNS lookup failed.');
 	for (const record of records) {
 		if (isPrivateIp(record.address)) {
@@ -212,6 +236,29 @@ async function assertPublicUrl(url: URL, dnsLookup: DnsLookup): Promise<VettedTa
 		addresses: records.map((record) => ({ address: record.address, family: record.family })),
 		pinnable: true
 	};
+}
+
+function waitForAbortable<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+	if (signal.aborted) {
+		return Promise.reject(
+			signal.reason instanceof Error ? signal.reason : new Error('Fetch aborted')
+		);
+	}
+	return new Promise<T>((resolve, reject) => {
+		const onAbort = () =>
+			reject(signal.reason instanceof Error ? signal.reason : new Error('Fetch aborted'));
+		signal.addEventListener('abort', onAbort, { once: true });
+		work.then(
+			(value) => {
+				signal.removeEventListener('abort', onAbort);
+				resolve(value);
+			},
+			(error) => {
+				signal.removeEventListener('abort', onAbort);
+				reject(error);
+			}
+		);
+	});
 }
 
 /**
@@ -319,14 +366,26 @@ export async function fetchPublicUrl(
 	let redirectCount = 0;
 
 	while (true) {
+		throwIfAborted(options.signal);
+		const controller = new AbortController();
+		const onParentAbort = () => controller.abort(options.signal?.reason);
+		options.signal?.addEventListener('abort', onParentAbort, { once: true });
+		const timeout = setTimeout(() => controller.abort(new Error('Fetch timed out')), timeoutMs);
 		// Each hop is independently vetted AND independently pinned: the vetted
 		// addresses feed a dedicated dispatcher so the connection cannot resolve
 		// to anything other than what we just checked (see createPinnedDispatcher).
-		const vetted = await assertPublicUrl(currentUrl, dnsLookup);
+		let vetted: VettedTarget;
+		try {
+			vetted = await assertPublicUrl(currentUrl, dnsLookup, controller.signal);
+		} catch (error) {
+			clearTimeout(timeout);
+			options.signal?.removeEventListener('abort', onParentAbort);
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(`Fetch failed: ${message}`);
+		}
+		throwIfAborted(options.signal);
 		const dispatcher = vetted.pinnable ? createPinnedDispatcher(vetted) : undefined;
 
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), timeoutMs);
 		let response: Response;
 		try {
 			response = await fetcher(currentUrl.toString(), {
@@ -338,6 +397,7 @@ export async function fetchPublicUrl(
 			});
 		} catch (error) {
 			clearTimeout(timeout);
+			options.signal?.removeEventListener('abort', onParentAbort);
 			// This agent is scoped to one hop. Destroy it instead of waiting for a
 			// graceful close: redirect/error responses can carry unread bodies, and
 			// Agent.close() waits indefinitely for that active stream to finish.
@@ -349,6 +409,7 @@ export async function fetchPublicUrl(
 		// 304 is a successful conditional revalidation response, not a redirect.
 		if (response.status === 304) {
 			clearTimeout(timeout);
+			options.signal?.removeEventListener('abort', onParentAbort);
 			await dispatcher?.destroy();
 			return {
 				url: inputUrl,
@@ -363,6 +424,7 @@ export async function fetchPublicUrl(
 
 		if (response.status >= 300 && response.status < 400) {
 			clearTimeout(timeout);
+			options.signal?.removeEventListener('abort', onParentAbort);
 			await dispatcher?.destroy();
 			if (!allowRedirects) throw new Error('Redirect blocked by policy.');
 			const location = response.headers.get('location');
@@ -375,6 +437,7 @@ export async function fetchPublicUrl(
 
 		if (response.status < 200 || response.status >= 400) {
 			clearTimeout(timeout);
+			options.signal?.removeEventListener('abort', onParentAbort);
 			await dispatcher?.destroy();
 			throw new Error(`Request failed (${response.status} ${response.statusText}).`);
 		}
@@ -392,7 +455,13 @@ export async function fetchPublicUrl(
 			};
 		} finally {
 			clearTimeout(timeout);
+			options.signal?.removeEventListener('abort', onParentAbort);
 			await dispatcher?.destroy();
 		}
 	}
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+	if (!signal?.aborted) return;
+	throw signal.reason instanceof Error ? signal.reason : new Error('Fetch aborted');
 }

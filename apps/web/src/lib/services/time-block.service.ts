@@ -897,10 +897,7 @@ export class TimeBlockService {
 		}
 	): Promise<void> {
 		if (!block.calendar_event_id) return;
-		if (this.sourceAwareCalendar) {
-			if (!block.calendar_source_id) {
-				throw new Error('Time block calendar source is missing');
-			}
+		if (this.sourceAwareCalendar && block.calendar_source_id) {
 			await this.sourceAwareCalendar.updateEvent({
 				userId: this.userId,
 				providerEventId: block.calendar_event_id,
@@ -924,10 +921,7 @@ export class TimeBlockService {
 		block: Pick<TimeBlockWithProject, 'calendar_event_id' | 'calendar_source_id'>
 	): Promise<void> {
 		if (!block.calendar_event_id) return;
-		if (this.sourceAwareCalendar) {
-			if (!block.calendar_source_id) {
-				throw new Error('Time block calendar source is missing');
-			}
+		if (this.sourceAwareCalendar && block.calendar_source_id) {
 			await this.sourceAwareCalendar.deleteEvent({
 				userId: this.userId,
 				providerEventId: block.calendar_event_id,

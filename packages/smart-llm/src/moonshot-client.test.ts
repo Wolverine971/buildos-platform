@@ -1,6 +1,10 @@
 // packages/smart-llm/src/moonshot-client.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
+import {
+	isOpenRouterModelAvailabilityError,
+	LLMRequestCancelledError,
+	LLMRequestTimeoutError
+} from './errors';
 import { MoonshotClient } from './moonshot-client';
 
 function createClient(fetchImpl: typeof fetch) {
@@ -56,5 +60,33 @@ describe('MoonshotClient.callMoonshot', () => {
 				cause
 			})
 		);
+	});
+
+	it('redacts provider bodies while preserving semantic failover metadata', async () => {
+		const sentinel = 'PRIVATE_MOONSHOT_PROVIDER_BODY';
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(
+				new Response(
+					JSON.stringify({ error: { message: `Model unavailable: ${sentinel}` } }),
+					{ status: 404, headers: { 'msh-request-id': 'moonshot-request-123' } }
+				)
+			);
+		const client = createClient(fetchMock as unknown as typeof fetch);
+
+		const error = await client
+			.callMoonshot({
+				model: 'moonshot-v1-32k',
+				messages: [{ role: 'user', content: 'Generate the daily brief.' }]
+			})
+			.catch((cause) => cause);
+
+		expect(isOpenRouterModelAvailabilityError(error)).toBe(true);
+		expect(error).toMatchObject({
+			status: 404,
+			moonshot: { requestId: 'moonshot-request-123' }
+		});
+		expect(String(error)).not.toContain(sentinel);
+		expect(JSON.stringify(error)).not.toContain(sentinel);
 	});
 });

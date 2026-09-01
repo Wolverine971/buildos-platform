@@ -118,7 +118,7 @@
 		twMerge(
 			// Base classes - Inkprint design
 			'w-full rounded-lg', // Softer radius
-			'border transition-all duration-200',
+			'border transition-[border-color,box-shadow,background-color,color] duration-150 motion-reduce:transition-none',
 			'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
 			'disabled:cursor-not-allowed disabled:opacity-50',
 

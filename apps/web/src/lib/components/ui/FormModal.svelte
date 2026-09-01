@@ -68,7 +68,7 @@
 		Type,
 		Hash,
 		X
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Modal from './Modal.svelte';
 	import MarkdownToggleField from './MarkdownToggleField.svelte';
 	import TextInput from './TextInput.svelte';
@@ -390,7 +390,7 @@
 							type="button"
 							onclick={handleClose}
 							disabled={isBusy}
-							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 							aria-label="Close modal"
 						>
 							<X class="h-4 w-4" />

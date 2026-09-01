@@ -269,13 +269,6 @@ export class ToolExecutionService implements BaseService {
 			}
 		}
 
-		if (dev && toolName === 'create_onto_document') {
-			logger.debug('create_onto_document raw arguments', {
-				callId: toolCall.id,
-				rawArguments
-			});
-		}
-
 		const argumentPipeline = runArgumentPipeline({
 			toolName,
 			args,

@@ -6,6 +6,8 @@ import {
 	isOpenRouterDefinitivePreGenerationRejection,
 	isOpenRouterModelAvailabilityError,
 	isRetryableOpenRouterError,
+	safeLlmErrorDiagnostic,
+	safeLlmErrorForLogging,
 	shouldFailoverToNextOpenRouterModel
 } from './errors';
 
@@ -91,4 +93,41 @@ describe('isRetryableOpenRouterError', () => {
 			})
 		).toBe(false);
 	});
+});
+
+describe('safe LLM error diagnostics', () => {
+	it('never serializes provider messages, request config, response bodies, or stacks', () => {
+		const sentinel = 'SUPER_SECRET_PROMPT_AND_API_KEY';
+		const error = Object.assign(new Error(sentinel), {
+			name: `Injected${sentinel}`,
+			status: 503,
+			code: `Injected${sentinel}`,
+			config: { headers: { Authorization: sentinel }, body: sentinel },
+			response: { data: { error: sentinel } },
+			openrouter: {
+				httpStatus: 503,
+				errorCode: `Injected${sentinel}`,
+				error: { message: sentinel }
+			}
+		});
+
+		expect(safeLlmErrorDiagnostic(error)).toEqual({
+			name: 'ProviderError',
+			category: 'server_error',
+			status: 503
+		});
+		expect(JSON.stringify(safeLlmErrorDiagnostic(error))).not.toContain(sentinel);
+		expect(safeLlmErrorForLogging(error, 'LLM request').message).not.toContain(sentinel);
+	});
+
+	it.each([
+		['LLMRequestCancelledError', 'cancelled'],
+		['LLMRequestTimeoutError', 'timeout'],
+		['SyntaxError', 'invalid_response']
+	] as const)(
+		'classifies allowlisted %s errors across serialization boundaries',
+		(name, category) => {
+			expect(safeLlmErrorDiagnostic({ name })).toMatchObject({ name, category });
+		}
+	);
 });

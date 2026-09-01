@@ -39,3 +39,4 @@ export * from './turn-intent';
 export * from './turn-contract';
 export * from './turn-outcome';
 export * from './write-ledger';
+export * from './web-egress-policy';

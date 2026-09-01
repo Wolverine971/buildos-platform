@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/onboarding-v3/NotificationsStepV3.svelte -->
 <script lang="ts">
-	import { Bell, Mail, MessageSquare, CheckCircle2 } from 'lucide-svelte';
+	import { Bell, Mail, MessageSquare, CheckCircle2 } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import PhoneVerificationCard from '$lib/components/onboarding-v2/PhoneVerificationCard.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -93,7 +93,7 @@
 	<div class="text-center mb-10">
 		<div class="flex justify-center mb-5">
 			<div
-				class="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
+				class="flex h-14 w-14 items-center justify-center rounded-lg bg-muted shadow-ink tx tx-bloom tx-weak"
 			>
 				<Bell class="w-7 h-7 text-accent" />
 			</div>
@@ -108,19 +108,18 @@
 	<div class="space-y-4 mb-8">
 		<!-- Email toggle -->
 		<label
-			class="flex items-center gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 pressable
+			class="relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-lg border-2 p-5 tx tx-frame tx-weak pressable
 				{wantEmail
 				? 'border-accent bg-accent/5 shadow-ink-strong'
 				: 'border-border bg-card shadow-ink hover:border-accent/50'}"
 		>
-			<div class="tx tx-frame tx-weak rounded-xl absolute inset-0 pointer-events-none"></div>
 			<div
 				class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
 					{wantEmail ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground'}"
 			>
 				<Mail class="w-5 h-5" />
 			</div>
-			<div class="flex-1">
+			<div class="relative min-w-0 flex-1">
 				<div class="font-semibold text-foreground">Email Daily Brief</div>
 				<p class="text-sm text-muted-foreground">
 					A morning email with what matters today — even on the projects you forgot about
@@ -129,25 +128,24 @@
 			<input
 				type="checkbox"
 				bind:checked={wantEmail}
-				class="w-5 h-5 text-accent rounded border-border focus:ring-2 focus:ring-ring"
+				class="relative h-5 w-5 shrink-0 rounded border-border text-accent focus:ring-2 focus:ring-ring"
 			/>
 		</label>
 
 		<!-- SMS toggle -->
 		<label
-			class="flex items-center gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 pressable
+			class="relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-lg border-2 p-5 tx tx-frame tx-weak pressable
 				{wantSMS
 				? 'border-accent bg-accent/5 shadow-ink-strong'
 				: 'border-border bg-card shadow-ink hover:border-accent/50'}"
 		>
-			<div class="tx tx-frame tx-weak rounded-xl absolute inset-0 pointer-events-none"></div>
 			<div
 				class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
 					{wantSMS ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground'}"
 			>
 				<MessageSquare class="w-5 h-5" />
 			</div>
-			<div class="flex-1">
+			<div class="relative min-w-0 flex-1">
 				<div class="font-semibold text-foreground">SMS Notifications</div>
 				<p class="text-sm text-muted-foreground">
 					Text message reminders for events and morning check-ins
@@ -156,7 +154,7 @@
 			<input
 				type="checkbox"
 				bind:checked={wantSMS}
-				class="w-5 h-5 text-accent rounded border-border focus:ring-2 focus:ring-ring"
+				class="relative h-5 w-5 shrink-0 rounded border-border text-accent focus:ring-2 focus:ring-ring"
 			/>
 		</label>
 	</div>
@@ -173,9 +171,9 @@
 	{/if}
 
 	{#if wantSMS && phoneVerified}
-		<div class="mb-8 p-4 bg-success/10 rounded-xl border border-success/30">
-			<p class="text-sm text-success flex items-center gap-2">
-				<CheckCircle2 class="w-4 h-4" />
+		<div class="mb-8 rounded-lg border border-success/30 bg-success/10 p-4">
+			<p class="flex items-center gap-2 text-sm text-foreground">
+				<CheckCircle2 class="h-4 w-4 shrink-0 text-success" />
 				Phone verified — you'll get event reminders and morning check-ins by text
 			</p>
 		</div>
@@ -194,7 +192,7 @@
 				onclick={saveAndContinue}
 				loading={isSaving}
 				disabled={isSaving || (wantSMS && !phoneVerified)}
-				class="flex-1 sm:flex-initial min-w-[200px] order-1 sm:order-2 shadow-ink-strong pressable"
+				class="order-1 flex-1 shadow-ink-strong sm:order-2 sm:min-w-[200px] sm:flex-initial"
 			>
 				{isSaving ? 'Saving...' : 'Continue'}
 			</Button>
@@ -203,7 +201,7 @@
 				variant="primary"
 				size="lg"
 				onclick={skip}
-				class="flex-1 sm:flex-initial min-w-[200px] order-1 sm:order-2 shadow-ink-strong pressable"
+				class="order-1 flex-1 shadow-ink-strong sm:order-2 sm:min-w-[200px] sm:flex-initial"
 			>
 				Continue
 			</Button>

@@ -250,7 +250,7 @@
 				<div class="space-y-2">
 					<label
 						for="security-timeframe"
-						class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+						class="micro-label font-semibold text-muted-foreground"
 					>
 						Timeframe
 					</label>
@@ -347,11 +347,7 @@
 		<AdminCard padding="lg" class="mt-5">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 				<div>
-					<p
-						class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
-					>
-						Live Event Stream
-					</p>
+					<p class="micro-label font-semibold text-muted-foreground">Live Event Stream</p>
 					<h2 class="mt-1 text-xl font-semibold text-foreground">
 						{formatNumber(analysis.securityEventStream.total)} normalized security event(s)
 					</h2>
@@ -410,11 +406,56 @@
 			</div>
 
 			{#if analysis.securityEventStream.recentEvents.length}
-				<div class="mt-5 overflow-x-auto">
+				<div class="mt-5 space-y-3 md:hidden">
+					{#each analysis.securityEventStream.recentEvents as event}
+						<article
+							class="rounded-lg border border-border bg-background/70 p-3 shadow-ink"
+						>
+							<div class="flex min-w-0 items-start justify-between gap-3">
+								<div class="min-w-0">
+									<p class="truncate text-sm font-semibold text-foreground">
+										{formatEventType(event.eventType)}
+									</p>
+									<p class="mt-0.5 text-xs text-muted-foreground">
+										{formatShortDate(event.createdAt)} · {event.category} · {event.severity}
+									</p>
+								</div>
+								<Badge size="sm" variant={outcomeBadge(event.outcome)}>
+									{event.outcome}
+								</Badge>
+							</div>
+
+							<dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+								<div class="min-w-0">
+									<dt class="micro-label">Actor</dt>
+									<dd class="mt-1 truncate font-mono text-foreground">
+										{actorLabel(event)}
+									</dd>
+								</div>
+								<div class="min-w-0">
+									<dt class="micro-label">Target</dt>
+									<dd class="mt-1 truncate font-mono text-foreground">
+										{targetLabel(event)}
+									</dd>
+								</div>
+							</dl>
+
+							{#if event.reason}
+								<p
+									class="mt-3 line-clamp-3 text-xs leading-relaxed text-muted-foreground"
+								>
+									{event.reason}
+								</p>
+							{/if}
+						</article>
+					{/each}
+				</div>
+
+				<div class="mt-5 hidden overflow-x-auto md:block">
 					<table class="min-w-full text-sm">
 						<thead>
 							<tr
-								class="border-b border-border text-left text-xs uppercase tracking-[0.16em] text-muted-foreground"
+								class="micro-label border-b border-border text-left text-muted-foreground"
 							>
 								<th class="py-2 pr-4">Time</th>
 								<th class="py-2 pr-4">Event</th>

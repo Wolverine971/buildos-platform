@@ -1,15 +1,14 @@
 // apps/web/src/routes/api/calendar/analyze/+server.ts
 import type { RequestHandler } from './$types';
-import { env as privateEnv } from '$env/dynamic/private';
 import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { parseJsonRequest } from '$lib/utils/request-validation';
-import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import { GoogleCalendarConnectionService } from '$lib/server/google-calendar-connection.service';
+import { GoogleCalendarTargetService } from '$lib/server/google-calendar-target.service';
+import { hasUsableGoogleCalendarConnection } from '$lib/server/google-calendar-connection-status';
 
 const calendarAnalyzeSchema = z
 	.object({
@@ -28,13 +27,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Check if user has calendar connected
-		const hasCalendarConnection = isMultiCalendarUserAllowed(session.user.id, privateEnv)
-			? (
-					await new GoogleCalendarConnectionService(
-						createAdminSupabaseClient()
-					).listConnections(session.user.id)
-				).connections.some((connection) => connection.status === 'active')
-			: await new CalendarService(supabase).hasValidConnection(session.user.id);
+		const hasCalendarConnection = await hasUsableGoogleCalendarConnection({
+			userId: session.user.id,
+			capability: 'analysis',
+			legacy: new CalendarService(supabase),
+			sourceAware: new GoogleCalendarTargetService(createAdminSupabaseClient())
+		});
 
 		if (!hasCalendarConnection) {
 			return ApiResponse.error(

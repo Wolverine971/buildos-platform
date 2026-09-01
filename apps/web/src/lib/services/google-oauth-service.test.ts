@@ -14,7 +14,8 @@ vi.mock('./errorLogger.service', () => ({
 import {
 	GoogleOAuthConnectionError,
 	GoogleOAuthService,
-	isGoogleOAuthReconnectError
+	isGoogleOAuthReconnectError,
+	safeGoogleOAuthErrorDiagnostic
 } from './google-oauth-service';
 
 function createJsonResponse(body: Record<string, unknown>, ok = true) {
@@ -27,6 +28,11 @@ function createJsonResponse(body: Record<string, unknown>, ok = true) {
 	};
 }
 
+type CalendarTokenUpdatePayload = {
+	access_token: string;
+	refresh_token: string;
+};
+
 function createTokenSupabase(existingToken: { id: string; refresh_token: string } | null) {
 	const selectBuilder: any = {
 		select: vi.fn(() => selectBuilder),
@@ -37,7 +43,7 @@ function createTokenSupabase(existingToken: { id: string; refresh_token: string 
 		})
 	};
 	const updateEqMock = vi.fn().mockResolvedValue({ error: null });
-	const updateMock = vi.fn(() => ({ eq: updateEqMock }));
+	const updateMock = vi.fn((_payload: CalendarTokenUpdatePayload) => ({ eq: updateEqMock }));
 	const insertMock = vi.fn().mockResolvedValue({ error: null });
 
 	return {
@@ -87,6 +93,59 @@ describe('GoogleOAuthService calendar token exchange', () => {
 		} else {
 			process.env.PRIVATE_GOOGLE_CLIENT_SECRET = originalEnv.PRIVATE_GOOGLE_CLIENT_SECRET;
 		}
+	});
+
+	it('signs short-lived Calendar OAuth state and rejects forged, unsigned, or expired state', () => {
+		const service = new GoogleOAuthService({} as any, {
+			clientId: 'google-client-id',
+			clientSecret: 'state-signing-secret'
+		});
+		const now = Date.now();
+		const authUrl = new URL(
+			service.generateCalendarAuthUrl(
+				'https://app.example.com/auth/google/calendar-callback',
+				'user-1',
+				{ redirectPath: '/profile?tab=calendar' }
+			)
+		);
+		const state = authUrl.searchParams.get('state');
+
+		expect(service.verifyCalendarState(state, now)).toMatchObject({
+			userId: 'user-1',
+			redirectPath: '/profile?tab=calendar'
+		});
+		expect(service.verifyCalendarState(`${state}tampered`, now)).toBeNull();
+		expect(service.verifyCalendarState('dXNlci0x', now)).toBeNull();
+		expect(service.verifyCalendarState(state, now + 11 * 60_000)).toBeNull();
+		expect(authUrl.searchParams.get('include_granted_scopes')).toBe('false');
+	});
+
+	it('rejects a Calendar token response containing an unrelated high-risk scope', async () => {
+		fetchMock.mockResolvedValueOnce(
+			createJsonResponse({
+				access_token: 'over-scoped-token',
+				refresh_token: 'refresh-token',
+				expires_in: 3600,
+				token_type: 'Bearer',
+				scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive'
+			})
+		);
+		const { supabase, insertMock, updateMock } = createTokenSupabase(null);
+		const service = new GoogleOAuthService(supabase as any);
+
+		await expect(
+			service.exchangeCodeForTokens(
+				'code-1',
+				'https://app.example.com/auth/google/calendar-callback',
+				'user-1'
+			)
+		).resolves.toEqual({
+			success: false,
+			error: 'Google returned an unexpected OAuth scope set. Please reconnect Google Calendar.'
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(insertMock).not.toHaveBeenCalled();
+		expect(updateMock).not.toHaveBeenCalled();
 	});
 
 	it('does not save a first-time calendar connection without a refresh token', async () => {
@@ -154,7 +213,7 @@ describe('GoogleOAuthService calendar token exchange', () => {
 
 		expect(result).toEqual({ success: true });
 		expect(updateMock).toHaveBeenCalledTimes(1);
-		const updatePayload = updateMock.mock.calls[0][0];
+		const [updatePayload] = updateMock.mock.calls[0]!;
 		expect(decryptCalendarToken(updatePayload.access_token).value).toBe('new-access-token');
 		expect(decryptCalendarToken(updatePayload.refresh_token).value).toBe(
 			'existing-refresh-token'
@@ -226,5 +285,42 @@ describe('GoogleOAuthService calendar token exchange', () => {
 			})
 		).toBe(true);
 		expect(isGoogleOAuthReconnectError(new Error('Temporary provider timeout'))).toBe(false);
+	});
+
+	it('reduces provider failures to credential-safe diagnostics', () => {
+		const credentialSentinel = 'CLIENT_SECRET_MUST_NEVER_REACH_LOGS';
+		const diagnostic = safeGoogleOAuthErrorDiagnostic({
+			name: 'GaxiosError',
+			message: `invalid_grant ${credentialSentinel}`,
+			stack: credentialSentinel,
+			code: 'ETIMEDOUT',
+			response: {
+				status: 400,
+				data: {
+					error: 'invalid_grant',
+					error_description: credentialSentinel
+				},
+				config: {
+					data: `client_secret=${credentialSentinel}`
+				}
+			}
+		});
+
+		expect(diagnostic).toEqual({
+			name: 'GaxiosError',
+			code: 'ETIMEDOUT',
+			status: 400,
+			providerCode: 'invalid_grant'
+		});
+		expect(JSON.stringify(diagnostic)).not.toContain(credentialSentinel);
+
+		const hostileDiagnostic = safeGoogleOAuthErrorDiagnostic({
+			name: credentialSentinel,
+			code: credentialSentinel,
+			status: 401,
+			response: { data: { error: credentialSentinel } }
+		});
+		expect(hostileDiagnostic).toEqual({ name: 'ProviderError', status: 401 });
+		expect(JSON.stringify(hostileDiagnostic)).not.toContain(credentialSentinel);
 	});
 });

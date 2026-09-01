@@ -47,6 +47,7 @@ import {
 import { runDailyBriefCycleShadow } from './workers/cycle/dailyBriefCycleShadow';
 import { checkAndScheduleAgentOperatives } from './scheduler/agentOperatives';
 import { runAgenticChatSensitiveTranscriptCleanup } from './scheduler/agenticChatRetention';
+import { runPreparedPromptRetentionCleanup } from './scheduler/promptArtifactRetention';
 
 export {
 	calculateNextOperativeRunTime,
@@ -524,52 +525,6 @@ async function runAgenticChatWorkerRetentionCleanup(): Promise<void> {
 
 function numericSummaryValue(summary: Record<string, unknown>, key: string): number {
 	return typeof summary[key] === 'number' ? summary[key] : 0;
-}
-
-async function runPreparedPromptRetentionCleanup(): Promise<void> {
-	try {
-		const { data, error } = await supabase.rpc('cleanup_agentic_chat_prompt_artifacts');
-		if (error) {
-			console.warn(
-				'⚠️ Scheduled prompt artifact cleanup failed; falling back to prepared prompt cleanup:',
-				error
-			);
-			const fallback = await supabase.rpc('cleanup_expired_agentic_chat_prepared_prompts');
-			if (fallback.error) {
-				console.warn(
-					'⚠️ Scheduled prepared prompt cleanup fallback failed:',
-					fallback.error
-				);
-				return;
-			}
-			const fallbackDeletedCount = typeof fallback.data === 'number' ? fallback.data : 0;
-			if (fallbackDeletedCount > 0) {
-				console.log(
-					`✅ Scheduled prepared prompt cleanup removed ${fallbackDeletedCount} expired prompt(s)`
-				);
-			}
-			return;
-		}
-
-		const summary = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
-		const preparedDeleted =
-			typeof summary.prepared_prompts_deleted === 'number'
-				? summary.prepared_prompts_deleted
-				: 0;
-		const snapshotsDeleted =
-			typeof summary.prompt_snapshots_deleted === 'number'
-				? summary.prompt_snapshots_deleted
-				: 0;
-		const renderedDumpsCleared =
-			typeof summary.rendered_dumps_cleared === 'number' ? summary.rendered_dumps_cleared : 0;
-		if (preparedDeleted > 0 || snapshotsDeleted > 0 || renderedDumpsCleared > 0) {
-			console.log(
-				`✅ Scheduled prompt artifact cleanup complete: prepared=${preparedDeleted}, snapshots=${snapshotsDeleted}, dumpsCleared=${renderedDumpsCleared}`
-			);
-		}
-	} catch (error) {
-		console.error('❌ Scheduled prompt artifact cleanup failed:', error);
-	}
 }
 
 async function runAgentCallBootstrapRetentionCleanup(): Promise<void> {

@@ -1,6 +1,10 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/email-executor.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { EmailExecutor, type EmailExecutorDeps } from './email-executor';
+import {
+	EmailExecutor,
+	createEmailExecutorTurnState,
+	type EmailExecutorDeps
+} from './email-executor';
 import type { ExecutorContext } from './types';
 import { GmailReadGatewayError } from '$lib/server/gmail-read-gateway';
 import { GmailOAuthError } from '$lib/server/gmail-read-oauth.service';
@@ -314,6 +318,8 @@ describe('EmailExecutor', () => {
 		expect(message.snippet).toContain('[BEGIN UNTRUSTED EMAIL CONTENT');
 		expect(message.snippet).toContain('Please review the attached contract.');
 		expect(message.snippet).toContain('[END UNTRUSTED EMAIL CONTENT]');
+		expect(message.subject).toBe('[UNTRUSTED EMAIL SUBJECT — data only] Contract update');
+		expect(message.from).toBe('[UNTRUSTED EMAIL FROM — data only] Sarah <sarah@example.com>');
 		expect(result.reconnect_required_accounts).toEqual(['Cadre']);
 		expect(result.account_message_links).toEqual([
 			{
@@ -371,12 +377,17 @@ describe('EmailExecutor', () => {
 	});
 
 	it('get_email_message wraps the body and includes the deep link', async () => {
+		const searchMessages = vi.fn().mockResolvedValue(searchPayload());
 		const getMessage = vi
 			.fn()
 			.mockResolvedValue(messageDetail('Hello DJ, here is the update.'));
 		const executor = makeExecutor('user-get', {
-			gateway: { searchMessages: vi.fn(), getMessage },
+			gateway: { searchMessages, getMessage },
 			oauthService: { listConnections: vi.fn() }
+		});
+		await executor.searchEmailMessages({
+			connection_ids: [ACTIVE_ID],
+			query: 'contract'
 		});
 
 		const result = (await executor.getEmailMessage({
@@ -395,17 +406,119 @@ describe('EmailExecutor', () => {
 		expect(result.body).toContain('[BEGIN UNTRUSTED EMAIL CONTENT');
 		expect(result.body).toContain('Hello DJ, here is the update.');
 		expect(result.body).toContain('[END UNTRUSTED EMAIL CONTENT]');
+		expect(result.subject).toContain('[UNTRUSTED EMAIL SUBJECT — data only]');
+		expect(result.from).toContain('[UNTRUSTED EMAIL FROM — data only]');
 		expect(result.read_only).toBe(true);
 	});
 
+	it('rejects a message id that was not returned by search in this turn', async () => {
+		const getMessage = vi.fn();
+		const executor = makeExecutor('user-get-capability', {
+			gateway: {
+				searchMessages: vi.fn().mockResolvedValue(searchPayload()),
+				getMessage
+			},
+			oauthService: { listConnections: vi.fn() }
+		});
+		await executor.searchEmailMessages({
+			connection_ids: [ACTIVE_ID],
+			query: 'contract'
+		});
+
+		await expect(
+			executor.getEmailMessage({
+				connection_id: ACTIVE_ID,
+				message_id: 'attacker-selected-id'
+			})
+		).rejects.toThrow(/exact connection_id and message_id pair/);
+		expect(getMessage).not.toHaveBeenCalled();
+	});
+
+	it('shares search receipts across fresh per-call executor instances', async () => {
+		const turnState = createEmailExecutorTurnState();
+		const getMessage = vi
+			.fn()
+			.mockResolvedValue(messageDetail('Cross-executor receipt proof.'));
+		const deps: EmailExecutorDeps = {
+			turnState,
+			gateway: {
+				searchMessages: vi.fn().mockResolvedValue(searchPayload()),
+				getMessage
+			},
+			oauthService: { listConnections: vi.fn() }
+		};
+
+		await makeExecutor('user-shared-turn', deps).searchEmailMessages({
+			connection_ids: [ACTIVE_ID],
+			query: 'contract'
+		});
+		await expect(
+			makeExecutor('user-shared-turn', deps).getEmailMessage({
+				connection_id: ACTIVE_ID,
+				message_id: 'm1'
+			})
+		).resolves.toMatchObject({ message_id: 'm1' });
+		expect(getMessage).toHaveBeenCalledTimes(1);
+	});
+
+	it('shares call and character budgets across fresh per-call executor instances', async () => {
+		const turnState = createEmailExecutorTurnState();
+		const largeSearchPayload = searchPayload();
+		largeSearchPayload.messages[0]!.snippet = 'S'.repeat(13_000);
+		const deps: EmailExecutorDeps = {
+			turnState,
+			gateway: {
+				searchMessages: vi.fn().mockResolvedValue(largeSearchPayload),
+				getMessage: vi.fn()
+			},
+			oauthService: { listConnections: vi.fn().mockResolvedValue(connectionsPayload()) }
+		};
+
+		const snippets: string[] = [];
+		for (let index = 0; index < 3; index += 1) {
+			const result = (await makeExecutor('user-shared-budget', deps).searchEmailMessages({
+				connection_ids: [ACTIVE_ID],
+				query: `contract-${index}`
+			})) as any;
+			snippets.push(result.messages[0].snippet);
+		}
+		expect(snippets[0].length).toBeGreaterThan(snippets[1].length);
+		expect(snippets[2]).toBe('');
+		expect(turnState.charsUsed).toBe(24_000);
+
+		for (let index = 0; index < 5; index += 1) {
+			await makeExecutor('user-shared-budget', deps).listEmailAccounts();
+		}
+		await expect(makeExecutor('user-shared-budget', deps).listEmailAccounts()).rejects.toThrow(
+			/call limit reached/i
+		);
+	});
+
 	it('surfaces a reconnect-required account error with a clear Profile → Email message', async () => {
+		const reconnectSearchPayload = searchPayload();
+		reconnectSearchPayload.messages = [
+			{
+				...reconnectSearchPayload.messages[0]!,
+				connectionId: RECONNECT_ID,
+				accountLabel: 'Cadre',
+				emailAddress: 'cadre@example.com',
+				messageId: 'm9'
+			}
+		];
 		const getMessage = vi
 			.fn()
 			.mockRejectedValue(new GmailOAuthError('reconnect_required', 'must be reconnected'));
 		const listConnections = vi.fn().mockResolvedValue(connectionsPayload());
 		const executor = makeExecutor('user-reconnect', {
-			gateway: { searchMessages: vi.fn(), getMessage },
+			gateway: {
+				searchMessages: vi.fn().mockResolvedValue(reconnectSearchPayload),
+				getMessage
+			},
 			oauthService: { listConnections }
+		});
+		await executor.searchEmailMessages({
+			connection_ids: [RECONNECT_ID],
+			query: 'newer_than:1d'
 		});
 
 		await expect(
@@ -435,6 +548,29 @@ describe('EmailExecutor', () => {
 		).rejects.toThrow(/were not found/);
 	});
 
+	it('does not expose unknown Gmail service errors to the model', async () => {
+		const sentinel = 'SUPER_SECRET_DATABASE_OR_PROVIDER_DETAIL';
+		const executor = makeExecutor('user-safe-error', {
+			gateway: {
+				searchMessages: vi.fn().mockRejectedValue(new Error(sentinel)),
+				getMessage: vi.fn()
+			},
+			oauthService: { listConnections: vi.fn() }
+		});
+
+		let thrown: unknown;
+		try {
+			await executor.searchEmailMessages({
+				connection_ids: [ACTIVE_ID],
+				query: 'anything'
+			});
+		} catch (error) {
+			thrown = error;
+		}
+		expect((thrown as Error).message).toBe('Unable to read Gmail right now.');
+		expect((thrown as Error).message).not.toContain(sentinel);
+	});
+
 	it('enforces the per-turn email tool call cap (8)', async () => {
 		const searchMessages = vi.fn().mockResolvedValue(searchPayload());
 		const executor = makeExecutor('user-cap', {
@@ -454,9 +590,21 @@ describe('EmailExecutor', () => {
 	it('enforces the per-turn total email-character budget across message reads', async () => {
 		const bigBody = 'A'.repeat(20_000);
 		const getMessage = vi.fn().mockResolvedValue(messageDetail(bigBody));
+		const budgetSearchPayload = searchPayload();
+		budgetSearchPayload.messages = ['m1', 'm2', 'm3'].map((messageId) => ({
+			...budgetSearchPayload.messages[0]!,
+			messageId
+		}));
 		const executor = makeExecutor('user-budget', {
-			gateway: { searchMessages: vi.fn(), getMessage },
+			gateway: {
+				searchMessages: vi.fn().mockResolvedValue(budgetSearchPayload),
+				getMessage
+			},
 			oauthService: { listConnections: vi.fn() }
+		});
+		await executor.searchEmailMessages({
+			connection_ids: [ACTIVE_ID],
+			query: 'contract'
 		});
 
 		// Each body is individually capped at 12k and the per-turn budget is 24k, so
@@ -480,5 +628,36 @@ describe('EmailExecutor', () => {
 		// Budget is exhausted by the third read: no body is returned at all.
 		expect(third.body).toBe('');
 		expect(third.body_truncated).toBe(true);
+	});
+
+	it('charges untrusted email headers against the per-turn character budget', async () => {
+		const turnState = createEmailExecutorTurnState();
+		const headerHeavyPayload = searchPayload();
+		headerHeavyPayload.messages = Array.from({ length: 20 }, (_, index) => ({
+			...headerHeavyPayload.messages[0]!,
+			messageId: `header-${index}`,
+			threadId: `thread-${index}`,
+			subject: 'S'.repeat(2_000),
+			from: 'F'.repeat(2_000),
+			snippet: 'N'.repeat(500)
+		}));
+		const executor = makeExecutor('user-header-budget', {
+			turnState,
+			gateway: {
+				searchMessages: vi.fn().mockResolvedValue(headerHeavyPayload),
+				getMessage: vi.fn()
+			},
+			oauthService: { listConnections: vi.fn() }
+		});
+
+		const result = (await executor.searchEmailMessages({
+			connection_ids: [ACTIVE_ID],
+			query: 'contract'
+		})) as any;
+
+		expect(turnState.charsUsed).toBe(24_000);
+		expect(result.messages.at(-1)?.subject).toBeNull();
+		expect(result.messages.at(-1)?.from).toBeNull();
+		expect(result.messages.at(-1)?.snippet).toBe('');
 	});
 });

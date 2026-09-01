@@ -26,15 +26,22 @@ describe('CalendarExecutor event-id routing', () => {
 			from: vi.fn(),
 			rpc: vi.fn().mockResolvedValue({ data: 'actor-1', error: null })
 		} as unknown as SupabaseClient<Database>;
-		const executor = new CalendarExecutor({
-			supabase: mockSupabase,
-			userId: 'user-1',
-			sessionId: 'session-1',
-			fetchFn: vi.fn() as unknown as typeof fetch,
-			getActorId: async () => 'actor-1',
-			getAdminSupabase: () => mockSupabase as any,
-			getAuthHeaders: async () => ({})
-		});
+		const executor = new CalendarExecutor(
+			{
+				supabase: mockSupabase,
+				userId: 'user-1',
+				sessionId: 'session-1',
+				fetchFn: vi.fn() as unknown as typeof fetch,
+				getActorId: async () => 'actor-1',
+				getAdminSupabase: () => mockSupabase as any,
+				getAuthHeaders: async () => ({})
+			},
+			{
+				googleCalendarWriteService: {
+					hasActiveTarget: vi.fn().mockResolvedValue(false)
+				} as any
+			}
+		);
 		getEventSpy = vi.fn().mockResolvedValue({ id: ONTO_EVENT_UUID, title: 'Onto event' });
 		getCalendarEventSpy = vi
 			.fn()

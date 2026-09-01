@@ -24,4 +24,8 @@ export { OntologyWriteExecutor } from './ontology-write-executor';
 export { UtilityExecutor } from './utility-executor';
 export { ExternalExecutor } from './external-executor';
 export { CalendarExecutor } from './calendar-executor';
-export { EmailExecutor } from './email-executor';
+export {
+	EmailExecutor,
+	createEmailExecutorTurnState,
+	type EmailExecutorTurnState
+} from './email-executor';

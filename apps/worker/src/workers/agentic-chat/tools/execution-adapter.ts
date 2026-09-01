@@ -23,6 +23,7 @@ import {
 } from '@buildos/agentic-chat-runtime/tools';
 import { createEmbeddingsClientFromEnv } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import {
+	evaluateAgenticChatWebEgressProvenance,
 	executeAgenticChatStandardControlToolV1,
 	isAgenticChatStandardControlToolNameV1,
 	searchTelemetryColumns
@@ -71,6 +72,8 @@ function createWorkerEmbeddingsPortFromEnv(): AgenticChatEmbeddingsPortV1 | unde
 }
 
 const MAX_RESULT_BYTES = 480 * 1024;
+const MAX_TURN_SECURITY_STATES = 1_024;
+const TURN_SECURITY_STATE_TTL_MS = 20 * 60_000;
 export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS = 60_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -78,6 +81,12 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 type WorkerReviewControlToolNameV1 = (typeof WORKER_REVIEW_CONTROL_TOOL_NAMES_V1)[number];
 type WorkerReviewControlToolRunnerV1 = (args: JsonObject) => Promise<Record<string, unknown>>;
 const WORKER_REVIEW_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(WORKER_REVIEW_CONTROL_TOOL_NAMES_V1);
+
+type TurnSecurityState = {
+	userId: string;
+	privateContentRead: boolean;
+	expiresAt: number;
+};
 
 function isWorkerReviewControlToolNameV1(value: unknown): value is WorkerReviewControlToolNameV1 {
 	return typeof value === 'string' && WORKER_REVIEW_CONTROL_TOOL_NAME_SET_V1.has(value);
@@ -195,6 +204,16 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	 * growing without limit.
 	 */
 	private readonly accessAdapters = new Map<string, AgenticChatToolAccessPortV1>();
+	/**
+	 * Outbound research is a data-egress capability, not an ordinary read. Once a
+	 * turn has loaded user-scoped workspace content, keep later web requests from
+	 * carrying that content to a model-selected destination.
+	 */
+	private readonly turnSecurityStates = new Map<string, TurnSecurityState>();
+	private readonly securityNow: () => number;
+	private readonly maxTurnSecurityStates: number;
+	private readonly maxTurnSecurityStatesPerUser: number;
+	private readonly turnSecurityStateTtlMs: number;
 	private readonly embeddings: AgenticChatEmbeddingsPortV1 | undefined;
 
 	constructor(
@@ -206,12 +225,35 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			webResearch?: WebResearchPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
 			embeddings?: AgenticChatEmbeddingsPortV1;
+			securityNow?: () => number;
+			maxTurnSecurityStates?: number;
+			maxTurnSecurityStatesPerUser?: number;
+			turnSecurityStateTtlMs?: number;
 		} = {}
 	) {
 		this.now = options.now ?? Date.now;
 		this.timeoutMs = options.timeoutMs ?? AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS;
 		this.webResearchTimeoutMs =
 			options.webResearchTimeoutMs ?? AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS;
+		this.securityNow = options.securityNow ?? Date.now;
+		this.maxTurnSecurityStates = Math.max(
+			1,
+			Math.floor(options.maxTurnSecurityStates ?? MAX_TURN_SECURITY_STATES)
+		);
+		this.maxTurnSecurityStatesPerUser = Math.max(
+			1,
+			Math.min(
+				this.maxTurnSecurityStates,
+				Math.floor(
+					options.maxTurnSecurityStatesPerUser ??
+						Math.max(1, Math.min(64, this.maxTurnSecurityStates / 4))
+				)
+			)
+		);
+		this.turnSecurityStateTtlMs = Math.max(
+			1,
+			Math.floor(options.turnSecurityStateTtlMs ?? TURN_SECURITY_STATE_TTL_MS)
+		);
 		this.webResearch = options.webResearch;
 		this.createAccessAdapter =
 			options.createAccessAdapter ??
@@ -229,10 +271,31 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const webResearchTool = AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1.includes(
 			toolName as (typeof AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1)[number]
 		);
+		const turnRunId = input.executionInput.claim.turnRunId;
 		const standardControlTool = isAgenticChatStandardControlToolNameV1(toolName);
 		const sharedReadTool = isAgenticChatSharedReadToolNameV1(toolName);
 		const contextChangeTool = toolName === CHANGE_CHAT_CONTEXT_TOOL_NAME;
 		const reviewControlTool = isWorkerReviewControlToolNameV1(toolName);
+		const turnSecurityState =
+			webResearchTool || sharedReadTool
+				? this.turnSecurityStateFor(input.executionInput.claim.userId, turnRunId)
+				: null;
+		if (webResearchTool) {
+			if (!turnSecurityState) {
+				throw providerError('read_tool_egress_security_capacity_exceeded', 'permanent');
+			}
+			if (turnSecurityState.privateContentRead) {
+				throw providerError('read_tool_egress_blocked_private_content', 'permanent');
+			}
+			const provenance = evaluateAgenticChatWebEgressProvenance({
+				toolName,
+				arguments: input.arguments,
+				userMessage: String(input.executionInput.requestPayload.message ?? '')
+			});
+			if (!provenance.allowed) {
+				throw providerError('read_tool_egress_provenance_required', 'permanent');
+			}
+		}
 		throwIfAborted(input.signal);
 		if (input.toolName === PROJECT_OVERVIEW_TOOL_NAME) {
 			// Pre-swap context guard, kept exactly where it observably applied
@@ -271,7 +334,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 							webResearchTool ? this.webResearchTimeoutMs : this.timeoutMs
 						}ms deadline`
 					),
-				run: async () => {
+				run: async (deadlineSignal) => {
 					if (standardControlTool) {
 						const execution = executeAgenticChatStandardControlToolV1({
 							toolName,
@@ -309,7 +372,9 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 							`Agentic Chat ${input.toolName} is not configured`
 						);
 					}
-					return requireResultRecord(await executeWebResearch(input.arguments));
+					return requireResultRecord(
+						await executeWebResearch(input.arguments, deadlineSignal)
+					);
 				}
 			});
 		} catch (error) {
@@ -368,6 +433,9 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			result: payload
 		});
 		const duration = Math.min(2_147_483_647, Math.max(0, Math.floor(this.now() - startedAt)));
+		if (sharedReadTool && turnSecurityState) {
+			turnSecurityState.privateContentRead = true;
+		}
 
 		return {
 			result: payload,
@@ -393,6 +461,56 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		}
 		const created = this.createAccessAdapter(userId);
 		this.accessAdapters.set(userId, created);
+		return created;
+	}
+
+	prepareTurnToolBatchSecurity(input: {
+		userId: string;
+		turnRunId: string;
+		toolNames: readonly string[];
+	}): void {
+		if (!input.toolNames.some((toolName) => isAgenticChatSharedReadToolNameV1(toolName))) {
+			return;
+		}
+		// Treat a scheduled private read as tainted before concurrent execution.
+		// Failing closed even when that read later errors avoids an ordering race.
+		const state = this.turnSecurityStateFor(input.userId, input.turnRunId);
+		if (state) state.privateContentRead = true;
+	}
+
+	completeTurnSecurityState(userId: string, turnRunId: string): void {
+		this.turnSecurityStates.delete(this.turnSecurityStateKey(userId, turnRunId));
+	}
+
+	private turnSecurityStateKey(userId: string, turnRunId: string): string {
+		return `${userId}:${turnRunId}`;
+	}
+
+	private turnSecurityStateFor(userId: string, turnRunId: string): TurnSecurityState | null {
+		const now = this.securityNow();
+		for (const [candidateId, state] of this.turnSecurityStates) {
+			if (state.expiresAt <= now) this.turnSecurityStates.delete(candidateId);
+		}
+		const stateKey = this.turnSecurityStateKey(userId, turnRunId);
+		const existing = this.turnSecurityStates.get(stateKey);
+		if (existing) {
+			existing.expiresAt = now + this.turnSecurityStateTtlMs;
+			return existing;
+		}
+		let userStateCount = 0;
+		for (const state of this.turnSecurityStates.values()) {
+			if (state.userId === userId) userStateCount += 1;
+		}
+		if (userStateCount >= this.maxTurnSecurityStatesPerUser) return null;
+		// Never clear active taint to make room. A saturated worker fails new web
+		// egress closed until an existing state expires.
+		if (this.turnSecurityStates.size >= this.maxTurnSecurityStates) return null;
+		const created: TurnSecurityState = {
+			userId,
+			privateContentRead: false,
+			expiresAt: now + this.turnSecurityStateTtlMs
+		};
+		this.turnSecurityStates.set(stateKey, created);
 		return created;
 	}
 

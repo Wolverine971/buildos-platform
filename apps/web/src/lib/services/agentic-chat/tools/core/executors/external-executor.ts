@@ -60,6 +60,46 @@ const logger = createLogger('ExternalExecutor');
 const DEFAULT_WEB_VISIT_LLM_TIMEOUT_MS = 25000;
 const DEFAULT_WEB_VISIT_CACHE_TTL_MS = 15 * 60 * 1000;
 const SEARCH_PAGE_MAX_CHARS = 4_000;
+const SAFE_FETCH_ERROR_CODES = new Set([
+	'ABORT_ERR',
+	'ECONNREFUSED',
+	'ECONNRESET',
+	'ENOTFOUND',
+	'ETIMEDOUT'
+]);
+
+export function safeExternalFetchErrorDiagnostic(error: unknown): {
+	errorName: string;
+	errorCode?: string | number;
+	status?: number;
+} {
+	if (!error || typeof error !== 'object') return { errorName: 'UnknownError' };
+	const candidate = error as {
+		name?: unknown;
+		code?: unknown;
+		status?: unknown;
+		response?: { status?: unknown };
+	};
+	const errorName =
+		candidate.name === 'AbortError' ||
+		candidate.name === 'Error' ||
+		candidate.name === 'FetchError'
+			? candidate.name
+			: 'FetchError';
+	const errorCode =
+		(typeof candidate.code === 'number' && Number.isFinite(candidate.code)) ||
+		(typeof candidate.code === 'string' && SAFE_FETCH_ERROR_CODES.has(candidate.code))
+			? candidate.code
+			: undefined;
+	const rawStatus = candidate.status ?? candidate.response?.status;
+	const status =
+		typeof rawStatus === 'number' && Number.isInteger(rawStatus) ? rawStatus : undefined;
+	return {
+		errorName,
+		...(errorCode !== undefined ? { errorCode } : {}),
+		...(status !== undefined ? { status } : {})
+	};
+}
 
 interface CachedVisitEntry {
 	payload: WebVisitResultPayload;
@@ -198,8 +238,8 @@ export class ExternalExecutor extends BaseExecutor {
 		} catch (error) {
 			if (!staleCache) throw error;
 			logger.warn('Page cache revalidation failed; serving stale content', {
-				url: args.url,
-				error: error instanceof Error ? error.message : String(error)
+				cacheEligible: true,
+				...safeExternalFetchErrorDiagnostic(error)
 			});
 			await this.recordCachedVisitUse(staleCache);
 			return {

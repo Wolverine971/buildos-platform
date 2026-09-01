@@ -1,5 +1,8 @@
 // packages/smart-llm/src/smart-llm-service.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { SmartLLMService } from './smart-llm-service';
 import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
 import {
@@ -101,6 +104,265 @@ function createToolDefs(): Array<{
 		}
 	];
 }
+
+async function emitKimiToolCall(llm: SmartLLMService): Promise<void> {
+	for await (const event of llm.streamText({
+		messages: [{ role: 'user', content: 'Update this task.' }],
+		tools: createToolDefs(),
+		tool_choice: 'auto',
+		model: KIMI_K3_MODEL,
+		userId: 'user-private',
+		sessionId: 'session-private',
+		messageId: 'message-private',
+		operationType: 'test_stream'
+	})) {
+		if (event.type === 'done' || event.type === 'error') break;
+	}
+}
+
+function kimiToolCallResponse(): Response {
+	return buildSSE([
+		JSON.stringify({
+			id: 'chatcmpl-kimi-log',
+			object: 'chat.completion.chunk',
+			created: 0,
+			model: KIMI_K3_MODEL,
+			provider: 'Moonshot AI',
+			choices: [
+				{
+					index: 0,
+					delta: {
+						tool_calls: [
+							{
+								index: 0,
+								id: 'update_onto_task:private',
+								type: 'function',
+								function: {
+									name: 'update_onto_task',
+									arguments:
+										'{"task_id":"private-task","description":"private content"}'
+								}
+							}
+						]
+					},
+					finish_reason: 'tool_calls'
+				}
+			]
+		}),
+		'[DONE]'
+	]);
+}
+
+function restoreEnv(name: string, value: string | undefined): void {
+	if (value === undefined) delete process.env[name];
+	else process.env[name] = value;
+}
+
+describe('Kimi tool-call debug logging privacy', () => {
+	it('does not write tool-call dumps unless the non-production debug gate is explicit', async () => {
+		const dumpDir = await mkdtemp(join(tmpdir(), 'buildos-kimi-log-disabled-'));
+		const previous = {
+			log: process.env.KIMI_TOOL_CALL_LOG,
+			dir: process.env.KIMI_TOOL_CALL_LOG_DIR,
+			nodeEnv: process.env.NODE_ENV
+		};
+		try {
+			delete process.env.KIMI_TOOL_CALL_LOG;
+			process.env.KIMI_TOOL_CALL_LOG_DIR = dumpDir;
+			process.env.NODE_ENV = 'test';
+			const llm = new SmartLLMService({
+				apiKey: 'openrouter-test-key',
+				fetch: vi.fn(async () => kimiToolCallResponse()) as unknown as typeof fetch
+			});
+
+			await emitKimiToolCall(llm);
+
+			expect(await readdir(dumpDir)).toEqual([]);
+		} finally {
+			restoreEnv('KIMI_TOOL_CALL_LOG', previous.log);
+			restoreEnv('KIMI_TOOL_CALL_LOG_DIR', previous.dir);
+			restoreEnv('NODE_ENV', previous.nodeEnv);
+			await rm(dumpDir, { recursive: true, force: true });
+		}
+	});
+
+	it('hard-disables all local stream diagnostics in production even when flags are set', async () => {
+		const dumpDir = await mkdtemp(join(tmpdir(), 'buildos-stream-log-production-'));
+		const previous = {
+			kimi: process.env.KIMI_TOOL_CALL_LOG,
+			kimiDir: process.env.KIMI_TOOL_CALL_LOG_DIR,
+			stream: process.env.LLM_STREAM_DEBUG,
+			streamDir: process.env.LLM_STREAM_DEBUG_DIR,
+			nodeEnv: process.env.NODE_ENV
+		};
+		try {
+			process.env.KIMI_TOOL_CALL_LOG = '1';
+			process.env.KIMI_TOOL_CALL_LOG_DIR = dumpDir;
+			process.env.LLM_STREAM_DEBUG = '1';
+			process.env.LLM_STREAM_DEBUG_DIR = dumpDir;
+			process.env.NODE_ENV = 'production';
+			const llm = new SmartLLMService({
+				apiKey: 'openrouter-test-key',
+				fetch: vi.fn(async () => kimiToolCallResponse()) as unknown as typeof fetch
+			});
+
+			await emitKimiToolCall(llm);
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			expect(await readdir(dumpDir)).toEqual([]);
+		} finally {
+			restoreEnv('KIMI_TOOL_CALL_LOG', previous.kimi);
+			restoreEnv('KIMI_TOOL_CALL_LOG_DIR', previous.kimiDir);
+			restoreEnv('LLM_STREAM_DEBUG', previous.stream);
+			restoreEnv('LLM_STREAM_DEBUG_DIR', previous.streamDir);
+			restoreEnv('NODE_ENV', previous.nodeEnv);
+			await rm(dumpDir, { recursive: true, force: true });
+		}
+	});
+
+	it('writes only bounded, redacted metadata with private permissions when opted in', async () => {
+		const dumpDir = await mkdtemp(join(tmpdir(), 'buildos-kimi-log-enabled-'));
+		const previous = {
+			log: process.env.KIMI_TOOL_CALL_LOG,
+			dir: process.env.KIMI_TOOL_CALL_LOG_DIR,
+			retention: process.env.KIMI_TOOL_CALL_LOG_RETENTION_DAYS,
+			nodeEnv: process.env.NODE_ENV
+		};
+		try {
+			process.env.KIMI_TOOL_CALL_LOG = '1';
+			process.env.KIMI_TOOL_CALL_LOG_DIR = dumpDir;
+			process.env.KIMI_TOOL_CALL_LOG_RETENTION_DAYS = '2';
+			process.env.NODE_ENV = 'test';
+			await writeFile(join(dumpDir, 'kimi-tool-calls-2020-01-01.jsonl'), 'stale\n');
+			const llm = new SmartLLMService({
+				apiKey: 'openrouter-test-key',
+				fetch: vi.fn(async () => kimiToolCallResponse()) as unknown as typeof fetch
+			});
+
+			await emitKimiToolCall(llm);
+			await vi.waitFor(async () => {
+				expect((await readdir(dumpDir)).some((name) => name.includes('2020-01-01'))).toBe(
+					false
+				);
+				expect((await readdir(dumpDir)).some((name) => name.endsWith('.jsonl'))).toBe(true);
+			});
+
+			const [fileName] = (await readdir(dumpDir)).filter((name) => name.endsWith('.jsonl'));
+			expect(fileName).toBeDefined();
+			const filePath = join(dumpDir, fileName!);
+			const raw = await readFile(filePath, 'utf8');
+			const record = JSON.parse(raw.trim()) as Record<string, unknown>;
+			expect(record).toMatchObject({
+				toolName: 'update_onto_task',
+				argumentsJsonValid: true
+			});
+			expect(record.argumentChars).toBeGreaterThan(0);
+			expect(raw).not.toContain('private-task');
+			expect(raw).not.toContain('private content');
+			expect(raw).not.toContain('session-private');
+			expect(raw).not.toContain('message-private');
+			expect((await stat(filePath)).mode & 0o777).toBe(0o600);
+			expect((await stat(dumpDir)).mode & 0o777).toBe(0o700);
+		} finally {
+			restoreEnv('KIMI_TOOL_CALL_LOG', previous.log);
+			restoreEnv('KIMI_TOOL_CALL_LOG_DIR', previous.dir);
+			restoreEnv('KIMI_TOOL_CALL_LOG_RETENTION_DAYS', previous.retention);
+			restoreEnv('NODE_ENV', previous.nodeEnv);
+			await rm(dumpDir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe('LLM stream debug logging privacy', () => {
+	it('writes only aggregate stream shapes with private permissions and bounded retention', async () => {
+		const dumpDir = await mkdtemp(join(tmpdir(), 'buildos-stream-log-enabled-'));
+		const previous = {
+			debug: process.env.LLM_STREAM_DEBUG,
+			dir: process.env.LLM_STREAM_DEBUG_DIR,
+			retention: process.env.LLM_STREAM_DEBUG_RETENTION_DAYS,
+			nodeEnv: process.env.NODE_ENV
+		};
+		try {
+			process.env.LLM_STREAM_DEBUG = '1';
+			process.env.LLM_STREAM_DEBUG_DIR = dumpDir;
+			process.env.LLM_STREAM_DEBUG_RETENTION_DAYS = '2';
+			process.env.NODE_ENV = 'test';
+			await writeFile(join(dumpDir, 'llm-stream-deltas-2020-01-01.jsonl'), 'stale\n');
+			const llm = new SmartLLMService({
+				apiKey: 'openrouter-test-key',
+				fetch: vi.fn(async () => kimiToolCallResponse()) as unknown as typeof fetch
+			});
+
+			await emitKimiToolCall(llm);
+			await vi.waitFor(async () => {
+				expect((await readdir(dumpDir)).some((name) => name.includes('2020-01-01'))).toBe(
+					false
+				);
+				expect(
+					(await readdir(dumpDir)).some((name) => name.startsWith('llm-stream-deltas-'))
+				).toBe(true);
+			});
+
+			const [fileName] = (await readdir(dumpDir)).filter((name) =>
+				name.startsWith('llm-stream-deltas-')
+			);
+			const filePath = join(dumpDir, fileName!);
+			const raw = await readFile(filePath, 'utf8');
+			const record = JSON.parse(raw.trim()) as Record<string, unknown>;
+			expect(record).toMatchObject({
+				model: KIMI_K3_MODEL,
+				provider: 'Moonshot AI',
+				stats: {
+					toolCallChunks: 1,
+					deltaKeyShapes: { tool_calls: 1 }
+				}
+			});
+			for (const privateValue of [
+				'private-task',
+				'private content',
+				'user-private',
+				'session-private',
+				'message-private',
+				'chatcmpl-kimi-log'
+			]) {
+				expect(raw).not.toContain(privateValue);
+			}
+			expect((await stat(filePath)).mode & 0o777).toBe(0o600);
+			expect((await stat(dumpDir)).mode & 0o777).toBe(0o700);
+		} finally {
+			restoreEnv('LLM_STREAM_DEBUG', previous.debug);
+			restoreEnv('LLM_STREAM_DEBUG_DIR', previous.dir);
+			restoreEnv('LLM_STREAM_DEBUG_RETENTION_DAYS', previous.retention);
+			restoreEnv('NODE_ENV', previous.nodeEnv);
+			await rm(dumpDir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe('SmartLLMService embedding error privacy', () => {
+	it.each([
+		['single', (llm: SmartLLMService) => llm.generateEmbedding('private input', 'key')],
+		['batch', (llm: SmartLLMService) => llm.generateEmbeddings(['private input'], 'key')]
+	])('does not expose provider response bodies for %s requests', async (_kind, invoke) => {
+		const sentinel = 'provider-body-secret-7f94';
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: vi.fn(
+				async () => new Response(`upstream failure ${sentinel}`, { status: 429 })
+			) as unknown as typeof fetch
+		});
+
+		const error = await invoke(llm).catch((cause) => cause);
+
+		expect(error).toMatchObject({
+			name: 'OpenAIEmbeddingError',
+			message: 'OpenAI embedding request failed.',
+			status: 429
+		});
+		expect(JSON.stringify(error)).not.toContain(sentinel);
+		expect(String(error)).not.toContain(sentinel);
+	});
+});
 
 describe('SmartLLMService streamText Moonshot tool handling', () => {
 	it('captures include_usage chunks that arrive with empty choices', async () => {
@@ -1248,7 +1510,7 @@ describe('SmartLLMService JSON model recovery', () => {
 				spendLimit: { maxCostUsd: 0.01 },
 				onUsage
 			})
-		).rejects.toThrow('No endpoints found');
+		).rejects.toThrow('No eligible model endpoint was available');
 
 		expect(fetchMock).toHaveBeenCalledOnce();
 		expect(onUsage).toHaveBeenCalledWith(
@@ -1259,6 +1521,56 @@ describe('SmartLLMService JSON model recovery', () => {
 				providerRequestId: undefined
 			})
 		);
+	});
+
+	it('keeps raw provider error bodies out of logs, usage rows, and returned errors', async () => {
+		const sentinel = 'SUPER_SECRET_PROMPT_AND_PROVIDER_BODY';
+		const errorLogger = { logAPIError: vi.fn(async () => undefined) };
+		const usageLogger = { logUsageToDatabase: vi.fn(async () => undefined) };
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						error: {
+							message: sentinel,
+							metadata: { provider_name: sentinel, echoed_prompt: sentinel }
+						}
+					}),
+					{
+						status: 503,
+						headers: { 'content-type': 'application/json' }
+					}
+				)
+		);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			errorLogger,
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		let thrown: unknown;
+		try {
+			await llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Use one bounded attempt.',
+				userId: 'user-private-error',
+				profile: 'powerful',
+				spendLimit: { maxCostUsd: 0.01 }
+			});
+		} catch (error) {
+			thrown = error;
+		}
+
+		expect(JSON.stringify(errorLogger.logAPIError.mock.calls)).not.toContain(sentinel);
+		expect(JSON.stringify(usageLogger.logUsageToDatabase.mock.calls)).not.toContain(sentinel);
+		expect(JSON.stringify(consoleError.mock.calls)).not.toContain(sentinel);
+		expect(String((thrown as Error)?.message)).not.toContain(sentinel);
+		expect(JSON.stringify((thrown as Error & { cause?: unknown })?.cause)).not.toContain(
+			sentinel
+		);
+		consoleError.mockRestore();
 	});
 
 	it('settles a budgeted call to the spend-plan reservation when a 200 response omits usage', async () => {

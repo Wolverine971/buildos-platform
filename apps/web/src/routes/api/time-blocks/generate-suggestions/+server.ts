@@ -28,7 +28,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		return ApiResponse.badRequest('time_block_id is required');
 	}
 
-	const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
+	const timeBlockService = await createTimeBlockRuntimeService(supabase, user.id);
 
 	try {
 		const timeBlock = await timeBlockService.generateSuggestionsForTimeBlock(timeBlockId);

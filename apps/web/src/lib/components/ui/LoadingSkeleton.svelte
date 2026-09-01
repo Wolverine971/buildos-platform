@@ -12,7 +12,9 @@
 
 <div class="flex items-center justify-center" style="min-height: {height}">
 	<div class="text-center">
-		<LoaderCircle class="w-8 h-8 animate-spin text-accent mx-auto mb-3" />
+		<LoaderCircle
+			class="w-8 h-8 animate-spin text-accent mx-auto mb-3 motion-reduce:animate-none"
+		/>
 		<p class="text-muted-foreground">{message}</p>
 	</div>
 </div>

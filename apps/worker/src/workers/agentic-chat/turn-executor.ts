@@ -153,6 +153,12 @@ export type AgenticChatReadToolPortV1 = {
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		signal: AbortSignal;
 	}): Promise<AgenticChatReadToolExecutionV1>;
+	prepareTurnToolBatchSecurity?(input: {
+		userId: string;
+		turnRunId: string;
+		toolNames: readonly string[];
+	}): void;
+	completeTurnSecurityState?(userId: string, turnRunId: string): void;
 };
 
 type PublisherPort = Pick<
@@ -1029,6 +1035,12 @@ export class AgenticChatTurnExecutor {
 			preparedProvider?.release();
 			combined.dispose();
 			this.ports.cancellation.unregisterTurn(claim.turnRunId, generation);
+			if (executionInput) {
+				this.ports.readTool.completeTurnSecurityState?.(
+					executionInput.claim.userId,
+					executionInput.claim.turnRunId
+				);
+			}
 			if (publisherRegistered) this.safeUnregisterPublisher(claim.turnRunId);
 		}
 	}
@@ -1202,6 +1214,14 @@ export class AgenticChatTurnExecutor {
 		const pendingByCallId = new Map(
 			pending.map((entry) => [entry.step.providerToolCallId, entry] as const)
 		);
+		// The adapter must see the whole provider batch before any calls begin.
+		// Otherwise a web call could race a same-batch private read and pass the
+		// turn-level egress gate before the read marks the state as tainted.
+		this.ports.readTool.prepareTurnToolBatchSecurity?.({
+			userId: executionInput.claim.userId,
+			turnRunId: executionInput.claim.turnRunId,
+			toolNames: pending.map(({ step }) => step.toolName)
+		});
 		let graph;
 		try {
 			graph = compileAgenticChatToolExecutionGraphV1({

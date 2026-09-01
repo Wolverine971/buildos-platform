@@ -62,7 +62,7 @@ const DEFAULT_LIST_LOOKAHEAD_DAYS = 90;
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 200;
 const MAX_LIST_FETCH = 300;
-const MAX_LIST_OFFSET = 5000;
+const MAX_LIST_OFFSET = MAX_LIST_FETCH - 1;
 
 const GOOGLE_CALENDAR_HEX_COLORS: Record<string, string> = {
 	'1': '#a4bdfc',

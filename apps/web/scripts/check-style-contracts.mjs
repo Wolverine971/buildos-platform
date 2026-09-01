@@ -98,6 +98,34 @@ if (!modal.includes("'flex flex-col overflow-hidden'")) {
 	fail(modalPath, 'non-scrollable modal content must remain a min-height-aware flex column');
 }
 
+const explicitTransitionFiles = [
+	'lib/components/ui/Button.svelte',
+	'lib/components/ui/TextInput.svelte',
+	'lib/components/ui/Textarea.svelte',
+	'lib/components/ui/Select.svelte',
+	'lib/components/ui/Modal.svelte',
+	'lib/components/ui/FormModal.svelte',
+	'lib/components/ui/Alert.svelte'
+];
+for (const relativePath of explicitTransitionFiles) {
+	const file = join(srcRoot, relativePath);
+	if (/(?:class=|['"])[^'"\n]*\btransition-all\b/.test(contents.get(file) ?? '')) {
+		fail(file, 'shared controls must declare only the properties they animate');
+	}
+}
+
+const formModalPath = join(srcRoot, 'lib/components/ui/FormModal.svelte');
+const formModal = contents.get(formModalPath) ?? '';
+if (!/h-11 w-11[\s\S]{0,300}aria-label="Close modal"/.test(formModal)) {
+	fail(formModalPath, 'the modal dismiss action must retain its 44px touch target');
+}
+
+const alertPath = join(srcRoot, 'lib/components/ui/Alert.svelte');
+const alert = contents.get(alertPath) ?? '';
+if (!/h-11 w-11[\s\S]{0,300}aria-label="Close alert"/.test(alert)) {
+	fail(alertPath, 'the alert dismiss action must retain its 44px touch target');
+}
+
 const briefChatPath = join(srcRoot, 'lib/components/briefs/BriefChatModal.svelte');
 const briefChat = contents.get(briefChatPath) ?? '';
 if (/brief-modal-container|brief-chat-root|use:portal/.test(briefChat)) {

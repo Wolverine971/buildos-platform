@@ -28,6 +28,25 @@
 		return connection.status === 'active';
 	}
 
+	function sourceBaseLabel(source: GoogleCalendarSourceSummary) {
+		return (source.summaryOverride || source.summary || 'Untitled calendar').trim();
+	}
+
+	function sourceDisplayLabel(
+		connection: GoogleCalendarConnectionsPayload['connections'][number],
+		source: GoogleCalendarSourceSummary
+	) {
+		const baseLabel = sourceBaseLabel(source);
+		const duplicateCount = connection.sources.filter(
+			(candidate) =>
+				sourceBaseLabel(candidate).toLocaleLowerCase() === baseLabel.toLocaleLowerCase()
+		).length;
+		if (duplicateCount < 2) return baseLabel;
+		const providerId = source.providerCalendarId.trim();
+		const suffix = providerId.length > 16 ? `…${providerId.slice(-12)}` : providerId;
+		return suffix ? `${baseLabel} · ${suffix}` : `${baseLabel} · ${source.id.slice(0, 8)}`;
+	}
+
 	async function requestJson(path: string, init?: RequestInit) {
 		const response = await fetch(path, init);
 		const body = await response.json().catch(() => null);
@@ -256,7 +275,7 @@
 												<p
 													class="truncate text-xs font-semibold text-foreground"
 												>
-													{source.summaryOverride || source.summary}
+													{sourceDisplayLabel(connection, source)}
 													{#if source.isPrimary}
 														<span
 															class="ml-1 font-normal text-muted-foreground"
@@ -283,7 +302,7 @@
 												<input
 													type="checkbox"
 													checked={source.readEnabled}
-													aria-label={`Events for ${source.summaryOverride || source.summary} in ${connection.accountLabel}`}
+													aria-label={`Events for ${sourceDisplayLabel(connection, source)} in ${connection.accountLabel}`}
 													disabled={!isActiveConnection(connection) ||
 														source.accessRole === 'freeBusyReader' ||
 														Boolean(pendingAction)}
@@ -300,7 +319,7 @@
 												<input
 													type="checkbox"
 													checked={source.availabilityEnabled}
-													aria-label={`Availability for ${source.summaryOverride || source.summary} in ${connection.accountLabel}`}
+													aria-label={`Availability for ${sourceDisplayLabel(connection, source)} in ${connection.accountLabel}`}
 													disabled={!isActiveConnection(connection) ||
 														Boolean(pendingAction)}
 													onchange={(event) =>
@@ -316,7 +335,7 @@
 												<input
 													type="checkbox"
 													checked={source.analysisEnabled}
-													aria-label={`Analysis for ${source.summaryOverride || source.summary} in ${connection.accountLabel}`}
+													aria-label={`Analysis for ${sourceDisplayLabel(connection, source)} in ${connection.accountLabel}`}
 													disabled={!isActiveConnection(connection) ||
 														source.accessRole === 'freeBusyReader' ||
 														Boolean(pendingAction)}
@@ -333,7 +352,7 @@
 												<input
 													type="checkbox"
 													checked={source.syncEnabled}
-													aria-label={`Two-way sync for ${source.summaryOverride || source.summary} in ${connection.accountLabel}`}
+													aria-label={`Two-way sync for ${sourceDisplayLabel(connection, source)} in ${connection.accountLabel}`}
 													disabled={!isActiveConnection(connection) ||
 														!isWritable(source) ||
 														Boolean(pendingAction)}
@@ -372,7 +391,7 @@
 			{#each payload.connections.filter(isActiveConnection) as connection (connection.id)}
 				{#each connection.sources.filter(isWritable) as source (source.id)}
 					<option value={source.id}>
-						{connection.accountLabel} — {source.summaryOverride || source.summary}
+						{connection.accountLabel} — {sourceDisplayLabel(connection, source)}
 					</option>
 				{/each}
 			{/each}

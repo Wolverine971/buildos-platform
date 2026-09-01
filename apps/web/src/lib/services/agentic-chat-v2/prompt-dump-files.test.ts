@@ -47,7 +47,7 @@ describe('shouldWriteLocalPromptDump', () => {
 		).toBe(false);
 	});
 
-	it('still allows real sessions and non-fixture prompts in dev', () => {
+	it('keeps real dev sessions off unless full dumps are explicitly enabled', () => {
 		expect(
 			shouldWriteLocalPromptDump({
 				dev: true,
@@ -55,6 +55,15 @@ describe('shouldWriteLocalPromptDump', () => {
 				historyCount: 0,
 				message: 'What is happening with my projects?',
 				env: {}
+			})
+		).toBe(false);
+		expect(
+			shouldWriteLocalPromptDump({
+				dev: true,
+				sessionId: '6039158b-0b23-4446-a584-06b2d48439b2',
+				historyCount: 0,
+				message: 'What is happening with my projects?',
+				env: { FASTCHAT_LOCAL_PROMPT_DUMPS: 'true' }
 			})
 		).toBe(true);
 	});
@@ -73,7 +82,7 @@ describe('shouldWriteLocalPromptDump', () => {
 });
 
 describe('pruneLocalPromptDumps', () => {
-	it('keeps the last five UTC calendar days and removes older dated dumps', () => {
+	it('keeps the last two UTC calendar days and removes older dated dumps', () => {
 		const dumpDir = createTempDumpDir();
 		writeFileSync(join(dumpDir, 'fastchat-2026-04-03T12-00-00-000Z.txt'), 'old', 'utf-8');
 		writeFileSync(join(dumpDir, 'fastchat-2026-04-04T12-00-00-000Z.txt'), 'keep', 'utf-8');
@@ -87,11 +96,8 @@ describe('pruneLocalPromptDumps', () => {
 			force: true
 		});
 
-		expect(result.removedCount).toBe(2);
-		expect(result.cutoffDate).toBe('2026-04-04');
-		expect(readdirSync(dumpDir).sort()).toEqual([
-			'fastchat-2026-04-04T12-00-00-000Z.txt',
-			'fastchat-2026-04-08T12-00-00-000Z.txt'
-		]);
+		expect(result.removedCount).toBe(3);
+		expect(result.cutoffDate).toBe('2026-04-07');
+		expect(readdirSync(dumpDir).sort()).toEqual(['fastchat-2026-04-08T12-00-00-000Z.txt']);
 	});
 });

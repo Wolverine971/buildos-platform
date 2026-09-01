@@ -1,7 +1,14 @@
 // packages/smart-llm/src/moonshot-client.ts
 
 import type { OpenRouterResponse } from './types';
-import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
+import {
+	isOpenRouterModelAvailabilityError,
+	isOpenRouterProviderError,
+	LLMRequestCancelledError,
+	LLMRequestTimeoutError,
+	safeLlmErrorDiagnostic,
+	safeProviderIdentifier
+} from './errors';
 
 export class MoonshotClient {
 	private apiKey: string;
@@ -95,45 +102,71 @@ export class MoonshotClient {
 						: typeof errorText === 'string'
 							? errorText
 							: 'Unknown error';
-				const trimmedMessage =
-					providerMessage.length > 4000
-						? `${providerMessage.slice(0, 4000)}…`
-						: providerMessage;
 				const requestIdHeader =
 					response.headers.get('x-request-id') || response.headers.get('msh-request-id');
+				const classificationSource = {
+					status: response.status,
+					message: providerMessage,
+					openrouter: { providerName: 'moonshotai' }
+				};
+				const safeErrorCode = safeLlmErrorDiagnostic({
+					status: response.status,
+					code: errorObject?.code
+				}).code;
 
 				const enrichedError = new Error(
-					`Moonshot API error: ${response.status} - ${trimmedMessage}`
+					`Moonshot API request failed (status=${response.status}).`
 				) as Error & {
 					status?: number;
 					moonshot?: Record<string, unknown>;
 					openrouter?: Record<string, unknown>;
 				};
+				enrichedError.name = 'MoonshotHTTPError';
 				enrichedError.status = response.status;
 				enrichedError.moonshot = {
 					httpStatus: response.status,
-					requestId: requestIdHeader ?? null,
-					errorType: errorObject?.type ?? null,
-					errorCode: errorObject?.code ?? null,
-					errorParam: errorObject?.param ?? null,
-					error: errorObject ?? null,
-					providerName: 'moonshotai'
+					requestId: safeProviderIdentifier(requestIdHeader),
+					errorCode: safeErrorCode ?? null,
+					providerName: 'moonshotai',
+					modelAvailabilityError:
+						isOpenRouterModelAvailabilityError(classificationSource),
+					providerError: isOpenRouterProviderError(classificationSource)
 				};
 				enrichedError.openrouter = enrichedError.moonshot;
 				throw enrichedError;
 			}
 
-			const data = (await response.json()) as OpenRouterResponse;
+			let data: OpenRouterResponse;
+			try {
+				data = (await response.json()) as OpenRouterResponse;
+			} catch (error) {
+				if (
+					error instanceof Error &&
+					(error.name === 'TimeoutError' || error.name === 'AbortError')
+				) {
+					throw error;
+				}
+				throw new SyntaxError('Moonshot returned invalid JSON');
+			}
 			if (data.error && typeof data.error.message === 'string' && data.error.message.trim()) {
+				const classificationSource = {
+					message: data.error.message,
+					openrouter: { providerName: 'moonshotai' }
+				};
+				const safeErrorCode = safeLlmErrorDiagnostic({ code: data.error.code }).code;
 				const enrichedError = new Error(
-					`Moonshot API error: ${data.error.message}`
+					'Moonshot API returned an error response.'
 				) as Error & {
 					moonshot?: Record<string, unknown>;
 					openrouter?: Record<string, unknown>;
 				};
+				enrichedError.name = 'MoonshotResponseError';
 				enrichedError.moonshot = {
-					error: data.error,
-					providerName: 'moonshotai'
+					errorCode: safeErrorCode ?? null,
+					providerName: 'moonshotai',
+					modelAvailabilityError:
+						isOpenRouterModelAvailabilityError(classificationSource),
+					providerError: isOpenRouterProviderError(classificationSource)
 				};
 				enrichedError.openrouter = enrichedError.moonshot;
 				throw enrichedError;

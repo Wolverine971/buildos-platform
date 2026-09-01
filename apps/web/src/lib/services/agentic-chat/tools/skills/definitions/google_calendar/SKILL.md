@@ -79,7 +79,7 @@ Create only after choosing scope, inspecting the relevant time window, and decid
 
 ### Update and Delete Rules
 
-- Use exact event IDs or local mapped IDs.
+- Use exact local mapped IDs, or the inseparable Google identity `{ event_id, calendar_source_id }` returned by the list.
 - Verify calendar scope before mutation.
 - Verify whether attendees may be notified.
 - For important or complex writes, read the existing event first and merge intended changes.
@@ -116,7 +116,7 @@ Lookup and sync are different jobs.
 3. Search for likely matches by title, time overlap, attendees, linked task/project metadata, local mapping, and external event IDs.
 4. If a likely event exists, update it, ask, or confirm whether the user wants an additional event.
 5. Create only when no reasonable match exists or the user explicitly wants another event.
-6. For update/delete, use exact IDs. Prefer local mapping, then external event ID plus calendar ID.
+6. For update/delete, use exact IDs. Prefer `onto_event_id` for a local mapping. Otherwise carry `{ event_id, calendar_source_id }` unchanged from the selected list result through detail, update, and delete. Never replace `calendar_source_id` with `calendar_id`, an account label, or a contributing source.
 7. Treat recurring events as high risk. Clarify whether the user means one instance, future instances, or the whole series.
 8. Report what changed and mention attendee notifications or sync implications when relevant.
 
@@ -133,6 +133,7 @@ Return the outcome of the calendar operation, not a narrative:
 
 - Do not create a calendar event before searching the relevant window.
 - Do not mutate by vague title matching alone.
+- Do not separate a Google `event_id` from its returned `calendar_source_id`; provider event IDs can collide across connected accounts.
 - Do not silently apply broad recurrence edits.
 - Do not invent calendar scope.
 - Do not hide failed updates by creating replacement events.

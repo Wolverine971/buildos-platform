@@ -3,6 +3,9 @@ import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { GoogleCalendarTargetService } from '$lib/server/google-calendar-target.service';
+import { hasUsableGoogleCalendarConnection } from '$lib/server/google-calendar-connection-status';
 
 export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
@@ -27,7 +30,12 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 
 	// Check if user has Google Calendar connected
 	const calendarService = new CalendarService(supabase);
-	const isCalendarConnected = await calendarService.hasValidConnection(user.id);
+	const isCalendarConnected = await hasUsableGoogleCalendarConnection({
+		userId: user.id,
+		capability: 'write',
+		legacy: calendarService,
+		sourceAware: new GoogleCalendarTargetService(createAdminSupabaseClient())
+	});
 
 	const projects = (data ?? []).map((project) => ({
 		id: project.id,

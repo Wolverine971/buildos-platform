@@ -16,7 +16,7 @@
 		MessageCircle,
 		Sparkles,
 		Target
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -24,6 +24,7 @@
 	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
 	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import { fade, scale } from 'svelte/transition';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import { onMount, untrack } from 'svelte';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 
@@ -97,6 +98,16 @@
 	const v3Prompts = $derived(intent ? ONBOARDING_V3_CONFIG.capturePrompts[intent] : null);
 	const isExplore = $derived(intent === 'explore');
 	const hadProjectsBeforeStep = untrack(() => initialProjects.length > 0);
+
+	function fadeIn(duration = 250) {
+		return { duration: prefersReducedMotion.current ? 0 : duration };
+	}
+
+	function scaleIn() {
+		return prefersReducedMotion.current
+			? { duration: 0, start: 1 }
+			: { duration: 320, start: 0.96 };
+	}
 
 	const PROMPT_CHIPS = [
 		'What are you trying to finish?',
@@ -551,7 +562,7 @@
 
 		<!-- Composer -->
 		<div
-			class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
+			class="mb-4 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
 			onkeydown={handleCaptureKeydown}
 			role="presentation"
 		>
@@ -572,7 +583,7 @@
 					<button
 						type="button"
 						onclick={() => appendChip(chip)}
-						class="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground hover:text-foreground hover:border-accent/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="inline-flex min-h-11 items-center rounded-full border border-border bg-muted/40 px-3 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
 						{chip}
 					</button>
@@ -585,7 +596,7 @@
 				onclick={submitCapture}
 				disabled={!draftText.trim() || isVoiceRecording || isLoadingChat}
 				loading={isLoadingChat}
-				class="w-full mt-4 shadow-ink pressable"
+				class="mt-4 w-full shadow-ink"
 			>
 				<Sparkles class="w-5 h-5 mr-2" />
 				Shape my first project
@@ -598,7 +609,7 @@
 
 		<!-- Existing projects (returning users): the first win already happened -->
 		{#if initialProjects.length > 0}
-			<div class="mb-4" in:fade={{ duration: 250 }}>
+			<div class="mb-4" in:fade={fadeIn()}>
 				<h3 class="text-sm font-semibold text-muted-foreground mb-2">
 					Already in your workspace
 				</h3>
@@ -608,7 +619,7 @@
 							href={`/projects/${project.id}`}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="group relative block p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak hover:border-accent/50 hover:shadow-ink-strong transition-all pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							class="group relative block rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak pressable hover:border-accent/50 hover:shadow-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<div class="flex items-start gap-3">
 								<div
@@ -654,7 +665,7 @@
 					variant="primary"
 					size="lg"
 					onclick={handleContinue}
-					class="min-w-[200px] shadow-ink-strong pressable"
+					class="min-w-[200px] shadow-ink-strong"
 				>
 					Continue
 					<ArrowRight class="w-4 h-4 ml-2" />
@@ -663,7 +674,7 @@
 				<button
 					type="button"
 					onclick={handleExploreSkip}
-					class="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+					class="inline-flex min-h-11 items-center rounded-md px-3 text-sm text-muted-foreground underline underline-offset-2 transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 				>
 					Skip for now — start with an empty workspace
 				</button>
@@ -671,10 +682,10 @@
 		</div>
 	{:else}
 		<!-- Receipt: what BuildOS understood, created, and will remember -->
-		<div class="mb-6 text-center" in:scale={{ duration: 400, start: 0.95 }}>
+		<div class="mb-6 text-center" in:scale={scaleIn()}>
 			<div class="flex justify-center mb-4">
 				<div
-					class="w-14 h-14 bg-success rounded-xl flex items-center justify-center shadow-ink-strong tx tx-bloom tx-weak"
+					class="flex h-14 w-14 items-center justify-center rounded-lg bg-success shadow-ink-strong tx tx-bloom tx-weak"
 				>
 					<CheckCircle class="w-7 h-7 text-success-foreground" />
 				</div>
@@ -690,16 +701,18 @@
 
 		{#if packetLoading}
 			<div
-				class="mb-4 flex items-center gap-3 p-4 bg-card rounded-xl border border-border shadow-ink"
+				class="mb-4 flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-ink"
 			>
-				<LoaderCircle class="w-5 h-5 animate-spin text-accent flex-shrink-0" />
+				<LoaderCircle
+					class="h-5 w-5 shrink-0 animate-spin text-accent motion-reduce:animate-none"
+				/>
 				<span class="text-sm text-foreground">Pulling your project summary together…</span>
 			</div>
 		{:else if packetError}
 			<div
-				class="mb-4 p-4 bg-card rounded-xl border border-destructive/30 shadow-ink text-sm"
+				class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm shadow-ink tx tx-static tx-weak"
 			>
-				<p class="text-destructive mb-3">{packetError}</p>
+				<p class="mb-3 text-foreground">{packetError}</p>
 				<Button
 					variant="outline"
 					size="sm"
@@ -709,16 +722,12 @@
 				</Button>
 			</div>
 		{:else if packet}
-			<div class="space-y-3 mb-6" in:fade={{ duration: 250 }}>
+			<div class="mb-6 space-y-3" in:fade={fadeIn()}>
 				<!-- What it understood -->
 				<div
-					class="p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
+					class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
 				>
-					<h3
-						class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
-					>
-						What BuildOS understood
-					</h3>
+					<h3 class="micro-label mb-2 text-muted-foreground">What BuildOS understood</h3>
 					<p class="text-base font-semibold text-foreground">{packet.project.name}</p>
 					{#if packet.project.description}
 						<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
@@ -729,13 +738,9 @@
 
 				<!-- What it created -->
 				<div
-					class="p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
+					class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
 				>
-					<h3
-						class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
-					>
-						What it created
-					</h3>
+					<h3 class="micro-label mb-2 text-muted-foreground">What it created</h3>
 					<div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-foreground mb-2">
 						{#if packet.counts.tasks > 0}
 							<span class="inline-flex items-center gap-1.5">
@@ -779,11 +784,9 @@
 				<!-- What it will remember -->
 				{#if packet.start_here?.excerpt}
 					<div
-						class="p-4 bg-card rounded-xl border border-border shadow-ink tx tx-grain tx-weak"
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak"
 					>
-						<h3
-							class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
-						>
+						<h3 class="micro-label mb-2 text-muted-foreground">
 							What it will remember
 						</h3>
 						<p class="text-xs text-muted-foreground mb-2 leading-relaxed">
@@ -802,15 +805,11 @@
 				<!-- Next move -->
 				{#if packet.project.next_step_short}
 					<div
-						class="p-4 bg-accent/5 rounded-xl border border-accent/30 shadow-ink flex items-start gap-3"
+						class="flex items-start gap-3 rounded-lg border border-accent/30 bg-accent/5 p-4 shadow-ink"
 					>
 						<ArrowRight class="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
 						<div>
-							<h3
-								class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1"
-							>
-								Next move
-							</h3>
+							<h3 class="micro-label mb-1 text-muted-foreground">Next move</h3>
 							<p class="text-sm text-foreground">{packet.project.next_step_short}</p>
 						</div>
 					</div>
@@ -824,7 +823,7 @@
 					target="_blank"
 					rel="noopener noreferrer"
 					onclick={handleOpenProject}
-					class="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline underline-offset-2"
+					class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-accent underline-offset-2 hover:bg-accent/10 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
 					<ExternalLink class="w-4 h-4" />
 					Open my project
@@ -832,7 +831,7 @@
 				<button
 					type="button"
 					onclick={openAdjustChat}
-					class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+					class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 				>
 					<MessageCircle class="w-4 h-4" />
 					Adjust in chat
@@ -843,12 +842,12 @@
 		<!-- Calendar follow-up: place the first win in the reality of the week -->
 		{#if hasCalendarConnected}
 			<div
-				class="mb-4 p-5 bg-accent/5 rounded-xl border-2 border-accent/30 shadow-ink tx tx-grain tx-weak"
-				in:scale={{ duration: 400, start: 0.95 }}
+				class="mb-4 rounded-lg border-2 border-accent/30 bg-accent/5 p-4 shadow-ink tx tx-grain tx-weak sm:p-5"
+				in:scale={scaleIn()}
 			>
 				<div class="flex items-start gap-3 mb-4">
 					<div
-						class="w-10 h-10 bg-accent rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent shadow-ink"
 					>
 						<CheckCircle class="w-5 h-5 text-accent-foreground" />
 					</div>
@@ -871,7 +870,9 @@
 					<div
 						class="flex items-center gap-2 p-3 bg-card rounded-lg border border-border"
 					>
-						<LoaderCircle class="w-4 h-4 animate-spin text-accent flex-shrink-0" />
+						<LoaderCircle
+							class="h-4 w-4 shrink-0 animate-spin text-accent motion-reduce:animate-none"
+						/>
 						<span class="text-sm text-foreground font-medium">
 							Analyzing your calendar — check the notification in the bottom-right
 							corner.
@@ -881,7 +882,7 @@
 					<Button
 						variant="primary"
 						onclick={handleStartCalendarAnalysis}
-						class="w-full shadow-ink pressable"
+						class="w-full shadow-ink"
 					>
 						<Sparkles class="w-4 h-4 mr-2" />
 						Analyze my calendar
@@ -890,7 +891,7 @@
 			</div>
 		{:else if !isCheckingConnection}
 			<div
-				class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
+				class="mb-4 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak"
 			>
 				<div class="flex items-start gap-3 mb-3">
 					<div
@@ -911,7 +912,7 @@
 
 				{#if connectionError}
 					<div
-						class="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+						class="mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-foreground"
 					>
 						{connectionError}
 					</div>
@@ -922,7 +923,7 @@
 					onclick={handleConnectCalendar}
 					disabled={isConnectingCalendar}
 					loading={isConnectingCalendar}
-					class="w-full shadow-ink pressable"
+					class="w-full shadow-ink"
 				>
 					{#if isConnectingCalendar}
 						Connecting...
@@ -940,7 +941,7 @@
 				variant="primary"
 				size="lg"
 				onclick={handleContinue}
-				class="min-w-[200px] shadow-ink-strong pressable"
+				class="min-w-[200px] shadow-ink-strong"
 			>
 				Continue setup
 				<ArrowRight class="w-4 h-4 ml-2" />

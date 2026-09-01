@@ -40,6 +40,7 @@ import {
 	ExternalExecutor,
 	CalendarExecutor,
 	EmailExecutor,
+	type EmailExecutorTurnState,
 	type ExecutorContext
 } from './executors';
 
@@ -66,6 +67,7 @@ export class ChatToolExecutor {
 	private logExecutions: boolean;
 	private abortSignal?: AbortSignal;
 	private skipProjectLoopBurst: boolean;
+	private emailTurnState: EmailExecutorTurnState;
 
 	// Cached values
 	private _actorId?: string;
@@ -89,6 +91,7 @@ export class ChatToolExecutor {
 			logExecutions?: boolean;
 			abortSignal?: AbortSignal;
 			skipProjectLoopBurst?: boolean;
+			emailTurnState?: EmailExecutorTurnState;
 		}
 	) {
 		this.sessionId = sessionId;
@@ -98,6 +101,11 @@ export class ChatToolExecutor {
 		this.logExecutions = options?.logExecutions ?? true;
 		this.abortSignal = options?.abortSignal;
 		this.skipProjectLoopBurst = options?.skipProjectLoopBurst ?? false;
+		this.emailTurnState = options?.emailTurnState ?? {
+			callCount: 0,
+			charsUsed: 0,
+			searchedMessageCapabilities: new Set<string>()
+		};
 	}
 
 	setSessionId(sessionId: string): void {
@@ -176,7 +184,9 @@ export class ChatToolExecutor {
 
 	private get emailExecutor(): EmailExecutor {
 		if (!this._emailExecutor) {
-			this._emailExecutor = new EmailExecutor(this.getExecutorContext());
+			this._emailExecutor = new EmailExecutor(this.getExecutorContext(), {
+				turnState: this.emailTurnState
+			});
 		}
 		return this._emailExecutor;
 	}

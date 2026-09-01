@@ -3,7 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CalendarTokens } from '../../app';
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { ErrorLoggerService } from './errorLogger.service';
 import {
 	buildEncryptedCalendarTokenPatch,
@@ -25,7 +25,8 @@ export interface CalendarStatus {
 export interface CalendarAuthState {
 	userId: string;
 	redirectPath?: string;
-	nonce: string | null;
+	nonce: string;
+	issuedAt: number;
 }
 
 export interface TokenRefreshResult {
@@ -38,6 +39,23 @@ export interface AutoRefreshResult {
 	refreshed: boolean;
 	error?: string;
 	requiresReconnect?: boolean;
+}
+
+const LEGACY_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
+const LEGACY_CALENDAR_ALLOWED_SCOPES = new Set([
+	LEGACY_CALENDAR_SCOPE,
+	'https://www.googleapis.com/auth/userinfo.email',
+	'openid'
+]);
+
+function hasSafeLegacyCalendarScopes(scope: unknown): boolean {
+	if (scope == null || scope === '') return true;
+	if (typeof scope !== 'string') return false;
+	const scopes = scope.split(/\s+/).filter(Boolean);
+	return (
+		scopes.includes(LEGACY_CALENDAR_SCOPE) &&
+		scopes.every((grantedScope) => LEGACY_CALENDAR_ALLOWED_SCOPES.has(grantedScope))
+	);
 }
 
 function getPrivateEnv(name: string): string | undefined {
@@ -108,6 +126,85 @@ function isPermanentGoogleGrantFailure(error: unknown): boolean {
 	);
 }
 
+export type SafeGoogleOAuthErrorDiagnostic = {
+	name: string;
+	code?: string | number;
+	status?: number;
+	providerCode?: string;
+};
+
+const SAFE_OAUTH_ERROR_NAMES = new Set([
+	'AbortError',
+	'Error',
+	'FetchError',
+	'GaxiosError',
+	'GoogleOAuthConnectionError'
+]);
+const SAFE_OAUTH_ERROR_CODES = new Set([
+	'ABORT_ERR',
+	'ECONNREFUSED',
+	'ECONNRESET',
+	'ENOTFOUND',
+	'ETIMEDOUT'
+]);
+const SAFE_GOOGLE_PROVIDER_CODES = new Set([
+	'access_denied',
+	'invalid_client',
+	'invalid_grant',
+	'temporarily_unavailable'
+]);
+
+/**
+ * OAuth library errors can retain the complete token request (including the
+ * client secret) in response/config fields. Keep logs useful without ever
+ * serializing the original error, its message, response body, or stack.
+ */
+export function safeGoogleOAuthErrorDiagnostic(error: unknown): SafeGoogleOAuthErrorDiagnostic {
+	if (!error || typeof error !== 'object') {
+		return { name: typeof error === 'string' ? 'ProviderError' : 'UnknownError' };
+	}
+
+	const candidate = error as {
+		name?: unknown;
+		code?: unknown;
+		status?: unknown;
+		response?: { status?: unknown; data?: { error?: unknown } };
+	};
+	const name =
+		typeof candidate.name === 'string' && SAFE_OAUTH_ERROR_NAMES.has(candidate.name)
+			? candidate.name
+			: 'ProviderError';
+	const rawCode = candidate.code;
+	const code =
+		(typeof rawCode === 'number' && Number.isFinite(rawCode)) ||
+		(typeof rawCode === 'string' && SAFE_OAUTH_ERROR_CODES.has(rawCode))
+			? rawCode
+			: undefined;
+	const rawStatus = candidate.status ?? candidate.response?.status;
+	const status =
+		typeof rawStatus === 'number' && Number.isInteger(rawStatus) ? rawStatus : undefined;
+	const rawProviderCode = candidate.response?.data?.error;
+	const providerCode =
+		typeof rawProviderCode === 'string' && SAFE_GOOGLE_PROVIDER_CODES.has(rawProviderCode)
+			? rawProviderCode
+			: undefined;
+
+	return {
+		name,
+		...(code !== undefined ? { code } : {}),
+		...(status !== undefined ? { status } : {}),
+		...(providerCode !== undefined ? { providerCode } : {})
+	};
+}
+
+function safeGoogleOAuthLogError(error: unknown, operation: string): Error {
+	const diagnostic = safeGoogleOAuthErrorDiagnostic(error);
+	const suffix = [diagnostic.providerCode, diagnostic.code, diagnostic.status]
+		.filter((value) => value !== undefined)
+		.join(':');
+	return new Error(`${operation} failed${suffix ? ` (${suffix})` : ''}`);
+}
+
 export class GoogleOAuthService {
 	private supabase: SupabaseClient;
 	private errorLogger: ErrorLoggerService;
@@ -167,9 +264,12 @@ export class GoogleOAuthService {
 				throw error;
 			}
 		} catch (error) {
-			console.error('Failed to upgrade stored calendar tokens:', error);
+			console.error(
+				'Failed to upgrade stored calendar tokens:',
+				safeGoogleOAuthErrorDiagnostic(error)
+			);
 			await this.errorLogger.logDatabaseError(
-				error,
+				safeGoogleOAuthLogError(error, 'calendar token encryption upgrade'),
 				'UPDATE',
 				'user_calendar_tokens',
 				userId,
@@ -211,32 +311,64 @@ export class GoogleOAuthService {
 	/**
 	 * Generate Google Calendar OAuth URL with comprehensive scopes
 	 */
-	static encodeCalendarState(state: CalendarAuthState): string {
-		return Buffer.from(JSON.stringify(state), 'utf-8').toString('base64url');
+	static encodeCalendarState(state: CalendarAuthState, signingSecret: string): string {
+		if (!signingSecret) {
+			throw new GoogleOAuthConnectionError('Google OAuth client secret is not configured');
+		}
+		const payload = Buffer.from(JSON.stringify(state), 'utf-8').toString('base64url');
+		const signature = createHmac('sha256', signingSecret).update(payload).digest('base64url');
+		return `${payload}.${signature}`;
 	}
 
-	static decodeCalendarState(state: string | null): CalendarAuthState | null {
+	static decodeCalendarState(
+		state: string | null,
+		signingSecret: string,
+		now = Date.now()
+	): CalendarAuthState | null {
 		if (!state) return null;
 
 		try {
-			const decoded = Buffer.from(state, 'base64url').toString('utf-8');
+			const [payload, signature, extra] = state.split('.');
+			if (!payload || !signature || extra || !signingSecret) return null;
+			const expectedSignature = createHmac('sha256', signingSecret).update(payload).digest();
+			const receivedSignature = Buffer.from(signature, 'base64url');
+			if (
+				receivedSignature.length !== expectedSignature.length ||
+				!timingSafeEqual(receivedSignature, expectedSignature)
+			) {
+				return null;
+			}
+
+			const decoded = Buffer.from(payload, 'base64url').toString('utf-8');
 			const parsed = JSON.parse(decoded);
-			if (parsed && typeof parsed.userId === 'string') {
+			const issuedAt = typeof parsed?.issuedAt === 'number' ? parsed.issuedAt : NaN;
+			const ageMs = now - issuedAt;
+			if (
+				parsed &&
+				typeof parsed.userId === 'string' &&
+				typeof parsed.nonce === 'string' &&
+				parsed.nonce.length >= 32 &&
+				Number.isFinite(issuedAt) &&
+				ageMs >= -60_000 &&
+				ageMs <= 10 * 60_000
+			) {
 				return {
 					userId: parsed.userId,
 					redirectPath:
 						typeof parsed.redirectPath === 'string' ? parsed.redirectPath : undefined,
-					nonce: typeof parsed.nonce === 'string' ? parsed.nonce : null
+					nonce: parsed.nonce,
+					issuedAt
 				};
 			}
 		} catch {
-			// Fall back to legacy plain userId state format
-			if (typeof state === 'string' && state.length > 0) {
-				return { userId: state, nonce: null };
-			}
+			return null;
 		}
 
 		return null;
+	}
+
+	verifyCalendarState(state: string | null, now = Date.now()): CalendarAuthState | null {
+		return GoogleOAuthService.decodeCalendarState(state, this.requireClientSecret(), now);
 	}
 
 	generateCalendarAuthUrl(
@@ -253,7 +385,8 @@ export class GoogleOAuthService {
 		const state: CalendarAuthState = {
 			userId,
 			redirectPath: options?.redirectPath,
-			nonce: randomBytes(16).toString('hex')
+			nonce: randomBytes(32).toString('base64url'),
+			issuedAt: Date.now()
 		};
 
 		const params = new URLSearchParams({
@@ -261,10 +394,10 @@ export class GoogleOAuthService {
 			response_type: 'code',
 			scope: scopes,
 			redirect_uri: redirectUri,
-			state: GoogleOAuthService.encodeCalendarState(state),
+			state: GoogleOAuthService.encodeCalendarState(state, this.requireClientSecret()),
 			access_type: 'offline',
 			prompt: 'consent',
-			include_granted_scopes: 'true'
+			include_granted_scopes: 'false'
 		});
 
 		return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -303,9 +436,9 @@ export class GoogleOAuthService {
 				google_email: normalizedTokens.google_email
 			};
 		} catch (error) {
-			console.error('Error checking calendar status:', error);
+			console.error('Error checking calendar status:', safeGoogleOAuthErrorDiagnostic(error));
 			await this.errorLogger.logDatabaseError(
-				error,
+				safeGoogleOAuthLogError(error, 'calendar status check'),
 				'SELECT',
 				'user_calendar_tokens',
 				userId,
@@ -322,7 +455,10 @@ export class GoogleOAuthService {
 		try {
 			return await this.getCalendarStatus(userId);
 		} catch (error) {
-			console.error('Safe calendar status check failed:', error);
+			console.error(
+				'Safe calendar status check failed:',
+				safeGoogleOAuthErrorDiagnostic(error)
+			);
 			return { isConnected: false };
 		}
 	}
@@ -362,7 +498,10 @@ export class GoogleOAuthService {
 			// Store the new tokens when they are refreshed
 			if (newTokens.refresh_token || newTokens.access_token) {
 				this.updateTokens(userId, newTokens).catch((error) => {
-					console.error('Failed to update tokens after refresh:', error);
+					console.error(
+						'Failed to update tokens after refresh:',
+						safeGoogleOAuthErrorDiagnostic(error)
+					);
 				});
 			}
 		});
@@ -374,19 +513,22 @@ export class GoogleOAuthService {
 				await this.updateTokens(userId, credentials);
 				oauth2Client.setCredentials(credentials);
 			} catch (refreshError: any) {
-				console.error('Token refresh failed:', refreshError);
+				console.error(
+					'Token refresh failed:',
+					safeGoogleOAuthErrorDiagnostic(refreshError)
+				);
 				if (isPermanentGoogleGrantFailure(refreshError)) {
 					try {
 						await this.disconnectCalendar(userId);
 					} catch (disconnectError) {
 						console.error(
 							'Failed to quarantine expired calendar connection:',
-							disconnectError
+							safeGoogleOAuthErrorDiagnostic(disconnectError)
 						);
 					}
 				}
 				await this.errorLogger.logAPIError(
-					refreshError,
+					safeGoogleOAuthLogError(refreshError, 'calendar token refresh'),
 					'https://oauth2.googleapis.com/token',
 					'POST',
 					userId,
@@ -408,9 +550,12 @@ export class GoogleOAuthService {
 			try {
 				await this.updateTokens(userId, newTokens);
 			} catch (updateError) {
-				console.error('Failed to update tokens in database:', updateError);
+				console.error(
+					'Failed to update tokens in database:',
+					safeGoogleOAuthErrorDiagnostic(updateError)
+				);
 				await this.errorLogger.logDatabaseError(
-					updateError,
+					safeGoogleOAuthLogError(updateError, 'refreshed token persistence'),
 					'UPDATE',
 					'user_calendar_tokens',
 					userId,
@@ -465,9 +610,9 @@ export class GoogleOAuthService {
 				needsRefresh
 			};
 		} catch (error) {
-			console.error('Error fetching calendar tokens:', error);
+			console.error('Error fetching calendar tokens:', safeGoogleOAuthErrorDiagnostic(error));
 			await this.errorLogger.logDatabaseError(
-				error,
+				safeGoogleOAuthLogError(error, 'calendar token lookup'),
 				'SELECT',
 				'user_calendar_tokens',
 				userId,
@@ -578,7 +723,10 @@ export class GoogleOAuthService {
 					.eq('user_id', userId);
 
 				if (updateError) {
-					console.error('Database update error:', updateError);
+					console.error(
+						'Database update error:',
+						safeGoogleOAuthErrorDiagnostic(updateError)
+					);
 					return {
 						success: false,
 						error: 'Failed to update tokens in database'
@@ -592,7 +740,7 @@ export class GoogleOAuthService {
 
 				return { success: true };
 			} catch (refreshError: any) {
-				console.error('OAuth refresh error:', refreshError);
+				console.error('OAuth refresh error:', safeGoogleOAuthErrorDiagnostic(refreshError));
 
 				// Handle specific OAuth errors
 				const requiresReconnect =
@@ -603,7 +751,7 @@ export class GoogleOAuthService {
 					refreshError.code === 400;
 
 				await this.errorLogger.logAPIError(
-					refreshError,
+					safeGoogleOAuthLogError(refreshError, 'calendar token refresh'),
 					'https://oauth2.googleapis.com/token',
 					'POST',
 					userId,
@@ -622,7 +770,7 @@ export class GoogleOAuthService {
 						} catch (disconnectError) {
 							console.error(
 								'Failed to quarantine expired calendar connection:',
-								disconnectError
+								safeGoogleOAuthErrorDiagnostic(disconnectError)
 							);
 						}
 					}
@@ -635,13 +783,13 @@ export class GoogleOAuthService {
 
 				return {
 					success: false,
-					error: refreshError.message || 'Failed to refresh calendar tokens'
+					error: 'Failed to refresh calendar tokens'
 				};
 			}
 		} catch (error: any) {
-			console.error('Token refresh failed:', error);
+			console.error('Token refresh failed:', safeGoogleOAuthErrorDiagnostic(error));
 			await this.errorLogger.logDatabaseError(
-				error,
+				safeGoogleOAuthLogError(error, 'calendar token refresh preparation'),
 				'SELECT',
 				'user_calendar_tokens',
 				userId,
@@ -652,7 +800,7 @@ export class GoogleOAuthService {
 			);
 			return {
 				success: false,
-				error: error.message || 'Failed to refresh token'
+				error: 'Failed to refresh token'
 			};
 		}
 	}
@@ -723,9 +871,9 @@ export class GoogleOAuthService {
 				requiresReconnect: result.requiresReconnect
 			};
 		} catch (error: any) {
-			console.error('Auto-refresh check failed:', error);
+			console.error('Auto-refresh check failed:', safeGoogleOAuthErrorDiagnostic(error));
 			await this.errorLogger.logDatabaseError(
-				error,
+				safeGoogleOAuthLogError(error, 'calendar auto-refresh check'),
 				'SELECT',
 				'user_calendar_tokens',
 				userId,
@@ -736,7 +884,7 @@ export class GoogleOAuthService {
 			);
 			return {
 				refreshed: false,
-				error: error.message || 'Auto-refresh check failed'
+				error: 'Auto-refresh check failed'
 			};
 		}
 	}
@@ -766,9 +914,12 @@ export class GoogleOAuthService {
 					await oauth2Client.refreshAccessToken();
 					return true;
 				} catch (error) {
-					console.error('Quick token verification failed:', error);
+					console.error(
+						'Quick token verification failed:',
+						safeGoogleOAuthErrorDiagnostic(error)
+					);
 					await this.errorLogger.logAPIError(
-						error,
+						safeGoogleOAuthLogError(error, 'calendar token verification'),
 						'https://oauth2.googleapis.com/token',
 						'POST',
 						userId,
@@ -784,9 +935,12 @@ export class GoogleOAuthService {
 
 			return true;
 		} catch (error) {
-			console.error('Error checking calendar connection:', error);
+			console.error(
+				'Error checking calendar connection:',
+				safeGoogleOAuthErrorDiagnostic(error)
+			);
 			await this.errorLogger.logDatabaseError(
-				error,
+				safeGoogleOAuthLogError(error, 'calendar connection check'),
 				'SELECT',
 				'user_calendar_tokens',
 				userId,
@@ -815,9 +969,9 @@ export class GoogleOAuthService {
 			if (tokenError) throw tokenError;
 			this.clientCache.delete(userId);
 		} catch (error) {
-			console.error('Error disconnecting calendar:', error);
+			console.error('Error disconnecting calendar:', safeGoogleOAuthErrorDiagnostic(error));
 			await this.errorLogger.logDatabaseError(
-				error,
+				safeGoogleOAuthLogError(error, 'calendar disconnect'),
 				'DELETE',
 				'user_calendar_tokens',
 				userId,
@@ -857,11 +1011,8 @@ export class GoogleOAuthService {
 			});
 
 			if (!tokenResponse.ok) {
-				const errorData = await tokenResponse.text();
 				console.error('Token exchange failed:', {
-					status: tokenResponse.status,
-					statusText: tokenResponse.statusText,
-					error: errorData
+					status: tokenResponse.status
 				});
 				return { success: false, error: 'Token exchange failed' };
 			}
@@ -870,6 +1021,12 @@ export class GoogleOAuthService {
 
 			if (!tokens.access_token) {
 				return { success: false, error: 'No access token received' };
+			}
+			if (!hasSafeLegacyCalendarScopes(tokens.scope)) {
+				return {
+					success: false,
+					error: 'Google returned an unexpected OAuth scope set. Please reconnect Google Calendar.'
+				};
 			}
 
 			// Get user profile info
@@ -917,7 +1074,7 @@ export class GoogleOAuthService {
 				expiry_date: expiryDate,
 				google_user_id: profile.id,
 				google_email: profile.email,
-				scope: tokens.scope || 'https://www.googleapis.com/auth/calendar',
+				scope: tokens.scope || LEGACY_CALENDAR_SCOPE,
 				token_type: tokens.token_type || 'Bearer',
 				updated_at: new Date().toISOString()
 			};
@@ -929,7 +1086,10 @@ export class GoogleOAuthService {
 					.eq('user_id', userId);
 
 				if (dbError) {
-					console.error('Database update error:', dbError);
+					console.error(
+						'Database update error:',
+						safeGoogleOAuthErrorDiagnostic(dbError)
+					);
 					return { success: false, error: 'Database error' };
 				}
 			} else {
@@ -938,16 +1098,22 @@ export class GoogleOAuthService {
 					.insert(tokenData);
 
 				if (dbError) {
-					console.error('Database insert error:', dbError);
+					console.error(
+						'Database insert error:',
+						safeGoogleOAuthErrorDiagnostic(dbError)
+					);
 					return { success: false, error: 'Database error' };
 				}
 			}
 
 			return { success: true };
 		} catch (error: any) {
-			console.error('Error exchanging code for tokens:', error);
+			console.error(
+				'Error exchanging code for tokens:',
+				safeGoogleOAuthErrorDiagnostic(error)
+			);
 			await this.errorLogger.logAPIError(
-				error,
+				safeGoogleOAuthLogError(error, 'OAuth code exchange'),
 				'https://oauth2.googleapis.com/token',
 				'POST',
 				userId,
@@ -958,7 +1124,7 @@ export class GoogleOAuthService {
 					hasCode: !!code
 				}
 			);
-			return { success: false, error: error.message || 'Unexpected error' };
+			return { success: false, error: 'Unexpected OAuth exchange error' };
 		}
 	}
 
@@ -990,7 +1156,7 @@ export class GoogleOAuthService {
 				}
 			}
 		} catch (error) {
-			console.warn('userinfo v1 failed:', error);
+			console.warn('userinfo v1 failed:', safeGoogleOAuthErrorDiagnostic(error));
 		}
 
 		// Method 2: Try userinfo v2 endpoint
@@ -1013,7 +1179,7 @@ export class GoogleOAuthService {
 				}
 			}
 		} catch (error) {
-			console.warn('userinfo v2 failed:', error);
+			console.warn('userinfo v2 failed:', safeGoogleOAuthErrorDiagnostic(error));
 		}
 
 		// Method 3: Try to decode ID token
@@ -1033,7 +1199,7 @@ export class GoogleOAuthService {
 					}
 				}
 			} catch (error) {
-				console.warn('ID token decode failed:', error);
+				console.warn('ID token decode failed:', safeGoogleOAuthErrorDiagnostic(error));
 			}
 		}
 
@@ -1060,7 +1226,7 @@ export class GoogleOAuthService {
 				}
 			}
 		} catch (error) {
-			console.warn('Calendar fallback failed:', error);
+			console.warn('Calendar fallback failed:', safeGoogleOAuthErrorDiagnostic(error));
 		}
 
 		// Last resort: Use fallback email

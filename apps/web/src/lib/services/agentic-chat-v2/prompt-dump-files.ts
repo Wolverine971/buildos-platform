@@ -2,7 +2,7 @@
 import { readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
-const DEFAULT_LOCAL_PROMPT_DUMP_RETENTION_DAYS = 5;
+const DEFAULT_LOCAL_PROMPT_DUMP_RETENTION_DAYS = 2;
 const DEFAULT_LOCAL_PROMPT_DUMP_PRUNE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 const LOW_SIGNAL_FIXTURE_MESSAGES = new Set([
@@ -50,10 +50,6 @@ function readDatedFilename(name: string): string | null {
 	return match?.[1] ?? null;
 }
 
-function isTestLikeEnv(env: NodeJS.ProcessEnv): boolean {
-	return Boolean(env.VITEST) || env.NODE_ENV === 'test';
-}
-
 export function shouldWriteLocalPromptDump(params: {
 	dev: boolean;
 	sessionId: string;
@@ -63,14 +59,12 @@ export function shouldWriteLocalPromptDump(params: {
 }): boolean {
 	const env = params.env ?? process.env;
 	const explicitToggle = parseBooleanEnv(env.FASTCHAT_LOCAL_PROMPT_DUMPS);
-	if (explicitToggle === false) return false;
 	// Prompt dumps contain full rendered prompts. Never let an environment flag
 	// turn filesystem dumping on in a production build.
 	if (!params.dev) return false;
-
-	if (isTestLikeEnv(env) && explicitToggle !== true) {
-		return false;
-	}
+	// Full prompt/history/tool dumps are always explicit opt-in, including for
+	// real accounts in local development.
+	if (explicitToggle !== true) return false;
 
 	const includeFixtures = parseBooleanEnv(env.FASTCHAT_LOCAL_PROMPT_DUMPS_INCLUDE_FIXTURES);
 	if (includeFixtures === true) {
@@ -93,11 +87,6 @@ export function pruneLocalPromptDumps(params: {
 	force?: boolean;
 }): { removedCount: number; cutoffDate: string | null } {
 	const env = params.env ?? process.env;
-	const explicitToggle = parseBooleanEnv(env.FASTCHAT_LOCAL_PROMPT_DUMPS);
-	if (explicitToggle === false) {
-		return { removedCount: 0, cutoffDate: null };
-	}
-
 	const retentionDays =
 		parsePositiveIntEnv(env.FASTCHAT_LOCAL_PROMPT_DUMP_RETENTION_DAYS) ??
 		DEFAULT_LOCAL_PROMPT_DUMP_RETENTION_DAYS;

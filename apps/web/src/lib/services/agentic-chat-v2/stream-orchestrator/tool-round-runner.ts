@@ -403,6 +403,17 @@ async function dispatchUnavailableToolCall(
 					function: { ...toolCall.function, name: executableName }
 				}
 			: toolCall;
+	// Loading a schema and executing it are separate security boundaries. A
+	// write can be exposed so the user can review exact arguments without being
+	// authorized to reach its executor in the same turn.
+	const executionAuthorization = params.authorizeToolCall?.(directToolCall, 'execution');
+	if (executionAuthorization && !executionAuthorization.allowed) {
+		return {
+			executionToolCall: directToolCall,
+			executedToolCallDelta: 0,
+			result: executionAuthorization.result
+		};
+	}
 	const result = await validateOrExecuteDirectToolCall({
 		...params,
 		originalToolCall,

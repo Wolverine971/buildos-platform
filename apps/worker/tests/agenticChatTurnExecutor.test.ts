@@ -670,6 +670,7 @@ function createHarness(
 	}> = [];
 	const input = { load: vi.fn(async () => executionInput) };
 	const readTool = {
+		prepareTurnToolBatchSecurity: vi.fn(),
 		execute: vi.fn(async () => ({
 			result: { title: 'Fixture project' },
 			executionTimeMs: null,

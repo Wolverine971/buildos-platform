@@ -73,6 +73,7 @@ import {
 	checkProjectAccess
 } from '$lib/services/agentic-chat-v2/access-checks';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
+import { createEmailExecutorTurnState } from '$lib/services/agentic-chat/tools/core/executors/email-executor';
 import { ToolExecutionService } from '$lib/services/agentic-chat/legacy-execution/tool-execution-service';
 import {
 	isSearchTool,
@@ -945,7 +946,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 				entityId,
 				projectId: projectIdForLogs ?? null,
 				projectFocus,
-				latestUserMessage: messageForModel,
+				latestUserMessage: message,
 				conversationSummary,
 				agentMetadata: session.agent_metadata,
 				contextShiftHintTtlMs: STREAM_CONFIG.contextShiftHintTtlMs,
@@ -1539,6 +1540,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 			let latestContextShift: ContextShiftPayload | null = null;
 			let effectiveProjectIdForTools =
 				resolveEffectiveProjectId({ contextType, entityId, projectFocus }) ?? undefined;
+			const emailTurnState = createEmailExecutorTurnState();
 			const toolExecutorInstance =
 				tools.length > 0
 					? new ChatToolExecutor(supabase, userId, session.id, fetch, llm, {
@@ -1546,7 +1548,8 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 							// Thread the turn signal so a cancel aborts in-flight tool HTTP
 							// requests (writes) instead of letting them land after the turn ends.
 							abortSignal: turnAbortController.signal,
-							skipProjectLoopBurst
+							skipProjectLoopBurst,
+							emailTurnState
 						})
 					: undefined;
 			const sharedToolExecutor =
@@ -1568,7 +1571,8 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 							: new ChatToolExecutor(supabase, userId, session.id, fetch, llm, {
 									logExecutions: false,
 									abortSignal: executionAbortSignal,
-									skipProjectLoopBurst
+									skipProjectLoopBurst,
+									emailTurnState
 								});
 					const result = await executorForCall.execute(call);
 					if (!result.success) {
@@ -1753,7 +1757,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 				const livingWorkspaceToolSelection = applyLivingWorkspaceToolProfile({
 					tools,
 					workspace: agentWorkspace,
-					latestUserMessage: messageForModel,
+					latestUserMessage: message,
 					turnIntent
 				});
 				if (livingWorkspaceToolSelection.tools !== tools) {
@@ -1787,7 +1791,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 				// that gap without making the skill global or spending an LLM round.
 				const projectDomainRuntimeSkillId = resolveProjectDomainRuntimeSkillId({
 					workspace: agentWorkspace,
-					latestUserMessage: messageForModel,
+					latestUserMessage: message,
 					implicitCapture: livingWorkspaceToolSelection.implicitCapture
 				});
 				if (STREAM_CONFIG.scaffold.routing.skillPreload && projectDomainRuntimeSkillId) {
@@ -1843,7 +1847,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 				const turnSituation = resolveLitePromptTurnSituation({
 					toolNames: extractToolNamesFromDefinitions(tools),
 					turnIntentRequiresWrite: turnIntent.requiresWrite,
-					latestUserMessage: messageForModel,
+					latestUserMessage: message,
 					livingWorkspace: agentWorkspace?.mode === 'living_reference',
 					livingWorkspaceCapture: livingWorkspaceToolSelection.implicitCapture,
 					domainProfile: agentWorkspace?.domain_profile ?? null,
@@ -1856,7 +1860,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 						tools,
 						productSurface: STREAM_CONFIG.endpoint,
 						conversationPosition: `live stream turn ${streamRunId}`,
-						currentUserMessage: messageForModel,
+						currentUserMessage: message,
 						domainSensingResult: null,
 						scaffold: STREAM_CONFIG.scaffold.prompt
 					});
@@ -1881,7 +1885,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 						tools,
 						productSurface: STREAM_CONFIG.endpoint,
 						conversationPosition: `live stream turn ${streamRunId}`,
-						currentUserMessage: messageForModel,
+						currentUserMessage: message,
 						domainSensingResult: null,
 						scaffold: STREAM_CONFIG.scaffold.prompt
 					});
@@ -1889,7 +1893,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 
 				if (litePromptEnvelope) {
 					litePromptEnvelope = applyActiveDomainSignalsOverlay(litePromptEnvelope, {
-						currentUserMessage: messageForModel,
+						currentUserMessage: message,
 						conversationSummary,
 						priorDomainIds,
 						priorOutcomeCardIds,
@@ -2408,6 +2412,8 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 				initialTurnContract: pendingTurnContract?.contract ?? null,
 				history: historyForModel,
 				message: messageForModel,
+				trustedUserMessage: message,
+				currentTurnContainsUntrustedContent: chatAttachmentRefs.length > 0,
 				currentTurnContent,
 				signal: turnAbortController.signal,
 				systemPrompt,
@@ -2780,13 +2786,15 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 							});
 						}
 						if (!result.success) {
+							const toolErrorLength =
+								typeof result.error === 'string' ? result.error.length : 0;
 							const toolFailureMetadata = {
 								sessionId: session.id,
 								contextType: effectiveContextType,
 								entityId: effectiveEntityId,
 								toolName: patchedCall.function.name,
 								toolCallId: patchedCall.id,
-								toolError: result.error
+								toolError: `Tool failed (${toolErrorLength} error characters).`
 							};
 							if (isExpectedToolValidationFailure(result.error)) {
 								logger.warn('FastChat tool validation failure', {
@@ -2797,7 +2805,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 								});
 								const errorLogId = persistFastChatError({
 									error: new Error(
-										result.error ?? 'FastChat tool validation failed'
+										`FastChat tool validation failed (${toolErrorLength} error characters).`
 									),
 									operationType: 'tool_execution',
 									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
@@ -2818,7 +2826,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 							} else {
 								logFastChatError({
 									error: new Error(
-										result.error ?? 'FastChat tool execution failed'
+										`FastChat tool execution failed (${toolErrorLength} error characters).`
 									),
 									operationType: 'fastchat_tool_result_failure',
 									projectId: effectiveProjectIdForTools ?? projectIdForLogs,

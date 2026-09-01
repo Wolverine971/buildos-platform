@@ -33,7 +33,7 @@ export const PATCH: RequestHandler = async ({
 	};
 
 	try {
-		const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
+		const timeBlockService = await createTimeBlockRuntimeService(supabase, user.id);
 
 		const updatedBlock = await timeBlockService.updateTimeBlock(blockId, updateParams);
 
@@ -57,7 +57,7 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 	}
 
 	try {
-		const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
+		const timeBlockService = await createTimeBlockRuntimeService(supabase, user.id);
 
 		await timeBlockService.deleteTimeBlock(blockId);
 

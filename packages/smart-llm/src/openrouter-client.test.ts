@@ -1,6 +1,10 @@
 // packages/smart-llm/src/openrouter-client.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
+import {
+	isOpenRouterModelAvailabilityError,
+	LLMRequestCancelledError,
+	LLMRequestTimeoutError
+} from './errors';
 import { OpenRouterClient } from './openrouter-client';
 
 function createClient(fetchImpl: typeof fetch) {
@@ -103,6 +107,40 @@ describe('OpenRouterClient.callOpenRouter', () => {
 			})
 		);
 	});
+
+	it('redacts provider bodies while preserving semantic failover metadata', async () => {
+		const sentinel = 'SUPER_SECRET_PROMPT_FRAGMENT';
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					error: {
+						message: `No endpoints found: ${sentinel}`,
+						metadata: { provider_name: sentinel }
+					}
+				}),
+				{
+					status: 404,
+					headers: { 'x-generation-id': 'generation-safe-123' }
+				}
+			)
+		);
+		const client = createClient(fetchMock as unknown as typeof fetch);
+
+		const error = await client
+			.callOpenRouter({
+				model: 'openai/gpt-5-mini',
+				messages: [{ role: 'user', content: 'Return JSON.' }]
+			})
+			.catch((cause) => cause);
+
+		expect(isOpenRouterModelAvailabilityError(error)).toBe(true);
+		expect(error).toMatchObject({
+			status: 404,
+			openrouter: { generationId: 'generation-safe-123' }
+		});
+		expect(String(error)).not.toContain(sentinel);
+		expect(JSON.stringify(error)).not.toContain(sentinel);
+	});
 });
 
 describe('OpenRouterClient.callOpenRouterTranscription', () => {
@@ -143,26 +181,31 @@ describe('OpenRouterClient.callOpenRouterTranscription', () => {
 	});
 
 	it('preserves OpenRouter status and request metadata on errors', async () => {
+		const sentinel = 'PRIVATE_TRANSCRIPTION_PROVIDER_BODY';
 		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(JSON.stringify({ error: { message: 'No credits' } }), {
+			new Response(JSON.stringify({ error: { message: sentinel } }), {
 				status: 402,
 				headers: { 'x-generation-id': 'generation-error' }
 			})
 		);
 		const client = createClient(fetchMock as unknown as typeof fetch);
 
-		await expect(
-			client.callOpenRouterTranscription({
+		const error = await client
+			.callOpenRouterTranscription({
 				model: 'openai/gpt-4o-mini-transcribe',
 				inputAudio: { data: 'base64-audio', format: 'webm' },
 				timeoutMs: 30_000
 			})
-		).rejects.toMatchObject({
+			.catch((cause) => cause);
+
+		expect(error).toMatchObject({
 			status: 402,
 			openrouter: {
 				httpStatus: 402,
 				requestId: 'generation-error'
 			}
 		});
+		expect(String(error)).not.toContain(sentinel);
+		expect(JSON.stringify(error)).not.toContain(sentinel);
 	});
 });

@@ -88,10 +88,10 @@ export const AGENT_OP_WEB_VISIT = 'util.web.visit' as const;
 export const AGENT_OP_WEB_READ_CATALOG = [AGENT_OP_WEB_SEARCH, AGENT_OP_WEB_VISIT] as const;
 
 export interface WebResearchPort {
-	search?: (args: Record<string, unknown>) => Promise<unknown>;
+	search?: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>;
 	/** False when an identical search is already cached or in flight. */
 	searchRequiresDispatch?: (args: Record<string, unknown>) => boolean | Promise<boolean>;
-	visit?: (args: Record<string, unknown>) => Promise<unknown>;
+	visit?: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>;
 }
 
 export class WebResearchPortError extends Error {

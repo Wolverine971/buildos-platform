@@ -55,6 +55,7 @@ export interface TavilyDiscoveryOptions {
 	fetchFn?: typeof fetch;
 	timeoutMs?: number;
 	onBeforeDispatch?: (dispatch: NativeSearchDiscoveryDispatch) => void | Promise<void>;
+	signal?: AbortSignal;
 }
 
 export type NativeSearchDiscoveryErrorCode =
@@ -271,6 +272,8 @@ export async function discoverWithTavily(
 	});
 
 	const controller = new AbortController();
+	const onParentAbort = () => controller.abort(options.signal?.reason);
+	options.signal?.addEventListener('abort', onParentAbort, { once: true });
 	const timeoutMs = Math.max(
 		1,
 		Math.floor(options.timeoutMs ?? NATIVE_SEARCH_DEFAULT_DISCOVERY_TIMEOUT_MS)
@@ -296,33 +299,38 @@ export async function discoverWithTavily(
 			signal: controller.signal
 		});
 	} catch (error) {
+		clearTimeout(timeout);
+		options.signal?.removeEventListener('abort', onParentAbort);
 		const message = controller.signal.aborted
 			? `timed out after ${timeoutMs}ms`
 			: error instanceof Error
 				? error.message
 				: String(error);
 		throw new NativeSearchDiscoveryError(`Tavily search failed: ${message}`, 'REQUEST_FAILED');
+	}
+
+	try {
+		if (!response.ok) {
+			const detail = await readErrorDetail(response);
+			throw new NativeSearchDiscoveryError(
+				`Tavily search failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ''}`,
+				'HTTP_ERROR',
+				response.status
+			);
+		}
+
+		let payload: unknown;
+		try {
+			payload = await response.json();
+		} catch {
+			throw new NativeSearchDiscoveryError(
+				'Tavily search returned invalid JSON',
+				'INVALID_RESPONSE'
+			);
+		}
+		return normalizeTavilyDiscoveryResponse(request, payload);
 	} finally {
 		clearTimeout(timeout);
+		options.signal?.removeEventListener('abort', onParentAbort);
 	}
-
-	if (!response.ok) {
-		const detail = await readErrorDetail(response);
-		throw new NativeSearchDiscoveryError(
-			`Tavily search failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ''}`,
-			'HTTP_ERROR',
-			response.status
-		);
-	}
-
-	let payload: unknown;
-	try {
-		payload = await response.json();
-	} catch {
-		throw new NativeSearchDiscoveryError(
-			'Tavily search returned invalid JSON',
-			'INVALID_RESPONSE'
-		);
-	}
-	return normalizeTavilyDiscoveryResponse(request, payload);
 }

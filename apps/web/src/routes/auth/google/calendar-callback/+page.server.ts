@@ -42,7 +42,8 @@ export const load: PageServerLoad = async ({
 	const code = url.searchParams.get('code');
 	const error = url.searchParams.get('error');
 	const stateParam = url.searchParams.get('state');
-	const decodedState = GoogleOAuthService.decodeCalendarState(stateParam);
+	const oAuthService = new GoogleOAuthService(supabase);
+	const decodedState = oAuthService.verifyCalendarState(stateParam);
 	const stateUserId = decodedState?.userId ?? null;
 	const stateMatchesUser = !!stateUserId && stateUserId === user.id;
 
@@ -227,9 +228,62 @@ export const load: PageServerLoad = async ({
 		userId: user.id
 	});
 
+	// The provider error branch is still part of the OAuth transaction. Reject
+	// every callback with invalid state before logging or interpreting any
+	// model/provider-controlled query value.
+	if (!stateMatchesUser) {
+		console.error('State mismatch in calendar OAuth:', {
+			expected: user.id,
+			receivedStateUserId: stateUserId,
+			hasState: !!stateParam
+		});
+		await logSecurityEvent(
+			{
+				eventType: 'integration.calendar.oauth_state_mismatch',
+				category: 'integration',
+				outcome: 'blocked',
+				severity: 'medium',
+				actorType: 'user',
+				actorUserId: user.id,
+				reason: 'state_mismatch',
+				...requestContext,
+				metadata: {
+					provider: 'google_calendar',
+					hasStateUserId: Boolean(stateUserId)
+				}
+			},
+			securityEventOptions
+		);
+		await logServerError({
+			error: new Error('Calendar OAuth state mismatch'),
+			...baseErrorContext,
+			operation: 'google_calendar_oauth_callback_state_mismatch',
+			severity: 'warning',
+			metadata: {
+				expectedUserId: user.id,
+				receivedStateUserId: stateUserId,
+				hasState: Boolean(stateParam)
+			}
+		});
+		throw redirect(
+			303,
+			buildCalendarRedirect(DEFAULT_REDIRECT_PATH, { error: 'invalid_state' })
+		);
+	}
+
 	// Handle OAuth errors
 	if (error) {
-		console.error('Calendar OAuth error:', error);
+		const allowedProviderErrors = new Set([
+			'access_denied',
+			'invalid_request',
+			'unauthorized_client',
+			'unsupported_response_type',
+			'invalid_scope',
+			'server_error',
+			'temporarily_unavailable'
+		]);
+		const safeProviderError = allowedProviderErrors.has(error) ? error : 'oauth_error';
+		console.error('Calendar OAuth error:', safeProviderError);
 		await logSecurityEvent(
 			{
 				eventType: 'integration.calendar.oauth_failed',
@@ -238,11 +292,11 @@ export const load: PageServerLoad = async ({
 				severity: 'low',
 				actorType: 'user',
 				actorUserId: user.id,
-				reason: error,
+				reason: safeProviderError,
 				...requestContext,
 				metadata: {
 					provider: 'google_calendar',
-					oauthError: error,
+					oauthError: safeProviderError,
 					stateMatchesUser,
 					resolvedRedirectPath
 				}
@@ -250,12 +304,12 @@ export const load: PageServerLoad = async ({
 			securityEventOptions
 		);
 		await logServerError({
-			error: new Error(`Calendar OAuth error: ${error}`),
+			error: new Error(`Calendar OAuth error: ${safeProviderError}`),
 			...baseErrorContext,
 			operation: 'google_calendar_oauth_callback',
 			severity: 'warning',
 			metadata: {
-				oauthError: error,
+				oauthError: safeProviderError,
 				stateMatchesUser,
 				resolvedRedirectPath
 			}
@@ -270,7 +324,7 @@ export const load: PageServerLoad = async ({
 			temporarily_unavailable: 'Google OAuth temporarily unavailable'
 		};
 
-		const errorMsg = errorDescriptions[error] ? error : 'oauth_error';
+		const errorMsg = errorDescriptions[safeProviderError] ? safeProviderError : 'oauth_error';
 		const target = buildCalendarRedirect(resolvedRedirectPath, {
 			error: errorMsg
 		});
@@ -313,53 +367,11 @@ export const load: PageServerLoad = async ({
 		throw redirect(303, target);
 	}
 
-	// Verify state parameter matches user ID for security
-	if (!stateMatchesUser) {
-		console.error('State mismatch in calendar OAuth:', {
-			expected: user.id,
-			receivedStateUserId: stateUserId,
-			hasState: !!stateParam
-		});
-		await logSecurityEvent(
-			{
-				eventType: 'integration.calendar.oauth_state_mismatch',
-				category: 'integration',
-				outcome: 'blocked',
-				severity: 'medium',
-				actorType: 'user',
-				actorUserId: user.id,
-				reason: 'state_mismatch',
-				...requestContext,
-				metadata: {
-					provider: 'google_calendar',
-					hasStateUserId: Boolean(stateUserId)
-				}
-			},
-			securityEventOptions
-		);
-		await logServerError({
-			error: new Error('Calendar OAuth state mismatch'),
-			...baseErrorContext,
-			operation: 'google_calendar_oauth_callback_state_mismatch',
-			severity: 'warning',
-			metadata: {
-				expectedUserId: user.id,
-				receivedStateUserId: stateUserId,
-				hasState: Boolean(stateParam)
-			}
-		});
-		throw redirect(
-			303,
-			buildCalendarRedirect(DEFAULT_REDIRECT_PATH, { error: 'invalid_state' })
-		);
-	}
-
 	// Calculate the redirect URI dynamically
 	const redirectUri = `${url.origin}/auth/google/calendar-callback`;
 	console.log('Using redirect URI:', redirectUri);
 
 	// Use the new OAuth service to handle token exchange
-	const oAuthService = new GoogleOAuthService(supabase);
 	const result = await oAuthService.exchangeCodeForTokens(code, redirectUri, user.id, user.email);
 
 	if (!result.success) {

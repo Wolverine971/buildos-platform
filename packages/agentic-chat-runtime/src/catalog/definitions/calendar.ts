@@ -46,8 +46,9 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						type: 'integer',
 						default: 0,
 						minimum: 0,
-						maximum: 5000,
-						description: 'Zero-based pagination offset for merged results.'
+						maximum: 299,
+						description:
+							'Zero-based pagination offset for the bounded merged result window (0-299).'
 					},
 					calendar_scope: {
 						type: 'string',
@@ -73,7 +74,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'get_calendar_event_details',
 			description:
-				'Get one event. Pass onto_event_id for an ontology event or event_id with the external_event_id value for a Google event.',
+				'Get one event. Pass onto_event_id for an ontology event. For a Google event, pass event_id and calendar_source_id exactly as returned by list_calendar_events.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -98,6 +99,11 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					project_id: {
 						type: 'string',
 						description: 'Project id for project calendar lookup'
+					},
+					calendar_source_id: {
+						type: 'string',
+						description:
+							'Opaque Google calendar source UUID from list_calendar_events. Required for source-aware Google events.'
 					}
 				}
 			}
@@ -202,6 +208,11 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						type: 'string',
 						description: 'Project id for project calendar lookup'
 					},
+					calendar_source_id: {
+						type: 'string',
+						description:
+							'Opaque Google calendar source UUID from list_calendar_events. Required for source-aware Google events.'
+					},
 					title: {
 						type: 'string',
 						description: 'New title'
@@ -266,6 +277,11 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					project_id: {
 						type: 'string',
 						description: 'Project id for project calendar lookup'
+					},
+					calendar_source_id: {
+						type: 'string',
+						description:
+							'Opaque Google calendar source UUID from list_calendar_events. Required for source-aware Google events.'
 					},
 					sync_to_calendar: {
 						type: 'boolean',

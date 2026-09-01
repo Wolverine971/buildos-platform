@@ -1,9 +1,24 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/external-executor.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { hashNativeSearchPageContent } from '@buildos/shared-agent-ops/web/native-search';
-import { ExternalExecutor } from './external-executor';
+import { ExternalExecutor, safeExternalFetchErrorDiagnostic } from './external-executor';
 
 describe('ExternalExecutor page cache revalidation', () => {
+	it('reduces fetch failures to URL- and credential-free diagnostics', () => {
+		const sentinel = 'SIGNED_QUERY_TOKEN_MUST_NOT_BE_LOGGED';
+		const diagnostic = safeExternalFetchErrorDiagnostic({
+			name: sentinel,
+			message: `https://example.com/private?token=${sentinel}`,
+			stack: sentinel,
+			code: sentinel,
+			status: 502,
+			config: { url: `https://example.com/private?token=${sentinel}` }
+		});
+
+		expect(diagnostic).toEqual({ errorName: 'FetchError', status: 502 });
+		expect(JSON.stringify(diagnostic)).not.toContain(sentinel);
+	});
+
 	it('serves stored markdown after a stale entry receives HTTP 304', async () => {
 		const cachedMarkdown = '# Cached evidence\n\nStill current.';
 		const contentHash = hashNativeSearchPageContent(cachedMarkdown);

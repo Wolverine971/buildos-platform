@@ -13,8 +13,8 @@ import {
 	formatToolSurfaceSizeMatrix,
 	formatToolSurfaceSizeReport
 } from '../tool-surface-size-report';
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { appendFileSync, chmodSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { parseToolArguments } from './tool-arguments';
 import type { FastChatDebugContext, FastToolExecution, LLMStreamPassMetadata } from './shared';
 import { FASTCHAT_PROMPT_VARIANT } from '../prompt-variant';
@@ -72,8 +72,9 @@ export function writeInitialPromptDump(params: {
 
 	try {
 		const dumpDir = join(process.cwd(), '.prompt-dumps');
+		mkdirSync(dumpDir, { recursive: true, mode: 0o700 });
+		chmodSync(dumpDir, 0o700);
 		pruneLocalPromptDumps({ dumpDir });
-		mkdirSync(dumpDir, { recursive: true });
 		const dumpTimestamp = new Date();
 		const ts = dumpTimestamp.toISOString().replace(/[:.]/g, '-');
 		const promptVariant = params.debugContext?.promptVariant ?? FASTCHAT_PROMPT_VARIANT;
@@ -186,7 +187,8 @@ export function writeInitialPromptDump(params: {
 		lines.push(`END OF DUMP`);
 		lines.push(`════════════════════════════════════════`);
 
-		writeFileSync(dumpPath, lines.join('\n'), 'utf-8');
+		writeFileSync(dumpPath, lines.join('\n'), { encoding: 'utf-8', mode: 0o600 });
+		chmodSync(dumpPath, 0o600);
 		console.log(`[FastChat] Prompt dumped to ${dumpPath}`);
 		return dumpPath;
 	} catch {
@@ -313,6 +315,10 @@ export function appendRuntimeMetadataToPromptDump(
 	if (!promptDumpPath) return;
 
 	try {
+		const dumpDir = dirname(promptDumpPath);
+		mkdirSync(dumpDir, { recursive: true, mode: 0o700 });
+		chmodSync(dumpDir, 0o700);
+		pruneLocalPromptDumps({ dumpDir });
 		const lines: string[] = [
 			'',
 			'────────────────────────────────────────',
@@ -391,7 +397,11 @@ export function appendRuntimeMetadataToPromptDump(
 			});
 		}
 		lines.push('');
-		appendFileSync(promptDumpPath, `${lines.join('\n')}\n`, 'utf-8');
+		appendFileSync(promptDumpPath, `${lines.join('\n')}\n`, {
+			encoding: 'utf-8',
+			mode: 0o600
+		});
+		chmodSync(promptDumpPath, 0o600);
 	} catch {
 		// Ignore dump append failures.
 	}

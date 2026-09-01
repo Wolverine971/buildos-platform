@@ -36,6 +36,10 @@ import {
 	buildOpenRouterEmptyContentError,
 	hasOpenRouterGenerationId,
 	isOpenRouterDefinitivePreGenerationRejection,
+	isOpenRouterModelAvailabilityError,
+	safeLlmErrorDiagnostic,
+	safeLlmErrorForLogging,
+	safeLlmErrorMessage,
 	shouldFailoverToNextOpenRouterModel
 } from './errors';
 import {
@@ -742,30 +746,20 @@ export class SmartLLMService {
 							console.warn(`Recovered truncated JSON response from ${actualModel}`);
 						}
 					} catch (parseError) {
-						// Log which model actually responded
+						// Log only structural diagnostics. Parser messages and nearby
+						// response slices can contain model output or user prompt material.
 						const actualModelForError = response.model || requestedModel || 'unknown';
-						console.error(`JSON parse error with ${actualModelForError}:`, parseError);
-
-						// Enhanced error logging with context
-						if (
-							parseError instanceof SyntaxError &&
-							parseError.message.includes('position')
-						) {
-							// Extract position from error message (e.g., "at position 1618")
-							const posMatch = parseError.message.match(/position (\d+)/);
-							if (posMatch && posMatch[1]) {
-								const errorPos = parseInt(posMatch[1], 10);
-								const contextStart = Math.max(0, errorPos - 100);
-								const contextEnd = Math.min(cleaned.length, errorPos + 100);
-								console.error(
-									`Context around error position ${errorPos}:`,
-									'\n' + cleaned.substring(contextStart, contextEnd)
-								);
-								console.error(
-									`Full response length: ${cleaned.length} characters, Error at: ${errorPos}`
-								);
-							}
-						}
+						const positionMatch =
+							parseError instanceof SyntaxError
+								? parseError.message.match(/position (\d+)/)
+								: null;
+						console.error(`JSON parse error with ${actualModelForError}:`, {
+							...safeLlmErrorDiagnostic(parseError),
+							responseChars: cleaned.length,
+							...(positionMatch?.[1]
+								? { errorPosition: Number.parseInt(positionMatch[1], 10) }
+								: {})
+						});
 
 						// If validation is enabled and parse failed, we can retry with a more powerful model
 						if (
@@ -855,7 +849,7 @@ export class SmartLLMService {
 								// If retry also fails, throw original error with context
 								console.error(
 									`Retry also failed after ${retryCount} attempts:`,
-									retryError
+									safeLlmErrorDiagnostic(retryError)
 								);
 								// Preserve ownership cancellation and any accepted/typed timeout
 								// from the paid repair call. Replacing either with the original
@@ -876,7 +870,7 @@ export class SmartLLMService {
 							// Log parse failure without retry
 							if (this.errorLogger) {
 								await this.errorLogger.logAPIError(
-									parseError,
+									safeLlmErrorForLogging(parseError, 'OpenRouter JSON parsing'),
 									lastRequestApiUrl,
 									'POST',
 									options.userId,
@@ -885,7 +879,8 @@ export class SmartLLMService {
 										errorType: 'llm_json_parse_failure',
 										modelUsed: actualModelForError,
 										responseLength: cleaned.length,
-										retryDisabled: !options.validation?.retryOnParseError
+										retryDisabled: !options.validation?.retryOnParseError,
+										llmErrorDiagnostic: safeLlmErrorDiagnostic(parseError)
 									}
 								);
 							}
@@ -1032,7 +1027,9 @@ export class SmartLLMService {
 								systemFingerprint: responseForLogging.system_fingerprint
 							}
 						})
-						.catch((err) => console.error('Failed to log usage:', err));
+						.catch((err) =>
+							console.error('Failed to log usage:', safeLlmErrorDiagnostic(err))
+						);
 
 					return result;
 				} catch (error) {
@@ -1050,7 +1047,7 @@ export class SmartLLMService {
 							attempt: attempt + 1,
 							maxAttempts,
 							model: requestedModel,
-							error: lastError.message
+							error: safeLlmErrorDiagnostic(lastError)
 						});
 						continue;
 					}
@@ -1089,13 +1086,8 @@ export class SmartLLMService {
 			const lastModel = terminalAttemptFailed
 				? lastRequestedModel || baseModel
 				: failureResponse?.model || lastRequestedModel || baseModel;
-			const errorProviderName =
-				typeof openrouterErrorDetails?.providerName === 'string' &&
-				openrouterErrorDetails.providerName.trim()
-					? openrouterErrorDetails.providerName.trim()
-					: undefined;
 			const failureProvider = terminalAttemptFailed
-				? errorProviderName
+				? this.resolveProviderRoute(lastRequestedModel || baseModel).provider
 				: failureResponse?.provider || lastProvider;
 			const definitivePreGenerationRejection =
 				isOpenRouterDefinitivePreGenerationRejection(error);
@@ -1183,15 +1175,15 @@ export class SmartLLMService {
 					billingDisposition
 				});
 			}
-			const emptyContentDetails =
-				error instanceof OpenRouterEmptyContentError ? error.details : undefined;
+			const safeErrorDiagnostic = safeLlmErrorDiagnostic(error);
+			const safeErrorMessage = safeLlmErrorMessage(error, 'OpenRouter JSON request');
 
-			console.error(`OpenRouter request failed:`, error);
+			console.error('OpenRouter request failed:', safeErrorDiagnostic);
 
 			// Log to error tracking system
 			if (this.errorLogger) {
 				await this.errorLogger.logAPIError(
-					error,
+					safeLlmErrorForLogging(error, 'OpenRouter JSON request'),
 					lastRequestApiUrl,
 					'POST',
 					options.userId,
@@ -1211,8 +1203,7 @@ export class SmartLLMService {
 						lastModel,
 						openrouterRequestId: failureProviderRequestId,
 						openrouterProvider: failureProvider,
-						openrouterErrorDetails: openrouterErrorDetails ?? null,
-						emptyContentDetails: emptyContentDetails ?? null
+						llmErrorDiagnostic: safeErrorDiagnostic
 					}
 				);
 			}
@@ -1235,7 +1226,7 @@ export class SmartLLMService {
 					requestStartedAt,
 					requestCompletedAt,
 					status: lastError instanceof LLMRequestTimeoutError ? 'timeout' : 'failure',
-					errorMessage: lastError.message,
+					errorMessage: safeErrorMessage,
 					temperature: options.temperature,
 					maxTokens,
 					profile,
@@ -1259,11 +1250,10 @@ export class SmartLLMService {
 						billingDisposition,
 						openrouterRequestId: failureProviderRequestId,
 						openrouterProvider: failureProvider,
-						openrouterErrorDetails: openrouterErrorDetails ?? null,
-						emptyContentDetails: emptyContentDetails ?? null
+						llmErrorDiagnostic: safeErrorDiagnostic
 					}
 				})
-				.catch((err) => console.error('Failed to log error:', err));
+				.catch((err) => console.error('Failed to log error:', safeLlmErrorDiagnostic(err)));
 
 			if (
 				lastError instanceof LLMRequestTimeoutError ||
@@ -1277,8 +1267,15 @@ export class SmartLLMService {
 				throw lastError;
 			}
 
-			const wrappedError = new Error(`Failed to generate valid JSON: ${lastError?.message}`);
-			(wrappedError as Error & { cause?: unknown }).cause = lastError;
+			const wrappedError = new Error(
+				definitivePreGenerationRejection
+					? 'No eligible model endpoint was available'
+					: 'Failed to generate valid JSON'
+			);
+			(wrappedError as Error & { cause?: unknown }).cause = {
+				llmErrorDiagnostic: safeErrorDiagnostic,
+				...(errorGenerationId ? { openrouter: { generationId: errorGenerationId } } : {})
+			};
 			throw wrappedError;
 		}
 	}
@@ -1484,7 +1481,9 @@ export class SmartLLMService {
 								systemFingerprint: attemptResponse.system_fingerprint
 							}
 						})
-						.catch((err) => console.error('Failed to log usage:', err));
+						.catch((err) =>
+							console.error('Failed to log usage:', safeLlmErrorDiagnostic(err))
+						);
 
 					const usage: TextGenerationUsage | undefined = attemptResponse.usage
 						? {
@@ -1555,7 +1554,7 @@ export class SmartLLMService {
 							attempt: attempt + 1,
 							maxAttempts,
 							model: failedModel,
-							error: lastError.message,
+							error: safeLlmErrorDiagnostic(lastError),
 							inferredCause,
 							finishReason,
 							overrideModel,
@@ -1576,19 +1575,15 @@ export class SmartLLMService {
 			const modelsAttempted = Array.from(attemptedModels);
 			const lastModel =
 				lastResponse?.model || modelsAttempted[modelsAttempted.length - 1] || baseModel;
-			const emptyContentDetails =
-				error instanceof OpenRouterEmptyContentError ? error.details : undefined;
-			const openrouterErrorDetails =
-				(error as any)?.openrouter && typeof (error as any).openrouter === 'object'
-					? (error as any).openrouter
-					: undefined;
+			const safeErrorDiagnostic = safeLlmErrorDiagnostic(error);
+			const safeErrorMessage = safeLlmErrorMessage(error, 'OpenRouter text generation');
 
-			console.error(`OpenRouter text generation failed:`, error);
+			console.error('OpenRouter text generation failed:', safeErrorDiagnostic);
 
 			// Log to error tracking system
 			if (this.errorLogger) {
 				await this.errorLogger.logAPIError(
-					error,
+					safeLlmErrorForLogging(error, 'OpenRouter text generation'),
 					lastRequestApiUrl,
 					'POST',
 					options.userId,
@@ -1610,9 +1605,7 @@ export class SmartLLMService {
 						openrouterProvider: lastResponse?.provider,
 						openrouterNativeFinishReason:
 							lastResponse?.choices?.[0]?.native_finish_reason ?? null,
-						openrouterResponseError: lastResponse?.error ?? null,
-						openrouterErrorDetails: openrouterErrorDetails ?? null,
-						emptyContentDetails: emptyContentDetails ?? null
+						llmErrorDiagnostic: safeErrorDiagnostic
 					}
 				);
 			}
@@ -1634,7 +1627,7 @@ export class SmartLLMService {
 					requestStartedAt,
 					requestCompletedAt,
 					status: error instanceof LLMRequestTimeoutError ? 'timeout' : 'failure',
-					errorMessage: (error as Error).message,
+					errorMessage: safeErrorMessage,
 					temperature: options.temperature,
 					maxTokens: options.maxTokens,
 					profile,
@@ -1658,12 +1651,10 @@ export class SmartLLMService {
 						openrouterProvider: lastResponse?.provider,
 						openrouterNativeFinishReason:
 							lastResponse?.choices?.[0]?.native_finish_reason ?? null,
-						openrouterResponseError: lastResponse?.error ?? null,
-						openrouterErrorDetails: openrouterErrorDetails ?? null,
-						emptyContentDetails: emptyContentDetails ?? null
+						llmErrorDiagnostic: safeErrorDiagnostic
 					}
 				})
-				.catch((err) => console.error('Failed to log error:', err));
+				.catch((err) => console.error('Failed to log error:', safeLlmErrorDiagnostic(err)));
 
 			throw new Error('Failed to generate text');
 		}
@@ -1920,15 +1911,8 @@ export class SmartLLMService {
 		}
 
 		if (this.errorLogger) {
-			const emptyContentDetails =
-				lastError instanceof OpenRouterEmptyContentError ? lastError.details : undefined;
-			const openrouterErrorDetails =
-				(lastError as any)?.openrouter && typeof (lastError as any).openrouter === 'object'
-					? (lastError as any).openrouter
-					: undefined;
-
 			await this.errorLogger.logAPIError(
-				lastError || new Error('OpenRouter transcription failed'),
+				safeLlmErrorForLogging(lastError, 'OpenRouter transcription'),
 				OPENROUTER_TRANSCRIPTION_API_URL,
 				'POST',
 				options.userId,
@@ -1938,13 +1922,16 @@ export class SmartLLMService {
 					modelsTried: models.join(', '),
 					timeoutMs,
 					requestStartedAt: requestStartedAt.toISOString(),
-					openrouterErrorDetails: openrouterErrorDetails ?? null,
-					emptyContentDetails: emptyContentDetails ?? null
+					llmErrorDiagnostic: safeLlmErrorDiagnostic(lastError)
 				}
 			);
 		}
 
-		throw lastError || new Error('OpenRouter transcription failed');
+		const terminalError = safeLlmErrorForLogging(lastError, 'OpenRouter transcription');
+		(terminalError as Error & { cause?: unknown }).cause = {
+			llmErrorDiagnostic: safeLlmErrorDiagnostic(lastError)
+		};
+		throw terminalError;
 	}
 
 	// ============================================
@@ -1969,8 +1956,10 @@ export class SmartLLMService {
 		});
 
 		if (!response.ok) {
-			const error = await response.text();
-			throw new Error(`OpenAI Embedding API error: ${response.status} - ${error}`);
+			throw Object.assign(new Error('OpenAI embedding request failed.'), {
+				name: 'OpenAIEmbeddingError',
+				status: response.status
+			});
 		}
 
 		const result = await response.json();
@@ -1994,8 +1983,10 @@ export class SmartLLMService {
 		});
 
 		if (!response.ok) {
-			const error = await response.text();
-			throw new Error(`OpenAI Embedding API error: ${response.status} - ${error}`);
+			throw Object.assign(new Error('OpenAI embedding request failed.'), {
+				name: 'OpenAIEmbeddingError',
+				status: response.status
+			});
 		}
 
 		const result = await response.json();
@@ -2164,7 +2155,6 @@ export class SmartLLMService {
 			const attemptedModels = new Set<string>();
 			let response: Response | null = null;
 			let lastError: Error | null = null;
-			let lastErrorText: string | null = null;
 
 			for (let attempt = 0; attempt < maxAttempts; attempt++) {
 				const remainingModels = preferredModels.filter(
@@ -2255,7 +2245,7 @@ export class SmartLLMService {
 							attempt: attempt + 1,
 							maxAttempts,
 							model: requestedModel,
-							error: lastError.message
+							error: safeLlmErrorDiagnostic(lastError)
 						});
 						continue;
 					}
@@ -2277,12 +2267,17 @@ export class SmartLLMService {
 				}
 
 				const errorText = await response.text();
+				const modelAvailabilityError = isOpenRouterModelAvailabilityError({
+					status: response.status,
+					message: errorText
+				});
 				const statusError = new Error(
-					`${providerLabel} API error: ${response.status} - ${errorText}`
-				) as Error & { status?: number };
+					`${providerLabel} stream request failed (status=${response.status}).`
+				) as Error & { status?: number; openrouter?: Record<string, unknown> };
+				statusError.name = `${providerLabel}HTTPError`;
 				statusError.status = response.status;
+				statusError.openrouter = { modelAvailabilityError };
 				lastError = statusError;
-				lastErrorText = errorText;
 				attemptedModels.add(requestedModel);
 
 				if (attempt < maxAttempts - 1 && shouldFailoverToNextOpenRouterModel(statusError)) {
@@ -2290,34 +2285,27 @@ export class SmartLLMService {
 						attempt: attempt + 1,
 						maxAttempts,
 						model: requestedModel,
-						error: statusError.message
+						error: safeLlmErrorDiagnostic(statusError)
 					});
 					continue;
 				}
 
 				yield {
 					type: 'error',
-					error: statusError.message
+					error: safeLlmErrorMessage(statusError, `${providerLabel} stream request`)
 				};
 				return;
 			}
 
 			if (!response || !response.ok) {
-				const message =
-					lastError?.message ||
-					(lastErrorText
-						? `${
-								lastRouteProvider === 'moonshot' ? 'Moonshot' : 'OpenRouter'
-							} API error: ${lastErrorText}`
-						: `${
-								lastRouteProvider === 'moonshot' ? 'Moonshot' : 'OpenRouter'
-							} stream request failed`);
+				const providerLabel = lastRouteProvider === 'moonshot' ? 'Moonshot' : 'OpenRouter';
+				const message = safeLlmErrorMessage(lastError, `${providerLabel} stream request`);
 				const operationType =
 					options.operationType || this.buildChatStreamOperationType(options.contextType);
 
 				if (this.errorLogger) {
 					await this.errorLogger.logAPIError(
-						lastError ?? message,
+						safeLlmErrorForLogging(lastError, `${providerLabel} stream request`),
 						lastRequestApiUrl,
 						'POST',
 						options.userId,
@@ -2327,7 +2315,7 @@ export class SmartLLMService {
 							sessionId: options.sessionId,
 							messageId: options.messageId,
 							statusCode: (lastError as any)?.status ?? response?.status,
-							errorText: lastErrorText ?? null
+							llmErrorDiagnostic: safeLlmErrorDiagnostic(lastError)
 						}
 					);
 				}
@@ -2347,9 +2335,10 @@ export class SmartLLMService {
 						responseTimeMs: Math.round(performance.now() - startTime),
 						requestStartedAt,
 						requestCompletedAt: new Date(),
-						status: (lastError as Error)?.message?.includes('timeout')
-							? 'timeout'
-							: 'failure',
+						status:
+							safeLlmErrorDiagnostic(lastError).category === 'timeout'
+								? 'timeout'
+								: 'failure',
 						errorMessage: message,
 						temperature: options.temperature,
 						maxTokens: options.maxTokens,
@@ -2373,10 +2362,12 @@ export class SmartLLMService {
 							modelRequested: lastRequestedModel,
 							modelsAttempted: lastRoutingModels,
 							statusCode: (lastError as any)?.status ?? response?.status,
-							errorText: lastErrorText ?? null
+							llmErrorDiagnostic: safeLlmErrorDiagnostic(lastError)
 						}
 					})
-					.catch((err) => console.error('Failed to log error:', err));
+					.catch((err) =>
+						console.error('Failed to log error:', safeLlmErrorDiagnostic(err))
+					);
 
 				yield {
 					type: 'error',
@@ -2479,7 +2470,9 @@ export class SmartLLMService {
 							attempts: startedStreamAttempt || 1
 						}
 					})
-					.catch((err) => console.error('Failed to log error:', err));
+					.catch((err) =>
+						console.error('Failed to log error:', safeLlmErrorDiagnostic(err))
+					);
 
 				yield {
 					type: 'error',
@@ -2503,10 +2496,13 @@ export class SmartLLMService {
 			let terminalFinishReason: string | undefined;
 
 			// Debug instrumentation for reasoning / content channel attribution.
-			// Enable with LLM_STREAM_DEBUG=1. Captures per-chunk delta key shapes
-			// and a sample of raw deltas so we can see which channel (content vs
-			// reasoning vs reasoning_details) a given provider actually uses.
-			const streamDebugEnabled = process.env.LLM_STREAM_DEBUG === '1';
+			// Enable explicitly in non-production environments. Only aggregate key
+			// shapes and byte counts are retained; raw content, reasoning, tool args,
+			// and stable request/user identifiers never enter the dump.
+			const streamDebugEnabled =
+				typeof process !== 'undefined' &&
+				process.env.NODE_ENV !== 'production' &&
+				process.env.LLM_STREAM_DEBUG === '1';
 			const streamDebugStats: {
 				chunkCount: number;
 				contentChunks: number;
@@ -2518,8 +2514,6 @@ export class SmartLLMService {
 				toolCallChunks: number;
 				otherChunks: number;
 				deltaKeyShapes: Record<string, number>;
-				firstDeltas: unknown[];
-				firstReasoningDeltas: unknown[];
 			} = {
 				chunkCount: 0,
 				contentChunks: 0,
@@ -2530,9 +2524,7 @@ export class SmartLLMService {
 				reasoningDetailsItems: 0,
 				toolCallChunks: 0,
 				otherChunks: 0,
-				deltaKeyShapes: {},
-				firstDeltas: [],
-				firstReasoningDeltas: []
+				deltaKeyShapes: {}
 			};
 
 			while (true) {
@@ -2565,8 +2557,6 @@ export class SmartLLMService {
 								void this.writeKimiToolCallLog({
 									model: resolvedModel,
 									provider: resolvedProvider,
-									sessionId: options.sessionId,
-									messageId: options.messageId,
 									toolCall: pending
 								});
 							}
@@ -2653,7 +2643,12 @@ export class SmartLLMService {
 										pricingModel: pricing?.modelId ?? null
 									}
 								})
-								.catch((err) => console.error('Failed to log usage:', err));
+								.catch((err) =>
+									console.error(
+										'Failed to log usage:',
+										safeLlmErrorDiagnostic(err)
+									)
+								);
 						}
 
 						const reasoningTokens =
@@ -2668,12 +2663,6 @@ export class SmartLLMService {
 							void this.writeStreamDebugSummary({
 								model: resolvedModel,
 								provider: resolvedProvider,
-								requestId: streamRequestId,
-								sessionId: options.sessionId,
-								messageId: options.messageId,
-								turnRunId: options.turnRunId,
-								streamRunId: options.streamRunId,
-								clientTurnId: options.clientTurnId,
 								contextType: options.contextType,
 								finishedReason: terminalFinishReason ?? 'stop',
 								usageReasoningTokens: reasoningTokens,
@@ -2770,9 +2759,6 @@ export class SmartLLMService {
 								const shapeKey = keys.length > 0 ? keys.join('+') : '<empty>';
 								streamDebugStats.deltaKeyShapes[shapeKey] =
 									(streamDebugStats.deltaKeyShapes[shapeKey] ?? 0) + 1;
-								if (streamDebugStats.firstDeltas.length < 3) {
-									streamDebugStats.firstDeltas.push(delta);
-								}
 							}
 
 							if (delta.content) {
@@ -2828,12 +2814,6 @@ export class SmartLLMService {
 										streamDebugStats.reasoningDetailsItems +=
 											reasoningDetailsArray.length;
 									}
-									if (streamDebugStats.firstReasoningDeltas.length < 3) {
-										streamDebugStats.firstReasoningDeltas.push({
-											reasoning: reasoningString,
-											reasoning_details: reasoningDetailsArray
-										});
-									}
 								}
 								yield {
 									type: 'reasoning',
@@ -2861,8 +2841,6 @@ export class SmartLLMService {
 										void this.writeKimiToolCallLog({
 											model: resolvedModel,
 											provider: resolvedProvider,
-											sessionId: options.sessionId,
-											messageId: options.messageId,
 											toolCall: pending
 										});
 									}
@@ -2879,7 +2857,10 @@ export class SmartLLMService {
 							}
 						}
 					} catch (parseError) {
-						console.error('Failed to parse SSE chunk:', parseError);
+						console.error(
+							'Failed to parse SSE chunk:',
+							safeLlmErrorDiagnostic(parseError)
+						);
 						// Continue processing other chunks
 					}
 
@@ -2899,12 +2880,14 @@ export class SmartLLMService {
 			const duration = performance.now() - startTime;
 			const requestCompletedAt = new Date();
 
-			console.error('Streaming failed:', error);
+			const safeErrorDiagnostic = safeLlmErrorDiagnostic(error);
+			const safeErrorMessage = safeLlmErrorMessage(error, 'LLM streaming');
+			console.error('Streaming failed:', safeErrorDiagnostic);
 
 			// Log error
 			if (this.errorLogger) {
 				await this.errorLogger.logAPIError(
-					error,
+					safeLlmErrorForLogging(error, 'LLM streaming'),
 					lastRequestApiUrl,
 					'POST',
 					options.userId,
@@ -2912,7 +2895,8 @@ export class SmartLLMService {
 						operation: 'streamText',
 						errorType: 'llm_streaming_failure',
 						sessionId: options.sessionId,
-						messageId: options.messageId
+						messageId: options.messageId,
+						llmErrorDiagnostic: safeErrorDiagnostic
 					}
 				);
 			}
@@ -2941,7 +2925,7 @@ export class SmartLLMService {
 					requestStartedAt,
 					requestCompletedAt,
 					status: 'failure',
-					errorMessage: (error as Error).message,
+					errorMessage: safeErrorMessage,
 					temperature: options.temperature,
 					maxTokens: options.maxTokens,
 					profile,
@@ -2966,11 +2950,11 @@ export class SmartLLMService {
 						attempts: startedStreamAttempt || 1
 					}
 				})
-				.catch((err) => console.error('Failed to log error:', err));
+				.catch((err) => console.error('Failed to log error:', safeLlmErrorDiagnostic(err)));
 
 			yield {
 				type: 'error',
-				error: `Stream failed: ${(error as Error).message}`
+				error: safeErrorMessage
 			};
 		}
 	}
@@ -3003,14 +2987,18 @@ export class SmartLLMService {
 	}
 
 	private shouldLogKimiToolCalls(model: string | undefined, hasTools: boolean): boolean {
-		return hasTools && this.isKimiExperimentModel(model);
+		return (
+			hasTools &&
+			typeof process !== 'undefined' &&
+			process.env.NODE_ENV !== 'production' &&
+			process.env.KIMI_TOOL_CALL_LOG === '1' &&
+			this.isKimiExperimentModel(model)
+		);
 	}
 
 	private async writeKimiToolCallLog(payload: {
 		model?: string;
 		provider?: string;
-		sessionId?: string;
-		messageId?: string;
 		toolCall: unknown;
 	}): Promise<void> {
 		if (typeof process === 'undefined' || !process.versions || !process.versions.node) {
@@ -3018,10 +3006,9 @@ export class SmartLLMService {
 		}
 
 		try {
-			const [{ appendFile, mkdir, access }, path] = await Promise.all([
-				import('node:fs/promises'),
-				import('node:path')
-			]);
+			const [{ appendFile, mkdir, access, chmod, readdir, unlink }, path] = await Promise.all(
+				[import('node:fs/promises'), import('node:path')]
+			);
 
 			const exists = async (target: string): Promise<boolean> => {
 				try {
@@ -3056,21 +3043,68 @@ export class SmartLLMService {
 			};
 
 			const baseDir = await resolveBaseDir();
-			await mkdir(baseDir, { recursive: true });
+			await mkdir(baseDir, { recursive: true, mode: 0o700 });
+			await chmod(baseDir, 0o700);
 
 			const date = new Date();
 			const dateStamp = date.toISOString().slice(0, 10);
+			const configuredRetentionDays = Number.parseInt(
+				process.env.KIMI_TOOL_CALL_LOG_RETENTION_DAYS ?? '',
+				10
+			);
+			const retentionDays =
+				Number.isSafeInteger(configuredRetentionDays) && configuredRetentionDays > 0
+					? Math.min(configuredRetentionDays, 30)
+					: 2;
+			const cutoff = new Date(date);
+			cutoff.setUTCDate(cutoff.getUTCDate() - (retentionDays - 1));
+			const cutoffDateStamp = cutoff.toISOString().slice(0, 10);
+			for (const entry of await readdir(baseDir, { withFileTypes: true })) {
+				const match = entry.isFile()
+					? entry.name.match(/^kimi-tool-calls-(\d{4}-\d{2}-\d{2})\.jsonl$/)
+					: null;
+				if (match?.[1] && match[1] < cutoffDateStamp) {
+					await unlink(path.join(baseDir, entry.name));
+				}
+			}
 			const filePath = path.join(baseDir, `kimi-tool-calls-${dateStamp}.jsonl`);
+			const toolCall =
+				payload.toolCall && typeof payload.toolCall === 'object'
+					? (payload.toolCall as Record<string, unknown>)
+					: null;
+			const fn =
+				toolCall?.function && typeof toolCall.function === 'object'
+					? (toolCall.function as Record<string, unknown>)
+					: null;
+			const rawArguments = fn?.arguments;
+			let argumentChars = 0;
+			let argumentsJsonValid: boolean | null = null;
+			if (typeof rawArguments === 'string') {
+				argumentChars = rawArguments.length;
+				try {
+					JSON.parse(rawArguments);
+					argumentsJsonValid = true;
+				} catch {
+					argumentsJsonValid = false;
+				}
+			} else if (rawArguments !== undefined) {
+				argumentChars = JSON.stringify(rawArguments).length;
+				argumentsJsonValid = true;
+			}
 			const record = {
 				timestamp: date.toISOString(),
 				model: payload.model ?? null,
 				provider: payload.provider ?? null,
-				sessionId: payload.sessionId ?? null,
-				messageId: payload.messageId ?? null,
-				toolCall: payload.toolCall
+				toolName: typeof fn?.name === 'string' ? fn.name : null,
+				argumentChars,
+				argumentsJsonValid
 			};
 
-			await appendFile(filePath, `${JSON.stringify(record)}\n`, 'utf8');
+			await appendFile(filePath, `${JSON.stringify(record)}\n`, {
+				encoding: 'utf8',
+				mode: 0o600
+			});
+			await chmod(filePath, 0o600);
 			if (process.env.KIMI_TOOL_CALL_LOG_DEBUG === '1') {
 				console.debug('[SmartLLMService] Logged Kimi tool call', {
 					baseDir,
@@ -3080,7 +3114,10 @@ export class SmartLLMService {
 		} catch (e) {
 			// Ignore logging failures to avoid disrupting streaming.
 			if (process.env.KIMI_TOOL_CALL_LOG_DEBUG === '1') {
-				console.warn('[SmartLLMService] Failed to log Kimi tool call', e);
+				console.warn(
+					'[SmartLLMService] Failed to log Kimi tool call',
+					safeLlmErrorDiagnostic(e)
+				);
 			}
 		}
 	}
@@ -3088,7 +3125,7 @@ export class SmartLLMService {
 	/**
 	 * LLM stream debug summary writer.
 	 *
-	 * Enabled by env var LLM_STREAM_DEBUG=1. Writes one JSONL line per
+	 * Enabled explicitly in non-production with LLM_STREAM_DEBUG=1. Writes one JSONL line per
 	 * completed stream to apps/web/.prompt-dumps/llm-stream-deltas-<date>.jsonl
 	 * and also logs a compact summary to the console. Purpose: see exactly
 	 * which delta channel a provider is using (content vs reasoning vs
@@ -3098,12 +3135,6 @@ export class SmartLLMService {
 	private async writeStreamDebugSummary(payload: {
 		model?: string;
 		provider?: string;
-		requestId?: string;
-		sessionId?: string;
-		messageId?: string;
-		turnRunId?: string;
-		streamRunId?: string;
-		clientTurnId?: string;
 		contextType?: string;
 		finishedReason?: string;
 		usageReasoningTokens?: number;
@@ -3118,17 +3149,21 @@ export class SmartLLMService {
 			toolCallChunks: number;
 			otherChunks: number;
 			deltaKeyShapes: Record<string, number>;
-			firstDeltas: unknown[];
-			firstReasoningDeltas: unknown[];
 		};
 	}): Promise<void> {
+		if (
+			typeof process === 'undefined' ||
+			process.env.NODE_ENV === 'production' ||
+			process.env.LLM_STREAM_DEBUG !== '1'
+		) {
+			return;
+		}
 		try {
 			// Always emit a compact console summary so developers can read it
 			// without opening a file.
 			console.debug('[LLM_STREAM_DEBUG] stream complete', {
 				model: payload.model,
 				provider: payload.provider,
-				requestId: payload.requestId,
 				contextType: payload.contextType,
 				finishedReason: payload.finishedReason,
 				chunks: payload.stats.chunkCount,
@@ -3156,10 +3191,9 @@ export class SmartLLMService {
 		}
 
 		try {
-			const [{ appendFile, mkdir, access }, path] = await Promise.all([
-				import('node:fs/promises'),
-				import('node:path')
-			]);
+			const [{ appendFile, mkdir, access, chmod, readdir, unlink }, path] = await Promise.all(
+				[import('node:fs/promises'), import('node:path')]
+			);
 
 			const exists = async (target: string): Promise<boolean> => {
 				try {
@@ -3192,20 +3226,32 @@ export class SmartLLMService {
 			};
 
 			const baseDir = await resolveBaseDir();
-			await mkdir(baseDir, { recursive: true });
+			await mkdir(baseDir, { recursive: true, mode: 0o700 });
+			await chmod(baseDir, 0o700);
 			const date = new Date();
 			const dateStamp = date.toISOString().slice(0, 10);
+			const requestedRetentionDays = Number.parseInt(
+				process.env.LLM_STREAM_DEBUG_RETENTION_DAYS ?? '',
+				10
+			);
+			const retentionDays = Number.isFinite(requestedRetentionDays)
+				? Math.min(30, Math.max(1, requestedRetentionDays))
+				: 2;
+			const cutoff = date.getTime() - retentionDays * 24 * 60 * 60 * 1000;
+			const filePattern = /^llm-stream-deltas-(\d{4}-\d{2}-\d{2})\.jsonl$/;
+			for (const entry of await readdir(baseDir)) {
+				const match = filePattern.exec(entry);
+				if (!match) continue;
+				const timestamp = Date.parse(`${match[1]}T00:00:00.000Z`);
+				if (Number.isFinite(timestamp) && timestamp < cutoff) {
+					await unlink(path.join(baseDir, entry)).catch(() => undefined);
+				}
+			}
 			const filePath = path.join(baseDir, `llm-stream-deltas-${dateStamp}.jsonl`);
 			const record = {
 				timestamp: date.toISOString(),
 				model: payload.model ?? null,
 				provider: payload.provider ?? null,
-				requestId: payload.requestId ?? null,
-				sessionId: payload.sessionId ?? null,
-				messageId: payload.messageId ?? null,
-				turnRunId: payload.turnRunId ?? null,
-				streamRunId: payload.streamRunId ?? null,
-				clientTurnId: payload.clientTurnId ?? null,
 				contextType: payload.contextType ?? null,
 				finishedReason: payload.finishedReason ?? null,
 				usageReasoningTokens: payload.usageReasoningTokens ?? null,
@@ -3218,14 +3264,20 @@ export class SmartLLMService {
 					reasoningDetailsChunks: payload.stats.reasoningDetailsChunks,
 					reasoningDetailsItems: payload.stats.reasoningDetailsItems,
 					toolCallChunks: payload.stats.toolCallChunks,
+					otherChunks: payload.stats.otherChunks,
 					deltaKeyShapes: payload.stats.deltaKeyShapes
-				},
-				firstDeltas: payload.stats.firstDeltas,
-				firstReasoningDeltas: payload.stats.firstReasoningDeltas
+				}
 			};
-			await appendFile(filePath, `${JSON.stringify(record)}\n`, 'utf8');
+			await appendFile(filePath, `${JSON.stringify(record)}\n`, {
+				encoding: 'utf8',
+				mode: 0o600
+			});
+			await chmod(filePath, 0o600);
 		} catch (e) {
-			console.warn('[LLM_STREAM_DEBUG] Failed to write debug summary', e);
+			console.warn(
+				'[LLM_STREAM_DEBUG] Failed to write debug summary',
+				safeLlmErrorDiagnostic(e)
+			);
 		}
 	}
 

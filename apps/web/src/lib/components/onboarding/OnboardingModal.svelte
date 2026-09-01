@@ -36,9 +36,9 @@
 	onDismiss={handleDismiss}
 >
 	{#snippet icon()}
-		<div class="rounded-xl border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak">
+		<div class="rounded-lg border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak">
 			<div
-				class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted shadow-ink-inner"
+				class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-md border border-border bg-muted shadow-ink-inner"
 			>
 				<video
 					autoplay
@@ -96,7 +96,7 @@
 			variant="primary"
 			size="md"
 			fullWidth
-			class="shadow-ink-strong pressable"
+			class="shadow-ink-strong"
 		>
 			<span class="flex items-center justify-center gap-2">
 				<User class="w-4 h-4" />

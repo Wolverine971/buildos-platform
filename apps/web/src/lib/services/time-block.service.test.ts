@@ -181,4 +181,31 @@ describe('TimeBlockService source-aware calendar routing', () => {
 		});
 		expect(legacyCalendar.deleteCalendarEvent).not.toHaveBeenCalled();
 	});
+
+	it('keeps legacy events operable after a user gains a source-aware connection', async () => {
+		const { service, sourceAwareCalendar, legacyCalendar } = createService();
+		const legacyIdentity = {
+			calendar_event_id: 'legacy-event-1',
+			calendar_source_id: null
+		};
+
+		await (service as any).updateCalendarEvent(legacyIdentity, {
+			summary: 'Legacy block',
+			description: '',
+			start_time: '2026-08-12T14:00:00.000Z',
+			end_time: '2026-08-12T15:00:00.000Z',
+			timeZone: 'UTC'
+		});
+		await (service as any).deleteCalendarEvent(legacyIdentity);
+
+		expect(legacyCalendar.updateCalendarEvent).toHaveBeenCalledWith(
+			'user-1',
+			expect.objectContaining({ event_id: 'legacy-event-1' })
+		);
+		expect(legacyCalendar.deleteCalendarEvent).toHaveBeenCalledWith('user-1', {
+			event_id: 'legacy-event-1'
+		});
+		expect(sourceAwareCalendar.updateEvent).not.toHaveBeenCalled();
+		expect(sourceAwareCalendar.deleteEvent).not.toHaveBeenCalled();
+	});
 });

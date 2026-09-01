@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/ui/Alert.svelte -->
 <script lang="ts">
-	import { CircleAlert, CircleCheck, TriangleAlert, Info, X } from 'lucide-svelte';
+	import { CircleAlert, CircleCheck, TriangleAlert, Info, X } from '$lib/icons/lucide';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import type { Snippet } from 'svelte';
 
@@ -126,7 +126,7 @@
 			{#if closeable}
 				<button
 					type="button"
-					class="flex-shrink-0 flex items-start pt-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded-md pressable"
+					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 pressable"
 					onclick={handleClose}
 					aria-label="Close alert"
 				>

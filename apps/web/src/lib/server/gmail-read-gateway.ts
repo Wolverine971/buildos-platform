@@ -119,6 +119,8 @@ function cleanHeaderValue(value: unknown, maxLength = 2_000): string {
 	if (typeof value !== 'string') return '';
 	return value
 		.replace(/[\r\n\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]+/g, ' ')
+		.replace(/\p{Cf}+/gu, '')
+		.replace(/\s+/g, ' ')
 		.trim()
 		.slice(0, maxLength);
 }
@@ -138,6 +140,7 @@ function cleanSnippet(value: unknown): string {
 		allowedAttributes: {},
 		nonTextTags: ['style', 'script', 'textarea', 'option', 'noscript']
 	})
+		.replace(/\p{Cf}+/gu, '')
 		.replace(/\s+/g, ' ')
 		.trim()
 		.slice(0, 500);
@@ -176,6 +179,7 @@ function sanitizePlainText(value: string): string {
 	return value
 		.replace(/\r\n?/g, '\n')
 		.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+		.replace(/\p{Cf}+/gu, '')
 		.replace(/\n{4,}/g, '\n\n\n')
 		.trim();
 }

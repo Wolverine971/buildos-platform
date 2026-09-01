@@ -5,7 +5,8 @@ const {
 	legacyUpdateMock,
 	legacyDeleteMock,
 	legacyDisconnectMock,
-	legacyHasValidConnectionMock,
+	legacyHasStoredConnectionMock,
+	targetHasActiveMock,
 	legacyShareMock,
 	legacyUnshareMock,
 	writeCreateMock,
@@ -22,7 +23,8 @@ const {
 		legacyUpdateMock: vi.fn(),
 		legacyDeleteMock: vi.fn(),
 		legacyDisconnectMock: vi.fn(),
-		legacyHasValidConnectionMock: vi.fn(),
+		legacyHasStoredConnectionMock: vi.fn(),
+		targetHasActiveMock: vi.fn().mockResolvedValue(true),
 		legacyShareMock: vi.fn(),
 		legacyUnshareMock: vi.fn(),
 		writeCreateMock: vi.fn(),
@@ -51,7 +53,7 @@ vi.mock('$lib/services/calendar-service', () => ({
 	CalendarService: vi.fn().mockImplementation((client, options) => ({
 		client,
 		options,
-		hasValidConnection: legacyHasValidConnectionMock,
+		hasStoredConnection: legacyHasStoredConnectionMock,
 		updateCalendarEvent: legacyUpdateMock,
 		deleteCalendarEvent: legacyDeleteMock,
 		disconnectCalendar: legacyDisconnectMock,
@@ -75,6 +77,12 @@ vi.mock('$lib/services/ontology/onto-event-sync.service', () => ({
 
 vi.mock('$lib/server/google-calendar-read.service', () => ({
 	GoogleCalendarReadService: vi.fn()
+}));
+
+vi.mock('$lib/server/google-calendar-target.service', () => ({
+	GoogleCalendarTargetService: vi.fn().mockImplementation(() => ({
+		hasActiveTarget: targetHasActiveMock
+	}))
 }));
 
 vi.mock('$lib/server/google-calendar-write.service', async (importOriginal) => {
@@ -131,6 +139,7 @@ function scheduleSupabase(task: Record<string, unknown>) {
 describe('multi-account /api/calendar mutations', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		targetHasActiveMock.mockResolvedValue(true);
 	});
 
 	it('routes an update through the exact calendar source on the canary path', async () => {
@@ -229,7 +238,8 @@ describe('multi-account /api/calendar mutations', () => {
 	});
 
 	it('provides privileged cleanup authority for automatic disconnects', async () => {
-		legacyHasValidConnectionMock.mockResolvedValue(false);
+		legacyHasStoredConnectionMock.mockResolvedValue(false);
+		targetHasActiveMock.mockResolvedValue(false);
 		const event = eventFor({});
 
 		const response = await GET(event);
@@ -239,7 +249,7 @@ describe('multi-account /api/calendar mutations', () => {
 		expect(CalendarService).toHaveBeenCalledWith(event.locals.supabase, {
 			privilegedSupabase: adminClient
 		});
-		expect(legacyHasValidConnectionMock).toHaveBeenCalledWith('user-1');
+		expect(legacyHasStoredConnectionMock).toHaveBeenCalledWith('user-1');
 		expect(payload.data).toEqual({ connected: false, userId: 'user-1' });
 	});
 

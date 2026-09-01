@@ -485,6 +485,14 @@ export class CalendarService {
 	}
 
 	/**
+	 * Cheap storage-level connection check for routing and UI status. Provider
+	 * credential refresh remains the responsibility of the calendar operation.
+	 */
+	async hasStoredConnection(userId: string): Promise<boolean> {
+		return (await this.oAuthService.safeGetCalendarStatus(userId)).isConnected;
+	}
+
+	/**
 	 * Simple connection check - used by UI
 	 */
 	async hasValidConnection(userId: string): Promise<boolean> {

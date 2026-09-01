@@ -2,7 +2,14 @@
 
 import type { OpenRouterResponse, OpenRouterTranscriptionResponse } from './types';
 import { buildOpenRouterChatCompletionBody } from './openrouter-request';
-import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
+import {
+	isOpenRouterModelAvailabilityError,
+	isOpenRouterProviderError,
+	LLMRequestCancelledError,
+	LLMRequestTimeoutError,
+	safeLlmErrorDiagnostic,
+	safeProviderIdentifier
+} from './errors';
 
 function reasonMessage(reason: unknown): string {
 	if (reason instanceof Error && reason.message.trim()) return reason.message;
@@ -96,10 +103,6 @@ export class OpenRouterClient {
 						: typeof errorText === 'string'
 							? errorText
 							: 'Unknown error';
-				const trimmedMessage =
-					providerMessage.length > 4000
-						? `${providerMessage.slice(0, 4000)}…`
-						: providerMessage;
 				const requestIdHeader =
 					response.headers.get('x-request-id') ||
 					response.headers.get('x-openrouter-request-id') ||
@@ -120,25 +123,34 @@ export class OpenRouterClient {
 					typeof errorMetadata?.provider_name === 'string'
 						? errorMetadata.provider_name
 						: null;
+				const classificationSource = {
+					status: response.status,
+					message: providerMessage,
+					openrouter: { metadata: errorMetadata, providerName }
+				};
+				const safeErrorCode = safeLlmErrorDiagnostic({
+					status: response.status,
+					code: errorObject?.code
+				}).code;
 
 				const enrichedError = new Error(
-					`OpenRouter API error: ${response.status} - ${trimmedMessage}`
+					`OpenRouter API request failed (status=${response.status}).`
 				) as Error & {
 					status?: number;
 					openrouter?: Record<string, unknown>;
 				};
+				enrichedError.name = 'OpenRouterHTTPError';
 				enrichedError.status = response.status;
 				enrichedError.openrouter = {
 					httpStatus: response.status,
-					requestId: requestIdHeader ?? null,
-					generationId: generationIdHeader ?? null,
-					errorType: errorObject?.type ?? null,
-					errorCode: errorObject?.code ?? null,
-					errorParam: errorObject?.param ?? null,
-					error: errorObject ?? null,
-					metadata: errorMetadata,
-					providerName,
-					retryAfterMs
+					requestId: safeProviderIdentifier(requestIdHeader),
+					generationId: safeProviderIdentifier(generationIdHeader),
+					errorCode: safeErrorCode ?? null,
+					providerName: null,
+					retryAfterMs,
+					modelAvailabilityError:
+						isOpenRouterModelAvailabilityError(classificationSource),
+					providerError: isOpenRouterProviderError(classificationSource)
 				};
 				throw enrichedError;
 			}
@@ -149,13 +161,16 @@ export class OpenRouterClient {
 				data = (await response.json()) as OpenRouterResponse;
 			} catch (error) {
 				const enrichedError =
-					error instanceof Error ? error : new Error('OpenRouter returned invalid JSON');
+					error instanceof Error &&
+					(error.name === 'TimeoutError' || error.name === 'AbortError')
+						? error
+						: new SyntaxError('OpenRouter returned invalid JSON');
 				(
 					enrichedError as Error & {
 						openrouter?: Record<string, unknown>;
 					}
 				).openrouter = {
-					generationId: generationIdHeader ?? null
+					generationId: safeProviderIdentifier(generationIdHeader)
 				};
 				throw enrichedError;
 			}
@@ -168,16 +183,26 @@ export class OpenRouterClient {
 					typeof errorMetadata?.provider_name === 'string'
 						? errorMetadata.provider_name
 						: null;
+				const classificationSource = {
+					message: data.error.message,
+					openrouter: { metadata: errorMetadata, providerName }
+				};
+				const safeErrorCode = safeLlmErrorDiagnostic({ code: data.error.code }).code;
 				const enrichedError = new Error(
-					`OpenRouter API error: ${data.error.message}`
+					'OpenRouter API returned an error response.'
 				) as Error & {
 					openrouter?: Record<string, unknown>;
 				};
+				enrichedError.name = 'OpenRouterResponseError';
 				enrichedError.openrouter = {
-					error: data.error,
-					metadata: errorMetadata,
-					providerName,
-					generationId: data.id || generationIdHeader || null
+					errorCode: safeErrorCode ?? null,
+					providerName: null,
+					generationId:
+						safeProviderIdentifier(data.id) ??
+						safeProviderIdentifier(generationIdHeader),
+					modelAvailabilityError:
+						isOpenRouterModelAvailabilityError(classificationSource),
+					providerError: isOpenRouterProviderError(classificationSource)
 				};
 				throw enrichedError;
 			}
@@ -275,10 +300,10 @@ export class OpenRouterClient {
 			});
 
 			if (!response.ok) {
-				const errorText = await response.text();
 				const error = new Error(
-					`OpenRouter API error: ${response.status} - ${errorText}`
+					`OpenRouter audio request failed (status=${response.status}).`
 				) as Error & { status?: number };
+				error.name = 'OpenRouterHTTPError';
 				error.status = response.status;
 				throw error;
 			}
@@ -330,28 +355,16 @@ export class OpenRouterClient {
 			});
 
 			if (!response.ok) {
-				const errorText = await response.text();
-				let parsed: any = null;
-				try {
-					parsed = JSON.parse(errorText);
-				} catch {
-					parsed = null;
-				}
-				const errorObject =
-					parsed?.error && typeof parsed.error === 'object' ? parsed.error : parsed;
-				const message =
-					typeof errorObject?.message === 'string' ? errorObject.message : errorText;
 				const enrichedError = new Error(
-					`OpenRouter transcription API error: ${response.status} - ${message}`
+					`OpenRouter transcription request failed (status=${response.status}).`
 				) as Error & { status?: number; openrouter?: Record<string, unknown> };
+				enrichedError.name = 'OpenRouterHTTPError';
 				enrichedError.status = response.status;
 				enrichedError.openrouter = {
 					httpStatus: response.status,
 					requestId:
-						response.headers.get('x-generation-id') ||
-						response.headers.get('x-request-id') ||
-						null,
-					error: errorObject ?? errorText
+						safeProviderIdentifier(response.headers.get('x-generation-id')) ??
+						safeProviderIdentifier(response.headers.get('x-request-id'))
 				};
 				throw enrichedError;
 			}

@@ -1,8 +1,6 @@
 // apps/web/src/routes/api/time-blocks/create/+server.ts
-import { env as privateEnv } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
-import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import { createTimeBlockRuntimeService } from '$lib/server/time-block-runtime.service';
 import { ApiResponse } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
@@ -43,10 +41,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	if (!start_time || !end_time) {
 		return ApiResponse.badRequest('Missing required fields: start_time, end_time');
 	}
-	if (calendar_source_id && !isMultiCalendarUserAllowed(user.id, privateEnv)) {
-		return ApiResponse.badRequest('Calendar source selection is not enabled for this account.');
-	}
-
 	const startDate = new Date(start_time);
 	const endDate = new Date(end_time);
 
@@ -55,7 +49,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	}
 
 	try {
-		const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
+		const timeBlockService = await createTimeBlockRuntimeService(supabase, user.id);
 
 		const timeBlock = await timeBlockService.createTimeBlock({
 			block_type,

@@ -1,7 +1,6 @@
 // apps/web/src/lib/services/calendar-analysis.service.ts
 import { ApiService, type ServiceResponse } from './base/api-service';
 import { CalendarService, type CalendarEvent } from './calendar-service';
-import { env as privateEnv } from '$env/dynamic/private';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { instantiateProject } from '$lib/services/ontology/instantiation.service';
 import { queueProjectContextSnapshot } from '$lib/server/project-context-snapshot.service';
@@ -18,12 +17,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { ErrorLoggerService } from './errorLogger.service';
 import { generateProjectContextFramework } from './prompts/core/prompt-components';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
-import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import {
 	GoogleCalendarReadService,
 	type GoogleCalendarReadWarning,
 	type GoogleCalendarSourceReadStatus
 } from '$lib/server/google-calendar-read.service';
+import { GoogleCalendarTargetService } from '$lib/server/google-calendar-target.service';
 import type { GoogleCalendarSourceEventIdentity } from '@buildos/shared-types';
 
 // Helper functions for date arithmetic (replacing dayjs)
@@ -107,6 +106,7 @@ type AnalysisCalendarEvent = CalendarEvent & {
 type CalendarAnalysisServiceOptions = {
 	multiCalendarAllowed?: (userId: string) => boolean;
 	multiCalendarReadService?: Pick<GoogleCalendarReadService, 'listEvents'>;
+	hasAnalysisTarget?: (userId: string) => Promise<boolean>;
 };
 
 type AnalysisEventReadResult = {
@@ -116,6 +116,7 @@ type AnalysisEventReadResult = {
 	sourceStatuses: GoogleCalendarSourceReadStatus[];
 	calendarSourceIds: string[];
 	providerCalendarIds: string[];
+	sourceAware: boolean;
 };
 
 interface ProjectSuggestion {
@@ -312,8 +313,8 @@ export class CalendarAnalysisService extends ApiService {
 	private supabase: SupabaseClient<Database>;
 	private calendarService: CalendarService;
 	private llmService: SmartLLMService;
-	private multiCalendarAllowed: (userId: string) => boolean;
 	private multiCalendarReadService: Pick<GoogleCalendarReadService, 'listEvents'> | null;
+	private hasAnalysisTarget: (userId: string) => Promise<boolean>;
 	public errorLogger: ErrorLoggerService;
 
 	private constructor(
@@ -327,10 +328,14 @@ export class CalendarAnalysisService extends ApiService {
 			supabase,
 			appName: 'BuildOS Calendar Analysis'
 		});
-		this.multiCalendarAllowed =
-			options.multiCalendarAllowed ??
-			((userId) => isMultiCalendarUserAllowed(userId, privateEnv));
 		this.multiCalendarReadService = options.multiCalendarReadService ?? null;
+		this.hasAnalysisTarget =
+			options.hasAnalysisTarget ??
+			((userId) =>
+				new GoogleCalendarTargetService(createAdminSupabaseClient()).hasActiveTarget(
+					userId,
+					'analysis'
+				));
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
@@ -351,7 +356,10 @@ export class CalendarAnalysisService extends ApiService {
 			legacyCalendarIds?: string[];
 		}
 	): Promise<AnalysisEventReadResult> {
-		if (!this.multiCalendarAllowed(userId)) {
+		const useSourceAware =
+			Boolean(params.calendarSourceIds?.length) ||
+			(await this.hasAnalysisTarget(userId).catch(() => false));
+		if (!useSourceAware) {
 			const eventsResponse = await this.calendarService.getCalendarEvents(userId, {
 				timeMin: params.timeMin,
 				timeMax: params.timeMax,
@@ -364,6 +372,7 @@ export class CalendarAnalysisService extends ApiService {
 				warnings: [],
 				sourceStatuses: [],
 				calendarSourceIds: [],
+				sourceAware: false,
 				providerCalendarIds: params.legacyCalendarIds?.length
 					? Array.from(new Set(params.legacyCalendarIds))
 					: ['primary']
@@ -399,6 +408,7 @@ export class CalendarAnalysisService extends ApiService {
 					)
 				])
 			),
+			sourceAware: true,
 			providerCalendarIds: Array.from(
 				new Set(response.sourceStatuses.map((status) => status.providerCalendarId))
 			)
@@ -444,7 +454,7 @@ export class CalendarAnalysisService extends ApiService {
 
 			if (!eventsResponse.events || eventsResponse.events.length === 0) {
 				throw new Error(
-					eventsResponse.sourceStatuses.length === 0 && this.multiCalendarAllowed(userId)
+					eventsResponse.sourceStatuses.length === 0 && eventsResponse.sourceAware
 						? 'No analysis-enabled calendar sources found'
 						: 'No calendar events found'
 				);

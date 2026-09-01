@@ -22,6 +22,18 @@ vi.mock('$lib/services/calendar-service', () => ({
 	}))
 }));
 
+vi.mock('$lib/server/google-calendar-connection-status', () => ({
+	hasUsableGoogleCalendarConnection: hasValidConnectionMock
+}));
+
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: vi.fn(() => ({}))
+}));
+
+vi.mock('$lib/server/google-calendar-target.service', () => ({
+	GoogleCalendarTargetService: vi.fn()
+}));
+
 vi.mock('$lib/services/calendar-analysis.service', () => ({
 	CalendarAnalysisService: {
 		getInstance: vi.fn(() => ({

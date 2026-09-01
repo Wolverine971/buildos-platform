@@ -15,6 +15,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { OnboardingIntent, OnboardingStakes } from '$lib/config/onboarding.config';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import { fade, scale } from 'svelte/transition';
 
 	interface Props {
@@ -116,6 +117,16 @@
 
 	const hasNotifications = $derived(summary.smsEnabled || summary.emailEnabled);
 
+	function fadeIn(duration = 300, delay = 0) {
+		return prefersReducedMotion.current ? { duration: 0, delay: 0 } : { duration, delay };
+	}
+
+	function scaleIn() {
+		return prefersReducedMotion.current
+			? { duration: 0, start: 1 }
+			: { duration: 320, start: 0.9 };
+	}
+
 	async function completeOnboarding() {
 		isCompleting = true;
 		const timeSpentSeconds =
@@ -170,10 +181,12 @@
 
 <div class="max-w-2xl mx-auto px-4 py-8 sm:py-16">
 	<!-- Success icon -->
-	<div class="text-center mb-10" in:scale={{ duration: 400, start: 0.8 }}>
+	<div class="text-center mb-10" in:scale={scaleIn()}>
 		<div class="flex justify-center mb-6">
 			<div class="relative">
-				<div class="absolute inset-0 bg-success/20 blur-2xl opacity-40 animate-pulse"></div>
+				<div
+					class="absolute inset-0 animate-pulse bg-success/20 opacity-40 blur-2xl motion-reduce:animate-none"
+				></div>
 				<div
 					class="relative w-20 h-20 bg-success rounded-full flex items-center justify-center shadow-ink-strong tx tx-bloom tx-weak"
 				>
@@ -185,11 +198,11 @@
 		<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">You're set up!</h1>
 
 		{#if stats.length > 0}
-			<p class="text-lg text-muted-foreground" in:fade={{ delay: 200, duration: 300 }}>
+			<p class="text-lg text-muted-foreground" in:fade={fadeIn(300, 200)}>
 				Here's what we created:
 			</p>
 		{:else}
-			<p class="text-lg text-muted-foreground" in:fade={{ delay: 200, duration: 300 }}>
+			<p class="text-lg text-muted-foreground" in:fade={fadeIn(300, 200)}>
 				You're ready to start using BuildOS
 			</p>
 		{/if}
@@ -197,10 +210,7 @@
 
 	<!-- Stats row -->
 	{#if stats.length > 0}
-		<div
-			class="flex justify-center gap-6 sm:gap-10 mb-12"
-			in:fade={{ delay: 300, duration: 300 }}
-		>
+		<div class="flex justify-center gap-6 sm:gap-10 mb-12" in:fade={fadeIn(300, 300)}>
 			{#each stats as stat}
 				<div class="text-center">
 					<div class="text-3xl sm:text-4xl font-bold text-accent">{stat.count}</div>
@@ -215,8 +225,8 @@
 	<!-- Public URL / username claim (optional, skippable) -->
 	{#if usernameLoaded}
 		<div
-			class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak mb-6"
-			in:fade={{ delay: 350, duration: 300 }}
+			class="mb-6 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak sm:p-6"
+			in:fade={fadeIn(300, 350)}
 		>
 			<div class="flex items-start gap-3 mb-3">
 				<div
@@ -235,9 +245,9 @@
 
 			{#if usernameSaved}
 				<div
-					class="flex items-center gap-2 rounded-md bg-success/10 px-3 py-2 text-sm text-success"
+					class="flex items-center gap-2 rounded-md bg-success/10 px-3 py-2 text-sm text-foreground"
 				>
-					<Check class="w-4 h-4 shrink-0" />
+					<Check class="h-4 w-4 shrink-0 text-success" />
 					<span>
 						Your public URL is
 						<span class="font-mono font-semibold">build-os.com/p/{usernameValue}/…</span
@@ -257,7 +267,7 @@
 						placeholder={derivedFallback}
 						minlength="3"
 						maxlength="24"
-						class="flex-1 min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+						class="min-h-11 min-w-0 flex-1 rounded-md border border-border-strong bg-background px-3 py-2 font-mono text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm"
 						disabled={usernameLoading}
 						aria-label="Public username"
 					/>
@@ -295,8 +305,8 @@
 
 	<!-- Connect your agents -->
 	<div
-		class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak mb-6"
-		in:fade={{ delay: 380, duration: 300 }}
+		class="mb-6 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak sm:p-6"
+		in:fade={fadeIn(300, 380)}
 	>
 		<div class="flex items-start gap-3 mb-3">
 			<div
@@ -341,12 +351,10 @@
 
 	<!-- Next actions -->
 	<div
-		class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak mb-10"
-		in:fade={{ delay: 400, duration: 300 }}
+		class="mb-10 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak sm:p-6"
+		in:fade={fadeIn(300, 400)}
 	>
-		<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
-			What to do next
-		</h3>
+		<h3 class="micro-label mb-4 text-muted-foreground">What to do next</h3>
 		<div class="space-y-3">
 			{#if summary.projectsCreated > 0}
 				<div class="flex items-center gap-3 text-foreground">
@@ -356,7 +364,7 @@
 			{/if}
 			<div class="flex items-center gap-3 text-foreground">
 				<MessageCircle class="w-5 h-5 text-accent flex-shrink-0" />
-				<span>Chat with BuildOS to update anything</span>
+				<span>Brain-dump changes to keep your project current</span>
 			</div>
 			{#if hasNotifications}
 				<div class="flex items-center gap-3 text-foreground">
@@ -368,14 +376,14 @@
 	</div>
 
 	<!-- CTA -->
-	<div class="text-center" in:fade={{ delay: 500, duration: 300 }}>
+	<div class="text-center" in:fade={fadeIn(300, 500)}>
 		<Button
 			variant="primary"
 			size="lg"
 			onclick={completeOnboarding}
 			loading={isCompleting}
 			disabled={isCompleting}
-			class="px-10 py-4 text-lg shadow-ink-strong pressable"
+			class="px-10 py-4 text-lg shadow-ink-strong"
 		>
 			{#if isCompleting}
 				Preparing Your Workspace...

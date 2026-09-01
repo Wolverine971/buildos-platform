@@ -264,7 +264,11 @@ export function emitToolResult(
 			options.onMessageSent?.();
 		})
 		.catch((error) => {
-			logger.warn('Failed to emit tool_result', { error, toolCall });
+			logger.warn('Failed to emit tool_result', {
+				error,
+				toolName: toolCall.function.name,
+				toolCallId: toolCall.id
+			});
 			options.onError?.(error);
 		});
 }

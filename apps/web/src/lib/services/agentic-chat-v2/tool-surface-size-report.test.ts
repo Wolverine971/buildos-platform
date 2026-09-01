@@ -133,7 +133,9 @@ describe('tool surface size report', () => {
 		// after a deliberate trim; the steering it carries (related-not-keyword,
 		// gather-before-broad-change, exact lookups stay on search_*) is the
 		// load-bearing part per the 2026-06-19 query-formulation eval.
-		expect(globalWrite?.totalChars).toBeLessThanOrEqual(19_900);
+		// 2026-09-01: 19,900 → 20,100 after Calendar reads/writes began carrying
+		// exact calendar_source_id identity to avoid cross-account ambiguity.
+		expect(globalWrite?.totalChars).toBeLessThanOrEqual(20_100);
 		expect(projectBasic?.totalChars).toBeLessThanOrEqual(12_070);
 		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_175);
 		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(21_130);

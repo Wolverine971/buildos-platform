@@ -405,6 +405,57 @@ describe('GmailReadGateway', () => {
 		);
 	});
 
+	it('removes invisible format padding from provider headers and snippets', async () => {
+		const connectionId = '11111111-1111-4111-8111-111111111111';
+		const { admin } = createAdmin([
+			{
+				id: connectionId,
+				email_address: 'buildos@example.com',
+				account_label: 'BuildOS',
+				status: 'active',
+				read_enabled: true
+			}
+		]);
+		const providerFetch = vi.fn(async (input: URL | RequestInfo) => {
+			if (String(input).includes('/messages?')) {
+				return jsonResponse({ messages: [{ id: 'm1', threadId: 't1' }] });
+			}
+			return jsonResponse({
+				id: 'm1',
+				threadId: 't1',
+				internalDate: '1754000000000',
+				snippet: `Payment failed${'\u200c'.repeat(200)} please update`,
+				payload: {
+					headers: [
+						{
+							name: 'From',
+							value: `Sender${'\u200b'.repeat(100)} <sender@example.com>`
+						},
+						{ name: 'Subject', value: `Invoice${'\u2060'.repeat(100)} update` }
+					]
+				}
+			});
+		});
+		const gateway = new GmailReadGateway(admin, {
+			oauthService: { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') },
+			providerFetch,
+			now: () => new Date('2026-07-22T18:00:00.000Z')
+		});
+
+		const result = await gateway.searchMessages({
+			userId: 'user-1',
+			connectionIds: [connectionId],
+			query: 'newer_than:1d',
+			maxResults: 1
+		});
+
+		expect(result.messages[0]).toMatchObject({
+			subject: 'Invoice update',
+			from: 'Sender <sender@example.com>',
+			snippet: 'Payment failed please update'
+		});
+	});
+
 	it('rejects an oversized provider response before parsing message content', async () => {
 		const connectionId = '11111111-1111-4111-8111-111111111111';
 		const { admin } = createAdmin([

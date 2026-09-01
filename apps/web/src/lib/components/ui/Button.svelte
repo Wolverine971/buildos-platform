@@ -15,7 +15,7 @@
 <script lang="ts">
 	import type { HTMLButtonAttributes } from 'svelte/elements';
 	import type { Snippet } from 'svelte';
-	import { LoaderCircle } from 'lucide-svelte';
+	import { LoaderCircle } from '$lib/icons/lucide';
 	import { twMerge } from 'tailwind-merge';
 
 	// Svelte 5 runes: Use $props() with rest syntax instead of export let and $$restProps
@@ -137,7 +137,9 @@
 			'font-semibold rounded-lg', // Slightly rounded for softer feel
 			'focus:outline-none focus-visible:ring-2',
 			'touch-manipulation',
-			'transition-all duration-100', // Fast, tactile transitions
+			// Keep motion compositor-friendly and explicit. `transition-all` also animates
+			// layout/texture changes and makes dense screens feel soft instead of tactile.
+			'transition-[background-color,border-color,color,box-shadow,opacity] duration-100 motion-reduce:transition-none motion-reduce:transform-none',
 
 			// Size classes
 			sizeClasses[size],

@@ -287,6 +287,32 @@ describe('CalendarAnalysisService.acceptSuggestion', () => {
 });
 
 describe('CalendarAnalysisService source provenance', () => {
+	it('uses an analysis-capable source even when the rollout flag is off', async () => {
+		const sourceRead = {
+			listEvents: vi.fn().mockResolvedValue({
+				events: [],
+				partial: false,
+				warnings: [],
+				sourceStatuses: []
+			})
+		};
+		const service = CalendarAnalysisService.getInstance({} as any, {
+			multiCalendarAllowed: () => false,
+			multiCalendarReadService: sourceRead,
+			hasAnalysisTarget: vi.fn().mockResolvedValue(true)
+		});
+
+		const result = await (service as any).readAnalysisEvents('user-1', {
+			timeMin: '2026-09-01T00:00:00.000Z',
+			timeMax: '2026-09-02T00:00:00.000Z'
+		});
+
+		expect(sourceRead.listEvents).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: 'user-1', capability: 'analysis' })
+		);
+		expect(result.sourceAware).toBe(true);
+	});
+
 	it('stores source/event pairs for analysis snapshots, suggestions, and task provenance', async () => {
 		const { supabase, inserts } = makeSupabase({
 			calendar_analysis_events: [{ data: null, error: null }],

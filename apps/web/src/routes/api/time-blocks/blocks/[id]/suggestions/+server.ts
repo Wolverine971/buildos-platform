@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession, s
 	}
 
 	try {
-		const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
+		const timeBlockService = await createTimeBlockRuntimeService(supabase, user.id);
 
 		const updatedBlock = await timeBlockService.regenerateSuggestions(blockId);
 

@@ -9,7 +9,6 @@ import {
 
 const MAX_TOOL_ARG_PARSE_DEPTH = 3;
 const MAX_TOOL_ARG_SEGMENTS = 8;
-const MAX_TOOL_ARGUMENT_LOG_PREVIEW_CHARS = 280;
 export const REDACTED_DURABLE_TEXT = '[redacted invalid durable text]';
 
 type SanitizeToolCallsForReplayOptions = {
@@ -363,25 +362,23 @@ export function logToolArgumentAnomaly(params: {
 	const { sessionId, anomaly } = params;
 	console.warn('[FastChat] Tool argument anomaly', {
 		kind: anomaly.kind,
-		sessionId,
 		toolName: anomaly.toolName,
-		toolCallId: anomaly.toolCallId,
 		parseError: anomaly.parseError ?? 'none',
-		argsPreview: previewToolArgumentAnomaly(anomaly.rawArgs),
+		argsShape: summarizeToolArgumentShape(anomaly.rawArgs),
 		recovered: Boolean(anomaly.recoveredArgs)
 	});
+	void sessionId;
 }
 
-function previewToolArgumentAnomaly(value: unknown): string {
-	let serialized: string;
-	try {
-		serialized = typeof value === 'string' ? value : JSON.stringify(value);
-	} catch {
-		serialized = '[unserializable tool arguments]';
+function summarizeToolArgumentShape(value: unknown): Record<string, unknown> {
+	if (typeof value === 'string') {
+		return { type: 'string', chars: value.length };
 	}
-	const compact = serialized.replace(/\s+/g, ' ').trim();
-	if (compact.length <= MAX_TOOL_ARGUMENT_LOG_PREVIEW_CHARS) return compact;
-	return `${compact.slice(0, MAX_TOOL_ARGUMENT_LOG_PREVIEW_CHARS - 3)}...`;
+	if (Array.isArray(value)) return { type: 'array', items: value.length };
+	if (value && typeof value === 'object') {
+		return { type: 'object', fields: Object.keys(value).length };
+	}
+	return { type: value === null ? 'null' : typeof value };
 }
 
 export function sanitizeToolCallsForReplay(

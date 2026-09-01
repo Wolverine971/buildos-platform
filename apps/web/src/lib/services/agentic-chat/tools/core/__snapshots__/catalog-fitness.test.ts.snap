@@ -2,7 +2,7 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "d9719c5297e921ba1dfe0941bc06687e54d7c785001916291da34da0c33a55cc",
+  "catalogSerializedSha256": "1c50a25e2332926ae71f627c3044e90389f75fa6c0b636f0033d089415aad847",
   "contextSurfaces": [
     {
       "contextType": "global",
@@ -70,9 +70,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "calendar",
-      "estimatedTokens": 3053,
+      "estimatedTokens": 3148,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "be12d60a84e9d99d42533429649699bd2583d0faf230f1b2f65daf6c8c868236",
+      "serializedDefinitionsSha256": "6962b7e82cb2d24778b46391c0b1b417a061159864c670e669d4c88c6deeef1f",
       "toolCount": 13,
       "toolNames": [
         "skill_search",
@@ -89,13 +89,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 12211,
+      "totalChars": 12590,
     },
     {
       "contextType": "daily_brief",
-      "estimatedTokens": 4927,
+      "estimatedTokens": 5022,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "4371ff88e59a48881fbb90d00c8f5934a1ed0af56f9426933916a75b9e17c12c",
+      "serializedDefinitionsSha256": "aad87f91b8d12576049c8efefa22c791ed787a2814f89da54bff3e53a80bf0d8",
       "toolCount": 19,
       "toolNames": [
         "skill_search",
@@ -118,7 +118,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_calendar_event",
         "update_calendar_event",
       ],
-      "totalChars": 19707,
+      "totalChars": 20086,
     },
     {
       "contextType": "general",
@@ -295,9 +295,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "delete_calendar_event",
-      "serialized": "{"type":"function","function":{"name":"delete_calendar_event","description":"Delete an ontology or Google event by onto_event_id or event_id.","parameters":{"type":"object","properties":{"onto_event_id":{"type":"string","description":"Ontology event UUID (onto_event_id from list results; not the Google id)"},"event_id":{"type":"string","description":"Google event id (external_event_id from list results)."},"calendar_id":{"type":"string","description":"Google calendar id (defaults to primary)"},"calendar_scope":{"type":"string","enum":["user","project","calendar_id"],"description":"Resolve event id against a specific calendar scope"},"project_id":{"type":"string","description":"Project id for project calendar lookup"},"sync_to_calendar":{"type":"boolean","description":"Whether to sync deletion to Google Calendar"}}}}}",
-      "serializedChars": 828,
-      "serializedSha256": "4ad0b2285a861c9b21c86aef3ac50522f9fdf2d50287d6723727bed6769a0fe4",
+      "serialized": "{"type":"function","function":{"name":"delete_calendar_event","description":"Delete an ontology or Google event by onto_event_id or event_id.","parameters":{"type":"object","properties":{"onto_event_id":{"type":"string","description":"Ontology event UUID (onto_event_id from list results; not the Google id)"},"event_id":{"type":"string","description":"Google event id (external_event_id from list results)."},"calendar_id":{"type":"string","description":"Google calendar id (defaults to primary)"},"calendar_scope":{"type":"string","enum":["user","project","calendar_id"],"description":"Resolve event id against a specific calendar scope"},"project_id":{"type":"string","description":"Project id for project calendar lookup"},"calendar_source_id":{"type":"string","description":"Opaque Google calendar source UUID from list_calendar_events. Required for source-aware Google events."},"sync_to_calendar":{"type":"boolean","description":"Whether to sync deletion to Google Calendar"}}}}}",
+      "serializedChars": 986,
+      "serializedSha256": "315c24223c3382294c4bcd2bf42fc37ad66a305f88eef2c11a8527d486f4c97e",
     },
     {
       "name": "delete_onto_document",
@@ -373,9 +373,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_calendar_event_details",
-      "serialized": "{"type":"function","function":{"name":"get_calendar_event_details","description":"Get one event. Pass onto_event_id for an ontology event or event_id with the external_event_id value for a Google event.","parameters":{"type":"object","properties":{"onto_event_id":{"type":"string","description":"Ontology event UUID (onto_event_id from list results; not the Google id)"},"event_id":{"type":"string","description":"Google event id (external_event_id from list results)"},"calendar_id":{"type":"string","description":"Google calendar id (defaults to primary)"},"calendar_scope":{"type":"string","enum":["user","project","calendar_id"],"description":"Resolve event id against a specific calendar scope"},"project_id":{"type":"string","description":"Project id for project calendar lookup"}}}}}",
-      "serializedChars": 790,
-      "serializedSha256": "391d667022e47c2607603cfbb4867f5300953cea043dfdb3bc1b92c7398c0c07",
+      "serialized": "{"type":"function","function":{"name":"get_calendar_event_details","description":"Get one event. Pass onto_event_id for an ontology event. For a Google event, pass event_id and calendar_source_id exactly as returned by list_calendar_events.","parameters":{"type":"object","properties":{"onto_event_id":{"type":"string","description":"Ontology event UUID (onto_event_id from list results; not the Google id)"},"event_id":{"type":"string","description":"Google event id (external_event_id from list results)"},"calendar_id":{"type":"string","description":"Google calendar id (defaults to primary)"},"calendar_scope":{"type":"string","enum":["user","project","calendar_id"],"description":"Resolve event id against a specific calendar scope"},"project_id":{"type":"string","description":"Project id for project calendar lookup"},"calendar_source_id":{"type":"string","description":"Opaque Google calendar source UUID from list_calendar_events. Required for source-aware Google events."}}}}}",
+      "serializedChars": 986,
+      "serializedSha256": "111276e9d4371df9547f4dd7babd561d72438ed5df9ebbae7813fc3fec983182",
     },
     {
       "name": "get_document_outline",
@@ -511,9 +511,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "list_calendar_events",
-      "serialized": "{"type":"function","function":{"name":"list_calendar_events","description":"List merged, deduplicated Google and ontology events. Pass explicit time_min/time_max for an exact window.","parameters":{"type":"object","properties":{"time_min":{"type":"string","description":"Window start (ISO 8601 datetime or date)."},"time_max":{"type":"string","description":"Window end (ISO 8601 datetime or date)."},"timezone":{"type":"string","description":"Optional IANA timezone for date-only/naive datetime values (example: America/New_York)."},"query":{"type":"string","description":"Matches Google event text and ontology title, description, or location."},"limit":{"type":"integer","default":100,"minimum":1,"maximum":200,"description":"Page size."},"offset":{"type":"integer","default":0,"minimum":0,"maximum":5000,"description":"Zero-based pagination offset for merged results."},"calendar_scope":{"type":"string","enum":["user","project","calendar_id"],"description":"Which calendar to query: user primary, project calendar, or a specific calendar id"},"project_id":{"type":"string","description":"Required when calendar_scope=project"},"calendar_id":{"type":"string","description":"Google calendar id to query (used when calendar_scope=user or calendar_id)"}}}}}",
-      "serializedChars": 1257,
-      "serializedSha256": "5a6f0b7ce750ae4733c7ef903b7e7b09434df51e6574775b290d51e93f7cec19",
+      "serialized": "{"type":"function","function":{"name":"list_calendar_events","description":"List merged, deduplicated Google and ontology events. Pass explicit time_min/time_max for an exact window.","parameters":{"type":"object","properties":{"time_min":{"type":"string","description":"Window start (ISO 8601 datetime or date)."},"time_max":{"type":"string","description":"Window end (ISO 8601 datetime or date)."},"timezone":{"type":"string","description":"Optional IANA timezone for date-only/naive datetime values (example: America/New_York)."},"query":{"type":"string","description":"Matches Google event text and ontology title, description, or location."},"limit":{"type":"integer","default":100,"minimum":1,"maximum":200,"description":"Page size."},"offset":{"type":"integer","default":0,"minimum":0,"maximum":299,"description":"Zero-based pagination offset for the bounded merged result window (0-299)."},"calendar_scope":{"type":"string","enum":["user","project","calendar_id"],"description":"Which calendar to query: user primary, project calendar, or a specific calendar id"},"project_id":{"type":"string","description":"Required when calendar_scope=project"},"calendar_id":{"type":"string","description":"Google calendar id to query (used when calendar_scope=user or calendar_id)"}}}}}",
+      "serializedChars": 1282,
+      "serializedSha256": "c9d523b442d614a9d502704b6ee274933ae066d1cd1ade41d462a91fffb90d2f",
     },
     {
       "name": "list_corsair_mcp_tools",
@@ -769,9 +769,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "update_calendar_event",
-      "serialized": "{"type":"function","function":{"name":"update_calendar_event","description":"Update an ontology or Google event. Pass onto_event_id or event_id plus at least one field to change.","parameters":{"type":"object","properties":{"onto_event_id":{"type":"string","description":"Ontology event UUID (onto_event_id from list results; not the Google id)"},"event_id":{"type":"string","description":"Google event id (external_event_id from list results)."},"calendar_id":{"type":"string","description":"Google calendar id (defaults to primary)"},"calendar_scope":{"type":"string","enum":["user","project","calendar_id"],"description":"Resolve event id against a specific calendar scope"},"project_id":{"type":"string","description":"Project id for project calendar lookup"},"title":{"type":"string","description":"New title"},"start_at":{"type":"string","description":"New start time (ISO 8601). Include timezone offset or Z unless timezone is provided."},"end_at":{"type":["string","null"],"description":"New end time (ISO 8601). Include timezone offset or Z unless timezone is provided."},"timezone":{"type":"string","description":"Optional IANA timezone (e.g., America/New_York). Used when start_at/end_at omit timezone."},"description":{"type":["string","null"],"description":"New description, or null to clear."},"location":{"type":["string","null"],"description":"New location, or null to clear."},"sync_to_calendar":{"type":"boolean","description":"Whether to sync ontology updates to Google Calendar"}}}}}",
-      "serializedChars": 1503,
-      "serializedSha256": "f0e778aaadde7dc6e084d7c66087b98172cbed66705cc2c219734669c6b56d5d",
+      "serialized": "{"type":"function","function":{"name":"update_calendar_event","description":"Update an ontology or Google event. Pass onto_event_id or event_id plus at least one field to change.","parameters":{"type":"object","properties":{"onto_event_id":{"type":"string","description":"Ontology event UUID (onto_event_id from list results; not the Google id)"},"event_id":{"type":"string","description":"Google event id (external_event_id from list results)."},"calendar_id":{"type":"string","description":"Google calendar id (defaults to primary)"},"calendar_scope":{"type":"string","enum":["user","project","calendar_id"],"description":"Resolve event id against a specific calendar scope"},"project_id":{"type":"string","description":"Project id for project calendar lookup"},"calendar_source_id":{"type":"string","description":"Opaque Google calendar source UUID from list_calendar_events. Required for source-aware Google events."},"title":{"type":"string","description":"New title"},"start_at":{"type":"string","description":"New start time (ISO 8601). Include timezone offset or Z unless timezone is provided."},"end_at":{"type":["string","null"],"description":"New end time (ISO 8601). Include timezone offset or Z unless timezone is provided."},"timezone":{"type":"string","description":"Optional IANA timezone (e.g., America/New_York). Used when start_at/end_at omit timezone."},"description":{"type":["string","null"],"description":"New description, or null to clear."},"location":{"type":["string","null"],"description":"New location, or null to clear."},"sync_to_calendar":{"type":"boolean","description":"Whether to sync ontology updates to Google Calendar"}}}}}",
+      "serializedChars": 1661,
+      "serializedSha256": "35d5dd80dcb21722f3368fbeeedcbfc66f4dbeea01b6a0dc8c179ba214962590",
     },
     {
       "name": "update_onto_document",
@@ -851,7 +851,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     "resolve_libri_resource",
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/42ae8423",
+  "registryVersion": "tool-registry/1a1ec0e7",
   "staticProfiles": [
     {
       "contextType": "global_basic",
@@ -877,9 +877,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "global_write",
-      "estimatedTokens": 4927,
+      "estimatedTokens": 5022,
       "profile": "global_write",
-      "serializedDefinitionsSha256": "4371ff88e59a48881fbb90d00c8f5934a1ed0af56f9426933916a75b9e17c12c",
+      "serializedDefinitionsSha256": "aad87f91b8d12576049c8efefa22c791ed787a2814f89da54bff3e53a80bf0d8",
       "toolCount": 19,
       "toolNames": [
         "skill_search",
@@ -902,7 +902,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_calendar_event",
         "update_calendar_event",
       ],
-      "totalChars": 19707,
+      "totalChars": 20086,
     },
     {
       "contextType": "project_basic",
@@ -1020,9 +1020,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "project_calendar",
-      "estimatedTokens": 3053,
+      "estimatedTokens": 3148,
       "profile": "project_calendar",
-      "serializedDefinitionsSha256": "be12d60a84e9d99d42533429649699bd2583d0faf230f1b2f65daf6c8c868236",
+      "serializedDefinitionsSha256": "6962b7e82cb2d24778b46391c0b1b417a061159864c670e669d4c88c6deeef1f",
       "toolCount": 13,
       "toolNames": [
         "skill_search",
@@ -1039,7 +1039,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 12211,
+      "totalChars": 12590,
     },
     {
       "contextType": "project_create_compound",
