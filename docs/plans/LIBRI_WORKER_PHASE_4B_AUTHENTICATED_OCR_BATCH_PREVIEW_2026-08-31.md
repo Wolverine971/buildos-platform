@@ -1,7 +1,7 @@
 # Libri Worker Phase 4B: Authenticated OCR Batch Preview
 
 Date: 2026-08-31
-Status: implemented and verified locally; production deployment blocked on the full BuildOS CI gate
+Status: deployed and production-smoke-tested; worker dispatch and consumption remain disabled
 
 ## Decision
 
@@ -66,20 +66,19 @@ or replaced preview cannot silently cross the admission boundary.
 - The required Svelte code-analysis and Svelte 5 best-practice workflows were reviewed; no
   `.svelte` component was changed, so the component autofixer was not applicable.
 
-## Deployment gate
+## Production receipt
 
-The Phase 4A migrations remain unapplied. GitHub run `33460108936` proved that the repaired planner
-migration is byte-preserved and the Libri migration scope/contracts pass inside the full job. The
-dedicated Libri job correctly refused to proceed because the repository-wide BuildOS job remains
-red from unrelated pre-existing failures: three unstamped legacy documents and the worker
-`agenticChatTurnExecutor.test.ts` type cascade. Production must remain unchanged until a commit
-containing Phase 4A passes the complete BuildOS job and the dependent Libri safety job.
+The Phase 4A database objects are live. Vercel deployment `dpl_AfCphzWgapHx3LYnr3bGRauXKke1`
+reached Ready and the BuildOS production aliases point to it. An unauthenticated production POST to
+the planning endpoint returned `401` with private, no-store cache controls; no queue or Libri rows
+were created.
+
+GitHub run `33473757045` retained a red repository-wide BuildOS job because of unrelated existing
+documentation and worker test-type failures. The Libri migration scope passed within that job. The
+user explicitly authorized this isolated deployment after review; the global CI exception remains
+recorded and must not be represented as a green BuildOS gate.
 
 ## Next slice
 
-After the full BuildOS gate is green:
-
-1. apply the isolated Phase 4A migrations and capture pre/post database and Railway receipts;
-2. deploy this Phase 4B route against the now-present planner RPC;
-3. exercise one authenticated idempotent plan/replay with no queue rows; and
-4. deploy Phase 4C's separate explicit admission boundary only after its own shared-system gate.
+Phase 4C's separate confirmation route is now deployed. The next boundary is Phase 4D's default-off
+Railway dispatcher; queue consumption and paid OCR stay separate.

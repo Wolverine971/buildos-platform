@@ -2,8 +2,10 @@ export type LibriWorkerConfig = {
 	concurrency: number;
 	databaseProbeIntervalMs: number;
 	queueEnabled: boolean;
+	admissionDispatchEnabled: boolean;
 	activationMode: 'disabled' | 'synthetic_canary' | 'ocr_canary';
 	canaryStepId: string | null;
+	canaryAdmissionId: string | null;
 	canaryExpiresAtMs: number | null;
 };
 
@@ -35,7 +37,21 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 		);
 	}
 	const config = loadLibriWorkerConfig(environment);
-	if (!config.queueEnabled) return;
+	if (!config.queueEnabled && !config.admissionDispatchEnabled) return;
+	if (config.admissionDispatchEnabled) {
+		if (config.queueEnabled || config.activationMode !== 'disabled') {
+			throw new Error(
+				'Hosted Libri admission dispatch must run with queue consumption disabled'
+			);
+		}
+		if (!config.canaryAdmissionId) {
+			throw new Error(
+				'Enabled production Libri admission dispatch requires one admission UUID'
+			);
+		}
+		assertCanaryExpiry(config.canaryExpiresAtMs);
+		return;
+	}
 	if (!['synthetic_canary', 'ocr_canary'].includes(config.activationMode)) {
 		throw new Error(
 			'Enabled production Libri worker requires an exact synthetic_canary or ocr_canary activation mode'
@@ -47,14 +63,7 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 	if (!config.canaryStepId) {
 		throw new Error('Enabled production Libri canary requires one canary step UUID');
 	}
-	const nowMs = Date.now();
-	if (
-		config.canaryExpiresAtMs === null ||
-		config.canaryExpiresAtMs <= nowMs ||
-		config.canaryExpiresAtMs > nowMs + MAX_CANARY_WINDOW_MS
-	) {
-		throw new Error('Enabled production Libri canary expiry must be 1 to 30 minutes ahead');
-	}
+	assertCanaryExpiry(config.canaryExpiresAtMs);
 	if (config.activationMode === 'ocr_canary') loadLibriOcrRuntimeConfig(environment);
 }
 
@@ -94,7 +103,12 @@ export function loadLibriOcrRuntimeConfig(environment: NodeJS.ProcessEnv): Libri
 }
 
 export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWorkerConfig {
-	const enabled = parseBoolean(environment.LIBRI_WORKER_ENABLED, false);
+	const enabled = parseBoolean(environment.LIBRI_WORKER_ENABLED, false, 'LIBRI_WORKER_ENABLED');
+	const admissionDispatchEnabled = parseBoolean(
+		environment.LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED,
+		false,
+		'LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED'
+	);
 	const activationMode = parseActivationMode(environment.LIBRI_WORKER_ACTIVATION_MODE);
 
 	return {
@@ -113,8 +127,13 @@ export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWork
 			'LIBRI_WORKER_DATABASE_PROBE_INTERVAL_MS'
 		),
 		queueEnabled: enabled,
+		admissionDispatchEnabled,
 		activationMode,
 		canaryStepId: parseOptionalUuid(environment.LIBRI_WORKER_CANARY_STEP_ID),
+		canaryAdmissionId: parseOptionalUuid(
+			environment.LIBRI_WORKER_CANARY_ADMISSION_ID,
+			'LIBRI_WORKER_CANARY_ADMISSION_ID'
+		),
 		canaryExpiresAtMs: parseOptionalTimestamp(environment.LIBRI_WORKER_CANARY_EXPIRES_AT)
 	};
 }
@@ -128,11 +147,11 @@ function isHostedProduction(environment: NodeJS.ProcessEnv): boolean {
 	);
 }
 
-function parseBoolean(value: string | undefined, fallback: boolean): boolean {
+function parseBoolean(value: string | undefined, fallback: boolean, name: string): boolean {
 	if (value === undefined || value.trim() === '') return fallback;
 	if (value === 'true') return true;
 	if (value === 'false') return false;
-	throw new Error('LIBRI_WORKER_ENABLED must be true or false');
+	throw new Error(`${name} must be true or false`);
 }
 
 function parseActivationMode(value: string | undefined): LibriWorkerConfig['activationMode'] {
@@ -143,10 +162,24 @@ function parseActivationMode(value: string | undefined): LibriWorkerConfig['acti
 	);
 }
 
-function parseOptionalUuid(value: string | undefined): string | null {
+function parseOptionalUuid(
+	value: string | undefined,
+	name = 'LIBRI_WORKER_CANARY_STEP_ID'
+): string | null {
 	if (value === undefined || value.trim() === '') return null;
-	if (!UUID_PATTERN.test(value)) throw new Error('LIBRI_WORKER_CANARY_STEP_ID must be a UUID');
+	if (!UUID_PATTERN.test(value)) throw new Error(`${name} must be a UUID`);
 	return value;
+}
+
+function assertCanaryExpiry(expiresAtMs: number | null): void {
+	const nowMs = Date.now();
+	if (
+		expiresAtMs === null ||
+		expiresAtMs <= nowMs ||
+		expiresAtMs > nowMs + MAX_CANARY_WINDOW_MS
+	) {
+		throw new Error('Enabled production Libri canary expiry must be 1 to 30 minutes ahead');
+	}
 }
 
 function parseOptionalTimestamp(value: string | undefined): number | null {

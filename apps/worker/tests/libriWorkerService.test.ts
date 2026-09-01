@@ -363,6 +363,54 @@ describe('dedicated Libri worker service', () => {
 		).toThrow('LIBRI_WORKER_CANARY_EXPIRES_AT');
 	});
 
+	it('allows only one exact, expiring admission dispatch while queue consumption is off', () => {
+		const admissionId = '31000000-0000-4000-8000-000000000001';
+		const canaryExpiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+		const base = {
+			NODE_ENV: 'production',
+			LIBRI_WORKER_PROFILE: 'production',
+			LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED: 'true',
+			LIBRI_WORKER_CANARY_EXPIRES_AT: canaryExpiresAt
+		};
+
+		expect(() => requireDedicatedLibriWorkerProductionProfile(base)).toThrow(
+			'requires one admission UUID'
+		);
+		expect(() =>
+			requireDedicatedLibriWorkerProductionProfile({
+				...base,
+				LIBRI_WORKER_CANARY_ADMISSION_ID: admissionId
+			})
+		).not.toThrow();
+		expect(
+			loadLibriWorkerConfig({
+				LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED: 'true',
+				LIBRI_WORKER_CANARY_ADMISSION_ID: admissionId,
+				LIBRI_WORKER_CANARY_EXPIRES_AT: canaryExpiresAt
+			})
+		).toMatchObject({
+			queueEnabled: false,
+			admissionDispatchEnabled: true,
+			activationMode: 'disabled',
+			canaryAdmissionId: admissionId,
+			canaryExpiresAtMs: Date.parse(canaryExpiresAt)
+		});
+		expect(() =>
+			requireDedicatedLibriWorkerProductionProfile({
+				...base,
+				LIBRI_WORKER_CANARY_ADMISSION_ID: admissionId,
+				LIBRI_WORKER_ENABLED: 'true',
+				LIBRI_WORKER_ACTIVATION_MODE: 'synthetic_canary'
+			})
+		).toThrow('queue consumption disabled');
+		expect(() =>
+			loadLibriWorkerConfig({ LIBRI_WORKER_CANARY_ADMISSION_ID: 'not-a-uuid' })
+		).toThrow('LIBRI_WORKER_CANARY_ADMISSION_ID');
+		expect(() =>
+			loadLibriWorkerConfig({ LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED: 'yes' })
+		).toThrow('LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED');
+	});
+
 	it('requires bounded paid and broker settings only for the exact OCR canary', () => {
 		const canaryStepId = '30000000-0000-4000-8000-000000000001';
 		const canaryExpiresAt = new Date(Date.now() + 10 * 60_000).toISOString();

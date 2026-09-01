@@ -1,7 +1,7 @@
 # Libri Worker Phase 4C: Explicit OCR Batch Admission
 
 Date: 2026-08-31
-Status: implemented and verified locally; not pushed or deployed while the shared BuildOS gate is red
+Status: deployed and production-smoke-tested; no admission has been dispatched
 
 ## Decision
 
@@ -79,17 +79,17 @@ dispatcher.
 
 No `.svelte` component changed, so the Svelte component autofixer was not applicable.
 
-## Deployment gate
+## Production receipt
 
-Production remains unchanged. The Phase 4A planner and retry-guard migrations are still absent,
-there are zero active Libri queue jobs, the stable BuildOS queue control hash remains
-`5d3787c8d3513d3117bcf4696776d5b5`, and the Railway service remains disabled with concurrency two,
-no canary scope, no provider key, and no Supabase service key.
+Migration `20260901020431` is live. Vercel deployment `dpl_AfCphzWgapHx3LYnr3bGRauXKke1`
+reached Ready. An unauthenticated production POST to the confirmation endpoint returned `401` with
+private, no-store cache controls. Production still has zero admission and manifest rows and zero
+active Libri queue jobs. The BuildOS queue control and shared queue contract hashes remain
+`5d3787c8d3513d3117bcf4696776d5b5` and `ff0f6cdfedfe6c889597696cec2037e0`.
 
-GitHub run `33460108936` remains red from unrelated repository-wide documentation and worker type
-failures. The dedicated Libri job correctly refuses migration deployment until the full BuildOS job
-passes. Phase 4C must not be pushed to a production-deploying web branch or applied to Supabase while
-that gate is closed.
+Railway remains disabled with concurrency two, no canary target, no provider key, and no Supabase
+service key. GitHub run `33473757045` remains globally red for unrelated existing failures; the
+Libri migration checks passed, and the explicitly authorized exception is retained in this receipt.
 
 ## Next slice
 

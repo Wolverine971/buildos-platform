@@ -1,7 +1,7 @@
 # Libri Worker Phase 4A: Explicit OCR Batch Planner
 
 Date: 2026-08-31
-Status: implemented locally; production migration and activation pending
+Status: deployed and production-verified; queue dispatch and consumption remain disabled
 
 ## Decision
 
@@ -81,6 +81,21 @@ the queue row count remains unchanged afterward.
   Libri queue jobs.
 - Railway remains `LIBRI_WORKER_ENABLED=false`, activation mode `disabled`, with no provider or
   Supabase service credential.
+
+## Production receipt
+
+Migrations `20260901012550`, `20260901014021`, and `20260901020431` were applied to Supabase
+project `iwifjtlebphefldmwbkh` from an isolated work directory after a dry run listed exactly those
+three versions. The post-apply receipt recorded:
+
+- all planner, retry-guard, manifest, admission, and confirmation objects present;
+- zero manifest and admission rows and zero active Libri queue jobs;
+- the existing Libri Phase 3 run, step, reservation, and asset-grant counts unchanged at one each;
+- BuildOS queue control hash `5d3787c8d3513d3117bcf4696776d5b5` unchanged; and
+- shared queue contract hash `ff0f6cdfedfe6c889597696cec2037e0` unchanged.
+
+Railway remained disabled with concurrency two, no target admission or step, no provider key, and
+no Supabase service credential.
 
 ## Next slice
 

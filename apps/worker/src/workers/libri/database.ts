@@ -1,5 +1,11 @@
 import { Pool, type PoolConfig, type QueryResult } from 'pg';
 import {
+	type DispatchLibriOcrAdmissionInput,
+	type DispatchLibriOcrAdmissionReceipt,
+	type LibriAdmissionDispatcherPort,
+	createLibriAdmissionDispatcher
+} from './admissionDispatcher';
+import {
 	type IssueLibriOcrAssetGrantInput,
 	type IssueLibriOcrAssetGrantReceipt,
 	type LibriAssetGrantPort,
@@ -80,6 +86,14 @@ type RoleProbeRow = {
 	can_delete_source_chunks: boolean;
 	can_authorize_ocr_provider_call: boolean;
 	can_persist_and_settle_ocr_result: boolean;
+	can_select_ocr_batch_items: boolean;
+	can_update_ocr_batch_items: boolean;
+	can_select_ocr_batch_admissions: boolean;
+	can_insert_ocr_batch_admissions: boolean;
+	can_update_ocr_batch_admission_status: boolean;
+	can_update_ocr_batch_admission_manifest: boolean;
+	can_delete_ocr_batch_admissions: boolean;
+	can_enforce_ocr_batch_admission_dispatch: boolean;
 };
 
 export type LibriPgPool = {
@@ -95,6 +109,8 @@ export type LibriDatabasePort = LibriLifecyclePort &
 	LibriCostLedgerPort &
 	LibriAssetGrantPort & {
 		[key in keyof LibriOcrExecutionPort]: LibriOcrExecutionPort[key];
+	} & {
+		[key in keyof LibriAdmissionDispatcherPort]: LibriAdmissionDispatcherPort[key];
 	} & {
 		probe: () => Promise<void>;
 		close: () => Promise<void>;
@@ -149,12 +165,20 @@ class LibriDatabase implements LibriDatabasePort {
 	private readonly costLedger: LibriCostLedgerPort;
 	private readonly assetGrants: LibriAssetGrantPort;
 	private readonly ocrExecution: LibriOcrExecutionPort;
+	private readonly admissionDispatcher: LibriAdmissionDispatcherPort;
 
 	constructor(private readonly pool: LibriPgPool) {
 		this.lifecycle = createLibriLifecycle(pool);
 		this.costLedger = createLibriCostLedger(pool);
 		this.assetGrants = createLibriAssetGrantIssuer(pool);
 		this.ocrExecution = createLibriOcrExecution(pool);
+		this.admissionDispatcher = createLibriAdmissionDispatcher(pool);
+	}
+
+	dispatchOcrAdmission(
+		input: DispatchLibriOcrAdmissionInput
+	): Promise<DispatchLibriOcrAdmissionReceipt> {
+		return this.admissionDispatcher.dispatchOcrAdmission(input);
 	}
 
 	issueOcrAssetGrant(
@@ -368,7 +392,49 @@ class LibriDatabase implements LibriDatabasePort {
 					current_user,
 					'libri.persist_and_settle_ocr_result(uuid,uuid,uuid,integer,uuid,uuid,uuid,text,text,numeric,text,bigint,bigint,bigint,text)',
 					'EXECUTE'
-				) AS can_persist_and_settle_ocr_result
+				) AS can_persist_and_settle_ocr_result,
+				pg_catalog.has_table_privilege(
+					current_user,
+					'libri.ocr_batch_items',
+					'SELECT'
+				) AS can_select_ocr_batch_items,
+				pg_catalog.has_table_privilege(
+					current_user,
+					'libri.ocr_batch_items',
+					'UPDATE'
+				) AS can_update_ocr_batch_items,
+				pg_catalog.has_table_privilege(
+					current_user,
+					'libri.ocr_batch_admissions',
+					'SELECT'
+				) AS can_select_ocr_batch_admissions,
+				pg_catalog.has_table_privilege(
+					current_user,
+					'libri.ocr_batch_admissions',
+					'INSERT'
+				) AS can_insert_ocr_batch_admissions,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.ocr_batch_admissions',
+					'status',
+					'UPDATE'
+				) AS can_update_ocr_batch_admission_status,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.ocr_batch_admissions',
+					'manifest_sha256',
+					'UPDATE'
+				) AS can_update_ocr_batch_admission_manifest,
+				pg_catalog.has_table_privilege(
+					current_user,
+					'libri.ocr_batch_admissions',
+					'DELETE'
+				) AS can_delete_ocr_batch_admissions,
+				pg_catalog.has_function_privilege(
+					current_user,
+					'libri.enforce_ocr_batch_admission_dispatch()',
+					'EXECUTE'
+				) AS can_enforce_ocr_batch_admission_dispatch
 			FROM pg_catalog.pg_roles role
 			WHERE role.rolname = current_user
 		`);
@@ -436,6 +502,14 @@ function isApprovedRole(role: RoleProbeRow): boolean {
 			!role.can_update_source_chunks &&
 			!role.can_delete_source_chunks &&
 			role.can_authorize_ocr_provider_call &&
-			role.can_persist_and_settle_ocr_result
+			role.can_persist_and_settle_ocr_result &&
+			role.can_select_ocr_batch_items &&
+			!role.can_update_ocr_batch_items &&
+			role.can_select_ocr_batch_admissions &&
+			!role.can_insert_ocr_batch_admissions &&
+			role.can_update_ocr_batch_admission_status &&
+			!role.can_update_ocr_batch_admission_manifest &&
+			!role.can_delete_ocr_batch_admissions &&
+			role.can_enforce_ocr_batch_admission_dispatch
 	);
 }

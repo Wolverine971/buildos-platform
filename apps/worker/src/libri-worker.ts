@@ -38,10 +38,29 @@ const service = createLibriWorkerService({
 
 installProcessHandlers(service);
 
-void service.start().catch((error) => {
+void startDedicatedLibriWorker().catch((error) => {
 	console.error('Failed to start dedicated Libri worker:', error);
 	void shutdownAndExit(service, 'startup', 1);
 });
+
+async function startDedicatedLibriWorker(): Promise<void> {
+	if (config.admissionDispatchEnabled) {
+		if (!config.canaryAdmissionId) {
+			throw new Error('Enabled Libri admission dispatch requires one admission UUID');
+		}
+		const receipt = await database.dispatchOcrAdmission({
+			admissionId: config.canaryAdmissionId
+		});
+		console.log('Libri OCR admission dispatch completed', {
+			admissionId: receipt.admissionId,
+			runId: receipt.runId,
+			manifestSha256: receipt.manifestSha256,
+			created: receipt.created,
+			jobCount: receipt.jobs.length
+		});
+	}
+	await service.start();
+}
 
 function installProcessHandlers(ownedService: LibriWorkerService): void {
 	process.on('SIGTERM', () => void shutdownAndExit(ownedService, 'SIGTERM', 0));

@@ -34,6 +34,10 @@ describe('Libri restricted PostgreSQL connection', () => {
 		expect(queryMock.mock.calls[0]?.[0]).toContain('libri.reserve_provider_cost');
 		expect(queryMock.mock.calls[0]?.[0]).toContain('libri.authorize_ocr_provider_call');
 		expect(queryMock.mock.calls[0]?.[0]).toContain('libri.persist_and_settle_ocr_result');
+		expect(queryMock.mock.calls[0]?.[0]).toContain("'libri.ocr_batch_admissions'");
+		expect(queryMock.mock.calls[0]?.[0]).toContain(
+			'libri.enforce_ocr_batch_admission_dispatch'
+		);
 
 		await database.close();
 		expect(endMock).toHaveBeenCalledOnce();
@@ -91,7 +95,15 @@ describe('Libri restricted PostgreSQL connection', () => {
 		['can_update_source_chunks', true],
 		['can_delete_source_chunks', true],
 		['can_authorize_ocr_provider_call', false],
-		['can_persist_and_settle_ocr_result', false]
+		['can_persist_and_settle_ocr_result', false],
+		['can_select_ocr_batch_items', false],
+		['can_update_ocr_batch_items', true],
+		['can_select_ocr_batch_admissions', false],
+		['can_insert_ocr_batch_admissions', true],
+		['can_update_ocr_batch_admission_status', false],
+		['can_update_ocr_batch_admission_manifest', true],
+		['can_delete_ocr_batch_admissions', true],
+		['can_enforce_ocr_batch_admission_dispatch', false]
 	] as const)('rejects Libri worker privilege drift in %s', async (capability, value) => {
 		const { pool } = fakePool({ ...approvedRole(), [capability]: value });
 		const database = createLibriDatabase(DATABASE_URL, {
@@ -147,7 +159,15 @@ function approvedRole() {
 		can_update_source_chunks: false,
 		can_delete_source_chunks: false,
 		can_authorize_ocr_provider_call: true,
-		can_persist_and_settle_ocr_result: true
+		can_persist_and_settle_ocr_result: true,
+		can_select_ocr_batch_items: true,
+		can_update_ocr_batch_items: false,
+		can_select_ocr_batch_admissions: true,
+		can_insert_ocr_batch_admissions: false,
+		can_update_ocr_batch_admission_status: true,
+		can_update_ocr_batch_admission_manifest: false,
+		can_delete_ocr_batch_admissions: false,
+		can_enforce_ocr_batch_admission_dispatch: true
 	};
 }
 
