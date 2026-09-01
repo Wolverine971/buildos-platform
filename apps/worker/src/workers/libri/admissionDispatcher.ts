@@ -1,8 +1,14 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import type { LibriTransactionClient, LibriTransactionalPool } from './lifecycle';
+import {
+	LIBRI_SHA256_PATTERN,
+	LIBRI_UUID_PATTERN,
+	type LibriOcrQueueReceipt,
+	hashLibriOcrAdmissionManifest,
+	libriOcrQueueMetadata,
+	libriOcrQueueReceiptMatchesItem
+} from './ocrAdmissionContract';
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const MAXIMUM_BATCH_SIZE = 10;
 
 export type DispatchLibriOcrAdmissionInput = {
@@ -68,14 +74,6 @@ type ManifestRow = {
 	active_queue_job_id: string | null;
 };
 
-type QueueJobRow = {
-	id: string;
-	queue_job_id: string;
-	job_type: string;
-	metadata: Record<string, unknown> | null;
-	status: string;
-};
-
 export function createLibriAdmissionDispatcher(
 	pool: LibriTransactionalPool
 ): LibriAdmissionDispatcherPort {
@@ -95,7 +93,7 @@ class LibriAdmissionDispatcher implements LibriAdmissionDispatcherPort {
 			const manifest = await lockManifest(client, context);
 			validateImmutableContract(context, manifest);
 
-			const manifestSha256 = hashManifest(context, manifest);
+			const manifestSha256 = hashLibriOcrAdmissionManifest(context, manifest);
 			if (manifestSha256 !== context.manifest_sha256) {
 				throw new Error('Confirmed Libri OCR admission manifest hash changed');
 			}
@@ -234,10 +232,10 @@ function validateImmutableContract(context: AdmissionContextRow, manifest: Manif
 		context.run_kind !== 'ocr_book_batch' ||
 		context.subject_type !== 'book' ||
 		!context.book_id ||
-		!UUID_PATTERN.test(context.book_id) ||
+		!LIBRI_UUID_PATTERN.test(context.book_id) ||
 		!context.requested_by ||
-		!UUID_PATTERN.test(context.requested_by) ||
-		!SHA256_PATTERN.test(context.manifest_sha256)
+		!LIBRI_UUID_PATTERN.test(context.requested_by) ||
+		!LIBRI_SHA256_PATTERN.test(context.manifest_sha256)
 	) {
 		throw new Error('Libri OCR admission run contract is invalid');
 	}
@@ -257,11 +255,11 @@ function validateImmutableContract(context: AdmissionContextRow, manifest: Manif
 	for (const [position, item] of manifest.entries()) {
 		if (
 			item.position !== position ||
-			!UUID_PATTERN.test(item.step_id) ||
-			!UUID_PATTERN.test(item.image_id) ||
+			!LIBRI_UUID_PATTERN.test(item.step_id) ||
+			!LIBRI_UUID_PATTERN.test(item.image_id) ||
 			!Number.isSafeInteger(item.expected_ocr_version) ||
 			item.expected_ocr_version < 1 ||
-			!SHA256_PATTERN.test(item.image_content_sha256) ||
+			!LIBRI_SHA256_PATTERN.test(item.image_content_sha256) ||
 			stepIds.has(item.step_id) ||
 			imageIds.has(item.image_id)
 		) {
@@ -295,23 +293,6 @@ function validateDispatchableContract(context: AdmissionContextRow, manifest: Ma
 	}
 }
 
-function hashManifest(context: AdmissionContextRow, manifest: ManifestRow[]): string {
-	const canonicalManifest = JSON.stringify({
-		version: 1,
-		runId: context.run_id,
-		libraryId: context.library_id,
-		bookId: context.book_id,
-		items: manifest.map((item) => ({
-			stepId: item.step_id,
-			imageId: item.image_id,
-			position: item.position,
-			expectedOcrVersion: item.expected_ocr_version,
-			imageContentSha256: item.image_content_sha256
-		}))
-	});
-	return createHash('sha256').update(canonicalManifest, 'utf8').digest('hex');
-}
-
 async function enqueueManifestItem(
 	client: LibriTransactionClient,
 	context: AdmissionContextRow,
@@ -319,9 +300,9 @@ async function enqueueManifestItem(
 	scheduledFor: string
 ): Promise<DispatchedLibriOcrJob> {
 	const dedupKey = `libri:research-step:${item.step_id}`;
-	const metadata = queueMetadata(context, item);
+	const metadata = libriOcrQueueMetadata(context, item);
 	const queueJobId = `libri_ingest_${randomUUID()}`;
-	const inserted = await client.query<QueueJobRow>(
+	const inserted = await client.query<LibriOcrQueueReceipt>(
 		`INSERT INTO public.queue_jobs (
 			queue_job_id,
 			user_id,
@@ -350,7 +331,7 @@ async function enqueueManifestItem(
 	let queueJob = inserted.rows[0];
 	const created = Boolean(queueJob);
 	if (!queueJob) {
-		const existing = await client.query<QueueJobRow>(
+		const existing = await client.query<LibriOcrQueueReceipt>(
 			`SELECT id, queue_job_id, job_type::text, metadata, status::text
 			FROM public.queue_jobs
 			WHERE dedup_key = $1 AND status IN ('pending', 'processing')
@@ -361,7 +342,7 @@ async function enqueueManifestItem(
 		);
 		queueJob = existing.rows[0];
 	}
-	if (!queueJob || !queueJobMatchesItem(queueJob, context, item)) {
+	if (!queueJob || !libriOcrQueueReceiptMatchesItem(queueJob, context, item)) {
 		throw new Error('Active Libri queue dedup row does not match the confirmed admission');
 	}
 
@@ -404,7 +385,7 @@ async function loadEnqueuedJobs(
 	context: AdmissionContextRow,
 	manifest: ManifestRow[]
 ): Promise<DispatchedLibriOcrJob[]> {
-	const result = await client.query<QueueJobRow>(
+	const result = await client.query<LibriOcrQueueReceipt>(
 		`SELECT id, queue_job_id, job_type::text, metadata, status::text
 		FROM public.queue_jobs
 		WHERE job_type = 'libri_ingest'
@@ -417,7 +398,7 @@ async function loadEnqueuedJobs(
 	}
 	return result.rows.map((queueJob, position) => {
 		const item = manifest[position];
-		if (!item || !queueJobMatchesItem(queueJob, context, item)) {
+		if (!item || !libriOcrQueueReceiptMatchesItem(queueJob, context, item)) {
 			throw new Error('Enqueued Libri OCR admission queue receipt changed');
 		}
 		return {
@@ -427,37 +408,6 @@ async function loadEnqueuedJobs(
 			created: false
 		};
 	});
-}
-
-function queueMetadata(context: AdmissionContextRow, item: ManifestRow): Record<string, unknown> {
-	return {
-		correlationId: context.correlation_id,
-		libraryId: context.library_id,
-		researchRunId: context.run_id,
-		researchStepId: item.step_id,
-		payloadVersion: item.payload_version,
-		libriAdmissionId: context.admission_id,
-		libriManifestSha256: context.manifest_sha256,
-		libriBatchPosition: item.position
-	};
-}
-
-function queueJobMatchesItem(
-	queueJob: QueueJobRow,
-	context: AdmissionContextRow,
-	item: ManifestRow
-): boolean {
-	const expected = queueMetadata(context, item);
-	return (
-		queueJob.job_type === 'libri_ingest' &&
-		queueJob.metadata?.researchStepId === expected.researchStepId &&
-		queueJob.metadata?.researchRunId === expected.researchRunId &&
-		queueJob.metadata?.libraryId === expected.libraryId &&
-		queueJob.metadata?.libriAdmissionId === expected.libriAdmissionId &&
-		queueJob.metadata?.libriManifestSha256 === expected.libriManifestSha256 &&
-		queueJob.metadata?.libriBatchPosition === expected.libriBatchPosition &&
-		queueJob.metadata?.payloadVersion === expected.payloadVersion
-	);
 }
 
 async function withTransaction<T>(
@@ -483,5 +433,5 @@ async function withTransaction<T>(
 }
 
 function assertUuid(value: string, name: string): void {
-	if (!UUID_PATTERN.test(value)) throw new Error(`${name} must be a UUID`);
+	if (!LIBRI_UUID_PATTERN.test(value)) throw new Error(`${name} must be a UUID`);
 }

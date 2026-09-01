@@ -1,7 +1,7 @@
 # Libri Worker Phase 4D: Atomic OCR Batch Dispatch
 
 Date: 2026-09-01
-Status: production migration applied and verified; disabled worker deployment pending
+Status: production migration and disabled worker release deployed and verified; complete
 
 ## Decision
 
@@ -90,6 +90,14 @@ The Supabase advisor no longer reports `confirmed_by` as an unindexed foreign ke
 reports `ocr_batch_admissions` as RLS-without-policy. It reports the brand-new index as unused,
 which is expected before the first admission. Existing unrelated Libri notices remain tracked
 separately.
+
+## Disabled Railway release
+
+Commit `216d1cab6` deployed successfully as Railway deployment
+`bc79f776-00d7-42c3-a932-4f660c339924`. Its instance is running, and the startup log contains no
+probe or health failure. The post-deploy environment receipt still has queue consumption false,
+admission dispatch unset/false, activation mode disabled, no canary admission, no provider key, and
+no Supabase service-role key.
 
 ## Phase boundary
 

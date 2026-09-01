@@ -8,6 +8,10 @@ import {
 	createLibriAdmissionDispatcher,
 	type LibriAdmissionDispatcherPort
 } from '../src/workers/libri/admissionDispatcher';
+import {
+	createLibriAdmissionReconciler,
+	type LibriAdmissionReconcilerPort
+} from '../src/workers/libri/admissionReconciler';
 
 const USER_ID = 'a1000000-0000-4000-8000-000000000001';
 const LIBRARY_ID = 'a2000000-0000-4000-8000-000000000001';
@@ -27,6 +31,7 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 	let workerPool: Pool | null = null;
 	let adminPool: Pool | null = null;
 	let dispatcher: LibriAdmissionDispatcherPort;
+	let reconciler: LibriAdmissionReconcilerPort;
 	let runId = '';
 	let manifestSha256 = '';
 	let controlHash = '';
@@ -89,6 +94,7 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 		workerPool = new Pool({ ...poolOptions, user: 'libri_worker', max: 2 });
 		adminPool = new Pool({ ...poolOptions, user: 'postgres', max: 1 });
 		dispatcher = createLibriAdmissionDispatcher(workerPool);
+		reconciler = createLibriAdmissionReconciler(workerPool);
 
 		const planned = await adminPool.query<{ run_id: string }>(
 			`SELECT run_id
@@ -181,6 +187,15 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 			libraries: '1',
 			joined: '1'
 		});
+		await expect(
+			reconciler.auditOcrAdmission({ admissionId: ADMISSION_ID })
+		).resolves.toMatchObject({
+			classification: 'confirmed_ready',
+			healthy: true,
+			manifestItems: 2,
+			queueReceipts: 0,
+			issues: []
+		});
 
 		const concurrent = await Promise.all([
 			dispatcher.dispatchOcrAdmission({ admissionId: ADMISSION_ID }),
@@ -207,6 +222,15 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 		expect(replay?.jobs.map((job) => job.queueRowId)).toEqual(
 			first?.jobs.map((job) => job.queueRowId)
 		);
+		await expect(
+			reconciler.auditOcrAdmission({ admissionId: ADMISSION_ID })
+		).resolves.toMatchObject({
+			classification: 'enqueued_consistent',
+			healthy: true,
+			manifestItems: 2,
+			queueReceipts: 2,
+			issues: []
+		});
 
 		const state = await adminPool?.query<{
 			admission_status: string;

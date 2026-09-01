@@ -6,6 +6,12 @@ import {
 	createLibriAdmissionDispatcher
 } from './admissionDispatcher';
 import {
+	type AuditLibriOcrAdmissionInput,
+	type LibriAdmissionReconcilerPort,
+	type LibriOcrAdmissionAuditReceipt,
+	createLibriAdmissionReconciler
+} from './admissionReconciler';
+import {
 	type IssueLibriOcrAssetGrantInput,
 	type IssueLibriOcrAssetGrantReceipt,
 	type LibriAssetGrantPort,
@@ -112,6 +118,8 @@ export type LibriDatabasePort = LibriLifecyclePort &
 	} & {
 		[key in keyof LibriAdmissionDispatcherPort]: LibriAdmissionDispatcherPort[key];
 	} & {
+		[key in keyof LibriAdmissionReconcilerPort]: LibriAdmissionReconcilerPort[key];
+	} & {
 		probe: () => Promise<void>;
 		close: () => Promise<void>;
 	};
@@ -166,6 +174,7 @@ class LibriDatabase implements LibriDatabasePort {
 	private readonly assetGrants: LibriAssetGrantPort;
 	private readonly ocrExecution: LibriOcrExecutionPort;
 	private readonly admissionDispatcher: LibriAdmissionDispatcherPort;
+	private readonly admissionReconciler: LibriAdmissionReconcilerPort;
 
 	constructor(private readonly pool: LibriPgPool) {
 		this.lifecycle = createLibriLifecycle(pool);
@@ -173,6 +182,11 @@ class LibriDatabase implements LibriDatabasePort {
 		this.assetGrants = createLibriAssetGrantIssuer(pool);
 		this.ocrExecution = createLibriOcrExecution(pool);
 		this.admissionDispatcher = createLibriAdmissionDispatcher(pool);
+		this.admissionReconciler = createLibriAdmissionReconciler(pool);
+	}
+
+	auditOcrAdmission(input: AuditLibriOcrAdmissionInput): Promise<LibriOcrAdmissionAuditReceipt> {
+		return this.admissionReconciler.auditOcrAdmission(input);
 	}
 
 	dispatchOcrAdmission(

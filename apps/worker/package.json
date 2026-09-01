@@ -33,7 +33,8 @@
 		"backfill:embeddings": "tsx src/scripts/backfillOntoEmbeddings.ts",
 		"cycles:backfill-daily-brief": "tsx src/scripts/backfillDailyBriefCycles.ts",
 		"cycles:shadow-daily-brief": "tsx src/scripts/reportDailyBriefCycleShadow.ts",
-		"cost-reconciliation:report": "tsx src/scripts/reportAgentRunCostReconciliation.ts"
+		"cost-reconciliation:report": "tsx src/scripts/reportAgentRunCostReconciliation.ts",
+		"libri:admission-audit": "tsx src/scripts/reportLibriOcrAdmission.ts"
 	},
 	"dependencies": {
 		"@breezystack/lamejs": "^1.2.7",
