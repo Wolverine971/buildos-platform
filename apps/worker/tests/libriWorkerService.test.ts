@@ -253,6 +253,9 @@ describe('dedicated Libri worker service', () => {
 		expect(entrypoint).toContain("requireEnvironment(process.env, 'LIBRI_DATABASE_CA_CERT')");
 		expect(entrypoint).not.toContain('startScheduler(');
 		expect(entrypoint).not.toContain('startWorker(');
+		expect(entrypoint.indexOf('await database.probe()')).toBeLessThan(
+			entrypoint.indexOf('await database.dispatchOcrAdmission')
+		);
 	});
 
 	it('exposes the exact isolated entrypoint used by Railway service settings', () => {

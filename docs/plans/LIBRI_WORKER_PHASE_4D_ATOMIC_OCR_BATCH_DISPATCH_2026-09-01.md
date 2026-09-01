@@ -20,11 +20,12 @@ successor enqueue, and recursive research remain absent.
 
 ## Atomicity and idempotency
 
-The dispatcher opens one transaction, locks the admission's owning run, reloads the admission after
-that lock, locks all ordered manifest steps, and revalidates the immutable batch contract and
-SHA-256. It then creates the exact `libri_ingest` rows with the standard active-job dedup key, links
-each research step, and compare-and-set marks the admission `enqueued` last. Any error rolls back
-every queue, step, and admission write.
+The startup path first runs the live restricted-role capability probe. The dispatcher then opens one
+transaction, locks the admission's owning run, reloads the admission after that lock, locks all
+ordered manifest steps, and revalidates the immutable batch contract and SHA-256. It creates the
+exact `libri_ingest` rows with the standard active-job dedup key, links each research step, and
+compare-and-set marks the admission `enqueued` last. Any error rolls back every queue, step, and
+admission write.
 
 Concurrent exact dispatches serialize on the owning run. One creates the queue rows; the other reads
 the committed `enqueued` state and returns the durable queue receipt. An `enqueued` replay verifies

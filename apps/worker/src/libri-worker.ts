@@ -45,6 +45,7 @@ void startDedicatedLibriWorker().catch((error) => {
 
 async function startDedicatedLibriWorker(): Promise<void> {
 	if (config.admissionDispatchEnabled) {
+		await database.probe();
 		if (!config.canaryAdmissionId) {
 			throw new Error('Enabled Libri admission dispatch requires one admission UUID');
 		}
