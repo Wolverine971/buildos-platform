@@ -3,6 +3,7 @@ import { json, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle, HandleServerError, RequestEvent } from '@sveltejs/kit';
 import { createSupabaseServer } from '$lib/supabase';
+import { applyBaselineSecurityHeaders } from '$lib/server/security-headers';
 import { createServerTiming } from '$lib/server/server-timing';
 import { dev } from '$app/environment';
 import type { ErrorSeverity } from '$lib/types/error-logging';
@@ -711,9 +712,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
-	for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
-		response.headers.set(key, value);
-	}
+	applyBaselineSecurityHeaders(response, SECURITY_HEADERS);
 	// HSTS only over HTTPS (skip on local http dev to avoid pinning localhost).
 	if (!dev) {
 		response.headers.set(

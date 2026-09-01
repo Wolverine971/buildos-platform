@@ -127,7 +127,7 @@ describe('semantic golden-standard grader', () => {
 					parent_document_id: campaignParentId,
 					title: 'City Miles Instagram Series',
 					content:
-						'Six week bike commuter campaign for a waterproof office pack: three Reels and two carousel posts weekly in the field-notes voice, with no discount codes.'
+						'Six-week bike commuter campaign for a waterproof office pack: three Reels and two carousel posts weekly in the field-notes voice, with no discount codes.'
 				},
 				decision: 'pending'
 			},

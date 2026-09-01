@@ -205,7 +205,8 @@ describe('EmailRelevanceReviewService', () => {
 			sampling_stratum: 'none',
 			sample_order: 23,
 			a_score: null,
-			a_confidence: null
+			a_confidence: null,
+			source_retention_expires_at: '2026-07-25T12:00:00.000Z'
 		});
 		input.repository.loadSamples.mockResolvedValue([...positiveSamples, negativeControl]);
 
@@ -216,7 +217,50 @@ describe('EmailRelevanceReviewService', () => {
 		expect(quickRows.map((row) => row.quick_review_order)).toEqual(
 			Array.from({ length: 20 }, (_, index) => index + 1)
 		);
-		expect(dashboard.queue.slice(20).every((row) => row.quick_review_order === null)).toBe(true);
+		expect(dashboard.queue.slice(20).every((row) => row.quick_review_order === null)).toBe(
+			true
+		);
+		expect(dashboard.source_retention_expires_at).toBe('2026-07-31T12:00:00.000Z');
+	});
+
+	it('balances the quick review across candidate strata and avoids repeated emails when possible', async () => {
+		const input = service();
+		const aOnly = Array.from({ length: 12 }, (_, index) =>
+			sample({
+				id: `51000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				source_observation_id: `61000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				candidate_a_id: `91000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				sample_order: index + 1
+			})
+		);
+		const both = Array.from({ length: 12 }, (_, index) =>
+			sample({
+				id: `52000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				source_observation_id:
+					index === 0
+						? aOnly[0]!.source_observation_id
+						: `62000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				candidate_a_id: `92000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				candidate_b_id: `93000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				sampling_stratum: 'both',
+				sample_order: index + 21,
+				b_score: 68,
+				b_confidence: 0.68
+			})
+		);
+		const allSamples = [...aOnly, ...both];
+		input.repository.loadSamples.mockResolvedValue(allSamples);
+
+		const dashboard = await input.service.dashboard(USER_ID, RUN_ID);
+		const selectedIds = new Set(
+			dashboard.queue.filter((row) => row.quick_review_order !== null).map((row) => row.id)
+		);
+		const selected = allSamples.filter((row) => selectedIds.has(row.id));
+
+		expect(selected).toHaveLength(20);
+		expect(selected.filter((row) => row.sampling_stratum === 'a_only')).toHaveLength(10);
+		expect(selected.filter((row) => row.sampling_stratum === 'both')).toHaveLength(10);
+		expect(new Set(selected.map((row) => row.source_observation_id)).size).toBe(20);
 	});
 
 	it('re-fetches exactly one metadata-only message for an explicitly opened sample', async () => {
@@ -259,6 +303,29 @@ describe('EmailRelevanceReviewService', () => {
 		expect(input.gateway.getMetadataBatch).not.toHaveBeenCalled();
 	});
 
+	it('discards metadata when the source expires during the Gmail request', async () => {
+		const input = dependencies();
+		let currentTime = Date.parse('2026-07-31T11:59:59.000Z');
+		input.gateway.getMetadataBatch.mockImplementation(async () => {
+			currentTime = Date.parse('2026-07-31T12:00:00.000Z');
+			return dependencies().gateway.getMetadataBatch();
+		});
+		const review = new EmailRelevanceReviewService({
+			repository: input.repository,
+			gateway: input.gateway,
+			environment: {
+				GMAIL_RELEVANCE_PHASE_A_REVIEW_ENABLED: 'true',
+				GMAIL_RELEVANCE_PHASE_A_REVIEW_USER_IDS: USER_ID
+			},
+			now: () => currentTime
+		});
+
+		await expect(
+			review.openSample({ user_id: USER_ID, run_id: RUN_ID, sample_id: SAMPLE_ID })
+		).rejects.toMatchObject({ code: 'sample_unavailable' });
+		expect(input.gateway.getMetadataBatch).toHaveBeenCalledTimes(1);
+	});
+
 	it('records a bounded decision, accepts a corrected wrong project, and reveals variants afterward', async () => {
 		const input = service();
 		const result = await input.service.adjudicate({
@@ -289,6 +356,27 @@ describe('EmailRelevanceReviewService', () => {
 			a: { score: 72 },
 			b: null
 		});
+	});
+
+	it('loads immutable reveal evidence before committing the decision', async () => {
+		const input = service();
+		input.repository.loadSample.mockRejectedValue(
+			new EmailRelevanceReviewServiceError('storage_unavailable')
+		);
+
+		await expect(
+			input.service.adjudicate({
+				user_id: USER_ID,
+				run_id: RUN_ID,
+				sample_id: SAMPLE_ID,
+				idempotency_key: 'b0000000-0000-4000-8000-000000000003',
+				decision: 'correct_project',
+				correction_reason: null,
+				corrected_project_id: null,
+				rule_proposal: null
+			})
+		).rejects.toMatchObject({ code: 'storage_unavailable' });
+		expect(input.repository.recordAdjudication).not.toHaveBeenCalled();
 	});
 
 	it('rejects malformed decision combinations before the database', async () => {

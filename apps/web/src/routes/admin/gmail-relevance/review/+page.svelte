@@ -4,6 +4,17 @@
 
 	let { data, form }: PageProps = $props();
 
+	function reviewAction(action: 'prepare' | 'open' | 'adjudicate', runId: string): string {
+		return `?/${action}&run_id=${encodeURIComponent(runId)}`;
+	}
+
+	function mailboxLocation(categories: { inbox: boolean; sent: boolean }): string {
+		if (categories.inbox && categories.sent) return 'Inbox + Sent';
+		if (categories.sent) return 'Sent';
+		if (categories.inbox) return 'Inbox';
+		return 'Other';
+	}
+
 	const quickQueue = $derived(
 		data.queue
 			.filter((item) => item.quick_review_order !== null)
@@ -13,9 +24,33 @@
 	const reviewedCount = $derived(quickQueue.filter((item) => item.state === 'reviewed').length);
 	const expiredCount = $derived(quickQueue.filter((item) => item.state === 'expired').length);
 	const opened = $derived(form?.kind === 'opened' ? form.review_context : null);
+	const alternativeProjects = $derived(
+		opened ? data.projects.filter((project) => project.id !== opened.project_id) : []
+	);
 	const adjudicated = $derived(form?.kind === 'adjudicated' ? form : null);
 	const nextSample = $derived(pendingQueue[0] ?? null);
-	const reviewComplete = $derived(quickQueue.length > 0 && reviewedCount === quickQueue.length);
+	const reviewFinished = $derived(quickQueue.length > 0 && pendingQueue.length === 0);
+	const actionErrorMessage = $derived.by(() => {
+		if (form?.kind !== 'error') return null;
+		if (
+			['run_unavailable', 'sample_unavailable', 'project_unavailable'].includes(
+				form.error_code
+			)
+		) {
+			return 'This suggestion is no longer available. Reload the scan to get the current queue.';
+		}
+		if (
+			['provider_timeout', 'provider_rejected', 'connection_unavailable'].includes(
+				form.error_code
+			)
+		) {
+			return 'The email preview could not be retrieved. Try again in a moment; no answer was saved.';
+		}
+		if (form.error_code === 'idempotency_conflict') {
+			return 'This suggestion was already answered in another request. Reload the scan to continue.';
+		}
+		return 'The result could not be confirmed. Reload this scan before trying again.';
+	});
 </script>
 
 <svelte:head>
@@ -54,7 +89,7 @@
 			class="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
 			aria-live="polite"
 		>
-			That action did not complete. Try again, or stop if the source has expired.
+			{actionErrorMessage}
 		</section>
 	{:else if form?.kind === 'prepared'}
 		<section
@@ -69,7 +104,9 @@
 			aria-live="polite"
 		>
 			<strong>Answer saved.</strong>
-			<span class="ml-1 text-muted-foreground">The next suggestion is ready below.</span>
+			<span class="ml-1 text-muted-foreground">
+				{reviewFinished ? 'The review is complete.' : 'The next suggestion is ready below.'}
+			</span>
 		</section>
 	{/if}
 
@@ -111,14 +148,14 @@
 		{#if data.selected_run_id && data.queue.length === 0}
 			<form
 				method="POST"
-				action="?/prepare"
+				action={reviewAction('prepare', data.selected_run_id)}
 				class="rounded-2xl border border-accent/30 bg-accent/10 p-6"
 			>
 				<input type="hidden" name="run_id" value={data.selected_run_id} />
-				<h2 class="text-lg font-semibold text-foreground">Create 20 suggestions</h2>
+				<h2 class="text-lg font-semibold text-foreground">Prepare 20 suggestions</h2>
 				<p class="mt-2 max-w-2xl text-sm text-muted-foreground">
-					BuildOS will select a fixed set of candidate matches from the completed scan.
-					This does not make another Gmail request.
+					BuildOS will prepare a content-free sample pool from the completed scan, then
+					show 20 candidate matches here. This does not make another Gmail request.
 				</p>
 				<button
 					type="submit"
@@ -144,7 +181,14 @@
 						</p>
 					{/if}
 				</div>
-				<div class="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+				<div
+					class="mt-4 h-2 overflow-hidden rounded-full bg-muted"
+					role="progressbar"
+					aria-label="Email suggestion review progress"
+					aria-valuemin="0"
+					aria-valuemax={quickQueue.length}
+					aria-valuenow={reviewedCount}
+				>
 					<div
 						class="h-full rounded-full bg-accent transition-[width] duration-300 motion-reduce:transition-none"
 						style:width={`${(reviewedCount / quickQueue.length) * 100}%`}
@@ -178,10 +222,9 @@
 						</h2>
 					</div>
 					<p class="text-xs text-muted-foreground">
-						{new Date(opened.internal_date).toLocaleString()} · {opened
-							.mailbox_categories.sent
-							? 'Sent'
-							: 'Inbox'}
+						{new Date(opened.internal_date).toLocaleString()} · {mailboxLocation(
+							opened.mailbox_categories
+						)}
 					</p>
 				</div>
 
@@ -196,7 +239,7 @@
 				</div>
 
 				<div class="grid gap-3 sm:grid-cols-3">
-					<form method="POST" action="?/adjudicate">
+					<form method="POST" action={reviewAction('adjudicate', data.selected_run_id)}>
 						<input type="hidden" name="run_id" value={data.selected_run_id} />
 						<input type="hidden" name="sample_id" value={opened.sample_id} />
 						<input
@@ -216,7 +259,7 @@
 						</button>
 					</form>
 
-					<form method="POST" action="?/adjudicate">
+					<form method="POST" action={reviewAction('adjudicate', data.selected_run_id)}>
 						<input type="hidden" name="run_id" value={data.selected_run_id} />
 						<input type="hidden" name="sample_id" value={opened.sample_id} />
 						<input
@@ -240,7 +283,7 @@
 						</button>
 					</form>
 
-					<form method="POST" action="?/adjudicate">
+					<form method="POST" action={reviewAction('adjudicate', data.selected_run_id)}>
 						<input type="hidden" name="run_id" value={data.selected_run_id} />
 						<input type="hidden" name="sample_id" value={opened.sample_id} />
 						<input
@@ -265,50 +308,58 @@
 					</form>
 				</div>
 
-				<details class="rounded-xl border border-border bg-background p-4">
-					<summary class="cursor-pointer text-sm font-semibold text-foreground">
-						It belongs to a different project
-					</summary>
-					<form
-						method="POST"
-						action="?/adjudicate"
-						class="mt-4 flex flex-col gap-3 sm:flex-row"
-					>
-						<input type="hidden" name="run_id" value={data.selected_run_id} />
-						<input type="hidden" name="sample_id" value={opened.sample_id} />
-						<input
-							type="hidden"
-							name="idempotency_key"
-							value={opened.idempotency_key}
-						/>
-						<input type="hidden" name="decision" value="wrong_project" />
-						<input
-							type="hidden"
-							name="correction_reason"
-							value="cross_project_ambiguity"
-						/>
-						<input type="hidden" name="rule_proposal" value="" />
-						<label class="flex-1 text-sm font-medium text-foreground">
-							Correct project
-							<select
-								name="corrected_project_id"
-								required
-								class="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2"
-							>
-								<option value="">Choose a project</option>
-								{#each data.projects.filter((project) => project.id !== opened.project_id) as project (project.id)}
-									<option value={project.id}>{project.label}</option>
-								{/each}
-							</select>
-						</label>
-						<button
-							type="submit"
-							class="self-end rounded-xl bg-foreground px-4 py-2 text-sm font-semibold text-background"
+				{#if alternativeProjects.length > 0}
+					<details class="rounded-xl border border-border bg-background p-4">
+						<summary class="cursor-pointer text-sm font-semibold text-foreground">
+							It belongs to a different project
+						</summary>
+						<form
+							method="POST"
+							action={reviewAction('adjudicate', data.selected_run_id)}
+							class="mt-4 flex flex-col gap-3 sm:flex-row"
 						>
-							Save different project
-						</button>
-					</form>
-				</details>
+							<input type="hidden" name="run_id" value={data.selected_run_id} />
+							<input type="hidden" name="sample_id" value={opened.sample_id} />
+							<input
+								type="hidden"
+								name="idempotency_key"
+								value={opened.idempotency_key}
+							/>
+							<input type="hidden" name="decision" value="wrong_project" />
+							<input
+								type="hidden"
+								name="correction_reason"
+								value="cross_project_ambiguity"
+							/>
+							<input type="hidden" name="rule_proposal" value="" />
+							<label class="flex-1 text-sm font-medium text-foreground">
+								Correct project
+								<select
+									name="corrected_project_id"
+									required
+									class="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2"
+								>
+									<option value="">Choose a project</option>
+									{#each alternativeProjects as project (project.id)}
+										<option value={project.id}>{project.label}</option>
+									{/each}
+								</select>
+							</label>
+							<button
+								type="submit"
+								class="self-end rounded-xl bg-foreground px-4 py-2 text-sm font-semibold text-background"
+							>
+								Save different project
+							</button>
+						</form>
+					</details>
+				{:else}
+					<p
+						class="rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground"
+					>
+						No other projects were included in this scan.
+					</p>
+				{/if}
 			</section>
 		{:else if data.selected_run_id && nextSample}
 			<section class="rounded-2xl border border-accent/30 bg-card p-5 shadow-ink">
@@ -326,7 +377,7 @@
 							match is right.
 						</p>
 					</div>
-					<form method="POST" action="?/open">
+					<form method="POST" action={reviewAction('open', data.selected_run_id)}>
 						<input type="hidden" name="run_id" value={data.selected_run_id} />
 						<input type="hidden" name="sample_id" value={nextSample.id} />
 						<button
@@ -338,13 +389,24 @@
 					</form>
 				</div>
 			</section>
-		{:else if reviewComplete}
+		{:else if reviewFinished}
 			<section class="rounded-2xl border border-success/30 bg-success/10 p-8 text-center">
-				<h2 class="text-xl font-semibold text-foreground">Twenty suggestions reviewed</h2>
-				<p class="mt-2 text-sm text-muted-foreground">
-					That is enough for a directional read. BuildOS will not scan again
-					automatically.
-				</p>
+				{#if expiredCount === 0}
+					<h2 class="text-xl font-semibold text-foreground">
+						{reviewedCount} suggestion{reviewedCount === 1 ? '' : 's'} reviewed
+					</h2>
+					<p class="mt-2 text-sm text-muted-foreground">
+						That is enough for a directional read. BuildOS will not scan again
+						automatically.
+					</p>
+				{:else}
+					<h2 class="text-xl font-semibold text-foreground">Review window finished</h2>
+					<p class="mt-2 text-sm text-muted-foreground">
+						{reviewedCount} answer{reviewedCount === 1 ? '' : 's'} saved; {expiredCount}
+						suggestion{expiredCount === 1 ? '' : 's'} expired before review. BuildOS will
+						not scan again automatically.
+					</p>
+				{/if}
 			</section>
 		{/if}
 	{/if}

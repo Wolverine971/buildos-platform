@@ -192,8 +192,15 @@ function keywordCoverage(
 	value: unknown,
 	keywords: string[]
 ): { found: string[]; missing: string[] } {
-	const haystack = JSON.stringify(value ?? '').toLowerCase();
-	const found = keywords.filter((keyword) => haystack.includes(keyword.toLowerCase()));
+	const normalize = (text: string) =>
+		text
+			.toLowerCase()
+			.normalize('NFKD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.replace(/[^a-z0-9]+/g, ' ')
+			.trim();
+	const haystack = normalize(JSON.stringify(value ?? ''));
+	const found = keywords.filter((keyword) => haystack.includes(normalize(keyword)));
 	return { found, missing: keywords.filter((keyword) => !found.includes(keyword)) };
 }
 

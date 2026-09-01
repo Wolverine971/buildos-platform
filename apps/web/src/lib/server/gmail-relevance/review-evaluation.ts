@@ -784,6 +784,63 @@ function validDecisionShape(input: z.infer<typeof REVIEW_INPUT_SCHEMA>): boolean
 	return input.correction_reason !== null && input.corrected_project_id === null;
 }
 
+function selectQuickReviewSamples(samples: ReviewSample[]): ReviewSample[] {
+	const orderedCandidates = samples
+		.filter((sample) => sample.candidate_a_id !== null || sample.candidate_b_id !== null)
+		.sort(
+			(left, right) =>
+				left.sample_order - right.sample_order ||
+				left.connection_scope_id.localeCompare(right.connection_scope_id) ||
+				left.project_id.localeCompare(right.project_id) ||
+				left.id.localeCompare(right.id)
+		);
+	const groups = new Map<string, ReviewSample[]>();
+	for (const sample of orderedCandidates) {
+		const key = `${sample.connection_scope_id}:${sample.sampling_stratum}:${sample.project_id}`;
+		const group = groups.get(key) ?? [];
+		group.push(sample);
+		groups.set(key, group);
+	}
+	const groupKeys = [...groups.keys()].sort();
+	const cursors = new Map(groupKeys.map((key) => [key, 0]));
+	const selected: ReviewSample[] = [];
+	const selectedIds = new Set<string>();
+	const selectedSources = new Set<string>();
+
+	while (selected.length < EMAIL_RELEVANCE_QUICK_REVIEW_TARGET) {
+		let added = false;
+		for (const key of groupKeys) {
+			const group = groups.get(key)!;
+			let cursor = cursors.get(key)!;
+			while (
+				cursor < group.length &&
+				selectedSources.has(group[cursor]!.source_observation_id)
+			) {
+				cursor += 1;
+			}
+			cursors.set(key, cursor + 1);
+			if (cursor >= group.length) continue;
+			const sample = group[cursor]!;
+			selected.push(sample);
+			selectedIds.add(sample.id);
+			selectedSources.add(sample.source_observation_id);
+			added = true;
+			if (selected.length === EMAIL_RELEVANCE_QUICK_REVIEW_TARGET) break;
+		}
+		if (!added) break;
+	}
+
+	if (selected.length < EMAIL_RELEVANCE_QUICK_REVIEW_TARGET) {
+		for (const sample of orderedCandidates) {
+			if (selectedIds.has(sample.id)) continue;
+			selected.push(sample);
+			if (selected.length === EMAIL_RELEVANCE_QUICK_REVIEW_TARGET) break;
+		}
+	}
+
+	return selected;
+}
+
 function sha256(value: string): string {
 	return createHash('sha256').update(value, 'utf8').digest('hex');
 }
@@ -857,18 +914,10 @@ export class EmailRelevanceReviewService {
 		const scopeIds = [...new Set(samples.map((sample) => sample.connection_scope_id))].sort();
 		const scopeLabel = new Map(scopeIds.map((id, index) => [id, `Account ${index + 1}`]));
 		const quickReviewOrder = new Map(
-			samples
-				.filter(
-					(sample) => sample.candidate_a_id !== null || sample.candidate_b_id !== null
-				)
-				.sort(
-					(left, right) =>
-						left.sample_order - right.sample_order ||
-						left.connection_scope_id.localeCompare(right.connection_scope_id) ||
-						left.id.localeCompare(right.id)
-				)
-				.slice(0, EMAIL_RELEVANCE_QUICK_REVIEW_TARGET)
-				.map((sample, index) => [sample.id, index + 1])
+			selectQuickReviewSamples(samples).map((sample, index) => [sample.id, index + 1])
+		);
+		const pendingQuickSamples = samples.filter(
+			(sample) => sample.state === 'pending' && quickReviewOrder.has(sample.id)
 		);
 		return {
 			runs: labeledRuns,
@@ -895,14 +944,14 @@ export class EmailRelevanceReviewService {
 				)
 			}),
 			source_retention_expires_at:
-				samples.length > 0
-					? samples.reduce(
+				pendingQuickSamples.length > 0
+					? pendingQuickSamples.reduce(
 							(earliest, sample) =>
 								Date.parse(sample.source_retention_expires_at) <
 								Date.parse(earliest)
 									? sample.source_retention_expires_at
 									: earliest,
-							samples[0]!.source_retention_expires_at
+							pendingQuickSamples[0]!.source_retention_expires_at
 						)
 					: null
 		};
@@ -952,6 +1001,9 @@ export class EmailRelevanceReviewService {
 			if (!message || message.provider_message_id !== providerMessageId) {
 				throw new EmailRelevanceReviewServiceError('provider_rejected');
 			}
+			if (Date.parse(source.sample.source_retention_expires_at) <= this.now()) {
+				throw new EmailRelevanceReviewServiceError('sample_unavailable');
+			}
 			return {
 				sample_id: source.sample.id,
 				project_id: source.sample.project_id,
@@ -999,16 +1051,16 @@ export class EmailRelevanceReviewService {
 			contract: EMAIL_RELEVANCE_REVIEW_CONTRACT_VERSION
 		});
 		const { idempotency_key: _idempotencyKey, ...boundedDecision } = parsed.data;
-		const result = await this.repository.recordAdjudication({
-			...boundedDecision,
-			idempotency_key_hash: sha256(`${parsed.data.user_id}:${parsed.data.idempotency_key}`),
-			decision_hash: sha256(canonicalDecision)
-		});
 		const sample = await this.repository.loadSample(
 			parsed.data.user_id,
 			parsed.data.run_id,
 			parsed.data.sample_id
 		);
+		const result = await this.repository.recordAdjudication({
+			...boundedDecision,
+			idempotency_key_hash: sha256(`${parsed.data.user_id}:${parsed.data.idempotency_key}`),
+			decision_hash: sha256(canonicalDecision)
+		});
 		return {
 			...result,
 			variant_reveal: {
