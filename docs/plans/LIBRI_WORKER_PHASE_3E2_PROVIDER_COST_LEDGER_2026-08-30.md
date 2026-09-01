@@ -1,7 +1,7 @@
 # Libri Worker Phase 3E.2: Provider Cost Ledger
 
 Date: 2026-08-30
-Status: deployed and production-verified; worker remains disabled; provider remains unwired
+Status: deployed and production-verified; one OCR canary settled; worker disabled and key removed
 
 ## Decision
 

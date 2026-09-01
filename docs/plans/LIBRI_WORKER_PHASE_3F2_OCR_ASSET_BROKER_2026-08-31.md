@@ -1,7 +1,7 @@
 # Libri Worker Phase 3F.2: OCR Asset Broker
 
 Date: 2026-08-31
-Status: implemented and locally verified on `main`; not deployed, wired, or activated
+Status: deployed, production-probed, and verified by one exact OCR canary; worker disabled
 
 ## Decision
 
@@ -70,6 +70,17 @@ and exactly match the configured Supabase origin.
    request timeout, exact response validation, and fresh-grant behavior after ambiguous failures.
 5. Provider wiring, OCR result persistence, and any exact-image canary remain gated on the later
    lifecycle slice; recurring polling remains disabled.
+
+## Production receipt
+
+- The broker is live at the fixed BuildOS endpoint with one dedicated token shared only with the
+  `libri-worker` service.
+- Unauthenticated, malformed authenticated, and random-grant probes returned generic
+  `401`/`400`/`404` responses without changing the grant ledger.
+- The real OCR canary consumed exactly one grant and returned only a short-lived signed URL to the
+  worker. No bucket, object path, signed URL, or credential entered durable run/step/queue state.
+- The worker is disabled again. The broker token remains configured for this boundary; the paid
+  provider key and canary target were removed after the receipt.
 
 ## Deliberate exclusions
 

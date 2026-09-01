@@ -1,7 +1,7 @@
 # Libri Worker Phase 3F.1: OCR Asset Capabilities
 
 Date: 2026-08-30
-Status: deployed and production-verified; Phase 3F.2 broker implemented locally; not activated
+Status: deployed, broker-integrated, and production-canary verified; recurring polling disabled
 
 ## Decision
 

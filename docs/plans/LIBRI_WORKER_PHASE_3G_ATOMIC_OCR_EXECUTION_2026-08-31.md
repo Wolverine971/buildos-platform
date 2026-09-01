@@ -1,7 +1,7 @@
 # Libri Worker Phase 3G: Atomic OCR Execution
 
 Date: 2026-08-31
-Status: implemented and verified locally; migration and disabled release pending
+Status: deployed, production-canary verified, sanitized, and complete; recurring polling disabled
 
 ## Decision
 
@@ -38,8 +38,8 @@ that paid exposure is never silently released or repeated.
   source-chunk columns. It cannot read object paths, write verification fields, update/delete
   chunks, access Storage, or mutate a non-Libri queue row.
 - RLS plus before-write triggers reject direct invalid image transitions and non-OCR chunk writes.
-- The startup probe requires the exact routines, hashing-schema usage, and reviewed columns while
-  rejecting broader image/chunk privileges.
+- The startup probe requires the exact routines, core `pg_catalog.sha256` access, and reviewed
+  columns while rejecting the shared `extensions` schema and broader image/chunk privileges.
 - The existing Libri migration checker remains green: no `SECURITY DEFINER`, hidden public/storage
   routine access, destructive DDL, or unreviewed shared-schema changes.
 
@@ -53,27 +53,40 @@ credential.
 
 ## Verification receipt
 
-- Disposable SQL contract passed on fresh PostgreSQL: exact authorization, second-authorization
-  denial, competing-image denial, pre-start release, atomic persistence/settlement, database-derived
-  SHA-256, direct-DML rejection, restricted grants, and unchanged BuildOS queue control.
-- Focused activation-through-completion stack: 92/92 tests passed.
-- OCR processor and atomic execution contracts: 13/13 tests passed.
-- Consumer regression proves `libri_ingest` exact-step claiming and no generic double-completion.
-- Worker production typecheck and focused ESLint passed.
-- Earlier complete worker run passed 169 files and 1,479 tests; a final complete gate is required
-  after composition formatting before deployment.
+- `39290e149` implemented Phase 3G and `62f2e85d3` restored the worker test-type baseline.
+  `bba27f4f1` replaced the two OCR hash expressions with `pg_catalog.sha256`, because granting
+  `extensions` schema usage would have exposed 72 executable extension routines to the worker.
+- Local gates passed: 28/28 disposable PostgreSQL contracts, 32/32 restricted-database unit tests,
+  worker production typecheck, and the fixed 217/217 test-type baseline.
+- GitHub CI run `33450486746` passed the full BuildOS job in 28m05s and the dedicated PostgreSQL 15
+  Libri migration-safety job in 1m05s.
+- Production migrations `20260831220245_libri_ocr_atomic_completion` and
+  `20260831223000_libri_ocr_core_sha256` are applied; a linked dry run reports the database current.
+- The production restricted-role probe passes while `extensions` remains inaccessible, object paths
+  remain unreadable, and no Supabase service key is present on the worker.
 
-## Deployment sequence
+## Production OCR canary
 
-1. Pass the complete worker, migration, SQL-contract, and BuildOS migration-safety gates.
-2. Commit and push the reviewed slice on local `main`.
-3. Apply `20260831220245_libri_ocr_atomic_completion` transactionally.
-4. Deploy web and worker with the Libri worker disabled.
-5. Configure the shared broker token and verify unauthorized/random-grant probes fail without queue
-   or ledger changes.
-6. Inspect one real Libri image and exact step before provisioning the provider key and opening a
-   maximum thirty-minute OCR canary window.
-7. Run the byte-identical non-Libri BuildOS control, then return to disabled mode immediately.
+- Run `714448cd-17a0-43fc-955e-069545a4f9af` and step
+  `992afcc4-bd00-4091-a269-70d0762f1b1c` were the only admitted work. The step had
+  `max_attempts=1`, concurrency was one, and the hosted profile carried an exact step UUID plus a
+  twenty-minute expiry.
+- Image `4c3e1b23-60b5-5d44-92bd-20d31ee434cf` advanced atomically from failed OCR version 6 to
+  complete version 7. Run, step, and shared queue row all completed with no error.
+- Reservation `3891a4e7-69a9-4262-841d-1fef9b74a620` settled exactly once at 1,176 microusd
+  ($0.001176): 2,411 prompt tokens and 132 completion tokens on `openai/gpt-4.1-mini`.
+- OCR chunk `30f1969d-fb5a-44b7-9d78-e01c165f1758` contains 370 characters, a database-verified
+  SHA-256, and the exact version-7 idempotency key. The one asset grant was consumed.
+- The non-Libri BuildOS queue control remained byte-identical at MD5
+  `7e89ac7606ab26280c7b1c66f5ee51b2`; active Libri queue jobs returned to zero.
+- Final Railway deployment `14abb8b5-a79d-412a-a51d-40791bb4fa9f` succeeded on `bba27f4f1` with
+  disabled mode, concurrency two, no target/expiry, no provider key, and no Supabase service key.
+
+## Phase boundary
+
+Phase 3 is complete. Recurring polling, recursive research, book/person discovery, successor
+enqueue, and multi-image orchestration remain outside this phase and require a separately reviewed
+Phase 4 plan.
 
 Recurring polling, recursive research, book/person discovery, and successor enqueue remain outside
 this phase.

@@ -1,8 +1,7 @@
 # Libri Worker Phase 3E.1: OCR Provider Boundary
 
 Date: 2026-08-30
-Status: implemented and locally verified; no queue registration, migration, provider call, or
-production activation
+Status: deployed and production-canary verified; worker disabled and provider credential removed
 
 ## Decision
 

@@ -1,7 +1,7 @@
 # Libri Worker Phase 3C: Synthetic Maintenance Consumer
 
 Date: 2026-08-30
-Status: deployed disabled and release-gated; exact activation canary remains pending
+Status: deployed, exact synthetic activation canaried, and complete; recurring polling disabled
 
 ## Outcome
 

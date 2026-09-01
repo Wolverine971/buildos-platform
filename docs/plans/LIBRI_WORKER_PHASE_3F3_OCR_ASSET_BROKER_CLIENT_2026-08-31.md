@@ -1,7 +1,7 @@
 # Libri Worker Phase 3F.3: OCR Asset Broker Client
 
 Date: 2026-08-31
-Status: implemented and verified locally; deployment remains disabled
+Status: deployed and production-canary verified; worker disabled and provider credential removed
 
 ## Decision
 
@@ -35,3 +35,6 @@ the broker consumes the one-time grant. The caller must issue a fresh grant for 
 Deploy the web broker and worker client with `LIBRI_WORKER_ENABLED=false`. Configure one randomly
 generated broker token on only the BuildOS web service and dedicated Libri worker. Do not configure
 the provider credential until an exact, expiring OCR canary step has been reviewed.
+
+Production followed this gate: the client redeemed one consumed grant during the exact-step canary,
+then the service returned to disabled mode and removed the provider key, target step, and expiry.
