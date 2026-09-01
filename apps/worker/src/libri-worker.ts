@@ -1,3 +1,4 @@
+// apps/worker/src/libri-worker.ts
 // Dedicated Libri Railway process. This entrypoint must never import the
 // general worker, scheduler, or any non-Libri processor tree.
 import 'dotenv/config';
@@ -5,6 +6,7 @@ import {
 	type LibriWorkerConfig,
 	loadLibriOcrRuntimeConfig,
 	loadLibriWorkerConfig,
+	requireActiveLibriCanaryExpiry,
 	requireDedicatedLibriWorkerProductionProfile
 } from './config/libriWorkerProfile';
 import { type LibriWorkerService, createLibriWorkerService } from './lib/libriWorkerService';
@@ -46,11 +48,13 @@ void startDedicatedLibriWorker().catch((error) => {
 async function startDedicatedLibriWorker(): Promise<void> {
 	if (config.admissionDispatchEnabled) {
 		await database.probe();
+		const dispatchExpiresAtMs = requireActiveLibriCanaryExpiry(config.canaryExpiresAtMs);
 		if (!config.canaryAdmissionId) {
 			throw new Error('Enabled Libri admission dispatch requires one admission UUID');
 		}
 		const receipt = await database.dispatchOcrAdmission({
-			admissionId: config.canaryAdmissionId
+			admissionId: config.canaryAdmissionId,
+			dispatchExpiresAt: new Date(dispatchExpiresAtMs).toISOString()
 		});
 		console.log('Libri OCR admission dispatch completed', {
 			admissionId: receipt.admissionId,

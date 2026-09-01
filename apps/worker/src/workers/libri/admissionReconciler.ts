@@ -1,3 +1,4 @@
+// apps/worker/src/workers/libri/admissionReconciler.ts
 import type { LibriTransactionClient, LibriTransactionalPool } from './lifecycle';
 import {
 	LIBRI_SHA256_PATTERN,
@@ -6,10 +7,12 @@ import {
 	type LibriOcrManifestIdentity,
 	type LibriOcrQueueReceipt,
 	hashLibriOcrAdmissionManifest,
-	libriOcrQueueReceiptMatchesItem
+	libriOcrQueueReceiptMatchesItem,
+	libriOcrQueueReceiptMatchesStepState
 } from './ocrAdmissionContract';
 
 const MAXIMUM_BATCH_SIZE = 10;
+const MAXIMUM_OUTPUT_CHARS = 50_000;
 
 export type AuditLibriOcrAdmissionInput = {
 	admissionId: string;
@@ -44,6 +47,8 @@ type AuditContextRow = LibriOcrAdmissionIdentity & {
 	queue_family: string;
 	run_kind: string;
 	subject_type: string;
+	requested_by: string | null;
+	library_created_by: string;
 	run_status: string;
 	cancel_requested_at: string | null;
 	dispatch_window_open: boolean;
@@ -54,12 +59,21 @@ type AuditContextRow = LibriOcrAdmissionIdentity & {
 };
 
 type AuditManifestRow = LibriOcrManifestIdentity & {
+	payload: Record<string, unknown> | null;
 	step_status: string | null;
 	step_queue_family: string | null;
 	step_kind: string | null;
 	attempts: number | null;
 	max_attempts: number | null;
 	active_queue_job_id: string | null;
+};
+
+type AuditCurrentImageRow = {
+	image_id: string;
+	book_id: string | null;
+	content_sha256: string;
+	ocr_status: string;
+	ocr_version: number;
 };
 
 export function createLibriAdmissionReconciler(
@@ -79,8 +93,12 @@ class LibriAdmissionReconciler implements LibriAdmissionReconcilerPort {
 		return withReadOnlySnapshot(this.pool, async (client) => {
 			const context = await loadContext(client, input.admissionId);
 			const manifest = await loadManifest(client, context);
-			const queueReceipts = await loadQueueReceipts(client, context.admission_id);
-			return reconcile(context, manifest, queueReceipts);
+			const currentImages =
+				context.admission_status === 'confirmed'
+					? await loadCurrentImages(client, context, manifest)
+					: [];
+			const queueReceipts = await loadQueueReceipts(client, manifest);
+			return reconcile(context, manifest, currentImages, queueReceipts);
 		});
 	}
 }
@@ -100,6 +118,7 @@ async function loadContext(
 			run.kind AS run_kind,
 			run.subject_type,
 			run.subject_id AS book_id,
+			run.requested_by,
 			run.status AS run_status,
 			run.cancel_requested_at,
 			(run.deadline_at IS NOT NULL AND run.deadline_at > now()) AS dispatch_window_open,
@@ -107,10 +126,12 @@ async function loadContext(
 			run.max_steps,
 			run.max_attempts_per_step,
 			run.max_concurrent_steps,
-			run.correlation_id
+			run.correlation_id,
+			library.created_by AS library_created_by
 		FROM libri.ocr_batch_admissions admission
 		JOIN libri.research_runs run
 			ON run.library_id = admission.library_id AND run.id = admission.run_id
+		JOIN libri.libraries library ON library.id = admission.library_id
 		WHERE admission.id = $1`,
 		[admissionId]
 	);
@@ -131,6 +152,7 @@ async function loadManifest(
 			item.expected_ocr_version,
 			item.image_content_sha256,
 			step.payload_version,
+			step.payload,
 			step.status AS step_status,
 			step.queue_family AS step_queue_family,
 			step.kind AS step_kind,
@@ -149,21 +171,45 @@ async function loadManifest(
 	return result.rows;
 }
 
+async function loadCurrentImages(
+	client: LibriTransactionClient,
+	context: AuditContextRow,
+	manifest: AuditManifestRow[]
+): Promise<AuditCurrentImageRow[]> {
+	const result = await client.query<AuditCurrentImageRow>(
+		`SELECT
+			image.id AS image_id,
+			image.book_id,
+			image.content_sha256,
+			image.ocr_status::text,
+			image.ocr_version
+		FROM libri.images image
+		WHERE image.library_id = $1 AND image.id = ANY($2::uuid[])
+		ORDER BY image.id`,
+		[context.library_id, manifest.map((item) => item.image_id)]
+	);
+	return result.rows;
+}
+
 async function loadQueueReceipts(
 	client: LibriTransactionClient,
-	admissionId: string
+	manifest: AuditManifestRow[]
 ): Promise<LibriOcrQueueReceipt[]> {
+	const queueRowIds = manifest
+		.map((item) => item.active_queue_job_id)
+		.filter((queueRowId): queueRowId is string => queueRowId !== null);
+	if (queueRowIds.length === 0) return [];
 	const result = await client.query<LibriOcrQueueReceipt>(
 		`SELECT id, queue_job_id, job_type::text, metadata, status::text
 		FROM public.queue_jobs
-		WHERE metadata->>'libriAdmissionId' = $1
+		WHERE id = ANY($1::uuid[])
 		ORDER BY
 			CASE
 				WHEN metadata->>'libriBatchPosition' ~ '^[0-9]+$'
 				THEN (metadata->>'libriBatchPosition')::integer
 			END,
 			id`,
-		[admissionId]
+		[queueRowIds]
 	);
 	return result.rows;
 }
@@ -171,6 +217,7 @@ async function loadQueueReceipts(
 function reconcile(
 	context: AuditContextRow,
 	manifest: AuditManifestRow[],
+	currentImages: AuditCurrentImageRow[],
 	queueReceipts: LibriOcrQueueReceipt[]
 ): LibriOcrAdmissionAuditReceipt {
 	const issues = immutableIssues(context, manifest);
@@ -196,6 +243,9 @@ function reconcile(
 		) {
 			issues.push('confirmed_steps_not_dispatchable');
 		}
+		if (!currentImagesMatchManifest(context, manifest, currentImages)) {
+			issues.push('confirmed_images_not_dispatchable');
+		}
 		if (queueReceipts.length !== 0) issues.push('confirmed_has_queue_receipts');
 	} else if (context.admission_status === 'enqueued') {
 		if (queueReceipts.length !== manifest.length) {
@@ -208,6 +258,22 @@ function reconcile(
 			})
 		) {
 			issues.push('enqueued_queue_receipt_mismatch');
+		}
+		if (
+			queueReceipts.some((queueJob, position) => {
+				const item = manifest[position];
+				return !item || item.active_queue_job_id !== queueJob.id;
+			})
+		) {
+			issues.push('enqueued_step_queue_link_mismatch');
+		}
+		if (
+			queueReceipts.some((queueJob, position) => {
+				const item = manifest[position];
+				return !item || !libriOcrQueueReceiptMatchesStepState(queueJob, item);
+			})
+		) {
+			issues.push('enqueued_queue_step_state_mismatch');
 		}
 	} else {
 		throw new Error(
@@ -239,6 +305,10 @@ function immutableIssues(context: AuditContextRow, manifest: AuditManifestRow[])
 		context.subject_type !== 'book' ||
 		!context.book_id ||
 		!LIBRI_UUID_PATTERN.test(context.book_id) ||
+		!context.requested_by ||
+		!LIBRI_UUID_PATTERN.test(context.requested_by) ||
+		!LIBRI_UUID_PATTERN.test(context.correlation_id) ||
+		!LIBRI_UUID_PATTERN.test(context.library_created_by) ||
 		!LIBRI_SHA256_PATTERN.test(context.manifest_sha256)
 	) {
 		issues.push('batch_contract_changed');
@@ -264,7 +334,7 @@ function immutableIssues(context: AuditContextRow, manifest: AuditManifestRow[])
 			!Number.isSafeInteger(item.expected_ocr_version) ||
 			item.expected_ocr_version < 1 ||
 			!LIBRI_SHA256_PATTERN.test(item.image_content_sha256) ||
-			!Number.isSafeInteger(item.payload_version) ||
+			!stepPayloadMatchesManifestItem(item) ||
 			stepIds.has(item.step_id) ||
 			imageIds.has(item.image_id)
 		) {
@@ -281,6 +351,38 @@ function immutableIssues(context: AuditContextRow, manifest: AuditManifestRow[])
 		issues.push('manifest_hash_changed');
 	}
 	return issues;
+}
+
+function currentImagesMatchManifest(
+	context: AuditContextRow,
+	manifest: AuditManifestRow[],
+	currentImages: AuditCurrentImageRow[]
+): boolean {
+	const imageById = new Map(currentImages.map((image) => [image.image_id, image]));
+	return manifest.every((item) => {
+		const image = imageById.get(item.image_id);
+		return Boolean(
+			image &&
+				image.book_id === context.book_id &&
+				image.content_sha256 === item.image_content_sha256 &&
+				['pending', 'failed'].includes(image.ocr_status) &&
+				image.ocr_version + 1 === item.expected_ocr_version
+		);
+	});
+}
+
+function stepPayloadMatchesManifestItem(item: AuditManifestRow): boolean {
+	const payload = item.payload;
+	if (!payload || Array.isArray(payload) || item.payload_version !== 1) return false;
+	const keys = Object.keys(payload).sort();
+	return (
+		keys.join(',') === 'expectedOcrVersion,imageId,kind,maxOutputChars,version' &&
+		payload.version === 1 &&
+		payload.kind === 'ocr_image' &&
+		payload.imageId === item.image_id &&
+		payload.expectedOcrVersion === item.expected_ocr_version &&
+		payload.maxOutputChars === MAXIMUM_OUTPUT_CHARS
+	);
 }
 
 function classify(status: string, healthy: boolean): LibriOcrAdmissionAuditClassification {

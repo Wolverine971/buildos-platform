@@ -1,8 +1,9 @@
+// apps/worker/tests/libriAdmissionDispatcher.postgres.test.ts
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { Pool } from 'pg';
+import { Pool, type PoolConfig } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
 	createLibriAdmissionDispatcher,
@@ -12,6 +13,12 @@ import {
 	createLibriAdmissionReconciler,
 	type LibriAdmissionReconcilerPort
 } from '../src/workers/libri/admissionReconciler';
+import { createLibriCostLedger, type LibriCostLedgerPort } from '../src/workers/libri/costLedger';
+import { createLibriLifecycle, type LibriLifecyclePort } from '../src/workers/libri/lifecycle';
+import {
+	createLibriOcrExecution,
+	type LibriOcrExecutionPort
+} from '../src/workers/libri/ocrExecution';
 
 const USER_ID = 'a1000000-0000-4000-8000-000000000001';
 const LIBRARY_ID = 'a2000000-0000-4000-8000-000000000001';
@@ -20,7 +27,12 @@ const IMAGE_IDS = ['a4000000-0000-4000-8000-000000000001', 'a4000000-0000-4000-8
 const ADMISSION_ID = 'a5000000-0000-4000-8000-000000000001';
 const CONTROL_ID = 'a6000000-0000-4000-8000-000000000001';
 
-const postgresAvailable = ['initdb', 'pg_ctl', 'psql'].every(hasCommand);
+const externalDatabaseUrl = process.env.LIBRI_TEST_DATABASE_URL?.trim() || null;
+const postgresAvailable =
+	Boolean(externalDatabaseUrl) || ['initdb', 'pg_ctl', 'psql'].every(hasCommand);
+if (process.env.CI && !postgresAvailable) {
+	throw new Error('Libri PostgreSQL contract tests require initdb, pg_ctl, and psql in CI');
+}
 const describePostgres = postgresAvailable ? describe : describe.skip;
 
 describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL contract', () => {
@@ -28,53 +40,81 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 	let dataDir = '';
 	let socketDir = '';
 	let port = 0;
+	let ownsCluster = false;
+	let psqlConnectionArgs: string[] = [];
 	let workerPool: Pool | null = null;
 	let adminPool: Pool | null = null;
 	let dispatcher: LibriAdmissionDispatcherPort;
 	let reconciler: LibriAdmissionReconcilerPort;
+	let lifecycle: LibriLifecyclePort;
+	let costLedger: LibriCostLedgerPort;
+	let ocrExecution: LibriOcrExecutionPort;
 	let runId = '';
+	let stepIds: string[] = [];
 	let manifestSha256 = '';
 	let controlHash = '';
 
 	beforeAll(async () => {
-		tempDir = mkdtempSync('/tmp/buildos-libri-admission-dispatch-pg-');
-		dataDir = join(tempDir, 'data');
-		socketDir = join(tempDir, 'socket');
-		port = 56_000 + (process.pid % 1_000);
-		mkdirSync(socketDir);
+		let poolOptions: PoolConfig;
+		let adminUser: string | undefined;
+		if (externalDatabaseUrl) {
+			const external = parseExternalTestDatabase(externalDatabaseUrl);
+			poolOptions = external.poolOptions;
+			adminUser = external.adminUser;
+			psqlConnectionArgs = external.psqlConnectionArgs;
+		} else {
+			tempDir = mkdtempSync('/tmp/buildos-libri-admission-dispatch-pg-');
+			dataDir = join(tempDir, 'data');
+			socketDir = join(tempDir, 'socket');
+			port = 56_000 + (process.pid % 1_000);
+			mkdirSync(socketDir);
 
-		execFileSync(
-			'initdb',
-			[
-				'-D',
-				dataDir,
-				'--no-locale',
-				'--encoding=UTF8',
-				'--auth=trust',
-				'--username=postgres'
-			],
-			{ stdio: 'pipe' }
-		);
-		const postgresLog = join(tempDir, 'postgres.log');
-		try {
 			execFileSync(
-				'pg_ctl',
+				'initdb',
 				[
 					'-D',
 					dataDir,
-					'-l',
-					postgresLog,
-					'-o',
-					`-p ${port} -k ${socketDir} -c listen_addresses=''`,
-					'start'
+					'--no-locale',
+					'--encoding=UTF8',
+					'--auth=trust',
+					'--username=postgres'
 				],
 				{ stdio: 'pipe' }
 			);
-		} catch (error) {
-			throw new Error(
-				`Disposable PostgreSQL failed to start:\n${readFileSync(postgresLog, 'utf8')}`,
-				{ cause: error }
-			);
+			const postgresLog = join(tempDir, 'postgres.log');
+			try {
+				execFileSync(
+					'pg_ctl',
+					[
+						'-D',
+						dataDir,
+						'-l',
+						postgresLog,
+						'-o',
+						`-p ${port} -k ${socketDir} -c listen_addresses=''`,
+						'start'
+					],
+					{ stdio: 'pipe' }
+				);
+				ownsCluster = true;
+			} catch (error) {
+				throw new Error(
+					`Disposable PostgreSQL failed to start:\n${readFileSync(postgresLog, 'utf8')}`,
+					{ cause: error }
+				);
+			}
+			poolOptions = { host: socketDir, port, database: 'postgres' };
+			adminUser = 'postgres';
+			psqlConnectionArgs = [
+				'-h',
+				socketDir,
+				'-p',
+				String(port),
+				'-d',
+				'postgres',
+				'-U',
+				'postgres'
+			];
 		}
 
 		const repositoryRoot = resolve(process.cwd(), '../..');
@@ -84,17 +124,33 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 				'supabase/tests/fixtures/libri_ocr_batch_dispatcher_access_base.sql'
 			)
 		);
+		applySqlFile(
+			resolve(
+				repositoryRoot,
+				'supabase/migrations/20260901153414_libri_ocr_admission_dispatch_timestamp_guard.sql'
+			)
+		);
+		applySqlFile(
+			resolve(
+				repositoryRoot,
+				'supabase/migrations/20260901155435_libri_ocr_admission_finalizer_hardening.sql'
+			)
+		);
+		applySqlFile(
+			resolve(
+				repositoryRoot,
+				'supabase/migrations/20260901163552_libri_ocr_admission_production_drift_correction.sql'
+			)
+		);
 		applySql(seedSql());
 
-		const poolOptions = {
-			host: socketDir,
-			port,
-			database: 'postgres'
-		};
 		workerPool = new Pool({ ...poolOptions, user: 'libri_worker', max: 2 });
-		adminPool = new Pool({ ...poolOptions, user: 'postgres', max: 1 });
+		adminPool = new Pool({ ...poolOptions, user: adminUser, max: 1 });
 		dispatcher = createLibriAdmissionDispatcher(workerPool);
 		reconciler = createLibriAdmissionReconciler(workerPool);
+		lifecycle = createLibriLifecycle(workerPool);
+		costLedger = createLibriCostLedger(workerPool);
+		ocrExecution = createLibriOcrExecution(workerPool);
 
 		const planned = await adminPool.query<{ run_id: string }>(
 			`SELECT run_id
@@ -115,6 +171,7 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 			ORDER BY position`,
 			[LIBRARY_ID, runId]
 		);
+		stepIds = manifest.rows.map((item) => item.step_id);
 		manifestSha256 = createHash('sha256')
 			.update(
 				JSON.stringify({
@@ -156,11 +213,65 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 	afterAll(async () => {
 		await workerPool?.end();
 		await adminPool?.end();
-		if (dataDir) {
+		if (ownsCluster && dataDir) {
 			spawnSync('pg_ctl', ['-D', dataDir, 'stop', '-m', 'fast'], { stdio: 'ignore' });
 		}
 		if (tempDir) rmSync(tempDir, { recursive: true, force: true });
 	});
+
+	it('rejects raw or expired finalization and rolls back when a lock outlives the canary', async () => {
+		await expect(
+			workerPool?.query(
+				`UPDATE libri.ocr_batch_admissions
+				SET status = 'enqueued', enqueued_at = transaction_timestamp(), updated_at = now()
+				WHERE id = $1`,
+				[ADMISSION_ID]
+			)
+		).rejects.toThrow('permission denied for table ocr_batch_admissions');
+		await expect(
+			workerPool?.query(
+				`SELECT admission_id
+				FROM libri.finalize_ocr_batch_admission_dispatch($1, clock_timestamp() - interval '1 second')`,
+				[ADMISSION_ID]
+			)
+		).rejects.toThrow('dispatch window expired or is invalid');
+
+		const blocker = await adminPool!.connect();
+		try {
+			await blocker.query('BEGIN');
+			await blocker.query('SELECT id FROM libri.research_runs WHERE id = $1 FOR UPDATE', [
+				runId
+			]);
+			await expect(
+				dispatcher.dispatchOcrAdmission({
+					admissionId: ADMISSION_ID,
+					dispatchExpiresAt: new Date(Date.now() + 350).toISOString()
+				})
+			).rejects.toThrow(/lock timeout|statement timeout/);
+		} finally {
+			await blocker.query('ROLLBACK');
+			blocker.release();
+		}
+
+		const state = await adminPool?.query<{
+			admission_status: string;
+			queue_jobs: string;
+			pending_steps: string;
+		}>(
+			`SELECT
+				(SELECT status FROM libri.ocr_batch_admissions WHERE id = $1) AS admission_status,
+				(SELECT count(*)::text FROM public.queue_jobs
+					WHERE metadata->>'libriAdmissionId' = $1::text) AS queue_jobs,
+				(SELECT count(*)::text FROM libri.research_steps
+					WHERE run_id = $2 AND status = 'pending') AS pending_steps`,
+			[ADMISSION_ID, runId]
+		);
+		expect(state?.rows[0]).toEqual({
+			admission_status: 'confirmed',
+			queue_jobs: '0',
+			pending_steps: '2'
+		});
+	}, 5_000);
 
 	it('dispatches and replays the whole exact batch without touching the BuildOS control', async () => {
 		const visibility = await workerPool?.query<{
@@ -197,9 +308,33 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 			issues: []
 		});
 
+		await expect(
+			adminPool?.query(
+				`UPDATE libri.research_steps
+			SET payload = jsonb_set(payload, '{maxOutputChars}', '1'::jsonb)
+			WHERE id = $1`,
+				[stepIds[0]]
+			)
+		).rejects.toThrow('step execution contract is immutable');
+
+		await expect(
+			adminPool?.query(
+				`UPDATE libri.images SET content_sha256 = repeat('f', 64) WHERE id = $1`,
+				[IMAGE_IDS[0]]
+			)
+		).rejects.toThrow('image identity is immutable');
+		await expect(
+			adminPool?.query(
+				`UPDATE libri.ocr_batch_items
+				SET run_id = 'a9000000-0000-4000-8000-000000000099'
+				WHERE library_id = $1 AND run_id = $2 AND step_id = $3`,
+				[LIBRARY_ID, runId, stepIds[0]]
+			)
+		).rejects.toThrow('batch items are immutable');
+
 		const concurrent = await Promise.all([
-			dispatcher.dispatchOcrAdmission({ admissionId: ADMISSION_ID }),
-			dispatcher.dispatchOcrAdmission({ admissionId: ADMISSION_ID })
+			dispatcher.dispatchOcrAdmission(dispatchInput()),
+			dispatcher.dispatchOcrAdmission(dispatchInput())
 		]);
 		const first = concurrent.find((receipt) => receipt.created);
 		const replay = concurrent.find((receipt) => !receipt.created);
@@ -222,6 +357,12 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 		expect(replay?.jobs.map((job) => job.queueRowId)).toEqual(
 			first?.jobs.map((job) => job.queueRowId)
 		);
+		await expect(
+			adminPool?.query(
+				`UPDATE libri.research_steps SET active_queue_job_id = NULL WHERE id = $1`,
+				[stepIds[0]]
+			)
+		).rejects.toThrow('step execution contract is immutable');
 		await expect(
 			reconciler.auditOcrAdmission({ admissionId: ADMISSION_ID })
 		).resolves.toMatchObject({
@@ -270,46 +411,108 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 		expect(workerVisible?.rows[0]?.count).toBe('2');
 	}, 15_000);
 
-	function applySqlFile(path: string): void {
-		execFileSync(
-			'psql',
-			[
-				'-h',
-				socketDir,
-				'-p',
-				String(port),
-				'-d',
-				'postgres',
-				'-U',
-				'postgres',
-				'-v',
-				'ON_ERROR_STOP=1',
-				'-f',
-				path
-			],
-			{ stdio: 'pipe' }
+	it('requires the exact admitted queue lease immediately before paid OCR authority', async () => {
+		const claim = await lifecycle.claimNextStep({
+			workerId: 'aa000000-0000-4000-8000-000000000001',
+			leaseDurationMs: 60_000,
+			queueTypes: ['libri_ingest'],
+			stepIds: [stepIds[0]!]
+		});
+		expect(claim).toMatchObject({ kind: 'claimed', stepId: stepIds[0] });
+		if (!claim || claim.kind !== 'claimed') throw new Error('OCR step was not claimed');
+
+		const reservation = await costLedger.reserveProviderCost({
+			stepId: claim.stepId,
+			executionGeneration: claim.executionGeneration,
+			leaseToken: claim.leaseToken,
+			reservationKey: `ocr:image:${IMAGE_IDS[0]}:version:1`,
+			provider: 'openrouter',
+			model: 'openai/gpt-4o-mini',
+			reservedMicrousd: 100_000n
+		});
+		expect(reservation).toMatchObject({ outcome: 'reserved', created: true });
+		if (!reservation.reservationId) throw new Error('OCR cost reservation was not created');
+
+		await adminPool?.query(
+			`UPDATE public.queue_jobs
+			SET metadata = jsonb_set(metadata, '{libriManifestSha256}', to_jsonb(repeat('f', 64)))
+			WHERE id = $1`,
+			[claim.queueRowId]
 		);
+		await expect(
+			ocrExecution.authorizeOcrProviderCall({
+				...claimOwnership(claim),
+				reservationId: reservation.reservationId,
+				imageId: IMAGE_IDS[0]!
+			})
+		).rejects.toThrow('paid OCR authorization lacks an exact enqueued admission');
+		await adminPool?.query(
+			`UPDATE public.queue_jobs
+			SET metadata = jsonb_set(metadata, '{libriManifestSha256}', to_jsonb($2::text))
+			WHERE id = $1`,
+			[claim.queueRowId, manifestSha256]
+		);
+
+		await expect(
+			ocrExecution.authorizeOcrProviderCall({
+				...claimOwnership(claim),
+				reservationId: reservation.reservationId,
+				imageId: IMAGE_IDS[0]!
+			})
+		).resolves.toMatchObject({
+			authorized: true,
+			outcome: 'started',
+			maxOutputChars: 50_000,
+			provider: 'openrouter',
+			model: 'openai/gpt-4o-mini'
+		});
+		await expect(
+			adminPool?.query<{ ocr_status: string }>(
+				'SELECT ocr_status::text FROM libri.images WHERE id = $1',
+				[IMAGE_IDS[0]]
+			)
+		).resolves.toMatchObject({ rows: [{ ocr_status: 'processing' }] });
+
+		await expect(
+			ocrExecution.completeOcrStep({
+				...claimOwnership(claim),
+				reservationId: reservation.reservationId,
+				imageId: IMAGE_IDS[0]!,
+				extractedText: 'Exact admitted OCR text',
+				summary: 'Exact admitted OCR summary',
+				confidence: 0.99,
+				language: 'en',
+				actualCostMicrousd: 50_000n,
+				promptTokens: 100n,
+				completionTokens: 200n,
+				providerRequestId: 'provider-request-admitted-ocr'
+			})
+		).resolves.toMatchObject({
+			accepted: true,
+			outcome: 'settled',
+			ocrVersion: 1,
+			provider: 'openrouter',
+			model: 'openai/gpt-4o-mini'
+		});
+		await expect(
+			reconciler.auditOcrAdmission({ admissionId: ADMISSION_ID })
+		).resolves.toMatchObject({
+			classification: 'enqueued_consistent',
+			healthy: true,
+			issues: []
+		});
+	});
+
+	function applySqlFile(path: string): void {
+		execFileSync('psql', [...psqlConnectionArgs, '-v', 'ON_ERROR_STOP=1', '-f', path], {
+			stdio: 'pipe'
+		});
 	}
 
 	function applySql(sql: string): void {
-		execFileSync(
-			'psql',
-			[
-				'-h',
-				socketDir,
-				'-p',
-				String(port),
-				'-d',
-				'postgres',
-				'-U',
-				'postgres',
-				'-v',
-				'ON_ERROR_STOP=1',
-				'-c',
-				sql
-			],
-			{ stdio: 'pipe' }
-		);
+		execFileSync('psql', [...psqlConnectionArgs, '-v', 'ON_ERROR_STOP=1', '-c', sql], {
+			stdio: 'pipe'
+		});
 	}
 });
 
@@ -362,6 +565,59 @@ function seedSql(): string {
 	`;
 }
 
+function dispatchInput() {
+	return {
+		admissionId: ADMISSION_ID,
+		dispatchExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString()
+	};
+}
+
+function claimOwnership(claim: {
+	queueRowId: string;
+	processingToken: string;
+	stepId: string;
+	executionGeneration: number;
+	leaseToken: string;
+}) {
+	return {
+		queueRowId: claim.queueRowId,
+		processingToken: claim.processingToken,
+		stepId: claim.stepId,
+		executionGeneration: claim.executionGeneration,
+		leaseToken: claim.leaseToken
+	};
+}
+
 function hasCommand(command: string): boolean {
 	return spawnSync(command, ['--version'], { stdio: 'ignore' }).status === 0;
+}
+
+function parseExternalTestDatabase(databaseUrl: string): {
+	poolOptions: PoolConfig;
+	adminUser: string | undefined;
+	psqlConnectionArgs: string[];
+} {
+	const parsed = new URL(databaseUrl);
+	const database = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
+	if (
+		!['postgres:', 'postgresql:'].includes(parsed.protocol) ||
+		!['', 'localhost', '127.0.0.1', '::1'].includes(parsed.hostname) ||
+		parsed.password ||
+		!/^(?:codex|buildos)_libri_[a-z0-9_]+$/.test(database)
+	) {
+		throw new Error(
+			'LIBRI_TEST_DATABASE_URL must target a passwordless local codex_libri_* or buildos_libri_* database'
+		);
+	}
+	const adminUser = parsed.username ? decodeURIComponent(parsed.username) : undefined;
+	const poolOptions: PoolConfig = {
+		database,
+		...(parsed.hostname ? { host: parsed.hostname } : {}),
+		...(parsed.port ? { port: Number(parsed.port) } : {})
+	};
+	const psqlConnectionArgs = ['-d', database];
+	if (parsed.hostname) psqlConnectionArgs.push('-h', parsed.hostname);
+	if (parsed.port) psqlConnectionArgs.push('-p', parsed.port);
+	if (adminUser) psqlConnectionArgs.push('-U', adminUser);
+	return { poolOptions, adminUser, psqlConnectionArgs };
 }

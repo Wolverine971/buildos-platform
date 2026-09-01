@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// scripts/database/check-libri-migration-scope.mjs
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -57,15 +58,30 @@ export function validateLibriMigration(filename, sql) {
 			'dynamic SQL is forbidden in Libri migrations because static scope cannot be proven'
 		);
 	}
-	if (/\bsecurity\s+definer\b/i.test(normalizedSql)) {
-		failures.push(
-			'SECURITY DEFINER is forbidden in Libri migrations; use RLS or an explicitly reviewed API migration'
-		);
-	}
+	validateSecurityDefinerFunctions(normalizedSql, header, failures);
 	for (const body of collectDollarQuotedBodies(normalizedSql)) {
-		if (/\b(?:public|storage)\s*\./i.test(body)) {
+		const reviewedPublicReferences = [];
+		for (const match of body.matchAll(/\b(public|storage)\s*\.\s*([a-z_][a-z0-9_$]*)\b/gi)) {
+			const schema = match[1].toLowerCase();
+			const object = match[2].toLowerCase();
+			if (schema !== 'public' || !header.publicReadObjects.has(object)) {
+				failures.push(
+					`unreviewed cross-schema reference inside routine body: ${schema}.${object}`
+				);
+			} else {
+				reviewedPublicReferences.push(`public.${object}`);
+			}
+		}
+		if (
+			reviewedPublicReferences.length > 0 &&
+			/\b(?:merge\s+into|copy\b|call\b|lock\s+table\b|for\s+(?:update|no\s+key\s+update|share|key\s+share)\b)/i.test(
+				maskSingleQuotedLiterals(body)
+			)
+		) {
 			failures.push(
-				'cross-schema references inside routine bodies are forbidden because their effects cannot be statically proven'
+				`reviewed public reads cannot use mutating or locking SQL (${[
+					...new Set(reviewedPublicReferences)
+				].join(', ')})`
 			);
 		}
 	}
@@ -84,7 +100,7 @@ export function validateLibriMigration(filename, sql) {
 		const failure = validateMutationTarget(target, header);
 		if (failure) failures.push(failure);
 	}
-	validateCrossSchemaReferences(normalizedSql, mutationTargets, failures);
+	validateCrossSchemaReferences(normalizedSql, mutationTargets, header, failures);
 	for (const statement of splitSqlStatements(normalizedSql)) {
 		if (!/\balter\s+type\s+public\.queue_type\b/i.test(statement)) continue;
 		const match = statement.match(
@@ -117,9 +133,56 @@ function parseHeader(sql, failures) {
 	return {
 		isLibriMigration: /^\s*--\s*libri-migration:\s*true\s*$/im.test(sql),
 		allowDestructive: /^\s*--\s*libri-allow-destructive:\s*reviewed\s*$/im.test(sql),
+		publicReadObjects: parseReadHeader(sql, 'libri-allow-public-read', failures),
+		securityDefinerFunctions: parseReadHeader(sql, 'libri-allow-security-definer', failures),
 		publicObjects: parseOperationHeader(sql, 'libri-allow-public', failures),
 		storageObjects: parseOperationHeader(sql, 'libri-allow-storage', failures)
 	};
+}
+
+function validateSecurityDefinerFunctions(sql, header, failures) {
+	const reviewed = new Set();
+	for (const statement of splitSqlStatements(sql)) {
+		if (!/\bsecurity\s+definer\b/i.test(statement)) continue;
+		const match = statement.match(
+			/^\s*create\s+(?:or\s+replace\s+)?function\s+libri\.([a-z_][a-z0-9_$]*)\s*\(/i
+		);
+		const functionName = match?.[1]?.toLowerCase();
+		if (!functionName || !header.securityDefinerFunctions.has(functionName)) {
+			failures.push(
+				'SECURITY DEFINER is forbidden without an explicitly reviewed libri-allow-security-definer function'
+			);
+			continue;
+		}
+		reviewed.add(functionName);
+		if (!/\bset\s+search_path\s*=\s*pg_catalog\s*,\s*libri\b/i.test(statement)) {
+			failures.push(
+				`reviewed SECURITY DEFINER function must fix search_path to pg_catalog, libri (${functionName})`
+			);
+		}
+	}
+	for (const functionName of header.securityDefinerFunctions) {
+		if (!reviewed.has(functionName)) {
+			failures.push(
+				`libri-allow-security-definer entry does not match a SECURITY DEFINER function (${functionName})`
+			);
+		}
+	}
+}
+
+function parseReadHeader(sql, key, failures) {
+	const match = sql.match(new RegExp(`^\\s*--\\s*${key}:\\s*([^\\n]+)$`, 'im'));
+	const objects = new Set();
+	if (!match) return objects;
+	for (const rawEntry of match[1].split(',')) {
+		const object = rawEntry.trim().toLowerCase();
+		if (!/^[a-z_][a-z0-9_$]*$/.test(object)) {
+			failures.push(`${key} entries must be unqualified object names`);
+			continue;
+		}
+		objects.add(object);
+	}
+	return objects;
 }
 
 function parseOperationHeader(sql, key, failures) {
@@ -328,7 +391,7 @@ function validateGrantStatement(statement, header, failures) {
 		return;
 	}
 	const targetKind = targetMatch[1]?.toLowerCase() ?? 'table';
-	for (const rawTarget of targetMatch[2].split(',').map((value) => value.trim())) {
+	for (const rawTarget of splitTopLevelCommas(targetMatch[2]).map((value) => value.trim())) {
 		const target = rawTarget.replace(/\([^)]*\)\s*$/, '');
 		if (targetKind.includes('in schema') || targetKind === 'schema') {
 			if (target.toLowerCase() !== 'libri') {
@@ -359,9 +422,12 @@ function validateGrantStatement(statement, header, failures) {
 
 function collectMutationTargets(sql) {
 	const scanSql = maskSingleQuotedLiterals(sql);
-	const dmlSql = scanSql.replace(/\b(?:on|for|before|after|instead\s+of)\s+update\b/gi, (match) =>
-		' '.repeat(match.length)
-	);
+	const dmlSql = scanSql
+		.replace(
+			/\b(?:before|after|instead\s+of)\s+(?:insert|update|delete|truncate)(?:\s+or\s+(?:insert|update|delete|truncate))*\s+on\b/gi,
+			(match) => ' '.repeat(match.length)
+		)
+		.replace(/\b(?:on|for)\s+update\b/gi, (match) => ' '.repeat(match.length));
 	const targets = [];
 	const rules = [
 		{
@@ -424,7 +490,25 @@ function collectMutationTargets(sql) {
 	return targets;
 }
 
-function validateCrossSchemaReferences(sql, mutationTargets, failures) {
+function splitTopLevelCommas(value) {
+	const parts = [];
+	let current = '';
+	let depth = 0;
+	for (const character of value) {
+		if (character === '(') depth += 1;
+		if (character === ')') depth = Math.max(0, depth - 1);
+		if (character === ',' && depth === 0) {
+			parts.push(current);
+			current = '';
+			continue;
+		}
+		current += character;
+	}
+	parts.push(current);
+	return parts;
+}
+
+function validateCrossSchemaReferences(sql, mutationTargets, header, failures) {
 	const classifiedTargets = new Set(
 		mutationTargets
 			.filter(
@@ -441,7 +525,9 @@ function validateCrossSchemaReferences(sql, mutationTargets, failures) {
 		].map((match) => `${match[1].toLowerCase()}.${match[2].toLowerCase()}`)
 	);
 	for (const reference of references) {
-		if (!classifiedTargets.has(reference)) {
+		const [schema, object] = reference.split('.');
+		const isReviewedPublicRead = schema === 'public' && header.publicReadObjects.has(object);
+		if (!classifiedTargets.has(reference) && !isReviewedPublicRead) {
 			failures.push(
 				`unclassified cross-schema reference is forbidden in a Libri migration: ${reference}`
 			);

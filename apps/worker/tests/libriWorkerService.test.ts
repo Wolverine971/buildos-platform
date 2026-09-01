@@ -1,3 +1,4 @@
+// apps/worker/tests/libriWorkerService.test.ts
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
@@ -6,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	loadLibriWorkerConfig,
 	loadLibriOcrRuntimeConfig,
+	requireActiveLibriCanaryExpiry,
 	requireDedicatedLibriWorkerProductionProfile
 } from '../src/config/libriWorkerProfile';
 import {
@@ -254,8 +256,11 @@ describe('dedicated Libri worker service', () => {
 		expect(entrypoint).not.toContain('startScheduler(');
 		expect(entrypoint).not.toContain('startWorker(');
 		expect(entrypoint.indexOf('await database.probe()')).toBeLessThan(
-			entrypoint.indexOf('await database.dispatchOcrAdmission')
+			entrypoint.indexOf('requireActiveLibriCanaryExpiry(config.canaryExpiresAtMs)')
 		);
+		expect(
+			entrypoint.indexOf('requireActiveLibriCanaryExpiry(config.canaryExpiresAtMs)')
+		).toBeLessThan(entrypoint.indexOf('await database.dispatchOcrAdmission'));
 	});
 
 	it('exposes the exact isolated entrypoint used by Railway service settings', () => {
@@ -345,6 +350,17 @@ describe('dedicated Libri worker service', () => {
 				LIBRI_WORKER_ACTIVATION_MODE: 'synthetic_canary',
 				LIBRI_WORKER_CONCURRENCY: '1',
 				LIBRI_WORKER_CANARY_STEP_ID: canaryStepId,
+				LIBRI_WORKER_CANARY_EXPIRES_AT: new Date(Date.now() + 30_000).toISOString()
+			})
+		).toThrow('expiry must be 1 to 30 minutes ahead');
+		expect(() =>
+			requireDedicatedLibriWorkerProductionProfile({
+				NODE_ENV: 'production',
+				LIBRI_WORKER_PROFILE: 'production',
+				LIBRI_WORKER_ENABLED: 'true',
+				LIBRI_WORKER_ACTIVATION_MODE: 'synthetic_canary',
+				LIBRI_WORKER_CONCURRENCY: '1',
+				LIBRI_WORKER_CANARY_STEP_ID: canaryStepId,
 				LIBRI_WORKER_CANARY_EXPIRES_AT: new Date(Date.now() + 31 * 60_000).toISOString()
 			})
 		).toThrow('expiry must be 1 to 30 minutes ahead');
@@ -364,6 +380,14 @@ describe('dedicated Libri worker service', () => {
 		expect(() =>
 			loadLibriWorkerConfig({ LIBRI_WORKER_CANARY_EXPIRES_AT: 'not-a-timestamp' })
 		).toThrow('LIBRI_WORKER_CANARY_EXPIRES_AT');
+	});
+
+	it('rechecks the canary expiry immediately before activation', () => {
+		expect(() => requireActiveLibriCanaryExpiry(Date.now() - 1)).toThrow(
+			'expired before activation'
+		);
+		expect(() => requireActiveLibriCanaryExpiry(null)).toThrow('expired before activation');
+		expect(() => requireActiveLibriCanaryExpiry(Date.now() + 1_000)).not.toThrow();
 	});
 
 	it('allows only one exact, expiring admission dispatch while queue consumption is off', () => {

@@ -1,3 +1,4 @@
+// apps/worker/src/workers/libri/ocrAdmissionContract.ts
 import { createHash } from 'node:crypto';
 
 export const LIBRI_UUID_PATTERN =
@@ -28,6 +29,12 @@ export type LibriOcrQueueReceipt = {
 	job_type: string;
 	metadata: Record<string, unknown> | null;
 	status: string;
+};
+
+export type LibriOcrStepQueueState = {
+	step_status: string | null;
+	attempts: number | null;
+	max_attempts: number | null;
 };
 
 export function hashLibriOcrAdmissionManifest(
@@ -82,4 +89,27 @@ export function libriOcrQueueReceiptMatchesItem(
 		queueJob.metadata?.libriBatchPosition === expected.libriBatchPosition &&
 		queueJob.metadata?.payloadVersion === expected.payloadVersion
 	);
+}
+
+export function libriOcrQueueReceiptMatchesStepState(
+	queueJob: LibriOcrQueueReceipt,
+	step: LibriOcrStepQueueState
+): boolean {
+	if (step.max_attempts !== 1 || !Number.isSafeInteger(step.attempts)) return false;
+	switch (queueJob.status) {
+		case 'pending':
+			return step.step_status === 'queued' && step.attempts === 0;
+		case 'processing':
+			return step.step_status === 'leased' && step.attempts === 1;
+		case 'completed':
+			return step.step_status === 'completed' && step.attempts === 1;
+		case 'failed':
+			return (
+				['failed', 'dead_letter'].includes(step.step_status ?? '') && step.attempts === 1
+			);
+		case 'cancelled':
+			return step.step_status === 'cancelled' && (step.attempts === 0 || step.attempts === 1);
+		default:
+			return false;
+	}
 }

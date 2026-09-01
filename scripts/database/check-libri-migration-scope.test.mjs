@@ -1,3 +1,4 @@
+// scripts/database/check-libri-migration-scope.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -8,17 +9,22 @@ const safeTimeouts = `set lock_timeout = '5s';
 set statement_timeout = '60s';`;
 
 test('keeps the out-of-band Libri worker role powerless until secret provisioning', () => {
-	const sql = readFileSync(
-		new URL('./provision-libri-worker-role.sql', import.meta.url),
-		'utf8'
-	);
-	const normalized = sql.replace(/--[^\n]*/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+	const sql = readFileSync(new URL('./provision-libri-worker-role.sql', import.meta.url), 'utf8');
+	const normalized = sql
+		.replace(/--[^\n]*/g, ' ')
+		.replace(/\s+/g, ' ')
+		.toLowerCase();
 
-	assert.match(normalized, /create role libri_worker login nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls connection limit 3/);
+	assert.match(
+		normalized,
+		/create role libri_worker login nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls connection limit 3/
+	);
 	assert.match(normalized, /pg_auth_members/);
 	assert.doesNotMatch(normalized, /\bpassword\b/);
 	assert.doesNotMatch(normalized, /\b(?:grant|revoke)\s+[a-z_][a-z0-9_]*\s+to\b/);
-	for (const match of normalized.matchAll(/\b(?:create|alter|drop)\s+role\s+([a-z_][a-z0-9_]*)/g)) {
+	for (const match of normalized.matchAll(
+		/\b(?:create|alter|drop)\s+role\s+([a-z_][a-z0-9_]*)/g
+	)) {
 		assert.equal(match[1], 'libri_worker');
 	}
 });
@@ -92,6 +98,31 @@ ${safeTimeouts}
 create function libri.unsafe() returns void language sql security definer as 'select';`
 	);
 	assert.match(failures.join('\n'), /SECURITY DEFINER/);
+});
+
+test('accepts only a named reviewed SECURITY DEFINER API with a fixed search path', () => {
+	const failures = validateLibriMigration(
+		filename,
+		`-- libri-migration: true
+-- libri-allow-security-definer: finalize_batch
+${safeTimeouts}
+create function libri.finalize_batch(uuid)
+returns void language plpgsql security definer
+set search_path = pg_catalog, libri
+as $body$ begin return; end; $body$;`
+	);
+	assert.deepEqual(failures, []);
+
+	const unsafe = validateLibriMigration(
+		filename,
+		`-- libri-migration: true
+-- libri-allow-security-definer: finalize_batch
+${safeTimeouts}
+create function libri.finalize_batch(uuid)
+returns void language plpgsql security definer
+as $body$ begin return; end; $body$;`
+	);
+	assert.match(unsafe.join('\n'), /must fix search_path/);
 });
 
 test('still rejects standalone unqualified DML', () => {
@@ -213,7 +244,81 @@ end;
 $$;`
 	);
 	assert.match(failures.join('\n'), /cannot delete public\.users/);
-	assert.match(failures.join('\n'), /cross-schema references inside routine bodies/);
+	assert.match(failures.join('\n'), /unreviewed cross-schema reference inside routine body/);
+});
+
+test('allows a reviewed read-only shared queue reference inside a Libri guard', () => {
+	const failures = validateLibriMigration(
+		filename,
+		`-- libri-migration: true
+-- libri-allow-public-read: queue_jobs
+${safeTimeouts}
+create function libri.queue_receipt_exists(p_id uuid) returns boolean
+language sql
+security invoker
+set search_path = pg_catalog, libri
+as $$
+  select exists(select 1 from public.queue_jobs where id = p_id);
+$$;`
+	);
+	assert.deepEqual(failures, []);
+});
+
+test('accepts multi-argument Libri function grants and multi-event triggers', () => {
+	assert.deepEqual(
+		validateLibriMigration(
+			'20260101000000_libri_function_grant.sql',
+			`-- libri-migration: true
+			${safeTimeouts}
+				CREATE FUNCTION libri.finish(uuid, timestamptz)
+				RETURNS void LANGUAGE plpgsql SECURITY INVOKER
+				SET search_path = pg_catalog, libri AS $body$
+				BEGIN RETURN; END;
+				$body$;
+				CREATE TRIGGER libri_guard BEFORE INSERT OR UPDATE OR DELETE ON libri.items
+				FOR EACH ROW EXECUTE FUNCTION libri.finish();
+				GRANT EXECUTE ON FUNCTION libri.finish(uuid, timestamptz) TO service_role;
+			`
+		),
+		[]
+	);
+});
+
+test('a reviewed public read never authorizes a shared queue mutation', () => {
+	const failures = validateLibriMigration(
+		filename,
+		`-- libri-migration: true
+-- libri-allow-public-read: queue_jobs
+${safeTimeouts}
+create function libri.unsafe_queue_write(p_id uuid) returns void
+language sql
+security invoker
+set search_path = pg_catalog, libri
+as $$
+  update public.queue_jobs set status = 'failed' where id = p_id;
+$$;`
+	);
+	assert.match(failures.join('\n'), /cannot update public\.queue_jobs/);
+});
+
+test('a reviewed public read rejects row locks and MERGE inside routine bodies', () => {
+	for (const body of [
+		`SELECT id FROM public.queue_jobs FOR UPDATE;`,
+		`MERGE INTO public.queue_jobs AS target USING libri.items AS source
+		ON target.id = source.id WHEN MATCHED THEN DELETE;`
+	]) {
+		const failures = validateLibriMigration(
+			filename,
+			`-- libri-migration: true
+-- libri-allow-public-read: queue_jobs
+${safeTimeouts}
+create function libri.unsafe_queue_read()
+returns void language plpgsql security invoker
+set search_path = pg_catalog, libri
+as $body$ begin ${body} end; $body$;`
+		);
+		assert.match(failures.join('\n'), /cannot use mutating or locking SQL/);
+	}
 });
 
 test('rejects dynamic SQL and unverifiable DO blocks', () => {

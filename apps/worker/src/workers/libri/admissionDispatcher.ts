@@ -1,3 +1,4 @@
+// apps/worker/src/workers/libri/admissionDispatcher.ts
 import { randomUUID } from 'node:crypto';
 import type { LibriTransactionClient, LibriTransactionalPool } from './lifecycle';
 import {
@@ -6,13 +7,16 @@ import {
 	type LibriOcrQueueReceipt,
 	hashLibriOcrAdmissionManifest,
 	libriOcrQueueMetadata,
-	libriOcrQueueReceiptMatchesItem
+	libriOcrQueueReceiptMatchesItem,
+	libriOcrQueueReceiptMatchesStepState
 } from './ocrAdmissionContract';
 
 const MAXIMUM_BATCH_SIZE = 10;
+const MAXIMUM_OUTPUT_CHARS = 50_000;
 
 export type DispatchLibriOcrAdmissionInput = {
 	admissionId: string;
+	dispatchExpiresAt: string;
 };
 
 export type DispatchedLibriOcrJob = {
@@ -69,9 +73,18 @@ type ManifestRow = {
 	step_kind: string;
 	priority: number;
 	payload_version: number;
+	payload: Record<string, unknown> | null;
 	attempts: number;
 	max_attempts: number;
 	active_queue_job_id: string | null;
+};
+
+type CurrentImageRow = {
+	image_id: string;
+	book_id: string | null;
+	content_sha256: string;
+	ocr_status: string;
+	ocr_version: number;
 };
 
 export function createLibriAdmissionDispatcher(
@@ -87,8 +100,10 @@ class LibriAdmissionDispatcher implements LibriAdmissionDispatcherPort {
 		input: DispatchLibriOcrAdmissionInput
 	): Promise<DispatchLibriOcrAdmissionReceipt> {
 		assertUuid(input.admissionId, 'admissionId');
+		assertTimestamp(input.dispatchExpiresAt, 'dispatchExpiresAt');
 
 		return withTransaction(this.pool, async (client) => {
+			await configureDispatchTransaction(client, input.dispatchExpiresAt);
 			const context = await lockAdmissionContext(client, input.admissionId);
 			const manifest = await lockManifest(client, context);
 			validateImmutableContract(context, manifest);
@@ -109,22 +124,20 @@ class LibriAdmissionDispatcher implements LibriAdmissionDispatcherPort {
 				};
 			}
 
-			validateDispatchableContract(context, manifest);
-			const scheduledFor = new Date().toISOString();
+			const currentImages = await lockCurrentImages(client, context, manifest);
+			validateDispatchableContract(context, manifest, currentImages);
 			const jobs: DispatchedLibriOcrJob[] = [];
 			for (const item of manifest) {
-				jobs.push(await enqueueManifestItem(client, context, item, scheduledFor));
+				jobs.push(await enqueueManifestItem(client, context, item));
 			}
 
-			const admissionUpdate = await client.query<{ id: string }>(
-				`UPDATE libri.ocr_batch_admissions
-				SET status = 'enqueued', enqueued_at = now(), updated_at = now()
-				WHERE id = $1 AND library_id = $2 AND run_id = $3 AND status = 'confirmed'
-				RETURNING id`,
-				[context.admission_id, context.library_id, context.run_id]
+			const admissionUpdate = await client.query<{ admission_id: string }>(
+				`SELECT admission_id
+				FROM libri.finalize_ocr_batch_admission_dispatch($1, $2::timestamptz)`,
+				[context.admission_id, input.dispatchExpiresAt]
 			);
 			if (admissionUpdate.rowCount !== 1) {
-				throw new Error('Libri OCR admission dispatch ownership changed');
+				throw new Error('Libri OCR admission dispatch finalization failed');
 			}
 
 			return {
@@ -135,6 +148,42 @@ class LibriAdmissionDispatcher implements LibriAdmissionDispatcherPort {
 				jobs
 			};
 		});
+	}
+}
+
+async function configureDispatchTransaction(
+	client: LibriTransactionClient,
+	dispatchExpiresAt: string
+): Promise<void> {
+	const configured = await client.query<{ active: boolean }>(
+		`SELECT
+			$1::timestamptz > clock_timestamp() AS active,
+			set_config(
+				'lock_timeout',
+				GREATEST(
+					1,
+					LEAST(
+						5000,
+						floor(extract(epoch FROM ($1::timestamptz - clock_timestamp())) * 1000)::integer
+					)
+				)::text || 'ms',
+				true
+			),
+			set_config(
+				'statement_timeout',
+				GREATEST(
+					1,
+					LEAST(
+						60000,
+						floor(extract(epoch FROM ($1::timestamptz - clock_timestamp())) * 1000)::integer
+					)
+				)::text || 'ms',
+				true
+			)`,
+		[dispatchExpiresAt]
+	);
+	if (configured.rows[0]?.active !== true) {
+		throw new Error('Libri OCR admission dispatch window expired before transaction locks');
 	}
 }
 
@@ -207,6 +256,7 @@ async function lockManifest(
 			step.kind AS step_kind,
 			step.priority,
 			step.payload_version,
+			step.payload,
 			step.attempts,
 			step.max_attempts,
 			step.active_queue_job_id
@@ -223,6 +273,27 @@ async function lockManifest(
 	return result.rows;
 }
 
+async function lockCurrentImages(
+	client: LibriTransactionClient,
+	context: AdmissionContextRow,
+	manifest: ManifestRow[]
+): Promise<CurrentImageRow[]> {
+	const result = await client.query<CurrentImageRow>(
+		`SELECT
+			image.id AS image_id,
+			image.book_id,
+			image.content_sha256,
+			image.ocr_status::text,
+			image.ocr_version
+		FROM libri.images image
+		WHERE image.library_id = $1 AND image.id = ANY($2::uuid[])
+		ORDER BY image.id
+		FOR SHARE OF image`,
+		[context.library_id, manifest.map((item) => item.image_id)]
+	);
+	return result.rows;
+}
+
 function validateImmutableContract(context: AdmissionContextRow, manifest: ManifestRow[]): void {
 	if (context.admission_status !== 'confirmed' && context.admission_status !== 'enqueued') {
 		throw new Error(`Libri OCR admission cannot dispatch from ${context.admission_status}`);
@@ -235,6 +306,8 @@ function validateImmutableContract(context: AdmissionContextRow, manifest: Manif
 		!LIBRI_UUID_PATTERN.test(context.book_id) ||
 		!context.requested_by ||
 		!LIBRI_UUID_PATTERN.test(context.requested_by) ||
+		!LIBRI_UUID_PATTERN.test(context.correlation_id) ||
+		!LIBRI_UUID_PATTERN.test(context.library_created_by) ||
 		!LIBRI_SHA256_PATTERN.test(context.manifest_sha256)
 	) {
 		throw new Error('Libri OCR admission run contract is invalid');
@@ -260,6 +333,7 @@ function validateImmutableContract(context: AdmissionContextRow, manifest: Manif
 			!Number.isSafeInteger(item.expected_ocr_version) ||
 			item.expected_ocr_version < 1 ||
 			!LIBRI_SHA256_PATTERN.test(item.image_content_sha256) ||
+			!stepPayloadMatchesManifestItem(item) ||
 			stepIds.has(item.step_id) ||
 			imageIds.has(item.image_id)
 		) {
@@ -270,7 +344,11 @@ function validateImmutableContract(context: AdmissionContextRow, manifest: Manif
 	}
 }
 
-function validateDispatchableContract(context: AdmissionContextRow, manifest: ManifestRow[]): void {
+function validateDispatchableContract(
+	context: AdmissionContextRow,
+	manifest: ManifestRow[],
+	currentImages: CurrentImageRow[]
+): void {
 	if (
 		context.admission_status !== 'confirmed' ||
 		context.run_status !== 'queued' ||
@@ -279,14 +357,21 @@ function validateDispatchableContract(context: AdmissionContextRow, manifest: Ma
 	) {
 		throw new Error('Libri OCR admission is no longer dispatchable');
 	}
+	const imageById = new Map(currentImages.map((image) => [image.image_id, image]));
 	for (const item of manifest) {
+		const image = imageById.get(item.image_id);
 		if (
 			item.step_status !== 'pending' ||
 			item.queue_family !== 'libri_ingest' ||
 			item.step_kind !== 'ocr_image' ||
 			item.attempts !== 0 ||
 			item.max_attempts !== 1 ||
-			item.active_queue_job_id !== null
+			item.active_queue_job_id !== null ||
+			!image ||
+			image.book_id !== context.book_id ||
+			image.content_sha256 !== item.image_content_sha256 ||
+			!['pending', 'failed'].includes(image.ocr_status) ||
+			image.ocr_version + 1 !== item.expected_ocr_version
 		) {
 			throw new Error('Libri OCR admission steps are no longer dispatchable');
 		}
@@ -296,8 +381,7 @@ function validateDispatchableContract(context: AdmissionContextRow, manifest: Ma
 async function enqueueManifestItem(
 	client: LibriTransactionClient,
 	context: AdmissionContextRow,
-	item: ManifestRow,
-	scheduledFor: string
+	item: ManifestRow
 ): Promise<DispatchedLibriOcrJob> {
 	const dedupKey = `libri:research-step:${item.step_id}`;
 	const metadata = libriOcrQueueMetadata(context, item);
@@ -314,19 +398,15 @@ async function enqueueManifestItem(
 			dedup_key,
 			attempts,
 			max_attempts
-		) VALUES ($1, $2, 'libri_ingest', $3::jsonb, 'pending', $4, $5, $6, 0, 1)
+		) VALUES (
+			$1, $2, 'libri_ingest', $3::jsonb, 'pending', $4,
+			transaction_timestamp(), $5, 0, 1
+		)
 		ON CONFLICT (dedup_key)
 		WHERE dedup_key IS NOT NULL AND status IN ('pending', 'processing')
 		DO NOTHING
 		RETURNING id, queue_job_id, job_type::text, metadata, status::text`,
-		[
-			queueJobId,
-			context.library_created_by,
-			JSON.stringify(metadata),
-			item.priority,
-			scheduledFor,
-			dedupKey
-		]
+		[queueJobId, context.library_created_by, JSON.stringify(metadata), item.priority, dedupKey]
 	);
 	let queueJob = inserted.rows[0];
 	const created = Boolean(queueJob);
@@ -350,8 +430,8 @@ async function enqueueManifestItem(
 		`UPDATE libri.research_steps
 		SET
 			status = 'queued',
-			scheduled_for = $2,
-			active_queue_job_id = $3,
+			scheduled_for = transaction_timestamp(),
+			active_queue_job_id = $2,
 			active_processing_token = NULL,
 			lease_token = NULL,
 			lease_owner = NULL,
@@ -360,13 +440,13 @@ async function enqueueManifestItem(
 			last_heartbeat_at = NULL,
 			updated_at = now()
 		WHERE id = $1
-			AND library_id = $4
-			AND run_id = $5
+			AND library_id = $3
+			AND run_id = $4
 			AND status = 'pending'
 			AND attempts = 0
 			AND active_queue_job_id IS NULL
 		RETURNING id`,
-		[item.step_id, scheduledFor, queueJob.id, context.library_id, context.run_id]
+		[item.step_id, queueJob.id, context.library_id, context.run_id]
 	);
 	if (stepUpdate.rowCount !== 1) {
 		throw new Error('Libri OCR step dispatch ownership changed');
@@ -385,20 +465,28 @@ async function loadEnqueuedJobs(
 	context: AdmissionContextRow,
 	manifest: ManifestRow[]
 ): Promise<DispatchedLibriOcrJob[]> {
+	const queueRowIds = manifest.map((item) => item.active_queue_job_id);
+	if (queueRowIds.some((queueRowId) => queueRowId === null)) {
+		throw new Error('Enqueued Libri OCR admission queue receipt is incomplete');
+	}
 	const result = await client.query<LibriOcrQueueReceipt>(
 		`SELECT id, queue_job_id, job_type::text, metadata, status::text
 		FROM public.queue_jobs
-		WHERE job_type = 'libri_ingest'
-			AND metadata->>'libriAdmissionId' = $1
+		WHERE id = ANY($1::uuid[]) AND job_type = 'libri_ingest'
 		ORDER BY (metadata->>'libriBatchPosition')::integer`,
-		[context.admission_id]
+		[queueRowIds]
 	);
 	if (result.rows.length !== manifest.length) {
 		throw new Error('Enqueued Libri OCR admission queue receipt is incomplete');
 	}
 	return result.rows.map((queueJob, position) => {
 		const item = manifest[position];
-		if (!item || !libriOcrQueueReceiptMatchesItem(queueJob, context, item)) {
+		if (
+			!item ||
+			item.active_queue_job_id !== queueJob.id ||
+			!libriOcrQueueReceiptMatchesItem(queueJob, context, item) ||
+			!libriOcrQueueReceiptMatchesStepState(queueJob, item)
+		) {
 			throw new Error('Enqueued Libri OCR admission queue receipt changed');
 		}
 		return {
@@ -408,6 +496,20 @@ async function loadEnqueuedJobs(
 			created: false
 		};
 	});
+}
+
+function stepPayloadMatchesManifestItem(item: ManifestRow): boolean {
+	const payload = item.payload;
+	if (!payload || Array.isArray(payload) || item.payload_version !== 1) return false;
+	const keys = Object.keys(payload).sort();
+	return (
+		keys.join(',') === 'expectedOcrVersion,imageId,kind,maxOutputChars,version' &&
+		payload.version === 1 &&
+		payload.kind === 'ocr_image' &&
+		payload.imageId === item.image_id &&
+		payload.expectedOcrVersion === item.expected_ocr_version &&
+		payload.maxOutputChars === MAXIMUM_OUTPUT_CHARS
+	);
 }
 
 async function withTransaction<T>(
@@ -434,4 +536,10 @@ async function withTransaction<T>(
 
 function assertUuid(value: string, name: string): void {
 	if (!LIBRI_UUID_PATTERN.test(value)) throw new Error(`${name} must be a UUID`);
+}
+
+function assertTimestamp(value: string, name: string): void {
+	if (typeof value !== 'string' || value.length > 64 || !Number.isFinite(Date.parse(value))) {
+		throw new Error(`${name} must be an ISO timestamp`);
+	}
 }

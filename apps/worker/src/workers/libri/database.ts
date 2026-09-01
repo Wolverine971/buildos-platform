@@ -1,3 +1,4 @@
+// apps/worker/src/workers/libri/database.ts
 import { Pool, type PoolConfig, type QueryResult } from 'pg';
 import {
 	type DispatchLibriOcrAdmissionInput,
@@ -83,6 +84,10 @@ type RoleProbeRow = {
 	can_release_provider_cost: boolean;
 	can_use_extensions_schema: boolean;
 	can_use_pg_catalog_sha256: boolean;
+	can_select_image_book_id: boolean;
+	can_select_image_content_sha256: boolean;
+	can_select_image_ocr_status: boolean;
+	can_select_image_ocr_version: boolean;
 	can_select_image_object_path: boolean;
 	can_update_image_ocr_status: boolean;
 	can_update_image_object_path: boolean;
@@ -100,6 +105,7 @@ type RoleProbeRow = {
 	can_update_ocr_batch_admission_manifest: boolean;
 	can_delete_ocr_batch_admissions: boolean;
 	can_enforce_ocr_batch_admission_dispatch: boolean;
+	can_finalize_ocr_batch_admission_dispatch: boolean;
 };
 
 export type LibriPgPool = {
@@ -360,6 +366,30 @@ class LibriDatabase implements LibriDatabasePort {
 				pg_catalog.has_column_privilege(
 					current_user,
 					'libri.images',
+					'book_id',
+					'SELECT'
+				) AS can_select_image_book_id,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.images',
+					'content_sha256',
+					'SELECT'
+				) AS can_select_image_content_sha256,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.images',
+					'ocr_status',
+					'SELECT'
+				) AS can_select_image_ocr_status,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.images',
+					'ocr_version',
+					'SELECT'
+				) AS can_select_image_ocr_version,
+				pg_catalog.has_column_privilege(
+					current_user,
+					'libri.images',
 					'object_path',
 					'SELECT'
 				) AS can_select_image_object_path,
@@ -448,7 +478,12 @@ class LibriDatabase implements LibriDatabasePort {
 					current_user,
 					'libri.enforce_ocr_batch_admission_dispatch()',
 					'EXECUTE'
-				) AS can_enforce_ocr_batch_admission_dispatch
+				) AS can_enforce_ocr_batch_admission_dispatch,
+				pg_catalog.has_function_privilege(
+					current_user,
+					'libri.finalize_ocr_batch_admission_dispatch(uuid,timestamp with time zone)',
+					'EXECUTE'
+				) AS can_finalize_ocr_batch_admission_dispatch
 			FROM pg_catalog.pg_roles role
 			WHERE role.rolname = current_user
 		`);
@@ -508,6 +543,10 @@ function isApprovedRole(role: RoleProbeRow): boolean {
 			role.can_release_provider_cost &&
 			!role.can_use_extensions_schema &&
 			role.can_use_pg_catalog_sha256 &&
+			role.can_select_image_book_id &&
+			role.can_select_image_content_sha256 &&
+			role.can_select_image_ocr_status &&
+			role.can_select_image_ocr_version &&
 			!role.can_select_image_object_path &&
 			role.can_update_image_ocr_status &&
 			!role.can_update_image_object_path &&
@@ -521,9 +560,10 @@ function isApprovedRole(role: RoleProbeRow): boolean {
 			!role.can_update_ocr_batch_items &&
 			role.can_select_ocr_batch_admissions &&
 			!role.can_insert_ocr_batch_admissions &&
-			role.can_update_ocr_batch_admission_status &&
+			!role.can_update_ocr_batch_admission_status &&
 			!role.can_update_ocr_batch_admission_manifest &&
 			!role.can_delete_ocr_batch_admissions &&
-			role.can_enforce_ocr_batch_admission_dispatch
+			!role.can_enforce_ocr_batch_admission_dispatch &&
+			role.can_finalize_ocr_batch_admission_dispatch
 	);
 }

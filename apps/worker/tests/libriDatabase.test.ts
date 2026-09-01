@@ -1,3 +1,4 @@
+// apps/worker/tests/libriDatabase.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { PoolConfig, QueryResult } from 'pg';
 import { createLibriDatabase, type LibriPgPool } from '../src/workers/libri/database';
@@ -37,6 +38,9 @@ describe('Libri restricted PostgreSQL connection', () => {
 		expect(queryMock.mock.calls[0]?.[0]).toContain("'libri.ocr_batch_admissions'");
 		expect(queryMock.mock.calls[0]?.[0]).toContain(
 			'libri.enforce_ocr_batch_admission_dispatch'
+		);
+		expect(queryMock.mock.calls[0]?.[0]).toContain(
+			'libri.finalize_ocr_batch_admission_dispatch'
 		);
 
 		await database.close();
@@ -87,6 +91,10 @@ describe('Libri restricted PostgreSQL connection', () => {
 		['can_release_provider_cost', false],
 		['can_use_extensions_schema', true],
 		['can_use_pg_catalog_sha256', false],
+		['can_select_image_book_id', false],
+		['can_select_image_content_sha256', false],
+		['can_select_image_ocr_status', false],
+		['can_select_image_ocr_version', false],
 		['can_select_image_object_path', true],
 		['can_update_image_ocr_status', false],
 		['can_update_image_object_path', true],
@@ -100,10 +108,11 @@ describe('Libri restricted PostgreSQL connection', () => {
 		['can_update_ocr_batch_items', true],
 		['can_select_ocr_batch_admissions', false],
 		['can_insert_ocr_batch_admissions', true],
-		['can_update_ocr_batch_admission_status', false],
+		['can_update_ocr_batch_admission_status', true],
 		['can_update_ocr_batch_admission_manifest', true],
 		['can_delete_ocr_batch_admissions', true],
-		['can_enforce_ocr_batch_admission_dispatch', false]
+		['can_enforce_ocr_batch_admission_dispatch', true],
+		['can_finalize_ocr_batch_admission_dispatch', false]
 	] as const)('rejects Libri worker privilege drift in %s', async (capability, value) => {
 		const { pool } = fakePool({ ...approvedRole(), [capability]: value });
 		const database = createLibriDatabase(DATABASE_URL, {
@@ -151,6 +160,10 @@ function approvedRole() {
 		can_release_provider_cost: true,
 		can_use_extensions_schema: false,
 		can_use_pg_catalog_sha256: true,
+		can_select_image_book_id: true,
+		can_select_image_content_sha256: true,
+		can_select_image_ocr_status: true,
+		can_select_image_ocr_version: true,
 		can_select_image_object_path: false,
 		can_update_image_ocr_status: true,
 		can_update_image_object_path: false,
@@ -164,10 +177,11 @@ function approvedRole() {
 		can_update_ocr_batch_items: false,
 		can_select_ocr_batch_admissions: true,
 		can_insert_ocr_batch_admissions: false,
-		can_update_ocr_batch_admission_status: true,
+		can_update_ocr_batch_admission_status: false,
 		can_update_ocr_batch_admission_manifest: false,
 		can_delete_ocr_batch_admissions: false,
-		can_enforce_ocr_batch_admission_dispatch: true
+		can_enforce_ocr_batch_admission_dispatch: false,
+		can_finalize_ocr_batch_admission_dispatch: true
 	};
 }
 

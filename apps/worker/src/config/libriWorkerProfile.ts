@@ -1,3 +1,4 @@
+// apps/worker/src/config/libriWorkerProfile.ts
 export type LibriWorkerConfig = {
 	concurrency: number;
 	databaseProbeIntervalMs: number;
@@ -21,6 +22,7 @@ export type LibriOcrRuntimeConfig = {
 
 const DEFAULT_CONCURRENCY = 2;
 const DEFAULT_DATABASE_PROBE_INTERVAL_MS = 15_000;
+const MIN_CANARY_WINDOW_MS = 60_000;
 const MAX_CANARY_WINDOW_MS = 30 * 60_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -175,11 +177,18 @@ function assertCanaryExpiry(expiresAtMs: number | null): void {
 	const nowMs = Date.now();
 	if (
 		expiresAtMs === null ||
-		expiresAtMs <= nowMs ||
+		expiresAtMs < nowMs + MIN_CANARY_WINDOW_MS ||
 		expiresAtMs > nowMs + MAX_CANARY_WINDOW_MS
 	) {
 		throw new Error('Enabled production Libri canary expiry must be 1 to 30 minutes ahead');
 	}
+}
+
+export function requireActiveLibriCanaryExpiry(expiresAtMs: number | null): number {
+	if (expiresAtMs === null || expiresAtMs <= Date.now()) {
+		throw new Error('Enabled Libri canary expired before activation');
+	}
+	return expiresAtMs;
 }
 
 function parseOptionalTimestamp(value: string | undefined): number | null {
