@@ -3,7 +3,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { addDays, addMinutes, endOfDay, startOfDay } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
-import { CalendarService, type CalendarEvent } from '$lib/services/calendar-service';
+import { CalendarService } from '$lib/services/calendar-service';
+import type { GoogleCalendarReadService } from '$lib/server/google-calendar-read.service';
+import type { GoogleCalendarTargetService } from '$lib/server/google-calendar-target.service';
+import { resolveGoogleCalendarBackend } from '$lib/server/google-calendar-connection-status';
 import type { CalendarItem } from '$lib/types/calendar-items';
 import {
 	buildRescheduleWindow,
@@ -36,6 +39,16 @@ interface BatchRescheduleContext {
 	tasks: OntoTaskRow[];
 	timezone: string;
 	preferences: SchedulingPreferencesShape;
+}
+
+type LegacyCalendarPort = Pick<CalendarService, 'getCalendarEvents' | 'hasStoredConnection'>;
+type SourceAwareAvailabilityPort = Pick<GoogleCalendarReadService, 'getFreeBusy'>;
+type SourceAwareTargetPort = Pick<GoogleCalendarTargetService, 'hasActiveTarget'>;
+
+export interface OverdueTaskRescheduleServiceOptions {
+	legacyCalendar?: LegacyCalendarPort;
+	sourceAwareAvailability?: SourceAwareAvailabilityPort;
+	sourceAwareTargets?: SourceAwareTargetPort;
 }
 
 export interface RescheduleSuggestion {
@@ -202,10 +215,17 @@ function buildGaps(
 }
 
 export class OverdueTaskRescheduleService {
-	private readonly calendarService: CalendarService;
+	private readonly calendarService: LegacyCalendarPort;
+	private readonly sourceAwareAvailability?: SourceAwareAvailabilityPort;
+	private readonly sourceAwareTargets?: SourceAwareTargetPort;
 
-	constructor(private readonly supabase: SupabaseClient<Database>) {
-		this.calendarService = new CalendarService(supabase);
+	constructor(
+		private readonly supabase: SupabaseClient<Database>,
+		options: OverdueTaskRescheduleServiceOptions = {}
+	) {
+		this.calendarService = options.legacyCalendar ?? new CalendarService(supabase);
+		this.sourceAwareAvailability = options.sourceAwareAvailability;
+		this.sourceAwareTargets = options.sourceAwareTargets;
 	}
 
 	async planReschedule(params: {
@@ -520,7 +540,7 @@ export class OverdueTaskRescheduleService {
 				p_include_task_due: true,
 				p_limit: 2000
 			}),
-			this.loadPrimaryCalendarBusyEvents(
+			this.loadGoogleCalendarBusyIntervals(
 				params.userId,
 				params.windowStartUtc,
 				params.windowEndUtc
@@ -550,12 +570,14 @@ export class OverdueTaskRescheduleService {
 			pushBusyInterval(intervals, start, end, params.windowStartUtc, params.windowEndUtc);
 		}
 
-		for (const event of googleBusy.events) {
-			const startValue = event.start.dateTime ?? event.start.date ?? null;
-			const endValue = event.end.dateTime ?? event.end.date ?? null;
-			const start = startValue ? new Date(startValue) : null;
-			const end = endValue ? new Date(endValue) : null;
-			pushBusyInterval(intervals, start, end, params.windowStartUtc, params.windowEndUtc);
+		for (const busy of googleBusy.intervals) {
+			pushBusyInterval(
+				intervals,
+				busy.start,
+				busy.end,
+				params.windowStartUtc,
+				params.windowEndUtc
+			);
 		}
 
 		return {
@@ -564,14 +586,58 @@ export class OverdueTaskRescheduleService {
 		};
 	}
 
-	private async loadPrimaryCalendarBusyEvents(
+	private async loadGoogleCalendarBusyIntervals(
 		userId: string,
 		windowStartUtc: Date,
 		windowEndUtc: Date
-	): Promise<{ connected: boolean; events: CalendarEvent[] }> {
-		const connected = await this.calendarService.hasValidConnection(userId);
-		if (!connected) {
-			return { connected: false, events: [] };
+	): Promise<{ connected: boolean; intervals: BusyInterval[] }> {
+		let backend: 'source-aware' | 'legacy' | null;
+		try {
+			backend =
+				this.sourceAwareAvailability && this.sourceAwareTargets
+					? (
+							await resolveGoogleCalendarBackend({
+								userId,
+								capability: 'availability',
+								legacy: this.calendarService,
+								sourceAware: this.sourceAwareTargets
+							})
+						).backend
+					: (await this.calendarService.hasStoredConnection(userId))
+						? 'legacy'
+						: null;
+		} catch (error) {
+			console.warn('[OverdueReschedule] Failed to resolve calendar backend:', error);
+			return { connected: false, intervals: [] };
+		}
+
+		if (!backend) {
+			return { connected: false, intervals: [] };
+		}
+
+		if (backend === 'source-aware' && this.sourceAwareAvailability) {
+			try {
+				const response = await this.sourceAwareAvailability.getFreeBusy({
+					userId,
+					timeMin: windowStartUtc.toISOString(),
+					timeMax: windowEndUtc.toISOString()
+				});
+				return {
+					connected: response.sourceStatuses.some(
+						(status) => status.status === 'success'
+					),
+					intervals: response.busy.map((interval) => ({
+						start: new Date(interval.start),
+						end: new Date(interval.end)
+					}))
+				};
+			} catch (error) {
+				console.warn(
+					'[OverdueReschedule] Failed to load source-aware calendar availability:',
+					error
+				);
+				return { connected: false, intervals: [] };
+			}
 		}
 
 		try {
@@ -583,15 +649,20 @@ export class OverdueTaskRescheduleService {
 
 			return {
 				connected: true,
-				events: response.events.filter((event) => {
-					if (event.status === 'cancelled') return false;
-					if (event.transparency === 'transparent') return false;
-					return true;
+				intervals: response.events.flatMap((event) => {
+					if (event.status === 'cancelled' || event.transparency === 'transparent') {
+						return [];
+					}
+					const startValue = event.start.dateTime ?? event.start.date ?? null;
+					const endValue = event.end.dateTime ?? event.end.date ?? null;
+					return startValue && endValue
+						? [{ start: new Date(startValue), end: new Date(endValue) }]
+						: [];
 				})
 			};
 		} catch (error) {
 			console.warn('[OverdueReschedule] Failed to load primary calendar events:', error);
-			return { connected: false, events: [] };
+			return { connected: false, intervals: [] };
 		}
 	}
 

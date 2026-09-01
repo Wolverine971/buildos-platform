@@ -143,7 +143,9 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 	}
 
 	const calendarService = new CalendarService(supabase);
-	const isConnected = await calendarService.hasValidConnection(user.id);
+	// This gateway's tool execution is still backed by the legacy CalendarService,
+	// so report that backend's stored connection without refreshing or deleting it.
+	const isConnected = await calendarService.hasStoredConnection(user.id);
 
 	return ApiResponse.success({
 		service: 'buildos-google-calendar',

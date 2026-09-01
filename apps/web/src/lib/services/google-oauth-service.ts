@@ -15,6 +15,11 @@ export interface GoogleOAuthCredentials {
 	clientSecret?: string | null;
 }
 
+export interface GoogleOAuthRuntimeOptions {
+	/** Server-only authority for deleting protected legacy webhook state. */
+	protectedCleanupSupabase?: SupabaseClient;
+}
+
 export interface CalendarStatus {
 	isConnected: boolean;
 	lastSync?: string | null;
@@ -211,15 +216,27 @@ export class GoogleOAuthService {
 	private clientCache = new Map<string, { client: OAuth2Client; expires: number }>();
 	private readonly clientId: string;
 	private readonly clientSecret: string;
+	private readonly protectedCleanupSupabase?: SupabaseClient;
 	private readonly MAX_RETRIES = 3;
 	private readonly RETRY_DELAY_MS = 1000;
 
-	constructor(supabase: SupabaseClient, credentials?: GoogleOAuthCredentials) {
+	constructor(
+		supabase: SupabaseClient,
+		credentials?: GoogleOAuthCredentials,
+		runtimeOptions: GoogleOAuthRuntimeOptions = {}
+	) {
 		this.supabase = supabase;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 		const resolvedCredentials = resolveGoogleOAuthCredentials(credentials);
 		this.clientId = resolvedCredentials.clientId;
 		this.clientSecret = resolvedCredentials.clientSecret;
+		this.protectedCleanupSupabase = runtimeOptions.protectedCleanupSupabase;
+	}
+
+	private async quarantineInvalidGrant(userId: string): Promise<void> {
+		this.clientCache.delete(userId);
+		if (!this.protectedCleanupSupabase) return;
+		await this.disconnectCalendar(userId);
 	}
 
 	private requireClientId(): string {
@@ -519,7 +536,7 @@ export class GoogleOAuthService {
 				);
 				if (isPermanentGoogleGrantFailure(refreshError)) {
 					try {
-						await this.disconnectCalendar(userId);
+						await this.quarantineInvalidGrant(userId);
 					} catch (disconnectError) {
 						console.error(
 							'Failed to quarantine expired calendar connection:',
@@ -766,7 +783,7 @@ export class GoogleOAuthService {
 				if (requiresReconnect) {
 					if (isPermanentGoogleGrantFailure(refreshError)) {
 						try {
-							await this.disconnectCalendar(userId);
+							await this.quarantineInvalidGrant(userId);
 						} catch (disconnectError) {
 							console.error(
 								'Failed to quarantine expired calendar connection:',
@@ -954,24 +971,46 @@ export class GoogleOAuthService {
 	 * Disconnect calendar and clear tokens
 	 */
 	async disconnectCalendar(userId: string): Promise<void> {
+		const cleanupSupabase = this.protectedCleanupSupabase ?? this.supabase;
 		try {
-			const { error: channelError } = await this.supabase
+			const { error: channelError } = await cleanupSupabase
 				.from('calendar_webhook_channels')
 				.delete()
 				.eq('user_id', userId)
 				.is('calendar_source_id', null);
 			if (channelError) throw channelError;
+		} catch (error) {
+			console.error(
+				'Error removing legacy calendar webhook state:',
+				safeGoogleOAuthErrorDiagnostic(error)
+			);
+			await this.errorLogger.logDatabaseError(
+				safeGoogleOAuthLogError(error, 'legacy calendar webhook disconnect'),
+				'DELETE',
+				'calendar_webhook_channels',
+				userId,
+				{
+					operation: 'disconnectCalendar',
+					errorType: 'webhook_channel_deletion_failure'
+				}
+			);
+			throw error;
+		}
 
-			const { error: tokenError } = await this.supabase
+		try {
+			const { error: tokenError } = await cleanupSupabase
 				.from('user_calendar_tokens')
 				.delete()
 				.eq('user_id', userId);
 			if (tokenError) throw tokenError;
 			this.clientCache.delete(userId);
 		} catch (error) {
-			console.error('Error disconnecting calendar:', safeGoogleOAuthErrorDiagnostic(error));
+			console.error(
+				'Error removing legacy calendar tokens:',
+				safeGoogleOAuthErrorDiagnostic(error)
+			);
 			await this.errorLogger.logDatabaseError(
-				safeGoogleOAuthLogError(error, 'calendar disconnect'),
+				safeGoogleOAuthLogError(error, 'legacy calendar token disconnect'),
 				'DELETE',
 				'user_calendar_tokens',
 				userId,

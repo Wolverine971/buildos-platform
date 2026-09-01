@@ -1,12 +1,17 @@
 // apps/web/src/lib/services/google-oauth-service.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { decryptCalendarToken } from '$lib/server/calendar-token-crypto';
+import { decryptCalendarToken, encryptCalendarToken } from '$lib/server/calendar-token-crypto';
+
+const { logAPIErrorMock, logDatabaseErrorMock } = vi.hoisted(() => ({
+	logAPIErrorMock: vi.fn(),
+	logDatabaseErrorMock: vi.fn()
+}));
 
 vi.mock('./errorLogger.service', () => ({
 	ErrorLoggerService: {
 		getInstance: vi.fn(() => ({
-			logAPIError: vi.fn(),
-			logDatabaseError: vi.fn()
+			logAPIError: logAPIErrorMock,
+			logDatabaseError: logDatabaseErrorMock
 		}))
 	}
 }));
@@ -68,6 +73,7 @@ describe('GoogleOAuthService calendar token exchange', () => {
 	};
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY = 'calendar-token-test-key';
 		process.env.PRIVATE_GOOGLE_CLIENT_ID = 'google-client-id';
 		process.env.PRIVATE_GOOGLE_CLIENT_SECRET = 'google-client-secret';
@@ -76,6 +82,7 @@ describe('GoogleOAuthService calendar token exchange', () => {
 	});
 
 	afterEach(() => {
+		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 		if (originalEnv.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY === undefined) {
 			delete process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY;
@@ -270,6 +277,143 @@ describe('GoogleOAuthService calendar token exchange', () => {
 			action: 'delete',
 			filters: [['user_id', 'user-1']]
 		});
+	});
+
+	it('attributes protected webhook cleanup failures to the webhook table', async () => {
+		const permissionError = {
+			code: '42501',
+			message: 'permission denied for table calendar_webhook_channels'
+		};
+		const fromMock = vi.fn((table: string) => {
+			const builder: any = {
+				delete: () => builder,
+				eq: () => builder,
+				is: () => builder,
+				then: (resolve: (value: { error: typeof permissionError | null }) => unknown) =>
+					Promise.resolve({
+						error: table === 'calendar_webhook_channels' ? permissionError : null
+					}).then(resolve)
+			};
+			return builder;
+		});
+		const service = new GoogleOAuthService({ from: fromMock } as any);
+
+		await expect(service.disconnectCalendar('user-1')).rejects.toEqual(permissionError);
+
+		expect(fromMock).toHaveBeenCalledTimes(1);
+		expect(logDatabaseErrorMock).toHaveBeenCalledWith(
+			expect.any(Error),
+			'DELETE',
+			'calendar_webhook_channels',
+			'user-1',
+			expect.objectContaining({ errorType: 'webhook_channel_deletion_failure' })
+		);
+	});
+
+	it('uses only the supplied protected client for webhook and token cleanup', async () => {
+		const userFromMock = vi.fn();
+		const protectedOperations: Array<{
+			table: string;
+			filters: Array<[string, unknown]>;
+		}> = [];
+		const protectedFromMock = vi.fn((table: string) => {
+			const operation = { table, filters: [] as Array<[string, unknown]> };
+			protectedOperations.push(operation);
+			const builder: any = {
+				delete: () => builder,
+				eq: (column: string, value: unknown) => {
+					operation.filters.push([column, value]);
+					return builder;
+				},
+				is: (column: string, value: unknown) => {
+					operation.filters.push([column, value]);
+					return builder;
+				},
+				then: (resolve: (value: { error: null }) => unknown) =>
+					Promise.resolve({ error: null }).then(resolve)
+			};
+			return builder;
+		});
+		const service = new GoogleOAuthService({ from: userFromMock } as any, undefined, {
+			protectedCleanupSupabase: { from: protectedFromMock } as any
+		});
+
+		await service.disconnectCalendar('user-1');
+
+		expect(userFromMock).not.toHaveBeenCalled();
+		expect(protectedOperations).toEqual([
+			{
+				table: 'calendar_webhook_channels',
+				filters: [
+					['user_id', 'user-1'],
+					['calendar_source_id', null]
+				]
+			},
+			{
+				table: 'user_calendar_tokens',
+				filters: [['user_id', 'user-1']]
+			}
+		]);
+	});
+
+	it('does not attempt protected webhook cleanup during automatic quarantine without service authority', async () => {
+		const service = new GoogleOAuthService({} as any);
+		const disconnectSpy = vi.spyOn(service, 'disconnectCalendar').mockResolvedValue(undefined);
+
+		await (service as any).quarantineInvalidGrant('user-1');
+
+		expect(disconnectSpy).not.toHaveBeenCalled();
+	});
+
+	it('uses supplied service authority during automatic invalid-grant quarantine', async () => {
+		const service = new GoogleOAuthService({} as any, undefined, {
+			protectedCleanupSupabase: { authority: 'service_role' } as any
+		});
+		const disconnectSpy = vi.spyOn(service, 'disconnectCalendar').mockResolvedValue(undefined);
+
+		await (service as any).quarantineInvalidGrant('user-1');
+
+		expect(disconnectSpy).toHaveBeenCalledWith('user-1');
+	});
+
+	it('does not issue deletes through the user client after an automatic invalid-grant failure', async () => {
+		const deleteMock = vi.fn();
+		const builder: any = {
+			select: () => builder,
+			eq: () => builder,
+			delete: deleteMock,
+			single: vi.fn().mockResolvedValue({
+				data: {
+					access_token: encryptCalendarToken('expired-access-token'),
+					refresh_token: encryptCalendarToken('expired-refresh-token'),
+					expiry_date: Date.now() - 60_000,
+					scope: 'https://www.googleapis.com/auth/calendar',
+					updated_at: new Date().toISOString(),
+					token_type: 'Bearer'
+				},
+				error: null
+			})
+		};
+		const fromMock = vi.fn(() => builder);
+		const service = new GoogleOAuthService({ from: fromMock } as any);
+		vi.spyOn(service as any, 'createOAuth2Client').mockReturnValue({
+			setCredentials: vi.fn(),
+			on: vi.fn(),
+			refreshAccessToken: vi.fn().mockRejectedValue({
+				message: 'invalid_grant',
+				response: { status: 400, data: { error: 'invalid_grant' } }
+			})
+		});
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		await expect(service.getAuthenticatedClient('user-1')).rejects.toMatchObject({
+			name: 'GoogleOAuthConnectionError',
+			requiresReconnection: true
+		});
+
+		expect(fromMock).toHaveBeenCalledTimes(1);
+		expect(fromMock).toHaveBeenCalledWith('user_calendar_tokens');
+		expect(deleteMock).not.toHaveBeenCalled();
 	});
 
 	it('recognizes reconnect errors across service boundaries', () => {

@@ -291,7 +291,13 @@ export class CalendarService {
 	constructor(supabase: SupabaseClient, options: CalendarServiceOptions = {}) {
 		this.supabase = supabase;
 		this.activityLogger = new ActivityLogger(supabase);
-		this.oAuthService = new GoogleOAuthService(supabase);
+		this.oAuthService = new GoogleOAuthService(
+			supabase,
+			undefined,
+			options.privilegedSupabase
+				? { protectedCleanupSupabase: options.privilegedSupabase }
+				: {}
+		);
 		this.disconnectOAuthService = options.privilegedSupabase
 			? new GoogleOAuthService(options.privilegedSupabase)
 			: this.oAuthService;
@@ -331,20 +337,18 @@ export class CalendarService {
 	}
 
 	/**
-	 * Silently handle connection failures by disconnecting the calendar
+	 * Record provider connection failures without mutating OAuth or webhook state.
+	 * Cleanup requires an explicitly supplied privileged client because webhook state is service-only.
 	 */
 	private async handleConnectionFailure(userId: string, reason: string): Promise<void> {
 		try {
 			await this.activityLogger.logActivity(userId, 'admin_action', {
-				action: 'calendar_auto_disconnected',
-				reason: reason,
+				action: 'calendar_connection_failed',
+				reason,
 				timestamp: new Date().toISOString()
 			});
-
-			await this.disconnectOAuthService.disconnectCalendar(userId);
-			console.log(`Calendar automatically disconnected for user ${userId}: ${reason}`);
 		} catch (error) {
-			console.error('Error handling calendar connection failure:', error);
+			console.error('Error recording calendar connection failure:', error);
 		}
 	}
 
@@ -493,15 +497,12 @@ export class CalendarService {
 	}
 
 	/**
-	 * Simple connection check - used by UI
+	 * Validate the legacy Google Calendar grant without mutating connection state.
+	 * Source-aware callers should use resolveGoogleCalendarBackend instead.
 	 */
 	async hasValidConnection(userId: string): Promise<boolean> {
 		try {
-			const isValid = await this.oAuthService.hasValidConnection(userId);
-			if (!isValid) {
-				await this.handleConnectionFailure(userId, 'Connection validation failed');
-			}
-			return isValid;
+			return await this.oAuthService.hasValidConnection(userId);
 		} catch (error) {
 			console.error('Error checking calendar connection:', error);
 			return false;
@@ -513,15 +514,21 @@ export class CalendarService {
 	 */
 	async disconnectCalendar(userId: string): Promise<void> {
 		try {
-			await this.activityLogger.logActivity(userId, 'admin_action', {
-				action: 'calendar_disconnected',
-				timestamp: new Date().toISOString()
-			});
-
 			await this.disconnectOAuthService.disconnectCalendar(userId);
 		} catch (error) {
 			console.error('Error disconnecting calendar:', error);
 			throw error;
+		}
+
+		try {
+			await this.activityLogger.logActivity(userId, 'admin_action', {
+				action: 'calendar_disconnected',
+				timestamp: new Date().toISOString()
+			});
+		} catch (error) {
+			// Cleanup succeeded, so an audit logging failure must not turn the
+			// completed user action into a false disconnect failure.
+			console.error('Error recording calendar disconnect activity:', error);
 		}
 	}
 

@@ -5,6 +5,9 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { OverdueTaskRescheduleService } from '$lib/services/overdue-task-reschedule.service';
 import type { OverdueReschedulePreset } from '$lib/utils/overdue-reschedule';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { GoogleCalendarReadService } from '$lib/server/google-calendar-read.service';
+import { GoogleCalendarTargetService } from '$lib/server/google-calendar-target.service';
 
 const VALID_PRESETS: OverdueReschedulePreset[] = ['today', 'tomorrow', 'plus3', 'nextWeek'];
 
@@ -35,7 +38,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		const planner = new OverdueTaskRescheduleService(locals.supabase);
+		const admin = createAdminSupabaseClient();
+		const planner = new OverdueTaskRescheduleService(locals.supabase, {
+			sourceAwareAvailability: new GoogleCalendarReadService(admin),
+			sourceAwareTargets: new GoogleCalendarTargetService(admin)
+		});
 		const result = await planner.planReschedule({
 			userId: session.user.id,
 			taskId: params.id,
