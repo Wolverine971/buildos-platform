@@ -100,6 +100,9 @@ probe or health failure. The post-deploy environment receipt still has queue con
 admission dispatch unset/false, activation mode disabled, no canary admission, no provider key, and
 no Supabase service-role key.
 
+Phase 5's final hardened successor release `10d47f59-c5e6-43ce-bb4d-5b35472f0950` at commit
+`837fdfe17` preserves that disabled posture and adds the mandatory pre-dispatch role probe.
+
 ## Phase boundary
 
 Phase 4 ends when the access migration and disabled worker release are live and their production

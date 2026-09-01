@@ -1,7 +1,7 @@
 # Libri Worker Phase 5: Exact Admission Reconciliation
 
 Date: 2026-09-01
-Status: production index applied and verified; disabled audit release pending
+Status: production index and disabled audit release deployed and verified; complete
 
 ## Decision
 
@@ -62,9 +62,10 @@ table. Production currently has one reservation row, so the bounded index build 
 - SQL inventory: 127 files valid, 33 self-contained disposable contracts.
 - Disposable PostgreSQL contracts: 33/33 passed.
 
-The full worker typecheck is temporarily red on two unrelated Agentic Chat runtime exports in
-concurrently edited files. The isolated Phase 5 compiler proof is green, and no Phase 5 diagnostic
-appears in the full output.
+The clean Railway build passed the complete committed worker TypeScript build. The local dirty
+checkout's full typecheck remains affected by unrelated concurrently edited Agentic Chat files, and
+GitHub's repository-wide verification remains red on unrelated existing test-type failures. The
+Phase 5 compiler proof and clean deploy build are green.
 
 ## Production procedure
 
@@ -89,6 +90,20 @@ single migration was applied successfully to Supabase project `iwifjtlebphefldmw
   `4145aa1a1ccdc7e0994247ffeac2cc42`.
 - The advisor's missing-foreign-key-index notice is gone. The new index is reported as unused, which
   is expected immediately after creation while there is no batch traffic.
+
+## Disabled Railway release
+
+Final hardening commit `837fdfe17` deployed successfully as Railway deployment
+`10d47f59-c5e6-43ce-bb4d-5b35472f0950`. The clean worker build passed, the instance is running, and
+the startup log contains no probe or health failure. Its final environment receipt has queue
+consumption false, admission dispatch unset/false, activation mode disabled, concurrency two, no
+canary step/admission/expiry, no provider key, no Supabase service-role key, and the restricted
+database URL present.
+
+No production audit command was run because there is no real admission to inspect. The final
+database receipt contains all five Phase 4/5 migration versions, zero manifest/admission/active-job
+rows, a valid dispatch trigger and provider-cost index, and the unchanged shared queue catalog
+fingerprint `4145aa1a1ccdc7e0994247ffeac2cc42`.
 
 ## Phase boundary
 
