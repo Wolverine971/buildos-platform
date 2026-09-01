@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
+	readerSchema: vi.fn(),
 	schema: vi.fn(),
 	rpc: vi.fn(),
 	from: vi.fn(),
@@ -17,17 +18,20 @@ vi.mock('$lib/supabase/admin', () => ({
 import { POST } from './+server';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
-const REQUEST_ID = '20000000-0000-4000-8000-000000000001';
+const CONFIRMATION_ID = '20000000-0000-4000-8000-000000000001';
 const LIBRARY_ID = '30000000-0000-4000-8000-000000000001';
 const BOOK_ID = '40000000-0000-4000-8000-000000000001';
 const RUN_ID = '50000000-0000-4000-8000-000000000001';
+const ADMISSION_ID = '80000000-0000-4000-8000-000000000001';
 const IMAGE_IDS = ['60000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000002'];
 const STEP_IDS = ['70000000-0000-4000-8000-000000000001', '70000000-0000-4000-8000-000000000002'];
+const MANIFEST_SHA256 = '0ac30c1f184d8840a100d5fe1731f872e2c9171c85ac9e8b7cc3edcf655458bb';
 const VALID_REQUEST = {
-	requestId: REQUEST_ID,
+	confirmationId: CONFIRMATION_ID,
 	libraryId: LIBRARY_ID,
 	bookId: BOOK_ID,
-	imageIds: IMAGE_IDS
+	runId: RUN_ID,
+	manifestSha256: MANIFEST_SHA256
 };
 const VALID_MANIFEST = IMAGE_IDS.map((imageId, position) => ({
 	step_id: STEP_IDS[position],
@@ -46,7 +50,7 @@ function request(
 		headers.set('Content-Type', options.contentType ?? 'application/json');
 	}
 	if (options.contentLength) headers.set('Content-Length', options.contentLength);
-	return new Request('https://build-os.com/api/libri/ocr-batches/plan', {
+	return new Request('https://build-os.com/api/libri/ocr-batches/confirm', {
 		method: 'POST',
 		headers,
 		body: options.rawBody ?? JSON.stringify(body)
@@ -57,6 +61,7 @@ async function post(input: Request, userId: string | null = USER_ID): Promise<Re
 	return POST({
 		request: input,
 		locals: {
+			supabase: { schema: mocks.readerSchema },
 			safeGetSession: async () =>
 				userId
 					? { session: { user: { id: userId } }, user: { id: userId } }
@@ -65,15 +70,15 @@ async function post(input: Request, userId: string | null = USER_ID): Promise<Re
 	} as never);
 }
 
-describe('POST /api/libri/ocr-batches/plan', () => {
+describe('POST /api/libri/ocr-batches/confirm', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
+		mocks.order.mockResolvedValue({ data: VALID_MANIFEST, error: null });
 		mocks.rpc.mockResolvedValue({
-			data: [{ run_id: RUN_ID, created: true, step_ids: STEP_IDS }],
+			data: [{ admission_id: ADMISSION_ID, created: true, admission_status: 'confirmed' }],
 			error: null
 		});
-		mocks.order.mockResolvedValue({ data: VALID_MANIFEST, error: null });
 
 		const manifestQuery = {
 			select: mocks.select,
@@ -83,7 +88,8 @@ describe('POST /api/libri/ocr-batches/plan', () => {
 		mocks.select.mockReturnValue(manifestQuery);
 		mocks.eq.mockReturnValue(manifestQuery);
 		mocks.from.mockReturnValue(manifestQuery);
-		mocks.schema.mockReturnValue({ rpc: mocks.rpc, from: mocks.from });
+		mocks.readerSchema.mockReturnValue({ from: mocks.from });
+		mocks.schema.mockReturnValue({ rpc: mocks.rpc });
 		mocks.createAdminSupabaseClient.mockReturnValue({ schema: mocks.schema });
 	});
 
@@ -98,13 +104,9 @@ describe('POST /api/libri/ocr-batches/plan', () => {
 	it.each([
 		['missing JSON content type', request(undefined, { contentType: '' })],
 		['malformed JSON', request(undefined, { rawBody: '{' })],
-		['invalid request UUID', request({ ...VALID_REQUEST, requestId: 'not-a-uuid' })],
-		['empty image list', request({ ...VALID_REQUEST, imageIds: [] })],
-		[
-			'duplicate image IDs',
-			request({ ...VALID_REQUEST, imageIds: [IMAGE_IDS[0], IMAGE_IDS[0]] })
-		],
-		['unexpected fields', request({ ...VALID_REQUEST, enqueue: true })],
+		['invalid confirmation UUID', request({ ...VALID_REQUEST, confirmationId: 'not-a-uuid' })],
+		['invalid manifest hash', request({ ...VALID_REQUEST, manifestSha256: 'not-a-hash' })],
+		['unexpected enqueue field', request({ ...VALID_REQUEST, enqueue: true })],
 		['oversized declared body', request(undefined, { contentLength: '1025' })]
 	])('rejects %s before using service authority', async (_label, input) => {
 		const response = await post(input);
@@ -114,99 +116,116 @@ describe('POST /api/libri/ocr-batches/plan', () => {
 		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
 	});
 
-	it('derives user identity and returns an independently reviewed non-enqueued preview', async () => {
+	it('records an exact admission without enqueueing transport', async () => {
 		const response = await post(request());
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
 		expect(response.headers.get('pragma')).toBe('no-cache');
-		expect(mocks.schema).toHaveBeenCalledWith('libri');
-		expect(mocks.rpc).toHaveBeenCalledWith('plan_explicit_ocr_batch', {
-			p_library_id: LIBRARY_ID,
-			p_book_id: BOOK_ID,
-			p_image_ids: IMAGE_IDS,
-			p_idempotency_key: `ocr-batch:user:${USER_ID}:request:${REQUEST_ID}`,
-			p_requested_by: USER_ID
-		});
+		expect(mocks.readerSchema).toHaveBeenCalledExactlyOnceWith('libri');
+		expect(mocks.schema).toHaveBeenCalledExactlyOnceWith('libri');
 		expect(mocks.from).toHaveBeenCalledExactlyOnceWith('ocr_batch_items');
 		expect(mocks.eq).toHaveBeenNthCalledWith(1, 'library_id', LIBRARY_ID);
 		expect(mocks.eq).toHaveBeenNthCalledWith(2, 'run_id', RUN_ID);
-		expect(body.data).toMatchObject({
+		expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('confirm_explicit_ocr_batch_admission', {
+			p_library_id: LIBRARY_ID,
+			p_book_id: BOOK_ID,
+			p_run_id: RUN_ID,
+			p_confirmation_id: CONFIRMATION_ID,
+			p_manifest_sha256: MANIFEST_SHA256,
+			p_step_ids: STEP_IDS,
+			p_image_ids: IMAGE_IDS,
+			p_expected_ocr_versions: [1, 2],
+			p_image_content_sha256s: ['a'.repeat(64), 'b'.repeat(64)],
+			p_requested_by: USER_ID
+		});
+		expect(body.data).toEqual({
+			admissionId: ADMISSION_ID,
 			runId: RUN_ID,
 			created: true,
-			batch: {
-				libraryId: LIBRARY_ID,
-				bookId: BOOK_ID,
-				imageCount: 2,
-				items: [
-					{
-						stepId: STEP_IDS[0],
-						imageId: IMAGE_IDS[0],
-						position: 0,
-						expectedOcrVersion: 1
-					},
-					{
-						stepId: STEP_IDS[1],
-						imageId: IMAGE_IDS[1],
-						position: 1,
-						expectedOcrVersion: 2
-					}
-				]
-			},
-			limits: {
-				maxAttemptsPerImage: 1,
-				maxConcurrentImages: 2,
-				reservedBudgetMicrousd: 200000,
-				maxOutputCharsPerImage: 50000,
-				deadlineWindowSeconds: 3600
-			},
-			confirmation: {
-				version: 1,
-				manifestSha256: '0ac30c1f184d8840a100d5fe1731f872e2c9171c85ac9e8b7cc3edcf655458bb'
-			},
+			status: 'confirmed',
+			manifestSha256: MANIFEST_SHA256,
 			transportEnqueued: false
 		});
+	});
+
+	it('rejects a stale preview before recording an admission', async () => {
+		const response = await post(request({ ...VALID_REQUEST, manifestSha256: 'f'.repeat(64) }));
+
+		expect(response.status).toBe(409);
+		expect(mocks.rpc).not.toHaveBeenCalled();
+		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
 	});
 
 	it.each([
 		['42501', 403],
 		['23505', 409],
+		['55000', 409],
 		['22023', 400],
 		['PGRST202', 503]
-	])('maps planner error %s without reading a manifest', async (code, status) => {
+	])('maps admission error %s', async (code, status) => {
 		mocks.rpc.mockResolvedValue({ data: null, error: { code } });
 
 		const response = await post(request());
 
 		expect(response.status).toBe(status);
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
-		expect(mocks.from).not.toHaveBeenCalled();
 	});
 
 	it.each([
-		['no planner row', []],
+		['empty manifest', [], 404],
+		['missing manifest row', VALID_MANIFEST.slice(0, 1), 409],
+		['manifest order mismatch', [VALID_MANIFEST[1], VALID_MANIFEST[0]], 503],
 		[
 			'duplicate step IDs',
-			[{ run_id: RUN_ID, created: true, step_ids: [STEP_IDS[0], STEP_IDS[0]] }]
+			[VALID_MANIFEST[0], { ...VALID_MANIFEST[1], step_id: STEP_IDS[0] }],
+			503
 		],
-		['missing manifest row', VALID_MANIFEST.slice(0, 1)],
-		['manifest order mismatch', [VALID_MANIFEST[1], VALID_MANIFEST[0]]],
 		[
-			'invalid manifest hash',
-			[{ ...VALID_MANIFEST[0], image_content_sha256: 'not-a-hash' }, VALID_MANIFEST[1]]
+			'invalid content hash',
+			[{ ...VALID_MANIFEST[0], image_content_sha256: 'not-a-hash' }, VALID_MANIFEST[1]],
+			503
 		]
-	])('fails closed for %s', async (label, invalidData) => {
-		if (label === 'no planner row' || label === 'duplicate step IDs') {
-			mocks.rpc.mockResolvedValue({ data: invalidData, error: null });
-		} else {
-			mocks.order.mockResolvedValue({ data: invalidData, error: null });
-		}
+	])('fails closed for %s', async (_label, invalidManifest, expectedStatus) => {
+		mocks.order.mockResolvedValue({ data: invalidManifest, error: null });
+
+		const response = await post(request());
+
+		expect(response.status).toBe(expectedStatus);
+		expect(mocks.rpc).not.toHaveBeenCalled();
+		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['no admission row', []],
+		[
+			'cancelled admission status',
+			[{ admission_id: ADMISSION_ID, created: false, admission_status: 'cancelled' }]
+		],
+		[
+			'invalid admission ID',
+			[{ admission_id: 'not-a-uuid', created: true, admission_status: 'confirmed' }]
+		]
+	])('fails closed for %s', async (_label, invalidReceipt) => {
+		mocks.rpc.mockResolvedValue({ data: invalidReceipt, error: null });
 
 		const response = await post(request());
 
 		expect(response.status).toBe(503);
-		expect(response.headers.get('cache-control')).toBe('private, no-store');
+	});
+
+	it('reports an already-enqueued replay truthfully', async () => {
+		mocks.rpc.mockResolvedValue({
+			data: [{ admission_id: ADMISSION_ID, created: false, admission_status: 'enqueued' }],
+			error: null
+		});
+
+		const response = await post(request());
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data.transportEnqueued).toBe(true);
 	});
 
 	it('fails closed when the manifest lookup errors', async () => {
@@ -215,6 +234,7 @@ describe('POST /api/libri/ocr-batches/plan', () => {
 		const response = await post(request());
 
 		expect(response.status).toBe(503);
-		expect(response.headers.get('cache-control')).toBe('private, no-store');
+		expect(mocks.rpc).not.toHaveBeenCalled();
+		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
 	});
 });

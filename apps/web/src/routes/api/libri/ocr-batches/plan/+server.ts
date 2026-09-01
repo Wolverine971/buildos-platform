@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { RequestHandler } from './$types';
+import { hashOcrBatchManifest } from '$lib/server/libri/ocr-batch-manifest';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 
@@ -238,6 +239,12 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			console.error('[LibriOcrBatchPlanner] Planner returned an invalid manifest');
 			return unavailable();
 		}
+		const manifestSha256 = hashOcrBatchManifest({
+			runId: receipt.runId,
+			libraryId: planRequest.libraryId,
+			bookId: planRequest.bookId,
+			items
+		});
 
 		return privateResponse(
 			ApiResponse.success({
@@ -255,6 +262,10 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 					reservedBudgetMicrousd: items.length * RESERVED_MICROUSD_PER_IMAGE,
 					maxOutputCharsPerImage: MAX_OUTPUT_CHARS_PER_IMAGE,
 					deadlineWindowSeconds: DEADLINE_WINDOW_SECONDS
+				},
+				confirmation: {
+					version: 1,
+					manifestSha256
 				},
 				transportEnqueued: false
 			})

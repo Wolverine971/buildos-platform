@@ -53,6 +53,10 @@ The response repeats the reviewed limits from the Phase 4A contract:
 These values are preview metadata only. Phase 4B does not register a consumer, activate Railway,
 or add enqueue behavior.
 
+The response also includes a versioned SHA-256 over the run, library, book, and exact ordered
+manifest. Phase 4C requires that hash before it will record a confirmation, so a stale, reordered,
+or replaced preview cannot silently cross the admission boundary.
+
 ## Verification receipt
 
 - Focused route tests: 19/19 passed.
@@ -75,7 +79,7 @@ containing Phase 4A passes the complete BuildOS job and the dependent Libri safe
 
 After the full BuildOS gate is green:
 
-1. apply the two isolated Phase 4A migrations and capture pre/post database and Railway receipts;
+1. apply the isolated Phase 4A migrations and capture pre/post database and Railway receipts;
 2. deploy this Phase 4B route against the now-present planner RPC;
 3. exercise one authenticated idempotent plan/replay with no queue rows; and
-4. design Phase 4C as a separate explicit enqueue confirmation boundary.
+4. deploy Phase 4C's separate explicit admission boundary only after its own shared-system gate.
