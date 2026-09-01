@@ -59,6 +59,12 @@ The terminal-retry correction is carried by the append-only
 committed planner migration. Its insert trigger takes the same image lock before replacing the
 permanent image/version uniqueness rule with an active-generation exclusion.
 
+The hosted ledger gate rejected the intermediate rewrite at `ac2762868` and, as designed, also
+rejected the correcting `14316af3c` push when comparing it directly with that bad immediate base.
+At `14316af3c`, the committed planner migration is restored byte-for-byte and the retry correction
+is append-only. The next docs-only tip is the first hosted comparison whose base and head both
+preserve the planner migration, so it is the authoritative deployment gate.
+
 This migration touches only the `libri` schema. The disposable contract stores a non-Libri
 `public.queue_jobs` control signature before planning and proves the row remains byte-identical and
 the queue row count remains unchanged afterward.
