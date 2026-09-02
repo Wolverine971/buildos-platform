@@ -943,6 +943,7 @@ describe('AgenticChatTurnExecutor', () => {
 		const harness = createHarness([
 			{
 				type: 'read_tool',
+				logicalProviderRound: 1,
 				callTransitionId: CALL_TRANSITION_ID,
 				resultTransitionId: RESULT_TRANSITION_ID,
 				providerToolCallId: 'provider-declare-contract',
@@ -1370,6 +1371,7 @@ describe('AgenticChatTurnExecutor', () => {
 			{ type: 'text_delta', text: 'Hello ' },
 			{
 				type: 'read_tool',
+				logicalProviderRound: 1,
 				callTransitionId: CALL_TRANSITION_ID,
 				resultTransitionId: RESULT_TRANSITION_ID,
 				providerToolCallId: 'provider-call-1',
@@ -2135,6 +2137,7 @@ describe('AgenticChatTurnExecutor', () => {
 			[
 				{
 					type: 'read_tool',
+					logicalProviderRound: 1,
 					callTransitionId: CALL_TRANSITION_ID,
 					resultTransitionId: RESULT_TRANSITION_ID,
 					providerToolCallId: 'provider-read-public-failure',
@@ -2234,6 +2237,7 @@ describe('AgenticChatTurnExecutor', () => {
 			[
 				{
 					type: 'read_tool',
+					logicalProviderRound: 1,
 					callTransitionId: CALL_TRANSITION_ID,
 					resultTransitionId: RESULT_TRANSITION_ID,
 					providerToolCallId: 'provider-read-timeout',
@@ -2306,6 +2310,7 @@ describe('AgenticChatTurnExecutor', () => {
 			[
 				{
 					type: 'read_tool',
+					logicalProviderRound: 1,
 					callTransitionId: CALL_TRANSITION_ID,
 					resultTransitionId: RESULT_TRANSITION_ID,
 					providerToolCallId: 'provider-ledger-timeout',
@@ -2839,6 +2844,7 @@ describe('AgenticChatTurnExecutor', () => {
 				},
 				{
 					type: 'mutating_tool',
+					logicalProviderRound: 1,
 					callTransitionId: CALL_TRANSITION_ID,
 					resultTransitionId: RESULT_TRANSITION_ID,
 					logicalOperationId: fixture.tool.logicalOperationId,
@@ -4298,6 +4304,7 @@ describe('AgenticChatTurnExecutor', () => {
 			[
 				{
 					type: 'read_tool',
+					logicalProviderRound: 1,
 					callTransitionId: CALL_TRANSITION_ID,
 					resultTransitionId: RESULT_TRANSITION_ID,
 					providerToolCallId: 'provider-call-budget-1',
@@ -4306,6 +4313,7 @@ describe('AgenticChatTurnExecutor', () => {
 				},
 				{
 					type: 'read_tool',
+					logicalProviderRound: 1,
 					callTransitionId: SECOND_CALL_TRANSITION_ID,
 					resultTransitionId: SECOND_RESULT_TRANSITION_ID,
 					providerToolCallId: 'provider-call-budget-2',
@@ -4401,6 +4409,7 @@ describe('AgenticChatTurnExecutor', () => {
 		const harness = createHarness([
 			{
 				type: 'mutating_tool',
+				logicalProviderRound: 1,
 				callTransitionId: CALL_TRANSITION_ID,
 				resultTransitionId: RESULT_TRANSITION_ID,
 				logicalOperationId: LOGICAL_OPERATION_ID,
@@ -4460,6 +4469,7 @@ describe('AgenticChatTurnExecutor', () => {
 		const harness = createHarness([
 			{
 				type: 'mutating_tool',
+				logicalProviderRound: 1,
 				callTransitionId: CALL_TRANSITION_ID,
 				resultTransitionId: RESULT_TRANSITION_ID,
 				logicalOperationId: LOGICAL_OPERATION_ID,
@@ -4563,6 +4573,7 @@ describe('AgenticChatTurnExecutor', () => {
 			[
 				{
 					type: 'mutating_tool',
+					logicalProviderRound: 1,
 					callTransitionId: CALL_TRANSITION_ID,
 					resultTransitionId: RESULT_TRANSITION_ID,
 					logicalOperationId: LOGICAL_OPERATION_ID,
@@ -4626,6 +4637,7 @@ describe('AgenticChatTurnExecutor', () => {
 			[
 				{
 					type: 'mutating_tool',
+					logicalProviderRound: 1,
 					callTransitionId: CALL_TRANSITION_ID,
 					resultTransitionId: RESULT_TRANSITION_ID,
 					logicalOperationId: LOGICAL_OPERATION_ID,
