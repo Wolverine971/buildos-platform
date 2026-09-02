@@ -17,7 +17,9 @@ jobs:
     checks:
         name: Typecheck, lint, test
         runs-on: ubuntu-latest
-        timeout-minutes: 30
+        # The full repository and coverage suites run close to 30 minutes;
+        # retain headroom so the dependent Libri safety gate gets a verdict.
+        timeout-minutes: 45
         steps:
             - uses: actions/checkout@v4
               with:
