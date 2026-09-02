@@ -29,6 +29,31 @@ test('keeps the out-of-band Libri worker role powerless until secret provisionin
 	}
 });
 
+test('keeps the out-of-band Libri frontend reader isolated and read-only by default', () => {
+	const sql = readFileSync(
+		new URL('./provision-libri-frontend-reader-role.sql', import.meta.url),
+		'utf8'
+	);
+	const normalized = sql
+		.replace(/--[^\n]*/g, ' ')
+		.replace(/\s+/g, ' ')
+		.toLowerCase();
+
+	assert.match(
+		normalized,
+		/create role libri_frontend_reader login nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls connection limit 3/
+	);
+	assert.match(normalized, /default_transaction_read_only = on/);
+	assert.match(normalized, /pg_auth_members/);
+	assert.doesNotMatch(normalized, /\bpassword\b/);
+	assert.doesNotMatch(normalized, /\b(?:grant|revoke)\s+[a-z_][a-z0-9_]*\s+to\b/);
+	for (const match of normalized.matchAll(
+		/\b(?:create|alter|drop)\s+role\s+([a-z_][a-z0-9_]*)/g
+	)) {
+		assert.equal(match[1], 'libri_frontend_reader');
+	}
+});
+
 test('accepts an additive, schema-qualified Libri migration', () => {
 	const failures = validateLibriMigration(
 		filename,
