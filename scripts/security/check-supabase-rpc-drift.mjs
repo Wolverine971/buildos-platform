@@ -34,12 +34,14 @@ function argument(name, fallback) {
 }
 
 function generatedFunctionNames(source) {
+	const publicSchemaMarker = '  public: {\n';
 	const startMarker = '    Functions: {\n';
 	const endMarker = '    }\n    Enums: {';
-	const start = source.indexOf(startMarker);
+	const publicSchemaStart = source.indexOf(publicSchemaMarker);
+	const start = source.indexOf(startMarker, publicSchemaStart + publicSchemaMarker.length);
 	const end = source.indexOf(endMarker, start + startMarker.length);
-	if (start === -1 || end === -1)
-		throw new Error('Functions section not found in generated types');
+	if (publicSchemaStart === -1 || start === -1 || end === -1)
+		throw new Error('public Functions section not found in generated types');
 
 	const section = source.slice(start + startMarker.length, end);
 	return new Set(
