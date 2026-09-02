@@ -46,7 +46,29 @@ pnpm install
 pnpm --filter @buildos/mcp-server build                  # produces packages/buildos-mcp-server/dist/index.js
 ```
 
-### Claude Desktop / Cursor / generic MCP client
+### Launcher script (recommended for a local checkout)
+
+`bin/buildos-mcp-bridge.sh` wraps `dist/index.js` so no client config ever holds the token. It
+reads `BUILDOS_AGENT_TOKEN` from the environment, or from the macOS Keychain (service
+`buildos-agent-token`, falling back to the legacy `codex-buildos-agent-token`), locates `node`
+even under the minimal PATH of GUI-launched apps, and execs the bridge.
+
+```bash
+security add-generic-password -a "$USER" -s buildos-agent-token -w 'boca_your_agent_key'
+
+# Claude Code (user scope — available in every project)
+claude mcp add --scope user --transport stdio buildos -- \
+  /absolute/path/to/buildos-platform/packages/buildos-mcp-server/bin/buildos-mcp-bridge.sh
+
+# Codex CLI / Codex desktop
+codex mcp add buildos -- \
+  /absolute/path/to/buildos-platform/packages/buildos-mcp-server/bin/buildos-mcp-bridge.sh
+```
+
+Any other stdio client (Claude Desktop, Cursor, Gemini CLI, OpenCode) takes the same script as
+its `command` with no `args` and no `env`.
+
+### Claude Desktop / Cursor / generic MCP client (explicit env)
 
 ```json
 {

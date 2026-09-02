@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import { describe, expect, it } from 'vitest';
 import {
 	authenticateOAuthMcpRequest,
+	BUILDOS_MCP_CHALLENGE_SCOPE,
 	BUILDOS_MCP_RESOURCE_SCOPES,
 	BUILDOS_OAUTH_READ_WRITE_OPS,
 	buildOAuthRedirect,
@@ -19,8 +20,15 @@ import {
 } from './oauth-connector.service';
 
 describe('OAuth connector helpers', () => {
-	it('advertises only the minimal scope required by the MCP protected resource', () => {
-		expect(BUILDOS_MCP_RESOURCE_SCOPES).toEqual(['buildos.read']);
+	it('advertises write and offline_access on the MCP resource so clients can request a refresh token', () => {
+		// Clients request exactly the advertised set and consent can only narrow it:
+		// without offline_access here no refresh token is ever issued (hourly re-auth).
+		expect(BUILDOS_MCP_RESOURCE_SCOPES).toEqual([
+			'buildos.read',
+			'buildos.write',
+			'offline_access'
+		]);
+		expect(BUILDOS_MCP_CHALLENGE_SCOPE).toBe('buildos.read buildos.write offline_access');
 	});
 
 	it('defaults OAuth requests to read-only access with refresh support', () => {

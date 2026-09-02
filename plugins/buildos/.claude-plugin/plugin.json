@@ -1,0 +1,13 @@
+{
+	"name": "buildos",
+	"version": "0.1.0",
+	"description": "Connect Claude Code to persistent BuildOS project context: search and update your projects, tasks, documents, goals, plans, milestones, risks, and calendar.",
+	"author": {
+		"name": "BuildOS",
+		"email": "dj@build-os.com",
+		"url": "https://build-os.com"
+	},
+	"homepage": "https://build-os.com/docs/connect-agents",
+	"repository": "https://github.com/buildos/buildos-platform",
+	"keywords": ["buildos", "project management", "project context", "productivity", "mcp"]
+}

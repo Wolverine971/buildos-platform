@@ -1,0 +1,34 @@
+{
+	"name": "buildos",
+	"version": "0.1.0",
+	"description": "Connect ChatGPT and Codex to persistent BuildOS project context through the BuildOS app.",
+	"author": {
+		"name": "BuildOS",
+		"email": "dj@build-os.com",
+		"url": "https://build-os.com"
+	},
+	"homepage": "https://build-os.com/docs/connect-agents",
+	"repository": "https://github.com/buildos/buildos-platform",
+	"keywords": ["buildos", "project management", "project context", "productivity", "mcp"],
+	"apps": "./.app.json",
+	"interface": {
+		"displayName": "BuildOS",
+		"shortDescription": "Persistent context for complex project work",
+		"longDescription": "Search and retrieve your BuildOS projects, tasks, documents, goals, plans, milestones, and risks from ChatGPT and Codex.",
+		"developerName": "BuildOS",
+		"category": "Productivity",
+		"capabilities": ["Search", "Read"],
+		"websiteURL": "https://build-os.com",
+		"privacyPolicyURL": "https://build-os.com/privacy",
+		"termsOfServiceURL": "https://build-os.com/terms",
+		"defaultPrompt": [
+			"Show me what needs attention across my BuildOS projects.",
+			"Open a BuildOS project and summarize its current status.",
+			"Find the BuildOS notes and tasks related to this topic."
+		],
+		"composerIcon": "./assets/buildos-composer.png",
+		"logo": "./assets/buildos-logo.png",
+		"screenshots": [],
+		"brandColor": "#7C3AED"
+	}
+}

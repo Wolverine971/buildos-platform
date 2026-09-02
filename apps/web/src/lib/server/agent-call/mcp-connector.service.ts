@@ -24,6 +24,7 @@ import {
 } from '$lib/server/security-event-logger';
 import {
 	authenticateOAuthMcpRequest,
+	BUILDOS_MCP_CHALLENGE_SCOPE,
 	BUILDOS_CONNECTOR_PUBLIC_NAME,
 	BUILDOS_MCP_SERVER_NAME,
 	createMcpCallSession,
@@ -174,7 +175,7 @@ function mcpAuthChallengeHeaders(
 	cors: Record<string, string>
 ): Record<string, string> {
 	return {
-		'WWW-Authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}", scope="buildos.read"`,
+		'WWW-Authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}", scope="${BUILDOS_MCP_CHALLENGE_SCOPE}"`,
 		'Cache-Control': 'no-store',
 		...cors
 	};
@@ -185,7 +186,7 @@ function mcpInsufficientScopeChallengeHeaders(
 	cors: Record<string, string>
 ): Record<string, string> {
 	return {
-		'WWW-Authenticate': `Bearer error="insufficient_scope", scope="buildos.read", resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}"`,
+		'WWW-Authenticate': `Bearer error="insufficient_scope", scope="${BUILDOS_MCP_CHALLENGE_SCOPE}", resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}"`,
 		'Cache-Control': 'no-store',
 		...cors
 	};

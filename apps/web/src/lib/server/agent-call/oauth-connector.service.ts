@@ -39,9 +39,23 @@ export const BUILDOS_OAUTH_SCOPES = [
 	'buildos.write',
 	'offline_access'
 ] as const satisfies readonly BuildosAgentOAuthScope[];
+/**
+ * Scopes advertised for the `/mcp/buildos` protected resource: its
+ * `scopes_supported` metadata and the `scope` attribute of the 401 challenge.
+ *
+ * MCP clients (Claude Code, Claude.ai, ChatGPT) request exactly what is
+ * advertised here, and the consent screen can only narrow that request
+ * (`scopesForOAuthApproval`). Advertising `buildos.read` alone meant no client
+ * ever asked for `offline_access` (no refresh token → re-authentication every
+ * hour) and the "Read and write" consent choice was a no-op. Read-only stays the
+ * consent default; nothing listed here grants access by itself.
+ */
 export const BUILDOS_MCP_RESOURCE_SCOPES = [
-	'buildos.read'
+	'buildos.read',
+	'buildos.write',
+	'offline_access'
 ] as const satisfies readonly BuildosAgentOAuthScope[];
+export const BUILDOS_MCP_CHALLENGE_SCOPE = BUILDOS_MCP_RESOURCE_SCOPES.join(' ');
 
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 const REFRESH_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60;

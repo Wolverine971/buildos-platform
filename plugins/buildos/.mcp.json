@@ -1,0 +1,9 @@
+{
+	"mcpServers": {
+		"buildos": {
+			"type": "http",
+			"url": "https://build-os.com/mcp/buildos",
+			"oauth_resource": "https://build-os.com/mcp/buildos"
+		}
+	}
+}

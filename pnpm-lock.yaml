@@ -94,6 +94,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@ambientcss/css':
+        specifier: 3.0.1
+        version: 3.0.1
       '@antv/g6':
         specifier: ^5.0.50
         version: 5.0.50(workerize-loader@2.0.2(webpack@5.104.1(postcss@8.5.26)))
@@ -833,6 +836,9 @@ packages:
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
+
+  '@ambientcss/css@3.0.1':
+    resolution: {integrity: sha512-sHiM6Wqw6FJgP5OABWzc9E+UNkVjEgou7G3SoEkpMuPiWs2+ETKa2ipTzeKPHipsykWASdSGQUXXAez3dxic6w==}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -6268,6 +6274,8 @@ snapshots:
   '@adobe/css-tools@4.4.4': {}
 
   '@alloc/quick-lru@5.2.0': {}
+
+  '@ambientcss/css@3.0.1': {}
 
   '@ampproject/remapping@2.3.0':
     dependencies:

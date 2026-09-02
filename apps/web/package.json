@@ -132,6 +132,7 @@
 		"pnpm": ">=9.0.0"
 	},
 	"dependencies": {
+		"@ambientcss/css": "3.0.1",
 		"@antv/g6": "^5.0.50",
 		"@buildos/agentic-chat-runtime": "workspace:*",
 		"@buildos/shared-agent-ops": "workspace:*",

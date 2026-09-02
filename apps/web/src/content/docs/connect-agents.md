@@ -8,7 +8,7 @@ seoDescription: Connect Claude Code, ChatGPT, Codex, OpenClaw, and custom MCP or
 seoKeywords: BuildOS agents, MCP connector, Claude Code MCP, ChatGPT Actions, ChatGPT remote MCP, Codex MCP, OpenClaw, agent keys, OAuth remote MCP
 icon: Plug
 order: 9
-lastUpdated: 2026-07-05
+lastUpdated: 2026-09-01
 path: apps/web/src/content/docs/connect-agents.md
 ---
 
@@ -67,6 +67,23 @@ The MCP endpoint supports three profiles:
 
 [`/integrations`](/integrations) has the same flow plus the public landing page.
 
+## Install as a plugin (Claude Code and Codex)
+
+The BuildOS repository is also a plugin marketplace. The same `plugins/buildos` directory carries a Claude Code manifest, a Codex manifest, and a skill that teaches the agent how to work inside a BuildOS workspace (find the project, call `get_onto_project_status`, then read or write).
+
+```bash
+# Claude Code
+claude plugin marketplace add buildos/buildos-platform
+claude plugin install buildos@buildos
+# then /mcp → buildos → approve the BuildOS consent screen
+
+# Codex
+codex plugin marketplace add /absolute/path/to/buildos-platform
+codex plugin add buildos@buildos
+```
+
+The plugin connects over remote MCP with OAuth, so no key is pasted anywhere. Consent grants a refresh token, so the connection survives past the one-hour access-token lifetime without re-approval.
+
 ## Setting it up in Claude Code
 
 Choose the **Claude Code** client profile when generating the key, then add BuildOS as an MCP server. The Agent Keys tab shows this exact command (with your key filled in):
@@ -88,6 +105,15 @@ claude mcp add --transport http buildos https://build-os.com/mcp/buildos
 ```
 
 Then run `/mcp` inside Claude Code and follow the browser login flow. Claude Code discovers BuildOS's OAuth metadata, and you approve scope and projects — no token stored locally.
+
+**Working from a checkout of this repository?** Keep the key in the macOS Keychain and let the stdio bridge launcher read it, so nothing secret lands in `~/.claude.json`:
+
+```bash
+security add-generic-password -a "$USER" -s buildos-agent-token -w 'boca_your_one_time_secret'
+pnpm --filter @buildos/mcp-server build
+claude mcp add --scope user --transport stdio buildos -- \
+  /absolute/path/to/buildos-platform/packages/buildos-mcp-server/bin/buildos-mcp-bridge.sh
+```
 
 The JSON-RPC gateway at `POST /api/agent-call/buildos` remains available as a fallback if you'd rather drive the `call.dial` flow directly with the env block:
 
@@ -161,7 +187,7 @@ bearer_token_env_var = "BUILDOS_AGENT_TOKEN"
 export BUILDOS_AGENT_TOKEN=boca_your_one_time_secret
 ```
 
-If a Codex surface only supports local stdio MCP servers, use the same local bridge shown in the Cursor section. For direct remote MCP, append `?profile=chatgpt_data_app` to the URL only when you intentionally want a read-only `search`/`fetch` surface; for the local bridge, set `BUILDOS_MCP_PROFILE=chatgpt_data_app`.
+If a Codex surface only supports local stdio MCP servers, use the bridge launcher (`codex mcp add buildos -- /absolute/path/to/buildos-platform/packages/buildos-mcp-server/bin/buildos-mcp-bridge.sh`); it reads the key from the macOS Keychain and works from the Codex desktop app as well as the CLI. For direct remote MCP, append `?profile=chatgpt_data_app` to the URL only when you intentionally want a read-only `search`/`fetch` surface; for the local bridge, set `BUILDOS_MCP_PROFILE=chatgpt_data_app`.
 
 ## Setting it up in ChatGPT (Custom GPT)
 

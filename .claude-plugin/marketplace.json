@@ -1,0 +1,21 @@
+{
+	"name": "buildos",
+	"owner": {
+		"name": "BuildOS",
+		"email": "dj@build-os.com"
+	},
+	"metadata": {
+		"description": "BuildOS plugins: persistent project context for coding agents.",
+		"version": "0.1.0"
+	},
+	"plugins": [
+		{
+			"name": "buildos",
+			"source": "./plugins/buildos",
+			"description": "Connect to your BuildOS workspace: search and update projects, tasks, documents, goals, plans, milestones, risks, and calendar through the BuildOS MCP connector.",
+			"version": "0.1.0",
+			"category": "productivity",
+			"homepage": "https://build-os.com/docs/connect-agents"
+		}
+	]
+}

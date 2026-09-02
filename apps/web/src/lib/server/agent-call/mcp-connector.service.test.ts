@@ -224,8 +224,10 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			expect(response.headers.get('WWW-Authenticate')).toContain(
 				'https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos'
 			);
-			expect(response.headers.get('WWW-Authenticate')).toContain('scope="buildos.read"');
-			expect(response.headers.get('WWW-Authenticate')).not.toContain('offline_access');
+			expect(response.headers.get('WWW-Authenticate')).toContain(
+				'scope="buildos.read buildos.write offline_access"'
+			);
+			expect(response.headers.get('WWW-Authenticate')).toContain('offline_access');
 		});
 
 		it('returns 405 for an authenticated GET because v1 offers no SSE stream', async () => {
@@ -242,8 +244,10 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			const response = await mcpPost({}, { jsonrpc: '2.0', id: 1, method: 'tools/list' });
 
 			expect(response.status).toBe(401);
-			expect(response.headers.get('WWW-Authenticate')).toContain('scope="buildos.read"');
-			expect(response.headers.get('WWW-Authenticate')).not.toContain('offline_access');
+			expect(response.headers.get('WWW-Authenticate')).toContain(
+				'scope="buildos.read buildos.write offline_access"'
+			);
+			expect(response.headers.get('WWW-Authenticate')).toContain('offline_access');
 			const body = await response.json();
 			expect(body.error.code).toBe(-32001);
 		});
@@ -301,7 +305,7 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 				expect(response.status).toBe(403);
 				const challenge = response.headers.get('WWW-Authenticate');
 				expect(challenge).toContain('error="insufficient_scope"');
-				expect(challenge).toContain('scope="buildos.read"');
+				expect(challenge).toContain('scope="buildos.read buildos.write offline_access"');
 				expect(challenge).toContain(
 					'resource_metadata="https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos"'
 				);

@@ -1,0 +1,20 @@
+{
+	"name": "buildos",
+	"interface": {
+		"displayName": "BuildOS"
+	},
+	"plugins": [
+		{
+			"name": "buildos",
+			"source": {
+				"source": "local",
+				"path": "./plugins/buildos"
+			},
+			"policy": {
+				"installation": "AVAILABLE",
+				"authentication": "ON_USE"
+			},
+			"category": "Productivity"
+		}
+	]
+}
