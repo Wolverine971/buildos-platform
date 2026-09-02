@@ -6,9 +6,9 @@
 
 **Status:** Active — prepared-admission, audit hardening, trigger-composition repair, and
 consent-gated immediate-fetch Send-latency telemetry are deployed; live global-worker,
-project-selection, and analytics-ingestion canaries are green; the local public-schema RPC parser
-repair still awaits integration and a manual/scheduled CI receipt, followed by the 100–500-turn
-real-user measurement cohort
+project-selection, and analytics-ingestion canaries are green; the public-schema RPC parser repair
+is deployed with a green manual production-drift and full CI receipt; only the 100–500-turn real-user
+measurement cohort remains before the consolidation decision
 
 **Priority:** P1 latency and database-load reduction; security correctness is a release gate
 
@@ -446,7 +446,7 @@ Deployment receipt for commit `49528ed799a58b625f67084dda0b31d4fa549229`:
   known errors (two below baseline, exit 0). The deployment and canary results below supersede the
   proposed paid retry.
 
-## Immediate-delivery and CI follow-up — 2026-08-31 (analytics deployed; parser integration pending)
+## Immediate-delivery and CI follow-up — 2026-08-31 (deployed and verified)
 
 The subsequent production rollout was healthy on both serving surfaces:
 
@@ -479,14 +479,15 @@ key, or user/session/project/turn identifier is included.
 The deployment's GitHub run `33430682056` executed **4,108 passing tests** but failed because Vitest
 reported no suite in the semantic golden file. Commit
 `4aa458a13a2e67f556291e728c857b1d149e3775` corrected that test discovery issue, and the golden suite
-passes **3/3** locally. Its GitHub run `33434017647` then exposed a separate false Supabase RPC drift
-failure: the checker read the first generated `Functions` block, now the intentionally empty `libri`
-schema, instead of `public.Functions`. The checker now anchors to the `public` schema; its regression
-test passes **1/1** and now runs inside the schema-drift job before the live comparison; the repaired
-live check reports **316 aligned RPC names**. The run was cancelled after the drift failure, so the
-next deployment is the authoritative CI receipt.
+passes **3/3** locally. Its GitHub run `33434017647` did not reach a live comparison because both
+Supabase workflow secrets were empty. A separate local live check then exposed the parser defect:
+the checker read the first generated `Functions` block, now the intentionally empty `libri` schema,
+instead of `public.Functions`. The checker now anchors to the `public` schema; its regression test
+passes **1/1** and runs inside the schema-drift job before the live comparison; the repaired local
+check reports **316 aligned RPC names**. The deployment receipt below supersedes this pre-deploy
+diagnosis.
 
-Local release checks for the pending revision are green:
+Pre-deploy local release checks are green:
 
 - PostHog, consent, telemetry, and worker transport: **17/17**;
 - semantic golden suite: **3/3**;
@@ -507,8 +508,8 @@ not the parser receipt. Scheduled run `33525981152` later failed at `Test genera
 because `.github/workflows/ci.yml` referenced
 `scripts/security/check-supabase-rpc-drift.test.mjs` while that test remained untracked. The local
 repair now anchors extraction to `public.Functions`, includes the missing regression test, passes
-the Node test, is Prettier-clean, and reports **316 aligned RPC names** against production. These two
-script changes still need to be integrated before rerunning the manual/scheduled drift job.
+the Node test, is Prettier-clean, and reports **316 aligned RPC names** against production. Release
+commit `67e758421d05110ea1349bf191d2e089f2e07675` integrates both script changes.
 
 The deployed zero-model `@analytics` production canary passed **1/1 in 15.3s**. It intercepted both
 worker admission and the legacy stream safety net, made no provider request, and received the
@@ -526,9 +527,31 @@ adds its normal consented SDK, person, browser, and current-page properties to t
 the privacy allowlist describes the application-owned custom properties rather than the complete
 PostHog envelope.
 
-Next: integrate the two RPC-parser files and obtain a green manual/scheduled schema-drift receipt.
-After that, leave WP-6 open only for the 100–500-turn real-user cohort; a paid synthetic model request
-is not needed.
+### Parser deployment and CI closure — 2026-09-01
+
+Release commit `67e758421d05110ea1349bf191d2e089f2e07675` is on `main`. The first manual
+verification run (`33581402657`) confirmed the parser regression itself passed but also proved the
+workflow had never received `PUBLIC_SUPABASE_URL` or `PRIVATE_SUPABASE_SERVICE_KEY`; this was the
+actual failure in run `33434017647`, not the parser. Both existing production values are now stored
+as masked GitHub Actions repository secrets, with no values logged.
+
+Authoritative manual CI run `33581615967` is green:
+
+- Supabase RPC schema drift: parser regression plus live production comparison, **10s**;
+- full typecheck, lint, tests, coverage, database integration, and self-contained Supabase SQL
+  contracts: **29m13s**;
+- independent Libri PostgreSQL 15 migration-safety gate: **1m13s**.
+
+Vercel production deployment `dpl_3G4AFcW1zX9aGDfcpRtHhVY5Vm51` is Ready and owns the
+`build-os.com` aliases. The release touched only repository scripts and this tasker, so Railway did
+not rebuild the Agentic Chat service; its current deployment
+`c8b61467-6bbf-4f73-8ade-40c4d1b0e037` remains successful with all four replicas Running. Focused
+local verification immediately before release was parser **1/1**, telemetry/semantic **17/17**,
+Prettier and syntax clean, `svelte-check` **0 errors / 0 warnings**, and a live **316-RPC** alignment
+check.
+
+WP-6 now remains open only for the 100–500-turn real-user cohort. A paid synthetic model request is
+not needed.
 
 Once the event reaches 100–500 comparable real-user turns, build the control/treatment insight and
 retain p50/p95 plus hit, miss, HTTP-error, and admission-race counts here. Do not manufacture that
