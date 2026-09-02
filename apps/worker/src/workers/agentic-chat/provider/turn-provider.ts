@@ -1274,11 +1274,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						const invalidCalls = callsWithValidationIssues(calls, validationIssues);
 						for (const call of invalidCalls) {
 							const callIssues = validationIssuesForCall(call, validationIssues);
-							yield buildValidationFailureReadToolStep(
-								request.turnRunId,
-								call,
-								callIssues
-							);
+							yield buildValidationFailureReadToolStep(request, call, callIssues);
 							observeSupervisorPreExecutionFailure(
 								state,
 								call,
@@ -1329,7 +1325,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					keepLeaseForSynthesis = true;
 					yield buildPlanningStep(request, normalizedCalls[0]!.id);
 					for (const call of normalizedCalls) {
-						yield buildProviderToolStep(request.turnRunId, call, state);
+						yield buildProviderToolStep(request, call, state);
 					}
 					state.markToolRoundCompleted();
 					continue;
@@ -1534,7 +1530,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			state.setCurrentRequest(request);
 			yield buildPlanningStep(reviewRequest, normalizedCalls[0]!.id);
 			for (const call of normalizedCalls) {
-				yield buildProviderToolStep(request.turnRunId, call, state);
+				yield buildProviderToolStep(reviewRequest, call, state);
 			}
 			state.markToolRoundCompleted();
 			pendingReviewTool = true;
@@ -1641,7 +1637,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			state.setCurrentRequest(pending.request);
 			yield buildPlanningStep(reviewRequest, normalizedCalls[0]!.id);
 			for (const call of normalizedCalls) {
-				yield buildProviderToolStep(pending.request.turnRunId, call, state);
+				yield buildProviderToolStep(reviewRequest, call, state);
 			}
 			state.markToolRoundCompleted();
 			pendingReviewTool = true;
@@ -1711,7 +1707,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			state.setPendingToolRound({ calls: normalizedCalls, usage: pending.usage });
 			yield buildPlanningStep(pending.request, normalizedCalls[0]!.id);
 			for (const call of normalizedCalls) {
-				yield buildProviderToolStep(pending.request.turnRunId, call, state);
+				yield buildProviderToolStep(pending.request, call, state);
 			}
 			state.markToolRoundCompleted();
 			pendingToolExecution = true;
@@ -1892,11 +1888,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						const invalidCalls = callsWithValidationIssues(calls, validationIssues);
 						for (const call of invalidCalls) {
 							const callIssues = validationIssuesForCall(call, validationIssues);
-							yield buildValidationFailureReadToolStep(
-								request.turnRunId,
-								call,
-								callIssues
-							);
+							yield buildValidationFailureReadToolStep(request, call, callIssues);
 							observeSupervisorPreExecutionFailure(
 								state,
 								call,
@@ -1962,7 +1954,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						yield buildPlanningStep(request, normalizedCalls[0]!.id);
 					}
 					for (const call of normalizedCalls) {
-						yield buildProviderToolStep(request.turnRunId, call, state);
+						yield buildProviderToolStep(request, call, state);
 					}
 					state.markToolRoundCompleted();
 					continue;

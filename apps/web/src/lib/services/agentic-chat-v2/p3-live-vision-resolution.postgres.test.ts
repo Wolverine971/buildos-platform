@@ -35,6 +35,7 @@ describePostgres('agentic-chat P3 live-vision resolution PostgreSQL contract', (
 	let port = 0;
 	let liveVisionOutput = '';
 	let providerPassOutput = '';
+	let readPlanningOutput = '';
 
 	const applySqlFile = (path: string): string =>
 		execFileSync(
@@ -163,6 +164,19 @@ describePostgres('agentic-chat P3 live-vision resolution PostgreSQL contract', (
 		providerPassOutput = applySqlFile(
 			sqlPath('supabase/tests/20260828221405_agentic_chat_provider_pass_telemetry.test.sql')
 		);
+		applySqlFile(
+			sqlPath('supabase/tests/fixtures/agentic_chat_read_planning_observability_base.sql')
+		);
+		applySqlFile(
+			sqlPath(
+				'supabase/migrations/20260902040000_agentic_chat_read_planning_observability.sql'
+			)
+		);
+		readPlanningOutput = applySqlFile(
+			sqlPath(
+				'supabase/tests/20260902040000_agentic_chat_read_planning_observability.test.sql'
+			)
+		);
 	}, 60_000);
 
 	afterAll(() => {
@@ -177,5 +191,9 @@ describePostgres('agentic-chat P3 live-vision resolution PostgreSQL contract', (
 
 	it('counts successful logical provider roles without counting replay or retry', () => {
 		expect(providerPassOutput).toContain('agentic_chat_provider_pass_telemetry_ok');
+	});
+
+	it('summarizes exact duplicates, projections, controls, and invalidated rereads', () => {
+		expect(readPlanningOutput).toContain('agentic_chat_read_planning_observability_ok');
 	});
 });

@@ -9,7 +9,11 @@ import {
 	assertTurnSucceeded,
 	normalizeComparableText
 } from '../harness/assertions';
-import { waitForTurnRun } from '../harness/telemetry';
+import {
+	getExecutionObservations,
+	summarizeReadPlanningObservations,
+	waitForTurnRun
+} from '../harness/telemetry';
 
 function spec(): ProjectSpec {
 	return {
@@ -58,7 +62,8 @@ export const toolGraphParallelReadsScenario: Scenario = {
 				assertTurnSucceeded(turn);
 				assertNonEmptyAssistantText(turn);
 				assertNoMutations(turn, 'this production canary is read-only');
-				assertTurnRunCompleted(await waitForTurnRun(ctx.db.admin, turn.streamRunId!));
+				const turnRun = await waitForTurnRun(ctx.db.admin, turn.streamRunId!);
+				assertTurnRunCompleted(turnRun);
 
 				const text = normalizeComparableText(turn.assistantText);
 				for (const expected of [
@@ -76,15 +81,35 @@ export const toolGraphParallelReadsScenario: Scenario = {
 					}
 				}
 
-				const documentReads = turn.toolCalls.filter((call) => {
-					const name = call.function?.name ?? '';
-					return name === 'get_document_outline' || name === 'read_document_section';
-				});
-				if (documentReads.length < 3) {
+				if (!turnRun) throw new Error('[assert] completed turn has no durable turn row');
+				const readPlanning = summarizeReadPlanningObservations(
+					await getExecutionObservations(ctx.db.admin, turnRun.id)
+				);
+				const expected = {
+					evidenceReadCallCount: 6,
+					uniqueExactReadCount: 6,
+					exactDuplicateCount: 0,
+					uniqueResourceCount: 3,
+					additionalProjectionCount: 3,
+					evidenceProviderRoundCount: 2,
+					controlProviderRoundCount: 0,
+					firstCompleteEvidenceRound: 2,
+					memoServedCount: 0,
+					justifiedPostMutationRereadCount: 0,
+					mutationCallCount: 0,
+					replayedMutationCount: 0,
+					rejectedCallCount: 0,
+					evidenceRoundWidths: [3, 3],
+					graphLayerWidths: [3, 3]
+				};
+				const scheduleMismatch = Object.entries(expected).some(
+					([key, value]) =>
+						JSON.stringify(readPlanning[key as keyof typeof readPlanning]) !==
+						JSON.stringify(value)
+				);
+				if (scheduleMismatch) {
 					throw new Error(
-						`[assert] expected at least three document reads; got [${turn.toolCalls
-							.map((call) => call.function?.name ?? '')
-							.join(', ')}]`
+						`[assert] lean scan/read schedule mismatch: expected ${JSON.stringify(expected)}, got ${JSON.stringify(readPlanning)}`
 					);
 				}
 			}

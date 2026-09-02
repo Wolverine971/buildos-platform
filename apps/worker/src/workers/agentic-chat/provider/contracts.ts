@@ -119,6 +119,8 @@ export type AgenticChatProviderToolSchedulingV1 = {
 };
 
 type AgenticChatProviderScheduledToolStepV1 = {
+	/** Logical model pass that authored this call; preserved through execution telemetry. */
+	logicalProviderRound: number;
 	/** Worker protocol metadata; never forwarded to a domain adapter. */
 	scheduling?: AgenticChatProviderToolSchedulingV1;
 };

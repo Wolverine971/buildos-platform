@@ -1812,6 +1812,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					type: 'read_tool',
+					logicalProviderRound: 3,
 					providerToolCallId: 'reviewer-approval-1',
 					toolName: 'approve_turn_contract_review',
 					arguments: reviewApprovalArguments
@@ -1839,6 +1840,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					type: 'read_tool',
+					logicalProviderRound: 4,
 					providerToolCallId: 'reviewer-mutation-approval-1',
 					toolName: 'approve_mutation_batch_review',
 					arguments: mutationReviewApprovalArguments

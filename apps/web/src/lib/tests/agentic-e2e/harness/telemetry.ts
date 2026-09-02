@@ -61,6 +61,25 @@ export interface ExecutionObservationRow {
 	payload: unknown;
 }
 
+export interface ReadPlanningSummary {
+	evidenceReadCallCount: number;
+	uniqueExactReadCount: number;
+	exactDuplicateCount: number;
+	uniqueResourceCount: number;
+	additionalProjectionCount: number;
+	evidenceProviderRoundCount: number;
+	controlProviderRoundCount: number;
+	firstCompleteEvidenceRound: number | null;
+	memoServedCount: number;
+	justifiedPostMutationRereadCount: number;
+	mutationCallCount: number;
+	replayedMutationCount: number;
+	rejectedCallCount: number;
+	providerRetryCount: number;
+	evidenceRoundWidths: number[];
+	graphLayerWidths: number[];
+}
+
 export interface StreamUsageSummary {
 	requestCount: number;
 	promptTokens: number;
@@ -346,6 +365,170 @@ export async function getExecutionObservations(
 		);
 	}
 	return (data as ExecutionObservationRow[] | null) ?? [];
+}
+
+/** Content-free read-planning attribution matching the durable SQL summary contract. */
+export function summarizeReadPlanningObservations(
+	rows: readonly ExecutionObservationRow[]
+): ReadPlanningSummary {
+	const calls = rows
+		.map((row, index) => {
+			const payload = telemetryRecord(row.payload);
+			return {
+				index,
+				phase: row.phase,
+				eventType: row.event_type,
+				executionClass: telemetryText(payload.execution_class),
+				logicalProviderRound: telemetryInteger(payload.logical_provider_round),
+				sequenceIndex: telemetryInteger(payload.sequence_index),
+				readEpoch: telemetryInteger(payload.read_epoch),
+				exactReadKey: telemetrySha256(payload.exact_read_key),
+				resourceKey: telemetrySha256(payload.resource_key),
+				status: telemetryText(payload.status),
+				memoServed: payload.memo_served === true,
+				replayed: payload.replayed === true
+			};
+		})
+		.filter(
+			(call) =>
+				call.phase === 'tool' &&
+				call.eventType === 'tool_execution_ended' &&
+				call.executionClass !== null
+		)
+		.sort(
+			(left, right) =>
+				(left.sequenceIndex ?? Number.MAX_SAFE_INTEGER) -
+					(right.sequenceIndex ?? Number.MAX_SAFE_INTEGER) || left.index - right.index
+		);
+	const evidence = calls.filter((call) => call.executionClass === 'evidence_read');
+	const providerRetryCount = rows.filter((row) => {
+		const payload = telemetryRecord(row.payload);
+		return (
+			row.phase === 'provider' &&
+			row.event_type === 'provider_attempt_ended' &&
+			payload.attempt_kind === 'retry'
+		);
+	}).length;
+	const exactKeys = new Set<string>();
+	const resourceProjections = new Map<string, Set<string>>();
+	const evidenceRoundWidths = new Map<number, number>();
+	const controlRounds = new Set<number>();
+	const successfulExactEpochs = new Map<string, Set<number>>();
+	const firstSuccessfulRoundByExact = new Map<string, number>();
+	let exactDuplicateCount = 0;
+	let justifiedPostMutationRereadCount = 0;
+
+	for (const call of calls) {
+		if (
+			(call.executionClass === 'control' || call.executionClass === 'review') &&
+			call.logicalProviderRound !== null
+		) {
+			controlRounds.add(call.logicalProviderRound);
+		}
+		if (call.executionClass !== 'evidence_read') continue;
+		if (call.logicalProviderRound !== null) {
+			evidenceRoundWidths.set(
+				call.logicalProviderRound,
+				(evidenceRoundWidths.get(call.logicalProviderRound) ?? 0) + 1
+			);
+		}
+		if (call.exactReadKey === null || call.readEpoch === null) continue;
+		const readEpoch = call.readEpoch;
+		exactKeys.add(call.exactReadKey);
+		const successfulEpochs = successfulExactEpochs.get(call.exactReadKey) ?? new Set<number>();
+		if (successfulEpochs.has(readEpoch)) exactDuplicateCount += 1;
+		if ([...successfulEpochs].some((epoch) => epoch < readEpoch)) {
+			justifiedPostMutationRereadCount += 1;
+		}
+		if (call.status === 'success') {
+			successfulEpochs.add(readEpoch);
+			successfulExactEpochs.set(call.exactReadKey, successfulEpochs);
+			if (
+				call.logicalProviderRound !== null &&
+				!firstSuccessfulRoundByExact.has(call.exactReadKey)
+			) {
+				firstSuccessfulRoundByExact.set(call.exactReadKey, call.logicalProviderRound);
+			}
+		}
+		if (call.resourceKey !== null) {
+			const projections = resourceProjections.get(call.resourceKey) ?? new Set<string>();
+			projections.add(call.exactReadKey);
+			resourceProjections.set(call.resourceKey, projections);
+		}
+	}
+
+	const graphLayers = new Map<string, { width: number; firstSequence: number }>();
+	for (const row of rows) {
+		if (row.phase !== 'tool') continue;
+		const payload = telemetryRecord(row.payload);
+		const graphPlanSha256 = telemetrySha256(payload.graph_plan_sha256);
+		const graphLayerIndex = telemetryInteger(payload.graph_layer_index);
+		const graphLayerWidth = telemetryInteger(payload.graph_layer_width);
+		const sequenceIndex = telemetryInteger(payload.sequence_index);
+		if (
+			graphPlanSha256 === null ||
+			graphLayerIndex === null ||
+			graphLayerWidth === null ||
+			sequenceIndex === null
+		) {
+			continue;
+		}
+		const key = `${graphPlanSha256}:${graphLayerIndex}`;
+		const firstSequence = sequenceIndex;
+		const existing = graphLayers.get(key);
+		if (!existing || firstSequence < existing.firstSequence) {
+			graphLayers.set(key, { width: graphLayerWidth, firstSequence });
+		}
+	}
+
+	return {
+		evidenceReadCallCount: evidence.length,
+		uniqueExactReadCount: exactKeys.size,
+		exactDuplicateCount,
+		uniqueResourceCount: resourceProjections.size,
+		additionalProjectionCount: [...resourceProjections.values()].reduce(
+			(total, projections) => total + Math.max(projections.size - 1, 0),
+			0
+		),
+		evidenceProviderRoundCount: evidenceRoundWidths.size,
+		controlProviderRoundCount: controlRounds.size,
+		firstCompleteEvidenceRound:
+			firstSuccessfulRoundByExact.size === exactKeys.size && exactKeys.size > 0
+				? Math.max(...firstSuccessfulRoundByExact.values())
+				: null,
+		memoServedCount: evidence.filter((call) => call.memoServed).length,
+		justifiedPostMutationRereadCount,
+		mutationCallCount: calls.filter((call) => call.executionClass === 'mutation').length,
+		replayedMutationCount: calls.filter(
+			(call) => call.executionClass === 'mutation' && call.replayed
+		).length,
+		rejectedCallCount: calls.filter((call) => call.executionClass === 'rejected').length,
+		providerRetryCount,
+		evidenceRoundWidths: [...evidenceRoundWidths.entries()]
+			.sort(([left], [right]) => left - right)
+			.map(([, width]) => width),
+		graphLayerWidths: [...graphLayers.values()]
+			.sort((left, right) => left.firstSequence - right.firstSequence)
+			.map((layer) => layer.width)
+	};
+}
+
+function telemetryRecord(value: unknown): Record<string, unknown> {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
+}
+
+function telemetryText(value: unknown): string | null {
+	return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function telemetryInteger(value: unknown): number | null {
+	return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function telemetrySha256(value: unknown): string | null {
+	return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value) ? value : null;
 }
 
 export function summarizeUsageLogs(rows: LlmUsageLogRow[]): StreamUsageSummary {

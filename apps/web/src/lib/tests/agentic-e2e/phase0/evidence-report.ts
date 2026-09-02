@@ -8,10 +8,12 @@ import type { AgentTimingSummary } from '@buildos/shared-types';
 
 import {
 	getExecutionObservations,
+	summarizeReadPlanningObservations,
 	waitForToolExecutions,
 	waitForTurnRun,
 	waitForUsageSummary,
 	type ExecutionObservationRow,
+	type ReadPlanningSummary,
 	type StreamUsageSummary,
 	type ToolExecutionRow,
 	type TurnRunRow
@@ -26,7 +28,7 @@ import type {
 import type { CheckedTurnOutcome } from '../harness/turn-sequencing';
 import type { AgenticE2EExecutionMode } from '../harness/worker-client';
 
-export const PHASE0_EVIDENCE_SCHEMA_VERSION = 2 as const;
+export const PHASE0_EVIDENCE_SCHEMA_VERSION = 3 as const;
 
 export interface Phase0RepositoryState {
 	root: string;
@@ -101,6 +103,9 @@ export interface Phase0ExecutionObservationEvidence {
 	observedAt: string;
 	round: number | null;
 	logicalProviderRound: number | null;
+	passRole: string | null;
+	providerAttempt: number | null;
+	attemptKind: string | null;
 	routeId: string | null;
 	modelRequested: string | null;
 	modelUsed: string | null;
@@ -112,6 +117,16 @@ export interface Phase0ExecutionObservationEvidence {
 	toolName: string | null;
 	providerToolCallId: string | null;
 	sequenceIndex: number | null;
+	toolBatchIndex: number | null;
+	graphPlanSha256: string | null;
+	graphLayerIndex: number | null;
+	graphLayerWidth: number | null;
+	readEpoch: number | null;
+	executionClass: string | null;
+	exactReadKey: string | null;
+	resourceKey: string | null;
+	memoServed: boolean | null;
+	replayed: boolean | null;
 	usage: Phase0ProviderUsageEvidence | null;
 	/** Present only on attempt rows where the worker rejected a streamed tool call. */
 	rejectedToolName?: string | null;
@@ -152,6 +167,7 @@ export interface Phase0TurnEvidence {
 	toolExecutions: Phase0ToolExecutionEvidence[];
 	controlDecisions: Phase0ControlDecisionEvidence[];
 	executionObservations: Phase0ExecutionObservationEvidence[];
+	readPlanning: ReadPlanningSummary;
 	usage: StreamUsageSummary;
 	turnRun: TurnRunRow | null;
 	persistence: Phase0PersistenceFootprint | null;
@@ -278,9 +294,14 @@ function providerUsageEvidence(value: unknown): Phase0ProviderUsageEvidence | nu
 }
 
 const REJECTED_TOOL_NAME_PATTERN = /^[A-Za-z0-9_.:-]{1,256}$/;
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
 function rejectedToolName(value: unknown): string | null {
 	return typeof value === 'string' && REJECTED_TOOL_NAME_PATTERN.test(value) ? value : null;
+}
+
+function sha256(value: unknown): string | null {
+	return typeof value === 'string' && SHA256_PATTERN.test(value) ? value : null;
 }
 
 export function executionObservationEvidence(
@@ -302,6 +323,9 @@ export function executionObservationEvidence(
 			observedAt: row.observed_at,
 			round: finiteNumber(payload.round),
 			logicalProviderRound: finiteNumber(payload.logical_provider_round),
+			passRole: boundedText(payload.pass_role, 64),
+			providerAttempt: finiteNumber(payload.provider_attempt),
+			attemptKind: boundedText(payload.attempt_kind, 32),
 			routeId: boundedText(payload.route_id),
 			modelRequested: boundedText(payload.model_requested),
 			modelUsed: boundedText(payload.model_used),
@@ -313,6 +337,16 @@ export function executionObservationEvidence(
 			toolName: boundedText(payload.tool_name),
 			providerToolCallId: boundedText(payload.provider_tool_call_id, 512),
 			sequenceIndex: finiteNumber(payload.sequence_index),
+			toolBatchIndex: finiteNumber(payload.tool_batch_index),
+			graphPlanSha256: sha256(payload.graph_plan_sha256),
+			graphLayerIndex: finiteNumber(payload.graph_layer_index),
+			graphLayerWidth: finiteNumber(payload.graph_layer_width),
+			readEpoch: finiteNumber(payload.read_epoch),
+			executionClass: boundedText(payload.execution_class, 32),
+			exactReadKey: sha256(payload.exact_read_key),
+			resourceKey: sha256(payload.resource_key),
+			memoServed: typeof payload.memo_served === 'boolean' ? payload.memo_served : null,
+			replayed: typeof payload.replayed === 'boolean' ? payload.replayed : null,
 			usage: providerUsageEvidence(payload.usage),
 			...rejectedToolEvidence
 		};
@@ -753,6 +787,7 @@ export async function collectPhase0TurnEvidence(params: {
 		toolExecutions: toolExecutionEvidence,
 		controlDecisions: controlDecisionEvidence(toolExecutionEvidence),
 		executionObservations: executionObservationEvidence(executionObservations),
+		readPlanning: summarizeReadPlanningObservations(executionObservations),
 		usage,
 		turnRun,
 		persistence,

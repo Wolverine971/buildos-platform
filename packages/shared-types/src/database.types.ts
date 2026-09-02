@@ -19046,6 +19046,74 @@ export type Database = {
           },
         ]
       }
+      agentic_chat_read_planning_admin_summary: {
+        Row: {
+          additional_projection_count: number | null
+          completion_tokens: number | null
+          control_provider_round_count: number | null
+          created_at: string | null
+          evidence_provider_round_count: number | null
+          evidence_read_call_count: number | null
+          evidence_round_widths: Json | null
+          exact_duplicate_count: number | null
+          execution_generation: number | null
+          finished_at: string | null
+          first_complete_evidence_round: number | null
+          graph_layer_widths: Json | null
+          justified_post_mutation_reread_count: number | null
+          llm_pass_count: number | null
+          memo_served_count: number | null
+          model_routes: Json | null
+          models_used: Json | null
+          mutation_call_count: number | null
+          prompt_snapshot_id: string | null
+          prompt_snapshot_version: string | null
+          prompt_tokens: number | null
+          prompt_variant: string | null
+          provider_duration_ms: number | null
+          provider_retry_count: number | null
+          providers: Json | null
+          rejected_call_count: number | null
+          replayed_mutation_count: number | null
+          stream_run_id: string | null
+          system_prompt_sha256: string | null
+          tool_call_count: number | null
+          tool_round_count: number | null
+          tools_sha256: string | null
+          total_cost_usd: number | null
+          total_tokens: number | null
+          turn_latency_ms: number | null
+          turn_run_id: string | null
+          turn_status: string | null
+          unique_exact_read_count: number | null
+          unique_resource_count: number | null
+          usage_response_time_ms: number | null
+        }
+        Relationships: []
+      }
+      agentic_chat_read_planning_turn_summary: {
+        Row: {
+          additional_projection_count: number | null
+          control_provider_round_count: number | null
+          evidence_provider_round_count: number | null
+          evidence_read_call_count: number | null
+          evidence_round_widths: Json | null
+          exact_duplicate_count: number | null
+          execution_generation: number | null
+          first_complete_evidence_round: number | null
+          graph_layer_widths: Json | null
+          justified_post_mutation_reread_count: number | null
+          memo_served_count: number | null
+          mutation_call_count: number | null
+          provider_retry_count: number | null
+          rejected_call_count: number | null
+          replayed_mutation_count: number | null
+          turn_run_id: string | null
+          unique_exact_read_count: number | null
+          unique_resource_count: number | null
+        }
+        Relationships: []
+      }
       agentic_chat_worker_lifecycle_observations: {
         Row: {
           event_type: string | null

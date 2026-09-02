@@ -3289,6 +3289,92 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
+	it('advances read invalidation telemetry only after a committed mutation', async () => {
+		const harness = createHarness([], {
+			maxToolConcurrency: 3,
+			concurrentReadsEnabled: true,
+			concurrentMutationsEnabled: true
+		});
+		const continueWithToolResults = vi.fn(() =>
+			(async function* () {
+				yield { type: 'text_delta', text: 'The update was verified.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})()
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							logicalProviderRound: 1,
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-read-before-write',
+							toolName: 'fixture_project_read',
+							arguments: { project_id: SHIFT_PROJECT_ID },
+							scheduling: { callRef: 'before', after: [] }
+						} as const;
+						yield {
+							logicalProviderRound: 1,
+							type: 'mutating_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'provider-write-between-reads',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: {
+								task_id: 'db000000-0000-4000-8000-000000000002',
+								state_key: 'in_progress'
+							},
+							downstreamIdempotencySupported: false,
+							scheduling: { callRef: 'write', after: ['before'] }
+						} as const;
+						yield {
+							logicalProviderRound: 1,
+							type: 'read_tool',
+							callTransitionId: THIRD_CALL_TRANSITION_ID,
+							resultTransitionId: THIRD_RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-read-after-write',
+							toolName: 'fixture_project_read',
+							arguments: { project_id: SHIFT_PROJECT_ID },
+							scheduling: { callRef: 'after', after: ['write'] }
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo: vi.fn(),
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			const ended = harness.executionObservationInputs
+				.filter((observation) => observation.eventType === 'tool_execution_ended')
+				.sort(
+					(left, right) =>
+						Number(left.payload.sequence_index) - Number(right.payload.sequence_index)
+				);
+			expect(
+				ended.map((observation) => ({
+					class: observation.payload.execution_class,
+					epoch: observation.payload.read_epoch,
+					status: observation.payload.status
+				}))
+			).toEqual([
+				{ class: 'evidence_read', epoch: 0, status: 'success' },
+				{ class: 'mutation', epoch: 0, status: 'success' },
+				{ class: 'evidence_read', epoch: 1, status: 'success' }
+			]);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('invalidates provider read memo before a mutation that fails uncertain', async () => {
 		const harness = createHarness([], {
 			recovery: [

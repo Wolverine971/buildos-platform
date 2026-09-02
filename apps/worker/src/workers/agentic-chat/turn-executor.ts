@@ -112,6 +112,7 @@ import {
 	executeAgenticChatToolExecutionGraphV1
 } from './toolExecutionGraph';
 import { resolveAgenticChatToolExecutionPolicyV1 } from './toolExecutionPolicy';
+import { deriveAgenticChatReadPlanningIdentityV1 } from './readPlanningTelemetry';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
@@ -220,6 +221,16 @@ type AgenticChatExecutableToolStepV1 = Extract<
 type AgenticChatPendingToolExecutionV1 = {
 	step: AgenticChatExecutableToolStepV1;
 	sequenceIndex: number;
+};
+
+type AgenticChatReadInvalidationEpochStateV1 = { value: number };
+
+type AgenticChatReadPlanningContextV1 = {
+	toolBatchIndex: number;
+	graphPlanSha256: string | null;
+	graphLayerIndex: number;
+	graphLayerWidth: number;
+	readEpoch: number;
 };
 
 type TerminalClaim = Pick<
@@ -537,6 +548,7 @@ export class AgenticChatTurnExecutor {
 			let synthesisStarted = false;
 			let toolCallCount = 0;
 			let continuationRounds = 0;
+			const readInvalidationEpoch: AgenticChatReadInvalidationEpochStateV1 = { value: 0 };
 			let roundHadToolExecution = false;
 			const markToolExecution = () => {
 				if (roundHadToolExecution) return;
@@ -696,6 +708,10 @@ export class AgenticChatTurnExecutor {
 									terminalContext,
 									step,
 									sequenceIndex,
+									standaloneReadPlanningContext(
+										continuationRounds + 1,
+										readInvalidationEpoch.value
+									),
 									markToolExecution,
 									combined.signal
 								)
@@ -746,6 +762,10 @@ export class AgenticChatTurnExecutor {
 								terminalContext,
 								step,
 								sequenceIndex,
+								standaloneReadPlanningContext(
+									continuationRounds + 1,
+									readInvalidationEpoch.value
+								),
 								markToolExecution,
 								combined.signal
 							);
@@ -758,6 +778,10 @@ export class AgenticChatTurnExecutor {
 								terminalContext,
 								step,
 								sequenceIndex,
+								standaloneReadPlanningContext(
+									continuationRounds + 1,
+									readInvalidationEpoch.value
+								),
 								markToolExecution,
 								combined.signal
 							);
@@ -797,6 +821,7 @@ export class AgenticChatTurnExecutor {
 						}
 						const sequenceIndex = this.reserveToolSequenceIndex(terminalContext, step);
 						if (!preparedProvider?.continueWithToolResults) {
+							preparedProvider?.invalidateReadMemo?.();
 							pendingToolResults.push(
 								await this.executeMutatingTool(
 									executionInput,
@@ -805,6 +830,11 @@ export class AgenticChatTurnExecutor {
 									terminalContext,
 									step,
 									sequenceIndex,
+									standaloneReadPlanningContext(
+										continuationRounds + 1,
+										readInvalidationEpoch.value
+									),
+									readInvalidationEpoch,
 									markToolExecution,
 									combined.signal
 								)
@@ -842,6 +872,7 @@ export class AgenticChatTurnExecutor {
 						pendingToolExecutions.splice(0, pendingToolExecutions.length),
 						continuationRounds + 1,
 						preparedProvider,
+						readInvalidationEpoch,
 						markToolExecution,
 						combined.signal
 					);
@@ -1208,6 +1239,7 @@ export class AgenticChatTurnExecutor {
 		pending: readonly AgenticChatPendingToolExecutionV1[],
 		providerRound: number,
 		preparedProvider: AgenticChatPreparedProviderInvocationV1 | null,
+		readInvalidationEpoch: AgenticChatReadInvalidationEpochStateV1,
 		markToolExecution: () => void,
 		signal: AbortSignal
 	): Promise<AgenticChatProviderToolSynthesisInputV1[]> {
@@ -1259,6 +1291,17 @@ export class AgenticChatTurnExecutor {
 		}
 
 		const batchStartedAt = Date.now();
+		const graphLayerByCallId = new Map(
+			graph.layers.flatMap((layer) =>
+				layer.providerToolCallIds.map(
+					(providerToolCallId) =>
+						[
+							providerToolCallId,
+							{ index: layer.index, width: layer.providerToolCallIds.length }
+						] as const
+				)
+			)
+		);
 		const run =
 			await executeAgenticChatToolExecutionGraphV1<AgenticChatProviderToolSynthesisInputV1>({
 				graph,
@@ -1266,13 +1309,28 @@ export class AgenticChatTurnExecutor {
 				signal,
 				isSuccessfulResult: (feedback) => !isFailedToolSynthesisInput(feedback),
 				onBeforeLayer: ({ containsMutation }) => {
-					if (containsMutation) preparedProvider?.invalidateReadMemo?.();
+					if (containsMutation) {
+						preparedProvider?.invalidateReadMemo?.();
+					}
 				},
 				executeCall: (call, callSignal) => {
 					const entry = pendingByCallId.get(call.providerToolCallId);
 					if (!entry)
 						throw new Error(`Tool execution batch lost ${call.providerToolCallId}`);
 					const step = { ...entry.step, arguments: call.arguments };
+					const graphLayer = graphLayerByCallId.get(call.providerToolCallId);
+					if (!graphLayer) {
+						throw new Error(
+							`Tool execution graph lost layer metadata for ${call.providerToolCallId}`
+						);
+					}
+					const planning = {
+						toolBatchIndex: providerRound,
+						graphPlanSha256: graph.canonicalPlanSha256,
+						graphLayerIndex: graphLayer.index,
+						graphLayerWidth: graphLayer.width,
+						readEpoch: readInvalidationEpoch.value
+					};
 					if (step.type === 'read_tool') {
 						return this.executeReadTool(
 							job,
@@ -1282,6 +1340,7 @@ export class AgenticChatTurnExecutor {
 							terminalContext,
 							step,
 							entry.sequenceIndex,
+							planning,
 							markToolExecution,
 							callSignal
 						) as Promise<AgenticChatProviderToolSynthesisInputV1>;
@@ -1294,6 +1353,8 @@ export class AgenticChatTurnExecutor {
 							terminalContext,
 							step,
 							entry.sequenceIndex,
+							planning,
+							readInvalidationEpoch,
 							markToolExecution,
 							callSignal
 						);
@@ -1305,6 +1366,7 @@ export class AgenticChatTurnExecutor {
 						terminalContext,
 						step,
 						entry.sequenceIndex,
+						planning,
 						markToolExecution,
 						callSignal
 					);
@@ -1377,6 +1439,21 @@ export class AgenticChatTurnExecutor {
 					entry.step,
 					entry.sequenceIndex,
 					result.blockedBy,
+					(() => {
+						const layer = graphLayerByCallId.get(result.providerToolCallId);
+						if (!layer) {
+							throw new Error(
+								`Tool execution graph lost layer metadata for ${result.providerToolCallId}`
+							);
+						}
+						return {
+							toolBatchIndex: providerRound,
+							graphPlanSha256: graph.canonicalPlanSha256,
+							graphLayerIndex: layer.index,
+							graphLayerWidth: layer.width,
+							readEpoch: readInvalidationEpoch.value
+						};
+					})(),
 					markToolExecution,
 					signal
 				)
@@ -1422,6 +1499,8 @@ export class AgenticChatTurnExecutor {
 		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatTurnProviderStepV1, { type: 'mutating_tool' }>,
 		sequenceIndex: number,
+		planning: AgenticChatReadPlanningContextV1,
+		readInvalidationEpoch: AgenticChatReadInvalidationEpochStateV1,
 		markToolExecution: () => void,
 		signal: AbortSignal
 	): Promise<
@@ -1464,6 +1543,21 @@ export class AgenticChatTurnExecutor {
 			},
 			signal
 		);
+		const mutationStartedAt = Date.now();
+		await this.observeToolExecution(
+			executionInput,
+			processingToken,
+			step,
+			sequenceIndex,
+			planning,
+			'tool_execution_started',
+			{
+				tool_name: step.toolName,
+				provider_tool_call_id: step.providerToolCallId,
+				sequence_index: sequenceIndex
+			},
+			signal
+		);
 		let mutation;
 		try {
 			mutation = await this.ports.mutation.execute({
@@ -1484,6 +1578,24 @@ export class AgenticChatTurnExecutor {
 				!(error instanceof AgenticChatEffectExecutionError) ||
 				error.failureClass !== 'permanent'
 			) {
+				await this.observeToolExecution(
+					executionInput,
+					processingToken,
+					step,
+					sequenceIndex,
+					planning,
+					'tool_execution_ended',
+					{
+						tool_name: step.toolName,
+						provider_tool_call_id: step.providerToolCallId,
+						sequence_index: sequenceIndex,
+						status: signal.aborted ? 'aborted' : 'failure',
+						duration_ms: elapsedMs(mutationStartedAt),
+						error_code: executionErrorCode(error, signal),
+						replayed: false
+					},
+					signal
+				);
 				throw error;
 			}
 			return this.persistKnownMutationFailure(
@@ -1494,6 +1606,8 @@ export class AgenticChatTurnExecutor {
 				step,
 				error,
 				sequenceIndex,
+				planning,
+				mutationStartedAt,
 				markToolExecution,
 				signal
 			);
@@ -1533,6 +1647,10 @@ export class AgenticChatTurnExecutor {
 			result: mutation.downstreamReceipt,
 			success: true
 		};
+		// Advance only after the committed mutation receipt is durable. Reads in
+		// the same concurrent layer remain on the pre-mutation snapshot; later
+		// layers and provider rounds are attributed to the invalidated epoch.
+		readInvalidationEpoch.value += 1;
 		this.recordTerminalToolExecution(
 			terminalContext,
 			sequenceIndex,
@@ -1540,6 +1658,24 @@ export class AgenticChatTurnExecutor {
 			chatToolResult
 		);
 		markToolExecution();
+		await this.observeToolExecution(
+			executionInput,
+			processingToken,
+			step,
+			sequenceIndex,
+			planning,
+			'tool_execution_ended',
+			{
+				tool_name: step.toolName,
+				provider_tool_call_id: step.providerToolCallId,
+				sequence_index: sequenceIndex,
+				status: 'success',
+				duration_ms: elapsedMs(mutationStartedAt),
+				error_code: null,
+				replayed: mutation.replayed
+			},
+			signal
+		);
 		const contextShift = extractContextShiftPayload(chatToolResult);
 		if (contextShift) {
 			await this.persistSessionHandoff(executionInput, processingToken, contextShift);
@@ -1626,6 +1762,8 @@ export class AgenticChatTurnExecutor {
 		step: Extract<AgenticChatTurnProviderStepV1, { type: 'mutating_tool' }>,
 		error: AgenticChatEffectExecutionError,
 		sequenceIndex: number,
+		planning: AgenticChatReadPlanningContextV1,
+		mutationStartedAt: number,
 		markToolExecution: () => void,
 		signal: AbortSignal
 	): Promise<AgenticChatProviderFailedToolSynthesisInputV1> {
@@ -1668,6 +1806,24 @@ export class AgenticChatTurnExecutor {
 			chatToolResult
 		);
 		markToolExecution();
+		await this.observeToolExecution(
+			executionInput,
+			processingToken,
+			step,
+			sequenceIndex,
+			planning,
+			'tool_execution_ended',
+			{
+				tool_name: step.toolName,
+				provider_tool_call_id: step.providerToolCallId,
+				sequence_index: sequenceIndex,
+				status: 'failure',
+				duration_ms: elapsedMs(mutationStartedAt),
+				error_code: 'known_mutation_failure',
+				replayed: false
+			},
+			signal
+		);
 		throwIfAborted(signal);
 		await this.publishSemantic(
 			executionInput,
@@ -1712,6 +1868,7 @@ export class AgenticChatTurnExecutor {
 		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatTurnProviderStepV1, { type: 'pre_execution_tool_failure' }>,
 		sequenceIndex: number,
+		planning: AgenticChatReadPlanningContextV1,
 		markToolExecution: () => void,
 		signal: AbortSignal
 	): Promise<AgenticChatProviderFailedToolSynthesisInputV1> {
@@ -1801,6 +1958,23 @@ export class AgenticChatTurnExecutor {
 			chatToolResult
 		);
 		markToolExecution();
+		await this.observeToolExecution(
+			executionInput,
+			processingToken,
+			step,
+			sequenceIndex,
+			planning,
+			'tool_execution_ended',
+			{
+				tool_name: step.toolName,
+				provider_tool_call_id: step.providerToolCallId,
+				sequence_index: sequenceIndex,
+				status: 'failure',
+				duration_ms: 0,
+				error_code: 'supervisor_block'
+			},
+			signal
+		);
 		throwIfAborted(signal);
 		await this.publishSemantic(
 			executionInput,
@@ -1842,6 +2016,7 @@ export class AgenticChatTurnExecutor {
 		step: AgenticChatExecutableToolStepV1,
 		sequenceIndex: number,
 		blockedBy: readonly string[],
+		planning: AgenticChatReadPlanningContextV1,
 		markToolExecution: () => void,
 		signal: AbortSignal
 	): Promise<AgenticChatProviderFailedToolSynthesisInputV1> {
@@ -1907,6 +2082,23 @@ export class AgenticChatTurnExecutor {
 			chatToolResult
 		);
 		markToolExecution();
+		await this.observeToolExecution(
+			executionInput,
+			processingToken,
+			step,
+			sequenceIndex,
+			planning,
+			'tool_execution_ended',
+			{
+				tool_name: step.toolName,
+				provider_tool_call_id: step.providerToolCallId,
+				sequence_index: sequenceIndex,
+				status: 'failure',
+				duration_ms: 0,
+				error_code: 'dependency_failed'
+			},
+			signal
+		);
 		await this.publishSemantic(
 			executionInput,
 			projection,
@@ -1953,6 +2145,7 @@ export class AgenticChatTurnExecutor {
 		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' }>,
 		sequenceIndex: number,
+		planning: AgenticChatReadPlanningContextV1,
 		markToolExecution: () => void,
 		signal: AbortSignal
 	): Promise<AgenticChatProviderReadSynthesisInputV1 | null> {
@@ -1989,7 +2182,7 @@ export class AgenticChatTurnExecutor {
 		);
 		throwIfAborted(signal);
 		if (step.validationFailure) {
-			return this.persistReadValidationFailure(
+			const result = await this.persistReadValidationFailure(
 				executionInput,
 				processingToken,
 				projection,
@@ -1998,6 +2191,24 @@ export class AgenticChatTurnExecutor {
 				sequenceIndex,
 				signal
 			);
+			await this.observeToolExecution(
+				executionInput,
+				processingToken,
+				step,
+				sequenceIndex,
+				planning,
+				'tool_execution_ended',
+				{
+					tool_name: step.toolName,
+					provider_tool_call_id: step.providerToolCallId,
+					sequence_index: sequenceIndex,
+					status: 'failure',
+					duration_ms: 0,
+					error_code: 'validation_failure'
+				},
+				signal
+			);
+			return result;
 		}
 		const readStartedAt = Date.now();
 		await this.observeToolExecution(
@@ -2005,6 +2216,7 @@ export class AgenticChatTurnExecutor {
 			processingToken,
 			step,
 			sequenceIndex,
+			planning,
 			'tool_execution_started',
 			{
 				tool_name: step.toolName,
@@ -2052,6 +2264,7 @@ export class AgenticChatTurnExecutor {
 					processingToken,
 					step,
 					sequenceIndex,
+					planning,
 					'tool_execution_ended',
 					{
 						tool_name: step.toolName,
@@ -2117,6 +2330,7 @@ export class AgenticChatTurnExecutor {
 				processingToken,
 				step,
 				sequenceIndex,
+				planning,
 				'tool_execution_ended',
 				{
 					tool_name: step.toolName,
@@ -2167,6 +2381,7 @@ export class AgenticChatTurnExecutor {
 			processingToken,
 			step,
 			sequenceIndex,
+			planning,
 			'tool_execution_ended',
 			{
 				tool_name: step.toolName,
@@ -2354,13 +2569,38 @@ export class AgenticChatTurnExecutor {
 	private async observeToolExecution(
 		executionInput: AgenticChatWorkerExecutionInputV1,
 		processingToken: string,
-		step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' }>,
+		step: AgenticChatExecutableToolStepV1,
 		sequenceIndex: number,
+		planning: AgenticChatReadPlanningContextV1,
 		eventType: 'tool_execution_started' | 'tool_execution_ended',
 		payload: JsonObject,
 		signal: AbortSignal
 	): Promise<void> {
 		if (!this.ports.executionObservations) return;
+		const identity =
+			step.type === 'read_tool'
+				? deriveAgenticChatReadPlanningIdentityV1({
+						toolName: step.toolName,
+						arguments: step.arguments,
+						...(step.decidedBy ? { decidedBy: step.decidedBy } : {})
+					})
+				: {
+						executionClass: step.type === 'mutating_tool' ? 'mutation' : 'rejected',
+						exactReadKey: null,
+						resourceKey: null
+					};
+		const planningPayload: JsonObject = {
+			logical_provider_round: step.logicalProviderRound,
+			tool_batch_index: planning.toolBatchIndex,
+			graph_layer_index: planning.graphLayerIndex,
+			graph_layer_width: planning.graphLayerWidth,
+			read_epoch: planning.readEpoch,
+			execution_class: identity.executionClass,
+			memo_served: step.type === 'read_tool' && Boolean(step.memoServed),
+			...(planning.graphPlanSha256 ? { graph_plan_sha256: planning.graphPlanSha256 } : {}),
+			...(identity.exactReadKey ? { exact_read_key: identity.exactReadKey } : {}),
+			...(identity.resourceKey ? { resource_key: identity.resourceKey } : {})
+		};
 		try {
 			await runWithAbortableDeadline({
 				parentSignal: signal,
@@ -2382,7 +2622,7 @@ export class AgenticChatTurnExecutor {
 							}),
 							phase: 'tool',
 							eventType,
-							payload
+							payload: { ...payload, ...planningPayload }
 						},
 						deadlineSignal
 					)
@@ -3763,6 +4003,19 @@ function canonicalBoundaryLabel(value: unknown, maximum: number): string | null 
 
 function elapsedMs(startedAt: number): number {
 	return Math.min(2_147_483_647, Math.max(0, Date.now() - startedAt));
+}
+
+function standaloneReadPlanningContext(
+	toolBatchIndex: number,
+	readEpoch: number
+): AgenticChatReadPlanningContextV1 {
+	return {
+		toolBatchIndex,
+		graphPlanSha256: null,
+		graphLayerIndex: 0,
+		graphLayerWidth: 1,
+		readEpoch
+	};
 }
 
 function isSemanticReviewStart(

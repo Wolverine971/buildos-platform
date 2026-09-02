@@ -99,6 +99,9 @@ function turn(overrides: Partial<Phase0TurnEvidence> = {}): Phase0TurnEvidence {
 				observedAt: '2026-07-30T12:00:00.400Z',
 				round: 1,
 				logicalProviderRound: 1,
+				passRole: 'acting',
+				providerAttempt: 1,
+				attemptKind: 'primary',
 				routeId: 'route-a',
 				modelRequested: 'model-a',
 				modelUsed: 'model-a',
@@ -110,6 +113,16 @@ function turn(overrides: Partial<Phase0TurnEvidence> = {}): Phase0TurnEvidence {
 				toolName: null,
 				providerToolCallId: null,
 				sequenceIndex: null,
+				toolBatchIndex: null,
+				graphPlanSha256: null,
+				graphLayerIndex: null,
+				graphLayerWidth: null,
+				readEpoch: null,
+				executionClass: null,
+				exactReadKey: null,
+				resourceKey: null,
+				memoServed: null,
+				replayed: null,
 				usage: {
 					promptTokens: 100,
 					completionTokens: 20,
@@ -120,6 +133,24 @@ function turn(overrides: Partial<Phase0TurnEvidence> = {}): Phase0TurnEvidence {
 				}
 			}
 		],
+		readPlanning: {
+			evidenceReadCallCount: 0,
+			uniqueExactReadCount: 0,
+			exactDuplicateCount: 0,
+			uniqueResourceCount: 0,
+			additionalProjectionCount: 0,
+			evidenceProviderRoundCount: 0,
+			controlProviderRoundCount: 0,
+			firstCompleteEvidenceRound: null,
+			memoServedCount: 0,
+			justifiedPostMutationRereadCount: 0,
+			mutationCallCount: 0,
+			replayedMutationCount: 0,
+			rejectedCallCount: 0,
+			providerRetryCount: 0,
+			evidenceRoundWidths: [],
+			graphLayerWidths: []
+		},
 		usage: {
 			requestCount: 1,
 			promptTokens: 100,
@@ -269,7 +300,7 @@ describe('Phase 0 evidence report', () => {
 			retainedBytesPerTurn: { samples: 2, p50: 2_000, p95: 3_000 },
 			executionObservationsPerTurn: { samples: 2, p50: 1, p95: 1 }
 		});
-		expect(report.schemaVersion).toBe(2);
+		expect(report.schemaVersion).toBe(3);
 		expect(report.configuration.executionMode).toBe('legacy_sse');
 		expect(report.limitations.join(' ')).toContain('not a PostgreSQL WAL');
 		expect(report.limitations.join(' ')).toContain('rejected tool name');
@@ -302,6 +333,9 @@ describe('executionObservationEvidence', () => {
 	const attempt = {
 		round: 'initial',
 		logical_provider_round: 1,
+		pass_role: 'acting',
+		provider_attempt: 1,
+		attempt_kind: 'primary',
 		route_id: 'route-a',
 		model_requested: 'model-a',
 		model_used: 'model-a',
@@ -357,5 +391,44 @@ describe('executionObservationEvidence', () => {
 			}
 		]);
 		expect(evidence).toMatchObject({ rejectedToolName: null, advertisedToolCount: 3 });
+	});
+
+	it('projects only bounded, content-free read-planning metadata', () => {
+		const exactReadKey = 'a'.repeat(64);
+		const resourceKey = 'b'.repeat(64);
+		const graphPlanSha256 = 'c'.repeat(64);
+		const [evidence] = executionObservationEvidence([
+			{
+				...base,
+				phase: 'tool',
+				event_type: 'tool_execution_ended',
+				payload: {
+					tool_name: 'read_document_section',
+					logical_provider_round: 2,
+					tool_batch_index: 2,
+					graph_plan_sha256: graphPlanSha256,
+					graph_layer_index: 0,
+					graph_layer_width: 3,
+					read_epoch: 0,
+					execution_class: 'evidence_read',
+					exact_read_key: exactReadKey,
+					resource_key: resourceKey,
+					memo_served: false
+				}
+			}
+		]);
+
+		expect(evidence).toMatchObject({
+			logicalProviderRound: 2,
+			toolBatchIndex: 2,
+			graphPlanSha256,
+			graphLayerIndex: 0,
+			graphLayerWidth: 3,
+			readEpoch: 0,
+			executionClass: 'evidence_read',
+			exactReadKey,
+			resourceKey,
+			memoServed: false
+		});
 	});
 });

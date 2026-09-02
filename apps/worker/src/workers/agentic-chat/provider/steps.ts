@@ -46,11 +46,11 @@ export function buildPlanningStep(
 }
 
 export function buildReadToolStep(
-	turnRunId: string,
+	request: AgenticChatTurnProviderRequestV1,
 	call: CompletedProviderToolCall,
 	memoServed: AgenticChatReadToolExecutionV1 | null = null
 ): Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> {
-	const base = buildReadToolStepBase(turnRunId, call);
+	const base = buildReadToolStepBase(request, call);
 	return memoServed ? { ...base, memoServed } : base;
 }
 
@@ -92,7 +92,7 @@ export function normalizeCompletedProviderCalls(
 }
 
 export function buildProviderToolStep(
-	turnRunId: string,
+	request: AgenticChatTurnProviderRequestV1,
 	call: AgenticChatFeedbackToolCall,
 	context: ProviderToolStepContext
 ): AgenticChatProviderStepV1 {
@@ -100,14 +100,15 @@ export function buildProviderToolStep(
 	if (call.supervisorFailure) {
 		return {
 			...scheduling,
+			logicalProviderRound: request.logicalProviderRound,
 			type: 'pre_execution_tool_failure',
 			callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-				turnRunId,
+				turnRunId: request.turnRunId,
 				providerToolCallId: call.id,
 				stage: 'call'
 			}),
 			resultTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-				turnRunId,
+				turnRunId: request.turnRunId,
 				providerToolCallId: call.id,
 				stage: 'result'
 			}),
@@ -123,18 +124,19 @@ export function buildProviderToolStep(
 		};
 	}
 	if (call.kind === 'read') {
-		return buildReadToolStep(turnRunId, call, context.resolveMemoServed(call));
+		return buildReadToolStep(request, call, context.resolveMemoServed(call));
 	}
 	return {
 		...scheduling,
+		logicalProviderRound: request.logicalProviderRound,
 		type: 'mutating_tool',
 		callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-			turnRunId,
+			turnRunId: request.turnRunId,
 			providerToolCallId: call.id,
 			stage: 'call'
 		}),
 		resultTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-			turnRunId,
+			turnRunId: request.turnRunId,
 			providerToolCallId: call.id,
 			stage: 'result'
 		}),
@@ -148,12 +150,12 @@ export function buildProviderToolStep(
 }
 
 export function buildValidationFailureReadToolStep(
-	turnRunId: string,
+	request: AgenticChatTurnProviderRequestV1,
 	call: CompletedProviderToolCall,
 	issues: ToolValidationIssue[]
 ): Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> {
 	return {
-		...buildReadToolStepBase(turnRunId, call),
+		...buildReadToolStepBase(request, call),
 		validationFailure: {
 			error: validationFailureError(issues),
 			toolCategory: TOOL_METADATA[call.name]?.category ?? null
@@ -161,17 +163,21 @@ export function buildValidationFailureReadToolStep(
 	};
 }
 
-function buildReadToolStepBase(turnRunId: string, call: CompletedProviderToolCall) {
+function buildReadToolStepBase(
+	request: AgenticChatTurnProviderRequestV1,
+	call: CompletedProviderToolCall
+) {
 	return {
 		...(call.scheduling ? { scheduling: call.scheduling } : {}),
+		logicalProviderRound: request.logicalProviderRound,
 		type: 'read_tool',
 		callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-			turnRunId,
+			turnRunId: request.turnRunId,
 			providerToolCallId: call.id,
 			stage: 'call'
 		}),
 		resultTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-			turnRunId,
+			turnRunId: request.turnRunId,
 			providerToolCallId: call.id,
 			stage: 'result'
 		}),
