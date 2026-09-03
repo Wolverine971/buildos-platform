@@ -4,7 +4,7 @@
 
 **Created:** 2026-09-02
 
-**Status:** In progress — WP-0 locally complete; CI receipt pending push
+**Status:** In progress — WP-0 closed with a baseline-CI exception; WP-1 reporting underway
 
 **Priority:** P1 (WP-1 gates the paid-launch proof in Tracker 78; WP-2 removes the last second
 chat harness)
@@ -68,7 +68,7 @@ committed in `f28e8f7bc` and deployed. Three things are still true:
 
 - Re-ran the disposable PostgreSQL recovery lane on PostgreSQL 16.13 with
   `pnpm --filter @buildos/web exec vitest run
-  src/lib/services/agentic-chat-v2/phase2b-execution-recovery.postgres.test.ts`: **3/3 tests
+src/lib/services/agentic-chat-v2/phase2b-execution-recovery.postgres.test.ts`: **3/3 tests
   passed**, including `recovery_backoff_seconds_ok` for all eight throttle, timeout, and
   infrastructure timing cases. The 69-line timing block is already committed in
   `d9b98ea703c0cac51ba9ca4c6fb59f8b0861945d`; no corrective SQL change was needed.
@@ -78,9 +78,13 @@ committed in `f28e8f7bc` and deployed. Three things are still true:
 - Vercel has no `AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED` variable in any environment. Railway had
   the variable on the production `agentic-chat-worker`; deleted that exact key and re-read the
   service variables to confirm it is absent. The production worker remained healthy.
-- GitHub has no checks for `d9b98ea70` because local `main` is one commit ahead of `origin/main`.
-  WP-0's CI clause remains pending until that existing commit is pushed and the `CI / Typecheck,
-  lint, test` job succeeds. Per the sequential gate, WP-1 has not started.
+- DJ pushed `8aa735dc6`; Vercel and the Railway `agentic-chat-worker` both deployed that SHA and
+  reached their healthy/ready states. GitHub run `33786349699` stopped in `Verify repository
+contract` on the same existing `@buildos/web#typecheck:tests` failures present on the prior
+  deployed SHA's run (`33704816554`), before the workflow reached `turbo test:run`. Therefore the
+  SQL lane is green locally but has no CI execution receipt. DJ asked work to continue once the
+  deployment was healthy, so this is recorded as a baseline-CI exception rather than expanding
+  WP-0 into the unrelated repository typecheck backlog.
 
 ## WP-1 — Production proof of the fixes (this week; the gate for WP-2 and WP-4)
 
@@ -123,6 +127,25 @@ Tracker 78 evidence packet for chat.
 **Exit:** first report committed with ≥7 days of post-deploy data; every metric has a number; any
 metric missing its target becomes a numbered defect in this file with an owner package (WP-2..6)
 or a new tracker.
+
+### WP-1 implementation receipt — 2026-09-03 (provisional)
+
+- Added the re-runnable, read-only `pnpm agentic:health --since <iso> [--until <iso>] [--user
+<id>]` report under `apps/web/scripts/agentic-health/`. It paginates production `select` queries,
+  prints all audit metrics and telemetry holes, and writes aggregate-only JSON under the
+  gitignored `apps/web/output/agentic-health/` directory by default. It does not persist message
+  text, emails, credentials, user IDs, or turn IDs.
+- The focused metric suite is green: **2/2 tests**. It covers retry recovery, inferred surface
+  repairs, reviewer cache/latency/spend, direct vs contract lanes and the restraint canary,
+  partial-write disclosure, sanitizer changes, skill preloads, delegation, throttle delay,
+  worker latency, telemetry holes, and the legacy-lane proxy.
+- The first strict post-deploy read (`2026-09-03T17:44:36Z` through
+  `2026-09-03T18:03:47Z`) completed successfully but contained zero turns. A wider all-user smoke
+  window from 2026-09-02 exercised every production join across 29 turns; it is deliberately not
+  acceptance evidence because it includes pre-deploy data.
+- WP-1 remains open until at least `2026-09-10T17:44:36Z`, when a single-user report can contain
+  seven full post-deploy days and its table can be pasted here. The ambitious interactive page and
+  nightly refresh are paused at the explicit DJ decision fork.
 
 ## WP-2 — Retire the legacy web chat lane (the big one)
 

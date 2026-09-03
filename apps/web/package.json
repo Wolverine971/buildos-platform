@@ -53,6 +53,7 @@
 		"test:agentic:modal:wiring": "playwright test --config playwright.config.agentic.ts --grep @wiring",
 		"test:agentic:modal:live": "playwright test --config playwright.config.agentic.ts --grep @live",
 		"compare:agentic-evidence": "node scripts/agentic-e2e/compare-evidence.mjs",
+		"agentic:health": "node scripts/agentic-health/index.mjs",
 		"gen:embeddings": "node --import tsx scripts/generate-embeddings.ts",
 		"gen:sctx": "node --import tsx scripts/generateStreamlinedProjectContext.ts . -o ./docs/development/sproject-context.json",
 		"gen:blog-context": "node --import tsx scripts/generate-blog-context.ts",

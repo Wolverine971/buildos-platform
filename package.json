@@ -13,6 +13,7 @@
 		"test:sql-contracts": "node scripts/database/run-sql-contracts.mjs",
 		"test:agentic-chat-read-canary": "node --import tsx --test scripts/lib/agentic-chat-read-canary.test.ts",
 		"verify:agentic-chat-read-canary": "node --import tsx scripts/verify-agentic-chat-read-canary.ts",
+		"agentic:health": "pnpm --filter @buildos/web agentic:health",
 		"lint": "turbo lint",
 		"lint:fix": "turbo lint:fix",
 		"typecheck": "turbo typecheck",
