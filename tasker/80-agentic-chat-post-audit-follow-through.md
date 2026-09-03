@@ -4,7 +4,8 @@
 
 **Created:** 2026-09-02
 
-**Status:** In progress — WP-0 closed with a baseline-CI exception; WP-1 reporting underway
+**Status:** In progress — WP-0 closed with a baseline-CI exception; WP-1 seven-day window maturing;
+WP-2 phase 1 shared-credential prerequisite implemented
 
 **Priority:** P1 (WP-1 gates the paid-launch proof in Tracker 78; WP-2 removes the last second
 chat harness)
@@ -32,6 +33,8 @@ committed in `f28e8f7bc` and deployed. Three things are still true:
 
 - Work the packages **in order**; each one's exit criteria gate the next. Do not start WP-2 until
   WP-1's report exists, and do not start WP-4 until WP-1 has seven days of data.
+  **DJ override (2026-09-03):** start WP-2 phase 1 while waiting for the seven-day report.
+  WP-1 acceptance and the WP-4 gate remain unchanged.
 - Before each package, re-read the audit §11 row(s) it touches and the lane report it cites. The
   point-in-time appendices live in
   `docs/technical/reviews/agentic-chat-turn-executor-audit-2026-09-02/`.
@@ -146,6 +149,10 @@ or a new tracker.
 - WP-1 remains open until at least `2026-09-10T17:44:36Z`, when a single-user report can contain
   seven full post-deploy days and its table can be pasted here. DJ chose the lean report on
   2026-09-03, so no interactive page or nightly refresh will be built.
+- A one-time Codex task follow-up (`agentic-chat-seven-day-proof`) is active for
+  **2026-09-10 at 14:00 America/New_York (18:00 UTC)**, after the acceptance window matures.
+  It will run the single-user report, commit aggregate evidence and the metric table, and assign
+  missed targets to numbered defects; it is not a nightly refresh or an acceptance receipt.
 
 ## WP-2 — Retire the legacy web chat lane (the big one)
 
@@ -196,6 +203,38 @@ Do it in four phases, each shippable:
 **Exit:** every chat context type executes on the worker; the four deletions are in; WP-1 shows
 zero renegotiations and calendar/email turns inside the same failure and latency bounds as project
 turns.
+
+### WP-2 phase 1 prerequisite receipt — 2026-09-03
+
+- DJ authorized starting the next package while the seven-day report matures. Calendar remains
+  first; the phase 2 email decision has not been made.
+- The existing `AgentRunCalendarPort` only handles legacy single-account credentials. The worker
+  composition root deliberately refuses that fallback when source-aware connections exist.
+  Reusing it unchanged would not preserve the web's multi-account authorization and token rotation.
+- Extracted the web's existing authenticated credential loading and refresh into
+  `@buildos/shared-agent-ops/calendar/google-calendar-credential.service`, plus its source-bound
+  AES-GCM token encryption into `calendar/google-calendar-token-crypto`. Web now delegates to
+  this implementation; workers can import the same implementation without SvelteKit environment
+  modules. Host-specific OAuth clients and encryption-key lookup are injected.
+- Preserved the versioned ciphertext format, exact user/connection ownership lookup, both OAuth
+  client kinds, refresh audience/account/scope checks, durable encrypted token rotation, reconnect
+  auditing, and disconnect/account-deletion cache invalidation. No migration or production data
+  write was needed.
+- Validation: **229/229 shared-agent-ops tests**, including **22 new credential/crypto tests**;
+  shared package typecheck and CJS/ESM/declaration build; **17/17 existing web credential/crypto
+  tests** plus **43/43 calendar consumer tests**; full web check (**0 errors, 0 warnings**);
+  full web lint/guardrails, worker typecheck, formatting, and documentation health. A plain Node
+  import from the worker package resolves the built credential service successfully.
+- The full web suite finished with **4,301 passing / 2 failing tests** (658 passing / 2 failing
+  files). The failures are the catalog-fitness snapshot and deterministic tool-surface size cap:
+  `project_create_minimal` measures 13,835 characters against a 13,530 cap. The catalog, snapshots,
+  and size-report inputs match HEAD; `d9b98ea70` already expanded `declare_turn_contract` by 320
+  serialized characters. These baseline failures are recorded, not fixed by changing unrelated
+  prompt budgets or snapshots in this credential extraction.
+- This is a shippable prerequisite, **not phase 1 completion**. All seven calendar tools remain
+  unavailable to agentic-chat workers, and admission/routing is unchanged. Next: reuse the web's
+  source-aware target/read/write/project-calendar behavior behind worker adapters, promote the
+  reviewed tool contracts together, and prove a calendar turn through the harness and WP-1 report.
 
 ## WP-3 — Resumable turns
 

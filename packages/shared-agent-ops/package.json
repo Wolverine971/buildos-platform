@@ -177,6 +177,16 @@
 			"import": "./dist/calendar/agent-run-calendar-port.mjs",
 			"require": "./dist/calendar/agent-run-calendar-port.js"
 		},
+		"./calendar/google-calendar-credential.service": {
+			"types": "./dist/calendar/google-calendar-credential.service.d.ts",
+			"import": "./dist/calendar/google-calendar-credential.service.mjs",
+			"require": "./dist/calendar/google-calendar-credential.service.js"
+		},
+		"./calendar/google-calendar-token-crypto": {
+			"types": "./dist/calendar/google-calendar-token-crypto.d.ts",
+			"import": "./dist/calendar/google-calendar-token-crypto.mjs",
+			"require": "./dist/calendar/google-calendar-token-crypto.js"
+		},
 		"./calendar/task-event-sync": {
 			"types": "./dist/calendar/task-event-sync.d.ts",
 			"import": "./dist/calendar/task-event-sync.mjs",

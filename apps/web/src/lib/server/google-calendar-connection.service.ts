@@ -10,11 +10,17 @@ import {
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { google, type calendar_v3 } from 'googleapis';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import {
+	GOOGLE_CALENDAR_SCOPE,
+	GoogleCalendarConnectionError,
+	GoogleCalendarCredentialService
+} from '@buildos/shared-agent-ops/calendar/google-calendar-credential.service';
 import { decodeStoredCalendarTokens } from './calendar-token-crypto';
 import {
 	decryptGoogleCalendarToken,
 	encryptGoogleCalendarToken,
 	getActiveGoogleCalendarTokenKeyVersion,
+	resolveWebGoogleCalendarTokenKey,
 	type GoogleCalendarOauthClientKind,
 	type GoogleCalendarTokenContext
 } from './google-calendar-token-crypto';
@@ -26,7 +32,7 @@ import type {
 	GoogleCalendarSourceSummary
 } from '$lib/types/google-calendar-integration';
 
-export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
+export { GOOGLE_CALENDAR_SCOPE, GoogleCalendarConnectionError };
 export const MAX_GOOGLE_CALENDAR_CONNECTIONS = 5;
 
 export type GoogleCalendarSourcePreferences = {
@@ -167,33 +173,6 @@ type GoogleCalendarConnectionServiceOptions = {
 	randomUuid?: () => string;
 };
 
-export class GoogleCalendarConnectionError extends Error {
-	constructor(
-		public readonly code:
-			| 'not_configured'
-			| 'invalid_state'
-			| 'invalid_token_response'
-			| 'identity_verification_failed'
-			| 'scope_mismatch'
-			| 'refresh_token_required'
-			| 'connection_not_found'
-			| 'source_not_found'
-			| 'source_conflict'
-			| 'source_not_writable'
-			| 'account_mismatch'
-			| 'account_already_connected'
-			| 'connection_limit_exceeded'
-			| 'reconnect_required'
-			| 'database_error'
-			| 'provider_error',
-		message: string,
-		public readonly redirectPath = '/profile?tab=calendar'
-	) {
-		super(message);
-		this.name = 'GoogleCalendarConnectionError';
-	}
-}
-
 function getPrivateEnv(name: string): string | undefined {
 	const value = privateEnv[name] ?? process.env[name];
 	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -242,23 +221,6 @@ function getDefaultLabel(emailAddress: string): string {
 	return (emailAddress.split('@')[0] || 'Google Calendar').slice(0, 60);
 }
 
-function isReconnectRequiredRefreshError(error: unknown): boolean {
-	if (!error || typeof error !== 'object') return false;
-	const candidate = error as {
-		message?: unknown;
-		response?: { data?: { error?: unknown } };
-	};
-	const providerCode = candidate.response?.data?.error;
-	const message = typeof candidate.message === 'string' ? candidate.message.toLowerCase() : '';
-	return (
-		providerCode === 'invalid_grant' ||
-		providerCode === 'invalid_client' ||
-		message.includes('invalid_grant') ||
-		message.includes('invalid_client') ||
-		message.includes('expired or revoked')
-	);
-}
-
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	try {
@@ -289,10 +251,7 @@ export class GoogleCalendarConnectionService {
 	private readonly now: () => Date;
 	private readonly randomToken: () => string;
 	private readonly randomUuid: () => string;
-	private readonly clientCache = new Map<
-		string,
-		{ client: CalendarOAuthClient; expiresAt: number }
-	>();
+	private readonly credentialService: GoogleCalendarCredentialService<CalendarOAuthClient>;
 
 	constructor(
 		admin: TypedSupabaseClient | CalendarDatabaseClient,
@@ -325,6 +284,12 @@ export class GoogleCalendarConnectionService {
 		this.now = options.now ?? (() => new Date());
 		this.randomToken = options.randomToken ?? (() => randomBytes(32).toString('base64url'));
 		this.randomUuid = options.randomUuid ?? (() => randomUUID());
+		this.credentialService = new GoogleCalendarCredentialService(this.admin, {
+			createOAuthClient: (kind) => this.createOAuthClient(kind),
+			getOAuthClientCredentials: (kind) => this.getOAuthClientCredentials(kind),
+			resolveTokenKey: resolveWebGoogleCalendarTokenKey,
+			now: this.now
+		});
 	}
 
 	isConfigured(): boolean {
@@ -1085,215 +1050,12 @@ export class GoogleCalendarConnectionService {
 		};
 	}
 
-	private clientCacheKey(userId: string, connectionId: string): string {
-		return `${userId}:${connectionId}`;
-	}
-
-	private async loadConnectionAndCredential(
-		userId: string,
-		connectionId: string
-	): Promise<{ connection: ConnectionRow; credential: CredentialRow }> {
-		const { data: connectionData, error: connectionError } = await this.admin
-			.from('user_calendar_connections')
-			.select('*')
-			.eq('id', connectionId)
-			.eq('user_id', userId)
-			.eq('provider', 'google_calendar')
-			.is('deleted_at', null)
-			.maybeSingle();
-		const connection = connectionData as ConnectionRow | null;
-		if (connectionError || !connection) {
-			throw new GoogleCalendarConnectionError(
-				'connection_not_found',
-				'Google Calendar connection was not found'
-			);
-		}
-		if (connection.status !== 'active') {
-			throw new GoogleCalendarConnectionError(
-				'reconnect_required',
-				'This Google Calendar account must be reconnected'
-			);
-		}
-
-		const { data: credentialData, error: credentialError } = await this.admin
-			.from('calendar_connection_credentials')
-			.select('*')
-			.eq('connection_id', connectionId)
-			.is('revoked_at', null)
-			.maybeSingle();
-		const credential = credentialData as CredentialRow | null;
-		if (credentialError || !credential) {
-			await this.markReconnectRequired(userId, connectionId, 'credentials_unavailable');
-			throw new GoogleCalendarConnectionError(
-				'reconnect_required',
-				'This Google Calendar account must be reconnected'
-			);
-		}
-		return { connection, credential };
-	}
-
 	async getAuthenticatedClient(
 		userId: string,
 		connectionId: string,
 		options: { forceRefresh?: boolean } = {}
 	): Promise<CalendarOAuthClient> {
-		const cacheKey = this.clientCacheKey(userId, connectionId);
-		const cached = this.clientCache.get(cacheKey);
-		if (!options.forceRefresh && cached && cached.expiresAt > this.now().getTime()) {
-			return cached.client;
-		}
-
-		const { connection, credential } = await this.loadConnectionAndCredential(
-			userId,
-			connectionId
-		);
-		const context = this.tokenContext(connection, credential.oauth_client_kind);
-		let accessToken: string;
-		let refreshToken: string;
-		try {
-			accessToken = decryptGoogleCalendarToken(credential.access_token_ciphertext, context);
-			refreshToken = decryptGoogleCalendarToken(credential.refresh_token_ciphertext, context);
-		} catch {
-			throw new GoogleCalendarConnectionError(
-				'database_error',
-				'Stored Google Calendar credentials are unavailable'
-			);
-		}
-
-		const oauthClient = this.createOAuthClient(credential.oauth_client_kind);
-		oauthClient.setCredentials({
-			access_token: accessToken,
-			refresh_token: refreshToken,
-			token_type: credential.token_type,
-			scope: credential.granted_scopes.join(' '),
-			expiry_date: credential.access_token_expires_at
-				? Date.parse(credential.access_token_expires_at)
-				: undefined
-		});
-
-		const expiresAt = credential.access_token_expires_at
-			? Date.parse(credential.access_token_expires_at)
-			: Number.NaN;
-		if (
-			!options.forceRefresh &&
-			Number.isFinite(expiresAt) &&
-			expiresAt > this.now().getTime() + 5 * 60 * 1000
-		) {
-			this.clientCache.set(cacheKey, {
-				client: oauthClient,
-				expiresAt: Math.min(
-					expiresAt - 5 * 60 * 1000,
-					this.now().getTime() + 10 * 60 * 1000
-				)
-			});
-			return oauthClient;
-		}
-
-		let refreshed: Credentials;
-		try {
-			refreshed = (await oauthClient.refreshAccessToken()).credentials;
-		} catch (error) {
-			if (isReconnectRequiredRefreshError(error)) {
-				await this.markReconnectRequired(userId, connectionId, 'provider_grant_invalid');
-				throw new GoogleCalendarConnectionError(
-					'reconnect_required',
-					'This Google Calendar account authorization has expired. Please reconnect it.'
-				);
-			}
-			throw new GoogleCalendarConnectionError(
-				'provider_error',
-				'Google Calendar is temporarily unavailable'
-			);
-		}
-
-		if (!refreshed.access_token) {
-			throw new GoogleCalendarConnectionError(
-				'invalid_token_response',
-				'Google returned an incomplete refreshed Calendar authorization'
-			);
-		}
-
-		const clientCredentials = this.getOAuthClientCredentials(credential.oauth_client_kind);
-		let tokenInfo: TokenInfo;
-		try {
-			tokenInfo = await oauthClient.getTokenInfo(refreshed.access_token);
-		} catch {
-			throw new GoogleCalendarConnectionError(
-				'identity_verification_failed',
-				'Unable to verify the refreshed Calendar authorization'
-			);
-		}
-		const grantedScopes = normalizeScopeList(
-			tokenInfo.scopes ?? refreshed.scope ?? credential.granted_scopes
-		);
-		if (
-			tokenInfo.aud !== clientCredentials.clientId ||
-			(tokenInfo.sub && tokenInfo.sub !== connection.provider_account_id) ||
-			!grantedScopes.includes(GOOGLE_CALENDAR_SCOPE)
-		) {
-			await this.markReconnectRequired(
-				userId,
-				connectionId,
-				'refreshed_token_policy_mismatch'
-			);
-			throw new GoogleCalendarConnectionError(
-				'reconnect_required',
-				'This Google Calendar authorization no longer matches the connection'
-			);
-		}
-
-		const rotatedRefreshToken = refreshed.refresh_token ?? refreshToken;
-		const { error: rotateError } = await this.admin.rpc('rotate_google_calendar_credentials', {
-			p_user_id: userId,
-			p_connection_id: connectionId,
-			p_oauth_client_kind: credential.oauth_client_kind,
-			p_access_token_ciphertext: encryptGoogleCalendarToken(refreshed.access_token, context),
-			p_refresh_token_ciphertext: encryptGoogleCalendarToken(rotatedRefreshToken, context),
-			p_access_token_expires_at: refreshed.expiry_date
-				? new Date(refreshed.expiry_date).toISOString()
-				: null,
-			p_refresh_token_expires_at:
-				getRefreshTokenExpiresAt(refreshed, this.now()) ??
-				credential.refresh_token_expires_at,
-			p_token_type: refreshed.token_type ?? credential.token_type ?? 'Bearer',
-			p_granted_scopes: grantedScopes,
-			p_key_version: getActiveGoogleCalendarTokenKeyVersion()
-		});
-		if (rotateError) {
-			throw new GoogleCalendarConnectionError(
-				'database_error',
-				'Unable to rotate Google Calendar credentials safely'
-			);
-		}
-
-		oauthClient.setCredentials({
-			...refreshed,
-			refresh_token: rotatedRefreshToken
-		});
-		this.clientCache.set(cacheKey, {
-			client: oauthClient,
-			expiresAt: this.now().getTime() + 10 * 60 * 1000
-		});
-		return oauthClient;
-	}
-
-	private async markReconnectRequired(
-		userId: string,
-		connectionId: string,
-		reasonCode: string
-	): Promise<void> {
-		this.clientCache.delete(this.clientCacheKey(userId, connectionId));
-		await this.admin.rpc('mark_calendar_connection_reconnect_required', {
-			p_user_id: userId,
-			p_connection_id: connectionId
-		});
-		await this.audit({
-			userId,
-			connectionId,
-			operation: 'calendar.token.refresh',
-			outcome: 'failure',
-			reasonCode
-		});
+		return this.credentialService.getAuthenticatedClient(userId, connectionId, options);
 	}
 
 	async renameConnection(
@@ -1411,7 +1173,7 @@ export class GoogleCalendarConnectionService {
 			.is('revoked_at', null)
 			.maybeSingle();
 		const credential = credentialData as CredentialRow | null;
-		this.clientCache.delete(this.clientCacheKey(userId, connectionId));
+		this.credentialService.invalidateClient(userId, connectionId);
 
 		let revocation:
 			| { oauthClientKind: GoogleCalendarOauthClientKind; refreshToken: string }
@@ -1533,7 +1295,7 @@ export class GoogleCalendarConnectionService {
 
 		const revocationResults = await Promise.all(
 			connections.map(async (connection) => {
-				this.clientCache.delete(this.clientCacheKey(userId, connection.id));
+				this.credentialService.invalidateClient(userId, connection.id);
 				const credential = credentialsByConnection.get(connection.id);
 				if (!credential) return false;
 
