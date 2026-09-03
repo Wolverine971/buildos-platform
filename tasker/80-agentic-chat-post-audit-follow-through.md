@@ -144,8 +144,8 @@ or a new tracker.
   window from 2026-09-02 exercised every production join across 29 turns; it is deliberately not
   acceptance evidence because it includes pre-deploy data.
 - WP-1 remains open until at least `2026-09-10T17:44:36Z`, when a single-user report can contain
-  seven full post-deploy days and its table can be pasted here. The ambitious interactive page and
-  nightly refresh are paused at the explicit DJ decision fork.
+  seven full post-deploy days and its table can be pasted here. DJ chose the lean report on
+  2026-09-03, so no interactive page or nightly refresh will be built.
 
 ## WP-2 — Retire the legacy web chat lane (the big one)
 
@@ -282,6 +282,7 @@ skills fire on the right turns and nothing else.
    decision and delays deleting the lane. Recommended: yes, calendar first, email second.
 2. **Ambitious health page (WP-1).** The nightly interactive page costs about a day more than the
    script. Recommended: yes; it is the Tracker 78 chat evidence.
+   **Decision (2026-09-03): lean report only; wait for the seven-day production report.**
 3. **Resume scope (WP-3).** Pre-write resume only, or across mutation rounds. Recommended: pre-write
    first, ship, then across rounds in the same tracker.
 
