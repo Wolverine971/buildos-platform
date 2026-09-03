@@ -910,6 +910,75 @@ SELECT pg_temp.assert_true(
 	'recovery rollback left split turn/queue state'
 );
 
+-- Exercise the actual requeue timestamp after the seconds-scale migration,
+-- including the jitter bounds and the existing single timeout-retry ceiling.
+DO $$
+DECLARE
+	v_case record;
+	v_turn uuid;
+	v_job uuid;
+	v_token uuid;
+	v_result jsonb;
+	v_replay jsonb;
+	v_scheduled timestamptz;
+	v_delay numeric;
+BEGIN
+	FOR v_case IN
+		SELECT * FROM (VALUES
+			('provider_throttle', 0, 5, 10, true),
+			('provider_throttle', 1, 10, 15, true),
+			('provider_throttle', 4, 60, 65, true),
+			('timeout_pre_start', 0, 5, 10, true),
+			('timeout_pre_start', 1, 0, 0, false),
+			('transient_infra', 0, 60, 120, true),
+			('transient_infra', 1, 120, 180, true),
+			('transient_infra', 4, 960, 1020, true)
+		) AS cases(failure_class, attempts, minimum_seconds, maximum_seconds, retries)
+	LOOP
+		v_turn := gen_random_uuid();
+		v_job := gen_random_uuid();
+		v_token := gen_random_uuid();
+		PERFORM pg_temp.seed_recovery_turn(
+			v_turn, gen_random_uuid(), gen_random_uuid(), v_job,
+			gen_random_uuid(), v_token, v_case.attempts
+		);
+		UPDATE public.queue_jobs SET max_attempts = 10 WHERE id = v_job;
+		SET LOCAL ROLE service_role;
+		v_result := public.recover_agentic_chat_turn(
+			v_turn, v_job, v_token, 1, v_case.failure_class, 'backoff fixture'
+		);
+		IF v_case.retries THEN
+			SELECT scheduled_for, extract(epoch FROM scheduled_for - updated_at)
+			INTO v_scheduled, v_delay FROM public.queue_jobs WHERE id = v_job;
+			PERFORM pg_temp.assert_true(
+				v_result->>'outcome' = 'retry_scheduled'
+					AND v_delay BETWEEN v_case.minimum_seconds AND v_case.maximum_seconds,
+				format('%s attempt %s scheduled after %s seconds; expected %s-%s',
+					v_case.failure_class, v_case.attempts, v_delay,
+					v_case.minimum_seconds, v_case.maximum_seconds)
+			);
+			v_replay := public.recover_agentic_chat_turn(
+				v_turn, v_job, v_token, 1, v_case.failure_class, 'backoff replay'
+			);
+			PERFORM pg_temp.assert_true(
+				v_replay->>'outcome' = 'already_requeued'
+					AND (SELECT scheduled_for = v_scheduled AND attempts = v_case.attempts + 1
+						FROM public.queue_jobs WHERE id = v_job),
+				'backoff replay changed the schedule or consumed an attempt'
+			);
+		ELSE
+			PERFORM pg_temp.assert_true(
+				v_result->>'outcome' = 'finalize_failed'
+					AND (v_result->>'retry_exhausted')::boolean,
+				'timeout pre-start retry ceiling changed'
+			);
+		END IF;
+		RESET ROLE;
+	END LOOP;
+END;
+$$;
+SELECT 'recovery_backoff_seconds_ok' AS result;
+
 DROP FUNCTION public.recover_agentic_chat_turn(uuid, uuid, uuid, integer, text, text);
 DROP FUNCTION public.begin_agentic_chat_turn_execution(uuid, uuid, uuid, integer);
 SELECT pg_temp.assert_true(

@@ -17,8 +17,10 @@ import {
 } from '../../tools/execution-adapter';
 import type {
 	AgenticChatControlDecisionAuthorV1,
-	AgenticChatTurnProviderRequestV1
+	AgenticChatTurnProviderRequestV1,
+	AgenticChatTurnProviderToolV1
 } from '../contracts';
+import { validateContractEffectFields } from '../contract-fields';
 import {
 	type CompletedProviderToolCall,
 	completeReviewerToolCalls,
@@ -50,6 +52,7 @@ export function completeTurnContractReviewDecision(
 		contract: TurnContract;
 		contractReviewSha256: string;
 		allowRevision: boolean;
+		admittedTools?: readonly AgenticChatTurnProviderToolV1[];
 	}
 ): CompletedProviderToolCall[] {
 	let { calls, fallbackReason } = completeSingleReviewDecision(
@@ -102,6 +105,15 @@ export function completeTurnContractReviewDecision(
 			// owns the remaining choice regardless of whether the reviewer approved
 			// the original contract or supplied a typed correction.
 			const reviewedContract = approval ? input.contract : correctedContract;
+			const fieldErrors = reviewedContract
+				? validateContractEffectFields(
+						reviewedContract,
+						input.admittedTools ?? input.actingRequest.tools
+					)
+				: [];
+			if (fieldErrors.length > 0) {
+				fallbackReason = `Independent semantic review returned an unexecutable contract. ${fieldErrors[0]}`;
+			}
 			const ambiguity = reviewedContract
 				? findAmbiguousReferenceCandidates(call.arguments, reviewedContract)
 				: null;

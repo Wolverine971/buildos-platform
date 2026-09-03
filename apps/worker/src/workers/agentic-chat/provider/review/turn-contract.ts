@@ -20,6 +20,7 @@ import type {
 	AgenticChatTurnProviderToolV1
 } from '../contracts';
 import { providerError } from '../protocol';
+import { describeContractEffectFields } from '../contract-fields';
 import { surfaceFor } from '../turn-phase';
 import { ACTOR_COMMISSION_GUIDANCE, SEMANTIC_COMMISSION_GUIDANCE } from './controls';
 
@@ -46,6 +47,7 @@ const TURN_CONTRACT_REVIEW_SYSTEM_PROMPT = [
 	'When declare_read_only_turn is among your tools and the current request commissions no durable change, choose it instead of inventing a contract or asking the user to clarify a change they did not request. When it is not among your tools, a prior independent review already established that this turn commissions a durable change; read-only correction is no longer available, so judge only whether this revised exact contract matches that commission or whether a genuine unresolved user choice remains.',
 	'Target IDs are existing entity IDs that bound the eligible scope; create outcomes have no target ID before execution. minimum_successful_effects is the required cardinality. Approve a minimum smaller than the target set only when the user commission genuinely allows that bounded partial result; require the full cardinality when every listed target must change.',
 	'The proposed contract JSON uses the exact provider-facing declaration field names. Any corrected_contract must preserve that snake_case shape exactly.',
+	'required_fields and changes name actual effect fields from the available tools, never prose acceptance criteria or invented section fields. A document section edit uses required_fields=["content"]; describe the section and preservation requirements in description. Use changes only for exact scalar postconditions supported by the tool, not descriptions of the desired result.',
 	"A create outcome may carry a label and a move outcome may carry parent_label: the move's destination is the entity that labelled create will produce, and the system binds the id after the create executes. Treat such a destination as resolved; do not ask for its id.",
 	'If multiple loaded entities plausibly match one descriptive reference, or a required value is absent from both the request and the loaded context and the field semantics, the choice belongs to the user: request clarification.',
 	'When request_proposal_revision is among your tools and the user commission is clear but the proposed contract misstates it — wrong cardinality, targets that need different values lumped into one outcome, an outcome the user did not commission, or a required value the turn evidence already resolves but the contract omits — call it with the complete corrected_contract plus a concise explanation. The corrected contract is durably recorded and independently re-reviewed; it is not approved by the revision call itself. If any descriptive reference has several plausible candidates, clarify instead; never revise around an ambiguous target. When request_proposal_revision is not among your tools, the acting model has used every correction allowed this turn: approve, correct to read-only if that tool is available, or ask the user.',
@@ -74,6 +76,7 @@ export function buildTurnContractReviewRequest(
 		serializeTurnContractForDeclaration(contract) as JsonValue
 	);
 	const fieldSemantics = describeContractValueSemantics(contract, availableTools);
+	const effectFields = describeContractEffectFields(contract, availableTools);
 	const proposalProvenance =
 		proposalSource === 'mutation_candidate_compiler'
 			? [
@@ -98,6 +101,7 @@ export function buildTurnContractReviewRequest(
 					`Exact proposed contract SHA-256: ${contractReviewSha256}`,
 					`Exact proposed contract declaration JSON: ${canonicalContract}`,
 					...(fieldSemantics ? [fieldSemantics] : []),
+					...(effectFields ? [effectFields] : []),
 					describeReviewerEvidence(request.messages)
 				].join('\n\n')
 			}
@@ -342,7 +346,12 @@ export function projectCreateShellGuidance(
 		.map(([name, label]) => `${name} (${label})`);
 	return [
 		'Project creation order: create_onto_project creates exactly one project plus its generated Context document. Pass entities=[] and relationships=[].',
-		'In declare_turn_contract, represent that call as one outcome with action=create, entity_kind=project, minimum_successful_effects=1, no target_ids, and no required_fields or changes. Put the project name, type_key, and other values in the later create_onto_project arguments.',
+		'In declare_turn_contract, represent that call as one outcome with action=create, entity_kind=project, minimum_successful_effects=1, no target_ids, no label, and no required_fields or changes. Put the project name, type_key, and other values in the later create_onto_project arguments.',
+		...(supportedChildTools.length > 0
+			? [
+					'Use id to identify each outcome. Omit label on additional records unless a later outcome needs that symbolic reference. If a create outcome uses label, it must also declare the entity title in changes (goals use name) and minimum_successful_effects=1; the label itself never supplies the title or name. Project membership is execution scope: omit project_id from required_fields and changes.'
+				]
+			: []),
 		supportedChildTools.length > 0
 			? `After create_onto_project returns project_id, call only these available tools for requested additional records: ${supportedChildTools.join(', ')}. Do not promise records that these tools cannot create.`
 			: 'No goal, task, or relationship creation tool is available in this turn. Create the project now without asking the user to reconfirm. Keep entities and relationships empty, then explain which requested additional records could not be created.'

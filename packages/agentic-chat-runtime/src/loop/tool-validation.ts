@@ -22,7 +22,9 @@ import {
 import { parseToolArguments } from './tool-arguments';
 import {
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
-	describeDeclaredTurnContractIssues
+	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
+	describeDeclaredTurnContractIssues,
+	executeAgenticChatStandardControlToolV1
 } from './turn-contract';
 
 const UPDATE_TOOL_PREFIX = 'update_onto_';
@@ -171,6 +173,16 @@ export function validateToolCalls(
 			for (const issue of describeDeclaredTurnContractIssues(args)) {
 				errors.push(`Invalid turn contract: ${issue}`);
 			}
+		}
+		if (toolName === REQUEST_TURN_CLARIFICATION_TOOL_NAME) {
+			// This is pure control semantics: checkpoint persistence happens only
+			// in the host adapter. Share its candidate/question validation so an
+			// invalid question enters bounded repair before reaching that adapter.
+			const validation = executeAgenticChatStandardControlToolV1({
+				toolName,
+				arguments: args
+			});
+			if (!validation.success) errors.push(validation.error);
 		}
 
 		const normalizedOp = registry.byToolName[toolName]?.op;

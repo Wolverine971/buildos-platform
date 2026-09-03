@@ -12,6 +12,7 @@ import {
 	validateToolCalls
 } from '@buildos/agentic-chat-runtime/loop';
 import { reviewedAgenticChatMutationSpecV1 } from '../mutationToolCatalog';
+import { validateContractEffectFields } from './contract-fields';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from './contracts';
 import { completedProviderCallToChatToolCall } from './feedback';
 import { providerError } from './protocol';
@@ -49,34 +50,46 @@ export function validateCompletedProviderCalls(
 	// member of an explicitly exhaustive set they meant. On a canonical
 	// project-scoped turn, return that model-authored typo through the existing
 	// bounded validation-repair loop before semantic review instead.
-	if (typeof request.projectId !== 'string' || !CANONICAL_UUID_PATTERN.test(request.projectId)) {
-		return issues;
-	}
+	const requiresCanonicalTargets =
+		typeof request.projectId === 'string' && CANONICAL_UUID_PATTERN.test(request.projectId);
 	for (const call of calls) {
 		if (call.name !== DECLARE_TURN_CONTRACT_TOOL_NAME) continue;
 		const contract = parseDeclaredTurnContract(call.arguments);
 		if (!contract) continue;
-		const uuidErrors = contract.outcomes.flatMap((outcome, index) =>
-			outcome.targetIds
-				.filter((targetId) => !CANONICAL_UUID_PATTERN.test(targetId))
-				.map(
-					(targetId) =>
-						`Invalid turn contract: Outcome ${index + 1}: target_ids entry ${JSON.stringify(targetId)} must be a canonical UUID copied exactly from loaded context.`
+		const errors = validateContractEffectFields(contract, admittedTools);
+		if (requiresCanonicalTargets) {
+			errors.push(
+				...contract.outcomes.flatMap((outcome, index) =>
+					outcome.targetIds
+						.filter((targetId) => !CANONICAL_UUID_PATTERN.test(targetId))
+						.map(
+							(targetId) =>
+								`Invalid turn contract: Outcome ${index + 1}: target_ids entry ${JSON.stringify(targetId)} must be a canonical UUID copied exactly from loaded context.`
+						)
 				)
-		);
-		if (uuidErrors.length === 0) continue;
-		const existing = issues.find((issue) => issue.toolCall.id === call.id);
-		if (existing) {
-			existing.errors.push(...uuidErrors);
-		} else {
-			issues.push({
-				toolCall: completedProviderCallToChatToolCall(call),
-				toolName: call.name,
-				errors: uuidErrors
-			});
+			);
 		}
+		addCallValidationErrors(issues, call, errors);
 	}
 	return issues;
+}
+
+function addCallValidationErrors(
+	issues: ToolValidationIssue[],
+	call: CompletedProviderToolCall,
+	errors: string[]
+): void {
+	if (errors.length === 0) return;
+	const existing = issues.find((issue) => issue.toolCall.id === call.id);
+	if (existing) {
+		existing.errors.push(...errors);
+	} else {
+		issues.push({
+			toolCall: completedProviderCallToChatToolCall(call),
+			toolName: call.name,
+			errors
+		});
+	}
 }
 
 function validateExplicitProjectCreateName(
@@ -103,16 +116,7 @@ function validateExplicitProjectCreateName(
 		const error =
 			`The user explicitly named this project ${JSON.stringify(expectedName)}. ` +
 			`create_onto_project.project.name must preserve that exact name; received ${JSON.stringify(proposedName ?? null)}.`;
-		const existing = issues.find((issue) => issue.toolCall.id === call.id);
-		if (existing) {
-			existing.errors.push(error);
-		} else {
-			issues.push({
-				toolCall: completedProviderCallToChatToolCall(call),
-				toolName: call.name,
-				errors: [error]
-			});
-		}
+		addCallValidationErrors(issues, call, [error]);
 	}
 }
 
@@ -201,17 +205,7 @@ function validateProjectCreateShellContracts(
 				);
 			}
 		}
-		if (errors.length === 0) continue;
-		const existing = issues.find((issue) => issue.toolCall.id === call.id);
-		if (existing) {
-			existing.errors.push(...errors);
-		} else {
-			issues.push({
-				toolCall: completedProviderCallToChatToolCall(call),
-				toolName: call.name,
-				errors
-			});
-		}
+		addCallValidationErrors(issues, call, errors);
 	}
 }
 

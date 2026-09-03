@@ -1020,6 +1020,152 @@ describe('AgenticChatOpenRouterClient', () => {
 		expect(fetchImpl).toHaveBeenCalledTimes(1);
 	});
 
+	it.each([
+		{ finishReason: 'tool_calls', streamCall: false },
+		{ finishReason: 'function_call', streamCall: false },
+		{ finishReason: 'stop', streamCall: true }
+	])(
+		'releases the provider pin for a disabled-tool response: %j',
+		async ({ finishReason, streamCall }) => {
+			const requests: Record<string, unknown>[] = [];
+			const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+				requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+				const violation = requests.length === 2;
+				const delta =
+					violation && streamCall
+						? {
+								tool_calls: [
+									{
+										index: 0,
+										id: 'disabled-call',
+										type: 'function',
+										function: {
+											name: 'update_onto_document',
+											arguments: '{"content":"do-not-retain"}'
+										}
+									}
+								]
+							}
+						: { content: 'Answer.' };
+				return sseResponse([
+					JSON.stringify({
+						model: requests.length < 3 ? 'provider/primary' : 'provider/fallback',
+						provider: requests.length < 3 ? 'Alibaba' : 'DeepInfra',
+						choices: [{ delta }]
+					}),
+					JSON.stringify({
+						choices: [{ delta: {}, finish_reason: violation ? finishReason : 'stop' }],
+						usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 }
+					}),
+					'[DONE]'
+				]);
+			}) as unknown as typeof fetch;
+			const test = harness(fetchImpl);
+			await collect(test.client.stream(input()));
+			await collect(test.client.stream({ ...input(), logicalProviderRound: 2 }));
+			await collect(test.client.stream({ ...input(), logicalProviderRound: 3 }));
+			expect(requests).toHaveLength(3);
+			expect(requests[1]).toMatchObject({
+				model: 'provider/primary',
+				provider: { order: ['alibaba'], allow_fallbacks: false }
+			});
+			expect(requests[2]).toMatchObject({
+				model: 'provider/fallback',
+				provider: { ignore: ['alibaba'] },
+				tool_choice: 'none'
+			});
+			expect(requests[2]).not.toHaveProperty('tools');
+			const ended = test.lifecycleObservations.filter(
+				(o) => o.eventType === 'provider_attempt_ended'
+			);
+			expect(ended[1]?.payload).toMatchObject({
+				status: 'failure',
+				error_class: 'provider_tool_call_disabled',
+				usage: { completion_tokens: 5 }
+			});
+			expect(test.observations[1]).toMatchObject({ status: 'failure', completionTokens: 5 });
+			expect(JSON.stringify(ended)).not.toContain('do-not-retain');
+		}
+	);
+
+	it('applies semantic rejection to the actual completed route, without penalizing a newer response', async () => {
+		const requests: Record<string, unknown>[] = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+			requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			const fallback = requests.length === 2;
+			return sseResponse([
+				JSON.stringify({
+					model: fallback ? 'provider/fallback' : 'provider/primary',
+					provider: fallback ? 'DeepInfra' : 'Alibaba',
+					choices: [{ delta: { content: 'Completed response.' }, finish_reason: 'stop' }]
+				}),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		await collect(test.client.stream(input()));
+		const repair = { ...input(), logicalProviderRound: 2, passRole: 'repair' as const };
+		await collect(test.client.stream({ ...repair, providerAttempt: 2 }));
+		test.client.rejectRepeatedInvalidToolResponse(repair);
+		test.client.rejectRepeatedInvalidToolResponse(repair);
+		await collect(test.client.stream({ ...input(), logicalProviderRound: 3 }));
+		test.client.rejectRepeatedInvalidToolResponse(repair);
+		await collect(test.client.stream({ ...input(), logicalProviderRound: 4 }));
+		expect(requests).toHaveLength(4);
+		for (const request of requests.slice(2)) {
+			expect(request).toMatchObject({
+				model: 'provider/primary',
+				provider: {
+					order: ['alibaba'],
+					allow_fallbacks: false,
+					ignore: ['deepinfra']
+				}
+			});
+		}
+		// Semantic feedback does not rewrite transport receipts or generate a new request.
+		expect(test.observations).toHaveLength(4);
+		expect(test.observations.every((observation) => observation.status === 'success')).toBe(
+			true
+		);
+	});
+
+	it.each([
+		{ logicalProviderRound: 1 },
+		{ executionGeneration: 1 },
+		{ streamRunId: 'other-stream' },
+		{ processingToken: 'other-claim' },
+		{ passRole: 'contract_review' as const },
+		{ providerRound: 'synthesis' as const },
+		{ turnRunId: 'other-turn' },
+		{ signal: AbortSignal.abort() }
+	])('ignores semantic rejection outside its completed response scope: %j', async (stale) => {
+		const requests: Record<string, unknown>[] = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+			requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			return sseResponse([
+				JSON.stringify({
+					model: 'provider/primary',
+					provider: 'DeepInfra',
+					choices: [{ delta: { content: 'Completed response.' }, finish_reason: 'stop' }]
+				}),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const current = { ...input(), logicalProviderRound: 2 };
+		await collect(test.client.stream(current));
+		test.client.rejectRepeatedInvalidToolResponse({ ...current, ...stale });
+		await collect(test.client.stream({ ...input(), logicalProviderRound: 3 }));
+		expect(requests[1]).toMatchObject({
+			model: 'provider/primary',
+			provider: {
+				order: ['deepinfra'],
+				allow_fallbacks: false
+			}
+		});
+		expect(requests[1]?.provider).not.toHaveProperty('ignore');
+	});
+
 	it('handles split CRLF frames and completes safely without an explicit DONE marker', async () => {
 		const fetchImpl = vi.fn(async () =>
 			splitSseResponse([

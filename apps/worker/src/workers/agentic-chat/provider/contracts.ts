@@ -111,6 +111,8 @@ export type AgenticChatTurnProviderClientPortV1 = {
 	stream(
 		input: AgenticChatTurnProviderClientRequestV1
 	): AsyncIterable<AgenticChatTurnProviderClientEventV1>;
+	/** Avoid the completed response's route on the next already-budgeted repair. Does not retry. */
+	rejectRepeatedInvalidToolResponse?(input: AgenticChatTurnProviderClientRequestV1): void;
 };
 
 /** Internal request state shared by the provider coordinator and extracted helpers. */

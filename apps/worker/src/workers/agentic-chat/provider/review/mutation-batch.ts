@@ -52,6 +52,7 @@ const MUTATION_BATCH_REVIEW_SYSTEM_PROMPT = [
 	'Reject unrelated cleanup, convenience edits, guessed targets, invented identifiers, broader scope, and follow-up changes that merely seem helpful.',
 	'Arguments the tool schema marks as required (listed in the user message per tool) are never "invented values": when the contract does not specify one, the agent supplies a brief on-topic value — for example a one-line description or a default type for a new grouping document. Never return a batch to remove a required argument; the tool cannot execute without it. Judge only whether the value is reasonable for the commissioned outcome.',
 	'Likewise a short heading or one-line body as `content`, a default `state_key`, or a `type_key` on a new container are implementation defaults for that create; never return a batch merely to remove them.',
+	'For an existing document section edit, update_onto_document can replace the full content while preserving every untargeted section. Compare the proposed content with the loaded original: reject uncommissioned differences, not the replace strategy itself. Append adds content and cannot revise an existing section in place. Do not demand an unavailable section-edit operation or merge_llm strategy; require evidence that the supported operation preserves the commissioned scope.',
 	'When request_proposal_revision is among your tools and a mutation carries an invented or unstated value, targets an entity outside the approved contract, or broadens scope while the user commission is clear, call it with the exact correction; that returns the batch to the acting model, not the user. When it is not among your tools, the acting model has used every batch correction allowed this turn: approve or ask the user.',
 	'Request clarification for the user only when a choice genuinely belongs to the user. Do not approve only a subset of the SHA-bound batch.',
 	'Choose exactly one tool. Never rewrite, repair, broaden, or substitute the proposed batch yourself.',
@@ -117,12 +118,11 @@ export function buildMutationBatchReviewRequest(
 					...(shellGuidance.length > 0
 						? [`Project-creation rules for this turn: ${shellGuidance.join(' ')}`]
 						: []),
-					`Approved turn contract SHA-256: ${authorization.contractSha256}`,
 					`Approved turn contract JSON: ${canonicalContract}`,
 					`Resolved contract labels (bound by the system from executed creates): ${JSON.stringify(boundLabels)}`,
 					...(fieldSemantics ? [fieldSemantics] : []),
 					...(requiredArguments ? [requiredArguments] : []),
-					`Exact proposed execution-plan batch SHA-256: ${pending.batchSha256}`,
+					`Exact proposed execution-plan batch SHA-256 (copy into batch_sha256): ${pending.batchSha256}`,
 					`Exact proposed execution-plan batch JSON: ${canonicalBatch}`,
 					describeReviewerEvidence(pending.request.messages)
 				].join('\n\n')

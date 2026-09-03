@@ -10,7 +10,10 @@ import {
 	type JsonObject,
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
-import { TURN_CONTRACT_TOOL_DEFINITION } from '@buildos/agentic-chat-runtime/catalog';
+import {
+	REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
+	TURN_CONTRACT_TOOL_DEFINITION
+} from '@buildos/agentic-chat-runtime/catalog';
 import {
 	parseDeclaredTurnContract,
 	serializeTurnContractForDeclaration
@@ -32,6 +35,7 @@ import type { AgenticChatLiveVisionResolverPortV1 } from '../src/workers/agentic
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/readToolIdentity';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
+import { AgenticChatOpenRouterClient } from '../src/workers/agentic-chat/provider/openrouter-client';
 import {
 	compileApprovedSingleTaskScheduleMutation,
 	compileSingleTaskScheduleContractFromMutation
@@ -281,7 +285,7 @@ function organizationContractArguments(documentId: string): JsonObject {
 				action: 'organize',
 				entity_kind: 'document',
 				target_ids: [documentId],
-				required_fields: ['project_id', 'document_id', 'new_parent_id'],
+				required_fields: ['parent_id'],
 				minimum_successful_effects: 1
 			}
 		]
@@ -1665,20 +1669,22 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			},
 			2_000,
 			16,
-			{ createOntoDocument: true }
+			{ createOntoDocument: true, moveDocumentInTree: true }
 		).prepare({
 			executionInput: executionInputWithReadSurface(
 				[
 					turnContractToolDefinition(),
 					readOnlyTurnToolDefinition(),
 					clarificationToolDefinition(),
-					createDocumentToolDefinition()
+					createDocumentToolDefinition(),
+					moveDocumentToolDefinition()
 				],
 				[
 					'declare_turn_contract',
 					'declare_read_only_turn',
 					'request_turn_clarification',
-					'create_onto_document'
+					'create_onto_document',
+					'move_document_in_tree'
 				]
 			),
 			processingToken: PROCESSING_TOKEN,
@@ -2184,6 +2190,111 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		]);
 		expect(semanticReviewer.stream).not.toHaveBeenCalled();
 	});
+
+	it.each([false, true])(
+		'repairs clarification semantics with bounded exhaustion=%s',
+		async (exhausted) => {
+			const invalid = {
+				reason: 'Two tasks match the reference.',
+				question: 'Should I update the launch or investor one?',
+				candidates: [
+					{ id: 'task-a', label: 'Launch email', kind: 'task' },
+					{ id: 'task-b', label: 'Investor email', kind: 'task' }
+				]
+			};
+			const corrected = {
+				...invalid,
+				question: 'Should I update Launch email or Investor email?'
+			};
+			const rounds = exhausted
+				? [1, 2, 3].map((n) =>
+						providerReadRound(`invalid-${n}`, invalid, 'request_turn_clarification')
+					)
+				: [
+						providerReadRound('invalid-1', invalid, 'request_turn_clarification'),
+						providerReadRound('corrected', corrected, 'request_turn_clarification'),
+						[
+							{ type: 'text' as const, content: corrected.question },
+							{ type: 'done' as const, finishedReason: 'stop' }
+						]
+					];
+			const client = clientWithRounds(rounds);
+			const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+			const providerInput = executionInputWithReadSurface(
+				[
+					TURN_CONTRACT_TOOL_DEFINITION,
+					readOnlyTurnToolDefinition(),
+					REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
+					updateTaskToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'update_onto_task'
+				],
+				undefined,
+				'project_write_document'
+			);
+			providerInput.requestPayload = {
+				...providerInput.requestPayload,
+				message: 'Mark the email task done.'
+			};
+			const invocation = await new AgenticChatTurnProviderAdapter(
+				{ client, capacity },
+				2_000,
+				16,
+				{ updateOntoTask: true }
+			).prepare({
+				executionInput: providerInput,
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			const steps: AgenticChatProviderStepV1[] = [];
+			const consume = async () => {
+				for await (const step of invocation.stream()) steps.push(step);
+			};
+			if (exhausted) {
+				await expect(consume()).rejects.toMatchObject({
+					code: 'provider_tool_validation_repair_exhausted'
+				});
+				expect(client.stream).toHaveBeenCalledTimes(3);
+			} else {
+				await consume();
+				const step = steps.find(
+					(entry) => entry.type === 'read_tool' && !entry.validationFailure
+				);
+				expect(step).toMatchObject({
+					type: 'read_tool',
+					toolName: 'request_turn_clarification',
+					arguments: corrected
+				});
+				if (!step || step.type !== 'read_tool')
+					throw new Error('Expected corrected clarification');
+				const feedback = durableReadFeedbackFor(
+					step.providerToolCallId,
+					step.toolName,
+					step.arguments,
+					{ status: 'clarification_required', requires_user_action: true }
+				);
+				feedback.execution.requiresUserAction = true;
+				await expect(
+					collect(invocation.continueWithToolResults!({ round: 2, results: [feedback] }))
+				).resolves.toEqual([
+					{ type: 'text_delta', text: corrected.question },
+					{ type: 'finish', finishedReason: 'stop', usage: null }
+				]);
+			}
+			expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+			expect(
+				steps.filter((step) => step.type === 'read_tool' && step.validationFailure)
+			).toHaveLength(exhausted ? 3 : 1);
+			expect(client.stream.mock.calls[1]?.[0].messages.at(-1)?.content).toContain(
+				'must name every supplied candidate label verbatim'
+			);
+			expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+		}
+	);
 
 	it('withholds more than three direct mutations and requires the complex contract route', async () => {
 		const taskIds = [
@@ -4837,16 +4948,16 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					entity_kind: 'project',
 					minimum_successful_effects: 1
 				},
-				...invalidContractArguments.outcomes.slice(1)
+				{
+					...invalidContractArguments.outcomes[1],
+					required_fields: ['title', 'due_at']
+				},
+				...invalidContractArguments.outcomes.slice(2)
 			]
 		};
 		const normalizedContract = parseDeclaredTurnContract(contractArguments);
 		if (!normalizedContract) throw new Error('Expected a valid composite contract');
-		expect(normalizedContract.outcomes[1]?.requiredFields).toEqual([
-			'name',
-			'project_id',
-			'target_date'
-		]);
+		expect(normalizedContract.outcomes[1]?.requiredFields).toEqual(['name', 'target_date']);
 		const contractSha256 = createHash('sha256')
 			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
 			.digest('hex');
@@ -5313,7 +5424,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 									},
 									label: {
 										description: expect.stringContaining(
-											'Create only: symbolic name for one new entity'
+											'Create only: optional symbolic reference to one new entity'
 										)
 									}
 								}
@@ -6219,6 +6330,145 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
+	it.each(['recovered', 'exhausted', 'cosmetic-change', 'changed-invalid'])(
+		'routes repeated invalid contracts within the existing repair limit: %s',
+		async (scenario) => {
+			const invalid: JsonObject = {
+				action: 'create',
+				entity_kind: 'goal',
+				minimum_successful_effects: 1,
+				label: 'launch'
+			};
+			const corrected = {
+				...invalid,
+				changes: [{ field: 'name', value: 'Publish three episodes' }]
+			};
+			const requests: Record<string, unknown>[] = [];
+			const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+				requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+				const attempt = requests.length;
+				const outcome =
+					attempt === 3 && scenario !== 'exhausted'
+						? corrected
+						: attempt === 2
+							? {
+									...Object.fromEntries(Object.entries(invalid).reverse()),
+									...(scenario === 'changed-invalid'
+										? { ...corrected, minimum_successful_effects: 2 }
+										: scenario === 'cosmetic-change'
+											? { target_ids: [] }
+											: {})
+								}
+							: invalid;
+				const frames = [
+					{
+						model: 'provider/primary',
+						provider: 'DeepInfra',
+						choices: [
+							{
+								delta: {
+									tool_calls: [
+										{
+											index: 0,
+											id: `declaration-${attempt}`,
+											type: 'function',
+											function: {
+												name: 'declare_turn_contract',
+												arguments: JSON.stringify({ outcomes: [outcome] })
+											}
+										}
+									]
+								}
+							}
+						]
+					},
+					{ choices: [{ delta: {}, finish_reason: 'tool_calls' }] }
+				];
+				return new Response(
+					frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join('') +
+						'data: [DONE]\n\n',
+					{ status: 200, headers: { 'content-type': 'text/event-stream' } }
+				);
+			}) as unknown as typeof fetch;
+			const client = new AgenticChatOpenRouterClient(
+				{ usage: { observe: vi.fn(async () => {}) } },
+				{
+					routes: [
+						{
+							id: 'openrouter',
+							kind: 'openrouter',
+							baseUrl: 'https://openrouter.example/api/v1',
+							apiKey: 'test-key',
+							model: 'provider/primary',
+							fallbackModels: ['provider/fallback'],
+							providerRouting: { allow_fallbacks: true }
+						}
+					],
+					httpReferer: 'https://build-os.com',
+					appName: 'test',
+					fetchImpl,
+					requestTimeoutMs: 10_000
+				}
+			);
+			const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+			const cooldown = vi.spyOn(capacity, 'markTemporarilyUnavailable');
+			const invocation = await new AgenticChatTurnProviderAdapter({
+				client,
+				capacity
+			}).prepare({
+				executionInput: executionInputWithReadSurface([TURN_CONTRACT_TOOL_DEFINITION]),
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			const steps: AgenticChatProviderStepV1[] = [];
+			const consume = async () => {
+				for await (const step of invocation.stream()) steps.push(step);
+			};
+			if (scenario === 'exhausted') {
+				await expect(consume()).rejects.toMatchObject({
+					code: 'provider_tool_validation_repair_exhausted'
+				});
+			} else {
+				await consume();
+				expect(
+					steps.filter((step) => step.type === 'read_tool' && !step.validationFailure)
+				).toMatchObject([
+					{ toolName: 'declare_turn_contract', arguments: { outcomes: [corrected] } }
+				]);
+				invocation.release();
+			}
+			expect(requests).toHaveLength(3);
+			expect(requests[1]?.provider).toMatchObject({
+				order: ['deepinfra'],
+				allow_fallbacks: false
+			});
+			if (scenario === 'changed-invalid') {
+				expect(requests[2]?.provider).toMatchObject({
+					order: ['deepinfra'],
+					allow_fallbacks: false
+				});
+			} else {
+				expect(requests[2]).toMatchObject({
+					model: 'provider/fallback',
+					provider: { ignore: ['deepinfra'], allow_fallbacks: true }
+				});
+			}
+			for (const request of requests.slice(1)) {
+				expect(request.tools).toEqual(requests[0]?.tools);
+				expect(request.tool_choice).toBe(requests[0]?.tool_choice);
+				expect(JSON.stringify(request.messages)).toContain(
+					'a labelled create outcome must declare its name in changes'
+				);
+			}
+			expect(
+				steps.filter((step) => step.type === 'read_tool' && step.validationFailure)
+			).toHaveLength(scenario === 'exhausted' ? 3 : 2);
+			expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+			expect(cooldown).not.toHaveBeenCalled();
+			expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+		}
+	);
+
 	it('bounds repeated validation repairs and releases provider capacity', async () => {
 		const invalidRound = (providerToolCallId: string) => [
 			{
@@ -6691,6 +6941,161 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
+
+	it.each([false, true])(
+		'switches the disabled-tool provider within the existing synthesis limit, exhausted=%s',
+		async (exhausted) => {
+			const projectId = '40000000-0000-4000-8000-000000000004';
+			const requests: Record<string, unknown>[] = [];
+			const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+				requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+				const opening = requests.length === 1;
+				const invalid = !opening && (requests.length === 2 || exhausted);
+				const frames = [
+					{
+						model: 'provider/primary',
+						provider: requests.length < 3 ? 'Alibaba' : 'DeepInfra',
+						choices: [
+							{
+								delta: opening
+									? {
+											tool_calls: [
+												{
+													index: 0,
+													id: 'provider-read-1',
+													type: 'function',
+													function: {
+														name: 'get_project_overview',
+														arguments: JSON.stringify({
+															project_id: projectId
+														})
+													}
+												}
+											]
+										}
+									: {
+											content: invalid
+												? 'This rejected answer must not be published.'
+												: 'The project evidence is ready. No changes were made.'
+										}
+							}
+						]
+					},
+					...(invalid
+						? [
+								{
+									choices: [
+										{
+											delta: {
+												tool_calls: [
+													{
+														index: 0,
+														id: 'disabled-mutation',
+														type: 'function',
+														function: {
+															name: 'update_onto_task',
+															arguments: JSON.stringify({
+																task_id: 'task-not-authorized',
+																state_key: 'done'
+															})
+														}
+													}
+												]
+											}
+										}
+									]
+								}
+							]
+						: []),
+					{
+						choices: [
+							{ delta: {}, finish_reason: opening || invalid ? 'tool_calls' : 'stop' }
+						]
+					}
+				];
+				return new Response(
+					frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join('') +
+						'data: [DONE]\n\n',
+					{ status: 200, headers: { 'content-type': 'text/event-stream' } }
+				);
+			}) as unknown as typeof fetch;
+			const client = new AgenticChatOpenRouterClient(
+				{ usage: { observe: vi.fn(async () => {}) } },
+				{
+					routes: [
+						{
+							id: 'openrouter',
+							kind: 'openrouter',
+							baseUrl: 'https://openrouter.example/api/v1',
+							apiKey: 'test-key',
+							model: 'provider/primary',
+							providerRouting: { allow_fallbacks: true }
+						}
+					],
+					httpReferer: 'https://build-os.com',
+					appName: 'test',
+					fetchImpl,
+					requestTimeoutMs: 10_000
+				}
+			);
+			const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+			const cooldown = vi.spyOn(capacity, 'markTemporarilyUnavailable');
+			const invocation = await new AgenticChatTurnProviderAdapter(
+				{ client, capacity },
+				2_000,
+				3
+			).prepare({
+				executionInput: executionInputWithReadSurface(),
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			await collect(invocation.stream());
+			const emitted: AgenticChatProviderStepV1[] = [];
+			const consume = async () => {
+				for await (const step of invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedback(
+							'provider-read-1',
+							{ project_id: projectId },
+							{ project: { id: projectId } }
+						)
+					]
+				}))
+					emitted.push(step);
+			};
+			if (exhausted) {
+				await expect(consume()).rejects.toMatchObject({
+					code: 'provider_forced_synthesis_failed'
+				});
+				expect(emitted).toEqual([]);
+			} else {
+				await consume();
+				expect(emitted).toEqual([
+					{
+						type: 'text_delta',
+						text: 'The project evidence is ready. No changes were made.'
+					},
+					{ type: 'finish', finishedReason: 'stop', usage: null }
+				]);
+			}
+			expect(requests).toHaveLength(3);
+			for (const request of requests.slice(1)) {
+				expect(request.tool_choice).toBe('none');
+				expect(request).not.toHaveProperty('tools');
+			}
+			expect(requests[1]?.provider).toMatchObject({
+				order: ['alibaba'],
+				allow_fallbacks: false
+			});
+			expect(requests[2]?.provider).toMatchObject({
+				ignore: ['alibaba'],
+				allow_fallbacks: true
+			});
+			expect(cooldown).not.toHaveBeenCalled();
+			expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+		}
+	);
 
 	it('atomically discards a failed partial pass and retries once with a new attempt identity', async () => {
 		const client = clientWithRounds([

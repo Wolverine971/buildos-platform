@@ -1,5 +1,7 @@
 // apps/worker/src/workers/agentic-chat/provider/turn-provider.ts
 
+import { createHash } from 'node:crypto';
+
 import {
 	CANCEL_TURN_CONTRACT_TOOL_NAME,
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
@@ -180,6 +182,8 @@ type ActingPassOptions = {
 	phase: 'initial' | 'continuation';
 	/** Bounded validation-repair passes already spent on this round. */
 	validationRepairRounds?: number;
+	/** Last validation failure, independent of call IDs and cosmetic payload changes. */
+	previousValidationFailureSha256?: string;
 	/** Whether the tool round this pass produces announces itself with a planning step. */
 	emitPlanningSemantic?: boolean;
 };
@@ -1128,6 +1132,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		const continuationOptions: ActingPassOptions = {
 			phase: 'continuation',
 			validationRepairRounds,
+			previousValidationFailureSha256: options.previousValidationFailureSha256,
 			emitPlanningSemantic: options.emitPlanningSemantic ?? false
 		};
 		let finished = false;
@@ -1327,6 +1332,27 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 								'permanent'
 							);
 						}
+						const validationFailureSha256 = createHash('sha256')
+							.update(
+								JSON.stringify(
+									validationIssues
+										.map((issue) =>
+											JSON.stringify([
+												issue.toolName,
+												issue.op ?? null,
+												[...issue.errors].sort()
+											])
+										)
+										.sort()
+								)
+							)
+							.digest('hex');
+						// First rejection gets literal feedback on the warm route. Only
+						// the same unresolved failure spends the remaining repair on a
+						// different route. Removing an empty array is not progress.
+						if (validationFailureSha256 === options.previousValidationFailureSha256) {
+							this.ports.client.rejectRepeatedInvalidToolResponse?.(request);
+						}
 						const repairRequest = buildValidationRepairRequest(
 							request,
 							invalidCalls,
@@ -1337,6 +1363,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						yield* this.streamActingPass(repairRequest, usage, state, {
 							phase: 'continuation',
 							validationRepairRounds: validationRepairRounds + 1,
+							previousValidationFailureSha256: validationFailureSha256,
 							emitPlanningSemantic
 						});
 						continue;
@@ -1562,6 +1589,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 
 			const calls = completeTurnContractReviewDecision({
 				actingRequest: request,
+				admittedTools: availableTools,
 				reviewRequest,
 				toolCalls,
 				finished,

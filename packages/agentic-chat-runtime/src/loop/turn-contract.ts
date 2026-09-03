@@ -492,11 +492,12 @@ function normalizeOutcome(
 				`a labelled create outcome names exactly one entity, so minimum_successful_effects must be 1 (received ${minimumSuccessfulEffects}). Split into one labelled create outcome per entity.`
 			);
 		}
-		if (!changes.some((change) => change.field === 'title')) {
+		const titleField = normalizeOutcomeFieldName('title', entityKind);
+		if (!changes.some((change) => change.field === titleField)) {
 			return rejectOutcome(
 				issues,
 				index,
-				'a labelled create outcome must declare its title in changes, e.g. [{"field":"title","value":"Meeting notes"}]; the title is how the created entity is bound to the label.'
+				`a labelled create outcome must declare its ${titleField} in changes, e.g. [{"field":"${titleField}","value":"Meeting notes"}]; the name is how the created entity is bound to the label.`
 			);
 		}
 	}
@@ -1146,7 +1147,8 @@ function entityMatches(expected: TurnContractEntityKind, actual: string): boolea
 export type TurnContractLabelBindings = ReadonlyMap<string, string>;
 
 function declaredTitle(outcome: TurnContractOutcome): string | undefined {
-	return outcome.changes?.find((change) => change.field === 'title')?.value;
+	const titleField = normalizeOutcomeFieldName('title', outcome.entityKind);
+	return outcome.changes?.find((change) => change.field === titleField)?.value;
 }
 
 /**
@@ -1225,6 +1227,7 @@ export function bindTurnContractLabels(
 	// 4. Parent-by-title moves resolved the parent without a create call.
 	for (const outcome of labelled) {
 		if (bindings.has(outcome.label)) continue;
+		if (!entityMatches(outcome.entityKind, 'document')) continue;
 		const title = declaredTitle(outcome);
 		const key = title ? titleKey(title) : '';
 		if (!key) continue;
@@ -1246,17 +1249,26 @@ function resolveOutcome(
 	ledger: WriteLedgerEntry[],
 	bindings: TurnContractLabelBindings
 ): TurnContractOutcomeResult {
-	// A labelled create is fulfilled exactly when its label bound, from any source.
+	// Binding proves the created entity's identity, not its other postconditions.
+	// Keep identity-only parent-by-title grouping valid. Check any other fields
+	// against successful creates and subsequent updates to that bound entity.
+	let boundCreateId: string | undefined;
 	if (outcome.label && outcome.action === 'create') {
-		const bound = bindings.get(outcome.label);
-		return {
-			id: outcome.id,
-			fulfilled: Boolean(bound),
-			matchedEffects: bound ? 1 : 0,
-			requiredEffects: outcome.minimumSuccessfulEffects,
-			missingTargetIds: [],
-			missingRequiredFields: bound ? [] : ['title']
-		};
+		boundCreateId = bindings.get(outcome.label);
+		const identityField = normalizeOutcomeFieldName('title', outcome.entityKind);
+		const requiredFields = outcome.requiredFields.filter((field) => field !== identityField);
+		const changes = outcome.changes?.filter((change) => change.field !== identityField);
+		if (!boundCreateId || (requiredFields.length === 0 && (changes?.length ?? 0) === 0)) {
+			return {
+				id: outcome.id,
+				fulfilled: Boolean(boundCreateId),
+				matchedEffects: boundCreateId ? 1 : 0,
+				requiredEffects: outcome.minimumSuccessfulEffects,
+				missingTargetIds: [],
+				missingRequiredFields: boundCreateId ? [] : [identityField]
+			};
+		}
+		outcome = { ...outcome, targetIds: [boundCreateId], requiredFields, changes };
 	}
 	const boundParentId = outcome.parentLabel ? bindings.get(outcome.parentLabel) : undefined;
 	if (outcome.parentLabel && !boundParentId) {
@@ -1273,7 +1285,11 @@ function resolveOutcome(
 	const candidates = ledger.filter(
 		(entry) =>
 			entry.status === 'success' &&
-			Boolean(entry.action && actionMatches(outcome.action, entry)) &&
+			Boolean(
+				entry.action &&
+					(actionMatches(outcome.action, entry) ||
+						(boundCreateId && entry.action === 'update'))
+			) &&
 			Boolean(entry.entityKind && entityMatches(outcome.entityKind, entry.entityKind)) &&
 			(outcome.targetIds.length === 0 ||
 				Boolean(entry.entityId && outcome.targetIds.includes(entry.entityId))) &&

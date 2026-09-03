@@ -42,7 +42,8 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 							id: {
 								type: 'string',
 								maxLength: 80,
-								description: 'Optional stable label for this outcome.'
+								description:
+									'Optional stable identifier for this outcome. Separate from the entity reference in label.'
 							},
 							action: {
 								type: 'string',
@@ -123,7 +124,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								maxLength: 40,
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Create only: symbolic name for one new entity so later outcomes can reference it before it has an ID. Set minimum_successful_effects=1 and declare its title in changes.'
+									'Create only: optional symbolic reference to one new entity. Omit unless another outcome needs to reference it. Set minimum_successful_effects=1 and declare its title in changes (goals use name). The label does not supply that value. Example labelled goal outcome: {"action":"create","entity_kind":"goal","minimum_successful_effects":1,"label":"launch","changes":[{"field":"name","value":"Publish three episodes"}]}'
 							},
 							parent_label: {
 								type: 'string',

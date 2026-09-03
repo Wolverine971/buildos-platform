@@ -202,6 +202,8 @@ type TurnRouteHealth = {
 		model: string;
 		providerSlug: string | null;
 	} | null;
+	/** Exact completed response eligible for delayed semantic-validation feedback. */
+	lastResponse: { identity: string; model: string; providerSlug: string | null } | null;
 	updatedAtMs: number;
 };
 
@@ -295,6 +297,15 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 
 	private readonly httpReferer: string;
 	private readonly appName: string;
+
+	rejectRepeatedInvalidToolResponse(input: ClientInput): void {
+		const response = this.getTurnRouteHealth(input.turnRunId, false)?.lastResponse;
+		if (input.signal.aborted || !response || response.identity !== responseIdentity(input))
+			return;
+		// Transport success was already accounted for. Validation is recorded by
+		// the coordinator; this only steers its remaining repair and is idempotent.
+		this.observeTurnRouteFailure(input.turnRunId, response.model, response.providerSlug);
+	}
 
 	async *stream(input: ClientInput): AsyncGenerator<AgenticChatTurnProviderClientEventV1> {
 		validateToolSurface(input);
@@ -614,6 +625,16 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				};
 				return;
 			}
+			// Forced synthesis already owns one bounded retry for disabled tools.
+			// Treat this response as a route failure before releasing its `done`,
+			// so that existing retry leaves the bad pin. Do not emit a retryable
+			// error here: the atomic-pass layer would add another retry allowance.
+			const toolsDisabledViolation =
+				input.toolChoice === 'none' &&
+				(state.toolCalls.size > 0 ||
+					!state.toolCallsObservable ||
+					state.finishReason === 'tool_calls' ||
+					state.finishReason === 'function_call');
 			await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 				round: input.providerRound,
 				logical_provider_round: input.logicalProviderRound,
@@ -624,26 +645,44 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				model_requested: active.route.model,
 				model_used: state.modelUsed ?? active.route.model,
 				provider: state.provider ?? active.route.id,
-				status: 'success',
+				status: toolsDisabledViolation ? 'failure' : 'success',
 				duration_ms: boundedDuration(
 					activeAttemptStartedAtMs ?? requestStartedAtMs,
 					attemptEndedAtMs
 				),
 				provider_timing: providerAttemptTimingPayload(active.timing(), attemptEndedAtMs),
 				finish_reason: finishedReason,
-				error_class: null,
+				error_class: toolsDisabledViolation ? 'provider_tool_call_disabled' : null,
 				usage: usagePayload,
 				...rejectedToolCallPayload(state, input)
 			});
 			activeAttemptEnded = true;
-			this.observeTurnRouteSuccess(
-				input.turnRunId,
-				state.modelUsed ?? active.route.model,
-				active.route.model,
-				state.providerSlug,
-				active.route.kind === 'openrouter'
-			);
-			await account('success', null, false);
+			if (toolsDisabledViolation) {
+				this.observeTurnRouteFailure(
+					input.turnRunId,
+					state.modelUsed ?? active.route.model,
+					state.providerSlug ?? normalizeProviderSlug(state.provider)
+				);
+				await account(
+					'failure',
+					'Agentic Chat provider requested tool calls while tool_choice=none',
+					true
+				);
+			} else {
+				this.observeTurnRouteSuccess(
+					input.turnRunId,
+					state.modelUsed ?? active.route.model,
+					active.route.model,
+					state.providerSlug,
+					active.route.kind === 'openrouter'
+				);
+				this.getTurnRouteHealth(input.turnRunId, true)!.lastResponse = {
+					identity: responseIdentity(input),
+					model: state.modelUsed ?? active.route.model,
+					providerSlug: state.providerSlug
+				};
+				await account('success', null, false);
+			}
 			yield {
 				type: 'done',
 				finishedReason,
@@ -867,6 +906,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		providerSlug: string | null
 	): void {
 		const health = this.getTurnRouteHealth(turnRunId, true)!;
+		health.lastResponse = null;
 		if (model) {
 			health.failedModels.add(model);
 			health.preferredModels = health.preferredModels.filter(
@@ -892,6 +932,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		pinEligible: boolean
 	): void {
 		const health = this.getTurnRouteHealth(turnRunId, true)!;
+		health.updatedAtMs = Date.now();
 		if (pinEligible && !health.pin) health.pin = { model, providerSlug };
 		const recoveredFromFailure =
 			health.failedModels.size > 0 || health.failedProviderSlugs.size > 0;
@@ -902,7 +943,6 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			model,
 			...health.preferredModels.filter((candidate) => candidate !== model)
 		];
-		health.updatedAtMs = Date.now();
 	}
 
 	private getTurnRouteHealth(turnRunId: string, create: boolean): TurnRouteHealth | null {
@@ -924,6 +964,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			failedProviderSlugs: new Set(),
 			preferredModels: [],
 			pin: null,
+			lastResponse: null,
 			updatedAtMs: now
 		};
 		this.turnRouteHealth.set(turnRunId, health);
@@ -1822,6 +1863,19 @@ function validateToolSurface(input: ClientInput): void {
 	for (const tool of input.tools) {
 		validateReadToolDefinition(tool, seen);
 	}
+}
+
+function responseIdentity(input: ClientInput): string {
+	// Physical retries belong to the same logical pass. The completed retry's
+	// actual route is retained, without retaining its prompt or tool arguments.
+	return JSON.stringify([
+		input.streamRunId,
+		input.processingToken,
+		input.executionGeneration,
+		input.logicalProviderRound,
+		input.providerRound,
+		input.passRole ?? 'acting'
+	]);
 }
 
 function canonicalProviderAttempt(value: number | undefined): number {

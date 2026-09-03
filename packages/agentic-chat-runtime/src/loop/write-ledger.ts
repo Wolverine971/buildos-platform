@@ -123,6 +123,7 @@ const NON_EFFECT_ARGUMENTS = new Set([
 	'destination_project_id',
 	'confirmation_token',
 	'update_strategy',
+	'merge_instructions',
 	'confirm',
 	'idempotency_key'
 ]);
@@ -147,7 +148,8 @@ function moveSelectsParent(toolName: string, args: ParsedArgs): boolean {
 	);
 }
 
-function extractChangedFields(toolName: string, args: ParsedArgs): string[] {
+/** Canonical effect fields recorded for these tool arguments, excluding routing metadata. */
+export function getWriteLedgerChangedFields(toolName: string, args: ParsedArgs): string[] {
 	const fields = Object.entries(args)
 		.filter(
 			([key, value]) =>
@@ -327,7 +329,7 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	if (action) entry.action = action;
 	if (entityKind) entry.entityKind = entityKind;
 	if (execution.toolCall.id) entry.effectId = execution.toolCall.id;
-	const changedFields = extractChangedFields(toolName, args);
+	const changedFields = getWriteLedgerChangedFields(toolName, args);
 	if (changedFields.length > 0) entry.changedFields = changedFields;
 	const changedValues = extractChangedValues(
 		toolName,

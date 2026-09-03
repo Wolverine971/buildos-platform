@@ -123,6 +123,294 @@ describe('semantic turn contracts', () => {
 		});
 	});
 
+	it.each(['name', 'title'])(
+		'binds labelled goals using canonical names supplied as %s',
+		(field) => {
+			const goals = [
+				{ id: 'goal-a', label: 'launch', name: 'Publish three episodes' },
+				{ id: 'goal-b', label: 'audience', name: 'Reach one hundred listeners' }
+			];
+			const contract = parseDeclaredTurnContract({
+				outcomes: goals.map((goal) => ({
+					action: 'create',
+					entity_kind: 'goal',
+					label: goal.label,
+					changes: [{ field, value: goal.name }],
+					minimum_successful_effects: 1
+				}))
+			});
+			expect(contract).not.toBeNull();
+			const ledger = buildWriteLedger(
+				[...goals].reverse().map((goal) =>
+					execution(
+						'create_onto_goal',
+						{ name: goal.name },
+						{
+							result: { goal: { id: goal.id, name: goal.name } }
+						}
+					)
+				)
+			);
+			expect(Object.fromEntries(bindTurnContractLabels(contract, ledger))).toEqual({
+				launch: 'goal-a',
+				audience: 'goal-b'
+			});
+		}
+	);
+
+	it('still rejects a labelled goal without its declared name', () => {
+		expect(
+			parseDeclaredTurnContract({
+				outcomes: [{ action: 'create', entity_kind: 'goal', label: 'launch' }]
+			})
+		).toBeNull();
+	});
+
+	it('reports the canonical name field for an unbound labelled goal', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'goal',
+					label: 'launch',
+					changes: [{ field: 'name', value: 'Publish three episodes' }]
+				}
+			]
+		});
+		expect(resolveTurnContractOutcome({ contract, toolExecutions: [] })).toMatchObject({
+			fulfilled: false,
+			outcomes: [{ missingRequiredFields: ['name'] }]
+		});
+	});
+
+	it('never binds a labelled goal to a document parent with the same name', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'goal',
+					label: 'launch',
+					changes: [{ field: 'name', value: 'Publish three episodes' }]
+				}
+			]
+		});
+		const ledger = [
+			{
+				toolName: 'move_document_in_tree',
+				status: 'success' as const,
+				action: 'move',
+				entityKind: 'document',
+				entityId: 'doc-a',
+				parentId: 'parent-doc',
+				parentTitle: 'Publish three episodes',
+				parentCreated: true
+			}
+		];
+		expect(Object.fromEntries(bindTurnContractLabels(contract, ledger))).toEqual({});
+	});
+
+	it.each([undefined, '2026-09-20', '2026-09-15'])(
+		'checks labelled goal postconditions after binding its name: %s',
+		(targetDate) => {
+			const contract = parseDeclaredTurnContract({
+				outcomes: [
+					{
+						action: 'create',
+						entity_kind: 'goal',
+						label: 'launch',
+						changes: [
+							{ field: 'name', value: 'Publish three episodes' },
+							{ field: 'target_date', value: '2026-09-15' }
+						]
+					}
+				]
+			});
+			expect(contract).not.toBeNull();
+			const toolExecutions = [
+				execution(
+					'create_onto_goal',
+					{
+						name: 'Publish three episodes',
+						...(targetDate ? { target_date: targetDate } : {})
+					},
+					{ result: { goal: { id: 'goal-a', name: 'Publish three episodes' } } }
+				)
+			];
+			expect(resolveTurnContractOutcome({ contract, toolExecutions }).fulfilled).toBe(
+				targetDate === '2026-09-15'
+			);
+		}
+	);
+
+	it.each([
+		{ createdDate: undefined, updatedDate: '2026-09-15', fulfilled: true },
+		{ createdDate: '2026-09-20', updatedDate: '2026-09-15', fulfilled: true },
+		{ createdDate: '2026-09-15', updatedDate: '2026-09-20', fulfilled: false }
+	])(
+		'uses the final saved fields of a labelled create: %j',
+		({ createdDate, updatedDate, fulfilled }) => {
+			const contract = parseDeclaredTurnContract({
+				outcomes: [
+					{
+						action: 'create',
+						entity_kind: 'goal',
+						label: 'launch',
+						changes: [
+							{ field: 'name', value: 'Publish three episodes' },
+							{ field: 'target_date', value: '2026-09-15' }
+						]
+					}
+				]
+			});
+			expect(contract).not.toBeNull();
+			const toolExecutions = [
+				execution(
+					'create_onto_goal',
+					{
+						name: 'Publish three episodes',
+						...(createdDate ? { target_date: createdDate } : {})
+					},
+					{ result: { goal: { id: 'goal-a', name: 'Publish three episodes' } } }
+				),
+				execution('update_onto_goal', { goal_id: 'goal-a', target_date: updatedDate })
+			];
+			expect(resolveTurnContractOutcome({ contract, toolExecutions }).fulfilled).toBe(
+				fulfilled
+			);
+		}
+	);
+
+	it.each(['failed', 'other-id', 'other-kind', 'no-create'])(
+		'does not prove a labelled create through an ineligible update: %s',
+		(scenario) => {
+			const contract = parseDeclaredTurnContract({
+				outcomes: [
+					{
+						action: 'create',
+						entity_kind: 'goal',
+						label: 'launch',
+						changes: [
+							{ field: 'name', value: 'Publish three episodes' },
+							{ field: 'target_date', value: '2026-09-15' }
+						]
+					}
+				]
+			});
+			expect(contract).not.toBeNull();
+			const toolExecutions =
+				scenario === 'no-create'
+					? []
+					: [
+							execution(
+								'create_onto_goal',
+								{ name: 'Publish three episodes' },
+								{
+									result: {
+										goal: { id: 'goal-a', name: 'Publish three episodes' }
+									}
+								}
+							)
+						];
+			toolExecutions.push(
+				scenario === 'other-kind'
+					? execution('update_onto_task', {
+							task_id: 'goal-a',
+							target_date: '2026-09-15'
+						})
+					: execution(
+							'update_onto_goal',
+							{
+								goal_id: scenario === 'other-id' ? 'goal-b' : 'goal-a',
+								target_date: '2026-09-15'
+							},
+							{ success: scenario !== 'failed' }
+						)
+			);
+			expect(resolveTurnContractOutcome({ contract, toolExecutions }).fulfilled).toBe(false);
+		}
+	);
+
+	it('does not fulfill extra create fields through an implicit parent binding', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'document',
+					label: 'notes',
+					changes: [
+						{ field: 'title', value: 'Meeting notes' },
+						{ field: 'description', value: 'Decisions from team meetings' }
+					]
+				}
+			]
+		});
+		expect(contract).not.toBeNull();
+		const toolExecutions = [
+			execution(
+				'move_document_in_tree',
+				{ document_id: 'doc-a', new_parent_title: 'Meeting notes' },
+				{
+					result: {
+						parent_id: 'parent-doc',
+						parent_title: 'Meeting notes',
+						parent_created: true
+					}
+				}
+			)
+		];
+		expect(resolveTurnContractOutcome({ contract, toolExecutions }).fulfilled).toBe(false);
+	});
+
+	it('does not count merge instructions as a saved document postcondition', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'update',
+					entity_kind: 'document',
+					target_ids: ['doc-a'],
+					required_fields: ['merge_instructions']
+				}
+			]
+		});
+		const toolExecutions = [
+			execution('update_onto_document', {
+				document_id: 'doc-a',
+				content: 'New content',
+				update_strategy: 'replace',
+				merge_instructions: 'Tighten the introduction'
+			})
+		];
+		expect(resolveTurnContractOutcome({ contract, toolExecutions }).fulfilled).toBe(false);
+		const ledger = buildWriteLedger(toolExecutions);
+		expect(ledger[0]?.changedFields).not.toContain('merge_instructions');
+		expect(ledger[0]?.changedValues).not.toHaveProperty('merge_instructions');
+	});
+
+	it('publishes a labelled-goal example accepted by the semantic validator', () => {
+		const definition = AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1.find(
+			(tool) => tool.function.name === 'declare_turn_contract'
+		)!;
+		const schema = definition.function.parameters.properties.outcomes as {
+			items: { properties: { label: { description: string } } };
+		};
+		const example = schema.items.properties.label.description.split(
+			'Example labelled goal outcome: '
+		)[1];
+		expect(example).toBeDefined();
+		const contract = parseDeclaredTurnContract({ outcomes: [JSON.parse(example!)] });
+		expect(contract).toMatchObject({
+			outcomes: [
+				{
+					action: 'create',
+					entityKind: 'goal',
+					label: 'launch',
+					minimumSuccessfulEffects: 1,
+					changes: [{ field: 'name', value: 'Publish three episodes' }]
+				}
+			]
+		});
+	});
+
 	it('publishes canonical schemas for every standard semantic control', () => {
 		const definitions = new Map(
 			AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1.map((definition) => [

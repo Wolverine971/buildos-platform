@@ -276,6 +276,14 @@ function batchReview(request = actingRequest(), allowRevision = true) {
 }
 
 describe('reviewer request prefix stability', () => {
+	it('gives the batch reviewer one approval hash without the unrelated contract hash', () => {
+		const review = batchReview();
+		const evidence = String(review.messages[1]?.content);
+		expect(evidence).not.toContain(sha(contractArguments()));
+		expect(evidence.match(/\b[a-f0-9]{64}\b/g)).toHaveLength(1);
+		expect(evidence).toContain('batch_sha256');
+	});
+
 	it('advertises static approval tools with no per-review SHA constant', () => {
 		const first = buildTurnContractReviewRequest(
 			actingRequest(),
