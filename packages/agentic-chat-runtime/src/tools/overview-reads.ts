@@ -1,16 +1,14 @@
 // packages/agentic-chat-runtime/src/tools/overview-reads.ts
 //
 // Shared overview/utility read tools (Phase 4 Slice 18 S3-T5). These are the
-// get_field_info / get_workspace_overview / get_project_overview /
-// change_chat_context implementations extracted from the legacy web
+// get_field_info / get_workspace_overview / get_project_overview
+// implementations extracted from the legacy web
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/utility-executor.ts
 // as free functions over the shared read context, so web (RLS user client) and
 // the worker (service-role client + explicit actor scoping via the access
 // port) produce byte-identical payloads. The pure payload builders already
 // live in ./overview-helper (T1); this module adds the data loaders and the
-// tool entry points. change_chat_context needs the host's launch tool surface
-// (host execution state), so it takes a minimal injected resolver rather than
-// importing an application composition layer.
+// tool entry points.
 
 import {
 	buildProjectOverviewPayload,
@@ -46,24 +44,6 @@ export interface SharedGetProjectOverviewArgs {
 	project_id?: string;
 	query?: string;
 }
-
-export interface SharedChangeChatContextArgs {
-	target: 'global' | 'project';
-	project_id?: string;
-	project_query?: string;
-	reason?: string;
-}
-
-/**
- * Host port for change_chat_context: resolves the direct tool names the host
- * mounts at launch for a chat context type. Web resolves the shared catalog
- * profile selected during admission; the worker supplies its decoded callable
- * surface. Kept as a function port because the active mounted surface is host
- * execution state, not shared read behavior.
- */
-export type SharedChangeChatContextPorts = {
-	resolveDirectToolNames: (contextType: 'global' | 'project') => string[];
-};
 
 // ============================================
 // PROJECT SUMMARY MAPPING (byte-identical to the legacy web executor)
@@ -439,124 +419,4 @@ export async function getProjectOverview(
 		members: related.members,
 		currentActorId: await context.access.getActorId()
 	});
-}
-
-// ============================================
-// CONTEXT CHANGE
-// ============================================
-
-export async function changeChatContext(
-	context: AgenticChatSharedReadContextV1,
-	args: SharedChangeChatContextArgs,
-	ports: SharedChangeChatContextPorts
-): Promise<Record<string, any>> {
-	const target = args.target === 'project' ? 'project' : 'global';
-	const reason = typeof args.reason === 'string' ? args.reason.trim() : '';
-
-	if (target === 'global') {
-		const message = reason || 'Zoomed out to workspace context.';
-		return {
-			type: 'context_change',
-			changed: true,
-			target,
-			context_shift: {
-				new_context: 'global',
-				entity_id: null,
-				entity_name: 'Workspace',
-				entity_type: 'workspace',
-				message
-			},
-			materialized_tools: ports.resolveDirectToolNames('global'),
-			message
-		};
-	}
-
-	const projectId =
-		typeof args.project_id === 'string' && args.project_id.trim().length > 0
-			? args.project_id.trim()
-			: undefined;
-	const projectQuery =
-		typeof args.project_query === 'string' && args.project_query.trim().length > 0
-			? args.project_query.trim()
-			: undefined;
-
-	if (!projectId && !projectQuery) {
-		return {
-			type: 'context_change',
-			changed: false,
-			target,
-			match: {
-				status: 'missing_project',
-				candidates: []
-			},
-			message: 'Project context changes require project_id or project_query.'
-		};
-	}
-
-	const overview = await getProjectOverview(context, {
-		...(projectId ? { project_id: projectId } : {}),
-		...(projectQuery ? { query: projectQuery } : {})
-	});
-	const match =
-		overview.match && typeof overview.match === 'object'
-			? (overview.match as Record<string, unknown>)
-			: null;
-	if (match?.status !== 'resolved' || !overview.project) {
-		return {
-			type: 'context_change',
-			changed: false,
-			target,
-			match: overview.match ?? {
-				status: 'not_found',
-				query: projectQuery ?? projectId ?? '',
-				candidates: []
-			},
-			message:
-				typeof overview.message === 'string'
-					? overview.message
-					: 'Project context was not changed.'
-		};
-	}
-
-	const project = overview.project as Record<string, unknown>;
-	const resolvedProjectId =
-		typeof project.id === 'string' && project.id.trim().length > 0
-			? project.id.trim()
-			: typeof match.project_id === 'string'
-				? match.project_id.trim()
-				: '';
-	if (!resolvedProjectId) {
-		return {
-			type: 'context_change',
-			changed: false,
-			target,
-			match: overview.match ?? null,
-			message: 'Project context was not changed because the resolved project had no id.'
-		};
-	}
-	const projectName =
-		typeof project.name === 'string' && project.name.trim().length > 0
-			? project.name.trim()
-			: 'Project';
-	const message = reason || `Zoomed into ${projectName}.`;
-
-	return {
-		type: 'context_change',
-		changed: true,
-		target,
-		project: {
-			id: resolvedProjectId,
-			name: projectName,
-			state_key: typeof project.state_key === 'string' ? project.state_key : null
-		},
-		context_shift: {
-			new_context: 'project',
-			entity_id: resolvedProjectId,
-			entity_name: projectName,
-			entity_type: 'project',
-			message
-		},
-		materialized_tools: ports.resolveDirectToolNames('project'),
-		message
-	};
 }

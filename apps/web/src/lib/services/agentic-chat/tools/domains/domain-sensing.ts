@@ -28,6 +28,8 @@ export type SensedDomain = {
 	coverage_status: DomainCoverageStatus;
 	parent_ids: string[];
 	aliases_hit: string[];
+	/** Distinct query tokens that hit the domain id/name/alias vocabulary (see DomainSearchMatch). */
+	discriminative_hits: number;
 	skill_ids: string[];
 	outcome_card_ids: string[];
 	recommended_skill_stack_ids: string[];
@@ -77,17 +79,48 @@ export type DomainSensingResult = {
 	 * tie across candidate cards, so skill choice stays with the model.
 	 */
 	skill_load_required: boolean;
+	/**
+	 * Set when the current message matched skill-covered vocabulary but a
+	 * deterministic guard closed the gate anyway (a direct-tool read or a
+	 * status recall question with no craft verb). Telemetry only.
+	 */
+	gate_suppressed_by?: 'direct_read_guard';
 	next_step: string;
 };
 
 const MAX_QUERY_CHARS = 800;
 const MIN_DOMAIN_CONFIDENCE = 0.45;
 const SKILL_GATE_CANDIDATE_LIMIT = 3;
-// Gate threshold: live prompts that should load a skill matched skill-bearing
-// domains at >= 0.56 confidence, while trivial follow-ups and direct-tool asks
-// returned no sensing result at all (2026-07-02 routing investigation).
-const SKILL_GATE_MIN_CONFIDENCE = 0.55;
+// Gate rule (2026-09-02 turn executor audit, Finding 4): the gate opens only on
+// an alias hit or on two distinct discriminative tokens (domain id / name /
+// alias vocabulary). A single shared noun such as "email" in "search my email
+// for the invoice" is one discriminative hit and stays advisory. Prose tokens
+// leaking from skill ids and summaries can no longer open it at all, so the
+// absolute confidence floors below are deliberately unchanged — raising them
+// would silence correct routes like "book idea" (0.55) and "LinkedIn post".
+const SKILL_GATE_MIN_DISCRIMINATIVE_HITS = 2;
 const NATIVE_PROJECT_SIGNAL_CONFIDENCE = 0.9;
+
+// Direct-tool negative guard. The 2026-08-27 Gmail-read message and "search my
+// email for the invoice from Stripe" both preloaded a cold-email playbook, and
+// "where are we at with this book?" preloaded a blog-marketing one. A read verb
+// on a BuildOS entity noun, or a status-recall question, with no craft verb is
+// a tool ask, not skill-covered work — whatever the lexical scorer thinks.
+const DIRECT_READ_ENTITY_PATTERN =
+	/\b(?:gmail|inbox|e-?mails?|calendars?|events?|tasks?|documents?|docs?|projects?)\b/i;
+const DIRECT_READ_VERB_PATTERN =
+	/\b(?:list|search|find|show|open|read|what'?s|what is|what are|where are we|where we'?re at)\b/i;
+const STATUS_RECALL_PATTERN =
+	/\b(?:where are we(?: at)?|where we'?re at|where we are at|what'?s the status|what is the status|status of|do we have|have we (?:got|decided|settled|picked)|remind me (?:what|where|which)|catch me up|bring me up to speed|i forget)\b/i;
+const CRAFT_VERB_PATTERN =
+	/\b(?:draft|write|plan|review|audit|strateg(?:y|ies|ize)|campaigns?|pitch|outreach|scripts?)\b/i;
+
+export function isDirectReadOrStatusRecallTurn(message: string | null | undefined): boolean {
+	const text = message?.trim() ?? '';
+	if (!text || CRAFT_VERB_PATTERN.test(text)) return false;
+	if (STATUS_RECALL_PATTERN.test(text)) return true;
+	return DIRECT_READ_ENTITY_PATTERN.test(text) && DIRECT_READ_VERB_PATTERN.test(text);
+}
 
 type NativeOutcomeCardSignal = {
 	outcomeCardId: string;
@@ -153,7 +186,8 @@ function shouldRequireSkillLoad(
 	return activeDomains.some(
 		(domain) =>
 			domain.skill_ids.length > 0 &&
-			(domain.confidence >= SKILL_GATE_MIN_CONFIDENCE || domain.aliases_hit.length > 0)
+			(domain.aliases_hit.length > 0 ||
+				domain.discriminative_hits >= SKILL_GATE_MIN_DISCRIMINATIVE_HITS)
 	);
 }
 
@@ -239,6 +273,7 @@ function toSensedDomain(domainId: string, match?: DomainSearchMatch): SensedDoma
 		coverage_status: loaded.coverage_status,
 		parent_ids: loaded.parent_ids,
 		aliases_hit: match?.aliases_hit ?? [],
+		discriminative_hits: match?.discriminative_hits ?? 0,
 		skill_ids: loaded.skills.map((skill) => skill.id),
 		outcome_card_ids: loaded.outcome_card_ids,
 		recommended_skill_stack_ids: loaded.recommended_skill_stacks.map((stack) => stack.id),
@@ -563,9 +598,14 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		...candidateOutcomeCards.flatMap((card) => card.gap_resource_ids)
 	]).slice(0, 8);
 
-	const skillLoadRequired =
+	const lexicalSkillLoadRequired =
 		shouldRequireSkillLoad(source, activeDomains) ||
 		(source !== 'session_state' && nativeOutcomeCards.length > 0);
+	const gateSuppressed =
+		lexicalSkillLoadRequired &&
+		source === 'current_user_message' &&
+		isDirectReadOrStatusRecallTurn(currentUserMessage);
+	const skillLoadRequired = lexicalSkillLoadRequired && !gateSuppressed;
 
 	return {
 		type: 'domain_sensing',
@@ -578,6 +618,7 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		coverage_gap_skill_ids: coverageGapSkillIds,
 		coverage_gap_resource_ids: coverageGapResourceIds,
 		skill_load_required: skillLoadRequired,
+		...(gateSuppressed ? { gate_suppressed_by: 'direct_read_guard' as const } : {}),
 		next_step: skillLoadRequired ? GATED_NEXT_STEP : ADVISORY_NEXT_STEP
 	};
 }
@@ -712,19 +753,26 @@ export function getSkillGateCandidateSkillLoadFormats(
 	);
 }
 
+export type DomainSensingPreloadSource =
+	| 'domain_sensing'
+	| 'project_domain_affinity'
+	| 'operational_intent';
+
 export function renderDomainSensingPromptContent(
 	result: DomainSensingResult | null,
 	options: {
 		preloadedSkillPromptContent?: string | null;
-		preloadSource?: 'domain_sensing' | 'project_domain_affinity' | null;
+		preloadSource?: DomainSensingPreloadSource | null;
 	} = {}
 ): string | null {
 	const preloadedSkillPromptContent = options.preloadedSkillPromptContent?.trim() || null;
 	if (preloadedSkillPromptContent) {
 		const source =
-			options.preloadSource === 'project_domain_affinity' || !result
-				? 'persisted_project_domain_affinity'
-				: result.source;
+			options.preloadSource === 'operational_intent'
+				? 'operational_intent'
+				: options.preloadSource === 'project_domain_affinity' || !result
+					? 'persisted_project_domain_affinity'
+					: result.source;
 		return [
 			`Source: ${source}.`,
 			'',

@@ -910,86 +910,114 @@ describe('AgenticChatOpenRouterClient', () => {
 		expect(firstHeaders['X-OpenRouter-Metadata']).toBe('enabled');
 	});
 
-	it('pins later passes to the first successful model and provider until that route fails', async () => {
-		const requests: Array<Record<string, unknown>> = [];
-		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
-			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
-			if (requests.length === 2) {
-				return new Response(
-					JSON.stringify({ error: { message: 'pinned route unavailable' } }),
-					{
-						status: 503,
-						headers: { 'content-type': 'application/json' }
-					}
-				);
-			}
-			return sseResponse([
-				JSON.stringify({
-					model:
-						requests.length === 1 ? 'provider/resolved-fallback' : 'provider/primary',
-					provider: requests.length === 1 ? 'Warm Provider' : 'Recovery Provider',
-					provider_slug: requests.length === 1 ? 'warm-provider' : 'recovery-provider',
-					choices: [{ delta: { content: requests.length === 1 ? 'First' : 'Recovered' } }]
-				}),
-				JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
-				'[DONE]'
+	it.each([503, 404])(
+		'releases a successful provider pin and permits retry after HTTP %s',
+		async (status) => {
+			const requests: Array<Record<string, unknown>> = [];
+			const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+				requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+				if (requests.length === 2) {
+					return new Response(
+						JSON.stringify({ error: { message: 'pinned route unavailable' } }),
+						{
+							status,
+							headers: { 'content-type': 'application/json' }
+						}
+					);
+				}
+				return sseResponse([
+					JSON.stringify({
+						model:
+							requests.length === 1
+								? 'provider/resolved-fallback'
+								: 'provider/primary',
+						provider: requests.length === 1 ? 'Warm Provider' : 'Recovery Provider',
+						provider_slug:
+							requests.length === 1 ? 'warm-provider' : 'recovery-provider',
+						choices: [
+							{ delta: { content: requests.length === 1 ? 'First' : 'Recovered' } }
+						]
+					}),
+					JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+					'[DONE]'
+				]);
+			}) as unknown as typeof fetch;
+			const test = harness(fetchImpl, [
+				route({
+					model: 'provider/primary',
+					fallbackModels: ['provider/resolved-fallback'],
+					providerRouting: { order: ['default-provider'], allow_fallbacks: true }
+				})
 			]);
-		}) as unknown as typeof fetch;
-		const test = harness(fetchImpl, [
-			route({
+
+			await expect(collect(test.client.stream(input()))).resolves.toEqual([
+				{ type: 'text', content: 'First' },
+				expect.objectContaining({ type: 'done', finishedReason: 'stop' })
+			]);
+			await expect(
+				collect(
+					test.client.stream({
+						...input(),
+						streamRunId: 'stream-run-2',
+						logicalProviderRound: 2
+					})
+				)
+			).resolves.toEqual([
+				{
+					type: 'error',
+					error: `Agentic Chat provider start failed (${status}): pinned route unavailable`,
+					retryable: true
+				}
+			]);
+			await expect(
+				collect(
+					test.client.stream({
+						...input(),
+						streamRunId: 'stream-run-3',
+						logicalProviderRound: 3
+					})
+				)
+			).resolves.toEqual([
+				{ type: 'text', content: 'Recovered' },
+				expect.objectContaining({ type: 'done', finishedReason: 'stop' })
+			]);
+
+			expect(requests[0]).toMatchObject({
 				model: 'provider/primary',
-				fallbackModels: ['provider/resolved-fallback'],
-				providerRouting: { order: ['default-provider'], allow_fallbacks: true }
-			})
-		]);
+				models: ['provider/resolved-fallback'],
+				provider: { order: ['default-provider'], allow_fallbacks: true }
+			});
+			expect(requests[1]).toMatchObject({
+				model: 'provider/resolved-fallback',
+				provider: { order: ['warm-provider'], allow_fallbacks: false }
+			});
+			expect(requests[1]).not.toHaveProperty('models');
+			expect(requests[2]).toMatchObject({
+				model: 'provider/primary',
+				models: ['provider/resolved-fallback'],
+				provider: { order: ['default-provider'], allow_fallbacks: true }
+			});
+		}
+	);
+
+	it('does not retry an unpinned missing model or endpoint', async () => {
+		const fetchImpl = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({ error: { message: 'No endpoints found for missing/model.' } }),
+					{ status: 404, headers: { 'content-type': 'application/json' } }
+				)
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
 
 		await expect(collect(test.client.stream(input()))).resolves.toEqual([
-			{ type: 'text', content: 'First' },
-			expect.objectContaining({ type: 'done', finishedReason: 'stop' })
-		]);
-		await expect(
-			collect(
-				test.client.stream({
-					...input(),
-					streamRunId: 'stream-run-2',
-					logicalProviderRound: 2
-				})
-			)
-		).resolves.toEqual([
 			{
 				type: 'error',
-				error: 'Agentic Chat provider start failed (503): pinned route unavailable',
-				retryable: true
+				error: 'Agentic Chat provider start failed (404): No endpoints found for missing/model.',
+				retryable: false
 			}
 		]);
-		await expect(
-			collect(
-				test.client.stream({
-					...input(),
-					streamRunId: 'stream-run-3',
-					logicalProviderRound: 3
-				})
-			)
-		).resolves.toEqual([
-			{ type: 'text', content: 'Recovered' },
-			expect.objectContaining({ type: 'done', finishedReason: 'stop' })
-		]);
-
-		expect(requests[0]).toMatchObject({
-			model: 'provider/primary',
-			models: ['provider/resolved-fallback'],
-			provider: { order: ['default-provider'], allow_fallbacks: true }
-		});
-		expect(requests[1]).toMatchObject({
-			model: 'provider/resolved-fallback',
-			provider: { order: ['warm-provider'], allow_fallbacks: false }
-		});
-		expect(requests[1]).not.toHaveProperty('models');
-		expect(requests[2]).toMatchObject({
-			model: 'provider/primary',
-			models: ['provider/resolved-fallback'],
-			provider: { order: ['default-provider'], allow_fallbacks: true }
-		});
+		expect(fetchImpl).toHaveBeenCalledTimes(1);
 	});
 
 	it('handles split CRLF frames and completes safely without an explicit DONE marker', async () => {
@@ -1820,5 +1848,197 @@ describe('rejected tool-call receipt', () => {
 				'usage'
 			].sort()
 		);
+	});
+});
+
+describe('truncated tool-call attempts and turn budgets', () => {
+	const tools = [readToolDefinition('get_project_overview')];
+	function toolCallFrame(argumentsText = '{"query":"9takes"}') {
+		return JSON.stringify({
+			choices: [
+				{
+					delta: {
+						tool_calls: [
+							{
+								index: 0,
+								id: 'provider-call-1',
+								type: 'function',
+								function: { name: 'get_project_overview', arguments: argumentsText }
+							}
+						]
+					}
+				}
+			]
+		});
+	}
+
+	it('names a stop-finished tool-call attempt as a failed attempt, clears the route pin, and retries on the fallback', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 1) {
+				// Trace T1: 2,001 completion tokens of tool call, finish_reason=stop.
+				return sseResponse(
+					[
+						toolCallFrame(),
+						JSON.stringify({
+							choices: [{ delta: {}, finish_reason: 'stop' }],
+							usage: {
+								prompt_tokens: 900,
+								completion_tokens: 2001,
+								total_tokens: 2901
+							}
+						}),
+						'[DONE]'
+					],
+					{ headers: { 'x-openrouter-provider': 'Alibaba' } }
+				);
+			}
+			return sseResponse([
+				toolCallFrame(),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'tool_calls' }],
+					usage: { prompt_tokens: 900, completion_tokens: 40, total_tokens: 940 }
+				}),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+
+		const first = await collect(test.client.stream({ ...input(), tools, toolChoice: 'auto' }));
+		expect(first.some((event) => event.type === 'done')).toBe(false);
+		expect(first.at(-1)).toMatchObject({
+			type: 'error',
+			retryable: true,
+			cause: 'tool_arguments_truncated'
+		});
+		// The failed attempt is visible in the durable receipt before any
+		// consumer-side finish assertion runs.
+		const ended = test.lifecycleObservations.filter(
+			(observation) => observation.eventType === 'provider_attempt_ended'
+		);
+		expect(ended[0]?.payload).toMatchObject({
+			status: 'failure',
+			error_class: 'provider_tool_arguments_truncated',
+			tool_call_truncation: 'finish_reason',
+			finish_reason: 'stop',
+			usage: { completion_tokens: 2001 }
+		});
+		expect(test.observations[0]).toMatchObject({
+			status: 'failure',
+			retryable: true,
+			completionTokens: 2001
+		});
+
+		const second = await collect(
+			test.client.stream({ ...input(), tools, toolChoice: 'auto', providerAttempt: 2 })
+		);
+		expect(second.at(-1)).toMatchObject({ type: 'done', finishedReason: 'tool_calls' });
+		expect(requests[1]).toMatchObject({
+			model: 'provider/fallback',
+			models: ['provider/primary'],
+			provider: { ignore: ['alibaba'] }
+		});
+		const endedAfterRetry = test.lifecycleObservations.filter(
+			(observation) => observation.eventType === 'provider_attempt_ended'
+		);
+		expect(endedAfterRetry).toHaveLength(2);
+		expect(endedAfterRetry[1]?.payload).toMatchObject({ status: 'success', error_class: null });
+	});
+
+	it('classifies arguments cut off mid-object as truncation even with a clean finish reason', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				toolCallFrame('{"query":"9ta'),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'tool_calls' }],
+					usage: { prompt_tokens: 9, completion_tokens: 2, total_tokens: 11 }
+				}),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const events = await collect(test.client.stream({ ...input(), tools, toolChoice: 'auto' }));
+		expect(events.at(-1)).toMatchObject({ type: 'error', retryable: true });
+		const ended = test.lifecycleObservations.find(
+			(observation) => observation.eventType === 'provider_attempt_ended'
+		);
+		expect(ended?.payload).toMatchObject({
+			status: 'failure',
+			tool_call_truncation: 'arguments',
+			rejected_tool_name: 'get_project_overview'
+		});
+		expect(JSON.stringify(ended?.payload)).not.toContain('9ta');
+	});
+
+	it('leaves malformed-but-complete arguments to the consumer as a permanent rejection', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				toolCallFrame('{"query": }'),
+				JSON.stringify({ choices: [{ delta: {}, finish_reason: 'tool_calls' }] }),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const events = await collect(test.client.stream({ ...input(), tools, toolChoice: 'auto' }));
+		expect(events.at(-1)).toMatchObject({ type: 'done', finishedReason: 'tool_calls' });
+	});
+
+	it('bounds each attempt timeout by the remaining turn budget, never below five seconds', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl); // requestTimeoutMs: 10_000
+		const attemptWindow = (index: number): number => {
+			const ended = test.lifecycleObservations.filter(
+				(observation) => observation.eventType === 'provider_attempt_ended'
+			)[index];
+			const timing = ended?.payload.provider_timing as Record<string, number>;
+			return timing.deadline_at_ms - timing.network_started_at_ms;
+		};
+
+		await collect(
+			test.client.stream({ ...input(), budget: { deadlineAtMs: Date.now() + 8_000 } })
+		);
+		// 8s left minus the 5s finalization reserve is 3s: floored to the 5s minimum.
+		expect(attemptWindow(0)).toBe(5_000);
+
+		await collect(
+			test.client.stream({
+				...input(),
+				logicalProviderRound: 2,
+				budget: { deadlineAtMs: Date.now() + 12_000 }
+			})
+		);
+		expect(attemptWindow(1)).toBeGreaterThanOrEqual(6_900);
+		expect(attemptWindow(1)).toBeLessThanOrEqual(7_000);
+
+		await collect(test.client.stream({ ...input(), logicalProviderRound: 3 }));
+		expect(attemptWindow(2)).toBe(10_000);
+	});
+
+	it('uses a constant prompt cache key for reviewer passes and the session key for acting passes', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			return sseResponse([
+				JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		await collect(test.client.stream(input()));
+		await collect(
+			test.client.stream({ ...input(), logicalProviderRound: 2, passRole: 'contract_review' })
+		);
+		await collect(
+			test.client.stream({ ...input(), logicalProviderRound: 3, passRole: 'mutation_review' })
+		);
+		expect(requests[0]?.prompt_cache_key).toBe(SESSION_ID);
+		expect(requests[1]?.prompt_cache_key).toBe('agentic-chat-reviewer-v1');
+		expect(requests[2]?.prompt_cache_key).toBe('agentic-chat-reviewer-v1');
 	});
 });

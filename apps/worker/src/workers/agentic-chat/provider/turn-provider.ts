@@ -1,6 +1,5 @@
 // apps/worker/src/workers/agentic-chat/provider/turn-provider.ts
 
-import type { JsonObject } from '@buildos/shared-types';
 import {
 	CANCEL_TURN_CONTRACT_TOOL_NAME,
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
@@ -22,6 +21,7 @@ import {
 	buildRoundToolPattern,
 	buildWriteLedger,
 	classifyReceiptGroundedAssistantDisposition,
+	isControlToolName,
 	mergeTurnContracts,
 	parseDeclaredTurnContract,
 	resolveTurnContractOutcome,
@@ -48,11 +48,6 @@ import {
 } from '../tools/execution-adapter';
 import type { AgenticChatReadToolExecutionV1 } from '../toolExecution';
 import type { AgenticChatLiveVisionResolverPortV1 } from '../liveVision';
-import type { AgenticChatWorkerSupervisorFactoryV1 } from '../workerSupervisor';
-import type {
-	AgenticChatSupervisorBlockedToolCallV1,
-	AgenticChatSupervisorTerminalRequestV1
-} from '../workerSupervisorDecisions';
 import {
 	type AgenticChatProviderMutationCapabilitiesV1,
 	reviewedAgenticChatMutationSpecV1
@@ -76,13 +71,13 @@ import {
 	completeTurnContractReviewDecision
 } from './review/decision-completion';
 import {
-	assertSemanticDispositionCalls,
 	buildPostSemanticDispositionRequest,
 	buildProjectCreateInitialContractGateRequest,
 	buildSemanticTurnDispositionGateRequest,
 	callsIncludeSemanticDisposition,
 	canRequirePreMutationSemanticDisposition,
 	isSemanticDispositionToolName,
+	reconcileSemanticDispositionCalls,
 	requestOffersSemanticDisposition
 } from './review/disposition';
 import {
@@ -99,7 +94,6 @@ import {
 	isMutationFeedback,
 	memoizeCompletedRead,
 	resolveMemoServedExecution,
-	validateReadFeedback,
 	validateToolFeedback
 } from './feedback';
 import {
@@ -111,8 +105,11 @@ import {
 } from './protocol';
 import { streamBufferedProviderPass } from './provider-pass';
 import {
+	type SurfaceRepairContext,
+	buildRequiredPassProseFallbackRequest,
 	buildReviewerMimicryRepairRequest,
 	buildUnavailableSkillRepairRequest,
+	buildUnavailableSurfaceToolRepairRequest,
 	contextSaturationRepairRank
 } from './repair-policy';
 import {
@@ -120,7 +117,6 @@ import {
 	buildBaseProviderRequest,
 	buildContinuationRequest,
 	buildPromptSnapshot,
-	buildSynthesisRequest,
 	buildValidationRepairRequest,
 	combineUsage,
 	forceToolFreeRequest,
@@ -142,22 +138,25 @@ import {
 	normalizeCompletedProviderCalls
 } from './steps';
 import {
-	AgenticChatProviderSupervisorRuntime,
-	drainSupervisorSteps,
-	observeSupervisorDurableToolResults,
-	observeSupervisorPreExecutionFailure,
-	observeSupervisorToolCalls,
-	supervisorUsage
-} from './supervisor-runtime';
+	type TurnPhase,
+	type TurnPhaseEvent,
+	contractPending,
+	dispositionPending,
+	nextTurnPhase
+} from './turn-phase';
 import {
 	callsWithValidationIssues,
 	contractSha256,
 	validateApprovedTurnContractMutations,
 	validateCompletedProviderCalls,
-	validationFailureError,
 	validationIssuesForCall
 } from './validation';
-import { assessDirectWriteBatch, directWriteContractInstruction } from './write-routing';
+import {
+	type DirectWriteRouteContext,
+	assessDirectWriteBatch,
+	collectSingleHitEntityIds,
+	directWriteContractInstruction
+} from './write-routing';
 
 const DEFAULT_MAX_PROVIDER_ROUNDS = 16;
 const MAX_VALIDATION_REPAIR_ROUNDS = 2;
@@ -176,9 +175,17 @@ type PendingToolRound = {
 	usage: AgenticChatProviderUsageV1 | null;
 };
 
+type ActingPassOptions = {
+	/** The opening pass resolves live vision and holds pre-gate prose; continuations do not. */
+	phase: 'initial' | 'continuation';
+	/** Bounded validation-repair passes already spent on this round. */
+	validationRepairRounds?: number;
+	/** Whether the tool round this pass produces announces itself with a planning step. */
+	emitPlanningSemantic?: boolean;
+};
+
 type ToolRoundStreamState = {
 	turnRunId: string;
-	supervisor: AgenticChatProviderSupervisorRuntime | null;
 	release(): void;
 	getAdmittedTools(): readonly AgenticChatTurnProviderToolV1[];
 	recordProviderToolCalls(count: number): void;
@@ -189,6 +196,10 @@ type ToolRoundStreamState = {
 	markToolRoundCompleted(): void;
 	setCurrentRequest(value: ClientRequest): void;
 	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null;
+	/** The phase the acting model is in and whether its contract is approved, for the one-shot surface repair. */
+	getSurfaceRepairContext(): SurfaceRepairContext;
+	/** Record an executed event in the turn state machine. */
+	advance(event: TurnPhaseEvent): void;
 	hasPendingTurnContractWrite(): boolean;
 	takePreMutationSemanticDispositionGate(
 		request: ClientRequest,
@@ -211,7 +222,6 @@ type ToolRoundStreamState = {
 	stageMutationBatchReview(
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[],
-		blockedToolCalls: ReadonlyMap<string, AgenticChatSupervisorBlockedToolCallV1>,
 		usage: AgenticChatProviderUsageV1 | null,
 		proposalSource?: PendingMutationBatchReview['proposalSource']
 	): PendingMutationBatchReview | null;
@@ -237,7 +247,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			semanticReviewer?: AgenticChatTurnProviderClientPortV1;
 			capacity: AgenticChatProviderCapacity;
 			liveVision?: AgenticChatLiveVisionResolverPortV1;
-			supervisorFactory?: AgenticChatWorkerSupervisorFactoryV1;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -272,15 +281,13 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			input.signal,
 			this.mutationCapabilities,
 			Boolean(this.ports.liveVision),
-			Boolean(this.ports.semanticReviewer)
+			Boolean(this.ports.semanticReviewer),
+			input.budget
 		);
 		const initialRequest = this.ports.semanticReviewer
 			? (buildProjectCreateInitialContractGateRequest(request) ?? request)
 			: request;
 		const promptSnapshot = buildPromptSnapshot(initialRequest.messages, initialRequest.tools);
-		const supervisor = this.ports.supervisorFactory
-			? new AgenticChatProviderSupervisorRuntime(this.ports.supervisorFactory(executionInput))
-			: null;
 		let lease;
 		try {
 			lease = this.ports.capacity.acquire(request.turnRunId);
@@ -297,8 +304,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 
 		let released = false;
 		let streamed = false;
-		let synthesized = false;
-		let continued = false;
 		let pendingToolRound: PendingToolRound | null = null;
 		let toolRoundCompleted = false;
 		let currentRequest = initialRequest;
@@ -306,11 +311,16 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		let readOnlyRoundCount = 0;
 		let providerToolCallCount = 0;
 		let readLoopRepairRank = 0;
-		let mutationRoundReached = false;
-		let semanticTurnDispositionGateUsed = false;
+		// Where the acting model is in the turn. Every precondition below is a
+		// phase check; the contract lane keeps only the SHA-bound data next to it.
+		// A project-create turn opens on the required gate rather than the surface.
+		let phase: TurnPhase =
+			initialRequest.semanticDispositionGate === true ? 'disposition_gate' : 'opening';
+		const advance = (event: TurnPhaseEvent): void => {
+			phase = nextTurnPhase(phase, event);
+		};
+		// The reviewer may downgrade a declared contract to read-only once per turn.
 		let semanticDispositionCorrectionUsed = false;
-		let contractWriteCarveOutUsed = false;
-		let contractCompletionContinuationUsed = false;
 		let turnContract: TurnContract | null = null;
 		let pendingContractReviewSha256: string | null = null;
 		let approvedContractSha256: string | null = null;
@@ -344,8 +354,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			if (
 				!turnContract ||
 				!approvedContractSha256 ||
-				!mutationRoundReached ||
-				contractCompletionContinuationUsed ||
+				phase !== 'mutating' ||
 				contractSha256(turnContract) !== approvedContractSha256
 			) {
 				return null;
@@ -389,6 +398,18 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		};
 		const semanticReviewRequired = Boolean(this.ports.semanticReviewer);
 		const readOps = new Set<string>();
+		// Ids that a read this turn returned as the only entity of their kind
+		// (id → kind). Together with the focus entity and the ids the user typed,
+		// these are the targets the direct lane may update without a reviewer.
+		const turnResolvedEntityIds = new Map<string, string>();
+		const currentUserMessage = executionInput.requestPayload.message;
+		const directWriteContext = (value: ClientRequest): DirectWriteRouteContext => ({
+			contextType: value.contextType,
+			entityId: value.entityId,
+			projectId: value.projectId,
+			userMessage: typeof currentUserMessage === 'string' ? currentUserMessage : null,
+			resolvedEntityIds: turnResolvedEntityIds
+		});
 		// The executor clears this memo as soon as any call reaches the write
 		// boundary (successful or not), matching the legacy invalidation fence.
 		const turnReadMemo = new Map<string, AgenticChatReadToolExecutionV1>();
@@ -401,7 +422,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		};
 		const buildStreamState = (): ToolRoundStreamState => ({
 			turnRunId: request.turnRunId,
-			supervisor,
 			release,
 			getAdmittedTools: () => admittedTools,
 			recordProviderToolCalls(count) {
@@ -413,11 +433,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			setPendingToolRound(value) {
 				pendingToolRound = value;
 				for (const call of value.calls) {
-					// A voluntary complex-write declaration satisfies the gate just as
-					// surely as one requested after a withheld contract-only proposal.
-					if (isSemanticDispositionToolName(call.name)) {
-						semanticTurnDispositionGateUsed = true;
-					}
 					if (call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME) {
 						const revision = readProposalRevision(call.arguments);
 						if (pendingMutationBatchReview) {
@@ -426,15 +441,24 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 							pendingMutationBatchReview = null;
 							mutationBatchRevisionCount += 1;
 							pendingProposalRevision = { kind: 'mutation_batch', ...revision };
+							advance({ type: 'review', decision: 'revise_batch' });
 						} else {
 							// The declared contract is void; the acting model must re-declare
-							// through the disposition gate, then pass review again.
+							// through the disposition gate, then pass review again. A typed
+							// correction is re-recorded as the declaration when its round
+							// returns, so it keeps the contract phase.
 							turnContract = null;
 							pendingContractReviewSha256 = null;
 							approvedContractSha256 = null;
 							contractRevisionCount += 1;
-							semanticTurnDispositionGateUsed = false;
 							pendingProposalRevision = { kind: 'contract', ...revision };
+							advance({
+								type: 'review',
+								decision:
+									revision.correctedContract && semanticReviewRequired
+										? 'correct_contract'
+										: 'revise_contract'
+							});
 						}
 						continue;
 					}
@@ -443,6 +467,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						pendingContractReviewSha256 = null;
 						approvedContractSha256 = null;
 						pendingMutationBatchReview = null;
+						advance({ type: 'disposition', decision: 'clarification' });
 						continue;
 					}
 					if (call.name === CANCEL_TURN_CONTRACT_TOOL_NAME) {
@@ -450,15 +475,27 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						pendingContractReviewSha256 = null;
 						approvedContractSha256 = null;
 						pendingMutationBatchReview = null;
+						advance({ type: 'disposition', decision: 'cancel' });
+						continue;
+					}
+					if (call.name === DECLARE_READ_ONLY_TURN_TOOL_NAME) {
+						advance({ type: 'review', decision: 'read_only' });
 						continue;
 					}
 					if (call.name !== DECLARE_TURN_CONTRACT_TOOL_NAME) continue;
-					if (!surfaceCanWrite) continue;
+					// A voluntary complex-write declaration satisfies the gate just as
+					// surely as one requested after a withheld contract-only proposal.
+					// A surface with no write tool answers it as a read-only turn.
+					if (!surfaceCanWrite) {
+						advance({ type: 'disposition', decision: 'read_only' });
+						continue;
+					}
 					turnContract = mergeTurnContracts(
 						turnContract,
 						parseDeclaredTurnContract(call.arguments)
 					);
 					approvedContractSha256 = null;
+					advance({ type: 'disposition', decision: 'contract' });
 				}
 			},
 			getContractRevisionCount() {
@@ -476,20 +513,18 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			resolveMemoServed(call) {
 				return resolveMemoServedExecution(turnReadMemo, call);
 			},
+			getSurfaceRepairContext() {
+				return { phase, contractApproved: approvedContractSha256 !== null };
+			},
+			advance,
 			hasPendingTurnContractWrite() {
-				return Boolean(turnContract && !contractWriteCarveOutUsed && !mutationRoundReached);
+				return turnContract !== null && contractPending(phase);
 			},
 			takePreMutationContractReview(value, calls) {
-				if (
-					!semanticReviewRequired ||
-					semanticTurnDispositionGateUsed ||
-					turnContract ||
-					mutationRoundReached ||
-					calls.length !== 1
-				) {
+				if (!semanticReviewRequired || !dispositionPending(phase) || calls.length !== 1) {
 					return null;
 				}
-				const directWrite = assessDirectWriteBatch(calls, value);
+				const directWrite = assessDirectWriteBatch(calls, directWriteContext(value));
 				if (
 					directWrite.kind !== 'contract_required' ||
 					directWrite.reason !== 'target_resolution_requires_review'
@@ -498,8 +533,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				}
 				const compiledContract = compileSingleTaskScheduleContractFromMutation(calls[0]!);
 				if (!compiledContract) return null;
-				semanticTurnDispositionGateUsed = true;
 				turnContract = compiledContract;
+				advance({ type: 'disposition', decision: 'contract' });
 				approvedContractSha256 = null;
 				pendingContractReviewSha256 = contractSha256(compiledContract);
 				return {
@@ -509,14 +544,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			},
 			takePreMutationSemanticDispositionGate(value, calls) {
 				if (
-					semanticTurnDispositionGateUsed ||
-					turnContract ||
-					mutationRoundReached ||
+					!dispositionPending(phase) ||
 					!calls.some((call) => reviewedAgenticChatMutationSpecV1(call.name))
 				) {
 					return null;
 				}
-				const directWrite = assessDirectWriteBatch(calls, value);
+				const directWrite = assessDirectWriteBatch(calls, directWriteContext(value));
 				if (directWrite.kind === 'simple') return null;
 				const gate = buildSemanticTurnDispositionGateRequest(
 					{
@@ -527,6 +560,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					admittedTools
 				);
 				if (!gate) return null;
+				advance({ type: 'gate' });
 				return appendSystemInstruction(
 					gate,
 					directWrite.kind === 'contract_required'
@@ -535,9 +569,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				);
 			},
 			takeReceiptGroundedFinalDispositionGate(value, assistantCandidate) {
-				if (semanticTurnDispositionGateUsed || turnContract || mutationRoundReached) {
-					return null;
-				}
+				if (!dispositionPending(phase)) return null;
 				const reason = classifyReceiptGroundedAssistantDisposition(assistantCandidate);
 				if (!reason) return null;
 				const gate = buildSemanticTurnDispositionGateRequest(
@@ -549,6 +581,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					admittedTools
 				);
 				if (!gate) return null;
+				advance({ type: 'gate' });
 				return appendSystemInstruction(
 					gate,
 					reason === 'mutation_claim'
@@ -557,16 +590,14 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				);
 			},
 			takeTurnContractWriteCarveOut(value) {
-				if (!turnContract || contractWriteCarveOutUsed || mutationRoundReached) {
-					return null;
-				}
+				if (!turnContract || !contractPending(phase)) return null;
 				const carveOut = buildTurnContractWriteCarveOutRequest(
 					value,
 					admittedTools,
 					turnContract
 				);
 				if (!carveOut) return null;
-				contractWriteCarveOutUsed = true;
+				advance({ type: 'carve_out' });
 				const organizeInstruction = organizeExecutionInstruction();
 				return organizeInstruction
 					? appendSystemInstruction(carveOut, organizeInstruction)
@@ -586,7 +617,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					labelBindings
 				);
 				if (!continuation) return null;
-				contractCompletionContinuationUsed = true;
+				advance({ type: 'completion' });
 				return continuation;
 			},
 			validateApprovedMutations(calls) {
@@ -595,7 +626,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (!semanticReviewRequired) return [];
 				if (
 					!turnContract &&
-					assessDirectWriteBatch(calls, currentRequest).kind === 'simple'
+					assessDirectWriteBatch(calls, directWriteContext(currentRequest)).kind ===
+						'simple'
 				) {
 					return [];
 				}
@@ -606,13 +638,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					labelBindings
 				);
 			},
-			stageMutationBatchReview(
-				value,
-				calls,
-				blockedToolCalls,
-				usage,
-				proposalSource = 'acting_model'
-			) {
+			stageMutationBatchReview(value, calls, usage, proposalSource = 'acting_model') {
 				if (
 					!semanticReviewRequired ||
 					!calls.some((call) => reviewedAgenticChatMutationSpecV1(call.name))
@@ -622,7 +648,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (pendingMutationBatchReview) {
 					throw providerError('provider_mutation_review_reused', 'permanent');
 				}
-				if (!turnContract && assessDirectWriteBatch(calls, value).kind === 'simple') {
+				if (
+					!turnContract &&
+					assessDirectWriteBatch(calls, directWriteContext(value)).kind === 'simple'
+				) {
 					return null;
 				}
 				const batchSha256 = mutationBatchSha256(calls);
@@ -633,7 +662,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					proposalSource,
 					batchSha256,
 					calls,
-					blockedToolCalls,
 					authorization: {
 						contract: turnContract,
 						contractSha256: approvedContractSha256,
@@ -665,66 +693,11 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				}
 				streamed = true;
 				const state = buildStreamState();
-				state.supervisor?.start();
-				return this.streamInitial(initialRequest, state);
-			},
-			synthesize: (feedback) => {
-				if (released) {
-					throw providerError('provider_invocation_released', 'unknown');
-				}
-				if (!streamed || !pendingToolRound || !toolRoundCompleted) {
-					throw providerError('provider_read_synthesis_not_ready', 'unknown');
-				}
-				if (synthesized) {
-					throw providerError('provider_read_synthesis_reused', 'unknown');
-				}
-				if (continued) {
-					throw providerError(
-						'provider_read_synthesis_unavailable_after_continuation',
-						'unknown'
-					);
-				}
-				if (pendingToolRound.calls.length !== 1) {
-					throw providerError('provider_read_synthesis_result_count_invalid', 'unknown');
-				}
-				const pendingCall = pendingToolRound.calls[0]!;
-				if (pendingCall.kind !== 'read') {
-					throw providerError('provider_mutating_tool_disabled', 'permanent');
-				}
-				validateReadFeedback(pendingCall, feedback);
-				synthesized = true;
-				const state = buildStreamState();
-				observeSupervisorDurableToolResults(state, [pendingCall], [feedback]);
-				state.supervisor?.observe({
-					type: 'tool_round_completed',
-					round: 1,
-					toolCallsMade: state.getProviderToolCallCount()
-				});
-				const supervisorQuestion = state.supervisor?.takeSupervisorQuestion();
-				if (supervisorQuestion) {
-					return this.streamSupervisorQuestion(
-						supervisorQuestion,
-						pendingToolRound.usage,
-						state
-					);
-				}
-				const baseSynthesisRequest = buildSynthesisRequest(
-					currentRequest,
-					pendingCall,
-					feedback
-				);
-				const directives = state.supervisor?.applyProviderDirectives(baseSynthesisRequest);
-				const synthesisRequest = directives?.request ?? baseSynthesisRequest;
-				return directives?.forceSynthesis
-					? this.streamForcedSynthesis(synthesisRequest, pendingToolRound.usage, state)
-					: this.streamSynthesis(synthesisRequest, pendingToolRound.usage, state);
+				return this.streamActingPass(initialRequest, null, state, { phase: 'initial' });
 			},
 			continueWithToolResults: (input) => {
 				if (released) {
 					throw providerError('provider_invocation_released', 'unknown');
-				}
-				if (synthesized) {
-					throw providerError('provider_read_continuation_reused', 'unknown');
 				}
 				if (!streamed || !pendingToolRound || !toolRoundCompleted) {
 					throw providerError('provider_read_continuation_not_ready', 'unknown');
@@ -739,7 +712,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					);
 				}
 
-				continued = true;
 				const completedToolRound = pendingToolRound;
 				const roundContainsMutation = completedToolRound.calls.some(
 					(call) => call.kind === 'mutation'
@@ -764,7 +736,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				);
 				if (roundContainsMutation) {
 					turnReadMemo.clear();
-					mutationRoundReached = true;
+					advance({ type: 'tool_round', kind: 'mutation' });
 				}
 				const roundExecutions = completedToolRound.calls.map((call, index) => {
 					const feedback = input.results[index]!;
@@ -777,6 +749,19 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					) {
 						memoizeCompletedRead(turnReadMemo, call, feedback.execution);
 					}
+					if (
+						call.kind === 'read' &&
+						!isControlToolName(call.name) &&
+						!isMutationFeedback(feedback) &&
+						!isFailedToolFeedback(feedback)
+					) {
+						for (const [id, kind] of collectSingleHitEntityIds(
+							feedback.execution.result,
+							call.canonicalArguments
+						)) {
+							turnResolvedEntityIds.set(id, kind);
+						}
+					}
 					return {
 						toolCall: completedProviderCallToChatToolCall(call),
 						result: feedbackToChatToolResult(call.id, feedback)
@@ -785,26 +770,24 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				turnToolExecutions.push(...roundExecutions);
 				if (roundContainsMutation) refreshLabelBindings();
 				const state = buildStreamState();
-				observeSupervisorDurableToolResults(state, completedToolRound.calls, input.results);
-				state.supervisor?.observe({
-					type: 'tool_round_completed',
-					round: input.round - 1,
-					toolCallsMade: state.getProviderToolCallCount()
-				});
-				const supervisorQuestion = state.supervisor?.takeSupervisorQuestion();
-				if (supervisorQuestion) {
-					pendingToolRound = null;
-					toolRoundCompleted = false;
-					return this.streamSupervisorQuestion(
-						supervisorQuestion,
-						completedToolRound.usage,
-						state
-					);
-				}
 				const completedToolCalls = roundExecutions.map(({ toolCall }) => toolCall);
 				const pattern = buildRoundToolPattern(completedToolCalls);
 				for (const op of pattern.readOps) readOps.add(op);
-				if (pattern.readOps.length > 0) readOnlyRoundCount += 1;
+				if (roundContainsMutation) {
+					// A mutation round is progress. The read-loop ladder restarts, as
+					// its own contract promises ("reset to 0 on any write round"), so
+					// reads that preceded the contract cannot force the turn tool-free
+					// right after its first write. Control-only rounds (declarations,
+					// reviewer decisions) are neither reads nor writes and leave the
+					// counters alone.
+					readOnlyRoundCount = 0;
+					readLoopRepairRank = 0;
+				} else if (pattern.readOps.length > 0) {
+					readOnlyRoundCount += 1;
+					advance({ type: 'tool_round', kind: 'read' });
+				} else {
+					advance({ type: 'tool_round', kind: 'control' });
+				}
 
 				currentRequest = buildContinuationRequest(
 					currentRequest,
@@ -868,7 +851,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					pendingToolRound = null;
 					toolRoundCompleted = false;
 					nextProviderRound += 1;
-					return this.streamContinuation(currentRequest, completedToolRound.usage, state);
+					return this.streamActingPass(currentRequest, completedToolRound.usage, state, {
+						phase: 'continuation'
+					});
 				}
 				if (contractReviewApproval) {
 					const approvalIndex = completedToolRound.calls.indexOf(contractReviewApproval);
@@ -894,6 +879,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					}
 					pendingContractReviewSha256 = null;
 					approvedContractSha256 = approvalResult.contract_sha256;
+					advance({ type: 'review', decision: 'approve_contract' });
 					const approvedExecutionRequest = buildPostSemanticDispositionRequest(
 						currentRequest,
 						admittedTools,
@@ -907,7 +893,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 									turnContract
 								)
 							: null;
-					if (projectCreateShellRequest) contractWriteCarveOutUsed = true;
+					if (projectCreateShellRequest) advance({ type: 'carve_out' });
 					currentRequest = appendSystemInstruction(
 						projectCreateShellRequest ?? approvedExecutionRequest,
 						'Independent semantic review approved the exact declared contract. Execute only that contract; do not broaden or substitute its targets or values.'
@@ -1011,6 +997,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						);
 					}
 					pendingMutationBatchReview = null;
+					advance({ type: 'review', decision: 'approve_batch' });
 					currentRequest = appendSystemInstruction(
 						currentRequest,
 						'Independent semantic review approved this exact mutation batch. Execute the SHA-bound calls without rewriting, broadening, or substituting them.'
@@ -1056,15 +1043,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						})
 					);
 				}
-				const supervisorDirectives =
-					state.supervisor?.applyProviderDirectives(currentRequest);
-				if (supervisorDirectives) currentRequest = supervisorDirectives.request;
-				if (supervisorDirectives?.forceSynthesis) {
-					readLoopRepairRank = Math.max(
-						readLoopRepairRank,
-						READ_LOOP_REPAIR_RANK.must_synthesize
-					);
-				}
 				const forceNoToolSynthesis =
 					directSimpleMutationCompleted ||
 					ledgerObservation.forceSynthesis ||
@@ -1094,10 +1072,22 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				pendingToolRound = null;
 				toolRoundCompleted = false;
 				nextProviderRound += 1;
-				return clarificationRequiresToolFreeSynthesis ||
+				if (
+					clarificationRequiresToolFreeSynthesis ||
 					(forceNoToolSynthesis && !contractWriteCarveOut && !contractCompletion)
-					? this.streamForcedSynthesis(currentRequest, completedToolRound.usage, state)
-					: this.streamContinuation(currentRequest, completedToolRound.usage, state);
+				) {
+					if (!clarificationRequiresToolFreeSynthesis) {
+						advance({ type: 'budget', limit: 'force_synthesis' });
+					}
+					return this.streamForcedSynthesis(
+						currentRequest,
+						completedToolRound.usage,
+						state
+					);
+				}
+				return this.streamActingPass(currentRequest, completedToolRound.usage, state, {
+					phase: 'continuation'
+				});
 			},
 			invalidateReadMemo: () => turnReadMemo.clear(),
 			release
@@ -1116,47 +1106,69 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		);
 	}
 
-	private async *streamInitial(
+	/**
+	 * One acting-model pass. The opening pass and every continuation share this
+	 * loop; `options.phase` selects the handful of behaviours that differ:
+	 * live-vision resolution and the pre-mutation prose hold belong to the
+	 * opening pass, while reviewer-mimicry repair, the required-pass prose
+	 * fallback, and contract-driven prose holding belong to continuations.
+	 */
+	private async *streamActingPass(
 		request: ClientRequest,
-		state: ToolRoundStreamState
+		priorUsage: AgenticChatProviderUsageV1 | null,
+		state: ToolRoundStreamState,
+		options: ActingPassOptions
 	): AsyncGenerator<AgenticChatProviderStepV1> {
+		const initial = options.phase === 'initial';
+		const validationRepairRounds = options.validationRepairRounds ?? 0;
+		// The opening pass always announces its tool round. A continuation
+		// announces one only when the round it repairs did; a validation repair
+		// inherits this pass's answer, every other repair inherits the raw option.
+		const emitPlanningSemantic = initial || (options.emitPlanningSemantic ?? false);
+		const continuationOptions: ActingPassOptions = {
+			phase: 'continuation',
+			validationRepairRounds,
+			emitPlanningSemantic: options.emitPlanningSemantic ?? false
+		};
 		let finished = false;
-		let keepLeaseForSynthesis = false;
+		let keepLease = false;
 		let streamedText = false;
 		let assistantCandidate = '';
-		const holdAssistantTextForMutationGate = canRequirePreMutationSemanticDisposition(request);
 		// Provider passes are fully buffered upstream, so deferring the text flush
 		// to pass end costs no latency. Holding lets a pass that ends in a semantic
 		// disposition control call withhold its prose: the post-disposition pass
 		// owns the final answer, and flushing both doubled the reply in production.
+		// Contract state can only hold prose after the opening pass; the opening
+		// pass instead holds whenever a withheld mutation could send it to the gate.
+		const holdAssistantTextForTurnContract =
+			!initial &&
+			(state.hasPendingTurnContractWrite() ||
+				state.hasIncompleteApprovedContract() ||
+				request.semanticDispositionGate === true);
 		const holdAssistantText =
-			holdAssistantTextForMutationGate || requestOffersSemanticDisposition(request);
+			holdAssistantTextForTurnContract ||
+			(initial && canRequirePreMutationSemanticDisposition(request)) ||
+			requestOffersSemanticDisposition(request);
 		const toolCalls = createToolCallAccumulator();
 		try {
-			yield* drainSupervisorSteps(state.supervisor);
-			request = await this.resolveLiveVision(request);
-			state.setCurrentRequest(request);
+			if (initial) {
+				request = await this.resolveLiveVision(request);
+				state.setCurrentRequest(request);
+			}
 			for await (const event of this.providerPass(request)) {
 				throwIfAborted(request.signal);
-				if (finished) {
-					throw providerError('provider_event_after_done', 'unknown');
-				}
+				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
 					streamedText = true;
 					assistantCandidate += event.content;
 					if (holdAssistantText) continue;
 					yield { type: 'text_delta', text: event.content };
-					state.supervisor?.observe({
-						type: 'assistant_text_delta',
-						chars: event.content.length
-					});
-					yield* drainSupervisorSteps(state.supervisor);
 					continue;
 				}
 				if (event.type === 'reasoning') {
 					// Reasoning remains private and never enters assistant text or the
-					// public event stream in the thin read-only slice.
+					// public event stream.
 					continue;
 				}
 				if (event.type === 'tool_call') {
@@ -1181,26 +1193,25 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				}
 
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
-				const usage = normalizeUsage(event.usage);
-				state.supervisor?.observe({
-					type: 'llm_pass_completed',
-					pass: request.logicalProviderRound,
-					finishedReason,
-					usage: supervisorUsage(usage)
-				});
-				yield* drainSupervisorSteps(state.supervisor);
 				// Judge the pass before parsing what it produced. A pass that stopped
 				// for any reason other than tool calls left its arguments unfinished,
 				// and reporting that as malformed JSON hides a recoverable condition
-				// behind a permanent protocol error.
-				// Initial project-create requests can now start in a required semantic
-				// disposition gate. Reject calls only when tools are actually disabled;
-				// both `auto` and `required` are valid tool-enabled initial policies.
+				// behind a permanent protocol error. Reject calls only when tools are
+				// actually disabled; both `auto` and `required` are valid tool-enabled
+				// policies (a project-create opening pass starts in a required gate).
 				assertToolCallFinishReason(toolCalls, finishedReason, request.toolChoice, 'none');
-				const calls = completeToolCalls(toolCalls, request.tools, {
-					finishedReason,
-					completionBudgetExhausted: finishedReason === 'length'
-				});
+				let calls: readonly CompletedProviderToolCall[] = completeToolCalls(
+					toolCalls,
+					request.tools,
+					{
+						finishedReason,
+						completionBudgetExhausted: finishedReason === 'length'
+					}
+				);
+				const passUsage = normalizeUsage(event.usage);
+				// The opening pass has no prior usage to fold in; combining with
+				// null would erase the pass usage instead of carrying it.
+				const usage = initial ? passUsage : combineUsage(priorUsage, passUsage);
 				finished = true;
 				if (calls.length > 0) {
 					const unavailableSkillRepair = buildUnavailableSkillRepairRequest(
@@ -1210,19 +1221,63 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					);
 					if (unavailableSkillRepair) {
 						state.setCurrentRequest(unavailableSkillRepair);
-						keepLeaseForSynthesis = true;
-						yield* this.streamContinuation(unavailableSkillRepair, usage, state);
+						keepLease = true;
+						yield* this.streamActingPass(
+							unavailableSkillRepair,
+							usage,
+							state,
+							continuationOptions
+						);
+						return;
+					}
+					const reviewerMimicryRepair = initial
+						? null
+						: buildReviewerMimicryRepairRequest(request, calls);
+					if (reviewerMimicryRepair) {
+						state.setCurrentRequest(reviewerMimicryRepair);
+						keepLease = true;
+						yield* this.streamActingPass(
+							reviewerMimicryRepair,
+							usage,
+							state,
+							continuationOptions
+						);
+						return;
+					}
+					const surfaceRepair = buildUnavailableSurfaceToolRepairRequest(
+						request,
+						calls,
+						state.getAdmittedTools(),
+						state.getSurfaceRepairContext()
+					);
+					if (surfaceRepair) {
+						state.setCurrentRequest(surfaceRepair);
+						keepLease = true;
+						yield* this.streamActingPass(
+							surfaceRepair,
+							usage,
+							state,
+							continuationOptions
+						);
 						return;
 					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
-					assertSemanticDispositionCalls(calls, request.semanticDispositionGate === true);
+					const disposition = reconcileSemanticDispositionCalls(
+						calls,
+						request.semanticDispositionGate === true
+					);
+					if (disposition.notice) {
+						request = appendSystemInstruction(request, disposition.notice);
+						state.setCurrentRequest(request);
+					}
+					calls = disposition.calls;
 					const compiledContractReview = state.takePreMutationContractReview(
 						request,
 						calls
 					);
 					if (compiledContractReview) {
 						state.setCurrentRequest(request);
-						keepLeaseForSynthesis = true;
+						keepLease = true;
 						yield* this.streamTurnContractReview(
 							request,
 							state.getAdmittedTools(),
@@ -1239,91 +1294,70 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						state.takePreMutationSemanticDispositionGate(request, calls);
 					if (preMutationSemanticDispositionGate) {
 						state.setCurrentRequest(preMutationSemanticDispositionGate);
-						keepLeaseForSynthesis = true;
-						yield* this.streamContinuation(
+						keepLease = true;
+						yield* this.streamActingPass(
 							preMutationSemanticDispositionGate,
 							usage,
-							state
+							state,
+							continuationOptions
 						);
 						return;
 					}
 					if (
 						holdAssistantText &&
+						!holdAssistantTextForTurnContract &&
 						assistantCandidate &&
 						!callsIncludeSemanticDisposition(calls)
 					) {
 						yield { type: 'text_delta', text: assistantCandidate };
-						state.supervisor?.observe({
-							type: 'assistant_text_delta',
-							chars: assistantCandidate.length
-						});
-						yield* drainSupervisorSteps(state.supervisor);
 					}
-					const blockedToolCalls = observeSupervisorToolCalls(state, calls);
-					yield* drainSupervisorSteps(state.supervisor);
-					const executableCalls = calls.filter((call) => !blockedToolCalls.has(call.id));
 					const validationIssues = [
-						...validateCompletedProviderCalls(
-							executableCalls,
-							request,
-							state.getAdmittedTools()
-						),
-						...state.validateApprovedMutations(executableCalls)
+						...validateCompletedProviderCalls(calls, request, state.getAdmittedTools()),
+						...state.validateApprovedMutations(calls)
 					];
 					if (validationIssues.length > 0) {
 						const invalidCalls = callsWithValidationIssues(calls, validationIssues);
 						for (const call of invalidCalls) {
 							const callIssues = validationIssuesForCall(call, validationIssues);
 							yield buildValidationFailureReadToolStep(request, call, callIssues);
-							observeSupervisorPreExecutionFailure(
-								state,
-								call,
-								validationFailureError(callIssues),
-								request.logicalProviderRound
+						}
+						if (validationRepairRounds >= MAX_VALIDATION_REPAIR_ROUNDS) {
+							throw providerError(
+								'provider_tool_validation_repair_exhausted',
+								'permanent'
 							);
 						}
-						const supervisorQuestion = state.supervisor?.takeSupervisorQuestion();
-						if (supervisorQuestion) {
-							yield* this.streamSupervisorQuestion(supervisorQuestion, usage, state);
-							continue;
-						}
-						let repairRequest = buildValidationRepairRequest(
+						const repairRequest = buildValidationRepairRequest(
 							request,
 							invalidCalls,
 							validationIssues
 						);
-						const directives = state.supervisor?.applyProviderDirectives(repairRequest);
-						if (directives) repairRequest = directives.request;
 						state.setCurrentRequest(repairRequest);
-						keepLeaseForSynthesis = true;
-						yield* directives?.forceSynthesis
-							? this.streamForcedSynthesis(repairRequest, usage, state)
-							: this.streamContinuation(repairRequest, usage, state, 1, true);
+						keepLease = true;
+						yield* this.streamActingPass(repairRequest, usage, state, {
+							phase: 'continuation',
+							validationRepairRounds: validationRepairRounds + 1,
+							emitPlanningSemantic
+						});
 						continue;
 					}
 					const mutationBatchReview = state.stageMutationBatchReview(
 						request,
 						calls,
-						blockedToolCalls,
 						usage
 					);
 					if (mutationBatchReview) {
 						state.setCurrentRequest(request);
-						keepLeaseForSynthesis = true;
+						keepLease = true;
 						yield* this.streamMutationBatchReview(mutationBatchReview, state);
 						return;
 					}
-					const normalizedCalls = normalizeCompletedProviderCalls(
-						request,
-						calls,
-						blockedToolCalls
-					);
-					state.setPendingToolRound({
-						calls: normalizedCalls,
-						usage
-					});
-					keepLeaseForSynthesis = true;
-					yield buildPlanningStep(request, normalizedCalls[0]!.id);
+					const normalizedCalls = normalizeCompletedProviderCalls(request, calls);
+					state.setPendingToolRound({ calls: normalizedCalls, usage });
+					keepLease = true;
+					if (emitPlanningSemantic) {
+						yield buildPlanningStep(request, normalizedCalls[0]!.id);
+					}
 					for (const call of normalizedCalls) {
 						yield buildProviderToolStep(request, call, state);
 					}
@@ -1338,45 +1372,76 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						request.toolChoice === 'none' ? 'permanent' : 'unknown'
 					);
 				}
-				const receiptGroundedFinalDispositionGate =
-					state.takeReceiptGroundedFinalDispositionGate(request, assistantCandidate);
-				if (receiptGroundedFinalDispositionGate) {
-					state.setCurrentRequest(receiptGroundedFinalDispositionGate);
-					keepLeaseForSynthesis = true;
-					yield* this.streamContinuation(
-						receiptGroundedFinalDispositionGate,
+				if (!initial && request.toolChoice === 'required') {
+					// A required control pass answered in prose. Nothing durable
+					// happened, so the prose becomes a withheld candidate for one
+					// tool-free answer instead of a permanent turn failure.
+					state.setCurrentRequest(request);
+					keepLease = true;
+					state.advance({ type: 'budget', limit: 'force_synthesis' });
+					yield* this.streamForcedSynthesis(
+						buildRequiredPassProseFallbackRequest(request, assistantCandidate),
 						usage,
 						state
 					);
 					return;
 				}
-				if (holdAssistantText && assistantCandidate) {
-					yield { type: 'text_delta', text: assistantCandidate };
-					state.supervisor?.observe({
-						type: 'assistant_text_delta',
-						chars: assistantCandidate.length
-					});
-					yield* drainSupervisorSteps(state.supervisor);
+				const receiptGroundedFinalDispositionGate =
+					state.takeReceiptGroundedFinalDispositionGate(request, assistantCandidate);
+				if (receiptGroundedFinalDispositionGate) {
+					state.setCurrentRequest(receiptGroundedFinalDispositionGate);
+					keepLease = true;
+					yield* this.streamActingPass(
+						receiptGroundedFinalDispositionGate,
+						usage,
+						state,
+						continuationOptions
+					);
+					return;
 				}
-				state.supervisor?.observe({
-					type: 'final_candidate',
-					text: assistantCandidate,
-					finishedReason
-				});
-				yield* drainSupervisorSteps(state.supervisor);
+				if (holdAssistantTextForTurnContract) {
+					const carveOutRequest = state.takeTurnContractWriteCarveOut(request);
+					if (carveOutRequest) {
+						state.setCurrentRequest(carveOutRequest);
+						keepLease = true;
+						yield* this.streamActingPass(
+							carveOutRequest,
+							usage,
+							state,
+							continuationOptions
+						);
+						return;
+					}
+					const completionRequest = state.takeContractCompletionContinuation(request);
+					if (completionRequest) {
+						state.setCurrentRequest(completionRequest);
+						keepLease = true;
+						yield* this.streamActingPass(
+							completionRequest,
+							usage,
+							state,
+							continuationOptions
+						);
+						return;
+					}
+					// Nothing more to execute: release the withheld prose so the user
+					// still gets the answer exactly once.
+					if (assistantCandidate) {
+						yield { type: 'text_delta', text: assistantCandidate };
+					}
+				} else if (holdAssistantText && assistantCandidate) {
+					yield { type: 'text_delta', text: assistantCandidate };
+				}
 				if (!streamedText) {
 					throw providerError('provider_no_assistant_text', 'permanent');
 				}
 				this.ports.capacity.markAvailable(request.turnRunId);
-				yield {
-					type: 'finish',
-					finishedReason,
-					usage
-				};
+				state.advance({ type: 'finish' });
+				yield { type: 'finish', finishedReason, usage };
 			}
 			if (!finished) throw providerError('provider_missing_done', 'unknown');
 		} finally {
-			if (!keepLeaseForSynthesis) state.release();
+			if (!keepLease) state.release();
 		}
 	}
 
@@ -1489,13 +1554,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				reviewerUsage = normalizeUsage(event.usage);
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
 				reviewFinishedReason = finishedReason;
-				state.supervisor?.observe({
-					type: 'llm_pass_completed',
-					pass: reviewRequest.logicalProviderRound,
-					finishedReason,
-					usage: supervisorUsage(reviewerUsage)
-				});
-				yield* drainSupervisorSteps(state.supervisor);
 				if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
 					fallbackReason =
 						'Independent semantic review did not return a control decision.';
@@ -1513,13 +1571,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				contractReviewSha256,
 				allowRevision
 			});
-			const blockedToolCalls = observeSupervisorToolCalls(state, calls);
-			yield* drainSupervisorSteps(state.supervisor);
-			const normalizedCalls = normalizeCompletedProviderCalls(
-				reviewRequest,
-				calls,
-				blockedToolCalls
-			);
+			const normalizedCalls = normalizeCompletedProviderCalls(reviewRequest, calls);
 			state.setPendingToolRound({
 				calls: normalizedCalls,
 				usage: combineUsage(priorUsage, reviewerUsage)
@@ -1598,13 +1650,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				reviewerUsage = normalizeUsage(event.usage);
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
 				reviewFinishedReason = finishedReason;
-				state.supervisor?.observe({
-					type: 'llm_pass_completed',
-					pass: reviewRequest.logicalProviderRound,
-					finishedReason,
-					usage: supervisorUsage(reviewerUsage)
-				});
-				yield* drainSupervisorSteps(state.supervisor);
 				if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
 					fallbackReason =
 						'Independent mutation review did not return a control decision.';
@@ -1621,13 +1666,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				batchSha256: pending.batchSha256,
 				allowRevision
 			});
-			const blockedToolCalls = observeSupervisorToolCalls(state, calls);
-			yield* drainSupervisorSteps(state.supervisor);
-			const normalizedCalls = normalizeCompletedProviderCalls(
-				reviewRequest,
-				calls,
-				blockedToolCalls
-			);
+			const normalizedCalls = normalizeCompletedProviderCalls(reviewRequest, calls);
 			state.setPendingToolRound({
 				calls: normalizedCalls,
 				usage: combineUsage(pending.usage, reviewerUsage)
@@ -1649,7 +1688,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 	/**
 	 * A single-target schedule contract already contains the complete mutation
 	 * arguments. Compile that narrow shape without another acting-model pass,
-	 * then cross the same validation, supervisor, independent review, and durable
+	 * then cross the same validation, independent review, and durable
 	 * execution boundaries as a model-proposed batch.
 	 */
 	private async *streamCompiledContractMutation(
@@ -1670,15 +1709,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// If those layers ever diverge, preserve behavior by returning to the
 				// acting model instead of emitting a system-authored invalid call.
 				keepLeaseForReview = true;
-				yield* this.streamContinuation(request, priorUsage, state);
+				yield* this.streamActingPass(request, priorUsage, state, { phase: 'continuation' });
 				return;
 			}
-			const blockedToolCalls = observeSupervisorToolCalls(state, [call]);
-			yield* drainSupervisorSteps(state.supervisor);
 			const pending = state.stageMutationBatchReview(
 				request,
 				[call],
-				blockedToolCalls,
 				priorUsage,
 				'contract_compiler'
 			);
@@ -1699,11 +1735,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 	): AsyncGenerator<AgenticChatProviderStepV1> {
 		let pendingToolExecution = false;
 		try {
-			const normalizedCalls = normalizeCompletedProviderCalls(
-				pending.request,
-				pending.calls,
-				pending.blockedToolCalls
-			);
+			const normalizedCalls = normalizeCompletedProviderCalls(pending.request, pending.calls);
 			state.setPendingToolRound({ calls: normalizedCalls, usage: pending.usage });
 			yield buildPlanningStep(pending.request, normalizedCalls[0]!.id);
 			for (const call of normalizedCalls) {
@@ -1716,337 +1748,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		}
 	}
 
-	private async *streamContinuation(
-		request: ClientRequest,
-		priorUsage: AgenticChatProviderUsageV1 | null,
-		state: ToolRoundStreamState,
-		validationRepairRounds = 0,
-		emitPlanningSemantic = false
-	): AsyncGenerator<AgenticChatProviderStepV1> {
-		let finished = false;
-		let keepLeaseForContinuation = false;
-		let streamedText = false;
-		let assistantCandidate = '';
-		const holdAssistantTextForTurnContract =
-			state.hasPendingTurnContractWrite() ||
-			state.hasIncompleteApprovedContract() ||
-			request.semanticDispositionGate === true;
-		// See streamInitial: prose emitted alongside a semantic disposition call is
-		// withheld so the post-disposition pass answers exactly once.
-		const holdAssistantText =
-			holdAssistantTextForTurnContract || requestOffersSemanticDisposition(request);
-		const toolCalls = createToolCallAccumulator();
-		try {
-			yield* drainSupervisorSteps(state.supervisor);
-			for await (const event of this.providerPass(request)) {
-				throwIfAborted(request.signal);
-				if (finished) throw providerError('provider_event_after_done', 'unknown');
-				if (event.type === 'text') {
-					if (!event.content) throw providerError('provider_empty_text', 'unknown');
-					streamedText = true;
-					assistantCandidate += event.content;
-					if (holdAssistantText) continue;
-					yield { type: 'text_delta', text: event.content };
-					state.supervisor?.observe({
-						type: 'assistant_text_delta',
-						chars: event.content.length
-					});
-					yield* drainSupervisorSteps(state.supervisor);
-					continue;
-				}
-				if (event.type === 'reasoning') continue;
-				if (event.type === 'tool_call') {
-					if (request.toolChoice === 'none') {
-						throw providerError('provider_tool_call_disabled', 'permanent');
-					}
-					appendToolCallDelta(toolCalls, event.toolCall);
-					continue;
-				}
-				if (event.type === 'error') {
-					if (event.retryable) {
-						this.ports.capacity.markTemporarilyUnavailable(
-							request.turnRunId,
-							this.retryableFailureCooldownMs
-						);
-					}
-					throw new AgenticChatProviderExecutionError(
-						'provider_stream_error',
-						event.retryable ? 'provider_throttle' : 'unknown',
-						canonicalError(event.error)
-					);
-				}
-
-				const finishedReason = canonicalFinishedReason(event.finishedReason);
-				// See streamInitial: the finish reason decides whether the assembled
-				// arguments can be trusted, so it is consulted before they are parsed.
-				assertToolCallFinishReason(toolCalls, finishedReason, request.toolChoice, 'none');
-				const calls = completeToolCalls(toolCalls, request.tools, {
-					finishedReason,
-					completionBudgetExhausted: finishedReason === 'length'
-				});
-				const passUsage = normalizeUsage(event.usage);
-				const aggregateUsage = combineUsage(priorUsage, passUsage);
-				state.supervisor?.observe({
-					type: 'llm_pass_completed',
-					pass: request.logicalProviderRound,
-					finishedReason,
-					usage: supervisorUsage(passUsage)
-				});
-				yield* drainSupervisorSteps(state.supervisor);
-				finished = true;
-				if (calls.length > 0) {
-					const unavailableSkillRepair = buildUnavailableSkillRepairRequest(
-						request,
-						calls,
-						state.getAdmittedTools()
-					);
-					if (unavailableSkillRepair) {
-						state.setCurrentRequest(unavailableSkillRepair);
-						keepLeaseForContinuation = true;
-						yield* this.streamContinuation(
-							unavailableSkillRepair,
-							aggregateUsage,
-							state,
-							validationRepairRounds,
-							emitPlanningSemantic
-						);
-						return;
-					}
-					const reviewerMimicryRepair = buildReviewerMimicryRepairRequest(request, calls);
-					if (reviewerMimicryRepair) {
-						state.setCurrentRequest(reviewerMimicryRepair);
-						keepLeaseForContinuation = true;
-						yield* this.streamContinuation(
-							reviewerMimicryRepair,
-							aggregateUsage,
-							state,
-							validationRepairRounds,
-							emitPlanningSemantic
-						);
-						return;
-					}
-					for (const call of calls) assertAllowlistedCall(call, request.tools);
-					assertSemanticDispositionCalls(calls, request.semanticDispositionGate === true);
-					const compiledContractReview = state.takePreMutationContractReview(
-						request,
-						calls
-					);
-					if (compiledContractReview) {
-						state.setCurrentRequest(request);
-						keepLeaseForContinuation = true;
-						yield* this.streamTurnContractReview(
-							request,
-							state.getAdmittedTools(),
-							compiledContractReview.contract,
-							compiledContractReview.contractSha256,
-							true,
-							aggregateUsage,
-							state,
-							'mutation_candidate_compiler'
-						);
-						return;
-					}
-					const preMutationSemanticDispositionGate =
-						state.takePreMutationSemanticDispositionGate(request, calls);
-					if (preMutationSemanticDispositionGate) {
-						state.setCurrentRequest(preMutationSemanticDispositionGate);
-						keepLeaseForContinuation = true;
-						yield* this.streamContinuation(
-							preMutationSemanticDispositionGate,
-							aggregateUsage,
-							state,
-							validationRepairRounds,
-							emitPlanningSemantic
-						);
-						return;
-					}
-					if (
-						holdAssistantText &&
-						!holdAssistantTextForTurnContract &&
-						assistantCandidate &&
-						!callsIncludeSemanticDisposition(calls)
-					) {
-						yield { type: 'text_delta', text: assistantCandidate };
-						state.supervisor?.observe({
-							type: 'assistant_text_delta',
-							chars: assistantCandidate.length
-						});
-						yield* drainSupervisorSteps(state.supervisor);
-					}
-					const blockedToolCalls = observeSupervisorToolCalls(state, calls);
-					yield* drainSupervisorSteps(state.supervisor);
-					const executableCalls = calls.filter((call) => !blockedToolCalls.has(call.id));
-					const validationIssues = [
-						...validateCompletedProviderCalls(
-							executableCalls,
-							request,
-							state.getAdmittedTools()
-						),
-						...state.validateApprovedMutations(executableCalls)
-					];
-					if (validationIssues.length > 0) {
-						const invalidCalls = callsWithValidationIssues(calls, validationIssues);
-						for (const call of invalidCalls) {
-							const callIssues = validationIssuesForCall(call, validationIssues);
-							yield buildValidationFailureReadToolStep(request, call, callIssues);
-							observeSupervisorPreExecutionFailure(
-								state,
-								call,
-								validationFailureError(callIssues),
-								request.logicalProviderRound
-							);
-						}
-						const supervisorQuestion = state.supervisor?.takeSupervisorQuestion();
-						if (supervisorQuestion) {
-							yield* this.streamSupervisorQuestion(
-								supervisorQuestion,
-								aggregateUsage,
-								state
-							);
-							continue;
-						}
-						if (validationRepairRounds >= MAX_VALIDATION_REPAIR_ROUNDS) {
-							throw providerError(
-								'provider_tool_validation_repair_exhausted',
-								'permanent'
-							);
-						}
-						let repairRequest = buildValidationRepairRequest(
-							request,
-							invalidCalls,
-							validationIssues
-						);
-						const directives = state.supervisor?.applyProviderDirectives(repairRequest);
-						if (directives) repairRequest = directives.request;
-						state.setCurrentRequest(repairRequest);
-						keepLeaseForContinuation = true;
-						yield* directives?.forceSynthesis
-							? this.streamForcedSynthesis(repairRequest, aggregateUsage, state)
-							: this.streamContinuation(
-									repairRequest,
-									aggregateUsage,
-									state,
-									validationRepairRounds + 1,
-									emitPlanningSemantic
-								);
-						continue;
-					}
-					const mutationBatchReview = state.stageMutationBatchReview(
-						request,
-						calls,
-						blockedToolCalls,
-						aggregateUsage
-					);
-					if (mutationBatchReview) {
-						state.setCurrentRequest(request);
-						keepLeaseForContinuation = true;
-						yield* this.streamMutationBatchReview(mutationBatchReview, state);
-						return;
-					}
-					const normalizedCalls = normalizeCompletedProviderCalls(
-						request,
-						calls,
-						blockedToolCalls
-					);
-					state.setPendingToolRound({ calls: normalizedCalls, usage: aggregateUsage });
-					keepLeaseForContinuation = true;
-					if (emitPlanningSemantic) {
-						yield buildPlanningStep(request, normalizedCalls[0]!.id);
-					}
-					for (const call of normalizedCalls) {
-						yield buildProviderToolStep(request, call, state);
-					}
-					state.markToolRoundCompleted();
-					continue;
-				}
-				if (finishedReason === 'tool_calls' || finishedReason === 'function_call') {
-					throw providerError(
-						request.toolChoice === 'none'
-							? 'provider_tool_call_disabled'
-							: 'provider_missing_tool_call',
-						request.toolChoice === 'none' ? 'permanent' : 'unknown'
-					);
-				}
-				if (request.toolChoice === 'required') {
-					throw providerError('provider_missing_tool_call', 'permanent');
-				}
-				const receiptGroundedFinalDispositionGate =
-					state.takeReceiptGroundedFinalDispositionGate(request, assistantCandidate);
-				if (receiptGroundedFinalDispositionGate) {
-					state.setCurrentRequest(receiptGroundedFinalDispositionGate);
-					keepLeaseForContinuation = true;
-					yield* this.streamContinuation(
-						receiptGroundedFinalDispositionGate,
-						aggregateUsage,
-						state,
-						validationRepairRounds,
-						emitPlanningSemantic
-					);
-					return;
-				}
-				if (holdAssistantTextForTurnContract) {
-					const carveOutRequest = state.takeTurnContractWriteCarveOut(request);
-					if (carveOutRequest) {
-						state.setCurrentRequest(carveOutRequest);
-						keepLeaseForContinuation = true;
-						yield* this.streamContinuation(
-							carveOutRequest,
-							aggregateUsage,
-							state,
-							validationRepairRounds,
-							emitPlanningSemantic
-						);
-						return;
-					}
-					const completionRequest = state.takeContractCompletionContinuation(request);
-					if (completionRequest) {
-						state.setCurrentRequest(completionRequest);
-						keepLeaseForContinuation = true;
-						yield* this.streamContinuation(
-							completionRequest,
-							aggregateUsage,
-							state,
-							validationRepairRounds,
-							emitPlanningSemantic
-						);
-						return;
-					}
-					// Nothing more to execute: release the withheld prose so the user
-					// still gets the answer exactly once.
-					if (assistantCandidate) {
-						yield { type: 'text_delta', text: assistantCandidate };
-						state.supervisor?.observe({
-							type: 'assistant_text_delta',
-							chars: assistantCandidate.length
-						});
-						yield* drainSupervisorSteps(state.supervisor);
-					}
-				} else if (holdAssistantText && assistantCandidate) {
-					yield { type: 'text_delta', text: assistantCandidate };
-					state.supervisor?.observe({
-						type: 'assistant_text_delta',
-						chars: assistantCandidate.length
-					});
-					yield* drainSupervisorSteps(state.supervisor);
-				}
-				state.supervisor?.observe({
-					type: 'final_candidate',
-					text: assistantCandidate,
-					finishedReason
-				});
-				yield* drainSupervisorSteps(state.supervisor);
-				if (!streamedText) {
-					throw providerError('provider_no_assistant_text', 'permanent');
-				}
-				this.ports.capacity.markAvailable(request.turnRunId);
-				yield { type: 'finish', finishedReason, usage: aggregateUsage };
-			}
-			if (!finished) throw providerError('provider_missing_done', 'unknown');
-		} finally {
-			if (!keepLeaseForContinuation) state.release();
-		}
-	}
-
 	private async *streamForcedSynthesis(
 		request: ClientRequest,
 		priorUsage: AgenticChatProviderUsageV1 | null,
@@ -2055,7 +1756,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		let currentRequest = forceToolFreeRequest(request);
 		let accumulatedUsage = priorUsage;
 		try {
-			yield* drainSupervisorSteps(state.supervisor);
 			for (let retryCount = 0; retryCount <= MAX_FORCED_SYNTHESIS_RETRIES; retryCount += 1) {
 				let finished = false;
 				let requestedTools = false;
@@ -2096,13 +1796,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					requestedTools ||=
 						finishedReason === 'tool_calls' || finishedReason === 'function_call';
 					passUsage = normalizeUsage(event.usage);
-					state.supervisor?.observe({
-						type: 'llm_pass_completed',
-						pass: currentRequest.logicalProviderRound,
-						finishedReason,
-						usage: supervisorUsage(passUsage)
-					});
-					yield* drainSupervisorSteps(state.supervisor);
 					finished = true;
 				}
 				if (!finished) throw providerError('provider_missing_done', 'unknown');
@@ -2113,18 +1806,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					if (finalText) {
 						this.ports.capacity.markAvailable(request.turnRunId);
 						yield { type: 'text_delta', text: finalText };
-						state.supervisor?.observe({
-							type: 'assistant_text_delta',
-							chars: finalText.length
-						});
 					}
-					state.supervisor?.observe({
-						type: 'final_candidate',
-						text: finalText,
-						finishedReason
-					});
-					yield* drainSupervisorSteps(state.supervisor);
 					if (finalText) {
+						state.advance({ type: 'finish' });
 						yield { type: 'finish', finishedReason, usage: accumulatedUsage };
 						return;
 					}
@@ -2144,111 +1828,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						: NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE
 				);
 			}
-		} finally {
-			state.release();
-		}
-	}
-
-	private async *streamSupervisorQuestion(
-		terminal: Extract<AgenticChatSupervisorTerminalRequestV1, { kind: 'ask_user' }>,
-		usage: AgenticChatProviderUsageV1 | null,
-		state: ToolRoundStreamState
-	): AsyncGenerator<AgenticChatProviderStepV1> {
-		try {
-			yield* drainSupervisorSteps(state.supervisor);
-			this.ports.capacity.markAvailable(state.turnRunId);
-			yield {
-				type: 'supervisor_question',
-				transitionId: terminal.transitionId,
-				sequence: terminal.sequence,
-				executionGeneration: terminal.executionGeneration,
-				reason: terminal.reason,
-				question: terminal.question,
-				checkpoint: {
-					digest: terminal.checkpoint.digest as unknown as JsonObject,
-					resumeContext: terminal.checkpoint.resumeContext as JsonObject,
-					supervisorDecision: terminal.supervisorDecision
-				},
-				finishedReason: terminal.finishedReason,
-				usage
-			};
-		} finally {
-			state.release();
-		}
-	}
-
-	private async *streamSynthesis(
-		request: ClientRequest,
-		initialUsage: AgenticChatProviderUsageV1 | null,
-		state: ToolRoundStreamState
-	): AsyncGenerator<AgenticChatProviderStepV1> {
-		let finished = false;
-		let streamedText = false;
-		let assistantCandidate = '';
-		try {
-			yield* drainSupervisorSteps(state.supervisor);
-			for await (const event of this.providerPass(request)) {
-				throwIfAborted(request.signal);
-				if (finished) throw providerError('provider_event_after_done', 'unknown');
-				if (event.type === 'text') {
-					if (!event.content) throw providerError('provider_empty_text', 'unknown');
-					streamedText = true;
-					assistantCandidate += event.content;
-					yield { type: 'text_delta', text: event.content };
-					state.supervisor?.observe({
-						type: 'assistant_text_delta',
-						chars: event.content.length
-					});
-					yield* drainSupervisorSteps(state.supervisor);
-					continue;
-				}
-				if (event.type === 'reasoning') continue;
-				if (event.type === 'tool_call') {
-					throw providerError('provider_additional_tool_round_disabled', 'permanent');
-				}
-				if (event.type === 'error') {
-					if (event.retryable) {
-						this.ports.capacity.markTemporarilyUnavailable(
-							request.turnRunId,
-							this.retryableFailureCooldownMs
-						);
-					}
-					throw new AgenticChatProviderExecutionError(
-						'provider_stream_error',
-						event.retryable ? 'provider_throttle' : 'unknown',
-						canonicalError(event.error)
-					);
-				}
-				const finishedReason = canonicalFinishedReason(event.finishedReason);
-				const usage = normalizeUsage(event.usage);
-				state.supervisor?.observe({
-					type: 'llm_pass_completed',
-					pass: request.logicalProviderRound,
-					finishedReason,
-					usage: supervisorUsage(usage)
-				});
-				yield* drainSupervisorSteps(state.supervisor);
-				if (finishedReason === 'tool_calls' || finishedReason === 'function_call') {
-					throw providerError('provider_additional_tool_round_disabled', 'permanent');
-				}
-				state.supervisor?.observe({
-					type: 'final_candidate',
-					text: assistantCandidate,
-					finishedReason
-				});
-				yield* drainSupervisorSteps(state.supervisor);
-				if (!streamedText) {
-					throw providerError('provider_no_assistant_text', 'permanent');
-				}
-				finished = true;
-				this.ports.capacity.markAvailable(request.turnRunId);
-				yield {
-					type: 'finish',
-					finishedReason,
-					usage: combineUsage(initialUsage, usage)
-				};
-			}
-			if (!finished) throw providerError('provider_missing_done', 'unknown');
 		} finally {
 			state.release();
 		}

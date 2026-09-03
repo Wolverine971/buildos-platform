@@ -65,17 +65,24 @@ export type GatewayToolMaterialization = {
 // Rare bridge/orchestration tools (Corsair MCP, delegate_task, commit_change_set)
 // are intentionally not mounted on every launch surface. They remain available
 // through tool_search/tool_schema and the orchestrator's on-miss materialization.
+//
+// Document reads are mounted here as well (turn-executor audit 2026-09-02,
+// Decision 2): a global "read those docs" turn has no zoom-into-project move any
+// more (change_chat_context was retired with zero measured calls), and the worker
+// surface is immutable for the turn, so the scan→read pair must already be on
+// the surface when a search result names a document.
 const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'declare_turn_contract',
 	'declare_read_only_turn',
 	'request_turn_clarification',
 	'cancel_turn_contract',
-	'change_chat_context',
 	'get_workspace_overview',
 	'get_project_overview',
 	'search_onto_projects',
 	'search_all_projects',
-	'explore_project'
+	'explore_project',
+	'get_document_outline',
+	'read_document_section'
 ] as const;
 
 // Cross-project action surface for contexts whose whole point is acting on
@@ -99,7 +106,6 @@ const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
 	'declare_read_only_turn',
 	'request_turn_clarification',
 	'cancel_turn_contract',
-	'change_chat_context',
 	'get_project_overview',
 	'get_onto_project_details',
 	'search_project',
@@ -109,8 +115,10 @@ const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
 	// Document reading is ungated on every project turn (Project Knowledge Layer L2):
 	// the scan→read flow ("does a marketing doc cover this? read that section") must
 	// not depend on a document-write turn or a discovery round. These two are the lean
-	// path; full-body get_onto_document_details materializes after document results
-	// or direct on-miss rather than sitting in every launch surface.
+	// path. Full-body get_onto_document_details is not on any launch surface; on the
+	// web path it materializes on demand, on the worker path the surface never grows
+	// mid-turn, so no mounted description or tool result may advertise it
+	// (surfaces.test.ts pins that).
 	'get_document_outline',
 	'read_document_section'
 ] as const;
@@ -260,12 +268,6 @@ export function getGatewayDirectToolNamesForProfile(
 	profileName: GatewaySurfaceProfileName
 ): string[] {
 	return [...resolveGatewayDirectToolNamesForProfile(profileName)];
-}
-
-export function getGatewayDirectToolNamesForContextType(contextType: ChatContextType): string[] {
-	return getGatewayDirectToolNamesForProfile(
-		resolveGatewaySurfaceProfileForContextType(contextType)
-	);
 }
 
 type GatewaySurfaceOptions = {

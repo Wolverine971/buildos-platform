@@ -30,13 +30,19 @@ describe('Agentic Chat worker tool policy', () => {
 		).toEqual(['future_unclassified_tool', 'list_calendar_events']);
 	});
 
-	it('executes context changes and explicitly omits preloaded domain discovery', () => {
-		expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1).toContain('change_chat_context');
+	it('executes global document reads and explicitly omits preloaded domain discovery', () => {
+		expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1).toContain('get_document_outline');
+		expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1).toContain('read_document_section');
 		expect(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1).toContain('domain_search');
 		expect(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1).toContain('declare_read_only_turn');
 		expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1).not.toContain(
 			'declare_read_only_turn'
 		);
-		expect(findAgenticChatWorkerUnavailableToolNamesV1(['change_chat_context'])).toEqual([]);
+		// Retired 2026-09-02 (Decision 2): zero measured calls and inert on the
+		// immutable worker surface. It is no longer a signed public tool at all.
+		expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1).not.toContain('change_chat_context');
+		expect(findAgenticChatWorkerUnavailableToolNamesV1(['change_chat_context'])).toEqual([
+			'change_chat_context'
+		]);
 	});
 });

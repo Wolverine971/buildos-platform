@@ -69,13 +69,19 @@ export function composeFastChatHistory(params: {
 
 	const shouldCompress = history.length >= threshold && history.length > tailCount;
 	if (!shouldCompress) {
+		// The continuity hint rides every composition it is supplied to, not
+		// only the empty and compressed cases: with one to seven raw messages the
+		// prior turn's entity ids and tools used are exactly what a follow-up
+		// ("move that one too") needs (turn-executor audit 2026-09-02, F-11).
 		return {
-			historyForModel: history,
+			historyForModel: continuityHint
+				? [{ role: 'system', content: continuityHint }, ...history]
+				: history,
 			compressed: false,
 			strategy: 'raw_history',
 			rawHistoryCount: rawHistory.length,
 			tailMessagesKept: history.length,
-			continuityHintUsed: false
+			continuityHintUsed: Boolean(continuityHint)
 		};
 	}
 

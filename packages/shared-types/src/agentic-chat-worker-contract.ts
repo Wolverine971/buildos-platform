@@ -90,6 +90,12 @@ export type AgenticChatCurrentTurnInputV1 = {
 	attachments: FrozenChatAttachmentV1[];
 };
 
+/**
+ * @deprecated The worker no longer runs a turn supervisor and never creates a
+ * `supervisor_question` checkpoint (2026-09-02). The field survives on the
+ * artifact only because the web admission path still resolves legacy rows
+ * and the artifact hash covers it; remove it with the next artifact version.
+ */
 export type AgenticChatResumeCheckpointSnapshotV1 = {
 	checkpointId: string;
 	originalTurnRunId: string;

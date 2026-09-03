@@ -79,7 +79,7 @@ export const ONTOLOGY_READ_TOOLS: ChatToolDefinition[] = [
 		function: {
 			name: 'list_onto_documents',
 			description:
-				'List document metadata, not body content. Use get_onto_document_details for a full document.',
+				'List document metadata, not body content. Read a listed document with get_document_outline, then read_document_section.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -349,7 +349,7 @@ Do not call for plain task metadata updates (title/state/priority) unless docume
 		function: {
 			name: 'explore_project',
 			description:
-				'Semantic discovery: finds entities RELATED to a concept or direction even without keyword overlap (theme "marketing" surfaces a customer-segments doc). Use to gather "everything about X" before a broad change; for one known item use search_project/search_all_projects. Omitting project_id searches all accessible projects, grouped by project.',
+				'Semantic discovery: finds entities RELATED to a concept or direction even without keyword overlap (theme "marketing" surfaces a customer-segments doc). Use to gather "everything about X" before a broad change; for one known item use the keyword search tool instead. Omitting project_id searches all accessible projects, grouped by project.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -696,7 +696,7 @@ Use only when older instructions specifically mention search_ontology.`,
 		function: {
 			name: 'get_onto_project_details',
 			description: `Get complete details for a specific ontology project including properties and metadata.
-Use when you need full project information after identifying it with list_onto_projects.`,
+Use when you need full project information for a known project id.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -733,7 +733,7 @@ Use when you need to reorganize or analyze the complete project graph structure.
 		function: {
 			name: 'get_onto_task_details',
 			description: `Get complete details for a specific ontology task including all properties and relationships.
-Use after identifying a task with list_onto_tasks.`,
+Use after a list or search result has identified the task id.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -899,7 +899,7 @@ Useful for showing where a document lives in the hierarchy.`,
 		type: 'function',
 		function: {
 			name: 'get_document_outline',
-			description: `Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Prefer over get_onto_document_details for scanning.`,
+			description: `Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use this to scan before reading any section.`,
 			parameters: {
 				type: 'object',
 				properties: {

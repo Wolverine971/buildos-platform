@@ -114,7 +114,10 @@ describePostgres('agentic-chat worker Phase 2B execution/recovery PostgreSQL con
 			'20260802030400_agentic_chat_worker_drop_legacy_event_sequence.sql',
 			'20260802030500_agentic_chat_worker_terminal_control_rpcs.sql',
 			'20260802031000_agentic_chat_worker_execution_recovery.sql',
-			'20260825161846_agentic_chat_queue_first_admission.sql'
+			'20260825161846_agentic_chat_queue_first_admission.sql',
+			'20260902150000_agentic_chat_recovery_throttle_backoff_seconds.sql',
+			// The migration patches a function body in place; replay must be a no-op.
+			'20260902150000_agentic_chat_recovery_throttle_backoff_seconds.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}
@@ -142,5 +145,9 @@ describePostgres('agentic-chat worker Phase 2B execution/recovery PostgreSQL con
 
 	it('passes supersede terminal-wait and immutable-input cleanup/retry checks', () => {
 		expect(behaviorOutput).toContain('phase2d_behavior_matrix_ok');
+	});
+
+	it('keeps throttle retries in seconds, infrastructure retries in minutes, and timeout retries bounded', () => {
+		expect(proofOutput).toContain('recovery_backoff_seconds_ok');
 	});
 });

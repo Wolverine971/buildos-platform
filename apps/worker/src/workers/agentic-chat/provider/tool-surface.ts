@@ -4,7 +4,10 @@ import {
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	DECLARE_TURN_CONTRACT_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
-import { provideAgenticChatLoopToolCatalog } from '@buildos/agentic-chat-runtime/loop';
+import {
+	provideAgenticChatLoopToolCatalog,
+	provideAgenticChatToolPayloadHostPolicy
+} from '@buildos/agentic-chat-runtime/loop';
 import {
 	type JsonObject,
 	type JsonValue,
@@ -70,21 +73,43 @@ const LAZY_COMPLEX_WRITE_CONTRACT_SURFACE_PROFILES = new Set([
 // Worker and web are separate hosts. Web installs its full registry; the
 // worker installs reviewed reads plus capability-gated mutation identities.
 provideAgenticChatLoopToolCatalog(() => WORKER_LOOP_CATALOG);
+// The worker surface never grows mid-turn, so tool results must not advertise
+// follow-up tools (`materialized_tools`, "Use get_onto_document_details …"):
+// the model's next call would be provider_tool_not_allowlisted and terminal
+// (turn-executor audit 2026-09-02, Finding 2). Web keeps the default because it
+// materializes advertised tools on demand.
+provideAgenticChatToolPayloadHostPolicy(() => ({ advertiseMaterializedTools: false }));
 
+/**
+ * Names the artifact may list that the worker removes by design rather than
+ * by incapacity: the retired read-only control is never mounted, and the
+ * contract schema is deferred off the opening pass of the lazy profiles and
+ * re-mounted by the deterministic complex-write redirect. Neither is a gap.
+ */
+const WORKER_KNOWN_ARTIFACT_ONLY_TOOL_NAMES = new Set<string>([
+	DECLARE_READ_ONLY_TURN_TOOL_NAME,
+	DECLARE_TURN_CONTRACT_TOOL_NAME
+]);
+
+/**
+ * Render the surface override only when the artifact names a tool the worker
+ * genuinely cannot call in this pass. Before 2026-09-02 it fired on every
+ * write-capable opening pass because the artifact lists the deferred
+ * `declare_turn_contract`, adding a third tool list to every prompt
+ * (Finding 9, F-A7).
+ */
 export function buildWorkerToolSurfaceOverride(
 	input: AgenticChatWorkerExecutionInputV1,
 	tools: readonly AgenticChatTurnProviderToolV1[]
 ): string | null {
 	const decoded = decodeAgenticChatToolSurfaceV1(input.artifact.prepared.toolSurface);
 	if (!decoded.ok) return null;
-	const artifactNames = decoded.surface.toolNames;
 	const callableNames = tools.map((tool) => tool.function.name);
-	if (
-		artifactNames.length === callableNames.length &&
-		artifactNames.every((name) => callableNames.includes(name))
-	) {
-		return null;
-	}
+	const callableNameSet = new Set(callableNames);
+	const missingNames = decoded.surface.toolNames.filter(
+		(name) => !WORKER_KNOWN_ARTIFACT_ONLY_TOOL_NAMES.has(name) && !callableNameSet.has(name)
+	);
+	if (missingNames.length === 0) return null;
 	return [
 		'Worker execution surface override: the callable tools in this provider pass are exactly:',
 		callableNames.length > 0 ? callableNames.join(', ') : 'none',
@@ -142,7 +167,7 @@ export function productionToolsFor(
 		const reviewedTool = reviewedWorkerProviderToolDefinitionV1(tool);
 		if (!reviewedTool) continue;
 		seen.add(tool.function.name);
-		tools.push(withToolSchedulingSidecars(reviewedTool));
+		tools.push(reviewedTool);
 	}
 
 	// Standard controls carry no data-mutation capability. Mutation-capable
@@ -160,10 +185,45 @@ export function productionToolsFor(
 			const control = readArtifactToolDefinition(definition);
 			if (!control || !isAgenticChatProductionReadToolNameV1(control.function.name)) continue;
 			seen.add(control.function.name);
-			tools.push(withToolSchedulingSidecars(control));
+			tools.push(control);
 		}
 	}
 	return tools;
+}
+
+const SCHEDULING_SIDECAR_PROPERTY_NAMES = ['call_ref', 'after'] as const;
+
+/**
+ * Attach the `call_ref`/`after` scheduling sidecar to the mutation tools of a
+ * multi-write pass. Until 2026-09-02 every tool on every pass carried it
+ * (349 bytes each, ~1.5k tokens on project_write_document) although reads do
+ * not need ordering, controls cannot be scheduled, and the direct-write lane
+ * reclassifies any call that uses it as contract-required (Finding 9, P1-2).
+ * Only the contract carve-out and completion passes call this.
+ */
+export function withSchedulingSidecar(
+	tools: readonly AgenticChatTurnProviderToolV1[]
+): AgenticChatTurnProviderToolV1[] {
+	return tools.map((tool) =>
+		reviewedAgenticChatMutationSpecV1(tool.function.name)
+			? withToolSchedulingSidecars(tool)
+			: tool
+	);
+}
+
+/** True when any tool in the pass carries the scheduling sidecar. */
+export function hasSchedulingSidecar(tools: readonly AgenticChatTurnProviderToolV1[]): boolean {
+	return tools.some((tool) => {
+		const properties = (tool.function.parameters as Record<string, JsonValue>).properties;
+		return (
+			Boolean(properties) &&
+			typeof properties === 'object' &&
+			!Array.isArray(properties) &&
+			SCHEDULING_SIDECAR_PROPERTY_NAMES.every((name) =>
+				Object.hasOwn(properties as JsonObject, name)
+			)
+		);
+	});
 }
 
 function withToolSchedulingSidecars(

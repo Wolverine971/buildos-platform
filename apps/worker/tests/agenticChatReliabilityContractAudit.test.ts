@@ -20,7 +20,6 @@ const FENCED_WRITE_MODULE_USAGE_COUNTS = Object.freeze({
 	researchCapture: 2,
 	statedFutureCapture: 1,
 	supabaseStreamPublisherAdapters: 2,
-	supervisorCheckpoint: 1,
 	toolExecution: 3
 });
 

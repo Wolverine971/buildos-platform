@@ -1,11 +1,8 @@
 // apps/worker/src/workers/agentic-chat/provider/review/contract-execution.ts
-import {
-	type TurnContract,
-	getSafeWriteToolNamesForTurnContract,
-	resolveTurnContractOutcome
-} from '@buildos/agentic-chat-runtime/loop';
+import { type TurnContract, resolveTurnContractOutcome } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from '../contracts';
-import { appendSystemInstruction } from '../request-builders';
+import { TOOL_EXECUTION_BATCHING_INSTRUCTION, appendSystemInstruction } from '../request-builders';
+import { surfaceFor } from '../turn-phase';
 
 export function buildContractCompletionRequest(
 	request: AgenticChatTurnProviderRequestV1,
@@ -22,9 +19,9 @@ export function buildContractCompletionRequest(
 		...contract,
 		outcomes: unfinishedOutcomes.map(({ outcome }) => outcome)
 	};
-	const safeToolNames = new Set(getSafeWriteToolNamesForTurnContract(unfinishedContract));
-	const writeTools = availableTools.filter((tool) => safeToolNames.has(tool.function.name));
-	if (writeTools.length === 0) return null;
+	const surface = surfaceFor('completion', availableTools, { contract: unfinishedContract });
+	if (!surface) return null;
+	const writeTools = surface.tools;
 	const declaredTitle = (label: string | undefined): string | undefined =>
 		label
 			? contract.outcomes
@@ -52,15 +49,19 @@ export function buildContractCompletionRequest(
 	});
 	return {
 		...appendSystemInstruction(
-			request,
+			// The sidecars below are the only reason the batching instruction is
+			// mounted; the base surface no longer carries either. It precedes the
+			// phase instruction so the last system message stays the phase order.
+			appendSystemInstruction(request, TOOL_EXECUTION_BATCHING_INSTRUCTION),
 			[
 				'The independently approved contract is not finished: the outcomes below have no durable effect yet. Your previous prose was withheld.',
 				unfinished.join('\n'),
 				`Execute them now with the available contract write tools (${writeTools.map((tool) => tool.function.name).join(', ')}), one call per target, using the resolved ids above. Do not restate the plan, do not re-declare the contract, and do not finish until every listed outcome has been executed or you have named the exact blocker.`
 			].join('\n')
 		),
-		tools: writeTools,
-		toolChoice: 'auto',
+		// Scheduling sidecars (call_ref/after) exist only for multi-write passes;
+		// this is one of the two places they are legal (Finding 9, 2026-09-02).
+		...surface,
 		providerRound: 'synthesis',
 		passRole: 'acting'
 	};
@@ -71,20 +72,15 @@ export function buildTurnContractWriteCarveOutRequest(
 	availableTools: readonly AgenticChatTurnProviderToolV1[],
 	contract: TurnContract
 ): AgenticChatTurnProviderRequestV1 | null {
-	const safeToolNames = new Set(getSafeWriteToolNamesForTurnContract(contract));
-	// Child creates require the durable project id returned by the shell. Keep
-	// the first approved mutation phase structurally incapable of inventing that
-	// id or racing goal/task calls alongside create_onto_project. Completion
-	// routing mounts only the unresolved child tools after the shell succeeds.
-	const firstPhaseToolNames =
-		request.contextType === 'project_create' && safeToolNames.has('create_onto_project')
-			? new Set(['create_onto_project'])
-			: safeToolNames;
-	const writeTools = availableTools.filter((tool) => firstPhaseToolNames.has(tool.function.name));
-	if (writeTools.length === 0) return null;
+	const surface = surfaceFor('contract_carve_out', availableTools, {
+		contract,
+		contextType: request.contextType
+	});
+	if (!surface) return null;
+	const writeTools = surface.tools;
 
 	const next = appendSystemInstruction(
-		request,
+		appendSystemInstruction(request, TOOL_EXECUTION_BATCHING_INSTRUCTION),
 		[
 			'Supervisor exception: the model declared durable turn outcomes and no mutation has reached execution yet.',
 			'Any earlier instruction to stop calling tools is superseded for exactly this one pass.',
@@ -96,8 +92,7 @@ export function buildTurnContractWriteCarveOutRequest(
 	);
 	return {
 		...next,
-		tools: writeTools,
-		toolChoice: 'auto',
+		...surface,
 		providerRound: 'synthesis',
 		passRole: 'acting'
 	};

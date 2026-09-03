@@ -17,7 +17,6 @@ import {
 	type AgenticChatEmbeddingsPortV1,
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1,
-	changeChatContext,
 	executeAgenticChatSharedReadToolV1,
 	isAgenticChatSharedReadToolNameV1
 } from '@buildos/agentic-chat-runtime/tools';
@@ -34,7 +33,6 @@ import { AgenticChatProviderExecutionError } from '../provider/contracts';
 import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
-const CHANGE_CHAT_CONTEXT_TOOL_NAME = 'change_chat_context';
 export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
 export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_review';
 /**
@@ -164,7 +162,6 @@ export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
 export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze([
 	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
-	CHANGE_CHAT_CONTEXT_TOOL_NAME,
 	...WORKER_REVIEW_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1
 ]);
@@ -274,7 +271,6 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const turnRunId = input.executionInput.claim.turnRunId;
 		const standardControlTool = isAgenticChatStandardControlToolNameV1(toolName);
 		const sharedReadTool = isAgenticChatSharedReadToolNameV1(toolName);
-		const contextChangeTool = toolName === CHANGE_CHAT_CONTEXT_TOOL_NAME;
 		const reviewControlTool = isWorkerReviewControlToolNameV1(toolName);
 		const turnSecurityState =
 			webResearchTool || sharedReadTool
@@ -312,14 +308,13 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 				throw providerError('read_tool_context_invalid', 'permanent');
 			}
 		}
-		const sharedContext: AgenticChatSharedReadContextV1 | null =
-			sharedReadTool || contextChangeTool
-				? {
-						client: this.client,
-						access: this.accessAdapterFor(input.executionInput.claim.userId),
-						embeddings: this.embeddings
-					}
-				: null;
+		const sharedContext: AgenticChatSharedReadContextV1 | null = sharedReadTool
+			? {
+					client: this.client,
+					access: this.accessAdapterFor(input.executionInput.claim.userId),
+					embeddings: this.embeddings
+				}
+			: null;
 		const startedAt = this.now();
 		let rawResult: Record<string, unknown>;
 		try {
@@ -348,14 +343,6 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 							toolName,
 							context: sharedContext!,
 							arguments: input.arguments
-						});
-					}
-					if (contextChangeTool) {
-						return changeChatContext(sharedContext!, input.arguments as never, {
-							// The provider surface is immutable for this turn. The client
-							// applies the context shift, and the following turn materializes
-							// the direct tools for its new context.
-							resolveDirectToolNames: () => []
 						});
 					}
 					if (reviewControlTool) {

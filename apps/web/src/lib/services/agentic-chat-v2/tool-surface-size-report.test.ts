@@ -103,6 +103,7 @@ describe('tool surface size report', () => {
 		const reports = buildGatewayProfileToolSurfaceSizeReports([
 			'project_create_compound',
 			'project_create_minimal',
+			'global_basic',
 			'global_write',
 			'project_basic',
 			'project_write',
@@ -112,6 +113,7 @@ describe('tool surface size report', () => {
 			(report) => report.profile === 'project_create_compound'
 		);
 		const projectCreate = reports.find((report) => report.profile === 'project_create_minimal');
+		const globalBasic = reports.find((report) => report.profile === 'global_basic');
 		const globalWrite = reports.find((report) => report.profile === 'global_write');
 		const projectBasic = reports.find((report) => report.profile === 'project_basic');
 		const projectWrite = reports.find((report) => report.profile === 'project_write');
@@ -127,7 +129,14 @@ describe('tool surface size report', () => {
 		// verified with the semantic-discovery work stashed) — project_create_minimal
 		// does not mount explore_project, so this is unrelated drift surfaced while
 		// landing it.
-		expect(projectCreate?.totalChars).toBeLessThanOrEqual(13_600);
+		// 2026-09-02: 13,600 → 13,530 (measured 13,515; create_onto_task no longer
+		// tells the model to load a skill the worker cannot call).
+		expect(projectCreate?.totalChars).toBeLessThanOrEqual(13_530);
+		// 2026-09-02 (turn-executor audit Decision 2): global surfaces trade
+		// change_chat_context (1,177 chars) for get_document_outline +
+		// read_document_section (~1,100 chars) so a global "read those docs" turn
+		// cannot die on an unmounted tool. Measured 10,454.
+		expect(globalBasic?.totalChars).toBeLessThanOrEqual(10_470);
 		// 2026-08-28: +~1,250 on the four surfaces that now preload explore_project
 		// (semantic discovery, tasker/71). Its definition serializes to ~1,207 chars
 		// after a deliberate trim; the steering it carries (related-not-keyword,
@@ -135,10 +144,14 @@ describe('tool surface size report', () => {
 		// load-bearing part per the 2026-06-19 query-formulation eval.
 		// 2026-09-01: 19,900 → 20,100 after Calendar reads/writes began carrying
 		// exact calendar_source_id identity to avoid cross-account ambiguity.
-		expect(globalWrite?.totalChars).toBeLessThanOrEqual(20_100);
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(12_070);
-		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_175);
-		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(21_130);
+		// 2026-09-02: every surface below lost change_chat_context (-1,177) and
+		// four read descriptions stopped naming unmounted tools. Measured:
+		// global_write 19,982 / project_basic 10,880 / project_write 17,942 /
+		// project_write_document 19,894. Caps keep the file's tight headroom.
+		expect(globalWrite?.totalChars).toBeLessThanOrEqual(20_000);
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(10_900);
+		expect(projectWrite?.totalChars).toBeLessThanOrEqual(17_960);
+		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(19_910);
 	});
 
 	it('reports complete skill bundles and fails closed on unresolved related ops', () => {

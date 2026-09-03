@@ -677,16 +677,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['base', 'global', 'project'],
 		category: 'read'
 	},
-	change_chat_context: {
-		summary: 'Durably zoom chat context into a resolved project or out to the workspace.',
-		capabilities: [
-			'Emits a visible context_shift event for the UI and session metadata',
-			'Materializes the target context direct-tool profile for the rest of the turn',
-			'Returns candidates instead of shifting when project resolution is ambiguous'
-		],
-		contexts: ['global', 'project'],
-		category: 'utility'
-	},
 	search_user_contacts: {
 		summary: 'Search user-owned contact memory by name, relationship, and method metadata.',
 		capabilities: [
@@ -736,29 +726,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		contexts: ['base', 'global', 'project_create', 'project'],
 		category: 'write'
-	},
-	resolve_libri_resource: {
-		summary: 'Resolve a person or author through Libri before generic web search.',
-		capabilities: [
-			'Calls Libri server-side with BuildOS provenance',
-			'Returns found, queued, pending, needs_input, and structured error statuses',
-			'Does not wait for Libri enrichment jobs'
-		],
-		contexts: ['global', 'project'],
-		timeoutMs: 15000,
-		category: 'read'
-	},
-	query_libri_library: {
-		summary:
-			'Query Libri library inventory for books, categories, authors, and YouTube videos.',
-		capabilities: [
-			'Searches Libri structured library data',
-			'Lists book categories/genres and top books by category',
-			'Returns authors and ingested YouTube videos without enqueueing research'
-		],
-		contexts: ['global', 'project'],
-		timeoutMs: 15000,
-		category: 'read'
 	},
 	list_corsair_mcp_tools: {
 		summary: 'List tools exposed by the connected Corsair remote MCP server.',

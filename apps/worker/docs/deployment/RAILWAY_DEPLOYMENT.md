@@ -89,7 +89,6 @@ enable flag:
 
 ```bash
 AGENTIC_CHAT_WORKER_PROFILE=production
-AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED=false
 PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE=false
 AGENTIC_CHAT_OPENROUTER_MODEL=<provider/model>
 AGENT_CHAT_LIVE_VISION_ENABLED=false
@@ -121,8 +120,6 @@ Notes:
   stay at or below 22 seconds.
 - Keep `AGENT_CHAT_LIVE_VISION_ENABLED` identical on Vercel and the dedicated
   service. When it is `false`, image turns use explicit web capability execution.
-- `AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED` is independently default-off. Keep it
-  false until the P4 checkpoint/clarification slices and their live gate are complete.
 - `PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE` must match the web service. When
   enabled, the worker re-evaluates `evaluate_user_consumption_gate` after an
   execution starts and before terminal finalization; failure is reported but

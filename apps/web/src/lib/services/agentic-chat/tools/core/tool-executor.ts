@@ -320,9 +320,6 @@ export class ChatToolExecutor {
 			case 'get_project_overview':
 				return this.utilityExecutor.getProjectOverview(args);
 
-			case 'change_chat_context':
-				return this.utilityExecutor.changeChatContext(args);
-
 			case 'delegate_task':
 				return this.utilityExecutor.delegateTask(args);
 

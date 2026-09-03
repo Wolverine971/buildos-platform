@@ -125,9 +125,69 @@ function toolArgumentParseCategory(error: unknown): {
 	};
 }
 
+/**
+ * A truncated tool call is a provider-side defect, not a model defect: the
+ * generation was cut off (token cap, provider quirk reporting `stop` on a
+ * tool-call response, a stream closed early). The atomic pass boundary retries
+ * it once on another route, so the failure class is transient — the durable
+ * retry policy still refuses post-start replays, but the classification no
+ * longer reads as "the model misbehaved" in telemetry.
+ */
+const TRUNCATED_TOOL_ARGUMENTS_FAILURE_CLASS = 'transient_infra' as const;
+
+function isFinishedForToolCalls(finishedReason: string): boolean {
+	return finishedReason === 'tool_calls' || finishedReason === 'function_call';
+}
+
+function parseFailedAtEndOfInput(argumentsText: string, error: unknown): boolean {
+	const { category, offset } = toolArgumentParseCategory(error);
+	const argumentBytes = Buffer.byteLength(argumentsText, 'utf8');
+	return (
+		category === 'unexpected_end' ||
+		category === 'unterminated' ||
+		(offset !== null && argumentBytes > 0 && offset >= argumentBytes - 1)
+	);
+}
+
+/**
+ * True when the assembled argument text is not a complete JSON object because
+ * the input ended before the object closed. Malformed JSON that fails earlier
+ * (a stray token mid-object) is a model defect and is not truncation.
+ */
+export function isToolArgumentsTextTruncated(argumentsText: string): boolean {
+	try {
+		JSON.parse(argumentsText || '{}');
+		return false;
+	} catch (error) {
+		return parseFailedAtEndOfInput(argumentsText, error);
+	}
+}
+
+export type ToolCallPassTruncation = 'finish_reason' | 'arguments';
+
+/**
+ * Classify a completed provider pass whose streamed tool calls cannot be
+ * trusted complete. Shared by the atomic pass boundary (which retries such a
+ * pass once) and the consumer's finish assertion (which names the failure
+ * when the retry is spent). A pass with tool calls disabled is not judged
+ * here: any streamed call on it is a permanent surface violation.
+ */
+export function detectToolCallPassTruncation(
+	state: ReturnType<typeof createToolCallAccumulator>,
+	finishedReason: string,
+	toolChoice: AgenticChatTurnProviderRequestV1['toolChoice']
+): ToolCallPassTruncation | null {
+	if (state.size === 0 || toolChoice === 'none') return null;
+	if (!isFinishedForToolCalls(finishedReason)) return 'finish_reason';
+	for (const call of state.values()) {
+		if (isToolArgumentsTextTruncated(call.argumentsText)) return 'arguments';
+	}
+	return null;
+}
+
 function rejectedToolArgumentsError(
 	call: Pick<ProviderToolCallAccumulator, 'name' | 'argumentsText'>,
-	stage: 'delta_type' | 'json_parse' | 'json_shape',
+	stage: 'delta_type' | 'json_parse' | 'json_shape' | 'finish_reason',
 	error: unknown,
 	context: ToolCallCompletionContext = {}
 ): AgenticChatProviderExecutionError {
@@ -142,12 +202,13 @@ function rejectedToolArgumentsError(
 		category === 'unterminated' ||
 		(offset !== null && argumentBytes > 0 && offset >= argumentBytes - 1);
 	const truncated =
+		stage === 'finish_reason' ||
 		context.completionBudgetExhausted === true ||
 		finishedReason === 'length' ||
 		(stage === 'json_parse' && failedAtEndOfInput);
 	return providerError(
 		truncated ? 'provider_tool_arguments_truncated' : 'provider_tool_arguments_invalid',
-		'permanent',
+		truncated ? TRUNCATED_TOOL_ARGUMENTS_FAILURE_CLASS : 'permanent',
 		{
 			kind: 'rejected_tool_arguments',
 			toolName: /^[A-Za-z0-9_.:-]{1,256}$/.test(call.name) ? call.name : null,
@@ -162,18 +223,34 @@ function rejectedToolArgumentsError(
 	);
 }
 
+/**
+ * Judge the pass before parsing what it produced. Streamed tool calls with a
+ * finish reason other than tool calls left their arguments unfinished, which
+ * is truncation (retryable), not a protocol violation. A finish reason that
+ * claims tool calls when none were streamed is the only remaining
+ * finish-reason protocol violation.
+ */
 export function assertToolCallFinishReason(
 	state: ReturnType<typeof createToolCallAccumulator>,
 	finishedReason: string,
 	toolChoice: AgenticChatTurnProviderRequestV1['toolChoice'],
 	disabledWhen: 'auto' | 'none'
 ): void {
-	if (state.size === 0) return;
+	if (state.size === 0) {
+		if (isFinishedForToolCalls(finishedReason) && toolChoice !== 'none') {
+			throw providerError('provider_tool_finish_reason_invalid', 'unknown');
+		}
+		return;
+	}
 	if (disabledWhen === 'auto' ? toolChoice !== 'auto' : toolChoice === 'none') {
 		throw providerError('provider_tool_call_disabled', 'permanent');
 	}
-	if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
-		throw providerError('provider_tool_finish_reason_invalid', 'unknown');
+	if (!isFinishedForToolCalls(finishedReason)) {
+		const first = [...state.entries()].sort(([left], [right]) => left - right)[0]![1];
+		throw rejectedToolArgumentsError(first, 'finish_reason', null, {
+			finishedReason,
+			completionBudgetExhausted: finishedReason === 'length'
+		});
 	}
 }
 

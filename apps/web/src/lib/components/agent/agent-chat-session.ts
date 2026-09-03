@@ -328,29 +328,42 @@ export interface ActiveTurnRunProbeResult {
 }
 
 /**
- * Lightweight "is the restored turn still running" check — a single
- * turn-runs query server-side instead of the full ~8-query session
- * snapshot. Returns null on failure so callers keep polling with backoff.
+ * Use the ownership-checked worker gateway: ordinary authenticated clients
+ * cannot select chat_turn_runs under RLS. An empty result from that legacy
+ * query incorrectly announced completion while worker turns were still active.
+ * Returns null on failure so callers keep polling with backoff.
  */
 export async function probeActiveTurnRun(
 	sessionId: string,
 	options: { signal?: AbortSignal } = {}
 ): Promise<ActiveTurnRunProbeResult | null> {
 	try {
-		const response = await fetch(`/api/chat/sessions/${sessionId}?probe=active-turn`, {
-			signal: options.signal
-		});
+		const response = await fetch(
+			`/api/agent/v2/turns?session_id=${encodeURIComponent(sessionId)}`,
+			{
+				cache: 'no-store',
+				signal: options.signal
+			}
+		);
 		if (!response.ok) return null;
 		const result = await response.json().catch(() => null);
-		const runs = Array.isArray(result?.data?.turnRuns) ? result.data.turnRuns : [];
-		const active =
-			runs.find(
-				(run: unknown) =>
-					isRecord(run) && typeof run.status === 'string' && run.status === 'running'
-			) ?? null;
+		const turns: unknown = result?.data?.turns;
+		if (result?.success !== true || !Array.isArray(turns) || turns.length > 8) return null;
+		// A malformed receipt is unknown, never proof that the turn finished.
+		for (const turn of turns) {
+			if (
+				!isRecord(turn) ||
+				(turn.status !== 'queued' && turn.status !== 'running') ||
+				!isRecord(turn.handle) ||
+				turn.handle.sessionId !== sessionId ||
+				!stringValue(turn.handle.turnRunId)
+			)
+				return null;
+		}
+		const active = turns[0];
 		return {
 			hasActiveTurnRun: Boolean(active),
-			activeTurnRunId: active && typeof active.id === 'string' ? active.id : null
+			activeTurnRunId: active ? active.handle.turnRunId : null
 		};
 	} catch (err) {
 		if ((err as DOMException)?.name === 'AbortError') {

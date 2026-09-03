@@ -19,6 +19,7 @@ interface Flags {
 	isVoiceBusy: boolean;
 	isVoicePending: boolean;
 	isTurnActive: boolean;
+	lastTurnContext: unknown;
 }
 
 function defaultFlags(): Flags {
@@ -40,7 +41,8 @@ function defaultFlags(): Flags {
 		inputValue: '',
 		isVoiceBusy: false,
 		isVoicePending: false,
-		isTurnActive: false
+		isTurnActive: false,
+		lastTurnContext: undefined
 	};
 }
 
@@ -99,6 +101,7 @@ function createHarness(opts: Partial<Flags> = {}) {
 		getHasDraftInput: () => flags.inputValue.trim().length > 0,
 		getIsVoiceBusy: () => flags.isVoiceBusy,
 		getIsVoicePending: () => flags.isVoicePending,
+		getLastTurnContext: () => flags.lastTurnContext,
 		prewarmAgentContext: prewarm,
 		warmStreamTransport,
 		hydrateSessionFromEvent: hydrate
@@ -402,6 +405,21 @@ describe('PrewarmController — orchestrate', () => {
 			entity_id: 'project-1'
 		});
 		expect(h.prewarm.mock.calls[0]?.[0]).not.toHaveProperty('ensure_session');
+	});
+
+	it('includes the last-turn continuity hint in the prewarm payload when provided', () => {
+		const hint = { summary: 'Reviewed Q3 plan', context_type: 'project' };
+		const h = createHarness({ lastTurnContext: hint });
+		h.controller.orchestrate();
+
+		expect(h.prewarm.mock.calls[0]?.[0]).toMatchObject({ lastTurnContext: hint });
+	});
+
+	it('sends a null last-turn continuity hint when none is available', () => {
+		const h = createHarness();
+		h.controller.orchestrate();
+
+		expect(h.prewarm.mock.calls[0]?.[0]).toMatchObject({ lastTurnContext: null });
 	});
 
 	it('waits until the active turn completes before rebuilding a prepared prompt', () => {

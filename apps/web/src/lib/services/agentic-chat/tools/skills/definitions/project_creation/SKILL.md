@@ -30,7 +30,7 @@ Turn a user idea into the smallest valid BuildOS project payload with an inferre
 - The chat is in project_create mode
 - The user wants to start a new project from scratch
 - You need to infer project name, type_key, and minimal initial entities and relationships from a rough idea
-- If the chat is already inside a project and the user asks to create/start another project, ask: "You're already in this project. Are you sure you want to create a new project?" Do not call `change_chat_context` or `create_onto_project` until they confirm.
+- If the chat is already inside a project and the user asks to create/start another project, ask: "You're already in this project. Are you sure you want to create a new project?" Do not call `create_onto_project` until they confirm.
 
 ## Judgment
 

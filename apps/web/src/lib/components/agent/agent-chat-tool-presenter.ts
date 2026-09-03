@@ -1399,16 +1399,6 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			action: 'Loading project overview',
 			target: resolveProjectTarget(args)
 		}),
-		change_chat_context: (args) => {
-			const target = firstDisplayLabel(args?.target);
-			if (target === 'global') {
-				return { action: 'Switching to workspace' };
-			}
-			return {
-				action: 'Switching to project',
-				target: resolveProjectTarget(args)
-			};
-		},
 		search_user_contacts: (args) => ({
 			action: 'Searching contacts',
 			target: contactTarget(args)

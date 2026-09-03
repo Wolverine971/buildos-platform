@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime/context';
 import {
 	extractContextShiftPayload,
+	hasSuccessfulDurableEffects,
 	resolveTurnContractFromExecutions,
 	resolveTurnContractOutcome
 } from '@buildos/agentic-chat-runtime/loop';
@@ -20,7 +21,6 @@ import {
 	type ChatTurnTerminalStatusV1,
 	type ContextShiftPayload,
 	type JsonObject,
-	canonicalizeAgenticChatJson,
 	classifyAgenticChatRetryV1,
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
@@ -53,6 +53,7 @@ import {
 	type AgenticChatPreparedProviderInvocationV1,
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderFailedToolSynthesisInputV1,
+	type AgenticChatProviderInputV1,
 	type AgenticChatProviderMutationSynthesisInputV1,
 	type AgenticChatProviderPortV1,
 	type AgenticChatProviderReadSynthesisInputV1,
@@ -67,14 +68,10 @@ import {
 } from './lifecycleIdentity';
 import {
 	type AgenticChatMonotonicClockV1,
-	type AgenticChatRuntimeTimingObserverV1,
 	AgenticChatRuntimeTimingTracker,
 	SYSTEM_AGENTIC_CHAT_MONOTONIC_CLOCK
 } from './runtimeTiming';
-import {
-	type AgenticChatPromptSnapshotPortV1,
-	createStableAgenticChatPromptSnapshotIdV1
-} from './promptSnapshot';
+import { createStableAgenticChatPromptSnapshotIdV1 } from './promptSnapshot';
 import { buildAgenticChatAsyncTimingDraftV1 } from './timingPayload';
 import {
 	type AgenticChatReadToolExecutionV1,
@@ -83,21 +80,13 @@ import {
 	AgenticChatToolExecutionTimeoutError,
 	createStableAgenticChatToolExecutionIdV1
 } from './toolExecution';
+import { createStableAgenticChatExecutionObservationKeyV1 } from './executionObservation';
+import { abortable, runWithAbortableDeadline } from './abortableDeadline';
 import {
-	AGENTIC_CHAT_EXECUTION_OBSERVATION_TIMEOUT_MS,
-	type AgenticChatExecutionObservationPortV1,
-	createStableAgenticChatExecutionObservationKeyV1
-} from './executionObservation';
-import { runWithAbortableDeadline } from './abortableDeadline';
+	type AgenticChatExecutorEffectPortsV1,
+	AgenticChatExecutorEffects
+} from './executorEffects';
 import { createStableAgenticChatReadToolTransitionIdV1 } from './readToolIdentity';
-import {
-	AgenticChatSupervisorCheckpointFenceError,
-	type AgenticChatSupervisorCheckpointPortV1,
-	AgenticChatSupervisorCheckpointTimeoutError,
-	createStableAgenticChatSupervisorCheckpointIdV1
-} from './supervisorCheckpoint';
-import type { AgenticChatResearchCapturePortV1 } from './researchCapture';
-import type { AgenticChatStatedFutureCapturePortV1 } from './statedFutureCapture';
 import {
 	AgenticChatSessionHandoffFenceError,
 	type AgenticChatSessionHandoffPortV1,
@@ -106,7 +95,6 @@ import {
 	AgenticChatSessionHandoffTimeoutError
 } from './sessionHandoff';
 import { enforceAgenticChatTerminalTextIntegrityV1 } from './terminalTextIntegrity';
-import type { AgenticChatConsumptionBillingPortV1 } from './consumptionBilling';
 import {
 	compileAgenticChatToolExecutionGraphV1,
 	executeAgenticChatToolExecutionGraphV1
@@ -204,6 +192,27 @@ type ProjectionState = {
 	semanticPublishTail: Promise<void>;
 };
 
+/**
+ * Known permanent mutation failures already fed back this turn. Production turn
+ * 0fa59a3e re-called delegate_task six times in 55 s against a backend contract
+ * error because nothing structural stopped the model; a further call that
+ * cannot succeed is now rejected before the adapter runs.
+ */
+type PermanentMutationFailureLedger = {
+	/** Tool-level failures (backend contract mismatch): every later call of the tool is capped. */
+	byTool: Map<string, string>;
+	/** Exact (tool, arguments) calls that failed permanently: an identical retry is capped. */
+	byCall: Map<string, string>;
+};
+
+type KnownMutationFailure = {
+	effectId: string | null;
+	message: string;
+	observationErrorCode: 'known_mutation_failure' | 'mutation_retry_capped';
+	/** True when the adapter's failure applies to every call of the tool, not just these arguments. */
+	toolLevel: boolean;
+};
+
 type TerminalContextState = {
 	contextShift: ContextShiftPayload | null;
 	toolExecutions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
@@ -211,11 +220,12 @@ type TerminalContextState = {
 	toolExecutionSequenceByCallId: Map<string, number>;
 	/** Provider rounds that completed at least one tool execution. */
 	toolRoundCount: number;
+	permanentMutationFailures: PermanentMutationFailureLedger;
 };
 
 type AgenticChatExecutableToolStepV1 = Extract<
 	AgenticChatTurnProviderStepV1,
-	{ type: 'read_tool' | 'mutating_tool' | 'pre_execution_tool_failure' }
+	{ type: 'read_tool' | 'mutating_tool' }
 >;
 
 type AgenticChatPendingToolExecutionV1 = {
@@ -250,7 +260,6 @@ type FinalizeTurnInput = {
 	assistantTextOverride?: string;
 	interruptedReason?: string;
 	publicError?: string;
-	supervisorQuestionCheckpointId?: string;
 	reevaluateConsumptionBilling?: boolean;
 	terminalEventContext?: {
 		executionInput: AgenticChatWorkerExecutionInputV1;
@@ -273,37 +282,22 @@ export class AgenticChatTurnExecutor {
 	private readonly concurrentReadsEnabled: boolean;
 	private readonly concurrentMutationsEnabled: boolean;
 
+	/** Every never-fatal side effect goes through one facade with one error policy. */
+	private readonly effects: AgenticChatExecutorEffects;
+
 	constructor(
-		private readonly ports: {
+		private readonly ports: AgenticChatExecutorEffectPortsV1 & {
 			control: AgenticChatExecutionControlPortV1;
 			input: AgenticChatExecutionInputPortV1;
 			publisher: PublisherPort;
 			cancellation: CancellationPort;
 			provider: AgenticChatProviderPortV1;
-			promptSnapshots?: AgenticChatPromptSnapshotPortV1;
-			executionObservations?: AgenticChatExecutionObservationPortV1;
 			readTool: AgenticChatReadToolPortV1;
 			toolExecutions: AgenticChatToolExecutionPortV1;
-			supervisorCheckpoints: AgenticChatSupervisorCheckpointPortV1;
 			sessionHandoff: AgenticChatSessionHandoffPortV1;
 			mutation: MutationPort;
-			researchCapture?: AgenticChatResearchCapturePortV1;
-			statedFutureCapture?: AgenticChatStatedFutureCapturePortV1;
-			consumptionBilling?: AgenticChatConsumptionBillingPortV1;
 			createId?: () => string;
 			timingClock?: AgenticChatMonotonicClockV1;
-			onTimingSnapshot?: AgenticChatRuntimeTimingObserverV1;
-			onPromptSnapshotError?: (error: unknown) => void;
-			onExecutionObservationError?: (error: unknown) => void;
-			onResearchCaptureError?: (error: unknown) => void;
-			onStatedFutureCaptureError?: (error: unknown) => void;
-			onConsumptionBillingError?: (error: unknown) => void;
-			onTerminalControlError?: (report: {
-				stage: 'finalize' | 'finalize_retry' | 'recover';
-				turnRunId: string;
-				executionGeneration: number;
-				error: unknown;
-			}) => void;
 		},
 		options: {
 			providerBudgetMs?: number;
@@ -315,6 +309,7 @@ export class AgenticChatTurnExecutor {
 			concurrentMutationsEnabled?: boolean;
 		} = {}
 	) {
+		this.effects = new AgenticChatExecutorEffects(ports);
 		this.providerBudgetMs = options.providerBudgetMs ?? DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS;
 		if (!Number.isSafeInteger(this.providerBudgetMs) || this.providerBudgetMs < 1) {
 			throw new Error('Agentic Chat provider budget must be a positive safe integer');
@@ -417,13 +412,15 @@ export class AgenticChatTurnExecutor {
 			providerBudget.signal
 		]);
 		let providerBudgetTimer: NodeJS.Timeout | null = null;
+		// Conservative until the start fence: the budget timer arms after `begin`,
+		// so the real deadline is never earlier than this pre-start estimate.
+		let providerBudgetDeadlineAtMs = Date.now() + this.providerBudgetMs;
 		let publisherRegistered = false;
 		let executionStarted = false;
 		let executionInput: AgenticChatWorkerExecutionInputV1 | null = null;
 		let preparedProvider: AgenticChatPreparedProviderInvocationV1 | null = null;
 		let usage: AgenticChatTurnUsageV1 | null = null;
 		let finishedReason = 'stop';
-		let supervisorQuestionCheckpointId: string | undefined;
 		let runtimeTiming: AgenticChatRuntimeTimingTracker | null = null;
 		const projection = emptyProjection();
 		const terminalContext: TerminalContextState = {
@@ -431,7 +428,8 @@ export class AgenticChatTurnExecutor {
 			toolExecutions: [],
 			nextToolSequenceIndex: 1,
 			toolExecutionSequenceByCallId: new Map(),
-			toolRoundCount: 0
+			toolRoundCount: 0,
+			permanentMutationFailures: { byTool: new Map(), byCall: new Map() }
 		};
 
 		try {
@@ -472,12 +470,17 @@ export class AgenticChatTurnExecutor {
 				preparedProvider = await this.awaitOverhead(
 					combined.signal,
 					'provider preparation',
-					(deadlineSignal) =>
-						this.ports.provider.prepare!({
+					(deadlineSignal) => {
+						// `prepare` receives the conservative pre-start deadline; it is
+						// re-anchored when the budget timer arms after the start fence.
+						const prepareInput: AgenticChatProviderInputV1 = {
 							executionInput: executionInput!,
 							processingToken: envelope.processingToken,
-							signal: deadlineSignal
-						})
+							signal: deadlineSignal,
+							budget: { deadlineAtMs: providerBudgetDeadlineAtMs }
+						};
+						return this.ports.provider.prepare!(prepareInput);
+					}
 				);
 			} else if (!this.ports.provider.stream) {
 				throw new AgenticChatProviderExecutionError(
@@ -515,6 +518,7 @@ export class AgenticChatTurnExecutor {
 				);
 			}
 			executionStarted = true;
+			providerBudgetDeadlineAtMs = Date.now() + this.providerBudgetMs;
 			providerBudgetTimer = setTimeout(() => {
 				providerBudget.abort(
 					new AgenticChatProviderExecutionError(
@@ -545,7 +549,6 @@ export class AgenticChatTurnExecutor {
 			let promptSnapshotAttempted = false;
 			const pendingToolResults: AgenticChatProviderToolSynthesisInputV1[] = [];
 			const pendingToolExecutions: AgenticChatPendingToolExecutionV1[] = [];
-			let synthesisStarted = false;
 			let toolCallCount = 0;
 			let continuationRounds = 0;
 			const readInvalidationEpoch: AgenticChatReadInvalidationEpochStateV1 = { value: 0 };
@@ -555,13 +558,15 @@ export class AgenticChatTurnExecutor {
 				roundHadToolExecution = true;
 				terminalContext.toolRoundCount += 1;
 			};
+			const legacyStreamInput: AgenticChatProviderInputV1 = {
+				executionInput,
+				processingToken: envelope.processingToken,
+				signal: combined.signal,
+				budget: { deadlineAtMs: providerBudgetDeadlineAtMs }
+			};
 			let providerStream: AsyncIterable<AgenticChatProviderStepV1> = preparedProvider
 				? preparedProvider.stream()
-				: this.ports.provider.stream!({
-						executionInput,
-						processingToken: envelope.processingToken,
-						signal: combined.signal
-					});
+				: this.ports.provider.stream!(legacyStreamInput);
 			while (!finished) {
 				for await (const step of iterateWithAbort(providerStream, combined.signal)) {
 					this.captureRuntimeTiming(runtimeTiming, (timing) =>
@@ -609,118 +614,6 @@ export class AgenticChatTurnExecutor {
 						}
 						continue;
 					}
-					if (step.type === 'supervisor_evaluation') {
-						logAgenticChatSupervisorEvaluation(job, executionInput, step);
-						continue;
-					}
-					if (step.type === 'supervisor_question') {
-						if (pendingToolResults.length > 0 || pendingToolExecutions.length > 0) {
-							throw new AgenticChatProviderExecutionError(
-								'provider_supervisor_question_before_tool_feedback',
-								'unknown',
-								'Supervisor question arrived before durable tool feedback was returned'
-							);
-						}
-						validateSupervisorQuestion(step, generation);
-						if (!promptSnapshotAttempted) {
-							promptSnapshotAttempted = true;
-							await this.persistPromptSnapshot(
-								envelope,
-								executionInput,
-								preparedProvider,
-								combined.signal
-							);
-						}
-						const checkpointId = createStableAgenticChatSupervisorCheckpointIdV1({
-							turnRunId: claim.turnRunId,
-							executionGeneration: generation,
-							supervisorTransitionId: step.transitionId
-						});
-						const checkpoint = await this.ports.supervisorCheckpoints.persist(
-							{
-								...envelope,
-								userId: claim.userId,
-								sessionId: claim.sessionId,
-								executionGeneration: generation,
-								checkpointId,
-								supervisorTransitionId: step.transitionId,
-								sequence: step.sequence,
-								reason: step.reason,
-								question: step.question,
-								digest: step.checkpoint.digest,
-								resumeContext: step.checkpoint.resumeContext,
-								supervisorDecision: step.checkpoint.supervisorDecision
-							},
-							combined.signal
-						);
-						supervisorQuestionCheckpointId = checkpoint.checkpointId;
-						await this.publishSemantic(
-							executionInput,
-							projection,
-							buildSupervisorWaitingStep(step),
-							combined.signal
-						);
-						await this.enqueueAssistantText(
-							claim.turnRunId,
-							step.question,
-							combined.signal
-						);
-						finishedReason = step.finishedReason;
-						usage = step.usage;
-						finished = true;
-						continue;
-					}
-					if (step.type === 'pre_execution_tool_failure') {
-						if (
-							preparedProvider?.synthesize &&
-							!preparedProvider.continueWithToolResults
-						) {
-							throw new AgenticChatProviderExecutionError(
-								'provider_pre_execution_failure_bridge_disabled',
-								'permanent',
-								'Pre-execution tool failures require the multi-result continuation bridge'
-							);
-						}
-						if (!promptSnapshotAttempted) {
-							promptSnapshotAttempted = true;
-							await this.persistPromptSnapshot(
-								envelope,
-								executionInput,
-								preparedProvider,
-								combined.signal
-							);
-						}
-						toolCallCount += 1;
-						if (toolCallCount > this.maxToolCalls) {
-							throw new AgenticChatProviderExecutionError(
-								'provider_tool_call_budget_exceeded',
-								'permanent',
-								`Agentic Chat provider exceeded its ${this.maxToolCalls} tool-call budget`
-							);
-						}
-						const sequenceIndex = this.reserveToolSequenceIndex(terminalContext, step);
-						if (!preparedProvider?.continueWithToolResults) {
-							pendingToolResults.push(
-								await this.executePreExecutionToolFailure(
-									executionInput,
-									envelope.processingToken,
-									projection,
-									terminalContext,
-									step,
-									sequenceIndex,
-									standaloneReadPlanningContext(
-										continuationRounds + 1,
-										readInvalidationEpoch.value
-									),
-									markToolExecution,
-									combined.signal
-								)
-							);
-						} else {
-							pendingToolExecutions.push({ step, sequenceIndex });
-						}
-						continue;
-					}
 					if (step.type === 'read_tool') {
 						if (!promptSnapshotAttempted) {
 							promptSnapshotAttempted = true;
@@ -729,19 +622,6 @@ export class AgenticChatTurnExecutor {
 								executionInput,
 								preparedProvider,
 								combined.signal
-							);
-						}
-						if (
-							preparedProvider?.synthesize &&
-							!preparedProvider.continueWithToolResults &&
-							(synthesisStarted ||
-								pendingToolResults.length > 0 ||
-								pendingToolExecutions.length > 0)
-						) {
-							throw new AgenticChatProviderExecutionError(
-								'provider_read_round_limit_exceeded',
-								'permanent',
-								'Agentic Chat production provider supports exactly one bounded read call'
 							);
 						}
 						toolCallCount += 1;
@@ -792,16 +672,6 @@ export class AgenticChatTurnExecutor {
 						continue;
 					}
 					if (step.type === 'mutating_tool') {
-						if (
-							preparedProvider?.synthesize &&
-							!preparedProvider.continueWithToolResults
-						) {
-							throw new AgenticChatProviderExecutionError(
-								'provider_mutating_tool_disabled',
-								'permanent',
-								'Mutating tools require the multi-result provider continuation bridge'
-							);
-						}
 						if (!promptSnapshotAttempted) {
 							promptSnapshotAttempted = true;
 							await this.persistPromptSnapshot(
@@ -847,8 +717,7 @@ export class AgenticChatTurnExecutor {
 
 					const finishedWithUnreturnedToolResults =
 						(pendingToolResults.length > 0 || pendingToolExecutions.length > 0) &&
-						(preparedProvider?.continueWithToolResults !== undefined ||
-							(preparedProvider?.synthesize !== undefined && !synthesisStarted));
+						preparedProvider?.continueWithToolResults !== undefined;
 					if (finishedWithUnreturnedToolResults) {
 						throw new AgenticChatProviderExecutionError(
 							'provider_finished_before_read_synthesis',
@@ -916,46 +785,6 @@ export class AgenticChatTurnExecutor {
 					roundHadToolExecution = false;
 					continue;
 				}
-				if (
-					pendingToolResults.length > 0 &&
-					preparedProvider?.synthesize &&
-					!synthesisStarted
-				) {
-					throwIfAborted(combined.signal);
-					const synthesisFeedback = pendingToolResults[0]!;
-					if (
-						isMutationSynthesisInput(synthesisFeedback) ||
-						isFailedToolSynthesisInput(synthesisFeedback)
-					) {
-						throw new AgenticChatProviderExecutionError(
-							'provider_mutating_tool_disabled',
-							'permanent',
-							'Mutating tools require the multi-result provider continuation bridge'
-						);
-					}
-					await logAgenticChatExecutionBoundary(job, executionInput, {
-						stage: 'synthesis',
-						state: 'started',
-						providerToolCallId: synthesisFeedback.providerToolCallId,
-						toolName: synthesisFeedback.toolName
-					});
-					try {
-						providerStream = preparedProvider.synthesize(synthesisFeedback);
-					} catch (error) {
-						await logAgenticChatExecutionBoundary(job, executionInput, {
-							stage: 'synthesis',
-							state: 'failed',
-							providerToolCallId: synthesisFeedback.providerToolCallId,
-							toolName: synthesisFeedback.toolName,
-							error
-						});
-						throw error;
-					}
-					pendingToolResults.length = 0;
-					synthesisStarted = true;
-					roundHadToolExecution = false;
-					continue;
-				}
 				throw new Error('Fixture provider ended without a finish step');
 			}
 			throwIfAborted(combined.signal);
@@ -1012,7 +841,6 @@ export class AgenticChatTurnExecutor {
 				projection,
 				publisherRegistered,
 				assistantTextOverride: terminalTextIntegrity.assistantText,
-				supervisorQuestionCheckpointId,
 				reevaluateConsumptionBilling: true,
 				terminalEventContext: { executionInput, terminalContext, runtimeTiming }
 			});
@@ -1026,6 +854,33 @@ export class AgenticChatTurnExecutor {
 				combined.signal,
 				executionStarted
 			);
+			// A spent provider budget after durable writes is a partial result, not
+			// a failure: the effects are real and the pending contract carries
+			// forward. Finalize as completed with the partial disclosure instead of
+			// "An error occurred while streaming." Cancellation, worker shutdown,
+			// publisher overload, and uncertain effects keep the failure path.
+			if (
+				executionStarted &&
+				executionInput !== null &&
+				failureClass === 'timeout_post_start' &&
+				providerBudget.signal.aborted &&
+				!cancellationSignal.aborted &&
+				!job.signal.aborted &&
+				!overload.signal.aborted &&
+				hasSuccessfulDurableEffects(terminalContext.toolExecutions)
+			) {
+				const completed = await this.finalizeBudgetExhaustedAfterDurableWrites({
+					envelope,
+					claim: executableClaim,
+					executionInput,
+					terminalContext,
+					runtimeTiming,
+					projection,
+					publisherRegistered,
+					usage
+				});
+				if (completed) return completed;
+			}
 			const terminalFailureCode = specificTerminalFailureCode(error, combined.signal);
 			const assistantText = this.safeAssistantText(
 				claim.turnRunId,
@@ -1081,12 +936,7 @@ export class AgenticChatTurnExecutor {
 		processingToken: string,
 		signal: AbortSignal
 	): Promise<void> {
-		if (!this.ports.researchCapture) return;
-		try {
-			await this.ports.researchCapture.capture({ executionInput, processingToken, signal });
-		} catch (error) {
-			this.ports.onResearchCaptureError?.(error);
-		}
+		await this.effects.captureResearch({ executionInput, processingToken, signal });
 		throwIfAborted(signal);
 	}
 
@@ -1095,16 +945,7 @@ export class AgenticChatTurnExecutor {
 		processingToken: string,
 		signal: AbortSignal
 	): Promise<void> {
-		if (!this.ports.statedFutureCapture) return;
-		try {
-			await this.ports.statedFutureCapture.capture({
-				executionInput,
-				processingToken,
-				signal
-			});
-		} catch (error) {
-			this.ports.onStatedFutureCaptureError?.(error);
-		}
+		await this.effects.captureStatedFuture({ executionInput, processingToken, signal });
 		throwIfAborted(signal);
 	}
 
@@ -1115,26 +956,19 @@ export class AgenticChatTurnExecutor {
 		signal: AbortSignal
 	): Promise<void> {
 		const prompt = preparedProvider?.promptSnapshot;
-		if (!prompt || !this.ports.promptSnapshots) return;
-		try {
-			await abortable(
-				this.ports.promptSnapshots.persist({
-					...envelope,
-					userId: executionInput.claim.userId,
-					executionGeneration: executionInput.claim.executionGeneration,
-					promptSnapshotId: createStableAgenticChatPromptSnapshotIdV1(
-						executionInput.claim.turnRunId
-					),
-					prompt
-				}),
-				signal
-			);
-		} catch (error) {
-			// Prompt snapshots are an observability/evaluation artifact. A failure
-			// must be visible to worker telemetry but cannot invalidate text that is
-			// already durable and delivered to the user.
-			this.ports.onPromptSnapshotError?.(error);
-		}
+		if (!prompt) return;
+		await this.effects.persistPromptSnapshot(
+			{
+				...envelope,
+				userId: executionInput.claim.userId,
+				executionGeneration: executionInput.claim.executionGeneration,
+				promptSnapshotId: createStableAgenticChatPromptSnapshotIdV1(
+					executionInput.claim.turnRunId
+				),
+				prompt
+			},
+			signal
+		);
 	}
 
 	private async publishExecutorLifecycle(
@@ -1261,16 +1095,13 @@ export class AgenticChatTurnExecutor {
 				maxCalls: this.maxToolCalls,
 				calls: pending.map(({ step }, providerCallIndex) => {
 					const kind = step.type === 'mutating_tool' ? 'mutation' : 'read';
-					const policy =
-						step.type === 'pre_execution_tool_failure'
-							? { executionPolicy: 'serial' as const, resources: [] }
-							: resolveAgenticChatToolExecutionPolicyV1({
-									toolName: step.toolName,
-									kind,
-									arguments: step.arguments,
-									concurrentReadsEnabled: this.concurrentReadsEnabled,
-									concurrentMutationsEnabled: this.concurrentMutationsEnabled
-								});
+					const policy = resolveAgenticChatToolExecutionPolicyV1({
+						toolName: step.toolName,
+						kind,
+						arguments: step.arguments,
+						concurrentReadsEnabled: this.concurrentReadsEnabled,
+						concurrentMutationsEnabled: this.concurrentMutationsEnabled
+					});
 					return {
 						providerCallIndex,
 						providerToolCallId: step.providerToolCallId,
@@ -1345,21 +1176,7 @@ export class AgenticChatTurnExecutor {
 							callSignal
 						) as Promise<AgenticChatProviderToolSynthesisInputV1>;
 					}
-					if (step.type === 'mutating_tool') {
-						return this.executeMutatingTool(
-							executionInput,
-							processingToken,
-							projection,
-							terminalContext,
-							step,
-							entry.sequenceIndex,
-							planning,
-							readInvalidationEpoch,
-							markToolExecution,
-							callSignal
-						);
-					}
-					return this.executePreExecutionToolFailure(
+					return this.executeMutatingTool(
 						executionInput,
 						processingToken,
 						projection,
@@ -1367,6 +1184,7 @@ export class AgenticChatTurnExecutor {
 						step,
 						entry.sequenceIndex,
 						planning,
+						readInvalidationEpoch,
 						markToolExecution,
 						callSignal
 					);
@@ -1558,6 +1376,25 @@ export class AgenticChatTurnExecutor {
 			},
 			signal
 		);
+		// Structural retry cap: a call that already failed permanently this turn
+		// is answered deterministically without reserving an effect or running
+		// the adapter, so a model that keeps re-issuing it cannot burn the turn.
+		const cappedRetry = findPermanentMutationFailureCap(terminalContext, step);
+		if (cappedRetry) {
+			return this.persistKnownMutationFailure(
+				executionInput,
+				processingToken,
+				projection,
+				terminalContext,
+				step,
+				cappedRetry,
+				sequenceIndex,
+				planning,
+				mutationStartedAt,
+				markToolExecution,
+				signal
+			);
+		}
 		let mutation;
 		try {
 			mutation = await this.ports.mutation.execute({
@@ -1604,7 +1441,12 @@ export class AgenticChatTurnExecutor {
 				projection,
 				terminalContext,
 				step,
-				error,
+				{
+					effectId: error.effectId,
+					message: errorMessage(error),
+					observationErrorCode: 'known_mutation_failure',
+					toolLevel: isToolLevelPermanentMutationFailure(error)
+				},
 				sequenceIndex,
 				planning,
 				mutationStartedAt,
@@ -1612,7 +1454,11 @@ export class AgenticChatTurnExecutor {
 				signal
 			);
 		}
-		const telemetry = deriveMutationTelemetry(step, mutation.downstreamReceipt);
+		const telemetry = deriveMutationTelemetry(
+			step,
+			mutation.downstreamReceipt,
+			elapsedMs(mutationStartedAt)
+		);
 		// A committed effect must become durable telemetry even if cancellation
 		// arrives after the irreversible boundary. The ledger adapter owns its own
 		// bounded deadline; a fresh signal prevents user cancellation from hiding
@@ -1760,15 +1606,20 @@ export class AgenticChatTurnExecutor {
 		projection: ProjectionState,
 		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatTurnProviderStepV1, { type: 'mutating_tool' }>,
-		error: AgenticChatEffectExecutionError,
+		failure: KnownMutationFailure,
 		sequenceIndex: number,
 		planning: AgenticChatReadPlanningContextV1,
 		mutationStartedAt: number,
 		markToolExecution: () => void,
 		signal: AbortSignal
 	): Promise<AgenticChatProviderFailedToolSynthesisInputV1> {
-		const failureMessage = errorMessage(error);
+		const failureMessage = failure.message;
 		const toolCategory = mutationToolCategory(step);
+		// Remember the failure before any await so a concurrent call of the same
+		// tool in this layer already sees the cap.
+		const ledger = terminalContext.permanentMutationFailures;
+		ledger.byCall.set(mutationCallKey(step), failureMessage);
+		if (failure.toolLevel) ledger.byTool.set(step.toolName, failureMessage);
 		// The effect executor has already reconciled this attempt to durable
 		// `failed`. Persist its failed tool row with an independent bounded signal
 		// so a known outcome can never be mistaken for an uncertain commit.
@@ -1819,7 +1670,7 @@ export class AgenticChatTurnExecutor {
 				sequence_index: sequenceIndex,
 				status: 'failure',
 				duration_ms: elapsedMs(mutationStartedAt),
-				error_code: 'known_mutation_failure',
+				error_code: failure.observationErrorCode,
 				replayed: false
 			},
 			signal
@@ -1842,7 +1693,7 @@ export class AgenticChatTurnExecutor {
 						tool_category: toolCategory,
 						tool_name: step.toolName,
 						gateway_op: step.operationName,
-						effect_id: error.effectId
+						effect_id: failure.effectId
 					}
 				}
 			},
@@ -1858,153 +1709,6 @@ export class AgenticChatTurnExecutor {
 				toolCategory,
 				modelPayload: { error: failureMessage }
 			}
-		};
-	}
-
-	private async executePreExecutionToolFailure(
-		executionInput: AgenticChatWorkerExecutionInputV1,
-		processingToken: string,
-		projection: ProjectionState,
-		terminalContext: TerminalContextState,
-		step: Extract<AgenticChatTurnProviderStepV1, { type: 'pre_execution_tool_failure' }>,
-		sequenceIndex: number,
-		planning: AgenticChatReadPlanningContextV1,
-		markToolExecution: () => void,
-		signal: AbortSignal
-	): Promise<AgenticChatProviderFailedToolSynthesisInputV1> {
-		canonicalUuid(step.callTransitionId, 'callTransitionId');
-		canonicalUuid(step.resultTransitionId, 'resultTransitionId');
-		if (!canonicalText(step.providerToolCallId, 512)) {
-			throw new Error('Fixture provider tool-call id is invalid');
-		}
-		if (!canonicalText(step.toolName, 256)) throw new Error('Fixture tool name is invalid');
-		if (!canonicalText(step.failure.error, 4_000)) {
-			throw new Error('Fixture pre-execution failure error is invalid');
-		}
-		if (step.failure.toolCategory !== null && !canonicalText(step.failure.toolCategory, 128)) {
-			throw new Error('Fixture pre-execution failure tool category is invalid');
-		}
-		const recovery = step.failure.modelPayload.supervisor_recovery;
-		if (
-			step.failure.kind !== 'supervisor_block' ||
-			step.failure.modelPayload.error !== step.failure.error ||
-			!isJsonRecord(recovery) ||
-			recovery.blocked_exact_retry !== true
-		) {
-			throw new Error('Fixture supervisor block payload is invalid');
-		}
-		canonicalizeAgenticChatJson(step.failure.modelPayload);
-		await this.assertCurrentReadToolFence(executionInput, processingToken, signal);
-
-		await this.publishSemantic(
-			executionInput,
-			projection,
-			{
-				type: 'semantic',
-				transitionId: step.callTransitionId,
-				phase: 'tool',
-				eventType: 'tool_call',
-				currentActivity: `Using ${step.toolName}...`,
-				eventPayload: {
-					type: 'tool_call',
-					tool_call: {
-						id: step.providerToolCallId,
-						type: 'function',
-						function: {
-							name: step.toolName,
-							arguments: JSON.stringify(step.arguments)
-						}
-					}
-				}
-			},
-			signal
-		);
-		throwIfAborted(signal);
-		await abortable(
-			this.ports.toolExecutions.persistFailure(
-				{
-					turnRunId: executionInput.claim.turnRunId,
-					queueJobId: executionInput.claim.queueJobId,
-					processingToken,
-					userId: executionInput.claim.userId,
-					executionGeneration: executionInput.claim.executionGeneration,
-					failureKind: 'supervisor_block',
-					toolExecutionId: createStableAgenticChatToolExecutionIdV1({
-						turnRunId: executionInput.claim.turnRunId,
-						sequenceIndex
-					}),
-					sequenceIndex,
-					providerToolCallId: step.providerToolCallId,
-					toolName: step.toolName,
-					arguments: step.arguments,
-					toolCategory: step.failure.toolCategory,
-					error: step.failure.error
-				},
-				signal
-			),
-			signal
-		);
-
-		const chatToolResult: ChatToolResult = {
-			tool_call_id: step.providerToolCallId,
-			result: null,
-			success: false,
-			error: step.failure.error
-		};
-		this.recordTerminalToolExecution(
-			terminalContext,
-			sequenceIndex,
-			providerToolCall(step),
-			chatToolResult
-		);
-		markToolExecution();
-		await this.observeToolExecution(
-			executionInput,
-			processingToken,
-			step,
-			sequenceIndex,
-			planning,
-			'tool_execution_ended',
-			{
-				tool_name: step.toolName,
-				provider_tool_call_id: step.providerToolCallId,
-				sequence_index: sequenceIndex,
-				status: 'failure',
-				duration_ms: 0,
-				error_code: 'supervisor_block'
-			},
-			signal
-		);
-		throwIfAborted(signal);
-		await this.publishSemantic(
-			executionInput,
-			projection,
-			{
-				type: 'semantic',
-				transitionId: step.resultTransitionId,
-				phase: 'tool',
-				eventType: 'tool_result',
-				currentActivity: DEFAULT_RUNNING_ACTIVITY,
-				eventPayload: {
-					type: 'tool_result',
-					result: {
-						...chatToolResult,
-						affected_entities: [],
-						...(step.failure.toolCategory !== null
-							? { tool_category: step.failure.toolCategory }
-							: {}),
-						tool_name: step.toolName
-					}
-				}
-			},
-			signal
-		);
-
-		return {
-			providerToolCallId: step.providerToolCallId,
-			toolName: step.toolName,
-			arguments: step.arguments,
-			failure: step.failure
 		};
 	}
 
@@ -2576,7 +2280,6 @@ export class AgenticChatTurnExecutor {
 		payload: JsonObject,
 		signal: AbortSignal
 	): Promise<void> {
-		if (!this.ports.executionObservations) return;
 		const identity =
 			step.type === 'read_tool'
 				? deriveAgenticChatReadPlanningIdentityV1({
@@ -2601,39 +2304,24 @@ export class AgenticChatTurnExecutor {
 			...(identity.exactReadKey ? { exact_read_key: identity.exactReadKey } : {}),
 			...(identity.resourceKey ? { resource_key: identity.resourceKey } : {})
 		};
-		try {
-			await runWithAbortableDeadline({
-				parentSignal: signal,
-				timeoutMs: AGENTIC_CHAT_EXECUTION_OBSERVATION_TIMEOUT_MS,
-				createTimeoutError: () =>
-					new Error('Agentic Chat tool execution observation timed out'),
-				run: (deadlineSignal) =>
-					this.ports.executionObservations!.observe(
-						{
-							turnRunId: executionInput.claim.turnRunId,
-							queueJobId: executionInput.claim.queueJobId,
-							processingToken,
-							userId: executionInput.claim.userId,
-							executionGeneration: executionInput.claim.executionGeneration,
-							observationKey: createStableAgenticChatExecutionObservationKeyV1({
-								turnRunId: executionInput.claim.turnRunId,
-								scope: `tool:${sequenceIndex}`,
-								boundary: eventType
-							}),
-							phase: 'tool',
-							eventType,
-							payload: { ...payload, ...planningPayload }
-						},
-						deadlineSignal
-					)
-			});
-		} catch (error) {
-			try {
-				this.ports.onExecutionObservationError?.(error);
-			} catch {
-				// Private observability must remain bounded and cannot alter the turn.
-			}
-		}
+		await this.effects.observeToolExecution(
+			{
+				turnRunId: executionInput.claim.turnRunId,
+				queueJobId: executionInput.claim.queueJobId,
+				processingToken,
+				userId: executionInput.claim.userId,
+				executionGeneration: executionInput.claim.executionGeneration,
+				observationKey: createStableAgenticChatExecutionObservationKeyV1({
+					turnRunId: executionInput.claim.turnRunId,
+					scope: `tool:${sequenceIndex}`,
+					boundary: eventType
+				}),
+				phase: 'tool',
+				eventType,
+				payload: { ...payload, ...planningPayload }
+			},
+			signal
+		);
 	}
 
 	private async assertCurrentReadToolFence(
@@ -2827,6 +2515,85 @@ export class AgenticChatTurnExecutor {
 		}
 	}
 
+	/**
+	 * Provider budget spent after at least one durable write. The same terminal
+	 * text floors as the happy path run against the tool ledger so the partial
+	 * disclosure ("Done: 2 of 6 moves. Not yet moved: ...") is appended, then
+	 * the turn finalizes `completed` / `mutation_unfulfilled` with the regular
+	 * timing draft and `done` event. Returns null when the terminal text could
+	 * not be made durable, so the caller falls back to the failure path.
+	 */
+	private async finalizeBudgetExhaustedAfterDurableWrites(params: {
+		envelope: AgenticChatExecutionIdentityV1;
+		claim: ExecutableClaim;
+		executionInput: AgenticChatWorkerExecutionInputV1;
+		terminalContext: TerminalContextState;
+		runtimeTiming: AgenticChatRuntimeTimingTracker | null;
+		projection: ProjectionState;
+		publisherRegistered: boolean;
+		usage: AgenticChatTurnUsageV1 | null;
+	}): Promise<AgenticChatTurnExecutionResultV1 | null> {
+		const { claim, executionInput, terminalContext, runtimeTiming } = params;
+		try {
+			// The provider budget signal is spent; terminal work runs on fresh
+			// signals bounded by the overhead deadline like every other terminal step.
+			const requestContext = executionInput.requestPayload.context as JsonObject;
+			const terminalTextIntegrity = enforceAgenticChatTerminalTextIntegrityV1({
+				assistantText:
+					this.safeAssistantText(claim.turnRunId, params.publisherRegistered) ?? '',
+				finishedReason: 'mutation_unfulfilled',
+				contextType:
+					typeof requestContext.type === 'string' ? requestContext.type : 'global',
+				toolExecutions: terminalContext.toolExecutions
+			});
+			if (terminalTextIntegrity.correctionDelta) {
+				await this.awaitOverhead(
+					new AbortController().signal,
+					'budget disclosure append',
+					(signal) =>
+						this.enqueueAssistantText(
+							claim.turnRunId,
+							terminalTextIntegrity.correctionDelta!,
+							signal
+						)
+				);
+			}
+			this.captureRuntimeTiming(runtimeTiming, (timing) => timing.markProviderFinished());
+			this.captureRuntimeTiming(runtimeTiming, (timing) =>
+				timing.markPublisherDrainStarted()
+			);
+			try {
+				await this.awaitOverhead(
+					new AbortController().signal,
+					'budget terminal flush',
+					() => this.ports.publisher.flushTurn(claim.turnRunId)
+				);
+			} finally {
+				this.captureRuntimeTiming(runtimeTiming, (timing) =>
+					timing.markPublisherDrainCompleted()
+				);
+			}
+			return await this.finalize({
+				envelope: params.envelope,
+				claim,
+				status: 'completed',
+				finishedReason: terminalTextIntegrity.finishedReason,
+				failureCode: null,
+				usage: params.usage,
+				projection: params.projection,
+				publisherRegistered: params.publisherRegistered,
+				assistantTextOverride: terminalTextIntegrity.assistantText,
+				reevaluateConsumptionBilling: true,
+				terminalEventContext: { executionInput, terminalContext, runtimeTiming }
+			});
+		} catch {
+			// Disclosure or drain could not be made durable in time. The committed
+			// effects still exist; the failure path below records the budget
+			// exhaustion exactly as before this completion lane existed.
+			return null;
+		}
+	}
+
 	private async finalize({
 		envelope,
 		claim,
@@ -2839,7 +2606,6 @@ export class AgenticChatTurnExecutor {
 		assistantTextOverride,
 		interruptedReason,
 		publicError,
-		supervisorQuestionCheckpointId,
 		reevaluateConsumptionBilling = false,
 		terminalEventContext
 	}: FinalizeTurnInput): Promise<AgenticChatTurnExecutionResultV1> {
@@ -2953,14 +2719,6 @@ export class AgenticChatTurnExecutor {
 					: {}),
 				tool_round_count: terminalEventContext?.terminalContext.toolRoundCount ?? 0,
 				tool_call_count: terminalEventContext?.terminalContext.toolExecutions.length ?? 0,
-				...(supervisorQuestionCheckpointId
-					? {
-							supervisor_question_checkpoint: {
-								checkpoint_id: supervisorQuestionCheckpointId,
-								failed: false
-							}
-						}
-					: {}),
 				...completedMessageMetadata,
 				...interruptedMessageMetadata
 			},
@@ -3177,7 +2935,7 @@ export class AgenticChatTurnExecutor {
 		if (!tracker) return;
 		try {
 			tracker.markTerminalCallCompleted();
-			this.ports.onTimingSnapshot?.(tracker.snapshot());
+			this.effects.timingSnapshot(tracker.snapshot());
 		} catch {
 			// Post-call timing must never overturn authoritative terminal DB truth.
 		}
@@ -3204,18 +2962,9 @@ export class AgenticChatTurnExecutor {
 	}
 
 	private async evaluateConsumptionBilling(userId: string): Promise<void> {
-		if (!this.ports.consumptionBilling) return;
-		try {
-			await this.awaitTerminal('consumption billing evaluation', () =>
-				this.ports.consumptionBilling!.evaluate(userId)
-			);
-		} catch (error) {
-			try {
-				this.ports.onConsumptionBillingError?.(error);
-			} catch {
-				// Billing telemetry must never overturn authoritative terminal truth.
-			}
-		}
+		await this.effects.evaluateConsumptionBilling(userId, (evaluate) =>
+			this.awaitTerminal('consumption billing evaluation', evaluate)
+		);
 	}
 
 	/**
@@ -3264,16 +3013,12 @@ export class AgenticChatTurnExecutor {
 		claim: { turnRunId: string; executionGeneration: number },
 		error: unknown
 	): void {
-		try {
-			this.ports.onTerminalControlError?.({
-				stage,
-				turnRunId: claim.turnRunId,
-				executionGeneration: claim.executionGeneration,
-				error
-			});
-		} catch {
-			// Terminal-control observability must never overturn terminal truth.
-		}
+		this.effects.reportTerminalControlError({
+			stage,
+			turnRunId: claim.turnRunId,
+			executionGeneration: claim.executionGeneration,
+			error
+		});
 	}
 
 	private async reconcileTerminalQueue(
@@ -3413,10 +3158,7 @@ function toProjectionJson(projection: ProjectionState): JsonObject {
 }
 
 function providerToolCall(
-	step: Extract<
-		AgenticChatTurnProviderStepV1,
-		{ type: 'read_tool' | 'mutating_tool' | 'pre_execution_tool_failure' }
-	>
+	step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' | 'mutating_tool' }>
 ): ChatToolCall {
 	return {
 		id: step.providerToolCallId,
@@ -3439,7 +3181,10 @@ function providerSchedulingArguments(step: AgenticChatExecutableToolStepV1): Jso
 
 function deriveMutationTelemetry(
 	step: Extract<AgenticChatTurnProviderStepV1, { type: 'mutating_tool' }>,
-	downstreamReceipt: JsonObject | null
+	downstreamReceipt: JsonObject | null,
+	// Adapter wall time measured by the executor; mutation rows previously
+	// persisted NULL here while read rows carried their duration.
+	executionTimeMs: number
 ): {
 	executionTimeMs: number | null;
 	tokensConsumed: number | null;
@@ -3448,7 +3193,7 @@ function deriveMutationTelemetry(
 } {
 	const requiresUserAction = findRequiresUserAction(downstreamReceipt) ?? false;
 	return {
-		executionTimeMs: null,
+		executionTimeMs,
 		tokensConsumed: null,
 		requiresUserAction,
 		affectedEntities: deriveMutationAffectedEntities(step, downstreamReceipt)
@@ -3461,6 +3206,80 @@ function mutationToolCategory(
 	return step.operationName.startsWith('onto.') || step.toolName.includes('_onto_')
 		? 'ontology_action'
 		: 'action';
+}
+
+const MAX_CAPPED_RETRY_PRIOR_MESSAGE_CHARS = 600;
+
+/**
+ * A backend contract mismatch (adapter code `*_contract_mismatch`) fails every
+ * call of the tool regardless of arguments. The effect executor does not yet
+ * surface the adapter's failure code on `AgenticChatEffectExecutionError`, so
+ * the code is read structurally when present and the adapter's own "retrying
+ * with different arguments will not help" instruction is honoured until then.
+ */
+function isToolLevelPermanentMutationFailure(error: AgenticChatEffectExecutionError): boolean {
+	const failureCode = (error as { failureCode?: unknown }).failureCode;
+	if (typeof failureCode === 'string' && failureCode.trim().endsWith('_contract_mismatch')) {
+		return true;
+	}
+	return (
+		/\bwith different arguments will not help\b/i.test(error.message) ||
+		/\bdo not (?:call|retry) [a-z0-9_]+ again this turn\b/i.test(error.message)
+	);
+}
+
+function findPermanentMutationFailureCap(
+	terminalContext: TerminalContextState,
+	step: Extract<AgenticChatTurnProviderStepV1, { type: 'mutating_tool' }>
+): KnownMutationFailure | null {
+	const ledger = terminalContext.permanentMutationFailures;
+	const toolLevelPrior = ledger.byTool.get(step.toolName);
+	if (toolLevelPrior !== undefined) {
+		return {
+			effectId: null,
+			message:
+				`${step.toolName} already failed permanently this turn; do not retry it. ` +
+				`Earlier failure: ${truncateCappedRetryMessage(toolLevelPrior)}`,
+			observationErrorCode: 'mutation_retry_capped',
+			toolLevel: true
+		};
+	}
+	const identicalPrior = ledger.byCall.get(mutationCallKey(step));
+	if (identicalPrior !== undefined) {
+		return {
+			effectId: null,
+			message:
+				`${step.toolName} was already called with these exact arguments this turn and failed permanently; ` +
+				`do not retry the identical call. Earlier failure: ${truncateCappedRetryMessage(identicalPrior)}`,
+			observationErrorCode: 'mutation_retry_capped',
+			toolLevel: false
+		};
+	}
+	return null;
+}
+
+function truncateCappedRetryMessage(message: string): string {
+	return message.length > MAX_CAPPED_RETRY_PRIOR_MESSAGE_CHARS
+		? `${message.slice(0, MAX_CAPPED_RETRY_PRIOR_MESSAGE_CHARS - 3)}...`
+		: message;
+}
+
+function mutationCallKey(
+	step: Extract<AgenticChatTurnProviderStepV1, { type: 'mutating_tool' }>
+): string {
+	return `${step.toolName}\u0000${stableJson(step.arguments)}`;
+}
+
+function stableJson(value: unknown): string {
+	if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+	if (value && typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		return `{${Object.keys(record)
+			.sort()
+			.map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`)
+			.join(',')}}`;
+	}
+	return JSON.stringify(value) ?? 'null';
 }
 
 function deriveMutationAffectedEntities(
@@ -3590,60 +3409,6 @@ function buildTerminalLastTurnContext(
 	});
 }
 
-function validateSupervisorQuestion(
-	step: Extract<AgenticChatTurnProviderStepV1, { type: 'supervisor_question' }>,
-	executionGeneration: number
-): void {
-	canonicalUuid(step.transitionId, 'supervisor transition id');
-	if (
-		step.executionGeneration !== executionGeneration ||
-		!Number.isSafeInteger(step.sequence) ||
-		step.sequence < 1 ||
-		step.finishedReason !== 'supervisor_question' ||
-		!canonicalText(step.reason, 256) ||
-		!canonicalText(step.question, 4_000)
-	) {
-		throw new Error('Fixture supervisor question identity or text is invalid');
-	}
-	validateFinish(step.finishedReason, step.usage);
-	const { digest, resumeContext, supervisorDecision } = step.checkpoint;
-	if (
-		!isJsonRecord(digest) ||
-		!isJsonRecord(resumeContext) ||
-		!isJsonRecord(supervisorDecision) ||
-		supervisorDecision.action !== 'ask_user' ||
-		supervisorDecision.reason !== step.reason ||
-		supervisorDecision.question !== step.question ||
-		!isJsonRecord(supervisorDecision.checkpoint) ||
-		canonicalizeAgenticChatJson(supervisorDecision.checkpoint) !==
-			canonicalizeAgenticChatJson({ digest, resumeContext })
-	) {
-		throw new Error('Fixture supervisor question checkpoint payload is inconsistent');
-	}
-}
-
-function buildSupervisorWaitingStep(
-	step: Extract<AgenticChatTurnProviderStepV1, { type: 'supervisor_question' }>
-): Extract<AgenticChatTurnProviderStepV1, { type: 'semantic' }> {
-	const contextType = step.checkpoint.digest.contextType;
-	if (typeof contextType !== 'string' || !canonicalText(contextType, 128)) {
-		throw new Error('Fixture supervisor question context type is invalid');
-	}
-	return {
-		type: 'semantic',
-		transitionId: step.transitionId,
-		phase: 'stream',
-		eventType: 'agent_state',
-		currentActivity: 'Waiting on your direction to continue.',
-		eventPayload: {
-			type: 'agent_state',
-			state: 'waiting_on_user',
-			contextType,
-			details: 'Waiting on your direction to continue.'
-		}
-	};
-}
-
 function validateFinish(reason: string, usage: AgenticChatTurnUsageV1 | null): void {
 	if (!canonicalText(reason, 256)) throw new Error('Fixture finished reason is invalid');
 	if (!usage) return;
@@ -3731,8 +3496,6 @@ function classifyFailure(
 	if (error instanceof AgenticChatSessionHandoffFenceError) return error.failureClass;
 	if (error instanceof AgenticChatSessionHandoffRpcError) return error.failureClass;
 	if (error instanceof AgenticChatSessionHandoffTimeoutError) return error.failureClass;
-	if (error instanceof AgenticChatSupervisorCheckpointFenceError) return error.failureClass;
-	if (error instanceof AgenticChatSupervisorCheckpointTimeoutError) return error.failureClass;
 	if (error instanceof AgenticChatProviderExecutionError) return error.failureClass;
 	const reason = signal.aborted ? signal.reason : error;
 	if (reason instanceof AgenticChatCancellationError) return 'cancelled';
@@ -3750,7 +3513,6 @@ function specificTerminalFailureCode(error: unknown, signal: AbortSignal): strin
 	const reason = signal.aborted ? signal.reason : error;
 	const candidate = reason ?? error;
 	if (candidate instanceof AgenticChatToolExecutionTimeoutError) return candidate.code;
-	if (candidate instanceof AgenticChatSupervisorCheckpointTimeoutError) return candidate.code;
 	if (candidate instanceof AgenticChatProviderExecutionError) {
 		return canonicalText(candidate.code, 128) ? candidate.code : undefined;
 	}
@@ -3790,42 +3552,7 @@ type AgenticChatExecutionBoundaryStage =
 	| 'read_op'
 	| 'ledger_persist'
 	| 'tool_result_publish'
-	| 'synthesis'
 	| 'tool_round';
-
-function logAgenticChatSupervisorEvaluation(
-	job: Pick<ProcessingJob, 'log'>,
-	executionInput: AgenticChatWorkerExecutionInputV1,
-	step: Extract<AgenticChatTurnProviderStepV1, { type: 'supervisor_evaluation' }>
-): void {
-	canonicalUuid(step.transitionId, 'transitionId');
-	if (!canonicalText(step.reason, 1_000)) {
-		throw new Error('Fixture supervisor evaluation reason is invalid');
-	}
-	if (!Number.isSafeInteger(step.sequence) || step.sequence < 1) {
-		throw new Error('Fixture supervisor evaluation sequence is invalid');
-	}
-	if (
-		!Number.isSafeInteger(step.executionGeneration) ||
-		step.executionGeneration !== executionInput.claim.executionGeneration
-	) {
-		throw new Error('Fixture supervisor evaluation generation is invalid');
-	}
-	const record = {
-		event: 'agentic_chat_supervisor_eval_flagged',
-		turn_run_id: executionInput.claim.turnRunId,
-		queue_job_id: executionInput.claim.queueJobId,
-		execution_generation: step.executionGeneration,
-		transition_id: step.transitionId,
-		sequence: step.sequence,
-		reason: step.reason
-	};
-	try {
-		void job.log(JSON.stringify(record)).catch(() => undefined);
-	} catch {
-		// Legacy eval flags are diagnostic only and cannot alter the turn.
-	}
-}
 
 function logAgenticChatExecutionBoundary(
 	job: Pick<ProcessingJob, 'log'>,
@@ -4031,12 +3758,6 @@ function canonicalUuid(value: unknown, label: string): asserts value is string {
 	}
 }
 
-function isMutationSynthesisInput(
-	input: AgenticChatProviderToolSynthesisInputV1
-): input is AgenticChatProviderMutationSynthesisInputV1 {
-	return 'mutation' in input;
-}
-
 function isFailedToolSynthesisInput(
 	input: AgenticChatProviderToolSynthesisInputV1
 ): input is AgenticChatProviderFailedToolSynthesisInputV1 {
@@ -4055,28 +3776,6 @@ function canonicalText(value: unknown, maximum: number): value is string {
 function throwIfAborted(signal: AbortSignal): void {
 	if (!signal.aborted) return;
 	throw signal.reason instanceof Error ? signal.reason : new Error('Execution aborted');
-}
-
-function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-	throwIfAborted(signal);
-	return new Promise<T>((resolve, reject) => {
-		const cleanup = () => signal.removeEventListener('abort', onAbort);
-		const onAbort = () => {
-			cleanup();
-			reject(signal.reason ?? new Error('Execution aborted'));
-		};
-		signal.addEventListener('abort', onAbort, { once: true });
-		void promise.then(
-			(value) => {
-				cleanup();
-				resolve(value);
-			},
-			(error) => {
-				cleanup();
-				reject(error);
-			}
-		);
-	});
 }
 
 async function* iterateWithAbort<T>(

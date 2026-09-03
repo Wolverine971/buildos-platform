@@ -10,7 +10,8 @@ import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } 
 import { providerError } from '../protocol';
 import { appendSystemInstruction, forceToolFreeRequest } from '../request-builders';
 import type { CompletedProviderToolCall } from '../stream-tool-calls';
-import { SEMANTIC_COMMISSION_GUIDANCE } from './controls';
+import { surfaceFor } from '../turn-phase';
+import { ACTOR_COMMISSION_GUIDANCE } from './controls';
 import { projectCreateShellGuidance } from './turn-contract';
 
 export function canRequirePreMutationSemanticDisposition(
@@ -49,18 +50,8 @@ export function buildSemanticTurnDispositionGateRequest(
 	options: { allowReads?: boolean } = {}
 ): AgenticChatTurnProviderRequestV1 | null {
 	const allowReads = options.allowReads !== false;
-	const gateNames = new Set([
-		DECLARE_TURN_CONTRACT_TOOL_NAME,
-		REQUEST_TURN_CLARIFICATION_TOOL_NAME
-	]);
-	const tools = availableTools.filter(
-		(tool) =>
-			gateNames.has(tool.function.name) ||
-			(allowReads && isPureReadToolName(tool.function.name))
-	);
-	if (!Array.from(gateNames).every((name) => tools.some((tool) => tool.function.name === name))) {
-		return null;
-	}
+	const surface = surfaceFor('disposition_gate', availableTools, { allowReads });
+	if (!surface) return null;
 	return {
 		...appendSystemInstruction(
 			request,
@@ -76,13 +67,14 @@ export function buildSemanticTurnDispositionGateRequest(
 				'Call declare_turn_contract only when the user commissioned a durable data change and every required target and value is resolved enough for safe execution.',
 				'Call request_turn_clarification when a durable change was commissioned but a required user choice remains unresolved after reading, including multiple plausible targets. Never guess among plausible choices. When loaded context identifies a finite candidate set, include every candidate with its stable ID when available and name every candidate label in the question.',
 				'A descriptive reference is safely resolved only when the user message and loaded context identify one plausible target. If several loaded entities fit, a prior assistant mention, ordering, or proposed tool target does not choose one for the user.',
-				...SEMANTIC_COMMISSION_GUIDANCE,
+				// The acting gate gets the five-line actor register; the full
+				// reviewer-register guidance stays in reviewer prompts only.
+				...ACTOR_COMMISSION_GUIDANCE,
 				'A proposal or request for approval is not read-only when the user already commissioned the action.',
 				'Describe semantic outcomes and real cardinality, not implementation steps or tool names. Declare one outcome per distinct change: targets that receive different values belong in separate outcomes.'
 			].join(' ')
 		),
-		tools,
-		toolChoice: 'required',
+		...surface,
 		providerRound: 'synthesis',
 		passRole: 'acting',
 		semanticDispositionGate: true
@@ -97,17 +89,14 @@ export function buildPostSemanticDispositionRequest(
 	if (dispositionToolName === DECLARE_TURN_CONTRACT_TOOL_NAME) {
 		return {
 			...request,
-			tools: availableTools,
-			toolChoice: availableTools.length > 0 ? 'auto' : 'none',
+			...surfaceFor('contract_declared', availableTools)!,
 			semanticDispositionGate: false
 		};
 	}
 	if (dispositionToolName === DECLARE_READ_ONLY_TURN_TOOL_NAME) {
-		const readTools = availableTools.filter((tool) => isPureReadToolName(tool.function.name));
 		return {
 			...request,
-			tools: readTools,
-			toolChoice: readTools.length > 0 ? 'auto' : 'none',
+			...surfaceFor('read_only_declared', availableTools)!,
 			providerRound: 'synthesis',
 			semanticDispositionGate: false
 		};
@@ -128,6 +117,37 @@ export function callsIncludeSemanticDisposition(
 	calls: readonly CompletedProviderToolCall[]
 ): boolean {
 	return calls.some((call) => isSemanticDispositionToolName(call.name));
+}
+
+/**
+ * Two dispositions in one pass used to be a permanent
+ * `provider_semantic_disposition_invalid`. The first one is the model's
+ * decision; the rest are dropped without execution and the model is told so
+ * on its next pass. Mixing reads with a disposition on a gate pass, or a gate
+ * pass with no disposition at all, still fails closed below.
+ */
+export function reconcileSemanticDispositionCalls(
+	calls: readonly CompletedProviderToolCall[],
+	gateRequired: boolean
+): { calls: readonly CompletedProviderToolCall[]; notice: string | null } {
+	const dispositions = calls.filter((call) => isSemanticDispositionToolName(call.name));
+	if (dispositions.length <= 1) {
+		assertSemanticDispositionCalls(calls, gateRequired);
+		return { calls, notice: null };
+	}
+	const kept = dispositions[0]!;
+	const dropped = new Set(dispositions.slice(1));
+	const reconciled = calls.filter((call) => !dropped.has(call));
+	assertSemanticDispositionCalls(reconciled, gateRequired);
+	const droppedNames = Array.from(new Set([...dropped].map((call) => call.name))).sort();
+	return {
+		calls: reconciled,
+		notice: [
+			`Disposition repair: the previous pass called ${dispositions.map((call) => call.name).join(' and ')} together.`,
+			`Exactly one disposition is allowed per pass; only the first, ${kept.name}, was taken and ${droppedNames.join(', ')} ${droppedNames.length === 1 ? 'was' : 'were'} rejected without execution.`,
+			'Continue from that disposition and do not call another disposition control in this turn unless the harness asks for one.'
+		].join(' ')
+	};
 }
 
 export function assertSemanticDispositionCalls(

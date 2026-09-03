@@ -106,6 +106,30 @@ const WRITE_LEDGER_TOOL_NAMES: ReadonlySet<string> = new Set([
 const READ_TOOL_PREFIXES = ['get_', 'list_', 'search_', 'find_', 'read_'];
 const READ_OP_SUFFIXES = ['.get', '.list', '.search', '.visit', '.read', '.find'];
 
+/**
+ * Harness control tools: disposition declarations the acting model makes and
+ * the decisions an independent reviewer returns. They cross the tool-result
+ * fence like reads, but a round made only of them gathers no evidence and
+ * makes no durable change. The read-loop escalation ladder (nudge →
+ * stop_and_answer → must_synthesize) must not count them: a canonical organize
+ * (three reads, declare, contract approval, batch approval) otherwise reaches
+ * stop_and_answer before its first mutation (turn-executor audit 2026-09-02,
+ * finding 8).
+ */
+export const CONTROL_TOOL_NAMES: ReadonlySet<string> = new Set([
+	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
+	'cancel_turn_contract',
+	'approve_turn_contract_review',
+	'approve_mutation_batch_review',
+	'request_proposal_revision'
+]);
+
+export function isControlToolName(name: string): boolean {
+	return CONTROL_TOOL_NAMES.has(name.trim().toLowerCase());
+}
+
 export function extractCanonicalOp(toolCall: ChatToolCall): string | null {
 	const { args } = parseToolArguments(toolCall.function?.arguments);
 	for (const key of ['op', 'operation', 'help_path']) {

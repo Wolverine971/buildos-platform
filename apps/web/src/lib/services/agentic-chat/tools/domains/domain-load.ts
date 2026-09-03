@@ -98,34 +98,44 @@ function aliasMatchesQuery(alias: string, queryTokenText: string): boolean {
 	return aliasTokens.every((token) => queryTokens.has(token));
 }
 
+const DISCRIMINATIVE_TOKEN_SCORE = 50;
+// Summary, capability-id, and skill-id words are prose: "first", "list",
+// "find", "email", "plan" leak out of skill ids like
+// cold_email_engagement_first_outreach and lead_list_research and used to be
+// worth as much as a domain-name hit, so three ordinary English words in a
+// long message cleared both sensing floors with zero aliases (2026-09-02 turn
+// executor audit, Finding 4 / lane D P1-1). Prose is now a tie-breaker only.
+const PROSE_TOKEN_SCORE = 10;
+
+function normalizedTokenSet(values: string[]): Set<string> {
+	return new Set(tokenizeRaw(values.join(' ').toLowerCase()).map(normalizeTokenForMatch));
+}
+
 function computeScore(
 	domain: DomainDefinition,
 	query: string
-): { score: number; aliasesHit: string[] } {
-	if (!query) return { score: 1, aliasesHit: [] };
+): { score: number; aliasesHit: string[]; discriminativeHits: number } {
+	if (!query) return { score: 1, aliasesHit: [], discriminativeHits: 0 };
 
 	const normalizedQuery = normalize(query);
 	const rawQueryTokens = tokenizeRaw(query);
 	const tokens = tokenizeQuery(query);
 	const queryTokenText = rawQueryTokens.join(' ');
 	const aliasesHit = domain.aliases.filter((alias) => aliasMatchesQuery(alias, queryTokenText));
-	const skillIds = getSkillIds(domain);
-	const haystack = [
-		domain.id,
-		domain.name,
+	const domainIdTokens = normalizedTokenSet([domain.id]);
+	const domainNameTokens = normalizedTokenSet([domain.name]);
+	// Discriminative vocabulary = what the catalog author chose to name the
+	// domain by. Prose vocabulary = everything else the haystack used to carry.
+	const discriminativeTokens = new Set([
+		...domainIdTokens,
+		...domainNameTokens,
+		...normalizedTokenSet(domain.aliases)
+	]);
+	const proseTokens = normalizedTokenSet([
 		domain.summary,
-		...domain.aliases,
 		...domain.capabilityIds,
-		...skillIds
-	]
-		.join(' ')
-		.toLowerCase();
-	const haystackTokens = new Set(tokenizeRaw(haystack));
-	const normalizedHaystackTokens = new Set(
-		Array.from(haystackTokens).map(normalizeTokenForMatch)
-	);
-	const domainIdTokens = new Set(tokenizeRaw(domain.id).map(normalizeTokenForMatch));
-	const domainNameTokens = new Set(tokenizeRaw(domain.name).map(normalizeTokenForMatch));
+		...getSkillIds(domain)
+	]);
 
 	let score = 0;
 	if (domain.id === normalizedQuery) score += 220;
@@ -134,14 +144,20 @@ function computeScore(
 	if (normalize(domain.name).includes(normalizedQuery)) score += 80;
 	score += aliasesHit.length * 70;
 
+	const discriminativeHitTokens = new Set<string>();
 	for (const token of tokens) {
 		const normalizedToken = normalizeTokenForMatch(token);
 		if (domainIdTokens.has(normalizedToken)) score += 50;
 		if (domainNameTokens.has(normalizedToken)) score += 40;
-		if (normalizedHaystackTokens.has(normalizedToken)) score += 50;
+		if (discriminativeTokens.has(normalizedToken)) {
+			score += DISCRIMINATIVE_TOKEN_SCORE;
+			discriminativeHitTokens.add(normalizedToken);
+		} else if (proseTokens.has(normalizedToken)) {
+			score += PROSE_TOKEN_SCORE;
+		}
 	}
 
-	return { score, aliasesHit };
+	return { score, aliasesHit, discriminativeHits: discriminativeHitTokens.size };
 }
 
 function normalizeTokenForMatch(token: string): string {
@@ -166,7 +182,8 @@ function nextStepForDomain(domain: DomainDefinition): string {
 function toSearchMatch(
 	domain: DomainDefinition,
 	score: number,
-	aliasesHit: string[]
+	aliasesHit: string[],
+	discriminativeHits: number
 ): DomainSearchMatch {
 	return {
 		domain_id: domain.id,
@@ -175,6 +192,7 @@ function toSearchMatch(
 		coverage_status: domain.coverageStatus,
 		parent_ids: domain.parentIds,
 		aliases_hit: aliasesHit,
+		discriminative_hits: discriminativeHits,
 		skill_ids: getSkillIds(domain),
 		outcome_card_ids: listOutcomeCardsForDomain(domain.id).map((card) => card.id),
 		related_domain_ids: domain.relatedDomainIds ?? [],
@@ -187,8 +205,8 @@ export function searchDomains(options: DomainSearchOptions = {}): DomainSearchPa
 	const limit = Math.max(1, Math.min(12, options.limit ?? 6));
 	const matches = listDomains()
 		.map((domain) => {
-			const { score, aliasesHit } = computeScore(domain, query);
-			return { domain, score, aliasesHit };
+			const { score, aliasesHit, discriminativeHits } = computeScore(domain, query);
+			return { domain, score, aliasesHit, discriminativeHits };
 		})
 		.filter(({ score }) => score > 0)
 		.sort((a, b) => {
@@ -196,7 +214,9 @@ export function searchDomains(options: DomainSearchOptions = {}): DomainSearchPa
 			return a.domain.id.localeCompare(b.domain.id);
 		})
 		.slice(0, limit)
-		.map(({ domain, score, aliasesHit }) => toSearchMatch(domain, score, aliasesHit));
+		.map(({ domain, score, aliasesHit, discriminativeHits }) =>
+			toSearchMatch(domain, score, aliasesHit, discriminativeHits)
+		);
 
 	return {
 		type: 'domain_search_results',

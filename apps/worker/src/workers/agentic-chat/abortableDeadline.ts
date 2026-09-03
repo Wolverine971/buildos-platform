@@ -30,13 +30,18 @@ export async function runWithAbortableDeadline<T>(input: AbortableDeadlineInput<
 	}
 }
 
-function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+/**
+ * Reject as soon as `signal` aborts, with the signal's own reason when it has
+ * one. Shared by the executor and its effect facade so both observe the same
+ * cancellation value.
+ */
+export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 	throwIfAborted(signal);
 	return new Promise<T>((resolve, reject) => {
 		const cleanup = () => signal.removeEventListener('abort', onAbort);
 		const onAbort = () => {
 			cleanup();
-			reject(abortReason(signal, 'Execution aborted'));
+			reject(signal.reason ?? new Error('Execution aborted'));
 		};
 		signal.addEventListener('abort', onAbort, { once: true });
 		void promise.then(

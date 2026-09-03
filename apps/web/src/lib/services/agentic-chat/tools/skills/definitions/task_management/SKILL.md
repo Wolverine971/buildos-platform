@@ -63,7 +63,7 @@ Escalate to the child skill `task_state_updates` when the user reports task prog
 4. Prefer assignee_handles over actor IDs unless the IDs were just discovered in-turn from project membership data.
 5. Use valid task states such as todo, in_progress, blocked, or done.
 6. For updates, reuse the exact task_id from recent context or the prior assistant turn when the follow-up clearly refers to that task. If the exact task_id is not already known, discover it before any write.
-7. Only use description merge strategies when append or merge behavior is actually needed; otherwise keep updates simple.
+7. A task description is a full replacement: `update_onto_task` has no append or merge strategy. To preserve existing detail, read the current description first, then write the composed value.
 8. **State coverage.** When the user reports that real-world task work advanced (started, in progress, blocked, or finished), include `state_key` in the `update_onto_task` call alongside any description change. Do not update only the description when the task state should also move.
 9. After execution, tell the user what changed and call out any missing owner, due date, or parent relationship that still matters.
 

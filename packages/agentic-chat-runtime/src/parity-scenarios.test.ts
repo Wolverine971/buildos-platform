@@ -55,7 +55,8 @@ describe('agentic chat parity scenario registry', () => {
 				expect(scenario.workerDeliberateDivergencePrefixes.slice(1)).toEqual([
 					`/events/${resultIndex}/payload/result/effect_id`,
 					`/events/${resultIndex}/payload/result/replayed`,
-					'/toolExecutions/0/effect_id'
+					'/toolExecutions/0/effect_id',
+					'/toolExecutions/0/execution_time_ms'
 				]);
 			} else if (scenario.scenarioClass === 'timeout') {
 				expect(scenario.workerDeliberateDivergencePrefixes).toEqual([

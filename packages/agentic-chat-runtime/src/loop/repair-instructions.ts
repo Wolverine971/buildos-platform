@@ -812,15 +812,63 @@ export function buildGatewayMutationNoExecutionRepairInstruction(
 	return lines.join(' ');
 }
 
+/**
+ * One declared turn-contract outcome the write ledger could not prove complete,
+ * shaped for the user-facing partial-fulfilment disclosure. The caller resolves
+ * target titles from tool evidence; an unresolved target falls back to its id.
+ */
+export type UnfulfilledMutationOutcomeDisclosureV1 = {
+	action: string;
+	entityKind: string;
+	description?: string;
+	/** Targets the outcome declared; 0 for create/label outcomes. */
+	declaredTargetCount: number;
+	/** Distinct effects the ledger matched against the outcome. */
+	completedTargetCount: number;
+	/** Effects the outcome needs before it counts as fulfilled. */
+	requiredEffects: number;
+	missingTargets: Array<{ id: string; title: string | null }>;
+};
+
+export type EnforceMutationOutcomeIntegrityParams = {
+	contextType: string;
+	toolExecutions: FastToolExecution[];
+	latestUserText?: string;
+	explicitMutationRequested?: boolean;
+	expectedWriteToolNames?: string[];
+	/**
+	 * Declared outcomes still unfulfilled at finalization. After at least one
+	 * successful write, prose that does not disclose the unfinished remainder
+	 * gets a deterministic "Done: N of M ... Not yet ...: ..." line appended so
+	 * the user learns what is still pending without relying on model prose.
+	 */
+	unfulfilledOutcomes?: UnfulfilledMutationOutcomeDisclosureV1[];
+};
+
 export function enforceMutationOutcomeIntegrity(
 	finalText: string,
-	params: {
-		contextType: string;
-		toolExecutions: FastToolExecution[];
-		latestUserText?: string;
-		explicitMutationRequested?: boolean;
-		expectedWriteToolNames?: string[];
-	}
+	params: EnforceMutationOutcomeIntegrityParams
+): string {
+	const text = enforceMutationOutcomeIntegrityCore(finalText, params);
+	return appendUnfulfilledMutationOutcomeDisclosure(text, params);
+}
+
+function appendUnfulfilledMutationOutcomeDisclosure(
+	finalText: string,
+	params: EnforceMutationOutcomeIntegrityParams
+): string {
+	const unfulfilledOutcomes = params.unfulfilledOutcomes ?? [];
+	if (!finalText || unfulfilledOutcomes.length === 0) return finalText;
+	// Zero-write turns are already corrected by the no-execution and
+	// finalization-guard floors; the partial line is for work that half-happened.
+	if (summarizeMutationOutcomes(params.toolExecutions).succeeded === 0) return finalText;
+	if (looksLikeUnfulfilledMutationDisclosure(finalText)) return finalText;
+	return `${finalText.trim()}\n\n${formatUnfulfilledMutationOutcomeDisclosure(unfulfilledOutcomes)}`;
+}
+
+function enforceMutationOutcomeIntegrityCore(
+	finalText: string,
+	params: EnforceMutationOutcomeIntegrityParams
 ): string {
 	if (!finalText) return finalText;
 
@@ -936,6 +984,101 @@ function describeWriteTool(toolName: string): string {
 	if (toolName === 'link_onto_entities') return 'entity link';
 	if (toolName === 'unlink_onto_edge') return 'entity unlink';
 	return toolName.replaceAll('_', ' ');
+}
+
+const MAX_DISCLOSED_MISSING_TARGETS = 10;
+
+const OUTCOME_ACTION_NOUNS: Record<string, { singular: string; plural: string }> = {
+	create: { singular: 'creation', plural: 'creations' },
+	update: { singular: 'update', plural: 'updates' },
+	move: { singular: 'move', plural: 'moves' },
+	organize: { singular: 'move', plural: 'moves' },
+	link: { singular: 'link', plural: 'links' },
+	unlink: { singular: 'unlink', plural: 'unlinks' },
+	delete: { singular: 'deletion', plural: 'deletions' },
+	schedule: { singular: 'scheduling change', plural: 'scheduling changes' },
+	set: { singular: 'update', plural: 'updates' },
+	assign: { singular: 'assignment', plural: 'assignments' },
+	complete: { singular: 'completion', plural: 'completions' },
+	archive: { singular: 'archive', plural: 'archives' },
+	restore: { singular: 'restore', plural: 'restores' },
+	tag: { singular: 'tag', plural: 'tags' }
+};
+
+const OUTCOME_ACTION_PARTICIPLES: Record<string, string> = {
+	create: 'created',
+	update: 'updated',
+	move: 'moved',
+	organize: 'moved',
+	link: 'linked',
+	unlink: 'unlinked',
+	delete: 'deleted',
+	schedule: 'scheduled',
+	set: 'set',
+	assign: 'assigned',
+	complete: 'completed',
+	archive: 'archived',
+	restore: 'restored',
+	tag: 'tagged'
+};
+
+/**
+ * "Done: 2 of 6 moves. Not yet moved: A, B, C, D." One sentence pair per
+ * unfulfilled outcome, targets named by title when tool evidence carried one
+ * and by id otherwise, so the user can see exactly what still needs doing.
+ */
+export function formatUnfulfilledMutationOutcomeDisclosure(
+	outcomes: readonly UnfulfilledMutationOutcomeDisclosureV1[]
+): string {
+	const sentences: string[] = [];
+	for (const outcome of outcomes) {
+		const total = Math.max(
+			outcome.declaredTargetCount > 0 ? outcome.declaredTargetCount : outcome.requiredEffects,
+			1
+		);
+		const done = Math.min(Math.max(outcome.completedTargetCount, 0), total);
+		const nouns = OUTCOME_ACTION_NOUNS[outcome.action] ?? {
+			singular: `${outcome.action} change`,
+			plural: `${outcome.action} changes`
+		};
+		const participle = OUTCOME_ACTION_PARTICIPLES[outcome.action] ?? 'done';
+		const remaining = describeMissingOutcomeTargets(outcome);
+		sentences.push(
+			`Done: ${done} of ${total} ${total === 1 ? nouns.singular : nouns.plural}.` +
+				(remaining ? ` Not yet ${participle}: ${remaining}.` : '')
+		);
+	}
+	return sentences.join(' ');
+}
+
+function describeMissingOutcomeTargets(outcome: UnfulfilledMutationOutcomeDisclosureV1): string {
+	const labels = outcome.missingTargets
+		.map((target) => target.title?.trim() || target.id.trim())
+		.filter(Boolean);
+	if (labels.length === 0) {
+		const description = outcome.description?.trim();
+		return description ? description : `${outcome.entityKind} ${outcome.action}`;
+	}
+	const shown = labels.slice(0, MAX_DISCLOSED_MISSING_TARGETS);
+	const hidden = labels.length - shown.length;
+	return hidden > 0 ? `${shown.join(', ')}, and ${hidden} more` : shown.join(', ');
+}
+
+const UNFULFILLED_MUTATION_DISCLOSURE_PATTERNS: RegExp[] = [
+	/\bnot yet\b/i,
+	/\b\d+\s+(?:of|out of)\s+\d+\b/i,
+	/\b(?:still|remain(?:s|ing)?|left)\b[^.!?\n]{0,40}\b(?:pending|unfinished|undone|outstanding|to do|to be (?:done|moved|updated|created|completed))\b/i,
+	/\b(?:the )?(?:rest|remainder|remaining|others?)\b[^.!?\n]{0,60}\b(?:pending|later|next turn|unfinished|not (?:yet )?(?:done|moved|updated|created|complete))\b/i,
+	/\b(?:only|just)\s+(?:moved|updated|created|completed|deleted|linked|managed|got)\b/i,
+	/\b(?:haven['’]?t|have not|didn['’]?t|did not|couldn['’]?t|could not|wasn['’]?t able to|was not able to|unable to)\s+(?:yet\s+)?(?:move|update|create|complete|finish|delete|link|get to|do|make|process|handle|reach)\b/i,
+	/\bran out of\b/i,
+	/\bpending\b/i,
+	/\bstill unfinished\b/i
+];
+
+/** True when the prose already tells the user that requested work is unfinished. */
+export function looksLikeUnfulfilledMutationDisclosure(text: string): boolean {
+	return UNFULFILLED_MUTATION_DISCLOSURE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 export function buildToolValidationRepairInstruction(

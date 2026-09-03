@@ -1,11 +1,30 @@
 // packages/agentic-chat-runtime/src/catalog/surfaces.test.ts
 import { describe, expect, it } from 'vitest';
+import type { ChatToolDefinition } from '@buildos/shared-types';
+import { AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1 } from '../worker-tool-policy';
+import { AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY } from './definitions';
 import {
+	GATEWAY_SURFACE_PROFILE_NAMES,
 	getGatewayDirectToolNamesForProfile,
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile,
 	materializeGatewayTools
 } from './surfaces';
+
+/** Every `description` string in a definition, including nested property schemas. */
+function collectDescriptionText(value: unknown, key?: string): string[] {
+	if (Array.isArray(value)) return value.flatMap((item) => collectDescriptionText(item));
+	if (value && typeof value === 'object') {
+		return Object.entries(value as Record<string, unknown>).flatMap(([childKey, child]) =>
+			collectDescriptionText(child, childKey)
+		);
+	}
+	return typeof value === 'string' && key === 'description' ? [value] : [];
+}
+
+function surfaceNames(tools: ChatToolDefinition[]): string[] {
+	return tools.map((tool) => tool.function.name);
+}
 
 describe('project-create gateway surface', () => {
 	it('separates the web compound surface from reviewed shell/goal/task creation', () => {
@@ -34,6 +53,77 @@ describe('project-create gateway surface', () => {
 			reviewedSurface.find((tool) => tool.function.name === 'create_onto_task')?.function
 				.parameters.required
 		).toEqual(['project_id', 'title']);
+	});
+});
+
+describe('global document reads (Decision 2, 2026-09-02)', () => {
+	it('mounts outline and section reads on the global surfaces', () => {
+		for (const profile of ['global_basic', 'global_write'] as const) {
+			const names = getGatewayDirectToolNamesForProfile(profile);
+			expect(names, profile).toContain('get_document_outline');
+			expect(names, profile).toContain('read_document_section');
+		}
+		expect(surfaceNames(getGatewaySurfaceForContextType('global'))).toEqual(
+			expect.arrayContaining(['get_document_outline', 'read_document_section'])
+		);
+	});
+
+	it('mounts the retired context-shift tool on no surface', () => {
+		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
+			expect(getGatewayDirectToolNamesForProfile(profile), profile).not.toContain(
+				'change_chat_context'
+			);
+		}
+		expect(materializeGatewayTools([], ['change_chat_context']).tools).toEqual([]);
+	});
+});
+
+describe('static surface descriptions', () => {
+	// The worker never grows its surface mid-turn and rejects any call outside
+	// the pass's tool list as a permanent error. A description that points at a
+	// tool absent from the same profile is therefore a trap, not guidance
+	// (turn-executor audit 2026-09-02, Finding 2; lane C §2.1 items 3-6).
+	it('never name a tool that is not mounted on the same worker-visible profile', () => {
+		const vocabulary = new Set(surfaceNames(AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY));
+		const omitted = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
+		const violations: string[] = [];
+		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
+			const surface = getGatewaySurfaceForProfile(profile).filter(
+				(tool) => !omitted.has(tool.function.name)
+			);
+			const mounted = new Set(surfaceNames(surface));
+			for (const tool of surface) {
+				const text = collectDescriptionText(tool).join('\n');
+				for (const token of text.match(/[a-z][a-z0-9]*(?:_[a-z0-9]+)+/g) ?? []) {
+					if (vocabulary.has(token) && !mounted.has(token)) {
+						violations.push(`${profile}: ${tool.function.name} mentions ${token}`);
+					}
+				}
+			}
+		}
+		expect(violations).toEqual([]);
+	});
+
+	it('never mention discovery tools the worker cannot call', () => {
+		const discoveryNames = [
+			'skill_search',
+			'skill_load',
+			'skill_reference_load',
+			'domain_search',
+			'domain_load',
+			'tool_search',
+			'tool_schema'
+		];
+		const omitted = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
+		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
+			for (const tool of getGatewaySurfaceForProfile(profile)) {
+				if (omitted.has(tool.function.name)) continue;
+				const text = collectDescriptionText(tool).join('\n');
+				for (const name of discoveryNames) {
+					expect(text, `${profile}: ${tool.function.name}`).not.toContain(name);
+				}
+			}
+		}
 	});
 });
 

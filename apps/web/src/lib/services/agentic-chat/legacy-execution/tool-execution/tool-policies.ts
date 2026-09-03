@@ -132,7 +132,7 @@ function guardProjectCreateFromProjectContext(params: {
 	context: ServiceContext;
 	toolCallId: string;
 }): ToolExecutionResult | null {
-	const { toolName, args, context, toolCallId } = params;
+	const { toolName, context, toolCallId } = params;
 	const original = context.originalTurnContext;
 	const originalProjectId =
 		original?.contextType === 'project' && typeof original.entityId === 'string'
@@ -142,11 +142,7 @@ function guardProjectCreateFromProjectContext(params: {
 	const originalProjectName = readTrimmedString(original?.entityName) || 'Project';
 
 	const isCreateProject = toolName === 'create_onto_project';
-	const isProjectCreationZoomOut =
-		toolName === 'change_chat_context' &&
-		isGlobalContextTarget(args.target) &&
-		isLikelyNewProjectRequest(args, context);
-	if (!isCreateProject && !isProjectCreationZoomOut) return null;
+	if (!isCreateProject) return null;
 	if (hasConfirmedNewProjectFromProjectContext(context)) return null;
 
 	return {
@@ -297,17 +293,6 @@ function hasExplicitDuplicateDocumentIntent(context: ServiceContext): boolean {
 		/\b(?:a|one|the)\s+copy\s+of\s+(?:this|that|the|my)\b/i.test(message) ||
 		/\bmake\s+(?:a\s+)?cop(?:y|ies)\b/i.test(message)
 	);
-}
-
-function isGlobalContextTarget(value: unknown): boolean {
-	const normalized = readTrimmedString(value).toLowerCase();
-	return normalized === 'global' || normalized === 'workspace' || normalized === 'general';
-}
-
-function isLikelyNewProjectRequest(args: ToolArguments, context: ServiceContext): boolean {
-	const values =
-		`${getLatestUserMessageText(context)} ${readTrimmedString(args.reason)}`.toLowerCase();
-	return values.includes('project') && /\b(create|start|new|another|separate)\b/.test(values);
 }
 
 function hasConfirmedNewProjectFromProjectContext(context: ServiceContext): boolean {

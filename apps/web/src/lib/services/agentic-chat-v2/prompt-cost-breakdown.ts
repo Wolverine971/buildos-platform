@@ -23,6 +23,7 @@ const LITE_SECTION_TITLE_KEYS: Record<string, string> = {
 	'Operating Strategy': 'operating_strategy',
 	'Safety and Data Rules': 'safety_data_rules',
 	'Current Focus and Purpose': 'focus_purpose',
+	'Daily Brief': 'daily_brief',
 	'Location and Loaded Context': 'location_loaded_context',
 	'Timeline and Recent Activity': 'timeline_recent_activity',
 	'Loaded Data and Retrieval Boundaries': 'context_inventory_retrieval',

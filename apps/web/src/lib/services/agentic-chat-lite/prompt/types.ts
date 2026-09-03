@@ -49,6 +49,7 @@ export type LitePromptSectionId =
 	| 'situational_rules'
 	| 'project_start_here'
 	| 'focus_purpose'
+	| 'daily_brief'
 	| 'location_loaded_context'
 	| 'project_knowledge_map'
 	| 'timeline_recent_activity'
@@ -132,6 +133,11 @@ export type LitePromptTimelineSummary = {
 	overdueLines: string[];
 	upcomingLines: string[];
 	recentChangeLines: string[];
+	/**
+	 * Entity ids the Timeline lines already carry verbatim. The loaded-context
+	 * JSON index skips these so each UUID renders once per prompt.
+	 */
+	renderedEntityIds: string[];
 };
 
 export type LitePromptContextInventory = {

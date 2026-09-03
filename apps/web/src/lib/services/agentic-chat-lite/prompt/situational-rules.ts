@@ -10,15 +10,23 @@
  * tool-materialization notices when the situation develops after the seed
  * prompt was built.
  *
- * Trigger design: both blocks key off capability, not guessed intent — the
- * write block renders when write tools are mounted (or turn intent flagged a
- * write), the research block when web tools are mounted (or the message
- * plainly asks for web research). A turn that cannot write never needs the
- * write rules, so coverage is complete rather than classifier-limited; the
- * mid-turn notice covers tools that materialize after the seed.
+ * Trigger design (revised 2026-09-02, turn executor audit Findings 9 and 10):
+ * the write block keys off write INTENT — a pending semantic contract, the
+ * retired lexical turn-intent flag, a living-reference capture, or a mutation
+ * verb in the message — never off "write tools are mounted". Every project
+ * turn mounts write tools, so tool presence rendered the block on pure
+ * questions. The research block still keys off web-tool presence (those tools
+ * mount only when research is plausible) or research phrasing; the mid-turn
+ * notice covers tools that materialize after the seed, which is itself an
+ * intent signal.
+ *
+ * Worker-bound artifacts (`dynamicSkillTools: false`) get the worker's own
+ * write route — an existing-entity write opens with declare_turn_contract —
+ * and lose the "See the X skill" pointers the worker cannot follow.
  */
 
 import { isWriteToolName } from '@buildos/agentic-chat-runtime/catalog';
+import { looksLikeMutationTurn } from '$lib/services/agentic-chat/tools/domains/operational-skill-intent';
 
 export type LitePromptTurnSituation = {
 	writeIntent: boolean;
@@ -28,15 +36,50 @@ export type LitePromptTurnSituation = {
 	livingWorkspaceCapture?: boolean;
 	domainProfile?: string | null;
 	domainAffinity?: string | null;
+	/**
+	 * True when the prompt is bound to the reviewed worker lane: no dynamic
+	 * skill tools, and existing-entity writes must open with a turn contract.
+	 */
+	workerBound?: boolean;
 };
 
 const WEB_TOOL_NAMES = new Set(['web_search', 'web_visit']);
 
+// One clarification sentence for the whole file (audit C5 collapsed four
+// phrasings). It matches the worker's control rule: clarify only when a
+// required target or value still has several plausible choices after reading.
+export const CLARIFICATION_RULE_LINE =
+	'- Ask one clarification only when a required target or value still has multiple plausible choices after reading context; never guess among candidates, and never ask when a read can settle it.';
+
+const EXACT_ID_RULE_LINE =
+	'- Use exact full IDs copied from context or tool results. Never truncate or abbreviate IDs, and never use placeholders like `"..."`, `"REPLACE_ME"`, `"<task_id>"`, `"TBD"`, `"none"`, or `"null"`.';
+
+const TASK_STATE_RULE_LINE =
+	'- When a task has visibly advanced (started, in progress, blocked, or finished), include `state_key` in `update_onto_task` alongside any description change.';
+
+/** Web lane: the model can search, then write directly. */
 export const WRITE_TURN_RULE_LINES = [
-	'- Resolve write targets in this order: reuse exact IDs from loaded context or prior tool results; search within the current project when project scope is known; search the workspace when project scope is unknown; ask one concise clarification when multiple plausible matches remain.',
-	'- Use exact full IDs copied from context or tool results; resolve an ambiguous target with a read op or one concise question before writing. Never truncate or abbreviate IDs, and never use placeholders like `"..."`, `"REPLACE_ME"`, `"<task_id>"`, `"TBD"`, `"none"`, or `"null"`.',
-	'- When a task has visibly advanced (started, in progress, blocked, or finished), include `state_key` in `update_onto_task` alongside any description change. See the task_management skill for the full playbook.'
+	'- Resolve write targets in this order: reuse exact IDs from loaded context or prior tool results; search within the current project when project scope is known; search the workspace when project scope is unknown.',
+	EXACT_ID_RULE_LINE,
+	CLARIFICATION_RULE_LINE,
+	`${TASK_STATE_RULE_LINE} See the task_management skill for the full playbook.`
 ];
+
+/**
+ * Worker lane: the reviewed harness withholds any direct write that selects an
+ * existing entity and redirects it to the contract route (audit F-A3). Teach
+ * that route up front instead of "find the id then write".
+ */
+export const WORKER_WRITE_TURN_RULE_LINES = [
+	'- Writing to an existing entity: call declare_turn_contract first, unless the target id is the focused entity, was given by the user, or is the only entity of its kind that a read in this turn returned. Creates inside the focused project can be direct calls.',
+	EXACT_ID_RULE_LINE,
+	CLARIFICATION_RULE_LINE,
+	TASK_STATE_RULE_LINE
+];
+
+export function getWriteTurnRuleLines(workerBound: boolean | null | undefined): string[] {
+	return workerBound ? WORKER_WRITE_TURN_RULE_LINES : WRITE_TURN_RULE_LINES;
+}
 
 export const WEB_RESEARCH_RULE_LINES = [
 	"- The user's own projects, tasks, and documents live in the workspace — search there first. Use web_search to find sources and web_visit to read the most promising pages for current or external information (news, market prices, competitor products, third-party vendor documentation).",
@@ -52,7 +95,7 @@ export const LIVING_WORKSPACE_RULE_LINES = [
 ];
 
 export const LIVING_WORKSPACE_CAPTURE_RULE_LINE =
-	'- This is an implicit capture turn: perform the smallest relevant durable document write before replying. Do not merely acknowledge or promise an update. Stop for clarification only when a contradiction or genuinely ambiguous target makes a safe write impossible.';
+	'- This is an implicit capture turn: perform the smallest relevant durable document write before replying. Do not merely acknowledge or promise an update.';
 
 export const REVIEW_DELEGATION_RULE_LINES = [
 	'- Gather and read the relevant project entities first, then call delegate_task once with the exact focused project ID, the exact discovered entity IDs, and the intended outcome for each entity.',
@@ -91,17 +134,22 @@ export function resolveLitePromptTurnSituation(params: {
 	livingWorkspaceCapture?: boolean | null;
 	domainProfile?: string | null;
 	domainAffinity?: string | null;
+	workerBound?: boolean | null;
 }): LitePromptTurnSituation {
 	const webToolsMounted = params.toolNames.some((name) => WEB_TOOL_NAMES.has(name));
-	const writeToolsMounted = params.toolNames.some((name) => isWriteToolName(name));
+	const livingWorkspaceCapture = params.livingWorkspaceCapture === true;
 	return {
-		writeIntent: Boolean(params.turnIntentRequiresWrite) || writeToolsMounted,
+		writeIntent:
+			Boolean(params.turnIntentRequiresWrite) ||
+			livingWorkspaceCapture ||
+			looksLikeMutationTurn(params.latestUserMessage),
 		webResearch: webToolsMounted || looksLikeWebResearchTurn(params.latestUserMessage),
 		reviewDelegation: params.reviewDelegation === true,
 		livingWorkspace: params.livingWorkspace === true,
-		livingWorkspaceCapture: params.livingWorkspaceCapture === true,
+		livingWorkspaceCapture,
 		domainProfile: params.domainProfile ?? null,
-		domainAffinity: params.domainAffinity ?? null
+		domainAffinity: params.domainAffinity ?? null,
+		workerBound: params.workerBound === true
 	};
 }
 
@@ -127,7 +175,12 @@ export function renderSituationalRulesContent(
 	if (!hasActiveSituation(situation)) return null;
 	const blocks: string[] = [];
 	if (situation?.writeIntent) {
-		blocks.push(['This turn can write to project data:', ...WRITE_TURN_RULE_LINES].join('\n'));
+		blocks.push(
+			[
+				'This turn can write to project data:',
+				...getWriteTurnRuleLines(situation.workerBound)
+			].join('\n')
+		);
 	}
 	if (situation?.webResearch) {
 		blocks.push(['This turn involves web research:', ...WEB_RESEARCH_RULE_LINES].join('\n'));
@@ -159,7 +212,8 @@ export function renderSituationalRulesContent(
 /**
  * Compact rider for the orchestrator's mid-turn tool-materialization notice:
  * when write or web tools appear after the seed prompt was built, the rules
- * arrive with them, in the recency position.
+ * arrive with them, in the recency position. Only the web lane materializes
+ * tools mid-turn, so these are the web rules.
  */
 export function buildMidTurnSituationalNotice(addedToolNames: string[]): string | null {
 	const addedWeb = addedToolNames.some((name) => WEB_TOOL_NAMES.has(name));

@@ -9,7 +9,13 @@ export const config = {
 };
 
 import type { RequestHandler } from './$types';
-import type { ChatContextType, ChatSession, Json, ProjectFocus } from '@buildos/shared-types';
+import type {
+	ChatContextType,
+	ChatSession,
+	Json,
+	LastTurnContext,
+	ProjectFocus
+} from '@buildos/shared-types';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -52,6 +58,8 @@ import {
 	type PreparedPromptSurface
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
 import { writePreparedPromptContent } from '$lib/services/agentic-chat-v2/prepared-prompt-store.server';
+import { loadWorkerSkillPreloadLedgerMessage } from '$lib/services/agentic-chat-v2/worker-turn-preparation.server';
+import { buildLastTurnContinuityHint } from '$lib/services/agentic-chat-v2/last-turn-context';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
 import { agenticChatProjectFocusSchema } from '$lib/services/agentic-chat-v2/stream-request';
@@ -75,7 +83,11 @@ const fastAgentPrewarmRequestSchema = z
 		entity_id: z.string().nullable().optional(),
 		prepare_prompt: z.boolean().optional(),
 		session_id: z.string().optional(),
-		ensure_session: z.boolean().optional()
+		ensure_session: z.boolean().optional(),
+		// Same loose shape the turns route accepts. The admission-window path
+		// composes history with the last-turn continuity hint; the prepared
+		// history must carry the same hint or a prepared hit silently drops it.
+		lastTurnContext: z.record(z.string(), z.unknown()).nullish()
 	})
 	.strict()
 	.superRefine((value, context) => {
@@ -218,6 +230,7 @@ async function buildPreparedPrompt(params: {
 	contextType: ChatContextType;
 	entityId?: string | null;
 	projectFocus?: ProjectFocus | null;
+	lastTurnContext?: LastTurnContext | null;
 	cacheKey: string;
 	prewarmedContext: FastChatContextCache;
 	contextInvalidationToken?: string | null;
@@ -235,16 +248,32 @@ async function buildPreparedPrompt(params: {
 		endpoint: '/api/agent/v2/prewarm',
 		httpMethod: 'POST'
 	});
-	const history = params.session?.id
+	const loadedHistory = params.session?.id
 		? await sessionService.loadRecentMessages(
 				params.session.id,
 				FASTCHAT_HISTORY_LOOKBACK_MESSAGES
 			)
 		: [];
+	// Worker-lane skill preloads leave no skill_load execution; the admission
+	// path projects them from user-message metadata into the loaded-skills
+	// ledger. The prepared history must carry the same ledger, or a prepared
+	// hit and a miss would dedupe differently (turn executor audit, P0-2).
+	const skillPreloadLedger = params.session?.id
+		? await loadWorkerSkillPreloadLedgerMessage({
+				supabase: params.sourceSupabase,
+				userId: params.userId,
+				sessionId: params.session.id,
+				limit: FASTCHAT_HISTORY_LOOKBACK_MESSAGES
+			})
+		: null;
+	const history = skillPreloadLedger
+		? [...loadedHistory, { role: 'system' as const, content: skillPreloadLedger }]
+		: loadedHistory;
 	const conversationSummary =
 		typeof params.session?.summary === 'string' ? params.session.summary : null;
 	const historyComposition = composeFastChatHistory({
 		history,
+		continuityHint: buildLastTurnContinuityHint(params.lastTurnContext ?? null),
 		sessionSummary: conversationSummary,
 		settings: {
 			compressionThresholdMessages: FASTCHAT_HISTORY_COMPRESSION_THRESHOLD_MESSAGES,
@@ -512,6 +541,7 @@ const handlePrewarmRequest: RequestHandler = async ({
 				contextType,
 				entityId,
 				projectFocus,
+				lastTurnContext: (parsed.data.lastTurnContext ?? null) as LastTurnContext | null,
 				cacheKey,
 				prewarmedContext,
 				contextInvalidationToken: contextResolution.invalidationToken

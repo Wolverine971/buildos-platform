@@ -16,7 +16,6 @@ const EXTRACTED_PROVIDER_MODULES = [
 	'request-builders.ts',
 	'steps.ts',
 	'stream-tool-calls.ts',
-	'supervisor-runtime.ts',
 	'tool-surface.ts',
 	'validation.ts',
 	join('review', 'contract-execution.ts'),
@@ -37,7 +36,6 @@ describe('Agentic Chat provider boundaries', () => {
 	it('keeps extracted responsibilities out of the turn coordinator', () => {
 		const coordinator = readFileSync(join(PROVIDER_ROOT, 'turn-provider.ts'), 'utf8');
 		const extractedDeclarations = [
-			'class AgenticChatProviderSupervisorRuntime',
 			'function appendToolCallDelta(',
 			'function buildContinuationRequest(',
 			'function buildBaseProviderRequest(',

@@ -44,7 +44,11 @@ import {
 	applyActiveDomainSignalsOverlay,
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT,
-	resolveLitePromptTurnSituation
+	resolveLitePromptTurnSituation,
+	type LitePromptContextInventory,
+	type LitePromptEnvelope,
+	type LitePromptSection,
+	type LitePromptToolsSummary
 } from '$lib/services/agentic-chat-lite/prompt';
 import {
 	LIVING_REFERENCE_MODE,
@@ -55,9 +59,17 @@ import {
 	mergeDomainSessionState,
 	type DomainSessionState
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
+import {
+	getSkillGateCandidateSkillIds,
+	type DomainSensingResult
+} from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import { getDomainIdsForSkillReference } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
-import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
-import { resolveSkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
+import { getSkillById, listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
+import {
+	resolveOperationalSkillPreload,
+	resolveSkillGatePreload,
+	type SkillGatePreload
+} from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 import { buildEntityResolutionHint } from './entity-resolution';
 import { checkDailyBriefAccess, checkProjectAccess } from './access-checks';
 import {
@@ -78,12 +90,22 @@ import {
 	inspectPreparedAdmissionLease,
 	inspectPreparedAdmissionLeaseContent
 } from './prepared-admission-lease.server';
-import { buildPreparedPromptSurfaceKey, getPreparedPromptSurface } from './prepared-prompt-cache';
+import {
+	buildPreparedPromptSurfaceKey,
+	getPreparedPromptSurface,
+	type PreparedPromptSurface
+} from './prepared-prompt-cache';
 import { resolveFastChatScaffoldConfigFromEnv } from './scaffold-variant';
-import { projectWorkerFrozenHistorySnapshot } from './session-service';
+import {
+	buildLoadedSkillHistorySummary,
+	extractLoadedSkillIdsFromHistory,
+	projectWorkerFrozenHistorySnapshot,
+	type LoadedSkillExecutionSummaryRow
+} from './session-service';
 import { loadFastChatPromptContext } from './context-loader';
 import { resolveMaterializedFastChatContext } from './materialized-context-cache.server';
 import { loadValidatedChatAttachments } from './stream-attachments';
+import { buildProposalFocusSystemMessage } from './stream-route/prompt-context';
 import { buildPendingTurnContractSystemMessage } from './turn-contract';
 import { resolveFastChatTurnPreparation } from './turn-preparation';
 import { looksLikeBroadProjectChangeTurn, looksLikeReviewStagingTurn } from './tool-selector';
@@ -172,6 +194,14 @@ const TEMP_IMAGE_TTL_SECONDS = positiveInt(
 );
 const STORAGE_BUCKET = 'onto-assets';
 const TEMP_ATTACHMENT_PATH_PREFIX = 'users';
+/**
+ * User-message metadata keys recording the server-selected skill preload.
+ * They are the worker lane's only durable trace of a preload: the lane never
+ * executes skill_load, so no chat_tool_executions row exists. The next turn's
+ * history loaders project them back into the loaded-skills ledger.
+ */
+export const SKILL_PRELOADED_ID_METADATA_KEY = 'skill_preloaded_id';
+export const SKILL_PRELOAD_SOURCE_METADATA_KEY = 'skill_preload_source';
 const SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
 // The dedicated worker executes the reviewed direct/control surface only. It
 // cannot run the web-owned dynamic skill discovery tools, so its prompt must
@@ -450,17 +480,9 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 
 	const requestLastTurnContext = input.command.lastTurnContext;
 	const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
-	const workerSkillGatePreload = SCAFFOLD.routing.skillPreload
-		? resolveSkillGatePreload(turnPreparation.turnDomainSensing, {
-				allowFollowupSkillLoad: false
-			})
-		: null;
-	// An unresolved dynamic skill gate would ask the worker to call a tool it
-	// cannot execute. Only carry domain sensing into the worker prompt after the
-	// trusted preload has already satisfied that gate.
-	const workerPromptDomainSensing = workerSkillGatePreload
-		? turnPreparation.turnDomainSensing
-		: null;
+	const workerPromptToolNames = workerPromptTools
+		.map((tool) => tool.function?.name ?? '')
+		.filter(Boolean);
 	let modelHistory: HistoryWithLineage[];
 	let historySource: 'admission_window' | 'prepared_prompt';
 	let preparedArtifact: TurnInputArtifactContentV1['prepared'];
@@ -468,6 +490,12 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	let preparedContextPayloadSha256: string | null = null;
 	let preparedSurfaceProfile: string | null = null;
 	let historyState: AgenticChatHistoryStateV1;
+	// Both history paths feed the same per-turn overlay below. A prepared hit
+	// hands over its byte-bound surface; a miss hands over the freshly built
+	// envelope. `promptContextData` is whatever loaded context the prompt saw.
+	let preparedSurfaceForOverlay: PreparedPromptSurface | null = null;
+	let envelopeForOverlay: LitePromptEnvelope | null = null;
+	let promptContextData: unknown = null;
 
 	if (preparedInspection.hit) {
 		historySource = 'prepared_prompt';
@@ -481,6 +509,10 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			preparedInspection.row.context_payload_sha256
 		);
 		preparedSurfaceProfile = preparedInspection.surfaceKey;
+		preparedSurfaceForOverlay = preparedInspection.surface;
+		promptContextData = isRecord(preparedInspection.row.context_payload)
+			? preparedInspection.row.context_payload.data
+			: null;
 		preparedArtifact = {
 			sourcePreparedPromptId: preparedPromptId,
 			contextPayload: toJsonObject(preparedInspection.row.context_payload),
@@ -536,22 +568,8 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			conversationSummary,
 			entityResolutionHint: buildEntityResolutionHint(requestLastTurnContext)
 		};
-		const agentWorkspace = resolveAgentWorkspaceFromContextData(promptContext.data);
-		const turnSituation = resolveLitePromptTurnSituation({
-			toolNames: workerPromptTools.map((tool) => tool.function?.name ?? '').filter(Boolean),
-			latestUserMessage: messageForModel,
-			reviewDelegation:
-				workerPromptTools.some((tool) => tool.function?.name === 'delegate_task') &&
-				(looksLikeBroadProjectChangeTurn(contextType, messageForModel) ||
-					looksLikeReviewStagingTurn(contextType, messageForModel)),
-			livingWorkspace: agentWorkspace?.mode === LIVING_REFERENCE_MODE,
-			// The semantic disposition gate decides whether this particular message
-			// is a capture; admission does not classify it from its wording.
-			livingWorkspaceCapture: false,
-			domainProfile: agentWorkspace?.domain_profile ?? null,
-			domainAffinity: agentWorkspace?.domain_affinity ?? null
-		});
-		let envelope = buildLitePromptEnvelope({
+		promptContextData = promptContext.data;
+		envelopeForOverlay = buildLitePromptEnvelope({
 			...promptContext,
 			tools: workerPromptTools,
 			projectCreateWorkflow: 'reviewed_shell',
@@ -561,25 +579,88 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			domainSensingResult: null,
 			scaffold: WORKER_PROMPT_SCAFFOLD
 		});
-		envelope = applyActiveDomainSignalsOverlay(envelope, {
-			currentUserMessage: messageForModel,
-			projectCreateWorkflow: 'reviewed_shell',
-			conversationSummary,
-			priorDomainIds: turnPreparation.priorDomainIds,
-			priorOutcomeCardIds: turnPreparation.priorOutcomeCardIds,
-			domainSensingResult: workerPromptDomainSensing,
-			skillGatePreload: workerSkillGatePreload,
-			turnSituation,
-			scaffold: WORKER_PROMPT_SCAFFOLD
-		});
 		preparedArtifact = {
 			sourcePreparedPromptId: null,
 			contextPayload: toJsonObject(promptContext),
 			conversationSummary,
 			surfaceProfile: turnPreparation.selectedSurfaceProfile,
-			systemPrompt: envelope.systemPrompt,
-			promptSections: toJsonObjectArray(envelope.sections),
+			systemPrompt: envelopeForOverlay.systemPrompt,
+			promptSections: toJsonObjectArray(envelopeForOverlay.sections),
 			toolSurface: buildToolSurface(turnPreparation.selectedSurfaceProfile, workerPromptTools)
+		};
+	}
+
+	// Skill preload and situational rules ride the artifact on BOTH history
+	// paths (2026-09-02 turn executor audit, Finding 4 / lane D P0-2). A
+	// prepared hit used to adopt the prewarmed prompt, which is built with
+	// domainSensingResult: null and no overlay, so whether any skill fired was
+	// a function of cache state. The prepared harness sha is computed from the
+	// canonical envelope without sensing or a situation
+	// (prepared-prompt-cache.ts buildPreparedPromptHarnessSha), so applying the
+	// overlay after inspection leaves hits matching.
+	//
+	// `alreadyLoadedSkillIds` comes from the loaded-skills ledger in the frozen
+	// history: real skill_load executions (legacy-started sessions) plus the
+	// preload continuity rows this file projects from user-message metadata.
+	// A skill therefore fires once per history window, not once per turn.
+	const alreadyLoadedSkillIds = extractLoadedSkillIdsFromHistory(modelHistory);
+	const workerSkillPreload = resolveWorkerSkillPreload({
+		message: messageForModel,
+		toolNames: workerPromptToolNames,
+		turnDomainSensing: turnPreparation.turnDomainSensing,
+		alreadyLoadedSkillIds
+	});
+	// An unresolved dynamic skill gate would ask the worker to call a tool it
+	// cannot execute. Only carry domain sensing into the worker prompt after the
+	// trusted preload has already satisfied that gate.
+	const workerPromptDomainSensing = workerSkillPreload ? turnPreparation.turnDomainSensing : null;
+	const agentWorkspace = resolveAgentWorkspaceFromContextData(promptContextData);
+	const turnSituation = resolveLitePromptTurnSituation({
+		toolNames: workerPromptToolNames,
+		// The lexical turn-intent classifier is retired (always empty); a pending
+		// semantic contract is the one structural write signal admission has.
+		turnIntentRequiresWrite:
+			turnPreparation.turnIntent?.requiresWrite === true ||
+			turnPreparation.pendingTurnContract !== null,
+		latestUserMessage: messageForModel,
+		reviewDelegation:
+			workerPromptToolNames.includes('delegate_task') &&
+			(looksLikeBroadProjectChangeTurn(contextType, messageForModel) ||
+				looksLikeReviewStagingTurn(contextType, messageForModel)),
+		livingWorkspace: agentWorkspace?.mode === LIVING_REFERENCE_MODE,
+		// The semantic disposition gate decides whether this particular message
+		// is a capture; admission does not classify it from its wording.
+		livingWorkspaceCapture: false,
+		domainProfile: agentWorkspace?.domain_profile ?? null,
+		domainAffinity: agentWorkspace?.domain_affinity ?? null,
+		workerBound: WORKER_PROMPT_SCAFFOLD.dynamicSkillTools === false
+	});
+	const overlayInput = {
+		currentUserMessage: messageForModel,
+		projectCreateWorkflow: 'reviewed_shell' as const,
+		conversationSummary,
+		priorDomainIds: turnPreparation.priorDomainIds,
+		priorOutcomeCardIds: turnPreparation.priorOutcomeCardIds,
+		domainSensingResult: workerPromptDomainSensing,
+		skillGatePreload: workerSkillPreload,
+		turnSituation,
+		scaffold: WORKER_PROMPT_SCAFFOLD
+	};
+	if (envelopeForOverlay) {
+		const envelope = applyActiveDomainSignalsOverlay(envelopeForOverlay, overlayInput);
+		preparedArtifact = {
+			...preparedArtifact,
+			systemPrompt: envelope.systemPrompt,
+			promptSections: toJsonObjectArray(envelope.sections)
+		};
+	} else if (preparedSurfaceForOverlay) {
+		preparedArtifact = {
+			...preparedArtifact,
+			...applyWorkerPromptOverlayToPreparedSurface({
+				surface: preparedSurfaceForOverlay,
+				contextType,
+				overlayInput
+			})
 		};
 	}
 
@@ -593,6 +674,19 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		modelHistory.push({
 			role: 'system',
 			content: pendingContractMessage,
+			sourceMessageId: null
+		});
+	}
+	// The AI-inbox / agent-run proposal brief is session state too (Finding 13):
+	// the legacy path rendered it, the worker path never did, and a prepared
+	// history never carries it. Same placement rule as the pending contract.
+	const proposalFocusMessage = buildProposalFocusSystemMessage(
+		sessionIntent.session?.agent_metadata ?? null
+	);
+	if (proposalFocusMessage) {
+		modelHistory.push({
+			role: 'system',
+			content: proposalFocusMessage,
 			sourceMessageId: null
 		});
 	}
@@ -708,6 +802,14 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		userMessageMetadata.supervisor_resume_original_turn_run_id =
 			resumeCheckpoint.originalTurnRunId;
 	}
+	// Telemetry for the worker lane's skill routing (lane D P1-2) and the
+	// continuity source for the next turn's ledger. The artifact's
+	// domainMetadata snapshot rejects unknown keys, so the user message row and
+	// the turn-run request payload carry it.
+	if (workerSkillPreload) {
+		userMessageMetadata[SKILL_PRELOADED_ID_METADATA_KEY] = workerSkillPreload.skillId;
+		userMessageMetadata[SKILL_PRELOAD_SOURCE_METADATA_KEY] = workerSkillPreload.source;
+	}
 	const preparedAdmissionLeaseMetadata = {
 		requested: input.command.preparedPromptKey !== null,
 		hit: preparedAdmissionLease.hit,
@@ -727,7 +829,10 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		promptVariant: LITE_PROMPT_VARIANT,
 		surfaceProfile: turnPreparation.selectedSurfaceProfile,
 		preparedPromptId,
-		preparedAdmissionLease: preparedAdmissionLeaseMetadata
+		preparedAdmissionLease: preparedAdmissionLeaseMetadata,
+		skillPreload: workerSkillPreload
+			? { skillId: workerSkillPreload.skillId, source: workerSkillPreload.source }
+			: null
 	});
 	return {
 		args: {
@@ -1024,8 +1129,167 @@ async function loadOwnedWorkerHistory(params: {
 		})),
 		attachments: attachmentRows,
 		interrupted_tool_executions: interruptedToolExecutions,
-		loaded_skill_executions: continuityToolExecutions
+		loaded_skill_executions: [
+			...continuityToolExecutions,
+			...buildSkillPreloadContinuityRows(rows)
+		]
 	});
+}
+
+/**
+ * Project worker-lane skill preloads (recorded on the user message at
+ * admission) as `skill_load` continuity rows so the loaded-skills ledger sees
+ * them. The ledger is what dedupes preloads on the next turn; once the
+ * preloading turn leaves the history window, the skill can fire again.
+ */
+export function buildSkillPreloadContinuityRows(
+	rows: ReadonlyArray<{ id: string; role: string; metadata: unknown }>
+): LoadedSkillExecutionSummaryRow[] {
+	const continuityRows: LoadedSkillExecutionSummaryRow[] = [];
+	for (const row of rows) {
+		if (row.role !== 'user' || !isRecord(row.metadata)) continue;
+		const skillIdRaw = row.metadata[SKILL_PRELOADED_ID_METADATA_KEY];
+		const skillId = typeof skillIdRaw === 'string' ? skillIdRaw.trim() : '';
+		const skill = skillId ? getSkillById(skillId) : undefined;
+		if (!skill) continue;
+		continuityRows.push({
+			message_id: row.id,
+			provider_tool_call_id: null,
+			tool_name: 'skill_load',
+			gateway_op: null,
+			sequence_index: 0,
+			success: true,
+			error_message: null,
+			arguments: { skill: skill.id, format: 'short' },
+			result: {
+				type: 'skill',
+				id: skill.id,
+				name: skill.name,
+				parent_id: skill.parentId ?? null,
+				depth: typeof skill.depth === 'number' ? skill.depth : null,
+				format: 'preload',
+				summary: skill.summary,
+				materialized_tools: []
+			}
+		});
+	}
+	return continuityRows;
+}
+
+/**
+ * Prewarm counterpart of the admission-window projection above: the prepared
+ * history must carry the same ledger, or a prepared hit would re-inject a
+ * skill the admission-window path skips (P0-2 by another door).
+ */
+export async function loadWorkerSkillPreloadLedgerMessage(params: {
+	supabase: FastChatSupabaseClient;
+	userId: string;
+	sessionId: string;
+	limit: number;
+}): Promise<string | null> {
+	// Best-effort: prewarm is a latency optimization and a missing ledger only
+	// risks one duplicate preload on a prepared hit, never a failed request.
+	try {
+		const { data, error } = await params.supabase
+			.from('chat_messages')
+			.select('id, role, metadata')
+			.eq('session_id', params.sessionId)
+			.eq('user_id', params.userId)
+			.eq('role', 'user')
+			.order('created_at', { ascending: false })
+			.order('id', { ascending: false })
+			.limit(params.limit);
+		if (error || !Array.isArray(data)) return null;
+		const rows = data
+			.filter((row): row is typeof row & { id: string } => typeof row.id === 'string')
+			.slice()
+			.reverse();
+		return buildLoadedSkillHistorySummary(buildSkillPreloadContinuityRows(rows));
+	} catch {
+		return null;
+	}
+}
+
+function resolveWorkerSkillPreload(params: {
+	message: string;
+	toolNames: string[];
+	turnDomainSensing: DomainSensingResult | null;
+	alreadyLoadedSkillIds: string[];
+}): SkillGatePreload | null {
+	if (!SCAFFOLD.routing.skillPreload) return null;
+	// Operational skills first (Decision 4): they carry the tool packaging and
+	// stop conditions the reviewed lane depends on, and their intent map cannot
+	// misfire on prose. A craft candidate from sensing rides along as the
+	// alternate so the model still sees the other route.
+	const craftCandidateSkillIds =
+		params.turnDomainSensing?.skill_load_required === true
+			? getSkillGateCandidateSkillIds(params.turnDomainSensing).slice(0, 1)
+			: [];
+	const operational = resolveOperationalSkillPreload({
+		message: params.message,
+		toolNames: params.toolNames,
+		craftAlternateSkillIds: craftCandidateSkillIds,
+		alreadyLoadedSkillIds: params.alreadyLoadedSkillIds
+	});
+	if (operational) return operational;
+	return resolveSkillGatePreload(params.turnDomainSensing, {
+		allowFollowupSkillLoad: false,
+		alreadyLoadedSkillIds: params.alreadyLoadedSkillIds
+	});
+}
+
+/**
+ * A prepared surface stores its section summaries without content, so the
+ * overlay cannot re-render the whole prompt. Run it against an empty section
+ * list, then append whatever it produced to the byte-bound prompt. Appending
+ * (rather than splicing before the final contract) keeps the cached prefix
+ * identical to the prewarmed bytes.
+ */
+function applyWorkerPromptOverlayToPreparedSurface(params: {
+	surface: PreparedPromptSurface;
+	contextType: ChatContextType;
+	overlayInput: Parameters<typeof applyActiveDomainSignalsOverlay>[1];
+}): { systemPrompt: string; promptSections: JsonObject[] } {
+	const { surface } = params;
+	const baseSections = Array.isArray(surface.sections) ? surface.sections : [];
+	const baseEnvelope: LitePromptEnvelope = {
+		promptVariant: LITE_PROMPT_VARIANT,
+		systemPrompt: surface.system_prompt,
+		sections: [],
+		contextInventory:
+			surface.context_inventory ??
+			({
+				focus: { contextType: params.contextType }
+			} as unknown as LitePromptContextInventory),
+		toolsSummary:
+			surface.tools_summary ??
+			({
+				contextType: params.contextType,
+				discoveryTools: [],
+				directTools: [],
+				totalTools: 0
+			} as unknown as LitePromptToolsSummary)
+	};
+	const overlaid = applyActiveDomainSignalsOverlay(baseEnvelope, params.overlayInput);
+	const overlaySections = (Array.isArray(overlaid?.sections) ? overlaid.sections : []).filter(
+		(section): section is LitePromptSection =>
+			isRecord(section) &&
+			typeof section.title === 'string' &&
+			typeof section.content === 'string'
+	);
+	if (overlaySections.length === 0) {
+		return {
+			systemPrompt: surface.system_prompt,
+			promptSections: toJsonObjectArray(baseSections)
+		};
+	}
+	const rendered = overlaySections
+		.map((section) => [`## ${section.title}`, '', section.content].join('\n'))
+		.join('\n\n');
+	return {
+		systemPrompt: `${surface.system_prompt}\n\n${rendered}`,
+		promptSections: toJsonObjectArray([...baseSections, ...overlaySections])
+	};
 }
 
 async function loadHistoryToolExecutions(params: {

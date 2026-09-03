@@ -15,6 +15,7 @@
 	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 	import type { Database } from '@buildos/shared-types';
 	import { browser, dev } from '$app/environment';
+	import { createSupabaseBrowser } from '$lib/supabase';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import ProjectFocusSelector from './ProjectFocusSelector.svelte';
@@ -310,7 +311,12 @@
 	// the result always shows even if chat_messages isn't in the publication.
 	type ChatMessageRow = Database['public']['Tables']['chat_messages']['Row'];
 	type WorkerTurnHandle = Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
-	const supabaseClient = getContext<SupabaseClient | undefined>('supabase');
+	// A public-page layout can mount before its client exists, then survive
+	// sign-in without providing context. Resolve the shared browser singleton
+	// here as well so an accepted turn always has a UI observer.
+	const supabaseClient =
+		getContext<SupabaseClient | undefined>('supabase') ??
+		(browser ? createSupabaseBrowser() : undefined);
 	let workerAdoption: AgenticChatWorkerTurnAdoption | null = null;
 	let workerRealtimeUserId: string | null = null;
 	const workerRealtime = supabaseClient
@@ -778,6 +784,7 @@
 		getHasDraftInput: () => hasDraftInput,
 		getIsVoiceBusy: () => voice.isBusy,
 		getIsVoicePending: () => voice.pendingSendAfterTranscription,
+		getLastTurnContext: () => lastTurnContext,
 		prewarmAgentContext: (payload, options) => prewarmAgentContext(payload, options),
 		warmStreamTransport: (options) => warmAgentChatStreamTransport(options),
 		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),

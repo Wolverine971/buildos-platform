@@ -6,18 +6,24 @@
 //      consolidation replay, where the model restated prompt section headers
 //      ("Final-response rules:", "Operating Strategy:") and narrated the
 //      ledger/prompt contents as its own plan before writing the real reply.
+//
+// Marker tiers (turn-executor audit 2026-09-02, Finding 3 / F-A1): the
+// patterns below are STRONG markers — anchored, phrase-specific echoes of
+// prompt machinery that never occur in a reply addressed to the user — and a
+// single hit strips the sentence. Generic shapes that also occur in ordinary
+// prose live in WEAK_SCRATCHPAD_SENTENCE_PATTERNS and need two distinct hits
+// in the same sentence. Four earlier patterns were deleted outright because
+// they matched status prose ("word (", "query:", sentences starting with
+// No/From/Since/Better/Yes) — measured on 76 production replies they removed
+// 13% of the characters, including "No tasks are overdue right now."
 const SCRATCHPAD_SENTENCE_PATTERNS = [
 	// Tool-call / schema echoes
 	/\bfunction_call\b/i,
 	/<\s*xai:function_call\b/i,
-	/\bcall\s+(?:a\s+)?tool\b/i,
-	/\b[a-z][a-z0-9_]*\s*\(\s*\{?/i,
-	/\b(?:op|input|path|query)\s*[:=]/i,
-	/"(?:op|input|args|path|query)"\s*:/i,
-	// Self-correction lead-ins
-	/^\s*(?:no\b|no,\s*wait\b|actually\b|correct(?:\s+that)?\b|better\b|to be safe\b|yes\.)/i,
-	/^\s*(?:from|since)\b/i,
-	/^\s*guidelines\b/i,
+	// Self-correction lead-ins. Kept deliberately narrow: "no, wait" and
+	// "actually" are the measured Grok self-correction openers; plain "No …"
+	// is how a status answer starts.
+	/^\s*(?:no,\s*wait\b|actually\b)/i,
 	/\bargs?\s+need\b/i,
 	/\bfetch\s+schema\b/i,
 	// Meta-narration about the prompt/conversation
@@ -132,6 +138,18 @@ const SCRATCHPAD_SENTENCE_PATTERNS = [
 	/^\s*<write_ledger\b/i,
 	/^\s*successful[_\s]writes\s*:/i,
 	/^\s*failed[_\s]writes\s*:/i
+];
+
+// Weak markers: shapes that are suspicious together but ordinary alone. A
+// markdown link line starts with "[", a JSON example carries braces and
+// colons, "call a tool" can be honest narration. Two distinct hits strip the
+// sentence; one does not.
+const WEAK_SCRATCHPAD_SENTENCE_PATTERNS = [
+	/\bcall\s+(?:a\s+)?tool\b/i,
+	/"(?:op|input|args|path|query)"\s*:/i,
+	/^\s*guidelines\b/i,
+	/[{}]/,
+	/^[<{[]/
 ];
 
 const CONTEXTUAL_SCRATCHPAD_SENTENCE_PATTERNS = [
@@ -271,15 +289,15 @@ function looksLikeScratchpadSentence(sentence: string): boolean {
 	}
 
 	const deBulleted = stripLeadingListMarker(normalized);
+	const matches = (pattern: RegExp): boolean =>
+		pattern.test(normalized) || pattern.test(deBulleted);
 
-	if (
-		SCRATCHPAD_SENTENCE_PATTERNS.some(
-			(pattern) => pattern.test(normalized) || pattern.test(deBulleted)
-		)
-	) {
+	if (SCRATCHPAD_SENTENCE_PATTERNS.some(matches)) {
 		return true;
 	}
 
+	// Two-signal heuristics: each already requires a pair of independent
+	// markers, so they count as strong.
 	if (
 		/\b(?:prompt|history|conversation)\b/i.test(normalized) &&
 		/\b(?:next turn|continuation|tool calls?|last assistant message|user's question)\b/i.test(
@@ -304,19 +322,19 @@ function looksLikeScratchpadSentence(sentence: string): boolean {
 		return true;
 	}
 
-	if ((normalized.includes('{') || normalized.includes('}')) && normalized.includes(':')) {
-		return true;
-	}
-
 	if (/^(?:onto|cal|util)\./i.test(normalized)) {
 		return true;
 	}
 
-	if (/^[<{[]/.test(normalized)) {
-		return true;
+	// Weak markers need two distinct hits in the same sentence. A brace only
+	// counts when a colon rides along (JSON-ish), so `{` alone is not a hit.
+	let weakHits = 0;
+	for (const pattern of WEAK_SCRATCHPAD_SENTENCE_PATTERNS) {
+		if (!matches(pattern)) continue;
+		if (pattern.source === '[{}]' && !normalized.includes(':')) continue;
+		weakHits += 1;
 	}
-
-	return false;
+	return weakHits >= 2;
 }
 
 function looksLikeContextualScratchpadSentence(sentence: string): boolean {

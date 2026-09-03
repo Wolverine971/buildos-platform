@@ -21,13 +21,9 @@ const TOTAL_TOOL_VOCABULARY = AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY;
 
 // These names are intentionally signed by the runtime metadata/policy but are
 // not provider definitions in the canonical direct surface. search_buildos is
-// a retained execution/schema alias. The two Libri names remain explicitly
-// unavailable in the worker after the 2026-08-07 capability removal.
-const EXPECTED_METADATA_ONLY_TOOL_NAMES = [
-	'query_libri_library',
-	'resolve_libri_resource',
-	'search_buildos'
-];
+// a retained execution/schema alias. The two Libri metadata entries were
+// deleted on 2026-09-02 (capability removed 2026-08-07, metadata was dead).
+const EXPECTED_METADATA_ONLY_TOOL_NAMES = ['search_buildos'];
 
 describe('agentic chat catalog fitness', () => {
 	it('keeps direct definitions unique and metadata drift explicit', () => {

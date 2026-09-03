@@ -1,13 +1,26 @@
 // apps/web/src/routes/api/agent/v2/prewarm/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { resolveSessionMock, loadPromptContextMock, loadRecentMessagesMock, mergeRpcMock } =
-	vi.hoisted(() => ({
-		resolveSessionMock: vi.fn(),
-		loadPromptContextMock: vi.fn(),
-		loadRecentMessagesMock: vi.fn(),
-		mergeRpcMock: vi.fn()
-	}));
+const {
+	resolveSessionMock,
+	loadPromptContextMock,
+	loadRecentMessagesMock,
+	mergeRpcMock,
+	composeHistoryMock
+} = vi.hoisted(() => ({
+	resolveSessionMock: vi.fn(),
+	loadPromptContextMock: vi.fn(),
+	loadRecentMessagesMock: vi.fn(),
+	mergeRpcMock: vi.fn(),
+	composeHistoryMock: vi.fn(() => ({
+		historyForModel: [],
+		compressed: false,
+		strategy: 'raw_history',
+		rawHistoryCount: 0,
+		tailMessagesKept: 0,
+		continuityHintUsed: false
+	}))
+}));
 
 const { preparedPromptStoreState } = vi.hoisted(() => ({
 	preparedPromptStoreState: { current: null as any }
@@ -24,14 +37,7 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		loadRecentMessages: loadRecentMessagesMock
 	}),
 	loadFastChatPromptContext: loadPromptContextMock,
-	composeFastChatHistory: () => ({
-		historyForModel: [],
-		compressed: false,
-		strategy: 'raw_history',
-		rawHistoryCount: 0,
-		tailMessagesKept: 0,
-		continuityHintUsed: false
-	}),
+	composeFastChatHistory: composeHistoryMock,
 	selectFastChatTools: () => []
 }));
 
@@ -337,6 +343,107 @@ describe('POST /api/agent/v2/prewarm', () => {
 					key: expect.any(String),
 					cache_key: 'global:none'
 				})
+			})
+		);
+	});
+
+	// 2026-09-02 turn executor audit, P0-2 by another door: the prepared
+	// history must carry the same last-turn continuity hint and the same
+	// worker-preload ledger the admission-window path composes, or a prepared
+	// hit renders a different prompt than a miss for the same message.
+	it('threads the last-turn continuity hint and the worker preload ledger into the prepared history', async () => {
+		const cachedContext = {
+			version: 1,
+			key: 'global:none',
+			invalidation_token: 'global:v1:test',
+			warmed_at: '2026-03-12T00:00:00.000Z',
+			context: {
+				contextType: 'global',
+				entityId: null,
+				projectId: null,
+				projectName: null,
+				focusEntityType: null,
+				focusEntityId: null,
+				focusEntityName: null,
+				data: { summary: 'cached' }
+			}
+		};
+		const session = {
+			id: 'session-1',
+			user_id: 'user-1',
+			context_type: 'global',
+			summary: null,
+			agent_metadata: { fastchat_context_cache: cachedContext }
+		};
+		preparedPromptStoreState.current = {
+			from: vi.fn(() => ({ insert: vi.fn(async () => ({ error: null })) }))
+		};
+		resolveSessionMock.mockResolvedValue({ session });
+		loadRecentMessagesMock.mockResolvedValue([
+			{ role: 'user', content: 'mark the intro call done' }
+		]);
+		const chatMessagesQuery = vi.fn((table: string) => {
+			const rows =
+				table === 'chat_messages'
+					? [
+							{
+								id: 'm1',
+								role: 'user',
+								metadata: {
+									skill_preloaded_id: 'task_management',
+									skill_preload_source: 'operational_intent'
+								}
+							}
+						]
+					: [];
+			const builder: Record<string, unknown> = {};
+			for (const method of ['select', 'eq', 'order', 'limit']) {
+				builder[method] = vi.fn(() => builder);
+			}
+			builder.maybeSingle = vi.fn(async () => ({
+				data: table === 'chat_sessions' ? session : null,
+				error: null
+			}));
+			builder.then = (onFulfilled: (value: { data: unknown[]; error: null }) => unknown) =>
+				Promise.resolve({ data: rows, error: null }).then(onFulfilled);
+			return builder;
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/prewarm', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					context_type: 'global',
+					session_id: 'session-1',
+					prepare_prompt: true,
+					lastTurnContext: {
+						summary: 'Marked the intro call done',
+						context_type: 'global',
+						entities: {},
+						data_accessed: ['update_onto_task']
+					}
+				})
+			}),
+			locals: {
+				safeGetSession: async () => ({ user: { id: 'user-1' } }),
+				supabase: { rpc: mergeRpcMock, from: chatMessagesQuery }
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(composeHistoryMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				continuityHint: expect.stringContaining(
+					'Last turn summary: Marked the intro call done'
+				),
+				history: [
+					expect.objectContaining({ role: 'user', content: 'mark the intro call done' }),
+					expect.objectContaining({
+						role: 'system',
+						content: expect.stringContaining('`task_management`')
+					})
+				]
 			})
 		);
 	});

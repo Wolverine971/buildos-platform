@@ -1,3 +1,5 @@
+// apps/worker/src/workers/agentic-chat/provider/protocol.ts
+import type { AgenticChatRecoveryFailureClassV1 } from '@buildos/shared-types';
 import {
 	type AgenticChatProviderExecutionDiagnosticV1,
 	AgenticChatProviderExecutionError,
@@ -81,7 +83,7 @@ export function canonicalError(value: string): string {
 
 export function providerError(
 	code: string,
-	failureClass: 'permanent' | 'unknown',
+	failureClass: AgenticChatRecoveryFailureClassV1,
 	diagnostic: AgenticChatProviderExecutionDiagnosticV1 | null = null
 ): AgenticChatProviderExecutionError {
 	return new AgenticChatProviderExecutionError(

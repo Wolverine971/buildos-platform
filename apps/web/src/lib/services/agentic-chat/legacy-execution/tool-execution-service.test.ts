@@ -2297,54 +2297,6 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).not.toHaveBeenCalled();
 		});
 
-		it('should warn before zooming out to create another project from a project turn', async () => {
-			const guardedContext: ServiceContext = {
-				...mockContext,
-				originalTurnContext: {
-					contextType: 'project',
-					entityId: '06691c72-8c01-4f77-a79f-d0ef7f40124a',
-					entityName: 'The Last Ember'
-				},
-				conversationHistory: [
-					{
-						role: 'user',
-						content:
-							'Start a blog project for a productivity tips series. I want to write 10 articles over the next 3 months.'
-					} as any
-				]
-			};
-			const toolCall: ChatToolCall = canonicalToolCall({
-				id: 'call_context_guard',
-				name: 'change_chat_context',
-				arguments: {
-					target: 'global',
-					reason: 'User wants to create a new blog project'
-				}
-			});
-			const changeContextDefinition: ChatToolDefinition = canonicalToolDefinition({
-				name: 'change_chat_context',
-				description: 'Change chat context',
-				parameters: {
-					type: 'object',
-					properties: {
-						target: { type: 'string' },
-						reason: { type: 'string' }
-					},
-					required: ['target']
-				}
-			});
-
-			const result = await service.executeTool(toolCall, guardedContext, [
-				changeContextDefinition
-			]);
-
-			expect(result.success).toBe(false);
-			expect(result.error).toBe(
-				"You're already in this project. Are you sure you want to create a new project?"
-			);
-			expect(mockToolExecutor).not.toHaveBeenCalled();
-		});
-
 		it('should allow new project creation after the user confirms the warning', async () => {
 			const confirmedContext: ServiceContext = {
 				...mockContext,

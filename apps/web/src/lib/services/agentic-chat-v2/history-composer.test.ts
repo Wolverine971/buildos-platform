@@ -15,11 +15,15 @@ function makeHistory(count: number): FastChatHistoryMessage[] {
 }
 
 describe('composeFastChatHistory', () => {
-	it('keeps raw history for short conversations and skips continuity duplication', () => {
+	it('keeps raw history for short conversations and still renders the continuity hint', () => {
+		// Audit 2026-09-02 (F-11): the hint used to render only when history was
+		// empty or compressed, so turns two through seven never saw the prior
+		// turn's entity ids. It now leads the raw history as a system message.
 		const history = makeHistory(4);
+		const hint = 'Conversation continuity hint (lightweight): Last turn summary: ...';
 		const result = composeFastChatHistory({
 			history,
-			continuityHint: 'Conversation continuity hint (lightweight): Last turn summary: ...',
+			continuityHint: hint,
 			sessionSummary: 'Session summary text',
 			settings: {
 				compressionThresholdMessages: 8,
@@ -28,6 +32,23 @@ describe('composeFastChatHistory', () => {
 		});
 
 		expect(result.compressed).toBe(false);
+		expect(result.strategy).toBe('raw_history');
+		expect(result.historyForModel).toEqual([{ role: 'system', content: hint }, ...history]);
+		expect(result.tailMessagesKept).toBe(4);
+		expect(result.continuityHintUsed).toBe(true);
+	});
+
+	it('keeps raw history untouched when no continuity hint is supplied', () => {
+		const history = makeHistory(4);
+		const result = composeFastChatHistory({
+			history,
+			sessionSummary: 'Session summary text',
+			settings: {
+				compressionThresholdMessages: 8,
+				tailMessagesWhenCompressed: 3
+			}
+		});
+
 		expect(result.strategy).toBe('raw_history');
 		expect(result.historyForModel).toEqual(history);
 		expect(result.continuityHintUsed).toBe(false);

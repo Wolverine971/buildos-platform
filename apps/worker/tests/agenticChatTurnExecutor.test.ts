@@ -10,7 +10,6 @@ import {
 	AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1,
 	AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
 	AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1,
-	AGENTIC_CHAT_SUPERVISOR_QUESTION_FIXTURE_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
 	AGENTIC_CHAT_TIMEOUT_FIXTURE_V1,
 	AGENTIC_CHAT_TIMEOUT_GOLDEN_V1,
@@ -44,11 +43,6 @@ import { AgenticChatToolExecutionAdapter } from '../src/workers/agentic-chat/too
 import { createStableAgenticChatPromptSnapshotIdV1 } from '../src/workers/agentic-chat/promptSnapshot';
 import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/runtimeTiming';
 import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/streamPublisher';
-import {
-	AgenticChatSupervisorCheckpointTimeoutError,
-	createStableAgenticChatSupervisorCheckpointIdV1
-} from '../src/workers/agentic-chat/supervisorCheckpoint';
-import { createStableAgenticChatSupervisorTransitionIdV1 } from '../src/workers/agentic-chat/workerSupervisor';
 import {
 	AgenticChatToolExecutionTimeoutError,
 	SupabaseAgenticChatToolExecutionAdapter
@@ -271,7 +265,6 @@ function createHarness(
 		concurrentReadsEnabled?: boolean;
 		concurrentMutationsEnabled?: boolean;
 		failSemanticType?: string;
-		supervisorCheckpointError?: Error;
 		researchCaptureError?: Error;
 		statedFutureCaptureError?: Error;
 		consumptionBillingError?: Error;
@@ -695,17 +688,6 @@ function createHarness(
 			executionObservationInputs.push(observation);
 		})
 	};
-	const supervisorCheckpoints = {
-		persist: vi.fn(async (input: { checkpointId: string }) => {
-			log.push('supervisor_checkpoint');
-			if (options.supervisorCheckpointError) throw options.supervisorCheckpointError;
-			return {
-				outcome: 'persisted' as const,
-				checkpointId: input.checkpointId,
-				expiresAt: '2026-08-14T12:00:00.000Z'
-			};
-		})
-	};
 	const sessionHandoff = {
 		persist: vi.fn(async () => {
 			log.push('session_handoff');
@@ -769,7 +751,6 @@ function createHarness(
 			onTerminalControlError: (report) => terminalControlErrors.push(report),
 			readTool,
 			toolExecutions,
-			supervisorCheckpoints,
 			sessionHandoff,
 			researchCapture,
 			statedFutureCapture,
@@ -816,7 +797,6 @@ function createHarness(
 		toolExecutions,
 		executionObservations,
 		executionObservationInputs,
-		supervisorCheckpoints,
 		sessionHandoff,
 		researchCapture,
 		statedFutureCapture,
@@ -1629,507 +1609,6 @@ describe('AgenticChatTurnExecutor', () => {
 			'done'
 		]);
 		await harness.publisher.stop();
-	});
-
-	it('starts synthesis only after the single read is fenced, durable, and publicly committed', async () => {
-		const harness = createHarness([]);
-		const readExecution = {
-			result: {
-				project: {
-					id: 'da000000-0000-4000-8000-000000000001',
-					name: 'Fixture project'
-				}
-			},
-			executionTimeMs: 12,
-			tokensConsumed: null,
-			affectedEntities: [],
-			toolCategory: 'utility',
-			resultCount: 1,
-			zeroResult: false,
-			requiresUserAction: false
-		};
-		harness.readTool.execute.mockResolvedValueOnce(readExecution);
-		harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
-			harness.log.push('tool_ledger');
-		});
-		const synthesize = vi.fn((feedback) => {
-			harness.log.push('synthesize');
-			expect(feedback).toEqual({
-				providerToolCallId: 'provider-read-1',
-				toolName: 'get_project_overview',
-				arguments: { project_id: 'da000000-0000-4000-8000-000000000001' },
-				execution: readExecution
-			});
-			return (async function* () {
-				yield { type: 'text_delta', text: 'The fixture project is ready.' } as const;
-				yield {
-					type: 'finish',
-					finishedReason: 'stop',
-					usage: { promptTokens: 10, completionTokens: 6, totalTokens: 16 }
-				} as const;
-			})();
-		});
-		Object.assign(harness.provider, {
-			prepare: vi.fn(async () => ({
-				stream: () =>
-					(async function* () {
-						yield {
-							type: 'read_tool',
-							callTransitionId: CALL_TRANSITION_ID,
-							resultTransitionId: RESULT_TRANSITION_ID,
-							providerToolCallId: 'provider-read-1',
-							toolName: 'get_project_overview',
-							arguments: {
-								project_id: 'da000000-0000-4000-8000-000000000001'
-							}
-						} as const;
-					})(),
-				synthesize,
-				release: vi.fn()
-			}))
-		});
-
-		const processingJob = job();
-		await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
-			outcome: 'completed',
-			terminalStatus: 'completed'
-		});
-		expect(synthesize).toHaveBeenCalledOnce();
-		expect(harness.control.claim).toHaveBeenCalledTimes(2);
-		const ledgerIndex = harness.log.indexOf('tool_ledger');
-		const publicResultIndex = harness.log.indexOf('semantic:tool_result:');
-		const synthesisIndex = harness.log.indexOf('synthesize');
-		expect(ledgerIndex).toBeGreaterThan(-1);
-		expect(publicResultIndex).toBeGreaterThan(ledgerIndex);
-		expect(synthesisIndex).toBeGreaterThan(publicResultIndex);
-		expect(
-			executionBoundaryLogs(processingJob).map(({ stage, state }) => `${stage}:${state}`)
-		).toEqual([
-			'read_op:started',
-			'read_op:finished',
-			'ledger_persist:started',
-			'ledger_persist:finished',
-			'tool_result_publish:started',
-			'tool_result_publish:finished',
-			'synthesis:started'
-		]);
-		expect(executionBoundaryLogs(processingJob)).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					event: 'agentic_chat_execution_boundary',
-					turn_run_id: TURN_RUN_ID,
-					queue_job_id: QUEUE_JOB_ID,
-					execution_generation: EXECUTION_GENERATION,
-					provider_tool_call_id: 'provider-read-1',
-					tool_name: 'get_project_overview'
-				})
-			])
-		);
-		for (const boundary of executionBoundaryLogs(processingJob)) {
-			expect(boundary).not.toHaveProperty('arguments');
-			expect(boundary).not.toHaveProperty('result');
-		}
-		expect(harness.control.finalize).toHaveBeenCalledWith(
-			expect.objectContaining({
-				assistantText: 'The fixture project is ready.',
-				promptTokens: 10,
-				completionTokens: 6,
-				totalTokens: 16
-			})
-		);
-		await harness.publisher.stop();
-	});
-
-	it('persists and publishes a supervisor block before returning mixed round feedback', async () => {
-		const harness = createHarness([]);
-		const blockedError =
-			'Supervisor blocked this exact write retry because the same tool arguments already failed earlier in the turn. Use corrected arguments, the correct tool for the entity kind, or ask one concise clarifying question.';
-		const blockedArguments = {
-			task_id: 'da000000-0000-4000-8000-000000000001',
-			state_key: 'done'
-		};
-		const blockedFailure = {
-			kind: 'supervisor_block',
-			error: blockedError,
-			toolCategory: 'write',
-			modelPayload: {
-				error: blockedError,
-				supervisor_recovery: { blocked_exact_retry: true }
-			}
-		} as const;
-		const readArguments = {
-			project_id: 'db000000-0000-4000-8000-000000000002'
-		};
-		const readExecution = {
-			result: { project: { id: readArguments.project_id, name: 'Mixed round' } },
-			executionTimeMs: 12,
-			tokensConsumed: null,
-			affectedEntities: [],
-			toolCategory: 'utility',
-			resultCount: 1,
-			zeroResult: false,
-			requiresUserAction: false
-		};
-		harness.readTool.execute.mockResolvedValueOnce(readExecution);
-		harness.toolExecutions.persistFailure.mockImplementationOnce(async () => {
-			harness.log.push('blocked_ledger');
-		});
-		harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
-			harness.log.push('read_ledger');
-		});
-		const continueWithToolResults = vi.fn((input: AgenticChatProviderToolRoundInputV1) => {
-			harness.log.push('continuation');
-			expect(input).toEqual({
-				round: 2,
-				results: [
-					{
-						providerToolCallId: 'blocked-update',
-						toolName: 'update_onto_task',
-						arguments: blockedArguments,
-						failure: blockedFailure
-					},
-					{
-						providerToolCallId: 'accepted-read',
-						toolName: 'get_project_overview',
-						arguments: readArguments,
-						execution: readExecution
-					}
-				]
-			});
-			return (async function* () {
-				yield {
-					type: 'supervisor_evaluation',
-					transitionId: THIRD_CALL_TRANSITION_ID,
-					reason: 'mixed_round_test_flag',
-					sequence: 9,
-					executionGeneration: EXECUTION_GENERATION
-				} as const;
-				yield { type: 'text_delta', text: 'The mixed round completed safely.' } as const;
-				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
-			})();
-		});
-		Object.assign(harness.provider, {
-			prepare: vi.fn(async () => ({
-				promptSnapshot: fixturePromptSnapshot,
-				stream: () =>
-					(async function* () {
-						yield {
-							type: 'pre_execution_tool_failure',
-							callTransitionId: VALIDATION_CALL_TRANSITION_ID,
-							resultTransitionId: VALIDATION_RESULT_TRANSITION_ID,
-							providerToolCallId: 'blocked-update',
-							toolName: 'update_onto_task',
-							arguments: blockedArguments,
-							failure: blockedFailure
-						} as const;
-						yield {
-							type: 'read_tool',
-							callTransitionId: CALL_TRANSITION_ID,
-							resultTransitionId: RESULT_TRANSITION_ID,
-							providerToolCallId: 'accepted-read',
-							toolName: 'get_project_overview',
-							arguments: readArguments
-						} as const;
-					})(),
-				continueWithToolResults,
-				release: vi.fn()
-			}))
-		});
-
-		const processingJob = job();
-		try {
-			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
-				outcome: 'completed',
-				terminalStatus: 'completed'
-			});
-			expect(harness.mutation.execute).not.toHaveBeenCalled();
-			expect(harness.readTool.execute).toHaveBeenCalledOnce();
-			expect(harness.toolExecutions.persistFailure).toHaveBeenCalledWith(
-				expect.objectContaining({
-					sequenceIndex: 1,
-					providerToolCallId: 'blocked-update',
-					toolName: 'update_onto_task',
-					arguments: blockedArguments,
-					toolCategory: 'write',
-					error: blockedError
-				}),
-				expect.any(AbortSignal)
-			);
-			expect(harness.toolExecutions.persistRead.mock.calls[0]?.[0]).toMatchObject({
-				sequenceIndex: 2,
-				providerToolCallId: 'accepted-read'
-			});
-			const publicResultIndexes = harness.log
-				.map((entry, index) => ({ entry, index }))
-				.filter(({ entry }) => entry === 'semantic:tool_result:')
-				.map(({ index }) => index);
-			expect(publicResultIndexes).toHaveLength(2);
-			expect(harness.log.indexOf('blocked_ledger')).toBeLessThan(publicResultIndexes[0]!);
-			expect(harness.log.indexOf('read_ledger')).toBeLessThan(publicResultIndexes[1]!);
-			expect(publicResultIndexes[1]!).toBeLessThan(harness.log.indexOf('continuation'));
-			const publicResults = harness.semanticInputs
-				.filter((input) => input.event_type === 'tool_result')
-				.map((input) => input.event_payload as Record<string, unknown>);
-			expect(publicResults[0]).toMatchObject({
-				type: 'tool_result',
-				result: {
-					tool_call_id: 'blocked-update',
-					result: null,
-					success: false,
-					error: blockedError,
-					tool_name: 'update_onto_task'
-				}
-			});
-			expect(harness.control.finalize.mock.calls[0]?.[0].assistantMetadata).toMatchObject({
-				tool_round_count: 1,
-				tool_call_count: 2
-			});
-			expect(
-				processingJob.log.mock.calls
-					.map(([message]) => JSON.parse(message) as Record<string, unknown>)
-					.find(({ event }) => event === 'agentic_chat_supervisor_eval_flagged')
-			).toMatchObject({
-				turn_run_id: TURN_RUN_ID,
-				execution_generation: EXECUTION_GENERATION,
-				transition_id: THIRD_CALL_TRANSITION_ID,
-				sequence: 9,
-				reason: 'mixed_round_test_flag'
-			});
-			expect(
-				harness.semanticInputs.some(
-					(input) => input.event_type === 'supervisor_eval_flagged'
-				)
-			).toBe(false);
-		} finally {
-			await harness.publisher.stop();
-		}
-	});
-
-	it('persists a supervisor checkpoint before publishing the waiting state and question', async () => {
-		const fixture = AGENTIC_CHAT_SUPERVISOR_QUESTION_FIXTURE_V1;
-		const question = fixture.response.question;
-		const transitionId = createStableAgenticChatSupervisorTransitionIdV1({
-			turnRunId: TURN_RUN_ID,
-			executionGeneration: EXECUTION_GENERATION,
-			sequence: 1,
-			action: 'ask_user'
-		});
-		const digest = fixture.checkpoint.digest;
-		const resumeContext = fixture.checkpoint.resumeContext;
-		const supervisorDecision = fixture.checkpoint.supervisorDecision;
-		const harness = createHarness(
-			[
-				{
-					type: 'supervisor_question',
-					transitionId,
-					sequence: 1,
-					executionGeneration: EXECUTION_GENERATION,
-					reason: fixture.decision.reason,
-					question,
-					checkpoint: { digest, resumeContext, supervisorDecision },
-					finishedReason: fixture.response.finishedReason,
-					usage: fixture.response.usage
-				}
-			],
-			{ promptSnapshot: fixturePromptSnapshot }
-		);
-		const fixtureExecutionInput = {
-			...executionInput,
-			requestPayload: {
-				...executionInput.requestPayload,
-				message: fixture.request.message,
-				context: { type: fixture.request.contextType }
-			}
-		};
-		harness.input.load.mockResolvedValueOnce(fixtureExecutionInput);
-
-		await expect(harness.executor.execute(job())).resolves.toMatchObject({
-			outcome: 'completed',
-			terminalStatus: 'completed'
-		});
-		const checkpointId = createStableAgenticChatSupervisorCheckpointIdV1({
-			turnRunId: TURN_RUN_ID,
-			executionGeneration: EXECUTION_GENERATION,
-			supervisorTransitionId: transitionId
-		});
-		expect(harness.supervisorCheckpoints.persist).toHaveBeenCalledWith(
-			{
-				turnRunId: TURN_RUN_ID,
-				queueJobId: QUEUE_JOB_ID,
-				processingToken: PROCESSING_TOKEN,
-				userId: USER_ID,
-				sessionId: SESSION_ID,
-				executionGeneration: EXECUTION_GENERATION,
-				checkpointId,
-				supervisorTransitionId: transitionId,
-				sequence: 1,
-				reason: fixture.decision.reason,
-				question,
-				digest,
-				resumeContext,
-				supervisorDecision
-			},
-			expect.any(AbortSignal)
-		);
-		expect(harness.log.indexOf('supervisor_checkpoint')).toBeLessThan(
-			harness.log.indexOf('semantic:agent_state:')
-		);
-		expect(harness.control.finalize).toHaveBeenCalledWith(
-			expect.objectContaining({
-				status: 'completed',
-				finishedReason: 'supervisor_question',
-				assistantText: question,
-				promptTokens: 9,
-				completionTokens: 3,
-				totalTokens: 12,
-				assistantMetadata: expect.objectContaining({
-					supervisor_question_checkpoint: {
-						checkpoint_id: checkpointId,
-						failed: false
-					}
-				})
-			})
-		);
-		const waitingEvent = harness.semanticInputs.find(
-			(input) => (input.event_payload as Record<string, unknown>).state === 'waiting_on_user'
-		);
-		expect(waitingEvent).toEqual(
-			expect.objectContaining({
-				transition_id: transitionId,
-				event_type: 'agent_state',
-				event_payload: expect.objectContaining({
-					type: 'agent_state',
-					state: 'waiting_on_user',
-					details: 'Waiting on your direction to continue.'
-				})
-			})
-		);
-		const publicTypes = streamBroadcastMessages(harness.broadcastMessages).map(
-			(message) => (message.payload as Record<string, unknown>).type
-		);
-		expect(publicTypes.indexOf('agent_state')).toBeLessThan(publicTypes.indexOf('text_delta'));
-		expect(publicTypes.at(-1)).toBe('done');
-
-		const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
-		const checkpointInput = harness.supervisorCheckpoints.persist.mock.calls[0]?.[0] as
-			| Record<string, unknown>
-			| undefined;
-		if (!terminalInput || !checkpointInput) {
-			throw new Error('Supervisor parity fixture did not persist its terminal state');
-		}
-		const supervisorCheckpointMetadata = terminalInput.assistantMetadata
-			.supervisor_question_checkpoint as Record<string, unknown>;
-		const worker = normalizeAgenticChatParityRunV1({
-			events: streamBroadcastMessages(harness.broadcastMessages).map(
-				(message) => message.payload
-			) as never,
-			messages: [
-				{ role: 'user', content: fixtureExecutionInput.requestPayload.message },
-				{
-					role: 'assistant',
-					content: terminalInput.assistantText,
-					metadata: {
-						completion_status: terminalInput.assistantMetadata.completion_status,
-						answer_source: terminalInput.assistantMetadata.answer_source,
-						supervisor_question_checkpoint: {
-							failed: supervisorCheckpointMetadata.failed
-						}
-					}
-				}
-			],
-			toolExecutions: [],
-			checkpoints: [
-				{
-					checkpoint_type: 'supervisor_question',
-					status: 'active',
-					reason: checkpointInput.reason,
-					question: checkpointInput.question,
-					digest: checkpointInput.digest,
-					resume_context: checkpointInput.resumeContext,
-					supervisor_decision: checkpointInput.supervisorDecision
-				}
-			],
-			outcome: {
-				status: terminalInput.status,
-				finished_reason: terminalInput.finishedReason,
-				assistant_message_linked: terminalInput.assistantMessageId !== null,
-				tool_round_count: terminalInput.assistantMetadata.tool_round_count,
-				tool_call_count: terminalInput.assistantMetadata.tool_call_count,
-				total_tokens: terminalInput.totalTokens
-			},
-			metadata: { checkpoint_count: harness.supervisorCheckpoints.persist.mock.calls.length }
-		});
-		for (const scenarioClass of ['clarification', 'supervisor_checkpoint'] as const) {
-			const evaluation = parityCoverage.evaluate(scenarioClass, worker);
-			expect(evaluation.diff.truncated).toBe(false);
-			expect(evaluation.deliberate.length).toBeGreaterThan(0);
-			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
-				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
-			);
-			expect(evaluation.matchesContract).toBe(true);
-		}
-		await harness.publisher.stop();
-	});
-
-	it('requeues an indeterminate checkpoint timeout without publishing a question', async () => {
-		const fixture = AGENTIC_CHAT_SUPERVISOR_QUESTION_FIXTURE_V1;
-		const transitionId = createStableAgenticChatSupervisorTransitionIdV1({
-			turnRunId: TURN_RUN_ID,
-			executionGeneration: EXECUTION_GENERATION,
-			sequence: 1,
-			action: 'ask_user'
-		});
-		const harness = createHarness(
-			[
-				{
-					type: 'supervisor_question',
-					transitionId,
-					sequence: 1,
-					executionGeneration: EXECUTION_GENERATION,
-					reason: fixture.decision.reason,
-					question: fixture.response.question,
-					checkpoint: {
-						digest: fixture.checkpoint.digest,
-						resumeContext: fixture.checkpoint.resumeContext,
-						supervisorDecision: fixture.checkpoint.supervisorDecision
-					},
-					finishedReason: fixture.response.finishedReason,
-					usage: fixture.response.usage
-				}
-			],
-			{
-				promptSnapshot: fixturePromptSnapshot,
-				supervisorCheckpointError: new AgenticChatSupervisorCheckpointTimeoutError(10),
-				recovery: [recoveryReceipt('retry_scheduled')]
-			}
-		);
-
-		try {
-			await expect(harness.executor.execute(job())).resolves.toMatchObject({
-				outcome: 'requeued',
-				terminalStatus: null
-			});
-			expect(harness.control.recover).toHaveBeenCalledWith(
-				expect.objectContaining({
-					failureClass: 'transient_infra',
-					errorMessage: expect.stringContaining('checkpoint exceeded its 10ms deadline')
-				})
-			);
-			expect(harness.control.finalize).not.toHaveBeenCalled();
-			expect(
-				streamBroadcastMessages(harness.broadcastMessages).some(
-					(message) =>
-						(message.payload as Record<string, unknown>).state === 'waiting_on_user'
-				)
-			).toBe(false);
-			expect(
-				streamBroadcastMessages(harness.broadcastMessages).some(
-					(message) => (message.payload as Record<string, unknown>).type === 'text_delta'
-				)
-			).toBe(false);
-		} finally {
-			await harness.publisher.stop();
-		}
 	});
 
 	it('carries an acknowledged tool row into recovery when public result persistence fails', async () => {
@@ -3026,6 +2505,8 @@ describe('AgenticChatTurnExecutor', () => {
 						sequence_index: persistedMutation.sequenceIndex,
 						arguments: persistedMutation.arguments,
 						result: fixture.tool.result,
+						// Ratified divergence (parity-scenarios.ts): the worker persists the
+						// measured adapter wall time; the legacy golden pinned null.
 						execution_time_ms: persistedMutation.executionTimeMs,
 						tokens_consumed: persistedMutation.tokensConsumed,
 						requires_user_action: persistedMutation.requiresUserAction,
@@ -3081,7 +2562,8 @@ describe('AgenticChatTurnExecutor', () => {
 			expect(ledgerRpc.mock.calls[0]?.[1]).toMatchObject({
 				p_effect_id: stable.effectId,
 				p_operation_name: fixture.tool.operationName,
-				p_affected_entities: fixture.tool.affectedEntities
+				p_affected_entities: fixture.tool.affectedEntities,
+				p_execution_time_ms: expect.any(Number)
 			});
 			expect(evaluation.diff.truncated).toBe(false);
 			const effectDivergences = evaluation.deliberate
@@ -3090,7 +2572,8 @@ describe('AgenticChatTurnExecutor', () => {
 			expect(effectDivergences).toEqual([
 				'/events/5/payload/result/effect_id',
 				'/events/5/payload/result/replayed',
-				'/toolExecutions/0/effect_id'
+				'/toolExecutions/0/effect_id',
+				'/toolExecutions/0/execution_time_ms'
 			]);
 			expect(
 				evaluation.deliberate
@@ -4351,60 +3834,6 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
-	it('keeps the Phase 3 single-read fence for providers without continueWithToolResults', async () => {
-		const harness = createHarness([], {
-			recovery: [
-				recoveryReceipt('finalize_failed', { failure_code: 'permanent' }),
-				recoveryReceipt('queue_reconciled', {
-					status: 'failed',
-					failure_code: 'permanent'
-				})
-			]
-		});
-		const synthesize = vi.fn();
-		Object.assign(harness.provider, {
-			prepare: vi.fn(async () => ({
-				stream: () =>
-					(async function* () {
-						yield {
-							type: 'read_tool',
-							callTransitionId: CALL_TRANSITION_ID,
-							resultTransitionId: RESULT_TRANSITION_ID,
-							providerToolCallId: 'provider-phase3-read-1',
-							toolName: 'fixture_project_read',
-							arguments: { projectId: 'da000000-0000-4000-8000-000000000001' }
-						} as const;
-						yield {
-							type: 'read_tool',
-							callTransitionId: SECOND_CALL_TRANSITION_ID,
-							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
-							providerToolCallId: 'provider-phase3-read-2',
-							toolName: 'fixture_task_read',
-							arguments: { taskId: 'db000000-0000-4000-8000-000000000002' }
-						} as const;
-					})(),
-				synthesize,
-				release: vi.fn()
-			}))
-		});
-
-		try {
-			await expect(harness.executor.execute(job())).resolves.toMatchObject({
-				outcome: 'failed',
-				terminalStatus: 'failed',
-				queueReconciled: true
-			});
-			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
-				failureClass: 'permanent',
-				errorMessage: expect.stringContaining('exactly one bounded read call')
-			});
-			expect(synthesize).not.toHaveBeenCalled();
-			expect(harness.readTool.execute).toHaveBeenCalledTimes(1);
-		} finally {
-			await harness.publisher.stop();
-		}
-	});
-
 	it('routes a mutating tool through the effect-boundary port and persists its receipt', async () => {
 		const harness = createHarness([
 			{
@@ -4812,10 +4241,49 @@ describe('AgenticChatTurnExecutor', () => {
 		expect(prepare).toHaveBeenCalledWith({
 			executionInput,
 			processingToken: PROCESSING_TOKEN,
-			signal: expect.any(AbortSignal)
+			signal: expect.any(AbortSignal),
+			budget: { deadlineAtMs: expect.any(Number) }
 		});
 		expect(harness.provider.stream).not.toHaveBeenCalled();
 		expect(release).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
+	it('hands the provider a wall-clock budget deadline derived from the executor budget', async () => {
+		const providerBudgetMs = 45_000;
+		const harness = createHarness([{ type: 'finish', finishedReason: 'stop', usage: null }], {
+			providerBudgetMs
+		});
+		const prepare = vi.fn(async () => ({
+			stream: () =>
+				(async function* () {
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})(),
+			release: vi.fn()
+		}));
+		Object.assign(harness.provider, { prepare });
+		const startedAt = Date.now();
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed'
+		});
+		const prepareInput = prepare.mock.calls[0]?.[0] as { budget?: { deadlineAtMs: number } };
+		const deadlineAtMs = prepareInput.budget?.deadlineAtMs;
+		if (typeof deadlineAtMs !== 'number') throw new Error('Prepare received no budget');
+		// The pre-start estimate can only be earlier than the armed deadline.
+		expect(deadlineAtMs).toBeGreaterThanOrEqual(startedAt + providerBudgetMs);
+		expect(deadlineAtMs).toBeLessThanOrEqual(Date.now() + providerBudgetMs);
+		await harness.publisher.stop();
+	});
+
+	it('passes the budget deadline to the legacy fixture stream port', async () => {
+		const harness = createHarness([{ type: 'finish', finishedReason: 'stop', usage: null }]);
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed'
+		});
+		expect(harness.provider.stream).toHaveBeenCalledWith(
+			expect.objectContaining({ budget: { deadlineAtMs: expect.any(Number) } })
+		);
 		await harness.publisher.stop();
 	});
 
@@ -5619,7 +5087,475 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('discloses partial contract fulfilment and finalizes mutation_unfulfilled after successful moves', async () => {
+		const harness = createHarness([]);
+		const emittedText = 'Moved Task A and Task B into Backlog.';
+		installMoveContractFixture(
+			harness,
+			MOVE_TASK_IDS,
+			[MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!],
+			[
+				{ type: 'text_delta', text: emittedText },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			]
+		);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(harness.control.finalize).toHaveBeenCalledOnce();
+			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			if (!terminalInput) throw new Error('Partial move fixture did not finalize');
+			expect(terminalInput).toMatchObject({
+				status: 'completed',
+				finishedReason: 'mutation_unfulfilled',
+				failureCode: null,
+				assistantMetadata: expect.objectContaining({ outcome_status: 'unfulfilled' }),
+				eventPayload: expect.objectContaining({
+					type: 'done',
+					status: 'completed',
+					finished_reason: 'mutation_unfulfilled'
+				})
+			});
+			expect(terminalInput.assistantText.startsWith(`${emittedText}\n\n`)).toBe(true);
+			expect(terminalInput.assistantText).toContain('Done: 2 of 6 moves.');
+			expect(terminalInput.assistantText).toContain(
+				'Not yet moved: Task C, Task D, Task E, Task F.'
+			);
+			// Mutation rows now carry the adapter wall time like read rows do.
+			expect(harness.toolExecutions.persistMutation).toHaveBeenCalledTimes(2);
+			for (const [input] of harness.toolExecutions.persistMutation.mock.calls) {
+				expect(input).toMatchObject({ executionTimeMs: expect.any(Number) });
+			}
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('leaves a fully fulfilled contract answer untouched', async () => {
+		const harness = createHarness([]);
+		const targets = [MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!];
+		installMoveContractFixture(harness, targets, targets, [
+			{ type: 'text_delta', text: 'Moved both tasks into Backlog.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'completed',
+					finishedReason: 'stop',
+					assistantText: 'Moved both tasks into Backlog.',
+					assistantMetadata: expect.objectContaining({ outcome_status: 'fulfilled' })
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('completes with the partial disclosure when the provider budget expires after a durable write', async () => {
+		const harness = createHarness([], { providerBudgetMs: 40 });
+		const targets = [MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!];
+		// Round 2 never yields: the executor budget is the only thing that ends it.
+		installMoveContractFixture(harness, targets, [targets[0]!], null);
+		const processingJob = job();
+
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed',
+				queueReconciled: true
+			});
+			expect(harness.control.recover).not.toHaveBeenCalled();
+			expect(harness.control.completeQueueJob).toHaveBeenCalledOnce();
+			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			if (!terminalInput) throw new Error('Budget fixture did not finalize');
+			expect(terminalInput).toMatchObject({
+				status: 'completed',
+				finishedReason: 'mutation_unfulfilled',
+				failureCode: null,
+				publicError: null,
+				assistantMetadata: expect.objectContaining({ outcome_status: 'unfulfilled' }),
+				eventPayload: {
+					type: 'done',
+					status: 'completed',
+					finished_reason: 'mutation_unfulfilled',
+					failure_code: null,
+					completion_status: 'completed',
+					answer_source: 'model'
+				},
+				timingDraft: expect.objectContaining({ finished_reason: 'mutation_unfulfilled' })
+			});
+			expect(terminalInput.assistantText).toContain('Done: 1 of 2 moves.');
+			expect(terminalInput.assistantText).toContain('Not yet moved: Task B.');
+			expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+				failure_class: 'timeout_post_start',
+				execution_started: true
+			});
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('rejects a repeat call of a tool whose earlier failure was a backend contract mismatch', async () => {
+		const harness = createHarness([]);
+		harness.mutation.execute.mockRejectedValueOnce(
+			new AgenticChatEffectExecutionError(
+				'permanent',
+				EFFECT_ID,
+				'Background delegation is unavailable: the server-side dispatch function does not match this worker. The arguments were valid and retrying with different arguments will not help.'
+			)
+		);
+		const rounds: AgenticChatProviderToolRoundInputV1[] = [];
+		const continueWithToolResults = vi.fn((input: AgenticChatProviderToolRoundInputV1) => {
+			rounds.push(input);
+			return (async function* () {
+				if (input.round === 2) {
+					yield {
+						type: 'mutating_tool',
+						callTransitionId: SECOND_CALL_TRANSITION_ID,
+						resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+						logicalOperationId: SECOND_LOGICAL_OPERATION_ID,
+						providerToolCallId: 'provider-delegate-retry',
+						toolName: 'delegate_task',
+						operationName: 'agent.run.dispatch',
+						arguments: { task_id: 'db000000-0000-4000-8000-000000000003' },
+						downstreamIdempotencySupported: false
+					} as const;
+					return;
+				}
+				yield { type: 'text_delta', text: 'Delegation is unavailable right now.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})();
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'provider-delegate-first',
+							toolName: 'delegate_task',
+							operationName: 'agent.run.dispatch',
+							arguments: { task_id: 'db000000-0000-4000-8000-000000000002' },
+							downstreamIdempotencySupported: false
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo: vi.fn(),
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			// The adapter ran once; the retry was answered structurally.
+			expect(harness.mutation.execute).toHaveBeenCalledOnce();
+			expect(harness.toolExecutions.persistFailure).toHaveBeenCalledTimes(2);
+			expect(harness.toolExecutions.persistFailure.mock.calls[1]?.[0]).toMatchObject({
+				providerToolCallId: 'provider-delegate-retry',
+				toolName: 'delegate_task',
+				failureKind: 'mutation',
+				error: expect.stringContaining(
+					'delegate_task already failed permanently this turn; do not retry it.'
+				)
+			});
+			expect(rounds[1]?.results).toEqual([
+				expect.objectContaining({
+					providerToolCallId: 'provider-delegate-retry',
+					failure: expect.objectContaining({
+						kind: 'known_execution_failure',
+						error: expect.stringContaining('already failed permanently this turn')
+					})
+				})
+			]);
+			expect(harness.semanticInputs).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						event_type: 'tool_result',
+						event_payload: expect.objectContaining({
+							result: expect.objectContaining({
+								tool_call_id: 'provider-delegate-retry',
+								success: false,
+								effect_id: null
+							})
+						})
+					})
+				])
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('caps only the identical retry after an argument-level permanent failure', async () => {
+		const harness = createHarness([]);
+		harness.mutation.execute.mockRejectedValueOnce(
+			new AgenticChatEffectExecutionError('permanent', EFFECT_ID, 'Task not found')
+		);
+		const missingArguments = {
+			task_id: 'db000000-0000-4000-8000-000000000002',
+			state_key: 'done'
+		};
+		const otherArguments = {
+			task_id: 'db000000-0000-4000-8000-000000000003',
+			state_key: 'done'
+		};
+		const rounds: AgenticChatProviderToolRoundInputV1[] = [];
+		const continueWithToolResults = vi.fn((input: AgenticChatProviderToolRoundInputV1) => {
+			rounds.push(input);
+			return (async function* () {
+				if (input.round === 2) {
+					yield {
+						type: 'mutating_tool',
+						callTransitionId: SECOND_CALL_TRANSITION_ID,
+						resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+						logicalOperationId: SECOND_LOGICAL_OPERATION_ID,
+						providerToolCallId: 'provider-identical-retry',
+						toolName: 'update_onto_task',
+						operationName: 'onto.task.update',
+						arguments: { state_key: 'done', task_id: missingArguments.task_id },
+						downstreamIdempotencySupported: false
+					} as const;
+					yield {
+						type: 'mutating_tool',
+						callTransitionId: THIRD_CALL_TRANSITION_ID,
+						resultTransitionId: THIRD_RESULT_TRANSITION_ID,
+						logicalOperationId: THIRD_LOGICAL_OPERATION_ID,
+						providerToolCallId: 'provider-other-target',
+						toolName: 'update_onto_task',
+						operationName: 'onto.task.update',
+						arguments: otherArguments,
+						downstreamIdempotencySupported: false
+					} as const;
+					return;
+				}
+				yield { type: 'text_delta', text: 'Marked the second task done.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})();
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'provider-missing-target',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: missingArguments,
+							downstreamIdempotencySupported: false
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo: vi.fn(),
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			// First call failed, identical retry was capped, the other target ran.
+			expect(harness.mutation.execute).toHaveBeenCalledTimes(2);
+			expect(harness.toolExecutions.persistMutation).toHaveBeenCalledOnce();
+			expect(harness.toolExecutions.persistFailure).toHaveBeenCalledTimes(2);
+			expect(harness.toolExecutions.persistFailure.mock.calls[1]?.[0]).toMatchObject({
+				providerToolCallId: 'provider-identical-retry',
+				error: expect.stringContaining('already called with these exact arguments')
+			});
+			expect(rounds[1]?.results.map((result) => result.providerToolCallId)).toEqual([
+				'provider-identical-retry',
+				'provider-other-target'
+			]);
+			expect(rounds[1]?.results[1]).toMatchObject({
+				mutation: expect.objectContaining({ operationName: 'onto.task.update' })
+			});
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('exercises every implemented parity scenario class from the shared registry', () => {
-		expect(parityCoverage.missing()).toEqual([]);
+		// The registry still carries the supervisor-question golden for the web
+		// orchestrator. The worker deleted its supervisor, so the two classes that
+		// replay that golden are no longer worker scenarios.
+		expect(parityCoverage.missing()).toEqual(['clarification', 'supervisor_checkpoint']);
 	});
 });
+
+const SECOND_LOGICAL_OPERATION_ID = 'c1000000-0000-4000-8000-00000000001c';
+const THIRD_LOGICAL_OPERATION_ID = 'c2000000-0000-4000-8000-00000000002c';
+const SECOND_EFFECT_ID = 'd1000000-0000-5000-8000-00000000001d';
+const MOVE_TASK_IDS = [
+	'aa000000-0000-4000-8000-000000000001',
+	'aa000000-0000-4000-8000-000000000002',
+	'aa000000-0000-4000-8000-000000000003',
+	'aa000000-0000-4000-8000-000000000004',
+	'aa000000-0000-4000-8000-000000000005',
+	'aa000000-0000-4000-8000-000000000006'
+];
+const MOVE_TASK_TITLES = ['Task A', 'Task B', 'Task C', 'Task D', 'Task E', 'Task F'];
+const MOVE_DESTINATION_PROJECT_ID = 'bb000000-0000-4000-8000-000000000001';
+const MOVE_STEP_TRANSITIONS = [
+	[THIRD_CALL_TRANSITION_ID, THIRD_RESULT_TRANSITION_ID, LOGICAL_OPERATION_ID, EFFECT_ID],
+	[
+		VALIDATION_CALL_TRANSITION_ID,
+		VALIDATION_RESULT_TRANSITION_ID,
+		SECOND_LOGICAL_OPERATION_ID,
+		SECOND_EFFECT_ID
+	]
+] as const;
+
+/**
+ * Round 1: declare a move contract over `declaredTargetIds`, list the tasks
+ * (so titles are durable evidence), and move `movedTargetIds`. Round 2 yields
+ * `roundTwoSteps`, or hangs forever when null so only the budget can end it.
+ */
+function installMoveContractFixture(
+	harness: ReturnType<typeof createHarness>,
+	declaredTargetIds: string[],
+	movedTargetIds: string[],
+	roundTwoSteps: AgenticChatTurnProviderStepV1[] | null
+): void {
+	harness.readTool.execute.mockImplementation(async (input) => {
+		if (input.providerToolCallId === 'provider-declare-moves') {
+			return {
+				result: {
+					status: 'declared',
+					contract: {
+						version: 1,
+						source: 'declared',
+						outcomes: [
+							{
+								id: 'declared-1',
+								action: 'move',
+								entityKind: 'task',
+								targetIds: declaredTargetIds,
+								requiredFields: [],
+								minimumSuccessfulEffects: declaredTargetIds.length
+							}
+						]
+					}
+				},
+				executionTimeMs: 0,
+				tokensConsumed: null,
+				affectedEntities: [],
+				toolCategory: 'control',
+				resultCount: null,
+				zeroResult: null,
+				requiresUserAction: false
+			};
+		}
+		return {
+			result: {
+				results: declaredTargetIds.map((id) => ({
+					id,
+					type: 'task',
+					title: MOVE_TASK_TITLES[MOVE_TASK_IDS.indexOf(id)],
+					state_key: 'todo'
+				}))
+			},
+			executionTimeMs: 1,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: 'read',
+			resultCount: declaredTargetIds.length,
+			zeroResult: false,
+			requiresUserAction: false
+		};
+	});
+	for (const taskId of movedTargetIds) {
+		const effectId = MOVE_STEP_TRANSITIONS[movedTargetIds.indexOf(taskId)]![3];
+		harness.mutation.execute.mockResolvedValueOnce({
+			effectId,
+			canonicalArgumentHash: 'a'.repeat(64),
+			downstreamIdempotencyKey: `chat-effect:${effectId}`,
+			downstreamReceipt: {
+				status: 'moved',
+				task: { id: taskId, title: MOVE_TASK_TITLES[MOVE_TASK_IDS.indexOf(taskId)] }
+			},
+			replayed: false
+		});
+	}
+	Object.assign(harness.provider, {
+		prepare: vi.fn(async () => ({
+			stream: () =>
+				(async function* () {
+					yield {
+						type: 'read_tool',
+						callTransitionId: CALL_TRANSITION_ID,
+						resultTransitionId: RESULT_TRANSITION_ID,
+						providerToolCallId: 'provider-declare-moves',
+						toolName: 'declare_turn_contract',
+						arguments: {
+							outcomes: [
+								{
+									action: 'move',
+									entity_kind: 'task',
+									target_ids: declaredTargetIds,
+									minimum_successful_effects: declaredTargetIds.length
+								}
+							]
+						}
+					} as const;
+					yield {
+						type: 'read_tool',
+						callTransitionId: SECOND_CALL_TRANSITION_ID,
+						resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+						providerToolCallId: 'provider-list-tasks',
+						toolName: 'search_project',
+						arguments: { query: 'backlog' }
+					} as const;
+					for (const taskId of movedTargetIds) {
+						const [callTransitionId, resultTransitionId, logicalOperationId] =
+							MOVE_STEP_TRANSITIONS[movedTargetIds.indexOf(taskId)]!;
+						yield {
+							type: 'mutating_tool',
+							callTransitionId,
+							resultTransitionId,
+							logicalOperationId,
+							providerToolCallId: `provider-move-${taskId}`,
+							toolName: 'move_onto_task',
+							operationName: 'onto.task.move',
+							arguments: {
+								task_id: taskId,
+								expected_source_project_id: 'project-1',
+								destination_project_id: MOVE_DESTINATION_PROJECT_ID
+							},
+							downstreamIdempotencySupported: false
+						} as const;
+					}
+				})(),
+			continueWithToolResults: vi.fn(() =>
+				(async function* () {
+					if (roundTwoSteps === null) {
+						await new Promise<never>(() => undefined);
+						return;
+					}
+					for (const step of roundTwoSteps) yield step;
+				})()
+			),
+			invalidateReadMemo: vi.fn(),
+			release: vi.fn()
+		}))
+	});
+}

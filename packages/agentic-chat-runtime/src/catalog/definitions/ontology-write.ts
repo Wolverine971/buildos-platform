@@ -18,7 +18,7 @@ export const ONTOLOGY_WRITE_TOOLS = [
 		function: {
 			name: 'create_onto_task',
 			description:
-				'Create future human work in a project when the user asks to add, track, or remember it. Do the work inline instead for research, brainstorming, summaries, or drafts. Link only known entities and assign only known project members. Load task_management for complex flows.',
+				'Create future human work in a project when the user asks to add, track, or remember it. Do the work inline instead for research, brainstorming, summaries, or drafts. Link only known entities and assign only known project members.',
 			parameters: {
 				type: 'object',
 				additionalProperties: false,

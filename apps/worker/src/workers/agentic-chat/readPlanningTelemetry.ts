@@ -18,7 +18,6 @@ const REVIEW_TOOL_NAMES = new Set([
 ]);
 const CONTROL_TOOL_NAMES = new Set<string>([
 	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
-	'change_chat_context',
 	...REVIEW_TOOL_NAMES
 ]);
 const REVIEW_DECISION_AUTHORS = new Set<AgenticChatControlDecisionAuthorV1>([

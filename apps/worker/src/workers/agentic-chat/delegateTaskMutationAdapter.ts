@@ -179,15 +179,7 @@ export class AgenticChatDelegateTaskMutationAdapter implements AgenticChatMutati
 			);
 		}
 
-		if (dispatchResult.error) {
-			const message = dispatchResult.error.message ?? 'Agent Run dispatch failed';
-			throw knownFailure(
-				message.includes('agent_run_limit_exceeded') || message.includes('slots')
-					? 'delegate_task_capacity_exhausted'
-					: 'delegate_task_dispatch_failed',
-				message
-			);
-		}
+		if (dispatchResult.error) throw classifyDispatchError(dispatchResult.error);
 
 		const { runId, jobId } = requireDispatchReceipt(
 			dispatchResult.data,
@@ -218,6 +210,43 @@ export class AgenticChatDelegateTaskMutationAdapter implements AgenticChatMutati
 		assertMutationReceiptSize(receipt, TOOL_NAME);
 		return receipt;
 	}
+}
+
+/**
+ * Postgres SQLSTATE class 42 (syntax error or access-rule violation) and the
+ * PostgREST schema-cache codes mean the deployed `create_agent_run_with_job`
+ * does not match this worker: a missing function, an undefined column, or a
+ * text-into-enum insert such as the 2026-08-30 `agent_run_trigger` cast
+ * defect (42804). Nothing about the model's arguments caused it, so the
+ * failure must tell the model not to retry with different arguments; the
+ * production turn that surfaced the cast defect retried six times in under a
+ * minute because the raw database message looked like a bad-argument error.
+ */
+const BACKEND_CONTRACT_SQLSTATE_CLASS = '42';
+const BACKEND_CONTRACT_POSTGREST_CODES = new Set(['PGRST202', 'PGRST203', 'PGRST204']);
+
+export function classifyDispatchError(error: {
+	code?: string;
+	message?: string;
+}): ReturnType<typeof knownFailure> {
+	const message = error.message ?? 'Agent Run dispatch failed';
+	const code = typeof error.code === 'string' ? error.code.trim().toUpperCase() : '';
+	if (message.includes('agent_run_limit_exceeded') || message.includes('slots')) {
+		return knownFailure('delegate_task_capacity_exhausted', message);
+	}
+	if (
+		code.startsWith(BACKEND_CONTRACT_SQLSTATE_CLASS) ||
+		BACKEND_CONTRACT_POSTGREST_CODES.has(code)
+	) {
+		return knownFailure(
+			'delegate_task_backend_contract_mismatch',
+			`Background delegation is unavailable: the server-side Agent Run dispatch function ` +
+				`does not match this worker (${code}: ${message}). The arguments were valid and ` +
+				`retrying with different arguments will not help. Do not call delegate_task again ` +
+				`this turn; tell the user background delegation is temporarily unavailable.`
+		);
+	}
+	return knownFailure('delegate_task_dispatch_failed', message);
 }
 
 function requireDispatchReceipt(

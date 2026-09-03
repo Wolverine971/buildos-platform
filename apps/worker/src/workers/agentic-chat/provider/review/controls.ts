@@ -8,6 +8,12 @@ import {
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../../tools/execution-adapter';
 
+/**
+ * Reviewer-register commission guidance. Mounted only in the two reviewer
+ * prompts (contract review, mutation-batch review) and the acting-side
+ * semantic disposition gate; the per-pass actor routing message carries the
+ * short ACTOR_COMMISSION_GUIDANCE instead (audit 2026-09-02, Finding 9).
+ */
 export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
 	'When the user explicitly delegates judgment (for example, asks for a sensible organization), reasonable implementation choices within that commission are resolved; do not ask the user to make the delegated choice again.',
 	'Past-tense reports that tracked work was completed commission the matching state change when exactly one loaded entity fits; conversational or dictated wording does not turn the report into a request for confirmation.',
@@ -23,6 +29,19 @@ export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
 	"A required_fields entry without a declared change is a postcondition the agent satisfies at execution, not a missing value. Implementation defaults such as type_key, state_key, position, or a description or short heading for a new container are the agent's choice and are validated or defaulted by the tool at execution; never revise a contract or ask the user over them.",
 	"When the user gives a day without a time, the entity's existing time of day carries over; that is a resolved value, not a missing one. Never ask what time to use.",
 	'A priority, scheduling, or completion instruction commissions only that change. Do not add workflow-state transitions the user did not state (for example in_progress because something became top priority).'
+]);
+
+/**
+ * Actor-register commission guidance: the five rules the acting model needs
+ * on every project pass, in its own register. The reviewer keeps the full
+ * SEMANTIC_COMMISSION_GUIDANCE; this must stay at most five lines.
+ */
+export const ACTOR_COMMISSION_GUIDANCE = Object.freeze([
+	'Commission rules: a simple commissioned change calls the mutation tools directly; a complex one calls declare_turn_contract first with the complete outcome set.',
+	'Ask for clarification only when the user still owns a genuine choice among loaded candidates; never guess among them, and never ask about a value the request, loaded context, or tool schema already resolves.',
+	'A past-tense report that tracked work was completed commissions the matching state change when exactly one loaded entity fits: complete it, carry any user-stated outcome or next step on that entity instead of a new one, omit unstated optional values, and never tell the user a stated next step will go unrecorded.',
+	'A priority, scheduling, or completion instruction commissions only that change; add no workflow-state transition the user did not state. A task push or reschedule changes due_at; use start_at only for an explicit task start.',
+	'Once organization is delegated, container titles, item placement, and order are your choices; do not ask the user to choose or confirm them.'
 ]);
 
 /**
@@ -61,6 +80,12 @@ export const REFERENCE_CANDIDATES_PROPERTY = Object.freeze({
 	}
 });
 
+/**
+ * Approval tools are static on purpose: a per-review `const` SHA in the schema
+ * changed the tools array on every call and defeated provider prefix caching
+ * (0% cache over 350 reviewer calls). The SHA binding is enforced in code by
+ * decision-completion.ts, which fails closed to clarification on a mismatch.
+ */
 export const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
 	type: 'function',
 	function: {
@@ -79,7 +104,8 @@ export const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 =
 				},
 				contract_sha256: {
 					type: 'string',
-					description: 'Exact SHA-256 supplied in the review request.'
+					description:
+						'The exact SHA-256 quoted in this request. The harness rejects an approval whose value differs from it.'
 				},
 				reference_candidates: {
 					...REFERENCE_CANDIDATES_PROPERTY
@@ -163,7 +189,8 @@ export const MUTATION_BATCH_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 
 				},
 				batch_sha256: {
 					type: 'string',
-					description: 'Exact SHA-256 supplied in the mutation review request.'
+					description:
+						'The exact SHA-256 quoted in this request. The harness rejects an approval whose value differs from it.'
 				}
 			}
 		}

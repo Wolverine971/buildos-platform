@@ -17,12 +17,17 @@ export {
 	normalizeEntityKind,
 	normalizeTurnSupervisorEntityIndex
 } from './entity-index';
+/**
+ * @deprecated The finalization guard is terminal-text integrity, not supervision.
+ * It lives in `@buildos/agentic-chat-runtime/loop`; this re-export exists only
+ * for the web `turn-supervisor/finalization-guard.ts` shim.
+ */
 export {
 	applyFinalizationGuard,
 	type FinalizationGuardFinishedReason,
 	type FinalizationGuardReason,
 	type FinalizationGuardResult
-} from './finalization-guard';
+} from '../loop/finalization-guard';
 export {
 	AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR_V1,
 	buildTurnStatusMessage

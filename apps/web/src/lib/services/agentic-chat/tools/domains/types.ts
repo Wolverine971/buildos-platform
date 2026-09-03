@@ -51,6 +51,12 @@ export interface DomainSearchMatch {
 	coverage_status: DomainCoverageStatus;
 	parent_ids: string[];
 	aliases_hit: string[];
+	/**
+	 * Distinct query tokens that hit the domain's id, name, or alias vocabulary.
+	 * Prose tokens (summary, capability ids, skill ids) never count here; they
+	 * inflate `confidence` only marginally and can never open the skill gate.
+	 */
+	discriminative_hits: number;
 	skill_ids: string[];
 	outcome_card_ids: string[];
 	related_domain_ids: string[];

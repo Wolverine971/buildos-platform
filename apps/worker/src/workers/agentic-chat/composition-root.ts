@@ -102,12 +102,6 @@ import {
 } from './mutationToolCatalog';
 import { AgenticChatUpdateOntoTaskMutationAdapter } from './updateOntoTaskMutationAdapter';
 import { SupabaseAgenticChatLiveVisionResolver } from './liveVision';
-import { AgenticChatWorkerSupervisorBridge } from './workerSupervisor';
-import {
-	type AgenticChatSupervisorCheckpointPortV1,
-	type AgenticChatSupervisorCheckpointRpcClient,
-	SupabaseAgenticChatSupervisorCheckpointAdapter
-} from './supervisorCheckpoint';
 import {
 	type AgenticChatSessionHandoffPortV1,
 	type AgenticChatSessionHandoffRpcClient,
@@ -142,7 +136,6 @@ export type AgenticChatCompositionRoot = {
 	promptSnapshots: AgenticChatPromptSnapshotPortV1;
 	toolExecutions: AgenticChatToolExecutionPortV1;
 	executionObservations: AgenticChatExecutionObservationPortV1;
-	supervisorCheckpoints: AgenticChatSupervisorCheckpointPortV1;
 	sessionHandoff: AgenticChatSessionHandoffPortV1;
 	researchCapture: AgenticChatResearchCapturePortV1;
 	statedFutureCapture: AgenticChatStatedFutureCapturePortV1;
@@ -190,8 +183,6 @@ export function createAgenticChatCompositionRoot(options: {
 	providerConfigured: boolean;
 	/** Separate default-off gate for ephemeral current-turn image resolution. */
 	liveVisionEnabled?: boolean;
-	/** Separate default-off gate for deterministic supervisor decisions. */
-	supervisorEnabled?: boolean;
 	/** Shared default-off gate for terminal consumption-billing re-evaluation. */
 	consumptionBillingEnabled?: boolean;
 	liveVisionFetchImpl?: typeof fetch;
@@ -248,7 +239,6 @@ export function createAgenticChatCompositionRoot(options: {
 		AgenticChatPromptSnapshotRpcClient &
 		AgenticChatToolExecutionRpcClient &
 		AgenticChatExecutionObservationRpcClient &
-		AgenticChatSupervisorCheckpointRpcClient &
 		AgenticChatSessionHandoffRpcClient &
 		AgenticChatResearchCaptureRpcClient &
 		AgenticChatStatedFutureCaptureRpcClient &
@@ -258,7 +248,6 @@ export function createAgenticChatCompositionRoot(options: {
 	const promptSnapshots = new SupabaseAgenticChatPromptSnapshotAdapter(rpcClient);
 	const toolExecutions = new SupabaseAgenticChatToolExecutionAdapter(rpcClient);
 	const executionObservations = new SupabaseAgenticChatExecutionObservationAdapter(rpcClient);
-	const supervisorCheckpoints = new SupabaseAgenticChatSupervisorCheckpointAdapter(rpcClient);
 	const sessionHandoff = new SupabaseAgenticChatSessionHandoffAdapter(rpcClient);
 	const researchCapture = new SupabaseAgenticChatResearchCaptureAdapter(rpcClient);
 	const statedFutureCapture = new SupabaseAgenticChatStatedFutureCaptureAdapter(
@@ -301,10 +290,7 @@ export function createAgenticChatCompositionRoot(options: {
 			client: options.providerClient,
 			semanticReviewer: options.semanticReviewerClient,
 			capacity: providerCapacity,
-			liveVision,
-			supervisorFactory: options.supervisorEnabled
-				? (executionInput) => new AgenticChatWorkerSupervisorBridge(executionInput)
-				: undefined
+			liveVision
 		},
 		options.providerCooldownMs,
 		options.maxProviderRounds,
@@ -436,7 +422,6 @@ export function createAgenticChatCompositionRoot(options: {
 				),
 			readTool,
 			toolExecutions,
-			supervisorCheckpoints,
 			sessionHandoff,
 			researchCapture,
 			statedFutureCapture,
@@ -512,7 +497,6 @@ export function createAgenticChatCompositionRoot(options: {
 		promptSnapshots,
 		toolExecutions,
 		executionObservations,
-		supervisorCheckpoints,
 		sessionHandoff,
 		researchCapture,
 		statedFutureCapture,

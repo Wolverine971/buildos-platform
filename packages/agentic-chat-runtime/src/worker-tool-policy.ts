@@ -69,8 +69,6 @@ export const AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1 = Object.freeze([
 	'list_user_contact_candidates',
 	'resolve_user_contact_candidate',
 	'link_user_contact',
-	'resolve_libri_resource',
-	'query_libri_library',
 	'list_corsair_mcp_tools',
 	'call_corsair_mcp_tool',
 	'get_buildos_overview',
@@ -100,7 +98,6 @@ const AGENTIC_CHAT_WORKER_ACTING_CONTROL_TOOL_NAMES_V1 =
 export const AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1 = Object.freeze([
 	...AGENTIC_CHAT_WORKER_ACTING_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
-	'change_chat_context',
 	'web_search',
 	'web_visit',
 	...AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1

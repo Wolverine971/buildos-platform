@@ -188,7 +188,6 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 		expect(loadAgenticChatConfig(configuredEnvironment())).toMatchObject({
 			enabled: true,
 			liveVisionEnabled: false,
-			supervisorEnabled: false,
 			consumptionBillingEnabled: false,
 			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
 			publisher: DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,
@@ -207,19 +206,6 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 		expect(() =>
 			loadAgenticChatConfig(configuredEnvironment({ AGENT_CHAT_LIVE_VISION_ENABLED: 'TRUE' }))
 		).toThrow('AGENT_CHAT_LIVE_VISION_ENABLED must be exactly true or false');
-	});
-
-	it('keeps the worker supervisor default-off and parses only an exact explicit gate', () => {
-		expect(
-			loadAgenticChatConfig(
-				configuredEnvironment({ AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED: 'true' })
-			)
-		).toMatchObject({ enabled: true, supervisorEnabled: true });
-		expect(() =>
-			loadAgenticChatConfig(
-				configuredEnvironment({ AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED: 'TRUE' })
-			)
-		).toThrow('AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED must be exactly true or false');
 	});
 
 	it('keeps terminal consumption billing aligned with the exact shared web gate', () => {
@@ -269,7 +255,6 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 		expect(config).toEqual({
 			enabled: true,
 			liveVisionEnabled: false,
-			supervisorEnabled: false,
 			consumptionBillingEnabled: false,
 			consumer: {
 				concurrency: 2,

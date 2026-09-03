@@ -1,7 +1,12 @@
 // packages/agentic-chat-runtime/src/loop/tool-payload-compaction.test.ts
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
-import { buildToolPayloadForModel } from './tool-payload-compaction';
+import {
+	buildToolPayloadForModel,
+	getAgenticChatToolPayloadHostPolicy,
+	provideAgenticChatToolPayloadHostPolicy,
+	stripToolDiscoveryHintsFromPayload
+} from './tool-payload-compaction';
 
 function toolCall(name: string): ChatToolCall {
 	return {
@@ -162,6 +167,110 @@ describe('buildToolPayloadForModel', () => {
 			'get_onto_task_details',
 			'list_task_documents'
 		]);
+	});
+
+	describe('host policy for follow-up tool hints', () => {
+		afterEach(() => {
+			provideAgenticChatToolPayloadHostPolicy(null);
+		});
+
+		const searchResult = () =>
+			toolResult({
+				query: 'user guide suite',
+				search_scope: 'project',
+				project_id: 'project-1',
+				total_returned: 1,
+				total: 1,
+				maybe_more: false,
+				message:
+					'Found 1 documents matching "user guide". Use get_onto_document_details for full document content.',
+				materialized_tools: ['get_document_outline'],
+				results: [
+					{
+						type: 'document',
+						id: '82dfb1b6-e39d-48cb-8c32-d13c3e620daa',
+						project_id: 'project-1',
+						title: 'User Guide Suite',
+						state_key: 'draft'
+					}
+				]
+			});
+
+		it('advertises hints by default so on-demand hosts still materialize them', () => {
+			expect(getAgenticChatToolPayloadHostPolicy()).toEqual({
+				advertiseMaterializedTools: true
+			});
+			const payload = buildToolPayloadForModel(
+				toolCall('search_project'),
+				searchResult(),
+				parseArgs
+			) as Record<string, any>;
+
+			expect(payload.materialized_tools).toContain('get_onto_document_details');
+			expect(payload.message).toContain('Use get_onto_document_details');
+		});
+
+		it('strips every hint for a host whose surface is immutable', () => {
+			provideAgenticChatToolPayloadHostPolicy(() => ({ advertiseMaterializedTools: false }));
+			const payload = buildToolPayloadForModel(
+				toolCall('search_project'),
+				searchResult(),
+				parseArgs
+			) as Record<string, any>;
+
+			expect(payload).not.toHaveProperty('materialized_tools');
+			expect(payload.message).toBe('Found 1 documents matching "user guide".');
+			expect(JSON.stringify(payload)).not.toContain('get_onto_document_details');
+			expect(payload.results).toHaveLength(1);
+		});
+
+		it('keeps hints that name a callable tool when the pass surface is known', () => {
+			const payload = buildToolPayloadForModel(
+				toolCall('search_project'),
+				searchResult(),
+				parseArgs,
+				{
+					hostPolicy: { advertiseMaterializedTools: false },
+					callableToolNames: ['search_project', 'get_document_outline']
+				}
+			) as Record<string, any>;
+
+			expect(payload.materialized_tools).toEqual(['get_document_outline']);
+			expect(payload.message).toBe('Found 1 documents matching "user guide".');
+		});
+
+		it('drops only the sentences that name an uncallable tool and keeps control hints', () => {
+			const stripped = stripToolDiscoveryHintsFromPayload({
+				status: 'not_found',
+				document: null,
+				message:
+					'Document not found. The document may have been deleted. Use list_onto_documents or search_onto_documents to find a current document.',
+				nested: {
+					message:
+						'No section with anchor "x". This document has no headings; use get_onto_document_details for the full body.',
+					next_step:
+						'Declare the change with declare_turn_contract when the target is known.',
+					title: 'get_onto_document_details stays in ordinary fields'
+				}
+			});
+
+			expect(stripped).toEqual({
+				status: 'not_found',
+				document: null,
+				message: 'Document not found. The document may have been deleted.',
+				nested: {
+					message: 'No section with anchor "x". This document has no headings;',
+					next_step:
+						'Declare the change with declare_turn_contract when the target is known.',
+					title: 'get_onto_document_details stays in ordinary fields'
+				}
+			});
+			expect(
+				stripToolDiscoveryHintsFromPayload({
+					message: 'Use get_onto_task_details for full information.'
+				})
+			).toEqual({});
+		});
 	});
 
 	it('compacts document detail payloads to content previews', () => {

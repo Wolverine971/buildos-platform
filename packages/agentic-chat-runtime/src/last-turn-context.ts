@@ -52,6 +52,26 @@ const NON_ENTITY_REFERENCE_TOOLS = new Set([
 	'skill_reference_load'
 ]);
 
+// Harness control tools: the acting model's disposition declarations and the
+// reviewer's decisions. They are turn machinery, not data the user's next
+// message can build on, so they never appear in the continuity hint's "Tools
+// used" line (turn-executor audit 2026-09-02, F-11). Mirrors CONTROL_TOOL_NAMES
+// in loop/tool-classification.ts (parity pinned by last-turn-context.test.ts);
+// kept local so this module stays free of catalog imports.
+const CONTINUITY_HIDDEN_CONTROL_TOOLS: ReadonlySet<string> = new Set([
+	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
+	'cancel_turn_contract',
+	'approve_turn_contract_review',
+	'approve_mutation_batch_review',
+	'request_proposal_revision'
+]);
+
+function isContinuityHiddenToolName(toolName: string): boolean {
+	return CONTINUITY_HIDDEN_CONTROL_TOOLS.has(toolName.trim().toLowerCase());
+}
+
 function normalizeExactEntityId(value: unknown): string | undefined {
 	if (typeof value !== 'string') return undefined;
 	const trimmed = value.trim();
@@ -534,7 +554,7 @@ export function buildLastTurnContextDraftV1(
 
 	for (const execution of params.toolExecutions) {
 		const toolName = normalizeTextValue(execution.toolCall.function?.name);
-		if (toolName) {
+		if (toolName && !isContinuityHiddenToolName(toolName)) {
 			toolsUsed.add(toolName);
 		}
 		if (!shouldCollectExactEntityReferencesFromToolName(toolName)) {

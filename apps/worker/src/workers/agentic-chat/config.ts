@@ -22,7 +22,7 @@ import {
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 // Production canaries measured long-tail final synthesis on StreamLake,
 // Sail Research, Baidu, and Alibaba. Prefer the faster observed pool, but do
-// not use `only`: this route is also cloned for the Gemini semantic reviewer,
+// not use `only`: this route is also cloned for the GPT-5.6-luna semantic reviewer,
 // and a cross-model provider allowlist can force an unrelated fallback model.
 // Mid-stream recovery is owned by the adapter's atomic buffered-pass retry.
 // Decision 2026-08-27: keep DigitalOcean outside the preferred order but do
@@ -48,7 +48,6 @@ export type AgenticChatProviderConfig = {
 
 type AgenticChatBaseConfig = {
 	liveVisionEnabled: boolean;
-	supervisorEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
 	publisher: AgenticChatPublisherConfig;
@@ -80,11 +79,6 @@ export function loadAgenticChatConfig(
 		environment.AGENT_CHAT_LIVE_VISION_ENABLED,
 		false,
 		'AGENT_CHAT_LIVE_VISION_ENABLED'
-	);
-	const supervisorEnabled = parseBoolean(
-		environment.AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED,
-		false,
-		'AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED'
 	);
 	const consumptionBillingEnabled = parseBoolean(
 		environment.PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE,
@@ -148,7 +142,6 @@ export function loadAgenticChatConfig(
 	return {
 		enabled: true,
 		liveVisionEnabled,
-		supervisorEnabled,
 		consumptionBillingEnabled,
 		consumer,
 		publisher,

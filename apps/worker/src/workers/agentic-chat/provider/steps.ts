@@ -8,7 +8,6 @@ import {
 	isAgenticChatProductionReadToolNameV1
 } from '../tools/execution-adapter';
 import type { AgenticChatReadToolExecutionV1 } from '../toolExecution';
-import type { AgenticChatSupervisorBlockedToolCallV1 } from '../workerSupervisorDecisions';
 import { reviewedAgenticChatMutationSpecV1 } from '../mutationToolCatalog';
 import type { AgenticChatProviderStepV1, AgenticChatTurnProviderRequestV1 } from './contracts';
 import type { AgenticChatFeedbackToolCall } from './feedback';
@@ -56,11 +55,9 @@ export function buildReadToolStep(
 
 export function normalizeCompletedProviderCalls(
 	request: AgenticChatTurnProviderRequestV1,
-	calls: readonly CompletedProviderToolCall[],
-	blockedToolCalls: ReadonlyMap<string, AgenticChatSupervisorBlockedToolCallV1> = new Map()
+	calls: readonly CompletedProviderToolCall[]
 ): AgenticChatFeedbackToolCall[] {
 	return calls.map((call, index) => {
-		const supervisorFailure = blockedToolCalls.get(call.id);
 		if (isAgenticChatProductionReadToolNameV1(call.name)) {
 			const decidedBy =
 				call.decidedBy ??
@@ -68,8 +65,7 @@ export function normalizeCompletedProviderCalls(
 			return {
 				...call,
 				kind: 'read',
-				...(decidedBy ? { decidedBy } : {}),
-				...(supervisorFailure ? { supervisorFailure } : {})
+				...(decidedBy ? { decidedBy } : {})
 			};
 		}
 		const spec = reviewedAgenticChatMutationSpecV1(call.name);
@@ -83,8 +79,7 @@ export function normalizeCompletedProviderCalls(
 					callIndex: index + 1
 				}),
 				operationName: spec.operationName,
-				downstreamIdempotencySupported: spec.downstreamIdempotencySupported,
-				...(supervisorFailure ? { supervisorFailure } : {})
+				downstreamIdempotencySupported: spec.downstreamIdempotencySupported
 			};
 		}
 		throw providerToolNotAllowlistedError(call.name, request.tools);
@@ -97,32 +92,6 @@ export function buildProviderToolStep(
 	context: ProviderToolStepContext
 ): AgenticChatProviderStepV1 {
 	const scheduling = call.scheduling ? { scheduling: call.scheduling } : {};
-	if (call.supervisorFailure) {
-		return {
-			...scheduling,
-			logicalProviderRound: request.logicalProviderRound,
-			type: 'pre_execution_tool_failure',
-			callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-				turnRunId: request.turnRunId,
-				providerToolCallId: call.id,
-				stage: 'call'
-			}),
-			resultTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-				turnRunId: request.turnRunId,
-				providerToolCallId: call.id,
-				stage: 'result'
-			}),
-			providerToolCallId: call.id,
-			toolName: call.name,
-			arguments: call.arguments,
-			failure: {
-				kind: 'supervisor_block',
-				error: call.supervisorFailure.error,
-				toolCategory: TOOL_METADATA[call.name]?.category ?? null,
-				modelPayload: call.supervisorFailure.modelPayload
-			}
-		};
-	}
 	if (call.kind === 'read') {
 		return buildReadToolStep(request, call, context.resolveMemoServed(call));
 	}

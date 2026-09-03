@@ -94,23 +94,7 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 		});
 	});
 
-	it('never rewrites a supervisor clarification terminal', () => {
-		const result = enforceAgenticChatTerminalTextIntegrityV1({
-			assistantText: 'Which task should I update?',
-			finishedReason: 'supervisor_question',
-			contextType: 'project',
-			toolExecutions: []
-		});
-
-		expect(result).toEqual({
-			assistantText: 'Which task should I update?',
-			finishedReason: 'supervisor_question',
-			correctionDelta: null,
-			finalizationGuard: null
-		});
-	});
-
-	it('preserves a semantic clarification terminal without a supervisor finish reason', () => {
+	it('preserves a semantic clarification terminal', () => {
 		const execution = toolExecution('request_turn_clarification', true, {
 			status: 'clarification_required',
 			question: 'Which matching task should I update?',
@@ -130,7 +114,122 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 			finalizationGuard: null
 		});
 	});
+
+	it('discloses partial contract fulfilment by title and marks the turn mutation_unfulfilled', () => {
+		const emittedText = 'Moved Draft outline and Interview notes into Backlog.';
+		const result = enforceAgenticChatTerminalTextIntegrityV1({
+			assistantText: emittedText,
+			finishedReason: 'stop',
+			contextType: 'project',
+			toolExecutions: [
+				declaredMoveContract(SIX_TASK_IDS),
+				taskListing(SIX_TASK_IDS),
+				movedTask(SIX_TASK_IDS[0]!, 'Draft outline'),
+				movedTask(SIX_TASK_IDS[1]!, 'Interview notes')
+			]
+		});
+
+		expect(result.finishedReason).toBe('mutation_unfulfilled');
+		expect(result.assistantText.startsWith(`${emittedText}\n\n`)).toBe(true);
+		expect(result.correctionDelta).toContain('Done: 2 of 6 moves.');
+		expect(result.correctionDelta).toContain('Not yet moved: Task C, Task D, Task E, Task F.');
+		expect(result.assistantText).toBe(`${emittedText}${result.correctionDelta}`);
+		// The disclosure line is honest prose; the guard must not paper over it.
+		expect(result.finalizationGuard).toBeNull();
+	});
+
+	it('leaves a fully fulfilled contract answer untouched', () => {
+		const targets = SIX_TASK_IDS.slice(0, 2);
+		const result = enforceAgenticChatTerminalTextIntegrityV1({
+			assistantText: 'Moved both tasks into Backlog.',
+			finishedReason: 'stop',
+			contextType: 'project',
+			toolExecutions: [
+				declaredMoveContract(targets),
+				taskListing(targets),
+				movedTask(targets[0]!, 'Task A'),
+				movedTask(targets[1]!, 'Task B')
+			]
+		});
+
+		expect(result).toMatchObject({
+			assistantText: 'Moved both tasks into Backlog.',
+			finishedReason: 'stop',
+			correctionDelta: null,
+			finalizationGuard: null
+		});
+	});
+
+	it('does not duplicate a partial disclosure the model already wrote', () => {
+		const emittedText =
+			'Moved Draft outline and Interview notes into Backlog. The other 4 tasks are not yet moved.';
+		const result = enforceAgenticChatTerminalTextIntegrityV1({
+			assistantText: emittedText,
+			finishedReason: 'stop',
+			contextType: 'project',
+			toolExecutions: [
+				declaredMoveContract(SIX_TASK_IDS),
+				taskListing(SIX_TASK_IDS),
+				movedTask(SIX_TASK_IDS[0]!, 'Draft outline'),
+				movedTask(SIX_TASK_IDS[1]!, 'Interview notes')
+			]
+		});
+
+		expect(result).toMatchObject({
+			assistantText: emittedText,
+			finishedReason: 'mutation_unfulfilled',
+			correctionDelta: null
+		});
+	});
 });
+
+const SIX_TASK_IDS = [
+	'aa000000-0000-4000-8000-000000000001',
+	'aa000000-0000-4000-8000-000000000002',
+	'aa000000-0000-4000-8000-000000000003',
+	'aa000000-0000-4000-8000-000000000004',
+	'aa000000-0000-4000-8000-000000000005',
+	'aa000000-0000-4000-8000-000000000006'
+];
+const TASK_TITLES = ['Task A', 'Task B', 'Task C', 'Task D', 'Task E', 'Task F'];
+
+function declaredMoveContract(targetIds: string[]): FastToolExecution {
+	return toolExecution(
+		'declare_turn_contract',
+		true,
+		{ status: 'declared' },
+		{
+			outcomes: [
+				{
+					action: 'move',
+					entity_kind: 'task',
+					target_ids: targetIds,
+					minimum_successful_effects: targetIds.length
+				}
+			]
+		}
+	);
+}
+
+function taskListing(targetIds: string[]): FastToolExecution {
+	return toolExecution('search_project', true, {
+		results: targetIds.map((id, index) => ({
+			id,
+			type: 'task',
+			title: TASK_TITLES[index],
+			state_key: 'todo'
+		}))
+	});
+}
+
+function movedTask(taskId: string, title: string): FastToolExecution {
+	return toolExecution(
+		'move_onto_task',
+		true,
+		{ status: 'moved', task: { id: taskId, title } },
+		{ task_id: taskId, destination_project_id: 'bb000000-0000-4000-8000-000000000001' }
+	);
+}
 
 function toolExecution(
 	name: string,

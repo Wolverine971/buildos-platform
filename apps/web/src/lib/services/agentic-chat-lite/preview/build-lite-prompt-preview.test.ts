@@ -99,13 +99,15 @@ describe('buildLitePromptPreview', () => {
 		});
 
 		expect(preview.prompt_variant).toBe('lite_seed_v1');
+		// 2026-09-02 (turn-executor audit Finding 9): the prose tool list is gone;
+		// the tools array is the source of truth, so no tool_surface_dynamic
+		// section renders when discovery tools are mounted.
 		expect(preview.lite.sections.map((section) => section.id)).toEqual([
 			'identity_mission',
 			'capabilities_skills_tools',
 			'operating_strategy',
 			'final_response_contract',
 			'safety_data_rules',
-			'tool_surface_dynamic',
 			'focus_purpose',
 			'location_loaded_context',
 			'timeline_recent_activity',

@@ -7,6 +7,7 @@ import {
 	senseDomains,
 	type DomainSensingResult
 } from './domain-sensing';
+import { resolveSkillGatePreload } from './skill-gate-preload';
 
 function buildSkillGateFixture(): DomainSensingResult {
 	return {
@@ -21,6 +22,7 @@ function buildSkillGateFixture(): DomainSensingResult {
 				coverage_status: 'strong',
 				parent_ids: [],
 				aliases_hit: ['hooks'],
+				discriminative_hits: 2,
 				skill_ids: ['content_strategy_beyond_blogging', 'algorithm_aware_publishing'],
 				outcome_card_ids: ['short_form_video_asset_improvement'],
 				recommended_skill_stack_ids: [],
@@ -457,5 +459,104 @@ describe('skill-load gate', () => {
 		});
 		expect(result?.active_domains.map((domain) => domain.id)).toContain('product_and_design');
 		expect(getSkillGateCandidateSkillIds(result)).not.toContain('project_audit');
+	});
+});
+
+// 2026-09-02 turn executor audit, Finding 4 / lane D P1-1: the scorer awarded
+// +50 per common word leaking from skill ids and summaries ("first", "list",
+// "find", "email", "book"), so direct-tool reads and status questions preloaded
+// craft playbooks. Prose tokens are now +10, the gate needs an alias or two
+// discriminative tokens, and a read verb on an entity noun (or a status-recall
+// question) with no craft verb closes the gate outright.
+describe('skill-load gate misfire regressions (F7)', () => {
+	const ungatedCases: Array<{ label: string; message: string }> = [
+		{
+			label: 'the 08-27 Gmail read battery message',
+			message:
+				'Use Gmail read tools. First list my connected accounts, then search each readable account for the unique marker CUTOVER_NO_MATCH_8f3a1c and tell me what you find.'
+		},
+		{
+			label: 'an email search',
+			message: 'search my email for the invoice from Stripe'
+		},
+		{
+			label: 'a status recall question about a book project',
+			message:
+				'Okay, I forget: where are we at with this book? Do we have a theme or a synopsis'
+		},
+		{
+			label: 'a document read',
+			message: 'show me the docs in this project and open the onboarding one'
+		},
+		{
+			label: 'a task listing',
+			message: 'what tasks are due this week?'
+		}
+	];
+
+	for (const { label, message } of ungatedCases) {
+		it(`does not gate ${label}`, () => {
+			const result = senseDomains({ currentUserMessage: message });
+			expect(result?.skill_load_required ?? false).toBe(false);
+			// The gate is what the preload keys off; candidates may still exist
+			// as advisory routing metadata for the web lane.
+			expect(resolveSkillGatePreload(result, { allowFollowupSkillLoad: false })).toBeNull();
+		});
+	}
+
+	it('records the guard when it closed a gate the lexical scorer had opened', () => {
+		const result = senseDomains({
+			currentUserMessage:
+				'Okay, I forget: where are we at with this book? Do we have a theme or a synopsis'
+		});
+		// "book" is a writing alias, so the scorer keeps the domain and would
+		// have gated; the status-recall guard is what closes it.
+		expect(result?.active_domains[0]?.id).toBe('writing');
+		expect(result?.skill_load_required).toBe(false);
+		expect(result?.gate_suppressed_by).toBe('direct_read_guard');
+		expect(result?.next_step).not.toContain('Skill-load gate is ACTIVE');
+	});
+
+	const gatedCases: Array<{ label: string; message: string; expectedSkill: string }> = [
+		{
+			label: 'a cold email draft',
+			message: 'draft a cold email to the head of growth',
+			expectedSkill: 'cold_email_engagement_first_outreach'
+		},
+		{
+			label: 'a marketing plan',
+			message: 'help me plan the marketing for our product launch',
+			expectedSkill: 'content_strategy_beyond_blogging'
+		},
+		{
+			label: 'a book idea (alias route, single discriminative token)',
+			message: 'We need to figure out the idea of the book I want to write.',
+			expectedSkill: 'nonfiction_writing_from_lived_conviction'
+		}
+	];
+
+	for (const { label, message, expectedSkill } of gatedCases) {
+		it(`still gates ${label}`, () => {
+			const result = senseDomains({ currentUserMessage: message });
+			expect(result?.skill_load_required).toBe(true);
+			expect(result?.gate_suppressed_by).toBeUndefined();
+			const surfacedSkillIds = [
+				...(result?.recommended_skill_ids ?? []),
+				...(result?.active_domains.flatMap((domain) => domain.skill_ids) ?? [])
+			];
+			expect(surfacedSkillIds).toContain(expectedSkill);
+		});
+	}
+
+	it('exposes discriminative hits and keeps prose hits from opening the gate', () => {
+		const result = senseDomains({
+			// "email" is one discriminative token for cold_email; the rest is prose.
+			currentUserMessage: 'forward the email thread to the team'
+		});
+		for (const domain of result?.active_domains ?? []) {
+			expect(domain.discriminative_hits).toBeLessThan(2);
+			expect(domain.aliases_hit).toEqual([]);
+		}
+		expect(result?.skill_load_required ?? false).toBe(false);
 	});
 });

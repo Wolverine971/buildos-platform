@@ -155,7 +155,7 @@ describe('Agentic Chat read-tool execution ledger', () => {
 		const { adapter, rpc } = adapterFor(receipt());
 
 		await expect(
-			adapter.persistFailure({ ...validationFailureInput, failureKind: 'supervisor_block' })
+			adapter.persistFailure({ ...validationFailureInput, failureKind: 'dependency_failed' })
 		).resolves.toBeUndefined();
 		expect(rpc).toHaveBeenCalledWith(
 			'persist_agentic_chat_tool_validation_failure',

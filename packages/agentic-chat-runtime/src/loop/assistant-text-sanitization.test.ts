@@ -293,6 +293,61 @@ describe('sanitizeAssistantFinalText', () => {
 		expect(cleaned).not.toContain('Prompt for next action');
 	});
 
+	// Turn-executor audit 2026-09-02 (Finding 3 / F-A1): the four broad
+	// patterns ("word (", "query:", sentences starting No/From/Since/Better/
+	// Yes) deleted 38 of DJ's last 76 replies in part. These are the measured
+	// sentences; every one must survive untouched.
+	describe('ordinary status prose survives', () => {
+		const ORDINARY = [
+			'Your project Launch Alpha (active) has 3 open tasks. The next step is shipping the beta build.',
+			'No tasks are overdue right now. Two tasks are due this week.',
+			'Since the beta ships May 1, the onboarding flow is the priority.',
+			'From what I can see, the invite email draft is still open.',
+			'That Theo Von task (due Aug 16) is already **16 days overdue**.',
+			"## Where we're at (Day ~1 of 100)"
+		];
+
+		it.each(ORDINARY)('keeps %j', (text) => {
+			expect(sanitizeAssistantFinalText(text)).toBe(text);
+		});
+
+		it('keeps parentheticals, "query:", "path:", and Better/Yes openers', () => {
+			for (const text of [
+				'Here is the status. Ten design partners (the beta cohort) are onboarded.',
+				'The query: pricing tier for the beta cohort is still an open question.',
+				'Path: docs/marketing/launch.md holds the announcement draft.',
+				'Better to ship the narrow beta first, then widen.',
+				'Yes. The invite email is drafted and waiting on review.',
+				'No overdue milestones. The next milestone (Beta ships) is due May 1.',
+				'To be safe, I left the completed task untouched.'
+			]) {
+				expect(sanitizeAssistantFinalText(text)).toBe(text);
+			}
+		});
+
+		it('needs two distinct weak markers before stripping a sentence', () => {
+			// One weak marker (leading bracket, braces, "call a tool") is ordinary.
+			expect(sanitizeAssistantFinalText('[Launch plan](doc-1) is ready for review.')).toBe(
+				'[Launch plan](doc-1) is ready for review.'
+			);
+			expect(
+				sanitizeAssistantFinalText('Use {project} as the placeholder in the template.')
+			).toBe('Use {project} as the placeholder in the template.');
+			expect(
+				sanitizeAssistantFinalText("I'll call a tool to check the calendar first.")
+			).toBe("I'll call a tool to check the calendar first.");
+			// Two weak markers in one sentence (JSON-ish braces + colon, plus a
+			// quoted tool-argument key) is a schema echo and goes.
+			const leaked = [
+				'{"op": "onto.task.update", "input": {}}',
+				'Updated it. The task is now in progress.'
+			].join('\n');
+			expect(sanitizeAssistantFinalText(leaked)).toBe(
+				'Updated it.\n\nThe task is now in progress.'
+			);
+		});
+	});
+
 	it('strips the April 20 Grok task-write scratchpad and splits no-space final text', () => {
 		const raw = [
 			'All state_key: todo, type_key: task.execute.',

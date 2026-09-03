@@ -27,6 +27,7 @@ import type {
 	LightRecentActivity,
 	LightTask,
 	ProjectContextData,
+	ProjectTaskRollup,
 	LinkedEdge
 } from './context-models';
 import { buildDocStructureSummary, collectDocStructureIds } from './context-models';
@@ -53,6 +54,9 @@ const GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS = 21;
 const GLOBAL_CONTEXT_GOAL_LIMIT = 2;
 const GLOBAL_CONTEXT_MILESTONE_LIMIT = 2;
 const GLOBAL_CONTEXT_PLAN_LIMIT = 2;
+// Row cap for the per-project task rollup query (one query for all bundled
+// projects). Above this the counts are reported as a floor.
+const GLOBAL_TASK_ROLLUP_ROW_LIMIT = 1500;
 const FASTCHAT_CONTEXT_RPC = 'load_fastchat_context';
 const FASTCHAT_EVENT_WINDOW_PAST_DAYS = 7;
 const FASTCHAT_EVENT_WINDOW_FUTURE_DAYS = 14;
@@ -1454,6 +1458,7 @@ function mapRecentActivity(params: {
 function buildGlobalContextMeta(params: {
 	source: 'rpc' | 'fallback';
 	projectCount: number;
+	activeProjectCount: number;
 	projectsReturned: number;
 }): NonNullable<GlobalContextData['context_meta']> {
 	return {
@@ -1461,6 +1466,7 @@ function buildGlobalContextMeta(params: {
 		source: params.source,
 		cache_age_seconds: 0,
 		project_count: params.projectCount,
+		active_project_count: params.activeProjectCount,
 		projects_returned: params.projectsReturned,
 		project_limit: GLOBAL_CONTEXT_PROJECT_LIMIT,
 		includes_doc_structure: false,
@@ -1997,6 +2003,104 @@ function buildProjectIntelligenceSnapshot(params: {
 	};
 }
 
+/**
+ * Mirrors `filterReadableProjectSummaries` in the runtime access port: the
+ * overview tools count only non-paused projects, and the prompt labels both
+ * numbers so "44 accessible" and "33 in the overview" stop contradicting.
+ */
+function countNonPausedProjects(projects: Array<{ state_key: string | null }>): number {
+	return projects.filter((project) => project.state_key !== 'paused').length;
+}
+
+type TaskRollupRow = Pick<TaskRow, 'project_id' | 'state_key' | 'due_at' | 'completed_at'>;
+
+function emptyTaskRollup(truncated: boolean): ProjectTaskRollup {
+	return { total: 0, open: 0, overdue: 0, in_progress: 0, blocked: 0, done: 0, truncated };
+}
+
+function buildTaskRollups(params: {
+	rows: TaskRollupRow[];
+	projectIds: string[];
+	nowMs: number;
+	truncated: boolean;
+}): Record<string, ProjectTaskRollup> {
+	const rollups: Record<string, ProjectTaskRollup> = {};
+	for (const projectId of params.projectIds) {
+		rollups[projectId] = emptyTaskRollup(params.truncated);
+	}
+	for (const row of params.rows) {
+		const rollup = rollups[row.project_id];
+		if (!rollup) continue;
+		rollup.total += 1;
+		const state = normalizeStateKey(row.state_key);
+		if (row.completed_at || isCompletedByState(state)) {
+			rollup.done += 1;
+			continue;
+		}
+		rollup.open += 1;
+		if (state === 'in_progress') rollup.in_progress += 1;
+		if (state === 'blocked') rollup.blocked += 1;
+		const dueMs = parseTimestamp(row.due_at);
+		if (dueMs !== null && dueMs < params.nowMs) rollup.overdue += 1;
+	}
+	return rollups;
+}
+
+/**
+ * One query for the task counts of every bundled project (turn-executor audit
+ * 2026-09-02, Finding 13 / F-02). The global RPC and its fallback load goals,
+ * milestones, plans, and activity per project but no tasks, so a status
+ * question used to cost a get_workspace_overview round. Errors degrade to "no
+ * rollup" rather than failing the context load.
+ */
+async function loadGlobalTaskRollups(
+	supabase: SupabaseClient<Database>,
+	projectIds: string[],
+	onError?: LoadContextParams['onError']
+): Promise<Record<string, ProjectTaskRollup> | null> {
+	if (projectIds.length === 0) return {};
+	const { data, error } = await supabase
+		.from('onto_tasks')
+		.select('project_id, state_key, due_at, completed_at')
+		.in('project_id', projectIds)
+		.is('deleted_at', null)
+		.is('archived_at', null)
+		.order('updated_at', { ascending: false })
+		.limit(GLOBAL_TASK_ROLLUP_ROW_LIMIT);
+	if (error) {
+		logger.warn('Failed to load global task rollups', { error });
+		reportContextLoadError(onError, 'query.global.task_rollups', error, {
+			projectCount: projectIds.length
+		});
+		return null;
+	}
+	const rows = (data ?? []) as TaskRollupRow[];
+	return buildTaskRollups({
+		rows,
+		projectIds,
+		nowMs: Date.now(),
+		truncated: rows.length >= GLOBAL_TASK_ROLLUP_ROW_LIMIT
+	});
+}
+
+async function attachGlobalTaskRollups(
+	supabase: SupabaseClient<Database>,
+	data: GlobalContextData,
+	onError?: LoadContextParams['onError']
+): Promise<GlobalContextData> {
+	const projectIds = data.projects.map((bundle) => bundle.project.id);
+	if (projectIds.length === 0) return data;
+	const rollups = await loadGlobalTaskRollups(supabase, projectIds, onError);
+	if (!rollups) return data;
+	return {
+		...data,
+		projects: data.projects.map((bundle) => ({
+			...bundle,
+			task_rollup: rollups[bundle.project.id] ?? null
+		}))
+	};
+}
+
 function buildGlobalProjectBundles(params: {
 	projects: LightProject[];
 	recentActivityByProject: Record<string, LightRecentActivity[]>;
@@ -2067,6 +2171,7 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 			context_meta: buildGlobalContextMeta({
 				source: 'rpc',
 				projectCount: 0,
+				activeProjectCount: 0,
 				projectsReturned: 0
 			})
 		};
@@ -2146,6 +2251,7 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 		context_meta: buildGlobalContextMeta({
 			source: 'rpc',
 			projectCount: allProjects.length,
+			activeProjectCount: countNonPausedProjects(allProjects),
 			projectsReturned: lightProjects.length
 		})
 	};
@@ -2376,6 +2482,7 @@ async function loadGlobalContextData(
 			context_meta: buildGlobalContextMeta({
 				source: 'fallback',
 				projectCount: 0,
+				activeProjectCount: 0,
 				projectsReturned: 0
 			})
 		};
@@ -2443,6 +2550,7 @@ async function loadGlobalContextData(
 			context_meta: buildGlobalContextMeta({
 				source: 'fallback',
 				projectCount: allProjects.length,
+				activeProjectCount: countNonPausedProjects(allProjects),
 				projectsReturned: 0
 			})
 		};
@@ -2613,6 +2721,7 @@ async function loadGlobalContextData(
 		context_meta: buildGlobalContextMeta({
 			source: 'fallback',
 			projectCount: allProjects.length,
+			activeProjectCount: countNonPausedProjects(allProjects),
 			projectsReturned: lightProjects.length
 		})
 	};
@@ -3257,7 +3366,11 @@ async function loadFastChatPromptContextBody(
 		if (rpcPayload) {
 			if (rpcContextType === 'global') {
 				if (normalizeProjectIntelligenceFromPayload(rpcPayload.project_intelligence)) {
-					const data = buildGlobalContextFromRpc(rpcPayload);
+					const data = await attachGlobalTaskRollups(
+						supabase,
+						buildGlobalContextFromRpc(rpcPayload),
+						params.onError
+					);
 					return { ...baseContext, contextLoadSource: 'rpc', data };
 				}
 				reportContextLoadError(
@@ -3327,7 +3440,11 @@ async function loadFastChatPromptContextBody(
 	}
 
 	if (contextType === 'global') {
-		const data = await loadGlobalContextData(supabase, userId, params.onError);
+		const data = await attachGlobalTaskRollups(
+			supabase,
+			await loadGlobalContextData(supabase, userId, params.onError),
+			params.onError
+		);
 		return { ...baseContext, contextLoadSource: fallbackContextLoadSource, data };
 	}
 

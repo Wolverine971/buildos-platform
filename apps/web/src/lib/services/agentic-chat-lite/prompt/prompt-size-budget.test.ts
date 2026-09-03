@@ -206,17 +206,35 @@ describe('total assembled prompt size budget', () => {
 		// This spends static tool-schema tokens to avoid a separate intent-model
 		// round; production workers still intersect the artifact with their
 		// reviewed deployed capabilities. The new cap preserves ~10% headroom.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(20_000);
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(41_300);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(10_320);
+		//
+		// Ratcheted down 2026-09-02 (turn-executor audit, Decision 2 / Finding 9):
+		// change_chat_context retired from every surface (-1,177 chars on the
+		// project surface) and four read descriptions stopped naming unmounted
+		// tools. Measured canonical payload 36,715 chars (~9,179 tokens); caps at
+		// measured + 5%. The system-prompt cap is unchanged (measured 16,764).
+		//
+		// Ratcheted down again 2026-09-02 (turn-executor audit Findings 9, 10,
+		// 13, 16 — prompt lane): the prose tool list, the runtime-capability
+		// identifier line, the three-bullet receipt contract, the "before you
+		// finish write it somewhere" bullet, the dump-metadata note, and the
+		// members/linked-document index refs are gone; global bundles and the
+		// daily brief now render (that growth lands on global/brief turns, not
+		// this project canonical). Measured canonical system prompt 14,222 chars
+		// (was 16,764) and payload 34,147 chars (~8,537 tokens); caps at
+		// measured + ~10% for the system prompt and + 5% for the payload.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(15_700);
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(35_900);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(8_970);
 		// Per-turn multiplier guard: ratchet this down when WP-3 removes the two
 		// read-only disposition/reviewer passes instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(30_960);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(26_910);
 		// 2026-08-28: 15,000 → 15,900. explore_project (semantic discovery,
 		// tasker/71) now mounts on the project surfaces; its ~300-token schema is
 		// multiplied by the per-turn pass count (measured 15,804). Deliberate spend
 		// per the ratified discovery UX; the definition is already trimmed.
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(15_900);
+		// 2026-09-02: 15,900 → 15,700 (measured 14,922 after change_chat_context
+		// left the project surface).
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(15_700);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		expect(largestToolSchemaTokens).toBeLessThanOrEqual(1_600);

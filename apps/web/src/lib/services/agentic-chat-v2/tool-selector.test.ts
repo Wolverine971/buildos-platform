@@ -295,7 +295,11 @@ describe('selectFastChatTools', () => {
 		expect(names).not.toContain('skill_reference_load');
 		expect(names).not.toContain('tool_search');
 		expect(names).not.toContain('tool_schema');
-		expect(names).toContain('change_chat_context');
+		// Retired 2026-09-02 (turn-executor audit Decision 2).
+		expect(names).not.toContain('change_chat_context');
+		// Global turns read documents in place instead of zooming into a project.
+		expect(names).toContain('get_document_outline');
+		expect(names).toContain('read_document_section');
 		expect(names).toContain('get_workspace_overview');
 		expect(names).toContain('get_project_overview');
 		expect(names).toContain('search_all_projects');
@@ -591,7 +595,7 @@ describe('selectFastChatTools', () => {
 		const names = tools.map((tool) => tool.function?.name).filter(Boolean);
 
 		expect(names).toContain('get_project_overview');
-		expect(names).toContain('change_chat_context');
+		expect(names).not.toContain('change_chat_context');
 		expect(names).toContain('get_onto_project_details');
 		expect(names).toContain('search_project');
 		expect(names).toContain('list_onto_tasks');

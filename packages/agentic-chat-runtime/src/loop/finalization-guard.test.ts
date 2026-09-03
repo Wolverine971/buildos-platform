@@ -1,7 +1,7 @@
-// packages/agentic-chat-runtime/src/supervisor/finalization-guard.test.ts
+// packages/agentic-chat-runtime/src/loop/finalization-guard.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
-import { provideAgenticChatLoopToolCatalog } from '../loop/tool-catalog';
+import { provideAgenticChatLoopToolCatalog } from './tool-catalog';
 import { applyFinalizationGuard } from './finalization-guard';
 
 const TEST_TOOL_CATALOG = {
@@ -455,6 +455,99 @@ describe('applyFinalizationGuard', () => {
 		});
 		expect(guard.text).toContain('completed 1 requested change');
 		expect(guard.text).toContain('remaining request stays pending');
+	});
+
+	it('marks a turn mutation_unfulfilled without rewriting prose that already discloses the remainder', () => {
+		const call = toolCall('update_onto_task', { task_id: 'task_1', state_key: 'done' });
+		const text =
+			'Marked Task A done. Done: 1 of 3 completions. Not yet completed: Task B, Task C.';
+		const guard = applyFinalizationGuard({
+			finalAssistantText: text,
+			assistantText: text,
+			mutationRequested: true,
+			unfulfilledOutcomes: [
+				{
+					action: 'complete',
+					entityKind: 'task',
+					declaredTargetCount: 3,
+					completedTargetCount: 1,
+					requiredEffects: 3,
+					missingTargets: [
+						{ id: 'task_2', title: 'Task B' },
+						{ id: 'task_3', title: 'Task C' }
+					]
+				}
+			],
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true) }]
+		});
+
+		expect(guard).toEqual({ text, applied: false, finishedReason: 'mutation_unfulfilled' });
+	});
+
+	it('names the unfinished targets when synthesizing after a partial write set', () => {
+		const call = toolCall('update_onto_task', { task_id: 'task_1', state_key: 'done' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			mutationRequested: true,
+			unfulfilledOutcomes: [
+				{
+					action: 'complete',
+					entityKind: 'task',
+					declaredTargetCount: 3,
+					completedTargetCount: 1,
+					requiredEffects: 3,
+					missingTargets: [
+						{ id: 'task_2', title: 'Task B' },
+						{ id: 'task_3', title: null }
+					]
+				}
+			],
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true) }]
+		});
+
+		expect(guard).toMatchObject({
+			applied: true,
+			reason: 'incomplete_mutation_after_reads',
+			finishedReason: 'mutation_unfulfilled'
+		});
+		expect(guard.text).toContain('completed 1 requested change');
+		expect(guard.text).toContain(
+			'Done: 1 of 3 completions. Not yet completed: Task B, task_3.'
+		);
+		expect(guard.text).toContain('remaining request stays pending');
+	});
+
+	it('keeps replacing an overclaim that hides the unfinished remainder', () => {
+		const call = toolCall('update_onto_task', { task_id: 'task_1', state_key: 'done' });
+		const text = 'I have marked all three tasks done.';
+		const guard = applyFinalizationGuard({
+			finalAssistantText: text,
+			assistantText: text,
+			mutationRequested: true,
+			unfulfilledOutcomes: [
+				{
+					action: 'complete',
+					entityKind: 'task',
+					declaredTargetCount: 3,
+					completedTargetCount: 1,
+					requiredEffects: 3,
+					missingTargets: [
+						{ id: 'task_2', title: 'Task B' },
+						{ id: 'task_3', title: 'Task C' }
+					]
+				}
+			],
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true) }]
+		});
+
+		expect(guard).toMatchObject({
+			applied: true,
+			reason: 'incomplete_mutation_after_reads',
+			finishedReason: 'mutation_unfulfilled'
+		});
+		expect(guard.text).not.toContain('all three');
+		expect(guard.text).toContain('Not yet completed: Task B, Task C.');
 	});
 
 	it('replaces a read-only lead-in after successful reads with evidence', () => {

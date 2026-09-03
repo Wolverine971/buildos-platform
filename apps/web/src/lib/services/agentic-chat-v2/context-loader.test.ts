@@ -130,7 +130,21 @@ function createProjectRpcSupabaseMock(
 	return { rpc, from } as any;
 }
 
-function createGlobalRpcSupabaseMock(payload: Record<string, unknown>) {
+function createTaskRollupQuery(result: QueryResult) {
+	// select(...).in(...).is(...).is(...).order(...).limit(...)
+	const limit = vi.fn().mockResolvedValue(result);
+	const order = vi.fn().mockReturnValue({ limit });
+	const isArchived = vi.fn().mockReturnValue({ order });
+	const is = vi.fn().mockReturnValue({ is: isArchived });
+	const inFn = vi.fn().mockReturnValue({ is });
+	const select = vi.fn().mockReturnValue({ in: inFn });
+	return { select };
+}
+
+function createGlobalRpcSupabaseMock(
+	payload: Record<string, unknown>,
+	options: { taskRollupRows?: QueryResult } = {}
+) {
 	const rpc = vi.fn().mockImplementation((fn: string) => {
 		if (fn === 'load_fastchat_context') {
 			return Promise.resolve({ data: payload, error: null });
@@ -140,6 +154,11 @@ function createGlobalRpcSupabaseMock(payload: Record<string, unknown>) {
 	const from = vi.fn().mockImplementation((table: string) => {
 		if (table === 'users') {
 			return createUsersTimezoneQuery(usersTimezoneRow(MOCK_USER_TIMEZONE));
+		}
+		// The per-project task rollup is the one context-table read the RPC
+		// path makes (turn-executor audit 2026-09-02, Finding 13 / F-02).
+		if (table === 'onto_tasks') {
+			return createTaskRollupQuery(options.taskRollupRows ?? { data: [], error: null });
 		}
 		throw new Error('Unexpected fallback query path for global RPC mock');
 	});
@@ -226,7 +245,9 @@ function createGlobalFallbackSupabaseMock(config: {
 			const limit = vi.fn().mockResolvedValue(config.tasks ?? { data: [], error: null });
 			const order = vi.fn().mockReturnValue({ limit });
 			const or = vi.fn().mockReturnValue({ order });
-			const isArchived = vi.fn().mockReturnValue({ or });
+			// `.or(...)` is the dated-signal query; the task rollup (2026-09-02)
+			// goes straight from the second `.is()` to `.order()`.
+			const isArchived = vi.fn().mockReturnValue({ or, order });
 			const is = vi.fn().mockReturnValue({ is: isArchived });
 			const inFn = vi.fn().mockReturnValue({ is });
 			const select = vi.fn().mockReturnValue({ in: inFn });
@@ -576,91 +597,136 @@ describe('loadFastChatPromptContext daily_brief', () => {
 
 describe('loadFastChatPromptContext global', () => {
 	it('uses the migrated global RPC payload when project intelligence is present', async () => {
-		const supabase = createGlobalRpcSupabaseMock({
-			projects: [
-				{
-					id: 'proj-1',
-					name: 'Project One',
-					state_key: 'active',
-					description: 'Shared project',
-					start_at: null,
-					end_at: null,
-					next_step_short: 'Ship it',
-					updated_at: '2026-02-15T20:00:00.000Z'
-				}
-			],
-			goals: [],
-			milestones: [],
-			plans: [],
-			project_logs: [],
-			project_intelligence: {
-				generated_at: '2026-02-15T20:00:00.000Z',
-				scope: 'global',
-				project_id: null,
-				project_name: null,
-				timezone: 'UTC',
-				windows: {
-					due_soon_days: 7,
-					upcoming_days: 30,
-					recent_changes_days: 7,
-					recent_changes_max_lookback_days: 21
-				},
-				counts: {
-					accessible_projects: 1,
-					projects_returned: 1,
-					overdue_total: 0,
-					due_soon_total: 1,
-					upcoming_total: 0,
-					recent_change_total: 0
-				},
-				overdue_or_due_soon: [
+		const supabase = createGlobalRpcSupabaseMock(
+			{
+				projects: [
 					{
-						kind: 'task',
-						id: 'task-1',
-						project_id: 'proj-1',
-						project_name: 'Project One',
-						title: 'Finish setup',
-						state_key: 'todo',
-						date_kind: 'due_at',
-						date: '2026-02-16T20:00:00.000Z',
-						bucket: 'due_soon',
-						days_delta: 1,
-						priority: 1,
-						updated_at: '2026-02-15T19:00:00.000Z'
-					}
-				],
-				upcoming_work: [],
-				recent_changes: [],
-				project_summaries: [
-					{
-						project_id: 'proj-1',
-						project_name: 'Project One',
+						id: 'proj-1',
+						name: 'Project One',
 						state_key: 'active',
+						description: 'Shared project',
+						start_at: null,
+						end_at: null,
 						next_step_short: 'Ship it',
-						updated_at: '2026-02-15T20:00:00.000Z',
-						counts: {
-							overdue: 0,
-							due_soon: 1,
-							upcoming: 0,
-							recent_changes: 0
-						}
+						updated_at: '2026-02-15T20:00:00.000Z'
 					}
 				],
-				limits: {
-					overdue_or_due_soon: 16,
-					upcoming_work: 16,
-					recent_changes: 16,
-					project_summaries: 8
-				},
-				maybe_more: {
-					overdue_or_due_soon: false,
-					upcoming_work: false,
-					recent_changes: false,
-					project_summaries: false
-				},
-				source: 'load_fastchat_context'
+				goals: [],
+				milestones: [],
+				plans: [],
+				project_logs: [],
+				project_intelligence: {
+					generated_at: '2026-02-15T20:00:00.000Z',
+					scope: 'global',
+					project_id: null,
+					project_name: null,
+					timezone: 'UTC',
+					windows: {
+						due_soon_days: 7,
+						upcoming_days: 30,
+						recent_changes_days: 7,
+						recent_changes_max_lookback_days: 21
+					},
+					counts: {
+						accessible_projects: 1,
+						projects_returned: 1,
+						overdue_total: 0,
+						due_soon_total: 1,
+						upcoming_total: 0,
+						recent_change_total: 0
+					},
+					overdue_or_due_soon: [
+						{
+							kind: 'task',
+							id: 'task-1',
+							project_id: 'proj-1',
+							project_name: 'Project One',
+							title: 'Finish setup',
+							state_key: 'todo',
+							date_kind: 'due_at',
+							date: '2026-02-16T20:00:00.000Z',
+							bucket: 'due_soon',
+							days_delta: 1,
+							priority: 1,
+							updated_at: '2026-02-15T19:00:00.000Z'
+						}
+					],
+					upcoming_work: [],
+					recent_changes: [],
+					project_summaries: [
+						{
+							project_id: 'proj-1',
+							project_name: 'Project One',
+							state_key: 'active',
+							next_step_short: 'Ship it',
+							updated_at: '2026-02-15T20:00:00.000Z',
+							counts: {
+								overdue: 0,
+								due_soon: 1,
+								upcoming: 0,
+								recent_changes: 0
+							}
+						}
+					],
+					limits: {
+						overdue_or_due_soon: 16,
+						upcoming_work: 16,
+						recent_changes: 16,
+						project_summaries: 8
+					},
+					maybe_more: {
+						overdue_or_due_soon: false,
+						upcoming_work: false,
+						recent_changes: false,
+						project_summaries: false
+					},
+					source: 'load_fastchat_context'
+				}
+			},
+			{
+				taskRollupRows: {
+					data: [
+						{
+							project_id: 'proj-1',
+							state_key: 'todo',
+							due_at: '2000-01-01T00:00:00.000Z',
+							completed_at: null
+						},
+						{
+							project_id: 'proj-1',
+							state_key: 'in_progress',
+							due_at: null,
+							completed_at: null
+						},
+						{
+							project_id: 'proj-1',
+							state_key: 'blocked',
+							due_at: null,
+							completed_at: null
+						},
+						{
+							project_id: 'proj-1',
+							state_key: 'done',
+							due_at: null,
+							completed_at: '2026-02-01T00:00:00.000Z'
+						},
+						{
+							project_id: 'proj-1',
+							state_key: 'todo',
+							due_at: null,
+							completed_at: '2026-02-01T00:00:00.000Z'
+						},
+						{
+							project_id: 'proj-other',
+							state_key: 'todo',
+							due_at: null,
+							completed_at: null
+						}
+					],
+					error: null
+				}
 			}
-		});
+		);
 
 		const context = await loadFastChatPromptContext({
 			supabase,
@@ -670,9 +736,21 @@ describe('loadFastChatPromptContext global', () => {
 
 		const data = context.data as Record<string, any>;
 		expect(data.context_meta.source).toBe('rpc');
+		expect(data.context_meta.active_project_count).toBe(1);
 		expect(
 			data.projects.map((bundle: { project: { id: string } }) => bundle.project.id)
 		).toEqual(['proj-1']);
+		// One TypeScript query rolls tasks up per bundled project: completed_at
+		// or a terminal state counts as done; overdue is open + past due.
+		expect(data.projects[0].task_rollup).toEqual({
+			total: 5,
+			open: 3,
+			overdue: 1,
+			in_progress: 1,
+			blocked: 1,
+			done: 2,
+			truncated: false
+		});
 		expect(data.project_intelligence).toMatchObject({
 			scope: 'global',
 			source: 'load_fastchat_context',
@@ -682,9 +760,12 @@ describe('loadFastChatPromptContext global', () => {
 			}
 		});
 		expect(supabase.rpc).toHaveBeenCalledTimes(1);
-		// The RPC path still loads no context tables; the only table read is
-		// the users.timezone lookup that runs alongside every context load.
-		expect(supabase.from.mock.calls.map(([table]: [string]) => table)).toEqual(['users']);
+		// The RPC path reads two tables: users.timezone (alongside every context
+		// load) and the one onto_tasks rollup query for the bundled projects.
+		expect(supabase.from.mock.calls.map(([table]: [string]) => table)).toEqual([
+			'users',
+			'onto_tasks'
+		]);
 		expect(context.timezone).toBe(MOCK_USER_TIMEZONE);
 	});
 

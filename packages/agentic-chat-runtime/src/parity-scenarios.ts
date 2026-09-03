@@ -115,7 +115,11 @@ function mutationEffectDivergencePrefixes(golden: AgenticChatParityRunV1): reado
 	return [
 		`/events/${resultIndex}/payload/result/effect_id`,
 		`/events/${resultIndex}/payload/result/replayed`,
-		'/toolExecutions/0/effect_id'
+		'/toolExecutions/0/effect_id',
+		// Ratified 2026-09-02 (turn-executor audit, Finding 15 follow-up): the
+		// worker persists the measured adapter wall time on mutation receipts;
+		// the legacy golden pinned null because the web path never measured it.
+		'/toolExecutions/0/execution_time_ms'
 	];
 }
 

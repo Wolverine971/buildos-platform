@@ -105,6 +105,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
+		descriptionOverride:
+			'Update one existing document by its exact document_id from a read or the focused context: title, type, state, description, or content (replace or append). Direct call is fine when the target id is the focused entity, was given by the user, or is the only document a read returned this turn; otherwise declare_turn_contract first.',
 		requiredNames: ['document_id'],
 		reviewedArgumentNames: [
 			'document_id',
@@ -150,7 +152,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Attach an existing document to a task workspace using exact task and document UUIDs from reads. This worker tool does not create a new document.',
+			'Attach an existing document to a task workspace using exact task and document UUIDs from reads. This worker tool does not create a new document. Direct call is fine when the target id is the focused entity, was given by the user, or is the only task and document a read returned this turn; otherwise declare_turn_contract first.',
 		requiredNames: ['task_id', 'document_id'],
 		reviewedArgumentNames: ['task_id', 'document_id', 'role']
 	},
@@ -161,7 +163,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Create one relationship between two existing non-project ontology entities using exact UUIDs from reads. Project endpoints are not available in the worker. Relationship aliases are normalized to their canonical direction.',
+			'Create one relationship between two existing non-project ontology entities using exact UUIDs from reads. Project endpoints are not available in the worker. Relationship aliases are normalized to their canonical direction. Direct call is fine when the target id is the focused entity, was given by the user, or is the only entity of each kind a read returned this turn; otherwise declare_turn_contract first.',
 		requiredNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel'],
 		reviewedArgumentNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel', 'props'],
 		propertyOverrides: {
@@ -222,6 +224,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
+		descriptionOverride:
+			'Update one existing task by its exact task_id from a read or the focused context: title, description, state, priority, schedule (due_at for a push or reschedule; start_at only for an explicit start), goal, milestone, or assignees. Direct call is fine when the target id is the focused entity, was given by the user, or is the only task a read returned this turn; otherwise declare_turn_contract first.',
 		requiredNames: ['task_id'],
 		reviewedArgumentNames: [
 			'task_id',
@@ -271,7 +275,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Send one explicit notification-only tag to active members of the focused project. Use exact user UUIDs returned by project-member reads and always pass mode "ping". This worker tool never edits entity content and does not resolve @handles.',
+			'Send one explicit notification-only tag to active members of the focused project. Use exact user UUIDs returned by project-member reads and always pass mode "ping". This worker tool never edits entity content and does not resolve @handles. Direct call is fine when the target id is the focused entity, was given by the user, or is the only entity a read returned this turn; otherwise declare_turn_contract first.',
 		requiredNames: ['project_id', 'entity_type', 'entity_id', 'mode', 'mentioned_user_ids'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -337,6 +341,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
+		descriptionOverride:
+			'Update one existing goal by its exact goal_id from a read: name, description, state, priority, target date, or measurement criteria. Direct call is fine when the target id is the focused entity, was given by the user, or is the only goal a read returned this turn; otherwise declare_turn_contract first.',
 		requiredNames: ['goal_id'],
 		reviewedArgumentNames: [
 			'goal_id',
@@ -375,6 +381,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
+		descriptionOverride:
+			'Update one existing plan by its exact plan_id from a read: name, description, plan body, state, or dates. Direct call is fine when the target id is the focused entity, was given by the user, or is the only plan a read returned this turn; otherwise declare_turn_contract first.',
 		requiredNames: ['plan_id'],
 		reviewedArgumentNames: [
 			'plan_id',
@@ -412,6 +420,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
+		descriptionOverride:
+			'Update one existing milestone by its exact milestone_id from a read: title, due date, state, or description. Direct call is fine when the target id is the focused entity, was given by the user, or is the only milestone a read returned this turn; otherwise declare_turn_contract first.',
 		requiredNames: ['milestone_id'],
 		reviewedArgumentNames: [
 			'milestone_id',
@@ -446,6 +456,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		downstreamIdempotencySupported: false,
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
+		descriptionOverride:
+			'Update one existing risk by its exact risk_id from a read: title, impact, probability, state, description, mitigation, or owner. Direct call is fine when the target id is the focused entity, was given by the user, or is the only risk a read returned this turn; otherwise declare_turn_contract first.',
 		requiredNames: ['risk_id'],
 		reviewedArgumentNames: [
 			'risk_id',

@@ -5,7 +5,23 @@ import {
 	renderDomainSensingPromptContent,
 	senseDomains
 } from './domain-sensing';
-import { resolveSkillGatePreload, resolveSkillPreloadById } from './skill-gate-preload';
+import {
+	resolveOperationalSkillPreload,
+	resolveSkillGatePreload,
+	resolveSkillPreloadById,
+	WORKER_PRELOAD_MAX_CHARS
+} from './skill-gate-preload';
+import { estimateTokensFromText } from '$lib/services/agentic-chat-v2/context-usage';
+import { listAllSkills } from '../skills/registry';
+
+const PROJECT_WRITE_DOCUMENT_TOOLS = [
+	'create_onto_task',
+	'update_onto_task',
+	'create_onto_document',
+	'update_onto_document',
+	'get_document_tree',
+	'move_document_in_tree'
+];
 
 function senseColdEmailTurn() {
 	return senseDomains({
@@ -45,6 +61,61 @@ describe('resolveSkillGatePreload', () => {
 		expect(preload?.promptContent).not.toContain('skill_load');
 		expect(preload?.promptContent).not.toContain('Linked child skills');
 		expect(preload?.promptContent).not.toContain('Need more depth?');
+		expect(preload!.promptContent.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
+	});
+
+	// Lane-aware rendering (lane D P1-3 / P2-1): the worker has no reload path,
+	// so its block carries the first worked example, says reference modules and
+	// child skills are unavailable, and is capped by characters for every skill.
+	it('keeps every worker block under the character cap and engages the cap at least once', () => {
+		const rendered = listAllSkills().map((skill) => ({
+			id: skill.id,
+			content:
+				resolveSkillPreloadById(skill.id, { allowFollowupSkillLoad: false })
+					?.promptContent ?? ''
+		}));
+		for (const { id, content } of rendered) {
+			expect(content.length, id).toBeGreaterThan(0);
+			expect(content.length, id).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
+			expect(content, id).not.toContain('skill_load');
+		}
+		const truncated = rendered.filter(({ content }) =>
+			content.endsWith('[Playbook truncated for prompt budget.]')
+		);
+		expect(truncated.length).toBeGreaterThan(0);
+		for (const { content } of truncated) {
+			// Cut on a line boundary, never mid-line.
+			expect(content).toMatch(/\n\[Playbook truncated for prompt budget\.\]$/);
+		}
+	});
+
+	it('adds the first worked example and the unavailable-references note on the worker lane', () => {
+		const preload = resolveSkillPreloadById('task_management', {
+			allowFollowupSkillLoad: false
+		});
+		expect(preload?.promptContent).toContain('Worked example:');
+		expect(preload?.promptContent).toContain('Track a real follow-up the user must do later');
+		expect(preload?.promptContent).toContain('not loadable on this surface');
+		expect(preload?.promptContent).not.toContain('Linked child skills');
+		expect(preload?.promptContent).not.toContain('skill_load');
+	});
+
+	it('inlines the Judgment block only for an explicit recommended_load_format: full', () => {
+		const fiction = resolveSkillPreloadById('fiction_story_craft', {
+			allowFollowupSkillLoad: false
+		});
+		expect(fiction?.promptContent).toContain('Judgment:');
+		expect(fiction?.promptContent).toContain('Canon ledger');
+		expect(fiction!.promptContent.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
+		// preserve_markdown alone derives `full`; it must not earn the block.
+		const tasks = resolveSkillPreloadById('task_management', {
+			allowFollowupSkillLoad: false
+		});
+		expect(tasks?.promptContent).not.toContain('Judgment:');
+		// Web lane keeps the short block untouched.
+		const webFiction = resolveSkillPreloadById('fiction_story_craft');
+		expect(webFiction?.promptContent).not.toContain('Judgment:');
+		expect(webFiction?.promptContent).not.toContain('Worked example:');
 	});
 
 	it('returns null when sensing did not require a skill load', () => {
@@ -125,7 +196,92 @@ describe('resolveSkillPreloadById', () => {
 	});
 });
 
+// 2026-09-02 turn executor audit, Finding 4 / Decision 4: the operational
+// skills live in no domain, so the worker reaches them through a
+// deterministic intent map keyed off the mounted tools.
+describe('resolveOperationalSkillPreload', () => {
+	it('preloads task_management for a task write on a project write surface', () => {
+		const preload = resolveOperationalSkillPreload({
+			message: 'mark the intro call done',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+
+		expect(preload).not.toBeNull();
+		expect(preload?.skillId).toBe('task_management');
+		expect(preload?.source).toBe('operational_intent');
+		expect(preload?.promptContent).toContain('Preloaded skill: task_management');
+		expect(preload?.promptContent).toContain('update_onto_task');
+		expect(preload?.promptContent).toContain('Worked example:');
+		expect(preload?.promptContent).not.toContain('skill_load');
+		expect(preload?.promptContent).not.toContain('update_strategy');
+		expect(preload?.promptContent).toContain('full replacement');
+		expect(preload!.promptContent.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
+		expect(estimateTokensFromText(preload!.promptContent)).toBeLessThanOrEqual(1_500);
+		// Reported in the audit remediation receipt.
+		process.stdout.write(
+			`[preload-size] task_management worker block: ${preload!.promptContent.length} chars, ~${estimateTokensFromText(preload!.promptContent)} tokens\n`
+		);
+	});
+
+	it('preloads document_workspace for organize intent', () => {
+		const preload = resolveOperationalSkillPreload({
+			message: "This project's documents are a mess, please organize them",
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+		expect(preload?.skillId).toBe('document_workspace');
+		expect(preload?.promptContent).toContain('move_document_in_tree');
+	});
+
+	it('names the craft candidate as an alternate when both fire', () => {
+		const preload = resolveOperationalSkillPreload({
+			message: 'add a task to draft the cold email sequence for the newsletter creators',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
+			craftAlternateSkillIds: ['cold_email_engagement_first_outreach']
+		});
+		expect(preload?.skillId).toBe('task_management');
+		expect(preload?.promptContent).toContain(
+			'Alternate skill candidates if this one does not fit: cold_email_engagement_first_outreach.'
+		);
+	});
+
+	it('stays null for reads, read-only surfaces, and already-loaded skills', () => {
+		expect(
+			resolveOperationalSkillPreload({
+				message: 'what tasks are due this week?',
+				toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+			})
+		).toBeNull();
+		expect(
+			resolveOperationalSkillPreload({
+				message: 'mark the intro call done',
+				toolNames: ['get_workspace_overview']
+			})
+		).toBeNull();
+		expect(
+			resolveOperationalSkillPreload({
+				message: 'mark the intro call done',
+				toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
+				alreadyLoadedSkillIds: ['TASK_MANAGEMENT']
+			})
+		).toBeNull();
+	});
+});
+
 describe('renderDomainSensingPromptContent with a preload', () => {
+	it('labels an operational preload by its source', () => {
+		const preload = resolveOperationalSkillPreload({
+			message: 'mark the intro call done',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+		const content = renderDomainSensingPromptContent(null, {
+			preloadedSkillPromptContent: preload!.promptContent,
+			preloadSource: preload!.source
+		});
+		expect(content).toContain('Source: operational_intent.');
+		expect(content).toContain('Skill-load gate: SATISFIED BY PRELOAD.');
+		expect(content).toContain('Preloaded skill: task_management');
+	});
+
 	it('renders a persisted-affinity preload even when lexical sensing found no domain', () => {
 		const preload = resolveSkillPreloadById('fiction_story_craft');
 		expect(preload).not.toBeNull();

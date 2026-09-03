@@ -7,6 +7,7 @@ import type { ToolValidationIssue } from './tool-validation';
 import { parseRequiredParameterFailure } from './tool-failure';
 import {
 	getGatewayExecOp,
+	isControlToolName,
 	isDiscoveryToolName,
 	isLikelyReadToolName,
 	isLikelyWriteToolName,
@@ -94,6 +95,15 @@ export function buildRoundToolPattern(toolCalls: ChatToolCall[]): RoundToolPatte
 	for (const toolCall of toolCalls) {
 		const toolName = toolCall.function?.name?.trim();
 		if (!toolName) continue;
+
+		// Harness controls (contract declarations, reviewer decisions,
+		// clarification requests) are registered as reads on the worker so they
+		// cross the durable tool-result fence, but they gather no evidence. A
+		// round made only of them is a control round: neither read-only nor a
+		// write, so it never advances the read-loop escalation ladder.
+		if (isControlToolName(toolName)) {
+			continue;
+		}
 
 		const operationName = resolveToolOperationName(toolName);
 

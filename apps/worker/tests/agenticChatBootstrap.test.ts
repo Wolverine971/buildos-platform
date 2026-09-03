@@ -6,7 +6,10 @@ import {
 	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1
 } from '../src/workers/agentic-chat/mutationToolCatalog';
+import { GPT_56_LUNA_MODEL, JSON_PROFILE_MODELS } from '@buildos/smart-llm';
 import {
+	AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER,
+	AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS,
 	buildAgenticChatSemanticReviewerRoutes,
 	createAgenticChatBootstrap,
 	summarizeAgenticChatMutationCapabilitiesV1,
@@ -129,6 +132,57 @@ describe('Agentic Chat operational bootstrap', () => {
 		});
 		expect(routes[0]?.model).not.toBe('deepseek/deepseek-v4-flash');
 		expect(routes[0]?.apiKey).toBe('provider-secret');
+	});
+
+	it('routes the reviewer to OpenAI before Azure instead of the acting provider order', () => {
+		const routes = buildAgenticChatSemanticReviewerRoutes([
+			{
+				id: 'openrouter',
+				kind: 'openrouter',
+				baseUrl: 'https://openrouter.ai/api/v1',
+				apiKey: 'provider-secret',
+				model: 'deepseek/deepseek-v4-flash',
+				fallbackModels: ['z-ai/glm-5.1'],
+				providerRouting: {
+					allow_fallbacks: true,
+					order: ['deepinfra', 'deepseek', 'alibaba', 'cloudflare'],
+					ignore: ['digitalocean']
+				}
+			}
+		]);
+
+		expect(routes[0]?.providerRouting).toEqual({
+			allow_fallbacks: true,
+			order: ['openai', 'azure'],
+			ignore: ['digitalocean']
+		});
+		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER).toEqual(['openai', 'azure']);
+		expect(routes[0]?.providerRouting?.order).not.toContain('deepinfra');
+		expect(routes[0]?.fallbackModels).not.toContain('deepseek/deepseek-v4-flash');
+		expect(routes[0]?.fallbackModels).not.toContain('z-ai/glm-5.1');
+	});
+
+	it('gives the reviewer client a shorter request timeout than the acting client', () => {
+		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS).toBe(45_000);
+		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS).toBeLessThan(90_000);
+	});
+
+	it('fails at startup instead of reviewing with an acting model', () => {
+		expect(() =>
+			buildAgenticChatSemanticReviewerRoutes([
+				{
+					id: 'openrouter',
+					kind: 'openrouter',
+					baseUrl: 'https://openrouter.ai/api/v1',
+					apiKey: 'provider-secret',
+					model: GPT_56_LUNA_MODEL,
+					fallbackModels: [
+						...JSON_PROFILE_MODELS.powerful,
+						...JSON_PROFILE_MODELS.maximum
+					]
+				}
+			])
+		).toThrow('semantic reviewer cannot be the acting model');
 	});
 
 	it('fails before construction when the dedicated service is not configured', () => {

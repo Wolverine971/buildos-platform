@@ -122,7 +122,6 @@ export const TOOL_CATEGORIES = {
 			'get_user_profile_overview',
 			'get_workspace_overview',
 			'get_project_overview',
-			'change_chat_context',
 			'search_user_contacts',
 			'upsert_user_contact',
 			'list_user_contact_candidates',

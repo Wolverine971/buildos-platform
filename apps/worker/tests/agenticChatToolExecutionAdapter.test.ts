@@ -153,7 +153,6 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		const composedNames = [
 			...AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,
 			...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
-			'change_chat_context',
 			...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1
 		];
 		expect([...AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1].sort()).toEqual(
@@ -162,7 +161,14 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		expect(new Set(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).size).toBe(
 			AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.length
 		);
-		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).toContain('change_chat_context');
+		// Global document reads (Decision 2, 2026-09-02) execute on the worker in
+		// any context: the shared implementations take a document_id and never
+		// consult the session context, so no project scope guard applies.
+		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).toContain('get_document_outline');
+		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).toContain('read_document_section');
+		// Retired with the same decision; the worker never executed a real shift.
+		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).not.toContain('change_chat_context');
+		expect(isAgenticChatProductionReadToolNameV1('change_chat_context')).toBe(false);
 		// Deliberately absent from the shared allowlist.
 		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).not.toContain(
 			'get_user_profile_overview'
@@ -173,20 +179,12 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		expect(isAgenticChatProductionReadToolNameV1('update_onto_project')).toBe(false);
 	});
 
-	it('executes a context shift and materializes the new surface on the following turn', async () => {
+	it('rejects the retired context-shift tool as not allowlisted', async () => {
 		const adapter = adapterWith(fakeSharedClient(), accessStub());
 
 		await expect(
 			adapter.execute(requestFor('change_chat_context', { target: 'global' }))
-		).resolves.toMatchObject({
-			result: {
-				type: 'context_change',
-				changed: true,
-				target: 'global',
-				materialized_tools: [],
-				context_shift: { new_context: 'global', entity_id: null }
-			}
-		});
+		).rejects.toMatchObject({ code: 'read_tool_not_allowlisted' });
 	});
 
 	it('executes worker-native web search and visit through the bounded research port', async () => {

@@ -91,7 +91,8 @@ export function completeTurnContractReviewDecision(
 			(!approval && !readOnly && !clarification && !revision) ||
 			(revision && !input.allowRevision) ||
 			(revision && !correctedContract) ||
-			(approval && call.arguments.contract_sha256 !== input.contractReviewSha256) ||
+			(approval &&
+				!approvalShaMatches(call.arguments.contract_sha256, input.contractReviewSha256)) ||
 			validationIssues.length > 0
 		) {
 			fallbackReason = 'Independent semantic review returned an invalid or unbound decision.';
@@ -212,7 +213,7 @@ export function completeMutationBatchReviewDecision(
 		if (
 			(!approval && !clarification && !revision) ||
 			(revision && !input.allowRevision) ||
-			(approval && call.arguments.batch_sha256 !== input.batchSha256) ||
+			(approval && !approvalShaMatches(call.arguments.batch_sha256, input.batchSha256)) ||
 			validateCompletedProviderCalls(calls, input.reviewRequest).length > 0
 		) {
 			fallbackReason = 'Independent mutation review returned an invalid or unbound decision.';
@@ -222,6 +223,16 @@ export function completeMutationBatchReviewDecision(
 		calls = [buildReviewFallbackClarification(input.actingRequest, fallbackReason)];
 	}
 	return withDecisionAuthor(calls, 'mutation_batch_reviewer');
+}
+
+/**
+ * The approval tool schemas are static (no per-review `const`), so this is
+ * the only binding between an approval and the exact proposal the reviewer
+ * was shown. A missing, non-string, or different SHA fails closed to the
+ * clarification fallback.
+ */
+export function approvalShaMatches(value: unknown, expected: string): boolean {
+	return typeof value === 'string' && expected.length > 0 && value === expected;
 }
 
 function completeSingleReviewDecision(

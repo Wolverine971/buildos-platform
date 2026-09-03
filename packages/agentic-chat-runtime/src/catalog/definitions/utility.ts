@@ -116,40 +116,6 @@ export const UTILITY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
 		function: {
-			name: 'change_chat_context',
-			description:
-				'Change durable chat focus early in the turn when the user switches to one identifiable project or back to workspace/all projects. Also zoom in from global when one project is clearly the primary subject, or switch between projects when focus is moving. Do not use for ambiguous names, brief mentions, or one-off comparisons. Pass project_id when known, otherwise project_query; ambiguous matches return candidates without changing context.',
-			parameters: {
-				type: 'object',
-				properties: {
-					target: {
-						type: 'string',
-						enum: ['global', 'project'],
-						description:
-							'Target context. Use global for workspace/all-projects zoom-out. Use project for durable focus on one project.'
-					},
-					project_id: {
-						type: 'string',
-						description: 'Exact project UUID when zooming into a known project.'
-					},
-					project_query: {
-						type: 'string',
-						description:
-							'Project name or phrase to resolve when zooming into a project and project_id is unknown.'
-					},
-					reason: {
-						type: 'string',
-						description:
-							'Brief user-visible reason for the context change, grounded in the latest request.'
-					}
-				},
-				required: ['target']
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
 			name: 'search_user_contacts',
 			description: `Search the current user's contact memory by name, relationship, and method metadata.
 Contact method values are redacted by default. Set include_sensitive_values=true only when the user explicitly asks for exact phone/email details and confirm with user_confirmed_sensitive=true.`,

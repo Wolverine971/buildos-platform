@@ -262,6 +262,7 @@ function formatPromptCostBreakdown(cost: PromptCostBreakdown): string[] {
 		'operating_strategy',
 		'safety_data_rules',
 		'focus_purpose',
+		'daily_brief',
 		'location_loaded_context',
 		'timeline_recent_activity',
 		'context_inventory_retrieval',

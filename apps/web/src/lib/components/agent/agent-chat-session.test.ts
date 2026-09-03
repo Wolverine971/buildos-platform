@@ -696,28 +696,60 @@ describe('agent-chat-session helpers', () => {
 		});
 	});
 
-	it('probeActiveTurnRun reports the running turn from the lightweight probe endpoint', async () => {
-		const fetchMock = vi.fn().mockResolvedValue({
-			ok: true,
-			json: async () => ({
-				success: true,
-				data: {
-					turnRuns: [
-						{ id: 'run-2', status: 'running' },
-						{ id: 'run-1', status: 'completed' }
-					]
-				}
+	it.each(['queued', 'running'])(
+		'probeActiveTurnRun reports a %s worker turn',
+		async (status) => {
+			const fetchMock = vi.fn().mockResolvedValue({
+				ok: true,
+				json: async () => ({
+					success: true,
+					data: {
+						turns: [{ handle: { turnRunId: 'run-2', sessionId: 'session-9' }, status }]
+					}
+				})
+			});
+			vi.stubGlobal('fetch', fetchMock);
+
+			const result = await probeActiveTurnRun('session-9');
+
+			expect(fetchMock).toHaveBeenCalledWith(
+				'/api/agent/v2/turns?session_id=session-9',
+				expect.anything()
+			);
+			expect(result).toEqual({ hasActiveTurnRun: true, activeTurnRunId: 'run-2' });
+		}
+	);
+
+	it('probeActiveTurnRun reports completion only for a valid empty worker list', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: async () => ({ success: true, data: { turns: [] } })
 			})
-		});
-		vi.stubGlobal('fetch', fetchMock);
-
-		const result = await probeActiveTurnRun('session-9');
-
-		expect(fetchMock).toHaveBeenCalledWith(
-			'/api/chat/sessions/session-9?probe=active-turn',
-			expect.anything()
 		);
-		expect(result).toEqual({ hasActiveTurnRun: true, activeTurnRunId: 'run-2' });
+		expect(await probeActiveTurnRun('session-9')).toEqual({
+			hasActiveTurnRun: false,
+			activeTurnRunId: null
+		});
+	});
+
+	it.each([
+		{ success: true, data: {} },
+		{
+			success: true,
+			data: {
+				turns: [
+					{
+						status: 'running',
+						handle: { turnRunId: 'run-2', sessionId: 'other-session' }
+					}
+				]
+			}
+		}
+	])('probeActiveTurnRun keeps polling on malformed or mismatched receipts', async (payload) => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => payload }));
+		expect(await probeActiveTurnRun('session-9')).toBeNull();
 	});
 
 	it('probeActiveTurnRun returns null on failure so callers keep polling', async () => {

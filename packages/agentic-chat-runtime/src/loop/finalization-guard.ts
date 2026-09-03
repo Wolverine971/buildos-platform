@@ -1,13 +1,18 @@
-// packages/agentic-chat-runtime/src/supervisor/finalization-guard.ts
-import type { FastToolExecution } from '../loop/shared';
-import { sanitizeAssistantFinalText } from '../loop/assistant-text-sanitization';
+// packages/agentic-chat-runtime/src/loop/finalization-guard.ts
+import type { FastToolExecution } from './shared';
+import { sanitizeAssistantFinalText } from './assistant-text-sanitization';
 import {
 	classifyToolExecution,
 	didGatewayExecSucceed,
 	doesToolExecutionRequireUserAction,
 	isDuplicateWriteSkippedExecution
-} from '../loop/tool-classification';
-import { classifyReceiptGroundedAssistantDisposition } from '../loop/repair-instructions';
+} from './tool-classification';
+import {
+	classifyReceiptGroundedAssistantDisposition,
+	formatUnfulfilledMutationOutcomeDisclosure,
+	looksLikeUnfulfilledMutationDisclosure,
+	type UnfulfilledMutationOutcomeDisclosureV1
+} from './repair-instructions';
 
 export type FinalizationGuardReason =
 	| 'empty_after_tools'
@@ -39,6 +44,12 @@ type ApplyFinalizationGuardParams = {
 	// completed answer and is the root of the "did you update it?" complaint pattern.
 	mutationRequested?: boolean;
 	expectedWriteToolNames?: string[];
+	/**
+	 * Declared contract outcomes the write ledger could not prove complete. Any
+	 * entry marks the turn `mutation_unfulfilled` even when the prose is left
+	 * alone, and the incomplete notice names the unfinished targets.
+	 */
+	unfulfilledOutcomes?: UnfulfilledMutationOutcomeDisclosureV1[];
 	synthesisTransportFailure?: boolean;
 };
 
@@ -102,6 +113,7 @@ function buildGuardText(params: {
 	otherSuccesses: number;
 	otherFailures: number;
 	mutationIncomplete?: boolean;
+	unfulfilledOutcomes?: readonly UnfulfilledMutationOutcomeDisclosureV1[];
 	synthesisTransportFailure?: boolean;
 	toolExecutions?: FastToolExecution[] | null;
 }): {
@@ -117,6 +129,7 @@ function buildGuardText(params: {
 		otherSuccesses,
 		otherFailures,
 		mutationIncomplete,
+		unfulfilledOutcomes,
 		synthesisTransportFailure
 	} = params;
 
@@ -126,8 +139,14 @@ function buildGuardText(params: {
 	if (mutationIncomplete) {
 		const evidenceText = buildReadEvidenceFallbackText(params);
 		if (successfulWrites > 0) {
+			// Name the unfinished targets when the contract knows them; a bare
+			// count leaves the user guessing which items still need the change.
+			const disclosure =
+				unfulfilledOutcomes && unfulfilledOutcomes.length > 0
+					? ` ${formatUnfulfilledMutationOutcomeDisclosure(unfulfilledOutcomes)}`
+					: '';
 			return {
-				text: `I completed ${successfulWrites} requested ${plural(successfulWrites, 'change')}, but I was not able to complete every requested write before the turn ended. The remaining request stays pending.`,
+				text: `I completed ${successfulWrites} requested ${plural(successfulWrites, 'change')}, but I was not able to complete every requested write before the turn ended.${disclosure} The remaining request stays pending.`,
 				reason: 'incomplete_mutation_after_reads',
 				finishedReason: 'mutation_unfulfilled'
 			};
@@ -528,17 +547,38 @@ export function applyFinalizationGuard(
 	// A requested mutation that never ran (no write succeeded or failed) must not be
 	// papered over with a lead-in like "let me update that" — the change did not happen.
 	const expectedWriteToolNames = Array.from(new Set(params.expectedWriteToolNames ?? []));
+	const unfulfilledOutcomes = params.unfulfilledOutcomes ?? [];
+	// Declared outcomes are the reviewed authority for what this turn owed. Any
+	// outcome the ledger could not prove complete keeps the turn unfulfilled even
+	// when every expected tool name ran at least once (2 of 6 moves is 2 moves).
+	const declaredOutcomesUnfulfilled =
+		params.mutationRequested === true && unfulfilledOutcomes.length > 0;
 	const mutationIncomplete =
 		params.mutationRequested === true &&
-		(expectedWriteToolNames.length > 0
-			? expectedWriteToolNames.some((toolName) => !successfulWriteToolNames.has(toolName))
-			: successfulWrites === 0 && failedWrites === 0);
-	const shouldReplaceWriteLeadIn = successfulWrites > 0 && candidate && isLikelyLeadIn(candidate);
+		(declaredOutcomesUnfulfilled ||
+			(expectedWriteToolNames.length > 0
+				? expectedWriteToolNames.some((toolName) => !successfulWriteToolNames.has(toolName))
+				: successfulWrites === 0 && failedWrites === 0));
+	// Prose that already names the unfinished remainder is honest; replacing it
+	// with the generic incomplete notice would drop the specific list.
+	const partialDisclosurePresent =
+		declaredOutcomesUnfulfilled &&
+		successfulWrites > 0 &&
+		Boolean(candidate) &&
+		looksLikeUnfulfilledMutationDisclosure(candidate);
+	const unfulfilledFinishedReason: FinalizationGuardFinishedReason | undefined =
+		declaredOutcomesUnfulfilled ? 'mutation_unfulfilled' : undefined;
+	const shouldReplaceWriteLeadIn =
+		!partialDisclosurePresent && successfulWrites > 0 && candidate && isLikelyLeadIn(candidate);
 	const shouldReplaceReadLeadIn =
 		successfulWrites === 0 && successfulReads > 0 && candidate && isLikelyLeadIn(candidate);
 	const shouldReplaceMutationLeadIn =
-		mutationIncomplete && Boolean(candidate) && isLikelyLeadIn(candidate);
+		!partialDisclosurePresent &&
+		mutationIncomplete &&
+		Boolean(candidate) &&
+		isLikelyLeadIn(candidate);
 	const shouldReplaceMutationClaim =
+		!partialDisclosurePresent &&
 		mutationIncomplete &&
 		classifyReceiptGroundedAssistantDisposition(candidate) === 'mutation_claim';
 	const shouldReplaceLeadIn =
@@ -549,7 +589,9 @@ export function applyFinalizationGuard(
 	const shouldSynthesizeEmpty = !candidate;
 
 	if (!shouldReplaceLeadIn && !shouldSynthesizeEmpty) {
-		return { text: candidate, applied: false };
+		return unfulfilledFinishedReason
+			? { text: candidate, applied: false, finishedReason: unfulfilledFinishedReason }
+			: { text: candidate, applied: false };
 	}
 
 	const synthesized = buildGuardText({
@@ -560,6 +602,7 @@ export function applyFinalizationGuard(
 		otherSuccesses,
 		otherFailures,
 		mutationIncomplete,
+		unfulfilledOutcomes,
 		synthesisTransportFailure: params.synthesisTransportFailure,
 		toolExecutions
 	});
@@ -569,7 +612,7 @@ export function applyFinalizationGuard(
 			text: synthesized.text,
 			applied: true,
 			reason: synthesized.reason,
-			finishedReason: synthesized.finishedReason
+			finishedReason: synthesized.finishedReason ?? unfulfilledFinishedReason
 		};
 	}
 
@@ -581,6 +624,6 @@ export function applyFinalizationGuard(
 			: shouldReplaceReadLeadIn
 				? 'lead_in_after_reads'
 				: synthesized.reason,
-		finishedReason: synthesized.finishedReason
+		finishedReason: synthesized.finishedReason ?? unfulfilledFinishedReason
 	};
 }

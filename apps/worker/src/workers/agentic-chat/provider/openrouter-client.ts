@@ -31,8 +31,19 @@ import {
 	type AgenticChatExecutionObservationPortV1,
 	createStableAgenticChatExecutionObservationKeyV1
 } from '../executionObservation';
+import { isToolArgumentsTextTruncated } from './stream-tool-calls';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
+/**
+ * Every attempt keeps at least this long, and reserves this much of the turn
+ * budget for the executor to finalize after the last provider pass. Below it a
+ * request cannot realistically open a stream, so a nearly-spent budget fails
+ * fast instead of being spread across a doomed attempt.
+ */
+const MIN_ATTEMPT_TIMEOUT_MS = 5_000;
+const BUDGET_FINALIZATION_RESERVE_MS = 5_000;
+/** Bump when the reviewer prefix (system prompt or tool schemas) changes shape. */
+const REVIEWER_PROMPT_CACHE_KEY = 'agentic-chat-reviewer-v1';
 /**
  * Acting passes can spend hidden reasoning tokens before writing a tool call.
  *
@@ -139,6 +150,8 @@ type ActiveResponse = {
 	response: Response;
 	requestId: string | null;
 	signal: AbortSignal;
+	/** Timeout this attempt was given, after the turn budget was applied. */
+	timeoutMs: number;
 	cleanup(): void;
 	timedOut(): boolean;
 	timing(): ProviderAttemptTiming;
@@ -540,6 +553,67 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					? 'length'
 					: (state.finishReason ?? 'stop');
 			const attemptEndedAtMs = Date.now();
+			const usagePayload = exactUsage
+				? {
+						prompt_tokens: exactUsage.promptTokens,
+						completion_tokens: exactUsage.completionTokens,
+						total_tokens: exactUsage.totalTokens,
+						reasoning_tokens: exactUsage.reasoningTokens,
+						cached_prompt_tokens: exactUsage.cachedPromptTokens,
+						cache_write_tokens: exactUsage.cacheWriteTokens
+					}
+				: null;
+			// A streamed tool call the consumer cannot trust complete — the
+			// provider reported a finish reason other than tool calls (Alibaba
+			// returned `stop` on a 2,001-token tool-call response in the 2026-09-01
+			// window), or the arguments end mid-object — is a failed attempt of
+			// this route, not a successful pass. Name it as such in the durable
+			// receipt, release the turn's route pin so the atomic-pass retry lands
+			// on the next model/provider, and surface a retryable error rather than
+			// a `done` the consumer would have to reject permanently.
+			const toolCallTruncation = observedToolCallTruncation(state, input, finishedReason);
+			if (toolCallTruncation) {
+				await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
+					round: input.providerRound,
+					logical_provider_round: input.logicalProviderRound,
+					pass_role: passRole,
+					provider_attempt: providerAttempt,
+					attempt_kind: activeAttemptKind ?? (providerAttempt > 1 ? 'retry' : 'primary'),
+					route_id: active.route.id,
+					model_requested: active.route.model,
+					model_used: state.modelUsed ?? active.route.model,
+					provider: state.provider ?? active.route.id,
+					status: 'failure',
+					duration_ms: boundedDuration(
+						activeAttemptStartedAtMs ?? requestStartedAtMs,
+						attemptEndedAtMs
+					),
+					provider_timing: providerAttemptTimingPayload(
+						active.timing(),
+						attemptEndedAtMs
+					),
+					finish_reason: finishedReason,
+					error_class: 'provider_tool_arguments_truncated',
+					tool_call_truncation: toolCallTruncation,
+					usage: usagePayload,
+					...rejectedToolCallPayload(state, input)
+				});
+				activeAttemptEnded = true;
+				this.observeTurnRouteFailure(
+					input.turnRunId,
+					state.modelUsed ?? active.route.model,
+					state.providerSlug ?? normalizeProviderSlug(state.provider)
+				);
+				const message = `Agentic Chat provider truncated a tool call (${toolCallTruncation}, finish_reason=${finishedReason})`;
+				await account('failure', message, true);
+				yield {
+					type: 'error',
+					error: message,
+					retryable: true,
+					cause: 'tool_arguments_truncated'
+				};
+				return;
+			}
 			await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 				round: input.providerRound,
 				logical_provider_round: input.logicalProviderRound,
@@ -558,16 +632,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				provider_timing: providerAttemptTimingPayload(active.timing(), attemptEndedAtMs),
 				finish_reason: finishedReason,
 				error_class: null,
-				usage: exactUsage
-					? {
-							prompt_tokens: exactUsage.promptTokens,
-							completion_tokens: exactUsage.completionTokens,
-							total_tokens: exactUsage.totalTokens,
-							reasoning_tokens: exactUsage.reasoningTokens,
-							cached_prompt_tokens: exactUsage.cachedPromptTokens,
-							cache_write_tokens: exactUsage.cacheWriteTokens
-						}
-					: null,
+				usage: usagePayload,
 				...rejectedToolCallPayload(state, input)
 			});
 			activeAttemptEnded = true;
@@ -642,7 +707,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					: active?.timedOut() === true || isRetryableUnknownError(error);
 			const message =
 				active?.timedOut() === true
-					? `Agentic Chat provider request timed out after ${this.requestTimeoutMs}ms`
+					? `Agentic Chat provider request timed out after ${active.timeoutMs}ms`
 					: canonicalError(error);
 			await account('failure', message, retryable);
 			yield { type: 'error', error: message, retryable };
@@ -661,11 +726,28 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		}
 	}
 
+	/**
+	 * Per-attempt timeout bounded by the turn's remaining wall-clock budget.
+	 * Without this, 90s × two attempts × every acting and reviewer pass composes
+	 * past the executor's 300s wall and the turn dies at the wall after
+	 * durable writes (turn-executor audit 2026-09-02, finding 14).
+	 */
+	private attemptTimeoutMs(input: ClientInput): number {
+		const deadlineAtMs = input.budget?.deadlineAtMs;
+		if (!Number.isFinite(deadlineAtMs)) return this.requestTimeoutMs;
+		const remaining = (deadlineAtMs as number) - Date.now() - BUDGET_FINALIZATION_RESERVE_MS;
+		return Math.max(
+			MIN_ATTEMPT_TIMEOUT_MS,
+			Math.min(this.requestTimeoutMs, Math.floor(remaining))
+		);
+	}
+
 	private async openRoute(
 		route: AgenticChatOpenAiCompatibleRouteV1,
 		input: ClientInput
 	): Promise<ActiveResponse> {
-		const attempt = createAttemptSignal(input.signal, this.requestTimeoutMs);
+		const timeoutMs = this.attemptTimeoutMs(input);
+		const attempt = createAttemptSignal(input.signal, timeoutMs);
 		try {
 			const response = await this.fetchImpl(`${route.baseUrl}/chat/completions`, {
 				method: 'POST',
@@ -684,9 +766,17 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			attempt.markResponseOpened();
 			if (!response.ok) {
 				const message = await responseErrorMessage(response);
+				// A warm provider can accept an auto-tool pass but have no endpoint
+				// for a later required-tool pass. Its pin disables OpenRouter fallback,
+				// so let the existing bounded pass retry run after the catch clears it.
+				// An unpinned 404 still represents a permanent route/model failure.
+				const pinnedEndpointUnavailable =
+					response.status === 404 &&
+					route.kind === 'openrouter' &&
+					Boolean(this.getTurnRouteHealth(input.turnRunId, false)?.pin?.providerSlug);
 				throw new AgenticChatProviderNetworkError(
 					`Agentic Chat provider start failed (${response.status}): ${message}`,
-					isRetryableStatus(response.status)
+					isRetryableStatus(response.status) || pinnedEndpointUnavailable
 				);
 			}
 			if (!response.body) {
@@ -711,6 +801,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					canonicalOptionalHeader(response.headers.get('x-request-id')) ??
 					canonicalOptionalHeader(response.headers.get('x-openrouter-request-id')),
 				signal: attempt.signal,
+				timeoutMs,
 				cleanup: attempt.cleanup,
 				timedOut: attempt.timedOut,
 				timing: attempt.timing
@@ -720,7 +811,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			if (input.signal.aborted) throwAbort(input.signal);
 			if (attempt.timedOut()) {
 				throw new AgenticChatProviderNetworkError(
-					`Agentic Chat provider request timed out after ${this.requestTimeoutMs}ms`,
+					`Agentic Chat provider request timed out after ${timeoutMs}ms`,
 					true
 				);
 			}
@@ -847,6 +938,14 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			input.toolChoice !== 'none'
 				? { tools: input.tools.map(copyTool), tool_choice: input.toolChoice }
 				: { tool_choice: 'none' as const };
+		// Reviewer passes share one byte-identical prefix (system prompt + tools)
+		// across every review, so their cache key is a constant and the prefix
+		// warms across sessions. Acting passes keep the per-session key because
+		// their prefix is the session's own prompt.
+		const promptCacheKey =
+			input.passRole === 'contract_review' || input.passRole === 'mutation_review'
+				? REVIEWER_PROMPT_CACHE_KEY
+				: input.sessionId;
 		if (route.kind === 'openrouter') {
 			return buildOpenRouterChatCompletionBody({
 				model: route.model,
@@ -864,7 +963,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				stream: true,
 				stream_options: { include_usage: true },
 				session_id: input.sessionId,
-				prompt_cache_key: input.sessionId
+				prompt_cache_key: promptCacheKey
 			});
 		}
 		return {
@@ -875,7 +974,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			max_tokens: this.maxTokens,
 			stream: true,
 			stream_options: { include_usage: true },
-			prompt_cache_key: input.sessionId
+			prompt_cache_key: promptCacheKey
 		};
 	}
 
@@ -1165,6 +1264,31 @@ function isAdvertisedToolName(name: string, advertised: readonly string[]): bool
 			name.length % candidate.length === 0 &&
 			candidate.repeat(name.length / candidate.length) === name
 	);
+}
+
+/**
+ * Mirror of the consumer's `detectToolCallPassTruncation` over the shadow
+ * accumulator: streamed calls with a non-tool-call finish reason, or arguments
+ * that end mid-object. Silent when the pass was unobservable or no tool
+ * surface was offered (the consumer rejects those calls as disabled, which is
+ * permanent and must not be retried).
+ */
+function observedToolCallTruncation(
+	state: StreamState,
+	input: ClientInput,
+	finishedReason: string
+): 'finish_reason' | 'arguments' | null {
+	if (!state.toolCallsObservable || state.toolCalls.size === 0 || input.toolChoice === 'none') {
+		return null;
+	}
+	if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
+		return 'finish_reason';
+	}
+	for (const call of state.toolCalls.values()) {
+		if (call.argumentsRejected) continue;
+		if (isToolArgumentsTextTruncated(call.argumentsText)) return 'arguments';
+	}
+	return null;
 }
 
 function acceptsToolArguments(call: ObservedToolCall): boolean {

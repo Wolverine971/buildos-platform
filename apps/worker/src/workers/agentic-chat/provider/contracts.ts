@@ -54,7 +54,27 @@ export type AgenticChatTurnProviderClientEventV1 =
 			};
 	  }
 	| { type: 'tool_call'; toolCall: unknown }
-	| { type: 'error'; error: string; retryable: boolean };
+	| {
+			type: 'error';
+			error: string;
+			retryable: boolean;
+			/**
+			 * Why a retryable error was raised when the reason is not provider
+			 * pressure. A truncated tool call (arguments cut off, or a finish reason
+			 * that contradicts the streamed calls) is retried on another route but
+			 * must not degrade the turn's capacity window the way a 429 does.
+			 */
+			cause?: 'tool_arguments_truncated';
+	  };
+
+/**
+ * Remaining wall-clock budget for the whole turn, set by the executor. Each
+ * network attempt derives its own timeout from it so that one slow pass cannot
+ * consume the entire budget and leave later passes to die at the wall.
+ */
+export type AgenticChatProviderBudgetV1 = {
+	deadlineAtMs: number;
+};
 
 export type AgenticChatProviderPassRoleV1 =
 	| 'acting'
@@ -82,6 +102,8 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	logicalProviderRound: number;
 	passRole?: AgenticChatProviderPassRoleV1;
 	providerAttempt?: number;
+	/** Turn-level deadline; absent for fixtures and legacy callers. */
+	budget?: AgenticChatProviderBudgetV1;
 	signal: AbortSignal;
 };
 
@@ -179,52 +201,6 @@ export type AgenticChatProviderStepV1 =
 			arguments: JsonObject;
 			downstreamIdempotencySupported: boolean;
 	  })
-	| (AgenticChatProviderScheduledToolStepV1 & {
-			/**
-			 * A supervisor-rejected call that must cross the same ledger/publication
-			 * fence as other tool results without invoking a tool adapter.
-			 */
-			type: 'pre_execution_tool_failure';
-			callTransitionId: string;
-			resultTransitionId: string;
-			providerToolCallId: string;
-			toolName: string;
-			arguments: JsonObject;
-			failure: {
-				kind: 'supervisor_block';
-				error: string;
-				toolCategory: string | null;
-				modelPayload: JsonObject;
-			};
-	  })
-	| {
-			/** Best-effort supervisor evaluation telemetry; never a public stream event. */
-			type: 'supervisor_evaluation';
-			transitionId: string;
-			reason: string;
-			sequence: number;
-			executionGeneration: number;
-	  }
-	| {
-			/**
-			 * A deterministic supervisor clarification terminal. The executor must
-			 * durably persist this exact checkpoint before publishing the waiting
-			 * state or assistant question.
-			 */
-			type: 'supervisor_question';
-			transitionId: string;
-			sequence: number;
-			executionGeneration: number;
-			reason: string;
-			question: string;
-			checkpoint: {
-				digest: JsonObject;
-				resumeContext: JsonObject;
-				supervisorDecision: JsonObject;
-			};
-			finishedReason: 'supervisor_question';
-			usage: AgenticChatProviderUsageV1 | null;
-	  }
 	| {
 			type: 'finish';
 			finishedReason: string;
@@ -235,6 +211,11 @@ export type AgenticChatProviderInputV1 = {
 	executionInput: AgenticChatWorkerExecutionInputV1;
 	/** Current queue ownership token used only for fenced private observations. */
 	processingToken: string;
+	/**
+	 * Turn wall-clock deadline. Threaded into every acting and reviewer pass so
+	 * each network attempt's timeout is bounded by the time actually left.
+	 */
+	budget?: AgenticChatProviderBudgetV1;
 	signal: AbortSignal;
 };
 
@@ -264,20 +245,11 @@ export type AgenticChatPreparedProviderInvocationV1 = {
 	/** No network/provider work may begin until the executor calls this after its start fence. */
 	stream(): AsyncIterable<AgenticChatProviderStepV1>;
 	/**
-	 * @deprecated Single-result alias retained for the bounded legacy adapter.
-	 * The executor keeps its one-read fence byte-identical for providers that
-	 * expose only this pass; new adapters implement `continueWithToolResults`.
-	 */
-	synthesize?(
-		input: AgenticChatProviderReadSynthesisInputV1
-	): AsyncIterable<AgenticChatProviderStepV1>;
-	/**
 	 * Multi-round continuation. A provider round ends when
 	 * its iterable completes without emitting `finish`; the executor then calls
 	 * this with every successful tool result of that round — each already durable in the
 	 * tool-execution ledger and publicly committed as a `tool_result` event —
-	 * and consumes the returned round the same way. Takes precedence over the
-	 * deprecated `synthesize` alias when both are present.
+	 * and consumes the returned round the same way.
 	 */
 	continueWithToolResults?(
 		input: AgenticChatProviderToolRoundInputV1
@@ -322,7 +294,7 @@ export type AgenticChatProviderFailedToolSynthesisInputV1 = {
 	toolName: string;
 	arguments: JsonObject;
 	failure: {
-		kind: 'supervisor_block' | 'known_execution_failure' | 'dependency_failed';
+		kind: 'known_execution_failure' | 'dependency_failed';
 		error: string;
 		toolCategory: string | null;
 		modelPayload: JsonObject;
@@ -370,8 +342,12 @@ export type AgenticChatProviderExecutionDiagnosticV1 =
 	| Readonly<{
 			kind: 'rejected_tool_arguments';
 			toolName: string | null;
-			/** Which acceptance step rejected the arguments. */
-			stage: 'delta_type' | 'json_parse' | 'json_shape';
+			/**
+			 * Which acceptance step rejected the arguments. `finish_reason` means
+			 * the calls were streamed but the provider reported a finish reason
+			 * other than tool calls, so the arguments cannot be trusted complete.
+			 */
+			stage: 'delta_type' | 'json_parse' | 'json_shape' | 'finish_reason';
 			/** Assembled argument bytes at rejection. */
 			argumentBytes: number;
 			/** SHA-256 of the assembled arguments, for correlating repeats. */

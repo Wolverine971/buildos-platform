@@ -1,14 +1,15 @@
 // apps/worker/src/workers/agentic-chat/terminalTextIntegrity.ts
 import {
 	type FastToolExecution,
+	type FinalizationGuardResult,
+	type TurnContract,
+	type UnfulfilledMutationOutcomeDisclosureV1,
+	applyFinalizationGuard,
 	collectGatewayWriteIntentOps,
 	enforceMutationOutcomeIntegrity,
-	resolveTurnContractFromExecutions
+	resolveTurnContractFromExecutions,
+	resolveTurnContractOutcome
 } from '@buildos/agentic-chat-runtime/loop';
-import {
-	type FinalizationGuardResult,
-	applyFinalizationGuard
-} from '@buildos/agentic-chat-runtime/supervisor';
 
 export type AgenticChatTerminalTextIntegrityResultV1 = {
 	assistantText: string;
@@ -31,28 +32,29 @@ export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 	contextType: string;
 	toolExecutions: FastToolExecution[];
 }): AgenticChatTerminalTextIntegrityResultV1 {
-	if (input.finishedReason === 'supervisor_question') {
-		return {
-			assistantText: input.assistantText,
-			finishedReason: input.finishedReason,
-			correctionDelta: null,
-			finalizationGuard: null
-		};
-	}
-
+	const turnContract = resolveTurnContractFromExecutions(input.toolExecutions);
 	const mutationRequested =
-		resolveTurnContractFromExecutions(input.toolExecutions) !== null ||
-		collectGatewayWriteIntentOps(input.toolExecutions).length > 0;
+		turnContract !== null || collectGatewayWriteIntentOps(input.toolExecutions).length > 0;
+	// Declared outcomes the ledger cannot prove complete are computed here, before
+	// the text floors run, so partial fulfilment (2 of 6 moves) is disclosed to the
+	// user and marks the turn instead of living only in message metadata.
+	const unfulfilledOutcomes = collectUnfulfilledOutcomeDisclosures(
+		turnContract,
+		input.toolExecutions,
+		input.finishedReason
+	);
 	const integrityText = enforceMutationOutcomeIntegrity(input.assistantText, {
 		contextType: input.contextType,
 		toolExecutions: input.toolExecutions,
-		explicitMutationRequested: mutationRequested
+		explicitMutationRequested: mutationRequested,
+		unfulfilledOutcomes
 	});
 	const guard = applyFinalizationGuard({
 		finalAssistantText: integrityText,
 		assistantText: input.assistantText,
 		toolExecutions: input.toolExecutions,
-		mutationRequested
+		mutationRequested,
+		unfulfilledOutcomes
 	});
 	const guardedAssistantText = guard.applied ? guard.text : integrityText;
 	const finishedReason =
@@ -84,4 +86,77 @@ function buildCorrectionDelta(emittedText: string, finalText: string): string | 
 		return remainder.trim() ? remainder : null;
 	}
 	return `\n\n${final}`;
+}
+
+/**
+ * Pair every unfulfilled declared outcome with the ids the contract matcher
+ * could not match, named by title when any tool result in this turn carried
+ * one. Titles come only from durable tool evidence, never from prose.
+ */
+function collectUnfulfilledOutcomeDisclosures(
+	contract: TurnContract | null,
+	toolExecutions: FastToolExecution[],
+	finishedReason: string
+): UnfulfilledMutationOutcomeDisclosureV1[] {
+	if (!contract) return [];
+	const resolution = resolveTurnContractOutcome({ contract, toolExecutions, finishedReason });
+	if (resolution.fulfilled) return [];
+	const outcomesById = new Map(contract.outcomes.map((outcome) => [outcome.id, outcome]));
+	let titles: Map<string, string> | null = null;
+	const disclosures: UnfulfilledMutationOutcomeDisclosureV1[] = [];
+	for (const result of resolution.outcomes) {
+		if (result.fulfilled) continue;
+		const outcome = outcomesById.get(result.id);
+		if (!outcome) continue;
+		titles ??= collectEntityTitlesFromToolExecutions(toolExecutions);
+		disclosures.push({
+			action: outcome.action,
+			entityKind: outcome.entityKind,
+			...(outcome.description ? { description: outcome.description } : {}),
+			declaredTargetCount: outcome.targetIds.length,
+			completedTargetCount: result.matchedEffects,
+			requiredEffects: result.requiredEffects,
+			missingTargets: result.missingTargetIds.map((id) => ({
+				id,
+				title: titles?.get(id) ?? null
+			}))
+		});
+	}
+	return disclosures;
+}
+
+const MAX_TITLE_WALK_DEPTH = 6;
+const MAX_TITLE_ENTRIES = 2000;
+
+function collectEntityTitlesFromToolExecutions(
+	toolExecutions: FastToolExecution[]
+): Map<string, string> {
+	const titles = new Map<string, string>();
+	for (const execution of toolExecutions) {
+		if (execution.result.success !== true) continue;
+		collectEntityTitles(execution.result.result, titles, 0);
+		if (titles.size >= MAX_TITLE_ENTRIES) break;
+	}
+	return titles;
+}
+
+function collectEntityTitles(payload: unknown, titles: Map<string, string>, depth: number): void {
+	if (!payload || typeof payload !== 'object' || depth > MAX_TITLE_WALK_DEPTH) return;
+	if (titles.size >= MAX_TITLE_ENTRIES) return;
+	if (Array.isArray(payload)) {
+		for (const item of payload) collectEntityTitles(item, titles, depth + 1);
+		return;
+	}
+	const record = payload as Record<string, unknown>;
+	const id = typeof record.id === 'string' ? record.id.trim() : '';
+	const title =
+		typeof record.title === 'string'
+			? record.title.trim()
+			: typeof record.name === 'string'
+				? record.name.trim()
+				: '';
+	if (id && title && !titles.has(id)) titles.set(id, title);
+	for (const nested of Object.values(record)) {
+		if (nested && typeof nested === 'object') collectEntityTitles(nested, titles, depth + 1);
+	}
 }

@@ -8,17 +8,15 @@
  * - get_linked_entities: Full linked entity details
  *
  * The overview/utility read tools (get_field_info, get_workspace_overview,
- * get_project_overview, change_chat_context) live in
+ * get_project_overview) live in
  * @buildos/agentic-chat-runtime/tools (Phase 4 Slice 18 S3-T5) as free
  * functions over an injected context; this class delegates to them with its
- * RLS client + web access adapter (and the shared catalog resolver for
- * change_chat_context). get_user_profile_overview stays web-side untouched
- * (usage_scope filter decision pending), as do the contacts tools,
+ * RLS client + web access adapter. get_user_profile_overview stays web-side
+ * untouched (usage_scope filter decision pending), as do the contacts tools,
  * delegate_task, commit_change_set, and the entity relationship tools.
  */
 
 import { BaseExecutor } from './base-executor';
-import { getGatewayDirectToolNamesForContextType } from '@buildos/agentic-chat-runtime/catalog';
 import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
 import {
 	formatLinkedEntitiesFullDetail,
@@ -37,7 +35,6 @@ import { validateAgentRunMetadata } from '@buildos/shared-types';
 import { commitChangeSet } from '@buildos/shared-agent-ops';
 import type {
 	ExecutorContext,
-	ChangeChatContextArgs,
 	CommitChangeSetArgs,
 	DelegateTaskArgs,
 	GetFieldInfoArgs,
@@ -54,7 +51,6 @@ import type {
 } from './types';
 import {
 	type AgenticChatSharedReadContextV1,
-	changeChatContext as sharedChangeChatContext,
 	getEntityRelationships as sharedGetEntityRelationships,
 	getFieldInfo as sharedGetFieldInfo,
 	getProjectOverview as sharedGetProjectOverview,
@@ -400,13 +396,6 @@ export class UtilityExecutor extends BaseExecutor {
 
 	async getProjectOverview(args: GetProjectOverviewArgs = {}): Promise<Record<string, any>> {
 		return sharedGetProjectOverview(this.sharedReadContext, args);
-	}
-
-	async changeChatContext(args: ChangeChatContextArgs): Promise<Record<string, any>> {
-		return sharedChangeChatContext(this.sharedReadContext, args, {
-			resolveDirectToolNames: (contextType) =>
-				getGatewayDirectToolNamesForContextType(contextType)
-		});
 	}
 
 	// ============================================

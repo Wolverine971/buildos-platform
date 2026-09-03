@@ -307,7 +307,8 @@ function createDefaultComposition(
 		...clientOptions,
 		routes: buildAgenticChatSemanticReviewerRoutes(input.config.provider.routes),
 		temperature: 0,
-		maxTokens: AGENTIC_CHAT_SEMANTIC_REVIEWER_MAX_TOKENS
+		maxTokens: AGENTIC_CHAT_SEMANTIC_REVIEWER_MAX_TOKENS,
+		requestTimeoutMs: AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS
 	});
 	return createAgenticChatCompositionRoot({
 		client: input.client,
@@ -315,7 +316,6 @@ function createDefaultComposition(
 		semanticReviewerClient,
 		providerConfigured: true,
 		liveVisionEnabled: input.config.liveVisionEnabled,
-		supervisorEnabled: input.config.supervisorEnabled,
 		consumptionBillingEnabled: input.config.consumptionBillingEnabled,
 		mutationCapabilities: ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 		liveVisionFetchImpl: input.fetchImpl,
@@ -351,6 +351,22 @@ function createDefaultComposition(
  */
 export const AGENTIC_CHAT_SEMANTIC_REVIEWER_MAX_TOKENS = 4_000;
 
+/**
+ * A reviewer pass is one bounded tool-choice decision over a filtered
+ * evidence set, not a streamed answer; the acting client's 90s ceiling let a
+ * stalled reviewer route eat most of the turn wall before failing over
+ * (audit 2026-09-02, Finding 5: minute-long reviewer tail).
+ */
+export const AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS = 45_000;
+
+/**
+ * The reviewer prefers OpenAI's own endpoint over Azure: both serve the Luna
+ * model, but the acting route's provider order (DeepInfra/DeepSeek/...) is
+ * meaningless for it and the audited 0% prefix-cache rate came from the
+ * request bouncing between endpoints. Fallbacks stay allowed for availability.
+ */
+export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze(['openai', 'azure']);
+
 export function buildAgenticChatSemanticReviewerRoutes(
 	routes: EnabledAgenticChatConfig['provider']['routes']
 ): EnabledAgenticChatConfig['provider']['routes'] {
@@ -366,27 +382,34 @@ export function buildAgenticChatSemanticReviewerRoutes(
 		...JSON_PROFILE_MODELS.powerful,
 		...JSON_PROFILE_MODELS.maximum
 	];
-	const reviewedCandidates = [...reviewerCandidates].filter((model, index, models) => {
-		return (
-			models.indexOf(model) === index &&
-			modelSupportsCapability(model, 'tools') &&
-			!actingModels.has(model)
-		);
-	});
-	const fallbackCandidates = [...reviewerCandidates].filter(
+	const toolCapableCandidates = [...reviewerCandidates].filter(
 		(model, index, models) =>
 			models.indexOf(model) === index && modelSupportsCapability(model, 'tools')
 	);
-	const candidates = reviewedCandidates.length > 0 ? reviewedCandidates : fallbackCandidates;
+	const candidates = toolCapableCandidates.filter((model) => !actingModels.has(model));
 	const model = candidates[0];
-	if (!model) throw new Error('No reviewed tool-capable semantic reviewer model is available');
+	if (!model) {
+		// The reviewer is the only thing that caught a guessed-target write in
+		// production; a reviewer that is the acting model reviews its own work.
+		// Fail the dedicated service at startup rather than degrade silently.
+		throw new Error(
+			`Agentic Chat semantic reviewer cannot be the acting model: every reviewed tool-capable candidate (${toolCapableCandidates.join(', ') || 'none'}) is already in the acting route (${Array.from(actingModels).join(', ')}). Change AGENTIC_CHAT_OPENROUTER_MODEL or AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS so a distinct reviewer model remains.`
+		);
+	}
 	return Object.freeze(
 		routes.map((route) =>
 			Object.freeze({
 				...route,
 				id: `${route.id}_semantic_reviewer`,
 				model,
-				fallbackModels: Object.freeze(candidates.slice(1, 4))
+				fallbackModels: Object.freeze(candidates.slice(1, 4)),
+				providerRouting: Object.freeze({
+					...(route.providerRouting?.ignore
+						? { ignore: route.providerRouting.ignore }
+						: {}),
+					allow_fallbacks: true,
+					order: AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER
+				})
 			})
 		)
 	);

@@ -169,62 +169,83 @@ describe('chat-session-notification.bridge', () => {
 		expect(body.has_messages_sent).toBe(false);
 	});
 
-	it('probes an active turn to completion and flips the card to response-ready with a preview', async () => {
-		let probeCalls = 0;
-		const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
-			const url = String(input);
-			if (url.includes('probe=active-turn')) {
-				probeCalls += 1;
+	it.each(['queued', 'running'])(
+		'keeps a %s worker turn processing until the owned gateway reports completion',
+		async (status) => {
+			let probeCalls = 0;
+			const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+				const url = String(input);
+				if (url.includes('/api/agent/v2/turns?session_id=')) {
+					probeCalls += 1;
+					return Promise.resolve(
+						jsonResponse({
+							success: true,
+							data: {
+								turns:
+									probeCalls === 1
+										? [
+												{
+													handle: {
+														turnRunId: 'turn-1',
+														sessionId: 'session-4'
+													},
+													status
+												}
+											]
+										: []
+							}
+						})
+					);
+				}
 				return Promise.resolve(
 					jsonResponse({
 						success: true,
 						data: {
-							turnRuns: probeCalls === 1 ? [{ id: 'turn-1', status: 'running' }] : []
+							messages: [
+								{ role: 'user', content: 'Plan my day' },
+								{ role: 'assistant', content: 'Here is your plan for today.' }
+							]
 						}
 					})
 				);
-			}
-			return Promise.resolve(
-				jsonResponse({
-					success: true,
-					data: {
-						messages: [
-							{ role: 'user', content: 'Plan my day' },
-							{ role: 'assistant', content: 'Here is your plan for today.' }
-						]
-					}
-				})
-			);
-		});
-		vi.stubGlobal('fetch', fetchMock);
+			});
+			vi.stubGlobal('fetch', fetchMock);
 
-		parkChatSession({
-			sessionId: 'session-4',
-			title: 'Busy chat',
-			contextType: 'global',
-			hasActiveTurn: true,
-			hasSentMessage: true
-		});
+			parkChatSession({
+				sessionId: 'session-4',
+				title: 'Busy chat',
+				contextType: 'global',
+				hasActiveTurn: true,
+				hasSentMessage: true
+			});
 
-		expect(getCards()[0].status).toBe('processing');
+			expect(getCards()[0].status).toBe('processing');
 
-		// First probe (2s): still running. Second probe (3s later): finished.
-		await vi.advanceTimersByTimeAsync(2_000);
-		expect(getCards()[0].status).toBe('processing');
-		await vi.advanceTimersByTimeAsync(3_000);
+			// First probe (2s): still running. Second probe (3s later): finished.
+			await vi.advanceTimersByTimeAsync(2_000);
+			expect(getCards()[0].status).toBe('processing');
+			await vi.advanceTimersByTimeAsync(3_000);
 
-		const card = getCards()[0];
-		expect(card.status).toBe('success');
-		expect(card.data.hasActiveTurn).toBe(false);
-		expect(card.data.responsePreview).toBe('Here is your plan for today.');
-		expect(probeCalls).toBe(2);
-	});
+			const card = getCards()[0];
+			expect(card.status).toBe('success');
+			expect(card.data.hasActiveTurn).toBe(false);
+			expect(card.data.responsePreview).toBe('Here is your plan for today.');
+			expect(probeCalls).toBe(2);
+		}
+	);
 
 	it('stops probing once the card is resolved externally', async () => {
 		const fetchMock = vi.fn().mockResolvedValue(
 			jsonResponse({
 				success: true,
-				data: { turnRuns: [{ id: 'turn-1', status: 'running' }] }
+				data: {
+					turns: [
+						{
+							handle: { turnRunId: 'turn-1', sessionId: 'session-5' },
+							status: 'running'
+						}
+					]
+				}
 			})
 		);
 		vi.stubGlobal('fetch', fetchMock);
@@ -250,7 +271,14 @@ describe('chat-session-notification.bridge', () => {
 			Promise.resolve(
 				jsonResponse({
 					success: true,
-					data: { turnRuns: [{ id: 'turn-1', status: 'running' }] }
+					data: {
+						turns: [
+							{
+								handle: { turnRunId: 'turn-1', sessionId: 'session-6' },
+								status: 'running'
+							}
+						]
+					}
 				})
 			)
 		);

@@ -10,11 +10,10 @@ import {
 	buildMemoServedResult,
 	buildReadMemoKey,
 	isPureReadToolName,
-	shouldMemoizeReadResult
+	shouldMemoizeReadResult,
+	stripToolDiscoveryHintsFromPayload
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatReadToolExecutionV1 } from '../toolExecution';
-import type { AgenticChatSupervisorBlockedToolCallV1 } from '../workerSupervisorDecisions';
-import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/catalog';
 import type {
 	AgenticChatProviderMutationSynthesisInputV1,
 	AgenticChatProviderReadSynthesisInputV1,
@@ -25,29 +24,14 @@ import type { CompletedProviderToolCall } from './stream-tool-calls';
 
 export type AgenticChatFeedbackToolCall = CompletedProviderToolCall &
 	(
-		| { kind: 'read'; supervisorFailure?: AgenticChatSupervisorBlockedToolCallV1 }
+		| { kind: 'read' }
 		| {
 				kind: 'mutation';
 				logicalOperationId: string;
 				operationName: string;
 				downstreamIdempotencySupported: boolean;
-				supervisorFailure?: AgenticChatSupervisorBlockedToolCallV1;
 		  }
 	);
-
-export function validateReadFeedback(
-	call: CompletedProviderToolCall,
-	feedback: AgenticChatProviderReadSynthesisInputV1
-): void {
-	if (
-		feedback.providerToolCallId !== call.id ||
-		feedback.toolName !== call.name ||
-		canonicalizeAgenticChatJson(feedback.arguments as JsonValue) !== call.canonicalArguments
-	) {
-		throw providerError('provider_read_feedback_mismatch', 'unknown');
-	}
-	canonicalizeAgenticChatJson(feedback.execution.result as JsonValue);
-}
 
 export function validateToolFeedback(
 	call: AgenticChatFeedbackToolCall,
@@ -59,19 +43,6 @@ export function validateToolFeedback(
 		canonicalizeAgenticChatJson(feedback.arguments as JsonValue) !== call.canonicalArguments
 	) {
 		throw providerError('provider_read_feedback_mismatch', 'unknown');
-	}
-	if (call.supervisorFailure) {
-		if (
-			!isFailedToolFeedback(feedback) ||
-			feedback.failure.kind !== 'supervisor_block' ||
-			feedback.failure.error !== call.supervisorFailure.error ||
-			feedback.failure.toolCategory !== (TOOL_METADATA[call.name]?.category ?? null) ||
-			canonicalizeAgenticChatJson(feedback.failure.modelPayload as JsonValue) !==
-				canonicalizeAgenticChatJson(call.supervisorFailure.modelPayload as JsonValue)
-		) {
-			throw providerError('provider_tool_feedback_kind_mismatch', 'unknown');
-		}
-		return;
 	}
 	if (isFailedToolFeedback(feedback)) {
 		if (feedback.failure.kind === 'dependency_failed') {
@@ -140,9 +111,16 @@ function executionToChatToolResult(
 		| AgenticChatProviderReadSynthesisInputV1['execution']
 		| AgenticChatProviderMutationSynthesisInputV1['execution']
 ): ChatToolResult {
+	// The worker surface is immutable for the turn, so a result that advertises
+	// a follow-up tool (`materialized_tools`, "Use get_onto_document_details …")
+	// is always a trap: the next call is provider_tool_not_allowlisted and the
+	// turn dies (Finding 2, 2026-09-02). Strip the hints at the normalization
+	// boundary so neither the model feedback nor the memo-served replay carries
+	// them. The shared read implementations keep emitting them for the web host,
+	// which materializes on demand.
 	return {
 		tool_call_id: toolCallId,
-		result: execution.result,
+		result: stripToolDiscoveryHintsFromPayload(execution.result) as ChatToolResult['result'],
 		success: true,
 		...(execution.executionTimeMs !== null ? { duration_ms: execution.executionTimeMs } : {}),
 		...(execution.tokensConsumed !== null ? { tokens_consumed: execution.tokensConsumed } : {}),

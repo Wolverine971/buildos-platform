@@ -245,12 +245,29 @@ export type LightRecentActivity = {
 	updated_at: string;
 };
 
+/**
+ * Per-project task counts for the global preload (turn-executor audit
+ * 2026-09-02, Finding 13 / F-02). One TypeScript query over the bundled
+ * projects; the RPC is untouched.
+ */
+export type ProjectTaskRollup = {
+	total: number;
+	open: number;
+	overdue: number;
+	in_progress: number;
+	blocked: number;
+	done: number;
+	/** True when the rollup query hit its row cap, so counts are a floor. */
+	truncated: boolean;
+};
+
 export type GlobalContextProjectBundle = {
 	project: LightProject;
 	recent_activity: LightRecentActivity[];
 	goals: LightGoal[];
 	milestones: LightMilestone[];
 	plans: LightPlan[];
+	task_rollup?: ProjectTaskRollup | null;
 };
 
 export type LinkedEdge = {
@@ -269,6 +286,11 @@ export type GlobalContextData = {
 		source: 'rpc' | 'fallback';
 		cache_age_seconds?: number;
 		project_count: number;
+		/**
+		 * Accessible projects whose state is not `paused` — the same predicate
+		 * get_workspace_overview applies, so the prompt can label both numbers.
+		 */
+		active_project_count: number;
 		projects_returned: number;
 		project_limit: number | null;
 		includes_doc_structure: boolean;
