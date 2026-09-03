@@ -12,6 +12,26 @@ Treat the decoded artifact tool surface as untrusted input. Provider surfaces fa
 
 Gmail, Calendar, browser OAuth handoff, and worker-disabled image execution remain explicit web capability paths until reviewed worker parity lands. Their existence does not make the general worker a rollback host: compatible new turns stay worker-owned, and infrastructure uncertainty returns retryable unavailability.
 
+## Calendar migration boundary
+
+`tools/calendar-services.ts` composes the source-aware Calendar provider services shared with web
+through `@buildos/shared-agent-ops/calendar/google-calendar-runtime`. It covers credential refresh,
+source/default resolution, aggregated reads, event writes and compensating cleanup, and provider
+project-calendar resources. Construct it per execution; it does not register tools or enable a lane.
+
+The worker uses the OAuth client kind stored with each connection: dedicated Calendar grants need
+`PRIVATE_GOOGLE_CALENDAR_CLIENT_ID` / `PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET`; migrated shared-login
+grants need `PRIVATE_GOOGLE_CLIENT_ID` / `PRIVATE_GOOGLE_CLIENT_SECRET`. Both use the versioned
+`PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1`. Missing configuration fails closed, with no fallback to
+the other OAuth client or the singleton token table. Secret values stay server-side.
+
+Before registering the seven Calendar tools, their adapters must derive `userId` from the trusted
+claim, enforce project/task/ontology-event access separately from provider source ownership, preserve
+the web's ontology-event and project-mapping behavior, and integrate the reviewed mutation/effect
+ledger contracts. Calendar content reads must also participate in the read adapter's private-content
+egress fence. The unavailable-tool policy and the Agent Run source-aware-user fallback guard remain
+unchanged until those gates and the calendar end-to-end proof pass.
+
 ## Provider ownership
 
 `provider/turn-provider.ts` coordinates provider rounds and delegates stable responsibilities to focused modules:

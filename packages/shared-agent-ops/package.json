@@ -178,9 +178,14 @@
 			"require": "./dist/calendar/agent-run-calendar-port.js"
 		},
 		"./calendar/google-calendar-credential.service": {
-			"types": "./dist/calendar/google-calendar-credential.service.d.ts",
-			"import": "./dist/calendar/google-calendar-credential.service.mjs",
-			"require": "./dist/calendar/google-calendar-credential.service.js"
+			"types": "./dist/calendar/google-calendar-runtime.d.ts",
+			"import": "./dist/calendar/google-calendar-runtime.mjs",
+			"require": "./dist/calendar/google-calendar-runtime.js"
+		},
+		"./calendar/google-calendar-runtime": {
+			"types": "./dist/calendar/google-calendar-runtime.d.ts",
+			"import": "./dist/calendar/google-calendar-runtime.mjs",
+			"require": "./dist/calendar/google-calendar-runtime.js"
 		},
 		"./calendar/google-calendar-token-crypto": {
 			"types": "./dist/calendar/google-calendar-token-crypto.d.ts",
@@ -293,6 +298,8 @@
 		"@buildos/shared-utils": "workspace:*",
 		"@buildos/supabase-client": "workspace:*",
 		"@supabase/supabase-js": "^2.89.0",
+		"date-fns": "4.1.0",
+		"date-fns-tz": "3.2.0",
 		"google-auth-library": "^10.6.2",
 		"googleapis": "^171.4.0",
 		"js-sha256": "^1.0.0",

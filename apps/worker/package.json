@@ -51,6 +51,8 @@
 		"date-fns-tz": "^3.2.0",
 		"dotenv": "^16.3.1",
 		"express": "^4.21.2",
+		"google-auth-library": "10.6.2",
+		"googleapis": "171.4.0",
 		"kokoro-js": "^1.2.1",
 		"marked": "^16.3.0",
 		"node-cron": "^3.0.3",

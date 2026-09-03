@@ -39,7 +39,7 @@ export default defineConfig({
 		'src/ops/gateway-op-aliases.ts',
 		'src/ops/security-event-logger.ts',
 		'src/calendar/agent-run-calendar-port.ts',
-		'src/calendar/google-calendar-credential.service.ts',
+		'src/calendar/google-calendar-runtime.ts',
 		'src/calendar/google-calendar-token-crypto.ts',
 		'src/calendar/task-event-sync.ts',
 		'src/calendar/worker-task-event-mutation-port.ts',

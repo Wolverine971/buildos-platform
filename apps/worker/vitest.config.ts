@@ -11,6 +11,15 @@ export const agenticChatRuntimeSourceAliases = createAgenticChatRuntimeSourceAli
 const workspacePackageAliases = [
 	...agenticChatRuntimeSourceAliases,
 	{
+		find: /^@buildos\/shared-agent-ops\/calendar\/google-calendar-runtime$/,
+		replacement: fileURLToPath(
+			new URL(
+				'../../packages/shared-agent-ops/src/calendar/google-calendar-runtime.ts',
+				import.meta.url
+			)
+		)
+	},
+	{
 		find: /^@buildos\/shared-agent-ops$/,
 		replacement: fileURLToPath(
 			new URL('../../packages/shared-agent-ops/src/index.ts', import.meta.url)

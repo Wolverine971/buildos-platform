@@ -5,7 +5,7 @@
 **Created:** 2026-09-02
 
 **Status:** In progress — WP-0 closed with a baseline-CI exception; WP-1 seven-day window maturing;
-WP-2 phase 1 shared-credential prerequisite implemented
+WP-2 phase 1 shared provider services wired, tool admission still pending
 
 **Priority:** P1 (WP-1 gates the paid-launch proof in Tracker 78; WP-2 removes the last second
 chat harness)
@@ -206,6 +206,7 @@ turns.
 
 ### WP-2 phase 1 prerequisite receipt — 2026-09-03
 
+- Credential prerequisite committed in `194ef9ad4`.
 - DJ authorized starting the next package while the seven-day report matures. Calendar remains
   first; the phase 2 email decision has not been made.
 - The existing `AgentRunCalendarPort` only handles legacy single-account credentials. The worker
@@ -235,6 +236,45 @@ turns.
   unavailable to agentic-chat workers, and admission/routing is unchanged. Next: reuse the web's
   source-aware target/read/write/project-calendar behavior behind worker adapters, promote the
   reviewed tool contracts together, and prove a calendar turn through the harness and WP-1 report.
+
+### WP-2 phase 1 shared provider-services receipt — 2026-09-03
+
+- Continued from the credential prerequisite by moving the existing source selection, aggregated
+  read, event write, and project-calendar resource services into
+  `@buildos/shared-agent-ops/calendar/google-calendar-runtime`. Their operation method bodies are
+  unchanged; web keeps its existing import paths and OAuth defaults through thin wrappers.
+  Source registration and default-source reconciliation are shared too, not reimplemented by the
+  worker.
+- Added `tools/calendar-services.ts` in the agentic-chat worker to compose those services with
+  explicit worker environment and OAuth configuration. Both stored OAuth client kinds use their
+  own credentials and the versioned encryption key; missing configuration never substitutes the
+  singleton-token path or a different client. The factory is per execution and is not yet called
+  by production tool dispatch.
+- Kept one bundled runtime entry so shared error constructors retain identity across consumers;
+  the previous credential import path aliases the same entry. Plain Node **ESM and CJS** imports
+  both verify constructor identity, with two regression tests protecting the source/export contract.
+  Added only already-resolved, pinned Google/timezone dependencies
+  to their consuming packages; no dependency versions were upgraded.
+- **17 new worker integration tests** pass with filtering database and Google API fixtures. They
+  cover both OAuth kinds, owned/enabled sources, partial reads, cross-user denial, ambiguous
+  provider IDs, no default fallback for existing events, source-scoped tracking updates, default
+  reconciliation, failed-create compensation/orphan receipts, idempotent delete cleanup, project
+  source registration/cleanup, and missing configuration.
+- Validation: **1,673 worker tests passed / 12 opt-in tests skipped**; **231 shared-agent-ops tests
+  passed**; **40 existing web service regression tests passed**; worker/shared typechecks, shared
+  CJS/ESM/declaration build, and full web check (**0 errors, 0 warnings**). The worker suite's local
+  PostgreSQL/HTTP tests were re-run outside the sandbox after shared-memory/socket restrictions
+  blocked their first run. No production data or environment was changed.
+- Full web suite: **4,300 passed / 3 failed**. Two failures are the existing catalog size/snapshot
+  baselines recorded above; the document-tree loading timeout passed **10/10** on an isolated
+  rerun without code changes. The full web suite is not green. Web lint passes; worker lint has
+  zero errors and one pre-existing `require-await` warning in `agent-run/webResearchPort.ts`.
+  Changed-file formatting, diff whitespace checks, and documentation health checks pass.
+- **Phase 1 remains open.** The seven tool adapters still need ontology/project access checks,
+  existing web ontology/project-mapping semantics, reviewed mutation/effect-ledger contracts, and
+  the private-content read/egress fence. Only then promote their allowlists/routing together and run
+  the calendar harness proof. Calendar tools, daily-brief routing, email, and the legacy-lane
+  retirement gate are unchanged. WP-1's seven-day follow-up remains scheduled.
 
 ## WP-3 — Resumable turns
 
