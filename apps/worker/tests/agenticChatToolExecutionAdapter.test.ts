@@ -807,25 +807,6 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		expect(access.getActorId).not.toHaveBeenCalled();
 	});
 
-	it('records an independently bound mutation-batch approval without touching project data', async () => {
-		const access = accessStub();
-		const client = fakeSharedClient();
-		const batchSha256 = 'b'.repeat(64);
-		const result = await adapterWith(client, access).execute(
-			requestFor('approve_mutation_batch_review', {
-				reason: 'Every exact target and value is within the approved commission.',
-				batch_sha256: batchSha256
-			})
-		);
-
-		expect(result.result).toMatchObject({
-			status: 'mutation_batch_review_approved',
-			batch_sha256: batchSha256
-		});
-		expect(client.from).not.toHaveBeenCalled();
-		expect(access.getActorId).not.toHaveBeenCalled();
-	});
-
 	it('routes get_project_overview through the shared implementation and returns the legacy payload', async () => {
 		const access = accessStub();
 		const client = fakeSharedClient();

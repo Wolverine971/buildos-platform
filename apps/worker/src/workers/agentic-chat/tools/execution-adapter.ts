@@ -53,9 +53,23 @@ export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_r
  * "over-clarification" was born.
  */
 export const REQUEST_PROPOSAL_REVISION_TOOL_NAME = 'request_proposal_revision';
+/**
+ * The reviewer-only control vocabulary the worker recognizes.
+ * `approve_mutation_batch_review` belongs to the retired mutation-batch review
+ * lane: no request builder offers it (`review/controls.ts` builds only the
+ * contract approval and the revision), so it can never be allowlisted, and
+ * `buildReviewerMimicryRepairRequest` intercepts an acting model that imitates
+ * it before any execution path is reached. The name stays here because that
+ * repair still has to recognize it; the executor below does not, because it
+ * cannot be reached.
+ */
 const WORKER_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
+	REQUEST_PROPOSAL_REVISION_TOOL_NAME
+] as const);
+const WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
+	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 ] as const);
 export const AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1 = Object.freeze([
@@ -86,9 +100,12 @@ export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS = 60_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-type WorkerReviewControlToolNameV1 = (typeof WORKER_REVIEW_CONTROL_TOOL_NAMES_V1)[number];
+type WorkerExecutableReviewControlToolNameV1 =
+	(typeof WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1)[number];
 type WorkerReviewControlToolRunnerV1 = (args: JsonObject) => Promise<Record<string, unknown>>;
-const WORKER_REVIEW_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(WORKER_REVIEW_CONTROL_TOOL_NAMES_V1);
+const WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(
+	WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1
+);
 
 type TurnSecurityState = {
 	userId: string;
@@ -96,8 +113,12 @@ type TurnSecurityState = {
 	expiresAt: number;
 };
 
-function isWorkerReviewControlToolNameV1(value: unknown): value is WorkerReviewControlToolNameV1 {
-	return typeof value === 'string' && WORKER_REVIEW_CONTROL_TOOL_NAME_SET_V1.has(value);
+function isWorkerReviewControlToolNameV1(
+	value: unknown
+): value is WorkerExecutableReviewControlToolNameV1 {
+	return (
+		typeof value === 'string' && WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAME_SET_V1.has(value)
+	);
 }
 
 /**
@@ -105,24 +126,8 @@ function isWorkerReviewControlToolNameV1(value: unknown): value is WorkerReviewC
  * host-neutral runtime. Promote them only if a second host adopts that protocol.
  */
 const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
-	Record<WorkerReviewControlToolNameV1, WorkerReviewControlToolRunnerV1>
+	Record<WorkerExecutableReviewControlToolNameV1, WorkerReviewControlToolRunnerV1>
 > = Object.freeze({
-	[APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME]: (args) => {
-		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
-		const batchSha256 = typeof args.batch_sha256 === 'string' ? args.batch_sha256.trim() : '';
-		if (!reason || !/^[0-9a-f]{64}$/.test(batchSha256)) {
-			throw new Error(
-				'Mutation batch review approval failed: provide a reason and the exact reviewed batch SHA-256.'
-			);
-		}
-		return Promise.resolve({
-			status: 'mutation_batch_review_approved',
-			reason,
-			batch_sha256: batchSha256,
-			instruction:
-				'The independently reviewed mutation batch may proceed exactly as proposed.'
-		});
-	},
 	[APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME]: (args) => {
 		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
 		const contractSha256 =

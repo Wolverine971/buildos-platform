@@ -71,21 +71,32 @@ export function completeTurnContractReviewDecision(
 		const correctedContract = revision
 			? parseDeclaredTurnContract(normalizedCorrection.value)
 			: null;
-		let validationIssues = validateCompletedProviderCalls(calls, input.reviewRequest);
-		if (
+		// One schema validation per decision (2026-09-04, one-engine stage S9).
+		// A correction that needs canonicalizing is canonicalized FIRST, because
+		// the canonical call is the one that will be adopted and therefore the
+		// one that has to pass. Validating the raw decision and then the
+		// normalized decision spent two validator passes to answer one question.
+		const canonicalCall =
 			revision &&
 			correctedContract &&
 			(normalizedCorrection.changed ||
-				usesInternalContractFieldNames(call.arguments.corrected_contract) ||
-				validationIssues.length > 0)
-		) {
-			const normalizedCall = normalizeCorrectedContractCall(call, correctedContract);
-			const normalizedIssues = validateCompletedProviderCalls(
-				[normalizedCall],
-				input.reviewRequest
-			);
-			if (normalizedIssues.length === 0) {
-				call = normalizedCall;
+				usesInternalContractFieldNames(call.arguments.corrected_contract))
+				? normalizeCorrectedContractCall(call, correctedContract)
+				: null;
+		let validationIssues = validateCompletedProviderCalls(
+			canonicalCall ? [canonicalCall] : calls,
+			input.reviewRequest
+		);
+		if (canonicalCall && validationIssues.length === 0) {
+			call = canonicalCall;
+			calls = [call];
+		} else if (!canonicalCall && correctedContract && validationIssues.length > 0) {
+			// Bounded repair, not a re-validation: the reviewer's own JSON failed,
+			// so its canonical serialization gets one attempt before the turn falls
+			// back to asking the user.
+			const repairedCall = normalizeCorrectedContractCall(call, correctedContract);
+			if (validateCompletedProviderCalls([repairedCall], input.reviewRequest).length === 0) {
+				call = repairedCall;
 				calls = [call];
 				validationIssues = [];
 			}
@@ -105,12 +116,19 @@ export function completeTurnContractReviewDecision(
 			// owns the remaining choice regardless of whether the reviewer approved
 			// the original contract or supplied a typed correction.
 			const reviewedContract = approval ? input.contract : correctedContract;
-			const fieldErrors = reviewedContract
-				? validateContractEffectFields(
-						reviewedContract,
-						input.admittedTools ?? input.actingRequest.tools
-					)
-				: [];
+			// Only a reviewer-authored correction is a new contract. An APPROVED
+			// contract is the exact contract the acting pass already put through
+			// `validateCompletedProviderCalls` against this same admitted surface,
+			// which runs `validateContractEffectFields` on it; re-running it here
+			// validated the identical contract twice on every write turn that
+			// reached review (and a third time when a correction was re-reviewed).
+			const fieldErrors =
+				!approval && correctedContract
+					? validateContractEffectFields(
+							correctedContract,
+							input.admittedTools ?? input.actingRequest.tools
+						)
+					: [];
 			if (fieldErrors.length > 0) {
 				fallbackReason = `Independent semantic review returned an unexecutable contract. ${fieldErrors[0]}`;
 			}

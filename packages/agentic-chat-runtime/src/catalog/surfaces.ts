@@ -182,20 +182,20 @@ const GATEWAY_TOOL_DEFINITION_MAP = new Map(
 		.filter((entry): entry is [string, ChatToolDefinition] => Boolean(entry[0] && entry[1]))
 );
 
-function normalizeGatewayToolName(name: string): string {
-	if (name === 'work_capability_search') return 'outcome_card_search';
-	if (name === 'work_capability_load') return 'outcome_card_load';
-	return name;
-}
-
 function uniqueToolNames(names: string[]): string[] {
 	return Array.from(new Set(names));
 }
 
+/**
+ * The single guard on the tool name space (2026-09-04, one-engine stage S9).
+ * There is exactly one name per capability now: the `work_capability_*` aliases
+ * and the alias-folding normalizer that sat in front of every call site are
+ * gone, so a name either resolves to a definition here or it is unknown, and
+ * `materializeGatewayTools` reports it by name instead of dropping it silently.
+ */
 function resolveGatewayToolDefinition(name: string): ChatToolDefinition | undefined {
-	const normalizedName = normalizeGatewayToolName(name);
-	if (!isGatewayToolEnabled(normalizedName)) return undefined;
-	return GATEWAY_TOOL_DEFINITION_MAP.get(normalizedName) ?? extractTools([normalizedName])[0];
+	if (!isGatewayToolEnabled(name)) return undefined;
+	return GATEWAY_TOOL_DEFINITION_MAP.get(name) ?? extractTools([name])[0];
 }
 
 function isGatewayToolEnabled(_name: string): boolean {
@@ -304,10 +304,8 @@ export function extractGatewayToolMaterializations(payload: unknown): GatewayToo
 		? record.materialized_tools
 				.map((name) => (typeof name === 'string' ? name.trim() : ''))
 				.filter((name): name is string => name.length > 0)
-				.map(normalizeGatewayToolName)
 		: [];
-	const inferredEntityTools =
-		inferMaterializedToolsFromEntityResults(record).map(normalizeGatewayToolName);
+	const inferredEntityTools = inferMaterializedToolsFromEntityResults(record);
 	const materializations: GatewayToolMaterialization[] = [];
 	if (materializedTools.length > 0) {
 		const source: GatewayToolMaterializationSource =
@@ -342,7 +340,7 @@ export function extractGatewayToolMaterializations(payload: unknown): GatewayToo
 				.filter(
 					(name): name is string => typeof name === 'string' && name.trim().length > 0
 				)
-				.map((name) => normalizeGatewayToolName(name.trim()))
+				.map((name) => name.trim())
 		);
 		return toolNames.length > 0 ? [{ source: 'search', toolNames }] : [];
 	}
@@ -350,7 +348,7 @@ export function extractGatewayToolMaterializations(payload: unknown): GatewayToo
 	if (type === 'tool_schema' || type === 'op') {
 		const toolName = record.tool_name;
 		return typeof toolName === 'string' && toolName.trim().length > 0
-			? [{ source: 'schema', toolNames: [normalizeGatewayToolName(toolName.trim())] }]
+			? [{ source: 'schema', toolNames: [toolName.trim()] }]
 			: [];
 	}
 
@@ -361,14 +359,17 @@ export function materializeGatewayTools(
 	currentTools: ChatToolDefinition[],
 	toolNames: string[],
 	options: GatewayToolMaterializationOptions = {}
-): { tools: ChatToolDefinition[]; addedToolNames: string[]; blockedToolNames: string[] } {
-	const currentNames = new Set(
-		extractToolNamesFromDefinitions(currentTools).map(normalizeGatewayToolName)
-	);
+): {
+	tools: ChatToolDefinition[];
+	addedToolNames: string[];
+	blockedToolNames: string[];
+	/** Requested names that exist in no catalog. Named, not silently discarded. */
+	unknownToolNames: string[];
+} {
+	const currentNames = new Set(extractToolNamesFromDefinitions(currentTools));
 	const requestedNames = toolNames
 		.map((name) => name.trim())
 		.filter((name) => name.length > 0)
-		.map(normalizeGatewayToolName)
 		.filter(isGatewayToolEnabled)
 		.filter((name) => !currentNames.has(name))
 		.filter((name, index, names) => names.indexOf(name) === index);
@@ -378,20 +379,23 @@ export function materializeGatewayTools(
 	const blockedToolNameSet = new Set(blockedToolNames);
 	const nextNames = requestedNames.filter((name) => !blockedToolNameSet.has(name));
 	if (nextNames.length === 0) {
-		return { tools: currentTools, addedToolNames: [], blockedToolNames };
+		return { tools: currentTools, addedToolNames: [], blockedToolNames, unknownToolNames: [] };
 	}
 
 	const addedTools = nextNames
 		.map((name) => resolveGatewayToolDefinition(name))
 		.filter((tool): tool is ChatToolDefinition => Boolean(tool));
 	const addedToolNames = extractToolNamesFromDefinitions(addedTools);
+	const addedToolNameSet = new Set(addedToolNames);
+	const unknownToolNames = nextNames.filter((name) => !addedToolNameSet.has(name));
 	if (addedToolNames.length === 0) {
-		return { tools: currentTools, addedToolNames: [], blockedToolNames };
+		return { tools: currentTools, addedToolNames: [], blockedToolNames, unknownToolNames };
 	}
 
 	return {
 		tools: [...currentTools, ...addedTools],
 		addedToolNames,
-		blockedToolNames
+		blockedToolNames,
+		unknownToolNames
 	};
 }

@@ -2,7 +2,7 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "a7e5ced5febbdd22d1792d5efa21db85a20d8c5abead562c42a7ad1e3e80547f",
+  "catalogSerializedSha256": "3b4904833b9fd285c9de90949d739fb5a723a68094a4beca09382ed685dc4862",
   "contextSurfaces": [
     {
       "contextType": "global",
@@ -918,18 +918,6 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
       "serialized": "{"type":"function","function":{"name":"web_visit","description":"Fetch and summarize a specific URL.\\nUse this when the user provides a direct link or asks to review a known page.\\nFor discovery or multiple sources, use web_search first. Persisted public pages include an immutable version receipt and stable evidence-chunk selectors when available.","parameters":{"type":"object","properties":{"url":{"type":"string","description":"Absolute http/https URL to fetch (required)."},"mode":{"type":"string","enum":["auto","reader","raw"],"default":"auto","description":"Content extraction mode. \\"auto\\" uses reader-style extraction for HTML."},"max_chars":{"type":"integer","default":6000,"minimum":1,"maximum":12000,"description":"Maximum number of characters to return."},"max_html_chars":{"type":"integer","minimum":1,"description":"Maximum number of HTML characters to send to the markdown converter."},"output_format":{"type":"string","enum":["markdown","text","llm_markdown"],"default":"markdown","description":"\\"markdown\\" is deterministic; use slower \\"llm_markdown\\" only when it renders poorly."},"persist":{"type":"boolean","default":true,"description":"Store the markdown snapshot for reuse."},"force_refresh":{"type":"boolean","default":false,"description":"Force a fresh fetch even if cached."},"include_links":{"type":"boolean","default":false,"description":"Include a short list of outbound links when available."},"allow_redirects":{"type":"boolean","default":true,"description":"Follow redirects up to a fixed cap."},"prefer_language":{"type":"string","description":"Optional Accept-Language hint (e.g., \\"en-US\\")."}},"required":["url"]}}}",
       "serializedChars": 1657,
       "serializedSha256": "26790e147228435ac93c2d96d9c398d582cc8070dc3a4db66ab9cc792f044d64",
-    },
-    {
-      "name": "work_capability_load",
-      "serialized": "{"type":"function","function":{"name":"work_capability_load","description":"Legacy alias for outcome_card_load. Prefer outcome_card_load for new calls.","parameters":{"type":"object","properties":{"workCapability":{"type":"string","description":"Canonical outcome card id such as \\"cold_email_campaign_build\\", \\"youtube_growth_strategy_plan\\", or \\"ui_ux_screen_review\\"."}},"required":["workCapability"]}}}",
-      "serializedChars": 408,
-      "serializedSha256": "6c2b8f553350f7d63e93a98ed84abb44bab56a8e1fc6c3061953d44f5d412afa",
-    },
-    {
-      "name": "work_capability_search",
-      "serialized": "{"type":"function","function":{"name":"work_capability_search","description":"Legacy alias for outcome_card_search. Prefer outcome_card_search for new calls.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Natural-language outcome search, e.g. \\"cold email campaign\\", \\"YouTube growth plan\\", or \\"UI screen review\\"."},"domain":{"type":"string","description":"Optional BuildOS domain id such as \\"sales_and_growth.cold_email\\" or \\"marketing.youtube_growth\\"."},"buildosCapability":{"type":"string","description":"Optional BuildOS runtime capability id such as \\"planning\\", \\"documents\\", or \\"project_audit\\"."},"limit":{"type":"integer","default":8,"minimum":1,"maximum":20,"description":"Maximum matches."}}}}}",
-      "serializedChars": 753,
-      "serializedSha256": "df84e20bc5675d7588792abb99a3c7f9c01ed32f11172d18ff41acf6c209ed96",
     },
   ],
   "metadataOnlyToolNames": [

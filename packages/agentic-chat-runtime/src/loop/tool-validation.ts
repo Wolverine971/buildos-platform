@@ -468,9 +468,13 @@ function extractExactGatewayDiscoveryOp(
 		return null;
 	}
 
-	const normalized = normalizeGatewayOpName(rawReference.trim());
-	if (registry.ops[normalized]) return normalized;
-	return null;
+	// One name space, resolved through the catalog itself (one-engine stage S9).
+	// `tool_schema` takes an op, but models routinely pass the tool name, and the
+	// deleted alias table hand-listed nine of those. The registry already carries
+	// both directions for all 90 tools, so a name resolves generically or not at
+	// all — no alias list to fall behind the catalog.
+	const reference = normalizeGatewayOpName(rawReference.trim());
+	return registry.ops[reference]?.op ?? registry.byToolName[reference]?.op ?? null;
 }
 
 function validateDirectOpArgs(

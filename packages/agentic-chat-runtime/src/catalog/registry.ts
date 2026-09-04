@@ -18,92 +18,135 @@ export type ToolRegistry = {
 	byToolName: Record<string, RegistryOp>;
 };
 
-const OP_EXCEPTIONS: Record<string, string> = {
-	search_all_projects: 'x.search.all_projects',
-	search_project: 'x.search.project',
-	explore_project: 'x.search.explore',
-	search_ontology: 'onto.search',
-	get_document_tree: 'onto.document.tree.get',
-	move_document_in_tree: 'onto.document.tree.move',
-	get_document_path: 'onto.document.path.get',
-	get_entity_relationships: 'onto.entity.relationships.get',
-	get_linked_entities: 'onto.entity.links.get',
-	list_task_documents: 'onto.task.docs.list',
-	create_task_document: 'onto.task.docs.create_or_attach',
-	move_onto_task: 'onto.task.move',
-	link_onto_entities: 'onto.edge.link',
-	unlink_onto_edge: 'onto.edge.unlink',
-	reorganize_onto_project_graph: 'onto.project.graph.reorganize',
-	get_onto_project_graph: 'onto.project.graph.get'
+/**
+ * One tool name space: the single table binding every catalog tool name to its
+ * gateway op and its execution kind.
+ *
+ * This replaces four scattered maps (`OP_EXCEPTIONS`, `UTIL_OPS`,
+ * `CALENDAR_OPS`, `EMAIL_OPS`), a name-prefix regex, an entity-alias map, and a
+ * write-prefix list that between them decided op names in five different
+ * places. A derived name space silently invents an op for any new tool whose
+ * name happens to match the prefix rule (which is how `get_document_outline`
+ * acquired `onto.document_outline.get`) and silently drops one that does not
+ * (`read_document_section` and `tag_onto_entity` fell through to `x.misc.*`).
+ * Op names here are the EXTERNAL contract for MCP and agent-call, so they are
+ * frozen: `registry.test.ts` asserts this table against the mapping that was in
+ * production on 2026-09-04, entry for entry.
+ *
+ * Adding a tool means adding a row. There is no fallback: a catalog tool with
+ * no row fails registry construction by name.
+ */
+export type ToolOperationKind = 'read' | 'write' | 'control' | 'discovery';
+
+export type ToolOperation = {
+	op: string;
+	kind: ToolOperationKind;
 };
 
-const UTIL_OPS: Record<string, string> = {
-	get_field_info: 'util.schema.field_info',
-	get_user_profile_overview: 'util.profile.overview',
-	get_workspace_overview: 'util.workspace.overview',
-	get_project_overview: 'util.project.overview',
-	search_user_contacts: 'util.contact.search',
-	upsert_user_contact: 'util.contact.upsert',
-	list_user_contact_candidates: 'util.contact.candidates.list',
-	resolve_user_contact_candidate: 'util.contact.candidate.resolve',
-	link_user_contact: 'util.contact.link',
-	web_search: 'util.web.search',
-	web_visit: 'util.web.visit',
-	list_corsair_mcp_tools: 'util.corsair_mcp.tools.list',
-	call_corsair_mcp_tool: 'util.corsair_mcp.tool.call',
-	get_buildos_overview: 'util.buildos.overview',
-	get_buildos_usage_guide: 'util.buildos.usage_guide',
-	delegate_task: 'util.agent.delegate',
-	commit_change_set: 'util.agent.commit_changes'
-};
-
-const CALENDAR_OPS: Record<string, string> = {
-	list_calendar_events: 'cal.event.list',
-	get_calendar_event_details: 'cal.event.get',
-	create_calendar_event: 'cal.event.create',
-	update_calendar_event: 'cal.event.update',
-	delete_calendar_event: 'cal.event.delete',
-	get_project_calendar: 'cal.project.get',
-	set_project_calendar: 'cal.project.set'
-};
-
-// Gmail content stays read-only. The write-classified `connect` op only stages a
-// user-confirmed browser OAuth handoff; it cannot send, draft, or modify email.
-const EMAIL_OPS: Record<string, string> = {
-	get_external_account_status: 'email.accounts.status',
-	request_email_account_connection: 'email.accounts.connect',
-	list_email_accounts: 'email.accounts.list',
-	search_email_messages: 'email.messages.search',
-	get_email_message: 'email.messages.get'
-};
-
-const ENTITY_ALIASES: Record<string, string> = {
-	project: 'project',
-	projects: 'project',
-	task: 'task',
-	tasks: 'task',
-	goal: 'goal',
-	goals: 'goal',
-	plan: 'plan',
-	plans: 'plan',
-	document: 'document',
-	documents: 'document',
-	milestone: 'milestone',
-	milestones: 'milestone',
-	risk: 'risk',
-	risks: 'risk'
-};
-
-const WRITE_PREFIXES = [
-	'create_',
-	'update_',
-	'delete_',
-	'link_',
-	'unlink_',
-	'move_',
-	'set_',
-	'reorganize_'
-];
+/**
+ * Direct tools only. Discovery meta-tools (`skill_search`, `tool_schema`, ...)
+ * and the turn controls (`declare_turn_contract`, ...) are deliberately absent:
+ * they carry no gateway op, and inventing one for them would widen the external
+ * op contract. `kind` carries their vocabulary so they can join the table the
+ * day they get ops without a type change.
+ */
+export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.freeze({
+	// --- Ontology reads ---
+	list_onto_tasks: { op: 'onto.task.list', kind: 'read' },
+	list_onto_goals: { op: 'onto.goal.list', kind: 'read' },
+	list_onto_documents: { op: 'onto.document.list', kind: 'read' },
+	list_onto_milestones: { op: 'onto.milestone.list', kind: 'read' },
+	list_onto_risks: { op: 'onto.risk.list', kind: 'read' },
+	list_onto_plans: { op: 'onto.plan.list', kind: 'read' },
+	list_onto_projects: { op: 'onto.project.list', kind: 'read' },
+	list_task_documents: { op: 'onto.task.docs.list', kind: 'read' },
+	search_all_projects: { op: 'x.search.all_projects', kind: 'read' },
+	search_project: { op: 'x.search.project', kind: 'read' },
+	explore_project: { op: 'x.search.explore', kind: 'read' },
+	search_onto_tasks: { op: 'onto.task.search', kind: 'read' },
+	search_onto_projects: { op: 'onto.project.search', kind: 'read' },
+	search_onto_documents: { op: 'onto.document.search', kind: 'read' },
+	search_onto_goals: { op: 'onto.goal.search', kind: 'read' },
+	search_onto_plans: { op: 'onto.plan.search', kind: 'read' },
+	search_onto_milestones: { op: 'onto.milestone.search', kind: 'read' },
+	search_onto_risks: { op: 'onto.risk.search', kind: 'read' },
+	search_ontology: { op: 'onto.search', kind: 'read' },
+	get_onto_project_details: { op: 'onto.project.get', kind: 'read' },
+	get_onto_project_graph: { op: 'onto.project.graph.get', kind: 'read' },
+	get_onto_task_details: { op: 'onto.task.get', kind: 'read' },
+	get_onto_goal_details: { op: 'onto.goal.get', kind: 'read' },
+	get_onto_plan_details: { op: 'onto.plan.get', kind: 'read' },
+	get_onto_document_details: { op: 'onto.document.get', kind: 'read' },
+	get_onto_milestone_details: { op: 'onto.milestone.get', kind: 'read' },
+	get_onto_risk_details: { op: 'onto.risk.get', kind: 'read' },
+	get_document_tree: { op: 'onto.document.tree.get', kind: 'read' },
+	get_document_path: { op: 'onto.document.path.get', kind: 'read' },
+	get_document_outline: { op: 'onto.document_outline.get', kind: 'read' },
+	read_document_section: { op: 'x.misc.read_document_section', kind: 'read' },
+	get_entity_relationships: { op: 'onto.entity.relationships.get', kind: 'read' },
+	get_linked_entities: { op: 'onto.entity.links.get', kind: 'read' },
+	// --- Ontology writes ---
+	create_onto_task: { op: 'onto.task.create', kind: 'write' },
+	create_onto_goal: { op: 'onto.goal.create', kind: 'write' },
+	create_onto_plan: { op: 'onto.plan.create', kind: 'write' },
+	create_onto_document: { op: 'onto.document.create', kind: 'write' },
+	create_onto_milestone: { op: 'onto.milestone.create', kind: 'write' },
+	create_onto_risk: { op: 'onto.risk.create', kind: 'write' },
+	move_document_in_tree: { op: 'onto.document.tree.move', kind: 'write' },
+	create_task_document: { op: 'onto.task.docs.create_or_attach', kind: 'write' },
+	link_onto_entities: { op: 'onto.edge.link', kind: 'write' },
+	unlink_onto_edge: { op: 'onto.edge.unlink', kind: 'write' },
+	reorganize_onto_project_graph: { op: 'onto.project.graph.reorganize', kind: 'write' },
+	create_onto_project: { op: 'onto.project.create', kind: 'write' },
+	update_onto_task: { op: 'onto.task.update', kind: 'write' },
+	move_onto_task: { op: 'onto.task.move', kind: 'write' },
+	update_onto_project: { op: 'onto.project.update', kind: 'write' },
+	update_onto_goal: { op: 'onto.goal.update', kind: 'write' },
+	update_onto_plan: { op: 'onto.plan.update', kind: 'write' },
+	update_onto_document: { op: 'onto.document.update', kind: 'write' },
+	tag_onto_entity: { op: 'x.misc.tag_onto_entity', kind: 'write' },
+	update_onto_milestone: { op: 'onto.milestone.update', kind: 'write' },
+	update_onto_risk: { op: 'onto.risk.update', kind: 'write' },
+	delete_onto_project: { op: 'onto.project.delete', kind: 'write' },
+	delete_onto_task: { op: 'onto.task.delete', kind: 'write' },
+	delete_onto_document: { op: 'onto.document.delete', kind: 'write' },
+	delete_onto_milestone: { op: 'onto.milestone.delete', kind: 'write' },
+	delete_onto_risk: { op: 'onto.risk.delete', kind: 'write' },
+	delete_onto_goal: { op: 'onto.goal.delete', kind: 'write' },
+	delete_onto_plan: { op: 'onto.plan.delete', kind: 'write' },
+	// --- Utility ---
+	get_field_info: { op: 'util.schema.field_info', kind: 'read' },
+	get_user_profile_overview: { op: 'util.profile.overview', kind: 'read' },
+	get_workspace_overview: { op: 'util.workspace.overview', kind: 'read' },
+	get_project_overview: { op: 'util.project.overview', kind: 'read' },
+	search_user_contacts: { op: 'util.contact.search', kind: 'read' },
+	upsert_user_contact: { op: 'util.contact.upsert', kind: 'write' },
+	list_user_contact_candidates: { op: 'util.contact.candidates.list', kind: 'read' },
+	resolve_user_contact_candidate: { op: 'util.contact.candidate.resolve', kind: 'write' },
+	link_user_contact: { op: 'util.contact.link', kind: 'write' },
+	list_corsair_mcp_tools: { op: 'util.corsair_mcp.tools.list', kind: 'read' },
+	call_corsair_mcp_tool: { op: 'util.corsair_mcp.tool.call', kind: 'write' },
+	web_search: { op: 'util.web.search', kind: 'read' },
+	web_visit: { op: 'util.web.visit', kind: 'read' },
+	get_buildos_overview: { op: 'util.buildos.overview', kind: 'read' },
+	get_buildos_usage_guide: { op: 'util.buildos.usage_guide', kind: 'read' },
+	delegate_task: { op: 'util.agent.delegate', kind: 'write' },
+	commit_change_set: { op: 'util.agent.commit_changes', kind: 'write' },
+	// --- Calendar ---
+	list_calendar_events: { op: 'cal.event.list', kind: 'read' },
+	get_calendar_event_details: { op: 'cal.event.get', kind: 'read' },
+	create_calendar_event: { op: 'cal.event.create', kind: 'write' },
+	update_calendar_event: { op: 'cal.event.update', kind: 'write' },
+	delete_calendar_event: { op: 'cal.event.delete', kind: 'write' },
+	get_project_calendar: { op: 'cal.project.get', kind: 'read' },
+	set_project_calendar: { op: 'cal.project.set', kind: 'write' },
+	// --- Email ---
+	get_external_account_status: { op: 'email.accounts.status', kind: 'read' },
+	request_email_account_connection: { op: 'email.accounts.connect', kind: 'write' },
+	list_email_accounts: { op: 'email.accounts.list', kind: 'read' },
+	search_email_messages: { op: 'email.messages.search', kind: 'read' },
+	get_email_message: { op: 'email.messages.get', kind: 'read' }
+});
 
 let cachedRegistry: ToolRegistry | null = null;
 
@@ -148,7 +191,13 @@ export function buildToolRegistry(
 		const toolName = tool.function?.name;
 		if (!toolName) continue;
 
-		const op = deriveOpFromToolName(toolName) ?? `x.misc.${toolName}`;
+		const operation = TOOL_OPERATIONS[toolName];
+		if (!operation) {
+			throw new Error(
+				`Unknown tool name "${toolName}": every catalog tool needs one TOOL_OPERATIONS row naming its gateway op and kind.`
+			);
+		}
+		const op = operation.op;
 		opMap[op] = toolName;
 
 		const description = tool.function?.description ?? '';
@@ -165,7 +214,7 @@ export function buildToolRegistry(
 			description,
 			parameters_schema: parametersSchema,
 			group,
-			kind: inferKind(toolName, toolMeta),
+			kind: assertRegistryKind(toolName, operation.kind),
 			entity,
 			action,
 			contexts: toolMeta?.contexts,
@@ -181,24 +230,6 @@ export function buildToolRegistry(
 		ops,
 		byToolName
 	};
-}
-
-function deriveOpFromToolName(toolName: string): string | null {
-	if (OP_EXCEPTIONS[toolName]) return OP_EXCEPTIONS[toolName];
-	if (UTIL_OPS[toolName]) return UTIL_OPS[toolName];
-	if (CALENDAR_OPS[toolName]) return CALENDAR_OPS[toolName];
-	if (EMAIL_OPS[toolName]) return EMAIL_OPS[toolName];
-
-	const match = toolName.match(/^(list|search|get|create|update|delete)_(onto_)?(.+)$/);
-	if (!match) return null;
-
-	const action = match[1];
-	let remainder = match[3] ?? '';
-	remainder = remainder.replace(/_details$/, '');
-	const entityKey = ENTITY_ALIASES[remainder] ?? remainder;
-	if (!entityKey) return null;
-
-	return `onto.${entityKey}.${action}`;
 }
 
 function resolveGroup(op: string): RegistryOp['group'] {
@@ -233,10 +264,16 @@ function resolveEntity(op: string, group: RegistryOp['group']): string | undefin
 	return undefined;
 }
 
-function inferKind(toolName: string, meta?: ToolMetadata): 'read' | 'write' {
-	if (meta?.category === 'write') return 'write';
-	if (WRITE_PREFIXES.some((prefix) => toolName.startsWith(prefix))) return 'write';
-	return 'read';
+/**
+ * The single guard between the four-kind table vocabulary and the two-kind
+ * `RegistryOp`. A control or discovery row would need an op the external
+ * contract does not define, so it is rejected by name rather than coerced.
+ */
+function assertRegistryKind(toolName: string, kind: ToolOperationKind): RegistryOp['kind'] {
+	if (kind === 'read' || kind === 'write') return kind;
+	throw new Error(
+		`Tool "${toolName}" is registered as ${kind}, which carries no gateway op and cannot enter the op registry.`
+	);
 }
 
 function computeRegistryVersion(
