@@ -300,6 +300,29 @@ describe('projects/[id] +page.server load', () => {
 		expect(timingLabels).toContain('db.project_skeleton_with_access_v2');
 	});
 
+	it('routes ?doc= deep links to the document page before any fan-out', async () => {
+		const documentId = '22222222-2222-4222-8222-222222222222';
+		const { event, operations } = createHarness({
+			pathname: `/projects/${PROJECT_ID}?doc=${documentId}&openPublish=true`
+		});
+
+		await expect(load(event)).rejects.toMatchObject({
+			status: 307,
+			location: `/projects/${PROJECT_ID}/documents/${documentId}?openPublish=true`
+		});
+		expect(operations).toEqual([]);
+		expect(ensureActorIdMock).not.toHaveBeenCalled();
+	});
+
+	it('drops a malformed ?doc= value instead of opening a broken document route', async () => {
+		const { event } = createHarness({ pathname: `/projects/${PROJECT_ID}?doc=not-a-uuid` });
+
+		await expect(load(event)).rejects.toMatchObject({
+			status: 307,
+			location: `/projects/${PROJECT_ID}`
+		});
+	});
+
 	it('rejects invalid project ids before making API calls', async () => {
 		const { event, operations, from } = createHarness();
 		event.params.id = 'project-1';

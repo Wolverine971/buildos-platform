@@ -258,6 +258,35 @@ export function buildProviderPassBudgetSynthesisInstruction(
 	);
 }
 
+const MAX_REJECTED_CALL_ERROR_CHARS = 400;
+
+/**
+ * The answer that ends a turn whose last tool call could not be validated
+ * even after the bounded repair rounds. Nothing durable rides on the rejected
+ * call, so instead of a bare `provider_tool_validation_repair_exhausted`
+ * failure (the user saw "An error occurred while streaming" in the 2026-09-04
+ * DST case) the turn ends on a receipt-grounded prose answer: what already
+ * happened, what the rejected call was trying to do, and what was not done.
+ */
+export function buildValidationRepairExhaustedSynthesisInstruction(
+	ledger: readonly WriteLedgerEntry[],
+	unfinished: readonly string[],
+	rejected: readonly { toolName: string; errors: readonly string[] }[]
+): string {
+	const described = rejected
+		.slice(0, 3)
+		.map(
+			(call) =>
+				`${call.toolName}${call.errors[0] ? ` (${call.errors[0].slice(0, MAX_REJECTED_CALL_ERROR_CHARS)})` : ''}`
+		)
+		.join('; ');
+	const lead = [
+		`The last tool call could not be validated after the allowed corrections${described ? `: ${described}` : ''}. That call did not run and no further tool call can run in this turn.`,
+		'If that call was a clarification question, ask the user the question in plain prose now, naming each choice.'
+	].join(' ');
+	return buildReceiptGroundedSynthesisInstruction(lead, ledger, unfinished);
+}
+
 /**
  * The answer that ends a batch which only half landed. Same receipt-grounded
  * closing pass as the pass ceiling, with the reason the turn is ending changed:

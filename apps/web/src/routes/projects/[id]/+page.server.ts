@@ -192,6 +192,22 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 		throw error(400, 'Invalid project ID');
 	}
 
+	// `/projects/{id}?doc={documentId}` is the document deep link that chat
+	// entity cards, session receipts, collaboration notices, and the public-page
+	// owner bar all emit. The workspace never consumed it (a 2026-09-04 retest
+	// found every such link opening the Overview), so it routes to the document
+	// page itself; any other query parameters ride along.
+	const requestedDocumentId = url.searchParams.get('doc');
+	if (requestedDocumentId !== null) {
+		const remaining = new URLSearchParams(url.searchParams);
+		remaining.delete('doc');
+		const suffix = remaining.size > 0 ? `?${remaining.toString()}` : '';
+		if (isValidUUID(requestedDocumentId)) {
+			throw redirect(307, `/projects/${id}/documents/${requestedDocumentId}${suffix}`);
+		}
+		throw redirect(307, `/projects/${id}${suffix}`);
+	}
+
 	const supabase = locals.supabase;
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();

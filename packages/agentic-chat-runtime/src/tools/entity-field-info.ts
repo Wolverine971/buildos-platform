@@ -6,6 +6,8 @@
  * information about field types, valid values, and descriptions.
  */
 
+import { ONTO_TASK_PRIORITY_DESCRIPTION } from '@buildos/shared-types';
+
 import type { FieldInfo } from '../catalog/types';
 
 export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
@@ -122,12 +124,13 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 			// (insight-panel-config.ts:594). The wrong description taught the model
 			// the inverted scale — asked to make a task "top priority" it wrote 5
 			// and demoted the task. Caught 2026-07-25 by the `task-multi-update`
-			// e2e scenario; see TIER_1_RESULTS_2026-07-25.md.
-			description:
-				'Optional numeric priority (1-5). LOWER numbers mean more important: ' +
-				'1 is the highest priority, 5 is the lowest. "Top priority" or "urgent" means 1.',
+			// e2e scenario; see TIER_1_RESULTS_2026-07-25.md. The five UI labels
+			// replaced the "1 highest / 5 lowest" paraphrase on 2026-09-04: told
+			// only the endpoints, a model writes 1 for "high" and the task renders
+			// as "P1 Critical".
+			description: `Optional. ${ONTO_TASK_PRIORITY_DESCRIPTION}`,
 			required: false,
-			example: '1'
+			example: '2'
 		},
 		start_at: {
 			type: 'date',

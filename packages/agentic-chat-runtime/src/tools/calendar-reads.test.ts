@@ -161,6 +161,67 @@ describe('resolveCalendarReadCoverage', () => {
 		expect(warning).toContain('Do not assert availability');
 		expect(warning).not.toContain('all 0 connected');
 	});
+
+	// The production regression: the model saw `provider_error` and told the user
+	// this was "a transient OAuth/sync issue on Google's side" when in fact the
+	// server had no calendar credentials.
+	it('names a missing server credential as server configuration, not a Google outage', () => {
+		const warning = describeCalendarCoverage({
+			coverage: 'unavailable',
+			source_count: 0,
+			failed_source_count: 0,
+			source_failures: [
+				{
+					calendar: '',
+					calendar_source_id: '',
+					connection_id: '',
+					reason_code: 'credentials_not_configured'
+				}
+			]
+		});
+		expect(warning).toContain("This server's Google Calendar credentials are not configured");
+		expect(warning).toContain('BuildOS server configuration problem');
+		expect(warning).toContain('NOT a Google outage');
+		expect(warning).toContain('reconnecting their calendar');
+		expect(warning).toContain('Do not assert availability');
+	});
+
+	it('names key drift as an undecryptable stored credential', () => {
+		const warning = describeCalendarCoverage({
+			coverage: 'unavailable',
+			source_count: 1,
+			failed_source_count: 1,
+			source_failures: [
+				{
+					calendar: 'calendar-1@example.com',
+					calendar_source_id: 'source-1',
+					connection_id: 'connection-1',
+					reason_code: 'credentials_unreadable'
+				}
+			]
+		});
+		expect(warning).toContain('could not be decrypted on this server');
+		expect(warning).toContain('BuildOS server configuration problem');
+	});
+
+	it('explains a read-disabled source without condemning the whole read', () => {
+		const warning = describeCalendarCoverage({
+			coverage: 'degraded',
+			source_count: 2,
+			failed_source_count: 1,
+			source_failures: [
+				{
+					calendar: 'calendar-1@example.com',
+					calendar_source_id: 'source-1',
+					connection_id: 'connection-1',
+					reason_code: 'source_not_readable'
+				}
+			]
+		});
+		expect(warning).toContain('not enabled for reading in BuildOS');
+		expect(warning).toContain('/profile?tab=calendar');
+		expect(warning).toContain('Calendar coverage is degraded');
+	});
 });
 
 describe('shared list_calendar_events', () => {

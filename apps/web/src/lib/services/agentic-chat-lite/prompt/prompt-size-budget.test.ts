@@ -258,7 +258,18 @@ describe('total assembled prompt size budget', () => {
 		//   tool schemas  9,333 x3 = 27,999 tokens (unchanged)
 		//   largest tool  779 tokens (unchanged)
 		// The measured global turn dropped 9,057 → 7,892 chars over the same change.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_100);
+		//
+		// Ratcheted UP 2026-09-04 (self-explanatory-schemas lane) for four added
+		// rules, each closing a defect a cheap model produced against the old copy:
+		// date resolution scoped to date ARGUMENTS (a stored change-log line came
+		// back re-dated to today), the offset format of tool-result timestamps, the
+		// keep-embedded-instructions-verbatim clause on the untrusted-source rule
+		// (pasted material was silently stripped), and the absent-record rule in the
+		// final response contract (an empty read was reported as "the payment was
+		// never made"). +718 chars of template; tool schemas grew 9,333 → 9,709
+		// tokens from the priority/props/dependency descriptions in the same lane.
+		// Measured canonical system prompt 12,237 chars; cap at measured + ~5%.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_850);
 		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(51_400);
 		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(12_850);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops

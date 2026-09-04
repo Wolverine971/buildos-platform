@@ -21,6 +21,12 @@ type CalendarApi = Pick<calendar_v3.Calendar, 'events' | 'freebusy'>;
  */
 export type GoogleCalendarSourceReadFailureReason =
 	| 'reconnect_required'
+	/** This server has no Calendar credentials configured. Not a Google outage. */
+	| 'credentials_not_configured'
+	/** Credentials exist but this server's key cannot decrypt them (key drift). */
+	| 'credentials_unreadable'
+	/** The source exists but is not enabled for reading (or is freeBusy-only). */
+	| 'source_not_readable'
 	| 'timeout'
 	| 'rate_limited'
 	| 'forbidden'
@@ -137,11 +143,36 @@ type CalendarReadFailure = {
 	message: string;
 };
 
+/** A source that was asked for but can never be read, reported per source. */
+type UnreadableCalendarSource = {
+	calendarSourceId: string;
+	providerCalendarId: string;
+	sourceSummary: string;
+	failure: CalendarReadFailure;
+};
+
+type ResolvedReadTargets = {
+	targets: CalendarTarget[];
+	unreadable: UnreadableCalendarSource[];
+};
+
+function isCalendarTarget(target: CalendarTarget | null): target is CalendarTarget {
+	return target !== null;
+}
+
 /** Google's connection errors cross bundle boundaries, so match by shape, not identity. */
 function googleCalendarConnectionErrorCode(error: unknown): string | undefined {
 	if (!error || typeof error !== 'object') return undefined;
 	const candidate = error as { name?: unknown; code?: unknown };
 	if (candidate.name !== 'GoogleCalendarConnectionError') return undefined;
+	return typeof candidate.code === 'string' ? candidate.code : undefined;
+}
+
+/** Same reasoning for target errors: match by shape, not identity. */
+function googleCalendarTargetErrorCode(error: unknown): string | undefined {
+	if (!error || typeof error !== 'object') return undefined;
+	const candidate = error as { name?: unknown; code?: unknown };
+	if (candidate.name !== 'GoogleCalendarTargetError') return undefined;
 	return typeof candidate.code === 'string' ? candidate.code : undefined;
 }
 
@@ -196,6 +227,18 @@ function classifyCalendarReadError(error: unknown): CalendarReadFailure {
 	const connectionCode = googleCalendarConnectionErrorCode(error);
 	if (connectionCode === 'reconnect_required' || connectionCode === 'refresh_token_required') {
 		return { status: 'error', reasonCode: 'reconnect_required', errorName, message };
+	}
+	// Server configuration, not a provider fault. Collapsing these into
+	// `provider_error` is what made the assistant blame "a transient OAuth/sync
+	// issue on Google's side" for an unset Railway variable.
+	if (connectionCode === 'not_configured') {
+		return { status: 'error', reasonCode: 'credentials_not_configured', errorName, message };
+	}
+	if (connectionCode === 'database_error') {
+		return { status: 'error', reasonCode: 'credentials_unreadable', errorName, message };
+	}
+	if (googleCalendarTargetErrorCode(error) === 'CALENDAR_SOURCE_NOT_CAPABLE') {
+		return { status: 'error', reasonCode: 'source_not_readable', errorName, message };
 	}
 
 	const httpStatus = httpStatusFromError(error);
@@ -253,6 +296,15 @@ function describeSourceFailure(
 	const reasonCode = failure?.reasonCode ?? 'provider_error';
 	if (reasonCode === 'reconnect_required') {
 		return `Could not read ${subject}: this calendar needs to be reconnected (its Google access expired or was revoked) before BuildOS can read it (reason: reconnect_required)`;
+	}
+	if (reasonCode === 'credentials_not_configured') {
+		return `Could not read ${subject}: this server's Google Calendar credentials are not configured, so Google Calendar was never contacted (reason: credentials_not_configured)`;
+	}
+	if (reasonCode === 'credentials_unreadable') {
+		return `Could not read ${subject}: the stored Google Calendar credentials could not be decrypted on this server (reason: credentials_unreadable)`;
+	}
+	if (reasonCode === 'source_not_readable') {
+		return `Could not read ${subject}: this calendar source is not enabled for reading (reason: source_not_readable)`;
 	}
 	if (reasonCode === 'timeout') {
 		return `Calendar read budget expired for ${subject} (reason: timeout)`;
@@ -347,43 +399,81 @@ export class GoogleCalendarReadService {
 		this.clock = options.clock ?? (() => Date.now());
 	}
 
+	/**
+	 * One requested source that is not enabled for reading used to abort the
+	 * whole read: the `GoogleCalendarTargetError` escaped past the per-target
+	 * try/catch and the caller reported `mode: 'none'` with a raw error string.
+	 * That is one source's problem, so it comes back as a source failure and the
+	 * other requested calendars still read. Every other resolver error still
+	 * throws — a missing or ambiguous source is a bad request, not a partial read.
+	 */
 	private async resolveReadTargets(params: {
 		userId: string;
 		calendarSourceId?: string;
 		calendarSourceIds?: string[];
 		calendarId?: string;
 		capability?: 'read' | 'analysis';
-	}): Promise<CalendarTarget[]> {
+	}): Promise<ResolvedReadTargets> {
 		const capability = params.capability ?? 'read';
+		const unreadable: UnreadableCalendarSource[] = [];
+
+		const resolveRequested = async (
+			descriptor: { calendarSourceId?: string; calendarId?: string },
+			resolve: () => Promise<CalendarTarget>
+		): Promise<CalendarTarget | null> => {
+			try {
+				return await resolve();
+			} catch (error) {
+				const failure = classifyCalendarReadError(error);
+				if (failure.reasonCode !== 'source_not_readable') throw error;
+				unreadable.push({
+					calendarSourceId: descriptor.calendarSourceId ?? '',
+					providerCalendarId: descriptor.calendarId ?? '',
+					sourceSummary:
+						descriptor.calendarSourceId ??
+						descriptor.calendarId ??
+						'the requested calendar',
+					failure
+				});
+				return null;
+			}
+		};
+
 		if (params.calendarSourceIds?.length) {
 			const sourceIds = Array.from(new Set(params.calendarSourceIds));
-			return Promise.all(
+			const resolved = await Promise.all(
 				sourceIds.map((sourceId) =>
-					this.targetService.resolveExplicitSource(params.userId, sourceId, capability)
+					resolveRequested({ calendarSourceId: sourceId }, () =>
+						this.targetService.resolveExplicitSource(
+							params.userId,
+							sourceId,
+							capability
+						)
+					)
 				)
 			);
+			return { targets: resolved.filter(isCalendarTarget), unreadable };
 		}
 		if (params.calendarSourceId) {
-			return [
-				await this.targetService.resolveExplicitSource(
-					params.userId,
-					params.calendarSourceId,
-					capability
-				)
-			];
+			const sourceId = params.calendarSourceId;
+			const target = await resolveRequested({ calendarSourceId: sourceId }, () =>
+				this.targetService.resolveExplicitSource(params.userId, sourceId, capability)
+			);
+			return { targets: target ? [target] : [], unreadable };
 		}
 		if (params.calendarId) {
-			return [
-				await this.targetService.resolveLegacyCalendarId(
-					params.userId,
-					params.calendarId,
-					capability
-				)
-			];
+			const calendarId = params.calendarId;
+			const target = await resolveRequested({ calendarId }, () =>
+				this.targetService.resolveLegacyCalendarId(params.userId, calendarId, capability)
+			);
+			return { targets: target ? [target] : [], unreadable };
 		}
-		return capability === 'analysis'
-			? this.targetService.listAnalysisTargets(params.userId)
-			: this.targetService.listEnabledReadTargets(params.userId);
+		return {
+			targets: await (capability === 'analysis'
+				? this.targetService.listAnalysisTargets(params.userId)
+				: this.targetService.listEnabledReadTargets(params.userId)),
+			unreadable
+		};
 	}
 
 	private async resolveAvailabilityTargets(params: {
@@ -530,7 +620,7 @@ export class GoogleCalendarReadService {
 			params.background ? DEFAULT_BACKGROUND_BUDGET_MS : DEFAULT_INTERACTIVE_BUDGET_MS
 		);
 		const deadline = this.clock() + budgetMs;
-		const targets = await this.resolveReadTargets(params);
+		const { targets, unreadable: unreadableSources } = await this.resolveReadTargets(params);
 		const defaultSourceId = await this.targetService
 			.reconcileDefaultWriteSourceId(params.userId)
 			.catch(() => null);
@@ -575,6 +665,31 @@ export class GoogleCalendarReadService {
 			event: AggregatedGoogleCalendarEvent;
 			target: CalendarTarget;
 		}> = [];
+		for (const source of unreadableSources) {
+			const target = {
+				calendarSourceId: source.calendarSourceId,
+				connectionId: '',
+				providerCalendarId: source.providerCalendarId
+			};
+			logCalendarSourceReadFailure({
+				operation: 'listEvents',
+				target,
+				failure: source.failure
+			});
+			sourceStatuses.push({
+				...target,
+				status: source.failure.status,
+				itemCount: 0,
+				...failureDetail(source.failure)
+			});
+			warnings.push({
+				code: 'CALENDAR_SOURCE_READ_FAILED',
+				message: describeSourceFailure(source.sourceSummary, source.failure, 'events'),
+				calendarSourceId: source.calendarSourceId,
+				connectionId: '',
+				reasonCode: source.failure.reasonCode
+			});
+		}
 		for (const result of targetResults) {
 			sourceStatuses.push({
 				calendarSourceId: result.target.calendarSourceId,

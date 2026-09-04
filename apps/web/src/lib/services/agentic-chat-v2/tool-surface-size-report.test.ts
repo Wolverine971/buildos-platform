@@ -90,7 +90,15 @@ describe('tool surface size report', () => {
 		// 2026-09-04 (stage S6): the two project-create profiles collapsed into
 		// one — four controls plus the shell and its child creates, no discovery.
 		expect(projectCreate.toolCount).toBe(7);
-		expect(createTask?.chars).toBeLessThanOrEqual(2500);
+		// 2026-09-04: budget bumped 2500 → 2750 (measured 2,671). create_onto_task
+		// now names the five UI priority labels instead of "1 is highest, 5
+		// lowest" (told only the endpoints, a model writes 1 for "high" and the
+		// task renders as "P1 Critical"), points `props` at the
+		// duration_minutes convention (the estimate was being written into the
+		// description as prose), and says a prerequisite is a relationship rather
+		// than description text. +426 chars of deliberate creation guidance for
+		// weak routed models, same class as the create_onto_project bump above.
+		expect(createTask?.chars).toBeLessThanOrEqual(2750);
 	});
 
 	it('keeps deterministic preloaded profiles below target payload sizes', () => {
@@ -122,9 +130,17 @@ describe('tool surface size report', () => {
 		// two cross-project searches. This is a deliberate token spend: the
 		// alternative is a turn that cannot reach a capability, because the worker
 		// surface is immutable once the turn is admitted.
-		expect(global?.totalChars).toBeLessThanOrEqual(32_000);
+		// Bumped 2026-09-04: 32,000 → 40,000. Measured 37,995 after mounting
+		// create_onto_project on the global surface (+6,028 for the catalog
+		// definition; the worker's reviewed rewrite the model actually sees is
+		// ~2.2k) plus the control-tool and schedule-field description work. A
+		// General Chat "create a project" turn was a dead turn before this.
+		expect(global?.totalChars).toBeLessThanOrEqual(40_000);
 		expect(project?.totalChars).toBeLessThanOrEqual(39_200);
-		expect(projectCreate?.totalChars).toBeLessThanOrEqual(15_250);
+		// Bumped 2026-09-04: 15,250 → 15,700. Measured 15,458 — +426 from the
+		// create_onto_task description work noted above, and +516 already present
+		// on this branch from the control-tool descriptions (declare_turn_contract).
+		expect(projectCreate?.totalChars).toBeLessThanOrEqual(15_700);
 	});
 
 	it('reports complete skill bundles and fails closed on unresolved related ops', () => {

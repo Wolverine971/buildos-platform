@@ -11,6 +11,7 @@ import {
 	getSafeWriteToolNamesForTurnContract,
 	parseDeclaredTurnContract,
 	titleKey,
+	turnContractCreatesProject,
 	validateToolCalls
 } from '@buildos/agentic-chat-runtime/loop';
 import { reviewedAgenticChatMutationSpecV1 } from '../mutationToolCatalog';
@@ -102,7 +103,6 @@ function validateExplicitProjectCreateName(
 	request: AgenticChatTurnProviderRequestV1,
 	issues: ToolValidationIssue[]
 ): void {
-	if (request.contextType !== 'project_create') return;
 	const expectedName = explicitProjectCreateName(request);
 	if (!expectedName) return;
 	for (const call of calls) {
@@ -145,13 +145,28 @@ function canonicalDisplayName(value: string): string {
 	return value.normalize('NFC').trim().replace(/\s+/g, ' ');
 }
 
+/**
+ * Which record kinds each admitted creation tool can produce after the project
+ * shell exists. A contract that promises a kind with no creation tool on the
+ * surface is rejected deterministically instead of burning reviewer rounds.
+ */
+const CREATE_TOOL_ENTITY_KINDS: ReadonlyArray<[string, TurnContractOutcome['entityKind']]> = [
+	['create_onto_goal', 'goal'],
+	['create_onto_task', 'task'],
+	['create_onto_document', 'document'],
+	['create_onto_plan', 'plan'],
+	['create_onto_milestone', 'milestone'],
+	['create_onto_risk', 'risk'],
+	['create_calendar_event', 'event'],
+	['link_onto_entities', 'relationship']
+];
+
 function validateProjectCreateShellContracts(
 	calls: readonly CompletedProviderToolCall[],
 	request: AgenticChatTurnProviderRequestV1,
 	admittedTools: readonly AgenticChatTurnProviderToolV1[],
 	issues: ToolValidationIssue[]
 ): void {
-	if (request.contextType !== 'project_create') return;
 	const mutationNames = new Set(
 		admittedTools
 			.filter((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
@@ -160,13 +175,20 @@ function validateProjectCreateShellContracts(
 	if (!mutationNames.has('create_onto_project')) return;
 	const shellOnly = mutationNames.size === 1;
 	const supportedEntityKinds = new Set<TurnContractOutcome['entityKind']>(['project']);
-	if (mutationNames.has('create_onto_goal')) supportedEntityKinds.add('goal');
-	if (mutationNames.has('create_onto_task')) supportedEntityKinds.add('task');
+	for (const [toolName, entityKind] of CREATE_TOOL_ENTITY_KINDS) {
+		if (mutationNames.has(toolName)) supportedEntityKinds.add(entityKind);
+	}
 
 	for (const call of calls) {
 		if (call.name !== DECLARE_TURN_CONTRACT_TOOL_NAME) continue;
 		const contract = parseDeclaredTurnContract(call.arguments);
 		if (!contract) continue;
+		// On Project Setup every contract is a project contract. On any other
+		// surface that mounts create_onto_project (global since 2026-09-04) the
+		// shell rules apply only to a contract that actually creates a project.
+		if (request.contextType !== 'project_create' && !turnContractCreatesProject(contract)) {
+			continue;
+		}
 		const errors: string[] = [];
 		const projectOutcomes = contract.outcomes.filter(
 			(outcome) => outcome.entityKind === 'project'

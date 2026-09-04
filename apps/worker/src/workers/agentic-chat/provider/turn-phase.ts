@@ -15,7 +15,8 @@ import {
 import {
 	type TurnContract,
 	getSafeWriteToolNamesForTurnContract,
-	isPureReadToolName
+	isPureReadToolName,
+	turnContractCreatesProject
 } from '@buildos/agentic-chat-runtime/loop';
 import type { JsonObject } from '@buildos/shared-types';
 import type { AgenticChatTurnProviderToolV1 } from './contracts';
@@ -267,10 +268,9 @@ export function surfaceFor(
 			// the first approved mutation phase structurally incapable of inventing that
 			// id or racing goal/task calls alongside create_onto_project. Completion
 			// routing mounts only the unresolved child tools after the shell succeeds.
-			const firstPhaseToolNames =
-				context.contextType === 'project_create' && safeToolNames.has('create_onto_project')
-					? new Set(['create_onto_project'])
-					: safeToolNames;
+			const firstPhaseToolNames = safeToolNames.has('create_onto_project')
+				? new Set(['create_onto_project'])
+				: safeToolNames;
 			return writeSurface(admitted, firstPhaseToolNames);
 		}
 		case 'clarification':
@@ -336,7 +336,10 @@ function approvedRepairSurface(
 	admitted: readonly AgenticChatTurnProviderToolV1[],
 	context: TurnSurfaceContext
 ): readonly AgenticChatTurnProviderToolV1[] {
-	if (context.contractApproved && context.contextType === 'project_create') {
+	if (
+		context.contractApproved &&
+		(context.contextType === 'project_create' || turnContractCreatesProject(context.contract))
+	) {
 		return context.requestTools ?? admitted;
 	}
 	return admitted;

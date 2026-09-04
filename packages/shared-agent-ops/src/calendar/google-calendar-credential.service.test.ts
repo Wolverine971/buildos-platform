@@ -250,11 +250,64 @@ describe('GoogleCalendarCredentialService', () => {
 			service.getAuthenticatedClient('user-1', 'connection-1')
 		).rejects.toMatchObject({
 			code: 'database_error',
-			message: 'Stored Google Calendar credentials are unavailable'
+			message:
+				"Stored Google Calendar credentials could not be decrypted with this server's calendar token encryption key"
 		});
 		expect(oauth.setCredentials).not.toHaveBeenCalled();
 		expect(oauth.refreshAccessToken).not.toHaveBeenCalled();
 		expect(admin.rpc).not.toHaveBeenCalled();
+	});
+
+	// The production failure this split exists for: the worker service had no
+	// encryption key, the bare catch called it 'database_error', the read layer
+	// called that 'provider_error', and the assistant told the user Google was
+	// having a transient issue.
+	it('separates a missing encryption key from ciphertext this key cannot open', async () => {
+		const missingKey = new GoogleCalendarCredentialService(fixture().admin, {
+			createOAuthClient: () => fixture().oauth,
+			getOAuthClientCredentials: () => ({
+				clientId: 'calendar-client',
+				clientSecret: 'configured-secret'
+			}),
+			resolveTokenKey: () => undefined,
+			now: () => now
+		});
+		await expect(
+			missingKey.getAuthenticatedClient('user-1', 'connection-1')
+		).rejects.toMatchObject({
+			code: 'not_configured',
+			message:
+				'Calendar token encryption key is not configured on this server (PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1)'
+		});
+
+		const shortKey = new GoogleCalendarCredentialService(fixture().admin, {
+			createOAuthClient: () => fixture().oauth,
+			getOAuthClientCredentials: () => ({
+				clientId: 'calendar-client',
+				clientSecret: 'configured-secret'
+			}),
+			resolveTokenKey: () => 'too-short',
+			now: () => now
+		});
+		await expect(
+			shortKey.getAuthenticatedClient('user-1', 'connection-1')
+		).rejects.toMatchObject({ code: 'not_configured' });
+
+		const driftedKey = new GoogleCalendarCredentialService(fixture().admin, {
+			createOAuthClient: () => fixture().oauth,
+			getOAuthClientCredentials: () => ({
+				clientId: 'calendar-client',
+				clientSecret: 'configured-secret'
+			}),
+			resolveTokenKey: () => 'a-different-calendar-key-with-at-least-32-bytes-of-material',
+			now: () => now
+		});
+		await expect(
+			driftedKey.getAuthenticatedClient('user-1', 'connection-1')
+		).rejects.toMatchObject({
+			code: 'database_error',
+			message: expect.stringContaining('could not be decrypted')
+		});
 	});
 
 	it('does not cache a refreshed client when durable credential rotation fails', async () => {

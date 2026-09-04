@@ -5,19 +5,12 @@ import {
 	normalizeDateOnlyInput,
 	resolveUserCivilTimezone
 } from '@buildos/shared-agent-ops';
+import { ONTO_TASK_PRIORITY_WORDS } from '@buildos/shared-types';
 import { isValidTypeKey } from '$lib/types/onto';
 
 type Normalized<T> = { ok: true; value: T } | { ok: false; error: string };
 
 type DateBoundary = 'start' | 'end';
-
-const PRIORITY_LABELS: Record<string, number> = {
-	urgent: 1,
-	high: 1,
-	medium: 3,
-	normal: 3,
-	low: 5
-};
 
 function ok<T>(value: T): Normalized<T> {
 	return { ok: true, value };
@@ -150,7 +143,12 @@ export function normalizePriorityInput(
 			return ok(options.allowNull ? null : options.defaultValue);
 		}
 
-		const labelValue = PRIORITY_LABELS[trimmed];
+		// Word priorities resolve through the canonical five-rung scale
+		// (ONTO_TASK_PRIORITY_LABELS). The local map this replaced collapsed the
+		// scale to three rungs — "high" landed on 1 (Critical) and "low" on 5
+		// (Nice to have), so every word priority the API accepted was one or two
+		// rungs off what the task detail UI then displayed.
+		const labelValue = ONTO_TASK_PRIORITY_WORDS[trimmed];
 		if (labelValue !== undefined) {
 			return ok(labelValue);
 		}

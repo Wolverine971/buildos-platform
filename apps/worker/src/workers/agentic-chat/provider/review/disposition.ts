@@ -65,7 +65,7 @@ export function buildSemanticTurnDispositionGateRequest(
 							'Context gathering is over for this turn. Choose a disposition now; no more read tools are available in this gate. Never guess or call a mutation.'
 						]),
 				'Call declare_turn_contract only when the user commissioned a durable data change and every required target and value is resolved enough for safe execution.',
-				'Call request_turn_clarification when a durable change was commissioned but a required user choice remains unresolved after reading, including multiple plausible targets. Never guess among plausible choices. When loaded context identifies a finite candidate set, include every candidate with its stable ID when available and name every candidate label in the question.',
+				'Call request_turn_clarification when a durable change was commissioned but a required user choice remains unresolved after reading, including multiple plausible targets. Never guess among plausible choices. When loaded context identifies a finite candidate set, include every candidate with its stable ID when available; the candidates are shown to the user as a list beneath your question.',
 				'A descriptive reference is safely resolved only when the user message and loaded context identify one plausible target. If several loaded entities fit, a prior assistant mention, ordering, or proposed tool target does not choose one for the user.',
 				// The acting gate gets the five-line actor register; the full
 				// reviewer-register guidance stays in reviewer prompts only.

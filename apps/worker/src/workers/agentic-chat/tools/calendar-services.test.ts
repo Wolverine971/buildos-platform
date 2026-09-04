@@ -497,13 +497,50 @@ describe('worker source-aware Calendar provider services', () => {
 		const f = fixture();
 		delete f.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1;
 		f.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY = key;
+		// A host with no key is a server configuration failure, not a database
+		// failure and not a provider failure. Naming it is the whole point.
 		await expect(
 			f.services.write.getEvent({
 				userId: 'user-1',
 				providerEventId: 'event-a',
 				selector: { calendarSourceId: 'source-a' }
 			})
-		).rejects.toMatchObject({ code: 'database_error' });
+		).rejects.toMatchObject({
+			code: 'not_configured',
+			message: expect.stringContaining('PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1')
+		});
 		expect(f.createCalendarApi).not.toHaveBeenCalled();
+	});
+
+	it('reports key drift as an undecryptable stored credential, not a provider fault', async () => {
+		const f = fixture();
+		f.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1 =
+			'a-different-worker-calendar-key-with-at-least-32-bytes';
+		await expect(
+			f.services.write.getEvent({
+				userId: 'user-1',
+				providerEventId: 'event-a',
+				selector: { calendarSourceId: 'source-a' }
+			})
+		).rejects.toMatchObject({
+			code: 'database_error',
+			message: expect.stringContaining('could not be decrypted')
+		});
+		expect(f.createCalendarApi).not.toHaveBeenCalled();
+	});
+
+	it('names the missing OAuth client variables instead of saying credentials are unavailable', async () => {
+		const f = fixture();
+		delete f.env.PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET;
+		await expect(
+			f.services.write.getEvent({
+				userId: 'user-1',
+				providerEventId: 'event-a',
+				selector: { calendarSourceId: 'source-a' }
+			})
+		).rejects.toMatchObject({
+			code: 'not_configured',
+			message: expect.stringContaining('PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET')
+		});
 	});
 });

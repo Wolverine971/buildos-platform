@@ -121,7 +121,12 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		//   project        30 tools / 34,269 B
 		//   project_create  6 tools / 11,465 B (members unchanged from the old
 		//                  project_create_minimal, which had no cap here)
-		expect(global.openingBytes).toBeLessThanOrEqual(28_700);
+		// Ratcheted 2026-09-04 (retest remediation): global 28,700 → 32,700.
+		// Measured 31,085 B: create_onto_project now rides the global surface
+		// (~2.2k B after its dead entities item schema was dropped; a General
+		// Chat "create a project" turn was a dead turn before), plus the priority
+		// label vocabulary and duration_minutes descriptions on the task tools.
+		expect(global.openingBytes).toBeLessThanOrEqual(32_700);
 		expect(project.openingBytes).toBeLessThanOrEqual(36_000);
 		expect(project.admittedBytes).toBeLessThanOrEqual(36_000);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(12_040);

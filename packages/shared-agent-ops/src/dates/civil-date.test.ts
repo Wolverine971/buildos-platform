@@ -4,7 +4,9 @@ import {
 	CivilDateError,
 	civilDateBoundaryInstant,
 	hasDateOnlyValue,
+	instantToZonedIso,
 	isDateOnlyValue,
+	isIsoInstantString,
 	isValidIanaTimezone,
 	normalizeDateOnlyInput,
 	resolveUserCivilTimezone
@@ -163,5 +165,75 @@ describe('resolveUserCivilTimezone', () => {
 		await expect(
 			resolveUserCivilTimezone(clientReturning({ data: null }).client, null)
 		).resolves.toBeNull();
+	});
+});
+
+describe('isIsoInstantString', () => {
+	it('accepts only datetimes carrying an explicit offset', () => {
+		expect(isIsoInstantString('2026-09-23T03:59:59Z')).toBe(true);
+		expect(isIsoInstantString('2026-09-23T03:59:59.123Z')).toBe(true);
+		expect(isIsoInstantString('2026-09-23T03:59:59+00:00')).toBe(true);
+		expect(isIsoInstantString('2026-09-22T23:59:59-0400')).toBe(true);
+		expect(isIsoInstantString('2026-09-23T03:59Z')).toBe(true);
+	});
+
+	it('rejects civil dates, naive datetimes, and non-strings', () => {
+		// A bare calendar date is a civil day; rewriting it would invent a time.
+		expect(isIsoInstantString('2026-09-22')).toBe(false);
+		expect(isIsoInstantString('2026-09-22T10:00:00')).toBe(false);
+		expect(isIsoInstantString('2026-09-22 10:00:00+00')).toBe(false);
+		expect(isIsoInstantString('next tuesday')).toBe(false);
+		expect(isIsoInstantString('')).toBe(false);
+		expect(isIsoInstantString(null)).toBe(false);
+		expect(isIsoInstantString(1758600000000)).toBe(false);
+	});
+});
+
+describe('instantToZonedIso', () => {
+	it('renders a UTC instant as the user timezone wall clock during EDT', () => {
+		// The exact off-by-one-day case: 03:59:59Z is still September 22 in NY.
+		expect(instantToZonedIso('2026-09-23T03:59:59+00:00', 'America/New_York')).toBe(
+			'2026-09-22T23:59:59-04:00'
+		);
+		expect(instantToZonedIso('2026-09-23T03:59:59.000Z', 'America/New_York')).toBe(
+			'2026-09-22T23:59:59-04:00'
+		);
+	});
+
+	it('uses the DST-correct offset during EST', () => {
+		expect(instantToZonedIso('2026-11-20T04:59:59Z', 'America/New_York')).toBe(
+			'2026-11-19T23:59:59-05:00'
+		);
+	});
+
+	it('re-renders an already-offset input in the target timezone', () => {
+		expect(instantToZonedIso('2026-09-22T23:59:59-04:00', 'Asia/Tokyo')).toBe(
+			'2026-09-23T12:59:59+09:00'
+		);
+		expect(instantToZonedIso('2026-09-22T23:59:59-04:00', 'America/New_York')).toBe(
+			'2026-09-22T23:59:59-04:00'
+		);
+	});
+
+	it('falls back to +00:00 when no timezone resolves', () => {
+		expect(instantToZonedIso('2026-09-23T03:59:59Z', null)).toBe('2026-09-23T03:59:59+00:00');
+		expect(instantToZonedIso('2026-09-23T03:59:59Z', undefined)).toBe(
+			'2026-09-23T03:59:59+00:00'
+		);
+		expect(instantToZonedIso('2026-09-23T03:59:59Z', 'Mars/Olympus')).toBe(
+			'2026-09-23T03:59:59+00:00'
+		);
+	});
+
+	it('drops sub-second precision', () => {
+		expect(instantToZonedIso('2026-09-23T03:59:59.987Z', 'UTC')).toBe(
+			'2026-09-23T03:59:59+00:00'
+		);
+	});
+
+	it('returns null for anything that is not an instant', () => {
+		expect(instantToZonedIso('2026-09-22', 'America/New_York')).toBeNull();
+		expect(instantToZonedIso('2026-09-22T10:00:00', 'America/New_York')).toBeNull();
+		expect(instantToZonedIso('not a date', 'America/New_York')).toBeNull();
 	});
 });

@@ -3,6 +3,7 @@ import type {
 	ChatToolCall,
 	ChatToolDefinition,
 	ToolJsonObjectSchema,
+	ToolJsonSchema,
 	ToolJsonValue
 } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '@buildos/shared-agent-ops/ops/gateway-op-aliases';
@@ -166,11 +167,11 @@ export function validateToolCalls(
 		for (const required of requiredParams) {
 			const value = getValueByPath(args, required);
 			if (value === undefined || value === null) {
-				errors.push(`Missing required parameter: ${required}`);
+				errors.push(describeMissingRequiredParameter(toolName, required, paramSchema));
 				continue;
 			}
 			if (typeof value === 'string' && value.trim().length === 0) {
-				errors.push(`Missing required parameter: ${required}`);
+				errors.push(describeMissingRequiredParameter(toolName, required, paramSchema));
 			}
 		}
 
@@ -294,7 +295,8 @@ function describeTaskScheduleNoOp(
 		.join(' and ');
 	return (
 		`This update_onto_task would change nothing: ${described} on task_id ${taskId} in the context loaded this turn. ` +
-		`Re-send update_onto_task with the ${unchanged.join('/')} the user actually asked for (ISO 8601 datetime, e.g. 2026-08-07T15:00:00Z), ` +
+		`Re-send update_onto_task with the ${unchanged.join('/')} the user actually asked for ` +
+		`(YYYY-MM-DD for a day-level date in the user's timezone, or a full ISO datetime only when a clock time was given), ` +
 		`or, if the task already sits on that date, do not call a write tool and say so in your answer instead.`
 	);
 }
@@ -337,6 +339,43 @@ function cloneToolJsonValue(value: ToolJsonValue): ToolJsonValue {
 		);
 	}
 	return value;
+}
+
+/**
+ * Self-healing repair text for a missing required parameter.
+ *
+ * The bare "Missing required parameter: anchor" this replaced named neither the
+ * tool nor what an anchor is, so a repair round had nothing to act on but its
+ * own guess — the model resent read_document_section with an invented anchor.
+ * The property's own schema description is the answer the model needs and it is
+ * already written; carry it into the error.
+ */
+function describeMissingRequiredParameter(
+	toolName: string,
+	required: string,
+	paramSchema: ToolJsonObjectSchema | undefined
+): string {
+	const description = findPropertyDescription(paramSchema, required);
+	const subject = toolName ? `${toolName} is` : 'Tool call is';
+	return `${subject} missing required parameter "${required}"${description ? `: ${description}` : ''}`;
+}
+
+/** Resolve a (possibly dotted) required-parameter path to its schema description. */
+function findPropertyDescription(
+	paramSchema: ToolJsonObjectSchema | undefined,
+	path: string
+): string | null {
+	let cursor: ToolJsonSchema | undefined = paramSchema;
+	for (const part of path.split('.')) {
+		const properties = cursor?.properties;
+		if (!properties) return null;
+		cursor = properties[part];
+		if (!cursor) return null;
+	}
+	const description = cursor?.description;
+	return typeof description === 'string' && description.trim().length > 0
+		? description.trim()
+		: null;
 }
 
 function getValueByPath(value: Record<string, any>, path: string): unknown {

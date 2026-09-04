@@ -66,6 +66,8 @@ function mapProjectSummaryToOverviewRow(summary: {
 		name: summary.name,
 		state_key: summary.state_key,
 		description: summary.description ?? null,
+		// The summaries RPC carries no start_at/end_at. loadOverviewProjectData
+		// fetches them and mergeProjectScheduleDates fills them in.
 		start_at: null,
 		end_at: null,
 		next_step_short: summary.next_step_short ?? null,
@@ -129,10 +131,36 @@ async function loadOverviewProjectRows(
 	};
 }
 
+/** The project schedule the summaries RPC does not return, keyed by project id. */
+export type OverviewProjectScheduleRow = {
+	id: string;
+	start_at: string | null;
+	end_at: string | null;
+};
+
+/**
+ * Fill a summary-derived project row's start_at/end_at from the schedule rows
+ * read off `onto_projects`. Local to the overview payloads so the shared
+ * project-summary type keeps its shape.
+ */
+function mergeProjectScheduleDates(
+	project: ProjectRow,
+	schedules: readonly OverviewProjectScheduleRow[]
+): ProjectRow {
+	const schedule = schedules.find((row) => String(row.id) === String(project.id));
+	if (!schedule) return project;
+	return {
+		...project,
+		start_at: schedule.start_at ?? null,
+		end_at: schedule.end_at ?? null
+	};
+}
+
 async function loadOverviewProjectData(
 	context: AgenticChatSharedReadContextV1,
 	projectIds: string[]
 ): Promise<{
+	projectSchedules: OverviewProjectScheduleRow[];
 	tasks: TaskRow[];
 	milestones: MilestoneRow[];
 	plans: PlanRow[];
@@ -143,6 +171,7 @@ async function loadOverviewProjectData(
 }> {
 	if (projectIds.length === 0) {
 		return {
+			projectSchedules: [],
 			tasks: [],
 			milestones: [],
 			plans: [],
@@ -158,55 +187,66 @@ async function loadOverviewProjectData(
 	const eventStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 	const eventEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-	const [tasksRes, milestonesRes, plansRes, risksRes, eventsRes, logsRes, membersRes] =
-		await Promise.all([
-			supabaseAny
-				.from('onto_tasks')
-				.select(
-					'id, project_id, title, state_key, priority, due_at, completed_at, updated_at'
-				)
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			supabaseAny
-				.from('onto_milestones')
-				.select('id, project_id, title, state_key, due_at, completed_at, updated_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			supabaseAny
-				.from('onto_plans')
-				.select('id, project_id, name, state_key, updated_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			supabaseAny
-				.from('onto_risks')
-				.select('id, project_id, title, state_key, impact, updated_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			supabaseAny
-				.from('onto_events')
-				.select('id, project_id, title, state_key, start_at, end_at, updated_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null)
-				.gte('start_at', eventStart)
-				.lte('start_at', eventEnd),
-			supabaseAny
-				.from('onto_project_logs')
-				.select(
-					'project_id, entity_type, entity_id, action, created_at, changed_by, changed_by_actor_id, change_source, after_data, before_data'
-				)
-				.in('project_id', projectIds)
-				.order('created_at', { ascending: false })
-				.limit(Math.max(12, projectIds.length * 6)),
-			supabaseAny
-				.from('onto_project_members')
-				.select(
-					'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
-				)
-				.in('project_id', projectIds)
-				.is('removed_at', null)
-		]);
+	const [
+		projectsRes,
+		tasksRes,
+		milestonesRes,
+		plansRes,
+		risksRes,
+		eventsRes,
+		logsRes,
+		membersRes
+	] = await Promise.all([
+		// The summaries RPC has no start_at/end_at columns, so the project's own
+		// schedule is read here alongside its children. `projectIds` is already
+		// access-filtered by the caller, exactly like every query below it.
+		supabaseAny.from('onto_projects').select('id, start_at, end_at').in('id', projectIds),
+		supabaseAny
+			.from('onto_tasks')
+			.select('id, project_id, title, state_key, priority, due_at, completed_at, updated_at')
+			.in('project_id', projectIds)
+			.is('deleted_at', null),
+		supabaseAny
+			.from('onto_milestones')
+			.select('id, project_id, title, state_key, due_at, completed_at, updated_at')
+			.in('project_id', projectIds)
+			.is('deleted_at', null),
+		supabaseAny
+			.from('onto_plans')
+			.select('id, project_id, name, state_key, updated_at')
+			.in('project_id', projectIds)
+			.is('deleted_at', null),
+		supabaseAny
+			.from('onto_risks')
+			.select('id, project_id, title, state_key, impact, updated_at')
+			.in('project_id', projectIds)
+			.is('deleted_at', null),
+		supabaseAny
+			.from('onto_events')
+			.select('id, project_id, title, state_key, start_at, end_at, updated_at')
+			.in('project_id', projectIds)
+			.is('deleted_at', null)
+			.gte('start_at', eventStart)
+			.lte('start_at', eventEnd),
+		supabaseAny
+			.from('onto_project_logs')
+			.select(
+				'project_id, entity_type, entity_id, action, created_at, changed_by, changed_by_actor_id, change_source, after_data, before_data'
+			)
+			.in('project_id', projectIds)
+			.order('created_at', { ascending: false })
+			.limit(Math.max(12, projectIds.length * 6)),
+		supabaseAny
+			.from('onto_project_members')
+			.select(
+				'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
+			)
+			.in('project_id', projectIds)
+			.is('removed_at', null)
+	]);
 
 	const failures = [
+		['project schedules', projectsRes.error],
 		['tasks', tasksRes.error],
 		['milestones', milestonesRes.error],
 		['plans', plansRes.error],
@@ -221,6 +261,7 @@ async function loadOverviewProjectData(
 	}
 
 	return {
+		projectSchedules: Array.isArray(projectsRes.data) ? projectsRes.data : [],
 		tasks: Array.isArray(tasksRes.data) ? tasksRes.data : [],
 		milestones: Array.isArray(milestonesRes.data) ? milestonesRes.data : [],
 		plans: Array.isArray(plansRes.data) ? plansRes.data : [],
@@ -316,7 +357,9 @@ export async function getWorkspaceOverview(
 	const projectIds = projects.map((project) => String(project.id));
 	const related = await loadOverviewProjectData(context, projectIds);
 	return buildWorkspaceOverviewPayload({
-		projects,
+		projects: projects.map((project) =>
+			mergeProjectScheduleDates(project, related.projectSchedules)
+		),
 		tasks: related.tasks,
 		milestones: related.milestones,
 		plans: related.plans,
@@ -368,7 +411,7 @@ export async function getProjectOverview(
 
 		const related = await loadOverviewProjectData(context, [String(project.id)]);
 		return buildProjectOverviewPayload({
-			project,
+			project: mergeProjectScheduleDates(project, related.projectSchedules),
 			tasks: related.tasks,
 			milestones: related.milestones,
 			plans: related.plans,
@@ -408,7 +451,7 @@ export async function getProjectOverview(
 
 	const related = await loadOverviewProjectData(context, [match.project.id]);
 	return buildProjectOverviewPayload({
-		project: match.project,
+		project: mergeProjectScheduleDates(match.project, related.projectSchedules),
 		query,
 		tasks: related.tasks,
 		milestones: related.milestones,

@@ -16,10 +16,13 @@ describe('clarification semantic preflight', () => {
 		{ id: 'beta', label: 'Investor email', kind: 'task' }
 	];
 
+	// The question is no longer required to repeat every label verbatim: the
+	// host renders the candidates beneath it, and the verbatim rule failed four
+	// live clarifications in the 2026-09-04 retest (one fatally). What still
+	// fails preflight is a candidate set that is not a choice.
 	it.each([
-		['paraphrased candidates', 'Should I update the launch or investor one?', candidates],
-		['missing candidate', 'Should I update Launch email?', candidates],
-		['invalid candidate set', 'Which email should I update?', [{ label: '' }]]
+		['invalid candidate set', 'Which email should I update?', [{ label: '' }]],
+		['a single candidate', 'Which email should I update?', [candidates[0]]]
 	])(
 		'returns repairable feedback for %s before control execution',
 		(_name, question, choices) => {
@@ -42,10 +45,10 @@ describe('clarification semantic preflight', () => {
 		}
 	);
 
-	it('accepts a corrected question that names every candidate', () => {
+	it('accepts a question that paraphrases the candidates instead of naming them', () => {
 		const args = {
 			reason: 'Two tasks match the request.',
-			question: 'Should I update Launch email or Investor email?',
+			question: 'Should I update the launch or investor one?',
 			candidates
 		};
 		expect(
@@ -109,6 +112,12 @@ describe('reschedule no-op preflight', () => {
 		const message = issues[0]!.errors.join(' ');
 		expect(message).toContain('due_at is already 2026-08-07T15:00:00Z');
 		expect(message).toContain(taskId);
+		// The repair example must not contradict the schema's date rule: a
+		// day-level date is YYYY-MM-DD in the user's timezone, not an ISO instant.
+		expect(message).toContain(
+			"YYYY-MM-DD for a day-level date in the user's timezone, or a full ISO datetime only when a clock time was given"
+		);
+		expect(message).not.toContain('ISO 8601 datetime, e.g.');
 	});
 
 	it('rejects a same-instant restatement written in another offset', () => {
@@ -184,5 +193,87 @@ describe('reschedule no-op preflight', () => {
 				loaded({ due_at: '2026-08-07T15:00:00Z' })
 			)
 		).toEqual([]);
+	});
+});
+
+// A bare "Missing required parameter: anchor" gave the repair round nothing to
+// act on: it named neither the tool nor what an anchor is, so the model resent
+// the call with an invented anchor (2026-09-04).
+describe('missing required parameter feedback', () => {
+	const readSectionTool: ChatToolDefinition = {
+		type: 'function',
+		function: {
+			name: 'read_document_section',
+			description: 'Read one section of a document by heading anchor.',
+			parameters: {
+				type: 'object',
+				properties: {
+					document_id: { type: 'string', description: 'Document ID to read from' },
+					anchor: {
+						type: 'string',
+						description:
+							'Heading anchor (slug) of the section to read, e.g. "channels". Call get_document_outline to list anchors.'
+					}
+				},
+				required: ['document_id', 'anchor']
+			}
+		}
+	};
+	const call = (args: Record<string, unknown>): ChatToolCall => ({
+		id: 'read-section-1',
+		type: 'function',
+		function: { name: 'read_document_section', arguments: JSON.stringify(args) }
+	});
+
+	it("names the tool and carries the property's own schema description", () => {
+		const issues = validateToolCalls([call({ document_id: 'doc-1' })], [readSectionTool]);
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]!.errors).toEqual([
+			'read_document_section is missing required parameter "anchor": Heading anchor (slug) of the section to read, e.g. "channels". Call get_document_outline to list anchors.'
+		]);
+	});
+
+	it('treats a blank string the same as an absent value', () => {
+		const issues = validateToolCalls(
+			[call({ document_id: 'doc-1', anchor: '   ' })],
+			[readSectionTool]
+		);
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]!.errors[0]).toContain(
+			'read_document_section is missing required parameter "anchor"'
+		);
+	});
+
+	it('falls back to the bare name when the property has no description', () => {
+		const bareTool: ChatToolDefinition = {
+			type: 'function',
+			function: {
+				name: 'get_onto_task_details',
+				description: 'Read one task.',
+				parameters: {
+					type: 'object',
+					properties: { task_id: { type: 'string' } },
+					required: ['task_id']
+				}
+			}
+		};
+
+		const issues = validateToolCalls(
+			[
+				{
+					id: 'task-details-1',
+					type: 'function',
+					function: { name: 'get_onto_task_details', arguments: '{}' }
+				}
+			],
+			[bareTool]
+		);
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]!.errors).toEqual([
+			'get_onto_task_details is missing required parameter "task_id"'
+		]);
 	});
 });

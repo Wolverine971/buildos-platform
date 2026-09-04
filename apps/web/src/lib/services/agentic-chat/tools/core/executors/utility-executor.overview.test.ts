@@ -91,7 +91,35 @@ function createOverviewSupabaseMock(config: {
 
 	const from = vi.fn().mockImplementation((table: string) => {
 		if (table === 'onto_projects') {
-			throw new Error('Unexpected direct onto_projects query in overview scope test');
+			// The only permitted direct read is the schedule of projects the
+			// access-filtered summaries RPC already returned (start_at/end_at are
+			// not RPC columns). Any wider read is an unscoped project query.
+			const scopedIds = new Set(
+				(config.projectSummaries as Array<{ id: string }>).map((summary) => summary.id)
+			);
+			return {
+				select: vi.fn().mockImplementation((columns: string) => {
+					if (columns.replace(/\s+/g, '') !== 'id,start_at,end_at') {
+						throw new Error(
+							`Unexpected direct onto_projects query in overview scope test: ${columns}`
+						);
+					}
+					return {
+						in: vi.fn().mockImplementation((column: string, ids: unknown) => {
+							const requested = Array.isArray(ids) ? (ids as string[]) : [];
+							if (column !== 'id' || requested.some((id) => !scopedIds.has(id))) {
+								throw new Error(
+									'Unexpected direct onto_projects query in overview scope test'
+								);
+							}
+							return Promise.resolve({
+								data: requested.map((id) => ({ id, start_at: null, end_at: null })),
+								error: null
+							});
+						})
+					};
+				})
+			};
 		}
 
 		if (table === 'onto_tasks') {

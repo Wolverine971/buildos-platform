@@ -79,6 +79,9 @@ describe('convertCalendarSuggestionToProjectSpec', () => {
 		expect(planEntity).toBeTruthy();
 		expect(taskEntity).toBeTruthy();
 		expect(taskEntity?.state_key).toBe('todo');
+		// "high" is rung 2 on the canonical scale (1 Critical ... 5 Nice to have).
+		// The map this replaced was inverted and produced 4 (Low).
+		expect(taskEntity?.priority).toBe(2);
 		expect(taskEntity?.due_at).toBe(expectedTaskDueAt);
 		expect((taskEntity?.props as Record<string, unknown>)?.recurrence_rrule).toBe(
 			'RRULE:FREQ=WEEKLY;BYDAY=MO'

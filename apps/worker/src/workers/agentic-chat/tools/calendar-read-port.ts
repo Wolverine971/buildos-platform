@@ -10,8 +10,9 @@
 //  1. Nothing here touches OAuth environment variables at construction time.
 //     `createWorkerGoogleCalendarServices` resolves credentials lazily inside
 //     the credential service, so a worker deployed without the Calendar OAuth
-//     env still boots; a calendar read then reports `not_configured` as
-//     `coverage: 'unavailable'` instead of throwing an unhandled error.
+//     env still boots; a calendar read then reports
+//     `credentials_not_configured` as `coverage: 'unavailable'` instead of
+//     throwing an unhandled error or blaming Google.
 //  2. There is NO legacy single-OAuth-account fallback. A user with no active
 //     source-aware read target gets `coverage: 'unavailable'` with
 //     `reason_code: 'not_connected'`, never an empty event list.
@@ -47,24 +48,35 @@ type WorkerGoogleCalendarServices = ReturnType<typeof createWorkerGoogleCalendar
  * failed". They become `coverage: 'unavailable'` with the reason attached; any
  * other error still throws so the turn records a real tool failure.
  */
-const CONNECTION_LEVEL_REASON_CODES = new Set([
-	'not_configured',
-	'connection_not_found',
-	'source_not_found',
-	'refresh_token_required',
-	'reconnect_required'
+const CONNECTION_LEVEL_REASON_CODES = new Map<string, string>([
+	// Provider error code -> the reason code the model-facing tools speak. The
+	// two credential codes are deliberately renamed: `not_configured` and
+	// `database_error` read like transient provider trouble, and the model told a
+	// user a missing server variable was "a transient issue on Google's side".
+	['not_configured', 'credentials_not_configured'],
+	['database_error', 'credentials_unreadable'],
+	['connection_not_found', 'connection_not_found'],
+	['source_not_found', 'source_not_found'],
+	['refresh_token_required', 'refresh_token_required'],
+	['reconnect_required', 'reconnect_required']
 ]);
 
 function connectionLevelReasonCode(error: unknown): string | null {
-	if (error instanceof GoogleCalendarConnectionError) {
-		return CONNECTION_LEVEL_REASON_CODES.has(error.code) ? error.code : null;
-	}
+	const code = (error as { code?: unknown } | null)?.code;
+	if (typeof code !== 'string') return null;
 	// Bundle boundaries can break instanceof; match by shape as the calendar
 	// services themselves do.
-	const code = (error as { code?: unknown } | null)?.code;
-	if (typeof code === 'string' && CONNECTION_LEVEL_REASON_CODES.has(code)) {
-		const name = (error as { name?: unknown }).name;
-		if (name === 'GoogleCalendarConnectionError') return code;
+	const name = (error as { name?: unknown } | null)?.name;
+	if (
+		error instanceof GoogleCalendarConnectionError ||
+		name === 'GoogleCalendarConnectionError'
+	) {
+		return CONNECTION_LEVEL_REASON_CODES.get(code) ?? null;
+	}
+	// A source that is not enabled for reading is that source's problem, not a
+	// failed tool call. Report it instead of throwing the whole read away.
+	if (name === 'GoogleCalendarTargetError' && code === 'CALENDAR_SOURCE_NOT_CAPABLE') {
+		return 'source_not_readable';
 	}
 	return null;
 }

@@ -6,6 +6,8 @@ import {
 	decryptGoogleCalendarToken,
 	encryptGoogleCalendarToken,
 	getActiveGoogleCalendarTokenKeyVersion,
+	googleCalendarTokenKeyEnvVarName,
+	isGoogleCalendarTokenKeyUnavailableError,
 	type GoogleCalendarOauthClientKind,
 	type GoogleCalendarTokenContext,
 	type GoogleCalendarTokenKeyResolver
@@ -257,10 +259,23 @@ export class GoogleCalendarCredentialService<
 		try {
 			accessToken = this.decryptToken(credential.access_token_ciphertext, context);
 			refreshToken = this.decryptToken(credential.refresh_token_ciphertext, context);
-		} catch {
+		} catch (error) {
+			// A bare catch here once reported a host with no encryption key and a
+			// host with the wrong one as the same 'database_error', which is how a
+			// missing Railway variable reached a user as "a transient issue on
+			// Google's side". These are different fixes, so they get different codes.
+			if (isGoogleCalendarTokenKeyUnavailableError(error)) {
+				const envVarName =
+					(error as { envVarName?: unknown }).envVarName ??
+					googleCalendarTokenKeyEnvVarName(credential.key_version);
+				throw new GoogleCalendarConnectionError(
+					'not_configured',
+					`Calendar token encryption key is not configured on this server (${envVarName})`
+				);
+			}
 			throw new GoogleCalendarConnectionError(
 				'database_error',
-				'Stored Google Calendar credentials are unavailable'
+				"Stored Google Calendar credentials could not be decrypted with this server's calendar token encryption key"
 			);
 		}
 

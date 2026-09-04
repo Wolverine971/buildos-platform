@@ -312,23 +312,71 @@ function readLabel(value: unknown): string | undefined {
 	return normalized ? normalized : undefined;
 }
 
+/**
+ * A change value is a short scalar the fulfilment check compares by exact
+ * equality. The declaration schema caps it at this length.
+ */
+export const MAX_TURN_CONTRACT_CHANGE_VALUE_CHARS = 160;
+
+/**
+ * Fields whose values are prose rather than scalars. A contract can require
+ * that such a field be written, but it cannot carry the text: the schema caps a
+ * change value at 160 characters and fulfilment compares change values by exact
+ * equality, so a document body or description declared as a change is either
+ * truncated by the model at the cap (the 2026-09-04 production retest recorded
+ * `Clear scope,|||||` and `$10,000##2` from the reviewer) or can never match
+ * what the write tool actually stored. Such declarations are demoted to
+ * required_fields postconditions: the field must be written, and the exact text
+ * is supplied to the write tool at execution.
+ */
+export const TURN_CONTRACT_PROSE_FIELDS: ReadonlySet<string> = new Set([
+	'content',
+	'body',
+	'body_markdown',
+	'markdown',
+	'text',
+	'description',
+	'notes',
+	'summary',
+	'merge_instructions'
+]);
+
 function readChangeValue(value: unknown): string | undefined {
-	if (typeof value === 'string') return readString(value, 160);
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		return trimmed ? trimmed : undefined;
+	}
 	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
 		return String(value);
 	}
 	return undefined;
 }
 
+export function isProseTurnContractChange(field: string, value: string): boolean {
+	return (
+		TURN_CONTRACT_PROSE_FIELDS.has(field) ||
+		value.length >= MAX_TURN_CONTRACT_CHANGE_VALUE_CHARS
+	);
+}
+
+type ParsedChanges = {
+	changes: TurnContractChange[];
+	/** Prose fields declared as changes, kept only as required_fields postconditions. */
+	postconditions: string[];
+};
+
 /**
  * Returns the declared changes, `[]` when none were declared, or `null` when
  * any entry is malformed. Like target_ids, a malformed entry rejects the whole
  * outcome rather than silently weakening it. Repeated fields keep the last value.
+ * Prose fields (see TURN_CONTRACT_PROSE_FIELDS) and values at or over the
+ * schema cap are returned as postconditions rather than truncated.
  */
-function readChanges(value: unknown): TurnContractChange[] | null {
-	if (value === undefined) return [];
+function readChanges(value: unknown): ParsedChanges | null {
+	if (value === undefined) return { changes: [], postconditions: [] };
 	if (!Array.isArray(value) || value.length > MAX_CHANGES_PER_OUTCOME) return null;
 	const valuesByField = new Map<string, string>();
+	const postconditions = new Set<string>();
 	for (const item of value) {
 		const record = asRecord(item);
 		if (!record) return null;
@@ -337,9 +385,21 @@ function readChanges(value: unknown): TurnContractChange[] | null {
 		if (!rawField || changeValue === undefined) return null;
 		const field = normalizeFieldName(rawField);
 		if (!field) return null;
+		if (isProseTurnContractChange(field, changeValue)) {
+			valuesByField.delete(field);
+			postconditions.add(field);
+			continue;
+		}
+		postconditions.delete(field);
 		valuesByField.set(field, changeValue);
 	}
-	return Array.from(valuesByField, ([field, changeValue]) => ({ field, value: changeValue }));
+	return {
+		changes: Array.from(valuesByField, ([field, changeValue]) => ({
+			field,
+			value: changeValue
+		})),
+		postconditions: Array.from(postconditions)
+	};
 }
 
 /**
@@ -428,7 +488,7 @@ function normalizeOutcome(
 			`changes must be an array of at most ${MAX_CHANGES_PER_OUTCOME} objects, each with a non-empty "field" and a string, number, boolean, or null "value".`
 		);
 	}
-	const changes = normalizeOutcomeChanges(parsedChanges, entityKind);
+	const changes = normalizeOutcomeChanges(parsedChanges.changes, entityKind);
 	// A create has no durable entity id until after it executes. Models sometimes
 	// put the containing project id in target_ids, but target_ids means existing
 	// entity ids and would make both pre-execution authorization and completion
@@ -436,10 +496,14 @@ function normalizeOutcome(
 	// reviewed mutation batch.
 	const targetIds = action === 'create' ? [] : parsedTargetIds;
 	// A declared change is a postcondition: the field must actually be written on
-	// each counted target, so it joins required_fields for fulfillment.
+	// each counted target, so it joins required_fields for fulfillment. Prose
+	// changes join only as postconditions (their text is not a contract value).
 	const requiredFields = Array.from(
 		new Set([
 			...parsedRequiredFields.map((field) => normalizeOutcomeFieldName(field, entityKind)),
+			...parsedChanges.postconditions.map((field) =>
+				normalizeOutcomeFieldName(field, entityKind)
+			),
 			...changes.map((change) => change.field)
 		])
 	);
@@ -732,6 +796,20 @@ export function isPendingTurnContractInScope(
 	);
 }
 
+/**
+ * Whether the contract commissions a new project. Project creation is shell
+ * first: the project must exist before any child record can reference its id,
+ * so hosts route such contracts through the narrow create_onto_project
+ * carve-out regardless of which surface declared them.
+ */
+export function turnContractCreatesProject(contract: TurnContract | null | undefined): boolean {
+	return Boolean(
+		contract?.outcomes.some(
+			(outcome) => outcome.action === 'create' && outcome.entityKind === 'project'
+		)
+	);
+}
+
 export function extractDeclaredTurnContract(toolCall: ChatToolCall): TurnContract | null {
 	if (toolCall.function?.name !== DECLARE_TURN_CONTRACT_TOOL_NAME) return null;
 	const { args } = parseToolArguments(toolCall.function.arguments);
@@ -796,25 +874,14 @@ export function executeAgenticChatStandardControlToolV1(input: {
 			const candidates = readClarificationCandidates(args.candidates);
 			if (error || !reason || !question || !candidates) {
 				return standardControlFailure(
-					'Turn clarification failed: provide the unresolved semantic choice and a concise question that names every supplied candidate.'
+					'Turn clarification failed: provide the unresolved semantic choice (reason), a concise user-facing question, and, when candidates are supplied, at least two of them each with a label.'
 				);
 			}
-			const missingLabels = candidates
-				.filter(
-					(candidate) => !question.toLowerCase().includes(candidate.label.toLowerCase())
-				)
-				.map((candidate) => candidate.label);
-			if (missingLabels.length > 0) {
-				const named = missingLabels
-					.slice(0, 3)
-					.map((label) => `"${label.slice(0, 80)}"`)
-					.join(', ');
-				const overflow =
-					missingLabels.length > 3 ? ` and ${missingLabels.length - 3} more` : '';
-				return standardControlFailure(
-					`Turn clarification failed: the question must name every supplied candidate label verbatim; missing ${named}${overflow}.`
-				);
-			}
+			// The candidates are rendered to the user as a list beneath the
+			// question (the host's clarification render guarantees every label
+			// reaches the user), so the question is not required to repeat them.
+			// Requiring verbatim labels in the question failed four live
+			// clarifications in the 2026-09-04 retest, one of them fatally.
 			return {
 				success: true,
 				result: {

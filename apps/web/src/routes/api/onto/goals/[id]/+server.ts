@@ -55,7 +55,12 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
-import { normalizeDateTimeInput, normalizeTypeKeyInput } from '../../shared/input-normalization';
+import {
+	needsCivilTimezone,
+	normalizeDateTimeInput,
+	normalizeTypeKeyInput,
+	resolveUserCivilTimezone
+} from '../../shared/input-normalization';
 import {
 	AgenticChatToolAccessDeniedError,
 	loadOntoGoalDetail
@@ -241,7 +246,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Access denied', 403);
 		}
 
-		const normalizedTargetDate = normalizeDateTimeInput(target_date, 'target_date', 'end');
+		// A bare YYYY-MM-DD closes the civil day in this user's timezone. Only
+		// date-only input pays for the users.timezone read.
+		const civilTimezone = needsCivilTimezone(target_date)
+			? await resolveUserCivilTimezone(supabase, session.user.id)
+			: null;
+
+		const normalizedTargetDate = normalizeDateTimeInput(
+			target_date,
+			'target_date',
+			'end',
+			civilTimezone
+		);
 		if (!normalizedTargetDate.ok) {
 			return ApiResponse.badRequest(normalizedTargetDate.error);
 		}

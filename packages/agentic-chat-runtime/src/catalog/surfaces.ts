@@ -98,6 +98,13 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	'create_onto_task',
 	'update_onto_task',
 	'move_onto_task',
+	// New-project creation. "Create a project for X" is a workspace-level ask;
+	// before 2026-09-04 only the Project Setup surface mounted the tool and a
+	// General Chat turn asking for one was a dead turn. The tool is
+	// contract-required, so it always runs through declared-contract review and
+	// the shell-first carve-out; the adapter shifts the session into the new
+	// project afterwards.
+	'create_onto_project',
 	// Background handoff and live web research.
 	'delegate_task',
 	'web_search',
@@ -119,7 +126,12 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
  */
 const PROJECT_DIRECT_TOOL_NAMES = [
 	...GLOBAL_DIRECT_TOOL_NAMES.filter(
-		(name) => name !== 'search_onto_projects' && name !== 'search_all_projects'
+		(name) =>
+			name !== 'search_onto_projects' &&
+			name !== 'search_all_projects' &&
+			// A focused project turn stays inside its project; creating another
+			// project is a workspace-level move that belongs to the global surface.
+			name !== 'create_onto_project'
 	),
 	'get_onto_project_details',
 	'search_project',

@@ -100,7 +100,7 @@ function readReferenceCandidates(value: unknown): ReferenceCandidateGroup[] {
 export function findAmbiguousReferenceCandidates(
 	argumentsValue: JsonObject,
 	contract: TurnContract,
-	userMessageText: string | null = null
+	userMessageText: string | null | readonly string[] = null
 ): ReferenceCandidateGroup | null {
 	return findAmbiguousReferenceCandidatesForTargetIds(
 		argumentsValue,
@@ -112,10 +112,18 @@ export function findAmbiguousReferenceCandidates(
 export function findAmbiguousReferenceCandidatesForTargetIds(
 	argumentsValue: JsonObject,
 	targetIds: readonly string[],
-	userMessageText: string | null = null
+	userMessageText: string | null | readonly string[] = null
 ): ReferenceCandidateGroup | null {
 	const contractTargets = new Set(targetIds);
-	const normalizedMessage = normalizeCandidateMatchText(userMessageText ?? '');
+	// Latest message first, then earlier ones: "the same document" in a
+	// follow-up points at whatever the user named in their own earlier words.
+	const userMessages = (
+		Array.isArray(userMessageText)
+			? userMessageText
+			: [typeof userMessageText === 'string' ? userMessageText : '']
+	).map((text) => normalizeCandidateMatchText(text ?? ''));
+	const normalizedMessage = userMessages[0] ?? '';
+	const priorMessages = userMessages.slice(1);
 	for (const group of readReferenceCandidates(argumentsValue.reference_candidates)) {
 		if (group.candidates.length < 2) continue;
 		const covered = group.candidates.filter((candidate) =>
@@ -137,6 +145,16 @@ export function findAmbiguousReferenceCandidatesForTargetIds(
 		// id. Only an unambiguous naming skips the floor; anything the message
 		// leaves open still reaches the user.
 		if (userMessageIdentifiesExactlyOneCandidate(normalizedMessage, group.candidates)) continue;
+		// A follow-up that says "the same document" or "those edits" names
+		// nothing itself. When exactly one candidate was named in the user's
+		// own recent earlier messages and the contract targets that candidate,
+		// the reference is resolved by the user, not guessed by the model
+		// (2026-09-04 retest: "Use the same existing document" after a message
+		// that named the Marketing Brief was bounced back as a choice).
+		const priorPick = priorMessages
+			.map((text) => uniquelyIdentifiedCandidate(text, group.candidates))
+			.find((candidate) => candidate !== null);
+		if (priorPick && contractTargets.has(priorPick.id)) continue;
 		return group;
 	}
 	return null;
@@ -156,17 +174,24 @@ function userMessageIdentifiesExactlyOneCandidate(
 	normalizedMessage: string,
 	candidates: readonly { id: string; title: string }[]
 ): boolean {
-	if (!normalizedMessage) return false;
+	return uniquelyIdentifiedCandidate(normalizedMessage, candidates) !== null;
+}
+
+function uniquelyIdentifiedCandidate<T extends { id: string; title: string }>(
+	normalizedMessage: string,
+	candidates: readonly T[]
+): T | null {
+	if (!normalizedMessage) return null;
 	const byId = candidates.filter((candidate) => {
 		const id = normalizeCandidateMatchText(candidate.id);
 		return id.length > 0 && normalizedMessage.includes(id);
 	});
-	if (byId.length > 0) return byId.length === 1;
+	if (byId.length > 0) return byId.length === 1 ? byId[0]! : null;
 	const byTitle = candidates.filter((candidate) => {
 		const title = normalizeCandidateMatchText(candidate.title);
 		return title.length >= MIN_UNIQUE_TITLE_MATCH_LENGTH && normalizedMessage.includes(title);
 	});
-	return byTitle.length === 1;
+	return byTitle.length === 1 ? byTitle[0]! : null;
 }
 
 /**
@@ -174,20 +199,36 @@ function userMessageIdentifiesExactlyOneCandidate(
  * user's own latest words off the acting request it is about to answer.
  */
 export function latestUserMessageText(request: AgenticChatTurnProviderRequestV1): string | null {
-	for (let index = request.messages.length - 1; index >= 0; index -= 1) {
+	return recentUserMessageTexts(request, 1)[0] ?? null;
+}
+
+const RECENT_USER_MESSAGE_WINDOW = 3;
+
+/**
+ * The user's own recent words, latest first. A follow-up ("the same one",
+ * "those three edits") resolves against what the user named just before it.
+ */
+export function recentUserMessageTexts(
+	request: AgenticChatTurnProviderRequestV1,
+	limit = RECENT_USER_MESSAGE_WINDOW
+): string[] {
+	const texts: string[] = [];
+	for (let index = request.messages.length - 1; index >= 0 && texts.length < limit; index -= 1) {
 		const message = request.messages[index]!;
 		if (message.role !== 'user') continue;
-		if (typeof message.content === 'string') return message.content;
-		const text = message.content
-			.filter(
-				(part): part is Extract<typeof part, { type: 'text' }> =>
-					part.type === 'text' && typeof part.text === 'string'
-			)
-			.map((part) => part.text)
-			.join('\n');
-		return text || null;
+		const text =
+			typeof message.content === 'string'
+				? message.content
+				: message.content
+						.filter(
+							(part): part is Extract<typeof part, { type: 'text' }> =>
+								part.type === 'text' && typeof part.text === 'string'
+						)
+						.map((part) => part.text)
+						.join('\n');
+		if (text) texts.push(text);
 	}
-	return null;
+	return texts;
 }
 
 const CANDIDATE_GATE_QUESTION_MAX_LENGTH = 500;
@@ -276,12 +317,15 @@ export function readClarificationRender(argumentsValue: JsonObject): Clarificati
 export function clarificationRenderSatisfied(text: string, render: ClarificationRender): boolean {
 	const normalized = normalizeCandidateMatchText(text);
 	if (!normalized) return false;
-	if (normalized.includes(normalizeCandidateMatchText(render.question))) return true;
-	if (!normalized.includes('?')) return false;
-	return (
-		render.labels.length > 0 &&
-		render.labels.every((label) => normalized.includes(normalizeCandidateMatchText(label)))
+	// Every candidate label has to reach the user: the clarification executor
+	// no longer requires the question itself to repeat them, so the render is
+	// the one place that guarantees the choices are visible.
+	const labelsPresent = render.labels.every((label) =>
+		normalized.includes(normalizeCandidateMatchText(label))
 	);
+	if (!labelsPresent) return false;
+	if (normalized.includes(normalizeCandidateMatchText(render.question))) return true;
+	return normalized.includes('?') && render.labels.length > 0;
 }
 
 export function renderClarificationText(render: ClarificationRender): string {

@@ -6,6 +6,7 @@
  * These tools modify data in the ontology system.
  */
 
+import { ONTO_TASK_PRIORITY_DEFAULT, ONTO_TASK_PRIORITY_DESCRIPTION } from '@buildos/shared-types';
 import type { ChatToolDefinition } from '@buildos/shared-types';
 
 export const ONTOLOGY_WRITE_TOOLS = [
@@ -18,7 +19,7 @@ export const ONTOLOGY_WRITE_TOOLS = [
 		function: {
 			name: 'create_onto_task',
 			description:
-				'Create future human work in a project when the user asks to add, track, or remember it. Do the work inline instead for research, brainstorming, summaries, or drafts. Link only known entities and assign only known project members.',
+				'Create future human work in a project when the user asks to add, track, or remember it. Do the work inline instead for research, brainstorming, summaries, or drafts. Link only known entities and assign only known project members. A dependency or prerequisite between two existing records is a relationship (rel "depends_on"), not description text.',
 			parameters: {
 				type: 'object',
 				additionalProperties: false,
@@ -51,8 +52,8 @@ export const ONTOLOGY_WRITE_TOOLS = [
 						type: 'integer',
 						minimum: 1,
 						maximum: 5,
-						default: 3,
-						description: 'Priority; 1 is highest, 5 lowest.'
+						default: ONTO_TASK_PRIORITY_DEFAULT,
+						description: ONTO_TASK_PRIORITY_DESCRIPTION
 					},
 					assignee_actor_ids: {
 						type: 'array',
@@ -111,7 +112,8 @@ export const ONTOLOGY_WRITE_TOOLS = [
 					},
 					props: {
 						type: 'object',
-						description: 'Additional JSON properties'
+						description:
+							'Additional JSON properties. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
 					}
 				},
 				required: ['project_id', 'title']
@@ -1015,7 +1017,7 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 		function: {
 			name: 'update_onto_task',
 			description:
-				'Update only the provided task fields: title, description, type, state, priority, assignees, schedule, links, or props.',
+				'Update only the provided task fields: title, description, type, state, priority, assignees, schedule, links, or props. A dependency or prerequisite on another existing record is a relationship (rel "depends_on"), not description text.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -1050,7 +1052,7 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 						type: 'integer',
 						minimum: 1,
 						maximum: 5,
-						description: 'New priority; 1 is highest, 5 lowest.'
+						description: `New priority. ${ONTO_TASK_PRIORITY_DESCRIPTION}`
 					},
 					assignee_actor_ids: {
 						type: 'array',
@@ -1092,7 +1094,8 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 					},
 					props: {
 						type: 'object',
-						description: 'Properties to merge with existing props'
+						description:
+							'Properties to merge with existing props. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
 					}
 				},
 				required: ['task_id']

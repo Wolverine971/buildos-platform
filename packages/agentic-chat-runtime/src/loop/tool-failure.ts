@@ -29,7 +29,12 @@ export type ClassifyToolFailureParams = {
 	field?: string | null;
 };
 
-const REQUIRED_PARAMETER_PATTERN = /Missing required parameter:\s*([a-zA-Z0-9_.-]+)/i;
+// Two shapes reach here: the gateway's `Missing required parameter: task_id`
+// and the loop validator's self-healing `<tool> is missing required
+// parameter "anchor": <schema description>` (2026-09-04). Both must classify
+// as missing_required_parameter and yield the field name, or the repair loop
+// loses the field it is supposed to ask for.
+const REQUIRED_PARAMETER_PATTERN = /missing required parameter(?::\s*|\s+")([a-zA-Z0-9_.-]+)/i;
 const INVALID_ARGUMENT_PATTERN = /\bInvalid\s+([a-zA-Z0-9_.-]+):/i;
 
 export function parseRequiredParameterFailure(message: string): string | null {

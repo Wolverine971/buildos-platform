@@ -1962,22 +1962,35 @@ describe('AgenticChatTurnProviderAdapter', () => {
 	it.each([false, true])(
 		'repairs clarification semantics with bounded exhaustion=%s',
 		async (exhausted) => {
+			// A one-entry candidate list is not a choice. (The question is no
+			// longer required to repeat every label verbatim: the host renders
+			// the candidates beneath it, and that rule failed four live
+			// clarifications in the 2026-09-04 retest.)
 			const invalid = {
 				reason: 'Two tasks match the reference.',
 				question: 'Should I update the launch or investor one?',
+				candidates: [{ id: 'task-a', label: 'Launch email', kind: 'task' }]
+			};
+			const corrected = {
+				...invalid,
 				candidates: [
 					{ id: 'task-a', label: 'Launch email', kind: 'task' },
 					{ id: 'task-b', label: 'Investor email', kind: 'task' }
 				]
 			};
-			const corrected = {
-				...invalid,
-				question: 'Should I update Launch email or Investor email?'
-			};
+			const degradedAnswer = 'Which one should I mark done: Launch email or Investor email?';
 			const rounds = exhausted
-				? [1, 2, 3].map((n) =>
-						providerReadRound(`invalid-${n}`, invalid, 'request_turn_clarification')
-					)
+				? [
+						...[1, 2, 3].map((n) =>
+							providerReadRound(`invalid-${n}`, invalid, 'request_turn_clarification')
+						),
+						// Exhausted repair no longer fails the turn: the rejected call
+						// never ran, so the turn ends on a tool-free prose answer.
+						[
+							{ type: 'text' as const, content: degradedAnswer },
+							{ type: 'done' as const, finishedReason: 'stop' }
+						]
+					]
 				: [
 						providerReadRound('invalid-1', invalid, 'request_turn_clarification'),
 						providerReadRound('corrected', corrected, 'request_turn_clarification'),
@@ -2023,10 +2036,20 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				for await (const step of invocation.stream()) steps.push(step);
 			};
 			if (exhausted) {
-				await expect(consume()).rejects.toMatchObject({
-					code: 'provider_tool_validation_repair_exhausted'
-				});
-				expect(client.stream).toHaveBeenCalledTimes(3);
+				await consume();
+				expect(client.stream).toHaveBeenCalledTimes(4);
+				const synthesisRequest = client.stream.mock.calls[3]?.[0];
+				expect(synthesisRequest?.tools).toEqual([]);
+				expect(synthesisRequest?.messages.at(-1)?.content).toContain(
+					'could not be validated after the allowed corrections'
+				);
+				expect(synthesisRequest?.messages.at(-1)?.content).toContain(
+					'request_turn_clarification'
+				);
+				expect(steps.slice(-2)).toEqual([
+					{ type: 'text_delta', text: degradedAnswer },
+					{ type: 'finish', finishedReason: 'stop', usage: null }
+				]);
 			} else {
 				await consume();
 				const step = steps.find(
@@ -2046,10 +2069,16 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					{ status: 'clarification_required', requires_user_action: true }
 				);
 				feedback.execution.requiresUserAction = true;
+				// The prose repeated the question without the candidate labels, so
+				// the render guarantees them beneath it: the executor no longer
+				// requires the question to name every label itself.
 				await expect(
 					collect(invocation.continueWithToolResults!({ round: 2, results: [feedback] }))
 				).resolves.toEqual([
-					{ type: 'text_delta', text: corrected.question },
+					{
+						type: 'text_delta',
+						text: `${corrected.question}\n- Launch email\n- Investor email`
+					},
 					{ type: 'finish', finishedReason: 'stop', usage: null }
 				]);
 			}
@@ -2058,7 +2087,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				steps.filter((step) => step.type === 'read_tool' && step.validationFailure)
 			).toHaveLength(exhausted ? 3 : 1);
 			expect(client.stream.mock.calls[1]?.[0].messages.at(-1)?.content).toContain(
-				'must name every supplied candidate label verbatim'
+				'at least two of them each with a label'
 			);
 			expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 		}
@@ -5065,7 +5094,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 								properties: {
 									changes: {
 										description: expect.stringContaining(
-											'Durable field/value pairs applied to every target.'
+											'Short scalar field/value pairs applied to every target'
 										)
 									},
 									label: {
@@ -5959,6 +5988,23 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
 				requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
 				const attempt = requests.length;
+				if (attempt >= 4) {
+					// The exhausted repair ends on a tool-free prose pass; the
+					// model answers in prose there.
+					const proseFrames = [
+						{
+							model: 'provider/primary',
+							provider: 'DeepInfra',
+							choices: [{ delta: { content: 'I could not record that goal yet.' } }]
+						},
+						{ choices: [{ delta: {}, finish_reason: 'stop' }] }
+					];
+					return new Response(
+						proseFrames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join('') +
+							'data: [DONE]\n\n',
+						{ status: 200, headers: { 'content-type': 'text/event-stream' } }
+					);
+				}
 				const outcome =
 					attempt === 3 && scenario !== 'exhausted'
 						? corrected
@@ -6037,9 +6083,18 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				for await (const step of invocation.stream()) steps.push(step);
 			};
 			if (scenario === 'exhausted') {
-				await expect(consume()).rejects.toMatchObject({
-					code: 'provider_tool_validation_repair_exhausted'
-				});
+				// Exhausted repair degrades to a receipt-grounded prose answer
+				// instead of a permanent turn failure: the rejected call never ran.
+				await consume();
+				expect(requests).toHaveLength(4);
+				expect(requests[3]?.tools ?? []).toEqual([]);
+				expect(JSON.stringify(requests[3]?.messages)).toContain(
+					'could not be validated after the allowed corrections'
+				);
+				expect(steps.slice(-2)).toEqual([
+					{ type: 'text_delta', text: 'I could not record that goal yet.' },
+					expect.objectContaining({ type: 'finish', finishedReason: 'stop' })
+				]);
 			} else {
 				await consume();
 				expect(
@@ -6048,8 +6103,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					{ toolName: 'declare_turn_contract', arguments: { outcomes: [corrected] } }
 				]);
 				invocation.release();
+				expect(requests).toHaveLength(3);
 			}
-			expect(requests).toHaveLength(3);
 			expect(requests[1]?.provider).toMatchObject({
 				order: ['deepinfra'],
 				allow_fallbacks: false
@@ -6065,7 +6120,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					provider: { ignore: ['deepinfra'], allow_fallbacks: true }
 				});
 			}
-			for (const request of requests.slice(1)) {
+			for (const request of requests.slice(1, 3)) {
 				expect(request.tools).toEqual(requests[0]?.tools);
 				expect(request.tool_choice).toBe(requests[0]?.tool_choice);
 				expect(JSON.stringify(request.messages)).toContain(
@@ -6099,7 +6154,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const streams = [
 			invalidRound('invalid-read-1'),
 			invalidRound('invalid-read-2'),
-			invalidRound('invalid-read-3')
+			invalidRound('invalid-read-3'),
+			[
+				{ type: 'text' as const, content: 'I could not read that project overview.' },
+				{ type: 'done' as const, finishedReason: 'stop' }
+			]
 		];
 		const client = {
 			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
@@ -6133,20 +6192,26 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		});
 
 		const exposedSteps: AgenticChatProviderStepV1[] = [];
-		await expect(
-			(async () => {
-				for await (const step of invocation.stream()) exposedSteps.push(step);
-			})()
-		).rejects.toMatchObject({
-			code: 'provider_tool_validation_repair_exhausted',
-			failureClass: 'permanent'
-		});
+		for await (const step of invocation.stream()) exposedSteps.push(step);
 		expect(
 			exposedSteps.flatMap((step) =>
 				step.type === 'read_tool' && step.validationFailure ? [step.providerToolCallId] : []
 			)
 		).toEqual(['invalid-read-1', 'invalid-read-2', 'invalid-read-3']);
-		expect(client.stream).toHaveBeenCalledTimes(3);
+		// The third rejection used to be a permanent
+		// provider_tool_validation_repair_exhausted failure (a generic stream
+		// error for the user). The rejected call never ran, so the turn now ends
+		// on one tool-free prose pass that names the rejected call.
+		expect(client.stream).toHaveBeenCalledTimes(4);
+		const synthesisRequest = client.stream.mock.calls[3]?.[0];
+		expect(synthesisRequest?.tools).toEqual([]);
+		expect(synthesisRequest?.messages.at(-1)?.content).toContain(
+			'get_project_overview (get_project_overview is missing required parameter'
+		);
+		expect(exposedSteps.slice(-2)).toEqual([
+			{ type: 'text_delta', text: 'I could not read that project overview.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 

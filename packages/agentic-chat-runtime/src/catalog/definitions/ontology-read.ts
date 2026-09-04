@@ -917,7 +917,7 @@ Useful for showing where a document lives in the hierarchy.`,
 		type: 'function',
 		function: {
 			name: 'read_document_section',
-			description: `Read one section of a document by heading anchor (from get_document_outline), not the whole body. Returns that section plus nested subsections — pull in only the relevant context. Lists available anchors if the anchor is unknown.`,
+			description: `Read one section of a document by heading anchor, not the whole body. Returns that section plus nested subsections — pull in only the relevant context. The anchor is required and cannot be guessed: call get_document_outline first, which lists every anchor in the document, then read each section you need. Lists available anchors if the anchor is unknown.`,
 			parameters: {
 				type: 'object',
 				properties: {

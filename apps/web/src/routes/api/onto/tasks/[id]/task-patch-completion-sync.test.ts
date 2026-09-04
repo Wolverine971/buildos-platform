@@ -269,7 +269,10 @@ describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 
 		expect(response.status).toBe(200);
 		expect(capturedAtomicArgs?.p_updates).toMatchObject({
-			priority: 5,
+			// "low" is rung 4 on the canonical five-rung scale (1 Critical ...
+			// 5 Nice to have). It resolved to 5 while the API carried its own
+			// three-rung map, which is "Nice to have" in the task UI.
+			priority: 4,
 			type_key: 'task.review.qa',
 			start_at: '2026-04-20T00:00:00.000Z',
 			due_at: '2026-04-21T23:59:59.000Z'

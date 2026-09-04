@@ -57,7 +57,12 @@ function commentsResponse(): Response {
 }
 
 describe('OntologyProjectEditModal date saving', () => {
+	const originalTimezone = process.env.TZ;
+
 	beforeEach(() => {
+		// Project timeline instants are civil-day boundaries in the owner's
+		// timezone, so these assertions only mean something in a fixed zone.
+		process.env.TZ = 'America/New_York';
 		Object.defineProperty(window, 'matchMedia', {
 			configurable: true,
 			writable: true,
@@ -95,6 +100,7 @@ describe('OntologyProjectEditModal date saving', () => {
 	});
 
 	afterEach(() => {
+		process.env.TZ = originalTimezone;
 		cleanup();
 		vi.unstubAllGlobals();
 		vi.clearAllMocks();
@@ -137,7 +143,7 @@ describe('OntologyProjectEditModal date saving', () => {
 		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
 	});
 
-	it('sends midnight UTC only when the visible calendar date changes', async () => {
+	it('sends the bare calendar date only when the visible date changes', async () => {
 		const initialProject = project();
 		const updatedProject = project({ start_at: '2026-01-22T00:00:00.000Z' });
 		const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -178,10 +184,45 @@ describe('OntologyProjectEditModal date saving', () => {
 		const patchCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
 		expect(patchCall).toBeDefined();
 		expect(JSON.parse(String(patchCall?.[1]?.body))).toEqual({
-			start_at: '2026-01-22T00:00:00.000Z'
+			start_at: '2026-01-22'
 		});
 		expect(toastSuccess).toHaveBeenCalledWith('Project updated');
 		expect(onClose).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows the local civil day for an end-of-day instant and leaves it alone', async () => {
+		const civilDayProject = project({
+			// 23:59:59 on Nov 20 in America/New_York.
+			start_at: '2026-11-02T05:00:00.000Z',
+			end_at: '2026-11-21T04:59:59.000Z'
+		});
+		const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+			const url = String(input);
+			if (url.startsWith('/api/onto/comments?')) {
+				return Promise.resolve(commentsResponse());
+			}
+			return Promise.resolve(
+				new Response(JSON.stringify({ error: 'Unexpected request' }), { status: 500 })
+			);
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(OntologyProjectEditModal, {
+			props: {
+				isOpen: true,
+				project: civilDayProject
+			}
+		});
+
+		const startInput = await screen.findByLabelText('Start');
+		const endInput = screen.getByLabelText('End');
+		expect(startInput).toHaveValue('2026-11-02');
+		expect(endInput).toHaveValue('2026-11-20');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+		await waitFor(() => expect(toastInfo).toHaveBeenCalledWith('No changes to save'));
+		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
 	});
 
 	it('blocks a reversed date range before making an update request', async () => {

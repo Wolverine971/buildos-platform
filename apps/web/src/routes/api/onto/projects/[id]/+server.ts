@@ -15,6 +15,11 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { logOntologyApiError } from '../../shared/error-logging';
+import {
+	needsCivilTimezone,
+	normalizeDateTimeInput,
+	resolveUserCivilTimezone
+} from '../../shared/input-normalization';
 import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 import {
@@ -659,6 +664,28 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Project not found');
 		}
 
+		// A bare YYYY-MM-DD means a civil day in this user's timezone: `start`
+		// opens it, `end` closes it at 23:59:59 local. Only date-only input pays
+		// for the users.timezone read; full datetimes pass through untouched.
+		const civilTimezone = needsCivilTimezone(start_at, end_at)
+			? await resolveUserCivilTimezone(supabase, session.user.id)
+			: null;
+
+		const normalizedStartAt = normalizeDateTimeInput(
+			start_at,
+			'start_at',
+			'start',
+			civilTimezone
+		);
+		if (!normalizedStartAt.ok) {
+			return ApiResponse.badRequest(normalizedStartAt.error);
+		}
+
+		const normalizedEndAt = normalizeDateTimeInput(end_at, 'end_at', 'end', civilTimezone);
+		if (!normalizedEndAt.ok) {
+			return ApiResponse.badRequest(normalizedEndAt.error);
+		}
+
 		const updateData: Record<string, unknown> = {
 			updated_at: new Date().toISOString()
 		};
@@ -680,11 +707,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		if (start_at !== undefined) {
-			updateData.start_at = normalizeDateInput(start_at, existingProject.start_at);
+			updateData.start_at = normalizedStartAt.value ?? null;
 		}
 
 		if (end_at !== undefined) {
-			updateData.end_at = normalizeDateInput(end_at, existingProject.end_at);
+			updateData.end_at = normalizedEndAt.value ?? null;
 		}
 
 		// facet_* columns are generated from props.facets.*; update props to change them.
@@ -830,30 +857,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };
-
-function normalizeDateInput(value: unknown, fallback: string | null): string | null {
-	if (value === null) {
-		return null;
-	}
-
-	if (typeof value !== 'string') {
-		return fallback;
-	}
-
-	const trimmed = value.trim();
-	if (!trimmed) {
-		return null;
-	}
-
-	// Accept YYYY-MM-DD or ISO strings
-	if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-		const date = new Date(`${trimmed}T00:00:00Z`);
-		return isNaN(date.getTime()) ? fallback : date.toISOString();
-	}
-
-	const parsed = new Date(trimmed);
-	return isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
-}
 
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	try {

@@ -12,6 +12,7 @@ import {
 	AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS,
 	buildAgenticChatSemanticReviewerRoutes,
 	createAgenticChatBootstrap,
+	summarizeAgenticChatCalendarCredentialsV1,
 	summarizeAgenticChatMutationCapabilitiesV1,
 	type AgenticChatBootstrapCompositionPort
 } from '../src/workers/agentic-chat/bootstrap';
@@ -388,5 +389,68 @@ describe('summarizeAgenticChatMutationCapabilitiesV1', () => {
 			adapter: { count: 0, names: [] },
 			advertisedMutationToolNames: []
 		});
+	});
+});
+
+// Calendar reads run on this service, so its calendar credentials must be on
+// this service. Production shipped without them and every calendar read blamed
+// Google; startup now has to say the variable names out loud.
+describe('summarizeAgenticChatCalendarCredentialsV1', () => {
+	const configured: NodeJS.ProcessEnv = {
+		PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1: 'x'.repeat(32),
+		PRIVATE_GOOGLE_CALENDAR_CLIENT_ID: 'calendar-client',
+		PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET: 'calendar-secret',
+		PRIVATE_GOOGLE_CLIENT_ID: 'shared-client',
+		PRIVATE_GOOGLE_CLIENT_SECRET: 'shared-secret'
+	};
+
+	it('reports configured when every calendar variable is present', () => {
+		expect(summarizeAgenticChatCalendarCredentialsV1(configured)).toEqual({
+			status: 'configured',
+			missing: []
+		});
+	});
+
+	it('names every missing variable and never a value', () => {
+		const summary = summarizeAgenticChatCalendarCredentialsV1({});
+		expect(summary.missing).toEqual([
+			'PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1',
+			'PRIVATE_GOOGLE_CALENDAR_CLIENT_ID',
+			'PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET',
+			'PRIVATE_GOOGLE_CLIENT_ID',
+			'PRIVATE_GOOGLE_CLIENT_SECRET'
+		]);
+		expect(summary.status).toBe(`missing:${summary.missing.join(',')}`);
+	});
+
+	it('treats a blank variable as missing and half a pair as missing', () => {
+		expect(
+			summarizeAgenticChatCalendarCredentialsV1({
+				...configured,
+				PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1: '   ',
+				PRIVATE_GOOGLE_CLIENT_SECRET: undefined
+			}).missing
+		).toEqual(['PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1', 'PRIVATE_GOOGLE_CLIENT_SECRET']);
+	});
+
+	it('publishes the calendar credential status on bootstrap health without failing startup', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		try {
+			const bootstrap = createAgenticChatBootstrap({
+				client: client() as never,
+				environment: environment(),
+				createComposition: () => composition()
+			});
+			expect(bootstrap.getHealth().calendarCredentials).toContain(
+				'missing:PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1'
+			);
+			const logged = warn.mock.calls
+				.map(([entry]) => String(entry))
+				.filter((entry) => entry.includes('agentic_chat_calendar_credentials_missing'));
+			expect(logged).toHaveLength(1);
+			expect(logged[0]).toContain('credentials_not_configured');
+		} finally {
+			warn.mockRestore();
+		}
 	});
 });

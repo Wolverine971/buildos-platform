@@ -7,6 +7,7 @@ import {
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	type TurnContract,
+	isProseTurnContractChange,
 	parseDeclaredTurnContract,
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
@@ -30,7 +31,7 @@ import {
 	buildCandidateGateClarification,
 	buildReviewFallbackClarification,
 	findAmbiguousReferenceCandidates,
-	latestUserMessageText
+	recentUserMessageTexts
 } from './decision-handling';
 
 type ReviewDecisionCompletionInput = {
@@ -80,7 +81,8 @@ export function completeTurnContractReviewDecision(
 			revision &&
 			correctedContract &&
 			(normalizedCorrection.changed ||
-				usesInternalContractFieldNames(call.arguments.corrected_contract))
+				usesInternalContractFieldNames(call.arguments.corrected_contract) ||
+				correctionCarriesProseChanges(normalizedCorrection.value))
 				? normalizeCorrectedContractCall(call, correctedContract)
 				: null;
 		let validationIssues = validateCompletedProviderCalls(
@@ -136,7 +138,7 @@ export function completeTurnContractReviewDecision(
 				? findAmbiguousReferenceCandidates(
 						call.arguments,
 						reviewedContract,
-						latestUserMessageText(input.actingRequest)
+						recentUserMessageTexts(input.actingRequest)
 					)
 				: null;
 			if (ambiguity) {
@@ -186,6 +188,38 @@ function normalizeReviewerCorrectedContractValue(value: unknown): {
 		return normalized;
 	});
 	return changed ? { value: { ...record, outcomes }, changed } : { value, changed: false };
+}
+
+/**
+ * The contract parser demotes prose change values (document content, a
+ * description) to required_fields postconditions. A reviewer that pasted such
+ * text into changes hit the 160-character cap and padded it with garbage in
+ * the 2026-09-04 retest; the canonical serialization of the parsed contract is
+ * the one to record and re-review, so the durable transition never carries a
+ * value the fulfilment check cannot match.
+ */
+function correctionCarriesProseChanges(rawValue: unknown): boolean {
+	if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) return false;
+	const outcomes = (rawValue as Record<string, unknown>).outcomes;
+	if (!Array.isArray(outcomes)) return false;
+	return outcomes.some((outcome) => {
+		if (!outcome || typeof outcome !== 'object' || Array.isArray(outcome)) return false;
+		const changes = (outcome as Record<string, unknown>).changes;
+		if (!Array.isArray(changes)) return false;
+		return changes.some((change) => {
+			if (!change || typeof change !== 'object' || Array.isArray(change)) return false;
+			const record = change as Record<string, unknown>;
+			const field =
+				typeof record.field === 'string'
+					? record.field
+							.trim()
+							.replace(/[A-Z]/g, (character) => `_${character.toLowerCase()}`)
+							.toLowerCase()
+					: '';
+			const value = typeof record.value === 'string' ? record.value.trim() : '';
+			return Boolean(field) && isProseTurnContractChange(field, value);
+		});
+	});
 }
 
 function usesInternalContractFieldNames(value: unknown): boolean {

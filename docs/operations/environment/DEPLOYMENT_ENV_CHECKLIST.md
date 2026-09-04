@@ -63,6 +63,38 @@ PUBLIC_POSTHOG_KEY=<same as PUBLIC_POSTHOG_KEY in Vercel>
 PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
+### For Railway — `agentic-chat-worker` service (calendar)
+
+Agentic chat calendar reads and writes run on the dedicated
+`agentic-chat-worker` service, which inherits nothing from the general worker or
+from Vercel. All five must be set on that service, and every value must be
+byte-identical to Vercel production — the stored OAuth tokens are encrypted with
+`PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1`, so key drift surfaces as calendar
+reads reporting `credentials_unreadable` (a missing key or client pair surfaces
+as `credentials_not_configured`):
+
+```bash
+PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1=<same value as Vercel production>
+PRIVATE_GOOGLE_CALENDAR_CLIENT_ID=<same value as Vercel production>
+PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET=<same value as Vercel production>
+PRIVATE_GOOGLE_CLIENT_ID=<same value as Vercel production>
+PRIVATE_GOOGLE_CLIENT_SECRET=<same value as Vercel production>
+```
+
+```bash
+railway variables --service agentic-chat-worker \
+  --set "PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1=<same value as Vercel>" \
+  --set "PRIVATE_GOOGLE_CALENDAR_CLIENT_ID=<same value as Vercel>" \
+  --set "PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET=<same value as Vercel>" \
+  --set "PRIVATE_GOOGLE_CLIENT_ID=<same value as Vercel>" \
+  --set "PRIVATE_GOOGLE_CLIENT_SECRET=<same value as Vercel>"
+```
+
+The service still starts without them; it logs one
+`agentic_chat_calendar_credentials_missing` warning naming the missing variables
+(names only, never values) and reports `agenticChat.calendarCredentials` on
+`/health`.
+
 ## ✅ Variables That Should Already Exist (No Change)
 
 ### In Vercel - Keep These As-Is:

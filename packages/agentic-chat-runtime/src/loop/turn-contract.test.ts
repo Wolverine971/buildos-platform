@@ -614,6 +614,9 @@ describe('semantic turn contracts', () => {
 				]
 			}
 		});
+		// The question need not repeat the labels: the host renders the
+		// candidates beneath it. Requiring verbatim labels failed four live
+		// clarifications in the 2026-09-04 retest, one of them fatally.
 		expect(
 			executeRequestTurnClarification(
 				call('request_turn_clarification', {
@@ -626,9 +629,26 @@ describe('semantic turn contracts', () => {
 				})
 			)
 		).toMatchObject({
-			success: false,
-			error: 'Turn clarification failed: the question must name every supplied candidate label verbatim; missing "Alpha task", "Beta task".'
+			success: true,
+			result: {
+				status: 'clarification_required',
+				question: 'Which task?',
+				candidates: [
+					{ id: 'task-alpha', label: 'Alpha task' },
+					{ id: 'task-beta', label: 'Beta task' }
+				]
+			}
 		});
+		// A single candidate is not a choice.
+		expect(
+			executeRequestTurnClarification(
+				call('request_turn_clarification', {
+					reason: 'One choice.',
+					question: 'Which task?',
+					candidates: [{ id: 'task-alpha', label: 'Alpha task' }]
+				})
+			).success
+		).toBe(false);
 		expect(
 			executeRequestTurnClarification(call('request_turn_clarification', { reason: 'x' }))
 				.success
@@ -1328,6 +1348,49 @@ describe('turn contract changes', () => {
 		expect(contract?.outcomes[0]?.requiredFields).toEqual(['title', 'priority']);
 		expect(contract?.outcomes[1]?.requiredFields).toEqual(['title']);
 		expect(contract?.outcomes[1]).not.toHaveProperty('changes');
+	});
+
+	// The 2026-09-04 production retest: the reviewer pasted a document body into
+	// a content change and the description of a project into a description
+	// change; both hit the 160-character schema cap and were padded with
+	// garbage ("Clear scope,|||||", "$10,000##2"), and fulfilment could never
+	// have matched them anyway. Prose is a postcondition, never a change value.
+	it('demotes prose change fields and over-long values to required_fields postconditions', () => {
+		const longTitle = 'x'.repeat(160);
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'update',
+					entity_kind: 'document',
+					target_ids: ['doc-a'],
+					changes: [
+						{ field: 'content', value: '# Brief\n\n## Audience\nHomeowners' },
+						{ field: 'state_key', value: 'ready' }
+					],
+					minimum_successful_effects: 1
+				},
+				{
+					action: 'create',
+					entity_kind: 'project',
+					changes: [
+						{ field: 'title', value: 'Cedar House' },
+						{ field: 'description', value: 'Short brief.' },
+						{ field: 'start_date', value: longTitle }
+					],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		expect(contract?.outcomes[0]?.changes).toEqual([{ field: 'state_key', value: 'ready' }]);
+		expect(contract?.outcomes[0]?.requiredFields).toEqual(['content', 'state_key']);
+		expect(contract?.outcomes[1]?.changes).toEqual([{ field: 'title', value: 'Cedar House' }]);
+		expect(contract?.outcomes[1]?.requiredFields).toEqual([
+			'description',
+			'start_date',
+			'title'
+		]);
+		expect(JSON.stringify(contract)).not.toContain('Short brief.');
+		expect(JSON.stringify(contract)).not.toContain(longTitle);
 	});
 
 	it('normalizes change field names, stringifies scalar values, and keeps the last value per field', () => {

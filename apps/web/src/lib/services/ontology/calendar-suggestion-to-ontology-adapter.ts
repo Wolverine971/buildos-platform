@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/ontology/calendar-suggestion-to-ontology-adapter.ts
 
 import type { ProjectSpec, TaskState } from '$lib/types/onto';
+import { ONTO_TASK_PRIORITY_WORDS } from '@buildos/shared-types';
 import type { Database } from '@buildos/shared-types';
 
 /**
@@ -109,13 +110,6 @@ const TASK_TYPE_INFERENCE: Array<{ pattern: RegExp; typeKey: string }> = [
 	{ pattern: /\bemail\b|\binvoice\b|\bpaperwork\b|\badmin\b/, typeKey: 'task.admin' }
 ];
 
-const LEGACY_PRIORITY_MAP: Record<string, number> = {
-	low: 2,
-	medium: 3,
-	high: 4,
-	urgent: 5
-};
-
 const CALENDAR_TASK_STATE_MAP: Record<string, TaskState> = {
 	backlog: 'todo',
 	todo: 'todo',
@@ -168,7 +162,11 @@ function inferTaskTypeKey(title: string): string {
 function normalizePriority(value: unknown): number | undefined {
 	if (typeof value === 'number' && value >= 1 && value <= 5) return value;
 	if (typeof value === 'string') {
-		const mapped = LEGACY_PRIORITY_MAP[value.toLowerCase()];
+		// The local map this replaced was fully inverted (urgent -> 5, low -> 2),
+		// so every imported calendar suggestion landed on the opposite end of the
+		// scale from what the user's calendar implied. Resolve through the
+		// canonical five-rung scale instead (1 = Critical ... 5 = Nice to have).
+		const mapped = ONTO_TASK_PRIORITY_WORDS[value.trim().toLowerCase()];
 		return mapped ?? undefined;
 	}
 	return undefined;

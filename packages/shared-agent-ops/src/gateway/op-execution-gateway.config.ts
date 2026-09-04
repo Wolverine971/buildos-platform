@@ -2,10 +2,11 @@
 //
 // Static gateway catalogs, table mappings, and schema fragments shared by the
 // execution core, worker adapter, and staging adapter.
-import type {
-	BuildosAgentAllowedOp,
-	RegistryOp,
-	ToolJsonObjectSchema
+import {
+	ONTO_TASK_PRIORITY_DESCRIPTION,
+	type BuildosAgentAllowedOp,
+	type RegistryOp,
+	type ToolJsonObjectSchema
 } from '@buildos/shared-types';
 import { DOCUMENT_STATES } from '../ontology/onto';
 
@@ -344,9 +345,10 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 				// get it backwards without being told: asked to make a task "top
 				// priority", the production model wrote 5 (the lowest) and demoted it.
 				// Verified 2026-07-25 by the `task-multi-update` e2e scenario.
-				description:
-					'Optional priority, 1-5, where 1 is the HIGHEST priority and 5 is the LOWEST. ' +
-					'"top priority" / "urgent" / "most important" means 1, not 5.'
+				// Naming the five UI labels (2026-09-04) closes the other half of the
+				// gap: told only "1 is highest", a model writes 1 for "high", and the
+				// UI then renders that task as "P1 Critical".
+				description: `Optional. ${ONTO_TASK_PRIORITY_DESCRIPTION}`
 			},
 			assignee_actor_ids: {
 				type: 'array',
@@ -404,7 +406,8 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			props: {
 				type: 'object',
-				description: 'Optional JSON props merged onto the task.'
+				description:
+					'Optional JSON props merged onto the task. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
 			}
 		},
 		required: ['project_id', 'title']
@@ -546,10 +549,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 				maximum: 5,
 				// See the create-task note: 1 is highest. Raising priority means
 				// moving the number DOWN.
-				description:
-					'Optional priority, 1-5, where 1 is the HIGHEST priority and 5 is the LOWEST. ' +
-					'Raising a task\'s priority means giving it a LOWER number ("make this top ' +
-					'priority" -> 1). Use null to clear.'
+				description: `Optional. ${ONTO_TASK_PRIORITY_DESCRIPTION} Use null to clear.`
 			},
 			assignee_actor_ids: {
 				type: 'array',
@@ -591,7 +591,8 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			props: {
 				type: 'object',
-				description: 'Optional JSON props merged onto the task.'
+				description:
+					'Optional JSON props merged onto the task. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
 			}
 		},
 		required: ['task_id']

@@ -11,7 +11,8 @@ import {
 import {
 	type TurnContract,
 	getSafeWriteToolNamesForTurnContract,
-	serializeTurnContractForDeclaration
+	serializeTurnContractForDeclaration,
+	turnContractCreatesProject
 } from '@buildos/agentic-chat-runtime/loop';
 import { reviewedAgenticChatMutationSpecV1 } from '../../mutationToolCatalog';
 import type {
@@ -47,7 +48,7 @@ const TURN_CONTRACT_REVIEW_SYSTEM_PROMPT = [
 	'When declare_read_only_turn is among your tools and the current request commissions no durable change, choose it instead of inventing a contract or asking the user to clarify a change they did not request. When it is not among your tools, a prior independent review already established that this turn commissions a durable change; read-only correction is no longer available, so judge only whether this revised exact contract matches that commission or whether a genuine unresolved user choice remains.',
 	'Target IDs are existing entity IDs that bound the eligible scope; create outcomes have no target ID before execution. minimum_successful_effects is the required cardinality. Approve a minimum smaller than the target set only when the user commission genuinely allows that bounded partial result; require the full cardinality when every listed target must change.',
 	'The proposed contract JSON uses the exact provider-facing declaration field names. Any corrected_contract must preserve that snake_case shape exactly.',
-	'required_fields and changes name actual effect fields from the available tools, never prose acceptance criteria or invented section fields. A document section edit uses required_fields=["content"]; describe the section and preservation requirements in description. Use changes only for exact scalar postconditions supported by the tool, not descriptions of the desired result.',
+	'required_fields and changes name actual effect fields from the available tools, never prose acceptance criteria or invented section fields. Prose fields (content, description, body) are postconditions: list them in required_fields and state the required text or preservation rules in description and required_correction; never put their text in changes, which holds only short scalar values (a title, date, id, priority, or state) and is capped at 160 characters. A document edit therefore uses required_fields=["content"] with no content change.',
 	"A create outcome may carry a label and a move outcome may carry parent_label: the move's destination is the entity that labelled create will produce, and the system binds the id after the create executes. Treat such a destination as resolved; do not ask for its id.",
 	'If multiple loaded entities plausibly match one descriptive reference, or a required value is absent from both the request and the loaded context and the field semantics, the choice belongs to the user: request clarification.',
 	'When request_proposal_revision is among your tools and the user commission is clear but the proposed contract misstates it — wrong cardinality, targets that need different values lumped into one outcome, an outcome the user did not commission, or a required value the turn evidence already resolves but the contract omits — call it with the complete corrected_contract plus a concise explanation. The corrected contract is durably recorded and independently re-reviewed; it is not approved by the revision call itself. If any descriptive reference has several plausible candidates, clarify instead; never revise around an ambiguous target. When request_proposal_revision is not among your tools, the acting model has used every correction allowed this turn: approve, correct to read-only if that tool is available, or ask the user.',
@@ -79,7 +80,13 @@ export function buildTurnContractReviewRequest(
 	const proposalProvenance = [
 		'Proposal source: the acting model chose the contract, so its proposal, prior assistant claims, ordering, and selected IDs are untrusted evidence—not user intent.'
 	];
-	const shellGuidance = projectCreateShellGuidance(request.contextType, availableTools);
+	// Shell rules matter to the reviewer only when the contract under review
+	// creates a project; on a surface that merely mounts the tool they would
+	// be noise for every other contract.
+	const shellGuidance =
+		request.contextType === 'project_create' || turnContractCreatesProject(contract)
+			? projectCreateShellGuidance(request.contextType, availableTools)
+			: [];
 	return {
 		...request,
 		messages: [
@@ -309,16 +316,23 @@ export function describeContractValueSemantics(
 	return `Field semantics from the product's tool schemas (authoritative for what a value means):\n${body}`;
 }
 
+/**
+ * Shell-first rules for any surface that mounts create_onto_project. On the
+ * Project Setup surface every contract is a project contract; elsewhere (the
+ * global surface mounts the tool since 2026-09-04) the rules apply only when
+ * the user asks for a new project, so they are prefixed as conditional.
+ */
 export function projectCreateShellGuidance(
 	contextType: string,
 	availableTools: readonly AgenticChatTurnProviderToolV1[]
 ): string[] {
-	if (
-		contextType !== 'project_create' ||
-		!availableTools.some((tool) => tool.function.name === 'create_onto_project')
-	) {
+	if (!availableTools.some((tool) => tool.function.name === 'create_onto_project')) {
 		return [];
 	}
+	const lead =
+		contextType === 'project_create'
+			? 'Project creation order:'
+			: 'When the user asks to create a new project (a complex request):';
 	const mutationNames = new Set(
 		availableTools
 			.filter((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
@@ -336,7 +350,7 @@ export function projectCreateShellGuidance(
 		.filter(([name]) => mutationNames.has(name))
 		.map(([name, label]) => `${name} (${label})`);
 	return [
-		'Project creation order: create_onto_project creates exactly one project plus its generated Context document. Pass entities=[] and relationships=[].',
+		`${lead} create_onto_project creates exactly one project plus its generated Context document. Pass entities=[] and relationships=[].`,
 		'In declare_turn_contract, represent that call as one outcome with action=create, entity_kind=project, minimum_successful_effects=1, no target_ids, no label, and no required_fields or changes. Put the project name, type_key, and other values in the later create_onto_project arguments.',
 		...(supportedChildTools.length > 0
 			? [
@@ -366,7 +380,7 @@ export function buildWorkerSemanticMutationOrdering(
 			'For a clear commissioned durable change, propose the complete concrete mutation batch with the available mutation tools. The worker deterministically executes only an eligible simple batch; it withholds any complex batch before execution and opens the independently reviewed contract route in the next pass.',
 			'A direct call is fine when the target id is the focused entity, was given by the user, or is the only entity of its kind a read returned this turn.',
 			'Do not split, shrink, or serialize a complex request merely to fit the simple lane. Include the complete commissioned batch that can be expressed with the available tools.',
-			'Call request_turn_clarification instead when a required target or value has multiple plausible choices. Never guess among loaded candidates. Include every known candidate with its stable ID when available and name every candidate label in the question.',
+			'Call request_turn_clarification instead when a required target or value has multiple plausible choices. Never guess among loaded candidates. Include every known candidate with its stable ID when available; the candidates are shown to the user as a list beneath your question.',
 			'For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
 			'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
 			...ACTOR_COMMISSION_GUIDANCE
@@ -378,7 +392,7 @@ export function buildWorkerSemanticMutationOrdering(
 		'Examples of simple requests: rename this focused project; create these three explicitly named tasks in this project; create a new goal with the requested name.',
 		'Complex means selecting any existing child entity from project or global context, more than three mutations, multiple rounds or dependencies, project creation, move or organize work, unlinking or destructive effects, high-impact operations, model-selected scope, or any ambiguous required target/value. For a complex request, call declare_turn_contract with the complete outcome set before any mutation.',
 		'Examples of complex requests: complete a task selected from this project; organize these documents; clean up duplicates; update everything that looks outdated; create a project and then populate it; change an ambiguous item reference.',
-		'Call request_turn_clarification when a commissioned durable change still has an unresolved required user choice. Include every known candidate with its stable ID when available and name every candidate label in the question. For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
+		'Call request_turn_clarification when a commissioned durable change still has an unresolved required user choice. Include every known candidate with its stable ID when available; the candidates are shown to the user as a list beneath your question. For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
 		'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
 		...ACTOR_COMMISSION_GUIDANCE,
 		...projectCreateShellGuidance(contextType, tools),

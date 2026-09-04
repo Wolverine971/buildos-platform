@@ -76,6 +76,7 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'create_onto_task',
 			'update_onto_task',
 			'move_onto_task',
+			'create_onto_project',
 			'delegate_task',
 			'web_search',
 			'web_visit',
@@ -94,7 +95,10 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 
 		expect(project).toEqual([
 			...getGatewayDirectToolNamesForProfile('global').filter(
-				(name) => name !== 'search_onto_projects' && name !== 'search_all_projects'
+				(name) =>
+					name !== 'search_onto_projects' &&
+					name !== 'search_all_projects' &&
+					name !== 'create_onto_project'
 			),
 			'get_onto_project_details',
 			'search_project',
@@ -108,7 +112,8 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 		]);
 		expect([...global].filter((name) => !projectSet.has(name))).toEqual([
 			'search_onto_projects',
-			'search_all_projects'
+			'search_all_projects',
+			'create_onto_project'
 		]);
 	});
 

@@ -63,6 +63,7 @@
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import GoalMilestonesSidebarSection from './GoalMilestonesSidebarSection.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { timestamptzToLocalDate } from '$lib/utils/date-utils';
 	import {
 		loadDocumentModal,
 		loadPlanEditModal,
@@ -195,11 +196,13 @@
 		}
 	});
 
+	// target_date is stored as the last second of the civil day in the owner's
+	// timezone, so the calendar day has to be read back in that zone. Reading it
+	// in UTC showed a New York goal due Nov 20 (2026-11-21T04:59:59Z) as Nov 21.
 	function formatDateOnly(value?: string | null): string {
 		if (!value) return '';
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) return '';
-		return date.toISOString().slice(0, 10);
+		if (Number.isNaN(new Date(value).getTime())) return '';
+		return timestamptzToLocalDate(value);
 	}
 
 	async function loadGoal() {

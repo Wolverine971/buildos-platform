@@ -7,7 +7,8 @@ import type { AgenticChatTurnProviderRequestV1 } from '../src/workers/agentic-ch
 import {
 	buildCandidateGateClarification,
 	findAmbiguousReferenceCandidatesForTargetIds,
-	latestUserMessageText
+	latestUserMessageText,
+	recentUserMessageTexts
 } from '../src/workers/agentic-chat/provider/review/decision-handling';
 
 const request = {
@@ -131,6 +132,48 @@ describe('findAmbiguousReferenceCandidatesForTargetIds with the user message', (
 		).toMatchObject({ reference: 'the document' });
 	});
 
+	// 2026-09-04 retest: "Please complete those exact three document edits now.
+	// Use the same existing document" followed a message that named the
+	// Marketing Brief; the gate bounced the choice back to the user.
+	it('does not clarify a follow-up when an earlier user message named the targeted candidate', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(
+				reviewerArguments,
+				[marketingBriefId],
+				[
+					'Please complete those exact three edits now. Use the same existing document.',
+					'Update the existing "QA — Cedar House Marketing Brief" in place. Change only Audience.'
+				]
+			)
+		).toBeNull();
+	});
+
+	it('still clarifies a follow-up when the earlier naming does not match the contract target', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(
+				reviewerArguments,
+				[contextDocumentId],
+				[
+					'Use the same existing document.',
+					'Update the existing "QA — Cedar House Marketing Brief" in place.'
+				]
+			)
+		).toMatchObject({ reference: 'the document' });
+	});
+
+	it('still clarifies a follow-up when earlier messages named both candidates', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(
+				reviewerArguments,
+				[marketingBriefId],
+				[
+					'Use the same existing document.',
+					'Compare the QA — Cedar House Marketing Brief with the QA — Cedar House Context Document.'
+				]
+			)
+		).toMatchObject({ reference: 'the document' });
+	});
+
 	it('still clarifies when the message names both candidates', () => {
 		expect(
 			findAmbiguousReferenceCandidatesForTargetIds(
@@ -181,5 +224,19 @@ describe('latestUserMessageText', () => {
 				messages: [{ role: 'system', content: 'System prompt' }]
 			} as AgenticChatTurnProviderRequestV1)
 		).toBeNull();
+	});
+
+	it('lists recent user turns latest first within the window', () => {
+		expect(
+			recentUserMessageTexts({
+				messages: [
+					{ role: 'user', content: 'One' },
+					{ role: 'assistant', content: 'A' },
+					{ role: 'user', content: 'Two' },
+					{ role: 'user', content: 'Three' },
+					{ role: 'user', content: 'Four' }
+				]
+			} as AgenticChatTurnProviderRequestV1)
+		).toEqual(['Four', 'Three', 'Two']);
 	});
 });

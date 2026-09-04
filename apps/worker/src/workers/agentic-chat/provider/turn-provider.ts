@@ -29,7 +29,8 @@ import {
 	parseDeclaredTurnContract,
 	resolveTurnContractOutcome,
 	sanitizeAssistantFinalText,
-	selectReadLoopRepairEscalation
+	selectReadLoopRepairEscalation,
+	turnContractCreatesProject
 } from '@buildos/agentic-chat-runtime/loop';
 import {
 	type AgenticChatPreparedProviderInvocationV1,
@@ -105,6 +106,7 @@ import {
 	buildReviewerMimicryRepairRequest,
 	buildUnavailableSkillRepairRequest,
 	buildUnavailableSurfaceToolRepairRequest,
+	buildValidationRepairExhaustedSynthesisInstruction,
 	contextSaturationRepairRank
 } from './repair-policy';
 import {
@@ -201,6 +203,9 @@ type ToolRoundStreamState = {
 	providerPassBudgetExhausted(): boolean;
 	/** Receipt-grounded instruction for the answer that ends a capped turn. */
 	buildProviderPassBudgetInstruction(): string;
+	buildValidationRepairExhaustedInstruction(
+		rejected: readonly { toolName: string; errors: readonly string[] }[]
+	): string;
 	markToolRoundCompleted(): void;
 	setCurrentRequest(value: ClientRequest): void;
 	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null;
@@ -555,6 +560,13 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					unfinishedContractOutcomeDescriptions()
 				);
 			},
+			buildValidationRepairExhaustedInstruction(rejected) {
+				return buildValidationRepairExhaustedSynthesisInstruction(
+					buildWriteLedger(turnToolExecutions),
+					unfinishedContractOutcomeDescriptions(),
+					rejected
+				);
+			},
 			markToolRoundCompleted() {
 				toolRoundCompleted = true;
 			},
@@ -811,7 +823,11 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					completedToolRound.calls,
 					input.results
 				);
-				if (roundContainsMutation && request.contextType === 'project_create') {
+				if (
+					roundContainsMutation &&
+					(request.contextType === 'project_create' ||
+						turnContractCreatesProject(turnContract))
+				) {
 					// The shell receipt carries the new project id. Switch surfaces before
 					// asking the acting model for another pass so the shell cannot be
 					// duplicated and child calls can use that durable id immediately.
@@ -891,8 +907,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						admittedTools,
 						DECLARE_TURN_CONTRACT_TOOL_NAME
 					);
+					// Shell-first execution belongs to the contract, not the surface:
+					// a project created from the global surface needs the same narrow
+					// create_onto_project pass before any child record can use its id.
 					const projectCreateShellRequest =
-						approvedExecutionRequest.contextType === 'project_create'
+						approvedExecutionRequest.contextType === 'project_create' ||
+						turnContractCreatesProject(turnContract)
 							? buildTurnContractWriteCarveOutRequest(
 									approvedExecutionRequest,
 									admittedTools,
@@ -1307,10 +1327,29 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 							yield buildValidationFailureReadToolStep(request, call, callIssues);
 						}
 						if (validationRepairRounds >= MAX_VALIDATION_REPAIR_ROUNDS) {
-							throw providerError(
-								'provider_tool_validation_repair_exhausted',
-								'permanent'
+							// The rejected call never ran, so nothing durable depends on
+							// it. End on a receipt-grounded prose answer rather than a
+							// permanent failure the user sees as a generic stream error.
+							state.setCurrentRequest(request);
+							keepLease = true;
+							state.advance({ type: 'budget', limit: 'force_synthesis' });
+							yield* this.streamForcedSynthesis(
+								appendSystemInstruction(
+									request,
+									state.buildValidationRepairExhaustedInstruction(
+										invalidCalls.map((call) => ({
+											toolName: call.name,
+											errors: validationIssuesForCall(
+												call,
+												validationIssues
+											).flatMap((issue) => issue.errors)
+										}))
+									)
+								),
+								usage,
+								state
 							);
+							return;
 						}
 						const validationFailureSha256 = createHash('sha256')
 							.update(

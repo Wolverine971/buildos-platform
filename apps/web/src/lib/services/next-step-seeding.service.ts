@@ -15,7 +15,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import { ONTO_TASK_PRIORITY_WORDS, type Database } from '@buildos/shared-types';
 import {
 	buildTaskGoalLinks,
 	TASK_GOAL_RELATIONSHIPS,
@@ -438,23 +438,26 @@ export class NextStepSeedingService {
 		return completedStates.has(normalized);
 	}
 
+	/**
+	 * Higher rank sorts first. Numeric onto priorities are inverted (1 is
+	 * Critical), so a numeric value is mapped onto the same rank scale as the
+	 * words instead of being returned as-is, which ranked Critical tasks last.
+	 */
 	private getPriorityRank(priority?: number | string | null): number {
 		if (priority === null || priority === undefined) return 0;
-		if (typeof priority === 'number') return priority;
-		const normalized = priority.toLowerCase();
-		const priorityMap: Record<string, number> = {
-			urgent: 5,
-			critical: 5,
-			p0: 5,
-			high: 4,
-			p1: 4,
-			medium: 3,
-			p2: 3,
-			low: 2,
-			p3: 2,
-			p4: 1
-		};
-		return priorityMap[normalized] ?? 0;
+		const rung =
+			typeof priority === 'number'
+				? priority
+				: (ONTO_TASK_PRIORITY_WORDS[priority.trim().toLowerCase()] ??
+					this.legacyPriorityRung(priority));
+		if (rung === null || !Number.isFinite(rung)) return 0;
+		return 6 - Math.min(5, Math.max(1, Math.round(rung)));
+	}
+
+	/** P0..P4 labels from older imports, on the canonical 1..5 rung scale. */
+	private legacyPriorityRung(priority: string): number | null {
+		const match = /^p([0-4])$/i.exec(priority.trim());
+		return match ? Number(match[1]) + 1 : null;
 	}
 
 	private sortTasksByPriority(tasks: TaskContext[]): TaskContext[] {

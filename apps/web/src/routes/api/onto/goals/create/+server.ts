@@ -56,10 +56,12 @@ import {
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
 import {
+	needsCivilTimezone,
 	normalizeDateTimeInput,
 	normalizeOptionalString,
 	normalizeRequiredString,
-	normalizeTypeKeyInput
+	normalizeTypeKeyInput,
+	resolveUserCivilTimezone
 } from '../../shared/input-normalization';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
@@ -104,7 +106,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest(normalizedName.error);
 		}
 
-		const normalizedTargetDate = normalizeDateTimeInput(target_date, 'target_date', 'end');
+		// A bare YYYY-MM-DD closes the civil day in this user's timezone. Only
+		// date-only input pays for the users.timezone read.
+		const civilTimezone = needsCivilTimezone(target_date)
+			? await resolveUserCivilTimezone(supabase, user.id)
+			: null;
+
+		const normalizedTargetDate = normalizeDateTimeInput(
+			target_date,
+			'target_date',
+			'end',
+			civilTimezone
+		);
 		if (!normalizedTargetDate.ok) {
 			return ApiResponse.badRequest(normalizedTargetDate.error);
 		}

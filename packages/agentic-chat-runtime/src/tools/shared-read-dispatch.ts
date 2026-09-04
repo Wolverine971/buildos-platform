@@ -41,6 +41,7 @@ import { getDocumentPath, getDocumentTree, getOntoProjectGraph } from './ontolog
 import { getOntoTaskDetails } from './ontology-task-detail';
 import { listTaskDocuments } from './ontology-task-documents';
 import { getFieldInfo, getProjectOverview, getWorkspaceOverview } from './overview-reads';
+import { projectReadResultInstantsToTimezone } from './read-result-timezone';
 
 type SharedReadToolRunnerV1 = (
 	context: AgenticChatSharedReadContextV1,
@@ -150,5 +151,9 @@ export async function executeAgenticChatSharedReadToolV1(input: {
 		AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1[input.toolName];
 	// The provider validates tool arguments against the admitted JSON schema;
 	// individual implementations retain their domain checks for direct callers.
-	return runner(input.context, input.arguments as never);
+	const result = await runner(input.context, input.arguments as never);
+	// Every read renders its scheduling instants in the user's civil timezone, so
+	// a stored `2026-09-23T03:59:59+00:00` reaches the model as the September 22
+	// the user actually typed. No timezone on the context = unchanged payload.
+	return projectReadResultInstantsToTimezone(result, input.context.timezone);
 }

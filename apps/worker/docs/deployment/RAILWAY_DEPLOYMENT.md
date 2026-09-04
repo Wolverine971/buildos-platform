@@ -171,6 +171,41 @@ PRIVATE_GOOGLE_CLIENT_SECRET=
 PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY=
 ```
 
+## Calendar credentials on the Agentic Chat worker
+
+Agentic chat calendar reads and writes execute on the dedicated
+`agentic-chat-worker` service, so that service needs the calendar credentials
+too. They are **not** inherited from the general worker or from Vercel:
+
+```bash
+PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1=
+PRIVATE_GOOGLE_CALENDAR_CLIENT_ID=
+PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET=
+PRIVATE_GOOGLE_CLIENT_ID=
+PRIVATE_GOOGLE_CLIENT_SECRET=
+```
+
+Every value must be byte-identical to Vercel production: the stored OAuth tokens
+are encrypted with `PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1`, so key drift
+shows up as calendar reads reporting `credentials_unreadable`, and a missing key
+or client pair shows up as `credentials_not_configured`.
+
+Set them with placeholders replaced by the real Vercel production values:
+
+```bash
+railway variables --service agentic-chat-worker \
+  --set "PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1=<same value as Vercel>" \
+  --set "PRIVATE_GOOGLE_CALENDAR_CLIENT_ID=<same value as Vercel>" \
+  --set "PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET=<same value as Vercel>" \
+  --set "PRIVATE_GOOGLE_CLIENT_ID=<same value as Vercel>" \
+  --set "PRIVATE_GOOGLE_CLIENT_SECRET=<same value as Vercel>"
+```
+
+Startup does not fail without them. The service logs one
+`agentic_chat_calendar_credentials_missing` warning naming the missing variables
+(names only, never values), and `/health` reports
+`agenticChat.calendarCredentials` as `configured` or `missing:<NAMES>`.
+
 ## Web app variables
 
 The web app needs distinct service origins and the matching token:

@@ -281,7 +281,9 @@ describe('POST /api/onto/tasks/create assignment + mention coalescing', () => {
 			title: 'Agent-friendly task',
 			description: 'Coordinate launch notes',
 			type_key: 'task.execute',
-			priority: 1,
+			// "high" is rung 2, not 1: rung 1 is Critical in the task UI, and the
+			// API's old three-rung map silently promoted every "high" to Critical.
+			priority: 2,
 			start_at: '2026-04-20T00:00:00.000Z',
 			due_at: '2026-04-21T23:59:59.000Z',
 			props: { source: 'agentic-chat' }

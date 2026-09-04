@@ -20,19 +20,54 @@ export type GoogleCalendarTokenContext = {
 
 export type GoogleCalendarTokenKeyResolver = (version: number) => string | undefined;
 
+export function googleCalendarTokenKeyEnvVarName(version: number): string {
+	return `PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V${version}`;
+}
+
+/**
+ * "The key is not on this host" and "this key cannot open that ciphertext" are
+ * different operational failures with different fixes. Callers could only tell
+ * them apart by matching message text, so a missing/short key now throws a named
+ * error carrying the env var an operator has to set. Never carries key material.
+ */
+export class GoogleCalendarTokenKeyUnavailableError extends Error {
+	constructor(
+		public readonly keyVersion: number,
+		public readonly envVarName: string,
+		message: string
+	) {
+		super(message);
+		this.name = 'GoogleCalendarTokenKeyUnavailableError';
+	}
+}
+
+/** Bundle boundaries can break `instanceof`; match by shape as the services do. */
+export function isGoogleCalendarTokenKeyUnavailableError(error: unknown): boolean {
+	if (error instanceof GoogleCalendarTokenKeyUnavailableError) return true;
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		(error as { name?: unknown }).name === 'GoogleCalendarTokenKeyUnavailableError'
+	);
+}
+
 export const resolveGoogleCalendarTokenKeyFromEnv: GoogleCalendarTokenKeyResolver = (version) =>
-	process.env[`PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V${version}`];
+	process.env[googleCalendarTokenKeyEnvVarName(version)];
 
 function getKeySecret(version: number, resolveKey: GoogleCalendarTokenKeyResolver): string {
 	const secret = resolveKey(version)?.trim();
 	if (!secret) {
-		throw new Error(
-			`Calendar connection token encryption key V${version} is unavailable. Configure PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V${version}.`
+		throw new GoogleCalendarTokenKeyUnavailableError(
+			version,
+			googleCalendarTokenKeyEnvVarName(version),
+			`Calendar connection token encryption key V${version} is unavailable. Configure ${googleCalendarTokenKeyEnvVarName(version)}.`
 		);
 	}
 
 	if (Buffer.byteLength(secret, 'utf8') < 32) {
-		throw new Error(
+		throw new GoogleCalendarTokenKeyUnavailableError(
+			version,
+			googleCalendarTokenKeyEnvVarName(version),
 			`Calendar connection token encryption key V${version} must contain at least 32 bytes of secret material.`
 		);
 	}

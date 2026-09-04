@@ -64,6 +64,39 @@ export type AgenticChatCalendarReadSummaryV1 = {
 };
 
 /**
+ * Some failures have a cause the model must not paraphrase. A server with no
+ * calendar credentials is not a Google outage and cannot be fixed by
+ * reconnecting, so the guidance for those reason codes is spelled out here
+ * rather than left to the model to guess from a bare code.
+ */
+const CALENDAR_REASON_GUIDANCE: Record<string, string> = {
+	credentials_not_configured:
+		"This server's Google Calendar credentials are not configured, so BuildOS never contacted Google Calendar. " +
+		'This is a BuildOS server configuration problem: it is NOT a Google outage, NOT a sync problem, and NOT ' +
+		'something the user can fix by reconnecting their calendar. Tell the user exactly that.',
+	credentials_unreadable:
+		'The stored Google Calendar credentials could not be decrypted on this server, so BuildOS never contacted ' +
+		'Google Calendar. This is a BuildOS server configuration problem (the calendar token encryption key on this ' +
+		'server does not match the stored credentials), not a Google outage. Tell the user exactly that.',
+	source_not_readable:
+		'That calendar source is not enabled for reading in BuildOS, so it was skipped. Tell the user they can turn ' +
+		'reading on for it in Profile > Calendar (/profile?tab=calendar).'
+};
+
+/** Leading-space joined guidance for whichever of the above reasons occurred. */
+export function describeCalendarFailureReasons(reasonCodes: Iterable<string>): string {
+	const sentences: string[] = [];
+	const seen = new Set<string>();
+	for (const code of reasonCodes) {
+		const guidance = CALENDAR_REASON_GUIDANCE[code];
+		if (!guidance || seen.has(code)) continue;
+		seen.add(code);
+		sentences.push(guidance);
+	}
+	return sentences.length > 0 ? ` ${sentences.join(' ')}` : '';
+}
+
+/**
  * The model previously saw `partial: true` for both a total calendar outage and
  * a single missing calendar. Say plainly which one happened, and what to do
  * about it.
@@ -76,7 +109,9 @@ export function describeCalendarCoverage(read: {
 }): string | null {
 	if (read.coverage === 'complete') return null;
 
-	const reasons = Array.from(new Set(read.source_failures.map((f) => f.reason_code))).join(', ');
+	const reasonCodes = Array.from(new Set(read.source_failures.map((f) => f.reason_code)));
+	const reasons = reasonCodes.join(', ');
+	const guidance = describeCalendarFailureReasons(reasonCodes);
 	const reconnect = read.source_failures.filter((f) => f.reason_code === 'reconnect_required');
 	const reconnectSentence = reconnect.length
 		? ` Tell the user to reconnect ${reconnect
@@ -92,20 +127,20 @@ export function describeCalendarCoverage(read: {
 			return (
 				`No calendar data was read (${reasons || 'no calendar source was available'}). ` +
 				`Do not assert availability, free time, or that a slot is open from this result — ` +
-				`the calendar was not read.${reconnectSentence}`
+				`the calendar was not read.${guidance}${reconnectSentence}`
 			);
 		}
 		return (
 			`No calendar data was read: all ${read.source_count} connected calendar source(s) failed` +
 			`${reasons ? ` (${reasons})` : ''}. Do not assert availability, free time, or that a slot is open ` +
-			`from this result — the calendar was not read.${reconnectSentence}`
+			`from this result — the calendar was not read.${guidance}${reconnectSentence}`
 		);
 	}
 
 	return (
 		`Calendar coverage is degraded: ${read.failed_source_count} of ${read.source_count} calendar ` +
 		`source(s) failed${reasons ? ` (${reasons})` : ''}. Events on those calendars are missing from ` +
-		`this result, so availability may be wrong.${reconnectSentence}`
+		`this result, so availability may be wrong.${guidance}${reconnectSentence}`
 	);
 }
 
@@ -946,7 +981,9 @@ export async function getCalendarEventDetails(
 			provider_calendar_id: result.providerCalendarId,
 			external_event_id: eventId,
 			event: null,
-			warnings: [noCalendarDataWarning(reasonCode)]
+			warnings: [
+				`${noCalendarDataWarning(reasonCode)}${describeCalendarFailureReasons([reasonCode])}`
+			]
 		};
 	}
 

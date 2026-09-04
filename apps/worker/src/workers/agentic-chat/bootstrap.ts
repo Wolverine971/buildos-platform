@@ -53,7 +53,39 @@ export type AgenticChatBootstrapHealth = {
 	reason?: string;
 	runtime: AgenticChatConsumerRuntimeHealth | null;
 	mutationCapabilities: AgenticChatMutationCapabilitiesSummaryV1 | null;
+	/**
+	 * `'configured'` or `'missing:<VAR,VAR>'`. Variable names only, never values.
+	 * Optional so a caller that cannot reach the bootstrap can still report health.
+	 */
+	calendarCredentials?: string;
 };
+
+/**
+ * Calendar reads and writes run on this service now, so the credentials must be
+ * on this service too. When they are not, every calendar tool reports
+ * `credentials_not_configured` — which is only self-diagnosing if startup says
+ * so out loud. Names only: this never reads or logs a value.
+ */
+const CALENDAR_CREDENTIAL_ENV_VARS = [
+	'PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1',
+	'PRIVATE_GOOGLE_CALENDAR_CLIENT_ID',
+	'PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET',
+	'PRIVATE_GOOGLE_CLIENT_ID',
+	'PRIVATE_GOOGLE_CLIENT_SECRET'
+] as const;
+
+export function summarizeAgenticChatCalendarCredentialsV1(environment: NodeJS.ProcessEnv): {
+	status: string;
+	missing: string[];
+} {
+	const missing = CALENDAR_CREDENTIAL_ENV_VARS.filter(
+		(name) => !environment[name]?.trim()
+	) as string[];
+	return {
+		status: missing.length === 0 ? 'configured' : `missing:${missing.join(',')}`,
+		missing
+	};
+}
 
 /**
  * Reduce the unified mutation capability surface to the backwards-compatible
@@ -129,6 +161,22 @@ export function createAgenticChatBootstrap(
 	const mutationCapabilities = summarizeAgenticChatMutationCapabilitiesV1(
 		ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1
 	);
+	const calendarCredentials = summarizeAgenticChatCalendarCredentialsV1(
+		options.environment ?? process.env
+	);
+	// Never fails startup: a chat worker without calendar credentials still runs
+	// every non-calendar turn. It just must not be silent about it.
+	if (calendarCredentials.missing.length > 0) {
+		console.warn(
+			JSON.stringify({
+				event: 'agentic_chat_calendar_credentials_missing',
+				missingVariables: calendarCredentials.missing,
+				impact: 'Calendar reads and writes on this service will report credentials_not_configured until these variables are set.',
+				remediation:
+					'Set them on this Railway service with values byte-identical to Vercel production.'
+			})
+		);
+	}
 	// One-line, JSON-ish startup record of the write surface — capability and
 	// tool names/counts only, never env values — so operators and the e2e
 	// harness can confirm what mutation capability shipped without reading env.
@@ -149,7 +197,7 @@ export function createAgenticChatBootstrap(
 		onUsageError: options.onUsageError,
 		onConsumptionBillingError: options.onConsumptionBillingError
 	});
-	return new AgenticChatBootstrap(composition, mutationCapabilities);
+	return new AgenticChatBootstrap(composition, mutationCapabilities, calendarCredentials.status);
 }
 
 export class AgenticChatBootstrap {
@@ -160,7 +208,8 @@ export class AgenticChatBootstrap {
 
 	constructor(
 		private readonly composition: AgenticChatBootstrapCompositionPort,
-		private readonly mutationCapabilities: AgenticChatMutationCapabilitiesSummaryV1 | null = null
+		private readonly mutationCapabilities: AgenticChatMutationCapabilitiesSummaryV1 | null = null,
+		private readonly calendarCredentials: string = 'configured'
 	) {
 		this.state = 'ready';
 	}
@@ -205,16 +254,25 @@ export class AgenticChatBootstrap {
 	getHealth(): AgenticChatBootstrapHealth {
 		const runtime = this.safeRuntimeHealth();
 		const mutationCapabilities = this.mutationCapabilities;
+		const calendarCredentials = this.calendarCredentials;
 		if (this.state === 'running') {
 			return runtime?.healthy
-				? { enabled: true, healthy: true, state: this.state, runtime, mutationCapabilities }
+				? {
+						enabled: true,
+						healthy: true,
+						state: this.state,
+						runtime,
+						mutationCapabilities,
+						calendarCredentials
+					}
 				: {
 						enabled: true,
 						healthy: false,
 						state: this.state,
 						reason: runtime?.reason ?? 'runtime_health_unavailable',
 						runtime,
-						mutationCapabilities
+						mutationCapabilities,
+						calendarCredentials
 					};
 		}
 		if (this.state === 'stopping' || this.state === 'stopped') {
@@ -224,7 +282,8 @@ export class AgenticChatBootstrap {
 				state: this.state,
 				reason: this.state,
 				runtime,
-				mutationCapabilities
+				mutationCapabilities,
+				calendarCredentials
 			};
 		}
 		return {
@@ -233,7 +292,8 @@ export class AgenticChatBootstrap {
 			state: this.state,
 			reason: this.state === 'failed' ? (this.lastError ?? 'bootstrap_failed') : this.state,
 			runtime,
-			mutationCapabilities
+			mutationCapabilities,
+			calendarCredentials
 		};
 	}
 

@@ -96,7 +96,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								maxItems: 30,
 								items: { type: 'string' },
 								description:
-									'Required durable postconditions, not tool arguments. For document-tree placement use parent_id and position.'
+									'Required durable postconditions, not tool arguments: the fields that must be written on every counted target (for example ["content"] for a document edit, ["due_at"] for a reschedule). For document-tree placement use parent_id and position.'
 							},
 							changes: {
 								type: 'array',
@@ -105,12 +105,17 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 									type: 'object',
 									properties: {
 										field: { type: 'string', maxLength: 80 },
-										value: { type: 'string', maxLength: 160 }
+										value: {
+											type: 'string',
+											maxLength: 160,
+											description:
+												'Short scalar value only: a title, name, date, id, priority, or state. Never prose.'
+										}
 									},
 									required: ['field', 'value']
 								},
 								description:
-									'Durable field/value pairs applied to every target. Targets receiving different values require separate outcomes.'
+									'Short scalar field/value pairs applied to every target (title, due_at, priority, state_key, parent_id). Prose fields are never declared here: for document content, descriptions, or bodies list the field in required_fields and supply the exact text to the write tool at execution. Targets receiving different values require separate outcomes.'
 							},
 							minimum_successful_effects: {
 								type: 'integer',
@@ -207,7 +212,7 @@ export const REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION: ChatToolDefinition = {
 					minItems: 2,
 					maxItems: 20,
 					description:
-						'Every known plausible target or value for the unresolved choice. Include this when loaded context identifies a finite candidate set, and name every label in the question.',
+						'Every known plausible target or value for the unresolved choice. Include this when loaded context identifies a finite candidate set; the labels are shown to the user as a list beneath the question, so the question need not repeat them.',
 					items: {
 						type: 'object',
 						additionalProperties: false,
@@ -221,7 +226,7 @@ export const REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION: ChatToolDefinition = {
 							label: {
 								type: 'string',
 								maxLength: 200,
-								description: 'Human-readable choice named verbatim in the question.'
+								description: 'Human-readable choice shown to the user.'
 							},
 							kind: {
 								type: 'string',

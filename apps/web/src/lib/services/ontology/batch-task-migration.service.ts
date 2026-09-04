@@ -28,7 +28,7 @@
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { Database, Json } from '@buildos/shared-types';
+import { ONTO_TASK_PRIORITY_WORDS, type Database, type Json } from '@buildos/shared-types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import { chunkArray } from '$lib/utils/chunk-array';
 import type { MigrationContext, LegacyTask } from './migration/enhanced-migration.types';
@@ -759,8 +759,9 @@ IMPORTANT: Include ALL ${tasksInMode.length} tasks. Use null for base work mode.
 	private priorityToNumber(priority: string | number | null | undefined): number | null {
 		if (priority === null || priority === undefined) return null;
 		if (typeof priority === 'number') return priority;
-		const map: Record<string, number> = { low: 1, medium: 2, high: 3 };
-		return map[priority.toLowerCase()] ?? null;
+		// Canonical onto scale: 1 is Critical. The old local map ({low:1, high:3})
+		// wrote every "low" migrated task as P1 Critical.
+		return ONTO_TASK_PRIORITY_WORDS[priority.trim().toLowerCase()] ?? null;
 	}
 
 	/**

@@ -53,3 +53,6 @@ export * from './project-graph-context.types';
 
 // Export Cycles (recurring work definitions and immutable run occurrences)
 export * from './cycle.types';
+
+// Export the canonical onto_tasks.priority scale (labels + schema description)
+export * from './onto-task-priority';

@@ -4,6 +4,7 @@ import {
 	needsCivilTimezone,
 	normalizeCalendarSyncInput,
 	normalizeDateTimeInput,
+	normalizePriorityInput,
 	toTaskCalendarSyncReceipt
 } from './input-normalization';
 
@@ -111,6 +112,49 @@ describe('toTaskCalendarSyncReceipt', () => {
 		expect(toTaskCalendarSyncReceipt(undefined)).toEqual({
 			calendar_sync: 'synced',
 			calendar_events: []
+		});
+	});
+});
+
+describe('normalizePriorityInput word scale', () => {
+	// The five rungs are the UI labels: 1 Critical, 2 High, 3 Medium, 4 Low,
+	// 5 Nice to have. The map this replaced collapsed them to three, so "high"
+	// resolved to 1 (Critical) and "low" to 5 (Nice to have).
+	it.each([
+		['critical', 1],
+		['urgent', 1],
+		['high', 2],
+		['medium', 3],
+		['normal', 3],
+		['low', 4],
+		['minimal', 5],
+		['nice to have', 5]
+	])('maps %s to priority %i', (word, expected) => {
+		expect(normalizePriorityInput(word)).toEqual({ ok: true, value: expected });
+	});
+
+	it('is case- and whitespace-insensitive', () => {
+		expect(normalizePriorityInput('  High  ')).toEqual({ ok: true, value: 2 });
+	});
+
+	it('clamps and rounds numeric input into the 1-5 range', () => {
+		expect(normalizePriorityInput(0)).toEqual({ ok: true, value: 1 });
+		expect(normalizePriorityInput(9)).toEqual({ ok: true, value: 5 });
+		expect(normalizePriorityInput('4')).toEqual({ ok: true, value: 4 });
+	});
+
+	it('keeps null/undefined semantics and rejects unknown words', () => {
+		expect(normalizePriorityInput(undefined, { defaultValue: 3 })).toEqual({
+			ok: true,
+			value: 3
+		});
+		expect(normalizePriorityInput(null, { allowNull: true })).toEqual({
+			ok: true,
+			value: null
+		});
+		expect(normalizePriorityInput('whenever')).toEqual({
+			ok: false,
+			error: 'priority must be a number from 1 to 5'
 		});
 	});
 });

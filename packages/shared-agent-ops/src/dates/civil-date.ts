@@ -122,6 +122,67 @@ export function civilDateBoundaryInstant(
 	return new Date(candidate).toISOString();
 }
 
+/**
+ * Strict ISO-8601 instant: a date, a time, and an EXPLICIT zone designator
+ * (`Z` or `±HH:MM` / `±HHMM`). A bare `YYYY-MM-DD` is a civil date, and a
+ * naive `YYYY-MM-DDTHH:MM:SS` names no instant at all — neither may be
+ * rewritten into a zoned rendering, so both must fail this test.
+ */
+const ISO_INSTANT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/;
+
+/** True only for a string that carries a date, a time, and an explicit UTC offset. */
+export function isIsoInstantString(value: unknown): boolean {
+	return typeof value === 'string' && ISO_INSTANT_PATTERN.test(value.trim());
+}
+
+function pad(value: number, width = 2): string {
+	return String(value).padStart(width, '0');
+}
+
+/**
+ * Render an instant as ISO-8601 wall-clock time in `timezone` with its numeric
+ * offset — the inverse of `civilDateBoundaryInstant`.
+ *
+ * `2026-09-23T03:59:59Z` + `America/New_York` -> `2026-09-22T23:59:59-04:00`
+ *
+ * Sub-second precision is dropped. Returns null when the value is not a
+ * parseable instant (a bare date or a naive datetime is not one). An unusable
+ * timezone renders in UTC (`+00:00`).
+ */
+export function instantToZonedIso(value: string, timezone?: string | null): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	if (!ISO_INSTANT_PATTERN.test(trimmed)) return null;
+
+	const epochMs = Date.parse(trimmed);
+	if (Number.isNaN(epochMs)) return null;
+
+	// Truncate to whole seconds BEFORE measuring the offset: `timeZoneOffsetMs`
+	// reads the zone's wall clock through Intl, which has no sub-second parts,
+	// so a millisecond-bearing instant would otherwise report an offset short by
+	// those milliseconds (and render `-00:00` for UTC).
+	const secondMs = Math.floor(epochMs / 1000) * 1000;
+	const offsetMs = isValidIanaTimezone(timezone)
+		? timeZoneOffsetMs(new Date(secondMs), (timezone as string).trim())
+		: 0;
+	// Zone offsets are whole minutes; rounding keeps the label and the shift in
+	// agreement even for the historical zones with second-level offsets.
+	const offsetMinutes = Math.round(offsetMs / 60_000);
+
+	// The wall clock in `timezone` read off a UTC calendar shifted by the offset.
+	const wall = new Date(secondMs + offsetMinutes * 60_000);
+	const absOffsetMinutes = Math.abs(offsetMinutes);
+	const offsetLabel = `${offsetMinutes < 0 ? '-' : '+'}${pad(
+		Math.floor(absOffsetMinutes / 60)
+	)}:${pad(absOffsetMinutes % 60)}`;
+
+	return (
+		`${pad(wall.getUTCFullYear(), 4)}-${pad(wall.getUTCMonth() + 1)}-${pad(wall.getUTCDate())}` +
+		`T${pad(wall.getUTCHours())}:${pad(wall.getUTCMinutes())}:${pad(wall.getUTCSeconds())}` +
+		offsetLabel
+	);
+}
+
 export interface NormalizeDateOnlyOptions {
 	/** Which end of the civil day a bare date means. */
 	boundary: CivilDateBoundary;

@@ -47,6 +47,7 @@
 	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { hasEntityReferences } from '$lib/utils/entity-reference-parser';
+	import { timestamptzToLocalDate } from '$lib/utils/date-utils';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
@@ -273,21 +274,30 @@
 		error = null;
 	});
 
+	// Project timeline instants are civil-day boundaries in the owner's timezone
+	// (start = 00:00:00 local, end = 23:59:59 local), so the calendar day has to
+	// be read back in that zone. Reading it in UTC showed a New York project
+	// ending Nov 20 (stored 2026-11-21T04:59:59Z) as Nov 21.
 	function toDateInput(value?: string | null): string {
 		if (!value) return '';
-		const date = new Date(value);
-		if (isNaN(date.getTime())) return '';
-		return date.toISOString().slice(0, 10);
+		if (Number.isNaN(new Date(value).getTime())) return '';
+		return timestamptzToLocalDate(value);
 	}
 
-	function parseDateInput(value: string): string | null {
-		if (!value) return null;
-		if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-		const date = new Date(`${value}T00:00:00Z`);
-		if (isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
-			return null;
-		}
-		return date.toISOString();
+	// The API owns the civil-day -> instant conversion (it knows the user's
+	// timezone), so the form sends the bare calendar date it is showing.
+	function isValidDateInput(value: string): boolean {
+		const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+		if (!match) return false;
+		const year = Number(match[1]);
+		const month = Number(match[2]);
+		const day = Number(match[3]);
+		const probe = new Date(Date.UTC(year, month - 1, day));
+		return (
+			probe.getUTCFullYear() === year &&
+			probe.getUTCMonth() === month - 1 &&
+			probe.getUTCDate() === day
+		);
 	}
 
 	function handleClose() {
@@ -395,10 +405,10 @@
 			payload.facet_stage = facetStage || null;
 		}
 
-		const parsedStart = parseDateInput(startDate);
-		const parsedEnd = parseDateInput(endDate);
-
-		if ((startDate && !parsedStart) || (endDate && !parsedEnd)) {
+		if (
+			(startDate && !isValidDateInput(startDate)) ||
+			(endDate && !isValidDateInput(endDate))
+		) {
 			error = 'Enter valid timeline dates.';
 			return;
 		}
@@ -408,15 +418,15 @@
 			return;
 		}
 
-		// Compare the calendar-day values shown in the form. Comparing the parsed
-		// midnight ISO value to the stored timestamp would turn an unchanged date
-		// into a false edit whenever the stored value includes a time component.
+		// Compare the calendar-day values shown in the form. Comparing an instant
+		// to the stored timestamp would turn an unchanged date into a false edit
+		// whenever the stored value includes a time component.
 		if (startDate !== toDateInput(project.start_at)) {
-			payload.start_at = parsedStart;
+			payload.start_at = startDate || null;
 		}
 
 		if (endDate !== toDateInput(project.end_at)) {
-			payload.end_at = parsedEnd;
+			payload.end_at = endDate || null;
 		}
 
 		// Check if next step changed

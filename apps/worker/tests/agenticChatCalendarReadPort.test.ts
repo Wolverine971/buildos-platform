@@ -5,7 +5,10 @@
 // test covers what a real turn executes (arguments -> shared tool -> port ->
 // provider services).
 import { describe, expect, it, vi } from 'vitest';
-import { GoogleCalendarConnectionError } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
+import {
+	GoogleCalendarConnectionError,
+	GoogleCalendarTargetError
+} from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
 import {
 	executeAgenticChatSharedReadToolV1,
 	type AgenticChatSharedReadContextV1,
@@ -246,7 +249,40 @@ describe('worker calendar read port', () => {
 		services.read.listEvents = vi.fn(async () => {
 			throw new GoogleCalendarConnectionError(
 				'not_configured',
-				'OAuth credentials are unavailable for Calendar client kind google_calendar'
+				'Google Calendar OAuth client credentials are not configured on this server for client kind google_calendar (missing PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET)'
+			);
+		});
+		const { context } = createContext({ services: () => services });
+
+		const result = await listCalendarEvents(context, RANGE);
+
+		// The model must be handed the server-configuration reason, not a bare
+		// `not_configured` it can paraphrase as a Google problem.
+		expect(result.google_read).toMatchObject({
+			coverage: 'unavailable',
+			source_failures: [
+				expect.objectContaining({ reason_code: 'credentials_not_configured' })
+			]
+		});
+		expect(
+			result.warnings.some((entry: string) => entry.includes('No calendar data was read'))
+		).toBe(true);
+		expect(
+			result.warnings.some((entry: string) =>
+				entry.includes("This server's Google Calendar credentials are not configured")
+			)
+		).toBe(true);
+		expect(result.warnings.some((entry: string) => entry.includes('NOT a Google outage'))).toBe(
+			true
+		);
+	});
+
+	it('surfaces an undecryptable stored credential as key drift, not a database fault', async () => {
+		const services = fakeServices();
+		services.read.listEvents = vi.fn(async () => {
+			throw new GoogleCalendarConnectionError(
+				'database_error',
+				"Stored Google Calendar credentials could not be decrypted with this server's calendar token encryption key"
 			);
 		});
 		const { context } = createContext({ services: () => services });
@@ -255,10 +291,35 @@ describe('worker calendar read port', () => {
 
 		expect(result.google_read).toMatchObject({
 			coverage: 'unavailable',
-			source_failures: [expect.objectContaining({ reason_code: 'not_configured' })]
+			source_failures: [expect.objectContaining({ reason_code: 'credentials_unreadable' })]
 		});
 		expect(
-			result.warnings.some((entry: string) => entry.includes('No calendar data was read'))
+			result.warnings.some((entry: string) =>
+				entry.includes('could not be decrypted on this server')
+			)
+		).toBe(true);
+	});
+
+	it('reports a read-disabled source instead of throwing the whole read away', async () => {
+		const services = fakeServices();
+		services.read.listEvents = vi.fn(async () => {
+			throw new GoogleCalendarTargetError(
+				'CALENDAR_SOURCE_NOT_CAPABLE',
+				'Google Calendar source cannot be used for read'
+			);
+		});
+		const { context } = createContext({ services: () => services });
+
+		const result = await listCalendarEvents(context, RANGE);
+
+		expect(result.google_read).toMatchObject({
+			coverage: 'unavailable',
+			source_failures: [expect.objectContaining({ reason_code: 'source_not_readable' })]
+		});
+		expect(
+			result.warnings.some((entry: string) =>
+				entry.includes('not enabled for reading in BuildOS')
+			)
 		).toBe(true);
 	});
 
@@ -294,9 +355,11 @@ describe('worker calendar read port', () => {
 			time_max: '2026-09-03'
 		});
 
+		// The provider is queried in UTC; the model sees the same instants
+		// rendered in the turn timezone (read-result projection, 2026-09-04).
 		expect(result.queried_range).toMatchObject({
-			time_min: '2026-09-03T06:00:00.000Z',
-			time_max: '2026-09-04T05:59:59.000Z',
+			time_min: '2026-09-03T00:00:00-06:00',
+			time_max: '2026-09-03T23:59:59-06:00',
 			timezone: 'America/Denver'
 		});
 		expect(services.read.listEvents).toHaveBeenCalledWith(

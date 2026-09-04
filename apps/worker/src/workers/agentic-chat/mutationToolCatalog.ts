@@ -969,6 +969,13 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			entities: {
 				type: 'array',
 				maxItems: 0,
+				// The catalog schema carries a 1.2k-character item union for
+				// embedded child records; the reviewed worker path admits none, and
+				// the surface now rides every global turn (2026-09-04).
+				items: {
+					type: 'object',
+					additionalProperties: false
+				},
 				description:
 					'Must be empty. After create_onto_project returns project_id, create requested goals or tasks only when their tools are available.'
 			},
