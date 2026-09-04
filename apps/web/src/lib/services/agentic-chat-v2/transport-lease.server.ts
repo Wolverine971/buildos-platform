@@ -108,7 +108,10 @@ export function issueAgenticChatTransportLease(
 		throw new AgenticChatTransportLeaseError('invalid_binding', 'Decision id is invalid');
 	}
 	const killEpoch = nonnegativeSafeInteger(input.killEpoch ?? 0, 'kill epoch');
-	const contractVersion = contractVersionForMode(input.mode);
+	if (input.mode !== 'worker_realtime') {
+		throw new AgenticChatTransportLeaseError('invalid_binding', 'Lease mode is invalid');
+	}
+	const contractVersion = AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
 	const claims: AgenticChatTransportLeaseClaims = {
 		tokenVersion: AGENTIC_CHAT_TRANSPORT_LEASE_TOKEN_VERSION,
 		userId: input.userId.toLowerCase(),
@@ -188,8 +191,12 @@ export function verifyAgenticChatTransportLease(
 			'Lease binding does not match'
 		);
 	}
+	// One lease mode since one-engine stage S8, so the kill epoch is
+	// unconditional: bumping AGENTIC_CHAT_WORKER_KILL_EPOCH forces every
+	// outstanding lease to be renegotiated and the turn re-admitted on the
+	// worker. There is no other engine to fall back to.
 	const currentKillEpoch = nonnegativeSafeInteger(input.currentKillEpoch ?? 0, 'kill epoch');
-	if (claims.mode === 'worker_realtime' && claims.killEpoch < currentKillEpoch) {
+	if (claims.killEpoch < currentKillEpoch) {
 		throw new AgenticChatTransportLeaseError(
 			'transport_renegotiate',
 			'Worker lease predates the current kill epoch'
@@ -225,8 +232,8 @@ function parseClaims(value: unknown): AgenticChatTransportLeaseClaims {
 	const context = value.context;
 	if (
 		value.tokenVersion !== AGENTIC_CHAT_TRANSPORT_LEASE_TOKEN_VERSION ||
-		(mode !== 'legacy_sse' && mode !== 'worker_realtime') ||
-		contractVersion !== contractVersionForMode(mode) ||
+		mode !== 'worker_realtime' ||
+		contractVersion !== AGENTIC_CHAT_WORKER_CONTRACT_VERSION ||
 		!isCanonicalUuid(value.userId) ||
 		!canonicalBoundedString(value.clientTurnId, 256) ||
 		!canonicalBoundedString(value.streamRunId, 256) ||
@@ -254,7 +261,7 @@ function parseClaims(value: unknown): AgenticChatTransportLeaseClaims {
 		streamRunId: value.streamRunId,
 		context: normalizedContext,
 		mode,
-		contractVersion: contractVersionForMode(mode),
+		contractVersion: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 		decisionId: value.decisionId.toLowerCase(),
 		issuedAtMs,
 		expiresAtMs,
@@ -320,12 +327,6 @@ function sameBinding(
 		claims.context.entityId === context.entityId &&
 		claims.context.projectId === context.projectId
 	);
-}
-
-function contractVersionForMode(mode: LeaseMode): LeaseContractVersion {
-	if (mode === 'worker_realtime') return AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
-	if (mode === 'legacy_sse') return 'legacy_internal_v1';
-	throw new AgenticChatTransportLeaseError('invalid_binding', 'Lease mode is invalid');
 }
 
 function validateSecret(secret: string): void {

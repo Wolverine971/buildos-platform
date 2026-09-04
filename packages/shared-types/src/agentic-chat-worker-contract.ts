@@ -359,7 +359,7 @@ type AgenticChatAdmissionHandleV1 = {
 	correlationId: string;
 	streamRunId: string;
 	clientTurnId: string | null;
-	executionMode: 'worker_realtime' | 'legacy_sse';
+	executionMode: 'worker_realtime';
 	status: ChatTurnStatusV1;
 };
 
@@ -583,8 +583,8 @@ export type AgenticChatRealtimeBroadcastV1 =
 export type TurnSnapshotV1 = {
 	contract_version: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
 	turn_run_id: string;
-	/** both transports implement reconcile(); legacy snapshots carry 'legacy_sse' */
-	execution_mode: 'worker_realtime' | 'legacy_sse';
+	/** One execution mode since one-engine stage S8; reconcile() is worker-only. */
+	execution_mode: 'worker_realtime';
 	execution_generation: number;
 	status: ChatTurnStatusV1;
 	text: string;
@@ -617,9 +617,14 @@ export type AgenticChatReconcileRpcResultV1 =
 			turn_run_id: string;
 	  }
 	| {
+			/**
+			 * Historical rows only: turns admitted before one-engine stage S8
+			 * stored a non-worker execution mode. Nothing writes one any more,
+			 * so the mode is read back as opaque text rather than an enum.
+			 */
 			outcome: 'not_worker_turn';
 			turn_run_id: string;
-			execution_mode: 'legacy_sse';
+			execution_mode: string;
 			status: ChatTurnStatusV1;
 	  }
 	| (TurnSnapshotV1 & {
@@ -672,12 +677,11 @@ export type CancelTurnResultV1 =
 			outcome: 'already_terminal';
 			status: ChatTurnTerminalStatusV1;
 			terminalEventId: string;
-	  }
-	| { outcome: 'legacy_abort_requested' };
+	  };
 
 export type AgentChatTransportLeaseV1 = {
-	mode: 'legacy_sse' | 'worker_realtime';
-	contractVersion: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION | 'legacy_internal_v1';
+	mode: 'worker_realtime';
+	contractVersion: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
 	decisionId: string;
 	token: string;
 	expiresAt: string;
@@ -699,23 +703,14 @@ export type AgentChatTransportLeaseRequestV1 = {
 	priorDecisionId: string | null;
 };
 
-export type TurnHandleV1 =
-	| {
-			contractVersion: 'legacy_internal_v1';
-			executionMode: 'legacy_sse';
-			streamRunId: string;
-			clientTurnId: string;
-			sessionId: string | null;
-			turnRunId: string | null;
-	  }
-	| {
-			contractVersion: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
-			executionMode: 'worker_realtime';
-			streamRunId: string;
-			clientTurnId: string;
-			sessionId: string;
-			turnRunId: string;
-	  };
+export type TurnHandleV1 = {
+	contractVersion: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
+	executionMode: 'worker_realtime';
+	streamRunId: string;
+	clientTurnId: string;
+	sessionId: string;
+	turnRunId: string;
+};
 
 export type AgenticChatWorkerTurnDescriptorV1 = {
 	handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;

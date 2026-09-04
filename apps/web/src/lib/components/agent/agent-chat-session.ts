@@ -418,25 +418,21 @@ export async function syncBrowserTimezone(
 	}
 }
 
+/**
+ * Opening the chat warms what the first turn needs before the user sends.
+ * The legacy stream route's warmup GET went with that engine (one-engine
+ * stage S8); storing the browser timezone is the work that remains, and the
+ * worker turn route is warmed by the prepared-prompt prewarm POST.
+ */
 export async function warmAgentChatStreamTransport(
 	options: { signal?: AbortSignal } = {}
 ): Promise<boolean> {
-	// Piggyback on the transport warmup (once per page load) so the user's
-	// zone is stored before their first turn builds a prompt.
-	void syncBrowserTimezone();
+	if (options.signal?.aborted) return false;
 	try {
-		const response = await fetch('/api/agent/v2/stream?purpose=warmup', {
-			method: 'GET',
-			cache: 'no-store',
-			signal: options.signal
-		});
-		return response.ok;
+		return await syncBrowserTimezone();
 	} catch (err) {
-		if ((err as DOMException)?.name === 'AbortError') {
-			throw err;
-		}
 		if (dev) {
-			console.warn('[AgentChat] Stream transport warmup failed:', err);
+			console.warn('[AgentChat] Chat warmup failed:', err);
 		}
 		return false;
 	}

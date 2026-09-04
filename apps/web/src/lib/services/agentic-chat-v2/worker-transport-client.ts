@@ -13,8 +13,8 @@ const TRANSPORT_ENDPOINT = '/api/agent/v2/transport';
 const WORKER_TURNS_ENDPOINT = '/api/agent/v2/turns';
 // The server may spend 5s on its first worker-capacity observation and another
 // 2.5s on the one permitted fresh observation. Keep the client alive beyond
-// that full bounded retry budget so it does not manufacture a legacy fallback
-// while the server is still making a valid routing decision.
+// that full bounded retry budget so it does not surface an outage while the
+// server is still making a valid admission decision.
 const TRANSPORT_TIMEOUT_MS = 10_000;
 const MAX_LEASE_TOKEN_LENGTH = 8 * 1024;
 const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -42,10 +42,14 @@ export type AgenticChatWorkerCommand = {
 	preparedPromptKey: string | null;
 };
 
+/**
+ * One engine since one-engine stage S8: negotiation either yields a worker
+ * lease or fails. There is no null "use the other transport" answer.
+ */
 export async function requestAgenticChatTransportLease(input: {
 	request: AgentChatTransportLeaseRequestV1;
 	fetchImpl?: typeof fetch;
-}): Promise<AgentChatTransportLeaseV1 | null> {
+}): Promise<AgentChatTransportLeaseV1> {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), TRANSPORT_TIMEOUT_MS);
 	try {
@@ -60,10 +64,7 @@ export async function requestAgenticChatTransportLease(input: {
 			signal: controller.signal,
 			body: JSON.stringify(input.request)
 		});
-		if (!response.ok) {
-			if (await isLegacyTransportUnavailableResponse(response)) return null;
-			throw new AgenticChatWorkerUnavailableResponseError();
-		}
+		if (!response.ok) throw new AgenticChatWorkerUnavailableResponseError();
 		const value: unknown = await response.json();
 		const lease = parseTransportLeaseEnvelope(value);
 		if (!lease) throw new AgenticChatWorkerUnavailableResponseError();
@@ -73,16 +74,6 @@ export async function requestAgenticChatTransportLease(input: {
 		throw new AgenticChatWorkerUnavailableResponseError();
 	} finally {
 		clearTimeout(timer);
-	}
-}
-
-async function isLegacyTransportUnavailableResponse(response: Response): Promise<boolean> {
-	if (response.status !== 503) return false;
-	try {
-		const value: unknown = await response.clone().json();
-		return isRecord(value) && value.code === 'TRANSPORT_UNAVAILABLE';
-	} catch {
-		return false;
 	}
 }
 
@@ -255,10 +246,7 @@ function parseTransportLeaseEnvelope(value: unknown): AgentChatTransportLeaseV1 
 	) {
 		return null;
 	}
-	if (
-		(data.mode === 'legacy_sse' && data.contractVersion === 'legacy_internal_v1') ||
-		(data.mode === 'worker_realtime' && data.contractVersion === 'agentic_chat_worker_v1')
-	) {
+	if (data.mode === 'worker_realtime' && data.contractVersion === 'agentic_chat_worker_v1') {
 		return data as AgentChatTransportLeaseV1;
 	}
 	return null;

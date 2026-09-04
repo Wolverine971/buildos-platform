@@ -296,22 +296,11 @@ describe('POST /api/agent/v2/turns', () => {
 		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
 	});
 
-	it('rejects legacy mode and a stale worker kill epoch before durable work', async () => {
+	// A kill-epoch bump now means "re-admit on the worker": the stale lease is
+	// refused before any durable work, and a lease minted at the new epoch is
+	// admitted, so the client's single re-admission converges.
+	it('forces re-admission when the worker kill epoch advances', async () => {
 		const base = admissionBody();
-		const legacy = issueAgenticChatTransportLease({
-			secret: SECRET,
-			userId: USER_ID,
-			clientTurnId: base.clientTurnId,
-			streamRunId: base.streamRunId,
-			context: base.context,
-			mode: 'legacy_sse'
-		});
-		let response = await POST(
-			postEvent({ body: { ...base, leaseToken: legacy.token } }) as never
-		);
-		expect(response.status).toBe(409);
-		expect((await response.json()).code).toBe('WORKER_LEASE_REQUIRED');
-
 		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '2';
 		const stale = issueAgenticChatTransportLease({
 			secret: SECRET,
@@ -322,10 +311,27 @@ describe('POST /api/agent/v2/turns', () => {
 			mode: 'worker_realtime',
 			killEpoch: 1
 		});
-		response = await POST(postEvent({ body: { ...base, leaseToken: stale.token } }) as never);
-		expect(response.status).toBe(409);
-		expect((await response.json()).code).toBe('TRANSPORT_RENEGOTIATE');
+		const staleResponse = await POST(
+			postEvent({ body: { ...base, leaseToken: stale.token } }) as never
+		);
+		expect(staleResponse.status).toBe(409);
+		expect((await staleResponse.json()).code).toBe('TRANSPORT_RENEGOTIATE');
 		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
+
+		const reissued = issueAgenticChatTransportLease({
+			secret: SECRET,
+			userId: USER_ID,
+			clientTurnId: base.clientTurnId,
+			streamRunId: base.streamRunId,
+			context: base.context,
+			mode: 'worker_realtime',
+			killEpoch: 2
+		});
+		const readmitted = await POST(
+			postEvent({ body: { ...base, leaseToken: reissued.token } }) as never
+		);
+		expect(readmitted.status).toBe(202);
+		expect(mocks.createAdminSupabaseClient).toHaveBeenCalled();
 	});
 
 	it('prepares server-owned inputs once and returns a private immutable handle for new admission', async () => {

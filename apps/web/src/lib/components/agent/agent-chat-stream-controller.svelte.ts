@@ -18,7 +18,6 @@ import type {
 } from '@buildos/shared-types';
 import { SvelteDate } from 'svelte/reactivity';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
-import { buildFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request-client';
 import { AgentStreamEventGuard } from '$lib/services/agentic-chat-v2/stream-protocol';
 import {
 	normalizeFastContextType,
@@ -30,11 +29,6 @@ import {
 	requestAgenticChatTransportLease,
 	requestAgenticChatWorkerAdmission
 } from '$lib/services/agentic-chat-v2/worker-transport-client';
-import {
-	SSEProcessor,
-	type StreamCallbacks,
-	type SSEProcessorOptions
-} from '$lib/utils/sse-processor';
 import { AgentRequestError, buildAgentRequestError } from './agent-chat-session';
 import type { PreparedPromptClient } from './agent-chat-session';
 import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
@@ -66,14 +60,6 @@ export type StreamTurnReconcileReason = 'transport_error' | 'detached';
 export interface StreamTurnReconcileRequest {
 	handle: TurnHandleV1 & { sessionId: string };
 	reason: StreamTurnReconcileReason;
-}
-
-export interface StreamProcessorLike {
-	processStream(
-		response: Response,
-		callbacks: StreamCallbacks,
-		options?: SSEProcessorOptions
-	): Promise<void>;
 }
 
 export interface StreamControllerAttachmentDeps {
@@ -142,7 +128,6 @@ export interface StreamControllerDeps {
 	setExistingImagePickerOpen(value: boolean): void;
 	haptic?(style: 'light' | 'medium' | 'heavy'): void;
 	fetchImpl?: typeof fetch;
-	streamProcessor?: StreamProcessorLike;
 	logError?(message: string, err: unknown): void;
 	logDebug?(message: string, data?: unknown): void;
 }
@@ -174,31 +159,6 @@ function buildClientStreamTimingState(runId: number): ClientStreamTimingState {
 	};
 }
 
-// Inactivity guard for the SSE transport. The server heartbeats every 12s
-// (SSE comments — the processor counts raw chunk bytes as activity), so a
-// 45s gap means the connection is dead; the timeout error routes into the
-// standard turn-reconciliation path instead of an infinite spinner.
-const STREAM_INACTIVITY_TIMEOUT_MS = 45_000;
-
-// Event types that prove the server started the turn proper (they are only
-// emitted after turn admission + user-message persistence). The initial
-// The acknowledgement `turn_phase` and `session` events can fire BEFORE the
-// deny checks, so turn_phase intentionally does not count. Used as a SAFETY
-// CHECK on the deny-rollback in sendMessage's
-// onComplete — the rollback trigger itself is the server's explicit
-// `turn_rejected` flag on the error event.
-const TURN_EVIDENCE_EVENT_TYPES = new Set<string>([
-	'context_usage',
-	'text',
-	'text_delta',
-	'tool_call',
-	'tool_result',
-	'context_shift',
-	'last_turn_context',
-	'skill_activity',
-	'operation'
-]);
-
 /**
  * Rejections that prove the worker never accepted the turn, so the optimistic
  * message may be removed and the draft (text + images) restored. Anything not
@@ -211,7 +171,8 @@ const TURN_EVIDENCE_EVENT_TYPES = new Set<string>([
  */
 const WORKER_KNOWN_NOT_ADMITTED_CODES = new Set([
 	'TRANSPORT_RENEGOTIATE',
-	'WORKER_LEASE_REQUIRED',
+	'WORKER_CAPABILITY_UNAVAILABLE',
+	'CLIENT_UPGRADE_REQUIRED',
 	'WORKER_CAPACITY_EXCEEDED',
 	'WORKER_ADMISSION_CONFLICT',
 	'INVALID_WORKER_COMMAND',
@@ -262,13 +223,11 @@ export class AgentChatStreamController {
 	#currentStreamController: AbortController | null = null;
 	#deps: StreamControllerDeps;
 	#fetch: typeof fetch;
-	#streamProcessor: StreamProcessorLike;
 	#streamEventGuard = new AgentStreamEventGuard();
 
 	constructor(deps: StreamControllerDeps) {
 		this.#deps = deps;
 		this.#fetch = deps.fetchImpl ?? fetch;
-		this.#streamProcessor = deps.streamProcessor ?? SSEProcessor;
 	}
 
 	adoptWorkerTurn(
@@ -304,6 +263,10 @@ export class AgentChatStreamController {
 		status: Extract<ChatTurnStatusV1, 'completed' | 'failed' | 'cancelled'>
 	): void {
 		if (!this.#isActiveWorkerHandle(handle)) return;
+		this.finalizeClientStreamTiming(
+			this.activeStreamRunId,
+			status === 'completed' ? 'completed' : status === 'failed' ? 'error' : 'cancelled'
+		);
 		this.activeTurnHandle = null;
 		this.isStreaming = false;
 		this.isStartingStream = false;
@@ -317,6 +280,7 @@ export class AgentChatStreamController {
 
 	releaseWorkerTurn(handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>): void {
 		if (!this.#isActiveWorkerHandle(handle)) return;
+		this.finalizeClientStreamTiming(this.activeStreamRunId, 'aborted');
 		this.activeTurnHandle = null;
 		this.isStreaming = false;
 		this.isStartingStream = false;
@@ -353,39 +317,6 @@ export class AgentChatStreamController {
 
 	#clearStreamEventOrderingState(): void {
 		this.#streamEventGuard.reset();
-	}
-
-	#shouldAcceptStreamEvent(event: AgentSSEMessage): boolean {
-		const decision = this.#streamEventGuard.inspect(event, {
-			streamRunId: this.activeTurnHandle?.streamRunId ?? null,
-			clientTurnId: this.activeTurnHandle?.clientTurnId ?? null
-		});
-		if (decision.accepted) return true;
-		this.#deps.logDebug?.('[AgentChat] Dropping rejected stream event', {
-			type: event.type,
-			reason: decision.reason,
-			eventKey: decision.eventKey,
-			eventStreamRunId: decision.eventStreamRunId,
-			activeStreamRunId: this.activeTurnHandle?.streamRunId ?? null,
-			eventClientTurnId: decision.eventClientTurnId,
-			activeClientTurnId: this.activeTurnHandle?.clientTurnId ?? null
-		});
-		return false;
-	}
-
-	#hydrateActiveTurnHandle(event: AgentSSEMessage): void {
-		const handle = this.activeTurnHandle;
-		if (!handle || handle.executionMode !== 'legacy_sse') return;
-		const eventSessionId =
-			event.type === 'session' ? (event.session?.id ?? event.sessionId ?? null) : null;
-		const sessionId = eventSessionId ?? handle.sessionId;
-		const turnRunId = event.turn_run_id ?? handle.turnRunId;
-		if (sessionId === handle.sessionId && turnRunId === handle.turnRunId) return;
-		this.activeTurnHandle = {
-			...handle,
-			sessionId,
-			turnRunId
-		};
 	}
 
 	finalizeClientStreamTiming(
@@ -536,15 +467,12 @@ export class AgentChatStreamController {
 
 		this.isStartingStream = true;
 		let userMessage: UIMessage | null = null;
-		let runId: number | null = null;
-		let streamController: AbortController | null = null;
-		let responseAccepted = false;
 		let workerAdmissionAttempted = false;
 		let workerAdmissionSessionId: string | null = null;
 
 		try {
 			if (this.isStreaming) {
-				await this.stopGeneration('superseded', { awaitCancelHint: true });
+				await this.stopGeneration('superseded');
 			}
 
 			const requestContextType = selectedContextType;
@@ -557,8 +485,7 @@ export class AgentChatStreamController {
 				currentPrewarmKey
 			);
 			let sessionForTurn = this.#deps.getCurrentSession();
-			// Every new UI send is worker-owned until admission explicitly proves that
-			// its capability surface requires legacy execution. Both paths need a
+			// Every UI send is worker-owned (one-engine stage S8) and needs a
 			// durable session id before transport negotiation.
 			if (!sessionForTurn?.id) {
 				try {
@@ -608,21 +535,20 @@ export class AgentChatStreamController {
 					projectFocus: requestProjectFocus
 				})
 			};
-			let transportLease = await requestAgenticChatTransportLease({
-				fetchImpl: this.#fetch,
-				request: {
-					clientTurnId,
-					streamRunId: transportStreamRunId,
-					sessionId: sessionForTurn.id,
-					context: transportContext,
-					supportedModes: ['legacy_sse', 'worker_realtime'],
-					supportedContractVersions: ['legacy_internal_v1', 'agentic_chat_worker_v1'],
-					priorDecisionId: null
-				}
-			});
-			if (transportLease?.mode === 'worker_realtime' && !sessionForTurn?.id) {
-				throw new AgenticChatWorkerUnavailableResponseError();
-			}
+			const negotiateWorkerLease = () =>
+				requestAgenticChatTransportLease({
+					fetchImpl: this.#fetch,
+					request: {
+						clientTurnId,
+						streamRunId: transportStreamRunId,
+						sessionId: sessionForTurn!.id,
+						context: transportContext,
+						supportedModes: ['worker_realtime'],
+						supportedContractVersions: ['agentic_chat_worker_v1'],
+						priorDecisionId: null
+					}
+				});
+			let transportLease = await negotiateWorkerLease();
 
 			userMessage = {
 				id: crypto.randomUUID(),
@@ -676,18 +602,32 @@ export class AgentChatStreamController {
 			}
 			this.error = null;
 
-			if (transportLease?.mode === 'worker_realtime' && sessionForTurn?.id) {
-				this.lastCancelResult = null;
-				this.isStreaming = false;
-				this.#deps.clearPendingToolState();
-				this.#deps.thinking.create();
-				this.currentActivity = 'Submitting secure worker turn...';
-				this.#deps.thinking.updateState(
-					'thinking',
-					'BuildOS is starting the worker response...'
-				);
-				this.#deps.setUserHasScrolled(false);
-				prewarm.clearPreparedPrompt();
+			this.lastCancelResult = null;
+			this.isStreaming = false;
+			// Client-side turn telemetry runs on the worker lane too: the modal's
+			// realtime projection feeds recordClientStreamEvent/attachServerTiming
+			// against this run id, and finishWorkerTurn closes it out.
+			this.activeStreamRunId = this.activeStreamRunId + 1;
+			this.activeStreamTiming = buildClientStreamTimingState(this.activeStreamRunId);
+			this.#clearStreamEventOrderingState();
+			this.#deps.clearPendingToolState();
+			this.#deps.thinking.create();
+			this.currentActivity = 'Submitting secure worker turn...';
+			this.#deps.thinking.updateState(
+				'thinking',
+				'BuildOS is starting the worker response...'
+			);
+			this.#deps.setUserHasScrolled(false);
+			prewarm.clearPreparedPrompt();
+			this.isStartingStream = false;
+
+			// One engine: a stale lease (an AGENTIC_CHAT_WORKER_KILL_EPOCH bump,
+			// or plain expiry) is answered by negotiating a fresh worker lease and
+			// re-admitting the same turn exactly once. A second renegotiation
+			// inside one send is a hard, user-visible error rather than a loop,
+			// and there is no legacy POST to fall back to.
+			let readmissionsRemaining = 1;
+			for (;;) {
 				workerAdmissionAttempted = true;
 				workerAdmissionSessionId = sessionForTurn.id;
 				const admission = await requestAgenticChatWorkerAdmission({
@@ -706,40 +646,8 @@ export class AgentChatStreamController {
 						preparedPromptKey: matchingPreparedPrompt?.key ?? null
 					}
 				});
-				if (!admission.response.ok) {
-					const admissionError = await buildAgentRequestError(
-						admission.response,
-						'Unable to start the worker response. BuildOS is checking its status.'
-					);
-					if (admissionError.code === 'TRANSPORT_RENEGOTIATE') {
-						workerAdmissionAttempted = false;
-						workerAdmissionSessionId = null;
-						transportLease = await requestAgenticChatTransportLease({
-							fetchImpl: this.#fetch,
-							request: {
-								clientTurnId,
-								streamRunId: transportStreamRunId,
-								sessionId: sessionForTurn.id,
-								context: transportContext,
-								supportedModes: ['legacy_sse'],
-								supportedContractVersions: ['legacy_internal_v1'],
-								priorDecisionId: null
-							}
-						});
-						if (transportLease?.mode !== 'legacy_sse') {
-							throw new AgenticChatWorkerUnavailableResponseError();
-						}
-					} else {
-						if (
-							admissionError.code &&
-							WORKER_KNOWN_NOT_ADMITTED_CODES.has(admissionError.code)
-						) {
-							workerAdmissionAttempted = false;
-							workerAdmissionSessionId = null;
-						}
-						throw admissionError;
-					}
-				} else {
+
+				if (admission.response.ok) {
 					const descriptor = this.#deps.adoptWorkerAdmissionResponse(admission.payload);
 					if (
 						descriptor.handle.clientTurnId !== clientTurnId ||
@@ -749,216 +657,31 @@ export class AgentChatStreamController {
 							'Worker admission did not return the negotiated turn handle'
 						);
 					}
-					responseAccepted = true;
 					return;
 				}
-			}
 
-			this.activeStreamRunId = this.activeStreamRunId + 1;
-			runId = this.activeStreamRunId;
-			this.activeTurnHandle = {
-				contractVersion: 'legacy_internal_v1',
-				executionMode: 'legacy_sse',
-				streamRunId: transportStreamRunId,
-				clientTurnId,
-				sessionId: sessionForTurn?.id ?? null,
-				turnRunId: null
-			};
-			this.lastCancelResult = null;
-			this.#clearStreamEventOrderingState();
-			this.activeStreamTiming = buildClientStreamTimingState(runId);
-
-			this.isStreaming = true;
-			this.#deps.clearPendingToolState();
-			this.#deps.thinking.create();
-
-			this.currentActivity = 'Analyzing request...';
-			this.#deps.thinking.updateState('thinking', 'BuildOS is processing your request...');
-
-			this.#deps.setUserHasScrolled(false);
-
-			let receivedStreamEvent = false;
-			let receivedTerminalEvent = false;
-
-			streamController = new AbortController();
-			this.#currentStreamController = streamController;
-			this.isStartingStream = false;
-			prewarm.clearPreparedPrompt();
-
-			const response = await this.#fetch('/api/agent/v2/stream', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				signal: streamController.signal,
-				body: JSON.stringify(
-					buildFastAgentStreamRequestBody({
-						message: trimmed,
-						sessionId: sessionForTurn?.id,
-						contextType: requestContextType,
-						entityId: requestEntityId,
-						attachments: streamAttachmentRefs,
-						projectFocus: requestProjectFocus,
-						lastTurnContext: this.#deps.getLastTurnContext(),
-						streamRunId: transportStreamRunId,
-						clientTurnId,
-						voiceNoteGroupId: activeVoiceNoteGroupId,
-						preparedPromptKey: matchingPreparedPrompt?.key
-					})
-				)
-			});
-
-			if (!response.ok) {
-				throw await buildAgentRequestError(
-					response,
-					'Failed to send message. Please try again.'
+				const admissionError = await buildAgentRequestError(
+					admission.response,
+					'Unable to start the worker response. BuildOS is checking its status.'
 				);
-			}
-			responseAccepted = true;
-			let receivedTurnEvidence = false;
-			let turnRejectedByServer = false;
-
-			const callbacks: StreamCallbacks = {
-				onProgress: (data: any) => {
-					if (runId !== this.activeStreamRunId) {
-						if (
-							!this.#deps.getCurrentSession()?.id &&
-							data?.type === 'session' &&
-							data?.session
-						) {
-							this.#deps.hydrateSessionFromEvent(data.session as ChatSession);
-						}
-						return;
-					}
-					const event = data as AgentSSEMessage;
-					if (!this.#shouldAcceptStreamEvent(event)) return;
-					this.#hydrateActiveTurnHandle(event);
-					receivedStreamEvent = true;
-					if (event?.type === 'done') receivedTerminalEvent = true;
-					if (event?.type && TURN_EVIDENCE_EVENT_TYPES.has(event.type)) {
-						receivedTurnEvidence = true;
-					}
-					if (
-						event?.type === 'error' &&
-						(event as { turn_rejected?: boolean }).turn_rejected === true
-					) {
-						turnRejectedByServer = true;
-					}
-					this.recordClientStreamEvent(
-						runId,
-						(event?.type as AgentSSEMessage['type']) ?? 'text'
-					);
-					this.#deps.handleSSEMessage(event);
-				},
-				onError: (err) => {
-					if (runId !== this.activeStreamRunId) return;
-					this.recordClientStreamEvent(runId, 'transport_error');
-					this.#deps.logError?.('SSE error:', err);
-					const reconcileRequest = this.buildTurnReconcileRequest('transport_error');
-					if (
-						reconcileRequest &&
-						this.startTurnReconciliation(runId, reconcileRequest, 'error', 'error')
-					) {
-						return;
-					}
-					this.error =
-						typeof err === 'string' ? err : 'Connection error occurred while streaming';
-					this.isStreaming = false;
-					this.currentActivity = '';
-					this.#currentStreamController = null;
-					this.activeTurnHandle = null;
-					this.#clearStreamEventOrderingState();
-					this.#deps.thinking.finalize('error');
-					this.#deps.assistant.flushText();
-					this.#deps.assistant.finalizeMessage();
-					this.finalizeClientStreamTiming(runId, 'error', 'error');
-				},
-				onComplete: () => {
-					if (runId !== this.activeStreamRunId) return;
-					if (!receivedTerminalEvent) {
-						const reconcileRequest = this.buildTurnReconcileRequest('transport_error');
-						if (
-							reconcileRequest &&
-							this.startTurnReconciliation(runId, reconcileRequest, 'error', 'error')
-						) {
-							return;
-						}
-						this.error = 'The response ended before completion. Please try again.';
-					}
-					this.isStreaming = false;
-					this.currentActivity = '';
-					this.#currentStreamController = null;
-					if (!receivedStreamEvent && !this.error) {
-						this.error = 'BuildOS did not return a response. Please try again.';
-					}
-					this.activeTurnHandle = null;
-					this.#clearStreamEventOrderingState();
-					const terminalState = this.error ? 'error' : 'completed';
-					this.#deps.thinking.finalize(terminalState);
-					this.#deps.assistant.flushText();
-					this.#deps.assistant.finalizeMessage();
-					this.finalizeClientStreamTiming(runId, terminalState);
-
-					// Denied turn: the server explicitly rejected it before the
-					// user message persisted (`turn_rejected` on the error
-					// event), so the optimistic bubble would silently vanish on
-					// the next snapshot reload. Roll it back and restore the
-					// draft. The evidence check is a safety net: never roll
-					// back a turn that demonstrably did real work.
-					if (turnRejectedByServer && !receivedTurnEvidence && userMessage) {
-						this.#deps.messages.removeById(userMessage.id);
-						if (!this.#deps.getInputValue().trim()) {
-							this.#deps.setInputValue(trimmed);
-						}
-						if (
-							!suppressInputClear &&
-							sentImageAttachments.length > 0 &&
-							this.#deps.attachments.getDraftSnapshot().length === 0
-						) {
-							this.#deps.attachments.restoreDraft(sentImageAttachments);
-						}
-					}
+				if (
+					admissionError.code &&
+					WORKER_KNOWN_NOT_ADMITTED_CODES.has(admissionError.code)
+				) {
+					workerAdmissionAttempted = false;
+					workerAdmissionSessionId = null;
 				}
-			};
-
-			await this.#streamProcessor.processStream(response, callbacks, {
-				timeout: STREAM_INACTIVITY_TIMEOUT_MS,
-				parseJSON: true,
-				treatErrorEventsAsProgress: true,
-				signal: streamController.signal
-			});
+				if (admissionError.code !== 'TRANSPORT_RENEGOTIATE' || readmissionsRemaining < 1) {
+					throw admissionError;
+				}
+				readmissionsRemaining -= 1;
+				this.currentActivity = 'Reconnecting to the worker...';
+				transportLease = await negotiateWorkerLease();
+			}
 		} catch (err) {
-			this.#currentStreamController = null;
-			if ((err as DOMException)?.name === 'AbortError') {
-				if (runId === null || runId !== this.activeStreamRunId) {
-					return;
-				}
-				this.isStreaming = false;
-				this.currentActivity = '';
-				this.activeTurnHandle = null;
-				this.#clearStreamEventOrderingState();
-				this.#deps.thinking.finalize('interrupted', 'Stopped');
-				this.#deps.assistant.flushText();
-				this.#deps.assistant.finalizeMessage();
-				this.finalizeClientStreamTiming(runId, 'aborted');
-				return;
-			}
-			if (runId !== null && runId !== this.activeStreamRunId) {
-				return;
-			}
+			if ((err as DOMException)?.name === 'AbortError') return;
 
 			this.#deps.logError?.('Failed to send message:', err);
-			const reconcileRequest =
-				responseAccepted && runId !== null
-					? this.buildTurnReconcileRequest('transport_error')
-					: null;
-			if (
-				reconcileRequest &&
-				this.startTurnReconciliation(runId!, reconcileRequest, 'error', 'error')
-			) {
-				return;
-			}
-
 			this.error =
 				err instanceof AgentRequestError ||
 				err instanceof AgenticChatWorkerUnavailableResponseError
@@ -971,9 +694,6 @@ export class AgentChatStreamController {
 			this.#deps.thinking.finalize('error');
 			this.#deps.assistant.flushText();
 			this.#deps.assistant.finalizeMessage();
-			if (runId !== null) {
-				this.finalizeClientStreamTiming(runId, 'error', 'error');
-			}
 
 			if (workerAdmissionAttempted && workerAdmissionSessionId) {
 				void this.#deps
@@ -1005,72 +725,35 @@ export class AgentChatStreamController {
 			}
 		} finally {
 			this.isStartingStream = false;
-			if (this.#currentStreamController === streamController) {
-				this.#currentStreamController = null;
-			}
 		}
 	}
 
+	/**
+	 * Stop. One engine since one-engine stage S8: the durable worker
+	 * cancellation signal carries both the turn identity and the reason, so
+	 * there is no second hint channel to write.
+	 */
 	async cancelTurn(
 		handle: TurnHandleV1,
-		reason: 'user_cancelled' | 'superseded',
-		options: { awaitAck?: boolean } = {}
+		reason: 'user_cancelled' | 'superseded'
 	): Promise<CancelTurnResultV1> {
-		if (handle.executionMode === 'worker_realtime') {
-			const response = await this.#fetch(
-				`/api/agent/v2/turns/${encodeURIComponent(handle.turnRunId)}/cancel`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Accept: 'application/json'
-					},
-					credentials: 'same-origin',
-					cache: 'no-store',
-					body: JSON.stringify({ reason })
-				}
-			);
-			if (!response.ok) {
-				throw await buildAgentRequestError(
-					response,
-					'Unable to stop this response right now.'
-				);
+		const response = await this.#fetch(
+			`/api/agent/v2/turns/${encodeURIComponent(handle.turnRunId)}/cancel`,
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				credentials: 'same-origin',
+				cache: 'no-store',
+				body: JSON.stringify({ reason })
 			}
-			return parseWorkerCancelResponse(await response.json());
+		);
+		if (!response.ok) {
+			throw await buildAgentRequestError(response, 'Unable to stop this response right now.');
 		}
-
-		const payload = {
-			session_id: handle.sessionId ?? this.#deps.getCurrentSession()?.id,
-			stream_run_id: handle.streamRunId,
-			client_turn_id: handle.clientTurnId,
-			reason
-		};
-		const request = this.#fetch('/api/agent/v2/stream/cancel', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			keepalive: true,
-			body: JSON.stringify(payload)
-		}).catch((cancelError) => {
-			this.#deps.logDebug?.(
-				'[AgentChat] Failed to report stream cancellation reason',
-				cancelError
-			);
-		});
-
-		if (!options.awaitAck) {
-			void request;
-			return { outcome: 'legacy_abort_requested' };
-		}
-
-		await Promise.race([
-			request,
-			new Promise<void>((resolve) => {
-				setTimeout(resolve, 120);
-			})
-		]);
-		return { outcome: 'legacy_abort_requested' };
+		return parseWorkerCancelResponse(await response.json());
 	}
 
 	detachActiveStream(options: { reconcile?: boolean } = {}): void {
@@ -1108,83 +791,21 @@ export class AgentChatStreamController {
 		}
 	}
 
-	async stopGeneration(
-		reason: StreamStopReason = 'user_cancelled',
-		options: { awaitCancelHint?: boolean } = {}
-	): Promise<void> {
+	async stopGeneration(reason: StreamStopReason = 'user_cancelled'): Promise<void> {
 		if (!this.isStreaming) return;
 		const handle = this.activeTurnHandle;
-		if (handle?.executionMode === 'worker_realtime') {
-			if (reason === 'error') return;
-			if (reason === 'user_cancelled') this.#deps.haptic?.('heavy');
-			try {
-				this.currentActivity = 'Stopping response...';
-				this.lastCancelResult = await this.cancelTurn(handle, reason);
-			} catch (error) {
-				this.#deps.logError?.('[AgentChat] Worker cancellation failed:', error);
-				this.error =
-					error instanceof Error
-						? error.message
-						: 'Unable to stop this response right now.';
-				this.currentActivity = workerActivityForStatus('running');
-			}
-			return;
-		}
-		if (!this.#currentStreamController) return;
-
-		if (reason === 'user_cancelled') {
-			this.#deps.haptic?.('heavy');
-		}
-
-		const runId = this.activeStreamRunId;
-		const streamRunId = handle?.streamRunId ?? null;
-		const shouldReportReason = reason === 'user_cancelled' || reason === 'superseded';
-		const cancellationReasonPromise =
-			shouldReportReason && handle
-				? this.cancelTurn(handle, reason, {
-						awaitAck: Boolean(options.awaitCancelHint)
-					}).then((result) => {
-						this.lastCancelResult = result;
-						return result;
-					})
-				: null;
-
-		this.#deps.assistant.flushText();
-		this.#deps.assistant.markInterrupted(reason, streamRunId);
-		this.finalizeClientStreamTiming(
-			runId,
-			'cancelled',
-			reason === 'user_cancelled' || reason === 'superseded' ? reason : null
-		);
-		this.activeStreamRunId = this.activeStreamRunId + 1;
-		this.activeTurnHandle = null;
-		this.#clearStreamEventOrderingState();
-
-		if (cancellationReasonPromise && options.awaitCancelHint) {
-			await cancellationReasonPromise;
-		}
-
+		if (!handle) return;
+		if (reason === 'error') return;
+		if (reason === 'user_cancelled') this.#deps.haptic?.('heavy');
 		try {
-			// Optional chain: the natural-completion path may have nulled the
-			// controller while we awaited the cancel hint above.
-			this.#currentStreamController?.abort();
-		} catch (abortError) {
-			this.#deps.logDebug?.('Abort failed (already closed)', abortError);
+			this.currentActivity = 'Stopping response...';
+			this.lastCancelResult = await this.cancelTurn(handle, reason);
+		} catch (error) {
+			this.#deps.logError?.('[AgentChat] Worker cancellation failed:', error);
+			this.error =
+				error instanceof Error ? error.message : 'Unable to stop this response right now.';
+			this.currentActivity = workerActivityForStatus('running');
 		}
-		this.#currentStreamController = null;
-
-		this.#deps.thinking.finalize(
-			reason === 'superseded' ? 'cancelled' : 'interrupted',
-			reason === 'user_cancelled' ? 'Stopped by you' : 'Stopped'
-		);
-		this.#deps.assistant.finalizeMessage();
-
-		if (cancellationReasonPromise && !options.awaitCancelHint) {
-			void cancellationReasonPromise;
-		}
-
-		this.isStreaming = false;
-		this.currentActivity = '';
 	}
 
 	disposeActiveStream(options: { reconcile?: boolean } = {}): void {

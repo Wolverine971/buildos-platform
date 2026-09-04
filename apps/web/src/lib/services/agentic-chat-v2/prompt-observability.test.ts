@@ -284,7 +284,8 @@ describe('prompt observability helpers', () => {
 		expect(breakdown.sections.safety_data_rules.chars).toBeGreaterThan(0);
 		expect(breakdown.sections.focus_purpose.chars).toBeGreaterThan(0);
 		expect(breakdown.sections.location_loaded_context.chars).toBeGreaterThan(0);
-		expect(breakdown.sections.context_inventory_retrieval.chars).toBeGreaterThan(0);
+		// 2026-09-04: retrieval boundaries render inside location_loaded_context.
+		expect(breakdown.sections).not.toHaveProperty('context_inventory_retrieval');
 		expect(breakdown.sections.final_response_contract.chars).toBeGreaterThan(0);
 		expect(breakdown.sections).not.toHaveProperty('skill_catalog');
 		expect(breakdown.sections).not.toHaveProperty('tools_text_block');

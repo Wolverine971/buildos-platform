@@ -156,29 +156,22 @@ function validateExistingDecision(
 		throw storedContractInvalid();
 	}
 
-	let mode: AgentChatTransportLeaseV1['mode'];
-	let contractVersion: AgentChatTransportLeaseV1['contractVersion'];
+	// One execution mode since one-engine stage S8. A turn persisted under any
+	// other stored contract names an engine that no longer exists, so it is
+	// reported invalid rather than replayed or silently re-decided as a worker
+	// turn: re-deciding would let one clientTurnId execute twice.
 	if (
-		row.execution_mode === 'worker_realtime' &&
-		row.transport_contract_version === AGENTIC_CHAT_WORKER_CONTRACT_VERSION
+		row.execution_mode !== 'worker_realtime' ||
+		row.transport_contract_version !== AGENTIC_CHAT_WORKER_CONTRACT_VERSION
 	) {
-		mode = 'worker_realtime';
-		contractVersion = AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
-	} else if (
-		row.execution_mode === 'legacy_sse' &&
-		row.transport_contract_version === 'legacy_internal_v1'
-	) {
-		mode = 'legacy_sse';
-		contractVersion = 'legacy_internal_v1';
-	} else {
 		throw storedContractInvalid();
 	}
 
 	return {
 		turnRunId: row.id.toLowerCase(),
 		sessionId: row.session_id.toLowerCase(),
-		mode,
-		contractVersion,
+		mode: 'worker_realtime',
+		contractVersion: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 		decisionId: row.transport_decision_id.toLowerCase()
 	};
 }

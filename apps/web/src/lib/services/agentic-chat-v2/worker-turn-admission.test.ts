@@ -114,11 +114,10 @@ describe('Agentic Chat worker admission gateway', () => {
 		});
 	});
 
-	it('preserves a legacy active conflict with no client-turn identity', async () => {
+	it('preserves an active conflict with no client-turn identity', async () => {
 		const database = client({
 			data: handle({
 				outcome: 'active_turn_conflict',
-				execution_mode: 'legacy_sse',
 				status: 'running',
 				client_turn_id: null,
 				user_message_id: null,
@@ -130,9 +129,19 @@ describe('Agentic Chat worker admission gateway', () => {
 		const result = await admitAgenticChatWorkerTurn({ client: database.value, args });
 		expect(result).toMatchObject({
 			outcome: 'active_turn_conflict',
-			executionMode: 'legacy_sse',
+			executionMode: 'worker_realtime',
 			clientTurnId: null
 		});
+	});
+
+	it('rejects a handle that names a retired execution mode', async () => {
+		const database = client({
+			data: handle({ outcome: 'active_turn_conflict', execution_mode: 'legacy_sse' }),
+			error: null
+		});
+		await expect(
+			admitAgenticChatWorkerTurn({ client: database.value, args })
+		).rejects.toMatchObject({ code: 'protocol_error' });
 	});
 
 	it('maps idempotency and bounded capacity outcomes', async () => {

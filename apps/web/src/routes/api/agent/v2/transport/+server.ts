@@ -3,6 +3,10 @@ import { randomUUID } from 'node:crypto';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
+import {
+	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+	type AgentChatTransportLeaseRequestV1
+} from '@buildos/shared-types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
 	AgenticChatTransportDecisionError,
@@ -17,9 +21,16 @@ import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { normalizeFastContextType } from '$lib/services/agentic-chat-v2/scope';
-import { selectAgenticChatNewTransport } from '$lib/services/agentic-chat-v2/worker-transport-routing.server';
 
 const logger = createLogger('API:AgentTransportV2');
+
+/**
+ * One execution mode since one-engine stage S8. Capability arrays stay in the
+ * request so an outdated bundle is told to reload instead of being handed a
+ * lease it cannot drive, but the only negotiable transport is the worker.
+ */
+const WORKER_MODE = 'worker_realtime' as const;
+const CAPABILITY_MAX_ENTRIES = 4;
 
 const canonicalText = (maxLength: number) =>
 	z
@@ -51,14 +62,14 @@ const transportRequestSchema = z
 				type: normalizeFastContextType(context.type)
 			})),
 		supportedModes: z
-			.array(z.enum(['legacy_sse', 'worker_realtime']))
+			.array(canonicalText(64))
 			.min(1)
-			.max(2)
+			.max(CAPABILITY_MAX_ENTRIES)
 			.refine((values) => new Set(values).size === values.length, 'Modes must be unique'),
 		supportedContractVersions: z
-			.array(z.enum(['legacy_internal_v1', 'agentic_chat_worker_v1']))
+			.array(canonicalText(64))
 			.min(1)
-			.max(2)
+			.max(CAPABILITY_MAX_ENTRIES)
 			.refine((values) => new Set(values).size === values.length, 'Contracts must be unique'),
 		priorDecisionId: nullableUuid.optional().default(null)
 	})
@@ -73,43 +84,49 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	});
 	if (!parsed.ok) return privateResponse(parsed.response);
 
-	let selectedMode: 'legacy_sse' | 'worker_realtime' | null = null;
+	// A client that cannot drive the worker transport is an outdated bundle, not
+	// a routing choice: the engine it is asking for was deleted, so it is told
+	// to reload instead of being downgraded.
+	if (
+		!parsed.data.supportedModes.includes(WORKER_MODE) ||
+		!parsed.data.supportedContractVersions.includes(AGENTIC_CHAT_WORKER_CONTRACT_VERSION)
+	) {
+		return privateResponse(
+			ApiResponse.error(
+				'This BuildOS chat client is out of date. Reload the page to continue.',
+				HttpStatus.CONFLICT,
+				'CLIENT_UPGRADE_REQUIRED'
+			)
+		);
+	}
+
+	const leaseRequest: AgentChatTransportLeaseRequestV1 = {
+		clientTurnId: parsed.data.clientTurnId,
+		streamRunId: parsed.data.streamRunId,
+		sessionId: parsed.data.sessionId,
+		context: parsed.data.context,
+		supportedModes: [WORKER_MODE],
+		supportedContractVersions: [AGENTIC_CHAT_WORKER_CONTRACT_VERSION],
+		priorDecisionId: parsed.data.priorDecisionId
+	};
+
 	try {
 		const existing = await resolveExistingAgenticChatTransportDecision({
 			client: createAdminSupabaseClient() as unknown as AgenticChatTransportDecisionClient,
 			userId: user.id,
-			request: parsed.data
+			request: leaseRequest
 		});
-		const selected = existing
-			? { mode: existing.mode, contractVersion: existing.contractVersion }
-			: await selectAgenticChatNewTransport({
-					supportedModes: parsed.data.supportedModes,
-					supportedContractVersions: parsed.data.supportedContractVersions
-				});
-		const { mode, contractVersion } = selected;
-		selectedMode = mode;
-		if (
-			!parsed.data.supportedModes.includes(mode) ||
-			!parsed.data.supportedContractVersions.includes(contractVersion)
-		) {
-			return privateResponse(
-				ApiResponse.error(
-					'No compatible transport is available for this turn',
-					HttpStatus.CONFLICT,
-					'TRANSPORT_INCOMPATIBLE'
-				)
-			);
-		}
 
-		// Existing turns retain their persisted immutable mode. New compatible
-		// worker turns are server-enabled and wait in the durable queue as needed.
+		// Existing turns retain their persisted immutable mode; every mode is the
+		// worker mode. New turns are server-enabled and wait in the durable queue
+		// as needed.
 		const lease = issueAgenticChatTransportLease({
 			secret: env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET ?? '',
 			userId: user.id,
-			clientTurnId: parsed.data.clientTurnId,
-			streamRunId: parsed.data.streamRunId,
-			context: parsed.data.context,
-			mode,
+			clientTurnId: leaseRequest.clientTurnId,
+			streamRunId: leaseRequest.streamRunId,
+			context: leaseRequest.context,
+			mode: WORKER_MODE,
 			// A prior id is only a lookup hint. It becomes authoritative only when an
 			// owned persisted turn proves it; otherwise the server mints a fresh id.
 			decisionId: existing?.decisionId ?? randomUUID(),
@@ -124,7 +141,12 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		});
 		if (
 			error instanceof AgenticChatTransportDecisionError &&
-			(error.code === 'binding_mismatch' || error.code === 'ambiguous_turn')
+			(error.code === 'binding_mismatch' ||
+				error.code === 'ambiguous_turn' ||
+				// A stored contract that is not the worker contract names a deleted
+				// engine. It can never be served, so it is a conflict, not a
+				// retryable outage.
+				error.code === 'stored_contract_invalid')
 		) {
 			return privateResponse(
 				ApiResponse.error(
@@ -134,34 +156,11 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 				)
 			);
 		}
-		// A compatible new turn is worker-owned even if selection or lease issuance
-		// fails. Legacy is available only when the request itself is legacy-only;
-		// infrastructure uncertainty must never change transport semantics.
-		if (
-			selectedMode === 'worker_realtime' ||
-			(selectedMode === null && requestCouldSelectWorker(parsed.data))
-		) {
-			return workerUnavailableResponse();
-		}
-		return transportUnavailableResponse();
+		// Every turn is worker-owned, so an infrastructure failure here is a
+		// worker outage and never a change of transport semantics.
+		return workerUnavailableResponse();
 	}
 };
-
-function requestCouldSelectWorker(request: z.infer<typeof transportRequestSchema>): boolean {
-	return (
-		request.supportedModes.includes('worker_realtime') &&
-		request.supportedContractVersions.includes('agentic_chat_worker_v1')
-	);
-}
-
-function transportUnavailableResponse(): Response {
-	const response = ApiResponse.error(
-		'Transport negotiation is unavailable; continue with legacy chat.',
-		HttpStatus.SERVICE_UNAVAILABLE,
-		'TRANSPORT_UNAVAILABLE'
-	);
-	return privateResponse(response);
-}
 
 function workerUnavailableResponse(retryAfterSeconds = 2): Response {
 	const response = ApiResponse.error(

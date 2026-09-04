@@ -779,13 +779,321 @@ test('@prewarm project selection materializes a project-scoped prepared prompt',
 });
 
 // ---------------------------------------------------------------------------
-// The four @wiring tests that used to live here (Stop turn identity, mid-stream
-// reconciliation, continuity forwarding, and the canonical attachment ref) drove
-// the modal through mocked POST /api/agent/v2/stream responses. That route is
-// deleted (stage S8) and the client no longer negotiates a legacy turn, so the
-// mocks could only prove the legacy engine still worked. B6 re-establishes these
-// four behaviors against the worker transport (POST /api/agent/v2/turns plus the
-// realtime turn channel), which is where they are now observable. The helpers
-// they owned (`openPrewarmedModal`, `readBootstrappedSessionId`) went with them
-// and are recoverable from this commit's parent.
+// The four @wiring tests below replace the mocked-SSE originals deleted with the
+// legacy engine (stage S8). Each drives the real modal through the real
+// transport route (a genuine worker lease is minted and verified) and mocks only
+// the worker-transport HTTP boundary — POST /api/agent/v2/turns, the owned-turn
+// cancel and discovery endpoints — so no model call is made. Realtime is the one
+// thing that cannot be faked over HTTP: it is a WebSocket, so a behavior whose
+// only observable is a durable worker event is skipped rather than weakened.
 // ---------------------------------------------------------------------------
+
+const WORKER_CONTRACT = AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
+
+type AdmissionRecord = {
+	turnRunId: string;
+	clientTurnId: string;
+	streamRunId: string;
+	body: Record<string, unknown>;
+};
+
+/**
+ * Answers POST /api/agent/v2/turns with a synthetic admitted handle (so no
+ * model runs) while letting POST /api/agent/v2/transport hit the real route,
+ * which mints and later verifies a genuine worker lease. GET
+ * /api/agent/v2/turns?session_id=... (owned-turn discovery) is left alone.
+ */
+async function stubWorkerAdmission(
+	page: Page,
+	options: { status?: number; body?: Record<string, unknown> } = {}
+): Promise<{ admissions: AdmissionRecord[]; waitForAdmission: () => Promise<AdmissionRecord> }> {
+	const admissions: AdmissionRecord[] = [];
+	await page.route('**/api/agent/v2/turns', async (route) => {
+		const request = route.request();
+		if (request.method() !== 'POST') {
+			await route.continue();
+			return;
+		}
+		const body = request.postDataJSON() as Record<string, unknown>;
+		const turnRunId = randomUUID();
+		admissions.push({
+			turnRunId,
+			clientTurnId: String(body.clientTurnId),
+			streamRunId: String(body.streamRunId),
+			body
+		});
+		if (options.status && options.status >= 400) {
+			await route.fulfill({
+				status: options.status,
+				contentType: 'application/json',
+				body: JSON.stringify(options.body ?? { success: false })
+			});
+			return;
+		}
+		await route.fulfill({
+			status: 202,
+			contentType: 'application/json',
+			body: JSON.stringify({
+				success: true,
+				data: {
+					outcome: 'newly_admitted',
+					status: 'queued',
+					handle: {
+						contractVersion: WORKER_CONTRACT,
+						executionMode: 'worker_realtime',
+						turnRunId,
+						sessionId: body.sessionId,
+						streamRunId: body.streamRunId,
+						clientTurnId: body.clientTurnId
+					}
+				}
+			})
+		});
+	});
+
+	return {
+		admissions,
+		waitForAdmission: async () => {
+			await expect.poll(() => admissions.length, { timeout: 30_000 }).toBeGreaterThan(0);
+			return admissions[admissions.length - 1]!;
+		}
+	};
+}
+
+test('@wiring modal Stop cancels exactly the negotiated worker turn', async ({ page }) => {
+	const { admin, userId, actorId } = await authenticateHarnessUser(page);
+	const legacyStreamRoute = guardLegacyStreamRouteGone(page);
+	const cancels: Array<{ url: string; body: Record<string, unknown> }> = [];
+	let sessionId: string | null = null;
+	let testFailed = false;
+
+	const worker = await stubWorkerAdmission(page);
+	await page.route('**/api/agent/v2/turns/*/cancel', async (route) => {
+		const request = route.request();
+		cancels.push({
+			url: new URL(request.url()).pathname,
+			body: request.postDataJSON() as Record<string, unknown>
+		});
+		await route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify({
+				success: true,
+				data: { outcome: 'cancel_requested' }
+			})
+		});
+	});
+
+	try {
+		sessionId = await seedModalSession(admin, userId);
+		const { dialog } = await openPrewarmedExistingSession(page, sessionId, PROMPT);
+		await dialog.getByRole('button', { name: 'Send message' }).click();
+		const admission = await worker.waitForAdmission();
+
+		const stopButton = dialog.getByRole('button', { name: 'Stop response' });
+		await expect(stopButton).toBeVisible();
+		await stopButton.click();
+		await expect.poll(() => cancels.length, { timeout: 30_000 }).toBe(1);
+
+		// Turn identity travels in the URL for a worker cancel; the reason is the
+		// only body field. Both must name the turn admission just returned.
+		expect(cancels[0]!.url).toBe(`/api/agent/v2/turns/${admission.turnRunId}/cancel`);
+		expect(cancels[0]!.body).toEqual({ reason: 'user_cancelled' });
+		// Stop must never dispatch another turn.
+		expect(worker.admissions).toHaveLength(1);
+		await legacyStreamRoute.assertNeverCalled();
+	} catch (error) {
+		testFailed = true;
+		throw error;
+	} finally {
+		await cleanupModalFixtures({
+			admin,
+			userId,
+			actorId,
+			sessionId,
+			projectId: null,
+			testFailed
+		});
+	}
+});
+
+test('@wiring modal recovers an uncertain worker admission from server truth', async ({ page }) => {
+	const { admin, userId, actorId } = await authenticateHarnessUser(page);
+	const legacyStreamRoute = guardLegacyStreamRouteGone(page);
+	let sessionId: string | null = null;
+	let testFailed = false;
+
+	// The worker equivalent of the deleted "accepted stream closes without done"
+	// test: admission outcome is unknown, so the client must reconcile against
+	// owned-turn discovery instead of guessing or re-sending.
+	const worker = await stubWorkerAdmission(page, {
+		status: 503,
+		body: {
+			success: false,
+			error: 'Worker turn admission is temporarily unavailable',
+			code: 'WORKER_ADMISSION_UNAVAILABLE'
+		}
+	});
+
+	try {
+		sessionId = await seedModalSession(admin, userId);
+		const discoveryPromise = page.waitForRequest(
+			(request) =>
+				request.method() === 'GET' &&
+				new URL(request.url()).pathname === '/api/agent/v2/turns' &&
+				new URL(request.url()).searchParams.get('session_id') === sessionId,
+			{ timeout: 60_000 }
+		);
+		const { dialog } = await openPrewarmedExistingSession(page, sessionId, PROMPT);
+		await dialog.getByRole('button', { name: 'Send message' }).click();
+		await worker.waitForAdmission();
+
+		const discovery = await discoveryPromise;
+		expect(new URL(discovery.url()).searchParams.get('session_id')).toBe(sessionId);
+		// An uncertain admission never rolls the bubble back: a duplicate turn is
+		// worse than a lost one, so the sent message stays put.
+		await expect(dialog.getByTestId('agent-chat-user-message').last()).toContainText(PROMPT);
+		await expect(dialog.getByRole('button', { name: 'Stop response' })).toBeHidden();
+		expect(worker.admissions).toHaveLength(1);
+		await legacyStreamRoute.assertNeverCalled();
+	} catch (error) {
+		testFailed = true;
+		throw error;
+	} finally {
+		await cleanupModalFixtures({
+			admin,
+			userId,
+			actorId,
+			sessionId,
+			projectId: null,
+			testFailed
+		});
+	}
+});
+
+// Continuity forwarding: `lastTurnContext` is only ever set from the worker's
+// `last_turn_context` event, which arrives over the Supabase Realtime WebSocket
+// and has no HTTP boundary to mock, so this needs a live worker turn.
+test.skip('@wiring modal forwards worker continuity context on the next turn', async () => {});
+
+test('@wiring modal uploads a temporary image and admits its canonical attachment ref', async ({
+	page
+}) => {
+	const { admin, userId, actorId } = await authenticateHarnessUser(page);
+	const legacyStreamRoute = guardLegacyStreamRouteGone(page);
+	const attachmentCreate = deferred<Record<string, unknown>>();
+	const temporaryAttachmentId = randomUUID();
+	const storagePath = `users/${userId}/chat-temp/${temporaryAttachmentId}/original.png`;
+	const expiresAt = new Date(Date.now() + 60_000).toISOString();
+	let sessionId: string | null = null;
+	let testFailed = false;
+
+	const worker = await stubWorkerAdmission(page);
+	await page.route('**/api/agent/chat-attachments', async (route) => {
+		attachmentCreate.resolve(route.request().postDataJSON() as Record<string, unknown>);
+		await route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify({
+				success: true,
+				data: {
+					asset: {
+						id: temporaryAttachmentId,
+						project_id: null,
+						kind: 'temporary_file',
+						storage_bucket: 'onto-assets',
+						storage_path: storagePath,
+						original_filename: 'modal-fixture.png',
+						content_type: 'image/png',
+						file_size_bytes: 68,
+						width: 1,
+						height: 1,
+						ocr_status: 'skipped',
+						expires_at: expiresAt
+					},
+					upload: {
+						signed_url: `https://storage.invalid/storage/v1/object/upload/sign/onto-assets/${storagePath}?token=fake-token`,
+						path: storagePath,
+						token: 'fake-token'
+					}
+				}
+			})
+		});
+	});
+	await page.route('**/storage/v1/object/upload/sign/**', async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify({ Key: `onto-assets/${storagePath}` })
+		});
+	});
+
+	try {
+		sessionId = await seedModalSession(admin, userId);
+		const { dialog } = await openPrewarmedExistingSession(
+			page,
+			sessionId,
+			'Describe this image.'
+		);
+		await dialog
+			.locator('input[type="file"]')
+			.first()
+			.setInputFiles({
+				name: 'modal-fixture.png',
+				mimeType: 'image/png',
+				buffer: Buffer.from(
+					'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+					'base64'
+				)
+			});
+
+		const createBody = await attachmentCreate.promise;
+		expect(createBody).toMatchObject({
+			project_id: null,
+			file_name: 'modal-fixture.png',
+			content_type: 'image/png',
+			metadata: { source_component: 'agent_chat_composer' }
+		});
+		expect(createBody.checksum_sha256).toMatch(/^[a-f0-9]{64}$/);
+		await expect(dialog.getByText('Ready to analyze')).toBeVisible();
+
+		await dialog.getByRole('button', { name: 'Send message' }).click();
+		const admission = await worker.waitForAdmission();
+
+		expect(admission.body).toMatchObject({
+			sessionId,
+			message: 'Describe this image.',
+			attachments: [
+				{
+					attachmentKind: 'temporary_file',
+					mediaType: 'image',
+					temporaryAttachmentId,
+					storageBucket: 'onto-assets',
+					storagePath,
+					fileName: 'modal-fixture.png',
+					contentType: 'image/png',
+					fileSizeBytes: 68,
+					width: 1,
+					height: 1
+				}
+			]
+		});
+		expect(String((admission.body.attachments as any[])[0].checksumSha256)).toMatch(
+			/^[a-f0-9]{64}$/
+		);
+		expect(admission.body.leaseToken).toMatch(/^actl1\./);
+		await legacyStreamRoute.assertNeverCalled();
+	} catch (error) {
+		testFailed = true;
+		throw error;
+	} finally {
+		await cleanupModalFixtures({
+			admin,
+			userId,
+			actorId,
+			sessionId,
+			projectId: null,
+			testFailed
+		});
+	}
+});

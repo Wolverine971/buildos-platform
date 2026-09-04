@@ -7,10 +7,13 @@ import {
 	type PreparedPromptRow
 } from './prepared-prompt-cache';
 import {
-	consumePreparedPrompt,
 	inspectPreparedPromptAdmissionLineage,
 	inspectPreparedPromptForWorkerAdmission
 } from './prepared-prompt-consumer.server';
+
+// One execution mode since one-engine stage S8: every prepared surface is keyed
+// `worker_realtime:<profile>` and is inspected, never claimed, at admission.
+const SURFACE_KEY = 'worker_realtime:global';
 
 type QueryResult = {
 	data: unknown;
@@ -70,7 +73,7 @@ function buildPreparedPromptRow(params: {
 			context_payload: contextPayload,
 			conversation_summary: conversationSummary,
 			prepared_surfaces: {
-				global: surface
+				[surface.surface_profile]: surface
 			},
 			default_surface_profile: 'global',
 			prompt_variant: 'lite',
@@ -95,7 +98,6 @@ function createSupabaseMock(params: {
 	updateResult?: QueryResult;
 	historyRows?: Array<{ id: string; created_at: string }>;
 	historyResult?: QueryResult;
-	activeLegacyUserMessageId?: string | null;
 }) {
 	const updatePatches: Record<string, unknown>[] = [];
 	const builders: Array<{
@@ -110,11 +112,7 @@ function createSupabaseMock(params: {
 	}> = [];
 
 	const from = vi.fn((table: string) => {
-		if (
-			table !== 'agentic_chat_prepared_prompts' &&
-			table !== 'chat_messages' &&
-			table !== 'chat_turn_runs'
-		) {
+		if (table !== 'agentic_chat_prepared_prompts' && table !== 'chat_messages') {
 			throw new Error(`Unexpected table: ${table}`);
 		}
 		let mode: 'select' | 'update' = 'select';
@@ -134,14 +132,6 @@ function createSupabaseMock(params: {
 				return builder;
 			}),
 			maybeSingle: vi.fn(async () => {
-				if (table === 'chat_turn_runs') {
-					return {
-						data: params.activeLegacyUserMessageId
-							? { user_message_id: params.activeLegacyUserMessageId }
-							: null,
-						error: null
-					};
-				}
 				if (table === 'chat_messages') {
 					return (
 						params.historyResult ?? {
@@ -178,7 +168,7 @@ function createSupabaseMock(params: {
 	};
 }
 
-describe('consumePreparedPrompt', () => {
+describe('prepared prompt admission inspection', () => {
 	afterEach(() => {
 		delete process.env.FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED;
 	});
@@ -187,50 +177,18 @@ describe('consumePreparedPrompt', () => {
 		const mock = createSupabaseMock({});
 
 		await expect(
-			consumePreparedPrompt({
+			inspectPreparedPromptForWorkerAdmission({
 				supabase: mock.supabase as any,
 				key: null,
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global',
+				surfaceProfile: SURFACE_KEY,
 				contextType: 'global',
 				tools: []
 			})
 		).resolves.toEqual({ hit: false, reason: 'missing_key' });
 		expect(mock.from).not.toHaveBeenCalled();
-	});
-
-	it('consumes a valid prepared prompt and marks it consumed', async () => {
-		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
-		const preparedPrompt = buildPreparedPromptRow({ tools });
-		const mock = createSupabaseMock({
-			row: preparedPrompt.row,
-			activeLegacyUserMessageId: '33333333-3333-4333-8333-333333333333'
-		});
-
-		const result = await consumePreparedPrompt({
-			supabase: mock.supabase as any,
-			key: preparedPrompt.key,
-			userId: 'user-1',
-			sessionId: 'session-1',
-			cacheKey: 'v2|global|none|none|none',
-			surfaceProfile: 'global',
-			contextType: 'global',
-			tools
-		});
-
-		expect(result.hit).toBe(true);
-		if (!result.hit) return;
-		expect(result.row.consumed_at).toEqual(expect.any(String));
-		expect(result.surface.surface_profile).toBe('global');
-		expect(result.ageSeconds).toBeGreaterThanOrEqual(0);
-		expect(mock.updatePatches).toEqual([
-			{
-				consumed_at: expect.any(String),
-				updated_at: expect.any(String)
-			}
-		]);
 	});
 
 	it('rejects stale harness when tool definitions no longer match', async () => {
@@ -239,13 +197,13 @@ describe('consumePreparedPrompt', () => {
 		const preparedPrompt = buildPreparedPromptRow({ tools: preparedTools });
 		const mock = createSupabaseMock({ row: preparedPrompt.row });
 
-		const result = await consumePreparedPrompt({
+		const result = await inspectPreparedPromptForWorkerAdmission({
 			supabase: mock.supabase as any,
 			key: preparedPrompt.key,
 			userId: 'user-1',
 			sessionId: 'session-1',
 			cacheKey: 'v2|global|none|none|none',
-			surfaceProfile: 'global',
+			surfaceProfile: SURFACE_KEY,
 			contextType: 'global',
 			tools: currentTools
 		});
@@ -255,9 +213,9 @@ describe('consumePreparedPrompt', () => {
 			reason: 'stale_harness',
 			diagnostics: {
 				prepared_prompt_id: preparedPrompt.row.id,
-				requested_surface_profile: 'global',
+				requested_surface_profile: SURFACE_KEY,
 				default_surface_profile: 'global',
-				prepared_surface_profiles: ['global'],
+				prepared_surface_profiles: [SURFACE_KEY],
 				surface_available: true,
 				prepared_tool_names: ['get_workspace_overview'],
 				actual_tool_names: ['get_workspace_overview'],
@@ -292,11 +250,11 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global'
+				surfaceProfile: SURFACE_KEY
 			})
 		).resolves.toEqual({
 			id: preparedPrompt.row.id,
-			acceptedSurfaceProfile: 'global'
+			acceptedSurfaceProfile: SURFACE_KEY
 		});
 		expect(mock.updatePatches).toEqual([]);
 	});
@@ -312,7 +270,7 @@ describe('consumePreparedPrompt', () => {
 			userId: 'user-1',
 			sessionId: 'session-1',
 			cacheKey: 'v2|global|none|none|none',
-			surfaceProfile: 'global',
+			surfaceProfile: SURFACE_KEY,
 			contextType: 'global',
 			tools
 		});
@@ -320,7 +278,7 @@ describe('consumePreparedPrompt', () => {
 		expect(result).toMatchObject({
 			hit: true,
 			row: { id: preparedPrompt.row.id },
-			surface: { surface_profile: 'global' },
+			surface: { surface_profile: SURFACE_KEY },
 			history: {
 				ok: true,
 				history: [],
@@ -358,7 +316,7 @@ describe('consumePreparedPrompt', () => {
 			userId: 'user-1',
 			sessionId: 'session-1',
 			cacheKey: 'v2|global|none|none|none',
-			surfaceProfile: 'global',
+			surfaceProfile: SURFACE_KEY,
 			contextType: 'global',
 			tools,
 			nowMs: Date.parse('2026-08-11T10:00:02.000Z')
@@ -396,7 +354,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global',
+				surfaceProfile: SURFACE_KEY,
 				contextType: 'global',
 				tools
 			})
@@ -433,7 +391,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global',
+				surfaceProfile: SURFACE_KEY,
 				contextType: 'global',
 				tools
 			})
@@ -442,48 +400,6 @@ describe('consumePreparedPrompt', () => {
 			reason: 'invalid_history',
 			diagnostics: { prepared_history_validation_error: 'invalid_attachments' }
 		});
-	});
-
-	it('legacy consumption ignores the newly admitted message but rejects an earlier mid-draft message', async () => {
-		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
-		const preparedPrompt = buildPreparedPromptRow({
-			tools,
-			overrides: { created_at: '2026-08-11T10:00:00.000Z' }
-		});
-		const mock = createSupabaseMock({
-			row: preparedPrompt.row,
-			activeLegacyUserMessageId: '33333333-3333-4333-8333-333333333333',
-			historyRows: [
-				{
-					id: '33333333-3333-4333-8333-333333333333',
-					created_at: '2026-08-11T10:00:02.000Z'
-				},
-				{
-					id: '22222222-2222-4222-8222-222222222222',
-					created_at: '2026-08-11T10:00:01.000Z'
-				}
-			]
-		});
-
-		await expect(
-			consumePreparedPrompt({
-				supabase: mock.supabase as any,
-				key: preparedPrompt.key,
-				userId: 'user-1',
-				sessionId: 'session-1',
-				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global',
-				contextType: 'global',
-				tools
-			})
-		).resolves.toMatchObject({
-			hit: false,
-			reason: 'stale_history',
-			diagnostics: {
-				latest_session_message_id: '22222222-2222-4222-8222-222222222222'
-			}
-		});
-		expect(mock.updatePatches).toEqual([]);
 	});
 
 	it('fails closed when prepared-history currency cannot be established', async () => {
@@ -501,7 +417,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global',
+				surfaceProfile: SURFACE_KEY,
 				contextType: 'global',
 				tools
 			})
@@ -520,7 +436,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global'
+				surfaceProfile: SURFACE_KEY
 			})
 		).resolves.toBeNull();
 	});

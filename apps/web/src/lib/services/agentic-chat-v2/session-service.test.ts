@@ -8,7 +8,7 @@ import {
 	extractLoadedSkillIdsFromHistory,
 	historyIncludesLoadedSkillsLedger,
 	PENDING_CLARIFICATION_LEDGER_PREFIX,
-	projectLegacyFallbackHistorySnapshot
+	projectChatHistorySnapshot
 } from './session-service';
 
 type TestRow = Record<string, any>;
@@ -325,7 +325,7 @@ describe('fast chat session service helpers', () => {
 		);
 
 		const fromLegacyQuery = await service.loadRecentMessages('session-1', 10);
-		const fromAtomicSnapshot = projectLegacyFallbackHistorySnapshot({
+		const fromAtomicSnapshot = projectChatHistorySnapshot({
 			messages: messages.map(({ session_id: _sessionId, ...message }) => message),
 			attachments,
 			interrupted_tool_executions: executions,
@@ -337,7 +337,7 @@ describe('fast chat session service helpers', () => {
 
 	it('projects an empty fallback snapshot as empty history', () => {
 		expect(
-			projectLegacyFallbackHistorySnapshot({
+			projectChatHistorySnapshot({
 				messages: [],
 				attachments: [],
 				interrupted_tool_executions: [],
@@ -384,7 +384,7 @@ describe('fast chat session service helpers', () => {
 	});
 
 	it('does not replay a clarification after a later user message has answered it', () => {
-		const projected = projectLegacyFallbackHistorySnapshot({
+		const projected = projectChatHistorySnapshot({
 			messages: [
 				{
 					id: 'message-assistant',
@@ -431,7 +431,7 @@ describe('fast chat session service helpers', () => {
 	});
 
 	it('projects an admission snapshot with attachments, interrupted tools, and loaded skills', () => {
-		const projected = projectLegacyFallbackHistorySnapshot({
+		const projected = projectChatHistorySnapshot({
 			messages: [
 				{
 					id: 'message-user',

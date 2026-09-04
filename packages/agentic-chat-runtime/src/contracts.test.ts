@@ -37,9 +37,9 @@ type RetiredAgentSSEMessageTypeStillPresent = Extract<
 	RetiredAgentSSEMessageType
 >;
 
-const legacyHandle: AdmittedTurnHandleV1 = {
-	contractVersion: 'legacy_internal_v1',
-	executionMode: 'legacy_sse',
+const workerHandle: AdmittedTurnHandleV1 = {
+	contractVersion: 'agentic_chat_worker_v1',
+	executionMode: 'worker_realtime',
 	streamRunId: 'stream-1',
 	clientTurnId: 'client-1',
 	sessionId: 'session-1',
@@ -48,7 +48,7 @@ const legacyHandle: AdmittedTurnHandleV1 = {
 
 const command: AgenticChatTurnCommand = {
 	runtimeContractVersion: AGENTIC_CHAT_RUNTIME_CONTRACT_VERSION,
-	handle: legacyHandle,
+	handle: workerHandle,
 	userId: 'user-1',
 	userMessageId: 'message-1',
 	userMessage: 'Hello',
@@ -98,7 +98,7 @@ function createPorts(): AgenticChatRuntimePorts {
 
 describe('agentic chat runtime contracts', () => {
 	it('requires an admitted handle before runtime execution', () => {
-		expect(isAdmittedTurnHandle(legacyHandle)).toBe(true);
+		expect(isAdmittedTurnHandle(workerHandle)).toBe(true);
 		expect(
 			isAdmittedTurnHandle({
 				contractVersion: 'agentic_chat_worker_v1',
@@ -111,9 +111,9 @@ describe('agentic chat runtime contracts', () => {
 		).toBe(true);
 		expect(
 			isAdmittedTurnHandle({
-				...legacyHandle,
-				sessionId: null,
-				turnRunId: null
+				...workerHandle,
+				sessionId: '',
+				turnRunId: ''
 			})
 		).toBe(false);
 	});

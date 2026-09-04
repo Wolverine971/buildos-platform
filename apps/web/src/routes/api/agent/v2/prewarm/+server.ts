@@ -295,36 +295,9 @@ async function buildPreparedPrompt(params: {
 		conversationSummary
 	};
 	const defaultSurfaceProfile = resolveDefaultPreparedSurfaceProfile(params.contextType);
+	// One prepared surface per profile since one-engine stage S8: every turn
+	// executes on the worker, so only the worker scaffold is worth preparing.
 	const preparedSurfaces: Record<string, PreparedPromptSurface> = {};
-	for (const surfaceProfile of resolvePreparedSurfaceProfiles(params.contextType)) {
-		const tools = applyEmailSurfaceMount(
-			getGatewaySurfaceForProfile(surfaceProfile, {
-				leanDiscovery: FASTCHAT_SCAFFOLD.routing.leanDiscovery
-			}),
-			params.emailToolsMounted
-		);
-		const envelope = buildLitePromptEnvelope({
-			...promptContext,
-			tools,
-			productSurface: '/api/agent/v2/prewarm',
-			conversationPosition: `prepared prompt ${rowId}`,
-			domainSensingResult: null,
-			scaffold: FASTCHAT_SCAFFOLD.prompt
-		});
-		const surface = buildPreparedPromptSurface({
-			surfaceProfile,
-			executionMode: 'legacy_sse',
-			contextType: params.contextType,
-			contextPayload: preparedContextPayload,
-			conversationSummary,
-			tools,
-			envelope,
-			scaffold: FASTCHAT_SCAFFOLD.prompt,
-			createdAt: createdAt.toISOString()
-		});
-		preparedSurfaces[surface.surface_profile] = surface;
-	}
-
 	const workerScaffold = buildWorkerPromptScaffold(FASTCHAT_SCAFFOLD.prompt);
 	for (const surfaceProfile of resolvePreparedSurfaceProfiles(params.contextType)) {
 		const selectedTools = applyEmailSurfaceMount(
@@ -353,7 +326,6 @@ async function buildPreparedPrompt(params: {
 		});
 		const surface = buildPreparedPromptSurface({
 			surfaceProfile,
-			executionMode: 'worker_realtime',
 			contextType: params.contextType,
 			contextPayload: preparedContextPayload,
 			conversationSummary,

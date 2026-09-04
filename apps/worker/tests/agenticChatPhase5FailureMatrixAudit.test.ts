@@ -41,9 +41,9 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	},
 	{
 		id: 'supersede_abort_honored',
-		requirement: 'Supersede aborts the active legacy stream before replacement.',
+		requirement: 'Supersede replaces the active worker turn with a distinct client turn id.',
 		file: 'apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts',
-		anchor: 'supersedes an active stream before sending a second message'
+		anchor: 'supersedes an active turn before sending a second message'
 	},
 	{
 		id: 'supersede_abort_ignored',
@@ -198,15 +198,15 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	},
 	{
 		id: 'transport_kill_epoch',
-		requirement: 'Emergency epoch invalidates only unused worker leases.',
+		requirement: 'Emergency epoch invalidates every outstanding lease and forces re-admission.',
 		file: 'apps/web/src/lib/services/agentic-chat-v2/transport-lease.test.ts',
-		anchor: 'invalidates only worker leases across an emergency kill epoch'
+		anchor: 'invalidates every lease across an emergency kill epoch'
 	},
 	{
 		id: 'transport_lost_admission_response',
-		requirement: 'Uncertain worker admission never starts legacy transport.',
+		requirement: 'Uncertain worker admission keeps the bubble and recovers from server truth.',
 		file: 'apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts',
-		anchor: 'never falls back to legacy after worker admission becomes uncertain'
+		anchor: 'keeps the optimistic bubble after worker admission becomes uncertain'
 	},
 	{
 		id: 'first_turn_concurrent_session',
@@ -245,16 +245,17 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 		anchor: 'converges duplicate admission, reload discovery, reconnect, a sequence gap, and terminal wait'
 	},
 	{
-		id: 'legacy_supersede_before_turn_id',
-		requirement: 'Legacy supersede aborts even before durable turn discovery.',
+		id: 'kill_epoch_forced_readmission',
+		requirement:
+			'A mid-turn kill-epoch bump re-admits the turn once on the worker, and a second demand fails instead of looping.',
 		file: 'apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts',
-		anchor: 'supersedes an active stream before sending a second message'
+		anchor: 're-admits the turn once on the worker after a mid-turn kill-epoch bump'
 	},
 	{
-		id: 'legacy_supersede_after_turn_id',
-		requirement: 'Legacy cancellation routes through the exposed durable turn.',
+		id: 'kill_epoch_readmission_bounded',
+		requirement: 'Repeated renegotiation demands surface an error rather than a retry loop.',
 		file: 'apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts',
-		anchor: 'reports and aborts user cancellation'
+		anchor: 'fails the turn instead of looping when a second renegotiation is demanded'
 	},
 	{
 		id: 'termination_before_provider',

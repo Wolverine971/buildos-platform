@@ -110,7 +110,7 @@ import { buildPendingTurnContractSystemMessage } from './turn-contract';
 import { resolveFastChatTurnPreparation } from './turn-preparation';
 import { applyEmailSurfaceMount, hasActiveEmailConnection } from './email-surface-mount.server';
 import type { FastChatHistoryMessage } from './types';
-import type { LegacyFallbackHistorySnapshot } from './turn-admission';
+import type { ChatHistorySnapshot } from './turn-admission';
 import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.server';
 import {
 	freezeCheckpointResumeSnapshot,
@@ -248,7 +248,7 @@ export type AgenticChatWorkerPreparationErrorCode =
 	| 'invalid_command'
 	| 'access_denied'
 	| 'session_conflict'
-	| 'transport_renegotiate'
+	| 'capability_unavailable'
 	| 'database_error'
 	| 'protocol_error';
 
@@ -363,8 +363,10 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const attachments = attachmentValidation.attachments;
 	const liveVisionEnabled = input.dependencies?.liveVisionEnabled ?? LIVE_VISION_ENABLED;
 	if (attachments.length > 0 && !liveVisionEnabled) {
+		// There is no second engine to renegotiate onto since one-engine stage
+		// S8, so an unrunnable capability is a hard, user-visible refusal.
 		throw new AgenticChatWorkerPreparationError(
-			'transport_renegotiate',
+			'capability_unavailable',
 			'Worker live vision is unavailable for attachment turns'
 		);
 	}
@@ -425,23 +427,21 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	);
 	const workerPromptTools = workerToolResolution.tools;
 	if (workerToolResolution.unavailableToolNames.length > 0) {
-		// A renegotiation here silently re-leases the turn onto the legacy web
-		// engine, where a different (lexical) write gate applies. Log the exact
-		// tools that forced it so a silent fallback is diagnosable from server
-		// logs instead of only from turn rows.
-		logger.warn('Worker tool surface unavailable; renegotiating transport', {
+		// The turn cannot run at all: there is no other engine to fall back to.
+		// Log the exact tools that forced the refusal so the gap is diagnosable
+		// from server logs instead of only from turn rows.
+		logger.warn('Worker tool surface unavailable; refusing the turn', {
 			unavailableToolNames: workerToolResolution.unavailableToolNames,
 			contextType,
 			surfaceProfile: turnPreparation.selectedSurfaceProfile
 		});
 		throw new AgenticChatWorkerPreparationError(
-			'transport_renegotiate',
+			'capability_unavailable',
 			`Worker tool surface is unavailable: ${workerToolResolution.unavailableToolNames.join(', ')}`
 		);
 	}
 	const preparedWorkerSurfaceKey = buildPreparedPromptSurfaceKey(
-		turnPreparation.selectedSurfaceProfile,
-		'worker_realtime'
+		turnPreparation.selectedSurfaceProfile
 	);
 
 	// Both lineage paths must apply the same acceptance conditions so a retry
@@ -1125,7 +1125,7 @@ async function loadOwnedWorkerHistory(params: {
 		.slice()
 		.reverse();
 	const ids = rows.map((row) => row.id);
-	let attachmentRows: LegacyFallbackHistorySnapshot['attachments'] = [];
+	let attachmentRows: ChatHistorySnapshot['attachments'] = [];
 	if (ids.length > 0) {
 		const { data: loadedAttachmentRows, error: attachmentError } = await (
 			params.serviceClient as any
@@ -1141,7 +1141,7 @@ async function loadOwnedWorkerHistory(params: {
 		if (attachmentError || !Array.isArray(loadedAttachmentRows)) {
 			throw databaseError('Worker history attachment lookup failed');
 		}
-		attachmentRows = loadedAttachmentRows as LegacyFallbackHistorySnapshot['attachments'];
+		attachmentRows = loadedAttachmentRows as ChatHistorySnapshot['attachments'];
 	}
 
 	const interruptedMessageIds = rows
@@ -1338,7 +1338,7 @@ async function loadHistoryToolExecutions(params: {
 	messageIds: string[];
 	limit: number;
 	toolNames?: string[];
-}): Promise<LegacyFallbackHistorySnapshot['interrupted_tool_executions']> {
+}): Promise<ChatHistorySnapshot['interrupted_tool_executions']> {
 	if (params.messageIds.length === 0) return [];
 	let query = params.serviceClient
 		.from('chat_tool_executions')
@@ -1355,7 +1355,7 @@ async function loadHistoryToolExecutions(params: {
 	if (error || !Array.isArray(data)) {
 		throw databaseError('Worker history tool execution lookup failed');
 	}
-	return data as LegacyFallbackHistorySnapshot['interrupted_tool_executions'];
+	return data as ChatHistorySnapshot['interrupted_tool_executions'];
 }
 
 function isInterruptedMessageMetadata(value: unknown): boolean {

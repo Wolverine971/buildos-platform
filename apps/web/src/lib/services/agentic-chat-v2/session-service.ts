@@ -21,7 +21,7 @@ import {
 	createChatAttachmentRefFromAsset,
 	type ChatAttachmentAssetRow
 } from './attachments';
-import type { LegacyFallbackHistorySnapshot } from './turn-admission';
+import type { ChatHistorySnapshot } from './turn-admission';
 
 const logger = createLogger('FastChatSession');
 
@@ -495,14 +495,14 @@ export function buildInterruptedToolHistorySummary(
 }
 
 /**
- * Pure projection shared by the legacy query path and the atomic-admission
- * snapshot path. Admission returns raw bounded rows captured before the current
- * message; this function reproduces the existing model-facing history shape.
+ * Pure projection shared by the query path and the atomic-admission snapshot
+ * path. Admission returns raw bounded rows captured before the current message;
+ * this function reproduces the model-facing history shape.
  */
-export function projectLegacyFallbackHistorySnapshot(
-	snapshot: LegacyFallbackHistorySnapshot
+export function projectChatHistorySnapshot(
+	snapshot: ChatHistorySnapshot
 ): FastChatHistoryMessage[] {
-	return projectFallbackHistorySnapshotWithLineage(snapshot).map(
+	return projectHistorySnapshotWithLineage(snapshot).map(
 		({ sourceMessageId: _sourceMessageId, ...message }) => message
 	);
 }
@@ -512,19 +512,19 @@ export type FastChatHistoryMessageWithLineage = FastChatHistoryMessage & {
 };
 
 /**
- * Worker admission uses the same model-facing projection as legacy SSE while
- * retaining exact database lineage for messages that actually came from the
- * bounded admission window. Synthetic continuity/tool-ledger messages carry
- * null lineage.
+ * Worker admission uses the same model-facing projection as the query path
+ * while retaining exact database lineage for messages that actually came from
+ * the bounded admission window. Synthetic continuity/tool-ledger messages
+ * carry null lineage.
  */
 export function projectWorkerFrozenHistorySnapshot(
-	snapshot: LegacyFallbackHistorySnapshot
+	snapshot: ChatHistorySnapshot
 ): FastChatHistoryMessageWithLineage[] {
-	return projectFallbackHistorySnapshotWithLineage(snapshot);
+	return projectHistorySnapshotWithLineage(snapshot);
 }
 
-function projectFallbackHistorySnapshotWithLineage(
-	snapshot: LegacyFallbackHistorySnapshot
+function projectHistorySnapshotWithLineage(
+	snapshot: ChatHistorySnapshot
 ): FastChatHistoryMessageWithLineage[] {
 	const allowedRoles = new Set(['user', 'assistant', 'system']);
 	const orderedMessages = snapshot.messages.filter((message) => allowedRoles.has(message.role));
@@ -1030,9 +1030,9 @@ export function createFastChatSessionService(
 			}
 		}
 
-		return projectLegacyFallbackHistorySnapshot({
+		return projectChatHistorySnapshot({
 			messages: orderedMessages,
-			attachments: fallbackAttachmentRows as LegacyFallbackHistorySnapshot['attachments'],
+			attachments: fallbackAttachmentRows as ChatHistorySnapshot['attachments'],
 			interrupted_tool_executions: interruptedExecutionRows,
 			loaded_skill_executions: continuityExecutionRows
 		});

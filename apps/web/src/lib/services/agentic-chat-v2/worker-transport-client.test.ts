@@ -22,8 +22,8 @@ const request = {
 	streamRunId: 'stream-run-1',
 	sessionId: SESSION_ID,
 	context: { type: 'global', entityId: null, projectId: null },
-	supportedModes: ['legacy_sse', 'worker_realtime'] as const,
-	supportedContractVersions: ['legacy_internal_v1', 'agentic_chat_worker_v1'] as const,
+	supportedModes: ['worker_realtime'],
+	supportedContractVersions: ['agentic_chat_worker_v1'],
 	priorDecisionId: null
 };
 const workerLease = {
@@ -118,11 +118,13 @@ describe('Agentic Chat worker transport client', () => {
 		}
 	});
 
-	it('returns null only for the legacy-safe transport-unavailable sentinel', async () => {
+	it('never resolves without a worker lease, whatever the failure body says', async () => {
 		const fetchImpl = vi.fn<typeof fetch>(async () =>
 			Response.json({ code: 'TRANSPORT_UNAVAILABLE' }, { status: 503 })
 		);
-		await expect(requestAgenticChatTransportLease({ request, fetchImpl })).resolves.toBeNull();
+		await expect(
+			requestAgenticChatTransportLease({ request, fetchImpl })
+		).rejects.toBeInstanceOf(AgenticChatWorkerUnavailableResponseError);
 	});
 
 	it('submits text, attachment, and voice context to worker admission', async () => {

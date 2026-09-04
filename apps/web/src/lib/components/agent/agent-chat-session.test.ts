@@ -757,20 +757,26 @@ describe('agent-chat-session helpers', () => {
 		expect(await probeActiveTurnRun('session-9')).toBeNull();
 	});
 
-	it('warmAgentChatStreamTransport calls the stream route warmup endpoint', async () => {
+	it('warmAgentChatStreamTransport never pings the deleted legacy stream route', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({ ok: true });
 		vi.stubGlobal('fetch', fetchMock);
 
-		const result = await warmAgentChatStreamTransport();
+		await expect(warmAgentChatStreamTransport()).resolves.toEqual(expect.any(Boolean));
 
-		expect(result).toBe(true);
-		expect(fetchMock).toHaveBeenCalledWith(
-			'/api/agent/v2/stream?purpose=warmup',
-			expect.objectContaining({
-				method: 'GET',
-				cache: 'no-store'
-			})
+		const requestedUrls = fetchMock.mock.calls.map(([url]) => String(url));
+		expect(requestedUrls.some((url) => url.startsWith('/api/agent/v2/stream'))).toBe(false);
+	});
+
+	it('warmAgentChatStreamTransport does no work once its signal is aborted', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+		vi.stubGlobal('fetch', fetchMock);
+		const controller = new AbortController();
+		controller.abort();
+
+		await expect(warmAgentChatStreamTransport({ signal: controller.signal })).resolves.toBe(
+			false
 		);
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it('loadAgentChatSessionSnapshot throws the backend error when session restore fails', async () => {

@@ -31,7 +31,7 @@ function issue(overrides: Partial<Parameters<typeof issueAgenticChatTransportLea
 	return issueAgenticChatTransportLease({
 		secret: SECRET,
 		...binding,
-		mode: 'legacy_sse',
+		mode: 'worker_realtime',
 		decisionId: DECISION_ID,
 		nowMs: NOW,
 		ttlMs: 60_000,
@@ -47,7 +47,7 @@ function resignClaims(claims: unknown, rawJson = JSON.stringify(claims)): string
 }
 
 describe('Agentic Chat transport leases', () => {
-	it('round-trips an exact signed legacy lease and preserves its decision', () => {
+	it('round-trips an exact signed worker lease and preserves its decision', () => {
 		const lease = issue();
 		const claims = verifyAgenticChatTransportLease({
 			secret: SECRET,
@@ -57,15 +57,15 @@ describe('Agentic Chat transport leases', () => {
 		});
 
 		expect(lease).toMatchObject({
-			mode: 'legacy_sse',
-			contractVersion: 'legacy_internal_v1',
+			mode: 'worker_realtime',
+			contractVersion: 'agentic_chat_worker_v1',
 			decisionId: DECISION_ID,
 			expiresAt: '2026-08-03T00:01:00.000Z'
 		});
 		expect(claims).toMatchObject({
 			...binding,
-			mode: 'legacy_sse',
-			contractVersion: 'legacy_internal_v1',
+			mode: 'worker_realtime',
+			contractVersion: 'agentic_chat_worker_v1',
 			decisionId: DECISION_ID,
 			issuedAtMs: NOW,
 			expiresAtMs: NOW + 60_000
@@ -153,28 +153,36 @@ describe('Agentic Chat transport leases', () => {
 		).toThrowError(expect.objectContaining({ code: 'not_yet_valid' }));
 	});
 
-	it('invalidates only worker leases across an emergency kill epoch', () => {
-		const worker = issue({ mode: 'worker_realtime', killEpoch: 2 });
+	it('invalidates every lease across an emergency kill epoch', () => {
+		const stale = issue({ killEpoch: 2 });
 		expect(() =>
 			verifyAgenticChatTransportLease({
 				secret: SECRET,
-				token: worker.token,
+				token: stale.token,
 				expected: binding,
 				nowMs: NOW + 1,
 				currentKillEpoch: 3
 			})
 		).toThrowError(expect.objectContaining({ code: 'transport_renegotiate' }));
 
-		const legacy = issue({ killEpoch: 2 });
+		// A lease minted at (or past) the current epoch still verifies, so the
+		// forced re-admission converges after exactly one renegotiation.
+		const reissued = issue({ killEpoch: 3 });
 		expect(
 			verifyAgenticChatTransportLease({
 				secret: SECRET,
-				token: legacy.token,
+				token: reissued.token,
 				expected: binding,
 				nowMs: NOW + 1,
 				currentKillEpoch: 3
 			}).mode
-		).toBe('legacy_sse');
+		).toBe('worker_realtime');
+	});
+
+	it('refuses to mint a lease for a retired execution mode', () => {
+		expect(() => issue({ mode: 'legacy_sse' as never })).toThrowError(
+			expect.objectContaining({ code: 'invalid_binding' })
+		);
 	});
 
 	it('rejects weak secrets, malformed bindings, and excessive lifetimes', () => {

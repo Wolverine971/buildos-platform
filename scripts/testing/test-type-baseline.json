@@ -5,8 +5,8 @@
 		"web": {
 			"tsconfig": "tsconfig.tests.json",
 			"compiler": "typescript",
-			"maxErrors": 328,
-			"note": "Remaining web test fixture debt after deleting the legacy web streaming engine and its tests on 2026-09-04. Lower this ceiling whenever errors are fixed."
+			"maxErrors": 327,
+			"note": "Remaining web test fixture debt after collapsing to one execution mode (one-engine stage S8) on 2026-09-04. Lower this ceiling whenever errors are fixed."
 		},
 		"worker": {
 			"tsconfig": "tsconfig.tests.json",

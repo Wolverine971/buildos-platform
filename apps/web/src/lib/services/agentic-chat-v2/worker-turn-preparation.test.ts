@@ -434,13 +434,13 @@ describe('Agentic Chat worker turn preparation', () => {
 				dependencies: dependencies()
 			})
 		).rejects.toMatchObject({
-			code: 'transport_renegotiate'
+			code: 'capability_unavailable'
 		});
 	});
 
 	// Before 2026-09-03 the lexical calendar selector mounted list_calendar_events
-	// on any calendar-ish turn, which the worker could not execute; the turn
-	// renegotiated onto the legacy web engine and lost every worker capability.
+	// on any calendar-ish turn, which the worker could not execute; the turn was
+	// then pushed off the worker and lost every worker capability.
 	it('admits a launch surface carrying the calendar reads the worker now executes', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
@@ -2015,7 +2015,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
-	it('renegotiates attachment turns when worker live vision is disabled', async () => {
+	it('refuses attachment turns when worker live vision is disabled', async () => {
 		mocks.loadValidatedChatAttachments.mockResolvedValue({
 			assets: [],
 			attachments: [
@@ -2072,7 +2072,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				},
 				dependencies: { ...dependencies(), liveVisionEnabled: false }
 			})
-		).rejects.toMatchObject({ code: 'transport_renegotiate' });
+		).rejects.toMatchObject({ code: 'capability_unavailable' });
 	});
 	// Stage S6 (2026-09-04): the three stable surfaces, exercised through the
 	// real resolver rather than the surface stub the other cases use.

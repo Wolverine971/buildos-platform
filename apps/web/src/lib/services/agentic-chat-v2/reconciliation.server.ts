@@ -72,9 +72,13 @@ function parseReconciliationReceipt(
 	}
 
 	if (outcome === 'not_worker_turn') {
+		// Historical rows only: nothing has written a non-worker execution mode
+		// since one-engine stage S8, so the mode is validated as opaque text.
 		if (
 			receipt.turn_run_id !== request.turnRunId ||
-			receipt.execution_mode !== 'legacy_sse' ||
+			typeof receipt.execution_mode !== 'string' ||
+			receipt.execution_mode.length === 0 ||
+			receipt.execution_mode === 'worker_realtime' ||
 			!isChatTurnStatus(receipt.status)
 		) {
 			fail('not_worker_turn receipt mismatch');

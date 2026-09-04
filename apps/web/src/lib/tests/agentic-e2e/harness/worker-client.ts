@@ -133,11 +133,8 @@ export class AgenticE2EWorkerClient {
 				streamRunId: randomUUID(),
 				sessionId: null,
 				context: { type: 'global', entityId: null, projectId: null },
-				supportedModes: ['legacy_sse', 'worker_realtime'],
-				supportedContractVersions: [
-					'legacy_internal_v1',
-					AGENTIC_CHAT_WORKER_CONTRACT_VERSION
-				],
+				supportedModes: ['worker_realtime'],
+				supportedContractVersions: [AGENTIC_CHAT_WORKER_CONTRACT_VERSION],
 				priorDecisionId: null
 			}
 		});
@@ -187,11 +184,8 @@ export class AgenticE2EWorkerClient {
 				streamRunId,
 				sessionId,
 				context,
-				supportedModes: ['legacy_sse', 'worker_realtime'],
-				supportedContractVersions: [
-					'legacy_internal_v1',
-					AGENTIC_CHAT_WORKER_CONTRACT_VERSION
-				],
+				supportedModes: ['worker_realtime'],
+				supportedContractVersions: [AGENTIC_CHAT_WORKER_CONTRACT_VERSION],
 				priorDecisionId: null
 			}
 		});

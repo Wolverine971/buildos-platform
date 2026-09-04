@@ -12,7 +12,7 @@ export {
 	createFastChatSessionService,
 	extractLoadedSkillIdsFromHistory,
 	historyIncludesLoadedSkillsLedger,
-	projectLegacyFallbackHistorySnapshot,
+	projectChatHistorySnapshot,
 	projectWorkerFrozenHistorySnapshot
 } from './session-service';
 export { FASTCHAT_LIMITS } from './limits';

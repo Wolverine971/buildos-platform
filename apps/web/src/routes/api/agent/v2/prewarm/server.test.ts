@@ -551,12 +551,13 @@ describe('POST /api/agent/v2/prewarm', () => {
 		const row = insertedRows[0]!;
 		const serializedRow = JSON.stringify(row);
 		const focus = row.context_payload.data.focus_entity_full;
-		expect(Object.keys(row.prepared_surfaces).sort()).toEqual(
-			['project', 'worker_realtime:project'].sort()
-		);
-		expect(payload.data.prepared_prompt.prepared_surface_profiles.sort()).toEqual(
-			['project', 'worker_realtime:project'].sort()
-		);
+		// One execution mode since one-engine stage S8: only the worker surface
+		// is prepared, and its key keeps the `worker_realtime:` prefix so rows
+		// written before the collapse still resolve.
+		expect(Object.keys(row.prepared_surfaces)).toEqual(['worker_realtime:project']);
+		expect(payload.data.prepared_prompt.prepared_surface_profiles).toEqual([
+			'worker_realtime:project'
+		]);
 		expect(payload.data.prepared_prompt.default_surface_profile).toBe('project');
 		expect(payload.data.prepared_prompt.system_prompt_sha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(focus).toMatchObject({
