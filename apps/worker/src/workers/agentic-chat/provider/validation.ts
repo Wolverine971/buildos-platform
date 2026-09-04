@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/provider/validation.ts
 import { createHash } from 'node:crypto';
 import type { ChatToolDefinition, JsonObject, JsonValue } from '@buildos/shared-types';
 import { canonicalizeAgenticChatJson } from '@buildos/shared-types';

@@ -108,7 +108,7 @@ import { loadValidatedChatAttachments } from './stream-attachments';
 import { buildProposalFocusSystemMessage } from './stream-route/prompt-context';
 import { buildPendingTurnContractSystemMessage } from './turn-contract';
 import { resolveFastChatTurnPreparation } from './turn-preparation';
-import { looksLikeBroadProjectChangeTurn, looksLikeReviewStagingTurn } from './tool-selector';
+import { applyEmailSurfaceMount, hasActiveEmailConnection } from './email-surface-mount.server';
 import type { FastChatHistoryMessage } from './types';
 import type { LegacyFallbackHistorySnapshot } from './turn-admission';
 import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.server';
@@ -266,6 +266,11 @@ export type AgenticChatWorkerPreparationDependencies = {
 	createId?: () => string;
 	nowMs?: () => number;
 	liveVisionEnabled?: boolean;
+	hasActiveEmailConnection?: (input: {
+		serviceClient: FastChatSupabaseClient;
+		userId: string;
+		nowMs: number;
+	}) => Promise<boolean>;
 	loadResumeCheckpoint?: (input: {
 		serviceClient: FastChatSupabaseClient;
 		userId: string;
@@ -403,10 +408,21 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		agentMetadata,
 		contextShiftHintTtlMs: CONTEXT_SHIFT_HINT_TTL_MS,
 		nowMs,
-		projectCreateWorkflow: 'reviewed_shell',
 		scaffold: SCAFFOLD
 	});
-	const workerToolResolution = resolveWorkerPromptTools(turnPreparation.tools);
+	// A8: the Gmail read group is per-user, not per-context. Prewarm applies the
+	// same decision to its prepared surfaces, so a connected user's prepared
+	// prompt still matches on the tool list.
+	const emailToolsMounted = await (
+		input.dependencies?.hasActiveEmailConnection ?? defaultHasActiveEmailConnection
+	)({
+		serviceClient: input.serviceClient,
+		userId: input.userId,
+		nowMs
+	});
+	const workerToolResolution = resolveWorkerPromptTools(
+		applyEmailSurfaceMount(turnPreparation.tools, emailToolsMounted)
+	);
 	const workerPromptTools = workerToolResolution.tools;
 	if (workerToolResolution.unavailableToolNames.length > 0) {
 		// A renegotiation here silently re-leases the turn onto the legacy web
@@ -635,10 +651,11 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			turnPreparation.turnIntent?.requiresWrite === true ||
 			turnPreparation.pendingTurnContract !== null,
 		latestUserMessage: messageForModel,
-		reviewDelegation:
-			workerPromptToolNames.includes('delegate_task') &&
-			(looksLikeBroadProjectChangeTurn(contextType, messageForModel) ||
-				looksLikeReviewStagingTurn(contextType, messageForModel)),
+		// 2026-09-04: this used to add two message regexes on top of the mount
+		// check. delegate_task is now mounted on every global and project
+		// surface, so the rule applies whenever the tool is there — the same
+		// contract `webResearch` already uses for the web tools.
+		reviewDelegation: workerPromptToolNames.includes('delegate_task'),
 		livingWorkspace: agentWorkspace?.mode === LIVING_REFERENCE_MODE,
 		// The semantic disposition gate decides whether this particular message
 		// is a capture; admission does not classify it from its wording.
@@ -953,6 +970,18 @@ function getWorkerDomainReferenceMaps(): Pick<
 
 function sortedUnique(values: string[]): string[] {
 	return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+async function defaultHasActiveEmailConnection(input: {
+	serviceClient: FastChatSupabaseClient;
+	userId: string;
+	nowMs: number;
+}): Promise<boolean> {
+	return hasActiveEmailConnection({
+		supabase: input.serviceClient,
+		userId: input.userId,
+		nowMs: input.nowMs
+	});
 }
 
 async function loadWorkerResumeCheckpoint(input: {

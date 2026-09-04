@@ -1,8 +1,9 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-preparation.ts
 import type { ChatContextType, ChatToolDefinition, ProjectFocus } from '@buildos/shared-types';
-import type {
-	GatewaySurfaceProfileName,
-	ProjectCreateExecutionWorkflow
+import {
+	getGatewaySurfaceForProfile,
+	resolveGatewaySurfaceProfileForContextType,
+	type GatewaySurfaceProfileName
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	getActiveDomainIds,
@@ -20,7 +21,6 @@ import {
 	type FastChatContextShiftHint
 } from './context-cache-routing';
 import { normalizeFastContextType } from './scope';
-import { resolveFastChatSurfaceProfileForTurn, selectFastChatTools } from './tool-selector';
 import {
 	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY,
 	readFastChatPendingTurnIntent,
@@ -67,7 +67,6 @@ type ResolveFastChatTurnPreparationParams = {
 	nowMs?: number;
 	measureNow?: () => number;
 	scaffold?: FastChatScaffoldConfig;
-	projectCreateWorkflow?: ProjectCreateExecutionWorkflow;
 };
 
 function readMetadataRecord(value: unknown): Record<string, unknown> {
@@ -113,8 +112,7 @@ export function resolveFastChatTurnPreparation({
 	contextShiftHintTtlMs,
 	nowMs = Date.now(),
 	measureNow = Date.now,
-	scaffold,
-	projectCreateWorkflow = 'web_compound'
+	scaffold
 }: ResolveFastChatTurnPreparationParams): FastChatTurnPreparation {
 	const sessionMetadata = readMetadataRecord(agentMetadata);
 	const pendingTurnIntent = readFastChatPendingTurnIntent(
@@ -170,23 +168,14 @@ export function resolveFastChatTurnPreparation({
 		| FastChatContextCache
 		| undefined;
 
+	// One stable surface per chat context (one-engine stage S6, 2026-09-04).
+	// The message text is not read here: the surface a turn is admitted with is
+	// the surface it keeps, so a lexical guess could only either mount a tool the
+	// worker cannot execute or withhold one the turn turns out to need.
 	const toolSelectionStartedAtMs = measureNow();
-	const selectedSurfaceProfile =
-		contextType === 'project_create' && projectCreateWorkflow === 'reviewed_shell'
-			? 'project_create_minimal'
-			: resolveFastChatSurfaceProfileForTurn({
-					contextType,
-					latestUserMessage,
-					turnIntent,
-					allowLegacySurfaceFallback: scaffold?.routing.legacySurfaceFallback
-				});
-	const tools = selectFastChatTools({
-		contextType,
-		surfaceProfile: selectedSurfaceProfile,
-		latestUserMessage,
-		turnIntent,
-		leanDiscovery: scaffold?.routing.leanDiscovery,
-		projectCreateWorkflow
+	const selectedSurfaceProfile = resolveGatewaySurfaceProfileForContextType(contextType);
+	const tools = getGatewaySurfaceForProfile(selectedSurfaceProfile, {
+		leanDiscovery: scaffold?.routing.leanDiscovery
 	});
 	const toolSelectionMs = Math.max(0, measureNow() - toolSelectionStartedAtMs);
 

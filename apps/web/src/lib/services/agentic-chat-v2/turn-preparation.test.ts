@@ -13,10 +13,11 @@ function toolNames(result: ReturnType<typeof resolveFastChatTurnPreparation>): s
 }
 
 describe('resolveFastChatTurnPreparation', () => {
-	it('admits the exact reviewed project shell, goal, and task creation surface', () => {
+	// Stage S6 (2026-09-04): both project-create workflows launch with the same
+	// creation surface, and no discovery tools ride along.
+	it('admits the reviewed project shell, goal, and task creation surface', () => {
 		const result = resolveFastChatTurnPreparation({
 			contextType: 'project_create',
-			projectCreateWorkflow: 'reviewed_shell',
 			latestUserMessage:
 				'Create Agentic Worker PC1 with one dated goal and three standalone tasks.',
 			conversationSummary: null,
@@ -25,7 +26,7 @@ describe('resolveFastChatTurnPreparation', () => {
 			nowMs: NOW_MS
 		});
 
-		expect(result.selectedSurfaceProfile).toBe('project_create_minimal');
+		expect(result.selectedSurfaceProfile).toBe('project_create');
 		expect(toolNames(result)).toEqual([
 			'declare_turn_contract',
 			'declare_read_only_turn',
@@ -36,20 +37,6 @@ describe('resolveFastChatTurnPreparation', () => {
 			'create_onto_task'
 		]);
 		expect(toolNames(result)).not.toContain('link_onto_entities');
-	});
-
-	it('keeps web compound project creation to one atomic tool', () => {
-		const result = resolveFastChatTurnPreparation({
-			contextType: 'project_create',
-			latestUserMessage: 'Create a podcast project with one goal and three tasks.',
-			conversationSummary: null,
-			agentMetadata: null,
-			contextShiftHintTtlMs: 120_000,
-			nowMs: NOW_MS
-		});
-
-		expect(result.selectedSurfaceProfile).toBe('project_create_compound');
-		expect(toolNames(result)).toEqual(['create_onto_project']);
 	});
 
 	it('uses stable project capabilities without classifying message text', () => {
@@ -74,7 +61,7 @@ describe('resolveFastChatTurnPreparation', () => {
 		expect(result.domainSensingBypassed).toBe(false);
 		expect(result.turnDomainSensing).toBeNull();
 		expect(result.previousDomainState).toBeNull();
-		expect(result.selectedSurfaceProfile).toBe('project_write_document');
+		expect(result.selectedSurfaceProfile).toBe('project');
 		expect(toolNames(result)).toContain('declare_turn_contract');
 		expect(toolNames(result)).toContain('update_onto_task');
 		expect(result.cacheKey).toBe('v2|project|project-1|none|none');
@@ -100,9 +87,11 @@ describe('resolveFastChatTurnPreparation', () => {
 				nowMs: NOW_MS
 			});
 
-			expect(result.selectedSurfaceProfile).toBe('project_write_document');
+			expect(result.selectedSurfaceProfile).toBe('project');
 			expect(toolNames(result)).toContain('update_onto_task');
 			expect(toolNames(result)).toContain('create_onto_task');
+			// The Gmail group is never a launch-surface member; worker admission
+			// appends it per user (A8), never per message shape.
 			expect(toolNames(result)).not.toEqual(
 				expect.arrayContaining([
 					'list_email_accounts',
@@ -132,11 +121,11 @@ describe('resolveFastChatTurnPreparation', () => {
 			action: null,
 			entityKind: 'unknown'
 		});
-		expect(result.selectedSurfaceProfile).toBe('project_write_document');
+		expect(result.selectedSurfaceProfile).toBe('project');
 		expect(toolNames(result)).toContain('move_document_in_tree');
 	});
 
-	it('admits live web tools for explicit comparative market research', () => {
+	it('admits live web tools on every project turn, research phrasing or not', () => {
 		const result = resolveFastChatTurnPreparation({
 			contextType: 'project',
 			entityId: 'project-1',
@@ -150,9 +139,42 @@ describe('resolveFastChatTurnPreparation', () => {
 			nowMs: NOW_MS
 		});
 
-		expect(result.selectedSurfaceProfile).toBe('project_write_document');
+		expect(result.selectedSurfaceProfile).toBe('project');
 		expect(toolNames(result)).toContain('web_search');
 		expect(toolNames(result)).toContain('web_visit');
+		expect(toolNames(result)).toContain('delegate_task');
+	});
+
+	it('gives every cross-project context the same global surface', () => {
+		const resolve = (contextType: 'global' | 'general' | 'calendar' | 'daily_brief') =>
+			resolveFastChatTurnPreparation({
+				contextType,
+				latestUserMessage: 'What is on for today?',
+				conversationSummary: null,
+				agentMetadata: null,
+				contextShiftHintTtlMs: 120_000,
+				nowMs: NOW_MS
+			});
+
+		for (const contextType of ['global', 'general', 'calendar', 'daily_brief'] as const) {
+			const result = resolve(contextType);
+			expect(result.selectedSurfaceProfile, contextType).toBe('global');
+			// Calendar turns used to be the only ones carrying calendar tools, and
+			// brief turns the only ones carrying task writes. Both ride every
+			// cross-project turn now.
+			expect(toolNames(result), contextType).toEqual(
+				expect.arrayContaining([
+					'list_calendar_events',
+					'create_calendar_event',
+					'delete_calendar_event',
+					'create_onto_task',
+					'update_onto_task',
+					'move_onto_task',
+					'search_all_projects'
+				])
+			);
+			expect(toolNames(result), contextType).not.toContain('create_onto_document');
+		}
 	});
 
 	it('keeps subject-matter sensing active for advisory work', () => {

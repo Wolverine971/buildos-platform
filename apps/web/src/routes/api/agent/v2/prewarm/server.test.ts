@@ -37,8 +37,7 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		loadRecentMessages: loadRecentMessagesMock
 	}),
 	loadFastChatPromptContext: loadPromptContextMock,
-	composeFastChatHistory: composeHistoryMock,
-	selectFastChatTools: () => []
+	composeFastChatHistory: composeHistoryMock
 }));
 
 vi.mock('$lib/services/agentic-chat-v2/context-cache', () => ({
@@ -553,12 +552,12 @@ describe('POST /api/agent/v2/prewarm', () => {
 		const serializedRow = JSON.stringify(row);
 		const focus = row.context_payload.data.focus_entity_full;
 		expect(Object.keys(row.prepared_surfaces).sort()).toEqual(
-			['project_write_document', 'worker_realtime:project_write_document'].sort()
+			['project', 'worker_realtime:project'].sort()
 		);
 		expect(payload.data.prepared_prompt.prepared_surface_profiles.sort()).toEqual(
-			['project_write_document', 'worker_realtime:project_write_document'].sort()
+			['project', 'worker_realtime:project'].sort()
 		);
-		expect(payload.data.prepared_prompt.default_surface_profile).toBe('project_write_document');
+		expect(payload.data.prepared_prompt.default_surface_profile).toBe('project');
 		expect(payload.data.prepared_prompt.system_prompt_sha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(focus).toMatchObject({
 			id: '22222222-2222-4222-8222-222222222222',

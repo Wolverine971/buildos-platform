@@ -281,24 +281,14 @@ export function verifyPreparedPromptNonce(params: { nonce: string; nonceSha256: 
 	return timingSafeEqual(actual, expected);
 }
 
+/**
+ * One surface per context (one-engine stage S6, 2026-09-04). Both execution
+ * modes prepare the same profile; only the prompt scaffold differs, which the
+ * surface key (`worker_realtime:<profile>`) already separates.
+ */
 export function resolvePreparedSurfaceProfiles(
 	contextType: ChatContextType
 ): GatewaySurfaceProfileName[] {
-	if (contextType === 'project' || contextType === 'ontology') {
-		// Turn routing now deterministically selects the common project surface.
-		// Avoid serializing three unreachable full system-prompt variants.
-		return ['project_write_document'];
-	}
-	return [resolveGatewaySurfaceProfileForContextType(contextType)];
-}
-
-export function resolveWorkerPreparedSurfaceProfiles(
-	contextType: ChatContextType
-): GatewaySurfaceProfileName[] {
-	if (contextType === 'project' || contextType === 'ontology') {
-		return ['project_write_document'];
-	}
-	if (contextType === 'project_create') return ['project_create_minimal'];
 	return [resolveGatewaySurfaceProfileForContextType(contextType)];
 }
 
@@ -314,9 +304,6 @@ export function buildPreparedPromptSurfaceKey(
 export function resolveDefaultPreparedSurfaceProfile(
 	contextType: ChatContextType
 ): GatewaySurfaceProfileName {
-	if (contextType === 'project' || contextType === 'ontology') {
-		return 'project_write_document';
-	}
 	return resolveGatewaySurfaceProfileForContextType(contextType);
 }
 

@@ -25,9 +25,13 @@ import {
 	composeFastChatHistory,
 	createFastChatSessionService,
 	loadFastChatPromptContext,
-	selectFastChatTools,
 	type FastAgentPrewarmRequest
 } from '$lib/services/agentic-chat-v2';
+import { getGatewaySurfaceForProfile } from '@buildos/agentic-chat-runtime/catalog';
+import {
+	applyEmailSurfaceMount,
+	hasActiveEmailConnection
+} from '$lib/services/agentic-chat-v2/email-surface-mount.server';
 import {
 	isProjectScopedContext,
 	normalizeFastContextType,
@@ -52,7 +56,6 @@ import {
 	isPreparedPromptPrewarmEnabled,
 	resolveDefaultPreparedSurfaceProfile,
 	resolvePreparedSurfaceProfiles,
-	resolveWorkerPreparedSurfaceProfiles,
 	sha256Json,
 	type PreparedPromptResponse,
 	type PreparedPromptSurface
@@ -234,6 +237,7 @@ async function buildPreparedPrompt(params: {
 	cacheKey: string;
 	prewarmedContext: FastChatContextCache;
 	contextInvalidationToken?: string | null;
+	emailToolsMounted: boolean;
 }): Promise<PreparedPromptResponse | null> {
 	const rowId = randomUUID();
 	const { key, nonceSha256 } = buildPreparedPromptKey(rowId);
@@ -293,11 +297,12 @@ async function buildPreparedPrompt(params: {
 	const defaultSurfaceProfile = resolveDefaultPreparedSurfaceProfile(params.contextType);
 	const preparedSurfaces: Record<string, PreparedPromptSurface> = {};
 	for (const surfaceProfile of resolvePreparedSurfaceProfiles(params.contextType)) {
-		const tools = selectFastChatTools({
-			contextType: params.contextType,
-			surfaceProfile,
-			leanDiscovery: FASTCHAT_SCAFFOLD.routing.leanDiscovery
-		});
+		const tools = applyEmailSurfaceMount(
+			getGatewaySurfaceForProfile(surfaceProfile, {
+				leanDiscovery: FASTCHAT_SCAFFOLD.routing.leanDiscovery
+			}),
+			params.emailToolsMounted
+		);
 		const envelope = buildLitePromptEnvelope({
 			...promptContext,
 			tools,
@@ -321,13 +326,13 @@ async function buildPreparedPrompt(params: {
 	}
 
 	const workerScaffold = buildWorkerPromptScaffold(FASTCHAT_SCAFFOLD.prompt);
-	for (const surfaceProfile of resolveWorkerPreparedSurfaceProfiles(params.contextType)) {
-		const selectedTools = selectFastChatTools({
-			contextType: params.contextType,
-			surfaceProfile,
-			leanDiscovery: FASTCHAT_SCAFFOLD.routing.leanDiscovery,
-			projectCreateWorkflow: 'reviewed_shell'
-		});
+	for (const surfaceProfile of resolvePreparedSurfaceProfiles(params.contextType)) {
+		const selectedTools = applyEmailSurfaceMount(
+			getGatewaySurfaceForProfile(surfaceProfile, {
+				leanDiscovery: FASTCHAT_SCAFFOLD.routing.leanDiscovery
+			}),
+			params.emailToolsMounted
+		);
 		const workerToolResolution = resolveWorkerPromptTools(selectedTools);
 		if (workerToolResolution.unavailableToolNames.length > 0) {
 			logger.warn('Skipping unavailable worker prepared-prompt surface', {
@@ -544,7 +549,13 @@ const handlePrewarmRequest: RequestHandler = async ({
 				lastTurnContext: (parsed.data.lastTurnContext ?? null) as LastTurnContext | null,
 				cacheKey,
 				prewarmedContext,
-				contextInvalidationToken: contextResolution.invalidationToken
+				contextInvalidationToken: contextResolution.invalidationToken,
+				// Must match what worker admission decides, or every prepared
+				// prompt for a Gmail-connected user misses on a tool-list diff.
+				emailToolsMounted: await hasActiveEmailConnection({
+					supabase: serverStore,
+					userId: user.id
+				})
 			});
 		} catch (error) {
 			logger.warn('Prepared prompt build failed during v2 prewarm; continuing without it', {

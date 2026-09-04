@@ -2,11 +2,8 @@
 import type { ChatContextType, Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-import {
-	loadFastChatPromptContext,
-	normalizeFastContextType,
-	selectFastChatTools
-} from '$lib/services/agentic-chat-v2';
+import { loadFastChatPromptContext, normalizeFastContextType } from '$lib/services/agentic-chat-v2';
+import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	buildPromptCostBreakdown,
 	type PromptCostBreakdown
@@ -142,7 +139,7 @@ export async function buildLitePromptPreview(params: {
 		input: params.input.project_focus ?? params.input.projectFocus ?? null
 	});
 	const sampleMessage = trimOptionalString(params.input.sample_message) ?? '';
-	const tools = selectFastChatTools({ contextType, latestUserMessage: sampleMessage });
+	const tools = getGatewaySurfaceForContextType(contextType);
 	const promptContext = await loadFastChatPromptContext({
 		supabase: params.supabase,
 		userId: params.userId,

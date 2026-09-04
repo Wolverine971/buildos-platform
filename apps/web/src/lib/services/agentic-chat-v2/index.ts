@@ -7,7 +7,6 @@ export {
 	estimateTokensFromText,
 	FASTCHAT_TOKEN_BUDGETS
 } from './context-usage';
-export { resolveFastChatSurfaceProfileForTurn, selectFastChatTools } from './tool-selector';
 export * from './context-models';
 export {
 	createFastChatSessionService,

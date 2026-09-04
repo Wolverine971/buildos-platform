@@ -6,7 +6,6 @@ export const FASTCHAT_SCAFFOLD_VARIANT_IDS = [
 	'lean-discovery',
 	'no-static-catalog',
 	'no-retired-model-coaching',
-	'no-legacy-surface-fallback',
 	'model-led-skill-discovery',
 	'no-server-skill-routing',
 	'no-soft-forced-synthesis',
@@ -25,7 +24,6 @@ export type FastChatScaffoldConfig = {
 		skillPreload: boolean;
 		skillGateRepair: boolean;
 		leanDiscovery: boolean;
-		legacySurfaceFallback: boolean;
 	};
 	recovery: {
 		softForcedSynthesis: boolean;
@@ -79,8 +77,7 @@ export function resolveFastChatScaffoldConfig(
 			domainSensing: true,
 			skillPreload: true,
 			skillGateRepair: true,
-			leanDiscovery: parseBooleanFlag(environment.leanDiscovery, true),
-			legacySurfaceFallback: true
+			leanDiscovery: parseBooleanFlag(environment.leanDiscovery, true)
 		},
 		recovery: {
 			softForcedSynthesis: true,
@@ -98,9 +95,6 @@ export function resolveFastChatScaffoldConfig(
 			break;
 		case 'no-retired-model-coaching':
 			config.prompt.retiredModelCoaching = false;
-			break;
-		case 'no-legacy-surface-fallback':
-			config.routing.legacySurfaceFallback = false;
 			break;
 		case 'model-led-skill-discovery':
 			config.prompt.staticSkillCatalog = false;

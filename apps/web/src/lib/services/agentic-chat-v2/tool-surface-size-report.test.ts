@@ -62,25 +62,20 @@ describe('tool surface size report', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 
 		const projectCreate = buildToolSurfaceSizeReport({
-			profile: 'project_create_minimal',
-			contextType: 'project_create_minimal',
-			tools: getGatewaySurfaceForProfile('project_create_minimal')
+			profile: 'project_create',
+			contextType: 'project_create',
+			tools: getGatewaySurfaceForProfile('project_create')
 		});
-		const webProjectCreate = buildToolSurfaceSizeReport({
-			profile: 'project_create_compound',
-			contextType: 'project_create_compound',
-			tools: getGatewaySurfaceForProfile('project_create_compound')
-		});
-		const projectWrite = buildToolSurfaceSizeReport({
-			profile: 'project_write',
-			contextType: 'project_write',
-			tools: getGatewaySurfaceForProfile('project_write')
+		const project = buildToolSurfaceSizeReport({
+			profile: 'project',
+			contextType: 'project',
+			tools: getGatewaySurfaceForProfile('project')
 		});
 
 		const createProject = projectCreate.tools.find(
 			(tool) => tool.name === 'create_onto_project'
 		);
-		const createTask = projectWrite.tools.find((tool) => tool.name === 'create_onto_task');
+		const createTask = project.tools.find((tool) => tool.name === 'create_onto_task');
 
 		// 2026-04-18: budget bumped from 5000 → 5500 after adding `kind` enum
 		// constraints to relationship endpoints (regression bc05e6ac fix).
@@ -92,8 +87,9 @@ describe('tool surface size report', () => {
 		// weaker routed models, not description-bloat. Serializes to ~5772 chars; 6200
 		// keeps ~428 chars of headroom.
 		expect(createProject?.chars).toBeLessThanOrEqual(6200);
-		expect(webProjectCreate.toolCount).toBe(1);
-		expect(webProjectCreate.totalChars).toBeLessThanOrEqual(6200);
+		// 2026-09-04 (stage S6): the two project-create profiles collapsed into
+		// one — four controls plus the shell and its child creates, no discovery.
+		expect(projectCreate.toolCount).toBe(7);
 		expect(createTask?.chars).toBeLessThanOrEqual(2500);
 	});
 
@@ -101,84 +97,34 @@ describe('tool surface size report', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 
 		const reports = buildGatewayProfileToolSurfaceSizeReports([
-			'project_create_compound',
-			'project_create_minimal',
-			'global_basic',
-			'global_write',
-			'project_basic',
-			'project_write',
-			'project_write_document'
+			'global',
+			'project',
+			'project_create'
 		]);
-		const webProjectCreate = reports.find(
-			(report) => report.profile === 'project_create_compound'
-		);
-		const projectCreate = reports.find((report) => report.profile === 'project_create_minimal');
-		const globalBasic = reports.find((report) => report.profile === 'global_basic');
-		const globalWrite = reports.find((report) => report.profile === 'global_write');
-		const projectBasic = reports.find((report) => report.profile === 'project_basic');
-		const projectWrite = reports.find((report) => report.profile === 'project_write');
-		const projectWriteDocument = reports.find(
-			(report) => report.profile === 'project_write_document'
-		);
+		const global = reports.find((report) => report.profile === 'global');
+		const project = reports.find((report) => report.profile === 'project');
+		const projectCreate = reports.find((report) => report.profile === 'project_create');
 
-		// 2026-08-25 definition audit: concise descriptions and removal of unsupported
-		// read arguments materially reduced every profile. These caps retain bounded
-		// headroom without dropping semantic guidance that changes model behavior.
-		expect(webProjectCreate?.totalChars).toBeLessThanOrEqual(6200);
-		// 2026-08-28: 13,400 → 13,600. Pre-existing overage (13,555 on clean main,
-		// verified with the semantic-discovery work stashed) — project_create_minimal
-		// does not mount explore_project, so this is unrelated drift surfaced while
-		// landing it.
-		// 2026-09-02: 13,600 → 13,530 (measured 13,515; create_onto_task no longer
-		// tells the model to load a skill the worker cannot call).
-		// 2026-09-03: 13,530 -> 14,180 (measured 14,164). NOT this change: a
-		// concurrent edit to catalog/definitions/ontology-write.ts added the
-		// calendar_sync enum to create_onto_task / update_onto_task. Re-baselined
-		// so the shared budget test stays runnable.
-		// 2026-09-04: 14,180 → 14,600 (measured 14,516). Date-only descriptions on
-		// start_at/due_at/end_at now state the civil-day rule so the model stops
-		// minting UTC timestamps (Cedar House cases 1, 4, 5).
-		expect(projectCreate?.totalChars).toBeLessThanOrEqual(14_600);
-		// 2026-09-02 (turn-executor audit Decision 2): global surfaces trade
-		// change_chat_context (1,177 chars) for get_document_outline +
-		// read_document_section (~1,100 chars) so a global "read those docs" turn
-		// cannot die on an unmounted tool. Measured 10,454.
-		// 2026-09-03 (Start Here / global-reach audit): +1,306 chars on every
-		// global surface for the task scan->read pair — list_onto_tasks (~954) and
-		// get_onto_task_details (~352). global_basic previously had NO task-level
-		// read, so a global turn naming a task could not reach it at all and the
-		// immutable worker surface offered no recovery. Measured 11,760.
-		expect(globalBasic?.totalChars).toBeLessThanOrEqual(11_780);
-		// 2026-08-28: +~1,250 on the four surfaces that now preload explore_project
-		// (semantic discovery, tasker/71). Its definition serializes to ~1,207 chars
-		// after a deliberate trim; the steering it carries (related-not-keyword,
-		// gather-before-broad-change, exact lookups stay on search_*) is the
-		// load-bearing part per the 2026-06-19 query-formulation eval.
-		// 2026-09-01: 19,900 → 20,100 after Calendar reads/writes began carrying
-		// exact calendar_source_id identity to avoid cross-account ambiguity.
-		// 2026-09-02: every surface below lost change_chat_context (-1,177) and
-		// four read descriptions stopped naming unmounted tools. Measured:
-		// global_write 19,982 / project_basic 10,880 / project_write 17,942 /
-		// project_write_document 19,894. Caps keep the file's tight headroom.
-		// 2026-09-03: 20,000 -> 21,600 (measured 21,576). ~954 is this change
-		// (list_onto_tasks; get_onto_task_details was already mounted here), the
-		// remaining ~640 is the concurrent calendar_sync addition on
-		// create_onto_task / update_onto_task.
-		// 2026-09-04: 21,600 → 22,100 (measured 21,852); civil-day date descriptions.
-		expect(globalWrite?.totalChars).toBeLessThanOrEqual(22_100);
-		// 2026-09-03 re-baseline of the project profiles. NONE of this delta is
-		// the global task-read mount above (these profiles already carried
-		// list_onto_tasks / get_onto_task_details or neither). It is concurrent
-		// catalog work landing in the same tree: a larger declare_turn_contract
-		// (+320 on every profile), the calendar_sync enum on create_onto_task /
-		// update_onto_task, and the reserved-type note added to
-		// create_onto_document's type_key description. Measured: project_basic
-		// 11,200 / project_write 19,078 / project_write_document 21,030.
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(11_220);
-		// 2026-09-04: project_write 19,100 → 19,600 (measured 19,354) and
-		// project_write_document 21,050 → 21,550 (measured 21,306); civil-day date descriptions.
-		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_600);
-		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(21_550);
+		// RE-BASELINED 2026-09-04 for the three stable surfaces (one-engine stage
+		// S6). The nine profiles this replaces were partly selected by regex over
+		// the user's message; a stable surface has to carry, on every turn, the
+		// capabilities that used to be materialized only when a pattern matched.
+		// Measured, caps at measured + ~5%:
+		//   global         26 tools / 30,464 chars (was global_basic 15 / 11,760)
+		//   project        33 tools / 37,331 chars (was project_write_document
+		//                  20 / 21,030)
+		//   project_create  7 tools / 14,516 chars (unchanged members; this is
+		//                  the old project_create_minimal, renamed)
+		// What global gained over global_basic: create/update/move_onto_task,
+		// delegate_task (3,116), web_search + web_visit (2,873), and the five
+		// calendar tools (6,373). What project gained over project_write_document:
+		// the same, plus get_project_calendar / set_project_calendar, minus the
+		// two cross-project searches. This is a deliberate token spend: the
+		// alternative is a turn that cannot reach a capability, because the worker
+		// surface is immutable once the turn is admitted.
+		expect(global?.totalChars).toBeLessThanOrEqual(32_000);
+		expect(project?.totalChars).toBeLessThanOrEqual(39_200);
+		expect(projectCreate?.totalChars).toBeLessThanOrEqual(15_250);
 	});
 
 	it('reports complete skill bundles and fails closed on unresolved related ops', () => {
@@ -194,13 +140,15 @@ describe('tool surface size report', () => {
 			resolvedToolCount: 7
 		});
 		expect(calendar?.materializedToolNames).toContain('delete_calendar_event');
-		expect(calendar?.incrementalByProfile.project_write_document).toMatchObject({
-			toolCount: 7
+		// 2026-09-04: the project surface already carries the whole calendar
+		// bundle, so loading the skill adds no schema at all; global is missing
+		// only the two project-calendar binding tools.
+		expect(calendar?.incrementalByProfile.project).toMatchObject({ toolCount: 0 });
+		expect(calendar?.incrementalByProfile.global).toMatchObject({
+			toolCount: 2,
+			toolNames: ['get_project_calendar', 'set_project_calendar']
 		});
-		expect(calendar?.incrementalByProfile.project_calendar).toMatchObject({
-			toolCount: 1,
-			toolNames: ['delete_calendar_event']
-		});
+		expect(calendar?.incrementalByProfile.project_create).toMatchObject({ toolCount: 7 });
 		expect(plan?.estimatedTokens).toBeLessThanOrEqual(4_500);
 		expect(Math.max(...reports.map((report) => report.estimatedTokens))).toBeLessThanOrEqual(
 			4_500

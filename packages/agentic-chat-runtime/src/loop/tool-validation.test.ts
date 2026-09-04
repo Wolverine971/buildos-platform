@@ -1,3 +1,4 @@
+// packages/agentic-chat-runtime/src/loop/tool-validation.test.ts
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 import { REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION } from '../catalog/definitions/controls';

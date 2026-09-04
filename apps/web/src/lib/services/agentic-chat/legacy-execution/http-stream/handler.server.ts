@@ -172,7 +172,7 @@ import {
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
 import { deriveUsedDomainSignalsFromToolExecutions } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
 import { buildEntityResolutionHint } from '$lib/services/agentic-chat-v2/entity-resolution';
-import { applyLivingWorkspaceToolProfile } from '$lib/services/agentic-chat-v2/tool-selector';
+import { applyLivingWorkspaceToolProfile } from '$lib/services/agentic-chat-v2/living-workspace-tools';
 import {
 	resolveAgentWorkspaceFromContextData,
 	resolveProjectDomainRuntimeSkillId
@@ -1756,9 +1756,7 @@ export const handleLegacyAgentStream: RequestHandler = async ({
 				const agentWorkspace = resolveAgentWorkspaceFromContextData(promptContext.data);
 				const livingWorkspaceToolSelection = applyLivingWorkspaceToolProfile({
 					tools,
-					workspace: agentWorkspace,
-					latestUserMessage: message,
-					turnIntent
+					workspace: agentWorkspace
 				});
 				if (livingWorkspaceToolSelection.tools !== tools) {
 					tools = livingWorkspaceToolSelection.tools;

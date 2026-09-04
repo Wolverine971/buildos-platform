@@ -99,15 +99,31 @@ vi.mock('$lib/services/agentic-chat-v2/turn-intent', () => ({
 	shouldBypassDomainSensingForTurnIntent: () => false
 }));
 
-vi.mock('$lib/services/agentic-chat-v2/tool-selector', () => ({
+vi.mock('$lib/services/agentic-chat-v2/living-workspace-tools', () => ({
 	applyLivingWorkspaceToolProfile: ({ tools }: { tools: unknown[] }) => ({
 		tools,
 		implicitCapture: false,
 		commissionedWriteMinimumCount: 0
-	}),
-	resolveFastChatSurfaceProfileForTurn: () => 'general',
-	selectFastChatTools: mocks.selectFastChatTools
+	})
 }));
+
+// Launch surfaces are stable per context now (stage S6, 2026-09-04), so these
+// tests override the resolved tool list at the one seam that still produces
+// it instead of stubbing a message-shape selector that no longer exists.
+vi.mock('$lib/services/agentic-chat-v2/turn-preparation', async (importOriginal) => {
+	const original =
+		await importOriginal<typeof import('$lib/services/agentic-chat-v2/turn-preparation')>();
+	return {
+		...original,
+		resolveFastChatTurnPreparation: (
+			params: Parameters<typeof original.resolveFastChatTurnPreparation>[0]
+		) => {
+			const prepared = original.resolveFastChatTurnPreparation(params);
+			const overrideTools = mocks.selectFastChatTools();
+			return Array.isArray(overrideTools) ? { ...prepared, tools: overrideTools } : prepared;
+		}
+	};
+});
 
 vi.mock('$lib/services/agentic-chat-lite/prompt', () => ({
 	LITE_PROMPT_VARIANT: 'lite',
@@ -854,7 +870,7 @@ function buildPreparedPromptRow(overrides: Row = {}): { key: string; row: Row } 
 	const conversationSummary = overrides.conversation_summary ?? null;
 	const { key, nonceSha256 } = buildPreparedPromptKey(id);
 	const surface = buildPreparedPromptSurface({
-		surfaceProfile: 'general' as any,
+		surfaceProfile: 'global',
 		contextType: 'global',
 		contextPayload,
 		conversationSummary,
@@ -880,9 +896,9 @@ function buildPreparedPromptRow(overrides: Row = {}): { key: string; row: Row } 
 			context_payload: contextPayload,
 			conversation_summary: conversationSummary,
 			prepared_surfaces: {
-				general: surface
+				global: surface
 			},
-			default_surface_profile: 'general',
+			default_surface_profile: 'global',
 			prompt_variant: 'lite',
 			history_for_model: [],
 			history_compressed: false,
@@ -2329,7 +2345,7 @@ describe('/api/agent/v2/stream', () => {
 			prepared_prompt_miss_reason: 'missing_key',
 			prepared_prompt_id: null,
 			prepared_prompt_age_seconds: null,
-			requested_surface_profile: 'general',
+			requested_surface_profile: 'global',
 			diagnostics: null
 		});
 	});
@@ -2427,10 +2443,10 @@ describe('/api/agent/v2/stream', () => {
 			prepared_prompt_hit: false,
 			prepared_prompt_miss_reason: 'stale_harness',
 			prepared_prompt_id: preparedPrompt.row.id,
-			requested_surface_profile: 'general',
+			requested_surface_profile: 'global',
 			diagnostics: {
 				prepared_prompt_id: preparedPrompt.row.id,
-				requested_surface_profile: 'general',
+				requested_surface_profile: 'global',
 				surface_available: true,
 				prepared_tool_names: [],
 				actual_tool_names: ['get_workspace_overview'],
@@ -2452,8 +2468,8 @@ describe('/api/agent/v2/stream', () => {
 
 	it('overlays current turn domain signals on a prepared prompt with stale domain sections', async () => {
 		const preparedPrompt = buildPreparedPromptRow();
-		preparedPrompt.row.prepared_surfaces.general = {
-			...preparedPrompt.row.prepared_surfaces.general,
+		preparedPrompt.row.prepared_surfaces.global = {
+			...preparedPrompt.row.prepared_surfaces.global,
 			system_prompt: 'System prompt\n\n## Active Domain Signals\n\nStale turn signal',
 			sections: [
 				{

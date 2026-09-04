@@ -630,7 +630,13 @@ Use deep only for genuinely difficult analysis. Use deep_research for multi-sour
 						type: 'boolean',
 						default: false,
 						description:
-							'For read_write runs, stage changes as a proposal. Present it and call commit_change_set only after approval. Ignored for read_only.'
+							// 2026-09-04: this used to say "call commit_change_set after
+							// approval". delegate_task is now mounted on every global and
+							// project surface, and commit_change_set is on none of them —
+							// the acting surface is immutable for the turn, so naming it
+							// was an instruction the model could not follow. The user
+							// approves and applies the staged proposal from the AI inbox.
+							'For read_write runs, stage changes as a proposal for the user to review and apply. Ignored for read_only.'
 					}
 				},
 				required: ['goal']

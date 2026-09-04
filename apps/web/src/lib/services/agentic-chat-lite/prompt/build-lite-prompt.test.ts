@@ -1565,7 +1565,15 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).not.toContain('declare_turn_contract');
 		expect(envelope.systemPrompt).not.toContain('create_onto_goal');
 		expect(envelope.systemPrompt).not.toContain('create_onto_task');
-		expect(envelope.toolsSummary.directTools).toEqual(['create_onto_project']);
+		expect(envelope.toolsSummary.directTools).toEqual([
+			'declare_turn_contract',
+			'declare_read_only_turn',
+			'request_turn_clarification',
+			'cancel_turn_contract',
+			'create_onto_project',
+			'create_onto_goal',
+			'create_onto_task'
+		]);
 	});
 
 	it('renders the multi-step workflow using only concrete available tool names', () => {

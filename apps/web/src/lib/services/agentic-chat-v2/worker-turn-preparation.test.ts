@@ -21,7 +21,7 @@ const IDS = [
 ];
 const NOW = Date.parse('2026-08-03T12:00:00.000Z');
 const PROJECT_ID = 'd9000000-0000-4000-8000-000000000001';
-const PROJECT_WRITE_DOCUMENT_TOOL_NAMES = [
+const PROJECT_SURFACE_TOOL_NAMES = [
 	'declare_turn_contract',
 	'get_project_overview',
 	'list_onto_tasks',
@@ -257,7 +257,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			cacheKey: 'v2|global|none|none|none',
 			cachedContext: undefined,
 			bypassContextCacheForShiftHint: false,
-			selectedSurfaceProfile: 'global_basic',
+			selectedSurfaceProfile: 'global',
 			tools: []
 		});
 		mocks.loadFastChatPromptContext.mockResolvedValue({
@@ -340,9 +340,6 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(result.args.p_artifact_prepared).not.toHaveProperty('turnIntent');
 		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
 		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
-		expect(mocks.resolveFastChatTurnPreparation).toHaveBeenCalledWith(
-			expect.objectContaining({ projectCreateWorkflow: 'reviewed_shell' })
-		);
 		expect(mocks.buildLitePromptEnvelope).toHaveBeenCalledWith(
 			expect.objectContaining({
 				currentUserMessage: 'Ship the next slice',
@@ -618,10 +615,11 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
-	it('adds the review-delegation situation for a broad project change', async () => {
+	// 2026-09-04: the situation now follows the mount, not the message shape.
+	it('adds the review-delegation situation whenever delegate_task is mounted', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
-			selectedSurfaceProfile: 'project_write_document',
+			selectedSurfaceProfile: 'project',
 			tools: ['get_document_tree', 'delegate_task'].map((name) => ({
 				type: 'function',
 				function: {
@@ -670,7 +668,7 @@ describe('Agentic Chat worker turn preparation', () => {
 	it('omits retired and impossible write controls from a read-only worker artifact', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
-			selectedSurfaceProfile: 'global_basic',
+			selectedSurfaceProfile: 'global',
 			tools: [
 				'declare_turn_contract',
 				'declare_read_only_turn',
@@ -721,7 +719,7 @@ describe('Agentic Chat worker turn preparation', () => {
 	it('keeps the complex contract on a mutation-capable worker artifact', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
-			selectedSurfaceProfile: 'project_write_document',
+			selectedSurfaceProfile: 'project',
 			tools: [
 				'declare_turn_contract',
 				'declare_read_only_turn',
@@ -859,7 +857,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			cacheKey: 'v2|global|none|none|none',
 			cachedContext: undefined,
 			bypassContextCacheForShiftHint: false,
-			selectedSurfaceProfile: 'global_basic',
+			selectedSurfaceProfile: 'global',
 			tools: []
 		});
 
@@ -897,8 +895,8 @@ describe('Agentic Chat worker turn preparation', () => {
 	it('preloads task_management from mutation intent on a project write surface and records it', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
-			selectedSurfaceProfile: 'project_write_document',
-			tools: toolDefinitions(PROJECT_WRITE_DOCUMENT_TOOL_NAMES)
+			selectedSurfaceProfile: 'project',
+			tools: toolDefinitions(PROJECT_SURFACE_TOOL_NAMES)
 		});
 		mocks.loadFastChatPromptContext.mockResolvedValueOnce({
 			contextType: 'project',
@@ -948,8 +946,8 @@ describe('Agentic Chat worker turn preparation', () => {
 	it('keeps a status question free of a preload and of the write rules', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
-			selectedSurfaceProfile: 'project_write_document',
-			tools: toolDefinitions(PROJECT_WRITE_DOCUMENT_TOOL_NAMES)
+			selectedSurfaceProfile: 'project',
+			tools: toolDefinitions(PROJECT_SURFACE_TOOL_NAMES)
 		});
 		mocks.loadFastChatPromptContext.mockResolvedValueOnce({
 			contextType: 'project',
@@ -1006,12 +1004,12 @@ describe('Agentic Chat worker turn preparation', () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
 			cacheKey: `v2|project|${PROJECT_ID}|none|none`,
-			selectedSurfaceProfile: 'project_write_document',
-			tools: toolDefinitions(PROJECT_WRITE_DOCUMENT_TOOL_NAMES)
+			selectedSurfaceProfile: 'project',
+			tools: toolDefinitions(PROJECT_SURFACE_TOOL_NAMES)
 		});
 		mocks.inspectPreparedPromptAdmissionLineage.mockResolvedValue({
 			id: preparedId,
-			acceptedSurfaceProfile: 'worker_realtime:project_write_document'
+			acceptedSurfaceProfile: 'worker_realtime:project'
 		});
 		mocks.inspectPreparedPromptForWorkerAdmission.mockResolvedValue({
 			hit: true,
@@ -1041,7 +1039,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				system_prompt: 'Prepared system prompt',
 				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
 			},
-			surfaceKey: 'worker_realtime:project_write_document'
+			surfaceKey: 'worker_realtime:project'
 		});
 		mocks.applyActiveDomainSignalsOverlay.mockImplementationOnce((envelope, input) => ({
 			...envelope,
@@ -1149,8 +1147,8 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
-			selectedSurfaceProfile: 'project_write_document',
-			tools: toolDefinitions(PROJECT_WRITE_DOCUMENT_TOOL_NAMES)
+			selectedSurfaceProfile: 'project',
+			tools: toolDefinitions(PROJECT_SURFACE_TOOL_NAMES)
 		});
 		mocks.loadFastChatPromptContext.mockResolvedValueOnce({
 			contextType: 'project',
@@ -1267,7 +1265,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		mocks.inspectPreparedPromptAdmissionLineage.mockResolvedValue({
 			id: preparedId,
-			acceptedSurfaceProfile: 'worker_realtime:global_basic'
+			acceptedSurfaceProfile: 'worker_realtime:global'
 		});
 		mocks.inspectPreparedPromptForWorkerAdmission.mockResolvedValue({
 			hit: true,
@@ -1297,7 +1295,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				system_prompt: 'Prepared system prompt',
 				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
 			},
-			surfaceKey: 'worker_realtime:global_basic'
+			surfaceKey: 'worker_realtime:global'
 		});
 		const result = await prepareAgenticChatWorkerAdmission({
 			userClient: {} as never,
@@ -1321,7 +1319,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			p_history_source: 'prepared_prompt',
 			p_prepared_prompt_id: preparedId,
 			p_prepared_context_payload_sha256: 'a'.repeat(64),
-			p_prepared_surface_profile: 'worker_realtime:global_basic'
+			p_prepared_surface_profile: 'worker_realtime:global'
 		});
 		expect(result.args.p_artifact_history).toEqual([
 			expect.objectContaining({ role: 'assistant', content: 'Earlier answer' })
@@ -1329,7 +1327,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(result.args.p_artifact_prepared).toMatchObject({
 			sourcePreparedPromptId: preparedId,
 			systemPrompt: 'Prepared system prompt',
-			surfaceProfile: 'worker_realtime:global_basic',
+			surfaceProfile: 'worker_realtime:global',
 			historyState: {
 				strategy: 'raw_history',
 				compressed: false,
@@ -1352,11 +1350,11 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(mocks.buildLitePromptEnvelope).not.toHaveBeenCalled();
 		expect(mocks.loadFastChatPromptContext).not.toHaveBeenCalled();
 		expect(mocks.inspectPreparedPromptAdmissionLineage).toHaveBeenCalledWith(
-			expect.objectContaining({ surfaceProfile: 'worker_realtime:global_basic' })
+			expect.objectContaining({ surfaceProfile: 'worker_realtime:global' })
 		);
 		expect(mocks.inspectPreparedPromptForWorkerAdmission).toHaveBeenCalledWith(
 			expect.objectContaining({
-				surfaceProfile: 'worker_realtime:global_basic',
+				surfaceProfile: 'worker_realtime:global',
 				scaffold: expect.objectContaining({ dynamicSkillTools: false })
 			})
 		);
@@ -1370,7 +1368,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			voiceNoteGroupId: null,
 			preparedPromptLineage: {
 				id: preparedId,
-				acceptedSurfaceProfile: 'worker_realtime:global_basic'
+				acceptedSurfaceProfile: 'worker_realtime:global'
 			}
 		});
 		expect(result.args.p_request_hash).toBe(expectedHash);
@@ -1404,8 +1402,8 @@ describe('Agentic Chat worker turn preparation', () => {
 			raw_history_count: 1,
 			history_for_model_count: 1,
 			prepared_surfaces: {
-				'worker_realtime:project_write_document': {
-					surface_profile: 'worker_realtime:project_write_document',
+				'worker_realtime:project': {
+					surface_profile: 'worker_realtime:project',
 					system_prompt: 'Prepared project system prompt'
 				}
 			}
@@ -1430,7 +1428,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			cacheKey: preparedRow.cache_key,
 			cachedContext: undefined,
 			bypassContextCacheForShiftHint: false,
-			selectedSurfaceProfile: 'project_write_document',
+			selectedSurfaceProfile: 'project',
 			tools: []
 		});
 		mocks.inspectPreparedAdmissionLease.mockResolvedValue({
@@ -1457,7 +1455,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				system_prompt: 'Prepared project system prompt',
 				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
 			},
-			surfaceKey: 'worker_realtime:project_write_document'
+			surfaceKey: 'worker_realtime:project'
 		});
 		const deps = dependencies();
 		const result = await prepareAgenticChatWorkerAdmission({
@@ -1487,7 +1485,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			p_session_id: SESSION_ID,
 			p_history_source: 'prepared_prompt',
 			p_prepared_prompt_id: preparedId,
-			p_prepared_surface_profile: 'worker_realtime:project_write_document'
+			p_prepared_surface_profile: 'worker_realtime:project'
 		});
 		expect(mocks.inspectPreparedAdmissionLease).toHaveBeenCalledTimes(1);
 		expect(mocks.checkProjectAccess).not.toHaveBeenCalled();
@@ -1536,7 +1534,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			cacheKey: `v2|project|${projectId}|task-focus|${projectId}`,
 			cachedContext: undefined,
 			bypassContextCacheForShiftHint: false,
-			selectedSurfaceProfile: 'project_write_document',
+			selectedSurfaceProfile: 'project',
 			tools: []
 		});
 		mocks.inspectPreparedAdmissionLease.mockResolvedValue({
@@ -1557,8 +1555,8 @@ describe('Agentic Chat worker turn preparation', () => {
 				conversation_summary: null,
 				history_for_model: [],
 				prepared_surfaces: {
-					'worker_realtime:project_write_document': {
-						surface_profile: 'worker_realtime:project_write_document',
+					'worker_realtime:project': {
+						surface_profile: 'worker_realtime:project',
 						system_prompt: 'Prepared project system prompt'
 					}
 				}
@@ -1877,7 +1875,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		mocks.inspectPreparedPromptAdmissionLineage.mockResolvedValue({
 			id: preparedId,
-			acceptedSurfaceProfile: 'worker_realtime:global_basic'
+			acceptedSurfaceProfile: 'worker_realtime:global'
 		});
 		mocks.inspectPreparedPromptForWorkerAdmission
 			.mockResolvedValueOnce({
@@ -1905,7 +1903,7 @@ describe('Agentic Chat worker turn preparation', () => {
 					history_for_model_count: 0
 				},
 				surface: { system_prompt: 'Prepared prompt', sections: [] },
-				surfaceKey: 'worker_realtime:global_basic'
+				surfaceKey: 'worker_realtime:global'
 			})
 			.mockResolvedValueOnce({ hit: false, reason: 'consumed' });
 
@@ -2075,5 +2073,112 @@ describe('Agentic Chat worker turn preparation', () => {
 				dependencies: { ...dependencies(), liveVisionEnabled: false }
 			})
 		).rejects.toMatchObject({ code: 'transport_renegotiate' });
+	});
+	// Stage S6 (2026-09-04): the three stable surfaces, exercised through the
+	// real resolver rather than the surface stub the other cases use.
+	describe('stable launch surfaces', () => {
+		async function realTurnPreparationOnce() {
+			const actual =
+				await vi.importActual<typeof import('./turn-preparation')>('./turn-preparation');
+			mocks.resolveFastChatTurnPreparation.mockImplementationOnce((params: never) =>
+				actual.resolveFastChatTurnPreparation(params)
+			);
+		}
+
+		function admittedToolNames(result: {
+			args: { p_artifact_prepared: { toolSurface: { toolNames: string[] } } };
+		}): string[] {
+			return result.args.p_artifact_prepared.toolSurface.toolNames;
+		}
+
+		async function admit(
+			commandOverrides: Record<string, unknown>,
+			dependencyOverrides: Record<string, unknown> = {}
+		) {
+			await realTurnPreparationOnce();
+			return prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: {} as never,
+				userId: USER_ID,
+				command: command(commandOverrides) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: { ...dependencies(), ...dependencyOverrides }
+			});
+		}
+
+		// A calendar turn used to route to project_calendar, whose calendar
+		// writes the worker could not execute — admission renegotiated onto the
+		// legacy engine. It now admits on the worker with the global surface.
+		it('admits a calendar-context turn on the worker with the global surface', async () => {
+			const result = await admit({
+				context: { type: 'calendar', entityId: null, projectId: null },
+				message: 'Move my 2pm to Thursday and delete the duplicate hold.'
+			});
+
+			expect(result.args.p_artifact_prepared.surfaceProfile).toBe('global');
+			const names = admittedToolNames(result as never);
+			expect(names).toEqual(
+				expect.arrayContaining([
+					'list_calendar_events',
+					'get_calendar_event_details',
+					'create_calendar_event',
+					'update_calendar_event',
+					'delete_calendar_event',
+					'delegate_task',
+					'web_search',
+					'move_onto_task'
+				])
+			);
+			// The omitted discovery tools never reach the signed artifact.
+			expect(names).not.toContain('skill_search');
+			expect(names).not.toContain('domain_search');
+			expect(names).not.toContain('declare_read_only_turn');
+		});
+
+		it('gives a project-create turn the shell, its child creates, and the controls', async () => {
+			const result = await admit({
+				context: { type: 'project_create', entityId: null, projectId: null },
+				message: 'Start a project for the Cedar House renovation.'
+			});
+
+			expect(result.args.p_artifact_prepared.surfaceProfile).toBe('project_create');
+			expect(admittedToolNames(result as never)).toEqual([
+				'declare_turn_contract',
+				'request_turn_clarification',
+				'cancel_turn_contract',
+				'create_onto_project',
+				'create_onto_goal',
+				'create_onto_task'
+			]);
+		});
+
+		it('mounts the Gmail group only for a user with a live connection', async () => {
+			const withoutConnection = await admit(
+				{ message: 'What did the contractor say?' },
+				{ hasActiveEmailConnection: async () => false }
+			);
+			const withConnection = await admit(
+				{ message: 'What did the contractor say?' },
+				{ hasActiveEmailConnection: async () => true }
+			);
+
+			const emailGroup = [
+				'get_external_account_status',
+				'list_email_accounts',
+				'search_email_messages',
+				'get_email_message',
+				'request_email_account_connection'
+			];
+			for (const name of emailGroup) {
+				expect(admittedToolNames(withoutConnection as never), name).not.toContain(name);
+			}
+			expect(admittedToolNames(withConnection as never)).toEqual(
+				expect.arrayContaining(emailGroup)
+			);
+		});
 	});
 });

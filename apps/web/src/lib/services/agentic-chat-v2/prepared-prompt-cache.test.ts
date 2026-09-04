@@ -52,7 +52,7 @@ describe('prepared-prompt-cache', () => {
 			tools
 		});
 		const surface = buildPreparedPromptSurface({
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			contextType: 'global',
 			contextPayload: { contextType: 'global' },
 			conversationSummary: null,
@@ -110,7 +110,7 @@ describe('prepared-prompt-cache', () => {
 			tools
 		});
 		const surface = buildPreparedPromptSurface({
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			contextType: 'global',
 			contextPayload: { contextType: 'global' },
 			conversationSummary: null,
@@ -137,7 +137,7 @@ describe('prepared-prompt-cache', () => {
 			tools
 		});
 		const surface = buildPreparedPromptSurface({
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			contextType: 'global',
 			contextPayload: { contextType: 'global' },
 			conversationSummary: null,
@@ -165,7 +165,7 @@ describe('prepared-prompt-cache', () => {
 			tools: preparedTools
 		});
 		const surface = buildPreparedPromptSurface({
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			contextType: 'global',
 			contextPayload: { contextType: 'global' },
 			conversationSummary: null,
@@ -192,7 +192,7 @@ describe('prepared-prompt-cache', () => {
 			tools
 		});
 		const surface = buildPreparedPromptSurface({
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			contextType: 'global',
 			contextPayload: { contextType: 'global' },
 			conversationSummary: null,

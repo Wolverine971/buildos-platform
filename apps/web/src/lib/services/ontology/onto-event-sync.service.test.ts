@@ -142,13 +142,11 @@ describe('OntoEventSyncService web queue fan-out', () => {
 
 	it('is wired into the shared write path so project writes stay asynchronous', async () => {
 		const service = new OntoEventSyncService({} as any);
-		const enqueue = vi
-			.spyOn(service as any, 'enqueueProjectEventSyncJobs')
-			.mockResolvedValue({
-				mode: 'actor_projection',
-				targetUserIds: ['user-1'],
-				enqueued: 1
-			});
+		const enqueue = vi.spyOn(service as any, 'enqueueProjectEventSyncJobs').mockResolvedValue({
+			mode: 'actor_projection',
+			targetUserIds: ['user-1'],
+			enqueued: 1
+		});
 		const event = {
 			id: 'event-3',
 			project_id: 'project-1',

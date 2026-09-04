@@ -44,7 +44,7 @@ function buildPreparedPromptRow(params: {
 	const conversationSummary = params.overrides?.conversation_summary ?? null;
 	const { key, nonceSha256 } = buildPreparedPromptKey(id);
 	const surface = buildPreparedPromptSurface({
-		surfaceProfile: 'global_basic',
+		surfaceProfile: 'global',
 		contextType: 'global',
 		contextPayload,
 		conversationSummary,
@@ -70,9 +70,9 @@ function buildPreparedPromptRow(params: {
 			context_payload: contextPayload,
 			conversation_summary: conversationSummary,
 			prepared_surfaces: {
-				global_basic: surface
+				global: surface
 			},
-			default_surface_profile: 'global_basic',
+			default_surface_profile: 'global',
 			prompt_variant: 'lite',
 			history_for_model: [],
 			history_compressed: false,
@@ -193,7 +193,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global_basic',
+				surfaceProfile: 'global',
 				contextType: 'global',
 				tools: []
 			})
@@ -215,7 +215,7 @@ describe('consumePreparedPrompt', () => {
 			userId: 'user-1',
 			sessionId: 'session-1',
 			cacheKey: 'v2|global|none|none|none',
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			contextType: 'global',
 			tools
 		});
@@ -223,7 +223,7 @@ describe('consumePreparedPrompt', () => {
 		expect(result.hit).toBe(true);
 		if (!result.hit) return;
 		expect(result.row.consumed_at).toEqual(expect.any(String));
-		expect(result.surface.surface_profile).toBe('global_basic');
+		expect(result.surface.surface_profile).toBe('global');
 		expect(result.ageSeconds).toBeGreaterThanOrEqual(0);
 		expect(mock.updatePatches).toEqual([
 			{
@@ -245,7 +245,7 @@ describe('consumePreparedPrompt', () => {
 			userId: 'user-1',
 			sessionId: 'session-1',
 			cacheKey: 'v2|global|none|none|none',
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			contextType: 'global',
 			tools: currentTools
 		});
@@ -255,9 +255,9 @@ describe('consumePreparedPrompt', () => {
 			reason: 'stale_harness',
 			diagnostics: {
 				prepared_prompt_id: preparedPrompt.row.id,
-				requested_surface_profile: 'global_basic',
-				default_surface_profile: 'global_basic',
-				prepared_surface_profiles: ['global_basic'],
+				requested_surface_profile: 'global',
+				default_surface_profile: 'global',
+				prepared_surface_profiles: ['global'],
 				surface_available: true,
 				prepared_tool_names: ['get_workspace_overview'],
 				actual_tool_names: ['get_workspace_overview'],
@@ -292,11 +292,11 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global_basic'
+				surfaceProfile: 'global'
 			})
 		).resolves.toEqual({
 			id: preparedPrompt.row.id,
-			acceptedSurfaceProfile: 'global_basic'
+			acceptedSurfaceProfile: 'global'
 		});
 		expect(mock.updatePatches).toEqual([]);
 	});
@@ -312,7 +312,7 @@ describe('consumePreparedPrompt', () => {
 			userId: 'user-1',
 			sessionId: 'session-1',
 			cacheKey: 'v2|global|none|none|none',
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			contextType: 'global',
 			tools
 		});
@@ -320,7 +320,7 @@ describe('consumePreparedPrompt', () => {
 		expect(result).toMatchObject({
 			hit: true,
 			row: { id: preparedPrompt.row.id },
-			surface: { surface_profile: 'global_basic' },
+			surface: { surface_profile: 'global' },
 			history: {
 				ok: true,
 				history: [],
@@ -358,7 +358,7 @@ describe('consumePreparedPrompt', () => {
 			userId: 'user-1',
 			sessionId: 'session-1',
 			cacheKey: 'v2|global|none|none|none',
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			contextType: 'global',
 			tools,
 			nowMs: Date.parse('2026-08-11T10:00:02.000Z')
@@ -396,7 +396,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global_basic',
+				surfaceProfile: 'global',
 				contextType: 'global',
 				tools
 			})
@@ -433,7 +433,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global_basic',
+				surfaceProfile: 'global',
 				contextType: 'global',
 				tools
 			})
@@ -472,7 +472,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global_basic',
+				surfaceProfile: 'global',
 				contextType: 'global',
 				tools
 			})
@@ -501,7 +501,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global_basic',
+				surfaceProfile: 'global',
 				contextType: 'global',
 				tools
 			})
@@ -520,7 +520,7 @@ describe('consumePreparedPrompt', () => {
 				userId: 'user-1',
 				sessionId: 'session-1',
 				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global_basic'
+				surfaceProfile: 'global'
 			})
 		).resolves.toBeNull();
 	});

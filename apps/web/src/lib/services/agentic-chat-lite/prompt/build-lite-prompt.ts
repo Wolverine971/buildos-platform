@@ -3,8 +3,7 @@ import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types'
 import { estimateTokensFromText } from '$lib/services/agentic-chat-v2/context-usage';
 import {
 	extractToolNamesFromDefinitions,
-	getGatewaySurfaceForContextType,
-	getGatewaySurfaceForProfile
+	getGatewaySurfaceForContextType
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	renderDomainSensingPromptContent,
@@ -197,11 +196,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 	const projectDigest = buildProjectDigest(input.data, focus, nowIso);
 	const timeline = buildTimelineSummary(input, focus, dataSummary, projectDigest);
 	const retrievalMap = buildRetrievalMap(input.retrievalMap ?? null, focus, dataSummary);
-	const toolsSummary = buildToolsSummary(
-		input.contextType,
-		input.tools ?? null,
-		input.projectCreateWorkflow ?? 'web_compound'
-	);
+	const toolsSummary = buildToolsSummary(input.contextType, input.tools ?? null);
 	// project_create has no skill_load/domain tools, so a skill-load gate here
 	// would demand a tool call the surface cannot satisfy (WP-3).
 	const domainSignalSection =
@@ -1596,14 +1591,11 @@ function buildFocus(input: LitePromptInput): LitePromptFocus {
 
 function buildToolsSummary(
 	contextType: ChatContextType,
-	tools: ChatToolDefinition[] | null,
-	projectCreateWorkflow: LiteProjectCreateWorkflow
+	tools: ChatToolDefinition[] | null
 ): LitePromptToolsSummary {
-	const selectedTools =
-		tools ??
-		(contextType === 'project_create' && projectCreateWorkflow === 'reviewed_shell'
-			? getGatewaySurfaceForProfile('project_create_minimal')
-			: getGatewaySurfaceForContextType(contextType));
+	// One surface per context (stage S6, 2026-09-04): both project-create
+	// workflows now launch with the same creation surface.
+	const selectedTools = tools ?? getGatewaySurfaceForContextType(contextType);
 	const toolNames = extractToolNamesFromDefinitions(selectedTools);
 	const discoveryTools = toolNames.filter((name) => DISCOVERY_TOOL_NAMES.has(name));
 	const directTools = toolNames.filter((name) => !DISCOVERY_TOOL_NAMES.has(name));

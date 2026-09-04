@@ -31,17 +31,13 @@ function isLeanDiscoveryEnabled(): boolean {
 	return true;
 }
 
-export const GATEWAY_SURFACE_PROFILE_NAMES = [
-	'global_basic',
-	'global_write',
-	'project_basic',
-	'project_write',
-	'project_document',
-	'project_write_document',
-	'project_calendar',
-	'project_create_compound',
-	'project_create_minimal'
-] as const;
+// Three stable surfaces (2026-09-04, one-engine stage S6). A turn's tool
+// surface is now a function of its chat context alone. The nine profiles this
+// replaces were selected partly by regex over the user's message, which is the
+// mechanism that leaked turns onto the legacy engine: a lexical hit
+// materialized a tool the worker could not execute, admission renegotiated,
+// and the turn ran on a different write gate than the one it was budgeted for.
+export const GATEWAY_SURFACE_PROFILE_NAMES = ['global', 'project', 'project_create'] as const;
 
 export type GatewaySurfaceProfileName = (typeof GATEWAY_SURFACE_PROFILE_NAMES)[number];
 export type ProjectCreateExecutionWorkflow = 'web_compound' | 'reviewed_shell';
@@ -62,126 +58,88 @@ export type GatewayToolMaterialization = {
 	toolNames: string[];
 };
 
-// Rare bridge/orchestration tools (Corsair MCP, delegate_task, commit_change_set)
-// are intentionally not mounted on every launch surface. They remain available
-// through tool_search/tool_schema and the orchestrator's on-miss materialization.
-//
-// Document reads are mounted here as well (turn-executor audit 2026-09-02,
-// Decision 2): a global "read those docs" turn has no zoom-into-project move any
-// more (change_chat_context was retired with zero measured calls), and the worker
-// surface is immutable for the turn, so the scan→read pair must already be on
-// the surface when a search result names a document.
-const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
+/**
+ * The global surface: everything a turn can do when no project is in focus.
+ *
+ * Membership rule (2026-09-04): a tool is mounted when a turn in this context
+ * can plausibly need it and the worker can execute it. Nothing here is chosen
+ * from the message text. The worker surface is immutable for the turn, so a
+ * capability that is not mounted at launch cannot be recovered mid-turn; the
+ * cost of carrying a schema is paid in tokens, the cost of omitting one is a
+ * dead turn.
+ *
+ * Deliberately absent: deletes (`delete_onto_*`) and the contacts tools, which
+ * have no worker execution adapter yet, and every relationship/graph tool.
+ * Those stay discovery-only. The Gmail group is appended per turn by worker
+ * admission when the user actually has a connected mailbox (A8) — mounting
+ * ~3.3 KB of email schema for users with no mailbox buys nothing.
+ */
+const GLOBAL_DIRECT_TOOL_NAMES = [
 	'declare_turn_contract',
 	'declare_read_only_turn',
 	'request_turn_clarification',
 	'cancel_turn_contract',
+	// Overview + cross-project search: the entry points for "what is going on".
 	'get_workspace_overview',
 	'get_project_overview',
 	'search_onto_projects',
 	'search_all_projects',
 	'explore_project',
+	// Document scan→read pair. A global "read those docs" turn has no
+	// zoom-into-project move any more (change_chat_context was retired), so the
+	// pair must already be mounted when a search result names a document.
 	'get_document_outline',
 	'read_document_section',
-	// Task reads are mounted here too (Start Here / global-reach audit
-	// 2026-09-03): global_basic previously had no task-level read at all, so a
-	// global turn asking about a specific task could not reach its details —
-	// the worker surface is immutable for the turn and strips hints naming
-	// tools outside it. list_onto_tasks takes an OPTIONAL project_id (it
-	// defaults to every visible project), so it works on a global turn, and it
-	// is the scan half of the scan→read pair that get_onto_task_details
-	// completes. search_onto_tasks stays off: search_all_projects already
-	// covers keyword lookup across projects.
+	// Task reads and writes. list_onto_tasks takes an OPTIONAL project_id, so it
+	// scans every visible project on a global turn; get_onto_task_details and
+	// move_onto_task complete the scan→read→act chain across projects.
 	'list_onto_tasks',
-	'get_onto_task_details'
-] as const;
-
-// Cross-project action surface for contexts whose whole point is acting on
-// items that live in many projects (daily brief). Task and calendar writes are
-// direct so a "bump these tasks, create that meeting" turn never depends on a
-// tool_search round the turn supervisor may cut short. Deletes stay behind
-// discovery so they keep their confirm-first path.
-const GLOBAL_WRITE_DIRECT_TOOL_NAMES = [
-	// get_onto_task_details and list_onto_tasks now arrive from global_basic.
-	...GLOBAL_BASIC_DIRECT_TOOL_NAMES,
+	'get_onto_task_details',
 	'create_onto_task',
 	'update_onto_task',
-	'list_calendar_events',
-	'get_calendar_event_details',
-	'create_calendar_event',
-	'update_calendar_event'
-] as const;
-
-const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
-	'declare_turn_contract',
-	'declare_read_only_turn',
-	'request_turn_clarification',
-	'cancel_turn_contract',
-	'get_project_overview',
-	'get_onto_project_details',
-	'search_project',
-	'explore_project',
-	'list_onto_tasks',
-	'list_onto_documents',
-	// Document reading is ungated on every project turn (Project Knowledge Layer L2):
-	// the scan→read flow ("does a marketing doc cover this? read that section") must
-	// not depend on a document-write turn or a discovery round. These two are the lean
-	// path. Full-body get_onto_document_details is not on any launch surface; on the
-	// web path it materializes on demand, on the worker path the surface never grows
-	// mid-turn, so no mounted description or tool result may advertise it
-	// (surfaces.test.ts pins that).
-	'get_document_outline',
-	'read_document_section'
-] as const;
-
-const PROJECT_WRITE_DIRECT_TOOL_NAMES = [
-	...PROJECT_BASIC_DIRECT_TOOL_NAMES,
-	'create_onto_task',
-	'update_onto_task',
-	'create_onto_document',
-	'update_onto_document'
-] as const;
-
-const PROJECT_DOCUMENT_DIRECT_TOOL_NAMES = [
-	...PROJECT_BASIC_DIRECT_TOOL_NAMES,
-	'create_onto_document',
-	'update_onto_document',
-	'get_document_tree',
-	'move_document_in_tree'
-] as const;
-
-// Union surface for turns that need both task writes and document workspace
-// operations (e.g. "Chapter 2 is complete — draft chapter 3 and save progress
-// notes"). Combines PROJECT_WRITE and PROJECT_DOCUMENT without duplicates.
-const PROJECT_WRITE_DOCUMENT_DIRECT_TOOL_NAMES = [
-	...PROJECT_BASIC_DIRECT_TOOL_NAMES,
-	'create_onto_task',
-	'update_onto_task',
-	'create_onto_document',
-	'update_onto_document',
-	'get_document_tree',
-	'move_document_in_tree'
-] as const;
-
-const PROJECT_CALENDAR_DIRECT_TOOL_NAMES = [
-	'declare_turn_contract',
-	'declare_read_only_turn',
-	'request_turn_clarification',
-	'cancel_turn_contract',
-	'get_project_overview',
+	'move_onto_task',
+	// Background handoff and live web research.
+	'delegate_task',
+	'web_search',
+	'web_visit',
+	// Calendar reads and writes execute on the worker as of 2026-09-04.
 	'list_calendar_events',
 	'get_calendar_event_details',
 	'create_calendar_event',
 	'update_calendar_event',
+	'delete_calendar_event'
+] as const;
+
+/**
+ * The project surface: the global surface narrowed to one project and widened
+ * with the document workspace and this project's calendar binding. The two
+ * cross-project searches drop out because `search_project` is the in-scope
+ * equivalent and a focused turn that wanted another project would change
+ * context, not widen its search.
+ */
+const PROJECT_DIRECT_TOOL_NAMES = [
+	...GLOBAL_DIRECT_TOOL_NAMES.filter(
+		(name) => name !== 'search_onto_projects' && name !== 'search_all_projects'
+	),
+	'get_onto_project_details',
+	'search_project',
+	'list_onto_documents',
+	'get_document_tree',
+	'create_onto_document',
+	'update_onto_document',
+	'move_document_in_tree',
 	'get_project_calendar',
 	'set_project_calendar'
 ] as const;
 
-// Project creation is a bounded contract-first hot path. The project adapter
-// creates only the shell, so independently reviewed goal/task calls complete
-// fully specified creation requests after the shell returns its project id.
-// Relationship and unrelated tools remain outside this immutable surface.
-const PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES = [
+/**
+ * Project creation stays a bounded contract-first hot path. The project adapter
+ * creates a shell only (goals: 0, tasks: 0), so the independently reviewed
+ * goal and task creates are what complete a fully specified creation request
+ * after the shell returns its project id. Relationship, document and unrelated
+ * tools remain outside this immutable surface.
+ */
+const PROJECT_CREATE_DIRECT_TOOL_NAMES = [
 	'declare_turn_contract',
 	'declare_read_only_turn',
 	'request_turn_clarification',
@@ -191,23 +149,25 @@ const PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES = [
 	'create_onto_task'
 ] as const;
 
-// The web executor persists the complete ProjectSpec atomically, so child and
-// semantic-control tools add provider payload without adding capability.
-const PROJECT_CREATE_COMPOUND_DIRECT_TOOL_NAMES = ['create_onto_project'] as const;
+/**
+ * Gmail read group. Not a static surface member: worker admission appends it
+ * for users with an active `user_email_connections` row (A8, 2026-09-04).
+ */
+export const GATEWAY_EMAIL_SURFACE_TOOL_NAMES = [
+	'get_external_account_status',
+	'list_email_accounts',
+	'search_email_messages',
+	'get_email_message',
+	'request_email_account_connection'
+] as const;
 
 const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 	GatewaySurfaceProfileName,
 	readonly string[]
 > = {
-	global_basic: GLOBAL_BASIC_DIRECT_TOOL_NAMES,
-	global_write: GLOBAL_WRITE_DIRECT_TOOL_NAMES,
-	project_basic: PROJECT_BASIC_DIRECT_TOOL_NAMES,
-	project_write: PROJECT_WRITE_DIRECT_TOOL_NAMES,
-	project_document: PROJECT_DOCUMENT_DIRECT_TOOL_NAMES,
-	project_write_document: PROJECT_WRITE_DOCUMENT_DIRECT_TOOL_NAMES,
-	project_calendar: PROJECT_CALENDAR_DIRECT_TOOL_NAMES,
-	project_create_compound: PROJECT_CREATE_COMPOUND_DIRECT_TOOL_NAMES,
-	project_create_minimal: PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES
+	global: GLOBAL_DIRECT_TOOL_NAMES,
+	project: PROJECT_DIRECT_TOOL_NAMES,
+	project_create: PROJECT_CREATE_DIRECT_TOOL_NAMES
 };
 
 const GATEWAY_TOOL_DEFINITION_MAP = new Map(
@@ -242,30 +202,25 @@ function isGatewayToolEnabled(_name: string): boolean {
 	return true;
 }
 
+/**
+ * The whole routing decision. Every context that is not focused on one project
+ * — global, general, calendar, daily_brief, daily_brief_update — is a
+ * cross-project turn and gets the global surface, which already carries the
+ * calendar and task capabilities those contexts used to get from their own
+ * profile. The model's tool call is the semantic decision; nothing here reads
+ * the user's message.
+ */
 export function resolveGatewaySurfaceProfileForContextType(
 	contextType: ChatContextType
 ): GatewaySurfaceProfileName {
 	switch (contextType) {
-		case 'calendar':
-			return 'project_calendar';
 		case 'project':
 		case 'ontology':
-			// Common project reads and writes are a stable capability surface. The
-			// existing model call chooses semantically whether to use them; routing no
-			// longer guesses that choice from verb or noun strings.
-			return 'project_write_document';
+			return 'project';
 		case 'project_create':
-			return 'project_create_compound';
-		// The daily brief is an action surface: "bump these tasks, reschedule
-		// that, create a meeting" is the expected workload, and follow-up turns
-		// ("ok did you finish?") carry no mutation keywords for intent routing
-		// to catch. Keep writes available on every brief turn.
-		case 'daily_brief':
-			return 'global_write';
-		case 'global':
-		case 'general':
+			return 'project_create';
 		default:
-			return 'global_basic';
+			return 'global';
 	}
 }
 
@@ -318,7 +273,7 @@ export function getGatewaySurfaceForProfile(
 	profileName: GatewaySurfaceProfileName,
 	options: GatewaySurfaceOptions = {}
 ): ChatToolDefinition[] {
-	if (profileName === 'project_create_minimal' || profileName === 'project_create_compound') {
+	if (profileName === 'project_create') {
 		return materializeGatewayTools(
 			[],
 			[...resolveGatewayDirectToolNamesForProfile(profileName)]
