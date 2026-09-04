@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat-v2/stream-route/prompt-context.ts
 import type { ChatContextType } from '@buildos/shared-types';
 import type { AgentStateToolSummary } from '$lib/services/agentic-chat/state/agent-state-reconciliation-service';
 import { sanitizeAssistantFinalText } from '@buildos/agentic-chat-runtime/loop';

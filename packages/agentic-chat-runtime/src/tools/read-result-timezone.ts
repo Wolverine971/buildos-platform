@@ -27,7 +27,7 @@ import {
 	instantToZonedIso,
 	isIsoInstantString,
 	isValidIanaTimezone
-} from '@buildos/shared-agent-ops';
+} from '@buildos/shared-agent-ops/dates/civil-date';
 
 /** Key suffixes that mark a schedule field rather than content. */
 const SCHEDULE_KEY_SUFFIXES = ['_at', '_date', '_time', '_min', '_max'] as const;

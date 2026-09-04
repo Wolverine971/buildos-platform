@@ -35,13 +35,19 @@ import {
 	resolveCalendarReadCoverage
 } from '@buildos/agentic-chat-runtime/tools';
 import { ProjectCalendarReadService } from '@buildos/shared-agent-ops/calendar/project-calendar-read.service';
-import { GoogleCalendarConnectionError } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
+import {
+	type AggregatedGoogleCalendarEvent,
+	GoogleCalendarConnectionError,
+	type GoogleCalendarWriteResult
+} from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
 import {
 	type WorkerGoogleCalendarServicesOptions,
 	createWorkerGoogleCalendarServices
 } from './calendar-services';
 
 type WorkerGoogleCalendarServices = ReturnType<typeof createWorkerGoogleCalendarServices>;
+type WorkerCalendarEvent = GoogleCalendarWriteResult['event'] &
+	Partial<AggregatedGoogleCalendarEvent>;
 
 /**
  * Connection-level failures mean "there is no calendar to ask", not "the read
@@ -96,7 +102,7 @@ function unavailableListResult(reasonCode: string): AgenticChatCalendarListEvent
 	};
 }
 
-function toPortEvent(event: Record<string, any>): AgenticChatCalendarEventV1 {
+function toPortEvent(event: WorkerCalendarEvent): AgenticChatCalendarEventV1 {
 	return {
 		id: event.id ?? null,
 		providerEventId: event.providerEventId ?? event.id ?? null,
@@ -191,9 +197,7 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 			).length;
 			const sourceCount = sourceStatuses.length;
 			return {
-				events: (response.events ?? []).map((event) =>
-					toPortEvent(event as unknown as Record<string, any>)
-				),
+				events: (response.events ?? []).map(toPortEvent),
 				mode: 'source_aware',
 				coverage: resolveCalendarReadCoverage(sourceCount, successfulSourceCount),
 				sourceCount,
@@ -244,7 +248,7 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 				});
 				return {
 					event: toPortEvent({
-						...(result.event as unknown as Record<string, any>),
+						...result.event,
 						calendarSourceId: result.calendarSourceId,
 						connectionId: result.connectionId,
 						providerCalendarId: result.providerCalendarId,

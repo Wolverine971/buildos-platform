@@ -9,6 +9,7 @@ export default defineConfig({
 	entry: [
 		'src/index.ts',
 		'src/policy.ts',
+		'src/dates/civil-date.ts',
 		'src/ontology/onto.ts',
 		'src/ontology/onto-api.ts',
 		'src/ontology/project-graph.types.ts',

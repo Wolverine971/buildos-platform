@@ -1,5 +1,9 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_EMPTY_SYNTHESIS_REPAIR_PLAN_2026-06-23.md -->
 
+<!-- doc-status: point-in-time -->
+> **Point-in-time document.** Written 2026-06-24. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Empty Synthesis Repair Plan
 
 Date: 2026-06-23

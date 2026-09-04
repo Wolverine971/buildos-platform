@@ -12,6 +12,11 @@
 			"import": "./dist/index.mjs",
 			"require": "./dist/index.js"
 		},
+		"./dates/civil-date": {
+			"types": "./dist/dates/civil-date.d.ts",
+			"import": "./dist/dates/civil-date.mjs",
+			"require": "./dist/dates/civil-date.js"
+		},
 		"./ontology/onto": {
 			"types": "./dist/ontology/onto.d.ts",
 			"import": "./dist/ontology/onto.mjs",

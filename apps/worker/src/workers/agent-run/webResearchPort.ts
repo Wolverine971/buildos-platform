@@ -210,12 +210,12 @@ function normalizeSearchArgs(args: Record<string, unknown>): NormalizedNativeSea
 	}
 }
 
-async function performSearch(
+function performSearch(
 	args: Record<string, unknown>,
 	normalized: NormalizedNativeSearchRequest,
 	options: { tavilyCreditCostUsd: number },
 	discoveryEntry: NativeSearchDiscoveryCacheEntry
-): Promise<AgentRunSearchResultPayload> {
+): AgentRunSearchResultPayload {
 	const reservedCharge = estimateTavilySearchCharge(args, options.tavilyCreditCostUsd);
 	const { discovery } = discoveryEntry;
 	const providerCredits = discovery.diagnostics.usage?.credits ?? null;
@@ -597,12 +597,7 @@ export function createAgentRunWebResearchPort(
 			const loadSearchResult = async (): Promise<AgentRunCachedSearchResult> => {
 				const discovery = await loadSharedDiscovery();
 				return {
-					response: await performSearch(
-						args,
-						normalized,
-						resolvedOptions,
-						discovery.value
-					),
+					response: performSearch(args, normalized, resolvedOptions, discovery.value),
 					discoveryStatus: discovery.status
 				};
 			};
