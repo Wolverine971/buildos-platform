@@ -1,5 +1,6 @@
-// apps/web/src/lib/server/gmail-token-crypto.ts
-import { env as privateEnv } from '$env/dynamic/private';
+// packages/shared-agent-ops/src/email/gmail-token-crypto.ts
+// Server-only authenticated encryption for Gmail read OAuth credentials.
+// Hosts inject how an encryption key version resolves; no SvelteKit dependency.
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -17,12 +18,13 @@ export type GmailTokenContext = {
 	grantKind: GmailGrantKind;
 };
 
-function getPrivateEnv(name: string): string | undefined {
-	return privateEnv[name] ?? process.env[name];
-}
+export type GmailTokenKeyResolver = (version: number) => string | undefined;
 
-function getKeySecret(version: number): string {
-	const secret = getPrivateEnv(`PRIVATE_GMAIL_TOKEN_ENCRYPTION_KEY_V${version}`)?.trim();
+export const resolveGmailTokenKeyFromEnv: GmailTokenKeyResolver = (version) =>
+	process.env[`PRIVATE_GMAIL_TOKEN_ENCRYPTION_KEY_V${version}`];
+
+function getKeySecret(version: number, resolveKey: GmailTokenKeyResolver): string {
+	const secret = resolveKey(version)?.trim();
 	if (!secret) {
 		throw new Error(
 			`Gmail token encryption key V${version} is unavailable. Configure PRIVATE_GMAIL_TOKEN_ENCRYPTION_KEY_V${version}.`
@@ -37,9 +39,9 @@ function getKeySecret(version: number): string {
 	return secret;
 }
 
-function deriveKey(version: number): Buffer {
+function deriveKey(version: number, resolveKey: GmailTokenKeyResolver): Buffer {
 	return createHash('sha256')
-		.update(`${ENCRYPTION_CONTEXT}:v${version}:${getKeySecret(version)}`, 'utf8')
+		.update(`${ENCRYPTION_CONTEXT}:v${version}:${getKeySecret(version, resolveKey)}`, 'utf8')
 		.digest();
 }
 
@@ -87,7 +89,11 @@ export function isEncryptedGmailToken(value: string | null | undefined): boolean
 	return typeof value === 'string' && value.startsWith(ENCRYPTED_PREFIX);
 }
 
-export function encryptGmailToken(value: string, context: GmailTokenContext): string {
+export function encryptGmailToken(
+	value: string,
+	context: GmailTokenContext,
+	resolveKey: GmailTokenKeyResolver = resolveGmailTokenKeyFromEnv
+): string {
 	if (!value) {
 		throw new Error('Cannot encrypt an empty Gmail OAuth token');
 	}
@@ -98,7 +104,7 @@ export function encryptGmailToken(value: string, context: GmailTokenContext): st
 
 	const version = ACTIVE_KEY_VERSION;
 	const iv = randomBytes(IV_LENGTH);
-	const cipher = createCipheriv(ALGORITHM, deriveKey(version), iv);
+	const cipher = createCipheriv(ALGORITHM, deriveKey(version, resolveKey), iv);
 	cipher.setAAD(serializeContext(context));
 	const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
 	const authTag = cipher.getAuthTag();
@@ -107,7 +113,11 @@ export function encryptGmailToken(value: string, context: GmailTokenContext): st
 	return `${ENCRYPTED_PREFIX}${version}.${payload}`;
 }
 
-export function decryptGmailToken(value: string, context: GmailTokenContext): string {
+export function decryptGmailToken(
+	value: string,
+	context: GmailTokenContext,
+	resolveKey: GmailTokenKeyResolver = resolveGmailTokenKeyFromEnv
+): string {
 	const { version, payload } = parseEncryptedToken(value);
 	if (payload.length <= IV_LENGTH + AUTH_TAG_LENGTH) {
 		throw new Error('Encrypted Gmail OAuth token payload is malformed');
@@ -116,7 +126,7 @@ export function decryptGmailToken(value: string, context: GmailTokenContext): st
 	const iv = payload.subarray(0, IV_LENGTH);
 	const authTag = payload.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
 	const ciphertext = payload.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
-	const decipher = createDecipheriv(ALGORITHM, deriveKey(version), iv);
+	const decipher = createDecipheriv(ALGORITHM, deriveKey(version, resolveKey), iv);
 	decipher.setAAD(serializeContext(context));
 	decipher.setAuthTag(authTag);
 

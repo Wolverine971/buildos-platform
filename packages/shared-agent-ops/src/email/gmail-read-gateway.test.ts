@@ -1,4 +1,4 @@
-// apps/web/src/lib/server/gmail-read-gateway.test.ts
+// packages/shared-agent-ops/src/email/gmail-read-gateway.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { GmailReadGateway, GmailReadGatewayError } from './gmail-read-gateway';
 

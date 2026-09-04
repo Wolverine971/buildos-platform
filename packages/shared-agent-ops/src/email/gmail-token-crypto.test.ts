@@ -1,10 +1,5 @@
-// apps/web/src/lib/server/gmail-token-crypto.test.ts
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-// CI materializes apps/web/.env from the example file before Vitest starts.
-// Keep this unit test's runtime env mutable so deleting/replacing the key
-// exercises the fail-closed branches instead of reading that placeholder.
-vi.mock('$env/dynamic/private', () => ({ env: process.env }));
+// packages/shared-agent-ops/src/email/gmail-token-crypto.test.ts
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
 	decryptGmailToken,

@@ -1,4 +1,4 @@
-// apps/web/src/lib/server/gmail-gateway-infrastructure.test.ts
+// packages/shared-agent-ops/src/email/gmail-gateway-infrastructure.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { mapWithConcurrency, readJsonBounded } from './gmail-gateway-infrastructure';
 

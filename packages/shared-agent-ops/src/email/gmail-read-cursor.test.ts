@@ -1,4 +1,4 @@
-// apps/web/src/lib/server/gmail-read-cursor.test.ts
+// packages/shared-agent-ops/src/email/gmail-read-cursor.test.ts
 import { describe, expect, it } from 'vitest';
 import {
 	consumeGmailReadCursor,

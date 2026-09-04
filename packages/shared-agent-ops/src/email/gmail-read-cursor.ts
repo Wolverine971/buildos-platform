@@ -1,6 +1,8 @@
-// apps/web/src/lib/server/gmail-read-cursor.ts
-import { env as privateEnv } from '$env/dynamic/private';
+// packages/shared-agent-ops/src/email/gmail-read-cursor.ts
+// Encrypted, context-bound Gmail pagination cursors. Hosts inject how an
+// encryption key version resolves; no SvelteKit dependency.
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
+import { resolveGmailTokenKeyFromEnv, type GmailTokenKeyResolver } from './gmail-token-crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
@@ -25,8 +27,9 @@ type GmailReadCursorPayload = {
 	expiresAt: string;
 };
 
-type GmailReadCursorOptions = {
+export type GmailReadCursorOptions = {
 	secret?: string;
+	resolveKey?: GmailTokenKeyResolver;
 };
 
 export class GmailReadCursorError extends Error {
@@ -36,22 +39,25 @@ export class GmailReadCursorError extends Error {
 	}
 }
 
-function getPrivateEnv(name: string): string | undefined {
-	return privateEnv[name] ?? process.env[name];
-}
-
-function getKeySecret(version: number, override?: string): string {
-	const secret =
-		override?.trim() ?? getPrivateEnv(`PRIVATE_GMAIL_TOKEN_ENCRYPTION_KEY_V${version}`)?.trim();
+function getKeySecret(
+	version: number,
+	override: string | undefined,
+	resolveKey: GmailTokenKeyResolver
+): string {
+	const secret = override?.trim() ?? resolveKey(version)?.trim();
 	if (!secret || Buffer.byteLength(secret, 'utf8') < 32) {
 		throw new GmailReadCursorError();
 	}
 	return secret;
 }
 
-function deriveKey(version: number, secret?: string): Buffer {
+function deriveKey(version: number, options: GmailReadCursorOptions): Buffer {
+	const resolveKey = options.resolveKey ?? resolveGmailTokenKeyFromEnv;
 	return createHash('sha256')
-		.update(`${CURSOR_CONTEXT}:v${version}:${getKeySecret(version, secret)}`, 'utf8')
+		.update(
+			`${CURSOR_CONTEXT}:v${version}:${getKeySecret(version, options.secret, resolveKey)}`,
+			'utf8'
+		)
 		.digest();
 }
 
@@ -111,7 +117,7 @@ export function issueGmailReadCursor(
 
 	const version = ACTIVE_KEY_VERSION;
 	const iv = randomBytes(IV_LENGTH);
-	const cipher = createCipheriv(ALGORITHM, deriveKey(version, options.secret), iv);
+	const cipher = createCipheriv(ALGORITHM, deriveKey(version, options), iv);
 	cipher.setAAD(serializeContext(params));
 	const payload: GmailReadCursorPayload = {
 		pageToken: params.pageToken,
@@ -136,7 +142,7 @@ export function consumeGmailReadCursor(
 		const iv = payload.subarray(0, IV_LENGTH);
 		const authTag = payload.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
 		const ciphertext = payload.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
-		const decipher = createDecipheriv(ALGORITHM, deriveKey(version, options.secret), iv);
+		const decipher = createDecipheriv(ALGORITHM, deriveKey(version, options), iv);
 		decipher.setAAD(serializeContext(params));
 		decipher.setAuthTag(authTag);
 		const decoded = JSON.parse(

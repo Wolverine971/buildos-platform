@@ -1,4 +1,4 @@
-// apps/web/src/lib/server/gmail-read-oauth.service.test.ts
+// packages/shared-agent-ops/src/email/gmail-read-oauth.service.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { decryptGmailToken, encryptGmailToken } from './gmail-token-crypto';
