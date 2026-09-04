@@ -76,10 +76,12 @@ describe('buildLitePromptPreview', () => {
 			'final_response_contract',
 			'safety_data_rules',
 			'focus_purpose',
-			'location_loaded_context',
-			'timeline_recent_activity',
-			'context_inventory_retrieval'
+			'location_loaded_context'
 		]);
+		// Stage S7 (2026-09-04): timeline_recent_activity and
+		// context_inventory_retrieval fold into location_loaded_context.
+		expect(preview.lite.system_prompt).not.toContain('## Timeline and Recent Activity');
+		expect(preview.lite.system_prompt).not.toContain('## Loaded Data and Retrieval Boundaries');
 		// WP-7 (2026-07-10): the variant lives in envelope metadata, not model input.
 		expect(preview.lite.system_prompt).not.toContain('Prompt variant:');
 		expect(preview.lite.system_prompt).toContain('# BuildOS Agentic Chat');

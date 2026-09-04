@@ -40,20 +40,29 @@ export const LITE_PROMPT_VARIANT = 'lite_seed_v1' as const;
 export type LitePromptVariant = typeof LITE_PROMPT_VARIANT;
 export type LitePromptSectionKind = 'static' | 'dynamic' | 'mixed';
 
+// 15 -> 11 sections (one-engine stage S7, 2026-09-04):
+// - `active_domain_signals` retired. The candidate-domain / outcome-card /
+//   skill-gate signal list is routing metadata the model never needed; the
+//   skill-load rule it restated already lives in Operating Strategy. The one
+//   payload that section carried for real - a server-preloaded skill playbook -
+//   moved into `situational_rules`, the other per-turn overlay section.
+// - `timeline_recent_activity` and `context_inventory_retrieval` folded into
+//   `location_loaded_context`: one section that says what is loaded and what is
+//   retrievable, instead of three that restated each other's fetch rule.
+// - `daily_brief` retired with the surface merge; daily-brief context routes to
+//   the `global` tool surface and its brief payload rides the loaded-context
+//   index. The "you are in a daily-brief turn" sentence is already in
+//   `focus_purpose` (purpose line + brief guardrails).
 export type LitePromptSectionId =
 	| 'identity_mission'
 	| 'operating_strategy'
 	| 'safety_data_rules'
 	| 'capabilities_skills_tools'
-	| 'active_domain_signals'
 	| 'situational_rules'
 	| 'project_start_here'
 	| 'focus_purpose'
-	| 'daily_brief'
 	| 'location_loaded_context'
 	| 'project_knowledge_map'
-	| 'timeline_recent_activity'
-	| 'context_inventory_retrieval'
 	| 'tool_surface_dynamic'
 	| 'final_response_contract';
 
