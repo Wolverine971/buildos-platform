@@ -6,7 +6,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loginAndGetCookie } from '../harness/auth';
 import { loadHarnessEnv } from '../harness/env';
 import { assertTurnSucceeded } from '../harness/assertions';
-import { runTurn, warmupPing } from '../harness/sse-client';
+import {
+	createAgenticE2EWorkerClient,
+	HARNESS_EXECUTION_MODE,
+	type AgenticE2EWorkerClient
+} from '../harness/worker-client';
 import { sweepOrphanProjects, sweepStaleOrphanProjects, teardownProject } from '../harness/seed';
 import { teardownChatSession, waitForUsageSummary } from '../harness/telemetry';
 import { ensureTestAuthUser, provisionTestUser } from '../harness/test-user';
@@ -35,11 +39,17 @@ const selectedScenarios =
 		: frozenPhaseACorpus.scenarios;
 
 let ctx: ScenarioContext | null = null;
+let workerClient: AgenticE2EWorkerClient | null = null;
 const completedRuns: PhaseAControlRun[] = [];
 
 function requireCtx(): ScenarioContext {
 	if (!ctx) throw new Error('[phase-a-control] harness context not initialized');
 	return ctx;
+}
+
+function requireWorkerClient(): AgenticE2EWorkerClient {
+	if (!workerClient) throw new Error('[phase-a-control] worker client not initialized');
+	return workerClient;
 }
 
 async function urlResolves(url: string): Promise<boolean> {
@@ -102,9 +112,7 @@ async function executeControlRun(params: {
 	);
 	let sessionId: string | undefined;
 	try {
-		const result = await runTurn({
-			baseUrl: params.ctx.baseUrl,
-			cookie: params.ctx.cookie,
+		const result = await requireWorkerClient().runTurn({
 			message: params.scenario.request_text,
 			contextType: params.scenario.context_type,
 			entityId: seed.projectId
@@ -158,7 +166,7 @@ async function executeControlRun(params: {
 			assertTurnSucceeded(result);
 			expect(
 				result.timing.ttftMs,
-				'control baseline requires a client-observed SSE text event'
+				'control baseline requires a client-observed assistant text event'
 			).not.toBeNull();
 			expect(
 				usage.requestCount,
@@ -185,12 +193,27 @@ phaseADescribe('Phase A frozen-corpus control baseline (paid, real endpoint)', (
 			password: env.testUserPassword
 		});
 		const db = await provisionTestUser({ userId, email: env.testUserEmail });
-		await warmupPing({ baseUrl: env.baseUrl, cookie });
+		workerClient = await createAgenticE2EWorkerClient({
+			baseUrl: env.baseUrl,
+			cookie,
+			email: env.testUserEmail,
+			password: env.testUserPassword,
+			userId,
+			admin: db.admin
+		});
+		await workerClient.requireWorkerLease();
 		await sweepStaleOrphanProjects(db);
-		ctx = { baseUrl: env.baseUrl, cookie, db, executionMode: 'legacy_sse' };
+		ctx = { baseUrl: env.baseUrl, cookie, db, executionMode: HARNESS_EXECUTION_MODE };
 	}, 60_000);
 
 	afterAll(async () => {
+		if (workerClient) {
+			try {
+				await workerClient.close();
+			} finally {
+				workerClient = null;
+			}
+		}
 		const report = buildControlBaselineReport(
 			frozenPhaseACorpus.corpus_version,
 			completedRuns,

@@ -2,8 +2,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	createAuthenticatedHarnessFetch,
+	HARNESS_EXECUTION_MODE,
 	requireAdvertisedMutationTools,
-	resolveAgenticE2EExecutionMode,
 	waitForWorkerTerminalWithRecovery
 } from './worker-client';
 
@@ -21,14 +21,9 @@ describe('agentic E2E worker client boundaries', () => {
 		delete process.env.AGENTIC_E2E_EXECUTION_MODE;
 	});
 
-	it('defaults to legacy but accepts only the two explicit execution modes', () => {
-		delete process.env.AGENTIC_E2E_EXECUTION_MODE;
-		expect(resolveAgenticE2EExecutionMode()).toBe('legacy_sse');
-		expect(resolveAgenticE2EExecutionMode(' worker_realtime ')).toBe('worker_realtime');
-		expect(resolveAgenticE2EExecutionMode('legacy_sse')).toBe('legacy_sse');
-		expect(() => resolveAgenticE2EExecutionMode('auto')).toThrow(
-			'AGENTIC_E2E_EXECUTION_MODE must be legacy_sse or worker_realtime'
-		);
+	it('pins the harness to the worker lane regardless of the retired env override', () => {
+		process.env.AGENTIC_E2E_EXECUTION_MODE = 'legacy_sse';
+		expect(HARNESS_EXECUTION_MODE).toBe('worker_realtime');
 	});
 
 	it('prefixes product-relative requests and carries the authenticated cookie', async () => {

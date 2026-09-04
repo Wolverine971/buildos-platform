@@ -4,10 +4,10 @@
 import type { AgentTimingSummary, ChatToolCall, LastTurnContext } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 
-/** A chat context mode accepted by POST /api/agent/v2/stream. */
+/** A chat context mode accepted by the agentic chat turn contract. */
 export type HarnessContextType = 'global' | 'project' | 'project_create' | 'daily_brief';
 
-/** Production transport selected for this harness run. */
+/** Value of `chat_turn_runs.execution_mode`. The harness only drives `worker_realtime`. */
 export type AgenticE2EExecutionMode = 'legacy_sse' | 'worker_realtime';
 
 /** Client-observed stream timing; durations are relative to the fetch start. */

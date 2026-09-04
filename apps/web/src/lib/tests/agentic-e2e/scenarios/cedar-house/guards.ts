@@ -44,8 +44,8 @@ export function requireStreamRunId(turn: TurnResult): string {
 export async function assertWorkerLaneOnly(turn: TurnResult, ctx: ScenarioContext): Promise<void> {
 	if (ctx.executionMode !== 'worker_realtime') {
 		throw new Error(
-			'[assert] the Cedar House battery is worker-path only; run it with ' +
-				`AGENTIC_E2E_EXECUTION_MODE=worker_realtime (received ${ctx.executionMode})`
+			'[assert] the Cedar House battery is worker-path only; the harness ' +
+				`declared the ${ctx.executionMode} lane`
 		);
 	}
 	await assertNoLegacyRows(ctx.db.admin, turn.sessionId, 'worker_realtime');

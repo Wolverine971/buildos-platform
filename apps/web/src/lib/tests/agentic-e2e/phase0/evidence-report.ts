@@ -827,7 +827,7 @@ export function buildPhase0EvidenceReport(params: {
 		repository: params.repository,
 		configuration: {
 			baseUrl: params.baseUrl,
-			executionMode: params.executionMode ?? 'legacy_sse',
+			executionMode: params.executionMode ?? 'worker_realtime',
 			scenarioIds: params.scenarioIds,
 			repetitions: params.repetitions,
 			retryCount: params.retryCount

@@ -5,7 +5,7 @@
 		"web": {
 			"tsconfig": "tsconfig.tests.json",
 			"compiler": "typescript",
-			"maxErrors": 354,
+			"maxErrors": 341,
 			"note": "Remaining web test fixture debt after hardening OpenRouter, question-tree, admin request lifecycle, agent stream, and related strict-indexing fixtures on 2026-08-30. Lower this ceiling whenever errors are fixed."
 		},
 		"worker": {

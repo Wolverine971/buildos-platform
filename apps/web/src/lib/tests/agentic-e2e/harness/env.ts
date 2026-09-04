@@ -32,7 +32,9 @@ export function loadHarnessEnv(): HarnessEnv {
 	if (cached) return cached;
 
 	cached = {
-		baseUrl: (privateEnv.AGENTIC_E2E_BASE_URL || 'http://localhost:5173').replace(/\/$/, ''),
+		// 127.0.0.1, never localhost: Node resolves localhost to ::1 first while
+		// `vite dev` binds IPv4 only, so the IPv6 attempt fails the whole run.
+		baseUrl: (privateEnv.AGENTIC_E2E_BASE_URL || 'http://127.0.0.1:5173').replace(/\/$/, ''),
 		testUserEmail: required('AGENTIC_TEST_USER_EMAIL', privateEnv.AGENTIC_TEST_USER_EMAIL),
 		testUserPassword: required(
 			'AGENTIC_TEST_USER_PASSWORD',

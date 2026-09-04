@@ -1,4 +1,4 @@
-// apps/web/src/lib/tests/agentic-e2e/harness/sse-client-timing.test.ts
+// apps/web/src/lib/tests/agentic-e2e/harness/turn-result.test.ts
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -6,9 +6,9 @@ import {
 	createTurnTiming,
 	readServerTiming,
 	recordTurnEventTiming
-} from './sse-client';
+} from './turn-result';
 
-describe('agentic E2E client timing', () => {
+describe('agentic E2E turn-result timing', () => {
 	it('records TTFT from the first text event, not the first SSE event', () => {
 		const timing = createTurnTiming('2026-07-24T17:00:00.000Z');
 

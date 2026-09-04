@@ -27,7 +27,11 @@ import {
 import { excludeSystemDocuments } from '../harness/assertions';
 import { loginAndGetCookie } from '../harness/auth';
 import { loadHarnessEnv } from '../harness/env';
-import { runTurn, warmupPing } from '../harness/sse-client';
+import {
+	createAgenticE2EWorkerClient,
+	HARNESS_EXECUTION_MODE,
+	type AgenticE2EWorkerClient
+} from '../harness/worker-client';
 import { sweepOrphanProjects, sweepStaleOrphanProjects, teardownProject } from '../harness/seed';
 import {
 	getToolExecutions,
@@ -92,11 +96,17 @@ interface OpenBriefControlAttempt {
 }
 
 let ctx: ScenarioContext | null = null;
+let workerClient: AgenticE2EWorkerClient | null = null;
 const attempts: OpenBriefControlAttempt[] = [];
 
 function requireCtx(): ScenarioContext {
 	if (!ctx) throw new Error('[open-brief-control] harness context not initialized');
 	return ctx;
+}
+
+function requireWorkerClient(): AgenticE2EWorkerClient {
+	if (!workerClient) throw new Error('[open-brief-control] worker client not initialized');
+	return workerClient;
 }
 
 function matchesPin(actual: string, expected: string): boolean {
@@ -109,9 +119,8 @@ function infrastructureInvalidReason(params: {
 	errors: string[];
 	usage: Awaited<ReturnType<typeof waitForUsageSummary>>;
 }): string | null {
-	if (!params.completed) return 'The stream did not emit a terminal done event.';
-	if (params.errors.length > 0)
-		return `The stream emitted error(s): ${params.errors.join(' | ')}`;
+	if (!params.completed) return 'The turn did not emit a terminal done event.';
+	if (params.errors.length > 0) return `The turn emitted error(s): ${params.errors.join(' | ')}`;
 	if (params.usage.requestCount === 0) return 'No stream-correlated model usage was observed.';
 	const mismatch = params.usage.models.find((model) => !matchesPin(model, EXPECTED_MODEL));
 	if (mismatch) return `Actual control model ${mismatch} is outside the pin ${EXPECTED_MODEL}.`;
@@ -259,9 +268,7 @@ async function executeAttempt(params: {
 	try {
 		const beforeDocuments = await listDocuments(context.db.admin, seed.projectId!);
 		const beforeDocumentIds = new Set(beforeDocuments.map((document) => document.id));
-		const firstTurn = await runTurn({
-			baseUrl: context.baseUrl,
-			cookie: context.cookie,
+		const firstTurn = await requireWorkerClient().runTurn({
 			message: params.cell.requestText,
 			contextType: 'project',
 			entityId: seed.projectId
@@ -279,9 +286,7 @@ async function executeAttempt(params: {
 			firstTurn.completed &&
 			firstTurn.errors.length === 0
 		) {
-			const followup = await runTurn({
-				baseUrl: context.baseUrl,
-				cookie: context.cookie,
+			const followup = await requireWorkerClient().runTurn({
 				message: OPEN_BRIEF_BLOCKED_FOLLOWUP,
 				contextType: 'project',
 				entityId: seed.projectId,
@@ -466,12 +471,27 @@ controlDescribe('Open-brief cohort 1 — production v2 control lane (paid)', () 
 			password: env.testUserPassword
 		});
 		const db = await provisionTestUser({ userId, email: env.testUserEmail });
-		await warmupPing({ baseUrl: env.baseUrl, cookie });
+		workerClient = await createAgenticE2EWorkerClient({
+			baseUrl: env.baseUrl,
+			cookie,
+			email: env.testUserEmail,
+			password: env.testUserPassword,
+			userId,
+			admin: db.admin
+		});
+		await workerClient.requireWorkerLease();
 		await sweepStaleOrphanProjects(db);
-		ctx = { baseUrl: env.baseUrl, cookie, db, executionMode: 'legacy_sse' };
+		ctx = { baseUrl: env.baseUrl, cookie, db, executionMode: HARNESS_EXECUTION_MODE };
 	}, 60_000);
 
 	afterAll(async () => {
+		if (workerClient) {
+			try {
+				await workerClient.close();
+			} finally {
+				workerClient = null;
+			}
+		}
 		writeReport();
 		if (ctx) await sweepOrphanProjects(ctx.db);
 	});
