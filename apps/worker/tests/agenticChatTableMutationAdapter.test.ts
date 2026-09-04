@@ -10,6 +10,10 @@
 import { EntityMentionPingServiceError } from '@buildos/shared-agent-ops/ops/entity-mention-ping.service';
 import { TaskMoveServiceError } from '@buildos/shared-agent-ops/ontology/task-move.service';
 import { describe, expect, it, vi } from 'vitest';
+import {
+	AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1,
+	AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1
+} from '../src/workers/agentic-chat/mutation-argument-normalizers';
 import { AgenticChatMutationAdapterError } from '../src/workers/agentic-chat/mutation-executor';
 import { reviewedAgenticChatGatewayMutationSpecV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
 import { AgenticChatTableMutationAdapter } from '../src/workers/agentic-chat/tableMutationAdapter';
@@ -2320,6 +2324,300 @@ describe('table row tag_onto_entity', () => {
 			disposition: 'outcome_uncertain',
 			failureCode: 'tag_onto_entity_receipt_invalid'
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Calendar writes (2026-09-04): four table rows on the `calendar_service`
+// runner. The port itself is covered by agenticChatCalendarWritePort.test.ts;
+// these cases prove the row wiring — fence, admitted arguments, receipt shape,
+// and the structured reconnect/not-configured envelopes.
+// ---------------------------------------------------------------------------
+
+describe('table rows calendar writes', () => {
+	const PROJECT_ID = '90000000-0000-4000-8000-000000000009';
+	const OTHER_PROJECT_ID = '91000000-0000-4000-8000-000000000091';
+	const EVENT_ID = '92000000-0000-4000-8000-000000000092';
+	const CONNECTION_ID = '93000000-0000-4000-8000-000000000093';
+
+	function calendarPort(result: Record<string, unknown> | (() => never)) {
+		return {
+			execute: vi.fn(async () => (typeof result === 'function' ? result() : result))
+		};
+	}
+
+	function createInput(args: Record<string, unknown>, overrides: Partial<InputSpec> = {}) {
+		return mutationInput({
+			toolName: 'create_calendar_event',
+			operationName: 'cal.event.create',
+			projectContext: null,
+			args,
+			...overrides
+		});
+	}
+
+	it('carries the whole calendar receipt for a synced project event', async () => {
+		const calendarWrites = calendarPort({
+			ok: true,
+			event_id: EVENT_ID,
+			google_event_id: 'google-1',
+			html_link: 'https://calendar.google.com/event?eid=google-1',
+			calendar_id: 'project@group.calendar.google.com',
+			scope: 'project',
+			synced: true,
+			task_link_created: true
+		});
+
+		await expect(
+			adapter({ calendarWrites }).execute(
+				createInput(
+					{ title: 'Kickoff', start_at: '2026-09-10T15:00:00Z', project_id: PROJECT_ID },
+					{ projectContext: PROJECT_ID }
+				)
+			)
+		).resolves.toEqual({
+			ok: true,
+			event_id: EVENT_ID,
+			google_event_id: 'google-1',
+			html_link: 'https://calendar.google.com/event?eid=google-1',
+			calendar_id: 'project@group.calendar.google.com',
+			scope: 'project',
+			synced: true,
+			task_link_created: true,
+			message: 'Created the calendar event and synced it to Google.'
+		});
+		expect(calendarWrites.execute).toHaveBeenCalledWith({
+			toolName: 'create_calendar_event',
+			userId: USER_ID,
+			sessionId: SESSION_ID,
+			projectId: PROJECT_ID,
+			arguments: {
+				title: 'Kickoff',
+				start_at: '2026-09-10T15:00:00Z',
+				project_id: PROJECT_ID
+			}
+		});
+	});
+
+	it('reports a dead Google grant as data, keeping the unsynced ontology row', async () => {
+		const calendarWrites = calendarPort({
+			ok: false,
+			error_code: 'reconnect_required',
+			connection_id: CONNECTION_ID,
+			event_id: EVENT_ID,
+			google_event_id: null,
+			html_link: null,
+			calendar_id: null,
+			scope: 'user',
+			synced: false,
+			sync_error: 'This Google Calendar account must be reconnected'
+		});
+
+		const receipt = (await adapter({ calendarWrites }).execute(
+			createInput({ title: 'Dentist', start_at: '2026-09-10T15:00:00Z' })
+		)) as Record<string, unknown>;
+
+		expect(receipt).toMatchObject({
+			ok: false,
+			error_code: 'reconnect_required',
+			connection_id: CONNECTION_ID,
+			event_id: EVENT_ID,
+			synced: false,
+			requires_user_action: true,
+			status: 'browser_handoff_required',
+			sync_error: 'This Google Calendar account must be reconnected'
+		});
+		// Same envelope shape the Gmail connection handoff renders.
+		expect(receipt.client_action).toMatchObject({
+			kind: 'connect_google_calendar',
+			action_id: `calendar:${CONNECTION_ID}`,
+			mode: 'reconnect',
+			connection_id: CONNECTION_ID,
+			title: 'Reconnect Google Calendar',
+			button_label: 'Reconnect Google Calendar'
+		});
+	});
+
+	it('reports a worker with no Calendar OAuth deployment as not_configured', async () => {
+		const calendarWrites = calendarPort({
+			ok: false,
+			error_code: 'not_configured',
+			event_id: EVENT_ID,
+			google_event_id: null,
+			html_link: null,
+			calendar_id: null,
+			scope: 'user',
+			synced: false
+		});
+
+		const receipt = (await adapter({ calendarWrites }).execute(
+			createInput({ title: 'Dentist', start_at: '2026-09-10T15:00:00Z' })
+		)) as Record<string, unknown>;
+
+		expect(receipt).toMatchObject({
+			ok: false,
+			error_code: 'not_configured',
+			connection_id: null,
+			requires_user_action: false,
+			synced: false
+		});
+		expect(receipt).not.toHaveProperty('client_action');
+	});
+
+	it('refuses attendees and reminders before the port is reached', async () => {
+		const calendarWrites = calendarPort({ ok: true, event_id: EVENT_ID, synced: true });
+		const port = adapter({ calendarWrites });
+
+		for (const forbidden of ['attendees', 'reminders']) {
+			await expect(
+				port.execute(
+					createInput({
+						title: 'Kickoff',
+						start_at: '2026-09-10T15:00:00Z',
+						[forbidden]: ['someone@example.com']
+					})
+				)
+			).rejects.toMatchObject({
+				disposition: 'known_failed',
+				failureCode: 'mutation_arguments_not_admitted'
+			});
+		}
+		expect(calendarWrites.execute).not.toHaveBeenCalled();
+	});
+
+	it('strips attendees and reminders in the normalizer and names them on the receipt', () => {
+		const context = {
+			toolName: 'create_calendar_event',
+			input: { arguments: {} },
+			args: {
+				title: 'Kickoff',
+				attendees: ['someone@example.com'],
+				reminders: { useDefault: true }
+			},
+			projectId: null,
+			expected: {}
+		} as never as Parameters<
+			(typeof AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1)['strip_calendar_attendees_and_reminders']
+		>[0];
+
+		AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1.strip_calendar_attendees_and_reminders(
+			context
+		);
+
+		expect(context.args).toEqual({ title: 'Kickoff' });
+		expect(context.expected.strippedFields).toEqual(['attendees', 'reminders']);
+		expect(
+			AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1.calendar_event(
+				{ ok: true, event_id: EVENT_ID, scope: 'user', synced: false },
+				context
+			)
+		).toMatchObject({ stripped_fields: ['attendees', 'reminders'] });
+	});
+
+	it('never widens past the admitted project fence', async () => {
+		const calendarWrites = calendarPort({ ok: true, event_id: EVENT_ID, synced: true });
+
+		await expect(
+			adapter({ calendarWrites }).execute(
+				createInput(
+					{ title: 'Kickoff', start_at: '2026-09-10T15:00:00Z', project_id: PROJECT_ID },
+					{ projectContext: OTHER_PROJECT_ID }
+				)
+			)
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'mutation_project_scope_mismatch'
+		});
+		expect(calendarWrites.execute).not.toHaveBeenCalled();
+	});
+
+	it('surfaces a membership refusal as a known failure, not an uncertain commit', async () => {
+		const calendarWrites = calendarPort(() => {
+			throw new AgenticChatMutationAdapterError(
+				'known_failed',
+				'update_calendar_event_access_denied',
+				'Project not found or access denied'
+			);
+		});
+
+		await expect(
+			adapter({ calendarWrites }).execute(
+				mutationInput({
+					toolName: 'update_calendar_event',
+					operationName: 'cal.event.update',
+					projectContext: PROJECT_ID,
+					args: { onto_event_id: EVENT_ID, title: 'Renamed' }
+				})
+			)
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'update_calendar_event_access_denied'
+		});
+	});
+
+	it('classifies an unexpected calendar failure as an uncertain commit', async () => {
+		const calendarWrites = calendarPort(() => {
+			throw new Error('socket hang up');
+		});
+
+		await expect(
+			adapter({ calendarWrites }).execute(
+				mutationInput({
+					toolName: 'delete_calendar_event',
+					operationName: 'cal.event.delete',
+					projectContext: PROJECT_ID,
+					args: { onto_event_id: EVENT_ID }
+				})
+			)
+		).rejects.toMatchObject({
+			disposition: 'outcome_uncertain',
+			failureCode: 'delete_calendar_event_outcome_uncertain'
+		});
+	});
+
+	it('returns the project-calendar receipt shape for set_project_calendar', async () => {
+		const calendarWrites = calendarPort({
+			ok: true,
+			project_id: PROJECT_ID,
+			calendar_id: 'project@group.calendar.google.com',
+			sync_mode: 'actor_projection'
+		});
+
+		await expect(
+			adapter({ calendarWrites }).execute(
+				mutationInput({
+					toolName: 'set_project_calendar',
+					operationName: 'cal.project.set',
+					projectContext: PROJECT_ID,
+					args: { project_id: PROJECT_ID, name: 'Launch calendar' }
+				})
+			)
+		).resolves.toEqual({
+			ok: true,
+			project_id: PROJECT_ID,
+			calendar_id: 'project@group.calendar.google.com',
+			sync_mode: 'actor_projection',
+			message: 'Updated the project calendar.'
+		});
+	});
+
+	it('requires a project id for set_project_calendar', async () => {
+		const calendarWrites = calendarPort({ ok: true, project_id: PROJECT_ID });
+
+		await expect(
+			adapter({ calendarWrites }).execute(
+				mutationInput({
+					toolName: 'set_project_calendar',
+					operationName: 'cal.project.set',
+					projectContext: null,
+					args: { name: 'Launch calendar' }
+				})
+			)
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'mutation_scope_invalid'
+		});
+		expect(calendarWrites.execute).not.toHaveBeenCalled();
 	});
 });
 

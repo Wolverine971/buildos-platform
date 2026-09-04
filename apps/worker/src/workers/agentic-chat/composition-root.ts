@@ -45,6 +45,10 @@ import {
 import { AgenticChatTurnProviderAdapter } from './provider/turn-provider';
 import { AgenticChatToolExecutionAdapter } from './tools/execution-adapter';
 import {
+	type AgenticChatCalendarWritePortV1,
+	createWorkerAgenticChatCalendarWritePort
+} from './tools/calendar-write-port';
+import {
 	type AgenticChatRecoverySnapshotRpcClient,
 	SupabaseAgenticChatRecoverySnapshotAdapter
 } from './recoverySnapshot';
@@ -183,6 +187,14 @@ export function createAgenticChatCompositionRoot(options: {
 	/** Injectable for tests; production reuses the worker's SSRF-safe native web port. */
 	webResearch?: WebResearchPort;
 	/**
+	 * Injectable for tests. Production composes the source-aware Google Calendar
+	 * services, `OntoEventSyncService` and the shared project-calendar service
+	 * per execution inside the port — never at boot and never cached across
+	 * turns — so a worker deployed without the Calendar OAuth env still starts
+	 * and a calendar write reports `not_configured` as structured data.
+	 */
+	calendarWrites?: AgenticChatCalendarWritePortV1;
+	/**
 	 * One surface controls both provider advertisement and installed adapters.
 	 * Production passes the complete reviewed catalog; partial maps remain useful
 	 * for isolated assembly tests without permitting the two sides to drift.
@@ -283,10 +295,14 @@ export function createAgenticChatCompositionRoot(options: {
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort()
 	});
+	const calendarWrites =
+		options.calendarWrites ??
+		createWorkerAgenticChatCalendarWritePort({ client: options.client });
 	const mutationAdapters: AgenticChatMutationAdapterEntry[] =
 		selectAgenticChatMutationAdapterEntriesV1({
 			capabilities: mutationCapabilities,
-			tableAdapter: () => new AgenticChatTableMutationAdapter(options.client),
+			tableAdapter: () =>
+				new AgenticChatTableMutationAdapter(options.client, { calendarWrites }),
 			customAdapters: {
 				create_onto_project: () =>
 					new AgenticChatCreateOntoProjectMutationAdapter(options.client),

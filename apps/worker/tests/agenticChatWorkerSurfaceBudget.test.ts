@@ -119,9 +119,15 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		//   global_basic            opening 11 tools /  7,435 B
 		//   project_write_document  opening 16 tools / 16,847 B
 		//   project_write_document  all pass 17 tools / 19,900 B
+		// Re-ratcheted 2026-09-04 (calendar writes on the worker): the profile
+		// already listed set_project_calendar, which the worker used to drop as
+		// unexecutable; now that it executes, its narrowed schema is billed.
+		// global_basic is unchanged. Measured:
+		//   project_write_document  opening 16 tools / 17,598 B (+751)
+		//   project_write_document  all pass 17 tools / 20,651 B (+751)
 		expect(globalBasic.openingBytes).toBeLessThanOrEqual(7_810);
-		expect(projectWriteDocument.openingBytes).toBeLessThanOrEqual(17_690);
-		expect(projectWriteDocument.admittedBytes).toBeLessThanOrEqual(20_900);
+		expect(projectWriteDocument.openingBytes).toBeLessThanOrEqual(18_470);
+		expect(projectWriteDocument.admittedBytes).toBeLessThanOrEqual(21_680);
 	});
 
 	it('mounts document reads on the global worker surface', () => {
@@ -185,16 +191,17 @@ describe('Agentic Chat worker-projected surface budget', () => {
 			)
 		).toBeNull();
 
-		// global_write names calendar WRITES the worker cannot execute. The three
-		// calendar reads moved to the worker on 2026-09-03, so they stay mounted.
+		// global_write used to render an override purely because it named calendar
+		// WRITES the worker could not execute. The reads moved on 2026-09-03 and
+		// the writes on 2026-09-04, so the whole profile is now executable and the
+		// third tool list disappears from the prompt.
 		const globalWrite = measure('global_write');
-		const override = buildWorkerToolSurfaceOverride(globalWrite.input, globalWrite.opening);
-		expect(override).toContain('Worker execution surface override');
+		expect(buildWorkerToolSurfaceOverride(globalWrite.input, globalWrite.opening)).toBeNull();
 		const globalWriteNames = globalWrite.opening.map((tool) => tool.function.name);
 		expect(globalWriteNames).toContain('list_calendar_events');
 		expect(globalWriteNames).toContain('get_calendar_event_details');
-		expect(globalWriteNames).not.toContain('create_calendar_event');
-		expect(globalWriteNames).not.toContain('update_calendar_event');
+		expect(globalWriteNames).toContain('create_calendar_event');
+		expect(globalWriteNames).toContain('update_calendar_event');
 	});
 
 	it('never lets a worker-projected description advertise a tool outside the same surface', () => {

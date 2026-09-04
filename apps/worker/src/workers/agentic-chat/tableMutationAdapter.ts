@@ -38,7 +38,14 @@ import {
 	AGENTIC_CHAT_MUTATION_RECEIPT_POST_PROCESSORS_V1,
 	type AgenticChatMutationExecutionContextV1
 } from './mutation-argument-normalizers';
-import type { AgenticChatMutatingToolPortV1 } from './mutation-executor';
+import {
+	type AgenticChatMutatingToolPortV1,
+	AgenticChatMutationAdapterError
+} from './mutation-executor';
+import {
+	type AgenticChatCalendarWritePortV1,
+	createWorkerAgenticChatCalendarWritePort
+} from './tools/calendar-write-port';
 import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
@@ -88,6 +95,8 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 	private readonly pingEntity: EntityPingRunner;
 	private readonly injectedTaskSync: TaskSyncPort | undefined;
 	private memoizedTaskSync: TaskSyncPort | undefined;
+	private readonly injectedCalendarWrites: AgenticChatCalendarWritePortV1 | undefined;
+	private memoizedCalendarWrites: AgenticChatCalendarWritePortV1 | undefined;
 
 	constructor(
 		private readonly client: SupabaseClient<Database>,
@@ -96,12 +105,14 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 			taskSync?: TaskSyncPort;
 			moveTask?: TaskMoveRunner;
 			pingEntity?: EntityPingRunner;
+			calendarWrites?: AgenticChatCalendarWritePortV1;
 		} = {}
 	) {
 		this.runGateway = options.runGateway ?? runGatewayWriteOp;
 		this.moveTask = options.moveTask ?? moveOntoTaskAtomic;
 		this.pingEntity = options.pingEntity ?? pingOntoEntity;
 		this.injectedTaskSync = options.taskSync;
+		this.injectedCalendarWrites = options.calendarWrites;
 	}
 
 	async execute(input: MutationInput): Promise<JsonObject> {
@@ -161,7 +172,44 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 				return this.runTaskMove(context);
 			case 'entity_ping_service':
 				return this.runEntityPing(context);
+			case 'calendar_service':
+				return this.runCalendarWrite(context);
 		}
+	}
+
+	/**
+	 * Calendar writes reach Google directly from the worker. The port owns the
+	 * provider composition and the explicit authorization the service-role client
+	 * cannot provide; everything else on this row — the admitted-surface fence,
+	 * the project fence, the normalizers, the receipt builder — is the same table
+	 * machinery every other reviewed write runs through.
+	 */
+	private async runCalendarWrite(
+		context: AgenticChatMutationExecutionContextV1
+	): Promise<Record<string, unknown>> {
+		const { input, toolName, args, projectId } = context;
+		try {
+			return await this.calendarWrites().execute({
+				toolName,
+				userId: input.executionInput.claim.userId,
+				sessionId: input.executionInput.claim.sessionId ?? null,
+				projectId,
+				arguments: args
+			});
+		} catch (error) {
+			if (error instanceof AgenticChatMutationAdapterError) throw error;
+			throw uncertainFailure(
+				`${toolName}_outcome_uncertain`,
+				canonicalGatewayError(error, toolName)
+			);
+		}
+	}
+
+	private calendarWrites(): AgenticChatCalendarWritePortV1 {
+		this.memoizedCalendarWrites ??=
+			this.injectedCalendarWrites ??
+			createWorkerAgenticChatCalendarWritePort({ client: this.client });
+		return this.memoizedCalendarWrites;
 	}
 
 	private async runGatewayOp(

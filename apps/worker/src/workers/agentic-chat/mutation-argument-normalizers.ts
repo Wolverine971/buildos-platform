@@ -338,6 +338,22 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 		context.expected.entityId = entityId;
 		context.expected.mentionedUserIds = mentionedUserIds;
 		context.expected.messageSuffix = messageSuffix;
+	},
+
+	/**
+	 * BuildOS never invites anyone or sets a reminder on a user's behalf. Neither
+	 * field is a canonical calendar argument, so the admitted-argument fence
+	 * already refuses them; this is the second lock, and it records what it took
+	 * off so the receipt can say so rather than silently dropping intent.
+	 */
+	strip_calendar_attendees_and_reminders: (context) => {
+		const stripped: string[] = [];
+		for (const field of ['attendees', 'reminders']) {
+			if (!Object.hasOwn(context.args, field)) continue;
+			delete context.args[field];
+			stripped.push(field);
+		}
+		if (stripped.length > 0) context.expected.strippedFields = stripped;
 	}
 });
 
@@ -583,8 +599,133 @@ export const AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1: Readonly<
 			buildEntityMentionPingToolResult(value as never),
 			context.toolName
 		);
+	},
+
+	/**
+	 * Calendar event receipt. The provider half can fail while the ontology row
+	 * stands, so `ok` and `synced` are separate facts and a dead Google grant
+	 * comes back as data — `reconnect_required` plus the same `client_action`
+	 * envelope the Gmail connection handoff renders — never as a thrown error.
+	 */
+	calendar_event: (value, context) => {
+		if (!isRecord(value)) {
+			throw invalidReceipt(context.toolName, 'returned no calendar receipt');
+		}
+		const errorCode = typeof value.error_code === 'string' ? value.error_code : null;
+		if (errorCode === null && value.ok !== true) {
+			throw invalidReceipt(context.toolName, 'returned an unclassified calendar failure');
+		}
+		return canonicalMutationReceipt(
+			{
+				ok: value.ok === true,
+				event_id: value.event_id ?? null,
+				google_event_id: value.google_event_id ?? null,
+				html_link: value.html_link ?? null,
+				calendar_id: value.calendar_id ?? null,
+				scope: value.scope ?? null,
+				synced: value.synced === true,
+				...(value.deleted === true ? { deleted: true } : {}),
+				...(value.already_missing === true ? { already_missing: true } : {}),
+				...(value.sync_error ? { sync_error: value.sync_error } : {}),
+				...(value.task_link_created !== undefined
+					? { task_link_created: value.task_link_created }
+					: {}),
+				...(value.task_link_error ? { task_link_error: value.task_link_error } : {}),
+				...strippedFieldsReceipt(context),
+				...calendarFailureReceipt(errorCode, value.connection_id ?? null),
+				message: calendarEventMessage(context.toolName, value, errorCode)
+			},
+			context.toolName
+		);
+	},
+
+	project_calendar: (value, context) => {
+		if (!isRecord(value) || typeof value.project_id !== 'string') {
+			throw invalidReceipt(context.toolName, 'returned no project calendar receipt');
+		}
+		const errorCode = typeof value.error_code === 'string' ? value.error_code : null;
+		if (errorCode === null && value.ok !== true) {
+			throw invalidReceipt(context.toolName, 'returned an unclassified calendar failure');
+		}
+		return canonicalMutationReceipt(
+			{
+				ok: value.ok === true,
+				project_id: value.project_id,
+				calendar_id: value.calendar_id ?? null,
+				sync_mode: value.sync_mode ?? null,
+				...strippedFieldsReceipt(context),
+				...calendarFailureReceipt(errorCode, value.connection_id ?? null),
+				message:
+					errorCode === null
+						? 'Updated the project calendar.'
+						: calendarFailureMessage(errorCode)
+			},
+			context.toolName
+		);
 	}
 });
+
+const CALENDAR_RECONNECT_PATH = '/profile?tab=calendar';
+
+/**
+ * The `client_action` envelope shape the Gmail connection handoff already uses,
+ * so one renderer can present either provider reconnection.
+ */
+function calendarFailureReceipt(
+	errorCode: string | null,
+	connectionId: unknown
+): Record<string, unknown> {
+	if (errorCode === null) return {};
+	const connection = typeof connectionId === 'string' && connectionId ? connectionId : null;
+	if (errorCode !== 'reconnect_required') {
+		return { error_code: errorCode, connection_id: connection, requires_user_action: false };
+	}
+	return {
+		error_code: errorCode,
+		connection_id: connection,
+		status: 'browser_handoff_required',
+		requires_user_action: true,
+		client_action: {
+			kind: 'connect_google_calendar',
+			action_id: `calendar:${connection ?? 'default'}`,
+			mode: 'reconnect',
+			connection_id: connection,
+			title: 'Reconnect Google Calendar',
+			description: `Reconnect Google Calendar from Profile > Calendar (${CALENDAR_RECONNECT_PATH}). The BuildOS record was saved; only the Google copy is missing.`,
+			button_label: 'Reconnect Google Calendar'
+		}
+	};
+}
+
+function calendarFailureMessage(errorCode: string): string {
+	return errorCode === 'reconnect_required'
+		? 'Google Calendar must be reconnected before this change can reach Google. The BuildOS record was saved.'
+		: 'Google Calendar is not configured in this environment, so nothing was sent to Google.';
+}
+
+function calendarEventMessage(
+	toolName: string,
+	value: Record<string, unknown>,
+	errorCode: string | null
+): string {
+	if (errorCode !== null) return calendarFailureMessage(errorCode);
+	const verb =
+		toolName === 'create_calendar_event'
+			? 'Created'
+			: toolName === 'delete_calendar_event'
+				? 'Deleted'
+				: 'Updated';
+	return value.synced === true
+		? `${verb} the calendar event and synced it to Google.`
+		: `${verb} the BuildOS calendar event; it is not synced to Google.`;
+}
+
+function strippedFieldsReceipt(
+	context: AgenticChatMutationExecutionContextV1
+): Record<string, unknown> {
+	const stripped = context.expected.strippedFields;
+	return Array.isArray(stripped) && stripped.length > 0 ? { stripped_fields: stripped } : {};
+}
 
 // ---------------------------------------------------------------------------
 // Shared helpers

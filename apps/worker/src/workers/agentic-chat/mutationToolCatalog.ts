@@ -27,7 +27,11 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'updateOntoRisk'
 	| 'createOntoProject'
 	| 'updateOntoProject'
-	| 'delegateTask';
+	| 'delegateTask'
+	| 'createCalendarEvent'
+	| 'updateCalendarEvent'
+	| 'deleteCalendarEvent'
+	| 'setProjectCalendar';
 
 export type AgenticChatProviderMutationCapabilitiesV1 = Record<
 	AgenticChatMutationCapabilityNameV1,
@@ -50,7 +54,17 @@ const BUILDOS_AGENT_ALLOWED_OP_SET = new Set<string>(BUILDOS_AGENT_SUPPORTED_OPS
  * write — calendar, email, delete, contact — is a spec row plus, at most, a
  * named normalizer/receipt function, never a new adapter class.
  */
-export type AgenticChatMutationRunnerIdV1 = 'gateway' | 'task_move_service' | 'entity_ping_service';
+export type AgenticChatMutationRunnerIdV1 =
+	| 'gateway'
+	| 'task_move_service'
+	| 'entity_ping_service'
+	/**
+	 * The shared calendar write stack (`OntoEventSyncService` +
+	 * `ProjectCalendarService` over the source-aware Google services), reached
+	 * through the worker calendar write port. Calendar writes call Google
+	 * directly from the worker; there is no queue hop.
+	 */
+	| 'calendar_service';
 
 export type AgenticChatCustomMutationAdapterIdV1 = 'create_onto_project' | 'delegate_task';
 
@@ -71,7 +85,8 @@ export type AgenticChatMutationArgumentNormalizerIdV1 =
 	| 'normalize_document_tree_move_arguments'
 	| 'normalize_task_document_arguments'
 	| 'normalize_task_move_arguments'
-	| 'normalize_entity_ping_arguments';
+	| 'normalize_entity_ping_arguments'
+	| 'strip_calendar_attendees_and_reminders';
 
 /** Named pure receipt-entity transforms resolved in `mutation-argument-normalizers.ts`. */
 export type AgenticChatMutationReceiptPostProcessorIdV1 =
@@ -87,7 +102,9 @@ export type AgenticChatMutationReceiptBuilderIdV1 =
 	| 'document_tree_move'
 	| 'task_document_attach'
 	| 'task_move'
-	| 'entity_ping';
+	| 'entity_ping'
+	| 'calendar_event'
+	| 'project_calendar';
 
 export type AgenticChatMutationScopeSpecV1 =
 	/** The project fence comes from an argument; the turn context must agree. */
@@ -1046,6 +1063,129 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 				description: 'Observed LLM-usage ceiling in USD; defaults to $0.50.'
 			}
 		}
+	},
+	// -----------------------------------------------------------------------
+	// Calendar writes (2026-09-04). They execute on the worker and call Google
+	// directly through the shared calendar write stack — no queue hop. Attendees
+	// and reminders are never sent: neither is a canonical argument, and
+	// `strip_calendar_attendees_and_reminders` removes either if a caller
+	// smuggles it in.
+	// -----------------------------------------------------------------------
+	create_calendar_event: {
+		capability: 'createCalendarEvent',
+		operationName: 'cal.event.create',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'calendar_service',
+			scope: { mode: 'argument_project', argument: 'project_id', required: false },
+			argumentNormalizers: ['strip_calendar_attendees_and_reminders'],
+			receipt: { kind: 'builder', builder: 'calendar_event' }
+		},
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
+		directWriteExistingReferenceNames: ['task_id', 'calendar_id', 'calendar_source_id'],
+		requiredNames: ['title', 'start_at'],
+		reviewedArgumentNames: [
+			'title',
+			'start_at',
+			'end_at',
+			'timezone',
+			'description',
+			'location',
+			'project_id',
+			'task_id',
+			'calendar_scope',
+			'calendar_id',
+			'calendar_source_id',
+			'sync_to_calendar'
+		]
+	},
+	update_calendar_event: {
+		capability: 'updateCalendarEvent',
+		operationName: 'cal.event.update',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'calendar_service',
+			scope: { mode: 'argument_project', argument: 'project_id', required: false },
+			argumentNormalizers: ['strip_calendar_attendees_and_reminders'],
+			receipt: { kind: 'builder', builder: 'calendar_event' }
+		},
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
+		descriptionOverride:
+			'Update one existing calendar event. Pass onto_event_id for a BuildOS event, or event_id for a Google-only event from a calendar read, plus at least one field to change. Attendees and reminders cannot be changed by this tool.',
+		requiredNames: [],
+		reviewedArgumentNames: [
+			'onto_event_id',
+			'event_id',
+			'calendar_id',
+			'calendar_scope',
+			'project_id',
+			'calendar_source_id',
+			'title',
+			'start_at',
+			'end_at',
+			'timezone',
+			'description',
+			'location',
+			'sync_to_calendar'
+		]
+	},
+	delete_calendar_event: {
+		capability: 'deleteCalendarEvent',
+		operationName: 'cal.event.delete',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'calendar_service',
+			scope: { mode: 'argument_project', argument: 'project_id', required: false },
+			argumentNormalizers: ['strip_calendar_attendees_and_reminders'],
+			receipt: { kind: 'builder', builder: 'calendar_event' }
+		},
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
+		descriptionOverride:
+			'Delete one existing calendar event by onto_event_id (a BuildOS event) or event_id (a Google-only event from a calendar read). A BuildOS event is soft-deleted and its Google event is removed.',
+		requiredNames: [],
+		reviewedArgumentNames: [
+			'onto_event_id',
+			'event_id',
+			'calendar_id',
+			'calendar_scope',
+			'project_id',
+			'calendar_source_id',
+			'sync_to_calendar'
+		]
+	},
+	set_project_calendar: {
+		capability: 'setProjectCalendar',
+		operationName: 'cal.project.set',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'calendar_service',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			argumentNormalizers: ['strip_calendar_attendees_and_reminders'],
+			receipt: { kind: 'builder', builder: 'project_calendar' }
+		},
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'focused_project',
+		// `calendar_id` is deliberately unreviewed: linking an existing Google
+		// calendar needs a `calendar_source_id`, which this tool's canonical
+		// schema has no property for, so the shared service would refuse it.
+		descriptionOverride:
+			'Create the project calendar, or update its name, description, color, or sync toggle. Linking an existing Google calendar is not available here.',
+		requiredNames: ['project_id'],
+		reviewedArgumentNames: [
+			'project_id',
+			'action',
+			'name',
+			'description',
+			'color_id',
+			'sync_enabled'
+		]
 	}
 } as const satisfies Record<string, AgenticChatReviewedMutationSpecV1>;
 
@@ -1054,7 +1194,6 @@ export type AgenticChatReviewedMutationToolNameV1 =
 
 export type AgenticChatDeferredMutationReasonV1 =
 	| 'browser_user_action_handoff'
-	| 'calendar_provider_reconciliation'
 	| 'compound_partial_commit'
 	| 'control_plane_effect_mapping'
 	| 'irreversible_delete_without_tombstone'
@@ -1070,8 +1209,6 @@ export type AgenticChatDeferredMutationReasonV1 =
 export const AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1 = Object.freeze({
 	call_corsair_mcp_tool: 'opaque_external_mutation',
 	commit_change_set: 'compound_partial_commit',
-	create_calendar_event: 'calendar_provider_reconciliation',
-	delete_calendar_event: 'irreversible_delete_without_tombstone',
 	delete_onto_document: 'irreversible_delete_without_tombstone',
 	delete_onto_goal: 'irreversible_delete_without_tombstone',
 	delete_onto_milestone: 'irreversible_delete_without_tombstone',
@@ -1083,8 +1220,6 @@ export const AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1 = Object.freeze({
 	reorganize_onto_project_graph: 'compound_partial_commit',
 	request_email_account_connection: 'browser_user_action_handoff',
 	resolve_user_contact_candidate: 'sensitive_contact_reconciliation',
-	set_project_calendar: 'calendar_provider_reconciliation',
-	update_calendar_event: 'calendar_provider_reconciliation',
 	upsert_user_contact: 'sensitive_contact_reconciliation'
 } as const satisfies Record<string, AgenticChatDeferredMutationReasonV1>);
 
