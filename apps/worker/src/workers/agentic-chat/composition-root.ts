@@ -72,35 +72,19 @@ import {
 	type AgenticChatExecutionObservationRpcClient,
 	SupabaseAgenticChatExecutionObservationAdapter
 } from './executionObservation';
-import { AgenticChatCreateOntoDocumentMutationAdapter } from './createOntoDocumentMutationAdapter';
 import { AgenticChatCreateOntoProjectMutationAdapter } from './createOntoProjectMutationAdapter';
-import { AgenticChatCreateOntoTaskMutationAdapter } from './createOntoTaskMutationAdapter';
 import { AgenticChatDelegateTaskMutationAdapter } from './delegateTaskMutationAdapter';
-import { AgenticChatMoveOntoTaskMutationAdapter } from './moveOntoTaskMutationAdapter';
-import { AgenticChatTagOntoEntityPingMutationAdapter } from './tagOntoEntityPingMutationAdapter';
-import {
-	AGENTIC_CHAT_GATEWAY_ENTITY_MUTATION_TOOL_NAMES_V1,
-	AgenticChatGatewayEntityMutationAdapter
-} from './gatewayEntityMutationAdapter';
-import {
-	AGENTIC_CHAT_DOCUMENT_RELATIONSHIP_MUTATION_TOOL_NAMES_V1,
-	AgenticChatGatewayDocumentRelationshipMutationAdapter
-} from './gatewayDocumentRelationshipMutationAdapter';
-import {
-	AGENTIC_CHAT_EDGE_MUTATION_TOOL_NAMES_V1,
-	AgenticChatGatewayEdgeMutationAdapter
-} from './gatewayEdgeMutationAdapter';
-import { AgenticChatGatewayProjectMutationAdapter } from './gatewayProjectMutationAdapter';
 import {
 	type AgenticChatMutationAdapterEntry,
-	AgenticChatMutationAdapterRouter
+	AgenticChatMutationAdapterRouter,
+	selectAgenticChatMutationAdapterEntriesV1
 } from './mutationAdapterRouter';
 import {
 	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1,
 	type AgenticChatProviderMutationCapabilitiesV1,
 	normalizeAgenticChatMutationCapabilitiesV1
 } from './mutationToolCatalog';
-import { AgenticChatUpdateOntoTaskMutationAdapter } from './updateOntoTaskMutationAdapter';
+import { AgenticChatTableMutationAdapter } from './tableMutationAdapter';
 import { SupabaseAgenticChatLiveVisionResolver } from './liveVision';
 import {
 	type AgenticChatSessionHandoffPortV1,
@@ -299,92 +283,16 @@ export function createAgenticChatCompositionRoot(options: {
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort()
 	});
-	const mutationAdapters: AgenticChatMutationAdapterEntry[] = [];
-	if (mutationCapabilities.createOntoDocument) {
-		mutationAdapters.push([
-			'create_onto_document',
-			new AgenticChatCreateOntoDocumentMutationAdapter(options.client)
-		]);
-	}
-	if (mutationCapabilities.createOntoTask) {
-		mutationAdapters.push([
-			'create_onto_task',
-			new AgenticChatCreateOntoTaskMutationAdapter(options.client)
-		]);
-	}
-	if (mutationCapabilities.updateOntoTask) {
-		mutationAdapters.push([
-			'update_onto_task',
-			new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
-		]);
-	}
-	if (mutationCapabilities.moveOntoTask) {
-		mutationAdapters.push([
-			'move_onto_task',
-			new AgenticChatMoveOntoTaskMutationAdapter(options.client)
-		]);
-	}
-	if (mutationCapabilities.tagOntoEntity) {
-		mutationAdapters.push([
-			'tag_onto_entity',
-			new AgenticChatTagOntoEntityPingMutationAdapter(options.client)
-		]);
-	}
-	if (mutationCapabilities.updateOntoProject) {
-		mutationAdapters.push([
-			'update_onto_project',
-			new AgenticChatGatewayProjectMutationAdapter(options.client)
-		]);
-	}
-	if (mutationCapabilities.createOntoProject) {
-		mutationAdapters.push([
-			'create_onto_project',
-			new AgenticChatCreateOntoProjectMutationAdapter(options.client)
-		]);
-	}
-	if (mutationCapabilities.delegateTask) {
-		mutationAdapters.push([
-			'delegate_task',
-			new AgenticChatDelegateTaskMutationAdapter(options.client)
-		]);
-	}
-	const gatewayEntityToolNames = new Set<string>(
-		AGENTIC_CHAT_GATEWAY_ENTITY_MUTATION_TOOL_NAMES_V1
-	);
-	const enabledGatewayEntityTools = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
-		([capability, toolName]) =>
-			mutationCapabilities[capability] && gatewayEntityToolNames.has(toolName)
-	).map(([, toolName]) => toolName);
-	if (enabledGatewayEntityTools.length > 0) {
-		const gatewayEntityAdapter = new AgenticChatGatewayEntityMutationAdapter(options.client);
-		for (const toolName of enabledGatewayEntityTools) {
-			mutationAdapters.push([toolName, gatewayEntityAdapter]);
-		}
-	}
-	const documentRelationshipToolNames = new Set<string>(
-		AGENTIC_CHAT_DOCUMENT_RELATIONSHIP_MUTATION_TOOL_NAMES_V1
-	);
-	const enabledDocumentRelationshipTools = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
-		([capability, toolName]) =>
-			mutationCapabilities[capability] && documentRelationshipToolNames.has(toolName)
-	).map(([, toolName]) => toolName);
-	if (enabledDocumentRelationshipTools.length > 0) {
-		const documentRelationshipAdapter =
-			new AgenticChatGatewayDocumentRelationshipMutationAdapter(options.client);
-		for (const toolName of enabledDocumentRelationshipTools) {
-			mutationAdapters.push([toolName, documentRelationshipAdapter]);
-		}
-	}
-	const edgeToolNames = new Set<string>(AGENTIC_CHAT_EDGE_MUTATION_TOOL_NAMES_V1);
-	const enabledEdgeTools = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
-		([capability, toolName]) => mutationCapabilities[capability] && edgeToolNames.has(toolName)
-	).map(([, toolName]) => toolName);
-	if (enabledEdgeTools.length > 0) {
-		const edgeAdapter = new AgenticChatGatewayEdgeMutationAdapter(options.client);
-		for (const toolName of enabledEdgeTools) {
-			mutationAdapters.push([toolName, edgeAdapter]);
-		}
-	}
+	const mutationAdapters: AgenticChatMutationAdapterEntry[] =
+		selectAgenticChatMutationAdapterEntriesV1({
+			capabilities: mutationCapabilities,
+			tableAdapter: () => new AgenticChatTableMutationAdapter(options.client),
+			customAdapters: {
+				create_onto_project: () =>
+					new AgenticChatCreateOntoProjectMutationAdapter(options.client),
+				delegate_task: () => new AgenticChatDelegateTaskMutationAdapter(options.client)
+			}
+		});
 	assertAgenticChatMutationAdapterCoverageV1(mutationCapabilities, mutationAdapters);
 	const mutation =
 		mutationAdapters.length > 0

@@ -42,10 +42,111 @@ export type AgenticChatMutationOperationNameV1 =
 
 const BUILDOS_AGENT_ALLOWED_OP_SET = new Set<string>(BUILDOS_AGENT_SUPPORTED_OPS);
 
+/**
+ * Table-driven mutation execution.
+ *
+ * Every reviewed write declares HOW it runs instead of owning a file. One
+ * adapter (`tableMutationAdapter.ts`) reads these rows, so a newly reviewed
+ * write — calendar, email, delete, contact — is a spec row plus, at most, a
+ * named normalizer/receipt function, never a new adapter class.
+ */
+export type AgenticChatMutationRunnerIdV1 = 'gateway' | 'task_move_service' | 'entity_ping_service';
+
+export type AgenticChatCustomMutationAdapterIdV1 = 'create_onto_project' | 'delegate_task';
+
+/** Named pure argument transforms resolved in `mutation-argument-normalizers.ts`. */
+export type AgenticChatMutationArgumentNormalizerIdV1 =
+	| 'reject_merge_llm_update_strategy'
+	| 'drop_empty_props'
+	| 'require_trimmed_description'
+	| 'rename_parent_id_to_parent_document_id'
+	| 'drop_unusable_document_position'
+	| 'drop_scope_only_project_id'
+	| 'normalize_target_date_end_of_day'
+	| 'normalize_due_at_start_of_day'
+	| 'require_signed_impact'
+	| 'normalize_project_row_update'
+	| 'normalize_edge_link_arguments'
+	| 'reduce_to_edge_id'
+	| 'normalize_document_tree_move_arguments'
+	| 'normalize_task_document_arguments'
+	| 'normalize_task_move_arguments'
+	| 'normalize_entity_ping_arguments';
+
+/** Named pure receipt-entity transforms resolved in `mutation-argument-normalizers.ts`. */
+export type AgenticChatMutationReceiptPostProcessorIdV1 =
+	| 'strip_external_agent_origin'
+	| 'milestone_state'
+	| 'carry_goal_id_argument'
+	| 'sanitize_project_for_client';
+
+/** Named whole-receipt builders for writes whose receipt is not one entity row. */
+export type AgenticChatMutationReceiptBuilderIdV1 =
+	| 'edge_link'
+	| 'edge_unlink'
+	| 'document_tree_move'
+	| 'task_document_attach'
+	| 'task_move'
+	| 'entity_ping';
+
+export type AgenticChatMutationScopeSpecV1 =
+	/** The project fence comes from an argument; the turn context must agree. */
+	| { mode: 'argument_project'; argument: string; required: boolean }
+	/** The project fence is the admitted turn context alone. */
+	| { mode: 'context_project'; required: boolean }
+	| { mode: 'unscoped' };
+
+export type AgenticChatMutationReceiptSpecV1 =
+	| {
+			kind: 'entity';
+			/** Receipt key holding the committed row (`task`, `document`, `goal`, ...). */
+			rootKey: string;
+			/** Argument whose value the returned row id must equal, when the write targets one. */
+			expectedIdArgument: string | null;
+			requireCanonicalEntityId: boolean;
+			requireCanonicalProjectId: boolean;
+			requireProjectMatch: boolean;
+			displayField: string | null;
+			fallbackLabel: string | null;
+			/** `{display}` interpolates the resolved label. */
+			message: string;
+			/** Gateway-only enrichment the legacy chat receipt never exposed. */
+			strippedFields: readonly string[];
+			staticFields?: Readonly<Record<string, boolean>>;
+	  }
+	| { kind: 'builder'; builder: AgenticChatMutationReceiptBuilderIdV1 };
+
+export type AgenticChatMutationExecutionSpecV1 =
+	| { executor: 'custom'; adapter: AgenticChatCustomMutationAdapterIdV1 }
+	| {
+			executor: 'table';
+			runner: AgenticChatMutationRunnerIdV1;
+			scope: AgenticChatMutationScopeSpecV1;
+			/** Default false. Threads the worker calendar sync port into the gateway. */
+			taskSync?: boolean;
+			/** Default false. Only exactly replayable writes forward the effect key. */
+			forwardIdempotencyKey?: boolean;
+			/** Default []. Canonical-UUID arguments asserted before dispatch. */
+			requiredUuidArguments?: readonly string[];
+			/** Default []. */
+			argumentNormalizers?: readonly AgenticChatMutationArgumentNormalizerIdV1[];
+			/** Default []. Entity receipts only. */
+			receiptPostProcessors?: readonly AgenticChatMutationReceiptPostProcessorIdV1[];
+			/**
+			 * Default []. Runner-result fields carried onto the receipt. The first
+			 * entry gates the group: nothing is carried unless it is a string.
+			 */
+			passthroughReceiptFields?: readonly string[];
+			/** Default 'gateway_default'. */
+			failureClassifier?: 'gateway_default' | 'document_tree_title_branch';
+			receipt: AgenticChatMutationReceiptSpecV1;
+	  };
+
 type AgenticChatReviewedMutationSpecBaseV1 = {
 	capability: AgenticChatMutationCapabilityNameV1;
 	operationName: AgenticChatMutationOperationNameV1;
 	downstreamIdempotencySupported: boolean;
+	execution: AgenticChatMutationExecutionSpecV1;
 	requiredNames: readonly string[];
 	reviewedArgumentNames: readonly string[];
 	descriptionOverride?: string;
@@ -84,6 +185,29 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoDocument',
 		operationName: 'onto.document.create',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			argumentNormalizers: [
+				'require_trimmed_description',
+				'rename_parent_id_to_parent_document_id',
+				'drop_unusable_document_position'
+			],
+			receiptPostProcessors: ['strip_external_agent_origin'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'document',
+				expectedIdArgument: null,
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: false,
+				requireProjectMatch: true,
+				displayField: 'title',
+				fallbackLabel: 'Document',
+				message: 'Created ontology document "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'new_entity',
 		directWriteExistingReferenceNames: ['parent_id'],
@@ -103,6 +227,26 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoDocument',
 		operationName: 'onto.document.update',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: false },
+			requiredUuidArguments: ['document_id'],
+			argumentNormalizers: ['reject_merge_llm_update_strategy', 'drop_empty_props'],
+			receiptPostProcessors: ['strip_external_agent_origin'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'document',
+				expectedIdArgument: 'document_id',
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: true,
+				requireProjectMatch: true,
+				displayField: 'title',
+				fallbackLabel: 'Document',
+				message: 'Updated ontology document "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
@@ -133,6 +277,15 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'moveDocumentInTree',
 		operationName: 'onto.document.tree.move',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			requiredUuidArguments: ['document_id'],
+			argumentNormalizers: ['normalize_document_tree_move_arguments'],
+			failureClassifier: 'document_tree_title_branch',
+			receipt: { kind: 'builder', builder: 'document_tree_move' }
+		},
 		directWriteClass: 'contract_required',
 		descriptionOverride:
 			'Move an existing document in the current project document tree. To group documents under a parent, prefer new_parent_title with a short category name (e.g. "Pricing", "Meeting notes"): the server reuses the existing document with that title or creates the parent, so grouping is one call per document with no parent UUID needed. Reuse the exact same new_parent_title for every document in a category. Pass new_parent_id only for a parent UUID returned by a tree/document read; never invent a UUID. Omit both for root placement.',
@@ -149,6 +302,14 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createTaskDocument',
 		operationName: 'onto.task.docs.create_or_attach',
 		downstreamIdempotencySupported: true,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: true },
+			requiredUuidArguments: ['task_id', 'document_id'],
+			argumentNormalizers: ['normalize_task_document_arguments'],
+			receipt: { kind: 'builder', builder: 'task_document_attach' }
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
@@ -160,6 +321,13 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'linkOntoEntities',
 		operationName: 'onto.edge.link',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: true },
+			argumentNormalizers: ['normalize_edge_link_arguments'],
+			receipt: { kind: 'builder', builder: 'edge_link' }
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
@@ -181,6 +349,14 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'unlinkOntoEdge',
 		operationName: 'onto.edge.unlink',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: true },
+			requiredUuidArguments: ['edge_id'],
+			argumentNormalizers: ['reduce_to_edge_id'],
+			receipt: { kind: 'builder', builder: 'edge_unlink' }
+		},
 		directWriteClass: 'contract_required',
 		descriptionOverride:
 			'Remove one existing ontology relationship by the exact edge UUID returned by a project graph or relationship read.',
@@ -191,6 +367,31 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoTask',
 		operationName: 'onto.task.create',
 		downstreamIdempotencySupported: true,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			taskSync: true,
+			forwardIdempotencyKey: true,
+			passthroughReceiptFields: [
+				'calendar_sync',
+				'calendar_events',
+				'removed_calendar_event_count'
+			],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'task',
+				expectedIdArgument: null,
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: false,
+				requireProjectMatch: true,
+				displayField: null,
+				fallbackLabel: null,
+				message: 'Task created successfully.',
+				strippedFields: ['project_name', 'idempotency_key'],
+				staticFields: { requires_user_action: false }
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'new_entity',
 		directWriteExistingReferenceNames: [
@@ -223,6 +424,31 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoTask',
 		operationName: 'onto.task.update',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: false },
+			taskSync: true,
+			argumentNormalizers: ['drop_scope_only_project_id'],
+			passthroughReceiptFields: [
+				'calendar_sync',
+				'calendar_events',
+				'removed_calendar_event_count'
+			],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'task',
+				expectedIdArgument: 'task_id',
+				requireCanonicalEntityId: false,
+				requireCanonicalProjectId: false,
+				requireProjectMatch: true,
+				displayField: null,
+				fallbackLabel: null,
+				message: 'Task updated successfully.',
+				strippedFields: ['project_name'],
+				staticFields: { requires_user_action: false }
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
@@ -250,6 +476,18 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'moveOntoTask',
 		operationName: 'onto.task.move',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'task_move_service',
+			scope: {
+				mode: 'argument_project',
+				argument: 'expected_source_project_id',
+				required: true
+			},
+			requiredUuidArguments: ['task_id', 'destination_project_id'],
+			argumentNormalizers: ['normalize_task_move_arguments'],
+			receipt: { kind: 'builder', builder: 'task_move' }
+		},
 		directWriteClass: 'contract_required',
 		descriptionOverride:
 			'Move one standalone task from the focused source project to another writable project while preserving its ID, comments, and eligible assignees. Clean moves execute immediately. If relationships, project-local links, or incompatible assignees must be removed, the tool returns an exact impact preview and confirmation_token. Ask the user to confirm those effects, then call this tool in a later turn with that token. Never confirm or retry with the token in the same turn. Scheduled, recurring, asset-linked, and archived-destination moves are blocked.',
@@ -274,6 +512,13 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'tagOntoEntity',
 		operationName: 'x.misc.tag_onto_entity',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'entity_ping_service',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			argumentNormalizers: ['normalize_entity_ping_arguments'],
+			receipt: { kind: 'builder', builder: 'entity_ping' }
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
@@ -322,6 +567,24 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoGoal',
 		operationName: 'onto.goal.create',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			argumentNormalizers: ['normalize_target_date_end_of_day'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'goal',
+				expectedIdArgument: null,
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: true,
+				requireProjectMatch: true,
+				displayField: 'name',
+				fallbackLabel: 'Goal',
+				message: 'Created ontology goal "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'new_entity',
 		requiredNames: ['project_id', 'name'],
@@ -341,6 +604,25 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoGoal',
 		operationName: 'onto.goal.update',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: false },
+			requiredUuidArguments: ['goal_id'],
+			argumentNormalizers: ['normalize_target_date_end_of_day'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'goal',
+				expectedIdArgument: 'goal_id',
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: true,
+				requireProjectMatch: true,
+				displayField: 'name',
+				fallbackLabel: 'Goal',
+				message: 'Updated ontology goal "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
@@ -362,6 +644,23 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoPlan',
 		operationName: 'onto.plan.create',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			receipt: {
+				kind: 'entity',
+				rootKey: 'plan',
+				expectedIdArgument: null,
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: true,
+				requireProjectMatch: true,
+				displayField: 'name',
+				fallbackLabel: 'Plan',
+				message: 'Created ontology plan "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'new_entity',
 		requiredNames: ['project_id', 'name'],
@@ -381,6 +680,24 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoPlan',
 		operationName: 'onto.plan.update',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: false },
+			requiredUuidArguments: ['plan_id'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'plan',
+				expectedIdArgument: 'plan_id',
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: true,
+				requireProjectMatch: true,
+				displayField: 'name',
+				fallbackLabel: 'Plan',
+				message: 'Updated ontology plan "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
@@ -402,6 +719,26 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoMilestone',
 		operationName: 'onto.milestone.create',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			requiredUuidArguments: ['goal_id'],
+			argumentNormalizers: ['normalize_due_at_start_of_day'],
+			receiptPostProcessors: ['milestone_state', 'carry_goal_id_argument'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'milestone',
+				expectedIdArgument: null,
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: true,
+				requireProjectMatch: true,
+				displayField: 'title',
+				fallbackLabel: 'Milestone',
+				message: 'Created ontology milestone "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'new_entity',
 		directWriteExistingReferenceNames: ['goal_id'],
@@ -420,6 +757,26 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoMilestone',
 		operationName: 'onto.milestone.update',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: false },
+			requiredUuidArguments: ['milestone_id'],
+			argumentNormalizers: ['normalize_due_at_start_of_day'],
+			receiptPostProcessors: ['milestone_state'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'milestone',
+				expectedIdArgument: 'milestone_id',
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: true,
+				requireProjectMatch: true,
+				displayField: 'title',
+				fallbackLabel: 'Milestone',
+				message: 'Updated ontology milestone "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
@@ -438,6 +795,24 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoRisk',
 		operationName: 'onto.risk.create',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			argumentNormalizers: ['require_signed_impact'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'risk',
+				expectedIdArgument: null,
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: true,
+				requireProjectMatch: true,
+				displayField: 'title',
+				fallbackLabel: 'Risk',
+				message: 'Created ontology risk "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'new_entity',
 		requiredNames: ['project_id', 'title', 'impact'],
@@ -456,6 +831,24 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoRisk',
 		operationName: 'onto.risk.update',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: false },
+			requiredUuidArguments: ['risk_id'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'risk',
+				expectedIdArgument: 'risk_id',
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: true,
+				requireProjectMatch: true,
+				displayField: 'title',
+				fallbackLabel: 'Risk',
+				message: 'Updated ontology risk "{display}"',
+				strippedFields: ['project_name']
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
@@ -478,6 +871,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'createOntoProject',
 		operationName: 'onto.project.create',
 		downstreamIdempotencySupported: false,
+		execution: { executor: 'custom', adapter: 'create_onto_project' },
 		directWriteClass: 'contract_required',
 		descriptionOverride:
 			'Create one standard project and its generated Context document. Pass empty entities and relationships arrays. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support fiction/living-reference projects, custom Context documents, clarifications, embedded child records, or relationships.',
@@ -543,8 +937,15 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 							}
 						}
 					},
-					start_at: { type: 'string', description: 'Optional ISO start date.' },
-					end_at: { type: 'string', description: 'Optional ISO end date.' }
+					start_at: {
+						type: 'string',
+						description:
+							"Start date. YYYY-MM-DD for day-level intent (stored as that civil day in the user's timezone); a full ISO datetime only when a clock time was given. Never convert a date to a timestamp yourself."
+					},
+					end_at: {
+						type: 'string',
+						description: 'End date. Same date rule as start_at.'
+					}
 				},
 				required: ['name', 'type_key']
 			},
@@ -573,6 +974,25 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'updateOntoProject',
 		operationName: 'onto.project.update',
 		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			argumentNormalizers: ['normalize_project_row_update'],
+			receiptPostProcessors: ['sanitize_project_for_client'],
+			receipt: {
+				kind: 'entity',
+				rootKey: 'project',
+				expectedIdArgument: 'project_id',
+				requireCanonicalEntityId: true,
+				requireCanonicalProjectId: false,
+				requireProjectMatch: false,
+				displayField: 'name',
+				fallbackLabel: null,
+				message: 'Updated ontology project "{display}"',
+				strippedFields: []
+			}
+		},
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'focused_project',
 		requiredNames: ['project_id'],
@@ -590,6 +1010,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		capability: 'delegateTask',
 		operationName: 'util.agent.delegate',
 		downstreamIdempotencySupported: false,
+		execution: { executor: 'custom', adapter: 'delegate_task' },
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'new_entity',
 		descriptionOverride:
@@ -769,3 +1190,38 @@ export function normalizeAgenticChatMutationCapabilitiesV1(
 		])
 	) as AgenticChatProviderMutationCapabilitiesV1;
 }
+
+/**
+ * Resolve the executable row for one already-admitted mutation. Returning
+ * `null` for an unknown tool keeps the router and adapter fail-closed.
+ */
+export function agenticChatMutationExecutionSpecV1(
+	toolName: string
+): AgenticChatMutationExecutionSpecV1 | null {
+	return reviewedAgenticChatMutationSpecV1(toolName)?.execution ?? null;
+}
+
+/** Reviewed tools whose write is executed by the one table-driven adapter. */
+export const AGENTIC_CHAT_TABLE_MUTATION_TOOL_NAMES_V1 = Object.freeze(
+	Object.entries(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)
+		.filter(([, spec]) => spec.execution.executor === 'table')
+		.map(([toolName]) => toolName as AgenticChatReviewedMutationToolNameV1)
+);
+
+/** Reviewed tools that still name a hand-written constructor. */
+export const AGENTIC_CHAT_CUSTOM_MUTATION_ADAPTERS_V1 = Object.freeze(
+	Object.entries(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)
+		.filter(([, spec]) => spec.execution.executor === 'custom')
+		.map(
+			([toolName, spec]) =>
+				[
+					toolName as AgenticChatReviewedMutationToolNameV1,
+					(
+						spec.execution as {
+							executor: 'custom';
+							adapter: AgenticChatCustomMutationAdapterIdV1;
+						}
+					).adapter
+				] as const
+		)
+);

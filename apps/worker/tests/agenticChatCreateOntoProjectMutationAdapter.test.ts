@@ -137,8 +137,8 @@ describe('AgenticChatCreateOntoProjectMutationAdapter', () => {
 					description: '  Ship the new site.  ',
 					state_key: 'active',
 					props: { facets: { context: 'commercial', stage: 'execution' } },
-					start_at: '2026-08-01T00:00:00Z',
-					end_at: '2026-12-31T23:59:59Z'
+					start_at: '2026-08-01T00:00:00.000Z',
+					end_at: '2026-12-31T23:59:59.000Z'
 				},
 				entities: [],
 				relationships: [],
@@ -227,5 +227,82 @@ describe('AgenticChatCreateOntoProjectMutationAdapter', () => {
 			disposition: 'outcome_uncertain',
 			failureCode: 'create_onto_project_receipt_invalid'
 		});
+	});
+});
+
+describe('AgenticChatCreateOntoProjectMutationAdapter civil-day bounds', () => {
+	function timezoneClient(timezone: string | null) {
+		return {
+			from: vi.fn(() => ({
+				select: () => ({
+					eq: () => ({
+						maybeSingle: async () => ({
+							data: timezone === null ? null : { timezone },
+							error: null
+						})
+					})
+				})
+			}))
+		};
+	}
+
+	async function dispatchedProjectArgs(input: {
+		timezone: string | null;
+		start_at?: string;
+		end_at?: string;
+	}) {
+		const runGateway = vi.fn(async () => ({ ok: true, data: successData() }));
+		const adapter = new AgenticChatCreateOntoProjectMutationAdapter(
+			timezoneClient(input.timezone) as never,
+			{ runGateway: runGateway as never, now: () => NOW }
+		);
+		const mutation = mutationInput() as any;
+		mutation.arguments.project = {
+			name: 'Launch Site',
+			type_key: 'project.business.product_launch',
+			...(input.start_at !== undefined ? { start_at: input.start_at } : {}),
+			...(input.end_at !== undefined ? { end_at: input.end_at } : {})
+		};
+
+		await adapter.execute(mutation);
+		return (runGateway.mock.calls[0]?.[0] as any).args.project as Record<string, unknown>;
+	}
+
+	it('resolves a date-only start to the first moment of that civil day', async () => {
+		const project = await dispatchedProjectArgs({
+			timezone: 'America/New_York',
+			start_at: '2026-09-14'
+		});
+
+		expect(project.start_at).toBe('2026-09-14T04:00:00.000Z');
+	});
+
+	it('resolves a date-only end to the last second of that civil day', async () => {
+		const project = await dispatchedProjectArgs({
+			timezone: 'America/New_York',
+			end_at: '2026-11-20'
+		});
+
+		expect(project.end_at).toBe('2026-11-21T04:59:59.000Z');
+	});
+
+	it('falls back to the UTC civil day when the user has no timezone row', async () => {
+		const project = await dispatchedProjectArgs({
+			timezone: null,
+			start_at: '2026-09-14',
+			end_at: '2026-11-20'
+		});
+
+		expect(project.start_at).toBe('2026-09-14T00:00:00.000Z');
+		expect(project.end_at).toBe('2026-11-20T23:59:59.000Z');
+	});
+
+	it('passes a full datetime through unchanged', async () => {
+		const project = await dispatchedProjectArgs({
+			timezone: 'America/New_York',
+			start_at: '2026-09-14T15:30:00.000Z'
+		});
+
+		expect(project.start_at).toBe('2026-09-14T15:30:00.000Z');
 	});
 });

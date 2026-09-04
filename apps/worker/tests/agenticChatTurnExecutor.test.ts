@@ -47,7 +47,7 @@ import {
 	AgenticChatToolExecutionTimeoutError,
 	SupabaseAgenticChatToolExecutionAdapter
 } from '../src/workers/agentic-chat/toolExecution';
-import { AgenticChatUpdateOntoTaskMutationAdapter } from '../src/workers/agentic-chat/updateOntoTaskMutationAdapter';
+import { AgenticChatTableMutationAdapter } from '../src/workers/agentic-chat/tableMutationAdapter';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -2397,8 +2397,9 @@ describe('AgenticChatTurnExecutor', () => {
 			entityProjectId: fixture.tool.result.task.project_id,
 			entityTitle: fixture.tool.result.task.title
 		}));
-		const mutatingTool = new AgenticChatUpdateOntoTaskMutationAdapter({} as never, {
-			runGateway: runGateway as never
+		const mutatingTool = new AgenticChatTableMutationAdapter({} as never, {
+			runGateway: runGateway as never,
+			taskSync: { syncTaskEvents: vi.fn() } as never
 		});
 		const mutatingToolExecute = vi.spyOn(mutatingTool, 'execute');
 		const realMutation = new AgenticChatMutationExecutor({

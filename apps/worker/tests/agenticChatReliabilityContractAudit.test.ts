@@ -23,18 +23,12 @@ const FENCED_WRITE_MODULE_USAGE_COUNTS = Object.freeze({
 	toolExecution: 3
 });
 
+// One table-driven adapter plus the two writes whose execution row still names
+// a constructor. Adding a reviewed write must not add a file here.
 const REVIEWED_MUTATION_ADAPTER_FILES = Object.freeze([
-	'createOntoDocumentMutationAdapter.ts',
 	'createOntoProjectMutationAdapter.ts',
-	'createOntoTaskMutationAdapter.ts',
 	'delegateTaskMutationAdapter.ts',
-	'gatewayDocumentRelationshipMutationAdapter.ts',
-	'gatewayEdgeMutationAdapter.ts',
-	'gatewayEntityMutationAdapter.ts',
-	'gatewayProjectMutationAdapter.ts',
-	'moveOntoTaskMutationAdapter.ts',
-	'tagOntoEntityPingMutationAdapter.ts',
-	'updateOntoTaskMutationAdapter.ts'
+	'tableMutationAdapter.ts'
 ]);
 
 describe('Agentic Chat Phase 5 reliability contract audit', () => {

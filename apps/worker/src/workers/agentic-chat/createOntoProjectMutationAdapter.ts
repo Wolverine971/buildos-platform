@@ -1,4 +1,9 @@
 // apps/worker/src/workers/agentic-chat/createOntoProjectMutationAdapter.ts
+import {
+	type CivilDateBoundary,
+	civilDateBoundaryInstant,
+	resolveUserCivilTimezone
+} from '@buildos/shared-agent-ops';
 import { runGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -97,7 +102,13 @@ export class AgenticChatCreateOntoProjectMutationAdapter implements AgenticChatM
 		});
 		assertProjectCreateContext(input);
 
-		const project = normalizeProjectShell(input.arguments);
+		// A bare YYYY-MM-DD is the user's civil day, never midnight UTC. Resolve
+		// the timezone once per execution rather than per date field.
+		const timezone = await resolveUserCivilTimezone(
+			this.client,
+			input.executionInput.claim.userId
+		);
+		const project = normalizeProjectShell(input.arguments, timezone);
 		const contextDocument = buildContextDocument(project, this.now());
 		const gatewayArguments = {
 			project,
@@ -178,7 +189,10 @@ function assertProjectCreateContext(input: MutationInput): void {
 	}
 }
 
-function normalizeProjectShell(args: JsonObject): JsonObject & { name: string } {
+function normalizeProjectShell(
+	args: JsonObject,
+	timezone: string | null
+): JsonObject & { name: string } {
 	if (!Array.isArray(args.entities) || args.entities.length !== 0) {
 		throw knownFailure(
 			'mutation_arguments_not_admitted',
@@ -255,7 +269,7 @@ function normalizeProjectShell(args: JsonObject): JsonObject & { name: string } 
 		['end_at', 'end']
 	] as const) {
 		if (args.project[field] === undefined) continue;
-		const normalized = normalizeProjectDate(args.project[field], boundary, field);
+		const normalized = normalizeProjectDate(args.project[field], boundary, field, timezone);
 		if (normalized !== undefined) project[field] = normalized;
 	}
 	return project as JsonObject & { name: string };
@@ -307,8 +321,9 @@ function normalizeProjectState(value: unknown): string {
 
 function normalizeProjectDate(
 	value: unknown,
-	boundary: 'start' | 'end',
-	field: string
+	boundary: CivilDateBoundary,
+	field: string,
+	timezone: string | null
 ): string | undefined {
 	if (value === null || value === '') return undefined;
 	if (typeof value !== 'string') {
@@ -324,7 +339,8 @@ function normalizeProjectDate(
 			Number(dateOnly[2]),
 			Number(dateOnly[3]),
 			boundary,
-			field
+			field,
+			timezone
 		);
 	}
 	const yearMonth = raw.match(/^(\d{4})-(\d{2})$/);
@@ -332,13 +348,13 @@ function normalizeProjectDate(
 		const year = Number(yearMonth[1]);
 		const month = Number(yearMonth[2]);
 		const day = boundary === 'end' ? new Date(Date.UTC(year, month, 0)).getUTCDate() : 1;
-		return calendarBoundary(year, month, day, boundary, field);
+		return calendarBoundary(year, month, day, boundary, field, timezone);
 	}
 	const yearOnly = raw.match(/^(\d{4})$/);
 	if (yearOnly) {
 		return boundary === 'end'
-			? calendarBoundary(Number(yearOnly[1]), 12, 31, boundary, field)
-			: calendarBoundary(Number(yearOnly[1]), 1, 1, boundary, field);
+			? calendarBoundary(Number(yearOnly[1]), 12, 31, boundary, field, timezone)
+			: calendarBoundary(Number(yearOnly[1]), 1, 1, boundary, field, timezone);
 	}
 	const parsed = new Date(raw);
 	if (Number.isNaN(parsed.getTime())) {
@@ -351,8 +367,9 @@ function calendarBoundary(
 	year: number,
 	month: number,
 	day: number,
-	boundary: 'start' | 'end',
-	field: string
+	boundary: CivilDateBoundary,
+	field: string,
+	timezone: string | null
 ): string {
 	const parsed = new Date(Date.UTC(year, month - 1, day));
 	if (
@@ -368,7 +385,9 @@ function calendarBoundary(
 	const date = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(
 		day
 	).padStart(2, '0')}`;
-	return boundary === 'end' ? `${date}T23:59:59Z` : `${date}T00:00:00Z`;
+	// One civil-day rule across every BuildOS write path: the boundary is the
+	// first/last second of that day in the user's timezone, not a UTC sentinel.
+	return civilDateBoundaryInstant(date, boundary, timezone);
 }
 
 function buildContextDocument(project: JsonObject & { name: string }, now: number): JsonObject {
