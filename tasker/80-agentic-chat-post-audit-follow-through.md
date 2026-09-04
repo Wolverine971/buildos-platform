@@ -157,6 +157,8 @@ or a new tracker.
 
 ## WP-2 — Retire the legacy web chat lane (the big one)
 
+> Two-engine parity machinery (`parity.ts`, `parity-scenarios.ts`, the 7 fixtures and their goldens) retired 2026-09-04 (one-engine); the parity registry references below are historical.
+
 **User outcome:** daily-brief, calendar, and email turns get the same truncation retry, surface
 repair, partial-fulfilment disclosure, and independent review as every other turn; the
 `calendar_management` and `plan_management` skill preloads (wired on 09-02, dormant) start firing;
