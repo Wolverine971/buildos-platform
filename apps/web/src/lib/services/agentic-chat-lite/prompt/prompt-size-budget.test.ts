@@ -223,18 +223,24 @@ describe('total assembled prompt size budget', () => {
 		// (was 16,764) and payload 34,147 chars (~8,537 tokens); caps at
 		// measured + ~10% for the system prompt and + 5% for the payload.
 		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(15_700);
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(35_900);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(8_970);
+		// 2026-09-04: 35,900 → 36,300 (measured 35,945); verbatim-storage wording on
+		// document content fields (Cedar House case 9).
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(36_300);
+		// 2026-09-04: 8,970 → 9,100 (measured 8,987); same wording change.
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(9_100);
 		// Per-turn multiplier guard: ratchet this down when WP-3 removes the two
 		// read-only disposition/reviewer passes instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(26_910);
+		// 2026-09-04: 26,910 → 27,300 (measured 26,961); date + verbatim wording.
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(27_300);
 		// 2026-08-28: 15,000 → 15,900. explore_project (semantic discovery,
 		// tasker/71) now mounts on the project surfaces; its ~300-token schema is
 		// multiplied by the per-turn pass count (measured 15,804). Deliberate spend
 		// per the ratified discovery UX; the definition is already trimmed.
 		// 2026-09-02: 15,900 → 15,700 (measured 14,922 after change_chat_context
 		// left the project surface).
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(15_700);
+		// 2026-09-04: 15,700 → 16,400 (measured 16,149) for the civil-day date
+		// descriptions and verbatim-storage wording on the write tools.
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(16_400);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		expect(largestToolSchemaTokens).toBeLessThanOrEqual(1_600);

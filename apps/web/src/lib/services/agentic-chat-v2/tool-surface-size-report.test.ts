@@ -135,7 +135,10 @@ describe('tool surface size report', () => {
 		// concurrent edit to catalog/definitions/ontology-write.ts added the
 		// calendar_sync enum to create_onto_task / update_onto_task. Re-baselined
 		// so the shared budget test stays runnable.
-		expect(projectCreate?.totalChars).toBeLessThanOrEqual(14_180);
+		// 2026-09-04: 14,180 → 14,600 (measured 14,516). Date-only descriptions on
+		// start_at/due_at/end_at now state the civil-day rule so the model stops
+		// minting UTC timestamps (Cedar House cases 1, 4, 5).
+		expect(projectCreate?.totalChars).toBeLessThanOrEqual(14_600);
 		// 2026-09-02 (turn-executor audit Decision 2): global surfaces trade
 		// change_chat_context (1,177 chars) for get_document_outline +
 		// read_document_section (~1,100 chars) so a global "read those docs" turn
@@ -161,7 +164,8 @@ describe('tool surface size report', () => {
 		// (list_onto_tasks; get_onto_task_details was already mounted here), the
 		// remaining ~640 is the concurrent calendar_sync addition on
 		// create_onto_task / update_onto_task.
-		expect(globalWrite?.totalChars).toBeLessThanOrEqual(21_600);
+		// 2026-09-04: 21,600 → 22,100 (measured 21,852); civil-day date descriptions.
+		expect(globalWrite?.totalChars).toBeLessThanOrEqual(22_100);
 		// 2026-09-03 re-baseline of the project profiles. NONE of this delta is
 		// the global task-read mount above (these profiles already carried
 		// list_onto_tasks / get_onto_task_details or neither). It is concurrent
@@ -171,8 +175,10 @@ describe('tool surface size report', () => {
 		// create_onto_document's type_key description. Measured: project_basic
 		// 11,200 / project_write 19,078 / project_write_document 21,030.
 		expect(projectBasic?.totalChars).toBeLessThanOrEqual(11_220);
-		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_100);
-		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(21_050);
+		// 2026-09-04: project_write 19,100 → 19,600 (measured 19,354) and
+		// project_write_document 21,050 → 21,550 (measured 21,306); civil-day date descriptions.
+		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_600);
+		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(21_550);
 	});
 
 	it('reports complete skill bundles and fails closed on unresolved related ops', () => {
