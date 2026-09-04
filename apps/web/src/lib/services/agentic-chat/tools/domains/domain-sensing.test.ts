@@ -85,7 +85,11 @@ function buildSkillGateFixture(): DomainSensingResult {
 }
 
 describe('domain sensing', () => {
-	it('gates explicit fiction development through the story craft skill', () => {
+	// Craft trim (founder decision 2026-09-03): writing.fiction still senses and
+	// still names its skill as a routing hint, but an options prompt with no
+	// request shape no longer opens the gate. Fiction workspaces reach the
+	// playbook through persisted project affinity instead.
+	it('senses fiction craft without gating an options prompt', () => {
 		const result = senseDomains({
 			currentUserMessage:
 				'Given this novel, what should happen with this character next? Give me three options.'
@@ -95,7 +99,23 @@ describe('domain sensing', () => {
 			id: 'writing.fiction',
 			coverage_status: 'strong'
 		});
+		expect(result?.skill_load_required).toBe(false);
+		expect(result?.gate_suppressed_by).toBe('not_allowlisted');
+		expect(getSkillGateCandidateSkillIds(result)[0]).toBe('fiction_story_craft');
+	});
+
+	it('gates explicit fiction development through the story craft skill', () => {
+		const result = senseDomains({
+			currentUserMessage:
+				'Help me plan what happens to this character next in the novel. Give me three options.'
+		});
+
+		expect(result?.active_domains[0]).toMatchObject({
+			id: 'writing.fiction',
+			coverage_status: 'strong'
+		});
 		expect(result?.skill_load_required).toBe(true);
+		expect(result?.gate_suppressed_by).toBeUndefined();
 		expect(getSkillGateCandidateSkillIds(result)[0]).toBe('fiction_story_craft');
 	});
 
@@ -359,17 +379,6 @@ describe('skill-load gate', () => {
 			expectedSkill: 'viral_video_script_structure'
 		},
 		{
-			label: 'hook options',
-			message: 'Just give me 10 opening-hook options for the launch video.',
-			expectedSkill: 'hook_craft_short_form'
-		},
-		{
-			label: 'channel diagnosis',
-			message:
-				'The BuildOS YouTube channel has 9 videos and almost no views. Why are my videos not getting views, and what 3 videos should I make next?',
-			expectedSkill: 'youtube_channel_craft_for_founders'
-		},
-		{
 			label: 'UI audit',
 			message:
 				'Here is the landing page the video links to. It feels amateur and I cannot tell why. Give me a UI/UX audit.',
@@ -397,10 +406,41 @@ describe('skill-load gate', () => {
 		});
 	}
 
+	// Craft trim (founder decision 2026-09-03): a marketing topic with no request
+	// shape keeps its routing hints but no longer buys a skill_load pass.
+	const craftTrimmedCases: Array<{ label: string; message: string; hintedSkill: string }> = [
+		{
+			label: 'hook options',
+			message: 'Just give me 10 opening-hook options for the launch video.',
+			hintedSkill: 'hook_craft_short_form'
+		},
+		{
+			label: 'channel diagnosis',
+			message:
+				'The BuildOS YouTube channel has 9 videos and almost no views. Why are my videos not getting views, and what 3 videos should I make next?',
+			hintedSkill: 'youtube_channel_craft_for_founders'
+		}
+	];
+
+	for (const { label, message, hintedSkill } of craftTrimmedCases) {
+		it(`does not gate ${label} prompts but still surfaces the skill as a hint`, () => {
+			const result = senseDomains({ currentUserMessage: message });
+			expect(result?.skill_load_required).toBe(false);
+			expect(result?.gate_suppressed_by).toBe('not_allowlisted');
+			expect(result?.next_step).not.toContain('Skill-load gate is ACTIVE');
+			const surfacedSkillIds = [
+				...(result?.recommended_skill_ids ?? []),
+				...(result?.active_domains.flatMap((domain) => domain.skill_ids) ?? []),
+				...(result?.candidate_outcome_cards.flatMap((card) => card.skill_ids) ?? [])
+			];
+			expect(surfacedSkillIds).toContain(hintedSkill);
+		});
+	}
+
 	it('renders the gate directive at the top of the prompt block when active', () => {
 		const block = renderDomainSensingPromptBlock(
 			senseDomains({
-				currentUserMessage: 'Just give me 10 opening-hook options for the launch video.'
+				currentUserMessage: 'Draft the script for the 90-second launch video.'
 			})
 		);
 		expect(block).toContain('Skill-load gate: ACTIVE.');
@@ -531,6 +571,30 @@ describe('skill-load gate misfire regressions (F7)', () => {
 			expect(resolveSkillGatePreload(result, { allowFollowupSkillLoad: false })).toBeNull();
 		});
 	}
+
+	// Founder decision 2026-09-03: craft topics need an explicit ask.
+	it('labels a craft topic with no request shape as not_allowlisted', () => {
+		const result = senseDomains({
+			currentUserMessage:
+				"Hi DJ — forwarding the note from the newsletter creator: 'loved the cold email, let's talk next week about a sponsorship.'"
+		});
+
+		expect(result?.active_domains[0]?.id).toBe('sales_and_growth.cold_email');
+		expect(result?.skill_load_required).toBe(false);
+		expect(result?.gate_suppressed_by).toBe('not_allowlisted');
+		expect(result?.next_step).not.toContain('Skill-load gate is ACTIVE');
+	});
+
+	it('senses no gate at all for the Cedar House estimate edit or a Start Here section swap', () => {
+		for (const message of [
+			'change the estimate on the Cedar House framing task to 6 hours',
+			"Replace the Start Here document's audience section with the first-time buyer copy."
+		]) {
+			const result = senseDomains({ currentUserMessage: message });
+			expect(result?.skill_load_required ?? false, message).toBe(false);
+			expect(resolveSkillGatePreload(result), message).toBeNull();
+		}
+	});
 
 	it('labels the narrow-edit suppression separately from the direct-read guard', () => {
 		const result = senseDomains({ currentUserMessage: CEDAR_HOUSE_EDIT });

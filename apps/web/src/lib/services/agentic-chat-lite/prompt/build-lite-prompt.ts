@@ -10,6 +10,7 @@ import {
 	renderDomainSensingPromptContent,
 	senseDomains
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
+import { isProductivityPreloadSkill } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 import { listRootSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import type {
 	FastChatProjectIntelligence,
@@ -1393,9 +1394,15 @@ function buildCapabilitiesSkillsToolsSection(
 	// 500-700 chars each and put ~2.2k tokens of prose in every turn). The full
 	// summary stays available through skill_search and skill_load. The fallback
 	// truncation guards skills that have not declared catalog_line yet.
+	//
+	// Productivity-only catalog (founder decision 2026-09-03): the seed lists the
+	// skills the runtime may preload automatically. Marketing, sales, and craft
+	// skills stay registered and reachable through skill_search / skill_load —
+	// they just stop costing every turn a row in the default prompt.
 	const rootSkillRows =
 		scaffold.dynamicSkillTools && scaffold.staticSkillCatalog
 			? listRootSkills()
+					.filter((skill) => isProductivityPreloadSkill(skill.id))
 					.sort((a, b) => a.id.localeCompare(b.id))
 					.map(
 						(skill) =>
@@ -1443,7 +1450,7 @@ function buildCapabilitiesSkillsToolsSection(
 						'',
 						rootSkillTable,
 						'',
-						'Some root skills expose child skills for narrower niches. Child skills are not listed here to keep the seed lean; discover them with `skill_search` or by loading the matching root skill, then `skill_load` a child only when the niche clearly matches.'
+						'This table lists the everyday work playbooks only. Marketing, sales, writing, and design-craft playbooks exist but are not listed here; when the user explicitly asks for that work, `skill_search` finds the id and `skill_load` fetches it. Child skills for narrower niches are likewise unlisted — discover them with `skill_search` or by loading the matching root skill, then `skill_load` a child only when the niche clearly matches.'
 					]
 				: [])
 		].join('\n')

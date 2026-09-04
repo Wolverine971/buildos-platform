@@ -4,6 +4,7 @@ import type { DomainDefinition } from './types';
 const DOMAIN_CATALOG: DomainDefinition[] = [
 	{
 		id: 'marketing',
+		explicitAskOnly: true,
 		name: 'Marketing',
 		parentIds: [],
 		aliases: ['marketing', 'growth', 'go to market', 'audience growth', 'distribution'],
@@ -55,6 +56,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 	},
 	{
 		id: 'marketing.content_strategy',
+		explicitAskOnly: true,
 		name: 'Content Strategy',
 		parentIds: ['marketing'],
 		aliases: [
@@ -141,6 +143,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 	},
 	{
 		id: 'marketing.short_form_video',
+		explicitAskOnly: true,
 		name: 'Short-Form Video',
 		parentIds: ['marketing', 'creator_growth', 'marketing.content_strategy'],
 		aliases: [
@@ -230,6 +233,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 	},
 	{
 		id: 'marketing.youtube_growth',
+		explicitAskOnly: true,
 		name: 'YouTube Growth',
 		parentIds: ['marketing', 'creator_growth', 'marketing.content_strategy'],
 		aliases: [
@@ -321,6 +325,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 	},
 	{
 		id: 'marketing.linkedin_company_page_growth',
+		explicitAskOnly: true,
 		name: 'LinkedIn Company Page Growth',
 		parentIds: ['marketing'],
 		aliases: [
@@ -362,6 +367,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 	},
 	{
 		id: 'sales_and_growth',
+		explicitAskOnly: true,
 		name: 'Sales and Growth',
 		parentIds: [],
 		aliases: ['sales', 'growth', 'pipeline', 'outreach', 'leads', 'lead generation'],
@@ -399,6 +405,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 	},
 	{
 		id: 'sales_and_growth.cold_email',
+		explicitAskOnly: true,
 		name: 'Cold Email Outreach',
 		parentIds: ['sales_and_growth'],
 		aliases: [
@@ -659,6 +666,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 	},
 	{
 		id: 'creator_growth',
+		explicitAskOnly: true,
 		name: 'Creator Growth',
 		parentIds: ['marketing'],
 		aliases: [
@@ -716,6 +724,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 	},
 	{
 		id: 'writing',
+		explicitAskOnly: true,
 		name: 'Writing',
 		parentIds: [],
 		aliases: ['writing', 'drafting', 'editing', 'book', 'essay', 'article', 'fiction'],
@@ -757,6 +766,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 	},
 	{
 		id: 'writing.fiction',
+		explicitAskOnly: true,
 		name: 'Fiction Writing',
 		parentIds: ['writing'],
 		aliases: [
@@ -849,6 +859,22 @@ export function listDomains(): DomainDefinition[] {
 export function getDomainById(id: string): DomainDefinition | undefined {
 	const normalized = id.trim().toLowerCase();
 	return DOMAIN_CATALOG.find((domain) => domain.id === normalized);
+}
+
+/**
+ * Marketing / sales / writing-craft domains are explicit-ask only (founder
+ * decision 2026-09-03). Automatic domain sensing still names them as routing
+ * hints, but it may not open the skill-load gate off them, and their skills are
+ * not on the productivity preload allowlist.
+ */
+export function isExplicitAskOnlyDomain(id: string): boolean {
+	return getDomainById(id)?.explicitAskOnly === true;
+}
+
+export function listExplicitAskOnlyDomainIds(): string[] {
+	return DOMAIN_CATALOG.filter((domain) => domain.explicitAskOnly === true).map(
+		(domain) => domain.id
+	);
 }
 
 export function listChildDomains(parentId: string): DomainDefinition[] {

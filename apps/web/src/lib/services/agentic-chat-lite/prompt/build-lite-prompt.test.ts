@@ -258,7 +258,15 @@ describe('buildLitePromptEnvelope', () => {
 		// Child skills are no longer inlined as a table (2026-06-14 Tier 1): they
 		// stay discoverable via skill_search / loading the matching root skill
 		// instead of paying the ~23-row table cost on every turn.
-		expect(envelope.systemPrompt).toContain('Some root skills expose child skills');
+		// Productivity-only catalog (founder decision 2026-09-03): craft rows left
+		// the default prompt; skill_search still reaches them.
+		expect(envelope.systemPrompt).not.toContain('| `content_strategy_beyond_blogging` |');
+		expect(envelope.systemPrompt).not.toContain('| `cold_email_engagement_first_outreach` |');
+		expect(envelope.systemPrompt).not.toContain('| `fiction_story_craft` |');
+		expect(envelope.systemPrompt).toContain(
+			'Marketing, sales, writing, and design-craft playbooks exist but are not listed here'
+		);
+		expect(envelope.systemPrompt).toContain('Child skills for narrower niches are likewise');
 		expect(envelope.systemPrompt).not.toContain('Registered child skills');
 		expect(envelope.systemPrompt).not.toContain('| `task_state_updates` | `task_management` |');
 		// tasker/39 stage 2: skill_reference_load mechanics and the
@@ -338,13 +346,29 @@ describe('buildLitePromptEnvelope', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'project',
 			entityId: 'project-1',
-			currentUserMessage: 'Just give me 10 opening-hook options for the launch video.'
+			// Craft domains need an explicit request shape after the 2026-09-03
+			// trim; "Draft the script" carries one, "give me 10 hooks" does not.
+			currentUserMessage: 'Draft the script for the 90-second launch video.'
 		});
 
 		const section = envelope.sections.find((item) => item.id === 'active_domain_signals');
 		expect(section?.content).toContain('Skill-load gate: ACTIVE.');
 		expect(section?.content).toContain('Skill-load gate is ACTIVE');
 		expect(envelope.systemPrompt).toContain('Skill-load gate: ACTIVE.');
+	});
+
+	it('leaves the skill-load gate closed for a craft topic with no explicit ask', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			currentUserMessage: 'Just give me 10 opening-hook options for the launch video.'
+		});
+
+		const section = envelope.sections.find((item) => item.id === 'active_domain_signals');
+		// Routing hints survive; the gate — and the skill_load pass it buys — do not.
+		expect(section?.content).toContain('marketing.short_form_video');
+		expect(section?.content).not.toContain('Skill-load gate: ACTIVE.');
+		expect(envelope.systemPrompt).not.toContain('Skill-load gate: ACTIVE.');
 	});
 
 	it('overlays current-turn domain signals into an envelope that has no domain section', () => {

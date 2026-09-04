@@ -6,13 +6,16 @@ import {
 	senseDomains
 } from './domain-sensing';
 import {
+	isProductivityPreloadSkill,
+	PRODUCTIVITY_PRELOAD_ALLOWLIST,
 	resolveOperationalSkillPreload,
 	resolveSkillGatePreload,
+	resolveSkillGatePreloadDecision,
 	resolveSkillPreloadById,
 	WORKER_PRELOAD_MAX_CHARS
 } from './skill-gate-preload';
 import { estimateTokensFromText } from '$lib/services/agentic-chat-v2/context-usage';
-import { listAllSkills } from '../skills/registry';
+import { getSkillById, listAllSkills } from '../skills/registry';
 
 const PROJECT_WRITE_DOCUMENT_TOOLS = [
 	'create_onto_task',
@@ -141,6 +144,111 @@ describe('resolveSkillGatePreload', () => {
 		});
 
 		expect(preload).toBeNull();
+	});
+});
+
+// Productivity allowlist (founder decision 2026-09-03). Marketing, sales, and
+// craft skills left the default runtime: they preload only when the turn is an
+// explicit ask. Everything on the allowlist keeps preloading automatically.
+describe('productivity preload allowlist', () => {
+	it('names only registered skills', () => {
+		for (const skillId of PRODUCTIVITY_PRELOAD_ALLOWLIST) {
+			expect(getSkillById(skillId)?.id, skillId).toBe(skillId);
+		}
+		expect(PRODUCTIVITY_PRELOAD_ALLOWLIST).toHaveLength(12);
+		expect(isProductivityPreloadSkill('content_strategy_beyond_blogging')).toBe(false);
+		expect(isProductivityPreloadSkill('cold_email_engagement_first_outreach')).toBe(false);
+		expect(isProductivityPreloadSkill('TASK_MANAGEMENT')).toBe(true);
+	});
+
+	it('preloads an allowlisted skill automatically off domain sensing', () => {
+		const sensing = senseDomains({
+			currentUserMessage: 'audit this project for blockers and stale work',
+			limit: 3
+		});
+		const decision = resolveSkillGatePreloadDecision(sensing);
+
+		expect(decision.preload?.skillId).toBe('project_audit');
+		expect(decision.preload?.reason).toBe('productivity_allowlist');
+		expect(decision.gate_suppressed_by).toBeUndefined();
+	});
+
+	it('preloads a task-management ask automatically through operational intent', () => {
+		const preload = resolveOperationalSkillPreload({
+			message: 'add a task to call the roofer back on Tuesday',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+
+		expect(preload?.skillId).toBe('task_management');
+		expect(preload?.reason).toBe('productivity_allowlist');
+	});
+
+	it('preloads a marketing skill on an explicit campaign ask', () => {
+		const sensing = senseDomains({
+			currentUserMessage: 'help me plan a cold email campaign for local homeowners',
+			limit: 3
+		});
+		expect(sensing?.skill_load_required).toBe(true);
+
+		const decision = resolveSkillGatePreloadDecision(sensing);
+
+		expect(decision.preload?.skillId).toBe('cold_email_engagement_first_outreach');
+		expect(decision.preload?.reason).toBe('explicit_ask');
+		expect(isProductivityPreloadSkill(decision.preload!.skillId)).toBe(false);
+		expect(decision.gate_suppressed_by).toBeUndefined();
+	});
+
+	it('refuses a marketing-flavored message that never asks for the work', () => {
+		// A forwarded reply mentions "cold email" but requests nothing.
+		const sensing = senseDomains({
+			currentUserMessage:
+				"Hi DJ — forwarding the note from the newsletter creator: 'loved the cold email, let's talk next week about a sponsorship.'",
+			limit: 3
+		});
+		const decision = resolveSkillGatePreloadDecision(sensing);
+
+		expect(decision.preload).toBeNull();
+		expect(decision.gate_suppressed_by).toBe('not_allowlisted');
+	});
+
+	it('refuses a craft candidate the chokepoint sees with the gate still open', () => {
+		// Design craft keeps automatic sensing (it is not a marketing domain), so
+		// the allowlist itself is what refuses the preload here.
+		const sensing = senseDomains({
+			currentUserMessage:
+				'Here is the landing page the video links to. It feels amateur and I cannot tell why. Give me a UI/UX audit.',
+			limit: 3
+		});
+		expect(sensing?.skill_load_required).toBe(true);
+		const topCandidate = getSkillGateCandidateSkillIds(sensing)[0];
+		expect(isProductivityPreloadSkill(topCandidate)).toBe(false);
+
+		const decision = resolveSkillGatePreloadDecision(sensing, {
+			allowFollowupSkillLoad: false
+		});
+
+		// "audit" is a request verb, so this one earns the explicit-ask escape.
+		expect(decision.preload?.reason).toBe('explicit_ask');
+	});
+
+	it('does not preload for a narrow task edit or a document section replacement', () => {
+		const narrowCases = [
+			'change the estimate on the Cedar House framing task to 6 hours',
+			"Replace the Start Here document's audience section with the first-time buyer copy."
+		];
+		for (const message of narrowCases) {
+			const sensing = senseDomains({ currentUserMessage: message, limit: 3 });
+			const decision = resolveSkillGatePreloadDecision(sensing);
+			expect(decision.preload, message).toBeNull();
+			expect(resolveSkillGatePreload(sensing, { allowFollowupSkillLoad: false })).toBeNull();
+		}
+	});
+
+	it('keeps the persisted project affinity route open for a craft skill', () => {
+		// A project domain profile is a selection the user already made; it is not
+		// the automatic sensing this decision restricts.
+		const preload = resolveSkillPreloadById('fiction_story_craft');
+		expect(preload?.reason).toBe('project_domain_affinity');
 	});
 });
 

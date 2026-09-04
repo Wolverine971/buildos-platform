@@ -21,6 +21,14 @@
  * Operational skills (task_management, document_workspace, plan_management,
  * calendar_management) are in no domain or outcome card, so they arrive via the
  * deterministic intent map in operational-skill-intent.ts rather than sensing.
+ *
+ * Productivity allowlist (founder decision 2026-09-03): marketing, sales, and
+ * writing-craft skills left the default chat runtime. Automatic preload is
+ * restricted to PRODUCTIVITY_PRELOAD_ALLOWLIST; every other skill preloads only
+ * on an explicit ask (isExplicitSkillAskTurn) and is otherwise refused with
+ * `gate_suppressed_by: 'not_allowlisted'`. Domain sensing itself is unchanged —
+ * craft domains still arrive as routing hints, and skill_search / skill_load
+ * still reach every registered skill.
  */
 
 import { loadSkill } from '../skills/skill-load';
@@ -28,8 +36,11 @@ import { getSkillById } from '../skills/registry';
 import { isSkillHelpPayload, type SkillExample, type SkillHelpPayload } from '../skills/types';
 import {
 	getSkillGateCandidateSkillIds,
+	hasExplicitSkillRequestShape,
+	resolveSkillGateSuppression,
 	type DomainSensingPreloadSource,
-	type DomainSensingResult
+	type DomainSensingResult,
+	type SkillGateSuppressionReason
 } from './domain-sensing';
 import {
 	resolveOperationalSkillForTurn,
@@ -38,13 +49,62 @@ import {
 
 export type SkillGatePreloadSource = DomainSensingPreloadSource;
 
+/**
+ * Why a preload was admitted. `productivity_allowlist` is the automatic route,
+ * `explicit_ask` is the narrow escape a craft skill has to earn per turn, and
+ * `project_domain_affinity` is a persisted per-project selection the user
+ * already made (it is not automatic sensing).
+ */
+export type SkillPreloadReason =
+	| 'productivity_allowlist'
+	| 'explicit_ask'
+	| 'project_domain_affinity';
+
+/**
+ * Skills the runtime may preload automatically (founder decision 2026-09-03).
+ * Everything else — marketing, sales, writing craft, design craft — preloads
+ * only on an explicit ask. Marketing skills stay registered, searchable, and
+ * loadable; they just stop riding into every turn's prompt for free.
+ */
+export const PRODUCTIVITY_PRELOAD_ALLOWLIST: readonly string[] = [
+	'calendar_management',
+	'context_engineering_for_agent_work',
+	'document_workspace',
+	'google_calendar',
+	'people_context',
+	'plan_management',
+	'project_audit',
+	'project_creation',
+	'project_forecast',
+	'research_capture',
+	'task_management',
+	'task_state_updates'
+];
+
+const PRODUCTIVITY_PRELOAD_ALLOWLIST_SET = new Set(PRODUCTIVITY_PRELOAD_ALLOWLIST);
+
+export function isProductivityPreloadSkill(skillId: string | null | undefined): boolean {
+	return PRODUCTIVITY_PRELOAD_ALLOWLIST_SET.has((skillId ?? '').trim().toLowerCase());
+}
+
 export type SkillGatePreload = {
 	skillId: string;
 	source: SkillGatePreloadSource;
+	reason: SkillPreloadReason;
 	format: 'short';
 	payload: SkillHelpPayload;
 	promptContent: string;
 	materializedToolNames: string[];
+};
+
+/**
+ * The no-preload shape keeps the telemetry the gate produced: `null` preload
+ * plus the reason the chokepoint refused. `not_allowlisted` means the candidate
+ * is a craft skill and this turn carried no explicit ask.
+ */
+export type SkillGatePreloadDecision = {
+	preload: SkillGatePreload | null;
+	gate_suppressed_by?: SkillGateSuppressionReason;
 };
 
 const PRELOAD_LIST_LIMIT = 6;
@@ -65,15 +125,55 @@ export function resolveSkillGatePreload(
 	sensing: DomainSensingResult | null | undefined,
 	options: SkillPreloadOptions = {}
 ): SkillGatePreload | null {
+	return resolveSkillGatePreloadDecision(sensing, options).preload;
+}
+
+/**
+ * The full decision, including why a candidate was refused. Callers that only
+ * need the block keep using `resolveSkillGatePreload`; telemetry and tests read
+ * `gate_suppressed_by` from here.
+ */
+export function resolveSkillGatePreloadDecision(
+	sensing: DomainSensingResult | null | undefined,
+	options: SkillPreloadOptions = {}
+): SkillGatePreloadDecision {
 	if (!sensing || sensing.skill_load_required !== true) {
-		return null;
+		return {
+			preload: null,
+			...(sensing?.gate_suppressed_by
+				? { gate_suppressed_by: sensing.gate_suppressed_by }
+				: {})
+		};
 	}
 	const candidates = getSkillGateCandidateSkillIds(sensing);
 	const topCandidate = candidates[0]?.trim();
 	if (!topCandidate) {
-		return null;
+		return { preload: null };
 	}
-	return resolveSkillPreload(topCandidate, candidates.slice(1), 'domain_sensing', options);
+	return resolveSkillPreload(topCandidate, candidates.slice(1), 'domain_sensing', options, {
+		explicitAsk: isExplicitSkillAskTurn(sensing)
+	});
+}
+
+/**
+ * An explicit ask, as ratified on 2026-09-03. All of:
+ *   1. the sensed subject has strong coverage (a real playbook exists),
+ *   2. the current message carries a request shape AND names the subject,
+ *   3. no deterministic guard fired (narrow edits and direct reads are out).
+ */
+export function isExplicitSkillAskTurn(sensing: DomainSensingResult | null | undefined): boolean {
+	if (!sensing || sensing.source !== 'current_user_message') return false;
+	const message = sensing.query;
+	if (!hasExplicitSkillRequestShape(message)) return false;
+	if (resolveSkillGateSuppression(message) !== null) return false;
+	const primaryDomain = sensing.active_domains[0];
+	if (!primaryDomain) {
+		// A BuildOS-native outcome card carries its own subject match.
+		return sensing.candidate_outcome_cards[0]?.coverage_status === 'strong';
+	}
+	const namesSubject =
+		primaryDomain.aliases_hit.length > 0 || primaryDomain.discriminative_hits > 0;
+	return primaryDomain.coverage_status === 'strong' && namesSubject;
 }
 
 /**
@@ -87,7 +187,9 @@ export function resolveSkillPreloadById(
 ): SkillGatePreload | null {
 	const normalizedSkillId = skillId?.trim();
 	if (!normalizedSkillId) return null;
-	return resolveSkillPreload(normalizedSkillId, [], 'project_domain_affinity', options);
+	return resolveSkillPreload(normalizedSkillId, [], 'project_domain_affinity', options, {
+		explicitAsk: false
+	}).preload;
 }
 
 /**
@@ -111,41 +213,78 @@ export function resolveOperationalSkillPreload(params: {
 		...resolution.alternateSkillIds,
 		...(params.craftAlternateSkillIds ?? [])
 	]).filter((id) => id !== resolution.skillId);
-	const preload = resolveSkillPreload(resolution.skillId, alternates, 'operational_intent', {
-		alreadyLoadedSkillIds: params.alreadyLoadedSkillIds,
-		allowFollowupSkillLoad: false
-	});
+	const preload = resolveSkillPreload(
+		resolution.skillId,
+		alternates,
+		'operational_intent',
+		{
+			alreadyLoadedSkillIds: params.alreadyLoadedSkillIds,
+			allowFollowupSkillLoad: false
+		},
+		{ explicitAsk: false }
+	).preload;
 	return preload ? { ...preload, skillId: resolution.skillId } : null;
 }
+
+/**
+ * The single admission chokepoint. Every preload route lands here, so the
+ * productivity allowlist is enforced in exactly one place.
+ */
+function resolvePreloadReason(
+	skillId: string,
+	source: SkillGatePreload['source'],
+	admission: SkillPreloadAdmission
+): SkillPreloadReason | null {
+	if (isProductivityPreloadSkill(skillId)) return 'productivity_allowlist';
+	// A persisted project domain profile is a selection the user already made
+	// for this project; it is not the default runtime sensing this decision
+	// restricts. The lexical and operational routes get no such pass.
+	if (source === 'project_domain_affinity') return 'project_domain_affinity';
+	return admission.explicitAsk ? 'explicit_ask' : null;
+}
+
+type SkillPreloadAdmission = {
+	/** True when this turn earned a craft preload (see isExplicitSkillAskTurn). */
+	explicitAsk: boolean;
+};
 
 function resolveSkillPreload(
 	skillId: string,
 	remainingCandidates: string[],
 	source: SkillGatePreload['source'],
-	options: SkillPreloadOptions
-): SkillGatePreload | null {
+	options: SkillPreloadOptions,
+	admission: SkillPreloadAdmission
+): SkillGatePreloadDecision {
 	const alreadyLoaded = new Set(
 		(options.alreadyLoadedSkillIds ?? []).map((id) => id.trim().toLowerCase())
 	);
 	if (alreadyLoaded.has(skillId.toLowerCase())) {
-		return null;
+		return { preload: null };
+	}
+
+	const reason = resolvePreloadReason(skillId, source, admission);
+	if (!reason) {
+		return { preload: null, gate_suppressed_by: 'not_allowlisted' };
 	}
 
 	const allowFollowupSkillLoad = options.allowFollowupSkillLoad !== false;
 	const payload = loadSkill(skillId, { format: 'short', surface: 'chat_internal' });
 	if (!isSkillHelpPayload(payload)) {
-		return null;
+		return { preload: null };
 	}
 
 	return {
-		skillId: payload.id,
-		source,
-		format: 'short',
-		payload,
-		promptContent: allowFollowupSkillLoad
-			? renderPreloadedSkillPromptContent(payload, remainingCandidates)
-			: renderWorkerPreloadedSkillPromptContent(payload, remainingCandidates),
-		materializedToolNames: payload.materialized_tools ?? []
+		preload: {
+			skillId: payload.id,
+			source,
+			reason,
+			format: 'short',
+			payload,
+			promptContent: allowFollowupSkillLoad
+				? renderPreloadedSkillPromptContent(payload, remainingCandidates)
+				: renderWorkerPreloadedSkillPromptContent(payload, remainingCandidates),
+			materializedToolNames: payload.materialized_tools ?? []
+		}
 	};
 }
 
