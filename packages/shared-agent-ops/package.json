@@ -378,7 +378,7 @@
 		"@buildos/shared-utils": "workspace:*",
 		"@buildos/supabase-client": "workspace:*",
 		"@supabase/supabase-js": "^2.89.0",
-		"date-fns": "4.1.0",
+		"date-fns": "4.4.0",
 		"date-fns-tz": "3.2.0",
 		"google-auth-library": "^10.6.2",
 		"googleapis": "^171.4.0",
