@@ -56,7 +56,8 @@ function outcomeFields(
 ): Set<string> | null {
 	if (
 		outcome.entityKind !== 'document' &&
-		!(outcome.action === 'create' && ['task', 'goal'].includes(outcome.entityKind))
+		outcome.entityKind !== 'task' &&
+		!(outcome.action === 'create' && outcome.entityKind === 'goal')
 	)
 		return null;
 	const relevantNames = new Set(
@@ -78,11 +79,16 @@ function outcomeFields(
 		if (outcome.action === 'organize' && tool.function.name === 'create_onto_document') {
 			continue;
 		}
-		const args = Object.fromEntries(
+		const args: Record<string, unknown> = Object.fromEntries(
 			spec.reviewedArgumentNames
 				.filter((name) => Object.hasOwn(properties, name))
 				.map((name) => [name, null])
 		);
+		const propsSchema = (properties as Record<string, { properties?: Record<string, unknown> }>)
+			.props;
+		if (propsSchema?.properties?.duration_minutes && Object.hasOwn(args, 'props')) {
+			args.props = { duration_minutes: null };
+		}
 		for (const field of getWriteLedgerChangedFields(tool.function.name, args))
 			fields.add(field);
 	}

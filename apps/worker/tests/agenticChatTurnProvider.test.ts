@@ -268,6 +268,7 @@ function updateTaskToolDefinition(): ChatToolDefinition {
 				required: ['task_id'],
 				properties: {
 					task_id: { type: 'string' },
+					priority: { type: 'number' },
 					start_at: { type: ['string', 'null'] },
 					due_at: { type: ['string', 'null'] },
 					state_key: { type: 'string' },
@@ -3982,6 +3983,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						additionalProperties: false,
 						properties: {
 							task_id: { type: 'string' },
+							priority: { type: 'number' },
 							start_at: { type: ['string', 'null'] },
 							due_at: { type: ['string', 'null'] },
 							state_key: { type: 'string' },

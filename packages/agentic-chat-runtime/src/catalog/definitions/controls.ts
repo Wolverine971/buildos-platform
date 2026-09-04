@@ -131,6 +131,18 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								description:
 									'Create only: optional symbolic reference to one new entity. Omit unless another outcome needs to reference it. Set minimum_successful_effects=1 and declare its title in changes (goals use name). The label does not supply that value. Example labelled goal outcome: {"action":"create","entity_kind":"goal","minimum_successful_effects":1,"label":"launch","changes":[{"field":"name","value":"Publish three episodes"}]}'
 							},
+							src_label: {
+								type: 'string',
+								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
+								description:
+									'Link only: label of the source created by this contract. Declare one relationship outcome per directed edge, minimum_successful_effects=1, no target_ids, and a rel change. Use a src_id change for an existing source.'
+							},
+							dst_label: {
+								type: 'string',
+								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
+								description:
+									'Link only: label of the destination created by this contract. For depends_on the source is the dependent task and the destination is its prerequisite. Use a dst_id change for an existing destination.'
+							},
 							parent_label: {
 								type: 'string',
 								maxLength: 40,

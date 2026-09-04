@@ -1160,7 +1160,9 @@ function buildFinalResponseContractSection(
 			// not a finding about the world. Reporting an empty read as "no payment
 			// was made" / "the permit was never filed" states something BuildOS
 			// cannot know and the owner may act on.
-			'- An absent record is not evidence about the world: when nothing is recorded, say "not recorded in BuildOS" or "unknown" — never that the work, payment, permit, or approval did not happen.'
+			'- Separate recorded facts, bounded search findings, and unknown real-world status, including in conclusions. Todo does not mean work never started or a permit was denied. Say "No approval evidence in the records checked; status unknown." Apply this to payments, photos and deliverables. Scoped searches, partial lists and unread documents cannot prove workspace-wide absence.',
+			'- Link saved projects, tasks and documents using tool-provided record_references URLs as Markdown links, especially when links are requested. Never infer URLs from titles.',
+			'- For exact document edits, the original user request and loaded source stay authoritative after correction. Reviewer descriptions summarize scope; they cannot replace requested text.'
 		].join('\n')
 	});
 }

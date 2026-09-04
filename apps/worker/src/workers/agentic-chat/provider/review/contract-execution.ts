@@ -45,7 +45,17 @@ export function buildContractCompletionRequest(
 		const missing = result?.missingTargetIds.length
 			? ` still missing [${result.missingTargetIds.join(', ')}]`
 			: '';
-		return `- ${outcome.id}: ${outcome.action} ${outcome.entityKind}${targets}${destination}${missing}`;
+		const endpoints = [
+			['src_id', outcome.srcLabel],
+			['dst_id', outcome.dstLabel]
+		]
+			.filter(([, label]) => label)
+			.map(
+				([field, label]) =>
+					`${field}=${labelBindings.get(label!) ?? `pending create ${label}`}`
+			)
+			.join(', ');
+		return `- ${outcome.id}: ${outcome.action} ${outcome.entityKind}${targets}${destination}${missing}${endpoints ? ` (${endpoints})` : ''}`;
 	});
 	return {
 		...appendSystemInstruction(

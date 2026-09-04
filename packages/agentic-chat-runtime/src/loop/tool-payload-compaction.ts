@@ -1,6 +1,7 @@
 // packages/agentic-chat-runtime/src/loop/tool-payload-compaction.ts
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { inferMaterializedToolsFromEntityResults } from './entity-result-materialization';
+import { collectRecordReferences } from './record-references';
 
 type ToolArgumentParser = (rawArgs: unknown) => { args: Record<string, any>; error?: string };
 
@@ -199,7 +200,19 @@ export function buildToolPayloadForModel(
 		? compacted
 		: stripToolDiscoveryHintsFromPayload(compacted, options.callableToolNames);
 
-	return addToolResultSecurityNotice(toolName ?? '', advertised, resolvePayloadBudget(toolName));
+	const secured = addToolResultSecurityNotice(
+		toolName ?? '',
+		advertised,
+		resolvePayloadBudget(toolName)
+	);
+	const references = result.success ? collectRecordReferences(basePayload, toolName ?? '') : [];
+	// Keep navigation metadata outside content truncation, bounded to 20 records.
+	return references.length > 0 &&
+		secured &&
+		typeof secured === 'object' &&
+		!Array.isArray(secured)
+		? { ...secured, record_references: references }
+		: secured;
 }
 
 function isSkillPayloadTool(toolName: string): boolean {

@@ -112,6 +112,14 @@ export const ONTOLOGY_WRITE_TOOLS = [
 					},
 					props: {
 						type: 'object',
+						properties: {
+							duration_minutes: {
+								type: 'number',
+								minimum: 0,
+								description:
+									'Estimated work in minutes. Contract field: props.duration_minutes.'
+							}
+						},
 						description:
 							'Additional JSON properties. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
 					}
@@ -1094,6 +1102,14 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 					},
 					props: {
 						type: 'object',
+						properties: {
+							duration_minutes: {
+								type: 'number',
+								minimum: 0,
+								description:
+									'Estimated work in minutes. Contract field: props.duration_minutes. Other props are preserved.'
+							}
+						},
 						description:
 							'Properties to merge with existing props. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
 					}

@@ -417,7 +417,20 @@ export const AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1: Readonly<
 			throw invalidReceipt(context.toolName, 'returned a mismatched edge receipt');
 		}
 		return canonicalMutationReceipt(
-			{ created: value.created, message: 'Linked entities successfully.' },
+			{
+				created: value.created,
+				edge_id: edge.id,
+				edge: {
+					id: edge.id,
+					project_id: edge.project_id,
+					src_kind: edge.src_kind,
+					src_id: edge.src_id,
+					dst_kind: edge.dst_kind,
+					dst_id: edge.dst_id,
+					rel: edge.rel
+				},
+				message: 'Linked entities successfully.'
+			},
 			context.toolName
 		);
 	},

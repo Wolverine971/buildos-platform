@@ -1,5 +1,6 @@
 // packages/shared-types/src/index.ts
 export * from './database.types';
+export * from './record-routes';
 
 // Shared AI Inbox and notification admission vocabulary
 export * from './attention.types';

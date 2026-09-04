@@ -529,12 +529,14 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			}
 
 			// Refresh the Start Here document's managed status/map regions after a
-			// project chat session. TTL-gated + dedup-keyed in the snapshot worker,
-			// so frequent sessions coalesce instead of churning rebuilds.
+			// project chat session. Deduplicate this classification's retries, but
+			// bypass the read-cache TTL and older jobs so new work is not discarded.
 			const snapshotQueue = await queueProjectContextSnapshot({
 				projectId: activityResult.projectId,
 				userId: validatedData.userId,
-				reason: 'chat_session_end'
+				reason: 'chat_session_end',
+				force: true,
+				revisionKey: `classified-${job.id}`
 			});
 			if (!snapshotQueue.queued) {
 				console.warn(

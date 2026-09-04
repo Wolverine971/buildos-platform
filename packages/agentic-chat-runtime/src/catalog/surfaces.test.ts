@@ -71,6 +71,7 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'explore_project',
 			'get_document_outline',
 			'read_document_section',
+			'get_onto_document_details',
 			'list_onto_tasks',
 			'get_onto_task_details',
 			'create_onto_task',
@@ -107,6 +108,7 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'create_onto_document',
 			'update_onto_document',
 			'move_document_in_tree',
+			'link_onto_entities',
 			'get_project_calendar',
 			'set_project_calendar'
 		]);
@@ -148,7 +150,7 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 		}
 	});
 
-	it('keeps deletes, contacts and relationship tools off every static surface', () => {
+	it('keeps unsupported deletes, contacts and graph tools off every static surface', () => {
 		const forbidden = [
 			'delete_onto_task',
 			'delete_onto_project',

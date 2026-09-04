@@ -115,6 +115,9 @@ export type TurnContractOutcome = {
 	 * same-contract outcome carrying this label.
 	 */
 	parentLabel?: string;
+	/** Link endpoints created by labelled outcomes in the same contract. */
+	srcLabel?: string;
+	dstLabel?: string;
 };
 
 export const TURN_CONTRACT_LABEL_PATTERN = /^[a-z0-9][a-z0-9_-]{0,39}$/;
@@ -166,7 +169,9 @@ export function serializeTurnContractForDeclaration(contract: TurnContract): Jso
 					: {}),
 				minimum_successful_effects: outcome.minimumSuccessfulEffects,
 				...(outcome.label ? { label: outcome.label } : {}),
-				...(outcome.parentLabel ? { parent_label: outcome.parentLabel } : {})
+				...(outcome.parentLabel ? { parent_label: outcome.parentLabel } : {}),
+				...(outcome.srcLabel ? { src_label: outcome.srcLabel } : {}),
+				...(outcome.dstLabel ? { dst_label: outcome.dstLabel } : {})
 			})
 		)
 	};
@@ -282,6 +287,7 @@ function normalizeFieldName(value: string): string {
 const OUTCOME_FIELD_ALIASES: Readonly<
 	Partial<Record<TurnContractEntityKind, Readonly<Record<string, string>>>>
 > = Object.freeze({
+	task: Object.freeze({ duration_minutes: 'props.duration_minutes' }),
 	// Goal persistence and its provider tools use name/target_date. Models often
 	// borrow title/due_at from task creates when one project-create contract
 	// contains both entity kinds; these aliases are unambiguous for goals.
@@ -531,6 +537,59 @@ function normalizeOutcome(
 	// must be a single-effect outcome whose title is declared (the binding key).
 	const label = readLabel(record.label);
 	const parentLabel = readLabel(record.parent_label ?? record.parentLabel);
+	const srcLabel = readLabel(record.src_label ?? record.srcLabel);
+	const dstLabel = readLabel(record.dst_label ?? record.dstLabel);
+	for (const [field, endpointLabel] of [
+		['src', srcLabel],
+		['dst', dstLabel]
+	] as const) {
+		const raw = record[`${field}_label`] ?? record[`${field}Label`];
+		if (
+			raw !== undefined &&
+			raw !== null &&
+			(!endpointLabel || !TURN_CONTRACT_LABEL_PATTERN.test(endpointLabel))
+		) {
+			return rejectOutcome(issues, index, `${field}_label must be a valid create label.`);
+		}
+		if (
+			endpointLabel &&
+			(action !== 'link' ||
+				entityKind !== 'relationship' ||
+				minimumSuccessfulEffects !== 1 ||
+				targetIds.length > 0)
+		) {
+			return rejectOutcome(
+				issues,
+				index,
+				'Endpoint labels require one relationship link outcome with minimum_successful_effects=1 and no target_ids.'
+			);
+		}
+		if (endpointLabel && changes.some((change) => change.field === `${field}_id`)) {
+			return rejectOutcome(
+				issues,
+				index,
+				`Use either ${field}_label or a ${field}_id change, not both.`
+			);
+		}
+	}
+	if (srcLabel || dstLabel) {
+		for (const field of ['src', 'dst']) {
+			if (
+				!(field === 'src' ? srcLabel : dstLabel) &&
+				!changes.some((change) => change.field === `${field}_id`)
+			) {
+				return rejectOutcome(
+					issues,
+					index,
+					`Declare ${field}_label or the existing ${field}_id change.`
+				);
+			}
+		}
+		if (!changes.some((change) => change.field === 'rel'))
+			return rejectOutcome(issues, index, 'A labelled link must declare its rel change.');
+		if (srcLabel && srcLabel === dstLabel)
+			return rejectOutcome(issues, index, 'A relationship cannot link a label to itself.');
+	}
 	if (record.label !== undefined && record.label !== null && !label) {
 		return rejectOutcome(issues, index, 'label must be a non-empty string.');
 	}
@@ -596,7 +655,9 @@ function normalizeOutcome(
 		...(changes.length > 0 ? { changes } : {}),
 		minimumSuccessfulEffects,
 		...(label !== undefined ? { label } : {}),
-		...(parentLabel !== undefined ? { parentLabel } : {})
+		...(parentLabel !== undefined ? { parentLabel } : {}),
+		...(srcLabel ? { srcLabel } : {}),
+		...(dstLabel ? { dstLabel } : {})
 	};
 }
 
@@ -619,6 +680,21 @@ function describeContractReferenceIssues(outcomes: TurnContractOutcome[]): strin
 	});
 	const destinationByDocument = new Map<string, string>();
 	outcomes.forEach((outcome, index) => {
+		for (const [endpoint, label] of [
+			['src', outcome.srcLabel],
+			['dst', outcome.dstLabel]
+		] as const) {
+			if (!label) continue;
+			const owner = labelOwners.get(label);
+			const kind = outcome.changes?.find(
+				(change) => change.field === `${endpoint}_kind`
+			)?.value;
+			if (!owner || owner.entityKind === 'project' || (kind && kind !== owner.entityKind)) {
+				issues.push(
+					`Outcome ${index + 1}: ${endpoint}_label must reference a non-project create outcome of the declared endpoint kind.`
+				);
+			}
+		}
 		if (!outcome.parentLabel) return;
 		const owner = labelOwners.get(outcome.parentLabel);
 		if (!owner) {
@@ -1033,7 +1109,9 @@ function uniqueOutcomes(outcomes: TurnContractOutcome[]): TurnContractOutcome[] 
 				.sort(([left], [right]) => (left ?? '').localeCompare(right ?? '')),
 			outcome.minimumSuccessfulEffects,
 			outcome.label ?? null,
-			outcome.parentLabel ?? null
+			outcome.parentLabel ?? null,
+			outcome.srcLabel ?? null,
+			outcome.dstLabel ?? null
 		]);
 		if (seen.has(key)) return false;
 		seen.add(key);
@@ -1316,6 +1394,34 @@ function resolveOutcome(
 	ledger: WriteLedgerEntry[],
 	bindings: TurnContractLabelBindings
 ): TurnContractOutcomeResult {
+	if (outcome.srcLabel || outcome.dstLabel) {
+		const endpointChanges: TurnContractChange[] = [];
+		for (const [field, label] of [
+			['src_id', outcome.srcLabel],
+			['dst_id', outcome.dstLabel]
+		] as const) {
+			if (!label) continue;
+			const bound = bindings.get(label);
+			if (!bound)
+				return {
+					id: outcome.id,
+					fulfilled: false,
+					matchedEffects: 0,
+					requiredEffects: 1,
+					missingTargetIds: [],
+					missingRequiredFields: [field]
+				};
+			endpointChanges.push({ field, value: bound });
+		}
+		outcome = {
+			...outcome,
+			changes: [...(outcome.changes ?? []), ...endpointChanges],
+			requiredFields: [
+				...outcome.requiredFields,
+				...endpointChanges.map((change) => change.field)
+			]
+		};
+	}
 	// Binding proves the created entity's identity, not its other postconditions.
 	// Keep identity-only parent-by-title grouping valid. Check any other fields
 	// against successful creates and subsequent updates to that bound entity.
@@ -1363,7 +1469,9 @@ function resolveOutcome(
 			(boundParentId === undefined ||
 				(entry.changedValues?.parent_id ?? entry.parentId) === boundParentId)
 	);
-	const requiredFields = outcome.requiredFields.map(normalizeFieldName);
+	const requiredFields = outcome.requiredFields.map((field) =>
+		normalizeOutcomeFieldName(field, outcome.entityKind)
+	);
 	const candidatesForTarget = (targetId: string): WriteLedgerEntry[] =>
 		candidates.filter((entry) => entry.entityId === targetId);
 	const entriesMeetPostconditions = (entries: WriteLedgerEntry[]): boolean => {
@@ -1373,12 +1481,16 @@ function resolveOutcome(
 		if (!requiredFields.every((field) => fields.has(field))) return false;
 		const finalValues = new Map<string, string>();
 		for (const entry of entries) {
+			// An overwritten field with no provable scalar invalidates an earlier
+			// value; the earlier receipt must not prove the final state.
+			for (const field of entry.changedFields ?? [])
+				finalValues.delete(normalizeFieldName(field));
 			for (const [field, value] of Object.entries(entry.changedValues ?? {})) {
 				finalValues.set(normalizeFieldName(field), value);
 			}
 		}
 		return (outcome.changes ?? []).every((change) => {
-			const field = normalizeFieldName(change.field);
+			const field = normalizeOutcomeFieldName(change.field, outcome.entityKind);
 			const actual = finalValues.get(field);
 			if (actual === undefined) return false;
 			// Titles are compared by identity key: decoration is not a postcondition.

@@ -17,6 +17,7 @@
 		document,
 		contentLoading = false,
 		creating = false,
+		sourceUpdatedAt = null,
 		nextStepShort = null,
 		canEdit = false,
 		onOpenStartHere,
@@ -27,6 +28,7 @@
 		document: Document | null;
 		contentLoading?: boolean;
 		creating?: boolean;
+		sourceUpdatedAt?: string | null;
 		nextStepShort?: string | null;
 		canEdit?: boolean;
 		onOpenStartHere: (documentId: string) => void;
@@ -46,6 +48,13 @@
 	const orientation = $derived(content ? extractStartHereOrientation(content, 220) : null);
 	const nextStep = $derived(status?.nextStep ?? nextStepShort ?? null);
 	const rendered = $derived(status?.rendered === true);
+	const stale = $derived(
+		Boolean(
+			sourceUpdatedAt &&
+				status?.refreshedAt &&
+				Date.parse(sourceUpdatedAt) > Date.parse(status.refreshedAt)
+		)
+	);
 
 	// A meaningful edit after the snapshot is fresher than machine refresh noise.
 	// The one-minute buffer avoids classifying the same refresh transaction as an
@@ -70,6 +79,8 @@
 
 	const freshnessLabel = $derived.by(() => {
 		if (!document) return 'Missing';
+		if (stale)
+			return `Snapshot out of date · refreshed ${formatRelativeTime(status?.refreshedAt)}`;
 		if (freshness.kind === 'authored') {
 			return `Memory updated ${formatRelativeTime(freshness.at)}`;
 		}
@@ -180,7 +191,9 @@
 		<div class="space-y-1 px-3 pb-3 sm:px-4">
 			{#if rendered && status?.now}
 				<p class="text-xs text-foreground sm:text-sm">
-					<span class="font-medium text-muted-foreground">Now:</span>
+					<span class="font-medium text-muted-foreground"
+						>{stale ? 'At last refresh:' : 'Now:'}</span
+					>
 					{status.now}
 				</p>
 			{/if}

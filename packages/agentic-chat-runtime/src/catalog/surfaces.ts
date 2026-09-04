@@ -90,6 +90,7 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	// pair must already be mounted when a search result names a document.
 	'get_document_outline',
 	'read_document_section',
+	'get_onto_document_details',
 	// Task reads and writes. list_onto_tasks takes an OPTIONAL project_id, so it
 	// scans every visible project on a global turn; get_onto_task_details and
 	// move_onto_task complete the scan→read→act chain across projects.
@@ -140,6 +141,7 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 	'create_onto_document',
 	'update_onto_document',
 	'move_document_in_tree',
+	'link_onto_entities',
 	'get_project_calendar',
 	'set_project_calendar'
 ] as const;

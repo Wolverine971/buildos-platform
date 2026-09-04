@@ -299,19 +299,18 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain(
 			'User-visible durable fields (titles, descriptions, document content'
 		);
-		// 2026-09-02: the final response contract is one receipt sentence. A second
-		// bullet joined it 2026-09-04 — an absent record is not evidence about the
-		// world — because the receipt rule governs what was written and says nothing
-		// about how to report what was never there. Two bullets, both asserted by
-		// content: the guard is against bullet sprawl, not against this pair.
+		// Postdeploy 2026-09-04: receipts, evidence scope, record navigation, and
+		// exact document text each have one bounded final-response rule.
 		const contract = envelope.sections.find(
 			(section) => section.id === 'final_response_contract'
 		);
 		expect(contract?.content.split('\n').filter((line) => line.startsWith('- '))).toHaveLength(
-			2
+			4
 		);
 		expect(contract?.content).toContain('- Report only what tool results confirm');
-		expect(contract?.content).toContain('- An absent record is not evidence about the world');
+		expect(contract?.content).toContain('- Separate recorded facts, bounded search findings');
+		expect(contract?.content).toContain('record_references URLs as Markdown links');
+		expect(contract?.content).toContain('cannot replace requested text');
 		expect(envelope.systemPrompt).not.toContain('"parameters"');
 		expect(envelope.toolsSummary.discoveryTools).toEqual(['skill_search', 'domain_search']);
 		expect(envelope.toolsSummary.directTools).toContain('get_workspace_overview');

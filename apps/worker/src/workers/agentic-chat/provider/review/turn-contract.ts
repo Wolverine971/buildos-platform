@@ -48,8 +48,9 @@ const TURN_CONTRACT_REVIEW_SYSTEM_PROMPT = [
 	'When declare_read_only_turn is among your tools and the current request commissions no durable change, choose it instead of inventing a contract or asking the user to clarify a change they did not request. When it is not among your tools, a prior independent review already established that this turn commissions a durable change; read-only correction is no longer available, so judge only whether this revised exact contract matches that commission or whether a genuine unresolved user choice remains.',
 	'Target IDs are existing entity IDs that bound the eligible scope; create outcomes have no target ID before execution. minimum_successful_effects is the required cardinality. Approve a minimum smaller than the target set only when the user commission genuinely allows that bounded partial result; require the full cardinality when every listed target must change.',
 	'The proposed contract JSON uses the exact provider-facing declaration field names. Any corrected_contract must preserve that snake_case shape exactly.',
-	'required_fields and changes name actual effect fields from the available tools, never prose acceptance criteria or invented section fields. Prose fields (content, description, body) are postconditions: list them in required_fields and state the required text or preservation rules in description and required_correction; never put their text in changes, which holds only short scalar values (a title, date, id, priority, or state) and is capped at 160 characters. A document edit therefore uses required_fields=["content"] with no content change.',
+	'required_fields and changes name actual effect fields from the available tools, never invented section fields. Task estimates use props.duration_minutes. Prose fields (content, description, body) are postconditions: list them in required_fields. For document edits use required_fields=["content"] with no content change. Describe the edit scope briefly and refer to the original user message for exact replacement text and preservation requirements. Never copy, abbreviate, or rewrite exact source text into the length-limited description or required_correction. The original user request and loaded source remain authoritative through every revision; reviewer prose cannot replace them.',
 	"A create outcome may carry a label and a move outcome may carry parent_label: the move's destination is the entity that labelled create will produce, and the system binds the id after the create executes. Treat such a destination as resolved; do not ask for its id.",
+	'When tasks are created with dependencies, include both the task creates and one relationship link outcome per requested edge. Use src_label/dst_label to reference labelled creates, rel=depends_on from dependent to prerequisite, minimum_successful_effects=1, and no target_ids. Their IDs are bound after creation. Do not omit these relationships merely because create_onto_task lacks a dependency field.',
 	'If multiple loaded entities plausibly match one descriptive reference, or a required value is absent from both the request and the loaded context and the field semantics, the choice belongs to the user: request clarification.',
 	'When request_proposal_revision is among your tools and the user commission is clear but the proposed contract misstates it — wrong cardinality, targets that need different values lumped into one outcome, an outcome the user did not commission, or a required value the turn evidence already resolves but the contract omits — call it with the complete corrected_contract plus a concise explanation. The corrected contract is durably recorded and independently re-reviewed; it is not approved by the revision call itself. If any descriptive reference has several plausible candidates, clarify instead; never revise around an ambiguous target. When request_proposal_revision is not among your tools, the acting model has used every correction allowed this turn: approve, correct to read-only if that tool is available, or ask the user.',
 	'For clarification, ask one concise user-facing question and name the plausible human-readable choices from the loaded evidence when available.',
@@ -296,7 +297,18 @@ export function describeContractValueSemantics(
 			}
 			for (const field of fields) {
 				for (const alias of FIELD_SEMANTICS_ALIASES[field] ?? [field]) {
-					const schema = (properties as JsonObject)[alias];
+					let schema: unknown = { properties };
+					for (const part of alias.split('.')) {
+						if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+							schema = null;
+							break;
+						}
+						const nested = (schema as JsonObject).properties;
+						schema =
+							nested && typeof nested === 'object' && !Array.isArray(nested)
+								? (nested as JsonObject)[part]
+								: null;
+					}
 					if (!schema || typeof schema !== 'object' || Array.isArray(schema)) continue;
 					const description = (schema as JsonObject).description;
 					if (typeof description !== 'string' || !description.trim()) continue;

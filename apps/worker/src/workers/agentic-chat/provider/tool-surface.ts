@@ -61,6 +61,8 @@ const WORKER_LOOP_CATALOG = Object.freeze({
 // Legacy/custom profiles keep their historical eager contract surface during
 // the artifact retention window, and project creation remains contract-first.
 const LAZY_COMPLEX_WRITE_CONTRACT_SURFACE_PROFILES = new Set([
+	'global',
+	'project',
 	'global_basic',
 	'global_write',
 	'project_basic',

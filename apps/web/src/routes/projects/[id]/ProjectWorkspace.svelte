@@ -13,8 +13,10 @@
 -->
 <script lang="ts">
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
+	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { browser } from '$app/environment';
-	import { pushState, replaceState } from '$app/navigation';
+	import { goto, pushState, replaceState } from '$app/navigation';
+	import { buildRecordHref } from '@buildos/shared-types';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -284,6 +286,20 @@
 		showAllMilestones ? upcomingMilestones : upcomingMilestones.slice(0, 5)
 	);
 	const visibleRisks = $derived(showAllRisks ? openRisks : openRisks.slice(0, 5));
+	const memorySourceUpdatedAt = $derived.by(() => {
+		const times = [
+			project,
+			...tasks,
+			...documents.filter((doc) => doc.id !== contextDocument?.id),
+			...goals,
+			...milestones,
+			...plans,
+			...risks
+		]
+			.map((record) => (record.updated_at ? Date.parse(record.updated_at) : NaN))
+			.filter(Number.isFinite);
+		return times.length ? new Date(Math.max(...times)).toISOString() : null;
+	});
 
 	function humanize(value: string | null | undefined): string {
 		if (!value) return 'Unknown';
@@ -346,8 +362,12 @@
 		}
 	}
 
-	async function hydrateContextDocument() {
-		if (!contextDocument?.id || contextDocument.content || isContextDocumentContentLoading) {
+	async function hydrateContextDocument(force = false) {
+		if (
+			!contextDocument?.id ||
+			(!force && contextDocument.content) ||
+			isContextDocumentContentLoading
+		) {
 			return;
 		}
 		isContextDocumentContentLoading = true;
@@ -405,7 +425,7 @@
 
 	function openProjectBrief() {
 		showProjectBriefModal = true;
-		void hydrateContextDocument();
+		void hydrateContextDocument(true);
 	}
 
 	function openStartHereFromMemory(documentId: string) {
@@ -414,7 +434,13 @@
 			document_id: documentId,
 			source: 'memory_card'
 		});
-		openEntity('document', documentId);
+		openStartHereDocument(documentId);
+	}
+
+	function openStartHereDocument(documentId: string) {
+		void goto(
+			resolve(buildRecordHref('document', documentId, project.id)! as `/projects/${string}`)
+		);
 	}
 
 	function openMemoryUpdateChat() {
@@ -441,11 +467,18 @@
 		);
 	}
 
-	async function recheckStartHereAfterSnapshot(seedDocument: Document) {
-		if (hasRenderedStartHereSnapshot(seedDocument)) return;
+	async function recheckStartHereAfterSnapshot(
+		seedDocument: Document,
+		afterRefresh?: string | null
+	) {
+		if (afterRefresh === undefined && hasRenderedStartHereSnapshot(seedDocument)) return;
 		const request = ++startHereRefreshRequest;
 
-		for (const delayMs of START_HERE_REFRESH_RECHECK_DELAYS_MS) {
+		const delays =
+			afterRefresh === undefined
+				? START_HERE_REFRESH_RECHECK_DELAYS_MS
+				: [1000, 3000, 6000, 10000, 15000, 25000];
+		for (const delayMs of delays) {
 			await new Promise((resolveDelay) => setTimeout(resolveDelay, delayMs));
 			if (request !== startHereRefreshRequest || contextDocument?.id !== seedDocument.id)
 				return;
@@ -453,6 +486,12 @@
 			try {
 				const refreshed = await fetchProjectDocument(seedDocument.id);
 				if (!hasRenderedStartHereSnapshot(refreshed)) continue;
+				const refreshedAt = parseStartHereStatusRegion(refreshed.content!)?.refreshedAt;
+				if (
+					afterRefresh &&
+					(!refreshedAt || Date.parse(refreshedAt) <= Date.parse(afterRefresh))
+				)
+					continue;
 				contextDocument = refreshed;
 				return;
 			} catch {
@@ -802,10 +841,34 @@
 	onMount(() => {
 		syncWorkspaceFromUrl(new URL(window.location.href));
 		void hydrateProject();
+		// Ignore the store's initial value; only react to new completed mutations.
+		let initial = true;
+		let active = true;
+		const unsubscribe = dataMutationEvents.subscribe((event) => {
+			if (initial) {
+				initial = false;
+				return;
+			}
+			if (!event || !mutationAffectsProject(event.summary, project.id)) return;
+			const previousRefresh = contextDocument?.content
+				? (parseStartHereStatusRegion(contextDocument.content)?.refreshedAt ?? null)
+				: null;
+			void refreshProject().then(() => {
+				if (active && contextDocument)
+					void recheckStartHereAfterSnapshot(contextDocument, previousRefresh);
+			});
+		});
+		return () => {
+			active = false;
+			unsubscribe();
+		};
 	});
 </script>
 
-<svelte:window onpopstate={handleWorkspacePopState} />
+<svelte:window
+	onpopstate={handleWorkspacePopState}
+	onfocus={() => void hydrateContextDocument(true)}
+/>
 
 <svelte:head>
 	<title>{project.name || 'Project'} · BuildOS</title>
@@ -1097,6 +1160,7 @@
 							document={contextDocument}
 							contentLoading={isContextDocumentContentLoading}
 							creating={isCreatingStartHere}
+							sourceUpdatedAt={memorySourceUpdatedAt}
 							nextStepShort={project.next_step_short ?? null}
 							{canEdit}
 							onOpenStartHere={openStartHereFromMemory}
@@ -1680,7 +1744,7 @@
 		{contextDocument}
 		{canEdit}
 		onClose={() => (showProjectBriefModal = false)}
-		onOpenStartHere={(documentId) => openEntity('document', documentId)}
+		onOpenStartHere={openStartHereDocument}
 	/>
 {/if}
 

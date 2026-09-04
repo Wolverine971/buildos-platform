@@ -3,7 +3,7 @@
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { pushState } from '$app/navigation';
+import { goto, pushState } from '$app/navigation';
 import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
 import ProjectWorkspace from './ProjectWorkspace.svelte';
 
@@ -170,6 +170,30 @@ function plans(count: number) {
 }
 
 describe('ProjectWorkspace edge states', () => {
+	it('labels old counts and reloads the latest snapshot when returning to the workspace', async () => {
+		render(ProjectWorkspace, {
+			props: {
+				data: projectData({
+					context_document: contextDocument(),
+					documents: [projectDocument()]
+				}) as any
+			}
+		});
+		expect(await screen.findByText(/Snapshot out of date/)).toBeInTheDocument();
+		expect(screen.getByText('At last refresh:')).toBeInTheDocument();
+		const refreshed = {
+			...contextDocument(),
+			content: contextDocument()
+				.content.replace('2026-07-22T12:00:00.000Z', '2026-08-15T12:00:00.000Z')
+				.replace('4 open tasks', '5 open tasks')
+		};
+		vi.mocked(fetch).mockResolvedValueOnce(apiResponse({ document: refreshed }));
+		await fireEvent.focus(window);
+		await waitFor(() =>
+			expect(screen.queryByText(/Snapshot out of date/)).not.toBeInTheDocument()
+		);
+		expect(screen.getByText(/5 open tasks/)).toBeInTheDocument();
+	});
 	beforeEach(() => {
 		window.history.replaceState({}, '', '/workspace?view=overview');
 		vi.stubGlobal('scrollTo', vi.fn());
@@ -325,12 +349,10 @@ describe('ProjectWorkspace edge states', () => {
 			within(briefDialog).getAllByRole('heading', { name: 'START HERE - Project' })
 		).toHaveLength(1);
 		await fireEvent.click(screen.getByRole('button', { name: 'Open document' }));
-		expect(pushState).toHaveBeenCalledOnce();
-		const briefUrl = vi.mocked(pushState).mock.calls[0]?.[0];
-		expect(typeof briefUrl).toBe('string');
-		const parsedBriefUrl = new URL(briefUrl as string, window.location.origin);
-		expect(parsedBriefUrl.searchParams.get('entity')).toBe('document');
-		expect(parsedBriefUrl.searchParams.get('entity_id')).toBe(CONTEXT_DOCUMENT_ID);
+		expect(goto).toHaveBeenCalledWith(
+			`/projects/${PROJECT_ID}/documents/${CONTEXT_DOCUMENT_ID}`
+		);
+		expect(pushState).not.toHaveBeenCalled();
 	});
 
 	it('surfaces the live Start Here snapshot and deep-links to its canonical document', async () => {
@@ -365,7 +387,9 @@ describe('ProjectWorkspace edge states', () => {
 			'project',
 			expect.objectContaining({ source: 'memory_card' })
 		);
-		expect(pushState).toHaveBeenCalledOnce();
+		expect(goto).toHaveBeenCalledWith(
+			`/projects/${PROJECT_ID}/documents/${CONTEXT_DOCUMENT_ID}`
+		);
 	});
 
 	it('recovers a missing Start Here document from the Overview', async () => {

@@ -10,6 +10,8 @@ export async function queueProjectContextSnapshot(params: {
 	userId: string;
 	reason?: string;
 	force?: boolean;
+	/** Distinct source revision, so an older in-flight build cannot absorb it. */
+	revisionKey?: string;
 }): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
 	try {
 		const supabase = createAdminSupabaseClient();
@@ -23,7 +25,7 @@ export async function queueProjectContextSnapshot(params: {
 			},
 			p_priority: 7,
 			p_scheduled_for: new Date().toISOString(),
-			p_dedup_key: `project-context-snapshot-${params.projectId}`
+			p_dedup_key: `project-context-snapshot-${params.projectId}${params.revisionKey ? `-${params.revisionKey}` : ''}`
 		});
 
 		return { queued: true, jobId: queueJobId, reason: 'queued' };

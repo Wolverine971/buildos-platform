@@ -176,6 +176,8 @@ export async function queueProjectContextSnapshot(params: {
 	userId: string;
 	reason?: string;
 	force?: boolean;
+	/** Distinct source revision, so an older in-flight build cannot absorb it. */
+	revisionKey?: string;
 }): Promise<{ queued: boolean; reason?: string }> {
 	try {
 		const { error } = await supabase.rpc('add_queue_job', {
@@ -188,7 +190,7 @@ export async function queueProjectContextSnapshot(params: {
 			}),
 			p_priority: 7,
 			p_scheduled_for: new Date().toISOString(),
-			p_dedup_key: `project-context-snapshot-${params.projectId}`
+			p_dedup_key: `project-context-snapshot-${params.projectId}${params.revisionKey ? `-${params.revisionKey}` : ''}`
 		});
 
 		if (error) {

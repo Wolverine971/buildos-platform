@@ -348,7 +348,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Create one relationship between two existing non-project ontology entities using exact UUIDs from reads. Project endpoints are not available in the worker. Relationship aliases are normalized to their canonical direction. Direct call is fine when the target id is the focused entity, was given by the user, or is the only entity of each kind a read returned this turn; otherwise declare_turn_contract first.',
+			'Create one relationship between two non-project ontology entities using UUIDs from reads or successful creates. For newly requested tasks and dependencies: declare all task creates with labels and one link outcome per edge using src_label/dst_label, then create tasks and use their returned UUIDs here. depends_on points from the dependent task (src) to its prerequisite (dst). Project endpoints are unavailable. Otherwise declare_turn_contract unless both targets are uniquely resolved by the current turn.',
 		requiredNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel'],
 		reviewedArgumentNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel', 'props'],
 		propertyOverrides: {

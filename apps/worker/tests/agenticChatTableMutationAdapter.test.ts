@@ -1420,6 +1420,16 @@ describe('table rows for reviewed ontology edges', () => {
 
 		await expect(adapter({ runGateway }).execute(linkInput())).resolves.toEqual({
 			created: 1,
+			edge_id: EDGE_ID,
+			edge: {
+				id: EDGE_ID,
+				project_id: PROJECT_ID,
+				src_kind: 'task',
+				src_id: TASK_ID,
+				dst_kind: 'goal',
+				dst_id: GOAL_ID,
+				rel: 'supports_goal'
+			},
 			message: 'Linked entities successfully.'
 		});
 		expect(runGateway).toHaveBeenCalledWith({
@@ -1470,7 +1480,20 @@ describe('table rows for reviewed ontology edges', () => {
 					rel: 'belongs_to_plan'
 				})
 			)
-		).resolves.toEqual({ created: 0, message: 'Linked entities successfully.' });
+		).resolves.toEqual({
+			created: 0,
+			edge_id: EDGE_ID,
+			edge: {
+				id: EDGE_ID,
+				project_id: PROJECT_ID,
+				src_kind: 'plan',
+				src_id: PLAN_ID,
+				dst_kind: 'task',
+				dst_id: TASK_ID,
+				rel: 'has_task'
+			},
+			message: 'Linked entities successfully.'
+		});
 		expect(runGateway).toHaveBeenCalledWith(
 			expect.objectContaining({
 				args: {

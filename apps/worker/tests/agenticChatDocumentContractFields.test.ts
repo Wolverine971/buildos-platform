@@ -13,7 +13,11 @@ import type {
 	AgenticChatTurnProviderRequestV1,
 	AgenticChatTurnProviderToolV1
 } from '../src/workers/agentic-chat/provider/contracts';
-import { validateCompletedProviderCalls } from '../src/workers/agentic-chat/provider/validation';
+import {
+	contractSha256,
+	validateApprovedTurnContractMutations,
+	validateCompletedProviderCalls
+} from '../src/workers/agentic-chat/provider/validation';
 import { buildTurnContractReviewRequest } from '../src/workers/agentic-chat/provider/review/turn-contract';
 import { completeTurnContractReviewDecision } from '../src/workers/agentic-chat/provider/review/decision-completion';
 import {
@@ -87,6 +91,116 @@ function call(argumentsValue: JsonObject) {
 beforeAll(() => provideAgenticChatLoopToolCatalog(() => ({ ops: {}, byToolName: {} })));
 
 describe('executable contract fields', () => {
+	it.each(['duration_minutes', 'props.duration_minutes'])(
+		'accepts nested task estimate contracts using %s',
+		(field) => {
+			const taskTools = [
+				...controlTools,
+				providerTool(REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION),
+				...ONTOLOGY_WRITE_TOOLS.filter(
+					(tool) => tool.function.name === 'update_onto_task'
+				).map(providerTool)
+			];
+			const args = {
+				outcomes: [
+					{
+						action: 'update',
+						entity_kind: 'task',
+						target_ids: [DOCUMENT_ID],
+						changes: [{ field, value: '120' }]
+					}
+				]
+			};
+			expect(
+				validateCompletedProviderCalls([call(args)], { ...request, tools: taskTools })
+			).toEqual([]);
+			const review = buildTurnContractReviewRequest(
+				request,
+				taskTools,
+				parseDeclaredTurnContract(args)!,
+				'a'.repeat(64),
+				true,
+				true
+			);
+			expect(JSON.stringify(review.messages)).toContain('props.duration_minutes');
+			expect(JSON.stringify(review.messages)).toContain('Estimated work in minutes');
+		}
+	);
+	it('rejects invented nested task fields', () => {
+		const taskTools = [
+			...controlTools,
+			...ONTOLOGY_WRITE_TOOLS.filter((tool) => tool.function.name === 'update_onto_task').map(
+				providerTool
+			)
+		];
+		expect(
+			validateCompletedProviderCalls(
+				[
+					call({
+						outcomes: [
+							{
+								action: 'update',
+								entity_kind: 'task',
+								target_ids: [DOCUMENT_ID],
+								changes: [{ field: 'props.estimated_duration', value: '120' }]
+							}
+						]
+					})
+				],
+				{ ...request, tools: taskTools }
+			)
+		).toHaveLength(1);
+	});
+	it('authorizes only the bound dependency endpoints and direction', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				...['install', 'order'].map((label) => ({
+					action: 'create',
+					entity_kind: 'task',
+					label,
+					changes: [{ field: 'title', value: label }]
+				})),
+				{
+					action: 'link',
+					entity_kind: 'relationship',
+					src_label: 'install',
+					dst_label: 'order',
+					changes: [{ field: 'rel', value: 'depends_on' }]
+				}
+			]
+		})!;
+		const bindings = new Map([
+			['install', 'task-install'],
+			['order', 'task-order']
+		]);
+		const mutation = (overrides: JsonObject = {}) => ({
+			...call({
+				src_kind: 'task',
+				src_id: 'task-install',
+				dst_kind: 'task',
+				dst_id: 'task-order',
+				rel: 'depends_on',
+				...overrides
+			}),
+			name: 'link_onto_entities'
+		});
+		const validate = (overrides: JsonObject = {}, bound = bindings) =>
+			validateApprovedTurnContractMutations(
+				[mutation(overrides)],
+				contract,
+				contractSha256(contract),
+				bound
+			);
+		expect(validate()).toEqual([]);
+		for (const args of [
+			{ src_id: 'wrong' },
+			{ src_kind: 'document' },
+			{ rel: 'related_to' },
+			{ src_id: 'task-order', dst_id: 'task-install' }
+		])
+			expect(validate(args)).toHaveLength(1);
+		expect(validate({}, new Map())[0]?.errors.join(' ')).toContain('has not been created yet');
+	});
 	it.each([
 		{ entityKind: 'goal', fields: ['name', 'due_at', 'project_id'], rejected: true },
 		{ entityKind: 'task', fields: ['title', 'project_id'], rejected: true },

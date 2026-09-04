@@ -267,8 +267,8 @@ export function validateApprovedTurnContractMutations(
 		);
 		const errors = unbound
 			? [
-					`Mutation ${call.name} moves into the contract folder labelled "${unbound.label}", which has not been created yet, so its id cannot be bound. ` +
-						'Propose only the create calls for labelled folders in this pass; propose the moves after their receipts return, using the created ids (or the exact declared title via new_parent_title).'
+					`Mutation ${call.name} references the contract entity labelled "${unbound.label}", which has not been created yet, so its id cannot be bound. ` +
+						'Propose its create call first; propose dependent moves or links after the successful create receipt returns, using the created id.'
 				]
 			: [
 					`Mutation ${call.name} is outside the independently approved turn contract. ` +
@@ -306,6 +306,29 @@ function turnContractOutcomeAuthorizesCall(
 	}
 
 	const targetIds = contractTargetIdsForCall(outcome, call.arguments);
+	if (outcome.srcLabel || outcome.dstLabel) {
+		for (const [endpoint, label] of [
+			['src', outcome.srcLabel],
+			['dst', outcome.dstLabel]
+		] as const) {
+			if (!label) continue;
+			const bound = labelBindings.get(label);
+			if (!bound) return { kind: 'unbound_label', label };
+			const owner = contract.outcomes.find((candidate) => candidate.label === label);
+			if (
+				call.arguments[`${endpoint}_id`] !== bound ||
+				call.arguments[`${endpoint}_kind`] !== owner?.entityKind
+			)
+				return { kind: 'rejected' };
+		}
+		for (const change of outcome.changes ?? []) {
+			if (
+				['rel', 'src_id', 'dst_id', 'src_kind', 'dst_kind'].includes(change.field) &&
+				call.arguments[change.field] !== change.value
+			)
+				return { kind: 'rejected' };
+		}
+	}
 	// A create call cannot carry the id of the entity that does not exist yet.
 	// This also permits the folder-creation step of an approved `organize`
 	// outcome; the exact project, title, and content remain protected by the

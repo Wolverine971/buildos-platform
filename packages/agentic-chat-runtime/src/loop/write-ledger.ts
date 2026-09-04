@@ -148,6 +148,12 @@ function moveSelectsParent(toolName: string, args: ParsedArgs): boolean {
 	);
 }
 
+function taskDurationProps(toolName: string, args: ParsedArgs): ParsedArgs | null {
+	if (toolName !== 'create_onto_task' && toolName !== 'update_onto_task') return null;
+	const props = extractResultObject(args.props);
+	return props && Object.hasOwn(props, 'duration_minutes') ? props : null;
+}
+
 /** Canonical effect fields recorded for these tool arguments, excluding routing metadata. */
 export function getWriteLedgerChangedFields(toolName: string, args: ParsedArgs): string[] {
 	const fields = Object.entries(args)
@@ -162,6 +168,7 @@ export function getWriteLedgerChangedFields(toolName: string, args: ParsedArgs):
 	if (moveSelectsParent(toolName, args)) {
 		fields.push('parent_id');
 	}
+	if (taskDurationProps(toolName, args)) fields.push('props.duration_minutes');
 	return Array.from(new Set(fields)).sort();
 }
 
@@ -189,6 +196,17 @@ function extractChangedValues(
 		if (NON_EFFECT_ARGUMENTS.has(field) || value === undefined) continue;
 		const canonical = canonicalScalarEffectValue(value);
 		if (canonical !== undefined) values[field] = canonical;
+	}
+	const durationProps = taskDurationProps(toolName, args);
+	if (durationProps) {
+		// Prefer the saved value when the adapter returned a task. A mismatching
+		// or absent saved estimate must not be proved by the requested arguments.
+		const task = extractResultObject(result?.task);
+		const value = task
+			? extractResultObject(task.props)?.duration_minutes
+			: durationProps.duration_minutes;
+		const canonical = canonicalScalarEffectValue(value);
+		if (canonical !== undefined) values['props.duration_minutes'] = canonical;
 	}
 	if (moveSelectsParent(toolName, args)) {
 		// The receipt's resolved parent wins: a parent selected by title only
@@ -234,6 +252,11 @@ function extractIdFromResult(
 	result: ParsedArgs | null
 ): string | undefined {
 	if (!result || !entityKind) return undefined;
+	if (entityKind === 'relationship') {
+		const edgeId =
+			readString(result.edge_id) ?? readString(extractResultObject(result.edge)?.id);
+		if (edgeId) return edgeId;
+	}
 	const direct = readString((result as Record<string, unknown>)[`${entityKind}_id`]);
 	if (direct) return direct;
 	const nested = (result as Record<string, unknown>)[entityKind];

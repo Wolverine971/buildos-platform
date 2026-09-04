@@ -128,16 +128,39 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// label vocabulary and duration_minutes descriptions on the task tools.
 		expect(global.openingBytes).toBeLessThanOrEqual(32_700);
 		expect(project.openingBytes).toBeLessThanOrEqual(36_000);
-		expect(project.admittedBytes).toBeLessThanOrEqual(36_000);
-		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(12_040);
+		// 2026-09-04 postdeploy: admit directed relationships and their symbolic
+		// endpoint schema; lazy contracts still keep the opening pass below 36k.
+		expect(project.admittedBytes).toBeLessThanOrEqual(39_000);
+		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(12_400);
 	});
 
 	it('mounts document reads on the global worker surface', () => {
 		const names = measure('global').opening.map((tool) => tool.function.name);
 		expect(names).toEqual(
-			expect.arrayContaining(['get_document_outline', 'read_document_section'])
+			expect.arrayContaining([
+				'get_document_outline',
+				'read_document_section',
+				'get_onto_document_details'
+			])
 		);
 		expect(names).not.toContain('change_chat_context');
+	});
+	it('defers contracts on stable opening surfaces while admitting project dependencies', () => {
+		for (const profile of ['global', 'project'] as const) {
+			const surface = measure(profile);
+			expect(surface.opening.map((tool) => tool.function.name)).not.toContain(
+				'declare_turn_contract'
+			);
+			expect(surface.admitted.map((tool) => tool.function.name)).toContain(
+				'declare_turn_contract'
+			);
+		}
+		expect(measure('project').opening.map((tool) => tool.function.name)).toContain(
+			'link_onto_entities'
+		);
+		expect(measure('global').opening.map((tool) => tool.function.name)).not.toContain(
+			'link_onto_entities'
+		);
 	});
 
 	// A calendar or daily-brief turn is a global turn now, and every capability

@@ -29,6 +29,7 @@
 			links: [
 				{ href: '/blogs', label: 'Blog' },
 				{ href: '/skills', label: 'Skill Gallery' },
+				{ href: '/marketing-assets', label: 'Marketing assets' },
 				{ href: '/help', label: 'Help' }
 			]
 		},

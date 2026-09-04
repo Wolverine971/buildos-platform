@@ -194,7 +194,10 @@ describe('reviewer corrections that carry prose', () => {
 		expect(systemPrompt).toContain(
 			'Prose fields (content, description, body) are postconditions'
 		);
-		expect(systemPrompt).toContain('capped at 160 characters');
+		expect(systemPrompt).toContain('Never copy, abbreviate, or rewrite exact source text');
+		expect(systemPrompt).toContain(
+			'original user request and loaded source remain authoritative'
+		);
 	});
 });
 

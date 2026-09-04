@@ -53,6 +53,166 @@ function execution(
 }
 
 describe('semantic turn contracts', () => {
+	it.each(['duration_minutes', 'props.duration_minutes'])(
+		'verifies nested task estimates declared as %s',
+		(field) => {
+			const taskId = 'cf2f0470-78c1-4a93-b29a-e3d727f2b0e7';
+			const contract = parseDeclaredTurnContract({
+				outcomes: [
+					{
+						action: 'update',
+						entity_kind: 'task',
+						target_ids: [taskId],
+						changes: [
+							{ field: 'due_at', value: '2026-09-22' },
+							{ field, value: '120' }
+						]
+					}
+				]
+			});
+			const saved = (duration: unknown, id = taskId, success = true) =>
+				execution(
+					'update_onto_task',
+					{
+						task_id: id,
+						due_at: '2026-09-22',
+						props: { duration_minutes: 120 },
+						calendar_sync: 'none'
+					},
+					{
+						success,
+						result: {
+							task: {
+								id,
+								due_at: '2026-09-23T03:59:59+00:00',
+								props: { duration_minutes: duration }
+							}
+						}
+					}
+				);
+			expect(
+				resolveTurnContractOutcome({ contract, toolExecutions: [saved(120)] }).fulfilled
+			).toBe(true);
+			for (const candidate of [
+				saved(90),
+				saved(undefined),
+				saved(120, 'other-task'),
+				saved(120, taskId, false)
+			]) {
+				expect(
+					resolveTurnContractOutcome({ contract, toolExecutions: [candidate] }).fulfilled
+				).toBe(false);
+			}
+			for (const later of [saved(90), saved(undefined)]) {
+				expect(
+					resolveTurnContractOutcome({ contract, toolExecutions: [saved(120), later] })
+						.fulfilled
+				).toBe(false);
+			}
+		}
+	);
+	it('requires all five creates and the three exact directed dependencies, including on retry', () => {
+		const titles = [
+			'Permits',
+			'Order cabinets',
+			'Install cabinets',
+			'Kitchen inspection',
+			'Bathroom inspection'
+		];
+		const creates = titles.map((title, i) => ({
+			action: 'create',
+			entity_kind: 'task',
+			label: `task${i}`,
+			changes: [{ field: 'title', value: title }],
+			minimum_successful_effects: 1
+		}));
+		const pairs = [
+			[2, 1],
+			[3, 2],
+			[4, 0]
+		];
+		const links = pairs.map(([src, dst]) => ({
+			action: 'link',
+			entity_kind: 'relationship',
+			src_label: `task${src}`,
+			dst_label: `task${dst}`,
+			changes: [{ field: 'rel', value: 'depends_on' }],
+			minimum_successful_effects: 1
+		}));
+		const contract = parseDeclaredTurnContract({ outcomes: [...creates, ...links] });
+		expect(contract).not.toBeNull();
+		expect(parseDeclaredTurnContract(serializeTurnContractForDeclaration(contract!))).toEqual(
+			contract
+		);
+		const createExecutions = titles.map((title, i) =>
+			execution(
+				'create_onto_task',
+				{ title },
+				{ result: { task: { id: `task-id-${i}`, title } } }
+			)
+		);
+		const link = (src: number, dst: number, rel = 'depends_on', success = true) =>
+			execution(
+				'link_onto_entities',
+				{
+					src_kind: 'task',
+					src_id: `task-id-${src}`,
+					dst_kind: 'task',
+					dst_id: `task-id-${dst}`,
+					rel
+				},
+				{ success, result: { edge_id: `edge-${src}-${dst}` } }
+			);
+		const edges = pairs.map(([src, dst]) => link(src!, dst!));
+		const resolve = (writes: FastToolExecution[]) =>
+			resolveTurnContractOutcome({ contract, toolExecutions: writes });
+		expect(resolve([...createExecutions, ...edges]).fulfilled).toBe(true);
+		expect(resolve([...createExecutions, ...edges, ...edges]).fulfilled).toBe(true);
+		for (const last of [
+			link(0, 4),
+			link(4, 0, 'related_to'),
+			link(4, 0, 'depends_on', false),
+			edges[0]!
+		]) {
+			const partial = resolve([...createExecutions, ...edges.slice(0, 2), last]);
+			expect(partial.fulfilled).toBe(false);
+			expect(partial.outcomes.filter((outcome) => outcome.fulfilled)).toHaveLength(7);
+		}
+		expect(resolve([...createExecutions.slice(1), ...edges]).fulfilled).toBe(false);
+	});
+	it.each([
+		{ src_label: 'unknown', dst_label: 'second' },
+		{ src_label: 'first', dst_label: 'first' },
+		{ src_label: 'first', dst_label: 'second', minimum_successful_effects: 2 },
+		{ src_label: 'first' },
+		{ src_label: 'first', dst_label: 'second', changes: [] },
+		{
+			src_label: 'first',
+			dst_label: 'second',
+			changes: [
+				{ field: 'rel', value: 'depends_on' },
+				{ field: 'src_id', value: 'invented-id' }
+			]
+		}
+	])('rejects malformed endpoint references %j', (overrides) => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				...['first', 'second'].map((label) => ({
+					action: 'create',
+					entity_kind: 'task',
+					label,
+					changes: [{ field: 'title', value: label }]
+				})),
+				{
+					action: 'link',
+					entity_kind: 'relationship',
+					changes: [{ field: 'rel', value: 'depends_on' }],
+					...overrides
+				}
+			]
+		});
+		expect(contract).toBeNull();
+	});
 	it('serializes normalized contracts back to the provider declaration schema', () => {
 		const contract = parseDeclaredTurnContract({
 			summary: 'Move the beta task to Friday.',

@@ -5,6 +5,7 @@ import type { ChatSessionUpdate } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { normalizeContextType } from '$lib/services/agentic-chat/shared/context-utils';
 import { queueChatSessionClassification } from '$lib/server/chat-classification.service';
+import { queueProjectContextSnapshot } from '$lib/server/project-context-snapshot.service';
 import { parseOptionalJsonRequest } from '$lib/utils/request-validation';
 
 const closeChatSessionSchema = z
@@ -160,10 +161,40 @@ export const POST: RequestHandler = async ({
 		}
 	}
 
+	// Refresh saved project state even if classification is unavailable. This is
+	// coalesced by session revision and runs at close, not per tool mutation.
+	let snapshotQueued = false;
+	const effectiveContextType = updates.context_type ?? session.context_type;
+	const effectiveEntityId = hasEntityId ? updates.entity_id : session.entity_id;
+	if (shouldQueueClassification && effectiveContextType === 'project' && effectiveEntityId) {
+		try {
+			// The client may change the session context. Check access through RLS
+			// before handing the project id to the privileged queue service.
+			const { data: project, error } = await supabase
+				.from('onto_projects')
+				.select('id')
+				.eq('id', effectiveEntityId)
+				.maybeSingle();
+			if (!error && project) {
+				const result = await queueProjectContextSnapshot({
+					projectId: project.id,
+					userId: user.id,
+					reason: 'chat_session_close',
+					force: true,
+					revisionKey: `close-${sessionId}-${inferredLastMessageAt ?? 'unknown'}`
+				});
+				snapshotQueued = result.queued;
+			}
+		} catch (err) {
+			console.warn('[Chat Close] Failed to queue project snapshot:', err);
+		}
+	}
+
 	return ApiResponse.success({
 		updated: Object.keys(updates).length > 0,
 		classificationQueued,
 		classificationQueueAttempted: shouldQueueClassification,
-		classificationQueueReason
+		classificationQueueReason,
+		snapshotQueued
 	});
 };

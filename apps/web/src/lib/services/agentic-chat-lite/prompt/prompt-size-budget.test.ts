@@ -270,14 +270,17 @@ describe('total assembled prompt size budget', () => {
 		// tokens from the priority/props/dependency descriptions in the same lane.
 		// Measured canonical system prompt 12,237 chars; cap at measured + ~5%.
 		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_850);
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(51_400);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(12_850);
+		// Postdeploy 2026-09-04: add the executable relationship tool and explicit
+		// endpoint references, plus the nested estimate schema. Keep the system
+		// prose cap unchanged; the worker defers the contract from opening passes.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(55_000);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(13_750);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(38_500);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(29_400);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(41_250);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(31_200);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
-		expect(largestToolSchemaTokens).toBeLessThanOrEqual(900);
+		expect(largestToolSchemaTokens).toBeLessThanOrEqual(1_050);
 	});
 });
