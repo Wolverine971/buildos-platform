@@ -14,7 +14,6 @@ import {
 } from './disposition';
 
 export type PendingProposalRevision = {
-	kind: 'contract' | 'mutation_batch';
 	reason: string;
 	requiredCorrection: string;
 	correctedContract: TurnContract | null;
@@ -310,29 +309,6 @@ export function buildContractRevisionRequest(
 			`Required correction: ${revision.requiredCorrection || 'not stated'}.`,
 			'Declare the corrected exact contract now with declare_turn_contract: one outcome per distinct change, exact target ids from the loaded context, and the full cardinality the user commissioned.',
 			'Request clarification only if a choice genuinely belongs to the user. Do not narrate this correction to the user.'
-		].join(' ')
-	);
-}
-
-export function buildMutationBatchRevisionRequest(
-	request: AgenticChatTurnProviderRequestV1,
-	availableTools: readonly AgenticChatTurnProviderToolV1[],
-	revision: PendingProposalRevision
-): AgenticChatTurnProviderRequestV1 {
-	return appendSystemInstruction(
-		{
-			...buildPostSemanticDispositionRequest(
-				request,
-				availableTools,
-				DECLARE_TURN_CONTRACT_TOOL_NAME
-			),
-			passRole: 'repair'
-		},
-		[
-			'Independent review returned your exact mutation batch to you for correction; it did not reach the user. The approved contract still stands.',
-			`Reason: ${revision.reason || 'not stated'}.`,
-			`Required correction: ${revision.requiredCorrection || 'not stated'}.`,
-			'Propose the corrected mutation calls now using only the approved contract targets and values the user stated or delegated. Do not re-declare the contract, do not add unstated values, and do not narrate this correction to the user.'
 		].join(' ')
 	);
 }

@@ -3,7 +3,6 @@ import type { JsonObject } from '@buildos/shared-types';
 import { TURN_CONTRACT_TOOL_DEFINITION } from '@buildos/agentic-chat-runtime/catalog';
 import type { AgenticChatTurnProviderToolV1 } from '../contracts';
 import {
-	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../../tools/execution-adapter';
@@ -165,32 +164,6 @@ export const CONTRACT_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Ob
 					...(TURN_CONTRACT_TOOL_DEFINITION.function.parameters as unknown as JsonObject),
 					description:
 						'The complete corrected turn contract. It must contain only outcomes already commissioned and values resolved by the turn evidence.'
-				}
-			}
-		}
-	}
-});
-
-export const MUTATION_BATCH_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
-	type: 'function',
-	function: {
-		name: APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-		description:
-			'Approve the exact proposed mutation batch only when every target and value is semantically within the independently approved user commission.',
-		parameters: {
-			type: 'object',
-			additionalProperties: false,
-			required: ['reason', 'batch_sha256'],
-			properties: {
-				reason: {
-					type: 'string',
-					description:
-						'Concise evidence that every exact mutation in the batch is commissioned and safe.'
-				},
-				batch_sha256: {
-					type: 'string',
-					description:
-						'The exact SHA-256 quoted in this request. The harness rejects an approval whose value differs from it.'
 				}
 			}
 		}

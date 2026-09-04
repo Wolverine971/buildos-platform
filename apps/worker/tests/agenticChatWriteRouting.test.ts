@@ -175,13 +175,75 @@ describe('resolved_existing direct lane (Decision 3)', () => {
 		).toEqual({ kind: 'simple', mutationCount: 1 });
 	});
 
-	it('admits an update whose target id the user typed', () => {
+	it('admits an update whose target id the user typed and a read this turn loaded', () => {
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_task', { task_id: TASK_ID, due_at: '2026-09-04T15:00:00Z' })],
+				focusedProject({
+					userMessage: `push ${TASK_ID} to Friday`,
+					turnSeenEntityIds: new Map([[TASK_ID, 'task']])
+				})
+			)
+		).toEqual({ kind: 'simple', mutationCount: 1 });
+	});
+
+	it('refuses a pasted id that no read this turn loaded', () => {
 		expect(
 			assessDirectWriteBatch(
 				[call('update_onto_task', { task_id: TASK_ID, due_at: '2026-09-04T15:00:00Z' })],
 				focusedProject({ userMessage: `push ${TASK_ID} to Friday` })
 			)
+		).toMatchObject({
+			kind: 'contract_required',
+			reason: 'target_resolution_requires_review'
+		});
+	});
+
+	it('never resolves an id that is only a substring of the message', () => {
+		// A pasted transcript or JSON blob is not the user naming a target: only
+		// a whole UUID token counts, and only alongside read evidence.
+		const embedded = `see task_id=${TASK_ID}xyz for the details`;
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_task', { task_id: TASK_ID, state_key: 'done' })],
+				focusedProject({
+					userMessage: embedded,
+					turnSeenEntityIds: new Map([[TASK_ID, 'task']])
+				})
+			)
+		).toMatchObject({
+			kind: 'contract_required',
+			reason: 'target_resolution_requires_review'
+		});
+	});
+
+	it('normalizes case on both sides of the single-hit lookup', () => {
+		const oneHit = collectSingleHitEntityIds({
+			tasks: [{ id: TASK_ID.toUpperCase(), title: 'Send the launch email' }]
+		});
+		expect([...oneHit.keys()]).toEqual([TASK_ID]);
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_task', { task_id: TASK_ID.toUpperCase(), state_key: 'done' })],
+				focusedProject({ resolvedEntityIds: oneHit })
+			)
 		).toEqual({ kind: 'simple', mutationCount: 1 });
+	});
+
+	it('admits three resolved single-target updates in one batch', () => {
+		const resolved = new Map([
+			[TASK_ID, 'task'],
+			[OTHER_TASK_IDS[0]!, 'task'],
+			[OTHER_TASK_IDS[1]!, 'task']
+		]);
+		expect(
+			assessDirectWriteBatch(
+				[TASK_ID, ...OTHER_TASK_IDS].map((id) =>
+					call('update_onto_task', { task_id: id, state_key: 'done' })
+				),
+				focusedProject({ resolvedEntityIds: resolved })
+			)
+		).toEqual({ kind: 'simple', mutationCount: 3 });
 	});
 
 	it('admits an update whose target a read returned alone, and refuses a three-hit read', () => {

@@ -58,13 +58,12 @@ describe('nextTurnPhase (lane-E §1.2 pass ladders)', () => {
 		expect(contractPending('mutating')).toBe(false);
 	});
 
-	it('(c) complex write: withheld batch → gate → declare → review → propose → batch review → execute → answer', () => {
+	it('(c) complex write: withheld batch → gate → declare → review → propose → execute → answer', () => {
 		const phases = run([
 			{ type: 'gate' },
 			{ type: 'disposition', decision: 'contract' },
 			{ type: 'review', decision: 'approve_contract' },
 			read,
-			{ type: 'review', decision: 'approve_batch' },
 			mutation,
 			finish
 		]);
@@ -72,7 +71,6 @@ describe('nextTurnPhase (lane-E §1.2 pass ladders)', () => {
 			'opening',
 			'disposition_gate',
 			'contract_declared',
-			'contract_reviewed',
 			'contract_reviewed',
 			'contract_reviewed',
 			'mutating',
@@ -161,10 +159,8 @@ describe('nextTurnPhase (lane-E §1.2 pass ladders)', () => {
 				{ type: 'disposition', decision: 'contract' },
 				{ type: 'review', decision: 'approve_contract' },
 				{ type: 'carve_out' },
-				{ type: 'review', decision: 'approve_batch' },
 				mutation,
 				{ type: 'completion' },
-				{ type: 'review', decision: 'approve_batch' },
 				mutation,
 				finish
 			],
@@ -175,9 +171,7 @@ describe('nextTurnPhase (lane-E §1.2 pass ladders)', () => {
 			'contract_declared',
 			'contract_reviewed',
 			'contract_carve_out',
-			'contract_carve_out',
 			'mutating',
-			'completion',
 			'completion',
 			'completion',
 			'terminal'
@@ -391,11 +385,6 @@ describe('surfaceFor', () => {
 			'approve_turn_contract_review',
 			'request_turn_clarification'
 		]);
-		expect(names(surfaceFor('batch_review', ADMITTED, { allowRevision: true }))).toEqual([
-			'approve_mutation_batch_review',
-			'request_proposal_revision',
-			'request_turn_clarification'
-		]);
-		expect(surfaceFor('batch_review', [tool('create_onto_task')])).toBeNull();
+		expect(surfaceFor('contract_review', [tool('create_onto_task')])).toBeNull();
 	});
 });

@@ -92,6 +92,21 @@ type GatewayValidationContext = {
 	 * title/type echo as a successful update and the model loops on it.
 	 */
 	taskScheduleFieldRequired?: boolean;
+	/**
+	 * Persisted scheduling values for the tasks this turn actually loaded, keyed
+	 * by task id. Re-sending a task's current date changes nothing, yet the
+	 * update executes, the receipt echoes the row back, and the model reports the
+	 * reschedule as done — the same failure as the no-field echo above, one step
+	 * later. Comparing against loaded evidence rejects the no-op before execution
+	 * and names the field, so the bounded repair loop can ask for a real date.
+	 */
+	loadedTaskSchedules?: ReadonlyMap<string, LoadedTaskSchedule>;
+};
+
+/** Scheduling fields of one task exactly as a read in this turn returned them. */
+export type LoadedTaskSchedule = {
+	due_at?: string | null;
+	start_at?: string | null;
 };
 
 const TASK_SCHEDULE_FIELD_KEYS = ['due_at', 'start_at'] as const;
@@ -216,6 +231,9 @@ export function validateToolCalls(
 			);
 		}
 
+		const scheduleNoOp = describeTaskScheduleNoOp(toolName, args, validationContext);
+		if (scheduleNoOp) errors.push(scheduleNoOp);
+
 		records.push({
 			toolCall,
 			toolName,
@@ -235,6 +253,61 @@ export function validateToolCalls(
 			op,
 			errors
 		}));
+}
+
+/**
+ * An `update_onto_task` whose scheduling fields all repeat what this turn's
+ * reads already loaded. The call would execute, succeed, and change nothing, so
+ * it is rejected before execution with the field and its current value named.
+ * Only refused when the whole call is a no-op reschedule, or when the turn is a
+ * scheduling request whose one scheduling field did not move: an update that
+ * also changes a real field is still a real update.
+ */
+function describeTaskScheduleNoOp(
+	toolName: string,
+	args: Record<string, any>,
+	validationContext: GatewayValidationContext
+): string | null {
+	if (toolName !== 'update_onto_task') return null;
+	const taskId = typeof args.task_id === 'string' ? args.task_id.trim().toLowerCase() : '';
+	const loaded = taskId ? validationContext.loadedTaskSchedules?.get(taskId) : undefined;
+	if (!loaded) return null;
+
+	const provided = TASK_SCHEDULE_FIELD_KEYS.filter((key) => hasMeaningfulUpdateValue(args[key]));
+	if (provided.length === 0) return null;
+	const unchanged = provided.filter((key) => sameScheduleInstant(args[key], loaded[key] ?? null));
+	if (unchanged.length !== provided.length) return null;
+
+	const ignoredKeys = new Set<string>([
+		'task_id',
+		'update_strategy',
+		'merge_instructions',
+		...provided
+	]);
+	const changesSomethingElse = Object.entries(args).some(
+		([key, value]) => !ignoredKeys.has(key) && hasMeaningfulUpdateValue(value)
+	);
+	if (changesSomethingElse && validationContext.taskScheduleFieldRequired !== true) return null;
+
+	const described = unchanged
+		.map((key) => `${key} is already ${String(loaded[key]).trim()}`)
+		.join(' and ');
+	return (
+		`This update_onto_task would change nothing: ${described} on task_id ${taskId} in the context loaded this turn. ` +
+		`Re-send update_onto_task with the ${unchanged.join('/')} the user actually asked for (ISO 8601 datetime, e.g. 2026-08-07T15:00:00Z), ` +
+		`or, if the task already sits on that date, do not call a write tool and say so in your answer instead.`
+	);
+}
+
+function sameScheduleInstant(proposed: unknown, current: string | null | undefined): boolean {
+	if (typeof proposed !== 'string' || typeof current !== 'string') return false;
+	const left = proposed.trim();
+	const right = current.trim();
+	if (!left || !right) return false;
+	if (left === right) return true;
+	const leftMs = Date.parse(left);
+	const rightMs = Date.parse(right);
+	return Number.isFinite(leftMs) && Number.isFinite(rightMs) && leftMs === rightMs;
 }
 
 function applySchemaDefaults(

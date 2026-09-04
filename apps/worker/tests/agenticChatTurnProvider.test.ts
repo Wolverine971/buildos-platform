@@ -23,6 +23,7 @@ import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-c
 import { reviewedAgenticChatMutationSpecV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
 import {
 	AgenticChatProviderExecutionError,
+	type AgenticChatProviderFailedToolSynthesisInputV1,
 	type AgenticChatProviderMutationSynthesisInputV1,
 	type AgenticChatProviderReadSynthesisInputV1,
 	type AgenticChatProviderStepV1,
@@ -36,10 +37,6 @@ import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provide
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/readToolIdentity';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
 import { AgenticChatOpenRouterClient } from '../src/workers/agentic-chat/provider/openrouter-client';
-import {
-	compileApprovedSingleTaskScheduleMutation,
-	compileSingleTaskScheduleContractFromMutation
-} from '../src/workers/agentic-chat/provider/review/contract-mutation-compiler';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -145,38 +142,6 @@ function clientWithRounds(rounds: AgenticChatTurnProviderClientEventV1[][]) {
 			})();
 		})
 	};
-}
-
-function mutationBatchReviewSha256(
-	calls: Array<{
-		id: string;
-		name: string;
-		arguments: JsonObject;
-		scheduling?: { callRef: string | null; after: readonly string[] };
-	}>
-): string {
-	return createHash('sha256')
-		.update(
-			canonicalizeAgenticChatJson(
-				calls.map((call, providerCallIndex) => ({
-					provider_call_index: providerCallIndex,
-					provider_tool_call_id: call.id,
-					tool_name: call.name,
-					execution_kind: reviewedAgenticChatMutationSpecV1(call.name)
-						? 'mutation'
-						: 'read',
-					arguments: call.arguments,
-					scheduling: call.scheduling
-						? {
-								call_ref: call.scheduling.callRef,
-								after: [...call.scheduling.after]
-							}
-						: null
-				})) as never
-			),
-			'utf8'
-		)
-		.digest('hex');
 }
 
 function readToolDefinition(name: string, description = `Read with ${name}.`): ChatToolDefinition {
@@ -548,6 +513,52 @@ function durableMutationFeedback(input: {
 			logicalOperationId: input.logicalOperationId,
 			operationName: input.operationName ?? 'onto.task.update',
 			replayed: false
+		}
+	};
+}
+
+function failedMutationFeedback(input: {
+	providerToolCallId: string;
+	arguments: JsonObject;
+	error: string;
+	toolName?: string;
+}): AgenticChatProviderFailedToolSynthesisInputV1 {
+	return {
+		providerToolCallId: input.providerToolCallId,
+		toolName: input.toolName ?? 'update_onto_task',
+		arguments: input.arguments,
+		failure: {
+			kind: 'known_execution_failure',
+			error: input.error,
+			toolCategory: 'ontology_action',
+			modelPayload: {
+				tool_call_id: input.providerToolCallId,
+				success: false,
+				error: input.error
+			}
+		}
+	};
+}
+
+function dependencyFailedFeedback(input: {
+	providerToolCallId: string;
+	arguments: JsonObject;
+	error: string;
+	toolName?: string;
+}): AgenticChatProviderFailedToolSynthesisInputV1 {
+	return {
+		providerToolCallId: input.providerToolCallId,
+		toolName: input.toolName ?? 'update_onto_task',
+		arguments: input.arguments,
+		failure: {
+			kind: 'dependency_failed',
+			error: input.error,
+			toolCategory: null,
+			modelPayload: {
+				tool_call_id: input.providerToolCallId,
+				success: false,
+				error: input.error
+			}
 		}
 	};
 }
@@ -1349,13 +1360,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			document_id: documentId,
 			new_parent_id: parentId
 		};
-		const mutationBatchSha256 = mutationBatchReviewSha256([
-			{ id: 'provider-move-1', name: 'move_document_in_tree', arguments: moveArguments }
-		]);
-		const mutationReviewApprovalArguments = {
-			reason: 'The exact document move is within the approved organization commission.',
-			batch_sha256: mutationBatchSha256
-		};
 		const streams: AgenticChatTurnProviderClientEventV1[][] = [
 			providerReadRound('provider-read-1', { project_id: projectId }),
 			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
@@ -1418,11 +1422,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'reviewer-approval-1',
 				reviewApprovalArguments,
 				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-mutation-approval-1',
-				mutationReviewApprovalArguments,
-				'approve_mutation_batch_review'
 			)
 		]);
 		const invocation = await new AgenticChatTurnProviderAdapter(
@@ -1489,7 +1488,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			])
 		);
 		expect(reviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
-		const mutationReviewSteps = await collect(
+		const mutationSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 4,
 				results: [
@@ -1500,34 +1499,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						{
 							status: 'turn_contract_review_approved',
 							contract_sha256: contractReviewSha256
-						}
-					)
-				]
-			})
-		);
-		expect(mutationReviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					logicalProviderRound: 4,
-					providerToolCallId: 'reviewer-mutation-approval-1',
-					toolName: 'approve_mutation_batch_review',
-					arguments: mutationReviewApprovalArguments
-				})
-			])
-		);
-		expect(mutationReviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
-		const mutationSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 5,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-mutation-approval-1',
-						'approve_mutation_batch_review',
-						mutationReviewApprovalArguments,
-						{
-							status: 'mutation_batch_review_approved',
-							batch_sha256: mutationBatchSha256
 						}
 					)
 				]
@@ -1554,7 +1525,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
-					round: 6,
+					round: 5,
 					results: [
 						durableMoveMutationFeedback({
 							providerToolCallId: 'provider-move-1',
@@ -1579,7 +1550,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
 		expect(client.stream).toHaveBeenCalledTimes(6);
-		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
 		expect(semanticReviewer.stream.mock.calls[0]?.[0]).toMatchObject({
 			passRole: 'contract_review',
 			toolChoice: 'required',
@@ -1589,21 +1560,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				}),
 				expect.objectContaining({
 					function: expect.objectContaining({ name: 'declare_read_only_turn' })
-				}),
-				expect.objectContaining({
-					function: expect.objectContaining({ name: 'request_proposal_revision' })
-				}),
-				expect.objectContaining({
-					function: expect.objectContaining({ name: 'request_turn_clarification' })
-				})
-			]
-		});
-		expect(semanticReviewer.stream.mock.calls[1]?.[0]).toMatchObject({
-			passRole: 'mutation_review',
-			toolChoice: 'required',
-			tools: [
-				expect.objectContaining({
-					function: expect.objectContaining({ name: 'approve_mutation_batch_review' })
 				}),
 				expect.objectContaining({
 					function: expect.objectContaining({ name: 'request_proposal_revision' })
@@ -1634,17 +1590,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			title: 'Reference',
 			description: 'Stable reference material'
 		};
-		const batchSha256 = mutationBatchReviewSha256([
-			{
-				id: 'provider-create-folder-1',
-				name: 'create_onto_document',
-				arguments: createArguments
-			}
-		]);
-		const batchApprovalArguments = {
-			reason: 'This folder is a reasonable implementation of the delegated organization.',
-			batch_sha256: batchSha256
-		};
 		const client = clientWithRounds([
 			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
 			providerReadRound('provider-create-folder-1', createArguments, 'create_onto_document')
@@ -1654,11 +1599,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'reviewer-contract-approval-1',
 				contractApprovalArguments,
 				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-batch-approval-1',
-				batchApprovalArguments,
-				'approve_mutation_batch_review'
 			)
 		]);
 		const invocation = await new AgenticChatTurnProviderAdapter(
@@ -1705,34 +1645,18 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		await collect(
-			invocation.continueWithToolResults!({
-				round: 3,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-contract-approval-1',
-						'approve_turn_contract_review',
-						contractApprovalArguments,
-						{
-							status: 'turn_contract_review_approved',
-							contract_sha256: contractReviewSha256
-						}
-					)
-				]
-			})
-		);
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
-					round: 4,
+					round: 3,
 					results: [
 						durableReadFeedbackFor(
-							'reviewer-batch-approval-1',
-							'approve_mutation_batch_review',
-							batchApprovalArguments,
+							'reviewer-contract-approval-1',
+							'approve_turn_contract_review',
+							contractApprovalArguments,
 							{
-								status: 'mutation_batch_review_approved',
-								batch_sha256: batchSha256
+								status: 'turn_contract_review_approved',
+								contract_sha256: contractReviewSha256
 							}
 						)
 					]
@@ -1747,152 +1671,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				})
 			])
 		);
-	});
-
-	it('lets the independent reviewer reject an exact mutation batch after approving its contract', async () => {
-		const documentId = '42000000-0000-4000-8000-000000000004';
-		const contractArguments: JsonObject = {
-			outcomes: [
-				{
-					action: 'update',
-					entity_kind: 'document',
-					target_ids: [documentId],
-					required_fields: ['content'],
-					minimum_successful_effects: 1
-				}
-			]
-		};
-		const normalizedContract = parseDeclaredTurnContract(contractArguments);
-		if (!normalizedContract) throw new Error('Expected a valid test turn contract');
-		const contractReviewSha256 = createHash('sha256')
-			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
-			.digest('hex');
-		const contractApprovalArguments = {
-			reason: 'The user commissioned an update to this exact document.',
-			contract_sha256: contractReviewSha256,
-			reference_candidates: []
-		};
-		const mutationArguments = {
-			document_id: documentId,
-			content: 'An unrelated cleanup paragraph.',
-			update_strategy: 'replace'
-		};
-		const clarificationArguments = {
-			reason: 'The proposed replacement content is not supported by the user request.',
-			question: 'What exact content would you like me to put in this document?'
-		};
-		const client = clientWithRounds([
-			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
-			providerReadRound(
-				'provider-uncommissioned-mutation-1',
-				mutationArguments,
-				'update_onto_document'
-			),
-			[
-				{ type: 'text', content: clarificationArguments.question },
-				{ type: 'done', finishedReason: 'stop' }
-			]
-		]);
-		const semanticReviewer = clientWithRounds([
-			providerReadRound(
-				'reviewer-contract-approval-1',
-				contractApprovalArguments,
-				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-mutation-clarification-1',
-				clarificationArguments,
-				'request_turn_clarification'
-			)
-		]);
-		const invocation = await new AgenticChatTurnProviderAdapter(
-			{
-				client,
-				semanticReviewer,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
-			},
-			2_000,
-			16,
-			{ updateOntoDocument: true }
-		).prepare({
-			executionInput: executionInputWithReadSurface(
-				[
-					turnContractToolDefinition(),
-					readOnlyTurnToolDefinition(),
-					clarificationToolDefinition(),
-					updateDocumentToolDefinition()
-				],
-				[
-					'declare_turn_contract',
-					'declare_read_only_turn',
-					'request_turn_clarification',
-					'update_onto_document'
-				]
-			),
-			processingToken: PROCESSING_TOKEN,
-			signal: new AbortController().signal
-		});
-
-		await collect(invocation.stream());
-		await collect(
-			invocation.continueWithToolResults!({
-				round: 2,
-				results: [
-					durableReadFeedbackFor(
-						'provider-contract-1',
-						'declare_turn_contract',
-						contractArguments,
-						{ status: 'declared' }
-					)
-				]
-			})
-		);
-		const mutationReviewSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 3,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-contract-approval-1',
-						'approve_turn_contract_review',
-						contractApprovalArguments,
-						{
-							status: 'turn_contract_review_approved',
-							contract_sha256: contractReviewSha256
-						}
-					)
-				]
-			})
-		);
-		expect(mutationReviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
-		expect(mutationReviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-mutation-clarification-1',
-					toolName: 'request_turn_clarification'
-				})
-			])
-		);
-		const clarificationFeedback = durableReadFeedbackFor(
-			'reviewer-mutation-clarification-1',
-			'request_turn_clarification',
-			clarificationArguments,
-			{ status: 'clarification_required', requires_user_action: true }
-		);
-		clarificationFeedback.execution.requiresUserAction = true;
-		await expect(
-			collect(
-				invocation.continueWithToolResults!({
-					round: 4,
-					results: [clarificationFeedback]
-				})
-			)
-		).resolves.toEqual([
-			{ type: 'text_delta', text: clarificationArguments.question },
-			{ type: 'finish', finishedReason: 'stop', usage: null }
-		]);
-		expect(client.stream).toHaveBeenCalledTimes(3);
-		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
 	});
 
 	it('forces a tool-free question after the disposition gate finds an unresolved user choice', async () => {
@@ -2522,17 +2300,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			reference_candidates: []
 		};
 		const mutationArguments = { task_id: taskId, state_key: 'done' };
-		const mutationBatchSha256 = mutationBatchReviewSha256([
-			{
-				id: 'provider-complete-task-1',
-				name: 'update_onto_task',
-				arguments: mutationArguments
-			}
-		]);
-		const mutationApprovalArguments = {
-			reason: 'The state-only update completes the unique commissioned task without guessing.',
-			batch_sha256: mutationBatchSha256
-		};
 		const client = clientWithRounds([
 			providerReadRound(
 				'provider-completion-contract-1',
@@ -2550,11 +2317,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'reviewer-completion-contract-1',
 				contractApprovalArguments,
 				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-completion-batch-1',
-				mutationApprovalArguments,
-				'approve_mutation_batch_review'
 			)
 		]);
 		const providerInput = executionInputWithReadSurface(
@@ -2613,7 +2375,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				})
 			])
 		);
-		const mutationReviewSteps = await collect(
+		const mutationSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 3,
 				results: [
@@ -2624,30 +2386,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						{
 							status: 'turn_contract_review_approved',
 							contract_sha256: contractReviewSha256
-						}
-					)
-				]
-			})
-		);
-		expect(mutationReviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					providerToolCallId: 'reviewer-completion-batch-1',
-					toolName: 'approve_mutation_batch_review'
-				})
-			])
-		);
-		const mutationSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 4,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-completion-batch-1',
-						'approve_mutation_batch_review',
-						mutationApprovalArguments,
-						{
-							status: 'mutation_batch_review_approved',
-							batch_sha256: mutationBatchSha256
 						}
 					)
 				]
@@ -2665,7 +2403,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
-					round: 5,
+					round: 4,
 					results: [
 						durableMutationFeedback({
 							providerToolCallId: 'provider-complete-task-1',
@@ -2734,7 +2472,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		}
 
 		expect(client.stream).toHaveBeenCalledTimes(3);
-		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
 	});
 
 	it('fails a malformed reviewer approval closed to a durable clarification', async () => {
@@ -4970,17 +4708,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			...projectArguments,
 			project: { ...projectArguments.project, name: 'Agentic Worker' }
 		};
-		const batchSha256 = mutationBatchReviewSha256([
-			{
-				id: 'provider-create-composite-project',
-				name: 'create_onto_project',
-				arguments: projectArguments
-			}
-		]);
-		const batchApprovalArguments = {
-			reason: 'The shell is the first phase of the approved composite contract.',
-			batch_sha256: batchSha256
-		};
 		const goalArguments = {
 			project_id: projectId,
 			name: 'Publish the first three podcast episodes',
@@ -5003,11 +4730,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				arguments: argumentsValue
 			}))
 		];
-		const childBatchSha256 = mutationBatchReviewSha256(childCalls);
-		const childBatchApprovalArguments = {
-			reason: 'The goal and three tasks exactly complete the approved contract.',
-			batch_sha256: childBatchSha256
-		};
 		const childRound: AgenticChatTurnProviderClientEventV1[] = [
 			{
 				type: 'tool_call',
@@ -5051,16 +4773,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'reviewer-composite-contract',
 				contractApprovalArguments,
 				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-composite-project-batch',
-				batchApprovalArguments,
-				'approve_mutation_batch_review'
-			),
-			providerReadRound(
-				'reviewer-composite-child-batch',
-				childBatchApprovalArguments,
-				'approve_mutation_batch_review'
 			)
 		]);
 		const input = executionInputWithReadSurface(
@@ -5133,7 +4845,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(contractReviewPrompt).toContain('create_onto_goal.target_date: Goal target date');
 		expect(contractReviewPrompt).not.toContain('create_onto_task.due_at');
 
-		const batchReviewSteps = await collect(
+		const projectMutationSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 3,
 				results: [
@@ -5149,7 +4861,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		expect(batchReviewSteps).toEqual(
+		expect(projectMutationSteps).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					providerToolCallId: 'provider-create-composite-project-wrong-name',
@@ -5161,8 +4873,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					})
 				}),
 				expect.objectContaining({
-					providerToolCallId: 'reviewer-composite-project-batch',
-					toolName: 'approve_mutation_batch_review'
+					type: 'mutating_tool',
+					providerToolCallId: 'provider-create-composite-project',
+					toolName: 'create_onto_project'
 				})
 			])
 		);
@@ -5193,31 +4906,15 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			])
 		);
 
-		const projectMutationSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 4,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-composite-project-batch',
-						'approve_mutation_batch_review',
-						batchApprovalArguments,
-						{
-							status: 'mutation_batch_review_approved',
-							batch_sha256: batchSha256
-						}
-					)
-				]
-			})
-		);
 		const projectMutation = projectMutationSteps.find(
 			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
 				step.type === 'mutating_tool'
 		);
 		if (!projectMutation) throw new Error('Expected reviewed project-shell mutation');
 
-		const childBatchReviewSteps = await collect(
+		const childMutationSteps = await collect(
 			invocation.continueWithToolResults!({
-				round: 5,
+				round: 4,
 				results: [
 					durableProjectCreateMutationFeedback({
 						providerToolCallId: 'provider-create-composite-project',
@@ -5228,35 +4925,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		expect(childBatchReviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					providerToolCallId: 'reviewer-composite-child-batch',
-					toolName: 'approve_mutation_batch_review'
-				})
-			])
-		);
 		expect(client.stream.mock.calls[4]?.[0].tools.map((tool) => tool.function.name)).toEqual([
 			'create_onto_goal',
 			'create_onto_task'
 		]);
-
-		const childMutationSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 6,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-composite-child-batch',
-						'approve_mutation_batch_review',
-						childBatchApprovalArguments,
-						{
-							status: 'mutation_batch_review_approved',
-							batch_sha256: childBatchSha256
-						}
-					)
-				]
-			})
-		);
 		const childMutations = childMutationSteps.filter(
 			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
 				step.type === 'mutating_tool'
@@ -5305,17 +4977,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			entities: [],
 			relationships: []
 		};
-		const batchSha256 = mutationBatchReviewSha256([
-			{
-				id: 'provider-create-project',
-				name: 'create_onto_project',
-				arguments: projectArguments
-			}
-		]);
-		const batchApprovalArguments = {
-			reason: 'The exact empty-graph shell matches the approved project outcome.',
-			batch_sha256: batchSha256
-		};
 		const projectDefinition: ChatToolDefinition = {
 			type: 'function' as const,
 			function: {
@@ -5349,11 +5010,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'reviewer-project-contract',
 				contractApprovalArguments,
 				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-project-batch',
-				batchApprovalArguments,
-				'approve_mutation_batch_review'
 			)
 		]);
 		const input = executionInputWithReadSurface([projectDefinition], ['create_onto_project']);
@@ -5463,7 +5119,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			])
 		);
 
-		const batchReviewSteps = await collect(
+		const mutationSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 3,
 				results: [
@@ -5474,33 +5130,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						{
 							status: 'turn_contract_review_approved',
 							contract_sha256: contractSha256
-						}
-					)
-				]
-			})
-		);
-		expect(batchReviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-project-batch',
-					toolName: 'approve_mutation_batch_review'
-				})
-			])
-		);
-		expect(batchReviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
-
-		const mutationSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 4,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-project-batch',
-						'approve_mutation_batch_review',
-						batchApprovalArguments,
-						{
-							status: 'mutation_batch_review_approved',
-							batch_sha256: batchSha256
 						}
 					)
 				]
@@ -5521,7 +5150,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
-					round: 5,
+					round: 4,
 					results: [
 						durableProjectCreateMutationFeedback({
 							providerToolCallId: 'provider-create-project',
@@ -5537,18 +5166,13 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
 		expect(
-			[
-				...declarationSteps,
-				...contractReviewSteps,
-				...batchReviewSteps,
-				...mutationSteps
-			].some(
+			[...declarationSteps, ...contractReviewSteps, ...mutationSteps].some(
 				(step) =>
 					step.type === 'read_tool' && step.toolName === 'request_turn_clarification'
 			)
 		).toBe(false);
 		expect(client.stream).toHaveBeenCalledTimes(3);
-		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
 	});
 
 	it('continues sequential read rounds with compacted durable feedback', async () => {
@@ -7801,11 +7425,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				arguments: { task_id: halcyonId, priority: 1 }
 			}
 		] as const;
-		const batchSha256 = mutationBatchReviewSha256(mutationCalls);
-		const batchApprovalArguments = {
-			reason: 'The three updates exactly implement the two approved outcomes.',
-			batch_sha256: batchSha256
-		};
 		const client = clientWithRounds([
 			providerReadRound(
 				'provider-contract-1',
@@ -7845,11 +7464,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'reviewer-approval-1',
 				approvalArguments,
 				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-batch-approval-1',
-				batchApprovalArguments,
-				'approve_mutation_batch_review'
 			)
 		]);
 		const providerInput = executionInputWithReadSurface(
@@ -7973,7 +7587,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		);
 		expect(client.stream).toHaveBeenCalledTimes(1);
 
-		const batchReviewSteps = await collect(
+		const mutationSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 4,
 				results: [
@@ -7985,29 +7599,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 							status: 'turn_contract_review_approved',
 							contract_sha256: correctedSha256
 						}
-					)
-				]
-			})
-		);
-		expect(batchReviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-batch-approval-1',
-					toolName: 'approve_mutation_batch_review',
-					decidedBy: 'mutation_batch_reviewer'
-				})
-			])
-		);
-		const mutationSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 5,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-batch-approval-1',
-						'approve_mutation_batch_review',
-						batchApprovalArguments,
-						{ status: 'mutation_batch_review_approved', batch_sha256: batchSha256 }
 					)
 				]
 			})
@@ -8025,7 +7616,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
-					round: 6,
+					round: 5,
 					results: mutationCalls.map((call, index) =>
 						durableMutationFeedback({
 							providerToolCallId: call.id,
@@ -8044,821 +7635,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
 		expect(client.stream).toHaveBeenCalledTimes(3);
-		expect(semanticReviewer.stream).toHaveBeenCalledTimes(3);
-	});
-
-	it('submits an exact withheld task schedule directly for contract review', async () => {
-		const taskId = '41000000-0000-4000-8000-000000000051';
-		const projectId = '40000000-0000-4000-8000-000000000004';
-		const listArguments = { project_id: projectId, limit: 10 };
-		const mutationArguments = {
-			task_id: taskId,
-			due_at: '2026-09-04T15:00:00Z'
-		};
-		const candidateCall = {
-			id: 'provider-schedule-candidate-1',
-			name: 'update_onto_task',
-			arguments: mutationArguments,
-			canonicalArguments: canonicalizeAgenticChatJson(mutationArguments as never),
-			canonicalProviderArguments: canonicalizeAgenticChatJson(mutationArguments as never)
-		};
-		const compiledContract = compileSingleTaskScheduleContractFromMutation(candidateCall);
-		if (!compiledContract) throw new Error('Expected the exact schedule candidate to compile');
-		const contractSha256 = createHash('sha256')
-			.update(canonicalizeAgenticChatJson(compiledContract as never), 'utf8')
-			.digest('hex');
-		const contractApproval = {
-			reason: 'The exact task and Friday timestamp match the user commission.',
-			contract_sha256: contractSha256,
-			reference_candidates: [
-				{
-					reference: 'the beta list email thing',
-					candidates: [{ id: taskId, title: 'Send the launch email to the beta list' }]
-				}
-			]
-		};
-		const compiledMutation = compileApprovedSingleTaskScheduleMutation(compiledContract);
-		if (!compiledMutation) throw new Error('Expected the approved schedule to compile');
-		const batchSha256 = mutationBatchReviewSha256([compiledMutation]);
-		const batchApproval = {
-			reason: 'The exact compiled update matches the approved contract.',
-			batch_sha256: batchSha256
-		};
-		const client = clientWithRounds([
-			providerReadRound('provider-task-list-1', listArguments, 'list_onto_tasks'),
-			providerReadRound(
-				'provider-schedule-candidate-1',
-				mutationArguments,
-				'update_onto_task'
-			),
-			[
-				{ type: 'text', content: 'Done — the beta-list email task is due Friday.' },
-				{ type: 'done', finishedReason: 'stop' }
-			]
-		]);
-		const semanticReviewer = clientWithRounds([
-			providerReadRound(
-				'reviewer-compiled-contract-approval-1',
-				contractApproval,
-				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-compiled-batch-approval-1',
-				batchApproval,
-				'approve_mutation_batch_review'
-			)
-		]);
-		const invocation = await new AgenticChatTurnProviderAdapter(
-			{
-				client,
-				semanticReviewer,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
-			},
-			2_000,
-			16,
-			{ updateOntoTask: true }
-		).prepare({
-			executionInput: executionInputWithReadSurface(
-				[
-					turnContractToolDefinition(),
-					readOnlyTurnToolDefinition(),
-					clarificationToolDefinition(),
-					readToolDefinition('list_onto_tasks'),
-					updateTaskToolDefinition()
-				],
-				[
-					'declare_turn_contract',
-					'declare_read_only_turn',
-					'request_turn_clarification',
-					'list_onto_tasks',
-					'update_onto_task'
-				]
-			),
-			processingToken: PROCESSING_TOKEN,
-			signal: new AbortController().signal
-		});
-
-		const initialSteps = await collect(invocation.stream());
-		expect(initialSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'provider-task-list-1',
-					toolName: 'list_onto_tasks'
-				})
-			])
-		);
-		const contractReviewSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 2,
-				results: [
-					durableReadFeedbackFor(
-						'provider-task-list-1',
-						'list_onto_tasks',
-						listArguments,
-						{
-							// Two plausible tasks: the target is not deterministically
-							// resolved, so the withheld schedule still takes the compiled
-							// contract route. A single hit would execute directly.
-							tasks: [
-								{
-									id: taskId,
-									title: 'Send the launch email to the beta list',
-									due_at: '2026-09-02T15:00:00Z'
-								},
-								{
-									id: '41000000-0000-4000-8000-000000000052',
-									title: 'Send the launch email to investors',
-									due_at: '2026-09-02T16:00:00Z'
-								}
-							]
-						}
-					)
-				]
-			})
-		);
-		expect(contractReviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-compiled-contract-approval-1',
-					toolName: 'approve_turn_contract_review',
-					decidedBy: 'contract_reviewer'
-				})
-			])
-		);
-		expect(
-			contractReviewSteps.some(
-				(step) => step.type === 'read_tool' && step.toolName === 'declare_turn_contract'
-			)
-		).toBe(false);
-		expect(client.stream).toHaveBeenCalledTimes(2);
-		expect(semanticReviewer.stream).toHaveBeenCalledOnce();
-		const contractReviewRequest = semanticReviewer.stream.mock.calls[0]?.[0];
-		// Provenance is per-review material, so it lives in the user message; the
-		// reviewer system prompt stays static for provider prefix caching.
-		expect(String(contractReviewRequest?.messages[1]?.content)).toContain(
-			'worker deterministically derived'
-		);
-		expect(String(contractReviewRequest?.messages[1]?.content)).not.toContain(
-			'the acting model chose the contract'
-		);
-
-		const batchReviewSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 3,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-compiled-contract-approval-1',
-						'approve_turn_contract_review',
-						contractApproval,
-						{
-							status: 'turn_contract_review_approved',
-							contract_sha256: contractSha256
-						}
-					)
-				]
-			})
-		);
-		expect(batchReviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-compiled-batch-approval-1',
-					toolName: 'approve_mutation_batch_review'
-				})
-			])
-		);
-
-		const mutationSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 4,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-compiled-batch-approval-1',
-						'approve_mutation_batch_review',
-						batchApproval,
-						{
-							status: 'mutation_batch_review_approved',
-							batch_sha256: batchSha256
-						}
-					)
-				]
-			})
-		);
-		const mutationStep = mutationSteps.find(
-			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
-				step.type === 'mutating_tool'
-		);
-		expect(mutationStep).toMatchObject({
-			providerToolCallId: compiledMutation.id,
-			toolName: 'update_onto_task',
-			arguments: mutationArguments
-		});
-		if (!mutationStep) throw new Error('Expected the compiled mutation step');
-
-		await expect(
-			collect(
-				invocation.continueWithToolResults!({
-					round: 5,
-					results: [
-						durableMutationFeedback({
-							providerToolCallId: compiledMutation.id,
-							logicalOperationId: mutationStep.logicalOperationId,
-							arguments: mutationArguments
-						})
-					]
-				})
-			)
-		).resolves.toEqual([
-			{ type: 'text_delta', text: 'Done — the beta-list email task is due Friday.' },
-			{ type: 'finish', finishedReason: 'stop', usage: null }
-		]);
-		expect(client.stream).toHaveBeenCalledTimes(3);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
-	});
-
-	it('submits an initial exact task schedule directly for contract review', async () => {
-		const taskId = '41000000-0000-4000-8000-000000000052';
-		const mutationArguments = {
-			task_id: taskId,
-			start_at: '2026-09-04T13:00:00Z'
-		};
-		const compiledContract = compileSingleTaskScheduleContractFromMutation({
-			id: 'provider-initial-schedule-candidate-1',
-			name: 'update_onto_task',
-			arguments: mutationArguments,
-			canonicalArguments: canonicalizeAgenticChatJson(mutationArguments as never),
-			canonicalProviderArguments: canonicalizeAgenticChatJson(mutationArguments as never)
-		});
-		if (!compiledContract)
-			throw new Error('Expected the initial schedule candidate to compile');
-		const contractSha256 = createHash('sha256')
-			.update(canonicalizeAgenticChatJson(compiledContract as never), 'utf8')
-			.digest('hex');
-		const client = clientWithRounds([
-			providerReadRound(
-				'provider-initial-schedule-candidate-1',
-				mutationArguments,
-				'update_onto_task'
-			)
-		]);
-		const semanticReviewer = clientWithRounds([
-			providerReadRound(
-				'reviewer-initial-compiled-contract-approval-1',
-				{
-					reason: 'The exact task and timestamp match the user commission.',
-					contract_sha256: contractSha256,
-					reference_candidates: []
-				},
-				'approve_turn_contract_review'
-			)
-		]);
-		const invocation = await new AgenticChatTurnProviderAdapter(
-			{
-				client,
-				semanticReviewer,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
-			},
-			2_000,
-			16,
-			{ updateOntoTask: true }
-		).prepare({
-			executionInput: executionInputWithReadSurface(
-				[
-					turnContractToolDefinition(),
-					readOnlyTurnToolDefinition(),
-					clarificationToolDefinition(),
-					updateTaskToolDefinition()
-				],
-				[
-					'declare_turn_contract',
-					'declare_read_only_turn',
-					'request_turn_clarification',
-					'update_onto_task'
-				]
-			),
-			processingToken: PROCESSING_TOKEN,
-			signal: new AbortController().signal
-		});
-
-		const reviewSteps = await collect(invocation.stream());
-		expect(reviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-initial-compiled-contract-approval-1',
-					toolName: 'approve_turn_contract_review',
-					decidedBy: 'contract_reviewer'
-				})
-			])
-		);
-		expect(client.stream).toHaveBeenCalledOnce();
-		expect(semanticReviewer.stream).toHaveBeenCalledOnce();
-		invocation.release();
-	});
-
-	it('compiles the exact reschedule reviewer correction without losing the commission', async () => {
-		const betaListId = '41000000-0000-4000-8000-000000000041';
-		const verificationId = '41000000-0000-4000-8000-000000000042';
-		const incorrectContractArguments: JsonObject = {
-			summary: 'Push the beta list email task to Friday.',
-			outcomes: [
-				{
-					action: 'update',
-					entity_kind: 'task',
-					target_ids: [betaListId, verificationId],
-					required_fields: ['due_at'],
-					minimum_successful_effects: 1
-				}
-			]
-		};
-		const correctedContractArguments: JsonObject = {
-			summary: 'Push only the beta list email task to Friday.',
-			outcomes: [
-				{
-					action: 'update',
-					entity_kind: 'task',
-					target_ids: [betaListId],
-					required_fields: ['due_at'],
-					changes: [{ field: 'due_at', value: '2026-09-04T17:00:00-04:00' }],
-					minimum_successful_effects: 1
-				}
-			]
-		};
-		const correctedContract = parseDeclaredTurnContract(correctedContractArguments);
-		if (!correctedContract) throw new Error('Expected a valid reschedule correction');
-		const correctedSha256 = createHash('sha256')
-			.update(canonicalizeAgenticChatJson(correctedContract as never), 'utf8')
-			.digest('hex');
-		const reviewerCamelCaseCorrection: JsonObject = {
-			summary: correctedContract.summary ?? '',
-			outcomes: correctedContract.outcomes.map((outcome) => ({
-				id: outcome.id,
-				action: outcome.action,
-				entityKind: outcome.entityKind,
-				targetIds: [...outcome.targetIds],
-				requiredFields: [...outcome.requiredFields],
-				changes: outcome.changes?.map((change) => ({ ...change })) ?? [],
-				minimumSuccessfulEffects: outcome.minimumSuccessfulEffects,
-				// Production reviewer regression: tool models may fill optional
-				// symbolic-tree fields with placeholders on an ordinary task update.
-				// They are action-inapplicable decoration, not a user ambiguity.
-				label: 'result',
-				parentLabel: 'destination'
-			}))
-		};
-		const reviewerRevisionArguments = {
-			reason: 'The proposal targets both loaded email tasks and omits the resolved Friday due date.',
-			required_correction:
-				'Target only Send the launch email to the beta list and set due_at to Friday while preserving state.',
-			// Production regression: the old review prompt exposed this internal
-			// camelCase representation and the worker rejected it against the
-			// provider-facing correction schema.
-			corrected_contract: reviewerCamelCaseCorrection,
-			reference_candidates: [
-				{
-					reference: 'the beta list email thing',
-					candidates: [
-						{ id: betaListId, title: 'Send the launch email to the beta list' }
-					]
-				}
-			]
-		};
-		const normalizedRevisionArguments = {
-			...reviewerRevisionArguments,
-			corrected_contract: serializeTurnContractForDeclaration(correctedContract)
-		};
-		const approvalArguments = {
-			reason: 'The corrected contract targets the unique beta-list task and exact Friday value.',
-			contract_sha256: correctedSha256,
-			reference_candidates: []
-		};
-		const compiledMutation = compileApprovedSingleTaskScheduleMutation(correctedContract);
-		if (!compiledMutation) throw new Error('Expected the approved reschedule to compile');
-		const batchSha256 = mutationBatchReviewSha256([compiledMutation]);
-		const batchApprovalArguments = {
-			reason: 'The compiled update exactly implements the approved due date.',
-			batch_sha256: batchSha256
-		};
-		const client = clientWithRounds([
-			providerReadRound(
-				'provider-reschedule-contract-1',
-				incorrectContractArguments,
-				'declare_turn_contract'
-			)
-		]);
-		const semanticReviewer = clientWithRounds([
-			providerReadRound(
-				'reviewer-reschedule-revision-1',
-				reviewerRevisionArguments,
-				'request_proposal_revision'
-			),
-			providerReadRound(
-				'reviewer-reschedule-approval-1',
-				approvalArguments,
-				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-reschedule-batch-approval-1',
-				batchApprovalArguments,
-				'approve_mutation_batch_review'
-			)
-		]);
-		const providerInput = executionInputWithReadSurface(
-			[
-				turnContractToolDefinition(),
-				readOnlyTurnToolDefinition(),
-				clarificationToolDefinition(),
-				updateTaskToolDefinition()
-			],
-			[
-				'declare_turn_contract',
-				'declare_read_only_turn',
-				'request_turn_clarification',
-				'update_onto_task'
-			]
-		);
-		providerInput.requestPayload = {
-			...providerInput.requestPayload,
-			message: "push the beta list email thing to friday, i'm not gonna get to it before then"
-		};
-		const invocation = await new AgenticChatTurnProviderAdapter(
-			{
-				client,
-				semanticReviewer,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
-			},
-			2_000,
-			16,
-			{ updateOntoTask: true }
-		).prepare({
-			executionInput: providerInput,
-			processingToken: PROCESSING_TOKEN,
-			signal: new AbortController().signal
-		});
-
-		await collect(invocation.stream());
-		const revisionSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 2,
-				results: [
-					durableReadFeedbackFor(
-						'provider-reschedule-contract-1',
-						'declare_turn_contract',
-						incorrectContractArguments,
-						{ status: 'declared' }
-					)
-				]
-			})
-		);
-		expect(revisionSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-reschedule-revision-1',
-					toolName: 'request_proposal_revision',
-					arguments: normalizedRevisionArguments
-				})
-			])
-		);
-		const firstReviewPrompt = String(
-			semanticReviewer.stream.mock.calls[0]?.[0].messages[1]?.content
-		);
-		expect(firstReviewPrompt).toContain('"entity_kind":"task"');
-		expect(firstReviewPrompt).not.toContain('"entityKind":"task"');
-		expect(String(semanticReviewer.stream.mock.calls[0]?.[0].messages[0]?.content)).toContain(
-			'the durable field is due_at. Use start_at only when the user explicitly refers to the task start'
-		);
-		const revisionTool = semanticReviewer.stream.mock.calls[0]?.[0].tools.find(
-			(tool) => tool.function.name === 'request_proposal_revision'
-		);
-		expect(revisionTool?.function.parameters.required).toContain('reference_candidates');
-		const approvalSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 3,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-reschedule-revision-1',
-						'request_proposal_revision',
-						normalizedRevisionArguments,
-						{ status: 'revision_required', ...normalizedRevisionArguments }
-					)
-				]
-			})
-		);
-		expect(approvalSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-reschedule-approval-1',
-					toolName: 'approve_turn_contract_review'
-				})
-			])
-		);
-		expect(client.stream).toHaveBeenCalledOnce();
-		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
-		expect(
-			semanticReviewer.stream.mock.calls[1]?.[0].tools.map((tool) => tool.function.name)
-		).not.toContain('declare_read_only_turn');
-
-		const batchReviewSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 4,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-reschedule-approval-1',
-						'approve_turn_contract_review',
-						approvalArguments,
-						{
-							status: 'turn_contract_review_approved',
-							contract_sha256: correctedSha256
-						}
-					)
-				]
-			})
-		);
-		expect(batchReviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-reschedule-batch-approval-1',
-					toolName: 'approve_mutation_batch_review',
-					decidedBy: 'mutation_batch_reviewer'
-				})
-			])
-		);
-		expect(client.stream).toHaveBeenCalledOnce();
-		expect(semanticReviewer.stream).toHaveBeenCalledTimes(3);
-		const batchReviewRequest = semanticReviewer.stream.mock.calls[2]?.[0];
-		expect(String(batchReviewRequest?.messages[1]?.content)).toContain(
-			'worker deterministically compiled'
-		);
-		expect(String(batchReviewRequest?.messages[1]?.content)).not.toContain(
-			'the acting model proposed every tool name'
-		);
-
-		const mutationSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 5,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-reschedule-batch-approval-1',
-						'approve_mutation_batch_review',
-						batchApprovalArguments,
-						{
-							status: 'mutation_batch_review_approved',
-							batch_sha256: batchSha256
-						}
-					)
-				]
-			})
-		);
-		expect(mutationSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'mutating_tool',
-					providerToolCallId: compiledMutation.id,
-					toolName: 'update_onto_task',
-					arguments: {
-						task_id: betaListId,
-						due_at: '2026-09-04T17:00:00-04:00'
-					}
-				})
-			])
-		);
-	});
-
-	it('returns an invented batch value to the acting model once before approving the corrected batch', async () => {
-		const taskId = '41000000-0000-4000-8000-000000000021';
-		const contractArguments: JsonObject = {
-			outcomes: [
-				{
-					action: 'complete',
-					entity_kind: 'task',
-					target_ids: [taskId],
-					required_fields: ['state_key'],
-					minimum_successful_effects: 1
-				}
-			]
-		};
-		const contract = parseDeclaredTurnContract(contractArguments);
-		if (!contract) throw new Error('Expected a valid completion contract');
-		const contractSha256 = createHash('sha256')
-			.update(canonicalizeAgenticChatJson(contract as never), 'utf8')
-			.digest('hex');
-		const approvalArguments = {
-			reason: 'Exactly one loaded task matches the reported completed call.',
-			contract_sha256: contractSha256,
-			reference_candidates: [
-				{
-					reference: 'the northwind call',
-					candidates: [{ id: taskId, title: 'Intro call with Northwind Systems' }]
-				}
-			]
-		};
-		const inventedArguments = {
-			task_id: taskId,
-			state_key: 'done',
-			description: 'Call on 2026-08-20 went well.'
-		};
-		const correctedArguments = {
-			task_id: taskId,
-			state_key: 'done',
-			description: 'Call went well; waiting to hear back.'
-		};
-		const correctedSha256 = mutationBatchReviewSha256([
-			{ id: 'provider-update-2', name: 'update_onto_task', arguments: correctedArguments }
-		]);
-		const revisionArguments = {
-			reason: 'The description adds a call date the user never stated.',
-			required_correction: 'Drop the date; keep only the user-stated outcome and next step.'
-		};
-		const batchApprovalArguments = {
-			reason: 'The corrected update carries only user-stated text.',
-			batch_sha256: correctedSha256
-		};
-		const client = clientWithRounds([
-			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
-			providerReadRound('provider-update-1', inventedArguments, 'update_onto_task'),
-			providerReadRound('provider-update-2', correctedArguments, 'update_onto_task'),
-			[
-				{ type: 'text', content: 'Marked the Northwind call done.' },
-				{ type: 'done', finishedReason: 'stop' }
-			]
-		]);
-		const semanticReviewer = clientWithRounds([
-			providerReadRound(
-				'reviewer-approval-1',
-				approvalArguments,
-				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-batch-revision-1',
-				revisionArguments,
-				'request_proposal_revision'
-			),
-			providerReadRound(
-				'reviewer-batch-approval-1',
-				batchApprovalArguments,
-				'approve_mutation_batch_review'
-			)
-		]);
-		const invocation = await new AgenticChatTurnProviderAdapter(
-			{
-				client,
-				semanticReviewer,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
-			},
-			2_000,
-			16,
-			{ updateOntoTask: true }
-		).prepare({
-			executionInput: executionInputWithReadSurface(
-				[
-					turnContractToolDefinition(),
-					readOnlyTurnToolDefinition(),
-					clarificationToolDefinition(),
-					updateTaskToolDefinition()
-				],
-				[
-					'declare_turn_contract',
-					'declare_read_only_turn',
-					'request_turn_clarification',
-					'update_onto_task'
-				]
-			),
-			processingToken: PROCESSING_TOKEN,
-			signal: new AbortController().signal
-		});
-
-		await collect(invocation.stream());
-		await collect(
-			invocation.continueWithToolResults!({
-				round: 2,
-				results: [
-					durableReadFeedbackFor(
-						'provider-contract-1',
-						'declare_turn_contract',
-						contractArguments,
-						{ status: 'declared' }
-					)
-				]
-			})
-		);
-		const revisionSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 3,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-approval-1',
-						'approve_turn_contract_review',
-						approvalArguments,
-						{ status: 'turn_contract_review_approved', contract_sha256: contractSha256 }
-					)
-				]
-			})
-		);
-		expect(revisionSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
-		expect(revisionSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-batch-revision-1',
-					toolName: 'request_proposal_revision',
-					decidedBy: 'mutation_batch_reviewer'
-				})
-			])
-		);
-		const approvalSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 4,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-batch-revision-1',
-						'request_proposal_revision',
-						revisionArguments,
-						{ status: 'revision_required', ...revisionArguments }
-					)
-				]
-			})
-		);
-		expect(approvalSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-batch-approval-1',
-					toolName: 'approve_mutation_batch_review',
-					decidedBy: 'mutation_batch_reviewer'
-				})
-			])
-		);
-		// The approved contract survives the batch correction; the acting model gets
-		// its full write surface back and the reviewer's exact correction.
-		const correctionRequest = client.stream.mock.calls[2]?.[0];
-		expect(correctionRequest).toMatchObject({ toolChoice: 'auto' });
-		const correctionInstruction = [...(correctionRequest?.messages ?? [])]
-			.reverse()
-			.find((message) => message.role === 'system');
-		expect(String(correctionInstruction?.content)).toContain('approved contract still stands');
-		expect(String(correctionInstruction?.content)).toContain('Drop the date');
-		expect(
-			semanticReviewer.stream.mock.calls[1]?.[0].tools.map((tool) => tool.function.name)
-		).toEqual([
-			'approve_mutation_batch_review',
-			'request_proposal_revision',
-			'request_turn_clarification'
-		]);
-		expect(
-			semanticReviewer.stream.mock.calls[2]?.[0].tools.map((tool) => tool.function.name)
-		).toEqual([
-			'approve_mutation_batch_review',
-			'request_proposal_revision',
-			'request_turn_clarification'
-		]);
-
-		const mutationSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 5,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-batch-approval-1',
-						'approve_mutation_batch_review',
-						batchApprovalArguments,
-						{ status: 'mutation_batch_review_approved', batch_sha256: correctedSha256 }
-					)
-				]
-			})
-		);
-		const updateStep = mutationSteps.find(
-			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
-				step.type === 'mutating_tool'
-		);
-		expect(updateStep).toMatchObject({
-			providerToolCallId: 'provider-update-2',
-			toolName: 'update_onto_task',
-			arguments: correctedArguments
-		});
-		if (!updateStep) throw new Error('Expected the corrected mutation');
-		await expect(
-			collect(
-				invocation.continueWithToolResults!({
-					round: 6,
-					results: [
-						durableMutationFeedback({
-							providerToolCallId: 'provider-update-2',
-							logicalOperationId: updateStep.logicalOperationId,
-							arguments: correctedArguments
-						})
-					]
-				})
-			)
-		).resolves.toEqual([
-			{ type: 'text_delta', text: 'Marked the Northwind call done.' },
-			{ type: 'finish', finishedReason: 'stop', usage: null }
-		]);
-		expect(client.stream).toHaveBeenCalledTimes(4);
-		expect(semanticReviewer.stream).toHaveBeenCalledTimes(3);
 	});
 
 	it('converts an approval that enumerates several matching candidates into a clarification naming them', async () => {
@@ -9430,214 +8207,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
 	});
 
-	it('binds a labelled folder from its create receipt and tells the batch reviewer the resolved id', async () => {
-		const projectId = '40000000-0000-4000-8000-000000000004';
-		const documentId = '42000000-0000-4000-8000-000000000004';
-		const folderId = '42000000-0000-4000-8000-000000000077';
-		const contractArguments: JsonObject = {
-			outcomes: [
-				{
-					action: 'create',
-					entity_kind: 'document',
-					label: 'meeting-notes',
-					changes: [{ field: 'title', value: 'Meeting notes' }],
-					minimum_successful_effects: 1
-				},
-				{
-					action: 'move',
-					entity_kind: 'document',
-					target_ids: [documentId],
-					parent_label: 'meeting-notes',
-					minimum_successful_effects: 1
-				}
-			]
-		};
-		const normalizedContract = parseDeclaredTurnContract(contractArguments);
-		if (!normalizedContract) throw new Error('Expected a valid labelled contract');
-		const contractReviewSha256 = createHash('sha256')
-			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
-			.digest('hex');
-		const approvalArguments = {
-			reason: 'Delegated organization with a labelled folder.',
-			contract_sha256: contractReviewSha256,
-			reference_candidates: []
-		};
-		const createArguments = {
-			project_id: projectId,
-			title: '📋 Meeting Notes',
-			description: 'Grouping document'
-		};
-		const createBatchSha256 = mutationBatchReviewSha256([
-			{ id: 'provider-create-1', name: 'create_onto_document', arguments: createArguments }
-		]);
-		const createBatchApproval = {
-			reason: 'The folder is inside the approved contract.',
-			batch_sha256: createBatchSha256
-		};
-		const moveArguments = {
-			project_id: projectId,
-			document_id: documentId,
-			new_parent_id: folderId
-		};
-		const client = clientWithRounds([
-			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
-			providerReadRound('provider-create-1', createArguments, 'create_onto_document'),
-			providerReadRound('provider-move-1', moveArguments, 'move_document_in_tree')
-		]);
-		const semanticReviewer = clientWithRounds([
-			providerReadRound(
-				'reviewer-contract-approval-1',
-				approvalArguments,
-				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-batch-approval-1',
-				createBatchApproval,
-				'approve_mutation_batch_review'
-			),
-			providerReadRound(
-				'reviewer-clarification-2',
-				{ reason: 'fixture stop', question: 'fixture?' },
-				'request_turn_clarification'
-			)
-		]);
-		const invocation = await new AgenticChatTurnProviderAdapter(
-			{
-				client,
-				semanticReviewer,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
-			},
-			2_000,
-			16,
-			{ createOntoDocument: true, moveDocumentInTree: true }
-		).prepare({
-			executionInput: executionInputWithReadSurface(
-				[
-					turnContractToolDefinition(),
-					readOnlyTurnToolDefinition(),
-					clarificationToolDefinition(),
-					createDocumentToolDefinition(),
-					moveDocumentToolDefinition()
-				],
-				[
-					'declare_turn_contract',
-					'declare_read_only_turn',
-					'request_turn_clarification',
-					'create_onto_document',
-					'move_document_in_tree'
-				]
-			),
-			processingToken: PROCESSING_TOKEN,
-			signal: new AbortController().signal
-		});
-
-		await collect(invocation.stream());
-		await collect(
-			invocation.continueWithToolResults!({
-				round: 2,
-				results: [
-					durableReadFeedbackFor(
-						'provider-contract-1',
-						'declare_turn_contract',
-						contractArguments,
-						{ status: 'declared' }
-					)
-				]
-			})
-		);
-		await collect(
-			invocation.continueWithToolResults!({
-				round: 3,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-contract-approval-1',
-						'approve_turn_contract_review',
-						approvalArguments,
-						{
-							status: 'turn_contract_review_approved',
-							contract_sha256: contractReviewSha256
-						}
-					)
-				]
-			})
-		);
-		const createSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 4,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-batch-approval-1',
-						'approve_mutation_batch_review',
-						createBatchApproval,
-						{
-							status: 'mutation_batch_review_approved',
-							batch_sha256: createBatchSha256
-						}
-					)
-				]
-			})
-		);
-		const createStep = createSteps.find(
-			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
-				step.type === 'mutating_tool'
-		);
-		if (!createStep) throw new Error('Expected the folder create to reach execution');
-
-		// The create receipt binds the label; the next acting pass proposes the move.
-		await collect(
-			invocation.continueWithToolResults!({
-				round: 5,
-				results: [
-					{
-						providerToolCallId: 'provider-create-1',
-						toolName: 'create_onto_document',
-						arguments: createArguments,
-						execution: {
-							result: {
-								document: {
-									id: folderId,
-									title: 'Meeting notes',
-									project_id: projectId
-								},
-								message: 'Created document "Meeting notes".'
-							},
-							executionTimeMs: null,
-							tokensConsumed: null,
-							affectedEntities: [],
-							toolCategory: 'ontology_action',
-							resultCount: null,
-							zeroResult: null,
-							requiresUserAction: false
-						},
-						mutation: {
-							effectId: 'a3000000-0000-4000-8000-00000000007a',
-							logicalOperationId: createStep.logicalOperationId,
-							operationName: 'onto.document.create',
-							replayed: false
-						}
-					}
-				]
-			})
-		);
-		const moveReview = semanticReviewer.stream.mock.calls[2]?.[0];
-		expect(moveReview?.tools.map((tool) => tool.function.name)).toContain(
-			'approve_mutation_batch_review'
-		);
-		expect(String(moveReview?.messages[1]?.content)).toContain(
-			`Resolved contract labels (bound by the system from executed creates): {"meeting-notes":"${folderId}"}`
-		);
-		expect(String(moveReview?.messages[0]?.content)).toContain('parent_label');
-
-		// The create batch review told the reviewer which arguments the tool schema
-		// requires, so a required `description` is never treated as an invented value.
-		const createReview = semanticReviewer.stream.mock.calls[1]?.[0];
-		expect(String(createReview?.messages[1]?.content)).toContain(
-			'- create_onto_document requires: project_id, title, description'
-		);
-		expect(String(createReview?.messages[0]?.content)).toContain(
-			'Never return a batch to remove a required argument'
-		);
-	});
 	it('gives an identical typed correction re-review a distinct transition id', async () => {
 		const halcyonId = '41000000-0000-4000-8000-000000000013';
 		const contractArguments: JsonObject = {
@@ -9778,24 +8347,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			title: 'Meeting notes',
 			description: 'Grouping document'
 		};
-		const createBatchSha256 = mutationBatchReviewSha256([
-			{ id: 'provider-create-1', name: 'create_onto_document', arguments: createArguments }
-		]);
-		const createBatchApproval = {
-			reason: 'The folder is inside the approved contract.',
-			batch_sha256: createBatchSha256
-		};
 		const moveArguments = {
 			project_id: projectId,
 			document_id: documentId,
 			new_parent_id: folderId
-		};
-		const moveBatchSha256 = mutationBatchReviewSha256([
-			{ id: 'provider-move-1', name: 'move_document_in_tree', arguments: moveArguments }
-		]);
-		const moveBatchApproval = {
-			reason: 'The move uses the folder ID bound by the approved create outcome.',
-			batch_sha256: moveBatchSha256
 		};
 		const client = clientWithRounds([
 			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
@@ -9807,16 +8362,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'reviewer-contract-approval-1',
 				approvalArguments,
 				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-batch-approval-1',
-				createBatchApproval,
-				'approve_mutation_batch_review'
-			),
-			providerReadRound(
-				'reviewer-move-approval-1',
-				moveBatchApproval,
-				'approve_mutation_batch_review'
 			)
 		]);
 		const adapter = new AgenticChatTurnProviderAdapter(
@@ -9865,7 +8410,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					]
 				})
 			);
-			await collect(
+			const createSteps = await collect(
 				invocation.continueWithToolResults!({
 					round: 3,
 					results: [
@@ -9881,22 +8426,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					]
 				})
 			);
-			const createSteps = await collect(
-				invocation.continueWithToolResults!({
-					round: 4,
-					results: [
-						durableReadFeedbackFor(
-							'reviewer-batch-approval-1',
-							'approve_mutation_batch_review',
-							createBatchApproval,
-							{
-								status: 'mutation_batch_review_approved',
-								batch_sha256: createBatchSha256
-							}
-						)
-					]
-				})
-			);
 			const createStep = createSteps.find(
 				(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
 					step.type === 'mutating_tool'
@@ -9904,7 +8433,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			if (!createStep) throw new Error('Expected the folder create to reach execution');
 			const afterCreate = await collect(
 				invocation.continueWithToolResults!({
-					round: 5,
+					round: 4,
 					results: [
 						{
 							providerToolCallId: 'provider-create-1',
@@ -9945,9 +8474,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			runThroughCreate,
 			folderId,
 			documentId,
-			moveArguments,
-			moveBatchApproval,
-			moveBatchSha256
+			moveArguments
 		};
 	}
 
@@ -9968,33 +8495,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		]);
 		const { invocation, afterCreate } = await fixture.runThroughCreate();
-		expect(afterCreate).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'reviewer-move-approval-1',
-					toolName: 'approve_mutation_batch_review'
-				})
-			])
-		);
-
-		const moveSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 6,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-move-approval-1',
-						'approve_mutation_batch_review',
-						fixture.moveBatchApproval,
-						{
-							status: 'mutation_batch_review_approved',
-							batch_sha256: fixture.moveBatchSha256
-						}
-					)
-				]
-			})
-		);
-		const moveStep = moveSteps.find(
+		const moveStep = afterCreate.find(
 			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
 				step.type === 'mutating_tool'
 		);
@@ -10008,7 +8509,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
-					round: 7,
+					round: 5,
 					results: [
 						durableMoveMutationFeedback({
 							providerToolCallId: 'provider-move-1',
@@ -10025,7 +8526,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			},
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
-		expect(fixture.semanticReviewer.stream).toHaveBeenCalledTimes(3);
+		// One contract review for the whole organize: the approved contract's own
+		// mutations execute without a second model review.
+		expect(fixture.semanticReviewer.stream).toHaveBeenCalledTimes(1);
 	});
 
 	it('sends the model back to finish an approved contract when it tries to answer after the first mutation round', async () => {
@@ -10085,7 +8588,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(String(repair?.messages.at(-1)?.content)).toContain('reviewer-only control');
 		expect(repair?.tools.map((tool) => tool.function.name)).toContain('move_document_in_tree');
 		expect(afterCreate.some((step) => step.type === 'finish')).toBe(true);
-		expect(fixture.semanticReviewer.stream).toHaveBeenCalledTimes(2);
+		expect(fixture.semanticReviewer.stream).toHaveBeenCalledTimes(1);
 	});
 	it('keeps an approval whose reference candidates form a set the contract mostly covers', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
@@ -10442,9 +8945,6 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 			title: 'Meeting notes',
 			description: 'Grouping document'
 		};
-		const batchSha256 = mutationBatchReviewSha256([
-			{ id: 'provider-create-1', name: 'create_onto_document', arguments: createArguments }
-		]);
 		const client = clientWithRounds([
 			providerReadRound('provider-read-1', { project_id: projectId }),
 			providerReadRound('provider-read-2', { project_id: projectId, marker: 'two' }),
@@ -10465,11 +8965,6 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 					reference_candidates: []
 				},
 				'approve_turn_contract_review'
-			),
-			providerReadRound(
-				'reviewer-batch-approval-1',
-				{ reason: 'Inside the contract.', batch_sha256: batchSha256 },
-				'approve_mutation_batch_review'
 			)
 		]);
 		const { invocation } = await prepared(client, {
@@ -10526,7 +9021,7 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 				]
 			})
 		);
-		const proposalSteps = await collect(
+		const executionSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 6,
 				results: [
@@ -10543,31 +9038,10 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 				]
 			})
 		);
-		expect(proposalSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					toolName: 'approve_mutation_batch_review'
-				})
-			])
-		);
-		const executionSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 7,
-				results: [
-					durableReadFeedbackFor(
-						'reviewer-batch-approval-1',
-						'approve_mutation_batch_review',
-						{ reason: 'Inside the contract.', batch_sha256: batchSha256 },
-						{ status: 'mutation_batch_review_approved', batch_sha256: batchSha256 }
-					)
-				]
-			})
-		);
 		const create = mutationStepOf(executionSteps, 'create_onto_document');
 		const finalSteps = await collect(
 			invocation.continueWithToolResults!({
-				round: 8,
+				round: 7,
 				results: [
 					{
 						providerToolCallId: 'provider-create-1',
@@ -10600,9 +9074,9 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 			})
 		);
 		expect(finalSteps.some((step) => step.type === 'finish')).toBe(true);
-		// Three reads earn a nudge; the declaration, contract approval and batch
-		// approval rounds must not turn it into stop_and_answer (six "read-only"
-		// rounds under the old counting), and the mutation round resets the ladder.
+		// Three reads earn a nudge; the declaration and contract approval rounds
+		// must not turn it into stop_and_answer (five "read-only" rounds under the
+		// old counting), and the mutation round resets the ladder.
 		const proposalRequest = client.stream.mock.calls[4]?.[0];
 		const finalRequest = client.stream.mock.calls[5]?.[0];
 		for (const request of [proposalRequest, finalRequest]) {
@@ -10611,7 +9085,7 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 			expect(text).not.toContain('Read-loop hard stop');
 		}
 		expect(finalRequest).not.toMatchObject({ toolChoice: 'none' });
-		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
 	});
 
 	// Finding 7 / Decision 3 — a deterministically resolved existing target
@@ -10673,6 +9147,82 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 		expect(client.stream.mock.calls[2]?.[0]).toMatchObject({ tools: [], toolChoice: 'none' });
 	});
 
+	// A "reschedule" to the date the task already carries executes, succeeds, and
+	// moves nothing; the receipt echoes the row and the model reports the move as
+	// done. Reject it before execution and name the field for the repair.
+	it('rejects a reschedule to the date the read already loaded and repairs it', async () => {
+		const loadedDueAt = '2026-08-07T15:00:00Z';
+		const client = clientWithRounds([
+			providerReadRound('provider-list-1', { project_id: projectId }, 'list_onto_tasks'),
+			providerReadRound(
+				'provider-update-noop',
+				{ task_id: taskId, due_at: loadedDueAt },
+				'update_onto_task'
+			),
+			providerReadRound(
+				'provider-update-1',
+				{ task_id: taskId, due_at: '2026-08-14T15:00:00Z' },
+				'update_onto_task'
+			),
+			[
+				{ type: 'text', content: 'Pushed it a week.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const { invocation } = await prepared(client, {
+			input: writeSurface(),
+			capabilities: { updateOntoTask: true },
+			semanticReviewer: clientWithRounds([])
+		});
+		await collect(invocation.stream());
+		const steps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-list-1',
+						'list_onto_tasks',
+						{ project_id: projectId },
+						{
+							tasks: [
+								{
+									id: taskId,
+									title: 'Send the launch email to the beta list',
+									due_at: loadedDueAt
+								}
+							]
+						}
+					)
+				]
+			})
+		);
+		// The no-op never becomes a mutating step: it is a durable validation
+		// failure, so nothing reaches the write adapter to be reported as a move.
+		expect(
+			steps
+				.filter((step) => step.type === 'mutating_tool')
+				.map((step) => step.providerToolCallId)
+		).toEqual(['provider-update-1']);
+		const rejected = steps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> =>
+				step.type === 'read_tool' && step.providerToolCallId === 'provider-update-noop'
+		);
+		expect(rejected?.validationFailure?.error).toContain(`due_at is already ${loadedDueAt}`);
+		expect(rejected?.validationFailure?.error).toContain(taskId);
+
+		const repairRequest = client.stream.mock.calls.at(-1)![0];
+		expect(requireTextContent(repairRequest.messages.at(-1), 'Validation repair')).toContain(
+			'One or more tool calls failed validation.'
+		);
+		expect(requireTextContent(repairRequest.messages.at(-2), 'Validation feedback')).toContain(
+			'due_at is already'
+		);
+
+		// The repaired call carries a date that actually moves the task.
+		const repaired = mutationStepOf(steps, 'update_onto_task');
+		expect(repaired.arguments).toEqual({ task_id: taskId, due_at: '2026-08-14T15:00:00Z' });
+	});
+
 	it('executes an update of the focused entity directly on the opening pass', async () => {
 		const client = clientWithRounds([
 			providerReadRound(
@@ -10718,6 +9268,606 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 			{ type: 'text_delta', text: 'Pushed it to Friday.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
+	});
+
+	it('reviews a two-target contract exactly once and then executes both updates', async () => {
+		const contractArguments: JsonObject = {
+			outcomes: [
+				{
+					action: 'complete',
+					entity_kind: 'task',
+					target_ids: [taskId, otherTaskIds[0]!],
+					required_fields: ['state_key'],
+					changes: [{ field: 'state_key', value: 'done' }],
+					minimum_successful_effects: 2
+				}
+			]
+		};
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid two-target contract');
+		const contractSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const approvalArguments = {
+			reason: 'The user commissioned both completions.',
+			contract_sha256: contractSha256,
+			reference_candidates: []
+		};
+		const updates = [taskId, otherTaskIds[0]!].map((id) => ({
+			id: `provider-update-${id}`,
+			arguments: { task_id: id, state_key: 'done' }
+		}));
+		const client = clientWithRounds([
+			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
+			[
+				{
+					type: 'tool_call',
+					toolCall: updates.map((update, index) => ({
+						index,
+						id: update.id,
+						type: 'function' as const,
+						function: {
+							name: 'update_onto_task',
+							arguments: JSON.stringify(update.arguments)
+						}
+					}))
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			[
+				{ type: 'text', content: 'Both are done.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-approval-1',
+				approvalArguments,
+				'approve_turn_contract_review'
+			)
+		]);
+		const { invocation } = await prepared(client, {
+			input: writeSurface(),
+			capabilities: { updateOntoTask: true },
+			semanticReviewer
+		});
+		await collect(invocation.stream());
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		const mutationSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-approval-1',
+						'approve_turn_contract_review',
+						approvalArguments,
+						{ status: 'turn_contract_review_approved', contract_sha256: contractSha256 }
+					)
+				]
+			})
+		);
+		const mutations = mutationSteps.filter(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(mutations.map((step) => step.arguments)).toEqual(
+			updates.map((update) => update.arguments)
+		);
+		// One model review for the turn: the approved contract's own mutations
+		// execute without a second reviewer pass.
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 4,
+					results: updates.map((update, index) =>
+						durableMutationFeedback({
+							providerToolCallId: update.id,
+							logicalOperationId: mutations[index]!.logicalOperationId,
+							arguments: update.arguments,
+							effectId: `a3000000-0000-4000-8000-00000000006${index}`
+						})
+					)
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'Both are done.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+	});
+
+	// The global provider-pass ceiling: a turn that keeps working past twelve
+	// model calls ends with an honest partial that names what actually executed.
+	it('ends a turn that reaches the provider-pass ceiling with a receipt-grounded partial', async () => {
+		const contractArguments: JsonObject = {
+			outcomes: [
+				{
+					action: 'complete',
+					entity_kind: 'task',
+					target_ids: [taskId],
+					required_fields: ['state_key'],
+					changes: [{ field: 'state_key', value: 'done' }],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid contract');
+		const contractSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const approvalArguments = {
+			reason: 'Commissioned.',
+			contract_sha256: contractSha256,
+			reference_candidates: []
+		};
+		const updateArguments = { task_id: taskId, state_key: 'done' };
+		const trailingReadIds = Array.from(
+			{ length: 7 },
+			(_, index) => `provider-read-${index + 3}`
+		);
+		const client = clientWithRounds([
+			providerReadRound('provider-read-1', { project_id: projectId, marker: '1' }),
+			providerReadRound('provider-read-2', { project_id: projectId, marker: '2' }),
+			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
+			providerReadRound('provider-update-1', updateArguments, 'update_onto_task'),
+			...trailingReadIds.map((id, index) =>
+				providerReadRound(id, { project_id: projectId, marker: String(index + 3) })
+			),
+			[
+				{ type: 'text', content: 'I completed the task; I did not finish the review.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-approval-1',
+				approvalArguments,
+				'approve_turn_contract_review'
+			)
+		]);
+		const { invocation } = await prepared(client, {
+			input: writeSurface(),
+			capabilities: { updateOntoTask: true },
+			semanticReviewer
+		});
+		const readResult = (marker: string) => ({
+			project: { id: projectId, title: 'Launch' },
+			tasks: [
+				{
+					id: `41000000-0000-4000-8000-0000000000${marker.padStart(2, '0')}`,
+					title: `Task ${marker}`
+				}
+			]
+		});
+		await collect(invocation.stream());
+		for (const [round, id, marker] of [
+			[2, 'provider-read-1', '1'],
+			[3, 'provider-read-2', '2']
+		] as const) {
+			await collect(
+				invocation.continueWithToolResults!({
+					round,
+					results: [
+						durableReadFeedback(
+							id,
+							{ project_id: projectId, marker },
+							readResult(marker)
+						)
+					]
+				})
+			);
+		}
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		const mutationSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 5,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-approval-1',
+						'approve_turn_contract_review',
+						approvalArguments,
+						{ status: 'turn_contract_review_approved', contract_sha256: contractSha256 }
+					)
+				]
+			})
+		);
+		const update = mutationStepOf(mutationSteps, 'update_onto_task');
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 6,
+				results: [
+					durableMutationFeedback({
+						providerToolCallId: 'provider-update-1',
+						logicalOperationId: update.logicalOperationId,
+						arguments: updateArguments
+					})
+				]
+			})
+		);
+		let lastSteps: AgenticChatProviderStepV1[] = [];
+		for (const [index, id] of trailingReadIds.entries()) {
+			lastSteps = await collect(
+				invocation.continueWithToolResults!({
+					round: 7 + index,
+					results: [
+						durableReadFeedback(
+							id,
+							{ project_id: projectId, marker: String(index + 3) },
+							readResult(String(index + 3))
+						)
+					]
+				})
+			);
+		}
+		// Twelve model calls were spent (eleven acting passes plus one reviewer);
+		// the thirteenth is the tool-free answer, not another attempt.
+		expect(client.stream).toHaveBeenCalledTimes(12);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+		expect(lastSteps).toEqual([
+			{ type: 'text_delta', text: 'I completed the task; I did not finish the review.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		const finalRequest = client.stream.mock.calls[11]?.[0];
+		expect(finalRequest).toMatchObject({ tools: [], toolChoice: 'none' });
+		const instruction = systemMessagesOf(finalRequest!).at(-1)!;
+		expect(instruction).toContain('reached its limit on model passes');
+		expect(instruction).toContain('succeeded: update_onto_task');
+		expect(instruction).toContain(taskId);
+		expect(instruction).toContain('say plainly which part of the request was not done');
+	});
+
+	it('executes three resolved single-target updates as one direct batch', async () => {
+		const updates = [taskId, ...otherTaskIds].map((id) => ({
+			id: `provider-update-${id}`,
+			arguments: { task_id: id, state_key: 'done' }
+		}));
+		const client = clientWithRounds([
+			providerReadRound('provider-list-1', { project_id: projectId }, 'list_onto_tasks'),
+			[
+				{
+					type: 'tool_call',
+					toolCall: updates.map((update, index) => ({
+						index,
+						id: update.id,
+						type: 'function' as const,
+						function: {
+							name: 'update_onto_task',
+							arguments: JSON.stringify(update.arguments)
+						}
+					}))
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			[
+				{ type: 'text', content: 'All three are done.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([]);
+		const base = writeSurface();
+		const { invocation } = await prepared(client, {
+			input: {
+				...base,
+				requestPayload: {
+					...base.requestPayload,
+					// The user named all three ids, and the read below actually loaded
+					// them: both halves are required before the direct lane accepts one.
+					message: `mark ${taskId}, ${otherTaskIds[0]} and ${otherTaskIds[1]} done`
+				}
+			},
+			capabilities: { updateOntoTask: true },
+			semanticReviewer
+		});
+		await collect(invocation.stream());
+		const updateSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-list-1',
+						'list_onto_tasks',
+						{ project_id: projectId },
+						{
+							tasks: [taskId, ...otherTaskIds].map((id, index) => ({
+								id,
+								title: `Email task ${index + 1}`
+							}))
+						}
+					)
+				]
+			})
+		);
+		const mutations = updateSteps.filter(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(mutations.map((step) => step.arguments)).toEqual(
+			updates.map((update) => update.arguments)
+		);
+		expect(semanticReviewer.stream).not.toHaveBeenCalled();
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: updates.map((update, index) =>
+						durableMutationFeedback({
+							providerToolCallId: update.id,
+							logicalOperationId: mutations[index]!.logicalOperationId,
+							arguments: update.arguments,
+							effectId: `a3000000-0000-4000-8000-00000000005${index}`
+						})
+					)
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'All three are done.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+	});
+
+	// Worker twin of the legacy partial-mutation recovery regression: one batch,
+	// one persisted receipt, two that never landed. The turn owes the user an
+	// exact account of both halves and must not quietly re-run the failure.
+	it('discloses which of three batched updates persisted and never retries the failed one', async () => {
+		const updates = [taskId, ...otherTaskIds].map((id) => ({
+			id: `provider-update-${id}`,
+			arguments: { task_id: id, state_key: 'done' }
+		}));
+		const client = clientWithRounds([
+			providerReadRound('provider-list-1', { project_id: projectId }, 'list_onto_tasks'),
+			[
+				{
+					type: 'tool_call',
+					toolCall: updates.map((update, index) => ({
+						index,
+						id: update.id,
+						type: 'function' as const,
+						function: {
+							name: 'update_onto_task',
+							arguments: JSON.stringify(update.arguments)
+						}
+					}))
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			[
+				{
+					type: 'text',
+					content:
+						'Email task 1 is marked done. Email task 2 and Email task 3 were not changed: the update was rejected.'
+				},
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const base = writeSurface();
+		const { invocation } = await prepared(client, {
+			input: {
+				...base,
+				requestPayload: {
+					...base.requestPayload,
+					message: `mark ${taskId}, ${otherTaskIds[0]} and ${otherTaskIds[1]} done`
+				}
+			},
+			capabilities: { updateOntoTask: true },
+			semanticReviewer: clientWithRounds([])
+		});
+		await collect(invocation.stream());
+		const updateSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-list-1',
+						'list_onto_tasks',
+						{ project_id: projectId },
+						{
+							tasks: [taskId, ...otherTaskIds].map((id, index) => ({
+								id,
+								title: `Email task ${index + 1}`
+							}))
+						}
+					)
+				]
+			})
+		);
+		const mutations = updateSteps.filter(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(mutations).toHaveLength(3);
+		const finalSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableMutationFeedback({
+						providerToolCallId: updates[0]!.id,
+						logicalOperationId: mutations[0]!.logicalOperationId,
+						arguments: updates[0]!.arguments,
+						effectId: 'a3000000-0000-4000-8000-000000000060'
+					}),
+					failedMutationFeedback({
+						providerToolCallId: updates[1]!.id,
+						arguments: updates[1]!.arguments,
+						error: 'Task update rejected: the task is locked by another change.'
+					}),
+					dependencyFailedFeedback({
+						providerToolCallId: updates[2]!.id,
+						arguments: updates[2]!.arguments,
+						error: 'Skipped because an earlier call in this batch failed.'
+					})
+				]
+			})
+		);
+		expect(finalSteps).toEqual([
+			{
+				type: 'text_delta',
+				text: 'Email task 1 is marked done. Email task 2 and Email task 3 were not changed: the update was rejected.'
+			},
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+
+		const synthesisRequest = client.stream.mock.calls.at(-1)![0];
+		// The failed mutation is not re-proposed by the provider, and the pass
+		// that writes the answer carries no tool with which to retry it.
+		expect(synthesisRequest.toolChoice).toBe('none');
+		expect(synthesisRequest.tools).toEqual([]);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+
+		// Exactly one receipt succeeded and both failures are named, per call id.
+		const toolResults = synthesisRequest.messages
+			.filter((message) => message.role === 'tool')
+			.map((message) => ({
+				id: message.tool_call_id,
+				content: requireTextContent(message, 'tool result')
+			}));
+		const receiptFor = (id: string) => {
+			const entry = toolResults.find((result) => result.id === id);
+			if (!entry) throw new Error(`No durable receipt was replayed for ${id}`);
+			return entry.content;
+		};
+		expect(receiptFor(updates[0]!.id)).toContain('Task updated successfully.');
+		expect(receiptFor(updates[0]!.id)).not.toContain('"success":false');
+		expect(receiptFor(updates[1]!.id)).toContain(
+			'Task update rejected: the task is locked by another change.'
+		);
+		expect(receiptFor(updates[2]!.id)).toContain(
+			'Skipped because an earlier call in this batch failed.'
+		);
+		// The answer the model is asked for is grounded in those receipts: the
+		// persisted change is named, the unpersisted ones are named as unmade.
+		const instruction = systemMessagesOf(synthesisRequest).join('\n');
+		expect(instruction).toContain('succeeded: update_onto_task');
+		expect(instruction).toContain('failed: update_onto_task');
+	});
+
+	it('keeps an id the user pasted without any read this turn on the contract route', async () => {
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-update-1',
+				{ task_id: taskId, state_key: 'done' },
+				'update_onto_task'
+			),
+			providerReadRound(
+				'provider-clarify-1',
+				{
+					reason: 'Nothing loaded proves that id exists.',
+					question: 'Which task did you mean?'
+				},
+				'request_turn_clarification'
+			)
+		]);
+		const semanticReviewer = clientWithRounds([]);
+		const base = writeSurface();
+		const { invocation } = await prepared(client, {
+			input: {
+				...base,
+				requestPayload: {
+					...base.requestPayload,
+					message: `mark ${taskId} done`
+				}
+			},
+			capabilities: { updateOntoTask: true },
+			semanticReviewer
+		});
+		const steps = await collect(invocation.stream());
+		expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					toolName: 'request_turn_clarification'
+				})
+			])
+		);
+		const gate = client.stream.mock.calls[1]?.[0];
+		expect(gate).toMatchObject({ toolChoice: 'required' });
+		expect(gate?.tools.map((tool) => tool.function.name)).toContain('declare_turn_contract');
+	});
+
+	it('drops resolved read evidence with the memo at the write boundary', async () => {
+		const client = clientWithRounds([
+			providerReadRound('provider-list-1', { project_id: projectId }, 'list_onto_tasks'),
+			providerReadRound('provider-read-2', { project_id: projectId, marker: 'two' }),
+			providerReadRound(
+				'provider-update-1',
+				{ task_id: taskId, state_key: 'done' },
+				'update_onto_task'
+			),
+			providerReadRound(
+				'provider-clarify-1',
+				{ reason: 'The loaded evidence is stale.', question: 'Which task did you mean?' },
+				'request_turn_clarification'
+			)
+		]);
+		const semanticReviewer = clientWithRounds([]);
+		const { invocation } = await prepared(client, {
+			input: writeSurface(),
+			capabilities: { updateOntoTask: true },
+			semanticReviewer
+		});
+		await collect(invocation.stream());
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-list-1',
+						'list_onto_tasks',
+						{ project_id: projectId },
+						{ tasks: [{ id: taskId, title: 'Send the launch email to the beta list' }] }
+					)
+				]
+			})
+		);
+		// The executor clears the memo as soon as a call reaches the write
+		// boundary. The single-hit id that read resolved dies with it.
+		invocation.invalidateReadMemo!();
+		const steps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedback('provider-read-2', {
+						project_id: projectId,
+						marker: 'two'
+					})
+				]
+			})
+		);
+		expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					toolName: 'request_turn_clarification'
+				})
+			])
+		);
 	});
 
 	it('keeps an update chosen from three plausible tasks on the contract route', async () => {
@@ -11333,6 +10483,48 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
 		expect(client.stream).toHaveBeenCalledTimes(4);
+	});
+
+	// Worker twin of the legacy people-synthesis timeout regression
+	// (incident 2026-07-22): the synthesis pass that follows real tool work dies
+	// on both attempts, and the user still owns whatever it managed to write.
+	const timedOutSynthesisRound = (partial?: string): AgenticChatTurnProviderClientEventV1[] => [
+		...(partial ? [{ type: 'text' as const, content: partial }] : []),
+		{
+			type: 'error' as const,
+			error: 'Agentic Chat provider request timed out after 90000ms',
+			retryable: true
+		}
+	];
+
+	it('ends a timed-out people-synthesis pass with its partial answer instead of failing the turn', async () => {
+		const partial =
+			'Marked the launch email done. The remaining beta tasks are still open and unassigned';
+		const { client, steps } = await streamStraySynthesis([
+			timedOutSynthesisRound('discarded first attempt'),
+			timedOutSynthesisRound(partial)
+		]);
+		await expect(collect(steps)).resolves.toEqual([
+			{ type: 'text_delta', text: partial },
+			// Degraded, not failed: the durable update is already recorded, so the
+			// turn finishes on the honest partial rather than raising
+			// provider_stream_error and discarding it.
+			{ type: 'finish', finishedReason: 'synthesis_recovered', usage: null }
+		]);
+		// Both physical attempts of the one synthesis pass were spent; the dead
+		// attempt is never replayed a third time.
+		expect(client.stream).toHaveBeenCalledTimes(4);
+	});
+
+	it('still fails a timed-out synthesis pass whose partial is only a lead-in', async () => {
+		const { steps } = await streamStraySynthesis([
+			timedOutSynthesisRound(),
+			timedOutSynthesisRound('Here are')
+		]);
+		await expect(collect(steps)).rejects.toMatchObject({
+			code: 'provider_stream_error',
+			failureClass: 'provider_throttle'
+		});
 	});
 
 	it('mounts the batching instruction only when a mounted tool carries the scheduling sidecar', async () => {

@@ -21,8 +21,6 @@ import type { JsonObject } from '@buildos/shared-types';
 import type { AgenticChatTurnProviderToolV1 } from './contracts';
 import {
 	CONTRACT_PROPOSAL_REVISION_TOOL,
-	MUTATION_BATCH_REVIEW_APPROVAL_TOOL,
-	PROPOSAL_REVISION_TOOL,
 	TURN_CONTRACT_REVIEW_APPROVAL_TOOL
 } from './review/controls';
 import { withSchedulingSidecar } from './tool-surface';
@@ -71,10 +69,8 @@ export type TurnPhaseEvent =
 			type: 'review';
 			decision:
 				| 'approve_contract'
-				| 'approve_batch'
 				| 'revise_contract'
 				| 'correct_contract'
-				| 'revise_batch'
 				| 'read_only'
 				| 'clarify';
 	  }
@@ -126,9 +122,6 @@ export function nextTurnPhase(phase: TurnPhase, event: TurnPhaseEvent): TurnPhas
 					return 'read_only_declared';
 				case 'clarify':
 					return 'clarification';
-				case 'approve_batch':
-				case 'revise_batch':
-					return phase;
 			}
 			return phase;
 		case 'carve_out':
@@ -176,8 +169,8 @@ export type TurnSurface = {
 	toolChoice: 'none' | 'auto' | 'required';
 };
 
-/** Reviewer lanes have their own surfaces; they are not acting phases. */
-export type ReviewerLane = 'contract_review' | 'batch_review';
+/** The reviewer lane has its own surface; it is not an acting phase. */
+export type ReviewerLane = 'contract_review';
 
 export type TurnSurfaceContext = {
 	/** Tools the opening pass mounted (admitted minus any deferred contract schema). */
@@ -299,20 +292,6 @@ export function surfaceFor(
 					TURN_CONTRACT_REVIEW_APPROVAL_TOOL,
 					...(readOnlyDispositionTool ? [readOnlyDispositionTool] : []),
 					...(context.allowRevision ? [CONTRACT_PROPOSAL_REVISION_TOOL] : []),
-					clarificationTool
-				],
-				toolChoice: 'required'
-			};
-		}
-		case 'batch_review': {
-			const clarificationTool = admitted.find(
-				(tool) => tool.function.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME
-			);
-			if (!clarificationTool) return null;
-			return {
-				tools: [
-					MUTATION_BATCH_REVIEW_APPROVAL_TOOL,
-					...(context.allowRevision ? [PROPOSAL_REVISION_TOOL] : []),
 					clarificationTool
 				],
 				toolChoice: 'required'

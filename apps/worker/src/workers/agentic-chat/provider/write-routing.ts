@@ -11,7 +11,7 @@ export type DirectWriteRouteContext = {
 	contextType: string;
 	entityId: string | null;
 	projectId: string | null;
-	/** The current user message; an id it literally names was chosen by the user. */
+	/** The current user message; a full UUID it literally names was typed by the user. */
 	userMessage?: string | null;
 	/**
 	 * Ids that a successful read in this turn returned as the only entity of
@@ -20,6 +20,13 @@ export type DirectWriteRouteContext = {
 	 * by the collector.
 	 */
 	resolvedEntityIds?: ReadonlyMap<string, string>;
+	/**
+	 * Every entity ref any read returned this turn (id → kind), single hit or
+	 * not. A user-typed id is trusted only when a read this turn actually
+	 * loaded that entity, so a pasted transcript full of UUIDs cannot authorize
+	 * a write against a row nobody looked at.
+	 */
+	turnSeenEntityIds?: ReadonlyMap<string, string>;
 };
 
 export type DirectWriteBatchAssessment =
@@ -49,11 +56,18 @@ export type DirectWriteBatchAssessment =
  * an exact UUID proves adapter scope, not that the user's language uniquely
  * selected that row. New entities and the already focused project retain the
  * low-latency direct lane, and so does an existing entity whose id was
- * resolved deterministically — it is the focused entity, the user typed it,
- * or one read this turn returned exactly one entity of that kind (Decision 3,
- * turn-executor audit 2026-09-02). Any id merely present somewhere in a
- * multi-hit read still goes to the contract lane: three plausible "email"
- * tasks stay a clarification, not a guess.
+ * resolved deterministically — it is the focused entity, one read this turn
+ * returned exactly one entity of that kind, or the user typed the whole UUID
+ * of an entity a read this turn actually loaded (Decision 3, turn-executor
+ * audit 2026-09-02). Any id merely present somewhere in a multi-hit read still
+ * goes to the contract lane: three plausible "email" tasks stay a
+ * clarification, not a guess.
+ *
+ * The count floor is the only cardinality rule: any batch of at most
+ * MAX_DIRECT_SIMPLE_MUTATIONS_PER_TURN ordinary single-target mutations whose
+ * every id-valued argument is resolved is direct, whether that is one call or
+ * three. Splitting the same resolved work into separate reviewed rounds bought
+ * latency and reviewer cost, not safety.
  */
 export function assessDirectWriteBatch(
 	calls: readonly CompletedProviderToolCall[],
@@ -195,18 +209,57 @@ function isResolvedExistingTargetDeterministic(
 		.every((name) => typeof call.arguments[name] === 'string');
 }
 
+/**
+ * One normalization for every id that enters or leaves the evidence maps, so
+ * a lookup can never miss a stored id on case or surrounding whitespace.
+ */
+export function normalizeId(value: string | null | undefined): string {
+	return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function resolvedKindMatches(resolvedKind: string | undefined, kind: string | null): boolean {
+	if (resolvedKind === undefined) return false;
+	return kind === null || resolvedKind === 'entity' || resolvedKind === kind.toLowerCase();
+}
+
+/**
+ * Full canonical UUIDs the user typed. A substring test used to accept any id
+ * that merely appeared anywhere in the message, so a pasted assistant reply or
+ * JSON blob authorized unreviewed direct writes; only a whole UUID token counts.
+ */
+function userMessageNamesId(userMessage: string | null | undefined, normalizedId: string): boolean {
+	if (typeof userMessage !== 'string' || userMessage.length === 0) return false;
+	if (!UUID_PATTERN.test(normalizedId)) return false;
+	for (const match of userMessage.matchAll(GLOBAL_UUID_PATTERN)) {
+		if (normalizeId(match[0]) === normalizedId) return true;
+	}
+	return false;
+}
+
+/**
+ * Deterministic resolution, in order of strength: the id is the focused entity
+ * or project, a read this turn returned it as the only entity of its kind, or
+ * the user typed the whole UUID *and* a read this turn actually loaded it. The
+ * last lane pairs the user's own words with real evidence: a typed id alone
+ * proves the string, not that the row exists or is the row they meant.
+ */
 function isDeterministicallyResolvedId(
 	id: string,
 	kind: string | null,
 	context: DirectWriteRouteContext,
 	focusedProjectId: string | null
 ): boolean {
-	if (id.length === 0) return false;
-	if (id === context.entityId || id === focusedProjectId) return true;
-	if (context.userMessage?.includes(id)) return true;
-	const resolvedKind = context.resolvedEntityIds?.get(id.toLowerCase());
-	if (resolvedKind === undefined) return false;
-	return kind === null || resolvedKind === 'entity' || resolvedKind === kind.toLowerCase();
+	const normalized = normalizeId(id);
+	if (normalized.length === 0) return false;
+	if (
+		normalized === normalizeId(context.entityId) ||
+		normalized === normalizeId(focusedProjectId)
+	) {
+		return true;
+	}
+	if (resolvedKindMatches(context.resolvedEntityIds?.get(normalized), kind)) return true;
+	if (!userMessageNamesId(context.userMessage, normalized)) return false;
+	return resolvedKindMatches(context.turnSeenEntityIds?.get(normalized), kind);
 }
 
 export function directWriteContractInstruction(
@@ -244,9 +297,18 @@ export type ReadResultEntityRef = {
 	id: string;
 	kind: string;
 	title: string | null;
+	/**
+	 * Scheduling values exactly as the read returned them, when it returned any.
+	 * A later `update_onto_task` that re-sends one of these is a no-op the
+	 * validator rejects before it can execute and be reported as a reschedule.
+	 */
+	schedule?: { due_at?: string | null; start_at?: string | null };
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** Whole-token scan of free text for canonical UUIDs (never a substring match). */
+const GLOBAL_UUID_PATTERN =
+	/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
 const KNOWN_ENTITY_KINDS: ReadonlySet<string> = new Set([
 	'project',
 	'task',
@@ -310,6 +372,8 @@ const PASSTHROUGH_WRAPPER_KEYS: ReadonlySet<string> = new Set([
 const MAX_WALKED_NODES = 4_000;
 const MAX_WALK_DEPTH = 10;
 const MAX_TITLE_CHARS = 80;
+/** ISO 8601 datetimes are far shorter; anything longer is not a timestamp. */
+const MAX_SCHEDULE_CHARS = 64;
 
 function fieldEntityKind(record: Record<string, unknown>): string | null {
 	for (const key of ['kind', 'entity_kind', 'entity_type', 'type']) {
@@ -320,6 +384,20 @@ function fieldEntityKind(record: Record<string, unknown>): string | null {
 		}
 	}
 	return null;
+}
+
+/** The scheduling fields of one read record, only when it actually carries one. */
+function readSchedule(
+	record: Record<string, unknown>
+): { due_at?: string | null; start_at?: string | null } | null {
+	const schedule: { due_at?: string | null; start_at?: string | null } = {};
+	for (const key of ['due_at', 'start_at'] as const) {
+		const value = record[key];
+		if (typeof value === 'string' && value.trim().length > 0) {
+			schedule[key] = value.trim().slice(0, MAX_SCHEDULE_CHARS);
+		}
+	}
+	return Object.keys(schedule).length > 0 ? schedule : null;
 }
 
 function firstText(...values: unknown[]): string | null {
@@ -350,16 +428,23 @@ export function collectReadResultEntityRefs(result: unknown): ReadResultEntityRe
 		if (!value || typeof value !== 'object') return;
 		const record = value as Record<string, unknown>;
 		const id = record.id;
-		if (typeof id === 'string' && UUID_PATTERN.test(id)) {
-			const normalizedId = id.toLowerCase();
+		if (typeof id === 'string' && UUID_PATTERN.test(id.trim())) {
+			const normalizedId = normalizeId(id);
 			const kind = fieldEntityKind(record) ?? contextKind ?? 'entity';
 			const title = firstText(record.title, record.name, record.label);
+			const schedule = readSchedule(record);
 			const existing = refs.get(normalizedId);
 			if (!existing) {
-				refs.set(normalizedId, { id: normalizedId, kind, title });
+				refs.set(normalizedId, {
+					id: normalizedId,
+					kind,
+					title,
+					...(schedule ? { schedule } : {})
+				});
 			} else {
 				if (existing.kind === 'entity' && kind !== 'entity') existing.kind = kind;
 				if (existing.title === null && title !== null) existing.title = title;
+				if (!existing.schedule && schedule) existing.schedule = schedule;
 			}
 		}
 		for (const [key, child] of Object.entries(record)) {
@@ -384,15 +469,23 @@ export function collectSingleHitEntityIds(
 	result: unknown,
 	callArguments?: CompletedProviderToolCall['canonicalArguments']
 ): Map<string, string> {
-	const refs = collectReadResultEntityRefs(result);
+	return selectSingleHitEntityIds(collectReadResultEntityRefs(result), callArguments);
+}
+
+/** The single-hit selection over refs already collected, so one read is walked once. */
+export function selectSingleHitEntityIds(
+	refs: readonly ReadResultEntityRef[],
+	callArguments?: CompletedProviderToolCall['canonicalArguments']
+): Map<string, string> {
 	const countByKind = new Map<string, number>();
 	for (const ref of refs) countByKind.set(ref.kind, (countByKind.get(ref.kind) ?? 0) + 1);
 	const argumentsText = (callArguments ?? '').toLowerCase();
 	const resolved = new Map<string, string>();
 	for (const ref of refs) {
 		if (countByKind.get(ref.kind) !== 1) continue;
-		if (argumentsText.includes(ref.id)) continue;
-		resolved.set(ref.id, ref.kind);
+		const normalizedId = normalizeId(ref.id);
+		if (argumentsText.includes(normalizedId)) continue;
+		resolved.set(normalizedId, ref.kind);
 	}
 	return resolved;
 }

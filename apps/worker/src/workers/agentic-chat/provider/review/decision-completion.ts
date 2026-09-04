@@ -11,7 +11,6 @@ import {
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import {
-	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../../tools/execution-adapter';
@@ -210,36 +209,6 @@ function normalizeCorrectedContractCall(
 		canonicalArguments: canonicalizeAgenticChatJson(argumentsValue),
 		canonicalProviderArguments: canonicalizeAgenticChatJson(providerArguments)
 	};
-}
-
-export function completeMutationBatchReviewDecision(
-	input: ReviewDecisionCompletionInput & {
-		batchSha256: string;
-		allowRevision: boolean;
-	}
-): CompletedProviderToolCall[] {
-	let { calls, fallbackReason } = completeSingleReviewDecision(
-		input,
-		'Independent mutation review'
-	);
-	if (!fallbackReason) {
-		const call = calls[0]!;
-		const approval = call.name === APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME;
-		const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
-		const revision = call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME;
-		if (
-			(!approval && !clarification && !revision) ||
-			(revision && !input.allowRevision) ||
-			(approval && !approvalShaMatches(call.arguments.batch_sha256, input.batchSha256)) ||
-			validateCompletedProviderCalls(calls, input.reviewRequest).length > 0
-		) {
-			fallbackReason = 'Independent mutation review returned an invalid or unbound decision.';
-		}
-	}
-	if (fallbackReason) {
-		calls = [buildReviewFallbackClarification(input.actingRequest, fallbackReason)];
-	}
-	return withDecisionAuthor(calls, 'mutation_batch_reviewer');
 }
 
 /**
