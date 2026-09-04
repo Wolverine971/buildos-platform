@@ -830,7 +830,7 @@ export type UnfulfilledMutationOutcomeDisclosureV1 = {
 	missingTargets: Array<{ id: string; title: string | null }>;
 };
 
-export type EnforceMutationOutcomeIntegrityParams = {
+type EnforceMutationOutcomeIntegrityParams = {
 	contextType: string;
 	toolExecutions: FastToolExecution[];
 	latestUserText?: string;
@@ -1532,7 +1532,7 @@ function looksLikePureClarifyingQuestion(text: string): boolean {
 	return text.includes('?') && !looksLikeActionSuccessClaim(text);
 }
 
-export type ReceiptGroundedAssistantDisposition = 'mutation_claim' | 'clarification_question';
+type ReceiptGroundedAssistantDisposition = 'mutation_claim' | 'clarification_question';
 
 /**
  * Identify terminal prose that cannot safely be authoritative on its own.
