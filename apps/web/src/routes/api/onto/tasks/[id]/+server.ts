@@ -137,6 +137,8 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 		const details = await loadOntoTaskDetail(
 			createWebAgenticChatSharedReadContext({
 				supabase: supabase as never,
+				userId: session.user.id,
+				timezone: null,
 				getActorId: async () => actorId
 			}),
 			params.id,

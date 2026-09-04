@@ -91,6 +91,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const details = await loadOntoMilestoneDetail(
 			createWebAgenticChatSharedReadContext({
 				supabase: supabase as never,
+				userId: session.user.id,
+				timezone: null,
 				getActorId: async () => actorId
 			}),
 			params.id

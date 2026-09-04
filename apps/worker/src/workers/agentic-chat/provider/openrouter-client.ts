@@ -225,7 +225,9 @@ type ProviderUsage = {
 class AgenticChatProviderNetworkError extends Error {
 	constructor(
 		message: string,
-		readonly retryable: boolean
+		readonly retryable: boolean,
+		/** Upstream endpoint the failing response named, when it named one. */
+		readonly providerSlug: string | null = null
 	) {
 		super(message);
 		this.name = 'AgenticChatProviderNetworkError';
@@ -450,7 +452,16 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					break;
 				} catch (error) {
 					if (input.signal.aborted) throwAbort(input.signal);
-					this.observeTurnRouteFailure(input.turnRunId, route.model, null);
+					// A 5xx or a timeout before the stream opens is the only 5xx-storm
+					// signal this lane gets. Record the endpoint it can be attributed
+					// to — the one the error named, or the one the request was pinned
+					// to — so the next attempt's `provider.ignore` routes around it
+					// instead of walking back into the same upstream.
+					this.observeTurnRouteFailure(
+						input.turnRunId,
+						route.model,
+						attributedProviderSlug(route, error)
+					);
 					const failure = routeFailure(route.id, error);
 					failures.push(failure);
 					await this.observeProviderAttempt(input, route, 'provider_attempt_ended', {
@@ -809,7 +820,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			});
 			attempt.markResponseOpened();
 			if (!response.ok) {
-				const message = await responseErrorMessage(response);
+				const { message, providerSlug } = await responseError(response);
 				// A warm provider can accept an auto-tool pass but have no endpoint
 				// for a later required-tool pass. Its pin disables OpenRouter fallback,
 				// so let the existing bounded pass retry run after the catch clears it.
@@ -820,7 +831,8 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					Boolean(this.getTurnRouteHealth(input.turnRunId, false)?.pin?.providerSlug);
 				throw new AgenticChatProviderNetworkError(
 					`Agentic Chat provider start failed (${response.status}): ${message}`,
-					isRetryableStatus(response.status) || pinnedEndpointUnavailable
+					isRetryableStatus(response.status) || pinnedEndpointUnavailable,
+					providerSlug
 				);
 			}
 			if (!response.body) {
@@ -1945,9 +1957,22 @@ function validateReadToolDefinition(
 	seen.add(tool.function.name);
 }
 
-async function responseErrorMessage(response: Response): Promise<string> {
+/**
+ * The failing response's message and, when the gateway reported it, the
+ * upstream that produced the failure. OpenRouter names it as
+ * `error.metadata.provider_name`; a direct OpenAI-compatible endpoint names
+ * nothing, and the caller falls back to the endpoint the request was pinned to.
+ */
+async function responseError(
+	response: Response
+): Promise<{ message: string; providerSlug: string | null }> {
 	const text = (await readBoundedResponseText(response, 16 * 1024)).trim().slice(0, 2_000);
-	if (!text) return response.statusText || 'provider request failed';
+	if (!text) {
+		return {
+			message: response.statusText || 'provider request failed',
+			providerSlug: null
+		};
+	}
 	try {
 		const parsed = JSON.parse(text) as unknown;
 		if (parsed !== null && typeof parsed === 'object') {
@@ -1956,14 +1981,49 @@ async function responseErrorMessage(response: Response): Promise<string> {
 				root.error !== null && typeof root.error === 'object'
 					? (root.error as Record<string, unknown>)
 					: root;
+			const metadata =
+				error.metadata !== null && typeof error.metadata === 'object'
+					? (error.metadata as Record<string, unknown>)
+					: {};
+			const providerSlug =
+				normalizeProviderSlug(canonicalOptionalText(metadata.provider_slug)) ??
+				normalizeProviderSlug(canonicalOptionalText(metadata.provider_name)) ??
+				normalizeProviderSlug(canonicalOptionalText(metadata.provider)) ??
+				normalizeProviderSlug(canonicalOptionalText(root.provider_slug)) ??
+				normalizeProviderSlug(canonicalOptionalText(root.provider));
 			if (typeof error.message === 'string' && error.message.trim()) {
-				return error.message.trim().slice(0, 2_000);
+				return { message: error.message.trim().slice(0, 2_000), providerSlug };
 			}
+			return { message: text, providerSlug };
 		}
 	} catch {
 		// Plain-text provider errors are returned below.
 	}
-	return text;
+	return { message: text, providerSlug: null };
+}
+
+/**
+ * The endpoint a failed attempt can honestly be blamed for. Either the response
+ * named it, or the request was constrained to exactly one upstream and could
+ * have reached no other. An unconstrained request that fails names nothing:
+ * ignoring a provider it may never have touched would shrink the pool for the
+ * rest of the turn on no evidence.
+ */
+function attributedProviderSlug(
+	route: AgenticChatOpenAiCompatibleRouteV1,
+	error: unknown
+): string | null {
+	if (error instanceof AgenticChatProviderNetworkError && error.providerSlug) {
+		return error.providerSlug;
+	}
+	if (route.kind !== 'openrouter') return null;
+	const routing = route.providerRouting;
+	if (!routing) return null;
+	if (routing.only?.length === 1) return normalizeProviderSlug(routing.only[0]);
+	if (routing.allow_fallbacks === false && routing.order?.length === 1) {
+		return normalizeProviderSlug(routing.order[0]);
+	}
+	return null;
 }
 
 async function readBoundedResponseText(response: Response, maximumBytes: number): Promise<string> {

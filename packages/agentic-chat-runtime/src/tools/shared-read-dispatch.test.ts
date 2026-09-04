@@ -15,7 +15,12 @@ describe('shared read dispatch', () => {
 		expect(new Set(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).size).toBe(
 			AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1.length
 		);
-		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(35);
+		// 35 ontology/overview reads + the three calendar reads the worker gained
+		// on 2026-09-03 (list_calendar_events, get_calendar_event_details,
+		// get_project_calendar) + the five email tools it gained on 2026-09-04
+		// (get_external_account_status, request_email_account_connection,
+		// list_email_accounts, search_email_messages, get_email_message).
+		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(43);
 		for (const toolName of AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1) {
 			expect(TOOL_METADATA[toolName], `${toolName} is missing TOOL_METADATA`).toBeDefined();
 			expect(isAgenticChatSharedReadToolNameV1(toolName)).toBe(true);

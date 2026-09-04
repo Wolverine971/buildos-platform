@@ -3,7 +3,8 @@
 # Agentic Chat API/Runtime E2E Stress Harness
 
 End-to-end quality tests for the **real** agentic chat. Each scenario drives the
-production `POST /api/agent/v2/stream` endpoint against a running dev server,
+production worker transport (`harness/worker-client.ts`: transport lease →
+durable worker admission → private Realtime) against a running dev server,
 exercising the full stack — prompt build → orchestrator loop → the production
 **cheap/weak model** → tool execution → immediate DB writes → telemetry — then
 asserts on three surfaces and (for fuzzy scenarios) scores quality with a strong
@@ -14,7 +15,7 @@ LLM judge.
 
 This Vitest lane is API/runtime E2E, not browser/modal E2E. A separate
 Playwright lane drives the real `AgentChatModal` through its composer, prewarm,
-production SSE client, and rendered message list.
+stream client, and rendered message list.
 
 ## ⚠️ Read before running
 

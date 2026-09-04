@@ -1,50 +1,18 @@
 // apps/web/src/lib/services/agentic-chat-lite/preview/build-lite-prompt-preview.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { loadFastChatPromptContextMock, normalizeFastContextTypeMock, selectFastChatToolsMock } =
-	vi.hoisted(() => ({
-		loadFastChatPromptContextMock: vi.fn(),
-		normalizeFastContextTypeMock: vi.fn(),
-		selectFastChatToolsMock: vi.fn()
-	}));
+const { loadFastChatPromptContextMock, normalizeFastContextTypeMock } = vi.hoisted(() => ({
+	loadFastChatPromptContextMock: vi.fn(),
+	normalizeFastContextTypeMock: vi.fn()
+}));
 
 vi.mock('$lib/services/agentic-chat-v2', () => ({
 	loadFastChatPromptContext: loadFastChatPromptContextMock,
-	normalizeFastContextType: normalizeFastContextTypeMock,
-	selectFastChatTools: selectFastChatToolsMock
+	normalizeFastContextType: normalizeFastContextTypeMock
 }));
 
+import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
 import { buildLitePromptPreview, LitePromptPreviewInputError } from './build-lite-prompt-preview';
-
-const toolFixtures = [
-	{
-		type: 'function',
-		function: {
-			name: 'skill_load',
-			description: 'Load skill guidance.',
-			parameters: {
-				type: 'object',
-				properties: {
-					skill: { type: 'string' }
-				},
-				required: ['skill']
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
-			name: 'get_project_overview',
-			description: 'Fetch a compact project overview.',
-			parameters: {
-				type: 'object',
-				properties: {
-					project_id: { type: 'string' }
-				}
-			}
-		}
-	}
-] as any;
 
 describe('buildLitePromptPreview', () => {
 	beforeEach(() => {
@@ -52,7 +20,6 @@ describe('buildLitePromptPreview', () => {
 		normalizeFastContextTypeMock.mockImplementation((input?: string) =>
 			!input || input === 'general' ? 'global' : input
 		);
-		selectFastChatToolsMock.mockReturnValue(toolFixtures);
 		loadFastChatPromptContextMock.mockResolvedValue({
 			contextType: 'global',
 			entityId: null,
@@ -109,15 +76,21 @@ describe('buildLitePromptPreview', () => {
 			'final_response_contract',
 			'safety_data_rules',
 			'focus_purpose',
-			'location_loaded_context',
-			'timeline_recent_activity',
-			'context_inventory_retrieval'
+			'location_loaded_context'
 		]);
+		// Stage S7 (2026-09-04): timeline_recent_activity and
+		// context_inventory_retrieval fold into location_loaded_context.
+		expect(preview.lite.system_prompt).not.toContain('## Timeline and Recent Activity');
+		expect(preview.lite.system_prompt).not.toContain('## Loaded Data and Retrieval Boundaries');
 		// WP-7 (2026-07-10): the variant lives in envelope metadata, not model input.
 		expect(preview.lite.system_prompt).not.toContain('Prompt variant:');
 		expect(preview.lite.system_prompt).toContain('# BuildOS Agentic Chat');
 		expect(preview.lite.context_inventory.dataSummary.arrayCounts.projects).toBe(1);
-		expect(preview.lite.tool_surface_report.toolCount).toBe(2);
+		// 2026-09-04: the preview now renders the real stable global surface
+		// instead of a stubbed two-tool fixture.
+		expect(preview.lite.tool_surface_report.toolCount).toBe(
+			getGatewaySurfaceForContextType('global').length
+		);
 		expect(preview.lite.cost_breakdown.provider_payload_estimate.chars).toBeGreaterThan(
 			preview.lite.cost_breakdown.system_prompt.chars
 		);

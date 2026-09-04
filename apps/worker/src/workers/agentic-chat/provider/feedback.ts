@@ -9,10 +9,10 @@ import {
 import {
 	buildMemoServedResult,
 	buildReadMemoKey,
-	isPureReadToolName,
 	shouldMemoizeReadResult,
 	stripToolDiscoveryHintsFromPayload
 } from '@buildos/agentic-chat-runtime/loop';
+import { AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1 } from '@buildos/agentic-chat-runtime/tools';
 import type { AgenticChatReadToolExecutionV1 } from '../toolExecution';
 import type {
 	AgenticChatProviderMutationSynthesisInputV1,
@@ -145,12 +145,28 @@ export function feedbackToChatToolResult(
 	return executionToChatToolResult(toolCallId, feedback.execution);
 }
 
+/**
+ * The exact tools whose result may be served from the within-turn read memo.
+ * `isPureReadToolName` was a heuristic over name shape and metadata, so a tool
+ * that merely looked like a read (or a future name that stopped looking like
+ * one) silently changed what could be replayed. This is the shared read
+ * registry itself: every entry is a side-effect-free ontology read, and a tool
+ * that is not on this list is executed every time it is called.
+ */
+export const READ_MEMO_ELIGIBLE_TOOL_NAMES: ReadonlySet<string> = new Set<string>(
+	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1
+);
+
+function isReadMemoEligible(name: string): boolean {
+	return READ_MEMO_ELIGIBLE_TOOL_NAMES.has(name.trim());
+}
+
 export function memoizeCompletedRead(
 	memo: Map<string, AgenticChatReadToolExecutionV1>,
 	call: CompletedProviderToolCall,
 	execution: AgenticChatReadToolExecutionV1
 ): void {
-	if (!isPureReadToolName(call.name)) return;
+	if (!isReadMemoEligible(call.name)) return;
 	const toolCall = completedProviderCallToChatToolCall(call);
 	const key = buildReadMemoKey(toolCall);
 	if (!key || memo.has(key)) return;
@@ -163,7 +179,7 @@ export function resolveMemoServedExecution(
 	memo: Map<string, AgenticChatReadToolExecutionV1>,
 	call: CompletedProviderToolCall
 ): AgenticChatReadToolExecutionV1 | null {
-	if (!isPureReadToolName(call.name)) return null;
+	if (!isReadMemoEligible(call.name)) return null;
 	const key = buildReadMemoKey(completedProviderCallToChatToolCall(call));
 	const cached = key ? memo.get(key) : undefined;
 	if (!cached) return null;

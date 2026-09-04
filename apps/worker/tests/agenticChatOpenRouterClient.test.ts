@@ -2276,3 +2276,217 @@ describe('truncated tool-call attempts and turn budgets', () => {
 		expect(requests[2]?.prompt_cache_key).toBe('agentic-chat-reviewer-v1');
 	});
 });
+
+// Worker twin of the legacy turn-route-health accumulator (the only 5xx-storm
+// mitigation the engine had): per-turn provider failures steer the next
+// attempt's routing, and the ledger is scoped to one turn.
+describe('per-turn route health', () => {
+	const providerErrorResponse = (status: number, providerName: string) =>
+		new Response(
+			JSON.stringify({
+				error: {
+					message: 'Provider returned error',
+					code: status,
+					metadata: { provider_name: providerName }
+				}
+			}),
+			{ status, headers: { 'content-type': 'application/json' } }
+		);
+	const okFrames = (model: string, provider: string, providerSlug: string) => [
+		JSON.stringify({
+			model,
+			provider,
+			provider_slug: providerSlug,
+			choices: [{ delta: { content: 'Answer.' } }]
+		}),
+		JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+		'[DONE]'
+	];
+
+	it('excludes a provider that returned 5xx from the next attempt in the same turn', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 1) return providerErrorResponse(503, 'DeepInfra');
+			return sseResponse(okFrames('provider/fallback', 'Together', 'together'));
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+
+		await expect(collect(test.client.stream(input()))).resolves.toEqual([
+			{
+				type: 'error',
+				error: 'Agentic Chat provider start failed (503): Provider returned error',
+				retryable: true
+			}
+		]);
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					streamRunId: 'stream-run-2',
+					logicalProviderRound: 2
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text', content: 'Answer.' },
+			expect.objectContaining({ type: 'done', finishedReason: 'stop' })
+		]);
+		expect(requests[0]?.provider).not.toMatchObject({ ignore: expect.anything() });
+		expect(requests[1]?.provider).toMatchObject({ ignore: ['deepinfra'] });
+	});
+
+	it('excludes the pinned provider the request timed out on', async () => {
+		vi.useFakeTimers();
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn((_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 2) {
+				return new Promise<Response>((_resolve, reject) => {
+					request?.signal?.addEventListener(
+						'abort',
+						() => reject(request.signal?.reason ?? new Error('timed out')),
+						{ once: true }
+					);
+				});
+			}
+			return Promise.resolve(
+				sseResponse(okFrames('provider/primary', 'DeepInfra', 'deepinfra'))
+			);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+
+		await collect(test.client.stream(input()));
+		// The first success pins DeepInfra, so the timed-out attempt below could
+		// have reached no other endpoint and the timeout is attributable to it.
+		expect(requests[0]?.provider).not.toMatchObject({ order: expect.anything() });
+		const timingOut = collect(
+			test.client.stream({ ...input(), streamRunId: 'stream-run-2', logicalProviderRound: 2 })
+		);
+		await vi.advanceTimersByTimeAsync(10_000);
+		await expect(timingOut).resolves.toEqual([
+			{
+				type: 'error',
+				error: 'Agentic Chat provider request timed out after 10000ms',
+				retryable: true
+			}
+		]);
+		await collect(
+			test.client.stream({ ...input(), streamRunId: 'stream-run-3', logicalProviderRound: 3 })
+		);
+		expect(requests[1]?.provider).toMatchObject({
+			order: ['deepinfra'],
+			allow_fallbacks: false
+		});
+		expect(requests[2]?.provider).toMatchObject({ ignore: ['deepinfra'] });
+		expect(requests[2]?.provider).not.toMatchObject({ order: expect.anything() });
+	});
+
+	it('accumulates a second failed provider instead of replacing the first', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 1) return providerErrorResponse(503, 'DeepInfra');
+			if (requests.length === 2) return providerErrorResponse(500, 'Together');
+			return sseResponse(okFrames('provider/fallback', 'Fireworks', 'fireworks'));
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+
+		for (const round of [1, 2, 3]) {
+			await collect(
+				test.client.stream({
+					...input(),
+					streamRunId: `stream-run-${round}`,
+					logicalProviderRound: round
+				})
+			);
+		}
+		expect(requests[1]?.provider).toMatchObject({ ignore: ['deepinfra'] });
+		expect(requests[2]?.provider).toMatchObject({ ignore: ['deepinfra', 'together'] });
+	});
+
+	it('starts the next turn with a clean provider list', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 1) return providerErrorResponse(502, 'DeepInfra');
+			return sseResponse(okFrames('provider/fallback', 'Together', 'together'));
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+
+		await collect(test.client.stream(input()));
+		await collect(
+			test.client.stream({ ...input(), streamRunId: 'stream-run-2', logicalProviderRound: 2 })
+		);
+		await collect(
+			test.client.stream({
+				...input(),
+				turnRunId: '30000000-0000-4000-8000-0000000000ff',
+				streamRunId: 'stream-run-other-turn',
+				logicalProviderRound: 1
+			})
+		);
+		expect(requests[1]?.provider).toMatchObject({ ignore: ['deepinfra'] });
+		expect(requests[2]?.provider).not.toMatchObject({ ignore: expect.anything() });
+		expect(requests[2]).toMatchObject({
+			model: 'provider/primary',
+			models: ['provider/fallback']
+		});
+	});
+
+	it('releases the pin and ignores the endpoint that answered tool_choice=none with a tool call', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 2) {
+				return sseResponse([
+					JSON.stringify({
+						model: 'provider/primary',
+						provider: 'DeepInfra',
+						choices: [
+							{
+								delta: {
+									tool_calls: [
+										{
+											index: 0,
+											id: 'disabled-1',
+											type: 'function',
+											function: { name: 'update_onto_task', arguments: '{}' }
+										}
+									]
+								}
+							}
+						]
+					}),
+					JSON.stringify({ choices: [{ delta: {}, finish_reason: 'tool_calls' }] }),
+					'[DONE]'
+				]);
+			}
+			return sseResponse(
+				okFrames(
+					requests.length === 1 ? 'provider/primary' : 'provider/fallback',
+					requests.length === 1 ? 'DeepInfra' : 'Together',
+					requests.length === 1 ? 'deepinfra' : 'together'
+				)
+			);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+
+		for (const round of [1, 2, 3]) {
+			await collect(
+				test.client.stream({
+					...input(),
+					streamRunId: `stream-run-${round}`,
+					logicalProviderRound: round
+				})
+			);
+		}
+		expect(requests[1]?.provider).toMatchObject({
+			order: ['deepinfra'],
+			allow_fallbacks: false
+		});
+		// The pin is retired and the endpoint that ignored tool_choice=none is
+		// excluded, so the bounded retry cannot be routed straight back to it.
+		expect(requests[2]?.provider).toMatchObject({ ignore: ['deepinfra'] });
+		expect(requests[2]?.provider).not.toMatchObject({ order: expect.anything() });
+	});
+});

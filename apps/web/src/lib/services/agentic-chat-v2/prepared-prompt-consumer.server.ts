@@ -14,10 +14,7 @@ import {
 	type PreparedPromptRow,
 	type PreparedPromptSurface
 } from './prepared-prompt-cache';
-import {
-	claimPreparedPromptContent,
-	readPreparedPromptContent
-} from './prepared-prompt-store.server';
+import { readPreparedPromptContent } from './prepared-prompt-store.server';
 import {
 	inspectPreparedHistorySnapshot,
 	type PreparedHistoryInspection
@@ -67,21 +64,6 @@ type PreparedContextCurrencyInspection = {
 	preparedToken: string | null;
 	actualToken: string | null;
 };
-
-export type PreparedPromptConsumeResult =
-	| {
-			hit: true;
-			row: PreparedPromptRow;
-			surface: PreparedPromptSurface;
-			surfaceKey: string;
-			history: Extract<PreparedHistoryInspection, { ok: true }>;
-			ageSeconds: number;
-	  }
-	| {
-			hit: false;
-			reason: PreparedPromptCacheMissReason;
-			diagnostics?: PreparedPromptConsumeMissDiagnostics;
-	  };
 
 export type PreparedPromptAdmissionLineage = {
 	id: string;
@@ -249,8 +231,7 @@ export async function inspectPreparedPromptForWorkerAdmission(params: {
 		supabase: params.supabase,
 		row,
 		userId: params.userId,
-		sessionId: params.sessionId,
-		excludeActiveLegacyUserMessage: false
+		sessionId: params.sessionId
 	});
 	if (!historyInspection) {
 		return {
@@ -281,176 +262,6 @@ export async function inspectPreparedPromptForWorkerAdmission(params: {
 	return {
 		hit: true,
 		row,
-		surface,
-		surfaceKey: params.surfaceProfile,
-		history,
-		ageSeconds: resolveCacheAgeSeconds(row.created_at)
-	};
-}
-
-export async function consumePreparedPrompt(params: {
-	supabase: FastChatSupabaseClient;
-	key: string | null;
-	userId: string;
-	sessionId: string;
-	cacheKey: string;
-	surfaceProfile: string;
-	contextType: ChatContextType;
-	tools: ChatToolDefinition[];
-	scaffold?: LitePromptScaffoldOptions | null;
-}): Promise<PreparedPromptConsumeResult> {
-	if (!params.key) {
-		return { hit: false, reason: 'missing_key' };
-	}
-	if (!isPreparedPromptPrewarmEnabled()) {
-		return { hit: false, reason: 'disabled' };
-	}
-
-	const parsed = parsePreparedPromptKey(params.key);
-	if (!parsed) {
-		return { hit: false, reason: 'bad_format' };
-	}
-
-	const { row, error } = await readPreparedPromptContent({
-		supabase: params.supabase,
-		id: parsed.id
-	});
-	if (error || !row) {
-		return { hit: false, reason: 'not_found' };
-	}
-
-	if (row.user_id !== params.userId) {
-		return { hit: false, reason: 'user_mismatch' };
-	}
-	if (!verifyPreparedPromptNonce({ nonce: parsed.nonce, nonceSha256: row.nonce_sha256 })) {
-		return { hit: false, reason: 'nonce_mismatch' };
-	}
-	if (row.consumed_at) {
-		return { hit: false, reason: 'consumed' };
-	}
-	if (Date.parse(row.expires_at) <= Date.now()) {
-		return { hit: false, reason: 'expired' };
-	}
-	if (row.session_id && row.session_id !== params.sessionId) {
-		return { hit: false, reason: 'session_mismatch' };
-	}
-	if (row.cache_key !== params.cacheKey) {
-		return {
-			hit: false,
-			reason: 'scope_mismatch',
-			diagnostics: buildPreparedPromptRowDiagnostics({ row, params })
-		};
-	}
-	const contextCurrency = await inspectPreparedContextCurrency({
-		supabase: params.supabase,
-		row
-	});
-	if (!contextCurrency.current) {
-		return {
-			hit: false,
-			reason: 'stale_context',
-			diagnostics: buildPreparedPromptRowDiagnostics({ row, params, contextCurrency })
-		};
-	}
-
-	const surface = getPreparedPromptSurface(row, params.surfaceProfile);
-	if (!surface) {
-		return {
-			hit: false,
-			reason: 'surface_missing',
-			diagnostics: buildPreparedPromptRowDiagnostics({ row, params })
-		};
-	}
-	const surfaceInspection = inspectPreparedPromptSurfaceCurrent({
-		surface,
-		contextType: params.contextType,
-		contextPayload: row.context_payload,
-		conversationSummary: row.conversation_summary ?? null,
-		tools: params.tools,
-		scaffold: params.scaffold
-	});
-	if (!surfaceInspection.current) {
-		return {
-			hit: false,
-			reason: 'stale_harness',
-			diagnostics: buildPreparedPromptRowDiagnostics({
-				row,
-				params,
-				surface,
-				surfaceInspection
-			})
-		};
-	}
-	const history = inspectPreparedPromptHistory(row);
-	if (!history.ok) {
-		return {
-			hit: false,
-			reason: 'invalid_history',
-			diagnostics: buildPreparedPromptRowDiagnostics({
-				row,
-				params,
-				surface,
-				surfaceInspection,
-				historyValidationError: history.code
-			})
-		};
-	}
-	// Legacy atomic admission has already persisted this turn's user message.
-	// Exclude that exact linked identity before comparing the prepared snapshot
-	// with the latest message that could have landed while the user was composing.
-	const historyInspection = await inspectPreparedHistoryCurrency({
-		supabase: params.supabase,
-		row,
-		userId: params.userId,
-		sessionId: params.sessionId,
-		excludeActiveLegacyUserMessage: true
-	});
-	if (!historyInspection) {
-		return {
-			hit: false,
-			reason: 'history_check_failed',
-			diagnostics: buildPreparedPromptRowDiagnostics({
-				row,
-				params,
-				surface,
-				surfaceInspection
-			})
-		};
-	}
-	if (!historyInspection.current) {
-		return {
-			hit: false,
-			reason: 'stale_history',
-			diagnostics: buildPreparedPromptRowDiagnostics({
-				row,
-				params,
-				surface,
-				surfaceInspection,
-				historyInspection
-			})
-		};
-	}
-
-	const consumedAt = new Date().toISOString();
-	const { claimed, error: updateError } = await claimPreparedPromptContent({
-		supabase: params.supabase,
-		id: row.id,
-		userId: params.userId,
-		consumedAt
-	});
-	if (updateError) {
-		return { hit: false, reason: 'update_failed' };
-	}
-	if (!claimed) {
-		return { hit: false, reason: 'consumed' };
-	}
-
-	return {
-		hit: true,
-		row: {
-			...row,
-			consumed_at: consumedAt
-		},
 		surface,
 		surfaceKey: params.surfaceProfile,
 		history,
@@ -586,27 +397,22 @@ async function inspectPreparedHistoryCurrency(params: {
 	row: PreparedPromptRow;
 	userId: string;
 	sessionId: string;
-	excludeActiveLegacyUserMessage: boolean;
 }): Promise<PreparedHistoryCurrencyInspection | null> {
 	const preparedHistoryCreatedAtMs = Date.parse(params.row.created_at);
 	if (!Number.isFinite(preparedHistoryCreatedAtMs)) return null;
-	const excludedMessageId = params.excludeActiveLegacyUserMessage
-		? await loadActiveLegacyUserMessageId(params)
-		: null;
-	if (params.excludeActiveLegacyUserMessage && excludedMessageId === null) return null;
 
-	const query = params.supabase
+	// Worker admission persists this turn's user message only after the prepared
+	// row is inspected, so the newest stored message is always a competitor for
+	// currency: nothing has to be excluded from the comparison.
+	const { data, error } = await params.supabase
 		.from('chat_messages')
 		.select('id, created_at')
 		.eq('session_id', params.sessionId)
 		.eq('user_id', params.userId)
 		.order('created_at', { ascending: false })
-		.limit(excludedMessageId === null ? 1 : 2);
-	const { data, error } = await query;
+		.limit(1);
 	if (error) return null;
-	const latest = Array.isArray(data)
-		? data.find((message) => message.id !== excludedMessageId)
-		: null;
+	const latest = Array.isArray(data) ? (data[0] ?? null) : null;
 	if (!latest) {
 		return {
 			current: true,
@@ -622,22 +428,4 @@ async function inspectPreparedHistoryCurrency(params: {
 		latestSessionMessageId: latest.id,
 		latestSessionMessageCreatedAt: latest.created_at
 	};
-}
-
-async function loadActiveLegacyUserMessageId(params: {
-	supabase: FastChatSupabaseClient;
-	userId: string;
-	sessionId: string;
-}): Promise<string | null> {
-	const { data, error } = await params.supabase
-		.from('chat_turn_runs')
-		.select('user_message_id')
-		.eq('session_id', params.sessionId)
-		.eq('user_id', params.userId)
-		.eq('status', 'running')
-		.eq('execution_mode', 'legacy_sse')
-		.order('started_at', { ascending: false })
-		.limit(1)
-		.maybeSingle();
-	return !error && typeof data?.user_message_id === 'string' ? data.user_message_id : null;
 }

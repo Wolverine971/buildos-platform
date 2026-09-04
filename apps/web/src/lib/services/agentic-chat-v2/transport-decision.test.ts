@@ -20,8 +20,8 @@ const request: AgentChatTransportLeaseRequestV1 = {
 	streamRunId: 'stream-run-1',
 	sessionId: SESSION_ID,
 	context: { type: 'project', entityId: ENTITY_ID, projectId: PROJECT_ID },
-	supportedModes: ['legacy_sse', 'worker_realtime'],
-	supportedContractVersions: ['legacy_internal_v1', 'agentic_chat_worker_v1'],
+	supportedModes: ['worker_realtime'],
+	supportedContractVersions: ['agentic_chat_worker_v1'],
 	priorDecisionId: DECISION_ID
 };
 

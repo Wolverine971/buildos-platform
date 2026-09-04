@@ -1,66 +1,18 @@
 // packages/shared-agent-ops/src/ops/gateway-op-aliases.ts
 /**
- * Legacy gateway op aliases.
+ * Canonical gateway op names.
  *
- * Maps historical op names to canonical gateway op names used by the
- * current tool registry.
+ * One op name space (2026-09-04, one-engine stage S9). The 33-entry
+ * `GATEWAY_OP_ALIASES` table that lived here is gone: it had already stopped
+ * translating (the external gateway answered every alias form with NOT_FOUND),
+ * and 90 days of production traffic — 964 ops in `agent_call_tool_executions`
+ * and 3,537 tool names in `chat_tool_executions` — contain no alias form at all.
+ *
+ * What remains is the one place an op name is canonicalized before it is looked
+ * up in the registry. Op names are the EXTERNAL contract for MCP and agent-call,
+ * so the canonical name IS the requested name; an unrecognized op is rejected by
+ * the caller's own unknown-op guard, which names it.
  */
-
-export const GATEWAY_OP_ALIASES: Record<string, string> = {
-	search_buildos: 'x.search.all_projects',
-	'x.search.buildos': 'x.search.all_projects',
-	get_document_tree: 'onto.document.tree.get',
-	move_document_in_tree: 'onto.document.tree.move',
-	get_document_path: 'onto.document.path.get',
-	get_onto_project_graph: 'onto.project.graph.get',
-	get_onto_project_status: 'onto.project.status.get',
-	reorganize_onto_project_graph: 'onto.project.graph.reorganize',
-	link_onto_entities: 'onto.edge.link',
-	unlink_onto_edge: 'onto.edge.unlink',
-	search_ontology: 'onto.search',
-	onto_projects_get_document_tree: 'onto.document.tree.get',
-	onto_projects_move_document_in_tree: 'onto.document.tree.move',
-	onto_projects_get_document_path: 'onto.document.path.get',
-	onto_projects_get_onto_project_graph: 'onto.project.graph.get',
-	onto_projects_get_onto_project_status: 'onto.project.status.get',
-	onto_projects_reorganize_onto_project_graph: 'onto.project.graph.reorganize',
-	onto_projects_link_onto_entities: 'onto.edge.link',
-	onto_projects_unlink_onto_edge: 'onto.edge.unlink',
-	onto_projects_search_ontology: 'onto.search',
-	'onto_projects.get_document_tree': 'onto.document.tree.get',
-	'onto_projects.move_document_in_tree': 'onto.document.tree.move',
-	'onto_projects.get_document_path': 'onto.document.path.get',
-	'onto_projects.get_onto_project_graph': 'onto.project.graph.get',
-	'onto_projects.get_onto_project_status': 'onto.project.status.get',
-	'onto_projects.reorganize_onto_project_graph': 'onto.project.graph.reorganize',
-	'onto_projects.link_onto_entities': 'onto.edge.link',
-	'onto_projects.unlink_onto_edge': 'onto.edge.unlink',
-	'onto_projects.search_ontology': 'onto.search',
-	'onto_projects.doc_structure.tree.get': 'onto.document.tree.get',
-	'onto_projects.doc_structure.tree.move': 'onto.document.tree.move',
-	'onto_projects.doc_structure.path.get': 'onto.document.path.get'
-};
-
-export type GatewayOpAliasResolution = {
-	requestedOp: string;
-	canonicalOp: string;
-	usedAlias: boolean;
-};
-
-export function resolveGatewayOpAlias(op: string): GatewayOpAliasResolution {
-	const requestedOp = op.trim();
-	if (!requestedOp) {
-		return { requestedOp: '', canonicalOp: '', usedAlias: false };
-	}
-
-	const canonicalOp = GATEWAY_OP_ALIASES[requestedOp] ?? requestedOp;
-	return {
-		requestedOp,
-		canonicalOp,
-		usedAlias: canonicalOp !== requestedOp
-	};
-}
-
 export function normalizeGatewayOpName(op: string): string {
-	return resolveGatewayOpAlias(op).canonicalOp;
+	return typeof op === 'string' ? op.trim() : '';
 }

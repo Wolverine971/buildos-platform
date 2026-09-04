@@ -2,7 +2,9 @@
 //
 // Deterministic assertion helpers. Each throws an Error with a rich, debuggable
 // message (captured tool list, telemetry, text) so a failure explains itself.
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { AgenticE2EExecutionMode, TurnResult } from './types';
+import { listEvents, listTurnRunsForSession } from './telemetry';
 import type { ToolExecutionRow, TurnRunRow } from './telemetry';
 import { HARNESS_TIMEZONE } from './timezone';
 
@@ -214,6 +216,64 @@ export function assertNoMutations(turn: TurnResult, why: string): void {
 		throw new Error(
 			`[assert] expected zero mutations (${why}) but the agent called [${writes.join(', ')}]. ` +
 				`Assistant text: "${turn.assistantText.slice(0, 300)}"`
+		);
+	}
+}
+
+/**
+ * No calendar event exists under the project.
+ *
+ * The 2026-09-03 browser audit (finding F5) found a 30-minute `onto_events` row
+ * created alongside a task whose prompt said "these are due dates, not
+ * appointments" and "no calendar events" — while the chat reported that no event
+ * had been created. Neither the stream nor the tool telemetry shows it, because
+ * the event is a downstream side effect of the task write rather than a tool
+ * call, so only ground truth catches it.
+ */
+export async function assertNoEventsCreated(
+	admin: TypedSupabaseClient,
+	projectId: string,
+	why: string
+): Promise<void> {
+	const events = await listEvents(admin, projectId);
+	if (events.length > 0) {
+		throw new Error(
+			`[assert] expected zero calendar events (${why}) but the project has ${events.length}: ` +
+				`[${events.map((event) => `${event.title} @ ${event.start_at}`).join(' | ')}]`
+		);
+	}
+}
+
+/**
+ * Every turn in this session ran on the selected transport.
+ *
+ * A battery graded deploy-over-deploy is only comparable if every case actually
+ * exercised the same lane. `worker-client.ts` refuses to fall back, but a
+ * scenario can still reach the legacy path if the runner picked the SSE client;
+ * this reads the persisted rows instead of trusting the client we think we used.
+ * Absence of rows is an instrument gap (local `vite dev` finalizes lazily) and
+ * stays soft; a row on the WRONG lane is always fatal.
+ */
+export async function assertNoLegacyRows(
+	admin: TypedSupabaseClient,
+	sessionId: string | null | undefined,
+	expectedMode: AgenticE2EExecutionMode = 'worker_realtime'
+): Promise<void> {
+	if (!sessionId) {
+		throw new Error(
+			'[assert] cannot verify the execution lane: the turn exposed no session id'
+		);
+	}
+	const runs = await listTurnRunsForSession(admin, sessionId);
+	if (runs.length === 0) {
+		telemetryFail(`no chat_turn_runs rows persisted for session ${sessionId}`);
+		return;
+	}
+	const offLane = runs.filter((run) => run.execution_mode !== expectedMode);
+	if (offLane.length > 0) {
+		throw new Error(
+			`[assert] ${offLane.length} of ${runs.length} turn(s) in session ${sessionId} ran off the ` +
+				`${expectedMode} lane: [${offLane.map((run) => `${run.id}:${run.execution_mode}`).join(', ')}]`
 		);
 	}
 }

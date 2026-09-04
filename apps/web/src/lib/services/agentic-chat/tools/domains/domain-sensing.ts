@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/domains/domain-sensing.ts
+import { isExplicitAskOnlyDomain } from './catalog';
 import { loadDomain, searchDomains } from './domain-load';
 import type { DomainCoverageStatus, DomainLoadPayload, DomainSearchMatch } from './types';
 import {
@@ -62,7 +63,18 @@ export type SensedOutcomeCard = {
 	load_hint: string;
 };
 
-export type SkillGateSuppressionReason = 'direct_read_guard' | 'narrow_edit_guard';
+export type SkillGateSuppressionReason =
+	| 'direct_read_guard'
+	| 'narrow_edit_guard'
+	/**
+	 * Founder decision 2026-09-03: marketing, sales, and writing-craft skills
+	 * left the default chat runtime. Their domains stay in the catalog and still
+	 * arrive as routing hints, but automatic sensing may not open the gate off
+	 * them, and their skills are not on the productivity preload allowlist. The
+	 * gate reopens for them on an explicit ask (see
+	 * `hasExplicitSkillRequestShape`).
+	 */
+	| 'not_allowlisted';
 
 export type DomainSensingResult = {
 	type: 'domain_sensing';
@@ -158,6 +170,27 @@ export function isNarrowEntityEditTurn(message: string | null | undefined): bool
 		NAMED_ENTITY_REFERENCE_PATTERN.test(text) &&
 		NARROW_EDIT_TARGET_PATTERN.test(text)
 	);
+}
+
+// Explicit-ask predicate (founder decision 2026-09-03). Craft work no longer
+// rides in on a topic mention alone: the message has to ask for the work. The
+// verb set is deliberately small and request-shaped — a pasted email, a
+// forwarded reply, or a metric observation that merely mentions "cold email"
+// carries none of them, while "help me plan a cold email campaign" carries two.
+// `campaign` is in the set because it is the request noun the marketing lane is
+// asked for by name.
+const EXPLICIT_SKILL_REQUEST_PATTERN =
+	/\b(?:help|helps|helping|draft|drafts|drafted|drafting|write|writes|writing|rewrite|rewrites|rewriting|plan|plans|planning|build|builds|building|review|reviews|reviewing|audit|audits|auditing|campaign|campaigns)\b/i;
+
+/**
+ * True when the message asks for work rather than merely naming a subject. The
+ * caller still has to establish the subject itself (an alias or discriminative
+ * hit on a sensed domain); this predicate only answers "is this a request?".
+ */
+export function hasExplicitSkillRequestShape(message: string | null | undefined): boolean {
+	const text = message?.trim() ?? '';
+	if (!text) return false;
+	return EXPLICIT_SKILL_REQUEST_PATTERN.test(text);
 }
 
 /** The deterministic guard, if any, that closes a lexically opened gate. */
@@ -645,14 +678,30 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		...candidateOutcomeCards.flatMap((card) => card.gap_resource_ids)
 	]).slice(0, 8);
 
+	// Craft-domain trim (founder decision 2026-09-03). Marketing/sales/writing
+	// domains stay sensed as routing hints, but they may not open the automatic
+	// skill-load gate: without an explicit request shape in the message, only
+	// productivity domains and BuildOS-native outcome cards can.
+	const explicitRequestShape = hasExplicitSkillRequestShape(query);
+	const gatingDomains = explicitRequestShape
+		? activeDomains
+		: activeDomains.filter((domain) => !isExplicitAskOnlyDomain(domain.id));
 	const lexicalSkillLoadRequired =
 		shouldRequireSkillLoad(source, activeDomains) ||
 		(source !== 'session_state' && nativeOutcomeCards.length > 0);
-	const gateSuppressedBy =
+	const allowlistedSkillLoadRequired =
+		shouldRequireSkillLoad(source, gatingDomains) ||
+		(source !== 'session_state' && nativeOutcomeCards.length > 0);
+	// The deterministic guards are evaluated first so their labels survive: a
+	// narrow edit on a marketing brief is still a narrow edit, not a routing miss.
+	const guardSuppression =
 		lexicalSkillLoadRequired && source === 'current_user_message'
 			? resolveSkillGateSuppression(currentUserMessage)
 			: null;
-	const skillLoadRequired = lexicalSkillLoadRequired && !gateSuppressedBy;
+	const gateSuppressedBy: SkillGateSuppressionReason | null =
+		guardSuppression ??
+		(lexicalSkillLoadRequired && !allowlistedSkillLoadRequired ? 'not_allowlisted' : null);
+	const skillLoadRequired = allowlistedSkillLoadRequired && !guardSuppression;
 
 	return {
 		type: 'domain_sensing',

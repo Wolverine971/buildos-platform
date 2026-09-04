@@ -100,40 +100,64 @@ function collectDescriptionText(value: unknown, key?: string): string[] {
 
 describe('Agentic Chat worker-projected surface budget', () => {
 	it('keeps the production opening-pass surfaces under budget', () => {
-		const globalBasic = measure('global_basic');
-		const projectWriteDocument = measure('project_write_document');
+		const global = measure('global');
+		const project = measure('project');
+		const projectCreate = measure('project_create');
 		process.stderr.write(
-			`WORKER global_basic: opening tools=${globalBasic.opening.length} bytes=${globalBasic.openingBytes} (all passes ${globalBasic.admitted.length}/${globalBasic.admittedBytes})\n` +
-				`WORKER project_write_document: opening tools=${projectWriteDocument.opening.length} bytes=${projectWriteDocument.openingBytes} (all passes ${projectWriteDocument.admitted.length}/${projectWriteDocument.admittedBytes})\n`
+			`WORKER global: opening tools=${global.opening.length} bytes=${global.openingBytes} (all passes ${global.admitted.length}/${global.admittedBytes})\n` +
+				`WORKER project: opening tools=${project.opening.length} bytes=${project.openingBytes} (all passes ${project.admitted.length}/${project.admittedBytes})\n` +
+				`WORKER project_create: opening tools=${projectCreate.opening.length} bytes=${projectCreate.openingBytes} (all passes ${projectCreate.admitted.length}/${projectCreate.admittedBytes})\n`
 		);
 
-		// Ratchets set 2026-09-02 at measured + 5%. Measured on that day, after
-		// the sidecar removal (Finding 9), change_chat_context retirement and the
-		// global document reads (Decision 2):
-		//   global_basic            opening  9 tools /  6,449 B (was  8 /  9,306 B)
-		//   project_write_document  opening 16 tools / 16,149 B (was 17 / 23,242 B)
-		//   project_write_document  all pass 17 tools / 18,882 B (was 18 / 26,323 B)
-		// Re-ratcheted 2026-09-03 (Cedar House battery): global_basic gained
-		// list_onto_tasks + get_onto_task_details (a global turn had no task-level
-		// read at all), and create/update_onto_task gained calendar_sync. Measured:
-		//   global_basic            opening 11 tools /  7,435 B
-		//   project_write_document  opening 16 tools / 16,847 B
-		//   project_write_document  all pass 17 tools / 19,900 B
-		expect(globalBasic.openingBytes).toBeLessThanOrEqual(7_810);
-		expect(projectWriteDocument.openingBytes).toBeLessThanOrEqual(17_690);
-		expect(projectWriteDocument.admittedBytes).toBeLessThanOrEqual(20_900);
+		// RE-BASELINED 2026-09-04 for the three stable surfaces (one-engine stage
+		// S6). The nine profiles this replaces were partly chosen by regex over
+		// the user's message; a stable surface carries on every turn what those
+		// patterns used to materialize. The growth here is delegate_task, the web
+		// pair, move_onto_task and the calendar tools on both surfaces.
+		// Previous ratchets, for reference: global_basic 7,810 B opening,
+		// project_write_document 18,470 B opening / 21,680 B all passes.
+		// Measured on this branch, caps at measured + ~5%:
+		//   global         23 tools / 27,317 B (opening == all passes)
+		//   project        30 tools / 34,269 B
+		//   project_create  6 tools / 11,465 B (members unchanged from the old
+		//                  project_create_minimal, which had no cap here)
+		expect(global.openingBytes).toBeLessThanOrEqual(28_700);
+		expect(project.openingBytes).toBeLessThanOrEqual(36_000);
+		expect(project.admittedBytes).toBeLessThanOrEqual(36_000);
+		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(12_040);
 	});
 
 	it('mounts document reads on the global worker surface', () => {
-		const names = measure('global_basic').opening.map((tool) => tool.function.name);
+		const names = measure('global').opening.map((tool) => tool.function.name);
 		expect(names).toEqual(
 			expect.arrayContaining(['get_document_outline', 'read_document_section'])
 		);
 		expect(names).not.toContain('change_chat_context');
 	});
 
+	// A calendar or daily-brief turn is a global turn now, and every capability
+	// those profiles used to carry alone is executable here.
+	it('keeps the whole global surface executable, with no capability override', () => {
+		const global = measure('global');
+		expect(buildWorkerToolSurfaceOverride(global.input, global.opening)).toBeNull();
+		const names = global.opening.map((tool) => tool.function.name);
+		for (const name of [
+			'list_calendar_events',
+			'get_calendar_event_details',
+			'create_calendar_event',
+			'update_calendar_event',
+			'delete_calendar_event',
+			'delegate_task',
+			'web_search',
+			'web_visit',
+			'move_onto_task'
+		]) {
+			expect(names, name).toContain(name);
+		}
+	});
+
 	it('attaches scheduling sidecars only to mutation tools of an explicit write pass', () => {
-		const { admitted } = measure('project_write_document');
+		const { admitted } = measure('project');
 		for (const tool of admitted) {
 			expect(propertyNames(tool), tool.function.name).not.toEqual(
 				expect.arrayContaining(SIDECAR_PROPERTY_NAMES)
@@ -172,26 +196,14 @@ describe('Agentic Chat worker-projected surface budget', () => {
 	});
 
 	it('renders the surface override only for a genuine capability gap', () => {
-		const projectWriteDocument = measure('project_write_document');
 		// The artifact lists the deferred declare_turn_contract; that is a known
 		// deferral, not a gap, so the happy-path opening pass has no override.
+		const project = measure('project');
+		expect(buildWorkerToolSurfaceOverride(project.input, project.opening)).toBeNull();
+		const projectCreate = measure('project_create');
 		expect(
-			buildWorkerToolSurfaceOverride(projectWriteDocument.input, projectWriteDocument.opening)
+			buildWorkerToolSurfaceOverride(projectCreate.input, projectCreate.opening)
 		).toBeNull();
-		expect(
-			buildWorkerToolSurfaceOverride(
-				measure('global_basic').input,
-				measure('global_basic').opening
-			)
-		).toBeNull();
-
-		// global_write names calendar tools the worker cannot execute.
-		const globalWrite = measure('global_write');
-		const override = buildWorkerToolSurfaceOverride(globalWrite.input, globalWrite.opening);
-		expect(override).toContain('Worker execution surface override');
-		expect(globalWrite.opening.map((tool) => tool.function.name)).not.toContain(
-			'list_calendar_events'
-		);
 	});
 
 	it('never lets a worker-projected description advertise a tool outside the same surface', () => {
@@ -199,12 +211,7 @@ describe('Agentic Chat worker-projected surface budget', () => {
 			AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY.map((definition) => definition.function.name)
 		);
 		const violations: string[] = [];
-		for (const profile of [
-			'global_basic',
-			'global_write',
-			'project_write_document',
-			'project_create_minimal'
-		] as const) {
+		for (const profile of ['global', 'project', 'project_create'] as const) {
 			const { admitted } = measure(profile);
 			const mounted = new Set(admitted.map((tool) => tool.function.name));
 			for (const tool of admitted) {

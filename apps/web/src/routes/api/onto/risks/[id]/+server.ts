@@ -94,6 +94,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const details = await loadOntoRiskDetail(
 			createWebAgenticChatSharedReadContext({
 				supabase: supabase as never,
+				userId: session.user.id,
+				timezone: null,
 				getActorId: async () => actorId
 			}),
 			params.id

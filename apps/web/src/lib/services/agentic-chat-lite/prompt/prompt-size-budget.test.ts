@@ -185,6 +185,9 @@ describe('total assembled prompt size budget', () => {
 			...toolSurface.tools.map((tool) => tool.estimatedTokens)
 		);
 
+		process.stderr.write(
+			`PROMPT BUDGET system_prompt=${breakdown.system_prompt.chars} payload=${breakdown.provider_payload_estimate.chars} payload_tokens=${breakdown.provider_payload_estimate.est_tokens} tool_tokens=${toolSurface.estimatedTokens} largest=${largestToolSchemaTokens}\n`
+		);
 		expect(breakdown.system_prompt.chars).toBeGreaterThan(0);
 		expect(breakdown.tool_definitions.chars).toBeGreaterThan(0);
 
@@ -222,21 +225,48 @@ describe('total assembled prompt size budget', () => {
 		// this project canonical). Measured canonical system prompt 14,222 chars
 		// (was 16,764) and payload 34,147 chars (~8,537 tokens); caps at
 		// measured + ~10% for the system prompt and + 5% for the payload.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(15_700);
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(35_900);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(8_970);
-		// Per-turn multiplier guard: ratchet this down when WP-3 removes the two
-		// read-only disposition/reviewer passes instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(26_910);
-		// 2026-08-28: 15,000 → 15,900. explore_project (semantic discovery,
-		// tasker/71) now mounts on the project surfaces; its ~300-token schema is
-		// multiplied by the per-turn pass count (measured 15,804). Deliberate spend
-		// per the ratified discovery UX; the definition is already trimmed.
-		// 2026-09-02: 15,900 → 15,700 (measured 14,922 after change_chat_context
-		// left the project surface).
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(15_700);
+		//
+		// RE-BASELINED 2026-09-04 for the three stable surfaces (one-engine stage
+		// S6). The project surface now carries, on every turn, what the deleted
+		// lexical selector used to materialize only on a pattern match:
+		// delegate_task, web_search/web_visit, move_onto_task, and the seven
+		// calendar tools. Tool schemas went 21,030 → 37,331 chars, and they are
+		// billed on every pass. This is the measured price of never leaving a
+		// turn short of a capability it cannot recover mid-turn — the number to
+		// attack next is the pass count, not the surface.
+		// Measured on this branch, caps at measured + ~5%:
+		//   system prompt 12,737 chars   (was 14,222; the drop is the productivity
+		//                                 skill allowlist f63ee035a, not S6)
+		//   payload       50,125 chars / 12,532 est tokens (was 35,945 / 8,987)
+		//   payload x3    37,596 tokens  (was 26,961)
+		//   tool schemas  9,333 x3 = 27,999 tokens (was 16,149)
+		//   largest tool  779 tokens (delegate_task; create_onto_project left the
+		//                 project surface with the project_create split)
+		//
+		// Ratcheted down 2026-09-04 (one-engine stage S7, prompt lane). The section
+		// list went 15 → 11: active_domain_signals and daily_brief retired, and
+		// timeline_recent_activity + context_inventory_retrieval folded into
+		// location_loaded_context. Ten sentences of copy were cut on top of that —
+		// references to the retired section, audit/forecast "sessions" from the
+		// legacy context types, and six rules each stated in a second section.
+		// Tool schemas are untouched (surfaces unchanged since S6), so the whole
+		// drop is template.
+		// Measured on this branch, caps at measured + ~5%:
+		//   system prompt 11,519 chars   (was 12,737)
+		//   payload       48,907 chars / 12,227 est tokens (was 50,125 / 12,532)
+		//   payload x3    36,681 tokens  (was 37,596)
+		//   tool schemas  9,333 x3 = 27,999 tokens (unchanged)
+		//   largest tool  779 tokens (unchanged)
+		// The measured global turn dropped 9,057 → 7,892 chars over the same change.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_100);
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(51_400);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(12_850);
+		// Per-turn multiplier guard: ratchet this down when the pass count drops
+		// instead of hiding pass-count drift.
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(38_500);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(29_400);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
-		expect(largestToolSchemaTokens).toBeLessThanOrEqual(1_600);
+		expect(largestToolSchemaTokens).toBeLessThanOrEqual(900);
 	});
 });

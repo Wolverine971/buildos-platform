@@ -301,7 +301,7 @@ describe('Phase 0 evidence report', () => {
 			executionObservationsPerTurn: { samples: 2, p50: 1, p95: 1 }
 		});
 		expect(report.schemaVersion).toBe(3);
-		expect(report.configuration.executionMode).toBe('legacy_sse');
+		expect(report.configuration.executionMode).toBe('worker_realtime');
 		expect(report.limitations.join(' ')).toContain('not a PostgreSQL WAL');
 		expect(report.limitations.join(' ')).toContain('rejected tool name');
 		expect(report.limitations.join(' ')).toContain('never the call arguments');

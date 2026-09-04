@@ -64,8 +64,18 @@ export async function* streamBufferedProviderPass(
 					retry = true;
 					break;
 				}
+				// A tool-free pass has nothing half-executed to retract: it can
+				// emit no tool call, and no later round replays it. Its prose is
+				// the honest partial answer the user is owed when the last attempt
+				// dies, so it is released ahead of the error and the consumer
+				// decides whether it is usable (people-synthesis timeout,
+				// 2026-07-22). Every tool-enabled pass keeps the atomic boundary.
+				const recoverablePartial =
+					request.toolChoice === 'none'
+						? buffered.filter((candidate) => candidate.type === 'text')
+						: [];
 				buffered.length = 0;
-				buffered.push(event);
+				buffered.push(...recoverablePartial, event);
 				terminal = true;
 				break;
 			}

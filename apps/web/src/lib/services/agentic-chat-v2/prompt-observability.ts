@@ -261,8 +261,19 @@ export function extractFastChatToolCallMeta(toolCall: ChatToolCall): FastChatToo
 			? (parsed.args as JsonRecord)
 			: null;
 	const rawOp = typeof argsRecord?.op === 'string' ? argsRecord.op : null;
-	const schemaOp = toolName === 'tool_schema' && rawOp ? normalizeGatewayOpName(rawOp) : null;
-	const directOp = getToolRegistry().byToolName[toolName]?.op ?? null;
+	const registry = getToolRegistry();
+	// `tool_schema` takes an op, but models routinely pass the tool name. The
+	// registry resolves both directions for all 90 tools; the nine hand-listed
+	// tool-name entries of the deleted `GATEWAY_OP_ALIASES` table did the same
+	// job for a subset (one-engine stage S9, 2026-09-04).
+	const schemaReference =
+		toolName === 'tool_schema' && rawOp ? normalizeGatewayOpName(rawOp) : null;
+	const schemaOp = schemaReference
+		? (registry.ops[schemaReference]?.op ??
+			registry.byToolName[schemaReference]?.op ??
+			schemaReference)
+		: null;
+	const directOp = registry.byToolName[toolName]?.op ?? null;
 
 	return {
 		toolName,

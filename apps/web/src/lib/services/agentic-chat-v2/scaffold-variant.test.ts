@@ -23,8 +23,7 @@ describe('resolveFastChatScaffoldConfig', () => {
 				domainSensing: true,
 				skillPreload: true,
 				skillGateRepair: true,
-				leanDiscovery: true,
-				legacySurfaceFallback: true
+				leanDiscovery: true
 			},
 			recovery: {
 				softForcedSynthesis: true,

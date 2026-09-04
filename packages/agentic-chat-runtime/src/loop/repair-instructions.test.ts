@@ -1,9 +1,10 @@
 // packages/agentic-chat-runtime/src/loop/repair-instructions.test.ts
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import {
-	buildGatewayRequiredFieldRepairInstruction,
-	buildProjectCreateNoExecutionRepairInstruction,
 	buildToolValidationRepairInstruction,
 	classifyReceiptGroundedAssistantDisposition,
 	enforceMutationOutcomeIntegrity,
@@ -195,27 +196,122 @@ describe('tool validation repair instructions', () => {
 		expect(instruction).not.toContain('Load exact-op help before retrying');
 		expect(instruction).not.toContain('For first-time or uncertain writes');
 	});
+});
 
-	it('retries web project creation using only the available one-call tool', () => {
-		const instruction = buildProjectCreateNoExecutionRepairInstruction();
+// ---------------------------------------------------------------------------
+// Static surface guard.
+//
+// This module accumulated repair builders faster than anything retired them.
+// The web streaming engine that owned most of them is deleted, and so are its
+// builders. The guard below reads the repository itself so a builder cannot go
+// quietly unreferenced again, and the second guard keeps the retired engine's
+// directories from returning with a private builder set of their own.
+// ---------------------------------------------------------------------------
 
-		expect(instruction).toContain('Build one complete create_onto_project call');
-		expect(instruction).toContain('include them in entities in this same call');
-		expect(instruction).not.toContain('declare_turn_contract');
-		expect(instruction).not.toContain('create_onto_goal');
-		expect(instruction).not.toContain('create_onto_task');
-		expect(instruction).not.toMatch(/web-owned|reviewed flow|project shell|bounded surface/i);
+const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
+const SOURCE_MODULE = join(
+	REPO_ROOT,
+	'packages/agentic-chat-runtime/src/loop/repair-instructions.ts'
+);
+
+/** Paths that belong to the retired web streaming engine (deleted by stage S8). */
+const RETIRED_WEB_ENGINE_PREFIXES = [
+	'apps/web/src/lib/services/agentic-chat/legacy-execution/',
+	'apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/',
+	'apps/web/src/routes/api/agent/v2/stream/'
+];
+
+/**
+ * The retired web engine is gone (stage S8), and with it every builder that
+ * only it imported. This list stays empty on purpose: it is the assertion that
+ * the engine's directories cannot come back carrying private prompt builders.
+ */
+const RETIRED_WEB_ENGINE_ONLY_EXPORTS: string[] = [];
+
+const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist', '.turbo', '.svelte-kit', 'build']);
+
+function exportedNames(source: string): string[] {
+	return [
+		...source.matchAll(
+			/^export\s+(?:async\s+)?(?:function|const|type|class|interface)\s+([A-Za-z0-9_]+)/gm
+		)
+	].map((match) => match[1]!);
+}
+
+function sourceFilesUnder(directory: string): string[] {
+	const files: string[] = [];
+	for (const entry of readdirSync(directory, { withFileTypes: true })) {
+		const path = join(directory, entry.name);
+		if (entry.isDirectory()) {
+			if (SKIPPED_DIRECTORIES.has(entry.name)) continue;
+			files.push(...sourceFilesUnder(path));
+			continue;
+		}
+		if (!/\.(ts|svelte)$/.test(entry.name)) continue;
+		if (/\.(test|spec)\.ts$/.test(entry.name)) continue;
+		files.push(path);
+	}
+	return files;
+}
+
+/** Identifiers named only in prose are not references. */
+function withoutComments(source: string): string {
+	return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
+}
+
+function scanRoots(): string[] {
+	const roots = ['apps/web/src', 'apps/worker/src'];
+	const packagesRoot = join(REPO_ROOT, 'packages');
+	if (existsSync(packagesRoot)) {
+		for (const entry of readdirSync(packagesRoot, { withFileTypes: true })) {
+			if (entry.isDirectory() && existsSync(join(packagesRoot, entry.name, 'src'))) {
+				roots.push(`packages/${entry.name}/src`);
+			}
+		}
+	}
+	return roots.filter((root) => existsSync(join(REPO_ROOT, root)));
+}
+
+function classifyExportReferences(): {
+	unreferenced: string[];
+	retiredEngineOnly: string[];
+} {
+	const names = exportedNames(readFileSync(SOURCE_MODULE, 'utf8'));
+	const live = new Set<string>();
+	const retired = new Set<string>();
+	const patterns = names.map((name) => [name, new RegExp(`\\b${name}\\b`)] as const);
+	for (const root of scanRoots()) {
+		for (const file of sourceFilesUnder(join(REPO_ROOT, root))) {
+			if (file === SOURCE_MODULE) continue;
+			const relative = file.slice(REPO_ROOT.length);
+			const isRetired = RETIRED_WEB_ENGINE_PREFIXES.some((prefix) =>
+				relative.startsWith(prefix)
+			);
+			const text = withoutComments(readFileSync(file, 'utf8'));
+			for (const [name, pattern] of patterns) {
+				if (!pattern.test(text)) continue;
+				(isRetired ? retired : live).add(name);
+			}
+		}
+	}
+	return {
+		unreferenced: names.filter((name) => !live.has(name) && !retired.has(name)).sort(),
+		retiredEngineOnly: names.filter((name) => !live.has(name) && retired.has(name)).sort()
+	};
+}
+
+describe('repair-instruction export surface', () => {
+	it('keeps every export referenced by a non-test module', () => {
+		// A builder nothing calls is dead prompt text that still ships in the
+		// bundle and still has to be read by whoever edits this file next.
+		expect(classifyExportReferences().unreferenced).toEqual([]);
 	});
 
-	it('repairs repeated web project fields without suggesting unavailable help tools', () => {
-		const instruction = buildGatewayRequiredFieldRepairInstruction([
-			{ op: 'onto.project.create', field: 'project.name', occurrences: 2 }
-		]);
-
-		expect(instruction).toContain('Correct and retry that tool directly');
-		expect(instruction).toContain('same create_onto_project call');
-		expect(instruction).not.toContain('tool_schema');
-		expect(instruction).not.toContain('create_onto_goal');
-		expect(instruction).not.toContain('create_onto_task');
+	it('keeps the retired web engine deleted', () => {
+		// The engine's directories are gone; nothing may reintroduce them with
+		// builders only they import.
+		expect(classifyExportReferences().retiredEngineOnly).toEqual(
+			RETIRED_WEB_ENGINE_ONLY_EXPORTS
+		);
 	});
 });

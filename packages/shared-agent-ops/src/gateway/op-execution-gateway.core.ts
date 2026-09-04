@@ -9,7 +9,6 @@ import type { AgentCallScope, BuildosAgentAllowedOp, Database } from '@buildos/s
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { logCreateAsync, logUpdateAsync } from '../ops/async-activity-logger';
 import { ensureActorId, type OntologyProjectSummary } from '../ontology/ontology-projects.service';
-import { resolveGatewayOpAlias } from '../ops/gateway-op-aliases';
 import {
 	defaultAllowedOpsForMode,
 	isSupportedOp,
@@ -349,12 +348,13 @@ async function logGatewayCompatibilityAliasUsage(params: {
 	scope: AgentCallScope;
 	requestedOp: string;
 	canonicalOp: string;
-	opAliasUsed: boolean;
 	argAliasesUsed?: GatewayLegacyArgAliasUsage[];
 	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<void> {
+	// Legacy ARGUMENT aliases only. The op-name alias table was deleted in
+	// one-engine stage S9; there is one op name space now.
 	const argAliasesUsed = params.argAliasesUsed ?? [];
-	if (!params.opAliasUsed && argAliasesUsed.length === 0) {
+	if (argAliasesUsed.length === 0) {
 		return;
 	}
 
@@ -373,7 +373,6 @@ async function logGatewayCompatibilityAliasUsage(params: {
 				requestedOp: params.requestedOp,
 				canonicalOp: params.canonicalOp,
 				scopeMode: params.scope.mode,
-				opAliasUsed: params.opAliasUsed,
 				argAliasesUsed
 			}
 		},
@@ -2112,40 +2111,16 @@ export async function executeGatewayOp(params: {
 		return buildExecError('', 'VALIDATION_ERROR', 'Missing op', 'root');
 	}
 
-	const opAlias = resolveGatewayOpAlias(requestedOp);
-	const canonicalOp = opAlias.canonicalOp;
+	// One op name space (2026-09-04, one-engine stage S9). The 33-entry legacy
+	// alias table that used to sit here already only produced a NOT_FOUND, and 90
+	// days of `agent_call_tool_executions` (964 ops) and `chat_tool_executions`
+	// (3,537 tool names) contain no alias form. The requested op IS the canonical
+	// op; an unrecognized one falls through to the same unknown-op error below,
+	// which names it.
+	const canonicalOp = requestedOp;
 	const allowedOps = params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode);
-	if (opAlias.usedAlias) {
-		await logGatewayCompatibilityAliasUsage({
-			admin: params.admin,
-			userId: params.userId,
-			callerId: params.callerId,
-			callSessionId: params.callSessionId,
-			scope: params.scope,
-			requestedOp,
-			canonicalOp,
-			opAliasUsed: true,
-			securityEventOptions: params.securityEventOptions
-		});
-		return buildExecError(requestedOp, 'NOT_FOUND', `Unknown op: ${requestedOp}`, 'root', {
-			canonical_op: canonicalOp,
-			reason: 'legacy_op_alias_removed'
-		});
-	}
 	const entry = registry.ops[canonicalOp];
 	if (!entry) {
-		await logGatewayCompatibilityAliasUsage({
-			admin: params.admin,
-			userId: params.userId,
-			callerId: params.callerId,
-			callSessionId: params.callSessionId,
-			scope: params.scope,
-			requestedOp,
-			canonicalOp,
-			opAliasUsed: opAlias.usedAlias,
-			securityEventOptions: params.securityEventOptions
-		});
-
 		if (isSupportedOp(canonicalOp)) {
 			await logSecurityEvent(
 				{
@@ -2198,7 +2173,6 @@ export async function executeGatewayOp(params: {
 		scope: params.scope,
 		requestedOp,
 		canonicalOp,
-		opAliasUsed: opAlias.usedAlias,
 		argAliasesUsed: preparedArgs.legacyAliasesUsed,
 		securityEventOptions: params.securityEventOptions
 	});

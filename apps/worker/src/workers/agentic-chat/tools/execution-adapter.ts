@@ -6,7 +6,11 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { type WebResearchPort, WebResearchPortError } from '@buildos/shared-agent-ops';
+import {
+	resolveUserCivilTimezone,
+	type WebResearchPort,
+	WebResearchPortError
+} from '@buildos/shared-agent-ops';
 import {
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
@@ -14,6 +18,8 @@ import {
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+	type AgenticChatCalendarReadPortV1,
+	type AgenticChatEmailReadPortV1,
 	type AgenticChatEmbeddingsPortV1,
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1,
@@ -24,13 +30,17 @@ import { createEmbeddingsClientFromEnv } from '@buildos/shared-agent-ops/embeddi
 import {
 	evaluateAgenticChatWebEgressProvenance,
 	executeAgenticChatStandardControlToolV1,
+	isAgenticChatContentFreeEmailToolNameV1,
 	isAgenticChatStandardControlToolNameV1,
+	isAgenticChatWebEgressToolName,
 	searchTelemetryColumns
 } from '@buildos/agentic-chat-runtime/loop';
 import { runWithAbortableDeadline } from '../abortableDeadline';
 import type { AgenticChatReadToolPortV1 } from '../turn-executor';
 import { AgenticChatProviderExecutionError } from '../provider/contracts';
 import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
+import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
+import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
 export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
@@ -43,9 +53,23 @@ export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_r
  * "over-clarification" was born.
  */
 export const REQUEST_PROPOSAL_REVISION_TOOL_NAME = 'request_proposal_revision';
+/**
+ * The reviewer-only control vocabulary the worker recognizes.
+ * `approve_mutation_batch_review` belongs to the retired mutation-batch review
+ * lane: no request builder offers it (`review/controls.ts` builds only the
+ * contract approval and the revision), so it can never be allowlisted, and
+ * `buildReviewerMimicryRepairRequest` intercepts an acting model that imitates
+ * it before any execution path is reached. The name stays here because that
+ * repair still has to recognize it; the executor below does not, because it
+ * cannot be reached.
+ */
 const WORKER_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
+	REQUEST_PROPOSAL_REVISION_TOOL_NAME
+] as const);
+const WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
+	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 ] as const);
 export const AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1 = Object.freeze([
@@ -76,9 +100,12 @@ export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS = 60_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-type WorkerReviewControlToolNameV1 = (typeof WORKER_REVIEW_CONTROL_TOOL_NAMES_V1)[number];
+type WorkerExecutableReviewControlToolNameV1 =
+	(typeof WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1)[number];
 type WorkerReviewControlToolRunnerV1 = (args: JsonObject) => Promise<Record<string, unknown>>;
-const WORKER_REVIEW_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(WORKER_REVIEW_CONTROL_TOOL_NAMES_V1);
+const WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(
+	WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1
+);
 
 type TurnSecurityState = {
 	userId: string;
@@ -86,8 +113,12 @@ type TurnSecurityState = {
 	expiresAt: number;
 };
 
-function isWorkerReviewControlToolNameV1(value: unknown): value is WorkerReviewControlToolNameV1 {
-	return typeof value === 'string' && WORKER_REVIEW_CONTROL_TOOL_NAME_SET_V1.has(value);
+function isWorkerReviewControlToolNameV1(
+	value: unknown
+): value is WorkerExecutableReviewControlToolNameV1 {
+	return (
+		typeof value === 'string' && WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAME_SET_V1.has(value)
+	);
 }
 
 /**
@@ -95,24 +126,8 @@ function isWorkerReviewControlToolNameV1(value: unknown): value is WorkerReviewC
  * host-neutral runtime. Promote them only if a second host adopts that protocol.
  */
 const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
-	Record<WorkerReviewControlToolNameV1, WorkerReviewControlToolRunnerV1>
+	Record<WorkerExecutableReviewControlToolNameV1, WorkerReviewControlToolRunnerV1>
 > = Object.freeze({
-	[APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME]: (args) => {
-		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
-		const batchSha256 = typeof args.batch_sha256 === 'string' ? args.batch_sha256.trim() : '';
-		if (!reason || !/^[0-9a-f]{64}$/.test(batchSha256)) {
-			throw new Error(
-				'Mutation batch review approval failed: provide a reason and the exact reviewed batch SHA-256.'
-			);
-		}
-		return Promise.resolve({
-			status: 'mutation_batch_review_approved',
-			reason,
-			batch_sha256: batchSha256,
-			instruction:
-				'The independently reviewed mutation batch may proceed exactly as proposed.'
-		});
-	},
 	[APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME]: (args) => {
 		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
 		const contractSha256 =
@@ -159,6 +174,21 @@ export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
 	'web_visit'
 ] as const);
 
+/**
+ * Does executing this tool taint the turn for outbound egress? Every shared
+ * read reaches user-scoped workspace or mailbox content except the three email
+ * account tools, whose payloads carry connection plumbing and no content.
+ * Excluding them is load-bearing, not a relaxation: `search_email_messages`
+ * cannot run without the connection ids `list_email_accounts` returns, so
+ * tainting that prerequisite would make Gmail search permanently unreachable.
+ */
+function contributesPrivateContentTaint(toolName: string): boolean {
+	return (
+		isAgenticChatSharedReadToolNameV1(toolName) &&
+		!isAgenticChatContentFreeEmailToolNameV1(toolName)
+	);
+}
+
 export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze([
 	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
@@ -195,6 +225,29 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	private readonly webResearchTimeoutMs: number;
 	private readonly createAccessAdapter: (userId: string) => AgenticChatToolAccessPortV1;
 	/**
+	 * Built per (user, turn) on first calendar read, never at boot: composing the
+	 * Google services is cheap and env-free here, but keeping it lazy means a
+	 * worker deployed without the Calendar OAuth variables still starts, and the
+	 * missing credentials surface as `coverage: 'unavailable'` on the one tool
+	 * call that needed them.
+	 */
+	private readonly createCalendarPort: (userId: string) => AgenticChatCalendarReadPortV1;
+	private readonly turnCalendarPorts = new Map<
+		string,
+		{ expiresAt: number; port: AgenticChatCalendarReadPortV1 }
+	>();
+	/**
+	 * Built per (user, turn) on first email read, for the same reason as the
+	 * calendar port — and additionally because the shared email tools hang their
+	 * per-turn call cap, character budget, and search-receipt set off the port
+	 * instance. One port per turn is therefore the budget boundary.
+	 */
+	private readonly createEmailPort: (userId: string) => AgenticChatEmailReadPortV1;
+	private readonly turnEmailPorts = new Map<
+		string,
+		{ expiresAt: number; port: AgenticChatEmailReadPortV1 }
+	>();
+	/**
 	 * Access adapters are cached per user so the actorId RPC amortizes across
 	 * the many tool calls of one turn. Bounded: the worker process is
 	 * long-lived, so the cache is cleared once it holds 256 users rather than
@@ -207,6 +260,15 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	 * carrying that content to a model-selected destination.
 	 */
 	private readonly turnSecurityStates = new Map<string, TurnSecurityState>();
+	/**
+	 * Per-turn memo of `users.timezone`, keyed like the security state. A turn
+	 * runs many read tools and each one carries the civil zone on its context;
+	 * without this the worker would re-query `users` on every one of them.
+	 */
+	private readonly turnTimezones = new Map<
+		string,
+		{ expiresAt: number; timezone: Promise<string | null> }
+	>();
 	private readonly securityNow: () => number;
 	private readonly maxTurnSecurityStates: number;
 	private readonly maxTurnSecurityStatesPerUser: number;
@@ -221,6 +283,8 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			webResearchTimeoutMs?: number;
 			webResearch?: WebResearchPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
+			createCalendarPort?: (userId: string) => AgenticChatCalendarReadPortV1;
+			createEmailPort?: (userId: string) => AgenticChatEmailReadPortV1;
 			embeddings?: AgenticChatEmbeddingsPortV1;
 			securityNow?: () => number;
 			maxTurnSecurityStates?: number;
@@ -255,6 +319,12 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		this.createAccessAdapter =
 			options.createAccessAdapter ??
 			((userId) => new WorkerAgenticChatToolAccessAdapter({ client: this.client, userId }));
+		this.createCalendarPort =
+			options.createCalendarPort ??
+			((userId) => createWorkerAgenticChatCalendarReadPort({ client: this.client, userId }));
+		this.createEmailPort =
+			options.createEmailPort ??
+			((userId) => createWorkerAgenticChatEmailReadPort({ client: this.client, userId }));
 		this.embeddings = options.embeddings ?? createWorkerEmbeddingsPortFromEnv();
 	}
 
@@ -268,15 +338,21 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const webResearchTool = AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1.includes(
 			toolName as (typeof AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1)[number]
 		);
+		// `search_email_messages` sends a model-authored query to Google, so it is
+		// data egress on the same footing as web research even though it executes
+		// on the shared read lane with the ordinary read timeout and failure
+		// classes. The fence keys on the egress predicate; dispatch, timeout and
+		// failure mapping stay keyed on the web-research names.
+		const egressTool = isAgenticChatWebEgressToolName(toolName);
 		const turnRunId = input.executionInput.claim.turnRunId;
 		const standardControlTool = isAgenticChatStandardControlToolNameV1(toolName);
 		const sharedReadTool = isAgenticChatSharedReadToolNameV1(toolName);
 		const reviewControlTool = isWorkerReviewControlToolNameV1(toolName);
 		const turnSecurityState =
-			webResearchTool || sharedReadTool
+			egressTool || sharedReadTool
 				? this.turnSecurityStateFor(input.executionInput.claim.userId, turnRunId)
 				: null;
-		if (webResearchTool) {
+		if (egressTool) {
 			if (!turnSecurityState) {
 				throw providerError('read_tool_egress_security_capacity_exceeded', 'permanent');
 			}
@@ -311,7 +387,20 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const sharedContext: AgenticChatSharedReadContextV1 | null = sharedReadTool
 			? {
 					client: this.client,
+					// The worker reads with a service-role client, so the claim's
+					// userId is the only identity the shared tools can authorize
+					// external (calendar/email) reads against.
+					userId: input.executionInput.claim.userId,
+					timezone: await this.turnTimezoneFor(
+						input.executionInput.claim.userId,
+						turnRunId
+					),
 					access: this.accessAdapterFor(input.executionInput.claim.userId),
+					calendar: this.turnCalendarPortFor(
+						input.executionInput.claim.userId,
+						turnRunId
+					),
+					email: this.turnEmailPortFor(input.executionInput.claim.userId, turnRunId),
 					embeddings: this.embeddings
 				}
 			: null;
@@ -420,7 +509,10 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			result: payload
 		});
 		const duration = Math.min(2_147_483_647, Math.max(0, Math.floor(this.now() - startedAt)));
-		if (sharedReadTool && turnSecurityState) {
+		// `get_email_message` and `search_email_messages` both reach mailbox
+		// content, so a later egress call in the same turn is refused; the three
+		// content-free email account tools deliberately do not taint.
+		if (turnSecurityState && contributesPrivateContentTaint(input.toolName)) {
 			turnSecurityState.privateContentRead = true;
 		}
 
@@ -456,9 +548,15 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		turnRunId: string;
 		toolNames: readonly string[];
 	}): void {
-		if (!input.toolNames.some((toolName) => isAgenticChatSharedReadToolNameV1(toolName))) {
-			return;
-		}
+		// An egress tool never pre-taints on its own behalf; otherwise
+		// `search_email_messages` would block itself the moment it was scheduled.
+		// Its own result still taints once it completes.
+		const scheduledPrivateRead = input.toolNames.some(
+			(toolName) =>
+				contributesPrivateContentTaint(toolName) &&
+				!isAgenticChatWebEgressToolName(toolName)
+		);
+		if (!scheduledPrivateRead) return;
 		// Treat a scheduled private read as tainted before concurrent execution.
 		// Failing closed even when that read later errors avoids an ordering race.
 		const state = this.turnSecurityStateFor(input.userId, input.turnRunId);
@@ -467,6 +565,88 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 
 	completeTurnSecurityState(userId: string, turnRunId: string): void {
 		this.turnSecurityStates.delete(this.turnSecurityStateKey(userId, turnRunId));
+		this.turnTimezones.delete(this.turnSecurityStateKey(userId, turnRunId));
+		this.turnCalendarPorts.delete(this.turnSecurityStateKey(userId, turnRunId));
+		// Dropping the email port also drops the turn's email call cap, character
+		// budget, and the set of message ids search authorized this turn.
+		this.turnEmailPorts.delete(this.turnSecurityStateKey(userId, turnRunId));
+	}
+
+	/**
+	 * One calendar port per (user, turn), memoized like the timezone so the many
+	 * tool calls of a turn share the same lazily composed provider services.
+	 */
+	private turnCalendarPortFor(userId: string, turnRunId: string): AgenticChatCalendarReadPortV1 {
+		const now = this.securityNow();
+		for (const [candidateId, entry] of this.turnCalendarPorts) {
+			if (entry.expiresAt <= now) this.turnCalendarPorts.delete(candidateId);
+		}
+		const stateKey = this.turnSecurityStateKey(userId, turnRunId);
+		const existing = this.turnCalendarPorts.get(stateKey);
+		if (existing) {
+			existing.expiresAt = now + this.turnSecurityStateTtlMs;
+			return existing.port;
+		}
+		const port = this.createCalendarPort(userId);
+		if (this.turnCalendarPorts.size < this.maxTurnSecurityStates) {
+			this.turnCalendarPorts.set(stateKey, {
+				expiresAt: now + this.turnSecurityStateTtlMs,
+				port
+			});
+		}
+		return port;
+	}
+
+	/** One email port per (user, turn), memoized exactly like the calendar port. */
+	private turnEmailPortFor(userId: string, turnRunId: string): AgenticChatEmailReadPortV1 {
+		const now = this.securityNow();
+		for (const [candidateId, entry] of this.turnEmailPorts) {
+			if (entry.expiresAt <= now) this.turnEmailPorts.delete(candidateId);
+		}
+		const stateKey = this.turnSecurityStateKey(userId, turnRunId);
+		const existing = this.turnEmailPorts.get(stateKey);
+		if (existing) {
+			existing.expiresAt = now + this.turnSecurityStateTtlMs;
+			return existing.port;
+		}
+		const port = this.createEmailPort(userId);
+		if (this.turnEmailPorts.size < this.maxTurnSecurityStates) {
+			this.turnEmailPorts.set(stateKey, {
+				expiresAt: now + this.turnSecurityStateTtlMs,
+				port
+			});
+		}
+		return port;
+	}
+
+	/**
+	 * Resolves `users.timezone` at most once per (user, turn). The promise is
+	 * memoized rather than the value so concurrent tool calls in the same round
+	 * share a single query instead of racing three of them.
+	 */
+	private turnTimezoneFor(userId: string, turnRunId: string): Promise<string | null> {
+		const now = this.securityNow();
+		for (const [candidateId, entry] of this.turnTimezones) {
+			if (entry.expiresAt <= now) this.turnTimezones.delete(candidateId);
+		}
+		const stateKey = this.turnSecurityStateKey(userId, turnRunId);
+		const existing = this.turnTimezones.get(stateKey);
+		if (existing) {
+			existing.expiresAt = now + this.turnSecurityStateTtlMs;
+			return existing.timezone;
+		}
+		// resolveUserCivilTimezone never rejects — it returns null when the row
+		// is missing, unreadable, or carries an invalid zone.
+		const timezone = resolveUserCivilTimezone(this.client, userId);
+		// Share the security-state ceiling so a saturated worker stops caching
+		// rather than growing an unbounded second map.
+		if (this.turnTimezones.size < this.maxTurnSecurityStates) {
+			this.turnTimezones.set(stateKey, {
+				expiresAt: now + this.turnSecurityStateTtlMs,
+				timezone
+			});
+		}
+		return timezone;
 	}
 
 	private turnSecurityStateKey(userId: string, turnRunId: string): string {

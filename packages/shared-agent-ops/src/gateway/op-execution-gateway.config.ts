@@ -388,17 +388,19 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			start_at: {
 				type: ['string', 'null'],
-				description: 'Optional ISO start date.'
+				description:
+					"Optional start date. Pass a plain calendar date (YYYY-MM-DD) for day-level intent; it is stored as that civil day in the user's timezone. Pass a full ISO datetime only when the user gave a clock time. Never convert a date to a timestamp yourself."
 			},
 			due_at: {
 				type: ['string', 'null'],
-				description: 'Optional ISO due date.'
+				description:
+					"Optional due date. Pass a plain calendar date (YYYY-MM-DD) for day-level intent; it is stored as that civil day in the user's timezone. Pass a full ISO datetime only when the user gave a clock time. Never convert a date to a timestamp yourself."
 			},
 			calendar_sync: {
 				type: 'string',
 				enum: ['auto', 'none'],
 				description:
-					"Optional calendar side-effect switch. 'auto' (default) creates or updates the task's linked calendar event when it is scheduled. 'none' skips every calendar effect — use it when the user asks for no calendar events or blocks."
+					"Optional calendar side-effect switch. 'auto' (default) creates or updates the task's linked calendar event when it is scheduled. 'none' skips every calendar effect. Required whenever the user says no calendar event, not on the calendar, or just the task — a scheduled task otherwise gets a calendar event by default."
 			},
 			props: {
 				type: 'object',
@@ -573,17 +575,19 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			start_at: {
 				type: ['string', 'null'],
-				description: 'Optional ISO start date. Use null to clear.'
+				description:
+					"Optional start date. Use null to clear. Pass a plain calendar date (YYYY-MM-DD) for day-level intent; it is stored as that civil day in the user's timezone. Pass a full ISO datetime only when the user gave a clock time. Never convert a date to a timestamp yourself."
 			},
 			due_at: {
 				type: ['string', 'null'],
-				description: 'Optional ISO due date. Use null to clear.'
+				description:
+					"Optional due date. Use null to clear. Pass a plain calendar date (YYYY-MM-DD) for day-level intent; it is stored as that civil day in the user's timezone. Pass a full ISO datetime only when the user gave a clock time. Never convert a date to a timestamp yourself."
 			},
 			calendar_sync: {
 				type: 'string',
 				enum: ['auto', 'none'],
 				description:
-					"Optional calendar side-effect switch. 'auto' (default) creates or updates the task's linked calendar event when it is scheduled. 'none' skips every calendar effect — use it when the user asks for no calendar events or blocks."
+					"Optional calendar side-effect switch. 'auto' (default) creates or updates the task's linked calendar event when it is scheduled. 'none' skips every calendar effect. Required whenever the user says no calendar event, not on the calendar, or just the task — a scheduled task otherwise gets a calendar event by default."
 			},
 			props: {
 				type: 'object',

@@ -2277,7 +2277,12 @@ describe('external tool gateway', () => {
 		}
 	});
 
-	it('records telemetry when a legacy gateway op alias is used', async () => {
+	it('rejects a retired op-alias form as an unknown op, by name', async () => {
+		// One op name space (one-engine stage S9, 2026-09-04). The 33-entry alias
+		// table is deleted: a legacy form is no longer translated, no longer
+		// carries `canonical_op`/`legacy_op_alias_removed`, and no longer emits
+		// `agent.tool.alias_used`. It is simply an op that does not exist, and the
+		// error names it.
 		const { executeGatewayOp } = await import(
 			'@buildos/shared-agent-ops/gateway/op-execution-gateway'
 		);
@@ -2285,6 +2290,7 @@ describe('external tool gateway', () => {
 			documents: [],
 			tasks: [],
 			toolExecutions: [],
+			securityEvents: [],
 			nextTaskId: 1,
 			nextToolExecutionId: 1
 		};
@@ -2309,22 +2315,16 @@ describe('external tool gateway', () => {
 
 		expect(result).toMatchObject({
 			ok: false,
-			error: { code: 'NOT_FOUND' }
+			error: {
+				code: 'NOT_FOUND',
+				message: 'Unknown op: reorganize_onto_project_graph'
+			}
 		});
-		expect(state.securityEvents).toContainEqual(
-			expect.objectContaining({
-				event_type: 'agent.tool.alias_used',
-				category: 'agent',
-				outcome: 'info',
-				severity: 'low',
-				metadata: expect.objectContaining({
-					requestedOp: 'reorganize_onto_project_graph',
-					canonicalOp: 'onto.project.graph.reorganize',
-					opAliasUsed: true,
-					argAliasesUsed: []
-				})
-			})
-		);
+		expect(
+			(state.securityEvents ?? []).filter(
+				(event) => event.event_type === 'agent.tool.alias_used'
+			)
+		).toEqual([]);
 	});
 
 	it('exposes image asset tools through scoped discovery without granting media URLs', async () => {
@@ -3488,7 +3488,6 @@ describe('external tool gateway', () => {
 				metadata: expect.objectContaining({
 					requestedOp: 'onto.document.create',
 					canonicalOp: 'onto.document.create',
-					opAliasUsed: false,
 					argAliasesUsed: [{ alias: 'body_markdown', target: 'content' }]
 				})
 			})
@@ -3544,7 +3543,6 @@ describe('external tool gateway', () => {
 				metadata: expect.objectContaining({
 					requestedOp: 'onto.document.create',
 					canonicalOp: 'onto.document.create',
-					opAliasUsed: false,
 					argAliasesUsed: [{ alias: 'parent_id', target: 'parent_document_id' }]
 				})
 			})

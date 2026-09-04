@@ -35,6 +35,14 @@ export interface DomainDefinition {
 	summary: string;
 	boundaries: string[];
 	coverageStatus: DomainCoverageStatus;
+	/**
+	 * Craft domains (marketing, sales, writing) whose skills left the default
+	 * chat runtime on 2026-09-03. They stay in the catalog — `domain_search`,
+	 * `domain_load`, and skill_search still reach them — but automatic sensing
+	 * may not open the skill-load gate off them unless the current message
+	 * carries an explicit request shape. See `hasExplicitSkillRequestShape`.
+	 */
+	explicitAskOnly?: boolean;
 	capabilityIds: string[];
 	skills: DomainSkillLink[];
 	recommendedSkillStacks?: DomainSkillStack[];

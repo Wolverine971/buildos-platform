@@ -11,20 +11,15 @@ import {
 	TURN_CONTRACT_TOOL_DEFINITION
 } from '@buildos/agentic-chat-runtime/catalog';
 import type { TurnContract } from '@buildos/agentic-chat-runtime/loop';
-import { type JsonObject, canonicalizeAgenticChatJson } from '@buildos/shared-types';
+import type { JsonObject } from '@buildos/shared-types';
 import type {
 	AgenticChatTurnProviderRequestV1,
 	AgenticChatTurnProviderToolV1
 } from '../src/workers/agentic-chat/provider/contracts';
 import {
 	approvalShaMatches,
-	completeMutationBatchReviewDecision,
 	completeTurnContractReviewDecision
 } from '../src/workers/agentic-chat/provider/review/decision-completion';
-import {
-	buildMutationBatchReviewRequest,
-	mutationBatchSha256
-} from '../src/workers/agentic-chat/provider/review/mutation-batch';
 import { buildTurnContractReviewRequest } from '../src/workers/agentic-chat/provider/review/turn-contract';
 import {
 	appendToolCallDelta,
@@ -137,46 +132,6 @@ function contractDecision(argumentsValue: JsonObject) {
 	});
 }
 
-function batchDecision(argumentsFor: (batchSha256: string) => JsonObject) {
-	const request = actingRequest();
-	const mutationArguments: JsonObject = { task_id: TASK_ID, state_key: 'done' };
-	const call = {
-		id: 'mutation-1',
-		name: 'update_onto_task',
-		arguments: mutationArguments,
-		canonicalArguments: canonicalizeAgenticChatJson(mutationArguments),
-		canonicalProviderArguments: canonicalizeAgenticChatJson(mutationArguments)
-	};
-	const batchSha256 = mutationBatchSha256([call]);
-	const reviewRequest = buildMutationBatchReviewRequest(
-		{
-			proposalSource: 'acting_model',
-			batchSha256,
-			calls: [call],
-			blockedToolCalls: new Map(),
-			authorization: {
-				contract: CONTRACT,
-				contractSha256: CONTRACT_SHA,
-				labelBindings: new Map()
-			},
-			reviewTools: TOOLS,
-			request,
-			usage: null
-		},
-		true
-	);
-	return completeMutationBatchReviewDecision({
-		actingRequest: request,
-		reviewRequest,
-		toolCalls: reviewerCalls('approve_mutation_batch_review', argumentsFor(batchSha256)),
-		finished: true,
-		finishedReason: 'tool_calls',
-		fallbackReason: null,
-		batchSha256,
-		allowRevision: true
-	});
-}
-
 describe('approvalShaMatches', () => {
 	it('accepts only the exact expected string', () => {
 		expect(approvalShaMatches('a'.repeat(64), 'a'.repeat(64))).toBe(true);
@@ -223,44 +178,6 @@ describe('contract review SHA binding', () => {
 
 	it('fails closed to clarification when the SHA is missing', () => {
 		const calls = contractDecision({ reason: 'Approved.', reference_candidates: [] });
-		expect(calls).toEqual([
-			expect.objectContaining({
-				name: 'request_turn_clarification',
-				decidedBy: 'harness_review_fallback'
-			})
-		]);
-	});
-});
-
-describe('mutation batch review SHA binding', () => {
-	it('passes an approval whose SHA matches the reviewed batch', () => {
-		const calls = batchDecision((batchSha256) => ({
-			reason: 'Every mutation is inside the approved contract.',
-			batch_sha256: batchSha256
-		}));
-		expect(calls).toEqual([
-			expect.objectContaining({
-				name: 'approve_mutation_batch_review',
-				decidedBy: 'mutation_batch_reviewer'
-			})
-		]);
-	});
-
-	it('fails closed to clarification when the SHA does not match', () => {
-		const calls = batchDecision(() => ({ reason: 'Approved.', batch_sha256: 'f'.repeat(64) }));
-		expect(calls).toEqual([
-			expect.objectContaining({
-				name: 'request_turn_clarification',
-				decidedBy: 'harness_review_fallback',
-				arguments: expect.objectContaining({
-					reason: expect.stringContaining('invalid or unbound')
-				})
-			})
-		]);
-	});
-
-	it('fails closed to clarification when the SHA is missing', () => {
-		const calls = batchDecision(() => ({ reason: 'Approved.' }));
 		expect(calls).toEqual([
 			expect.objectContaining({
 				name: 'request_turn_clarification',

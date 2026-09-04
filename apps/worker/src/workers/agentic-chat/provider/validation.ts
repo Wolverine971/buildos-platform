@@ -1,8 +1,10 @@
+// apps/worker/src/workers/agentic-chat/provider/validation.ts
 import { createHash } from 'node:crypto';
 import type { ChatToolDefinition, JsonObject, JsonValue } from '@buildos/shared-types';
 import { canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import { DECLARE_TURN_CONTRACT_TOOL_NAME } from '@buildos/agentic-chat-runtime/catalog';
 import {
+	type LoadedTaskSchedule,
 	type ToolValidationIssue,
 	type TurnContract,
 	type TurnContractOutcome,
@@ -30,7 +32,9 @@ export function contractSha256(contract: TurnContract): string {
 export function validateCompletedProviderCalls(
 	calls: readonly CompletedProviderToolCall[],
 	request: AgenticChatTurnProviderRequestV1,
-	admittedTools: readonly AgenticChatTurnProviderToolV1[] = request.tools
+	admittedTools: readonly AgenticChatTurnProviderToolV1[] = request.tools,
+	/** Scheduling values this turn's reads loaded; a reschedule that repeats one is a no-op. */
+	loadedTaskSchedules?: ReadonlyMap<string, LoadedTaskSchedule>
 ): ToolValidationIssue[] {
 	const issues = validateToolCalls(
 		calls.map(completedProviderCallToChatToolCall),
@@ -40,7 +44,8 @@ export function validateCompletedProviderCalls(
 				typeof request.projectId === 'string' &&
 				CANONICAL_UUID_PATTERN.test(request.projectId)
 					? request.projectId
-					: null
+					: null,
+			...(loadedTaskSchedules && loadedTaskSchedules.size > 0 ? { loadedTaskSchedules } : {})
 		}
 	);
 	validateProjectCreateShellContracts(calls, request, admittedTools, issues);

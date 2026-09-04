@@ -16,6 +16,7 @@ import {
 } from './ontology-search-ranking';
 
 const ACTOR_ID = '90000000-0000-4000-8000-000000000009';
+const USER_ID = '91000000-0000-4000-8000-000000000009';
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
 const SHARED_PROJECT_ID = '50000000-0000-4000-8000-000000000005';
 const NOW = new Date('2026-08-08T12:00:00.000Z').getTime();
@@ -57,6 +58,8 @@ function contextWith(input: {
 	const getActorId = vi.fn(async () => ACTOR_ID);
 	const context: AgenticChatSharedReadContextV1 = {
 		client: client as never,
+		userId: USER_ID,
+		timezone: null,
 		access: {
 			getActorId,
 			resolveProjectSummaries: vi.fn(async () => input.projectSummaries ?? []),

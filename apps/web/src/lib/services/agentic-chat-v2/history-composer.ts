@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/history-composer.ts
 import type { FastChatHistoryMessage } from './types';
-import { sanitizeAssistantFinalText } from './stream-orchestrator/assistant-text-sanitization';
+import { sanitizeAssistantFinalText } from '@buildos/agentic-chat-runtime/loop';
 
 export type FastChatHistoryCompositionSettings = {
 	compressionThresholdMessages?: number;

@@ -53,7 +53,7 @@ function contentFixture(): TurnInputArtifactContentV1 {
 			sourcePreparedPromptId: IDS.prepared,
 			contextPayload: { contextType: 'global', data: {} },
 			conversationSummary: 'Earlier context',
-			surfaceProfile: 'global_basic',
+			surfaceProfile: 'global',
 			systemPrompt: 'System prompt',
 			promptSections: [{ id: 'context', text: 'Trusted context' }],
 			toolSurface: { names: ['get_workspace_overview'] },

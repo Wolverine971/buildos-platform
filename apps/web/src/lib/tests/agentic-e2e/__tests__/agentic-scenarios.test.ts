@@ -1,7 +1,7 @@
 // apps/web/src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts
 //
 // ⚠️ End-to-end agentic-chat stress harness. Every scenario drives the REAL
-// selected production transport against a running dev server, runs the production
+// production worker transport against a running dev server, runs the production
 // (cheap) model + tools, writes to the hosted DB, and calls a strong LLM judge on
 // fuzzy scenarios. It COSTS MONEY and requires a running dev server
 // (`pnpm dev --filter=@buildos/web`). Excluded from `pnpm test`; run with
@@ -10,11 +10,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadHarnessEnv } from '../harness/env';
 import { loginAndGetCookie } from '../harness/auth';
 import { ensureTestAuthUser, provisionTestUser } from '../harness/test-user';
-import { runTurn, warmupPing } from '../harness/sse-client';
 import {
 	createAgenticE2EWorkerClient,
+	HARNESS_EXECUTION_MODE,
 	requireAdvertisedMutationTools,
-	resolveAgenticE2EExecutionMode,
 	type AgenticE2EWorkerClient
 } from '../harness/worker-client';
 import {
@@ -27,8 +26,9 @@ import { releaseTurnForFollowup, teardownChatSession, waitForTurnRun } from '../
 import { judgeQuality } from '../harness/judge';
 import { checkTurnBeforeFollowupRelease } from '../harness/turn-sequencing';
 import { evaluateTurnEvidenceChecks } from '../harness/evidence-checks';
-import { readTurnAttribution, readWorkerTurnAttribution } from '../harness/attribution';
+import { readWorkerTurnAttribution } from '../harness/attribution';
 import { scenarioCatalog } from '../scenarios/catalog';
+import { BatteryRecorder, selectBattery, writeBatteryScorecard } from '../harness/battery';
 import {
 	evaluateTurnCheckpoints,
 	formatCheckpointFailures,
@@ -38,6 +38,7 @@ import type { ScenarioContext, SeedResult } from '../harness/types';
 import type { LastTurnContext } from '@buildos/shared-types';
 import {
 	buildPhase0EvidenceReport,
+	classifyPhase0TurnResult,
 	collectPhase0TurnEvidence,
 	readPhase0RepositoryState,
 	writePhase0EvidenceReport,
@@ -56,11 +57,18 @@ const PHASE0_CAPTURE = process.env.AGENTIC_PHASE0_CAPTURE === 'true';
 // retained evidence, and the judge's 90s hard wall. A 300s whole-test default
 // incorrectly classified completed worker turns as scenario timeouts.
 const DEFAULT_SCENARIO_TIMEOUT_MS = 450_000;
-const EXECUTION_MODE = resolveAgenticE2EExecutionMode();
+const EXECUTION_MODE = HARNESS_EXECUTION_MODE;
 const WORKER_PREFLIGHT_ONLY = process.env.AGENTIC_E2E_WORKER_PREFLIGHT_ONLY === 'true';
 const PHASE0_OUTPUT_PATH =
 	process.env.AGENTIC_PHASE0_OUTPUT_PATH?.trim() ||
 	`/tmp/buildos-agentic-phase0-${HARNESS_RUN_ID}.json`;
+// A graded battery run (AGENTIC_BATTERY=cedar-house) always emits a scorecard,
+// independently of Phase 0 evidence capture — which refuses a dirty tree and so
+// cannot be the only way to score a run during ordinary development.
+const BATTERY = process.env.AGENTIC_BATTERY?.trim() || null;
+const BATTERY_OUTPUT_PATH =
+	process.env.AGENTIC_BATTERY_OUTPUT_PATH?.trim() ||
+	`/tmp/buildos-agentic-battery-${HARNESS_RUN_ID}.json`;
 
 function positiveIntegerEnv(name: string, fallback: number): number {
 	const raw = process.env[name]?.trim();
@@ -90,6 +98,13 @@ function requireCtx(): ScenarioContext {
 	return ctx;
 }
 
+function requireWorkerClient(): AgenticE2EWorkerClient {
+	if (!workerClient) {
+		throw new Error('[agentic-e2e] worker client not initialized (beforeAll failed)');
+	}
+	return workerClient;
+}
+
 beforeAll(async () => {
 	const env = loadHarnessEnv();
 	phase0BaseUrl = env.baseUrl;
@@ -112,45 +127,37 @@ beforeAll(async () => {
 	});
 	const db = await provisionTestUser({ userId, email: env.testUserEmail });
 
-	// 2. Confirm the selected transport is reachable + authorized. Worker mode
-	// requires both the private Realtime subscription and an exact worker lease;
-	// it never silently falls back to legacy SSE.
-	await warmupPing({ baseUrl: env.baseUrl, cookie });
-	if (EXECUTION_MODE === 'worker_realtime') {
-		workerClient = await createAgenticE2EWorkerClient({
-			baseUrl: env.baseUrl,
-			cookie,
-			email: env.testUserEmail,
-			password: env.testUserPassword,
-			userId,
-			admin: db.admin
-		});
-		await workerClient.requireWorkerLease();
+	// 2. Confirm the worker transport is reachable + authorized. This requires
+	// both the private Realtime subscription and an exact worker lease; the
+	// client never silently falls back.
+	workerClient = await createAgenticE2EWorkerClient({
+		baseUrl: env.baseUrl,
+		cookie,
+		email: env.testUserEmail,
+		password: env.testUserPassword,
+		userId,
+		admin: db.admin
+	});
+	await workerClient.requireWorkerLease();
 
-		// Fail-closed write-surface preflight: a valid transport lease only proves
-		// the worker is reachable, not that it advertises the write tools the
-		// selected scenarios need. Runs unconditionally in worker mode (including
-		// AGENTIC_E2E_WORKER_PREFLIGHT_ONLY) so a preflight-only run proves both.
-		const requiredMutationTools = [
-			...new Set(
-				selectedScenarios().flatMap((scenario) => scenario.requiredMutationTools ?? [])
-			)
-		];
-		if (requiredMutationTools.length > 0) {
-			if (!env.workerHealthUrl) {
-				throw new Error(
-					'[agentic-e2e] selected scenarios require write tools; set PRIVATE_AGENTIC_CHAT_WORKER_URL to run the write-surface preflight'
-				);
-			}
-			const { advertised } = await requireAdvertisedMutationTools({
-				healthUrl: env.workerHealthUrl,
-				required: requiredMutationTools
-			});
-			console.info(
-				'[agentic-e2e] worker advertises mutation tools',
-				JSON.stringify(advertised)
+	// Fail-closed write-surface preflight: a valid transport lease only proves
+	// the worker is reachable, not that it advertises the write tools the
+	// selected scenarios need. Runs unconditionally (including
+	// AGENTIC_E2E_WORKER_PREFLIGHT_ONLY) so a preflight-only run proves both.
+	const requiredMutationTools = [
+		...new Set(selectedScenarios().flatMap((scenario) => scenario.requiredMutationTools ?? []))
+	];
+	if (requiredMutationTools.length > 0) {
+		if (!env.workerHealthUrl) {
+			throw new Error(
+				'[agentic-e2e] selected scenarios require write tools; set PRIVATE_AGENTIC_CHAT_WORKER_URL to run the write-surface preflight'
 			);
 		}
+		const { advertised } = await requireAdvertisedMutationTools({
+			healthUrl: env.workerHealthUrl,
+			required: requiredMutationTools
+		});
+		console.info('[agentic-e2e] worker advertises mutation tools', JSON.stringify(advertised));
 	}
 
 	// 3. Clear only old crashed-run fixtures. Live concurrent runs remain isolated.
@@ -171,6 +178,36 @@ afterAll(async () => {
 			);
 		} finally {
 			workerClient = null;
+		}
+	}
+	if (batteryRecorder && BATTERY) {
+		try {
+			let head: string | null = null;
+			try {
+				head = readPhase0RepositoryState().head;
+			} catch {
+				head = null;
+			}
+			const scorecard = batteryRecorder.build({
+				runId: HARNESS_RUN_ID,
+				baseUrl: phase0BaseUrl,
+				executionMode: EXECUTION_MODE,
+				head
+			});
+			writeBatteryScorecard(BATTERY_OUTPUT_PATH, scorecard);
+			console.info(
+				`[agentic-e2e] battery "${BATTERY}" scored ` +
+					`${scorecard.summary.totalScore}/${scorecard.summary.maxScore} ` +
+					`(${scorecard.summary.percent}%, ${scorecard.summary.grade}) -> ${BATTERY_OUTPUT_PATH}\n` +
+					'Render it with: node scripts/agentic-e2e/render-scorecard.mjs ' +
+					`${BATTERY_OUTPUT_PATH}`
+			);
+		} catch (error) {
+			console.error(
+				`[agentic-e2e] could not write the battery scorecard: ${
+					error instanceof Error ? error.message : String(error)
+				}`
+			);
 		}
 	}
 	if (PHASE0_CAPTURE && phase0Repository) {
@@ -219,13 +256,16 @@ afterAll(async () => {
 // Unset runs the whole catalog. Unknown ids fail loudly rather than silently
 // running nothing — a typo that quietly passes zero scenarios reads as success.
 function selectedScenarios() {
+	// AGENTIC_BATTERY narrows to one graded battery; AGENTIC_SCENARIOS can then
+	// narrow further to a single case while iterating on it.
+	const battery = selectBattery(scenarioCatalog, BATTERY ?? undefined);
 	const raw = process.env.AGENTIC_SCENARIOS?.trim();
-	if (!raw) return scenarioCatalog;
+	if (!raw) return battery;
 	const wanted = raw
 		.split(',')
 		.map((id) => id.trim())
 		.filter(Boolean);
-	const known = new Set(scenarioCatalog.map((s) => s.id));
+	const known = new Set(battery.map((s) => s.id));
 	const unknown = wanted.filter((id) => !known.has(id));
 	if (unknown.length > 0) {
 		throw new Error(
@@ -233,8 +273,10 @@ function selectedScenarios() {
 				`Known ids: [${[...known].join(', ')}]`
 		);
 	}
-	return scenarioCatalog.filter((s) => wanted.includes(s.id));
+	return battery.filter((s) => wanted.includes(s.id));
 }
+
+const batteryRecorder = BATTERY ? new BatteryRecorder(BATTERY, selectedScenarios()) : null;
 
 describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 	if (WORKER_PREFLIGHT_ONLY) {
@@ -275,19 +317,13 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 							if (turn.coldSession) {
 								if (sessionId) {
 									await teardownChatSession(c.db.admin, c.db.userId, sessionId, {
-										retainForWorkerControlRowRetention:
-											EXECUTION_MODE === 'worker_realtime'
+										retainForWorkerControlRowRetention: true
 									});
 								}
 								sessionId = undefined;
 								lastTurnContext = null;
 							}
-							const turnRunner = workerClient
-								? workerClient.runTurn.bind(workerClient)
-								: runTurn;
-							const result = await turnRunner({
-								baseUrl: c.baseUrl,
-								cookie: c.cookie,
+							const result = await requireWorkerClient().runTurn({
 								message: turn.message,
 								contextType: turn.contextType,
 								entityId,
@@ -304,7 +340,7 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 									await turn.assert(result, c, seed);
 									if (!result.streamRunId) {
 										throw new Error(
-											'[agentic-e2e] selected transport did not expose a stream_run_id'
+											'[agentic-e2e] worker transport did not expose a stream_run_id'
 										);
 									}
 									const selectedTurnRun = await waitForTurnRun(
@@ -314,12 +350,11 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 									const expectedContract = 'agentic_chat_worker_v1';
 									if (
 										selectedTurnRun?.execution_mode !== EXECUTION_MODE ||
-										(EXECUTION_MODE === 'worker_realtime' &&
-											selectedTurnRun.transport_contract_version !==
-												expectedContract)
+										selectedTurnRun.transport_contract_version !==
+											expectedContract
 									) {
 										throw new Error(
-											`[agentic-e2e] expected ${EXECUTION_MODE}${EXECUTION_MODE === 'worker_realtime' ? `/${expectedContract}` : ''}, received ` +
+											`[agentic-e2e] expected ${EXECUTION_MODE}/${expectedContract}, received ` +
 												`${selectedTurnRun?.execution_mode ?? 'missing'}/${selectedTurnRun?.transport_contract_version ?? 'missing'}`
 										);
 									}
@@ -346,16 +381,10 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 										}
 										return;
 									}
-									const attribution =
-										EXECUTION_MODE === 'worker_realtime'
-											? await readWorkerTurnAttribution(
-													c.db.admin,
-													result.streamRunId
-												)
-											: await readTurnAttribution(
-													c.db.admin,
-													result.streamRunId
-												);
+									const attribution = await readWorkerTurnAttribution(
+										c.db.admin,
+										result.streamRunId
+									);
 									console.info(
 										'[agentic-e2e] turn attribution',
 										JSON.stringify({
@@ -373,50 +402,6 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 											`[agentic-e2e] missing model/provider/intervention attribution for ${result.streamRunId}`
 										);
 									}
-									if (
-										process.env.AGENTIC_ASSERT_TELEMETRY === 'true' &&
-										EXECUTION_MODE !== 'worker_realtime'
-									) {
-										const interventions = attribution.interventions;
-										const expectedVariant =
-											process.env.AGENTIC_EXPECT_SCAFFOLD_VARIANT?.trim();
-										const expectedFingerprint =
-											process.env.AGENTIC_EXPECT_SCAFFOLD_FINGERPRINT?.trim();
-										if (
-											!interventions?.evalScaffoldVariant ||
-											!interventions.evalScaffoldFingerprint ||
-											!interventions.evalScaffoldConfig
-										) {
-											throw new Error(
-												`[agentic-e2e] missing computed scaffold attribution for ${result.streamRunId}`
-											);
-										}
-										if (
-											interventions.evalScaffoldConfig.variant !==
-											interventions.evalScaffoldVariant
-										) {
-											throw new Error(
-												`[agentic-e2e] scaffold label/config mismatch for ${result.streamRunId}`
-											);
-										}
-										if (
-											expectedVariant &&
-											interventions.evalScaffoldVariant !== expectedVariant
-										) {
-											throw new Error(
-												`[agentic-e2e] expected scaffold ${expectedVariant}, received ${interventions.evalScaffoldVariant}`
-											);
-										}
-										if (
-											expectedFingerprint &&
-											interventions.evalScaffoldFingerprint !==
-												expectedFingerprint
-										) {
-											throw new Error(
-												`[agentic-e2e] expected scaffold fingerprint ${expectedFingerprint}, received ${interventions.evalScaffoldFingerprint}`
-											);
-										}
-									}
 								},
 								judgeTurn: turn.judge
 									? async () => {
@@ -430,38 +415,70 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 											return { ...verdict, threshold };
 										}
 									: undefined,
-								captureTurn: PHASE0_CAPTURE
-									? async (checkOutcome) => {
-											try {
-												const subchecks = await evaluateTurnEvidenceChecks({
-													checks: turn.evidenceChecks ?? [],
-													turn: result,
-													ctx: c,
-													seed
-												});
-												phase0Turns.push(
-													await collectPhase0TurnEvidence({
-														admin: c.db.admin,
+								captureTurn:
+									PHASE0_CAPTURE || batteryRecorder
+										? async (checkOutcome) => {
+												if (batteryRecorder) {
+													// Scored from the SAME taxonomy the evidence
+													// report uses, so a scorecard and a Phase 0
+													// artifact from one run never disagree.
+													batteryRecorder.recordTurn({
 														scenario,
 														repetition,
 														turnIndex: turnIndex + 1,
 														turnLabel: turn.label ?? null,
-														result,
-														checkOutcome,
-														subchecks
-													})
-												);
-											} catch (error) {
-												phase0FatalCaptureErrors.push(
-													`${scenario.id} run ${repetition} turn ${turnIndex + 1}: ${
-														error instanceof Error
-															? error.message
-															: String(error)
-													}`
-												);
+														streamRunId: result.streamRunId,
+														resultClass: classifyPhase0TurnResult({
+															result,
+															// Wait for a terminal row: a still-
+															// flushing run would otherwise be
+															// scored a transport failure (0) when
+															// it is really a behavior failure (1).
+															turnRun: result.streamRunId
+																? await waitForTurnRun(
+																		c.db.admin,
+																		result.streamRunId,
+																		{ timeoutMs: 15_000 }
+																	)
+																: null,
+															checkOutcome,
+															captureErrors: []
+														}),
+														error: checkOutcome.overallError
+													});
+												}
+												if (!PHASE0_CAPTURE) return;
+												try {
+													const subchecks =
+														await evaluateTurnEvidenceChecks({
+															checks: turn.evidenceChecks ?? [],
+															turn: result,
+															ctx: c,
+															seed
+														});
+													phase0Turns.push(
+														await collectPhase0TurnEvidence({
+															admin: c.db.admin,
+															scenario,
+															repetition,
+															turnIndex: turnIndex + 1,
+															turnLabel: turn.label ?? null,
+															result,
+															checkOutcome,
+															subchecks
+														})
+													);
+												} catch (error) {
+													phase0FatalCaptureErrors.push(
+														`${scenario.id} run ${repetition} turn ${turnIndex + 1}: ${
+															error instanceof Error
+																? error.message
+																: String(error)
+														}`
+													);
+												}
 											}
-										}
-									: undefined,
+										: undefined,
 								releaseForFollowup: () =>
 									releaseTurnForFollowup(c.db.admin, result.streamRunId)
 							});
@@ -487,8 +504,7 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 					} finally {
 						try {
 							await teardownChatSession(c.db.admin, c.db.userId, sessionId, {
-								retainForWorkerControlRowRetention:
-									EXECUTION_MODE === 'worker_realtime'
+								retainForWorkerControlRowRetention: true
 							});
 						} finally {
 							// Extra cleanup first (multi-project fixtures, agent-created

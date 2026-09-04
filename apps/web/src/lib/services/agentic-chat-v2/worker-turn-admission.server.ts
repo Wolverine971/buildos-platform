@@ -197,7 +197,7 @@ type ParsedHandle = {
 	correlationId: string;
 	streamRunId: string;
 	clientTurnId: string | null;
-	executionMode: 'worker_realtime' | 'legacy_sse';
+	executionMode: 'worker_realtime';
 	status: ChatTurnStatusV1;
 };
 
@@ -218,7 +218,7 @@ function parseHandle(value: Record<string, unknown>): ParsedHandle {
 		correlationId === null ||
 		!canonicalText(value.stream_run_id, 256) ||
 		clientTurnId === 'invalid' ||
-		(value.execution_mode !== 'worker_realtime' && value.execution_mode !== 'legacy_sse') ||
+		value.execution_mode !== 'worker_realtime' ||
 		!isTurnStatus(value.status)
 	) {
 		throw protocolError('Worker admission handle is invalid');

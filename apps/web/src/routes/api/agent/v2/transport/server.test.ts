@@ -12,8 +12,7 @@ const mocks = vi.hoisted(() => ({
 		AGENTIC_CHAT_WORKER_KILL_EPOCH: '0'
 	},
 	createAdminSupabaseClient: vi.fn(),
-	resolveExistingAgenticChatTransportDecision: vi.fn(),
-	selectAgenticChatNewTransport: vi.fn()
+	resolveExistingAgenticChatTransportDecision: vi.fn()
 }));
 
 vi.mock('$env/dynamic/private', () => ({ env: mocks.env }));
@@ -31,17 +30,6 @@ vi.mock('$lib/services/agentic-chat-v2/transport-decision.server', async (import
 			mocks.resolveExistingAgenticChatTransportDecision
 	};
 });
-vi.mock('$lib/services/agentic-chat-v2/worker-transport-routing.server', async (importOriginal) => {
-	const original =
-		await importOriginal<
-			typeof import('$lib/services/agentic-chat-v2/worker-transport-routing.server')
-		>();
-	return {
-		...original,
-		selectAgenticChatNewTransport: mocks.selectAgenticChatNewTransport
-	};
-});
-
 import { AgenticChatTransportDecisionError } from '$lib/services/agentic-chat-v2/transport-decision.server';
 import { POST } from './+server';
 
@@ -51,8 +39,8 @@ function body(overrides: Record<string, unknown> = {}) {
 		streamRunId: 'stream-run-1',
 		sessionId: SESSION_ID,
 		context: { type: 'global', entityId: null, projectId: null },
-		supportedModes: ['legacy_sse', 'worker_realtime'],
-		supportedContractVersions: ['legacy_internal_v1', 'agentic_chat_worker_v1'],
+		supportedModes: ['worker_realtime'],
+		supportedContractVersions: ['agentic_chat_worker_v1'],
 		priorDecisionId: null,
 		...overrides
 	};
@@ -81,10 +69,6 @@ describe('POST /api/agent/v2/transport', () => {
 		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
 		mocks.createAdminSupabaseClient.mockReturnValue({ from: vi.fn() });
 		mocks.resolveExistingAgenticChatTransportDecision.mockResolvedValue(null);
-		mocks.selectAgenticChatNewTransport.mockResolvedValue({
-			mode: 'worker_realtime',
-			contractVersion: 'agentic_chat_worker_v1'
-		});
 	});
 
 	it('requires authentication before parsing or creating a service client', async () => {
@@ -98,7 +82,7 @@ describe('POST /api/agent/v2/transport', () => {
 		for (const invalid of [
 			body({ clientTurnId: ' padded ' }),
 			body({ sessionId: 'not-a-uuid' }),
-			body({ supportedModes: ['legacy_sse', 'legacy_sse'] }),
+			body({ supportedModes: ['worker_realtime', 'worker_realtime'] }),
 			body({ extra: true })
 		]) {
 			expect((await POST(event({ body: invalid }) as never)).status).toBe(422);
@@ -106,7 +90,7 @@ describe('POST /api/agent/v2/transport', () => {
 		expect(mocks.resolveExistingAgenticChatTransportDecision).not.toHaveBeenCalled();
 	});
 
-	it('issues a private policy-selected lease for a genuinely new decision', async () => {
+	it('issues a private worker lease for a genuinely new decision', async () => {
 		const response = await POST(event() as never);
 		const payload = await response.json();
 
@@ -124,42 +108,23 @@ describe('POST /api/agent/v2/transport', () => {
 			userId: USER_ID,
 			request: body()
 		});
-		expect(mocks.selectAgenticChatNewTransport).toHaveBeenCalledWith({
-			supportedModes: body().supportedModes,
-			supportedContractVersions: body().supportedContractVersions
-		});
 	});
 
-	it('issues legacy only when the request and server selection are explicitly legacy', async () => {
-		mocks.selectAgenticChatNewTransport.mockResolvedValueOnce({
-			mode: 'legacy_sse',
-			contractVersion: 'legacy_internal_v1'
-		});
-		const response = await POST(
-			event({
-				body: body({
-					supportedModes: ['legacy_sse'],
-					supportedContractVersions: ['legacy_internal_v1']
-				})
-			}) as never
-		);
-		const payload = await response.json();
-		expect(response.status).toBe(200);
-		expect(payload.data).toMatchObject({
-			mode: 'legacy_sse',
-			contractVersion: 'legacy_internal_v1'
-		});
-	});
-
-	it('returns retryable worker-unavailable when worker routing itself fails', async () => {
-		mocks.selectAgenticChatNewTransport.mockRejectedValueOnce(new Error('routing failed'));
-		const response = await POST(event() as never);
-		const payload = await response.json();
-
-		expect(response.status).toBe(503);
-		expect(response.headers.get('retry-after')).toBe('2');
-		expect(payload.code).toBe('WORKER_UNAVAILABLE');
-		expect(payload).not.toHaveProperty('data.mode');
+	it('tells a legacy-only client to upgrade instead of downgrading the turn', async () => {
+		for (const legacyOnly of [
+			body({
+				supportedModes: ['legacy_sse'],
+				supportedContractVersions: ['legacy_internal_v1']
+			}),
+			body({ supportedModes: ['legacy_sse'] }),
+			body({ supportedContractVersions: ['legacy_internal_v1'] })
+		]) {
+			const response = await POST(event({ body: legacyOnly }) as never);
+			const payload = await response.json();
+			expect(response.status).toBe(409);
+			expect(payload.code).toBe('CLIENT_UPGRADE_REQUIRED');
+		}
+		expect(mocks.resolveExistingAgenticChatTransportDecision).not.toHaveBeenCalled();
 	});
 
 	it('treats an unproven prior decision id only as a lookup hint', async () => {
@@ -170,24 +135,6 @@ describe('POST /api/agent/v2/transport', () => {
 		expect(response.status).toBe(200);
 		expect(payload.data.decisionId).not.toBe(DECISION_ID);
 		expect(payload.data.decisionId).toMatch(/^[0-9a-f-]{36}$/);
-	});
-
-	it('rejects a selected transport the client did not advertise', async () => {
-		mocks.selectAgenticChatNewTransport.mockResolvedValueOnce({
-			mode: 'legacy_sse',
-			contractVersion: 'legacy_internal_v1'
-		});
-		const response = await POST(
-			event({
-				body: body({
-					supportedModes: ['worker_realtime'],
-					supportedContractVersions: ['agentic_chat_worker_v1']
-				})
-			}) as never
-		);
-		const payload = await response.json();
-		expect(response.status).toBe(409);
-		expect(payload.code).toBe('TRANSPORT_INCOMPATIBLE');
 	});
 
 	it('reissues an existing turn only in its persisted immutable mode', async () => {
@@ -205,7 +152,6 @@ describe('POST /api/agent/v2/transport', () => {
 			contractVersion: 'agentic_chat_worker_v1',
 			decisionId: DECISION_ID
 		});
-		expect(mocks.selectAgenticChatNewTransport).not.toHaveBeenCalled();
 	});
 
 	it('maps binding conflicts distinctly and keeps internal failures private', async () => {
@@ -227,23 +173,19 @@ describe('POST /api/agent/v2/transport', () => {
 		expect(JSON.stringify(payload)).not.toContain('too short');
 	});
 
-	it('returns transport-unavailable when a legacy-only decision lookup fails', async () => {
+	it('refuses a stored decision that names a retired engine', async () => {
 		mocks.resolveExistingAgenticChatTransportDecision.mockRejectedValueOnce(
-			new Error('temporary database outage')
+			new AgenticChatTransportDecisionError(
+				'stored_contract_invalid',
+				'private stored contract detail'
+			)
 		);
-		const response = await POST(
-			event({
-				body: body({
-					supportedModes: ['legacy_sse'],
-					supportedContractVersions: ['legacy_internal_v1']
-				})
-			}) as never
-		);
+		const response = await POST(event() as never);
 		const payload = await response.json();
 
-		expect(response.status).toBe(503);
-		expect(payload.code).toBe('TRANSPORT_UNAVAILABLE');
-		expect(payload.message).not.toContain('database outage');
+		expect(response.status).toBe(409);
+		expect(payload.code).toBe('TRANSPORT_CONFLICT');
+		expect(JSON.stringify(payload)).not.toContain('private stored contract detail');
 	});
 
 	it('keeps compatible-turn decision failures worker-strict', async () => {

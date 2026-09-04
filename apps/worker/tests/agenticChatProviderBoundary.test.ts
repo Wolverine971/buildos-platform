@@ -23,7 +23,6 @@ const EXTRACTED_PROVIDER_MODULES = [
 	join('review', 'decision-completion.ts'),
 	join('review', 'decision-handling.ts'),
 	join('review', 'disposition.ts'),
-	join('review', 'mutation-batch.ts'),
 	join('review', 'turn-contract.ts')
 ] as const;
 
@@ -45,13 +44,11 @@ describe('Agentic Chat provider boundaries', () => {
 			'function buildReviewerMimicryRepairRequest(',
 			'function buildReadOnlyRequest(',
 			'function buildReviewFallbackClarification(',
-			'function buildMutationBatchRevisionRequest(',
 			'function buildTurnContractWriteCarveOutRequest(',
 			'function buildUnavailableSkillRepairRequest(',
 			'function getAdmissionContextUsage(',
 			'function buildPlanningStep(',
 			'function buildPromptSnapshot(',
-			'function buildMutationBatchReviewRequest(',
 			'function buildSemanticTurnDispositionGateRequest(',
 			'function buildTurnContractReviewRequest(',
 			'function buildWorkerSemanticMutationOrdering(',
@@ -61,8 +58,6 @@ describe('Agentic Chat provider boundaries', () => {
 			'function readProposalRevision(',
 			'function validateCompletedProviderCalls(',
 			'function validateReadFeedback(',
-			'function mutationBatchSha256(',
-			'function completeMutationBatchReviewDecision(',
 			'function completeTurnContractReviewDecision(',
 			'function contextSaturationRepairRank(',
 			'function streamBufferedProviderPass(',

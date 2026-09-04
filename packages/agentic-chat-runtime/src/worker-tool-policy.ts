@@ -32,7 +32,13 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1 = Object.free
 	'update_onto_risk',
 	'create_onto_project',
 	'update_onto_project',
-	'delegate_task'
+	'delegate_task',
+	// Calendar writes moved to the worker on 2026-09-04. They call Google
+	// directly from Railway through the shared calendar write stack.
+	'create_calendar_event',
+	'update_calendar_event',
+	'delete_calendar_event',
+	'set_project_calendar'
 ] as const);
 
 /**
@@ -43,18 +49,6 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1 = Object.free
 export const AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1 = Object.freeze([
 	'get_entity_relationships',
 	'get_linked_entities',
-	'list_calendar_events',
-	'get_calendar_event_details',
-	'create_calendar_event',
-	'update_calendar_event',
-	'delete_calendar_event',
-	'get_project_calendar',
-	'set_project_calendar',
-	'get_external_account_status',
-	'request_email_account_connection',
-	'list_email_accounts',
-	'search_email_messages',
-	'get_email_message',
 	'reorganize_onto_project_graph',
 	'delete_onto_project',
 	'delete_onto_task',

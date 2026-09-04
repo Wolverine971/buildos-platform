@@ -408,7 +408,7 @@
 
 	// Establish the standing per-user worker delivery path at chat-surface mount.
 	// The runtime is intentionally handle-free until server-authoritative worker
-	// admission lands; mounting it cannot change the existing legacy SSE Send path.
+	// admission lands; mounting it cannot change the worker Send path.
 	$effect(() => {
 		if (!browser || !isSurfaceActive || !workerRealtime) return;
 		void workerRealtime.start();

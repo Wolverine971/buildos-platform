@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/provider/repair-policy.ts
 
-import { READ_LOOP_REPAIR_RANK } from '@buildos/agentic-chat-runtime/loop';
+import { READ_LOOP_REPAIR_RANK, type WriteLedgerEntry } from '@buildos/agentic-chat-runtime/loop';
 import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from '../mutationToolCatalog';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
@@ -234,4 +234,72 @@ export function contextSaturationRepairRank(
 	if (status === 'saturated') return READ_LOOP_REPAIR_RANK.stop_and_answer;
 	if (status === 'must_synthesize') return READ_LOOP_REPAIR_RANK.must_synthesize;
 	return 0;
+}
+
+const MAX_BUDGET_SYNTHESIS_RECEIPTS = 20;
+const MAX_BUDGET_SYNTHESIS_UNFINISHED = 10;
+
+/**
+ * The answer that ends a turn which spent its whole provider-pass budget.
+ * Everything already executed is durable and the user has to be told exactly
+ * that much: the receipts name what really happened, and the instruction
+ * forbids both inventing more and quietly dropping what was not done. A turn
+ * that ran out of passes used to end in a bare failure or in prose written
+ * from intent rather than from effects.
+ */
+export function buildProviderPassBudgetSynthesisInstruction(
+	ledger: readonly WriteLedgerEntry[],
+	unfinished: readonly string[]
+): string {
+	return buildReceiptGroundedSynthesisInstruction(
+		'This turn has reached its limit on model passes. No further tool call can run, and nothing else will execute after this answer.',
+		ledger,
+		unfinished
+	);
+}
+
+/**
+ * The answer that ends a batch which only half landed. Same receipt-grounded
+ * closing pass as the pass ceiling, with the reason the turn is ending changed:
+ * a failed durable call is never silently retried, so the user has to be told
+ * which effects are real and which were not made (partial mutation recovery,
+ * incident 2026-07-31).
+ */
+export function buildPartialMutationBatchSynthesisInstruction(
+	ledger: readonly WriteLedgerEntry[]
+): string {
+	return buildReceiptGroundedSynthesisInstruction(
+		'A durable call in this batch failed after an earlier one had already been recorded. No further tool call can run, and the failed call is not retried after this answer.',
+		ledger,
+		[]
+	);
+}
+
+function buildReceiptGroundedSynthesisInstruction(
+	lead: string,
+	ledger: readonly WriteLedgerEntry[],
+	unfinished: readonly string[]
+): string {
+	const receipts = ledger.slice(0, MAX_BUDGET_SYNTHESIS_RECEIPTS).map(describeWriteReceipt);
+	const remaining = unfinished
+		.filter((entry) => entry.trim().length > 0)
+		.slice(0, MAX_BUDGET_SYNTHESIS_UNFINISHED);
+	return [
+		lead,
+		receipts.length > 0
+			? `Durable effects actually recorded this turn: ${receipts.join('; ')}.`
+			: 'No durable change was recorded in this turn.',
+		...(remaining.length > 0
+			? [`Commissioned outcomes with no successful effect: ${remaining.join('; ')}.`]
+			: []),
+		'Answer the user now in plain prose. State exactly what was done using those receipts and nothing beyond them, and say plainly which part of the request was not done. Do not claim or imply an unrecorded change, do not promise to continue in the background, and do not narrate internal review, contracts, or limits.'
+	].join(' ');
+}
+
+function describeWriteReceipt(entry: WriteLedgerEntry): string {
+	const target = entry.title ?? entry.entityId ?? entry.entityKind ?? '';
+	return [
+		entry.status === 'success' ? 'succeeded' : 'failed',
+		`${entry.toolName}${target ? ` (${target})` : ''}`
+	].join(': ');
 }

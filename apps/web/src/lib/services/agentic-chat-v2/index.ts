@@ -7,16 +7,14 @@ export {
 	estimateTokensFromText,
 	FASTCHAT_TOKEN_BUDGETS
 } from './context-usage';
-export { resolveFastChatSurfaceProfileForTurn, selectFastChatTools } from './tool-selector';
 export * from './context-models';
 export {
 	createFastChatSessionService,
 	extractLoadedSkillIdsFromHistory,
 	historyIncludesLoadedSkillsLedger,
-	projectLegacyFallbackHistorySnapshot,
+	projectChatHistorySnapshot,
 	projectWorkerFrozenHistorySnapshot
 } from './session-service';
-export { streamFastChat } from './stream-orchestrator/index';
 export { FASTCHAT_LIMITS } from './limits';
 export { composeFastChatHistory } from './history-composer';
 export * from './attachments';

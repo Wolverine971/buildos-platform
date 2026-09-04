@@ -1,7 +1,10 @@
 // apps/web/src/lib/services/agentic-chat-lite/shadow/compare-lite-shadow.ts
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
-import { extractToolNamesFromDefinitions } from '@buildos/agentic-chat-runtime/catalog';
-import { normalizeFastContextType, selectFastChatTools } from '$lib/services/agentic-chat-v2';
+import {
+	extractToolNamesFromDefinitions,
+	getGatewaySurfaceForContextType
+} from '@buildos/agentic-chat-runtime/catalog';
+import { normalizeFastContextType } from '$lib/services/agentic-chat-v2';
 import {
 	buildPromptCostBreakdown,
 	type PromptCostBreakdown
@@ -344,9 +347,7 @@ export function buildLiteShadowComparison(params: {
 	const { history, userMessage } = splitHistoryAndUserMessage(modelMessages);
 	const gaps = [...snapshotContext.gaps];
 	const v2Tools = parseToolDefinitions(promptSnapshot.tool_definitions, gaps);
-	const liteTools = selectFastChatTools({
-		contextType: snapshotContext.promptContext.contextType
-	});
+	const liteTools = getGatewaySurfaceForContextType(snapshotContext.promptContext.contextType);
 	const liteEnvelope = buildLitePromptEnvelope({
 		...snapshotContext.promptContext,
 		now: params.now ?? promptSnapshot.created_at ?? null,

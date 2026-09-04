@@ -19,7 +19,7 @@ export const PREPARED_PROMPT_KEY_PREFIX = 'pp_v1';
 export const PREPARED_PROMPT_TTL_MS = 90 * 1000;
 const PREPARED_PROMPT_FOCUS_STRING_MAX_CHARS = 1_500;
 
-export type PreparedPromptExecutionMode = 'legacy_sse' | 'worker_realtime';
+export type PreparedPromptExecutionMode = 'worker_realtime';
 
 export type PreparedPromptSectionSummary = Omit<LitePromptSection, 'content'> & {
 	content_sha256: string;
@@ -281,48 +281,29 @@ export function verifyPreparedPromptNonce(params: { nonce: string; nonceSha256: 
 	return timingSafeEqual(actual, expected);
 }
 
+/**
+ * One surface per context (one-engine stage S6, 2026-09-04). One execution mode
+ * since stage S8; the surface key keeps its `worker_realtime:<profile>` shape so
+ * prepared rows written before the collapse still resolve.
+ */
 export function resolvePreparedSurfaceProfiles(
 	contextType: ChatContextType
 ): GatewaySurfaceProfileName[] {
-	if (contextType === 'project' || contextType === 'ontology') {
-		// Turn routing now deterministically selects the common project surface.
-		// Avoid serializing three unreachable full system-prompt variants.
-		return ['project_write_document'];
-	}
 	return [resolveGatewaySurfaceProfileForContextType(contextType)];
 }
 
-export function resolveWorkerPreparedSurfaceProfiles(
-	contextType: ChatContextType
-): GatewaySurfaceProfileName[] {
-	if (contextType === 'project' || contextType === 'ontology') {
-		return ['project_write_document'];
-	}
-	if (contextType === 'project_create') return ['project_create_minimal'];
-	return [resolveGatewaySurfaceProfileForContextType(contextType)];
-}
-
-export function buildPreparedPromptSurfaceKey(
-	surfaceProfile: GatewaySurfaceProfileName,
-	executionMode: PreparedPromptExecutionMode
-): string {
-	return executionMode === 'worker_realtime'
-		? `worker_realtime:${surfaceProfile}`
-		: surfaceProfile;
+export function buildPreparedPromptSurfaceKey(surfaceProfile: GatewaySurfaceProfileName): string {
+	return `worker_realtime:${surfaceProfile}`;
 }
 
 export function resolveDefaultPreparedSurfaceProfile(
 	contextType: ChatContextType
 ): GatewaySurfaceProfileName {
-	if (contextType === 'project' || contextType === 'ontology') {
-		return 'project_write_document';
-	}
 	return resolveGatewaySurfaceProfileForContextType(contextType);
 }
 
 export function buildPreparedPromptSurface(params: {
 	surfaceProfile: GatewaySurfaceProfileName;
-	executionMode?: PreparedPromptExecutionMode;
 	contextType: ChatContextType;
 	contextPayload: Record<string, unknown>;
 	conversationSummary?: string | null;
@@ -331,14 +312,13 @@ export function buildPreparedPromptSurface(params: {
 	scaffold?: LitePromptScaffoldOptions | null;
 	createdAt?: string;
 }): PreparedPromptSurface {
-	const executionMode = params.executionMode ?? 'legacy_sse';
 	const toolNames = params.tools
 		.map((tool) => tool.function?.name)
 		.filter((name): name is string => Boolean(name));
 	return {
-		surface_profile: buildPreparedPromptSurfaceKey(params.surfaceProfile, executionMode),
+		surface_profile: buildPreparedPromptSurfaceKey(params.surfaceProfile),
 		base_surface_profile: params.surfaceProfile,
-		execution_mode: executionMode,
+		execution_mode: 'worker_realtime',
 		tool_names: toolNames,
 		tools_sha256: toolNames.length > 0 ? sha256Json(toolNames) : null,
 		tool_definitions_sha256: sha256ToolDefinitions(params.tools),
@@ -414,7 +394,10 @@ export function buildPreparedPromptResponse(params: {
 	defaultSurfaceProfile: GatewaySurfaceProfileName;
 	preparedSurfaces: Record<string, PreparedPromptSurface>;
 }): PreparedPromptResponse {
-	const defaultSurface = params.preparedSurfaces[params.defaultSurfaceProfile];
+	// Surfaces are keyed by execution mode, so the default profile has to be
+	// resolved through the same key builder the writer used.
+	const defaultSurface =
+		params.preparedSurfaces[buildPreparedPromptSurfaceKey(params.defaultSurfaceProfile)];
 	return {
 		id: params.rowId,
 		key: params.key,

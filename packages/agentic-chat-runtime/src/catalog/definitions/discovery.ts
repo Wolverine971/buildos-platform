@@ -106,60 +106,6 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
 		function: {
-			name: 'work_capability_search',
-			description:
-				'Legacy alias for outcome_card_search. Prefer outcome_card_search for new calls.',
-			parameters: {
-				type: 'object',
-				properties: {
-					query: {
-						type: 'string',
-						description:
-							'Natural-language outcome search, e.g. "cold email campaign", "YouTube growth plan", or "UI screen review".'
-					},
-					domain: {
-						type: 'string',
-						description:
-							'Optional BuildOS domain id such as "sales_and_growth.cold_email" or "marketing.youtube_growth".'
-					},
-					buildosCapability: {
-						type: 'string',
-						description:
-							'Optional BuildOS runtime capability id such as "planning", "documents", or "project_audit".'
-					},
-					limit: {
-						type: 'integer',
-						default: 8,
-						minimum: 1,
-						maximum: 20,
-						description: 'Maximum matches.'
-					}
-				}
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
-			name: 'work_capability_load',
-			description:
-				'Legacy alias for outcome_card_load. Prefer outcome_card_load for new calls.',
-			parameters: {
-				type: 'object',
-				properties: {
-					workCapability: {
-						type: 'string',
-						description:
-							'Canonical outcome card id such as "cold_email_campaign_build", "youtube_growth_strategy_plan", or "ui_ux_screen_review".'
-					}
-				},
-				required: ['workCapability']
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
 			name: 'skill_search',
 			description: 'Find BuildOS workflow playbooks relevant to the task.',
 			parameters: {

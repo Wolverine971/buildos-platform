@@ -53,6 +53,13 @@ const workspacePackageRootAliases = [
 // gateway's relative imports and the mocked subpaths dedupe to the same files.
 const sharedAgentOpsTestAliases = [
 	'calendar/google-calendar-runtime',
+	'calendar/google-calendar-feature',
+	'calendar/onto-event-read.service',
+	'calendar/onto-event.service',
+	'calendar/onto-event-sync.service',
+	'calendar/calendar-colors',
+	'calendar/project-calendar-read.service',
+	'calendar/project-calendar.service',
 	'calendar/google-calendar-credential.service',
 	'calendar/google-calendar-token-crypto',
 	'gateway/op-execution-gateway',
@@ -79,7 +86,16 @@ const sharedAgentOpsTestAliases = [
 	'utils/validation-utils',
 	'web/native-search',
 	'web/safe-fetch',
-	'email/gmail-account-read-port'
+	'email/gmail-account-read-port',
+	'email/gmail-integration.types',
+	'email/gmail-database.types',
+	'email/gmail-gateway-infrastructure',
+	'email/gmail-token-crypto',
+	'email/gmail-read-cursor',
+	'email/gmail-rate-limiter-port',
+	'email/gmail-read-rate-limit',
+	'email/gmail-read-oauth.service',
+	'email/gmail-read-gateway'
 ].map((sub) => ({
 	find: `@buildos/shared-agent-ops/${sub}`,
 	replacement: sharedAgentOpsSrc(`${sub}.ts`)

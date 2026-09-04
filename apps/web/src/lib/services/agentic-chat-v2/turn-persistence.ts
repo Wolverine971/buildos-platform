@@ -17,7 +17,7 @@ import type {
 	AgentStateToolSummary
 } from '$lib/services/agentic-chat/state/agent-state-reconciliation-service';
 import { extractFastChatToolCallMeta } from '$lib/services/agentic-chat-v2/prompt-observability';
-import type { LLMStreamPassMetadata } from './stream-orchestrator/shared';
+import type { LLMStreamPassMetadata } from '@buildos/agentic-chat-runtime/loop';
 import { extractToolOpFromToolCall } from './tool-trace';
 import type { AgentChatEventSink } from './stream-events';
 

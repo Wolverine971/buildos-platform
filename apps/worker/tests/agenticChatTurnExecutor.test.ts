@@ -4,19 +4,15 @@ import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
+import { projectAgenticChatWorkerLifecycleObservationsV1 } from '@buildos/agentic-chat-runtime';
 import {
 	AGENTIC_CHAT_MUTATING_TOOL_FIXTURE_V1,
 	AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1,
 	AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1,
-	AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
 	AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
-	AGENTIC_CHAT_TIMEOUT_FIXTURE_V1,
-	AGENTIC_CHAT_TIMEOUT_GOLDEN_V1,
-	createAgenticChatWorkerParityCoverageTrackerV1,
-	normalizeAgenticChatParityRunV1,
-	projectAgenticChatWorkerLifecycleObservationsV1
-} from '@buildos/agentic-chat-runtime';
+	AGENTIC_CHAT_TIMEOUT_FIXTURE_V1
+} from './fixtures/agenticChatTurnFixtures';
 import { provideAgenticChatLoopToolCatalog } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
@@ -47,7 +43,7 @@ import {
 	AgenticChatToolExecutionTimeoutError,
 	SupabaseAgenticChatToolExecutionAdapter
 } from '../src/workers/agentic-chat/toolExecution';
-import { AgenticChatUpdateOntoTaskMutationAdapter } from '../src/workers/agentic-chat/updateOntoTaskMutationAdapter';
+import { AgenticChatTableMutationAdapter } from '../src/workers/agentic-chat/tableMutationAdapter';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -817,7 +813,21 @@ function streamBroadcastMessages(messages: Array<Record<string, unknown>>) {
 	return messages.filter((message) => message.kind === 'event');
 }
 
-const parityCoverage = createAgenticChatWorkerParityCoverageTrackerV1();
+/**
+ * Public event types with consecutive assistant text collapsed into one
+ * `assistant_text` entry, so a delta-count change does not churn the assertion.
+ */
+function normalizedBroadcastEventTypes(messages: Array<Record<string, unknown>>): string[] {
+	const types: string[] = [];
+	for (const message of streamBroadcastMessages(messages)) {
+		const rawType = (message.payload as Record<string, unknown>).type;
+		const type =
+			rawType === 'text' || rawType === 'text_delta' ? 'assistant_text' : String(rawType);
+		if (type === 'assistant_text' && types.at(-1) === 'assistant_text') continue;
+		types.push(type);
+	}
+	return types;
+}
 
 describe('AgenticChatTurnExecutor', () => {
 	it('consumes provider text without waiting for each durable delivery', async () => {
@@ -1890,7 +1900,7 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
-	it('isolates the intentional async timing divergence from the remaining legacy differential', async () => {
+	it('commits async timing without a done timestamp on a deterministic text-only turn', async () => {
 		const harness = createHarness(
 			[
 				{
@@ -1923,53 +1933,6 @@ describe('AgenticChatTurnExecutor', () => {
 			});
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 			if (!terminalInput) throw new Error('Phase 4 worker fixture did not finalize');
-			const worker = normalizeAgenticChatParityRunV1({
-				events: streamBroadcastMessages(harness.broadcastMessages).map(
-					(message) => message.payload
-				) as never,
-				messages: [
-					{
-						role: 'user',
-						content: fixtureExecutionInput.requestPayload.message
-					},
-					{
-						role: 'assistant',
-						content: terminalInput.assistantText,
-						metadata: {
-							completion_status: terminalInput.assistantMetadata.completion_status,
-							answer_source: terminalInput.assistantMetadata.answer_source
-						}
-					}
-				],
-				toolExecutions: [],
-				checkpoints: [],
-				outcome: {
-					status: terminalInput.status,
-					finished_reason: terminalInput.finishedReason,
-					assistant_message_linked: terminalInput.assistantMessageId !== null,
-					total_tokens: terminalInput.totalTokens
-				},
-				metadata: {
-					admission: {
-						status: claim.status,
-						context_type: fixtureExecutionInput.requestPayload.context.type,
-						user_message_linked:
-							claim.userMessageId === executionInput.claim.userMessageId
-					},
-					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
-						admissionObserved: true,
-						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
-							(message) => message.payload
-						),
-						terminalStatus: terminalInput.status,
-						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
-					}),
-					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
-				}
-			});
-			const evaluation = parityCoverage.evaluate('success', worker);
-			expect(evaluation.diff.truncated).toBe(false);
-			expect(evaluation.deliberate.length).toBeGreaterThan(0);
 			expect(
 				(
 					streamBroadcastMessages(harness.broadcastMessages)[6]?.payload as Record<
@@ -1981,16 +1944,12 @@ describe('AgenticChatTurnExecutor', () => {
 				timing_contract_version: 'agentic_chat_async_v1',
 				done_emitted_at: null
 			});
-			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
-				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
-			);
-			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			await harness.publisher.stop();
 		}
 	});
 
-	it('exposes the exact deterministic validation-repair real-tool parity gaps', async () => {
+	it('orders durable and public receipts across a deterministic validation repair', async () => {
 		const harness = createHarness([]);
 		const firstReadExecution = {
 			result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.result,
@@ -2154,86 +2113,6 @@ describe('AgenticChatTurnExecutor', () => {
 			});
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 			if (!terminalInput) throw new Error('Phase 4 read-only fixture did not finalize');
-			const persistedToolExecutions = [
-				...harness.toolExecutions.persistRead.mock.calls.map(([input], index) => ({
-					order: harness.toolExecutions.persistRead.mock.invocationCallOrder[index]!,
-					row: {
-						tool_name: input.toolName,
-						tool_category: input.execution.toolCategory,
-						sequence_index: input.sequenceIndex,
-						arguments: input.arguments,
-						result: input.execution.result,
-						execution_time_ms: input.execution.executionTimeMs,
-						tokens_consumed: input.execution.tokensConsumed,
-						success: true,
-						affected_entities: input.execution.affectedEntities,
-						message_linked: terminalInput.assistantMessageId !== null
-					}
-				})),
-				...harness.toolExecutions.persistFailure.mock.calls.map(([input], index) => ({
-					order: harness.toolExecutions.persistFailure.mock.invocationCallOrder[index]!,
-					row: {
-						tool_name: input.toolName,
-						tool_category: input.toolCategory,
-						sequence_index: input.sequenceIndex,
-						arguments: input.arguments,
-						result: null,
-						execution_time_ms: null,
-						tokens_consumed: null,
-						success: false,
-						affected_entities: [],
-						message_linked: terminalInput.assistantMessageId !== null
-					}
-				}))
-			]
-				.sort((left, right) => left.order - right.order)
-				.map(({ row }) => row);
-			const worker = normalizeAgenticChatParityRunV1({
-				events: streamBroadcastMessages(harness.broadcastMessages).map(
-					(message) => message.payload
-				) as never,
-				messages: [
-					{
-						role: 'user',
-						content: fixtureExecutionInput.requestPayload.message
-					},
-					{
-						role: 'assistant',
-						content: terminalInput.assistantText,
-						metadata: {
-							completion_status: terminalInput.assistantMetadata.completion_status,
-							answer_source: terminalInput.assistantMetadata.answer_source
-						}
-					}
-				],
-				toolExecutions: persistedToolExecutions,
-				checkpoints: [],
-				outcome: {
-					status: terminalInput.status,
-					finished_reason: terminalInput.finishedReason,
-					assistant_message_linked: terminalInput.assistantMessageId !== null,
-					tool_round_count: terminalInput.assistantMetadata.tool_round_count,
-					tool_call_count: terminalInput.assistantMetadata.tool_call_count,
-					total_tokens: terminalInput.totalTokens
-				},
-				metadata: {
-					admission: {
-						status: claim.status,
-						context_type: fixtureExecutionInput.requestPayload.context.type,
-						user_message_linked:
-							claim.userMessageId === fixtureExecutionInput.claim.userMessageId
-					},
-					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
-						admissionObserved: true,
-						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
-							(message) => message.payload
-						),
-						terminalStatus: terminalInput.status,
-						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
-					}),
-					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
-				}
-			});
 			expect(continueWithToolResults).toHaveBeenCalledTimes(3);
 			expect(harness.readTool.execute).toHaveBeenCalledTimes(3);
 			expect(
@@ -2291,19 +2170,12 @@ describe('AgenticChatTurnExecutor', () => {
 				'timing',
 				'done'
 			]);
-			const evaluation = parityCoverage.evaluate('read_only_tools', worker);
-			expect(evaluation.diff.truncated).toBe(false);
-			expect(evaluation.deliberate.length).toBeGreaterThan(0);
-			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
-				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
-			);
-			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			await harness.publisher.stop();
 		}
 	});
 
-	it('exposes only the ratified effect-receipt asymmetry for the mutating-tool golden', async () => {
+	it('routes the deterministic mutating-tool fixture through the effect boundary', async () => {
 		const fixture = AGENTIC_CHAT_MUTATING_TOOL_FIXTURE_V1;
 		const harness = createHarness(
 			[
@@ -2397,8 +2269,9 @@ describe('AgenticChatTurnExecutor', () => {
 			entityProjectId: fixture.tool.result.task.project_id,
 			entityTitle: fixture.tool.result.task.title
 		}));
-		const mutatingTool = new AgenticChatUpdateOntoTaskMutationAdapter({} as never, {
-			runGateway: runGateway as never
+		const mutatingTool = new AgenticChatTableMutationAdapter({} as never, {
+			runGateway: runGateway as never,
+			taskSync: { syncTaskEvents: vi.fn() } as never
 		});
 		const mutatingToolExecute = vi.spyOn(mutatingTool, 'execute');
 		const realMutation = new AgenticChatMutationExecutor({
@@ -2480,69 +2353,6 @@ describe('AgenticChatTurnExecutor', () => {
 			if (!terminalInput) throw new Error('Phase 4 mutation fixture did not finalize');
 			const persistedMutation = harness.toolExecutions.persistMutation.mock.calls[0]?.[0];
 			if (!persistedMutation) throw new Error('Phase 4 mutation fixture was not persisted');
-			const worker = normalizeAgenticChatParityRunV1({
-				events: streamBroadcastMessages(harness.broadcastMessages).map(
-					(message) => message.payload
-				) as never,
-				messages: [
-					{ role: 'user', content: fixtureExecutionInput.requestPayload.message },
-					{
-						role: 'assistant',
-						content: terminalInput.assistantText,
-						metadata: {
-							completion_status: terminalInput.assistantMetadata.completion_status,
-							answer_source: terminalInput.assistantMetadata.answer_source
-						}
-					}
-				],
-				toolExecutions: [
-					{
-						tool_name: persistedMutation.toolName,
-						tool_category: fixture.tool.toolCategory,
-						gateway_op: persistedMutation.operationName,
-						effect_id: persistedMutation.effectId,
-						provider_tool_call_id: persistedMutation.providerToolCallId,
-						sequence_index: persistedMutation.sequenceIndex,
-						arguments: persistedMutation.arguments,
-						result: fixture.tool.result,
-						// Ratified divergence (parity-scenarios.ts): the worker persists the
-						// measured adapter wall time; the legacy golden pinned null.
-						execution_time_ms: persistedMutation.executionTimeMs,
-						tokens_consumed: persistedMutation.tokensConsumed,
-						requires_user_action: persistedMutation.requiresUserAction,
-						success: true,
-						affected_entities: persistedMutation.affectedEntities,
-						message_linked: terminalInput.assistantMessageId !== null
-					}
-				],
-				checkpoints: [],
-				outcome: {
-					status: terminalInput.status,
-					finished_reason: terminalInput.finishedReason,
-					assistant_message_linked: terminalInput.assistantMessageId !== null,
-					tool_round_count: terminalInput.assistantMetadata.tool_round_count,
-					tool_call_count: terminalInput.assistantMetadata.tool_call_count,
-					total_tokens: terminalInput.totalTokens
-				},
-				metadata: {
-					admission: {
-						status: claim.status,
-						context_type: fixtureExecutionInput.requestPayload.context.type,
-						user_message_linked:
-							claim.userMessageId === fixtureExecutionInput.claim.userMessageId
-					},
-					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
-						admissionObserved: true,
-						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
-							(message) => message.payload
-						),
-						terminalStatus: terminalInput.status,
-						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
-					}),
-					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
-				}
-			});
-			const evaluation = parityCoverage.evaluate('mutating_tools', worker);
 			expect(effectControl.reserve).toHaveBeenCalledOnce();
 			expect(effectControl.begin).toHaveBeenCalledOnce();
 			expect(effectControl.reconcile).toHaveBeenCalledWith(
@@ -2565,25 +2375,6 @@ describe('AgenticChatTurnExecutor', () => {
 				p_affected_entities: fixture.tool.affectedEntities,
 				p_execution_time_ms: expect.any(Number)
 			});
-			expect(evaluation.diff.truncated).toBe(false);
-			const effectDivergences = evaluation.deliberate
-				.map(({ path }) => path)
-				.filter((path) => !path.startsWith('/events/9/payload/timing/'));
-			expect(effectDivergences).toEqual([
-				'/events/5/payload/result/effect_id',
-				'/events/5/payload/result/replayed',
-				'/toolExecutions/0/effect_id',
-				'/toolExecutions/0/execution_time_ms'
-			]);
-			expect(
-				evaluation.deliberate
-					.map(({ path }) => path)
-					.filter((path) => path.startsWith('/events/9/payload/timing/')).length
-			).toBeGreaterThan(0);
-			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
-				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
-			);
-			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -4552,7 +4343,7 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
-	it('exposes the remaining partial-cancellation differential after durable metadata parity', async () => {
+	it('finalizes durable partial text and metadata on a partial cancellation', async () => {
 		const harness = createHarness([], {
 			recovery: [
 				recoveryReceipt('finalize_cancelled'),
@@ -4606,55 +4397,6 @@ describe('AgenticChatTurnExecutor', () => {
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 			if (!terminalInput)
 				throw new Error('Partial-cancellation worker fixture did not finalize');
-			const worker = normalizeAgenticChatParityRunV1({
-				events: streamBroadcastMessages(harness.broadcastMessages).map(
-					(message) => message.payload
-				) as never,
-				messages: [
-					{
-						role: 'user',
-						content: fixtureExecutionInput.requestPayload.message
-					},
-					{
-						role: 'assistant',
-						content: terminalInput.assistantText,
-						metadata: {
-							finished_reason: terminalInput.assistantMetadata.finished_reason,
-							interrupted: terminalInput.assistantMetadata.interrupted,
-							interrupted_reason: terminalInput.assistantMetadata.interrupted_reason,
-							partial_tokens: terminalInput.assistantMetadata.partial_tokens
-						}
-					}
-				],
-				toolExecutions: [],
-				checkpoints: [],
-				outcome: {
-					status: terminalInput.status,
-					finished_reason: terminalInput.finishedReason,
-					assistant_message_linked: terminalInput.assistantMessageId !== null,
-					total_tokens: terminalInput.totalTokens
-				},
-				metadata: {
-					admission: {
-						status: claim.status,
-						context_type: fixtureExecutionInput.requestPayload.context.type,
-						user_message_linked:
-							claim.userMessageId === executionInput.claim.userMessageId
-					},
-					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
-						admissionObserved: true,
-						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
-							(message) => message.payload
-						),
-						terminalStatus: terminalInput.status,
-						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
-					}),
-					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
-				}
-			});
-			const evaluation = parityCoverage.evaluate('cancellation', worker);
-			expect(evaluation.diff.truncated).toBe(false);
-			expect(evaluation.deliberate.length).toBeGreaterThan(0);
 			expect(
 				(
 					streamBroadcastMessages(harness.broadcastMessages)[5]?.payload as Record<
@@ -4667,10 +4409,6 @@ describe('AgenticChatTurnExecutor', () => {
 				done_emitted_at: null,
 				finished_reason: 'cancelled'
 			});
-			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
-				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
-			);
-			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -4747,55 +4485,7 @@ describe('AgenticChatTurnExecutor', () => {
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 			if (!terminalInput) throw new Error('Provider-error worker fixture did not finalize');
 			expect(terminalInput.failureCode).toBe('provider_stream_failed');
-			const worker = normalizeAgenticChatParityRunV1({
-				events: streamBroadcastMessages(harness.broadcastMessages).map(
-					(message) => message.payload
-				) as never,
-				messages: [
-					{
-						role: 'user',
-						content: fixtureExecutionInput.requestPayload.message
-					}
-				],
-				toolExecutions: [],
-				checkpoints: [],
-				outcome: {
-					status: terminalInput.status,
-					finished_reason: terminalInput.finishedReason,
-					assistant_message_linked: terminalInput.assistantMessageId !== null,
-					total_tokens: 0
-				},
-				metadata: {
-					admission: {
-						status: claim.status,
-						context_type: fixtureExecutionInput.requestPayload.context.type,
-						user_message_linked:
-							claim.userMessageId === executionInput.claim.userMessageId
-					},
-					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
-						admissionObserved: true,
-						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
-							(message) => message.payload
-						),
-						terminalStatus: terminalInput.status,
-						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
-					}),
-					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
-				}
-			});
-			const evaluation = parityCoverage.evaluate('provider_error', worker);
-			const workerEventTypes = worker.events.map(({ type }) => type);
-
-			expect(evaluation.diff.truncated).toBe(false);
-			expect(
-				evaluation.contested.filter(({ path }) =>
-					path.startsWith('/metadata/lifecycle_events/')
-				)
-			).toEqual([]);
-			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
-				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
-			);
-			expect(evaluation.matchesContract).toBe(true);
+			const workerEventTypes = normalizedBroadcastEventTypes(harness.broadcastMessages);
 			expect(workerEventTypes).toEqual([
 				'turn_phase',
 				'session',
@@ -4805,26 +4495,8 @@ describe('AgenticChatTurnExecutor', () => {
 				'timing',
 				'done'
 			]);
-			expect(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1.events.map(({ type }) => type)).toEqual([
-				'turn_phase',
-				'session',
-				'context_usage',
-				'assistant_text',
-				'error',
-				'timing',
-				'done'
-			]);
-			expect(worker.messages).toHaveLength(1);
-			expect(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1.messages).toHaveLength(1);
-			expect(worker.outcome).toMatchObject({
-				assistant_message_linked: false,
-				total_tokens: 0
-			});
-			expect(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1.outcome).toMatchObject({
-				assistant_message_linked: false,
-				total_tokens: 0
-			});
-			expect(worker.metadata.prompt_snapshot_count).toBe(1);
+			expect(terminalInput.assistantMessageId).toBeNull();
+			expect(harness.promptSnapshots.persist.mock.calls.length).toBe(1);
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -4888,53 +4560,6 @@ describe('AgenticChatTurnExecutor', () => {
 					(message) => (message.payload as Record<string, unknown>).type
 				)
 			).toEqual(['turn_phase', 'session', 'context_usage', 'error', 'timing', 'done']);
-			const worker = normalizeAgenticChatParityRunV1({
-				events: streamBroadcastMessages(harness.broadcastMessages).map(
-					(message) => message.payload
-				) as never,
-				messages: [
-					{
-						role: 'user',
-						content: fixtureExecutionInput.requestPayload.message
-					}
-				],
-				toolExecutions: [],
-				checkpoints: [],
-				outcome: {
-					status: terminalInput.status,
-					finished_reason: terminalInput.finishedReason,
-					assistant_message_linked: terminalInput.assistantMessageId !== null,
-					total_tokens: terminalInput.totalTokens
-				},
-				metadata: {
-					admission: {
-						status: claim.status,
-						context_type: fixtureExecutionInput.requestPayload.context.type,
-						user_message_linked:
-							claim.userMessageId === fixtureExecutionInput.claim.userMessageId
-					},
-					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
-						admissionObserved: true,
-						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
-							(message) => message.payload
-						),
-						terminalStatus: terminalInput.status,
-						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length,
-						streamTerminalFailureObserved:
-							terminalInput.failureCode === 'timeout_post_start'
-					}),
-					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
-				}
-			});
-			const evaluation = parityCoverage.evaluate('timeout', worker);
-			expect(evaluation.diff.truncated).toBe(false);
-			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
-				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
-			);
-			expect(evaluation.matchesContract).toBe(true);
-			expect(worker.events.map(({ type }) => type)).toEqual(
-				AGENTIC_CHAT_TIMEOUT_GOLDEN_V1.events.map(({ type }) => type)
-			);
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -5392,13 +5017,6 @@ describe('AgenticChatTurnExecutor', () => {
 		} finally {
 			await harness.publisher.stop();
 		}
-	});
-
-	it('exercises every implemented parity scenario class from the shared registry', () => {
-		// The registry still carries the supervisor-question golden for the web
-		// orchestrator. The worker deleted its supervisor, so the two classes that
-		// replay that golden are no longer worker scenarios.
-		expect(parityCoverage.missing()).toEqual(['clarification', 'supervisor_checkpoint']);
 	});
 });
 

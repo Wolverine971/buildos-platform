@@ -5,6 +5,7 @@ import { AgenticChatExploreUnavailableError, exploreProject } from './ontology-e
 import { AgenticChatOntologySearchInputError } from './ontology-search';
 
 const ACTOR_ID = '90000000-0000-4000-8000-000000000009';
+const USER_ID = '91000000-0000-4000-8000-000000000009';
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
 const OTHER_PROJECT_ID = '50000000-0000-4000-8000-000000000005';
 const EMBEDDING = [0.1, 0.2, 0.3];
@@ -34,6 +35,8 @@ function contextWith(input: {
 	const assertProjectAccess = vi.fn(async () => {});
 	const context: AgenticChatSharedReadContextV1 = {
 		client: client as never,
+		userId: USER_ID,
+		timezone: null,
 		access: {
 			getActorId: vi.fn(async () => ACTOR_ID),
 			resolveProjectSummaries: vi.fn(async () => []),

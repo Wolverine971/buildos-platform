@@ -191,7 +191,6 @@ describe('Chat tool schema compatibility', () => {
 		const defaults: Record<string, number> = {
 			domain_search: 6,
 			outcome_card_search: 8,
-			work_capability_search: 8,
 			skill_search: 8,
 			resource_search: 8,
 			tool_search: 8
@@ -301,15 +300,24 @@ describe('Chat tool schema compatibility', () => {
 		}
 	});
 
-	it('maps legacy search_buildos references to search_all_projects', () => {
-		const schema = getToolSchema('search_buildos', {
+	it('serves one name per capability: the canonical name resolves, a legacy one does not', () => {
+		// One tool name space (one-engine stage S9, 2026-09-04). `tool_schema` used
+		// to fold legacy names onto canonical ops through `GATEWAY_OP_ALIASES`; that
+		// table is deleted, so a legacy name is simply not a name. `search_buildos`
+		// survives only as an executor-side entry in the shared read dispatch — it
+		// has no tool definition, so it is never mounted and never callable.
+		const canonical = getToolSchema('search_all_projects', {
 			include_examples: true,
 			include_schema: true
 		}) as Record<string, any>;
 
-		expect(schema.type).toBe('tool_schema');
-		expect(schema.op).toBe('x.search.all_projects');
-		expect(schema.tool_name).toBe('search_all_projects');
-		expect(schema.example_tool_call.name).toBe('search_all_projects');
+		expect(canonical.type).toBe('tool_schema');
+		expect(canonical.op).toBe('x.search.all_projects');
+		expect(canonical.tool_name).toBe('search_all_projects');
+		expect(canonical.example_tool_call.name).toBe('search_all_projects');
+
+		expect(
+			(getToolSchema('search_buildos', { include_schema: true }) as Record<string, any>).type
+		).toBe('not_found');
 	});
 });

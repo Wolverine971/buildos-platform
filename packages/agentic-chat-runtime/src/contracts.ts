@@ -10,12 +10,7 @@ import type {
 
 export const AGENTIC_CHAT_RUNTIME_CONTRACT_VERSION = 'agentic_chat_runtime_v1' as const;
 
-export type AdmittedTurnHandleV1 =
-	| (Omit<Extract<TurnHandleV1, { executionMode: 'legacy_sse' }>, 'sessionId' | 'turnRunId'> & {
-			sessionId: string;
-			turnRunId: string;
-	  })
-	| Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
+export type AdmittedTurnHandleV1 = Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
 
 export type AgenticChatTurnContextV1 = {
 	type: string;
@@ -27,8 +22,8 @@ export type AgenticChatTurnContextV1 = {
  * Transport-neutral input to one admitted turn execution.
  *
  * Host adapters retain ownership of authentication, HTTP parsing, admission,
- * and transport setup. `input` carries adapter-specific retained or legacy
- * input until the shared artifact contract is wired through both modes.
+ * and transport setup. `input` carries adapter-specific retained input until
+ * the shared artifact contract is wired all the way through.
  */
 export type AgenticChatTurnCommand<TInput = unknown> = {
 	runtimeContractVersion: typeof AGENTIC_CHAT_RUNTIME_CONTRACT_VERSION;
@@ -60,6 +55,11 @@ export type AgenticChatStreamEvent<
 	TPayload extends AgenticChatRuntimeEvent = AgenticChatRuntimeEvent
 > = AgentStreamEventV1<TPayload>;
 
+/**
+ * One execution mode since one-engine stage S8, so the handle shape is already
+ * the admitted shape. The runtime guard still holds: a handle with a blank
+ * session or turn identity never reached durable admission.
+ */
 export function isAdmittedTurnHandle(handle: TurnHandleV1): handle is AdmittedTurnHandleV1 {
-	return Boolean(handle.sessionId?.trim() && handle.turnRunId?.trim());
+	return Boolean(handle.sessionId.trim() && handle.turnRunId.trim());
 }

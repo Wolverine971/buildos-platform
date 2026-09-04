@@ -20,14 +20,9 @@ import type {
 } from '../src/workers/agentic-chat/provider/contracts';
 import {
 	ACTOR_COMMISSION_GUIDANCE,
-	MUTATION_BATCH_REVIEW_APPROVAL_TOOL,
 	SEMANTIC_COMMISSION_GUIDANCE,
 	TURN_CONTRACT_REVIEW_APPROVAL_TOOL
 } from '../src/workers/agentic-chat/provider/review/controls';
-import {
-	buildMutationBatchReviewRequest,
-	mutationBatchSha256
-} from '../src/workers/agentic-chat/provider/review/mutation-batch';
 import {
 	REVIEWER_EVIDENCE_SECTION_TITLES,
 	buildReviewerEvidence,
@@ -81,7 +76,7 @@ const ACTING_SYSTEM_PROMPT = [
 	'Tasks loaded:',
 	`- Northwind intro call (${TASK_ID}) state=in_progress`,
 	'',
-	'## Loaded Data and Retrieval Boundaries',
+	'## Rules for This Turn',
 	'',
 	'Loaded 1 task.'
 ].join('\n');
@@ -247,41 +242,19 @@ function sha(value: unknown): string {
 	return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
-function batchReview(request = actingRequest(), allowRevision = true) {
-	const argumentsValue: JsonObject = { task_id: TASK_ID, state_key: 'done' };
-	const call = {
-		id: 'mutation-1',
-		name: 'update_onto_task',
-		arguments: argumentsValue,
-		canonicalArguments: canonicalizeAgenticChatJson(argumentsValue),
-		canonicalProviderArguments: canonicalizeAgenticChatJson(argumentsValue)
-	};
-	return buildMutationBatchReviewRequest(
-		{
-			proposalSource: 'acting_model',
-			batchSha256: mutationBatchSha256([call]),
-			calls: [call],
-			blockedToolCalls: new Map(),
-			authorization: {
-				contract: contract(),
-				contractSha256: sha(contractArguments()),
-				labelBindings: new Map()
-			},
-			reviewTools: reviewTools(),
-			request,
-			usage: null
-		},
-		allowRevision
-	);
-}
-
 describe('reviewer request prefix stability', () => {
-	it('gives the batch reviewer one approval hash without the unrelated contract hash', () => {
-		const review = batchReview();
+	it('gives the contract reviewer one approval hash and no other', () => {
+		const review = buildTurnContractReviewRequest(
+			actingRequest(),
+			reviewTools(),
+			contract(),
+			sha(contractArguments()),
+			true,
+			true
+		);
 		const evidence = String(review.messages[1]?.content);
-		expect(evidence).not.toContain(sha(contractArguments()));
 		expect(evidence.match(/\b[a-f0-9]{64}\b/g)).toHaveLength(1);
-		expect(evidence).toContain('batch_sha256');
+		expect(evidence).toContain('Exact proposed contract SHA-256');
 	});
 
 	it('advertises static approval tools with no per-review SHA constant', () => {
@@ -310,13 +283,6 @@ describe('reviewer request prefix stability', () => {
 				.contract_sha256 as JsonObject
 		).description;
 		expect(String(shaProperty)).toContain('quoted in this request');
-		const batchSha = (
-			(MUTATION_BATCH_REVIEW_APPROVAL_TOOL.function.parameters.properties as JsonObject)
-				.batch_sha256 as JsonObject
-		).description;
-		expect(String(batchSha)).toContain('quoted in this request');
-		expect(batchReview().tools[0]).toBe(MUTATION_BATCH_REVIEW_APPROVAL_TOOL);
-		expect(JSON.stringify(batchReview().tools)).not.toContain('"const"');
 	});
 
 	it('keeps the reviewer system prompt byte-identical across reviews', () => {
@@ -334,8 +300,7 @@ describe('reviewer request prefix stability', () => {
 			{ ...contract(), outcomes: [] },
 			'c'.repeat(64),
 			false,
-			false,
-			'mutation_candidate_compiler'
+			false
 		);
 		expect(base.messages[0]?.role).toBe('system');
 		expect(base.messages[0]?.content).toBe(laterReview.messages[0]?.content);
@@ -347,7 +312,7 @@ describe('reviewer request prefix stability', () => {
 		);
 		expect(String(base.messages[0]?.content)).not.toContain('a'.repeat(64));
 		expect(String(laterReview.messages[1]?.content)).toContain(
-			'worker deterministically derived'
+			'the acting model chose the contract'
 		);
 		expect(String(base.messages[1]?.content)).toContain('the acting model chose the contract');
 		for (const line of SEMANTIC_COMMISSION_GUIDANCE) {
@@ -355,13 +320,6 @@ describe('reviewer request prefix stability', () => {
 		}
 		expect(String(base.messages[0]?.content)).toContain(
 			'prior independent review already established'
-		);
-
-		const batchA = batchReview(actingRequest(), true);
-		const batchB = batchReview(actingRequest({ logicalProviderRound: 9 }), false);
-		expect(batchA.messages[0]?.content).toBe(batchB.messages[0]?.content);
-		expect(String(batchA.messages[1]?.content)).toContain(
-			'Exact proposed execution-plan batch SHA-256'
 		);
 	});
 
@@ -418,13 +376,6 @@ describe('reviewer evidence filter', () => {
 		expect(userMessage).not.toContain('Never guess entity ids');
 		expect(userMessage).not.toContain('Tools: list_onto_tasks');
 		expect(userMessage).not.toContain(SEMANTIC_COMMISSION_GUIDANCE[0]!);
-
-		const batch = batchReview();
-		const batchUser = String(batch.messages[1]?.content);
-		expect(batchUser).toContain('I finished the Northwind intro call');
-		expect(batchUser).toContain('Ship the intro call first.');
-		expect(batchUser).not.toContain('Before you finish');
-		expect(batchUser).not.toContain('Worker write routing');
 	});
 
 	it('slices the acting prompt on known top-level sections only', () => {
@@ -434,7 +385,7 @@ describe('reviewer evidence filter', () => {
 			'Project Start Here',
 			'Current Focus and Purpose',
 			'Location and Loaded Context',
-			'Loaded Data and Retrieval Boundaries'
+			'Rules for This Turn'
 		]);
 		for (const entry of sections) {
 			expect(REVIEWER_EVIDENCE_SECTION_TITLES).toContain(entry.section);

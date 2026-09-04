@@ -104,10 +104,20 @@ export function createWebAgenticChatToolAccessAdapter(input: {
 /** Shared context factory used by executors and route-level compatibility handlers. */
 export function createWebAgenticChatSharedReadContext(input: {
 	supabase: SupabaseClient<Database>;
+	/** Trusted auth user id for the request (not the ontology actor id). */
+	userId: string;
+	/**
+	 * The request user's IANA civil timezone when the caller already resolved
+	 * it; null means "not resolved here", which reads as UTC downstream. Stated
+	 * explicitly at every call site so a route that has the zone cannot drop it.
+	 */
+	timezone: string | null;
 	getActorId: () => Promise<string>;
 }): AgenticChatSharedReadContextV1 {
 	return {
 		client: input.supabase as AgenticChatSharedReadContextV1['client'],
+		userId: input.userId,
+		timezone: input.timezone,
 		access: createWebAgenticChatToolAccessAdapter(input)
 	};
 }

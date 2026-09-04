@@ -1,9 +1,10 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/worker-client.ts
 //
-// Drives the actual worker transport used by the product: exact transport
+// The single transport every agentic e2e entry point drives: exact transport
 // negotiation, durable worker admission, private Realtime delivery, and the
-// product reconciliation fallback. Unlike the legacy SSE harness, this client
-// never falls back when worker routing or capacity is unavailable.
+// product reconciliation fallback. This client never falls back when worker
+// routing or capacity is unavailable — a run that cannot reach the worker
+// fails loudly instead of quietly grading a different engine.
 import { randomUUID } from 'node:crypto';
 import { env as publicEnv } from '$env/dynamic/public';
 import {
@@ -36,7 +37,7 @@ import {
 	createTurnTiming,
 	recordTurnEventTiming,
 	type RunTurnParams
-} from './sse-client';
+} from './turn-result';
 
 const REALTIME_READY_TIMEOUT_MS = 10_000;
 // The production worker owns a 300-second provider budget and still needs a
@@ -50,15 +51,12 @@ const WORKER_TERMINAL_RECOVERY_TIMEOUT_MS = 30_000;
 
 export type { AgenticE2EExecutionMode } from './types';
 
-export function resolveAgenticE2EExecutionMode(
-	value = process.env.AGENTIC_E2E_EXECUTION_MODE
-): AgenticE2EExecutionMode {
-	const normalized = value?.trim() || 'legacy_sse';
-	if (normalized === 'legacy_sse' || normalized === 'worker_realtime') return normalized;
-	throw new Error(
-		`[agentic-e2e] AGENTIC_E2E_EXECUTION_MODE must be legacy_sse or worker_realtime; received ${normalized}`
-	);
-}
+/**
+ * The only lane the harness drives. `AGENTIC_E2E_EXECUTION_MODE` is retired — it
+ * selected the deleted legacy web SSE client and is now ignored wherever it is
+ * still set.
+ */
+export const HARNESS_EXECUTION_MODE: AgenticE2EExecutionMode = 'worker_realtime';
 
 /** Shape of `agenticChat.mutationCapabilities` on the worker's `/health` response. */
 export interface AdvertisedMutationCapabilities {
@@ -135,11 +133,8 @@ export class AgenticE2EWorkerClient {
 				streamRunId: randomUUID(),
 				sessionId: null,
 				context: { type: 'global', entityId: null, projectId: null },
-				supportedModes: ['legacy_sse', 'worker_realtime'],
-				supportedContractVersions: [
-					'legacy_internal_v1',
-					AGENTIC_CHAT_WORKER_CONTRACT_VERSION
-				],
+				supportedModes: ['worker_realtime'],
+				supportedContractVersions: [AGENTIC_CHAT_WORKER_CONTRACT_VERSION],
 				priorDecisionId: null
 			}
 		});
@@ -189,11 +184,8 @@ export class AgenticE2EWorkerClient {
 				streamRunId,
 				sessionId,
 				context,
-				supportedModes: ['legacy_sse', 'worker_realtime'],
-				supportedContractVersions: [
-					'legacy_internal_v1',
-					AGENTIC_CHAT_WORKER_CONTRACT_VERSION
-				],
+				supportedModes: ['worker_realtime'],
+				supportedContractVersions: [AGENTIC_CHAT_WORKER_CONTRACT_VERSION],
 				priorDecisionId: null
 			}
 		});

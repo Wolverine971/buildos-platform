@@ -182,6 +182,41 @@
 			"import": "./dist/calendar/google-calendar-runtime.mjs",
 			"require": "./dist/calendar/google-calendar-runtime.js"
 		},
+		"./calendar/google-calendar-feature": {
+			"types": "./dist/calendar/google-calendar-feature.d.ts",
+			"import": "./dist/calendar/google-calendar-feature.mjs",
+			"require": "./dist/calendar/google-calendar-feature.js"
+		},
+		"./calendar/onto-event-read.service": {
+			"types": "./dist/calendar/onto-event-read.service.d.ts",
+			"import": "./dist/calendar/onto-event-read.service.mjs",
+			"require": "./dist/calendar/onto-event-read.service.js"
+		},
+		"./calendar/onto-event.service": {
+			"types": "./dist/calendar/onto-event.service.d.ts",
+			"import": "./dist/calendar/onto-event.service.mjs",
+			"require": "./dist/calendar/onto-event.service.js"
+		},
+		"./calendar/onto-event-sync.service": {
+			"types": "./dist/calendar/onto-event-sync.service.d.ts",
+			"import": "./dist/calendar/onto-event-sync.service.mjs",
+			"require": "./dist/calendar/onto-event-sync.service.js"
+		},
+		"./calendar/calendar-colors": {
+			"types": "./dist/calendar/calendar-colors.d.ts",
+			"import": "./dist/calendar/calendar-colors.mjs",
+			"require": "./dist/calendar/calendar-colors.js"
+		},
+		"./calendar/project-calendar-read.service": {
+			"types": "./dist/calendar/project-calendar-read.service.d.ts",
+			"import": "./dist/calendar/project-calendar-read.service.mjs",
+			"require": "./dist/calendar/project-calendar-read.service.js"
+		},
+		"./calendar/project-calendar.service": {
+			"types": "./dist/calendar/project-calendar.service.d.ts",
+			"import": "./dist/calendar/project-calendar.service.mjs",
+			"require": "./dist/calendar/project-calendar.service.js"
+		},
 		"./calendar/google-calendar-runtime": {
 			"types": "./dist/calendar/google-calendar-runtime.d.ts",
 			"import": "./dist/calendar/google-calendar-runtime.mjs",
@@ -206,6 +241,51 @@
 			"types": "./dist/email/gmail-account-read-port.d.ts",
 			"import": "./dist/email/gmail-account-read-port.mjs",
 			"require": "./dist/email/gmail-account-read-port.js"
+		},
+		"./email/gmail-integration.types": {
+			"types": "./dist/email/gmail-integration.types.d.ts",
+			"import": "./dist/email/gmail-integration.types.mjs",
+			"require": "./dist/email/gmail-integration.types.js"
+		},
+		"./email/gmail-database.types": {
+			"types": "./dist/email/gmail-database.types.d.ts",
+			"import": "./dist/email/gmail-database.types.mjs",
+			"require": "./dist/email/gmail-database.types.js"
+		},
+		"./email/gmail-gateway-infrastructure": {
+			"types": "./dist/email/gmail-gateway-infrastructure.d.ts",
+			"import": "./dist/email/gmail-gateway-infrastructure.mjs",
+			"require": "./dist/email/gmail-gateway-infrastructure.js"
+		},
+		"./email/gmail-token-crypto": {
+			"types": "./dist/email/gmail-token-crypto.d.ts",
+			"import": "./dist/email/gmail-token-crypto.mjs",
+			"require": "./dist/email/gmail-token-crypto.js"
+		},
+		"./email/gmail-read-cursor": {
+			"types": "./dist/email/gmail-read-cursor.d.ts",
+			"import": "./dist/email/gmail-read-cursor.mjs",
+			"require": "./dist/email/gmail-read-cursor.js"
+		},
+		"./email/gmail-rate-limiter-port": {
+			"types": "./dist/email/gmail-rate-limiter-port.d.ts",
+			"import": "./dist/email/gmail-rate-limiter-port.mjs",
+			"require": "./dist/email/gmail-rate-limiter-port.js"
+		},
+		"./email/gmail-read-rate-limit": {
+			"types": "./dist/email/gmail-read-rate-limit.d.ts",
+			"import": "./dist/email/gmail-read-rate-limit.mjs",
+			"require": "./dist/email/gmail-read-rate-limit.js"
+		},
+		"./email/gmail-read-oauth.service": {
+			"types": "./dist/email/gmail-read-oauth.service.d.ts",
+			"import": "./dist/email/gmail-read-oauth.service.mjs",
+			"require": "./dist/email/gmail-read-oauth.service.js"
+		},
+		"./email/gmail-read-gateway": {
+			"types": "./dist/email/gmail-read-gateway.d.ts",
+			"import": "./dist/email/gmail-read-gateway.mjs",
+			"require": "./dist/email/gmail-read-gateway.js"
 		},
 		"./web/safe-fetch": {
 			"types": "./dist/web/safe-fetch.d.ts",
@@ -306,11 +386,13 @@
 		"marked": "^16.1.1",
 		"marked-gfm-heading-id": "^4.1.3",
 		"posthog-node": "^5.39.2",
+		"sanitize-html": "2.17.5",
 		"undici": "^6.28.0",
 		"zod": "^3.23.0"
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.10",
+		"@types/sanitize-html": "^2.16.0",
 		"@vitest/coverage-v8": "^3.2.4",
 		"tsup": "^8.3.5",
 		"typescript": "^5.9.2",

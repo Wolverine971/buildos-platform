@@ -4,7 +4,7 @@
 // POST /api/auth/login (the JSON endpoint the app's own login form calls). The
 // server-side @supabase/ssr client writes the auth cookies on the response; we
 // harvest those Set-Cookie headers into a jar string and replay it as `Cookie:`
-// on every /api/agent/v2/stream request.
+// on every harness request to the app.
 //
 // NOTE: /auth/login (no /api) is a *page form action* and rejects JSON with 415 —
 // use the /api/auth/login endpoint.

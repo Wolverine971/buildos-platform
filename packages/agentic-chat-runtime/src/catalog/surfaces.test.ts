@@ -1,14 +1,19 @@
 // packages/agentic-chat-runtime/src/catalog/surfaces.test.ts
 import { describe, expect, it } from 'vitest';
-import type { ChatToolDefinition } from '@buildos/shared-types';
-import { AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1 } from '../worker-tool-policy';
+import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
+import {
+	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1,
+	isAgenticChatWorkerExecutableToolNameV1
+} from '../worker-tool-policy';
 import { AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY } from './definitions';
 import {
+	GATEWAY_EMAIL_SURFACE_TOOL_NAMES,
 	GATEWAY_SURFACE_PROFILE_NAMES,
 	getGatewayDirectToolNamesForProfile,
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile,
-	materializeGatewayTools
+	materializeGatewayTools,
+	resolveGatewaySurfaceProfileForContextType
 } from './surfaces';
 
 /** Every `description` string in a definition, including nested property schemas. */
@@ -26,79 +31,162 @@ function surfaceNames(tools: ChatToolDefinition[]): string[] {
 	return tools.map((tool) => tool.function.name);
 }
 
-describe('project-create gateway surface', () => {
-	it('separates the web compound surface from reviewed shell/goal/task creation', () => {
+const CONTROL_TOOL_NAMES = [
+	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
+	'cancel_turn_contract'
+];
+
+describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
+	it('exposes exactly three profiles', () => {
+		expect([...GATEWAY_SURFACE_PROFILE_NAMES]).toEqual(['global', 'project', 'project_create']);
+	});
+
+	it('routes every context type by context alone', () => {
+		const routes: Array<[ChatContextType, string]> = [
+			['global', 'global'],
+			['general', 'global'],
+			['calendar', 'global'],
+			['daily_brief', 'global'],
+			['daily_brief_update', 'global'],
+			['project', 'project'],
+			['ontology', 'project'],
+			['project_create', 'project_create']
+		];
+		for (const [contextType, profile] of routes) {
+			expect(resolveGatewaySurfaceProfileForContextType(contextType), contextType).toBe(
+				profile
+			);
+		}
+	});
+
+	it('pins the global members', () => {
+		expect(getGatewayDirectToolNamesForProfile('global')).toEqual([
+			...CONTROL_TOOL_NAMES,
+			'get_workspace_overview',
+			'get_project_overview',
+			'search_onto_projects',
+			'search_all_projects',
+			'explore_project',
+			'get_document_outline',
+			'read_document_section',
+			'list_onto_tasks',
+			'get_onto_task_details',
+			'create_onto_task',
+			'update_onto_task',
+			'move_onto_task',
+			'delegate_task',
+			'web_search',
+			'web_visit',
+			'list_calendar_events',
+			'get_calendar_event_details',
+			'create_calendar_event',
+			'update_calendar_event',
+			'delete_calendar_event'
+		]);
+	});
+
+	it('narrows the project surface to one project and widens it with documents', () => {
+		const global = new Set(getGatewayDirectToolNamesForProfile('global'));
+		const project = getGatewayDirectToolNamesForProfile('project');
+		const projectSet = new Set(project);
+
+		expect(project).toEqual([
+			...getGatewayDirectToolNamesForProfile('global').filter(
+				(name) => name !== 'search_onto_projects' && name !== 'search_all_projects'
+			),
+			'get_onto_project_details',
+			'search_project',
+			'list_onto_documents',
+			'get_document_tree',
+			'create_onto_document',
+			'update_onto_document',
+			'move_document_in_tree',
+			'get_project_calendar',
+			'set_project_calendar'
+		]);
+		expect([...global].filter((name) => !projectSet.has(name))).toEqual([
+			'search_onto_projects',
+			'search_all_projects'
+		]);
+	});
+
+	// The project adapter creates a bounded shell (goals: 0, tasks: 0), so the
+	// reviewed goal and task creates are what complete a fully specified
+	// creation request after the shell returns its id.
+	it('keeps project creation to the shell, its child creates, and the controls', () => {
 		const expected = [
-			'declare_turn_contract',
-			'declare_read_only_turn',
-			'request_turn_clarification',
-			'cancel_turn_contract',
+			...CONTROL_TOOL_NAMES,
 			'create_onto_project',
 			'create_onto_goal',
 			'create_onto_task'
 		];
+		expect(getGatewayDirectToolNamesForProfile('project_create')).toEqual(expected);
+		// No discovery tools ride the creation surface.
+		expect(surfaceNames(getGatewaySurfaceForContextType('project_create'))).toEqual(expected);
+	});
 
-		expect(getGatewayDirectToolNamesForProfile('project_create_minimal')).toEqual(expected);
-		expect(getGatewayDirectToolNamesForProfile('project_create_compound')).toEqual([
-			'create_onto_project'
+	it('mounts no name the worker cannot execute', () => {
+		const omitted = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
+		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
+			for (const name of getGatewayDirectToolNamesForProfile(profile)) {
+				if (omitted.has(name)) continue;
+				expect(
+					isAgenticChatWorkerExecutableToolNameV1(name),
+					`${profile} mounts worker-unexecutable ${name}`
+				).toBe(true);
+			}
+		}
+		for (const name of GATEWAY_EMAIL_SURFACE_TOOL_NAMES) {
+			expect(isAgenticChatWorkerExecutableToolNameV1(name), name).toBe(true);
+		}
+	});
+
+	it('keeps deletes, contacts and relationship tools off every static surface', () => {
+		const forbidden = [
+			'delete_onto_task',
+			'delete_onto_project',
+			'delete_onto_document',
+			'search_user_contacts',
+			'upsert_user_contact',
+			'get_entity_relationships',
+			'get_linked_entities',
+			'commit_change_set',
+			'change_chat_context'
+		];
+		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
+			const names = getGatewayDirectToolNamesForProfile(profile);
+			for (const name of forbidden) {
+				expect(names, `${profile}: ${name}`).not.toContain(name);
+			}
+		}
+		expect(materializeGatewayTools([], ['change_chat_context']).tools).toEqual([]);
+	});
+
+	// The email group is per-user state, not a static surface member: worker
+	// admission appends it only for users with a connected mailbox (A8).
+	it('keeps the email group off every static surface but resolvable on demand', () => {
+		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
+			const names = getGatewayDirectToolNamesForProfile(profile);
+			for (const name of GATEWAY_EMAIL_SURFACE_TOOL_NAMES) {
+				expect(names, `${profile}: ${name}`).not.toContain(name);
+			}
+		}
+		const appended = materializeGatewayTools(getGatewaySurfaceForProfile('global'), [
+			...GATEWAY_EMAIL_SURFACE_TOOL_NAMES
 		]);
-		const surface = getGatewaySurfaceForContextType('project_create');
-		expect(surface.map((tool) => tool.function.name)).toEqual(['create_onto_project']);
-		const reviewedSurface = getGatewaySurfaceForProfile('project_create_minimal');
-		expect(
-			reviewedSurface.find((tool) => tool.function.name === 'create_onto_goal')?.function
-				.parameters.required
-		).toEqual(['project_id', 'name']);
-		expect(
-			reviewedSurface.find((tool) => tool.function.name === 'create_onto_task')?.function
-				.parameters.required
-		).toEqual(['project_id', 'title']);
-	});
-});
-
-describe('global document reads (Decision 2, 2026-09-02)', () => {
-	it('mounts outline and section reads on the global surfaces', () => {
-		for (const profile of ['global_basic', 'global_write'] as const) {
-			const names = getGatewayDirectToolNamesForProfile(profile);
-			expect(names, profile).toContain('get_document_outline');
-			expect(names, profile).toContain('read_document_section');
-		}
-		expect(surfaceNames(getGatewaySurfaceForContextType('global'))).toEqual(
-			expect.arrayContaining(['get_document_outline', 'read_document_section'])
-		);
-	});
-
-	// Start Here / global-reach audit 2026-09-03: global_basic carried no
-	// task-level read at all, so a global turn naming a task could not reach it.
-	it('mounts the task scan→read pair on the global surfaces', () => {
-		for (const profile of ['global_basic', 'global_write'] as const) {
-			const names = getGatewayDirectToolNamesForProfile(profile);
-			expect(names, profile).toContain('list_onto_tasks');
-			expect(names, profile).toContain('get_onto_task_details');
-			expect(new Set(names).size, profile).toBe(names.length);
-		}
-		expect(surfaceNames(getGatewaySurfaceForContextType('global'))).toEqual(
-			expect.arrayContaining(['list_onto_tasks', 'get_onto_task_details'])
-		);
+		expect(appended.addedToolNames).toEqual([...GATEWAY_EMAIL_SURFACE_TOOL_NAMES]);
 	});
 
 	// list_onto_tasks is only usable on a global turn because project_id is
 	// optional; get_onto_task_details needs an id the scan supplies.
 	it('keeps list_onto_tasks callable without a project_id', () => {
-		const listTasks = getGatewaySurfaceForProfile('global_basic').find(
+		const listTasks = getGatewaySurfaceForProfile('global').find(
 			(tool) => tool.function.name === 'list_onto_tasks'
 		);
 		expect(listTasks?.function.parameters.required ?? []).toEqual([]);
 		expect(listTasks?.function.parameters.properties).toHaveProperty('project_id');
-	});
-
-	it('mounts the retired context-shift tool on no surface', () => {
-		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
-			expect(getGatewayDirectToolNamesForProfile(profile), profile).not.toContain(
-				'change_chat_context'
-			);
-		}
-		expect(materializeGatewayTools([], ['change_chat_context']).tools).toEqual([]);
 	});
 });
 
@@ -112,15 +200,25 @@ describe('static surface descriptions', () => {
 		const omitted = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
 		const violations: string[] = [];
 		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
-			const surface = getGatewaySurfaceForProfile(profile).filter(
-				(tool) => !omitted.has(tool.function.name)
-			);
-			const mounted = new Set(surfaceNames(surface));
-			for (const tool of surface) {
-				const text = collectDescriptionText(tool).join('\n');
-				for (const token of text.match(/[a-z][a-z0-9]*(?:_[a-z0-9]+)+/g) ?? []) {
-					if (vocabulary.has(token) && !mounted.has(token)) {
-						violations.push(`${profile}: ${tool.function.name} mentions ${token}`);
+			// The email group rides the same immutable surface when it is
+			// appended, so check both shapes of every profile.
+			for (const [label, surface] of [
+				[profile, getGatewaySurfaceForProfile(profile)],
+				[
+					`${profile}+email`,
+					materializeGatewayTools(getGatewaySurfaceForProfile(profile), [
+						...GATEWAY_EMAIL_SURFACE_TOOL_NAMES
+					]).tools
+				]
+			] as const) {
+				const visible = surface.filter((tool) => !omitted.has(tool.function.name));
+				const mounted = new Set(surfaceNames(visible));
+				for (const tool of visible) {
+					const text = collectDescriptionText(tool).join('\n');
+					for (const token of text.match(/[a-z][a-z0-9]*(?:_[a-z0-9]+)+/g) ?? []) {
+						if (vocabulary.has(token) && !mounted.has(token)) {
+							violations.push(`${label}: ${tool.function.name} mentions ${token}`);
+						}
 					}
 				}
 			}

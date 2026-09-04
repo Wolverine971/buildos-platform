@@ -104,6 +104,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			currentKillEpoch: parseAgenticChatWorkerKillEpoch(env.AGENTIC_CHAT_WORKER_KILL_EPOCH)
 		});
 	} catch (error) {
+		// TRANSPORT_RENEGOTIATE now means exactly one thing: get a fresh worker
+		// lease and re-admit this turn on the worker. A kill-epoch bump is the
+		// deliberate way to force that for every in-flight lease.
 		logger.warn('Worker turn lease verification failed', {
 			error,
 			userId: user.id,
@@ -117,16 +120,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			)
 		);
 	}
-	if (lease.mode !== 'worker_realtime' || lease.contractVersion !== 'agentic_chat_worker_v1') {
-		return privateResponse(
-			ApiResponse.error(
-				'A worker transport lease is required',
-				HttpStatus.CONFLICT,
-				'WORKER_LEASE_REQUIRED'
-			)
-		);
-	}
-
 	const serviceClient = createAdminSupabaseClient();
 	try {
 		const command = {
@@ -278,12 +271,12 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			clientTurnId: parsed.data.clientTurnId
 		});
 		if (error instanceof AgenticChatWorkerPreparationError) {
-			if (error.code === 'transport_renegotiate') {
+			if (error.code === 'capability_unavailable') {
 				return privateResponse(
 					ApiResponse.error(
-						'This turn requires the legacy tool surface',
+						'BuildOS cannot run this turn right now: a required capability is unavailable.',
 						HttpStatus.CONFLICT,
-						'TRANSPORT_RENEGOTIATE'
+						'WORKER_CAPABILITY_UNAVAILABLE'
 					)
 				);
 			}

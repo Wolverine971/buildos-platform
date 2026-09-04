@@ -16,18 +16,23 @@ export type PromptCostBreakdown = {
 	sections: Record<string, PromptSectionCost>;
 };
 
+// 2026-09-04 (stage S7): titles follow the eleven-section lite prompt. Recent
+// activity and retrieval boundaries now render inside Location and Loaded
+// Context; Daily Brief and Active Domain Signals no longer render.
 const LITE_SECTION_TITLE_KEYS: Record<string, string> = {
 	'Identity and Mission': 'identity_mission',
 	'Capabilities, Skills, and Tools': 'capabilities_skills_tools',
 	'Current Tool Surface': 'tool_surface_dynamic',
 	'Operating Strategy': 'operating_strategy',
 	'Safety and Data Rules': 'safety_data_rules',
+	'Rules for This Turn': 'situational_rules',
+	'Project Starter Profile': 'situational_rules',
+	'Project Creation Boundaries': 'situational_rules',
+	'Project Start Here': 'project_start_here',
 	'Current Focus and Purpose': 'focus_purpose',
-	'Daily Brief': 'daily_brief',
 	'Location and Loaded Context': 'location_loaded_context',
-	'Timeline and Recent Activity': 'timeline_recent_activity',
-	'Loaded Data and Retrieval Boundaries': 'context_inventory_retrieval',
-	'Project Creation Boundaries': 'context_inventory_retrieval'
+	'Project Knowledge Map': 'project_knowledge_map',
+	'Final Response Contract': 'final_response_contract'
 };
 
 function measureText(text: string): PromptSectionCost {

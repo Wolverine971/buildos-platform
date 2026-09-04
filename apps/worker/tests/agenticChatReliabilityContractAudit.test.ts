@@ -23,18 +23,12 @@ const FENCED_WRITE_MODULE_USAGE_COUNTS = Object.freeze({
 	toolExecution: 3
 });
 
+// One table-driven adapter plus the two writes whose execution row still names
+// a constructor. Adding a reviewed write must not add a file here.
 const REVIEWED_MUTATION_ADAPTER_FILES = Object.freeze([
-	'createOntoDocumentMutationAdapter.ts',
 	'createOntoProjectMutationAdapter.ts',
-	'createOntoTaskMutationAdapter.ts',
 	'delegateTaskMutationAdapter.ts',
-	'gatewayDocumentRelationshipMutationAdapter.ts',
-	'gatewayEdgeMutationAdapter.ts',
-	'gatewayEntityMutationAdapter.ts',
-	'gatewayProjectMutationAdapter.ts',
-	'moveOntoTaskMutationAdapter.ts',
-	'tagOntoEntityPingMutationAdapter.ts',
-	'updateOntoTaskMutationAdapter.ts'
+	'tableMutationAdapter.ts'
 ]);
 
 describe('Agentic Chat Phase 5 reliability contract audit', () => {
@@ -76,7 +70,9 @@ describe('Agentic Chat Phase 5 reliability contract audit', () => {
 				/assertMutationAdapterBoundary\(/
 			);
 		}
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(21);
+		// 21 -> 25 on 2026-09-04: the four calendar writes are table rows, so they
+		// add no adapter file; they cross the same boundary through the table.
+		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(25);
 	});
 
 	it('limits automatic uncertain-commit replay to the reviewed idempotent downstreams', () => {
@@ -85,6 +81,6 @@ describe('Agentic Chat Phase 5 reliability contract audit', () => {
 			.map(([toolName]) => toolName)
 			.sort();
 		expect(retryable).toEqual(['create_onto_task', 'create_task_document']);
-		expect(Object.keys(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)).toHaveLength(21);
+		expect(Object.keys(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)).toHaveLength(25);
 	});
 });

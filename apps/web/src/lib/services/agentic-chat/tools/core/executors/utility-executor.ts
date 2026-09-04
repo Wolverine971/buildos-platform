@@ -196,6 +196,9 @@ export class UtilityExecutor extends BaseExecutor {
 		super(context);
 		this.sharedReadContext = {
 			client: this.supabase as AgenticChatSharedReadContextV1['client'],
+			userId: this.userId,
+			// The chat executor context does not carry the civil zone yet.
+			timezone: null,
 			access: this.accessAdapter
 		};
 	}

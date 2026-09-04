@@ -26,6 +26,29 @@ export function isAgenticChatWebEgressToolName(
 }
 
 /**
+ * Email tools whose payload carries account plumbing (connection ids, labels,
+ * addresses the user already named, capability booleans) and no message
+ * content. They must not taint the turn's egress state: `search_email_messages`
+ * is unusable without first calling `list_email_accounts` for its connection
+ * ids, so treating that prerequisite as private content would make Gmail search
+ * permanently unreachable. Web classifies `list_email_accounts` the same way
+ * (`PROVIDER_NEUTRAL_OR_CONTROL_TOOLS` in turn-security-policy.ts).
+ */
+export const AGENTIC_CHAT_CONTENT_FREE_EMAIL_TOOL_NAMES_V1 = Object.freeze([
+	'get_external_account_status',
+	'request_email_account_connection',
+	'list_email_accounts'
+] as const);
+
+const CONTENT_FREE_EMAIL_TOOL_NAMES = new Set<string>(
+	AGENTIC_CHAT_CONTENT_FREE_EMAIL_TOOL_NAMES_V1
+);
+
+export function isAgenticChatContentFreeEmailToolNameV1(toolName: string): boolean {
+	return CONTENT_FREE_EMAIL_TOOL_NAMES.has(toolName.trim().toLowerCase());
+}
+
+/**
  * Authorize outbound research from the current trusted user message, never from
  * model-visible history or preloaded workspace context. Search queries must be
  * explicitly present in the current message. Visits must target a URL written
