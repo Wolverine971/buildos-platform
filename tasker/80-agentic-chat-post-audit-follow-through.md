@@ -5,7 +5,8 @@
 **Created:** 2026-09-02
 
 **Status:** In progress — WP-0 closed with a baseline-CI exception; WP-1 seven-day window maturing;
-WP-2 phase 1 shared provider services wired, tool admission still pending
+WP-2 phase 1 shared provider services wired, tool admission still pending; WP-7 (Cedar House
+battery remediation) built and verified 2026-09-03, uncommitted, migration not applied, rerun owed
 
 **Priority:** P1 (WP-1 gates the paid-launch proof in Tracker 78; WP-2 removes the last second
 chat harness)
@@ -353,6 +354,61 @@ skills fire on the right turns and nothing else.
   longer exist; stamp or rewrite it. Lane reports are point-in-time and stay as they are.
 
 **Exit:** WP-1's report has no "unknown" cells.
+
+## WP-7 — Cedar House battery remediation (2026-09-03)
+
+**Origin.** The adversarial browser battery on 2026-09-03
+([`artifacts/agentic-chat-audit-2026-09-03.md`](../artifacts/agentic-chat-audit-2026-09-03.md),
+graded F 28/52) and its independent diagnosis
+([`artifacts/agentic-chat-independent-diagnosis-2026-09-03.md`](../artifacts/agentic-chat-independent-diagnosis-2026-09-03.md)).
+All seven findings were verified against source at `b4d4c107` and against the production
+`chat_turn_runs` / `chat_turn_events` / `chat_messages` rows for the four QA sessions. Two root
+causes the diagnosis did not have:
+
+1. **Engine split.** Any prompt matching `\bcalendar\b` materialized `list_calendar_events`
+   (worker-unavailable), worker preparation threw `transport_renegotiate`, and the browser silently
+   re-leased the turn onto `legacy_sse`, whose lexical write gate rejects ordinary task writes. All
+   three failed task prompts said "no calendar events"; the two that succeeded never used the word.
+2. **Finding 11 of the 09-02 audit was a regression.** Continuation stubbing removed exact quotes,
+   dates and amounts before the final pass. Reverted; see the audit's 2026-09-03 addendum.
+
+**Built (all uncommitted).**
+
+| Step | Change                                                                                                                                                                                                                                                                                   | Files                                                                                                                                                                                                                                                                             |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Removed `supersedeConsumedToolResults` and the memo stub; full bodies replay every round                                                                                                                                                                                                 | worker `provider/request-builders.ts`; tests flipped + Cedar House regression in `agenticChatTurnProvider.test.ts`                                                                                                                                                                |
+| 2    | Negation-aware `looksLikeExternalCalendarTurn`; renegotiation logs its cause; legacy `write_execution_scope_mismatch` message no longer points at contracts; forced tool-free synthesis after the second rejection                                                                       | web `tool-selector.ts`, `worker-turn-preparation.server.ts:412`, `turn-security-policy.ts`, `stream-orchestrator/index.ts`                                                                                                                                                        |
+| 3    | Candidate gate honors a verbatim title or UUID in the user message; clarification question rendered deterministically when synthesis prose drops it                                                                                                                                      | worker `review/decision-handling.ts`, `review/decision-completion.ts`, `turn-provider.ts`                                                                                                                                                                                         |
+| 4    | One civil-date normalizer (user timezone from `users.timezone`, UTC fallback) on gateway and web paths; `calendar_sync: 'auto' \| 'none'` on task create/update end to end; receipts carry `calendar_sync` + `calendar_events`; `date-only-semantics.ts` now timezone-aware for `/today` | shared-agent-ops `dates/civil-date.ts`, gateway `normalization/tasks/activity/projects/core-entities/config/types`, web `input-normalization.ts`, task routes, `ontology-write.ts`, worker task adapters, `date-only-semantics.ts`, `today-feed.service.ts`, `today/+page.svelte` |
+| 5    | Per-source `reasonCode` + `httpStatus` + one log line `[GoogleCalendarRead] Calendar source read failed`; executor `coverage: complete \| degraded \| unavailable` with reconnect wording                                                                                                | shared-agent-ops `google-calendar-read.service.ts`, web `calendar-executor.ts`                                                                                                                                                                                                    |
+| 6    | Chat/agent creation of `document.context.project` refused on gateway and web paths naming the existing Start Here; schema text updated; migration prefers the origin marker over recency and backfills it                                                                                | shared-agent-ops `op-execution-gateway.core.ts`, web `documents/create/+server.ts`, `supabase/migrations/20260904000000_start_here_document_selection_marker.sql`                                                                                                                 |
+| 7    | `list_onto_tasks` + `get_onto_task_details` on `global_basic`; forced synthesis keeps accumulated text on a stray tool call; route pin released on `provider_tool_call_disabled`; `narrow_edit_guard` stops craft-playbook preloads on narrow edits                                      | runtime `surfaces.ts`, worker `turn-provider.ts`, `openrouter-client.ts`, web `domain-sensing.ts`                                                                                                                                                                                 |
+
+**Receipt 2026-09-03.** Worker: 1,690 passed / 12 skipped (183 files), `typecheck` clean, `lint`
+clean (one pre-existing `require-await` warning in `webResearchPort.ts`). Runtime: 364 passed,
+typecheck, build. Shared-agent-ops: 262 passed, typecheck, build. Web: 4,358 passed (661 files),
+`svelte-check` 0 errors / 0 warnings, eslint clean on changed files. Prettier clean on all 59
+changed code files. Doc health 0/0/0. Surface-budget ratchets re-baselined in both
+`tool-surface-size-report.test.ts` (web) and `agenticChatWorkerSurfaceBudget.test.ts` (worker),
+annotated in-file. `artifacts/agentic-chat-evidence-retention-probe-2026-09-03.ts` now asserts
+retention and passes.
+
+**Still owed before this WP closes.**
+
+- Apply `20260904000000_start_here_document_selection_marker.sql` to production (validated on a
+  throwaway PG16 cluster only). The code guard does not depend on it; the RPC ordering fix does.
+- Commit per package with explicit pathspecs, deploy, then **rerun the 14 battery cases in fresh
+  sessions on the pinned build** and record the scorecard next to the original. Acceptance is the
+  rerun, not the unit totals.
+- Run one live calendar read after deploy and read the new log line to learn the 09-03 failure
+  cause (credentials were valid; the read itself failed).
+- Follow-ups found while building, none blocking: web goals/milestones routes still use the UTC
+  fallback for date-only values (gateway path is timezone-aware); the finalization guard says
+  "ran out of steps" when writes were blocked rather than starved
+  (`finalization-guard.ts:151-160`); calendar has no proactive connection-health cron (Gmail
+  does); a civil-date column remains the correct long-term shape for date-only values.
+- Fork 1's ambitious half (calendar and email reads on the worker, delete the lexical gate) is
+  WP-2 above.
 
 ## Decisions for DJ
 
