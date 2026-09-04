@@ -170,7 +170,24 @@ export interface TurnSpec {
 export interface Scenario {
 	id: string;
 	title: string;
-	category: 'project' | 'document' | 'task' | 'organization' | 'calendar' | 'email' | 'creative';
+	/**
+	 * Grouping label. Doubles as the battery name selected by `AGENTIC_BATTERY`:
+	 * `cedar-house` is the replay of the 2026-09-03 adversarial browser audit.
+	 */
+	category:
+		| 'project'
+		| 'document'
+		| 'task'
+		| 'organization'
+		| 'calendar'
+		| 'email'
+		| 'creative'
+		| 'cedar-house';
+	/**
+	 * Case number inside the battery, so a scorecard row lines up with the
+	 * original audit's numbered table. Required for scenarios in a battery.
+	 */
+	batteryCase?: number;
 	/** Override for long, multi-turn journeys. Defaults to the runner's 5 minutes. */
 	timeoutMs?: number;
 	/** Return true to skip (e.g. calendar without a connected test calendar). */

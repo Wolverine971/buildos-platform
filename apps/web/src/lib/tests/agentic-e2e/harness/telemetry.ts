@@ -207,6 +207,26 @@ export async function getTurnRun(
 	return (data as TurnRunRow | null) ?? null;
 }
 
+/** Every persisted turn run for one chat session, oldest first. */
+export async function listTurnRunsForSession(
+	admin: TypedSupabaseClient,
+	sessionId: string
+): Promise<TurnRunRow[]> {
+	const { data, error } = await admin
+		.from('chat_turn_runs')
+		.select(
+			'id, session_id, execution_mode, transport_contract_version, status, created_at, started_at, finished_at, finished_reason, tool_call_count, tool_round_count, llm_pass_count, validation_failure_count, first_canonical_op, assistant_message_id, user_message_id, timing_metric_id'
+		)
+		.eq('session_id', sessionId)
+		.order('created_at', { ascending: true });
+	if (error) {
+		throw new Error(
+			`[agentic-e2e] failed to read chat_turn_runs for session ${sessionId}: ${error.message}`
+		);
+	}
+	return (data as TurnRunRow[] | null) ?? [];
+}
+
 /**
  * Retire a still-`running` turn row after it has been observed and checked. The
  * per-session admission guard rejects a new turn while the previous one is
