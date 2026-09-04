@@ -7,9 +7,11 @@
 
 export * from './access-port';
 export * from './activity-log-summary';
+export * from './calendar-reads';
 export * from './entity-field-info';
 export * from './milestone-state';
 export * from './embeddings-port';
+export * from './external-ports';
 export * from './ontology-detail-reads';
 export * from './ontology-explore';
 export * from './ontology-relationship-reads';

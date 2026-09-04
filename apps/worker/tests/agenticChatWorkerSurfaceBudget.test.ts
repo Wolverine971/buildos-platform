@@ -185,13 +185,16 @@ describe('Agentic Chat worker-projected surface budget', () => {
 			)
 		).toBeNull();
 
-		// global_write names calendar tools the worker cannot execute.
+		// global_write names calendar WRITES the worker cannot execute. The three
+		// calendar reads moved to the worker on 2026-09-03, so they stay mounted.
 		const globalWrite = measure('global_write');
 		const override = buildWorkerToolSurfaceOverride(globalWrite.input, globalWrite.opening);
 		expect(override).toContain('Worker execution surface override');
-		expect(globalWrite.opening.map((tool) => tool.function.name)).not.toContain(
-			'list_calendar_events'
-		);
+		const globalWriteNames = globalWrite.opening.map((tool) => tool.function.name);
+		expect(globalWriteNames).toContain('list_calendar_events');
+		expect(globalWriteNames).toContain('get_calendar_event_details');
+		expect(globalWriteNames).not.toContain('create_calendar_event');
+		expect(globalWriteNames).not.toContain('update_calendar_event');
 	});
 
 	it('never lets a worker-projected description advertise a tool outside the same surface', () => {

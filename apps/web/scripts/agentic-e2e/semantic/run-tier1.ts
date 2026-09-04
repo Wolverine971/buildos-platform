@@ -122,7 +122,7 @@ const KIND_TABLES: Record<string, { table: string; column: string }> = {
 	requirement: { table: 'onto_requirements', column: 'text' }
 };
 
-async function resolveFixture(): Promise<{ id: string; actorId: string }> {
+async function resolveFixture(): Promise<{ id: string; actorId: string; userId: string }> {
 	const { data: list, error: listError } = await admin.auth.admin.listUsers({
 		page: 1,
 		perPage: 200
@@ -144,7 +144,7 @@ async function resolveFixture(): Promise<{ id: string; actorId: string }> {
 			`Expected exactly one "${FIXTURE_PROJECT_NAME}" project for the demo actor, found ${data?.length ?? 0}. Run scripts/agentic-e2e/semantic/seed.ts${(data?.length ?? 0) > 1 ? ' --reset' : ''}.`
 		);
 	}
-	return { id: data[0]!.id, actorId };
+	return { id: data[0]!.id, actorId, userId: user.id };
 }
 
 async function embedFixture(projectId: string): Promise<void> {
@@ -248,7 +248,7 @@ async function resolveExpectationIds(projectId: string): Promise<Map<string, str
 }
 
 async function main() {
-	const { id: projectId, actorId } = await resolveFixture();
+	const { id: projectId, actorId, userId } = await resolveFixture();
 	console.log(`Fixture project ${projectId} (actor ${actorId})`);
 
 	if (EMBED) await embedFixture(projectId);
@@ -271,6 +271,8 @@ async function main() {
 
 	const context: AgenticChatSharedReadContextV1 = {
 		client: admin as never,
+		userId,
+		timezone: null,
 		access: {
 			getActorId: async () => actorId,
 			resolveProjectSummaries: async () => [{ id: projectId }],

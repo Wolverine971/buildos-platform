@@ -43,12 +43,9 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1 = Object.free
 export const AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1 = Object.freeze([
 	'get_entity_relationships',
 	'get_linked_entities',
-	'list_calendar_events',
-	'get_calendar_event_details',
 	'create_calendar_event',
 	'update_calendar_event',
 	'delete_calendar_event',
-	'get_project_calendar',
 	'set_project_calendar',
 	'get_external_account_status',
 	'request_email_account_connection',

@@ -27,6 +27,7 @@ import {
 	searchOntoTasks,
 	type AgenticChatSharedReadContextV1
 } from './ontology-reads';
+import { getCalendarEventDetails, getProjectCalendar, listCalendarEvents } from './calendar-reads';
 import { exploreProject } from './ontology-explore';
 import { searchAllProjects, searchOntology, searchProject } from './ontology-search';
 import { getDocumentPath, getDocumentTree, getOntoProjectGraph } from './ontology-structure-reads';
@@ -80,6 +81,11 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	get_document_path: getDocumentPath,
 	get_workspace_overview: getWorkspaceOverview,
 	get_project_overview: getProjectOverview,
+	// Calendar READS only. The four calendar writes and set_project_calendar
+	// stay on the web executor and remain worker-unavailable.
+	list_calendar_events: listCalendarEvents,
+	get_calendar_event_details: getCalendarEventDetails,
+	get_project_calendar: getProjectCalendar,
 	get_field_info: async (_context, args: Parameters<typeof getFieldInfo>[0]) => getFieldInfo(args)
 } satisfies Readonly<Record<string, SharedReadToolRunnerV1>>);
 

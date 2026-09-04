@@ -223,6 +223,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const payload = await searchOntologyEntities(
 			createWebAgenticChatSharedReadContext({
 				supabase: locals.supabase as never,
+				userId,
+				timezone: null,
 				getActorId
 			}),
 			body

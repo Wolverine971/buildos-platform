@@ -6,7 +6,11 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { type WebResearchPort, WebResearchPortError } from '@buildos/shared-agent-ops';
+import {
+	resolveUserCivilTimezone,
+	type WebResearchPort,
+	WebResearchPortError
+} from '@buildos/shared-agent-ops';
 import {
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
@@ -14,6 +18,7 @@ import {
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+	type AgenticChatCalendarReadPortV1,
 	type AgenticChatEmbeddingsPortV1,
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1,
@@ -31,6 +36,7 @@ import { runWithAbortableDeadline } from '../abortableDeadline';
 import type { AgenticChatReadToolPortV1 } from '../turn-executor';
 import { AgenticChatProviderExecutionError } from '../provider/contracts';
 import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
+import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
 export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
@@ -195,6 +201,18 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	private readonly webResearchTimeoutMs: number;
 	private readonly createAccessAdapter: (userId: string) => AgenticChatToolAccessPortV1;
 	/**
+	 * Built per (user, turn) on first calendar read, never at boot: composing the
+	 * Google services is cheap and env-free here, but keeping it lazy means a
+	 * worker deployed without the Calendar OAuth variables still starts, and the
+	 * missing credentials surface as `coverage: 'unavailable'` on the one tool
+	 * call that needed them.
+	 */
+	private readonly createCalendarPort: (userId: string) => AgenticChatCalendarReadPortV1;
+	private readonly turnCalendarPorts = new Map<
+		string,
+		{ expiresAt: number; port: AgenticChatCalendarReadPortV1 }
+	>();
+	/**
 	 * Access adapters are cached per user so the actorId RPC amortizes across
 	 * the many tool calls of one turn. Bounded: the worker process is
 	 * long-lived, so the cache is cleared once it holds 256 users rather than
@@ -207,6 +225,15 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	 * carrying that content to a model-selected destination.
 	 */
 	private readonly turnSecurityStates = new Map<string, TurnSecurityState>();
+	/**
+	 * Per-turn memo of `users.timezone`, keyed like the security state. A turn
+	 * runs many read tools and each one carries the civil zone on its context;
+	 * without this the worker would re-query `users` on every one of them.
+	 */
+	private readonly turnTimezones = new Map<
+		string,
+		{ expiresAt: number; timezone: Promise<string | null> }
+	>();
 	private readonly securityNow: () => number;
 	private readonly maxTurnSecurityStates: number;
 	private readonly maxTurnSecurityStatesPerUser: number;
@@ -221,6 +248,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			webResearchTimeoutMs?: number;
 			webResearch?: WebResearchPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
+			createCalendarPort?: (userId: string) => AgenticChatCalendarReadPortV1;
 			embeddings?: AgenticChatEmbeddingsPortV1;
 			securityNow?: () => number;
 			maxTurnSecurityStates?: number;
@@ -255,6 +283,9 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		this.createAccessAdapter =
 			options.createAccessAdapter ??
 			((userId) => new WorkerAgenticChatToolAccessAdapter({ client: this.client, userId }));
+		this.createCalendarPort =
+			options.createCalendarPort ??
+			((userId) => createWorkerAgenticChatCalendarReadPort({ client: this.client, userId }));
 		this.embeddings = options.embeddings ?? createWorkerEmbeddingsPortFromEnv();
 	}
 
@@ -311,7 +342,19 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const sharedContext: AgenticChatSharedReadContextV1 | null = sharedReadTool
 			? {
 					client: this.client,
+					// The worker reads with a service-role client, so the claim's
+					// userId is the only identity the shared tools can authorize
+					// external (calendar/email) reads against.
+					userId: input.executionInput.claim.userId,
+					timezone: await this.turnTimezoneFor(
+						input.executionInput.claim.userId,
+						turnRunId
+					),
 					access: this.accessAdapterFor(input.executionInput.claim.userId),
+					calendar: this.turnCalendarPortFor(
+						input.executionInput.claim.userId,
+						turnRunId
+					),
 					embeddings: this.embeddings
 				}
 			: null;
@@ -467,6 +510,63 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 
 	completeTurnSecurityState(userId: string, turnRunId: string): void {
 		this.turnSecurityStates.delete(this.turnSecurityStateKey(userId, turnRunId));
+		this.turnTimezones.delete(this.turnSecurityStateKey(userId, turnRunId));
+		this.turnCalendarPorts.delete(this.turnSecurityStateKey(userId, turnRunId));
+	}
+
+	/**
+	 * One calendar port per (user, turn), memoized like the timezone so the many
+	 * tool calls of a turn share the same lazily composed provider services.
+	 */
+	private turnCalendarPortFor(userId: string, turnRunId: string): AgenticChatCalendarReadPortV1 {
+		const now = this.securityNow();
+		for (const [candidateId, entry] of this.turnCalendarPorts) {
+			if (entry.expiresAt <= now) this.turnCalendarPorts.delete(candidateId);
+		}
+		const stateKey = this.turnSecurityStateKey(userId, turnRunId);
+		const existing = this.turnCalendarPorts.get(stateKey);
+		if (existing) {
+			existing.expiresAt = now + this.turnSecurityStateTtlMs;
+			return existing.port;
+		}
+		const port = this.createCalendarPort(userId);
+		if (this.turnCalendarPorts.size < this.maxTurnSecurityStates) {
+			this.turnCalendarPorts.set(stateKey, {
+				expiresAt: now + this.turnSecurityStateTtlMs,
+				port
+			});
+		}
+		return port;
+	}
+
+	/**
+	 * Resolves `users.timezone` at most once per (user, turn). The promise is
+	 * memoized rather than the value so concurrent tool calls in the same round
+	 * share a single query instead of racing three of them.
+	 */
+	private turnTimezoneFor(userId: string, turnRunId: string): Promise<string | null> {
+		const now = this.securityNow();
+		for (const [candidateId, entry] of this.turnTimezones) {
+			if (entry.expiresAt <= now) this.turnTimezones.delete(candidateId);
+		}
+		const stateKey = this.turnSecurityStateKey(userId, turnRunId);
+		const existing = this.turnTimezones.get(stateKey);
+		if (existing) {
+			existing.expiresAt = now + this.turnSecurityStateTtlMs;
+			return existing.timezone;
+		}
+		// resolveUserCivilTimezone never rejects — it returns null when the row
+		// is missing, unreadable, or carries an invalid zone.
+		const timezone = resolveUserCivilTimezone(this.client, userId);
+		// Share the security-state ceiling so a saturated worker stops caching
+		// rather than growing an unbounded second map.
+		if (this.turnTimezones.size < this.maxTurnSecurityStates) {
+			this.turnTimezones.set(stateKey, {
+				expiresAt: now + this.turnSecurityStateTtlMs,
+				timezone
+			});
+		}
+		return timezone;
 	}
 
 	private turnSecurityStateKey(userId: string, turnRunId: string): string {

@@ -25,6 +25,7 @@ import {
 	type AgenticChatToolAccessPortV1
 } from './access-port';
 import type { AgenticChatEmbeddingsPortV1 } from './embeddings-port';
+import type { AgenticChatCalendarReadPortV1, AgenticChatEmailReadPortV1 } from './external-ports';
 import { pickStartHereDocument } from './start-here-selector';
 import { prepareAgenticChatSearchTerm } from './search-term';
 import { normalizeAgenticChatProjectStateV1 } from '../loop/project-semantics';
@@ -39,11 +40,31 @@ import { normalizeAgenticChatProjectStateV1 } from '../loop/project-semantics';
  * access port that carries the host's actor/membership semantics. The optional
  * embeddings port powers semantic discovery (explore_project); hosts without
  * an embeddings provider leave it unset.
+ *
+ * `userId` is the host's trusted identity claim for the turn (web: the session
+ * user; worker: the turn claim's userId). It is required because the worker
+ * reads with a service-role client that has no RLS to fall back on, so every
+ * external read (calendar, email) must authorize against it explicitly. It is
+ * the auth user id, not the ontology actor id — `access.getActorId()` still
+ * owns actor-scoped ontology reads.
  */
 export type AgenticChatSharedReadContextV1 = {
 	client: SupabaseClient<Database>;
 	access: AgenticChatToolAccessPortV1;
+	/** Trusted auth user id for the turn. */
+	userId: string;
+	/**
+	 * The user's IANA civil timezone (`users.timezone`), or null when it is
+	 * unknown/invalid — callers treat null as "fall back to UTC". Carried on the
+	 * context so read results can render civil dates in the user's zone instead
+	 * of reporting a stored instant as a UTC calendar day.
+	 */
+	timezone: string | null;
 	embeddings?: AgenticChatEmbeddingsPortV1;
+	/** Host adapter over Google Calendar reads; unset on hosts without calendar access. */
+	calendar?: AgenticChatCalendarReadPortV1;
+	/** Host adapter over Gmail reads; unset on hosts without email access. */
+	email?: AgenticChatEmailReadPortV1;
 };
 
 // ============================================

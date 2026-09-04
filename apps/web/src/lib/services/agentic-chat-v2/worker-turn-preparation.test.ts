@@ -414,8 +414,9 @@ describe('Agentic Chat worker turn preparation', () => {
 				{
 					type: 'function',
 					function: {
-						name: 'list_calendar_events',
-						description: 'Calendar read',
+						// Calendar WRITES are still worker-unavailable (2026-09-03).
+						name: 'create_calendar_event',
+						description: 'Calendar write',
 						parameters: { type: 'object', properties: {} }
 					}
 				}
@@ -427,7 +428,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				userClient: {} as never,
 				serviceClient: {} as never,
 				userId: USER_ID,
-				command: command({ message: "What's on my calendar tomorrow?" }) as never,
+				command: command({ message: 'Put a meeting on my calendar tomorrow' }) as never,
 				lease: {
 					decisionId: DECISION_ID,
 					mode: 'worker_realtime',
@@ -438,6 +439,46 @@ describe('Agentic Chat worker turn preparation', () => {
 		).rejects.toMatchObject({
 			code: 'transport_renegotiate'
 		});
+	});
+
+	// Before 2026-09-03 the lexical calendar selector mounted list_calendar_events
+	// on any calendar-ish turn, which the worker could not execute; the turn
+	// renegotiated onto the legacy web engine and lost every worker capability.
+	it('admits a launch surface carrying the calendar reads the worker now executes', async () => {
+		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+			...mocks.resolveFastChatTurnPreparation(),
+			tools: [
+				'list_calendar_events',
+				'get_calendar_event_details',
+				'get_project_calendar'
+			].map((name) => ({
+				type: 'function',
+				function: {
+					name,
+					description: name,
+					parameters: { type: 'object', properties: {} }
+				}
+			}))
+		});
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command({ message: "What's on my calendar tomorrow?" }) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.args.p_artifact_prepared.toolSurface.toolNames).toEqual([
+			'list_calendar_events',
+			'get_calendar_event_details',
+			'get_project_calendar'
+		]);
 	});
 
 	it('admits a normal launch surface after omitting preloaded discovery tools', async () => {

@@ -759,7 +759,18 @@ describe('AgenticChatToolExecutionAdapter', () => {
 			zeroResult: null
 		});
 		expect(access.assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
-		expect(client.from).toHaveBeenCalledTimes(2);
+		// Two ontology reads plus the one `users.timezone` lookup that fills the
+		// shared read context's civil timezone.
+		expect(client.from).toHaveBeenCalledTimes(3);
+		const timezoneReads = () =>
+			client.from.mock.calls.filter(([table]: [string]) => table === 'users').length;
+		expect(timezoneReads()).toBe(1);
+
+		// A second read in the same turn reuses the memoized zone rather than
+		// re-querying `users` on every tool call.
+		await adapter.execute(requestFor('get_onto_risk_details', { risk_id: riskId }));
+		expect(timezoneReads()).toBe(1);
+		expect(client.from).toHaveBeenCalledTimes(5);
 	});
 
 	it('dispatches task details with project-fenced assignee hydration', async () => {

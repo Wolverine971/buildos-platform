@@ -28,6 +28,8 @@ function contextWith(client: Record<string, unknown> = { from: vi.fn() }): {
 	return {
 		context: {
 			client: client as never,
+			userId: 'user-1',
+			timezone: null,
 			access: {
 				getActorId: vi.fn(async () => 'actor-1'),
 				resolveProjectSummaries: vi.fn(async () => []),

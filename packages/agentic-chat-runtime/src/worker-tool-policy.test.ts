@@ -24,10 +24,36 @@ describe('Agentic Chat worker tool policy', () => {
 		expect(
 			findAgenticChatWorkerUnavailableToolNamesV1([
 				'get_project_overview',
+				// Calendar READS moved to the worker on 2026-09-03; the writes did not.
 				'list_calendar_events',
+				'create_calendar_event',
 				'future_unclassified_tool'
 			])
-		).toEqual(['future_unclassified_tool', 'list_calendar_events']);
+		).toEqual(['create_calendar_event', 'future_unclassified_tool']);
+	});
+
+	it('executes the three calendar reads and refuses every calendar write', () => {
+		for (const name of [
+			'list_calendar_events',
+			'get_calendar_event_details',
+			'get_project_calendar'
+		]) {
+			expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1, name).toContain(name);
+			expect(AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1, name).not.toContain(name);
+		}
+		expect(
+			findAgenticChatWorkerUnavailableToolNamesV1([
+				'create_calendar_event',
+				'update_calendar_event',
+				'delete_calendar_event',
+				'set_project_calendar'
+			])
+		).toEqual([
+			'create_calendar_event',
+			'delete_calendar_event',
+			'set_project_calendar',
+			'update_calendar_event'
+		]);
 	});
 
 	it('executes global document reads and explicitly omits preloaded domain discovery', () => {
