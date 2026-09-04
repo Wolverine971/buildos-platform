@@ -8,28 +8,23 @@ export type SelectAgenticChatNewTransportInput = {
 	supportedContractVersions: readonly ('legacy_internal_v1' | 'agentic_chat_worker_v1')[];
 };
 
-const LEGACY_TRANSPORT: AgenticChatNewTransportSelection = {
-	mode: 'legacy_sse',
-	contractVersion: 'legacy_internal_v1'
+const WORKER_TRANSPORT: AgenticChatNewTransportSelection = {
+	mode: 'worker_realtime',
+	contractVersion: 'agentic_chat_worker_v1'
 };
 
 /**
- * Selects worker transport whenever the client supports its contract. Runtime
- * pressure is deliberately not a routing input: compatible turns enter the
- * durable queue and wait there. Legacy remains available only for clients or
- * admitted capability surfaces that explicitly require it.
+ * Every new turn runs on the worker. This is a constant, not a decision:
+ * since 2026-09-04 (one-engine B1) the legacy SSE engine is no longer a
+ * routing target for new turns. A client that does not declare worker
+ * support is rejected by the transport route's capability check rather than
+ * downgraded, so an outdated bundle fails loudly instead of landing on an
+ * engine that is being deleted. The input is kept so the route's call site
+ * and stored-decision replay keep their shape until stage B6 removes the
+ * legacy mode from the contract types.
  */
 export async function selectAgenticChatNewTransport(
-	input: SelectAgenticChatNewTransportInput
+	_input: SelectAgenticChatNewTransportInput
 ): Promise<AgenticChatNewTransportSelection> {
-	if (
-		!input.supportedModes.includes('worker_realtime') ||
-		!input.supportedContractVersions.includes('agentic_chat_worker_v1')
-	) {
-		return LEGACY_TRANSPORT;
-	}
-	return {
-		mode: 'worker_realtime',
-		contractVersion: 'agentic_chat_worker_v1'
-	};
+	return WORKER_TRANSPORT;
 }
