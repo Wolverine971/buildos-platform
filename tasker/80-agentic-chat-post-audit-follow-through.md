@@ -5,8 +5,10 @@
 **Created:** 2026-09-02
 
 **Status:** In progress — WP-0 closed with a baseline-CI exception; WP-1 seven-day window maturing;
-WP-2 phase 1 shared provider services wired, tool admission still pending; WP-7 (Cedar House
-battery remediation) built and verified 2026-09-03, uncommitted, migration not applied, rerun owed
+WP-2 BUILT on branch `one-engine` (21 commits, legacy engine deleted, calendar + email on the
+worker; all suites green; live battery + deploy = merge gate, see
+`docs/technical/reviews/ONE_ENGINE_BRANCH_HANDOFF_2026-09-04.md`); WP-7 committed `a1771c1f7`,
+deployed, retest D 34/52
 
 **Priority:** P1 (WP-1 gates the paid-launch proof in Tracker 78; WP-2 removes the last second
 chat harness)
@@ -441,3 +443,12 @@ mid-write no longer ends a turn.
 
 Append one dated entry per package as it closes: what shipped, the commit, the numbers, and any
 decision taken without DJ.
+
+### WP-2 branch receipt — 2026-09-04
+
+Branch `one-engine` (from `e515ae273`) carries the whole retirement: S0 battery, C1 table adapter,
+C2 direct lane, A1–A8 calendar + email on the worker, C3 three surfaces, C5 skills allowlist,
+C6 prompt cuts, C4 one name space, B1–B7 legacy engine deleted and one execution mode. Not done:
+live battery on the branch (worker code needs a deploy to be exercised), B8 + C7 migrations (after
+72h bake). Handoff with the commit table, verification, merge-gate options and open forks:
+`docs/technical/reviews/ONE_ENGINE_BRANCH_HANDOFF_2026-09-04.md`.
