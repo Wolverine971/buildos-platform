@@ -76,7 +76,7 @@ const ACTING_SYSTEM_PROMPT = [
 	'Tasks loaded:',
 	`- Northwind intro call (${TASK_ID}) state=in_progress`,
 	'',
-	'## Loaded Data and Retrieval Boundaries',
+	'## Rules for This Turn',
 	'',
 	'Loaded 1 task.'
 ].join('\n');
@@ -385,7 +385,7 @@ describe('reviewer evidence filter', () => {
 			'Project Start Here',
 			'Current Focus and Purpose',
 			'Location and Loaded Context',
-			'Loaded Data and Retrieval Boundaries'
+			'Rules for This Turn'
 		]);
 		for (const entry of sections) {
 			expect(REVIEWER_EVIDENCE_SECTION_TITLES).toContain(entry.section);

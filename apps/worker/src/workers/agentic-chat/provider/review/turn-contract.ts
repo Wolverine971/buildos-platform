@@ -119,16 +119,13 @@ export const ACTING_PROMPT_SECTION_TITLES = Object.freeze([
 	'Final Response Contract',
 	'Safety and Data Rules',
 	'Current Tool Surface',
-	'Active Domain Signals',
 	'Rules for This Turn',
 	'Project Starter Profile',
 	'Project Creation Boundaries',
 	'Project Start Here',
 	'Current Focus and Purpose',
 	'Location and Loaded Context',
-	'Project Knowledge Map',
-	'Timeline and Recent Activity',
-	'Loaded Data and Retrieval Boundaries'
+	'Project Knowledge Map'
 ]);
 
 /**
@@ -142,9 +139,10 @@ export const REVIEWER_EVIDENCE_SECTION_TITLES = Object.freeze([
 	'Current Focus and Purpose',
 	'Location and Loaded Context',
 	'Project Knowledge Map',
-	'Timeline and Recent Activity',
-	'Loaded Data and Retrieval Boundaries',
-	'Active Domain Signals'
+	// 2026-09-04 (stage S7): recent activity and retrieval boundaries now live
+	// inside "Location and Loaded Context"; the preloaded skill playbook that
+	// "Active Domain Signals" used to carry now leads "Rules for This Turn".
+	'Rules for This Turn'
 ]);
 
 const ACTING_PROMPT_SECTION_TITLE_SET = new Set<string>(ACTING_PROMPT_SECTION_TITLES);
