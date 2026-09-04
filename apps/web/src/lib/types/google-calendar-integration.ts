@@ -5,6 +5,15 @@ export type { GoogleCalendarAccessRole } from '@buildos/shared-types';
 
 import type { GoogleCalendarAccessRole } from '@buildos/shared-types';
 
+export type ConnectedGoogleCalendarReadFailureReason =
+	| 'reconnect_required'
+	| 'timeout'
+	| 'rate_limited'
+	| 'forbidden'
+	| 'not_found'
+	| 'network'
+	| 'provider_error';
+
 export type GoogleCalendarSourceSummary = {
 	id: string;
 	providerCalendarId: string;
@@ -95,6 +104,7 @@ export type ConnectedGoogleCalendarEventsPayload = {
 		message: string;
 		calendarSourceId: string;
 		connectionId: string;
+		reasonCode?: ConnectedGoogleCalendarReadFailureReason;
 	}>;
 	sourceStatuses: Array<{
 		calendarSourceId: string;
@@ -102,5 +112,7 @@ export type ConnectedGoogleCalendarEventsPayload = {
 		providerCalendarId: string;
 		status: 'success' | 'error' | 'timeout';
 		itemCount: number;
+		reasonCode?: ConnectedGoogleCalendarReadFailureReason;
+		httpStatus?: number;
 	}>;
 };

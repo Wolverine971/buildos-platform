@@ -113,9 +113,15 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		//   global_basic            opening  9 tools /  6,449 B (was  8 /  9,306 B)
 		//   project_write_document  opening 16 tools / 16,149 B (was 17 / 23,242 B)
 		//   project_write_document  all pass 17 tools / 18,882 B (was 18 / 26,323 B)
-		expect(globalBasic.openingBytes).toBeLessThanOrEqual(6_770);
-		expect(projectWriteDocument.openingBytes).toBeLessThanOrEqual(16_950);
-		expect(projectWriteDocument.admittedBytes).toBeLessThanOrEqual(19_820);
+		// Re-ratcheted 2026-09-03 (Cedar House battery): global_basic gained
+		// list_onto_tasks + get_onto_task_details (a global turn had no task-level
+		// read at all), and create/update_onto_task gained calendar_sync. Measured:
+		//   global_basic            opening 11 tools /  7,435 B
+		//   project_write_document  opening 16 tools / 16,847 B
+		//   project_write_document  all pass 17 tools / 19,900 B
+		expect(globalBasic.openingBytes).toBeLessThanOrEqual(7_810);
+		expect(projectWriteDocument.openingBytes).toBeLessThanOrEqual(17_690);
+		expect(projectWriteDocument.admittedBytes).toBeLessThanOrEqual(20_900);
 	});
 
 	it('mounts document reads on the global worker surface', () => {

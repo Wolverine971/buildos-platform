@@ -182,7 +182,9 @@ describe('CalendarExecutor multi-account reads', () => {
 				source_count: 1,
 				successful_source_count: 1,
 				failed_source_count: 0,
-				partial: false
+				partial: false,
+				coverage: 'complete',
+				source_failures: []
 			});
 			expect(result.events).toEqual([
 				expect.objectContaining({ source: 'google', external_event_id: 'provider-event-1' })
@@ -498,5 +500,154 @@ describe('CalendarExecutor multi-account reads', () => {
 			provider_calendar_id: null,
 			onto_event_id: 'onto-event-1'
 		});
+	});
+});
+
+describe('CalendarExecutor read coverage', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.hasActiveTarget.mockResolvedValue(false);
+	});
+
+	function sourceStatus(
+		index: number,
+		status: 'success' | 'error' | 'timeout',
+		reasonCode?: string
+	) {
+		return {
+			calendarSourceId: `source-${index}`,
+			connectionId: `connection-${index}`,
+			providerCalendarId: `calendar-${index}@example.com`,
+			status,
+			itemCount: 0,
+			...(reasonCode ? { reasonCode } : {})
+		};
+	}
+
+	function mockRead(
+		statuses: ReturnType<typeof sourceStatus>[],
+		warnings: Array<Record<string, unknown>> = []
+	) {
+		mocks.multiCalendarAllowed.mockReturnValue(true);
+		mocks.listEvents.mockResolvedValueOnce({
+			event_count: 0,
+			time_range: {
+				start: '2026-09-03T10:00:00.000Z',
+				end: '2026-09-03T18:00:00.000Z',
+				timeZone: 'America/New_York'
+			},
+			events: [],
+			partial: warnings.length > 0,
+			warnings,
+			sourceStatuses: statuses
+		});
+	}
+
+	async function runList() {
+		const query = emptyQuery();
+		const supabase = {
+			from: vi.fn(() => query)
+		} as unknown as SupabaseClient<Database>;
+		const executor = new CalendarExecutor({
+			supabase,
+			userId: 'user-1',
+			sessionId: 'session-1',
+			fetchFn: vi.fn() as unknown as typeof fetch,
+			getActorId: async () => 'actor-1',
+			getAdminSupabase: () => supabase as any,
+			getAuthHeaders: async () => ({})
+		});
+		(executor as any).calendarService = { getCalendarEvents: vi.fn() };
+		return executor.listCalendarEvents({
+			time_min: '2026-09-03T10:00:00Z',
+			time_max: '2026-09-03T18:00:00Z',
+			timezone: 'America/New_York'
+		});
+	}
+
+	it('reports complete coverage when 2 of 2 sources succeed', async () => {
+		mockRead([sourceStatus(1, 'success'), sourceStatus(2, 'success')]);
+
+		const result = await runList();
+
+		expect(result.google_read).toMatchObject({
+			coverage: 'complete',
+			source_count: 2,
+			successful_source_count: 2,
+			failed_source_count: 0,
+			source_failures: []
+		});
+		expect(result.warnings).not.toContainEqual(expect.stringContaining('coverage'));
+	});
+
+	it('reports degraded coverage when 1 of 2 sources succeeds', async () => {
+		mockRead(
+			[sourceStatus(1, 'success'), sourceStatus(2, 'error', 'rate_limited')],
+			[{ code: 'CALENDAR_SOURCE_READ_FAILED', message: 'Could not read calendar-2' }]
+		);
+
+		const result = await runList();
+
+		expect(result.google_read).toMatchObject({
+			coverage: 'degraded',
+			source_count: 2,
+			successful_source_count: 1,
+			failed_source_count: 1,
+			source_failures: [
+				{
+					calendar: 'calendar-2@example.com',
+					calendar_source_id: 'source-2',
+					connection_id: 'connection-2',
+					reason_code: 'rate_limited'
+				}
+			]
+		});
+		const warning = result.warnings.find((entry: string) =>
+			entry.includes('Calendar coverage is degraded')
+		);
+		expect(warning).toContain('1 of 2');
+		expect(warning).toContain('rate_limited');
+	});
+
+	it('reports unavailable coverage and reconnect guidance when 0 of 2 sources succeed', async () => {
+		mockRead(
+			[
+				sourceStatus(1, 'error', 'reconnect_required'),
+				sourceStatus(2, 'error', 'reconnect_required')
+			],
+			[
+				{ code: 'CALENDAR_SOURCE_READ_FAILED', message: 'a' },
+				{ code: 'CALENDAR_SOURCE_READ_FAILED', message: 'b' }
+			]
+		);
+
+		const result = await runList();
+
+		expect(result.google_read).toMatchObject({
+			coverage: 'unavailable',
+			source_count: 2,
+			successful_source_count: 0,
+			failed_source_count: 2
+		});
+		expect(result.google_read.source_failures).toHaveLength(2);
+		const warning = result.warnings.find((entry: string) =>
+			entry.includes('No calendar data was read')
+		);
+		expect(warning).toContain('Do not assert availability');
+		expect(warning).toContain('reconnect');
+		expect(warning).toContain('calendar-1@example.com');
+		expect(warning).toContain('calendar-2@example.com');
+	});
+
+	it('marks coverage unavailable when the source-aware read throws outright', async () => {
+		mocks.multiCalendarAllowed.mockReturnValue(true);
+		mocks.listEvents.mockRejectedValueOnce(new Error('read exploded'));
+
+		const result = await runList();
+
+		expect(result.google_read.coverage).toBe('unavailable');
+		expect(
+			result.warnings.some((entry: string) => entry.includes('No calendar data was read'))
+		).toBe(true);
 	});
 });

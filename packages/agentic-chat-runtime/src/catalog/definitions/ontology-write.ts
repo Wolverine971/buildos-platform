@@ -101,6 +101,13 @@ export const ONTOLOGY_WRITE_TOOLS = [
 						type: 'string',
 						description: 'ISO due date'
 					},
+					calendar_sync: {
+						type: 'string',
+						enum: ['auto', 'none'],
+						default: 'auto',
+						description:
+							"Pass 'none' when the user asks for no calendar event, block, or reminder; default 'auto' syncs the linked event."
+					},
 					props: {
 						type: 'object',
 						description: 'Additional JSON properties'
@@ -278,7 +285,8 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 						default: 'document.default',
 						description: `Document type taxonomy (required): document.{family}[.{variant}]
 Families: context (project/brief), knowledge (research), notes (meeting_notes/rfc), spec (product/technical), reference (handbook/sop), intake (client/project), creative (structure/character/world/chapter).
-Examples: document.context.project, document.knowledge.research, document.spec.technical, document.creative.character`
+document.context.project is reserved for the project's single Start Here document and must not be used for ordinary notes; use document.default instead.
+Examples: document.knowledge.research, document.spec.technical, document.notes.meeting_notes, document.creative.character`
 					},
 					state_key: {
 						type: 'string',
@@ -1069,6 +1077,13 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 					due_at: {
 						type: ['string', 'null'],
 						description: 'New due date (ISO format) or null to clear'
+					},
+					calendar_sync: {
+						type: 'string',
+						enum: ['auto', 'none'],
+						default: 'auto',
+						description:
+							"Pass 'none' when the user asks for no calendar event, block, or reminder; default 'auto' syncs the linked event."
 					},
 					props: {
 						type: 'object',

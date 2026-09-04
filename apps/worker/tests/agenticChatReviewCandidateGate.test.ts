@@ -1,9 +1,14 @@
 // apps/worker/tests/agenticChatReviewCandidateGate.test.ts
 
+import type { JsonObject } from '@buildos/shared-types';
 import { executeAgenticChatStandardControlToolV1 } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it } from 'vitest';
 import type { AgenticChatTurnProviderRequestV1 } from '../src/workers/agentic-chat/provider/contracts';
-import { buildCandidateGateClarification } from '../src/workers/agentic-chat/provider/review/decision-handling';
+import {
+	buildCandidateGateClarification,
+	findAmbiguousReferenceCandidatesForTargetIds,
+	latestUserMessageText
+} from '../src/workers/agentic-chat/provider/review/decision-handling';
 
 const request = {
 	turnRunId: 'turn-run-1',
@@ -58,5 +63,123 @@ describe('buildCandidateGateClarification', () => {
 				arguments: call.arguments
 			})
 		).toMatchObject({ success: true, requiresUserAction: true });
+	});
+});
+
+// 2026-09-03 browser battery: the reviewer listed the Marketing Brief and the
+// Context Document for a message that named the Marketing Brief, and the gate
+// asked the user to choose between them. The gate now reads the user's own
+// words and only clarifies what they left open.
+describe('findAmbiguousReferenceCandidatesForTargetIds with the user message', () => {
+	const marketingBriefId = '1d651834-5dee-4e08-9f62-3072c2e61f4d';
+	const contextDocumentId = '2f8a1c40-6b21-4e3a-9a77-51c0b7e9d1aa';
+	const reviewerArguments = {
+		reference_candidates: [
+			{
+				reference: 'the document',
+				candidates: [
+					{ id: marketingBriefId, title: 'QA — Cedar House Marketing Brief' },
+					{ id: contextDocumentId, title: 'QA — Cedar House Context Document' }
+				]
+			}
+		]
+	} satisfies JsonObject;
+
+	it('clarifies when the user message is unavailable', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(reviewerArguments, [marketingBriefId])
+		).toMatchObject({ reference: 'the document' });
+	});
+
+	it('does not clarify when the user named exactly one candidate by title', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(
+				reviewerArguments,
+				[marketingBriefId],
+				'Please add a Risks section to the QA — Cedar House Marketing Brief.'
+			)
+		).toBeNull();
+	});
+
+	it('matches a title across NFKC, case and collapsed whitespace differences', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(
+				reviewerArguments,
+				[marketingBriefId],
+				'add a risks section to the\n  qa — cedar house MARKETING brief please'
+			)
+		).toBeNull();
+	});
+
+	it('does not clarify when the user pasted exactly one candidate id', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(
+				reviewerArguments,
+				[marketingBriefId],
+				`Update document ${marketingBriefId} with a risks section.`
+			)
+		).toBeNull();
+	});
+
+	it('still clarifies when the user referred to the document generically', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(
+				reviewerArguments,
+				[marketingBriefId],
+				'Add a risks section to the existing document.'
+			)
+		).toMatchObject({ reference: 'the document' });
+	});
+
+	it('still clarifies when the message names both candidates', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(
+				reviewerArguments,
+				[marketingBriefId],
+				'Compare QA — Cedar House Marketing Brief with QA — Cedar House Context Document and update it.'
+			)
+		).toMatchObject({ reference: 'the document' });
+	});
+
+	it('still clarifies when the message pastes both candidate ids', () => {
+		expect(
+			findAmbiguousReferenceCandidatesForTargetIds(
+				reviewerArguments,
+				[marketingBriefId],
+				`Look at ${marketingBriefId} and ${contextDocumentId}, then update the document.`
+			)
+		).toMatchObject({ reference: 'the document' });
+	});
+});
+
+describe('latestUserMessageText', () => {
+	it('reads the last user turn, including multimodal text parts', () => {
+		expect(
+			latestUserMessageText({
+				messages: [
+					{ role: 'user', content: 'First ask' },
+					{ role: 'assistant', content: 'Answer' },
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', text: 'Second ask' },
+							{
+								type: 'image_url',
+								image_url: { url: 'https://example.test/a.png', detail: 'auto' }
+							}
+						]
+					},
+					{ role: 'tool', content: 'tool payload', tool_call_id: 'call-1' }
+				]
+			} as AgenticChatTurnProviderRequestV1)
+		).toBe('Second ask');
+	});
+
+	it('returns null when the request carries no user turn', () => {
+		expect(
+			latestUserMessageText({
+				messages: [{ role: 'system', content: 'System prompt' }]
+			} as AgenticChatTurnProviderRequestV1)
+		).toBeNull();
 	});
 });

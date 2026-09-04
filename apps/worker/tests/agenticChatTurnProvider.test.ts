@@ -1912,14 +1912,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'suppressed-read-after-clarification',
 				{ project_id: projectId },
 				'get_project_overview'
-			),
-			[
-				{
-					type: 'text',
-					content: 'Which of the matching tasks should I mark complete?'
-				},
-				{ type: 'done', finishedReason: 'stop' }
-			]
+			)
 		];
 		const client = {
 			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
@@ -1992,12 +1985,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			providerRound: 'synthesis',
 			passRole: 'final_response'
 		});
-		expect(client.stream.mock.calls[3]?.[0]).toMatchObject({
-			tools: [],
-			toolChoice: 'none',
-			providerRound: 'synthesis',
-			passRole: 'final_response'
-		});
 		expect(
 			client.stream.mock.calls[2]?.[0].messages.some(
 				(message) =>
@@ -2006,7 +1993,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 					message.content.includes('Clarification is required.')
 			)
 		).toBe(true);
-		expect(client.stream).toHaveBeenCalledTimes(4);
+		// The synthesis pass answered with a stray tool call and no prose. The
+		// structured question is rendered deterministically instead of buying a
+		// second pass from the same model.
+		expect(client.stream).toHaveBeenCalledTimes(3);
 	});
 
 	it('executes one target-free create without an independent review pass', async () => {
@@ -5845,16 +5835,14 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const repeatedModelPayload = JSON.parse(
 			requireTextContent(repeatedToolMessage, 'Repeated read feedback')
 		) as Record<string, unknown>;
-		// The model already saw this payload on the pass that asked for it; the
-		// repeat carries the notice and the entity evidence, never the body again.
+		// The repeat replays the full cached payload with the notice attached:
+		// the model asks again exactly when it no longer holds the evidence.
 		expect(repeatedModelPayload).toMatchObject({
-			superseded: true,
 			served_from_turn_memo: true,
 			repeat_read_notice: expect.stringContaining('vary the arguments'),
-			tool: 'get_project_overview',
-			entities: [{ id: projectId, kind: 'project', title: 'Memo project' }]
+			project: { id: projectId, title: 'Memo project' }
 		});
-		expect(repeatedModelPayload).not.toHaveProperty('project');
+		expect(repeatedModelPayload).not.toHaveProperty('superseded');
 		expect(repeatedToolMessage?.tool_call_id).toBe('provider-read-2');
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
@@ -6802,7 +6790,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
-	it('buffers forced synthesis and retries once when the provider still requests a tool', async () => {
+	it('retries forced synthesis once when the provider requests a tool and writes no prose', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const streams = [
 			providerReadRound(
@@ -6812,7 +6800,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				{ promptTokens: 3, completionTokens: 1, totalTokens: 4 }
 			),
 			[
-				{ type: 'text', content: 'This rejected partial must never be published.' },
+				// No prose to publish, so the stray call still costs one retry.
 				{
 					type: 'tool_call',
 					toolCall: [
@@ -6973,11 +6961,14 @@ describe('AgenticChatTurnProviderAdapter', () => {
 												}
 											]
 										}
-									: {
-											content: invalid
-												? 'This rejected answer must not be published.'
-												: 'The project evidence is ready. No changes were made.'
-										}
+									: invalid
+										? // A disabled-tool pass with no prose still has to
+											// switch providers rather than publish nothing.
+											{}
+										: {
+												content:
+													'The project evidence is ready. No changes were made.'
+											}
 							}
 						]
 					},
@@ -9003,7 +8994,17 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				})
 			)
 		).resolves.toEqual([
-			{ type: 'text_delta', text: 'Which email task did you mean?' },
+			// The synthesis prose asked a question but dropped every candidate, so
+			// the structured clarification is rendered verbatim instead.
+			{
+				type: 'text_delta',
+				text: [
+					question,
+					'- Send the launch email to the beta list',
+					'- Draft the investor update email',
+					'- Fix the email verification bug on signup'
+				].join('\n')
+			},
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
 		expect(semanticReviewer.stream).toHaveBeenCalledOnce();
@@ -10776,8 +10777,11 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 		expect(semanticReviewer.stream).not.toHaveBeenCalled();
 	});
 
-	// Finding 11 — consumed tool results are replaced by stubs that keep ids.
-	it('stubs consumed tool results from older rounds and keeps the latest round full', async () => {
+	// Finding 11 (2026-09-02) replaced consumed results with id-only stubs to
+	// save tokens. The Cedar House battery (2026-09-03) showed that this removed
+	// the exact quotes, dates and amounts the final answer needed. Every round
+	// now stays at full length.
+	it('keeps every consumed tool result body in later rounds', async () => {
 		const bigResult = (round: number) => ({
 			project: { id: projectId, title: 'Stub project' },
 			tasks: Array.from({ length: 6 }, (_, index) => ({
@@ -10818,33 +10822,129 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 		const finalRequest = client.stream.mock.calls[4]?.[0];
 		const toolMessages = finalRequest!.messages.filter((message) => message.role === 'tool');
 		expect(toolMessages).toHaveLength(4);
-		const latest = requireTextContent(toolMessages[3], 'latest round');
-		expect(latest).toContain('41000004-0000-4000-8000-000000000005');
-		expect(latest).not.toContain('"superseded"');
-		for (const [index, message] of toolMessages.slice(0, 3).entries()) {
-			const content = requireTextContent(message, `round ${index + 1} stub`);
-			const stub = JSON.parse(content) as Record<string, unknown>;
-			expect(stub).toMatchObject({
-				superseded: true,
-				tool: 'get_project_overview',
-				status: 'ok',
-				summary: '1 project, 6 tasks'
-			});
-			expect(stub.entities).toHaveLength(7);
-			expect(stub.entities).toEqual(
-				expect.arrayContaining([
-					{ id: projectId, kind: 'project', title: 'Stub project' },
-					{
-						id: `4100000${index + 1}-0000-4000-8000-000000000005`,
-						kind: 'task',
-						title: `Task ${index + 1}.5`
-					}
-				])
-			);
-			expect(content).not.toContain('BODY');
-			expect(content.length).toBeLessThan(latest.length);
+		for (const [index, message] of toolMessages.entries()) {
+			const content = requireTextContent(message, `round ${index + 1}`);
+			expect(content).toContain(`BODY${index + 1}`);
+			expect(content).toContain(`4100000${index + 1}-0000-4000-8000-000000000005`);
+			expect(content).not.toContain('"superseded"');
 			expect(message.tool_call_id).toBe(`provider-read-${index + 1}`);
 		}
+	});
+
+	// Cedar House regression (2026-09-03): read three facts, run unrelated
+	// reads, repeat one section through the turn memo, then answer. The exact
+	// facts must still be in the outgoing request the answer is drawn from.
+	// Seven read rounds keeps the turn under the must_synthesize ladder (8).
+	it('carries exact evidence through unrelated reads and a memo repeat to the final pass', async () => {
+		const audienceQuote = 'Local homeowners considering a kitchen renovation.';
+		const ctaQuote = 'Book a 20-minute discovery call.';
+		const budgetLine = 'Budget cap $85,000 including $10,000 contingency.';
+		const documentId = '1d651834-5dee-4e08-9f62-3072c2e61f4d';
+		const sectionArgs = (anchor: string) => ({ project_id: projectId, anchor });
+		const section = (anchor: string, quote: string) => ({
+			project: { id: projectId, title: 'QA — Cedar House Renovation' },
+			document_id: documentId,
+			title: 'QA — Cedar House Marketing Brief',
+			anchor,
+			heading: anchor,
+			level: 2,
+			message: `Section "${anchor}" loaded.`,
+			content: `## ${anchor}\n${quote}`
+		});
+		const filler = (round: number) => ({
+			project: { id: projectId, title: 'QA — Cedar House Renovation' },
+			tasks: Array.from({ length: 6 }, (_, index) => ({
+				id: `4200000${round}-0000-4000-8000-0000000000${String(index).padStart(2, '0')}`,
+				title: `Unrelated ${round}.${index}`,
+				description: `FILLER${round}`.repeat(30)
+			}))
+		});
+		const rounds: Array<{ id: string; args: JsonObject; result: JsonObject }> = [
+			{
+				id: 'read-overview',
+				args: { project_id: projectId },
+				result: {
+					project: {
+						id: projectId,
+						title: 'QA — Cedar House Renovation',
+						description: `${budgetLine} `.repeat(8),
+						start_at: '2026-09-14',
+						end_at: '2026-11-20'
+					},
+					tasks: [
+						{
+							id: '9ec50ba0-5775-4c75-831c-607bc8bbc23a',
+							title: 'QA — Confirm permit requirements',
+							due_at: '2026-09-15'
+						}
+					]
+				}
+			},
+			{
+				id: 'read-audience',
+				args: sectionArgs('audience'),
+				result: section('audience', audienceQuote)
+			},
+			{
+				id: 'read-cta',
+				args: sectionArgs('call-to-action'),
+				result: section('call-to-action', ctaQuote)
+			},
+			...[1, 2, 3].map((index) => ({
+				id: `read-unrelated-${index}`,
+				args: { project_id: projectId, marker: `u${index}` },
+				result: filler(index)
+			}))
+		];
+		const client = clientWithRounds([
+			...rounds.map((round) => providerReadRound(round.id, round.args)),
+			providerReadRound('read-audience-repeat', sectionArgs('audience')),
+			[
+				{ type: 'text', content: 'Grounded answer.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const { invocation } = await prepared(client);
+		await collect(invocation.stream());
+		let lastSteps: AgenticChatProviderStepV1[] = [];
+		for (const [index, round] of rounds.entries()) {
+			lastSteps = await collect(
+				invocation.continueWithToolResults!({
+					round: index + 2,
+					results: [durableReadFeedback(round.id, round.args, round.result)]
+				})
+			);
+		}
+		const memoStep = lastSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> =>
+				step.type === 'read_tool' && step.providerToolCallId === 'read-audience-repeat'
+		);
+		if (!memoStep?.memoServed)
+			throw new Error('Expected the repeated read to use the turn memo');
+		await collect(
+			invocation.continueWithToolResults!({
+				round: rounds.length + 2,
+				results: [
+					{
+						providerToolCallId: 'read-audience-repeat',
+						toolName: 'get_project_overview',
+						arguments: sectionArgs('audience'),
+						execution: memoStep.memoServed
+					}
+				]
+			})
+		);
+		const finalRequest = client.stream.mock.calls.at(-1)?.[0];
+		const toolTexts = finalRequest!.messages
+			.filter((message) => message.role === 'tool')
+			.map((message) => requireTextContent(message, 'tool message'));
+		expect(toolTexts).toHaveLength(rounds.length + 1);
+		expect(toolTexts.filter((text) => text.includes(audienceQuote))).toHaveLength(2);
+		expect(toolTexts.filter((text) => text.includes(ctaQuote))).toHaveLength(1);
+		expect(toolTexts.filter((text) => text.includes(budgetLine))).toHaveLength(1);
+		expect(toolTexts.join('\n')).not.toContain('"superseded"');
+		expect(toolTexts.at(-1)).toContain('served_from_turn_memo');
+		for (const text of toolTexts) expect(text.length).toBeGreaterThan(400);
 	});
 
 	// Finding 9 / P2 — small items.
@@ -10926,6 +11026,313 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 		);
 		expect(notice).toContain('only the first, request_turn_clarification, was taken');
 		expect(notice).toContain('declare_turn_contract was rejected without execution');
+	});
+
+	// 2026-09-03 document-edit battery: the reviewer listed two loaded documents
+	// for a message that named one of them, and the candidate gate asked the
+	// user to choose again. The gate now reads the user's own words.
+	it('does not hand back a choice the user already made in their own message', async () => {
+		const betaId = '41000000-0000-4000-8000-000000000031';
+		const investorId = '41000000-0000-4000-8000-000000000032';
+		const contractArguments: JsonObject = {
+			outcomes: [
+				{
+					action: 'complete',
+					entity_kind: 'task',
+					target_ids: [betaId],
+					required_fields: ['state_key'],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const contract = parseDeclaredTurnContract(contractArguments);
+		if (!contract) throw new Error('Expected a valid completion contract');
+		const contractSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(contract as never), 'utf8')
+			.digest('hex');
+		const approvalArguments = {
+			reason: 'The user named the beta-list email task.',
+			contract_sha256: contractSha256,
+			reference_candidates: [
+				{
+					reference: 'the email one',
+					candidates: [
+						{ id: betaId, title: 'Send the launch email to the beta list' },
+						{ id: investorId, title: 'Draft the investor update email' }
+					]
+				}
+			]
+		};
+		const runWithMessage = async (message: string) => {
+			const client = clientWithRounds([
+				providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract')
+			]);
+			const semanticReviewer = clientWith(
+				providerReadRound(
+					'reviewer-approval-1',
+					approvalArguments,
+					'approve_turn_contract_review'
+				)
+			);
+			const base = writeSurface();
+			const { invocation } = await prepared(client, {
+				semanticReviewer,
+				capabilities: { updateOntoTask: true },
+				input: { ...base, requestPayload: { ...base.requestPayload, message } }
+			});
+			await collect(invocation.stream());
+			const steps = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedbackFor(
+							'provider-contract-1',
+							'declare_turn_contract',
+							contractArguments,
+							{ status: 'declared' }
+						)
+					]
+				})
+			);
+			return steps
+				.filter(
+					(step): step is Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> =>
+						step.type === 'read_tool'
+				)
+				.map((step) => step.toolName);
+		};
+
+		await expect(
+			runWithMessage('Mark Send the launch email to the beta list complete.')
+		).resolves.toContain('approve_turn_contract_review');
+		await expect(
+			runWithMessage('Mark Send the launch email to the beta list complete.')
+		).resolves.not.toContain('request_turn_clarification');
+		// A generic reference leaves the choice with the user, as before.
+		await expect(runWithMessage('Mark the email one complete.')).resolves.toContain(
+			'request_turn_clarification'
+		);
+	});
+
+	// 2026-09-03 document-edit battery: a clarification disposition handed to
+	// forced synthesis came back as prose that dropped the question and promised
+	// to act. The structured question now reaches the user verbatim.
+	const clarificationWithCandidatesToolDefinition = (): ChatToolDefinition => ({
+		type: 'function' as const,
+		function: {
+			name: 'request_turn_clarification',
+			description: 'Request the user choice required for safe durable execution.',
+			parameters: {
+				type: 'object',
+				required: ['reason', 'question'],
+				properties: {
+					reason: { type: 'string' },
+					question: { type: 'string' },
+					candidates: {
+						type: 'array',
+						items: {
+							type: 'object',
+							properties: {
+								id: { type: 'string' },
+								label: { type: 'string' },
+								kind: { type: 'string' }
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+	const clarificationCandidateSurface = () =>
+		executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationWithCandidatesToolDefinition(),
+				readToolDefinition('list_onto_tasks'),
+				readToolDefinition('get_project_overview'),
+				updateTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'list_onto_tasks',
+				'get_project_overview',
+				'update_onto_task'
+			]
+		);
+	const marketingBriefLabel = 'QA — Cedar House Marketing Brief';
+	const contextDocumentLabel = 'QA — Cedar House Context Document';
+	const clarificationArguments: JsonObject = {
+		reason: 'Two loaded documents plausibly match "the brief".',
+		question: `Which one did you mean by "the brief"? ${marketingBriefLabel} · ${contextDocumentLabel}`,
+		candidates: [
+			{
+				id: '1d651834-5dee-4e08-9f62-3072c2e61f4d',
+				label: marketingBriefLabel,
+				kind: 'entity'
+			},
+			{
+				id: '2f8a1c40-6b21-4e3a-9a77-51c0b7e9d1aa',
+				label: contextDocumentLabel,
+				kind: 'entity'
+			}
+		]
+	};
+	const streamClarificationSynthesis = async (
+		synthesis: AgenticChatTurnProviderClientEventV1[]
+	) => {
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-clarify-1',
+				clarificationArguments,
+				'request_turn_clarification'
+			),
+			synthesis
+		]);
+		const { invocation } = await prepared(client, {
+			input: clarificationCandidateSurface(),
+			capabilities: { updateOntoTask: true }
+		});
+		await collect(invocation.stream());
+		const steps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-clarify-1',
+						'request_turn_clarification',
+						clarificationArguments,
+						{ status: 'clarification_required' }
+					)
+				]
+			})
+		);
+		return { client, steps };
+	};
+
+	it('emits the structured clarification verbatim when the synthesis prose drops the question', async () => {
+		const { client, steps } = await streamClarificationSynthesis([
+			{
+				type: 'text',
+				content: 'Got it — I will add the risks section to the brief right away.'
+			},
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		expect(steps).toEqual([
+			{
+				type: 'text_delta',
+				text: `${String(clarificationArguments.question)}\n- ${marketingBriefLabel}\n- ${contextDocumentLabel}`
+			},
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		// No retry: the deterministic render replaces the failed pass outright.
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({ tools: [], toolChoice: 'none' });
+	});
+
+	it('keeps synthesis prose that asks the question and names every candidate', async () => {
+		const paraphrase = `Before I edit anything — did you mean the ${marketingBriefLabel} or the ${contextDocumentLabel}?`;
+		const { client, steps } = await streamClarificationSynthesis([
+			{ type: 'text', content: paraphrase },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		expect(steps).toEqual([
+			{ type: 'text_delta', text: paraphrase },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+	});
+
+	// 2026-09-03 fresh-retrieval battery: a stray tool call under
+	// tool_choice=none discarded a usable answer and then died permanently.
+	const streamStraySynthesis = async (synthesis: AgenticChatTurnProviderClientEventV1[][]) => {
+		const client = clientWithRounds([
+			providerReadRound('provider-list-1', { project_id: projectId }, 'list_onto_tasks'),
+			providerReadRound(
+				'provider-update-1',
+				{ task_id: taskId, state_key: 'done' },
+				'update_onto_task'
+			),
+			...synthesis
+		]);
+		const { invocation } = await prepared(client, {
+			input: writeSurface(),
+			capabilities: { updateOntoTask: true },
+			semanticReviewer: clientWithRounds([])
+		});
+		await collect(invocation.stream());
+		const updateSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-list-1',
+						'list_onto_tasks',
+						{ project_id: projectId },
+						{ tasks: [{ id: taskId, title: 'Send the launch email to the beta list' }] }
+					)
+				]
+			})
+		);
+		const update = mutationStepOf(updateSteps, 'update_onto_task');
+		return {
+			client,
+			steps: invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableMutationFeedback({
+						providerToolCallId: 'provider-update-1',
+						logicalOperationId: update.logicalOperationId,
+						arguments: { task_id: taskId, state_key: 'done' }
+					})
+				]
+			})
+		};
+	};
+	const strayToolCall: AgenticChatTurnProviderClientEventV1 = {
+		type: 'tool_call',
+		toolCall: [
+			{
+				index: 0,
+				id: 'provider-stray-1',
+				type: 'function',
+				function: { name: 'get_project_overview', arguments: '{}' }
+			}
+		]
+	};
+
+	it('emits the accumulated answer when a forced synthesis pass also returns a stray tool call', async () => {
+		const { client, steps } = await streamStraySynthesis([
+			[
+				{ type: 'text', content: 'Marked it done; nothing else changed.' },
+				strayToolCall,
+				{ type: 'done', finishedReason: 'tool_calls' }
+			]
+		]);
+		await expect(collect(steps)).resolves.toEqual([
+			{ type: 'text_delta', text: 'Marked it done; nothing else changed.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		// The stray call is dropped, never executed or replayed, and the pass is
+		// not retried now that it produced a usable answer.
+		expect(client.stream).toHaveBeenCalledTimes(3);
+	});
+
+	it('still spends the one bounded retry when a stray tool call carried no text', async () => {
+		const { client, steps } = await streamStraySynthesis([
+			[strayToolCall, { type: 'done', finishedReason: 'tool_calls' }],
+			[
+				{ type: 'text', content: 'Marked it done.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		await expect(collect(steps)).resolves.toEqual([
+			{ type: 'text_delta', text: 'Marked it done.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(4);
 	});
 
 	it('mounts the batching instruction only when a mounted tool carries the scheduling sidecar', async () => {

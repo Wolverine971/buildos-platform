@@ -24,6 +24,60 @@ import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature'
 
 const logger = createLogger('CalendarExecutor');
 
+/** Zero calendar coverage and one-missing-calendar must not read the same to the model. */
+type CalendarReadCoverage = 'complete' | 'degraded' | 'unavailable';
+
+type CalendarSourceFailure = {
+	calendar: string;
+	calendar_source_id: string;
+	connection_id: string;
+	reason_code: string;
+};
+
+function resolveCalendarReadCoverage(
+	sourceCount: number,
+	successfulSourceCount: number
+): CalendarReadCoverage {
+	// Zero sources means nothing failed, so coverage is vacuously complete.
+	if (sourceCount - successfulSourceCount === 0) return 'complete';
+	return successfulSourceCount === 0 ? 'unavailable' : 'degraded';
+}
+
+/**
+ * The model previously saw `partial: true` for both a total calendar outage and a
+ * single missing calendar. Say plainly which one happened, and what to do about it.
+ */
+function describeCalendarCoverage(read: {
+	coverage: CalendarReadCoverage;
+	source_count: number;
+	failed_source_count: number;
+	source_failures: CalendarSourceFailure[];
+}): string | null {
+	if (read.coverage === 'complete') return null;
+
+	const reasons = Array.from(new Set(read.source_failures.map((f) => f.reason_code))).join(', ');
+	const reconnect = read.source_failures.filter((f) => f.reason_code === 'reconnect_required');
+	const reconnectSentence = reconnect.length
+		? ` Tell the user to reconnect ${reconnect
+				.map((f) => f.calendar)
+				.join(', ')} from Profile > Calendar (/profile?tab=calendar).`
+		: '';
+
+	if (read.coverage === 'unavailable') {
+		return (
+			`No calendar data was read: all ${read.source_count} connected calendar source(s) failed` +
+			`${reasons ? ` (${reasons})` : ''}. Do not assert availability, free time, or that a slot is open ` +
+			`from this result — the calendar was not read.${reconnectSentence}`
+		);
+	}
+
+	return (
+		`Calendar coverage is degraded: ${read.failed_source_count} of ${read.source_count} calendar ` +
+		`source(s) failed${reasons ? ` (${reasons})` : ''}. Events on those calendars are missing from ` +
+		`this result, so availability may be wrong.${reconnectSentence}`
+	);
+}
+
 type CalendarScope = 'user' | 'project' | 'calendar_id';
 type SourceAwareCalendarEvent = CalendarEvent &
 	Partial<
@@ -516,7 +570,10 @@ export class CalendarExecutor extends BaseExecutor {
 			source_count: 0,
 			successful_source_count: 0,
 			failed_source_count: 0,
-			partial: false
+			partial: false,
+			// `partial` alone cannot separate 0-of-N from N-1-of-N. Coverage can.
+			coverage: 'complete' as CalendarReadCoverage,
+			source_failures: [] as CalendarSourceFailure[]
 		};
 		const requestedCalendarId = this.normalizeCalendarId(
 			this.getStringArg(args.calendar_id, args.calendarId)
@@ -582,15 +639,32 @@ export class CalendarExecutor extends BaseExecutor {
 						const successfulSourceCount = response.sourceStatuses.filter(
 							(status) => status.status === 'success'
 						).length;
+						const sourceCount = response.sourceStatuses.length;
+						const failedSourceCount = sourceCount - successfulSourceCount;
+						const sourceFailures = response.sourceStatuses
+							.filter((status) => status.status !== 'success')
+							.map((status) => ({
+								calendar: status.providerCalendarId,
+								calendar_source_id: status.calendarSourceId,
+								connection_id: status.connectionId,
+								reason_code: status.reasonCode ?? 'provider_error'
+							}));
 						googleRead = {
 							mode: 'source_aware',
-							source_count: response.sourceStatuses.length,
+							source_count: sourceCount,
 							successful_source_count: successfulSourceCount,
-							failed_source_count:
-								response.sourceStatuses.length - successfulSourceCount,
-							partial: response.partial
+							failed_source_count: failedSourceCount,
+							partial: response.partial,
+							coverage: resolveCalendarReadCoverage(
+								sourceCount,
+								successfulSourceCount
+							),
+							source_failures: sourceFailures
 						};
-						if (response.partial) {
+						const coverageWarning = describeCalendarCoverage(googleRead);
+						if (coverageWarning) {
+							googleError = coverageWarning;
+						} else if (response.partial) {
 							googleError = `Calendar read returned partial results for ${response.warnings.length} source(s).`;
 						}
 					}
@@ -610,8 +684,12 @@ export class CalendarExecutor extends BaseExecutor {
 					googleEvents = response.events ?? [];
 				}
 			} catch (error) {
-				googleError =
+				// The Google read produced nothing at all, so the model must not treat
+				// an empty event list as evidence that the time is free.
+				googleRead = { ...googleRead, coverage: 'unavailable' };
+				const detail =
 					error instanceof Error ? error.message : 'Failed to load Google events';
+				googleError = `No calendar data was read (${detail}). Do not assert availability or that time is free from this result.`;
 			}
 		}
 

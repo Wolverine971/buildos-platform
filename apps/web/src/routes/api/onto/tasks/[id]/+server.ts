@@ -60,9 +60,14 @@ import type { EntityKind } from '$lib/services/ontology/edge-direction';
 import { prepareTaskUpdateRelationshipPlan } from '../task-relationship-helpers';
 import { logOntologyApiError } from '../../shared/error-logging';
 import {
+	type TaskCalendarSyncReceipt,
+	needsCivilTimezone,
+	normalizeCalendarSyncInput,
 	normalizeDateTimeInput,
 	normalizePriorityInput,
-	normalizeTypeKeyInput
+	normalizeTypeKeyInput,
+	resolveUserCivilTimezone,
+	toTaskCalendarSyncReceipt
 } from '../../shared/input-normalization';
 import {
 	TaskAssignmentValidationError,
@@ -395,12 +400,28 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest(normalizedPriority.error);
 		}
 
-		const normalizedStartAt = normalizeDateTimeInput(start_at, 'start_at', 'start');
+		const calendarSync = normalizeCalendarSyncInput(body.calendar_sync);
+		if (!calendarSync.ok) {
+			return ApiResponse.badRequest(calendarSync.error);
+		}
+
+		// A bare YYYY-MM-DD means a civil day in this user's timezone. Only
+		// date-only input pays for the users.timezone read.
+		const civilTimezone = needsCivilTimezone(start_at, due_at)
+			? await resolveUserCivilTimezone(supabase, session.user.id)
+			: null;
+
+		const normalizedStartAt = normalizeDateTimeInput(
+			start_at,
+			'start_at',
+			'start',
+			civilTimezone
+		);
 		if (!normalizedStartAt.ok) {
 			return ApiResponse.badRequest(normalizedStartAt.error);
 		}
 
-		const normalizedDueAt = normalizeDateTimeInput(due_at, 'due_at', 'end');
+		const normalizedDueAt = normalizeDateTimeInput(due_at, 'due_at', 'end', civilTimezone);
 		if (!normalizedDueAt.ok) {
 			return ApiResponse.badRequest(normalizedDueAt.error);
 		}
@@ -599,11 +620,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const shouldSyncEvents =
 			shouldSyncFromTitleEdit || hasSchedulingEdit || isTransitioningToDone;
 
-		if (shouldSyncEvents) {
+		// `calendar_sync: 'none'` is the explicit "no calendar events/blocks"
+		// switch: skip reconciliation entirely and enqueue nothing.
+		let calendarReceipt: TaskCalendarSyncReceipt =
+			calendarSync.value === 'none'
+				? { calendar_sync: 'skipped' }
+				: { calendar_sync: 'unchanged' };
+		if (calendarSync.value !== 'none' && shouldSyncEvents) {
 			try {
 				const taskEventSync = new TaskEventSyncService(supabase);
-				await taskEventSync.syncTaskEvents(session.user.id, actorId, updatedTask);
+				calendarReceipt = toTaskCalendarSyncReceipt(
+					await taskEventSync.syncTaskEvents(session.user.id, actorId, updatedTask)
+				);
 			} catch (eventError) {
+				calendarReceipt = { calendar_sync: 'failed' };
 				console.warn('[Task Update] Failed to sync task events:', eventError);
 			}
 		}
@@ -722,7 +752,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 		}
 
-		return ApiResponse.success({ task: taskWithAssignees });
+		return ApiResponse.success({ task: taskWithAssignees, ...calendarReceipt });
 	} catch (error) {
 		if (error instanceof TaskAssignmentValidationError) {
 			return ApiResponse.error(error.message, error.status);

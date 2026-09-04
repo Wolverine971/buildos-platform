@@ -68,6 +68,30 @@ describe('global document reads (Decision 2, 2026-09-02)', () => {
 		);
 	});
 
+	// Start Here / global-reach audit 2026-09-03: global_basic carried no
+	// task-level read at all, so a global turn naming a task could not reach it.
+	it('mounts the task scan→read pair on the global surfaces', () => {
+		for (const profile of ['global_basic', 'global_write'] as const) {
+			const names = getGatewayDirectToolNamesForProfile(profile);
+			expect(names, profile).toContain('list_onto_tasks');
+			expect(names, profile).toContain('get_onto_task_details');
+			expect(new Set(names).size, profile).toBe(names.length);
+		}
+		expect(surfaceNames(getGatewaySurfaceForContextType('global'))).toEqual(
+			expect.arrayContaining(['list_onto_tasks', 'get_onto_task_details'])
+		);
+	});
+
+	// list_onto_tasks is only usable on a global turn because project_id is
+	// optional; get_onto_task_details needs an id the scan supplies.
+	it('keeps list_onto_tasks callable without a project_id', () => {
+		const listTasks = getGatewaySurfaceForProfile('global_basic').find(
+			(tool) => tool.function.name === 'list_onto_tasks'
+		);
+		expect(listTasks?.function.parameters.required ?? []).toEqual([]);
+		expect(listTasks?.function.parameters.properties).toHaveProperty('project_id');
+	});
+
 	it('mounts the retired context-shift tool on no surface', () => {
 		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
 			expect(getGatewayDirectToolNamesForProfile(profile), profile).not.toContain(

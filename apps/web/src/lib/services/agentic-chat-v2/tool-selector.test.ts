@@ -10,6 +10,7 @@ import {
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	applyLivingWorkspaceToolProfile,
+	looksLikeExternalCalendarTurn,
 	resolveFastChatSurfaceProfileForTurn,
 	selectFastChatTools
 } from './tool-selector';
@@ -312,7 +313,12 @@ describe('selectFastChatTools', () => {
 		expect(names).not.toContain('call_corsair_mcp_tool');
 		expect(names).not.toContain('delegate_task');
 		expect(names).not.toContain('commit_change_set');
-		expect(names).not.toContain('list_onto_tasks');
+		// Start Here / global-reach audit 2026-09-03: the task scan→read pair is
+		// now mounted globally. list_onto_tasks takes an optional project_id, so
+		// it works on a global turn, and without it the immutable worker surface
+		// left "what's on task X?" with no reachable read.
+		expect(names).toContain('list_onto_tasks');
+		expect(names).toContain('get_onto_task_details');
 		expect(names).not.toContain('resolve_libri_resource');
 	});
 
@@ -947,5 +953,68 @@ describe('selectFastChatTools', () => {
 				materialized_tools: ['resource_load']
 			})
 		).toEqual(['resource_load']);
+	});
+});
+
+// 2026-09-03 QA battery: every task-create/update prompt that merely *excluded*
+// calendar work mounted `list_calendar_events`, which is worker-unavailable.
+// The turn renegotiated onto the legacy web engine, whose lexical write gate
+// then rejected the task writes. Detection must be negation-aware.
+describe('looksLikeExternalCalendarTurn negation awareness', () => {
+	const EXCLUSION_PROMPTS = [
+		'In this project create exactly these five tasks, all initially not started, with no calendar events: (1) …',
+		'Create the four remaining tasks now: … Do not duplicate the existing permit task or create calendar events.',
+		'Change only the existing "QA — Order kitchen cabinets" task: due date September 22, 2026; … Do not create another task or a calendar event.'
+	];
+
+	it.each(EXCLUSION_PROMPTS)(
+		'treats an excluded calendar mention as no calendar request: %s',
+		(message) => {
+			expect(looksLikeExternalCalendarTurn(message)).toBe(false);
+		}
+	);
+
+	it.each(EXCLUSION_PROMPTS)(
+		'keeps the worker-unavailable calendar read off the launch surface: %s',
+		(message) => {
+			const names = selectFastChatTools({
+				contextType: 'project',
+				latestUserMessage: message
+			})
+				.map((tool) => tool.function?.name)
+				.filter(Boolean);
+
+			expect(names).not.toContain('list_calendar_events');
+		}
+	);
+
+	it.each([
+		'read my connected calendar for September 4',
+		'schedule an event tomorrow',
+		"what's on my calendar this week",
+		'move the appointment',
+		'Create a task and also put a calendar event on Friday',
+		'Check my calendar, but do not create anything yet'
+	])('still detects a genuine calendar turn: %s', (message) => {
+		expect(looksLikeExternalCalendarTurn(message)).toBe(true);
+	});
+
+	it('mounts the legacy calendar read for a positive project-context calendar turn', () => {
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage: 'Create a task and also put a calendar event on Friday'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toContain('list_calendar_events');
+	});
+
+	it('does not let a negation in an earlier sentence suppress a later calendar request', () => {
+		expect(
+			looksLikeExternalCalendarTurn(
+				'Do not create another task. Now show me my calendar for Friday.'
+			)
+		).toBe(true);
 	});
 });

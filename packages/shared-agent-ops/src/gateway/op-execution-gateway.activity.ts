@@ -12,7 +12,42 @@ import {
 } from '../ops/entity-mention-notification.service';
 import { notifyTaskAssignmentAdded } from '../ops/task-assignment-notification.service';
 import type { OntologyProjectSummary } from '../ontology/ontology-projects.service';
-import type { ToolExecutionContext } from './op-execution-gateway.types';
+import type { GatewayCalendarSyncMode } from './op-execution-gateway.normalization';
+import {
+	asTaskEventSyncSummary,
+	type TaskCalendarEventReceipt,
+	type ToolExecutionContext
+} from './op-execution-gateway.types';
+
+/**
+ * What the calendar side of a task write actually did, reported verbatim in the
+ * tool receipt. Before this existed a receipt built from the task row alone let
+ * the chat truthfully say "no event was created" while an event had just been
+ * created and queued for Google sync.
+ */
+export type GatewayCalendarSyncReceipt = {
+	/**
+	 * synced   - sync ran; `calendar_events` lists the resulting events.
+	 * skipped  - caller passed calendar_sync: 'none'; nothing was created/queued.
+	 * unchanged- no field changed that requires event reconciliation.
+	 * failed   - sync ran and threw; the task write still committed.
+	 */
+	calendar_sync: 'synced' | 'skipped' | 'unchanged' | 'failed';
+	calendar_events?: TaskCalendarEventReceipt[];
+	removed_calendar_event_count?: number;
+};
+
+function syncedReceipt(result: unknown): GatewayCalendarSyncReceipt {
+	const summary = asTaskEventSyncSummary(result);
+	if (!summary) return { calendar_sync: 'synced', calendar_events: [] };
+	return {
+		calendar_sync: 'synced',
+		calendar_events: summary.events,
+		...(summary.removed_event_count > 0
+			? { removed_calendar_event_count: summary.removed_event_count }
+			: {})
+	};
+}
 
 export function getExternalAgentActivityContext(
 	context: ToolExecutionContext
@@ -33,7 +68,9 @@ export async function syncCreatedTaskSideEffects(params: {
 	actorId: string;
 	task: Record<string, unknown>;
 	addedAssigneeActorIds?: string[];
-}): Promise<void> {
+	/** 'none' suppresses every calendar side effect for this write. */
+	calendarSync?: GatewayCalendarSyncMode;
+}): Promise<GatewayCalendarSyncReceipt> {
 	const actorDisplayName = 'BuildOS agent';
 	const mentionUserIds = await resolveEntityMentionUserIds({
 		supabase: params.context.admin,
@@ -76,9 +113,14 @@ export async function syncCreatedTaskSideEffects(params: {
 		source: 'agent_ping'
 	});
 
-	if (params.context.taskSync) {
+	let calendarReceipt: GatewayCalendarSyncReceipt =
+		params.calendarSync === 'none'
+			? { calendar_sync: 'skipped' }
+			: { calendar_sync: 'unchanged' };
+
+	if (params.calendarSync !== 'none' && params.context.taskSync) {
 		try {
-			await params.context.taskSync.syncTaskEvents(
+			const syncResult = await params.context.taskSync.syncTaskEvents(
 				params.context.userId,
 				params.actorId,
 				params.task as any,
@@ -89,7 +131,9 @@ export async function syncCreatedTaskSideEffects(params: {
 					}
 				}
 			);
+			calendarReceipt = syncedReceipt(syncResult);
 		} catch (eventError) {
+			calendarReceipt = { calendar_sync: 'failed' };
 			console.warn(
 				'[External Tool Gateway] Failed to sync task events on create:',
 				eventError
@@ -112,6 +156,8 @@ export async function syncCreatedTaskSideEffects(params: {
 		params.context.chatSessionId,
 		getExternalAgentActivityContext(params.context)
 	);
+
+	return calendarReceipt;
 }
 
 export async function syncUpdatedTaskSideEffects(params: {
@@ -122,7 +168,9 @@ export async function syncUpdatedTaskSideEffects(params: {
 	updatedTask: Record<string, unknown>;
 	changedArgs: Record<string, unknown>;
 	addedAssigneeActorIds?: string[];
-}): Promise<void> {
+	/** 'none' suppresses every calendar side effect for this write. */
+	calendarSync?: GatewayCalendarSyncMode;
+}): Promise<GatewayCalendarSyncReceipt> {
 	const isTransitioningToDone =
 		params.changedArgs.state_key !== undefined &&
 		params.existingTask.state_key !== 'done' &&
@@ -137,9 +185,14 @@ export async function syncUpdatedTaskSideEffects(params: {
 		params.changedArgs.title !== undefined && !isTransitioningFromDone;
 	const shouldSyncEvents = shouldSyncFromTitleEdit || hasSchedulingEdit || isTransitioningToDone;
 
-	if (shouldSyncEvents && params.context.taskSync) {
+	let calendarReceipt: GatewayCalendarSyncReceipt =
+		params.calendarSync === 'none'
+			? { calendar_sync: 'skipped' }
+			: { calendar_sync: 'unchanged' };
+
+	if (params.calendarSync !== 'none' && shouldSyncEvents && params.context.taskSync) {
 		try {
-			await params.context.taskSync.syncTaskEvents(
+			const syncResult = await params.context.taskSync.syncTaskEvents(
 				params.context.userId,
 				params.actorId,
 				params.updatedTask as any,
@@ -150,7 +203,9 @@ export async function syncUpdatedTaskSideEffects(params: {
 					}
 				}
 			);
+			calendarReceipt = syncedReceipt(syncResult);
 		} catch (eventError) {
+			calendarReceipt = { calendar_sync: 'failed' };
 			console.warn(
 				'[External Tool Gateway] Failed to sync task events on update:',
 				eventError
@@ -229,4 +284,6 @@ export async function syncUpdatedTaskSideEffects(params: {
 		params.context.chatSessionId,
 		getExternalAgentActivityContext(params.context)
 	);
+
+	return calendarReceipt;
 }

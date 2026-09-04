@@ -398,6 +398,30 @@ function normalizeEntityDates(
 }
 
 /**
+ * A task write result carries the calendar side effects the route actually
+ * performed, so the model's receipt states what happened instead of inferring
+ * "no event was created" from a task row that never mentioned events.
+ */
+export type TaskWriteResult = {
+	task: any;
+	message: string;
+	calendar_sync?: 'synced' | 'skipped' | 'unchanged' | 'failed';
+	calendar_events?: Array<{ id: string; title: string; start_at: string; end_at: string }>;
+	removed_calendar_event_count?: number;
+};
+
+function calendarSyncReceiptFields(data: any): Partial<TaskWriteResult> {
+	if (!data || typeof data.calendar_sync !== 'string') return {};
+	return {
+		calendar_sync: data.calendar_sync,
+		...(Array.isArray(data.calendar_events) ? { calendar_events: data.calendar_events } : {}),
+		...(typeof data.removed_calendar_event_count === 'number'
+			? { removed_calendar_event_count: data.removed_calendar_event_count }
+			: {})
+	};
+}
+
+/**
  * Executor for ontology write operations.
  *
  * Handles create, update, and delete operations with proper validation
@@ -909,10 +933,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 	async createOntoTask(
 		args: CreateOntoTaskArgs,
 		opts: { toolCallId?: string } = {}
-	): Promise<{
-		task: any;
-		message: string;
-	}> {
+	): Promise<TaskWriteResult> {
 		this.assertDurableTextSafe('create_onto_task', args);
 		const assigneeResolution = await this.resolveTaskAssigneeActorIds({
 			projectId: args.project_id,
@@ -949,6 +970,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.connections !== undefined) {
 			payload.connections = args.connections;
 		}
+		if (args.calendar_sync !== undefined) {
+			payload.calendar_sync = args.calendar_sync;
+		}
 		if (assigneeResolution.hasInput) {
 			payload.assignee_actor_ids = assigneeResolution.assigneeActorIds;
 		}
@@ -971,6 +995,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 
 		return {
 			task: data.task,
+			// The route reports what calendar sync actually did; passing it through
+			// keeps the receipt honest instead of inferring from the task row.
+			...calendarSyncReceiptFields(data),
 			message: `Created ontology task "${data.task?.title ?? 'Task'}"`
 		};
 	}
@@ -1445,10 +1472,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 	async updateOntoTask(
 		args: UpdateOntoTaskArgs,
 		getTaskDetails: (taskId: string) => Promise<any>
-	): Promise<{
-		task: any;
-		message: string;
-	}> {
+	): Promise<TaskWriteResult> {
 		this.assertDurableTextSafe('update_onto_task', args);
 		const updateData: Record<string, unknown> = {};
 		let taskDetailsCache: any | null = null;
@@ -1522,13 +1546,21 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			);
 		}
 
+		// calendar_sync is a side-effect switch, not a task field: it is added
+		// after the no-effect guard so it never masks an otherwise empty patch.
+		const patchBody =
+			args.calendar_sync !== undefined
+				? { ...updateData, calendar_sync: args.calendar_sync }
+				: updateData;
+
 		const data = await this.apiRequest(`/api/onto/tasks/${args.task_id}`, {
 			method: 'PATCH',
-			body: JSON.stringify(updateData)
+			body: JSON.stringify(patchBody)
 		});
 
 		return {
 			task: data.task,
+			...calendarSyncReceiptFields(data),
 			message: `Updated ontology task "${data.task?.title ?? args.task_id}"`
 		};
 	}

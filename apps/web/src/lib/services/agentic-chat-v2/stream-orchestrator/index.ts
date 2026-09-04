@@ -668,6 +668,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let repeatedReadOpSetCount = 0;
 	let readLoopRepairRank = 0;
 	let forceNoToolSynthesisPass = false;
+	// A `write_execution_scope_mismatch` rejection never becomes authorized by
+	// retrying, so bound how many the model may burn a turn on before we force a
+	// tool-free report of what was not performed.
+	let writeExecutionScopeMismatchCount = 0;
+	let writeExecutionScopeMismatchSynthesisForced = false;
 	let deterministicProjectCreateConfirmationUsed = false;
 	let forceWriteIntentToolPass: ForcedWriteIntentToolPass | null = null;
 	let writeIntentCarveOutUsed = false;
@@ -2358,6 +2363,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					authorizeToolCall: (candidate, phase) => {
 						const decision = evaluateToolSecurity(candidate, phase);
 						if (decision.allowed) return { allowed: true };
+						if (
+							phase === 'execution' &&
+							decision.reason === 'write_execution_scope_mismatch'
+						) {
+							writeExecutionScopeMismatchCount += 1;
+						}
 						if (decision.requiresUserAction && decision.isWrite) {
 							const parsed = parseToolArguments(candidate.function.arguments).args;
 							const proposal = buildWriteReviewProposal({
@@ -2417,6 +2428,23 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					content:
 						'Supervisor note: A tool returned requires_user_action. Do not call that tool again or perform additional writes in this turn. Explain the preview or blocker, ask for the required user decision, and wait for a later user turn.'
 				});
+				forceNoToolSynthesisPass = true;
+				continue;
+			}
+
+			// Declaring a turn contract cannot authorize execution on this path, so
+			// a rejected write stays rejected no matter how the model rephrases it.
+			// Stop the retry loop after the second rejection and make the turn
+			// report what was not performed.
+			if (
+				writeExecutionScopeMismatchCount >= 2 &&
+				!writeExecutionScopeMismatchSynthesisForced
+			) {
+				writeExecutionScopeMismatchSynthesisForced = true;
+				queueRepairInstruction(
+					'Two write calls in this turn were rejected before execution and nothing was changed. Retrying them cannot succeed in this turn. Answer now without tools: name each write that was not performed, state the exact change you intended for each, and ask the user to confirm it in a new message.'
+				);
+				flushRepairInstructions();
 				forceNoToolSynthesisPass = true;
 				continue;
 			}

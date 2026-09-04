@@ -187,6 +187,77 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 	});
 
+	it('stops retrying an unauthorized write after the second scope mismatch', async () => {
+		const projectId = '11111111-1111-4111-8111-111111111111';
+		const streamParams: Array<{ toolNames: string[] }> = [];
+		let pass = 0;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				pass += 1;
+				const toolNames: string[] = (params.tools ?? [])
+					.map((tool: ChatToolDefinition) => tool.function?.name)
+					.filter((name: string | undefined): name is string => Boolean(name));
+				streamParams.push({ toolNames });
+				if (toolNames.length > 0) {
+					// The model keeps re-attempting the blocked write with fresh
+					// arguments each time (so the identical-retry supervisor never
+					// catches it), exactly as it did in the 2026-09-03 QA battery
+					// where one turn burned 11 attempts.
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'create_onto_task',
+							{ project_id: projectId, title: `Blocked task ${pass}` },
+							`write-attempt-${pass}`
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'I did not create the task.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn();
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user-1',
+			sessionId: 'session-1',
+			contextType: 'project',
+			projectId,
+			history: [],
+			message: 'Summarize this project.',
+			tools: tools(['create_onto_task']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 6,
+			maxToolCalls: 12
+		});
+
+		// Two rejections, then a forced tool-free pass: the third attempt is never
+		// offered a tool surface, so it never reaches the executor.
+		expect(toolExecutor).not.toHaveBeenCalled();
+		const writeAttempts = result.toolExecutions.filter(
+			(execution) => execution.toolCall.function.name === 'create_onto_task'
+		);
+		expect(writeAttempts).toHaveLength(2);
+		for (const attempt of writeAttempts) {
+			expect(attempt.result).toMatchObject({
+				success: false,
+				result: { reason: 'write_execution_scope_mismatch', write_executed: false }
+			});
+			// The rejection must not send the model back to declare a turn
+			// contract: that never authorizes execution on this path.
+			expect(attempt.result?.error ?? '').not.toMatch(/turn contract/i);
+		}
+		expect(streamParams).toHaveLength(3);
+		expect(streamParams[2]?.toolNames).toEqual([]);
+		expect(result.llmPasses?.[2]?.forcedNoToolSynthesis).toBe(true);
+		expect(result.finalAssistantText.trim().length).toBeGreaterThan(0);
+		expect(result.finalAssistantText).toContain('nothing was updated');
+	});
+
 	it('forces one project-create tool and confirms directly from its durable receipt', async () => {
 		let streamInvocation = 0;
 		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];

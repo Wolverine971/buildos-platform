@@ -286,14 +286,90 @@ function looksLikeExternalEmailReadTurn(latestUserMessage?: string | null): bool
 	);
 }
 
-function looksLikeExternalCalendarTurn(latestUserMessage?: string | null): boolean {
+const CALENDAR_MENTION_PATTERN = /\bcalendars?\b/gi;
+const CALENDAR_EVENT_MENTION_PATTERN = /\b(?:events?|appointments?)\b/gi;
+const CALENDAR_ACTION_PATTERN =
+	/\b(?:schedule|reschedule|move|create|update|cancel|delete|list|show|find|check|today|tomorrow|week|month)\b/i;
+// Negation cues that suppress a calendar mention. `don't forget` / `don't
+// hesitate` are encouragements, not exclusions, so they are filtered below.
+const CALENDAR_NEGATION_CUE_PATTERN =
+	/\b(?:no|not|don'?t|do\s+not|does\s+not|doesn'?t|didn'?t|won'?t|never|without|avoids?|avoiding|skips?|skipping|excludes?|excluding|omits?|omitting|rather\s+than|instead\s+of)\b/gi;
+const CALENDAR_NEGATION_FALSE_CUE_PATTERN = /^\s*(?:forget|hesitate)\b/i;
+// A negation binds a nearby mention directly ("with no calendar events"), or
+// governs a coordinated continuation of the same clause ("Do not duplicate the
+// existing permit task or create calendar events").
+const CALENDAR_NEGATION_ADJACENT_WORD_WINDOW = 6;
+const CALENDAR_NEGATION_COORDINATED_WORD_WINDOW = 20;
+const CALENDAR_NEGATION_COORDINATOR_PATTERN = /\b(?:or|nor)\b/i;
+
+function countWords(text: string): number {
+	return text.split(/\s+/).filter((word) => word.length > 0).length;
+}
+
+/** Clause spans, so a negation in one sentence cannot suppress the next. */
+function findEnclosingClause(text: string, index: number): { start: number; end: number } {
+	let start = 0;
+	let end = text.length;
+	for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+		if (/[.!?;\n]/.test(text[cursor] ?? '')) {
+			start = cursor + 1;
+			break;
+		}
+	}
+	for (let cursor = index; cursor < text.length; cursor += 1) {
+		if (/[.!?;\n]/.test(text[cursor] ?? '')) {
+			end = cursor;
+			break;
+		}
+	}
+	return { start, end };
+}
+
+function isCalendarMentionNegated(text: string, mentionIndex: number): boolean {
+	const clause = findEnclosingClause(text, mentionIndex);
+	const before = text.slice(clause.start, mentionIndex);
+	CALENDAR_NEGATION_CUE_PATTERN.lastIndex = 0;
+	let negationEnd: number | null = null;
+	let cue: RegExpExecArray | null;
+	while ((cue = CALENDAR_NEGATION_CUE_PATTERN.exec(before)) !== null) {
+		const trailing = before.slice(cue.index + cue[0].length);
+		if (CALENDAR_NEGATION_FALSE_CUE_PATTERN.test(trailing)) continue;
+		negationEnd = cue.index + cue[0].length;
+	}
+	if (negationEnd === null) return false;
+	const between = before.slice(negationEnd);
+	const distance = countWords(between);
+	if (distance <= CALENDAR_NEGATION_ADJACENT_WORD_WINDOW) return true;
+	return (
+		distance <= CALENDAR_NEGATION_COORDINATED_WORD_WINDOW &&
+		CALENDAR_NEGATION_COORDINATOR_PATTERN.test(between)
+	);
+}
+
+function collectUnnegatedMentionCount(text: string, pattern: RegExp): number {
+	pattern.lastIndex = 0;
+	let count = 0;
+	let match: RegExpExecArray | null;
+	while ((match = pattern.exec(text)) !== null) {
+		if (!isCalendarMentionNegated(text, match.index)) count += 1;
+	}
+	return count;
+}
+
+/**
+ * Detect turns that genuinely reach for the connected calendar. Calendar words
+ * used as an *exclusion* ("with no calendar events", "Do not create another
+ * task or a calendar event") must not mount `list_calendar_events`: that tool is
+ * worker-unavailable, so materializing it renegotiates the turn onto the legacy
+ * web engine, where ordinary task writes are then rejected by the lexical write
+ * gate. Only mentions outside a negation window count as a calendar request.
+ */
+export function looksLikeExternalCalendarTurn(latestUserMessage?: string | null): boolean {
 	const text = latestUserMessage?.trim() ?? '';
 	if (!text) return false;
-	if (/\bcalendar\b/i.test(text)) return true;
+	if (collectUnnegatedMentionCount(text, CALENDAR_MENTION_PATTERN) > 0) return true;
 	return (
-		/\b(?:event|appointment)\b/i.test(text) &&
-		/\b(?:schedule|reschedule|move|create|update|cancel|delete|list|show|find|check|today|tomorrow|week|month)\b/i.test(
-			text
-		)
+		collectUnnegatedMentionCount(text, CALENDAR_EVENT_MENTION_PATTERN) > 0 &&
+		CALENDAR_ACTION_PATTERN.test(text)
 	);
 }

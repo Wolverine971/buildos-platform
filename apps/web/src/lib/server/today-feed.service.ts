@@ -56,14 +56,15 @@ export function resolveTodayTaskBucket(
 	},
 	date: string,
 	dayStartMs: number,
-	dayEndMs: number
+	dayEndMs: number,
+	timezone?: string | null
 ): TodayTaskBucket | null {
-	const dueDateOnly = getDateOnlyCalendarDate(task.due_at, 'end');
+	const dueDateOnly = getDateOnlyCalendarDate(task.due_at, 'end', timezone);
 	if (dueDateOnly ? dueDateOnly === date : isWithinDay(task.due_at, dayStartMs, dayEndMs)) {
 		return 'due_today';
 	}
 
-	const startDateOnly = getDateOnlyCalendarDate(task.start_at, 'start');
+	const startDateOnly = getDateOnlyCalendarDate(task.start_at, 'start', timezone);
 	if (startDateOnly ? startDateOnly === date : isWithinDay(task.start_at, dayStartMs, dayEndMs)) {
 		return 'starts_today';
 	}
@@ -187,7 +188,7 @@ export async function getTodayFeed({
 		.map((task): TodayTask | null => {
 			const project = projectById.get(task.project_id);
 			if (!project) return null;
-			const bucket = resolveTodayTaskBucket(task, date, dayStartMs, dayEndMs);
+			const bucket = resolveTodayTaskBucket(task, date, dayStartMs, dayEndMs, timezone);
 			if (!bucket) return null;
 			return {
 				...task,

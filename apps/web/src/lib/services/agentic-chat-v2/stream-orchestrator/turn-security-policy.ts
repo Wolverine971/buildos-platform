@@ -660,7 +660,11 @@ export function buildInteractiveChatToolSecurityResult(params: {
 			case 'write_review_scope_mismatch':
 				return `The confirmed review did not authorize ${toolCall.function.name}. No write executed. Keep the confirmation bound to the exact proposed operation, or present this different write for a new review.`;
 			case 'write_execution_scope_mismatch':
-				return `Write tool ${toolCall.function.name} was not authorized for execution. No write executed. Declare a bounded turn contract that names this exact operation, use a server-commissioned tool, or present the operation for user review.`;
+				// Declaring a turn contract does NOT authorize execution on this
+				// path, so never tell the model to try that: it produces identical
+				// retries that all fail. The only forward move is to report the
+				// blocked change and ask the user to confirm in a new message.
+				return `Write tool ${toolCall.function.name} was not authorized on this path. Nothing was executed and nothing was changed. Do not retry this call or any variation of it in this turn. Tell the user exactly what you would have changed (the entity and each field value) and ask them to confirm it in a new message.`;
 			case 'write_materialization_contract_required':
 				return `Write tool ${toolCall.function.name} was not materialized. The trusted user turn did not directly commission this write. Declare a bounded turn contract first, or ask a clarifying question if the intended change is unresolved.`;
 		}

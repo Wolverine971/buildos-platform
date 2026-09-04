@@ -10,11 +10,9 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import {
-	REPEAT_READ_NOTICE,
 	type ToolValidationIssue,
 	buildToolPayloadForModel,
 	buildToolValidationRepairInstruction,
-	isControlToolName,
 	parseToolArguments
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatWorkerExecutionInputV1 } from '../executionInput';
@@ -51,7 +49,6 @@ import {
 	productionToolsFor
 } from './tool-surface';
 import { validationFailureError, validationIssuesForCall } from './validation';
-import { collectReadResultEntityRefs, summarizeReadResultEntityRefs } from './write-routing';
 
 export const TOOL_EXECUTION_BATCHING_INSTRUCTION =
 	'Tool execution batching: independent calls returned in one response may run in parallel. When a call must wait for another call in the same response, give each a unique call_ref and list prerequisite refs in after. Use after only when all dependent arguments are already known. Never reference a call_ref from an earlier response; completed earlier calls need no after dependency. If a later call needs a value returned by an earlier call, wait for that tool result and issue the dependent call in the next response. The worker may serialize calls that touch conflicting resources.';
@@ -241,123 +238,6 @@ export function buildBaseProviderRequest(
 	};
 }
 
-/**
- * Tool results are replayed on every later pass. Once a round has been
- * consumed by the model pass that produced the next round, its full bodies
- * are dead weight: the model already acted on them. Older tool messages are
- * replaced with a stub that keeps what a later write still needs (the tool,
- * its status, and the entity ids with their titles); the round just appended
- * stays full. Control results (contract declaration, reviewer decisions,
- * clarification) are never stubbed: they are the harness's own record.
- */
-const SUPERSEDED_TOOL_RESULT_MIN_CHARS = 400;
-const SUPERSEDED_TOOL_RESULT_MAX_ENTITIES = 64;
-const SUPERSEDED_TOOL_RESULT_TITLE_CHARS = 48;
-const SUPERSEDED_TOOL_RESULT_ERROR_CHARS = 160;
-
-type SupersededToolResultStub = JsonObject & { superseded: true };
-
-function isSupersededToolResultStub(content: string): boolean {
-	return content.startsWith('{"superseded":true') || content.includes('"superseded":true');
-}
-
-function supersededEntities(result: unknown): JsonObject {
-	const refs = collectReadResultEntityRefs(result);
-	if (refs.length === 0) return {};
-	const entities: JsonObject[] = refs
-		.slice(0, SUPERSEDED_TOOL_RESULT_MAX_ENTITIES)
-		.map((ref) => ({
-			id: ref.id,
-			kind: ref.kind,
-			...(ref.title ? { title: ref.title.slice(0, SUPERSEDED_TOOL_RESULT_TITLE_CHARS) } : {})
-		}));
-	const omitted = refs.length - entities.length;
-	return omitted > 0 ? { entities, entities_omitted: omitted } : { entities };
-}
-
-function buildSupersededToolResultStub(toolName: string, content: string): string | null {
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(content);
-	} catch {
-		parsed = null;
-	}
-	const record =
-		parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-			? (parsed as Record<string, unknown>)
-			: null;
-	const stub: SupersededToolResultStub = { superseded: true, tool: toolName };
-	if (record && typeof record.error === 'string') {
-		stub.status = 'error';
-		stub.error = record.error.slice(0, SUPERSEDED_TOOL_RESULT_ERROR_CHARS);
-	} else {
-		stub.status = 'ok';
-		const refs = collectReadResultEntityRefs(parsed);
-		stub.summary =
-			refs.length > 0
-				? summarizeReadResultEntityRefs(refs)
-				: `${content.length} chars, no entity ids`;
-		Object.assign(stub, supersededEntities(parsed));
-	}
-	const serialized = canonicalizeAgenticChatJson(stub);
-	// A stub that is not smaller than what it replaces saves nothing.
-	return serialized.length < content.length ? serialized : null;
-}
-
-export function supersedeConsumedToolResults(
-	messages: readonly AgenticChatTurnProviderMessageV1[]
-): AgenticChatTurnProviderMessageV1[] {
-	const toolNamesByCallId = new Map<string, string>();
-	return messages.map((message) => {
-		if (message.role === 'assistant' && Array.isArray(message.tool_calls)) {
-			for (const toolCall of message.tool_calls) {
-				const fn = toolCall.function;
-				if (
-					typeof toolCall.id === 'string' &&
-					fn &&
-					typeof fn === 'object' &&
-					!Array.isArray(fn) &&
-					typeof (fn as JsonObject).name === 'string'
-				) {
-					toolNamesByCallId.set(toolCall.id, (fn as JsonObject).name as string);
-				}
-			}
-			return message;
-		}
-		if (message.role !== 'tool' || typeof message.content !== 'string') return message;
-		if (message.content.length <= SUPERSEDED_TOOL_RESULT_MIN_CHARS) return message;
-		if (isSupersededToolResultStub(message.content)) return message;
-		const toolName = message.tool_call_id ? toolNamesByCallId.get(message.tool_call_id) : null;
-		if (!toolName || isControlToolName(toolName)) return message;
-		const stub = buildSupersededToolResultStub(toolName, message.content);
-		return stub ? { ...message, content: stub } : message;
-	});
-}
-
-/**
- * A memo-served repeat read re-injected the whole cached payload on the
- * pass that asked for it; the model saw that payload already. Return the
- * notice and the entity evidence instead.
- */
-function buildMemoServedToolResultContent(toolName: string, result: JsonObject): string {
-	const refs = collectReadResultEntityRefs(result);
-	return canonicalizeAgenticChatJson({
-		superseded: true,
-		served_from_turn_memo: true,
-		repeat_read_notice:
-			typeof result.repeat_read_notice === 'string'
-				? result.repeat_read_notice
-				: REPEAT_READ_NOTICE,
-		tool: toolName,
-		status: 'ok',
-		summary:
-			refs.length > 0
-				? summarizeReadResultEntityRefs(refs)
-				: 'identical to the earlier result',
-		...supersededEntities(result)
-	});
-}
-
 export function buildContinuationRequest(
 	request: AgenticChatTurnProviderRequestV1,
 	calls: readonly AgenticChatFeedbackToolCall[],
@@ -376,21 +256,9 @@ export function buildContinuationRequest(
 			};
 		}
 		const execution = result.execution;
-		if (
-			call.kind === 'read' &&
-			execution.result &&
-			typeof execution.result === 'object' &&
-			(execution.result as JsonObject).served_from_turn_memo === true
-		) {
-			return {
-				role: 'tool',
-				content: buildMemoServedToolResultContent(
-					call.name,
-					execution.result as JsonObject
-				),
-				tool_call_id: call.id
-			};
-		}
+		// A memo-served repeat read carries the full cached payload plus the
+		// repeat notice. Replay it whole: the model asks again precisely when it
+		// no longer has the evidence, so a stub would leave it with nothing.
 		const modelPayload = buildToolPayloadForModel(
 			completedProviderCallToChatToolCall(call),
 			{
@@ -417,8 +285,12 @@ export function buildContinuationRequest(
 		logicalProviderRound: request.logicalProviderRound + 1,
 		providerRound: 'synthesis',
 		passRole: 'acting',
+		// Every earlier tool result stays in the request at full length. The
+		// final answer is grounded in evidence gathered across all rounds, so
+		// compacting consumed bodies here removed exact quotes, dates and amounts
+		// before the model could report them (Cedar House battery, 2026-09-03).
 		messages: [
-			...supersedeConsumedToolResults(request.messages),
+			...request.messages,
 			{
 				role: 'assistant',
 				content: '',

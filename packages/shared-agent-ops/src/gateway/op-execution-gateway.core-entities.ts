@@ -36,7 +36,8 @@ import {
 	normalizeProps,
 	normalizeRiskImpactFilter,
 	normalizeStateValue,
-	requireTrimmedString
+	requireTrimmedString,
+	resolveGatewayCivilTimezone
 } from './op-execution-gateway.normalization';
 import {
 	buildPaginationForRows,
@@ -187,7 +188,11 @@ export async function createGoal(context: ToolExecutionContext, args: Record<str
 	const actorId = await ensureActorId(context.admin, context.userId);
 	const name = requireTrimmedString(args.name, 'name');
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', GOAL_STATES, 'draft');
-	const targetDate = normalizeOptionalDate(args.target_date, 'target_date');
+	// A goal target date is a civil day in the user's timezone, closing that day.
+	const targetDate = normalizeOptionalDate(args.target_date, 'target_date', {
+		boundary: 'end',
+		timezone: await resolveGatewayCivilTimezone(context, [args.target_date])
+	});
 	const description =
 		normalizeOptionalText(args.description, 'description', { allowNull: true }) || null;
 	const goalBody = normalizeOptionalText(args.goal, 'goal', { allowNull: true }) || null;
@@ -252,6 +257,7 @@ export async function createGoal(context: ToolExecutionContext, args: Record<str
 }
 
 export async function updateGoal(context: ToolExecutionContext, args: Record<string, unknown>) {
+	const civilTimezone = await resolveGatewayCivilTimezone(context, [args.target_date]);
 	return updateCoreEntity(
 		context,
 		args,
@@ -284,7 +290,10 @@ export async function updateGoal(context: ToolExecutionContext, args: Record<str
 						: null;
 			}
 			if (args.target_date !== undefined) {
-				updateData.target_date = normalizeOptionalDate(args.target_date, 'target_date');
+				updateData.target_date = normalizeOptionalDate(args.target_date, 'target_date', {
+					boundary: 'end',
+					timezone: civilTimezone
+				});
 			}
 			if (
 				args.props !== undefined ||
@@ -466,7 +475,11 @@ export async function createMilestone(
 	const actorId = await ensureActorId(context.admin, context.userId);
 	const title = requireTrimmedString(args.title, 'title');
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', MILESTONE_STATES, 'pending');
-	const dueAt = normalizeOptionalDate(args.due_at, 'due_at');
+	// A milestone due date is a civil day in the user's timezone, closing that day.
+	const dueAt = normalizeOptionalDate(args.due_at, 'due_at', {
+		boundary: 'end',
+		timezone: await resolveGatewayCivilTimezone(context, [args.due_at])
+	});
 	const description =
 		normalizeOptionalText(args.description, 'description', { allowNull: true }) || null;
 	const milestone =
@@ -528,6 +541,7 @@ export async function updateMilestone(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>
 ) {
+	const civilTimezone = await resolveGatewayCivilTimezone(context, [args.due_at]);
 	return updateCoreEntity(context, args, 'milestone', (existing) => {
 		const updateData: Record<string, unknown> = {};
 		if (args.title !== undefined) updateData.title = requireTrimmedString(args.title, 'title');
@@ -536,7 +550,10 @@ export async function updateMilestone(
 				normalizeOptionalText(args.description, 'description', { allowNull: true }) || null;
 		}
 		if (args.due_at !== undefined)
-			updateData.due_at = normalizeOptionalDate(args.due_at, 'due_at');
+			updateData.due_at = normalizeOptionalDate(args.due_at, 'due_at', {
+				boundary: 'end',
+				timezone: civilTimezone
+			});
 		if (args.state_key !== undefined) {
 			updateData.state_key = normalizeStateValue(
 				args.state_key,

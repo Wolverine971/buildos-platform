@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/google-calendar-read.service.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { GoogleCalendarConnectionError } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
 import { GoogleCalendarReadService } from './google-calendar-read.service';
 import type { CalendarTarget } from './google-calendar-target.service';
 
@@ -302,5 +303,219 @@ describe('GoogleCalendarReadService', () => {
 		expect(result.warnings).toEqual([
 			expect.objectContaining({ calendarSourceId: 'source-c' })
 		]);
+	});
+});
+
+describe('GoogleCalendarReadService failure classification', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	function serviceThatThrows(error: unknown, thrownBy: 'auth' | 'list' = 'list') {
+		const readTarget = target();
+		const targetService = createTargetService({
+			readTargets: [readTarget],
+			availabilityTargets: [readTarget]
+		});
+		const getAuthenticatedClient = vi.fn(async () => {
+			if (thrownBy === 'auth') throw error;
+			return { connectionId: 'connection-a' };
+		});
+		return new GoogleCalendarReadService({} as any, {
+			targetService,
+			connectionService: { getAuthenticatedClient },
+			createCalendarApi: () =>
+				({
+					events: {
+						list: vi.fn(async () => {
+							throw error;
+						})
+					},
+					freebusy: {
+						query: vi.fn(async () => {
+							throw error;
+						})
+					}
+				}) as any
+		});
+	}
+
+	function gaxiosLike(status: number) {
+		const error = new Error(`Request failed with status ${status}`) as Error & {
+			status: number;
+			code: number;
+			response: { status: number };
+		};
+		error.status = status;
+		error.code = status;
+		error.response = { status };
+		return error;
+	}
+
+	function errnoLike(code: string) {
+		const error = new Error('socket problem') as Error & { code: string };
+		error.code = code;
+		return error;
+	}
+
+	it.each([
+		{
+			label: 'reconnect_required from the credential service',
+			error: new GoogleCalendarConnectionError(
+				'reconnect_required',
+				'Google refresh token expired or revoked'
+			),
+			thrownBy: 'auth' as const,
+			expectedStatus: 'error',
+			expectedReason: 'reconnect_required',
+			expectedHttpStatus: undefined
+		},
+		{
+			label: 'HTTP 401 from the provider',
+			error: gaxiosLike(401),
+			thrownBy: 'list' as const,
+			expectedStatus: 'error',
+			expectedReason: 'reconnect_required',
+			expectedHttpStatus: 401
+		},
+		{
+			label: 'HTTP 429 rate limiting',
+			error: gaxiosLike(429),
+			thrownBy: 'list' as const,
+			expectedStatus: 'error',
+			expectedReason: 'rate_limited',
+			expectedHttpStatus: 429
+		},
+		{
+			label: 'HTTP 403 forbidden',
+			error: gaxiosLike(403),
+			thrownBy: 'list' as const,
+			expectedStatus: 'error',
+			expectedReason: 'forbidden',
+			expectedHttpStatus: 403
+		},
+		{
+			label: 'HTTP 404 missing calendar',
+			error: gaxiosLike(404),
+			thrownBy: 'list' as const,
+			expectedStatus: 'error',
+			expectedReason: 'not_found',
+			expectedHttpStatus: 404
+		},
+		{
+			label: 'transport failure',
+			error: errnoLike('ECONNRESET'),
+			thrownBy: 'list' as const,
+			expectedStatus: 'error',
+			expectedReason: 'network',
+			expectedHttpStatus: undefined
+		},
+		{
+			label: 'unclassified provider failure',
+			error: new Error('provider unavailable'),
+			thrownBy: 'list' as const,
+			expectedStatus: 'error',
+			expectedReason: 'provider_error',
+			expectedHttpStatus: undefined
+		}
+	])(
+		'classifies $label and logs one sanitized line',
+		async ({ error, thrownBy, expectedStatus, expectedReason, expectedHttpStatus }) => {
+			const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+			const service = serviceThatThrows(error, thrownBy);
+
+			const result = await service.listEvents({ userId: 'user-1', budgetMs: 5000 });
+
+			expect(result.sourceStatuses).toEqual([
+				expect.objectContaining({
+					calendarSourceId: 'source-a',
+					status: expectedStatus,
+					reasonCode: expectedReason,
+					httpStatus: expectedHttpStatus
+				})
+			]);
+			expect(result.warnings[0]).toMatchObject({ reasonCode: expectedReason });
+			expect(result.warnings[0]?.message).toContain(expectedReason);
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(warn).toHaveBeenCalledWith(
+				'[GoogleCalendarRead] Calendar source read failed',
+				expect.objectContaining({
+					operation: 'listEvents',
+					calendarSourceId: 'source-a',
+					connectionId: 'connection-a',
+					reasonCode: expectedReason
+				})
+			);
+			// Sanitized: identifiers and a bounded message only.
+			const payload = warn.mock.calls[0]?.[1] as Record<string, unknown>;
+			expect(Object.keys(payload).sort()).toEqual([
+				'calendarSourceId',
+				'connectionId',
+				'errorMessage',
+				'errorName',
+				'httpStatus',
+				'operation',
+				'providerCalendarId',
+				'reasonCode',
+				'status'
+			]);
+			expect(String(payload.errorMessage).length).toBeLessThanOrEqual(200);
+		}
+	);
+
+	it('tells the user to reconnect the calendar when Google access is revoked', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const service = serviceThatThrows(
+			new GoogleCalendarConnectionError('reconnect_required', 'invalid_grant'),
+			'auth'
+		);
+
+		const result = await service.listEvents({ userId: 'user-1', budgetMs: 5000 });
+
+		expect(result.warnings[0]?.message).toContain('needs to be reconnected');
+		expect(result.warnings[0]?.code).toBe('CALENDAR_SOURCE_READ_FAILED');
+		expect(result.partial).toBe(true);
+	});
+
+	it('keeps timeout semantics and tags the budget reason', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const readTarget = target();
+		const targetService = createTargetService({ readTargets: [readTarget] });
+		const service = new GoogleCalendarReadService({} as any, {
+			targetService,
+			connectionService: {
+				getAuthenticatedClient: vi.fn().mockResolvedValue({ connectionId: 'connection-a' })
+			},
+			createCalendarApi: () =>
+				({
+					events: { list: vi.fn(() => new Promise(() => {})) },
+					freebusy: {} as any
+				}) as any
+		});
+
+		const result = await service.listEvents({ userId: 'user-1', budgetMs: 50 });
+
+		expect(result.sourceStatuses[0]).toMatchObject({
+			status: 'timeout',
+			reasonCode: 'timeout'
+		});
+	});
+
+	it('classifies availability failures per source too', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const service = serviceThatThrows(gaxiosLike(429), 'list');
+
+		const result = await service.getFreeBusy({
+			userId: 'user-1',
+			timeMin: '2026-08-12T12:00:00.000Z',
+			timeMax: '2026-08-12T20:00:00.000Z'
+		});
+
+		expect(result.sourceStatuses[0]).toMatchObject({
+			status: 'error',
+			reasonCode: 'rate_limited',
+			httpStatus: 429
+		});
+		expect(result.warnings[0]?.message).toContain('rate_limited');
 	});
 });

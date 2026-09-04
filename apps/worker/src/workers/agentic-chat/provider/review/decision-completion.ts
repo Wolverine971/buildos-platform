@@ -30,7 +30,8 @@ import { validateCompletedProviderCalls } from '../validation';
 import {
 	buildCandidateGateClarification,
 	buildReviewFallbackClarification,
-	findAmbiguousReferenceCandidates
+	findAmbiguousReferenceCandidates,
+	latestUserMessageText
 } from './decision-handling';
 
 type ReviewDecisionCompletionInput = {
@@ -115,7 +116,11 @@ export function completeTurnContractReviewDecision(
 				fallbackReason = `Independent semantic review returned an unexecutable contract. ${fieldErrors[0]}`;
 			}
 			const ambiguity = reviewedContract
-				? findAmbiguousReferenceCandidates(call.arguments, reviewedContract)
+				? findAmbiguousReferenceCandidates(
+						call.arguments,
+						reviewedContract,
+						latestUserMessageText(input.actingRequest)
+					)
 				: null;
 			if (ambiguity) {
 				calls = [buildCandidateGateClarification(input.actingRequest, ambiguity)];

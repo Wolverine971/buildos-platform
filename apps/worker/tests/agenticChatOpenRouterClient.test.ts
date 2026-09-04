@@ -1000,6 +1000,94 @@ describe('AgenticChatOpenRouterClient', () => {
 		}
 	);
 
+	// 2026-09-03 battery: a pinned endpoint ignored tool_choice=none and named
+	// neither the pinned model nor a normalizable provider slug, so the pin
+	// survived and `order: [slug], allow_fallbacks: false` sent the bounded
+	// retry straight back to the same endpoint.
+	it('releases the route pin when a pinned endpoint ignores tool_choice=none', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 2) {
+				return sseResponse([
+					JSON.stringify({
+						model: 'provider/other-resolved',
+						provider: 'Warm Provider Display Name',
+						choices: [
+							{
+								delta: {
+									tool_calls: [
+										{
+											index: 0,
+											id: 'disabled-tool-1',
+											type: 'function',
+											function: { name: 'update_onto_task', arguments: '{}' }
+										}
+									]
+								}
+							}
+						]
+					}),
+					JSON.stringify({ choices: [{ delta: {}, finish_reason: 'tool_calls' }] }),
+					'[DONE]'
+				]);
+			}
+			return sseResponse([
+				JSON.stringify({
+					model: 'provider/resolved-fallback',
+					provider: 'Warm Provider Display Name',
+					provider_slug: 'warm-provider',
+					choices: [{ delta: { content: requests.length === 1 ? 'First' : 'Recovered' } }]
+				}),
+				JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl, [
+			route({
+				model: 'provider/primary',
+				fallbackModels: ['provider/resolved-fallback'],
+				providerRouting: { allow_fallbacks: true }
+			})
+		]);
+
+		await expect(collect(test.client.stream(input()))).resolves.toEqual([
+			{ type: 'text', content: 'First' },
+			expect.objectContaining({ type: 'done', finishedReason: 'stop' })
+		]);
+		expect(requests[0]?.provider).not.toMatchObject({ order: expect.anything() });
+
+		const violation = await collect(
+			test.client.stream({ ...input(), streamRunId: 'stream-run-2', logicalProviderRound: 2 })
+		);
+		expect(violation.at(-1)).toMatchObject({ type: 'done', finishedReason: 'tool_calls' });
+		expect(requests[1]).toMatchObject({
+			model: 'provider/resolved-fallback',
+			provider: { order: ['warm-provider'], allow_fallbacks: false }
+		});
+
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					streamRunId: 'stream-run-3',
+					logicalProviderRound: 3
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text', content: 'Recovered' },
+			expect.objectContaining({ type: 'done', finishedReason: 'stop' })
+		]);
+		// The pin is gone and the endpoint that ignored tool_choice=none is
+		// ignored, so the retry can land somewhere else.
+		expect(requests[2]?.provider).toMatchObject({
+			ignore: ['warm-provider'],
+			allow_fallbacks: true
+		});
+		expect(requests[2]?.provider).not.toMatchObject({ order: expect.anything() });
+		expect(requests[2]).toHaveProperty('models');
+	});
+
 	it('does not retry an unpinned missing model or endpoint', async () => {
 		const fetchImpl = vi.fn(
 			async () =>

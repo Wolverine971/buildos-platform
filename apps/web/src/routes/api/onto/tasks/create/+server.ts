@@ -24,11 +24,16 @@ import {
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
 import {
+	type TaskCalendarSyncReceipt,
+	needsCivilTimezone,
+	normalizeCalendarSyncInput,
 	normalizeDateTimeInput,
 	normalizeOptionalString,
 	normalizePriorityInput,
 	normalizeRequiredString,
-	normalizeTypeKeyInput
+	normalizeTypeKeyInput,
+	resolveUserCivilTimezone,
+	toTaskCalendarSyncReceipt
 } from '../../shared/input-normalization';
 import { parseTaskCreateBody } from './request-parser';
 import {
@@ -110,12 +115,28 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest(normalizedPriority.error);
 		}
 
-		const normalizedStartAt = normalizeDateTimeInput(start_at, 'start_at', 'start');
+		const calendarSync = normalizeCalendarSyncInput(body.calendar_sync);
+		if (!calendarSync.ok) {
+			return ApiResponse.badRequest(calendarSync.error);
+		}
+
+		// A bare YYYY-MM-DD means a civil day in this user's timezone. Only
+		// date-only input pays for the users.timezone read.
+		const civilTimezone = needsCivilTimezone(start_at, due_at)
+			? await resolveUserCivilTimezone(supabase, user.id)
+			: null;
+
+		const normalizedStartAt = normalizeDateTimeInput(
+			start_at,
+			'start_at',
+			'start',
+			civilTimezone
+		);
 		if (!normalizedStartAt.ok) {
 			return ApiResponse.badRequest(normalizedStartAt.error);
 		}
 
-		const normalizedDueAt = normalizeDateTimeInput(due_at, 'due_at', 'end');
+		const normalizedDueAt = normalizeDateTimeInput(due_at, 'due_at', 'end', civilTimezone);
 		if (!normalizedDueAt.ok) {
 			return ApiResponse.badRequest(normalizedDueAt.error);
 		}
@@ -373,7 +394,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					assigneeError
 				);
 			}
-			return ApiResponse.created({ task: replayTask });
+			return ApiResponse.created({
+				task: replayTask,
+				calendar_sync: calendarSync.value === 'none' ? 'skipped' : 'unchanged'
+			});
 		}
 		const actorDisplayName =
 			(typeof user.name === 'string' && user.name) ||
@@ -418,12 +442,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			mentionedUserIds: mentionUserIds,
 			skipUserIds: assignmentRecipientUserIds
 		});
-		// Create or update linked events when task is scheduled
-		try {
-			const taskEventSync = new TaskEventSyncService(supabase);
-			await taskEventSync.syncTaskEvents(user.id, actorId, task);
-		} catch (eventError) {
-			console.warn('[Task Create] Failed to sync task events:', eventError);
+		// Create or update linked events when task is scheduled. `calendar_sync:
+		// 'none'` is the explicit "no calendar events/blocks" switch: nothing is
+		// created and nothing is enqueued for Google.
+		let calendarReceipt: TaskCalendarSyncReceipt =
+			calendarSync.value === 'none'
+				? { calendar_sync: 'skipped' }
+				: { calendar_sync: 'unchanged' };
+		if (calendarSync.value !== 'none') {
+			try {
+				const taskEventSync = new TaskEventSyncService(supabase);
+				calendarReceipt = toTaskCalendarSyncReceipt(
+					await taskEventSync.syncTaskEvents(user.id, actorId, task)
+				);
+			} catch (eventError) {
+				calendarReceipt = { calendar_sync: 'failed' };
+				console.warn('[Task Create] Failed to sync task events:', eventError);
+			}
 		}
 		// Log activity async (non-blocking)
 		logCreateAsync(
@@ -469,7 +504,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				action: 'created'
 			});
 		}
-		return ApiResponse.created({ task: taskWithAssignees });
+		return ApiResponse.created({ task: taskWithAssignees, ...calendarReceipt });
 	} catch (error) {
 		if (error instanceof TaskAssignmentValidationError) {
 			return ApiResponse.error(error.message, error.status);

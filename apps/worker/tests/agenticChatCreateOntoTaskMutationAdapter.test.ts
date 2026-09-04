@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatCreateOntoTaskMutationAdapter.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { AgenticChatCreateOntoTaskMutationAdapter } from '../src/workers/agentic-chat/createOntoTaskMutationAdapter';
 import { AgenticChatMutationAdapterError } from '../src/workers/agentic-chat/mutation-executor';
@@ -206,5 +207,76 @@ describe('AgenticChatCreateOntoTaskMutationAdapter', () => {
 		await expect(
 			adapter.execute(mutationInput({ downstreamIdempotencyKey: 'changed' }))
 		).rejects.toBeInstanceOf(AgenticChatMutationAdapterError);
+	});
+});
+
+describe('AgenticChatCreateOntoTaskMutationAdapter calendar receipt', () => {
+	it('reports the calendar events the gateway actually created', async () => {
+		const runGateway = vi.fn(async () => ({
+			ok: true,
+			data: {
+				task: taskReceipt(),
+				calendar_sync: 'synced',
+				calendar_events: [
+					{
+						id: '88888888-8888-4888-8888-888888888888',
+						title: 'Due: New task',
+						start_at: '2026-09-19T03:29:59.000Z',
+						end_at: '2026-09-19T03:59:59.000Z'
+					}
+				]
+			},
+			entityKind: 'task',
+			entityId: TASK_ID,
+			entityProjectId: PROJECT_ID,
+			entityTitle: 'New task'
+		}));
+		const adapter = new AgenticChatCreateOntoTaskMutationAdapter({} as never, {
+			runGateway: runGateway as never,
+			taskSync: { syncTaskEvents: vi.fn() }
+		});
+
+		const receipt = (await adapter.execute(mutationInput())) as Record<string, unknown>;
+		expect(receipt.calendar_sync).toBe('synced');
+		expect(receipt.calendar_events).toEqual([
+			{
+				id: '88888888-8888-4888-8888-888888888888',
+				title: 'Due: New task',
+				start_at: '2026-09-19T03:29:59.000Z',
+				end_at: '2026-09-19T03:59:59.000Z'
+			}
+		]);
+	});
+
+	it('admits calendar_sync as a reviewed argument and reports the skip', async () => {
+		const runGateway = vi.fn(async () => ({
+			ok: true,
+			data: { task: taskReceipt(), calendar_sync: 'skipped' },
+			entityKind: 'task',
+			entityId: TASK_ID,
+			entityProjectId: PROJECT_ID,
+			entityTitle: 'New task'
+		}));
+		const adapter = new AgenticChatCreateOntoTaskMutationAdapter({} as never, {
+			runGateway: runGateway as never,
+			taskSync: { syncTaskEvents: vi.fn() }
+		});
+
+		const receipt = (await adapter.execute(
+			mutationInput({
+				arguments: {
+					project_id: PROJECT_ID,
+					title: 'New task',
+					due_at: '2026-09-18',
+					calendar_sync: 'none'
+				}
+			})
+		)) as Record<string, unknown>;
+
+		expect(runGateway.mock.calls[0]?.[0]).toMatchObject({
+			args: expect.objectContaining({ calendar_sync: 'none' })
+		});
+		expect(receipt.calendar_sync).toBe('skipped');
+		expect(receipt).not.toHaveProperty('calendar_events');
 	});
 });

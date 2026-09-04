@@ -5,6 +5,9 @@
 // op policy/scope (and, in later slices, the op handlers themselves).
 export * from './policy';
 
+// Civil-date semantics: one rule for date-only scheduling input everywhere.
+export * from './dates/civil-date';
+
 // Shared pure utilities
 // NOTE: ./ontology/onto and ./ontology/onto-api are NOT in the barrel — they export
 // colliding names (DocTreeNode/DocumentChildren) and are exposed only via subpath

@@ -63,10 +63,14 @@ import {
 	compileSingleTaskScheduleContractFromMutation
 } from './review/contract-mutation-compiler';
 import {
+	type ClarificationRender,
 	type PendingProposalRevision,
 	buildContractRevisionRequest,
 	buildMutationBatchRevisionRequest,
-	readProposalRevision
+	clarificationRenderSatisfied,
+	readClarificationRender,
+	readProposalRevision,
+	renderClarificationText
 } from './review/decision-handling';
 import {
 	completeMutationBatchReviewDecision,
@@ -1053,6 +1057,17 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					readLoopRepairRank >= READ_LOOP_REPAIR_RANK.must_synthesize;
 				const clarificationRequiresToolFreeSynthesis =
 					semanticDispositionToolName === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
+				// The clarification the executor accepted is the thing the user has
+				// to see. Carry its structured question into the synthesis pass so a
+				// prose answer that drops the question cannot silently replace it
+				// with a promise to act (2026-09-03 document-edit battery).
+				const clarificationRender = clarificationRequiresToolFreeSynthesis
+					? readClarificationRender(
+							completedToolRound.calls.find(
+								(call) => call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME
+							)?.arguments ?? {}
+						)
+					: null;
 				const contractWriteCarveOut = forceNoToolSynthesis
 					? state.takeTurnContractWriteCarveOut(currentRequest)
 					: null;
@@ -1086,7 +1101,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					return this.streamForcedSynthesis(
 						currentRequest,
 						completedToolRound.usage,
-						state
+						state,
+						{ clarification: clarificationRender }
 					);
 				}
 				return this.streamActingPass(currentRequest, completedToolRound.usage, state, {
@@ -1779,8 +1795,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 	private async *streamForcedSynthesis(
 		request: ClientRequest,
 		priorUsage: AgenticChatProviderUsageV1 | null,
-		state: ToolRoundStreamState
+		state: ToolRoundStreamState,
+		options: { clarification?: ClarificationRender | null } = {}
 	): AsyncGenerator<AgenticChatProviderStepV1> {
+		const clarification = options.clarification ?? null;
 		let currentRequest = forceToolFreeRequest(request);
 		let accumulatedUsage = priorUsage;
 		try {
@@ -1801,8 +1819,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					}
 					if (event.type === 'reasoning') continue;
 					if (event.type === 'tool_call') {
-						// This pass advertises no tools. Buffer and discard the entire
-						// candidate, then give the provider one bounded tool-free retry.
+						// This pass advertises no tools. The stray call is never
+						// executed or replayed, but any prose already accumulated is a
+						// real answer and is emitted below rather than discarded.
 						requestedTools = true;
 						continue;
 					}
@@ -1830,16 +1849,25 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 
 				accumulatedUsage = combineUsage(accumulatedUsage, passUsage);
 				const finalText = sanitizeAssistantFinalText(assistantCandidate);
-				if (!requestedTools) {
-					if (finalText) {
-						this.ports.capacity.markAvailable(request.turnRunId);
-						yield { type: 'text_delta', text: finalText };
-					}
-					if (finalText) {
-						state.advance({ type: 'finish' });
-						yield { type: 'finish', finishedReason, usage: accumulatedUsage };
-						return;
-					}
+				// A clarification pass owes the user the question, not a promise.
+				// When the prose dropped it, the structured question is emitted
+				// verbatim instead of failing or burning a retry on the same model.
+				const emittedText =
+					clarification && !clarificationRenderSatisfied(finalText, clarification)
+						? renderClarificationText(clarification)
+						: finalText;
+				if (emittedText) {
+					this.ports.capacity.markAvailable(request.turnRunId);
+					yield { type: 'text_delta', text: emittedText };
+					state.advance({ type: 'finish' });
+					yield {
+						type: 'finish',
+						// The stray call is dropped, so the turn really did end in
+						// prose; reporting `tool_calls` here would misname it.
+						finishedReason: requestedTools ? 'stop' : finishedReason,
+						usage: accumulatedUsage
+					};
+					return;
 				}
 
 				if (retryCount >= MAX_FORCED_SYNTHESIS_RETRIES) {

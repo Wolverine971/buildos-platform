@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/gateway/op-execution-gateway.tasks.test.ts
 import { describe, expect, it, vi } from 'vitest';
 
 const { syncCreatedTaskSideEffectsMock, syncUpdatedTaskSideEffectsMock } = vi.hoisted(() => ({
@@ -495,5 +496,163 @@ describe('updateTask atomic relationship surface', () => {
 				]
 			}
 		});
+	});
+});
+
+describe('createTask civil-date normalization', () => {
+	function adminFor(timezoneRow: { timezone?: string } | null, capture: { task?: any }) {
+		const rpc = vi.fn(async (name: string, args?: Record<string, unknown>) => {
+			if (name === 'ensure_actor_for_user') return { data: OWNER_ACTOR_ID, error: null };
+			if (name === 'get_onto_project_summaries_v1') {
+				return { data: [projectSummary()], error: null };
+			}
+			if (name === 'onto_task_create_with_relationships_atomic') {
+				capture.task = args?.p_task as Record<string, unknown>;
+				return {
+					data: {
+						task: { ...capture.task },
+						added_actor_ids: [],
+						idempotent_replay: false
+					},
+					error: null
+				};
+			}
+			throw new Error(`unexpected rpc ${name}`);
+		});
+
+		const from = vi.fn((table: string) => {
+			if (table === 'users') {
+				return {
+					select: () => ({
+						eq: () => ({
+							maybeSingle: async () => ({ data: timezoneRow, error: null })
+						})
+					})
+				};
+			}
+			// Assignee enrichment read.
+			return {
+				select: () => ({
+					eq: () => ({ eq: () => ({ order: async () => ({ data: [], error: null }) }) })
+				})
+			};
+		});
+
+		return { rpc, from };
+	}
+
+	function contextFor(admin: unknown) {
+		return {
+			admin,
+			userId: USER_ID,
+			scope: {
+				mode: 'read_write',
+				allowed_ops: ['onto.task.create'],
+				project_ids: [PROJECT_ID],
+				write_project_ids: [PROJECT_ID]
+			}
+		} as never;
+	}
+
+	it('resolves a date-only due_at to the end of that civil day in the user timezone', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+
+		await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Ship it',
+			due_at: '2026-09-18'
+		});
+
+		// Previously the gateway stored the raw "2026-09-18", which Postgres read
+		// as midnight UTC — Sept 17, 8:00 PM in New York.
+		expect(capture.task?.due_at).toBe('2026-09-19T03:59:59.000Z');
+		expect(admin.from).toHaveBeenCalledWith('users');
+	});
+
+	it('resolves a date-only start_at to the start of that civil day', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+
+		await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Ship it',
+			start_at: '2026-09-18'
+		});
+
+		expect(capture.task?.start_at).toBe('2026-09-18T04:00:00.000Z');
+	});
+
+	it('falls back to UTC when the user has no usable timezone', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor(null, capture);
+
+		await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Ship it',
+			due_at: '2026-09-18'
+		});
+
+		expect(capture.task?.due_at).toBe('2026-09-18T23:59:59.000Z');
+	});
+
+	it('passes a full datetime through without reading the user timezone', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+
+		await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Ship it',
+			due_at: '2026-09-18T17:00:00.000Z'
+		});
+
+		expect(capture.task?.due_at).toBe('2026-09-18T17:00:00.000Z');
+		expect(admin.from).not.toHaveBeenCalledWith('users');
+	});
+
+	it('rejects an unusable date', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+
+		await expect(
+			createTask(contextFor(admin), {
+				project_id: PROJECT_ID,
+				title: 'Ship it',
+				due_at: 'next tuesday'
+			})
+		).rejects.toThrow(/due_at must be a valid ISO date/);
+	});
+
+	it('passes calendar_sync: none through to the side-effect layer', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+		syncCreatedTaskSideEffectsMock.mockClear();
+		syncCreatedTaskSideEffectsMock.mockResolvedValue({ calendar_sync: 'skipped' } as never);
+
+		const result = await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Ship it',
+			due_at: '2026-09-18',
+			calendar_sync: 'none'
+		});
+
+		expect(syncCreatedTaskSideEffectsMock).toHaveBeenCalledWith(
+			expect.objectContaining({ calendarSync: 'none' })
+		);
+		expect(result).toMatchObject({ calendar_sync: 'skipped' });
+		syncCreatedTaskSideEffectsMock.mockResolvedValue(undefined as never);
+	});
+
+	it('rejects an unknown calendar_sync value', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+
+		await expect(
+			createTask(contextFor(admin), {
+				project_id: PROJECT_ID,
+				title: 'Ship it',
+				calendar_sync: 'off'
+			})
+		).rejects.toThrow(/calendar_sync must be one of: auto, none/);
 	});
 });

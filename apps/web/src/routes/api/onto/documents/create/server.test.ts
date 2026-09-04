@@ -5,6 +5,7 @@ const addDocumentToTreeMock = vi.fn();
 const autoOrganizeConnectionsMock = vi.fn();
 const assertEntityRefsInProjectMock = vi.fn();
 const createOrMergeDocumentVersionMock = vi.fn();
+const getChangeSourceFromRequestMock = vi.fn(() => 'ui');
 
 vi.mock('$lib/services/ontology/doc-structure.service', () => ({
 	addDocumentToTree: addDocumentToTreeMock
@@ -26,7 +27,7 @@ vi.mock('$lib/services/ontology/versioning.service', () => ({
 
 vi.mock('$lib/services/async-activity-logger', () => ({
 	logCreateAsync: vi.fn(),
-	getChangeSourceFromRequest: vi.fn(() => 'ui'),
+	getChangeSourceFromRequest: (...args: unknown[]) => getChangeSourceFromRequestMock(...args),
 	getChatSessionIdFromRequest: vi.fn(() => null)
 }));
 
@@ -46,6 +47,7 @@ class QueryBuilderMock {
 		private readonly table: string,
 		private readonly fixtures: {
 			project?: any;
+			contextDocuments?: any[];
 		}
 	) {}
 
@@ -68,6 +70,14 @@ class QueryBuilderMock {
 
 	is() {
 		return this;
+	}
+
+	order() {
+		return this;
+	}
+
+	limit() {
+		return Promise.resolve({ data: this.fixtures.contextDocuments ?? [], error: null });
 	}
 
 	maybeSingle() {
@@ -100,7 +110,7 @@ class QueryBuilderMock {
 	}
 }
 
-function createSupabaseMock() {
+function createSupabaseMock(contextDocuments: any[] = []) {
 	return {
 		rpc: vi.fn(async (fn: string) => {
 			if (fn === 'ensure_actor_for_user') {
@@ -111,7 +121,11 @@ function createSupabaseMock() {
 			}
 			return { data: null, error: null };
 		}),
-		from: (table: string) => new QueryBuilderMock(table, { project: { id: 'project-1' } })
+		from: (table: string) =>
+			new QueryBuilderMock(table, {
+				project: { id: 'project-1' },
+				contextDocuments
+			})
 	};
 }
 
@@ -122,6 +136,7 @@ describe('POST /api/onto/documents/create', () => {
 		assertEntityRefsInProjectMock.mockReset();
 		createOrMergeDocumentVersionMock.mockResolvedValue({ status: 'skipped' });
 		addDocumentToTreeMock.mockResolvedValue({ version: 1, root: [] });
+		getChangeSourceFromRequestMock.mockReturnValue('ui');
 	});
 
 	it('adds new documents to the tree with parent/position', async () => {
@@ -231,5 +246,110 @@ describe('POST /api/onto/documents/create', () => {
 		expect(response.status).toBe(200);
 		const payload = (await response.json()) as Record<string, any>;
 		expect(payload?.data?.document?.type_key).toBe('document.default');
+	});
+
+	// Start Here substitution guard (incident 2026-09-03): the chat created a
+	// "contractor note" typed document.context.project and the project page's
+	// Start Here silently became that note.
+	describe('document.context.project reserved-type guard', () => {
+		const startHereDocument = {
+			id: 'doc-start-here',
+			title: 'START HERE - Cedar House',
+			content: '# START HERE - Cedar House',
+			props: { origin: 'start_here_template' },
+			created_at: '2026-08-01T00:00:00.000Z',
+			updated_at: '2026-08-02T00:00:00.000Z'
+		};
+
+		function contextDocumentRequest(title = 'Contractor note') {
+			return new Request('http://localhost/api/onto/documents/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					project_id: 'project-1',
+					title,
+					type_key: 'document.context.project'
+				})
+			});
+		}
+
+		it('refuses a chat-authored context document and names the existing Start Here', async () => {
+			getChangeSourceFromRequestMock.mockReturnValue('chat');
+			const { POST } = await import('./+server');
+
+			const response = await POST({
+				request: contextDocumentRequest(),
+				locals: {
+					supabase: createSupabaseMock([startHereDocument]) as any,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				}
+			} as any);
+
+			expect(response.status).toBe(400);
+			const payload = (await response.json()) as Record<string, any>;
+			expect(payload?.errors?.[0] ?? payload?.error ?? payload?.message).toContain(
+				'doc-start-here'
+			);
+			expect(JSON.stringify(payload)).toContain('START HERE - Cedar House');
+		});
+
+		it('prefers the explicitly marked Start Here over a newer context-typed note', async () => {
+			getChangeSourceFromRequestMock.mockReturnValue('agent_call');
+			const { POST } = await import('./+server');
+
+			const response = await POST({
+				request: contextDocumentRequest(),
+				locals: {
+					supabase: createSupabaseMock([
+						{
+							id: 'doc-imposter',
+							title: 'Contractor note',
+							content: 'Called the contractor.',
+							props: {},
+							created_at: '2026-09-02T00:00:00.000Z',
+							updated_at: '2026-09-02T00:00:00.000Z'
+						},
+						startHereDocument
+					]) as any,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				}
+			} as any);
+
+			expect(response.status).toBe(400);
+			expect(JSON.stringify(await response.json())).toContain('doc-start-here');
+		});
+
+		it('still refuses when the project has no Start Here document yet', async () => {
+			getChangeSourceFromRequestMock.mockReturnValue('chat');
+			const { POST } = await import('./+server');
+
+			const response = await POST({
+				request: contextDocumentRequest(),
+				locals: {
+					supabase: createSupabaseMock([]) as any,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				}
+			} as any);
+
+			expect(response.status).toBe(400);
+			expect(JSON.stringify(await response.json())).toContain('document.default');
+		});
+
+		it('leaves non-agent callers (create modal, forms) able to create the context document', async () => {
+			getChangeSourceFromRequestMock.mockReturnValue('api');
+			const { POST } = await import('./+server');
+
+			const response = await POST({
+				request: contextDocumentRequest('Project context'),
+				locals: {
+					supabase: createSupabaseMock([startHereDocument]) as any,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				}
+			} as any);
+
+			expect(response.status).toBe(200);
+			const payload = (await response.json()) as Record<string, any>;
+			expect(payload?.data?.document?.type_key).toBe('document.context.project');
+		});
 	});
 });

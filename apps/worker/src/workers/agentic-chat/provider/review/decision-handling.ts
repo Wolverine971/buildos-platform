@@ -100,19 +100,23 @@ function readReferenceCandidates(value: unknown): ReferenceCandidateGroup[] {
  */
 export function findAmbiguousReferenceCandidates(
 	argumentsValue: JsonObject,
-	contract: TurnContract
+	contract: TurnContract,
+	userMessageText: string | null = null
 ): ReferenceCandidateGroup | null {
 	return findAmbiguousReferenceCandidatesForTargetIds(
 		argumentsValue,
-		contract.outcomes.flatMap((outcome) => outcome.targetIds)
+		contract.outcomes.flatMap((outcome) => outcome.targetIds),
+		userMessageText
 	);
 }
 
 export function findAmbiguousReferenceCandidatesForTargetIds(
 	argumentsValue: JsonObject,
-	targetIds: readonly string[]
+	targetIds: readonly string[],
+	userMessageText: string | null = null
 ): ReferenceCandidateGroup | null {
 	const contractTargets = new Set(targetIds);
+	const normalizedMessage = normalizeCandidateMatchText(userMessageText ?? '');
 	for (const group of readReferenceCandidates(argumentsValue.reference_candidates)) {
 		if (group.candidates.length < 2) continue;
 		const covered = group.candidates.filter((candidate) =>
@@ -126,7 +130,63 @@ export function findAmbiguousReferenceCandidatesForTargetIds(
 		// reviewer's judgment, not a user choice. Live organize turns were
 		// converted from approval to clarification here.
 		if (covered >= 2) continue;
-		if (covered < group.candidates.length) return group;
+		if (covered >= group.candidates.length) continue;
+		// Strictly narrowing: a reference the user already disambiguated in
+		// their own words is not a choice to hand back. A 2026-09-03 browser
+		// battery asked "Marketing Brief or Context Document?" for a message
+		// that said "Marketing Brief" and a contract carrying that document's
+		// id. Only an unambiguous naming skips the floor; anything the message
+		// leaves open still reaches the user.
+		if (userMessageIdentifiesExactlyOneCandidate(normalizedMessage, group.candidates)) continue;
+		return group;
+	}
+	return null;
+}
+
+/**
+ * NFKC + lowercase + whitespace collapse, so a pasted id or title matches the
+ * user's own typography (curly quotes, non-breaking spaces, wrapped lines).
+ */
+function normalizeCandidateMatchText(value: string): string {
+	return value.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+const MIN_UNIQUE_TITLE_MATCH_LENGTH = 3;
+
+function userMessageIdentifiesExactlyOneCandidate(
+	normalizedMessage: string,
+	candidates: readonly { id: string; title: string }[]
+): boolean {
+	if (!normalizedMessage) return false;
+	const byId = candidates.filter((candidate) => {
+		const id = normalizeCandidateMatchText(candidate.id);
+		return id.length > 0 && normalizedMessage.includes(id);
+	});
+	if (byId.length > 0) return byId.length === 1;
+	const byTitle = candidates.filter((candidate) => {
+		const title = normalizeCandidateMatchText(candidate.title);
+		return title.length >= MIN_UNIQUE_TITLE_MATCH_LENGTH && normalizedMessage.includes(title);
+	});
+	return byTitle.length === 1;
+}
+
+/**
+ * The reviewer never sees the conversation, so the candidate gate reads the
+ * user's own latest words off the acting request it is about to answer.
+ */
+export function latestUserMessageText(request: AgenticChatTurnProviderRequestV1): string | null {
+	for (let index = request.messages.length - 1; index >= 0; index -= 1) {
+		const message = request.messages[index]!;
+		if (message.role !== 'user') continue;
+		if (typeof message.content === 'string') return message.content;
+		const text = message.content
+			.filter(
+				(part): part is Extract<typeof part, { type: 'text' }> =>
+					part.type === 'text' && typeof part.text === 'string'
+			)
+			.map((part) => part.text)
+			.join('\n');
+		return text || null;
 	}
 	return null;
 }
@@ -176,6 +236,58 @@ export function buildCandidateGateClarification(
 		canonicalProviderArguments: canonicalizeAgenticChatJson(argumentsValue),
 		decidedBy: 'harness_candidate_gate'
 	};
+}
+
+export type ClarificationRender = {
+	question: string;
+	labels: string[];
+};
+
+const CLARIFICATION_RENDER_MAX_LABELS = 20;
+
+/**
+ * The structured question the clarification executor already accepted. A
+ * forced-synthesis pass that originates from a clarification disposition has
+ * to put this in front of the user; the model's prose is only allowed to
+ * paraphrase it, never to replace it with a promise to act.
+ */
+export function readClarificationRender(argumentsValue: JsonObject): ClarificationRender | null {
+	const question =
+		typeof argumentsValue.question === 'string'
+			? argumentsValue.question.trim().slice(0, CANDIDATE_GATE_QUESTION_MAX_LENGTH)
+			: '';
+	if (!question) return null;
+	const labels: string[] = [];
+	if (Array.isArray(argumentsValue.candidates)) {
+		for (const item of argumentsValue.candidates.slice(0, CLARIFICATION_RENDER_MAX_LABELS)) {
+			if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+			const label = (item as Record<string, unknown>).label;
+			const trimmed = typeof label === 'string' ? label.trim().slice(0, 200) : '';
+			if (trimmed && !labels.includes(trimmed)) labels.push(trimmed);
+		}
+	}
+	return { question, labels };
+}
+
+/**
+ * The question survived if the prose repeats it, or at least asks something
+ * and names every candidate. Both are checked case-insensitively on collapsed
+ * whitespace so a reflowed paragraph still counts.
+ */
+export function clarificationRenderSatisfied(text: string, render: ClarificationRender): boolean {
+	const normalized = normalizeCandidateMatchText(text);
+	if (!normalized) return false;
+	if (normalized.includes(normalizeCandidateMatchText(render.question))) return true;
+	if (!normalized.includes('?')) return false;
+	return (
+		render.labels.length > 0 &&
+		render.labels.every((label) => normalized.includes(normalizeCandidateMatchText(label)))
+	);
+}
+
+export function renderClarificationText(render: ClarificationRender): string {
+	if (render.labels.length === 0) return render.question;
+	return [render.question, ...render.labels.map((label) => `- ${label}`)].join('\n');
 }
 
 export function buildContractRevisionRequest(

@@ -106,6 +106,7 @@ export class AgenticChatUpdateOntoTaskMutationAdapter implements AgenticChatMuta
 		const receipt = canonicalMutationReceipt(
 			{
 				task,
+				...calendarSyncReceiptFields(result.data),
 				message: 'Task updated successfully.',
 				requires_user_action: false
 			},
@@ -114,6 +115,24 @@ export class AgenticChatUpdateOntoTaskMutationAdapter implements AgenticChatMuta
 		assertMutationReceiptSize(receipt, TOOL_NAME);
 		return receipt;
 	}
+}
+
+/**
+ * The gateway reports what task calendar sync actually did. Carrying it into
+ * the receipt is the difference between the chat saying "no event was created"
+ * and it being true.
+ */
+function calendarSyncReceiptFields(value: Record<string, unknown> | undefined): JsonObject {
+	if (!isRecord(value) || typeof value.calendar_sync !== 'string') return {};
+	return {
+		calendar_sync: value.calendar_sync,
+		...(Array.isArray(value.calendar_events)
+			? { calendar_events: value.calendar_events as JsonObject[] }
+			: {}),
+		...(typeof value.removed_calendar_event_count === 'number'
+			? { removed_calendar_event_count: value.removed_calendar_event_count }
+			: {})
+	} as JsonObject;
 }
 
 function requireTaskReceipt(

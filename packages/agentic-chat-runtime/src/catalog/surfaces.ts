@@ -82,7 +82,18 @@ const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'search_all_projects',
 	'explore_project',
 	'get_document_outline',
-	'read_document_section'
+	'read_document_section',
+	// Task reads are mounted here too (Start Here / global-reach audit
+	// 2026-09-03): global_basic previously had no task-level read at all, so a
+	// global turn asking about a specific task could not reach its details —
+	// the worker surface is immutable for the turn and strips hints naming
+	// tools outside it. list_onto_tasks takes an OPTIONAL project_id (it
+	// defaults to every visible project), so it works on a global turn, and it
+	// is the scan half of the scan→read pair that get_onto_task_details
+	// completes. search_onto_tasks stays off: search_all_projects already
+	// covers keyword lookup across projects.
+	'list_onto_tasks',
+	'get_onto_task_details'
 ] as const;
 
 // Cross-project action surface for contexts whose whole point is acting on
@@ -91,8 +102,8 @@ const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 // tool_search round the turn supervisor may cut short. Deletes stay behind
 // discovery so they keep their confirm-first path.
 const GLOBAL_WRITE_DIRECT_TOOL_NAMES = [
+	// get_onto_task_details and list_onto_tasks now arrive from global_basic.
 	...GLOBAL_BASIC_DIRECT_TOOL_NAMES,
-	'get_onto_task_details',
 	'create_onto_task',
 	'update_onto_task',
 	'list_calendar_events',

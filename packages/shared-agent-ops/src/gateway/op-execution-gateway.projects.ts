@@ -16,7 +16,8 @@ import {
 	normalizeOptionalDate,
 	normalizeOptionalText,
 	normalizeProjectState,
-	requireTrimmedString
+	requireTrimmedString,
+	resolveGatewayCivilTimezone
 } from './op-execution-gateway.normalization';
 import {
 	buildPaginationForRows,
@@ -161,12 +162,20 @@ export async function updateProject(context: ToolExecutionContext, args: Record<
 		updateData.state_key = normalizeProjectState(args.state_key ?? args.state);
 		changed += 1;
 	}
-	const startAt = normalizeOptionalDate(args.start_at, 'start_at');
+	// Date-only project bounds are civil days in the user's timezone.
+	const civilTimezone = await resolveGatewayCivilTimezone(context, [args.start_at, args.end_at]);
+	const startAt = normalizeOptionalDate(args.start_at, 'start_at', {
+		boundary: 'start',
+		timezone: civilTimezone
+	});
 	if (startAt !== undefined) {
 		updateData.start_at = startAt;
 		changed += 1;
 	}
-	const endAt = normalizeOptionalDate(args.end_at, 'end_at');
+	const endAt = normalizeOptionalDate(args.end_at, 'end_at', {
+		boundary: 'end',
+		timezone: civilTimezone
+	});
 	if (endAt !== undefined) {
 		updateData.end_at = endAt;
 		changed += 1;

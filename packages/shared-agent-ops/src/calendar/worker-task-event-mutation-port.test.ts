@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/calendar/worker-task-event-mutation-port.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createWorkerTaskSyncPort } from './worker-task-event-mutation-port';
 
@@ -342,7 +343,12 @@ describe('worker task-event synchronization', () => {
 		const state = supabaseState({ queueError: { message: 'queue unavailable' } });
 		const sync = createWorkerTaskSyncPort(state.client as any);
 
-		await expect(sync.syncTaskEvents('user-1', 'actor-1', task())).resolves.toBeUndefined();
+		// The enqueue failure is recorded on the event; the sync itself still
+		// reports the event it created.
+		await expect(sync.syncTaskEvents('user-1', 'actor-1', task())).resolves.toMatchObject({
+			events: [expect.objectContaining({ id: expect.any(String) })],
+			removed_event_count: 0
+		});
 
 		const created = [...state.events.values()][0];
 		expect(created).toMatchObject({

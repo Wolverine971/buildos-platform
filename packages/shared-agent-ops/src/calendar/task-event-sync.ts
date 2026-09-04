@@ -1,7 +1,12 @@
+// packages/shared-agent-ops/src/calendar/task-event-sync.ts
 import type { Database, Json, ProjectLogChangeSource } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ActivityLogActorContext } from '../ops/async-activity-logger';
-import type { TaskSyncPort } from '../gateway/op-execution-gateway.types';
+import type {
+	TaskCalendarEventReceipt,
+	TaskEventSyncSummary,
+	TaskSyncPort
+} from '../gateway/op-execution-gateway.types';
 
 type OntoTaskRow = Database['public']['Tables']['onto_tasks']['Row'];
 export type TaskEventRow = Database['public']['Tables']['onto_events']['Row'];
@@ -76,12 +81,18 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 		private readonly eventMutations: TaskEventMutationPort
 	) {}
 
+	/**
+	 * Reconcile a task's derived calendar events and report what happened, so
+	 * tool receipts can state the real side effects instead of guessing.
+	 */
 	async syncTaskEvents(
 		userId: string,
 		actorId: string,
 		task: OntoTaskRow,
 		options: { activityLog?: TaskEventActivityLogOptions } = {}
-	): Promise<void> {
+	): Promise<TaskEventSyncSummary> {
+		const syncedEvents: TaskCalendarEventReceipt[] = [];
+		let removedEventCount = 0;
 		const desiredSpecs = buildTaskEventSpecs(task);
 		const activityLog = buildActivityLogOptions(options.activityLog, actorId);
 
@@ -96,7 +107,9 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 		if (edgeError) throw new Error(edgeError.message);
 
 		const existingEventIds = (edges ?? []).map((edge) => edge.dst_id);
-		if (existingEventIds.length === 0 && desiredSpecs.length === 0) return;
+		if (existingEventIds.length === 0 && desiredSpecs.length === 0) {
+			return { events: [], removed_event_count: 0 };
+		}
 
 		let existingEvents: TaskEventRow[] = [];
 		if (existingEventIds.length > 0) {
@@ -110,19 +123,25 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 		}
 
 		if (task.state_key === 'done') {
-			await this.removeEvents(
+			removedEventCount = await this.removeEvents(
 				userId,
 				futureTaskEventsOnCompletion(existingEvents),
 				activityLog,
 				task.id,
 				task.project_id
 			);
-			return;
+			return { events: [], removed_event_count: removedEventCount };
 		}
 
 		if (desiredSpecs.length === 0) {
-			await this.removeEvents(userId, existingEvents, activityLog, task.id, task.project_id);
-			return;
+			removedEventCount = await this.removeEvents(
+				userId,
+				existingEvents,
+				activityLog,
+				task.id,
+				task.project_id
+			);
+			return { events: [], removed_event_count: removedEventCount };
 		}
 
 		const eventsByKind = new Map<TaskEventKind, TaskEventRow>();
@@ -151,6 +170,12 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 					syncTaskFromEvent: false,
 					activityLog
 				});
+				syncedEvents.push({
+					id: existing.id,
+					title: spec.title,
+					start_at: spec.startAt,
+					end_at: spec.endAt
+				});
 				continue;
 			}
 
@@ -176,15 +201,23 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 				rel: 'has_event'
 			});
 			usedEventIds.add(result.event.id);
+			syncedEvents.push({
+				id: result.event.id,
+				title: spec.title,
+				start_at: spec.startAt,
+				end_at: spec.endAt
+			});
 		}
 
-		await this.removeEvents(
+		removedEventCount = await this.removeEvents(
 			userId,
 			existingEvents.filter((event) => !usedEventIds.has(event.id)),
 			activityLog,
 			task.id,
 			task.project_id
 		);
+
+		return { events: syncedEvents, removed_event_count: removedEventCount };
 	}
 
 	private async removeEvents(
@@ -193,7 +226,7 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 		activityLog: TaskEventActivityLogOptions,
 		taskId: string,
 		projectId: string
-	): Promise<void> {
+	): Promise<number> {
 		for (const event of events) {
 			await this.eventMutations.deleteEvent(userId, {
 				eventId: event.id,
@@ -210,6 +243,7 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 				.eq('dst_kind', 'event')
 				.eq('rel', 'has_event');
 		}
+		return events.length;
 	}
 }
 

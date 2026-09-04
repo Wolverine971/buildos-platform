@@ -91,7 +91,7 @@
 	function hasClockTime(iso: string, boundary: DateOnlyBoundary): boolean {
 		// UTC boundary sentinels carry a calendar date and must not be shifted into
 		// a fake local clock time.
-		return getDateOnlyCalendarDate(iso, boundary) === null;
+		return getDateOnlyCalendarDate(iso, boundary, timezone) === null;
 	}
 
 	function projectNameFor(projectId: string | null): string | null {

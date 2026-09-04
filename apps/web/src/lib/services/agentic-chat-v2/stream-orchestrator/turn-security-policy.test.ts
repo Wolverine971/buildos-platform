@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { FastChatHistoryMessage } from '../types';
 import { AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1 } from '@buildos/agentic-chat-runtime/tools';
 import {
+	buildInteractiveChatToolSecurityResult,
 	buildWriteReviewProposal,
 	evaluateInteractiveChatToolSecurity,
 	hasExplicitWriteReviewConfirmation,
@@ -116,6 +117,30 @@ describe('interactive chat turn security policy', () => {
 			reason: 'write_execution_scope_mismatch',
 			requiresUserAction: false
 		});
+	});
+
+	// Declaring a turn contract does not make `writeExecutionAuthorized` true, so
+	// telling the model to declare one only produced identical retries.
+	it('does not tell the model to declare a turn contract after an execution scope mismatch', () => {
+		const decision = evaluate({
+			toolName: 'update_onto_task',
+			writeExecutionAuthorized: false,
+			trustedUserWriteCommission: true
+		});
+		expect(decision.allowed).toBe(false);
+		const result = buildInteractiveChatToolSecurityResult({
+			toolCall: {
+				id: 'call-1',
+				type: 'function',
+				function: { name: 'update_onto_task', arguments: '{}' }
+			},
+			decision: decision as Extract<typeof decision, { allowed: false }>
+		});
+		expect(result.error).not.toMatch(/turn contract/i);
+		expect(result.error).toMatch(/not authorized on this path/i);
+		expect(result.error).toMatch(/do not retry/i);
+		expect(result.error).toMatch(/confirm/i);
+		expect(result.result).toMatchObject({ write_executed: false });
 	});
 
 	it('requires review instead of silently blocking a bounded natural-language write', () => {

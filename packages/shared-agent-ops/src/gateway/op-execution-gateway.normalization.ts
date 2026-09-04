@@ -1,5 +1,12 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.normalization.ts
 import { isValidUUID } from '@buildos/shared-types';
+import {
+	CivilDateError,
+	type CivilDateBoundary,
+	hasDateOnlyValue,
+	normalizeDateOnlyInput,
+	resolveUserCivilTimezone
+} from '../dates/civil-date';
 import { normalizeDocumentStateInput } from '../ontology/document-state';
 import {
 	DOCUMENT_STATES,
@@ -199,9 +206,20 @@ export function normalizeOptionalUuid(
 	return value.trim();
 }
 
+export interface NormalizeOptionalDateOptions {
+	/**
+	 * Which end of the civil day a bare `YYYY-MM-DD` means. Due/end fields take
+	 * 'end'; start fields take 'start'.
+	 */
+	boundary?: CivilDateBoundary;
+	/** Owning user's IANA timezone. Missing/invalid falls back to UTC. */
+	timezone?: string | null;
+}
+
 export function normalizeOptionalDate(
 	value: unknown,
-	fieldName: string
+	fieldName: string,
+	options: NormalizeOptionalDateOptions = {}
 ): string | null | undefined {
 	if (value === undefined) {
 		return undefined;
@@ -223,15 +241,81 @@ export function normalizeOptionalDate(
 		return null;
 	}
 
-	const parsed = Date.parse(normalized);
-	if (Number.isNaN(parsed)) {
-		throw new ExternalToolGatewayError(
-			'VALIDATION_ERROR',
-			`${fieldName} must be a valid ISO date`
-		);
+	try {
+		// Date-only input means a civil day in the user's timezone, not the
+		// midnight-UTC instant Postgres would otherwise store.
+		return normalizeDateOnlyInput(normalized, {
+			boundary: options.boundary ?? 'start',
+			timezone: options.timezone
+		});
+	} catch (error) {
+		if (error instanceof CivilDateError) {
+			throw new ExternalToolGatewayError(
+				'VALIDATION_ERROR',
+				`${fieldName} must be a valid ISO date`
+			);
+		}
+		throw error;
+	}
+}
+
+/**
+ * Cache the users.timezone lookup per gateway execution context so a mutation
+ * touching several date fields costs at most one extra read, and a mutation
+ * with no date-only input costs none.
+ */
+const contextTimezoneCache = new WeakMap<object, Promise<string | null>>();
+
+export type CivilTimezoneContext = {
+	admin: unknown;
+	userId: string;
+	/** Pre-resolved override; skips the lookup entirely. */
+	timezone?: string | null;
+};
+
+/**
+ * Resolve the acting user's civil timezone, but only when at least one supplied
+ * value is date-only. Everything else already carries its own offset.
+ */
+export async function resolveGatewayCivilTimezone(
+	context: CivilTimezoneContext,
+	dateCandidates: readonly unknown[]
+): Promise<string | null> {
+	if (!hasDateOnlyValue(dateCandidates)) return null;
+	if (typeof context.timezone === 'string' && context.timezone.trim()) {
+		return context.timezone.trim();
 	}
 
-	return normalized;
+	const cached = contextTimezoneCache.get(context as object);
+	if (cached) return cached;
+
+	const pending = resolveUserCivilTimezone(
+		context.admin as { from: (table: string) => any } | null,
+		context.userId
+	);
+	contextTimezoneCache.set(context as object, pending);
+	return pending;
+}
+
+export type GatewayCalendarSyncMode = 'auto' | 'none';
+
+/**
+ * Explicit switch for task calendar side effects. Default keeps today's
+ * behavior; 'none' means the caller asked for no calendar events/blocks.
+ */
+export function normalizeCalendarSyncMode(
+	value: unknown,
+	fieldName = 'calendar_sync'
+): GatewayCalendarSyncMode {
+	if (value === undefined || value === null || value === '') return 'auto';
+	if (typeof value === 'string') {
+		const normalized = value.trim().toLowerCase();
+		if (normalized === 'auto' || normalized === 'none') return normalized;
+	}
+	throw new ExternalToolGatewayError(
+		'VALIDATION_ERROR',
+		`${fieldName} must be one of: auto, none`
+	);
 }
 
 export function normalizeProps(

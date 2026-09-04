@@ -661,7 +661,12 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				this.observeTurnRouteFailure(
 					input.turnRunId,
 					state.modelUsed ?? active.route.model,
-					state.providerSlug ?? normalizeProviderSlug(state.provider)
+					state.providerSlug ?? normalizeProviderSlug(state.provider),
+					// The pin is what put this pass on this endpoint, and the
+					// endpoint ignored `tool_choice=none`. Retire the pin even when
+					// the response named neither the pinned model nor the pinned
+					// provider, so the bounded retry can land somewhere else.
+					{ releasePin: true }
 				);
 				await account(
 					'failure',
@@ -903,7 +908,8 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 	private observeTurnRouteFailure(
 		turnRunId: string,
 		model: string | null,
-		providerSlug: string | null
+		providerSlug: string | null,
+		options: { releasePin?: boolean } = {}
 	): void {
 		const health = this.getTurnRouteHealth(turnRunId, true)!;
 		health.lastResponse = null;
@@ -916,9 +922,16 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		if (providerSlug) health.failedProviderSlugs.add(providerSlug);
 		if (
 			health.pin &&
-			((model && health.pin.model === model) ||
+			(options.releasePin === true ||
+				(model && health.pin.model === model) ||
 				(providerSlug && health.pin.providerSlug === providerSlug))
 		) {
+			// A caller that names the pin itself as the cause also retires the
+			// pinned endpoint, so `order: [slug], allow_fallbacks: false` cannot
+			// be rebuilt onto the same provider on the next pass.
+			if (options.releasePin === true && health.pin.providerSlug) {
+				health.failedProviderSlugs.add(health.pin.providerSlug);
+			}
 			health.pin = null;
 		}
 		health.updatedAtMs = Date.now();

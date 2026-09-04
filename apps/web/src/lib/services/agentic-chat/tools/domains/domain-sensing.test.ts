@@ -504,6 +504,60 @@ describe('skill-load gate misfire regressions (F7)', () => {
 		});
 	}
 
+	// Start Here substitution incident, 2026-09-03: this exact edit prompt
+	// preloaded content_strategy_beyond_blogging / story_driven_content_craft.
+	// It names an existing document and asks for section-level edits — no craft
+	// verb anywhere, so the direct-read guard never saw it.
+	const CEDAR_HOUSE_EDIT =
+		'In the QA — Cedar House Marketing Brief, update the Audience section to say first-time buyers in Baltimore County, and the Call to action to book a walkthrough, and append to Change log: audience narrowed 2026-09-03.';
+
+	const narrowEditCases: Array<{ label: string; message: string }> = [
+		{ label: 'the Cedar House brief edit', message: CEDAR_HOUSE_EDIT },
+		{
+			label: 'a single-field rename on a named document',
+			message: 'rename the title of the onboarding doc to "Getting started"'
+		},
+		{
+			label: 'a changelog append on a named brief',
+			message: 'append a line to the Change log section of the launch brief'
+		}
+	];
+
+	for (const { label, message } of narrowEditCases) {
+		it(`does not preload a craft playbook for ${label}`, () => {
+			const result = senseDomains({ currentUserMessage: message });
+			expect(result?.skill_load_required ?? false).toBe(false);
+			expect(resolveSkillGatePreload(result)).toBeNull();
+			expect(resolveSkillGatePreload(result, { allowFollowupSkillLoad: false })).toBeNull();
+		});
+	}
+
+	it('labels the narrow-edit suppression separately from the direct-read guard', () => {
+		const result = senseDomains({ currentUserMessage: CEDAR_HOUSE_EDIT });
+		// The lexical scorer still senses marketing/writing off "Marketing Brief"
+		// and "Audience"; the guard is what closes the gate.
+		expect(result?.active_domains.map((domain) => domain.id)).toContain('marketing');
+		expect(result?.gate_suppressed_by).toBe('narrow_edit_guard');
+		expect(result?.next_step).not.toContain('Skill-load gate is ACTIVE');
+	});
+
+	it('still preloads a craft playbook for genuine content strategy work', () => {
+		const result = senseDomains({
+			currentUserMessage: 'help me write a content strategy for my newsletter'
+		});
+		expect(result?.skill_load_required).toBe(true);
+		expect(result?.gate_suppressed_by).toBeUndefined();
+		expect(resolveSkillGatePreload(result)?.skillId).toBe('content_strategy_beyond_blogging');
+	});
+
+	it('leaves an open-ended rewrite of a named document gated', () => {
+		// No section/field target, so this is craft work, not a surgical edit.
+		const result = senseDomains({
+			currentUserMessage: 'change the tone of the blog post so it sounds less corporate'
+		});
+		expect(result?.gate_suppressed_by).toBeUndefined();
+	});
+
 	it('records the guard when it closed a gate the lexical scorer had opened', () => {
 		const result = senseDomains({
 			currentUserMessage:

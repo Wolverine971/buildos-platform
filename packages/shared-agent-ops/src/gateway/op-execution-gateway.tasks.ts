@@ -18,18 +18,21 @@ import {
 	loadVisibleProjects
 } from './op-execution-gateway.access';
 import {
+	type GatewayCalendarSyncReceipt,
 	syncCreatedTaskSideEffects,
 	syncUpdatedTaskSideEffects
 } from './op-execution-gateway.activity';
 import {
 	applyArchivedReadFilter,
 	normalizeArchivedUpdate,
+	normalizeCalendarSyncMode,
 	normalizeEntityStateFilter,
 	normalizeEntityTypeFilter,
 	normalizeOptionalDate,
 	normalizeOptionalUuid,
 	normalizeProps,
-	requireTrimmedString
+	requireTrimmedString,
+	resolveGatewayCivilTimezone
 } from './op-execution-gateway.normalization';
 import {
 	buildPaginationForRows,
@@ -303,8 +306,18 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 			? 'task.default'
 			: (requireTrimmedString(args.type_key, 'type_key') ?? 'task.default');
 	const priority = normalizePriority(args.priority, 'priority');
-	const startAt = normalizeOptionalDate(args.start_at, 'start_at');
-	const dueAt = normalizeOptionalDate(args.due_at, 'due_at');
+	// A bare YYYY-MM-DD is a civil day in the user's timezone: start_at opens it,
+	// due_at closes it. Only date-only input triggers the timezone lookup.
+	const civilTimezone = await resolveGatewayCivilTimezone(context, [args.start_at, args.due_at]);
+	const startAt = normalizeOptionalDate(args.start_at, 'start_at', {
+		boundary: 'start',
+		timezone: civilTimezone
+	});
+	const dueAt = normalizeOptionalDate(args.due_at, 'due_at', {
+		boundary: 'end',
+		timezone: civilTimezone
+	});
+	const calendarSync = normalizeCalendarSyncMode(args.calendar_sync);
 	const props = normalizeProps(args.props, 'props');
 	const actorId = await ensureActorId(context.admin, context.userId);
 	const assignees = await resolveGatewayTaskAssignees({
@@ -421,18 +434,22 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 		);
 	}
 
+	let calendarReceipt: GatewayCalendarSyncReceipt = { calendar_sync: 'unchanged' };
 	if (!atomic.idempotent_replay) {
-		await syncCreatedTaskSideEffects({
+		calendarReceipt = await syncCreatedTaskSideEffects({
 			context,
 			project,
 			actorId,
 			task,
+			calendarSync,
 			addedAssigneeActorIds: assignees.hasInput
 				? (atomic.added_actor_ids ?? []).filter(
 						(id): id is string => typeof id === 'string'
 					)
 				: undefined
 		});
+	} else if (calendarSync === 'none') {
+		calendarReceipt = { calendar_sync: 'skipped' };
 	}
 
 	const responseTaskBase = { ...task };
@@ -457,7 +474,8 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 		task: {
 			...responseTask,
 			project_name: project.name
-		}
+		},
+		...calendarReceipt
 	};
 }
 
@@ -473,6 +491,7 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 	}
 
 	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
+	const calendarSync = normalizeCalendarSyncMode(args.calendar_sync);
 	let existingTaskQuery = context.admin
 		.from('onto_tasks')
 		.select(
@@ -562,14 +581,21 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		changedFields.push('priority');
 	}
 
-	const startAt = normalizeOptionalDate(args.start_at, 'start_at');
+	const civilTimezone = await resolveGatewayCivilTimezone(context, [args.start_at, args.due_at]);
+	const startAt = normalizeOptionalDate(args.start_at, 'start_at', {
+		boundary: 'start',
+		timezone: civilTimezone
+	});
 	if (startAt !== undefined) {
 		updateData.start_at = startAt;
 		changedFieldCount += 1;
 		changedFields.push('start_at');
 	}
 
-	const dueAt = normalizeOptionalDate(args.due_at, 'due_at');
+	const dueAt = normalizeOptionalDate(args.due_at, 'due_at', {
+		boundary: 'end',
+		timezone: civilTimezone
+	});
 	if (dueAt !== undefined) {
 		updateData.due_at = dueAt;
 		changedFieldCount += 1;
@@ -734,13 +760,14 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		data = updatedTask as Record<string, unknown>;
 	}
 
-	await syncUpdatedTaskSideEffects({
+	const calendarReceipt = await syncUpdatedTaskSideEffects({
 		context,
 		project,
 		actorId,
 		existingTask: existingTask as Record<string, unknown>,
 		updatedTask: data as Record<string, unknown>,
 		changedArgs: args,
+		calendarSync,
 		addedAssigneeActorIds: assignees.hasInput ? addedAssigneeActorIds : undefined
 	});
 
@@ -765,7 +792,8 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		task: {
 			...responseTask,
 			project_name: project.name
-		}
+		},
+		...calendarReceipt
 	};
 }
 

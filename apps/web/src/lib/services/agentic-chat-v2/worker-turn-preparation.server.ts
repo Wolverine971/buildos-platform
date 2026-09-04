@@ -118,6 +118,9 @@ import {
 	recoverCheckpointResumeLifecycle
 } from './turn-supervisor/checkpoint-service.server';
 import { buildWorkerPromptScaffold, resolveWorkerPromptTools } from './worker-prompt-surface';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('AgenticChat:WorkerPreparation');
 
 const WORKER_TURNS_ENDPOINT = '/api/agent/v2/turns';
 const HISTORY_LIMIT = positiveInt(process.env.FASTCHAT_HISTORY_LOOKBACK_MESSAGES, 10, 50);
@@ -406,6 +409,15 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const workerToolResolution = resolveWorkerPromptTools(turnPreparation.tools);
 	const workerPromptTools = workerToolResolution.tools;
 	if (workerToolResolution.unavailableToolNames.length > 0) {
+		// A renegotiation here silently re-leases the turn onto the legacy web
+		// engine, where a different (lexical) write gate applies. Log the exact
+		// tools that forced it so a silent fallback is diagnosable from server
+		// logs instead of only from turn rows.
+		logger.warn('Worker tool surface unavailable; renegotiating transport', {
+			unavailableToolNames: workerToolResolution.unavailableToolNames,
+			contextType,
+			surfaceProfile: turnPreparation.selectedSurfaceProfile
+		});
 		throw new AgenticChatWorkerPreparationError(
 			'transport_renegotiate',
 			`Worker tool surface is unavailable: ${workerToolResolution.unavailableToolNames.join(', ')}`

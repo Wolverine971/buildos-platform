@@ -271,6 +271,8 @@ export interface CreateOntoTaskArgs {
 	supporting_milestone_id?: string;
 	start_at?: string;
 	due_at?: string;
+	/** 'none' suppresses every calendar side effect for this write. */
+	calendar_sync?: 'auto' | 'none';
 	props?: Record<string, unknown>;
 	parent?: { kind: string; id: string; is_primary?: boolean };
 	parents?: Array<{ kind: string; id: string; is_primary?: boolean }>;
@@ -451,6 +453,8 @@ export interface UpdateOntoTaskArgs {
 	supporting_milestone_id?: string | null;
 	start_at?: string | null;
 	due_at?: string | null;
+	/** 'none' suppresses every calendar side effect for this write. */
+	calendar_sync?: 'auto' | 'none';
 	props?: Record<string, unknown>;
 }
 

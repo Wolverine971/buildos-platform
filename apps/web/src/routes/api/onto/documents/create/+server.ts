@@ -34,6 +34,10 @@ import { addDocumentToTree } from '$lib/services/ontology/doc-structure.service'
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { ParentRef } from '$lib/services/ontology/containment-organizer';
 import { isValidTypeKey, type DocumentState, type DocStructure } from '$lib/types/onto';
+import {
+	pickProjectStartHereDocument,
+	START_HERE_DOCUMENT_TYPE_KEY
+} from '@buildos/shared-agent-ops/ontology/start-here';
 import { logOntologyApiError } from '../../shared/error-logging';
 import {
 	readProjectLoopReviewContext,
@@ -111,6 +115,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		const changeSource = getChangeSourceFromRequest(request);
+		// Chat and external-agent writes are the only callers that reach this
+		// route with a model-chosen type_key; the create modal sends 'api'/'form'.
+		const isAgentAuthoredWrite = changeSource === 'chat' || changeSource === 'agent_call';
 		const chatSessionId = getChatSessionIdFromRequest(request);
 		const accessAudit = {
 			endpoint: '/api/onto/documents/create',
@@ -167,6 +175,57 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			forbiddenMessage: 'You do not have permission to add documents to this project'
 		});
 		if (!accessResult.ok) return accessResult.response;
+
+		// Start Here substitution guard (incident 2026-09-03).
+		//
+		// `document.context.project` IS the project's Start Here document type:
+		// get_project_full and the page-side selector each resolve to a single
+		// context-typed document, so a second one authored by the chat silently
+		// replaces the real Start Here on the project page. The Start Here
+		// services insert into `onto_documents` directly
+		// (@buildos/shared-agent-ops ontology/start-here.service.ts and
+		// ontology/instantiation.service.ts) and never call this route, so
+		// refusing agent-authored writes here costs no legitimate creation. The
+		// refusal names the existing document so the model can switch to an
+		// update in the same turn.
+		if (isAgentAuthoredWrite && normalizedTypeKey === START_HERE_DOCUMENT_TYPE_KEY) {
+			const { data: contextDocuments } = await supabase
+				.from('onto_documents')
+				.select('id, title, content, props, created_at, updated_at')
+				.eq('project_id', project_id as string)
+				.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(10);
+
+			const existingStartHere = pickProjectStartHereDocument(
+				(contextDocuments ?? []).map((row) => ({
+					id: String(row.id),
+					title: typeof row.title === 'string' ? row.title : null,
+					content: typeof row.content === 'string' ? row.content : null,
+					props: row.props,
+					created_at: typeof row.created_at === 'string' ? row.created_at : null,
+					updated_at: typeof row.updated_at === 'string' ? row.updated_at : null
+				}))
+			);
+
+			return ApiResponse.badRequest(
+				existingStartHere
+					? `type_key "${START_HERE_DOCUMENT_TYPE_KEY}" is reserved for this project's Start Here document, which already exists: "${
+							existingStartHere.title ?? 'Start Here'
+						}" (document_id ${existingStartHere.id}). Creating another one would replace it on the project page. Update that document instead, or retry this create with a different type_key such as "document.default".`
+					: `type_key "${START_HERE_DOCUMENT_TYPE_KEY}" is reserved for the project's Start Here document and cannot be created here. Retry with a different type_key such as "document.default".`,
+				{
+					reserved_type_key: START_HERE_DOCUMENT_TYPE_KEY,
+					...(existingStartHere
+						? {
+								start_here_document_id: existingStartHere.id,
+								start_here_document_title: existingStartHere.title ?? null
+							}
+						: {})
+				}
+			);
+		}
 
 		const explicitParents = toParentRefs({
 			parent: parent as ParentRef | null | undefined,

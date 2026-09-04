@@ -62,6 +62,8 @@ export type SensedOutcomeCard = {
 	load_hint: string;
 };
 
+export type SkillGateSuppressionReason = 'direct_read_guard' | 'narrow_edit_guard';
+
 export type DomainSensingResult = {
 	type: 'domain_sensing';
 	source: 'current_user_message' | 'conversation_summary' | 'session_state';
@@ -81,10 +83,11 @@ export type DomainSensingResult = {
 	skill_load_required: boolean;
 	/**
 	 * Set when the current message matched skill-covered vocabulary but a
-	 * deterministic guard closed the gate anyway (a direct-tool read or a
-	 * status recall question with no craft verb). Telemetry only.
+	 * deterministic guard closed the gate anyway: `direct_read_guard` for a
+	 * direct-tool read or a status-recall question with no craft verb,
+	 * `narrow_edit_guard` for a named-entity section/field edit. Telemetry only.
 	 */
-	gate_suppressed_by?: 'direct_read_guard';
+	gate_suppressed_by?: SkillGateSuppressionReason;
 	next_step: string;
 };
 
@@ -120,6 +123,50 @@ export function isDirectReadOrStatusRecallTurn(message: string | null | undefine
 	if (!text || CRAFT_VERB_PATTERN.test(text)) return false;
 	if (STATUS_RECALL_PATTERN.test(text)) return true;
 	return DIRECT_READ_ENTITY_PATTERN.test(text) && DIRECT_READ_VERB_PATTERN.test(text);
+}
+
+// Narrow-edit negative guard (Start Here substitution incident, 2026-09-03).
+// "In the QA — Cedar House Marketing Brief, update the Audience section to ...
+// and the Call to action to ... and append to Change log ..." preloaded two
+// content-craft playbooks. It carries no craft verb, so the direct-read guard
+// above never sees it, yet it is a surgical mutation of a named document: the
+// model needs the entity and the tools, not a content strategy workflow.
+//
+// All three signals must fire, which is what keeps genuine craft work gated:
+//   1. a narrow mutation verb,
+//   2. a definite reference to an entity that already exists,
+//   3. a section/field-shaped target inside it.
+// "help me write a content strategy for my newsletter" fails all three (and
+// trips the craft-verb escape first); "change the tone of the blog post" has no
+// section/field target and stays gated.
+const NARROW_EDIT_VERB_PATTERN =
+	/\b(?:updat(?:e|ing)|edit(?:ing)?|chang(?:e|ing)|renam(?:e|ing)|append(?:ing)?|replac(?:e|ing)|set|adjust(?:ing)?|tweak(?:ing)?|correct(?:ing)?|fix(?:ing)?|remove|delete)\b/i;
+const NARROW_EDIT_TARGET_PATTERN =
+	/\b(?:sections?|sub-?sections?|fields?|headings?|titles?|subtitles?|paragraphs?|bullets?|lines?|rows?|columns?|change\s*logs?|changelogs?|status|state|priority|due\s+date|start\s+date|descriptions?|summar(?:y|ies)|labels?|tags?|headers?|footers?|checklists?|tables?|callouts?|entr(?:y|ies)|items?|values?|call\s+to\s+action|cta)\b/i;
+const NAMED_ENTITY_REFERENCE_PATTERN =
+	/(?:"[^"]{2,}"|\u201c[^\u201d]{2,}\u201d|\b(?:the|this|that|my|our)\b[^.?!]{0,80}?\b(?:briefs?|documents?|docs?|notes?|pages?|posts?|tasks?|projects?|plans?|specs?|readmes?|reports?|memos?|outlines?|drafts?|files?|milestones?|goals?|risks?)\b)/i;
+
+/**
+ * A message that names an existing entity and asks for a bounded edit inside
+ * it. Craft playbooks are noise on these turns.
+ */
+export function isNarrowEntityEditTurn(message: string | null | undefined): boolean {
+	const text = message?.trim() ?? '';
+	if (!text || CRAFT_VERB_PATTERN.test(text)) return false;
+	return (
+		NARROW_EDIT_VERB_PATTERN.test(text) &&
+		NAMED_ENTITY_REFERENCE_PATTERN.test(text) &&
+		NARROW_EDIT_TARGET_PATTERN.test(text)
+	);
+}
+
+/** The deterministic guard, if any, that closes a lexically opened gate. */
+export function resolveSkillGateSuppression(
+	message: string | null | undefined
+): SkillGateSuppressionReason | null {
+	if (isDirectReadOrStatusRecallTurn(message)) return 'direct_read_guard';
+	if (isNarrowEntityEditTurn(message)) return 'narrow_edit_guard';
+	return null;
 }
 
 type NativeOutcomeCardSignal = {
@@ -601,11 +648,11 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 	const lexicalSkillLoadRequired =
 		shouldRequireSkillLoad(source, activeDomains) ||
 		(source !== 'session_state' && nativeOutcomeCards.length > 0);
-	const gateSuppressed =
-		lexicalSkillLoadRequired &&
-		source === 'current_user_message' &&
-		isDirectReadOrStatusRecallTurn(currentUserMessage);
-	const skillLoadRequired = lexicalSkillLoadRequired && !gateSuppressed;
+	const gateSuppressedBy =
+		lexicalSkillLoadRequired && source === 'current_user_message'
+			? resolveSkillGateSuppression(currentUserMessage)
+			: null;
+	const skillLoadRequired = lexicalSkillLoadRequired && !gateSuppressedBy;
 
 	return {
 		type: 'domain_sensing',
@@ -618,7 +665,7 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		coverage_gap_skill_ids: coverageGapSkillIds,
 		coverage_gap_resource_ids: coverageGapResourceIds,
 		skill_load_required: skillLoadRequired,
-		...(gateSuppressed ? { gate_suppressed_by: 'direct_read_guard' as const } : {}),
+		...(gateSuppressedBy ? { gate_suppressed_by: gateSuppressedBy } : {}),
 		next_step: skillLoadRequired ? GATED_NEXT_STEP : ADVISORY_NEXT_STEP
 	};
 }

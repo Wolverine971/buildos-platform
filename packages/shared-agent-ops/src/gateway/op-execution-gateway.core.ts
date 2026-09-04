@@ -58,6 +58,7 @@ import {
 } from '../ontology/instantiation.service';
 import { sanitizeProjectPropsPatchInput } from '../utils/project-props-sanitizer';
 import {
+	pickProjectStartHereDocument,
 	preserveCurrentStartHereManagedRegions,
 	START_HERE_DOCUMENT_TYPE_KEY
 } from '../ontology/start-here';
@@ -214,6 +215,8 @@ export type {
 } from './op-execution-gateway.types';
 
 const MAX_DOCUMENT_CONTENT_BYTES = 200 * 1024;
+/** Enough context-typed rows to run the Start Here selector; projects have 1-2. */
+const START_HERE_CANDIDATE_LOOKUP_LIMIT = 10;
 
 export const EXTERNAL_OP_HANDLERS: Record<
 	BuildosAgentAllowedOp,
@@ -398,6 +401,66 @@ function resolveDocumentTypeKey(value: unknown): string {
 	return isValidTypeKey(trimmed, 'document') ? trimmed : 'document.default';
 }
 
+/**
+ * Start Here substitution guard (incident 2026-09-03).
+ *
+ * `document.context.project` IS the project's Start Here document type. Both
+ * `get_project_full` and the page-side selector pick a single context-typed
+ * document, so an extra one created by an agent silently takes over the Start
+ * Here slot on the project page — that is exactly how a chat-authored
+ * "contractor note" replaced a real Start Here. Only the Start Here services
+ * may mint that type, and they insert straight into `onto_documents`
+ * (`ontology/start-here.service.ts`, `ontology/instantiation.service.ts`)
+ * without ever passing through this gateway, so refusing here costs no
+ * legitimate write. The refusal names the existing document so the model can
+ * pivot to `update_onto_document` inside the same turn.
+ */
+async function assertStartHereTypeNotAgentCreated(
+	context: ToolExecutionContext,
+	projectId: string,
+	typeKey: string
+): Promise<void> {
+	if (typeKey !== START_HERE_DOCUMENT_TYPE_KEY) return;
+
+	const { data } = await context.admin
+		.from('onto_documents')
+		.select('id, title, content, props, created_at, updated_at')
+		.eq('project_id', projectId)
+		.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
+		.is('deleted_at', null)
+		.order('updated_at', { ascending: false })
+		.limit(START_HERE_CANDIDATE_LOOKUP_LIMIT);
+
+	const existing = pickProjectStartHereDocument(
+		((data ?? []) as Record<string, unknown>[]).map((row) => ({
+			id: String(row.id),
+			title: typeof row.title === 'string' ? row.title : null,
+			content: typeof row.content === 'string' ? row.content : null,
+			props: row.props,
+			created_at: typeof row.created_at === 'string' ? row.created_at : null,
+			updated_at: typeof row.updated_at === 'string' ? row.updated_at : null
+		}))
+	);
+
+	throw new ExternalToolGatewayError(
+		'VALIDATION_ERROR',
+		existing
+			? `type_key "${START_HERE_DOCUMENT_TYPE_KEY}" is reserved for this project's Start Here document, which already exists: "${
+					existing.title ?? 'Start Here'
+				}" (document_id ${existing.id}). Creating another one would replace it on the project page. Update that document instead, or retry this create with a different type_key such as "document.default".`
+			: `type_key "${START_HERE_DOCUMENT_TYPE_KEY}" is reserved for the project's Start Here document and cannot be created here. Retry with a different type_key such as "document.default".`,
+		{
+			reserved_type_key: START_HERE_DOCUMENT_TYPE_KEY,
+			...(existing
+				? {
+						start_here_document_id: existing.id,
+						start_here_document_title: existing.title ?? null
+					}
+				: {})
+		}
+	);
+}
+
 function normalizeDocumentPosition(value: unknown, fieldName: string): number | undefined {
 	if (value === undefined) return undefined;
 	if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
@@ -476,6 +539,7 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 	assertContentWithinCap(normalizedContent, 'content');
 
 	const typeKey = resolveDocumentTypeKey(args.type_key);
+	await assertStartHereTypeNotAgentCreated(context, project.id, typeKey);
 
 	const stateInput =
 		args.state_key === undefined
@@ -1254,15 +1318,23 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 			);
 		}
 		const props = normalizeProps(args.props, 'props') ?? {};
+		const taskDocumentTypeKey =
+			typeof args.type_key === 'string' && args.type_key.trim()
+				? args.type_key.trim()
+				: 'document.task.scratch';
+		// Same reserved-type guard as onto.document.create: this op writes the
+		// same table and passed type_key through untouched.
+		await assertStartHereTypeNotAgentCreated(
+			context,
+			taskAccess.project.id,
+			taskDocumentTypeKey
+		);
 		const { data, error } = await context.admin
 			.from('onto_documents')
 			.insert({
 				project_id: taskAccess.project.id,
 				title,
-				type_key:
-					typeof args.type_key === 'string' && args.type_key.trim()
-						? args.type_key.trim()
-						: 'document.task.scratch',
+				type_key: taskDocumentTypeKey,
 				state_key: stateKey,
 				content: normalizedContent,
 				description:

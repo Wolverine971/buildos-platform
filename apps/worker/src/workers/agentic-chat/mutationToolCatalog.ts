@@ -215,6 +215,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'parent',
 			'start_at',
 			'due_at',
+			'calendar_sync',
 			'props'
 		]
 	},
@@ -241,6 +242,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'supporting_milestone_id',
 			'start_at',
 			'due_at',
+			'calendar_sync',
 			'props'
 		]
 	},

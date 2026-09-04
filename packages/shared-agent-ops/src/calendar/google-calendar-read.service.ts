@@ -15,11 +15,25 @@ const MAX_FREE_BUSY_ITEMS = 50;
 
 type CalendarApi = Pick<calendar_v3.Calendar, 'events' | 'freebusy'>;
 
+/**
+ * Why one calendar source failed to read. `status` stays `'error' | 'timeout'`
+ * for existing callers; `reasonCode` is the actionable detail they were missing.
+ */
+export type GoogleCalendarSourceReadFailureReason =
+	| 'reconnect_required'
+	| 'timeout'
+	| 'rate_limited'
+	| 'forbidden'
+	| 'not_found'
+	| 'network'
+	| 'provider_error';
+
 export type GoogleCalendarReadWarning = {
 	code: 'CALENDAR_SOURCE_READ_FAILED' | 'CALENDAR_PARTIAL_RESULT';
 	message: string;
 	calendarSourceId: string;
 	connectionId: string;
+	reasonCode?: GoogleCalendarSourceReadFailureReason;
 };
 
 export type GoogleCalendarSourceReadStatus = {
@@ -28,6 +42,10 @@ export type GoogleCalendarSourceReadStatus = {
 	providerCalendarId: string;
 	status: 'success' | 'error' | 'timeout';
 	itemCount: number;
+	/** Present only when `status` is not `'success'`. */
+	reasonCode?: GoogleCalendarSourceReadFailureReason;
+	/** Provider HTTP status when the failure carried one. */
+	httpStatus?: number;
 };
 
 export type AggregatedGoogleCalendarEvent = calendar_v3.Schema$Event & {
@@ -90,6 +108,163 @@ class CalendarReadBudgetExpiredError extends Error {
 		super('calendar_read_budget_expired');
 		this.name = 'CalendarReadBudgetExpiredError';
 	}
+}
+
+const CALENDAR_READ_LOG_PREFIX = '[GoogleCalendarRead] Calendar source read failed';
+const MAX_LOGGED_MESSAGE_LENGTH = 200;
+
+const NETWORK_ERROR_CODES = new Set([
+	'ECONNRESET',
+	'ECONNREFUSED',
+	'ECONNABORTED',
+	'ENOTFOUND',
+	'ETIMEDOUT',
+	'EAI_AGAIN',
+	'EPIPE',
+	'EHOSTUNREACH',
+	'ENETUNREACH',
+	'ERR_NETWORK',
+	'UND_ERR_CONNECT_TIMEOUT',
+	'UND_ERR_SOCKET',
+	'UND_ERR_HEADERS_TIMEOUT'
+]);
+
+type CalendarReadFailure = {
+	status: 'error' | 'timeout';
+	reasonCode: GoogleCalendarSourceReadFailureReason;
+	httpStatus?: number;
+	errorName: string;
+	message: string;
+};
+
+/** Google's connection errors cross bundle boundaries, so match by shape, not identity. */
+function googleCalendarConnectionErrorCode(error: unknown): string | undefined {
+	if (!error || typeof error !== 'object') return undefined;
+	const candidate = error as { name?: unknown; code?: unknown };
+	if (candidate.name !== 'GoogleCalendarConnectionError') return undefined;
+	return typeof candidate.code === 'string' ? candidate.code : undefined;
+}
+
+function errorCodeString(error: unknown): string | undefined {
+	if (!error || typeof error !== 'object') return undefined;
+	const code = (error as { code?: unknown }).code;
+	return typeof code === 'string' ? code : undefined;
+}
+
+function httpStatusFromError(error: unknown): number | undefined {
+	if (!error || typeof error !== 'object') return undefined;
+	const candidate = error as {
+		code?: unknown;
+		status?: unknown;
+		response?: { status?: unknown };
+	};
+	for (const value of [candidate.response?.status, candidate.status, candidate.code]) {
+		if (typeof value === 'number' && Number.isInteger(value) && value >= 100 && value <= 599) {
+			return value;
+		}
+		if (typeof value === 'string' && /^[1-5]\d{2}$/.test(value)) return Number(value);
+	}
+	return undefined;
+}
+
+function isNetworkError(error: unknown): boolean {
+	const code = errorCodeString(error);
+	if (code && NETWORK_ERROR_CODES.has(code)) return true;
+	const message = error instanceof Error ? error.message.toLowerCase() : '';
+	const name = error instanceof Error ? error.name : '';
+	return (
+		name === 'FetchError' ||
+		message.includes('fetch failed') ||
+		message.includes('socket hang up') ||
+		message.includes('network error')
+	);
+}
+
+/**
+ * Collapsing every non-budget failure to `'error'` is why a two-calendar outage
+ * was undiagnosable. Keep the legacy `status`, but carry the reason with it.
+ */
+function classifyCalendarReadError(error: unknown): CalendarReadFailure {
+	const errorName = error instanceof Error ? error.name : typeof error;
+	const rawMessage = error instanceof Error ? error.message : String(error);
+	const message = rawMessage.slice(0, MAX_LOGGED_MESSAGE_LENGTH);
+
+	if (error instanceof CalendarReadBudgetExpiredError) {
+		return { status: 'timeout', reasonCode: 'timeout', errorName, message };
+	}
+
+	const connectionCode = googleCalendarConnectionErrorCode(error);
+	if (connectionCode === 'reconnect_required' || connectionCode === 'refresh_token_required') {
+		return { status: 'error', reasonCode: 'reconnect_required', errorName, message };
+	}
+
+	const httpStatus = httpStatusFromError(error);
+	if (httpStatus === 401) {
+		return {
+			status: 'error',
+			reasonCode: 'reconnect_required',
+			httpStatus,
+			errorName,
+			message
+		};
+	}
+	if (httpStatus === 429) {
+		return { status: 'error', reasonCode: 'rate_limited', httpStatus, errorName, message };
+	}
+	if (httpStatus === 403) {
+		return { status: 'error', reasonCode: 'forbidden', httpStatus, errorName, message };
+	}
+	if (httpStatus === 404) {
+		return { status: 'error', reasonCode: 'not_found', httpStatus, errorName, message };
+	}
+	if (httpStatus === undefined && isNetworkError(error)) {
+		return { status: 'error', reasonCode: 'network', errorName, message };
+	}
+
+	return { status: 'error', reasonCode: 'provider_error', httpStatus, errorName, message };
+}
+
+function logCalendarSourceReadFailure(params: {
+	operation: 'listEvents' | 'getFreeBusy';
+	target: Pick<CalendarTarget, 'calendarSourceId' | 'connectionId' | 'providerCalendarId'>;
+	failure: CalendarReadFailure;
+}): void {
+	// Identifiers only: no OAuth material, no event bodies, nothing beyond what the
+	// per-source status already carries back to the caller.
+	console.warn(CALENDAR_READ_LOG_PREFIX, {
+		operation: params.operation,
+		calendarSourceId: params.target.calendarSourceId,
+		connectionId: params.target.connectionId,
+		providerCalendarId: params.target.providerCalendarId,
+		status: params.failure.status,
+		reasonCode: params.failure.reasonCode,
+		httpStatus: params.failure.httpStatus ?? null,
+		errorName: params.failure.errorName,
+		errorMessage: params.failure.message
+	});
+}
+
+function describeSourceFailure(
+	sourceSummary: string,
+	failure: CalendarReadFailure | null,
+	kind: 'events' | 'availability'
+): string {
+	const subject = kind === 'availability' ? `availability for ${sourceSummary}` : sourceSummary;
+	const reasonCode = failure?.reasonCode ?? 'provider_error';
+	if (reasonCode === 'reconnect_required') {
+		return `Could not read ${subject}: this calendar needs to be reconnected (its Google access expired or was revoked) before BuildOS can read it (reason: reconnect_required)`;
+	}
+	if (reasonCode === 'timeout') {
+		return `Calendar read budget expired for ${subject} (reason: timeout)`;
+	}
+	return `Could not read ${subject} (reason: ${reasonCode})`;
+}
+
+function failureDetail(
+	failure: CalendarReadFailure | null
+): Pick<GoogleCalendarSourceReadStatus, 'reasonCode' | 'httpStatus'> {
+	if (!failure) return {};
+	return { reasonCode: failure.reasonCode, httpStatus: failure.httpStatus };
 }
 
 function chunk<T>(values: T[], size: number): T[][] {
@@ -376,15 +551,20 @@ export class GoogleCalendarReadService {
 					deadline,
 					clientCache
 				});
-				return { target, status: 'success' as const, events };
-			} catch (error) {
 				return {
 					target,
-					status:
-						error instanceof CalendarReadBudgetExpiredError
-							? ('timeout' as const)
-							: ('error' as const),
-					events: [] as calendar_v3.Schema$Event[]
+					status: 'success' as const,
+					events,
+					failure: null as CalendarReadFailure | null
+				};
+			} catch (error) {
+				const failure = classifyCalendarReadError(error);
+				logCalendarSourceReadFailure({ operation: 'listEvents', target, failure });
+				return {
+					target,
+					status: failure.status,
+					events: [] as calendar_v3.Schema$Event[],
+					failure: failure as CalendarReadFailure | null
 				};
 			}
 		});
@@ -401,7 +581,8 @@ export class GoogleCalendarReadService {
 				connectionId: result.target.connectionId,
 				providerCalendarId: result.target.providerCalendarId,
 				status: result.status,
-				itemCount: result.events.length
+				itemCount: result.events.length,
+				...failureDetail(result.failure)
 			});
 			if (result.status !== 'success') {
 				warnings.push({
@@ -409,12 +590,14 @@ export class GoogleCalendarReadService {
 						result.status === 'timeout'
 							? 'CALENDAR_PARTIAL_RESULT'
 							: 'CALENDAR_SOURCE_READ_FAILED',
-					message:
-						result.status === 'timeout'
-							? `Calendar read budget expired for ${result.target.sourceSummary}`
-							: `Could not read ${result.target.sourceSummary}`,
+					message: describeSourceFailure(
+						result.target.sourceSummary,
+						result.failure,
+						'events'
+					),
 					calendarSourceId: result.target.calendarSourceId,
-					connectionId: result.target.connectionId
+					connectionId: result.target.connectionId,
+					reasonCode: result.failure?.reasonCode
 				});
 				continue;
 			}
@@ -559,15 +742,22 @@ export class GoogleCalendarReadService {
 					}),
 					deadline
 				);
-				return { batch, response, status: 'success' as const };
+				return {
+					batch,
+					response,
+					status: 'success' as const,
+					failure: null as CalendarReadFailure | null
+				};
 			} catch (error) {
+				const failure = classifyCalendarReadError(error);
+				for (const target of batch) {
+					logCalendarSourceReadFailure({ operation: 'getFreeBusy', target, failure });
+				}
 				return {
 					batch,
 					response: null,
-					status:
-						error instanceof CalendarReadBudgetExpiredError
-							? ('timeout' as const)
-							: ('error' as const)
+					status: failure.status,
+					failure: failure as CalendarReadFailure | null
 				};
 			}
 		});
@@ -580,37 +770,56 @@ export class GoogleCalendarReadService {
 						connectionId: target.connectionId,
 						providerCalendarId: target.providerCalendarId,
 						status: result.status,
-						itemCount: 0
+						itemCount: 0,
+						...failureDetail(result.failure)
 					});
 					warnings.push({
 						code:
 							result.status === 'timeout'
 								? 'CALENDAR_PARTIAL_RESULT'
 								: 'CALENDAR_SOURCE_READ_FAILED',
-						message:
-							result.status === 'timeout'
-								? `Availability read budget expired for ${target.sourceSummary}`
-								: `Could not read availability for ${target.sourceSummary}`,
+						message: describeSourceFailure(
+							target.sourceSummary,
+							result.failure,
+							'availability'
+						),
 						calendarSourceId: target.calendarSourceId,
-						connectionId: target.connectionId
+						connectionId: target.connectionId,
+						reasonCode: result.failure?.reasonCode
 					});
 					continue;
 				}
 
 				const providerResult = result.response.data.calendars?.[target.providerCalendarId];
 				if (!providerResult || (providerResult.errors?.length ?? 0) > 0) {
+					const providerFailure: CalendarReadFailure = {
+						status: 'error',
+						reasonCode: 'provider_error',
+						errorName: 'FreeBusyCalendarError',
+						message: (providerResult?.errors ?? [])
+							.map((entry) => entry.reason ?? 'unknown')
+							.join(',')
+							.slice(0, MAX_LOGGED_MESSAGE_LENGTH)
+					};
+					logCalendarSourceReadFailure({
+						operation: 'getFreeBusy',
+						target,
+						failure: providerFailure
+					});
 					sourceStatuses.push({
 						calendarSourceId: target.calendarSourceId,
 						connectionId: target.connectionId,
 						providerCalendarId: target.providerCalendarId,
 						status: 'error',
-						itemCount: 0
+						itemCount: 0,
+						...failureDetail(providerFailure)
 					});
 					warnings.push({
 						code: 'CALENDAR_SOURCE_READ_FAILED',
-						message: `Google did not return availability for ${target.sourceSummary}`,
+						message: `Google did not return availability for ${target.sourceSummary} (reason: provider_error)`,
 						calendarSourceId: target.calendarSourceId,
-						connectionId: target.connectionId
+						connectionId: target.connectionId,
+						reasonCode: 'provider_error'
 					});
 					continue;
 				}

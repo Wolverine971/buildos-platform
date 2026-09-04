@@ -394,6 +394,12 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 				type: ['string', 'null'],
 				description: 'Optional ISO due date.'
 			},
+			calendar_sync: {
+				type: 'string',
+				enum: ['auto', 'none'],
+				description:
+					"Optional calendar side-effect switch. 'auto' (default) creates or updates the task's linked calendar event when it is scheduled. 'none' skips every calendar effect — use it when the user asks for no calendar events or blocks."
+			},
 			props: {
 				type: 'object',
 				description: 'Optional JSON props merged onto the task.'
@@ -572,6 +578,12 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			due_at: {
 				type: ['string', 'null'],
 				description: 'Optional ISO due date. Use null to clear.'
+			},
+			calendar_sync: {
+				type: 'string',
+				enum: ['auto', 'none'],
+				description:
+					"Optional calendar side-effect switch. 'auto' (default) creates or updates the task's linked calendar event when it is scheduled. 'none' skips every calendar effect — use it when the user asks for no calendar events or blocks."
 			},
 			props: {
 				type: 'object',
