@@ -182,55 +182,121 @@ export type AgenticChatEmailAccountStatusV1 =
 	| 'disabled'
 	| 'error';
 
+export type AgenticChatEmailCapabilityStatusV1 = 'enabled' | 'disabled' | 'reconnect_required';
+
 export interface AgenticChatEmailAccountV1 {
 	connectionId: string;
 	emailAddress: string;
 	accountLabel: string;
 	status: AgenticChatEmailAccountStatusV1;
 	readEnabled: boolean;
+	/** Stored `read` capability grant; `disabled` when the connection has no grant row. */
+	readCapabilityStatus: AgenticChatEmailCapabilityStatusV1;
+}
+
+export interface AgenticChatEmailAccountsResultV1 {
+	/** False when read-only Gmail OAuth is not configured in this environment at all. */
+	available: boolean;
+	maxConnections: number;
+	accounts: AgenticChatEmailAccountV1[];
+}
+
+/**
+ * Calendar connection health as `get_external_account_status` reports it. This
+ * is deliberately not the calendar read port: the status tool answers "can this
+ * exact address be read at all", which is a connection question, and it must
+ * still answer it on a host that cannot reach the Google Calendar API.
+ */
+export interface AgenticChatCalendarAccountSourceV1 {
+	readEnabled: boolean;
+	/** Google access role for the source (`owner`, `writer`, `reader`, ...). */
+	accessRole: string;
+}
+
+export interface AgenticChatCalendarAccountV1 {
+	connectionId: string;
+	emailAddress: string;
+	accountLabel: string;
+	status: AgenticChatEmailAccountStatusV1;
+	sources: AgenticChatCalendarAccountSourceV1[];
+}
+
+export interface AgenticChatCalendarAccountsResultV1 {
+	/** False when multi-account Google Calendar is not configured in this environment. */
+	available: boolean;
+	accounts: AgenticChatCalendarAccountV1[];
+}
+
+/**
+ * Both external-account surfaces in one read. The calendar half is nullable on
+ * purpose: the legacy web executor resolved it with `Promise.allSettled` so an
+ * unavailable calendar never hid a healthy inbox answer.
+ */
+export interface AgenticChatExternalAccountsResultV1 {
+	gmail: AgenticChatEmailAccountsResultV1;
+	/** Null when the host could not read calendar connections at all. */
+	calendar: AgenticChatCalendarAccountsResultV1 | null;
+}
+
+export type AgenticChatEmailSearchAccountStatusV1 =
+	| 'success'
+	| 'reconnect_required'
+	| 'unavailable';
+
+/** Per-account outcome of one multi-account search; a failed account never fails the search. */
+export interface AgenticChatEmailSearchAccountV1 {
+	connectionId: string;
+	accountLabel: string;
+	emailAddress: string;
+	status: AgenticChatEmailSearchAccountStatusV1;
+	messageCount: number;
+	hasMore: boolean;
+	/** Opaque host-issued pagination envelope, bound to this user/connection/query. */
+	nextCursor: string | null;
 }
 
 export interface AgenticChatEmailMessageSummaryV1 {
 	connectionId: string;
+	accountLabel: string;
+	emailAddress: string;
 	messageId: string;
-	threadId: string | null;
-	subject: string | null;
-	from: string | null;
-	/** RFC3339 timestamp when the host could parse one. */
-	date: string | null;
-	/** Untrusted external text; hosts delimit it before it reaches the model. */
-	snippet: string | null;
+	threadId: string;
+	/** Untrusted external text; the shared tools delimit it before the model sees it. */
+	subject: string;
+	/** Untrusted external text; the shared tools delimit it before the model sees it. */
+	from: string;
+	/** RFC3339 timestamp derived from the provider's internal date. */
+	date: string;
+	/** Untrusted external text; the shared tools delimit it before the model sees it. */
+	snippet: string;
 }
 
 export interface AgenticChatEmailMessageV1 extends AgenticChatEmailMessageSummaryV1 {
-	to: string[];
-	cc: string[];
-	/** Untrusted external text; hosts delimit it before it reaches the model. */
-	body: string | null;
+	/** Untrusted external text. */
+	to: string;
+	/** Untrusted external text. */
+	cc: string | null;
+	/** Sanitized plain text, already size-capped by the host gateway. Untrusted. */
+	body: string;
 	bodyTruncated: boolean;
-}
-
-export interface AgenticChatEmailAccountFailureV1 {
-	connectionId: string;
-	/** e.g. `reconnect_required`, `rate_limited`, `provider_error`. */
-	reason_code: string;
+	hasUnsupportedAttachments: boolean;
+	fetchedAt: string;
 }
 
 export interface AgenticChatEmailSearchInputV1 {
 	/** MUST equal the read context's trusted `userId`. */
 	userId: string;
-	/** Omit to search every readable account. */
-	connectionIds?: string[];
-	query?: string;
+	/** Exact connection ids the user owns. The tool never searches an implicit set. */
+	connectionIds: string[];
+	query: string;
 	maxResults?: number;
 	cursor?: string;
 }
 
 export interface AgenticChatEmailSearchResultV1 {
+	accounts: AgenticChatEmailSearchAccountV1[];
 	messages: AgenticChatEmailMessageSummaryV1[];
-	nextCursor: string | null;
-	/** Accounts that failed; search still returns results from the healthy ones. */
-	accountFailures: AgenticChatEmailAccountFailureV1[];
+	fetchedAt: string;
 }
 
 export interface AgenticChatEmailGetMessageInputV1 {
@@ -241,12 +307,77 @@ export interface AgenticChatEmailGetMessageInputV1 {
 }
 
 /**
- * Minimal read-only email surface. Deliberately narrow — the chat-lane concerns
- * (per-turn call caps, character budgets, untrusted-content delimiters, deep
- * links) stay on the host side, and the tool-facing shape grows in A7.
+ * Classified failures the shared email tools can turn into safe, content-free
+ * model-facing errors. Anything a host throws that is NOT one of these is
+ * assumed to carry request details or credentials and is collapsed into a
+ * single generic message.
+ */
+export type AgenticChatEmailReadErrorCodeV1 =
+	| 'invalid_request'
+	| 'not_configured'
+	| 'connection_not_found'
+	| 'reconnect_required'
+	| 'read_capability_disabled'
+	| 'message_not_found'
+	| 'provider_response_too_large'
+	| 'unsupported_message'
+	| 'rate_limited'
+	| 'provider_error';
+
+export class AgenticChatEmailReadErrorV1 extends Error {
+	constructor(
+		public readonly code: AgenticChatEmailReadErrorCodeV1,
+		message: string,
+		public readonly connectionId: string | null = null
+	) {
+		super(message);
+		this.name = 'AgenticChatEmailReadErrorV1';
+	}
+}
+
+/**
+ * Bundle boundaries break `instanceof` (web and the worker load their own copy
+ * of this module), so classification matches by shape, exactly as the calendar
+ * port does for `GoogleCalendarConnectionError`.
+ */
+export function asAgenticChatEmailReadErrorV1(error: unknown): {
+	code: AgenticChatEmailReadErrorCodeV1;
+	message: string;
+	connectionId: string | null;
+} | null {
+	if (!error || typeof error !== 'object') return null;
+	const candidate = error as {
+		name?: unknown;
+		code?: unknown;
+		message?: unknown;
+		connectionId?: unknown;
+	};
+	if (candidate.name !== 'AgenticChatEmailReadErrorV1') return null;
+	if (typeof candidate.code !== 'string') return null;
+	return {
+		code: candidate.code as AgenticChatEmailReadErrorCodeV1,
+		message: typeof candidate.message === 'string' ? candidate.message : '',
+		connectionId: typeof candidate.connectionId === 'string' ? candidate.connectionId : null
+	};
+}
+
+/**
+ * The read-only email surface the shared tools need. Hosts own OAuth, the
+ * provider transport, ownership checks, sanitization, size caps and rate
+ * limiting; the shared tools own the chat-lane concerns (per-turn call cap,
+ * character budget, untrusted-content delimiters, deep links) so web and the
+ * worker produce identical payloads.
+ *
+ * Every method authorizes against the caller-supplied `userId`; hosts MUST
+ * reject a `userId` that does not match the read context.
  */
 export interface AgenticChatEmailReadPortV1 {
-	listAccounts(input: { userId: string }): Promise<AgenticChatEmailAccountV1[]>;
+	/** Connected Gmail accounts. No provider call. */
+	listAccounts(input: { userId: string }): Promise<AgenticChatEmailAccountsResultV1>;
+	/** Gmail plus calendar connection health, for `get_external_account_status`. */
+	listExternalAccounts(input: { userId: string }): Promise<AgenticChatExternalAccountsResultV1>;
+	/** Bounded multi-account search across the exact connection ids supplied. */
 	searchMessages(input: AgenticChatEmailSearchInputV1): Promise<AgenticChatEmailSearchResultV1>;
-	getMessage(input: AgenticChatEmailGetMessageInputV1): Promise<AgenticChatEmailMessageV1 | null>;
+	/** One sanitized message. Throws `message_not_found` rather than returning null. */
+	getMessage(input: AgenticChatEmailGetMessageInputV1): Promise<AgenticChatEmailMessageV1>;
 }

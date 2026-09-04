@@ -414,9 +414,9 @@ describe('Agentic Chat worker turn preparation', () => {
 				{
 					type: 'function',
 					function: {
-						// Calendar WRITES are still worker-unavailable (2026-09-03).
-						name: 'create_calendar_event',
-						description: 'Calendar write',
+						// Ontology deletes are still worker-unavailable (2026-09-04).
+						name: 'delete_onto_task',
+						description: 'Ontology delete',
 						parameters: { type: 'object', properties: {} }
 					}
 				}
@@ -428,7 +428,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				userClient: {} as never,
 				serviceClient: {} as never,
 				userId: USER_ID,
-				command: command({ message: 'Put a meeting on my calendar tomorrow' }) as never,
+				command: command({ message: 'Delete that task' }) as never,
 				lease: {
 					decisionId: DECISION_ID,
 					mode: 'worker_realtime',
@@ -478,6 +478,94 @@ describe('Agentic Chat worker turn preparation', () => {
 			'list_calendar_events',
 			'get_calendar_event_details',
 			'get_project_calendar'
+		]);
+	});
+
+	// The four calendar WRITES moved to the worker on 2026-09-04. "Put a meeting
+	// on my calendar" used to renegotiate onto the legacy web engine for the
+	// whole turn; now the worker executes it and calls Google directly.
+	it('admits a launch surface carrying the calendar writes the worker now executes', async () => {
+		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+			...mocks.resolveFastChatTurnPreparation(),
+			tools: [
+				'list_calendar_events',
+				'create_calendar_event',
+				'update_calendar_event',
+				'delete_calendar_event',
+				'set_project_calendar'
+			].map((name) => ({
+				type: 'function',
+				function: {
+					name,
+					description: name,
+					parameters: { type: 'object', properties: {} }
+				}
+			}))
+		});
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command({ message: 'Put a meeting on my calendar tomorrow' }) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.args.p_artifact_prepared.toolSurface.toolNames).toEqual([
+			'list_calendar_events',
+			'create_calendar_event',
+			'update_calendar_event',
+			'delete_calendar_event',
+			'set_project_calendar'
+		]);
+	});
+
+	// The five email tools moved to the worker on 2026-09-04. Before that a
+	// launch surface naming search_email_messages renegotiated onto the legacy
+	// web engine and lost every worker capability for the whole turn.
+	it('admits a launch surface carrying the email tools the worker now executes', async () => {
+		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+			...mocks.resolveFastChatTurnPreparation(),
+			tools: [
+				'get_external_account_status',
+				'list_email_accounts',
+				'search_email_messages',
+				'get_email_message',
+				'request_email_account_connection'
+			].map((name) => ({
+				type: 'function',
+				function: {
+					name,
+					description: name,
+					parameters: { type: 'object', properties: {} }
+				}
+			}))
+		});
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command({ message: 'Search my email for the contract' }) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.args.p_artifact_prepared.toolSurface.toolNames).toEqual([
+			'get_external_account_status',
+			'list_email_accounts',
+			'search_email_messages',
+			'get_email_message',
+			'request_email_account_connection'
 		]);
 	});
 

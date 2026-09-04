@@ -2,6 +2,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+	agenticChatEmailSearchReceiptKeyV1,
+	agenticChatEmailTurnStateForPortV1,
+	type AgenticChatEmailReadPortV1,
 	type AgenticChatToolAccessPortV1
 } from '@buildos/agentic-chat-runtime/tools';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
@@ -126,12 +129,86 @@ function adapterWith(
 		maxTurnSecurityStates?: number;
 		maxTurnSecurityStatesPerUser?: number;
 		turnSecurityStateTtlMs?: number;
+		createEmailPort?: (userId: string) => AgenticChatEmailReadPortV1;
 	} = {}
 ): AgenticChatToolExecutionAdapter {
 	return new AgenticChatToolExecutionAdapter(client as never, {
 		...options,
 		createAccessAdapter: () => access
 	});
+}
+
+const EMAIL_CONNECTION_ID = '11111111-1111-4111-8111-111111111111';
+
+function emailPortStub(): AgenticChatEmailReadPortV1 {
+	return {
+		listAccounts: vi.fn(async () => ({
+			available: true,
+			maxConnections: 5,
+			accounts: [
+				{
+					connectionId: EMAIL_CONNECTION_ID,
+					emailAddress: 'buildos@example.com',
+					accountLabel: 'BuildOS',
+					status: 'active' as const,
+					readEnabled: true,
+					readCapabilityStatus: 'enabled' as const
+				}
+			]
+		})),
+		listExternalAccounts: vi.fn(async () => ({
+			gmail: {
+				available: true,
+				maxConnections: 5,
+				accounts: []
+			},
+			calendar: null
+		})),
+		searchMessages: vi.fn(async () => ({
+			fetchedAt: '2026-09-04T00:00:00.000Z',
+			accounts: [
+				{
+					connectionId: EMAIL_CONNECTION_ID,
+					accountLabel: 'BuildOS',
+					emailAddress: 'buildos@example.com',
+					status: 'success' as const,
+					messageCount: 1,
+					hasMore: false,
+					nextCursor: null
+				}
+			],
+			messages: [
+				{
+					connectionId: EMAIL_CONNECTION_ID,
+					accountLabel: 'BuildOS',
+					emailAddress: 'buildos@example.com',
+					messageId: 'm1',
+					threadId: 't1',
+					subject: 'Contract update',
+					from: 'Sarah <sarah@example.com>',
+					date: '2026-09-03T17:00:00.000Z',
+					snippet: 'Please review the attached contract.'
+				}
+			]
+		})),
+		getMessage: vi.fn(async () => ({
+			connectionId: EMAIL_CONNECTION_ID,
+			accountLabel: 'BuildOS',
+			emailAddress: 'buildos@example.com',
+			messageId: 'm1',
+			threadId: 't1',
+			subject: 'Contract update',
+			from: 'Sarah <sarah@example.com>',
+			date: '2026-09-03T17:00:00.000Z',
+			snippet: 'Please review the attached contract.',
+			to: 'DJ <buildos@example.com>',
+			cc: null,
+			body: 'Hello DJ, here is the update.',
+			bodyTruncated: false,
+			hasUnsupportedAttachments: false,
+			fetchedAt: '2026-09-04T00:00:00.000Z'
+		}))
+	};
 }
 
 function requestFor(
@@ -254,6 +331,161 @@ describe('AgenticChatToolExecutionAdapter', () => {
 			failureClass: 'permanent'
 		});
 		expect(webResearch.visit).not.toHaveBeenCalled();
+	});
+
+	// The five email tools moved to the worker on 2026-09-04. `search_email_messages`
+	// sends a model-authored query to Google, so it sits behind the same egress
+	// fence as web research (isAgenticChatWebEgressToolName), while the three
+	// content-free account tools deliberately do not taint the turn.
+	it('runs a Gmail search after the content-free account listing that authorizes it', async () => {
+		const email = emailPortStub();
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			createEmailPort: () => email
+		});
+
+		await expect(
+			adapter.execute(
+				requestFor(
+					'list_email_accounts',
+					{},
+					{ userMessage: 'Search my email for contract' }
+				)
+			)
+		).resolves.toMatchObject({ result: { readable_count: 1 } });
+		await expect(
+			adapter.execute(
+				requestFor(
+					'search_email_messages',
+					{ connection_ids: [EMAIL_CONNECTION_ID], query: 'contract' },
+					{ userMessage: 'Search my email for contract' }
+				)
+			)
+		).resolves.toMatchObject({ result: { message_count: 1 } });
+		expect(email.searchMessages).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses search_email_messages after get_email_message in the same turn', async () => {
+		const email = emailPortStub();
+		// Seed the receipt search would have issued, so this turn's only mailbox
+		// content read is get_email_message and the block is attributable to it.
+		agenticChatEmailTurnStateForPortV1(email).searchedMessageCapabilities.add(
+			agenticChatEmailSearchReceiptKeyV1(EMAIL_CONNECTION_ID, 'm1')
+		);
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			createEmailPort: () => email
+		});
+
+		await expect(
+			adapter.execute(
+				requestFor(
+					'get_email_message',
+					{ connection_id: EMAIL_CONNECTION_ID, message_id: 'm1' },
+					{ userMessage: 'Search my email for contract' }
+				)
+			)
+		).resolves.toMatchObject({ result: { message_id: 'm1' } });
+
+		await expect(
+			adapter.execute(
+				requestFor(
+					'search_email_messages',
+					{ connection_ids: [EMAIL_CONNECTION_ID], query: 'contract' },
+					{ userMessage: 'Search my email for contract' }
+				)
+			)
+		).rejects.toMatchObject({
+			code: 'read_tool_egress_blocked_private_content',
+			failureClass: 'permanent'
+		});
+		expect(email.searchMessages).not.toHaveBeenCalled();
+	});
+
+	it('refuses search_email_messages after a private document read', async () => {
+		const email = emailPortStub();
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			createEmailPort: () => email
+		});
+
+		await expect(
+			adapter.execute(
+				requestFor(
+					'get_project_overview',
+					{ project_id: PROJECT_ID },
+					{ userMessage: 'Search my email for contract' }
+				)
+			)
+		).resolves.toMatchObject({ result: { project: { id: PROJECT_ID } } });
+
+		await expect(
+			adapter.execute(
+				requestFor(
+					'search_email_messages',
+					{ connection_ids: [EMAIL_CONNECTION_ID], query: 'contract' },
+					{ userMessage: 'Search my email for contract' }
+				)
+			)
+		).rejects.toMatchObject({
+			code: 'read_tool_egress_blocked_private_content',
+			failureClass: 'permanent'
+		});
+		expect(email.searchMessages).not.toHaveBeenCalled();
+	});
+
+	it('refuses a Gmail query the current user message never authorized', async () => {
+		const email = emailPortStub();
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			createEmailPort: () => email
+		});
+
+		await expect(
+			adapter.execute(
+				requestFor(
+					'search_email_messages',
+					{ connection_ids: [EMAIL_CONNECTION_ID], query: 'private roadmap codename' },
+					{ userMessage: 'Summarize my project.' }
+				)
+			)
+		).rejects.toMatchObject({ code: 'read_tool_egress_provenance_required' });
+		expect(email.searchMessages).not.toHaveBeenCalled();
+	});
+
+	it('carries the Gmail OAuth browser handoff envelope through the read result', async () => {
+		const email = emailPortStub();
+		(email.listExternalAccounts as ReturnType<typeof vi.fn>).mockResolvedValue({
+			gmail: { available: true, maxConnections: 5, accounts: [] },
+			calendar: null
+		});
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			createEmailPort: () => email
+		});
+
+		const result = await adapter.execute(
+			requestFor('request_email_account_connection', {
+				email_address: 'new@example.com',
+				user_confirmed: true
+			})
+		);
+
+		// These exact field names are what
+		// apps/web/src/lib/components/agent/agent-chat-client-actions.ts reads off
+		// `activity.metadata.result`; the turn executor publishes this payload
+		// verbatim as the tool_result event's `result.result`.
+		expect(result.result).toMatchObject({
+			status: 'browser_handoff_required',
+			requires_user_action: true,
+			client_action: {
+				kind: 'connect_google_gmail',
+				action_id: 'gmail:new@example.com',
+				mode: 'connect',
+				email_address: 'new@example.com',
+				connection_id: null,
+				title: 'Connect Gmail',
+				button_label: 'Connect new@example.com'
+			}
+		});
+		expect(
+			String((result.result.client_action as Record<string, unknown>).description).length
+		).toBeGreaterThan(0);
 	});
 
 	it('pre-taints a same-batch web call when any private read is scheduled', async () => {

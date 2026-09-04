@@ -28,6 +28,13 @@ import {
 	type AgenticChatSharedReadContextV1
 } from './ontology-reads';
 import { getCalendarEventDetails, getProjectCalendar, listCalendarEvents } from './calendar-reads';
+import {
+	getEmailMessage,
+	getExternalAccountStatus,
+	listEmailAccounts,
+	requestEmailAccountConnection,
+	searchEmailMessages
+} from './email-reads';
 import { exploreProject } from './ontology-explore';
 import { searchAllProjects, searchOntology, searchProject } from './ontology-search';
 import { getDocumentPath, getDocumentTree, getOntoProjectGraph } from './ontology-structure-reads';
@@ -86,6 +93,15 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	list_calendar_events: listCalendarEvents,
 	get_calendar_event_details: getCalendarEventDetails,
 	get_project_calendar: getProjectCalendar,
+	// Email (Gmail) READS plus the browser OAuth handoff. The handoff is signed
+	// `write` in TOOL_METADATA because it asks the user to grant access, but it
+	// performs no mutation of BuildOS or Gmail state: it returns a client_action
+	// envelope the browser renders, so it executes on the read lane.
+	get_external_account_status: getExternalAccountStatus,
+	request_email_account_connection: requestEmailAccountConnection,
+	list_email_accounts: listEmailAccounts,
+	search_email_messages: searchEmailMessages,
+	get_email_message: getEmailMessage,
 	get_field_info: async (_context, args: Parameters<typeof getFieldInfo>[0]) => getFieldInfo(args)
 } satisfies Readonly<Record<string, SharedReadToolRunnerV1>>);
 

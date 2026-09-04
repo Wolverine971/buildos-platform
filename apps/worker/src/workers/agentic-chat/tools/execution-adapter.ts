@@ -19,6 +19,7 @@ import {
 import {
 	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
 	type AgenticChatCalendarReadPortV1,
+	type AgenticChatEmailReadPortV1,
 	type AgenticChatEmbeddingsPortV1,
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1,
@@ -29,7 +30,9 @@ import { createEmbeddingsClientFromEnv } from '@buildos/shared-agent-ops/embeddi
 import {
 	evaluateAgenticChatWebEgressProvenance,
 	executeAgenticChatStandardControlToolV1,
+	isAgenticChatContentFreeEmailToolNameV1,
 	isAgenticChatStandardControlToolNameV1,
+	isAgenticChatWebEgressToolName,
 	searchTelemetryColumns
 } from '@buildos/agentic-chat-runtime/loop';
 import { runWithAbortableDeadline } from '../abortableDeadline';
@@ -37,6 +40,7 @@ import type { AgenticChatReadToolPortV1 } from '../turn-executor';
 import { AgenticChatProviderExecutionError } from '../provider/contracts';
 import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
 import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
+import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
 export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
@@ -165,6 +169,21 @@ export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
 	'web_visit'
 ] as const);
 
+/**
+ * Does executing this tool taint the turn for outbound egress? Every shared
+ * read reaches user-scoped workspace or mailbox content except the three email
+ * account tools, whose payloads carry connection plumbing and no content.
+ * Excluding them is load-bearing, not a relaxation: `search_email_messages`
+ * cannot run without the connection ids `list_email_accounts` returns, so
+ * tainting that prerequisite would make Gmail search permanently unreachable.
+ */
+function contributesPrivateContentTaint(toolName: string): boolean {
+	return (
+		isAgenticChatSharedReadToolNameV1(toolName) &&
+		!isAgenticChatContentFreeEmailToolNameV1(toolName)
+	);
+}
+
 export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze([
 	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
@@ -213,6 +232,17 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		{ expiresAt: number; port: AgenticChatCalendarReadPortV1 }
 	>();
 	/**
+	 * Built per (user, turn) on first email read, for the same reason as the
+	 * calendar port — and additionally because the shared email tools hang their
+	 * per-turn call cap, character budget, and search-receipt set off the port
+	 * instance. One port per turn is therefore the budget boundary.
+	 */
+	private readonly createEmailPort: (userId: string) => AgenticChatEmailReadPortV1;
+	private readonly turnEmailPorts = new Map<
+		string,
+		{ expiresAt: number; port: AgenticChatEmailReadPortV1 }
+	>();
+	/**
 	 * Access adapters are cached per user so the actorId RPC amortizes across
 	 * the many tool calls of one turn. Bounded: the worker process is
 	 * long-lived, so the cache is cleared once it holds 256 users rather than
@@ -249,6 +279,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			webResearch?: WebResearchPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
 			createCalendarPort?: (userId: string) => AgenticChatCalendarReadPortV1;
+			createEmailPort?: (userId: string) => AgenticChatEmailReadPortV1;
 			embeddings?: AgenticChatEmbeddingsPortV1;
 			securityNow?: () => number;
 			maxTurnSecurityStates?: number;
@@ -286,6 +317,9 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		this.createCalendarPort =
 			options.createCalendarPort ??
 			((userId) => createWorkerAgenticChatCalendarReadPort({ client: this.client, userId }));
+		this.createEmailPort =
+			options.createEmailPort ??
+			((userId) => createWorkerAgenticChatEmailReadPort({ client: this.client, userId }));
 		this.embeddings = options.embeddings ?? createWorkerEmbeddingsPortFromEnv();
 	}
 
@@ -299,15 +333,21 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const webResearchTool = AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1.includes(
 			toolName as (typeof AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1)[number]
 		);
+		// `search_email_messages` sends a model-authored query to Google, so it is
+		// data egress on the same footing as web research even though it executes
+		// on the shared read lane with the ordinary read timeout and failure
+		// classes. The fence keys on the egress predicate; dispatch, timeout and
+		// failure mapping stay keyed on the web-research names.
+		const egressTool = isAgenticChatWebEgressToolName(toolName);
 		const turnRunId = input.executionInput.claim.turnRunId;
 		const standardControlTool = isAgenticChatStandardControlToolNameV1(toolName);
 		const sharedReadTool = isAgenticChatSharedReadToolNameV1(toolName);
 		const reviewControlTool = isWorkerReviewControlToolNameV1(toolName);
 		const turnSecurityState =
-			webResearchTool || sharedReadTool
+			egressTool || sharedReadTool
 				? this.turnSecurityStateFor(input.executionInput.claim.userId, turnRunId)
 				: null;
-		if (webResearchTool) {
+		if (egressTool) {
 			if (!turnSecurityState) {
 				throw providerError('read_tool_egress_security_capacity_exceeded', 'permanent');
 			}
@@ -355,6 +395,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 						input.executionInput.claim.userId,
 						turnRunId
 					),
+					email: this.turnEmailPortFor(input.executionInput.claim.userId, turnRunId),
 					embeddings: this.embeddings
 				}
 			: null;
@@ -463,7 +504,10 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			result: payload
 		});
 		const duration = Math.min(2_147_483_647, Math.max(0, Math.floor(this.now() - startedAt)));
-		if (sharedReadTool && turnSecurityState) {
+		// `get_email_message` and `search_email_messages` both reach mailbox
+		// content, so a later egress call in the same turn is refused; the three
+		// content-free email account tools deliberately do not taint.
+		if (turnSecurityState && contributesPrivateContentTaint(input.toolName)) {
 			turnSecurityState.privateContentRead = true;
 		}
 
@@ -499,9 +543,15 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		turnRunId: string;
 		toolNames: readonly string[];
 	}): void {
-		if (!input.toolNames.some((toolName) => isAgenticChatSharedReadToolNameV1(toolName))) {
-			return;
-		}
+		// An egress tool never pre-taints on its own behalf; otherwise
+		// `search_email_messages` would block itself the moment it was scheduled.
+		// Its own result still taints once it completes.
+		const scheduledPrivateRead = input.toolNames.some(
+			(toolName) =>
+				contributesPrivateContentTaint(toolName) &&
+				!isAgenticChatWebEgressToolName(toolName)
+		);
+		if (!scheduledPrivateRead) return;
 		// Treat a scheduled private read as tainted before concurrent execution.
 		// Failing closed even when that read later errors avoids an ordering race.
 		const state = this.turnSecurityStateFor(input.userId, input.turnRunId);
@@ -512,6 +562,9 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		this.turnSecurityStates.delete(this.turnSecurityStateKey(userId, turnRunId));
 		this.turnTimezones.delete(this.turnSecurityStateKey(userId, turnRunId));
 		this.turnCalendarPorts.delete(this.turnSecurityStateKey(userId, turnRunId));
+		// Dropping the email port also drops the turn's email call cap, character
+		// budget, and the set of message ids search authorized this turn.
+		this.turnEmailPorts.delete(this.turnSecurityStateKey(userId, turnRunId));
 	}
 
 	/**
@@ -532,6 +585,28 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const port = this.createCalendarPort(userId);
 		if (this.turnCalendarPorts.size < this.maxTurnSecurityStates) {
 			this.turnCalendarPorts.set(stateKey, {
+				expiresAt: now + this.turnSecurityStateTtlMs,
+				port
+			});
+		}
+		return port;
+	}
+
+	/** One email port per (user, turn), memoized exactly like the calendar port. */
+	private turnEmailPortFor(userId: string, turnRunId: string): AgenticChatEmailReadPortV1 {
+		const now = this.securityNow();
+		for (const [candidateId, entry] of this.turnEmailPorts) {
+			if (entry.expiresAt <= now) this.turnEmailPorts.delete(candidateId);
+		}
+		const stateKey = this.turnSecurityStateKey(userId, turnRunId);
+		const existing = this.turnEmailPorts.get(stateKey);
+		if (existing) {
+			existing.expiresAt = now + this.turnSecurityStateTtlMs;
+			return existing.port;
+		}
+		const port = this.createEmailPort(userId);
+		if (this.turnEmailPorts.size < this.maxTurnSecurityStates) {
+			this.turnEmailPorts.set(stateKey, {
 				expiresAt: now + this.turnSecurityStateTtlMs,
 				port
 			});
