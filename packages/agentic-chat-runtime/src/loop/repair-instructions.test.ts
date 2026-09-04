@@ -5,8 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import {
-	buildGatewayRequiredFieldRepairInstruction,
-	buildProjectCreateNoExecutionRepairInstruction,
 	buildToolValidationRepairInstruction,
 	classifyReceiptGroundedAssistantDisposition,
 	enforceMutationOutcomeIntegrity,
@@ -198,40 +196,16 @@ describe('tool validation repair instructions', () => {
 		expect(instruction).not.toContain('Load exact-op help before retrying');
 		expect(instruction).not.toContain('For first-time or uncertain writes');
 	});
-
-	it('retries web project creation using only the available one-call tool', () => {
-		const instruction = buildProjectCreateNoExecutionRepairInstruction();
-
-		expect(instruction).toContain('Build one complete create_onto_project call');
-		expect(instruction).toContain('include them in entities in this same call');
-		expect(instruction).not.toContain('declare_turn_contract');
-		expect(instruction).not.toContain('create_onto_goal');
-		expect(instruction).not.toContain('create_onto_task');
-		expect(instruction).not.toMatch(/web-owned|reviewed flow|project shell|bounded surface/i);
-	});
-
-	it('repairs repeated web project fields without suggesting unavailable help tools', () => {
-		const instruction = buildGatewayRequiredFieldRepairInstruction([
-			{ op: 'onto.project.create', field: 'project.name', occurrences: 2 }
-		]);
-
-		expect(instruction).toContain('Correct and retry that tool directly');
-		expect(instruction).toContain('same create_onto_project call');
-		expect(instruction).not.toContain('tool_schema');
-		expect(instruction).not.toContain('create_onto_goal');
-		expect(instruction).not.toContain('create_onto_task');
-	});
 });
 
 // ---------------------------------------------------------------------------
 // Static surface guard.
 //
-// This module accumulated repair builders faster than anything retired them:
-// most of what it exports was written for the web streaming engine, which no
-// longer serves a production request. The guard below reads the repository
-// itself so a builder cannot go quietly unreferenced again, and it pins the
-// exact set that only the retired web engine still imports so that deleting
-// that engine forces the matching builders out with it.
+// This module accumulated repair builders faster than anything retired them.
+// The web streaming engine that owned most of them is deleted, and so are its
+// builders. The guard below reads the repository itself so a builder cannot go
+// quietly unreferenced again, and the second guard keeps the retired engine's
+// directories from returning with a private builder set of their own.
 // ---------------------------------------------------------------------------
 
 const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -248,38 +222,11 @@ const RETIRED_WEB_ENGINE_PREFIXES = [
 ];
 
 /**
- * Builders whose only remaining importer is the retired web engine. Deleting
- * that engine must delete these too: the first guard below turns each one into
- * a failure the moment its last importer disappears, and this list is the
- * ready-made delete manifest. Nothing may be added here — a new builder that
- * only the retired engine calls is a builder that should not have been written.
+ * The retired web engine is gone (stage S8), and with it every builder that
+ * only it imported. This list stays empty on purpose: it is the assertion that
+ * the engine's directories cannot come back carrying private prompt builders.
  */
-const RETIRED_WEB_ENGINE_ONLY_EXPORTS = [
-	'ReadLoopRepairInstructionLevel',
-	'SkillGateTelemetry',
-	'buildConsolidatedRepairInstruction',
-	'buildGatewayCreateFieldNoProgressRepairInstruction',
-	'buildGatewayMutationNoExecutionRepairInstruction',
-	'buildGatewayRequiredFieldRepairInstruction',
-	'buildProjectCreateNoExecutionRepairInstruction',
-	'buildResearchNoPersistRepairInstruction',
-	'buildSkillGateNoLoadRepairInstruction',
-	'buildSkillGateTelemetry',
-	'buildStatedFutureRepairInstruction',
-	'buildToolRoundBudgetSynthesisInstruction',
-	'collectDocumentInventoryFromReads',
-	'countDistinctSuccessfulWriteTargets',
-	'countWebResearchCalls',
-	'didCreateDurableRecord',
-	'hasGatewayCreateFieldNoProgressFailure',
-	'looksLikeStatedFuture',
-	'shouldRepairGatewayMutationNoExecution',
-	'shouldRepairOrganizeCommissionNoExecution',
-	'shouldRepairProjectCreateNoExecution',
-	'shouldRepairResearchNoPersist',
-	'shouldRepairSkillGateNoLoad',
-	'shouldRepairStatedFutureNotRecorded'
-];
+const RETIRED_WEB_ENGINE_ONLY_EXPORTS: string[] = [];
 
 const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist', '.turbo', '.svelte-kit', 'build']);
 
@@ -360,9 +307,9 @@ describe('repair-instruction export surface', () => {
 		expect(classifyExportReferences().unreferenced).toEqual([]);
 	});
 
-	it('pins the builders that only the retired web engine still imports', () => {
-		// Deleting the retired engine must delete exactly these with it; the
-		// guard above fails the moment one of them loses its last importer.
+	it('keeps the retired web engine deleted', () => {
+		// The engine's directories are gone; nothing may reintroduce them with
+		// builders only they import.
 		expect(classifyExportReferences().retiredEngineOnly).toEqual(
 			RETIRED_WEB_ENGINE_ONLY_EXPORTS
 		);

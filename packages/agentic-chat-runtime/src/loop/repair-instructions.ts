@@ -1,6 +1,5 @@
 // packages/agentic-chat-runtime/src/loop/repair-instructions.ts
 import { normalizeGatewayOpName } from '@buildos/shared-agent-ops/ops/gateway-op-aliases';
-import { getAgenticChatLoopSkillLookup, type SkillLoadFormat } from './skill-lookup';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
@@ -11,7 +10,6 @@ import {
 	didSuccessfulGatewayOpExecute,
 	getGatewayExecOp,
 	isDuplicateWriteSkippedExecution,
-	isWebResearchToolName,
 	isWriteLedgerToolExecution,
 	isWriteLikeOperation
 } from './tool-classification';
@@ -22,373 +20,6 @@ import {
 	isNotFoundFailure,
 	parseRequiredParameterFailure
 } from './tool-failure';
-
-export function shouldRepairProjectCreateNoExecution(params: {
-	contextType: string;
-	finalText: string;
-	toolExecutions: FastToolExecution[];
-	repairAlreadyInjected: boolean;
-}): boolean {
-	if (params.contextType !== 'project_create') return false;
-	if (params.repairAlreadyInjected) return false;
-	if (didSuccessfulGatewayOpExecute(params.toolExecutions, 'onto.project.create')) return false;
-
-	const finalText = params.finalText.trim();
-	if (!finalText) return true;
-	if (looksLikePureClarifyingQuestion(finalText)) return false;
-	return true;
-}
-
-export function buildProjectCreateNoExecutionRepairInstruction(): string {
-	return [
-		'You are in project_create context and create_onto_project has not succeeded yet.',
-		'Do not end the turn with a success summary unless create_onto_project actually succeeds.',
-		'create_onto_project is already available. Do not call project-creation discovery or help tools.',
-		'Build one complete create_onto_project call from the user request. Always include project, entities, and relationships; use empty arrays only when the user requested no initial records or connections.',
-		'Minimal valid create shape: create_onto_project({ project: { name: "Project Name", type_key: "project.business.initiative" }, entities: [], relationships: [] }).',
-		'If the user requested initial goals, tasks, plans, documents, or other supported records, include them in entities in this same call. Relationships must reference those entities with from/to objects containing temp_id and kind.',
-		'If a previous create_onto_project attempt already included a full payload, reuse it and patch only the failing fields. Never replace a complete payload with empty arguments.',
-		'Ask one concise clarifying question only when a critical user choice is genuinely unresolved; do not ask for redundant confirmation.'
-	].join(' ');
-}
-
-// Skill-load gate enforcement (2026-07-02): the prompt-level gate alone proved
-// insufficient — a live turn had "Skill-load gate: ACTIVE" in its prompt and the
-// model still rewrote a document with zero skill_load calls. When domain sensing
-// marked the turn skill-covered and nothing satisfied the gate, block the first
-// finalization attempt and demand the load. Fires at most once per turn.
-
-export type SkillGateTelemetry = {
-	skill_gate_required: boolean;
-	expected_skill_ids: string[];
-	expected_skill_format: SkillLoadFormat | null;
-	expected_skill_formats: Record<string, SkillLoadFormat>;
-	history_loaded_skill_ids: string[];
-	loaded_skill_ids: string[];
-	matching_loaded_skill_ids: string[];
-	loaded_skill_formats: Record<string, SkillLoadFormat>;
-	skill_gate_satisfied: boolean;
-	skill_gate_violation_repaired: boolean;
-	skill_contract_present: boolean | null;
-};
-
-type LoadedSkillExecutionTelemetry = {
-	skillIds: string[];
-	format: SkillLoadFormat | null;
-	contractPresent: boolean | null;
-};
-
-export function shouldRepairSkillGateNoLoad(params: {
-	skillLoadRequired: boolean;
-	acceptableSkillIds: string[];
-	historyLoadedSkillIds: string[];
-	finalText: string;
-	toolExecutions: FastToolExecution[];
-	repairAlreadyInjected: boolean;
-}): boolean {
-	if (!params.skillLoadRequired) return false;
-	if (params.repairAlreadyInjected) return false;
-	const acceptableSkillIds = normalizeSkillIdList(params.acceptableSkillIds);
-	if (hasRelevantLoadedSkill(params.historyLoadedSkillIds, acceptableSkillIds)) return false;
-	if (didRelevantSuccessfulSkillLoadExecute(params.toolExecutions, acceptableSkillIds))
-		return false;
-	const finalText = params.finalText.trim();
-	if (!finalText) return true;
-	// A pure clarifying question produces no work product; the gate allows it.
-	if (looksLikePureClarifyingQuestion(finalText)) return false;
-	return true;
-}
-
-export function buildSkillGateTelemetry(params: {
-	skillLoadRequired: boolean;
-	expectedSkillIds: string[];
-	expectedSkillFormats?: Record<string, SkillLoadFormat>;
-	historyLoadedSkillIds: string[];
-	toolExecutions: FastToolExecution[];
-	violationRepairInjected: boolean;
-}): SkillGateTelemetry {
-	const expectedSkillIds = normalizeSkillIdList(params.expectedSkillIds).slice(0, 20);
-	const expectedSkillFormats = normalizeSkillLoadFormats(params.expectedSkillFormats ?? {});
-	const historyLoadedSkillIds = normalizeSkillIdList(params.historyLoadedSkillIds).slice(0, 20);
-	const loadedSkillExecutions = params.toolExecutions
-		.map(extractLoadedSkillExecutionTelemetry)
-		.filter(
-			(summary): summary is LoadedSkillExecutionTelemetry =>
-				summary !== null && summary.skillIds.length > 0
-		);
-	const currentLoadedSkillIds = uniqueSkillIds(
-		loadedSkillExecutions.flatMap((summary) => summary.skillIds)
-	);
-	const loadedSkillIds = uniqueSkillIds([...historyLoadedSkillIds, ...currentLoadedSkillIds]);
-	const matchingLoadedSkillIds = params.skillLoadRequired
-		? loadedSkillIds.filter((skillId) =>
-				expectedSkillIds.length === 0
-					? true
-					: doesLoadedSkillSatisfyAcceptableSkill(skillId, expectedSkillIds)
-			)
-		: [];
-	const loadedSkillFormats = collectLoadedSkillFormats(loadedSkillExecutions);
-	const skillGateSatisfied =
-		!params.skillLoadRequired ||
-		hasRelevantLoadedSkill(historyLoadedSkillIds, expectedSkillIds) ||
-		loadedSkillExecutions.some((summary) =>
-			summary.skillIds.some((skillId) =>
-				expectedSkillIds.length === 0
-					? true
-					: doesLoadedSkillSatisfyAcceptableSkill(skillId, expectedSkillIds)
-			)
-		);
-
-	return {
-		skill_gate_required: params.skillLoadRequired,
-		expected_skill_ids: expectedSkillIds,
-		expected_skill_format: resolveExpectedSkillFormat(expectedSkillFormats),
-		expected_skill_formats: expectedSkillFormats,
-		history_loaded_skill_ids: historyLoadedSkillIds,
-		loaded_skill_ids: loadedSkillIds,
-		matching_loaded_skill_ids: matchingLoadedSkillIds,
-		loaded_skill_formats: loadedSkillFormats,
-		skill_gate_satisfied: skillGateSatisfied,
-		skill_gate_violation_repaired: params.violationRepairInjected,
-		skill_contract_present: resolveSkillContractPresent({
-			loadedSkillExecutions,
-			expectedSkillIds,
-			skillGateRequired: params.skillLoadRequired,
-			skillGateSatisfied
-		})
-	};
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function normalizeSkillIdList(skillIds: string[]): string[] {
-	const result: string[] = [];
-	const seen = new Set<string>();
-	for (const skillId of skillIds) {
-		const canonicalId = canonicalizeSkillReference(skillId);
-		if (!canonicalId || seen.has(canonicalId)) continue;
-		seen.add(canonicalId);
-		result.push(canonicalId);
-	}
-	return result;
-}
-
-function uniqueSkillIds(skillIds: string[]): string[] {
-	return normalizeSkillIdList(skillIds);
-}
-
-function normalizeSkillLoadFormats(
-	value: Record<string, SkillLoadFormat>
-): Record<string, SkillLoadFormat> {
-	const formats: Record<string, SkillLoadFormat> = {};
-	for (const [skillId, format] of Object.entries(value)) {
-		if (format !== 'short' && format !== 'full') continue;
-		const canonicalId = canonicalizeSkillReference(skillId);
-		if (!canonicalId) continue;
-		formats[canonicalId] = format;
-	}
-	return formats;
-}
-
-function resolveExpectedSkillFormat(
-	expectedSkillFormats: Record<string, SkillLoadFormat>
-): SkillLoadFormat | null {
-	const uniqueFormats = new Set(Object.values(expectedSkillFormats));
-	return uniqueFormats.size === 1 ? ([...uniqueFormats][0] ?? null) : null;
-}
-
-function collectLoadedSkillFormats(
-	loadedSkillExecutions: LoadedSkillExecutionTelemetry[]
-): Record<string, SkillLoadFormat> {
-	const formats: Record<string, SkillLoadFormat> = {};
-	for (const summary of loadedSkillExecutions) {
-		if (!summary.format) continue;
-		for (const skillId of summary.skillIds) {
-			formats[skillId] = summary.format;
-		}
-	}
-	return formats;
-}
-
-function parseSkillLoadFormat(value: unknown): SkillLoadFormat | null {
-	return value === 'short' || value === 'full' ? value : null;
-}
-
-function extractLoadedSkillExecutionTelemetry(
-	execution: FastToolExecution
-): LoadedSkillExecutionTelemetry | null {
-	if (execution.toolCall.function?.name?.trim() !== 'skill_load') return null;
-	if (execution.result.success !== true) return null;
-	const skillIds = extractLoadedSkillIdsFromExecution(execution);
-	if (skillIds.length === 0) return null;
-
-	const result = execution.result.result;
-	let resultFormat: SkillLoadFormat | null = null;
-	let contractPresent: boolean | null = null;
-	if (isRecord(result)) {
-		resultFormat = parseSkillLoadFormat(result.format);
-		if (result.type === 'skill') {
-			contractPresent =
-				typeof result.output_contract === 'string' &&
-				result.output_contract.trim().length > 0;
-		}
-	}
-
-	const parsedArgs = parseToolArguments(execution.toolCall.function?.arguments);
-	const argumentFormat = parsedArgs.error ? null : parseSkillLoadFormat(parsedArgs.args.format);
-
-	return {
-		skillIds,
-		format: resultFormat ?? argumentFormat,
-		contractPresent
-	};
-}
-
-function resolveSkillContractPresent(params: {
-	loadedSkillExecutions: LoadedSkillExecutionTelemetry[];
-	expectedSkillIds: string[];
-	skillGateRequired: boolean;
-	skillGateSatisfied: boolean;
-}): boolean | null {
-	if (!params.skillGateRequired || !params.skillGateSatisfied) return null;
-	let sawMatchingCurrentLoad = false;
-	for (const summary of params.loadedSkillExecutions) {
-		const matchesGate = summary.skillIds.some((skillId) =>
-			params.expectedSkillIds.length === 0
-				? true
-				: doesLoadedSkillSatisfyAcceptableSkill(skillId, params.expectedSkillIds)
-		);
-		if (!matchesGate) continue;
-		sawMatchingCurrentLoad = true;
-		if (summary.contractPresent === true) return true;
-	}
-	return sawMatchingCurrentLoad ? false : null;
-}
-
-function canonicalizeSkillReference(value: unknown): string | null {
-	if (typeof value !== 'string') return null;
-	const reference = value.trim();
-	if (!reference) return null;
-	return getAgenticChatLoopSkillLookup().getSkillIdByReference(reference) ?? reference;
-}
-
-function hasRelevantLoadedSkill(loadedSkillIds: string[], acceptableSkillIds: string[]): boolean {
-	const normalizedLoadedSkillIds = normalizeSkillIdList(loadedSkillIds);
-	if (acceptableSkillIds.length === 0) {
-		return normalizedLoadedSkillIds.length > 0;
-	}
-	return normalizedLoadedSkillIds.some((skillId) =>
-		doesLoadedSkillSatisfyAcceptableSkill(skillId, acceptableSkillIds)
-	);
-}
-
-function didRelevantSuccessfulSkillLoadExecute(
-	toolExecutions: FastToolExecution[],
-	acceptableSkillIds: string[]
-): boolean {
-	for (const execution of toolExecutions) {
-		if (execution.toolCall.function?.name?.trim() !== 'skill_load') continue;
-		if (execution.result.success !== true) continue;
-		const loadedSkillIds = extractLoadedSkillIdsFromExecution(execution);
-		if (acceptableSkillIds.length === 0) return true;
-		if (
-			loadedSkillIds.some((skillId) =>
-				doesLoadedSkillSatisfyAcceptableSkill(skillId, acceptableSkillIds)
-			)
-		) {
-			return true;
-		}
-	}
-	return false;
-}
-
-function extractLoadedSkillIdsFromExecution(execution: FastToolExecution): string[] {
-	const resultSkillIds: Array<string | null> = [];
-	const result = execution.result.result;
-	if (isRecord(result)) {
-		resultSkillIds.push(
-			canonicalizeSkillReference(result.id),
-			canonicalizeSkillReference(result.skill_id),
-			canonicalizeSkillReference(result.skill)
-		);
-	}
-	const normalizedResultSkillIds = normalizeSkillIdList(
-		resultSkillIds.filter((id): id is string => Boolean(id))
-	);
-	if (normalizedResultSkillIds.length > 0) return normalizedResultSkillIds;
-
-	const argumentSkillIds: Array<string | null> = [];
-	const parsed = parseToolArguments(execution.toolCall.function?.arguments);
-	if (!parsed.error) {
-		argumentSkillIds.push(
-			canonicalizeSkillReference(parsed.args.skill),
-			canonicalizeSkillReference(parsed.args.id),
-			canonicalizeSkillReference(parsed.args.path)
-		);
-	}
-	return normalizeSkillIdList(argumentSkillIds.filter((id): id is string => Boolean(id)));
-}
-
-function doesLoadedSkillSatisfyAcceptableSkill(
-	loadedSkillId: string,
-	acceptableSkillIds: string[]
-): boolean {
-	const acceptableSet = new Set(acceptableSkillIds);
-	if (acceptableSet.has(loadedSkillId)) return true;
-
-	const seen = new Set<string>([loadedSkillId]);
-	const skillLookup = getAgenticChatLoopSkillLookup();
-	let currentParentId = skillLookup.getSkillParentId(loadedSkillId)?.trim();
-	while (currentParentId && !seen.has(currentParentId)) {
-		const canonicalParentId = canonicalizeSkillReference(currentParentId);
-		if (!canonicalParentId) return false;
-		if (acceptableSet.has(canonicalParentId)) return true;
-		seen.add(canonicalParentId);
-		currentParentId = skillLookup.getSkillParentId(canonicalParentId)?.trim();
-	}
-	return false;
-}
-
-export function buildSkillGateNoLoadRepairInstruction(recommendedSkillIds: string[]): string {
-	const candidates = recommendedSkillIds.slice(0, 6);
-	return [
-		'The skill-load gate for this turn is ACTIVE and no matching skill has been loaded in this turn or earlier in this session.',
-		'This request matches skill-covered work; do not finalize an answer from base knowledge.',
-		candidates.length > 0
-			? `Your next response must call skill_load for the best-matching skill among: ${candidates.join(', ')}.`
-			: 'Your next response must call skill_load for the best-matching skill from the Active Domain Signals section.',
-		"If none of those candidates fits the user's actual ask, call skill_search to find the right skill and then skill_load it.",
-		"After the skill is loaded, write the final answer by applying that skill's playbook and output contract.",
-		"If you already created or updated an entity this turn (for example a document rewrite), re-apply the loaded skill's contract to that content and update the entity again before finalizing — do not leave un-skill-grounded content as the persisted result."
-	].join(' ');
-}
-
-/**
- * Research-capture floor (2026-07-25).
- *
- * A turn that runs real web research and persists nothing loses everything it learned the moment
- * the session ends, and the user cannot see that it happened — the reply looks complete.
- *
- * This is enforced in code rather than by prompt guidance because guidance was measured and did
- * not hold. Baseline on the `document-from-vague-description` e2e scenario was 3/5 turns
- * persisting; after explicit prompt instruction it was 1/6, with research volume going UP and
- * document writes going DOWN. `task-complete-cold-reference` is 0/7 lifetime. A skill cannot carry
- * this either: `activation: always_on` is a dead enum (parsed, never acted on), all runtime skills
- * are `progressive`, and across those 10 measured turns the model made exactly one `skill_load`
- * call — none for the research skill.
- *
- * The bar is deliberately low. One durable write of any kind satisfies it; this asks "did anything
- * survive the turn," not "was the right thing written."
- */
-const RESEARCH_CAPTURE_MINIMUM_CALLS = 2;
-
-export function countWebResearchCalls(toolExecutions: FastToolExecution[]): number {
-	return toolExecutions.filter((execution) =>
-		isWebResearchToolName(execution.toolCall.function?.name ?? '')
-	).length;
-}
 
 /**
  * Forward-carry floor (2026-07-26).
@@ -421,7 +52,7 @@ const STATED_FUTURE_PATTERNS: RegExp[] = [
 	/\bstill (?:need|needs|have) to\b/i
 ];
 
-export function looksLikeStatedFuture(text: string): boolean {
+function looksLikeStatedFuture(text: string): boolean {
 	const normalized = (text ?? '').trim();
 	if (!normalized) return false;
 	return STATED_FUTURE_PATTERNS.some((pattern) => pattern.test(normalized));
@@ -451,7 +82,7 @@ export function extractStatedFutureClause(text: string): string | null {
  * Closing a task is not carrying its follow-up forward, which is the whole failure being gated.
  * Mirrors the four surfaces the scenario accepts: task, document, event, or START HERE edit.
  */
-export function didCreateDurableRecord(toolExecutions: FastToolExecution[]): boolean {
+function didCreateDurableRecord(toolExecutions: FastToolExecution[]): boolean {
 	return toolExecutions.some((execution) => {
 		if (execution.result.success !== true) return false;
 		const name = execution.toolCall.function?.name?.trim() ?? '';
@@ -469,29 +100,6 @@ export function didCreateDurableRecord(toolExecutions: FastToolExecution[]): boo
 		}
 		return false;
 	});
-}
-
-export function shouldRepairStatedFutureNotRecorded(params: {
-	latestUserText: string;
-	finalText: string;
-	toolExecutions: FastToolExecution[];
-	repairAlreadyInjected: boolean;
-}): boolean {
-	if (params.repairAlreadyInjected) return false;
-	if (!looksLikeStatedFuture(params.latestUserText)) return false;
-	// Only gate turns that already acted. A pure question or a turn that wrote nothing at all is a
-	// different failure, and the other floors own it.
-	const wrote = params.toolExecutions.some(
-		(execution) => isWriteLedgerToolExecution(execution) && execution.result.success === true
-	);
-	if (!wrote) return false;
-	if (didCreateDurableRecord(params.toolExecutions)) return false;
-	// Deliberately NO looksLikePureClarifyingQuestion waiver, unlike the sibling floors. This gate
-	// only reaches here when the turn ALREADY acted on the message — a trailing "want me to set a
-	// follow-up?" after acting is exactly the prose-instead-of-record failure being gated, and in
-	// the 2026-07-26 battery 2/5 runs dropped the future without the gate ever firing. Any '?' in
-	// the final text was one of the two code paths that allowed that.
-	return true;
 }
 
 /**
@@ -525,73 +133,6 @@ export function didWriteWithoutDurableRecord(toolExecutions: FastToolExecution[]
 	return wrote && !didCreateDurableRecord(toolExecutions);
 }
 
-export function buildStatedFutureRepairInstruction(): string {
-	// Measured 2026-07-26: an earlier version of this instruction offered the model two ways out —
-	// "already recorded" OR "it was a passing remark not worth recording". It took the second one
-	// on 5/5 runs and wrote nothing. The gate's own preconditions already rule that reading out:
-	// it only fires when the user stated a future AND the agent acted AND created no new record.
-	// A turn that merely heard a passing mention never reaches here, because it never wrote.
-	// So the only legitimate escape left is "it already exists", and it must be evidenced.
-	return [
-		'The user told you what happens next — what they are waiting on, a decision, a constraint, or a deadline — and this turn changed an existing record without creating anything to hold that future.',
-		'Create that record now. Pick exactly one, the smallest that fits: a task if it is work to do, an event if it has a time, or an update to the relevant document or the project START HERE if it is context. One record, not several.',
-		'Base it on the user\'s own words — for "waiting to hear back from them", the record is the waiting, not a restatement of what you already closed.',
-		'The only reason to skip this is that the future is ALREADY captured in a specific existing record. If you believe that, name that record by title in one short line instead of writing.',
-		'Do not re-do the change you already made, do not restate the whole turn, and do not simply confirm the future back to the user in prose — prose is not a record.'
-	].join(' ');
-}
-
-export function shouldRepairResearchNoPersist(params: {
-	finalText: string;
-	toolExecutions: FastToolExecution[];
-	repairAlreadyInjected: boolean;
-}): boolean {
-	if (params.repairAlreadyInjected) return false;
-	if (countWebResearchCalls(params.toolExecutions) < RESEARCH_CAPTURE_MINIMUM_CALLS) return false;
-	// Any successful durable write clears the floor, whatever it wrote.
-	if (
-		params.toolExecutions.some(
-			(execution) =>
-				isWriteLedgerToolExecution(execution) && execution.result.success === true
-		)
-	) {
-		return false;
-	}
-	// Deliberately NO looksLikePureClarifyingQuestion waiver (removed 2026-07-26, DJ call, after
-	// the same waiver measurably dropped stated futures 2/5 on the sibling gate). A turn that ran
-	// two or more web searches has findings worth keeping regardless of how its reply ends, and a
-	// trailing "want me to save this?" is the needless-confirmation anti-pattern, not a genuine
-	// blocker. The repair instruction still permits a real blocking question — after persisting.
-	return true;
-}
-
-/**
- * Organize-commission floor (2026-07-26).
- *
- * "Help me get these documents organized" is a commission, and the failure mode is a turn that
- * reads everything, proposes a structure in prose, and moves nothing. Measured on
- * `project-organize`: 0/3 with a read-only surface (router fix), then 0/3 with the surface
- * mounted and the read-loop ladder steering to execute — the model batches its reads into a few
- * rounds, never trips the ladder, and finalizes voluntarily with a plan. So the floor lives at
- * finalization, like the stated-future gate: a commissioned reorganization may not end with zero
- * writes and no repair round.
- *
- * Deliberately no clarifying-question waiver — that escape hatch measurably gets taken (twice
- * this week).
- */
-export function shouldRepairOrganizeCommissionNoExecution(params: {
-	organizeCommissioned: boolean;
-	toolExecutions: FastToolExecution[];
-	repairAlreadyInjected: boolean;
-}): boolean {
-	if (params.repairAlreadyInjected) return false;
-	if (!params.organizeCommissioned) return false;
-	const wrote = params.toolExecutions.some(
-		(execution) => isWriteLedgerToolExecution(execution) && execution.result.success === true
-	);
-	return !wrote;
-}
-
 const DOCUMENT_READ_TOOL_NAMES = new Set([
 	'get_document_tree',
 	'list_onto_documents',
@@ -610,7 +151,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
  * a plan needs an entity that does not exist; the countermeasure is handing them the real
  * inventory, not asking them to remember it.
  */
-export function collectDocumentInventoryFromReads(
+function collectDocumentInventoryFromReads(
 	toolExecutions: FastToolExecution[]
 ): Array<{ id: string; title: string }> {
 	const found = new Map<string, string>();
@@ -659,157 +200,6 @@ export function buildOrganizeCommissionRepairInstruction(
 	]
 		.filter((line): line is string => Boolean(line))
 		.join(' ');
-}
-
-export function buildResearchNoPersistRepairInstruction(
-	toolExecutions: FastToolExecution[]
-): string {
-	const researchCalls = countWebResearchCalls(toolExecutions);
-	return [
-		`You ran ${researchCalls} web research calls this turn and saved none of it.`,
-		'Those findings exist only in this reply and are lost when the session ends.',
-		'Before you finalize, persist what you learned: append to the project document the research was for, or create one if nothing fits.',
-		'Include a Sources section listing the URLs used, and a short section naming anything you looked for and could not resolve.',
-		'Then write the final reply as 3-5 bottom-line-up-front takeaways plus one line naming the document the detail lives in.',
-		'Do not paste the document body into the reply.',
-		'If you still need an answer from the user before going further, persist first, then ask — an unanswered question must not cost the research.',
-		'If the user explicitly asked you not to save anything, say so in one line instead of writing.'
-	].join(' ');
-}
-
-export function buildToolRoundBudgetSynthesisInstruction(): string {
-	return [
-		'The tool-round budget for this turn is exhausted.',
-		'Do not request more tools, schemas, skills, searches, or reads.',
-		'Answer from the evidence and context already loaded.',
-		'If a fact you were about to fetch is still missing, state that limitation briefly and give the best next step instead of continuing tool coordination.'
-	].join(' ');
-}
-
-export function shouldRepairGatewayMutationNoExecution(params: {
-	gatewayModeActive: boolean;
-	contextType: string;
-	finalText: string;
-	toolExecutions: FastToolExecution[];
-	repairAlreadyInjected: boolean;
-	latestUserText?: string;
-	explicitMutationRequested?: boolean;
-	allowClarifyingQuestionWithoutWrite?: boolean;
-	minimumSuccessfulWrites?: number;
-	commissionedWriteToolNames?: readonly string[];
-}): boolean {
-	if (!params.gatewayModeActive) return false;
-	if (params.contextType === 'project_create') return false;
-	if (params.repairAlreadyInjected) return false;
-
-	const finalText = params.finalText.trim();
-	if (!finalText) return true;
-
-	const mutationOutcomes = summarizeMutationOutcomes(params.toolExecutions);
-	const minimumSuccessfulWrites = Math.max(1, Math.floor(params.minimumSuccessfulWrites ?? 1));
-	const floorSatisfyingWrites =
-		minimumSuccessfulWrites > 1
-			? countDistinctSuccessfulWriteTargets(
-					params.toolExecutions,
-					params.commissionedWriteToolNames
-				)
-			: mutationOutcomes.succeeded;
-	if (floorSatisfyingWrites >= minimumSuccessfulWrites) return false;
-
-	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
-	const explicitUserWriteIntent = params.explicitMutationRequested === true;
-	if (writeIntentOps.length === 0 && !explicitUserWriteIntent) return false;
-
-	if (
-		params.allowClarifyingQuestionWithoutWrite !== false &&
-		looksLikePureClarifyingQuestion(finalText)
-	)
-		return false;
-	if (
-		explicitUserWriteIntent &&
-		writeIntentOps.length === 0 &&
-		mutationOutcomes.attempted === 0 &&
-		looksLikeWriteRefusalDisclosure(finalText)
-	) {
-		return false;
-	}
-	// A failure disclosure only waives repair when a write actually failed.
-	// Gating on the prose alone is an escape hatch: fiction canon routinely
-	// contains "didn't"/"could not" ("Ilyan didn't report Mara"), and that must
-	// not silently cancel an outstanding commissioned write.
-	if (mutationOutcomes.failed > 0 && looksLikeWriteFailureDisclosure(finalText)) return false;
-
-	return true;
-}
-
-export function buildGatewayMutationNoExecutionRepairInstruction(
-	toolExecutions: FastToolExecution[],
-	minimumSuccessfulWrites = 1,
-	commissionedWriteToolNames?: readonly string[]
-): string {
-	const plannedWriteOps = collectGatewayWriteIntentOps(toolExecutions);
-	const mutationOutcomes = summarizeMutationOutcomes(toolExecutions);
-	const completedFloorWrites =
-		Math.floor(minimumSuccessfulWrites) > 1
-			? countDistinctSuccessfulWriteTargets(toolExecutions, commissionedWriteToolNames)
-			: mutationOutcomes.succeeded;
-	const remainingSuccessfulWrites = Math.max(
-		1,
-		Math.floor(minimumSuccessfulWrites) - completedFloorWrites
-	);
-	const lines = [
-		completedFloorWrites > 0
-			? `The durable-capture commission still needs ${remainingSuccessfulWrites} additional successful write call${remainingSuccessfulWrites === 1 ? '' : 's'} to distinct affected documents.`
-			: `You have not completed any write yet.${minimumSuccessfulWrites > 1 ? ` This commission requires ${minimumSuccessfulWrites} successful writes to distinct affected documents.` : ''}`,
-		'Do not stop after schema discovery or failed writes without either retrying correctly or asking a concise blocker question.',
-		'If you cannot execute the requested write after trying, say "I was unable to <requested action>" and briefly explain what blocked it. Make clear that nothing changed.'
-	];
-
-	if (plannedWriteOps.length > 0) {
-		lines.push(`Write ops already identified: ${plannedWriteOps.join(', ')}.`);
-	}
-
-	if (plannedWriteOps.some((op) => op.endsWith('.create'))) {
-		lines.push(
-			'For create ops, use concrete user-provided titles/names from the current message. Do not emit creates with only project_id.'
-		);
-	}
-	if (plannedWriteOps.some((op) => op.endsWith('.update'))) {
-		lines.push(
-			'For update ops, reuse exact *_id values already present in structured context and include at least one concrete field to change. Never emit empty argument objects.'
-		);
-	}
-	if (plannedWriteOps.includes('onto.goal.update')) {
-		lines.push(
-			'For onto.goal.update, copy the exact goal_id from structured context and include a concrete field such as name, description, state_key, or target_date.'
-		);
-	}
-	if (plannedWriteOps.includes('onto.milestone.create')) {
-		lines.push(
-			'For onto.milestone.create, use a concrete title from the user message, for example "Complete chapters 1-10".'
-		);
-	}
-	if (plannedWriteOps.includes('onto.task.create')) {
-		lines.push(
-			'For onto.task.create, use a concrete title from the user message, for example "Research literary agents for fantasy genre".'
-		);
-	}
-	if (plannedWriteOps.includes('onto.plan.create')) {
-		lines.push(
-			'For onto.plan.create, use a concrete name from the user message, for example "Weekday drafting routine".'
-		);
-	}
-	if (plannedWriteOps.includes('cal.event.create')) {
-		lines.push(
-			'For cal.event.create, include concrete title, start_at, and end_at values before executing.'
-		);
-	}
-
-	lines.push(
-		'Your next response must do one of two things only: emit valid direct tool calls for the concrete writes already identified, or ask one concise blocker question.'
-	);
-
-	return lines.join(' ');
 }
 
 /**
@@ -1218,125 +608,7 @@ export function buildToolValidationRepairInstruction(
 	return lines.join(' ');
 }
 
-export function hasGatewayCreateFieldNoProgressFailure(
-	failures: GatewayRequiredFieldFailure[]
-): boolean {
-	return failures.some(
-		(failure) =>
-			(failure.op === 'onto.task.create' && failure.field === 'title') ||
-			(failure.op === 'onto.milestone.create' && failure.field === 'title') ||
-			(failure.op === 'onto.goal.create' && failure.field === 'name') ||
-			(failure.op === 'onto.plan.create' && failure.field === 'name')
-	);
-}
-
-export function buildGatewayCreateFieldNoProgressRepairInstruction(
-	failures: GatewayRequiredFieldFailure[]
-): string {
-	const lines = [
-		'You are repeating create ops without the required user-facing title/name field.',
-		'Do not emit the same blank create again.',
-		'If the current user message already contains the goal, milestone, plan, or task wording, copy that text directly into title or name before calling the direct create tool.'
-	];
-
-	if (
-		failures.some((failure) => failure.op === 'onto.task.create' && failure.field === 'title')
-	) {
-		lines.push(
-			'For onto.task.create, use a concrete task title from the user message, for example "Research literary agents for fantasy genre".'
-		);
-	}
-	if (
-		failures.some(
-			(failure) => failure.op === 'onto.milestone.create' && failure.field === 'title'
-		)
-	) {
-		lines.push(
-			'For onto.milestone.create, use a concrete milestone title from the user message, for example "Complete chapters 1-10".'
-		);
-	}
-	if (failures.some((failure) => failure.op === 'onto.goal.create' && failure.field === 'name')) {
-		lines.push(
-			'For onto.goal.create, use a concrete goal name from the user message, for example "Finish first draft by March 31st".'
-		);
-	}
-	if (failures.some((failure) => failure.op === 'onto.plan.create' && failure.field === 'name')) {
-		lines.push(
-			'For onto.plan.create, use a concrete plan name from the user message, for example "Weekday drafting routine".'
-		);
-	}
-
-	lines.push(
-		'Your next response must do one of two things only: emit valid direct create-tool calls with concrete title/name values, or ask one concise clarifying question if the user truly did not provide those values.'
-	);
-
-	return lines.join(' ');
-}
-
-export function buildGatewayRequiredFieldRepairInstruction(
-	failures: GatewayRequiredFieldFailure[]
-): string {
-	const labels = failures.map((failure) => `${failure.op} -> ${failure.field}`).join(', ');
-	const hasProjectCreateFailure = failures.some(
-		(failure) => failure.op === 'onto.project.create'
-	);
-	const hasTaskCreateTitleFailure = failures.some(
-		(failure) => failure.op === 'onto.task.create' && failure.field === 'title'
-	);
-	const hasTaskUpdateIdFailure = failures.some(
-		(failure) => failure.op === 'onto.task.update' && failure.field === 'task_id'
-	);
-	return [
-		`Repeated required-field validation failures detected: ${labels}.`,
-		'Do not call write tools with empty argument objects.',
-		...(hasProjectCreateFailure
-			? [
-					'create_onto_project is already available. Correct and retry that tool directly; do not call search, schema, skill, or turn-contract tools.',
-					'Use the user request and the previous complete payload to restore required values. Ask one concise question only if a critical user value is genuinely missing.'
-				]
-			: [
-					'A missing required parameter means the current operation is not ready to execute.',
-					'For routine status questions, prefer get_workspace_overview or get_project_overview instead of repeating empty search/list calls.',
-					'For search ops, include query (for example onto.project.search, onto.task.search, onto.search).',
-					'If query is unclear, ask one concise clarifying question instead of repeating empty search args.',
-					'Before retrying any create/update/delete op, call tool_schema({ op: "<exact op>" }) and follow that schema exactly.',
-					'If exact IDs are already present in the current structured context, reuse them directly. If the named entity is already listed there, copy its exact UUID into the direct tool arguments instead of searching again.',
-					'Do not emit another empty update after tool_schema. Use the current structured context to fill the required *_id and include at least one concrete field to change.',
-					'If the missing value is user input rather than an ID, ask one concise clarifying question instead of calling a tool.',
-					'For onto.<entity>.update, include <entity>_id and at least one concrete field to change.',
-					'For onto.<entity>.delete, include <entity>_id.',
-					'For cal.event.update, include event_id or onto_event_id plus at least one concrete field to change.'
-				]),
-		...(hasTaskCreateTitleFailure
-			? [
-					'For onto.task.create, do not emit a blank create. Include a concrete title taken from the user request, for example "Revise chapter 2 dialogue between Elena and Master Thorne".'
-				]
-			: []),
-		...(hasTaskUpdateIdFailure
-			? [
-					'For onto.task.update, if the task is already listed in structured context, copy its exact task_id directly into task_id instead of retrying with empty arguments.',
-					'If the user is referring to an in-scope task like an outline or chapter task, map that reference to the exact task_id before calling update_onto_task.'
-				]
-			: []),
-		...(hasProjectCreateFailure
-			? [
-					'For create_onto_project, include project with project.name and project.type_key, plus entities and relationships arrays.',
-					'Minimal valid project creation shape: { project: { name, type_key }, entities: [], relationships: [] }.',
-					'Include any requested initial goals, tasks, plans, documents, and supported relationships in this same create_onto_project call.',
-					'If a previous create_onto_project attempt included a full payload, reuse it and patch only the failing fields. Never replace a complete payload with empty arguments.'
-				]
-			: []),
-		...buildGatewayCreateFieldRepairLines(failures),
-		...(!hasProjectCreateFailure
-			? [
-					'For document organization, get IDs from onto.document.tree.get result.unlinked/documents and pass exact input.document_id for delete/move.'
-				]
-			: []),
-		'If IDs are still unclear, ask one concise clarifying question instead of repeating failed writes.'
-	].join(' ');
-}
-
-export type ReadLoopRepairInstructionLevel = 'nudge' | 'stop_and_answer' | 'must_synthesize';
+type ReadLoopRepairInstructionLevel = 'nudge' | 'stop_and_answer' | 'must_synthesize';
 
 export function buildReadLoopRepairInstruction(
 	readOps: string[],
@@ -1461,25 +733,6 @@ export function buildReadLoopRepairInstruction(
 	]
 		.filter((line): line is string => Boolean(line))
 		.join(' ');
-}
-
-export function buildConsolidatedRepairInstruction(instructions: string[]): string {
-	const unique = Array.from(
-		new Set(
-			instructions
-				.map((instruction) => instruction.trim())
-				.filter((instruction) => instruction.length > 0)
-		)
-	);
-	if (unique.length === 0) return '';
-	if (unique.length === 1) return unique[0] ?? '';
-
-	const lines = [
-		'Repair instructions for the next response:',
-		...unique.map((instruction, index) => `${index + 1}. ${instruction}`),
-		'Apply all relevant items in a single corrected tool response.'
-	];
-	return lines.join('\n');
 }
 
 export function collectGatewayWriteIntentOps(toolExecutions: FastToolExecution[]): string[] {
@@ -1713,71 +966,6 @@ function summarizeMutationOutcomes(toolExecutions: FastToolExecution[]): Mutatio
 	};
 }
 
-function getWriteTargetIdentityKey(execution: FastToolExecution, writeOp: string): string {
-	const { args } = parseToolArguments(execution.toolCall.function?.arguments);
-	const record =
-		args && typeof args === 'object' && !Array.isArray(args)
-			? (args as Record<string, unknown>)
-			: {};
-	const entityKind = writeOp
-		.toLowerCase()
-		.replace(/^(?:create|update|delete)_onto_/, '')
-		.replace(/\.(?:create|update|delete)$/, '');
-	const idKeys = [
-		'document_id',
-		'task_id',
-		'goal_id',
-		'plan_id',
-		'milestone_id',
-		'event_id',
-		'note_id',
-		'entity_id',
-		'project_id'
-	];
-	for (const key of idKeys) {
-		const value = record[key];
-		if (typeof value === 'string' && value.trim()) {
-			return `${entityKind}|id:${value.trim().toLowerCase()}`;
-		}
-	}
-	const title = record.title ?? record.name;
-	if (typeof title === 'string' && title.trim()) {
-		const normalizedTitle = title
-			.normalize('NFKC')
-			.toLocaleLowerCase()
-			.replace(/[^\p{L}\p{N}]+/gu, ' ')
-			.trim();
-		return `${entityKind}|title:${normalizedTitle}`;
-	}
-	try {
-		return `${entityKind}|args:${JSON.stringify(record)}`;
-	} catch {
-		return `${entityKind}|args:unknown`;
-	}
-}
-
-/**
- * A multi-write commission means "N distinct durable projections", not "N
- * successful write calls". Two updates to the same document, or a duplicate
- * projection into an unrelated entity, must not satisfy the floor.
- */
-export function countDistinctSuccessfulWriteTargets(
-	toolExecutions: FastToolExecution[],
-	toolNames?: readonly string[]
-): number {
-	const nameFilter = toolNames && toolNames.length > 0 ? new Set(toolNames) : null;
-	const targets = new Set<string>();
-	for (const execution of toolExecutions) {
-		if (nameFilter && !nameFilter.has(execution.toolCall.function?.name ?? '')) continue;
-		if (isDuplicateWriteSkippedExecution(execution)) continue;
-		const writeOp = getWriteOperationName(execution);
-		if (!writeOp) continue;
-		if (!didWriteExecutionSucceed(execution)) continue;
-		targets.add(getWriteTargetIdentityKey(execution, writeOp));
-	}
-	return targets.size;
-}
-
 type FailedWriteDisclosure = {
 	op: string;
 	error?: string;
@@ -1941,15 +1129,6 @@ function looksLikeMutationSuccessClaim(text: string): boolean {
 function looksLikeWriteFailureDisclosure(text: string): boolean {
 	return /\b(?:failed|unable|could not|did not|didn't|not saved|not updated|not created|nothing changed|tool error)\b/i.test(
 		text
-	);
-}
-
-function looksLikeWriteRefusalDisclosure(text: string): boolean {
-	return (
-		/\b(?:won't|will not|not going to|decline to|refuse to)\b/i.test(text) ||
-		/\b(?:cannot|can't)\b[^.?!\n]{0,120}\b(?:protected|not allowed|outside|permission|scope|unsafe|fixture)\b/i.test(
-			text
-		)
 	);
 }
 

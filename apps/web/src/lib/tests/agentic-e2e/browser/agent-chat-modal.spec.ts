@@ -24,6 +24,36 @@ function deferred<T>() {
 	return { promise, resolve };
 }
 
+/**
+ * The legacy web streaming engine is deleted (stage S8): POST
+ * /api/agent/v2/stream no longer exists. Every modal turn negotiates through
+ * POST /api/agent/v2/turns and streams from the worker, so a request to the old
+ * route is a regression, not something to mock a response for. The GET
+ * `?purpose=warmup` ping is the one known exception: `agent-chat-session.ts`
+ * still fires it and B6 removes that call with the rest of the client fallback.
+ */
+function guardLegacyStreamRouteGone(page: Page): { assertNeverCalled: () => Promise<void> } {
+	const calls: string[] = [];
+	const routed = page.route('**/api/agent/v2/stream*', async (route) => {
+		const request = route.request();
+		const url = new URL(request.url());
+		const isWarmupPing =
+			request.method() === 'GET' && url.searchParams.get('purpose') === 'warmup';
+		if (!isWarmupPing) calls.push(`${request.method()} ${url.pathname}${url.search}`);
+		await route.fulfill({
+			status: 410,
+			contentType: 'application/json',
+			body: JSON.stringify({ success: false, error: 'legacy stream route removed' })
+		});
+	});
+	return {
+		assertNeverCalled: async () => {
+			await routed;
+			expect(calls, 'the legacy /api/agent/v2/stream route is deleted').toEqual([]);
+		}
+	};
+}
+
 function required(name: string): string {
 	const value = process.env[name]?.trim();
 	if (!value) throw new Error(`[agentic-modal-e2e] Missing ${name} in apps/web/.env`);
@@ -191,70 +221,6 @@ async function authenticateHarnessUser(
 	return { admin, userId, actorId };
 }
 
-async function openPrewarmedModal(
-	page: Page,
-	prompt: string,
-	options: { forceSessionBootstrap?: boolean } = {}
-) {
-	if (options.forceSessionBootstrap) {
-		await page.route('**/api/agent/v2/prewarm', async (route) => {
-			const body = route.request().postDataJSON() as { ensure_session?: boolean };
-			if (body.ensure_session !== false) {
-				await route.continue();
-				return;
-			}
-
-			const response = await route.fetch();
-			const payload = (await response.json()) as {
-				data?: { prepared_prompt?: unknown };
-			};
-			if (payload.data) payload.data.prepared_prompt = null;
-			await route.fulfill({ response, json: payload });
-		});
-	}
-
-	await page.goto('/dashboard');
-	await chooseTrackingConsent(page);
-	const prewarmRequestPromise = page.waitForRequest(
-		(request) =>
-			request.method() === 'POST' &&
-			request.url().endsWith('/api/agent/v2/prewarm') &&
-			(request.postDataJSON() as { ensure_session?: boolean }).ensure_session === false,
-		{ timeout: 30_000 }
-	);
-	const prewarmResponsePromise = page.waitForResponse(
-		(response) =>
-			response.request().method() === 'POST' &&
-			response.url().endsWith('/api/agent/v2/prewarm') &&
-			(response.request().postDataJSON() as { ensure_session?: boolean }).ensure_session ===
-				false,
-		{ timeout: 30_000 }
-	);
-	const sessionBootstrapResponsePromise = options.forceSessionBootstrap
-		? page.waitForResponse(
-				(response) =>
-					response.request().method() === 'POST' &&
-					response.url().endsWith('/api/agent/v2/prewarm') &&
-					(response.request().postDataJSON() as { ensure_session?: boolean })
-						.ensure_session === true,
-				{ timeout: 30_000 }
-			)
-		: null;
-
-	await page.getByRole('button', { name: 'Open BuildOS chat' }).click();
-	const dialog = page.getByRole('dialog', { name: 'BuildOS chat assistant dialog' });
-	await expect(dialog).toBeVisible();
-	await dialog.getByRole('button', { name: /Open-ended chat/ }).click();
-	const composer = dialog.locator('textarea').first();
-	await expect(composer).toBeEnabled();
-	await composer.fill(prompt);
-	const [prewarmRequest, prewarmResponse] = await Promise.all([
-		prewarmRequestPromise,
-		prewarmResponsePromise
-	]);
-	return { dialog, prewarmRequest, prewarmResponse, sessionBootstrapResponsePromise };
-}
-
 async function openPrewarmedExistingSession(page: Page, sessionId: string, prompt: string) {
 	await page.goto('/dashboard');
 	await chooseTrackingConsent(page);
@@ -289,17 +255,6 @@ async function openPrewarmedExistingSession(page: Page, sessionId: string, promp
 		prewarmResponsePromise
 	]);
 	return { dialog, prewarmRequest, prewarmResponse };
-}
-
-async function readBootstrappedSessionId(
-	responsePromise: Promise<import('@playwright/test').Response> | null
-): Promise<string> {
-	if (!responsePromise) throw new Error('Modal E2E session bootstrap observer was not installed');
-	const response = await responsePromise;
-	const payload = (await response.json()) as { data?: { session?: { id?: string } } };
-	const sessionId = payload.data?.session?.id ?? null;
-	expect(sessionId, 'Send-time prewarm did not return the modal chat session id').toBeTruthy();
-	return sessionId!;
 }
 
 async function seedModalProject(
@@ -527,6 +482,7 @@ test('@live existing modal session consumes its prewarmed lease through the work
 	page
 }) => {
 	const { admin, userId, actorId } = await authenticateHarnessUser(page);
+	const legacyStreamRoute = guardLegacyStreamRouteGone(page);
 	let sessionId: string | null = null;
 	let clientTurnId: string | null = null;
 	let projectId: string | null = null;
@@ -618,6 +574,7 @@ test('@live existing modal session consumes its prewarmed lease through the work
 			'MODAL E2E OK',
 			{ timeout: 180_000 }
 		);
+		await legacyStreamRoute.assertNeverCalled();
 	} catch (error) {
 		testFailed = true;
 		throw error;
@@ -647,7 +604,7 @@ test('@analytics admission capture reaches PostHog without a model call', async 
 	let sessionId: string | null = null;
 	let projectId: string | null = null;
 	let testFailed = false;
-	let legacyStreamIntercepted = false;
+	const legacyStreamRoute = guardLegacyStreamRouteGone(page);
 
 	await page.route('**/api/agent/v2/turns*', async (route) => {
 		const request = route.request();
@@ -692,14 +649,6 @@ test('@analytics admission capture reaches PostHog without a model call', async 
 			})
 		});
 	});
-	await page.route('**/api/agent/v2/stream*', async (route) => {
-		legacyStreamIntercepted = true;
-		await route.fulfill({
-			status: 200,
-			contentType: 'text/event-stream',
-			body: `data: ${JSON.stringify({ type: 'done', finished_reason: 'test_intercepted' })}\n\n`
-		});
-	});
 
 	try {
 		sessionId = await seedModalSession(admin, userId);
@@ -717,9 +666,8 @@ test('@analytics admission capture reaches PostHog without a model call', async 
 		});
 		// Give the fire-and-forget request a bounded delivery window before fixture teardown.
 		await page.waitForTimeout(2_000);
-		console.log(
-			`[agentic-modal-e2e] no-model PostHog capture accepted; legacy_stream_intercepted=${legacyStreamIntercepted}`
-		);
+		await legacyStreamRoute.assertNeverCalled();
+		console.log('[agentic-modal-e2e] no-model PostHog capture accepted on the worker path');
 	} catch (error) {
 		testFailed = true;
 		throw error;
@@ -739,6 +687,7 @@ test('@prewarm project selection materializes a project-scoped prepared prompt',
 	page
 }) => {
 	const { admin, userId, actorId } = await authenticateHarnessUser(page);
+	const legacyStreamRoute = guardLegacyStreamRouteGone(page);
 	const projectName = `AE2E · Project prewarm · ${randomUUID().slice(0, 8)}`;
 	let projectId: string | null = null;
 	let testFailed = false;
@@ -810,6 +759,7 @@ test('@prewarm project selection materializes a project-scoped prepared prompt',
 		expect(payload.data?.prepared_prompt?.cache_key).toBe(
 			`v2|project|${projectId}|project-wide|none`
 		);
+		await legacyStreamRoute.assertNeverCalled();
 		console.log(
 			`[agentic-modal-e2e] project prewarm ready: cache_source=${payload.data?.cache_source ?? 'unknown'}`
 		);
@@ -828,331 +778,14 @@ test('@prewarm project selection materializes a project-scoped prepared prompt',
 	}
 });
 
-test('@wiring modal Stop reports matching turn identity and exits streaming', async ({ page }) => {
-	const { admin, userId, actorId } = await authenticateHarnessUser(page);
-	const streamStarted = deferred<Record<string, unknown>>();
-	const releaseStream = deferred<void>();
-	const cancelReceived = deferred<Record<string, unknown>>();
-	let sessionId: string | null = null;
-	let projectId: string | null = null;
-	let testFailed = false;
-
-	await page.route('**/api/agent/v2/stream*', async (route) => {
-		const request = route.request();
-		const url = new URL(request.url());
-		if (request.method() !== 'POST' || url.pathname !== '/api/agent/v2/stream') {
-			await route.continue();
-			return;
-		}
-		streamStarted.resolve(request.postDataJSON() as Record<string, unknown>);
-		await releaseStream.promise;
-		await route.abort('aborted').catch(() => undefined);
-	});
-	await page.route('**/api/agent/v2/stream/cancel', async (route) => {
-		cancelReceived.resolve(route.request().postDataJSON() as Record<string, unknown>);
-		await route.fulfill({
-			status: 200,
-			contentType: 'application/json',
-			body: JSON.stringify({ success: true })
-		});
-	});
-
-	try {
-		projectId = await seedModalProject(admin, actorId);
-		const setup = await openPrewarmedModal(page, 'Keep working until I stop you.', {
-			forceSessionBootstrap: true
-		});
-		const { dialog } = setup;
-		await dialog.getByRole('button', { name: 'Send message' }).click();
-		sessionId = await readBootstrappedSessionId(setup.sessionBootstrapResponsePromise);
-		const streamBody = await streamStarted.promise;
-		const stopButton = dialog.getByRole('button', { name: 'Stop response' });
-		await expect(stopButton).toBeVisible();
-		await stopButton.click();
-		const cancelBody = await cancelReceived.promise;
-
-		expect(cancelBody).toMatchObject({
-			session_id: sessionId,
-			stream_run_id: streamBody.stream_run_id,
-			client_turn_id: streamBody.client_turn_id,
-			reason: 'user_cancelled'
-		});
-		await expect(stopButton).toBeHidden();
-		await expect(dialog.getByText('Stopped by you')).toBeVisible();
-	} catch (error) {
-		testFailed = true;
-		throw error;
-	} finally {
-		releaseStream.resolve();
-		await cleanupModalFixtures({
-			admin,
-			userId,
-			actorId,
-			sessionId,
-			projectId,
-			testFailed
-		});
-	}
-});
-
-test('@wiring modal reconciles an accepted stream that closes without done', async ({ page }) => {
-	const { admin, userId, actorId } = await authenticateHarnessUser(page);
-	let sessionId: string | null = null;
-	let projectId: string | null = null;
-	let testFailed = false;
-
-	try {
-		projectId = await seedModalProject(admin, actorId);
-		const setup = await openPrewarmedModal(page, 'Test interrupted response recovery.', {
-			forceSessionBootstrap: true
-		});
-		const { dialog } = setup;
-		await page.route('**/api/agent/v2/stream', async (route) => {
-			const progressEvent = {
-				type: 'agent_state',
-				state: 'thinking',
-				details: 'Accepted before transport closed'
-			};
-			await route.fulfill({
-				status: 200,
-				contentType: 'text/event-stream',
-				body: `data: ${JSON.stringify(progressEvent)}\n\n`
-			});
-		});
-		const snapshotRequestPromise = page.waitForRequest(
-			(request) =>
-				request.method() === 'GET' &&
-				new URL(request.url()).pathname.startsWith('/api/chat/sessions/') &&
-				new URL(request.url()).searchParams.get('includeVoiceNotes') === '1'
-		);
-
-		await dialog.getByRole('button', { name: 'Send message' }).click();
-		sessionId = await readBootstrappedSessionId(setup.sessionBootstrapResponsePromise);
-		const snapshotRequest = await snapshotRequestPromise;
-		expect(new URL(snapshotRequest.url()).pathname).toBe(`/api/chat/sessions/${sessionId}`);
-		await expect(dialog.getByText('Restoring latest response')).toBeVisible();
-		await expect(dialog.getByRole('button', { name: 'Stop response' })).toBeHidden();
-	} catch (error) {
-		testFailed = true;
-		throw error;
-	} finally {
-		await cleanupModalFixtures({
-			admin,
-			userId,
-			actorId,
-			sessionId,
-			projectId,
-			testFailed
-		});
-	}
-});
-
-test('@wiring modal forwards server continuity context on the next turn', async ({ page }) => {
-	const { admin, userId, actorId } = await authenticateHarnessUser(page);
-	const firstStream = deferred<Record<string, unknown>>();
-	const secondStream = deferred<Record<string, unknown>>();
-	const continuityContext = {
-		summary: 'Reviewed the launch checklist and identified the beta email as next.',
-		entities: {
-			projects: [{ id: randomUUID(), name: 'Modal continuity fixture' }]
-		},
-		context_type: 'global',
-		data_accessed: ['onto_projects'],
-		timestamp: new Date().toISOString()
-	};
-	let streamCount = 0;
-	let sessionId: string | null = null;
-	let projectId: string | null = null;
-	let testFailed = false;
-
-	await page.route('**/api/agent/v2/stream', async (route) => {
-		streamCount += 1;
-		const body = route.request().postDataJSON() as Record<string, unknown>;
-		if (streamCount === 1) {
-			firstStream.resolve(body);
-			await route.fulfill({
-				status: 200,
-				contentType: 'text/event-stream',
-				body: [
-					`data: ${JSON.stringify({ type: 'last_turn_context', context: continuityContext })}`,
-					`data: ${JSON.stringify({ type: 'done', finished_reason: 'stop' })}`,
-					''
-				].join('\n\n')
-			});
-			return;
-		}
-		secondStream.resolve(body);
-		await route.fulfill({
-			status: 200,
-			contentType: 'text/event-stream',
-			body: `data: ${JSON.stringify({ type: 'done', finished_reason: 'stop' })}\n\n`
-		});
-	});
-
-	try {
-		projectId = await seedModalProject(admin, actorId);
-		const setup = await openPrewarmedModal(page, 'Review the launch checklist.', {
-			forceSessionBootstrap: true
-		});
-		const { dialog } = setup;
-		await dialog.getByRole('button', { name: 'Send message' }).click();
-		sessionId = await readBootstrappedSessionId(setup.sessionBootstrapResponsePromise);
-		const firstBody = await firstStream.promise;
-		expect(firstBody.lastTurnContext).toBeNull();
-
-		const composer = dialog.locator('textarea').first();
-		await expect(composer).toBeEnabled();
-		await composer.fill('What should I do next?');
-		await dialog.getByRole('button', { name: 'Send message' }).click();
-		const secondBody = await secondStream.promise;
-
-		expect(secondBody).toMatchObject({
-			session_id: sessionId,
-			message: 'What should I do next?',
-			lastTurnContext: continuityContext
-		});
-		expect(secondBody.client_turn_id).not.toBe(firstBody.client_turn_id);
-		expect(secondBody.stream_run_id).not.toBe(firstBody.stream_run_id);
-		await expect(dialog.getByRole('button', { name: 'Stop response' })).toBeHidden();
-	} catch (error) {
-		testFailed = true;
-		throw error;
-	} finally {
-		await cleanupModalFixtures({
-			admin,
-			userId,
-			actorId,
-			sessionId,
-			projectId,
-			testFailed
-		});
-	}
-});
-
-test('@wiring modal uploads a temporary image and sends its canonical attachment ref', async ({
-	page
-}) => {
-	const { admin, userId, actorId } = await authenticateHarnessUser(page);
-	const attachmentCreate = deferred<Record<string, unknown>>();
-	const streamStarted = deferred<Record<string, unknown>>();
-	const temporaryAttachmentId = randomUUID();
-	const storagePath = `users/${userId}/chat-temp/${temporaryAttachmentId}/original.png`;
-	let sessionId: string | null = null;
-	let projectId: string | null = null;
-	let testFailed = false;
-
-	await page.route('**/api/agent/chat-attachments', async (route) => {
-		attachmentCreate.resolve(route.request().postDataJSON() as Record<string, unknown>);
-		await route.fulfill({
-			status: 200,
-			contentType: 'application/json',
-			body: JSON.stringify({
-				success: true,
-				data: {
-					asset: {
-						id: temporaryAttachmentId,
-						project_id: null,
-						kind: 'temporary_file',
-						storage_bucket: 'onto-assets',
-						storage_path: storagePath,
-						original_filename: 'modal-fixture.png',
-						content_type: 'image/png',
-						file_size_bytes: 68,
-						width: 1,
-						height: 1,
-						ocr_status: 'skipped',
-						expires_at: new Date(Date.now() + 60_000).toISOString()
-					},
-					upload: {
-						signed_url: `https://storage.invalid/storage/v1/object/upload/sign/onto-assets/${storagePath}?token=fake-token`,
-						path: storagePath,
-						token: 'fake-token'
-					}
-				}
-			})
-		});
-	});
-	await page.route('**/storage/v1/object/upload/sign/**', async (route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: 'application/json',
-			body: JSON.stringify({ Key: `onto-assets/${storagePath}` })
-		});
-	});
-	await page.route('**/api/agent/v2/stream', async (route) => {
-		streamStarted.resolve(route.request().postDataJSON() as Record<string, unknown>);
-		await route.fulfill({
-			status: 200,
-			contentType: 'text/event-stream',
-			body: `data: ${JSON.stringify({ type: 'done', finished_reason: 'stop' })}\n\n`
-		});
-	});
-
-	try {
-		projectId = await seedModalProject(admin, actorId);
-		const setup = await openPrewarmedModal(page, 'Describe this image.', {
-			forceSessionBootstrap: true
-		});
-		const { dialog } = setup;
-		await dialog
-			.locator('input[type="file"]')
-			.first()
-			.setInputFiles({
-				name: 'modal-fixture.png',
-				mimeType: 'image/png',
-				buffer: Buffer.from(
-					'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-					'base64'
-				)
-			});
-
-		const createBody = await attachmentCreate.promise;
-		expect(createBody).toMatchObject({
-			project_id: null,
-			file_name: 'modal-fixture.png',
-			content_type: 'image/png',
-			metadata: { source_component: 'agent_chat_composer' }
-		});
-		expect(createBody.checksum_sha256).toMatch(/^[a-f0-9]{64}$/);
-		await expect(dialog.getByText('Ready to analyze')).toBeVisible();
-
-		await dialog.getByRole('button', { name: 'Send message' }).click();
-		sessionId = await readBootstrappedSessionId(setup.sessionBootstrapResponsePromise);
-		const streamBody = await streamStarted.promise;
-		expect(streamBody).toMatchObject({
-			session_id: sessionId,
-			message: 'Describe this image.',
-			attachments: [
-				{
-					attachment_kind: 'temporary_file',
-					media_type: 'image',
-					temporary_attachment_id: temporaryAttachmentId,
-					project_id: null,
-					storage_bucket: 'onto-assets',
-					storage_path: storagePath,
-					file_name: 'modal-fixture.png',
-					content_type: 'image/png',
-					ocr_status: 'skipped',
-					role: 'analysis_target',
-					display_order: 0
-				}
-			]
-		});
-		await expect(dialog.getByTestId('agent-chat-user-message')).toContainText(
-			'Describe this image.'
-		);
-		await expect(dialog.getByRole('button', { name: 'Stop response' })).toBeHidden();
-	} catch (error) {
-		testFailed = true;
-		throw error;
-	} finally {
-		await cleanupModalFixtures({
-			admin,
-			userId,
-			actorId,
-			sessionId,
-			projectId,
-			testFailed
-		});
-	}
-});
+// ---------------------------------------------------------------------------
+// The four @wiring tests that used to live here (Stop turn identity, mid-stream
+// reconciliation, continuity forwarding, and the canonical attachment ref) drove
+// the modal through mocked POST /api/agent/v2/stream responses. That route is
+// deleted (stage S8) and the client no longer negotiates a legacy turn, so the
+// mocks could only prove the legacy engine still worked. B6 re-establishes these
+// four behaviors against the worker transport (POST /api/agent/v2/turns plus the
+// realtime turn channel), which is where they are now observable. The helpers
+// they owned (`openPrewarmedModal`, `readBootstrappedSessionId`) went with them
+// and are recoverable from this commit's parent.
+// ---------------------------------------------------------------------------

@@ -304,6 +304,9 @@ function parseLegacyAdmissionResult(value: unknown): LegacyAgenticChatAdmissionR
  * Typed service-role adapter for the atomic legacy admission transaction.
  * The caller supplies the gateway-owned canonical request hash; PostgreSQL
  * compares/stores it but deliberately never attempts to reproduce the JS hash.
+ *
+ * Its only caller was the web streaming engine's route handler, deleted in B4.
+ * Removed in B6 along with the rest of the legacy admission surface.
  */
 export async function admitLegacyAgenticChatTurn(
 	params: AdmitLegacyAgenticChatTurnParams

@@ -11,9 +11,10 @@
  * both by the trace builder and by validation-failure logging in the route.
  */
 
+import '$lib/services/agentic-chat/tools/registry/install-loop-catalog';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { extractFastChatToolCallMeta } from './prompt-observability';
-import { classifyToolTraceName } from './stream-orchestrator/tool-classification';
+import { classifyToolTraceName } from '@buildos/agentic-chat-runtime/loop';
 
 export type PersistedToolTraceEntry = {
 	tool_call_id: string;

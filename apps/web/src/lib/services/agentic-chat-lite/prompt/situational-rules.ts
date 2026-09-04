@@ -104,8 +104,8 @@ export const REVIEW_DELEGATION_RULE_LINES = [
 ];
 
 // Conservative on purpose: web-tool mounting is the primary trigger, this
-// regex only buys the block (and early web-tool mount, via the tool selector)
-// for turns that name web research before any tool exists on the surface.
+// regex only buys the block for turns that name web research before any web
+// tool exists on the surface.
 // Bare "research" is excluded — "research this project" is workspace work.
 const WEB_RESEARCH_TURN_PATTERNS = [
 	/\b(?:search|look\s?up|check|find)\b[\s\S]{0,50}\b(?:the web|online|the internet|google)\b/i,

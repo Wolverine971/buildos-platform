@@ -1,6 +1,6 @@
 import type { ChatContextType } from '@buildos/shared-types';
 import type { AgentStateToolSummary } from '$lib/services/agentic-chat/state/agent-state-reconciliation-service';
-import { sanitizeAssistantFinalText } from '../stream-orchestrator/assistant-text-sanitization';
+import { sanitizeAssistantFinalText } from '@buildos/agentic-chat-runtime/loop';
 
 export const CLEAN_RESPONSE_FALLBACK =
 	'I hit an issue producing a clean final response for that turn. Please try again and I can continue from the project state.';
