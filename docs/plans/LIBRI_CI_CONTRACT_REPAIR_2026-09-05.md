@@ -3,7 +3,7 @@
 # Libri migration prerequisite: CI contract repair
 
 Date: 2026-09-05 UTC
-Status: narrow tests pass; full remote CI and PostgreSQL 15 migration gate still required.
+Status: full remote CI and PostgreSQL 15 migration gate passed; exact author-column grant applied.
 
 ## Scope
 
@@ -45,11 +45,29 @@ or change a runtime capability. Future unrelated growth must still fail.
 ## Validation and release gate
 
 All five originally failing files pass: 25 tests, including the additional semantic contract test.
-The catalog snapshot was regenerated only after the structural comparison above. Focused ESLint
-and formatting checks are required before commit; the full remote repository/coverage/integration
-checks and dependent PostgreSQL 15 job remain the production migration prerequisite.
+The catalog snapshot was regenerated only after the structural comparison above. Focused ESLint,
+formatting and strict documentation health checks passed before the repair was committed.
 
-Apply only `20260903230207_libri_frontend_author_read_boundary.sql` after those gates pass and
-fresh pre/post production boundary snapshots are captured. Do not bypass CI, blanket-push schema
-history, or activate the legacy author flag merely because the grant exists. Standalone Libri
-read browsing is already independent of that transitional flag.
+Commit `50d956d28725aefc175e3c35a5d50af614b04f71` passed full
+[CI run 33983662189](https://github.com/Wolverine971/buildos-platform/actions/runs/33983662189),
+including repository verification, coverage, database integration, self-contained SQL contracts,
+and the dependent PostgreSQL 15 Libri ledger/scope/contracts gate. The separately scheduled RPC
+schema-drift job was skipped on this push and is not included in that verification claim.
+
+Only `20260903230207_libri_frontend_author_read_boundary.sql` was applied at September 5,
+18:44:39 UTC. The management tool's generated history timestamp was reconciled to the exact
+repository version after comparing its stored SQL; unrelated migration history was untouched.
+The retained query found the same 16,258 non-Libri signatures before/after, fingerprint
+`8c5f67748ce17e129ebff6e7e418ebe3`, and unchanged people policies/role limits. Only the two column
+SELECT privileges changed. BuildOS table canaries and the normal Projects UI passed after apply;
+immediate security/performance advisor finding keys were unchanged.
+
+Production restricted-reader data-query smoke remains unverified: the management connection cannot
+assume the reader role, and the Vercel CLI did not supply that existing credential to a verification
+process. No role or credential was changed to bypass this limit. Actual restricted-role SQL tests
+passed on disposable PostgreSQL 15, and production ACL/RLS metadata was verified. Keep the optional
+legacy author-preview flag off. Standalone Libri user-scoped browsing is independent of this flag.
+
+Full deployment receipt: Libri repository
+`library-app/docs/LIBRI_AUTHOR_GRANT_DEPLOYMENT_2026-09-05.md`. Future migrations still require
+fresh full CI, the PostgreSQL 15 gate and production boundary checks; this receipt is not a waiver.
