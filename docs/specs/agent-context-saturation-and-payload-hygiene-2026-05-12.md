@@ -1,9 +1,18 @@
 <!-- docs/specs/agent-context-saturation-and-payload-hygiene-2026-05-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Historical implementation snapshot; reviewed 2026-09-05.** The implementation paths and
+> remaining-work statements below describe the former web-hosted orchestration system, not the
+> current runtime. They are retained as audit history, not instructions to restore removed files.
+> For current ownership, start with the [shared runtime](../../packages/agentic-chat-runtime/README.md)
+> and [queued worker composition](../../apps/worker/src/workers/agentic-chat/README.md).
+
 # Agent Context Saturation and Payload Hygiene Plan
 
 Date: 2026-05-12
-Status: In progress. Compaction, payload hygiene, token-tracking foundations, Phase 0 orchestration guardrails, the initial saturation ledger, and high-priority retrieval cleanup shipped; lower-priority RPC, telemetry, and UI-badge work remain.
+Status: Historical snapshot; not a current execution plan.
+Historical status: Compaction, payload hygiene, token-tracking foundations, Phase 0 orchestration guardrails, the initial saturation ledger, and high-priority retrieval cleanup had shipped; lower-priority RPC, telemetry, and UI-badge work remained at the time.
 Authors: Codex (original spec, retrieval audit), Claude (independent review, token tracking audit, fixes)
 
 Related: [agent-token-tracking-investigation-2026-05-12.md](./agent-token-tracking-investigation-2026-05-12.md)

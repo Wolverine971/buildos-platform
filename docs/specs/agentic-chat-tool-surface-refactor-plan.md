@@ -1,9 +1,18 @@
 <!-- docs/specs/agentic-chat-tool-surface-refactor-plan.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Historical implementation snapshot; reviewed 2026-09-05.** The implementation paths and
+> remaining-work statements below describe an earlier tool-surface rollout. Many web-hosted
+> orchestration files have since been retired or moved; do not recreate them from this plan.
+> For current ownership, start with the [shared runtime](../../packages/agentic-chat-runtime/README.md)
+> and [queued worker composition](../../apps/worker/src/workers/agentic-chat/README.md).
+
 # Agentic Chat Tool Surface Refactor Plan
 
 Date: 2026-04-10
-Status: Phase 1 implemented and verified; rechecked 2026-06-22
+Status: Historical snapshot; not a current execution plan.
+Historical status: Phase 1 implemented and verified; rechecked 2026-06-22.
 Owner: BuildOS Agentic Chat
 
 Related:
