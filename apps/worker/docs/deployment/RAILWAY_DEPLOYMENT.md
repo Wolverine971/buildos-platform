@@ -206,6 +206,60 @@ Startup does not fail without them. The service logs one
 (names only, never values), and `/health` reports
 `agenticChat.calendarCredentials` as `configured` or `missing:<NAMES>`.
 
+For an existing production service, inspect that names-only field before changing
+variables:
+
+```bash
+curl -fsS https://agentic-chat-worker-production.up.railway.app/health \
+  | jq -r '.agenticChat.calendarCredentials'
+```
+
+Configure missing values on Railway project `queue-worker`, environment
+`production`. Keep the three source-aware Calendar variables identical across
+Vercel `build-os` Production, `agentic-chat-worker`, and `daily-brief-worker`.
+Presence alone does not establish equality or valid Google credentials.
+
+Vercel sensitive values are non-readable after creation. Blank values from
+`vercel env pull` or `vercel env run` do **not** establish that a sensitive value
+is empty at runtime. Use runtime configuration checks and an authenticated Calendar
+read to validate the deployed app. Copy a known, verified source value without
+printing it in logs or command output.
+
+Vercel CLI 50.4.9 can fail to update a sensitive variable with
+`You cannot change the key of a Sensitive Environment Variable`. Use the documented
+Vercel API `PATCH /v9/projects/{projectId}/env/{envId}` with only `{ "value": ... }`
+to update the existing Production entry, preserving its name and sensitivity.
+Authenticate through the operator's existing Vercel credentials and never log the
+request or secret-bearing response. Redeploy after a successful update.
+
+If a runtime check proves `PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1` is missing or
+the configured key cannot decrypt stored tokens, recover the original from the
+approved secret manager. If it is irrecoverable, treat a new key as a credential
+rotation: set the same new value on every service before reconnecting or explicitly
+re-encrypting every stored source-aware Calendar grant. Follow
+`docs/integrations/google-calendar/setup.md`; a newly generated key cannot decrypt
+existing credential rows.
+
+After Railway deploys the variable change, the same command must print
+`configured`. That proves presence, not correctness. Finish with a real
+`list_calendar_events` canary: complete coverage with every configured source
+successful proves the worker can decrypt the stored grants and reach Google.
+Interpret any remaining structured failure before taking another action:
+
+- `credentials_not_configured`: a required value is still missing or blank on the
+  Agentic Chat service.
+- `credentials_unreadable`: the versioned encryption-key value does not match the
+  value that encrypted the stored grants.
+- `reconnect_required`: server configuration is now available, but the individual
+  Google grant is expired, revoked, or otherwise invalid.
+
+Decrypt failures can leave a connection marked `active`, which hides its Reconnect
+button in Calendar settings. After verifying the affected rows and synchronizing
+the servers, an operator can mark only those connections `reconnect_required`.
+Reauthorize the same Google accounts to replace their tokens under the current key;
+keep their existing connection IDs and calendar source mappings. Complete the
+Google consent flow before expecting the Calendar canary to succeed.
+
 ## Web app variables
 
 The web app needs distinct service origins and the matching token:
