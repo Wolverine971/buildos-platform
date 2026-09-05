@@ -61,7 +61,7 @@ class FakePublicationStore implements ProjectEmailProfilePublicationStore {
 	onAppend?: (input: {
 		profile_id: string;
 		compiled: CompiledProjectEmailProfile;
-	}) => Promise<StoredVersion> | undefined;
+	}) => Promise<StoredVersion | undefined>;
 
 	async loadOwnedSourceInputs(input: {
 		user_id: string;
@@ -206,7 +206,7 @@ describe('ProjectEmailProfilePublicationService', () => {
 				project_ids: [PROJECT_ALPHA_ID, PROJECT_BETA_ID]
 			})
 		).rejects.toEqual(
-			expect.objectContaining<ProjectEmailProfilePublicationError>({
+			expect.objectContaining<Partial<ProjectEmailProfilePublicationError>>({
 				code: 'project_unavailable'
 			})
 		);

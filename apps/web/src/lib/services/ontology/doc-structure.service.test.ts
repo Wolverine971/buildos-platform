@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/ontology/doc-structure.service.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, it, expect, vi } from 'vitest';
 import type { DocTreeNode, OntoDocument } from '$lib/types/onto-api';
 import {
@@ -43,7 +44,7 @@ const doc = (id: string, title: string): OntoDocument => ({
 	type_key: 'document',
 	title,
 	state_key: 'draft',
-	props: null,
+	props: {},
 	created_by: 'actor-1',
 	created_at: '2026-01-01T00:00:00Z',
 	updated_at: '2026-01-01T00:00:00Z'
@@ -76,13 +77,13 @@ describe('doc-structure tree utilities', () => {
 	it('removeNodeFromTree removes nodes and reorders siblings', () => {
 		const updated = removeNodeFromTree(baseTree, 'e');
 		expect(updated).toHaveLength(1);
-		expect(updated[0].id).toBe('a');
-		expect(updated[0].order).toBe(0);
+		expect(requireTestValue(updated[0]).id).toBe('a');
+		expect(requireTestValue(updated[0]).order).toBe(0);
 	});
 
 	it('removeNodeFromTreePromoteChildren lifts children into parent level', () => {
 		const updated = removeNodeFromTreePromoteChildren(baseTree, 'c');
-		const children = updated[0].children ?? [];
+		const children = requireTestValue(updated[0]).children ?? [];
 		expect(children.map((child) => child.id)).toEqual(['b', 'd']);
 		expect(children.map((child) => child.order)).toEqual([0, 1]);
 	});
@@ -96,7 +97,7 @@ describe('doc-structure tree utilities', () => {
 	it('insertNodeIntoTree inserts at specified position and reorders', () => {
 		const newNode: DocTreeNode = { id: 'f', order: 0 };
 		const updated = insertNodeIntoTree(baseTree, newNode, 'a', 1);
-		const children = updated[0].children ?? [];
+		const children = requireTestValue(updated[0]).children ?? [];
 		expect(children.map((child) => child.id)).toEqual(['b', 'f', 'c']);
 		expect(children.map((child) => child.order)).toEqual([0, 1, 2]);
 	});
@@ -127,10 +128,10 @@ describe('enrichTreeNodes', () => {
 		const nodes: DocTreeNode[] = [{ id: 'a', order: 0, children: [{ id: 'b', order: 0 }] }];
 
 		const enriched = enrichTreeNodes(nodes, documents);
-		expect(enriched[0].type).toBe('folder');
-		expect(enriched[0].children?.[0].type).toBe('doc');
-		expect(enriched[0].title).toBe('Alpha');
-		expect(enriched[0].children?.[0].title).toBe('Beta');
+		expect(requireTestValue(enriched[0]).type).toBe('folder');
+		expect(requireTestValue(requireTestValue(enriched[0]).children?.[0]).type).toBe('doc');
+		expect(requireTestValue(enriched[0]).title).toBe('Alpha');
+		expect(requireTestValue(requireTestValue(enriched[0]).children?.[0]).title).toBe('Beta');
 	});
 });
 

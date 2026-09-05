@@ -471,9 +471,7 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 
 	it('aborts and ignores a late response after stop', async () => {
 		let resolveFetch!: (response: Response) => void;
-		let requestSignal: AbortSignal | null = null;
 		const fetchImpl = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
-			requestSignal = init?.signal as AbortSignal;
 			return new Promise<Response>((resolve) => (resolveFetch = resolve));
 		});
 		const observer = applicationObserver();
@@ -485,7 +483,7 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 		await flushAsync();
 
 		coordinator.stop();
-		expect(requestSignal?.aborted).toBe(true);
+		expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
 		resolveFetch(apiResponse(receipt()));
 		await flushAsync();
 		expect(observer.applyReconciliation).not.toHaveBeenCalled();

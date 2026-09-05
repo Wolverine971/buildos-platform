@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/admin/chat-session-audit-export.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { unzipSync, strFromU8 } from 'fflate';
 import { describe, expect, it, vi } from 'vitest';
 import { buildSessionDetailPayload } from '../../../routes/api/admin/chat/sessions/[id]/session-detail-payload';
@@ -380,9 +381,9 @@ describe('deriveAuditGist', () => {
 
 	it('classifies a safety-limit reply as errored with forced-synthesis flags', () => {
 		const payload = buildFixturePayload();
-		payload.messages[1].content =
+		requireTestValue(payload.messages[1]).content =
 			'I hit a safety limit while coordinating tools. Please break the request into smaller steps and try again.';
-		payload.messages[1].metadata = {
+		requireTestValue(payload.messages[1]).metadata = {
 			llm_passes: [
 				{
 					pass: 5,
@@ -398,8 +399,8 @@ describe('deriveAuditGist', () => {
 				}
 			]
 		};
-		payload.turn_runs[1].finished_reason = 'tool_calls';
-		payload.turn_runs[1].llm_pass_count = 6;
+		requireTestValue(payload.turn_runs[1]).finished_reason = 'tool_calls';
+		requireTestValue(payload.turn_runs[1]).llm_pass_count = 6;
 
 		const gist = deriveAuditGist(payload);
 		expect(gist.outcome).toBe('errored');
@@ -413,7 +414,7 @@ describe('deriveAuditGist', () => {
 		const payload = buildFixturePayload();
 		payload.session.has_errors = true;
 		payload.metrics.tool_failures = 1;
-		payload.messages[1].content = 'Project created successfully.';
+		requireTestValue(payload.messages[1]).content = 'Project created successfully.';
 
 		const gist = deriveAuditGist(payload);
 		expect(gist.outcome).toBe('completed');
@@ -425,7 +426,7 @@ describe('deriveAuditGist', () => {
 		const payload = buildFixturePayload();
 		payload.session.has_errors = true;
 		payload.metrics.llm_failures = 2;
-		payload.messages[1].content = 'The fallback model completed the reply.';
+		requireTestValue(payload.messages[1]).content = 'The fallback model completed the reply.';
 
 		const gist = deriveAuditGist(payload);
 		expect(gist.outcome).toBe('completed');
@@ -436,7 +437,7 @@ describe('deriveAuditGist', () => {
 	it('keeps an LLM failure classified as failed when the turn itself failed', () => {
 		const payload = buildFixturePayload();
 		payload.metrics.llm_failures = 1;
-		payload.turn_runs[1].status = 'failed';
+		requireTestValue(payload.turn_runs[1]).status = 'failed';
 
 		const gist = deriveAuditGist(payload);
 		expect(gist.outcome).toBe('errored');
@@ -463,7 +464,7 @@ describe('deriveAuditGist', () => {
 
 	it('classifies a session with no assistant reply as incomplete', () => {
 		const payload = buildFixturePayload();
-		payload.messages = [payload.messages[0]];
+		payload.messages = [requireTestValue(payload.messages[0])];
 		const gist = deriveAuditGist(payload);
 		expect(gist.outcome).toBe('incomplete');
 	});
@@ -503,20 +504,20 @@ describe('chat-session-audit-bundle', () => {
 		expect(files['capabilities.md']).toContain('get_project_overview');
 
 		// Raw lives as real parseable JSON, not markdown-fenced.
-		const toolExecRaw = JSON.parse(files['raw/tool_executions.json']);
+		const toolExecRaw = JSON.parse(requireTestValue(files['raw/tool_executions.json']));
 		expect(toolExecRaw[0].tool_name).toBe('get_project_overview');
 
-		const timelineRaw = JSON.parse(files['raw/timeline.json']);
+		const timelineRaw = JSON.parse(requireTestValue(files['raw/timeline.json']));
 		expect(JSON.stringify(timelineRaw)).not.toContain('FASTCHAT V2 PROMPT SNAPSHOT');
 
-		const turnRunsRaw = JSON.parse(files['raw/turn_runs.json']);
+		const turnRunsRaw = JSON.parse(requireTestValue(files['raw/turn_runs.json']));
 		expect(turnRunsRaw[0].prompt_snapshot_id).toBe('snapshot-1');
 		expect(turnRunsRaw[0].events).toBeUndefined();
 
-		const promptSnapshotsRaw = JSON.parse(files['raw/prompt_snapshots.json']);
+		const promptSnapshotsRaw = JSON.parse(requireTestValue(files['raw/prompt_snapshots.json']));
 		expect(promptSnapshotsRaw[0].rendered_dump_text).toBe('FASTCHAT V2 PROMPT SNAPSHOT');
 
-		const capabilitiesRaw = JSON.parse(files['raw/capabilities.json']);
+		const capabilitiesRaw = JSON.parse(requireTestValue(files['raw/capabilities.json']));
 		expect(capabilitiesRaw.tools.loaded[0].id).toBe('get_project_overview');
 	});
 
@@ -531,7 +532,7 @@ describe('chat-session-audit-bundle', () => {
 
 		const entries = unzipSync(zipped);
 		expect(Object.keys(entries)).toContain(`${folder}/README.md`);
-		expect(strFromU8(entries[`${folder}/README.md`])).toContain('**Outcome:** COMPLETED');
-		expect(JSON.parse(strFromU8(entries[`${folder}/raw/messages.json`]))).toHaveLength(2);
+		expect(strFromU8(requireTestValue(entries[`${folder}/README.md`]))).toContain('**Outcome:** COMPLETED');
+		expect(JSON.parse(strFromU8(requireTestValue(entries[`${folder}/raw/messages.json`])))).toHaveLength(2);
 	});
 });

@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/domains/skill-gate-preload.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import {
 	getSkillGateCandidateSkillIds,
@@ -140,7 +141,7 @@ describe('resolveSkillGatePreload', () => {
 		const topCandidate = getSkillGateCandidateSkillIds(sensing)[0];
 
 		const preload = resolveSkillGatePreload(sensing, {
-			alreadyLoadedSkillIds: [topCandidate.toUpperCase()]
+			alreadyLoadedSkillIds: [requireTestValue(topCandidate).toUpperCase()]
 		});
 
 		expect(preload).toBeNull();

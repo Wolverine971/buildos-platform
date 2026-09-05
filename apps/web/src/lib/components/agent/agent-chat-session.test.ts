@@ -82,7 +82,7 @@ describe('agent-chat-session helpers', () => {
 				title: 'Agent Session',
 				auto_title: 'Website refresh thread',
 				summary: 'You were reorganizing homepage tasks.',
-				agent_metadata: { focus }
+				agent_metadata: { focus: { ...focus } }
 			}),
 			messages: [
 				{

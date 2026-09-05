@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-transport-client.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AgentChatTransportLeaseRequestV1 } from '@buildos/shared-types';
 
 const mocks = vi.hoisted(() => ({
 	captureEvent: vi.fn()
@@ -17,7 +18,7 @@ import { workerAdmissionRequestSchema } from '../../../routes/api/agent/v2/turns
 
 const SESSION_ID = 'd2000000-0000-4000-8000-000000000001';
 const DECISION_ID = 'd4000000-0000-4000-8000-000000000001';
-const request = {
+const request: AgentChatTransportLeaseRequestV1 = {
 	clientTurnId: 'client-turn-1',
 	streamRunId: 'stream-run-1',
 	sessionId: SESSION_ID,
@@ -167,6 +168,8 @@ describe('Agentic Chat worker transport client', () => {
 				],
 				projectFocus: {
 					focusType: 'project-wide',
+					focusEntityId: null,
+					focusEntityName: null,
 					projectId: SESSION_ID,
 					projectName: 'Canary Project'
 				},

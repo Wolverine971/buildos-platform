@@ -1,5 +1,6 @@
 // apps/web/src/lib/components/email/request-lifecycle.test.ts
 // @vitest-environment jsdom
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -94,7 +95,7 @@ describe('EmailManager request lifecycle', () => {
 		await new Promise((resolve) => window.setTimeout(resolve, 20));
 		expect(requests).toHaveLength(1);
 
-		const initialRequest = requests[0];
+		const initialRequest = requireTestValue(requests[0]);
 		await fireEvent.input(
 			screen.getByPlaceholderText('Search emails by subject or content...'),
 			{ target: { value: 'newest' } }
@@ -103,7 +104,7 @@ describe('EmailManager request lifecycle', () => {
 		await waitFor(() => expect(initialRequest.signal?.aborted).toBe(true));
 		await waitFor(() => expect(requests).toHaveLength(2), { timeout: 1_000 });
 
-		const currentRequest = requests[1];
+		const currentRequest = requireTestValue(requests[1]);
 		expect(currentRequest.url).toContain('search=newest');
 		await settleResponse(
 			currentRequest,

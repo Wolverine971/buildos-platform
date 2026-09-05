@@ -65,7 +65,7 @@ describe('OntologyContextLoader global access', () => {
 		expect(mockFetchProjectSummaries).toHaveBeenCalledWith(mockSupabase, 'collaborator-actor');
 		expect(context.entities.projects).toHaveLength(1);
 		expect(context.entities.projects?.[0]?.id).toBe('shared-project');
-		expect(context.entities.projects?.[0]?.is_shared).toBe(true);
+		expect(context.entities.projects?.[0]).toMatchObject({ is_shared: true });
 		expect(context.metadata.total_projects).toBe(1);
 	});
 });

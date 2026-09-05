@@ -30,7 +30,7 @@ function project(overrides: Partial<Project> = {}): Project {
 		name: 'Mobile Project',
 		description: 'A compact project editor.',
 		type_key: 'project.default',
-		state_key: 'planning',
+		state_key: 'planning', external_agent_access: 'standard',
 		props: {},
 		facet_context: 'client',
 		facet_scale: 'small',

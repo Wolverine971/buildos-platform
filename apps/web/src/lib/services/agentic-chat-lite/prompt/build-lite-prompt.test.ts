@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	applyActiveDomainSignalsOverlay,
@@ -13,7 +14,7 @@ afterEach(() => {
 function extractLoadedJson(prompt: string): Record<string, unknown> {
 	const match = prompt.match(/```json\n([\s\S]*?)\n```/);
 	if (!match) throw new Error('Expected a JSON code fence in the lite prompt');
-	return JSON.parse(match[1]) as Record<string, unknown>;
+	return JSON.parse(requireTestValue(match[1])) as Record<string, unknown>;
 }
 
 describe('buildLitePromptEnvelope', () => {
@@ -59,9 +60,7 @@ describe('buildLitePromptEnvelope', () => {
 		expect(safety?.content).not.toContain('internal machinery');
 		expect(envelope.systemPrompt).not.toContain('| `project_audit` |');
 		expect(envelope.systemPrompt).not.toContain('Pre-tool lead-ins');
-		expect(envelope.sections.some((section) => section.id === 'active_domain_signals')).toBe(
-			false
-		);
+		expect(envelope.sections.map((section) => section.id)).not.toContain('active_domain_signals');
 	});
 
 	it('renders the global seed as inspectable sections with canonical tool names', () => {
@@ -2123,10 +2122,10 @@ describe('audit 2026-09-02 context rendering', () => {
 		const loadedContext = extractLoadedJson(envelope.systemPrompt);
 		const entityRefs = loadedContext.entity_refs as Record<string, Array<{ id: string }>>;
 		// task-overdue is carried (with its id) by the Timeline overdue line.
-		expect(entityRefs.tasks.map((ref) => ref.id)).toEqual(['task-2']);
+		expect(requireTestValue(entityRefs.tasks).map((ref) => ref.id)).toEqual(['task-2']);
 		expect(envelope.systemPrompt.match(/task-overdue/g)).toHaveLength(1);
 		// doc-channels is listed in the Knowledge Map; only the unlinked doc needs the index.
-		expect(entityRefs.documents.map((ref) => ref.id)).toEqual(['doc-unlinked']);
+		expect(requireTestValue(entityRefs.documents).map((ref) => ref.id)).toEqual(['doc-unlinked']);
 		expect(envelope.systemPrompt.match(/doc-channels/g)).toHaveLength(1);
 		// Members: no UUID-only refs, one names-and-roles line, never emails.
 		expect(entityRefs.members).toBeUndefined();

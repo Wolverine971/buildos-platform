@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	loadAiInboxCount: vi.fn(),
 	startGmailOAuth: vi.fn(),
-	warning: vi.fn(() => 'toast-1'),
+	warning: vi.fn<typeof import('$lib/stores/toast.store').toastService.warning>(() => 'toast-1'),
 	success: vi.fn(),
 	error: vi.fn(),
 	remove: vi.fn()

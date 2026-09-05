@@ -1,5 +1,6 @@
 // apps/web/src/lib/components/project/ProjectCollaborationModal.test.ts
 // @vitest-environment jsdom
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -240,7 +241,7 @@ describe('ProjectCollaborationModal request coordination', () => {
 		await fireEvent.click(notificationToggle);
 		await waitFor(() => expect(requests).toHaveLength(4));
 		const projectAUpdate = requests[3];
-		expect(projectAUpdate.url).toBe(`/api/onto/projects/${PROJECT_A_ID}/notification-settings`);
+		expect(requireTestValue(projectAUpdate).url).toBe(`/api/onto/projects/${PROJECT_A_ID}/notification-settings`);
 
 		await view.rerender({
 			isOpen: true,
@@ -260,7 +261,7 @@ describe('ProjectCollaborationModal request coordination', () => {
 			screen.getByRole('checkbox', { name: /Notify me about project activity/i })
 		).toBeChecked();
 
-		projectAUpdate.response.resolve(
+		requireTestValue(projectAUpdate).response.resolve(
 			jsonResponse({
 				data: {
 					settings: {
@@ -276,7 +277,7 @@ describe('ProjectCollaborationModal request coordination', () => {
 				}
 			})
 		);
-		await projectAUpdate.response.promise;
+		await requireTestValue(projectAUpdate).response.promise;
 		await Promise.resolve();
 		await tick();
 

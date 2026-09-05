@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/onto/documents/[id]/document-patch-mentions.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { updateDocNodeMetadata } from '$lib/services/ontology/doc-structure.service';
 
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
@@ -225,5 +226,6 @@ describe('PATCH /api/onto/documents/[id] mention notifications', () => {
 				})
 			);
 		});
+		expect(updateDocNodeMetadata).not.toHaveBeenCalled();
 	});
 });

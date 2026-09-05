@@ -1,4 +1,5 @@
 // apps/web/src/lib/components/ontology/linked-entities/linked-entities.service.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchLinkedEntities } from './linked-entities.service';
 
@@ -60,13 +61,13 @@ describe('fetchLinkedEntities', () => {
 		const second = fetchLinkedEntities('task-1', 'task', 'project-1');
 
 		expect(fetchMock).toHaveBeenCalledTimes(1);
-		requests[0].resolve(linkedEntitiesResponse());
+		requireTestValue(requests[0]).resolve(linkedEntitiesResponse());
 
 		await expect(Promise.all([first, second])).resolves.toHaveLength(2);
 
 		const third = fetchLinkedEntities('task-1', 'task', 'project-1');
 		expect(fetchMock).toHaveBeenCalledTimes(2);
-		requests[1].resolve(linkedEntitiesResponse());
+		requireTestValue(requests[1]).resolve(linkedEntitiesResponse());
 		await third;
 	});
 
@@ -112,19 +113,19 @@ describe('fetchLinkedEntities', () => {
 		});
 		controller.abort();
 		await expect(abandoned).rejects.toMatchObject({ name: 'AbortError' });
-		expect(requests[0].signal?.aborted).toBe(true);
+		expect(requireTestValue(requests[0]).signal?.aborted).toBe(true);
 
 		// A new caller must not inherit the abandoned request, even if that transport ignores abort.
 		const replacement = fetchLinkedEntities('task-retired', 'task', 'project-retired');
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 
 		// The late abandoned request must not remove the newer request from the dedupe map.
-		requests[0].resolve(linkedEntitiesResponse());
+		requireTestValue(requests[0]).resolve(linkedEntitiesResponse());
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 		const sharedReplacement = fetchLinkedEntities('task-retired', 'task', 'project-retired');
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 
-		requests[1].resolve(linkedEntitiesResponse());
+		requireTestValue(requests[1]).resolve(linkedEntitiesResponse());
 		await expect(Promise.all([replacement, sharedReplacement])).resolves.toHaveLength(2);
 	});
 });

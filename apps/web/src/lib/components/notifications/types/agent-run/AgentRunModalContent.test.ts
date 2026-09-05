@@ -1,5 +1,6 @@
 // apps/web/src/lib/components/notifications/types/agent-run/AgentRunModalContent.test.ts
 // @vitest-environment jsdom
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import AgentRunModalContent from './AgentRunModalContent.svelte';
@@ -175,7 +176,7 @@ describe('AgentRunModalContent Chat bridge', () => {
 		await fireEvent.click(chatButton);
 
 		await waitFor(() => expect(opened).toHaveBeenCalledTimes(1));
-		const event = opened.mock.calls[0][0] as CustomEvent;
+		const event = requireTestValue(opened.mock.calls[0])[0] as CustomEvent;
 		expect(fetchMock).toHaveBeenCalledWith('/api/agent-runs/run-1/chat-session', {
 			method: 'POST',
 			headers: { accept: 'application/json' }

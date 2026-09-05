@@ -40,7 +40,7 @@
 		onCloseCreate: () => void;
 		onCreated: (kind: WorkspaceCreateKind, entityId: string) => void;
 		onCloseEdit: () => void;
-		onMutated: () => void;
+		onMutated: (operation?: 'update') => void;
 	} = $props();
 </script>
 
@@ -105,6 +105,7 @@
 			goalId={editTarget.entityId}
 			projectId={project.id}
 			onClose={onCloseEdit}
+			onSaved={() => onMutated('update')}
 			onUpdated={onMutated}
 			onDeleted={onMutated}
 		/>

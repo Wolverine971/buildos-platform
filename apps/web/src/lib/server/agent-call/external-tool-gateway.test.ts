@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/agent-call/external-tool-gateway.test.ts
+import type { AgentCallScope } from '@buildos/shared-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILDOS_AGENT_READ_OPS, BUILDOS_AGENT_WRITE_OPS } from '@buildos/shared-types';
 
@@ -1036,9 +1037,10 @@ class AgentCallToolExecutionsQueryBuilderMock {
 
 		let rows = this.state.toolExecutions.filter((row) => this.matches(row));
 		if (this.orderBy) {
+			const orderBy = this.orderBy;
 			rows = [...rows].sort((a, b) => {
-				const left = String(a[this.orderBy?.field] ?? '');
-				const right = String(b[this.orderBy?.field] ?? '');
+				const left = String(a[orderBy.field] ?? '');
+				const right = String(b[orderBy.field] ?? '');
 				return this.orderBy?.ascending
 					? left.localeCompare(right)
 					: right.localeCompare(left);
@@ -2078,7 +2080,7 @@ describe('external tool gateway', () => {
 
 	it('exposes schemas for every supported external op in the granted scope', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
-		const scope = {
+		const scope: AgentCallScope = {
 			mode: 'read_write' as const,
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
 		};
@@ -2145,7 +2147,7 @@ describe('external tool gateway', () => {
 
 	it('returns newly exposed ontology tools through scoped tool_search', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
-		const scope = {
+		const scope: AgentCallScope = {
 			mode: 'read_write' as const,
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
 		};
@@ -2203,7 +2205,7 @@ describe('external tool gateway', () => {
 
 	it('returns scoped directory guidance when ungranted matches are filtered out', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
-		const scope = {
+		const scope: AgentCallScope = {
 			mode: 'read_only' as const,
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 		};
@@ -2238,7 +2240,7 @@ describe('external tool gateway', () => {
 
 	it('keeps legacy ontology search tools discoverable for scoped external callers', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
-		const scope = {
+		const scope: AgentCallScope = {
 			mode: 'read_only' as const,
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 		};
@@ -2296,7 +2298,7 @@ describe('external tool gateway', () => {
 		};
 
 		const result = await executeGatewayOp({
-			admin: createAdminMock(state),
+			admin: createAdminMock(state) as never,
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			callerId: '11111111-1111-1111-1111-111111111111',
 			callSessionId: '22222222-2222-2222-2222-222222222222',
@@ -2331,7 +2333,7 @@ describe('external tool gateway', () => {
 		const { executeBuildosAgentGatewayTool, getBuildosAgentGatewayTools } = await import(
 			'./external-tool-gateway'
 		);
-		const scope = {
+		const scope: AgentCallScope = {
 			mode: 'read_only' as const,
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 		};
@@ -3193,7 +3195,7 @@ describe('external tool gateway', () => {
 
 		// Same scope object the gateway threads into the handler context, so the
 		// in-session scope expansion is observable here.
-		const scope = {
+		const scope: AgentCallScope = {
 			mode: 'read_write' as const,
 			project_ids: ['44444444-4444-4444-4444-444444444444'],
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
@@ -3262,7 +3264,7 @@ describe('external tool gateway', () => {
 				mode: 'read_write',
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
-			},
+			} satisfies AgentCallScope,
 			toolName: 'create_onto_task',
 			arguments: {
 				project_id: '44444444-4444-4444-4444-444444444444',
@@ -3826,7 +3828,7 @@ describe('external tool gateway', () => {
 				mode: 'read_write',
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
-			},
+			} satisfies AgentCallScope,
 			toolName: 'create_onto_task',
 			arguments: {
 				project_id: '44444444-4444-4444-4444-444444444444',
@@ -3856,7 +3858,7 @@ describe('external tool gateway', () => {
 				mode: 'read_write' as const,
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
-			},
+			} satisfies AgentCallScope,
 			toolName: 'create_onto_task' as const,
 			arguments: {
 				idempotency_key: 'task-create-1',
@@ -3920,7 +3922,7 @@ describe('external tool gateway', () => {
 				mode: 'read_write',
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
-			},
+			} satisfies AgentCallScope,
 			toolName: 'create_onto_task',
 			arguments: {
 				idempotency_key: 'task-create-pending',
@@ -3951,7 +3953,7 @@ describe('external tool gateway', () => {
 						title: 'Hidden Doc',
 						description: null,
 						type_key: 'document.context.project',
-						content: 'Top secret',
+						content: 'Top secret', props: {},
 						state_key: 'active',
 						created_at: '2026-04-28T00:00:00.000Z',
 						updated_at: '2026-04-28T00:00:00.000Z',

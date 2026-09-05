@@ -48,13 +48,13 @@ describe('ImageAssetsPanel', () => {
 		window.scrollTo = vi.fn();
 		if (!Element.prototype.animate) {
 			Element.prototype.animate = vi.fn(() => {
-				const animation: Partial<Animation> = {
-					finished: Promise.resolve(),
+				const animation = {
 					cancel: vi.fn(),
 					play: vi.fn(),
 					pause: vi.fn(),
 					currentTime: 0
-				};
+				} as Animation;
+				Object.defineProperty(animation, 'finished', { value: Promise.resolve(animation) });
 				setTimeout(() => {
 					if (typeof animation.onfinish === 'function') {
 						animation.onfinish(new Event('finish') as AnimationPlaybackEvent);
@@ -199,13 +199,14 @@ describe('ImageAssetsPanel', () => {
 				}
 
 				if (url.pathname === '/api/onto/assets/asset-1/ocr' && method === 'PATCH') {
-					capturedOcrBody = JSON.parse(String(init?.body || '{}'));
+					const body: Record<string, unknown> = JSON.parse(String(init?.body || '{}'));
+					capturedOcrBody = body;
 					return okJson({
 						data: {
 							asset: {
 								...assetRow(),
-								extracted_text: capturedOcrBody.extracted_text,
-								extraction_summary: capturedOcrBody.extraction_summary
+								extracted_text: body.extracted_text,
+								extraction_summary: body.extraction_summary
 							}
 						}
 					});

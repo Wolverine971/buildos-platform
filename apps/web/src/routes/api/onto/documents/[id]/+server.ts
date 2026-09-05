@@ -667,8 +667,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		// These run in the background after the response is sent.
 		// Each operation has its own error handling — failures are logged but non-fatal.
 		const shouldSyncDocStructure =
-			Object.prototype.hasOwnProperty.call(updatePayload, 'title') ||
-			Object.prototype.hasOwnProperty.call(updatePayload, 'description');
+			updatedDocument.title !== document.title ||
+			updatedDocument.description !== document.description;
 
 		// Capture session values before the async closure (TypeScript narrowing doesn't persist)
 		const userId = session.user.id;

@@ -2,6 +2,7 @@
 // @vitest-environment jsdom
 // apps/web/src/lib/services/chat-session-notification.bridge.test.ts
 
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { get } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { notificationStore } from '$lib/stores/notification.store';
@@ -55,9 +56,9 @@ describe('chat-session-notification.bridge', () => {
 
 		const cards = getCards();
 		expect(cards).toHaveLength(1);
-		expect(cards[0].status).toBe('idle');
-		expect(cards[0].data.title).toBe('Morning planning');
-		expect(cards[0].data.contextLabel).toBe('Workspace');
+		expect(requireTestValue(cards[0]).status).toBe('idle');
+		expect(requireTestValue(cards[0]).data.title).toBe('Morning planning');
+		expect(requireTestValue(cards[0]).data.contextLabel).toBe('Workspace');
 		await vi.advanceTimersByTimeAsync(60_000);
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
@@ -83,8 +84,8 @@ describe('chat-session-notification.bridge', () => {
 
 		const cards = getCards();
 		expect(cards).toHaveLength(1);
-		expect(cards[0].data.title).toBe('Renamed chat');
-		expect(cards[0].data.entityId).toBe('project-9');
+		expect(requireTestValue(cards[0]).data.title).toBe('Renamed chat');
+		expect(requireTestValue(cards[0]).data.entityId).toBe('project-9');
 	});
 
 	it('view action removes the card and dispatches buildos:open-agent-chat with the parked context', () => {
@@ -105,11 +106,11 @@ describe('chat-session-notification.bridge', () => {
 			});
 
 			const card = getCards()[0];
-			card.actions.view?.();
+			requireTestValue(card).actions.view?.();
 
 			expect(getCards()).toHaveLength(0);
 			expect(openEvents).toHaveLength(1);
-			expect(openEvents[0].detail).toMatchObject({
+			expect(requireTestValue(openEvents[0]).detail).toMatchObject({
 				sessionId: 'session-2',
 				contextType: 'project',
 				entityId: 'project-1',
@@ -133,12 +134,12 @@ describe('chat-session-notification.bridge', () => {
 			hasSentMessage: true
 		});
 
-		getCards()[0].actions.dismiss?.();
+		requireTestValue(getCards()[0]).actions.dismiss?.();
 		await vi.runAllTimersAsync();
 
 		expect(getCards()).toHaveLength(0);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const [url, init] = fetchMock.mock.calls[0];
+		const [url, init] = requireTestValue(fetchMock.mock.calls[0]);
 		expect(url).toBe('/api/chat/sessions/session-3/close');
 		expect(JSON.parse((init as RequestInit).body as string)).toEqual({
 			reason: 'close',
@@ -160,7 +161,7 @@ describe('chat-session-notification.bridge', () => {
 			hasSentMessage: false
 		});
 
-		getCards()[0].actions.dismiss?.();
+		requireTestValue(getCards()[0]).actions.dismiss?.();
 		await vi.runAllTimersAsync();
 
 		const [, init] = fetchMock.mock.calls[0];
@@ -219,17 +220,17 @@ describe('chat-session-notification.bridge', () => {
 				hasSentMessage: true
 			});
 
-			expect(getCards()[0].status).toBe('processing');
+			expect(requireTestValue(getCards()[0]).status).toBe('processing');
 
 			// First probe (2s): still running. Second probe (3s later): finished.
 			await vi.advanceTimersByTimeAsync(2_000);
-			expect(getCards()[0].status).toBe('processing');
+			expect(requireTestValue(getCards()[0]).status).toBe('processing');
 			await vi.advanceTimersByTimeAsync(3_000);
 
 			const card = getCards()[0];
-			expect(card.status).toBe('success');
-			expect(card.data.hasActiveTurn).toBe(false);
-			expect(card.data.responsePreview).toBe('Here is your plan for today.');
+			expect(requireTestValue(card).status).toBe('success');
+			expect(requireTestValue(card).data.hasActiveTurn).toBe(false);
+			expect(requireTestValue(card).data.responsePreview).toBe('Here is your plan for today.');
 			expect(probeCalls).toBe(2);
 		}
 	);
@@ -296,8 +297,8 @@ describe('chat-session-notification.bridge', () => {
 		await vi.advanceTimersByTimeAsync(8 * 60 * 1000);
 
 		const card = getCards()[0];
-		expect(card.status).toBe('warning');
-		expect(card.data.hasActiveTurn).toBe(false);
+		expect(requireTestValue(card).status).toBe('warning');
+		expect(requireTestValue(card).data.hasActiveTurn).toBe(false);
 		expect(vi.getTimerCount()).toBe(0);
 	});
 });

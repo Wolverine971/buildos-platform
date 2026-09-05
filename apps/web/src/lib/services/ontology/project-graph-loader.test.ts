@@ -40,7 +40,7 @@ function createMockSupabase(tableData: TableData) {
 		__selectCalls: selectCalls
 	};
 
-	return supabase as any;
+	return supabase;
 }
 
 describe('loadProjectGraphData', () => {
@@ -51,7 +51,7 @@ describe('loadProjectGraphData', () => {
 			onto_edges: []
 		});
 
-		const result = await loadProjectGraphData(supabase, 'proj-1', { entityKinds: ['task'] });
+		const result = await loadProjectGraphData(supabase as never, 'proj-1', { entityKinds: ['task'] });
 
 		expect(result.tasks).toHaveLength(1);
 		expect(result.plans).toHaveLength(0);
@@ -123,7 +123,7 @@ describe('loadProjectGraphData', () => {
 			]
 		});
 
-		const result = await loadProjectGraphData(supabase, 'proj-1', {
+		const result = await loadProjectGraphData(supabase as never, 'proj-1', {
 			excludeCompletedTasks: true
 		});
 
@@ -138,7 +138,7 @@ describe('loadProjectGraphData', () => {
 			onto_edges: []
 		});
 
-		await loadProjectGraphData(supabase, 'proj-1');
+		await loadProjectGraphData(supabase as never, 'proj-1');
 
 		for (const call of supabase.__selectCalls) {
 			expect(call.columns).toBeTruthy();
@@ -173,7 +173,7 @@ describe('loadMultipleProjectGraphs', () => {
 			onto_edges: []
 		});
 
-		const graphs = await loadMultipleProjectGraphs(supabase, ['proj-1', 'proj-2']);
+		const graphs = await loadMultipleProjectGraphs(supabase as never, ['proj-1', 'proj-2']);
 
 		expect(graphs.get('proj-1')?.tasks.map((t: any) => t.id)).toEqual(['task-1']);
 		expect(graphs.get('proj-2')?.tasks.map((t: any) => t.id)).toEqual(['task-2']);
@@ -237,7 +237,7 @@ describe('loadMultipleProjectGraphs', () => {
 			]
 		});
 
-		const graphs = await loadMultipleProjectGraphs(supabase, ['proj-1'], {
+		const graphs = await loadMultipleProjectGraphs(supabase as never, ['proj-1'], {
 			excludeCompletedTasks: true
 		});
 

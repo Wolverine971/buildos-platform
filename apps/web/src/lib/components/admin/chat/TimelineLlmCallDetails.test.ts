@@ -19,7 +19,15 @@ const event: AuditTimelineEvent = {
 	payload: {}
 };
 
-const turnRun = {
+const turnRun: SessionTurnRun = {
+	stream_run_id: null, client_turn_id: null, status: 'completed', finished_reason: 'stop',
+	context_type: 'global', entity_id: null, project_id: null, gateway_enabled: true,
+	user_message_id: null, assistant_message_id: null, tool_round_count: 0, tool_call_count: 0,
+	validation_failure_count: 0, llm_pass_count: 1, first_lane: null, first_help_path: null,
+	first_skill_path: null, first_canonical_op: null, history_strategy: null, history_compressed: false,
+	raw_history_count: 0, history_for_model_count: 0, cache_source: null, cache_age_seconds: 0,
+	request_prewarmed_context: false, started_at: event.timestamp, finished_at: event.timestamp,
+	events: [], eval_runs: [],
 	id: 'run-1',
 	turn_index: 1,
 	request_message: 'Ask the planning agent to identify the next concrete milestone.',
@@ -33,7 +41,7 @@ const turnRun = {
 			}
 		]
 	}
-} as SessionTurnRun;
+};
 
 const group = {
 	id: 'turn:1',

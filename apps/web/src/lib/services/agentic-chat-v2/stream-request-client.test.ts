@@ -10,7 +10,7 @@ describe('buildFastAgentStreamRequestBody', () => {
 				sessionId: 'session-1',
 				contextType: 'project',
 				entityId: 'project-1',
-				projectFocus: { projectId: 'project-1' },
+				projectFocus: { projectId: 'project-1', projectName: 'Project', focusType: 'project-wide', focusEntityId: null, focusEntityName: null },
 				streamRunId: 'stream-1',
 				clientTurnId: 'turn-1',
 				preparedPromptKey: 'prepared-1'
@@ -21,7 +21,7 @@ describe('buildFastAgentStreamRequestBody', () => {
 			context_type: 'project',
 			entity_id: 'project-1',
 			attachments: [],
-			projectFocus: { projectId: 'project-1' },
+			projectFocus: { projectId: 'project-1', projectName: 'Project', focusType: 'project-wide', focusEntityId: null, focusEntityName: null },
 			lastTurnContext: null,
 			stream_run_id: 'stream-1',
 			client_turn_id: 'turn-1',

@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/security-event-logger.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { createAdminSupabaseClientMock } = vi.hoisted(() => ({
@@ -122,7 +123,7 @@ describe('security event logger delivery', () => {
 		await logSecurityEvent(baseEvent, { waitUntil });
 
 		expect(waitUntil).toHaveBeenCalledTimes(1);
-		await waitUntil.mock.calls[0][0];
+		await requireTestValue(waitUntil.mock.calls[0])[0];
 	});
 
 	it('extracts waitUntil from SvelteKit platform shapes', () => {

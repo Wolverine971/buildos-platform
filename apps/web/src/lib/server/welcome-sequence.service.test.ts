@@ -1,4 +1,6 @@
 // apps/web/src/lib/server/welcome-sequence.service.test.ts
+import type { Database } from '@buildos/shared-types';
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sendEmailMock = vi.fn();
@@ -505,7 +507,7 @@ class QueryBuilderMock implements PromiseLike<any> {
 	}
 }
 
-function createSequenceRow(userId: string) {
+function createSequenceRow(userId: string): Database['public']['Tables']['welcome_email_sequences']['Row'] {
 	return {
 		user_id: userId,
 		sequence_version: '2026-03-16',
@@ -597,7 +599,7 @@ function createEnrollmentFromWelcomeRow(state: MockState, row: Record<string, an
 		next_step_number: row.status === 'active' ? next : null,
 		next_send_at:
 			row.status === 'active' && next
-				? addDaysIso(row.started_at, TEST_STEP_OFFSETS[`email_${next}`])
+				? addDaysIso(row.started_at, requireTestValue(TEST_STEP_OFFSETS[`email_${next}`]))
 				: null,
 		last_sent_at: sentAt,
 		last_email_id: null,
@@ -632,14 +634,14 @@ function advanceEnrollment(state: MockState, enrollment: Record<string, any>) {
 		current_step_number: enrollment.next_step_number,
 		next_step_number: hasNext ? nextStepNumberValue : null,
 		next_send_at: hasNext
-			? addDaysIso(enrollment.created_at, TEST_STEP_OFFSETS[`email_${nextStepNumberValue}`])
+			? addDaysIso(enrollment.created_at, requireTestValue(TEST_STEP_OFFSETS[`email_${nextStepNumberValue}`]))
 			: null,
 		processing_started_at: null,
 		failure_count: 0,
 		exit_reason: hasNext ? null : 'completed',
 		updated_at: new Date().toISOString()
 	};
-	state.emailSequenceEnrollments![enrollmentKey(updated.sequence_id, updated.user_id)] = updated;
+	state.emailSequenceEnrollments![enrollmentKey(enrollment.sequence_id, enrollment.user_id)] = updated;
 	return updated;
 }
 

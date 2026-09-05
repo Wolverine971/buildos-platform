@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/project-loop-burst.service.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -481,7 +482,7 @@ describe('queueProjectLoopReviewSignal', () => {
 			last_seen_at: '2026-07-07T12:00:00.000Z',
 			queue_job_id: 'queue-public-1'
 		});
-		expect(signals[0].metadata).toMatchObject({
+		expect(requireTestValue(signals[0]).metadata).toMatchObject({
 			sources: ['task_update'],
 			actions: ['updated'],
 			entityTypes: ['task'],
@@ -618,7 +619,7 @@ describe('queueProjectLoopReviewSignal', () => {
 			last_seen_at: '2026-07-07T12:05:00.000Z',
 			queue_job_id: 'queue-public-1'
 		});
-		expect(signals[0].metadata).toMatchObject({
+		expect(requireTestValue(signals[0]).metadata).toMatchObject({
 			sources: ['task_update'],
 			actions: ['updated'],
 			entityTypes: ['task'],
@@ -685,7 +686,7 @@ describe('queueProjectLoopReviewSignal', () => {
 			status: 'failed',
 			error_message: 'queue unavailable'
 		});
-		expect(typeof signals[0].finished_at).toBe('string');
+		expect(typeof requireTestValue(signals[0]).finished_at).toBe('string');
 	});
 });
 

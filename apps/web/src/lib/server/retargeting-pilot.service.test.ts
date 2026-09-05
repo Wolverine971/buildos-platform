@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/retargeting-pilot.service.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -350,7 +351,7 @@ describe('RetargetingPilotService', () => {
 				})
 			})
 		);
-		expect(state.members['member-1'].touch_1_sent_at).toMatch(/2026|20\d{2}/);
+		expect(requireTestValue(state.members['member-1']).touch_1_sent_at).toMatch(/2026|20\d{2}/);
 	});
 
 	it('rejects empty member updates', async () => {

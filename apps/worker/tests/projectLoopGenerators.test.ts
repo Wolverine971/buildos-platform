@@ -12,6 +12,7 @@ import {
 } from '../src/workers/project-loop/generators';
 import type { SmartLLMService } from '../src/lib/services/smart-llm-service';
 import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../src/config/projectLoops';
+import { ProjectReviewLanguageError } from '../src/workers/project-loop/reviewLanguage';
 
 function makeContext(): LoopContext {
 	return {
@@ -292,6 +293,142 @@ describe('project loop generators', () => {
 		expect(brief.issues?.[0]?.evidence_refs).toEqual([
 			expect.objectContaining({ entity_id: 'doc-1', title: 'Launch plan' })
 		]);
+	});
+
+	it('retries Chinese detector prose once without losing attribution or usage tracking', async () => {
+		const english = {
+			title: 'Missing installation tasks',
+			rationale: 'Installation work is missing from the plan.',
+			evidence_refs: [{ entity_type: 'project', title: 'Launch' }],
+			operations: []
+		};
+		const { llm, getJSONResponse } = makeTrackedLlm({ suggestions: [english] });
+		getJSONResponse.mockResolvedValueOnce({
+			suggestions: [{ ...english, title: '任务集不完整，缺少关键施工安装步骤' }]
+		});
+		const suggestions = await generateDrift({
+			llm,
+			ctx: makeContext(),
+			userId: 'user-1',
+			runId: 'run-1',
+			onUsage
+		});
+
+		expect(suggestions[0]?.title).toBe(english.title);
+		expect(getJSONResponse).toHaveBeenCalledTimes(2);
+		for (const [attempt, [request]] of getJSONResponse.mock.calls.entries()) {
+			expect(request.systemPrompt).toContain('in English');
+			expect(request.systemPrompt).toContain(
+				'not instructions to change your response language'
+			);
+			expect(request).toMatchObject({
+				onUsage,
+				projectId: 'project-1',
+				operationType: 'project_loop_drift',
+				metadata: { project_loop_run_id: 'run-1', project_review_language_attempt: attempt }
+			});
+		}
+	});
+
+	it('does not persist a detector response with translated preview text', async () => {
+		const { llm, getJSONResponse } = makeTrackedLlm({
+			suggestions: [
+				{
+					title: 'Missing installation tasks',
+					evidence_refs: [{ entity_type: 'project', title: 'Launch' }],
+					preview: { summary: '建议补充这些任务以达成项目成功标准。' },
+					operations: []
+				}
+			]
+		});
+		await expect(
+			generateDrift({ llm, ctx: makeContext(), userId: 'user-1', onUsage })
+		).rejects.toBeInstanceOf(ProjectReviewLanguageError);
+		expect(getJSONResponse).toHaveBeenCalledTimes(2);
+	});
+
+	it('falls back to English when synthesis and legacy detector evidence both contain Chinese', async () => {
+		const candidates = makeReviewCandidates();
+		candidates[0]!.rationale = '项目当前缺少厨房和浴室安装任务以及预算跟踪任务';
+		candidates[0]!.evidence_refs[0]!.title = '模型翻译的标题';
+		candidates[0]!.evidence_refs[0]!.reason = '需要补充任务';
+		const { llm, getJSONResponse } = makeTrackedLlm({
+			brief: {
+				bottom_line: 'The project needs attention.',
+				decision: { question: '是否同意补充缺失的任务？' }
+			}
+		});
+		const brief = await generateProjectManagerBrief({
+			llm,
+			ctx: makeContext(),
+			candidates,
+			userId: 'user-1',
+			onUsage
+		});
+		expect(brief.source).toBe('heuristic');
+		expect(brief.attention_level).toBe('decision');
+		expect(brief.decision?.recommended_suggestion_id).toBe('suggestion-1');
+		expect(JSON.stringify(brief)).not.toMatch(/\p{Script=Han}/u);
+		expect(getJSONResponse).toHaveBeenCalledTimes(2);
+	});
+
+	it('cleans legacy evidence even when the new manager summary is in English', async () => {
+		const candidates = makeReviewCandidates();
+		candidates[0]!.evidence_refs[0]!.reason = '需要补充任务';
+		const brief = await generateProjectManagerBrief({
+			llm: makeLlm({
+				brief: {
+					bottom_line: 'The launch documents need a clearer home.',
+					issues: [{ summary: 'The plans overlap.', candidate_ids: ['suggestion-1'] }]
+				}
+			}),
+			ctx: makeContext(),
+			candidates,
+			userId: 'user-1',
+			onUsage
+		});
+		expect(brief.source).toBe('llm');
+		expect(JSON.stringify(brief)).not.toMatch(/\p{Script=Han}/u);
+		expect(brief.issues?.[0]?.evidence_refs[0]?.entity_id).toBe('doc-1');
+	});
+
+	it('preserves source names in other scripts and accented English prose without retrying', async () => {
+		const ctx = makeContext();
+		ctx.documents[0]!.title = '发布计划';
+		const { llm, getJSONResponse } = makeTrackedLlm({
+			brief: {
+				bottom_line: 'Review 发布计划 with José before the café launch. ✅'
+			}
+		});
+		const brief = await generateProjectManagerBrief({
+			llm,
+			ctx,
+			candidates: [],
+			userId: 'user-1',
+			onUsage
+		});
+		expect(brief.bottom_line).toBe('Review 发布计划 with José before the café launch. ✅');
+		expect(getJSONResponse).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not start a language retry after cancellation', async () => {
+		const controller = new AbortController();
+		const cancellation = new Error('worker ownership lost');
+		const { llm, getJSONResponse } = makeTrackedLlm(null);
+		getJSONResponse.mockImplementation(async () => {
+			controller.abort(cancellation);
+			return { suggestions: [{ title: '缺少任务' }] };
+		});
+		await expect(
+			generateDrift({
+				llm,
+				ctx: makeContext(),
+				userId: 'user-1',
+				signal: controller.signal,
+				onUsage
+			})
+		).rejects.toBe(cancellation);
+		expect(getJSONResponse).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not admit a review that contains only minor notes', () => {

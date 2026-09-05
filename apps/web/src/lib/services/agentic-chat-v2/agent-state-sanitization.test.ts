@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/agent-state-sanitization.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import type { AgentState } from '$lib/types/agent-chat-enhancement';
 import {
@@ -88,10 +89,10 @@ describe('sanitizeAgentStateForPrompt', () => {
 
 		expect(result.current_understanding.entities).toEqual([{ id: UUID_A }]);
 		expect(result.current_understanding.dependencies).toEqual([{ from: UUID_A, to: UUID_B }]);
-		expect(result.expectations[0].expected_ids).toEqual([UUID_A]);
-		expect(result.expectations[1].expected_ids).toBeUndefined();
-		expect(result.items[0].relatedEntityIds).toEqual([UUID_B]);
-		expect(result.items[1].relatedEntityIds).toBeUndefined();
+		expect(requireTestValue(result.expectations[0]).expected_ids).toEqual([UUID_A]);
+		expect(requireTestValue(result.expectations[1]).expected_ids).toBeUndefined();
+		expect(requireTestValue(result.items[0]).relatedEntityIds).toEqual([UUID_B]);
+		expect(requireTestValue(result.items[1]).relatedEntityIds).toBeUndefined();
 	});
 
 	it('preserves other top-level fields', () => {

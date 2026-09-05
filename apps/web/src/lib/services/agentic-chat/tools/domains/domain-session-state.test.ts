@@ -139,6 +139,7 @@ describe('domain session state', () => {
 					confidence: 0.8,
 					coverage_status: 'strong',
 					parent_ids: ['marketing'],
+					discriminative_hits: 1,
 					aliases_hit: ['content strategy'],
 					skill_ids: ['content_strategy_beyond_blogging'],
 					outcome_card_ids: ['newsletter_retention_review'],

@@ -1,5 +1,6 @@
 // apps/web/vitest.config.ts
 import { defineConfig } from 'vitest/config';
+import { localWorkerLimits } from '../../vitest.workers';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { fileURLToPath } from 'node:url';
 import { coverageConfig } from '../../vitest.coverage';
@@ -109,6 +110,7 @@ export default defineConfig({
 		conditions: ['browser']
 	},
 	test: {
+		...localWorkerLimits(),
 		globals: true,
 		environment: 'node', // Use node for server-side tests by default
 		setupFiles: ['./vitest.setup.ts'],

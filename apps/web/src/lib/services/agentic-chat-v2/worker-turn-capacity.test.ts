@@ -123,11 +123,9 @@ describe('Agentic Chat worker capacity boundary', () => {
 	it('reserves network transit budget beyond the worker collection ceiling', async () => {
 		vi.useFakeTimers();
 		try {
-			let requestSignal: AbortSignal | null = null;
 			const fetchImpl = vi.fn<typeof fetch>(
 				(_input, init) =>
 					new Promise<Response>((resolve, reject) => {
-						requestSignal = init?.signal ?? null;
 						init?.signal?.addEventListener(
 							'abort',
 							() => reject(new Error('aborted')),
@@ -155,7 +153,7 @@ describe('Agentic Chat worker capacity boundary', () => {
 			});
 
 			await vi.advanceTimersByTimeAsync(4_999);
-			expect(requestSignal?.aborted).toBe(false);
+			expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
 			await expect(observation).resolves.toEqual({
 				available: true,
 				retryAfterSeconds: 2,

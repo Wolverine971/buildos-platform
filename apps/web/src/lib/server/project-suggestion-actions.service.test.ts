@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/project-suggestion-actions.service.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -333,7 +334,7 @@ describe('decideProjectSuggestion', () => {
 		});
 
 		expect(outcome).toMatchObject({ ok: true, superseded: true });
-		expect(updates[0].payload).toMatchObject({
+		expect(requireTestValue(updates[0]).payload).toMatchObject({
 			status: 'superseded',
 			freshness_state: 'changed',
 			result: {
@@ -455,7 +456,7 @@ describe('decideProjectSuggestion', () => {
 			})
 		);
 
-		const fetchFn = mocks.chatExecutorConstructor.mock.calls[0][3] as typeof fetch;
+		const fetchFn = requireTestValue(mocks.chatExecutorConstructor.mock.calls[0])[3] as typeof fetch;
 		await fetchFn('/api/test', {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
@@ -463,7 +464,7 @@ describe('decideProjectSuggestion', () => {
 		});
 
 		expect(routeFetchMock).toHaveBeenCalledWith('/api/test', expect.any(Object));
-		const replayInit = routeFetchMock.mock.calls[0][1] as RequestInit;
+		const replayInit = requireTestValue(routeFetchMock.mock.calls[0])[1] as RequestInit;
 		const replayHeaders = new Headers(replayInit.headers);
 		expect(replayHeaders.get('Content-Type')).toBe('application/json');
 		expect(replayHeaders.get('X-Skip-Project-Loop-Burst')).toBeNull();

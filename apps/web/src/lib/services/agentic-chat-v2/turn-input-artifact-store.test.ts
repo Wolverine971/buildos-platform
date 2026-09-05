@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-input-artifact-store.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
@@ -175,7 +176,7 @@ describe('turn input artifact store', () => {
 			created_at: CREATED_AT,
 			retain_until: RETAIN_UNTIL
 		});
-		expect(stored.artifact.contentHash).toBe(mock.insertedRows[0].content_hash);
+		expect(stored.artifact.contentHash).toBe(requireTestValue(mock.insertedRows[0]).content_hash);
 		expect(stored.sourcePreparedPromptId).toBe(IDS.prepared);
 	});
 

@@ -30,6 +30,23 @@ These are repository-wide defaults unless the user asks for a different approach
   measured benefit.
 - Preserve clarity unless evidence justifies the tradeoff.
 
+## Run validation without hurting the machine
+
+This repo is developed on a 24GB laptop that usually has several agent sessions open at once.
+Every vitest run pays for a ~500MB main process plus ~300-400MB per busy worker, and svelte-check,
+lint, and build are in the same weight class. Unbounded fan-out freezes the machine.
+
+- Run the narrowest target that proves the change: `pnpm --filter <pkg> exec vitest run <files>`.
+  Do not run root `pnpm test:run`, `pnpm verify`, or `pnpm pre-push` from a subagent, and never
+  fan out parallel subagents that each run a suite or typecheck.
+- Local worker caps live in `vitest.workers.ts` (4 workers, lazy spawn; CI keeps defaults) and
+  agent sessions cap further via `VITEST_MAX_FORKS`. Do not pass `--maxWorkers`, `--no-isolate`,
+  or `--pool` flags to get around them.
+- Heavy validation commands run through `test-gate` (a machine-wide hook: at most 2 in flight,
+  refused when memory is critical). If it refuses or times out waiting for a slot, do what the
+  message says: wait at least 60s, retry once, then stop and report. `test-gate status` shows
+  what is in flight.
+
 ## Decision order
 
 1. Clearest test of the core insight.

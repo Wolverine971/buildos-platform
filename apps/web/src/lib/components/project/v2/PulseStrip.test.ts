@@ -59,7 +59,7 @@ function createLog(overrides: Partial<ProjectLogEntryWithMeta> = {}): ProjectLog
 		before_data: null,
 		after_data: null,
 		changed_by: '22222222-2222-4222-8222-222222222222',
-		change_source: 'user',
+		change_source: 'form',
 		chat_session_id: null,
 		created_at: '2026-05-09T15:00:00.000Z',
 		entity_name: 'Changed task',

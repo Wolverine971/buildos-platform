@@ -129,7 +129,7 @@ describe('GmailRelevanceMetadataGateway', () => {
 				connection_id: CONNECTION_ID,
 				provider_message_ids: ['synthetic_message']
 			})
-		).rejects.toMatchObject<GmailRelevanceMetadataGatewayError>({
+		).rejects.toMatchObject({
 			code: 'provider_rejected'
 		});
 		expect(providerFetch).not.toHaveBeenCalled();
@@ -160,7 +160,7 @@ describe('GmailRelevanceMetadataGateway', () => {
 					(_, index) => `synthetic_deadline_${index + 1}`
 				)
 			})
-		).rejects.toMatchObject<GmailRelevanceMetadataGatewayError>({
+		).rejects.toMatchObject({
 			code: 'provider_timeout',
 			providerCallsStarted: 4
 		});
@@ -206,7 +206,7 @@ describe('GmailRelevanceMetadataGateway', () => {
 					(_, index) => `synthetic_race_${index + 1}`
 				)
 			})
-		).rejects.toMatchObject<GmailRelevanceMetadataGatewayError>({
+		).rejects.toMatchObject({
 			code: 'provider_timeout',
 			providerCallsStarted: 4
 		});

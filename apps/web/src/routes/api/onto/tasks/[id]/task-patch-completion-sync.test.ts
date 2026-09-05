@@ -233,6 +233,87 @@ describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 		);
 	});
 
+	it.each([
+		{
+			title: 'Task',
+			start_at: '2026-09-04T09:00:00.000Z',
+			due_at: '2026-09-04T10:00:00.000Z',
+			description: 'Edited description'
+		},
+		{
+			title: 'Task',
+			start_at: '2026-09-04T05:00:00-04:00',
+			due_at: '2026-09-04T06:00:00-04:00',
+			priority: 2
+		}
+	])(
+		'does not reconcile the calendar for unchanged title and scheduling values: %j',
+		async (body) => {
+			const supabase = createSupabaseMock({
+				existingTask: {
+					id: 'task1',
+					project_id: 'proj1',
+					title: 'Task',
+					type_key: 'task.default',
+					state_key: 'todo',
+					start_at: '2026-09-04T09:00:00Z',
+					due_at: '2026-09-04T10:00:00Z',
+					props: {},
+					project: { id: 'proj1', created_by: 'actor1' }
+				}
+			});
+			const { PATCH } = await routeModule;
+			const response = await PATCH({
+				params: { id: 'task1' },
+				request: new Request('http://localhost/api/onto/tasks/task1', {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body)
+				}),
+				locals: {
+					supabase: supabase as any,
+					safeGetSession: async () => ({ user: { id: 'user1' } })
+				}
+			} as any);
+			expect(response.status).toBe(200);
+			expect(syncTaskEventsMock).not.toHaveBeenCalled();
+		}
+	);
+
+	it.each([{ title: 'Renamed task' }, { start_at: null }, { due_at: null }])(
+		'still reconciles real calendar changes: %j',
+		async (body) => {
+			const supabase = createSupabaseMock({
+				existingTask: {
+					id: 'task1',
+					project_id: 'proj1',
+					title: 'Task',
+					type_key: 'task.default',
+					state_key: 'todo',
+					start_at: '2026-09-04T09:00:00Z',
+					due_at: '2026-09-04T10:00:00Z',
+					props: {},
+					project: { id: 'proj1', created_by: 'actor1' }
+				}
+			});
+			const { PATCH } = await routeModule;
+			const response = await PATCH({
+				params: { id: 'task1' },
+				request: new Request('http://localhost/api/onto/tasks/task1', {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body)
+				}),
+				locals: {
+					supabase: supabase as any,
+					safeGetSession: async () => ({ user: { id: 'user1' } })
+				}
+			} as any);
+			expect(response.status).toBe(200);
+			expect(syncTaskEventsMock).toHaveBeenCalledTimes(1);
+		}
+	);
+
 	it('normalizes priority, dates, and type_key before the atomic update RPC', async () => {
 		const supabase = createSupabaseMock({
 			existingTask: {

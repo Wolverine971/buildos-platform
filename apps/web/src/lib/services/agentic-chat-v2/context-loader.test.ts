@@ -1085,7 +1085,7 @@ describe('loadFastChatPromptContext global', () => {
 		expect(
 			data.project_intelligence.overdue_or_due_soon.map((item: { id: string }) => item.id)
 		).toEqual(['goal-due-soon', 'milestone-soon', 'goal-overdue', 'milestone-overdue']);
-		expect(supabase.rpc.mock.calls.map(([fn]) => fn)).toEqual([
+		expect(supabase.rpc.mock.calls.map(([fn]: [string]) => fn)).toEqual([
 			'load_fastchat_context',
 			'ensure_actor_for_user',
 			'get_onto_project_summaries_v1'

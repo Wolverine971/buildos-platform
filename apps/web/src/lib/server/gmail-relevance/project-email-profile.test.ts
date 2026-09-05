@@ -56,7 +56,7 @@ describe('compileProjectEmailProfile', () => {
 		candidates[2]!.source.user_id = SYNTHETIC_OTHER_USER_ID;
 
 		expect(() => compile(candidates)).toThrowError(
-			expect.objectContaining<ProjectEmailProfileCompileError>({
+			expect.objectContaining<Partial<ProjectEmailProfileCompileError>>({
 				code: 'source_ownership_mismatch',
 				candidate_index: 2
 			})

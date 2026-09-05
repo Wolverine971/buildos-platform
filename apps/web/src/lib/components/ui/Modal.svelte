@@ -446,9 +446,12 @@
 	}
 
 	function restoreFocus() {
-		if (previousFocusElement?.focus) {
+		const opener = previousFocusElement;
+		if (opener?.focus) {
 			requestAnimationFrame(() => {
-				previousFocusElement?.focus();
+				// Scroll restoration belongs to the scroll lock. Focusing the opener
+				// must not start a second smooth scroll after the dialog disappears.
+				if (opener.isConnected) opener.focus({ preventScroll: true });
 			});
 		}
 	}

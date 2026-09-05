@@ -1,5 +1,6 @@
 // apps/web/src/lib/components/ontology/TaskEditModal.test.ts
 // @vitest-environment jsdom
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TaskEditModal from './TaskEditModal.svelte';
@@ -297,6 +298,39 @@ describe('TaskEditModal task loading', () => {
 		expect(onLoaded).not.toHaveBeenCalled();
 	});
 
+	it('closes an unchanged task without a write or refresh', async () => {
+		const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+			taskResponse('task-a', 'Task A')
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const onClose = vi.fn();
+		const onUpdated = vi.fn();
+		render(TaskEditModal, { taskId: 'task-a', projectId: 'project-1', onClose, onUpdated });
+		await screen.findByDisplayValue('Task A');
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+		expect(onClose).toHaveBeenCalledTimes(1);
+		expect(onUpdated).not.toHaveBeenCalled();
+		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+	});
+
+	it('saves only edited fields and defers desktop details requests until revealed', async () => {
+		const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+			taskResponse('task-a', 'Task A')
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const onClose = vi.fn();
+		render(TaskEditModal, { taskId: 'task-a', projectId: 'project-1', onClose });
+		await screen.findByDisplayValue('Task A');
+		expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false);
+		await fireEvent.input(screen.getByRole('textbox', { name: 'Description' }), {
+			target: { value: 'Updated context' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+		await waitFor(() => expect(onClose).toHaveBeenCalled());
+		const write = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+		expect(JSON.parse(String(write?.[1]?.body))).toEqual({ description: 'Updated context' });
+	});
+
 	it('ignores a task save that resolves after the component switches tasks', async () => {
 		const taskA = deferred<Response>();
 		const taskB = deferred<Response>();
@@ -335,6 +369,9 @@ describe('TaskEditModal task loading', () => {
 		taskA.resolve(taskResponse('task-a', 'Task A'));
 		await waitFor(() => expect(screen.getByDisplayValue('Task A')).toBeInTheDocument());
 
+		await fireEvent.input(screen.getByDisplayValue('Task A'), {
+			target: { value: 'Edited Task A' }
+		});
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 		await waitFor(() =>
 			expect(fetchMock).toHaveBeenCalledWith(
@@ -416,11 +453,11 @@ describe('TaskEditModal task loading', () => {
 		await waitFor(() => expect(calendarRequests).toHaveLength(1));
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' }).at(-1)!);
-		expect(calendarRequests[0].signal?.aborted).toBe(true);
+		expect(requireTestValue(calendarRequests[0]).signal?.aborted).toBe(true);
 		await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 		await waitFor(() => expect(calendarRequests).toHaveLength(2));
 
-		calendarRequests[1].response.resolve(
+		requireTestValue(calendarRequests[1]).response.resolve(
 			new Response(
 				JSON.stringify({
 					data: {
@@ -434,7 +471,7 @@ describe('TaskEditModal task loading', () => {
 			expect(screen.getByRole('button', { name: 'Delete + Calendar' })).toBeInTheDocument()
 		);
 
-		calendarRequests[0].response.resolve(
+		requireTestValue(calendarRequests[0]).response.resolve(
 			new Response(JSON.stringify({ data: { events: [] } }), {
 				status: 200,
 				headers: { 'content-type': 'application/json' }

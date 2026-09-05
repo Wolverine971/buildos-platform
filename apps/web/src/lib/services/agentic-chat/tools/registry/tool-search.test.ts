@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/tool-search.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { getToolRegistry, resetToolRegistryCache } from '@buildos/agentic-chat-runtime/catalog';
@@ -161,9 +162,9 @@ describe('searchToolRegistry discovery surfaces', () => {
 
 	it('puts cross-project search operations in a browsable search group', () => {
 		const registry = getToolRegistry();
-		expect(registry.ops['x.search.all_projects'].group).toBe('search');
-		expect(registry.ops['x.search.project'].group).toBe('search');
-		expect(registry.ops['onto.search'].group).toBe('search');
+		expect(requireTestValue(registry.ops['x.search.all_projects']).group).toBe('search');
+		expect(requireTestValue(registry.ops['x.search.project']).group).toBe('search');
+		expect(requireTestValue(registry.ops['onto.search']).group).toBe('search');
 
 		const result = searchToolRegistry({ group: 'search', limit: 25 });
 		expect(toolNames(result)).toEqual(

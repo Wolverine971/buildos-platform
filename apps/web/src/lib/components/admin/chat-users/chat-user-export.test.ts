@@ -40,7 +40,7 @@ describe('chat-user-export', () => {
 		const file = buildChatUserDetailJsonFile({
 			userDetail: detail,
 			filters: exportFilters(),
-			selectedEntityGroup: detail.entities[0],
+			selectedEntityGroup: detail.entities[0] ?? null,
 			visibleEntityChanges: detail.entity_changes,
 			redactedSession: null,
 			now: NOW

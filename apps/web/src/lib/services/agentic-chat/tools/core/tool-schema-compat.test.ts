@@ -36,7 +36,7 @@ describe('Chat tool schema compatibility', () => {
 	it('uses OpenRouter/OpenAI-compatible top-level function parameter schemas', () => {
 		for (const tool of ALL_TOOL_DEFINITIONS) {
 			const toolName = tool.function?.name ?? 'unknown_tool';
-			const parameters = tool.function?.parameters as Record<string, unknown> | undefined;
+			const parameters = tool.function?.parameters;
 
 			expect(parameters, `${toolName} should define function.parameters`).toBeDefined();
 			expect(parameters?.type, `${toolName} must have top-level type=object`).toBe('object');

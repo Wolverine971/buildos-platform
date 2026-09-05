@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/project/ProjectDocumentsSection.svelte -->
 <script lang="ts">
 	import { slide } from 'svelte/transition';
+	import { preloadEntityModal } from '$lib/actions/preload-entity-modal';
 	import { ChevronDown, FileText, Plus } from '$lib/icons/lucide';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { DocTreeView } from '$lib/components/ontology/doc-tree';
@@ -83,6 +84,7 @@
 {/snippet}
 
 <section
+	use:preloadEntityModal={'document'}
 	class="overflow-hidden {variant === 'workspace'
 		? 'border-y border-border bg-card/40'
 		: 'rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}"

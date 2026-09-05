@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/tool-trace.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import {
@@ -119,7 +120,7 @@ describe('buildPersistedToolTrace', () => {
 		const trace = buildPersistedToolTrace([
 			{ toolCall: toolCall('read_x', {}, 'c2'), result: result({ duration_ms: NaN }) }
 		]);
-		expect(trace[0].duration_ms).toBeUndefined();
+		expect(requireTestValue(trace[0]).duration_ms).toBeUndefined();
 	});
 
 	it('persists content-free summaries for every Gmail account tool', () => {
@@ -224,17 +225,17 @@ describe('buildPersistedToolTrace', () => {
 		for (const secret of secrets) {
 			expect(durableTrace).not.toContain(secret);
 		}
-		expect(trace[1].arguments_preview).toBe(
+		expect(requireTestValue(trace[1]).arguments_preview).toBe(
 			'{"read_only":true,"connection_count":1,"has_query":true,"has_cursor":true,"requested_max_results":5}'
 		);
-		expect(trace[1].result_preview).toBe(
+		expect(requireTestValue(trace[1]).result_preview).toBe(
 			'{"read_only":true,"account_count":1,"message_count":1,"reconnect_required_count":0,"has_more":true}'
 		);
-		expect(trace[2].result_preview).toBe(
+		expect(requireTestValue(trace[2]).result_preview).toBe(
 			'{"read_only":true,"body_returned":true,"body_truncated":false,"has_unsupported_attachments":false}'
 		);
-		expect(trace[3].arguments_preview).toBe('{"read_only":true,"email_address_present":true}');
-		expect(trace[4].result_preview).toBe(
+		expect(requireTestValue(trace[3]).arguments_preview).toBe('{"read_only":true,"email_address_present":true}');
+		expect(requireTestValue(trace[4]).result_preview).toBe(
 			'{"browser_handoff_only":true,"status":"browser_handoff_required","requires_user_action":true,"has_client_action":true}'
 		);
 	});
@@ -253,7 +254,7 @@ describe('buildPersistedToolTrace', () => {
 			}
 		]);
 
-		expect(trace[0].error).toBe('Email account tool failed.');
+		expect(requireTestValue(trace[0]).error).toBe('Email account tool failed.');
 		expect(JSON.stringify(trace)).not.toContain('sender@example.com');
 		expect(JSON.stringify(trace)).not.toContain('Confidential subject');
 	});

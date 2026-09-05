@@ -30,6 +30,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onDestroy } from 'svelte';
+	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
 	import { portal } from '$lib/actions/portal';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -1535,9 +1536,10 @@
 			loading = true;
 			formError = null;
 			linkedEntities = undefined;
-			const response = await fetch(
-				`/api/onto/documents/${context.documentId}/full?include_linked=false`,
-				{ signal: controller.signal }
+			const response = await fetchEntityModalData(
+				'document',
+				context.documentId,
+				controller.signal
 			);
 			const payload = await response.json().catch(() => null);
 

@@ -195,7 +195,7 @@ function createCaller(
 		caller_key: 'openclaw:workspace:test',
 		token_prefix: 'ocw_',
 		token_hash: 'hash',
-		status: 'trusted',
+		status: 'trusted', project_scope_mode: 'selected',
 		policy: {},
 		metadata: {},
 		last_used_at: null,

@@ -700,7 +700,7 @@ describe('createInboxChatSession', () => {
 			source_status: 'pending',
 			user_id: USER_ID,
 			project_id: PROJECT_ID,
-			audience: 'project' as const,
+			audience: 'project_members' as const,
 			status: 'pending' as const,
 			title: suggestion.title,
 			summary: suggestion.rationale,

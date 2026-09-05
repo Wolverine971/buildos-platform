@@ -193,7 +193,7 @@ function createCaller(
 		caller_key: 'openclaw:workspace:test',
 		token_prefix: 'boca_123456',
 		token_hash: 'hashed-token',
-		status: 'trusted',
+		status: 'trusted', project_scope_mode: 'selected',
 		policy: {},
 		metadata: {},
 		last_used_at: null,

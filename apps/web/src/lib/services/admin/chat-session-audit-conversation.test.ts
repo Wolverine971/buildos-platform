@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/admin/chat-session-audit-conversation.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import {
 	buildConversationTurns,
@@ -149,15 +150,15 @@ describe('chat-session-audit-conversation', () => {
 			replayTimeline: buildReplayTimeline(payload.timeline)
 		});
 		expect(turns).toHaveLength(1);
-		expect(turns[0].userMessages[0].content).toBe('What should I do next?');
-		expect(turns[0].assistantMessages[0].content).toBe('Draft the outline.');
-		expect(turns[0].toolCalls).toHaveLength(1);
-		expect(turns[0].toolCalls[0]).toMatchObject({
+		expect(requireTestValue(requireTestValue(turns[0]).userMessages[0]).content).toBe('What should I do next?');
+		expect(requireTestValue(requireTestValue(turns[0]).assistantMessages[0]).content).toBe('Draft the outline.');
+		expect(requireTestValue(turns[0]).toolCalls).toHaveLength(1);
+		expect(requireTestValue(turns[0]).toolCalls[0]).toMatchObject({
 			toolName: 'buildos_gateway',
 			statusLabel: 'completed',
 			result: { matches: 2 }
 		});
-		expect(turns[0].supervisorEvents).toHaveLength(1);
+		expect(requireTestValue(turns[0]).supervisorEvents).toHaveLength(1);
 	});
 
 	it('detects long messages', () => {

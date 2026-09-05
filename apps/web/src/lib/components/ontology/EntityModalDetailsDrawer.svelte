@@ -26,9 +26,11 @@
 	const isDesktop = new MediaQuery('(min-width: 1024px)', false);
 
 	let open = $state(false);
+	let hasOpened = $state(false);
 	const hiddenFromDesktopFlow = $derived(isDesktop.current && !open);
 
 	function togglePanel() {
+		hasOpened = true;
 		open = !open;
 	}
 </script>
@@ -97,7 +99,9 @@
 			id={`${panelId}-content`}
 			class="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:py-2 lg:pl-4 lg:[scrollbar-gutter:stable] {className}"
 		>
-			{@render children()}
+			{#if !hiddenFromDesktopFlow || hasOpened}
+				{@render children()}
+			{/if}
 		</div>
 	</div>
 </aside>

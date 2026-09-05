@@ -25,6 +25,7 @@ import type {
 import { buildHeuristicProjectLoopBrief } from '@buildos/shared-agent-ops';
 import type { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../../config/projectLoops';
+import { generateEnglishProjectReview, hasUnexpectedReviewScript } from './reviewLanguage';
 
 /**
  * LLM usage/cost event emitted by the smart-llm service on each call. Relocated
@@ -545,7 +546,7 @@ async function callGenerator(params: {
 	llm: SmartLLMService;
 	userId: string;
 	chatSessionId?: string;
-	projectId: string;
+	ctx: LoopContext;
 	runId?: string;
 	generator: Exclude<ProjectLoopOperationType, 'project_loop_brief'>;
 	systemPrompt: string;
@@ -556,26 +557,34 @@ async function callGenerator(params: {
 	const providerOrder = Array.isArray(PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED)
 		? PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED
 		: [];
-	const result = await params.llm.getJSONResponse<RawSuggestionEnvelope>({
+	const result = await generateEnglishProjectReview({
 		systemPrompt: params.systemPrompt,
-		userPrompt: params.userPrompt,
-		userId: params.userId,
-		profile: 'balanced',
+		sourceNames: reviewSourceNames(params.ctx),
 		signal: params.signal,
-		providerRouting: providerOrder.length
-			? { order: providerOrder, allow_fallbacks: true }
-			: undefined,
-		validation: { retryOnParseError: true, maxRetries: 2 },
-		operationType: params.generator,
-		projectId: params.projectId,
-		chatSessionId: params.chatSessionId,
-		metadata: {
-			project_loop: true,
-			project_loop_run_id: params.runId ?? null,
-			project_loop_generator: params.generator,
-			onto_project_id: params.projectId
-		},
-		onUsage: params.onUsage
+		generate: (systemPrompt, languageAttempt) =>
+			params.llm.getJSONResponse<RawSuggestionEnvelope>({
+				systemPrompt,
+				userPrompt: params.userPrompt,
+				userId: params.userId,
+				profile: 'balanced',
+				signal: params.signal,
+				providerRouting: providerOrder.length
+					? { order: providerOrder, allow_fallbacks: true }
+					: undefined,
+				validation: { retryOnParseError: true, maxRetries: 2 },
+				operationType: params.generator,
+				projectId: params.ctx.projectId,
+				chatSessionId: params.chatSessionId,
+				metadata: {
+					project_loop: true,
+					project_review_language: 'en',
+					project_review_language_attempt: languageAttempt,
+					project_loop_run_id: params.runId ?? null,
+					project_loop_generator: params.generator,
+					onto_project_id: params.ctx.projectId
+				},
+				onUsage: params.onUsage
+			})
 	});
 	return Array.isArray(result?.suggestions) ? result.suggestions : [];
 }
@@ -584,7 +593,7 @@ async function callBriefGenerator(params: {
 	llm: SmartLLMService;
 	userId: string;
 	chatSessionId?: string;
-	projectId: string;
+	ctx: LoopContext;
 	runId?: string;
 	systemPrompt: string;
 	userPrompt: string;
@@ -594,29 +603,69 @@ async function callBriefGenerator(params: {
 	const providerOrder = Array.isArray(PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED)
 		? PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED
 		: [];
-	const result = await params.llm.getJSONResponse<RawBriefEnvelope>({
+	const result = await generateEnglishProjectReview({
 		systemPrompt: params.systemPrompt,
-		userPrompt: params.userPrompt,
-		userId: params.userId,
-		profile: 'balanced',
+		sourceNames: reviewSourceNames(params.ctx),
 		signal: params.signal,
-		providerRouting: providerOrder.length
-			? { order: providerOrder, allow_fallbacks: true }
-			: undefined,
-		validation: { retryOnParseError: true, maxRetries: 2 },
-		operationType: 'project_loop_brief',
-		projectId: params.projectId,
-		chatSessionId: params.chatSessionId,
-		metadata: {
-			project_loop: true,
-			project_loop_brief: true,
-			project_loop_run_id: params.runId ?? null,
-			project_loop_generator: 'project_loop_brief',
-			onto_project_id: params.projectId
-		},
-		onUsage: params.onUsage
+		generate: (systemPrompt, languageAttempt) =>
+			params.llm.getJSONResponse<RawBriefEnvelope>({
+				systemPrompt,
+				userPrompt: params.userPrompt,
+				userId: params.userId,
+				profile: 'balanced',
+				signal: params.signal,
+				providerRouting: providerOrder.length
+					? { order: providerOrder, allow_fallbacks: true }
+					: undefined,
+				validation: { retryOnParseError: true, maxRetries: 2 },
+				operationType: 'project_loop_brief',
+				projectId: params.ctx.projectId,
+				chatSessionId: params.chatSessionId,
+				metadata: {
+					project_loop: true,
+					project_review_language: 'en',
+					project_review_language_attempt: languageAttempt,
+					project_loop_brief: true,
+					project_loop_run_id: params.runId ?? null,
+					project_loop_generator: 'project_loop_brief',
+					onto_project_id: params.ctx.projectId
+				},
+				onUsage: params.onUsage
+			})
 	});
 	return result?.brief && typeof result.brief === 'object' ? result.brief : null;
+}
+
+function reviewSourceNames(ctx: LoopContext): string[] {
+	return [
+		ctx.projectName,
+		...ctx.goals.map((goal) => goal.name),
+		...ctx.documents.map((doc) => doc.title),
+		...ctx.tasks.map((task) => task.title)
+	];
+}
+
+// Legacy candidates can already contain a language-switched detector response.
+// Never reintroduce that prose through the deterministic fallback.
+function englishFallbackCandidate(
+	candidate: ProjectReviewSynthesisCandidate,
+	sourceNames: string[]
+): ProjectReviewSynthesisCandidate {
+	const text = (value: string | null | undefined) =>
+		hasUnexpectedReviewScript(value, sourceNames) ? null : value;
+	return {
+		...candidate,
+		title: text(candidate.title) ?? 'Project review finding',
+		rationale: text(candidate.rationale) ?? null,
+		why_now: text(candidate.why_now) ?? null,
+		verified_change_headline: text(candidate.verified_change_headline),
+		evidence_refs: candidate.evidence_refs.map((ref) => ({
+			...ref,
+			title: text(ref.title) ?? 'Project evidence',
+			reason: text(ref.reason) ?? undefined,
+			excerpt: text(ref.excerpt) ?? undefined
+		}))
+	};
 }
 
 function describeDocuments(documents: LoopDocument[]): string {
@@ -1050,11 +1099,13 @@ export function buildHeuristicProjectManagerBrief(params: {
 }): ProjectLoopBrief {
 	const now = params.now ?? new Date();
 	const uncheckedLenses = [...new Set(params.uncheckedLenses ?? [])];
-	const candidates = [...params.candidates].sort(
-		(left, right) =>
-			right.risk_tier - left.risk_tier ||
-			Number(right.operations.length > 0) - Number(left.operations.length > 0)
-	);
+	const candidates = params.candidates
+		.map((candidate) => englishFallbackCandidate(candidate, reviewSourceNames(params.ctx)))
+		.sort(
+			(left, right) =>
+				right.risk_tier - left.risk_tier ||
+				Number(right.operations.length > 0) - Number(left.operations.length > 0)
+		);
 	const legacy = buildHeuristicProjectLoopBrief(params.ctx, now);
 	if (!candidates.length) {
 		return {
@@ -1188,7 +1239,12 @@ function sanitizeManagerBrief(params: {
 		uncheckedLenses: params.uncheckedLenses
 	});
 	if (!params.raw) return fallback;
-	const candidateById = new Map(params.candidates.map((candidate) => [candidate.id, candidate]));
+	const candidateById = new Map(
+		params.candidates.map((candidate) => [
+			candidate.id,
+			englishFallbackCandidate(candidate, reviewSourceNames(params.ctx))
+		])
+	);
 	const allowedIds = new Set(candidateById.keys());
 	const raw = params.raw as Record<string, unknown>;
 	const requestedAttention = REVIEW_ATTENTION_LEVELS.has(
@@ -1446,7 +1502,7 @@ export async function generateProjectManagerBrief(params: {
 			llm: params.llm,
 			userId: params.userId,
 			chatSessionId: params.chatSessionId,
-			projectId: params.ctx.projectId,
+			ctx: params.ctx,
 			runId: params.runId,
 			systemPrompt,
 			userPrompt,
@@ -1514,7 +1570,7 @@ export async function generateProjectBrief(params: {
 			llm: params.llm,
 			userId: params.userId,
 			chatSessionId: params.chatSessionId,
-			projectId: ctx.projectId,
+			ctx: params.ctx,
 			runId: params.runId,
 			systemPrompt,
 			userPrompt,
@@ -1584,7 +1640,7 @@ export async function generateDocOrganization(params: {
 		llm: params.llm,
 		userId: params.userId,
 		chatSessionId: params.chatSessionId,
-		projectId: ctx.projectId,
+		ctx: params.ctx,
 		runId: params.runId,
 		generator: 'project_loop_doc_organization',
 		systemPrompt,
@@ -1679,7 +1735,7 @@ export async function generateOutdatedDocs(params: {
 		llm: params.llm,
 		userId: params.userId,
 		chatSessionId: params.chatSessionId,
-		projectId: ctx.projectId,
+		ctx: params.ctx,
 		runId: params.runId,
 		generator: 'project_loop_outdated_docs',
 		systemPrompt,
@@ -1768,7 +1824,7 @@ export async function generateDrift(params: {
 		llm: params.llm,
 		userId: params.userId,
 		chatSessionId: params.chatSessionId,
-		projectId: ctx.projectId,
+		ctx: params.ctx,
 		runId: params.runId,
 		generator: 'project_loop_drift',
 		systemPrompt,
@@ -1856,7 +1912,7 @@ export async function generateTaskConflicts(params: {
 		llm: params.llm,
 		userId: params.userId,
 		chatSessionId: params.chatSessionId,
-		projectId: ctx.projectId,
+		ctx: params.ctx,
 		runId: params.runId,
 		generator: 'project_loop_task_conflicts',
 		systemPrompt,

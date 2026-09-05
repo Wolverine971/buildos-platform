@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/ontology-context-loader.project-access.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
@@ -96,7 +97,7 @@ describe('OntologyContextLoader project-scoped access', () => {
 		expect(documentQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
 		expect(documentQuery.in).toHaveBeenCalledWith('id', ['doc-1']);
 		expect(result.linkedEntities.documents).toHaveLength(1);
-		expect(result.linkedEntities.documents[0].id).toBe('doc-1');
+		expect(requireTestValue(result.linkedEntities.documents[0]).id).toBe('doc-1');
 	});
 
 	it('rejects project-less creator rows before loading linked edges', async () => {

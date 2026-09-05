@@ -15,7 +15,7 @@ function createDatabase(results: Record<string, QueryResult>) {
 	}> = [];
 
 	function query(table: string) {
-		const entry = {
+		const entry: (typeof operations)[number] = {
 			table,
 			action: 'select',
 			filters: [] as Array<[string, unknown]>

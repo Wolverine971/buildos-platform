@@ -79,7 +79,9 @@ function parseCivilDateParts(value: string): { year: number; month: number; day:
 	if (!match) {
 		throw new CivilDateError(`"${value}" is not a calendar date (YYYY-MM-DD)`);
 	}
-	const [year, month, day] = value.split('-').map(Number);
+	const year = Number(value.slice(0, 4));
+	const month = Number(value.slice(5, 7));
+	const day = Number(value.slice(8, 10));
 	const probe = new Date(Date.UTC(year, month - 1, day));
 	if (
 		probe.getUTCFullYear() !== year ||

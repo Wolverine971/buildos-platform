@@ -64,6 +64,8 @@
 	import GoalMilestonesSidebarSection from './GoalMilestonesSidebarSection.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { timestamptzToLocalDate } from '$lib/utils/date-utils';
+	import { changedFormFields } from '$lib/utils/form-patch';
+	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
 	import {
 		loadDocumentModal,
 		loadPlanEditModal,
@@ -95,11 +97,13 @@
 		projectId: string;
 		onClose: () => void;
 		onUpdated?: () => void;
+		/** The main form changed only this goal's fields. Other updates may affect relationships. */
+		onSaved?: () => void;
 		onDeleted?: () => void;
 		onLoaded?: () => void;
 	}
 
-	let { goalId, projectId, onClose, onUpdated, onDeleted, onLoaded }: Props = $props();
+	let { goalId, projectId, onClose, onUpdated, onSaved, onDeleted, onLoaded }: Props = $props();
 
 	let modalOpen = $state(true);
 	let goal = $state<any>(null);
@@ -109,6 +113,8 @@
 	let isDeleting = $state(false);
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
+	let initialForm: ReturnType<typeof formSnapshot> | null = null;
+	let relatedEntitiesChanged = false;
 
 	// Form fields
 	let name = $state('');
@@ -207,9 +213,10 @@
 
 	async function loadGoal() {
 		try {
+			initialForm = null;
 			isLoading = true;
 			linkedEntities = undefined;
-			const response = await fetch(`/api/onto/goals/${goalId}/full?include_linked=false`);
+			const response = await fetchEntityModalData('goal', goalId);
 			if (!response.ok) throw new Error('Failed to load goal');
 
 			const data = await response.json();
@@ -224,6 +231,7 @@
 				measurementCriteria = goal.props?.measurement_criteria || '';
 				stateKey = goal.state_key || 'draft';
 				typeKey = goal.type_key || 'goal.default';
+				initialForm = formSnapshot();
 			}
 		} catch (err) {
 			console.error('Error loading goal:', err);
@@ -246,9 +254,30 @@
 		linkedEntities = value;
 	}
 
+	function formSnapshot() {
+		return {
+			name: name.trim(),
+			goal: goalDetails.trim() || null,
+			description: description.trim() || null,
+			priority: priority || null,
+			target_date: targetDate || null,
+			measurement_criteria: measurementCriteria.trim() || null,
+			state_key: stateKey,
+			type_key: typeKey || 'goal.default'
+		};
+	}
+
 	async function handleSave() {
+		if (isLoading || isSaving || !initialForm) return;
 		if (!name.trim()) {
 			error = 'Goal name is required';
+			return;
+		}
+
+		const requestBody = changedFormFields(initialForm, formSnapshot());
+		if (Object.keys(requestBody).length === 0) {
+			if (relatedEntitiesChanged) onUpdated?.();
+			handleClose();
 			return;
 		}
 
@@ -256,17 +285,6 @@
 		error = '';
 
 		try {
-			const requestBody = {
-				name: name.trim(),
-				goal: goalDetails.trim() || null,
-				description: description.trim() || null,
-				priority: priority || null,
-				target_date: targetDate || null,
-				measurement_criteria: measurementCriteria.trim() || null,
-				state_key: stateKey,
-				type_key: typeKey || 'goal.default'
-			};
-
 			const response = await fetch(`/api/onto/goals/${goalId}`, {
 				method: 'PATCH',
 				headers: {
@@ -282,7 +300,9 @@
 			}
 
 			// Success! Call the callback and close
-			if (onUpdated) {
+			if (onSaved && !relatedEntitiesChanged) {
+				onSaved();
+			} else if (onUpdated) {
 				onUpdated();
 			}
 			onClose();
@@ -374,11 +394,13 @@
 		selectedDocumentIdForModal = null;
 		// Smart refresh: only reload if changes were made
 		if (wasChanged) {
+			relatedEntitiesChanged = true;
 			loadGoal();
 		}
 	}
 
 	function handleLinksChanged() {
+		relatedEntitiesChanged = true;
 		// Invalidate cached linked entities so component will refetch
 		linkedEntities = undefined;
 	}
@@ -408,6 +430,7 @@
 			}
 
 			// Refresh linked entities to show updated milestone
+			relatedEntitiesChanged = true;
 			loadGoal();
 		} catch (err) {
 			console.error('Error toggling milestone complete:', err);
@@ -423,17 +446,20 @@
 	}
 
 	function handleMilestoneCreated() {
+		relatedEntitiesChanged = true;
 		showMilestoneCreateModal = false;
 		loadGoal();
 	}
 
 	function handleMilestoneUpdated() {
+		relatedEntitiesChanged = true;
 		showMilestoneEditModal = false;
 		editingMilestoneId = null;
 		loadGoal();
 	}
 
 	function handleMilestoneDeleted() {
+		relatedEntitiesChanged = true;
 		showMilestoneEditModal = false;
 		editingMilestoneId = null;
 		loadGoal();

@@ -112,14 +112,14 @@ describe('buildEmailRelevanceScanManifest', () => {
 		expect(() =>
 			buildEmailRelevanceScanManifest(duplicateConnection, SYNTHETIC_SCAN_REFERENCE_TIME)
 		).toThrowError(
-			expect.objectContaining<EmailRelevanceScanManifestError>({
+			expect.objectContaining<Partial<EmailRelevanceScanManifestError>>({
 				code: 'duplicate_connection'
 			})
 		);
 		expect(() =>
 			buildEmailRelevanceScanManifest(duplicateProject, SYNTHETIC_SCAN_REFERENCE_TIME)
 		).toThrowError(
-			expect.objectContaining<EmailRelevanceScanManifestError>({
+			expect.objectContaining<Partial<EmailRelevanceScanManifestError>>({
 				code: 'duplicate_project'
 			})
 		);

@@ -1,6 +1,7 @@
 // apps/web/src/lib/components/agent/agent-chat-prewarm.svelte.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it, vi } from 'vitest';
-import type { ChatSession } from '@buildos/shared-types';
+import type { ChatSession, LastTurnContext } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
 import type { PreparedPromptClient } from './agent-chat-session';
@@ -19,7 +20,7 @@ interface Flags {
 	isVoiceBusy: boolean;
 	isVoicePending: boolean;
 	isTurnActive: boolean;
-	lastTurnContext: unknown;
+	lastTurnContext: LastTurnContext | null;
 }
 
 function defaultFlags(): Flags {
@@ -42,7 +43,7 @@ function defaultFlags(): Flags {
 		isVoiceBusy: false,
 		isVoicePending: false,
 		isTurnActive: false,
-		lastTurnContext: undefined
+		lastTurnContext: null
 	};
 }
 
@@ -408,7 +409,7 @@ describe('PrewarmController — orchestrate', () => {
 	});
 
 	it('includes the last-turn continuity hint in the prewarm payload when provided', () => {
-		const hint = { summary: 'Reviewed Q3 plan', context_type: 'project' };
+		const hint: LastTurnContext = { summary: 'Reviewed Q3 plan', context_type: 'project', entities: {}, data_accessed: [], timestamp: '2026-09-05T12:00:00.000Z' };
 		const h = createHarness({ lastTurnContext: hint });
 		h.controller.orchestrate();
 
@@ -572,18 +573,12 @@ describe('PrewarmController — orchestrate', () => {
 		const cache = makeCache({ key });
 		const prepared = makePreparedPrompt({ cacheKey: key });
 		let signal: AbortSignal | undefined;
-		let resolvePrewarm:
-			| ((value: {
-					session: null;
-					prewarmedContext: FastChatContextCache;
-					preparedPrompt: PreparedPromptClient;
-			  }) => void)
-			| null = null;
+		const pending: { resolve?: (value: { session: null; prewarmedContext: FastChatContextCache; preparedPrompt: PreparedPromptClient }) => void } = {};
 		h.prewarm.mockImplementation(
 			(_payload, options) =>
 				new Promise((resolve) => {
 					signal = options.signal;
-					resolvePrewarm = resolve;
+					pending.resolve = resolve;
 				})
 		);
 
@@ -593,8 +588,8 @@ describe('PrewarmController — orchestrate', () => {
 		cleanup!();
 		expect(signal?.aborted).toBe(false);
 
-		expect(resolvePrewarm).not.toBeNull();
-		(resolvePrewarm as NonNullable<typeof resolvePrewarm>)({
+		expect(pending.resolve).toBeDefined();
+		requireTestValue(pending.resolve)({
 			session: null,
 			prewarmedContext: cache,
 			preparedPrompt: prepared

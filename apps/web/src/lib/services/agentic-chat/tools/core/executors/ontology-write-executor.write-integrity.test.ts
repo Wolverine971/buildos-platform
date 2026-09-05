@@ -8,6 +8,7 @@
  *       empty {} PATCH that the route reports as a successful "Updated".
  */
 
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
@@ -96,9 +97,9 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 
 	describe('create-project payload integrity', () => {
 		it('repairs nested graph collections before calling the instantiate endpoint', async () => {
-			let instantiateBody: Record<string, any> | null = null;
+			const captured: { instantiateBody?: Record<string, unknown> } = {};
 			mockFetch.mockImplementationOnce((_url, options) => {
-				instantiateBody = JSON.parse(String(options?.body));
+				captured.instantiateBody = JSON.parse(String(options?.body));
 				return Promise.resolve(
 					buildJsonResponse({
 						project_id: 'project-1',
@@ -127,10 +128,10 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 			} as any);
 
 			expect(result.project_id).toBe('project-1');
-			expect(instantiateBody?.project).not.toHaveProperty('entities');
-			expect(instantiateBody?.project).not.toHaveProperty('relationships');
-			expect(instantiateBody?.entities).toHaveLength(2);
-			expect(instantiateBody?.relationships).toHaveLength(1);
+			expect(captured.instantiateBody?.project).not.toHaveProperty('entities');
+			expect(captured.instantiateBody?.project).not.toHaveProperty('relationships');
+			expect(captured.instantiateBody?.entities).toHaveLength(2);
+			expect(captured.instantiateBody?.relationships).toHaveLength(1);
 		});
 	});
 
@@ -218,7 +219,7 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		const longExisting = 'E'.repeat(8000);
 
 		it('scales the merge token cap above the old 2000 default for long documents', async () => {
-			const generateTextDetailed = vi.fn(async () => ({
+			const generateTextDetailed = vi.fn(async (_options: { maxTokens?: number; timeoutMs?: number }) => ({
 				text: `MERGED ${'M'.repeat(8500)}`
 			}));
 			context.llmService = { generateTextDetailed } as any;
@@ -236,7 +237,7 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 			);
 
 			expect(generateTextDetailed).toHaveBeenCalledTimes(1);
-			const mergeArgs = generateTextDetailed.mock.calls[0][0] as {
+			const mergeArgs = requireTestValue(generateTextDetailed.mock.calls[0])[0] as {
 				maxTokens?: number;
 				timeoutMs?: number;
 			};
@@ -249,7 +250,7 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		});
 
 		it('falls back to a safe append when the merge comes back materially shorter', async () => {
-			const generateTextDetailed = vi.fn(async () => ({ text: 'short merged output' }));
+			const generateTextDetailed = vi.fn(async (_options: { maxTokens?: number; timeoutMs?: number }) => ({ text: 'short merged output' }));
 			context.llmService = { generateTextDetailed } as any;
 			const executor = new OntologyWriteExecutor(context);
 
@@ -275,7 +276,7 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		it('falls back to a safe append when the merge returns the original body unchanged', async () => {
 			const existing = '# Start Here\n\nNext step: submit the application.';
 			const incoming = 'Now waiting to hear back on next steps.';
-			const generateTextDetailed = vi.fn(async () => ({ text: existing }));
+			const generateTextDetailed = vi.fn(async (_options: { maxTokens?: number; timeoutMs?: number }) => ({ text: existing }));
 			context.llmService = { generateTextDetailed } as any;
 			const executor = new OntologyWriteExecutor(context);
 
@@ -298,7 +299,7 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		it('does not duplicate content that was already durably present', async () => {
 			const incoming = 'Now waiting to hear back on next steps.';
 			const existing = `# Start Here\n\n${incoming}`;
-			const generateTextDetailed = vi.fn(async () => ({ text: existing }));
+			const generateTextDetailed = vi.fn(async (_options: { maxTokens?: number; timeoutMs?: number }) => ({ text: existing }));
 			context.llmService = { generateTextDetailed } as any;
 			const executor = new OntologyWriteExecutor(context);
 

@@ -368,6 +368,41 @@ describe('ProjectWorkspace edge states', () => {
 		vi.clearAllMocks();
 	});
 
+	it('loads a goal once and refreshes only that goal after a form save', async () => {
+		const originalFetch = vi.mocked(fetch).getMockImplementation()!;
+		let goal = { ...goals(1)[0]!, name: 'Launch goal', project_id: PROJECT_ID };
+		vi.mocked(fetch).mockImplementation(async (input, init) => {
+			const url = String(input);
+			if (url.includes(`/api/onto/goals/${goal.id}`)) {
+				if (init?.method === 'PATCH') goal = { ...goal, ...JSON.parse(String(init.body)) };
+				return apiResponse({ goal });
+			}
+			if (url.includes('/api/onto/comments')) return apiResponse({ comments: [], total: 0 });
+			return originalFetch(input, init);
+		});
+		render(ProjectWorkspace, { data: projectData({ goals: [goal] }) as any });
+		await fireEvent.click(screen.getByRole('button', { name: /Launch goal/ }));
+		await screen.findByDisplayValue('Launch goal');
+		expect(
+			vi
+				.mocked(fetch)
+				.mock.calls.filter(([url]) => String(url).includes(`/goals/${goal.id}/full`))
+		).toHaveLength(1);
+		await fireEvent.input(screen.getByDisplayValue('Launch goal'), {
+			target: { value: 'Updated launch goal' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: /Updated launch goal/ })).toBeInTheDocument()
+		);
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+		expect(
+			vi
+				.mocked(fetch)
+				.mock.calls.some(([url]) => String(url).includes(`/projects/${PROJECT_ID}/full`))
+		).toBe(false);
+	});
+
 	it('keeps the persistent shell focused on project identity, the brief, and workspace tabs', async () => {
 		const { container } = render(ProjectWorkspace, {
 			props: {

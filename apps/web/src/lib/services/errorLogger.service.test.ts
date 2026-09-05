@@ -113,7 +113,7 @@ class FakeSupabase {
 	) {}
 
 	from(table: 'error_logs' | 'users') {
-		return new FakeQuery(this.tables[table]);
+		return table === 'error_logs' ? new FakeQuery(this.tables.error_logs) : new FakeQuery(this.tables.users);
 	}
 }
 

@@ -6,8 +6,12 @@ import {
 	OpenRouterEmptyContentError
 } from '@buildos/smart-llm';
 import { classifyDetectorFailure } from '../src/workers/project-loop/detectorFailure';
+import { ProjectReviewLanguageError } from '../src/workers/project-loop/reviewLanguage';
 
 describe('classifyDetectorFailure', () => {
+	it('marks an exhausted language retry as an unchecked detector', () => {
+		expect(classifyDetectorFailure(new ProjectReviewLanguageError())).toBe('invalid_language');
+	});
 	it('degrades typed provider timeouts', () => {
 		expect(
 			classifyDetectorFailure(

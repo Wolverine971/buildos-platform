@@ -119,6 +119,8 @@
 	import { format } from 'date-fns';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { changedFormFields } from '$lib/utils/form-patch';
+	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
 
 	interface Props {
 		taskId: string;
@@ -148,6 +150,7 @@
 	let calendarLinkStatusController: AbortController | null = null;
 	let calendarLinkStatusRequestId = 0;
 	let taskSessionEpoch = 0;
+	let initialForm: ReturnType<typeof formSnapshot> | null = null;
 
 	type TaskSession = {
 		taskId: string;
@@ -411,6 +414,7 @@
 	}
 
 	function resetTaskSessionState() {
+		initialForm = null;
 		cancelCalendarLinkStatusLoad();
 		isSaving = false;
 		isDeleting = false;
@@ -560,10 +564,7 @@
 		try {
 			isLoading = true;
 			error = '';
-			const response = await fetch(
-				`/api/onto/tasks/${requestedTaskId}/full?include_linked=false`,
-				{ signal: controller.signal }
-			);
+			const response = await fetchEntityModalData('task', requestedTaskId, controller.signal);
 
 			if (!response.ok) throw new Error('Failed to load task');
 
@@ -592,6 +593,7 @@
 					: [];
 				seriesActionError = '';
 				showSeriesDeleteConfirm = false;
+				initialForm = formSnapshot();
 			}
 		} catch (err) {
 			if (
@@ -693,10 +695,30 @@
 		}
 	}
 
+	function formSnapshot() {
+		return {
+			title: title.trim(),
+			description: description.trim() || null,
+			priority: Number(priority),
+			state_key: stateKey,
+			type_key: typeKey || 'task.default',
+			start_at: startAt,
+			due_at: dueAt,
+			assignee_actor_ids: [...assigneeActorIds].sort()
+		};
+	}
+
 	async function handleSave() {
+		if (isLoading || isSaving || !initialForm) return;
 		const session = captureTaskSession();
 		if (!title.trim()) {
 			error = 'Task title is required';
+			return;
+		}
+
+		const changes = changedFormFields(initialForm, formSnapshot());
+		if (Object.keys(changes).length === 0) {
+			handleClose();
 			return;
 		}
 
@@ -705,14 +727,13 @@
 
 		try {
 			const requestBody = {
-				title: title.trim(),
-				description: description.trim() || null,
-				priority: Number(priority),
-				state_key: stateKey,
-				type_key: typeKey || 'task.default',
-				start_at: parseDateTimeFromInput(startAt),
-				due_at: parseDateTimeFromInput(dueAt),
-				assignee_actor_ids: assigneeActorIds
+				...changes,
+				...(changes.start_at !== undefined
+					? { start_at: parseDateTimeFromInput(changes.start_at) }
+					: {}),
+				...(changes.due_at !== undefined
+					? { due_at: parseDateTimeFromInput(changes.due_at) }
+					: {})
 			};
 
 			const response = await fetch(`/api/onto/tasks/${session.taskId}`, {

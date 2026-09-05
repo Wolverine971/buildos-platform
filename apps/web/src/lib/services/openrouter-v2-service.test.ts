@@ -1181,7 +1181,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 	});
 
 	it('prices provider date-suffixed model ids with the configured base model', async () => {
-		const insertMock = vi.fn(async () => ({ error: null }));
+		const insertMock = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
 		const fetchMock = vi.fn(
 			async () =>
 				new Response(
@@ -1676,7 +1676,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			userId: 'user_1',
 			models: [DEEPSEEK_V4_FLASH_MODEL],
 			providerRouting: { ignore: ['DigitalOcean'] },
-			onRouteObserved: (observation) => routeObservations.push(observation),
+			onRouteObserved: (observation) => { routeObservations.push(observation); },
 			maxTokens: 6000
 		})) {
 			events.push(event);
@@ -1712,7 +1712,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 	});
 
 	it('logs streaming usage against the active request model and resolved provider', async () => {
-		const insertMock = vi.fn(async () => ({ error: null }));
+		const insertMock = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -1802,7 +1802,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 	it('logs a failure usage row with the real usage frame when the stream errors mid-flight', async () => {
 		// D10: abort/error is a normal end state for chat turns and must still record
 		// token usage — billing credits are computed from llm_usage_logs.
-		const insertMock = vi.fn(async () => ({ error: null }));
+		const insertMock = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
 		const encoder = new TextEncoder();
 		const fetchMock = vi.fn(async () => {
 			let stage = 0;
@@ -1867,7 +1867,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 	it('estimates token usage on a failed stream when no usage frame arrived', async () => {
 		// D10: when the provider never sent a usage frame, fall back to a char/4 estimate
 		// so cancelled/errored turns are still billed rather than undercounted at zero.
-		const insertMock = vi.fn(async () => ({ error: null }));
+		const insertMock = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
 		const encoder = new TextEncoder();
 		const fetchMock = vi.fn(async () => {
 			let stage = 0;

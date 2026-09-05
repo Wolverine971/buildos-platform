@@ -24,9 +24,10 @@ export interface ExecutorContext {
 	sessionId?: string;
 	fetchFn: typeof fetch;
 	llmService?: SmartLLMService;
-	getActorId: () => Promise<string>;
-	getAdminSupabase: () => TypedSupabaseClient;
-	getAuthHeaders: () => Promise<HeadersInit>;
+	/** Optional providers; BaseExecutor resolves these from the session when omitted. */
+	getActorId?: () => Promise<string>;
+	getAdminSupabase?: () => TypedSupabaseClient;
+	getAuthHeaders?: () => Promise<HeadersInit>;
 	activityLogActorContext?: ActivityLogActorContext;
 	/**
 	 * Turn-scoped abort signal. When the turn is cancelled (user stop / disconnect /

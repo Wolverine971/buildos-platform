@@ -101,7 +101,7 @@ class ExternalAgentCallersQueryBuilderMock {
 				caller_key: String(this.upsertPayload.caller_key),
 				token_prefix: String(this.upsertPayload.token_prefix),
 				token_hash: String(this.upsertPayload.token_hash),
-				status: 'trusted',
+				status: 'trusted', project_scope_mode: this.upsertPayload.project_scope_mode === 'all_unrestricted' ? 'all_unrestricted' : 'selected',
 				policy: (this.upsertPayload.policy ?? {}) as Record<string, unknown>,
 				metadata: (this.upsertPayload.metadata ?? {}) as Record<string, unknown>,
 				last_used_at: null,
@@ -413,7 +413,7 @@ describe('CallerProvisioningService', () => {
 		expect(response.caller).toMatchObject({
 			provider: 'openclaw',
 			caller_key: 'openclaw:workspace:test',
-			status: 'trusted',
+			status: 'trusted', project_scope_mode: 'selected',
 			scope_mode: 'read_only',
 			allowed_ops: BUILDOS_AGENT_READ_OPS,
 			allowed_project_ids: ['44444444-4444-4444-4444-444444444444']
@@ -524,7 +524,7 @@ describe('CallerProvisioningService', () => {
 					caller_key: 'openclaw:workspace:test',
 					token_prefix: 'boca_123456',
 					token_hash: 'hashed-token',
-					status: 'trusted',
+					status: 'trusted', project_scope_mode: 'selected',
 					policy: {
 						allowed_project_ids: ['44444444-4444-4444-4444-444444444444']
 					},
@@ -578,7 +578,7 @@ describe('CallerProvisioningService', () => {
 					caller_key: 'openclaw:workspace:test',
 					token_prefix: 'boca_123456',
 					token_hash: 'hashed-token',
-					status: 'trusted',
+					status: 'trusted', project_scope_mode: 'selected',
 					policy: {},
 					metadata: {},
 					last_used_at: '2026-04-28T00:05:00.000Z',
@@ -670,7 +670,7 @@ describe('CallerProvisioningService', () => {
 					caller_key: 'openclaw:workspace:test',
 					token_prefix: 'boca_123456',
 					token_hash: 'hashed-token',
-					status: 'trusted',
+					status: 'trusted', project_scope_mode: 'selected',
 					policy: {},
 					metadata: { installation_name: 'Research Agent' },
 					last_used_at: now,
@@ -808,7 +808,7 @@ describe('CallerProvisioningService', () => {
 					caller_key: 'openclaw:workspace:test',
 					token_prefix: 'boca_123456',
 					token_hash: 'hashed-token',
-					status: 'trusted',
+					status: 'trusted', project_scope_mode: 'selected',
 					policy: {
 						allowed_project_ids: [
 							'44444444-4444-4444-4444-444444444444',
@@ -844,7 +844,7 @@ describe('CallerProvisioningService', () => {
 					caller_key: 'openclaw:workspace:test',
 					token_prefix: 'boca_123456',
 					token_hash: 'hashed-token',
-					status: 'trusted',
+					status: 'trusted', project_scope_mode: 'selected',
 					policy: {},
 					metadata: {},
 					last_used_at: null,

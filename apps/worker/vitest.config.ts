@@ -1,5 +1,6 @@
 // apps/worker/vitest.config.ts
 import { defineConfig } from 'vitest/config';
+import { localWorkerLimits } from '../../vitest.workers';
 import { fileURLToPath } from 'node:url';
 import { coverageConfig } from '../../vitest.coverage';
 import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints';
@@ -128,6 +129,7 @@ const workspacePackageAliases = [
 
 export default defineConfig({
 	test: {
+		...localWorkerLimits(),
 		environment: 'node',
 		globals: true,
 		setupFiles: ['./tests/setup.ts'],

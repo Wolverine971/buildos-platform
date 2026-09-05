@@ -19,7 +19,7 @@ function createNode(overrides: Partial<EnrichedDocTreeNode> = {}): EnrichedDocTr
 		has_content: true,
 		created_at: '2026-07-19T12:00:00.000Z',
 		updated_at: '2026-07-19T12:00:00.000Z',
-		is_public: false,
+		is_public: false, public_status: 'not_public',
 		public_slug: null,
 		public_url_path: null,
 		...overrides

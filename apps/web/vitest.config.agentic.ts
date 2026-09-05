@@ -1,5 +1,6 @@
 // apps/web/vitest.config.agentic.ts
 import { defineConfig } from 'vitest/config';
+import { localWorkerLimits } from '../../vitest.workers';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { fileURLToPath } from 'node:url';
 import { config as loadDotenv } from 'dotenv';
@@ -49,6 +50,7 @@ export default defineConfig({
 		alias: sharedAgentOpsTestAliases
 	},
 	test: {
+		...localWorkerLimits(),
 		globals: true,
 		environment: 'node',
 		setupFiles: ['./vitest.setup.ts'],

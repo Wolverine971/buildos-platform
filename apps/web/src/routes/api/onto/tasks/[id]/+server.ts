@@ -617,8 +617,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			state_key !== undefined &&
 			existingTask.state_key === 'done' &&
 			updatedTask.state_key !== 'done';
-		const hasSchedulingEdit = start_at !== undefined || due_at !== undefined;
-		const shouldSyncFromTitleEdit = title !== undefined && !isTransitioningFromDone;
+		// Full-form clients may resend unchanged fields. Reconcile calendar events
+		// only when persisted scheduling/title values actually changed.
+		const timestamp = (value: string | null | undefined) =>
+			value ? new Date(value).getTime() : null;
+		const hasSchedulingEdit =
+			(start_at !== undefined &&
+				timestamp(existingTask.start_at) !== timestamp(updatedTask.start_at)) ||
+			(due_at !== undefined &&
+				timestamp(existingTask.due_at) !== timestamp(updatedTask.due_at));
+		const shouldSyncFromTitleEdit =
+			title !== undefined &&
+			existingTask.title !== updatedTask.title &&
+			!isTransitioningFromDone;
 		const shouldSyncEvents =
 			shouldSyncFromTitleEdit || hasSchedulingEdit || isTransitioningToDone;
 

@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/inbox.service.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -225,7 +226,7 @@ describe('inbox service', () => {
 			limit: 20
 		});
 
-		expect(state.tables.project_suggestions[0]).toMatchObject({
+		expect(requireTestValue(state.tables.project_suggestions)[0]).toMatchObject({
 			status: 'applied',
 			applied_at: '2026-06-29T12:05:00.000Z',
 			result: expect.objectContaining({
@@ -266,7 +267,7 @@ describe('inbox service', () => {
 			limit: 20
 		});
 
-		expect(state.tables.project_suggestions[0]).toMatchObject({
+		expect(requireTestValue(state.tables.project_suggestions)[0]).toMatchObject({
 			status: 'failed',
 			result: expect.objectContaining({
 				ok: false,
@@ -293,7 +294,7 @@ describe('inbox service', () => {
 			limit: 20
 		});
 
-		expect(state.tables.project_suggestions[0]).toMatchObject({
+		expect(requireTestValue(state.tables.project_suggestions)[0]).toMatchObject({
 			status: 'delegated',
 			agent_run_id: 'agent-run-1'
 		});
@@ -588,7 +589,7 @@ describe('inbox service', () => {
 
 		expect(result.items).toEqual([]);
 		expect(result.total).toBe(0);
-		expect(state.tables.inbox_items[0]).toMatchObject({
+		expect(requireTestValue(state.tables.inbox_items)[0]).toMatchObject({
 			status: 'expired',
 			source_status: 'project_deleted',
 			blocked_reason: 'Project was deleted',
@@ -757,7 +758,7 @@ describe('inbox service', () => {
 		});
 		mocks.syncInboxItemForSource.mockImplementation(
 			async ({ sourceRefId }: { sourceRefId: string }) => {
-				const row = state.tables.inbox_items.find(
+				const row = requireTestValue(state.tables.inbox_items).find(
 					(entry) => entry.source_ref_id === sourceRefId
 				);
 				if (row) row.project_id = 'project-1';

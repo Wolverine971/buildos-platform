@@ -10,6 +10,7 @@
 	import TodayAgendaRow from '$lib/components/today/TodayAgendaRow.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
 	import { loadTaskEditModal } from '$lib/components/project/project-entity-modal-loader';
+	import { prepareEntityModalData } from '$lib/components/project/entity-modal-data';
 	import {
 		AlertCircle,
 		ArrowUpRight,
@@ -459,6 +460,7 @@
 
 	async function openTask(task: TodayTask) {
 		selectedTask = task;
+		prepareEntityModalData('task', task.id);
 		try {
 			TaskEditModalComponent = (await loadTaskEditModal()).default;
 			trackLoopEvent('loop_surface_opened', 'today', {

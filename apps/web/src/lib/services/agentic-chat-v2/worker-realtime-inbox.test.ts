@@ -45,7 +45,7 @@ function event(
 		event_type: 'text_delta',
 		durable: true,
 		type: 'text_delta',
-		text_delta: `chunk-${sequence}`,
+		content: `chunk-${sequence}`,
 		...overrides
 	};
 }

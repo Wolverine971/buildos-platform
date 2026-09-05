@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/admin/chat-tool-analytics.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import {
 	buildChatToolAnalytics,
@@ -9,7 +10,7 @@ import {
 const row = (
 	overrides: Partial<ToolExecutionAnalyticsRow> & { id: string }
 ): ToolExecutionAnalyticsRow => ({
-	id: overrides.id,
+
 	session_id: 'session-1',
 	turn_run_id: null,
 	stream_run_id: null,
@@ -32,7 +33,7 @@ const row = (
 const turnRun = (
 	overrides: Partial<ToolTurnRunAnalyticsRow> & { id: string }
 ): ToolTurnRunAnalyticsRow => ({
-	id: overrides.id,
+
 	session_id: 'session-1',
 	context_type: 'project',
 	status: 'completed',
@@ -145,7 +146,7 @@ describe('buildChatToolAnalytics', () => {
 			'direct_exact_op'
 		);
 		expect(payload.trends).toHaveLength(1);
-		expect(payload.trends[0].bucket).toBe('2026-04-10T12:00:00.000Z');
+		expect(requireTestValue(payload.trends[0]).bucket).toBe('2026-04-10T12:00:00.000Z');
 	});
 
 	it('applies outcome, context, and minimum-call filters without shrinking filter options', () => {
@@ -227,7 +228,7 @@ describe('buildChatToolAnalytics', () => {
 			affected_tools: ['tool_search', 'update_onto_task'],
 			last_seen_at: '2026-04-10T12:00:00.000Z'
 		});
-		expect(payload.most_problematic_tools[0].failure_rate).toBe(100);
+		expect(requireTestValue(payload.most_problematic_tools[0]).failure_rate).toBe(100);
 	});
 
 	it('classifies outcome card tools as gateway discovery', () => {

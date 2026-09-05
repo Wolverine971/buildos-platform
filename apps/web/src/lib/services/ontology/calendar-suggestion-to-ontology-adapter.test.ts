@@ -48,7 +48,6 @@ function buildSuggestion(
 		user_modified_context: null,
 		rejection_reason: null,
 		status_changed_at: null,
-		analysis_result_id: null,
 		created_project_id: null,
 		applied_at: null,
 		...overrides

@@ -27,7 +27,7 @@ vi.mock('$lib/services/ontology/versioning.service', () => ({
 
 vi.mock('$lib/services/async-activity-logger', () => ({
 	logCreateAsync: vi.fn(),
-	getChangeSourceFromRequest: (...args: unknown[]) => getChangeSourceFromRequestMock(...args),
+	getChangeSourceFromRequest: getChangeSourceFromRequestMock,
 	getChatSessionIdFromRequest: vi.fn(() => null)
 }));
 

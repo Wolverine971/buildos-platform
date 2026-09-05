@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/webvisit/parser.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import {
 	extractPageMetadata,
@@ -92,7 +93,7 @@ describe('web visit parser', () => {
 			startDate: '2026-05-11T15:00:00+00:00'
 		});
 		expect(structuredData[0]).not.toHaveProperty('@context');
-		expect(structuredData[0].offers).toMatchObject({
+		expect(requireTestValue(structuredData[0]).offers).toMatchObject({
 			type: 'Offer',
 			availability: 'https://schema.org/InStock'
 		});

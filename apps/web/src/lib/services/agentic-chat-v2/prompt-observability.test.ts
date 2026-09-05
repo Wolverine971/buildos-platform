@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-observability.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
 import {
@@ -236,8 +237,8 @@ describe('prompt observability helpers', () => {
 			tools
 		});
 
-		expect(breakdown.sections.tools_text_block.chars).toBeGreaterThan(0);
-		expect(breakdown.sections.context_payload.chars).toBeGreaterThan(0);
+		expect(requireTestValue(breakdown.sections.tools_text_block).chars).toBeGreaterThan(0);
+		expect(requireTestValue(breakdown.sections.context_payload).chars).toBeGreaterThan(0);
 		expect(breakdown.tool_definitions.chars).toBeGreaterThan(0);
 		expect(breakdown.provider_payload_estimate.chars).toBeGreaterThan(
 			breakdown.model_messages.chars
@@ -279,14 +280,14 @@ describe('prompt observability helpers', () => {
 			tools
 		});
 
-		expect(breakdown.sections.capabilities_skills_tools.chars).toBeGreaterThan(0);
-		expect(breakdown.sections.operating_strategy.chars).toBeGreaterThan(0);
-		expect(breakdown.sections.safety_data_rules.chars).toBeGreaterThan(0);
-		expect(breakdown.sections.focus_purpose.chars).toBeGreaterThan(0);
-		expect(breakdown.sections.location_loaded_context.chars).toBeGreaterThan(0);
+		expect(requireTestValue(breakdown.sections.capabilities_skills_tools).chars).toBeGreaterThan(0);
+		expect(requireTestValue(breakdown.sections.operating_strategy).chars).toBeGreaterThan(0);
+		expect(requireTestValue(breakdown.sections.safety_data_rules).chars).toBeGreaterThan(0);
+		expect(requireTestValue(breakdown.sections.focus_purpose).chars).toBeGreaterThan(0);
+		expect(requireTestValue(breakdown.sections.location_loaded_context).chars).toBeGreaterThan(0);
 		// 2026-09-04: retrieval boundaries render inside location_loaded_context.
 		expect(breakdown.sections).not.toHaveProperty('context_inventory_retrieval');
-		expect(breakdown.sections.final_response_contract.chars).toBeGreaterThan(0);
+		expect(requireTestValue(breakdown.sections.final_response_contract).chars).toBeGreaterThan(0);
 		expect(breakdown.sections).not.toHaveProperty('skill_catalog');
 		expect(breakdown.sections).not.toHaveProperty('tools_text_block');
 		expect(breakdown.sections).not.toHaveProperty('execution_protocol');

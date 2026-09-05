@@ -229,7 +229,18 @@ export function searchDomains(options: DomainSearchOptions = {}): DomainSearchPa
 	};
 }
 
-export function loadDomain(domainId: string): DomainLoadPayload | Record<string, unknown> {
+export type DomainNotFoundPayload = {
+	type: 'not_found';
+	domain: string;
+	available_domains: Array<{
+		id: string;
+		name: string;
+		coverage_status: DomainDefinition['coverageStatus'];
+	}>;
+	message: string;
+};
+
+export function loadDomain(domainId: string): DomainLoadPayload | DomainNotFoundPayload {
 	const normalizedDomainId = domainId.trim().toLowerCase();
 	const domain = getDomainById(normalizedDomainId);
 	if (!domain) {

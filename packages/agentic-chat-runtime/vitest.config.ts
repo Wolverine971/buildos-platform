@@ -1,11 +1,15 @@
 // packages/agentic-chat-runtime/vitest.config.ts
 import { defineConfig } from 'vitest/config';
+import { localWorkerLimits } from '../../vitest.workers';
 import { fileURLToPath } from 'node:url';
 
 const sharedAgentOpsSrc = (sub: string) =>
 	fileURLToPath(new URL(`../shared-agent-ops/src/${sub}`, import.meta.url));
 
 export default defineConfig({
+	test: {
+		...localWorkerLimits()
+	},
 	resolve: {
 		alias: [
 			{

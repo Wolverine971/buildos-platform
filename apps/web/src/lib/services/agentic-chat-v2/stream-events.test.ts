@@ -103,7 +103,7 @@ describe('stream-events', () => {
 			getTurnRunId: () => null
 		});
 
-		await eventSink.emit({ type: 'session', session_id: 'session-1' });
+		await eventSink.emit({ type: 'session', sessionId: 'session-1' });
 
 		expect(fake.messages[0]).toEqual(
 			expect.objectContaining({

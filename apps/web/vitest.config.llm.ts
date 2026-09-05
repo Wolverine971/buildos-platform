@@ -1,5 +1,6 @@
 // apps/web/vitest.config.llm.ts
 import { defineConfig } from 'vitest/config';
+import { localWorkerLimits } from '../../vitest.workers';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 /**
@@ -11,6 +12,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 export default defineConfig({
 	plugins: [sveltekit()],
 	test: {
+		...localWorkerLimits(),
 		globals: true,
 		environment: 'node',
 		setupFiles: ['./vitest.setup.ts'],

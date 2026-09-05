@@ -16,8 +16,8 @@ function message(overrides: Partial<ChatMessage>): ChatMessage {
 
 describe('ChatCompressionService.smartCompress', () => {
 	it('keeps assistant tool calls and tool results in chronological order', async () => {
-		const supabase = { from: vi.fn() } as never;
-		const service = new ChatCompressionService(supabase);
+		const supabase = { from: vi.fn() };
+		const service = new ChatCompressionService(supabase as never);
 		const messages = [
 			message({ role: 'user', content: 'Find the project' }),
 			message({
@@ -70,7 +70,7 @@ describe('ChatCompressionService.smartCompress', () => {
 					: { update: sessionUpdate }
 			)
 		} as never;
-		const service = new ChatCompressionService(supabase);
+		const service = new ChatCompressionService(supabase as never);
 		const summarize = vi
 			.spyOn(service as never, 'compressMessageGroup')
 			.mockResolvedValue('The user supplied a long project brief.');

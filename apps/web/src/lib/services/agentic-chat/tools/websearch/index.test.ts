@@ -124,7 +124,7 @@ describe('performWebSearch', () => {
 		);
 		const durableStore: NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry> = {
 			probe: vi.fn(async () => true),
-			claim: vi.fn(async () => ({ state: 'hit', value: entry })),
+			claim: vi.fn(async () => ({ state: 'hit' as const, value: entry })),
 			complete: vi.fn(),
 			release: vi.fn(),
 			invalidate: vi.fn()

@@ -971,7 +971,7 @@ describe('EmailRelevanceMetadataDriver three-connection lifecycle', () => {
 				connection_scope_id: SCOPE_IDS[0]
 			})
 		).rejects.toEqual(
-			expect.objectContaining<EmailRelevanceMetadataDriverError>({
+			expect.objectContaining<Partial<EmailRelevanceMetadataDriverError>>({
 				code: 'scope_unavailable'
 			})
 		);

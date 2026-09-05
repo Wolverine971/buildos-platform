@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-eval-runner.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import {
 	buildPromptEvalTarget,
@@ -227,7 +228,7 @@ describe('prompt eval runner', () => {
 		const insertedAssertions = supabase.getInserted('chat_prompt_eval_assertions');
 		expect(insertedRuns).toHaveLength(1);
 		expect(insertedAssertions.length).toBeGreaterThan(0);
-		expect(insertedAssertions.every((row) => row.eval_run_id === insertedRuns[0].id)).toBe(
+		expect(insertedAssertions.every((row) => row.eval_run_id === requireTestValue(insertedRuns[0]).id)).toBe(
 			true
 		);
 		expect(

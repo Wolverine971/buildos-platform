@@ -181,7 +181,7 @@ describe('validateProjectSpec', () => {
 
 		expect(parsed.project.name).toBe('Trimmed Project');
 		expect(parsed.entities[0]?.kind).toBe('task');
-		expect(parsed.entities[0]?.title).toBe('Trimmed Task');
+		expect(parsed.entities[0]).toMatchObject({ kind: 'task', title: 'Trimmed Task' });
 	});
 
 	it('accepts and normalizes capitalized risk impact values', () => {
@@ -204,7 +204,7 @@ describe('validateProjectSpec', () => {
 		const { valid, errors } = validateProjectSpec(spec);
 		expect(valid).toBe(true);
 		expect(errors).toHaveLength(0);
-		expect(ProjectSpecSchema.parse(spec).entities[0]?.impact).toBe('medium');
+		expect(ProjectSpecSchema.parse(spec).entities[0]).toMatchObject({ kind: 'risk', impact: 'medium' });
 	});
 
 	it('extracts a valid severity from a risk impact containing model-generated prose', () => {
@@ -227,6 +227,6 @@ describe('validateProjectSpec', () => {
 		const { valid, errors } = validateProjectSpec(spec);
 		expect(valid).toBe(true);
 		expect(errors).toHaveLength(0);
-		expect(ProjectSpecSchema.parse(spec).entities[0]?.impact).toBe('high');
+		expect(ProjectSpecSchema.parse(spec).entities[0]).toMatchObject({ kind: 'risk', impact: 'high' });
 	});
 });

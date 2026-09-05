@@ -13,7 +13,7 @@ function createSkill(
 	overrides: Partial<SkillDefinition> & Pick<SkillDefinition, 'id'>
 ): SkillDefinition {
 	return {
-		id: overrides.id,
+
 		name: overrides.name ?? overrides.id,
 		summary: overrides.summary ?? `Summary for ${overrides.id}`,
 		legacyPaths: overrides.legacyPaths ?? [],

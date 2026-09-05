@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/clarified-decision.service.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -268,7 +269,7 @@ describe('decideProjectSuggestionWithClarification', () => {
 		});
 
 		expect(outcome).toMatchObject({ ok: true, superseded: true });
-		expect(updates[0].payload).toMatchObject({
+		expect(requireTestValue(updates[0]).payload).toMatchObject({
 			status: 'superseded',
 			freshness_state: 'changed',
 			user_feedback: expect.objectContaining({

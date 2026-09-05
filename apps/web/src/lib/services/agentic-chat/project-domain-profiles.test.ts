@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/project-domain-profiles.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import {
 	AGENT_WORKSPACE_PROP,
@@ -75,14 +76,14 @@ describe('project domain profiles', () => {
 				project: {
 					name: 'The Glass Harbor',
 					type_key: 'project.creative.novel',
-					props: { facets: { stage: 'discovery' }, owner_note: 'private draft' }
+					props: { facets: { stage: 'discovery' }, owner_note: 'private draft' } as Record<string, unknown>
 				},
 				context_document: {
 					title: 'START HERE',
 					content: 'A living book workspace.',
 					props: { source: 'user' }
 				},
-				entities: [],
+				entities: [] as Array<{ title: string; content?: string }>,
 				relationships: []
 			},
 			'Keep this book organized as an ongoing workspace whenever I add story details.'
@@ -118,7 +119,7 @@ describe('project domain profiles', () => {
 						}
 					}
 				},
-				entities: [],
+				entities: [] as Array<{ title: string; content?: string }>,
 				relationships: []
 			},
 			'Create a quarterly planning project.'
@@ -183,7 +184,7 @@ describe('project domain profiles', () => {
 					start_at: '2026-07-29T00:00:00Z',
 					end_at: '2026-10-29T00:00:00Z'
 				},
-				entities: [],
+				entities: [] as Array<{ title: string; content?: string }>,
 				relationships: []
 			},
 			'Create an ongoing workspace for my novel; it has three narrative parts.'
@@ -235,12 +236,12 @@ describe('project domain profiles', () => {
 
 		expect(result.entities.map((entity) => entity.kind)).toEqual(['document', 'document']);
 		expect(result.relationships).toHaveLength(1);
-		expect(result.entities[0].body_markdown).toContain(characterSentence);
-		expect(result.entities[0].body_markdown).toContain('## Author canon');
-		expect(result.entities[1].content).toContain(structureSentence);
-		expect(result.entities[1].content).toContain(characterSentence);
-		expect(result.entities[1].content).toContain('Archivist Senn');
-		expect(result.entities[1].content).toContain('## Author canon');
+		expect(requireTestValue(result.entities[0]).body_markdown).toContain(characterSentence);
+		expect(requireTestValue(result.entities[0]).body_markdown).toContain('## Author canon');
+		expect(requireTestValue(result.entities[1]).content).toContain(structureSentence);
+		expect(requireTestValue(result.entities[1]).content).toContain(characterSentence);
+		expect(requireTestValue(result.entities[1]).content).toContain('Archivist Senn');
+		expect(requireTestValue(result.entities[1]).content).toContain('## Author canon');
 		expect(validateFictionCharacterSourceCoverage(result, characterSentence)).toEqual([]);
 		expect(validateFictionStructureSourceCoverage(result, structureSentence)).toEqual([]);
 	});
@@ -271,7 +272,7 @@ describe('project domain profiles', () => {
 			`Create an ongoing novel workspace. ${pressure} ${structure}`
 		);
 
-		expect(result.entities[1].content).toContain(pressure);
+		expect(requireTestValue(result.entities[1]).content).toContain(pressure);
 		expect(validateFictionStructureSourceCoverage(result, `${pressure} ${structure}`)).toEqual(
 			[]
 		);
@@ -283,7 +284,7 @@ describe('project domain profiles', () => {
 		const result = applyProjectCreationProfileDefaults(
 			{
 				project: { name: 'The Glass Harbor', type_key: 'project.creative.novel' },
-				entities: [],
+				entities: [] as Array<{ title: string; content?: string }>,
 				relationships: []
 			},
 			userMessage
@@ -295,11 +296,11 @@ describe('project domain profiles', () => {
 			'Ilyan Rook',
 			'Story Structure'
 		]);
-		expect(result.entities[2].content).toContain(
+		expect(requireTestValue(result.entities[2]).content).toContain(
 			'official maps decide what the city remembers'
 		);
-		expect(result.entities[2].content).toContain('Archivist Senn');
-		expect(result.entities[2].content).toContain('Part III');
+		expect(requireTestValue(result.entities[2]).content).toContain('Archivist Senn');
+		expect(requireTestValue(result.entities[2]).content).toContain('Part III');
 		expect(validateProjectCreationProfileGrounding(result, userMessage)).toEqual([]);
 	});
 

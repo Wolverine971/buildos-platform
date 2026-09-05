@@ -160,7 +160,7 @@ describe('GmailRelevancePilotService', () => {
 				project_ids: [PROJECT_ID]
 			})
 		).rejects.toEqual(
-			expect.objectContaining<GmailRelevancePilotServiceError>({
+			expect.objectContaining<Partial<GmailRelevancePilotServiceError>>({
 				code: 'connection_unavailable'
 			})
 		);

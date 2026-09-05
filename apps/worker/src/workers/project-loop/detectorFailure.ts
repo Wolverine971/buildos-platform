@@ -6,8 +6,13 @@ import {
 	isOpenRouterProviderError,
 	parseOpenRouterErrorMetadata
 } from '@buildos/smart-llm';
+import { ProjectReviewLanguageError } from './reviewLanguage';
 
-export type DetectorSkipReason = 'cost_cap' | 'provider_timeout' | 'provider_error';
+export type DetectorSkipReason =
+	| 'cost_cap'
+	| 'provider_timeout'
+	| 'provider_error'
+	| 'invalid_language';
 
 export type SkippedLens = {
 	label: string;
@@ -18,13 +23,14 @@ export type SkippedLens = {
 };
 
 /**
- * Detector isolation is intentionally narrow: only a provider timeout or an
- * upstream response that is plausibly transient may degrade a single lens.
+ * Detector isolation is intentionally narrow: a provider timeout, transient
+ * upstream response, or exhausted language retry may degrade a single lens.
  * Cancellation, malformed JSON, empty content, database failures, and local
  * invariants must still stop the run.
  */
 export function classifyDetectorFailure(error: unknown): DetectorSkipReason | null {
 	if (error instanceof LLMRequestCancelledError) return null;
+	if (error instanceof ProjectReviewLanguageError) return 'invalid_language';
 	if (error instanceof LLMRequestTimeoutError) return 'provider_timeout';
 	if (error instanceof SyntaxError || error instanceof OpenRouterEmptyContentError) return null;
 

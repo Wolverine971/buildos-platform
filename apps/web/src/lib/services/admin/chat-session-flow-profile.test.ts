@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/admin/chat-session-flow-profile.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import { buildSessionFlowProfile } from './chat-session-flow-profile';
 import type { ChatSessionAuditPayload, ConversationTurn } from './chat-session-audit-types';
@@ -147,7 +148,7 @@ describe('chat-session-flow-profile', () => {
 
 	it('distinguishes a recorded zero-cost LLM call from unmetered work', () => {
 		const zeroCostTurn = turn();
-		zeroCostTurn.llmCalls[0].payload.total_cost_usd = 0;
+		requireTestValue(zeroCostTurn.llmCalls[0]).payload.total_cost_usd = 0;
 		const profile = buildSessionFlowProfile({
 			detail: detail(0),
 			conversationTurns: [zeroCostTurn]
@@ -163,7 +164,7 @@ describe('chat-session-flow-profile', () => {
 
 	it('does not coerce a missing LLM cost into a recorded zero', () => {
 		const missingCostTurn = turn();
-		delete missingCostTurn.llmCalls[0].payload.total_cost_usd;
+		delete requireTestValue(missingCostTurn.llmCalls[0]).payload.total_cost_usd;
 		const profile = buildSessionFlowProfile({
 			detail: detail(0),
 			conversationTurns: [missingCostTurn]
@@ -182,9 +183,9 @@ describe('chat-session-flow-profile', () => {
 		{ estimatedUsage: true }
 	])('keeps estimated charges separate from provider-reported spend (%j)', (metadata) => {
 		const estimatedTurn = turn();
-		estimatedTurn.llmCalls[0].severity = 'error';
-		estimatedTurn.llmCalls[0].payload.metadata = metadata;
-		estimatedTurn.llmCalls[0].payload.openrouter_usage_cost_usd = null;
+		requireTestValue(estimatedTurn.llmCalls[0]).severity = 'error';
+		requireTestValue(estimatedTurn.llmCalls[0]).payload.metadata = metadata;
+		requireTestValue(estimatedTurn.llmCalls[0]).payload.openrouter_usage_cost_usd = null;
 		const profile = buildSessionFlowProfile({
 			detail: detail(0.015),
 			conversationTurns: [estimatedTurn]
@@ -204,8 +205,8 @@ describe('chat-session-flow-profile', () => {
 
 	it.each([0, '0'])('honors provider-reported zero %j over a stored estimate', (providerCost) => {
 		const reportedTurn = turn();
-		reportedTurn.llmCalls[0].payload.metadata = { costSource: 'catalog_estimate' };
-		reportedTurn.llmCalls[0].payload.openrouter_usage_cost_usd = providerCost;
+		requireTestValue(reportedTurn.llmCalls[0]).payload.metadata = { costSource: 'catalog_estimate' };
+		requireTestValue(reportedTurn.llmCalls[0]).payload.openrouter_usage_cost_usd = providerCost;
 		const profile = buildSessionFlowProfile({
 			detail: detail(0.015),
 			conversationTurns: [reportedTurn]
@@ -226,8 +227,8 @@ describe('chat-session-flow-profile', () => {
 		'recovers full usage evidence from a partial timeline payload (%j)',
 		(metadata) => {
 			const legacyTurn = turn();
-			legacyTurn.llmCalls[0].payload.metadata = metadata;
-			legacyTurn.llmCalls[0].payload.openrouter_usage_cost_usd = null;
+			requireTestValue(legacyTurn.llmCalls[0]).payload.metadata = metadata;
+			requireTestValue(legacyTurn.llmCalls[0]).payload.openrouter_usage_cost_usd = null;
 			const sessionDetail = detail(0.015);
 			sessionDetail.llm_calls = [
 				{
@@ -258,7 +259,7 @@ describe('chat-session-flow-profile', () => {
 		'does not present historical charges with no provider evidence as reported (%j)',
 		(metadata) => {
 			const legacyTurn = turn();
-			legacyTurn.llmCalls[0].payload.metadata = metadata;
+			requireTestValue(legacyTurn.llmCalls[0]).payload.metadata = metadata;
 			const profile = buildSessionFlowProfile({
 				detail: detail(0.015),
 				conversationTurns: [legacyTurn]
@@ -278,8 +279,8 @@ describe('chat-session-flow-profile', () => {
 		'does not interpret invalid provider cost %j as reported zero',
 		(providerCost) => {
 			const legacyTurn = turn();
-			legacyTurn.llmCalls[0].payload.metadata = {};
-			legacyTurn.llmCalls[0].payload.openrouter_usage_cost_usd = providerCost;
+			requireTestValue(legacyTurn.llmCalls[0]).payload.metadata = {};
+			requireTestValue(legacyTurn.llmCalls[0]).payload.openrouter_usage_cost_usd = providerCost;
 			const profile = buildSessionFlowProfile({
 				detail: detail(),
 				conversationTurns: [legacyTurn]
@@ -298,7 +299,7 @@ describe('chat-session-flow-profile', () => {
 		['repair', 'Repair']
 	])('labels the %s pass in plain language', (passRole, expectedLabel) => {
 		const labeledTurn = turn();
-		labeledTurn.llmCalls[0].payload.metadata = { passRole };
+		requireTestValue(labeledTurn.llmCalls[0]).payload.metadata = { passRole };
 		const profile = buildSessionFlowProfile({
 			detail: detail(),
 			conversationTurns: [labeledTurn]

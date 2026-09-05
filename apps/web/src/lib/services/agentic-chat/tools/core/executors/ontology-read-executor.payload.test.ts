@@ -92,7 +92,7 @@ describe('OntologyReadExecutor payload hygiene', () => {
 		// S3-T4 security reorder: the first select resolves the project for the
 		// access check WITHOUT touching the body; only after access passes does
 		// the second select fetch the full agent projection.
-		const selections = documentQuery.select.mock.calls.map(([selection]) => String(selection));
+		const selections = documentQuery.select.mock.calls.map(([selection]: [string]) => String(selection));
 		expect(selections).toHaveLength(2);
 		expect(selections[0]).toBe('id, project_id');
 		expect(selections[0]).not.toContain('content');
@@ -131,7 +131,7 @@ describe('OntologyReadExecutor payload hygiene', () => {
 		const result = await executor.getOntoGoalDetails({ goal_id: 'goal-1' });
 
 		expect(fetchFn).not.toHaveBeenCalled();
-		expect(goalQuery.select.mock.calls.map(([selection]) => String(selection))).toEqual([
+		expect(goalQuery.select.mock.calls.map(([selection]: [string]) => String(selection))).toEqual([
 			'id, project_id',
 			'*, project:onto_projects!inner(id, name, created_by)'
 		]);
@@ -289,7 +289,7 @@ describe('OntologyReadExecutor payload hygiene', () => {
 		});
 
 		for (const query of [listQuery, searchQuery]) {
-			const selections = query.select.mock.calls.map(([selection]) => String(selection));
+			const selections = query.select.mock.calls.map(([selection]: [string]) => String(selection));
 			expect(selections).toHaveLength(1);
 			expect(selections[0]).not.toBe('*');
 			expect(selections[0]).not.toContain('content');
@@ -300,7 +300,7 @@ describe('OntologyReadExecutor payload hygiene', () => {
 		// combined `.or(...)` filter (title/description/content) instead of a direct
 		// `.ilike('title', ...)` call. Assert the title match is present in that filter.
 		const orFilters = searchQuery.or.mock.calls.map(([filter]: [string]) => String(filter));
-		expect(orFilters.some((filter) => filter.includes('title.ilike."%Rod%"'))).toBe(true);
+		expect(orFilters.some((filter: string) => filter.includes('title.ilike."%Rod%"'))).toBe(true);
 		expect(JSON.stringify(listResult.documents)).not.toContain('Full content');
 		expect(JSON.stringify(searchResult.documents)).not.toContain('Full search content');
 		expect(JSON.stringify(listResult.documents)).not.toContain('search_vector');
@@ -402,7 +402,7 @@ describe('OntologyReadExecutor payload hygiene', () => {
 			expect.anything()
 		);
 		const projectSelections = queries.onto_projects.select.mock.calls
-			.map(([selection]) => String(selection))
+			.map(([selection]: [string]) => String(selection))
 			.join('\n');
 		expect(projectSelections).not.toContain('start_at');
 		expect(projectSelections).not.toContain('end_at');

@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/email-tool-registry.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import {
 	buildToolRegistry,
@@ -55,13 +56,13 @@ describe('email tools — registry availability', () => {
 		const registry = buildRegistry();
 		for (const op of EMAIL_READ_OPS) {
 			expect(registry.ops[op]).toBeDefined();
-			expect(registry.ops[op].kind).toBe('read');
-			expect(registry.ops[op].group).toBe('email');
-			expect(registry.ops[op].chat_discoverable).toBe(true);
+			expect(requireTestValue(registry.ops[op]).kind).toBe('read');
+			expect(requireTestValue(registry.ops[op]).group).toBe('email');
+			expect(requireTestValue(registry.ops[op]).chat_discoverable).toBe(true);
 		}
 		for (const name of EMAIL_READ_TOOLS) {
 			expect(registry.byToolName[name]).toBeDefined();
-			expect(registry.byToolName[name].kind).toBe('read');
+			expect(requireTestValue(registry.byToolName[name]).kind).toBe('read');
 		}
 		for (const op of EMAIL_CONNECTION_OPS) {
 			expect(registry.ops[op]).toMatchObject({ kind: 'write', group: 'email' });

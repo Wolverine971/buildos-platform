@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/admin-chat-user-analytics.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it } from 'vitest';
 import {
 	assertAdminChatUserAnalyticsRedacted,
@@ -193,7 +194,7 @@ describe('admin chat user analytics', () => {
 		expect(payloadText).not.toContain('SECRET TOOL ARG');
 		expect(payloadText).not.toContain('SECRET TOOL RESULT');
 		expect(payloadText).not.toContain('SECRET TRANSCRIPT SUMMARY');
-		expect(analytics.users[0].preview).toContain('Topics: landing page, launch video.');
+		expect(requireTestValue(analytics.users[0]).preview).toContain('Topics: landing page, launch video.');
 	});
 
 	it('marks missing classification and filters by entity impact', () => {
@@ -299,7 +300,7 @@ describe('admin chat user analytics', () => {
 			}
 		);
 
-		expect(detail?.sessions[0].classification_job).toEqual({
+		expect(requireTestValue(detail?.sessions[0]).classification_job).toEqual({
 			job_id: 'job-new',
 			queue_job_id: 'queue-new',
 			status: 'failed',
@@ -626,7 +627,7 @@ describe('admin chat user analytics', () => {
 				}
 			]
 		});
-		expect(redacted?.turns[0].error_summaries).toEqual(
+		expect(requireTestValue(redacted?.turns[0]).error_summaries).toEqual(
 			expect.arrayContaining([
 				{ source: 'validation', message: '1 validation failure' },
 				{ source: 'message', message: 'stream interrupted' },

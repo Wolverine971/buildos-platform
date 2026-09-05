@@ -17,6 +17,7 @@ const publicDocument: EnrichedDocTreeNode = {
 	created_at: '2026-07-18T12:00:00.000Z',
 	updated_at: '2026-07-18T12:00:00.000Z',
 	is_public: true,
+	public_status: 'live', depth: 0, path: [],
 	public_slug: 'public-plan',
 	public_url_path: '/p/public-plan'
 };

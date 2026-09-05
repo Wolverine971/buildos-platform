@@ -26,7 +26,7 @@ describe('ExpensiveOperationLimiter', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date('2026-04-08T12:00:00.000Z'));
-		limiter = new ExpensiveOperationLimiter(testPolicies);
+		limiter = new ExpensiveOperationLimiter({ ...testPolicies, transcribe: { ...testPolicies.agent_fastchat, key: 'transcribe' } });
 	});
 
 	afterEach(() => {

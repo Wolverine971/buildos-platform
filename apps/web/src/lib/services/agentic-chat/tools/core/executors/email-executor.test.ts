@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/email-executor.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	EmailExecutor,
@@ -482,7 +483,7 @@ describe('EmailExecutor', () => {
 			})) as any;
 			snippets.push(result.messages[0].snippet);
 		}
-		expect(snippets[0].length).toBeGreaterThan(snippets[1].length);
+		expect(requireTestValue(snippets[0]).length).toBeGreaterThan(requireTestValue(snippets[1]).length);
 		expect(snippets[2]).toBe('');
 		expect(turnState.charsUsed).toBe(24_000);
 

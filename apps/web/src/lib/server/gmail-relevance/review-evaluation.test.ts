@@ -23,7 +23,9 @@ const PROFILE_ID = '80000000-0000-4000-8000-000000000001';
 const CANDIDATE_A_ID = '90000000-0000-4000-8000-000000000001';
 const NOW = Date.parse('2026-07-24T12:00:00.000Z');
 
-function sample(overrides: Record<string, unknown> = {}) {
+type ReviewSample = Awaited<ReturnType<EmailRelevanceReviewRepository['loadSamples']>>[number];
+
+function sample(overrides: Partial<ReviewSample> = {}): ReviewSample {
 	return {
 		id: SAMPLE_ID,
 		connection_scope_id: SCOPE_ID,
@@ -157,7 +159,7 @@ describe('EmailRelevanceReviewService', () => {
 		});
 		await expect(
 			review.dashboard(USER_ID)
-		).rejects.toMatchObject<EmailRelevanceReviewServiceError>({
+		).rejects.toMatchObject({
 			code: 'review_disabled'
 		});
 		expect(input.repository.listRuns).not.toHaveBeenCalled();

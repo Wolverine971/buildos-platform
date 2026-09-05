@@ -199,6 +199,7 @@ describe('tool execution telemetry correlation', () => {
 	it('rejects missing or malformed IDs instead of synthesizing an ordinal identity', () => {
 		expect(() =>
 			resolveStableToolCallId(toolCall('', 'create_onto_task'), {
+				tool_call_id: '',
 				success: true,
 				result: null
 			})

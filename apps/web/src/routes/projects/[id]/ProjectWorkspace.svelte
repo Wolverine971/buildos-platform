@@ -13,6 +13,7 @@
 -->
 <script lang="ts">
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
+	import { preloadEntityModal } from '$lib/actions/preload-entity-modal';
 	import {
 		dataMutationEvents,
 		mutationAffectsProject,
@@ -42,6 +43,7 @@
 		type EntityOpenAction
 	} from '$lib/components/project/project-page-interactions';
 	import { preloadProjectEntityModal } from '$lib/components/project/project-entity-modal-loader';
+	import { prepareEntityModalData } from '$lib/components/project/entity-modal-data';
 	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
 	import {
 		archiveProjectDocument,
@@ -666,6 +668,7 @@
 			return;
 		}
 
+		prepareEntityModalData(resolution.action.kind, resolution.action.entityId);
 		void preloadProjectEntityModal(resolution.action.kind).catch((error) => {
 			console.warn('[Project workspace] Failed to preload entity editor', error);
 		});
@@ -770,9 +773,11 @@
 		openEntity(kind, entityId);
 	}
 
-	function handleWorkspaceEntityMutated() {
+	function handleWorkspaceEntityMutated(operation?: 'update') {
+		const target = editingEntity;
 		closeEntityEditor();
-		void refreshProject();
+		if (target && operation) refreshEntity(target.kind, target.entityId, operation);
+		else void refreshProject();
 	}
 
 	function createDocument(parentId: string | null = null) {
@@ -1354,6 +1359,7 @@
 														type="button"
 														class="entity-row"
 														onclick={() => openEntity('goal', goal.id)}
+														use:preloadEntityModal={'goal'}
 													>
 														<div class="min-w-0 flex-1">
 															<p

@@ -471,11 +471,11 @@ describe('Agentic Chat worker turn preparation', () => {
 			dependencies: dependencies()
 		});
 
-		expect(result.args.p_artifact_prepared.toolSurface.toolNames).toEqual([
+		expect(result.args.p_artifact_prepared).toMatchObject({ toolSurface: { toolNames: [
 			'list_calendar_events',
 			'get_calendar_event_details',
 			'get_project_calendar'
-		]);
+		] } });
 	});
 
 	// The four calendar WRITES moved to the worker on 2026-09-04. "Put a meeting
@@ -513,13 +513,13 @@ describe('Agentic Chat worker turn preparation', () => {
 			dependencies: dependencies()
 		});
 
-		expect(result.args.p_artifact_prepared.toolSurface.toolNames).toEqual([
+		expect(result.args.p_artifact_prepared).toMatchObject({ toolSurface: { toolNames: [
 			'list_calendar_events',
 			'create_calendar_event',
 			'update_calendar_event',
 			'delete_calendar_event',
 			'set_project_calendar'
-		]);
+		] } });
 	});
 
 	// The five email tools moved to the worker on 2026-09-04. Before that a
@@ -557,13 +557,13 @@ describe('Agentic Chat worker turn preparation', () => {
 			dependencies: dependencies()
 		});
 
-		expect(result.args.p_artifact_prepared.toolSurface.toolNames).toEqual([
+		expect(result.args.p_artifact_prepared).toMatchObject({ toolSurface: { toolNames: [
 			'get_external_account_status',
 			'list_email_accounts',
 			'search_email_messages',
 			'get_email_message',
 			'request_email_account_connection'
-		]);
+		] } });
 	});
 
 	it('admits a normal launch surface after omitting preloaded discovery tools', async () => {
@@ -1179,7 +1179,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			dependencies: dependencies()
 		});
 
-		const ledger = result.args.p_artifact_history.find(
+		const ledger = (result.args.p_artifact_history as TurnInputArtifactV1['history']).find(
 			(message: { role: string; content: string }) =>
 				message.role === 'system' &&
 				message.content.startsWith('Previously loaded skills in this session:')
@@ -2130,7 +2130,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				message: 'Move my 2pm to Thursday and delete the duplicate hold.'
 			});
 
-			expect(result.args.p_artifact_prepared.surfaceProfile).toBe('global');
+			expect(result.args.p_artifact_prepared).toMatchObject({ surfaceProfile: 'global' });
 			const names = admittedToolNames(result as never);
 			expect(names).toEqual(
 				expect.arrayContaining([
@@ -2156,7 +2156,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				message: 'Start a project for the Cedar House renovation.'
 			});
 
-			expect(result.args.p_artifact_prepared.surfaceProfile).toBe('project_create');
+			expect(result.args.p_artifact_prepared).toMatchObject({ surfaceProfile: 'project_create' });
 			expect(admittedToolNames(result as never)).toEqual([
 				'declare_turn_contract',
 				'request_turn_clarification',

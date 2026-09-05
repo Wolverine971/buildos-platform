@@ -1,5 +1,6 @@
 // apps/web/src/lib/components/ontology/linked-entities/LinkedEntities.test.ts
 // @vitest-environment jsdom
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -194,10 +195,10 @@ describe('LinkedEntities request ownership', () => {
 			onLoaded
 		});
 
-		expect(obsoleteRequest.signal?.aborted).toBe(true);
+		expect(requireTestValue(obsoleteRequest).signal?.aborted).toBe(true);
 		expect(await screen.findByRole('button', { name: /Tasks \(0\)/ })).toBeInTheDocument();
 
-		obsoleteRequest.response.resolve(
+		requireTestValue(obsoleteRequest).response.resolve(
 			linkedResponse(withTask(linkedTask('linked-a', 'Obsolete link')))
 		);
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -213,7 +214,7 @@ describe('LinkedEntities request ownership', () => {
 		await waitFor(() => expect(requests).toHaveLength(1));
 		const request = requests[0];
 		view.unmount();
-		expect(request.signal?.aborted).toBe(true);
+		expect(requireTestValue(request).signal?.aborted).toBe(true);
 	});
 
 	it('does not open or populate a picker from a stale available-entity request', async () => {
@@ -285,7 +286,7 @@ describe('LinkedEntities request ownership', () => {
 		await fireEvent.click(await screen.findByRole('button', { name: /Tasks \(1\)/ }));
 		expect(await screen.findByText('Linked to B')).toBeInTheDocument();
 
-		requests[0].response.resolve(jsonResponse({ error: 'Late unlink failure' }, 500));
+		requireTestValue(requests[0]).response.resolve(jsonResponse({ error: 'Late unlink failure' }, 500));
 		await tick();
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
@@ -310,7 +311,7 @@ describe('LinkedEntities request ownership', () => {
 
 		await fireEvent.click(await screen.findByRole('button', { name: 'Add document' }));
 		await waitFor(() => expect(requests).toHaveLength(1));
-		requests[0].response.resolve(
+		requireTestValue(requests[0]).response.resolve(
 			availableResponse([{ id: 'document-a', title: 'Document A', isLinked: false }])
 		);
 		await fireEvent.click(await screen.findByRole('button', { name: 'Document A' }));

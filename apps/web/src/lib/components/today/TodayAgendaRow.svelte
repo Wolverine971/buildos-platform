@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/today/TodayAgendaRow.svelte -->
 <script lang="ts">
 	import { Calendar, Check, FolderKanban, MessageCircle, SquarePen } from '$lib/icons/lucide';
+	import { preloadEntityModal } from '$lib/actions/preload-entity-modal';
 
 	interface Props {
 		kind: 'event' | 'task';
@@ -80,6 +81,7 @@
 			<div class="min-w-0 flex-1">
 				{#if onOpenTask}
 					<button
+						use:preloadEntityModal={'task'}
 						onclick={onOpenTask}
 						class="flex min-h-6 w-full min-w-0 items-center gap-1.5 rounded-md text-left text-sm font-medium leading-5 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring {done
 							? 'text-muted-foreground'
@@ -131,6 +133,8 @@
 						{/if}
 						<a
 							href={projectHref}
+							data-sveltekit-preload-data="hover"
+							data-sveltekit-preload-code="viewport"
 							class="{timeLabel
 								? 'max-[360px]:basis-full'
 								: ''} inline-flex min-h-6 min-w-0 items-center gap-1 rounded-md underline decoration-border-strong underline-offset-2 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -155,6 +159,8 @@
 				{#if !onOpenTask && projectHref && !projectName}
 					<a
 						href={projectHref}
+						data-sveltekit-preload-data="hover"
+						data-sveltekit-preload-code="viewport"
 						class="flex h-11 w-11 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						title="Open project"
 						aria-label={`Open project for "${title}"`}
