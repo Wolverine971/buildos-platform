@@ -176,7 +176,9 @@ describe('turn input artifact store', () => {
 			created_at: CREATED_AT,
 			retain_until: RETAIN_UNTIL
 		});
-		expect(stored.artifact.contentHash).toBe(requireTestValue(mock.insertedRows[0]).content_hash);
+		expect(stored.artifact.contentHash).toBe(
+			requireTestValue(mock.insertedRows[0]).content_hash
+		);
 		expect(stored.sourcePreparedPromptId).toBe(IDS.prepared);
 	});
 

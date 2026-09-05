@@ -157,9 +157,7 @@ describe('EmailRelevanceReviewService', () => {
 			environment: {},
 			now: () => NOW
 		});
-		await expect(
-			review.dashboard(USER_ID)
-		).rejects.toMatchObject({
+		await expect(review.dashboard(USER_ID)).rejects.toMatchObject({
 			code: 'review_disabled'
 		});
 		expect(input.repository.listRuns).not.toHaveBeenCalled();

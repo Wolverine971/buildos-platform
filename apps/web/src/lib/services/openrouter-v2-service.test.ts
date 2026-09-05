@@ -1676,7 +1676,9 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			userId: 'user_1',
 			models: [DEEPSEEK_V4_FLASH_MODEL],
 			providerRouting: { ignore: ['DigitalOcean'] },
-			onRouteObserved: (observation) => { routeObservations.push(observation); },
+			onRouteObserved: (observation) => {
+				routeObservations.push(observation);
+			},
 			maxTokens: 6000
 		})) {
 			events.push(event);

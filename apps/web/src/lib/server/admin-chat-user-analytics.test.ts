@@ -194,7 +194,9 @@ describe('admin chat user analytics', () => {
 		expect(payloadText).not.toContain('SECRET TOOL ARG');
 		expect(payloadText).not.toContain('SECRET TOOL RESULT');
 		expect(payloadText).not.toContain('SECRET TRANSCRIPT SUMMARY');
-		expect(requireTestValue(analytics.users[0]).preview).toContain('Topics: landing page, launch video.');
+		expect(requireTestValue(analytics.users[0]).preview).toContain(
+			'Topics: landing page, launch video.'
+		);
 	});
 
 	it('marks missing classification and filters by entity impact', () => {

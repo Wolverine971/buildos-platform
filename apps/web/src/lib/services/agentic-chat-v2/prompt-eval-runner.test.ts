@@ -228,9 +228,11 @@ describe('prompt eval runner', () => {
 		const insertedAssertions = supabase.getInserted('chat_prompt_eval_assertions');
 		expect(insertedRuns).toHaveLength(1);
 		expect(insertedAssertions.length).toBeGreaterThan(0);
-		expect(insertedAssertions.every((row) => row.eval_run_id === requireTestValue(insertedRuns[0]).id)).toBe(
-			true
-		);
+		expect(
+			insertedAssertions.every(
+				(row) => row.eval_run_id === requireTestValue(insertedRuns[0]).id
+			)
+		).toBe(true);
 		expect(
 			insertedAssertions.every(
 				(row) =>

@@ -205,7 +205,9 @@ describe('chat-session-flow-profile', () => {
 
 	it.each([0, '0'])('honors provider-reported zero %j over a stored estimate', (providerCost) => {
 		const reportedTurn = turn();
-		requireTestValue(reportedTurn.llmCalls[0]).payload.metadata = { costSource: 'catalog_estimate' };
+		requireTestValue(reportedTurn.llmCalls[0]).payload.metadata = {
+			costSource: 'catalog_estimate'
+		};
 		requireTestValue(reportedTurn.llmCalls[0]).payload.openrouter_usage_cost_usd = providerCost;
 		const profile = buildSessionFlowProfile({
 			detail: detail(0.015),
@@ -280,7 +282,8 @@ describe('chat-session-flow-profile', () => {
 		(providerCost) => {
 			const legacyTurn = turn();
 			requireTestValue(legacyTurn.llmCalls[0]).payload.metadata = {};
-			requireTestValue(legacyTurn.llmCalls[0]).payload.openrouter_usage_cost_usd = providerCost;
+			requireTestValue(legacyTurn.llmCalls[0]).payload.openrouter_usage_cost_usd =
+				providerCost;
 			const profile = buildSessionFlowProfile({
 				detail: detail(),
 				conversationTurns: [legacyTurn]

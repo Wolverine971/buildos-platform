@@ -1,3 +1,5 @@
+// apps/worker/tests/chatWorkerService.test.ts
+import { Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -163,17 +165,17 @@ function bootstrap(): ChatWorkerBootstrapPort & {
 }
 
 function fakeServer() {
-	const server = {
-		address: vi.fn(() => ({ address: '127.0.0.1', family: 'IPv4', port: 4312 })),
-		closeIdleConnections: vi.fn(),
-		close: vi.fn((callback?: () => void) => {
-			callback?.();
-			return server;
-		}),
-		once: vi.fn(),
-		off: vi.fn(),
-		listen: vi.fn()
-	};
+	const server = new Server();
+	vi.spyOn(server, 'address').mockReturnValue({
+		address: '127.0.0.1',
+		family: 'IPv4',
+		port: 4312
+	});
+	vi.spyOn(server, 'closeIdleConnections').mockImplementation(() => undefined);
+	vi.spyOn(server, 'close').mockImplementation((callback) => {
+		callback?.();
+		return server;
+	});
 	return server;
 }
 

@@ -507,7 +507,9 @@ class QueryBuilderMock implements PromiseLike<any> {
 	}
 }
 
-function createSequenceRow(userId: string): Database['public']['Tables']['welcome_email_sequences']['Row'] {
+function createSequenceRow(
+	userId: string
+): Database['public']['Tables']['welcome_email_sequences']['Row'] {
 	return {
 		user_id: userId,
 		sequence_version: '2026-03-16',
@@ -634,14 +636,18 @@ function advanceEnrollment(state: MockState, enrollment: Record<string, any>) {
 		current_step_number: enrollment.next_step_number,
 		next_step_number: hasNext ? nextStepNumberValue : null,
 		next_send_at: hasNext
-			? addDaysIso(enrollment.created_at, requireTestValue(TEST_STEP_OFFSETS[`email_${nextStepNumberValue}`]))
+			? addDaysIso(
+					enrollment.created_at,
+					requireTestValue(TEST_STEP_OFFSETS[`email_${nextStepNumberValue}`])
+				)
 			: null,
 		processing_started_at: null,
 		failure_count: 0,
 		exit_reason: hasNext ? null : 'completed',
 		updated_at: new Date().toISOString()
 	};
-	state.emailSequenceEnrollments![enrollmentKey(enrollment.sequence_id, enrollment.user_id)] = updated;
+	state.emailSequenceEnrollments![enrollmentKey(enrollment.sequence_id, enrollment.user_id)] =
+		updated;
 	return updated;
 }
 

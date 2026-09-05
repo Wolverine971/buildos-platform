@@ -1,4 +1,5 @@
 // apps/worker/tests/agenticChatResearchCapture.test.ts
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import { AGENTIC_CHAT_INPUT_ARTIFACT_VERSION } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
 import { SupabaseAgenticChatResearchCaptureAdapter } from '../src/workers/agentic-chat/researchCapture';
@@ -12,7 +13,7 @@ const PROJECT_ID = '70000000-0000-4000-8000-000000000007';
 const DOCUMENT_ID = '80000000-0000-4000-8000-000000000008';
 const EXECUTION_GENERATION = 2;
 
-const executionInput = {
+const executionInput: AgenticChatWorkerExecutionInputV1 = {
 	claim: {
 		outcome: 'claimed',
 		executionMayStart: true,
@@ -79,7 +80,7 @@ const executionInput = {
 		preparedPromptMissReason: null,
 		preparedSurfaceProfile: null
 	}
-} as const;
+};
 
 function evidenceReceipt(outcome = 'eligible') {
 	return {

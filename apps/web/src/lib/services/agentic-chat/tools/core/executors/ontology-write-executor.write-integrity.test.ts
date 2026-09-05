@@ -219,9 +219,11 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		const longExisting = 'E'.repeat(8000);
 
 		it('scales the merge token cap above the old 2000 default for long documents', async () => {
-			const generateTextDetailed = vi.fn(async (_options: { maxTokens?: number; timeoutMs?: number }) => ({
-				text: `MERGED ${'M'.repeat(8500)}`
-			}));
+			const generateTextDetailed = vi.fn(
+				async (_options: { maxTokens?: number; timeoutMs?: number }) => ({
+					text: `MERGED ${'M'.repeat(8500)}`
+				})
+			);
 			context.llmService = { generateTextDetailed } as any;
 			const executor = new OntologyWriteExecutor(context);
 
@@ -250,7 +252,11 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		});
 
 		it('falls back to a safe append when the merge comes back materially shorter', async () => {
-			const generateTextDetailed = vi.fn(async (_options: { maxTokens?: number; timeoutMs?: number }) => ({ text: 'short merged output' }));
+			const generateTextDetailed = vi.fn(
+				async (_options: { maxTokens?: number; timeoutMs?: number }) => ({
+					text: 'short merged output'
+				})
+			);
 			context.llmService = { generateTextDetailed } as any;
 			const executor = new OntologyWriteExecutor(context);
 
@@ -276,7 +282,9 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		it('falls back to a safe append when the merge returns the original body unchanged', async () => {
 			const existing = '# Start Here\n\nNext step: submit the application.';
 			const incoming = 'Now waiting to hear back on next steps.';
-			const generateTextDetailed = vi.fn(async (_options: { maxTokens?: number; timeoutMs?: number }) => ({ text: existing }));
+			const generateTextDetailed = vi.fn(
+				async (_options: { maxTokens?: number; timeoutMs?: number }) => ({ text: existing })
+			);
 			context.llmService = { generateTextDetailed } as any;
 			const executor = new OntologyWriteExecutor(context);
 
@@ -299,7 +307,9 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		it('does not duplicate content that was already durably present', async () => {
 			const incoming = 'Now waiting to hear back on next steps.';
 			const existing = `# Start Here\n\n${incoming}`;
-			const generateTextDetailed = vi.fn(async (_options: { maxTokens?: number; timeoutMs?: number }) => ({ text: existing }));
+			const generateTextDetailed = vi.fn(
+				async (_options: { maxTokens?: number; timeoutMs?: number }) => ({ text: existing })
+			);
 			context.llmService = { generateTextDetailed } as any;
 			const executor = new OntologyWriteExecutor(context);
 

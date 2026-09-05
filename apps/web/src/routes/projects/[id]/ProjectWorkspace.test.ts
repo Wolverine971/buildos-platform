@@ -43,6 +43,30 @@ function apiResponse(data: Record<string, unknown>) {
 	});
 }
 
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((resolvePromise) => {
+		resolve = resolvePromise;
+	});
+	return { promise, resolve };
+}
+
+function skeletonData(deferredFullData: Promise<unknown>) {
+	return projectData({
+		skeleton: true,
+		counts: {
+			task_count: 0,
+			document_count: 0,
+			goal_count: 0,
+			plan_count: 0,
+			milestone_count: 0,
+			risk_count: 0,
+			image_count: 0
+		},
+		deferredFullData
+	});
+}
+
 function contextDocument() {
 	const content = [
 		'# START HERE - Project',
@@ -171,6 +195,166 @@ function plans(count: number) {
 }
 
 describe('ProjectWorkspace edge states', () => {
+	it('does not present loading data as empty and hydrates without a duplicate fetch', async () => {
+		const load = deferred<unknown>();
+		render(ProjectWorkspace, { props: { data: skeletonData(load.promise) as any } });
+		expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-busy', 'true');
+		expect(screen.getByText('Loading project overview')).toBeInTheDocument();
+		expect(screen.queryByText('No direction set yet')).not.toBeInTheDocument();
+		expect(screen.queryByText('No milestones yet')).not.toBeInTheDocument();
+		expect(screen.queryByText('No open risks')).not.toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'Tasks' })).toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'Docs' })).toBeInTheDocument();
+		load.resolve({
+			ok: true,
+			data: projectData({ goals: goals(1), documents: [projectDocument()] })
+		});
+		expect(await screen.findByText('Goal 1')).toBeInTheDocument();
+		expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-busy', 'false');
+		expect(screen.getByRole('tab', { name: 'Tasks 0' })).toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'Docs 1' })).toBeInTheDocument();
+		expect(
+			vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/full?'))
+		).toHaveLength(0);
+	});
+
+	it.each(['overview', 'work', 'docs', 'activity'])(
+		'keeps a failed %s load distinct from an empty workspace',
+		async (view) => {
+			window.history.replaceState({}, '', `/workspace?view=${view}`);
+			render(ProjectWorkspace, {
+				props: {
+					data: skeletonData(
+						Promise.resolve({ ok: false, error: 'Temporary outage' })
+					) as any
+				}
+			});
+			expect(await screen.findByRole('alert')).toHaveTextContent('Temporary outage');
+			expect(screen.getByRole('tab', { name: 'Tasks' })).toBeInTheDocument();
+			expect(screen.getByRole('tab', { name: 'Docs' })).toBeInTheDocument();
+			expect(screen.queryByText('No direction set yet')).not.toBeInTheDocument();
+			expect(screen.queryByText('No open risks')).not.toBeInTheDocument();
+			// None of the data-dependent panels should mount from failed hydration.
+			expect(
+				screen.getByRole('tabpanel').querySelector('section, button, [role="region"]')
+			).toBeNull();
+		}
+	);
+
+	it('retries the endpoint once, then shows the fresh data', async () => {
+		render(ProjectWorkspace, {
+			props: {
+				data: skeletonData(Promise.resolve({ ok: false, error: 'Temporary outage' })) as any
+			}
+		});
+		const retryButton = await screen.findByRole('button', { name: 'Try again' });
+		const retry = deferred<Response>();
+		vi.mocked(fetch).mockClear();
+		vi.mocked(fetch).mockReturnValueOnce(retry.promise);
+		await fireEvent.click(retryButton);
+		await fireEvent.click(retryButton);
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(fetch).toHaveBeenCalledWith(
+			`/api/onto/projects/${PROJECT_ID}/full?profile=v2-initial`,
+			undefined
+		);
+		expect(screen.getByText('Loading project overview')).toBeInTheDocument();
+		retry.resolve(
+			apiResponse(projectData({ goals: goals(1), documents: [projectDocument()] }))
+		);
+		expect(await screen.findByText('Goal 1')).toBeInTheDocument();
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'Docs 1' })).toBeInTheDocument();
+	});
+
+	it('allows another fresh retry after the endpoint fails', async () => {
+		render(ProjectWorkspace, {
+			props: {
+				data: skeletonData(Promise.resolve({ ok: false, error: 'Initial failure' })) as any
+			}
+		});
+		await screen.findByRole('alert');
+		vi.mocked(fetch).mockClear();
+		vi.mocked(fetch).mockRejectedValueOnce(new Error('Still offline'));
+		await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+		expect(await screen.findByRole('alert')).toHaveTextContent('Still offline');
+		vi.mocked(fetch).mockResolvedValueOnce(apiResponse(projectData({ goals: goals(1) })));
+		await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+		expect(await screen.findByText('Goal 1')).toBeInTheDocument();
+		expect(fetch).toHaveBeenCalledTimes(2);
+	});
+
+	it('holds chat mutation refreshes behind a pending hydration retry', async () => {
+		window.history.replaceState({}, '', '/workspace?view=work');
+		const task = {
+			id: 'task-1',
+			project_id: PROJECT_ID,
+			title: 'Before chat',
+			state_key: 'todo',
+			props: {},
+			deleted_at: null,
+			start_at: null,
+			due_at: null,
+			priority: 3
+		};
+		render(ProjectWorkspace, {
+			props: {
+				data: skeletonData(Promise.resolve({ ok: false, error: 'Temporary outage' })) as any
+			}
+		});
+		await screen.findByRole('alert');
+		const retry = deferred<Response>();
+		vi.mocked(fetch).mockClear();
+		vi.mocked(fetch).mockReturnValueOnce(retry.promise);
+		vi.mocked(fetch).mockResolvedValueOnce(
+			apiResponse({ task: { ...task, title: 'After chat' } })
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+		notifyDataMutation({
+			hasChanges: true,
+			totalMutations: 1,
+			affectedProjectIds: [PROJECT_ID],
+			hasMessagesSent: true,
+			mutations: [
+				{
+					entityKind: 'task',
+					entityId: task.id,
+					operation: 'update',
+					projectIds: [PROJECT_ID]
+				}
+			]
+		});
+		await Promise.resolve();
+		expect(fetch).toHaveBeenCalledTimes(1);
+		retry.resolve(
+			apiResponse(
+				projectData({
+					tasks: [task],
+					tasks_coverage: createCompleteProjectTasksCoverage([task] as any)
+				})
+			)
+		);
+		expect(await screen.findByText('After chat')).toBeInTheDocument();
+		expect(screen.queryByText('Before chat')).not.toBeInTheDocument();
+		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(fetch).toHaveBeenLastCalledWith('/api/onto/tasks/task-1', undefined);
+	});
+
+	it('does not fetch document content from hydration that finishes after unmount', async () => {
+		const load = deferred<unknown>();
+		const { unmount } = render(ProjectWorkspace, {
+			props: { data: skeletonData(load.promise) as any }
+		});
+		unmount();
+		vi.mocked(fetch).mockClear();
+		load.resolve({
+			ok: true,
+			data: projectData({ context_document: { ...contextDocument(), content: null } })
+		});
+		await load.promise;
+		expect(fetch).not.toHaveBeenCalled();
+	});
+
 	it('updates a visible task after chat closes without refetching the project', async () => {
 		window.history.replaceState({}, '', '/workspace?view=work');
 		const task = {

@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/base-executor.abort.test.ts
+import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it, vi } from 'vitest';
 import { BaseExecutor } from './base-executor';
 import type { ExecutorContext } from './types';
@@ -58,7 +59,7 @@ describe('BaseExecutor abort signal threading', () => {
 		await executor.callApiRequest('/api/onto/tasks/create', { method: 'POST', body: '{}' });
 
 		expect(fetchFn).toHaveBeenCalledTimes(1);
-		const [, init] = fetchFn.mock.calls[0];
+		const [, init] = requireTestValue(fetchFn.mock.calls[0]);
 		expect(init.signal).toBe(controller.signal);
 	});
 
@@ -89,7 +90,7 @@ describe('BaseExecutor abort signal threading', () => {
 			signal: callController.signal
 		});
 
-		const [, init] = fetchFn.mock.calls[0];
+		const [, init] = requireTestValue(fetchFn.mock.calls[0]);
 		expect(init.signal).toBe(callController.signal);
 	});
 

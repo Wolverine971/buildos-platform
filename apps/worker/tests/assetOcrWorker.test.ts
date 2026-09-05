@@ -26,7 +26,7 @@ const BASE_ASSET = {
 	content_type: 'image/png',
 	ocr_status: 'pending',
 	ocr_version: 1,
-	extracted_text: null,
+	extracted_text: null as string | null,
 	extracted_text_source: 'ocr',
 	extraction_summary: null,
 	extraction_metadata: {},

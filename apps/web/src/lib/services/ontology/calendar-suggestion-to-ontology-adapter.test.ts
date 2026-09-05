@@ -22,6 +22,7 @@ function buildSuggestion(
 		suggested_priority: null,
 		confidence_score: 0.91,
 		calendar_event_ids: ['event-1'],
+		calendar_source_event_ids: [],
 		calendar_ids: ['primary'],
 		event_count: 1,
 		event_patterns: {
@@ -49,7 +50,7 @@ function buildSuggestion(
 		rejection_reason: null,
 		status_changed_at: null,
 		created_project_id: null,
-		applied_at: null,
+		tasks_created_count: null,
 		...overrides
 	};
 }

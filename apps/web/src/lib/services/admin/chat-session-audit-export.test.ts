@@ -16,8 +16,8 @@ import {
 import { deriveAuditGist } from './chat-session-audit-gist';
 import type { ChatSessionAuditPayload } from './chat-session-audit-types';
 
-const buildFixturePayload = (): ChatSessionAuditPayload =>
-	buildSessionDetailPayload({
+const buildFixturePayload = (): ChatSessionAuditPayload => {
+	const payload = buildSessionDetailPayload({
 		sessionRow: {
 			id: 'session-1',
 			user_id: 'user-1',
@@ -285,6 +285,24 @@ const buildFixturePayload = (): ChatSessionAuditPayload =>
 			}
 		]
 	});
+	return {
+		...payload,
+		messages: payload.messages.map((row) => ({ ...row })),
+		tool_executions: payload.tool_executions.map((row) => ({ ...row })),
+		llm_calls: payload.llm_calls.map((row) => ({ ...row })),
+		operations: payload.operations.map((row) => ({ ...row })),
+		timing_metrics: payload.timing_metrics ? { ...payload.timing_metrics } : null,
+		turn_runs: payload.turn_runs.map((run) => ({
+			...run,
+			prompt_snapshot: run.prompt_snapshot ? { ...run.prompt_snapshot } : null,
+			events: run.events.map((event) => ({ ...event })),
+			eval_runs: run.eval_runs.map((evaluation) => ({
+				...evaluation,
+				assertions: evaluation.assertions.map((assertion) => ({ ...assertion }))
+			}))
+		}))
+	};
+};
 
 describe('chat-session-audit-export', () => {
 	it('formats a gist-first markdown audit with compact tables and a raw appendix', () => {
@@ -532,7 +550,11 @@ describe('chat-session-audit-bundle', () => {
 
 		const entries = unzipSync(zipped);
 		expect(Object.keys(entries)).toContain(`${folder}/README.md`);
-		expect(strFromU8(requireTestValue(entries[`${folder}/README.md`]))).toContain('**Outcome:** COMPLETED');
-		expect(JSON.parse(strFromU8(requireTestValue(entries[`${folder}/raw/messages.json`])))).toHaveLength(2);
+		expect(strFromU8(requireTestValue(entries[`${folder}/README.md`]))).toContain(
+			'**Outcome:** COMPLETED'
+		);
+		expect(
+			JSON.parse(strFromU8(requireTestValue(entries[`${folder}/raw/messages.json`])))
+		).toHaveLength(2);
 	});
 });

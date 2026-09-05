@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/queue-jobs/[id]/+server.ts
-import { ApiResponse } from '$lib/utils/api-response';
+import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
@@ -38,7 +38,7 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 
 	try {
 		// Only allow cancelling pending jobs
-		const { error } = await supabase
+		const { data: cancelledJob, error } = await supabase
 			.from('queue_jobs')
 			.update({
 				status: 'cancelled',
@@ -47,10 +47,30 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 			})
 			.eq('queue_job_id', params.id)
 			.eq('user_id', user.id)
-			.eq('status', 'pending');
+			.eq('status', 'pending')
+			.select('id')
+			.maybeSingle();
 
 		if (error) {
 			throw error;
+		}
+
+		if (!cancelledJob) {
+			// A worker may have claimed the job before the conditional update.
+			// Only look up the current user's row when cancellation did not occur.
+			const { data: existingJob, error: lookupError } = await supabase
+				.from('queue_jobs')
+				.select('id')
+				.eq('queue_job_id', params.id)
+				.eq('user_id', user.id)
+				.maybeSingle();
+			if (lookupError) throw lookupError;
+			if (!existingJob) return ApiResponse.notFound('Job');
+			return ApiResponse.error(
+				'Job is no longer pending and could not be cancelled',
+				HttpStatus.CONFLICT,
+				'JOB_NOT_PENDING'
+			);
 		}
 
 		return ApiResponse.success({ success: true }, 'Job cancelled');

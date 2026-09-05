@@ -42,7 +42,7 @@ function entry(overrides: Partial<AgentRunCostEntry> = {}): AgentRunCostEntry {
 
 describe('OpenRouter generation cost lookup', () => {
 	it('returns authoritative provider cost and native token totals', async () => {
-		const fetchFn = vi.fn(
+		const fetchFn = vi.fn<typeof fetch>(
 			async () =>
 				new Response(
 					JSON.stringify({
@@ -61,13 +61,13 @@ describe('OpenRouter generation cost lookup', () => {
 
 		const result = await lookupOpenRouterGenerationCost('gen-1', {
 			apiKey: 'or-test',
-			fetchFn: fetchFn as unknown as typeof fetch
+			fetchFn
 		});
 
 		expect(fetchFn).toHaveBeenCalledOnce();
 		const [url, init] = fetchFn.mock.calls[0];
 		expect(String(url)).toBe('https://openrouter.ai/api/v1/generation?id=gen-1');
-		expect(init.headers).toEqual({ Authorization: 'Bearer or-test' });
+		expect(init?.headers).toEqual({ Authorization: 'Bearer or-test' });
 		expect(result).toEqual({
 			generationId: 'gen-1',
 			totalCostUsd: 0.0125,
@@ -78,12 +78,12 @@ describe('OpenRouter generation cost lookup', () => {
 	});
 
 	it('treats a not-yet-visible generation as retryable', async () => {
-		const fetchFn = vi.fn(async () => new Response('', { status: 404 }));
+		const fetchFn = vi.fn<typeof fetch>(async () => new Response('', { status: 404 }));
 
 		await expect(
 			lookupOpenRouterGenerationCost('gen-late', {
 				apiKey: 'or-test',
-				fetchFn: fetchFn as unknown as typeof fetch
+				fetchFn
 			})
 		).rejects.toMatchObject({
 			name: 'ProviderCostLookupError',
@@ -110,7 +110,7 @@ describe('Agent Run cost reconciliation batch', () => {
 			reconciliation_lock_token: null,
 			reconciliation_needs_operator_at: NOW.toISOString()
 		}));
-		const fetchFn = vi.fn(
+		const fetchFn = vi.fn<typeof fetch>(
 			async () =>
 				new Response(
 					JSON.stringify({
@@ -127,7 +127,7 @@ describe('Agent Run cost reconciliation batch', () => {
 
 		const result = await runAgentRunCostReconciliation({
 			apiKey: 'or-test',
-			fetchFn: fetchFn as unknown as typeof fetch,
+			fetchFn,
 			now: () => NOW,
 			ledger: { claim, reconcile, release }
 		});
@@ -168,11 +168,11 @@ describe('Agent Run cost reconciliation batch', () => {
 		const claim = vi.fn(async () => [entry({ reconciliation_attempts: 8 })]);
 		const reconcile = vi.fn();
 		const release = vi.fn(async () => entry());
-		const fetchFn = vi.fn(async () => new Response('', { status: 429 }));
+		const fetchFn = vi.fn<typeof fetch>(async () => new Response('', { status: 429 }));
 
 		const result = await runAgentRunCostReconciliation({
 			apiKey: 'or-test',
-			fetchFn: fetchFn as unknown as typeof fetch,
+			fetchFn,
 			now: () => NOW,
 			maxAttempts: 8,
 			ledger: { claim, reconcile, release }

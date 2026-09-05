@@ -113,6 +113,12 @@
 		<div class="text-sm font-semibold text-foreground">
 			{formatNumber(sessionDetail.turn_runs.filter((run) => !!run.prompt_snapshot).length)}
 		</div>
+		{#if sessionDetail.turn_runs.some((run) => !run.prompt_snapshot)}
+			<div class="text-2xs text-muted-foreground">
+				Missing initial context:
+				{formatNumber(sessionDetail.turn_runs.filter((run) => !run.prompt_snapshot).length)}
+			</div>
+		{/if}
 	</div>
 	<div class="rounded-lg border border-border bg-background p-2">
 		<div class="text-xs text-foreground/70">Validation Failures</div>

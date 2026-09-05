@@ -1923,6 +1923,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			openingRequest?.messages.some(
 				(message) =>
 					message.role === 'system' &&
+					typeof message.content === 'string' &&
 					message.content.includes(
 						'large complex-write contract route is deferred in this opening pass'
 					)
@@ -3953,13 +3954,18 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		const assistantCalls = client.stream.mock.calls[1]?.[0].messages.findLast(
-			(message) => message.role === 'assistant' && message.tool_calls
-		)?.tool_calls;
-		expect(assistantCalls?.map((call) => JSON.parse(String(call.function.arguments)))).toEqual([
-			{ call_ref: 'first' },
-			{ after: ['first'], call_ref: 'second' }
-		]);
+		const assistantCalls = [...(client.stream.mock.calls[1]?.[0].messages ?? [])]
+			.reverse()
+			.find((message) => message.role === 'assistant' && message.tool_calls)?.tool_calls;
+		expect(
+			assistantCalls?.map((call) => {
+				const definition = call.function;
+				if (!definition || typeof definition !== 'object' || Array.isArray(definition)) {
+					throw new Error('Expected a function tool call');
+				}
+				return JSON.parse(String(definition.arguments));
+			})
+		).toEqual([{ call_ref: 'first' }, { after: ['first'], call_ref: 'second' }]);
 	});
 
 	it('bridges an explicitly enabled mixed read/write round in provider order', async () => {

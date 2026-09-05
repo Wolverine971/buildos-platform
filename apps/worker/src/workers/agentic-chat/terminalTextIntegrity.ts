@@ -7,9 +7,9 @@ import {
 	applyFinalizationGuard,
 	collectGatewayWriteIntentOps,
 	enforceMutationOutcomeIntegrity,
-	resolveTurnContractFromExecutions,
 	resolveTurnContractOutcome
 } from '@buildos/agentic-chat-runtime/loop';
+import { resolveReviewedTurnContractFromExecutions } from './reviewedTurnContract';
 
 export type AgenticChatTerminalTextIntegrityResultV1 = {
 	assistantText: string;
@@ -32,7 +32,7 @@ export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 	contextType: string;
 	toolExecutions: FastToolExecution[];
 }): AgenticChatTerminalTextIntegrityResultV1 {
-	const turnContract = resolveTurnContractFromExecutions(input.toolExecutions);
+	const turnContract = resolveReviewedTurnContractFromExecutions(input.toolExecutions);
 	const mutationRequested =
 		turnContract !== null || collectGatewayWriteIntentOps(input.toolExecutions).length > 0;
 	// Declared outcomes the ledger cannot prove complete are computed here, before

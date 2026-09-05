@@ -158,10 +158,9 @@ function stageEdgeCtx(): AgentOpContext {
 		userId: '00000000-0000-4000-8000-000000000000',
 		scope: {
 			mode: 'read_write',
-			allowed_ops: ['onto.edge.link'],
-			project_ids: [PROJECT_A_ID],
-			write_project_ids: [PROJECT_A_ID]
+			allowed_ops: ['onto.edge.link']
 		},
+		runContext: { context_type: 'project', project_id: PROJECT_A_ID },
 		mutationMode: 'stage'
 	};
 }
@@ -363,11 +362,13 @@ describe('executeAgentOp policy + dispatch', () => {
 			'cal.event.create'
 		]);
 
-		expect(buildAgentRunOpCatalog({ scope, mutationMode: 'stage', calendar })).toEqual([
-			'onto.project.list',
-			'onto.task.create',
-			'cal.event.list'
-		]);
+		expect(
+			buildAgentRunOpCatalog({
+				scope,
+				mutationMode: 'stage',
+				calendar
+			})
+		).toEqual(['onto.project.list', 'onto.task.create', 'cal.event.list']);
 	});
 
 	it('adds configured web reads to the default catalog without bypassing explicit allowlists', () => {
@@ -523,7 +524,11 @@ describe('executeAgentOp policy + dispatch', () => {
 	it('stages a write op (mutationMode=stage) instead of committing, without mutating', async () => {
 		// throwingAdmin proves no create handler ran; staging a create does no DB read.
 		const r = await executeAgentOp(
-			{ ...ctx(), scope: { mode: 'read_write' }, mutationMode: 'stage' },
+			{
+				...ctx(),
+				scope: { mode: 'read_write' },
+				mutationMode: 'stage'
+			},
 			'onto.task.create',
 			{ project_id: PROJECT_A_ID, title: 'Draft task' }
 		);
@@ -565,7 +570,11 @@ describe('executeAgentOp policy + dispatch', () => {
 
 	it('still validates args when staging a write op', async () => {
 		const r = await executeAgentOp(
-			{ ...ctx(), scope: { mode: 'read_write' }, mutationMode: 'stage' },
+			{
+				...ctx(),
+				scope: { mode: 'read_write' },
+				mutationMode: 'stage'
+			},
 			'onto.task.create',
 			{}
 		);

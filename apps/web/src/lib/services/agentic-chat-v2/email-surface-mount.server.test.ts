@@ -41,7 +41,11 @@ describe('hasActiveEmailConnection', () => {
 		const supabase = supabaseReturning({ data: [{ id: 'connection-1' }], error: null });
 
 		await expect(
-			hasActiveEmailConnection({ supabase: supabase.client as never, userId: USER_ID, nowMs: 0 })
+			hasActiveEmailConnection({
+				supabase: supabase.client as never,
+				userId: USER_ID,
+				nowMs: 0
+			})
 		).resolves.toBe(true);
 		expect(supabase.calls).toEqual([
 			['user_id', USER_ID],
@@ -55,7 +59,11 @@ describe('hasActiveEmailConnection', () => {
 	it('is false with no rows', async () => {
 		const supabase = supabaseReturning({ data: [], error: null });
 		await expect(
-			hasActiveEmailConnection({ supabase: supabase.client as never, userId: USER_ID, nowMs: 0 })
+			hasActiveEmailConnection({
+				supabase: supabase.client as never,
+				userId: USER_ID,
+				nowMs: 0
+			})
 		).resolves.toBe(false);
 	});
 
@@ -64,14 +72,22 @@ describe('hasActiveEmailConnection', () => {
 	it('is false when the lookup fails', async () => {
 		const supabase = supabaseReturning({ data: null, error: { message: 'boom' } });
 		await expect(
-			hasActiveEmailConnection({ supabase: supabase.client as never, userId: USER_ID, nowMs: 0 })
+			hasActiveEmailConnection({
+				supabase: supabase.client as never,
+				userId: USER_ID,
+				nowMs: 0
+			})
 		).resolves.toBe(false);
 	});
 
 	it('memoizes per user for a bounded window', async () => {
 		const supabase = supabaseReturning({ data: [{ id: 'connection-1' }], error: null });
 
-		await hasActiveEmailConnection({ supabase: supabase.client as never, userId: USER_ID, nowMs: 0 });
+		await hasActiveEmailConnection({
+			supabase: supabase.client as never,
+			userId: USER_ID,
+			nowMs: 0
+		});
 		await hasActiveEmailConnection({
 			supabase: supabase.client as never,
 			userId: USER_ID,

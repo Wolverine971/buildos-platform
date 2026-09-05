@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/admin/chat/TimelinePromptSnapshotDetails.svelte -->
 <script lang="ts">
-	import { formatNumber } from '$lib/services/admin/chat-session-audit-formatters';
+	import { formatNumber, prettyJson } from '$lib/services/admin/chat-session-audit-formatters';
 	import { payloadField, stringValue } from '$lib/services/admin/chat-session-audit-payload';
 	import type {
 		AuditRecord,
@@ -9,11 +9,19 @@
 
 	let {
 		event,
-		payload
+		payload,
+		snapshot = payload
 	}: {
 		event: SessionDetailPayload['timeline'][number];
 		payload: AuditRecord;
+		snapshot?: AuditRecord;
 	} = $props();
+
+	const snapshotSections = [
+		{ label: 'Initial model messages', key: 'model_messages' },
+		{ label: 'Tool definitions', key: 'tool_definitions' }
+	];
+	let expandedSections = $state<Record<string, boolean>>({});
 </script>
 
 {#if event.type === 'prompt_snapshot'}
@@ -37,6 +45,24 @@
 			</div>
 		</div>
 	</div>
+	{#each snapshotSections as { label, key } (key)}
+		{#if payloadField(snapshot, key)}
+			<details
+				class="mt-2 rounded border border-border bg-card p-2 text-xs"
+				ontoggle={(event) => {
+					expandedSections[key] = event.currentTarget.open;
+				}}
+			>
+				<summary class="cursor-pointer font-medium text-foreground">{label}</summary>
+				{#if expandedSections[key]}
+					<pre
+						class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs text-foreground">{prettyJson(
+							payloadField(snapshot, key)
+						)}</pre>
+				{/if}
+			</details>
+		{/if}
+	{/each}
 	{#if payloadField(payload, 'rendered_dump_text')}
 		<details class="mt-2 rounded border border-border bg-card p-2 text-xs">
 			<summary class="cursor-pointer font-medium text-foreground">

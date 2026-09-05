@@ -128,8 +128,8 @@ describe('processChatClassificationJob Libri extraction', () => {
 		});
 
 		const messageSelect = chain({
-			eq: vi.fn(() => messageSelect),
-			order: vi.fn(() => messageSelect),
+			eq: vi.fn().mockReturnThis(),
+			order: vi.fn().mockReturnThis(),
 			limit: vi.fn().mockImplementation(async () => ({
 				data: messageData,
 				error: null

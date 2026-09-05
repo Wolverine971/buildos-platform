@@ -286,7 +286,9 @@ describe('LinkedEntities request ownership', () => {
 		await fireEvent.click(await screen.findByRole('button', { name: /Tasks \(1\)/ }));
 		expect(await screen.findByText('Linked to B')).toBeInTheDocument();
 
-		requireTestValue(requests[0]).response.resolve(jsonResponse({ error: 'Late unlink failure' }, 500));
+		requireTestValue(requests[0]).response.resolve(
+			jsonResponse({ error: 'Late unlink failure' }, 500)
+		);
 		await tick();
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 

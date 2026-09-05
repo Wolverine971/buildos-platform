@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/gmail-reconnect-attention.bridge.test.ts
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -5,7 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	loadAiInboxCount: vi.fn(),
 	startGmailOAuth: vi.fn(),
-	warning: vi.fn<typeof import('$lib/stores/toast.store').toastService.warning>(() => 'toast-1'),
+	warning: vi.fn<typeof import('$lib/stores/toast.store').toastService.warning>(
+		() => '00000000-0000-4000-8000-000000000001'
+	),
 	success: vi.fn(),
 	error: vi.fn(),
 	remove: vi.fn()
@@ -83,7 +86,7 @@ function createRealtimeClient() {
 beforeEach(() => {
 	sessionStorage.clear();
 	vi.clearAllMocks();
-	mocks.warning.mockReturnValue('toast-1');
+	mocks.warning.mockReturnValue('00000000-0000-4000-8000-000000000001');
 	mocks.startGmailOAuth.mockResolvedValue({ accountLabel: 'Work' });
 	vi.stubGlobal(
 		'fetch',
@@ -134,7 +137,7 @@ describe('Gmail reconnect attention bridge', () => {
 			new: attentionRow('decided'),
 			old: attentionRow('pending')
 		});
-		expect(mocks.remove).toHaveBeenCalledWith('toast-1');
+		expect(mocks.remove).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001');
 		expect(mocks.loadAiInboxCount).toHaveBeenCalledWith({ force: true });
 	});
 });

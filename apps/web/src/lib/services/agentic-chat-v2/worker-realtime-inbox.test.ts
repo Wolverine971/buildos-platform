@@ -31,7 +31,7 @@ function event(
 	sequence: number,
 	generation = 1,
 	overrides: Record<string, unknown> = {}
-): AgentStreamEventV1 {
+): AgentStreamEventV1<{ type: string; content: string }> {
 	return {
 		contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 		event_id: `${TURN_ID}:${generation}:${sequence}`,

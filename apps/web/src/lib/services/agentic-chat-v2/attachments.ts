@@ -353,10 +353,10 @@ export function shouldUseLiveVisionForTurn(params: {
 }
 
 export function assessLiveVisionImageEligibility(
-	asset: Pick<
-		ChatAttachmentAssetRow,
-		'content_type' | 'file_size_bytes' | 'storage_bucket' | 'storage_path' | 'checksum_sha256'
-	>,
+	asset: Pick<ChatAttachmentAssetRow, 'content_type' | 'file_size_bytes' | 'checksum_sha256'> & {
+		storage_bucket: string | null;
+		storage_path: string | null;
+	},
 	options: { maxBytes: number }
 ): LiveVisionImageEligibilityResult {
 	return assessAgenticChatLiveVisionEligibilityV1(

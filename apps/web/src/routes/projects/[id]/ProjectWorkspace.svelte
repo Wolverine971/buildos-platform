@@ -251,19 +251,7 @@
 	const access = $derived((data.access ?? DEFAULT_ACCESS) as Access);
 	const canEdit = $derived(access.canEdit);
 
-	const initialCounts = $derived(
-		data.skeleton
-			? data.counts
-			: {
-					task_count: tasksCoverage.total,
-					document_count: documents.length,
-					goal_count: goals.length,
-					plan_count: plans.length,
-					milestone_count: milestones.length,
-					risk_count: risks.length,
-					image_count: data.images?.length ?? 0
-				}
-	);
+	const workspaceReady = $derived(!isHydrating && !hydrationError);
 
 	const taskCount = $derived(tasksCoverage.total || tasks.length);
 
@@ -358,7 +346,7 @@
 		seedDocumentTree();
 	}
 
-	async function hydrateProject() {
+	async function hydrateProject(retry = false) {
 		if (!initialData.skeleton) {
 			seedDocumentTree();
 			isHydrating = false;
@@ -368,16 +356,31 @@
 		isHydrating = true;
 		hydrationError = null;
 		try {
-			const result = await initialData.deferredFullData;
-			if (!result.ok) throw new Error(result.error);
-			applyFullData(result.data);
+			let fullData: ProjectFullData;
+			if (retry) {
+				fullData = await fetchProjectFullData(project.id, { profile: 'v2-initial' });
+			} else {
+				const result = await initialData.deferredFullData;
+				if (!result.ok) throw new Error(result.error);
+				fullData = result.data;
+			}
+			if (!workspaceActive) return;
+			applyFullData(fullData);
 			void hydrateContextDocument();
 		} catch (error) {
+			if (!workspaceActive) return;
 			hydrationError =
 				error instanceof Error ? error.message : 'Failed to load project workspace';
 		} finally {
-			isHydrating = false;
+			if (workspaceActive) isHydrating = false;
 		}
+	}
+
+	function retryHydration() {
+		if (isHydrating || !workspaceActive) return;
+		// The route's deferred promise is settled. Retry the endpoint and keep
+		// mutation refreshes behind this request, just like initial hydration.
+		hydrationPromise = hydrateProject(true);
 	}
 
 	async function hydrateContextDocument(force = false) {
@@ -1067,7 +1070,7 @@
 					>
 						<ListChecks class="hidden h-4 w-4 sm:block" />
 						Tasks
-						<span class="tab-count">{taskCount}</span>
+						{#if workspaceReady}<span class="tab-count">{taskCount}</span>{/if}
 					</button>
 					<button
 						bind:this={tabButtons[2]}
@@ -1083,9 +1086,7 @@
 					>
 						<FileText class="hidden h-4 w-4 sm:block" />
 						Docs
-						<span class="tab-count">
-							{isHydrating ? initialCounts.document_count : documents.length}
-						</span>
+						{#if workspaceReady}<span class="tab-count">{documents.length}</span>{/if}
 					</button>
 					<button
 						bind:this={tabButtons[3]}
@@ -1122,12 +1123,7 @@
 							The workspace did not finish loading
 						</p>
 						<p class="mt-1 text-sm text-muted-foreground">{hydrationError}</p>
-						<Button
-							variant="outline"
-							size="sm"
-							class="mt-3"
-							onclick={() => void hydrateProject()}
-						>
+						<Button variant="outline" size="sm" class="mt-3" onclick={retryHydration}>
 							Try again
 						</Button>
 					</div>
@@ -1152,7 +1148,7 @@
 			</div>
 		{/if}
 
-		{#if activeTab !== 'activity'}
+		{#if activeTab !== 'activity' && !hydrationError}
 			<div class="workspace-toolbar mb-3">
 				{#if isHydrating}
 					<div
@@ -1214,6 +1210,7 @@
 				class="workspace-panel"
 				role="tabpanel"
 				aria-labelledby="workspace-tab-work"
+				aria-busy={isHydrating}
 				tabindex="0"
 			>
 				{#if isHydrating}
@@ -1221,7 +1218,7 @@
 						class="min-h-[430px] animate-pulse border-y border-border bg-card motion-reduce:animate-none"
 						aria-label="Loading task board"
 					></div>
-				{:else}
+				{:else if workspaceReady}
 					{#await import('$lib/components/project/v2/TaskKanbanBoard.svelte')}
 						<div
 							class="min-h-[430px] animate-pulse border-y border-border bg-card motion-reduce:animate-none"
@@ -1259,10 +1256,18 @@
 				class="workspace-panel"
 				role="tabpanel"
 				aria-labelledby="workspace-tab-overview"
+				aria-busy={isHydrating}
 				tabindex="0"
 			>
-				<div class="space-y-5">
-					{#if !isHydrating}
+				{#if isHydrating}
+					<div
+						class="min-h-[430px] animate-pulse rounded-lg border border-border bg-card motion-reduce:animate-none"
+						role="status"
+					>
+						<span class="sr-only">Loading project overview</span>
+					</div>
+				{:else if workspaceReady}
+					<div class="space-y-5">
 						<ProjectMemoryCard
 							document={contextDocument}
 							contentLoading={isContextDocumentContentLoading}
@@ -1277,402 +1282,426 @@
 								: undefined}
 							onShown={handleMemorySnapshotShown}
 						/>
-					{/if}
 
-					<ProjectProgressOverview
-						{project}
-						{tasksCoverage}
-						{milestones}
-						{risks}
-						onOpenTasks={() => selectTab('work')}
-						onOpenMilestone={(milestoneId) => openEntity('milestone', milestoneId)}
-					/>
+						<ProjectProgressOverview
+							{project}
+							{tasksCoverage}
+							{milestones}
+							{risks}
+							onOpenTasks={() => selectTab('work')}
+							onOpenMilestone={(milestoneId) => openEntity('milestone', milestoneId)}
+						/>
 
-					<div
-						class="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]"
-					>
-						<div class="min-w-0 space-y-5">
-							<section
-								class="overview-section"
-								aria-labelledby="overview-direction-title"
-							>
-								<header class="overview-section-header">
-									<div class="flex min-w-0 items-center gap-2">
-										<Target class="h-4 w-4 shrink-0 text-warning" />
-										<h2
-											id="overview-direction-title"
-											class="text-sm font-semibold"
-										>
-											Direction
-										</h2>
-									</div>
-									{#if activeGoals.length > 0 || activePlans.length > 0}
-										<span
-											class="shrink-0 text-2xs font-medium text-muted-foreground"
-										>
-											{activeGoals.length} goals · {activePlans.length} plans
-										</span>
-									{/if}
-								</header>
-								{#if activeGoals.length === 0 && activePlans.length === 0}
-									<div class="section-empty-state">
-										<Target class="h-5 w-5 shrink-0 text-muted-foreground" />
-										<div class="min-w-0 flex-1">
-											<p class="text-sm font-semibold">
-												No direction set yet
-											</p>
-											<p class="text-xs text-muted-foreground">
-												Add a goal or plan when the path becomes clear.
-											</p>
-										</div>
-										{#if canEdit}
-											<div class="flex shrink-0 flex-wrap justify-end gap-1">
-												<button
-													type="button"
-													class="section-empty-action"
-													onclick={() => createWorkspaceEntity('goal')}
-												>
-													Add goal
-												</button>
-												<button
-													type="button"
-													class="section-empty-action"
-													onclick={() => createWorkspaceEntity('plan')}
-												>
-													Add plan
-												</button>
-											</div>
-										{/if}
-									</div>
-								{:else}
-									<div
-										class="grid gap-0 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
-									>
-										<div class="p-3 sm:p-4">
-											<p class="micro-label mb-2">GOALS</p>
-											<div class="space-y-2">
-												{#each visibleGoals as goal (goal.id)}
-													{@const goalMilestones = milestones.filter(
-														(milestone) => milestone.goal_id === goal.id
-													)}
-													<button
-														type="button"
-														class="entity-row"
-														onclick={() => openEntity('goal', goal.id)}
-														use:preloadEntityModal={'goal'}
-													>
-														<div class="min-w-0 flex-1">
-															<p
-																class="truncate text-sm font-semibold"
-															>
-																{goal.name}
-															</p>
-															<p
-																class="truncate text-xs text-muted-foreground"
-															>
-																{goalMilestones.length} milestone{goalMilestones.length ===
-																1
-																	? ''
-																	: 's'}
-																{goal.target_date
-																	? ` · target ${formatDate(goal.target_date)}`
-																	: ''}
-															</p>
-														</div>
-														<ChevronRight
-															class="h-4 w-4 shrink-0 text-muted-foreground"
-														/>
-													</button>
-												{:else}
-													<div class="empty-row">
-														<Target class="h-5 w-5" />
-														<p>No active goals yet</p>
-													</div>
-												{/each}
-												{#if activeGoals.length > 5}
-													<button
-														type="button"
-														class="view-all-row"
-														aria-expanded={showAllGoals}
-														onclick={() =>
-															(showAllGoals = !showAllGoals)}
-													>
-														{showAllGoals
-															? 'Show fewer goals'
-															: `Show all ${activeGoals.length} goals`}
-													</button>
-												{/if}
-												{#if canEdit}
-													<button
-														type="button"
-														class="entity-create-row"
-														onclick={() =>
-															createWorkspaceEntity('goal')}
-													>
-														<Plus class="h-3.5 w-3.5" />
-														Add goal
-													</button>
-												{/if}
-											</div>
-										</div>
-										<div class="p-3 sm:p-4">
-											<p class="micro-label mb-2">PLANS</p>
-											<div class="space-y-2">
-												{#each visiblePlans as plan (plan.id)}
-													<button
-														type="button"
-														class="entity-row"
-														onclick={() => openEntity('plan', plan.id)}
-													>
-														<div class="min-w-0 flex-1">
-															<p
-																class="truncate text-sm font-semibold"
-															>
-																{plan.name}
-															</p>
-															<p
-																class="truncate text-xs text-muted-foreground"
-															>
-																{humanize(plan.state_key)}
-																{plan.description
-																	? ` · ${plan.description}`
-																	: ''}
-															</p>
-														</div>
-														<ChevronRight
-															class="h-4 w-4 shrink-0 text-muted-foreground"
-														/>
-													</button>
-												{:else}
-													<div class="empty-row">
-														<Workflow class="h-5 w-5" />
-														<p>No active plans yet</p>
-													</div>
-												{/each}
-												{#if activePlans.length > 5}
-													<button
-														type="button"
-														class="view-all-row"
-														aria-expanded={showAllPlans}
-														onclick={() =>
-															(showAllPlans = !showAllPlans)}
-													>
-														{showAllPlans
-															? 'Show fewer plans'
-															: `Show all ${activePlans.length} plans`}
-													</button>
-												{/if}
-												{#if canEdit}
-													<button
-														type="button"
-														class="entity-create-row"
-														onclick={() =>
-															createWorkspaceEntity('plan')}
-													>
-														<Plus class="h-3.5 w-3.5" />
-														Add plan
-													</button>
-												{/if}
-											</div>
-										</div>
-									</div>
-								{/if}
-							</section>
-						</div>
-
-						<aside class="min-w-0 space-y-5">
-							<section
-								class="overview-section"
-								aria-labelledby="overview-milestones-title"
-							>
-								<header class="overview-section-header">
-									<div class="flex min-w-0 items-center gap-2">
-										<Flag class="h-4 w-4 shrink-0 text-accent" />
-										<h2
-											id="overview-milestones-title"
-											class="text-sm font-semibold"
-										>
-											Milestones
-										</h2>
-									</div>
-									{#if upcomingMilestones.length > 0}
-										<span class="text-2xs font-medium text-muted-foreground">
-											{upcomingMilestones.length} upcoming
-										</span>
-									{/if}
-								</header>
-								<div class="pt-2">
-									{#if visibleMilestones.length > 0}
-										{#each visibleMilestones as milestone (milestone.id)}
-											<button
-												type="button"
-												class="entity-row"
-												onclick={() =>
-													openEntity('milestone', milestone.id)}
+						<div
+							class="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]"
+						>
+							<div class="min-w-0 space-y-5">
+								<section
+									class="overview-section"
+									aria-labelledby="overview-direction-title"
+								>
+									<header class="overview-section-header">
+										<div class="flex min-w-0 items-center gap-2">
+											<Target class="h-4 w-4 shrink-0 text-warning" />
+											<h2
+												id="overview-direction-title"
+												class="text-sm font-semibold"
 											>
-												<div
-													class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
-												>
-													<Flag class="h-3.5 w-3.5 text-accent" />
-												</div>
-												<div class="min-w-0 flex-1">
-													<p class="truncate text-sm font-semibold">
-														{milestone.title}
-													</p>
-													<p
-														class="truncate text-xs text-muted-foreground"
-													>
-														{milestone.due_at
-															? formatDate(milestone.due_at, true)
-															: 'No target date'}
-													</p>
-												</div>
-											</button>
-										{/each}
-										{#if upcomingMilestones.length > 5}
-											<button
-												type="button"
-												class="view-all-row"
-												aria-expanded={showAllMilestones}
-												onclick={() =>
-													(showAllMilestones = !showAllMilestones)}
+												Direction
+											</h2>
+										</div>
+										{#if activeGoals.length > 0 || activePlans.length > 0}
+											<span
+												class="shrink-0 text-2xs font-medium text-muted-foreground"
 											>
-												{showAllMilestones
-													? 'Show fewer milestones'
-													: `Show all ${upcomingMilestones.length} milestones`}
-											</button>
+												{activeGoals.length} goals · {activePlans.length} plans
+											</span>
 										{/if}
-										{#if canEdit}
-											<button
-												type="button"
-												class="entity-create-row"
-												onclick={() => createWorkspaceEntity('milestone')}
-											>
-												<Plus class="h-3.5 w-3.5" />
-												Add milestone
-											</button>
-										{/if}
-									{:else}
+									</header>
+									{#if activeGoals.length === 0 && activePlans.length === 0}
 										<div class="section-empty-state">
-											<Flag class="h-5 w-5 shrink-0 text-muted-foreground" />
-											<div class="min-w-0 flex-1">
-												<p class="text-sm font-semibold">
-													No milestones yet
-												</p>
-												<p class="text-xs text-muted-foreground">
-													Add key commitments when dates matter.
-												</p>
-											</div>
-											{#if canEdit}
-												<button
-													type="button"
-													class="section-empty-action shrink-0"
-													onclick={() =>
-														createWorkspaceEntity('milestone')}
-												>
-													Add milestone
-												</button>
-											{/if}
-										</div>
-									{/if}
-								</div>
-							</section>
-
-							<section
-								class="overview-section"
-								aria-labelledby="overview-risks-title"
-							>
-								<header class="overview-section-header">
-									<div class="flex min-w-0 items-center gap-2">
-										<AlertTriangle class="h-4 w-4 shrink-0 text-destructive" />
-										<h2 id="overview-risks-title" class="text-sm font-semibold">
-											Risks
-										</h2>
-									</div>
-									{#if openRisks.length > 0}
-										<span class="text-2xs font-medium text-muted-foreground">
-											{openRisks.length} open
-										</span>
-									{/if}
-								</header>
-								<div class="pt-2">
-									{#if visibleRisks.length > 0}
-										{#each visibleRisks as risk (risk.id)}
-											<button
-												type="button"
-												class="entity-row"
-												onclick={() => openEntity('risk', risk.id)}
-											>
-												<div class="min-w-0 flex-1">
-													<p class="truncate text-sm font-semibold">
-														{risk.title}
-													</p>
-													<p
-														class="truncate text-xs text-muted-foreground"
-													>
-														{humanize(risk.impact)} impact
-														{risk.probability !== null &&
-														risk.probability !== undefined
-															? ` · ${Math.round(risk.probability * 100)}% likelihood`
-															: ''}
-													</p>
-												</div>
-												<span
-													class="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-2xs font-semibold text-destructive"
-												>
-													{humanize(risk.state_key)}
-												</span>
-											</button>
-										{/each}
-										{#if openRisks.length > 5}
-											<button
-												type="button"
-												class="view-all-row"
-												aria-expanded={showAllRisks}
-												onclick={() => (showAllRisks = !showAllRisks)}
-											>
-												{showAllRisks
-													? 'Show fewer risks'
-													: `Show all ${openRisks.length} risks`}
-											</button>
-										{/if}
-										{#if canEdit}
-											<button
-												type="button"
-												class="entity-create-row"
-												onclick={() => createWorkspaceEntity('risk')}
-											>
-												<Plus class="h-3.5 w-3.5" />
-												Add risk
-											</button>
-										{/if}
-									{:else}
-										<div class="section-empty-state">
-											<AlertTriangle
+											<Target
 												class="h-5 w-5 shrink-0 text-muted-foreground"
 											/>
 											<div class="min-w-0 flex-1">
-												<p class="text-sm font-semibold">No open risks</p>
+												<p class="text-sm font-semibold">
+													No direction set yet
+												</p>
 												<p class="text-xs text-muted-foreground">
-													Nothing is currently flagged.
+													Add a goal or plan when the path becomes clear.
 												</p>
 											</div>
 											{#if canEdit}
+												<div
+													class="flex shrink-0 flex-wrap justify-end gap-1"
+												>
+													<button
+														type="button"
+														class="section-empty-action"
+														onclick={() =>
+															createWorkspaceEntity('goal')}
+													>
+														Add goal
+													</button>
+													<button
+														type="button"
+														class="section-empty-action"
+														onclick={() =>
+															createWorkspaceEntity('plan')}
+													>
+														Add plan
+													</button>
+												</div>
+											{/if}
+										</div>
+									{:else}
+										<div
+											class="grid gap-0 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
+										>
+											<div class="p-3 sm:p-4">
+												<p class="micro-label mb-2">GOALS</p>
+												<div class="space-y-2">
+													{#each visibleGoals as goal (goal.id)}
+														{@const goalMilestones = milestones.filter(
+															(milestone) =>
+																milestone.goal_id === goal.id
+														)}
+														<button
+															type="button"
+															class="entity-row"
+															onclick={() =>
+																openEntity('goal', goal.id)}
+															use:preloadEntityModal={'goal'}
+														>
+															<div class="min-w-0 flex-1">
+																<p
+																	class="truncate text-sm font-semibold"
+																>
+																	{goal.name}
+																</p>
+																<p
+																	class="truncate text-xs text-muted-foreground"
+																>
+																	{goalMilestones.length} milestone{goalMilestones.length ===
+																	1
+																		? ''
+																		: 's'}
+																	{goal.target_date
+																		? ` · target ${formatDate(goal.target_date)}`
+																		: ''}
+																</p>
+															</div>
+															<ChevronRight
+																class="h-4 w-4 shrink-0 text-muted-foreground"
+															/>
+														</button>
+													{:else}
+														<div class="empty-row">
+															<Target class="h-5 w-5" />
+															<p>No active goals yet</p>
+														</div>
+													{/each}
+													{#if activeGoals.length > 5}
+														<button
+															type="button"
+															class="view-all-row"
+															aria-expanded={showAllGoals}
+															onclick={() =>
+																(showAllGoals = !showAllGoals)}
+														>
+															{showAllGoals
+																? 'Show fewer goals'
+																: `Show all ${activeGoals.length} goals`}
+														</button>
+													{/if}
+													{#if canEdit}
+														<button
+															type="button"
+															class="entity-create-row"
+															onclick={() =>
+																createWorkspaceEntity('goal')}
+														>
+															<Plus class="h-3.5 w-3.5" />
+															Add goal
+														</button>
+													{/if}
+												</div>
+											</div>
+											<div class="p-3 sm:p-4">
+												<p class="micro-label mb-2">PLANS</p>
+												<div class="space-y-2">
+													{#each visiblePlans as plan (plan.id)}
+														<button
+															type="button"
+															class="entity-row"
+															onclick={() =>
+																openEntity('plan', plan.id)}
+														>
+															<div class="min-w-0 flex-1">
+																<p
+																	class="truncate text-sm font-semibold"
+																>
+																	{plan.name}
+																</p>
+																<p
+																	class="truncate text-xs text-muted-foreground"
+																>
+																	{humanize(plan.state_key)}
+																	{plan.description
+																		? ` · ${plan.description}`
+																		: ''}
+																</p>
+															</div>
+															<ChevronRight
+																class="h-4 w-4 shrink-0 text-muted-foreground"
+															/>
+														</button>
+													{:else}
+														<div class="empty-row">
+															<Workflow class="h-5 w-5" />
+															<p>No active plans yet</p>
+														</div>
+													{/each}
+													{#if activePlans.length > 5}
+														<button
+															type="button"
+															class="view-all-row"
+															aria-expanded={showAllPlans}
+															onclick={() =>
+																(showAllPlans = !showAllPlans)}
+														>
+															{showAllPlans
+																? 'Show fewer plans'
+																: `Show all ${activePlans.length} plans`}
+														</button>
+													{/if}
+													{#if canEdit}
+														<button
+															type="button"
+															class="entity-create-row"
+															onclick={() =>
+																createWorkspaceEntity('plan')}
+														>
+															<Plus class="h-3.5 w-3.5" />
+															Add plan
+														</button>
+													{/if}
+												</div>
+											</div>
+										</div>
+									{/if}
+								</section>
+							</div>
+
+							<aside class="min-w-0 space-y-5">
+								<section
+									class="overview-section"
+									aria-labelledby="overview-milestones-title"
+								>
+									<header class="overview-section-header">
+										<div class="flex min-w-0 items-center gap-2">
+											<Flag class="h-4 w-4 shrink-0 text-accent" />
+											<h2
+												id="overview-milestones-title"
+												class="text-sm font-semibold"
+											>
+												Milestones
+											</h2>
+										</div>
+										{#if upcomingMilestones.length > 0}
+											<span
+												class="text-2xs font-medium text-muted-foreground"
+											>
+												{upcomingMilestones.length} upcoming
+											</span>
+										{/if}
+									</header>
+									<div class="pt-2">
+										{#if visibleMilestones.length > 0}
+											{#each visibleMilestones as milestone (milestone.id)}
 												<button
 													type="button"
-													class="section-empty-action shrink-0"
+													class="entity-row"
+													onclick={() =>
+														openEntity('milestone', milestone.id)}
+												>
+													<div
+														class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
+													>
+														<Flag class="h-3.5 w-3.5 text-accent" />
+													</div>
+													<div class="min-w-0 flex-1">
+														<p class="truncate text-sm font-semibold">
+															{milestone.title}
+														</p>
+														<p
+															class="truncate text-xs text-muted-foreground"
+														>
+															{milestone.due_at
+																? formatDate(milestone.due_at, true)
+																: 'No target date'}
+														</p>
+													</div>
+												</button>
+											{/each}
+											{#if upcomingMilestones.length > 5}
+												<button
+													type="button"
+													class="view-all-row"
+													aria-expanded={showAllMilestones}
+													onclick={() =>
+														(showAllMilestones = !showAllMilestones)}
+												>
+													{showAllMilestones
+														? 'Show fewer milestones'
+														: `Show all ${upcomingMilestones.length} milestones`}
+												</button>
+											{/if}
+											{#if canEdit}
+												<button
+													type="button"
+													class="entity-create-row"
+													onclick={() =>
+														createWorkspaceEntity('milestone')}
+												>
+													<Plus class="h-3.5 w-3.5" />
+													Add milestone
+												</button>
+											{/if}
+										{:else}
+											<div class="section-empty-state">
+												<Flag
+													class="h-5 w-5 shrink-0 text-muted-foreground"
+												/>
+												<div class="min-w-0 flex-1">
+													<p class="text-sm font-semibold">
+														No milestones yet
+													</p>
+													<p class="text-xs text-muted-foreground">
+														Add key commitments when dates matter.
+													</p>
+												</div>
+												{#if canEdit}
+													<button
+														type="button"
+														class="section-empty-action shrink-0"
+														onclick={() =>
+															createWorkspaceEntity('milestone')}
+													>
+														Add milestone
+													</button>
+												{/if}
+											</div>
+										{/if}
+									</div>
+								</section>
+
+								<section
+									class="overview-section"
+									aria-labelledby="overview-risks-title"
+								>
+									<header class="overview-section-header">
+										<div class="flex min-w-0 items-center gap-2">
+											<AlertTriangle
+												class="h-4 w-4 shrink-0 text-destructive"
+											/>
+											<h2
+												id="overview-risks-title"
+												class="text-sm font-semibold"
+											>
+												Risks
+											</h2>
+										</div>
+										{#if openRisks.length > 0}
+											<span
+												class="text-2xs font-medium text-muted-foreground"
+											>
+												{openRisks.length} open
+											</span>
+										{/if}
+									</header>
+									<div class="pt-2">
+										{#if visibleRisks.length > 0}
+											{#each visibleRisks as risk (risk.id)}
+												<button
+													type="button"
+													class="entity-row"
+													onclick={() => openEntity('risk', risk.id)}
+												>
+													<div class="min-w-0 flex-1">
+														<p class="truncate text-sm font-semibold">
+															{risk.title}
+														</p>
+														<p
+															class="truncate text-xs text-muted-foreground"
+														>
+															{humanize(risk.impact)} impact
+															{risk.probability !== null &&
+															risk.probability !== undefined
+																? ` · ${Math.round(risk.probability * 100)}% likelihood`
+																: ''}
+														</p>
+													</div>
+													<span
+														class="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-2xs font-semibold text-destructive"
+													>
+														{humanize(risk.state_key)}
+													</span>
+												</button>
+											{/each}
+											{#if openRisks.length > 5}
+												<button
+													type="button"
+													class="view-all-row"
+													aria-expanded={showAllRisks}
+													onclick={() => (showAllRisks = !showAllRisks)}
+												>
+													{showAllRisks
+														? 'Show fewer risks'
+														: `Show all ${openRisks.length} risks`}
+												</button>
+											{/if}
+											{#if canEdit}
+												<button
+													type="button"
+													class="entity-create-row"
 													onclick={() => createWorkspaceEntity('risk')}
 												>
+													<Plus class="h-3.5 w-3.5" />
 													Add risk
 												</button>
 											{/if}
-										</div>
-									{/if}
-								</div>
-							</section>
-						</aside>
+										{:else}
+											<div class="section-empty-state">
+												<AlertTriangle
+													class="h-5 w-5 shrink-0 text-muted-foreground"
+												/>
+												<div class="min-w-0 flex-1">
+													<p class="text-sm font-semibold">
+														No open risks
+													</p>
+													<p class="text-xs text-muted-foreground">
+														Nothing is currently flagged.
+													</p>
+												</div>
+												{#if canEdit}
+													<button
+														type="button"
+														class="section-empty-action shrink-0"
+														onclick={() =>
+															createWorkspaceEntity('risk')}
+													>
+														Add risk
+													</button>
+												{/if}
+											</div>
+										{/if}
+									</div>
+								</section>
+							</aside>
+						</div>
 					</div>
-				</div>
+				{/if}
 			</div>
 		{:else if activeTab === 'docs'}
 			<div
@@ -1680,6 +1709,7 @@
 				class="workspace-panel"
 				role="tabpanel"
 				aria-labelledby="workspace-tab-docs"
+				aria-busy={isHydrating}
 				tabindex="0"
 			>
 				<h2 class="sr-only">Project documents</h2>
@@ -1690,7 +1720,7 @@
 							class="min-h-[420px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
 							aria-label="Loading project documents"
 						></div>
-					{:else}
+					{:else if workspaceReady}
 						{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
 							<div
 								class="min-h-[420px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
@@ -1725,6 +1755,7 @@
 				class="workspace-panel"
 				role="tabpanel"
 				aria-labelledby="workspace-tab-activity"
+				aria-busy={isHydrating}
 				tabindex="0"
 			>
 				<h2 class="sr-only">Project activity</h2>
@@ -1734,7 +1765,7 @@
 						class="min-h-[360px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
 						aria-label="Loading project activity"
 					></div>
-				{:else}
+				{:else if workspaceReady}
 					<ProjectRecentChats projectId={project.id} onOpenChat={openRecentChat} />
 
 					<div class="mt-6">

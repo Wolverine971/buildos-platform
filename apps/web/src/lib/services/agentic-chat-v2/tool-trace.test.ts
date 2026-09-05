@@ -234,7 +234,9 @@ describe('buildPersistedToolTrace', () => {
 		expect(requireTestValue(trace[2]).result_preview).toBe(
 			'{"read_only":true,"body_returned":true,"body_truncated":false,"has_unsupported_attachments":false}'
 		);
-		expect(requireTestValue(trace[3]).arguments_preview).toBe('{"read_only":true,"email_address_present":true}');
+		expect(requireTestValue(trace[3]).arguments_preview).toBe(
+			'{"read_only":true,"email_address_present":true}'
+		);
 		expect(requireTestValue(trace[4]).result_preview).toBe(
 			'{"browser_handoff_only":true,"status":"browser_handoff_required","requires_user_action":true,"has_client_action":true}'
 		);

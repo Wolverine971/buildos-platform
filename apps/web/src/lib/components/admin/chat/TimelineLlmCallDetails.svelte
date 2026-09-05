@@ -8,7 +8,11 @@
 		prettyJson,
 		truncateText
 	} from '$lib/services/admin/chat-session-audit-formatters';
-	import { payloadField, stringValue } from '$lib/services/admin/chat-session-audit-payload';
+	import {
+		payloadField,
+		recordFromUnknown,
+		stringValue
+	} from '$lib/services/admin/chat-session-audit-payload';
 	import {
 		capturedPromptMessages,
 		promptSnapshotFromTurnRun,
@@ -34,6 +38,19 @@
 	let promptMessages = $derived(capturedPromptMessages(group.run));
 	let requestMessage = $derived(timelineGroupRequestMessage(group));
 	let showFullPrompt = $state(false);
+	let metadata = $derived(recordFromUnknown(payload.metadata) ?? {});
+	let localDump = $derived(recordFromUnknown(metadata.localPromptDump));
+	let identifiers = $derived(
+		[
+			['Pass', stringValue(metadata.passRole).replace(/_/g, ' ')],
+			['Logical round', metadata.logicalProviderRound],
+			['Attempt', metadata.providerAttempt],
+			['Route', metadata.routeId],
+			['OpenRouter request ID', payload.openrouter_request_id],
+			['Usage log ID', payload.id || event.id.replace(/^llm:/, '')],
+			['Turn run ID', payload.turn_run_id || group.run?.id]
+		].filter(([, value]) => value !== undefined && value !== null && value !== '')
+	);
 	let promptVariant = $derived(
 		stringValue(payloadField(payload, 'prompt_variant')) ||
 			stringValue(payloadField(promptSnapshot ?? {}, 'prompt_variant')) ||
@@ -83,6 +100,32 @@
 		</div>
 	</div>
 
+	<dl
+		class="mt-2 grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2"
+		aria-label="LLM call correlation"
+	>
+		{#each identifiers as [label, value] (label)}
+			<div class="rounded border border-border bg-card px-2 py-1.5">
+				<dt class="font-medium text-foreground/60">{label}</dt>
+				<dd class="mt-0.5 break-all font-mono text-foreground select-all">
+					{stringValue(value)}
+				</dd>
+			</div>
+		{/each}
+	</dl>
+	{#if localDump?.markdownFile}
+		<div class="mt-2 rounded border border-accent/30 bg-accent/5 px-3 py-2 text-xs">
+			<div class="font-semibold">Exact request dump · worker development files</div>
+			<p class="mt-1 break-all font-mono select-all">
+				apps/worker/.prompt-dumps/{stringValue(localDump.markdownFile)}
+			</p>
+			<p class="mt-1 text-muted-foreground">
+				Open this file on the machine running the worker for this pass's messages, tools,
+				response events, and outcome. Local files expire after 48 hours.
+			</p>
+		</div>
+	{/if}
+
 	{#if requestMessage || promptMessages.length > 0}
 		<section
 			class="mt-2 overflow-hidden rounded-lg border border-accent/30 bg-accent/5"
@@ -94,6 +137,12 @@
 					The request supplied by the user or calling agent.
 				</div>
 			</div>
+			{#if promptMessages.length === 0}
+				<p class="border-b border-accent/20 px-3 py-2 text-xs text-muted-foreground">
+					Initial prompt snapshot unavailable for this turn. The request below is the
+					user's message; it does not show the model's full context.
+				</p>
+			{/if}
 			{#if requestMessage}
 				{#if requestMessage.length > 1_200}
 					<details class="px-3 py-2 text-sm text-foreground">
@@ -140,10 +189,12 @@
 					{#if showFullPrompt}
 						<div class="space-y-2 border-t border-border px-3 py-2">
 							<p class="text-2xs text-muted-foreground">
-								This snapshot includes the system prompt, conversation history, and
-								turn request captured at the start of the turn. Token totals can
-								also include tool definitions and provider formatting. Later tool
-								rounds can add messages that are not stored as separate snapshots.
+								This initial snapshot includes the system prompt, conversation
+								history, and turn request captured at the start of the turn. Token
+								totals can also include tool definitions and provider formatting.
+								Later tool rounds and review passes use different context. For the
+								exact request for this call, use its worker development dump when
+								available.
 							</p>
 							{#each promptMessages as message (message)}
 								<div class="overflow-hidden rounded border border-border bg-card">

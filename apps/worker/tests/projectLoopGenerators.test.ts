@@ -36,12 +36,14 @@ function makeContext(): LoopContext {
 			{
 				id: 'task-1',
 				title: 'Publish launch announcement',
+				description: null,
 				state_key: 'todo',
 				updated_at: '2026-06-22T00:00:00.000Z'
 			},
 			{
 				id: 'task-2',
 				title: 'Publish announcement draft',
+				description: null,
 				state_key: 'todo',
 				updated_at: '2026-06-23T00:00:00.000Z'
 			}
@@ -687,6 +689,7 @@ describe('project loop generators', () => {
 				{
 					id: 'task-3',
 					title: 'Prepare launch metrics',
+					description: null,
 					state_key: 'todo',
 					updated_at: '2026-06-24T00:00:00.000Z'
 				}

@@ -129,7 +129,7 @@ function node(): QuestionTreeNode {
 
 describe('OpenRouterQuestionTreeModel', () => {
 	it('pins the paid model, requests JSON, allows same-model provider fallback, and sends no tools', async () => {
-		const fetchImpl = vi.fn(async () => response());
+		const fetchImpl = vi.fn<typeof fetch>(async () => response());
 		const model = new OpenRouterQuestionTreeModel({ apiKey: 'test-key', fetchImpl });
 		const result = await model.seed({ run: run('paid_floor_strict') });
 		const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
@@ -150,7 +150,7 @@ describe('OpenRouterQuestionTreeModel', () => {
 	});
 
 	it('omits response_format for the strict free endpoint', async () => {
-		const fetchImpl = vi.fn(async () => response());
+		const fetchImpl = vi.fn<typeof fetch>(async () => response());
 		const model = new OpenRouterQuestionTreeModel({ apiKey: 'test-key', fetchImpl });
 		await model.seed({ run: run('free_strict') });
 		const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));

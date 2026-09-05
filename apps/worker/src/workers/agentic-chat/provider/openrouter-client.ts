@@ -32,6 +32,7 @@ import {
 	createStableAgenticChatExecutionObservationKeyV1
 } from '../executionObservation';
 import { isToolArgumentsTextTruncated } from './stream-tool-calls';
+import { localPromptDumpsEnabled, startLocalPromptDump, type LocalPromptDump } from '../promptDump';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
 /**
@@ -94,6 +95,7 @@ export type AgenticChatOpenAiCompatibleRouteV1 = {
 };
 
 export type AgenticChatProviderUsageObservationV1 = {
+	localPromptDump?: { jsonFile: string; markdownFile: string };
 	usageLogId: string;
 	status: 'success' | 'failure' | 'aborted';
 	requestStartedAtMs: number;
@@ -146,6 +148,7 @@ type RouteFailure = {
 };
 
 type ActiveResponse = {
+	promptDump: LocalPromptDump | null;
 	route: AgenticChatOpenAiCompatibleRouteV1;
 	response: Response;
 	requestId: string | null;
@@ -321,6 +324,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		const failures: RouteFailure[] = [];
 		let lastAttemptedRoute: AgenticChatOpenAiCompatibleRouteV1 | null = null;
 		let active: ActiveResponse | null = null;
+		let lastPromptDump: LocalPromptDump | null = null;
 		let activeAttemptStartedAtMs: number | null = null;
 		let activeAttemptKind: 'primary' | 'retry' | null = null;
 		let activeAttemptEnded = false;
@@ -353,6 +357,17 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				exactUsage = null;
 			}
 			accounted = true;
+			active?.promptDump?.complete({
+				status,
+				error,
+				retryable,
+				requestId: state.requestId ?? active.requestId,
+				modelUsed: state.modelUsed ?? active.route.model,
+				provider: state.provider,
+				finishReason: state.finishReason,
+				usage: state.rawUsage,
+				timing: active.timing()
+			});
 			// A rejected start is not evidence that the prompt was processed.
 			// Retain the failed attempt, but do not turn its request size into
 			// billable usage. Accepted streams still need estimates if usage is lost.
@@ -375,6 +390,14 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				: { inputCost: 0, outputCost: 0, source: 'unknown' as const };
 			await this.observeUsage(
 				{
+					...(lastPromptDump
+						? {
+								localPromptDump: {
+									jsonFile: lastPromptDump.jsonFile,
+									markdownFile: lastPromptDump.markdownFile
+								}
+							}
+						: {}),
 					usageLogId: createStableAgenticChatProviderUsageLogIdV1({
 						turnRunId: input.turnRunId,
 						executionGeneration: input.executionGeneration,
@@ -453,7 +476,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					model_requested: route.model
 				});
 				try {
-					active = await this.openRoute(route, input);
+					active = await this.openRoute(route, input, (dump) => {
+						lastPromptDump = dump;
+					});
 					activeAttemptStartedAtMs = attemptStartedAtMs;
 					activeAttemptKind = attemptKind;
 					break;
@@ -539,6 +564,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					throwIfAborted(active.signal);
 					const outcome = parseSseLine(line, state);
 					for (const event of outcome.events) {
+						active.promptDump?.recordEvent(event);
 						throwIfAborted(active.signal);
 						yield event;
 						// Async generators pause at `yield`. If the provider deadline fires
@@ -557,6 +583,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				throwIfAborted(active.signal);
 				const outcome = parseSseLine(buffer, state);
 				for (const event of outcome.events) {
+					active.promptDump?.recordEvent(event);
 					throwIfAborted(active.signal);
 					yield event;
 					throwIfAborted(active.signal);
@@ -806,10 +833,42 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 
 	private async openRoute(
 		route: AgenticChatOpenAiCompatibleRouteV1,
-		input: ClientInput
+		input: ClientInput,
+		onPromptDump: (dump: LocalPromptDump | null) => void
 	): Promise<ActiveResponse> {
+		const body = JSON.stringify(this.requestBody(route, input));
+		const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
+		const passRole = canonicalProviderPassRole(input.passRole);
+		const promptDump = localPromptDumpsEnabled()
+			? startLocalPromptDump(
+					{
+						sessionId: input.sessionId,
+						turnRunId: input.turnRunId,
+						streamRunId: input.streamRunId,
+						clientTurnId: input.clientTurnId,
+						executionGeneration: input.executionGeneration,
+						logicalProviderRound: input.logicalProviderRound,
+						providerRound: input.providerRound,
+						passRole,
+						providerAttempt,
+						routeId: route.id,
+						usageLogId: createStableAgenticChatProviderUsageLogIdV1({
+							turnRunId: input.turnRunId,
+							executionGeneration: input.executionGeneration,
+							logicalProviderRound: input.logicalProviderRound,
+							passRole,
+							providerAttempt,
+							routeId: route.id
+						})
+					},
+					body
+				)
+			: null;
+		onPromptDump(promptDump);
 		const timeoutMs = this.attemptTimeoutMs(input);
 		const attempt = createAttemptSignal(input.signal, timeoutMs);
+		let httpStatus: number | null = null;
+		let requestId: string | null = null;
 		try {
 			const response = await this.fetchImpl(`${route.baseUrl}/chat/completions`, {
 				method: 'POST',
@@ -822,10 +881,14 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					...(route.kind === 'openrouter' ? { 'X-OpenRouter-Metadata': 'enabled' } : {}),
 					...(route.headers ?? {})
 				},
-				body: JSON.stringify(this.requestBody(route, input)),
+				body,
 				signal: attempt.signal
 			});
 			attempt.markResponseOpened();
+			httpStatus = response.status;
+			requestId =
+				canonicalOptionalHeader(response.headers.get('x-request-id')) ??
+				canonicalOptionalHeader(response.headers.get('x-openrouter-request-id'));
 			if (!response.ok) {
 				const { message, providerSlug } = await responseError(response);
 				// A warm provider can accept an auto-tool pass but have no endpoint
@@ -858,11 +921,10 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				);
 			}
 			return {
+				promptDump,
 				route,
 				response,
-				requestId:
-					canonicalOptionalHeader(response.headers.get('x-request-id')) ??
-					canonicalOptionalHeader(response.headers.get('x-openrouter-request-id')),
+				requestId,
 				signal: attempt.signal,
 				timeoutMs,
 				cleanup: attempt.cleanup,
@@ -870,6 +932,13 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				timing: attempt.timing
 			};
 		} catch (error) {
+			promptDump?.complete({
+				status: input.signal.aborted ? 'aborted' : 'failure',
+				error: canonicalError(error),
+				httpStatus,
+				requestId,
+				timing: attempt.timing()
+			});
 			attempt.cleanup();
 			if (input.signal.aborted) throwAbort(input.signal);
 			if (attempt.timedOut()) {
@@ -1162,6 +1231,9 @@ export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObse
 			cachedPromptTokens: observation.cachedPromptTokens,
 			cacheWriteTokens: observation.cacheWriteTokens,
 			metadata: {
+				...(observation.localPromptDump
+					? { localPromptDump: observation.localPromptDump }
+					: {}),
 				contextType: observation.contextType,
 				entityId: observation.entityId,
 				routeId: observation.routeId,

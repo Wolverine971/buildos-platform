@@ -1,7 +1,6 @@
 // apps/worker/tests/agenticChatMutationExecutor.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
-	AgenticChatEffectExecutionError,
 	AgenticChatMutationAdapterError,
 	AgenticChatMutationExecutor
 } from '../src/workers/agentic-chat/mutation-executor';
@@ -88,7 +87,9 @@ function createHarness(options: { abortOnReserve?: AbortController } = {}) {
 		)
 	};
 	const mutatingTool = {
-		execute: vi.fn(async () => ({ mutationId: 'mutation-1' }))
+		execute: vi.fn<
+			ConstructorParameters<typeof AgenticChatMutationExecutor>[0]['mutatingTool']['execute']
+		>(async () => ({ mutationId: 'mutation-1' }))
 	};
 	const executor = new AgenticChatMutationExecutor({
 		control: control as never,
@@ -325,7 +326,7 @@ describe('AgenticChatMutationExecutor', () => {
 				step: baseStep,
 				signal: new AbortController().signal
 			})
-		).rejects.toMatchObject<Partial<AgenticChatEffectExecutionError>>({
+		).rejects.toMatchObject({
 			failureClass: 'uncertain_external_commit',
 			effectId: harness.stable.effectId
 		});
@@ -373,7 +374,7 @@ describe('AgenticChatMutationExecutor', () => {
 			step: { ...baseStep, downstreamIdempotencySupported: false },
 			signal: new AbortController().signal
 		});
-		await expect(execution).rejects.toMatchObject<Partial<AgenticChatEffectExecutionError>>({
+		await expect(execution).rejects.toMatchObject({
 			failureClass: 'uncertain_external_commit',
 			effectId: harness.stable.effectId
 		});

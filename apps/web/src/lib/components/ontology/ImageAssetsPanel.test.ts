@@ -48,16 +48,21 @@ describe('ImageAssetsPanel', () => {
 		window.scrollTo = vi.fn();
 		if (!Element.prototype.animate) {
 			Element.prototype.animate = vi.fn(() => {
-				const animation = {
+				const animation: Partial<Animation> = {
 					cancel: vi.fn(),
 					play: vi.fn(),
 					pause: vi.fn(),
 					currentTime: 0
-				} as Animation;
-				Object.defineProperty(animation, 'finished', { value: Promise.resolve(animation) });
+				};
+				Object.defineProperty(animation, 'finished', {
+					value: Promise.resolve(animation as Animation)
+				});
 				setTimeout(() => {
 					if (typeof animation.onfinish === 'function') {
-						animation.onfinish(new Event('finish') as AnimationPlaybackEvent);
+						animation.onfinish.call(
+							animation as Animation,
+							new Event('finish') as AnimationPlaybackEvent
+						);
 					}
 				}, 0);
 				return animation as Animation;

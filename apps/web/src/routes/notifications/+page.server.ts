@@ -10,6 +10,7 @@ import type { PageServerLoad } from './$types';
 import { loadActivityTimeline } from '$lib/server/activity-timeline.service';
 
 const FIRST_PAGE_SIZE = 30;
+const READ_BATCH_SIZE = 500;
 /** Channels whose "unread" state is owned by this page, per the nav badge query. */
 const IN_APP_CHANNELS = ['in_app', 'push'];
 const UNOPENED_STATUSES = ['sent', 'delivered'];
@@ -19,43 +20,67 @@ async function markInAppDeliveriesOpened(
 	userId: string
 ): Promise<void> {
 	const openedAt = new Date().toISOString();
+	let afterId: string | null = null;
 
-	const { data: unopened, error: selectError } = await supabase
-		.from('notification_deliveries')
-		.select('id')
-		.eq('recipient_user_id', userId)
-		.in('channel', IN_APP_CHANNELS as any)
-		.in('status', UNOPENED_STATUSES as any)
-		.is('opened_at', null)
-		.limit(500);
+	while (true) {
+		// Keyset pagination avoids skipping rows as the unread set shrinks. The
+		// cutoff keeps notifications arriving during this visit unread.
+		let query = supabase
+			.from('notification_deliveries')
+			.select('id')
+			.eq('recipient_user_id', userId)
+			.in('channel', IN_APP_CHANNELS as any)
+			.in('status', UNOPENED_STATUSES as any)
+			.is('opened_at', null)
+			.lte('created_at', openedAt)
+			.order('id', { ascending: true })
+			.limit(READ_BATCH_SIZE);
+		if (afterId) query = query.gt('id', afterId);
 
-	if (selectError) {
-		console.error('[Notifications] Failed to find unopened deliveries', selectError);
-		return;
-	}
+		const { data: unopened, error: selectError } = await query;
+		if (selectError) {
+			console.error('[Notifications] Failed to find unopened deliveries', selectError);
+			return;
+		}
 
-	const ids = (unopened ?? []).map((row) => row.id);
-	if (ids.length === 0) return;
+		const ids = (unopened ?? []).map((row) => row.id);
+		const lastId = ids.at(-1);
+		if (!lastId) return;
 
-	const { error: updateError } = await supabase
-		.from('notification_deliveries')
-		.update({ opened_at: openedAt, status: 'opened', updated_at: openedAt })
-		.eq('recipient_user_id', userId)
-		.in('id', ids);
+		const { data: opened, error: updateError } = await supabase
+			.from('notification_deliveries')
+			.update({ opened_at: openedAt, status: 'opened', updated_at: openedAt })
+			.eq('recipient_user_id', userId)
+			.in('id', ids)
+			.in('status', UNOPENED_STATUSES as any)
+			.is('opened_at', null)
+			.select('id');
 
-	if (updateError) {
-		console.error('[Notifications] Failed to mark deliveries opened', updateError);
-		return;
-	}
+		if (updateError) {
+			console.error('[Notifications] Failed to mark deliveries opened', updateError);
+			return;
+		}
 
-	const { error: readStateError } = await supabase
-		.from('user_notifications')
-		.update({ read_at: openedAt })
-		.in('delivery_id', ids)
-		.is('read_at', null);
+		const openedIds = (opened ?? []).map((row) => row.id);
+		if (openedIds.length > 0) {
+			const { error: readStateError } = await supabase
+				.from('user_notifications')
+				.update({ read_at: openedAt })
+				.eq('user_id', userId)
+				.in('delivery_id', openedIds)
+				.is('read_at', null);
 
-	if (readStateError) {
-		console.error('[Notifications] Failed to mark user notifications read', readStateError);
+			if (readStateError) {
+				console.error(
+					'[Notifications] Failed to mark user notifications read',
+					readStateError
+				);
+				return;
+			}
+		}
+
+		if (ids.length < READ_BATCH_SIZE) return;
+		afterId = lastId;
 	}
 }
 

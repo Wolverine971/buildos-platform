@@ -1,5 +1,6 @@
 // apps/worker/tests/agenticChatCancellationObserver.test.ts
 
+import { deferred } from './helpers/deferred';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
 	AgenticChatCancellationObservationInputV1,
@@ -143,17 +144,13 @@ describe('AgenticChatCancellationObserver', () => {
 	});
 
 	it('shares one in-flight poll instead of issuing overlapping queries', async () => {
-		let resolvePoll: ((value: AgenticChatCancellationObservationRpcResultV1) => void) | null =
-			null;
+		const poll = deferred<AgenticChatCancellationObservationRpcResultV1>();
 		let calls = 0;
 		const observer = new AgenticChatCancellationObserver({
-			observation: port(
-				() =>
-					new Promise((resolve) => {
-						calls += 1;
-						resolvePoll = resolve;
-					})
-			)
+			observation: port(() => {
+				calls += 1;
+				return poll.promise;
+			})
 		});
 		observer.registerTurn({ turnRunId: 'turn-overlap', executionGeneration: 1 });
 
@@ -161,7 +158,7 @@ describe('AgenticChatCancellationObserver', () => {
 		const second = observer.pollNow();
 		expect(second).toBe(first);
 		expect(calls).toBe(1);
-		resolvePoll?.([]);
+		poll.resolve([]);
 		await expect(first).resolves.toBe(0);
 		await observer.stop();
 	});

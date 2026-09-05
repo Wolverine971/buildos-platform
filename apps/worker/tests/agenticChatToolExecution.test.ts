@@ -204,10 +204,11 @@ describe('Agentic Chat read-tool execution ledger', () => {
 
 	it('aborts and rejects a hung ledger RPC at the configured deadline', async () => {
 		let deadlineSignal: AbortSignal | null = null;
-		const response = Object.assign(new Promise<never>(() => undefined), {
+		const pending = new Promise<never>(() => undefined);
+		const response = Object.assign(pending, {
 			abortSignal(signal: AbortSignal) {
 				deadlineSignal = signal;
-				return this;
+				return pending;
 			}
 		});
 		const adapter = new SupabaseAgenticChatToolExecutionAdapter(
@@ -228,9 +229,7 @@ describe('Agentic Chat read-tool execution ledger', () => {
 			['already_terminal', 'unknown']
 		] as const) {
 			const { adapter } = adapterFor(receipt({ outcome }));
-			await expect(adapter.persistRead(input)).rejects.toMatchObject<
-				Partial<AgenticChatToolExecutionFenceError>
-			>({
+			await expect(adapter.persistRead(input)).rejects.toMatchObject({
 				name: 'AgenticChatToolExecutionFenceError',
 				outcome,
 				failureClass

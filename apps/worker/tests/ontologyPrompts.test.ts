@@ -78,6 +78,7 @@ function createBriefData(
 ): OntologyBriefData {
 	return {
 		briefDate: '2025-12-17',
+		recentlyPausedProjects: [],
 		timezone: 'America/New_York',
 		goals: [],
 		risks: [],

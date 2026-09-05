@@ -132,7 +132,7 @@ describe('SMS Event Scheduling - Delivery Tracking', () => {
 			const { data: deliveredScheduled } = await testSetup
 				.getClient()
 				.from('scheduled_sms_messages')
-				.select('status')
+				.select('status, delivered_at, sent_at')
 				.eq('id', scheduledMsg.id)
 				.single();
 
@@ -448,7 +448,7 @@ describe('SMS Event Scheduling - Delivery Tracking', () => {
 			let { data: msg } = await testSetup
 				.getClient()
 				.from('sms_messages')
-				.select('status')
+				.select('status, delivered_at, sent_at')
 				.eq('id', smsMsg.id)
 				.single();
 
@@ -468,7 +468,7 @@ describe('SMS Event Scheduling - Delivery Tracking', () => {
 			({ data: msg } = await testSetup
 				.getClient()
 				.from('sms_messages')
-				.select('status')
+				.select('status, delivered_at, sent_at')
 				.eq('id', smsMsg.id)
 				.single());
 
@@ -541,7 +541,7 @@ describe('SMS Event Scheduling - Delivery Tracking', () => {
 			let { data: msg } = await testSetup
 				.getClient()
 				.from('sms_messages')
-				.select('status')
+				.select('status, delivered_at, sent_at')
 				.eq('id', smsMsg.id)
 				.single();
 
@@ -629,7 +629,7 @@ describe('SMS Event Scheduling - Delivery Tracking', () => {
 			const { data: allMessages } = await testSetup
 				.getClient()
 				.from('sms_messages')
-				.select('status')
+				.select('status, delivered_at, sent_at')
 				.eq('user_id', user.id);
 
 			const delivered = allMessages?.filter((m) => m.status === 'delivered').length || 0;

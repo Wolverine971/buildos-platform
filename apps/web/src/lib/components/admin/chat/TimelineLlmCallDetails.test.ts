@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/admin/chat/TimelineLlmCallDetails.test.ts
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
@@ -20,14 +21,35 @@ const event: AuditTimelineEvent = {
 };
 
 const turnRun: SessionTurnRun = {
-	stream_run_id: null, client_turn_id: null, status: 'completed', finished_reason: 'stop',
-	context_type: 'global', entity_id: null, project_id: null, gateway_enabled: true,
-	user_message_id: null, assistant_message_id: null, tool_round_count: 0, tool_call_count: 0,
-	validation_failure_count: 0, llm_pass_count: 1, first_lane: null, first_help_path: null,
-	first_skill_path: null, first_canonical_op: null, history_strategy: null, history_compressed: false,
-	raw_history_count: 0, history_for_model_count: 0, cache_source: null, cache_age_seconds: 0,
-	request_prewarmed_context: false, started_at: event.timestamp, finished_at: event.timestamp,
-	events: [], eval_runs: [],
+	stream_run_id: null,
+	client_turn_id: null,
+	status: 'completed',
+	finished_reason: 'stop',
+	context_type: 'global',
+	entity_id: null,
+	project_id: null,
+	gateway_enabled: true,
+	user_message_id: null,
+	assistant_message_id: null,
+	tool_round_count: 0,
+	tool_call_count: 0,
+	validation_failure_count: 0,
+	llm_pass_count: 1,
+	first_lane: null,
+	first_help_path: null,
+	first_skill_path: null,
+	first_canonical_op: null,
+	history_strategy: null,
+	history_compressed: false,
+	raw_history_count: 0,
+	history_for_model_count: 0,
+	cache_source: null,
+	cache_age_seconds: 0,
+	request_prewarmed_context: false,
+	started_at: event.timestamp,
+	finished_at: event.timestamp,
+	events: [],
+	eval_runs: [],
 	id: 'run-1',
 	turn_index: 1,
 	request_message: 'Ask the planning agent to identify the next concrete milestone.',
@@ -114,6 +136,32 @@ describe('TimelineLlmCallDetails', () => {
 
 		expect(
 			screen.getByText(/Prompt content was not captured for this historical call/)
+		).toBeInTheDocument();
+	});
+
+	it('exposes the exact call correlation and local dump while distinguishing missing initial context', () => {
+		render(TimelineLlmCallDetails, {
+			props: {
+				event,
+				group: { ...group, run: { ...turnRun, prompt_snapshot: null } },
+				payload: {
+					id: 'usage-123',
+					openrouter_request_id: 'gen-456',
+					metadata: {
+						passRole: 'contract_review',
+						logicalProviderRound: 3,
+						providerAttempt: 2,
+						localPromptDump: { markdownFile: 'request-123.md' }
+					}
+				}
+			}
+		});
+		expect(screen.getByText('contract review')).toBeInTheDocument();
+		expect(screen.getByText('gen-456')).toBeInTheDocument();
+		expect(screen.getByText('usage-123')).toBeInTheDocument();
+		expect(screen.getByText('apps/worker/.prompt-dumps/request-123.md')).toBeInTheDocument();
+		expect(
+			screen.getByText(/Initial prompt snapshot unavailable for this turn/)
 		).toBeInTheDocument();
 	});
 });

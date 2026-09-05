@@ -2,13 +2,24 @@
 // Graceful-shutdown drain behavior for SupabaseQueue.stop(). These exercise the
 // drain primitive directly plus one real claimed processor to prove the abort
 // and reclaimability boundary.
+import { deferred } from './helpers/deferred';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
 import { supabase } from '../src/lib/supabase';
 
+const { rpcMock } = vi.hoisted(() => ({
+	rpcMock:
+		vi.fn<
+			(
+				name: string,
+				args?: Record<string, unknown>
+			) => Promise<{ data: unknown; error: unknown }>
+		>()
+}));
+
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
-		rpc: vi.fn(),
+		rpc: rpcMock,
 		from: vi.fn()
 	}
 }));
@@ -25,7 +36,7 @@ function asInternals(queue: SupabaseQueue): DrainInternals {
 
 describe('SupabaseQueue.stop() drain', () => {
 	beforeEach(() => {
-		vi.mocked(supabase.rpc).mockReset();
+		rpcMock.mockReset();
 	});
 
 	afterEach(() => {
@@ -91,7 +102,7 @@ describe('SupabaseQueue.stop() drain', () => {
 	it('aborts an over-budget chat executor and leaves its queue row for fenced recovery', async () => {
 		const job = claimedChatJob();
 		let claimCount = 0;
-		vi.mocked(supabase.rpc).mockImplementation(async (name) => {
+		rpcMock.mockImplementation(async (name) => {
 			if (name === 'claim_pending_jobs') {
 				claimCount += 1;
 				return { data: claimCount === 1 ? [job] : [], error: null } as never;
@@ -99,9 +110,9 @@ describe('SupabaseQueue.stop() drain', () => {
 			return { data: true, error: null } as never;
 		});
 
-		const started = Promise.withResolvers<void>();
-		const aborted = Promise.withResolvers<unknown>();
-		const release = Promise.withResolvers<void>();
+		const started = deferred<void>();
+		const aborted = deferred<unknown>();
+		const release = deferred<void>();
 		const queue = new SupabaseQueue({
 			batchSize: 1,
 			pollInterval: 60_000,

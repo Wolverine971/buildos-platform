@@ -107,6 +107,8 @@ function createCompleteAuditJob(
 	return {
 		id: 'queue-job-1',
 		processingToken: 'token-1',
+		correlationId: null,
+		signal: new AbortController().signal,
 		userId: 'user-1',
 		attempts: 0,
 		data: {

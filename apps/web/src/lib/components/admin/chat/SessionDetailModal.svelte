@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/admin/chat/SessionDetailModal.svelte -->
 <script lang="ts">
 	import { Activity, AlertCircle } from 'lucide-svelte';
-	import { tick } from 'svelte';
+	import { revealSessionFlowTarget } from '$lib/services/admin/chat-session-flow-navigation';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { SessionFlowTarget } from '$lib/services/admin/chat-session-flow-targets';
 	import type {
@@ -77,49 +77,12 @@
 		runPromptEval: (turnRunId: string) => void | Promise<void>;
 	} = $props();
 
-	function openDetailsAround(element: HTMLElement, includeDescendants = false): void {
-		let current: HTMLElement | null = element;
-		while (current) {
-			if (current instanceof HTMLDetailsElement) current.open = true;
-			current = current.parentElement;
-		}
-		if (includeDescendants) {
-			element.querySelectorAll('details').forEach((details) => {
-				details.open = true;
-			});
-		}
-	}
-
-	async function revealFlowTarget(target: SessionFlowTarget): Promise<void> {
-		if (target.auditEventId && !expandedEventIds.has(target.auditEventId)) {
-			toggleEventExpansion(target.auditEventId);
-		}
-		await tick();
-
-		let exactTarget = document.getElementById(target.domId);
-		if (!exactTarget && target.kind === 'audit') {
-			resetTimelineFilters();
-			await tick();
-			exactTarget = document.getElementById(target.domId);
-		}
-		const targetElement =
-			exactTarget ??
-			(target.fallbackDomId ? document.getElementById(target.fallbackDomId) : null);
-		if (!targetElement) return;
-
-		openDetailsAround(targetElement, target.kind === 'message');
-		await tick();
-
-		const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		targetElement.scrollIntoView({
-			behavior: reduceMotion ? 'auto' : 'smooth',
-			block: 'center'
+	function revealFlowTarget(target: SessionFlowTarget): Promise<void> {
+		return revealSessionFlowTarget(target, {
+			isExpanded: (id) => expandedEventIds.has(id),
+			expandEvent: toggleEventExpansion,
+			resetFilters: resetTimelineFilters
 		});
-		const focusTarget =
-			targetElement instanceof HTMLDetailsElement
-				? targetElement.querySelector<HTMLElement>(':scope > summary')
-				: targetElement;
-		focusTarget?.focus({ preventScroll: true });
 	}
 </script>
 
@@ -146,7 +109,7 @@
 			<span>{detailError}</span>
 		</div>
 	{:else if sessionDetail}
-		<div class="flex flex-col">
+		<div class="session-flow-detail flex flex-col">
 			<div class="p-3 border-b border-border space-y-3 bg-card">
 				<SessionMetricsHeader
 					{sessionDetail}
@@ -193,3 +156,14 @@
 		</div>
 	{/if}
 </Modal>
+
+<style>
+	.session-flow-detail :global([id^='chat-flow-']),
+	.session-flow-detail :global([id^='chat-flow-'] > summary) {
+		scroll-margin-block-start: 1rem;
+	}
+	.session-flow-detail :global([data-flow-selected='true']) {
+		outline: 2px solid hsl(var(--accent));
+		outline-offset: 3px;
+	}
+</style>

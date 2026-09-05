@@ -182,9 +182,11 @@ describe('Brief Generator - Parallel Project Processing', () => {
 				}
 			];
 
-			const mockGenerateProjectBrief = vi.fn(async () => {
-				throw new Error('Database error');
-			});
+			const mockGenerateProjectBrief = vi.fn(
+				async (_project: { project_id: string; name: string; user_id: string }) => {
+					throw new Error('Database error');
+				}
+			);
 
 			const projectBriefPromises = mockProjects.map(async (project) => {
 				try {

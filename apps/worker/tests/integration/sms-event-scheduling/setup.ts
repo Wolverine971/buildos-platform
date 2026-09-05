@@ -14,12 +14,12 @@ export interface TestUser {
 	email: string;
 	timezone: string;
 	smsPreferences: {
-		phone_number: string;
+		phone_number: string | null;
 		phone_verified: boolean;
 		event_reminders_enabled: boolean;
 		event_reminder_lead_time_minutes: number;
-		quiet_hours_start?: string;
-		quiet_hours_end?: string;
+		quiet_hours_start?: string | null;
+		quiet_hours_end?: string | null;
 		daily_sms_limit: number;
 	};
 }

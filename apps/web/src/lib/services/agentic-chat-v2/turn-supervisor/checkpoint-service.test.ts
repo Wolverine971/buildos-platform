@@ -115,7 +115,8 @@ function createCheckpointSupabaseMock(
 				this.executed = true;
 				const inserted = this.insertPayload.map((row) => ({
 					id: row.id ?? `checkpoint-${nextId++}`,
-					resume_turn_run_id: null, execution_generation: null,
+					resume_turn_run_id: null,
+					execution_generation: null,
 					status: 'active',
 					question: null,
 					resume_started_at: null,
@@ -394,7 +395,8 @@ describe('turn supervisor checkpoint service', () => {
 		expect(restored).toMatchObject({
 			id: 'checkpoint-1',
 			status: 'active',
-			resume_turn_run_id: null, execution_generation: null,
+			resume_turn_run_id: null,
+			execution_generation: null,
 			resume_started_at: null
 		});
 	});
@@ -417,7 +419,8 @@ describe('turn supervisor checkpoint service', () => {
 				checkpointRow({
 					id: 'orphaned-resume',
 					status: 'resuming',
-					resume_turn_run_id: null, execution_generation: null,
+					resume_turn_run_id: null,
+					execution_generation: null,
 					resume_started_at: '2026-05-23T10:00:00.000Z'
 				})
 			],
@@ -446,12 +449,14 @@ describe('turn supervisor checkpoint service', () => {
 		});
 		expect(supabase.rows.find((row) => row.id === 'failed-resume')).toMatchObject({
 			status: 'active',
-			resume_turn_run_id: null, execution_generation: null,
+			resume_turn_run_id: null,
+			execution_generation: null,
 			resume_started_at: null
 		});
 		expect(supabase.rows.find((row) => row.id === 'orphaned-resume')).toMatchObject({
 			status: 'active',
-			resume_turn_run_id: null, execution_generation: null,
+			resume_turn_run_id: null,
+			execution_generation: null,
 			resume_started_at: null
 		});
 	});
@@ -569,7 +574,10 @@ function checkpointRow(overrides: Partial<ChatTurnCheckpoint> = {}): ChatTurnChe
 		turn_run_id: 'turn-1',
 		session_id: 'session-1',
 		user_id: 'user-1',
-		resume_turn_run_id: null, execution_generation: null,
+		resume_turn_run_id: null,
+		execution_generation: null,
+		supervisor_sequence: null,
+		supervisor_transition_id: null,
 		checkpoint_type: 'supervisor_question',
 		status: 'active',
 		reason: 'ambiguous_target',

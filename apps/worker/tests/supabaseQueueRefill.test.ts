@@ -6,9 +6,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
 import { supabase } from '../src/lib/supabase';
 
+const { rpcMock } = vi.hoisted(() => ({
+	rpcMock:
+		vi.fn<
+			(
+				name: string,
+				args?: Record<string, unknown>
+			) => Promise<{ data: unknown; error: unknown }>
+		>()
+}));
+
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
-		rpc: vi.fn(),
+		rpc: rpcMock,
 		from: vi.fn()
 	}
 }));
@@ -42,7 +52,7 @@ function claimedJob(sequence: number, label: TestMetadata['label']) {
 
 describe('SupabaseQueue per-slot refill', () => {
 	beforeEach(() => {
-		vi.mocked(supabase.rpc).mockReset();
+		rpcMock.mockReset();
 	});
 
 	afterEach(() => {
@@ -57,7 +67,7 @@ describe('SupabaseQueue per-slot refill', () => {
 		];
 		const claimedBatchSizes: number[] = [];
 
-		vi.mocked(supabase.rpc).mockImplementation(async (functionName, args) => {
+		rpcMock.mockImplementation(async (functionName, args) => {
 			if (functionName === 'claim_pending_jobs') {
 				claimedBatchSizes.push((args as { p_batch_size: number }).p_batch_size);
 				return { data: claims.shift() ?? [], error: null } as never;
@@ -119,7 +129,7 @@ describe('SupabaseQueue per-slot refill', () => {
 			releaseJob = resolve;
 		});
 
-		vi.mocked(supabase.rpc).mockImplementation(async (functionName) => {
+		rpcMock.mockImplementation(async (functionName) => {
 			if (functionName === 'claim_pending_jobs') {
 				return (await claimGate) as never;
 			}
@@ -176,7 +186,7 @@ describe('SupabaseQueue per-slot refill', () => {
 			processing_token: 'd7000000-0000-4000-8000-000000000001'
 		};
 		let claimCount = 0;
-		vi.mocked(supabase.rpc).mockImplementation(async (functionName) => {
+		rpcMock.mockImplementation(async (functionName) => {
 			if (functionName === 'claim_pending_jobs') {
 				claimCount += 1;
 				return { data: claimCount === 1 ? [chatJob] : [], error: null } as never;
@@ -184,22 +194,22 @@ describe('SupabaseQueue per-slot refill', () => {
 			return { data: true, error: null } as never;
 		});
 
-		let received: ProcessingJob<TestMetadata> | null = null;
+		const received: { job?: ProcessingJob<TestMetadata> } = {};
 		const queue = new SupabaseQueue({ batchSize: 1, pollInterval: 60_000 });
 		queue.process<TestMetadata>(
 			'agentic_chat_turn',
 			async (job) => {
-				received = job;
+				received.job = job;
 			},
 			{ queueLifecycle: 'processor_managed' }
 		);
 
 		await queue.start();
-		await vi.waitFor(() => expect(received).not.toBeNull());
+		await vi.waitFor(() => expect(received.job).toBeDefined());
 		await vi.waitFor(() => expect(claimCount).toBeGreaterThanOrEqual(2));
 
-		expect(received?.id).toBe(chatJob.queue_job_id);
-		expect(received?.queueRowId).toBe(chatJob.id);
+		expect(received.job?.id).toBe(chatJob.queue_job_id);
+		expect(received.job?.queueRowId).toBe(chatJob.id);
 		expect(
 			vi
 				.mocked(supabase.rpc)
@@ -218,7 +228,7 @@ describe('SupabaseQueue per-slot refill', () => {
 			processing_token: 'd7000000-0000-4000-8000-000000000002'
 		};
 		let claimCount = 0;
-		vi.mocked(supabase.rpc).mockImplementation(async (functionName) => {
+		rpcMock.mockImplementation(async (functionName) => {
 			if (functionName === 'claim_pending_jobs') {
 				claimCount += 1;
 				return { data: claimCount === 1 ? [chatJob] : [], error: null } as never;

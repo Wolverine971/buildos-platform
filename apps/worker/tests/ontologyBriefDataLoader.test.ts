@@ -854,13 +854,14 @@ describe('categorizeTasks', () => {
 		const tasks = [
 			createMockTask({
 				id: 'cancelled-due',
-				state_key: 'cancelled',
+				// Exercise legacy stored states outside the current write enum.
+				state_key: 'cancelled' as OntoTask['state_key'],
 				due_at: '2025-12-15T14:00:00Z',
 				type_key: 'task.execute'
 			}),
 			createMockTask({
 				id: 'archived-today',
-				state_key: 'archived',
+				state_key: 'archived' as OntoTask['state_key'],
 				due_at: '2025-12-17T14:00:00Z',
 				type_key: 'task.create'
 			})

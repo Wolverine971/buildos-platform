@@ -63,7 +63,9 @@ describe('Agentic Chat worker/catalog policy compatibility', () => {
 				`${toolName} reviewed arguments`
 			).toEqual([]);
 			expect(
-				spec.requiredNames.filter((name) => !spec.reviewedArgumentNames.includes(name)),
+				spec.requiredNames.filter(
+					(name) => !new Set<string>(spec.reviewedArgumentNames).has(name)
+				),
 				`${toolName} required arguments`
 			).toEqual([]);
 		}

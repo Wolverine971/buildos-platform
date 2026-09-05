@@ -65,7 +65,7 @@ async function driveBudgetedTurn(runBudgets: unknown) {
 
 	// The fixed turn loop fails closed when there is no numeric cost budget rather
 	// than issuing an unreserved paid call.
-	if (spendLimit === undefined) {
+	if (spendLimit == null) {
 		return { failedClosed: true, reserveCalls: 0, fetchCalls: 0, spendLimit };
 	}
 

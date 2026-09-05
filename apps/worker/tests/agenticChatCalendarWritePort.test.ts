@@ -113,7 +113,9 @@ function request(overrides: Record<string, unknown> = {}) {
 
 describe('worker calendar write port', () => {
 	it('creates a user-scope event and reports what actually reached Google', async () => {
-		const createEvent = vi.fn(async () => ({ event: { id: EVENT_ID } }));
+		const createEvent = vi.fn(async (_userId: string, _payload: Record<string, unknown>) => ({
+			event: { id: EVENT_ID }
+		}));
 		const port = createWorkerAgenticChatCalendarWritePort({
 			client: fakeClient({
 				users: [{ data: { timezone: 'America/New_York' }, error: null }],
@@ -135,7 +137,7 @@ describe('worker calendar write port', () => {
 			scope: 'user',
 			synced: true
 		});
-		const [, payload] = createEvent.mock.calls[0] as [string, Record<string, unknown>];
+		const [, payload] = createEvent.mock.calls[0];
 		expect(createEvent.mock.calls[0]![0]).toBe(USER_ID);
 		expect(payload.owner).toEqual({ type: 'actor', id: ACTOR_ID });
 		expect(payload.startAt).toBe('2026-09-10T15:00:00.000Z');
@@ -145,7 +147,9 @@ describe('worker calendar write port', () => {
 	});
 
 	it('authorizes project membership before touching onto_events', async () => {
-		const createEvent = vi.fn(async () => ({ event: { id: EVENT_ID } }));
+		const createEvent = vi.fn(async (_userId: string, _payload: Record<string, unknown>) => ({
+			event: { id: EVENT_ID }
+		}));
 		const access = fakeAccess({
 			assertProjectAccess: async () => {
 				throw new AgenticChatToolAccessDeniedError();
@@ -287,7 +291,9 @@ describe('worker calendar write port', () => {
 	});
 
 	it('refuses a user-scope event the turn actor does not own', async () => {
-		const updateEvent = vi.fn(async () => ({}));
+		const updateEvent = vi.fn(
+			async (_userId: string, _payload: Record<string, unknown>) => ({})
+		);
 		const port = createWorkerAgenticChatCalendarWritePort({
 			client: fakeClient({
 				onto_events: [
@@ -327,7 +333,9 @@ describe('worker calendar write port', () => {
 	});
 
 	it('gates a project event update on project membership and reports the sync outcome', async () => {
-		const updateEvent = vi.fn(async () => ({ id: EVENT_ID }));
+		const updateEvent = vi.fn(async (_userId: string, _payload: Record<string, unknown>) => ({
+			id: EVENT_ID
+		}));
 		const access = fakeAccess();
 		const port = createWorkerAgenticChatCalendarWritePort({
 			client: fakeClient({
@@ -367,7 +375,7 @@ describe('worker calendar write port', () => {
 			(access as unknown as { assertProjectAccess: ReturnType<typeof vi.fn> })
 				.assertProjectAccess
 		).toHaveBeenCalledWith(PROJECT_ID, 'write');
-		const [, payload] = updateEvent.mock.calls[0] as [string, Record<string, unknown>];
+		const [, payload] = updateEvent.mock.calls[0];
 		expect(payload).toMatchObject({ eventId: EVENT_ID, title: 'Renamed', endAt: null });
 	});
 
@@ -416,7 +424,9 @@ describe('worker calendar write port', () => {
 
 	it('links a task event and surfaces a failed link instead of dropping it', async () => {
 		const inserts: Array<{ table: string; row: unknown }> = [];
-		const createEvent = vi.fn(async () => ({ event: { id: EVENT_ID } }));
+		const createEvent = vi.fn(async (_userId: string, _payload: Record<string, unknown>) => ({
+			event: { id: EVENT_ID }
+		}));
 		const port = createWorkerAgenticChatCalendarWritePort({
 			client: fakeClient(
 				{

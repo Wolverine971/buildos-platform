@@ -1,4 +1,5 @@
 // apps/worker/tests/agenticChatStatedFutureCapture.test.ts
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import { AGENTIC_CHAT_INPUT_ARTIFACT_VERSION } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
 import { SupabaseAgenticChatStatedFutureCaptureAdapter } from '../src/workers/agentic-chat/statedFutureCapture';
@@ -15,7 +16,7 @@ const EXECUTION_GENERATION = 2;
 const STARTED_AT = '2026-08-13T15:00:00.000Z';
 const FINISHED_AT = '2026-08-13T15:00:01.000Z';
 
-const executionInput = {
+const executionInput: AgenticChatWorkerExecutionInputV1 = {
 	claim: {
 		outcome: 'claimed',
 		executionMayStart: true,
@@ -82,7 +83,7 @@ const executionInput = {
 		preparedPromptMissReason: null,
 		preparedSurfaceProfile: null
 	}
-} as const;
+};
 
 function evidenceReceipt(
 	executions: unknown[] = [

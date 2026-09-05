@@ -105,13 +105,17 @@ describe('Agentic Chat mutation surface policy', () => {
 		for (const [toolName, spec] of Object.entries(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)) {
 			const execution = spec.execution;
 			if (execution.executor !== 'table') continue;
-			for (const normalizerId of execution.argumentNormalizers ?? []) {
+			for (const normalizerId of 'argumentNormalizers' in execution
+				? execution.argumentNormalizers
+				: []) {
 				expect(
 					typeof AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1[normalizerId],
 					`${toolName} normalizer ${normalizerId}`
 				).toBe('function');
 			}
-			for (const postProcessorId of execution.receiptPostProcessors ?? []) {
+			for (const postProcessorId of 'receiptPostProcessors' in execution
+				? execution.receiptPostProcessors
+				: []) {
 				expect(
 					typeof AGENTIC_CHAT_MUTATION_RECEIPT_POST_PROCESSORS_V1[postProcessorId],
 					`${toolName} post-processor ${postProcessorId}`

@@ -179,7 +179,7 @@ describe('Cycle worker adversarial boundaries', () => {
 		});
 		expect(store.fail).toHaveBeenCalledWith(
 			expect.objectContaining({
-				cycleRunId: patch.id ?? RUN_ID,
+				cycleRunId: ('id' in patch ? patch.id : undefined) ?? RUN_ID,
 				processingToken: FIRST_TOKEN,
 				terminal: true
 			})

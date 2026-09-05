@@ -282,12 +282,16 @@ describe('agent-run chat session service', () => {
 			project_id: 'project-1'
 		});
 		expect(state.tables.chat_messages).toHaveLength(1);
-		expect(requireTestValue(requireTestValue(state.tables.chat_messages)[0]).metadata).toMatchObject({
+		expect(
+			requireTestValue(requireTestValue(state.tables.chat_messages)[0]).metadata
+		).toMatchObject({
 			source: 'agent_run_context',
 			run_id: 'run-1',
 			idempotency_key: 'agent-run-context:run-1'
 		});
-		expect(requireTestValue(requireTestValue(state.tables.chat_messages)[0]).metadata).not.toHaveProperty('agent_run_id');
+		expect(
+			requireTestValue(requireTestValue(state.tables.chat_messages)[0]).metadata
+		).not.toHaveProperty('agent_run_id');
 		expect(requireTestValue(state.tables.chat_sessions)[0]).toMatchObject({
 			message_count: 4,
 			last_message_at: '2026-06-29T15:00:00.000Z'
@@ -351,7 +355,9 @@ describe('agent-run chat session service', () => {
 			entity_id: 'project-1',
 			project_id: 'project-1'
 		});
-		expect(requireTestValue(requireTestValue(state.tables.chat_sessions)[0]).agent_metadata).toMatchObject({
+		expect(
+			requireTestValue(requireTestValue(state.tables.chat_sessions)[0]).agent_metadata
+		).toMatchObject({
 			source: 'agent_run_context',
 			agent_run_id: 'run-1',
 			focus: {
@@ -364,7 +370,9 @@ describe('agent-run chat session service', () => {
 			chat_session_id: result.chat_session_id,
 			project_id: 'project-1'
 		});
-		expect(requireTestValue(requireTestValue(state.tables.chat_messages)[0]).metadata).not.toHaveProperty('agent_run_id');
+		expect(
+			requireTestValue(requireTestValue(state.tables.chat_messages)[0]).metadata
+		).not.toHaveProperty('agent_run_id');
 	});
 
 	it('uses project_id to scope a project run even when context_type is stale', async () => {
@@ -391,7 +399,9 @@ describe('agent-run chat session service', () => {
 			context_type: 'project',
 			entity_id: 'project-1'
 		});
-		expect(requireTestValue(requireTestValue(state.tables.chat_sessions)[0]).agent_metadata.focus).toMatchObject({
+		expect(
+			requireTestValue(requireTestValue(state.tables.chat_sessions)[0]).agent_metadata.focus
+		).toMatchObject({
 			projectId: 'project-1',
 			projectName: 'Launch Project'
 		});

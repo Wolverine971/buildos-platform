@@ -186,7 +186,7 @@ describePostgres('Agent Run cost-ledger live wiring', () => {
 		});
 		const budgets = parseBudgets(runBudgets);
 		const spendLimit = resolveAgentRunLlmSpendLimit(budgets.max_cost_usd, 0);
-		if (spendLimit === undefined) {
+		if (spendLimit == null) {
 			// Fixed turn loop fails closed rather than making an unreserved call.
 			return { dispatched: false, spendLimit };
 		}

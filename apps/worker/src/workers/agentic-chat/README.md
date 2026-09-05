@@ -34,6 +34,41 @@ unchanged until those gates and the calendar end-to-end proof pass.
 
 ## Provider ownership
 
+### Local prompt dumps
+
+Set `AGENTIC_CHAT_LOCAL_PROMPT_DUMPS=true` in `apps/worker/.env` and run
+`pnpm --filter @buildos/worker dev:chat`. The dev scripts set `NODE_ENV=development`;
+restart the process after changing the environment. Dumps are disabled in production,
+tests, and hosted Railway services even if the flag is set.
+
+Open `apps/worker/.prompt-dumps/latest.md` for the most recently started request.
+Each timestamped `.md` / `.json` pair includes the exact outgoing request body
+(ordered system/history/tool-result messages, mounted tool schemas, model, routing,
+and sampling settings), the decoded response events, and final status, provider
+request ID, usage/cost, and network timing. This captures acting, repair, review,
+final-response passes, and each HTTP route fallback. A pending outcome means the
+request is in flight or the process exited before its completion was captured.
+No authorization headers, API keys, or worker processing tokens are copied.
+
+Filenames include turn ID, execution generation, logical round, pass role, and
+attempt; the JSON also includes session, stream, client-turn, and usage-log IDs.
+Find a session with `rg -l 'SESSION_ID' apps/worker/.prompt-dumps --glob '*.json'`,
+or use the exact file shown in the admin LLM call details. Usage IDs and OpenRouter
+request IDs correlate the dump with `/admin/chat/sessions` and OpenRouter activity.
+OpenRouter's internal upstream retries are represented by the request we send and
+the metadata OpenRouter returns, not separate outgoing worker requests.
+
+The folder is gitignored, files are private to the local user, and only generated
+files older than 48 hours are pruned (at most once per hour while capturing).
+Disk failures warn and leave chat execution running. Request/outcome writes are
+synchronous only when this development flag is enabled, to preserve requests on
+cancellation without leaving a queue of unfinished disk writes.
+
+The database's initial prompt snapshots remain separate. Historical later-pass
+requests cannot be recovered from those snapshots alone. The admin UI labels
+missing initial context and does not present an initial snapshot as the exact
+prompt for a later acting or reviewer call.
+
 `provider/turn-provider.ts` coordinates provider rounds and delegates stable responsibilities to focused modules:
 
 - `contracts.ts` owns provider-facing request, event, usage, and port contracts.

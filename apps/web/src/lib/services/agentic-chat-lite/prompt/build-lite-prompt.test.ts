@@ -60,7 +60,9 @@ describe('buildLitePromptEnvelope', () => {
 		expect(safety?.content).not.toContain('internal machinery');
 		expect(envelope.systemPrompt).not.toContain('| `project_audit` |');
 		expect(envelope.systemPrompt).not.toContain('Pre-tool lead-ins');
-		expect(envelope.sections.map((section) => section.id)).not.toContain('active_domain_signals');
+		expect(envelope.sections.map((section) => section.id)).not.toContain(
+			'active_domain_signals'
+		);
 	});
 
 	it('renders the global seed as inspectable sections with canonical tool names', () => {
@@ -2125,7 +2127,9 @@ describe('audit 2026-09-02 context rendering', () => {
 		expect(requireTestValue(entityRefs.tasks).map((ref) => ref.id)).toEqual(['task-2']);
 		expect(envelope.systemPrompt.match(/task-overdue/g)).toHaveLength(1);
 		// doc-channels is listed in the Knowledge Map; only the unlinked doc needs the index.
-		expect(requireTestValue(entityRefs.documents).map((ref) => ref.id)).toEqual(['doc-unlinked']);
+		expect(requireTestValue(entityRefs.documents).map((ref) => ref.id)).toEqual([
+			'doc-unlinked'
+		]);
 		expect(envelope.systemPrompt.match(/doc-channels/g)).toHaveLength(1);
 		// Members: no UUID-only refs, one names-and-roles line, never emails.
 		expect(entityRefs.members).toBeUndefined();

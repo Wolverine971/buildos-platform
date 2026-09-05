@@ -10,7 +10,6 @@ import {
 const row = (
 	overrides: Partial<ToolExecutionAnalyticsRow> & { id: string }
 ): ToolExecutionAnalyticsRow => ({
-
 	session_id: 'session-1',
 	turn_run_id: null,
 	stream_run_id: null,
@@ -33,7 +32,6 @@ const row = (
 const turnRun = (
 	overrides: Partial<ToolTurnRunAnalyticsRow> & { id: string }
 ): ToolTurnRunAnalyticsRow => ({
-
 	session_id: 'session-1',
 	context_type: 'project',
 	status: 'completed',

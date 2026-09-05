@@ -453,7 +453,6 @@ describe('Scheduler - calculateNextRunTime', () => {
 				user_id: 'user-1',
 				frequency: 'daily',
 				time_of_day: '09:00:00',
-				timezone: null,
 				is_active: true,
 				// email_daily_brief removed - now in user_notification_preferences
 				day_of_week: null,

@@ -127,7 +127,7 @@ describe('table row create_onto_task', () => {
 	}
 
 	it('passes the stable effect key through the project-fenced shared gateway', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: { task: taskReceipt() }
 		}));
@@ -249,7 +249,7 @@ describe('table row create_onto_task', () => {
 	});
 
 	it('reports the calendar events the gateway actually created', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: {
 				task: taskReceipt(),
@@ -281,7 +281,7 @@ describe('table row create_onto_task', () => {
 	});
 
 	it('admits calendar_sync as a reviewed argument and reports the skip', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: { task: taskReceipt(), calendar_sync: 'skipped' }
 		}));
@@ -307,7 +307,7 @@ describe('table row create_onto_task', () => {
 	});
 
 	it('carries a removed calendar event count onto the receipt', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: {
 				task: taskReceipt(),
@@ -371,7 +371,10 @@ describe('table row update_onto_task', () => {
 	}
 
 	it('executes the admitted canonical op through the project-fenced shared gateway', async () => {
-		const runGateway = vi.fn(async () => ({ ok: true, data: { task: gatewayTask() } }));
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: { task: gatewayTask() }
+		}));
 		const port = adapter({ runGateway, taskSync: { syncTaskEvents: vi.fn() } });
 
 		await expect(port.execute(input())).resolves.toEqual({
@@ -410,7 +413,7 @@ describe('table row update_onto_task', () => {
 	});
 
 	it('reports the calendar sync the gateway performed on an update', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: {
 				task: gatewayTask(),
@@ -430,7 +433,7 @@ describe('table row update_onto_task', () => {
 	});
 
 	it('admits the ratified assignment and relationship arguments without weakening the project fence', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: { task: { ...gatewayTask(), assignees: [] } }
 		}));
@@ -650,7 +653,7 @@ describe('table row create_onto_document', () => {
 	}
 
 	it('uses the project-fenced gateway once and returns the legacy-compatible receipt', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: { document: documentReceipt(), structure: { version: 3 }, structure_error: null }
 		}));
@@ -803,7 +806,10 @@ describe('table row create_onto_document', () => {
 	});
 
 	it('normalizes the legacy description, parent, and position semantics before dispatch', async () => {
-		const runGateway = vi.fn(async () => ({ ok: true, data: { document: documentReceipt() } }));
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: { document: documentReceipt() }
+		}));
 
 		await adapter({ runGateway }).execute(
 			input({
@@ -1063,7 +1069,7 @@ describe('table rows for reviewed gateway ontology entities', () => {
 	it.each(SUCCESS_CASES)(
 		'dispatches $toolName once through the project-fenced gateway',
 		async (testCase) => {
-			const runGateway = vi.fn(async () => ({
+			const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 				ok: true,
 				data: { [testCase.entityKind]: testCase.entity }
 			}));
@@ -1228,7 +1234,7 @@ describe('table row update_onto_project', () => {
 	}
 
 	it('dispatches the sanitized row update once and restores the legacy receipt', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: {
 				project: {
@@ -1416,7 +1422,10 @@ describe('table rows for reviewed ontology edges', () => {
 	}
 
 	it('normalizes and links one exact non-project relationship with a legacy receipt', async () => {
-		const runGateway = vi.fn(async () => ({ ok: true, data: { created: 1, edge: edge() } }));
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: { created: 1, edge: edge() }
+		}));
 
 		await expect(adapter({ runGateway }).execute(linkInput())).resolves.toEqual({
 			created: 1,
@@ -1455,7 +1464,7 @@ describe('table rows for reviewed ontology edges', () => {
 	});
 
 	it('canonicalizes deprecated relationship direction before dispatch', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: {
 				created: 0,
@@ -1509,7 +1518,7 @@ describe('table rows for reviewed ontology edges', () => {
 	});
 
 	it('deletes one exact edge and returns the legacy public receipt', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: { deleted: true, edge_id: EDGE_ID, edge: edge() }
 		}));
@@ -1676,7 +1685,7 @@ describe('table rows for reviewed document relationships', () => {
 	}
 
 	it('moves one exact document and proves its returned parent and clamped position', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: { project_id: PROJECT_ID, document_id: DOCUMENT_ID, structure: STRUCTURE }
 		}));
@@ -1715,7 +1724,7 @@ describe('table rows for reviewed document relationships', () => {
 			rel: 'task_has_document',
 			props: { role: 'primary', created_at: '2026-08-10T12:00:00.000Z' }
 		};
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: {
 				document: {
@@ -1878,7 +1887,7 @@ describe('table rows for reviewed document relationships', () => {
 				}
 			]
 		};
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: {
 				project_id: PROJECT_ID,
@@ -1919,7 +1928,7 @@ describe('table rows for reviewed document relationships', () => {
 	});
 
 	it('lets an exact parent UUID win over a title and drops the title from dispatch', async () => {
-		const runGateway = vi.fn(async () => ({
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
 			data: {
 				project_id: PROJECT_ID,
@@ -2051,7 +2060,7 @@ describe('table row move_onto_task', () => {
 	});
 
 	it('dispatches one worker-authorized move and restores the compact legacy receipt', async () => {
-		const moveTask = vi.fn(async () => movedResult());
+		const moveTask = vi.fn(async (_input: Record<string, unknown>) => movedResult());
 
 		await expect(adapter({ moveTask }).execute(input())).resolves.toEqual({
 			status: 'moved',
@@ -2113,7 +2122,7 @@ describe('table row move_onto_task', () => {
 	});
 
 	it('passes a confirmed token only when it is canonical', async () => {
-		const moveTask = vi.fn(async () => movedResult());
+		const moveTask = vi.fn(async (_input: Record<string, unknown>) => movedResult());
 		const port = adapter({ moveTask });
 
 		await port.execute(

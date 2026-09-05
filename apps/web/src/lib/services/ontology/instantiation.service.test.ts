@@ -204,7 +204,10 @@ describe('validateProjectSpec', () => {
 		const { valid, errors } = validateProjectSpec(spec);
 		expect(valid).toBe(true);
 		expect(errors).toHaveLength(0);
-		expect(ProjectSpecSchema.parse(spec).entities[0]).toMatchObject({ kind: 'risk', impact: 'medium' });
+		expect(ProjectSpecSchema.parse(spec).entities[0]).toMatchObject({
+			kind: 'risk',
+			impact: 'medium'
+		});
 	});
 
 	it('extracts a valid severity from a risk impact containing model-generated prose', () => {
@@ -227,6 +230,9 @@ describe('validateProjectSpec', () => {
 		const { valid, errors } = validateProjectSpec(spec);
 		expect(valid).toBe(true);
 		expect(errors).toHaveLength(0);
-		expect(ProjectSpecSchema.parse(spec).entities[0]).toMatchObject({ kind: 'risk', impact: 'high' });
+		expect(ProjectSpecSchema.parse(spec).entities[0]).toMatchObject({
+			kind: 'risk',
+			impact: 'high'
+		});
 	});
 });

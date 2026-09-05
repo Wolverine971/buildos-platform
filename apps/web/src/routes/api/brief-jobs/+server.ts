@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/brief-jobs/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { validatePaginationCustom } from '$lib/utils/api-helpers';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -12,8 +13,13 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// Get query parameters
 		const jobType = url.searchParams.get('job_type') || 'generate_daily_brief';
 		const status = url.searchParams.get('status');
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
-		const offset = parseInt(url.searchParams.get('offset') || '0');
+		const { limit, offset } = validatePaginationCustom({
+			limit: url.searchParams.get('limit'),
+			offset: url.searchParams.get('offset')
+		});
+		if (!Number.isSafeInteger(offset + limit - 1)) {
+			return ApiResponse.badRequest('Pagination offset is too large');
+		}
 
 		// Build query. No count mode — the Brief Settings UI only renders
 		// returned rows; tracking an exact count would force Postgres to run

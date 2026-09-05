@@ -10,11 +10,9 @@ import type { Mock } from 'vitest';
  * Time manipulation utilities for testing
  */
 export class TimeController {
-	private originalDateNow: typeof Date.now;
 	private currentTime: number;
 
 	constructor() {
-		this.originalDateNow = Date.now;
 		this.currentTime = Date.now();
 	}
 
@@ -25,16 +23,8 @@ export class TimeController {
 		const timestamp = typeof date === 'number' ? date : new Date(date).getTime();
 		this.currentTime = timestamp;
 
-		// Mock Date.now()
-		vi.spyOn(Date, 'now').mockReturnValue(this.currentTime);
-
-		// Mock new Date()
-		vi.spyOn(global, 'Date').mockImplementation((...args: any[]) => {
-			if (args.length === 0) {
-				return new this.originalDateNow(this.currentTime) as any;
-			}
-			return new this.originalDateNow(...args) as any;
-		}) as any;
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(this.currentTime);
 	}
 
 	/**
@@ -63,6 +53,7 @@ export class TimeController {
 	 * Reset to real time
 	 */
 	reset() {
+		vi.useRealTimers();
 		vi.restoreAllMocks();
 	}
 }

@@ -54,7 +54,7 @@ function receipt(overrides: Record<string, unknown> = {}) {
 		durable_events: [event(2)],
 		response_watermark: 2,
 		reconcile_required: false,
-		assistant_message: null,
+		assistant_message: null as Record<string, unknown> | null,
 		terminal_event_id: null,
 		terminalized_at: null,
 		finished_reason: null,
@@ -135,7 +135,7 @@ describe('SupabaseAgenticChatRecoverySnapshotAdapter', () => {
 		const mismatchedMessage = {
 			...terminalReceipt,
 			assistant_message: {
-				...(terminalReceipt.assistant_message as Record<string, unknown>),
+				...terminalReceipt.assistant_message,
 				content: 'different partial'
 			}
 		};

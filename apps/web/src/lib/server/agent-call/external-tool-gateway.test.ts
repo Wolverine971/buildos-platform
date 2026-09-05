@@ -2080,10 +2080,11 @@ describe('external tool gateway', () => {
 
 	it('exposes schemas for every supported external op in the granted scope', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
-		const scope: AgentCallScope = {
-			mode: 'read_write' as const,
-			allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
-		};
+		const scope: AgentCallScope & { allowed_ops: NonNullable<AgentCallScope['allowed_ops']> } =
+			{
+				mode: 'read_write' as const,
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
+			};
 
 		for (const op of scope.allowed_ops) {
 			const result = await executeBuildosAgentGatewayTool({
@@ -2147,10 +2148,11 @@ describe('external tool gateway', () => {
 
 	it('returns newly exposed ontology tools through scoped tool_search', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
-		const scope: AgentCallScope = {
-			mode: 'read_write' as const,
-			allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
-		};
+		const scope: AgentCallScope & { allowed_ops: NonNullable<AgentCallScope['allowed_ops']> } =
+			{
+				mode: 'read_write' as const,
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
+			};
 		const admin = createAdminMock({
 			documents: [],
 			tasks: [],
@@ -2205,10 +2207,11 @@ describe('external tool gateway', () => {
 
 	it('returns scoped directory guidance when ungranted matches are filtered out', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
-		const scope: AgentCallScope = {
-			mode: 'read_only' as const,
-			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
-		};
+		const scope: AgentCallScope & { allowed_ops: NonNullable<AgentCallScope['allowed_ops']> } =
+			{
+				mode: 'read_only' as const,
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+			};
 		const admin = createAdminMock({
 			documents: [],
 			tasks: [],
@@ -2240,10 +2243,11 @@ describe('external tool gateway', () => {
 
 	it('keeps legacy ontology search tools discoverable for scoped external callers', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
-		const scope: AgentCallScope = {
-			mode: 'read_only' as const,
-			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
-		};
+		const scope: AgentCallScope & { allowed_ops: NonNullable<AgentCallScope['allowed_ops']> } =
+			{
+				mode: 'read_only' as const,
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+			};
 		const admin = createAdminMock({
 			documents: [],
 			tasks: [],
@@ -2333,10 +2337,11 @@ describe('external tool gateway', () => {
 		const { executeBuildosAgentGatewayTool, getBuildosAgentGatewayTools } = await import(
 			'./external-tool-gateway'
 		);
-		const scope: AgentCallScope = {
-			mode: 'read_only' as const,
-			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
-		};
+		const scope: AgentCallScope & { allowed_ops: NonNullable<AgentCallScope['allowed_ops']> } =
+			{
+				mode: 'read_only' as const,
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+			};
 		const admin = createAdminMock({
 			documents: [],
 			tasks: [],
@@ -3195,11 +3200,12 @@ describe('external tool gateway', () => {
 
 		// Same scope object the gateway threads into the handler context, so the
 		// in-session scope expansion is observable here.
-		const scope: AgentCallScope = {
-			mode: 'read_write' as const,
-			project_ids: ['44444444-4444-4444-4444-444444444444'],
-			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
-		};
+		const scope: AgentCallScope & { allowed_ops: NonNullable<AgentCallScope['allowed_ops']> } =
+			{
+				mode: 'read_write' as const,
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
+			};
 
 		const result = await executeBuildosAgentGatewayTool({
 			admin: createAdminMock(state),
@@ -3953,7 +3959,8 @@ describe('external tool gateway', () => {
 						title: 'Hidden Doc',
 						description: null,
 						type_key: 'document.context.project',
-						content: 'Top secret', props: {},
+						content: 'Top secret',
+						props: {},
 						state_key: 'active',
 						created_at: '2026-04-28T00:00:00.000Z',
 						updated_at: '2026-04-28T00:00:00.000Z',

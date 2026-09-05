@@ -241,7 +241,9 @@ describe('ProjectCollaborationModal request coordination', () => {
 		await fireEvent.click(notificationToggle);
 		await waitFor(() => expect(requests).toHaveLength(4));
 		const projectAUpdate = requests[3];
-		expect(requireTestValue(projectAUpdate).url).toBe(`/api/onto/projects/${PROJECT_A_ID}/notification-settings`);
+		expect(requireTestValue(projectAUpdate).url).toBe(
+			`/api/onto/projects/${PROJECT_A_ID}/notification-settings`
+		);
 
 		await view.rerender({
 			isOpen: true,

@@ -52,7 +52,12 @@ function runRow(): AgentRunRow {
 		updated_at: '2026-07-14T12:01:00.000Z',
 		started_at: '2026-07-14T12:00:01.000Z',
 		completed_at: null,
-		commit_started_at: null, depth: 0, effort: 'medium', execution_generation: 0, orchestration_state: {}, run_template: 'default'
+		commit_started_at: null,
+		depth: 0,
+		effort: 'medium',
+		execution_generation: 0,
+		orchestration_state: {},
+		run_template: 'default'
 	};
 }
 

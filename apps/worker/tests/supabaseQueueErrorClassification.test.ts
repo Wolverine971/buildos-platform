@@ -10,9 +10,19 @@ import { SupabaseQueue } from '../src/lib/supabaseQueue';
 import { supabase } from '../src/lib/supabase';
 import { validateBriefJobData, validateSMSJobData } from '../src/workers/shared/queueUtils';
 
+const { rpcMock } = vi.hoisted(() => ({
+	rpcMock:
+		vi.fn<
+			(
+				name: string,
+				args?: Record<string, unknown>
+			) => Promise<{ data: unknown; error: unknown }>
+		>()
+}));
+
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
-		rpc: vi.fn(),
+		rpc: rpcMock,
 		from: vi.fn()
 	}
 }));
@@ -48,7 +58,7 @@ function claimedJob(attempts = 0, maxAttempts = 3) {
 
 async function captureFailArgs(error: unknown, attempts = 0, maxAttempts = 3) {
 	let claimCount = 0;
-	vi.mocked(supabase.rpc).mockImplementation(async (functionName) => {
+	rpcMock.mockImplementation(async (functionName) => {
 		if (functionName === 'claim_pending_jobs') {
 			claimCount++;
 			return {
@@ -81,7 +91,7 @@ async function captureFailArgs(error: unknown, attempts = 0, maxAttempts = 3) {
 
 describe('queue processor error classification', () => {
 	beforeEach(() => {
-		vi.mocked(supabase.rpc).mockReset();
+		rpcMock.mockReset();
 		vi.mocked(logWorkerError).mockReset();
 		vi.spyOn(console, 'error').mockImplementation(() => undefined);
 	});
@@ -121,7 +131,7 @@ describe('queue processor error classification', () => {
 		const explicit = await captureFailArgs(
 			new TransientQueueError('provider_timeout', 'Provider timed out')
 		);
-		vi.mocked(supabase.rpc).mockReset();
+		rpcMock.mockReset();
 		const unclassified = await captureFailArgs(new Error('Connection reset'));
 
 		expect(explicit.p_retry).toBe(true);

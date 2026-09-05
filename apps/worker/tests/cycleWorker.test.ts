@@ -1,3 +1,4 @@
+// apps/worker/tests/cycleWorker.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { CycleQueueJobMetadata, CycleRunFor, CycleRunOutcome } from '@buildos/shared-types';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
@@ -10,7 +11,9 @@ const queueRowId = '33333333-3333-4333-8333-333333333333';
 const userId = '44444444-4444-4444-8444-444444444444';
 const processingToken = '55555555-5555-4555-8555-555555555555';
 
-function makeRun(status: CycleRunFor<'daily_brief'>['status'] = 'running') {
+function makeRun(
+	status: CycleRunFor<'daily_brief'>['status'] = 'running'
+): CycleRunFor<'daily_brief'> {
 	return {
 		id: cycleRunId,
 		cycle_id: cycleId,
@@ -125,7 +128,10 @@ describe('Cycle worker', () => {
 			} satisfies CycleRunOutcome
 		};
 		const store = makeStore(terminalRun);
-		store.claim = vi.fn(async () => ({ disposition: 'already_terminal', run: terminalRun }));
+		store.claim = vi.fn<CycleRunStore['claim']>(async () => ({
+			disposition: 'already_terminal',
+			run: terminalRun
+		}));
 		const registry = new CycleHandlerRegistry();
 		const processor = createCycleRunProcessor({ registry, store });
 

@@ -121,7 +121,11 @@
 
 			<TimelineTurnRunDetails {event} {payload} />
 
-			<TimelinePromptSnapshotDetails {event} {payload} />
+			<TimelinePromptSnapshotDetails
+				{event}
+				{payload}
+				snapshot={group.run?.prompt_snapshot ?? payload}
+			/>
 
 			<TimelineTurnEventDetails
 				{event}

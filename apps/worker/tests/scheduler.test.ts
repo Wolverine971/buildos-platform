@@ -347,11 +347,14 @@ export async function testSchedulerIntegration() {
 
 	// Test 1: Verify 24-hour scheduling
 	const testUser = 'test-user-1';
-	const preference = {
+	const preference: UserBriefPreference = {
+		id: 'preference-1',
+		created_at: '2024-01-01T00:00:00Z',
+		updated_at: '2024-01-01T00:00:00Z',
+		day_of_week: null,
 		user_id: testUser,
 		frequency: 'daily',
 		time_of_day: '09:00:00',
-		timezone: 'UTC',
 		is_active: true
 	};
 

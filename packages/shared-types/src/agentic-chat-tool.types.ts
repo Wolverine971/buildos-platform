@@ -31,7 +31,7 @@ export type ToolJsonSchemaType =
  * open `any` index signature. Add a named keyword here when a definition starts
  * using it so schema consumers retain useful, narrow types.
  */
-export interface ToolJsonSchema {
+export type ToolJsonSchema = {
 	$id?: string;
 	$ref?: string;
 	$schema?: string;
@@ -74,13 +74,13 @@ export interface ToolJsonSchema {
 	uniqueItems?: boolean;
 	minProperties?: number;
 	maxProperties?: number;
-}
+};
 
 /** Top-level parameter schema required by function-calling providers. */
-export interface ToolJsonObjectSchema extends ToolJsonSchema {
+export type ToolJsonObjectSchema = ToolJsonSchema & {
 	type: 'object';
 	properties: Record<string, ToolJsonSchema>;
-}
+};
 
 /** Context scopes used to select Agentic Chat tools for a turn. */
 export type ToolContextScope = 'base' | 'global' | 'project_create' | 'project';

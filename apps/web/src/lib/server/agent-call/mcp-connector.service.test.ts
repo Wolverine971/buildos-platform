@@ -342,7 +342,9 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			// A call session is created and the gateway is invoked with the scoped caller.
 			expect(sessionMocks.createMcpCallSession).toHaveBeenCalledTimes(1);
 			expect(gatewayMocks.executeBuildosAgentGatewayTool).toHaveBeenCalledTimes(1);
-			const callArgs = requireTestValue(gatewayMocks.executeBuildosAgentGatewayTool.mock.calls[0])[0];
+			const callArgs = requireTestValue(
+				gatewayMocks.executeBuildosAgentGatewayTool.mock.calls[0]
+			)[0];
 			expect(callArgs.toolName).toBe('list_onto_projects');
 			expect(callArgs.arguments).toEqual({ limit: 5 });
 			expect(callArgs.userId).toBe('user-1');
@@ -717,7 +719,9 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 					text: 'do the thing'
 				}
 			]);
-			const callArgs = requireTestValue(gatewayMocks.executeBuildosAgentGatewayTool.mock.calls[0])[0];
+			const callArgs = requireTestValue(
+				gatewayMocks.executeBuildosAgentGatewayTool.mock.calls[0]
+			)[0];
 			expect(callArgs.scope.mode).toBe('read_only');
 		});
 
@@ -754,7 +758,9 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 				url: 'https://build-os.com/projects/p1',
 				metadata: { type: 'task', project_id: 'p1', state_key: 'todo' }
 			});
-			const callArgs = requireTestValue(gatewayMocks.executeBuildosAgentGatewayTool.mock.calls[0])[0];
+			const callArgs = requireTestValue(
+				gatewayMocks.executeBuildosAgentGatewayTool.mock.calls[0]
+			)[0];
 			expect(callArgs.arguments).toEqual({ task_id: 't1' });
 		});
 

@@ -976,7 +976,7 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		// shared read context's civil timezone.
 		expect(client.from).toHaveBeenCalledTimes(3);
 		const timezoneReads = () =>
-			client.from.mock.calls.filter(([table]: [string]) => table === 'users').length;
+			client.from.mock.calls.filter(([table]) => table === 'users').length;
 		expect(timezoneReads()).toBe(1);
 
 		// A second read in the same turn reuses the memoized zone rather than

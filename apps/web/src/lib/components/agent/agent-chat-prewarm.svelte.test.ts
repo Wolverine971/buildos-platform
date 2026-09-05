@@ -409,7 +409,13 @@ describe('PrewarmController — orchestrate', () => {
 	});
 
 	it('includes the last-turn continuity hint in the prewarm payload when provided', () => {
-		const hint: LastTurnContext = { summary: 'Reviewed Q3 plan', context_type: 'project', entities: {}, data_accessed: [], timestamp: '2026-09-05T12:00:00.000Z' };
+		const hint: LastTurnContext = {
+			summary: 'Reviewed Q3 plan',
+			context_type: 'project',
+			entities: {},
+			data_accessed: [],
+			timestamp: '2026-09-05T12:00:00.000Z'
+		};
 		const h = createHarness({ lastTurnContext: hint });
 		h.controller.orchestrate();
 
@@ -573,7 +579,13 @@ describe('PrewarmController — orchestrate', () => {
 		const cache = makeCache({ key });
 		const prepared = makePreparedPrompt({ cacheKey: key });
 		let signal: AbortSignal | undefined;
-		const pending: { resolve?: (value: { session: null; prewarmedContext: FastChatContextCache; preparedPrompt: PreparedPromptClient }) => void } = {};
+		const pending: {
+			resolve?: (value: {
+				session: null;
+				prewarmedContext: FastChatContextCache;
+				preparedPrompt: PreparedPromptClient;
+			}) => void;
+		} = {};
 		h.prewarm.mockImplementation(
 			(_payload, options) =>
 				new Promise((resolve) => {

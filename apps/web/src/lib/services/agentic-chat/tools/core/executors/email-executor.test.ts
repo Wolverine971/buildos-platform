@@ -483,7 +483,9 @@ describe('EmailExecutor', () => {
 			})) as any;
 			snippets.push(result.messages[0].snippet);
 		}
-		expect(requireTestValue(snippets[0]).length).toBeGreaterThan(requireTestValue(snippets[1]).length);
+		expect(requireTestValue(snippets[0]).length).toBeGreaterThan(
+			requireTestValue(snippets[1]).length
+		);
 		expect(snippets[2]).toBe('');
 		expect(turnState.charsUsed).toBe(24_000);
 

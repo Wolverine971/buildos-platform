@@ -87,7 +87,10 @@ function successData(overrides: Record<string, unknown> = {}) {
 
 describe('AgenticChatCreateOntoProjectMutationAdapter', () => {
 	it('creates one project shell once and restores the compound legacy receipt', async () => {
-		const runGateway = vi.fn(async () => ({ ok: true, data: successData() }));
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: successData()
+		}));
 		const expectedContextMarkdown = [
 			'# Launch Site Context Document',
 			'## Vision & Summary',
@@ -251,7 +254,10 @@ describe('AgenticChatCreateOntoProjectMutationAdapter civil-day bounds', () => {
 		start_at?: string;
 		end_at?: string;
 	}) {
-		const runGateway = vi.fn(async () => ({ ok: true, data: successData() }));
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: successData()
+		}));
 		const adapter = new AgenticChatCreateOntoProjectMutationAdapter(
 			timezoneClient(input.timezone) as never,
 			{ runGateway: runGateway as never, now: () => NOW }

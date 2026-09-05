@@ -178,7 +178,9 @@ function uniquelyIdentifiedCandidate<T extends { id: string; title: string }>(
  * The reviewer never sees the conversation, so the candidate gate reads the
  * user's own latest words off the acting request it is about to answer.
  */
-export function latestUserMessageText(request: AgenticChatTurnProviderRequestV1): string | null {
+export function latestUserMessageText(
+	request: Pick<AgenticChatTurnProviderRequestV1, 'messages'>
+): string | null {
 	return recentUserMessageTexts(request, 1)[0] ?? null;
 }
 
@@ -189,7 +191,7 @@ const RECENT_USER_MESSAGE_WINDOW = 3;
  * "those three edits") resolves against what the user named just before it.
  */
 export function recentUserMessageTexts(
-	request: AgenticChatTurnProviderRequestV1,
+	request: Pick<AgenticChatTurnProviderRequestV1, 'messages'>,
 	limit = RECENT_USER_MESSAGE_WINDOW
 ): string[] {
 	const texts: string[] = [];

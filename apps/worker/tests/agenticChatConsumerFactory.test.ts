@@ -7,15 +7,25 @@ import {
 	createAgenticChatConsumerFactory
 } from '../src/workers/agentic-chat/consumer-factory';
 
+const { rpcMock } = vi.hoisted(() => ({
+	rpcMock:
+		vi.fn<
+			(
+				name: string,
+				args?: Record<string, unknown>
+			) => Promise<{ data: unknown; error: unknown }>
+		>()
+}));
+
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
-		rpc: vi.fn(),
+		rpc: rpcMock,
 		from: vi.fn()
 	}
 }));
 
 beforeEach(() => {
-	vi.mocked(supabase.rpc).mockReset();
+	rpcMock.mockReset();
 });
 
 describe('Agentic Chat consumer factory isolation', () => {
@@ -57,7 +67,7 @@ describe('Agentic Chat consumer factory isolation', () => {
 		);
 		let generalClaimed = false;
 		let chatClaimed = false;
-		vi.mocked(supabase.rpc).mockImplementation(async (name, args) => {
+		rpcMock.mockImplementation(async (name, args) => {
 			if (name === 'claim_pending_jobs') {
 				const jobTypes = (args as { p_job_types: string[] }).p_job_types;
 				if (jobTypes.length !== 1) throw new Error('Fixture queue mixed job types');
@@ -113,7 +123,7 @@ describe('Agentic Chat consumer factory isolation', () => {
 		expect(general.getRegisteredJobTypes()).toEqual(['send_notification']);
 		expect(chat.queue.getRegisteredJobTypes()).toEqual(['agentic_chat_turn']);
 		expect(
-			vi.mocked(supabase.rpc).mock.calls
+			rpcMock.mock.calls
 				.filter(([name]) => name === 'claim_pending_jobs')
 				.slice(0, 2)
 				.map(([, args]) => args)
@@ -125,9 +135,7 @@ describe('Agentic Chat consumer factory isolation', () => {
 		release();
 		await Promise.all([general.stop(), chat.queue.stop()]);
 		expect(
-			vi
-				.mocked(supabase.rpc)
-				.mock.calls.filter(([name]) => name === 'complete_queue_job')
+			vi.mocked(supabase.rpc).mock.calls.filter(([name]) => name === 'complete_queue_job')
 		).toHaveLength(20);
 	});
 });

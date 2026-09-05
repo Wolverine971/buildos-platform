@@ -105,12 +105,12 @@ function createSweep(options: {
 	const finalizations = [...(options.finalizations ?? [])];
 	const control = {
 		claim: vi.fn(async () => options.claim ?? claimed()),
-		recover: vi.fn(async () => {
+		recover: vi.fn(async (_input: Record<string, unknown>) => {
 			const value = recoveries.shift();
 			if (!value) throw new Error('Unexpected recovery call');
 			return value;
 		}),
-		finalize: vi.fn(async () => {
+		finalize: vi.fn(async (_input: Record<string, unknown>) => {
 			const value = finalizations.shift();
 			if (!value) throw new Error('Unexpected finalization call');
 			return value;

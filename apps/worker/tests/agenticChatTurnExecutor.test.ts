@@ -1,4 +1,5 @@
 // apps/worker/tests/agenticChatTurnExecutor.test.ts
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
@@ -98,7 +99,12 @@ const claim = {
 	userMessageId: USER_MESSAGE_ID
 } as const;
 
-const executionInput = {
+const executionInput: AgenticChatWorkerExecutionInputV1 & {
+	artifact: Extract<
+		AgenticChatWorkerExecutionInputV1['artifact'],
+		{ artifactVersion: typeof AGENTIC_CHAT_INPUT_ARTIFACT_VERSION }
+	>;
+} = {
 	claim,
 	streamRunId: 'stream-run-1',
 	clientTurnId: 'client-turn-1',
@@ -156,7 +162,7 @@ const executionInput = {
 		retainUntil: '2026-08-10T12:00:00.000Z',
 		contentHash: '0'.repeat(64)
 	}
-} as const;
+};
 
 function job(signal: AbortSignal = new AbortController().signal) {
 	return {
@@ -243,6 +249,8 @@ function terminalReceipt(
 		...overrides
 	};
 }
+
+type ExecutorPorts = ConstructorParameters<typeof AgenticChatTurnExecutor>[0];
 
 function createHarness(
 	steps: AgenticChatTurnProviderStepV1[],
@@ -406,7 +414,7 @@ function createHarness(
 				status: 'running'
 			};
 		}),
-		recover: vi.fn(async () => {
+		recover: vi.fn(async (_input: Parameters<ExecutorPorts['control']['recover']>[0]) => {
 			const receipt = recovery.shift();
 			if (!receipt) throw new Error('Unexpected recovery call');
 			return receipt;
@@ -637,7 +645,7 @@ function createHarness(
 				stream: providerStream
 			};
 	const promptSnapshots = {
-		persist: vi.fn(async () => {
+		persist: vi.fn<NonNullable<ExecutorPorts['promptSnapshots']>['persist']>(async () => {
 			log.push('prompt_snapshot');
 			if (options.promptSnapshotError) throw options.promptSnapshotError;
 			return {
@@ -657,10 +665,12 @@ function createHarness(
 		executionGeneration: number;
 		error: unknown;
 	}> = [];
-	const input = { load: vi.fn(async () => executionInput) };
+	const input = {
+		load: vi.fn<NonNullable<ExecutorPorts['input']>['load']>(async () => executionInput)
+	};
 	const readTool = {
 		prepareTurnToolBatchSecurity: vi.fn(),
-		execute: vi.fn(async () => ({
+		execute: vi.fn<NonNullable<ExecutorPorts['readTool']>['execute']>(async () => ({
 			result: { title: 'Fixture project' },
 			executionTimeMs: null,
 			tokensConsumed: null,
@@ -672,11 +682,17 @@ function createHarness(
 		}))
 	};
 	const toolExecutions = {
-		persistRead: vi.fn(async () => undefined),
-		persistFailure: vi.fn(async () => undefined),
-		persistMutation: vi.fn(async () => {
-			log.push('mutation_ledger');
-		})
+		persistRead: vi.fn<NonNullable<ExecutorPorts['toolExecutions']>['persistRead']>(
+			async () => undefined
+		),
+		persistFailure: vi.fn<NonNullable<ExecutorPorts['toolExecutions']>['persistFailure']>(
+			async () => undefined
+		),
+		persistMutation: vi.fn<NonNullable<ExecutorPorts['toolExecutions']>['persistMutation']>(
+			async () => {
+				log.push('mutation_ledger');
+			}
+		)
 	};
 	const executionObservationInputs: AgenticChatExecutionObservationInputV1[] = [];
 	const executionObservations = {
@@ -685,12 +701,12 @@ function createHarness(
 		})
 	};
 	const sessionHandoff = {
-		persist: vi.fn(async () => {
+		persist: vi.fn<NonNullable<ExecutorPorts['sessionHandoff']>['persist']>(async () => {
 			log.push('session_handoff');
 		})
 	};
 	const mutation = {
-		execute: vi.fn(async () => ({
+		execute: vi.fn<NonNullable<ExecutorPorts['mutation']>['execute']>(async () => ({
 			effectId: EFFECT_ID,
 			canonicalArgumentHash: 'a'.repeat(64),
 			downstreamIdempotencyKey: `chat-effect:${EFFECT_ID}`,
@@ -3822,7 +3838,7 @@ describe('AgenticChatTurnExecutor', () => {
 					execution_generation: EXECUTION_GENERATION,
 					signal_id: 'c0000000-0000-4000-8000-00000000000c',
 					cancel_reason: 'user_cancelled',
-					cancel_source: 'user',
+					cancel_source: 'browser',
 					cancel_requested_at: '2026-08-03T12:00:00.000Z',
 					consumed_at: '2026-08-03T12:00:00.100Z'
 				})
@@ -4001,18 +4017,20 @@ describe('AgenticChatTurnExecutor', () => {
 	it('reserves provider capacity before begin and starts the network stream only after begin wins', async () => {
 		const harness = createHarness([]);
 		const release = vi.fn(() => harness.log.push('release'));
-		const prepare = vi.fn(async () => {
-			harness.log.push('prepare');
-			return {
-				stream: () => {
-					harness.log.push('provider');
-					return (async function* () {
-						yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
-					})();
-				},
-				release
-			};
-		});
+		const prepare = vi.fn(
+			async (_input: Parameters<NonNullable<ExecutorPorts['provider']['prepare']>>[0]) => {
+				harness.log.push('prepare');
+				return {
+					stream: () => {
+						harness.log.push('provider');
+						return (async function* () {
+							yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+						})();
+					},
+					release
+				};
+			}
+		);
 		Object.assign(harness.provider, { prepare });
 
 		await expect(harness.executor.execute(job())).resolves.toMatchObject({
@@ -4045,13 +4063,15 @@ describe('AgenticChatTurnExecutor', () => {
 		const harness = createHarness([{ type: 'finish', finishedReason: 'stop', usage: null }], {
 			providerBudgetMs
 		});
-		const prepare = vi.fn(async () => ({
-			stream: () =>
-				(async function* () {
-					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
-				})(),
-			release: vi.fn()
-		}));
+		const prepare = vi.fn(
+			async (_input: Parameters<NonNullable<ExecutorPorts['provider']['prepare']>>[0]) => ({
+				stream: () =>
+					(async function* () {
+						yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+					})(),
+				release: vi.fn()
+			})
+		);
 		Object.assign(harness.provider, { prepare });
 		const startedAt = Date.now();
 
@@ -4297,7 +4317,7 @@ describe('AgenticChatTurnExecutor', () => {
 						execution_generation: EXECUTION_GENERATION,
 						signal_id: 'c0000000-0000-4000-8000-00000000000c',
 						cancel_reason: 'user_cancelled',
-						cancel_source: 'user',
+						cancel_source: 'browser',
 						cancel_requested_at: '2026-08-03T12:00:00.000Z',
 						consumed_at: '2026-08-03T12:00:00.100Z'
 					})
@@ -4367,10 +4387,8 @@ describe('AgenticChatTurnExecutor', () => {
 							turn_run_id: TURN_RUN_ID,
 							execution_generation: EXECUTION_GENERATION,
 							signal_id: 'c0000000-0000-4000-8000-00000000000c',
-							cancel_reason:
-								AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.response
-									.interruptedReason,
-							cancel_source: 'user',
+							cancel_reason: 'user_cancelled',
+							cancel_source: 'browser',
 							cancel_requested_at: '2026-08-04T12:05:00.000Z',
 							consumed_at: '2026-08-04T12:05:00.100Z'
 						})

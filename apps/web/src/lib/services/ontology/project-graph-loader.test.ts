@@ -51,7 +51,9 @@ describe('loadProjectGraphData', () => {
 			onto_edges: []
 		});
 
-		const result = await loadProjectGraphData(supabase as never, 'proj-1', { entityKinds: ['task'] });
+		const result = await loadProjectGraphData(supabase as never, 'proj-1', {
+			entityKinds: ['task']
+		});
 
 		expect(result.tasks).toHaveLength(1);
 		expect(result.plans).toHaveLength(0);

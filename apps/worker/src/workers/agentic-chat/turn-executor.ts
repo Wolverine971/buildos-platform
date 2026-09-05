@@ -4,9 +4,9 @@ import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime/conte
 import {
 	extractContextShiftPayload,
 	hasSuccessfulDurableEffects,
-	resolveTurnContractFromExecutions,
 	resolveTurnContractOutcome
 } from '@buildos/agentic-chat-runtime/loop';
+import { resolveReviewedTurnContractFromExecutions } from './reviewedTurnContract';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
@@ -2670,7 +2670,7 @@ export class AgenticChatTurnExecutor {
 		const includesFailureEventPair = status === 'failed' && terminalEventContext;
 		const turnContract =
 			status === 'completed'
-				? resolveTurnContractFromExecutions(
+				? resolveReviewedTurnContractFromExecutions(
 						terminalEventContext?.terminalContext.toolExecutions
 					)
 				: null;

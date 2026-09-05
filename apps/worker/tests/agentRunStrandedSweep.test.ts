@@ -82,7 +82,9 @@ function makeStore(overrides: Partial<StrandedSweepStore> = {}): {
 	const mocks = {
 		listStrandedCandidates: vi.fn(async () => [] as StrandedRunRow[]),
 		listActiveDedupKeys: vi.fn(async () => [] as string[]),
-		loadParent: vi.fn(async () => null as StrandedParentRow | null),
+		loadParent: vi.fn<StrandedSweepStore['loadParent']>(
+			async () => null as StrandedParentRow | null
+		),
 		loadChildren: vi.fn(async () => [] as StrandedChildRow[]),
 		enqueueContinuation: vi.fn(async () => ({}) as { errorMessage?: string }),
 		wakeSynthesis: vi.fn(async () => ({ jobId: 'agent-run-job-1' })),
@@ -198,7 +200,7 @@ describe('runAgentRunStrandedSweep', () => {
 		const store: StrandedSweepStore = {
 			...makeStore().store,
 			listStrandedCandidates: vi.fn(async () => [queued]),
-			listActiveDedupKeys: vi.fn(async (_userId, keys) =>
+			listActiveDedupKeys: vi.fn(async (_userId: string, keys: string[]) =>
 				keys.filter((k) => activeKeys.has(k))
 			),
 			enqueueContinuation: vi.fn(async (_userId, _metadata, dedupKey) => {
@@ -246,7 +248,11 @@ describe('runAgentRunStrandedSweep', () => {
 		});
 		const { store, mocks } = makeStore({
 			listStrandedCandidates: vi.fn(async () => [strandedChild]),
-			loadParent: vi.fn(async () => ({ status: 'failed', completed_at: minutesAgo(15) }))
+			loadParent: vi.fn<StrandedSweepStore['loadParent']>(async () => ({
+				id: PARENT_ID,
+				status: 'failed',
+				completed_at: minutesAgo(15)
+			}))
 		});
 
 		const summary = await run(store);
@@ -270,7 +276,11 @@ describe('runAgentRunStrandedSweep', () => {
 		});
 		const { store, mocks } = makeStore({
 			listStrandedCandidates: vi.fn(async () => [strandedChild]),
-			loadParent: vi.fn(async () => ({ status: 'completed', completed_at: minutesAgo(2) }))
+			loadParent: vi.fn<StrandedSweepStore['loadParent']>(async () => ({
+				id: PARENT_ID,
+				status: 'completed',
+				completed_at: minutesAgo(2)
+			}))
 		});
 
 		const summary = await run(store);

@@ -33,13 +33,13 @@ function dailyClaim(overrides: Partial<ClaimedCycleTrigger> = {}): ClaimedCycleT
 function fakeStore(claims: ClaimedCycleTrigger[]): CycleTriggerCoordinatorStore {
 	return {
 		claimDue: vi.fn(async () => claims),
-		admitClaimed: vi.fn(async () => ({
+		admitClaimed: vi.fn<CycleTriggerCoordinatorStore['admitClaimed']>(async () => ({
 			disposition: 'admitted',
 			cycle_run_id: '44444444-4444-4444-8444-444444444444',
 			queue_job_record_id: '55555555-5555-4555-8555-555555555555',
 			queue_job_id: 'run_cycle_1'
 		})),
-		skipClaimed: vi.fn(async () => ({
+		skipClaimed: vi.fn<CycleTriggerCoordinatorStore['skipClaimed']>(async () => ({
 			disposition: 'skipped_misfire',
 			cycle_run_id: '66666666-6666-4666-8666-666666666666',
 			queue_job_record_id: null,

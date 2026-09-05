@@ -193,10 +193,11 @@ describe('Agentic Chat private execution observations', () => {
 
 	it('aborts a hung observation RPC at its local deadline', async () => {
 		let deadlineSignal: AbortSignal | null = null;
-		const response = Object.assign(new Promise<never>(() => undefined), {
+		const pending = new Promise<never>(() => undefined);
+		const response = Object.assign(pending, {
 			abortSignal(signal: AbortSignal) {
 				deadlineSignal = signal;
-				return this;
+				return pending;
 			}
 		});
 		const adapter = new SupabaseAgenticChatExecutionObservationAdapter(

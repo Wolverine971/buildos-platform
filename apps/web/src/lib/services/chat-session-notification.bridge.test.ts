@@ -164,7 +164,7 @@ describe('chat-session-notification.bridge', () => {
 		requireTestValue(getCards()[0]).actions.dismiss?.();
 		await vi.runAllTimersAsync();
 
-		const [, init] = fetchMock.mock.calls[0];
+		const [, init] = requireTestValue(fetchMock.mock.calls[0]);
 		const body = JSON.parse((init as RequestInit).body as string);
 		expect(body).not.toHaveProperty('context_type');
 		expect(body.has_messages_sent).toBe(false);
@@ -230,7 +230,9 @@ describe('chat-session-notification.bridge', () => {
 			const card = getCards()[0];
 			expect(requireTestValue(card).status).toBe('success');
 			expect(requireTestValue(card).data.hasActiveTurn).toBe(false);
-			expect(requireTestValue(card).data.responsePreview).toBe('Here is your plan for today.');
+			expect(requireTestValue(card).data.responsePreview).toBe(
+				'Here is your plan for today.'
+			);
 			expect(probeCalls).toBe(2);
 		}
 	);

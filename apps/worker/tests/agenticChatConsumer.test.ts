@@ -10,9 +10,19 @@ import { AgenticChatConsumerRuntime } from '../src/workers/agentic-chat/consumer
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
 import { DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG } from '../src/workers/agentic-chat/streamPublisher';
 
+const { rpcMock } = vi.hoisted(() => ({
+	rpcMock:
+		vi.fn<
+			(
+				name: string,
+				args?: Record<string, unknown>
+			) => Promise<{ data: unknown; error: unknown }>
+		>()
+}));
+
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
-		rpc: vi.fn(),
+		rpc: rpcMock,
 		from: vi.fn()
 	}
 }));
@@ -30,7 +40,7 @@ function configuredEnvironment(
 }
 
 beforeEach(() => {
-	vi.mocked(supabase.rpc).mockReset();
+	rpcMock.mockReset();
 });
 
 afterEach(() => {
@@ -77,7 +87,7 @@ describe('Agentic Chat queue consumer', () => {
 		const job = claimedChatJob();
 		let exposeJob = false;
 		let delivered = false;
-		vi.mocked(supabase.rpc).mockImplementation(async (name, args) => {
+		rpcMock.mockImplementation(async (name, args) => {
 			if (name !== 'claim_pending_jobs') return { data: true, error: null } as never;
 			expect(args).toEqual({ p_job_types: ['agentic_chat_turn'], p_batch_size: 1 });
 			if (!exposeJob || delivered) return { data: [], error: null } as never;
@@ -118,7 +128,7 @@ describe('Agentic Chat queue consumer', () => {
 			resolveInitialClaim = resolve;
 		});
 		let claimCount = 0;
-		vi.mocked(supabase.rpc).mockImplementation(async (name) => {
+		rpcMock.mockImplementation(async (name) => {
 			if (name !== 'claim_pending_jobs') return { data: true, error: null } as never;
 			claimCount += 1;
 			if (claimCount === 1) return (await initialClaim) as never;
@@ -143,21 +153,19 @@ describe('Agentic Chat queue consumer', () => {
 
 	it('delegates stalled rows only to the fenced chat recovery service', async () => {
 		vi.useFakeTimers();
-		vi.mocked(supabase.rpc).mockResolvedValue({ data: [], error: null } as never);
+		rpcMock.mockResolvedValue({ data: [], error: null } as never);
 		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
 
 		await consumer.queue.start();
 		await vi.advanceTimersByTimeAsync(60_000);
-		expect(
-			vi.mocked(supabase.rpc).mock.calls.some(([name]) => name === 'reset_stalled_jobs')
-		).toBe(false);
+		expect(rpcMock.mock.calls.some(([name]) => name === 'reset_stalled_jobs')).toBe(false);
 		await consumer.queue.stop();
 	});
 
 	it('executes an admitted job without a second worker-local user cohort', async () => {
 		const job = { ...claimedChatJob(), user_id: 'd1000000-0000-4000-8000-000000000002' };
 		let claimCount = 0;
-		vi.mocked(supabase.rpc).mockImplementation(async (name) => {
+		rpcMock.mockImplementation(async (name) => {
 			if (name !== 'claim_pending_jobs') return { data: true, error: null } as never;
 			claimCount += 1;
 			return { data: claimCount === 1 ? [job] : [], error: null } as never;
@@ -500,7 +508,7 @@ describe('Agentic Chat consumer lifecycle', () => {
 	});
 
 	it('turns runtime health unhealthy after repeated stalled-sweep failures', async () => {
-		vi.mocked(supabase.rpc).mockResolvedValue({ data: [], error: null } as never);
+		rpcMock.mockResolvedValue({ data: [], error: null } as never);
 		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
 		const recovery = service('recovery', []);
 		const runtime = new AgenticChatConsumerRuntime(consumer.queue, {

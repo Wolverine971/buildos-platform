@@ -76,7 +76,10 @@ describe('project domain profiles', () => {
 				project: {
 					name: 'The Glass Harbor',
 					type_key: 'project.creative.novel',
-					props: { facets: { stage: 'discovery' }, owner_note: 'private draft' } as Record<string, unknown>
+					props: {
+						facets: { stage: 'discovery' },
+						owner_note: 'private draft'
+					} as Record<string, unknown>
 				},
 				context_document: {
 					title: 'START HERE',

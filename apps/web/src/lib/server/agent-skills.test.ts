@@ -377,7 +377,9 @@ describe('public agent skill serving', () => {
 			'references/ai-ui-smoke-test.md'
 		]);
 
-		const frontmatter = requireTestValue(bundle.files['SKILL.md']).match(/^---\n([\s\S]*?)\n---/)?.[1];
+		const frontmatter = requireTestValue(bundle.files['SKILL.md']).match(
+			/^---\n([\s\S]*?)\n---/
+		)?.[1];
 		expect(frontmatter).toBeTruthy();
 		expect(parseYaml(frontmatter ?? '')).toEqual({
 			name: 'ui-ux-quality-review',
@@ -387,7 +389,10 @@ describe('public agent skill serving', () => {
 		expect(bundle.files['SKILL.md']).toContain('## Portable References');
 		expect(bundle.files['SKILL.md']).toContain('references/foundation-checks.md');
 
-		const buildosMetadata = parseYaml(requireTestValue(bundle.files['buildos.yaml'])) as Record<string, unknown>;
+		const buildosMetadata = parseYaml(requireTestValue(bundle.files['buildos.yaml'])) as Record<
+			string,
+			unknown
+		>;
 		expect(buildosMetadata.runtime_skill_id).toBe('ui_ux_quality_review');
 		expect(buildosMetadata.bundle_url).toBe(
 			'https://build-os.com/agent-skills/ui-ux-quality-review/bundle.zip'

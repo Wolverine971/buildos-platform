@@ -7,10 +7,7 @@ import {
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
-import {
-	AgenticChatExecutionInputError,
-	SupabaseAgenticChatExecutionInputAdapter
-} from '../src/workers/agentic-chat/executionInput';
+import { SupabaseAgenticChatExecutionInputAdapter } from '../src/workers/agentic-chat/executionInput';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -249,7 +246,7 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 
 		await expect(
 			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
-		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+		).rejects.toMatchObject({
 			code: 'invalid_artifact'
 		});
 	});
@@ -268,7 +265,7 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 
 		await expect(
 			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
-		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+		).rejects.toMatchObject({
 			code: 'invalid_artifact'
 		});
 	});
@@ -289,7 +286,7 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 
 		await expect(
 			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
-		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+		).rejects.toMatchObject({
 			code: 'invalid_command'
 		});
 	});
@@ -305,7 +302,7 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 
 		await expect(
 			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
-		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+		).rejects.toMatchObject({
 			code: 'invalid_timing_source'
 		});
 	});
@@ -319,7 +316,7 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 
 		await expect(
 			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
-		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+		).rejects.toMatchObject({
 			code: 'invalid_timing_source'
 		});
 	});
@@ -330,7 +327,7 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 
 		await expect(
 			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
-		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+		).rejects.toMatchObject({
 			code: 'invalid_timing_source'
 		});
 	});
@@ -344,7 +341,7 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 
 		await expect(
 			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
-		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+		).rejects.toMatchObject({
 			code: 'invalid_timing_source'
 		});
 	});
@@ -357,7 +354,7 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 			new SupabaseAgenticChatExecutionInputAdapter(client, () =>
 				Date.parse('2026-08-11T00:00:00.000Z')
 			).load(claim)
-		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+		).rejects.toMatchObject({
 			code: 'artifact_expired'
 		});
 	});

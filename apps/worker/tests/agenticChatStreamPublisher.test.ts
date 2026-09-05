@@ -1,5 +1,6 @@
 // apps/worker/tests/agenticChatStreamPublisher.test.ts
 
+import { deferred } from './helpers/deferred';
 import { describe, expect, it, vi } from 'vitest';
 import type {
 	AgenticChatSemanticEventRpcResultV1,
@@ -339,24 +340,26 @@ describe('AgenticChatStreamPublisher', () => {
 		const context = turn('semantic-replay');
 		const base = createPersistence([context]);
 		const transitionId = '60000000-0000-5000-8000-000000000006';
-		base.persistSemantic = vi.fn(async (input) => ({
-			outcome: 'already_persisted',
-			publish_allowed: false,
-			turn_run_id: context.turnRunId,
-			queue_job_id: context.queueJobId,
-			session_id: context.sessionId,
-			user_id: context.userId,
-			stream_run_id: context.streamRunId,
-			client_turn_id: context.clientTurnId,
-			execution_generation: context.executionGeneration,
-			sequence_index: 1,
-			event_id: `${context.turnRunId}:1:1`,
-			phase: input.phase,
-			event_type: input.event_type,
-			durable: true,
-			transition_id: input.transition_id,
-			event_payload: input.event_payload
-		}));
+		base.persistSemantic = vi.fn<AgenticChatPersistencePortV1['persistSemantic']>(
+			async (input) => ({
+				outcome: 'already_persisted',
+				publish_allowed: false,
+				turn_run_id: context.turnRunId,
+				queue_job_id: context.queueJobId,
+				session_id: context.sessionId,
+				user_id: context.userId,
+				stream_run_id: context.streamRunId,
+				client_turn_id: context.clientTurnId,
+				execution_generation: context.executionGeneration,
+				sequence_index: 1,
+				event_id: `${context.turnRunId}:1:1`,
+				phase: input.phase,
+				event_type: input.event_type,
+				durable: true,
+				transition_id: input.transition_id,
+				event_payload: input.event_payload
+			})
+		);
 		const broadcast = createBroadcast();
 		const publisher = new AgenticChatStreamPublisher({ persistence: base, broadcast });
 		publisher.start();
@@ -445,21 +448,23 @@ describe('AgenticChatStreamPublisher', () => {
 	it('does not retry a permanent isolated-row rejection', async () => {
 		const context = turn('rejected');
 		const base = createPersistence([context]);
-		base.flushTextBatches = vi.fn(async () => ({
-			outcome: 'flushed',
-			input_count: 1,
-			persisted_count: 0,
-			rejected_count: 1,
-			results: [
-				{
-					outcome: 'rejected',
-					publish_allowed: false,
-					input_index: 0,
-					error_code: 'P0001',
-					error_message: 'agentic_chat_text_write_prefix_conflict'
-				}
-			]
-		}));
+		base.flushTextBatches = vi.fn<AgenticChatPersistencePortV1['flushTextBatches']>(
+			async () => ({
+				outcome: 'flushed',
+				input_count: 1,
+				persisted_count: 0,
+				rejected_count: 1,
+				results: [
+					{
+						outcome: 'rejected',
+						publish_allowed: false,
+						input_index: 0,
+						error_code: 'P0001',
+						error_message: 'agentic_chat_text_write_prefix_conflict'
+					}
+				]
+			})
+		);
 		const broadcast = createBroadcast();
 		const publisher = new AgenticChatStreamPublisher({ persistence: base, broadcast });
 		publisher.start();
@@ -476,7 +481,7 @@ describe('AgenticChatStreamPublisher', () => {
 
 	it('provides pressure relief and fails closed with the complete prefix at the hard bound', async () => {
 		const context = turn('pressure');
-		const gate = Promise.withResolvers<void>();
+		const gate = deferred<void>();
 		const base = createPersistence([context]);
 		const originalFlush = base.flushTextBatches.bind(base);
 		let firstFlush = true;
@@ -514,7 +519,7 @@ describe('AgenticChatStreamPublisher', () => {
 		gate.resolve();
 		await Promise.all([first.delivery, pressured.delivery, pressured.pressureRelieved]);
 
-		const held = Promise.withResolvers<void>();
+		const held = deferred<void>();
 		base.flushTextBatches = async (inputs) => {
 			await held.promise;
 			return await originalFlush(inputs);
@@ -689,10 +694,11 @@ describe('AgenticChatStreamPublisher', () => {
 				{ type: 'done', status: 'completed' }
 			)
 		).resolves.toBe('broadcast_acknowledged');
-		expect(broadcast.messages.map((message) => message.payload.type)).toEqual([
-			'last_turn_context',
-			'done'
-		]);
+		expect(
+			broadcast.messages.map((message) =>
+				'type' in message.payload ? message.payload.type : undefined
+			)
+		).toEqual(['last_turn_context', 'done']);
 		expect(log).toEqual([
 			'broadcast:event',
 			`ack:${context.turnRunId}:1`,
@@ -704,7 +710,7 @@ describe('AgenticChatStreamPublisher', () => {
 
 	it('abandons pending writes without publishing a late in-flight receipt', async () => {
 		const context = turn('abandon');
-		const gate = Promise.withResolvers<void>();
+		const gate = deferred<void>();
 		const persistence = createPersistence([context]);
 		const originalFlush = persistence.flushTextBatches.bind(persistence);
 		persistence.flushTextBatches = async (inputs) => {

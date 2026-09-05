@@ -214,7 +214,7 @@ describe('latestUserMessageText', () => {
 					},
 					{ role: 'tool', content: 'tool payload', tool_call_id: 'call-1' }
 				]
-			} as AgenticChatTurnProviderRequestV1)
+			})
 		).toBe('Second ask');
 	});
 
@@ -222,7 +222,7 @@ describe('latestUserMessageText', () => {
 		expect(
 			latestUserMessageText({
 				messages: [{ role: 'system', content: 'System prompt' }]
-			} as AgenticChatTurnProviderRequestV1)
+			})
 		).toBeNull();
 	});
 
@@ -236,7 +236,7 @@ describe('latestUserMessageText', () => {
 					{ role: 'user', content: 'Three' },
 					{ role: 'user', content: 'Four' }
 				]
-			} as AgenticChatTurnProviderRequestV1)
+			})
 		).toEqual(['Four', 'Three', 'Two']);
 	});
 });

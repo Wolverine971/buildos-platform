@@ -72,12 +72,16 @@ const throwingAdmin: any = new Proxy(
 	}
 );
 
-function calStubPort(): Record<string, unknown> {
-	const port: Record<string, unknown> = {};
-	for (const m of CAL_PORT_METHODS) {
-		port[m] = async () => ({ ok: true, stub: m });
-	}
-	return port;
+function calStubPort(): NonNullable<AgentOpContext['calendar']> {
+	return {
+		listCalendarEvents: async () => ({ ok: true, stub: 'listCalendarEvents' }),
+		getCalendarEventDetails: async () => ({ ok: true, stub: 'getCalendarEventDetails' }),
+		createCalendarEvent: async () => ({ ok: true, stub: 'createCalendarEvent' }),
+		updateCalendarEvent: async () => ({ ok: true, stub: 'updateCalendarEvent' }),
+		deleteCalendarEvent: async () => ({ ok: true, stub: 'deleteCalendarEvent' }),
+		getProjectCalendar: async () => ({ ok: true, stub: 'getProjectCalendar' }),
+		setProjectCalendar: async () => ({ ok: true, stub: 'setProjectCalendar' })
+	};
 }
 
 describe('END STATE — calendar write catalog (Waves 5–6)', () => {

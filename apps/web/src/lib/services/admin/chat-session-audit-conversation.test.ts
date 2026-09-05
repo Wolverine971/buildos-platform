@@ -150,8 +150,12 @@ describe('chat-session-audit-conversation', () => {
 			replayTimeline: buildReplayTimeline(payload.timeline)
 		});
 		expect(turns).toHaveLength(1);
-		expect(requireTestValue(requireTestValue(turns[0]).userMessages[0]).content).toBe('What should I do next?');
-		expect(requireTestValue(requireTestValue(turns[0]).assistantMessages[0]).content).toBe('Draft the outline.');
+		expect(requireTestValue(requireTestValue(turns[0]).userMessages[0]).content).toBe(
+			'What should I do next?'
+		);
+		expect(requireTestValue(requireTestValue(turns[0]).assistantMessages[0]).content).toBe(
+			'Draft the outline.'
+		);
 		expect(requireTestValue(turns[0]).toolCalls).toHaveLength(1);
 		expect(requireTestValue(turns[0]).toolCalls[0]).toMatchObject({
 			toolName: 'buildos_gateway',

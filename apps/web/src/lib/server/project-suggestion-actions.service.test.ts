@@ -456,7 +456,9 @@ describe('decideProjectSuggestion', () => {
 			})
 		);
 
-		const fetchFn = requireTestValue(mocks.chatExecutorConstructor.mock.calls[0])[3] as typeof fetch;
+		const fetchFn = requireTestValue(
+			mocks.chatExecutorConstructor.mock.calls[0]
+		)[3] as typeof fetch;
 		await fetchFn('/api/test', {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },

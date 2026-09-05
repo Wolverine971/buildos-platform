@@ -387,11 +387,11 @@ describe('AgenticChatOpenRouterClient', () => {
 			{ type: 'done', finishedReason: 'stop', usage: undefined }
 		]);
 		expect(fetchImpl).toHaveBeenCalledTimes(2);
-		expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
+		expect(vi.mocked(fetchImpl).mock.calls.map(([url]) => url)).toEqual([
 			'https://openrouter.example/api/v1/chat/completions',
 			'https://direct.example/v1/chat/completions'
 		]);
-		const directBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body));
+		const directBody = JSON.parse(String(vi.mocked(fetchImpl).mock.calls[1]?.[1]?.body));
 		expect(directBody).toMatchObject({
 			model: 'direct/model',
 			tool_choice: 'none',
@@ -1403,7 +1403,13 @@ describe('AgenticChatOpenRouterClient', () => {
 		) as unknown as typeof fetch;
 		const observations: AgenticChatProviderUsageObservationV1[] = [];
 		const client = new AgenticChatOpenRouterClient(
-			{ usage: { observe: (observation) => observations.push(observation) } },
+			{
+				usage: {
+					observe: (observation) => {
+						observations.push(observation);
+					}
+				}
+			},
 			{
 				routes: [route()],
 				httpReferer: 'https://build-os.com',
@@ -1444,9 +1450,15 @@ describe('AgenticChatOpenRouterClient', () => {
 		const lifecycleObservations: AgenticChatExecutionObservationInputV1[] = [];
 		const client = new AgenticChatOpenRouterClient(
 			{
-				usage: { observe: (observation) => observations.push(observation) },
+				usage: {
+					observe: (observation) => {
+						observations.push(observation);
+					}
+				},
 				executionObservations: {
-					observe: (observation) => lifecycleObservations.push(observation)
+					observe: async (observation) => {
+						lifecycleObservations.push(observation);
+					}
 				}
 			},
 			{
