@@ -3,6 +3,27 @@ import { describe, expect, it } from 'vitest';
 import { resolveUsageLogCostBreakdown } from './llm-usage-costs';
 
 describe('resolveUsageLogCostBreakdown', () => {
+	it.each([
+		{ openrouter_usage_cost_usd: 0 },
+		{ openrouter_usage_cost_usd: '0' },
+		{ total_cost_usd: 0, metadata: { costSource: 'provider_reported' } }
+	])('preserves a reported zero instead of estimating a charge: %j', (receipt) => {
+		const result = resolveUsageLogCostBreakdown({
+			model_used: 'openai/gpt-5.6-luna',
+			prompt_tokens: 8_000,
+			completion_tokens: 500,
+			input_cost_usd: 0.008,
+			output_cost_usd: 0.003,
+			total_cost_usd: 0.011,
+			...receipt
+		});
+		expect(result).toMatchObject({
+			inputCost: 0,
+			outputCost: 0,
+			totalCost: 0,
+			wasEstimated: false
+		});
+	});
 	it('keeps stored costs when they are present', () => {
 		const result = resolveUsageLogCostBreakdown({
 			model_used: 'deepseek/deepseek-v4-flash-20260423',

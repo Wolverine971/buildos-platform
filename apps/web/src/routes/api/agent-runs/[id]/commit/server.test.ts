@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/agent-runs/[id]/commit/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +19,7 @@ vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: mocks.createAdminSupabaseClient
 }));
 
-import { POST } from './+server';
+import { config, POST } from './+server';
 
 type Row = Record<string, unknown>;
 
@@ -86,6 +87,10 @@ describe('POST /api/agent-runs/[id]/commit', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.expireInboxItemsForProject.mockResolvedValue(1);
+	});
+
+	it('has enough runtime budget for a multi-change commit', () => {
+		expect(config).toEqual({ maxDuration: 60 });
 	});
 
 	it('cancels an unreviewed proposal instead of committing it after project deletion', async () => {

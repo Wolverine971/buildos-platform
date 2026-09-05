@@ -325,7 +325,39 @@ export type AgenticChatProviderPortV1 = {
 	stream?(input: AgenticChatProviderInputV1): AsyncIterable<AgenticChatProviderStepV1>;
 };
 
+export type ContractReviewRejectionCode =
+	| 'unexpected_control_tool'
+	| 'revision_disallowed'
+	| 'corrected_contract_invalid'
+	| 'approval_sha_mismatch'
+	| 'decision_schema_invalid'
+	| 'unexecutable_effect_fields'
+	| 'provider_failure'
+	| 'decision_truncated'
+	| 'unexpected_finish_reason'
+	| 'unreadable_decision'
+	| 'missing_done'
+	| 'decision_count_invalid';
+
+/** Shape-only review telemetry: no reviewer prose, argument values, or user text. */
+export type ContractReviewDiagnostic = Readonly<{
+	kind: 'rejected_contract_review';
+	code: ContractReviewRejectionCode;
+	finished: boolean;
+	finishedReason: string | null;
+	validationIssueCount: number;
+	/** Fixed schema keywords only; validation messages may contain private values. */
+	validationIssueFields: string[];
+	calls: Array<{
+		toolName: string | null;
+		argumentBytes: number;
+		argumentSha256: string;
+		truncated: boolean;
+	}>;
+}>;
+
 export type AgenticChatProviderExecutionDiagnosticV1 =
+	| ContractReviewDiagnostic
 	| Readonly<{
 			kind: 'rejected_tool_name';
 			rejectedToolName: string | null;

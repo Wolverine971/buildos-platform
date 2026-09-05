@@ -24,26 +24,6 @@ export type ReferenceCandidateGroup = {
 	candidates: Array<{ id: string; title: string }>;
 };
 
-export function buildReviewFallbackClarification(
-	request: AgenticChatTurnProviderRequestV1,
-	reason: string
-): CompletedProviderToolCall {
-	const id = `semantic-review-fallback:${request.turnRunId}:${request.logicalProviderRound}`;
-	const argumentsValue: JsonObject = {
-		reason: reason.trim().slice(0, 240),
-		question:
-			'I could not safely verify the exact target and values for this change. Which exact item should I change, and what should the final value be?'
-	};
-	return {
-		id,
-		name: REQUEST_TURN_CLARIFICATION_TOOL_NAME,
-		arguments: argumentsValue,
-		canonicalArguments: canonicalizeAgenticChatJson(argumentsValue),
-		canonicalProviderArguments: canonicalizeAgenticChatJson(argumentsValue),
-		decidedBy: 'harness_review_fallback'
-	};
-}
-
 export function readProposalRevision(argumentsValue: JsonObject): {
 	reason: string;
 	requiredCorrection: string;

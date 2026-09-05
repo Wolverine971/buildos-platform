@@ -104,7 +104,7 @@ VALUES (
 	'global', NULL, NULL,
 	'{"workspace":"retained"}'::jsonb,
 	'[{"role":"system","content":"prepared history"}]'::jsonb,
-	'{"global_basic":{"surface_profile":"global_basic","system_prompt":"retained system","sections":[{"id":"context","content_sha256":"abc","content_chars":16}]}}'::jsonb,
+	'{"global_basic":{"surface_profile":"global_basic","system_prompt":"retained system","system_prompt_sha256":"1decc6f47eeaf6c057772cfcbf457a77322652ddcbd9e118ea9a77ab93167c6c","sections":[{"id":"context","content_sha256":"abc","content_chars":16}]}}'::jsonb,
 	'global_basic', repeat('b', 64), now() + interval '10 minutes',
 	'retained summary'
 );
@@ -138,7 +138,7 @@ INSERT INTO phase2d_results VALUES (
 			"preparedPromptId":"b3000000-0000-4000-8000-000000000001",
 			"preparedContextPayloadSha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 			"preparedSurfaceProfile":"global_basic",
-			"artifactPrepared":{"sourcePreparedPromptId":"b3000000-0000-4000-8000-000000000001","contextPayload":{"workspace":"retained"},"conversationSummary":"retained summary","surfaceProfile":"global_basic","systemPrompt":"retained system","promptSections":[{"id":"context","content_sha256":"abc","content_chars":16}],"toolSurface":{"names":[]}}
+			"artifactPrepared":{"sourcePreparedPromptId":"b3000000-0000-4000-8000-000000000001","sourcePreparedSurface":{"systemPromptSha256":"1decc6f47eeaf6c057772cfcbf457a77322652ddcbd9e118ea9a77ab93167c6c","promptSections":[{"id":"context","content_sha256":"abc","content_chars":16}]},"contextPayload":{"workspace":"retained"},"conversationSummary":"retained summary","surfaceProfile":"global_basic","systemPrompt":"retained system","promptSections":[{"id":"context","content_sha256":"abc","content_chars":16}],"toolSurface":{"names":[]}}
 		}'::jsonb
 	)
 );

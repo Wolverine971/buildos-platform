@@ -22,6 +22,7 @@ import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type {
 	CreatedEntityRef,
+	DataMutation,
 	DataMutationSummary,
 	DocumentMutationEvent
 } from './agent-chat.types';
@@ -167,8 +168,12 @@ const TOOL_CATALOG: Record<string, ToolCatalogEntry> = {
 	create_onto_document: { toast: true, trackMutation: true },
 	update_onto_document: { toast: true, trackMutation: true },
 	delete_onto_document: { toast: true, trackMutation: true },
+	create_onto_milestone: { toast: false, trackMutation: true },
 	update_onto_milestone: { toast: true, trackMutation: true },
+	delete_onto_milestone: { toast: false, trackMutation: true },
+	create_onto_risk: { toast: false, trackMutation: true },
 	update_onto_risk: { toast: true, trackMutation: true },
+	delete_onto_risk: { toast: false, trackMutation: true },
 	create_calendar_event: { toast: true, trackMutation: true },
 	update_calendar_event: { toast: true, trackMutation: true },
 	delete_calendar_event: { toast: true, trackMutation: true },
@@ -729,6 +734,7 @@ function genericPrefixDescriptor(
 export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 	const entityNameCache = new Map<string, string>();
 	const mutatedProjectIds = new Set<string>();
+	const mutations: DataMutation[] = [];
 	let mutationCount = 0;
 
 	function cacheEntityName(kind: OntologyEntityKind | 'entity', id: string, name: string): void {
@@ -1857,6 +1863,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 
 		const args = safeParseArgs(argsJson);
 		const projectId = resolveProjectId(args, toolResult);
+		const projectIds = new Set(projectId ? [projectId] : []);
 
 		mutationCount += 1;
 		if (projectId) {
@@ -1881,14 +1888,52 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			]) {
 				if (typeof candidate === 'string' && candidate.length > 0) {
 					mutatedProjectIds.add(candidate);
+					projectIds.add(candidate);
 				}
 			}
 		}
+
+		const match =
+			/^(create|update|delete|move)_onto_(project|task|document|goal|plan|milestone|risk)$/.exec(
+				toolName
+			);
+		const entityKind: DataMutation['entityKind'] = match
+			? (match[2] as DataMutation['entityKind'])
+			: toolName === 'create_task_document'
+				? 'document'
+				: /^(create|update|delete)_calendar_event$/.test(toolName)
+					? 'event'
+					: null;
+		const operation = (match?.[1] ?? toolName.split('_')[0]) as DataMutation['operation'];
+		const payload = resultPayload?.result ?? resultPayload;
+		const entityId =
+			entityKind === 'document'
+				? documentId
+				: entityKind
+					? [
+							args[`${entityKind}_id`],
+							payload?.[entityKind]?.id,
+							payload?.[`${entityKind}_id`],
+							payload?.entity_id,
+							payload?.id
+						]
+							.map(normalizeEntityLabel)
+							.find(Boolean)
+					: undefined;
+		mutations.push({
+			entityKind,
+			entityId: entityId ?? null,
+			operation: ['create', 'update', 'delete', 'move'].includes(operation)
+				? operation
+				: 'other',
+			projectIds: Array.from(projectIds)
+		});
 	}
 
 	function resetMutationTracking(): void {
 		mutationCount = 0;
 		mutatedProjectIds.clear();
+		mutations.length = 0;
 	}
 
 	function buildMutationSummary(
@@ -1898,6 +1943,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			hasChanges: mutationCount > 0,
 			totalMutations: mutationCount,
 			affectedProjectIds: Array.from(mutatedProjectIds),
+			mutations: mutations.slice(),
 			hasMessagesSent: extra.hasMessagesSent,
 			sessionId: extra.sessionId ?? null,
 			contextType: ctx.getContextType() ?? null,

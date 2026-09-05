@@ -13,11 +13,19 @@ import { commitChangeSet } from '@buildos/shared-agent-ops';
 import { expireInboxItemsForProject } from '@buildos/shared-agent-ops/inbox-index';
 import type { ChangeSetDecision } from '@buildos/shared-types';
 
+export const config = { maxDuration: 60 };
+
 const DELETED_PROJECT_COMMIT_MESSAGE =
 	'This proposal belongs to a deleted project and can no longer be applied.';
 
-export const POST: RequestHandler = async ({ params, request, locals: { safeGetSession } }) => {
-	const { user } = await safeGetSession();
+export const POST: RequestHandler = async ({
+	params,
+	request,
+	locals: { safeGetSession, serverTiming }
+}) => {
+	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
+		serverTiming ? serverTiming.measure(name, fn) : fn();
+	const { user } = await measure('agent_run_commit.auth', safeGetSession);
 	if (!user) return ApiResponse.unauthorized();
 
 	const payload = await request.json().catch(() => null);
@@ -38,21 +46,30 @@ export const POST: RequestHandler = async ({ params, request, locals: { safeGetS
 		payload?.default_decision === 'rejected' ? 'rejected' : 'approved';
 
 	const admin = createAdminSupabaseClient();
-	const { data: run, error: runError } = await admin
-		.from('agent_runs')
-		.select('id, user_id, project_id, status')
-		.eq('id', params.id)
-		.eq('user_id', user.id)
-		.maybeSingle();
+	const { data: run, error: runError } = await measure(
+		'agent_run_commit.load_run',
+		async () =>
+			await admin
+				.from('agent_runs')
+				.select('id, user_id, project_id, status')
+				.eq('id', params.id)
+				.eq('user_id', user.id)
+				.maybeSingle()
+	);
 	if (runError) return ApiResponse.databaseError(runError);
 	if (!run) return ApiResponse.notFound('Agent run');
 
 	if (run.project_id) {
-		const { data: project, error: projectError } = await admin
-			.from('onto_projects')
-			.select('id, deleted_at')
-			.eq('id', run.project_id)
-			.maybeSingle();
+		const projectId = run.project_id;
+		const { data: project, error: projectError } = await measure(
+			'agent_run_commit.load_project',
+			async () =>
+				await admin
+					.from('onto_projects')
+					.select('id, deleted_at')
+					.eq('id', projectId)
+					.maybeSingle()
+		);
 		if (projectError) return ApiResponse.databaseError(projectError);
 		if (!project || project.deleted_at) {
 			if (run.status === 'proposal_ready') {
@@ -70,10 +87,12 @@ export const POST: RequestHandler = async ({ params, request, locals: { safeGetS
 				if (cancelError) return ApiResponse.databaseError(cancelError);
 			}
 			try {
-				await expireInboxItemsForProject({
-					supabase: admin as any,
-					projectId: run.project_id
-				});
+				await measure('agent_run_commit.expire_inbox', () =>
+					expireInboxItemsForProject({
+						supabase: admin as any,
+						projectId
+					})
+				);
 			} catch (expireError) {
 				return ApiResponse.databaseError(expireError);
 			}
@@ -85,13 +104,15 @@ export const POST: RequestHandler = async ({ params, request, locals: { safeGetS
 		}
 	}
 
-	const outcome = await commitChangeSet({
-		admin,
-		runId: params.id,
-		userId: user.id,
-		decisions,
-		defaultDecision
-	});
+	const outcome = await measure('agent_run_commit.apply', () =>
+		commitChangeSet({
+			admin,
+			runId: params.id,
+			userId: user.id,
+			decisions,
+			defaultDecision
+		})
+	);
 
 	if (!outcome.ok) {
 		const status =

@@ -190,7 +190,8 @@ describePostgres('agentic-chat worker Phase 2B terminal control PostgreSQL contr
 		for (const migration of [
 			'20260802031000_agentic_chat_worker_execution_recovery.sql',
 			'20260824205329_attach_worker_voice_note_groups.sql',
-			'20260825161846_agentic_chat_queue_first_admission.sql'
+			'20260825161846_agentic_chat_queue_first_admission.sql',
+			'20260905012719_agentic_chat_prepared_overlay_copy_contract.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}

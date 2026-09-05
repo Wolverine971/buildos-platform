@@ -89,19 +89,32 @@ export async function admitAgenticChatWorkerTurn(input: {
 	return parseAdmissionReceipt(data, input.args);
 }
 
+const RETRYABLE_PREPARED_ADMISSION_FAILURES = new Set([
+	'agentic_chat_worker_admission_prepared_scope_mismatch',
+	'agentic_chat_worker_admission_prepared_already_consumed',
+	'agentic_chat_worker_admission_prepared_expired',
+	'agentic_chat_worker_admission_prepared_claim_lost',
+	'agentic_chat_input_prepared_history_stale'
+]);
+
+export function getPreparedAdmissionFailureCode(error: unknown): string | null {
+	if (
+		!(error instanceof AgenticChatWorkerAdmissionGatewayError) ||
+		error.code !== 'database_error'
+	) {
+		return null;
+	}
+	return error.message.match(/\bagentic_chat_[a-z_]*prepared[a-z_]*\b/)?.[0] ?? null;
+}
+
 /**
- * True when a durable-admission failure names one of the prepared-prompt
- * guards (scope/consumed/expired/integrity/copy/claim/history-currency).
- * These are inspection→admission races — an invalidation, consumption, or
- * newer message landed in between — and the turn is safe to re-admit once
- * without the prepared fast path.
+ * True only for prepared-lease failures that can occur between inspection and
+ * the atomic claim. Contract/copy failures are deterministic bugs and must
+ * surface instead of being mislabeled and hidden by the slow-path retry.
  */
 export function isPreparedAdmissionRaceError(error: unknown): boolean {
-	return (
-		error instanceof AgenticChatWorkerAdmissionGatewayError &&
-		error.code === 'database_error' &&
-		/prepared/.test(error.message)
-	);
+	const failureCode = getPreparedAdmissionFailureCode(error);
+	return failureCode !== null && RETRYABLE_PREPARED_ADMISSION_FAILURES.has(failureCode);
 }
 
 function parseAdmissionReceipt(

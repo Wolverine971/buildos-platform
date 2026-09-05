@@ -83,7 +83,7 @@ export const REFERENCE_CANDIDATES_PROPERTY = Object.freeze({
  * Approval tools are static on purpose: a per-review `const` SHA in the schema
  * changed the tools array on every call and defeated provider prefix caching
  * (0% cache over 350 reviewer calls). The SHA binding is enforced in code by
- * decision-completion.ts, which fails closed to clarification on a mismatch.
+ * decision-completion.ts, which fails closed to an internal review fault on a mismatch.
  */
 export const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
 	type: 'function',
@@ -134,7 +134,7 @@ export const PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Object.free
 					type: 'string',
 					maxLength: 400,
 					description:
-						'The exact correction the acting model must make so the proposal matches the user commission.'
+						'The structural correction needed to match the user commission. For text edits, name the content postcondition and refer to the original user request for exact wording and preservation rules. Do not copy or abbreviate source text into this short field.'
 				}
 			}
 		}

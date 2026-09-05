@@ -54,6 +54,20 @@ export function resolveUsageLogCostBreakdown(row: UsageCostRow): {
 		...metadataModels
 	]);
 	const profile = pricing?.profile;
+	const hasReportedTotal =
+		hasNumericValue(row.openrouter_usage_cost_usd) ||
+		(metadata.costSource === 'provider_reported' && hasNumericValue(row.total_cost_usd));
+	// A provider receipt of zero is a measured value, not a missing price.
+	// In particular, don't replace a fully cached/free call with catalog rates.
+	if (hasReportedTotal && totalCost === 0) {
+		return {
+			inputCost: 0,
+			outputCost: 0,
+			totalCost: 0,
+			pricingModel: pricing?.modelId ?? null,
+			wasEstimated: false
+		};
+	}
 
 	if (profile) {
 		const estimatedInput = promptTokens > 0 ? (promptTokens / 1_000_000) * profile.cost : 0;

@@ -1000,10 +1000,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 	 * cap mid-`arguments` and the provider still reported `finish_reason:
 	 * "tool_calls"`, so the truncated JSON reached `completeToolCalls` and the
 	 * whole turn died with a permanent `provider_tool_arguments_invalid`. A
-	 * reviewer that fails to produce a decision must fall back to clarification —
-	 * the existing safety behaviour — not kill the turn.
+	 * reviewer that exhausts its internal retry reports an internal fault without
+	 * inventing a missing user choice or authorizing a mutation.
 	 */
-	it('falls back to clarification when a reviewer decision is truncated mid-arguments', async () => {
+	it('reports internal failure when reviewer truncation exhausts transport retry', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const documentId = '42000000-0000-4000-8000-000000000004';
 		const contractArguments = organizationContractArguments(documentId);
@@ -1083,13 +1083,13 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		// The turn survives as a clarification, and no mutation is authorized by a
+		// The turn reports an internal fault, and no mutation is authorized by a
 		// decision the reviewer never finished writing.
 		expect(reviewSteps).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					type: 'read_tool',
-					toolName: 'request_turn_clarification'
+					type: 'finish',
+					finishedReason: 'semantic_review_failed'
 				})
 			])
 		);
@@ -2505,88 +2505,159 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
 	});
 
-	it('fails a malformed reviewer approval closed to a durable clarification', async () => {
-		const taskId = '41000000-0000-4000-8000-000000000004';
-		const contractArguments: JsonObject = {
-			outcomes: [
-				{
-					action: 'complete',
-					entity_kind: 'task',
-					target_ids: [taskId],
-					required_fields: ['state_key']
-				}
-			]
-		};
-		const client = clientWith(
-			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract')
-		);
-		const semanticReviewer = clientWith(
-			providerReadRound(
+	it.each([false, true])(
+		'retries a malformed reviewer approval internally, recovered=%s',
+		async (recovered) => {
+			const taskId = '41000000-0000-4000-8000-000000000004';
+			const contractArguments: JsonObject = {
+				outcomes: [
+					{
+						action: 'complete',
+						entity_kind: 'task',
+						target_ids: [taskId],
+						required_fields: ['state_key']
+					}
+				]
+			};
+			const client = clientWith(
+				providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract')
+			);
+			const invalidDecision = providerReadRound(
 				'reviewer-approval-1',
 				{
 					reason: 'Unsafe unbound approval.',
 					contract_sha256: 'f'.repeat(64)
 				},
 				'approve_turn_contract_review'
-			)
-		);
-		const invocation = await new AgenticChatTurnProviderAdapter(
-			{
-				client,
-				semanticReviewer,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
-			},
-			2_000,
-			16,
-			{ updateOntoTask: true }
-		).prepare({
-			executionInput: executionInputWithReadSurface(
-				[
-					turnContractToolDefinition(),
-					readOnlyTurnToolDefinition(),
-					clarificationToolDefinition(),
-					updateTaskToolDefinition()
-				],
-				[
-					'declare_turn_contract',
-					'declare_read_only_turn',
-					'request_turn_clarification',
-					'update_onto_task'
-				]
-			),
-			processingToken: PROCESSING_TOKEN,
-			signal: new AbortController().signal
-		});
-
-		await collect(invocation.stream());
-		const reviewSteps = await collect(
-			invocation.continueWithToolResults!({
-				round: 2,
-				results: [
-					durableReadFeedbackFor(
-						'provider-contract-1',
-						'declare_turn_contract',
-						contractArguments,
-						{ status: 'declared' }
+			);
+			const validSha = createHash('sha256')
+				.update(
+					canonicalizeAgenticChatJson(
+						parseDeclaredTurnContract(contractArguments)! as unknown as JsonObject
 					)
-				]
-			})
-		);
+				)
+				.digest('hex');
+			const reviewStreams = [
+				invalidDecision,
+				recovered
+					? providerReadRound(
+							'reviewer-approval-2',
+							{
+								reason: 'Exact task.',
+								contract_sha256: validSha,
+								reference_candidates: []
+							},
+							'approve_turn_contract_review'
+						)
+					: invalidDecision
+			];
+			const semanticReviewer = {
+				stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() =>
+					(async function* () {
+						for (const event of reviewStreams.shift() ?? []) yield event;
+					})()
+				)
+			};
+			const invocation = await new AgenticChatTurnProviderAdapter(
+				{
+					client,
+					semanticReviewer,
+					capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+				},
+				2_000,
+				16,
+				{ updateOntoTask: true }
+			).prepare({
+				executionInput: executionInputWithReadSurface(
+					[
+						turnContractToolDefinition(),
+						readOnlyTurnToolDefinition(),
+						clarificationToolDefinition(),
+						updateTaskToolDefinition()
+					],
+					[
+						'declare_turn_contract',
+						'declare_read_only_turn',
+						'request_turn_clarification',
+						'update_onto_task'
+					]
+				),
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
 
-		expect(reviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
-		expect(reviewSteps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: expect.stringContaining('semantic-review-fallback:'),
-					toolName: 'request_turn_clarification',
-					arguments: expect.objectContaining({
-						reason: expect.stringContaining('invalid or unbound')
-					})
+			await collect(invocation.stream());
+			const reviewSteps = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedbackFor(
+							'provider-contract-1',
+							'declare_turn_contract',
+							contractArguments,
+							{ status: 'declared' }
+						)
+					]
 				})
-			])
-		);
-	});
+			);
+
+			expect(reviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+			expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+			expect(
+				semanticReviewer.stream.mock.calls.map(([request]) => request.providerAttempt)
+			).toEqual([1, 3]);
+			expect(
+				new Set(
+					semanticReviewer.stream.mock.calls.map(
+						([request]) => request.logicalProviderRound
+					)
+				).size
+			).toBe(1);
+			expect(reviewSteps).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						type: 'semantic',
+						eventPayload: expect.objectContaining({
+							semantic_review: expect.objectContaining({
+								rejection: expect.objectContaining({
+									code: 'approval_sha_mismatch'
+								})
+							})
+						})
+					})
+				])
+			);
+			expect(
+				reviewSteps.some(
+					(step) =>
+						step.type === 'read_tool' && step.toolName === 'request_turn_clarification'
+				)
+			).toBe(false);
+			if (recovered) {
+				expect(reviewSteps).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							type: 'read_tool',
+							toolName: 'approve_turn_contract_review'
+						})
+					])
+				);
+			} else {
+				expect(reviewSteps).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							type: 'finish',
+							finishedReason: 'semantic_review_failed'
+						}),
+						expect.objectContaining({
+							type: 'text_delta',
+							text: expect.stringContaining('internal check')
+						})
+					])
+				);
+			}
+		}
+	);
 
 	it('advertises simple versus complex routing and withholds collection-resolved writes', async () => {
 		const taskId = '41000000-0000-4000-8000-000000000004';
@@ -6575,6 +6646,80 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
+
+	it.each(['empty', 'stray_tool', 'provider_error'])(
+		'renders durable receipts when forced synthesis fails: %s',
+		async (mode) => {
+			const argumentsValue = {
+				task_id: '41000000-0000-4000-8000-000000000004',
+				state_key: 'done'
+			};
+			const failure: AgenticChatTurnProviderClientEventV1[] =
+				mode === 'provider_error'
+					? [{ type: 'error', error: 'upstream unavailable', retryable: false }]
+					: mode === 'stray_tool'
+						? providerReadRound('stray', {}, 'update_onto_task')
+						: [{ type: 'done', finishedReason: 'stop' }];
+			const streams = [
+				providerReadRound('write-1', argumentsValue, 'update_onto_task'),
+				failure,
+				failure
+			];
+			const client = {
+				stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() =>
+					(async function* () {
+						for (const event of streams.shift() ?? []) yield event;
+					})()
+				)
+			};
+			const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+			const invocation = await new AgenticChatTurnProviderAdapter(
+				{ client, capacity },
+				2_000,
+				3,
+				{ updateOntoTask: true }
+			).prepare({
+				executionInput: executionInputWithReadSurface(
+					[updateTaskToolDefinition()],
+					['update_onto_task']
+				),
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			const first = await collect(invocation.stream());
+			const mutation = first.find((step) => step.type === 'mutating_tool');
+			if (!mutation || mutation.type !== 'mutating_tool')
+				throw new Error('Expected mutation');
+			const final = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableMutationFeedback({
+							providerToolCallId: 'write-1',
+							logicalOperationId: mutation.logicalOperationId,
+							arguments: argumentsValue
+						})
+					]
+				})
+			);
+			expect(final).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						type: 'text_delta',
+						text: expect.stringContaining(
+							'Updated task: 41000000-0000-4000-8000-000000000004'
+						)
+					}),
+					expect.objectContaining({
+						type: 'finish',
+						finishedReason: 'synthesis_receipt_fallback'
+					})
+				])
+			);
+			expect(final.some((step) => step.type === 'mutating_tool')).toBe(false);
+			expect(capacity.getSnapshot().activeRequests).toBe(0);
+		}
+	);
 
 	it('fails deterministically after one empty forced-synthesis retry', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
@@ -10583,15 +10728,19 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 		expect(client.stream).toHaveBeenCalledTimes(4);
 	});
 
-	it('still fails a timed-out synthesis pass whose partial is only a lead-in', async () => {
+	it('renders saved receipts when a timed-out synthesis partial is only a lead-in', async () => {
 		const { steps } = await streamStraySynthesis([
 			timedOutSynthesisRound(),
 			timedOutSynthesisRound('Here are')
 		]);
-		await expect(collect(steps)).rejects.toMatchObject({
-			code: 'provider_stream_error',
-			failureClass: 'provider_throttle'
-		});
+		await expect(collect(steps)).resolves.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'finish',
+					finishedReason: 'synthesis_receipt_fallback'
+				})
+			])
+		);
 	});
 
 	it('mounts the batching instruction only when a mounted tool carries the scheduling sidecar', async () => {

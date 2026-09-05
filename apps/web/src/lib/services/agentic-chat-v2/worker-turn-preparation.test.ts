@@ -1037,6 +1037,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			},
 			surface: {
 				system_prompt: 'Prepared system prompt',
+				system_prompt_sha256: 'c'.repeat(64),
 				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
 			},
 			surfaceKey: 'worker_realtime:project'
@@ -1093,6 +1094,10 @@ describe('Agentic Chat worker turn preparation', () => {
 		// ...and its sections are appended after the prewarmed bytes.
 		expect(result.args.p_artifact_prepared).toMatchObject({
 			sourcePreparedPromptId: preparedId,
+			sourcePreparedSurface: {
+				systemPromptSha256: 'c'.repeat(64),
+				promptSections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
+			},
 			systemPrompt:
 				'Prepared system prompt\n\n## Active Domain Signals\n\nPreloaded skill: task_management',
 			promptSections: [
@@ -1293,6 +1298,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			},
 			surface: {
 				system_prompt: 'Prepared system prompt',
+				system_prompt_sha256: 'c'.repeat(64),
 				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
 			},
 			surfaceKey: 'worker_realtime:global'
@@ -1453,6 +1459,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			row: preparedRow,
 			surface: {
 				system_prompt: 'Prepared project system prompt',
+				system_prompt_sha256: 'c'.repeat(64),
 				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
 			},
 			surfaceKey: 'worker_realtime:project'
@@ -1902,7 +1909,11 @@ describe('Agentic Chat worker turn preparation', () => {
 					raw_history_count: 0,
 					history_for_model_count: 0
 				},
-				surface: { system_prompt: 'Prepared prompt', sections: [] },
+				surface: {
+					system_prompt: 'Prepared prompt',
+					system_prompt_sha256: 'c'.repeat(64),
+					sections: []
+				},
 				surfaceKey: 'worker_realtime:global'
 			})
 			.mockResolvedValueOnce({ hit: false, reason: 'consumed' });

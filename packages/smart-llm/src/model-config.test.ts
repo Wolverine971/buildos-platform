@@ -114,8 +114,8 @@ describe('resolveModelPricingProfile', () => {
 		const grok = resolveModelPricingProfile(GROK_46_MODEL);
 		const kimi = resolveModelPricingProfile(KIMI_K3_MODEL);
 
-		expect(luna?.profile.cost).toBe(1);
-		expect(luna?.profile.outputCost).toBe(6);
+		expect(luna?.profile.cost).toBe(0.2);
+		expect(luna?.profile.outputCost).toBe(1.2);
 		expect(grok?.modelId).toBe(GROK_46_MODEL);
 		expect(grok?.profile.cost).toBe(2);
 		expect(grok?.profile.outputCost).toBe(6);

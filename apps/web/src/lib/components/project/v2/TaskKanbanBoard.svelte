@@ -40,7 +40,8 @@
 	column lazy-loads them from /api/onto/projects/[id]/tasks/archived.
 -->
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { slide } from 'svelte/transition';
 	import {
 		Archive,
@@ -208,6 +209,44 @@
 	let archivedTotal = $state(0);
 	let archivedServerReturned = $state(0);
 	let archivedHasMore = $state(false);
+	let archivedRefreshPending = false;
+
+	async function refreshArchivedTasks() {
+		if (archivedLoading) {
+			archivedRefreshPending = true;
+			return;
+		}
+		if (!archivedLoaded) return;
+		const loadedCount = archivedServerReturned;
+		await loadArchived();
+		while (archivedHasMore && archivedServerReturned < loadedCount) {
+			const previousCount = archivedServerReturned;
+			await loadArchived(true);
+			if (archivedServerReturned <= previousCount) break;
+		}
+	}
+
+	onMount(() => {
+		let initial = true;
+		return dataMutationEvents.subscribe((event) => {
+			if (initial) {
+				initial = false;
+				return;
+			}
+			if (!event || !mutationAffectsProject(event.summary, projectId)) return;
+			const mutations = event.summary.mutations;
+			if (
+				mutations?.length &&
+				!mutations.some(
+					(mutation) =>
+						(!mutation.entityKind || mutation.entityKind === 'task') &&
+						(!mutation.projectIds.length || mutation.projectIds.includes(projectId))
+				)
+			)
+				return;
+			void refreshArchivedTasks();
+		});
+	});
 
 	async function loadArchived(loadMore = false) {
 		if (archivedLoading) return;
@@ -233,7 +272,7 @@
 			// Merge: drop any local copy of these IDs, then add server rows.
 			const fetchedIds = new Set(fetched.map((t) => t.id));
 			localTasks = [
-				...localTasks.filter((t) => !fetchedIds.has(t.id)),
+				...localTasks.filter((t) => !fetchedIds.has(t.id) && (loadMore || !t.deleted_at)),
 				...fetched.map((t) => ({ ...t }))
 			];
 			archivedLoaded = true;
@@ -241,6 +280,10 @@
 			archivedError = err instanceof Error ? err.message : 'Failed to load archived';
 		} finally {
 			archivedLoading = false;
+			if (archivedRefreshPending) {
+				archivedRefreshPending = false;
+				void refreshArchivedTasks();
+			}
 		}
 	}
 

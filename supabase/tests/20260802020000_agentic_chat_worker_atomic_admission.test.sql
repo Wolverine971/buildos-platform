@@ -140,7 +140,7 @@ VALUES (
 	'global', NULL, NULL,
 	'{"workspace":"trusted"}'::jsonb,
 	'[{"role":"system","content":"prepared history"}]'::jsonb,
-	'{"global_basic":{"surface_profile":"global_basic","system_prompt":"trusted system","sections":[{"id":"context","content_sha256":"abc","content_chars":12}]}}'::jsonb,
+	'{"global_basic":{"surface_profile":"global_basic","system_prompt":"trusted system","system_prompt_sha256":"e13927322809cc6b684c96b6ddc0f297308239b3bb5bbaa47eb6a4bfaebfe93b","sections":[{"id":"context","content_sha256":"abc","content_chars":12}]}}'::jsonb,
 	'global_basic', repeat('b', 64), now() + interval '10 minutes', 'trusted summary'
 );
 
@@ -184,7 +184,7 @@ INSERT INTO admission_results VALUES (
 			"preparedPromptId":"d3000000-0000-4000-8000-000000000001",
 			"preparedContextPayloadSha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 			"preparedSurfaceProfile":"global_basic",
-			"artifactPrepared":{"sourcePreparedPromptId":"d3000000-0000-4000-8000-000000000001","contextPayload":{"workspace":"trusted"},"conversationSummary":"trusted summary","surfaceProfile":"global_basic","systemPrompt":"trusted system","promptSections":[{"id":"context","content_sha256":"abc","content_chars":12}],"toolSurface":{"names":[]}}
+			"artifactPrepared":{"sourcePreparedPromptId":"d3000000-0000-4000-8000-000000000001","sourcePreparedSurface":{"systemPromptSha256":"e13927322809cc6b684c96b6ddc0f297308239b3bb5bbaa47eb6a4bfaebfe93b","promptSections":[{"id":"context","content_sha256":"abc","content_chars":12}]},"contextPayload":{"workspace":"trusted"},"conversationSummary":"trusted summary","surfaceProfile":"global_basic","systemPrompt":"trusted system\n\n## Rules for This Turn\n\nUse the current turn overlay.","promptSections":[{"id":"context","content_sha256":"abc","content_chars":12},{"id":"turn_rules","content_sha256":"def","content_chars":29}],"toolSurface":{"names":[]}}
 		}'::jsonb
 	)
 );

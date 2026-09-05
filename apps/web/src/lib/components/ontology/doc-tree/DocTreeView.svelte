@@ -109,6 +109,22 @@
 	let expandedIds = $state<Set<string>>(new Set());
 	let currentVersion = $state(getInitialStructure()?.version ?? 0);
 	let hasUpdate = $state(false);
+	let treeRequest = 0;
+
+	// Parent snapshots arrive after chat/editor writes. Preserve disclosure and
+	// selection state while replacing the data, without a second tree request.
+	$effect(() => {
+		if (!initialStructure) return;
+		treeRequest += 1;
+		structure = initialStructure;
+		documents = initialDocuments;
+		unlinked = initialUnlinked;
+		archived = initialArchived;
+		currentVersion = initialStructure.version;
+		hasUpdate = false;
+		loading = false;
+		error = null;
+	});
 
 	// Context menu state
 	let contextMenuOpen = $state(false);
@@ -363,6 +379,7 @@
 
 	// Fetch tree data
 	async function fetchTree(isPolling = false) {
+		const request = isPolling ? treeRequest : ++treeRequest;
 		if (!isPolling) {
 			loading = true;
 			error = null;
@@ -379,6 +396,7 @@
 			}
 
 			const data: { data: GetDocTreeResponse } = await res.json();
+			if (request !== treeRequest) return;
 			const newVersion = data.data.structure.version;
 
 			if (isPolling) {
@@ -397,11 +415,11 @@
 			publishDataLoaded(structure, documents, unlinked, archived);
 			initializeExpandedState();
 		} catch (err) {
-			if (!isPolling) {
+			if (!isPolling && request === treeRequest) {
 				error = err instanceof Error ? err.message : 'Failed to load document tree';
 			}
 		} finally {
-			if (!isPolling) {
+			if (!isPolling && request === treeRequest) {
 				loading = false;
 			}
 		}

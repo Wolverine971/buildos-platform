@@ -468,6 +468,37 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		});
 	});
 
+	it('hashes and validates compact prepared-surface source evidence', async () => {
+		const artifact = artifactFixture();
+		artifact.prepared.sourcePreparedSurface = {
+			systemPromptSha256: 'c'.repeat(64),
+			promptSections: [{ id: 'context', content_sha256: 'd'.repeat(64) }]
+		};
+		artifact.contentHash = await hashTurnInputArtifactContentV1(artifact);
+
+		const valid = await validateTurnInputArtifactV1(artifact);
+		expect(valid).toMatchObject({
+			ok: true,
+			normalizedContent: {
+				prepared: {
+					sourcePreparedSurface: {
+						systemPromptSha256: 'c'.repeat(64),
+						promptSections: [{ id: 'context', content_sha256: 'd'.repeat(64) }]
+					}
+				}
+			}
+		});
+
+		const orphaned = artifactFixture();
+		orphaned.prepared.sourcePreparedPromptId = null;
+		orphaned.prepared.sourcePreparedSurface = artifact.prepared.sourcePreparedSurface;
+		orphaned.contentHash = await hashTurnInputArtifactContentV1(orphaned);
+		expect(await validateTurnInputArtifactV1(orphaned)).toMatchObject({
+			ok: false,
+			code: 'invalid_prepared_surface'
+		});
+	});
+
 	it('freezes a canonical supervisor resume snapshot into the artifact hash', async () => {
 		const resumeContext = {
 			missing_field: 'task_id',

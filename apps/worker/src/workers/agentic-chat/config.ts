@@ -44,6 +44,8 @@ const DEFAULT_OPENROUTER_PROVIDER_ROUTING = Object.freeze({
 
 export type AgenticChatProviderConfig = {
 	routes: readonly AgenticChatOpenAiCompatibleRouteV1[];
+	/** Explicit reviewer policy; no implicit model fallbacks when configured. */
+	reviewer?: { model: string; fallbackModels: readonly string[] };
 };
 
 type AgenticChatBaseConfig = {
@@ -278,27 +280,49 @@ function loadProviderConfig(environment: NodeJS.ProcessEnv): AgenticChatProvider
 		fallbackModels,
 		providerRouting: DEFAULT_OPENROUTER_PROVIDER_ROUTING
 	});
-	return Object.freeze({ routes: Object.freeze([route]) });
+	const reviewerModelValue = environment.AGENTIC_CHAT_REVIEWER_MODEL;
+	if (!reviewerModelValue && environment.AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS) {
+		throw new Error(
+			'AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS requires AGENTIC_CHAT_REVIEWER_MODEL'
+		);
+	}
+	const reviewerModel =
+		reviewerModelValue === undefined
+			? null
+			: canonicalRequiredValue(reviewerModelValue, 'AGENTIC_CHAT_REVIEWER_MODEL', 256);
+	return Object.freeze({
+		routes: Object.freeze([route]),
+		...(reviewerModel
+			? {
+					reviewer: Object.freeze({
+						model: reviewerModel,
+						fallbackModels: parseFallbackModels(
+							environment.AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS,
+							reviewerModel,
+							'AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS'
+						)
+					})
+				}
+			: {})
+	});
 }
 
-function parseFallbackModels(value: string | undefined, primaryModel: string): readonly string[] {
+function parseFallbackModels(
+	value: string | undefined,
+	primaryModel: string,
+	name = 'AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS'
+): readonly string[] {
 	if (value === undefined || value === '') return Object.freeze([]);
 	const entries = value.split(',');
 	if (entries.some((entry) => !entry)) {
-		throw new Error(
-			'AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS must be a comma-separated canonical model list'
-		);
+		throw new Error(`${name} must be a comma-separated canonical model list`);
 	}
-	const models = entries.map((entry) =>
-		canonicalRequiredValue(entry, 'AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS', 256)
-	);
+	const models = entries.map((entry) => canonicalRequiredValue(entry, name, 256));
 	if (models.length > 3) {
-		throw new Error('AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS supports at most three models');
+		throw new Error(`${name} supports at most three models`);
 	}
 	if (new Set(models).size !== models.length || models.includes(primaryModel)) {
-		throw new Error(
-			'AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS must be unique and exclude the primary model'
-		);
+		throw new Error(`${name} must be unique and exclude the primary model`);
 	}
 	return Object.freeze(models);
 }

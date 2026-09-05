@@ -99,7 +99,8 @@ const turn = (): ConversationTurn => ({
 				request_started_at: '2026-08-03T12:00:00.500Z',
 				request_completed_at: '2026-08-03T12:00:01.500Z',
 				response_time_ms: 1000,
-				total_cost_usd: 0.015
+				total_cost_usd: 0.015,
+				metadata: { costSource: 'provider_reported' }
 			}
 		}
 	],
@@ -137,9 +138,10 @@ describe('chat-session-flow-profile', () => {
 		const llmEvent = profile.events.find((event) => event.category === 'llm');
 		const toolEvent = profile.events.find((event) => event.category === 'tool');
 
-		expect(llmEvent).toMatchObject({ costUsd: 0.015, costState: 'metered' });
+		expect(llmEvent).toMatchObject({ costUsd: 0.015, costState: 'reported' });
 		expect(toolEvent).toMatchObject({ costUsd: null, costState: 'unmetered' });
 		expect(profile.attributedCostUsd).toBeCloseTo(0.015);
+		expect(profile.reportedCostUsd).toBeCloseTo(0.015);
 		expect(profile.costDifferenceUsd).toBeCloseTo(0.005);
 	});
 
@@ -151,7 +153,9 @@ describe('chat-session-flow-profile', () => {
 			conversationTurns: [zeroCostTurn]
 		});
 
-		expect(profile.events.find((event) => event.category === 'llm')?.costState).toBe('zero');
+		expect(profile.events.find((event) => event.category === 'llm')?.costState).toBe(
+			'reported'
+		);
 		expect(profile.events.find((event) => event.category === 'tool')?.costState).toBe(
 			'unmetered'
 		);
@@ -167,8 +171,142 @@ describe('chat-session-flow-profile', () => {
 
 		expect(profile.events.find((event) => event.category === 'llm')).toMatchObject({
 			costUsd: null,
-			costState: 'unmetered'
+			costState: 'unknown'
 		});
+	});
+
+	it.each([
+		{ costSource: 'catalog_estimate', estimatedUsage: true },
+		{ costSource: 'catalog_estimate' },
+		{ costSource: 'reservation' },
+		{ estimatedUsage: true }
+	])('keeps estimated charges separate from provider-reported spend (%j)', (metadata) => {
+		const estimatedTurn = turn();
+		estimatedTurn.llmCalls[0].severity = 'error';
+		estimatedTurn.llmCalls[0].payload.metadata = metadata;
+		estimatedTurn.llmCalls[0].payload.openrouter_usage_cost_usd = null;
+		const profile = buildSessionFlowProfile({
+			detail: detail(0.015),
+			conversationTurns: [estimatedTurn]
+		});
+
+		expect(profile.events.find((event) => event.category === 'llm')).toMatchObject({
+			costUsd: 0.015,
+			storedCostUsd: 0.015,
+			costState: 'estimated'
+		});
+		expect(profile.reportedCostUsd).toBe(0);
+		expect(profile.estimatedCostUsd).toBe(0.015);
+		expect(profile.estimatedCostCount).toBe(1);
+		expect(profile.attributedCostUsd).toBe(0.015);
+		expect(profile.costDifferenceUsd).toBe(0);
+	});
+
+	it.each([0, '0'])('honors provider-reported zero %j over a stored estimate', (providerCost) => {
+		const reportedTurn = turn();
+		reportedTurn.llmCalls[0].payload.metadata = { costSource: 'catalog_estimate' };
+		reportedTurn.llmCalls[0].payload.openrouter_usage_cost_usd = providerCost;
+		const profile = buildSessionFlowProfile({
+			detail: detail(0.015),
+			conversationTurns: [reportedTurn]
+		});
+
+		expect(profile.events.find((event) => event.category === 'llm')).toMatchObject({
+			costUsd: 0,
+			storedCostUsd: 0.015,
+			costState: 'reported'
+		});
+		expect(profile.reportedCostUsd).toBe(0);
+		expect(profile.estimatedCostUsd).toBe(0);
+		expect(profile.unknownCostCount).toBe(0);
+		expect(profile.attributedCostUsd).toBe(0.015);
+	});
+
+	it.each([undefined, null, {}, { unrelated: true }])(
+		'recovers full usage evidence from a partial timeline payload (%j)',
+		(metadata) => {
+			const legacyTurn = turn();
+			legacyTurn.llmCalls[0].payload.metadata = metadata;
+			legacyTurn.llmCalls[0].payload.openrouter_usage_cost_usd = null;
+			const sessionDetail = detail(0.015);
+			sessionDetail.llm_calls = [
+				{
+					id: 'usage-1',
+					openrouter_usage_cost_usd: 0.012,
+					metadata: { passRole: 'contract_review' }
+				}
+			];
+			const profile = buildSessionFlowProfile({
+				detail: sessionDetail,
+				conversationTurns: [legacyTurn]
+			});
+
+			expect(profile.events.find((event) => event.category === 'llm')).toMatchObject({
+				label: 'Contract review · gpt-test',
+				modelLabel: 'gpt-test',
+				passRoleLabel: 'Contract review',
+				costUsd: 0.012,
+				storedCostUsd: 0.015,
+				costState: 'reported'
+			});
+			expect(profile.reportedCostUsd).toBe(0.012);
+			expect(profile.attributedCostUsd).toBe(0.015);
+		}
+	);
+
+	it.each([{}, { costSource: 'unknown' }])(
+		'does not present historical charges with no provider evidence as reported (%j)',
+		(metadata) => {
+			const legacyTurn = turn();
+			legacyTurn.llmCalls[0].payload.metadata = metadata;
+			const profile = buildSessionFlowProfile({
+				detail: detail(0.015),
+				conversationTurns: [legacyTurn]
+			});
+
+			expect(profile.events.find((event) => event.category === 'llm')).toMatchObject({
+				costUsd: 0.015,
+				costState: 'unknown'
+			});
+			expect(profile.reportedCostUsd).toBe(0);
+			expect(profile.unknownCostUsd).toBe(0.015);
+			expect(profile.unknownCostCount).toBe(1);
+		}
+	);
+
+	it.each([null, '', ' ', false, -1, 'invalid'])(
+		'does not interpret invalid provider cost %j as reported zero',
+		(providerCost) => {
+			const legacyTurn = turn();
+			legacyTurn.llmCalls[0].payload.metadata = {};
+			legacyTurn.llmCalls[0].payload.openrouter_usage_cost_usd = providerCost;
+			const profile = buildSessionFlowProfile({
+				detail: detail(),
+				conversationTurns: [legacyTurn]
+			});
+
+			expect(profile.events.find((event) => event.category === 'llm')?.costState).toBe(
+				'unknown'
+			);
+		}
+	);
+
+	it.each([
+		['contract_review', 'Contract review'],
+		['acting', 'Acting'],
+		['final_response', 'Final response'],
+		['repair', 'Repair']
+	])('labels the %s pass in plain language', (passRole, expectedLabel) => {
+		const labeledTurn = turn();
+		labeledTurn.llmCalls[0].payload.metadata = { passRole };
+		const profile = buildSessionFlowProfile({
+			detail: detail(),
+			conversationTurns: [labeledTurn]
+		});
+
+		expect(profile.events.find((event) => event.category === 'llm')?.label).toBe(
+			`${expectedLabel} · gpt-test`
+		);
 	});
 
 	it('drops turns that have no renderable flow events', () => {

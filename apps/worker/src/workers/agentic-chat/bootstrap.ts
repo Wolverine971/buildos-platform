@@ -365,7 +365,10 @@ function createDefaultComposition(
 	});
 	const semanticReviewerClient = new AgenticChatOpenRouterClient(clientPorts, {
 		...clientOptions,
-		routes: buildAgenticChatSemanticReviewerRoutes(input.config.provider.routes),
+		routes: buildAgenticChatSemanticReviewerRoutes(
+			input.config.provider.routes,
+			input.config.provider.reviewer
+		),
 		temperature: 0,
 		maxTokens: AGENTIC_CHAT_SEMANTIC_REVIEWER_MAX_TOKENS,
 		requestTimeoutMs: AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS
@@ -392,8 +395,9 @@ function createDefaultComposition(
 
 /**
  * Reuse the validated OpenRouter credential/route policy, but select a
- * reviewed tool-capable model that is distinct from the acting model whenever
- * the catalog permits it. This is configuration-free by design.
+ * tool-capable model distinct from the acting models. An explicit reviewer
+ * policy restricts both primary and fallbacks; omitted policy uses the
+ * reviewed default without additional model fallbacks.
  */
 /**
  * The reviewer's completion budget covers hidden reasoning as well as the
@@ -426,22 +430,48 @@ export const AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS = 45_000;
  * request bouncing between endpoints. Fallbacks stay allowed for availability.
  */
 export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze(['openai', 'azure']);
+export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_56_LUNA_MODEL;
 
 export function buildAgenticChatSemanticReviewerRoutes(
-	routes: EnabledAgenticChatConfig['provider']['routes']
+	routes: EnabledAgenticChatConfig['provider']['routes'],
+	policy?: EnabledAgenticChatConfig['provider']['reviewer']
 ): EnabledAgenticChatConfig['provider']['routes'] {
 	const actingModels = new Set(
 		routes.flatMap((route) => [route.model, ...(route.fallbackModels ?? [])])
 	);
-	// Production evidence showed the cheaper GLM fallback turning an explicitly
-	// informational pricing-research request into an irrelevant clarification.
-	// This lane is a bounded, temperature-zero safety adjudication, so prefer the
-	// stronger reviewed Luna model before the general-purpose JSON profile order.
-	const reviewerCandidates = [
-		GPT_56_LUNA_MODEL,
-		...JSON_PROFILE_MODELS.powerful,
-		...JSON_PROFILE_MODELS.maximum
-	];
+	// Preserve the deployed default until a replacement passes semantic replay.
+	// 2026-09-04: GLM 5.3 Flash approved a dependency correction without declaring
+	// its endpoints. An explicit policy opts out of the legacy fallback pool;
+	// only the operator's listed alternatives can then be used.
+	const reviewerCandidates = policy
+		? [policy.model, ...policy.fallbackModels]
+		: [
+				DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL,
+				...JSON_PROFILE_MODELS.powerful,
+				...JSON_PROFILE_MODELS.maximum
+			];
+	if (policy) {
+		for (const candidate of reviewerCandidates) {
+			if (!modelSupportsCapability(candidate, 'tools')) {
+				throw new Error(
+					`Agentic Chat reviewer model must be a catalogued tool-capable model: ${candidate}`
+				);
+			}
+			if (actingModels.has(candidate)) {
+				throw new Error(
+					`Agentic Chat semantic reviewer cannot be the acting model: ${candidate}`
+				);
+			}
+		}
+		if (
+			new Set(reviewerCandidates).size !== reviewerCandidates.length ||
+			policy.fallbackModels.length > 3
+		) {
+			throw new Error(
+				'Agentic Chat reviewer policy requires unique models and at most three fallbacks'
+			);
+		}
+	}
 	const toolCapableCandidates = [...reviewerCandidates].filter(
 		(model, index, models) =>
 			models.indexOf(model) === index && modelSupportsCapability(model, 'tools')
@@ -453,7 +483,7 @@ export function buildAgenticChatSemanticReviewerRoutes(
 		// production; a reviewer that is the acting model reviews its own work.
 		// Fail the dedicated service at startup rather than degrade silently.
 		throw new Error(
-			`Agentic Chat semantic reviewer cannot be the acting model: every reviewed tool-capable candidate (${toolCapableCandidates.join(', ') || 'none'}) is already in the acting route (${Array.from(actingModels).join(', ')}). Change AGENTIC_CHAT_OPENROUTER_MODEL or AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS so a distinct reviewer model remains.`
+			`Agentic Chat semantic reviewer cannot be the acting model: every reviewed tool-capable candidate (${toolCapableCandidates.join(', ') || 'none'}) is already in the acting route (${Array.from(actingModels).join(', ')}). Set AGENTIC_CHAT_REVIEWER_MODEL to a distinct model, or change the acting route.`
 		);
 	}
 	return Object.freeze(
@@ -468,7 +498,9 @@ export function buildAgenticChatSemanticReviewerRoutes(
 						? { ignore: route.providerRouting.ignore }
 						: {}),
 					allow_fallbacks: true,
-					order: AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER
+					...(model === GPT_56_LUNA_MODEL
+						? { order: AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER }
+						: {})
 				})
 			})
 		)

@@ -42,6 +42,8 @@ describe('error observability filters', () => {
 		expect(isIgnorableProbePath('/api/openapi.json')).toBe(true);
 		expect(isIgnorableProbePath('/swagger.json')).toBe(true);
 		expect(isIgnorableProbePath('/.well-known/jwks.json')).toBe(true);
+		expect(isIgnorableProbePath('/.well-known/mcp.json')).toBe(true);
+		expect(isIgnorableProbePath('/.well-known/webmcp.json')).toBe(true);
 		expect(isIgnorableProbePath('/keys/service-account.json')).toBe(true);
 		expect(isIgnorableProbePath('/serviceAccountKey.json')).toBe(true);
 		expect(isIgnorableProbePath('/_next/static/buildManifest.js')).toBe(true);

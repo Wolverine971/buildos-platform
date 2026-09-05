@@ -11,6 +11,8 @@ import {
 	normalizeAgentRunBudgets
 } from '$lib/server/agent-runs/dispatch';
 
+export const config = { maxDuration: 30 };
+
 // The live Run Stack calls this endpoint as a reconciliation heartbeat. Keep
 // that response deliberately narrow: result/change_set/orchestration_state can
 // each be tens of kilobytes and are hydrated from the detail endpoint only when
@@ -44,7 +46,10 @@ const AGENT_RUN_SUMMARY_SELECT = [
 
 const AGENT_RUN_FULL_SELECT = '*, project:onto_projects!agent_runs_project_id_fkey(id, name)';
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({
+	url,
+	locals: { supabase, safeGetSession, serverTiming }
+}) => {
 	const { user } = await safeGetSession();
 	if (!user) return ApiResponse.unauthorized();
 
@@ -68,7 +73,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	if (status === 'active') query = query.in('status', ACTIVE_AGENT_RUN_STATUSES);
 	else if (status) query = query.eq('status', status as any);
 
-	const { data, error } = await query;
+	const { data, error } = serverTiming
+		? await serverTiming.measure('agent_runs.list', async () => await query)
+		: await query;
 	if (error) {
 		return ApiResponse.error(
 			'Failed to fetch agent runs',

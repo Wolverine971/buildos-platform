@@ -1,0 +1,206 @@
+[
+	{
+		"scenario": "task",
+		"decision": {
+			"reason": "The user's update commissions two durable field changes on the uniquely identified task: its due date and its duration. The proposal selects the correct task but declares no required fields or values, so it would not reliably perform either requested change.",
+			"required_correction": "Update task 41000000-0000-4000-8000-000000000002 with due_at set to 2026-09-22T13:00:00Z, carrying over the existing time of day, and props.duration_minutes set to 120; preserve all other fields.",
+			"reference_candidates": [
+				{
+					"reference": "cabinet task",
+					"candidates": [
+						{
+							"id": "41000000-0000-4000-8000-000000000002",
+							"title": "Order cabinets"
+						}
+					]
+				}
+			],
+			"corrected_contract": {
+				"summary": "Update the Order cabinets task's due date to September 22, 2026 and duration to 120 minutes, preserving all other fields.",
+				"outcomes": [
+					{
+						"id": "outcome_1",
+						"action": "update",
+						"entity_kind": "task",
+						"description": "Change the task due date and duration while preserving all other fields.",
+						"target_ids": ["41000000-0000-4000-8000-000000000002"],
+						"required_fields": ["due_at", "props.duration_minutes"],
+						"changes": [
+							{
+								"field": "due_at",
+								"value": "2026-09-22T13:00:00Z"
+							},
+							{
+								"field": "props.duration_minutes",
+								"value": "120"
+							}
+						],
+						"minimum_successful_effects": 1,
+						"label": "cabinet-update",
+						"src_label": "cabinet-update",
+						"dst_label": "cabinet-update",
+						"parent_label": "cabinet-update"
+					}
+				]
+			}
+		}
+	},
+	{
+		"scenario": "document",
+		"decision": {
+			"reason": "The requested in-place document edit is clear and uniquely targeted, but the proposed contract declares no required effect field. The commissioned change must write document content while preserving every other byte.",
+			"required_correction": "Retain the uniquely identified document target and declare required_fields=[\"content\"]. Describe replacement of only the Audience sentence, with the exact replacement and preservation requirements taken from the current user message.",
+			"reference_candidates": [],
+			"corrected_contract": {
+				"summary": "Replace only the Audience sentence in the Marketing Brief document and preserve every other byte.",
+				"outcomes": [
+					{
+						"id": "outcome_1",
+						"action": "update",
+						"entity_kind": "document",
+						"description": "Replace only the Audience sentence; preserve every other byte.",
+						"target_ids": ["41000000-0000-4000-8000-000000000001"],
+						"required_fields": ["content"],
+						"changes": [],
+						"minimum_successful_effects": 1,
+						"label": "x",
+						"src_label": "x",
+						"dst_label": "x",
+						"parent_label": "x"
+					}
+				]
+			}
+		}
+	},
+	{
+		"scenario": "relationships",
+		"decision": {
+			"reason": "The commission is clear and uniquely identifies three dependency links, but the proposal omits the required relationship endpoints and rel=depends_on values, so it cannot establish the requested directed edges.",
+			"required_correction": "Replace the three incomplete link outcomes with directed relationship outcomes that specify src_id, dst_id, and rel=depends_on for each requested dependent-to-prerequisite edge; preserve all three links and create no tasks.",
+			"reference_candidates": [
+				{
+					"reference": "Order cabinets",
+					"candidates": [
+						{
+							"id": "41000000-0000-4000-8000-000000000002",
+							"title": "Order cabinets"
+						}
+					]
+				},
+				{
+					"reference": "Confirm permit",
+					"candidates": [
+						{
+							"id": "41000000-0000-4000-8000-000000000001",
+							"title": "Confirm permit"
+						}
+					]
+				},
+				{
+					"reference": "Schedule demolition",
+					"candidates": [
+						{
+							"id": "41000000-0000-4000-8000-000000000003",
+							"title": "Schedule demolition"
+						}
+					]
+				},
+				{
+					"reference": "Install cabinets",
+					"candidates": [
+						{
+							"id": "41000000-0000-4000-8000-000000000004",
+							"title": "Install cabinets"
+						}
+					]
+				}
+			],
+			"corrected_contract": {
+				"summary": "Link the four existing project tasks with the three requested depends_on relationships.",
+				"outcomes": [
+					{
+						"id": "outcome_1",
+						"action": "link",
+						"entity_kind": "relationship",
+						"description": "Order cabinets depends on Confirm permit",
+						"target_ids": [],
+						"required_fields": [],
+						"changes": [
+							{
+								"field": "src_id",
+								"value": "41000000-0000-4000-8000-000000000002"
+							},
+							{
+								"field": "dst_id",
+								"value": "41000000-0000-4000-8000-000000000001"
+							},
+							{
+								"field": "rel",
+								"value": "depends_on"
+							}
+						],
+						"minimum_successful_effects": 1,
+						"label": "order-cabinets-depends-on-permit",
+						"src_label": "existing-order-cabinets",
+						"dst_label": "existing-confirm-permit",
+						"parent_label": "unused"
+					},
+					{
+						"id": "outcome_2",
+						"action": "link",
+						"entity_kind": "relationship",
+						"description": "Schedule demolition depends on Confirm permit",
+						"target_ids": [],
+						"required_fields": [],
+						"changes": [
+							{
+								"field": "src_id",
+								"value": "41000000-0000-4000-8000-000000000003"
+							},
+							{
+								"field": "dst_id",
+								"value": "41000000-0000-4000-8000-000000000001"
+							},
+							{
+								"field": "rel",
+								"value": "depends_on"
+							}
+						],
+						"minimum_successful_effects": 1,
+						"label": "schedule-demolition-depends-on-permit",
+						"src_label": "existing-schedule-demolition",
+						"dst_label": "existing-confirm-permit",
+						"parent_label": "unused"
+					},
+					{
+						"id": "outcome_3",
+						"action": "link",
+						"entity_kind": "relationship",
+						"description": "Install cabinets depends on Order cabinets",
+						"target_ids": [],
+						"required_fields": [],
+						"changes": [
+							{
+								"field": "src_id",
+								"value": "41000000-0000-4000-8000-000000000004"
+							},
+							{
+								"field": "dst_id",
+								"value": "41000000-0000-4000-8000-000000000002"
+							},
+							{
+								"field": "rel",
+								"value": "depends_on"
+							}
+						],
+						"minimum_successful_effects": 1,
+						"label": "install-cabinets-depends-on-order",
+						"src_label": "existing-install-cabinets",
+						"dst_label": "existing-order-cabinets",
+						"parent_label": "unused"
+					}
+				]
+			}
+		}
+	}
+]

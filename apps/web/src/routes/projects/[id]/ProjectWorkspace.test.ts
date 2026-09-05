@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { goto, pushState } from '$app/navigation';
 import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
+import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 import ProjectWorkspace from './ProjectWorkspace.svelte';
 
 const mocks = vi.hoisted(() => ({
@@ -170,6 +171,92 @@ function plans(count: number) {
 }
 
 describe('ProjectWorkspace edge states', () => {
+	it('updates a visible task after chat closes without refetching the project', async () => {
+		window.history.replaceState({}, '', '/workspace?view=work');
+		const task = {
+			id: 'task-1',
+			project_id: PROJECT_ID,
+			title: 'Before chat',
+			state_key: 'todo',
+			props: {},
+			deleted_at: null,
+			start_at: null,
+			due_at: null,
+			priority: 3
+		};
+		render(ProjectWorkspace, {
+			props: {
+				data: projectData({
+					tasks: [task],
+					tasks_coverage: createCompleteProjectTasksCoverage([task] as any)
+				}) as any
+			}
+		});
+		expect(await screen.findByText('Before chat')).toBeInTheDocument();
+		vi.mocked(fetch).mockClear();
+		vi.mocked(fetch).mockResolvedValueOnce(
+			apiResponse({ task: { ...task, title: 'After chat' } })
+		);
+		notifyDataMutation({
+			hasChanges: true,
+			totalMutations: 1,
+			affectedProjectIds: [PROJECT_ID],
+			hasMessagesSent: true,
+			mutations: [
+				{
+					entityKind: 'task',
+					entityId: task.id,
+					operation: 'update',
+					projectIds: [PROJECT_ID]
+				}
+			]
+		});
+		expect(await screen.findByText('After chat')).toBeInTheDocument();
+		expect(screen.queryByText('Before chat')).not.toBeInTheDocument();
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(fetch).toHaveBeenCalledWith('/api/onto/tasks/task-1', undefined);
+		expect(screen.getByRole('tab', { name: /Tasks/ })).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('refreshes an already mounted document tree after a chat document write', async () => {
+		window.history.replaceState({}, '', '/workspace?view=docs');
+		const doc = projectDocument();
+		const data = projectData({ documents: [doc] });
+		data.project.doc_structure = { version: 1, root: [{ id: doc.id, order: 0 }] } as any;
+		render(ProjectWorkspace, { props: { data: data as any } });
+		expect(await screen.findByText(doc.title)).toBeInTheDocument();
+		vi.mocked(fetch).mockClear();
+		vi.mocked(fetch).mockResolvedValueOnce(
+			apiResponse({
+				structure: data.project.doc_structure,
+				documents: { [doc.id]: { ...doc, title: 'Edited through chat' } },
+				unlinked: [],
+				archived: []
+			})
+		);
+		notifyDataMutation({
+			hasChanges: true,
+			totalMutations: 1,
+			affectedProjectIds: [PROJECT_ID],
+			hasMessagesSent: true,
+			mutations: [
+				{
+					entityKind: 'document',
+					entityId: doc.id,
+					operation: 'update',
+					projectIds: [PROJECT_ID]
+				}
+			]
+		});
+		expect(await screen.findByText('Edited through chat')).toBeInTheDocument();
+		expect(screen.queryByText(doc.title)).not.toBeInTheDocument();
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(fetch).toHaveBeenCalledWith(
+			`/api/onto/projects/${PROJECT_ID}/doc-tree?include_content=false`,
+			undefined
+		);
+	});
+
 	it('labels old counts and reloads the latest snapshot when returning to the workspace', async () => {
 		render(ProjectWorkspace, {
 			props: {

@@ -1108,6 +1108,56 @@ describe('AgenticChatOpenRouterClient', () => {
 		expect(fetchImpl).toHaveBeenCalledTimes(1);
 	});
 
+	it.each([404, 429])(
+		'does not fabricate spend for an HTTP %i before stream acceptance',
+		async (status) => {
+			const test = harness(
+				vi.fn(
+					async () =>
+						new Response(
+							JSON.stringify({ error: { message: 'Endpoint unavailable' } }),
+							{ status, headers: { 'content-type': 'application/json' } }
+						)
+				) as unknown as typeof fetch,
+				[route({ model: 'openai/gpt-5.6-luna', fallbackModels: [] })]
+			);
+			await collect(test.client.stream(input()));
+			expect(test.observations).toHaveLength(1);
+			expect(test.observations[0]).toMatchObject({
+				status: 'failure',
+				promptTokens: 0,
+				completionTokens: 0,
+				totalTokens: 0,
+				providerCost: null,
+				providerInputCost: 0,
+				providerOutputCost: 0,
+				costSource: 'unknown',
+				estimated: true
+			});
+		}
+	);
+
+	it('still estimates an accepted stream when its usage receipt is missing', async () => {
+		const test = harness(
+			vi.fn(async () =>
+				sseResponse([
+					JSON.stringify({
+						choices: [{ delta: { content: 'A partial answer' }, finish_reason: null }]
+					})
+				])
+			) as unknown as typeof fetch,
+			[route({ model: 'openai/gpt-5.6-luna', fallbackModels: [] })]
+		);
+		await collect(test.client.stream(input()));
+		expect(test.observations[0]).toMatchObject({
+			estimated: true,
+			costSource: 'catalog_estimate'
+		});
+		expect(test.observations[0]?.promptTokens).toBeGreaterThan(0);
+		expect(test.observations[0]?.providerInputCost).toBeGreaterThan(0);
+		expect(test.observations[0]?.providerOutputCost).toBeGreaterThan(0);
+	});
+
 	it.each([
 		{ finishReason: 'tool_calls', streamCall: false },
 		{ finishReason: 'function_call', streamCall: false },

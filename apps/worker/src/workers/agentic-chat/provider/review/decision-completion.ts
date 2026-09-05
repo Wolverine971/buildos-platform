@@ -1,5 +1,6 @@
 // apps/worker/src/workers/agentic-chat/provider/review/decision-completion.ts
 
+import { createHash } from 'node:crypto';
 import { type JsonObject, canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import {
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
@@ -7,6 +8,7 @@ import {
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	type TurnContract,
+	describeDeclaredTurnContractIssues,
 	isProseTurnContractChange,
 	parseDeclaredTurnContract,
 	serializeTurnContractForDeclaration
@@ -18,18 +20,21 @@ import {
 import type {
 	AgenticChatControlDecisionAuthorV1,
 	AgenticChatTurnProviderRequestV1,
-	AgenticChatTurnProviderToolV1
+	AgenticChatTurnProviderToolV1,
+	ContractReviewDiagnostic,
+	ContractReviewRejectionCode
 } from '../contracts';
+import { AgenticChatProviderExecutionError } from '../contracts';
 import { validateContractEffectFields } from '../contract-fields';
 import {
 	type CompletedProviderToolCall,
 	completeReviewerToolCalls,
-	createToolCallAccumulator
+	createToolCallAccumulator,
+	isToolArgumentsTextTruncated
 } from '../stream-tool-calls';
 import { validateCompletedProviderCalls } from '../validation';
 import {
 	buildCandidateGateClarification,
-	buildReviewFallbackClarification,
 	findAmbiguousReferenceCandidates,
 	recentUserMessageTexts
 } from './decision-handling';
@@ -46,6 +51,7 @@ type ReviewDecisionCompletionInput = {
 type SingleReviewDecision = {
 	calls: CompletedProviderToolCall[];
 	fallbackReason: string | null;
+	rejectionCode: ContractReviewRejectionCode | null;
 };
 
 export function completeTurnContractReviewDecision(
@@ -56,10 +62,12 @@ export function completeTurnContractReviewDecision(
 		admittedTools?: readonly AgenticChatTurnProviderToolV1[];
 	}
 ): CompletedProviderToolCall[] {
-	let { calls, fallbackReason } = completeSingleReviewDecision(
+	let { calls, fallbackReason, rejectionCode } = completeSingleReviewDecision(
 		input,
 		'Independent semantic review'
 	);
+	let validationIssueCount = 0;
+	let validationErrors: string[] = [];
 	if (!fallbackReason) {
 		let call = calls[0]!;
 		const approval = call.name === APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME;
@@ -95,7 +103,7 @@ export function completeTurnContractReviewDecision(
 		} else if (!canonicalCall && correctedContract && validationIssues.length > 0) {
 			// Bounded repair, not a re-validation: the reviewer's own JSON failed,
 			// so its canonical serialization gets one attempt before the turn falls
-			// back to asking the user.
+			// back to an internal review fault.
 			const repairedCall = normalizeCorrectedContractCall(call, correctedContract);
 			if (validateCompletedProviderCalls([repairedCall], input.reviewRequest).length === 0) {
 				call = repairedCall;
@@ -103,14 +111,34 @@ export function completeTurnContractReviewDecision(
 				validationIssues = [];
 			}
 		}
-		if (
-			(!approval && !readOnly && !clarification && !revision) ||
-			(revision && !input.allowRevision) ||
-			(revision && !correctedContract) ||
-			(approval &&
-				!approvalShaMatches(call.arguments.contract_sha256, input.contractReviewSha256)) ||
-			validationIssues.length > 0
-		) {
+		validationIssueCount = validationIssues.reduce(
+			(sum, issue) => sum + issue.errors.length,
+			0
+		);
+		validationErrors = validationIssues.flatMap((issue) => issue.errors);
+		if (revision && !correctedContract) {
+			validationErrors.push(
+				...describeDeclaredTurnContractIssues(normalizedCorrection.value)
+			);
+			validationIssueCount = validationErrors.length;
+		}
+		rejectionCode =
+			!approval && !readOnly && !clarification && !revision
+				? 'unexpected_control_tool'
+				: revision && !input.allowRevision
+					? 'revision_disallowed'
+					: revision && !correctedContract
+						? 'corrected_contract_invalid'
+						: approval &&
+							  !approvalShaMatches(
+									call.arguments.contract_sha256,
+									input.contractReviewSha256
+							  )
+							? 'approval_sha_mismatch'
+							: validationIssues.length > 0
+								? 'decision_schema_invalid'
+								: null;
+		if (rejectionCode) {
 			fallbackReason = 'Independent semantic review returned an invalid or unbound decision.';
 		} else if (approval || (revision && correctedContract)) {
 			// Models propose; code disposes. If the reviewer enumerated several
@@ -132,6 +160,9 @@ export function completeTurnContractReviewDecision(
 						)
 					: [];
 			if (fieldErrors.length > 0) {
+				rejectionCode = 'unexecutable_effect_fields';
+				validationIssueCount = fieldErrors.length;
+				validationErrors = fieldErrors;
 				fallbackReason = `Independent semantic review returned an unexecutable contract. ${fieldErrors[0]}`;
 			}
 			const ambiguity = reviewedContract
@@ -147,7 +178,41 @@ export function completeTurnContractReviewDecision(
 		}
 	}
 	if (fallbackReason) {
-		calls = [buildReviewFallbackClarification(input.actingRequest, fallbackReason)];
+		const diagnostic: ContractReviewDiagnostic = {
+			kind: 'rejected_contract_review',
+			code: rejectionCode ?? 'provider_failure',
+			finished: input.finished,
+			finishedReason:
+				input.finishedReason && /^[a-z_]{1,64}$/.test(input.finishedReason)
+					? input.finishedReason
+					: null,
+			validationIssueCount,
+			validationIssueFields: [
+				...new Set(
+					validationErrors.flatMap(
+						(error) =>
+							error.match(
+								/\b(?:src_label|dst_label|parent_label|label|target_ids|required_fields|changes|minimum_successful_effects|entity_kind|action|contract_sha256|reference_candidates)\b/g
+							) ?? []
+					)
+				)
+			],
+			calls: [...input.toolCalls.values()].map((call) => ({
+				toolName: input.reviewRequest.tools.some((tool) => tool.function.name === call.name)
+					? call.name
+					: null,
+				argumentBytes: Buffer.byteLength(call.argumentsText, 'utf8'),
+				argumentSha256: createHash('sha256').update(call.argumentsText).digest('hex'),
+				truncated: isToolArgumentsTextTruncated(call.argumentsText)
+			}))
+		};
+		// Internal rejection is neither user ambiguity nor permission to write.
+		throw new AgenticChatProviderExecutionError(
+			'provider_semantic_review_invalid',
+			'transient_infra',
+			'Independent change verification failed.',
+			diagnostic
+		);
 	}
 	return withDecisionAuthor(calls, 'contract_reviewer');
 }
@@ -169,11 +234,52 @@ function normalizeReviewerCorrectedContractValue(value: unknown): {
 	const record = value as Record<string, unknown>;
 	if (!Array.isArray(record.outcomes)) return { value, changed: false };
 	let changed = false;
+	const createLabels = new Set(
+		record.outcomes.flatMap((outcome) => {
+			if (!outcome || typeof outcome !== 'object' || Array.isArray(outcome)) return [];
+			const value = outcome as Record<string, unknown>;
+			return typeof value.action === 'string' &&
+				value.action.trim().toLowerCase() === 'create' &&
+				typeof value.label === 'string'
+				? [value.label.trim().toLowerCase()]
+				: [];
+		})
+	);
 	const outcomes = record.outcomes.map((outcome) => {
 		if (!outcome || typeof outcome !== 'object' || Array.isArray(outcome)) return outcome;
 		const normalized = { ...(outcome as Record<string, unknown>) };
 		const action =
 			typeof normalized.action === 'string' ? normalized.action.trim().toLowerCase() : null;
+		const rawEntityKind = normalized.entity_kind ?? normalized.entityKind;
+		const entityKind =
+			typeof rawEntityKind === 'string' ? rawEntityKind.trim().toLowerCase() : null;
+		for (const endpoint of ['src', 'dst']) {
+			const changes = Array.isArray(normalized.changes) ? normalized.changes : [];
+			const hasExistingId = changes.some(
+				(change) =>
+					change &&
+					typeof change === 'object' &&
+					change.field === `${endpoint}_id` &&
+					typeof change.value === 'string' &&
+					/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+						change.value
+					)
+			);
+			for (const field of [`${endpoint}_label`, `${endpoint}Label`]) {
+				if (!Object.hasOwn(normalized, field)) continue;
+				// Discard decorations only when they cannot designate a create.
+				// A real create label plus an ID is a conflict, and still fails closed.
+				if (
+					(action && (action !== 'link' || entityKind !== 'relationship')) ||
+					(hasExistingId &&
+						(typeof normalized[field] !== 'string' ||
+							!createLabels.has(normalized[field].trim().toLowerCase())))
+				) {
+					delete normalized[field];
+					changed = true;
+				}
+			}
+		}
 		if (action && action !== 'create' && Object.hasOwn(normalized, 'label')) {
 			delete normalized.label;
 			changed = true;
@@ -237,7 +343,9 @@ function usesInternalContractFieldNames(value: unknown): boolean {
 				'targetIds',
 				'requiredFields',
 				'minimumSuccessfulEffects',
-				'parentLabel'
+				'parentLabel',
+				'srcLabel',
+				'dstLabel'
 			].some((field) => field in outcome)
 	);
 }
@@ -267,7 +375,7 @@ function normalizeCorrectedContractCall(
  * The approval tool schemas are static (no per-review `const`), so this is
  * the only binding between an approval and the exact proposal the reviewer
  * was shown. A missing, non-string, or different SHA fails closed to the
- * clarification fallback.
+ * internal review fault.
  */
 export function approvalShaMatches(value: unknown, expected: string): boolean {
 	return typeof value === 'string' && expected.length > 0 && value === expected;
@@ -278,6 +386,14 @@ function completeSingleReviewDecision(
 	reviewLabel: string
 ): SingleReviewDecision {
 	let fallbackReason = input.fallbackReason;
+	let rejectionCode: ContractReviewRejectionCode | null = fallbackReason
+		? 'provider_failure'
+		: null;
+	if (input.finishedReason && !['tool_calls', 'function_call'].includes(input.finishedReason)) {
+		rejectionCode =
+			input.finishedReason === 'length' ? 'decision_truncated' : 'unexpected_finish_reason';
+		fallbackReason = `${reviewLabel} did not finish a control decision.`;
+	}
 	let calls: CompletedProviderToolCall[] = [];
 	if (!fallbackReason && input.finished) {
 		const completion = completeReviewerToolCalls(input.toolCalls, input.reviewRequest.tools, {
@@ -285,15 +401,20 @@ function completeSingleReviewDecision(
 			completionBudgetExhausted: input.finishedReason === 'length'
 		});
 		if (completion.rejectionCode) {
+			rejectionCode =
+				completion.rejectionCode === 'provider_tool_arguments_truncated'
+					? 'decision_truncated'
+					: 'unreadable_decision';
 			fallbackReason = `${reviewLabel} did not return a readable decision (${completion.rejectionCode}).`;
 		} else {
 			calls = completion.calls;
 		}
 	}
 	if (!fallbackReason && (!input.finished || calls.length !== 1)) {
+		rejectionCode = !input.finished ? 'missing_done' : 'decision_count_invalid';
 		fallbackReason = `${reviewLabel} did not return exactly one decision.`;
 	}
-	return { calls, fallbackReason };
+	return { calls, fallbackReason, rejectionCode };
 }
 
 function withDecisionAuthor(

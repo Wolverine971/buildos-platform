@@ -17,7 +17,7 @@ vi.mock('$lib/server/inbox.service', () => ({
 	parseInboxLimit: (value: string | null) => Number.parseInt(value ?? '50', 10)
 }));
 
-import { GET } from './+server';
+import { config, GET } from './+server';
 
 function makeEvent(url: string) {
 	return {
@@ -40,6 +40,10 @@ describe('GET /api/inbox', () => {
 			repairedCount: 0,
 			backfilledCount: 0
 		});
+	});
+
+	it('allows hydration to survive a transient upstream stall', () => {
+		expect(config).toEqual({ maxDuration: 30 });
 	});
 
 	it('uses the indexed fast path when repair=none', async () => {

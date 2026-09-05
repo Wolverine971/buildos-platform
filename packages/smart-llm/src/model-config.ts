@@ -426,8 +426,10 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		speed: 4,
 		smartness: 5,
 		creativity: 4.8,
-		cost: 1,
-		outputCost: 6,
+		// Standard OpenAI/OpenRouter rates verified 2026-09-04:
+		// https://developers.openai.com/api/docs/models/gpt-5.6-luna
+		cost: 0.2,
+		outputCost: 1.2,
 		provider: 'openai',
 		bestFor: [
 			'premium-reasoning',

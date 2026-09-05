@@ -543,6 +543,12 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			: null;
 		preparedArtifact = {
 			sourcePreparedPromptId: preparedPromptId,
+			sourcePreparedSurface: {
+				systemPromptSha256: canonicalSha256(
+					preparedInspection.surface.system_prompt_sha256
+				),
+				promptSections: toJsonObjectArray(preparedInspection.surface.sections)
+			},
 			contextPayload: toJsonObject(preparedInspection.row.context_payload),
 			conversationSummary: preparedInspection.row.conversation_summary ?? null,
 			surfaceProfile: preparedSurfaceProfile,

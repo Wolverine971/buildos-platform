@@ -23,6 +23,7 @@ const { buildSessionFlowProfile, flowTarget } = vi.hoisted(() => {
 		isPoint: false,
 		severity: 'success' as const,
 		costUsd: null,
+		storedCostUsd: null,
 		costState: 'unmetered' as const,
 		target
 	};
@@ -44,6 +45,11 @@ const { buildSessionFlowProfile, flowTarget } = vi.hoisted(() => {
 			totalActiveDurationMs: 1500,
 			totalCostUsd: 0,
 			attributedCostUsd: 0,
+			reportedCostUsd: 0,
+			estimatedCostUsd: 0,
+			estimatedCostCount: 0,
+			unknownCostUsd: 0,
+			unknownCostCount: 0,
 			costDifferenceUsd: 0,
 			slowestEvent: event
 		}))
@@ -137,7 +143,7 @@ describe('SessionFlowVisuals', () => {
 		await waitFor(() =>
 			expect(screen.getByText('Cumulative cost waterfall')).toBeInTheDocument()
 		);
-		expect(screen.getByText('No metered spend')).toBeInTheDocument();
+		expect(screen.getByText('No reported spend')).toBeInTheDocument();
 		expect(buildSessionFlowProfile).toHaveBeenCalledTimes(1);
 	});
 });

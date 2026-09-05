@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	admitAgenticChatWorkerTurn,
 	AgenticChatWorkerAdmissionGatewayError,
+	getPreparedAdmissionFailureCode,
 	isPreparedAdmissionRaceError,
 	type AgenticChatWorkerAdmissionRpcArgs,
 	type AgenticChatWorkerAdmissionRpcClient
@@ -219,12 +220,20 @@ describe('Agentic Chat worker admission gateway', () => {
 		});
 	});
 
-	it('classifies only prepared-guard database failures as admission races', async () => {
+	it('classifies only lease-loss database failures as prepared-admission races', async () => {
+		const consumed = new AgenticChatWorkerAdmissionGatewayError(
+			'database_error',
+			'Worker turn admission failed: P0001 agentic_chat_worker_admission_prepared_already_consumed'
+		);
+		expect(getPreparedAdmissionFailureCode(consumed)).toBe(
+			'agentic_chat_worker_admission_prepared_already_consumed'
+		);
+		expect(isPreparedAdmissionRaceError(consumed)).toBe(true);
 		expect(
 			isPreparedAdmissionRaceError(
 				new AgenticChatWorkerAdmissionGatewayError(
 					'database_error',
-					'Worker turn admission failed: P0001 agentic_chat_worker_admission_prepared_already_consumed'
+					'Worker turn admission failed: agentic_chat_worker_admission_prepared_claim_lost'
 				)
 			)
 		).toBe(true);
@@ -236,6 +245,14 @@ describe('Agentic Chat worker admission gateway', () => {
 				)
 			)
 		).toBe(true);
+		expect(
+			isPreparedAdmissionRaceError(
+				new AgenticChatWorkerAdmissionGatewayError(
+					'database_error',
+					'Worker turn admission failed: agentic_chat_worker_admission_prepared_copy_mismatch'
+				)
+			)
+		).toBe(false);
 		expect(
 			isPreparedAdmissionRaceError(
 				new AgenticChatWorkerAdmissionGatewayError(

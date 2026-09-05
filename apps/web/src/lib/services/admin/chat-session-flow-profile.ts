@@ -6,7 +6,12 @@ import {
 	conversationTurnTargetId,
 	type SessionFlowTarget
 } from './chat-session-flow-targets';
-import { firstNonEmptyString, payloadField, toNumericValue } from './chat-session-audit-payload';
+import {
+	firstNonEmptyString,
+	payloadField,
+	recordFromUnknown,
+	toNumericValue
+} from './chat-session-audit-payload';
 import type {
 	AuditTimelineEvent,
 	AuditTimelineSeverity,
@@ -15,7 +20,7 @@ import type {
 } from './chat-session-audit-types';
 
 export type SessionFlowCategory = 'message' | 'supervisor' | 'llm' | 'tool' | 'operation';
-export type SessionFlowCostState = 'metered' | 'zero' | 'unmetered';
+export type SessionFlowCostState = 'reported' | 'estimated' | 'unknown' | 'unmetered';
 
 export type SessionFlowEvent = {
 	id: string;
@@ -23,12 +28,15 @@ export type SessionFlowEvent = {
 	turnIndex: number | null;
 	category: SessionFlowCategory;
 	label: string;
+	modelLabel?: string;
+	passRoleLabel?: string;
 	startMs: number;
 	endMs: number;
 	durationMs: number;
 	isPoint: boolean;
 	severity: AuditTimelineSeverity;
 	costUsd: number | null;
+	storedCostUsd: number | null;
 	costState: SessionFlowCostState;
 	target: SessionFlowTarget;
 };
@@ -49,6 +57,11 @@ export type SessionFlowProfile = {
 	totalActiveDurationMs: number;
 	totalCostUsd: number;
 	attributedCostUsd: number;
+	reportedCostUsd: number;
+	estimatedCostUsd: number;
+	estimatedCostCount: number;
+	unknownCostUsd: number;
+	unknownCostCount: number;
 	costDifferenceUsd: number;
 	slowestEvent: SessionFlowEvent | null;
 };
@@ -60,9 +73,45 @@ function timestampMs(value: unknown): number | null {
 }
 
 function nonNegativeNumber(value: unknown): number | null {
-	if (value === null || value === undefined || value === '') return null;
+	if (typeof value !== 'number' && typeof value !== 'string') return null;
+	if (typeof value === 'string' && !value.trim()) return null;
 	const parsed = toNumericValue(value);
 	return parsed !== null && parsed >= 0 ? parsed : null;
+}
+
+function resolveLlmCost(payload: Record<string, unknown>): {
+	costUsd: number | null;
+	storedCostUsd: number | null;
+	costState: SessionFlowCostState;
+} {
+	const storedCostUsd = nonNegativeNumber(payload.total_cost_usd);
+	const providerCostUsd = nonNegativeNumber(payload.openrouter_usage_cost_usd);
+	const metadata = recordFromUnknown(payload.metadata) ?? {};
+	const costSource = firstNonEmptyString(metadata.costSource, payload.costSource);
+
+	// A provider-reported zero is evidence too; never replace it with a catalog estimate.
+	if (providerCostUsd !== null) {
+		return { costUsd: providerCostUsd, storedCostUsd, costState: 'reported' };
+	}
+	if (costSource === 'provider_reported' && storedCostUsd !== null) {
+		return { costUsd: storedCostUsd, storedCostUsd, costState: 'reported' };
+	}
+	if (
+		storedCostUsd !== null &&
+		(costSource === 'catalog_estimate' ||
+			costSource === 'reservation' ||
+			(!costSource && metadata.estimatedUsage === true))
+	) {
+		return { costUsd: storedCostUsd, storedCostUsd, costState: 'estimated' };
+	}
+	// A historical total alone does not tell us whether a provider reported it.
+	return { costUsd: storedCostUsd, storedCostUsd, costState: 'unknown' };
+}
+
+function humanizePassRole(value: unknown): string | undefined {
+	if (typeof value !== 'string' || !value.trim()) return undefined;
+	const words = value.trim().replace(/[_-]+/g, ' ');
+	return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function resolveSpan(params: {
@@ -93,9 +142,21 @@ function auditEventFlowEvent(params: {
 	event: AuditTimelineEvent;
 	turn: ConversationTurn;
 	category: 'supervisor' | 'llm' | 'operation';
+	usage?: Record<string, unknown>;
 }): SessionFlowEvent {
 	const { event, turn, category } = params;
-	const payload = event.payload ?? {};
+	// Older timeline payloads omit provider cost, which is retained in the full usage row.
+	const payload: Record<string, unknown> = {
+		...params.usage,
+		...event.payload,
+		openrouter_usage_cost_usd:
+			nonNegativeNumber(event.payload.openrouter_usage_cost_usd) ??
+			params.usage?.openrouter_usage_cost_usd,
+		metadata: {
+			...(recordFromUnknown(params.usage?.metadata) ?? {}),
+			...(recordFromUnknown(event.payload.metadata) ?? {})
+		}
+	};
 	const span = resolveSpan({
 		start: category === 'llm' ? payloadField(payload, 'request_started_at') : event.timestamp,
 		end: category === 'llm' ? payloadField(payload, 'request_completed_at') : undefined,
@@ -105,8 +166,6 @@ function auditEventFlowEvent(params: {
 				: payloadField(payload, 'duration_ms'),
 		fallbackStart: event.timestamp
 	});
-	const rawCost =
-		category === 'llm' ? nonNegativeNumber(payloadField(payload, 'total_cost_usd')) : null;
 	const model = firstNonEmptyString(
 		payloadField(payload, 'model_used'),
 		payloadField(payload, 'model_requested')
@@ -116,6 +175,15 @@ function auditEventFlowEvent(params: {
 		payloadField(payload, 'action'),
 		payloadField(payload, 'event_name')
 	);
+	const metadata = recordFromUnknown(payload.metadata) ?? {};
+	const passRoleLabel =
+		category === 'llm'
+			? humanizePassRole(metadata.passRole ?? payload.pass_role ?? payload.passRole)
+			: undefined;
+	const modelLabel =
+		category === 'llm'
+			? model || event.title.replace(/^LLM Call:\s*/i, '') || 'LLM call'
+			: undefined;
 
 	return {
 		id: event.id,
@@ -124,14 +192,17 @@ function auditEventFlowEvent(params: {
 		category,
 		label:
 			category === 'llm'
-				? model || event.title.replace(/^LLM Call:\s*/i, '') || 'LLM call'
+				? [passRoleLabel, modelLabel].filter(Boolean).join(' · ')
 				: category === 'operation'
 					? operation || event.title.replace(/^Operation:\s*/i, '') || 'Operation'
 					: event.title || 'Supervisor event',
+		modelLabel,
+		passRoleLabel,
 		...span,
 		severity: event.severity,
-		costUsd: rawCost,
-		costState: rawCost === null ? 'unmetered' : rawCost === 0 ? 'zero' : 'metered',
+		...(category === 'llm'
+			? resolveLlmCost(payload)
+			: { costUsd: null, storedCostUsd: null, costState: 'unmetered' as const }),
 		target: eventTarget(event, turn.id)
 	};
 }
@@ -149,6 +220,7 @@ function messageFlowEvents(turn: ConversationTurn): SessionFlowEvent[] {
 				...span,
 				severity: message.errorMessage ? ('error' as const) : ('info' as const),
 				costUsd: null,
+				storedCostUsd: null,
 				costState: 'unmetered' as const,
 				target: {
 					kind: 'message' as const,
@@ -177,6 +249,7 @@ function toolFlowEvents(turn: ConversationTurn): SessionFlowEvent[] {
 			...span,
 			severity: tool.severity,
 			costUsd: null,
+			storedCostUsd: null,
 			costState: 'unmetered' as const,
 			target: {
 				kind: 'tool' as const,
@@ -191,12 +264,22 @@ function dedupeAuditEvents(events: AuditTimelineEvent[]): AuditTimelineEvent[] {
 	return [...new Map(events.map((event) => [event.id, event])).values()];
 }
 
-function turnFlowEvents(turn: ConversationTurn): SessionFlowEvent[] {
+function turnFlowEvents(
+	turn: ConversationTurn,
+	usageById: Map<string, Record<string, unknown>>
+): SessionFlowEvent[] {
 	const supervisor = dedupeAuditEvents(turn.supervisorEvents).map((event) =>
 		auditEventFlowEvent({ event, turn, category: 'supervisor' })
 	);
 	const llm = dedupeAuditEvents(turn.llmCalls).map((event) =>
-		auditEventFlowEvent({ event, turn, category: 'llm' })
+		auditEventFlowEvent({
+			event,
+			turn,
+			category: 'llm',
+			usage: usageById.get(
+				firstNonEmptyString(event.payload.id, event.id.replace(/^llm:/, ''))
+			)
+		})
 	);
 	const operations = dedupeAuditEvents(turn.operations).map((event) =>
 		auditEventFlowEvent({ event, turn, category: 'operation' })
@@ -216,8 +299,13 @@ export function buildSessionFlowProfile(params: {
 	conversationTurns: ConversationTurn[];
 }): SessionFlowProfile {
 	const turns: SessionFlowTurn[] = [];
+	const usageById = new Map(
+		params.detail.llm_calls
+			.filter((usage) => typeof usage.id === 'string')
+			.map((usage) => [usage.id as string, usage])
+	);
 	for (const turn of params.conversationTurns) {
-		const events = turnFlowEvents(turn);
+		const events = turnFlowEvents(turn, usageById);
 		const firstEvent = events[0];
 		if (!firstEvent) continue;
 
@@ -247,9 +335,23 @@ export function buildSessionFlowProfile(params: {
 		.flatMap((turn) => turn.events)
 		.sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs || a.id.localeCompare(b.id));
 	let attributedCostUsd = 0;
+	let reportedCostUsd = 0;
+	let estimatedCostUsd = 0;
+	let estimatedCostCount = 0;
+	let unknownCostUsd = 0;
+	let unknownCostCount = 0;
 	let slowestEvent: SessionFlowEvent | null = null;
 	for (const event of events) {
-		attributedCostUsd += event.costUsd ?? 0;
+		attributedCostUsd += event.storedCostUsd ?? 0;
+		if (event.costState === 'reported') reportedCostUsd += event.costUsd ?? 0;
+		if (event.costState === 'estimated') {
+			estimatedCostUsd += event.costUsd ?? 0;
+			estimatedCostCount += 1;
+		}
+		if (event.costState === 'unknown') {
+			unknownCostUsd += event.costUsd ?? 0;
+			unknownCostCount += 1;
+		}
 		if (event.durationMs > 0 && (!slowestEvent || event.durationMs > slowestEvent.durationMs)) {
 			slowestEvent = event;
 		}
@@ -262,6 +364,11 @@ export function buildSessionFlowProfile(params: {
 		totalActiveDurationMs: turns.reduce((sum, turn) => sum + turn.durationMs, 0),
 		totalCostUsd,
 		attributedCostUsd,
+		reportedCostUsd,
+		estimatedCostUsd,
+		estimatedCostCount,
+		unknownCostUsd,
+		unknownCostCount,
 		costDifferenceUsd: totalCostUsd - attributedCostUsd,
 		slowestEvent
 	};

@@ -11,6 +11,7 @@ import {
 } from '$lib/services/agentic-chat-v2/transport-lease.server';
 import {
 	admitAgenticChatWorkerTurn,
+	getPreparedAdmissionFailureCode,
 	isPreparedAdmissionRaceError,
 	type AgenticChatWorkerAdmissionRpcClient
 } from '$lib/services/agentic-chat-v2/worker-turn-admission.server';
@@ -167,8 +168,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			) {
 				throw admissionError;
 			}
-			logger.warn('Prepared admission raced an invalidation; retrying without it', {
+			logger.warn('Prepared admission lease changed before claim; retrying without it', {
 				error: admissionError,
+				preparedFailureCode: getPreparedAdmissionFailureCode(admissionError),
 				userId: user.id,
 				clientTurnId: parsed.data.clientTurnId,
 				preparedPromptId: preparation.args.p_prepared_prompt_id

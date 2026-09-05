@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/provider/contract-fields.ts
 import {
 	type TurnContract,
 	type TurnContractOutcome,
@@ -20,6 +21,18 @@ export function validateContractEffectFields(
 	return contract.outcomes.flatMap((outcome, index) => {
 		const fields = outcomeFields(contract, outcome, availableTools);
 		if (!fields) return [];
+		// A document update with no postconditions cannot say what must change.
+		// Return this mechanical omission to the actor's bounded repair before
+		// paying for semantic review. Do not infer content: a rename is valid too.
+		if (
+			outcome.entityKind === 'document' &&
+			outcome.action === 'update' &&
+			outcome.requiredFields.length === 0
+		) {
+			return [
+				`Invalid turn contract: Outcome ${index + 1}: document update must name the changed fields in required_fields or scalar changes. For a text edit use required_fields=["content"]; for a rename use a title change. Keep exact text and preservation requirements in the original user request, not in the short description.`
+			];
+		}
 		return outcome.requiredFields
 			.filter((field) => !fields.has(field))
 			.map(

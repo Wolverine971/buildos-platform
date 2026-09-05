@@ -82,21 +82,23 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 							},
 							description: {
 								type: 'string',
-								maxLength: 240
+								maxLength: 240,
+								description:
+									'Brief scope only. Never copy exact text here; refer to original user wording and preservation requirements.'
 							},
 							target_ids: {
 								type: 'array',
 								maxItems: 50,
 								items: { type: 'string' },
 								description:
-									'Known canonical IDs eligible for this outcome. Omit for creates and until targets are discovered; minimum_successful_effects is bounded by this list.'
+									'Distinct canonical IDs eligible for this outcome. List each ID exactly once; never pad the array. Omit for creates and until targets are discovered; minimum_successful_effects is bounded by this list.'
 							},
 							required_fields: {
 								type: 'array',
 								maxItems: 30,
 								items: { type: 'string' },
 								description:
-									'Required durable postconditions, not tool arguments: the fields that must be written on every counted target (for example ["content"] for a document edit, ["due_at"] for a reschedule). For document-tree placement use parent_id and position.'
+									'Nonempty changed fields for updates: ["content"] for text, ["due_at"] for reschedules; parent_id/position for tree moves.'
 							},
 							changes: {
 								type: 'array',
@@ -125,30 +127,30 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 									'Distinct targets that must change. Multiple fields on one target count once; never exceed target_ids.length.'
 							},
 							label: {
-								type: 'string',
+								type: ['string', 'null'],
 								maxLength: 40,
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Create only: optional symbolic reference to one new entity. Omit unless another outcome needs to reference it. Set minimum_successful_effects=1 and declare its title in changes (goals use name). The label does not supply that value. Example labelled goal outcome: {"action":"create","entity_kind":"goal","minimum_successful_effects":1,"label":"launch","changes":[{"field":"name","value":"Publish three episodes"}]}'
+									'Null/omit when unused; no placeholders. Create only: optional symbolic reference to one new entity. Omit unless another outcome needs to reference it. Set minimum_successful_effects=1 and declare its title in changes (goals use name). The label does not supply that value. Example labelled goal outcome: {"action":"create","entity_kind":"goal","minimum_successful_effects":1,"label":"launch","changes":[{"field":"name","value":"Publish three episodes"}]}'
 							},
 							src_label: {
-								type: 'string',
+								type: ['string', 'null'],
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Link only: label of the source created by this contract. Declare one relationship outcome per directed edge, minimum_successful_effects=1, no target_ids, and a rel change. Use a src_id change for an existing source.'
+									'Null/omit when unused; no placeholders. Link only: label of the source created by this contract. Declare one relationship outcome per directed edge, minimum_successful_effects=1, no target_ids, and a rel change. Use a src_id change for an existing source.'
 							},
 							dst_label: {
-								type: 'string',
+								type: ['string', 'null'],
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Link only: label of the destination created by this contract. For depends_on the source is the dependent task and the destination is its prerequisite. Use a dst_id change for an existing destination.'
+									'Null/omit when unused; no placeholders. Link only: label of the destination created by this contract. For depends_on the source is the dependent task and the destination is its prerequisite. Use a dst_id change for an existing destination.'
 							},
 							parent_label: {
-								type: 'string',
+								type: ['string', 'null'],
 								maxLength: 40,
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Move/organize only: label of a destination created by this contract. For an existing parent, put its ID in changes as parent_id; omit when using new_parent_title.'
+									'Null/omit when unused; no placeholders. Move/organize only: label of a destination created by this contract. For an existing parent, put its ID in changes as parent_id; omit when using new_parent_title.'
 							}
 						},
 						required: ['action', 'entity_kind', 'minimum_successful_effects']

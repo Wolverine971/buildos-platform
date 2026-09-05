@@ -62,7 +62,8 @@ function createPostEvent(body: Record<string, unknown>, withUser = true): Reques
 		locals: {
 			supabase: {},
 			safeGetSession: vi.fn().mockResolvedValue({
-				session: withUser ? { user: { id: 'user-1' } } : null
+				session: withUser ? { user: { id: 'untrusted-cookie-user' } } : null,
+				user: withUser ? { id: 'user-1' } : null
 			})
 		}
 	} as unknown as RequestEvent;
@@ -114,6 +115,9 @@ describe('POST /api/calendar/analyze', () => {
 			calendarsToAnalyze: undefined,
 			calendarSourceIds: undefined
 		});
+		expect(hasValidConnectionMock).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: 'user-1' })
+		);
 		expect(payload.data.analysisId).toBe('analysis-1');
 	});
 });

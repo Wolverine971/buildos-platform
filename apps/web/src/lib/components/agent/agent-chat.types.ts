@@ -182,6 +182,13 @@ export interface ThinkingBlockMessage extends UIMessage {
 
 export type ProjectAction = 'workspace';
 
+export interface DataMutation {
+	entityKind: 'project' | 'task' | 'document' | 'goal' | 'plan' | 'milestone' | 'risk' | 'event' | null;
+	entityId: string | null;
+	operation: 'create' | 'update' | 'delete' | 'move' | 'other';
+	projectIds: string[];
+}
+
 export interface DataMutationSummary {
 	/** Whether any successful data mutation occurred */
 	hasChanges: boolean;
@@ -189,6 +196,8 @@ export interface DataMutationSummary {
 	totalMutations: number;
 	/** Project IDs affected (best-effort, may be empty) */
 	affectedProjectIds: string[];
+	/** Successful writes, used for targeted refreshes. Absent on older producers. */
+	mutations?: DataMutation[];
 	/** Whether the user sent at least one message during this modal session */
 	hasMessagesSent: boolean;
 	/** Session ID for callers that need session resumption */

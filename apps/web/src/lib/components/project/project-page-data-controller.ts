@@ -19,6 +19,38 @@ import type {
 	ProjectTasksCoverage
 } from '$lib/types/project-full-data';
 import type { ProjectGoalConnectionOverview } from '$lib/types/goal-connection-summary';
+import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
+
+export type ProjectDocumentTree = {
+	structure: DocStructure;
+	documents: Record<string, OntoDocument>;
+	unlinked: OntoDocument[];
+	archived: OntoDocument[];
+};
+
+export async function fetchProjectDocumentTree(projectId: string): Promise<ProjectDocumentTree> {
+	const data = await requestApiDataRecord(
+		`/api/onto/projects/${projectId}/doc-tree?include_content=false`,
+		'Failed to load project documents'
+	);
+	const structure = requireRecord(data.structure, 'Invalid document tree');
+	return {
+		structure: {
+			...structure,
+			version: requireNumber(structure.version, 'Invalid document tree version'),
+			root: requireArray<DocStructure['root'][number]>(
+				structure.root,
+				'Invalid document tree root'
+			)
+		},
+		documents: requireRecord(data.documents, 'Invalid documents') as Record<
+			string,
+			OntoDocument
+		>,
+		unlinked: requireArray<OntoDocument>(data.unlinked, 'Invalid unlinked documents'),
+		archived: requireArray<OntoDocument>(data.archived ?? [], 'Invalid archived documents')
+	};
+}
 
 export type OntoEventWithSync = OntoEvent & {
 	onto_event_sync?: Database['public']['Tables']['onto_event_sync']['Row'][];

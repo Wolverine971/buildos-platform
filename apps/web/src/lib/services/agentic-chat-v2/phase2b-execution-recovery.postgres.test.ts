@@ -117,7 +117,8 @@ describePostgres('agentic-chat worker Phase 2B execution/recovery PostgreSQL con
 			'20260825161846_agentic_chat_queue_first_admission.sql',
 			'20260902150000_agentic_chat_recovery_throttle_backoff_seconds.sql',
 			// The migration patches a function body in place; replay must be a no-op.
-			'20260902150000_agentic_chat_recovery_throttle_backoff_seconds.sql'
+			'20260902150000_agentic_chat_recovery_throttle_backoff_seconds.sql',
+			'20260905012719_agentic_chat_prepared_overlay_copy_contract.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}

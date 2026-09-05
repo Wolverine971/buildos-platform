@@ -353,19 +353,26 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				exactUsage = null;
 			}
 			accounted = true;
-			const promptTokens = exactUsage?.promptTokens ?? estimateTokens(inputChars);
+			// A rejected start is not evidence that the prompt was processed.
+			// Retain the failed attempt, but do not turn its request size into
+			// billable usage. Accepted streams still need estimates if usage is lost.
+			const hasUsageEvidence = active !== null || exactUsage !== null;
+			const promptTokens =
+				exactUsage?.promptTokens ?? (hasUsageEvidence ? estimateTokens(inputChars) : 0);
 			const completionTokens =
 				exactUsage?.completionTokens ?? estimateTokens(state.completionChars);
 			const routeId = active?.route.id ?? lastAttemptedRoute?.id ?? 'none';
 			const modelRequested = active?.route.model ?? lastAttemptedRoute?.model ?? null;
 			const modelUsed = state.modelUsed ?? modelRequested;
-			const costs = resolveProviderUsageCosts({
-				usage: exactUsage,
-				modelRequested,
-				modelUsed,
-				promptTokens,
-				completionTokens
-			});
+			const costs = hasUsageEvidence
+				? resolveProviderUsageCosts({
+						usage: exactUsage,
+						modelRequested,
+						modelUsed,
+						promptTokens,
+						completionTokens
+					})
+				: { inputCost: 0, outputCost: 0, source: 'unknown' as const };
 			await this.observeUsage(
 				{
 					usageLogId: createStableAgenticChatProviderUsageLogIdV1({

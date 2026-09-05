@@ -216,6 +216,16 @@ export type FrozenHistoryMessageV1 = {
 
 type TurnInputArtifactPreparedBaseV1 = {
 	sourcePreparedPromptId: string | null;
+	/**
+	 * Compact immutable evidence for the cached surface used as the base of a
+	 * turn-specific prompt overlay. New prepared admissions always include it;
+	 * it remains optional while retained artifacts from the rolling writer age
+	 * out.
+	 */
+	sourcePreparedSurface?: {
+		systemPromptSha256: string;
+		promptSections: JsonObject[];
+	};
 	contextPayload: JsonObject;
 	conversationSummary: string | null;
 	surfaceProfile: string;
@@ -286,6 +296,7 @@ export type TurnInputArtifactValidationErrorCodeV1 =
 	| 'invalid_version'
 	| 'invalid_history_source'
 	| 'invalid_content'
+	| 'invalid_prepared_surface'
 	| 'invalid_history_state'
 	| 'invalid_current_turn'
 	| 'invalid_resume_checkpoint'
@@ -1235,6 +1246,18 @@ export function normalizeTurnInputArtifactContentV1(
 		history: freezeTurnInputHistoryV1(artifact.history),
 		prepared: {
 			sourcePreparedPromptId: artifact.prepared.sourcePreparedPromptId,
+			...(artifact.prepared.sourcePreparedSurface
+				? {
+						sourcePreparedSurface: {
+							systemPromptSha256:
+								artifact.prepared.sourcePreparedSurface.systemPromptSha256,
+							promptSections:
+								artifact.prepared.sourcePreparedSurface.promptSections.map(
+									(section) => cloneCanonicalJson(section)
+								)
+						}
+					}
+				: {}),
 			contextPayload: cloneCanonicalJson(artifact.prepared.contextPayload),
 			conversationSummary: artifact.prepared.conversationSummary,
 			surfaceProfile: artifact.prepared.surfaceProfile,
@@ -1434,6 +1457,17 @@ export async function validateTurnInputArtifactV1(
 			ok: false,
 			code: 'invalid_content',
 			detail: 'Artifact history and prepared content have invalid shapes'
+		};
+	}
+	if (
+		artifact.prepared.sourcePreparedSurface !== undefined &&
+		(!artifact.prepared.sourcePreparedPromptId ||
+			!isValidPreparedSurfaceEvidenceV1(artifact.prepared.sourcePreparedSurface))
+	) {
+		return {
+			ok: false,
+			code: 'invalid_prepared_surface',
+			detail: 'Prepared surface evidence is malformed or has no prepared-prompt lineage'
 		};
 	}
 	if (
@@ -1776,6 +1810,22 @@ function isValidSessionEventSnapshot(value: unknown): value is AgenticChatSessio
 		typeof value === 'object' &&
 		!Array.isArray(value) &&
 		!Object.prototype.hasOwnProperty.call(value, 'id')
+	);
+}
+
+function isValidPreparedSurfaceEvidenceV1(value: unknown): boolean {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+	const evidence = value as {
+		systemPromptSha256?: unknown;
+		promptSections?: unknown;
+	};
+	return (
+		typeof evidence.systemPromptSha256 === 'string' &&
+		/^[0-9a-f]{64}$/.test(evidence.systemPromptSha256) &&
+		Array.isArray(evidence.promptSections) &&
+		evidence.promptSections.every(
+			(section) => section !== null && typeof section === 'object' && !Array.isArray(section)
+		)
 	);
 }
 

@@ -2,7 +2,7 @@
 //
 // The approval tool schemas are static (no per-review `const` SHA), so the
 // binding between an approval and the proposal the reviewer saw is enforced
-// here, in code, and fails closed to the clarification fallback.
+// here, in code, and fails closed to the internal review fault.
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
@@ -159,30 +159,21 @@ describe('contract review SHA binding', () => {
 		]);
 	});
 
-	it('fails closed to clarification when the SHA does not match', () => {
-		const calls = contractDecision({
-			reason: 'Approved.',
-			contract_sha256: 'f'.repeat(64),
-			reference_candidates: []
-		});
-		expect(calls).toEqual([
-			expect.objectContaining({
-				name: 'request_turn_clarification',
-				decidedBy: 'harness_review_fallback',
-				arguments: expect.objectContaining({
-					reason: expect.stringContaining('invalid or unbound')
+	it.each(['f'.repeat(64), undefined])(
+		'rejects a mismatched or missing SHA as an internal fault (%s)',
+		(value) => {
+			expect(() =>
+				contractDecision({
+					reason: 'Approved.',
+					reference_candidates: [],
+					...(value ? { contract_sha256: value } : {})
 				})
-			})
-		]);
-	});
-
-	it('fails closed to clarification when the SHA is missing', () => {
-		const calls = contractDecision({ reason: 'Approved.', reference_candidates: [] });
-		expect(calls).toEqual([
-			expect.objectContaining({
-				name: 'request_turn_clarification',
-				decidedBy: 'harness_review_fallback'
-			})
-		]);
-	});
+			).toThrow(
+				expect.objectContaining({
+					code: 'provider_semantic_review_invalid',
+					diagnostic: expect.objectContaining({ code: 'approval_sha_mismatch' })
+				})
+			);
+		}
+	);
 });

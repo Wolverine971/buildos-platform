@@ -13,7 +13,18 @@
 -->
 <script lang="ts">
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
-	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
+	import {
+		dataMutationEvents,
+		mutationAffectsProject,
+		notifyDataMutation
+	} from '$lib/stores/projectDataMutations';
+	import type { DataMutation } from '$lib/components/agent/agent-chat.types';
+	import {
+		collectProjectMutations,
+		createProjectRefreshQueue,
+		fetchProjectMutationPatch,
+		type ProjectMutationPatch
+	} from '$lib/components/project/project-mutation-refresh';
 	import { browser } from '$app/environment';
 	import { goto, pushState, replaceState } from '$app/navigation';
 	import { buildRecordHref } from '@buildos/shared-types';
@@ -164,7 +175,10 @@
 	let tabButtons = $state<Array<HTMLButtonElement | null>>([]);
 	let isHydrating = $state(initialData.skeleton === true);
 	let hydrationError = $state<string | null>(null);
-	let isRefreshing = $state(false);
+	let refreshError = $state(false);
+	let workspaceActive = true;
+	let hydrationPromise = Promise.resolve();
+	let taskPageLoad: Promise<void> | null = null;
 
 	let project = $state.raw<Project>(projectFromPageData(initialData));
 	let tasks = $state.raw<Task[]>(
@@ -197,7 +211,6 @@
 	let docTreeDocuments = $state<Record<string, OntoDocument>>({});
 	let docTreeUnlinked = $state<OntoDocument[]>([]);
 	let docTreeArchived = $state<OntoDocument[]>([]);
-	let docTreeViewRef = $state<{ refresh: () => void } | null>(null);
 
 	let showTaskCreateModal = $state(false);
 	let editingTaskId = $state<string | null>(null);
@@ -223,6 +236,8 @@
 	let startHereRefreshRequest = 0;
 	onDestroy(() => {
 		startHereRefreshRequest += 1;
+		workspaceActive = false;
+		refreshQueue.dispose();
 	});
 	let showAllGoals = $state(false);
 	let showAllPlans = $state(false);
@@ -324,6 +339,7 @@
 		docTreeStructure = seed.structure;
 		docTreeDocuments = seed.documents;
 		docTreeArchived = seed.archived;
+		docTreeUnlinked = [];
 	}
 
 	function applyFullData(fullData: ProjectFullData) {
@@ -381,18 +397,79 @@
 		}
 	}
 
-	async function refreshProject() {
-		if (isRefreshing) return;
-		isRefreshing = true;
-		try {
-			const fullData = await fetchProjectFullData(project.id, { profile: 'v2-initial' });
-			applyFullData(fullData);
-			void hydrateContextDocument();
-		} catch (error) {
-			console.warn('[Project workspace prototype] Failed to refresh project', error);
-		} finally {
-			isRefreshing = false;
+	function applyMutationPatch(patch: ProjectMutationPatch) {
+		if (patch.tasks) tasks = patch.tasks;
+		if (patch.tasks_coverage) tasksCoverage = patch.tasks_coverage;
+		if (patch.goals) goals = patch.goals;
+		if (patch.plans) plans = patch.plans;
+		if (patch.milestones) milestones = patch.milestones;
+		if (patch.risks) risks = patch.risks;
+		if (patch.events) events = patch.events;
+		if (patch.documentTree) handleDocTreeDataLoaded(patch.documentTree);
+		if ('context_document' in patch) contextDocument = patch.context_document ?? null;
+	}
+
+	const refreshQueue = createProjectRefreshQueue(
+		async (summaries) => {
+			await hydrationPromise;
+			while (taskPageLoad) await taskPageLoad;
+			if (!workspaceActive) return;
+			const mutations =
+				summaries && !hydrationError
+					? collectProjectMutations(project.id, summaries)
+					: null;
+			const previousRefresh = contextDocument?.content
+				? (parseStartHereStatusRegion(contextDocument.content)?.refreshedAt ?? null)
+				: null;
+			if (mutations) {
+				if (!mutations.length) return;
+				const patch = await fetchProjectMutationPatch(project.id, mutations, {
+					project,
+					tasks,
+					tasks_coverage: tasksCoverage,
+					documents,
+					goals,
+					plans,
+					milestones,
+					risks,
+					events,
+					context_document: contextDocument
+				});
+				if (!workspaceActive) return;
+				applyMutationPatch(patch);
+			} else {
+				const fullData = await fetchProjectFullData(project.id, { profile: 'v2-initial' });
+				if (!workspaceActive) return;
+				applyFullData(fullData);
+				hydrationError = null;
+				void hydrateContextDocument();
+			}
+			if (summaries && contextDocument)
+				void recheckStartHereAfterSnapshot(contextDocument, previousRefresh);
+			refreshError = false;
+		},
+		(error) => {
+			console.warn('[Project workspace] Failed to refresh changed data', error);
+			if (workspaceActive) refreshError = true;
 		}
+	);
+
+	function refreshProject() {
+		return refreshQueue.enqueue();
+	}
+
+	function refreshEntity(
+		entityKind: DataMutation['entityKind'],
+		entityId: string | null,
+		operation: DataMutation['operation'] = 'update'
+	) {
+		notifyDataMutation({
+			hasChanges: true,
+			totalMutations: 1,
+			affectedProjectIds: [project.id],
+			hasMessagesSent: false,
+			mutations: [{ entityKind, entityId, operation, projectIds: [project.id] }]
+		});
 	}
 
 	function selectTab(tab: WorkspaceTab, updateUrl = true) {
@@ -547,7 +624,6 @@
 
 	function closeRecentChat() {
 		selectedRecentChatSessionId = null;
-		void refreshProject();
 	}
 
 	function resetEntityEditors() {
@@ -690,7 +766,7 @@
 
 	function handleWorkspaceEntityCreated(kind: WorkspaceCreateKind, entityId: string) {
 		createEntityKind = null;
-		void refreshProject();
+		void refreshEntity(kind, entityId, 'create');
 		openEntity(kind, entityId);
 	}
 
@@ -762,7 +838,7 @@
 				newPosition: 0
 			});
 			toastService.success('Document moved');
-			docTreeViewRef?.refresh();
+			void refreshEntity('document', moveDocumentId, 'move');
 		} catch (error) {
 			toastService.error(error instanceof Error ? error.message : 'Failed to move document');
 		} finally {
@@ -778,8 +854,7 @@
 			await archiveProjectDocument({ documentId: archiveDocumentId, mode });
 			toastService.success('Document archived');
 			closeArchiveDocumentModal();
-			docTreeViewRef?.refresh();
-			void refreshProject();
+			void refreshEntity('document', archiveDocumentId, 'delete');
 		} catch (error) {
 			toastService.error(
 				error instanceof Error ? error.message : 'Failed to archive document'
@@ -809,6 +884,19 @@
 	}
 
 	async function loadMoreTasks(bucket: ProjectActiveTaskBucketKey) {
+		await refreshQueue.whenIdle();
+		if (!workspaceActive) return;
+		while (taskPageLoad) await taskPageLoad;
+		if (!workspaceActive) return;
+		taskPageLoad = loadTaskPage(bucket);
+		try {
+			await taskPageLoad;
+		} finally {
+			taskPageLoad = null;
+		}
+	}
+
+	async function loadTaskPage(bucket: ProjectActiveTaskBucketKey) {
 		const coverage = tasksCoverage.buckets[bucket];
 		if (!coverage || coverage.complete) return;
 		const page = await fetchProjectTaskBucket({
@@ -840,26 +928,18 @@
 
 	onMount(() => {
 		syncWorkspaceFromUrl(new URL(window.location.href));
-		void hydrateProject();
+		hydrationPromise = hydrateProject();
 		// Ignore the store's initial value; only react to new completed mutations.
 		let initial = true;
-		let active = true;
 		const unsubscribe = dataMutationEvents.subscribe((event) => {
 			if (initial) {
 				initial = false;
 				return;
 			}
 			if (!event || !mutationAffectsProject(event.summary, project.id)) return;
-			const previousRefresh = contextDocument?.content
-				? (parseStartHereStatusRegion(contextDocument.content)?.refreshedAt ?? null)
-				: null;
-			void refreshProject().then(() => {
-				if (active && contextDocument)
-					void recheckStartHereAfterSnapshot(contextDocument, previousRefresh);
-			});
+			void refreshQueue.enqueue(event.summary);
 		});
 		return () => {
-			active = false;
 			unsubscribe();
 		};
 	});
@@ -1050,6 +1130,23 @@
 			</div>
 		{/if}
 
+		{#if refreshError}
+			<div
+				class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4"
+				role="alert"
+			>
+				<p class="text-sm">Your changes were saved, but this view could not refresh.</p>
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => {
+						refreshError = false;
+						void refreshQueue.retry();
+					}}>Try again</Button
+				>
+			</div>
+		{/if}
+
 		{#if activeTab !== 'activity'}
 			<div class="workspace-toolbar mb-3">
 				{#if isHydrating}
@@ -1132,7 +1229,12 @@
 							{tasksCoverage}
 							{canEdit}
 							onEditTask={(id) => openEntity('task', id)}
-							onTaskMoved={() => void refreshProject()}
+							onTaskMoved={(id, state) =>
+								void refreshEntity(
+									'task',
+									id,
+									state === 'archived' ? 'delete' : 'update'
+								)}
 							onLoadMoreTasks={loadMoreTasks}
 						/>
 					{:catch boardError}
@@ -1599,7 +1701,6 @@
 								onMoveDocument={moveDocument}
 								onDeleteDocument={archiveDocument}
 								onDataLoaded={handleDocTreeDataLoaded}
-								onTreeRefChange={(ref) => (docTreeViewRef = ref)}
 								initialStructure={docTreeStructure}
 								initialDocuments={docTreeDocuments}
 								initialUnlinked={docTreeUnlinked}
@@ -1655,7 +1756,7 @@
 			onClose={() => (showTaskCreateModal = false)}
 			onCreated={(taskId) => {
 				showTaskCreateModal = false;
-				void refreshProject();
+				void refreshEntity('task', taskId, 'create');
 				openEntity('task', taskId);
 			}}
 		/>
@@ -1669,12 +1770,12 @@
 			projectId={project.id}
 			onClose={closeEntityEditor}
 			onUpdated={() => {
+				void refreshEntity('task', editingTaskId);
 				closeEntityEditor();
-				void refreshProject();
 			}}
 			onDeleted={() => {
+				void refreshEntity('task', editingTaskId, 'delete');
 				closeEntityEditor();
-				void refreshProject();
 			}}
 		/>
 	{/await}
@@ -1688,10 +1789,10 @@
 			documentId={activeDocumentId}
 			{parentDocumentId}
 			onClose={closeDocumentModal}
-			onSaved={() => void refreshProject()}
+			onSaved={() => void refreshEntity('document', activeDocumentId)}
 			onDeleted={() => {
+				void refreshEntity('document', activeDocumentId, 'delete');
 				closeDocumentModal();
-				void refreshProject();
 			}}
 			onCreateChildRequested={(parentId) => createDocument(parentId)}
 		/>
@@ -1801,7 +1902,6 @@
 			entityId={project.id}
 			onClose={() => {
 				showMemoryUpdateChatModal = false;
-				void refreshProject();
 			}}
 		/>
 	{/await}

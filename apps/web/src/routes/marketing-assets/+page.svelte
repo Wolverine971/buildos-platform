@@ -1062,11 +1062,6 @@
 	.copy-status button {
 		font-size: 1.5rem;
 	}
-	button,
-	a,
-	select {
-		-webkit-tap-highlight-color: transparent;
-	}
 	button:focus-visible,
 	a:focus-visible,
 	select:focus-visible {

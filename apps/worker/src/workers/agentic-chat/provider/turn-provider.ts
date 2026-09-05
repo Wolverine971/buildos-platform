@@ -107,7 +107,8 @@ import {
 	buildUnavailableSkillRepairRequest,
 	buildUnavailableSurfaceToolRepairRequest,
 	buildValidationRepairExhaustedSynthesisInstruction,
-	contextSaturationRepairRank
+	contextSaturationRepairRank,
+	renderWriteReceiptFallback
 } from './repair-policy';
 import {
 	appendSystemInstruction,
@@ -203,6 +204,7 @@ type ToolRoundStreamState = {
 	providerPassBudgetExhausted(): boolean;
 	/** Receipt-grounded instruction for the answer that ends a capped turn. */
 	buildProviderPassBudgetInstruction(): string;
+	renderWriteReceiptFallback(): string | null;
 	buildValidationRepairExhaustedInstruction(
 		rejected: readonly { toolName: string; errors: readonly string[] }[]
 	): string;
@@ -553,6 +555,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			},
 			providerPassBudgetExhausted() {
 				return providerPassCount >= MAX_PROVIDER_PASSES_PER_TURN;
+			},
+			renderWriteReceiptFallback() {
+				return renderWriteReceiptFallback(
+					buildWriteLedger(turnToolExecutions),
+					unfinishedContractOutcomeDescriptions()
+				);
 			},
 			buildProviderPassBudgetInstruction() {
 				return buildProviderPassBudgetSynthesisInstruction(
@@ -1544,7 +1552,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		const allowRevision = state.getContractRevisionCount() < MAX_REVISIONS_PER_TURN;
 		const allowReadOnlyCorrection =
 			allowDispositionCorrection && state.getContractRevisionCount() === 0;
-		const reviewRequest = buildTurnContractReviewRequest(
+		let reviewRequest = buildTurnContractReviewRequest(
 			request,
 			availableTools,
 			contract,
@@ -1552,11 +1560,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			allowReadOnlyCorrection,
 			allowRevision
 		);
-		const toolCalls = createToolCallAccumulator();
-		let finished = false;
-		let reviewerUsage: AgenticChatProviderUsageV1 | null = null;
-		let fallbackReason: string | null = null;
-		let reviewFinishedReason: string | null = null;
+		let accumulatedReviewUsage = priorUsage;
 		let pendingReviewTool = false;
 		try {
 			yield {
@@ -1581,56 +1585,136 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					semantic_review: { contract_sha256: contractReviewSha256 }
 				}
 			};
-			for await (const event of this.providerPass(reviewRequest, state, reviewer)) {
-				throwIfAborted(request.signal);
-				if (finished) throw providerError('provider_event_after_done', 'unknown');
-				if (event.type === 'reasoning' || event.type === 'text') continue;
-				if (event.type === 'tool_call') {
-					appendToolCallDelta(toolCalls, event.toolCall);
-					continue;
-				}
-				if (event.type === 'error') {
-					fallbackReason = `Independent semantic review was unavailable: ${canonicalError(event.error)}`;
-					break;
+			for (let reviewAttempt = 0; reviewAttempt <= 1; reviewAttempt += 1) {
+				const toolCalls = createToolCallAccumulator();
+				let finished = false;
+				let reviewerUsage: AgenticChatProviderUsageV1 | null = null;
+				let fallbackReason: string | null = null;
+				let reviewFinishedReason: string | null = null;
+				try {
+					for await (const event of this.providerPass(reviewRequest, state, reviewer)) {
+						throwIfAborted(request.signal);
+						if (finished) throw providerError('provider_event_after_done', 'unknown');
+						if (event.type === 'reasoning' || event.type === 'text') continue;
+						if (event.type === 'tool_call') {
+							appendToolCallDelta(toolCalls, event.toolCall);
+							continue;
+						}
+						if (event.type === 'error') {
+							fallbackReason = `Independent semantic review was unavailable: ${canonicalError(event.error)}`;
+							break;
+						}
+
+						finished = true;
+						reviewerUsage = normalizeUsage(event.usage);
+						const finishedReason = canonicalFinishedReason(event.finishedReason);
+						reviewFinishedReason = finishedReason;
+						if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
+							fallbackReason =
+								'Independent semantic review did not return a control decision.';
+						}
+					}
+				} catch (error) {
+					throwIfAborted(request.signal);
+					if (!(error instanceof AgenticChatProviderExecutionError)) throw error;
+					fallbackReason = error.code;
 				}
 
-				finished = true;
-				reviewerUsage = normalizeUsage(event.usage);
-				const finishedReason = canonicalFinishedReason(event.finishedReason);
-				reviewFinishedReason = finishedReason;
-				if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
-					fallbackReason =
-						'Independent semantic review did not return a control decision.';
+				accumulatedReviewUsage = combineUsage(accumulatedReviewUsage, reviewerUsage);
+				let calls: CompletedProviderToolCall[];
+				try {
+					calls = completeTurnContractReviewDecision({
+						actingRequest: request,
+						admittedTools: availableTools,
+						reviewRequest,
+						toolCalls,
+						finished,
+						finishedReason: reviewFinishedReason,
+						fallbackReason,
+						contract,
+						contractReviewSha256,
+						allowRevision
+					});
+				} catch (error) {
+					if (
+						!(error instanceof AgenticChatProviderExecutionError) ||
+						error.diagnostic?.kind !== 'rejected_contract_review'
+					)
+						throw error;
+					const diagnostic = error.diagnostic;
+					yield {
+						type: 'semantic',
+						transitionId: createStableAgenticChatReadToolTransitionIdV1({
+							turnRunId: request.turnRunId,
+							providerToolCallId: `contract-review-rejection:${contractReviewSha256}:${reviewRequest.logicalProviderRound}:${reviewAttempt}`,
+							stage: 'planning'
+						}),
+						phase: 'stream',
+						eventType: 'agent_state',
+						currentActivity: 'Checking the requested change...',
+						eventPayload: {
+							type: 'agent_state',
+							state: 'thinking',
+							activity_visibility: 'activity_log',
+							semantic_review: {
+								contract_sha256: contractReviewSha256,
+								attempt: reviewAttempt + 1,
+								rejection: diagnostic
+							}
+						}
+					};
+					if (
+						reviewAttempt === 0 &&
+						!state.providerPassBudgetExhausted() &&
+						![
+							'decision_truncated',
+							'provider_failure',
+							'missing_done',
+							'unexpected_finish_reason'
+						].includes(diagnostic.code)
+					) {
+						reviewRequest = appendSystemInstruction(
+							{
+								...reviewRequest,
+								// The atomic transport pass reserves attempts 1–2.
+								// Keep the logical round and use fresh physical identities.
+								providerAttempt: (reviewRequest.providerAttempt ?? 1) + 2
+							},
+							`Your previous decision could not be accepted (${diagnostic.code}). Return exactly one valid decision for the same proposal. Copy its exact SHA for approval. For corrections use only applicable fields, omit unused labels, and preserve the complete user commission. This is an internal format repair, not evidence of user ambiguity.`
+						);
+						continue;
+					}
+					yield {
+						type: 'text_delta',
+						text:
+							state.renderWriteReceiptFallback() ??
+							"I couldn't complete an internal check, so I haven't applied this change. Please retry."
+					};
+					state.advance({ type: 'finish' });
+					yield {
+						type: 'finish',
+						finishedReason: 'semantic_review_failed',
+						usage: accumulatedReviewUsage
+					};
+					return;
 				}
+				const normalizedCalls = normalizeCompletedProviderCalls(reviewRequest, calls);
+				state.setPendingToolRound({
+					calls: normalizedCalls,
+					usage: accumulatedReviewUsage
+				});
+				// Keep the main agent's request as the continuation base. The durable
+				// reviewer call/result is appended by continueWithToolResults, while the
+				// reviewer's private system prompt never contaminates the acting model.
+				state.setCurrentRequest(request);
+				yield buildPlanningStep(reviewRequest, normalizedCalls[0]!.id);
+				for (const call of normalizedCalls) {
+					yield buildProviderToolStep(reviewRequest, call, state);
+				}
+				state.markToolRoundCompleted();
+				pendingReviewTool = true;
+				return;
 			}
-
-			const calls = completeTurnContractReviewDecision({
-				actingRequest: request,
-				admittedTools: availableTools,
-				reviewRequest,
-				toolCalls,
-				finished,
-				finishedReason: reviewFinishedReason,
-				fallbackReason,
-				contract,
-				contractReviewSha256,
-				allowRevision
-			});
-			const normalizedCalls = normalizeCompletedProviderCalls(reviewRequest, calls);
-			state.setPendingToolRound({
-				calls: normalizedCalls,
-				usage: combineUsage(priorUsage, reviewerUsage)
-			});
-			// Keep the main agent's request as the continuation base. The durable
-			// reviewer call/result is appended by continueWithToolResults, while the
-			// reviewer's private system prompt never contaminates the acting model.
-			state.setCurrentRequest(request);
-			yield buildPlanningStep(reviewRequest, normalizedCalls[0]!.id);
-			for (const call of normalizedCalls) {
-				yield buildProviderToolStep(reviewRequest, call, state);
-			}
-			state.markToolRoundCompleted();
-			pendingReviewTool = true;
 		} finally {
 			if (!pendingReviewTool) state.release();
 		}
@@ -1751,6 +1835,17 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						: NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE
 				);
 			}
+		} catch (error) {
+			throwIfAborted(request.signal);
+			const receipt = state.renderWriteReceiptFallback();
+			if (!receipt || !(error instanceof AgenticChatProviderExecutionError)) throw error;
+			yield { type: 'text_delta', text: receipt };
+			state.advance({ type: 'finish' });
+			yield {
+				type: 'finish',
+				finishedReason: 'synthesis_receipt_fallback',
+				usage: accumulatedUsage
+			};
 		} finally {
 			state.release();
 		}

@@ -10,6 +10,8 @@ import {
 	type InboxGroupFilter
 } from '$lib/server/inbox.service';
 
+export const config = { maxDuration: 30 };
+
 function parseGroup(value: string | null): InboxGroupFilter | null {
 	if (value === 'account' || value === 'project') return value;
 	return null;

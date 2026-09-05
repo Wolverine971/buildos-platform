@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatDocumentContractFields.test.ts
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
 	ONTOLOGY_WRITE_TOOLS,
@@ -91,6 +92,51 @@ function call(argumentsValue: JsonObject) {
 beforeAll(() => provideAgenticChatLoopToolCatalog(() => ({ ops: {}, byToolName: {} })));
 
 describe('executable contract fields', () => {
+	it.each([undefined, []])('rejects a fieldless document update before review (%j)', (fields) => {
+		const args: JsonObject = {
+			outcomes: [
+				{
+					action: 'update',
+					entity_kind: 'document',
+					target_ids: [DOCUMENT_ID],
+					minimum_successful_effects: 1,
+					...(fields ? { required_fields: fields } : {})
+				}
+			]
+		};
+		const issues = validateCompletedProviderCalls(
+			[call(args)],
+			{
+				...request,
+				tools: controlTools
+			},
+			tools
+		);
+		expect(issues).toHaveLength(1);
+		expect(issues[0]?.errors.join(' ')).toContain(
+			'document update must name the changed fields'
+		);
+		expect(args.outcomes).toEqual([
+			expect.not.objectContaining({ required_fields: ['content'] })
+		]);
+	});
+
+	it('accepts a title-only change without inventing a content requirement', () => {
+		const args: JsonObject = {
+			outcomes: [
+				{
+					action: 'update',
+					entity_kind: 'document',
+					target_ids: [DOCUMENT_ID],
+					minimum_successful_effects: 1,
+					changes: [{ field: 'title', value: 'Renamed brief' }]
+				}
+			]
+		};
+		expect(validateCompletedProviderCalls([call(args)], request)).toEqual([]);
+		expect(parseDeclaredTurnContract(args)?.outcomes[0]?.requiredFields).toEqual(['title']);
+	});
+
 	it.each(['duration_minutes', 'props.duration_minutes'])(
 		'accepts nested task estimate contracts using %s',
 		(field) => {
@@ -394,25 +440,30 @@ describe('executable contract fields', () => {
 				}
 			}
 		]);
-		const decisions = completeTurnContractReviewDecision({
-			actingRequest: {
-				...request,
-				tools: controlTools
-			},
-			admittedTools,
-			reviewRequest,
-			toolCalls: accumulator,
-			finished: true,
-			finishedReason: 'tool_calls',
-			fallbackReason: null,
-			contract,
-			contractReviewSha256: 'a'.repeat(64),
-			allowRevision: true
-		});
-		expect(decisions).toHaveLength(1);
-		expect(decisions[0]?.name).toBe(
-			valid ? 'request_proposal_revision' : 'request_turn_clarification'
-		);
-		if (!valid) expect(decisions[0]?.arguments.reason).toContain(field);
+		const decide = () =>
+			completeTurnContractReviewDecision({
+				actingRequest: {
+					...request,
+					tools: controlTools
+				},
+				admittedTools,
+				reviewRequest,
+				toolCalls: accumulator,
+				finished: true,
+				finishedReason: 'tool_calls',
+				fallbackReason: null,
+				contract,
+				contractReviewSha256: 'a'.repeat(64),
+				allowRevision: true
+			});
+		if (valid) {
+			expect(decide()[0]?.name).toBe('request_proposal_revision');
+		} else {
+			expect(decide).toThrow(
+				expect.objectContaining({
+					diagnostic: expect.objectContaining({ code: 'unexecutable_effect_fields' })
+				})
+			);
+		}
 	});
 });

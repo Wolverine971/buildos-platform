@@ -311,6 +311,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					// JWT validation failed
 					return { session: null, user: null };
 				}
+				// Replace the cookie-derived user proxy with the Auth-server-verified
+				// record. Callers that still need session.user now receive authentic
+				// identity data without triggering Supabase's server-side warning.
+				const verifiedSession = { ...session, user: authUser };
 
 				// Get user data from public.users table
 				const { data: userData, error: dbError } = await measure('db.user', () =>
@@ -333,7 +337,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 							}
 						}
 					);
-					return { session, user: null };
+					return { session: null, user: null };
 				}
 
 				const deletionStatus = (userData as { deletion_status?: unknown }).deletion_status;
@@ -346,7 +350,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				}
 
 				return {
-					session,
+					session: verifiedSession,
 					user: userData
 				};
 			} catch (error) {

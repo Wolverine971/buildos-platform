@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Task } from '$lib/types/onto';
 import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
+import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 import TaskKanbanBoard from './TaskKanbanBoard.svelte';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -141,5 +142,44 @@ describe('TaskKanbanBoard workflow', () => {
 			{ credentials: 'same-origin' }
 		);
 		expect(screen.getByRole('button', { name: 'Hide archived tasks' })).toBeInTheDocument();
+	});
+
+	it('refreshes a loaded archive after chat changes and removes stale archived rows', async () => {
+		const old = task('Old archived task', 'todo', { deleted_at: new Date().toISOString() });
+		const archived = task('Deleted through chat', 'todo', {
+			deleted_at: new Date().toISOString()
+		});
+		const response = (tasks: Task[]) =>
+			new Response(
+				JSON.stringify({
+					success: true,
+					data: { tasks, total: tasks.length, hasMore: false }
+				})
+			);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response([old]))
+			.mockResolvedValueOnce(response([archived]));
+		vi.stubGlobal('fetch', fetchMock);
+		renderBoard([]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Show archived tasks' }));
+		expect(await screen.findByText(old.title)).toBeInTheDocument();
+		notifyDataMutation({
+			hasChanges: true,
+			totalMutations: 1,
+			affectedProjectIds: [PROJECT_ID],
+			hasMessagesSent: true,
+			mutations: [
+				{
+					entityKind: 'task',
+					entityId: archived.id,
+					operation: 'delete',
+					projectIds: [PROJECT_ID]
+				}
+			]
+		});
+		expect(await screen.findByText(archived.title)).toBeInTheDocument();
+		expect(screen.queryByText(old.title)).not.toBeInTheDocument();
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 });

@@ -49,6 +49,7 @@ export function mutationAffectsProject(
 ): boolean {
 	if (!summary?.hasChanges) return false;
 	if (!projectId) return true;
+	if (summary.mutations?.some((mutation) => mutation.projectIds.length === 0)) return true;
 	if (summary.affectedProjectIds.length === 0) return true;
 	return summary.affectedProjectIds.includes(projectId);
 }

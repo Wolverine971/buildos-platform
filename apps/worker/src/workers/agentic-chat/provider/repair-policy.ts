@@ -332,3 +332,58 @@ function describeWriteReceipt(entry: WriteLedgerEntry): string {
 		`${entry.toolName}${target ? ` (${target})` : ''}`
 	].join(': ');
 }
+
+/** Last-resort user receipt, rendered only from this turn's durable ledger. */
+export function renderWriteReceiptFallback(
+	ledger: readonly WriteLedgerEntry[],
+	unfinished: readonly string[]
+): string | null {
+	const succeeded = ledger.filter((entry) => entry.status === 'success');
+	if (succeeded.length === 0) return null;
+	const clean = (text: string) =>
+		text
+			.replace(/[\r\n]+/g, ' ')
+			.replace(/[\\`*_<>[\]]/g, '')
+			.trim()
+			.slice(0, 240);
+	const verbs: Record<string, string> = {
+		create: 'Created',
+		update: 'Updated',
+		delete: 'Deleted',
+		move: 'Moved',
+		link: 'Linked',
+		unlink: 'Unlinked',
+		set: 'Set',
+		tag: 'Tagged',
+		reorganize: 'Reorganized'
+	};
+	const receipt = (entry: WriteLedgerEntry) => {
+		const target = clean(entry.title ?? entry.entityId ?? entry.entityKind ?? 'item');
+		return `${verbs[entry.action ?? ''] ?? 'Saved'} ${entry.entityKind ?? 'item'}: ${target}`;
+	};
+	const failed = ledger.filter((entry) => entry.status === 'failure');
+	return [
+		'I saved these changes, but could not finish the response:',
+		'',
+		...succeeded.map((entry) => `- ${receipt(entry)}`),
+		...(failed.length
+			? [
+					'',
+					'These changes did not succeed:',
+					...failed.map(
+						(entry) =>
+							`- ${clean(entry.title ?? entry.entityId ?? entry.entityKind ?? 'item')}`
+					)
+				]
+			: []),
+		...(unfinished.length
+			? [
+					'',
+					'These requested outcomes are not confirmed complete:',
+					...unfinished.map((text) => `- ${clean(text)}`)
+				]
+			: []),
+		'',
+		'No further work is running. Check the saved items before retrying the remaining work.'
+	].join('\n');
+}

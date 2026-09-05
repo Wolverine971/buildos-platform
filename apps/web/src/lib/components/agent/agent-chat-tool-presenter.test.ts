@@ -419,6 +419,47 @@ describe('agent-chat-tool-presenter — mutation tracking', () => {
 		expect(summary.hasMessagesSent).toBe(true);
 	});
 
+	it('retains entity IDs and operations for targeted create/update/delete refreshes', () => {
+		const presenter = createToolPresenter(h.ctx);
+		presenter.recordDataMutation('create_onto_task', { project_id: 'p-1' }, true, {
+			result: { task: { id: 't-new', project_id: 'p-1' } }
+		});
+		presenter.recordDataMutation(
+			'update_onto_task',
+			{ task_id: 't-old', project_id: 'p-1' },
+			true
+		);
+		presenter.recordDataMutation(
+			'delete_onto_document',
+			{ document_id: 'd-old', project_id: 'p-1' },
+			true
+		);
+		const summary = presenter.buildMutationSummary({ hasMessagesSent: true });
+		expect(summary.mutations).toEqual([
+			{ entityKind: 'task', entityId: 't-new', operation: 'create', projectIds: ['p-1'] },
+			{ entityKind: 'task', entityId: 't-old', operation: 'update', projectIds: ['p-1'] },
+			{ entityKind: 'document', entityId: 'd-old', operation: 'delete', projectIds: ['p-1'] }
+		]);
+		presenter.resetMutationTracking();
+		expect(summary.mutations).toHaveLength(3);
+		expect(presenter.buildMutationSummary({ hasMessagesSent: false }).mutations).toEqual([]);
+	});
+
+	it.each([
+		'create_onto_milestone',
+		'delete_onto_milestone',
+		'create_onto_risk',
+		'delete_onto_risk'
+	])('tracks %s so overview changes cannot be missed', (toolName) => {
+		const presenter = createToolPresenter(h.ctx);
+		presenter.recordDataMutation(toolName, { project_id: 'p-1' }, true, {
+			result: { entity_id: 'entity-1' }
+		});
+		expect(presenter.buildMutationSummary({ hasMessagesSent: false }).mutations).toEqual([
+			expect.objectContaining({ entityId: 'entity-1', entityKind: toolName.split('_')[2] })
+		]);
+	});
+
 	it('emits a document-scoped event with the turn id when a document mutation lands', () => {
 		const onDocumentMutation = vi.fn();
 		const presenter = createToolPresenter({ ...h.ctx, onDocumentMutation });

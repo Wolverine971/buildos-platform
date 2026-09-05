@@ -10,7 +10,7 @@ vi.mock('$lib/server/agent-runs/dispatch', () => ({
 	normalizeAgentRunBudgets: vi.fn()
 }));
 
-import { GET } from './+server';
+import { config, GET } from './+server';
 
 function createSupabaseMock(data: unknown[] = [], error: unknown = null) {
 	const builder: Record<string, any> = {};
@@ -42,6 +42,10 @@ function event(supabase: unknown, user: { id: string } | null = { id: 'user-1' }
 
 describe('GET /api/agent-runs', () => {
 	beforeEach(() => vi.clearAllMocks());
+
+	it('allows a transient upstream stall beyond the global ten-second budget', () => {
+		expect(config).toEqual({ maxDuration: 30 });
+	});
 
 	it('keeps the full representation for on-demand history', async () => {
 		const supabase = createSupabaseMock([

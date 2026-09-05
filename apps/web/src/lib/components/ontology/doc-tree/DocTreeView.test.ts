@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/ontology/doc-tree/DocTreeView.test.ts
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
@@ -55,6 +56,41 @@ describe('DocTreeView progressive disclosure', () => {
 	afterEach(() => {
 		cleanup();
 		localStorage.clear();
+	});
+
+	it('applies parent document snapshots without remounting or losing expanded folders', async () => {
+		const structure: DocStructure = {
+			version: 1,
+			root: [{ id: 'folder', order: 0, children: [{ id: 'child', order: 0 }] }]
+		};
+		const { rerender } = renderTree({
+			structure,
+			documents: {
+				folder: document('folder', 'Folder'),
+				child: document('child', 'Old title')
+			}
+		});
+		await waitFor(() => expect(screen.getByText('Old title')).toBeInTheDocument());
+		await rerender({
+			initialStructure: {
+				version: 2,
+				root: [{ id: 'folder', order: 0, children: [{ id: 'new', order: 0 }] }]
+			},
+			initialDocuments: {
+				folder: document('folder', 'Folder'),
+				new: document('new', 'Created in chat')
+			}
+		});
+		await waitFor(() => expect(screen.getByText('Created in chat')).toBeInTheDocument());
+		expect(screen.queryByText('Old title')).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Collapse Folder' })).toBeInTheDocument();
+		await rerender({
+			initialDocuments: {
+				folder: document('folder', 'Folder'),
+				new: document('new', 'Renamed in chat')
+			}
+		});
+		await waitFor(() => expect(screen.getByText('Renamed in chat')).toBeInTheDocument());
 	});
 
 	it('opens only the first folder level by default', async () => {

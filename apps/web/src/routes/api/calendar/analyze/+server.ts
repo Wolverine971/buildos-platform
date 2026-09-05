@@ -21,14 +21,14 @@ const calendarAnalyzeSchema = z
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
-		const { session } = await safeGetSession();
-		if (!session?.user) {
+		const { user } = await safeGetSession();
+		if (!user) {
 			return ApiResponse.unauthorized();
 		}
 
 		// Check if user has calendar connected
 		const hasCalendarConnection = await hasUsableGoogleCalendarConnection({
-			userId: session.user.id,
+			userId: user.id,
 			capability: 'analysis',
 			legacy: new CalendarService(supabase),
 			sourceAware: new GoogleCalendarTargetService(createAdminSupabaseClient())
@@ -58,7 +58,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Start calendar analysis
 		const analysisService = CalendarAnalysisService.getInstance(supabase);
-		const result = await analysisService.analyzeUserCalendar(session.user.id, {
+		const result = await analysisService.analyzeUserCalendar(user.id, {
 			daysBack,
 			daysForward,
 			calendarsToAnalyze,
@@ -82,8 +82,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
-		const { session } = await safeGetSession();
-		if (!session?.user) {
+		const { user } = await safeGetSession();
+		if (!user) {
 			return ApiResponse.unauthorized();
 		}
 
@@ -92,7 +92,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		if (analysisId) {
 			// Get specific analysis
-			const history = await analysisService.getAnalysisHistory(session.user.id);
+			const history = await analysisService.getAnalysisHistory(user.id);
 			const analysis = history.find((a) => a.id === analysisId);
 
 			if (!analysis) {
@@ -102,8 +102,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			return ApiResponse.success({ analysis });
 		} else {
 			// Get analysis history
-			const history = await analysisService.getAnalysisHistory(session.user.id);
-			const calendarProjects = await analysisService.getCalendarProjects(session.user.id);
+			const history = await analysisService.getAnalysisHistory(user.id);
+			const calendarProjects = await analysisService.getCalendarProjects(user.id);
 
 			return ApiResponse.success({ history, calendarProjects });
 		}
