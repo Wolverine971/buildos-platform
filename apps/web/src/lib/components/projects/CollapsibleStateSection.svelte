@@ -25,31 +25,38 @@
 
 {#if count > 0}
 	<section
-		class="space-y-2 border-t border-border pt-4"
+		class="space-y-1 border-t border-border pt-2"
 		aria-labelledby="state-section-{projectState}"
 	>
-		<button
-			type="button"
-			class="flex min-h-11 w-full items-center justify-between gap-3 rounded-md text-left transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-			onclick={toggle}
-			aria-expanded={!collapsed}
-			aria-controls="state-section-body-{projectState}"
-		>
-			<div class="flex items-baseline gap-2">
-				<p id="state-section-{projectState}" class="micro-label text-muted-foreground">
-					{meta.label} projects
-				</p>
-				<span class="text-xs font-semibold text-muted-foreground">{count}</span>
-			</div>
-			<ChevronDown
-				class="h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none {collapsed
-					? '-rotate-90'
-					: ''}"
-			/>
-		</button>
+		<h2>
+			<button
+				type="button"
+				class="flex min-h-11 w-full items-center justify-between gap-3 rounded-md text-left pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset [@media(pointer:fine)]:min-h-7"
+				onclick={toggle}
+				aria-expanded={!collapsed}
+				aria-controls="state-section-body-{projectState}"
+			>
+				<span class="flex items-baseline gap-2">
+					<span
+						id="state-section-{projectState}"
+						class="text-sm font-semibold text-foreground"
+					>
+						{meta.label} projects
+					</span>
+					<span class="text-xs font-medium tabular-nums text-muted-foreground"
+						>{count}</span
+					>
+				</span>
+				<ChevronDown
+					class="h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none {collapsed
+						? '-rotate-90'
+						: ''}"
+				/>
+			</button>
+		</h2>
 
 		{#if !collapsed}
-			<div id="state-section-body-{projectState}" class="space-y-2">
+			<div id="state-section-body-{projectState}" class="space-y-1">
 				{#each projects as project (project.id)}
 					<ProjectStateRow {project} {onSelect} />
 				{/each}

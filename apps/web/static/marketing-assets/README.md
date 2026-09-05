@@ -6,7 +6,7 @@ The original Brainbolt artwork, reusable logo compositions, social graphics, and
 - Use logos/lockup-horizontal-paper.png on light backgrounds; the ink version uses light lettering for dark backgrounds.
 - Transparent PNGs drop into slides, documents, websites, and email signatures.
 - SVG compositions contain editable Arial text and embedded raster Brainbolt artwork. They are NOT fully vector masters. Use PNG for consistent typography across devices.
-- Electric artwork uses the existing 1582 × 1380 pixel source. SVGs preserve that embedded resolution. For oversized print, commission a fully vector master.
+- The standalone electric mark retains the existing 1582 × 1380 pixel source. Compositions embed an 800-pixel version, above their largest placed mark size, to keep files lighter. For oversized print, commission a fully vector master.
 - Elements contains the Brainbolt, Build, and OS separately. Blueprint brain and bolt include the original paper treatment.
 - Disrupted compositions intentionally pull the identity apart; use the intact horizontal lockup for routine identification.
 

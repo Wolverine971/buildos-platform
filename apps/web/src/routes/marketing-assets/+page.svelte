@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/marketing-assets/+page.svelte -->
 <script lang="ts">
 	import {
 		ArrowDown,
@@ -268,7 +269,7 @@
 				<div class="asset-info">
 					<div>
 						<p class="dimensions">
-							{banner.width} × {banner.height} · {formatBytes(banner.files[0].bytes)}
+							{banner.width} × {banner.height} · {formatBytes(banner.files[0]!.bytes)}
 						</p>
 						<p class="asset-description">{banner.description}</p>
 					</div>
@@ -371,10 +372,16 @@
 								preload="none"
 								poster={asset.preview}
 								aria-label={`${asset.name} Brainbolt animation preview`}
-								><source src={asset.files[0].url} type="video/webm" /><source
-									src={asset.files[1].url}
-									type="video/mp4"
-								/><track kind="captions" />Your browser cannot preview this loop.
+							>
+								{#each asset.files as file (file.url)}
+									<source
+										src={file.url}
+										type={file.url.endsWith('.webm')
+											? 'video/webm'
+											: 'video/mp4'}
+									/>
+								{/each}
+								<track kind="captions" />Your browser cannot preview this loop.
 								Download the MP4 below.</video
 							>
 						</div>

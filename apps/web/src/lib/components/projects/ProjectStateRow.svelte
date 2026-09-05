@@ -2,8 +2,11 @@
 <script lang="ts">
 	import { AlignLeft, ListTodo, Users } from '$lib/icons/lucide';
 	import { resolve } from '$app/paths';
-	import ProjectStateChip from './ProjectStateChip.svelte';
-	import { formatAccessRole } from '$lib/config/project-states';
+	import {
+		formatAccessRole,
+		normalizeProjectState,
+		PROJECT_STATE_META
+	} from '$lib/config/project-states';
 	import {
 		formatProjectUpdatedLabel,
 		formatProjectUpdatedTitle,
@@ -18,6 +21,7 @@
 	const { project, onSelect }: Props = $props();
 
 	const accessRoleLabel = $derived(formatAccessRole(project.access_role));
+	const stateLabel = $derived(PROJECT_STATE_META[normalizeProjectState(project.state_key)].label);
 	const collaboratorTitle = $derived(
 		project.is_shared && accessRoleLabel
 			? `Has collaborators · Your role: ${accessRoleLabel}`
@@ -30,6 +34,7 @@
 			'Open this project to continue.'
 	);
 	const updatedLabel = $derived(formatProjectUpdatedLabel(project.updated_at));
+	const compactUpdatedLabel = $derived(updatedLabel.replace(/^Updated /, ''));
 	const updatedTitle = $derived(formatProjectUpdatedTitle(project.updated_at));
 
 	function handleClick() {
@@ -40,42 +45,32 @@
 <a
 	href={resolve('/projects/[id]', { id: project.id })}
 	onclick={handleClick}
-	class="project-dossier-row block wt-paper p-3 pressable tx tx-frame tx-weak"
+	class="project-dossier-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-lg border border-border/70 bg-card px-3 py-2 pressable hover:border-border-strong hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 >
-	<div class="min-w-0">
-		<div class="flex min-w-0 items-start justify-between gap-2 sm:gap-3">
-			<div class="flex min-w-0 items-center gap-2">
-				<h4
-					class="min-w-0 truncate text-base font-semibold tracking-tight text-foreground sm:text-lg"
-					style="view-transition-name: project-title-{project.id}; view-transition-class: project-title"
-					title={project.name}
-				>
-					{project.name}
-				</h4>
-				<ProjectStateChip state={project.state_key} size="xs" tone="neutral" />
-			</div>
-			<div class="flex shrink-0 flex-col items-end gap-0.5 text-right">
-				<time
-					datetime={project.updated_at}
-					title={updatedTitle}
-					class="whitespace-nowrap text-2xs text-muted-foreground sm:text-xs"
-				>
-					{updatedLabel}
-				</time>
-				{#if project.has_collaborators}
-					<span
-						title={collaboratorTitle}
-						class="inline-flex items-center gap-1 whitespace-nowrap text-2xs text-muted-foreground"
-					>
-						<Users class="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
-						Has collaborators
-					</span>
-				{/if}
-			</div>
-		</div>
-
+	<h3
+		class="min-w-0 truncate text-sm font-semibold text-foreground"
+		style="view-transition-name: project-title-{project.id}; view-transition-class: project-title"
+		title={project.name}
+	>
+		{project.name}
+	</h3>
+	<time
+		datetime={project.updated_at}
+		title={updatedTitle}
+		aria-label={updatedLabel}
+		class="justify-self-end whitespace-nowrap text-xs tabular-nums text-muted-foreground"
+	>
+		{compactUpdatedLabel}
+	</time>
+	<div
+		class="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground {project.has_collaborators
+			? ''
+			: 'col-span-2'}"
+	>
+		<span class="shrink-0" aria-label="Project state: {stateLabel}">{stateLabel}</span>
+		<span aria-hidden="true" class="text-muted-foreground/50">·</span>
 		<p
-			class="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground sm:text-sm"
+			class="flex min-w-0 items-center gap-1"
 			title={hasNextStep ? (project.next_step_long ?? resumeCue) : resumeCue}
 		>
 			{#if hasNextStep}
@@ -87,21 +82,14 @@
 			<span class="truncate">{resumeCue}</span>
 		</p>
 	</div>
+	{#if project.has_collaborators}
+		<span
+			title={collaboratorTitle}
+			aria-label={collaboratorTitle}
+			class="inline-flex items-center justify-self-end gap-1 whitespace-nowrap text-2xs text-muted-foreground"
+		>
+			<Users class="h-3 w-3 shrink-0" aria-hidden="true" />
+			Collaborators
+		</span>
+	{/if}
 </a>
-
-<style>
-	.project-dossier-row {
-		transition: box-shadow 180ms ease;
-	}
-
-	.project-dossier-row:hover,
-	.project-dossier-row:focus-visible {
-		box-shadow: inset 0 -1px 0 hsl(var(--border));
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.project-dossier-row {
-			transition: none;
-		}
-	}
-</style>

@@ -1,634 +1,634 @@
 {
-  "assets": [
-    {
-      "id": "lockup-horizontal-paper",
-      "name": "Horizontal · dark ink",
-      "category": "logos",
-      "width": 1600,
-      "height": 480,
-      "description": "Primary lockup for websites, slides, and email signatures.",
-      "theme": "paper",
-      "transparent": true,
-      "preview": "/marketing-assets/lockup-horizontal-paper.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/lockup-horizontal-paper.png",
-          "bytes": 193061
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/lockup-horizontal-paper.svg",
-          "bytes": 1807879
-        }
-      ]
-    },
-    {
-      "id": "lockup-stacked-paper",
-      "name": "Stacked · dark ink",
-      "category": "logos",
-      "width": 1080,
-      "height": 1080,
-      "description": "Centered composition for covers and square placements.",
-      "theme": "paper",
-      "transparent": true,
-      "preview": "/marketing-assets/lockup-stacked-paper.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/lockup-stacked-paper.png",
-          "bytes": 242739
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/lockup-stacked-paper.svg",
-          "bytes": 1807824
-        }
-      ]
-    },
-    {
-      "id": "wordmark-paper",
-      "name": "Wordmark · dark ink",
-      "category": "logos",
-      "width": 1200,
-      "height": 360,
-      "description": "BuildOS lettering, separate from the Brainbolt.",
-      "theme": "paper",
-      "transparent": true,
-      "preview": "/marketing-assets/wordmark-paper.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/wordmark-paper.png",
-          "bytes": 24479
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/wordmark-paper.svg",
-          "bytes": 426
-        }
-      ]
-    },
-    {
-      "id": "build-paper",
-      "name": "Build · dark ink",
-      "category": "elements",
-      "width": 760,
-      "height": 360,
-      "description": "Independent Build lettering for the disrupted composition.",
-      "theme": "paper",
-      "transparent": true,
-      "preview": "/marketing-assets/build-paper.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/build-paper.png",
-          "bytes": 12009
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/build-paper.svg",
-          "bytes": 281
-        }
-      ]
-    },
-    {
-      "id": "lockup-horizontal-ink",
-      "name": "Horizontal · light ink",
-      "category": "logos",
-      "width": 1600,
-      "height": 480,
-      "description": "Primary lockup for websites, slides, and email signatures.",
-      "theme": "ink",
-      "transparent": true,
-      "preview": "/marketing-assets/lockup-horizontal-ink.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/lockup-horizontal-ink.png",
-          "bytes": 192819
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/lockup-horizontal-ink.svg",
-          "bytes": 1807879
-        }
-      ]
-    },
-    {
-      "id": "lockup-stacked-ink",
-      "name": "Stacked · light ink",
-      "category": "logos",
-      "width": 1080,
-      "height": 1080,
-      "description": "Centered composition for covers and square placements.",
-      "theme": "ink",
-      "transparent": true,
-      "preview": "/marketing-assets/lockup-stacked-ink.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/lockup-stacked-ink.png",
-          "bytes": 242801
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/lockup-stacked-ink.svg",
-          "bytes": 1807824
-        }
-      ]
-    },
-    {
-      "id": "wordmark-ink",
-      "name": "Wordmark · light ink",
-      "category": "logos",
-      "width": 1200,
-      "height": 360,
-      "description": "BuildOS lettering, separate from the Brainbolt.",
-      "theme": "ink",
-      "transparent": true,
-      "preview": "/marketing-assets/wordmark-ink.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/wordmark-ink.png",
-          "bytes": 24590
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/wordmark-ink.svg",
-          "bytes": 426
-        }
-      ]
-    },
-    {
-      "id": "build-ink",
-      "name": "Build · light ink",
-      "category": "elements",
-      "width": 760,
-      "height": 360,
-      "description": "Independent Build lettering for the disrupted composition.",
-      "theme": "ink",
-      "transparent": true,
-      "preview": "/marketing-assets/build-ink.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/build-ink.png",
-          "bytes": 12183
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/build-ink.svg",
-          "bytes": 281
-        }
-      ]
-    },
-    {
-      "id": "os-orange",
-      "name": "OS · signal orange",
-      "category": "elements",
-      "width": 560,
-      "height": 360,
-      "description": "Independent OS lettering, ready to position.",
-      "theme": "paper",
-      "transparent": true,
-      "preview": "/marketing-assets/os-orange.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/os-orange.png",
-          "bytes": 11813
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/os-orange.svg",
-          "bytes": 278
-        }
-      ]
-    },
-    {
-      "id": "brainbolt-electric",
-      "name": "Brainbolt · electric",
-      "category": "elements",
-      "width": 512,
-      "height": 512,
-      "description": "The original electric Brainbolt on a transparent canvas.",
-      "theme": "ink",
-      "transparent": true,
-      "preview": "/marketing-assets/brainbolt-electric.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/brainbolt-electric.png",
-          "bytes": 276875
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/brainbolt-electric.svg",
-          "bytes": 1807529
-        }
-      ]
-    },
-    {
-      "id": "brainbolt-outline",
-      "name": "Brainbolt · outline",
-      "category": "elements",
-      "width": 512,
-      "height": 512,
-      "description": "Original single-color artwork for quieter applications.",
-      "theme": "paper",
-      "transparent": true,
-      "preview": "/marketing-assets/brainbolt-outline.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/brainbolt-outline.png",
-          "bytes": 118832
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/brainbolt-outline.svg",
-          "bytes": 322601
-        }
-      ]
-    },
-    {
-      "id": "lockup-outline",
-      "name": "Horizontal · outline",
-      "category": "logos",
-      "width": 1600,
-      "height": 480,
-      "description": "A restrained lockup using the original outline Brainbolt.",
-      "theme": "paper",
-      "transparent": true,
-      "preview": "/marketing-assets/lockup-outline.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/lockup-outline.png",
-          "bytes": 100764
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/lockup-outline.svg",
-          "bytes": 322951
-        }
-      ]
-    },
-    {
-      "id": "disrupted-paper",
-      "name": "Disrupted · paper",
-      "category": "compositions",
-      "width": 1920,
-      "height": 1080,
-      "description": "Build, Brainbolt, and OS pulled apart into independent layers.",
-      "theme": "paper",
-      "transparent": false,
-      "preview": "/marketing-assets/disrupted-paper.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/disrupted-paper.png",
-          "bytes": 365185
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/disrupted-paper.svg",
-          "bytes": 1809271
-        }
-      ]
-    },
-    {
-      "id": "linkedin-profile-paper",
-      "name": "LinkedIn profile · paper",
-      "category": "social",
-      "width": 1584,
-      "height": 396,
-      "description": "Profile cover with the message clear of the lower-left avatar.",
-      "theme": "paper",
-      "transparent": false,
-      "preview": "/marketing-assets/linkedin-profile-paper.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/linkedin-profile-paper.png",
-          "bytes": 141425
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/linkedin-profile-paper.svg",
-          "bytes": 1808751
-        }
-      ]
-    },
-    {
-      "id": "linkedin-company-paper",
-      "name": "LinkedIn company · paper",
-      "category": "social",
-      "width": 4200,
-      "height": 700,
-      "description": "Wide company-page cover with a clear center message.",
-      "theme": "paper",
-      "transparent": false,
-      "preview": "/marketing-assets/linkedin-company-paper.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/linkedin-company-paper.png",
-          "bytes": 566052
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/linkedin-company-paper.svg",
-          "bytes": 1808509
-        }
-      ]
-    },
-    {
-      "id": "disrupted-ink",
-      "name": "Disrupted · ink",
-      "category": "compositions",
-      "width": 1920,
-      "height": 1080,
-      "description": "Build, Brainbolt, and OS pulled apart into independent layers.",
-      "theme": "ink",
-      "transparent": false,
-      "preview": "/marketing-assets/disrupted-ink.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/disrupted-ink.png",
-          "bytes": 364619
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/disrupted-ink.svg",
-          "bytes": 1809271
-        }
-      ]
-    },
-    {
-      "id": "linkedin-profile-ink",
-      "name": "LinkedIn profile · ink",
-      "category": "social",
-      "width": 1584,
-      "height": 396,
-      "description": "Profile cover with the message clear of the lower-left avatar.",
-      "theme": "ink",
-      "transparent": false,
-      "preview": "/marketing-assets/linkedin-profile-ink.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/linkedin-profile-ink.png",
-          "bytes": 141334
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/linkedin-profile-ink.svg",
-          "bytes": 1808751
-        }
-      ]
-    },
-    {
-      "id": "linkedin-company-ink",
-      "name": "LinkedIn company · ink",
-      "category": "social",
-      "width": 4200,
-      "height": 700,
-      "description": "Wide company-page cover with a clear center message.",
-      "theme": "ink",
-      "transparent": false,
-      "preview": "/marketing-assets/linkedin-company-ink.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/linkedin-company-ink.png",
-          "bytes": 565663
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/linkedin-company-ink.svg",
-          "bytes": 1808509
-        }
-      ]
-    },
-    {
-      "id": "social-square",
-      "name": "Square post",
-      "category": "social",
-      "width": 1080,
-      "height": 1080,
-      "description": "Ready-to-use brand card with the core BuildOS promise.",
-      "theme": "paper",
-      "transparent": false,
-      "preview": "/marketing-assets/social-square.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/social-square.png",
-          "bytes": 287402
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/social-square.svg",
-          "bytes": 1808925
-        }
-      ]
-    },
-    {
-      "id": "social-portrait",
-      "name": "Portrait post",
-      "category": "social",
-      "width": 1080,
-      "height": 1350,
-      "description": "Ready-to-use brand card with the core BuildOS promise.",
-      "theme": "paper",
-      "transparent": false,
-      "preview": "/marketing-assets/social-portrait.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/social-portrait.png",
-          "bytes": 298344
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/social-portrait.svg",
-          "bytes": 1808926
-        }
-      ]
-    },
-    {
-      "id": "social-story",
-      "name": "Story / vertical cover",
-      "category": "social",
-      "width": 1080,
-      "height": 1920,
-      "description": "Ready-to-use brand card with the core BuildOS promise.",
-      "theme": "ink",
-      "transparent": false,
-      "preview": "/marketing-assets/social-story.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/social-story.png",
-          "bytes": 318811
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/social-story.svg",
-          "bytes": 1808927
-        }
-      ]
-    },
-    {
-      "id": "presentation-cover",
-      "name": "Presentation cover",
-      "category": "social",
-      "width": 1920,
-      "height": 1080,
-      "description": "A 16:9 opening slide for talks, demos, and decks.",
-      "theme": "ink",
-      "transparent": false,
-      "preview": "/marketing-assets/presentation-cover.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/presentation-cover.png",
-          "bytes": 484471
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/presentation-cover.svg",
-          "bytes": 1808929
-        }
-      ]
-    },
-    {
-      "id": "profile-avatar",
-      "name": "Profile avatar",
-      "category": "social",
-      "width": 800,
-      "height": 800,
-      "description": "Generous clear space for square and circular profile crops.",
-      "theme": "ink",
-      "transparent": false,
-      "preview": "/marketing-assets/profile-avatar.webp",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/profile-avatar.png",
-          "bytes": 311297
-        },
-        {
-          "label": "SVG",
-          "url": "/marketing-assets/profile-avatar.svg",
-          "bytes": 1807578
-        }
-      ]
-    },
-    {
-      "id": "brain-blueprint",
-      "name": "Brain · blueprint",
-      "category": "elements",
-      "width": 470,
-      "height": 455,
-      "description": "Original blueprint artwork with its paper background.",
-      "theme": "paper",
-      "transparent": false,
-      "preview": "/marketing-assets/brain-blueprint.png",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/brain-blueprint.png",
-          "bytes": 395487
-        }
-      ]
-    },
-    {
-      "id": "bolt-blueprint",
-      "name": "Bolt · blueprint",
-      "category": "elements",
-      "width": 380,
-      "height": 455,
-      "description": "Original blueprint artwork with its paper background.",
-      "theme": "paper",
-      "transparent": false,
-      "preview": "/marketing-assets/bolt-blueprint.png",
-      "files": [
-        {
-          "label": "PNG",
-          "url": "/marketing-assets/bolt-blueprint.png",
-          "bytes": 281220
-        }
-      ]
-    },
-    {
-      "id": "motion-electric",
-      "name": "Electric",
-      "category": "motion",
-      "description": "A quick spark for product reveals and energetic transitions.",
-      "preview": "/brain-bolt-electric-poster.webp",
-      "theme": "ink",
-      "files": [
-        {
-          "label": "WebM · alpha",
-          "url": "/onboarding-assets/animations/brain-bolt-electric-transparent.webm",
-          "bytes": 2129582
-        },
-        {
-          "label": "MP4",
-          "url": "/onboarding-assets/animations/brain-bolt-electric.mp4",
-          "bytes": 1017060
-        }
-      ]
-    },
-    {
-      "id": "motion-consistent-pulse",
-      "name": "Steady pulse",
-      "category": "motion",
-      "description": "An even rhythm for ambient brand moments.",
-      "preview": "/brain-bolt-electric-poster.webp",
-      "theme": "ink",
-      "files": [
-        {
-          "label": "WebM · alpha",
-          "url": "/onboarding-assets/animations/brain-bolt-consistent-pulse-transparent.webm",
-          "bytes": 1888999
-        },
-        {
-          "label": "MP4",
-          "url": "/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4",
-          "bytes": 1260334
-        }
-      ]
-    },
-    {
-      "id": "motion-pulse",
-      "name": "Pulse",
-      "category": "motion",
-      "description": "A pronounced pulse for intros and emphasis.",
-      "preview": "/brain-bolt-electric-poster.webp",
-      "theme": "ink",
-      "files": [
-        {
-          "label": "WebM · alpha",
-          "url": "/onboarding-assets/animations/brain-bolt-pulse-transparent.webm",
-          "bytes": 4996735
-        },
-        {
-          "label": "MP4",
-          "url": "/onboarding-assets/animations/brain-bolt-pulse.mp4",
-          "bytes": 1999265
-        }
-      ]
-    }
-  ],
-  "archive": {
-    "url": "/marketing-assets/buildos-marketing-kit.zip",
-    "fileCount": 55,
-    "bytes": 41574782
-  }
+	"assets": [
+		{
+			"id": "lockup-horizontal-paper",
+			"name": "Horizontal · dark ink",
+			"category": "logos",
+			"width": 1600,
+			"height": 480,
+			"description": "Primary lockup for websites, slides, and email signatures.",
+			"theme": "paper",
+			"transparent": true,
+			"preview": "/marketing-assets/lockup-horizontal-paper.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/lockup-horizontal-paper.png",
+					"bytes": 195025
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/lockup-horizontal-paper.svg",
+					"bytes": 930479
+				}
+			]
+		},
+		{
+			"id": "lockup-stacked-paper",
+			"name": "Stacked · dark ink",
+			"category": "logos",
+			"width": 1080,
+			"height": 1080,
+			"description": "Centered composition for covers and square placements.",
+			"theme": "paper",
+			"transparent": true,
+			"preview": "/marketing-assets/lockup-stacked-paper.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/lockup-stacked-paper.png",
+					"bytes": 245679
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/lockup-stacked-paper.svg",
+					"bytes": 930424
+				}
+			]
+		},
+		{
+			"id": "wordmark-paper",
+			"name": "Wordmark · dark ink",
+			"category": "logos",
+			"width": 1200,
+			"height": 360,
+			"description": "BuildOS lettering, separate from the Brainbolt.",
+			"theme": "paper",
+			"transparent": true,
+			"preview": "/marketing-assets/wordmark-paper.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/wordmark-paper.png",
+					"bytes": 24479
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/wordmark-paper.svg",
+					"bytes": 426
+				}
+			]
+		},
+		{
+			"id": "build-paper",
+			"name": "Build · dark ink",
+			"category": "elements",
+			"width": 760,
+			"height": 360,
+			"description": "Independent Build lettering for the disrupted composition.",
+			"theme": "paper",
+			"transparent": true,
+			"preview": "/marketing-assets/build-paper.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/build-paper.png",
+					"bytes": 12009
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/build-paper.svg",
+					"bytes": 281
+				}
+			]
+		},
+		{
+			"id": "lockup-horizontal-ink",
+			"name": "Horizontal · light ink",
+			"category": "logos",
+			"width": 1600,
+			"height": 480,
+			"description": "Primary lockup for websites, slides, and email signatures.",
+			"theme": "ink",
+			"transparent": true,
+			"preview": "/marketing-assets/lockup-horizontal-ink.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/lockup-horizontal-ink.png",
+					"bytes": 194823
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/lockup-horizontal-ink.svg",
+					"bytes": 930479
+				}
+			]
+		},
+		{
+			"id": "lockup-stacked-ink",
+			"name": "Stacked · light ink",
+			"category": "logos",
+			"width": 1080,
+			"height": 1080,
+			"description": "Centered composition for covers and square placements.",
+			"theme": "ink",
+			"transparent": true,
+			"preview": "/marketing-assets/lockup-stacked-ink.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/lockup-stacked-ink.png",
+					"bytes": 245758
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/lockup-stacked-ink.svg",
+					"bytes": 930424
+				}
+			]
+		},
+		{
+			"id": "wordmark-ink",
+			"name": "Wordmark · light ink",
+			"category": "logos",
+			"width": 1200,
+			"height": 360,
+			"description": "BuildOS lettering, separate from the Brainbolt.",
+			"theme": "ink",
+			"transparent": true,
+			"preview": "/marketing-assets/wordmark-ink.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/wordmark-ink.png",
+					"bytes": 24590
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/wordmark-ink.svg",
+					"bytes": 426
+				}
+			]
+		},
+		{
+			"id": "build-ink",
+			"name": "Build · light ink",
+			"category": "elements",
+			"width": 760,
+			"height": 360,
+			"description": "Independent Build lettering for the disrupted composition.",
+			"theme": "ink",
+			"transparent": true,
+			"preview": "/marketing-assets/build-ink.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/build-ink.png",
+					"bytes": 12183
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/build-ink.svg",
+					"bytes": 281
+				}
+			]
+		},
+		{
+			"id": "os-orange",
+			"name": "OS · signal orange",
+			"category": "elements",
+			"width": 560,
+			"height": 360,
+			"description": "Independent OS lettering, ready to position.",
+			"theme": "paper",
+			"transparent": true,
+			"preview": "/marketing-assets/os-orange.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/os-orange.png",
+					"bytes": 11813
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/os-orange.svg",
+					"bytes": 278
+				}
+			]
+		},
+		{
+			"id": "brainbolt-electric",
+			"name": "Brainbolt · electric",
+			"category": "elements",
+			"width": 1582,
+			"height": 1380,
+			"description": "The original electric Brainbolt on a transparent canvas.",
+			"theme": "ink",
+			"transparent": true,
+			"preview": "/marketing-assets/brainbolt-electric.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/brainbolt-electric.png",
+					"bytes": 2094777
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/brainbolt-electric.svg",
+					"bytes": 1807521
+				}
+			]
+		},
+		{
+			"id": "brainbolt-outline",
+			"name": "Brainbolt · outline",
+			"category": "elements",
+			"width": 512,
+			"height": 512,
+			"description": "Original single-color artwork for quieter applications.",
+			"theme": "paper",
+			"transparent": true,
+			"preview": "/marketing-assets/brainbolt-outline.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/brainbolt-outline.png",
+					"bytes": 118832
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/brainbolt-outline.svg",
+					"bytes": 322601
+				}
+			]
+		},
+		{
+			"id": "lockup-outline",
+			"name": "Horizontal · outline",
+			"category": "logos",
+			"width": 1600,
+			"height": 480,
+			"description": "A restrained lockup using the original outline Brainbolt.",
+			"theme": "paper",
+			"transparent": true,
+			"preview": "/marketing-assets/lockup-outline.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/lockup-outline.png",
+					"bytes": 100764
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/lockup-outline.svg",
+					"bytes": 322951
+				}
+			]
+		},
+		{
+			"id": "disrupted-paper",
+			"name": "Disrupted · paper",
+			"category": "compositions",
+			"width": 1920,
+			"height": 1080,
+			"description": "Build, Brainbolt, and OS pulled apart into independent layers.",
+			"theme": "paper",
+			"transparent": false,
+			"preview": "/marketing-assets/disrupted-paper.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/disrupted-paper.png",
+					"bytes": 368304
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/disrupted-paper.svg",
+					"bytes": 931871
+				}
+			]
+		},
+		{
+			"id": "linkedin-profile-paper",
+			"name": "LinkedIn profile · paper",
+			"category": "social",
+			"width": 1584,
+			"height": 396,
+			"description": "Profile cover with the message clear of the lower-left avatar.",
+			"theme": "paper",
+			"transparent": false,
+			"preview": "/marketing-assets/linkedin-profile-paper.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/linkedin-profile-paper.png",
+					"bytes": 141950
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/linkedin-profile-paper.svg",
+					"bytes": 931351
+				}
+			]
+		},
+		{
+			"id": "linkedin-company-paper",
+			"name": "LinkedIn company · paper",
+			"category": "social",
+			"width": 4200,
+			"height": 700,
+			"description": "Wide company-page cover with a clear center message.",
+			"theme": "paper",
+			"transparent": false,
+			"preview": "/marketing-assets/linkedin-company-paper.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/linkedin-company-paper.png",
+					"bytes": 575685
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/linkedin-company-paper.svg",
+					"bytes": 931109
+				}
+			]
+		},
+		{
+			"id": "disrupted-ink",
+			"name": "Disrupted · ink",
+			"category": "compositions",
+			"width": 1920,
+			"height": 1080,
+			"description": "Build, Brainbolt, and OS pulled apart into independent layers.",
+			"theme": "ink",
+			"transparent": false,
+			"preview": "/marketing-assets/disrupted-ink.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/disrupted-ink.png",
+					"bytes": 367110
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/disrupted-ink.svg",
+					"bytes": 931871
+				}
+			]
+		},
+		{
+			"id": "linkedin-profile-ink",
+			"name": "LinkedIn profile · ink",
+			"category": "social",
+			"width": 1584,
+			"height": 396,
+			"description": "Profile cover with the message clear of the lower-left avatar.",
+			"theme": "ink",
+			"transparent": false,
+			"preview": "/marketing-assets/linkedin-profile-ink.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/linkedin-profile-ink.png",
+					"bytes": 141687
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/linkedin-profile-ink.svg",
+					"bytes": 931351
+				}
+			]
+		},
+		{
+			"id": "linkedin-company-ink",
+			"name": "LinkedIn company · ink",
+			"category": "social",
+			"width": 4200,
+			"height": 700,
+			"description": "Wide company-page cover with a clear center message.",
+			"theme": "ink",
+			"transparent": false,
+			"preview": "/marketing-assets/linkedin-company-ink.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/linkedin-company-ink.png",
+					"bytes": 574326
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/linkedin-company-ink.svg",
+					"bytes": 931109
+				}
+			]
+		},
+		{
+			"id": "social-square",
+			"name": "Square post",
+			"category": "social",
+			"width": 1080,
+			"height": 1080,
+			"description": "Ready-to-use brand card with the core BuildOS promise.",
+			"theme": "paper",
+			"transparent": false,
+			"preview": "/marketing-assets/social-square.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/social-square.png",
+					"bytes": 290073
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/social-square.svg",
+					"bytes": 931525
+				}
+			]
+		},
+		{
+			"id": "social-portrait",
+			"name": "Portrait post",
+			"category": "social",
+			"width": 1080,
+			"height": 1350,
+			"description": "Ready-to-use brand card with the core BuildOS promise.",
+			"theme": "paper",
+			"transparent": false,
+			"preview": "/marketing-assets/social-portrait.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/social-portrait.png",
+					"bytes": 300875
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/social-portrait.svg",
+					"bytes": 931526
+				}
+			]
+		},
+		{
+			"id": "social-story",
+			"name": "Story / vertical cover",
+			"category": "social",
+			"width": 1080,
+			"height": 1920,
+			"description": "Ready-to-use brand card with the core BuildOS promise.",
+			"theme": "ink",
+			"transparent": false,
+			"preview": "/marketing-assets/social-story.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/social-story.png",
+					"bytes": 320516
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/social-story.svg",
+					"bytes": 931527
+				}
+			]
+		},
+		{
+			"id": "presentation-cover",
+			"name": "Presentation cover",
+			"category": "social",
+			"width": 1920,
+			"height": 1080,
+			"description": "A 16:9 opening slide for talks, demos, and decks.",
+			"theme": "ink",
+			"transparent": false,
+			"preview": "/marketing-assets/presentation-cover.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/presentation-cover.png",
+					"bytes": 491631
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/presentation-cover.svg",
+					"bytes": 931529
+				}
+			]
+		},
+		{
+			"id": "profile-avatar",
+			"name": "Profile avatar",
+			"category": "social",
+			"width": 800,
+			"height": 800,
+			"description": "Generous clear space for square and circular profile crops.",
+			"theme": "ink",
+			"transparent": false,
+			"preview": "/marketing-assets/profile-avatar.webp",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/profile-avatar.png",
+					"bytes": 314933
+				},
+				{
+					"label": "SVG",
+					"url": "/marketing-assets/profile-avatar.svg",
+					"bytes": 930178
+				}
+			]
+		},
+		{
+			"id": "brain-blueprint",
+			"name": "Brain · blueprint",
+			"category": "elements",
+			"width": 470,
+			"height": 455,
+			"description": "Original blueprint artwork with its paper background.",
+			"theme": "paper",
+			"transparent": false,
+			"preview": "/marketing-assets/brain-blueprint.png",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/brain-blueprint.png",
+					"bytes": 395487
+				}
+			]
+		},
+		{
+			"id": "bolt-blueprint",
+			"name": "Bolt · blueprint",
+			"category": "elements",
+			"width": 380,
+			"height": 455,
+			"description": "Original blueprint artwork with its paper background.",
+			"theme": "paper",
+			"transparent": false,
+			"preview": "/marketing-assets/bolt-blueprint.png",
+			"files": [
+				{
+					"label": "PNG",
+					"url": "/marketing-assets/bolt-blueprint.png",
+					"bytes": 281220
+				}
+			]
+		},
+		{
+			"id": "motion-electric",
+			"name": "Electric",
+			"category": "motion",
+			"description": "A quick spark for product reveals and energetic transitions.",
+			"preview": "/brain-bolt-electric-poster.webp",
+			"theme": "ink",
+			"files": [
+				{
+					"label": "WebM · alpha",
+					"url": "/onboarding-assets/animations/brain-bolt-electric-transparent.webm",
+					"bytes": 2129582
+				},
+				{
+					"label": "MP4",
+					"url": "/onboarding-assets/animations/brain-bolt-electric.mp4",
+					"bytes": 1017060
+				}
+			]
+		},
+		{
+			"id": "motion-consistent-pulse",
+			"name": "Steady pulse",
+			"category": "motion",
+			"description": "An even rhythm for ambient brand moments.",
+			"preview": "/brain-bolt-electric-poster.webp",
+			"theme": "ink",
+			"files": [
+				{
+					"label": "WebM · alpha",
+					"url": "/onboarding-assets/animations/brain-bolt-consistent-pulse-transparent.webm",
+					"bytes": 1888999
+				},
+				{
+					"label": "MP4",
+					"url": "/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4",
+					"bytes": 1260334
+				}
+			]
+		},
+		{
+			"id": "motion-pulse",
+			"name": "Pulse",
+			"category": "motion",
+			"description": "A pronounced pulse for intros and emphasis.",
+			"preview": "/brain-bolt-electric-poster.webp",
+			"theme": "ink",
+			"files": [
+				{
+					"label": "WebM · alpha",
+					"url": "/onboarding-assets/animations/brain-bolt-pulse-transparent.webm",
+					"bytes": 4996735
+				},
+				{
+					"label": "MP4",
+					"url": "/onboarding-assets/animations/brain-bolt-pulse.mp4",
+					"bytes": 1999265
+				}
+			]
+		}
+	],
+	"archive": {
+		"url": "/marketing-assets/buildos-marketing-kit.zip",
+		"fileCount": 55,
+		"bytes": 33309690
+	}
 }

@@ -1,3 +1,4 @@
+// apps/web/scripts/generate-marketing-assets.mjs
 // Rebuild the downloadable brand package from existing BuildOS artwork.
 // Run: pnpm --filter @buildos/web exec node scripts/generate-marketing-assets.mjs
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -17,7 +18,10 @@ const archive = {};
 const assets = [];
 const embedded = async (file) =>
 	`data:image/png;base64,${(await readFile(file)).toString('base64')}`;
-const electric = await embedded(path.join(web, 'brand-source/brain-bolt-big.png'));
+const electricSource = path.join(web, 'brand-source/brain-bolt-big.png');
+const electricOriginal = await embedded(electricSource);
+// 800px exceeds the largest placed mark (588px); retain the full standalone source.
+const electric = `data:image/png;base64,${(await sharp(electricSource).resize({ width: 800 }).png().toBuffer()).toString('base64')}`;
 const outline = await embedded(path.join(web, 'brand-source/brain-bolt-icon.png'));
 const xml = (value) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;');
 const text = (value, x, y, size, fill = ink, weight = 700, extra = '') =>
@@ -136,9 +140,9 @@ await save({
 	id: 'brainbolt-electric',
 	name: 'Brainbolt · electric',
 	category: 'elements',
-	width: 512,
-	height: 512,
-	body: mark(16, 16, 480),
+	width: 1582,
+	height: 1380,
+	body: `<image href="${electricOriginal}" width="1582" height="1380"/>`,
 	theme: 'ink',
 	description: 'The original electric Brainbolt on a transparent canvas.'
 });
@@ -297,7 +301,7 @@ for (const [key, name, description] of [
 	});
 }
 
-const guide = `# BuildOS marketing package\n\nThe original Brainbolt artwork, reusable logo compositions, social graphics, and existing motion loops.\n\n## Start here\n- Use logos/lockup-horizontal-paper.png on light backgrounds; the ink version uses light lettering for dark backgrounds.\n- Transparent PNGs drop into slides, documents, websites, and email signatures.\n- SVG compositions contain editable Arial text and embedded raster Brainbolt artwork. They are NOT fully vector masters. Use PNG for consistent typography across devices.\n- Electric artwork uses the existing 1582 × 1380 pixel source. SVGs preserve that embedded resolution. For oversized print, commission a fully vector master.\n- Elements contains the Brainbolt, Build, and OS separately. Blueprint brain and bolt include the original paper treatment.\n- Disrupted compositions intentionally pull the identity apart; use the intact horizontal lockup for routine identification.\n\n## Formats\n- LinkedIn profile: 1584 × 396 PNG, under 8 MB. Main copy avoids the lower-left profile photo. Preview the crop on LinkedIn before applying.\n- LinkedIn company: 4200 × 700 PNG. Preview the company cover crop before applying.\n- Square: 1080 × 1080; portrait: 1080 × 1350; story: 1080 × 1920; presentation: 1920 × 1080.\n- Story copy stays away from the top and bottom interface areas.\n- Motion: transparent WebM for compatible browsers/editors, original MP4 for broad support. MP4 includes the original background; it is not transparent.\n\n## Brand\nSignal orange #F97316. Ink #18181B. Paper #FAF9F6. Use deep orange #B85214 for small orange text on paper.\nKeep at least one quarter of the Brainbolt width clear around an intact logo. Do not stretch or crop the Brainbolt.\nUse a dark background behind light lettering. Keep the electric artwork in its original colors.\n\n## Messaging\nCategory: Thinking environment for people making complex things.\nPromise: Turn messy thinking into structured work.\nDifferentiator: The project remembers what matters.\n\n## Sources\nExisting repository assets; no new generated imagery or footage.\nBrand guide: docs/marketing/brand/brand-guide-1-pager.md.\nLinkedIn profile specifications: https://www.linkedin.com/help/linkedin/answer/a568217/add-or-change-the-background-photo-on-your-profile\n\nRebuild: pnpm --filter @buildos/web exec node scripts/generate-marketing-assets.mjs\n`;
+const guide = `# BuildOS marketing package\n\nThe original Brainbolt artwork, reusable logo compositions, social graphics, and existing motion loops.\n\n## Start here\n- Use logos/lockup-horizontal-paper.png on light backgrounds; the ink version uses light lettering for dark backgrounds.\n- Transparent PNGs drop into slides, documents, websites, and email signatures.\n- SVG compositions contain editable Arial text and embedded raster Brainbolt artwork. They are NOT fully vector masters. Use PNG for consistent typography across devices.\n- The standalone electric mark retains the existing 1582 × 1380 pixel source. Compositions embed an 800-pixel version, above their largest placed mark size, to keep files lighter. For oversized print, commission a fully vector master.\n- Elements contains the Brainbolt, Build, and OS separately. Blueprint brain and bolt include the original paper treatment.\n- Disrupted compositions intentionally pull the identity apart; use the intact horizontal lockup for routine identification.\n\n## Formats\n- LinkedIn profile: 1584 × 396 PNG, under 8 MB. Main copy avoids the lower-left profile photo. Preview the crop on LinkedIn before applying.\n- LinkedIn company: 4200 × 700 PNG. Preview the company cover crop before applying.\n- Square: 1080 × 1080; portrait: 1080 × 1350; story: 1080 × 1920; presentation: 1920 × 1080.\n- Story copy stays away from the top and bottom interface areas.\n- Motion: transparent WebM for compatible browsers/editors, original MP4 for broad support. MP4 includes the original background; it is not transparent.\n\n## Brand\nSignal orange #F97316. Ink #18181B. Paper #FAF9F6. Use deep orange #B85214 for small orange text on paper.\nKeep at least one quarter of the Brainbolt width clear around an intact logo. Do not stretch or crop the Brainbolt.\nUse a dark background behind light lettering. Keep the electric artwork in its original colors.\n\n## Messaging\nCategory: Thinking environment for people making complex things.\nPromise: Turn messy thinking into structured work.\nDifferentiator: The project remembers what matters.\n\n## Sources\nExisting repository assets; no new generated imagery or footage.\nBrand guide: docs/marketing/brand/brand-guide-1-pager.md.\nLinkedIn profile specifications: https://www.linkedin.com/help/linkedin/answer/a568217/add-or-change-the-background-photo-on-your-profile\n\nRebuild: pnpm --filter @buildos/web exec node scripts/generate-marketing-assets.mjs\n`;
 await writeFile(path.join(out, 'README.md'), guide);
 archive['README.md'] = Buffer.from(guide);
 const manifest = {
@@ -312,7 +316,7 @@ manifest.archive.bytes = zip.length;
 await writeFile(path.join(out, 'buildos-marketing-kit.zip'), zip);
 await writeFile(
 	path.join(web, 'src/lib/marketing/assets.json'),
-	JSON.stringify(manifest, null, 2) + '\n'
+	JSON.stringify(manifest, null, '\t') + '\n'
 );
 console.log(
 	`Created ${assets.length} assets, ${manifest.archive.fileCount} packaged files, ${(zip.length / 1048576).toFixed(1)} MB ZIP.`

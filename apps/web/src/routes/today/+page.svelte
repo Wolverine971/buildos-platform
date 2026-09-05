@@ -12,13 +12,13 @@
 	import { loadTaskEditModal } from '$lib/components/project/project-entity-modal-loader';
 	import {
 		AlertCircle,
+		ArrowUpRight,
 		Calendar,
 		Inbox,
 		MessageCircle,
 		RefreshCcw,
 		Send,
-		Sparkles,
-		Sun
+		Sparkles
 	} from '$lib/icons/lucide';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
@@ -219,19 +219,11 @@
 	);
 	const eventCount = $derived(feed ? feed.events.length : 0);
 
-	const summaryLine = $derived.by(() => {
-		if (!feed) return '';
-		const parts: string[] = [];
-		parts.push(`${eventCount} ${eventCount === 1 ? 'event' : 'events'}`);
-		parts.push(`${openTaskCount} ${openTaskCount === 1 ? 'task' : 'tasks'}`);
-		const next = agenda.schedule.find(
+	const nextEntry = $derived(
+		agenda.schedule.find(
 			(entry) => entry.sortMs > nowMs && !(entry.task && doneIds.has(entry.task.id))
-		);
-		if (next) {
-			parts.push(`next: ${next.title} at ${next.timeLabel}`);
-		}
-		return parts.join(' · ');
-	});
+		)
+	);
 
 	const degradedSections = $derived(feed?.degradedSections ?? []);
 	const hasIncompleteFeed = $derived(degradedSections.length > 0);
@@ -685,78 +677,104 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<main class="mx-auto max-w-2xl px-3 sm:px-4 py-6 sm:py-10">
+	<main class="mx-auto max-w-3xl px-3 py-4 sm:px-5 sm:py-6">
 		<header>
-			<div class="flex items-start justify-between gap-3">
+			<div class="flex items-center justify-between gap-3">
 				<div class="min-w-0">
-					<p
-						class="flex items-center gap-1.5 text-2xs sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
-					>
-						<Sun class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-warning" />
-						Today
-					</p>
-					<h1 class="mt-1 text-xl sm:text-3xl font-bold text-foreground">
-						{dateLabel || 'Your day'}
-					</h1>
-					{#if summaryLine}
-						<p class="mt-1 text-xs sm:text-sm text-muted-foreground">{summaryLine}</p>
+					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+						<h1 class="text-2xl font-semibold tracking-tight text-foreground">Today</h1>
+						<p class="text-xs text-muted-foreground">
+							{dateLabel || 'Your day, at a glance'}
+						</p>
+					</div>
+					{#if feed}
+						<p class="mt-0.5 text-xs text-muted-foreground">
+							<span class="font-medium tabular-nums text-foreground"
+								>{eventCount}</span
+							>
+							{eventCount === 1 ? 'event' : 'events'}
+							<span class="mx-1 text-muted-foreground/50" aria-hidden="true">·</span>
+							<span class="font-medium tabular-nums text-foreground"
+								>{openTaskCount}</span
+							>
+							{openTaskCount === 1 ? 'task' : 'tasks'}
+						</p>
 					{/if}
 				</div>
-				<div class="flex-shrink-0 pt-4 sm:pt-5">
-					<Button onclick={openDayChat} variant="primary" size="sm" icon={MessageCircle}>
-						<span class="hidden sm:inline">Chat about my day</span>
-						<span class="sm:hidden">My day</span>
-					</Button>
-				</div>
+				<Button
+					onclick={openDayChat}
+					variant="primary"
+					size="sm"
+					icon={MessageCircle}
+					class="shrink-0 text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5"
+				>
+					Plan my day
+				</Button>
 			</div>
+			{#if nextEntry}
+				<p class="mt-1 flex min-w-0 items-baseline gap-2 text-xs text-muted-foreground">
+					<span class="micro-label shrink-0 text-accent">Up next</span>
+					<span class="truncate" title={nextEntry.title}>{nextEntry.title}</span>
+					<span class="shrink-0 text-xs tabular-nums">{nextEntry.timeLabel}</span>
+				</p>
+			{/if}
 
-			<div class="mt-3 sm:mt-4 flex flex-wrap items-center gap-1.5 sm:gap-2">
+			<div class="mt-2 flex flex-wrap items-center border-b border-border/70 pb-1">
 				{#if inboxCount > 0}
-					<button
+					<Button
 						onclick={openInbox}
-						class="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-2xs sm:text-xs font-medium text-accent hover:bg-accent/20 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						variant="ghost"
+						size="sm"
+						class="gap-1.5 px-1 text-xs font-medium sm:px-2 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1"
 					>
-						<Inbox class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+						<Inbox class="h-4 w-4 shrink-0 text-accent" />
 						{inboxCount} to review
-					</button>
+					</Button>
 				{/if}
 				{#if feed && feed.overdueCount > 0}
-					<button
+					<Button
 						onclick={openOverdue}
-						class="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1 text-2xs sm:text-xs font-medium text-warning hover:bg-warning/20 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						variant="ghost"
+						size="sm"
+						class="gap-1.5 px-1 text-xs font-medium sm:px-2 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1"
 					>
-						<AlertCircle class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+						<AlertCircle class="h-4 w-4 shrink-0 text-warning" />
 						{feed.overdueCount} overdue
-					</button>
+					</Button>
 				{/if}
 				<a
 					href="/dashboard"
-					class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-2xs sm:text-xs font-medium text-muted-foreground hover:border-accent hover:text-accent transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="ml-auto inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					title="Open dashboard"
+					aria-label="Open dashboard"
 				>
-					Full dashboard
+					<span class="hidden sm:inline">Dashboard</span>
+					<ArrowUpRight class="h-4 w-4 shrink-0" />
 				</a>
-				<button
+				<Button
 					onclick={refresh}
 					disabled={refreshing}
-					class="ml-auto p-1.5 rounded-md text-muted-foreground hover:text-accent hover:bg-accent/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					variant="ghost"
+					size="sm"
+					class="px-2 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"
 					title="Refresh"
 					aria-label="Refresh today's agenda"
 				>
 					<RefreshCcw
-						class="h-3.5 w-3.5 sm:h-4 sm:w-4 {refreshing
+						class="h-4 w-4 {refreshing
 							? 'animate-spin motion-reduce:animate-none'
 							: ''}"
 					/>
-				</button>
+				</Button>
 			</div>
 		</header>
 
 		{#if feed && !hasProjects}
 			<!-- First-run: no projects yet. Lead with the relief promise and a prominent
 			     first-project brain-dump instead of the generic "what changed?" bar. -->
-			<section class="mt-6 sm:mt-10" aria-label="Start your first project">
+			<section class="mt-4" aria-label="Start your first project">
 				<div
-					class="wt-paper tx tx-grain tx-weak flex flex-col items-center gap-4 p-5 text-center sm:p-8"
+					class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak flex flex-col items-center gap-4 p-5 text-center sm:p-8"
 				>
 					<div class="rounded-md border border-accent/20 bg-accent/10 p-2.5">
 						<Sparkles class="h-5 w-5 text-accent" />
@@ -772,7 +790,7 @@
 					</div>
 					<div class="w-full max-w-md">
 						<div
-							class="wt-ghost border-dashed border-accent/40 p-2 text-left transition-colors focus-within:border-accent sm:p-2.5"
+							class="rounded-md border border-border bg-background p-2 text-left focus-within:border-accent sm:p-2.5"
 							onkeydown={handleFirstProjectKeydown}
 							role="presentation"
 						>
@@ -784,7 +802,8 @@
 								maxRows={10}
 								autoResize={true}
 								showStatusRow={false}
-								textareaClass="border-0 bg-transparent px-1 py-1 text-sm shadow-none focus:ring-0"
+								aria-label="Describe your first project"
+								textareaClass="border-0 bg-transparent px-1 py-1 text-base sm:text-sm shadow-none focus:ring-0"
 							/>
 						</div>
 						<div class="mt-3 flex justify-center">
@@ -802,41 +821,41 @@
 				</div>
 			</section>
 		{:else if hasProjects}
-			<section class="mt-4 sm:mt-5" aria-label="Quick capture">
+			<section class="mt-3" aria-label="Quick capture">
 				<div
-					class="wt-ghost border-dashed border-accent/40 p-2 sm:p-2.5 transition-colors focus-within:border-accent"
+					class="rounded-lg border border-border bg-card px-2 py-1 focus-within:border-accent/60"
 					onkeydown={handleCaptureKeydown}
 					role="presentation"
 				>
+					<h2 class="sr-only">Quick capture</h2>
 					<div class="flex items-end gap-2">
-						<div class="flex-1 min-w-0">
+						<div class="min-w-0 flex-1">
 							<TextareaWithVoice
 								bind:value={captureText}
 								bind:isRecording={captureVoiceRecording}
-								placeholder="What changed? Brain-dump it — messy is fine."
+								aria-label="Quick update for your projects"
+								placeholder="What changed today?"
 								rows={1}
 								maxRows={6}
 								autoResize={true}
 								showStatusRow={false}
-								textareaClass="border-0 bg-transparent px-1 py-1 text-xs sm:text-sm shadow-none focus:ring-0"
+								textareaClass="border-0 bg-transparent px-1 py-1.5 text-base sm:text-sm shadow-none focus:ring-0 [@media(pointer:fine)]:min-h-8"
 							/>
 						</div>
-						<button
+						<Button
 							onclick={submitCapture}
 							disabled={!captureText.trim() || captureVoiceRecording}
-							class="mb-0.5 flex-shrink-0 p-1.5 sm:p-2 rounded-md text-accent hover:bg-accent/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							variant="ghost"
+							size="sm"
+							class="shrink-0 px-2 text-accent [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"
 							title="Send update to BuildOS"
 							aria-label="Send update to BuildOS"
 						>
-							<Send class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-						</button>
+							<Send class="h-4 w-4" />
+						</Button>
 					</div>
 				</div>
 			</section>
-		{/if}
-
-		{#if changesFeed}
-			<WhatChangedSection feed={changesFeed} onChatAboutEntry={openReceiptChat} />
 		{/if}
 
 		{#if !feed}
@@ -873,13 +892,16 @@
 			{/if}
 
 			{#if agenda.allDay.length > 0}
-				<section class="mt-5 sm:mt-6" aria-label="All-day events">
-					<div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+				<section class="mt-4" aria-label="All-day events">
+					<h2 class="mb-3 text-sm font-semibold tracking-tight text-foreground">
+						All day
+					</h2>
+					<div class="flex flex-wrap items-center gap-2">
 						{#each agenda.allDay as event (event.calendar_item_id)}
 							{@const eventTitle = event.title ?? 'Untitled event'}
 							{@const eventProjectName = projectNameFor(event.project_id)}
 							<span
-								class="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border border-accent/20 bg-accent/5 px-2.5 py-1 text-2xs text-foreground sm:text-xs"
+								class="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs text-foreground"
 								title={eventProjectName
 									? `${eventTitle} · ${eventProjectName}`
 									: eventTitle}
@@ -901,22 +923,25 @@
 			{/if}
 
 			{#if agenda.schedule.length > 0}
-				<section class="mt-5 sm:mt-6" aria-label="Today's schedule">
-					<h2
-						class="mb-2 sm:mb-3 text-2xs sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
-					>
-						Schedule
-					</h2>
-					<div class="space-y-2">
+				<section class="mt-4" aria-label="Today's schedule">
+					<div class="mb-1.5 flex items-center gap-2">
+						<h2 class="text-sm font-semibold tracking-tight text-foreground">
+							Schedule
+						</h2>
+						<span class="text-xs tabular-nums text-muted-foreground"
+							>{agenda.schedule.length}</span
+						>
+					</div>
+					<div class="space-y-1">
 						{#each agenda.schedule as entry, index (entry.key)}
 							{#if index === nowMarkerIndex}
-								<div class="flex items-center gap-2 sm:gap-3" aria-hidden="true">
+								<div class="flex items-center gap-2" aria-hidden="true">
 									<div
-										class="w-12 sm:w-16 flex-shrink-0 text-right text-2xs sm:text-xs font-semibold tabular-nums text-destructive"
+										class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium tabular-nums text-accent"
 									>
 										{fmtTime(new Date(nowMs).toISOString())}
 									</div>
-									<div class="h-px flex-1 bg-destructive/50"></div>
+									<div class="h-px flex-1 bg-accent/40"></div>
 								</div>
 							{/if}
 							<TodayAgendaRow
@@ -961,13 +986,13 @@
 							/>
 						{/each}
 						{#if nowMarkerIndex === agenda.schedule.length}
-							<div class="flex items-center gap-2 sm:gap-3" aria-hidden="true">
+							<div class="flex items-center gap-2" aria-hidden="true">
 								<div
-									class="w-12 sm:w-16 flex-shrink-0 text-right text-2xs sm:text-xs font-semibold tabular-nums text-destructive"
+									class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium tabular-nums text-accent"
 								>
 									{fmtTime(new Date(nowMs).toISOString())}
 								</div>
-								<div class="h-px flex-1 bg-destructive/50"></div>
+								<div class="h-px flex-1 bg-accent/40"></div>
 							</div>
 						{/if}
 					</div>
@@ -975,13 +1000,16 @@
 			{/if}
 
 			{#if agenda.anytime.length > 0}
-				<section class="mt-5 sm:mt-6" aria-label="Tasks without a set time">
-					<h2
-						class="mb-2 sm:mb-3 text-2xs sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
-					>
-						Anytime today
-					</h2>
-					<div class="space-y-2">
+				<section class="mt-4" aria-label="Tasks without a set time">
+					<div class="mb-1.5 flex items-center gap-2">
+						<h2 class="text-sm font-semibold tracking-tight text-foreground">
+							Anytime today
+						</h2>
+						<span class="text-xs tabular-nums text-muted-foreground"
+							>{agenda.anytime.length}</span
+						>
+					</div>
+					<div class="space-y-1">
 						{#each agenda.anytime as task (task.id)}
 							<TodayAgendaRow
 								kind="task"
@@ -1009,16 +1037,12 @@
 				{#if waitingProjects.length > 0}
 					<!-- Nothing dated today, but there's undated work. Surface each project's
 					     next move so the day is never a dead end. -->
-					<section class="mt-6 sm:mt-8" aria-label="What's waiting">
-						<div class="wt-ghost border-dashed p-4 sm:p-6">
+					<section class="mt-4" aria-label="What's waiting">
+						<div class="rounded-lg border border-border bg-card p-4 shadow-ink sm:p-6">
 							<div class="mb-3 flex items-center gap-2">
 								<Sparkles class="h-4 w-4 shrink-0 text-accent" />
-								<h2 class="text-sm sm:text-base font-semibold text-foreground">
-									{#if feed.overdueCount > 0}
-										Nothing scheduled today — here's what's waiting
-									{:else}
-										Clear schedule — here's what's waiting
-									{/if}
+								<h2 class="text-sm font-semibold tracking-tight text-foreground">
+									Here's what's waiting
 								</h2>
 							</div>
 							<ul class="flex flex-col gap-1">
@@ -1026,24 +1050,22 @@
 									<li>
 										<a
 											href={`/projects/${project.id}`}
-											class="group flex items-start gap-2.5 rounded-md p-2 transition-colors hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											class="group flex min-h-11 items-start gap-3 rounded-md py-3 motion-reduce:transition-none hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											title={project.next_step_long ??
 												project.next_step_short ??
 												project.name}
 										>
-											<span
-												class="mt-0.5 shrink-0 text-2xs font-semibold uppercase tracking-wide text-accent"
-											>
+											<span class="micro-label mt-1 shrink-0 text-accent">
 												Next
 											</span>
 											<span class="min-w-0 flex-1">
 												<span
-													class="block truncate text-xs text-foreground sm:text-sm"
+													class="block text-sm leading-relaxed text-foreground [overflow-wrap:anywhere]"
 												>
 													{project.next_step_short}
 												</span>
 												<span
-													class="block truncate text-2xs text-muted-foreground"
+													class="mt-1 block truncate text-xs text-muted-foreground"
 												>
 													{project.name}
 												</span>
@@ -1066,20 +1088,20 @@
 					</section>
 				{:else}
 					<div
-						class="mt-8 sm:mt-12 flex flex-col items-center gap-3 wt-ghost border-dashed p-6 sm:p-10 text-center"
+						class="mt-8 flex flex-col items-center gap-4 rounded-lg border border-border bg-card p-6 shadow-ink sm:p-10 text-center"
 					>
 						<div class="p-2 sm:p-3 rounded-md bg-accent/10 border border-accent/20">
 							<Sparkles class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
 						</div>
 						<div>
-							<h2 class="text-sm sm:text-base font-semibold text-foreground">
+							<h2 class="text-sm font-semibold tracking-tight text-foreground">
 								{#if feed.overdueCount > 0}
 									Nothing due today
 								{:else}
 									Clear day ahead
 								{/if}
 							</h2>
-							<p class="mt-1 text-xs sm:text-sm text-muted-foreground">
+							<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
 								{#if feed.overdueCount > 0}
 									Nothing scheduled today. You have {feed.overdueCount} overdue — triage
 									them or plan the day with a chat.
@@ -1100,6 +1122,9 @@
 					</div>
 				{/if}
 			{/if}
+		{/if}
+		{#if changesFeed}
+			<WhatChangedSection feed={changesFeed} onChatAboutEntry={openReceiptChat} />
 		{/if}
 	</main>
 </div>

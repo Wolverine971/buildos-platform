@@ -525,11 +525,11 @@
 	onRefresh={handlePullRefresh}
 	disabled={isPullRefreshing || showChatModal || projectsLoading}
 >
-	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">
-		<header class="flex items-start justify-between gap-3 sm:gap-6">
+	<div class="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-3 sm:py-4 space-y-3">
+		<header class="flex items-center justify-between gap-3">
 			<div class="min-w-0 flex-1 space-y-1">
 				<div class="flex items-center gap-2.5">
-					<h1 class="text-2xl font-semibold text-foreground sm:text-3xl">
+					<h1 class="text-2xl font-semibold tracking-tight text-foreground">
 						{activeTab === 'overview' ? 'Projects' : 'Ontology graph'}
 					</h1>
 					{#if activeTab === 'overview' && projectsLoading}
@@ -538,20 +538,20 @@
 						/>
 					{/if}
 				</div>
-				<p class="text-sm text-muted-foreground">
-					{activeTab === 'overview'
-						? 'Pick up where you left off, or start something new.'
-						: 'Admin tool for exploring project and entity relationships.'}
-				</p>
+				{#if activeTab === 'graph'}
+					<p class="text-sm text-muted-foreground">
+						Admin tool for exploring project and entity relationships.
+					</p>
+				{/if}
 			</div>
 
 			{#if activeTab === 'overview'}
 				<Button
-					variant="accent"
+					variant="primary"
 					size="sm"
 					icon={Plus}
 					onclick={handleCreateProject}
-					class="shrink-0 whitespace-nowrap"
+					class="shrink-0 whitespace-nowrap text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5"
 				>
 					New project
 				</Button>
@@ -603,7 +603,7 @@
 								<input
 									type="search"
 									aria-label="Search projects"
-									class="min-h-11 w-full rounded-lg border border-border-strong bg-card py-2 pl-10 pr-10 text-base text-foreground shadow-ink-inner transition placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm"
+									class="min-h-11 w-full rounded-lg border border-border bg-card py-2 pl-9 pr-10 text-base text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm [&::-webkit-search-cancel-button]:appearance-none [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:py-1.5"
 									placeholder="Search projects..."
 									bind:value={searchQuery}
 								/>
@@ -625,7 +625,7 @@
 								onclick={() => (filtersExpanded = !filtersExpanded)}
 								aria-expanded={filtersExpanded}
 								aria-controls="filter-panel-content"
-								class="shrink-0"
+								class="shrink-0 text-xs [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:py-1.5"
 							>
 								Filters
 								{#if activeFilterCount > 0}
@@ -646,7 +646,7 @@
 						{#if filtersExpanded}
 							<div
 								id="filter-panel-content"
-								class="wt-paper space-y-4 p-3 tx tx-frame tx-weak sm:p-4"
+								class="space-y-3 rounded-lg border border-border bg-card p-3"
 							>
 								<div class="space-y-1.5">
 									<p class="micro-label text-muted-foreground">STATUS</p>
@@ -660,7 +660,7 @@
 														: stateCounts[scope]}
 											<button
 												type="button"
-												class="inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-semibold transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default {selectedScope ===
+												class="inline-flex min-h-11 items-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold pressable [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default {selectedScope ===
 												scope
 													? 'border-accent/40 bg-accent/15 text-accent'
 													: scopeCount === 0
@@ -686,9 +686,9 @@
 										{#each OWNERSHIP_FILTER_OPTIONS as option (option)}
 											<button
 												type="button"
-												class="min-h-11 rounded-md px-3 py-2 transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {selectedOwnership ===
+												class="min-h-11 rounded-md px-3 py-2 pressable [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {selectedOwnership ===
 												option
-													? 'bg-accent text-accent-foreground shadow-ink'
+													? 'bg-card text-foreground shadow-sm'
 													: 'text-muted-foreground hover:text-foreground'}"
 												onclick={() => (selectedOwnership = option)}
 												aria-pressed={selectedOwnership === option}
@@ -754,7 +754,7 @@
 								{#if selectedScope !== 'current'}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() => setProjectScope('current')}
 										aria-label="Clear status filter: {getProjectListScopeLabel(
 											selectedScope
@@ -767,7 +767,7 @@
 								{#if selectedOwnership !== 'all'}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() => (selectedOwnership = 'all')}
 										aria-label="Clear ownership filter"
 									>
@@ -778,7 +778,7 @@
 								{#each selectedContexts as value (value)}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() =>
 											(selectedContexts = toggleValue(
 												selectedContexts,
@@ -793,7 +793,7 @@
 								{#each selectedScales as value (value)}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() =>
 											(selectedScales = toggleValue(selectedScales, value))}
 										aria-label="Clear scale filter: {value}"
@@ -805,7 +805,7 @@
 								{#each selectedStages as value (value)}
 									<button
 										type="button"
-										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:min-h-7"
 										onclick={() =>
 											(selectedStages = toggleValue(selectedStages, value))}
 										aria-label="Clear stage filter: {value}"
@@ -844,26 +844,28 @@
 					</div>
 				</div>
 			{:else}
-				<div class="space-y-6">
+				<div class="space-y-3">
 					{#if filteredProjects.length > 0}
 						<section class="space-y-2" aria-labelledby="project-list-heading">
 							<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-								<p
+								<h2
 									id="project-list-heading"
-									class="micro-label text-muted-foreground"
+									class="text-sm font-semibold text-foreground"
 								>
 									{visibleSectionLabel}
-								</p>
-								<span class="text-2xs font-medium text-muted-foreground">
+								</h2>
+								<span
+									class="text-xs font-medium tabular-nums text-muted-foreground"
+								>
 									{filteredProjects.length}
 								</span>
 								<span
-									class="hidden text-xs font-normal text-muted-foreground/80 sm:inline"
+									class="ml-auto hidden text-xs font-normal text-muted-foreground sm:inline"
 								>
-									· {visibleSectionHelper}
+									{visibleSectionHelper}
 								</span>
 							</div>
-							<div class="space-y-2">
+							<div class="space-y-1">
 								{#each filteredProjects as project (project.id)}
 									<ProjectStateRow {project} onSelect={handleProjectClick} />
 								{/each}

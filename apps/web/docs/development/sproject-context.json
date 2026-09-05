@@ -69,11 +69,6 @@
 			"components": ["Modal", "PublicProjectView"]
 		},
 		{
-			"file": "src/lib/components/layout/Navigation.svelte",
-			"type": "component",
-			"components": ["DashboardInboxModal", "AgentChatModal", "WorkPanel"]
-		},
-		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
 			"type": "component",
 			"components": [
@@ -93,6 +88,11 @@
 				"TimeBlockModalContent",
 				"AgentRunModalContent"
 			]
+		},
+		{
+			"file": "src/lib/components/layout/Navigation.svelte",
+			"type": "component",
+			"components": ["DashboardInboxModal", "AgentChatModal", "WorkPanel"]
 		},
 		{
 			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
@@ -197,6 +197,11 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/ProjectWorkspace.svelte",
 			"type": "component",
 			"components": [
@@ -234,11 +239,6 @@
 				"OntologyProjectEditModal",
 				"ProjectCollaborationModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/admin/chat/SessionFlowVisuals.svelte",
@@ -1619,9 +1619,9 @@
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
-		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
+		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/ontology/DocumentInteractDock.svelte",
 		"src/lib/components/project/ProjectInboxPanel.svelte",

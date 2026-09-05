@@ -519,3 +519,53 @@ additional hover lighting, motion, or decoration would compete with list scannin
   was introduced.
 - Focused project-list suite: 6 tests passing. Targeted ESLint: clean. Full web `svelte-check`: 0
   errors / 0 warnings.
+
+---
+
+## Part 10 — Cohesive, high-density polish (2026-09-04)
+
+The user explicitly requested the same compact polish approved for Today. Information density is the
+primary constraint: the launcher should expose more projects while retaining every existing row signal.
+
+### Tier 1 — shipped
+
+- **Compact hierarchy (P1/P4/P6):** replaced the generic subtitle with a single compact heading/action
+  row. Current work and Completed use proper section headings, with neutral counts and consistent type.
+- **Two-line project rows (P1/P4/P8):** 14 px project names occupy the first line; lifecycle state and
+  the existing next-step/description fallback share the second. Update times remain top-right, with
+  collaborators beneath. Full names, next steps, exact timestamps, and access-role context remain in
+  tooltips/accessibility labels. No project fields or result limits were removed.
+- **Quiet surfaces (P2/P4/P9):** removed the repeated grid texture and lifecycle badge chrome from
+  rows. Neutral card surfaces, subtle borders, consistent radii, and a solid primary New project action
+  now match Today. The global application shell remains intact.
+- **Dense controls (P7/P13):** search and Filters stay visible; expanded filters use a compact neutral
+  panel. Fine-pointer controls use smaller heights while coarse-pointer controls retain their existing
+  44 px minimums. Removed the duplicate native search-clear icon while retaining the labeled clear button.
+- **Consistent loading and interaction (P11/P26):** skeletons match the new two-line row height and
+  spacing. Removed local transition overrides so the shared pressable behavior owns row motion; focus
+  rings and reduced-motion support remain intact.
+
+### Measured result
+
+At the same 1870 CSS px desktop width, the header measured 32 px instead of 60 px and the first row
+started at 218 px instead of 266 px. Solo rows measured 55 px instead of 77 px (about 28% shorter);
+collaborator rows also measured 55 px instead of the previously recorded 82 px. Inter-row gaps are 4 px.
+At a 390 CSS px phone width, rows retain the same 55 px height and all 35 current projects remain in the list.
+
+### Verification
+
+- Authenticated desktop light/dark and 320/390 CSS px phone checks; no horizontal overflow.
+- Long names, next steps, solo projects, and collaborator projects inspected in the real list.
+- Search narrows the list and clears correctly. Completed status updates the URL to `?state=completed`
+  and shows 3 results; clearing the status returns to Current work. Expanding Completed shows the same
+  3 projects alongside 35 current projects, and collapsing restores the default list.
+- Existing project-list suite: 6 tests passed. Svelte analyzer reported no issues in all four changed
+  components; its suggestions concern unchanged streaming/store synchronization in the page.
+- Final full web `svelte-check`: 0 errors / 0 warnings.
+- User's dark theme, default filters, and desktop viewport restored after visual inspection.
+
+### Tier 2 / Tier 3
+
+No further restructuring or decorative effects are warranted for this dense launcher. The previously
+recorded permanent admin graph destination remains open; its direct route is preserved. No project
+backend, detail view, lifecycle semantics, creation behavior, or shared UI primitive changed.
