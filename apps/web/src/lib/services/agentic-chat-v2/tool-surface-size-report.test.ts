@@ -98,7 +98,34 @@ describe('tool surface size report', () => {
 		// description as prose), and says a prerequisite is a relationship rather
 		// than description text. +426 chars of deliberate creation guidance for
 		// weak routed models, same class as the create_onto_project bump above.
-		expect(createTask?.chars).toBeLessThanOrEqual(2750);
+		// 2026-09-05: ef4ad9a10 added the typed, nonnegative duration_minutes
+		// schema (+147 chars, 2,671 -> 2,818), not more description copy.
+		// Pin that schema below and keep only 32 chars of further headroom.
+		expect(createTask?.chars).toBeLessThanOrEqual(2850);
+	});
+
+	it('retains the reviewed estimate and relationship capabilities behind the size budgets', () => {
+		const tools = getGatewaySurfaceForProfile('project');
+		const names = tools.map((tool) => tool.function?.name);
+		expect(names).toContain('get_onto_document_details');
+		expect(names).toContain('link_onto_entities');
+		for (const name of ['create_onto_task', 'update_onto_task']) {
+			const tool = tools.find((candidate) => candidate.function?.name === name);
+			expect(tool?.function?.parameters.properties.props).toMatchObject({
+				type: 'object',
+				properties: { duration_minutes: { type: 'number', minimum: 0 } }
+			});
+		}
+		const contract = tools.find((tool) => tool.function?.name === 'declare_turn_contract');
+		expect(contract?.function?.parameters.properties.outcomes).toMatchObject({
+			type: 'array',
+			items: {
+				properties: {
+					src_label: { type: ['string', 'null'], pattern: '^[a-z0-9][a-z0-9_-]{0,39}$' },
+					dst_label: { type: ['string', 'null'], pattern: '^[a-z0-9][a-z0-9_-]{0,39}$' }
+				}
+			}
+		});
 	});
 
 	it('keeps deterministic preloaded profiles below target payload sizes', () => {
@@ -136,11 +163,18 @@ describe('tool surface size report', () => {
 		// ~2.2k) plus the control-tool and schedule-field description work. A
 		// General Chat "create a project" turn was a dead turn before this.
 		expect(global?.totalChars).toBeLessThanOrEqual(40_000);
-		expect(project?.totalChars).toBeLessThanOrEqual(39_200);
+		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
+		// contract reference/null handling, +321 for typed task estimates, +396
+		// for get_onto_document_details, +1,190 for link_onto_entities. These
+		// committed capabilities explain all 2,745 chars (38,833 -> 41,578).
+		// Do not remove capabilities to fit the old surface or relax other caps.
+		expect(project?.totalChars).toBeLessThanOrEqual(42_000);
 		// Bumped 2026-09-04: 15,250 → 15,700. Measured 15,458 — +426 from the
 		// create_onto_task description work noted above, and +516 already present
 		// on this branch from the control-tool descriptions (declare_turn_contract).
-		expect(projectCreate?.totalChars).toBeLessThanOrEqual(15_700);
+		// Same reviewed changes: +838 contract, +147 task = 16,443 chars;
+		// the project-create surface still has exactly the same seven tools.
+		expect(projectCreate?.totalChars).toBeLessThanOrEqual(16_600);
 	});
 
 	it('reports complete skill bundles and fails closed on unresolved related ops', () => {

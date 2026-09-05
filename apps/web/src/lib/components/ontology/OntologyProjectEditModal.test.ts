@@ -30,7 +30,8 @@ function project(overrides: Partial<Project> = {}): Project {
 		name: 'Mobile Project',
 		description: 'A compact project editor.',
 		type_key: 'project.default',
-		state_key: 'planning', external_agent_access: 'standard',
+		state_key: 'planning',
+		external_agent_access: 'standard',
 		props: {},
 		facet_context: 'client',
 		facet_scale: 'small',
@@ -125,6 +126,8 @@ describe('OntologyProjectEditModal date saving', () => {
 			}
 		});
 
+		await fireEvent.click(await screen.findByRole('button', { name: 'Open Project details' }));
+
 		const nameInput = await screen.findByLabelText(/Project Name/);
 		const startInput = screen.getByLabelText('Start');
 		const endInput = screen.getByLabelText('End');
@@ -176,6 +179,8 @@ describe('OntologyProjectEditModal date saving', () => {
 			}
 		});
 
+		await fireEvent.click(await screen.findByRole('button', { name: 'Open Project details' }));
+
 		const startInput = await screen.findByLabelText('Start');
 		await fireEvent.input(startInput, { target: { value: '2026-01-22' } });
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -214,6 +219,8 @@ describe('OntologyProjectEditModal date saving', () => {
 			}
 		});
 
+		await fireEvent.click(await screen.findByRole('button', { name: 'Open Project details' }));
+
 		const startInput = await screen.findByLabelText('Start');
 		const endInput = screen.getByLabelText('End');
 		expect(startInput).toHaveValue('2026-11-02');
@@ -243,6 +250,8 @@ describe('OntologyProjectEditModal date saving', () => {
 				project: project()
 			}
 		});
+
+		await fireEvent.click(await screen.findByRole('button', { name: 'Open Project details' }));
 
 		const endInput = await screen.findByLabelText('End');
 		await fireEvent.input(endInput, { target: { value: '2026-01-20' } });

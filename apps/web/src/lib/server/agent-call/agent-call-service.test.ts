@@ -195,7 +195,8 @@ function createCaller(
 		caller_key: 'openclaw:workspace:test',
 		token_prefix: 'ocw_',
 		token_hash: 'hash',
-		status: 'trusted', project_scope_mode: 'selected',
+		status: 'trusted',
+		project_scope_mode: 'all_unrestricted',
 		policy: {},
 		metadata: {},
 		last_used_at: null,
@@ -317,6 +318,7 @@ describe('BuildosAgentCallService', () => {
 		const admin = createAdminMock(state);
 		authenticateExternalAgentCallerMock.mockResolvedValue(
 			createCaller({
+				project_scope_mode: 'selected',
 				policy: {
 					allowed_project_ids: ['44444444-4444-4444-4444-444444444444']
 				}
@@ -368,6 +370,7 @@ describe('BuildosAgentCallService', () => {
 		]);
 		authenticateExternalAgentCallerMock.mockResolvedValue(
 			createCaller({
+				project_scope_mode: 'selected',
 				policy: {
 					allowed_project_ids: ['44444444-4444-4444-4444-444444444444']
 				}

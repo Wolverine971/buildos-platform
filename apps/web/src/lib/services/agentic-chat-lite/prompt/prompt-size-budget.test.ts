@@ -281,6 +281,13 @@ describe('total assembled prompt size budget', () => {
 		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(31_200);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
-		expect(largestToolSchemaTokens).toBeLessThanOrEqual(1_050);
+		// 2026-09-05: declare_turn_contract now includes directed relationship
+		// references and nullable optional labels (4,354 chars / 1,089 estimated
+		// tokens). Pin the identity as well as its tight cap; aggregate and
+		// per-turn budgets above are deliberately unchanged.
+		expect(
+			toolSurface.tools.find((tool) => tool.estimatedTokens === largestToolSchemaTokens)?.name
+		).toBe('declare_turn_contract');
+		expect(largestToolSchemaTokens).toBeLessThanOrEqual(1_100);
 	});
 });
