@@ -59,6 +59,7 @@
 		"pg": "^8.23.0",
 		"posthog-node": "^5.39.2",
 		"sanitize-html": "2.17.5",
+		"sharp": "0.35.4",
 		"web-push": "^3.6.7"
 	},
 	"devDependencies": {
@@ -81,6 +82,6 @@
 		"vitest": "^3.2.4"
 	},
 	"engines": {
-		"node": ">=20.0.0"
+		"node": ">=20.9.0"
 	}
 }
