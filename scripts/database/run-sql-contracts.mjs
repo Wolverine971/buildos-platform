@@ -7,6 +7,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inventorySqlContracts } from './sql-contracts.mjs';
+import {
+	uploadAdmissionContract,
+	verifyUploadAdmissionRaces
+} from './libri-upload-admission-races.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const testsDirectory = join(repoRoot, 'supabase/tests');
@@ -34,12 +38,12 @@ if (expectedPostgresMajor && !/^\d+$/.test(expectedPostgresMajor)) {
 }
 if (externalDatabaseUrl) verifyExternalServerVersion();
 
-for (const [index, { filename }] of tests.entries()) runContract(filename, index);
+for (const [index, { filename }] of tests.entries()) await runContract(filename, index);
 console.log(`Disposable SQL contracts passed: ${tests.length}/${tests.length}.`);
 
-function runContract(filename, index) {
+async function runContract(filename, index) {
 	if (externalDatabaseUrl) {
-		runContractAgainstExternalServer(filename, index);
+		await runContractAgainstExternalServer(filename, index);
 		return;
 	}
 	const temporaryRoot = mkdtempSync(join(tmpdir(), 'buildos-sql-contract-'));
@@ -98,6 +102,15 @@ function runContract(filename, index) {
 				timeout: 60_000
 			}
 		);
+		if (filename === uploadAdmissionContract)
+			await verifyUploadAdmissionRaces([
+				'-h',
+				socketDirectory,
+				'-U',
+				'postgres',
+				'-d',
+				'postgres'
+			]);
 		console.log(`✓ ${filename}`);
 	} catch (error) {
 		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();
@@ -136,7 +149,7 @@ function verifyExternalServerVersion() {
 	console.log(`Disposable SQL server: PostgreSQL ${actualMajor}.`);
 }
 
-function runContractAgainstExternalServer(filename, index) {
+async function runContractAgainstExternalServer(filename, index) {
 	const databaseName = `buildos_sql_contract_${process.pid}_${index}`;
 	const testDatabaseUrl = new URL(externalDatabaseUrl);
 	testDatabaseUrl.pathname = `/${databaseName}`;
@@ -174,6 +187,8 @@ function runContractAgainstExternalServer(filename, index) {
 			],
 			psqlOptions
 		);
+		if (filename === uploadAdmissionContract)
+			await verifyUploadAdmissionRaces(['-d', testDatabaseUrl.toString()]);
 		console.log(`✓ ${filename}`);
 	} catch (error) {
 		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();
