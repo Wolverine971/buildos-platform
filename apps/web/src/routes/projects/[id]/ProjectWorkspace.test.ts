@@ -566,6 +566,9 @@ describe('ProjectWorkspace edge states', () => {
 		});
 		render(ProjectWorkspace, { data: projectData({ goals: [goal] }) as any });
 		await fireEvent.click(screen.getByRole('button', { name: /Launch goal/ }));
+		// The real editor is lazy-loaded. Wait for its import separately so a cold
+		// CI transform is not mistaken for a missing form by the DOM query timeout.
+		await vi.dynamicImportSettled();
 		await screen.findByDisplayValue('Launch goal');
 		expect(
 			vi
