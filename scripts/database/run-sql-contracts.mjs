@@ -15,6 +15,10 @@ import {
 	uploadProcessingContract,
 	verifyUploadProcessingRaces
 } from './libri-upload-processing-races.mjs';
+import {
+	uploadDownloadContract,
+	verifyUploadDownloadRaces
+} from './libri-upload-download-races.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const testsDirectory = join(repoRoot, 'supabase/tests');
@@ -124,6 +128,15 @@ async function runContract(filename, index) {
 				'-d',
 				'postgres'
 			]);
+		if (filename === uploadDownloadContract)
+			await verifyUploadDownloadRaces([
+				'-h',
+				socketDirectory,
+				'-U',
+				'postgres',
+				'-d',
+				'postgres'
+			]);
 		console.log(`✓ ${filename}`);
 	} catch (error) {
 		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();
@@ -204,6 +217,8 @@ async function runContractAgainstExternalServer(filename, index) {
 			await verifyUploadAdmissionRaces(['-d', testDatabaseUrl.toString()]);
 		if (filename === uploadProcessingContract)
 			await verifyUploadProcessingRaces(['-d', testDatabaseUrl.toString()]);
+		if (filename === uploadDownloadContract)
+			await verifyUploadDownloadRaces(['-d', testDatabaseUrl.toString()]);
 		console.log(`✓ ${filename}`);
 	} catch (error) {
 		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();
