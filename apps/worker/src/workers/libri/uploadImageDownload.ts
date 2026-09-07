@@ -1,4 +1,4 @@
-// Dedicated-worker transport. Not wired to a consumer or a live signing broker yet.
+// Dedicated-worker transport. Consumer activation is a separate guarded rollout.
 import type { LibriUploadClaim } from './uploadProcessing';
 import {
 	LIBRI_UPLOAD_IMAGE_LIMITS,
@@ -33,7 +33,7 @@ const discard = (body: ReadableStream<Uint8Array> | null) => {
 };
 
 /** One instance plus one shared verifier per dedicated Libri process.
- * `authorize` is trusted application wiring, NOT a job field. Its future server
+ * `authorize` is trusted application wiring, NOT a job field. Its server
  * implementation must recheck membership, both controls and the full lease fence
  * before signing. This module cannot authorize a database row by inspecting a URL.
  * No database/service key, Storage SDK, publication, retry or acknowledgment here.
@@ -101,7 +101,12 @@ export function createLibriUploadImageDownloader(options: {
 				// the download, declaration, fence or deadline.
 				const grant = await options.authorize({ claim, signal });
 				checkDeadline();
-				const { signedUrl, expiresAt } = reviewGrant(grant, claim, origin, now());
+				const { signedUrl, expiresAt } = reviewLibriUploadDownloadGrant(
+					grant,
+					claim,
+					origin,
+					now()
+				);
 				capabilityExpiresAt = expiresAt;
 				checkDeadline();
 				grantTimer = setTimeout(() => timeout.abort(), expiresAt - now() - MARGIN_MS);
@@ -221,7 +226,7 @@ function storageOrigin(value: string): string {
 	}
 }
 
-function reviewGrant(
+export function reviewLibriUploadDownloadGrant(
 	grant: LibriUploadDownloadGrant,
 	claim: Readonly<LibriUploadClaim>,
 	origin: string,
