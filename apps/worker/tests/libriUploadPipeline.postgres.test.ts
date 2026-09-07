@@ -10,10 +10,9 @@ import { createLibriUploadProcessing } from '../src/workers/libri/uploadProcessi
 import { createLibriUploadDownloadAuthorizer } from '../src/workers/libri/uploadDownloadAuthorizer';
 import { createLibriUploadImageDownloader } from '../src/workers/libri/uploadImageDownload';
 import { createLibriUploadImageVerifier } from '../src/workers/libri/uploadImageVerifier';
-import {
-	createLibriUploadPublisher,
-	type LibriPublicationPorts
-} from '../src/workers/libri/uploadPublication';
+import { type LibriPublicationPorts } from '../src/workers/libri/uploadPublication';
+import { createLibriUploadPublicationTransport } from '../src/workers/libri/uploadPublicationTransport';
+import { createLibriUploadPublicationBroker } from '../../web/src/lib/server/libri/upload-publication';
 import { signLibriUploadDownload } from '../../web/src/lib/server/libri/upload-download-signing';
 
 const available = ['initdb', 'pg_ctl', 'psql'].every(
@@ -345,9 +344,9 @@ describePostgres(
 					);
 					if (scenario === 'revoked')
 						await admin.query("UPDATE libri.library_members SET role='viewer'");
-					return { storageObjectId: objectId };
+					return { objectPath: input.publication.objectPath };
 				});
-				const publisher = createLibriUploadPublisher({
+				const ports: LibriPublicationPorts = {
 					prepare: async (input) =>
 						(
 							await service.query(
@@ -360,7 +359,7 @@ describePostgres(
 						savedCompletion = [
 							...fence,
 							input.publicationId,
-							input.storageObjectId,
+							objectId,
 							JSON.stringify(input.verified)
 						];
 						const connection = await service.connect();
@@ -384,6 +383,150 @@ describePostgres(
 						} finally {
 							connection.release();
 						}
+					}
+				};
+				let preparedRow: Record<string, unknown>;
+				const broker = createLibriUploadPublicationBroker();
+				const endpointUrl = 'https://build-os.com/api/internal/libri/uploads/publish';
+				const { bytes: _owned, ...metadata } = verified;
+				const providerFetch: typeof fetch = async (input, init) => {
+					const url = new URL(String(input));
+					const headers = new Headers(init?.headers);
+					expect(url.origin).toBe(origin);
+					expect(headers.get('authorization')).toBe('Bearer fixture-service-only');
+					const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+					if (url.pathname.endsWith('/authorize_image_upload_download'))
+						return Response.json(
+							(
+								await service.query(
+									'SELECT libri.authorize_image_upload_download($1,$2,$3,$4) AS receipt',
+									[
+										body.p_library_id,
+										body.p_upload_id,
+										body.p_lease_token,
+										body.p_attempt
+									]
+								)
+							).rows[0].receipt
+						);
+					if (url.pathname.endsWith('/prepare_image_upload_publication')) {
+						preparedRow = (await ports.prepare({
+							claim,
+							verified: body.p_verified,
+							signal: init!.signal!
+						})) as Record<string, unknown>;
+						return Response.json(preparedRow);
+					}
+					if (url.pathname.startsWith('/storage/v1/object/upload/sign/')) {
+						expect(headers.get('x-upsert')).toBe('false');
+						const payload = {
+							url: 'libri-assets/' + preparedRow.object_path,
+							upsert: false,
+							exp: Math.floor(Date.now() / 1000) + 7200
+						};
+						const token =
+							Buffer.from('{}').toString('base64url') +
+							'.' +
+							Buffer.from(JSON.stringify(payload)).toString('base64url') +
+							'.signature';
+						return Response.json({
+							url:
+								'/object/upload/sign/libri-assets/' +
+								preparedRow.object_path +
+								'?token=' +
+								token
+						});
+					}
+					if (url.pathname === '/rest/v1/image_upload_publications')
+						return Response.json(
+							(
+								await service.query(
+									'SELECT id,status,storage_object_id,verified_metadata FROM libri.image_upload_publications WHERE id=$1 AND library_id=$2 AND upload_id=$3 AND lease_token=$4 AND attempt=$5',
+									[
+										url.searchParams.get('id')!.slice(3),
+										url.searchParams.get('library_id')!.slice(3),
+										url.searchParams.get('upload_id')!.slice(3),
+										url.searchParams.get('lease_token')!.slice(3),
+										Number(url.searchParams.get('attempt')!.slice(3))
+									]
+								)
+							).rows
+						);
+					if (url.pathname.startsWith('/storage/v1/object/info/')) {
+						const row = (
+							await admin.query(
+								'SELECT id,name,bucket_id FROM storage.objects WHERE name=$1',
+								[preparedRow.object_path]
+							)
+						).rows[0];
+						return Response.json({
+							...row,
+							version: 'one',
+							size: bytes.length,
+							content_type: 'image/png',
+							cache_control: 'max-age=0'
+						});
+					}
+					if (url.pathname.startsWith('/storage/v1/object/authenticated/'))
+						return new Response(new Uint8Array(bytes), {
+							headers: { 'content-type': 'image/png' }
+						});
+					if (url.pathname.endsWith('/finalize_image_upload_publication')) {
+						expect(body.p_storage_object_id).toBe(objectId);
+						return Response.json(
+							await ports.finalize({
+								claim,
+								publicationId: body.p_publication_id,
+								verified: body.p_verified,
+								signal: init!.signal!
+							})
+						);
+					}
+					throw Error('Unexpected provider endpoint');
+				};
+				const publisher = createLibriUploadPublicationTransport({
+					endpointUrl,
+					bearerToken: brokerToken,
+					fetchImpl: async (input, init) => {
+						const url = new URL(String(input));
+						if (url.href === endpointUrl) {
+							const body = JSON.parse(String(init?.body));
+							expect(body).not.toHaveProperty('storageObjectId');
+							return broker(new Request(endpointUrl, init), {
+								enabled: true,
+								url: origin,
+								serviceKey: 'fixture-service-only',
+								brokerToken,
+								fetchImpl: providerFetch
+							});
+						}
+						expect(url.origin).toBe(origin);
+						expect(init?.method).toBe('PUT');
+						expect(url.pathname).toBe(
+							'/storage/v1/object/upload/sign/libri-assets/' + preparedRow.object_path
+						);
+						const headers = new Headers(init?.headers);
+						expect(headers.has('authorization')).toBe(false);
+						expect(headers.has('apikey')).toBe(false);
+						expect(headers.get('x-upsert')).toBe('false');
+						expect(headers.get('cache-control')).toBe('max-age=0');
+						await createObject({
+							publication: {
+								publicationId: String(preparedRow.publication_id),
+								libraryId,
+								uploadId,
+								bookId,
+								leaseToken: claim.leaseToken,
+								attempt: claim.attempt,
+								bucketId: 'libri-assets',
+								objectPath: String(preparedRow.object_path)
+							},
+							bytes: Buffer.from(init!.body as Uint8Array),
+							verified: metadata,
+							upsert: false,
+							signal: init!.signal!
+						});
+						return Response.json({ Key: 'libri-assets/' + preparedRow.object_path });
 					}
 				});
 				const result = publisher.publish({

@@ -40,13 +40,12 @@ export type LibriPublicationPorts = {
 		verified: Readonly<Verified>;
 		upsert: false;
 		signal: AbortSignal;
-	}): Promise<{ storageObjectId: string }>;
+	}): Promise<{ objectPath: string }>;
 	// Trusted server must attest the exact successful Storage write. SQL cannot inspect
 	// bytes; do not expose a raw caller-supplied Storage object ID to the service-role RPC.
 	finalize(input: {
 		claim: Fence;
 		publicationId: string;
-		storageObjectId: string;
 		verified: Readonly<Verified>;
 		signal: AbortSignal;
 	}): Promise<unknown>;
@@ -215,18 +214,13 @@ export function createLibriUploadPublisher(ports: LibriPublicationPorts) {
 					signal
 				});
 				check();
-				if (
-					!uploaded ||
-					typeof uploaded.storageObjectId !== 'string' ||
-					!UUID.test(uploaded.storageObjectId)
-				)
+				if (!uploaded || uploaded.objectPath !== publication.objectPath)
 					fail('invalid_storage_publication_receipt');
 				if (digest(bytes) !== verified.sha256) fail('publication_bytes_changed');
 				check();
 				const completed = await ports.finalize({
 					claim,
 					publicationId: publication.publicationId,
-					storageObjectId: uploaded.storageObjectId,
 					verified,
 					signal
 				});

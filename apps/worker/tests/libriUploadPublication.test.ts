@@ -60,7 +60,7 @@ function fixture() {
 	const prepare = vi.fn<LibriPublicationPorts['prepare']>().mockResolvedValue(prepared);
 	const createObject = vi
 		.fn<LibriPublicationPorts['createObject']>()
-		.mockResolvedValue({ storageObjectId });
+		.mockResolvedValue({ objectPath: prepared.object_path });
 	const finalize = vi.fn<LibriPublicationPorts['finalize']>().mockResolvedValue(completed);
 	const publisher = createLibriUploadPublisher({ prepare, createObject, finalize });
 	const controller = new AbortController();
@@ -103,7 +103,6 @@ describe('Libri immutable publication coordinator', () => {
 		expect(put.publication.objectPath).toBe(f.prepared.object_path);
 		expect(f.finalize.mock.calls[0][0]).toMatchObject({
 			publicationId,
-			storageObjectId,
 			claim: { libraryId, uploadId, attempt: 1, leaseToken: f.input.claim.leaseToken }
 		});
 		expect(f.prepare.mock.invocationCallOrder[0]).toBeLessThan(
@@ -193,7 +192,7 @@ describe('Libri immutable publication coordinator', () => {
 		const f = fixture();
 		f.createObject.mockImplementation(async ({ bytes }) => {
 			bytes.fill(0);
-			return { storageObjectId };
+			return { objectPath: f.prepared.object_path };
 		});
 		await expect(f.publisher.publish(f.input)).rejects.toMatchObject({
 			code: 'publication_bytes_changed',
@@ -201,7 +200,7 @@ describe('Libri immutable publication coordinator', () => {
 		});
 		expect(f.finalize).not.toHaveBeenCalled();
 	});
-	it.each([null, {}, { storageObjectId: 'wrong' }])(
+	it.each([null, {}, { objectPath: 'wrong' }])(
 		'rejects malformed Storage receipts: %j',
 		async (value) => {
 			const f = fixture();
