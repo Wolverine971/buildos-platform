@@ -85,7 +85,8 @@ describePostgres(
 				'supabase/migrations/20260906184227_libri_private_image_upload_admission.sql',
 				'supabase/migrations/20260906201700_libri_upload_processing_leases.sql',
 				'supabase/migrations/20260907015150_libri_upload_download_authorization.sql',
-				'supabase/migrations/20260907041707_libri_upload_publication_contract.sql'
+				'supabase/migrations/20260907041707_libri_upload_publication_contract.sql',
+				'supabase/migrations/20260907043724_libri_upload_claim_deadline_refresh.sql'
 			])
 				execFileSync('psql', [...psql, '-f', resolve(root, file)], {
 					stdio: 'pipe',

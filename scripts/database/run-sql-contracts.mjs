@@ -21,6 +21,7 @@ import {
 } from './libri-upload-download-races.mjs';
 import {
 	uploadPublicationContract,
+	uploadClaimDeadlineContract,
 	verifyUploadPublicationRaces
 } from './libri-upload-publication-races.mjs';
 
@@ -141,15 +142,11 @@ async function runContract(filename, index) {
 				'-d',
 				'postgres'
 			]);
-		if (filename === uploadPublicationContract)
-			await verifyUploadPublicationRaces([
-				'-h',
-				socketDirectory,
-				'-U',
-				'postgres',
-				'-d',
-				'postgres'
-			]);
+		if ([uploadPublicationContract, uploadClaimDeadlineContract].includes(filename))
+			await verifyUploadPublicationRaces(
+				['-h', socketDirectory, '-U', 'postgres', '-d', 'postgres'],
+				{ claimDeadline: filename === uploadClaimDeadlineContract }
+			);
 		console.log(`✓ ${filename}`);
 	} catch (error) {
 		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();
@@ -232,8 +229,10 @@ async function runContractAgainstExternalServer(filename, index) {
 			await verifyUploadProcessingRaces(['-d', testDatabaseUrl.toString()]);
 		if (filename === uploadDownloadContract)
 			await verifyUploadDownloadRaces(['-d', testDatabaseUrl.toString()]);
-		if (filename === uploadPublicationContract)
-			await verifyUploadPublicationRaces(['-d', testDatabaseUrl.toString()]);
+		if ([uploadPublicationContract, uploadClaimDeadlineContract].includes(filename))
+			await verifyUploadPublicationRaces(['-d', testDatabaseUrl.toString()], {
+				claimDeadline: filename === uploadClaimDeadlineContract
+			});
 		console.log(`✓ ${filename}`);
 	} catch (error) {
 		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();

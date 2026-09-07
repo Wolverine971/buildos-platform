@@ -1,10 +1,14 @@
 // Invoked only by the disposable SQL runner. No hosted credential/environment fallback.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 
 export const uploadPublicationContract =
 	'20260907041707_libri_upload_publication_contract.test.sql';
+export const uploadClaimDeadlineContract =
+	'20260907043724_libri_upload_claim_deadline_refresh.test.sql';
 const library = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
 const upload = 'dddddddd-dddd-4ddd-8ddd-ddddddddddd1';
 const token = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1';
@@ -19,7 +23,23 @@ const finish =
 	verified +
 	"');";
 
-export async function verifyUploadPublicationRaces(connectionArgs) {
+export async function verifyUploadPublicationRaces(connectionArgs, { claimDeadline = false } = {}) {
+	// Recovery from the rejected in-place edit must preserve the original published
+	// bytes permanently; deadline corrections belong in the separate migration.
+	assert.equal(
+		createHash('sha256')
+			.update(
+				readFileSync(
+					new URL(
+						'../../supabase/migrations/20260907041707_libri_upload_publication_contract.sql',
+						import.meta.url
+					)
+				)
+			)
+			.digest('hex'),
+		'79a795f726ab6081bca64ef38388bcadd01d783a5edf08d8932babc503d2707a',
+		'first-published publication migration remains immutable'
+	);
 	const args = ['-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1', ...connectionArgs];
 	const query = (sql) =>
 		execFileSync('psql', [...args, '-c', sql], {
@@ -209,6 +229,7 @@ export async function verifyUploadPublicationRaces(connectionArgs) {
 		{ validate: denied }
 	);
 	reset();
+	if (!claimDeadline) return;
 	query(
 		"UPDATE libri.image_upload_processing SET lease_expires_at=clock_timestamp()+interval '1 second'"
 	);
