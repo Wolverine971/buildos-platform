@@ -209,4 +209,20 @@ export async function verifyUploadPublicationRaces(connectionArgs) {
 		{ validate: denied }
 	);
 	reset();
+	query(
+		"UPDATE libri.image_upload_processing SET lease_expires_at=clock_timestamp()+interval '1 second'"
+	);
+	await race(
+		'claim retry cannot return a lease that expired during its processing-row wait',
+		'SELECT upload_id FROM libri.image_upload_processing FOR UPDATE;',
+		"SET ROLE libri_worker; SELECT libri.claim_image_upload('" +
+			library +
+			"','" +
+			upload +
+			"','" +
+			token +
+			"');",
+		{ expiry: true, validate: denied }
+	);
+	reset();
 }

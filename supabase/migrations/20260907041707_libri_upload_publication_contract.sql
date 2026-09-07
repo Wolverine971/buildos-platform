@@ -283,6 +283,9 @@ BEGIN
 		OR item.expires_at <= stamp THEN RETURN NULL; END IF;
 	SELECT processing.* INTO work FROM libri.image_upload_processing processing
 	WHERE processing.upload_id = item.id FOR UPDATE;
+	-- A processing-row wait can cross either deadline; do not return a stale claim.
+	stamp := clock_timestamp();
+	IF item.expires_at <= stamp THEN RETURN NULL; END IF;
 	IF work.upload_id IS NOT NULL AND work.lease_token = p_lease_token THEN
 		-- Ambiguous claim retries reuse the token, never extend time or consume an attempt.
 		IF work.status <> 'leased' OR work.lease_expires_at <= stamp THEN RETURN NULL; END IF;
