@@ -302,6 +302,136 @@ describe('DocumentModal document loading', () => {
 		expect(interactDock).toHaveAttribute('aria-hidden', 'false');
 	}, 10_000);
 
+	it('opens full agentic chat from the header with this document in focus', async () => {
+		await agentChatModalModule;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((input: RequestInfo | URL) => {
+				if (String(input).includes('/documents/document-a/full')) {
+					return Promise.resolve(documentResponse('document-a', 'Document A'));
+				}
+				return Promise.resolve(jsonResponse({ data: {} }));
+			})
+		);
+		const view = render(DocumentModal, {
+			props: { projectId: 'project-1', documentId: 'document-a', isOpen: true }
+		});
+		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
+		const button = screen.getByRole('button', { name: 'Chat about this document' });
+		expect(button.closest('.document-modal-header')).not.toBeNull();
+		expect(button.querySelector('img')).toHaveAttribute('src', '/brain-bolt.webp');
+		await fireEvent.click(button);
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Document A' })).toBeInTheDocument()
+		);
+		expect(screen.getByRole('button', { name: 'Clear focus' })).toBeInTheDocument();
+		expect(screen.queryByLabelText('Document interaction')).not.toBeInTheDocument();
+		await view.rerender({ projectId: 'project-1', documentId: 'document-a', isOpen: false });
+		await waitFor(() =>
+			expect(screen.queryByRole('button', { name: 'Clear focus' })).not.toBeInTheDocument()
+		);
+	}, 10_000);
+
+	it('keeps conflicts paused through further typing and a failed explicit overwrite', async () => {
+		const writes: Record<string, unknown>[] = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+				if (String(input).includes('/documents/document-a/full')) {
+					return Promise.resolve(documentResponse('document-a', 'Document A'));
+				}
+				if (init?.method === 'PATCH') {
+					writes.push(JSON.parse(String(init.body)));
+					return Promise.resolve(
+						jsonResponse({ error: 'Save failed' }, writes.length === 1 ? 409 : 500)
+					);
+				}
+				return Promise.resolve(jsonResponse({ data: {} }));
+			})
+		);
+		render(DocumentModal, {
+			props: { projectId: 'project-1', documentId: 'document-a', isOpen: true }
+		});
+		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
+		await fireEvent.input(screen.getByLabelText('Document title'), {
+			target: { value: 'My draft' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+		await waitFor(() => expect(screen.getByText(/autosave is paused/)).toBeInTheDocument());
+		await fireEvent.input(screen.getByLabelText('Document title'), {
+			target: { value: 'More local edits' }
+		});
+		await new Promise((resolve) => setTimeout(resolve, 2100));
+		expect(writes).toHaveLength(1);
+		expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+		expect(screen.getByDisplayValue('More local edits')).toBeInTheDocument();
+		expect(screen.getByText(/autosave is paused/)).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Overwrite' }));
+		await waitFor(() => expect(writes).toHaveLength(2));
+		expect(writes[1]).not.toHaveProperty('expected_updated_at');
+		await waitFor(() => expect(screen.getByText(/autosave is paused/)).toBeInTheDocument());
+		await fireEvent.input(screen.getByLabelText('Document title'), {
+			target: { value: 'Still my draft' }
+		});
+		await new Promise((resolve) => setTimeout(resolve, 2100));
+		expect(writes).toHaveLength(2);
+		expect(screen.getByDisplayValue('Still my draft')).toBeInTheDocument();
+	}, 10_000);
+
+	it('serializes autosaves and uses the returned timestamp without losing in-flight edits', async () => {
+		const firstSave = deferred<Response>();
+		const writes: Record<string, unknown>[] = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+				if (String(input).includes('/documents/document-a/full')) {
+					return Promise.resolve(documentResponse('document-a', 'Document A'));
+				}
+				if (init?.method === 'PATCH') {
+					writes.push(JSON.parse(String(init.body)));
+					return writes.length === 1
+						? firstSave.promise
+						: Promise.resolve(
+								jsonResponse({
+									data: {
+										document: {
+											id: 'document-a',
+											updated_at: '2026-01-03T00:00:00.000Z'
+										}
+									}
+								})
+							);
+				}
+				return Promise.resolve(jsonResponse({ data: {} }));
+			})
+		);
+		render(DocumentModal, {
+			props: { projectId: 'project-1', documentId: 'document-a', isOpen: true }
+		});
+		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
+		await fireEvent.input(screen.getByLabelText('Document title'), {
+			target: { value: 'First edit' }
+		});
+		await waitFor(() => expect(writes).toHaveLength(1), { timeout: 3000 });
+		await fireEvent.input(screen.getByLabelText('Document title'), {
+			target: { value: 'Second edit' }
+		});
+		await new Promise((resolve) => setTimeout(resolve, 2100));
+		expect(writes).toHaveLength(1);
+		firstSave.resolve(
+			jsonResponse({
+				data: { document: { id: 'document-a', updated_at: '2026-01-02T00:00:00.000Z' } }
+			})
+		);
+		await waitFor(() => expect(writes).toHaveLength(2));
+		expect(writes[1]).toMatchObject({
+			title: 'Second edit',
+			expected_updated_at: '2026-01-02T00:00:00.000Z'
+		});
+		expect(screen.getByDisplayValue('Second edit')).toBeInTheDocument();
+		expect(screen.queryByText(/autosave is paused/)).not.toBeInTheDocument();
+	}, 10_000);
+
 	it('portals the More actions menu above the modal clipping context', async () => {
 		const fetchMock = vi.fn((input: RequestInfo | URL) => {
 			const url = String(input);

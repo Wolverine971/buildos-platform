@@ -405,8 +405,10 @@
 
 	async function trapFocus() {
 		if (!modalElement) return;
+		const openingElement = modalElement;
 
 		await tick();
+		if (!isOpen || modalElement !== openingElement) return;
 
 		const focusableElements = visibleFocusableElements();
 

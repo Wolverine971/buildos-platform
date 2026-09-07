@@ -2,7 +2,7 @@
 
 # BuildOS Document Service
 
-> Last updated: 2026-08-27
+> Last updated: 2026-09-07
 
 **Status:** Vision written, design-reviewed against production, scope revised, direction ratified
 2026-08-26. **Step 1 and Step 1.5 are complete. The Step 2 signature-interaction vertical slice is
@@ -13,7 +13,12 @@ project Overview.** Steps 4–7 are unstarted. The base ontology migration alrea
 canonical `(document_id, number)` uniqueness constraint; there is no P0 index prerequisite for
 WS-1.
 
-> **Implementing agent, start here:**
+**2026-09-07 correction:** Ordinary saves can falsely conflict because the proposal-era generated
+`content_hash` was missing from the timestamp trigger's cache exclusions. The recovery review below
+records the reproduced cause, migration, and editor safeguards. The earlier completion labels are
+historical implementation milestones, not evidence of a finished end-to-end editor.
+
+> **Step 3 continuation:**
 > [`STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md`](./STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md).
 > It records the completed production backfill, live and missing-index slices, canonical-source
 > rules, and the next bounded pieces of Step 3.
@@ -25,6 +30,12 @@ a _project drive_, where documents live inside real project structure, an agent 
 true, and the work is safe enough to hold things you cannot afford to lose.
 
 ## Start here
+
+- [Editor status and autosave recovery, Sept 7](./EDITOR_STATUS_AND_RECOVERY_2026-09-07.md) —
+  **current review.** Restores the header Brain Bolt and diagnoses a production timestamp-trigger
+  regression introduced by the generated content hash. The migration and conflict-pause fixes
+  are prepared and locally validated; production rollout remains. Includes the current seven-step
+  status and the next bounded editor completion pass.
 
 - [Step 3 START HERE live-index handoff](./STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md) —
   **in progress, updated 2026-08-27.** Production snapshot coverage is complete. The project

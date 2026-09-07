@@ -29,7 +29,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
 	import { portal } from '$lib/actions/portal';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -61,6 +61,7 @@
 	import { findNodeById, enrichTreeNodes } from '$lib/services/ontology/doc-structure.service';
 	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import type { VoiceNote } from '$lib/types/voice-notes';
+	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { formatDateForDisplay, formatDateTimeForDisplay } from '$lib/utils/date-utils';
@@ -122,6 +123,10 @@
 	let PlanEditModalComponent = $state<PlanEditModalLazy>(null);
 	let GoalEditModalComponent = $state<GoalEditModalLazy>(null);
 	let DocumentModalComponent = $state<DocumentModalLazy>(null);
+	let AgentChatModalComponent = $state<
+		typeof import('$lib/components/agent/AgentChatModal.svelte').default | null
+	>(null);
+	let showChatModal = $state(false);
 
 	interface Props {
 		projectId: string;
@@ -330,7 +335,7 @@
 		}
 		autosaveTimer = setTimeout(() => {
 			autosaveTimer = null;
-			if (!hasUnsavedChanges || !isEditing || loading) return;
+			if (!hasUnsavedChanges || !isEditing || loading || saveStatus === 'conflict') return;
 			if (saving) {
 				autosaveQueued = true;
 				return;
@@ -350,7 +355,8 @@
 		const _state = stateKey;
 		const _editing = isEditing;
 
-		if (!_editing || !lastSavedSnapshot || loading) return;
+		const status = untrack(() => saveStatus);
+		if (!_editing || !lastSavedSnapshot || loading || status === 'conflict') return;
 
 		// Check if anything actually changed
 		const changed =
@@ -360,7 +366,7 @@
 			_state !== lastSavedSnapshot.stateKey;
 
 		if (changed) {
-			saveStatus = 'dirty';
+			if (status !== 'saving') saveStatus = 'dirty';
 			scheduleAutosave();
 		}
 	});
@@ -375,6 +381,17 @@
 
 	// Active document ID - prefers internal state (for newly created docs)
 	const activeDocumentId = $derived(internalDocumentId);
+	const documentChatFocus = $derived<ProjectFocus | null>(
+		activeDocumentId
+			? {
+					focusType: 'document',
+					focusEntityId: activeDocumentId,
+					focusEntityName: title || 'Untitled Document',
+					projectId,
+					projectName: 'Project'
+				}
+			: null
+	);
 
 	const isArchivedDocument = $derived(stateKey === 'archived');
 	const stateOptions = $derived.by(() =>
@@ -695,6 +712,7 @@
 		selectedDocumentIdForModal = null;
 		linkedEntityModalSession = null;
 		isDocumentInteractOpen = false;
+		showChatModal = false;
 		documentInteractSession = null;
 		documentInteractObservedMutation = false;
 		documentProposalSelection = null;
@@ -1802,9 +1820,20 @@
 
 	/** Internal save logic shared by autosave and manual save */
 	async function performSave(
-		options: { silent?: boolean; forceVersion?: boolean; blockingUi?: boolean } = {}
+		options: {
+			silent?: boolean;
+			forceVersion?: boolean;
+			blockingUi?: boolean;
+			overwrite?: boolean;
+		} = {}
 	): Promise<boolean> {
-		const { silent = false, forceVersion = false, blockingUi = false } = options;
+		const {
+			silent = false,
+			forceVersion = false,
+			blockingUi = false,
+			overwrite = false
+		} = options;
+		if (saveStatus === 'conflict' && !overwrite) return false;
 		const session = captureDocumentSession();
 		const requestedDocumentId = activeDocumentId;
 		const wasCreating = !requestedDocumentId;
@@ -1825,7 +1854,7 @@
 			stateKey
 		};
 		const requestedTypeKey = typeKey.trim();
-		const expectedUpdatedAt = serverUpdatedAt;
+		const expectedUpdatedAt = overwrite ? null : serverUpdatedAt;
 		const requestedPublicPageState = publicPageState;
 
 		try {
@@ -1901,6 +1930,7 @@
 
 			if (request.status === 409) {
 				// Conflict detected - server version is newer
+				clearAutosaveTimers();
 				saveStatus = 'conflict';
 				formError = null;
 				lastSavePublishedLive = false;
@@ -1973,6 +2003,9 @@
 
 			// Capture snapshot of what we just saved
 			captureSnapshot(snapshotAtRequest);
+			// A document mutation can arrive while this save response is in flight.
+			// Acknowledge our saved snapshot without clearing that newer conflict.
+			if (untrack(() => saveStatus === 'conflict')) return false;
 
 			// Show saved status briefly, then return to idle
 			lastSavePublishedLive = liveSyncSynced;
@@ -2036,7 +2069,7 @@
 				metadata: session.taskId ? { taskId: session.taskId } : undefined
 			});
 			formError = message;
-			saveStatus = 'error';
+			saveStatus = overwrite || saveStatus === 'conflict' ? 'conflict' : 'error';
 			lastSavePublishedLive = false;
 			if (!silent) {
 				toastService.error(message);
@@ -2064,7 +2097,8 @@
 	}
 
 	async function handleAutosave() {
-		if (!isEditing || !hasUnsavedChanges || saving || loading) return;
+		if (!isEditing || !hasUnsavedChanges || saving || loading || saveStatus === 'conflict')
+			return;
 		if (!title.trim()) return; // Don't autosave without a title
 		await performSave({ silent: true });
 	}
@@ -2082,17 +2116,16 @@
 	/** Reload the document from server (used for conflict resolution) */
 	async function handleConflictReload() {
 		if (!activeDocumentId) return;
-		saveStatus = 'idle';
+		clearAutosaveTimers();
 		formError = null;
 		await loadDocument(activeDocumentId);
 	}
 
 	/** Force-overwrite the server version (used for conflict resolution) */
 	async function handleConflictOverwrite() {
-		// Clear serverUpdatedAt so the next save won't include conflict check
-		serverUpdatedAt = null;
-		saveStatus = 'dirty';
-		await performSave({ silent: false, forceVersion: true, blockingUi: true });
+		if (!validateForm()) return;
+		clearAutosaveTimers();
+		await performSave({ silent: false, forceVersion: true, blockingUi: true, overwrite: true });
 	}
 
 	type ArchiveMode = 'archive_children' | 'promote_children' | 'unlink_children';
@@ -2371,6 +2404,25 @@
 	}
 
 	// Document interaction handlers
+	async function openChatAbout() {
+		if (!activeDocumentId || !projectId) return;
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
+		try {
+			const module = await import('$lib/components/agent/AgentChatModal.svelte');
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
+			AgentChatModalComponent = module.default;
+			isDocumentInteractOpen = false;
+			documentInteractSession = session;
+			documentInteractObservedMutation = false;
+			showChatModal = true;
+		} catch {
+			if (isCurrentDocumentMutation(session, requestedDocumentId)) {
+				toastService.error('Document chat could not be loaded. Please try again.');
+			}
+		}
+	}
+
 	function openDocumentInteract() {
 		if (!activeDocumentId || !projectId) return;
 		// The bottom workbench should own the secondary vertical space on phones
@@ -2396,15 +2448,23 @@
 	) {
 		if (!session || !isCurrentDocumentSession(session)) return;
 		isDocumentInteractOpen = false;
+		showChatModal = false;
 		documentInteractSession = null;
 
 		// Immediate document events already handled the editor refresh/conflict.
 		// Keep this as a compatibility fallback for older or incomplete event payloads.
 		if (documentInteractObservedMutation) return;
 		if (!summary?.hasChanges || !activeDocumentId) return;
-		if (hasUnsavedChanges || saveStatus === 'dirty' || saveStatus === 'saving') {
+		if (
+			hasUnsavedChanges ||
+			saveStatus === 'dirty' ||
+			saveStatus === 'saving' ||
+			saveStatus === 'conflict'
+		) {
+			clearAutosaveTimers();
+			saveStatus = 'conflict';
 			toastService.warning(
-				'The agent updated the saved document. Finish saving your local edits, then reopen the document to load the latest version.'
+				'The agent updated the saved document. Resolve the conflict before saving your local edits.'
 			);
 			return;
 		}
@@ -3491,6 +3551,16 @@
 						<MessageCircle class="h-4 w-4 shrink-0" />
 						<span class="hidden md:inline">Document Interact</span>
 					</button>
+					<button
+						type="button"
+						onclick={openChatAbout}
+						disabled={loading || blockingSave}
+						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+						title="Chat about this document"
+						aria-label="Chat about this document"
+					>
+						<img src="/brain-bolt.webp" alt="" class="w-6 h-6 rounded object-cover" />
+					</button>
 				{/if}
 				<!-- Close button -->
 				<button
@@ -4061,13 +4131,15 @@
 							<div class="flex items-center gap-2 flex-1 min-w-0">
 								<AlertTriangle class="w-4 h-4 text-warning shrink-0" />
 								<span class="text-sm text-warning">
-									This document was modified by someone else.
+									The saved document changed. Your local edits are preserved;
+									autosave is paused.
 								</span>
 							</div>
 							<div class="flex items-center gap-2 shrink-0">
 								<button
 									type="button"
 									onclick={handleConflictReload}
+									disabled={saving || loading}
 									class="text-xs font-medium px-2.5 py-1 rounded-md bg-warning/15 text-warning hover:bg-warning/25 transition-colors pressable"
 								>
 									Reload latest
@@ -4075,6 +4147,7 @@
 								<button
 									type="button"
 									onclick={handleConflictOverwrite}
+									disabled={saving || loading}
 									class="text-xs font-medium px-2.5 py-1 rounded-md bg-card border border-border text-foreground hover:bg-muted transition-colors pressable"
 								>
 									Overwrite
@@ -4236,7 +4309,7 @@
 					variant="primary"
 					size="sm"
 					loading={blockingSave}
-					disabled={saving || isArchivedDocument}
+					disabled={saving || isArchivedDocument || saveStatus === 'conflict'}
 					class="text-xs h-8 pressable tx tx-grain tx-weak wt-card"
 				>
 					<Save class="w-3.5 h-3.5" />
@@ -4246,6 +4319,16 @@
 		</div>
 	{/snippet}
 </Modal>
+
+{#if showChatModal && AgentChatModalComponent && documentChatFocus}
+	{@const chatSession = documentInteractSession}
+	<AgentChatModalComponent
+		isOpen={showChatModal}
+		initialProjectFocus={documentChatFocus}
+		onDocumentMutation={(event) => handleDocumentInteractMutation(chatSession, event)}
+		onClose={(summary) => handleDocumentInteractClose(chatSession, summary)}
+	/>
+{/if}
 
 {#if activeDocumentId}
 	<DocDeleteConfirmModal
