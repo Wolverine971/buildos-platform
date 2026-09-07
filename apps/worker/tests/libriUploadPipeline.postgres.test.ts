@@ -10,6 +10,10 @@ import { createLibriUploadProcessing } from '../src/workers/libri/uploadProcessi
 import { createLibriUploadDownloadAuthorizer } from '../src/workers/libri/uploadDownloadAuthorizer';
 import { createLibriUploadImageDownloader } from '../src/workers/libri/uploadImageDownload';
 import { createLibriUploadImageVerifier } from '../src/workers/libri/uploadImageVerifier';
+import {
+	createLibriUploadPublisher,
+	type LibriPublicationPorts
+} from '../src/workers/libri/uploadPublication';
 import { signLibriUploadDownload } from '../../web/src/lib/server/libri/upload-download-signing';
 
 const available = ['initdb', 'pg_ctl', 'psql'].every(
@@ -77,9 +81,11 @@ describePostgres(
 			for (const file of [
 				'supabase/tests/fixtures/libri_images_private_storage_base.sql',
 				'scripts/database/provision-libri-worker-role.sql',
+				'scripts/database/provision-libri-frontend-reader-role.sql',
 				'supabase/migrations/20260906184227_libri_private_image_upload_admission.sql',
 				'supabase/migrations/20260906201700_libri_upload_processing_leases.sql',
-				'supabase/migrations/20260907015150_libri_upload_download_authorization.sql'
+				'supabase/migrations/20260907015150_libri_upload_download_authorization.sql',
+				'supabase/migrations/20260907041707_libri_upload_publication_contract.sql'
 			])
 				execFileSync('psql', [...psql, '-f', resolve(root, file)], {
 					stdio: 'pipe',
@@ -123,6 +129,9 @@ describePostgres(
 		}, 60_000);
 		beforeEach(async () => {
 			// Only this test's newly created database is addressable through this socket.
+			await admin.query(
+				'DELETE FROM libri.image_upload_publications; DELETE FROM libri.images; DELETE FROM libri.source_book_links; DELETE FROM libri.sources; DELETE FROM storage.objects'
+			);
 			await admin.query(
 				'DELETE FROM libri.image_upload_processing; DELETE FROM libri.image_upload_intents'
 			);
@@ -274,5 +283,158 @@ describePostgres(
 				(await admin.query('SELECT status FROM libri.image_upload_intents')).rows[0].status
 			).toBe('awaiting_verification');
 		});
+
+		it.each(['published', 'revoked', 'unknown_commit', 'failed_storage', 'rollback'])(
+			'publishes verified bytes through real SQL roles without unsafe compensation: %s',
+			async (scenario) => {
+				const declaration = {
+					filename: 'page.png',
+					imageType: 'page',
+					mimeType: 'image/png' as const,
+					byteSize: bytes.length,
+					sha256: createHash('sha256').update(bytes).digest('hex')
+				};
+				const actor = await admin.connect();
+				let uploadId: string;
+				try {
+					await actor.query('BEGIN; SET LOCAL ROLE authenticated');
+					await actor.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [
+						userId
+					]);
+					uploadId = (
+						await actor.query(
+							'SELECT (libri.reserve_image_upload($1,$2,$3,$4::jsonb)).id AS id',
+							[libraryId, bookId, randomUUID(), JSON.stringify(declaration)]
+						)
+					).rows[0].id;
+					await actor.query('SELECT libri.submit_image_upload($1,$2)', [
+						libraryId,
+						uploadId
+					]);
+					await actor.query('COMMIT');
+				} catch (cause) {
+					await actor.query('ROLLBACK');
+					throw cause;
+				} finally {
+					actor.release();
+				}
+				const processing = createLibriUploadProcessing(worker);
+				const claim = await processing.claim({
+					libraryId,
+					uploadId,
+					leaseToken: randomUUID()
+				});
+				if (!claim) throw new Error('Expected actual worker claim');
+				const verified = await createLibriUploadImageVerifier().verify({
+					body: new Response(new Uint8Array(bytes)).body!,
+					declaration,
+					signal: new AbortController().signal
+				});
+				const fence = [libraryId, uploadId, claim.leaseToken, claim.attempt];
+				const objectId = randomUUID();
+				let savedCompletion: unknown[] = [];
+				const createObject = vi.fn<LibriPublicationPorts['createObject']>(async (input) => {
+					expect(input.upsert).toBe(false);
+					expect(input.bytes).toEqual(bytes);
+					if (scenario === 'failed_storage') throw new Error('Simulated Storage outage');
+					// Disposable Storage metadata plus the asserted owned byte payload, not hosted Storage.
+					await admin.query(
+						'INSERT INTO storage.objects(id,bucket_id,name) VALUES($1,$2,$3)',
+						[objectId, input.publication.bucketId, input.publication.objectPath]
+					);
+					if (scenario === 'revoked')
+						await admin.query("UPDATE libri.library_members SET role='viewer'");
+					return { storageObjectId: objectId };
+				});
+				const publisher = createLibriUploadPublisher({
+					prepare: async (input) =>
+						(
+							await service.query(
+								'SELECT libri.prepare_image_upload_publication($1,$2,$3,$4,$5::jsonb) AS receipt',
+								[...fence, JSON.stringify(input.verified)]
+							)
+						).rows[0].receipt,
+					createObject,
+					finalize: async (input) => {
+						savedCompletion = [
+							...fence,
+							input.publicationId,
+							input.storageObjectId,
+							JSON.stringify(input.verified)
+						];
+						const connection = await service.connect();
+						try {
+							await connection.query('BEGIN');
+							const result = (
+								await connection.query(
+									'SELECT libri.finalize_image_upload_publication($1,$2,$3,$4,$5,$6,$7::jsonb) AS receipt',
+									savedCompletion
+								)
+							).rows[0].receipt;
+							if (scenario === 'rollback')
+								throw new Error('Simulated failed transaction');
+							await connection.query('COMMIT');
+							if (scenario === 'unknown_commit')
+								throw new Error('Simulated lost commit response');
+							return result;
+						} catch (cause) {
+							await connection.query('ROLLBACK');
+							throw cause;
+						} finally {
+							connection.release();
+						}
+					}
+				});
+				const result = publisher.publish({
+					claim,
+					verified,
+					signal: new AbortController().signal
+				});
+				if (scenario === 'published') expect((await result).alreadyPublished).toBe(false);
+				else
+					await expect(result).rejects.toMatchObject({
+						code: 'publication_outcome_unknown',
+						mayHaveWrittenObject: true
+					});
+				expect(createObject).toHaveBeenCalledOnce();
+				const committed = ['published', 'unknown_commit'].includes(scenario);
+				const pub = (await admin.query('SELECT * FROM libri.image_upload_publications'))
+					.rows[0];
+				expect(pub.status).toBe(committed ? 'published' : 'prepared');
+				expect(pub.followup_status).toBe(committed ? 'pending' : null);
+				expect(
+					(await admin.query('SELECT count(*)::integer AS n FROM libri.images')).rows[0].n
+				).toBe(committed ? 1 : 0);
+				expect(
+					(await admin.query('SELECT count(*)::integer AS n FROM libri.sources')).rows[0]
+						.n
+				).toBe(committed ? 1 : 0);
+				expect(
+					(await admin.query('SELECT count(*)::integer AS n FROM storage.objects'))
+						.rows[0].n
+				).toBe(scenario === 'failed_storage' ? 0 : 1);
+				if (committed) {
+					expect(
+						await processing.claim({ libraryId, uploadId, leaseToken: randomUUID() })
+					).toBeNull();
+					expect(
+						await processing.fail({ ...claim, failureCode: 'storage_unavailable' })
+					).toBe(false);
+					const again = (
+						await service.query(
+							'SELECT libri.finalize_image_upload_publication($1,$2,$3,$4,$5,$6,$7::jsonb) AS receipt',
+							savedCompletion
+						)
+					).rows[0].receipt;
+					expect(again.already_published).toBe(true);
+					expect(again.image_id).toBe(pub.id);
+					expect(createObject).toHaveBeenCalledOnce();
+				}
+				expect(
+					(await admin.query('SELECT status FROM libri.image_upload_intents')).rows[0]
+						.status
+				).toBe('awaiting_verification');
+			}
+		);
 	}
 );
