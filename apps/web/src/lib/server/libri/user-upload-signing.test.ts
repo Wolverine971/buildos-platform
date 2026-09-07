@@ -261,6 +261,7 @@ describe('private Libri upload signer', () => {
 		{ object_path: `${library}/books/${book}/images/${upload}/original.webp` },
 		{ object_path: path + '/../../replace' },
 		{ status: 'awaiting_verification' },
+		{ status: 'cleanup_pending' },
 		{ submitted_at: new Date().toISOString() },
 		{ signing_deadline: 'invalid' },
 		{ expires_at: new Date(Date.now() + 90_000_000).toISOString() },
