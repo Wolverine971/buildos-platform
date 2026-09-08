@@ -13,10 +13,17 @@ project Overview.** Steps 4–7 are unstarted. The base ontology migration alrea
 canonical `(document_id, number)` uniqueness constraint; there is no P0 index prerequisite for
 WS-1.
 
-**2026-09-07 correction:** Ordinary saves can falsely conflict because the proposal-era generated
+**2026-09-07 correction:** Ordinary saves were falsely conflicting because the proposal-era generated
 `content_hash` was missing from the timestamp trigger's cache exclusions. The recovery review below
 records the reproduced cause, migration, and editor safeguards. The earlier completion labels are
 historical implementation milestones, not evidence of a finished end-to-end editor.
+The corrected trigger and search-path hardening are now verified in production, and their migration
+ledger entries are reconciled. Application rollout and full live-flow verification remain.
+
+**2026-09-07 continuation:** Step 2 now has save/apply serialization, functional reselection,
+request cancellation, voice-state guards, and keyboard-focus recovery. Focused regression tests
+and desktop/phone browser checks cover the local interaction; live model, microphone, and
+live persistence acceptance remain. Local restore, history, and comparison acceptance are recorded below.
 
 > **Step 3 continuation:**
 > [`STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md`](./STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md).
@@ -31,11 +38,22 @@ true, and the work is safe enough to hold things you cannot afford to lose.
 
 ## Start here
 
+- [History reliability and migration verification, Sept 7](./HISTORY_RELIABILITY_AND_MIGRATIONS_2026-09-07.md) —
+  **latest continuation.** Fixes stale history/comparison responses, snapshot caching, refresh
+  selection, and shortcut scope. Records verified production migrations and the remaining
+  application rollout gates.
+- [Restore safety and acceptance, Sept 7](./RESTORE_SAFETY_AND_ACCEPTANCE_2026-09-07.md) —
+  **restore pass.** Adds a recovery checkpoint before restore, guarded writes, reviewed
+  snapshot checks, sealed restore history, and restore/refresh locking. Records the observed
+  production timestamp-trigger fix and the remaining deployment verification.
+- [Step 2 editor acceptance, Sept 7](./STEP_2_EDITOR_ACCEPTANCE_2026-09-07.md) —
+  **interaction pass.** Fixes the save → ask → review → apply interaction and records automated
+  and synthetic browser evidence, with the remaining production acceptance gates.
 - [Editor status and autosave recovery, Sept 7](./EDITOR_STATUS_AND_RECOVERY_2026-09-07.md) —
-  **current review.** Restores the header Brain Bolt and diagnoses a production timestamp-trigger
-  regression introduced by the generated content hash. The migration and conflict-pause fixes
-  are prepared and locally validated; production rollout remains. Includes the current seven-step
-  status and the next bounded editor completion pass.
+  **initial audit.** Restores the header Brain Bolt and reproduces the timestamp-trigger
+  regression introduced by the generated content hash. Records the seven-step status and the
+  first conflict-pause safeguards; the later migration and acceptance notes above supersede its
+  rollout status.
 
 - [Step 3 START HERE live-index handoff](./STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md) —
   **in progress, updated 2026-08-27.** Production snapshot coverage is complete. The project
@@ -94,6 +112,7 @@ Ordered by the revised sequence (roadmap §8).
 3. **Step 2 proposal interaction** — 🟡 vertical slice implemented, migrated, and database-validated
    2026-08-26. Anchors, typed/voice instruction, immutable persistence, diff review, deterministic
    apply, conflict handling, revision boundary, server-owned mutations, and telemetry are present.
+   The Sept 7 continuation fixes client lifecycle gaps and adds local interaction acceptance.
    Complete visual/E2E rollout before calling Switching Bar item 3.3 shipped.
 4. **START HERE live index** — 🟡 projection, production coverage, and missing recovery implemented
    by 2026-08-27. The maintained project README uses the existing `<!-- managed:* -->` primitive;

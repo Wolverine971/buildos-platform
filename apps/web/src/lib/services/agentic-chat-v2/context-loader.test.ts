@@ -2,6 +2,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { START_HERE_CONTEXT_LOAD_MAX_CHARS } from '@buildos/shared-agent-ops/ontology/start-here';
 import { loadFastChatPromptContext } from './context-loader';
+import { compactPreparedPromptContextPayload } from './prepared-prompt-cache';
+import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
+import { FOCUSED_DOCUMENT_CONTENT_MAX_CHARS } from './focused-document-context';
 
 type QueryResult = {
 	data: any;
@@ -1302,6 +1305,66 @@ describe('loadFastChatPromptContext global', () => {
 		).toEqual(['task-b', 'doc-z', 'proj-2']);
 		expect(projectThree.recent_activity).toEqual([]);
 	});
+});
+
+describe('focused document initial context', () => {
+	it.each([
+		['trailing whitespace', 'Meeting notes.\n\n## Email\nsetup cheap\n\n\n\n'],
+		['longer than the former preview', 'Meeting notes\n'.repeat(400)],
+		['empty document', ''],
+		['bounded large document', 'x'.repeat(FOCUSED_DOCUMENT_CONTENT_MAX_CHARS + 1)]
+	])(
+		'preserves %s through the loader, prepared cache and initial prompt',
+		async (_label, content) => {
+			const projectId = '11111111-1111-4111-8111-111111111111';
+			const documentId = '22222222-2222-4222-8222-222222222222';
+			const context = await loadFastChatPromptContext({
+				supabase: createProjectRpcSupabaseMock({
+					project: { id: projectId, name: 'Website', state_key: 'active' },
+					focus_entity_full: {
+						id: documentId,
+						project_id: projectId,
+						title: 'Notes',
+						content
+					},
+					linked_entities: {},
+					linked_edges: []
+				}),
+				userId: 'user-1',
+				contextType: 'project',
+				entityId: projectId,
+				projectFocus: {
+					projectId,
+					projectName: 'Website',
+					focusType: 'document',
+					focusEntityId: documentId,
+					focusEntityName: 'Notes'
+				}
+			});
+			const cached = compactPreparedPromptContextPayload({ ...context });
+			const focus = (cached.data as Record<string, any>).focus_entity_full;
+			const expected = content.slice(0, FOCUSED_DOCUMENT_CONTENT_MAX_CHARS);
+			expect(focus).toMatchObject({
+				content_preview: expected,
+				content_length: content.length,
+				content_truncated: content.length > expected.length
+			});
+			const envelope = buildLitePromptEnvelope({ ...context, data: cached.data, tools: [] });
+			const section =
+				envelope.sections.find((section) => section.id === 'focus_purpose')?.content ?? '';
+			expect(section).toContain(expected);
+			if (content.length > expected.length) {
+				expect(section).toContain('Focus document excerpt');
+				expect(section).toContain('16000 of 16001 chars');
+			} else {
+				expect(section).toContain('Focus document content (complete, already loaded');
+				expect(section).not.toContain('for the rest');
+				expect(section).toContain(
+					'Do not call get_onto_document_details or read_document_section to load it again'
+				);
+			}
+		}
+	);
 });
 
 describe('loadFastChatPromptContext fallback bounds and focus safety', () => {

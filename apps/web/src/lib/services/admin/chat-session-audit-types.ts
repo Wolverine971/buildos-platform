@@ -47,6 +47,7 @@ export interface AuditTurnRun {
 	client_turn_id: string | null;
 	status: string;
 	finished_reason: string | null;
+	failure_code?: string | null;
 	context_type: string;
 	entity_id: string | null;
 	project_id: string | null;

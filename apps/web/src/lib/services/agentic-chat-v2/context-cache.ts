@@ -4,7 +4,7 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { buildAgenticChatContextCacheKeyInput, normalizeAgenticChatContextType } from './scope';
 
 export const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
-export const FASTCHAT_CONTEXT_CACHE_VERSION = 2;
+export const FASTCHAT_CONTEXT_CACHE_VERSION = 3;
 
 export type FastChatPromptContextSnapshot = {
 	contextType: ChatContextType;

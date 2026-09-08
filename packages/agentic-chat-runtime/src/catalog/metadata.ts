@@ -755,7 +755,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: [
 			'Uses versioned live-web discovery with Advanced depth by default',
 			'Optional domain allow/deny lists',
-			'Fetches the best two of the top four source pages concurrently',
+			'Returns ranked sources and snippets; use web_visit to read promising pages',
 			'Returns bounded snippets plus versioned source-page evidence for BuildOS synthesis',
 			'Carries stable page-version and evidence-chunk citation coordinates when available',
 			'Pair it with a document write to keep findings as project knowledge'

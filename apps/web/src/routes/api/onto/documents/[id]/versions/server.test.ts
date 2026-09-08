@@ -43,11 +43,12 @@ function createVersionQuery(result: QueryResult = { data: [], error: null, count
 	return query;
 }
 
-function createEvent(userIdFilter: string, actorId: string | null) {
-	const versionQuery = createVersionQuery();
+function createEvent(userIdFilter: string, actorId: string | null, versions?: QueryResult) {
+	const versionQuery = createVersionQuery(versions);
 	const actorQuery = {
 		select: vi.fn(),
 		eq: vi.fn(),
+		in: vi.fn().mockResolvedValue({ data: [{ id: 'actor-1', name: 'Editor' }], error: null }),
 		maybeSingle: vi.fn().mockResolvedValue({
 			data: actorId ? { id: actorId } : null,
 			error: null
@@ -94,6 +95,29 @@ describe('GET /api/onto/documents/[id]/versions actor filter', () => {
 			projectId: 'project-1'
 		});
 		mocks.logOntologyApiError.mockReset().mockResolvedValue(undefined);
+	});
+
+	it('presents a recent restore checkpoint as sealed instead of still absorbing edits', async () => {
+		const { event } = createEvent('', null, {
+			data: [
+				{
+					id: 'version-3',
+					number: 3,
+					created_by: 'actor-1',
+					created_at: new Date().toISOString(),
+					props: { restore_of_version: 1, restored_by_user_id: 'user-1' }
+				}
+			],
+			error: null,
+			count: 1
+		});
+		const response = await GET(event as never);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({
+			data: {
+				versions: [{ number: 3, is_restore: true, is_open: false, restore_of_version: 1 }]
+			}
+		});
 	});
 
 	it('uses a read-only visible actor lookup instead of provisioning the filtered user', async () => {

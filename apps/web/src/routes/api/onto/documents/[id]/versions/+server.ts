@@ -238,7 +238,9 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 				change_source: (props.change_source as string) ?? null,
 				is_merged: (props.is_merged as boolean) ?? false,
 				is_open:
-					isNewest && isVersionWindowOpen({ window, createdAt: v.created_at }, { now }),
+					isNewest &&
+					!props.restore_of_version &&
+					isVersionWindowOpen({ window, createdAt: v.created_at }, { now }),
 				is_restore: Boolean(props.restore_of_version),
 				restored_by_user_id: (props.restored_by_user_id as string) ?? null,
 				restore_of_version: (props.restore_of_version as number) ?? null

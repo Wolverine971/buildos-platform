@@ -46,6 +46,7 @@ export interface TimelineToolExecutionRow {
 	execution_time_ms?: number | null;
 	tokens_consumed?: number | null;
 	success?: boolean | null;
+	status?: AgentTimelineItemStatus;
 	error_message?: string | null;
 	requires_user_action?: boolean | null;
 	affected_entities?: unknown;
@@ -266,9 +267,16 @@ function projectRefFromEntity(ref: AgentTimelineEntityRef | null): AgentTimeline
 
 function toolSummaryTitle(execution: TimelineToolExecutionRow): string {
 	const op = execution.gateway_op || execution.tool_name || 'tool';
-	const status = normalizeStatus(execution.success);
-	const prefix =
-		status === 'failed' ? 'Failed' : status === 'needs_input' ? 'Needs input' : 'Ran';
+	const status = execution.status ?? normalizeStatus(execution.success);
+	const prefix = {
+		failed: 'Failed',
+		needs_input: 'Needs input',
+		running: 'Running',
+		pending: 'Pending',
+		cancelled: 'Cancelled',
+		completed: 'Ran',
+		partial: 'Partially ran'
+	}[status];
 	return `${prefix} ${humanizeIdentifier(op)}`;
 }
 
@@ -301,7 +309,7 @@ function buildToolTimelineItem(
 	const timestamp = fallbackTimestamp(execution.created_at);
 	const status = execution.requires_user_action
 		? 'needs_input'
-		: normalizeStatus(execution.success);
+		: (execution.status ?? normalizeStatus(execution.success));
 
 	return {
 		id: `tool_execution:${execution.id}`,
@@ -738,7 +746,8 @@ function timelineItemsForThinkingActivity(
 				numberValue(metadata.durationMs) ?? numberValue(metadata.duration_ms),
 			tokens_consumed:
 				numberValue(metadata.tokensConsumed) ?? numberValue(metadata.tokens_consumed),
-			success: activity.status !== 'failed',
+			status: normalizeStatus(activity.status ?? 'pending'),
+			success: activity.status === 'completed',
 			error_message: stringValue(metadata.error),
 			requires_user_action:
 				booleanValue(metadata.requiresUserAction) ??

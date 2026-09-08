@@ -1085,9 +1085,11 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		// warms across sessions. Acting passes keep the per-session key because
 		// their prefix is the session's own prompt.
 		const promptCacheKey =
-			input.passRole === 'contract_review' || input.passRole === 'mutation_review'
-				? REVIEWER_PROMPT_CACHE_KEY
-				: input.sessionId;
+			input.passRole === 'research_review'
+				? 'buildos:research-review:v1'
+				: input.passRole === 'contract_review' || input.passRole === 'mutation_review'
+					? REVIEWER_PROMPT_CACHE_KEY
+					: input.sessionId;
 		if (route.kind === 'openrouter') {
 			return buildOpenRouterChatCompletionBody({
 				model: route.model,
@@ -1965,7 +1967,7 @@ function validateToolSurface(input: ClientInput): void {
 	}
 	const seen = new Set<string>();
 	for (const tool of input.tools) {
-		validateReadToolDefinition(tool, seen);
+		validateReadToolDefinition(tool, seen, input.passRole);
 	}
 }
 
@@ -1998,6 +2000,7 @@ function canonicalProviderPassRole(
 		role !== 'acting' &&
 		role !== 'contract_review' &&
 		role !== 'mutation_review' &&
+		role !== 'research_review' &&
 		role !== 'repair' &&
 		role !== 'final_response'
 	) {
@@ -2008,7 +2011,8 @@ function canonicalProviderPassRole(
 
 function validateReadToolDefinition(
 	tool: AgenticChatTurnProviderToolV1 | undefined,
-	seen: Set<string>
+	seen: Set<string>,
+	passRole?: AgenticChatProviderPassRoleV1
 ): void {
 	if (
 		tool?.type !== 'function' ||
@@ -2017,7 +2021,8 @@ function validateReadToolDefinition(
 		!tool.function.name ||
 		tool.function.name !== tool.function.name.trim() ||
 		(!isAgenticChatProductionReadToolNameV1(tool.function.name) &&
-			reviewedAgenticChatMutationSpecV1(tool.function.name) === null) ||
+			reviewedAgenticChatMutationSpecV1(tool.function.name) === null &&
+			!(passRole === 'research_review' && tool.function.name === 'review_web_search')) ||
 		seen.has(tool.function.name) ||
 		typeof tool.function.description !== 'string' ||
 		!tool.function.description.trim() ||

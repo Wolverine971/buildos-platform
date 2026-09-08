@@ -29,7 +29,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
 	import { portal } from '$lib/actions/portal';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -51,7 +51,9 @@
 	import DocumentVersionRestoreModal from './DocumentVersionRestoreModal.svelte';
 	import DocumentComparisonView from './DocumentComparisonView.svelte';
 	import DocumentInteractDock from './DocumentInteractDock.svelte';
-	import DocumentProposalReview from './DocumentProposalReview.svelte';
+	import DocumentProposalReview, {
+		type DocumentProposalApplyReceipt
+	} from './DocumentProposalReview.svelte';
 	import DocumentVoiceNotesPanel from './DocumentVoiceNotesPanel.svelte';
 	import DocMoveModal from './doc-tree/DocMoveModal.svelte';
 	import DocDeleteConfirmModal from './doc-tree/DocDeleteConfirmModal.svelte';
@@ -300,6 +302,14 @@
 	};
 	let documentProposalSelection = $state.raw<DocumentProposalSelection | null>(null);
 	let documentProposalApplyLocked = $state(false);
+	let documentProposalVoiceBusy = $state(false);
+	let documentProposalInstruction = $state('');
+	let documentVersionRestoreLocked = $state(false);
+	const documentMutationLocked = $derived(
+		documentProposalApplyLocked || documentVersionRestoreLocked
+	);
+	const documentControlsLocked = $derived(blockingSave || documentMutationLocked);
+	let activeSavePromise: Promise<boolean> | null = null;
 
 	/** Whether content has changed vs. last-saved snapshot */
 	const hasUnsavedChanges = $derived.by(() => {
@@ -335,7 +345,14 @@
 		}
 		autosaveTimer = setTimeout(() => {
 			autosaveTimer = null;
-			if (!hasUnsavedChanges || !isEditing || loading || saveStatus === 'conflict') return;
+			if (
+				!hasUnsavedChanges ||
+				!isEditing ||
+				loading ||
+				documentMutationLocked ||
+				saveStatus === 'conflict'
+			)
+				return;
 			if (saving) {
 				autosaveQueued = true;
 				return;
@@ -356,7 +373,14 @@
 		const _editing = isEditing;
 
 		const status = untrack(() => saveStatus);
-		if (!_editing || !lastSavedSnapshot || loading || status === 'conflict') return;
+		if (
+			!_editing ||
+			!lastSavedSnapshot ||
+			loading ||
+			documentMutationLocked ||
+			status === 'conflict'
+		)
+			return;
 
 		// Check if anything actually changed
 		const changed =
@@ -408,7 +432,11 @@
 		() => !isEditing && Boolean(title.trim() || description.trim() || body.trim())
 	);
 	const isCloseBlocked = $derived(
-		blockingSave || saveStatus === 'saving' || editorIsRecording || editorIsTranscribing
+		documentControlsLocked ||
+			documentProposalVoiceBusy ||
+			saveStatus === 'saving' ||
+			editorIsRecording ||
+			editorIsTranscribing
 	);
 	const shouldPromptBeforeClose = $derived.by(
 		() => !isCloseBlocked && (hasUnsavedChanges || hasDraftContent)
@@ -609,13 +637,13 @@
 	// Version history state
 	let showRestoreModal = $state(false);
 	let selectedVersionForRestore = $state<VersionListItem | null>(null);
-	let latestVersionNumber = $state(0);
 	let versionHistoryPanelRef = $state<{ refresh: () => void } | null>(null);
 	let isAdminUser = $state(false);
 	let lastAdminAccessProjectId = $state<string | null>(null);
 
 	// Inline comparison mode state
 	let comparisonMode = $state(false);
+	let comparisonRefreshKey = $state(0);
 	let comparisonFromVersion = $state<number | null>(null);
 	let comparisonToVersion = $state<number | 'current'>(1);
 	let comparisonLatestVersion = $state(1);
@@ -717,6 +745,9 @@
 		documentInteractObservedMutation = false;
 		documentProposalSelection = null;
 		documentProposalApplyLocked = false;
+		documentVersionRestoreLocked = false;
+		documentProposalVoiceBusy = false;
+		documentProposalInstruction = '';
 		showRestoreModal = false;
 		selectedVersionForRestore = null;
 		restoreModalSession = null;
@@ -1818,20 +1849,39 @@
 		);
 	}
 
+	type DocumentSaveOptions = {
+		silent?: boolean;
+		forceVersion?: boolean;
+		blockingUi?: boolean;
+		overwrite?: boolean;
+		requireVersion?: boolean;
+	};
+
+	function performSave(options: DocumentSaveOptions = {}): Promise<boolean> {
+		if (saving) return saveDocument(options);
+		const request = saveDocument(options);
+		activeSavePromise = request;
+		return request.finally(() => {
+			if (activeSavePromise === request) activeSavePromise = null;
+		});
+	}
+
+	async function waitForDocumentSave(session: DocumentSession, id: string): Promise<boolean> {
+		while (saving && activeSavePromise) {
+			const saved = await activeSavePromise;
+			if (!saved || !isCurrentDocumentMutation(session, id)) return false;
+		}
+		return !saving && isCurrentDocumentMutation(session, id);
+	}
+
 	/** Internal save logic shared by autosave and manual save */
-	async function performSave(
-		options: {
-			silent?: boolean;
-			forceVersion?: boolean;
-			blockingUi?: boolean;
-			overwrite?: boolean;
-		} = {}
-	): Promise<boolean> {
+	async function saveDocument(options: DocumentSaveOptions = {}): Promise<boolean> {
 		const {
 			silent = false,
 			forceVersion = false,
 			blockingUi = false,
-			overwrite = false
+			overwrite = false,
+			requireVersion = false
 		} = options;
 		if (saveStatus === 'conflict' && !overwrite) return false;
 		const session = captureDocumentSession();
@@ -2049,7 +2099,7 @@
 				if (!isSaveSessionCurrent()) return false;
 			}
 
-			return true;
+			return !requireVersion || !versionWarning;
 		} catch (error) {
 			if (!isSaveSessionCurrent()) return false;
 			const message = error instanceof Error ? error.message : 'Failed to save document';
@@ -2097,7 +2147,14 @@
 	}
 
 	async function handleAutosave() {
-		if (!isEditing || !hasUnsavedChanges || saving || loading || saveStatus === 'conflict')
+		if (
+			!isEditing ||
+			!hasUnsavedChanges ||
+			saving ||
+			loading ||
+			documentMutationLocked ||
+			saveStatus === 'conflict'
+		)
 			return;
 		if (!title.trim()) return; // Don't autosave without a title
 		await performSave({ silent: true });
@@ -2105,6 +2162,7 @@
 
 	async function handleSave(event?: SubmitEvent) {
 		event?.preventDefault();
+		if (documentMutationLocked) return;
 		if (autosaveTimer) {
 			clearTimeout(autosaveTimer);
 			autosaveTimer = null;
@@ -2523,6 +2581,13 @@
 		markdown: string;
 	}) {
 		if (!activeDocumentId || !selection.markdown || loading) return;
+		if (
+			documentMutationLocked ||
+			documentProposalVoiceBusy ||
+			editorIsRecording ||
+			editorIsTranscribing
+		)
+			return;
 		if (saveStatus === 'conflict') {
 			toastService.warning('Resolve the document conflict before creating a proposal.');
 			return;
@@ -2531,6 +2596,11 @@
 		const session = captureDocumentSession();
 		const requestedDocumentId = activeDocumentId;
 		const baseContent = body;
+		if (!(await waitForDocumentSave(session, requestedDocumentId))) return;
+		if (body !== baseContent) {
+			toastService.warning('The document changed while saving. Select the passage again.');
+			return;
+		}
 		if (hasUnsavedChanges) {
 			if (autosaveTimer) {
 				clearTimeout(autosaveTimer);
@@ -2558,23 +2628,34 @@
 	}
 
 	function closeDocumentProposal() {
+		documentProposalInstruction = '';
+		documentProposalVoiceBusy = false;
 		documentProposalSelection = null;
 		documentProposalApplyLocked = false;
 		markdownEditorRef?.focus?.();
+	}
+
+	function reselectDocumentProposal(instruction: string) {
+		closeDocumentProposal();
+		documentProposalInstruction = instruction;
+		toastService.info('Select the latest passage and choose Ask. Your instruction is kept.');
 	}
 
 	async function prepareDocumentProposalApply(
 		selection: DocumentProposalSelection
 	): Promise<boolean> {
 		if (!isCurrentDocumentMutation(selection.session, selection.documentId)) return false;
+		if (editorIsRecording || editorIsTranscribing) {
+			toastService.warning(
+				'Finish recording and transcription before applying the proposal.'
+			);
+			return false;
+		}
 		if (saveStatus === 'conflict') {
 			toastService.warning('Resolve the document conflict before applying this proposal.');
 			return false;
 		}
-		if (saving || saveStatus === 'saving') {
-			toastService.warning('Wait for the current save to finish, then apply the proposal.');
-			return false;
-		}
+		if (!(await waitForDocumentSave(selection.session, selection.documentId))) return false;
 
 		if (autosaveTimer) {
 			clearTimeout(autosaveTimer);
@@ -2593,24 +2674,57 @@
 		return isCurrentDocumentMutation(selection.session, selection.documentId);
 	}
 
-	async function handleDocumentProposalApplied(selection: DocumentProposalSelection) {
+	async function handleDocumentProposalApplied(
+		selection: DocumentProposalSelection,
+		receipt: DocumentProposalApplyReceipt
+	) {
 		if (!isCurrentDocumentMutation(selection.session, selection.documentId)) return;
 		const editorState = markdownEditorRef?.captureViewState() ?? null;
 		documentProposalSelection = null;
-		await loadDocument(selection.documentId);
-		if (!isCurrentDocumentMutation(selection.session, selection.documentId) || formError)
-			return;
-		await markdownEditorRef?.restoreViewState(editorState);
-		versionHistoryPanelRef?.refresh();
-		toastService.success('Proposal applied and added to version history.');
-		onSaved?.();
+		documentProposalInstruction = '';
+		try {
+			if (receipt.versionWarning) toastService.warning(receipt.versionWarning);
+			await loadDocument(selection.documentId);
+			if (!isCurrentDocumentMutation(selection.session, selection.documentId)) return;
+			if (formError) {
+				toastService.warning(
+					'The proposal was applied, but the document could not be refreshed. Reopen it to load the saved change.'
+				);
+			} else {
+				await tick();
+				if (!isCurrentDocumentMutation(selection.session, selection.documentId)) return;
+				await markdownEditorRef?.restoreViewState(editorState);
+				versionHistoryPanelRef?.refresh();
+				if (!receipt.versionWarning)
+					toastService.success('Proposal applied and added to version history.');
+			}
+			onSaved?.();
+		} finally {
+			if (isCurrentDocumentMutation(selection.session, selection.documentId)) {
+				documentProposalApplyLocked = false;
+				await tick();
+				if (
+					!formError &&
+					isCurrentDocumentMutation(selection.session, selection.documentId)
+				) {
+					markdownEditorRef?.focus?.();
+				}
+			}
+		}
 	}
 
 	// Version history handlers
-	function handleRestoreRequested(version: VersionListItem, latestVersion: number) {
+	function handleRestoreRequested(version: VersionListItem) {
+		if (
+			documentMutationLocked ||
+			loading ||
+			editorIsRecording ||
+			editorIsTranscribing ||
+			documentProposalVoiceBusy
+		)
+			return;
 		restoreModalSession = captureDocumentSession();
 		selectedVersionForRestore = version;
-		latestVersionNumber = latestVersion;
 		showRestoreModal = true;
 	}
 
@@ -2621,22 +2735,75 @@
 		restoreModalSession = null;
 	}
 
+	async function prepareVersionRestore(session: DocumentSession | null): Promise<string | null> {
+		if (
+			!session ||
+			!isCurrentDocumentSession(session) ||
+			!activeDocumentId ||
+			editorIsRecording ||
+			editorIsTranscribing ||
+			documentProposalVoiceBusy ||
+			saveStatus === 'conflict'
+		)
+			return null;
+		const id = activeDocumentId;
+		if (!(await waitForDocumentSave(session, id))) return null;
+		clearAutosaveTimers();
+		// A forced checkpoint keeps the pre-restore content recoverable, including
+		// edits that otherwise would still be in the autosave coalescing window.
+		const saved = await performSave({
+			silent: true,
+			forceVersion: true,
+			blockingUi: true,
+			requireVersion: true
+		});
+		return saved && isCurrentDocumentMutation(session, id) ? serverUpdatedAt : null;
+	}
+
 	async function handleVersionRestored(session: DocumentSession | null) {
 		if (!session || !isCurrentDocumentSession(session) || !activeDocumentId) return;
 		const requestedDocumentId = activeDocumentId;
+		const editorState = markdownEditorRef?.captureViewState() ?? null;
 		showRestoreModal = false;
 		selectedVersionForRestore = null;
 		restoreModalSession = null;
-		// Reload the document to show restored content
-		await loadDocument(requestedDocumentId);
-		if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
-		// Refresh version history panel
-		versionHistoryPanelRef?.refresh();
-		onSaved?.();
+		documentProposalSelection = null;
+		documentProposalInstruction = '';
+		comparisonMode = false;
+		try {
+			await loadDocument(requestedDocumentId);
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
+			if (formError) {
+				toastService.warning(
+					'The version was restored, but the document could not be refreshed. Reopen it to load the saved content.'
+				);
+			} else {
+				await tick();
+				if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
+				await markdownEditorRef?.restoreViewState(editorState);
+				versionHistoryPanelRef?.refresh();
+			}
+			onSaved?.();
+		} finally {
+			if (isCurrentDocumentMutation(session, requestedDocumentId)) {
+				documentVersionRestoreLocked = false;
+				await tick();
+				if (!formError && isCurrentDocumentMutation(session, requestedDocumentId))
+					markdownEditorRef?.focus?.();
+			}
+		}
 	}
 
 	// Inline comparison mode handlers
 	function handleEnterComparison(versionNumber: number, latestVersion: number) {
+		if (
+			documentMutationLocked ||
+			editorIsRecording ||
+			editorIsTranscribing ||
+			documentProposalVoiceBusy
+		)
+			return;
+		comparisonRefreshKey += 1;
 		comparisonLatestVersion = latestVersion;
 		comparisonFromVersion = versionNumber > 1 ? versionNumber - 1 : null;
 		comparisonToVersion = versionNumber;
@@ -3052,7 +3219,7 @@
 				error={Boolean(titleFieldError)}
 				size="sm"
 				class="text-sm font-medium"
-				disabled={blockingSave}
+				disabled={documentControlsLocked}
 			/>
 		</FormField>
 
@@ -3069,7 +3236,7 @@
 				bind:value={description}
 				placeholder="Short summary"
 				rows={2}
-				disabled={blockingSave}
+				disabled={documentControlsLocked}
 				size="sm"
 			/>
 		</FormField>
@@ -3087,7 +3254,7 @@
 				bind:value={stateKey}
 				size="sm"
 				class="w-full text-xs"
-				disabled={blockingSave || isArchivedDocument}
+				disabled={documentControlsLocked || isArchivedDocument}
 			>
 				{#each stateOptions as option (option.value)}
 					<option value={option.value}>{option.label}</option>
@@ -3129,7 +3296,7 @@
 		variant="ghost"
 		size="sm"
 		onclick={openMoveModal}
-		disabled={blockingSave || treeLoading}
+		disabled={documentControlsLocked || treeLoading}
 		class="w-full text-xs justify-start px-2 h-8 pressable"
 		title="Move to another location"
 	>
@@ -3262,7 +3429,7 @@
 				variant="outline"
 				size="sm"
 				onclick={handleMakeDocumentPublic}
-				disabled={blockingSave || publicPageActionLoading || isArchivedDocument}
+				disabled={documentControlsLocked || publicPageActionLoading || isArchivedDocument}
 				class="w-full text-xs justify-center"
 			>
 				<Globe class="w-3.5 h-3.5" />
@@ -3334,7 +3501,7 @@
 	onBeforeClose={handleModalBeforeClose}
 	size="xl"
 	closeOnBackdrop={false}
-	closeOnEscape={!blockingSave}
+	closeOnEscape={!documentControlsLocked}
 	enableGestures={false}
 	showCloseButton={false}
 	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container !max-h-[calc(100dvh-var(--keyboard-height,0px))] !h-[calc(100dvh-var(--keyboard-height,0px))] sm:!h-auto sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg"
@@ -3423,7 +3590,7 @@
 							}
 							showExportMenu = !showExportMenu;
 						}}
-						disabled={blockingSave || loading || exportingFormat !== null}
+						disabled={documentControlsLocked || loading || exportingFormat !== null}
 						class="flex h-9 w-9 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 						title="More actions"
 						aria-label="More actions"
@@ -3454,7 +3621,7 @@
 										showExportMenu = false;
 										handleCopyDocumentPageUrl();
 									}}
-									disabled={blockingSave || loading}
+									disabled={documentControlsLocked || loading}
 									class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 									role="menuitem"
 								>
@@ -3467,7 +3634,7 @@
 										showExportMenu = false;
 										handleOpenDocumentPage();
 									}}
-									disabled={blockingSave || loading}
+									disabled={documentControlsLocked || loading}
 									class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 									role="menuitem"
 								>
@@ -3535,7 +3702,7 @@
 					<button
 						type="button"
 						onclick={toggleDocumentInteract}
-						disabled={loading || blockingSave}
+						disabled={loading || documentControlsLocked}
 						class="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold shadow-ink transition-all pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper {isDocumentInteractOpen
 							? 'border-accent bg-accent text-accent-foreground hover:bg-accent/90'
 							: 'border-accent/30 bg-accent/10 text-accent hover:border-accent/60 hover:bg-accent/15'}"
@@ -3554,7 +3721,7 @@
 					<button
 						type="button"
 						onclick={openChatAbout}
-						disabled={loading || blockingSave}
+						disabled={loading || documentControlsLocked}
 						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 						title="Chat about this document"
 						aria-label="Chat about this document"
@@ -3656,7 +3823,7 @@
 										entityType="document"
 										entityId={activeDocumentId}
 										entityTitle={title || 'Document'}
-										disabled={blockingSave || isArchivedDocument}
+										disabled={documentControlsLocked || isArchivedDocument}
 									/>
 								{/if}
 
@@ -3904,6 +4071,7 @@
 										state_key: stateKey
 									}}
 									latestVersionNumber={comparisonLatestVersion}
+									refreshKey={comparisonRefreshKey}
 									onExit={handleExitComparison}
 									onNavigate={handleComparisonNavigate}
 								/>
@@ -3915,7 +4083,7 @@
 											bind:this={markdownEditorRef}
 											bind:value={body}
 											onSave={handleSave}
-											disabled={documentProposalApplyLocked}
+											disabled={documentMutationLocked}
 											maxLength={50000}
 											helpText=""
 											fillHeight={true}
@@ -3936,21 +4104,40 @@
 									</div>
 									{#if documentProposalSelection}
 										{@const proposalSelection = documentProposalSelection}
-										<DocumentProposalReview
-											documentId={proposalSelection.documentId}
-											documentTitle={title || 'Untitled Document'}
-											baseContent={proposalSelection.baseContent}
-											selectionFrom={proposalSelection.from}
-											selectionTo={proposalSelection.to}
-											selectedMarkdown={proposalSelection.markdown}
-											onBeforeApply={() =>
-												prepareDocumentProposalApply(proposalSelection)}
-											onApplyStateChange={(applying) =>
-												(documentProposalApplyLocked = applying)}
-											onApplied={() =>
-												handleDocumentProposalApplied(proposalSelection)}
-											onClose={closeDocumentProposal}
-										/>
+										{#key proposalSelection}
+											<DocumentProposalReview
+												documentId={proposalSelection.documentId}
+												initialInstruction={documentProposalInstruction}
+												documentTitle={title || 'Untitled Document'}
+												baseContent={proposalSelection.baseContent}
+												selectionFrom={proposalSelection.from}
+												selectionTo={proposalSelection.to}
+												selectedMarkdown={proposalSelection.markdown}
+												onBeforeApply={() =>
+													prepareDocumentProposalApply(proposalSelection)}
+												onApplyStateChange={(applying) => {
+													if (
+														documentProposalSelection ===
+														proposalSelection
+													)
+														documentProposalApplyLocked = applying;
+												}}
+												onVoiceStateChange={(busy) => {
+													if (
+														documentProposalSelection ===
+														proposalSelection
+													)
+														documentProposalVoiceBusy = busy;
+												}}
+												onApplied={(receipt) =>
+													handleDocumentProposalApplied(
+														proposalSelection,
+														receipt
+													)}
+												onReselect={reselectDocumentProposal}
+												onClose={closeDocumentProposal}
+											/>
+										{/key}
 									{/if}
 								</div>
 							{/if}
@@ -4022,7 +4209,8 @@
 													entityType="document"
 													entityId={activeDocumentId}
 													entityTitle={title || 'Document'}
-													disabled={blockingSave || isArchivedDocument}
+													disabled={documentControlsLocked ||
+														isArchivedDocument}
 												/>
 											{/if}
 
@@ -4246,7 +4434,7 @@
 							variant="ghost"
 							size="sm"
 							onclick={handleRestore}
-							disabled={restoring || blockingSave}
+							disabled={restoring || documentControlsLocked}
 							class="text-xs px-2 h-8 pressable"
 						>
 							<RotateCcw class="w-3.5 h-3.5" />
@@ -4281,7 +4469,7 @@
 								variant="ghost"
 								size="sm"
 								onclick={handleCreateChild}
-								disabled={blockingSave}
+								disabled={documentControlsLocked}
 								class="text-xs px-2 h-8 pressable"
 								title="Create child document"
 							>
@@ -4308,8 +4496,11 @@
 					form={documentFormId}
 					variant="primary"
 					size="sm"
-					loading={blockingSave}
-					disabled={saving || isArchivedDocument || saveStatus === 'conflict'}
+					loading={documentControlsLocked}
+					disabled={saving ||
+						documentMutationLocked ||
+						isArchivedDocument ||
+						saveStatus === 'conflict'}
 					class="text-xs h-8 pressable tx tx-grain tx-weak wt-card"
 				>
 					<Save class="w-3.5 h-3.5" />
@@ -4708,21 +4899,28 @@
 <!-- Version Restore Modal -->
 {#if showRestoreModal && selectedVersionForRestore && activeDocumentId}
 	{@const modalSession = restoreModalSession}
-	<DocumentVersionRestoreModal
-		bind:isOpen={showRestoreModal}
-		documentId={activeDocumentId}
-		{projectId}
-		version={{
-			number: selectedVersionForRestore.number,
-			created_by_name: selectedVersionForRestore.created_by_name,
-			created_at: selectedVersionForRestore.created_at,
-			window: selectedVersionForRestore.window,
-			snapshot_hash: selectedVersionForRestore.snapshot_hash
-		}}
-		{latestVersionNumber}
-		onClose={() => handleRestoreModalClose(modalSession)}
-		onRestored={() => handleVersionRestored(modalSession)}
-	/>
+	{#key modalSession}
+		<DocumentVersionRestoreModal
+			bind:isOpen={showRestoreModal}
+			documentId={activeDocumentId}
+			{projectId}
+			version={{
+				number: selectedVersionForRestore.number,
+				created_by_name: selectedVersionForRestore.created_by_name,
+				created_at: selectedVersionForRestore.created_at,
+				window: selectedVersionForRestore.window,
+				snapshot_hash: selectedVersionForRestore.snapshot_hash
+			}}
+			expectedUpdatedAt={serverUpdatedAt}
+			onBeforeRestore={() => prepareVersionRestore(modalSession)}
+			onRestoreStateChange={(restoringVersion) => {
+				if (modalSession && isCurrentDocumentSession(modalSession) && showRestoreModal)
+					documentVersionRestoreLocked = restoringVersion;
+			}}
+			onClose={() => handleRestoreModalClose(modalSession)}
+			onRestored={() => handleVersionRestored(modalSession)}
+		/>
+	{/key}
 {/if}
 
 <!-- Move Document Modal -->

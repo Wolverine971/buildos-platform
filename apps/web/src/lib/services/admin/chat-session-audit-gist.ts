@@ -494,6 +494,7 @@ export const buildTurnSummarySection = (payload: ChatSessionAuditPayload): strin
 			`### Turn ${run.turn_index} · ${run.status}`,
 			'',
 			metricLine('Finished reason', run.finished_reason),
+			...(run.failure_code ? [metricLine('Failure code', run.failure_code)] : []),
 			metricLine('First lane', run.first_lane),
 			metricLine('First canonical op', run.first_canonical_op),
 			metricLine('Tool rounds / calls', `${run.tool_round_count} / ${run.tool_call_count}`),

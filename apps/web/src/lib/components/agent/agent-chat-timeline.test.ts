@@ -78,6 +78,33 @@ describe('agent-chat-timeline ask draft', () => {
 });
 
 describe('agent-chat-timeline safe JSON expansion', () => {
+	it.each(['pending', 'running', 'cancelled', 'failed'] as const)(
+		'does not mark a %s tool announcement completed',
+		(status) => {
+			const items = timelineItemsFromMessages('session-1', [
+				{
+					id: 'thinking',
+					type: 'thinking_block',
+					status: 'error',
+					activities: [
+						{
+							id: 'call',
+							activityType: 'tool_call',
+							status,
+							timestamp: new Date('2026-09-07T20:09:06Z'),
+							metadata: {
+								toolName: 'web_search',
+								arguments: { query: 'Mailchimp pricing' }
+							}
+						}
+					]
+				} as any
+			]);
+			expect(items.find((item) => item.kind === 'tool')).toMatchObject({ status });
+			expect(items[0]?.title).not.toMatch(/^Ran /);
+		}
+	);
+
 	it('includes pretty full JSON for safe tool args and results', () => {
 		const items = buildAgentTimeline({
 			sessionId: 'session-1',

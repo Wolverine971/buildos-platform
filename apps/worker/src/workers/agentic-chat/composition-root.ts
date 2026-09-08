@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import { createAgentRunWebResearchPort } from '../agent-run/webResearchPort';
+import { createAgenticChatWebSearchReviewer } from './tools/web-search-review';
 import type { AgenticChatQueueAgeClient } from './capacity';
 import {
 	AgenticChatWorkerCapacityCollector,
@@ -293,7 +294,10 @@ export function createAgenticChatCompositionRoot(options: {
 		mutationCapabilities
 	);
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
-		webResearch: options.webResearch ?? createAgentRunWebResearchPort()
+		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),
+		webSearchReviewer: createAgenticChatWebSearchReviewer(
+			options.semanticReviewerClient ?? options.providerClient
+		)
 	});
 	const calendarWrites =
 		options.calendarWrites ??

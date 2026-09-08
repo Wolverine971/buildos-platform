@@ -51,7 +51,7 @@ export type AgenticChatToolExecutionPersistInputV1 = AgenticChatExecutionIdentit
 export type AgenticChatToolFailurePersistInputV1 = AgenticChatExecutionIdentityV1 & {
 	userId: string;
 	executionGeneration: number;
-	failureKind: 'validation' | 'mutation' | 'dependency_failed';
+	failureKind: 'validation' | 'mutation' | 'dependency_failed' | 'read_policy' | 'read_failure';
 	toolExecutionId: string;
 	sequenceIndex: number;
 	providerToolCallId: string;
@@ -301,6 +301,8 @@ function validateFailureInput(input: AgenticChatToolFailurePersistInputV1): void
 	if (
 		input.failureKind !== 'validation' &&
 		input.failureKind !== 'mutation' &&
+		input.failureKind !== 'read_policy' &&
+		input.failureKind !== 'read_failure' &&
 		input.failureKind !== 'dependency_failed'
 	) {
 		throw protocolError('failureKind is invalid');

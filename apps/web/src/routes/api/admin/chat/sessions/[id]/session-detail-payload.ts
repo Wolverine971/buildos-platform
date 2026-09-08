@@ -156,6 +156,7 @@ export interface TurnRunRow {
 	assistant_message_id?: string | null;
 	status?: string | null;
 	finished_reason?: string | null;
+	failure_code?: string | null;
 	tool_round_count?: number | string | null;
 	tool_call_count?: number | string | null;
 	validation_failure_count?: number | string | null;
@@ -256,6 +257,7 @@ export interface SessionTurnRunPayload {
 	client_turn_id: string | null;
 	status: string;
 	finished_reason: string | null;
+	failure_code?: string | null;
 	context_type: string;
 	entity_id: string | null;
 	project_id: string | null;
@@ -978,6 +980,7 @@ export const buildSessionDetailPayload = ({
 		client_turn_id: turnRun.client_turn_id ?? null,
 		status: turnRun.status ?? 'running',
 		finished_reason: turnRun.finished_reason ?? null,
+		failure_code: turnRun.failure_code ?? null,
 		context_type: turnRun.context_type ?? sessionRow.context_type ?? 'global',
 		entity_id: turnRun.entity_id ?? null,
 		project_id: turnRun.project_id ?? null,

@@ -47,7 +47,7 @@ function makeSupabase(options: {
 	// Every number the service tried to claim, including the ones a concurrent
 	// writer had already taken — the retry path is only observable here.
 	const attempts: number[] = [];
-	const inserts: Array<{ number: number }> = [];
+	const inserts: Array<{ number: number; props?: unknown }> = [];
 	const taken = new Set(options.taken ?? []);
 	const rereads = [...(options.rereadNumbers ?? [])];
 	let latestSelects = 0;
@@ -80,14 +80,14 @@ function makeSupabase(options: {
 						})
 					})
 				}),
-				insert: (row: { number: number }) => ({
+				insert: (row: { number: number; props?: unknown }) => ({
 					select: () => ({
 						single: async () => {
 							attempts.push(row.number);
 							if (taken.has(row.number)) {
 								return { data: null, error: UNIQUE_VIOLATION };
 							}
-							inserts.push({ number: row.number });
+							inserts.push(row);
 							return {
 								data: { id: `version-${row.number}`, number: row.number },
 								error: null
@@ -234,5 +234,54 @@ describe('createOrMergeDocumentVersion version numbering', () => {
 
 		expect(result).toEqual({ status: 'skipped', reason: 'no_change' });
 		expect(inserts).toHaveLength(0);
+	});
+});
+
+describe('restore checkpoints', () => {
+	it('creates a restore checkpoint even for identical content and carries its provenance', async () => {
+		const { supabase, inserts } = makeSupabase({
+			latest: {
+				id: 'v2',
+				number: 2,
+				created_by: ACTOR_ID,
+				created_at: new Date().toISOString(),
+				props: {}
+			}
+		});
+		const result = await createOrMergeDocumentVersion({
+			supabase,
+			documentId: DOCUMENT_ID,
+			actorId: ACTOR_ID,
+			snapshot: snapshot('same'),
+			previousSnapshot: snapshot('same'),
+			restore: { versionNumber: 1, userId: 'user-1' }
+		});
+		expect(result).toMatchObject({ status: 'created', versionNumber: 3 });
+		expect(inserts[0]?.props).toMatchObject({
+			restore_of_version: 1,
+			restored_by_user_id: 'user-1',
+			is_merged: false
+		});
+	});
+
+	it('starts a new version after a restore so subsequent autosaves cannot alter the restore snapshot', async () => {
+		const { supabase, inserts } = makeSupabase({
+			latest: {
+				id: 'v3',
+				number: 3,
+				created_by: ACTOR_ID,
+				created_at: new Date().toISOString(),
+				props: { restore_of_version: 1, restored_by_user_id: 'user-1' }
+			}
+		});
+		const result = await createOrMergeDocumentVersion({
+			supabase,
+			documentId: DOCUMENT_ID,
+			actorId: ACTOR_ID,
+			snapshot: snapshot('later edit'),
+			previousSnapshot: snapshot('restored')
+		});
+		expect(result).toMatchObject({ status: 'created', versionNumber: 4 });
+		expect(inserts[0]?.props).not.toHaveProperty('restore_of_version');
 	});
 });

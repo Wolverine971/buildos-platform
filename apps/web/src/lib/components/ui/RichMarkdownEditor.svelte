@@ -1319,6 +1319,10 @@
 		return editorRef?.captureViewState() ?? null;
 	}
 
+	export function focus() {
+		editorRef?.focus();
+	}
+
 	export async function restoreViewState(snapshot: EditorViewState | null): Promise<void> {
 		if (!snapshot || mode !== 'edit') return;
 		await tick();
@@ -1361,6 +1365,7 @@
 					<button
 						type="button"
 						role="tab"
+						aria-label="Edit"
 						aria-selected={mode === 'edit'}
 						class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
 						'edit'
@@ -1374,6 +1379,7 @@
 					<button
 						type="button"
 						role="tab"
+						aria-label="Preview"
 						aria-selected={mode === 'preview'}
 						class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
 						'preview'

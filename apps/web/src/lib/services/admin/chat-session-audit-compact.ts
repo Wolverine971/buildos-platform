@@ -296,6 +296,7 @@ export const buildCompactTurnRuns = (turnRuns: AuditTurnRun[]): AuditRecord[] =>
 			client_turn_id: run.client_turn_id,
 			status: run.status,
 			finished_reason: run.finished_reason,
+			failure_code: run.failure_code,
 			context_type: run.context_type,
 			entity_id: run.entity_id,
 			project_id: run.project_id,

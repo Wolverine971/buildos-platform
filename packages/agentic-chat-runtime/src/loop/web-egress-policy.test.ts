@@ -1,6 +1,9 @@
 // packages/agentic-chat-runtime/src/loop/web-egress-policy.test.ts
 import { describe, expect, it } from 'vitest';
-import { evaluateAgenticChatWebEgressProvenance } from './web-egress-policy';
+import {
+	evaluateAgenticChatWebEgressProvenance,
+	normalizeAgenticChatWebSearchArguments
+} from './web-egress-policy';
 
 describe('agentic chat web egress provenance', () => {
 	it('allows only an exact explicitly requested Gmail query', () => {
@@ -51,7 +54,7 @@ describe('agentic chat web egress provenance', () => {
 		).toMatchObject({ allowed: false, reason: 'query_not_explicitly_requested' });
 	});
 
-	it('allows only search text explicitly present in the current user message', () => {
+	it('fast-paths exact searches and requires review for inferred queries', () => {
 		expect(
 			evaluateAgenticChatWebEgressProvenance({
 				toolName: 'web_search',
@@ -65,7 +68,7 @@ describe('agentic chat web egress provenance', () => {
 				arguments: { query: 'private roadmap codename' },
 				userMessage: 'Research the public competitor.'
 			})
-		).toMatchObject({ allowed: false, reason: 'query_not_explicitly_requested' });
+		).toMatchObject({ allowed: false, reason: 'search_review_required' });
 	});
 
 	it('does not treat a negated query or URL as outbound authority', () => {
@@ -85,7 +88,7 @@ describe('agentic chat web egress provenance', () => {
 		).toMatchObject({ allowed: false, reason: 'url_not_explicitly_requested' });
 	});
 
-	it('does not let the model choose a private-context bit from benign message substrings', () => {
+	it('requires semantic review for queries inferred from prose', () => {
 		for (const query of ['alpha', 'beta']) {
 			expect(
 				evaluateAgenticChatWebEgressProvenance({
@@ -93,11 +96,11 @@ describe('agentic chat web egress provenance', () => {
 					arguments: { query },
 					userMessage: 'Please compare alpha and beta.'
 				})
-			).toMatchObject({ allowed: false, reason: 'query_not_explicitly_requested' });
+			).toMatchObject({ allowed: false, reason: 'search_review_required' });
 		}
 	});
 
-	it('rejects model selection when the user supplies multiple explicit search clauses', () => {
+	it('allows multiple explicitly requested search clauses', () => {
 		for (const query of ['alpha pricing', 'beta pricing']) {
 			expect(
 				evaluateAgenticChatWebEgressProvenance({
@@ -105,18 +108,18 @@ describe('agentic chat web egress provenance', () => {
 					arguments: { query },
 					userMessage: 'Search alpha pricing, then search beta pricing.'
 				})
-			).toMatchObject({ allowed: false, reason: 'query_not_explicitly_requested' });
+			).toEqual({ allowed: true });
 		}
 	});
 
-	it('requires one deterministic user URL rather than model selection among several', () => {
+	it('allows comparing multiple user-supplied URLs', () => {
 		expect(
 			evaluateAgenticChatWebEgressProvenance({
 				toolName: 'web_visit',
 				arguments: { url: 'https://alpha.example/' },
 				userMessage: 'Compare https://alpha.example/ and https://beta.example/.'
 			})
-		).toMatchObject({ allowed: false, reason: 'url_not_explicitly_requested' });
+		).toEqual({ allowed: true });
 	});
 
 	it('pins redirect behavior to the server default', () => {
@@ -176,7 +179,7 @@ describe('agentic chat web egress provenance', () => {
 					arguments: arguments_,
 					userMessage: 'Search cats.'
 				})
-			).toMatchObject({ allowed: false, reason: 'query_not_explicitly_requested' });
+			).toEqual({ allowed: true });
 		}
 		expect(
 			evaluateAgenticChatWebEgressProvenance({
@@ -192,7 +195,51 @@ describe('agentic chat web egress provenance', () => {
 		).toEqual({ allowed: true });
 	});
 
-	it('allows user-written URLs but never treats model-selected search results as authority', () => {
+	it('normalizes search settings and rejects malformed provider-facing values', () => {
+		expect(
+			normalizeAgenticChatWebSearchArguments({
+				query: 'cats',
+				max_results: 99,
+				include_answer: true,
+				hidden: 'private'
+			})
+		).toEqual({
+			query: 'cats',
+			search_depth: 'advanced',
+			max_results: 4,
+			include_answer: false
+		});
+		for (const args of [
+			{ query: '' },
+			{ query: 'a'.repeat(1001) },
+			{ query: 'cats', include_domains: ['https://example.com/private'] }
+		])
+			expect(normalizeAgenticChatWebSearchArguments(args)).toBeNull();
+	});
+
+	it('accepts only a server-recorded URL capability and still honors user restrictions', () => {
+		const request = {
+			toolName: 'web_visit',
+			arguments: { url: 'https://docs.example/page' },
+			userMessage: 'Research useful examples.',
+			knownResearchUrl: true
+		};
+		expect(evaluateAgenticChatWebEgressProvenance(request)).toEqual({ allowed: true });
+		expect(
+			evaluateAgenticChatWebEgressProvenance({
+				...request,
+				userMessage: 'Do not open pages.'
+			})
+		).toMatchObject({ allowed: false });
+		expect(
+			evaluateAgenticChatWebEgressProvenance({
+				...request,
+				arguments: { url: 'https://secret@docs.example/page' }
+			})
+		).toMatchObject({ allowed: false });
+	});
+
+	it('allows user URLs and server-recorded search URLs, not invented addresses', () => {
 		expect(
 			evaluateAgenticChatWebEgressProvenance({
 				toolName: 'web_visit',

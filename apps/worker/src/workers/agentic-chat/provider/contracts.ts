@@ -80,6 +80,7 @@ export type AgenticChatProviderPassRoleV1 =
 	| 'acting'
 	| 'contract_review'
 	| 'mutation_review'
+	| 'research_review'
 	| 'repair'
 	| 'final_response';
 

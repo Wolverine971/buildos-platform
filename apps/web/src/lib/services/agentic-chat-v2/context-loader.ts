@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextType, Database } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { createLogger } from '$lib/utils/logger';
+import { buildFocusedDocumentContent } from './focused-document-context';
 import type { DocStructure } from '$lib/types/onto-api';
 import type {
 	DailyBriefContextData,
@@ -84,7 +85,6 @@ const PROJECT_CONTEXT_TASK_FETCH_LIMIT = PROJECT_CONTEXT_TASK_LIMIT * 4;
 const PROJECT_CONTEXT_DOCUMENT_FETCH_LIMIT = PROJECT_CONTEXT_DOCUMENT_LIMIT * 3;
 const GLOBAL_CONTEXT_ENTITY_FETCH_LIMIT = GLOBAL_CONTEXT_PROJECT_LIMIT * 4;
 const START_HERE_CANDIDATE_FETCH_LIMIT = 20;
-const FOCUS_DOCUMENT_CONTENT_PREVIEW_MAX_CHARS = Math.min(1200, START_HERE_CONTEXT_LOAD_MAX_CHARS);
 const PROJECT_DESCRIPTION_MAX_CHARS = 320;
 const ENTITY_DESCRIPTION_MAX_CHARS = 220;
 const TASK_DESCRIPTION_MAX_CHARS = 280;
@@ -237,14 +237,6 @@ function isUuid(value: string | null | undefined): value is string {
 	return typeof value === 'string' && UUID_PATTERN.test(value);
 }
 
-function truncatePreview(value: string | null | undefined, maxChars: number): string | null {
-	if (typeof value !== 'string') return null;
-	const trimmed = value.trim();
-	if (trimmed.length === 0) return null;
-	if (trimmed.length <= maxChars) return trimmed;
-	return trimmed.slice(0, Math.max(0, maxChars - 3)).trimEnd() + '...';
-}
-
 function mapDocumentFocus(row: DocumentRow): Record<string, unknown> {
 	const content = typeof row.content === 'string' ? row.content : null;
 	return {
@@ -254,8 +246,7 @@ function mapDocumentFocus(row: DocumentRow): Record<string, unknown> {
 		description: truncateText(row.description, ENTITY_DESCRIPTION_MAX_CHARS),
 		state_key: row.state_key,
 		type_key: row.type_key,
-		content_length: content?.length ?? null,
-		content_preview: truncatePreview(content, FOCUS_DOCUMENT_CONTENT_PREVIEW_MAX_CHARS),
+		...buildFocusedDocumentContent(content),
 		created_at: row.created_at,
 		updated_at: row.updated_at
 	};

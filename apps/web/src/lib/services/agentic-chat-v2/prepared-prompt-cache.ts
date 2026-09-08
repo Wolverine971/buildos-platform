@@ -9,6 +9,7 @@ import type {
 	LitePromptToolsSummary
 } from '$lib/services/agentic-chat-lite/prompt';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
+import { FOCUSED_DOCUMENT_CONTENT_MAX_CHARS } from './focused-document-context';
 import {
 	resolveGatewaySurfaceProfileForContextType,
 	type GatewaySurfaceProfileName
@@ -184,17 +185,27 @@ function compactPreparedPromptFocusEntity(value: unknown): Record<string, unknow
 		'created_at',
 		'updated_at',
 		'content_length',
-		'content_preview'
+		'content_preview',
+		'content_truncated'
 	]);
 	const output: Record<string, unknown> = {};
 	for (const key of allowedKeys) {
 		if (!(key in value)) continue;
 		const field = value[key];
 		if (typeof field === 'string') {
-			output[key] = truncatePreparedPromptString(field);
+			output[key] =
+				key === 'content_preview'
+					? field.slice(0, FOCUSED_DOCUMENT_CONTENT_MAX_CHARS)
+					: truncatePreparedPromptString(field);
 		} else if (field === null || typeof field === 'number' || typeof field === 'boolean') {
 			output[key] = field;
 		}
+	}
+	if (
+		typeof value.content_preview === 'string' &&
+		value.content_preview.length > FOCUSED_DOCUMENT_CONTENT_MAX_CHARS
+	) {
+		output.content_truncated = true;
 	}
 	return output;
 }

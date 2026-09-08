@@ -137,6 +137,7 @@ export type AgenticChatReadToolPortV1 = {
 		toolName: string;
 		arguments: JsonObject;
 		providerToolCallId: string;
+		processingToken?: string;
 		/** Author of a control-tool decision; undefined for ordinary reads. */
 		decidedBy?: AgenticChatControlDecisionAuthorV1;
 		executionInput: AgenticChatWorkerExecutionInputV1;
@@ -1852,7 +1853,11 @@ export class AgenticChatTurnExecutor {
 		planning: AgenticChatReadPlanningContextV1,
 		markToolExecution: () => void,
 		signal: AbortSignal
-	): Promise<AgenticChatProviderReadSynthesisInputV1 | null> {
+	): Promise<
+		| AgenticChatProviderReadSynthesisInputV1
+		| AgenticChatProviderFailedToolSynthesisInputV1
+		| null
+	> {
 		canonicalUuid(step.callTransitionId, 'callTransitionId');
 		canonicalUuid(step.resultTransitionId, 'resultTransitionId');
 		if (!canonicalText(step.providerToolCallId, 512)) {
@@ -1944,6 +1949,7 @@ export class AgenticChatTurnExecutor {
 			try {
 				toolResult = await abortable(
 					this.ports.readTool.execute({
+						processingToken,
 						toolName: step.toolName,
 						arguments: step.arguments,
 						providerToolCallId: step.providerToolCallId,
@@ -1980,6 +1986,36 @@ export class AgenticChatTurnExecutor {
 					},
 					signal
 				);
+				// Policy denials and failed web lookups produce no usable evidence.
+				// Persist failed receipts and continue; ownership/cancellation errors
+				// and failures of unrelated reads still terminate through recovery.
+				if (
+					!signal.aborted &&
+					error instanceof AgenticChatProviderExecutionError &&
+					(error.code === 'read_tool_egress_blocked_private_content' ||
+						error.code === 'read_tool_egress_provenance_required' ||
+						(['web_search', 'web_visit'].includes(step.toolName) &&
+							[
+								'read_tool_execution_failed',
+								'read_tool_timeout',
+								'read_tool_research_review_unavailable',
+								'read_tool_egress_security_capacity_exceeded',
+								'read_tool_result_too_large',
+								'read_tool_result_invalid'
+							].includes(error.code)))
+				) {
+					return this.persistRecoverableReadFailure(
+						executionInput,
+						processingToken,
+						projection,
+						terminalContext,
+						step,
+						sequenceIndex,
+						error.code,
+						markToolExecution,
+						signal
+					);
+				}
 				throw error;
 			}
 			await logAgenticChatExecutionBoundary(job, executionInput, {
@@ -2183,6 +2219,104 @@ export class AgenticChatTurnExecutor {
 			toolName: step.toolName,
 			arguments: step.arguments,
 			execution: toolResult
+		};
+	}
+
+	private async persistRecoverableReadFailure(
+		executionInput: AgenticChatWorkerExecutionInputV1,
+		processingToken: string,
+		projection: ProjectionState,
+		terminalContext: TerminalContextState,
+		step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' }>,
+		sequenceIndex: number,
+		code: string,
+		markToolExecution: () => void,
+		signal: AbortSignal
+	): Promise<AgenticChatProviderFailedToolSynthesisInputV1> {
+		const policyDenied =
+			code === 'read_tool_egress_blocked_private_content' ||
+			code === 'read_tool_egress_provenance_required';
+		const error =
+			code === 'read_tool_egress_blocked_private_content'
+				? 'Email lookup did not run: mailbox egress is restricted after reading private content.'
+				: code === 'read_tool_egress_provenance_required'
+					? 'External lookup did not run: the query or URL was not authorized for this research request.'
+					: 'Live research did not return usable evidence. The lookup service was unavailable, timed out, or could not complete its checks.';
+		await abortable(
+			this.ports.toolExecutions.persistFailure(
+				{
+					turnRunId: executionInput.claim.turnRunId,
+					queueJobId: executionInput.claim.queueJobId,
+					processingToken,
+					userId: executionInput.claim.userId,
+					executionGeneration: executionInput.claim.executionGeneration,
+					failureKind: policyDenied ? 'read_policy' : 'read_failure',
+					toolExecutionId: createStableAgenticChatToolExecutionIdV1({
+						turnRunId: executionInput.claim.turnRunId,
+						sequenceIndex
+					}),
+					sequenceIndex,
+					providerToolCallId: step.providerToolCallId,
+					toolName: step.toolName,
+					arguments: step.arguments,
+					toolCategory: null,
+					error: `${code}: ${error}`
+				},
+				signal
+			),
+			signal
+		);
+		const result: ChatToolResult = {
+			tool_call_id: step.providerToolCallId,
+			result: null,
+			success: false,
+			error
+		};
+		this.recordTerminalToolExecution(
+			terminalContext,
+			sequenceIndex,
+			providerToolCall(step),
+			result
+		);
+		markToolExecution();
+		await this.publishSemantic(
+			executionInput,
+			projection,
+			{
+				type: 'semantic',
+				transitionId: step.resultTransitionId,
+				phase: 'tool',
+				eventType: 'tool_result',
+				currentActivity: DEFAULT_RUNNING_ACTIVITY,
+				eventPayload: {
+					type: 'tool_result',
+					result: {
+						...result,
+						tool_name: step.toolName,
+						affected_entities: [],
+						error_code: code
+					}
+				}
+			},
+			signal
+		);
+		return {
+			providerToolCallId: step.providerToolCallId,
+			toolName: step.toolName,
+			arguments: step.arguments,
+			failure: {
+				kind: 'known_execution_failure',
+				error,
+				toolCategory: null,
+				modelPayload: {
+					error,
+					error_code: code,
+					executed: policyDenied ? false : null,
+					retryable: false,
+					instruction:
+						'Do not repeat this failed lookup or route around an authorization denial. Continue useful work using loaded context and any successful research results. Disclose which live facts could not be verified; cite only evidence that actually returned.'
+				}
+			}
 		};
 	}
 

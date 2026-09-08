@@ -1,9 +1,16 @@
 <!-- apps/web/src/lib/components/ontology/DocumentProposalReview.svelte -->
+<script module lang="ts">
+	export type DocumentProposalApplyReceipt = { versionWarning: string | null };
+</script>
+
 <script lang="ts">
-	import { AlertTriangle, Check, LoaderCircle, RefreshCcw, Sparkles, X } from 'lucide-svelte';
-	import type { Json } from '@buildos/shared-types';
+	import { onDestroy, tick, untrack } from 'svelte';
+	import { AlertTriangle, Check, LoaderCircle, RefreshCcw, Sparkles, X } from '$lib/icons/lucide';
+	import {
+		assertDocumentPatchIntegrity,
+		type DocumentPatchV1
+	} from '@buildos/shared-agent-ops/ontology/document-patch';
 	import { hashDocumentContent } from '@buildos/shared-agent-ops/utils/document-outline';
-	import type { DocumentPatchV1 } from '@buildos/shared-agent-ops/ontology/document-patch';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import { createDocumentFieldDiff } from '$lib/utils/document-diff';
@@ -13,8 +20,9 @@
 		id: string;
 		status: string;
 		instruction: string;
-		patch: Json;
+		patch: DocumentPatchV1;
 		conflict_reason: string | null;
+		version_warning?: string | null;
 	};
 
 	interface Props {
@@ -24,9 +32,12 @@
 		selectionTo: number;
 		selectedMarkdown: string;
 		documentTitle?: string;
+		initialInstruction?: string;
 		onBeforeApply?: () => boolean | Promise<boolean>;
 		onApplyStateChange?: (applying: boolean) => void;
-		onApplied?: () => void | Promise<void>;
+		onVoiceStateChange?: (busy: boolean) => void;
+		onApplied?: (receipt: DocumentProposalApplyReceipt) => void | Promise<void>;
+		onReselect?: (instruction: string) => void;
 		onClose?: () => void;
 	}
 
@@ -37,31 +48,77 @@
 		selectionTo,
 		selectedMarkdown,
 		documentTitle = '',
+		initialInstruction = '',
 		onBeforeApply,
 		onApplyStateChange,
+		onVoiceStateChange,
 		onApplied,
+		onReselect,
 		onClose
 	}: Props = $props();
 
-	let instruction = $state('');
+	// Each review instance belongs to one captured selection (keyed by the parent).
+	let instruction = $state(untrack(() => initialInstruction));
 	let proposal = $state.raw<Proposal | null>(null);
 	let generating = $state(false);
 	let applying = $state(false);
 	let errorMessage = $state<string | null>(null);
 	let conflictReason = $state<string | null>(null);
 	let replacesProposalId = $state<string | null>(null);
+	let isRecording = $state(false);
+	let isInitializing = $state(false);
+	let isStopping = $state(false);
+	let isTranscribing = $state(false);
+	const voiceBusy = $derived(isRecording || isInitializing || isStopping || isTranscribing);
+	let disposed = false;
+	let refreshingAppliedDocument = false;
+	let requestController: AbortController | null = null;
 
-	const patch = $derived.by(() => {
-		if (
-			!proposal?.patch ||
-			typeof proposal.patch !== 'object' ||
-			Array.isArray(proposal.patch)
-		) {
-			return null;
-		}
-		return proposal.patch as unknown as DocumentPatchV1;
+	$effect(() => {
+		onVoiceStateChange?.(voiceBusy);
 	});
-	const operation = $derived(patch?.operations[0] ?? null);
+
+	onDestroy(() => {
+		disposed = true;
+		requestController?.abort();
+		// Once applied, the parent owns the lock until its refresh completes.
+		// Otherwise release it if a reload removes an unfinished review.
+		if (!refreshingAppliedDocument) onApplyStateChange?.(false);
+		onVoiceStateChange?.(false);
+	});
+
+	function focusInstruction(element: HTMLElement) {
+		let cancelled = false;
+		void tick().then(() => {
+			if (!cancelled && element.isConnected) {
+				element.querySelector('textarea')?.focus({ preventScroll: true });
+			}
+		});
+		return () => {
+			cancelled = true;
+		};
+	}
+
+	function beginRequest() {
+		requestController?.abort();
+		const controller = new AbortController();
+		requestController = controller;
+		const identity = { documentId, baseContent, selectionFrom, selectionTo };
+		return {
+			controller,
+			identity,
+			isCurrent: () =>
+				!disposed &&
+				!controller.signal.aborted &&
+				requestController === controller &&
+				documentId === identity.documentId &&
+				baseContent === identity.baseContent &&
+				selectionFrom === identity.selectionFrom &&
+				selectionTo === identity.selectionTo
+		};
+	}
+
+	const operation = $derived(proposal?.patch.operations[0] ?? null);
 	const diffFields = $derived.by(() => {
 		if (!operation) return [];
 		return [
@@ -75,82 +132,140 @@
 		];
 	});
 
+	function readProposal(value: unknown, expectedDocumentId: string): Proposal {
+		const candidate = value as Proposal | null;
+		if (
+			!candidate ||
+			typeof candidate.id !== 'string' ||
+			typeof candidate.instruction !== 'string' ||
+			!candidate.patch
+		) {
+			throw new Error('The proposal response was incomplete. Please try again.');
+		}
+		assertDocumentPatchIntegrity(candidate.patch);
+		if (
+			candidate.patch.document_id !== expectedDocumentId ||
+			candidate.patch.operations.length !== 1
+		) {
+			throw new Error(
+				'The proposal does not match this document selection. Select the passage again.'
+			);
+		}
+		return candidate;
+	}
+
 	async function readPayload(response: Response) {
 		return response.json().catch(() => null) as Promise<{
-			data?: { proposal?: Proposal };
+			data?: { proposal?: unknown; version_warning?: string | null };
 			error?: string;
 			message?: string;
 			code?: string;
-			details?: { proposal?: Proposal };
+			details?: { proposal?: unknown };
 		} | null>;
 	}
 
 	async function generateProposal() {
 		const nextInstruction = instruction.trim();
-		if (!nextInstruction || generating) return;
+		if (!nextInstruction || generating || applying || voiceBusy || conflictReason) return;
+		const request = beginRequest();
 		generating = true;
 		errorMessage = null;
-		conflictReason = null;
 		try {
-			const response = await fetch(`/api/onto/documents/${documentId}/proposals`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					instruction: nextInstruction,
-					selection_from: selectionFrom,
-					selection_to: selectionTo,
-					base_content_hash: hashDocumentContent(baseContent),
-					...(replacesProposalId ? { replaces_proposal_id: replacesProposalId } : {})
-				})
-			});
+			const response = await fetch(
+				`/api/onto/documents/${request.identity.documentId}/proposals`,
+				{
+					method: 'POST',
+					signal: request.controller.signal,
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						instruction: nextInstruction,
+						selection_from: request.identity.selectionFrom,
+						selection_to: request.identity.selectionTo,
+						base_content_hash: hashDocumentContent(request.identity.baseContent),
+						...(replacesProposalId ? { replaces_proposal_id: replacesProposalId } : {})
+					})
+				}
+			);
 			const payload = await readPayload(response);
-			if (!response.ok || !payload?.data?.proposal) {
+			if (!request.isCurrent()) return;
+			if (!response.ok) {
+				conflictReason =
+					response.status === 409 ? (payload?.code ?? 'DOCUMENT_SELECTION_STALE') : null;
 				throw new Error(
 					payload?.error || payload?.message || 'Failed to generate proposal'
 				);
 			}
-			proposal = payload.data.proposal;
+			proposal = readProposal(payload?.data?.proposal, request.identity.documentId);
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to generate proposal';
+			if (request.isCurrent())
+				errorMessage =
+					error instanceof Error ? error.message : 'Failed to generate proposal';
 		} finally {
-			generating = false;
+			if (request.isCurrent()) generating = false;
 		}
 	}
 
 	async function applyProposal() {
-		if (!proposal || applying) return;
+		if (!proposal || proposal.status !== 'pending' || applying || voiceBusy || conflictReason)
+			return;
+		const targetProposal = proposal;
+		const request = beginRequest();
 		applying = true;
 		onApplyStateChange?.(true);
 		errorMessage = null;
-		conflictReason = null;
 		try {
 			const mayApply = (await onBeforeApply?.()) ?? true;
-			if (!mayApply) return;
+			if (!request.isCurrent()) return;
+			if (!mayApply) {
+				errorMessage =
+					'The document could not be prepared. Resolve its save warning, then try again.';
+				return;
+			}
 			const response = await fetch(
-				`/api/onto/documents/${documentId}/proposals/${proposal.id}/apply`,
-				{ method: 'POST' }
+				`/api/onto/documents/${request.identity.documentId}/proposals/${targetProposal.id}/apply`,
+				{
+					method: 'POST',
+					signal: request.controller.signal
+				}
 			);
 			const payload = await readPayload(response);
+			if (!request.isCurrent()) return;
 			if (!response.ok) {
 				conflictReason = response.status === 409 ? (payload?.code ?? 'CONFLICT') : null;
-				proposal = payload?.details?.proposal ?? proposal;
 				throw new Error(payload?.error || payload?.message || 'Failed to apply proposal');
 			}
-			proposal = payload?.data?.proposal ?? proposal;
-			await onApplied?.();
+			const applied = readProposal(payload?.data?.proposal, request.identity.documentId);
+			if (applied.id !== targetProposal.id || applied.status !== 'applied') {
+				throw new Error(
+					'The apply result could not be confirmed. Try again to check its status.'
+				);
+			}
+			proposal = applied;
+			const warning = payload?.data?.version_warning ?? applied.version_warning;
+			refreshingAppliedDocument = true;
+			await onApplied?.({
+				versionWarning:
+					typeof warning === 'string' && warning.trim() ? warning.trim() : null
+			});
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to apply proposal';
+			if (request.isCurrent())
+				errorMessage = error instanceof Error ? error.message : 'Failed to apply proposal';
 		} finally {
-			applying = false;
-			onApplyStateChange?.(false);
+			if (request.isCurrent()) {
+				applying = false;
+				onApplyStateChange?.(false);
+			}
 		}
 	}
 
 	function startOver() {
+		if (conflictReason) {
+			onReselect?.(instruction);
+			return;
+		}
 		replacesProposalId = proposal?.id ?? replacesProposalId;
 		proposal = null;
 		errorMessage = null;
-		conflictReason = null;
 	}
 </script>
 
@@ -174,7 +289,7 @@
 			type="button"
 			onclick={onClose}
 			class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-			disabled={generating || applying}
+			disabled={applying || voiceBusy}
 			aria-label="Close proposal review"
 		>
 			<X class="h-4 w-4" />
@@ -192,27 +307,37 @@
 				</p>
 			</div>
 
-			<TextareaWithVoice
-				bind:value={instruction}
-				placeholder="Describe the change you want…"
-				rows={2}
-				maxRows={5}
-				autoResize={true}
-				maxLength={4000}
-				enableVoice={true}
-				showStatusRow={false}
-				hintText="Type or speak an instruction"
-				voiceNoteSource="document-proposal"
-				disabled={generating}
-				textareaClass="text-sm"
-			/>
+			<div {@attach focusInstruction}>
+				<TextareaWithVoice
+					bind:value={instruction}
+					bind:isRecording
+					bind:isInitializing
+					bind:isStopping
+					bind:isTranscribing
+					aria-label="Proposal instruction"
+					placeholder="Describe the change you want…"
+					rows={2}
+					maxRows={5}
+					autoResize={true}
+					maxLength={4000}
+					enableVoice={true}
+					showStatusRow={false}
+					hintText="Type or speak an instruction"
+					voiceNoteSource="document-proposal"
+					disabled={generating}
+					textareaClass="text-sm"
+				/>
+			</div>
 
 			<div class="mt-3 flex justify-end">
 				<Button
 					type="button"
 					size="sm"
 					onclick={generateProposal}
-					disabled={!instruction.trim() || generating}
+					disabled={!instruction.trim() ||
+						generating ||
+						voiceBusy ||
+						Boolean(conflictReason)}
 				>
 					{#if generating}
 						<LoaderCircle class="mr-1.5 h-4 w-4 animate-spin" />
@@ -271,7 +396,7 @@
 					type="button"
 					size="sm"
 					onclick={applyProposal}
-					disabled={applying || Boolean(conflictReason)}
+					disabled={applying || Boolean(conflictReason) || proposal.status !== 'pending'}
 				>
 					{#if applying}
 						<LoaderCircle class="mr-1.5 h-4 w-4 animate-spin" />
@@ -282,6 +407,23 @@
 					{/if}
 				</Button>
 			</div>
+		{/if}
+
+		{#if conflictReason && !proposal}
+			<div
+				class="mt-3 flex items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning"
+				role="status"
+			>
+				<p>The document changed. Select the latest passage to continue.</p>
+				<Button type="button" variant="ghost" size="sm" onclick={startOver}
+					>Select again</Button
+				>
+			</div>
+		{/if}
+		{#if voiceBusy}
+			<p class="mt-2 text-xs text-muted-foreground" role="status">
+				Finish recording and transcription before generating a proposal.
+			</p>
 		{/if}
 
 		{#if errorMessage}

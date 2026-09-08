@@ -29,6 +29,7 @@ import {
 import { createEmbeddingsClientFromEnv } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import {
 	evaluateAgenticChatWebEgressProvenance,
+	normalizeAgenticChatWebSearchArguments,
 	executeAgenticChatStandardControlToolV1,
 	isAgenticChatContentFreeEmailToolNameV1,
 	isAgenticChatStandardControlToolNameV1,
@@ -41,6 +42,11 @@ import { AgenticChatProviderExecutionError } from '../provider/contracts';
 import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
 import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
 import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
+import type { AgenticChatWebSearchReviewPort } from './web-search-review';
+import {
+	createAgentRunWebUrlCapabilityLedger,
+	type AgentRunWebUrlCapabilityLedger
+} from '../../agent-run/webUrlCapabilityLedger';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
 export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
@@ -111,6 +117,9 @@ type TurnSecurityState = {
 	userId: string;
 	privateContentRead: boolean;
 	expiresAt: number;
+	webUrls: AgentRunWebUrlCapabilityLedger;
+	searchReviews: Map<string, Promise<boolean>>;
+	reviewIndex: number;
 };
 
 function isWorkerReviewControlToolNameV1(
@@ -175,7 +184,7 @@ export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
 ] as const);
 
 /**
- * Does executing this tool taint the turn for outbound egress? Every shared
+ * Does executing this tool taint subsequent mailbox searches? Every shared
  * read reaches user-scoped workspace or mailbox content except the three email
  * account tools, whose payloads carry connection plumbing and no content.
  * Excluding them is load-bearing, not a relaxation: `search_email_messages`
@@ -282,6 +291,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			timeoutMs?: number;
 			webResearchTimeoutMs?: number;
 			webResearch?: WebResearchPort;
+			webSearchReviewer?: AgenticChatWebSearchReviewPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
 			createCalendarPort?: (userId: string) => AgenticChatCalendarReadPortV1;
 			createEmailPort?: (userId: string) => AgenticChatEmailReadPortV1;
@@ -316,6 +326,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			Math.floor(options.turnSecurityStateTtlMs ?? TURN_SECURITY_STATE_TTL_MS)
 		);
 		this.webResearch = options.webResearch;
+		this.webSearchReviewer = options.webSearchReviewer;
 		this.createAccessAdapter =
 			options.createAccessAdapter ??
 			((userId) => new WorkerAgenticChatToolAccessAdapter({ client: this.client, userId }));
@@ -338,11 +349,8 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const webResearchTool = AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1.includes(
 			toolName as (typeof AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1)[number]
 		);
-		// `search_email_messages` sends a model-authored query to Google, so it is
-		// data egress on the same footing as web research even though it executes
-		// on the shared read lane with the ordinary read timeout and failure
-		// classes. The fence keys on the egress predicate; dispatch, timeout and
-		// failure mapping stay keyed on the web-research names.
+		// Mailbox search retains its existing provenance policy. Public web
+		// research uses request-specific authorization regardless of private reads.
 		const egressTool = isAgenticChatWebEgressToolName(toolName);
 		const turnRunId = input.executionInput.claim.turnRunId;
 		const standardControlTool = isAgenticChatStandardControlToolNameV1(toolName);
@@ -352,21 +360,42 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			egressTool || sharedReadTool
 				? this.turnSecurityStateFor(input.executionInput.claim.userId, turnRunId)
 				: null;
+		let reviewRequired = false;
+		let webArguments = input.arguments;
+		if (toolName === 'web_search') {
+			const normalized = normalizeAgenticChatWebSearchArguments(input.arguments);
+			if (!normalized)
+				throw providerError('read_tool_egress_provenance_required', 'permanent');
+			webArguments = normalized;
+		}
 		if (egressTool) {
 			if (!turnSecurityState) {
 				throw providerError('read_tool_egress_security_capacity_exceeded', 'permanent');
 			}
-			if (turnSecurityState.privateContentRead) {
+			if (!webResearchTool && turnSecurityState.privateContentRead) {
 				throw providerError('read_tool_egress_blocked_private_content', 'permanent');
 			}
 			const provenance = evaluateAgenticChatWebEgressProvenance({
 				toolName,
-				arguments: input.arguments,
-				userMessage: String(input.executionInput.requestPayload.message ?? '')
+				arguments: webArguments,
+				userMessage: String(input.executionInput.requestPayload.message ?? ''),
+				knownResearchUrl: turnSecurityState.webUrls.allowsVisit(input.arguments.url)
 			});
 			if (!provenance.allowed) {
-				throw providerError('read_tool_egress_provenance_required', 'permanent');
+				if (provenance.reason === 'search_review_required') reviewRequired = true;
+				else throw providerError('read_tool_egress_provenance_required', 'permanent');
 			}
+		}
+		if (toolName === 'web_visit') {
+			// Do not forward extra model-authored fields to the HTTP adapter.
+			webArguments = { url: input.arguments.url ?? null };
+			if (typeof input.arguments.max_chars === 'number')
+				webArguments.max_chars = Math.max(
+					1_000,
+					Math.min(12_000, Math.floor(input.arguments.max_chars))
+				);
+			if (typeof input.arguments.prefer_language === 'string')
+				webArguments.prefer_language = input.arguments.prefer_language;
 		}
 		throwIfAborted(input.signal);
 		if (input.toolName === PROJECT_OVERVIEW_TOOL_NAME) {
@@ -448,8 +477,39 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 							`Agentic Chat ${input.toolName} is not configured`
 						);
 					}
+					if (reviewRequired) {
+						if (!this.webSearchReviewer || !input.processingToken)
+							throw providerError(
+								'read_tool_research_review_unavailable',
+								'transient_infra'
+							);
+						const state = turnSecurityState!;
+						const key = canonicalizeAgenticChatJson(webArguments);
+						let review = state.searchReviews.get(key);
+						if (!review) {
+							if (state.searchReviews.size >= 32)
+								throw providerError(
+									'read_tool_egress_security_capacity_exceeded',
+									'permanent'
+								);
+							review = this.webSearchReviewer.authorize({
+								arguments: webArguments,
+								executionInput: input.executionInput,
+								processingToken: input.processingToken,
+								reviewIndex: ++state.reviewIndex,
+								signal: deadlineSignal
+							});
+							state.searchReviews.set(key, review);
+						}
+						if (!(await review))
+							throw providerError(
+								'read_tool_egress_provenance_required',
+								'permanent'
+							);
+					}
+					throwIfAborted(deadlineSignal);
 					return requireResultRecord(
-						await executeWebResearch(input.arguments, deadlineSignal)
+						await executeWebResearch(webArguments, deadlineSignal)
 					);
 				}
 			});
@@ -477,6 +537,10 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			throw providerError('read_tool_result_invalid', 'unknown');
 		}
 		const payload = parsed as JsonObject;
+		if (turnSecurityState && toolName === 'web_search')
+			turnSecurityState.webUrls.observeSearchResult(payload);
+		if (turnSecurityState && toolName === 'web_visit')
+			turnSecurityState.webUrls.observeVisitResult(payload);
 		// Control decisions record their author on the durable row so a reviewer
 		// veto is never mistaken for acting-model hesitation after the fact.
 		if (input.decidedBy && isAgenticChatControlToolNameV1(input.toolName)) {
@@ -510,7 +574,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		});
 		const duration = Math.min(2_147_483_647, Math.max(0, Math.floor(this.now() - startedAt)));
 		// `get_email_message` and `search_email_messages` both reach mailbox
-		// content, so a later egress call in the same turn is refused; the three
+		// content, so a later mailbox search in the same turn is refused; the three
 		// content-free email account tools deliberately do not taint.
 		if (turnSecurityState && contributesPrivateContentTaint(input.toolName)) {
 			turnSecurityState.privateContentRead = true;
@@ -675,6 +739,9 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const created: TurnSecurityState = {
 			userId,
 			privateContentRead: false,
+			webUrls: createAgentRunWebUrlCapabilityLedger(),
+			searchReviews: new Map(),
+			reviewIndex: 0,
 			expiresAt: now + this.turnSecurityStateTtlMs
 		};
 		this.turnSecurityStates.set(stateKey, created);
@@ -682,6 +749,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	}
 
 	private readonly webResearch: WebResearchPort | undefined;
+	private readonly webSearchReviewer: AgenticChatWebSearchReviewPort | undefined;
 }
 
 /**
@@ -757,7 +825,7 @@ function canonicalError(value: unknown): string {
 
 function providerError(
 	code: string,
-	failureClass: 'permanent' | 'unknown'
+	failureClass: 'permanent' | 'transient_infra' | 'unknown'
 ): AgenticChatProviderExecutionError {
 	return new AgenticChatProviderExecutionError(code, failureClass, code.replaceAll('_', ' '));
 }

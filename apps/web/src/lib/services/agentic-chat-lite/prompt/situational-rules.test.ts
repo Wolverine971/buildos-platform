@@ -194,6 +194,19 @@ describe('renderSituationalRulesContent', () => {
 		expect(content).not.toContain('state_key');
 	});
 
+	it('supports public research after workspace reads with honest failure reporting', () => {
+		const content = renderSituationalRulesContent({
+			writeIntent: false,
+			webResearch: true,
+			workerBound: true
+		});
+		expect(content).toContain('Workspace reads do not disable web research');
+		expect(content).toContain('read only missing details');
+		expect(content).toContain('disclose what could not be verified');
+		expect(content).not.toContain('search there first');
+		expect(content).toContain('returned by successful searches in this turn');
+	});
+
 	it('renders both blocks together', () => {
 		const content = renderSituationalRulesContent({ writeIntent: true, webResearch: true });
 		expect(content).toContain('This turn can write to project data:');
@@ -209,7 +222,9 @@ describe('renderSituationalRulesContent', () => {
 		const content = renderSituationalRulesContent(situation);
 
 		expect(situation.reviewDelegation).toBe(true);
-		expect(content).toContain('This turn requires a review-staged Agent Run:');
+		expect(content).toContain('Review-staged Agent Runs are available:');
+		expect(content).toContain('Tool availability alone does not commission an Agent Run');
+		expect(content).toContain('read only missing information');
 		expect(content).toContain('then call delegate_task once');
 		expect(content).toContain('proposal document is not a staged change set');
 		expect(content).toContain('does not approve or apply');

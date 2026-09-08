@@ -489,6 +489,20 @@ describe('deriveAuditGist', () => {
 });
 
 describe('chat-session-audit-bundle', () => {
+	it('retains the terminal failure code in readable and raw turn exports', () => {
+		const payload = buildFixturePayload();
+		Object.assign(payload.turn_runs[0]!, {
+			status: 'failed',
+			finished_reason: 'error',
+			failure_code: 'read_tool_egress_blocked_private_content'
+		});
+		const files = buildChatSessionAuditBundleFiles(payload);
+		expect(files['turns.md']).toContain('read_tool_egress_blocked_private_content');
+		expect(JSON.parse(requireTestValue(files['raw/turn_runs.json']))[0].failure_code).toBe(
+			'read_tool_egress_blocked_private_content'
+		);
+	});
+
 	it('builds the expected set of bundle files with a gist-led README', () => {
 		const files = buildChatSessionAuditBundleFiles(buildFixturePayload());
 

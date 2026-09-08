@@ -14,6 +14,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { untrack } from 'svelte';
 	import {
 		History,
 		LoaderCircle,
@@ -25,7 +26,7 @@
 		Search,
 		AlertCircle,
 		RefreshCw
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
@@ -93,6 +94,7 @@
 	let hasMore = $state(false);
 	let nextCursor = $state<number | null>(null);
 	let hasLoaded = $state(false);
+	let loadController: AbortController | null = null;
 	let error = $state<string | null>(null);
 
 	let selectedVersion = $state<VersionListItem | null>(null);
@@ -134,88 +136,107 @@
 	// ============================================================
 	// EFFECTS
 	// ============================================================
-	// Reset when document changes
+	// Each document/filter owns one request stream, including its pagination.
 	$effect(() => {
-		if (!browser || !documentId) return;
-		hasLoaded = false;
-		versions = [];
-		total = 0;
-		hasMore = false;
-		nextCursor = null;
-		error = null;
-		selectedVersion = null;
-		void loadVersions();
+		const identity = { documentId, projectId, timeFilter };
+		if (!browser) return;
+		untrack(() => {
+			versions = [];
+			total = 0;
+			hasMore = false;
+			nextCursor = null;
+			if (identity.documentId) void loadVersions();
+			else {
+				hasLoaded = false;
+				selectedVersion = null;
+				isLoading = false;
+				isLoadingMore = false;
+				error = null;
+			}
+		});
+		return () => {
+			loadController?.abort();
+			loadController = null;
+		};
 	});
 
-	// ============================================================
-	// FUNCTIONS
-	// ============================================================
 	async function loadVersions(cursor?: number | null, append = false) {
-		if (!documentId) return;
-
-		if (!append) {
-			isLoading = true;
-		} else {
-			isLoadingMore = true;
-		}
+		loadController?.abort();
+		const controller = new AbortController();
+		loadController = controller;
+		const requestedDocumentId = documentId;
+		const requestedProjectId = projectId;
+		const requestedFilter = timeFilter;
+		const isCurrent = () =>
+			loadController === controller &&
+			!controller.signal.aborted &&
+			documentId === requestedDocumentId &&
+			projectId === requestedProjectId &&
+			timeFilter === requestedFilter;
+		isLoading = !append && !!requestedDocumentId;
+		isLoadingMore = append;
 		error = null;
+		if (!append) {
+			hasLoaded = false;
+			// A refresh can change an open snapshot. Require a fresh selection before restore.
+			selectedVersion = null;
+		}
+		if (!requestedDocumentId) return;
 
 		try {
-			const params = new URLSearchParams();
-			params.set('limit', String(INITIAL_LIMIT));
-
-			if (cursor) {
-				params.set('cursor', String(cursor));
-			}
-
-			// Apply time filter to API
-			if (timeFilter !== 'all') {
+			const params = new URLSearchParams({ limit: String(INITIAL_LIMIT) });
+			if (cursor) params.set('cursor', String(cursor));
+			if (requestedFilter !== 'all') {
 				const from = new Date();
-				if (timeFilter === '24h') {
-					from.setHours(from.getHours() - 24);
-				} else if (timeFilter === '7d') {
-					from.setDate(from.getDate() - 7);
-				}
+				if (requestedFilter === '24h') from.setHours(from.getHours() - 24);
+				else from.setDate(from.getDate() - 7);
 				params.set('from', from.toISOString());
 			}
-
-			const response = await fetch(`/api/onto/documents/${documentId}/versions?${params}`);
+			const response = await fetch(
+				`/api/onto/documents/${requestedDocumentId}/versions?${params}`,
+				{
+					signal: controller.signal
+				}
+			);
 			const payload = await response.json();
-
-			if (!response.ok) {
-				throw new Error(payload?.error || 'Failed to fetch versions');
-			}
-
+			if (!isCurrent()) return;
+			if (!response.ok) throw new Error(payload?.error || 'Failed to fetch versions');
 			const data = payload.data as VersionListResponse;
-
-			if (append) {
-				versions = [...versions, ...data.versions];
-			} else {
-				versions = data.versions;
-			}
+			versions = append
+				? [
+						...versions,
+						...data.versions.filter(
+							(row) => !versions.some((existing) => existing.id === row.id)
+						)
+					]
+				: data.versions;
 			total = data.total;
 			hasMore = data.hasMore;
 			nextCursor = data.nextCursor;
 			hasLoaded = true;
 		} catch (err) {
+			if (!isCurrent()) return;
 			console.error('[VersionHistoryPanel] Failed to load:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/documents/${documentId}/versions`,
+				endpoint: `/api/onto/documents/${requestedDocumentId}/versions`,
 				method: 'GET',
-				projectId,
+				projectId: requestedProjectId,
 				entityType: 'document',
-				entityId: documentId,
+				entityId: requestedDocumentId,
 				operation: 'version_history_load'
 			});
 			error = err instanceof Error ? err.message : 'Failed to load versions';
 		} finally {
-			isLoading = false;
-			isLoadingMore = false;
+			if (isCurrent()) {
+				isLoading = false;
+				isLoadingMore = false;
+				loadController = null;
+			}
 		}
 	}
 
 	function handleLoadMore() {
-		if (!isLoadingMore && hasMore && nextCursor) {
+		if (!isLoading && !isLoadingMore && hasMore && nextCursor) {
 			loadVersions(nextCursor, true);
 		}
 	}
@@ -258,14 +279,10 @@
 
 	function handleTimeFilterChange(filter: '24h' | '7d' | 'all') {
 		timeFilter = filter;
-		hasLoaded = false;
-		versions = [];
-		loadVersions();
 	}
 
 	export function refresh() {
-		hasLoaded = false;
-		loadVersions();
+		return loadVersions();
 	}
 
 	function formatTimestamp(dateString: string): string {

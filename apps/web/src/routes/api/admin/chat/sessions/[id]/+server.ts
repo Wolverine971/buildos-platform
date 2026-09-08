@@ -213,6 +213,7 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
           assistant_message_id,
           status,
           finished_reason,
+          failure_code,
           tool_round_count,
           tool_call_count,
           validation_failure_count,

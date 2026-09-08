@@ -10,12 +10,14 @@
 	- documentId: The document ID
 	- projectId: The project ID
 	- version: The version to restore to
-	- latestVersionNumber: The current latest version number (for conflict check)
+	- expectedUpdatedAt: The loaded document timestamp (for conflict protection)
+	- onBeforeRestore: Save a recovery checkpoint and return its document timestamp
 	- onClose: Callback when modal is closed
 	- onRestored: Callback after successful restore
 -->
 <script lang="ts">
-	import { RotateCcw, AlertTriangle, LoaderCircle, User, Clock, Hash } from 'lucide-svelte';
+	import { onDestroy, untrack } from 'svelte';
+	import { RotateCcw, AlertTriangle, LoaderCircle, User, Clock, Hash } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -40,9 +42,11 @@
 		documentId: string;
 		projectId: string;
 		version: VersionInfo;
-		latestVersionNumber: number;
+		expectedUpdatedAt: string | null;
+		onBeforeRestore?: () => Promise<string | null>;
+		onRestoreStateChange?: (restoring: boolean) => void;
 		onClose?: () => void;
-		onRestored?: () => void;
+		onRestored?: () => void | Promise<void>;
 	}
 
 	let {
@@ -50,7 +54,9 @@
 		documentId,
 		projectId,
 		version,
-		latestVersionNumber,
+		expectedUpdatedAt,
+		onBeforeRestore,
+		onRestoreStateChange,
 		onClose,
 		onRestored
 	}: Props = $props();
@@ -61,68 +67,123 @@
 	let isRestoring = $state(false);
 	let confirmed = $state(false);
 	let error = $state<string | null>(null);
+	let disposed = false;
+	let controller: AbortController | null = null;
+	let refreshingRestoredDocument = false;
+	onDestroy(() => {
+		disposed = true;
+		controller?.abort();
+		if (!refreshingRestoredDocument) onRestoreStateChange?.(false);
+	});
 
 	// ============================================================
 	// EFFECTS
 	// ============================================================
 	$effect(() => {
-		if (isOpen) {
-			// Reset state when modal opens
+		// A confirmation belongs to this document and version, including when a
+		// caller reuses the component for another target while a request is pending.
+		const identity = [isOpen, documentId, projectId, version.number, version.snapshot_hash];
+		void identity;
+		untrack(() => {
+			controller?.abort();
+			controller = null;
+			if (isRestoring && !refreshingRestoredDocument) onRestoreStateChange?.(false);
+			isRestoring = false;
+			refreshingRestoredDocument = false;
 			confirmed = false;
 			error = null;
-		}
+		});
 	});
 
 	// ============================================================
 	// FUNCTIONS
 	// ============================================================
 	async function handleRestore() {
-		if (!confirmed || isRestoring) return;
-
+		if (!isOpen || !confirmed || isRestoring) return;
+		const target = {
+			documentId,
+			projectId,
+			number: version.number,
+			hash: version.snapshot_hash
+		};
+		const request = new AbortController();
+		controller?.abort();
+		controller = request;
+		const isCurrent = () =>
+			!disposed &&
+			isOpen &&
+			!request.signal.aborted &&
+			controller === request &&
+			documentId === target.documentId &&
+			projectId === target.projectId &&
+			version.number === target.number &&
+			version.snapshot_hash === target.hash;
 		isRestoring = true;
+		onRestoreStateChange?.(true);
 		error = null;
 
 		try {
+			const saveToken = onBeforeRestore ? await onBeforeRestore() : expectedUpdatedAt;
+			if (!isCurrent()) return;
+			if (!saveToken) {
+				throw new Error(
+					'The current document could not be saved to history. Resolve its save warning before restoring.'
+				);
+			}
 			const response = await fetch(
-				`/api/onto/documents/${documentId}/versions/${version.number}/restore`,
+				`/api/onto/documents/${target.documentId}/versions/${target.number}/restore`,
 				{
 					method: 'POST',
+					signal: request.signal,
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						expected_version: latestVersionNumber
+						expected_updated_at: saveToken,
+						...(target.hash ? { expected_snapshot_hash: target.hash } : {})
 					})
 				}
 			);
-
 			const payload = await response.json();
-
+			if (!isCurrent()) return;
 			if (!response.ok) {
-				if (response.status === 409) {
-					// Version conflict
-					throw new Error(
-						'The document has been modified since you opened this dialog. Please close and try again.'
-					);
-				}
-				throw new Error(payload?.error || 'Failed to restore version');
+				throw new Error(
+					payload?.error ||
+						(response.status === 409
+							? 'The document changed. Close this dialog and review it again before restoring.'
+							: 'Failed to restore version')
+				);
 			}
-
-			toastService.success(`Document restored to version ${version.number}`);
-			isOpen = false;
-			onRestored?.();
+			if (payload?.data?.document?.id !== target.documentId) {
+				throw new Error(
+					'The restore result could not be confirmed. Reload the document to check its saved state.'
+				);
+			}
+			const warning = payload?.data?.version_warning;
+			if (typeof warning === 'string' && warning.trim()) toastService.warning(warning);
+			else toastService.success(`Document restored to version ${target.number}`);
+			refreshingRestoredDocument = true;
+			await onRestored?.();
+			if (isCurrent()) {
+				isRestoring = false;
+				onRestoreStateChange?.(false);
+				isOpen = false;
+			}
 		} catch (err) {
-			console.error('[RestoreModal] Failed to restore:', err);
+			if (!isCurrent()) return;
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/documents/${documentId}/versions/${version.number}/restore`,
+				endpoint: `/api/onto/documents/${target.documentId}/versions/${target.number}/restore`,
 				method: 'POST',
-				projectId,
+				projectId: target.projectId,
 				entityType: 'document',
-				entityId: documentId,
+				entityId: target.documentId,
 				operation: 'version_restore',
-				metadata: { versionNumber: version.number }
+				metadata: { versionNumber: target.number }
 			});
 			error = err instanceof Error ? err.message : 'Failed to restore version';
 		} finally {
-			isRestoring = false;
+			if (isCurrent()) {
+				isRestoring = false;
+				onRestoreStateChange?.(false);
+			}
 		}
 	}
 
@@ -144,7 +205,14 @@
 	}
 </script>
 
-<Modal bind:isOpen onClose={handleClose} size="sm" closeOnBackdrop={!isRestoring}>
+<Modal
+	bind:isOpen
+	onClose={handleClose}
+	onBeforeClose={() => !isRestoring}
+	size="sm"
+	closeOnBackdrop={!isRestoring}
+	closeOnEscape={!isRestoring}
+>
 	{#snippet header()}
 		<div
 			class="flex-shrink-0 bg-warning/10 border-b border-warning/30 px-4 py-3 flex items-center gap-3"
@@ -171,8 +239,9 @@
 				<div class="text-sm text-warning">
 					<p class="font-medium mb-1">This action will overwrite the current document.</p>
 					<p class="text-warning">
-						The document content will be replaced with the content from version
-						{version.number}. A new version will be created to track this restore.
+						Your current edits will be saved to history first. The document will then be
+						replaced with version
+						{version.number}. The restore will also be recorded in history.
 					</p>
 				</div>
 			</div>

@@ -150,8 +150,14 @@ export function resolveSkillGatePreloadDecision(
 	if (!topCandidate) {
 		return { preload: null };
 	}
+	// Generic email capture/newsletter language is not an outreach commission.
 	return resolveSkillPreload(topCandidate, candidates.slice(1), 'domain_sensing', options, {
-		explicitAsk: isExplicitSkillAskTurn(sensing)
+		explicitAsk:
+			isExplicitSkillAskTurn(sensing) &&
+			(!topCandidate.startsWith('cold_email_') ||
+				/\b(?:cold[\s_-]+(?:email|outreach)|outbound|prospects?|prospecting|outreach|first[ -](?:contact|touch))\b/iu.test(
+					sensing.query
+				))
 	});
 }
 

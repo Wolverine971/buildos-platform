@@ -4,17 +4,23 @@
  *
  * Requires admin or owner access to the project.
  * Creates a new version tagged with is_restore and restore_of_version.
- * Supports optimistic locking via If-Unmodified-Since header or expected_version body param.
+ * Guards the head write with expected_updated_at (or If-Unmodified-Since), and supports
+ * legacy expected_version checks. Version writes use the shared retry/warning contract.
  */
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../../../shared/error-logging';
+import { normalizeDocumentStateInput } from '../../../../../shared/document-state';
 import {
+	createOrMergeDocumentVersion,
 	toDocumentSnapshot,
 	type DocumentVersionProps
 } from '$lib/services/ontology/versioning.service';
-import type { Json } from '@buildos/shared-types';
+import {
+	writeDocumentHeadAndVersion,
+	type OntoDocumentUpdate
+} from '$lib/services/ontology/document-write.service';
 import {
 	logUpdateAsync,
 	getChangeSourceFromRequest,
@@ -77,24 +83,20 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.unauthorized('Authentication required');
 		}
 
+		const userId = session.user.id;
 		const documentId = params.id;
-		const versionNumber = parseInt(params.number, 10);
+		const versionNumber = Number(params.number);
 		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		if (!documentId) {
 			return ApiResponse.badRequest('Document ID required');
 		}
 
-		if (isNaN(versionNumber) || versionNumber < 1) {
+		if (!Number.isSafeInteger(versionNumber) || versionNumber < 1) {
 			return ApiResponse.badRequest('Valid version number required');
 		}
 
-		const accessResult = await ensureRestoreAccess(
-			locals,
-			documentId,
-			versionNumber,
-			session.user.id
-		);
+		const accessResult = await ensureRestoreAccess(locals, documentId, versionNumber, userId);
 
 		if ('error' in accessResult) {
 			return accessResult.error;
@@ -103,8 +105,36 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const { document, actorId } = accessResult;
 
 		// Parse request body for optional precondition
-		const body = await request.json().catch(() => ({}));
-		const expectedVersion = body.expected_version as number | undefined;
+		const body = await request.json().catch(() => null);
+		if (!body || typeof body !== 'object' || Array.isArray(body)) {
+			return ApiResponse.badRequest('A restore request body is required');
+		}
+		const expectedVersion = body.expected_version;
+		if (
+			expectedVersion !== undefined &&
+			(!Number.isSafeInteger(expectedVersion) || expectedVersion < 1)
+		) {
+			return ApiResponse.badRequest('expected_version must be a positive integer');
+		}
+		const expectedUpdatedAt =
+			body.expected_updated_at ?? request.headers.get('If-Unmodified-Since');
+		if (
+			expectedUpdatedAt !== null &&
+			expectedUpdatedAt !== undefined &&
+			(typeof expectedUpdatedAt !== 'string' ||
+				!expectedUpdatedAt.trim() ||
+				Number.isNaN(Date.parse(expectedUpdatedAt)))
+		) {
+			return ApiResponse.badRequest('expected_updated_at must be a valid timestamp');
+		}
+		const expectedWriteVersion = expectedUpdatedAt ?? document.updated_at;
+		if (typeof expectedWriteVersion !== 'string' || !expectedWriteVersion) {
+			return ApiResponse.conflict('Reload the document before restoring a version.');
+		}
+		const expectedSnapshotHash = body.expected_snapshot_hash;
+		if (expectedSnapshotHash !== undefined && typeof expectedSnapshotHash !== 'string') {
+			return ApiResponse.badRequest('expected_snapshot_hash must be a string');
+		}
 
 		// Fetch the version to restore
 		const { data: targetVersion, error: versionError } = await locals.supabase
@@ -121,7 +151,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				error: versionError,
 				endpoint: `/api/onto/documents/${documentId}/versions/${versionNumber}/restore`,
 				method: 'POST',
-				userId: session.user.id,
+				userId: userId,
 				projectId: document.project_id as string,
 				entityType: 'document',
 				entityId: documentId,
@@ -135,26 +165,20 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Version');
 		}
 
-		// Get latest version for precondition check
-		const { data: latestVersion, error: latestError } = await locals.supabase
-			.from('onto_document_versions')
-			.select('number')
-			.eq('document_id', documentId)
-			.order('number', { ascending: false })
-			.limit(1)
-			.maybeSingle();
-
-		if (latestError) {
-			console.error('[Restore API] Failed to fetch latest version:', latestError);
-			return ApiResponse.databaseError(latestError);
-		}
-
-		// Check precondition if provided
-		if (expectedVersion !== undefined && latestVersion) {
-			if (latestVersion.number !== expectedVersion) {
-				return ApiResponse.error(
-					`Version conflict: expected version ${expectedVersion}, but current is ${latestVersion.number}`,
-					409
+		// Timestamp-based clients do not need another history read. Keep the
+		// version-number precondition for older clients, then guard the actual head write.
+		if (expectedVersion !== undefined) {
+			const { data: latestVersion, error: latestError } = await locals.supabase
+				.from('onto_document_versions')
+				.select('number')
+				.eq('document_id', documentId)
+				.order('number', { ascending: false })
+				.limit(1)
+				.maybeSingle();
+			if (latestError) return ApiResponse.databaseError(latestError);
+			if (latestVersion?.number !== expectedVersion) {
+				return ApiResponse.conflict(
+					'Version history changed. Review the latest document before restoring.'
 				);
 			}
 		}
@@ -163,16 +187,48 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const targetProps = (targetVersion.props ?? {}) as Partial<DocumentVersionProps>;
 		const snapshot = targetProps.snapshot;
 
-		if (!snapshot) {
+		if (
+			!snapshot ||
+			typeof snapshot !== 'object' ||
+			Array.isArray(snapshot) ||
+			(snapshot.content !== null && typeof snapshot.content !== 'string')
+		) {
 			return ApiResponse.badRequest('Target version does not contain a valid snapshot');
 		}
 
+		if (
+			expectedSnapshotHash !== undefined &&
+			expectedSnapshotHash !== targetProps.snapshot_hash
+		) {
+			return ApiResponse.conflict(
+				'This version changed since you reviewed it. Review it again before restoring.'
+			);
+		}
+
+		// Archive/tree membership has its own atomic command; version restoration
+		// must not bypass it by restoring an archived state through an ordinary write.
+		const targetState = normalizeDocumentStateInput(snapshot.state_key);
+		if (snapshot.state_key !== undefined && !targetState) {
+			return ApiResponse.badRequest('Target version has an invalid state');
+		}
+		if (
+			normalizeDocumentStateInput(document.state_key) === 'archived' ||
+			targetState === 'archived'
+		) {
+			return ApiResponse.badRequest(
+				'Restore the document from Archive first, then choose a version from before it was archived.'
+			);
+		}
+
 		// Prepare the document update from snapshot
-		const updatePayload: Record<string, unknown> = {
+		const updatePayload: OntoDocumentUpdate = {
 			updated_at: new Date().toISOString()
 		};
 
 		if (snapshot.title !== undefined) {
+			if (typeof snapshot.title !== 'string') {
+				return ApiResponse.badRequest('Target version has an invalid title');
+			}
 			updatePayload.title = snapshot.title;
 		}
 		if (snapshot.description !== undefined) {
@@ -181,97 +237,68 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		if (snapshot.content !== undefined) {
 			updatePayload.content = snapshot.content;
 		}
-		if (snapshot.state_key !== undefined) {
-			updatePayload.state_key = snapshot.state_key;
-		}
+		if (targetState) updatePayload.state_key = targetState;
 
 		// Preserve props with body_markdown for backwards compatibility
 		const currentProps = (document.props ?? {}) as Record<string, unknown>;
 		updatePayload.props = {
 			...currentProps,
 			...(snapshot.props ?? {}),
-			body_markdown: snapshot.content ?? ''
-		};
+			body_markdown: snapshot.content ?? '',
+			// Routing state is server-owned and is not restored from historical props.
+			agent_workspace: currentProps.agent_workspace
+		} as OntoDocumentUpdate['props'];
 
-		// Update the document
-		const { data: updatedDocument, error: updateError } = await locals.supabase
-			.from('onto_documents')
-			.update(updatePayload)
-			.eq('id', documentId)
-			.select('*')
-			.single();
-
-		if (updateError) {
-			console.error('[Restore API] Failed to update document:', updateError);
+		let newVersion: { number: number; id: string } | null = null;
+		const writeResult = await writeDocumentHeadAndVersion({
+			supabase: locals.supabase,
+			documentId,
+			projectId: document.project_id as string,
+			update: updatePayload,
+			expectedUpdatedAt: expectedWriteVersion,
+			actorId,
+			previousSnapshot: toDocumentSnapshot(document),
+			changeSource: getChangeSourceFromRequest(request),
+			forceCreateVersion: true,
+			versionWriter: async (params) => {
+				const result = await createOrMergeDocumentVersion({
+					...params,
+					restore: { versionNumber, userId: userId }
+				});
+				if (result.status !== 'skipped') {
+					newVersion = { number: result.versionNumber, id: result.versionId };
+				}
+				return result;
+			}
+		});
+		if (writeResult.status === 'conflict') {
+			return ApiResponse.conflict(
+				'The document changed before the restore completed. Reload and review it before trying again.'
+			);
+		}
+		if (writeResult.status === 'error') {
 			await logOntologyApiError({
 				supabase: locals.supabase,
-				error: updateError,
+				error: writeResult.error,
 				endpoint: `/api/onto/documents/${documentId}/versions/${versionNumber}/restore`,
 				method: 'POST',
-				userId: session.user.id,
+				userId: userId,
 				projectId: document.project_id as string,
 				entityType: 'document',
 				entityId: documentId,
 				operation: 'version_restore_update',
 				tableName: 'onto_documents'
 			});
-			return ApiResponse.databaseError(updateError);
+			return ApiResponse.databaseError(writeResult.error);
 		}
-
-		// Create a new version marked as a restore
-		let newVersion: { number: number; id: string } | null = null;
-
-		try {
-			// Get the new snapshot
-			const newSnapshot = toDocumentSnapshot(updatedDocument);
-
-			// Insert restore version directly to ensure restore metadata is preserved
-			const nextNumber = (latestVersion?.number ?? 0) + 1;
-			const now = new Date().toISOString();
-
-			const restoreVersionProps: DocumentVersionProps = {
-				snapshot: newSnapshot,
-				snapshot_hash: '', // Will be computed but we need to set it
-				window: { started_at: now, ended_at: now },
-				change_count: 1,
-				change_source: getChangeSourceFromRequest(request) ?? 'api',
-				is_merged: false,
-				restored_by_user_id: session.user.id,
-				restore_of_version: versionNumber
-			};
-
-			// Compute hash for the snapshot
-			const crypto = await import('node:crypto');
-			restoreVersionProps.snapshot_hash = crypto
-				.createHash('sha256')
-				.update(JSON.stringify(newSnapshot))
-				.digest('hex');
-
-			const { data: insertedVersion, error: insertError } = await locals.supabase
-				.from('onto_document_versions')
-				.insert({
-					document_id: documentId,
-					number: nextNumber,
-					storage_uri: 'inline://document-snapshot',
-					props: restoreVersionProps as Json,
-					created_by: actorId
-				})
-				.select('id, number')
-				.single();
-
-			if (insertError) {
-				throw insertError;
-			}
-
-			newVersion = insertedVersion;
-		} catch (versionError) {
-			console.error('[Restore API] Failed to create restore version:', versionError);
+		const updatedDocument = writeResult.document;
+		if (writeResult.versionError) {
 			await logOntologyApiError({
 				supabase: locals.supabase,
-				error: versionError,
+				error: writeResult.versionError,
 				endpoint: `/api/onto/documents/${documentId}/versions/${versionNumber}/restore`,
 				method: 'POST',
-				userId: session.user.id,
+				userId: userId,
 				projectId: document.project_id as string,
 				entityType: 'document',
 				entityId: documentId,
@@ -298,7 +325,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				type_key: updatedDocument.type_key,
 				_restore_from_version: versionNumber
 			},
-			session.user.id,
+			userId,
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
@@ -306,12 +333,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({
 			document: updatedDocument,
 			restoredFromVersion: versionNumber,
-			newVersion: newVersion
-				? {
-						number: newVersion.number,
-						id: newVersion.id
-					}
-				: null
+			newVersion,
+			version_warning: writeResult.versionWarning
 		});
 	} catch (error) {
 		console.error('[Restore API] Unexpected POST error:', error);

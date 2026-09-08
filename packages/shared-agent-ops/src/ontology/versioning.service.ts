@@ -53,6 +53,8 @@ type CreateOrMergeVersionParams = {
 	changeSource?: string | null;
 	piiRedacted?: boolean;
 	forceCreateVersion?: boolean;
+	/** Restores are permanent checkpoints; later edits must not merge into them. */
+	restore?: { versionNumber: number; userId: string };
 };
 
 type VersioningResult =
@@ -184,7 +186,8 @@ export async function createOrMergeDocumentVersion(
 		changeSource,
 		mergeWindowMinutes = DEFAULT_DOCUMENT_VERSION_WINDOW_MINUTES,
 		piiRedacted,
-		forceCreateVersion = false
+		restore,
+		forceCreateVersion = Boolean(restore)
 	} = params;
 
 	const now = new Date();
@@ -193,6 +196,7 @@ export async function createOrMergeDocumentVersion(
 
 	if (
 		!forceCreateVersion &&
+		!restore &&
 		previousSnapshot &&
 		hashSnapshot(previousSnapshot) === snapshotHash
 	) {
@@ -231,7 +235,9 @@ export async function createOrMergeDocumentVersion(
 	// Merge when same actor within window, unless caller explicitly forces a new version.
 	if (
 		!forceCreateVersion &&
+		!restore &&
 		latestVersionRow &&
+		!latestProps.restore_of_version &&
 		latestVersionRow.created_by === actorId &&
 		withinWindow
 	) {
@@ -279,6 +285,9 @@ export async function createOrMergeDocumentVersion(
 		change_count: 1,
 		change_source: changeSource ?? 'api',
 		is_merged: false,
+		...(restore
+			? { restore_of_version: restore.versionNumber, restored_by_user_id: restore.userId }
+			: {}),
 		pii_redacted: piiRedacted ?? latestProps.pii_redacted
 	};
 

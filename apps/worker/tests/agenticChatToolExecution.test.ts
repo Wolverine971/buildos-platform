@@ -151,17 +151,20 @@ describe('Agentic Chat read-tool execution ledger', () => {
 		});
 	});
 
-	it('keeps operational failures out of the validation counter', async () => {
-		const { adapter, rpc } = adapterFor(receipt());
+	it.each(['dependency_failed', 'read_policy', 'read_failure'] as const)(
+		'keeps %s failures out of the validation counter',
+		async (failureKind) => {
+			const { adapter, rpc } = adapterFor(receipt());
 
-		await expect(
-			adapter.persistFailure({ ...validationFailureInput, failureKind: 'dependency_failed' })
-		).resolves.toBeUndefined();
-		expect(rpc).toHaveBeenCalledWith(
-			'persist_agentic_chat_tool_validation_failure',
-			expect.any(Object)
-		);
-	});
+			await expect(
+				adapter.persistFailure({ ...validationFailureInput, failureKind })
+			).resolves.toBeUndefined();
+			expect(rpc).toHaveBeenCalledWith(
+				'persist_agentic_chat_tool_validation_failure',
+				expect.any(Object)
+			);
+		}
+	);
 
 	it('persists a succeeded mutation through its effect-linked fenced RPC', async () => {
 		const { adapter, rpc } = adapterFor(

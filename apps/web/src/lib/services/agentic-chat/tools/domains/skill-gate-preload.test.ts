@@ -35,6 +35,18 @@ function senseColdEmailTurn() {
 }
 
 describe('resolveSkillGatePreload', () => {
+	it.each([
+		'Should I build out email capture and a Mailchimp email flow for this pistol shooting client website?',
+		'Help me plan the newsletter signup and welcome email for this website.'
+	])('does not inject cold outreach into website email capture: %s', (message) => {
+		const sensing = senseDomains({ currentUserMessage: message, limit: 3 });
+		expect(resolveSkillGatePreload(sensing)?.skillId ?? '').not.toMatch(/^cold_email_/);
+		// Exercise the admission guard even if lexical scoring later changes.
+		const candidate = senseColdEmailTurn();
+		if (!candidate) throw new Error('Expected cold-email candidate');
+		expect(resolveSkillGatePreload({ ...candidate, query: message })).toBeNull();
+	});
+
 	it('preloads the top gate candidate in short format when the gate is active', () => {
 		const sensing = senseColdEmailTurn();
 		expect(sensing?.skill_load_required).toBe(true);

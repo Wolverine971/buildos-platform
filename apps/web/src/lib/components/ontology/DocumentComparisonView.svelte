@@ -4,23 +4,19 @@
 	Fetches version snapshots, computes diffs, renders toolbar + diff view.
 	Supports unified and split view modes, version navigation, and compare target toggling.
 
-	Caches fetched snapshots by version number during the session.
+	Caches sealed snapshots by document and version during the session.
 	Uses AbortController to prevent stale response races during rapid navigation.
 
 	Inkprint design tokens. Svelte 5 runes.
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { onDestroy } from 'svelte';
-	import { LoaderCircle, AlertCircle, RefreshCw } from 'lucide-svelte';
+	import { untrack } from 'svelte';
+	import { LoaderCircle, AlertCircle, RefreshCw } from '$lib/icons/lucide';
 	import ComparisonToolbar from './ComparisonToolbar.svelte';
 	import UnifiedDiffView from '$lib/components/ui/UnifiedDiffView.svelte';
 	import DocumentSplitDiffView from './DocumentSplitDiffView.svelte';
-	import {
-		createDocumentDiff,
-		type DocumentFieldDiff,
-		type DiffStats
-	} from '$lib/utils/document-diff';
+	import { createDocumentDiff } from '$lib/utils/document-diff';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import type { DocumentSnapshot } from '$lib/services/ontology/versioning.service';
 
@@ -56,6 +52,7 @@
 			state_key: string | null;
 		};
 		latestVersionNumber: number;
+		refreshKey?: number;
 		onExit: () => void;
 		onNavigate: (fromVersion: number | null, toVersion: number | 'current') => void;
 	}
@@ -67,6 +64,7 @@
 		toVersionNumber,
 		currentDocument,
 		latestVersionNumber,
+		refreshKey = 0,
 		onExit,
 		onNavigate
 	}: Props = $props();
@@ -82,172 +80,156 @@
 	let fromVersion = $state<VersionDetail | null>(null);
 	let toVersion = $state<VersionDetail | null>(null);
 
-	// Diff results
-	let diffFields = $state<DocumentFieldDiff[]>([]);
-	let totalStats = $state<DiffStats>({ added: 0, removed: 0, modified: 0 });
-
-	// Snapshot cache (version number -> VersionDetail)
-	let snapshotCache = $state<Map<number, VersionDetail>>(new Map());
-
-	// AbortController for in-flight requests
+	// Current editor changes recompute the diff without fetching history again.
+	const diff = $derived(
+		createDocumentDiff(
+			fromVersion?.snapshot ?? null,
+			toVersionNumber === 'current' ? currentDocument : (toVersion?.snapshot ?? null)
+		)
+	);
+	const diffFields = $derived(diff.fields);
+	const totalStats = $derived(diff.totalStats);
+	// Nonreactive: only request handlers consume this cache.
+	const snapshotCache = new Map<string, VersionDetail>();
 	let currentAbortController: AbortController | null = null;
 
-	function abortCurrentLoad() {
-		if (currentAbortController) {
-			currentAbortController.abort();
-			currentAbortController = null;
-		}
-	}
-
-	// ============================================================
-	// DERIVED
-	// ============================================================
 	const selectedVersion = $derived(
-		toVersionNumber === 'current' ? fromVersionNumber : (toVersionNumber as number)
+		toVersionNumber === 'current' ? fromVersionNumber : toVersionNumber
 	);
-
 	const compareTarget = $derived<'previous' | 'current'>(
 		toVersionNumber === 'current' ? 'current' : 'previous'
 	);
 
-	// ============================================================
-	// EFFECTS
-	// ============================================================
 	$effect(() => {
+		const request = {
+			documentId,
+			projectId,
+			fromVersionNumber,
+			toVersionNumber,
+			latestVersionNumber,
+			refreshKey
+		};
 		if (!browser) return;
-
-		// Re-fetch when version numbers change
-		const _from = fromVersionNumber;
-		const _to = toVersionNumber;
-		const _docId = documentId;
-		if (_docId) {
-			loadAndDiff();
-		}
+		untrack(() => void loadAndDiff(request));
+		return () => {
+			currentAbortController?.abort();
+			currentAbortController = null;
+		};
 	});
 
-	onDestroy(abortCurrentLoad);
-
-	// Keyboard navigation
-	$effect(() => {
-		function handleKeydown(e: KeyboardEvent) {
-			if (e.key === 'Escape') {
-				onExit();
-			} else if (e.key === 'ArrowLeft' && !e.metaKey && !e.ctrlKey) {
-				handlePrev();
-			} else if (e.key === 'ArrowRight' && !e.metaKey && !e.ctrlKey) {
-				handleNext();
-			}
+	// Handle shortcuts only inside this region, so typing in filters or a stacked
+	// restore dialog cannot navigate history or dismiss the document underneath it.
+	function handleKeydown(event: KeyboardEvent) {
+		if (
+			event.defaultPrevented ||
+			event.metaKey ||
+			event.ctrlKey ||
+			event.altKey ||
+			event.shiftKey
+		)
+			return;
+		if (
+			event.target instanceof Element &&
+			event.target.closest('input, textarea, select, [contenteditable="true"]')
+		)
+			return;
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			onExit();
+		} else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+			event.preventDefault();
+			event.stopPropagation();
+			if (event.key === 'ArrowLeft') handlePrev();
+			else handleNext();
 		}
+	}
 
-		window.addEventListener('keydown', handleKeydown);
-		return () => window.removeEventListener('keydown', handleKeydown);
-	});
+	type ComparisonRequest = {
+		documentId: string;
+		projectId: string;
+		fromVersionNumber: number | null;
+		toVersionNumber: number | 'current';
+		latestVersionNumber: number;
+		refreshKey: number;
+	};
 
-	// ============================================================
-	// FUNCTIONS
-	// ============================================================
-	async function loadAndDiff() {
-		// Abort any in-flight requests
-		abortCurrentLoad();
-		const abortController = new AbortController();
-		currentAbortController = abortController;
-
+	async function loadAndDiff(request: ComparisonRequest) {
+		currentAbortController?.abort();
+		const controller = new AbortController();
+		currentAbortController = controller;
+		const isCurrent = () =>
+			currentAbortController === controller &&
+			!controller.signal.aborted &&
+			documentId === request.documentId &&
+			projectId === request.projectId &&
+			fromVersionNumber === request.fromVersionNumber &&
+			toVersionNumber === request.toVersionNumber &&
+			latestVersionNumber === request.latestVersionNumber &&
+			refreshKey === request.refreshKey;
 		isLoading = true;
 		error = null;
-
+		fromVersion = null;
+		toVersion = null;
 		try {
-			// Fetch "from" version (if not null)
-			let fromSnapshot: DocumentSnapshot | null = null;
-			if (fromVersionNumber !== null) {
-				const fromDetail = await fetchVersion(fromVersionNumber, abortController.signal);
-				if (abortController.signal.aborted) return;
-				fromVersion = fromDetail;
-				fromSnapshot = fromDetail?.snapshot ?? null;
-			} else {
-				fromVersion = null;
-			}
-
-			// Fetch "to" version (or use current document)
-			let toSnapshot: {
-				title: string | null;
-				description: string | null;
-				content: string | null;
-				state_key: string | null;
-			} | null = null;
-
-			if (toVersionNumber === 'current') {
-				toVersion = null;
-				toSnapshot = currentDocument;
-			} else {
-				const toDetail = await fetchVersion(
-					toVersionNumber as number,
-					abortController.signal
-				);
-				if (abortController.signal.aborted) return;
-				toVersion = toDetail;
-				toSnapshot = toDetail?.snapshot
-					? {
-							title: toDetail.snapshot.title,
-							description: toDetail.snapshot.description,
-							content: toDetail.snapshot.content,
-							state_key: toDetail.snapshot.state_key
-						}
-					: null;
-			}
-
-			// Compute diffs
-			const result = createDocumentDiff(fromSnapshot, toSnapshot);
-			if (abortController.signal.aborted) return;
-
-			diffFields = result.fields;
-			totalStats = result.totalStats;
+			const [from, to] = await Promise.all([
+				request.fromVersionNumber === null
+					? null
+					: fetchVersion(
+							request,
+							request.fromVersionNumber,
+							controller.signal,
+							isCurrent
+						),
+				request.toVersionNumber === 'current'
+					? null
+					: fetchVersion(request, request.toVersionNumber, controller.signal, isCurrent)
+			]);
+			if (!isCurrent()) return;
+			fromVersion = from;
+			toVersion = to;
 		} catch (err) {
-			if (abortController.signal.aborted) return;
+			if (!isCurrent()) return;
 			console.error('[DocumentComparisonView] Failed to load:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/documents/${documentId}/versions`,
+				endpoint: `/api/onto/documents/${request.documentId}/versions`,
 				method: 'GET',
-				projectId,
+				projectId: request.projectId,
 				entityType: 'document',
-				entityId: documentId,
+				entityId: request.documentId,
 				operation: 'version_comparison_load'
 			});
 			error = err instanceof Error ? err.message : 'Failed to load version data';
 		} finally {
-			if (!abortController.signal.aborted) {
+			if (isCurrent()) {
 				isLoading = false;
-			}
-			if (currentAbortController === abortController) {
 				currentAbortController = null;
 			}
 		}
 	}
 
 	async function fetchVersion(
-		versionNumber: number,
-		signal: AbortSignal
+		request: ComparisonRequest,
+		number: number,
+		signal: AbortSignal,
+		isCurrent: () => boolean
 	): Promise<VersionDetail | null> {
-		// Check cache first
-		const cached = snapshotCache.get(versionNumber);
+		const key = `${request.projectId}/${request.documentId}/${number}`;
+		// The newest version can still absorb saves; never reuse its snapshot.
+		const cacheable = number < request.latestVersionNumber;
+		const cached = cacheable ? snapshotCache.get(key) : null;
 		if (cached) return cached;
-
 		const response = await fetch(
-			`/api/onto/documents/${documentId}/versions/${versionNumber}`,
+			`/api/onto/documents/${request.documentId}/versions/${number}`,
 			{ signal }
 		);
 		const payload = await response.json();
-
-		if (!response.ok) {
-			throw new Error(payload?.error || `Failed to fetch version ${versionNumber}`);
-		}
-
+		if (!isCurrent()) return null;
+		if (!response.ok) throw new Error(payload?.error || `Failed to fetch version ${number}`);
 		const detail = payload.data as VersionDetail;
-
-		// Cache the result
-		const next = new Map(snapshotCache);
-		next.set(versionNumber, detail);
-		snapshotCache = next;
-
+		if (detail?.number !== number || !detail.snapshot)
+			throw new Error(`Version ${number} has no available snapshot`);
+		if (cacheable) snapshotCache.set(key, detail);
 		return detail;
 	}
 
@@ -290,7 +272,14 @@
 
 	function handleRetry() {
 		error = null;
-		loadAndDiff();
+		void loadAndDiff({
+			documentId,
+			projectId,
+			fromVersionNumber,
+			toVersionNumber,
+			latestVersionNumber,
+			refreshKey
+		});
 	}
 
 	function formatDate(dateString: string): string {
@@ -332,7 +321,17 @@
 	}
 </script>
 
-<div class="flex flex-col h-full min-h-0">
+<div
+	class="flex flex-col h-full min-h-0"
+	role="region"
+	aria-label="Document version comparison"
+	tabindex="-1"
+	{@attach (node) => {
+		node.focus({ preventScroll: true });
+		node.addEventListener('keydown', handleKeydown);
+		return () => node.removeEventListener('keydown', handleKeydown);
+	}}
+>
 	<!-- Comparison Toolbar -->
 	<ComparisonToolbar
 		fromVersion={fromVersionNumber}
@@ -463,7 +462,7 @@
 					{/if}
 
 					<!-- Field-level change indicators -->
-					{#each diffFields as field}
+					{#each diffFields as field (field.field)}
 						{#if field.field === 'title'}
 							<span class="text-muted-foreground/60">Title changed</span>
 						{:else if field.field === 'state_key'}

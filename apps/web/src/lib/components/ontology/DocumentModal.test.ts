@@ -3,15 +3,19 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DocumentModal from './DocumentModal.svelte';
+import { EditorView } from '@codemirror/view';
+import { createDocumentPatchV1 } from '@buildos/shared-agent-ops/ontology/document-patch';
 
-const { toastWarningMock } = vi.hoisted(() => ({
-	toastWarningMock: vi.fn()
+const { toastWarningMock, toastSuccessMock } = vi.hoisted(() => ({
+	toastWarningMock: vi.fn(),
+	toastSuccessMock: vi.fn()
 }));
 
 vi.mock('$lib/stores/toast.store', () => ({
 	toastService: {
 		error: vi.fn(),
-		success: vi.fn(),
+		success: toastSuccessMock,
+		info: vi.fn(),
 		warning: toastWarningMock
 	}
 }));
@@ -40,7 +44,7 @@ function jsonResponse(data: unknown, status = 200): Response {
 	});
 }
 
-function documentResponse(id: string, title: string, stateKey = 'draft'): Response {
+function documentResponse(id: string, title: string, stateKey = 'draft', content = ''): Response {
 	return new Response(
 		JSON.stringify({
 			data: {
@@ -50,7 +54,7 @@ function documentResponse(id: string, title: string, stateKey = 'draft'): Respon
 					type_key: 'document.knowledge.research',
 					state_key: stateKey,
 					description: '',
-					content: '',
+					content,
 					props: {},
 					created_at: '2026-01-01T00:00:00.000Z',
 					updated_at: '2026-01-01T00:00:00.000Z'
@@ -431,6 +435,383 @@ describe('DocumentModal document loading', () => {
 		expect(screen.getByDisplayValue('Second edit')).toBeInTheDocument();
 		expect(screen.queryByText(/autosave is paused/)).not.toBeInTheDocument();
 	}, 10_000);
+
+	it('reselects a conflicted passage with the instruction preserved and no old proposal', async () => {
+		const content = '# Plan\n\nDraft this paragraph.\n\nKeep this context.';
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				if (url.includes('/documents/document-a/full'))
+					return Promise.resolve(
+						documentResponse('document-a', 'Document A', 'draft', content)
+					);
+				if (url.endsWith('/proposals') && init?.method === 'POST') {
+					const body = JSON.parse(String(init.body));
+					return Promise.resolve(
+						jsonResponse({
+							data: {
+								proposal: {
+									id: 'proposal-a',
+									status: 'pending',
+									instruction: body.instruction,
+									conflict_reason: null,
+									patch: createDocumentPatchV1({
+										project_id: 'project-1',
+										document_id: 'document-a',
+										base_content: content,
+										selections: [
+											{
+												op_id: 'op-1',
+												from: body.selection_from,
+												to: body.selection_to,
+												replacement_markdown: 'Clear paragraph.'
+											}
+										]
+									})
+								}
+							}
+						})
+					);
+				}
+				if (url.endsWith('/apply'))
+					return Promise.resolve(
+						jsonResponse({ error: 'The target changed', code: 'TARGET_CHANGED' }, 409)
+					);
+				return Promise.resolve(jsonResponse({ data: {} }));
+			})
+		);
+		render(DocumentModal, {
+			props: { projectId: 'project-1', documentId: 'document-a', isOpen: true }
+		});
+		await waitFor(() => expect(document.querySelector('.cm-content')).toBeInTheDocument());
+		const editor = EditorView.findFromDOM(
+			document.querySelector('.cm-content') as HTMLElement
+		)!;
+		editor.dispatch({ selection: { anchor: 8, head: 29 } });
+		await fireEvent.click(
+			screen.getByRole('button', { name: 'Ask the agent to revise selected text' })
+		);
+		await waitFor(() =>
+			expect(screen.getByRole('textbox', { name: 'Proposal instruction' })).toHaveFocus()
+		);
+		await fireEvent.input(screen.getByRole('textbox', { name: 'Proposal instruction' }), {
+			target: { value: 'Make it clearer' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Generate proposal' }));
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Apply proposal' })).toBeInTheDocument()
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Apply proposal' }));
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Select again' })).toBeInTheDocument()
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Select again' }));
+		expect(
+			screen.queryByRole('region', { name: 'Agent document proposal' })
+		).not.toBeInTheDocument();
+		expect(document.querySelector('.cm-content')).toHaveFocus();
+		editor.dispatch({ selection: { anchor: 31, head: content.length } });
+		await fireEvent.click(
+			screen.getByRole('button', { name: 'Ask the agent to revise selected text' })
+		);
+		await waitFor(() =>
+			expect(screen.getByRole('textbox', { name: 'Proposal instruction' })).toHaveValue(
+				'Make it clearer'
+			)
+		);
+		expect(screen.queryByRole('button', { name: 'Apply proposal' })).not.toBeInTheDocument();
+		expect(screen.getByRole('region', { name: 'Agent document proposal' })).toHaveTextContent(
+			'Keep this context.'
+		);
+	});
+
+	it('waits for an in-flight save before opening the selected passage review', async () => {
+		const save = deferred<Response>();
+		const content = 'Draft this paragraph.';
+		const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+			if (String(input).includes('/documents/document-a/full'))
+				return Promise.resolve(
+					documentResponse('document-a', 'Document A', 'draft', content)
+				);
+			if (init?.method === 'PATCH') return save.promise;
+			return Promise.resolve(jsonResponse({ data: {} }));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		render(DocumentModal, {
+			props: { projectId: 'project-1', documentId: 'document-a', isOpen: true }
+		});
+		await waitFor(() => expect(document.querySelector('.cm-content')).toBeInTheDocument());
+		await fireEvent.input(screen.getByLabelText('Document title'), {
+			target: { value: 'Updated title' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+		const editor = EditorView.findFromDOM(
+			document.querySelector('.cm-content') as HTMLElement
+		)!;
+		editor.dispatch({ selection: { anchor: 0, head: content.length } });
+		await fireEvent.click(
+			screen.getByRole('button', { name: 'Ask the agent to revise selected text' })
+		);
+		expect(
+			screen.queryByRole('region', { name: 'Agent document proposal' })
+		).not.toBeInTheDocument();
+		save.resolve(
+			jsonResponse({
+				data: { document: { id: 'document-a', updated_at: '2026-01-02T00:00:00Z' } }
+			})
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByRole('textbox', { name: 'Proposal instruction' })
+			).toBeInTheDocument()
+		);
+		expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(1);
+	});
+
+	it('locks all authored fields through apply and refresh, and surfaces history warnings honestly', async () => {
+		const content = 'Draft this paragraph.';
+		const appliedContent = 'Clear paragraph.';
+		const apply = deferred<Response>();
+		const reload = deferred<Response>();
+		let loads = 0;
+		const proposal = {
+			id: 'proposal-a',
+			status: 'pending',
+			instruction: 'Clarify',
+			conflict_reason: null,
+			patch: createDocumentPatchV1({
+				project_id: 'project-1',
+				document_id: 'document-a',
+				base_content: content,
+				selections: [
+					{
+						op_id: 'op-1',
+						from: 0,
+						to: content.length,
+						replacement_markdown: appliedContent
+					}
+				]
+			})
+		};
+		const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url.includes('/documents/document-a/full'))
+				return ++loads === 1
+					? Promise.resolve(
+							documentResponse('document-a', 'Document A', 'draft', content)
+						)
+					: reload.promise;
+			if (url.endsWith('/proposals') && init?.method === 'POST')
+				return Promise.resolve(jsonResponse({ data: { proposal } }));
+			if (url.endsWith('/apply')) return apply.promise;
+			return Promise.resolve(jsonResponse({ data: {} }));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		render(DocumentModal, {
+			props: { projectId: 'project-1', documentId: 'document-a', isOpen: true }
+		});
+		await waitFor(() => expect(document.querySelector('.cm-content')).toBeInTheDocument());
+		EditorView.findFromDOM(document.querySelector('.cm-content') as HTMLElement)!.dispatch({
+			selection: { anchor: 0, head: content.length }
+		});
+		await fireEvent.click(
+			screen.getByRole('button', { name: 'Ask the agent to revise selected text' })
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByRole('textbox', { name: 'Proposal instruction' })
+			).toBeInTheDocument()
+		);
+		await fireEvent.input(screen.getByRole('textbox', { name: 'Proposal instruction' }), {
+			target: { value: 'Clarify' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Generate proposal' }));
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Apply proposal' })).toBeInTheDocument()
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Apply proposal' }));
+		expect(screen.getByLabelText('Document title')).toBeDisabled();
+		expect(screen.getByPlaceholderText('Short summary')).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Close modal' })).toBeDisabled();
+		await fireEvent.submit(document.getElementById('document-modal-document-a')!);
+		expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(0);
+		const warning = 'Saved, but version history could not be written.';
+		apply.resolve(
+			jsonResponse({
+				data: { proposal: { ...proposal, status: 'applied' }, version_warning: warning }
+			})
+		);
+		await waitFor(() => expect(loads).toBe(2));
+		expect(screen.getByRole('button', { name: 'Close modal' })).toBeDisabled();
+		reload.resolve(documentResponse('document-a', 'Document A', 'draft', appliedContent));
+		await waitFor(() =>
+			expect(document.querySelector('.cm-content')).toHaveTextContent(appliedContent)
+		);
+		expect(toastWarningMock).toHaveBeenCalledWith(warning);
+		expect(toastSuccessMock).not.toHaveBeenCalledWith(
+			'Proposal applied and added to version history.'
+		);
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Close modal' })).not.toBeDisabled()
+		);
+		await waitFor(() => expect(document.querySelector('.cm-content')).toHaveFocus());
+		const restoredSelection = EditorView.findFromDOM(
+			document.querySelector('.cm-content') as HTMLElement
+		)!.state.selection.main;
+		expect({ from: restoredSelection.from, to: restoredSelection.to }).toEqual({
+			from: 0,
+			to: appliedContent.length
+		});
+	});
+
+	it.each([false, true])(
+		'checkpoints before version restore and keeps the editor locked through reload (history failure=%s)',
+		async (historyFailure) => {
+			const checkpoint = deferred<Response>();
+			const restore = deferred<Response>();
+			const reload = deferred<Response>();
+			let loads = 0;
+			const versions = [2, 1].map((number) => ({
+				id: `v${number}`,
+				number,
+				created_by: 'actor-1',
+				created_by_name: 'Editor',
+				created_at: '2026-01-01T00:00:00Z',
+				snapshot_hash: `hash-${number}`,
+				window: null,
+				change_count: 1,
+				change_source: 'ui',
+				is_merged: false,
+				is_open: false,
+				is_restore: false,
+				restored_by_user_id: null,
+				restore_of_version: null
+			}));
+			const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				if (url.includes('/documents/document-a/full')) {
+					loads += 1;
+					return loads === 1
+						? Promise.resolve(
+								documentResponse(
+									'document-a',
+									'Document A',
+									'draft',
+									'Current text'
+								)
+							)
+						: reload.promise;
+				}
+				if (url.includes('/versions?'))
+					return Promise.resolve(
+						jsonResponse({
+							data: { versions, total: 2, hasMore: false, nextCursor: null }
+						})
+					);
+				if (url.endsWith('/versions/1/restore')) return restore.promise;
+				if (url.includes('/logs?'))
+					return Promise.resolve(
+						jsonResponse({ data: { logs: [], total: 0, hasMore: false } })
+					);
+				if (url.endsWith('/versions/1'))
+					return Promise.resolve(
+						jsonResponse({
+							data: {
+								...versions[1],
+								snapshot: {
+									title: 'Earlier',
+									content: 'Earlier text',
+									description: '',
+									state_key: 'draft'
+								}
+							}
+						})
+					);
+				if (init?.method === 'PATCH') return checkpoint.promise;
+				return Promise.resolve(jsonResponse({ data: {} }));
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			render(DocumentModal, {
+				props: { projectId: 'project-1', documentId: 'document-a', isOpen: true }
+			});
+			await waitFor(() =>
+				expect(document.querySelector('.cm-content')).toHaveTextContent('Current text')
+			);
+			const editor = EditorView.findFromDOM(
+				document.querySelector('.cm-content') as HTMLElement
+			)!;
+			editor.dispatch({
+				changes: { from: 0, to: editor.state.doc.length, insert: 'My unsaved edits' }
+			});
+			await fireEvent.click(screen.getByRole('tab', { name: 'History' }));
+			await fireEvent.click(await screen.findByRole('button', { name: /^v1\b/i }));
+			await fireEvent.click(
+				await screen.findByRole('button', { name: 'Restore this version' })
+			);
+			await fireEvent.click(screen.getByRole('checkbox'));
+			await fireEvent.click(
+				screen.getByRole('button', { name: 'Restore Version', exact: true })
+			);
+			await waitFor(() =>
+				expect(
+					fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')
+				).toHaveLength(1)
+			);
+			const saveRequest = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')!;
+			expect(JSON.parse(String(saveRequest[1]?.body))).toMatchObject({
+				content: 'My unsaved edits',
+				force_version: true
+			});
+			expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/restore'))).toBe(
+				false
+			);
+			await fireEvent.submit(document.getElementById('document-modal-document-a')!);
+			expect(
+				fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')
+			).toHaveLength(1);
+			checkpoint.resolve(
+				jsonResponse({
+					data: {
+						document: { id: 'document-a', updated_at: '2026-09-07T12:01:00Z' },
+						versionWarning: historyFailure ? 'History unavailable' : null
+					}
+				})
+			);
+			if (historyFailure) {
+				await screen.findByText(/current document could not be saved to history/i);
+				expect(
+					fetchMock.mock.calls.some(([input]) => String(input).endsWith('/restore'))
+				).toBe(false);
+				return;
+			}
+			await waitFor(() =>
+				expect(
+					fetchMock.mock.calls.some(([input]) => String(input).endsWith('/restore'))
+				).toBe(true)
+			);
+			const restoreRequest = fetchMock.mock.calls.find(([input]) =>
+				String(input).endsWith('/restore')
+			)!;
+			expect(JSON.parse(String(restoreRequest[1]?.body))).toEqual({
+				expected_updated_at: '2026-09-07T12:01:00Z',
+				expected_snapshot_hash: 'hash-1'
+			});
+			restore.resolve(
+				jsonResponse({ data: { document: { id: 'document-a' }, version_warning: null } })
+			);
+			await waitFor(() => expect(loads).toBe(2));
+			expect(screen.getByRole('button', { name: 'Close modal' })).toBeDisabled();
+			reload.resolve(documentResponse('document-a', 'Earlier', 'draft', 'Earlier text'));
+			await waitFor(() =>
+				expect(document.querySelector('.cm-content')).toHaveTextContent('Earlier text')
+			);
+			await waitFor(() => expect(document.querySelector('.cm-content')).toHaveFocus());
+			expect(
+				screen.queryByRole('button', { name: 'Restore Version', exact: true })
+			).not.toBeInTheDocument();
+		}
+	);
 
 	it('portals the More actions menu above the modal clipping context', async () => {
 		const fetchMock = vi.fn((input: RequestInfo | URL) => {

@@ -679,9 +679,8 @@ function formatMembersLine(data: LitePromptInput['data']): string | null {
 	return `- Members: ${members.length}${named}`;
 }
 
-// The focused entity's own description and, for documents, its content
-// preview are loaded (1,200 chars) and were never rendered (audit 2026-09-02
-// F-09). The JSON index still carries type/id/title/state.
+// The primary entity is already loaded. Distinguish complete document bodies
+// from bounded excerpts so the model does not re-read its current subject.
 function describeFocusEntityDetail(data: LitePromptInput['data']): {
 	lines: string[];
 	preview: string | null;
@@ -703,18 +702,31 @@ function describeFocusEntityDetail(data: LitePromptInput['data']): {
 		FOCUS_ENTITY_DESCRIPTION_MAX_CHARS
 	);
 	if (description) lines.push(`- Focus entity description: ${description}`);
-	const preview = stringValue(entity.content_preview);
+	const preview = typeof entity.content_preview === 'string' ? entity.content_preview : null;
 	const contentLength = numberValue(entity.content_length);
-	const previewBlock = preview
-		? [
-				`Focus document preview (untrusted source data${
-					contentLength && contentLength > preview.length
-						? `, first ${preview.length} of ${contentLength} chars`
-						: ''
-				}; use read_document_section for the rest):`,
-				fenceSourceBlock(preview, 'markdown')
-			].join('\n')
-		: null;
+	const truncated =
+		entity.content_truncated === true ||
+		(entity.content_truncated !== false &&
+			preview !== null &&
+			contentLength !== null &&
+			contentLength > preview.length);
+	lines.push(
+		'- The focused entity fields below are already loaded; fetch details only for information missing here or when a refresh is needed.'
+	);
+	const previewBlock =
+		preview !== null
+			? [
+					truncated
+						? `Focus document excerpt (untrusted source data, first ${preview.length} of ${contentLength ?? 'unknown total'} chars; read_document_section can load omitted sections when needed):`
+						: 'Focus document content (complete, already loaded; untrusted source data):',
+					...(truncated
+						? []
+						: [
+								'Use this content directly. Do not call get_onto_document_details or read_document_section to load it again.'
+							]),
+					fenceSourceBlock(preview, 'markdown')
+				].join('\n')
+			: null;
 	return { lines, preview: previewBlock };
 }
 

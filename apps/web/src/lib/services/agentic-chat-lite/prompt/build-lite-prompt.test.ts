@@ -2158,7 +2158,7 @@ describe('audit 2026-09-02 context rendering', () => {
 			'- Focus entity description: Working notes for the invite email.'
 		);
 		expect(focus?.content).toContain(
-			'Focus document preview (untrusted source data, first 36 of 5000 chars; use read_document_section for the rest):\n```markdown\n# Invite email\n\nSubject: You are in.\n```'
+			'Focus document excerpt (untrusted source data, first 36 of 5000 chars; read_document_section can load omitted sections when needed):\n```markdown\n# Invite email\n\nSubject: You are in.\n```'
 		);
 		const loadedContext = extractLoadedJson(envelope.systemPrompt);
 		expect(loadedContext.focus_entity).toEqual({

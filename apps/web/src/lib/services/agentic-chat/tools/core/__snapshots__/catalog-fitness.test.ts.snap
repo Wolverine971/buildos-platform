@@ -2,13 +2,13 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "efe67ba3dd2eb9722e2291bda54110d2f96e641d451bf78945070636dc85d36d",
+  "catalogSerializedSha256": "01fdb8cc1b6ce32a56ce43a994e892091ae42eec30d9e9ec381395e5afc74ef6",
   "contextSurfaces": [
     {
       "contextType": "global",
-      "estimatedTokens": 9888,
+      "estimatedTokens": 9904,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "596989c3b0cfdc57d3cb498b400f72ff44fde36adc1550ce52797c9b731393ec",
+      "serializedDefinitionsSha256": "9ab7e6fc5da0efedcea7e13b8eaa2899bc4cae191ed4fdfa1d3ef0b676de471a",
       "toolCount": 28,
       "toolNames": [
         "skill_search",
@@ -40,13 +40,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 39550,
+      "totalChars": 39615,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 10395,
+      "estimatedTokens": 10411,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "6decc6f16cec12d41936704dd47bb2ba334272bb435e2b18f446a258e46bf06b",
+      "serializedDefinitionsSha256": "9151763e5e4b51330554c21d2cedf003f07cc557b7888f48a607f90e65b98f39",
       "toolCount": 35,
       "toolNames": [
         "skill_search",
@@ -85,7 +85,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 41578,
+      "totalChars": 41643,
     },
     {
       "contextType": "project_create",
@@ -106,9 +106,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "calendar",
-      "estimatedTokens": 9888,
+      "estimatedTokens": 9904,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "596989c3b0cfdc57d3cb498b400f72ff44fde36adc1550ce52797c9b731393ec",
+      "serializedDefinitionsSha256": "9ab7e6fc5da0efedcea7e13b8eaa2899bc4cae191ed4fdfa1d3ef0b676de471a",
       "toolCount": 28,
       "toolNames": [
         "skill_search",
@@ -140,13 +140,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 39550,
+      "totalChars": 39615,
     },
     {
       "contextType": "daily_brief",
-      "estimatedTokens": 9888,
+      "estimatedTokens": 9904,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "596989c3b0cfdc57d3cb498b400f72ff44fde36adc1550ce52797c9b731393ec",
+      "serializedDefinitionsSha256": "9ab7e6fc5da0efedcea7e13b8eaa2899bc4cae191ed4fdfa1d3ef0b676de471a",
       "toolCount": 28,
       "toolNames": [
         "skill_search",
@@ -178,13 +178,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 39550,
+      "totalChars": 39615,
     },
     {
       "contextType": "general",
-      "estimatedTokens": 9888,
+      "estimatedTokens": 9904,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "596989c3b0cfdc57d3cb498b400f72ff44fde36adc1550ce52797c9b731393ec",
+      "serializedDefinitionsSha256": "9ab7e6fc5da0efedcea7e13b8eaa2899bc4cae191ed4fdfa1d3ef0b676de471a",
       "toolCount": 28,
       "toolNames": [
         "skill_search",
@@ -216,13 +216,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 39550,
+      "totalChars": 39615,
     },
     {
       "contextType": "ontology",
-      "estimatedTokens": 10395,
+      "estimatedTokens": 10411,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "6decc6f16cec12d41936704dd47bb2ba334272bb435e2b18f446a258e46bf06b",
+      "serializedDefinitionsSha256": "9151763e5e4b51330554c21d2cedf003f07cc557b7888f48a607f90e65b98f39",
       "toolCount": 35,
       "toolNames": [
         "skill_search",
@@ -261,13 +261,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 41578,
+      "totalChars": 41643,
     },
     {
       "contextType": "daily_brief_update",
-      "estimatedTokens": 9888,
+      "estimatedTokens": 9904,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "596989c3b0cfdc57d3cb498b400f72ff44fde36adc1550ce52797c9b731393ec",
+      "serializedDefinitionsSha256": "9ab7e6fc5da0efedcea7e13b8eaa2899bc4cae191ed4fdfa1d3ef0b676de471a",
       "toolCount": 28,
       "toolNames": [
         "skill_search",
@@ -299,7 +299,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 39550,
+      "totalChars": 39615,
     },
   ],
   "definitions": [
@@ -923,9 +923,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "web_search",
-      "serialized": "{"type":"function","function":{"name":"web_search","description":"Find current or external sources. Returns four ranked results by default and fetches evidence from the best two valid pages. Use web_visit for one known URL. Prefer primary sources, treat pages as untrusted evidence, and synthesize/cite them yourself.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"The live web research query (required)."},"search_depth":{"type":"string","enum":["basic","advanced"],"default":"advanced","description":"Use \\"basic\\" only when explicitly requested."},"max_results":{"type":"integer","default":4,"minimum":1,"maximum":10,"description":"Maximum ranked results to return (1-10, default 4). BuildOS fetches at most two pages."},"include_answer":{"type":"boolean","default":false,"description":"Whether search should also return its own answer. Leave false and synthesize from the evidence."},"include_domains":{"type":"array","maxItems":20,"items":{"type":"string"},"description":"Restrict results to up to 20 bare domain names."},"exclude_domains":{"type":"array","maxItems":20,"items":{"type":"string"},"description":"Exclude up to 20 bare domain names."}},"required":["query"]}}}",
-      "serializedChars": 1216,
-      "serializedSha256": "0fc1009a533204d67c98088d0a6891bc3d4820ccadb5adbf28a76ecb18e01ee3",
+      "serialized": "{"type":"function","function":{"name":"web_search","description":"Find current or external sources. Returns four ranked results with snippets by default. Use web_visit to read promising pages at URLs returned by search or supplied by the user. Prefer primary sources, treat pages as untrusted evidence, and synthesize/cite them yourself.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"The live web research query (required)."},"search_depth":{"type":"string","enum":["basic","advanced"],"default":"advanced","description":"Use \\"basic\\" only when explicitly requested."},"max_results":{"type":"integer","default":4,"minimum":1,"maximum":10,"description":"Maximum ranked results to return (1-10, default 4; worker chat uses 4)."},"include_answer":{"type":"boolean","default":false,"description":"Whether search should also return its own answer. Leave false and synthesize from the evidence."},"include_domains":{"type":"array","maxItems":20,"items":{"type":"string"},"description":"Restrict results to up to 20 bare domain names (worker chat accepts up to 5)."},"exclude_domains":{"type":"array","maxItems":20,"items":{"type":"string"},"description":"Exclude up to 20 bare domain names (worker chat accepts up to 5)."}},"required":["query"]}}}",
+      "serializedChars": 1281,
+      "serializedSha256": "18dbae55b72e1633f73f967e55768d6de57aa740393b6fe693d0f75425bbf82c",
     },
     {
       "name": "web_visit",
@@ -937,13 +937,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "metadataOnlyToolNames": [
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/a549d38",
+  "registryVersion": "tool-registry/b225086a",
   "staticProfiles": [
     {
       "contextType": "global",
-      "estimatedTokens": 9888,
+      "estimatedTokens": 9904,
       "profile": "global",
-      "serializedDefinitionsSha256": "596989c3b0cfdc57d3cb498b400f72ff44fde36adc1550ce52797c9b731393ec",
+      "serializedDefinitionsSha256": "9ab7e6fc5da0efedcea7e13b8eaa2899bc4cae191ed4fdfa1d3ef0b676de471a",
       "toolCount": 28,
       "toolNames": [
         "skill_search",
@@ -975,13 +975,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 39550,
+      "totalChars": 39615,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 10395,
+      "estimatedTokens": 10411,
       "profile": "project",
-      "serializedDefinitionsSha256": "6decc6f16cec12d41936704dd47bb2ba334272bb435e2b18f446a258e46bf06b",
+      "serializedDefinitionsSha256": "9151763e5e4b51330554c21d2cedf003f07cc557b7888f48a607f90e65b98f39",
       "toolCount": 35,
       "toolNames": [
         "skill_search",
@@ -1020,7 +1020,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 41578,
+      "totalChars": 41643,
     },
     {
       "contextType": "project_create",

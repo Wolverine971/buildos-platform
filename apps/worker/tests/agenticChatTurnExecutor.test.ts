@@ -846,6 +846,151 @@ function normalizedBroadcastEventTypes(messages: Array<Record<string, unknown>>)
 }
 
 describe('AgenticChatTurnExecutor', () => {
+	it.each([
+		'read_tool_egress_blocked_private_content',
+		'read_tool_egress_provenance_required',
+		'read_tool_execution_failed',
+		'read_tool_timeout',
+		'read_tool_research_review_unavailable'
+	])('continues after a web-search batch is rejected by %s', async (code) => {
+		const policyDenied = code.startsWith('read_tool_egress_');
+		const harness = createHarness([]);
+		harness.readTool.execute.mockRejectedValue(
+			new AgenticChatProviderExecutionError(code, 'permanent', code)
+		);
+		const steps = [
+			[CALL_TRANSITION_ID, RESULT_TRANSITION_ID],
+			[SECOND_CALL_TRANSITION_ID, SECOND_RESULT_TRANSITION_ID],
+			[THIRD_CALL_TRANSITION_ID, THIRD_RESULT_TRANSITION_ID]
+		].map(([callTransitionId, resultTransitionId], index) => ({
+			type: 'read_tool' as const,
+			logicalProviderRound: 1,
+			callTransitionId: callTransitionId!,
+			resultTransitionId: resultTransitionId!,
+			providerToolCallId: `blocked-search-${index}`,
+			toolName: 'web_search',
+			arguments: { query: `Vendor pricing ${index}` }
+		}));
+		const continueWithToolResults = vi.fn(
+			({ results }: AgenticChatProviderToolRoundInputV1) => {
+				expect(results).toHaveLength(3);
+				for (const result of results)
+					expect(result).toMatchObject({
+						failure: {
+							kind: 'known_execution_failure',
+							modelPayload: {
+								error_code: code,
+								executed: policyDenied ? false : null,
+								retryable: false
+							}
+						}
+					});
+				return (async function* () {
+					yield {
+						type: 'text_delta',
+						text: 'I could not verify live prices. From your notes, the next questions are email capture, design inspiration, and available photos.'
+					} as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			}
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						for (const step of steps) yield step;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed'
+			});
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+			expect(harness.toolExecutions.persistRead).not.toHaveBeenCalled();
+			expect(harness.toolExecutions.persistFailure).toHaveBeenCalledTimes(3);
+			for (const [input] of harness.toolExecutions.persistFailure.mock.calls) {
+				expect(input).toMatchObject({
+					failureKind: policyDenied ? 'read_policy' : 'read_failure',
+					toolName: 'web_search'
+				});
+				expect(input.error).toContain(code);
+			}
+			const results = harness.semanticInputs.filter(
+				(event) => event.event_type === 'tool_result'
+			);
+			expect(results).toHaveLength(3);
+			for (const result of results)
+				expect(result).toMatchObject({
+					event_payload: { result: { success: false, error_code: code } }
+				});
+			expect(harness.control.recover).not.toHaveBeenCalled();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('preserves successful research when another lookup in the batch fails', async () => {
+		const harness = createHarness([]);
+		harness.readTool.execute.mockRejectedValueOnce(
+			new AgenticChatProviderExecutionError(
+				'read_tool_timeout',
+				'transient_infra',
+				'Timed out'
+			)
+		);
+		const steps = [
+			[CALL_TRANSITION_ID, RESULT_TRANSITION_ID],
+			[SECOND_CALL_TRANSITION_ID, SECOND_RESULT_TRANSITION_ID]
+		].map(([callTransitionId, resultTransitionId], index) => ({
+			type: 'read_tool' as const,
+			logicalProviderRound: 1,
+			callTransitionId: callTransitionId!,
+			resultTransitionId: resultTransitionId!,
+			providerToolCallId: `research-${index}`,
+			toolName: 'web_search',
+			arguments: { query: `Vendor ${index} pricing` }
+		}));
+		const continueWithToolResults = vi.fn(
+			({ results }: AgenticChatProviderToolRoundInputV1) => {
+				expect(results).toHaveLength(2);
+				expect(results[0]).toMatchObject({
+					failure: { modelPayload: { error_code: 'read_tool_timeout' } }
+				});
+				expect(results[1]).toHaveProperty('execution.result');
+				return (async function* () {
+					yield {
+						type: 'text_delta',
+						text: 'One source was unavailable; here is what the other returned.'
+					} as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			}
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield* steps;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed'
+			});
+			expect(harness.toolExecutions.persistRead).toHaveBeenCalledOnce();
+			expect(harness.toolExecutions.persistFailure).toHaveBeenCalledOnce();
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('consumes provider text without waiting for each durable delivery', async () => {
 		let releasePersistence!: () => void;
 		const persistenceGate = new Promise<void>((resolve) => {
