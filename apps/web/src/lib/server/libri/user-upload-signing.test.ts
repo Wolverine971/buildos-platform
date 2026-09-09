@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { signLibriUserUpload } from './user-upload-signing';
 
 const library = 'f09948c4-e4e0-581c-8689-7258bea2f501';
@@ -119,13 +119,16 @@ function fixture(
 				if (options.beginCode)
 					return Response.json({ code: options.beginCode }, { status: 500 });
 				if (!beginGranted || options.beginReceipt === null) return Response.json(null);
+				// Match the RPC's single clock_timestamp() sample. Separate reads can
+				// create a 10,001ms mock window, correctly rejected by the real signer.
+				const attemptedAt = Date.now();
 				return Response.json({
 					upload_id: upload,
 					library_id: library,
 					request_id: body.p_request_id,
 					object_path: path,
-					attempted_at: new Date().toISOString(),
-					sign_before: new Date(Date.now() + 10_000).toISOString(),
+					attempted_at: new Date(attemptedAt).toISOString(),
+					sign_before: new Date(attemptedAt + 10_000).toISOString(),
 					reservation_expires_at: intent.expires_at,
 					...options.beginReceipt
 				});
@@ -181,6 +184,17 @@ function fixture(
 }
 
 describe('private Libri upload signer', () => {
+	it('constructs the mock database window from one clock sample', async () => {
+		// A controlled offset makes mixing the native Date constructor with a
+		// separate Date.now() read fail deterministically, not only at a tick boundary.
+		const now = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 1000);
+		try {
+			const f = fixture();
+			expect((await signLibriUserUpload(f.request(), f.config)).status).toBe(200);
+		} finally {
+			now.mockRestore();
+		}
+	});
 	it('defaults off without authentication, database, or Storage calls', async () => {
 		const f = fixture({ enabled: false });
 		const response = await signLibriUserUpload(f.request(), f.config);
