@@ -100,8 +100,11 @@ describe('Chat tool schema compatibility', () => {
 			  }
 			| undefined;
 
-		expect(tool?.function?.description).toContain('Find current or external sources');
-		expect(tool?.function?.description).toContain('Use web_visit to read promising pages');
+		expect(tool?.function?.description).toContain('Find current public-web sources');
+		expect(tool?.function?.description).toContain('four ranked snippets by default');
+		expect(tool?.function?.description).toContain('Use web_visit on returned or user-supplied URLs');
+		expect(tool?.function?.description).toContain('Prefer primary sources');
+		expect(tool?.function?.description).toContain('untrusted evidence and synthesize/cite them');
 		expect(tool?.function?.description).not.toContain('using the Tavily API');
 		expect(tool?.function?.description).not.toMatch(/provider synthesis|model lane/i);
 		expect(parameters?.properties?.search_depth?.default).toBe('advanced');
