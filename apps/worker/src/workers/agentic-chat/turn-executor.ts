@@ -2236,11 +2236,15 @@ export class AgenticChatTurnExecutor {
 		const policyDenied =
 			code === 'read_tool_egress_blocked_private_content' ||
 			code === 'read_tool_egress_provenance_required';
+		const deniedPageVisit =
+			code === 'read_tool_egress_provenance_required' && step.toolName === 'web_visit';
 		const error =
 			code === 'read_tool_egress_blocked_private_content'
 				? 'Email lookup did not run: mailbox egress is restricted after reading private content.'
 				: code === 'read_tool_egress_provenance_required'
-					? 'External lookup did not run: the query or URL was not authorized for this research request.'
+					? deniedPageVisit
+						? 'Page visit did not run: the URL was not supplied by you or returned by a search this turn.'
+						: 'External lookup did not run: the query or URL was not authorized for this research request.'
 					: 'Live research did not return usable evidence. The lookup service was unavailable, timed out, or could not complete its checks.';
 		await abortable(
 			this.ports.toolExecutions.persistFailure(
@@ -2313,8 +2317,12 @@ export class AgenticChatTurnExecutor {
 					error_code: code,
 					executed: policyDenied ? false : null,
 					retryable: false,
-					instruction:
-						'Do not repeat this failed lookup or route around an authorization denial. Continue useful work using loaded context and any successful research results. Disclose which live facts could not be verified; cite only evidence that actually returned.'
+					instruction: [
+						deniedPageVisit
+							? 'To find an authorized page, use web_search with include_domains for the relevant public domain, then open an exact URL returned by that successful search. Do not guess or modify URLs to bypass authorization.'
+							: 'Do not repeat this failed lookup or route around an authorization denial.',
+						'Continue useful work using loaded context and any successful research results. Disclose which live facts could not be verified; cite only evidence that actually returned.'
+					].join(' ')
 				}
 			}
 		};

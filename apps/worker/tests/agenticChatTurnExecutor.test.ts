@@ -847,12 +847,15 @@ function normalizedBroadcastEventTypes(messages: Array<Record<string, unknown>>)
 
 describe('AgenticChatTurnExecutor', () => {
 	it.each([
-		'read_tool_egress_blocked_private_content',
-		'read_tool_egress_provenance_required',
-		'read_tool_execution_failed',
-		'read_tool_timeout',
-		'read_tool_research_review_unavailable'
-	])('continues after a web-search batch is rejected by %s', async (code) => {
+		...[
+			'read_tool_egress_blocked_private_content',
+			'read_tool_egress_provenance_required',
+			'read_tool_execution_failed',
+			'read_tool_timeout',
+			'read_tool_research_review_unavailable'
+		].map((code) => ({ toolName: 'web_search', code })),
+		{ toolName: 'web_visit', code: 'read_tool_egress_provenance_required' }
+	])('continues after a $toolName batch is rejected by $code', async ({ toolName, code }) => {
 		const policyDenied = code.startsWith('read_tool_egress_');
 		const harness = createHarness([]);
 		harness.readTool.execute.mockRejectedValue(
@@ -868,8 +871,11 @@ describe('AgenticChatTurnExecutor', () => {
 			callTransitionId: callTransitionId!,
 			resultTransitionId: resultTransitionId!,
 			providerToolCallId: `blocked-search-${index}`,
-			toolName: 'web_search',
-			arguments: { query: `Vendor pricing ${index}` }
+			toolName,
+			arguments:
+				toolName === 'web_visit'
+					? { url: `https://example.com/pricing/${index}` }
+					: { query: `Vendor pricing ${index}` }
 		}));
 		const continueWithToolResults = vi.fn(
 			({ results }: AgenticChatProviderToolRoundInputV1) => {
@@ -885,6 +891,20 @@ describe('AgenticChatTurnExecutor', () => {
 							}
 						}
 					});
+				if (toolName === 'web_visit') {
+					for (const result of results) {
+						expect(result).toMatchObject({
+							failure: {
+								error: expect.not.stringContaining('include_domains'),
+								modelPayload: {
+									instruction: expect.stringContaining(
+										'use web_search with include_domains'
+									)
+								}
+							}
+						});
+					}
+				}
 				return (async function* () {
 					yield {
 						type: 'text_delta',
@@ -914,7 +934,7 @@ describe('AgenticChatTurnExecutor', () => {
 			for (const [input] of harness.toolExecutions.persistFailure.mock.calls) {
 				expect(input).toMatchObject({
 					failureKind: policyDenied ? 'read_policy' : 'read_failure',
-					toolName: 'web_search'
+					toolName
 				});
 				expect(input.error).toContain(code);
 			}

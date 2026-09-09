@@ -1,9 +1,6 @@
 // apps/web/src/lib/server/gmail-relevance/metadata-gateway.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import {
-	GmailRelevanceMetadataGateway,
-	GmailRelevanceMetadataGatewayError
-} from './metadata-gateway';
+import { GmailRelevanceMetadataGateway } from './metadata-gateway';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const CONNECTION_ID = '22222222-2222-4222-8222-222222222222';

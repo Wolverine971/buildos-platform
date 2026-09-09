@@ -471,7 +471,7 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 
 	it('aborts and ignores a late response after stop', async () => {
 		let resolveFetch!: (response: Response) => void;
-		const fetchImpl = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+		const fetchImpl = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) => {
 			return new Promise<Response>((resolve) => (resolveFetch = resolve));
 		});
 		const observer = applicationObserver();

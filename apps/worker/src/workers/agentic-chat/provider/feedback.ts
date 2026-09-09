@@ -56,8 +56,10 @@ export function validateToolFeedback(
 			canonicalizeAgenticChatJson(feedback.failure.modelPayload as JsonValue);
 			return;
 		}
+		// The worker also persists recoverable read failures (for example, a
+		// denied page visit or unavailable search). Replay those as failed tool
+		// results so the model can continue with evidence that did succeed.
 		if (
-			call.kind !== 'mutation' ||
 			feedback.failure.kind !== 'known_execution_failure' ||
 			!isCanonicalProviderText(feedback.failure.error, 4_000) ||
 			(feedback.failure.toolCategory !== null &&

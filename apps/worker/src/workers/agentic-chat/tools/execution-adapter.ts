@@ -29,11 +29,11 @@ import {
 import { createEmbeddingsClientFromEnv } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import {
 	evaluateAgenticChatWebEgressProvenance,
-	normalizeAgenticChatWebSearchArguments,
 	executeAgenticChatStandardControlToolV1,
 	isAgenticChatContentFreeEmailToolNameV1,
 	isAgenticChatStandardControlToolNameV1,
 	isAgenticChatWebEgressToolName,
+	normalizeAgenticChatWebSearchArguments,
 	searchTelemetryColumns
 } from '@buildos/agentic-chat-runtime/loop';
 import { runWithAbortableDeadline } from '../abortableDeadline';
@@ -44,8 +44,8 @@ import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
 import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
 import type { AgenticChatWebSearchReviewPort } from './web-search-review';
 import {
-	createAgentRunWebUrlCapabilityLedger,
-	type AgentRunWebUrlCapabilityLedger
+	type AgentRunWebUrlCapabilityLedger,
+	createAgentRunWebUrlCapabilityLedger
 } from '../../agent-run/webUrlCapabilityLedger';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';

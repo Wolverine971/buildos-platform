@@ -5283,6 +5283,106 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
 	});
 
+	// Production turn 35f3e826: searches succeeded, a guessed page URL was
+	// denied, then the real provider rejected the worker's failed-read receipt.
+	// Exercise continuation itself, not an executor mock that accepts anything.
+	it.each<{ toolName: string; args: JsonObject; error: string }>([
+		{
+			toolName: 'web_visit',
+			args: { url: 'https://mailchimp.com/pricing/' },
+			error: 'External lookup did not run: the query or URL was not authorized for this research request.'
+		},
+		{
+			toolName: 'web_search',
+			args: { query: 'Mailchimp free plan limits' },
+			error: 'Live research did not return usable evidence. The lookup service was unavailable, timed out, or could not complete its checks.'
+		}
+	])(
+		'continues after a recoverable $toolName failure and keeps successful evidence',
+		async ({ toolName, args, error }) => {
+			const searchArgs = { query: 'Mailchimp pricing' };
+			const client = clientWithRounds([
+				providerReadRound('search-ok', searchArgs, 'web_search'),
+				providerReadRound('research-failed', args, toolName),
+				[
+					{
+						type: 'text',
+						content:
+							'The search returned sources, but I could not verify the requested details.'
+					},
+					{ type: 'done', finishedReason: 'stop' }
+				]
+			]);
+			const invocation = await new AgenticChatTurnProviderAdapter({
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			}).prepare({
+				executionInput: executionInputWithReadSurface([
+					readToolDefinition('web_search'),
+					readToolDefinition('web_visit')
+				]),
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			await collect(invocation.stream());
+			await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedbackFor('search-ok', 'web_search', searchArgs, {
+							results: [
+								{
+									url: 'https://mailchimp.com/pricing/marketing/compare-plans',
+									title: 'Compare plans'
+								}
+							]
+						})
+					]
+				})
+			);
+			const failure: AgenticChatProviderFailedToolSynthesisInputV1 = {
+				providerToolCallId: 'research-failed',
+				toolName,
+				arguments: args,
+				failure: {
+					kind: 'known_execution_failure',
+					error,
+					toolCategory: null,
+					modelPayload: { tool_call_id: 'research-failed', success: false, error }
+				}
+			};
+			await expect(
+				collect(
+					invocation.continueWithToolResults!({
+						round: 3,
+						results: [failure]
+					})
+				)
+			).resolves.toEqual([
+				{
+					type: 'text_delta',
+					text: 'The search returned sources, but I could not verify the requested details.'
+				},
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			]);
+			const continuation = client.stream.mock.calls[2]![0];
+			const receipts = continuation.messages.filter((message) => message.role === 'tool');
+			expect(receipts).toHaveLength(2);
+			expect(requireTextContent(receipts[0], 'Successful search')).toContain('Compare plans');
+			expect(JSON.parse(requireTextContent(receipts[1], 'Failed research'))).toMatchObject({
+				success: false,
+				error
+			});
+			// Reads can still recover through an authorized lookup; failed writes
+			// have a separate, tool-free partial-mutation recovery path.
+			expect(continuation.tools.map((tool) => tool.function.name)).toEqual([
+				'web_search',
+				'web_visit'
+			]);
+			expect(client.stream).toHaveBeenCalledTimes(3);
+		}
+	);
+
 	it('continues sequential read rounds with compacted durable feedback', async () => {
 		const streams: AgenticChatTurnProviderClientEventV1[][] = [
 			[

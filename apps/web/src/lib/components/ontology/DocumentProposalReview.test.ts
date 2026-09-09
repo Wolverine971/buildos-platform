@@ -113,7 +113,7 @@ describe('Document proposal review', () => {
 		});
 		await generate();
 		await waitForReview();
-		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+		expect(JSON.parse(fetchMock.mock.calls[0]?.[1].body)).toMatchObject({
 			instruction: 'Make it clear',
 			selection_from: 8,
 			selection_to: content.length,
@@ -125,7 +125,7 @@ describe('Document proposal review', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		preparation.resolve(true);
 		await waitFor(() => expect(onApplied).toHaveBeenCalledWith({ versionWarning: null }));
-		expect(fetchMock.mock.calls[1][0]).toBe(
+		expect(fetchMock.mock.calls[1]?.[0]).toBe(
 			'/api/onto/documents/document-1/proposals/proposal-1/apply'
 		);
 		expect(onApplyStateChange).toHaveBeenLastCalledWith(false);
@@ -205,7 +205,7 @@ describe('Document proposal review', () => {
 		await generate();
 		expect(screen.getByRole('button', { name: 'Close proposal review' })).not.toBeDisabled();
 		view.unmount();
-		expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+		expect(fetchMock.mock.calls[0]?.[1].signal.aborted).toBe(true);
 		pending.resolve(json({ data: { proposal: proposal() } }));
 		await tick();
 		expect(screen.queryByRole('button', { name: 'Apply proposal' })).not.toBeInTheDocument();
@@ -249,7 +249,7 @@ describe('Document proposal review', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Apply proposal' }));
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 		view.unmount();
-		expect(fetchMock.mock.calls[1][1].signal.aborted).toBe(true);
+		expect(fetchMock.mock.calls[1]?.[1].signal.aborted).toBe(true);
 		expect(onApplyStateChange).toHaveBeenLastCalledWith(false);
 		pending.resolve(json({ data: { proposal: proposal('applied') } }));
 		await tick();
@@ -284,7 +284,9 @@ describe('Document proposal review', () => {
 		);
 		await fireEvent.click(screen.getByRole('button', { name: 'Generate proposal' }));
 		await waitForReview();
-		expect(JSON.parse(fetchMock.mock.calls[1][1].body).replaces_proposal_id).toBe('proposal-1');
+		expect(JSON.parse(fetchMock.mock.calls[1]?.[1].body).replaces_proposal_id).toBe(
+			'proposal-1'
+		);
 	});
 	it('waits for recording and transcription before allowing generation', async () => {
 		const onVoiceStateChange = vi.fn();

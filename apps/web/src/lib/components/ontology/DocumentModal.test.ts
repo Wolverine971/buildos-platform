@@ -750,9 +750,7 @@ describe('DocumentModal document loading', () => {
 				await screen.findByRole('button', { name: 'Restore this version' })
 			);
 			await fireEvent.click(screen.getByRole('checkbox'));
-			await fireEvent.click(
-				screen.getByRole('button', { name: 'Restore Version', exact: true })
-			);
+			await fireEvent.click(screen.getByRole('button', { name: 'Restore Version' }));
 			await waitFor(() =>
 				expect(
 					fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')
@@ -808,7 +806,7 @@ describe('DocumentModal document loading', () => {
 			);
 			await waitFor(() => expect(document.querySelector('.cm-content')).toHaveFocus());
 			expect(
-				screen.queryByRole('button', { name: 'Restore Version', exact: true })
+				screen.queryByRole('button', { name: 'Restore Version' })
 			).not.toBeInTheDocument();
 		}
 	);

@@ -1,8 +1,13 @@
 -- supabase/tests/20260907162504_document_recency_guard.test.sql
--- Run with psql after applying the migration. Uses only a temporary table and
--- rolls back; calls the real trigger function with generated columns present.
+-- PSQL-ONLY / DISPOSABLE DATABASE ONLY. Never run against a linked database.
+-- Calls the real trigger function with generated columns present.
 \set ON_ERROR_STOP on
 BEGIN;
+\ir fixtures/document_recency_guard_base.sql
+\ir ../migrations/20260624000000_start_here_managed_region_recency_guard.sql
+\ir ../migrations/20260907162504_fix_document_content_hash_recency_guard.sql
+\ir ../migrations/20260907200711_harden_document_recency_guard_search_path.sql
+
 CREATE TEMP TABLE document_recency_probe (
  id integer primary key,
  title text default 'Meeting notes',

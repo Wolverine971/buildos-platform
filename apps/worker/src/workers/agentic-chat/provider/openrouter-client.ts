@@ -32,7 +32,7 @@ import {
 	createStableAgenticChatExecutionObservationKeyV1
 } from '../executionObservation';
 import { isToolArgumentsTextTruncated } from './stream-tool-calls';
-import { localPromptDumpsEnabled, startLocalPromptDump, type LocalPromptDump } from '../promptDump';
+import { type LocalPromptDump, localPromptDumpsEnabled, startLocalPromptDump } from '../promptDump';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
 /**
