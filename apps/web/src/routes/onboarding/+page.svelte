@@ -1,257 +1,207 @@
 <!-- apps/web/src/routes/onboarding/+page.svelte -->
 <script lang="ts">
-	import { untrack } from 'svelte';
-	import { browser } from '$app/environment';
+	import { onMount, tick, untrack } from 'svelte';
+	import { invalidate } from '$app/navigation';
 	import { captureEvent } from '$lib/services/posthog';
 	import type { PageData } from './$types';
 	import type { OnboardingIntent, OnboardingStakes } from '$lib/config/onboarding.config';
-
-	// V3 Onboarding Components
+	import type { ActivationPacket } from '$lib/utils/onboarding-state';
 	import IntentStakesStep from '$lib/components/onboarding-v3/IntentStakesStep.svelte';
 	import ProjectsCaptureStep from '$lib/components/onboarding-v2/ProjectsCaptureStep.svelte';
 	import NotificationsStepV3 from '$lib/components/onboarding-v3/NotificationsStepV3.svelte';
 	import ReadyStep from '$lib/components/onboarding-v3/ReadyStep.svelte';
 	import ProgressIndicatorV3 from '$lib/components/onboarding-v3/ProgressIndicatorV3.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 
 	let { data }: { data: PageData } = $props();
-	const initialData = untrack(() => data);
-
-	// --- Session state persistence (survives OAuth redirects) ---
-	const SESSION_KEY = 'buildos_onboarding_state';
-
-	type OnboardingV3State = {
-		intent: OnboardingIntent | null;
-		stakes: OnboardingStakes | null;
-		projectsCreated: number;
-		tasksCreated: number;
-		goalsCreated: number;
-		smsEnabled: boolean;
-		emailEnabled: boolean;
-	};
-
-	type SavedOnboardingState = {
-		currentStep: number;
-		maxStepReached: number;
-		v3Data: OnboardingV3State;
-		savedAt: number;
-	};
-
-	function saveStateToSession() {
-		if (!browser) return;
-		const state: SavedOnboardingState = {
-			currentStep,
-			maxStepReached,
-			v3Data: { ...v3Data },
-			savedAt: Date.now()
-		};
-		try {
-			sessionStorage.setItem(SESSION_KEY, JSON.stringify(state));
-		} catch {
-			// sessionStorage may be unavailable (private browsing, etc.)
-		}
-	}
-
-	function loadStateFromSession(): SavedOnboardingState | null {
-		if (!browser) return null;
-		try {
-			const raw = sessionStorage.getItem(SESSION_KEY);
-			if (!raw) return null;
-			const state = JSON.parse(raw) as SavedOnboardingState;
-			// Expire after 30 minutes to avoid stale state
-			if (Date.now() - state.savedAt > 30 * 60 * 1000) {
-				sessionStorage.removeItem(SESSION_KEY);
-				return null;
-			}
-			return state;
-		} catch {
-			return null;
-		}
-	}
-
-	function clearSessionState() {
-		if (!browser) return;
-		try {
-			sessionStorage.removeItem(SESSION_KEY);
-		} catch {
-			// ignore
-		}
-	}
-
-	// --- Initialize state: restore from session or database ---
-	const totalSteps = 4;
+	const initial = untrack(() => data);
+	let currentStep = $state(initial.calendarReturn ? 1 : initial.savedStep);
+	let committedStep = $state(initial.savedStep);
+	// Fresh loader data may include a later milestone saved in another tab.
+	const maxStepReached = $derived(Math.max(committedStep, data.savedStep));
+	let projectId = $state<string | null>(initial.savedProjectId);
+	let packet = $state<ActivationPacket | null>(null);
+	let progressError = $state<string | null>(null);
+	let isSaving = $state(false);
+	let completed = $state(false);
+	let stepContent = $state<HTMLDivElement>();
+	let progressAlert = $state<HTMLDivElement>();
+	let pendingStep = $state<number | null>(null);
 	const onboardingStartTime = Date.now();
-
-	// Try to restore from sessionStorage first (OAuth redirect scenario)
-	const savedSession = loadStateFromSession();
-	const hasSavedOnboardingSeed = Boolean(initialData.savedIntent || initialData.savedStakes);
-
-	let currentStep = $state(savedSession?.currentStep ?? 0);
-	let maxStepReached = $state(savedSession?.maxStepReached ?? savedSession?.currentStep ?? 0);
-	let v3Data = $state<OnboardingV3State>(
-		savedSession?.v3Data ?? {
-			intent: null as OnboardingIntent | null,
-			stakes: null as OnboardingStakes | null,
-			projectsCreated: 0,
-			tasksCreated: 0,
-			goalsCreated: 0,
-			smsEnabled: false,
-			emailEnabled: false
-		}
-	);
-
-	// If no session state, check if intent/stakes were saved to the database
-	// (user completed step 0, then got redirected by OAuth)
-	if (!savedSession && hasSavedOnboardingSeed) {
-		v3Data.intent = (initialData.savedIntent as OnboardingIntent) ?? null;
-		v3Data.stakes = (initialData.savedStakes as OnboardingStakes) ?? null;
-		// They already completed step 0, jump to step 1
-		currentStep = 1;
-		maxStepReached = 1;
-	}
-
-	// Fresh start only — OAuth-redirect restores and resumed sessions don't re-fire
-	if (browser && !savedSession && !hasSavedOnboardingSeed) {
-		captureEvent('onboarding_started');
-	}
-
-	type OntologyCounts = {
-		goals: number;
-		requirements: number;
-		plans: number;
-		tasks: number;
-		documents: number;
-		sources: number;
-		metrics: number;
-		milestones: number;
-		risks: number;
-		edges: number;
-	};
-
-	// Persist state to sessionStorage whenever it changes
-	$effect(() => {
-		// Access reactive values to track them
-		void currentStep;
-		void maxStepReached;
-		void v3Data.intent;
-		void v3Data.stakes;
-		void v3Data.projectsCreated;
-		saveStateToSession();
+	let v3Data = $state({
+		intent: initial.savedIntent as OnboardingIntent | null,
+		stakes: initial.savedStakes as OnboardingStakes | null,
+		projectsCreated: initial.savedProjectId ? 1 : 0,
+		tasksCreated: 0,
+		goalsCreated: 0,
+		smsEnabled: false,
+		emailEnabled: false
 	});
 
-	// Step navigation
+	onMount(() => {
+		if (!initial.savedIntent) captureEvent('onboarding_started');
+	});
+
+	async function focusStep() {
+		await tick();
+		const heading = stepContent?.querySelector('h1');
+		heading?.setAttribute('tabindex', '-1');
+		heading?.focus({ preventScroll: true });
+		window.scrollTo({ top: 0, behavior: 'instant' });
+	}
+
+	// Only committed milestones unlock navigation. Failed saves keep the current surface intact.
+	async function persistProgress(step: number, advance = true) {
+		if (isSaving) return;
+		isSaving = true;
+		progressError = null;
+		pendingStep = advance ? step : null;
+		try {
+			const response = await fetch('/api/onboarding', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'save_progress', step, projectId })
+			});
+			const result = await response.json().catch(() => null);
+			if (!response.ok || !result?.success)
+				throw new Error(
+					typeof result?.error === 'string'
+						? result.error
+						: 'Could not save your progress. Please try again.'
+				);
+			committedStep = Math.max(committedStep, step);
+			if (advance) {
+				currentStep = step;
+				void focusStep();
+			}
+			pendingStep = null;
+			await invalidate('app:onboarding');
+		} catch (error) {
+			progressError =
+				error instanceof Error
+					? error.message
+					: 'Could not save your progress. Please try again.';
+			await tick();
+			progressAlert?.focus();
+		} finally {
+			isSaving = false;
+		}
+	}
+
 	function goToStep(step: number) {
-		if (step < 0 || step >= totalSteps) return;
-		if (step > maxStepReached) return;
+		if (isSaving || step < 0 || step > maxStepReached) return;
+		progressError = null;
 		currentStep = step;
+		void focusStep();
 	}
 
-	function advanceTo(step: number) {
-		currentStep = step;
-		if (step > maxStepReached) maxStepReached = step;
+	async function handleIntentStakesDone() {
+		committedStep = Math.max(committedStep, 1);
+		currentStep = 1;
+		void focusStep();
+		await invalidate('app:onboarding');
 	}
 
-	function goBack() {
-		if (currentStep > 0) {
-			currentStep = currentStep - 1;
+	async function handleProjectsCreated(ids: string[], counts?: { tasks: number; goals: number }) {
+		const changed = projectId !== (ids[0] ?? null);
+		projectId = ids[0] ?? null;
+		if (changed) packet = null;
+		v3Data.projectsCreated = ids.length;
+		if (!ids.length) {
+			v3Data.tasksCreated = 0;
+			v3Data.goalsCreated = 0;
 		}
-	}
-
-	// Step 0: Intent + Stakes
-	function handleIntentSelected(intent: OnboardingIntent) {
-		v3Data.intent = intent;
-	}
-
-	function handleStakesSelected(stakes: OnboardingStakes) {
-		v3Data.stakes = stakes;
-	}
-
-	function handleIntentStakesDone() {
-		advanceTo(1);
-	}
-
-	// Step 1: Project capture
-	function handleProjectsCreated(projectIds: string[], ontologyCounts?: OntologyCounts) {
-		v3Data.projectsCreated = projectIds.length;
-		if (ontologyCounts) {
-			v3Data.tasksCreated = ontologyCounts.tasks;
-			v3Data.goalsCreated = ontologyCounts.goals;
+		if (counts) {
+			v3Data.tasksCreated = counts.tasks;
+			v3Data.goalsCreated = counts.goals;
 		}
+		// Save the project immediately, before the optional OAuth round-trip.
+		if (changed && projectId) await persistProgress(1, false);
 	}
-
-	function handleCalendarAnalyzed(_completed: boolean) {
-		// Tracked for analytics but doesn't affect flow
-	}
-
-	function handleProjectCaptureDone() {
-		advanceTo(2);
-	}
-
-	// Step 2: Notifications
-	function handleSMSEnabled(enabled: boolean) {
-		v3Data.smsEnabled = enabled;
-	}
-
-	function handleEmailEnabled(enabled: boolean) {
-		v3Data.emailEnabled = enabled;
-	}
-
-	function handleNotificationsDone() {
-		advanceTo(3);
-		clearSessionState();
-	}
-
-	const isExploreUser = $derived(v3Data.intent === 'explore');
 </script>
 
 <svelte:head>
 	<title>Welcome to BuildOS | Get Started</title>
 	<meta
 		name="description"
-		content="Set up BuildOS in under 5 minutes. Tell us what you need and get started with your first project."
+		content="Turn what’s on your mind into a project with a clear next move."
 	/>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<!-- Header: Progress indicator with Back navigation -->
-	<div
-		class="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/60 px-4 py-4"
-	>
+	<div class="sticky top-0 z-20 border-b border-border/60 bg-background px-4 py-4">
 		<ProgressIndicatorV3
 			{currentStep}
-			{totalSteps}
+			totalSteps={4}
 			{maxStepReached}
+			{completed}
 			onStepClick={goToStep}
-			onBack={goBack}
+			onBack={() => goToStep(currentStep - 1)}
+			disabled={isSaving || completed}
 		/>
 	</div>
 
-	<!-- Step content -->
-	{#if currentStep === 0}
-		<IntentStakesStep
-			onNext={handleIntentStakesDone}
-			onIntentSelected={handleIntentSelected}
-			onStakesSelected={handleStakesSelected}
-			defaultIntent={v3Data.intent ?? undefined}
-			defaultStakes={v3Data.stakes ?? undefined}
-		/>
-	{:else if currentStep === 1}
-		<ProjectsCaptureStep
-			onNext={handleProjectCaptureDone}
-			onProjectsCreated={handleProjectsCreated}
-			onCalendarAnalyzed={handleCalendarAnalyzed}
-			intent={v3Data.intent ?? undefined}
-			isSkippable={isExploreUser}
-			initialProjects={data.existingProjects ?? []}
-		/>
-	{:else if currentStep === 2}
-		<NotificationsStepV3
-			userId={data.user.id}
-			onNext={handleNotificationsDone}
-			onSMSEnabled={handleSMSEnabled}
-			onEmailEnabled={handleEmailEnabled}
-		/>
-	{:else if currentStep === 3}
-		<ReadyStep summary={v3Data} onboardingStartedAtMs={onboardingStartTime} />
+	{#if progressError}
+		<div
+			bind:this={progressAlert}
+			tabindex="-1"
+			class="mx-auto mt-4 max-w-2xl px-4 focus:outline-none"
+			role="alert"
+		>
+			<div class="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm">
+				<p class="text-foreground">{progressError}</p>
+				<p class="mt-1 text-muted-foreground">Your work is still here.</p>
+				<Button
+					variant="outline"
+					size="sm"
+					class="mt-3"
+					loading={isSaving}
+					onclick={() => persistProgress(pendingStep ?? 1, pendingStep !== null)}
+					>Retry saving progress</Button
+				>
+			</div>
+		</div>
 	{/if}
+	{#if isSaving}<p class="sr-only" role="status">Saving your setup progress…</p>{/if}
+
+	<div bind:this={stepContent}>
+		{#if currentStep === 0}
+			<IntentStakesStep
+				onNext={handleIntentStakesDone}
+				onIntentSelected={(intent) => (v3Data.intent = intent)}
+				onStakesSelected={(stakes) => (v3Data.stakes = stakes)}
+				defaultIntent={v3Data.intent ?? undefined}
+				defaultStakes={v3Data.stakes ?? undefined}
+			/>
+		{:else if currentStep === 1}
+			<ProjectsCaptureStep
+				userId={data.user.id}
+				savedProjectId={projectId}
+				onNext={() => persistProgress(2)}
+				onProjectsCreated={handleProjectsCreated}
+				onPacket={(value) => (packet = value)}
+				busy={isSaving}
+				intent={v3Data.intent ?? undefined}
+				isSkippable={v3Data.intent === 'explore'}
+				initialProjects={data.existingProjects ?? []}
+			/>
+		{:else if currentStep === 2}
+			<NotificationsStepV3
+				userId={data.user.id}
+				onNext={() => persistProgress(3)}
+				onSMSEnabled={(enabled) => (v3Data.smsEnabled = enabled)}
+				onEmailEnabled={(enabled) => (v3Data.emailEnabled = enabled)}
+			/>
+		{:else}
+			<ReadyStep
+				userId={data.user.id}
+				summary={v3Data}
+				{projectId}
+				initialPacket={packet}
+				onboardingStartedAtMs={onboardingStartTime}
+				onCompleted={() => (completed = true)}
+			/>
+		{/if}
+	</div>
 </div>

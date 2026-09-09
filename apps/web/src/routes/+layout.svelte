@@ -16,6 +16,7 @@
 	} from '$app/navigation';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
+	import { clearOnboardingDrafts, onboardingStorageKey } from '$lib/utils/onboarding-state';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import IOSSplashScreens from '$lib/components/layout/IOSSplashScreens.svelte';
 	import {
@@ -715,6 +716,7 @@
 
 			case 'SIGNED_OUT':
 			case 'USER_DELETED':
+				clearOnboardingDrafts();
 				await handleAuthSignedOut();
 				break;
 
@@ -733,7 +735,11 @@
 	function checkModalDismissed(): boolean {
 		if (!browser) return false;
 		try {
-			return localStorage.getItem('onboarding_modal_dismissed') === 'true';
+			return Boolean(
+				user &&
+					localStorage.getItem(onboardingStorageKey(user.id, 'welcome-dismissed')) ===
+						'true'
+			);
 		} catch {
 			return false;
 		}
@@ -782,7 +788,11 @@
 
 			if (browser) {
 				try {
-					localStorage.setItem('onboarding_modal_dismissed', 'true');
+					if (user)
+						localStorage.setItem(
+							onboardingStorageKey(user.id, 'welcome-dismissed'),
+							'true'
+						);
 				} catch (error) {
 					console.warn('Failed to save modal dismissal:', error);
 				}
@@ -964,6 +974,7 @@
 	}));
 	let footerProps = $derived.by(() => ({ user }));
 	let onboardingModalProps = $derived.by(() => ({
+		userId: user?.id ?? '',
 		isOpen: showOnboardingModal,
 		onDismiss: handleModalDismiss
 	}));
@@ -1073,6 +1084,23 @@
 	{#if showNavigation}
 		<Navigation bind:element={navigationElement} {...navigationProps} />
 	{/if}
+	{#if needsOnboarding && showNavigation && !isAdminRoute && $page.url.pathname !== '/onboarding' && !showOnboardingModal}
+		<aside
+			class="mx-auto mt-3 flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 text-sm"
+			aria-label="Finish your setup"
+		>
+			<p class="text-muted-foreground">
+				{onboardingProgress > 0
+					? 'Your setup is saved. Pick up where you left off when you’re ready.'
+					: 'A few quick steps will make BuildOS yours.'}
+			</p>
+			<a
+				href="/onboarding"
+				class="inline-flex min-h-11 items-center rounded-md px-3 font-semibold text-accent hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				>{onboardingProgress > 0 ? 'Continue setup' : 'Start setup'}</a
+			>
+		</aside>
+	{/if}
 
 	{#if !isAdminRoute && user && trialStatus && data.stripeEnabled}
 		<TrialBannerStatic
@@ -1119,7 +1147,10 @@
 	{/if}
 
 	<main id="main-content" class={mainContentClasses} tabindex="-1">
-		{@render children?.()}
+		<!-- Never carry a previous account’s component state into a new session. -->
+		{#key user?.id}
+			{@render children?.()}
+		{/key}
 	</main>
 
 	{#if showFooter}

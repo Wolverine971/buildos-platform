@@ -1,6 +1,7 @@
 // apps/web/src/routes/onboarding/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
+import { onboardingStep } from '$lib/utils/onboarding-state';
 import {
 	ensureActorId,
 	fetchProjectSummaries
@@ -35,41 +36,21 @@ function toLegacyStatus(stateKey: string | null | undefined): string {
 	}
 }
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+export const load: PageServerLoad = async ({
+	locals: { safeGetSession, supabase },
+	depends,
+	url
+}) => {
+	depends('app:onboarding');
 	const { user } = await safeGetSession();
 
 	if (!user) {
 		throw redirect(303, '/auth/login');
 	}
 
-	// Check if onboarding is already complete (users.onboarding_completed_at).
-	// Also load intent/stakes so we can restore state after OAuth redirects.
-	const { data: userData } = await supabase
-		.from('users')
-		.select('onboarding_completed_at, onboarding_intent, onboarding_stakes')
-		.eq('id', user.id)
-		.single();
-
-	if (userData?.onboarding_completed_at) {
-		throw redirect(303, '/dashboard');
-	}
-
-	// Load user context (used by ProjectsCaptureStep).
-	let userContext = null;
-	try {
-		const { data, error } = await supabase
-			.from('user_context')
-			.select('*')
-			.eq('user_id', user.id)
-			.single();
-
-		if (error && error.code !== 'PGRST116') {
-			console.error('Error fetching user context:', error);
-		} else {
-			userContext = data;
-		}
-	} catch (error) {
-		console.error('Error in onboarding page load:', error);
+	// safeGetSession returns the freshly loaded public profile, including saved milestones.
+	if (user.onboarding_completed_at) {
+		throw redirect(303, '/today');
 	}
 
 	// Load any existing projects so the capture step can preview them.
@@ -99,9 +80,15 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 
 	return {
 		user,
-		userContext,
 		existingProjects,
-		savedIntent: (userData?.onboarding_intent as string) ?? null,
-		savedStakes: (userData?.onboarding_stakes as string) ?? null
+		calendarReturn: url.searchParams.get('calendar') === '1',
+		savedStep: onboardingStep(
+			user.onboarding_step,
+			user.onboarding_intent,
+			user.onboarding_stakes
+		),
+		savedProjectId: user.onboarding_project_id ?? null,
+		savedIntent: user.onboarding_intent,
+		savedStakes: user.onboarding_stakes
 	};
 };

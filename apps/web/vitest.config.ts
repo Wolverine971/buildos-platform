@@ -65,6 +65,7 @@ const sharedAgentOpsTestAliases = [
 	'calendar/google-calendar-token-crypto',
 	'gateway/op-execution-gateway',
 	'ontology/onto',
+	'ontology/start-here',
 	'ontology/ontology-projects.service',
 	'ontology/task-move.service',
 	'ontology/doc-structure.service',

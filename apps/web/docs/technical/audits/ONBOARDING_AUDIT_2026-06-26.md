@@ -7,6 +7,8 @@
 
 # BuildOS Onboarding & First-Run Audit — 2026-06-26
 
+> Implementation follow-up (2026-09-09): [activation, persistence, recovery, and Today polish](../components/hyperplexed/ONBOARDING_ACTIVATION_POLISH_2026-09-09.md). This historical audit remains unchanged below; the follow-up records shipped fixes and live-service verification boundaries.
+
 **Question being answered:** When a brand-new user first gets on BuildOS, are we properly onboarding them, teaching them, and syncing them with what we're building (the "thinking environment / turn messy thinking into structured work" thesis)?
 
 **Verdict:** The flow _mechanically_ onboards well — it collects good signal (intent, stakes, a first project) and the final step is genuinely on-thesis. But it **under-teaches the two things that make BuildOS different** (the messy→structured transformation as a felt "wow," and project memory/continuity), and it **abandons the positioning the moment onboarding ends** (the empty-state dashboard reads like a generic task manager; skippers get nothing). We're onboarding them to _use the buttons_ but not converting them to _the worldview_.

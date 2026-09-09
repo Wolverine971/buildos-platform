@@ -18371,6 +18371,8 @@ export type Database = {
           name: string | null
           onboarding_completed_at: string | null
           onboarding_intent: string | null
+          onboarding_project_id: string | null
+          onboarding_step: number
           onboarding_stakes: string | null
           onboarding_v2_skipped_calendar: boolean | null
           onboarding_v2_skipped_sms: boolean | null
@@ -18407,6 +18409,8 @@ export type Database = {
           name?: string | null
           onboarding_completed_at?: string | null
           onboarding_intent?: string | null
+          onboarding_project_id?: string | null
+          onboarding_step?: number
           onboarding_stakes?: string | null
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
@@ -18443,6 +18447,8 @@ export type Database = {
           name?: string | null
           onboarding_completed_at?: string | null
           onboarding_intent?: string | null
+          onboarding_project_id?: string | null
+          onboarding_step?: number
           onboarding_stakes?: string | null
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
@@ -18464,6 +18470,13 @@ export type Database = {
           voice_narration_enabled?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "users_onboarding_project_id_fkey"
+            columns: ["onboarding_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "users_id_fkey"
             columns: ["id"]

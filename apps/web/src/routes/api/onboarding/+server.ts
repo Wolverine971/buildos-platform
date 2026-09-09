@@ -5,11 +5,14 @@ import type { RequestHandler } from './$types';
 import { OnboardingServerService } from '$lib/server/onboarding.service';
 import { captureServerEvent } from '$lib/server/posthog';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { saveOnboardingProgress } from '$lib/server/onboarding-progress';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const VALID_INTENTS = new Set(['organize', 'plan', 'unstuck', 'explore']);
 const VALID_STAKES = new Set(['high', 'medium', 'low']);
 
-export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	const { safeGetSession, supabase } = locals;
 	const { user } = await safeGetSession();
 
 	if (!user) {
@@ -29,6 +32,20 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		const onboardingService = new OnboardingServerService(supabase);
 
 		switch (action) {
+			case 'save_progress': {
+				const { step, projectId } = body;
+				if (
+					!Number.isInteger(step) ||
+					step < 1 ||
+					step > 3 ||
+					(projectId != null &&
+						(typeof projectId !== 'string' || !isValidUUID(projectId)))
+				) {
+					return ApiResponse.badRequest('Invalid setup progress');
+				}
+				await saveOnboardingProgress(locals, user.id, step, projectId);
+				return ApiResponse.success({ step });
+			}
 			case 'save_intent_stakes': {
 				const { intent, stakes } = body;
 				if (!intent || !stakes) {

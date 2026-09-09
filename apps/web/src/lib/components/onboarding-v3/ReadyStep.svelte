@@ -1,24 +1,25 @@
-<!-- apps/web/src/lib/components/onboarding-v3/ReadyStep.svelte -->
+<!-- Last review: declare completion only after the server commits it. -->
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import {
-		CheckCircle,
-		ArrowRight,
-		FolderOpen,
-		MessageCircle,
-		Mail,
-		Globe,
-		Check,
-		Plug
-	} from '$lib/icons/lucide';
+	import { onMount, untrack } from 'svelte';
+	import { ArrowRight, CheckCircle, FolderOpen } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { toastService } from '$lib/stores/toast.store';
+	import { goto } from '$app/navigation';
+	import { clearOnboardingDrafts, type ActivationPacket } from '$lib/utils/onboarding-state';
+	import {
+		loadOnboardingNotifications,
+		type OnboardingNotifications
+	} from '$lib/services/onboarding-notifications';
 	import type { OnboardingIntent, OnboardingStakes } from '$lib/config/onboarding.config';
-	import { prefersReducedMotion } from 'svelte/motion';
-	import { fade, scale } from 'svelte/transition';
 
-	interface Props {
+	let {
+		userId,
+		summary,
+		projectId,
+		initialPacket = null,
+		onboardingStartedAtMs,
+		onCompleted
+	}: {
+		userId: string;
 		summary: {
 			intent: OnboardingIntent | null;
 			stakes: OnboardingStakes | null;
@@ -28,369 +29,211 @@
 			smsEnabled: boolean;
 			emailEnabled: boolean;
 		};
+		projectId: string | null;
+		initialPacket?: ActivationPacket | null;
 		onboardingStartedAtMs?: number;
-	}
-
-	let { summary, onboardingStartedAtMs }: Props = $props();
-
+		onCompleted?: () => void;
+	} = $props();
+	let packet = $state<ActivationPacket | null>(untrack(() => initialPacket));
+	let notifications = $state<OnboardingNotifications | null>(null);
 	let isCompleting = $state(false);
-
-	// Username claim state — lets the user lock in their `/p/{username}/...`
-	// public URL prefix during onboarding so their first share has a clean link.
-	// Skippable; defaults to derived-from-name if skipped.
-	let usernameValue = $state<string | null>(null);
-	let usernameDraft = $state('');
-	let derivedFallback = $state('user');
-	let usernameLoading = $state(false);
-	let usernameError = $state<string | null>(null);
-	let usernameLoaded = $state(false);
-	let usernameSaved = $state(false);
-
-	onMount(() => {
-		void loadUsername();
-	});
-
-	async function loadUsername() {
-		try {
-			const res = await fetch('/api/profile/me/username');
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) return;
-			usernameValue =
-				typeof payload?.data?.username === 'string' ? payload.data.username : null;
-			derivedFallback =
-				typeof payload?.data?.derived_fallback === 'string'
-					? payload.data.derived_fallback
-					: 'user';
-			// Pre-fill draft from the derived value — friendlier than an empty
-			// field. User can accept it or type something else.
-			usernameDraft = usernameValue ?? derivedFallback;
-			usernameSaved = usernameValue !== null;
-		} catch {
-			// Best-effort; the profile tab offers the same editor later.
-		} finally {
-			usernameLoaded = true;
-		}
-	}
-
-	async function saveUsername() {
-		const trimmed = usernameDraft.trim().toLowerCase();
-		if (!trimmed) {
-			usernameError = 'Please enter a username or skip.';
-			return;
-		}
-		if (trimmed === (usernameValue ?? '')) {
-			usernameSaved = true;
-			return;
-		}
-		usernameLoading = true;
-		usernameError = null;
-		try {
-			const res = await fetch('/api/profile/me/username', {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username: trimmed })
-			});
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) {
-				usernameError =
-					payload?.error || 'That username is not available. Try another one.';
-				return;
-			}
-			usernameValue = payload?.data?.username ?? trimmed;
-			usernameDraft = usernameValue ?? '';
-			usernameSaved = true;
-		} catch (e) {
-			usernameError = e instanceof Error ? e.message : 'Failed to save username.';
-		} finally {
-			usernameLoading = false;
-		}
-	}
-
-	// Stats to display (only non-zero)
+	let completed = $state(false);
+	let completionError = $state<string | null>(null);
+	let isLoading = $state(true);
+	let summaryError = $state(false);
+	const destination = $derived(
+		projectId ? `/today?activated_project=${encodeURIComponent(projectId)}` : '/today'
+	);
 	const stats = $derived(
 		[
-			{ count: summary.projectsCreated, label: 'project', plural: 'projects' },
-			{ count: summary.tasksCreated, label: 'task', plural: 'tasks' },
-			{ count: summary.goalsCreated, label: 'goal', plural: 'goals' }
-		].filter((s) => s.count > 0)
+			{
+				count: summary.projectsCreated || (projectId ? 1 : 0),
+				label: 'project',
+				plural: 'projects'
+			},
+			{ count: packet?.counts.tasks ?? summary.tasksCreated, label: 'task', plural: 'tasks' },
+			{ count: packet?.counts.goals ?? summary.goalsCreated, label: 'goal', plural: 'goals' }
+		].filter((stat) => stat.count > 0)
 	);
 
-	const hasNotifications = $derived(summary.smsEnabled || summary.emailEnabled);
-
-	function fadeIn(duration = 300, delay = 0) {
-		return prefersReducedMotion.current ? { duration: 0, delay: 0 } : { duration, delay };
-	}
-
-	function scaleIn() {
-		return prefersReducedMotion.current
-			? { duration: 0, start: 1 }
-			: { duration: 320, start: 0.9 };
+	onMount(() => {
+		void loadSummary();
+	});
+	async function loadSummary() {
+		isLoading = true;
+		summaryError = false;
+		const results = await Promise.allSettled([
+			loadOnboardingNotifications().then((value) => {
+				notifications = value;
+			}),
+			projectId && !packet
+				? fetch(`/api/onto/projects/${projectId}/activation-packet`, {
+						cache: 'no-store'
+					}).then(async (response) => {
+						const result = await response.json();
+						if (!response.ok || !result.success) throw new Error('Summary unavailable');
+						packet = result.data;
+					})
+				: Promise.resolve()
+		]);
+		summaryError = results.some((result) => result.status === 'rejected');
+		isLoading = false;
 	}
 
 	async function completeOnboarding() {
+		if (isCompleting || isLoading) return;
 		isCompleting = true;
-		const timeSpentSeconds =
-			onboardingStartedAtMs != null
-				? Math.max(0, Math.round((Date.now() - onboardingStartedAtMs) / 1000))
-				: undefined;
-
+		completionError = null;
 		try {
-			const response = await fetch('/api/onboarding', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					action: 'complete_v3',
-					onboardingData: {
-						intent: summary.intent,
-						stakes: summary.stakes,
-						projectsCreated: summary.projectsCreated,
-						tasksCreated: summary.tasksCreated,
-						goalsCreated: summary.goalsCreated,
-						smsEnabled: summary.smsEnabled,
-						emailEnabled: summary.emailEnabled,
-						timeSpentSeconds
-					}
-				})
-			});
-
-			const result = await response.json();
-			if (!response.ok || !result?.success) {
-				const serverError =
-					typeof result?.error === 'string'
-						? result.error
-						: Array.isArray(result?.error)
-							? result.error[0]
-							: null;
-				throw new Error(serverError || 'Failed to complete');
+			if (!completed) {
+				const response = await fetch('/api/onboarding', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						action: 'complete_v3',
+						onboardingData: {
+							...summary,
+							projectsCreated: summary.projectsCreated || (projectId ? 1 : 0),
+							tasksCreated: packet?.counts.tasks ?? summary.tasksCreated,
+							goalsCreated: packet?.counts.goals ?? summary.goalsCreated,
+							emailEnabled: notifications?.emailEnabled ?? summary.emailEnabled,
+							smsEnabled: notifications?.smsEnabled ?? summary.smsEnabled,
+							timeSpentSeconds:
+								onboardingStartedAtMs == null
+									? undefined
+									: Math.max(
+											0,
+											Math.round((Date.now() - onboardingStartedAtMs) / 1000)
+										)
+						}
+					})
+				});
+				const result = await response.json().catch(() => null);
+				if (!response.ok || !result?.success)
+					throw new Error(
+						typeof result?.error === 'string'
+							? result.error
+							: 'Setup could not be completed. Please try again.'
+					);
+				completed = true;
+				clearOnboardingDrafts(userId);
+				onCompleted?.();
 			}
-
-			toastService.success('Welcome to BuildOS!');
-			await invalidateAll();
-			setTimeout(() => goto('/today'), 1000);
+			await goto(destination, { invalidateAll: true, replaceState: true });
 		} catch (error) {
-			console.error('Failed to complete onboarding:', error);
-			toastService.error(
-				error instanceof Error && error.message !== 'Failed to complete'
+			completionError = completed
+				? 'Setup is complete. Open Today to continue.'
+				: error instanceof Error
 					? error.message
-					: 'Failed to complete setup. Please try again.'
-			);
+					: 'Setup could not be completed. Please try again.';
+		} finally {
 			isCompleting = false;
 		}
 	}
 </script>
 
-<div class="max-w-2xl mx-auto px-4 py-8 sm:py-16">
-	<!-- Success icon -->
-	<div class="text-center mb-10" in:scale={scaleIn()}>
-		<div class="flex justify-center mb-6">
-			<div class="relative">
-				<div
-					class="absolute inset-0 animate-pulse bg-success/20 opacity-40 blur-2xl motion-reduce:animate-none"
-				></div>
-				<div
-					class="relative w-20 h-20 bg-success rounded-full flex items-center justify-center shadow-ink-strong tx tx-bloom tx-weak"
-				>
-					<CheckCircle class="w-10 h-10 text-success-foreground" />
-				</div>
-			</div>
-		</div>
-
-		<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">You're set up!</h1>
-
-		{#if stats.length > 0}
-			<p class="text-lg text-muted-foreground" in:fade={fadeIn(300, 200)}>
-				Here's what we created:
-			</p>
-		{:else}
-			<p class="text-lg text-muted-foreground" in:fade={fadeIn(300, 200)}>
-				You're ready to start using BuildOS
-			</p>
-		{/if}
-	</div>
-
-	<!-- Stats row -->
-	{#if stats.length > 0}
-		<div class="flex justify-center gap-6 sm:gap-10 mb-12" in:fade={fadeIn(300, 300)}>
-			{#each stats as stat}
-				<div class="text-center">
-					<div class="text-3xl sm:text-4xl font-bold text-accent">{stat.count}</div>
-					<div class="text-sm text-muted-foreground mt-1">
-						{stat.count === 1 ? stat.label : stat.plural}
-					</div>
-				</div>
-			{/each}
-		</div>
-	{/if}
-
-	<!-- Public URL / username claim (optional, skippable) -->
-	{#if usernameLoaded}
+<div class="mx-auto max-w-xl px-4 py-8 sm:py-12">
+	<div class="mb-6 text-center">
 		<div
-			class="mb-6 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak sm:p-6"
-			in:fade={fadeIn(300, 350)}
+			class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-success/10 text-success"
 		>
-			<div class="flex items-start gap-3 mb-3">
-				<div
-					class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-accent shrink-0"
-				>
-					<Globe class="w-4 h-4" />
-				</div>
-				<div class="min-w-0">
-					<h3 class="text-base font-semibold text-foreground">Claim your public URL</h3>
-					<p class="text-xs text-muted-foreground leading-relaxed mt-0.5">
-						When you share a project doc publicly, your link will start with your
-						username. You can change this any time in profile settings.
-					</p>
-				</div>
-			</div>
+			{#if completed}<CheckCircle class="h-7 w-7" />{:else}<FolderOpen class="h-7 w-7" />{/if}
+		</div>
+		<p class="micro-label mb-2 text-muted-foreground">
+			{completed ? 'Setup complete' : 'One last step'}
+		</p>
+		<h1 class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+			{completed
+				? 'You’re set up.'
+				: projectId
+					? 'Your work has a home.'
+					: 'Room for what’s next.'}
+		</h1>
+		<p class="mt-3 text-base leading-relaxed text-muted-foreground">
+			{projectId
+				? 'Your project is saved. Start today with one clear next move.'
+				: 'Start with an empty workspace. Your first brain dump can become a project whenever you’re ready.'}
+		</p>
+	</div>
 
-			{#if usernameSaved}
-				<div
-					class="flex items-center gap-2 rounded-md bg-success/10 px-3 py-2 text-sm text-foreground"
+	{#if packet}
+		<div class="mb-6 rounded-lg border border-border bg-card p-4 shadow-ink sm:p-5">
+			<p class="micro-label mb-2 text-muted-foreground">Pick up here</p>
+			<h2 class="text-lg font-semibold text-foreground [overflow-wrap:anywhere]">
+				{packet.project.name}
+			</h2>
+			<p class="mt-2 text-sm leading-relaxed text-foreground [overflow-wrap:anywhere]">
+				{packet.project.next_step_short ?? 'Open your project and choose your first task.'}
+			</p>
+			{#if packet.start_here?.excerpt}<p
+					class="mt-3 text-xs leading-relaxed text-muted-foreground"
 				>
-					<Check class="h-4 w-4 shrink-0 text-success" />
-					<span>
-						Your public URL is
-						<span class="font-mono font-semibold">build-os.com/p/{usernameValue}/…</span
-						>
-					</span>
-				</div>
-			{:else}
-				<div class="flex flex-wrap items-stretch gap-2">
-					<div
-						class="inline-flex items-center rounded-md border border-border bg-muted/40 px-2 text-sm font-mono text-muted-foreground"
-					>
-						build-os.com/p/
-					</div>
-					<input
-						type="text"
-						bind:value={usernameDraft}
-						placeholder={derivedFallback}
-						minlength="3"
-						maxlength="24"
-						class="min-h-11 min-w-0 flex-1 rounded-md border border-border-strong bg-background px-3 py-2 font-mono text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm"
-						disabled={usernameLoading}
-						aria-label="Public username"
-					/>
-				</div>
-				{#if usernameError}
-					<p class="mt-2 text-xs text-destructive">{usernameError}</p>
-				{/if}
-				<div class="mt-3 flex flex-wrap items-center gap-3">
-					<Button
-						type="button"
-						onclick={saveUsername}
-						disabled={usernameLoading || !usernameDraft.trim()}
-						loading={usernameLoading}
-						variant="primary"
-						size="sm"
-					>
-						Claim username
-					</Button>
-					<button
-						type="button"
-						onclick={() => (usernameSaved = true)}
-						disabled={usernameLoading}
-						class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 disabled:opacity-50"
-					>
-						Skip for now
-					</button>
-				</div>
-				<p class="mt-2 text-2xs text-muted-foreground">
-					3–24 characters, lowercase letters, numbers, and hyphens. If you skip, your URL
-					defaults to <span class="font-mono text-foreground">{derivedFallback}</span>.
-				</p>
-			{/if}
+					Your Start Here context is saved for your next session.
+				</p>{/if}
 		</div>
 	{/if}
-
-	<!-- Connect your agents -->
-	<div
-		class="mb-6 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak sm:p-6"
-		in:fade={fadeIn(300, 380)}
-	>
-		<div class="flex items-start gap-3 mb-3">
-			<div
-				class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-accent shrink-0"
+	{#if stats.length}
+		<div class="mb-6 flex flex-wrap justify-center gap-6" aria-label="Saved project structure">
+			{#each stats as stat (stat.label)}<div class="text-center">
+					<p class="text-2xl font-semibold tabular-nums text-foreground">{stat.count}</p>
+					<p class="text-sm text-muted-foreground">
+						{stat.count === 1 ? stat.label : stat.plural}
+					</p>
+				</div>{/each}
+		</div>
+	{/if}
+	{#if notifications}
+		<p class="mb-6 text-center text-sm text-muted-foreground">
+			Email briefs {notifications.emailEnabled ? 'on' : 'off'} · Text reminders {notifications.smsRemindersEnabled
+				? 'on'
+				: 'off'} · Brief texts {notifications.smsBriefEnabled ? 'on' : 'off'}. You can
+			change these in Profile.
+		</p>
+	{/if}
+	{#if isLoading}<p class="mb-4 text-center text-sm text-muted-foreground" role="status">
+			Checking your saved setup…
+		</p>{/if}
+	{#if summaryError}
+		<div
+			class="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm"
+			role="alert"
+		>
+			<p class="text-foreground">
+				Part of your saved summary couldn’t be loaded. Your project and settings are
+				unchanged.
+			</p>
+			<Button variant="ghost" size="sm" onclick={loadSummary} class="mt-2"
+				>Refresh summary</Button
 			>
-				<Plug class="w-4 h-4" />
-			</div>
-			<div class="min-w-0">
-				<h3 class="text-base font-semibold text-foreground">Connect your AI tools</h3>
-				<p class="text-xs text-muted-foreground leading-relaxed mt-0.5">
-					Your projects live in BuildOS. Let Claude Code, Cursor, ChatGPT, or any
-					HTTP-capable tool read off the same sheet of paper instead of starting from zero
-					each session.
-				</p>
-			</div>
 		</div>
-
-		<!-- Tool chips -->
-		<div class="mb-3 flex flex-wrap gap-1.5 text-2xs font-medium text-muted-foreground">
-			<span class="rounded-full border border-border px-2 py-0.5">Claude Code</span>
-			<span class="rounded-full border border-border px-2 py-0.5">Cursor</span>
-			<span class="rounded-full border border-border px-2 py-0.5">ChatGPT</span>
-			<span class="rounded-full border border-border px-2 py-0.5">Claude Desktop</span>
-			<span class="rounded-full border border-border px-2 py-0.5">Any HTTP tool</span>
-		</div>
-
-		<div class="flex flex-wrap items-center gap-3">
-			<Button
-				type="button"
-				onclick={() => goto('/profile?tab=agent-keys')}
-				variant="primary"
-				size="sm"
-			>
-				<Plug class="w-4 h-4 mr-1.5" />
-				Set up agent keys
-			</Button>
-			<span class="text-xs text-muted-foreground">
-				One key per tool · Per-project scope · Rotate any time
-			</span>
-		</div>
-	</div>
-
-	<!-- Next actions -->
-	<div
-		class="mb-10 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak sm:p-6"
-		in:fade={fadeIn(300, 400)}
-	>
-		<h3 class="micro-label mb-4 text-muted-foreground">What to do next</h3>
-		<div class="space-y-3">
-			{#if summary.projectsCreated > 0}
-				<div class="flex items-center gap-3 text-foreground">
-					<FolderOpen class="w-5 h-5 text-accent flex-shrink-0" />
-					<span>Open a project to see your tasks</span>
-				</div>
-			{/if}
-			<div class="flex items-center gap-3 text-foreground">
-				<MessageCircle class="w-5 h-5 text-accent flex-shrink-0" />
-				<span>Brain-dump changes to keep your project current</span>
-			</div>
-			{#if hasNotifications}
-				<div class="flex items-center gap-3 text-foreground">
-					<Mail class="w-5 h-5 text-accent flex-shrink-0" />
-					<span>Check your daily brief tomorrow morning</span>
-				</div>
-			{/if}
-		</div>
-	</div>
-
-	<!-- CTA -->
-	<div class="text-center" in:fade={fadeIn(300, 500)}>
+	{/if}
+	{#if completionError}<p
+			class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground"
+			role="alert"
+		>
+			{completionError}
+		</p>{/if}
+	{#if completed}
+		<a
+			href={destination}
+			class="flex min-h-11 items-center justify-center rounded-md bg-accent px-5 py-3 font-semibold text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			>Open Today <ArrowRight class="ml-2 h-4 w-4" /></a
+		>
+	{:else}
 		<Button
 			variant="primary"
 			size="lg"
 			onclick={completeOnboarding}
 			loading={isCompleting}
-			disabled={isCompleting}
-			class="px-10 py-4 text-lg shadow-ink-strong"
+			disabled={isCompleting || isLoading}
+			class="w-full shadow-ink"
 		>
-			{#if isCompleting}
-				Preparing Your Workspace...
-			{:else}
-				Start your day
-				<ArrowRight class="w-5 h-5 ml-2" />
-			{/if}
+			{isCompleting
+				? 'Finishing setup…'
+				: completionError
+					? 'Retry finishing setup'
+					: 'Finish setup and start today'}
+			<ArrowRight class="ml-2 h-4 w-4" />
 		</Button>
-	</div>
+	{/if}
 </div>

@@ -1,6 +1,13 @@
 <!-- apps/web/src/routes/today/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+	import ActivationReceipt from '$lib/components/onboarding-v3/ActivationReceipt.svelte';
+	import {
+		readOnboardingDraft,
+		writeOnboardingDraft,
+		type ActivationPacket
+	} from '$lib/utils/onboarding-state';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import { formatInTimeZone } from 'date-fns-tz';
 	import type { ChatContextType, ProjectFocus } from '@buildos/shared-types';
 	import type { PageData } from './$types';
@@ -67,8 +74,72 @@
 
 	// Quick capture: "what changed?" text handed to the agent chat, which
 	// structures it into project updates (the receipts section shows the result).
-	let captureText = $state('');
+	const savedCapture = untrack(() =>
+		readOnboardingDraft<{ text: string; projectId?: string; source?: string }>(
+			data.user.id,
+			'today-capture'
+		)
+	);
+	let captureText = $state(savedCapture?.text ?? '');
 	let captureVoiceRecording = $state(false);
+	let captureLoading = $state(false);
+	let captureError = $state<string | null>(null);
+	let submittedCapture: { text: string; first: boolean } | null = null;
+	let activationId = $state<string | null>(savedCapture?.projectId ?? null);
+	let activationSource = $state(savedCapture?.source ?? '');
+	let activationPacket = $state<ActivationPacket | null>(null);
+	let activationLoading = $state(false);
+	let activationError = $state<string | null>(null);
+	const activationProject = $derived(
+		feed?.projects.find(
+			(project) => project.id === (activationId ?? data.activatedProjectId)
+		) ?? (activationPacket?.project.id === activationId ? activationPacket.project : null)
+	);
+	$effect(() => {
+		writeOnboardingDraft(data.user.id, 'today-capture', {
+			text: captureText,
+			projectId: activationId,
+			source: activationSource
+		});
+	});
+	onMount(() => {
+		if (activationId) void loadActivationReceipt();
+	});
+
+	async function loadActivationReceipt() {
+		if (!activationId) return;
+		activationLoading = true;
+		activationError = null;
+		try {
+			const response = await fetch(`/api/onto/projects/${activationId}/activation-packet`, {
+				cache: 'no-store'
+			});
+			const result = await response.json();
+			if (!response.ok || !result?.success)
+				throw new Error('Please retry to see what BuildOS created.');
+			activationPacket = result.data;
+		} catch (error) {
+			activationError = error instanceof Error ? error.message : 'Please retry the summary.';
+		} finally {
+			activationLoading = false;
+		}
+	}
+
+	async function prepareCapture(text: string, first: boolean): Promise<boolean> {
+		if (!text || captureVoiceRecording || captureLoading || chatOpen) return false;
+		captureLoading = true;
+		captureError = null;
+		try {
+			await ensureChatModal();
+			submittedCapture = { text, first };
+			return true;
+		} catch {
+			captureError = 'Chat couldn’t be opened. Your words are saved here; try again.';
+			return false;
+		} finally {
+			captureLoading = false;
+		}
+	}
 
 	let InboxModalComponent = $state<any>(null);
 	let inboxOpen = $state(false);
@@ -563,8 +634,7 @@
 
 	async function submitCapture() {
 		const text = captureText.trim();
-		if (!text || captureVoiceRecording) return;
-		await ensureChatModal();
+		if (!(await prepareCapture(text, false))) return;
 		// 'general' (not 'global') skips the context selector and normalizes to
 		// workspace-wide scope, so the auto-send fires straight into the chat.
 		chatConfig = {
@@ -573,7 +643,6 @@
 			autoSend: true
 		};
 		chatOpen = true;
-		captureText = '';
 		trackLoopEvent('loop_capture_submitted', 'today', {
 			source_type: 'quick_capture',
 			capture_length: text.length
@@ -584,7 +653,12 @@
 	}
 
 	function handleCaptureKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
+		if (
+			!event.isComposing &&
+			event.target instanceof HTMLTextAreaElement &&
+			event.key === 'Enter' &&
+			!event.shiftKey
+		) {
 			event.preventDefault();
 			void submitCapture();
 		}
@@ -595,15 +669,13 @@
 	// update to existing ones.
 	async function submitFirstProject() {
 		const text = captureText.trim();
-		if (!text || captureVoiceRecording) return;
-		await ensureChatModal();
+		if (!(await prepareCapture(text, true))) return;
 		chatConfig = {
-			contextType: 'general',
-			draft: `This is my first project — here's the messy version. Turn it into a structured project with tasks and a clear next step:\n\n${text}`,
+			contextType: 'project_create',
+			draft: text,
 			autoSend: true
 		};
 		chatOpen = true;
-		captureText = '';
 		trackLoopEvent('loop_capture_submitted', 'today', {
 			source_type: 'first_project',
 			capture_length: text.length
@@ -614,13 +686,27 @@
 	}
 
 	function handleFirstProjectKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
+		if (
+			!event.isComposing &&
+			event.target instanceof HTMLTextAreaElement &&
+			event.key === 'Enter' &&
+			!event.shiftKey
+		) {
 			event.preventDefault();
 			void submitFirstProject();
 		}
 	}
 
-	function handleChatClose() {
+	function handleChatClose(summary?: DataMutationSummary) {
+		if (submittedCapture && summary?.hasChanges) {
+			if (captureText.trim() === submittedCapture.text) captureText = '';
+			if (submittedCapture.first && summary.affectedProjectIds[0]) {
+				activationId = summary.affectedProjectIds[0];
+				activationSource = submittedCapture.text;
+				void loadActivationReceipt();
+			}
+		}
+		submittedCapture = null;
 		chatOpen = false;
 		chatConfig = {};
 		refresh();
@@ -705,7 +791,7 @@
 				</div>
 				<Button
 					onclick={openDayChat}
-					variant="primary"
+					variant={activationProject || !hasProjects ? 'ghost' : 'primary'}
 					size="sm"
 					icon={MessageCircle}
 					class="shrink-0 text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5"
@@ -771,7 +857,62 @@
 			</div>
 		</header>
 
-		{#if feed && !hasProjects}
+		{#if activationId}
+			<section class="mt-4" aria-label="Your first project">
+				<ActivationReceipt
+					packet={activationPacket}
+					sourceText={activationSource}
+					loading={activationLoading}
+					error={activationError}
+					onRetry={loadActivationReceipt}
+					showNextMove={false}
+				/>
+				{#if activationError}
+					<Button
+						variant="ghost"
+						class="mt-2"
+						onclick={() => {
+							activationId = null;
+							activationPacket = null;
+							activationSource = '';
+							activationError = null;
+						}}>Dismiss this summary</Button
+					>
+				{/if}
+			</section>
+		{/if}
+		{#if activationProject}
+			<section
+				class="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-4 sm:p-5"
+				aria-label="Your next move"
+			>
+				<p class="micro-label text-muted-foreground">
+					Your next move · {activationProject.name}
+				</p>
+				<h2
+					class="mt-2 text-lg font-semibold leading-relaxed text-foreground [overflow-wrap:anywhere]"
+				>
+					{activationProject.next_step_short ??
+						'Open your project and choose your first task.'}
+				</h2>
+				<a
+					href={`/projects/${activationProject.id}`}
+					onclick={() => {
+						activationId = null;
+						activationSource = '';
+					}}
+					class="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>Continue with this project <ArrowUpRight class="h-4 w-4" /></a
+				>
+			</section>
+		{/if}
+		{#if captureError}<p
+				class="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground"
+				role="alert"
+			>
+				{captureError}
+			</p>{/if}
+		{#if feed && !hasProjects && !activationId}
 			<!-- First-run: no projects yet. Lead with the relief promise and a prominent
 			     first-project brain-dump instead of the generic "what changed?" bar. -->
 			<section class="mt-4" aria-label="Start your first project">
@@ -814,7 +955,10 @@
 								variant="primary"
 								size="sm"
 								icon={Send}
-								disabled={!captureText.trim() || captureVoiceRecording}
+								loading={captureLoading}
+								disabled={!captureText.trim() ||
+									captureVoiceRecording ||
+									captureLoading}
 							>
 								Structure my first project
 							</Button>
@@ -822,7 +966,7 @@
 					</div>
 				</div>
 			</section>
-		{:else if hasProjects}
+		{:else if hasProjects && !activationProject}
 			<section class="mt-3" aria-label="Quick capture">
 				<div
 					class="rounded-lg border border-border bg-card px-2 py-1 focus-within:border-accent/60"
@@ -846,7 +990,10 @@
 						</div>
 						<Button
 							onclick={submitCapture}
-							disabled={!captureText.trim() || captureVoiceRecording}
+							loading={captureLoading}
+							disabled={!captureText.trim() ||
+								captureVoiceRecording ||
+								captureLoading}
 							variant="ghost"
 							size="sm"
 							class="shrink-0 px-2 text-accent [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"
@@ -1035,7 +1182,7 @@
 				</section>
 			{/if}
 
-			{#if isClearDay && hasProjects}
+			{#if isClearDay && hasProjects && !activationProject}
 				{#if waitingProjects.length > 0}
 					<!-- Nothing dated today, but there's undated work. Surface each project's
 					     next move so the day is never a dead end. -->

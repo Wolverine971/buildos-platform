@@ -40,4 +40,20 @@ describe('ProgressIndicatorV3', () => {
 
 		expect(onStepClick).toHaveBeenCalledWith(1);
 	});
+
+	it('reports saved progress on Ready and preserves it while revisiting earlier steps', async () => {
+		const { rerender } = render(ProgressIndicatorV3, {
+			currentStep: 3,
+			totalSteps: 4,
+			maxStepReached: 3
+		});
+		expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '75');
+		await rerender({ currentStep: 1, totalSteps: 4, maxStepReached: 3 });
+		expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '75');
+		expect(
+			screen.getByRole('button', { name: 'Go to Notifications (completed)' })
+		).toBeEnabled();
+		await rerender({ currentStep: 3, totalSteps: 4, maxStepReached: 3, completed: true });
+		expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
+	});
 });

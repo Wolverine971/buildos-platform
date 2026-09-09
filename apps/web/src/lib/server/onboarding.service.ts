@@ -219,6 +219,15 @@ export class OnboardingServerService {
 			console.error('Error saving intent/stakes:', error);
 			throw new Error(`Failed to save intent/stakes: ${error.message}`);
 		}
+		const { error: progressError } = await this.supabase
+			.from('users')
+			.update({ onboarding_step: 1 })
+			.eq('id', userId)
+			.lt('onboarding_step', 1);
+		if (progressError)
+			throw new Error(
+				'Your answers are saved, but setup progress could not be saved. Please try again.'
+			);
 	}
 
 	/**

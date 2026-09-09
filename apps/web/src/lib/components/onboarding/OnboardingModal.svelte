@@ -1,16 +1,19 @@
 <!-- apps/web/src/lib/components/onboarding/OnboardingModal.svelte -->
 <script lang="ts">
-	import { User, ChevronRight } from 'lucide-svelte';
+	import { User, ChevronRight, Sparkles } from '$lib/icons/lucide';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { onboardingStorageKey } from '$lib/utils/onboarding-state';
 	import { goto } from '$app/navigation';
 	import WelcomeModal from '$lib/components/ui/WelcomeModal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	interface Props {
+		userId: string;
 		isOpen?: boolean;
 		onDismiss?: () => void;
 	}
 
-	let { isOpen = $bindable(false), onDismiss = () => {} }: Props = $props();
+	let { userId, isOpen = $bindable(false), onDismiss = () => {} }: Props = $props();
 
 	function handleStartOnboarding() {
 		isOpen = false;
@@ -30,7 +33,7 @@
 	secondaryButtonText="I'll do this later"
 	showTimeEstimate={true}
 	timeEstimate="Takes about 5 minutes"
-	storageKey="onboarding_modal_dismissed"
+	storageKey={onboardingStorageKey(userId, 'welcome-dismissed')}
 	onPrimary={handleStartOnboarding}
 	onSecondary={handleDismiss}
 	onDismiss={handleDismiss}
@@ -40,19 +43,21 @@
 			<div
 				class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-md border border-border bg-muted shadow-ink-inner"
 			>
-				<video
-					autoplay
-					loop
-					muted
-					playsinline
-					class="h-full w-full object-contain"
-					aria-label="BuildOS brain animation"
-				>
-					<source
-						src="/onboarding-assets/animations/brain-bolt-consistent-pulse-transparent.webm"
-						type="video/webm"
-					/>
-				</video>
+				{#if prefersReducedMotion.current}
+					<Sparkles class="h-7 w-7 text-accent" />
+				{:else}<video
+						autoplay
+						loop
+						muted
+						playsinline
+						class="h-full w-full object-contain"
+						aria-label="BuildOS brain animation"
+					>
+						<source
+							src="/onboarding-assets/animations/brain-bolt-consistent-pulse-transparent.webm"
+							type="video/webm"
+						/>
+					</video>{/if}
 			</div>
 		</div>
 	{/snippet}

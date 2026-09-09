@@ -2,8 +2,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ url }) => {
 	// Permanent redirect (308) from /signup to /auth/register
 	// You can use 307 for temporary redirect or 301/302 for older HTTP versions
-	throw redirect(308, '/auth/register');
+	throw redirect(308, `/auth/register${url.search}`);
 };

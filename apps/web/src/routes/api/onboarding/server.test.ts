@@ -2,11 +2,15 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { RequestEvent } from './$types';
 
-const { saveIntentAndStakesMock, completeOnboardingV3Mock, ensureActorIdMock } = vi.hoisted(() => ({
-	saveIntentAndStakesMock: vi.fn(),
-	completeOnboardingV3Mock: vi.fn(),
-	ensureActorIdMock: vi.fn()
-}));
+const { saveIntentAndStakesMock, completeOnboardingV3Mock, ensureActorIdMock, saveProgressMock } =
+	vi.hoisted(() => ({
+		saveIntentAndStakesMock: vi.fn(),
+		completeOnboardingV3Mock: vi.fn(),
+		ensureActorIdMock: vi.fn(),
+		saveProgressMock: vi.fn()
+	}));
+
+vi.mock('$lib/server/onboarding-progress', () => ({ saveOnboardingProgress: saveProgressMock }));
 
 vi.mock('$lib/server/onboarding.service', () => ({
 	OnboardingServerService: vi.fn().mockImplementation(() => ({
@@ -74,6 +78,7 @@ describe('POST /api/onboarding', () => {
 		completeOnboardingV3Mock.mockReset();
 		ensureActorIdMock.mockReset();
 		ensureActorIdMock.mockResolvedValue('actor-1');
+		saveProgressMock.mockReset();
 	});
 
 	it('rejects unauthenticated requests', async () => {
@@ -81,6 +86,25 @@ describe('POST /api/onboarding', () => {
 			createEvent({ action: 'save_intent_stakes' }, { withUser: false })
 		);
 		expect(response.status).toBe(401);
+	});
+	it.each([0, 4, 1.5, '2'])('rejects invalid saved milestone %s', async (step) => {
+		const response = await POST(createEvent({ action: 'save_progress', step }));
+		expect(response.status).toBe(400);
+		expect(saveProgressMock).not.toHaveBeenCalled();
+	});
+	it('validates project identifiers and uses only the authenticated user for progress', async () => {
+		const invalid = await POST(
+			createEvent({ action: 'save_progress', step: 2, projectId: 'bad-id' })
+		);
+		expect(invalid.status).toBe(400);
+		const event = createEvent({
+			action: 'save_progress',
+			step: 2,
+			projectId: null,
+			userId: 'someone-else'
+		});
+		expect((await POST(event)).status).toBe(200);
+		expect(saveProgressMock).toHaveBeenCalledWith(event.locals, 'user-1', 2, null);
 	});
 
 	it('validates complete_v3 payload shape', async () => {

@@ -21,6 +21,7 @@
 	let isSending = $state(false);
 	let isLoadingExisting = $state(true);
 	let verified = $state(false);
+	let optedOut = $state(false);
 	let error = $state<string | null>(null);
 	let resendCooldown = $state(0);
 	let cooldownInterval: ReturnType<typeof setInterval> | null = null;
@@ -28,7 +29,10 @@
 	// Format phone number as user types
 	function formatPhoneNumber(value: string): string {
 		// Remove all non-digits
-		const digits = value.replace(/\D/g, '');
+		const raw = value.replace(/\D/g, '');
+		const digits = raw.length === 11 && raw.startsWith('1') ? raw.slice(1) : raw;
+		// Preserve invalid/foreign input for correction instead of silently truncating it.
+		if (digits.length > 10) return value;
 
 		// Format as (XXX) XXX-XXXX
 		if (digits.length <= 3) {
@@ -50,13 +54,14 @@
 	function getRawPhoneNumber(formatted: string): string {
 		const digits = formatted.replace(/\D/g, '');
 		// Add +1 for US numbers if not already present
-		return digits.startsWith('1') ? `+${digits}` : `+1${digits}`;
+		return `+1${digits}`;
 	}
 
 	async function sendVerificationCode() {
+		if (isSending || isVerifying || verified || optedOut || resendCooldown > 0) return;
 		const rawPhone = getRawPhoneNumber(phoneNumber);
 
-		if (rawPhone.length < 11) {
+		if (!/^\+1\d{10}$/.test(rawPhone)) {
 			// +1 + 10 digits
 			error = 'Please enter a valid 10-digit phone number';
 			return;
@@ -95,7 +100,8 @@
 	}
 
 	async function confirmVerification() {
-		if (!verificationCode || verificationCode.length !== 6) {
+		if (isVerifying || isSending || verified || optedOut) return;
+		if (!/^\d{6}$/.test(verificationCode)) {
 			error = 'Please enter the 6-digit verification code';
 			return;
 		}
@@ -133,7 +139,8 @@
 	}
 
 	function handleKeyPress(event: KeyboardEvent) {
-		if (event.key === 'Enter') {
+		if (event.key === 'Enter' && !event.isComposing) {
+			event.preventDefault();
 			if (!codeSent) {
 				sendVerificationCode();
 			} else if (!verified) {
@@ -160,6 +167,8 @@
 				const result = await smsService.getSMSPreferences(userId);
 				if (result.success && result.data?.preferences) {
 					const prefs = result.data.preferences;
+					optedOut = prefs.opted_out === true;
+					if (optedOut) return;
 					if (prefs.phone_verified && prefs.phone_number) {
 						// Format the phone number for display
 						phoneNumber = formatPhoneNumber(prefs.phone_number);
@@ -199,11 +208,11 @@
 			<Phone class="w-6 h-6 text-success" />
 		</div>
 
-		<div class="flex-1">
+		<div class="min-w-0 flex-1">
 			<h4 class="font-semibold text-lg mb-2 text-foreground">SMS Notifications</h4>
 			<p class="text-sm text-muted-foreground mb-4">
-				Stay on track with text reminders before events, morning kickoffs with your
-				schedule, and evening recaps
+				Verify a US phone number for event reminders and morning check-ins. You choose
+				whether to enable texts below.
 			</p>
 
 			{#if isLoadingExisting}
@@ -215,6 +224,24 @@
 					<p class="text-sm text-muted-foreground">
 						Checking for existing phone number...
 					</p>
+				</div>
+			{:else if optedOut}
+				<div
+					class="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-foreground"
+					role="status"
+				>
+					<p>
+						Texts are currently opted out. Continue setup without them, or review your
+						SMS settings in Profile.
+					</p>
+					<a
+						href="/profile"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="mt-2 inline-flex min-h-11 items-center text-accent underline underline-offset-2"
+						>Open Profile</a
+					>
+					<Button variant="ghost" onclick={onSkip}>Continue without texts</Button>
 				</div>
 			{:else if verified}
 				<!-- Success State -->
@@ -237,7 +264,7 @@
 							for="phone-number"
 							class="block text-sm font-medium text-foreground mb-1"
 						>
-							Phone Number
+							US phone number (+1)
 						</label>
 						<TextInput
 							id="phone-number"
@@ -275,7 +302,7 @@
 							variant="primary"
 							onclick={sendVerificationCode}
 							loading={isSending}
-							disabled={phoneNumber.replace(/\D/g, '').length < 10}
+							disabled={isSending || phoneNumber.replace(/\D/g, '').length !== 10}
 							class="min-w-[120px] flex-1 shadow-ink"
 						>
 							{#if isSending}

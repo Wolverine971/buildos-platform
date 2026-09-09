@@ -16,13 +16,12 @@
 		type OnboardingStakes
 	} from '$lib/config/onboarding.config';
 	import { captureEvent } from '$lib/services/posthog';
-	import { toastService } from '$lib/stores/toast.store';
-	import { untrack } from 'svelte';
+	import { untrack, onDestroy } from 'svelte';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fade, fly } from 'svelte/transition';
 
 	interface Props {
-		onNext: () => void;
+		onNext: () => void | Promise<void>;
 		onIntentSelected: (intent: OnboardingIntent) => void;
 		onStakesSelected: (stakes: OnboardingStakes) => void;
 		defaultIntent?: OnboardingIntent;
@@ -36,6 +35,9 @@
 	let selectedIntent = $state<OnboardingIntent | null>(initialDefaults.defaultIntent ?? null);
 	let selectedStakes = $state<OnboardingStakes | null>(initialDefaults.defaultStakes ?? null);
 	let isSaving = $state(false);
+	let saveError = $state<string | null>(null);
+	let intentTimer: ReturnType<typeof setTimeout>;
+	onDestroy(() => clearTimeout(intentTimer));
 	// If the user already picked an intent (returning from a later step), start
 	// them on the stakes question so they don't have to re-traverse.
 	let currentQuestion = $state<'intent' | 'stakes'>(
@@ -61,7 +63,8 @@
 		selectedIntent = id;
 		captureEvent('intent_selected', { intent: id });
 		// Auto-advance to stakes question after a brief pause
-		setTimeout(
+		clearTimeout(intentTimer);
+		intentTimer = setTimeout(
 			() => {
 				currentQuestion = 'stakes';
 			},
@@ -82,9 +85,10 @@
 	}
 
 	async function saveAndContinue() {
-		if (!selectedIntent || !selectedStakes) return;
+		if (!selectedIntent || !selectedStakes || isSaving) return;
 
 		isSaving = true;
+		saveError = null;
 		try {
 			const response = await fetch('/api/onboarding', {
 				method: 'POST',
@@ -98,15 +102,22 @@
 
 			const result = await response.json();
 			if (!response.ok || !result?.success) {
-				throw new Error(result?.error?.[0] || 'Failed to save');
+				throw new Error(
+					typeof result?.error === 'string'
+						? result.error
+						: 'Your answers could not be saved. Please try again.'
+				);
 			}
 
 			onIntentSelected(selectedIntent);
 			onStakesSelected(selectedStakes);
-			onNext();
+			await onNext();
 		} catch (error) {
 			console.error('Failed to save intent/stakes:', error);
-			toastService.error('Failed to save. Please try again.');
+			saveError =
+				error instanceof Error
+					? error.message
+					: 'Your answers could not be saved. Please try again.';
 		} finally {
 			isSaving = false;
 		}
@@ -125,9 +136,12 @@
 			</div>
 
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-				{#each ONBOARDING_V3_CONFIG.intents as intent}
+				{#each ONBOARDING_V3_CONFIG.intents as intent (intent.id)}
 					{@const Icon = intentIcons[intent.id]}
 					<button
+						type="button"
+						aria-label={intent.label}
+						aria-pressed={selectedIntent === intent.id}
 						class="group relative overflow-hidden rounded-lg border-2 p-5 text-left tx tx-frame tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
 							{selectedIntent === intent.id
 							? 'border-accent bg-accent/5 shadow-ink-strong'
@@ -169,9 +183,12 @@
 			</div>
 
 			<div class="space-y-3 max-w-lg mx-auto">
-				{#each ONBOARDING_V3_CONFIG.stakes as stakes}
+				{#each ONBOARDING_V3_CONFIG.stakes as stakes (stakes.id)}
 					{@const Icon = stakesIcons[stakes.id]}
 					<button
+						type="button"
+						aria-label={stakes.label}
+						aria-pressed={selectedStakes === stakes.id}
 						class="group relative w-full overflow-hidden rounded-lg border-2 p-5 text-left tx tx-frame tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
 							{selectedStakes === stakes.id
 							? 'border-accent bg-accent/5 shadow-ink-strong'
@@ -211,6 +228,12 @@
 	{/if}
 
 	<!-- Continue button -->
+	{#if saveError}<p
+			class="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground"
+			role="alert"
+		>
+			{saveError} Your choices are still selected.
+		</p>{/if}
 	{#if canContinue}
 		<div class="mt-10 text-center" in:fade={fadeIn()}>
 			<Button

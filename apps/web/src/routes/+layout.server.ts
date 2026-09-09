@@ -1,7 +1,10 @@
 // apps/web/src/routes/+layout.server.ts
 import type { LayoutServerLoad } from './$types';
 import { env as privateEnv } from '$env/dynamic/private';
-import { OnboardingProgressService } from '$lib/services/onboardingProgress.service';
+import {
+	onboardingProgress as getOnboardingProgress,
+	onboardingStep
+} from '$lib/utils/onboarding-state';
 import { StripeService } from '$lib/services/stripe-service';
 import { fetchBillingContext } from '$lib/server/billing-context';
 import {
@@ -11,14 +14,6 @@ import {
 } from '$lib/server/billing-context-cache';
 import { recordAuthenticatedUserActivity } from '$lib/server/authenticated-user-activity';
 import { isGmailRelevancePhaseAReviewUserAllowed } from '$lib/server/gmail-relevance/config';
-
-const clampProgress = (progress?: number | null) => {
-	if (typeof progress !== 'number' || Number.isNaN(progress)) {
-		return 0;
-	}
-
-	return Math.max(0, Math.min(100, progress));
-};
 
 type BillingContext = CachedBillingContext;
 
@@ -53,10 +48,8 @@ type CacheEntry<T> = {
 };
 
 const PENDING_INVITES_TTL_MS = 20_000;
-const ONBOARDING_PROGRESS_TTL_MS = 60_000;
 
 const pendingInvitesCache = new Map<string, CacheEntry<PendingProjectInvite[]>>();
-const onboardingProgressCache = new Map<string, CacheEntry<number>>();
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string, nowMs: number): T | null {
 	const entry = cache.get(key);
@@ -115,6 +108,7 @@ export const load: LayoutServerLoad = async ({
 }) => {
 	depends('app:auth');
 	depends('app:billing');
+	depends('app:onboarding');
 
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		serverTiming ? serverTiming.measure(name, fn) : fn();
@@ -147,15 +141,6 @@ export const load: LayoutServerLoad = async ({
 	const completedOnboarding = Boolean(user.onboarding_completed_at);
 	const nowMs = Date.now();
 	const routePath = url.pathname;
-	// Include the landing surfaces ('/', '/today') so the nav onboarding indicator is
-	// correct wherever an un-onboarded user could render the layout — the WP-2 redirect
-	// guards normally route them to /onboarding first, so this is defense-in-depth.
-	const shouldLoadOnboardingProgress =
-		!completedOnboarding &&
-		(routePath === '/dashboard' ||
-			routePath === '/' ||
-			routePath === '/today' ||
-			routePath.startsWith('/onboarding'));
 	const shouldLoadBillingContext = stripeEnabled && !routePath.startsWith('/auth');
 
 	// Run all remaining queries in parallel instead of sequentially/streamed.
@@ -191,32 +176,15 @@ export const load: LayoutServerLoad = async ({
 				}
 			}),
 
-			completedOnboarding
-				? 100
-				: measure('db.onboarding_progress', async () => {
-						const cacheKey = user.id;
-						const cached = getCached(onboardingProgressCache, cacheKey, nowMs);
-						if (cached !== null) return cached;
-						if (!shouldLoadOnboardingProgress) {
-							return 0;
-						}
-						try {
-							const progress = await new OnboardingProgressService(supabase)
-								.getOnboardingProgress(user.id)
-								.then((data) => clampProgress(data?.progress));
-							setCached(
-								onboardingProgressCache,
-								cacheKey,
-								progress,
-								ONBOARDING_PROGRESS_TTL_MS,
-								nowMs
-							);
-							return progress;
-						} catch (error) {
-							console.error('Failed to load onboarding progress:', error);
-							return 0;
-						}
-					}),
+			// safeGetSession already loaded this profile. No duplicate query or stale TTL.
+			getOnboardingProgress(
+				onboardingStep(
+					user.onboarding_step,
+					user.onboarding_intent,
+					user.onboarding_stakes
+				),
+				completedOnboarding
+			),
 
 			shouldLoadBillingContext
 				? measure('db.billing_context', async () => {

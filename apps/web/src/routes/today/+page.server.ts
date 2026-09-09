@@ -5,7 +5,8 @@ import { getTodayFeed } from '$lib/server/today-feed.service';
 
 export const load: PageServerLoad = async ({
 	locals: { safeGetSession, supabase, serverTiming },
-	depends
+	depends,
+	url
 }) => {
 	depends('app:auth');
 	depends('today:feed');
@@ -30,9 +31,16 @@ export const load: PageServerLoad = async ({
 			timezone: user.timezone,
 			timing: serverTiming
 		});
-		return { user, feed };
+		const activatedProjectId = url.searchParams.get('activated_project');
+		return {
+			user,
+			feed,
+			activatedProjectId: feed.projects.some((project) => project.id === activatedProjectId)
+				? activatedProjectId
+				: null
+		};
 	} catch (error) {
 		console.error('[Today] Failed to load today feed:', error);
-		return { user, feed: null };
+		return { user, feed: null, activatedProjectId: null };
 	}
 };

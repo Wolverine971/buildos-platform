@@ -18,6 +18,14 @@
 		Target
 	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
+	import ActivationReceipt from '$lib/components/onboarding-v3/ActivationReceipt.svelte';
+	import {
+		readOnboardingDraft,
+		writeOnboardingDraft,
+		type ActivationPacket
+	} from '$lib/utils/onboarding-state';
+	import { notificationStore } from '$lib/stores/notification.store';
+	import type { CalendarAnalysisNotification } from '$lib/types/notification.types';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { ONBOARDING_V3_CONFIG, type OnboardingIntent } from '$lib/config/onboarding.config';
@@ -37,31 +45,12 @@
 		task_count?: number;
 	};
 
-	type ActivationPacket = {
-		project: {
-			id: string;
-			name: string;
-			description: string | null;
-			next_step_short: string | null;
-		};
-		start_here: {
-			id: string;
-			title: string | null;
-			excerpt: string | null;
-			truncated: boolean;
-		} | null;
-		counts: {
-			tasks: number;
-			goals: number;
-			documents: number;
-			plans: number;
-			milestones: number;
-		};
-		sample_entities: Array<{ kind: 'task' | 'goal' | 'document'; id: string; name: string }>;
-	};
-
 	interface Props {
-		onNext: () => void;
+		userId: string;
+		savedProjectId?: string | null;
+		busy?: boolean;
+		onPacket?: (packet: ActivationPacket) => void;
+		onNext: () => void | Promise<void>;
 		onProjectsCreated: (
 			projectIds: string[],
 			ontologyCounts?: {
@@ -76,7 +65,7 @@
 				risks: number;
 				edges: number;
 			}
-		) => void;
+		) => void | Promise<void>;
 		onCalendarAnalyzed?: (completed: boolean) => void;
 		/** V3: tailor capture prompt based on user intent */
 		intent?: OnboardingIntent;
@@ -87,6 +76,10 @@
 	}
 
 	let {
+		userId,
+		savedProjectId = null,
+		busy = false,
+		onPacket,
 		onNext,
 		onProjectsCreated,
 		onCalendarAnalyzed,
@@ -116,66 +109,57 @@
 		'What have you already started?'
 	];
 
-	// --- Step substate, persisted across the calendar OAuth redirect ---
-	const SUBSTATE_KEY = 'buildos_onboarding_step2_state';
-	type Step2Substate = {
+	// Raw input stays on this device, under this account. The project/milestone also live on the server.
+	type CaptureDraft = {
 		phase: 'capture' | 'receipt';
 		projectIds: string[];
 		draft: string;
-		savedAt: number;
+		source: string;
+		notificationId?: string | null;
 	};
-
-	function loadSubstate(): Step2Substate | null {
-		try {
-			const raw = sessionStorage.getItem(SUBSTATE_KEY);
-			if (!raw) return null;
-			const state = JSON.parse(raw) as Step2Substate;
-			if (Date.now() - state.savedAt > 30 * 60 * 1000) {
-				sessionStorage.removeItem(SUBSTATE_KEY);
-				return null;
-			}
-			return state;
-		} catch {
-			return null;
-		}
-	}
-
-	const restored = typeof sessionStorage !== 'undefined' ? loadSubstate() : null;
-
-	let phase = $state<'capture' | 'receipt'>(restored?.phase ?? 'capture');
-	let draftText = $state(restored?.draft ?? '');
+	const restored = untrack(() => readOnboardingDraft<CaptureDraft>(userId, 'capture'));
+	const initialProjectId = untrack(() => savedProjectId ?? initialProjects[0]?.id ?? null);
+	const restoredIds = Array.isArray(restored?.projectIds)
+		? restored.projectIds.filter((id) => typeof id === 'string')
+		: [];
+	let createdProjectIds = $state<string[]>(initialProjectId ? [initialProjectId] : restoredIds);
+	let phase = $state<'capture' | 'receipt'>(
+		initialProjectId || restoredIds.length ? 'receipt' : 'capture'
+	);
+	let draftText = $state(typeof restored?.draft === 'string' ? restored.draft : '');
+	let sourceText = $state(
+		(!initialProjectId || restoredIds[0] === initialProjectId) &&
+			typeof restored?.source === 'string'
+			? restored.source
+			: ''
+	);
+	let calendarNotificationId = $state<string | null>(restored?.notificationId ?? null);
 	let isVoiceRecording = $state(false);
-	let createdProjectIds = $state<string[]>(restored?.projectIds ?? []);
-	let captureStartedTracked = $state(false);
-	let reviewedTracked = $state(false);
-
+	let captureStartedTracked = false;
+	let reviewedTracked = false;
 	let packet = $state<ActivationPacket | null>(null);
 	let packetLoading = $state(false);
 	let packetError = $state<string | null>(null);
+	let packetRequest = 0;
 
 	$effect(() => {
-		// Persist so the calendar OAuth round-trip restores the receipt, not a blank step.
-		const state: Step2Substate = {
+		writeOnboardingDraft(userId, 'capture', {
 			phase,
 			projectIds: createdProjectIds,
 			draft: draftText,
-			savedAt: Date.now()
-		};
-		try {
-			sessionStorage.setItem(SUBSTATE_KEY, JSON.stringify(state));
-		} catch {
-			// sessionStorage may be unavailable (private browsing, etc.)
-		}
+			source: sourceText,
+			notificationId: calendarNotificationId
+		});
 	});
 
-	function clearSubstate() {
-		try {
-			sessionStorage.removeItem(SUBSTATE_KEY);
-		} catch {
-			// ignore
-		}
+	async function reviewProject(projectId: string) {
+		createdProjectIds = [projectId];
+		sourceText = '';
+		packet = null;
+		phase = 'receipt';
+		await onProjectsCreated(createdProjectIds);
+		await loadPacket(projectId);
 	}
-
 	function track(
 		event: Parameters<typeof trackLoopEvent>[0],
 		props: Record<string, string | number | boolean | null> = {}
@@ -218,7 +202,7 @@
 
 	async function submitCapture() {
 		const text = draftText.trim();
-		if (!text || isVoiceRecording) return;
+		if (!text || isVoiceRecording || isLoadingChat || showChatModal || busy) return;
 		try {
 			await ensureChatModal();
 		} catch (err) {
@@ -249,13 +233,14 @@
 		showChatModal = true;
 	}
 
-	function handleChatClose(summary?: DataMutationSummary) {
+	async function handleChatClose(summary?: DataMutationSummary) {
 		showChatModal = false;
 		const wasAdjusting = chatConfig.contextType === 'project';
 		const firstAffectedId = summary?.affectedProjectIds[0];
 		if (summary?.hasChanges && firstAffectedId) {
 			if (!wasAdjusting) {
 				createdProjectIds = summary.affectedProjectIds;
+				sourceText = draftText;
 				draftText = '';
 				phase = 'receipt';
 				track('first_structure_generated', {
@@ -265,7 +250,7 @@
 					project_id: firstAffectedId,
 					is_first: !hadProjectsBeforeStep
 				});
-				onProjectsCreated(summary.affectedProjectIds);
+				await onProjectsCreated(summary.affectedProjectIds);
 			}
 			void loadPacket(createdProjectIds[0] ?? firstAffectedId);
 		}
@@ -274,6 +259,7 @@
 
 	async function loadPacket(projectId: string | undefined) {
 		if (!projectId) return;
+		const requestId = ++packetRequest;
 		packetLoading = true;
 		packetError = null;
 		try {
@@ -285,14 +271,16 @@
 				throw new Error(payload?.error || 'Failed to load your project summary');
 			}
 			const loaded = (payload?.data ?? payload) as ActivationPacket;
+			if (requestId !== packetRequest) return;
 			packet = loaded;
+			onPacket?.(loaded);
 			// loadPacket also runs on OAuth restore and after adjust-in-chat closes —
 			// the review event should count the first reveal only.
 			if (!reviewedTracked) {
 				reviewedTracked = true;
 				track('first_project_reviewed', { project_id: projectId });
 			}
-			onProjectsCreated(createdProjectIds, {
+			await onProjectsCreated(createdProjectIds, {
 				goals: loaded.counts.goals,
 				requirements: 0,
 				plans: loaded.counts.plans,
@@ -306,10 +294,11 @@
 			});
 		} catch (err) {
 			console.error('Failed to load activation packet:', err);
+			if (requestId !== packetRequest) return;
 			packetError =
 				err instanceof Error ? err.message : 'Failed to load your project summary';
 		} finally {
-			packetLoading = false;
+			if (requestId === packetRequest) packetLoading = false;
 		}
 	}
 
@@ -319,15 +308,17 @@
 		track('first_project_opened', { project_id: projectId });
 	}
 
-	function handleExploreSkip() {
+	async function handleExploreSkip() {
+		if (busy) return;
 		track('first_capture_skipped', { reason: 'explore' });
-		clearSubstate();
-		onNext();
+		createdProjectIds = [];
+		sourceText = '';
+		await onProjectsCreated([]);
+		await onNext();
 	}
 
 	function handleContinue() {
-		clearSubstate();
-		onNext();
+		if (!busy) void onNext();
 	}
 
 	function handleCaptureKeydown(event: KeyboardEvent) {
@@ -335,6 +326,7 @@
 		// Only intercept Enter from the textarea itself — the card also contains the
 		// prompt chips and submit button, whose Enter activation must stay native.
 		if (
+			!event.isComposing &&
 			event.key === 'Enter' &&
 			!event.shiftKey &&
 			event.target instanceof HTMLTextAreaElement
@@ -351,8 +343,21 @@
 	let isConnectingCalendar = $state(false);
 	let showConnectionSuccess = $state(false);
 
-	let calendarAnalysisStarted = $state(false);
-	let calendarAnalysisCompleted = $state(false);
+	let startingAnalysis = $state(false);
+	const calendarNotification = $derived(
+		calendarNotificationId
+			? ($notificationStore.notifications.get(calendarNotificationId) as
+					| CalendarAnalysisNotification
+					| undefined)
+			: undefined
+	);
+	const calendarAnalysisStarted = $derived(
+		startingAnalysis || calendarNotification?.status === 'processing'
+	);
+	const calendarAnalysisCompleted = $derived(
+		calendarNotification?.status === 'success' || calendarNotification?.status === 'warning'
+	);
+	let analysisError = $state<string | null>(null);
 
 	async function checkCalendarConnection(): Promise<boolean> {
 		try {
@@ -362,7 +367,9 @@
 			const response = await fetch('/api/calendar', { cache: 'no-store' });
 
 			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}`);
+				throw new Error(
+					'Could not check your calendar connection. Retry or continue without it.'
+				);
 			}
 
 			const result = await response.json();
@@ -385,7 +392,7 @@
 			isConnectingCalendar = true;
 			connectionError = null;
 
-			const redirectPath = '/onboarding?v2=true';
+			const redirectPath = '/onboarding';
 			const encodedRedirect = encodeURIComponent(redirectPath);
 			const response = await fetch(`/profile/calendar?redirect=${encodedRedirect}`);
 			const payload = await response.json().catch(() => null);
@@ -404,9 +411,8 @@
 			window.location.href = result.calendarAuthUrl;
 		} catch (error) {
 			console.error('Calendar connection error:', error);
-			toastService.error(
-				error instanceof Error ? error.message : 'Failed to connect calendar'
-			);
+			connectionError =
+				'Calendar could not be connected. Please try again, or continue without it.';
 			isConnectingCalendar = false;
 		}
 	}
@@ -432,9 +438,6 @@
 			if (options.showSuccessToast) {
 				showConnectionSuccess = true;
 				toastService.success('Google Calendar connected successfully!');
-				setTimeout(() => {
-					showConnectionSuccess = false;
-				}, 5000);
 			}
 			return true;
 		}
@@ -451,6 +454,7 @@
 	onMount(() => {
 		// Restore the receipt after an OAuth redirect (or any remount mid-step).
 		if (phase === 'receipt' && createdProjectIds.length > 0 && !packet) {
+			void onProjectsCreated(createdProjectIds);
 			void loadPacket(createdProjectIds[0]);
 		}
 
@@ -493,11 +497,15 @@
 						errorMessage = `Calendar connection failed: ${error}`;
 				}
 
-				toastService.error(errorMessage);
+				connectionError = errorMessage;
 
 				params.delete('calendar');
 				params.delete('error');
 				replaceCalendarUrlParams(params);
+				void refreshCalendarConnection().then(() => {
+					connectionError = errorMessage;
+				});
+				return;
 			}
 		}
 
@@ -505,43 +513,29 @@
 	});
 
 	async function handleStartCalendarAnalysis() {
+		if (calendarAnalysisStarted) return;
+		startingAnalysis = true;
+		analysisError = null;
 		try {
 			const connected = await checkCalendarConnection();
-
 			if (!connected) {
-				toastService.error('Please connect your Google Calendar first.');
 				hasCalendarConnected = false;
-				showConnectionSuccess = false;
 				return;
 			}
-
-			const { completion } = await startCalendarAnalysis({
+			const { notificationId, completion } = await startCalendarAnalysis({
 				daysBack: 7,
 				daysForward: 60,
-				expandOnStart: false, // Keep minimized
-				expandOnComplete: true // Auto-expand when complete
+				expandOnStart: false,
+				expandOnComplete: false
 			});
-
-			calendarAnalysisStarted = true;
-			void completion
-				.then(() => {
-					if (calendarAnalysisCompleted) return;
-					calendarAnalysisCompleted = true;
-					onCalendarAnalyzed?.(true);
-				})
-				.catch(() => {
-					calendarAnalysisStarted = false;
-					calendarAnalysisCompleted = false;
-				});
-
-			toastService.success(
-				'Calendar analysis started! Check the notification in the bottom-right corner.'
-			);
-		} catch (error) {
-			console.error('Calendar analysis error:', error);
-			toastService.error(
-				error instanceof Error ? error.message : 'Failed to start calendar analysis'
-			);
+			calendarNotificationId = notificationId;
+			await completion;
+			onCalendarAnalyzed?.(true);
+		} catch {
+			analysisError =
+				'Calendar analysis couldn’t finish. Your project is safe. Retry or continue setup.';
+		} finally {
+			startingAnalysis = false;
 		}
 	}
 </script>
@@ -550,9 +544,9 @@
 	{#if phase === 'capture'}
 		<!-- Header -->
 		<div class="mb-8 text-center">
-			<h2 class="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
+			<h1 class="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
 				{v3Prompts?.heading ?? "Dump what's in your head. BuildOS will shape it."}
-			</h2>
+			</h1>
 			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
 				{isExplore
 					? 'Try one real dump if you want to see the product work. You can also skip for now.'
@@ -579,7 +573,7 @@
 
 			<!-- Prompt chips for blank-state freeze -->
 			<div class="mt-3 flex flex-wrap gap-1.5">
-				{#each PROMPT_CHIPS as chip}
+				{#each PROMPT_CHIPS as chip (chip)}
 					<button
 						type="button"
 						onclick={() => appendChip(chip)}
@@ -594,7 +588,7 @@
 				variant="primary"
 				size="lg"
 				onclick={submitCapture}
-				disabled={!draftText.trim() || isVoiceRecording || isLoadingChat}
+				disabled={!draftText.trim() || isVoiceRecording || isLoadingChat || busy}
 				loading={isLoadingChat}
 				class="mt-4 w-full shadow-ink"
 			>
@@ -615,11 +609,10 @@
 				</h3>
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 					{#each initialProjects.slice(0, 4) as project (project.id)}
-						<a
-							href={`/projects/${project.id}`}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="group relative block rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak pressable hover:border-accent/50 hover:shadow-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						<button
+							type="button"
+							onclick={() => reviewProject(project.id)}
+							class="group relative block w-full text-left rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak pressable hover:border-accent/50 hover:shadow-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<div class="flex items-start gap-3">
 								<div
@@ -651,7 +644,7 @@
 									{/if}
 								</div>
 							</div>
-						</a>
+						</button>
 					{/each}
 				</div>
 			</div>
@@ -662,12 +655,15 @@
 		<div class="mt-6 flex justify-center">
 			{#if initialProjects.length > 0}
 				<Button
-					variant="primary"
+					variant="outline"
 					size="lg"
-					onclick={handleContinue}
-					class="min-w-[200px] shadow-ink-strong"
+					onclick={() => {
+						const project = initialProjects[0];
+						if (project) void reviewProject(project.id);
+					}}
+					class="min-w-[200px]"
 				>
-					Continue
+					Review my saved project
 					<ArrowRight class="w-4 h-4 ml-2" />
 				</Button>
 			{:else if isSkippable}
@@ -690,132 +686,24 @@
 					<CheckCircle class="w-7 h-7 text-success-foreground" />
 				</div>
 			</div>
-			<h2 class="text-2xl sm:text-3xl font-bold mb-2 text-foreground">
-				Your first project is real
-			</h2>
+			<h1 class="text-2xl sm:text-3xl font-bold mb-2 text-foreground">
+				Your project is ready
+			</h1>
 			<p class="text-base text-muted-foreground max-w-xl mx-auto">
 				Here's what BuildOS understood, what it created, and what it will remember when you
 				come back.
 			</p>
 		</div>
 
-		{#if packetLoading}
-			<div
-				class="mb-4 flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-ink"
-			>
-				<LoaderCircle
-					class="h-5 w-5 shrink-0 animate-spin text-accent motion-reduce:animate-none"
-				/>
-				<span class="text-sm text-foreground">Pulling your project summary together…</span>
-			</div>
-		{:else if packetError}
-			<div
-				class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm shadow-ink tx tx-static tx-weak"
-			>
-				<p class="mb-3 text-foreground">{packetError}</p>
-				<Button
-					variant="outline"
-					size="sm"
-					onclick={() => loadPacket(createdProjectIds[0])}
-				>
-					Try again
-				</Button>
-			</div>
-		{:else if packet}
-			<div class="mb-6 space-y-3" in:fade={fadeIn()}>
-				<!-- What it understood -->
-				<div
-					class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
-				>
-					<h3 class="micro-label mb-2 text-muted-foreground">What BuildOS understood</h3>
-					<p class="text-base font-semibold text-foreground">{packet.project.name}</p>
-					{#if packet.project.description}
-						<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
-							{packet.project.description}
-						</p>
-					{/if}
-				</div>
+		<ActivationReceipt
+			{packet}
+			{sourceText}
+			loading={packetLoading}
+			error={packetError}
+			onRetry={() => loadPacket(createdProjectIds[0])}
+		/>
 
-				<!-- What it created -->
-				<div
-					class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
-				>
-					<h3 class="micro-label mb-2 text-muted-foreground">What it created</h3>
-					<div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-foreground mb-2">
-						{#if packet.counts.tasks > 0}
-							<span class="inline-flex items-center gap-1.5">
-								<ListChecks class="w-4 h-4 text-accent" />
-								{packet.counts.tasks}
-								{packet.counts.tasks === 1 ? 'task' : 'tasks'}
-							</span>
-						{/if}
-						{#if packet.counts.goals > 0}
-							<span class="inline-flex items-center gap-1.5">
-								<Target class="w-4 h-4 text-accent" />
-								{packet.counts.goals}
-								{packet.counts.goals === 1 ? 'goal' : 'goals'}
-							</span>
-						{/if}
-						{#if packet.counts.documents > 0}
-							<span class="inline-flex items-center gap-1.5">
-								<FolderOpen class="w-4 h-4 text-accent" />
-								{packet.counts.documents}
-								{packet.counts.documents === 1 ? 'document' : 'documents'}
-							</span>
-						{/if}
-					</div>
-					{#if packet.sample_entities.length > 0}
-						<ul class="space-y-1">
-							{#each packet.sample_entities.slice(0, 5) as entity (entity.id)}
-								<li class="flex items-center gap-2 text-sm text-muted-foreground">
-									<span
-										class="inline-block w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0"
-									></span>
-									<span class="truncate">{entity.name}</span>
-									<span class="text-2xs uppercase text-muted-foreground/70"
-										>{entity.kind}</span
-									>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</div>
-
-				<!-- What it will remember -->
-				{#if packet.start_here?.excerpt}
-					<div
-						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak"
-					>
-						<h3 class="micro-label mb-2 text-muted-foreground">
-							What it will remember
-						</h3>
-						<p class="text-xs text-muted-foreground mb-2 leading-relaxed">
-							This lives in your project's Start Here document — BuildOS reads it
-							every time you (or your AI tools) come back, so you never re-explain the
-							project.
-						</p>
-						<div
-							class="max-h-44 overflow-y-auto rounded-lg bg-muted/40 border border-border px-3 py-2 text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed"
-						>
-							{packet.start_here.excerpt}
-						</div>
-					</div>
-				{/if}
-
-				<!-- Next move -->
-				{#if packet.project.next_step_short}
-					<div
-						class="flex items-start gap-3 rounded-lg border border-accent/30 bg-accent/5 p-4 shadow-ink"
-					>
-						<ArrowRight class="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-						<div>
-							<h3 class="micro-label mb-1 text-muted-foreground">Next move</h3>
-							<p class="text-sm text-foreground">{packet.project.next_step_short}</p>
-						</div>
-					</div>
-				{/if}
-			</div>
-
+		{#if packet}
 			<!-- Receipt actions -->
 			<div class="mb-6 flex flex-wrap items-center justify-center gap-3">
 				<a
@@ -839,113 +727,98 @@
 			</div>
 		{/if}
 
-		<!-- Calendar follow-up: place the first win in the reality of the week -->
-		{#if hasCalendarConnected}
-			<div
-				class="mb-4 rounded-lg border-2 border-accent/30 bg-accent/5 p-4 shadow-ink tx tx-grain tx-weak sm:p-5"
-				in:scale={scaleIn()}
-			>
-				<div class="flex items-start gap-3 mb-4">
-					<div
-						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent shadow-ink"
-					>
-						<CheckCircle class="w-5 h-5 text-accent-foreground" />
-					</div>
-					<div class="flex-1">
-						<h3 class="text-base font-bold text-foreground flex items-center gap-2">
-							Google Calendar connected
-							<span
-								class="text-2xs bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
-							>
-								{showConnectionSuccess ? 'Connected just now' : 'Ready'}
-							</span>
-						</h3>
-						<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
-							Want BuildOS to scan your calendar for project signals and open time?
-						</p>
-					</div>
-				</div>
-
-				{#if calendarAnalysisStarted}
-					<div
-						class="flex items-center gap-2 p-3 bg-card rounded-lg border border-border"
-					>
-						<LoaderCircle
-							class="h-4 w-4 shrink-0 animate-spin text-accent motion-reduce:animate-none"
-						/>
-						<span class="text-sm text-foreground font-medium">
-							Analyzing your calendar — check the notification in the bottom-right
-							corner.
-						</span>
-					</div>
-				{:else}
-					<Button
-						variant="primary"
-						onclick={handleStartCalendarAnalysis}
-						class="w-full shadow-ink"
-					>
-						<Sparkles class="w-4 h-4 mr-2" />
-						Analyze my calendar
-					</Button>
-				{/if}
-			</div>
-		{:else if !isCheckingConnection}
-			<div
-				class="mb-4 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak"
-			>
-				<div class="flex items-start gap-3 mb-3">
-					<div
-						class="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0 shadow-ink"
-					>
-						<Calendar class="w-5 h-5 text-accent-foreground" />
-					</div>
-					<div class="flex-1">
-						<h3 class="text-sm font-semibold text-foreground mb-1">
-							Connect your calendar so BuildOS can work around real life
-						</h3>
-						<p class="text-xs text-muted-foreground leading-relaxed">
-							Find open time around commitments, detect recurring work from meetings,
-							and get scheduling suggestions based on actual availability.
-						</p>
-					</div>
-				</div>
-
-				{#if connectionError}
-					<div
-						class="mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-foreground"
-					>
-						{connectionError}
-					</div>
-				{/if}
-
-				<Button
-					variant="primary"
-					onclick={handleConnectCalendar}
-					disabled={isConnectingCalendar}
-					loading={isConnectingCalendar}
-					class="w-full shadow-ink"
-				>
-					{#if isConnectingCalendar}
-						Connecting...
-					{:else}
-						<Calendar class="w-4 h-4 mr-2" />
-						Connect Google Calendar
+		<section
+			class="mt-6 rounded-lg border border-border bg-card p-4 sm:p-5"
+			aria-label="Optional calendar connection"
+		>
+			<p class="micro-label mb-2 text-muted-foreground">Optional · your real week</p>
+			{#if isCheckingConnection}
+				<p class="text-sm text-muted-foreground" role="status">
+					Checking your calendar connection…
+				</p>
+			{:else if hasCalendarConnected}
+				<h3 class="flex items-center gap-2 text-base font-semibold text-foreground">
+					<CheckCircle class="h-5 w-5 text-success" /> Google Calendar connected
+				</h3>
+				{#if showConnectionSuccess}<p class="mt-1 text-xs text-success" role="status">
+						Connected just now. Your project is right where you left it.
+					</p>{/if}
+				{#if calendarAnalysisCompleted}
+					<p class="mt-2 text-sm text-foreground" role="status">
+						{calendarNotification?.data.partial
+							? 'Some calendars were unavailable. '
+							: ''}Reviewed {calendarNotification?.data.eventCount ?? 'your'} events and
+						found {calendarNotification?.data.suggestions?.length ?? 0} suggestions.
+					</p>
+					{#if calendarNotification?.data.suggestions?.length}
+						<Button
+							variant="outline"
+							size="sm"
+							class="mt-3"
+							onclick={() =>
+								calendarNotificationId &&
+								notificationStore.expand(calendarNotificationId)}
+							>Review calendar suggestions</Button
+						>
 					{/if}
-				</Button>
-			</div>
-		{/if}
-
+				{:else if calendarAnalysisStarted}
+					<p
+						class="mt-2 flex items-center gap-2 text-sm text-muted-foreground"
+						role="status"
+					>
+						<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" /> Looking
+						for project signals and open time. You can continue while this runs.
+					</p>
+				{:else}
+					<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+						Find project signals and open time around your existing commitments.
+					</p>
+					<Button variant="outline" class="mt-3" onclick={handleStartCalendarAnalysis}
+						>Analyze my calendar</Button
+					>
+				{/if}
+				{#if analysisError || calendarNotification?.status === 'error'}<p
+						class="mt-3 text-sm text-destructive"
+						role="alert"
+					>
+						{analysisError ?? 'Calendar analysis failed. Retry when you’re ready.'}
+					</p>{/if}
+			{:else}
+				<h3 class="text-base font-semibold text-foreground">Make room for this project</h3>
+				<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
+					Connect Google Calendar to find open time around real commitments. You can do
+					this later in Profile.
+				</p>
+				<Button
+					variant="outline"
+					class="mt-3"
+					onclick={handleConnectCalendar}
+					loading={isConnectingCalendar}
+					disabled={isConnectingCalendar || busy}>Connect Google Calendar</Button
+				>
+			{/if}
+			{#if connectionError}<p class="mt-3 text-sm text-destructive" role="alert">
+					{connectionError}
+				</p>{/if}
+		</section>
 		<!-- Continue -->
 		<div class="mt-6 flex justify-center">
 			<Button
 				variant="primary"
 				size="lg"
 				onclick={handleContinue}
-				class="min-w-[200px] shadow-ink-strong"
+				loading={busy}
+				disabled={busy}
+				class="w-full sm:w-auto sm:min-w-[240px] shadow-ink"
 			>
-				Continue setup
+				{hasCalendarConnected ? 'Continue setup' : 'Continue without calendar'}
 				<ArrowRight class="w-4 h-4 ml-2" />
 			</Button>
+		</div>
+		<div class="mt-2 flex justify-center">
+			<Button variant="ghost" size="sm" disabled={busy} onclick={() => (phase = 'capture')}
+				>Choose a different project</Button
+			>
 		</div>
 	{/if}
 </div>
