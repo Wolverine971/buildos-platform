@@ -16,6 +16,7 @@ import { createLibriUploadPublicationBroker } from '../../web/src/lib/server/lib
 import { signLibriUploadDownload } from '../../web/src/lib/server/libri/upload-download-signing';
 import { createLibriUploadCleanupExecutor } from '../../web/src/lib/server/libri/upload-cleanup';
 import { signLibriUserUpload } from '../../web/src/lib/server/libri/user-upload-signing';
+import { trackPoolDisconnections } from './helpers/trackPoolDisconnections';
 
 const available = ['initdb', 'pg_ctl', 'psql'].every(
 	(cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0
@@ -36,6 +37,11 @@ describePostgres(
 			dataDir = '',
 			socket = '';
 		let admin: Pool, worker: Pool, service: Pool;
+		const closePools: Array<() => Promise<void>> = [];
+		function trackPool(pool: Pool): Pool {
+			closePools.push(trackPoolDisconnections(pool));
+			return pool;
+		}
 		let bytes: Buffer;
 		beforeAll(async () => {
 			temporary = mkdtempSync('/tmp/buildos-libri-upload-pg-');
@@ -96,16 +102,22 @@ describePostgres(
 					stdio: 'pipe',
 					timeout: 20_000
 				});
-			admin = new Pool({ host: socket, database: 'postgres', user: 'postgres', max: 2 });
+			admin = trackPool(
+				new Pool({ host: socket, database: 'postgres', user: 'postgres', max: 2 })
+			);
 			await admin.query('GRANT USAGE ON SCHEMA libri TO libri_worker');
-			worker = new Pool({ host: socket, database: 'postgres', user: 'libri_worker', max: 1 });
-			service = new Pool({
-				host: socket,
-				database: 'postgres',
-				user: 'postgres',
-				options: '-c role=service_role',
-				max: 1
-			});
+			worker = trackPool(
+				new Pool({ host: socket, database: 'postgres', user: 'libri_worker', max: 1 })
+			);
+			service = trackPool(
+				new Pool({
+					host: socket,
+					database: 'postgres',
+					user: 'postgres',
+					options: '-c role=service_role',
+					max: 1
+				})
+			);
 			expect((await worker.query('SELECT current_user')).rows[0].current_user).toBe(
 				'libri_worker'
 			);
@@ -413,7 +425,7 @@ describePostgres(
 			expect(storageCalls).toBe(scenario === 'lost_begin' ? 0 : 1);
 		});
 		afterAll(async () => {
-			await Promise.all([admin?.end(), worker?.end(), service?.end()]);
+			await Promise.all(closePools.map((close) => close()));
 			if (dataDir)
 				spawnSync('pg_ctl', ['-D', dataDir, 'stop', '-m', 'fast'], {
 					stdio: 'ignore',
