@@ -19,6 +19,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { getDocumentEditorRevision } from '$lib/server/document-editor-revision';
 import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { requireProjectEntityAccess } from '$lib/server/ontology-api-access';
@@ -87,6 +88,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 
 		return ApiResponse.success({
 			document: documentData,
+			editor_revision: getDocumentEditorRevision(documentData),
 			...(linkedEntities ? { linkedEntities } : {})
 		});
 	} catch (error) {

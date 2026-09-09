@@ -83,6 +83,7 @@ describe('GET /api/onto/documents/[id]/full', () => {
 		expect(await response.json()).toMatchObject({
 			success: true,
 			data: {
+				editor_revision: expect.stringMatching(/^[a-f0-9]{64}$/),
 				document: {
 					id: 'document-1',
 					project_id: 'project-1',

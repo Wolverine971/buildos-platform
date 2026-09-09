@@ -7,6 +7,10 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import {
+	canRebaseDocumentEditorSave,
+	getDocumentEditorRevision
+} from '$lib/server/document-editor-revision';
 import { DOCUMENT_STATES, isValidTypeKey } from '$lib/types/onto';
 import {
 	logUpdateAsync,
@@ -224,7 +228,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.notFound('Document');
 		}
 
-		return ApiResponse.success(details);
+		return ApiResponse.success({
+			...details,
+			editor_revision: getDocumentEditorRevision(details.document)
+		});
 	} catch (error) {
 		if (error instanceof AgenticChatToolAccessDeniedError) {
 			return ApiResponse.forbidden('You do not have permission to access this document');
@@ -277,22 +284,32 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return accessResult.error;
 		}
 
-		const { document, actorId, project } = accessResult;
+		let { document } = accessResult;
+		const { actorId, project } = accessResult;
 
-		// Optimistic concurrency: reject an already-stale client before doing any work,
-		// then reuse the validated timestamp as a compare-and-swap condition on the
-		// actual UPDATE below. The write-time condition closes the race between this
-		// access read and the mutation.
+		// A matching editor revision permits an ordinary save after background
+		// metadata changes. Still compare-and-swap the exact row timestamp so a
+		// concurrent writer cannot be lost between this read and the UPDATE.
 		const expectedUpdatedAt = (body as Record<string, unknown>).expected_updated_at;
+		const expectedEditorRevision = body.expected_editor_revision;
+		if (
+			typeof expectedEditorRevision === 'string' &&
+			expectedEditorRevision !== getDocumentEditorRevision(document)
+		) {
+			return ApiResponse.conflict(DOCUMENT_CONFLICT_MESSAGE);
+		}
+		const canRebaseEditorSave = canRebaseDocumentEditorSave(document, body);
 		let expectedWriteVersion: string | null = null;
 		if (typeof expectedUpdatedAt === 'string' && document.updated_at) {
 			const clientTime = new Date(expectedUpdatedAt).getTime();
 			const serverTime = new Date(document.updated_at as string).getTime();
 			if (!isNaN(clientTime) && !isNaN(serverTime)) {
-				if (clientTime !== serverTime) {
+				if (clientTime !== serverTime && !canRebaseEditorSave) {
 					return ApiResponse.conflict(DOCUMENT_CONFLICT_MESSAGE);
 				}
-				expectedWriteVersion = expectedUpdatedAt;
+				expectedWriteVersion = canRebaseEditorSave
+					? document.updated_at
+					: expectedUpdatedAt;
 			}
 		}
 
@@ -564,19 +581,43 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const changeSource = getChangeSourceFromRequest(request);
-		const writeResult = await writeDocumentHeadAndVersion({
-			supabase: locals.supabase,
-			documentId,
-			projectId: document.project_id,
-			update: updatePayload as OntoDocumentUpdate,
-			expectedUpdatedAt: expectedWriteVersion,
-			actorId,
-			previousSnapshot: toDocumentSnapshot(document),
-			changeSource,
-			forceCreateVersion: forceVersion,
-			// Preserve the web route's test seam while the implementation itself is shared.
-			versionWriter: createOrMergeDocumentVersion
-		});
+		const writeHead = () =>
+			writeDocumentHeadAndVersion({
+				supabase: locals.supabase,
+				documentId,
+				projectId: document.project_id,
+				update: updatePayload as OntoDocumentUpdate,
+				expectedUpdatedAt: expectedWriteVersion,
+				actorId,
+				previousSnapshot: toDocumentSnapshot(document),
+				changeSource,
+				forceCreateVersion: forceVersion,
+				// Preserve the web route's test seam while the implementation itself is shared.
+				versionWriter: createOrMergeDocumentVersion
+			});
+		let writeResult = await writeHead();
+		if (writeResult.status === 'conflict' && canRebaseEditorSave && expectedWriteVersion) {
+			// Classification may finish during this request. Retry once only when the
+			// editor's original fields still match, merging from the fresh props.
+			const { data: latest, error: reloadError } = await locals.supabase
+				.from('onto_documents')
+				.select('*')
+				.eq('id', documentId)
+				.eq('project_id', document.project_id)
+				.is('deleted_at', null)
+				.maybeSingle();
+			if (!reloadError && latest && canRebaseDocumentEditorSave(latest, body)) {
+				document = latest;
+				expectedWriteVersion = latest.updated_at;
+				if (newContent !== undefined) {
+					updatePayload.props = {
+						...((latest.props as Record<string, unknown>) ?? {}),
+						body_markdown: updatePayload.content
+					};
+				}
+				writeResult = await writeHead();
+			}
+		}
 
 		if (writeResult.status === 'conflict') {
 			return ApiResponse.conflict(DOCUMENT_CONFLICT_MESSAGE);
@@ -873,7 +914,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
-		return ApiResponse.success({ document: updatedDocument, publicPageSync, versionWarning });
+		return ApiResponse.success({
+			document: updatedDocument,
+			editor_revision: getDocumentEditorRevision(updatedDocument),
+			publicPageSync,
+			versionWarning
+		});
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

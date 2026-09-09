@@ -154,7 +154,6 @@
 		documentId = null,
 		parentDocumentId = null,
 		isOpen = $bindable(false),
-		typeOptions = [],
 		onClose,
 		onSaved,
 		onDeleted,
@@ -175,7 +174,6 @@
 	let hasChanges = $state(false);
 
 	let title = $state('');
-	let typeKey = $state('');
 	let stateKey = $state('draft');
 	let description = $state('');
 	let body = $state('');
@@ -280,6 +278,7 @@
 
 	// Track the server's updated_at for conflict detection
 	let serverUpdatedAt = $state<string | null>(null);
+	let serverEditorRevision: string | null = null;
 	let publicPageState = $state<PublicPageState | null>(null);
 	let publicPageLoading = $state(false);
 	let publicPageActionLoading = $state(false);
@@ -1528,7 +1527,6 @@
 
 	function resetForm() {
 		title = '';
-		typeKey = typeOptions[0] ?? 'document.knowledge.research';
 		stateKey = 'draft';
 		description = '';
 		body = '';
@@ -1541,6 +1539,7 @@
 		// Reset autosave state
 		lastSavedSnapshot = null;
 		serverUpdatedAt = null;
+		serverEditorRevision = null;
 		saveStatus = 'idle';
 		lastSavePublishedLive = false;
 		clearAutosaveTimers();
@@ -1603,7 +1602,6 @@
 			}
 
 			title = document.title ?? '';
-			typeKey = document.type_key ?? '';
 			stateKey = normalizeDocumentState(document.state_key ?? 'draft');
 			description = document.description ?? document.props?.description ?? '';
 			// Prefer content column, fall back to props.body_markdown for backwards compatibility
@@ -1616,6 +1614,7 @@
 
 			// Track server state for autosave and conflict detection
 			serverUpdatedAt = document.updated_at ?? null;
+			serverEditorRevision = payload?.data?.editor_revision ?? null;
 			captureSnapshot();
 			saveStatus = 'idle';
 			lastSavePublishedLive = false;
@@ -1903,8 +1902,8 @@
 			body,
 			stateKey
 		};
-		const requestedTypeKey = typeKey.trim();
 		const expectedUpdatedAt = overwrite ? null : serverUpdatedAt;
+		const expectedEditorRevision = overwrite ? null : serverEditorRevision;
 		const requestedPublicPageState = publicPageState;
 
 		try {
@@ -1934,10 +1933,9 @@
 			// Include expected_updated_at for conflict detection (editing existing docs only)
 			if (requestedDocumentId && expectedUpdatedAt) {
 				payload.expected_updated_at = expectedUpdatedAt;
-			}
-
-			if (requestedDocumentId && requestedTypeKey) {
-				payload.type_key = requestedTypeKey;
+				if (expectedEditorRevision) {
+					payload.expected_editor_revision = expectedEditorRevision;
+				}
 			}
 
 			if (wasCreating) {
@@ -2004,6 +2002,7 @@
 				serverUpdatedAt = updatedDoc.updated_at;
 				updatedAt = updatedDoc.updated_at;
 			}
+			serverEditorRevision = result?.data?.editor_revision ?? null;
 
 			const syncResult =
 				result?.data?.publicPageSync && typeof result.data.publicPageSync === 'object'

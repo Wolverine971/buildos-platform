@@ -23,6 +23,7 @@ type OntologyEntityRow = Record<string, unknown> & {
 	id: string;
 	type_key?: string | null;
 	props?: Json | null;
+	updated_at?: string;
 };
 
 const DEFAULT_TYPE_KEYS: Record<OntologyEntityType, string> = {
@@ -57,7 +58,16 @@ const ENTITY_SELECT_FIELDS: Record<OntologyEntityType, string[]> = {
 	goal: ['id', 'name', 'description', 'goal', 'props', 'type_key', 'state_key'],
 	risk: ['id', 'title', 'content', 'impact', 'probability', 'props', 'type_key', 'state_key'],
 	milestone: ['id', 'title', 'description', 'milestone', 'props', 'type_key', 'state_key'],
-	document: ['id', 'title', 'description', 'content', 'props', 'type_key', 'state_key']
+	document: [
+		'id',
+		'title',
+		'description',
+		'content',
+		'props',
+		'type_key',
+		'state_key',
+		'updated_at'
+	]
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -283,19 +293,30 @@ async function updateEntityWithClassification(
 		tags: string[];
 		confidence: number;
 		modelUsed: string;
-	}
+	},
+	expectedDocumentUpdatedAt?: string
 ) {
 	const table = ENTITY_TABLES[entityType];
 	const defaultTypeKey = DEFAULT_TYPE_KEYS[entityType];
 
 	const { data: existing, error: fetchError } = await fromOntologyTable(table)
-		.select('props, type_key')
+		.select('props, type_key, updated_at')
 		.eq('id', entityId)
 		.single()
-		.overrideTypes<Pick<OntologyEntityRow, 'props' | 'type_key'>, { merge: false }>();
+		.overrideTypes<
+			Pick<OntologyEntityRow, 'props' | 'type_key' | 'updated_at'>,
+			{ merge: false }
+		>();
 
 	if (fetchError || !existing) {
 		throw new Error(`Entity not found: ${entityId}`);
+	}
+	if (
+		entityType === 'document' &&
+		(!expectedDocumentUpdatedAt || existing.updated_at !== expectedDocumentUpdatedAt)
+	) {
+		// The model classified an older draft. Leave the newer document untouched.
+		return false;
 	}
 
 	const currentProps = (existing.props as Record<string, unknown>) ?? {};
@@ -321,6 +342,13 @@ async function updateEntityWithClassification(
 			updated_at: new Date().toISOString()
 		})
 		.eq('id', entityId);
+	if (entityType === 'document' && expectedDocumentUpdatedAt) {
+		// Also close the race after re-reading props: never restore stale tags,
+		// body_markdown, or server-owned props over a newer save.
+		updateQuery = updateQuery
+			.eq('updated_at', expectedDocumentUpdatedAt)
+			.is('deleted_at', null);
+	}
 
 	if (existing.type_key === null) {
 		updateQuery = updateQuery.is('type_key', null);
@@ -335,8 +363,10 @@ async function updateEntityWithClassification(
 	}
 
 	if (!updated || updated.length === 0) {
+		if (entityType === 'document') return false;
 		throw new Error('Classification skipped: type_key changed');
 	}
+	return true;
 }
 
 export async function classifyOntologyEntity(
@@ -427,12 +457,26 @@ export async function classifyOntologyEntity(
 		};
 	}
 
-	await updateEntityWithClassification(entityType, entityId, {
-		typeKey,
-		tags,
-		confidence: Number(classification.confidence) || 0,
-		modelUsed: 'openrouter'
-	});
+	const applied = await updateEntityWithClassification(
+		entityType,
+		entityId,
+		{
+			typeKey,
+			tags,
+			confidence: Number(classification.confidence) || 0,
+			modelUsed: 'openrouter'
+		},
+		entity.updated_at
+	);
+	if (!applied) {
+		return {
+			success: true,
+			entityType,
+			entityId,
+			skipped: true,
+			reasoning: 'Document changed during classification; preserved the newer document.'
+		};
+	}
 
 	const duration = performance.now() - startTime;
 

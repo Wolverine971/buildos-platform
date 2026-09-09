@@ -26,7 +26,8 @@ These documents remain useful for understanding BuildOS architecture and pattern
 - **[context-framework-philosophy.md](context-framework-philosophy.md)** and **[universal-project-context-format.md](universal-project-context-format.md)** define our context model
 - **[calendar-per-project-architecture.md](calendar-per-project-architecture.md)** & **[calendar-webhook-integration.md](calendar-webhook-integration.md)** capture scheduling flows
 - **[project-page-patterns.md](project-page-patterns.md)** outlines authenticated layouts
-- **[design-principles-checklist.md](design-principles-checklist.md)** - lightweight review checklist before shipping
+- **[design-principles-checklist.md](design-principles-checklist.md)** - BuildOS usability principles for screens, flows, and shared interaction patterns
+- **[ux-audit-cheat-sheet.md](ux-audit-cheat-sheet.md)** - one-page working guide for flow and surface audits
 
 ## Legacy Documentation (Historical Reference)
 

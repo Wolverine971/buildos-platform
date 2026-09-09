@@ -1,145 +1,259 @@
 ---
-title: 'S-Tier SaaS Design Principles Checklist'
-description: 'Comprehensive design checklist inspired by Stripe, Airbnb, and Linear for building high-quality SaaS dashboards'
+title: 'BuildOS Usability and Interaction Principles'
+description: 'Operational principles for auditing BuildOS screens, flows, and shared interaction patterns'
 date_created: '2025-08-15'
-date_modified: '2025-10-05'
+date_modified: '2026-09-09'
 status: 'active'
 category: 'design-system'
-tags: [design-principles, checklist, saas, best-practices, ui-ux]
+tags: [design-principles, usability, interaction-design, flow-audits, buildos]
 related_files:
-    - apps/web/docs/design/design-system.md
-important_files:
-    - apps/web/src/lib/components/ui/
-    - apps/web/tailwind.config.js
-path: apps/web/docs/design/design-principles-checklist.md
+    - apps/web/docs/design/ux-audit-cheat-sheet.md
+    - apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
+    - apps/web/docs/technical/components/hyperplexed/HYPERPLEXED_DESIGN_PLAYBOOK.md
+    - apps/web/docs/technical/components/hyperplexed/HYPERPLEXED_AUDIT_TRACKER.md
 ---
 
-# S-Tier SaaS Dashboard Design Checklist (Inspired by Stripe, Airbnb, Linear)
+# BuildOS Usability and Interaction Principles
 
-## I. Core Design Philosophy & Strategy
+## Purpose
 
-- [ ] **Users First:** Prioritize user needs, workflows, and ease of use in every design decision.
-- [ ] **Meticulous Craft:** Aim for precision, polish, and high quality in every UI element and interaction.
-- [ ] **Speed & Performance:** Design for fast load times and snappy, responsive interactions.
-- [ ] **Simplicity & Clarity:** Strive for a clean, uncluttered interface. Ensure labels, instructions, and information are unambiguous.
-- [ ] **Focus & Efficiency:** Help users achieve their goals quickly and with minimal friction. Minimize unnecessary steps or distractions.
-- [ ] **Consistency:** Maintain a uniform design language (colors, typography, components, patterns) across the entire dashboard.
-- [ ] **Accessibility (WCAG AA+):** Design for inclusivity. Ensure sufficient color contrast, keyboard navigability, and screen reader compatibility.
-- [ ] **Opinionated Design (Thoughtful Defaults):** Establish clear, efficient default workflows and settings, reducing decision fatigue for users.
+Use these principles to make BuildOS easier to understand, faster to operate, safer to explore, and
+more satisfying to complete work in. They are decision prompts, not laws that override product
+context. Several overlap deliberately because a single source of friction can affect attention,
+structure, momentum, and trust at the same time.
 
-## II. Design System Foundation (Tokens & Core Components)
+Do not score every route against all twenty principles. Audit a core user flow first, inspect the
+screens and states inside that flow, and then move recurring problems into shared components or
+system conventions.
 
-- [ ] **Define a Color Palette:**
-    - [ ] **Primary Brand Color:** User-specified, used strategically.
-    - [ ] **Neutrals:** A scale of grays (5-7 steps) for text, backgrounds, borders.
-    - [ ] **Semantic Colors:** Define specific colors for Success (green), Error/Destructive (red), Warning (yellow/amber), Informational (blue).
-    - [ ] **Dark Mode Palette:** Create a corresponding accessible dark mode palette.
-    - [ ] **Accessibility Check:** Ensure all color combinations meet WCAG AA contrast ratios.
-- [ ] **Establish a Typographic Scale:**
-    - [ ] **Primary Font Family:** Choose a clean, legible sans-serif font (e.g., Inter, Manrope, system-ui).
-    - [ ] **Modular Scale:** Define distinct sizes for H1, H2, H3, H4, Body Large, Body Medium (Default), Body Small/Caption. (e.g., H1: 32px, Body: 14px/16px).
-    - [ ] **Font Weights:** Use a limited set of weights (e.g., Regular, Medium, SemiBold, Bold).
-    - [ ] **Line Height:** Ensure generous line height for readability (e.g., 1.5-1.7 for body text).
-- [ ] **Define Spacing Units:**
-    - [ ] **Base Unit:** Establish a base unit (e.g., 8px).
-    - [ ] **Spacing Scale:** Use multiples of the base unit for all padding, margins, and layout spacing (e.g., 4px, 8px, 12px, 16px, 24px, 32px).
-- [ ] **Define Border Radii:**
-    - [ ] **Consistent Values:** Use a small set of consistent border radii (e.g., Small: 4-6px for inputs/buttons; Medium: 8-12px for cards/modals).
-- [ ] **Develop Core UI Components (with consistent states: default, hover, active, focus, disabled):**
-    - [ ] Buttons (primary, secondary, tertiary/ghost, destructive, link-style; with icon options)
-    - [ ] Input Fields (text, textarea, select, date picker; with clear labels, placeholders, helper text, error messages)
-    - [ ] Checkboxes & Radio Buttons
-    - [ ] Toggles/Switches
-    - [ ] Cards (for content blocks, multimedia items, dashboard widgets)
-    - [ ] Tables (for data display; with clear headers, rows, cells; support for sorting, filtering)
-    - [ ] Modals/Dialogs (for confirmations, forms, detailed views)
-    - [ ] Navigation Elements (Sidebar, Tabs)
-    - [ ] Badges/Tags (for status indicators, categorization)
-    - [ ] Tooltips (for contextual help)
-    - [ ] Progress Indicators (Spinners, Progress Bars)
-    - [ ] Icons (use a single, modern, clean icon set; SVG preferred)
-    - [ ] Avatars
+The companion [UX audit cheat sheet](./ux-audit-cheat-sheet.md) is the abbreviated working version.
 
-## III. Layout, Visual Hierarchy & Structure
+## The three evaluation levels
 
-- [ ] **Responsive Grid System:** Design based on a responsive grid (e.g., 12-column) for consistent layout across devices.
-- [ ] **Strategic White Space:** Use ample negative space to improve clarity, reduce cognitive load, and create visual balance.
-- [ ] **Clear Visual Hierarchy:** Guide the user's eye using typography (size, weight, color), spacing, and element positioning.
-- [ ] **Consistent Alignment:** Maintain consistent alignment of elements.
-- [ ] **Main Dashboard Layout:**
-    - [ ] Persistent Left Sidebar: For primary navigation between modules.
-    - [ ] Content Area: Main space for module-specific interfaces.
-    - [ ] (Optional) Top Bar: For global search, user profile, notifications.
-- [ ] **Mobile-First Considerations:** Ensure the design adapts gracefully to smaller screens.
+### 1. Flow
 
-## IV. Interaction Design & Animations
+A flow begins with a user intention and ends with a recognizable outcome. Use the flow level for
+steps, defaults, waiting, progress, error recovery, completion time, and the quality of the ending.
 
-- [ ] **Purposeful Micro-interactions:** Use subtle animations and visual feedback for user actions (hovers, clicks, form submissions, status changes).
-    - [ ] Feedback should be immediate and clear.
-    - [ ] Animations should be quick (150-300ms) and use appropriate easing (e.g., ease-in-out).
-- [ ] **Loading States:** Implement clear loading indicators (skeleton screens for page loads, spinners for in-component actions).
-- [ ] **Transitions:** Use smooth transitions for state changes, modal appearances, and section expansions.
-- [ ] **Avoid Distraction:** Animations should enhance usability, not overwhelm or slow down the user.
-- [ ] **Keyboard Navigation:** Ensure all interactive elements are keyboard accessible and focus states are clear.
+Examples:
 
-## V. Specific Module Design Tactics
+- Start a project through agentic chat -> receive useful structure -> take the first next action.
+- Complete onboarding -> create the first project -> arrive on Today knowing what to do.
+- Open an AI inbox item -> understand it -> decide -> return to the relevant work.
 
-### A. Multimedia Moderation Module
+### 2. Screen or state
 
-- [ ] **Clear Media Display:** Prominent image/video previews (grid or list view).
-- [ ] **Obvious Moderation Actions:** Clearly labeled buttons (Approve, Reject, Flag, etc.) with distinct styling (e.g., primary/secondary, color-coding). Use icons for quick recognition.
-- [ ] **Visible Status Indicators:** Use color-coded Badges for content status (Pending, Approved, Rejected).
-- [ ] **Contextual Information:** Display relevant metadata (uploader, timestamp, flags) alongside media.
-- [ ] **Workflow Efficiency:**
-    - [ ] Bulk Actions: Allow selection and moderation of multiple items.
-    - [ ] Keyboard Shortcuts: For common moderation actions.
-- [ ] **Minimize Fatigue:** Clean, uncluttered interface; consider dark mode option.
+A screen is one page, modal, drawer, or materially different state inside a flow. Use this level for
+choice count, hierarchy, grouping, chunking, primary-action emphasis, proximity, and progressive
+disclosure. Audit empty, loading, partial, error, success, and resumed states—not only the happy-path
+screenshot.
 
-### B. Data Tables Module (Contacts, Admin Settings)
+### 3. System or component
 
-- [ ] **Readability & Scannability:**
-    - [ ] Smart Alignment: Left-align text, right-align numbers.
-    - [ ] Clear Headers: Bold column headers.
-    - [ ] Zebra Striping (Optional): For dense tables.
-    - [ ] Legible Typography: Simple, clean sans-serif fonts.
-    - [ ] Adequate Row Height & Spacing.
-- [ ] **Interactive Controls:**
-    - [ ] Column Sorting: Clickable headers with sort indicators.
-    - [ ] Intuitive Filtering: Accessible filter controls (dropdowns, text inputs) above the table.
-    - [ ] Global Table Search.
-- [ ] **Large Datasets:**
-    - [ ] Pagination (preferred for admin tables) or virtual/infinite scroll.
-    - [ ] Sticky Headers / Frozen Columns: If applicable.
-- [ ] **Row Interactions:**
-    - [ ] Expandable Rows: For detailed information.
-    - [ ] Inline Editing: For quick modifications.
-    - [ ] Bulk Actions: Checkboxes and contextual toolbar.
-    - [ ] Action Icons/Buttons per Row: (Edit, Delete, View Details) clearly distinguishable.
+Use this level for behavior that should be consistent everywhere: interaction feedback, pointer-
+appropriate target sizes, form validation, loading language, error structure, focus behavior,
+motion, and shared components. Fixing the system is preferable when the same defect appears in
+multiple flows.
 
-### C. Configuration Panels Module (Microsite, Admin Settings)
+## The six lenses
 
-- [ ] **Clarity & Simplicity:** Clear, unambiguous labels for all settings. Concise helper text or tooltips for descriptions. Avoid jargon.
-- [ ] **Logical Grouping:** Group related settings into sections or tabs.
-- [ ] **Progressive Disclosure:** Hide advanced or less-used settings by default (e.g., behind "Advanced Settings" toggle, accordions).
-- [ ] **Appropriate Input Types:** Use correct form controls (text fields, checkboxes, toggles, selects, sliders) for each setting.
-- [ ] **Visual Feedback:** Immediate confirmation of changes saved (e.g., toast notifications, inline messages). Clear error messages for invalid inputs.
-- [ ] **Sensible Defaults:** Provide default values for all settings.
-- [ ] **Reset Option:** Easy way to "Reset to Defaults" for sections or entire configuration.
-- [ ] **Microsite Preview (If Applicable):** Show a live or near-live preview of microsite changes.
+### A. Focus and priority
 
-## VI. CSS & Styling Architecture
+#### 1. Reduce choices per screen
 
-- [ ] **Choose a Scalable CSS Methodology:**
-    - [ ] **Utility-First (Recommended for LLM):** e.g., Tailwind CSS. Define design tokens in config, apply via utility classes.
-    - [ ] **BEM with Sass:** If not utility-first, use structured BEM naming with Sass variables for tokens.
-    - [ ] **CSS-in-JS (Scoped Styles):** e.g., Stripe's approach for Elements.
-- [ ] **Integrate Design Tokens:** Ensure colors, fonts, spacing, radii tokens are directly usable in the chosen CSS architecture.
-- [ ] **Maintainability & Readability:** Code should be well-organized and easy to understand.
-- [ ] **Performance:** Optimize CSS delivery; avoid unnecessary bloat.
+Every visible choice asks the user to compare, predict, and decide. Show the choices needed for the
+current decision; defer secondary paths until they become relevant. Do not confuse fewer choices
+with fewer capabilities.
 
-## VII. General Best Practices
+Audit question: _What decision is this screen asking the user to make, and which visible options do
+not help make it?_
 
-- [ ] **Iterative Design & Testing:** Continuously test with users and iterate on designs.
-- [ ] **Clear Information Architecture:** Organize content and navigation logically.
-- [ ] **Responsive Design:** Ensure the dashboard is fully functional and looks great on all device sizes (desktop, tablet, mobile).
-- [ ] **Documentation:** Maintain clear documentation for the design system and components.
+#### 2. Highlight the primary action
+
+Each state should have one visually dominant next action. Secondary actions can remain available,
+but they should not compete through equal color, weight, placement, or repeated calls to action.
+
+Audit question: _If the user glances for one second, will they identify the intended next step?_
+
+#### 3. Place key actions near their context
+
+Put actions beside the object or decision they affect. Avoid making users move between content and a
+distant toolbar, or remember which item an action will change.
+
+Audit question: _Can the action and its target be understood together without scanning elsewhere?_
+
+#### 4. Put essentials first
+
+Lead with the information and actions needed to orient and proceed. Put supporting context after the
+core answer, and place important recurring actions at predictable edges or endpoints.
+
+Audit question: _What must the user know first, and is it actually encountered first?_
+
+#### 5. Reveal complexity gradually
+
+Show the simple, common path first and expose advanced controls when the user asks for them or when
+the situation requires them. Keep active selections and consequential hidden state visible.
+
+Audit question: _What can be deferred without hiding the user's current state or a primary action?_
+
+### B. Structure and comprehension
+
+#### 6. Follow familiar patterns
+
+Use established web, platform, and existing BuildOS conventions unless a different interaction
+creates a material advantage. Familiar behavior reduces the amount users must learn and remember.
+
+Audit question: _Would a user reasonably predict how this behaves before trying it?_
+
+#### 7. Group related information
+
+Use proximity and shared placement to communicate relationships. Separate unrelated actions even
+when they technically fit in the same row or panel.
+
+Audit question: _Do the visual groups match the user's mental groups?_
+
+#### 8. Break content into meaningful chunks
+
+Turn long, undifferentiated content into sections the user can scan and act on. Chunk by meaning or
+decision—not merely to create more cards and borders.
+
+Audit question: _Can the user find the relevant part without reading everything?_
+
+#### 9. Simplify complex interfaces
+
+Remove accidental complexity, duplicate paths, repeated metadata, and unnecessary modes. Essential
+domain complexity may remain; move it into good defaults, clear sequencing, automation, or the point
+where it becomes actionable.
+
+Audit question: _Is this complexity inherent to the user's work, or created by the interface?_
+
+#### 10. Maintain pattern consistency
+
+Elements that look alike should behave alike. Equivalent actions, states, labels, and controls
+should keep the same visual and interaction language across routes and modals.
+
+Audit question: _Has the user already learned a pattern elsewhere that we should reuse here?_
+
+#### 11. Connect related elements visually
+
+Use alignment, dividers, containers, lines, shared backgrounds, or repeated geometry when a stronger
+relationship must be communicated. Do not add decoration where proximity alone is sufficient.
+
+Audit question: _Is the relationship visible before the user reads the labels?_
+
+### C. Interaction and physical ease
+
+#### 12. Make targets comfortably hittable
+
+Size and space targets for the input context. Coarse-pointer controls should normally provide a
+44-by-44 CSS-pixel hit area. Dense fine-pointer interfaces may use smaller visible controls when the
+hit area, focus state, and separation remain reliable.
+
+Audit question: _Can this be selected quickly without precision or fear of hitting its neighbor?_
+
+#### 13. Acknowledge interactions within 400 ms
+
+An interaction should visibly acknowledge the user within 400 ms, preferably within 100 ms for
+direct manipulation. This is not a promise that every server operation finishes in 400 ms. Long work
+must enter a truthful pending state immediately, preserve control where safe, and communicate
+progress or the next expected event.
+
+Audit question: _After acting, how quickly can the user tell that BuildOS received the intent?_
+
+#### 14. Reduce task-completion time
+
+Remove redundant steps, repeated data entry, avoidable navigation, and unnecessary confirmation.
+Optimize the common path while preserving safe escape hatches for uncommon or consequential cases.
+
+Audit question: _Which step could disappear without reducing understanding, control, or trust?_
+
+### D. Momentum and guidance
+
+#### 15. Show visible progress
+
+When work spans steps or time, show what has happened, what is happening, and what remains. Progress
+must reflect real state rather than provide decorative reassurance.
+
+Audit question: _Can the user tell whether they are moving forward, waiting, blocked, or finished?_
+
+#### 16. Make completion feel closer
+
+Break large work into credible milestones, acknowledge completed parts, and keep the next reachable
+step visible. Do not manufacture progress by splitting a short task into unnecessary screens.
+
+Audit question: _Does each step reduce uncertainty and make the remaining work feel bounded?_
+
+#### 17. Use sensible defaults
+
+Preselect the safest and most common valid choice using available context. Make the default visible,
+explain consequential assumptions, and allow change without forcing every user through setup.
+
+Audit question: _What would BuildOS choose if it were responsibly helping instead of asking?_
+
+### E. Prevention and recovery
+
+#### 18. Prevent errors proactively
+
+Constrain impossible choices, validate at the point of entry, preview consequential changes, and
+warn before destructive or irreversible actions. Prefer making errors hard to commit over explaining
+them afterward.
+
+Audit question: _What predictable mistake can the interface make impossible or obvious in advance?_
+
+#### 19. Make errors recoverable
+
+Preserve user input, provide retry or undo where appropriate, identify what failed in plain language,
+and tell the user what they can do next. A failure in one optional branch should not erase progress
+elsewhere in the flow.
+
+Audit question: _After failure, can the user continue without starting over or reconstructing work?_
+
+### F. Finish and continuity
+
+#### 20. End flows memorably
+
+Make success unmistakable. Name what BuildOS understood or created, show the useful result, and offer
+one relevant next action. The ending should reinforce the product promise and establish continuity,
+not simply display “Done.”
+
+Audit question: _What does the user leave believing happened, and do they know where to go next?_
+
+## BuildOS conflict-resolution rules
+
+When principles pull in different directions, use these rules:
+
+1. Preserve the user's real goal before reducing visible complexity.
+2. Preserve clarity and trust before saving a click.
+3. Preserve high information density when it improves scanning; remove noise, not useful information.
+4. Keep primary actions visible; progressive disclosure is for secondary or advanced controls.
+5. Use contextual target sizing rather than inflating every desktop control.
+6. A fast acknowledgment with honest progress is better than a frozen interface waiting for completion.
+7. Recovery and retained work matter more than a cosmetically clean error state.
+8. One issue may implicate several principles; record it once and cite every relevant lens.
+
+## Standard audit record
+
+For each finding, record:
+
+- **Flow and state:** where the user is and what they are trying to achieve.
+- **Evidence:** what is visible or observed, including desktop/mobile and alternate states.
+- **User cost:** delay, uncertainty, error risk, lost work, abandonment, or trust damage.
+- **Principles:** the relevant numbered principles and lens.
+- **Smallest credible fix:** copy, layout, interaction, flow, or shared-system change.
+- **Measure:** how the result will be verified before and after.
+
+Use three severity levels instead of a numerical UX score:
+
+- **Blocking:** prevents success, loses work, or materially damages trust.
+- **Friction:** adds decisions, time, uncertainty, backtracking, or repeated effort.
+- **Polish:** improves comprehension and confidence without changing task success.
+
+## Relationship to other BuildOS guidance
+
+- [Inkprint](../technical/components/INKPRINT_DESIGN_SYSTEM.md) defines visual tokens and component language.
+- The [Hyperplexed playbook](../technical/components/hyperplexed/HYPERPLEXED_DESIGN_PLAYBOOK.md)
+  provides the detailed region-by-region surface craft rubric.
+- The [Hyperplexed audit tracker](../technical/components/hyperplexed/HYPERPLEXED_AUDIT_TRACKER.md)
+  tracks page and component audits.
+- Flow audits should live in `apps/web/docs/technical/audits/` and link to relevant surface audits
+  instead of duplicating them.

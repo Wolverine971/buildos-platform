@@ -75,6 +75,58 @@ function proposalFixture(content: string, replacement = 'Publish this paragraph.
 }
 
 describe('generateDocumentProposalReplacement', () => {
+	it.each([
+		['\n\nSeven notebooks.', 'Eight notebooks.', '\n\nEight notebooks.'],
+		['Seven notebooks.\n\n', 'Eight notebooks.', 'Eight notebooks.\n\n'],
+		[' seven ', 'eight', ' eight '],
+		['\tSeven\r\n', '\nEight\n', '\tEight\r\n'],
+		['\nSeven\n', '\nEight\n', '\nEight\n'],
+		['\nSeven\n', '', '\n\n'],
+		['Seven', '  Eight\n', '  Eight\n'],
+		['Seven', '\n', '\n']
+	])('preserves selected whitespace boundaries for %j', async (selected, generated, expected) => {
+		await expect(
+			generateDocumentProposalReplacement(
+				{
+					instruction: 'Change seven to eight',
+					selectedMarkdown: selected,
+					prefixMarkdown: '# Heading',
+					suffixMarkdown: '\n\nNext paragraph',
+					userId: 'user-1',
+					projectId: 'project-1',
+					documentId: 'document-1'
+				},
+				{
+					llmClient: {
+						getJSONResponse: vi
+							.fn()
+							.mockResolvedValue({ replacement_markdown: generated })
+					} as never
+				}
+			)
+		).resolves.toBe(expected);
+	});
+
+	it('rejects a proposal whose only change was dropping boundary whitespace', async () => {
+		await expect(
+			generateDocumentProposalReplacement(
+				{
+					instruction: 'Improve this',
+					selectedMarkdown: '\n\nSame\n',
+					prefixMarkdown: '# Heading',
+					suffixMarkdown: 'Next paragraph',
+					userId: 'user-1',
+					projectId: 'project-1',
+					documentId: 'document-1'
+				},
+				{
+					llmClient: {
+						getJSONResponse: vi.fn().mockResolvedValue({ replacement_markdown: 'Same' })
+					} as never
+				}
+			)
+		).rejects.toMatchObject({ code: 'NO_CHANGE' });
+	});
 	it('requests one bounded replacement-only JSON response', async () => {
 		const getJSONResponse = vi.fn().mockResolvedValue({
 			replacement_markdown: 'Publish this paragraph.'
@@ -128,42 +180,45 @@ describe('generateDocumentProposalReplacement', () => {
 });
 
 describe('createDocumentProposal', () => {
-	it('binds the persisted proposal to the exact saved selection and hash', async () => {
-		const document = documentFixture();
-		const inserted = proposalFixture(document.content);
-		const single = vi.fn().mockResolvedValue({ data: inserted, error: null });
-		const select = vi.fn(() => ({ single }));
-		const insert = vi.fn(() => ({ select }));
-		const supabase = { from: vi.fn(() => ({ insert })) } as any;
-		const from = document.content.indexOf('Draft this paragraph.');
+	it.each([0, 2])(
+		'binds the reviewed patch and hash with %i boundary characters selected',
+		async (boundaryLength) => {
+			const document = documentFixture();
+			const inserted = proposalFixture(document.content);
+			const single = vi.fn().mockResolvedValue({ data: inserted, error: null });
+			const select = vi.fn(() => ({ single }));
+			const insert = vi.fn(() => ({ select }));
+			const supabase = { from: vi.fn(() => ({ insert })) } as any;
+			const from = document.content.indexOf('Draft this paragraph.') - boundaryLength;
 
-		await expect(
-			createDocumentProposal({
-				supabase,
-				document,
-				actorId: 'actor-1',
-				userId: 'user-1',
-				instruction: 'Make it final',
-				selectionFrom: from,
-				selectionTo: from + 'Draft this paragraph.'.length,
-				baseContentHash: hashDocumentContent(document.content),
-				llmClient: {
-					getJSONResponse: vi
-						.fn()
-						.mockResolvedValue({ replacement_markdown: 'Publish this paragraph.' })
-				} as never
-			})
-		).resolves.toBe(inserted);
+			await expect(
+				createDocumentProposal({
+					supabase,
+					document,
+					actorId: 'actor-1',
+					userId: 'user-1',
+					instruction: 'Make it final',
+					selectionFrom: from,
+					selectionTo: from + boundaryLength + 'Draft this paragraph.'.length,
+					baseContentHash: hashDocumentContent(document.content),
+					llmClient: {
+						getJSONResponse: vi
+							.fn()
+							.mockResolvedValue({ replacement_markdown: 'Publish this paragraph.' })
+					} as never
+				})
+			).resolves.toBe(inserted);
 
-		expect(insert).toHaveBeenCalledWith(
-			expect.objectContaining({
-				document_id: 'document-1',
-				patch_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
-				base_content_hash: hashDocumentContent(document.content),
-				result_content_hash: hashDocumentContent('# Plan\n\nPublish this paragraph.')
-			})
-		);
-	});
+			expect(insert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					document_id: 'document-1',
+					patch_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
+					base_content_hash: hashDocumentContent(document.content),
+					result_content_hash: hashDocumentContent('# Plan\n\nPublish this paragraph.')
+				})
+			);
+		}
+	);
 });
 
 describe('applyDocumentProposal', () => {

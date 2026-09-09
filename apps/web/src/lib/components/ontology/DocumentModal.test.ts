@@ -48,6 +48,7 @@ function documentResponse(id: string, title: string, stateKey = 'draft', content
 	return new Response(
 		JSON.stringify({
 			data: {
+				editor_revision: `editor:${id}:${title}`,
 				document: {
 					id,
 					title,
@@ -373,6 +374,11 @@ describe('DocumentModal document loading', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Overwrite' }));
 		await waitFor(() => expect(writes).toHaveLength(2));
 		expect(writes[1]).not.toHaveProperty('expected_updated_at');
+		expect(writes[0]).toHaveProperty(
+			'expected_editor_revision',
+			'editor:document-a:Document A'
+		);
+		expect(writes[1]).not.toHaveProperty('expected_editor_revision');
 		await waitFor(() => expect(screen.getByText(/autosave is paused/)).toBeInTheDocument());
 		await fireEvent.input(screen.getByLabelText('Document title'), {
 			target: { value: 'Still my draft' }
@@ -417,6 +423,11 @@ describe('DocumentModal document loading', () => {
 			target: { value: 'First edit' }
 		});
 		await waitFor(() => expect(writes).toHaveLength(1), { timeout: 3000 });
+		expect(writes[0]).toHaveProperty(
+			'expected_editor_revision',
+			'editor:document-a:Document A'
+		);
+		expect(writes[0]).not.toHaveProperty('type_key');
 		await fireEvent.input(screen.getByLabelText('Document title'), {
 			target: { value: 'Second edit' }
 		});
@@ -424,12 +435,16 @@ describe('DocumentModal document loading', () => {
 		expect(writes).toHaveLength(1);
 		firstSave.resolve(
 			jsonResponse({
-				data: { document: { id: 'document-a', updated_at: '2026-01-02T00:00:00.000Z' } }
+				data: {
+					editor_revision: 'first-saved-editor-revision',
+					document: { id: 'document-a', updated_at: '2026-01-02T00:00:00.000Z' }
+				}
 			})
 		);
 		await waitFor(() => expect(writes).toHaveLength(2));
 		expect(writes[1]).toMatchObject({
 			title: 'Second edit',
+			expected_editor_revision: 'first-saved-editor-revision',
 			expected_updated_at: '2026-01-02T00:00:00.000Z'
 		});
 		expect(screen.getByDisplayValue('Second edit')).toBeInTheDocument();

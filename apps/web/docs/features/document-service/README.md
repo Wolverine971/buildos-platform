@@ -2,12 +2,14 @@
 
 # BuildOS Document Service
 
-> Last updated: 2026-09-07
+> Last updated: 2026-09-09
 
 **Status:** Vision written, design-reviewed against production, scope revised, direction ratified
 2026-08-26. **Step 1 and Step 1.5 are complete. The Step 2 signature-interaction vertical slice is
 implemented, its production migrations are deployed, and its generated types and database contract
-are validated; visual/E2E rollout and production observation remain. Step 3 now has a live START
+are validated. The Sept 9 live acceptance pass verified focused chat, restore, and two-tab conflict
+recovery, but found classification/autosave and proposal-whitespace bugs; their new fixes await
+web and worker deployment and replay. Step 3 now has a live START
 HERE projection, completed production coverage backfill, and explicit missing-index recovery in the
 project Overview.** Steps 4–7 are unstarted. The base ontology migration already contains the
 canonical `(document_id, number)` uniqueness constraint; there is no P0 index prerequisite for
@@ -18,12 +20,20 @@ WS-1.
 records the reproduced cause, migration, and editor safeguards. The earlier completion labels are
 historical implementation milestones, not evidence of a finished end-to-end editor.
 The corrected trigger and search-path hardening are now verified in production, and their migration
-ledger entries are reconciled. Application rollout and full live-flow verification remain.
+ledger entries are reconciled. The user confirmed application deployment Sept 9; the live acceptance
+results and follow-up fixes are recorded below.
 
 **2026-09-07 continuation:** Step 2 now has save/apply serialization, functional reselection,
 request cancellation, voice-state guards, and keyboard-focus recovery. Focused regression tests
 and desktop/phone browser checks cover the local interaction; live model, microphone, and
-live persistence acceptance remain. Local restore, history, and comparison acceptance are recorded below.
+live persistence acceptance remained open at that handoff. Local restore, history, and comparison
+acceptance are recorded below.
+
+**2026-09-09 live acceptance:** Focused agent chat, history restore with a recovery checkpoint,
+sealed restore revisions, and real two-tab conflict recovery passed. Immediate post-create autosave
+still conflicted with asynchronous classification, and a model proposal removed selected boundary
+newlines. Both failures now have local fixes and regression coverage. Deploy web and worker, then
+replay these two cases before calling Step 2 production-accepted; physical voice acceptance remains.
 
 > **Step 3 continuation:**
 > [`STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md`](./STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md).
@@ -38,8 +48,11 @@ true, and the work is safe enough to hold things you cannot afford to lose.
 
 ## Start here
 
+- [Live acceptance and editor boundary fixes, Sept 9](./LIVE_ACCEPTANCE_AND_EDITOR_BOUNDARIES_2026-09-09.md) —
+  **latest continuation.** Records real production results and two new local fixes: classification-safe
+  editor saves and preserved proposal boundaries. Includes deployment/replay gates; no new migration.
 - [History reliability and migration verification, Sept 7](./HISTORY_RELIABILITY_AND_MIGRATIONS_2026-09-07.md) —
-  **latest continuation.** Fixes stale history/comparison responses, snapshot caching, refresh
+  **history pass.** Fixes stale history/comparison responses, snapshot caching, refresh
   selection, and shortcut scope. Records verified production migrations and the remaining
   application rollout gates.
 - [Restore safety and acceptance, Sept 7](./RESTORE_SAFETY_AND_ACCEPTANCE_2026-09-07.md) —
@@ -113,7 +126,8 @@ Ordered by the revised sequence (roadmap §8).
    2026-08-26. Anchors, typed/voice instruction, immutable persistence, diff review, deterministic
    apply, conflict handling, revision boundary, server-owned mutations, and telemetry are present.
    The Sept 7 continuation fixes client lifecycle gaps and adds local interaction acceptance.
-   Complete visual/E2E rollout before calling Switching Bar item 3.3 shipped.
+   Sept 9 production acceptance found two further bugs, fixed locally. Deploy and replay the
+   classification/autosave and proposal-boundary cases before calling Switching Bar item 3.3 shipped.
 4. **START HERE live index** — 🟡 projection, production coverage, and missing recovery implemented
    by 2026-08-27. The maintained project README uses the existing `<!-- managed:* -->` primitive;
    duplicate cleanup/atomic uniqueness, the structured current/stale/missing index, and the
