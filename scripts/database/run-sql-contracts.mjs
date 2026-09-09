@@ -28,6 +28,7 @@ import {
 	uploadRetirementContract,
 	verifyUploadRetirementRaces
 } from './libri-upload-retirement-races.mjs';
+import { uploadCleanupContract, verifyUploadCleanupRaces } from './libri-upload-cleanup-races.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const testsDirectory = join(repoRoot, 'supabase/tests');
@@ -160,6 +161,15 @@ async function runContract(filename, index) {
 				'-d',
 				'postgres'
 			]);
+		if (filename === uploadCleanupContract)
+			await verifyUploadCleanupRaces([
+				'-h',
+				socketDirectory,
+				'-U',
+				'postgres',
+				'-d',
+				'postgres'
+			]);
 		console.log(`✓ ${filename}`);
 	} catch (error) {
 		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();
@@ -248,6 +258,8 @@ async function runContractAgainstExternalServer(filename, index) {
 			});
 		if (filename === uploadRetirementContract)
 			await verifyUploadRetirementRaces(['-d', testDatabaseUrl.toString()]);
+		if (filename === uploadCleanupContract)
+			await verifyUploadCleanupRaces(['-d', testDatabaseUrl.toString()]);
 		console.log(`✓ ${filename}`);
 	} catch (error) {
 		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();

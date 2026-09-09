@@ -14,6 +14,7 @@ import { type LibriPublicationPorts } from '../src/workers/libri/uploadPublicati
 import { createLibriUploadPublicationTransport } from '../src/workers/libri/uploadPublicationTransport';
 import { createLibriUploadPublicationBroker } from '../../web/src/lib/server/libri/upload-publication';
 import { signLibriUploadDownload } from '../../web/src/lib/server/libri/upload-download-signing';
+import { createLibriUploadCleanupExecutor } from '../../web/src/lib/server/libri/upload-cleanup';
 
 const available = ['initdb', 'pg_ctl', 'psql'].every(
 	(cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0
@@ -85,7 +86,9 @@ describePostgres(
 				'supabase/migrations/20260906201700_libri_upload_processing_leases.sql',
 				'supabase/migrations/20260907015150_libri_upload_download_authorization.sql',
 				'supabase/migrations/20260907041707_libri_upload_publication_contract.sql',
-				'supabase/migrations/20260907043724_libri_upload_claim_deadline_refresh.sql'
+				'supabase/migrations/20260907043724_libri_upload_claim_deadline_refresh.sql',
+				'supabase/migrations/20260907154152_libri_upload_retirement_tombstones.sql',
+				'supabase/migrations/20260908192820_libri_upload_cleanup_leases.sql'
 			])
 				execFileSync('psql', [...psql, '-f', resolve(root, file)], {
 					stdio: 'pipe',
@@ -130,13 +133,16 @@ describePostgres(
 		beforeEach(async () => {
 			// Only this test's newly created database is addressable through this socket.
 			await admin.query(
+				'DELETE FROM libri.image_upload_cleanup_checks; DELETE FROM libri.image_upload_cleanup_targets; DELETE FROM libri.image_upload_retirements'
+			);
+			await admin.query(
 				'DELETE FROM libri.image_upload_publications; DELETE FROM libri.images; DELETE FROM libri.source_book_links; DELETE FROM libri.sources; DELETE FROM storage.objects'
 			);
 			await admin.query(
 				'DELETE FROM libri.image_upload_processing; DELETE FROM libri.image_upload_intents'
 			);
 			await admin.query(
-				"UPDATE libri.library_members SET role='owner'; UPDATE libri.image_upload_controls SET admission_enabled=true,processing_enabled=true"
+				"UPDATE libri.library_members SET role='owner'; UPDATE libri.image_upload_controls SET admission_enabled=true,processing_enabled=true,cleanup_enabled=false"
 			);
 		});
 		afterAll(async () => {
@@ -148,6 +154,195 @@ describePostgres(
 				});
 			if (temporary.startsWith('/tmp/buildos-libri-upload-pg-'))
 				rmSync(temporary, { recursive: true, force: true });
+		});
+		it.each([
+			'valid',
+			'already_absent',
+			'disabled',
+			'delete_outage',
+			'late_arrival',
+			'kill_before_delete',
+			'stale_fence',
+			'lost_finish'
+		])('cleans only a retired target through real service-role SQL: %s', async (scenario) => {
+			const declaration = {
+				filename: 'page.png',
+				imageType: 'page',
+				mimeType: 'image/png',
+				byteSize: bytes.length,
+				sha256: createHash('sha256').update(bytes).digest('hex')
+			};
+			const user = await admin.connect();
+			let uploadId: string;
+			try {
+				await user.query('BEGIN; SET LOCAL ROLE authenticated');
+				await user.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [userId]);
+				uploadId = (
+					await user.query(
+						'SELECT (libri.reserve_image_upload($1,$2,$3,$4::jsonb)).id AS id',
+						[libraryId, bookId, randomUUID(), JSON.stringify(declaration)]
+					)
+				).rows[0].id;
+				await user.query('COMMIT');
+			} catch (cause) {
+				await user.query('ROLLBACK');
+				throw cause;
+			} finally {
+				user.release();
+			}
+			await admin.query(
+				"UPDATE libri.image_upload_intents SET created_at=statement_timestamp()-interval '3 hours',signing_deadline=statement_timestamp()-interval '170 minutes',expires_at=statement_timestamp()-interval '45 minutes'"
+			);
+			expect(
+				(
+					await service.query('SELECT libri.retire_image_upload($1,$2) AS receipt', [
+						libraryId,
+						uploadId
+					])
+				).rows[0].receipt.target_count
+			).toBe(1);
+			await admin.query(
+				"UPDATE libri.image_upload_retirements SET retired_at=statement_timestamp()-interval '28 hours',inspect_after=statement_timestamp()-interval '1 hour'"
+			);
+			if (scenario !== 'disabled')
+				await admin.query('UPDATE libri.image_upload_controls SET cleanup_enabled=true');
+			const target = (
+				await admin.query('SELECT id,object_path FROM libri.image_upload_cleanup_targets')
+			).rows[0];
+			const object = {
+				id: randomUUID(),
+				name: target.object_path,
+				bucket_id: 'libri-assets',
+				version: 'fixture-version'
+			};
+			let removed = false,
+				deleteCalls = 0,
+				infoCalls = 0;
+			const provider: typeof fetch = async (input, init) => {
+				const url = new URL(String(input));
+				expect(url.origin).toBe(origin);
+				const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+				const base = body ? [body.p_library_id, body.p_target_id, body.p_lease_token] : [];
+				if (url.pathname.endsWith('/claim_image_upload_cleanup'))
+					return Response.json(
+						(
+							await service.query(
+								'SELECT libri.claim_image_upload_cleanup($1,$2,$3) AS receipt',
+								base
+							)
+						).rows[0].receipt
+					);
+				if (url.pathname.endsWith('/authorize_image_upload_cleanup'))
+					return Response.json(
+						(
+							await service.query(
+								'SELECT libri.authorize_image_upload_cleanup($1,$2,$3,$4) AS receipt',
+								[...base, body.p_generation]
+							)
+						).rows[0].receipt
+					);
+				if (url.pathname.endsWith('/finish_image_upload_cleanup')) {
+					const result = (
+						await service.query(
+							'SELECT libri.finish_image_upload_cleanup($1,$2,$3,$4,$5) AS receipt',
+							[...base, body.p_generation, body.p_outcome]
+						)
+					).rows[0].receipt;
+					if (scenario === 'lost_finish' && body.p_outcome === 'absent')
+						throw new Error('Simulated lost committed reply');
+					return Response.json(result);
+				}
+				if (url.pathname === '/storage/v1/bucket/libri-assets')
+					return Response.json({ id: 'libri-assets', public: false });
+				if (
+					url.pathname === '/storage/v1/object/libri-assets' &&
+					init?.method === 'DELETE'
+				) {
+					deleteCalls++;
+					expect(body).toEqual({ prefixes: [target.object_path] });
+					if (scenario === 'delete_outage')
+						return Response.json({ code: 'InternalError' }, { status: 503 });
+					removed = true;
+					return Response.json([object]);
+				}
+				if (url.pathname === `/storage/v1/object/info/libri-assets/${target.object_path}`) {
+					infoCalls++;
+					if (infoCalls === 1 && scenario === 'kill_before_delete')
+						await admin.query(
+							'UPDATE libri.image_upload_controls SET cleanup_enabled=false'
+						);
+					if (infoCalls === 1 && scenario === 'stale_fence')
+						await admin.query(
+							'UPDATE libri.image_upload_cleanup_checks SET generation=generation+1,lease_token=$1',
+							[randomUUID()]
+						);
+					if (scenario === 'already_absent' || (removed && scenario !== 'late_arrival'))
+						return Response.json(
+							{ code: 'NoSuchKey', statusCode: '404' },
+							{ status: 400 }
+						);
+					return Response.json(object);
+				}
+				throw new Error('Unexpected cleanup request');
+			};
+			const executor = createLibriUploadCleanupExecutor({
+				enabled: true,
+				url: origin,
+				serviceKey: 'disposable-service-fixture',
+				fetchImpl: provider
+			});
+			const execution = executor.run({
+				libraryId,
+				targetId: target.id,
+				leaseToken: randomUUID(),
+				signal: new AbortController().signal
+			});
+			if (['kill_before_delete', 'stale_fence', 'lost_finish'].includes(scenario))
+				await expect(execution).rejects.toThrow(
+					scenario === 'lost_finish' ? 'outcome unknown' : 'unavailable'
+				);
+			else
+				expect((await execution).status).toBe(
+					scenario === 'disabled'
+						? 'unclaimed'
+						: ['delete_outage', 'late_arrival'].includes(scenario)
+							? 'unavailable'
+							: 'absent'
+				);
+			const checks = (
+				await admin.query(
+					'SELECT status,last_outcome FROM libri.image_upload_cleanup_checks'
+				)
+			).rows;
+			if (scenario === 'disabled') expect(checks).toHaveLength(0);
+			else
+				expect(checks[0].status).toBe(
+					['kill_before_delete', 'stale_fence'].includes(scenario)
+						? 'leased'
+						: ['delete_outage', 'late_arrival'].includes(scenario)
+							? 'retry_wait'
+							: 'absent'
+				);
+			expect(deleteCalls).toBe(
+				['already_absent', 'disabled', 'kill_before_delete', 'stale_fence'].includes(
+					scenario
+				)
+					? 0
+					: 1
+			);
+			expect(
+				(await admin.query('SELECT status FROM libri.image_upload_intents')).rows[0].status
+			).toBe('cleanup_pending');
+			expect(
+				(
+					await admin.query(
+						'SELECT count(*)::integer AS n FROM libri.image_upload_cleanup_targets'
+					)
+				).rows[0].n
+			).toBe(1);
+			expect(
+				(await admin.query('SELECT count(*)::integer AS n FROM libri.images')).rows[0].n
+			).toBe(0);
 		});
 		it.each([
 			'valid',

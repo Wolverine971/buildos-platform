@@ -28,7 +28,7 @@
 		"gen:types": "node --import tsx scripts/generate-types.ts",
 		"check:supabase-rpc-drift": "node scripts/security/check-supabase-rpc-drift.mjs",
 		"check:migrations": "node scripts/database/check-migration-ledger.mjs",
-		"check:libri-migrations": "node --test scripts/database/check-libri-migration-scope.test.mjs && node scripts/database/check-libri-migration-scope.mjs",
+		"check:libri-migrations": "node --test scripts/database/check-libri-migration-scope.test.mjs scripts/database/libri-upload-cleanup-races.test.mjs && node scripts/database/check-libri-migration-scope.mjs",
 		"check:sql-contracts": "node scripts/database/check-sql-contract-inventory.mjs",
 		"check:doc-health": "node scripts/docs/check-doc-health.mjs",
 		"check:doc-health:strict": "node scripts/docs/check-doc-health.mjs --strict",
