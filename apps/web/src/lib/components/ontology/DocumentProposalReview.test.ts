@@ -31,9 +31,7 @@ vi.mock('$lib/services/voiceRecording.service', () => ({
 	}
 }));
 vi.mock('$lib/services/voice-note-groups.service', () => ({
-	cleanupVoiceNoteGroups: vi
-		.fn()
-		.mockResolvedValue({ deletedGroupIds: [], deletedVoiceNotes: 0 }),
+	cleanupVoiceNoteGroups: vi.fn(async () => ({ deletedGroupIds: [], deletedVoiceNotes: 0 })),
 	createVoiceNoteGroup: vi.fn()
 }));
 vi.mock('$lib/services/voice-notes.service', () => ({
@@ -97,7 +95,7 @@ afterEach(() => {
 });
 
 describe('Document proposal review', () => {
-	it('keeps the deferred voice cleanup mock asynchronous', async () => {
+	it('keeps deferred voice cleanup asynchronous after the test mocks reset', async () => {
 		let runCleanup: (() => void) | undefined;
 		vi.stubGlobal('requestIdleCallback', (callback: () => void) => {
 			runCleanup = callback;
@@ -106,6 +104,8 @@ describe('Document proposal review', () => {
 		render(DocumentProposalReview, { props });
 		await tick();
 		expect(runCleanup).toBeTypeOf('function');
+		// A callback can run after Vitest resets mocks at the file boundary.
+		vi.mocked(cleanupVoiceNoteGroups).mockReset();
 		expect(() => runCleanup?.()).not.toThrow();
 		expect(cleanupVoiceNoteGroups).toHaveBeenCalledWith({ maxAgeHours: 24 });
 		await expect(vi.mocked(cleanupVoiceNoteGroups).mock.results[0]?.value).resolves.toEqual({
