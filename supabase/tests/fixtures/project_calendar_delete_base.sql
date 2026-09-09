@@ -1,6 +1,13 @@
 -- supabase/tests/fixtures/project_calendar_delete_base.sql
 -- Minimal disposable database fixture for project calendar deletion tests.
 \set ON_ERROR_STOP on
+DO $$ DECLARE role_name text; BEGIN
+  FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=role_name) THEN
+      EXECUTE format('CREATE ROLE %I NOLOGIN', role_name);
+    END IF;
+  END LOOP;
+END; $$;
 CREATE TABLE public.onto_actors (id uuid PRIMARY KEY, user_id uuid);
 CREATE TABLE public.onto_projects (id uuid PRIMARY KEY, created_by uuid, deleted_at timestamptz, archived_at timestamptz, updated_at timestamptz);
 CREATE TABLE public.project_calendars (id uuid PRIMARY KEY, project_id uuid REFERENCES onto_projects ON DELETE CASCADE, user_id uuid, calendar_id text, calendar_source_id uuid, sync_enabled boolean);
@@ -104,4 +111,3 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.soft_delete_onto_project(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.soft_delete_onto_project(uuid) TO service_role;
-

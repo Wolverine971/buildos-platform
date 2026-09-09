@@ -1,5 +1,7 @@
 // Staging capabilities only. User RLS/RPCs authorize the intent; service authority
-// may sign its one immutable Storage path, never read or write domain tables.
+// may sign its immutable Storage path after a service-only issuance RPC commits.
+// Never write catalog tables or store bearer tokens in the issuance ledger.
+import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { error, isHttpError, json } from '@sveltejs/kit';
 
@@ -180,6 +182,34 @@ function validateCapability(data: unknown, intent: Intent) {
 	return { uploadId: intent.id, uploadUrl: url.href, expiresAt: new Date(expiry).toISOString() };
 }
 
+function validateIssuance(data: unknown, intent: Intent, requestId: string) {
+	if (
+		!object(data) ||
+		data.upload_id !== intent.id ||
+		data.library_id !== LIBRARY ||
+		data.request_id !== requestId ||
+		data.object_path !== intent.object_path ||
+		typeof data.attempted_at !== 'string' ||
+		typeof data.sign_before !== 'string' ||
+		typeof data.reservation_expires_at !== 'string'
+	)
+		error(503, 'Invalid issuance receipt');
+	const attempted = Date.parse(data.attempted_at);
+	const before = Date.parse(data.sign_before);
+	if (
+		!Number.isFinite(attempted) ||
+		!Number.isFinite(before) ||
+		attempted > Date.now() + 5000 ||
+		before <= attempted ||
+		before - attempted > 10_000 ||
+		before > Date.parse(intent.signing_deadline) - 30_000 ||
+		before <= Date.now() ||
+		Date.parse(data.reservation_expires_at) !== Date.parse(intent.expires_at)
+	)
+		error(503, 'Invalid issuance window');
+	return before;
+}
+
 export async function signLibriUserUpload(request: Request, config: Config): Promise<Response> {
 	try {
 		if (config.enabled !== true) error(404, 'Uploads are not enabled');
@@ -289,13 +319,38 @@ export async function signLibriUserUpload(request: Request, config: Config): Pro
 		};
 		await reauthorize();
 		signal.throwIfAborted();
-		const storage = createClient(config.url, config.serviceKey, {
+		const service = createClient(config.url, config.serviceKey, {
 			auth: authOptions,
 			global: { fetch: fetchImpl }
-		}).storage.from(BUCKET);
-		const signed = await storage.createSignedUploadUrl(intent.object_path, { upsert: false });
+		});
+		const requestId = randomUUID();
+		const begun = await service.schema('libri').rpc('begin_image_upload_issuance', {
+			p_library_id: LIBRARY,
+			p_upload_id: id,
+			p_requested_by: userId,
+			p_request_id: requestId
+		});
+		if (begun.error) error(503, 'Issuance unavailable');
+		if (begun.data === null) error(409, 'Upload already attempted or unavailable');
+		const signBefore = validateIssuance(begun.data, intent, requestId);
+		signal.throwIfAborted();
+		if (Date.now() >= signBefore) error(409, 'Issuance window expired');
+		// Exactly one call, only after a committed insert receipt. Unknown outcomes
+		// retain the ledger row and cannot authorize a second attempt, even on retry.
+		const signed = await service.storage
+			.from(BUCKET)
+			.createSignedUploadUrl(intent.object_path, { upsert: false });
 		if (signed.error) error(503, 'Upload signing unavailable');
 		const result = validateCapability(signed.data, intent);
+		signal.throwIfAborted();
+		const observed = await service.schema('libri').rpc('observe_image_upload_issuance', {
+			p_library_id: LIBRARY,
+			p_upload_id: id,
+			p_request_id: requestId,
+			p_token_expires_at: result.expiresAt
+		});
+		if (observed.error || observed.data !== true)
+			error(503, 'Issuance observation unavailable');
 		// Do not deliver a token if revocation, submission or disabling was observed
 		// during signing. Previously issued bearer tokens cannot be revoked this way.
 		await reauthorize();

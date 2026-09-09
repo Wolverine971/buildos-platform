@@ -1,7 +1,9 @@
 -- supabase/tests/20260909034006_project_calendar_delete_cleanup.test.sql
 -- PSQL-ONLY / DISPOSABLE DATABASE ONLY.
--- Apply fixtures/project_calendar_delete_base.sql, then the matching migration.
+-- Bootstrap the disposable fixture and the matching migration for the CI runner.
 \set ON_ERROR_STOP on
+\ir fixtures/project_calendar_delete_base.sql
+\ir ../migrations/20260909034006_project_calendar_delete_cleanup.sql
 BEGIN;
 CREATE FUNCTION pg_temp.assert_true(condition boolean, message text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN IF condition IS DISTINCT FROM true THEN RAISE EXCEPTION '%', message; END IF; END; $$;

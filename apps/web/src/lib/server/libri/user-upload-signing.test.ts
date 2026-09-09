@@ -24,6 +24,9 @@ function fixture(
 		claims?: Record<string, unknown>;
 		signedUrl?: string;
 		storageStatus?: number;
+		beginCode?: string;
+		beginReceipt?: Record<string, unknown> | null;
+		observeResult?: unknown;
 		providerBody?: (phase: string) => Response | undefined;
 	} = {}
 ) {
@@ -66,7 +69,8 @@ function fixture(
 		body: unknown;
 		phase: string;
 	}[] = [];
-	let replays = 0;
+	let replays = 0,
+		attempted = false;
 	const config = {
 		enabled: options.enabled ?? true,
 		url: origin,
@@ -79,16 +83,19 @@ function fixture(
 			expect(init?.cache).toBe('no-store');
 			expect(init?.signal).toBeTruthy();
 			const headers = new Headers(init?.headers);
-			const phase =
-				url.pathname === '/auth/v1/user'
-					? 'auth'
-					: url.pathname.endsWith('/library_members')
-						? 'member'
-						: url.pathname.endsWith('/image_upload_intents')
-							? 'lookup'
-							: url.pathname.includes('/rpc/')
-								? 'replay'
-								: 'storage';
+			const phase = url.pathname.endsWith('/begin_image_upload_issuance')
+				? 'begin'
+				: url.pathname.endsWith('/observe_image_upload_issuance')
+					? 'observe'
+					: url.pathname === '/auth/v1/user'
+						? 'auth'
+						: url.pathname.endsWith('/library_members')
+							? 'member'
+							: url.pathname.endsWith('/image_upload_intents')
+								? 'lookup'
+								: url.pathname.includes('/rpc/')
+									? 'replay'
+									: 'storage';
 			calls.push({
 				path: url.pathname,
 				params: url.searchParams,
@@ -96,8 +103,33 @@ function fixture(
 				body: init?.body ? JSON.parse(String(init.body)) : null,
 				phase
 			});
+			const beginGranted = phase === 'begin' && !attempted;
+			if (phase === 'begin') attempted = true;
 			const override = options.providerBody?.(phase);
 			if (override) return override;
+			if (phase === 'begin' || phase === 'observe') {
+				expect(headers.get('authorization')).toBe('Bearer private-service-fixture');
+				expect(headers.get('content-profile')).toBe('libri');
+				const body = JSON.parse(String(init?.body));
+				expect(body.p_library_id).toBe(library);
+				expect(body.p_upload_id).toBe(upload);
+				expect(body.p_request_id).toMatch(/^[0-9a-f-]{36}$/);
+				if (phase === 'observe') return Response.json(options.observeResult ?? true);
+				expect(body.p_requested_by).toBe(owner);
+				if (options.beginCode)
+					return Response.json({ code: options.beginCode }, { status: 500 });
+				if (!beginGranted || options.beginReceipt === null) return Response.json(null);
+				return Response.json({
+					upload_id: upload,
+					library_id: library,
+					request_id: body.p_request_id,
+					object_path: path,
+					attempted_at: new Date().toISOString(),
+					sign_before: new Date(Date.now() + 10_000).toISOString(),
+					reservation_expires_at: intent.expires_at,
+					...options.beginReceipt
+				});
+			}
 			if (phase === 'auth')
 				return Response.json(
 					options.authStatus
@@ -158,7 +190,7 @@ describe('private Libri upload signer', () => {
 		delete (f.config as { enabled?: boolean }).enabled;
 		expect((await signLibriUserUpload(f.request(), f.config)).status).toBe(404);
 	});
-	it('uses verified user RLS and two fresh DB checks around one no-overwrite Storage capability', async () => {
+	it('commits one attempt and its observation around signing, retaining both user authorization checks', async () => {
 		const f = fixture();
 		const response = await signLibriUserUpload(f.request(), f.config);
 		expect(response.status).toBe(200);
@@ -173,7 +205,9 @@ describe('private Libri upload signer', () => {
 			'member',
 			'lookup',
 			'replay',
+			'begin',
 			'storage',
+			'observe',
 			'replay'
 		]);
 		expect(f.calls[2]?.params.get('library_id')).toBe(`eq.${library}`);
@@ -190,8 +224,73 @@ describe('private Libri upload signer', () => {
 			f.calls
 				.filter((c) => c.headers.get('authorization') === 'Bearer private-service-fixture')
 				.map((c) => c.phase)
-		).toEqual(['storage']);
+		).toEqual(['begin', 'storage', 'observe']);
+		const begin = f.calls.find((c) => c.phase === 'begin')!.body as Record<string, unknown>;
+		expect(f.calls.find((c) => c.phase === 'observe')!.body).toEqual({
+			p_library_id: library,
+			p_upload_id: upload,
+			p_request_id: begin.p_request_id,
+			p_token_expires_at: new Date(f.claims.exp * 1000).toISOString()
+		});
 	});
+	it.each([
+		null,
+		{ object_path: path + '/wrong' },
+		{ request_id: other },
+		{ library_id: other },
+		{ upload_id: other },
+		{ attempted_at: 'bad' },
+		{ sign_before: 'bad' },
+		{ sign_before: new Date(Date.now() - 1000).toISOString() },
+		{ sign_before: new Date(Date.now() + 60_000).toISOString() },
+		{ reservation_expires_at: 'bad' }
+	])(
+		'refuses missing or inconsistent issuance receipts before Storage: %j',
+		async (beginReceipt) => {
+			const f = fixture({ beginReceipt });
+			expect((await signLibriUserUpload(f.request(), f.config)).status).toBe(
+				beginReceipt === null ? 409 : 503
+			);
+			expect(f.calls.some((c) => c.phase === 'storage')).toBe(false);
+		}
+	);
+	it('does not sign after a failed or lost begin response, including retries', async () => {
+		const failed = fixture({ beginCode: 'XX000' });
+		expect((await signLibriUserUpload(failed.request(), failed.config)).status).toBe(503);
+		expect(failed.calls.some((c) => c.phase === 'storage')).toBe(false);
+		let lost = true;
+		const f = fixture({
+			providerBody: (phase) => {
+				if (phase === 'begin' && lost) {
+					lost = false;
+					throw Error('lost committed begin');
+				}
+			}
+		});
+		expect((await signLibriUserUpload(f.request(), f.config)).status).toBe(503);
+		expect((await signLibriUserUpload(f.request(), f.config)).status).toBe(409);
+		expect(f.calls.some((c) => c.phase === 'storage')).toBe(false);
+	});
+	it.each(['storage_failure', 'bad_token', 'lost_observation', 'observation_refused', 'success'])(
+		'never resigns after the first attempt: %s',
+		async (scenario) => {
+			const f = fixture({
+				storageStatus: scenario === 'storage_failure' ? 500 : undefined,
+				claims: scenario === 'bad_token' ? { upsert: true } : undefined,
+				observeResult: scenario === 'observation_refused' ? false : undefined,
+				providerBody: (phase) => {
+					if (phase === 'observe' && scenario === 'lost_observation')
+						throw Error('lost committed receipt');
+				}
+			});
+			const first = await signLibriUserUpload(f.request(), f.config);
+			expect(first.status).toBe(scenario === 'success' ? 200 : 503);
+			if (scenario !== 'success')
+				expect(await first.text()).not.toMatch(/token=|fixtureSignature/);
+			expect((await signLibriUserUpload(f.request(), f.config)).status).toBe(409);
+			expect(f.calls.filter((c) => c.phase === 'storage')).toHaveLength(1);
+		}
+	);
 	it.each([null, 'viewer', 'admin'])(
 		'denies membership role %s before intent lookup',
 		async (role) => {

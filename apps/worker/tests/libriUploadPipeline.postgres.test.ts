@@ -15,6 +15,7 @@ import { createLibriUploadPublicationTransport } from '../src/workers/libri/uplo
 import { createLibriUploadPublicationBroker } from '../../web/src/lib/server/libri/upload-publication';
 import { signLibriUploadDownload } from '../../web/src/lib/server/libri/upload-download-signing';
 import { createLibriUploadCleanupExecutor } from '../../web/src/lib/server/libri/upload-cleanup';
+import { signLibriUserUpload } from '../../web/src/lib/server/libri/user-upload-signing';
 
 const available = ['initdb', 'pg_ctl', 'psql'].every(
 	(cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0
@@ -88,13 +89,14 @@ describePostgres(
 				'supabase/migrations/20260907041707_libri_upload_publication_contract.sql',
 				'supabase/migrations/20260907043724_libri_upload_claim_deadline_refresh.sql',
 				'supabase/migrations/20260907154152_libri_upload_retirement_tombstones.sql',
-				'supabase/migrations/20260908192820_libri_upload_cleanup_leases.sql'
+				'supabase/migrations/20260908192820_libri_upload_cleanup_leases.sql',
+				'supabase/migrations/20260909165112_libri_upload_capability_issuance.sql'
 			])
 				execFileSync('psql', [...psql, '-f', resolve(root, file)], {
 					stdio: 'pipe',
 					timeout: 20_000
 				});
-			admin = new Pool({ host: socket, database: 'postgres', user: 'postgres', max: 1 });
+			admin = new Pool({ host: socket, database: 'postgres', user: 'postgres', max: 2 });
 			await admin.query('GRANT USAGE ON SCHEMA libri TO libri_worker');
 			worker = new Pool({ host: socket, database: 'postgres', user: 'libri_worker', max: 1 });
 			service = new Pool({
@@ -132,6 +134,7 @@ describePostgres(
 		}, 60_000);
 		beforeEach(async () => {
 			// Only this test's newly created database is addressable through this socket.
+			await admin.query('DELETE FROM libri.image_upload_issuances');
 			await admin.query(
 				'DELETE FROM libri.image_upload_cleanup_checks; DELETE FROM libri.image_upload_cleanup_targets; DELETE FROM libri.image_upload_retirements'
 			);
@@ -144,6 +147,270 @@ describePostgres(
 			await admin.query(
 				"UPDATE libri.library_members SET role='owner'; UPDATE libri.image_upload_controls SET admission_enabled=true,processing_enabled=true,cleanup_enabled=false"
 			);
+		});
+		async function reserveForIssuance() {
+			const client = await admin.connect();
+			try {
+				await client.query('BEGIN; SET LOCAL ROLE authenticated');
+				await client.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [userId]);
+				const result = await client.query(
+					'SELECT to_jsonb(libri.reserve_image_upload($1,$2,$3,$4::jsonb)) AS receipt',
+					[
+						libraryId,
+						bookId,
+						randomUUID(),
+						JSON.stringify({
+							filename: 'page.png',
+							imageType: 'page',
+							mimeType: 'image/png',
+							byteSize: bytes.length,
+							sha256: createHash('sha256').update(bytes).digest('hex')
+						})
+					]
+				);
+				await client.query('COMMIT');
+				return result.rows[0].receipt;
+			} catch (cause) {
+				await client.query('ROLLBACK');
+				throw cause;
+			} finally {
+				client.release();
+			}
+		}
+		it.each([
+			'same_request',
+			'different_request',
+			'rollback',
+			'disable',
+			'revoke',
+			'deadline',
+			'retire'
+		])('uses real overlapping transactions to guard issuance: %s', async (scenario) => {
+			const intent = await reserveForIssuance();
+			const requestId = randomUUID();
+			const params = [libraryId, intent.id, userId, requestId];
+			const begin = 'SELECT libri.begin_image_upload_issuance($1,$2,$3,$4) AS receipt';
+			const holder = await admin.connect();
+			let contender: Promise<any> | undefined;
+			try {
+				await holder.query('BEGIN');
+				if (['same_request', 'different_request', 'rollback'].includes(scenario)) {
+					await holder.query('SET LOCAL ROLE service_role');
+					expect((await holder.query(begin, params)).rows[0].receipt).not.toBeNull();
+				} else if (scenario === 'disable')
+					await holder.query(
+						'UPDATE libri.image_upload_controls SET admission_enabled=false'
+					);
+				else if (scenario === 'revoke')
+					await holder.query("UPDATE libri.library_members SET role='viewer'");
+				else if (scenario === 'deadline')
+					await holder.query(
+						"UPDATE libri.image_upload_intents SET created_at=statement_timestamp()-interval '569.5 seconds',signing_deadline=statement_timestamp()+interval '30.5 seconds',expires_at=statement_timestamp()+interval '7530.5 seconds'"
+					);
+				else {
+					await holder.query(
+						"UPDATE libri.image_upload_intents SET created_at=statement_timestamp()-interval '3 hours',signing_deadline=statement_timestamp()-interval '170 minutes',expires_at=statement_timestamp()-interval '45 minutes'"
+					);
+					await holder.query('SET LOCAL ROLE service_role');
+					expect(
+						(
+							await holder.query(
+								'SELECT libri.retire_image_upload($1,$2) AS receipt',
+								[libraryId, intent.id]
+							)
+						).rows[0].receipt
+					).not.toBeNull();
+				}
+				const contenderParams = [...params];
+				if (scenario === 'different_request') contenderParams[3] = randomUUID();
+				contender = service.query(begin, contenderParams);
+				// Attach promptly so a query error is never an unhandled rejection.
+				void contender.catch(() => undefined);
+				await vi.waitFor(
+					async () => {
+						expect(
+							Number(
+								(
+									await admin.query(
+										"SELECT count(*) AS n FROM pg_stat_activity WHERE pid<>pg_backend_pid() AND datname=current_database() AND wait_event_type='Lock' AND query LIKE '%begin_image_upload_issuance%'"
+									)
+								).rows[0].n
+							)
+						).toBe(1);
+					},
+					{ timeout: 1500, interval: 20 }
+				);
+				if (scenario === 'deadline')
+					await new Promise((resolve) => setTimeout(resolve, 650));
+				await holder.query(scenario === 'rollback' ? 'ROLLBACK' : 'COMMIT');
+				const receipt = (await contender).rows[0].receipt;
+				if (scenario === 'rollback') expect(receipt).not.toBeNull();
+				else expect(receipt).toBeNull();
+				expect(
+					Number(
+						(
+							await admin.query(
+								'SELECT count(*) AS n FROM libri.image_upload_issuances'
+							)
+						).rows[0].n
+					)
+				).toBe(
+					['same_request', 'different_request', 'rollback'].includes(scenario) ? 1 : 0
+				);
+			} finally {
+				await holder.query('ROLLBACK');
+				holder.release();
+				await contender?.catch(() => undefined);
+			}
+		});
+		it.each([
+			'success',
+			'lost_begin',
+			'storage_error',
+			'lost_observation',
+			'revoked_during_signing'
+		])('persists actual restricted-role issuance around the broker: %s', async (scenario) => {
+			const intent = await reserveForIssuance();
+			let storageCalls = 0;
+			const userQuery = async (sql: string, params: unknown[]) => {
+				const c = await admin.connect();
+				try {
+					await c.query('BEGIN; SET LOCAL ROLE authenticated');
+					await c.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [userId]);
+					const result = await c.query(sql, params);
+					await c.query('COMMIT');
+					return result;
+				} catch (cause) {
+					await c.query('ROLLBACK');
+					throw cause;
+				} finally {
+					c.release();
+				}
+			};
+			const provider: typeof fetch = async (input, init) => {
+				const url = new URL(String(input));
+				expect(url.origin).toBe(origin);
+				const headers = new Headers(init?.headers);
+				const body = init?.body ? JSON.parse(String(init.body)) : null;
+				if (url.pathname === '/auth/v1/user') return Response.json({ id: userId });
+				if (url.pathname.endsWith('/library_members'))
+					return Response.json(
+						(
+							await userQuery(
+								'SELECT role FROM libri.library_members WHERE library_id=$1 AND user_id=$2',
+								[libraryId, userId]
+							)
+						).rows
+					);
+				if (url.pathname.endsWith('/image_upload_intents'))
+					return Response.json(
+						(
+							await userQuery(
+								'SELECT to_jsonb(i) AS receipt FROM libri.image_upload_intents i WHERE id=$1',
+								[intent.id]
+							)
+						).rows.map((row) => row.receipt)
+					);
+				if (url.pathname.endsWith('/reserve_image_upload')) {
+					try {
+						return Response.json(
+							(
+								await userQuery(
+									'SELECT to_jsonb(libri.reserve_image_upload($1,$2,$3,$4::jsonb)) AS receipt',
+									[
+										body.p_library_id,
+										body.p_book_id,
+										body.p_idempotency_key,
+										JSON.stringify(body.p_file)
+									]
+								)
+							).rows[0].receipt
+						);
+					} catch {
+						return Response.json({ code: '42501' }, { status: 403 });
+					}
+				}
+				expect(headers.get('authorization')).toBe('Bearer fixture-service-key');
+				if (url.pathname.endsWith('/begin_image_upload_issuance')) {
+					const row = (
+						await service.query(
+							'SELECT libri.begin_image_upload_issuance($1,$2,$3,$4) AS receipt',
+							[
+								body.p_library_id,
+								body.p_upload_id,
+								body.p_requested_by,
+								body.p_request_id
+							]
+						)
+					).rows[0];
+					if (scenario === 'lost_begin' && row.receipt)
+						throw Error('lost committed begin');
+					return Response.json(row.receipt);
+				}
+				if (url.pathname.endsWith('/observe_image_upload_issuance')) {
+					const row = (
+						await service.query(
+							'SELECT libri.observe_image_upload_issuance($1,$2,$3,$4) AS receipt',
+							[
+								body.p_library_id,
+								body.p_upload_id,
+								body.p_request_id,
+								body.p_token_expires_at
+							]
+						)
+					).rows[0];
+					if (scenario === 'lost_observation') throw Error('lost committed observation');
+					return Response.json(row.receipt);
+				}
+				expect(url.pathname).toBe(
+					`/storage/v1/object/upload/sign/libri-assets/${intent.object_path}`
+				);
+				storageCalls++;
+				expect(
+					(await admin.query('SELECT observed_at FROM libri.image_upload_issuances')).rows
+				).toEqual([{ observed_at: null }]);
+				if (scenario === 'storage_error')
+					return Response.json({ message: 'uncertain' }, { status: 500 });
+				if (scenario === 'revoked_during_signing')
+					await admin.query("UPDATE libri.library_members SET role='viewer'");
+				const token = `fixture.${Buffer.from(JSON.stringify({ url: `libri-assets/${intent.object_path}`, upsert: false, exp: Math.floor(Date.now() / 1000) + 7200 })).toString('base64url')}.signature`;
+				return Response.json({
+					url: `/object/upload/sign/libri-assets/${intent.object_path}?token=${token}`
+				});
+			};
+			const config = {
+				enabled: true,
+				url: origin,
+				publicKey: 'fixture-public-key',
+				serviceKey: 'fixture-service-key',
+				fetchImpl: provider
+			};
+			const request = () =>
+				new Request('https://build-os.com/api/internal/libri/uploads/sign', {
+					method: 'POST',
+					headers: {
+						authorization: 'Bearer fixture-user-token-abcdefghijklmn',
+						'content-type': 'application/json'
+					},
+					body: JSON.stringify({ uploadId: intent.id })
+				});
+			const first = await signLibriUserUpload(request(), config);
+			expect(first.status).toBe(
+				scenario === 'success' ? 200 : scenario === 'revoked_during_signing' ? 403 : 503
+			);
+			const ledger = (
+				await admin.query(
+					'SELECT observed_at,token_expires_at FROM libri.image_upload_issuances'
+				)
+			).rows;
+			expect(ledger).toHaveLength(1);
+			expect(ledger[0].observed_at !== null).toBe(
+				['success', 'lost_observation', 'revoked_during_signing'].includes(scenario)
+			);
+			expect((await signLibriUserUpload(request(), config)).status).toBe(
+				scenario === 'revoked_during_signing' ? 403 : 409
+			);
+			expect(storageCalls).toBe(scenario === 'lost_begin' ? 0 : 1);
 		});
 		afterAll(async () => {
 			await Promise.all([admin?.end(), worker?.end(), service?.end()]);
