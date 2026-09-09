@@ -5,6 +5,7 @@ import { tick } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDocumentPatchV1 } from '@buildos/shared-agent-ops/ontology/document-patch';
 import { hashDocumentContent } from '@buildos/shared-agent-ops/utils/document-outline';
+import { cleanupVoiceNoteGroups } from '$lib/services/voice-note-groups.service';
 import DocumentProposalReview from './DocumentProposalReview.svelte';
 
 const voice = vi.hoisted(() => ({
@@ -30,7 +31,9 @@ vi.mock('$lib/services/voiceRecording.service', () => ({
 	}
 }));
 vi.mock('$lib/services/voice-note-groups.service', () => ({
-	cleanupVoiceNoteGroups: vi.fn(),
+	cleanupVoiceNoteGroups: vi
+		.fn()
+		.mockResolvedValue({ deletedGroupIds: [], deletedVoiceNotes: 0 }),
 	createVoiceNoteGroup: vi.fn()
 }));
 vi.mock('$lib/services/voice-notes.service', () => ({
@@ -94,6 +97,22 @@ afterEach(() => {
 });
 
 describe('Document proposal review', () => {
+	it('keeps the deferred voice cleanup mock asynchronous', async () => {
+		let runCleanup: (() => void) | undefined;
+		vi.stubGlobal('requestIdleCallback', (callback: () => void) => {
+			runCleanup = callback;
+			return 1;
+		});
+		render(DocumentProposalReview, { props });
+		await tick();
+		expect(runCleanup).toBeTypeOf('function');
+		expect(() => runCleanup?.()).not.toThrow();
+		expect(cleanupVoiceNoteGroups).toHaveBeenCalledWith({ maxAgeHours: 24 });
+		await expect(vi.mocked(cleanupVoiceNoteGroups).mock.results[0]?.value).resolves.toEqual({
+			deletedGroupIds: [],
+			deletedVoiceNotes: 0
+		});
+	});
 	it('generates an exact selection proposal, reviews it, and waits for save preparation before applying', async () => {
 		const preparation = deferred<boolean>();
 		const onApplied = vi.fn();
