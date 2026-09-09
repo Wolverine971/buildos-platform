@@ -103,7 +103,7 @@ describe('agent-chat-session helpers', () => {
 		});
 
 		expect(snapshot.contextType).toBe('project');
-		expect(snapshot.selectedContextLabel).toBe('Website refresh');
+		expect(snapshot.selectedContextLabel).toBe('Homepage cleanup (Website refresh)');
 		expect(snapshot.selectedEntityId).toBe('project-1');
 		expect(snapshot.projectFocus).toEqual(focus);
 		expect(snapshot.messages).toHaveLength(2);
@@ -113,6 +113,45 @@ describe('agent-chat-session helpers', () => {
 			'note-1',
 			'note-2'
 		]);
+	});
+
+	it.each(['document', 'task', 'goal', 'plan', 'milestone', 'risk', 'requirement'] as const)(
+		'restores the %s identity and label from saved focus',
+		(focusType) => {
+			const focus: ProjectFocus = {
+				focusType,
+				focusEntityId: 'entity-1',
+				focusEntityName: 'Current entity title',
+				projectId: 'project-1',
+				projectName: 'Current project name'
+			};
+			const snapshot = buildAgentChatSessionSnapshot({
+				session: makeSession({
+					context_type: 'project',
+					entity_id: focus.projectId,
+					agent_metadata: { focus: { ...focus } }
+				})
+			});
+			expect(snapshot.projectFocus).toEqual(focus);
+			expect(snapshot.selectedEntityId).toBe(focus.projectId);
+			expect(snapshot.selectedContextLabel).toBe(
+				'Current entity title (Current project name)'
+			);
+		}
+	);
+
+	it('keeps the entity type visible when its saved name is missing', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession({
+				context_type: 'project',
+				entity_id: 'project-1',
+				agent_metadata: {
+					focus: { focusType: 'document', focusEntityId: 'doc-1', projectId: 'project-1' }
+				}
+			})
+		});
+		expect(snapshot.selectedContextLabel).toBe('Document (Project)');
+		expect(snapshot.projectFocus?.focusEntityId).toBe('doc-1');
 	});
 
 	it('buildAgentChatSessionSnapshot keeps inbox proposal sessions in project context', () => {

@@ -175,6 +175,14 @@ export function buildProjectWideFocus(
 	return buildScopeProjectWideFocus(projectId, projectName);
 }
 
+export function buildProjectFocusLabel(focus: ProjectFocus): string {
+	const projectName = focus.projectName?.trim() || 'Project';
+	if (focus.focusType === 'project-wide') return projectName;
+	const entityName = focus.focusEntityName?.trim();
+	const focusType = focus.focusType.charAt(0).toUpperCase() + focus.focusType.slice(1);
+	return `${entityName || focusType} (${projectName})`;
+}
+
 function normalizeProjectFocusClient(focus?: ProjectFocus | null): ProjectFocus | null {
 	return normalizeProjectFocus(focus);
 }
@@ -861,7 +869,7 @@ export function buildAgentChatSessionSnapshot(
 	if (isProjectContext(contextType)) {
 		if (metadataFocus) {
 			projectFocus = metadataFocus;
-			selectedContextLabel = metadataFocus.projectName?.trim() || sessionTitle;
+			selectedContextLabel = buildProjectFocusLabel(metadataFocus);
 		} else if (selectedEntityId) {
 			projectFocus = buildProjectWideFocus(selectedEntityId, selectedContextLabel);
 		}
@@ -915,7 +923,7 @@ export function buildAgentChatSessionSnapshot(
 	return {
 		session,
 		contextType,
-		selectedEntityId: metadataFocus?.projectId || projectFocus?.projectId || selectedEntityId,
+		selectedEntityId: projectFocus?.projectId || selectedEntityId,
 		selectedContextLabel,
 		projectFocus,
 		messages,
@@ -931,6 +939,7 @@ export async function loadAgentChatSessionSnapshot(
 	options: { signal?: AbortSignal } = {}
 ): Promise<AgentChatSessionSnapshot> {
 	const response = await fetch(`/api/chat/sessions/${sessionId}?includeVoiceNotes=1`, {
+		cache: 'no-store',
 		signal: options.signal
 	});
 	const result = await response.json().catch(() => null);

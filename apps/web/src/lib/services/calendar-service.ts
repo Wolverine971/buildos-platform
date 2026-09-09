@@ -1222,8 +1222,12 @@ export class CalendarService {
 				}
 			);
 
-			// 404 is not an error for delete operations
-			if (error.code === 404 || error.message?.includes('404')) {
+			// Google returns 410 for an already-deleted event on retry.
+			if (
+				[404, 410, '404', '410'].includes(error.code) ||
+				[404, 410].includes(error.response?.status) ||
+				error.message?.includes('404')
+			) {
 				// Still mark as deleted in our database
 				await this.supabase
 					.from('task_calendar_events')

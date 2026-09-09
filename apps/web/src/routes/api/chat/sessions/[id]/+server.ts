@@ -1,6 +1,12 @@
 // apps/web/src/routes/api/chat/sessions/[id]/+server.ts
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
+import type { ProjectFocus } from '@buildos/shared-types';
+import {
+	buildProjectWideFocus,
+	isProjectScopedContext,
+	normalizeProjectFocus
+} from '$lib/services/agentic-chat-v2/scope';
 import { ApiResponse } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { buildAgentTimeline } from '$lib/components/agent/agent-chat-timeline';
@@ -159,6 +165,12 @@ const ENTITY_LOOKUP_CONFIG: Record<string, EntityLookupConfig> = {
 		titleFields: ['title'],
 		hasProjectId: true
 	},
+	requirement: {
+		table: 'onto_requirements',
+		select: 'id, text, project_id',
+		titleFields: ['text'],
+		hasProjectId: true
+	},
 	event: {
 		table: 'onto_events',
 		select: 'id, title, project_id',
@@ -307,10 +319,11 @@ function updateTimelineItemAfterEnrichment(item: AgentTimelineItem): AgentTimeli
 	return item;
 }
 
-async function enrichTimelineEntityRefs(params: {
+async function enrichSessionEntities(params: {
 	supabase: unknown;
 	items: AgentTimelineItem[];
-}): Promise<AgentTimelineItem[]> {
+	projectFocus: ProjectFocus | null;
+}): Promise<{ timelineItems: AgentTimelineItem[]; projectFocus: ProjectFocus | null }> {
 	const refs = collectTimelineRefs(params.items);
 	const idsByKind = new Map<string, Set<string>>();
 	for (const ref of refs) {
@@ -318,7 +331,15 @@ async function enrichTimelineEntityRefs(params: {
 		if (ref.projectId) addLookupId(idsByKind, 'project', ref.projectId);
 	}
 
-	if (idsByKind.size === 0) return params.items;
+	// Resolve the saved focus even when the chat has no tool activity. Share the
+	// timeline lookup batch so reopening doesn't fetch the same entities twice.
+	const focus = params.projectFocus;
+	if (focus) {
+		addLookupId(idsByKind, 'project', focus.projectId);
+		addLookupId(idsByKind, focus.focusType, focus.focusEntityId);
+	}
+
+	if (idsByKind.size === 0) return { timelineItems: params.items, projectFocus: focus };
 
 	const lookups = await fetchEntityLookups({ supabase: params.supabase, idsByKind });
 	const projectIds = new Set<string>();
@@ -350,7 +371,7 @@ async function enrichTimelineEntityRefs(params: {
 		if (key.startsWith('project:')) projectLookups.set(value.id, value);
 	}
 
-	return params.items.map((item) => {
+	const timelineItems = params.items.map((item) => {
 		const entityRefs = item.entityRefs.map((ref) => enrichRef(ref, lookups, projectLookups));
 		const projectRef = item.projectRef
 			? enrichRef(item.projectRef, lookups, projectLookups)
@@ -374,6 +395,22 @@ async function enrichTimelineEntityRefs(params: {
 			entityRefs
 		});
 	});
+	const focusedEntity = focus?.focusEntityId
+		? lookups.get(entityLookupKey(focus.focusType, focus.focusEntityId))
+		: null;
+	return {
+		timelineItems,
+		projectFocus: focus
+			? {
+					...focus,
+					projectName: projectLookups.get(focus.projectId)?.title ?? focus.projectName,
+					focusEntityName:
+						focusedEntity?.projectId === focus.projectId
+							? (focusedEntity.title ?? focus.focusEntityName)
+							: focus.focusEntityName
+				}
+			: null
+	};
 }
 
 /**
@@ -601,8 +638,14 @@ export const GET: RequestHandler = async ({
 
 	// Check if there are more messages than we fetched (truncation indicator)
 	const truncated = (messages?.length || 0) >= MESSAGE_LIMIT;
-	const timelineItems = await enrichTimelineEntityRefs({
+	const metadata = (session.agent_metadata ?? {}) as Record<string, unknown>;
+	const savedFocus = isProjectScopedContext(session.context_type)
+		? (normalizeProjectFocus(metadata.focus as ProjectFocus | null) ??
+			(session.entity_id ? buildProjectWideFocus(session.entity_id) : null))
+		: null;
+	const { timelineItems, projectFocus } = await enrichSessionEntities({
 		supabase,
+		projectFocus: savedFocus,
 		items: buildAgentTimeline({
 			sessionId,
 			messages: messagesWithAttachments,
@@ -613,7 +656,9 @@ export const GET: RequestHandler = async ({
 	});
 
 	return ApiResponse.success({
-		session,
+		session: projectFocus
+			? { ...session, agent_metadata: { ...metadata, focus: projectFocus } }
+			: session,
 		messages: messagesWithAttachments,
 		toolExecutions: toolExecutions || [],
 		turnRuns: turnRuns || [],

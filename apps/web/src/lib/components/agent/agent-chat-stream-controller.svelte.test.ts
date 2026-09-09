@@ -7,7 +7,7 @@ import type {
 	TurnHandleV1
 } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-import type { PreparedPromptClient } from './agent-chat-session';
+import { buildAgentChatSessionSnapshot, type PreparedPromptClient } from './agent-chat-session';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
 import {
 	createAgentChatStreamController,
@@ -350,6 +350,35 @@ function workerHandle(overrides: Partial<TurnHandleV1> = {}): TurnHandleV1 {
 }
 
 describe('AgentChatStreamController', () => {
+	it.each(['document', 'task', 'goal', 'plan', 'milestone', 'risk', 'requirement'] as const)(
+		'sends the saved %s focus on the next turn after history restore',
+		async (focusType) => {
+			const focus: ProjectFocus = {
+				focusType,
+				focusEntityId: 'entity-1',
+				focusEntityName: 'Current entity',
+				projectId: 'project-1',
+				projectName: 'Project One'
+			};
+			const snapshot = buildAgentChatSessionSnapshot({
+				session: makeSession({ agent_metadata: { focus: { ...focus } } })
+			});
+			const h = createHarness({ currentSession: snapshot.session });
+			h.deps.getSelectedContextType = () => snapshot.contextType;
+			h.deps.getSelectedEntityId = () => snapshot.selectedEntityId;
+			h.deps.getResolvedProjectFocus = () => snapshot.projectFocus;
+
+			await h.controller.sendMessage('Continue working on this item');
+
+			expect(h.admissionCalls).toHaveLength(1);
+			expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
+				sessionId: snapshot.session.id,
+				context: { type: 'project', entityId: 'project-1', projectId: 'project-1' },
+				projectFocus: focus
+			});
+		}
+	);
+
 	beforeEach(() => {
 		vi.useRealTimers();
 	});

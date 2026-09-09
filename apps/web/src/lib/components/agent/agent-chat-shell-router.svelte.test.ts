@@ -40,6 +40,54 @@ function createHarness(
 }
 
 describe('AgentChatShellRouter', () => {
+	const documentFocus: ProjectFocus = {
+		focusType: 'document',
+		focusEntityId: 'doc-1',
+		focusEntityName: 'Launch notes',
+		projectId: 'project-1',
+		projectName: 'Launch'
+	};
+
+	it('keeps entity context visible after session and title events', () => {
+		const { router } = createHarness();
+		router.hydrateFromSession({
+			contextType: 'project',
+			entityId: 'project-1',
+			label: 'Launch',
+			projectFocus: documentFocus
+		});
+		router.hydrateSessionEvent({
+			contextType: 'project',
+			entityId: 'project-1',
+			sessionTitle: 'Brainstorming next steps'
+		});
+		expect(router.displayContextLabel).toBe('Launch notes (Launch)');
+		expect(router.resolvedProjectFocus).toEqual(documentFocus);
+
+		router.handleFocusClear();
+		expect(router.displayContextLabel).toBe('Launch');
+		expect(router.resolvedProjectFocus).toMatchObject({
+			focusType: 'project-wide',
+			focusEntityId: null,
+			projectName: 'Launch'
+		});
+	});
+
+	it('applies a modal launch focus once so changing it does not reset the conversation', () => {
+		const { router, resetConversation } = createHarness();
+		router.initializeFromProjectFocus(documentFocus);
+		expect(router.displayContextLabel).toBe('Launch notes (Launch)');
+		router.handleFocusClear();
+		router.initializeFromProjectFocus({ ...documentFocus, focusEntityName: 'Renamed notes' });
+		expect(resetConversation).toHaveBeenCalledTimes(1);
+		expect(router.resolvedProjectFocus?.focusType).toBe('project-wide');
+
+		router.resetInitialProjectFocus();
+		router.initializeFromProjectFocus(documentFocus);
+		expect(resetConversation).toHaveBeenCalledTimes(2);
+		expect(router.resolvedProjectFocus).toEqual(documentFocus);
+	});
+
 	it('routes a project context selection through the project action selector', () => {
 		const h = createHarness();
 

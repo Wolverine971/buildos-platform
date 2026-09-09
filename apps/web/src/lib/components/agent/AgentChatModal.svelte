@@ -1160,6 +1160,7 @@
 				wasOpen = false;
 				shellRouter.autoInitDismissed = false;
 				shellRouter.lastAutoInitProjectId = null;
+				shellRouter.resetInitialProjectFocus();
 				lastLoadedSessionId = null; // Reset to allow reloading same session
 				shellRouter.showProjectActionSelector = false;
 				prewarm.reset();
@@ -1243,37 +1244,10 @@
 
 	// Handle initialProjectFocus prop - when opening chat focused on a specific ontology entity
 	$effect(() => {
-		if (!isOpen || !initialProjectFocus) return;
-
-		// Skip if already initialized with this focus
-		if (
-			wasOpen &&
-			shellRouter.projectFocus?.focusEntityId === initialProjectFocus.focusEntityId &&
-			shellRouter.projectFocus?.projectId === initialProjectFocus.projectId
-		) {
-			return;
-		}
-
-		// Reset and set up for entity-focused chat
-		resetConversation({ preserveContext: false });
-
-		// Build context label based on focus type
-		const focusName = initialProjectFocus.focusEntityName;
-		const projectName = initialProjectFocus.projectName || 'Project';
-		const label =
-			initialProjectFocus.focusType === 'project-wide'
-				? projectName
-				: focusName
-					? `${focusName} (${projectName})`
-					: projectName;
-		shellRouter.setDirectContext({
-			contextType: 'project',
-			entityId: initialProjectFocus.projectId,
-			label,
-			projectFocus: initialProjectFocus,
-			showContextSelection: false,
-			showProjectActionSelector: false
-		});
+		if (!isOpen || initialChatSessionId || !initialProjectFocus) return;
+		const focus = initialProjectFocus;
+		// Launch props initialize once per entity/open, not whenever live focus changes.
+		untrack(() => shellRouter.initializeFromProjectFocus(focus));
 	});
 
 	// Handle initialChatSessionId prop - when resuming a previous chat session from history

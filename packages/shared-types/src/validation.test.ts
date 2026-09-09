@@ -78,3 +78,28 @@ describe('shared-types validation helpers', () => {
 		expect(tryValidateJobMetadata('other', { any: 'payload' })).toEqual({ any: 'payload' });
 	});
 });
+
+describe('project calendar cleanup queue metadata', () => {
+	const metadata = {
+		kind: 'onto_project_event_sync',
+		action: 'delete',
+		eventId: VALID_UUID,
+		projectId: VALID_UUID,
+		targetUserId: VALID_UUID,
+		deletionSnapshot: {
+			externalEventId: 'google-event',
+			calendarId: 'calendar',
+			calendarSourceId: VALID_UUID
+		}
+	};
+	it('preserves provider identity across queue validation', () => {
+		expect(validateJobMetadata('sync_calendar', metadata)).toEqual(metadata);
+	});
+	it.each([
+		{ ...metadata, action: 'upsert' },
+		{ ...metadata, deletionSnapshot: {} },
+		{ ...metadata, deletionSnapshot: { externalEventId: 'google-event', calendarId: ' ' } }
+	])('rejects invalid deletion snapshots', (input) => {
+		expect(() => validateJobMetadata('sync_calendar', input)).toThrow(ValidationError);
+	});
+});

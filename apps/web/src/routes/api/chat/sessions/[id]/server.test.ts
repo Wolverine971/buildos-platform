@@ -15,6 +15,81 @@ function createQuery(result: unknown) {
 }
 
 describe('GET /api/chat/sessions/[id]', () => {
+	it.each([
+		['document', 'onto_documents', 'title'],
+		['task', 'onto_tasks', 'title'],
+		['goal', 'onto_goals', 'name'],
+		['plan', 'onto_plans', 'name'],
+		['milestone', 'onto_milestones', 'title'],
+		['risk', 'onto_risks', 'title'],
+		['requirement', 'onto_requirements', 'text']
+	])(
+		'refreshes the saved %s name without changing its identity',
+		async (focusType, table, titleField) => {
+			const focus = {
+				focusType,
+				focusEntityId: 'entity-1',
+				focusEntityName: 'Old title',
+				projectId: 'project-1',
+				projectName: 'Project'
+			};
+			const session = {
+				id: 'session-1',
+				user_id: 'user-1',
+				context_type: 'project',
+				entity_id: 'project-1',
+				agent_metadata: { focus, source: 'entity-modal' }
+			};
+			const sessionQuery = createQuery({ data: session, error: null });
+			const entityQuery = createQuery({
+				data: [{ id: 'entity-1', [titleField!]: 'Updated title', project_id: 'project-1' }],
+				error: null
+			});
+			const projectQuery = createQuery({
+				data: [{ id: 'project-1', name: 'Updated project' }],
+				error: null
+			});
+			const supabase = {
+				from: vi.fn((name: string) => {
+					if (name === 'chat_sessions') return sessionQuery;
+					if (name === table) return entityQuery;
+					if (name === 'onto_projects') return projectQuery;
+					return createQuery({ data: [], error: null });
+				})
+			};
+			const request = {
+				params: { id: 'session-1' },
+				url: new URL('http://localhost/api/chat/sessions/session-1'),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				}
+			};
+			const response = await GET(request as any);
+			expect(response.status).toBe(200);
+			expect((await response.json()).data.session.agent_metadata).toEqual({
+				source: 'entity-modal',
+				focus: {
+					...focus,
+					focusEntityName: 'Updated title',
+					projectName: 'Updated project'
+				}
+			});
+			expect(entityQuery.in).toHaveBeenCalledExactlyOnceWith('id', ['entity-1']);
+			expect(projectQuery.in).toHaveBeenCalledExactlyOnceWith('id', ['project-1']);
+			expect(sessionQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
+			expect(session.agent_metadata.focus).toEqual(focus);
+
+			// A missing or inaccessible entity must not silently broaden the saved focus.
+			entityQuery.limit.mockResolvedValue({ data: [], error: null });
+			const missingResponse = await GET(request as any);
+			expect((await missingResponse.json()).data.session.agent_metadata.focus).toEqual({
+				...focus,
+				projectName: 'Updated project'
+			});
+		}
+	);
+
 	it('returns persisted tool executions when restoring a chat session', async () => {
 		const session = {
 			id: 'session-1',
@@ -305,6 +380,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 				if (table === 'chat_tool_executions') return createQuery({ data: [], error: null });
 				if (table === 'chat_turn_runs') return createQuery({ data: [], error: null });
 				if (table === 'chat_turn_events') return createQuery({ data: [], error: null });
+				if (table === 'onto_projects') return createQuery({ data: [], error: null });
 				throw new Error(`Unexpected table ${table}`);
 			})
 		};

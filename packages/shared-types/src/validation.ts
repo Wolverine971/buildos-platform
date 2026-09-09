@@ -26,6 +26,7 @@ import type {
 	OntoBraindumpProcessingJobMetadata
 } from './queue-types';
 import type { NotificationJobMetadata } from './notification.types';
+import { isProjectCalendarDeletionSnapshot } from './queue-types';
 import { CYCLE_KINDS, type CycleQueueJobMetadata } from './cycle.types';
 
 // Validation error class
@@ -374,6 +375,16 @@ export function validateCalendarSyncMetadata(metadata: unknown): CalendarSyncJob
 		}
 		if (meta.eventUpdatedAt !== undefined && typeof meta.eventUpdatedAt !== 'string') {
 			throw new ValidationError('eventUpdatedAt', meta.eventUpdatedAt, 'string');
+		}
+		if (
+			meta.deletionSnapshot !== undefined &&
+			(meta.action !== 'delete' || !isProjectCalendarDeletionSnapshot(meta.deletionSnapshot))
+		) {
+			throw new ValidationError(
+				'deletionSnapshot',
+				meta.deletionSnapshot,
+				'delete provider identity'
+			);
 		}
 
 		return meta as unknown as CalendarSyncJobMetadata;

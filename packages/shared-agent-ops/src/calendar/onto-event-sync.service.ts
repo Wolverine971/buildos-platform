@@ -19,7 +19,12 @@
 // The worker passes nothing, so project scope falls through to the synchronous
 // `syncEventToCalendar` / `updateCalendarFromEvent` / `deleteCalendarEvent`
 // paths and talks to Google directly with no queue hop.
-import type { Database, Json, ProjectLogChangeSource } from '@buildos/shared-types';
+import type {
+	Database,
+	Json,
+	ProjectLogChangeSource,
+	ProjectCalendarDeletionSnapshot
+} from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import {
 	logCreateAsync,
@@ -900,7 +905,16 @@ export class OntoEventSyncService extends OntoEventReadService {
 						)
 						.select('id')
 						.single();
-					if (mappingError) throw new Error(mappingError.message);
+					if (mappingError) {
+						// A hard delete can remove the event while Google's create is in flight.
+						// The source-aware writer compensates its own inserts; do the same here.
+						await this.requireLegacyCalendar().deleteCalendarEvent(userId, {
+							event_id: calendarEvent.eventId,
+							calendar_id: projectCalendar.calendar_id,
+							sendUpdates: 'all'
+						});
+						throw new Error(mappingError.message);
+					}
 				}
 
 				const nextProps = {
@@ -1159,14 +1173,13 @@ export class OntoEventSyncService extends OntoEventReadService {
 					userId,
 					providerEventId: mapping.externalEventId,
 					selector: this.buildSourceAwareMutationSelector(event.id, mapping),
-					sendUpdates: 'none'
+					sendUpdates: 'all'
 				});
 			} else {
 				await this.requireLegacyCalendar().deleteCalendarEvent(userId, {
 					event_id: mapping.externalEventId,
 					calendar_id: mapping.calendarId,
-					send_notifications: false,
-					sendUpdates: 'none'
+					sendUpdates: 'all'
 				});
 			}
 
@@ -1473,6 +1486,74 @@ export class OntoEventSyncService extends OntoEventReadService {
 		return message.includes('not found') || message.includes('404');
 	}
 
+	protected isGoogleEventAlreadyDeleted(error: unknown): boolean {
+		const value = error as {
+			code?: unknown;
+			status?: unknown;
+			response?: { status?: unknown };
+		} | null;
+		return [404, 410, '404', '410'].some(
+			(status) =>
+				status === value?.code ||
+				status === value?.status ||
+				status === value?.response?.status
+		);
+	}
+
+	/** Uses the queued identity, never a mapping that may have been cascaded away. */
+	protected async deleteProjectCalendarSnapshot(input: {
+		eventId: string;
+		projectId: string;
+		targetUserId: string;
+		deletionSnapshot: ProjectCalendarDeletionSnapshot;
+	}): Promise<{ outcome: 'deleted' | 'skipped'; reason: string }> {
+		const { data: project, error } = await this.supabase
+			.from('onto_projects')
+			.select('deleted_at')
+			.eq('id', input.projectId)
+			.maybeSingle();
+		if (error) throw new Error(error.message);
+		if (project && !project.deleted_at) {
+			return { outcome: 'skipped', reason: 'project_not_deleted' };
+		}
+		const mapping = input.deletionSnapshot;
+		try {
+			if (mapping.calendarSourceId || this.usesSourceRouting(input.targetUserId)) {
+				await this.getCalendarWriter().deleteEvent({
+					userId: input.targetUserId,
+					providerEventId: mapping.externalEventId,
+					selector: mapping.calendarSourceId
+						? { calendarSourceId: mapping.calendarSourceId }
+						: { calendarId: mapping.calendarId },
+					sendUpdates: 'all'
+				});
+			} else {
+				await this.requireLegacyCalendar().deleteCalendarEvent(input.targetUserId, {
+					event_id: mapping.externalEventId,
+					calendar_id: mapping.calendarId,
+					sendUpdates: 'all'
+				});
+			}
+		} catch (error) {
+			if (!this.isGoogleEventAlreadyDeleted(error)) {
+				await this.markEventSyncError(
+					input.eventId,
+					error instanceof Error ? error.message : 'Project calendar cleanup failed',
+					mapping.syncRowId
+				);
+				// A disconnected account is unfinished cleanup, not a successful skipped job.
+				throw error;
+			}
+		}
+		await this.markEventSynced(
+			input.eventId,
+			new Date().toISOString(),
+			mapping.syncRowId,
+			'cancelled'
+		);
+		return { outcome: 'deleted', reason: 'deleted_project_calendar_event' };
+	}
+
 	/**
 	 * Duck-typed on purpose: `GoogleOAuthConnectionError` is a web-only class, so
 	 * the shared check matches on the same `name`/`code` shape both hosts throw.
@@ -1504,10 +1585,19 @@ export class OntoEventSyncService extends OntoEventReadService {
 		targetUserId: string;
 		createCalendarIfMissing?: boolean;
 		expectedEventUpdatedAt?: string;
+		deletionSnapshot?: ProjectCalendarDeletionSnapshot;
 	}): Promise<{
 		outcome: 'synced' | 'deleted' | 'skipped';
 		reason: string;
 	}> {
+		if (input.deletionSnapshot) {
+			if (input.action !== 'delete')
+				throw new Error('Deletion snapshots require a delete action');
+			return this.deleteProjectCalendarSnapshot({
+				...input,
+				deletionSnapshot: input.deletionSnapshot
+			});
+		}
 		const event = await this.getEvent(input.eventId, input.targetUserId);
 		if (!event) {
 			return {
@@ -1523,10 +1613,10 @@ export class OntoEventSyncService extends OntoEventReadService {
 			};
 		}
 		const eventVersion = event.updated_at ?? event.created_at;
-		const isRetryingStillDeletedEvent = input.action === 'delete' && Boolean(event.deleted_at);
+		const isDeletedEvent = Boolean(event.deleted_at);
 		if (
 			this.isStaleEventVersion(input.expectedEventUpdatedAt, eventVersion) &&
-			!isRetryingStillDeletedEvent
+			!isDeletedEvent
 		) {
 			return {
 				outcome: 'skipped',
@@ -1551,14 +1641,13 @@ export class OntoEventSyncService extends OntoEventReadService {
 						userId: input.targetUserId,
 						providerEventId: mapping.externalEventId,
 						selector: this.buildSourceAwareMutationSelector(event.id, mapping),
-						sendUpdates: 'none'
+						sendUpdates: 'all'
 					});
 				} else {
 					await this.requireLegacyCalendar().deleteCalendarEvent(input.targetUserId, {
 						event_id: mapping.externalEventId,
 						calendar_id: mapping.calendarId,
-						send_notifications: false,
-						sendUpdates: 'none'
+						sendUpdates: 'all'
 					});
 				}
 
@@ -1590,7 +1679,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 					};
 				}
 
-				if (this.isGoogleNotFoundError(error)) {
+				if (this.isGoogleEventAlreadyDeleted(error)) {
 					const nowIso = new Date().toISOString();
 					await this.markEventSynced(
 						event.id,
@@ -1784,10 +1873,11 @@ export class OntoEventSyncService extends OntoEventReadService {
 		if (expectedEventVersion) {
 			eventUpdateQuery = eventUpdateQuery.eq('updated_at', expectedEventVersion);
 		}
-		await eventUpdateQuery;
+		const { error: eventError } = await eventUpdateQuery;
+		if (eventError) throw new Error(eventError.message);
 
 		if (syncRowId) {
-			await this.supabase
+			const { error: mappingError } = await this.supabase
 				.from('onto_event_sync')
 				.update({
 					last_synced_at: timestamp,
@@ -1795,6 +1885,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 					sync_error: null
 				})
 				.eq('id', syncRowId);
+			if (mappingError) throw new Error(mappingError.message);
 		}
 	}
 

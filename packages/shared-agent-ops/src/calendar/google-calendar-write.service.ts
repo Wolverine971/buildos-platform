@@ -704,7 +704,14 @@ export class GoogleCalendarWriteService {
 				sendUpdates: params.sendUpdates
 			});
 		} catch (error) {
-			if (!isNotFoundError(error)) throw error;
+			const deletedError = error as { code?: unknown; response?: { status?: number } };
+			if (
+				!isNotFoundError(error) &&
+				deletedError?.code !== 410 &&
+				deletedError?.code !== '410' &&
+				deletedError?.response?.status !== 410
+			)
+				throw error;
 			alreadyMissing = true;
 		}
 		await this.markTrackedEventDeleted({

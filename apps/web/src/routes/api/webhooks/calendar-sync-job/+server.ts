@@ -5,6 +5,7 @@ import { PRIVATE_BUILDOS_WEBHOOK_SECRET } from '$env/static/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import type { OntoProjectEventSyncJobMetadata } from '@buildos/shared-types';
+import { isProjectCalendarDeletionSnapshot } from '@buildos/shared-types';
 
 function isValidPayload(body: unknown): body is OntoProjectEventSyncJobMetadata {
 	if (!body || typeof body !== 'object') return false;
@@ -15,7 +16,10 @@ function isValidPayload(body: unknown): body is OntoProjectEventSyncJobMetadata 
 		typeof payload.eventId === 'string' &&
 		typeof payload.projectId === 'string' &&
 		typeof payload.targetUserId === 'string' &&
-		(payload.eventUpdatedAt === undefined || typeof payload.eventUpdatedAt === 'string')
+		(payload.eventUpdatedAt === undefined || typeof payload.eventUpdatedAt === 'string') &&
+		(payload.deletionSnapshot === undefined ||
+			(payload.action === 'delete' &&
+				isProjectCalendarDeletionSnapshot(payload.deletionSnapshot)))
 	);
 }
 
@@ -46,7 +50,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			projectId: body.projectId,
 			targetUserId: body.targetUserId,
 			createCalendarIfMissing: body.createCalendarIfMissing,
-			expectedEventUpdatedAt: body.eventUpdatedAt
+			expectedEventUpdatedAt: body.eventUpdatedAt,
+			deletionSnapshot: body.deletionSnapshot
 		});
 
 		return ApiResponse.success(result);

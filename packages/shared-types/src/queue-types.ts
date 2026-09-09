@@ -119,6 +119,31 @@ export interface OntoProjectEventSyncJobMetadata {
 	triggeredByUserId?: string;
 	createCalendarIfMissing?: boolean;
 	eventUpdatedAt?: string;
+	/** Durable provider identity retained when a project and its mappings are removed. */
+	deletionSnapshot?: ProjectCalendarDeletionSnapshot;
+}
+
+export interface ProjectCalendarDeletionSnapshot {
+	externalEventId: string;
+	calendarId: string;
+	calendarSourceId?: string;
+	syncRowId?: string;
+}
+
+export function isProjectCalendarDeletionSnapshot(
+	value: unknown
+): value is ProjectCalendarDeletionSnapshot {
+	if (!value || typeof value !== 'object') return false;
+	const snapshot = value as Record<string, unknown>;
+	return (
+		typeof snapshot.externalEventId === 'string' &&
+		snapshot.externalEventId.trim().length > 0 &&
+		typeof snapshot.calendarId === 'string' &&
+		snapshot.calendarId.trim().length > 0 &&
+		(snapshot.calendarSourceId === undefined ||
+			typeof snapshot.calendarSourceId === 'string') &&
+		(snapshot.syncRowId === undefined || typeof snapshot.syncRowId === 'string')
+	);
 }
 
 export type CalendarSyncJobMetadata =
@@ -653,7 +678,10 @@ function isCalendarSyncMetadata(obj: unknown): obj is CalendarSyncJobMetadata {
 			(meta.action === 'upsert' || meta.action === 'delete') &&
 			typeof meta.eventId === 'string' &&
 			typeof meta.projectId === 'string' &&
-			typeof meta.targetUserId === 'string'
+			typeof meta.targetUserId === 'string' &&
+			(meta.deletionSnapshot === undefined ||
+				(meta.action === 'delete' &&
+					isProjectCalendarDeletionSnapshot(meta.deletionSnapshot)))
 		);
 	}
 	return (

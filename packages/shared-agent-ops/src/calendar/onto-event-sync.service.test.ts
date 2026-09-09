@@ -800,7 +800,7 @@ describe('OntoEventSyncService source-qualified routing', () => {
 			userId: 'user-1',
 			providerEventId: 'google-event-3',
 			selector: { ontoEventId: 'event-3' },
-			sendUpdates: 'none'
+			sendUpdates: 'all'
 		});
 		expect(legacyCalendar.deleteCalendarEvent).not.toHaveBeenCalled();
 	});
@@ -843,7 +843,174 @@ describe('OntoEventSyncService source-qualified routing', () => {
 			userId: 'user-1',
 			providerEventId: 'google-event-legacy',
 			selector: { calendarId: 'legacy-project@example.com' },
-			sendUpdates: 'none'
+			sendUpdates: 'all'
 		});
+	});
+});
+
+describe('deleted project calendar snapshots', () => {
+	const input = {
+		action: 'delete' as const,
+		eventId: 'event-gone',
+		projectId: 'project-gone',
+		targetUserId: 'member-2',
+		deletionSnapshot: {
+			externalEventId: 'series-master',
+			calendarId: 'shared-calendar',
+			syncRowId: 'mapping-gone'
+		}
+	};
+	function setup(project: unknown = null, providerError?: unknown) {
+		const query: any = {
+			select: vi.fn(() => query),
+			eq: vi.fn(() => query),
+			maybeSingle: vi.fn().mockResolvedValue({ data: project, error: null })
+		};
+		const { service, legacyCalendar } = createLegacyService({ from: vi.fn(() => query) });
+		vi.spyOn(service as any, 'getEvent').mockRejectedValue(
+			new Error('Must not depend on deleted event')
+		);
+		const markSynced = vi.spyOn(service as any, 'markEventSynced').mockResolvedValue(undefined);
+		const markFailed = vi
+			.spyOn(service as any, 'markEventSyncError')
+			.mockResolvedValue(undefined);
+		if (providerError) legacyCalendar.deleteCalendarEvent.mockRejectedValue(providerError);
+		return { service, legacyCalendar, markSynced, markFailed };
+	}
+	it('deletes the exact recurring event after hard deletion and sends attendee cancellations', async () => {
+		const { service, legacyCalendar, markSynced } = setup();
+		await expect(service.processProjectEventSyncJob(input)).resolves.toMatchObject({
+			outcome: 'deleted'
+		});
+		expect(legacyCalendar.deleteCalendarEvent).toHaveBeenCalledWith('member-2', {
+			event_id: 'series-master',
+			calendar_id: 'shared-calendar',
+			sendUpdates: 'all'
+		});
+		expect(markSynced).toHaveBeenCalledWith(
+			'event-gone',
+			expect.any(String),
+			'mapping-gone',
+			'cancelled'
+		);
+	});
+	it('uses the stored source even if rollout settings changed and mapping rows are gone', async () => {
+		const { service, legacyCalendar } = setup({ deleted_at: '2026-09-08T00:00:00Z' });
+		const writer = { deleteEvent: vi.fn().mockResolvedValue({ deleted: true }) };
+		vi.spyOn(service as any, 'getCalendarWriter').mockReturnValue(writer);
+		await service.processProjectEventSyncJob({
+			...input,
+			deletionSnapshot: { ...input.deletionSnapshot, calendarSourceId: 'source-2' }
+		});
+		expect(writer.deleteEvent).toHaveBeenCalledWith({
+			userId: 'member-2',
+			providerEventId: 'series-master',
+			selector: { calendarSourceId: 'source-2' },
+			sendUpdates: 'all'
+		});
+		expect(legacyCalendar.deleteCalendarEvent).not.toHaveBeenCalled();
+	});
+	it.each([404, 410])('treats Google %s as successful cleanup on retry', async (status) => {
+		const { service, markSynced } = setup(null, { response: { status } });
+		await expect(service.processProjectEventSyncJob(input)).resolves.toMatchObject({
+			outcome: 'deleted'
+		});
+		expect(markSynced).toHaveBeenCalled();
+	});
+	it.each([
+		new Error('rate limited'),
+		new GoogleOAuthConnectionError('Reconnect required', true),
+		new Error('Calendar connection not found')
+	])('keeps failed cleanup retryable instead of reporting it as skipped', async (error) => {
+		const { service, markSynced, markFailed } = setup(null, error);
+		await expect(service.processProjectEventSyncJob(input)).rejects.toBe(error);
+		expect(markSynced).not.toHaveBeenCalled();
+		expect(markFailed).toHaveBeenCalled();
+	});
+	it('does not delete events if the project has been restored', async () => {
+		const { service, legacyCalendar } = setup({ deleted_at: null });
+		await expect(service.processProjectEventSyncJob(input)).resolves.toEqual({
+			outcome: 'skipped',
+			reason: 'project_not_deleted'
+		});
+		expect(legacyCalendar.deleteCalendarEvent).not.toHaveBeenCalled();
+	});
+	it('rejects snapshots on upsert jobs', async () => {
+		const { service, legacyCalendar } = setup();
+		await expect(
+			service.processProjectEventSyncJob({ ...input, action: 'upsert' })
+		).rejects.toThrow('delete action');
+		expect(legacyCalendar.deleteCalendarEvent).not.toHaveBeenCalled();
+	});
+	it('turns a stale upsert into deletion when the event is now deleted', async () => {
+		const { service, legacyCalendar } = createLegacyService();
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: input.eventId,
+			project_id: input.projectId,
+			deleted_at: '2026-09-09T00:00:00Z',
+			updated_at: '2026-09-09T00:00:00Z',
+			onto_event_sync: []
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue(
+			input.deletionSnapshot
+		);
+		vi.spyOn(service as any, 'markEventSynced').mockResolvedValue(undefined);
+		await expect(
+			service.processProjectEventSyncJob({
+				action: 'upsert',
+				eventId: input.eventId,
+				projectId: input.projectId,
+				targetUserId: input.targetUserId,
+				expectedEventUpdatedAt: '2026-09-08T00:00:00Z'
+			})
+		).resolves.toMatchObject({ outcome: 'deleted' });
+		expect(legacyCalendar.deleteCalendarEvent).toHaveBeenCalled();
+	});
+});
+
+describe('calendar cleanup failure boundaries', () => {
+	it('compensates a legacy provider create when hard deletion removed its local mapping target', async () => {
+		const query: any = {
+			upsert: () => query,
+			select: () => query,
+			single: async () => ({ data: null, error: { message: 'event foreign key missing' } })
+		};
+		const { service, legacyCalendar } = createLegacyService({ from: () => query });
+		vi.spyOn(service as any, 'hasStoredCalendarCredential').mockResolvedValue(true);
+		vi.spyOn(service as any, 'resolveProjectCalendar').mockResolvedValue({
+			id: 'calendar-row',
+			calendar_id: 'provider-calendar',
+			sync_enabled: true
+		});
+		vi.spyOn(service as any, 'buildCalendarEventDescription').mockResolvedValue('description');
+		vi.spyOn(service as any, 'markEventSyncError').mockResolvedValue(undefined);
+		const result = await (service as any).syncEventToCalendar(
+			'user-1',
+			{
+				id: 'event-1',
+				project_id: 'project-1',
+				title: 'Task due',
+				start_at: '2026-09-10T12:00:00Z'
+			},
+			{ scope: 'project', createProjectCalendarIfMissing: false }
+		);
+		expect(result.sync.success).toBe(false);
+		expect(legacyCalendar.deleteCalendarEvent).toHaveBeenCalledWith('user-1', {
+			event_id: 'legacy-event',
+			calendar_id: 'provider-calendar',
+			sendUpdates: 'all'
+		});
+	});
+	it('surfaces failed cancellation bookkeeping so the cleanup job can retry', async () => {
+		const query: any = {
+			update: () => query,
+			eq: () => query,
+			then: (resolve: (value: unknown) => unknown) =>
+				Promise.resolve({ error: { message: 'database unavailable' } }).then(resolve)
+		};
+		const { service } = createLegacyService({ from: () => query });
+		await expect(
+			(service as any).markEventSynced('event-1', 'now', 'sync-1', 'cancelled')
+		).rejects.toThrow('database unavailable');
 	});
 });

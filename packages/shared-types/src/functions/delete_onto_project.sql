@@ -24,6 +24,11 @@ BEGIN
 		RAISE EXCEPTION 'Project ID required';
 	END IF;
 
+	-- Capture durable calendar cleanup before removing provider mappings.
+	UPDATE public.onto_projects
+	SET deleted_at = COALESCE(deleted_at, now()), updated_at = now()
+	WHERE id = p_project_id;
+
 	v_all_ids := v_all_ids
 		|| v_goal_ids
 		|| v_requirement_ids

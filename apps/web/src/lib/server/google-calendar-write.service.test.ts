@@ -359,35 +359,38 @@ describe('GoogleCalendarWriteService', () => {
 		});
 	});
 
-	it('treats provider 404 deletion as idempotent success on the resolved source', async () => {
-		const mappedTarget = { ...target(), externalEventId: 'provider-event-1' };
-		const provider = createProvider();
-		provider.delete.mockRejectedValue({ response: { status: 404 } });
-		const { admin, updates, eqs } = createAdmin();
-		const service = new GoogleCalendarWriteService(admin, {
-			targetService: targetService({
-				resolveExternalEventTarget: vi.fn().mockResolvedValue(mappedTarget)
-			}) as any,
-			connectionService: { getAuthenticatedClient: vi.fn().mockResolvedValue({}) },
-			createCalendarApi: () => ({ events: provider }) as any
-		});
+	it.each([404, 410])(
+		'treats provider %s deletion as idempotent success on the resolved source',
+		async (status) => {
+			const mappedTarget = { ...target(), externalEventId: 'provider-event-1' };
+			const provider = createProvider();
+			provider.delete.mockRejectedValue({ response: { status } });
+			const { admin, updates, eqs } = createAdmin();
+			const service = new GoogleCalendarWriteService(admin, {
+				targetService: targetService({
+					resolveExternalEventTarget: vi.fn().mockResolvedValue(mappedTarget)
+				}) as any,
+				connectionService: { getAuthenticatedClient: vi.fn().mockResolvedValue({}) },
+				createCalendarApi: () => ({ events: provider }) as any
+			});
 
-		await expect(
-			service.deleteEvent({
-				userId: 'user-1',
-				providerEventId: 'provider-event-1'
-			})
-		).resolves.toMatchObject({ deleted: true, alreadyMissing: true });
-		expect(updates).toContainEqual(
-			expect.objectContaining({
+			await expect(
+				service.deleteEvent({
+					userId: 'user-1',
+					providerEventId: 'provider-event-1'
+				})
+			).resolves.toMatchObject({ deleted: true, alreadyMissing: true });
+			expect(updates).toContainEqual(
+				expect.objectContaining({
+					table: 'task_calendar_events',
+					value: expect.objectContaining({ sync_status: 'cancelled' })
+				})
+			);
+			expect(eqs).toContainEqual({
 				table: 'task_calendar_events',
-				value: expect.objectContaining({ sync_status: 'cancelled' })
-			})
-		);
-		expect(eqs).toContainEqual({
-			table: 'task_calendar_events',
-			column: 'calendar_source_id',
-			value: 'source-a'
-		});
-	});
+				column: 'calendar_source_id',
+				value: 'source-a'
+			});
+		}
+	);
 });

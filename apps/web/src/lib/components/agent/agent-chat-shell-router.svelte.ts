@@ -7,7 +7,11 @@
 import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
-import { buildProjectWideFocus, isProjectContext } from './agent-chat-session';
+import {
+	buildProjectFocusLabel,
+	buildProjectWideFocus,
+	isProjectContext
+} from './agent-chat-session';
 import type { ProjectAction } from './agent-chat.types';
 
 export interface AutoInitProjectConfig {
@@ -43,6 +47,7 @@ export class AgentChatShellRouter {
 	contextSelectionRef = $state<any>(null);
 	autoInitDismissed = $state(false);
 	lastAutoInitProjectId = $state<string | null>(null);
+	private initialProjectFocusKey: string | null = null;
 
 	constructor(private readonly deps: AgentChatShellRouterDeps) {}
 
@@ -53,6 +58,9 @@ export class AgentChatShellRouter {
 	get displayContextLabel(): string {
 		if (!this.selectedContextType) {
 			return 'Select a focus to begin';
+		}
+		if (isProjectContext(this.selectedContextType) && this.projectFocus) {
+			return buildProjectFocusLabel(this.projectFocus);
 		}
 		return this.selectedContextLabel ?? this.contextDescriptor?.title ?? 'Selected focus';
 	}
@@ -66,7 +74,10 @@ export class AgentChatShellRouter {
 
 	get defaultProjectFocus(): ProjectFocus | null {
 		if (isProjectContext(this.selectedContextType) && this.selectedEntityId) {
-			return buildProjectWideFocus(this.selectedEntityId, this.selectedContextLabel);
+			return buildProjectWideFocus(
+				this.selectedEntityId,
+				this.projectFocus?.projectName ?? this.selectedContextLabel
+			);
 		}
 		return null;
 	}
@@ -230,6 +241,23 @@ export class AgentChatShellRouter {
 		this.applyProjectAction(action, config.projectId, config.projectName, {
 			skipReset: true
 		});
+	}
+
+	initializeFromProjectFocus(focus: ProjectFocus): void {
+		const key = JSON.stringify([focus.projectId, focus.focusType, focus.focusEntityId]);
+		if (key === this.initialProjectFocusKey) return;
+		this.initialProjectFocusKey = key;
+		this.deps.resetConversation({ preserveContext: false });
+		this.setDirectContext({
+			contextType: 'project',
+			entityId: focus.projectId,
+			label: buildProjectFocusLabel(focus),
+			projectFocus: focus
+		});
+	}
+
+	resetInitialProjectFocus(): void {
+		this.initialProjectFocusKey = null;
 	}
 
 	setDirectContext(params: {
