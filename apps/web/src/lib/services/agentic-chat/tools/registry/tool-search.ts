@@ -182,7 +182,10 @@ export function computeToolMatchScore(
 		} else if (variants.some((token) => relatedSkillWords.has(token))) {
 			score += 15;
 			matchedConcepts += 1;
-			strongMatchedConcepts += 1;
+			// A skill can use a generic tool without granting its domain capability:
+			// cold-email skill tags do not make web_search a Gmail reader. Tags can
+			// discover a tool by one keyword, but cannot qualify a multi-concept ask.
+			if (tokenGroups.length === 1) strongMatchedConcepts += 1;
 		} else if (variants.some((token) => metadataWords.has(token))) {
 			score += 10;
 			matchedConcepts += 1;

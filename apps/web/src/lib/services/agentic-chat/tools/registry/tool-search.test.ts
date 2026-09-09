@@ -3,7 +3,7 @@ import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { getToolRegistry, resetToolRegistryCache } from '@buildos/agentic-chat-runtime/catalog';
-import { searchToolRegistry } from './tool-search';
+import { computeToolMatchScore, searchToolRegistry } from './tool-search';
 
 const CHAT_HIDDEN_LEGACY_SEARCH_TOOLS = [
 	'search_onto_goals',
@@ -24,6 +24,21 @@ afterEach(() => {
 });
 
 describe('searchToolRegistry discovery surfaces', () => {
+	it('uses skill tags as ranking hints, not proof of a multi-concept capability', () => {
+		const entry = {
+			...requireTestValue(getToolRegistry().byToolName.web_search),
+			// Preserve the generic read verb independently of provider-copy edits.
+			description: 'Search the public web; read linked pages.'
+		};
+		const relatedSkills = ['cold_email_campaign'];
+		expect(computeToolMatchScore(entry, 'gmail inbox read messages email', relatedSkills)).toBe(
+			0
+		);
+		expect(computeToolMatchScore(entry, 'email', relatedSkills)).toBeGreaterThan(0);
+		expect(computeToolMatchScore(entry, 'web search sources', relatedSkills)).toBeGreaterThan(
+			0
+		);
+	});
 	it('marks zero-use legacy entity search tools as hidden from chat discovery', () => {
 		const registry = getToolRegistry();
 
