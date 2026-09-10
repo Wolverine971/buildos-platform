@@ -36,11 +36,7 @@ function surfaceNames(tools: ChatToolDefinition[]): string[] {
 
 // declare_read_only_turn left every static list on 2026-09-10 (F28): the
 // acting worker never mounted it and the reviewer lane builds its own copy.
-const CONTROL_TOOL_NAMES = [
-	'declare_turn_contract',
-	'request_turn_clarification',
-	'cancel_turn_contract'
-];
+const CONTROL_TOOL_NAMES = ['request_turn_clarification'];
 
 describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 	it('exposes exactly three profiles', () => {
@@ -64,6 +60,21 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			);
 		}
 	});
+
+	it.each(GATEWAY_SURFACE_PROFILE_NAMES)(
+		'keeps batch and rollback controls consistent on %s',
+		(profile) => {
+			const batch = surfaceNames(getGatewaySurfaceForProfile(profile));
+			const rollback = surfaceNames(
+				getGatewaySurfaceForProfile(profile, { mutationBatchLaneEnabled: false })
+			);
+			for (const name of ['declare_turn_contract', 'cancel_turn_contract']) {
+				expect(batch).not.toContain(name);
+				expect(rollback).toContain(name);
+			}
+			expect(batch).toContain('request_turn_clarification');
+		}
+	);
 
 	it('pins the global members', () => {
 		expect(getGatewayDirectToolNamesForProfile('global')).toEqual([

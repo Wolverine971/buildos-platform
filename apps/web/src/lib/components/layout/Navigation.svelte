@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/layout/Navigation.svelte -->
 <script lang="ts">
+	import { BRAND_TAGLINE, START_PROJECT_CTA } from '$lib/constants/brand';
 	import { page } from '$app/stores';
 	import { replaceState } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
@@ -825,7 +826,7 @@
 									BuildOS
 								</div>
 								<div class="text-xs text-muted-foreground">
-									Thinking environment for complex work
+									{BRAND_TAGLINE}
 								</div>
 							</div>
 						</a>
@@ -1280,7 +1281,7 @@
 							href="/auth/register"
 							class="px-4 py-1.5 text-xs font-bold text-accent-foreground bg-accent rounded-lg shadow-ink hover:bg-accent/90 transition-colors pressable tx tx-bloom tx-weak"
 						>
-							Start in chat
+							{START_PROJECT_CTA}
 						</a>
 					</div>
 
@@ -1597,7 +1598,7 @@
 						onclick={() => handleMenuItemClick('/auth/register')}
 						class="block px-3 py-2.5 mt-2 text-sm font-bold text-center text-accent-foreground bg-accent hover:bg-accent/90 rounded-lg shadow-ink pressable tx tx-bloom tx-weak transition-colors"
 					>
-						Start in chat
+						{START_PROJECT_CTA}
 					</a>
 				</div>
 			{/if}

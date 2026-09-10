@@ -101,7 +101,8 @@ export function buildBaseProviderRequest(
 	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>,
 	liveVisionEnabled: boolean,
 	semanticReviewEnabled: boolean,
-	budget?: AgenticChatProviderBudgetV1
+	budget?: AgenticChatProviderBudgetV1,
+	mutationBatchLaneEnabled = false
 ): {
 	request: AgenticChatTurnProviderRequestV1;
 	admittedTools: readonly AgenticChatTurnProviderToolV1[];
@@ -178,7 +179,15 @@ export function buildBaseProviderRequest(
 
 	const context = requireRecord(input.requestPayload.context, 'request context');
 	const contextType = canonicalRequiredText(context.type, 'context type');
-	const admittedTools = productionToolsFor(input, mutationCapabilities, semanticReviewEnabled);
+	const admittedTools = productionToolsFor(
+		input,
+		mutationCapabilities,
+		semanticReviewEnabled
+	).filter(
+		(tool) =>
+			!mutationBatchLaneEnabled ||
+			!['declare_turn_contract', 'cancel_turn_contract'].includes(tool.function.name)
+	);
 	const tools = deferComplexWriteContractForInitialPass(
 		input,
 		admittedTools,

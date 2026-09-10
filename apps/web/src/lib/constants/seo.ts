@@ -1,8 +1,9 @@
 // apps/web/src/lib/constants/seo.ts
+import { BRAND_DESCRIPTION } from './brand';
+
 export const SITE_URL = 'https://build-os.com';
 export const SITE_NAME = 'BuildOS';
-export const SITE_DESCRIPTION =
-	'BuildOS is a thinking environment for people making complex things. Turn rough notes, voice dumps, and scattered research into structured projects with memory and a clear next move.';
+export const SITE_DESCRIPTION = BRAND_DESCRIPTION;
 
 export const DEFAULT_SOCIAL_IMAGE_URL = `${SITE_URL}/twitter_card_light.png`;
 export const DEFAULT_SOCIAL_IMAGE_ALT =
@@ -38,7 +39,7 @@ export const DEFAULT_ORGANIZATION_SOCIAL_PROFILES = [
 	'https://twitter.com/build_os',
 	'https://www.linkedin.com/company/build-os-app'
 ] as const;
-export const HOME_PAGE_LAST_MODIFIED = '2026-05-13';
+export const HOME_PAGE_LAST_MODIFIED = '2026-09-10';
 
 export const DEFAULT_TWITTER_SITE = '@build_os';
 export const DEFAULT_TWITTER_CREATOR = '@djwayne3';

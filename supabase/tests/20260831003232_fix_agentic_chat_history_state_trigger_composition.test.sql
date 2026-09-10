@@ -201,3 +201,42 @@ END;
 $$;
 
 SELECT 'agentic_chat_history_state_trigger_composition_ok' AS result;
+
+-- A prepared base plus pending-contract / proposal-focus state is an admission
+-- window. Prove the original prepared claim fails, and that clearing lineage
+-- preserves both messages and copies the final count to the parent atomically.
+INSERT INTO public.chat_turn_runs (id, session_id, user_id) VALUES (
+ '10000000-0000-4000-8000-000000000005',
+ '20000000-0000-4000-8000-000000000001',
+ '30000000-0000-4000-8000-000000000001'
+);
+DO $$
+DECLARE
+ v_history jsonb := '[{"sourceMessageId":null,"role":"assistant","content":"Earlier answer","attachments":[],"toolCalls":[],"toolCallId":null},{"sourceMessageId":null,"role":"system","content":"Current pending contract or proposal focus","attachments":[],"toolCalls":[],"toolCallId":null}]';
+ v_prepared jsonb := '{"sourcePreparedPromptId":null,"historyState":{"strategy":"raw_history","compressed":false,"rawHistoryCount":1,"historyForModelCount":2}}';
+BEGIN
+ BEGIN
+  INSERT INTO public.chat_turn_input_artifacts (
+   id, turn_run_id, session_id, user_id, source_prepared_prompt_id, history_source, history, prepared
+  ) VALUES (
+   '40000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000005',
+   '20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001',
+   '50000000-0000-4000-8000-000000000001', 'prepared_prompt', v_history, v_prepared
+  );
+  RAISE EXCEPTION 'prepared copy with appended session state was accepted';
+ EXCEPTION WHEN OTHERS THEN
+  IF SQLERRM <> 'agentic_chat_input_prepared_history_state_mismatch' THEN RAISE; END IF;
+ END;
+ INSERT INTO public.chat_turn_input_artifacts (
+  id, turn_run_id, session_id, user_id, source_prepared_prompt_id, history_source, history, prepared
+ ) VALUES (
+  '40000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000005',
+  '20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001',
+  NULL, 'admission_window', v_history, v_prepared
+ );
+ IF (SELECT history_for_model_count FROM public.chat_turn_runs WHERE id = '10000000-0000-4000-8000-000000000005') IS DISTINCT FROM 2 THEN
+  RAISE EXCEPTION 'admission session-state count was not preserved';
+ END IF;
+END;
+$$;
+SELECT 'agentic_chat_session_state_downgrade_ok' AS result;

@@ -15,6 +15,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+import type { BatteryProvenance } from './provenance';
 import type { Phase0ResultClass } from '../phase0/evidence-report';
 import type { Scenario } from './types';
 
@@ -123,6 +124,8 @@ export interface BatteryTurnRecord {
 	turnIndex: number;
 	turnLabel: string | null;
 	streamRunId: string | null;
+	durationMs?: number | null;
+	toolCallCount?: number;
 	resultClass: Phase0ResultClass;
 	error: string | null;
 }
@@ -132,6 +135,7 @@ export interface BatteryCaseResult {
 	case: number;
 	scenarioId: string;
 	title: string;
+	expectedTurnCount: number;
 	score: BatteryScore;
 	maxScore: typeof BATTERY_MAX_SCORE_PER_CASE;
 	resultClasses: Phase0ResultClass[];
@@ -146,6 +150,8 @@ export interface BatteryScorecard {
 	runId: string;
 	generatedAt: string;
 	head: string | null;
+	provenance: BatteryProvenance | null;
+	turns: BatteryTurnRecord[];
 	configuration: {
 		baseUrl: string;
 		executionMode: string;
@@ -204,6 +210,8 @@ export class BatteryRecorder {
 		turnIndex: number;
 		turnLabel: string | null;
 		streamRunId: string | null;
+		durationMs?: number | null;
+		toolCallCount?: number;
 		resultClass: Phase0ResultClass;
 		error?: unknown;
 	}): void {
@@ -213,6 +221,8 @@ export class BatteryRecorder {
 			turnIndex: params.turnIndex,
 			turnLabel: params.turnLabel,
 			streamRunId: params.streamRunId,
+			durationMs: params.durationMs,
+			toolCallCount: params.toolCallCount,
 			resultClass: params.resultClass,
 			error: errorMessage(params.error)
 		});
@@ -224,6 +234,7 @@ export class BatteryRecorder {
 		executionMode: string;
 		head?: string | null;
 		generatedAt?: string;
+		provenance?: BatteryProvenance | null;
 	}): BatteryScorecard {
 		const cases = this.scenarios.map<BatteryCaseResult>((scenario) => {
 			const turns = this.turns.filter((turn) => turn.scenarioId === scenario.id);
@@ -234,6 +245,7 @@ export class BatteryRecorder {
 				case: scenario.batteryCase ?? 0,
 				scenarioId: scenario.id,
 				title: scenario.title,
+				expectedTurnCount: scenario.turns.length,
 				score,
 				maxScore: BATTERY_MAX_SCORE_PER_CASE,
 				resultClasses,
@@ -253,6 +265,8 @@ export class BatteryRecorder {
 			runId: params.runId,
 			generatedAt: params.generatedAt ?? new Date().toISOString(),
 			head: params.head ?? null,
+			provenance: params.provenance ?? null,
+			turns: [...this.turns],
 			configuration: { baseUrl: params.baseUrl, executionMode: params.executionMode },
 			cases,
 			summary: {

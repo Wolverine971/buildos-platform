@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/+page.svelte -->
 <!-- Public landing page. Authenticated entry lives at /dashboard. -->
 <script lang="ts">
+	import { BRAND_TAGLINE, BRAND_DESCRIPTION } from '$lib/constants/brand';
 	import {
 		DEFAULT_ORGANIZATION_ID,
 		DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
@@ -21,9 +22,8 @@
 
 	let { data } = $props();
 
-	const homeTitle = 'BuildOS — Talk to BuildOS, see your thoughts organized.';
-	const homeDescription =
-		'BuildOS is a thinking environment for creators. Talk to BuildOS, see your projects organized. Same context for you and your agents — both make progress, in parallel.';
+	const homeTitle = `BuildOS — ${BRAND_TAGLINE}`;
+	const homeDescription = BRAND_DESCRIPTION;
 
 	let landingStructuredData = $derived.by(() =>
 		serializeJsonLd({
@@ -77,7 +77,7 @@
 	<meta name="description" content={homeDescription} />
 	<meta
 		name="keywords"
-		content="thinking environment, project chat, project memory, creator workflow, author workflow, YouTube workflow, AI agents, task organization, daily briefs, voice notes"
+		content="project workspace, conversational project management, project chat, project memory, creator workflow, author workflow, YouTube workflow, AI agents, task organization, daily briefs, voice notes"
 	/>
 	<link rel="canonical" href="https://build-os.com/" />
 

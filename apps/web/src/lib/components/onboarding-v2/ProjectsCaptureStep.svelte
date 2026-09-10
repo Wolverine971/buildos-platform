@@ -5,6 +5,7 @@
      phase: a compact activation packet proves what BuildOS understood, created, and will
      remember. Non-explore users cannot continue without one created project. -->
 <script lang="ts">
+	import { BRAND_TAGLINE, FIRST_PROJECT_PROMPT } from '$lib/constants/brand';
 	import {
 		ArrowRight,
 		Calendar,
@@ -589,13 +590,14 @@
 	{#if phase === 'capture'}
 		<!-- Header -->
 		<div class="mb-8 text-center">
+			<p class="micro-label mb-3 text-accent">{BRAND_TAGLINE}</p>
 			<h1 class="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
-				{v3Prompts?.heading ?? "Dump what's in your head. BuildOS will shape it."}
+				{v3Prompts?.heading ?? 'Tell BuildOS what you’re working on.'}
 			</h1>
 			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
 				{isExplore
-					? 'Try one real dump if you want to see the product work. You can also skip for now.'
-					: "Write it messy. Projects, worries, deadlines, half-formed ideas. We'll turn it into something you can work with."}
+					? 'Try one project to see how a conversation becomes a workspace. You can also skip for now.'
+					: 'Start with one project. Paste your notes or describe what you have so far. BuildOS will organize the pieces into tasks, documents, and next steps.'}
 			</p>
 		</div>
 
@@ -619,8 +621,7 @@
 			<TextareaWithVoice
 				bind:value={draftText}
 				bind:isRecording={isVoiceRecording}
-				placeholder={v3Prompts?.placeholder ??
-					"Describe what you're working on. Just write freely — we'll sort it out..."}
+				placeholder={v3Prompts?.placeholder ?? FIRST_PROJECT_PROMPT}
 				rows={6}
 				maxRows={14}
 				autoResize={true}
@@ -752,8 +753,8 @@
 				Your project is ready
 			</h1>
 			<p class="text-base text-muted-foreground max-w-xl mx-auto">
-				Here's what BuildOS understood, what it created, and what it will remember when you
-				come back.
+				Review what BuildOS created. Open a task or document, then use chat to tell BuildOS
+				what you want to change.
 			</p>
 		</div>
 

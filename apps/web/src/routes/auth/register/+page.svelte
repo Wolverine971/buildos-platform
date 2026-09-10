@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/auth/register/+page.svelte -->
 <script lang="ts">
+	import { BRAND_TAGLINE } from '$lib/constants/brand';
 	import { page } from '$app/stores';
 	import { goto, replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -404,7 +405,7 @@
 	title="Create Your BuildOS Account"
 	description="Create your BuildOS account and transform rough project input into structured projects with memory. Paid billing is not active, and creating an account does not charge you."
 	canonical="https://build-os.com/auth/register"
-	keywords="BuildOS sign up, early access, thinking environment, project memory, project context app"
+	keywords="BuildOS sign up, early access, project workspace, project memory, project context app"
 	noindex={true}
 />
 
@@ -432,7 +433,7 @@
 			</div>
 
 			<h1 class="text-3xl font-bold text-foreground mb-2">Join BuildOS</h1>
-			<p class="text-muted-foreground mb-8">Start with the messy version</p>
+			<p class="text-muted-foreground mb-8">{BRAND_TAGLINE}</p>
 		</div>
 
 		<!-- Form Section -->

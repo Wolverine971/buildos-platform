@@ -9,6 +9,8 @@
  * - Feature flags
  */
 
+import { FIRST_PROJECT_PROMPT } from '$lib/constants/brand';
+
 export const ONBOARDING_V2_CONFIG = {
 	version: 2,
 
@@ -315,24 +317,20 @@ export const ONBOARDING_V3_CONFIG = {
 
 	capturePrompts: {
 		organize: {
-			heading: 'Tell us about the projects you need organized',
-			placeholder:
-				"Describe your projects, what's in progress, what needs structure. Just write freely — we'll sort it out..."
+			heading: 'Which project would you like to organize?',
+			placeholder: FIRST_PROJECT_PROMPT
 		},
 		plan: {
-			heading: 'What are you trying to accomplish?',
-			placeholder:
-				"Describe your goals, even if they feel vague. We'll help you break them down into concrete steps..."
+			heading: 'What are you working toward?',
+			placeholder: FIRST_PROJECT_PROMPT
 		},
 		unstuck: {
-			heading: "What's on your plate right now?",
-			placeholder:
-				"Just dump everything that's on your mind — work, personal, ideas, worries. We'll help sort it out..."
+			heading: 'Which project feels stuck?',
+			placeholder: FIRST_PROJECT_PROMPT
 		},
 		explore: {
-			heading: "Got anything you're working on?",
-			placeholder:
-				'If you have something in mind, tell us about it. If not, no worries — you can always start with chat later...'
+			heading: 'Try a project you have in mind.',
+			placeholder: FIRST_PROJECT_PROMPT
 		}
 	},
 

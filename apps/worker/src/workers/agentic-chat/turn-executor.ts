@@ -1,4 +1,5 @@
 // apps/worker/src/workers/agentic-chat/turn-executor.ts
+import { workerSourceProvenance } from '../../lib/sourceProvenance';
 import { randomUUID } from 'node:crypto';
 import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime/context';
 import {
@@ -1021,6 +1022,7 @@ export class AgenticChatTurnExecutor {
 				eventPayload: {
 					type: 'turn_phase',
 					turn_phase: stage,
+					workerProvenance: workerSourceProvenance ? { ...workerSourceProvenance } : null,
 					message
 				}
 			},

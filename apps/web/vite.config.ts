@@ -2,6 +2,7 @@
 import { fileURLToPath, URL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { readSourceProvenance } from '../../packages/agentic-chat-runtime/src/provenance';
 import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -60,6 +61,28 @@ export default defineConfig(({ mode }) => {
 		cacheDir,
 
 		plugins: [
+			{
+				name: 'agentic-gate-provenance',
+				configureServer(server) {
+					let provenance: ReturnType<typeof readSourceProvenance> | null = null;
+					try {
+						provenance = readSourceProvenance();
+					} catch {
+						/* source archives have no Git metadata */
+					}
+					server.middlewares.use('/__agentic/provenance', (_req, res) => {
+						res.setHeader('Content-Type', 'application/json');
+						res.end(
+							JSON.stringify({
+								provenance,
+								mutationBatchLaneEnabled:
+									process.env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !==
+									'false'
+							})
+						);
+					});
+				}
+			},
 			sveltekit(),
 			// Gzip compression for production (fallback for older browsers)
 			isProd &&

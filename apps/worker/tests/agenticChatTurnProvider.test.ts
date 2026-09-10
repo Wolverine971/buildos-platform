@@ -1,4 +1,6 @@
 // apps/worker/tests/agenticChatTurnProvider.test.ts
+import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
+// apps/worker/tests/agenticChatTurnProvider.test.ts
 
 import { createHash } from 'node:crypto';
 import {
@@ -11039,6 +11041,57 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
  * wrote the executing calls AFTER the review (F08).
  */
 describe('SHA-bound mutation batch approval', () => {
+	it.each(['global', 'project_create'] as const)(
+		'opens %s on real mutation tools with no contract gate',
+		async (contextType) => {
+			const client = clientWithRounds([
+				[
+					{ type: 'text', content: 'Ready.' },
+					{ type: 'done', finishedReason: 'stop' }
+				]
+			]);
+			const reviewer = clientWithRounds([]);
+			const base = executionInputWithReadSurface(
+				getGatewaySurfaceForContextType(contextType, { mutationBatchLaneEnabled: false })
+			);
+			const input = {
+				...base,
+				requestPayload: {
+					...base.requestPayload,
+					context: { type: contextType, entityId: null, projectId: null }
+				}
+			};
+			const invocation = await new AgenticChatTurnProviderAdapter(
+				{
+					client,
+					semanticReviewer: reviewer,
+					capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+				},
+				2_000,
+				16,
+				{ createOntoProject: true, createOntoTask: true },
+				true
+			).prepare({
+				executionInput: input,
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			await collect(invocation.stream());
+			const opening = client.stream.mock.calls[0]![0];
+			expect(opening.tools.map((tool) => tool.function.name)).toContain(
+				'create_onto_project'
+			);
+			expect(opening.tools.map((tool) => tool.function.name)).not.toContain(
+				'declare_turn_contract'
+			);
+			expect(opening.tools.map((tool) => tool.function.name)).not.toContain(
+				'cancel_turn_contract'
+			);
+			expect(opening).not.toHaveProperty('semanticDispositionGate');
+			expect(opening.toolChoice).toBe('auto');
+		}
+	);
+
 	const PROJECT_ID = 'project-1';
 
 	function batchToolSurface() {

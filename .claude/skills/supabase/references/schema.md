@@ -3,7 +3,7 @@
 Complete column listing for all 246 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-09-09T01:48:53.814Z
+**Schema generated:** 2026-09-10T21:17:20.053Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -52,7 +52,7 @@ actor_id `string?` · created_at `string` · doc_structure `Json` · extraction_
 
 ### users
 
-access_restricted `boolean?` · access_restricted_at `string?` · bio `string?` · created_at `string` · deletion_requested_at `string?` · deletion_scheduled_for `string?` · deletion_status `string?` · email `string` · id `string` · is_admin `boolean` · is_beta_user `boolean?` · last_visit `string?` · name `string?` · onboarding_completed_at `string?` · onboarding_intent `string?` · onboarding_stakes `string?` · onboarding_v2_skipped_calendar `boolean?` · onboarding_v2_skipped_sms `boolean?` · preferences `Json?` · productivity_challenges `Json?` · referrer `string?` · signup_source `string?` · stripe_customer_id `string?` · subscription_plan_id `string?` · subscription_status `string?` · timezone `string` · trial_ends_at `string?` · updated_at `string` · usage_archetype `string?` · username `string?` · utm_campaign `string?` · utm_medium `string?` · utm_source `string?` · voice_narration_enabled `boolean`
+access_restricted `boolean?` · access_restricted_at `string?` · bio `string?` · created_at `string` · deletion_requested_at `string?` · deletion_scheduled_for `string?` · deletion_status `string?` · email `string` · id `string` · is_admin `boolean` · is_beta_user `boolean?` · last_visit `string?` · name `string?` · onboarding_completed_at `string?` · onboarding_intent `string?` · onboarding_project_id `string?` · onboarding_step `number` · onboarding_stakes `string?` · onboarding_v2_skipped_calendar `boolean?` · onboarding_v2_skipped_sms `boolean?` · preferences `Json?` · productivity_challenges `Json?` · referrer `string?` · signup_source `string?` · stripe_customer_id `string?` · subscription_plan_id `string?` · subscription_status `string?` · timezone `string` · trial_ends_at `string?` · updated_at `string` · usage_archetype `string?` · username `string?` · utm_campaign `string?` · utm_medium `string?` · utm_source `string?` · voice_narration_enabled `boolean`
 
 ### visitors
 

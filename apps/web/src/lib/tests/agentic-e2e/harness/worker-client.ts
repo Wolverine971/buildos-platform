@@ -177,6 +177,28 @@ export class AgenticE2EWorkerClient {
 				projectFocus: null
 			})
 		};
+		let preparedPromptKey: string | null = null;
+		if (process.env.AGENTIC_BATTERY && params.sessionId) {
+			const prewarm = await this.#fetch('/api/agent/v2/prewarm', {
+				signal: AbortSignal.timeout(60_000),
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					context_type: normalizedContextType,
+					entity_id: params.entityId ?? null,
+					session_id: sessionId,
+					prepare_prompt: true,
+					lastTurnContext: params.lastTurnContext ?? null
+				})
+			});
+			const payload = await prewarm.json();
+			preparedPromptKey =
+				payload.data?.prepared_prompt?.key ?? payload.prepared_prompt?.key ?? null;
+			if (!prewarm.ok || !preparedPromptKey)
+				throw new Error(
+					'[agentic-e2e] follow-up prewarm did not produce a prepared prompt; refusing cold-path substitution'
+				);
+		}
 		const lease = await requestAgenticChatTransportLease({
 			fetchImpl: this.#fetch,
 			request: {
@@ -211,7 +233,7 @@ export class AgenticE2EWorkerClient {
 				projectFocus: null,
 				lastTurnContext: params.lastTurnContext ?? null,
 				voiceNoteGroupId: null,
-				preparedPromptKey: null
+				preparedPromptKey
 			}
 		});
 		result.timing.responseHeadersMs = performance.now() - requestStartedMs;

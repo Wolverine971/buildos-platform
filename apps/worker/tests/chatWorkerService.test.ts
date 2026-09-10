@@ -1,4 +1,5 @@
 // apps/worker/tests/chatWorkerService.test.ts
+import { workerSourceProvenance } from '../src/lib/sourceProvenance';
 import { Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -42,7 +43,8 @@ describe('dedicated Agentic Chat worker composition', () => {
 			healthy: true,
 			state: 'running',
 			service: 'agentic-chat-worker',
-			release: 'phase-6-test'
+			release: 'phase-6-test',
+			provenance: workerSourceProvenance
 		});
 
 		expect(service.getAddress()).toMatchObject({ port: 4312 });

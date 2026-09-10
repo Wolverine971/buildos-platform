@@ -1,0 +1,81 @@
+# .github/workflows/agentic-chat-gate.yml
+name: Agentic Chat seed-data gate
+on:
+    workflow_dispatch:
+    pull_request:
+        paths:
+            - 'apps/web/src/lib/services/agentic-chat*/**'
+            - 'apps/web/src/routes/api/agent/**'
+            - 'apps/web/src/lib/tests/agentic-e2e/**'
+            - 'apps/web/vite.config.ts'
+            - 'apps/worker/**'
+            - 'packages/**'
+            - 'scripts/agentic/**'
+            - 'supabase/migrations/**'
+            - 'package.json'
+            - 'pnpm-lock.yaml'
+            - '.github/workflows/agentic-chat-gate.yml'
+    push:
+        branches: [main]
+        paths:
+            - 'apps/web/src/lib/services/agentic-chat*/**'
+            - 'apps/web/src/routes/api/agent/**'
+            - 'apps/web/src/lib/tests/agentic-e2e/**'
+            - 'apps/web/vite.config.ts'
+            - 'apps/worker/**'
+            - 'packages/**'
+            - 'scripts/agentic/**'
+            - 'supabase/migrations/**'
+            - 'package.json'
+            - 'pnpm-lock.yaml'
+            - '.github/workflows/agentic-chat-gate.yml'
+permissions:
+    contents: read
+# One dedicated database, one gate at a time. Do not cancel active cleanup.
+concurrency:
+    group: agentic-chat-seed-data-gate
+    cancel-in-progress: false
+jobs:
+    gate:
+        name: Agentic Chat seed-data gate
+        runs-on: ubuntu-latest
+        timeout-minutes: 90
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - name: Prepare isolated test environment
+              env:
+                  GATE_ENV_CONTENT: ${{ secrets.AGENTIC_GATE_ENV }}
+              run: |
+                  python3 - <<'PY'
+                  import os
+                  from pathlib import Path
+                  content = os.environ.get('GATE_ENV_CONTENT', '')
+                  if not content.strip():
+                      raise SystemExit('Configure AGENTIC_GATE_ENV with the isolated test-project environment. See docs/testing/agentic-chat-gate.md')
+                  target = Path(os.environ['RUNNER_TEMP']) / 'agentic-gate.env'
+                  target.write_text(content)
+                  target.chmod(0o600)
+                  for file in ['.env', 'apps/web/.env', 'apps/worker/.env']:
+                      example = Path(file + '.example')
+                      if example.exists(): Path(file).write_text(example.read_text())
+                  with open(os.environ['GITHUB_ENV'], 'a') as env:
+                      env.write(f'AGENTIC_GATE_ENV_FILE={target}\n')
+                  PY
+            - run: pnpm test:agentic:gate
+            - run: pnpm agentic:gate
+              env:
+                  AGENTIC_GATE_REPETITIONS: '3'
+                  AGENTIC_GATE_OUTPUT_DIR: output/agentic-gate/ci
+            - uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: agentic-chat-gate
+                  path: output/agentic-gate/**
+                  if-no-files-found: warn
+                  retention-days: 14

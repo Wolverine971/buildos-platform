@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.test.ts
 import { requireTestValue } from '$lib/test-helpers/require-test-value';
+import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	applyActiveDomainSignalsOverlay,
@@ -319,7 +320,9 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).not.toContain('"parameters"');
 		expect(envelope.toolsSummary.discoveryTools).toEqual(['skill_search', 'domain_search']);
 		expect(envelope.toolsSummary.directTools).toContain('get_workspace_overview');
-		expect(envelope.toolsSummary.directTools).toContain('declare_turn_contract');
+		expect(envelope.toolsSummary.directTools).not.toContain('declare_turn_contract');
+		expect(envelope.toolsSummary.directTools).not.toContain('cancel_turn_contract');
+		expect(envelope.systemPrompt).not.toContain('declare_turn_contract');
 		expect(envelope.toolsSummary.directTools).not.toContain('resolve_libri_resource');
 		expect(envelope.contextInventory.dataSummary.arrayCounts.projects).toBe(1);
 		// F115: the loader no longer builds bundle recent_activity from project
@@ -1583,13 +1586,14 @@ describe('buildLitePromptEnvelope', () => {
 		// creation tools its prose names to be mounted.
 		expect(envelope.toolsSummary.directTools).toEqual(
 			expect.arrayContaining([
-				'declare_turn_contract',
 				'request_turn_clarification',
 				'create_onto_project',
 				'create_onto_goal',
 				'create_onto_task'
 			])
 		);
+		expect(envelope.toolsSummary.directTools).not.toContain('declare_turn_contract');
+		expect(envelope.toolsSummary.directTools).not.toContain('cancel_turn_contract');
 	});
 
 	it('renders the multi-step workflow using only concrete available tool names', () => {
@@ -1609,8 +1613,9 @@ describe('buildLitePromptEnvelope', () => {
 			'The available creation tools do not create plans, documents, milestones, risks, or relationships'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Call declare_turn_contract with one project outcome plus one outcome per requested goal and task'
+			'Call create_onto_project with entities: [] and relationships: [] to create the project'
 		);
+		expect(envelope.systemPrompt).not.toContain('declare_turn_contract');
 		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F11: the focus workflow is four
 		// lines; the shell order, empty arrays, and child-tool list are also on
 		// the worker gate and the tool description, and the state_key vs
@@ -1641,13 +1646,14 @@ describe('buildLitePromptEnvelope', () => {
 		}
 		expect(envelope.toolsSummary.directTools).toEqual(
 			expect.arrayContaining([
-				'declare_turn_contract',
 				'request_turn_clarification',
 				'create_onto_project',
 				'create_onto_goal',
 				'create_onto_task'
 			])
 		);
+		expect(envelope.toolsSummary.directTools).not.toContain('declare_turn_contract');
+		expect(envelope.toolsSummary.directTools).not.toContain('cancel_turn_contract');
 		expect(envelope.sections.map((section) => section.source)).not.toContain(
 			'lite.project_create_domain_profile'
 		);
@@ -1658,6 +1664,25 @@ describe('buildLitePromptEnvelope', () => {
 		});
 		expect(overlaid.sections.map((section) => section.source)).not.toContain(
 			'lite.project_create_domain_profile'
+		);
+	});
+
+	it('retains the declared-contract instructions on the rollback project-create surface', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project_create',
+			entityId: null,
+			projectId: null,
+			projectCreateWorkflow: 'reviewed_shell',
+			tools: getGatewaySurfaceForContextType('project_create', {
+				mutationBatchLaneEnabled: false
+			})
+		});
+
+		expect(envelope.systemPrompt).toContain(
+			'Call declare_turn_contract with one project outcome plus one outcome per requested goal and task'
+		);
+		expect(envelope.toolsSummary.directTools).toEqual(
+			expect.arrayContaining(['declare_turn_contract', 'cancel_turn_contract'])
 		);
 	});
 
@@ -2362,8 +2387,9 @@ describe('audit 2026-09-02 context rendering', () => {
 		);
 		expect(createStrategy?.content).not.toContain('lead-in');
 		expect(createStrategy?.content).toContain(
-			'Call declare_turn_contract for the requested project, goals, and tasks'
+			'Create the project and its requested goals and tasks in the order below'
 		);
+		expect(createStrategy?.content).not.toContain('declare_turn_contract');
 
 		// The web runtime keeps its lead-in coaching and skill pointers.
 		const web = buildLitePromptEnvelope({ contextType: 'project', entityId: 'project-1' });

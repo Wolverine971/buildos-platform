@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/layout/Footer.svelte -->
 <script lang="ts">
+	import { BRAND_TAGLINE, START_PROJECT_CTA } from '$lib/constants/brand';
 	import { BookOpen, Brain, Heart, Linkedin, Shield, Twitter } from '$lib/icons/lucide';
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 	import { requestTrackingPreferences } from '$lib/services/tracking-consent';
@@ -146,7 +147,7 @@
 						<p
 							class="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground lg:mx-0"
 						>
-							Turn messy thinking into structured work with persistent project memory.
+							{BRAND_TAGLINE}
 						</p>
 
 						<div class="mx-auto mt-5 flex max-w-sm flex-col gap-3 sm:flex-row lg:mx-0">
@@ -155,7 +156,7 @@
 								class="pressable inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-5 py-3 text-sm font-semibold tracking-tight text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
 							>
 								<Brain class="h-4 w-4 shrink-0" aria-hidden="true" />
-								Start in chat
+								{START_PROJECT_CTA}
 							</a>
 							<a
 								href="/docs"

@@ -40,7 +40,9 @@
 		"gen:all": "pnpm run gen:types -- --allow-stale && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm run label-paths:changed && pnpm run format:changed && pnpm typecheck",
 		"gen:all:full": "pnpm run gen:types -- --allow-stale && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm run label-paths && pnpm format && pnpm typecheck",
 		"label-paths": "node --import tsx scripts/labelFilePaths.ts",
-		"label-paths:changed": "node --import tsx scripts/labelFilePaths.ts --changed"
+		"label-paths:changed": "node --import tsx scripts/labelFilePaths.ts --changed",
+		"agentic:gate": "node --import tsx scripts/agentic/gate.ts",
+		"test:agentic:gate": "node --import tsx --test scripts/agentic/*.test.ts"
 	},
 	"devDependencies": {
 		"dotenv": "^16.4.5",

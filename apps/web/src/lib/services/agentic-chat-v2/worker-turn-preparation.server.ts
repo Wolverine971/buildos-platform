@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts
 import { randomUUID } from 'node:crypto';
+import { env } from '$env/dynamic/private';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
@@ -373,6 +374,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		typeof sessionIntent.session?.summary === 'string' ? sessionIntent.session.summary : null;
 	const agentMetadata = sessionIntent.session?.agent_metadata ?? sessionIntent.inlineMetadata;
 	const turnPreparation = resolveFastChatTurnPreparation({
+		mutationBatchLaneEnabled: env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false',
 		contextType,
 		entityId,
 		projectId,
@@ -670,8 +672,10 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	// Pending commissions are current session state, not prepared-prompt state.
 	// Append them after either history path so a cached/prepared turn cannot
 	// silently lose an unfinished semantic contract during worker adoption.
+	const historyBeforeSessionState = JSON.stringify(modelHistory);
 	const pendingContractMessage = buildPendingTurnContractSystemMessage(
-		turnPreparation.pendingTurnContract
+		turnPreparation.pendingTurnContract,
+		{ mutationBatchLaneEnabled: env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false' }
 	);
 	if (pendingContractMessage) {
 		modelHistory.push({
@@ -694,6 +698,21 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		});
 	}
 
+	// Prepared lineage is a byte-copy claim, including history counts. Current
+	// session state makes this an admission-owned window even when its base was
+	// cached. Retain the cached prompt/context, but clear every prepared copy claim.
+	if (
+		historySource === 'prepared_prompt' &&
+		JSON.stringify(modelHistory) !== historyBeforeSessionState
+	) {
+		historySource = 'admission_window';
+		preparedPromptId = null;
+		preparedContextPayloadSha256 = null;
+		preparedSurfaceProfile = null;
+		const { sourcePreparedSurface: _source, ...admissionPrepared } = preparedArtifact;
+		preparedArtifact = { ...admissionPrepared, sourcePreparedPromptId: null };
+	}
+
 	// A newly created inline session must stay history/lineage free even when a
 	// stale prepared key or continuity hint was submitted by the browser.
 	if (!sessionIntent.session) {
@@ -714,6 +733,11 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const frozenHistory = freezeHistory(modelHistory);
 	historyState = {
 		...historyState,
+		// continuity_only describes exactly one hint, not a hint plus session state.
+		strategy:
+			historyState.strategy === 'continuity_only' && frozenHistory.length !== 1
+				? 'raw_history'
+				: historyState.strategy,
 		historyForModelCount: frozenHistory.length
 	};
 	const sessionSnapshot = buildWorkerSessionEventSnapshot({

@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/about/+page.svelte -->
 <script lang="ts">
+	import { BRAND_DESCRIPTION, BRAND_EXPLAINER, START_PROJECT_CTA } from '$lib/constants/brand';
 	import { onMount } from 'svelte';
 	import {
 		ArrowRight,
@@ -91,9 +92,9 @@
 
 <SEOHead
 	title="About BuildOS — Turn scattered thinking into structured work"
-	description="BuildOS is a founder-led thinking environment that turns scattered notes, conversations, and project fragments into structured projects with memory."
+	description={BRAND_DESCRIPTION}
 	canonical="https://build-os.com/about"
-	keywords="BuildOS story, DJ Wayne, thinking environment, project memory, structured work, project context"
+	keywords="BuildOS story, DJ Wayne, project workspace, project memory, structured work, project context"
 	author="DJ Wayne"
 	twitterCreator="@djwayne3"
 	jsonLd={{
@@ -103,8 +104,7 @@
 		name: 'BuildOS',
 		url: 'https://build-os.com',
 		logo: DEFAULT_ORGANIZATION_LOGO_IMAGE,
-		description:
-			'Thinking environment that turns scattered project context into structured work with memory.',
+		description: BRAND_DESCRIPTION,
 		foundingDate: '2025-11-01',
 		founder: {
 			'@type': 'Person',
@@ -171,18 +171,17 @@
 				<p
 					class="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
 				>
-					BuildOS is a thinking environment that turns scattered notes, conversations, and
-					project fragments into structured context you can keep building from.
+					{BRAND_EXPLAINER}
 				</p>
 
 				<div class="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
 					<a
 						href="/auth/register"
 						class="pressable inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-accent-foreground shadow-ink transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none sm:w-auto"
-						aria-label="Start in chat with BuildOS"
+						aria-label="Start with one project in BuildOS"
 					>
 						<Users class="h-4 w-4 shrink-0" aria-hidden="true" />
-						Start in chat
+						{START_PROJECT_CTA}
 					</a>
 					<a
 						href="#founder-story"
@@ -258,13 +257,13 @@
 			<header class="mx-auto mb-6 max-w-3xl text-center">
 				<p class="micro-label mb-3 text-accent">The product thesis</p>
 				<h2 id="thesis-heading" class="text-2xl font-bold text-foreground sm:text-3xl">
-					A thinking environment, not another chatbot
+					A conversation you can keep building on
 				</h2>
 				<p
 					class="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base"
 				>
-					A chat box is useful for a session. Complex work needs a system that can
-					remember, structure, and return the work to you.
+					Your notes, tasks, and decisions stay with the project. Tell BuildOS what
+					changed, review the result, and keep working from there.
 				</p>
 			</header>
 
@@ -421,10 +420,10 @@
 					<a
 						href="/auth/register"
 						class="pressable inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-ink transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
-						aria-label="Start in chat with BuildOS"
+						aria-label="Start with one project in BuildOS"
 					>
 						<Users class="h-4 w-4 shrink-0" aria-hidden="true" />
-						Start in chat
+						{START_PROJECT_CTA}
 					</a>
 					<a
 						href="/contact"

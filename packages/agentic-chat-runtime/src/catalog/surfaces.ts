@@ -106,8 +106,7 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	// New-project creation. "Create a project for X" is a workspace-level ask;
 	// before 2026-09-04 only the Project Setup surface mounted the tool and a
 	// General Chat turn asking for one was a dead turn. The tool is
-	// contract-required, so it always runs through declared-contract review and
-	// the shell-first carve-out; the adapter shifts the session into the new
+	// reviewed by the held mutation batch lane (or the rollback contract lane); the adapter shifts the session into the new
 	// project afterwards.
 	'create_onto_project',
 	// Live web research. The background handoff (`delegate_task`) is a
@@ -154,7 +153,7 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 ] as const;
 
 /**
- * Project creation stays a bounded contract-first hot path. The project adapter
+ * Project creation stays a bounded shell-first hot path. The project adapter
  * creates a shell only (goals: 0, tasks: 0), so the independently reviewed
  * goal and task creates are what complete a fully specified creation request
  * after the shell returns its project id. Relationship, document and unrelated
@@ -271,19 +270,28 @@ export function resolveGatewaySurfaceProfileForContextType(
 }
 
 function resolveGatewayDirectToolNamesForProfile(
-	profileName: GatewaySurfaceProfileName
+	profileName: GatewaySurfaceProfileName,
+	options: GatewaySurfaceOptions = {}
 ): readonly string[] {
-	return GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE[profileName];
+	const names = GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE[profileName];
+	return options.mutationBatchLaneEnabled === false
+		? names
+		: names.filter(
+				(name) => name !== 'declare_turn_contract' && name !== 'cancel_turn_contract'
+			);
 }
 
 export function getGatewayDirectToolNamesForProfile(
-	profileName: GatewaySurfaceProfileName
+	profileName: GatewaySurfaceProfileName,
+	options: GatewaySurfaceOptions = {}
 ): string[] {
-	return [...resolveGatewayDirectToolNamesForProfile(profileName)];
+	return [...resolveGatewayDirectToolNamesForProfile(profileName, options)];
 }
 
 type GatewaySurfaceOptions = {
 	leanDiscovery?: boolean;
+	/** Rollback seam. Batch actors propose concrete writes, never the contract DSL. */
+	mutationBatchLaneEnabled?: boolean;
 };
 
 export type GatewayToolMaterializationOptions = {
@@ -322,13 +330,13 @@ export function getGatewaySurfaceForProfile(
 	if (profileName === 'project_create') {
 		return materializeGatewayTools(
 			[],
-			[...resolveGatewayDirectToolNamesForProfile(profileName)]
+			[...resolveGatewayDirectToolNamesForProfile(profileName, options)]
 		).tools;
 	}
 
 	const names = [
 		...extractToolNamesFromDefinitions(getGatewayDiscoveryTools(options)),
-		...resolveGatewayDirectToolNamesForProfile(profileName)
+		...resolveGatewayDirectToolNamesForProfile(profileName, options)
 	].filter(isGatewayToolEnabled);
 	return materializeGatewayTools([], names).tools;
 }

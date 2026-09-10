@@ -55,3 +55,12 @@ lint, and build are in the same weight class. Unbounded fan-out freezes the mach
 4. Simplest abstraction that can absorb the next layer.
 5. Fewer calls, steps, and round trips.
 6. Production hardening after the idea earns it.
+
+## Agentic Chat change sets
+
+After each Agentic Chat change set, run `pnpm agentic:gate` before stacking another
+change set or claiming a live regression is fixed. It runs the Cedar House seed-data
+battery with verified web/worker provenance and three repetitions. Setup and the
+strict pass criteria are in `docs/testing/agentic-chat-gate.md`. A missing isolated
+test database or calendar connection is a blocked/failed gate, never a pass. Preserve
+the scorecard and resolve failures before deleting the contract rollback lane.

@@ -115,6 +115,16 @@ lines.push(
 		`on the \`${scorecard.configuration.executionMode}\` path` +
 		(scorecard.head ? `, HEAD \`${scorecard.head.slice(0, 9)}\`.` : '.')
 );
+lines.push('');
+lines.push(`Source provenance: **${scorecard.provenance?.verified ? 'verified' : 'unverified'}**.`);
+for (const service of ['expected', 'web', 'worker']) {
+	const provenance = scorecard.provenance?.[service];
+	lines.push(
+		`- ${service}: Git \`${provenance?.gitSha ?? 'unknown'}\`, dirty-tree SHA-256 \`${provenance?.dirtyTreeSha256 ?? 'unknown'}\`.`
+	);
+}
+if (scorecard.provenance?.error)
+	lines.push(`Verification error: ${escapeCell(scorecard.provenance.error)}`);
 if (baseline) {
 	lines.push('');
 	lines.push(

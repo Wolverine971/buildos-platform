@@ -15,6 +15,7 @@ import {
 } from '@buildos/agentic-chat-runtime';
 import {
 	AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY,
+	CANCEL_TURN_CONTRACT_TOOL_NAME,
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	type GatewaySurfaceProfileName,
 	getGatewaySurfaceForProfile
@@ -34,6 +35,10 @@ import {
 
 const WORKER_OMITTED = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
 const WORKER_MUTATIONS = new Set<string>(AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1);
+const BATCH_WITHHELD_CONTRACT_TOOL_NAMES = new Set([
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	CANCEL_TURN_CONTRACT_TOOL_NAME
+]);
 const SIDECAR_PROPERTY_NAMES = ['call_ref', 'after'];
 
 /**
@@ -42,9 +47,10 @@ const SIDECAR_PROPERTY_NAMES = ['call_ref', 'after'];
  * is dropped when no worker mutation is mounted.
  */
 function admittedExecutionInputFor(
-	profile: GatewaySurfaceProfileName
+	profile: GatewaySurfaceProfileName,
+	mutationBatchLaneEnabled = true
 ): AgenticChatWorkerExecutionInputV1 {
-	const candidates = getGatewaySurfaceForProfile(profile).filter(
+	const candidates = getGatewaySurfaceForProfile(profile, { mutationBatchLaneEnabled }).filter(
 		(tool) => !WORKER_OMITTED.has(tool.function.name)
 	);
 	const hasMutation = candidates.some((tool) => WORKER_MUTATIONS.has(tool.function.name));
@@ -69,9 +75,12 @@ function bytesOf(tools: readonly unknown[]): number {
 	return Buffer.byteLength(JSON.stringify(tools), 'utf8');
 }
 
-function measure(profile: GatewaySurfaceProfileName) {
-	const input = admittedExecutionInputFor(profile);
-	const admitted = productionToolsFor(input, ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1, true);
+function measure(profile: GatewaySurfaceProfileName, mutationBatchLaneEnabled = true) {
+	const input = admittedExecutionInputFor(profile, mutationBatchLaneEnabled);
+	const projected = productionToolsFor(input, ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1, true);
+	const admitted = mutationBatchLaneEnabled
+		? projected.filter((tool) => !BATCH_WITHHELD_CONTRACT_TOOL_NAMES.has(tool.function.name))
+		: projected;
 	const opening = deferComplexWriteContractForInitialPass(input, admitted, true);
 	return {
 		input,
@@ -126,17 +135,14 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// (~2.2k B after its dead entities item schema was dropped; a General
 		// Chat "create a project" turn was a dead turn before), plus the priority
 		// label vocabulary and duration_minutes descriptions on the task tools.
-		expect(global.openingBytes).toBeLessThanOrEqual(32_700);
-		expect(project.openingBytes).toBeLessThanOrEqual(36_000);
-		// 2026-09-04 postdeploy: admit directed relationships and their symbolic
-		// endpoint schema; lazy contracts still keep the opening pass below 36k.
-		// 2026-09-10 (harness audit): delegate_task moved from global to project
-		// (global opening 31,085 → 26,546 B), list_onto_tasks states its payload
-		// (+303 B) and the create tools carry the realm/work-mode text, while the
-		// contract label descriptions shrank (F06/F07); measured project admitted
-		// 38,300 B, project_create 11,674 B, so the caps hold unchanged.
-		expect(project.admittedBytes).toBeLessThanOrEqual(39_000);
-		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(12_400);
+		// 2026-09-10 (harness audit): delegate_task moved from global to project,
+		// and the batch lane removed the contract DSL from acting surfaces. Measured
+		// after provider projection: global 26,698 B, project 34,502 B and
+		// project_create 7,800 B. Caps retain about five percent headroom.
+		expect(global.openingBytes).toBeLessThanOrEqual(28_100);
+		expect(project.openingBytes).toBeLessThanOrEqual(36_300);
+		expect(project.admittedBytes).toBeLessThanOrEqual(36_300);
+		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_200);
 	});
 
 	it('mounts document reads on the global worker surface', () => {
@@ -150,15 +156,13 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		);
 		expect(names).not.toContain('change_chat_context');
 	});
-	it('defers contracts on stable opening surfaces while admitting project dependencies', () => {
+	it('omits contract controls from batch surfaces while admitting project dependencies', () => {
 		for (const profile of ['global', 'project'] as const) {
 			const surface = measure(profile);
-			expect(surface.opening.map((tool) => tool.function.name)).not.toContain(
-				'declare_turn_contract'
-			);
-			expect(surface.admitted.map((tool) => tool.function.name)).toContain(
-				'declare_turn_contract'
-			);
+			for (const name of BATCH_WITHHELD_CONTRACT_TOOL_NAMES) {
+				expect(surface.opening.map((tool) => tool.function.name)).not.toContain(name);
+				expect(surface.admitted.map((tool) => tool.function.name)).not.toContain(name);
+			}
 		}
 		expect(measure('project').opening.map((tool) => tool.function.name)).toContain(
 			'link_onto_entities'
@@ -171,9 +175,9 @@ describe('Agentic Chat worker-projected surface budget', () => {
 	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F36: the cancel control only acts on
 	// a contract carried forward from a prior turn, so it rides the opening pass
 	// only when admission rendered that pending-contract message.
-	it('withholds cancel_turn_contract from the opening pass unless a contract is pending', () => {
+	it('withholds cancel_turn_contract from rollback openings unless a contract is pending', () => {
 		for (const profile of ['global', 'project'] as const) {
-			const surface = measure(profile);
+			const surface = measure(profile, false);
 			expect(surface.opening.map((tool) => tool.function.name)).not.toContain(
 				'cancel_turn_contract'
 			);
@@ -266,7 +270,7 @@ describe('Agentic Chat worker-projected surface budget', () => {
 	});
 
 	it('attaches scheduling sidecars only to mutation tools of an explicit write pass', () => {
-		const { admitted } = measure('project');
+		const { admitted } = measure('project', false);
 		for (const tool of admitted) {
 			expect(propertyNames(tool), tool.function.name).not.toEqual(
 				expect.arrayContaining(SIDECAR_PROPERTY_NAMES)
@@ -286,6 +290,7 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// Controls and reads are never schedulable.
 		for (const name of [
 			'request_turn_clarification',
+			'declare_turn_contract',
 			'cancel_turn_contract',
 			'search_project'
 		]) {

@@ -1,5 +1,7 @@
+<!-- apps/web/src/lib/components/onboarding-v3/ReadyStep.svelte -->
 <!-- Last review: declare completion only after the server commits it. -->
 <script lang="ts">
+	import { PROJECT_UPDATE_PROMPT } from '$lib/constants/brand';
 	import { onMount, untrack } from 'svelte';
 	import { ArrowRight, CheckCircle, FolderOpen } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -151,8 +153,8 @@
 		</h1>
 		<p class="mt-3 text-base leading-relaxed text-muted-foreground">
 			{projectId
-				? 'Your project is saved. Start today with one clear next move.'
-				: 'Start with an empty workspace. Your first brain dump can become a project whenever you’re ready.'}
+				? 'Your project is saved. Open it and choose your next step.'
+				: 'Start with one project. Tell BuildOS what you’re working on when you’re ready.'}
 		</p>
 	</div>
 
@@ -170,6 +172,15 @@
 				>
 					Your Start Here context is saved for your next session.
 				</p>{/if}
+		</div>
+	{/if}
+	{#if projectId}
+		<div class="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5">
+			<p class="micro-label mb-2 text-accent">When you come back</p>
+			<p class="text-sm leading-relaxed text-foreground">{PROJECT_UPDATE_PROMPT}</p>
+			<p class="mt-2 text-sm text-muted-foreground">
+				Open that same project and continue in its chat.
+			</p>
 		</div>
 	{/if}
 	{#if stats.length}

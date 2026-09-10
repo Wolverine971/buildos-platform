@@ -7,6 +7,10 @@ import {
 	validateTurnInputArtifactV1,
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
+import {
+	buildPendingTurnContractSystemMessage as renderPendingContract,
+	type FastChatPendingTurnContract
+} from '@buildos/agentic-chat-runtime/loop';
 import { senseDomains } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 
 const USER_ID = 'd1000000-0000-4000-8000-000000000001';
@@ -1463,6 +1467,151 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(result.args.p_request_hash).toBe(expectedHash);
 	});
 
+	it.each([
+		['contract', 'raw_history'],
+		['proposal', 'raw_history'],
+		['contract', 'continuity_only'],
+		['proposal', 'continuity_only']
+	])(
+		'downgrades prepared history after appending %s session state to %s',
+		async (kind, strategy) => {
+			if (kind === 'contract') {
+				const pendingTurnContract: FastChatPendingTurnContract = {
+					version: 1,
+					contextType: 'global',
+					projectId: null,
+					originatingTurnRunId: IDS[0]!,
+					createdAt: new Date(NOW).toISOString(),
+					finishedReason: 'mutation_unfulfilled',
+					contract: {
+						version: 1,
+						source: 'declared',
+						outcomes: [
+							{
+								id: 'update-task',
+								action: 'update',
+								entityKind: 'task',
+								targetIds: [IDS[1]!],
+								requiredFields: ['due_at'],
+								minimumSuccessfulEffects: 1
+							}
+						]
+					}
+				};
+				mocks.resolveFastChatTurnPreparation.mockReturnValue({
+					...mocks.resolveFastChatTurnPreparation.getMockImplementation()!(),
+					pendingTurnContract
+				});
+				mocks.buildPendingTurnContractSystemMessage.mockImplementation(
+					renderPendingContract
+				);
+			}
+			const preparedId = 'd8000000-0000-4000-8000-000000000001';
+			const serviceClient = serviceClientWithTables({
+				chat_sessions: [
+					{
+						id: SESSION_ID,
+						user_id: USER_ID,
+						context_type: 'global',
+						entity_id: null,
+						summary: 'Trusted conversation summary',
+						agent_metadata:
+							kind === 'proposal'
+								? {
+										source: 'ai_inbox',
+										inbox_item_id: 'inbox-1',
+										proposal_context: { llm_text: 'Review this proposal' }
+									}
+								: { trusted: true }
+					}
+				],
+				chat_messages: [],
+				chat_message_attachments: [],
+				chat_tool_executions: []
+			});
+			mocks.inspectPreparedPromptAdmissionLineage.mockResolvedValue({
+				id: preparedId,
+				acceptedSurfaceProfile: 'worker_realtime:global'
+			});
+			mocks.inspectPreparedPromptForWorkerAdmission.mockResolvedValue({
+				hit: true,
+				ageSeconds: 3,
+				history: {
+					ok: true,
+					history: [{ role: 'assistant', content: 'Earlier answer' }],
+					state: {
+						strategy,
+						compressed: false,
+						rawHistoryCount: strategy === 'continuity_only' ? 0 : 1,
+						historyForModelCount: 1
+					}
+				},
+				row: {
+					id: preparedId,
+					context_payload: { contextType: 'global', data: { source: 'prepared' } },
+					context_payload_sha256: 'a'.repeat(64),
+					conversation_summary: 'Trusted conversation summary',
+					history_for_model: [{ role: 'assistant', content: 'Earlier answer' }],
+					history_compressed: false,
+					history_strategy: strategy,
+					raw_history_count: strategy === 'continuity_only' ? 0 : 1,
+					history_for_model_count: 1
+				},
+				surface: {
+					system_prompt: 'Prepared system prompt',
+					system_prompt_sha256: 'c'.repeat(64),
+					sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
+				},
+				surfaceKey: 'worker_realtime:global'
+			});
+			const result = await prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: serviceClient as never,
+				userId: USER_ID,
+				command: command({
+					sessionId: SESSION_ID,
+					preparedPromptKey: 'pp_v1.server-trusted-key'
+				}) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: dependencies()
+			});
+
+			expect(result.preparedPromptUsed).toBe(false);
+			expect(result.args).toMatchObject({
+				p_history_source: 'admission_window',
+				p_prepared_prompt_id: null,
+				p_prepared_context_payload_sha256: null,
+				p_prepared_surface_profile: null
+			});
+			expect(result.args.p_artifact_history).toHaveLength(2);
+			if (kind === 'contract') {
+				expect(mocks.buildPendingTurnContractSystemMessage).toHaveBeenCalledWith(
+					expect.objectContaining({ finishedReason: 'mutation_unfulfilled' }),
+					{ mutationBatchLaneEnabled: true }
+				);
+				expect(JSON.stringify(result.args.p_artifact_history)).toContain(
+					'propose concrete mutation tool calls'
+				);
+				expect(JSON.stringify(result.args.p_artifact_history)).not.toContain('Re-declare');
+			}
+			expect(result.args.p_artifact_prepared).toMatchObject({
+				sourcePreparedPromptId: null,
+				systemPrompt: 'Prepared system prompt',
+				historyState: {
+					strategy: 'raw_history',
+					rawHistoryCount: strategy === 'continuity_only' ? 0 : 1,
+					historyForModelCount: 2
+				}
+			});
+			expect(result.args.p_artifact_prepared).not.toHaveProperty('sourcePreparedSurface');
+			expect(mocks.loadFastChatPromptContext).not.toHaveBeenCalled();
+		}
+	);
+
 	it('uses one prepared-admission receipt without repeating access, session, checkpoint, or prepared reads', async () => {
 		const preparedId = 'd8000000-0000-4000-8000-000000000001';
 		const projectId = 'd9000000-0000-4000-8000-000000000001';
@@ -2208,9 +2357,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				surfaceProfile: 'project_create'
 			});
 			expect(admittedToolNames(result as never)).toEqual([
-				'declare_turn_contract',
 				'request_turn_clarification',
-				'cancel_turn_contract',
 				'create_onto_project',
 				'create_onto_goal',
 				'create_onto_task'

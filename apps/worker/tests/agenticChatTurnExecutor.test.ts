@@ -1,4 +1,6 @@
 // apps/worker/tests/agenticChatTurnExecutor.test.ts
+import { workerSourceProvenance } from '../src/lib/sourceProvenance';
+// apps/worker/tests/agenticChatTurnExecutor.test.ts
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
@@ -1884,6 +1886,7 @@ describe('AgenticChatTurnExecutor', () => {
 				event_payload: {
 					type: 'turn_phase',
 					turn_phase: 'acknowledged',
+					workerProvenance: workerSourceProvenance,
 					message: 'Request received. Preparing the workspace context...'
 				}
 			},
@@ -1895,6 +1898,7 @@ describe('AgenticChatTurnExecutor', () => {
 				event_payload: {
 					type: 'turn_phase',
 					turn_phase: 'finalizing',
+					workerProvenance: workerSourceProvenance,
 					message: 'Finalizing the response...'
 				}
 			}

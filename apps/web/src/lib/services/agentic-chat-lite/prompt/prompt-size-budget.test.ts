@@ -297,13 +297,12 @@ describe('total assembled prompt size budget', () => {
 		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(32_000);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
-		// 2026-09-05: declare_turn_contract now includes directed relationship
-		// references and nullable optional labels (4,354 chars / 1,089 estimated
-		// tokens). Pin the identity as well as its tight cap; aggregate and
-		// per-turn budgets above are deliberately unchanged.
+		// 2026-09-10: the batch lane removed the contract DSL from acting-model
+		// surfaces. update_onto_task is now the largest mounted schema at 796
+		// estimated tokens. Pin its identity and retain about 5% headroom.
 		expect(
 			toolSurface.tools.find((tool) => tool.estimatedTokens === largestToolSchemaTokens)?.name
-		).toBe('declare_turn_contract');
-		expect(largestToolSchemaTokens).toBeLessThanOrEqual(1_100);
+		).toBe('update_onto_task');
+		expect(largestToolSchemaTokens).toBeLessThanOrEqual(840);
 	});
 });

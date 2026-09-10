@@ -336,11 +336,13 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			this.mutationCapabilities,
 			Boolean(this.ports.liveVision),
 			Boolean(this.ports.semanticReviewer),
-			input.budget
+			input.budget,
+			this.mutationBatchLaneEnabled
 		);
-		const initialRequest = this.ports.semanticReviewer
-			? (buildProjectCreateInitialContractGateRequest(request) ?? request)
-			: request;
+		const initialRequest =
+			this.ports.semanticReviewer && !this.mutationBatchLaneEnabled
+				? (buildProjectCreateInitialContractGateRequest(request) ?? request)
+				: request;
 		const promptSnapshot = buildPromptSnapshot(initialRequest.messages, initialRequest.tools);
 		let lease;
 		try {

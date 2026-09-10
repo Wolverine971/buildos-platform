@@ -104,5 +104,6 @@ describePostgres('agentic-chat history-state trigger composition contract', () =
 
 	it('preserves lease freshness and copies immutable history evidence atomically', () => {
 		expect(proofOutput).toContain('agentic_chat_history_state_trigger_composition_ok');
+		expect(proofOutput).toContain('agentic_chat_session_state_downgrade_ok');
 	});
 });

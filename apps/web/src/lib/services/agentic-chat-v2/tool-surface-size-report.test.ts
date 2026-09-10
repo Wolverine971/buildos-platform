@@ -34,7 +34,7 @@ describe('tool surface size report', () => {
 		expect(report.totalChars).toBeGreaterThan(0);
 		expect(report.estimatedTokens).toBeGreaterThan(0);
 		expect(report.tools[0]?.chars).toBeGreaterThanOrEqual(report.tools.at(-1)?.chars ?? 0);
-		expect(report.tools.map((tool) => tool.name)).toContain('declare_turn_contract');
+		expect(report.tools.map((tool) => tool.name)).not.toContain('declare_turn_contract');
 		expect(report.tools.map((tool) => tool.name)).not.toContain('skill_load');
 	});
 
@@ -89,7 +89,7 @@ describe('tool surface size report', () => {
 		expect(createProject?.chars).toBeLessThanOrEqual(6200);
 		// 2026-09-08 (F28): declare_read_only_turn was retired from the acting
 		// surface, leaving three controls plus the shell and its child creates.
-		expect(projectCreate.toolCount).toBe(6);
+		expect(projectCreate.toolCount).toBe(4);
 		// 2026-09-04: budget bumped 2500 → 2750 (measured 2,671). create_onto_task
 		// now names the five UI priority labels instead of "1 is highest, 5
 		// lowest" (told only the endpoints, a model writes 1 for "high" and the
@@ -122,7 +122,9 @@ describe('tool surface size report', () => {
 				enum: ['auto', 'none']
 			});
 		}
-		const contract = tools.find((tool) => tool.function?.name === 'declare_turn_contract');
+		const contract = getGatewaySurfaceForProfile('project', {
+			mutationBatchLaneEnabled: false
+		}).find((tool) => tool.function?.name === 'declare_turn_contract');
 		expect(contract?.function?.parameters.properties.outcomes).toMatchObject({
 			type: 'array',
 			items: {

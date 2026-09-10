@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
+const nodeOnlyProductionFiles = new Set(['provenance.ts']);
 const forbiddenProductionImports = [
 	'$app/',
 	'$env/',
@@ -22,7 +23,10 @@ describe('runtime package portability', () => {
 	it('keeps production modules free of host-framework and deployment imports', async () => {
 		const entries = await readdir(sourceDirectory, { recursive: true });
 		const sourceFiles = entries.filter(
-			(file) => file.endsWith('.ts') && !file.endsWith('.test.ts')
+			(file) =>
+				file.endsWith('.ts') &&
+				!file.endsWith('.test.ts') &&
+				!nodeOnlyProductionFiles.has(file)
 		);
 		const productionSource = (
 			await Promise.all(
@@ -33,5 +37,11 @@ describe('runtime package portability', () => {
 		for (const forbiddenImport of forbiddenProductionImports) {
 			expect(productionSource).not.toContain(forbiddenImport);
 		}
+	});
+
+	it('keeps the Node-only provenance entrypoint out of the portable runtime barrel', async () => {
+		const runtimeBarrel = await readFile(join(sourceDirectory, 'index.ts'), 'utf8');
+
+		expect(runtimeBarrel).not.toContain('provenance');
 	});
 });

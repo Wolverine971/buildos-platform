@@ -9,6 +9,7 @@ export const config = {
 };
 
 import type { RequestHandler } from './$types';
+import { env } from '$env/dynamic/private';
 import type {
 	ChatContextType,
 	ChatSession,
@@ -302,6 +303,8 @@ async function buildPreparedPrompt(params: {
 	for (const surfaceProfile of resolvePreparedSurfaceProfiles(params.contextType)) {
 		const selectedTools = applyEmailSurfaceMount(
 			getGatewaySurfaceForProfile(surfaceProfile, {
+				mutationBatchLaneEnabled:
+					env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false',
 				leanDiscovery: FASTCHAT_SCAFFOLD.routing.leanDiscovery
 			}),
 			params.emailToolsMounted

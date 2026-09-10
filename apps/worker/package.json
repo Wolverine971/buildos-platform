@@ -4,7 +4,7 @@
 	"description": "General background queues plus dedicated Agentic Chat and Libri worker services",
 	"main": "dist/index.js",
 	"scripts": {
-		"build": "node ./node_modules/@typescript/native/bin/tsc",
+		"build": "node ./node_modules/@typescript/native/bin/tsc && node --import tsx scripts/stamp-source-provenance.ts",
 		"start": "node dist/index.js",
 		"start:chat": "node dist/chat-worker.js",
 		"start:libri": "node dist/libri-worker.js",

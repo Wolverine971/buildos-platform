@@ -8,6 +8,7 @@
 import type { Scenario } from '../../harness/types';
 import {
 	assertIsoDate,
+	assertNoMutations,
 	assertOnlyAllowedRowFieldsChanged,
 	assertToolCalled,
 	assertTurnRunCompleted,
@@ -99,6 +100,23 @@ export const cedarCase04NarrowUpdateScenario: Scenario = {
 					ctx,
 					seed.projectId!,
 					'the prompt said "do not create another task or a calendar event"'
+				);
+				await assertWorkerLaneOnly(turn, ctx);
+			}
+		},
+		{
+			label: 'prepared follow-up after the update',
+			contextType: 'project',
+			entityIdFromSeed: (seed) => seed.projectId,
+			message:
+				'Read back the cabinet task due date and estimate from its saved record. Do not make changes.',
+			assert: async (turn, ctx, seed) => {
+				assertTurnSucceeded(turn);
+				assertNoMutations(turn, 'the prompt explicitly forbids changes');
+				await assertNoCalendarSideEffects(
+					ctx,
+					seed.projectId!,
+					'prepared follow-up is read-only'
 				);
 				await assertWorkerLaneOnly(turn, ctx);
 			}

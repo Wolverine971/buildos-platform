@@ -1,6 +1,7 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/worker-client.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+	AgenticE2EWorkerClient,
 	createAuthenticatedHarnessFetch,
 	HARNESS_EXECUTION_MODE,
 	requireAdvertisedMutationTools,
@@ -18,7 +19,36 @@ describe('agentic E2E worker client boundaries', () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.unstubAllGlobals();
+		vi.unstubAllEnvs();
 		delete process.env.AGENTIC_E2E_EXECUTION_MODE;
+	});
+
+	it('requires a prepared key before a battery follow-up can negotiate admission', async () => {
+		vi.stubEnv('AGENTIC_BATTERY', 'cedar-house');
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			Response.json({ data: { prepared_prompt: null } })
+		);
+		const client = new AgenticE2EWorkerClient({
+			userId: 'test-user',
+			fetchImpl,
+			admin: {},
+			runtime: {},
+			realtimeClient: {}
+		} as never);
+		await expect(
+			client.runTurn({
+				message: 'Read the saved task',
+				contextType: 'project',
+				entityId: 'project-1',
+				sessionId: 'session-1'
+			})
+		).rejects.toThrow('refusing cold-path substitution');
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(fetchImpl.mock.calls[0]?.[0]).toBe('/api/agent/v2/prewarm');
+		expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject({
+			session_id: 'session-1',
+			prepare_prompt: true
+		});
 	});
 
 	it('pins the harness to the worker lane regardless of the retired env override', () => {

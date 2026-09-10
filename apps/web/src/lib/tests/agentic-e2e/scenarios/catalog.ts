@@ -25,7 +25,7 @@ import { toolGraphParallelReadsScenario } from './tool-graph-parallel-reads.scen
 import { readDefaultGlobalStatusScenario } from './read-default-global-status.scenario';
 // Cedar House battery — replay of the 2026-09-03 adversarial browser assessment
 // (artifacts/agentic-chat-audit-2026-09-03.md). Select with AGENTIC_BATTERY=cedar-house.
-// Cases 10-12 (calendar) are pending; see ./cedar-house/cases-10-to-12-calendar.pending.ts.
+// Case 12 (external event creation) remains outside the read-only battery.
 import { cedarCase01ProjectCreateScenario } from './cedar-house/case-01-project-create.scenario';
 import { cedarCase02TaskBatchScenario } from './cedar-house/case-02-task-batch.scenario';
 import { cedarCase03NoDuplicateScenario } from './cedar-house/case-03-no-duplicate.scenario';
@@ -35,6 +35,8 @@ import { cedarCase06DependencyConflictScenario } from './cedar-house/case-06-dep
 import { cedarCase07DocumentCreateScenario } from './cedar-house/case-07-document-create.scenario';
 import { cedarCase08DocumentEditScenario } from './cedar-house/case-08-document-edit.scenario';
 import { cedarCase09HostileSourceScenario } from './cedar-house/case-09-hostile-source.scenario';
+import { cedarCase10CalendarAvailabilityScenario } from './cedar-house/case-10-calendar-availability.scenario';
+import { cedarCase11DstValidationScenario } from './cedar-house/case-11-dst-validation.scenario';
 import { cedarCase13ColdRetrievalScenario } from './cedar-house/case-13-cold-retrieval.scenario';
 import { cedarCase14GroundedStatusScenario } from './cedar-house/case-14-grounded-status.scenario';
 
@@ -68,6 +70,8 @@ export const scenarioCatalog: Scenario[] = [
 	cedarCase07DocumentCreateScenario,
 	cedarCase08DocumentEditScenario,
 	cedarCase09HostileSourceScenario,
+	cedarCase10CalendarAvailabilityScenario,
+	cedarCase11DstValidationScenario,
 	cedarCase13ColdRetrievalScenario,
 	cedarCase14GroundedStatusScenario
 ];

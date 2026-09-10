@@ -5,6 +5,7 @@
 // here instead of being discovered mid-battery.
 import { describe, expect, it } from 'vitest';
 
+import { hasCompleteCalendarCoverage } from './case-10-calendar-availability.scenario';
 import { scenarioCatalog } from '../catalog';
 import { selectBattery } from '../../harness/battery';
 import { HARNESS_TIMEZONE, zonedEndOfDay, zonedStartOfDay } from '../../harness/timezone';
@@ -24,7 +25,7 @@ import { CEDAR_HOUSE_PENDING_CALENDAR_CASES } from './cases-10-to-12-calendar.pe
 
 const BATTERY = selectBattery(scenarioCatalog, 'cedar-house');
 /** Cases 10-12 are the calendar arm and join at stage S4. */
-const EXPECTED_CASES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14];
+const EXPECTED_CASES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14];
 
 function nyCivilDate(instant: string): string {
 	return new Intl.DateTimeFormat('en-CA', {
@@ -36,7 +37,29 @@ function nyCivilDate(instant: string): string {
 }
 
 describe('cedar-house battery registration', () => {
-	it('registers exactly the eleven built cases', () => {
+	it('grades real source-aware calendar coverage without crediting an empty or failed read', () => {
+		expect(
+			hasCompleteCalendarCoverage([
+				{
+					result: {
+						google_read: {
+							coverage: 'complete',
+							source_count: 2,
+							successful_source_count: 2
+						}
+					}
+				}
+			])
+		).toBe(true);
+		for (const google_read of [
+			{ coverage: 'complete', source_count: 0, successful_source_count: 0 },
+			{ coverage: 'degraded', source_count: 2, successful_source_count: 1 },
+			{ coverage: 'unavailable', source_count: 1, successful_source_count: 0 }
+		])
+			expect(hasCompleteCalendarCoverage([{ result: { google_read } }])).toBe(false);
+	});
+
+	it('registers exactly the thirteen built cases', () => {
 		expect(BATTERY).toHaveLength(EXPECTED_CASES.length);
 		expect(BATTERY.map((scenario) => scenario.batteryCase)).toEqual(EXPECTED_CASES);
 	});
@@ -86,9 +109,7 @@ describe('cedar-house battery registration', () => {
 	});
 
 	it('documents the calendar cases that are not built yet', () => {
-		expect(CEDAR_HOUSE_PENDING_CALENDAR_CASES.map((entry) => entry.batteryCase)).toEqual([
-			10, 11, 12
-		]);
+		expect(CEDAR_HOUSE_PENDING_CALENDAR_CASES.map((entry) => entry.batteryCase)).toEqual([12]);
 		const registered = new Set(BATTERY.map((scenario) => scenario.batteryCase));
 		for (const pending of CEDAR_HOUSE_PENDING_CALENDAR_CASES) {
 			expect(registered.has(pending.batteryCase)).toBe(false);

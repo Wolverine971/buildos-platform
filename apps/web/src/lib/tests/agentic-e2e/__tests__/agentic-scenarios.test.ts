@@ -6,6 +6,12 @@
 // fuzzy scenarios. It COSTS MONEY and requires a running dev server
 // (`pnpm dev --filter=@buildos/web`). Excluded from `pnpm test`; run with
 // `pnpm --filter @buildos/web test:agentic`.
+import { readSourceProvenance } from '@buildos/agentic-chat-runtime/provenance';
+import {
+	verifyBatteryServices,
+	verifyTurnWorkerProvenance,
+	type BatteryProvenance
+} from '../harness/provenance';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadHarnessEnv } from '../harness/env';
 import { loginAndGetCookie } from '../harness/auth';
@@ -66,6 +72,7 @@ const PHASE0_OUTPUT_PATH =
 // independently of Phase 0 evidence capture — which refuses a dirty tree and so
 // cannot be the only way to score a run during ordinary development.
 const BATTERY = process.env.AGENTIC_BATTERY?.trim() || null;
+let batteryProvenance: BatteryProvenance | null = null;
 const BATTERY_OUTPUT_PATH =
 	process.env.AGENTIC_BATTERY_OUTPUT_PATH?.trim() ||
 	`/tmp/buildos-agentic-battery-${HARNESS_RUN_ID}.json`;
@@ -108,6 +115,16 @@ function requireWorkerClient(): AgenticE2EWorkerClient {
 beforeAll(async () => {
 	const env = loadHarnessEnv();
 	phase0BaseUrl = env.baseUrl;
+	if (BATTERY) {
+		batteryProvenance = {
+			expected: readSourceProvenance(),
+			worker: null,
+			web: null,
+			verified: false,
+			error: null
+		};
+		await verifyBatteryServices(batteryProvenance, env.baseUrl, env.workerHealthUrl);
+	}
 	if (PHASE0_CAPTURE) {
 		phase0Repository = readPhase0RepositoryState();
 		if (phase0Repository.dirty) {
@@ -181,6 +198,14 @@ afterAll(async () => {
 		}
 	}
 	if (batteryRecorder && BATTERY) {
+		if (batteryProvenance?.verified) {
+			try {
+				const env = loadHarnessEnv();
+				await verifyBatteryServices(batteryProvenance, env.baseUrl, env.workerHealthUrl);
+			} catch (error) {
+				phase0FatalCaptureErrors.push(String(error));
+			}
+		}
 		try {
 			let head: string | null = null;
 			try {
@@ -192,7 +217,8 @@ afterAll(async () => {
 				runId: HARNESS_RUN_ID,
 				baseUrl: phase0BaseUrl,
 				executionMode: EXECUTION_MODE,
-				head
+				head,
+				provenance: batteryProvenance
 			});
 			writeBatteryScorecard(BATTERY_OUTPUT_PATH, scorecard);
 			console.info(
@@ -203,6 +229,7 @@ afterAll(async () => {
 					`${BATTERY_OUTPUT_PATH}`
 			);
 		} catch (error) {
+			phase0FatalCaptureErrors.push(String(error));
 			console.error(
 				`[agentic-e2e] could not write the battery scorecard: ${
 					error instanceof Error ? error.message : String(error)
@@ -244,7 +271,7 @@ afterAll(async () => {
 		const swept = await sweepOrphanProjects(ctx.db);
 		if (swept > 0) console.warn(`[agentic-e2e] afterAll swept ${swept} leftover project(s)`);
 	}
-	if (PHASE0_CAPTURE && phase0FatalCaptureErrors.length > 0) {
+	if ((PHASE0_CAPTURE || BATTERY) && phase0FatalCaptureErrors.length > 0) {
 		throw new Error(
 			`[agentic-e2e] Phase 0 evidence capture failed: ${phase0FatalCaptureErrors.join(' | ')}`
 		);
@@ -337,6 +364,23 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 							await checkTurnBeforeFollowupRelease({
 								hasFollowup: turnIndex < scenario.turns.length - 1,
 								assertTurn: async () => {
+									if (
+										batteryProvenance &&
+										result.streamRunId &&
+										result.completed
+									) {
+										try {
+											await verifyTurnWorkerProvenance(
+												c.db.admin,
+												result.streamRunId,
+												batteryProvenance.expected
+											);
+										} catch (error) {
+											batteryProvenance.verified = false;
+											batteryProvenance.error = String(error);
+											throw error;
+										}
+									}
 									await turn.assert(result, c, seed);
 									if (!result.streamRunId) {
 										throw new Error(
@@ -391,6 +435,8 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 											scenario: scenario.id,
 											turn: turnIndex + 1,
 											streamRunId: result.streamRunId,
+											durationMs: result.timing.totalDurationMs,
+											toolCallCount: result.toolCalls.length,
 											...attribution
 										})
 									);
@@ -428,6 +474,8 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 														turnIndex: turnIndex + 1,
 														turnLabel: turn.label ?? null,
 														streamRunId: result.streamRunId,
+														durationMs: result.timing.totalDurationMs,
+														toolCallCount: result.toolCalls.length,
 														resultClass: classifyPhase0TurnResult({
 															result,
 															// Wait for a terminal row: a still-

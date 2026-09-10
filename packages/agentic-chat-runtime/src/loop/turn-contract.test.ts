@@ -2417,6 +2417,12 @@ describe('turn contract symbolic references (label / parent_label)', () => {
 			projectId: 'p'
 		});
 		const message = buildPendingTurnContractSystemMessage(pending);
+		const batchMessage = buildPendingTurnContractSystemMessage(pending, {
+			mutationBatchLaneEnabled: true
+		});
+		expect(batchMessage).toContain('propose concrete mutation tool calls');
+		expect(batchMessage).not.toContain('Re-declare');
+		expect(batchMessage).not.toContain('cancel_turn_contract');
 		expect(message).not.toBeNull();
 		expect(isPendingTurnContractSystemMessage(message!)).toBe(true);
 		expect(isPendingTurnContractSystemMessage(`\n${message!}`)).toBe(true);

@@ -1,4 +1,5 @@
 // apps/worker/src/lib/chatWorkerService.ts
+import { workerSourceProvenance } from './sourceProvenance';
 import type { AddressInfo } from 'node:net';
 import { type Server, createServer } from 'node:http';
 import express, { type Express } from 'express';
@@ -48,6 +49,7 @@ export type ChatWorkerServiceHealth = {
 	reason?: string;
 	service: string;
 	release: string;
+	provenance: typeof workerSourceProvenance;
 	checks: ReturnType<typeof buildAgenticChatOperationalHealthChecks>;
 	agenticChat: AgenticChatBootstrapHealth;
 };
@@ -113,6 +115,7 @@ export class ChatWorkerService {
 			...(reason ? { reason } : {}),
 			service: this.options.serviceName,
 			release: this.options.release,
+			provenance: workerSourceProvenance,
 			checks: buildAgenticChatOperationalHealthChecks(
 				agenticChat,
 				this.options.eventLoopLagMonitor.getSnapshot()
@@ -147,6 +150,9 @@ export class ChatWorkerService {
 				timestamp: new Date().toISOString(),
 				service: health.service,
 				release: health.release,
+				provenance: health.provenance,
+				mutationBatchLaneEnabled:
+					process.env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false',
 				runtimeState: health.state,
 				...(health.reason ? { reason: health.reason } : {}),
 				checks: health.checks,

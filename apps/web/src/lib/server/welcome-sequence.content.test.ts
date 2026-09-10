@@ -202,26 +202,16 @@ describe('welcome sequence content', () => {
 			  {
 			    "body": "Hi Alex,
 
-			Welcome to BuildOS.
+			Welcome to BuildOS. A project workspace you can talk to.
 
-			The best way to understand it is not by reading about it. It is by using it once.
+			Tell it what you are working on. BuildOS organizes your notes, tasks, and next steps.
 
-			Start with the mess in your head:
-			- a project you are trying to move forward
-			- a pile of ideas you have not organized yet
-			- something you feel stuck on
-			- a bunch of loose notes you do not want to lose
+			Start with this:
+			"I'm working on ____. Here's what I have so far. Here's where I'm stuck."
 
-			Open BuildOS and talk through it the way you naturally would. Do not clean it up first.
+			Paste any rough notes you already have. Then open the project to review the tasks and documents it creates.
 
-			That is the point.
-
-			BuildOS is built to take rough input and turn it into structure you can actually work from.
-
-			Start here:
-			Start your first project: https://build-os.com/onboarding
-
-			If you reply with what you are trying to build, I will tell you the fastest way to start it in BuildOS.
+			Start with one project: https://build-os.com/onboarding
 
 			DJ",
 			    "branchKey": "welcome",
@@ -231,122 +221,91 @@ describe('welcome sequence content', () => {
 			  {
 			    "body": "Hi Alex,
 
-			If you opened BuildOS and thought "I should come back when I can explain this better," do not do that.
+			Pick one thing you are working on: a book, a video, a launch, or a project of your own.
 
-			A good first session sounds more like this:
+			Describe it like this:
+			"I'm working on ____. Here's what I have so far. Here's where I'm stuck."
 
-			"I am trying to [goal]. These are the things already in motion. These are the loose ends. This is what is blocking me. These are the things I do not want to forget."
+			If you came to BuildOS to turn the thing you are trying to build into a real plan, start there.
 
-			If you came to BuildOS to turn the thing you are trying to build into a real plan, use that as your starting point.
+			BuildOS turns that conversation into a project with tasks and documents you can open and edit.
 
-			You do not need:
-			- a polished plan
-			- a clean list
-			- the right format
-
-			You just need a real starting point.
-
-			Open BuildOS and give it the messy version. Let the system do the organizing after.
-
-			Open BuildOS: https://build-os.com/onboarding
+			Start with one project: https://build-os.com/onboarding
 
 			DJ",
 			    "branchKey": "no_project",
 			    "label": "email_2/no_project",
-			    "subject": "What to bring to your first BuildOS session",
+			    "subject": "Bring the rough notes you already have",
 			  },
 			  {
 			    "body": "Hi Alex,
 
-			Nice. You already got something into BuildOS, which is usually the hardest part.
+			You have started a project in BuildOS. Give it one update next.
 
-			One thing most tools get wrong: they make you maintain a clean system forever. BuildOS is the opposite. It gets more useful the more real work you throw at it.
+			Tell BuildOS one thing that changed: something you finished, a new idea, or a deadline that moved.
 
-			A few ways people make it click in the first week:
-			- Connect your calendar so deadlines and time context land inside the project instead of living in a separate place.
-			- Turn on the daily brief so the system shows back up for you on days you would have otherwise forgotten.
-			- Add a second project. Personal, side work, something you have been putting off. One rough dump is enough.
-			- Re-open the project you already started and add whatever changed since last time. The second session is where BuildOS starts to click.
+			Open the project chat and describe the change you want. Then open the task or document to check the result.
 
-			You do not have to do all of these. Pick the one closest to what you actually need this week.
+			Keep working in that same project as your plans develop.
 
-			Connect your calendar: https://build-os.com/profile?tab=calendar
-
-			Or just reply and tell me what you are building. I will tell you the fastest way to keep it moving in BuildOS.
+			Re-open your project: https://build-os.com/projects/project-1
 
 			DJ",
 			    "branchKey": "already_created_project",
 			    "label": "email_2/already_created_project",
-			    "subject": "You got your first project in. Here is what to do next.",
+			    "subject": "Tell your project what changed",
 			  },
 			  {
 			    "body": "Hi Alex,
 
-			Most tools make you start from zero.
+			Your first message can be the rough version of what you are trying to do.
 
-			You open a blank workspace, stare at it for a minute, and then put the work off because you are still the one responsible for turning the mess into structure.
+			"I'm working on ____. Here's what I have so far. Here's where I'm stuck."
 
-			That is the part BuildOS is trying to remove.
+			After BuildOS creates the project, open a task or document. If something needs changing, tell it in chat.
 
-			You do not need a polished plan before you start.
-
-			You need one place where you can say the messy version first and get something usable back.
-
-			Open BuildOS, dump what is in your head, and let the system turn it into a project you can keep building on.
-
-			Open BuildOS: https://build-os.com/onboarding
+			Start with one project: https://build-os.com/onboarding
 
 			DJ",
 			    "branchKey": "no_project",
 			    "label": "email_3/no_project",
-			    "subject": "Why BuildOS works better than another blank workspace",
+			    "subject": "One conversation to start your project",
 			  },
 			  {
 			    "body": "Hi Alex,
 
-			You already got something into BuildOS. Good.
+			You have already created a project in BuildOS.
 
-			The next step is finishing the setup that keeps you from starting from zero again.
+			Finish the remaining onboarding steps, then open that project. Calendar and notification connections are optional.
 
-			When you come back to a project, you should not have to rebuild the context in your head first.
+			Tell BuildOS one thing that changed: something you finished, a new idea, or a deadline that moved.
 
-			Finishing setup is what keeps that context attached to the work, so your next session starts with something real instead of another blank page.
-
-			Finish onboarding, turn on one follow-through channel, and reopen the project you started.
+			Your next conversation can build on the work you have already saved.
 
 			Finish setup: https://build-os.com/onboarding
 
 			DJ",
 			    "branchKey": "finish_setup",
 			    "label": "email_3/finish_setup",
-			    "subject": "Most tools make you start from zero",
+			    "subject": "Your project is saved. Pick up from there.",
 			  },
 			  {
 			    "body": "Hi Alex,
 
-			Most tools make you maintain the system.
+			Open the project you started and look at its notes and unfinished tasks.
 
-			You write notes in one place, tasks in another, talk to AI in another, and then you become the person responsible for stitching all of it back together.
+			Tell BuildOS one thing that changed: something you finished, a new idea, or a deadline that moved.
 
-			That is the part BuildOS is trying to remove.
+			Use the project chat to make the update, check the result, and ask what to tackle next.
 
-			When you talk through messy work in BuildOS, the goal is not just to generate text once.
-
-			The goal is to create a project you can keep building on without starting from zero every time.
-
-			Try this:
-			1. Open the project you already started
-			2. Add whatever changed since the last time you touched it
-			3. Ask what the next move should be
-
-			That second session is where BuildOS starts to make sense.
+			That is the loop: start a project, update it as you work, and come back to keep going.
 
 			Re-open your project: https://build-os.com/projects/project-1
 
 			DJ",
 			    "branchKey": "reopen_project",
 			    "label": "email_3/reopen_project",
-			    "subject": "Most tools make you start from zero",
+			    "subject": "Pick up where you left off",
 			  },
 			  {
 			    "body": "Hi Alex,

@@ -923,14 +923,17 @@ export function buildFastChatPendingTurnContract(params: {
 const PENDING_TURN_CONTRACT_MESSAGE_OPEN_TAG = '<pending_turn_contract>';
 
 export function buildPendingTurnContractSystemMessage(
-	pending: FastChatPendingTurnContract | null | undefined
+	pending: FastChatPendingTurnContract | null | undefined,
+	options: { mutationBatchLaneEnabled?: boolean } = {}
 ): string | null {
 	if (!pending) return null;
 	return [
 		PENDING_TURN_CONTRACT_MESSAGE_OPEN_TAG,
 		'The prior turn ended before these user-commissioned durable outcomes were fulfilled.',
 		JSON.stringify(pending.contract),
-		'Continue them in this turn. Re-declare the unfinished outcomes alongside any reads, then complete them with durable write effects. If the user explicitly cancels or supersedes this prior commission, call cancel_turn_contract instead and do not perform the cancelled writes. Do not claim completion from prose or read results.',
+		options.mutationBatchLaneEnabled
+			? 'Follow the current user request. For still-commissioned unfinished outcomes, propose concrete mutation tool calls on the ordinary surface; the worker handles review. Respect any cancellation or superseding request, and report completion only from durable write receipts.'
+			: 'Continue them in this turn. Re-declare the unfinished outcomes alongside any reads, then complete them with durable write effects. If the user explicitly cancels or supersedes this prior commission, call cancel_turn_contract instead and do not perform the cancelled writes. Do not claim completion from prose or read results.',
 		'</pending_turn_contract>'
 	].join('\n');
 }

@@ -28,14 +28,23 @@ describe('resolveFastChatTurnPreparation', () => {
 
 		expect(result.selectedSurfaceProfile).toBe('project_create');
 		expect(toolNames(result)).toEqual([
-			'declare_turn_contract',
 			'request_turn_clarification',
-			'cancel_turn_contract',
 			'create_onto_project',
 			'create_onto_goal',
 			'create_onto_task'
 		]);
 		expect(toolNames(result)).not.toContain('link_onto_entities');
+	});
+
+	it('restores the contract controls when the batch lane is explicitly disabled', () => {
+		const result = resolveFastChatTurnPreparation({
+			contextType: 'project_create',
+			agentMetadata: null,
+			contextShiftHintTtlMs: 120_000,
+			mutationBatchLaneEnabled: false
+		});
+		expect(toolNames(result)).toContain('declare_turn_contract');
+		expect(toolNames(result)).toContain('cancel_turn_contract');
 	});
 
 	it('uses stable project capabilities without classifying message text', () => {
@@ -60,7 +69,7 @@ describe('resolveFastChatTurnPreparation', () => {
 		expect(result.turnDomainSensing).toBeNull();
 		expect(result.previousDomainState).toBeNull();
 		expect(result.selectedSurfaceProfile).toBe('project');
-		expect(toolNames(result)).toContain('declare_turn_contract');
+		expect(toolNames(result)).not.toContain('declare_turn_contract');
 		expect(toolNames(result)).toContain('update_onto_task');
 		expect(result.cacheKey).toBe('v2|project|project-1|none|none');
 		expect(result.toolSelectionMs).toBe(7);

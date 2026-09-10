@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 export const AGENTIC_CHAT_RUNTIME_SOURCE_ENTRYPOINTS = {
 	'@buildos/agentic-chat-runtime': './src/index.ts',
+	'@buildos/agentic-chat-runtime/provenance': './src/provenance.ts',
 	'@buildos/agentic-chat-runtime/catalog': './src/catalog/index.ts',
 	'@buildos/agentic-chat-runtime/context': './src/context/index.ts',
 	'@buildos/agentic-chat-runtime/loop': './src/loop/index.ts',

@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/marketing-assets/+page.svelte -->
 <script lang="ts">
+	import { BRAND_TAGLINE, BRAND_EXPLAINER } from '$lib/constants/brand';
 	import {
 		ArrowDown,
 		ArrowUpRight,
@@ -149,9 +150,7 @@
 				fetchpriority="high"
 			/>
 			<div class="cover-bottom">
-				<span>Turn messy thinking into structured work.</span><span class="cover-index"
-					>IDENTITY / 01</span
-				>
+				<span>{BRAND_TAGLINE}</span><span class="cover-index">IDENTITY / 01</span>
 			</div>
 		</div>
 		<a class="cover-parts" href="#separated" onclick={() => (category = 'all')}>
@@ -430,17 +429,15 @@
 					</p>
 				</div>
 				<div class="message-card">
-					<p class="eyebrow">The promise</p>
-					<blockquote>Turn messy thinking<br />into structured work.</blockquote>
+					<p class="eyebrow">The description</p>
+					<blockquote>{BRAND_TAGLINE}</blockquote>
 					<button
 						class="text-link"
-						onclick={() =>
-							copy('Turn messy thinking into structured work.', 'Brand promise')}
+						onclick={() => copy(BRAND_TAGLINE, 'Product description')}
 						><Copy size={14} aria-hidden="true" /> Copy the line</button
 					>
 					<p>
-						BuildOS is a thinking environment for people making complex things. The
-						project remembers what matters.
+						{BRAND_EXPLAINER}
 					</p>
 				</div>
 			</div>

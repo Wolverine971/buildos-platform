@@ -48,11 +48,17 @@
 			"development": "./src/tools/milestone-state.ts",
 			"import": "./dist/tools/milestone-state.mjs",
 			"require": "./dist/tools/milestone-state.js"
+		},
+		"./provenance": {
+			"types": "./dist/provenance.d.ts",
+			"development": "./src/provenance.ts",
+			"import": "./dist/provenance.mjs",
+			"require": "./dist/provenance.js"
 		}
 	},
 	"scripts": {
-		"build": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
-		"build:types": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
+		"build": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts src/provenance.ts --format cjs,esm --dts --sourcemap",
+		"build:types": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts src/provenance.ts --format cjs,esm --dts --sourcemap",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",

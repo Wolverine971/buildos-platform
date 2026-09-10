@@ -3,9 +3,15 @@
   Homepage redesign — preview at /landing-v2
   Goal: make the path from messy input to a durable project obvious,
   using real product proof and one restrained visual language.
-  Strategy: docs/marketing/strategy/buildos-positioning-and-homepage-rewrite-2026-05-07.md
+  Strategy: docs/marketing/strategy/project-workspace-rollout-2026-09-10.md
 -->
 <script lang="ts">
+	import {
+		BRAND_TAGLINE,
+		BRAND_EXPLAINER,
+		START_PROJECT_CTA,
+		PROJECT_UPDATE_PROMPT
+	} from '$lib/constants/brand';
 	import { onMount } from 'svelte';
 	import {
 		FolderKanban,
@@ -18,7 +24,6 @@
 		ArrowRight,
 		ArrowDown,
 		CircleCheck,
-		Circle,
 		Mail
 	} from '$lib/icons/lucide';
 
@@ -126,16 +131,15 @@
 				</div>
 
 				<h1
-					class="text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl md:text-6xl"
+					class="text-balance text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl md:text-6xl"
 				>
-					Turn messy thinking into a working project.
+					{BRAND_TAGLINE}
 				</h1>
 
 				<p
 					class="mx-auto max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
 				>
-					Type it, paste it, or say it out loud. BuildOS turns the raw version into tasks,
-					docs, and a clear next step.
+					{BRAND_EXPLAINER}
 				</p>
 
 				<div class="flex flex-wrap items-center justify-center gap-3 pt-1">
@@ -143,7 +147,7 @@
 						href="/auth/register"
 						class="pressable rounded-md bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-ink transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
 					>
-						Start in chat
+						{START_PROJECT_CTA}
 					</a>
 					<a
 						href="#walkthrough"
@@ -166,7 +170,7 @@
 				class="mt-12 scroll-mt-4 overflow-hidden rounded-lg border border-border bg-card shadow-ink sm:mt-16"
 			>
 				<div class="border-b border-border px-4 py-6 text-center sm:px-6">
-					<p class="micro-label text-accent">From brain dump to project</p>
+					<p class="micro-label text-accent">Start a project</p>
 					<h2 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
 						One message in. A working project out.
 					</h2>
@@ -176,7 +180,9 @@
 						BuildOS creates the structure while you watch, then gives you a project you
 						can keep using.
 					</p>
-					<p class="micro-label mt-3 text-muted-foreground">Real BuildOS screenshots</p>
+					<p class="micro-label mt-3 text-muted-foreground">
+						Real BuildOS screenshots · example book project
+					</p>
 				</div>
 
 				<div>
@@ -193,7 +199,7 @@
 								Tell BuildOS what you're making.
 							</h3>
 							<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
-								Type, paste, or talk.
+								Start with rough notes or a message.
 							</p>
 						</div>
 
@@ -363,92 +369,9 @@
 
 				<div class="border-t border-border bg-background px-4 py-5 text-center sm:px-6">
 					<p class="mx-auto max-w-3xl text-base font-semibold text-foreground sm:text-lg">
-						The result is a project—not another chat thread.
+						Open the tasks and documents your conversation created.
 					</p>
 				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- ─── §02 two ways to use BuildOS ─────────────────────────────── -->
-	<section id="split" class="border-b border-border bg-card/30">
-		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
-			<div class="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
-				<p class="micro-label text-muted-foreground">Built for both</p>
-				<h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
-					Use it yourself. Bring agents when you're ready.
-				</h2>
-			</div>
-
-			<div class="grid gap-4 md:grid-cols-2 sm:gap-5">
-				<article
-					class="flex flex-col rounded-lg border border-border bg-background p-5 sm:p-6"
-				>
-					<p class="micro-label text-muted-foreground">Just you</p>
-					<h3 class="mt-3 text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-						Keep the whole project together.
-					</h3>
-					<p class="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-						BuildOS remembers the notes, tasks, decisions, and loose ends so you can
-						return without rebuilding the context.
-					</p>
-
-					<div class="mt-auto pt-6">
-						<button
-							type="button"
-							onclick={openExampleModal}
-							onpointerenter={preloadExampleModal}
-							onpointerdown={preloadExampleModal}
-							onfocus={preloadExampleModal}
-							class="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold text-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-						>
-							Open an example project
-							<ArrowRight class="h-4 w-4 shrink-0" />
-						</button>
-					</div>
-				</article>
-
-				<article
-					class="flex flex-col rounded-lg border border-border bg-background p-5 sm:p-6"
-				>
-					<p class="micro-label text-muted-foreground">You + agents</p>
-					<h3 class="mt-3 text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-						Give agents the context to do useful work.
-					</h3>
-					<p class="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-						Agents read and update the same project state you use. No prompt
-						archaeology. No hand-built handoffs.
-					</p>
-
-					<div class="mt-5 divide-y divide-border border-y border-border">
-						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
-							<p class="micro-label text-muted-foreground">You</p>
-							<p class="text-sm text-foreground">Set direction and make decisions.</p>
-						</div>
-						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
-							<p class="micro-label text-muted-foreground">Agents</p>
-							<p class="text-sm text-foreground">
-								Execute scoped work with real context.
-							</p>
-						</div>
-						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
-							<p class="micro-label text-muted-foreground">BuildOS</p>
-							<p class="text-sm text-foreground">
-								Keeps the shared project memory current.
-							</p>
-						</div>
-					</div>
-
-					<div class="mt-auto pt-6">
-						<a
-							href="#agents"
-							class="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold text-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-						>
-							See how agents use BuildOS
-							<ArrowDown class="h-4 w-4 shrink-0" />
-						</a>
-					</div>
-				</article>
 			</div>
 		</div>
 	</section>
@@ -462,7 +385,7 @@
 				<div class="text-center">
 					<p class="micro-label text-muted-foreground">Real changes, made in chat</p>
 					<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
-						Ask once. See the project update.
+						Tell it what changed. See the project update.
 					</h2>
 					<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
 						BuildOS finds the right item, makes the change, and shows you what moved.
@@ -471,7 +394,9 @@
 						class="mt-4 inline-flex items-center gap-2 rounded-md border border-accent/50 px-3 py-1.5"
 					>
 						<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"></span>
-						<span class="micro-label text-accent">Real BuildOS screenshots</span>
+						<span class="micro-label text-accent"
+							>Real BuildOS screenshots · example book project</span
+						>
 						<span class="hidden h-3 w-px bg-accent/30 md:block"></span>
 						<span class="micro-label hidden text-muted-foreground md:block"
 							>Hover to zoom</span
@@ -625,6 +550,126 @@
 						Every change stays attached to the project.
 					</p>
 				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Return to the same project; sample prompts, not a customer outcome claim. -->
+	<section id="return" class="border-b border-border bg-card/30">
+		<div class="mx-auto max-w-4xl px-4 py-12 sm:py-16 lg:px-6">
+			<p class="micro-label text-accent">Come back to the same project</p>
+			<h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+				Pick up your project without piecing it back together.
+			</h2>
+			<p class="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
+				Your notes, tasks, and decisions stay with the project. Open it, review where you
+				left off, and choose what to work on next.
+			</p>
+			<ol class="mt-8 grid gap-6 sm:grid-cols-3">
+				<li>
+					<p class="micro-label text-muted-foreground">1 · Open</p>
+					<h3 class="mt-2 font-semibold">Find your place.</h3>
+					<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+						Review the project’s notes and unfinished tasks.
+					</p>
+				</li>
+				<li>
+					<p class="micro-label text-muted-foreground">2 · Update</p>
+					<h3 class="mt-2 font-semibold">Tell it what changed.</h3>
+					<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+						{PROJECT_UPDATE_PROMPT}
+					</p>
+				</li>
+				<li>
+					<p class="micro-label text-muted-foreground">3 · Continue</p>
+					<h3 class="mt-2 font-semibold">Choose your next step.</h3>
+					<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+						Check the updated project and decide what to tackle next.
+					</p>
+				</li>
+			</ol>
+		</div>
+	</section>
+
+	<!-- ─── §02 two ways to use BuildOS ─────────────────────────────── -->
+	<section id="split" class="border-b border-border bg-card/30">
+		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
+			<div class="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
+				<p class="micro-label text-muted-foreground">Built for both</p>
+				<h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+					Use it yourself. Bring agents when you're ready.
+				</h2>
+			</div>
+
+			<div class="grid gap-4 md:grid-cols-2 sm:gap-5">
+				<article
+					class="flex flex-col rounded-lg border border-border bg-background p-5 sm:p-6"
+				>
+					<p class="micro-label text-muted-foreground">Just you</p>
+					<h3 class="mt-3 text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
+						Keep the whole project together.
+					</h3>
+					<p class="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+						BuildOS remembers the notes, tasks, decisions, and loose ends so you can
+						return without rebuilding the context.
+					</p>
+
+					<div class="mt-auto pt-6">
+						<button
+							type="button"
+							onclick={openExampleModal}
+							onpointerenter={preloadExampleModal}
+							onpointerdown={preloadExampleModal}
+							onfocus={preloadExampleModal}
+							class="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold text-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						>
+							Open an example project
+							<ArrowRight class="h-4 w-4 shrink-0" />
+						</button>
+					</div>
+				</article>
+
+				<article
+					class="flex flex-col rounded-lg border border-border bg-background p-5 sm:p-6"
+				>
+					<p class="micro-label text-muted-foreground">You + agents</p>
+					<h3 class="mt-3 text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
+						Give agents the context to do useful work.
+					</h3>
+					<p class="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+						Agents read and update the same project state you use. No prompt
+						archaeology. No hand-built handoffs.
+					</p>
+
+					<div class="mt-5 divide-y divide-border border-y border-border">
+						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
+							<p class="micro-label text-muted-foreground">You</p>
+							<p class="text-sm text-foreground">Set direction and make decisions.</p>
+						</div>
+						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
+							<p class="micro-label text-muted-foreground">Agents</p>
+							<p class="text-sm text-foreground">
+								Execute scoped work with real context.
+							</p>
+						</div>
+						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
+							<p class="micro-label text-muted-foreground">BuildOS</p>
+							<p class="text-sm text-foreground">
+								Keeps the shared project memory current.
+							</p>
+						</div>
+					</div>
+
+					<div class="mt-auto pt-6">
+						<a
+							href="#agents"
+							class="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold text-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						>
+							See how agents use BuildOS
+							<ArrowDown class="h-4 w-4 shrink-0" />
+						</a>
+					</div>
+				</article>
 			</div>
 		</div>
 	</section>
@@ -825,130 +870,6 @@
 		</div>
 	</section>
 
-	<!-- ─── §06 what it becomes — future pacing timeline ────────────── -->
-	<section class="home-deferred home-deferred-timeline border-b border-border bg-card/30">
-		<div class="mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
-			<div class="text-center">
-				<p class="micro-label text-muted-foreground">Project memory</p>
-				<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
-					More useful every day.
-				</h2>
-				<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
-					Every update adds context. BuildOS remembers where you left off and what comes
-					next.
-				</p>
-			</div>
-
-			<div class="grid md:grid-cols-3 gap-4 sm:gap-5">
-				<!-- DAY 1 -->
-				<article class="space-y-3">
-					<div class="micro-label text-muted-foreground">Day 1 · first brain dump</div>
-					<div class="overflow-hidden rounded-lg border border-border bg-background">
-						<div
-							class="micro-label flex h-8 items-center border-b border-border bg-muted/30 px-3"
-						>
-							New project
-						</div>
-						<div class="p-3 space-y-2 text-xs">
-							<p class="text-muted-foreground italic leading-relaxed">
-								"A queen is losing her magic. Act two is fuzzy. I need a first draft
-								and beta readers."
-							</p>
-							<div class="border-t border-border/60 pt-2 space-y-1">
-								<div class="flex items-center gap-1.5 text-foreground">
-									<FolderKanban class="w-3 h-3 text-muted-foreground" />
-									Project: <span class="font-medium">Fading Crown</span>
-								</div>
-								<div class="flex items-center gap-1.5 text-muted-foreground">
-									<FileText class="w-3 h-3" /> Doc: Magic rules (draft)
-								</div>
-								<div class="flex items-center gap-1.5 text-muted-foreground">
-									<Target class="w-3 h-3" /> Goal: First-draft complete
-								</div>
-							</div>
-						</div>
-					</div>
-					<p class="text-xs text-muted-foreground leading-relaxed">
-						BuildOS creates the first useful structure.
-					</p>
-				</article>
-
-				<!-- WEEK 3 -->
-				<article class="space-y-3">
-					<div class="micro-label text-muted-foreground">Week 3 · momentum</div>
-					<div class="overflow-hidden rounded-lg border border-border bg-background">
-						<div
-							class="micro-label flex h-8 items-center border-b border-border bg-muted/30 px-3"
-						>
-							Fading Crown — active
-						</div>
-						<div class="p-3 space-y-2 text-xs">
-							<div class="space-y-1">
-								<div class="flex items-center gap-1.5 text-foreground">
-									<CircleCheck class="w-3 h-3 text-success" />
-									<span class="line-through text-muted-foreground"
-										>Outline act 1 beats</span
-									>
-								</div>
-								<div class="flex items-center gap-1.5 text-foreground">
-									<CircleCheck class="w-3 h-3 text-success" />
-									<span class="line-through text-muted-foreground"
-										>Magic system v2 draft</span
-									>
-								</div>
-								<div class="flex items-center gap-1.5 text-foreground">
-									<Circle class="w-3 h-3 text-muted-foreground" />
-									Rewrite chapter 12 opening
-								</div>
-								<div class="flex items-center gap-1.5 text-foreground">
-									<Circle class="w-3 h-3 text-muted-foreground" />
-									Reconcile Maya's motivation
-								</div>
-							</div>
-							<div class="border-t border-border/60 pt-2 micro-label">
-								Recently captured · 4 docs · 12 tasks
-							</div>
-						</div>
-					</div>
-					<p class="text-xs text-muted-foreground leading-relaxed">
-						The project shows what moved and what needs attention.
-					</p>
-				</article>
-
-				<!-- MONTH 2 -->
-				<article class="space-y-3">
-					<div class="micro-label text-muted-foreground">Month 2 · daily brief</div>
-					<div class="overflow-hidden rounded-lg border border-border bg-background">
-						<div
-							class="micro-label flex h-8 items-center justify-between border-b border-border bg-muted/30 px-3"
-						>
-							<span class="flex items-center gap-1.5">
-								<Mail class="w-3 h-3" /> Daily brief — Tue
-							</span>
-							<span>Fading Crown</span>
-						</div>
-						<div class="p-3 space-y-2 text-xs">
-							<p class="text-foreground font-medium">
-								Yesterday: 3 chapters revised.
-							</p>
-							<div class="space-y-1 text-muted-foreground">
-								<div>▸ Today: finish Ch. 12, beta-read pass</div>
-								<div>▸ Calendar: 2pm writing block, 4pm beta call</div>
-								<div>▸ Open question: Maya's act-3 turn</div>
-							</div>
-							<div class="border-t border-border/60 pt-2 micro-label">
-								Synced to inbox · synced to calendar
-							</div>
-						</div>
-					</div>
-					<p class="text-xs text-muted-foreground leading-relaxed">
-						The project tells you where to restart.
-					</p>
-				</article>
-			</div>
-		</div>
-	</section>
-
 	<!-- ─── §07 optional Google integrations ────────────────────────── -->
 	<section id="google-integrations" class="home-deferred border-b border-border">
 		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
@@ -1020,7 +941,7 @@
 				Start with the messy version.
 			</h2>
 			<p class="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-				Tell BuildOS what you're making. Leave with a project you can move.
+				Bring one thing you’re working on. Start with the rough notes you already have.
 			</p>
 
 			<div class="mt-7 flex flex-wrap items-center justify-center gap-3">
@@ -1028,7 +949,7 @@
 					href="/auth/register"
 					class="pressable rounded-md bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
-					Start in chat
+					{START_PROJECT_CTA}
 				</a>
 				<a
 					href="/blogs/philosophy"
@@ -1125,10 +1046,6 @@
 			contain-intrinsic-size: auto 420px;
 		}
 
-		.home-deferred-timeline {
-			contain-intrinsic-size: auto 525px;
-		}
-
 		.home-deferred-cta {
 			contain-intrinsic-size: auto 330px;
 		}
@@ -1146,10 +1063,6 @@
 
 			.home-deferred-model {
 				contain-intrinsic-size: auto 975px;
-			}
-
-			.home-deferred-timeline {
-				contain-intrinsic-size: auto 1040px;
 			}
 
 			.home-deferred-cta {
