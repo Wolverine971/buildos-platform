@@ -11,10 +11,13 @@ const MAX_MODEL_SKILL_PAYLOAD_CHARS = 20000;
 // cannot re-derive from the ontology, so they get a larger budget than
 // ordinary tool results — mirroring the existing skill-payload carve-out.
 const MAX_MODEL_WEB_PAYLOAD_CHARS = 12000;
-// Compactors must land under the web budget MINUS the security-notice wrapper
+// Compactors must land under their budget MINUS the security-notice wrapper
 // that addToolResultSecurityNotice adds afterwards, or the outer size guard
-// degrades the structured payload into a truncated JSON string.
-const WEB_COMPACT_TARGET_CHARS = MAX_MODEL_WEB_PAYLOAD_CHARS - 400;
+// re-shapes a payload the compactor already fitted
+// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F113).
+const TOOL_PAYLOAD_NOTICE_MARGIN_CHARS = 400;
+const TOOL_COMPACT_TARGET_CHARS = MAX_MODEL_TOOL_PAYLOAD_CHARS - TOOL_PAYLOAD_NOTICE_MARGIN_CHARS;
+const WEB_COMPACT_TARGET_CHARS = MAX_MODEL_WEB_PAYLOAD_CHARS - TOOL_PAYLOAD_NOTICE_MARGIN_CHARS;
 const MAX_WEB_VISIT_CONTENT_CHARS = 8000;
 const MIN_WEB_VISIT_CONTENT_CHARS = 1500;
 const MAX_WEB_SEARCH_SNIPPET_CHARS = 1600;
@@ -27,6 +30,13 @@ const MAX_SKILL_OUTPUT_CONTRACT_CHARS = 4000;
 const MAX_SKILL_MARKDOWN_CHARS = 16000;
 const MAX_SKILL_MARKDOWN_WITH_CONTRACT_CHARS = 12000;
 const MAX_TOOL_LIST_ITEMS = 20;
+const MAX_SEARCH_RESULT_ITEMS = 12;
+const MAX_SEARCH_SNIPPET_CHARS = 200;
+const MIN_SEARCH_SNIPPET_CHARS = 80;
+const MAX_LIST_ENTITY_DESCRIPTION_CHARS = 200;
+const MAX_OVERVIEW_DESCRIPTION_CHARS = 200;
+const MAX_OVERVIEW_ACTIVITY_ITEMS = 2;
+const MAX_OVERVIEW_ACTIVITY_TEXT_CHARS = 120;
 const INTERNAL_PAYLOAD_KEYS = new Set(['search_vector']);
 const SKILL_TYPE_VALUES = new Set([
 	'procedure',
@@ -772,7 +782,8 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	if (
 		normalizedToolName === 'search_project' ||
 		normalizedToolName === 'search_all_projects' ||
-		normalizedToolName === 'search_ontology'
+		normalizedToolName === 'search_ontology' ||
+		normalizedToolName === 'explore_project'
 	) {
 		return compactOntologySearchPayload(payload);
 	}
@@ -781,6 +792,21 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	}
 	if (normalizedToolName === 'get_onto_project_details') {
 		return compactOntologyProjectDetailPayload(payload);
+	}
+	if (normalizedToolName === 'get_workspace_overview') {
+		return compactWorkspaceOverviewPayload(payload);
+	}
+	if (normalizedToolName === 'get_project_overview') {
+		return compactProjectOverviewPayload(payload);
+	}
+	if (normalizedToolName === 'list_onto_tasks') {
+		return compactTaskListPayload(payload);
+	}
+	if (
+		normalizedToolName === 'create_onto_document' ||
+		normalizedToolName === 'update_onto_document'
+	) {
+		return compactDocumentMutationReceipt(payload);
 	}
 	if (normalizedToolName === 'get_document_tree') {
 		return compactDocumentTreeGatewayPayload(payload);
@@ -797,7 +823,7 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	) {
 		return compactDocumentCollectionGatewayPayload(payload);
 	}
-	return applyToolPayloadSizeGuard(payload);
+	return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
 }
 
 function compactEmailSearchPayload(payload: unknown): unknown {
@@ -910,28 +936,49 @@ function compactOntologySearchPayload(payload: unknown): unknown {
 	const materializedToolHints = Array.isArray(record.materialized_tools)
 		? [...record.materialized_tools, ...inferredMaterializedTools]
 		: inferredMaterializedTools;
-	const compactResults = results.slice(0, 12).map(compactSearchResult);
-	const compactPayload: Record<string, unknown> = {
-		query: record.query,
-		search_scope: record.search_scope,
-		project_id: record.project_id,
-		total_returned:
-			typeof record.total_returned === 'number' ? record.total_returned : results.length,
-		total: typeof record.total === 'number' ? record.total : results.length,
-		maybe_more: Boolean(record.maybe_more),
-		message: record.message,
-		materialized_tools: compactMaterializedTools(materializedToolHints),
-		results: compactResults
+	const kept = results.slice(0, MAX_SEARCH_RESULT_ITEMS);
+	const buildPayload = (snippetBudget: number): Record<string, unknown> => {
+		const compactPayload: Record<string, unknown> = {
+			query: record.query,
+			theme: typeof record.theme === 'string' ? record.theme : undefined,
+			search_scope: record.search_scope,
+			project_id: record.project_id,
+			total_returned:
+				typeof record.total_returned === 'number' ? record.total_returned : results.length,
+			total: typeof record.total === 'number' ? record.total : results.length,
+			maybe_more: Boolean(record.maybe_more),
+			message: record.message,
+			materialized_tools: compactMaterializedTools(materializedToolHints),
+			results: kept.map((result: any) => compactSearchResult(result, snippetBudget)),
+			projects: Array.isArray(record.projects)
+				? record.projects.slice(0, 8).map((group: Record<string, any>) => ({
+						project_id: group?.project_id,
+						project_name: group?.project_name,
+						result_count: group?.result_count
+					}))
+				: undefined
+		};
+		if (results.length > kept.length) {
+			compactPayload.results_truncated = results.length - kept.length;
+		}
+		return compactPayload;
 	};
 
-	if (results.length > compactResults.length) {
-		compactPayload.results_truncated = results.length - compactResults.length;
-	}
-
-	return applyToolPayloadSizeGuard(compactPayload);
+	// Snippets shrink before results are dropped: a shorter excerpt still names
+	// the record, a dropped result is gone.
+	const fitted = fitPayloadToBudget(buildPayload, {
+		initial: MAX_SEARCH_SNIPPET_CHARS,
+		min: MIN_SEARCH_SNIPPET_CHARS,
+		targetChars: TOOL_COMPACT_TARGET_CHARS,
+		fieldCount: Math.max(kept.length, 1)
+	});
+	return applyToolPayloadSizeGuard(fitted, TOOL_COMPACT_TARGET_CHARS);
 }
 
-function compactSearchResult(result: any): Record<string, unknown> {
+// A search hit is an address plus the scheduling facts the model asks a
+// detail read for otherwise; the excerpt is short and the ranking prose
+// ("Matched indexed title, description fields") is gone.
+function compactSearchResult(result: any, snippetBudget: number): Record<string, unknown> {
 	return {
 		type: result?.type,
 		id: result?.id,
@@ -940,13 +987,14 @@ function compactSearchResult(result: any): Record<string, unknown> {
 		title: result?.title,
 		state_key: result?.state_key,
 		type_key: result?.type_key,
+		priority: typeof result?.priority === 'number' ? result.priority : undefined,
+		start_at: typeof result?.start_at === 'string' ? result.start_at : undefined,
+		due_at: typeof result?.due_at === 'string' ? result.due_at : undefined,
+		updated_at: typeof result?.updated_at === 'string' ? result.updated_at : undefined,
+		bucket_key: typeof result?.bucket_key === 'string' ? result.bucket_key : undefined,
 		score: typeof result?.score === 'number' ? result.score : undefined,
-		path: result?.path,
-		snippet: toTextPreview(result?.snippet, 700),
-		matched_fields: Array.isArray(result?.matched_fields)
-			? result.matched_fields.slice(0, 8)
-			: undefined,
-		why_matched: toTextPreview(result?.why_matched, 220)
+		chunk_anchor: typeof result?.chunk_anchor === 'string' ? result.chunk_anchor : undefined,
+		snippet: toTextPreview(result?.snippet, snippetBudget) ?? undefined
 	};
 }
 
@@ -959,7 +1007,7 @@ function compactOntologyDocumentDetailPayload(payload: unknown): unknown {
 	const document =
 		record.document && typeof record.document === 'object' ? record.document : null;
 	if (!document) {
-		return applyToolPayloadSizeGuard(payload);
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
 	}
 
 	const content =
@@ -970,27 +1018,30 @@ function compactOntologyDocumentDetailPayload(payload: unknown): unknown {
 				: '';
 	const contentPreview = toTextPreview(content, 3500);
 
-	return applyToolPayloadSizeGuard({
-		message: record.message,
-		document: {
-			id: document.id,
-			project_id: document.project_id,
-			project_name: document.project_name,
-			title: document.title,
-			description: toTextPreview(document.description, 700),
-			type_key: document.type_key,
-			state_key: document.state_key,
-			created_at: document.created_at,
-			updated_at: document.updated_at,
-			archived_at: document.archived_at,
-			content_length: content.length,
-			content_preview: contentPreview,
-			content_truncated: content.length > (contentPreview?.length ?? 0),
-			children_count: Array.isArray(document.children?.children)
-				? document.children.children.length
-				: undefined
-		}
-	});
+	return applyToolPayloadSizeGuard(
+		{
+			message: record.message,
+			document: {
+				id: document.id,
+				project_id: document.project_id,
+				project_name: document.project_name,
+				title: document.title,
+				description: toTextPreview(document.description, 700),
+				type_key: document.type_key,
+				state_key: document.state_key,
+				created_at: document.created_at,
+				updated_at: document.updated_at,
+				archived_at: document.archived_at,
+				content_length: content.length,
+				content_preview: contentPreview,
+				content_truncated: content.length > (contentPreview?.length ?? 0),
+				children_count: Array.isArray(document.children?.children)
+					? document.children.children.length
+					: undefined
+			}
+		},
+		TOOL_COMPACT_TARGET_CHARS
+	);
 }
 
 function compactOntologyProjectDetailPayload(payload: unknown): unknown {
@@ -1001,7 +1052,7 @@ function compactOntologyProjectDetailPayload(payload: unknown): unknown {
 	const record = payload as Record<string, any>;
 	const project = record.project && typeof record.project === 'object' ? record.project : null;
 	if (!project) {
-		return applyToolPayloadSizeGuard(payload);
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
 	}
 	const sourceCounts =
 		record.counts && typeof record.counts === 'object' && !Array.isArray(record.counts)
@@ -1063,7 +1114,7 @@ function compactOntologyProjectDetailPayload(payload: unknown): unknown {
 		context_document: compactDocumentSummary(record.context_document)
 	};
 
-	return applyToolPayloadSizeGuard(compactPayload);
+	return applyToolPayloadSizeGuard(compactPayload, TOOL_COMPACT_TARGET_CHARS);
 }
 
 function arrayLength(value: unknown): number {
@@ -1576,7 +1627,7 @@ function compactDocumentTreeGatewayPayload(payload: unknown): unknown {
 	const record = payload as Record<string, any>;
 	const treeResult = record.result && typeof record.result === 'object' ? record.result : null;
 	if (!treeResult) {
-		return applyToolPayloadSizeGuard(payload);
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
 	}
 
 	const structure =
@@ -1639,7 +1690,7 @@ function compactDocumentTreeGatewayPayload(payload: unknown): unknown {
 			unlinkedRaw.length - unlinkedSummary.length;
 	}
 
-	return applyToolPayloadSizeGuard(compactPayload);
+	return applyToolPayloadSizeGuard(compactPayload, TOOL_COMPACT_TARGET_CHARS);
 }
 
 function compactDocumentCollectionGatewayPayload(payload: unknown): unknown {
@@ -1649,7 +1700,7 @@ function compactDocumentCollectionGatewayPayload(payload: unknown): unknown {
 	const record = payload as Record<string, any>;
 	const listResult = record.result && typeof record.result === 'object' ? record.result : null;
 	if (!listResult) {
-		return applyToolPayloadSizeGuard(payload);
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
 	}
 
 	const documentsRaw = Array.isArray(listResult.documents) ? listResult.documents : [];
@@ -1686,7 +1737,248 @@ function compactDocumentCollectionGatewayPayload(payload: unknown): unknown {
 			documentsRaw.length - summary.length;
 	}
 
-	return applyToolPayloadSizeGuard(compactPayload);
+	return applyToolPayloadSizeGuard(compactPayload, TOOL_COMPACT_TARGET_CHARS);
+}
+
+// Overview payloads are what the prompt steers a global turn toward, so
+// they are bounded twice: at the source (overview-helper) and here, where
+// per-project prose shrinks before whole projects drop.
+function compactOverviewCounts(
+	counts: unknown,
+	entityCounts: unknown
+): Record<string, unknown> | undefined {
+	const base =
+		counts && typeof counts === 'object' && !Array.isArray(counts)
+			? { ...(counts as Record<string, unknown>) }
+			: undefined;
+	if (!entityCounts || typeof entityCounts !== 'object' || Array.isArray(entityCounts)) {
+		return base;
+	}
+	const merged: Record<string, unknown> = base ?? {};
+	for (const [key, value] of Object.entries(entityCounts as Record<string, unknown>)) {
+		// `collaborators` (and `projects` on totals) already live in counts.
+		if (key in merged) continue;
+		merged[key === 'tasks' ? 'total_tasks' : key] = value;
+	}
+	return merged;
+}
+
+function compactOverviewActivity(
+	value: unknown,
+	textBudget: number,
+	limit = MAX_OVERVIEW_ACTIVITY_ITEMS
+): unknown[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	return value.slice(0, limit).map((item: Record<string, any>) => ({
+		entity_type: item?.entity_type,
+		action: item?.action,
+		title: toTextPreview(item?.title, 120) ?? undefined,
+		description: toTextPreview(item?.description, textBudget) ?? undefined,
+		changed_by: item?.changed_by ?? undefined,
+		created_at: item?.created_at
+	}));
+}
+
+function compactWorkspaceOverviewPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+	const record = payload as Record<string, any>;
+	const projects = Array.isArray(record.projects) ? record.projects : [];
+	if (record.scope !== 'workspace' || projects.length === 0) {
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
+	}
+
+	const buildPayload = (textBudget: number, activityLimit: number): Record<string, unknown> => ({
+		generated_at: record.generated_at,
+		scope: record.scope,
+		projects_returned: record.projects_returned,
+		maybe_more: record.maybe_more,
+		snapshot: record.snapshot,
+		totals: compactOverviewCounts(record.totals, record.entity_totals),
+		projects: projects.map((project: Record<string, any>) => ({
+			project_id: project?.project_id,
+			name: project?.name,
+			state_key: project?.state_key,
+			description: toTextPreview(project?.description, textBudget) ?? undefined,
+			next_step_short: toTextPreview(project?.next_step_short, textBudget) ?? undefined,
+			updated_at: project?.updated_at,
+			counts: compactOverviewCounts(project?.counts, project?.entity_counts),
+			next_milestone: project?.next_milestone ?? undefined,
+			next_event: project?.next_event ?? undefined,
+			recent_activity: compactOverviewActivity(
+				project?.recent_activity,
+				Math.min(textBudget, MAX_OVERVIEW_ACTIVITY_TEXT_CHARS),
+				activityLimit
+			)
+		})),
+		message: record.message
+	});
+
+	// Prose shrinks first, then activity items go, and only then does the
+	// structural guard drop whole projects: a project's name and counts are
+	// the point of the overview, its activity log is not.
+	let fitted: Record<string, unknown> | null = null;
+	for (let activityLimit = MAX_OVERVIEW_ACTIVITY_ITEMS; activityLimit >= 0; activityLimit -= 1) {
+		fitted = fitPayloadToBudget((textBudget) => buildPayload(textBudget, activityLimit), {
+			initial: MAX_OVERVIEW_DESCRIPTION_CHARS,
+			min: 60,
+			targetChars: TOOL_COMPACT_TARGET_CHARS,
+			fieldCount: projects.length * 2
+		});
+		if (!exceedsTarget(fitted, TOOL_COMPACT_TARGET_CHARS)) break;
+	}
+	return applyToolPayloadSizeGuard(fitted, TOOL_COMPACT_TARGET_CHARS);
+}
+
+function compactProjectOverviewPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+	const record = payload as Record<string, any>;
+	const project = record.project && typeof record.project === 'object' ? record.project : null;
+	if (record.scope !== 'project' || !project) {
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
+	}
+	const collaborators =
+		record.collaborators && typeof record.collaborators === 'object'
+			? (record.collaborators as Record<string, any>)
+			: null;
+
+	const buildPayload = (textBudget: number): Record<string, unknown> => ({
+		generated_at: record.generated_at,
+		scope: record.scope,
+		match: record.match,
+		project: {
+			...project,
+			description: toTextPreview(project.description, textBudget) ?? undefined
+		},
+		counts: compactOverviewCounts(record.counts, record.entity_counts),
+		tasks: record.tasks,
+		milestones: record.milestones,
+		collaborators: collaborators
+			? {
+					count: collaborators.count,
+					truncated: collaborators.truncated,
+					members: Array.isArray(collaborators.members)
+						? collaborators.members.map((member: Record<string, any>) => ({
+								actor_id: member?.actor_id,
+								display_name: member?.display_name,
+								email: member?.email ?? undefined,
+								role_key: member?.role_key,
+								role_name: member?.role_name ?? undefined,
+								access: member?.access,
+								is_current_user: member?.is_current_user
+							}))
+						: []
+				}
+			: undefined,
+		risks: record.risks,
+		upcoming_events: record.upcoming_events,
+		recent_activity: compactOverviewActivity(
+			record.recent_activity,
+			Math.min(textBudget, MAX_OVERVIEW_ACTIVITY_TEXT_CHARS)
+		),
+		message: record.message
+	});
+
+	const fitted = fitPayloadToBudget(buildPayload, {
+		initial: 400,
+		min: 80,
+		targetChars: TOOL_COMPACT_TARGET_CHARS
+	});
+	return applyToolPayloadSizeGuard(fitted, TOOL_COMPACT_TARGET_CHARS);
+}
+
+// list_onto_tasks rows carry the whole `props` blob and an unbounded
+// description; the list is for choosing a task, the detail read has the rest.
+function compactTaskListPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+	const record = payload as Record<string, any>;
+	const tasks = Array.isArray(record.tasks) ? record.tasks : [];
+	const buildPayload = (textBudget: number): Record<string, unknown> => ({
+		tasks: tasks.map((task: Record<string, any>) => ({
+			id: task?.id,
+			project_id: task?.project_id,
+			project_name: task?.project_name ?? undefined,
+			title: task?.title,
+			description: toTextPreview(task?.description, textBudget) ?? undefined,
+			type_key: task?.type_key,
+			state_key: task?.state_key,
+			priority: task?.priority ?? undefined,
+			start_at: task?.start_at ?? undefined,
+			due_at: task?.due_at ?? undefined,
+			completed_at: task?.completed_at ?? undefined,
+			facets:
+				task?.props && typeof task.props === 'object' && !Array.isArray(task.props)
+					? ((task.props as Record<string, unknown>).facets ?? undefined)
+					: undefined
+		})),
+		total: record.total,
+		message: record.message
+	});
+
+	const fitted = fitPayloadToBudget(buildPayload, {
+		initial: MAX_LIST_ENTITY_DESCRIPTION_CHARS,
+		min: 60,
+		targetChars: TOOL_COMPACT_TARGET_CHARS,
+		fieldCount: Math.max(tasks.length, 1)
+	});
+	return applyToolPayloadSizeGuard(fitted, TOOL_COMPACT_TARGET_CHARS);
+}
+
+// A document write receipt proves the write; the body the model just sent
+// (or the whole existing body on a metadata edit) is not evidence it needs
+// back.
+function compactDocumentMutationReceipt(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+	const record = payload as Record<string, any>;
+	const envelope =
+		record.result && typeof record.result === 'object' && !Array.isArray(record.result)
+			? (record.result as Record<string, any>)
+			: null;
+	const holder = envelope ?? record;
+	const document =
+		holder.document && typeof holder.document === 'object' && !Array.isArray(holder.document)
+			? (holder.document as Record<string, any>)
+			: null;
+	if (!document) {
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
+	}
+	const content =
+		typeof document.content === 'string'
+			? document.content
+			: typeof document.props?.body_markdown === 'string'
+				? document.props.body_markdown
+				: '';
+	const compactDocument: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(document)) {
+		if (key === 'content' || key === 'props' || key === 'children') continue;
+		compactDocument[key] = value;
+	}
+	const props =
+		document.props && typeof document.props === 'object' && !Array.isArray(document.props)
+			? Object.fromEntries(
+					Object.entries(document.props as Record<string, unknown>).filter(
+						([key]) => key !== 'body_markdown'
+					)
+				)
+			: {};
+	if (Object.keys(props).length > 0) compactDocument.props = props;
+	if (Array.isArray(document.children?.children)) {
+		compactDocument.children_count = document.children.children.length;
+	}
+	compactDocument.content_length = content.length;
+	compactDocument.content_preview = toTextPreview(content, 300) ?? undefined;
+	const compactHolder = { ...holder, document: compactDocument };
+	return applyToolPayloadSizeGuard(
+		envelope ? { ...record, result: compactHolder } : compactHolder,
+		TOOL_COMPACT_TARGET_CHARS
+	);
 }
 
 function toTextPreview(value: unknown, maxLength: number): string | null {
@@ -1729,21 +2021,197 @@ function compactMarkdownOutline(outline: unknown): unknown {
 	};
 }
 
+// Keys the structural fit never drops: the notice wrapper, the tool's own
+// verdict, and the arguments that identify what was asked.
+const PROTECTED_PAYLOAD_KEYS = new Set([
+	'model_context_notice',
+	'model_context_source',
+	'tool_name',
+	'message',
+	'error',
+	'ok',
+	'op',
+	'status',
+	'query',
+	'theme',
+	'match',
+	'scope',
+	'found',
+	'result',
+	'data'
+]);
+const STRING_TRIM_FLOOR_CHARS = 240;
+const STRING_TRIM_HARD_FLOOR_CHARS = 120;
+const STRUCTURAL_FIT_MARKER_RESERVE_CHARS = 80;
+
+type PayloadContainer = Record<string, unknown> | unknown[];
+
+function serializedLength(value: unknown): number | null {
+	try {
+		return JSON.stringify(value).length;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The last line of defence keeps the payload's shape: long strings shrink,
+ * then the largest arrays lose trailing items (`<key>_omitted: N`), then the
+ * largest optional top-level keys go (`omitted_keys`). A JSON string cut
+ * mid-object is never sent — the model cannot read it and it re-serialises
+ * to more than it replaced.
+ */
 function applyToolPayloadSizeGuard(
 	payload: unknown,
 	maxChars = MAX_MODEL_TOOL_PAYLOAD_CHARS
 ): unknown {
+	const originalLength = serializedLength(payload);
+	if (originalLength === null || originalLength <= maxChars) {
+		return payload;
+	}
+	if (typeof payload === 'string') {
+		return toTextPreview(payload, Math.max(0, maxChars - 2)) ?? '';
+	}
+	if (!payload || typeof payload !== 'object') {
+		return payload;
+	}
+
+	let root: PayloadContainer;
 	try {
-		const serialized = JSON.stringify(payload);
-		if (serialized.length <= maxChars) {
-			return payload;
-		}
-		return {
-			truncated: true,
-			original_length: serialized.length,
-			preview: `${serialized.slice(0, maxChars)}...`
-		};
+		root = JSON.parse(JSON.stringify(payload)) as PayloadContainer;
 	} catch {
 		return payload;
+	}
+	const target = maxChars - STRUCTURAL_FIT_MARKER_RESERVE_CHARS;
+	shrinkStringLeaves(root, target, STRING_TRIM_FLOOR_CHARS);
+	dropTrailingArrayItems(root, target);
+	shrinkStringLeaves(root, target, STRING_TRIM_HARD_FLOOR_CHARS);
+	if (!Array.isArray(root)) {
+		dropLargestOptionalKeys(root, target);
+		// Gateway envelopes keep everything under `result`; trim inside it
+		// before giving up.
+		for (const envelopeKey of ['result', 'data']) {
+			const nested = root[envelopeKey];
+			if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+				dropLargestOptionalKeys(nested as Record<string, unknown>, target, root);
+			}
+		}
+		root.payload_truncated = true;
+		root.payload_original_length = originalLength;
+	}
+	return root;
+}
+
+type StringLeaf = { container: PayloadContainer; key: string | number; value: string };
+
+function collectStringLeaves(node: unknown, floor: number, out: StringLeaf[]): void {
+	if (!node || typeof node !== 'object') return;
+	if (Array.isArray(node)) {
+		node.forEach((child, index) => {
+			if (typeof child === 'string' && child.length > floor) {
+				out.push({ container: node, key: index, value: child });
+			} else {
+				collectStringLeaves(child, floor, out);
+			}
+		});
+		return;
+	}
+	for (const [key, child] of Object.entries(node as Record<string, unknown>)) {
+		if (typeof child === 'string' && child.length > floor) {
+			out.push({ container: node as Record<string, unknown>, key, value: child });
+		} else {
+			collectStringLeaves(child, floor, out);
+		}
+	}
+}
+
+// Every long string gives up the same share of its excess over the floor,
+// so one 8k section shrinks to what fits instead of every field collapsing
+// to the floor.
+function shrinkStringLeaves(root: PayloadContainer, target: number, floor: number): void {
+	for (let attempt = 0; attempt < 4; attempt += 1) {
+		const length = serializedLength(root);
+		if (length === null || length <= target) return;
+		const leaves: StringLeaf[] = [];
+		collectStringLeaves(root, floor, leaves);
+		const trimmable = leaves.reduce((sum, leaf) => sum + (leaf.value.length - floor), 0);
+		if (trimmable <= 0) return;
+		const share = Math.min(1, ((length - target) * 1.3) / trimmable);
+		for (const leaf of leaves) {
+			const excess = leaf.value.length - floor;
+			const budget = Math.max(floor, leaf.value.length - Math.ceil(excess * share) - 3);
+			(leaf.container as Record<string | number, unknown>)[leaf.key] =
+				toTextPreview(leaf.value, budget) ?? '';
+		}
+	}
+}
+
+type ArrayLeaf = {
+	container: PayloadContainer | null;
+	key: string | number | null;
+	array: unknown[];
+};
+
+function collectArrays(
+	node: unknown,
+	container: PayloadContainer | null,
+	key: string | number | null,
+	out: ArrayLeaf[]
+): void {
+	if (!node || typeof node !== 'object') return;
+	if (Array.isArray(node)) {
+		if (node.length > 1) out.push({ container, key, array: node });
+		node.forEach((child, index) => collectArrays(child, node, index, out));
+		return;
+	}
+	for (const [childKey, child] of Object.entries(node as Record<string, unknown>)) {
+		collectArrays(child, node as Record<string, unknown>, childKey, out);
+	}
+}
+
+function dropTrailingArrayItems(root: PayloadContainer, target: number): void {
+	for (let attempt = 0; attempt < 12; attempt += 1) {
+		const length = serializedLength(root);
+		if (length === null || length <= target) return;
+		const arrays: ArrayLeaf[] = [];
+		collectArrays(root, null, null, arrays);
+		if (arrays.length === 0) return;
+		const sized = arrays
+			.map((leaf) => ({ leaf, size: serializedLength(leaf.array) ?? 0 }))
+			.sort((a, b) => b.size - a.size);
+		const { leaf, size } = sized[0]!;
+		const perItem = Math.max(1, size / leaf.array.length);
+		const dropCount = Math.min(
+			leaf.array.length - 1,
+			Math.max(1, Math.ceil((length - target) / perItem))
+		);
+		leaf.array.length = leaf.array.length - dropCount;
+		if (leaf.container && !Array.isArray(leaf.container) && typeof leaf.key === 'string') {
+			const markerKey = `${leaf.key}_omitted`;
+			const previous = leaf.container[markerKey];
+			leaf.container[markerKey] = (typeof previous === 'number' ? previous : 0) + dropCount;
+		}
+	}
+}
+
+function dropLargestOptionalKeys(
+	node: Record<string, unknown>,
+	target: number,
+	measured: Record<string, unknown> = node
+): void {
+	for (let attempt = 0; attempt < 24; attempt += 1) {
+		const length = serializedLength(measured);
+		if (length === null || length <= target) return;
+		const candidates = Object.keys(node)
+			.filter((key) => !PROTECTED_PAYLOAD_KEYS.has(key) && key !== 'omitted_keys')
+			.map((key) => ({ key, size: serializedLength(node[key]) ?? 0 }))
+			.sort((a, b) => b.size - a.size);
+		const victim = candidates[0];
+		if (!victim) return;
+		delete node[victim.key];
+		node.omitted_keys = [
+			...(Array.isArray(node.omitted_keys) ? node.omitted_keys : []),
+			victim.key
+		];
 	}
 }

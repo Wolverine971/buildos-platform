@@ -1,6 +1,7 @@
 // packages/smart-llm/src/model-config.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	DEEPSEEK_V41_FLASH_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GLM_52_MODEL,
@@ -19,6 +20,27 @@ import {
 } from './model-config';
 
 describe('resolveModelPricingProfile', () => {
+	it('prices V4.1 Flash independently from V4, including provider snapshot ids', () => {
+		for (const id of [DEEPSEEK_V41_FLASH_MODEL, 'deepseek/deepseek-v4.1-flash-20260910']) {
+			const result = resolveModelPricingProfile(id);
+
+			expect(result?.modelId).toBe(DEEPSEEK_V41_FLASH_MODEL);
+			expect(result?.profile.cost).toBe(0.3);
+			expect(result?.profile.outputCost).toBe(1.2);
+			expect(result?.profile.capabilities).toMatchObject({
+				jsonMode: true,
+				structuredOutputs: true,
+				tools: true,
+				multimodal: true
+			});
+		}
+
+		const oldFlash = resolveModelPricingProfile('deepseek/deepseek-v4-flash-20260423');
+		expect(oldFlash?.modelId).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(oldFlash?.profile.cost).toBe(0.098);
+		expect(oldFlash?.profile.outputCost).toBe(0.196);
+	});
+
 	it('catalogs GLM 5.3 Flash at its launch-discount price with production capabilities', () => {
 		const result = resolveModelPricingProfile(GLM_53_FLASH_MODEL);
 

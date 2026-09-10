@@ -10,6 +10,7 @@ export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
 export const GROK_46_MODEL = 'x-ai/grok-4.6' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
+export const DEEPSEEK_V41_FLASH_MODEL = 'deepseek/deepseek-v4.1-flash' as const;
 export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
 export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;
 export const XIAOMI_MIMO_V25_MODEL = 'xiaomi/mimo-v2.5' as const;
@@ -37,6 +38,44 @@ export const AGENT_STATE_RECONCILIATION_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 export const AGENT_STATE_RECONCILIATION_MODELS = [AGENT_STATE_RECONCILIATION_MODEL] as const;
 
 export const MODEL_CATALOG: Record<string, ModelProfile> = {
+	[DEEPSEEK_V41_FLASH_MODEL]: {
+		id: DEEPSEEK_V41_FLASH_MODEL,
+		name: 'DeepSeek V4.1 Flash',
+		// Keep heuristic quality/speed scores at the V4 baseline until a
+		// representative BuildOS evaluation establishes a routing advantage.
+		speed: 4.6,
+		smartness: 4.85,
+		creativity: 4.3,
+		// DeepInfra's ZDR endpoint supports forced tools and JSON schemas.
+		// Budget its $0.30/$1.20 rate, not DeepSeek's time-dependent off-peak
+		// $0.15/$0.60 price (that endpoint does not support required tools).
+		cost: 0.3,
+		outputCost: 1.2,
+		provider: 'deepseek',
+		bestFor: [
+			'agentic-workflows',
+			'coding-assistants',
+			'json-mode',
+			'structured-output',
+			'tool-calling',
+			'multimodal',
+			'1m-context'
+		],
+		limitations: [
+			'new-endpoint',
+			'provider-price-variable',
+			'forced-tools-provider-dependent',
+			'not-default-production-routing'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
 	[GLM_53_FLASH_MODEL]: {
 		id: GLM_53_FLASH_MODEL,
 		name: 'GLM 5.3 Flash',
@@ -700,6 +739,9 @@ const TEXT_MAXIMUM_ROUTE = [
 
 export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 	new Set<string>([
+		// Explicitly selectable while launch compatibility/capacity is evaluated.
+		// Keep automatic lanes and the old Flash fallback independent of this ID.
+		DEEPSEEK_V41_FLASH_MODEL,
 		...OPENROUTER_TEXT_ROUTE,
 		...OPENROUTER_JSON_ROUTE,
 		...OPENROUTER_TOOL_ROUTE,

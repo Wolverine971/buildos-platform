@@ -14,7 +14,7 @@ import {
 	assertTurnRunCompleted,
 	assertTurnSucceeded
 } from '../../harness/assertions';
-import { listTasks, waitForTurnRun } from '../../harness/telemetry';
+import { listEdges, listTasks, waitForTurnRun } from '../../harness/telemetry';
 import { CEDAR_ALL_TASK_SLUGS, CEDAR_TASKS, seedCedarHouse } from './fixture';
 import {
 	assertMinutesRecorded,
@@ -55,6 +55,7 @@ export const cedarCase02TaskBatchScenario: Scenario = {
 				);
 
 				const tasks = await listTasks(ctx.db.admin, seed.projectId!);
+				const edges = await listEdges(ctx.db.admin, seed.projectId!);
 				if (tasks.length !== CEDAR_ALL_TASK_SLUGS.length) {
 					throw new Error(
 						`[assert] expected exactly ${CEDAR_ALL_TASK_SLUGS.length} tasks, found ${tasks.length}: ` +
@@ -79,11 +80,27 @@ export const cedarCase02TaskBatchScenario: Scenario = {
 						);
 					}
 					if (fixture.prerequisite) {
+						// The prompt says "save the dependencies as relationships if
+						// supported", so a real edge is the better answer and must
+						// pass. Prose stays acceptable; only recording the
+						// dependency nowhere fails
+						// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J9).
 						const text = `${task.title} ${task.description ?? ''}`.toLowerCase();
-						if (!text.includes(fixture.prerequisite.toLowerCase())) {
+						const recordedInText = text.includes(fixture.prerequisite.toLowerCase());
+						const prerequisiteTask = taskByTitle(tasks, fixture.prerequisite);
+						const recordedAsEdge =
+							prerequisiteTask !== undefined &&
+							edges.some(
+								(edge) =>
+									(edge.src_id === task.id &&
+										edge.dst_id === prerequisiteTask.id) ||
+									(edge.src_id === prerequisiteTask.id && edge.dst_id === task.id)
+							);
+						if (!recordedInText && !recordedAsEdge) {
 							throw new Error(
-								`[assert] task "${fixture.title}" did not record its "${fixture.prerequisite}" ` +
-									`prerequisite. Description: "${task.description ?? '(none)'}"`
+								`[assert] task "${fixture.title}" recorded its "${fixture.prerequisite}" ` +
+									`prerequisite neither as a relationship edge nor in its text. ` +
+									`Description: "${task.description ?? '(none)'}"`
 							);
 						}
 					}

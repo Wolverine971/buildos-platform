@@ -40,7 +40,6 @@ export type AgenticChatTurnProviderToolV1 = {
 
 export type AgenticChatTurnProviderClientEventV1 =
 	| { type: 'text'; content: string }
-	| { type: 'reasoning'; reasoning?: string; reasoning_details?: unknown[] }
 	| {
 			type: 'done';
 			finishedReason?: string;

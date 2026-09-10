@@ -52,7 +52,6 @@ export async function* streamBufferedProviderPass(
 			providerClientRequest({ ...request, providerAttempt })
 		)) {
 			throwIfAborted(request.signal);
-			if (event.type === 'reasoning') continue;
 			if (event.type === 'error') {
 				if (event.retryable && retriesRemain) {
 					if (event.cause !== 'tool_arguments_truncated') {

@@ -1,6 +1,9 @@
 // apps/web/vitest.setup.ts
-import { vi } from 'vitest';
+import { beforeAll, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
+import { assertPostgresTestIpcAccess } from '../../scripts/testing/postgres-ipc-preflight';
+
+beforeAll(() => assertPostgresTestIpcAccess(expect.getState().testPath));
 
 // $env/dynamic/public reads SvelteKit's injected runtime env, which doesn't
 // exist in the vitest environment — resolve it to process.env instead.

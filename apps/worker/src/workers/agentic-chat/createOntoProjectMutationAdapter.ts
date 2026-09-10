@@ -193,17 +193,17 @@ function normalizeProjectShell(
 	args: JsonObject,
 	timezone: string | null
 ): JsonObject & { name: string } {
-	if (!Array.isArray(args.entities) || args.entities.length !== 0) {
-		throw knownFailure(
-			'mutation_arguments_not_admitted',
-			'create_onto_project requires an empty entities array'
-		);
-	}
-	if (!Array.isArray(args.relationships) || args.relationships.length !== 0) {
-		throw knownFailure(
-			'mutation_arguments_not_admitted',
-			'create_onto_project requires an empty relationships array'
-		);
+	// The shell creates no child records. A missing array means the same as an
+	// empty one; only a populated one is refused
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F29).
+	for (const field of ['entities', 'relationships'] as const) {
+		const value = args[field] ?? [];
+		if (!Array.isArray(value) || value.length !== 0) {
+			throw knownFailure(
+				'mutation_arguments_not_admitted',
+				`create_onto_project does not accept ${field}; create child records afterwards`
+			);
+		}
 	}
 	if (!isRecord(args.project)) {
 		throw knownFailure(

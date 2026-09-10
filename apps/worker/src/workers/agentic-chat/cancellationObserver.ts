@@ -1,15 +1,26 @@
 // apps/worker/src/workers/agentic-chat/cancellationObserver.ts
 
 import {
-	AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS,
 	AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS,
 	type AgenticChatCancellationObservationInputV1,
 	type AgenticChatCancellationObservationRpcResultV1,
 	type AgenticChatCancellationObservationV1
 } from '@buildos/shared-types';
 
+/**
+ * One `observe_agentic_chat_turn_cancellations` RPC per worker per tick while
+ * any turn is registered. The poller's only unique value is aborting the
+ * provider stream during a silent phase: every write RPC already returns
+ * `cancel_requested` and the publisher aborts on it, and `recover` returns
+ * `finalize_cancelled` whenever `cancel_requested_at` is set, so the terminal
+ * outcome never depends on this tick. 2 s trades a worst-case cancel latency of
+ * 2 s during silence (was 0.5 s) for 4x fewer RPCs on every turn
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F53).
+ */
+export const DEFAULT_AGENTIC_CHAT_CANCELLATION_POLL_INTERVAL_MS = 2_000;
+
 export const DEFAULT_AGENTIC_CHAT_CANCELLATION_OBSERVER_CONFIG = {
-	pollIntervalMs: AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS,
+	pollIntervalMs: DEFAULT_AGENTIC_CHAT_CANCELLATION_POLL_INTERVAL_MS,
 	rpcMaxPairs: AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS,
 	consumerConcurrency: 1,
 	shutdownWaitMs: 2_000

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	classifyOperationalTurnIntent,
 	looksLikeMutationTurn,
+	resolveOperationalExampleHint,
 	resolveOperationalSkillForTurn
 } from './operational-skill-intent';
 
@@ -88,6 +89,38 @@ describe('classifyOperationalTurnIntent', () => {
 		}
 	});
 
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F75: polite asks that open as a
+	// question still commission a write when the verb phrase is unambiguous.
+	it('classifies polite question-led writes by their strong verb phrase', () => {
+		for (const [message, entityKind] of [
+			['Can you schedule a call with Ana tomorrow?', 'calendar'],
+			['Could you assign this task to Sam?', 'task'],
+			['Can you set the due date on the roofer task to Friday?', 'task'],
+			['Could you put the launch task on hold?', 'task'],
+			['Can you fix the title of the onboarding doc?', 'document']
+		] as const) {
+			const intent = classifyOperationalTurnIntent(message);
+			expect(intent.mutation, message).toBe(true);
+			expect(intent.entityKinds[0], message).toBe(entityKind);
+		}
+		// A question with no strong phrase stays a read.
+		expect(classifyOperationalTurnIntent('Can you see the call with Ana tomorrow?')).toEqual({
+			mutation: false,
+			entityKinds: []
+		});
+	});
+
+	it('picks the worked example from the earliest verb, update by default', () => {
+		expect(resolveOperationalExampleHint('add a task to update the roadmap')).toBe('create');
+		expect(resolveOperationalExampleHint('mark the intro call done')).toBe('update');
+		expect(resolveOperationalExampleHint('move the onboarding doc under Reference')).toBe(
+			'organize'
+		);
+		expect(resolveOperationalExampleHint("This project's docs are a mess")).toBe('organize');
+		expect(resolveOperationalExampleHint('save this as a note in the project')).toBe('create');
+		expect(resolveOperationalExampleHint('the roofer task')).toBe('update');
+	});
+
 	it('flags generic mutation phrasing without an entity noun', () => {
 		expect(looksLikeMutationTurn('rename the grocery list to weekend errands')).toBe(true);
 		expect(looksLikeMutationTurn('write this down so we do not lose it')).toBe(true);
@@ -106,7 +139,12 @@ describe('resolveOperationalSkillForTurn', () => {
 				message: 'mark the intro call done',
 				toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
 			})
-		).toEqual({ skillId: 'task_management', entityKind: 'task', alternateSkillIds: [] });
+		).toEqual({
+			skillId: 'task_management',
+			entityKind: 'task',
+			exampleHint: 'update',
+			alternateSkillIds: []
+		});
 	});
 
 	it('picks document_workspace for organize intent and names the task route as an alternate', () => {
@@ -123,8 +161,8 @@ describe('resolveOperationalSkillForTurn', () => {
 	});
 
 	it('never names a skill whose write tools are not mounted', () => {
-		// Plan tools are on no project surface today; calendar tools are not
-		// executable on the worker at all. Both must stay silent until mounted.
+		// Plan tools are on no surface today, and this fixture surface carries
+		// no calendar writes. Both must stay silent until mounted.
 		expect(
 			resolveOperationalSkillForTurn({
 				message: 'Plan out the next sprint for the mobile app',

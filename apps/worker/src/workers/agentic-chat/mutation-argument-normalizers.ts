@@ -158,11 +158,27 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 	},
 
 	/**
-	 * `project_id` is a legacy direct-tool scope/assignee hint, not a field on
-	 * the canonical gateway operation. Keep it as a worker scope fence only.
+	 * `project_id` is not a field on the canonical gateway operation. By the
+	 * time this runs, `resolveProjectFence` has already read it as the worker
+	 * scope fence; the gateway resolves assignee handles against the task's own
+	 * project, so nothing downstream needs it.
 	 */
 	drop_scope_only_project_id: ({ args }) => {
 		delete args.project_id;
+	},
+
+	/**
+	 * A task write from chat never creates a calendar event as a side effect.
+	 * The REST default is 'auto', which is right for the UI (the user is
+	 * looking at the scheduler) and wrong for an agent: case 4 of the
+	 * 2026-09-10 browser rerun set a due date under an explicit "no calendar
+	 * event" instruction and the tool created one anyway, because nothing in
+	 * the harness forces the switch the model forgot to send. Silence now
+	 * means no event; the model must ask for 'auto' to schedule one.
+	 */
+	default_calendar_sync_none: ({ args }) => {
+		if (args.calendar_sync === 'auto') return;
+		args.calendar_sync = 'none';
 	},
 
 	normalize_target_date_end_of_day: ({ args }) => {

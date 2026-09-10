@@ -192,6 +192,80 @@ export async function listProjectsByExactName(
 	return (data as ProjectRow[] | null) ?? [];
 }
 
+/**
+ * Harness project names carry run-scoping punctuation (`AE2E · run=<id> ·
+ * [QA BATTERY] <label> · <hex>`). A model that trims or normalises `·` still
+ * created the right project, so an exact-string miss must not fail a case
+ * whose subject is dates, budget and restraint
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J9). Compare on a normalised key and
+ * report whether the match was exact.
+ */
+function normalizedProjectNameKey(name: string): string {
+	return name
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, ' ')
+		.trim();
+}
+
+export interface ProjectNameMatch {
+	project: ProjectRow;
+	/** False when the saved name differs from the requested one only by normalisation. */
+	exact: boolean;
+}
+
+/**
+ * Find the project a `project_create` turn was asked to create, tolerating
+ * punctuation and whitespace drift in the name. Scoped to this actor and to
+ * the harness prefix, so it can never pick up a real project.
+ */
+export async function findProjectByRequestedName(
+	admin: TypedSupabaseClient,
+	actorId: string,
+	name: string
+): Promise<ProjectNameMatch[]> {
+	const exact = await listProjectsByExactName(admin, actorId, name);
+	if (exact.length > 0) return exact.map((project) => ({ project, exact: true }));
+
+	const { data, error } = await admin
+		.from('onto_projects')
+		.select('id, name, type_key, description')
+		.eq('created_by', actorId)
+		.order('created_at', { ascending: false })
+		.limit(200);
+	if (error) {
+		throw new Error(
+			`[agentic-e2e] failed to scan projects for a normalised match on "${name}": ${error.message}`
+		);
+	}
+	const wanted = normalizedProjectNameKey(name);
+	return ((data as ProjectRow[] | null) ?? [])
+		.filter((project) => normalizedProjectNameKey(project.name) === wanted)
+		.map((project) => ({ project, exact: false }));
+}
+
+export interface EdgeRow {
+	id: string;
+	rel: string;
+	src_id: string;
+	src_kind: string;
+	dst_id: string;
+	dst_kind: string;
+}
+
+/** Every relationship edge in a project, so a case can accept an edge OR prose. */
+export async function listEdges(admin: TypedSupabaseClient, projectId: string): Promise<EdgeRow[]> {
+	const { data, error } = await admin
+		.from('onto_edges')
+		.select('id, rel, src_id, src_kind, dst_id, dst_kind')
+		.eq('project_id', projectId);
+	if (error) {
+		throw new Error(
+			`[agentic-e2e] failed to list edges for project ${projectId}: ${error.message}`
+		);
+	}
+	return (data as EdgeRow[] | null) ?? [];
+}
+
 /** The single turn row for a stream_run_id (may be null if not yet persisted). */
 export async function getTurnRun(
 	admin: TypedSupabaseClient,

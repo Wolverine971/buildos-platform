@@ -29,7 +29,6 @@ describe('resolveFastChatTurnPreparation', () => {
 		expect(result.selectedSurfaceProfile).toBe('project_create');
 		expect(toolNames(result)).toEqual([
 			'declare_turn_contract',
-			'declare_read_only_turn',
 			'request_turn_clarification',
 			'cancel_turn_contract',
 			'create_onto_project',
@@ -53,11 +52,10 @@ describe('resolveFastChatTurnPreparation', () => {
 			measureNow: () => times.shift() ?? 107
 		});
 
-		expect(result.turnIntent).toMatchObject({
-			requiresWrite: false,
-			action: null,
-			originalRequestText: null
-		});
+		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F44: admission carries no lexical
+		// turn intent at all; the pending semantic contract is the write signal.
+		expect(result).not.toHaveProperty('turnIntent');
+		expect(result).not.toHaveProperty('pendingTurnIntent');
 		expect(result.domainSensingBypassed).toBe(false);
 		expect(result.turnDomainSensing).toBeNull();
 		expect(result.previousDomainState).toBeNull();
@@ -116,11 +114,7 @@ describe('resolveFastChatTurnPreparation', () => {
 			nowMs: NOW_MS
 		});
 
-		expect(result.turnIntent).toMatchObject({
-			requiresWrite: false,
-			action: null,
-			entityKind: 'unknown'
-		});
+		expect(result).not.toHaveProperty('turnIntent');
 		expect(result.selectedSurfaceProfile).toBe('project');
 		expect(toolNames(result)).toContain('move_document_in_tree');
 	});
@@ -189,7 +183,7 @@ describe('resolveFastChatTurnPreparation', () => {
 			nowMs: NOW_MS
 		});
 
-		expect(result.turnIntent.requiresWrite).toBe(false);
+		expect(result).not.toHaveProperty('turnIntent');
 		expect(result.domainSensingBypassed).toBe(false);
 		expect(result.turnDomainSensing?.active_domains[0]?.id).toBe('marketing.youtube_growth');
 	});

@@ -77,6 +77,17 @@ export function buildContractCompletionRequest(
 	};
 }
 
+// TODO(AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F43): the gate, post-disposition,
+// carve-out, organize, and completion instructions are all appended with
+// appendSystemInstruction and nothing removes the previous one, so by the
+// answer pass the actor still carries "choose exactly one control tool now"
+// and "for exactly this one pass". Fix lives in request-builders.ts (not owned
+// by WP-C): add replacePhaseInstruction(request, content) that drops the last
+// system message tagged as a phase instruction before appending the new one,
+// and call it from the five phase sites (disposition.ts gate + clarification,
+// this file's two builders, turn-provider.ts organizeExecutionInstruction).
+// Ladder nudges, batching, disposition notices, and admission-time messages
+// stay appended.
 export function buildTurnContractWriteCarveOutRequest(
 	request: AgenticChatTurnProviderRequestV1,
 	availableTools: readonly AgenticChatTurnProviderToolV1[],

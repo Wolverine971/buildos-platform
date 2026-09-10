@@ -44,8 +44,12 @@ export const EMAIL_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'request_email_account_connection',
+			// Today this tool mounts with the Gmail read group for users who already
+			// have a connection (reconnect / add-account handoff). Mounting it for
+			// users with no mailbox is AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F33,
+			// still open on the web mount; the description must not claim it.
 			description:
-				'Stage a user-clicked Google OAuth handoff for read-only Gmail access. Call get_external_account_status first. Set user_confirmed=true only after the user agrees in a later message for this exact address. The tool never receives credentials or grants access itself; an existing connection is returned instead.',
+				'Stage a user-clicked Google OAuth handoff for read-only Gmail access (reconnect or add an account). Use the search and read tools for inbox questions; use this only when the user asks to connect or reconnect a Gmail address. Ask for the exact address, call with user_confirmed=false to get the confirmation prompt, and set user_confirmed=true only after the user agrees in a later message for this exact address. The tool never receives credentials or grants access itself.',
 			parameters: {
 				type: 'object',
 				properties: {

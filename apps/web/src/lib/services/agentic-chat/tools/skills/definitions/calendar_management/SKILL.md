@@ -41,7 +41,7 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 1. Choose scope first: user, project, or explicit calendar_id.
 2. For project scope, include exact project_id.
 3. Use timezone-safe ISO 8601 values: `time_min`/`time_max` for reads and `start_at`/`end_at` for writes, or supply timezone. For a date-only event, pass `YYYY-MM-DD`; do not invent midnight UTC or a clock time. Date-only writes are all-day events.
-4. For project calendar mapping questions, check cal.project.get before assuming a project calendar exists.
+4. For project calendar mapping questions, read the project's calendar binding first instead of assuming a project calendar exists.
 5. For update/delete, discover and pass the exact identity returned by the list. An ontology event uses `onto_event_id`. A Google event uses the opaque pair `{ event_id, calendar_source_id }`; carry both fields together through detail, update, and delete, and never substitute `calendar_id` for `calendar_source_id`.
 6. Treat words such as "all", "every", "clean up", or a category like "shooting-related" as an exhaustive lookup request. Do not use a project overview or an upcoming-only list as the candidate set. Query an explicit window broad enough for the user's wording, paginate until exhausted, and include past or in-progress events unless the user limited the request to future events.
 7. For first-time or complex writes, inspect the existing event and verify the exact scope and fields before calling the paired direct calendar tool.
@@ -85,7 +85,7 @@ Stop conditions before replying: scope was chosen explicitly before the write; s
 
 ### Reschedule an existing event safely
 
-- Use cal.event.list or cal.event.get to discover the exact `onto_event_id`, or the Google `{ event_id, calendar_source_id }` pair.
+- Use `list_calendar_events` or `get_calendar_event_details` to discover the exact `onto_event_id`, or the Google `{ event_id, calendar_source_id }` pair.
 - Then call `update_calendar_event({ ... })` with that exact identity and the updated fields.
 
 ## Provenance

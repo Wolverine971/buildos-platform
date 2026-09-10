@@ -247,9 +247,12 @@ describe('executable contract fields', () => {
 			expect(validate(args)).toHaveLength(1);
 		expect(validate({}, new Map())[0]?.errors.join(' ')).toContain('has not been created yet');
 	});
+	// project_id is scope, not a field: the parser drops it before this check
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F07); invented fields still reject.
 	it.each([
-		{ entityKind: 'goal', fields: ['name', 'due_at', 'project_id'], rejected: true },
-		{ entityKind: 'task', fields: ['title', 'project_id'], rejected: true },
+		{ entityKind: 'goal', fields: ['name', 'due_at', 'project_id'], rejected: false },
+		{ entityKind: 'task', fields: ['title', 'project_id'], rejected: false },
+		{ entityKind: 'task', fields: ['title', 'estimated_minutes'], rejected: true },
 		{ entityKind: 'goal', fields: ['title', 'due_at'], rejected: false },
 		{ entityKind: 'task', fields: ['title', 'due_at'], rejected: false }
 	])(
@@ -277,10 +280,15 @@ describe('executable contract fields', () => {
 				admittedTools
 			);
 			expect(issues).toHaveLength(rejected ? 1 : 0);
-			if (rejected)
+			if (rejected) {
 				expect(issues[0]?.errors.join(' ')).toContain(
-					'cannot produce required field "project_id"'
+					'cannot produce required field "estimated_minutes"'
 				);
+				expect(issues[0]?.errors.join(' ')).not.toContain('project_id');
+			}
+			expect(parseDeclaredTurnContract(args)?.outcomes[0]?.requiredFields).not.toContain(
+				'project_id'
+			);
 		}
 	);
 
@@ -389,9 +397,11 @@ describe('executable contract fields', () => {
 	it.each([
 		{ kind: 'document', field: 'rollback_section_text', valid: false },
 		{ kind: 'document', field: 'content', valid: true },
-		{ kind: 'goal', field: 'project_id', valid: false },
+		// A reviewer's project_id is normalized away like the actor's (F07).
+		{ kind: 'goal', field: 'project_id', valid: true },
 		{ kind: 'goal', field: 'name', valid: true },
-		{ kind: 'task', field: 'project_id', valid: false },
+		{ kind: 'task', field: 'project_id', valid: true },
+		{ kind: 'task', field: 'estimated_minutes', valid: false },
 		{ kind: 'task', field: 'title', valid: true }
 	])('checks reviewer correction field before accepting it: %j', ({ kind, field, valid }) => {
 		const fieldDeclaration = (value: string): JsonObject =>

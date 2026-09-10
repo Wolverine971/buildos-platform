@@ -20,6 +20,7 @@ import {
 } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import { buildMutationBatch, mutationBatchSha256 } from '@buildos/agentic-chat-runtime/loop';
 import { reviewedAgenticChatMutationSpecV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
 import {
 	AgenticChatProviderExecutionError,
@@ -704,7 +705,6 @@ function providerContractAndReadRound(
 describe('AgenticChatTurnProviderAdapter', () => {
 	it('reserves before start and defers the first client call until stream', async () => {
 		const client = clientWith([
-			{ type: 'reasoning', reasoning: 'private chain' },
 			{ type: 'text', content: 'Visible answer' },
 			{
 				type: 'done',
@@ -4258,7 +4258,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'content',
 				'description',
 				'update_strategy',
-				'merge_instructions',
 				'props'
 			],
 			move_document_in_tree: ['project_id', 'document_id', 'new_parent_id', 'new_position'],
@@ -4595,14 +4594,18 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(
 			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
 				.parameters.required
-		).toEqual(['project', 'entities', 'relationships']);
-		expect(propertiesFor('create_onto_project').entities).toMatchObject({ maxItems: 0 });
+		).toEqual(['project']);
+		expect(propertiesFor('create_onto_project').entities).toMatchObject({
+			default: [],
+			maxItems: 0
+		});
 		const projectedProjectRelationships = requireJsonObject(
 			propertiesFor('create_onto_project').relationships,
 			'create_onto_project relationships schema'
 		);
 		expect(projectedProjectRelationships).toMatchObject({
 			type: 'array',
+			default: [],
 			maxItems: 0,
 			items: { type: 'object', additionalProperties: false }
 		});
@@ -4874,7 +4877,12 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				projectArguments,
 				'create_onto_project'
 			),
-			childRound
+			childRound,
+			providerReadRound(
+				'provider-create-composite-task-3-retry',
+				taskArguments[2]!,
+				'create_onto_task'
+			)
 		]);
 		const semanticReviewer = clientWithRounds([
 			providerReadRound(
@@ -5049,6 +5057,58 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			'create_onto_task'
 		]);
 		expect(childMutations.every((step) => step.arguments.project_id === projectId)).toBe(true);
+
+		// Review of AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F39: the goal and two
+		// tasks succeed and the third task fails. The completion continuation is
+		// null (touched-but-unfulfilled outcomes never re-run it), but the
+		// contract is not fulfilled, so the next pass must keep its write surface
+		// instead of being forced tool-free.
+		const [goalMutation, firstTask, secondTask, thirdTask] = childMutations;
+		const retrySteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 5,
+				results: [
+					durableMutationFeedback({
+						providerToolCallId: goalMutation!.providerToolCallId,
+						logicalOperationId: goalMutation!.logicalOperationId,
+						arguments: goalArguments,
+						toolName: 'create_onto_goal',
+						operationName: 'onto.goal.create',
+						effectId: 'a3000000-0000-4000-8000-000000000101'
+					}),
+					durableMutationFeedback({
+						providerToolCallId: firstTask!.providerToolCallId,
+						logicalOperationId: firstTask!.logicalOperationId,
+						arguments: taskArguments[0]!,
+						toolName: 'create_onto_task',
+						operationName: 'onto.task.create',
+						effectId: 'a3000000-0000-4000-8000-000000000102'
+					}),
+					durableMutationFeedback({
+						providerToolCallId: secondTask!.providerToolCallId,
+						logicalOperationId: secondTask!.logicalOperationId,
+						arguments: taskArguments[1]!,
+						toolName: 'create_onto_task',
+						operationName: 'onto.task.create',
+						effectId: 'a3000000-0000-4000-8000-000000000103'
+					}),
+					failedMutationFeedback({
+						providerToolCallId: thirdTask!.providerToolCallId,
+						arguments: taskArguments[2]!,
+						toolName: 'create_onto_task',
+						error: 'Task creation failed: temporary database error.'
+					})
+				]
+			})
+		);
+		const retryRequest = client.stream.mock.calls[5]?.[0];
+		expect(retryRequest?.tools.map((tool) => tool.function.name)).toContain('create_onto_task');
+		expect(retryRequest?.toolChoice).not.toBe('none');
+		expect(
+			retrySteps.some(
+				(step) => step.type === 'mutating_tool' && step.toolName === 'create_onto_task'
+			)
+		).toBe(true);
 	});
 
 	it('mounts semantic controls and reviews a project shell before creating it', async () => {
@@ -5178,7 +5238,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 									},
 									label: {
 										description: expect.stringContaining(
-											'Create only: optional symbolic reference to one new entity'
+											'Create only: name for one new entity'
 										)
 									}
 								}
@@ -5281,6 +5341,12 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		).toBe(false);
 		expect(client.stream).toHaveBeenCalledTimes(3);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F39: the shell is durable and the
+		// single-outcome contract is fulfilled, so the answer pass mounts nothing
+		// and create_onto_project cannot be called twice.
+		const answerRequest = client.stream.mock.calls[2]?.[0];
+		expect(answerRequest?.tools).toEqual([]);
+		expect(answerRequest?.toolChoice).toBe('none');
 	});
 
 	// Production turn 35f3e826: searches succeeded, a guessed page URL was
@@ -5487,10 +5553,12 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				requiresUserAction: false
 			}
 		};
+		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F15: the lead-in of the previous
+		// pass ended mid-line, so the next pass's prose opens on a new paragraph.
 		await expect(
 			collect(invocation.continueWithToolResults!({ round: 2, results: [firstFeedback] }))
 		).resolves.toEqual([
-			{ type: 'text_delta', text: 'I need one more detail.' },
+			{ type: 'text_delta', text: '\n\nI need one more detail.' },
 			expect.objectContaining({
 				type: 'read_tool',
 				providerToolCallId: 'provider-read-2',
@@ -5548,7 +5616,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				})
 			)
 		).resolves.toEqual([
-			{ type: 'text_delta', text: 'The project and its second read are ready.' },
+			{ type: 'text_delta', text: '\n\nThe project and its second read are ready.' },
 			{
 				type: 'finish',
 				finishedReason: 'stop',
@@ -5562,6 +5630,87 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			)
 		).toHaveLength(2);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('separates a held lead-in from the next pass and never separates whitespace-terminated prose', async () => {
+		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F15: the same rule covers the
+		// withheld-prose flush on a disposition-offering surface as the live
+		// stream, and a lead-in that already ends in a newline gets no extra one.
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const client = clientWithRounds([
+			[
+				{
+					type: 'text',
+					content: 'Let me check whether this task already exists before doing anything'
+				},
+				...providerReadRound('provider-read-1', { project_id: projectId })
+			],
+			[
+				{ type: 'text', content: 'Now one more read.\n' },
+				...providerReadRound('provider-read-2', { project_id: projectId })
+			],
+			[
+				{ type: 'text', content: 'That task already exists. Nothing was changed.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{ client, capacity },
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					updateTaskToolDefinition(),
+					readToolDefinition('get_project_overview')
+				],
+				['declare_turn_contract', 'update_onto_task', 'get_project_overview']
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const opening = await collect(invocation.stream());
+		expect(opening.filter((step) => step.type === 'text_delta')).toEqual([
+			{
+				type: 'text_delta',
+				text: 'Let me check whether this task already exists before doing anything'
+			}
+		]);
+		const second = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedback(
+						'provider-read-1',
+						{ project_id: projectId },
+						{ project: { id: projectId } }
+					)
+				]
+			})
+		);
+		expect(second.filter((step) => step.type === 'text_delta')).toEqual([
+			{ type: 'text_delta', text: '\n\nNow one more read.\n' }
+		]);
+		const final = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedback(
+						'provider-read-2',
+						{ project_id: projectId },
+						{ project: { id: projectId, state_key: 'todo' } }
+					)
+				]
+			})
+		);
+		expect(final).toEqual([
+			{ type: 'text_delta', text: 'That task already exists. Nothing was changed.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
 	});
 
 	it('serves an exact successful pure-read repeat from the turn memo with a new call identity', async () => {
@@ -6153,16 +6302,17 @@ describe('AgenticChatTurnProviderAdapter', () => {
 	it.each(['recovered', 'exhausted', 'cosmetic-change', 'changed-invalid'])(
 		'routes repeated invalid contracts within the existing repair limit: %s',
 		async (scenario) => {
+			// A labelled create without its name used to be the invalid fixture;
+			// the parser now drops that label with a note instead of rejecting
+			// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F06), so the fixture is a
+			// cardinality of zero, which no normalization can accept.
 			const invalid: JsonObject = {
 				action: 'create',
 				entity_kind: 'goal',
-				minimum_successful_effects: 1,
-				label: 'launch'
-			};
-			const corrected = {
-				...invalid,
+				minimum_successful_effects: 0,
 				changes: [{ field: 'name', value: 'Publish three episodes' }]
 			};
+			const corrected = { ...invalid, minimum_successful_effects: 1 };
 			const requests: Record<string, unknown>[] = [];
 			const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
 				requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
@@ -6191,7 +6341,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 							? {
 									...Object.fromEntries(Object.entries(invalid).reverse()),
 									...(scenario === 'changed-invalid'
-										? { ...corrected, minimum_successful_effects: 2 }
+										? { ...corrected, minimum_successful_effects: 101 }
 										: scenario === 'cosmetic-change'
 											? { target_ids: [] }
 											: {})
@@ -6286,12 +6436,12 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			}
 			expect(requests[1]?.provider).toMatchObject({
 				order: ['deepinfra'],
-				allow_fallbacks: false
+				allow_fallbacks: true
 			});
 			if (scenario === 'changed-invalid') {
 				expect(requests[2]?.provider).toMatchObject({
 					order: ['deepinfra'],
-					allow_fallbacks: false
+					allow_fallbacks: true
 				});
 			} else {
 				expect(requests[2]).toMatchObject({
@@ -6303,7 +6453,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				expect(request.tools).toEqual(requests[0]?.tools);
 				expect(request.tool_choice).toBe(requests[0]?.tool_choice);
 				expect(JSON.stringify(request.messages)).toContain(
-					'a labelled create outcome must declare its name in changes'
+					'minimum_successful_effects 0 must be a whole number from 1 to 100'
 				);
 			}
 			expect(
@@ -7019,7 +7169,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			}
 			expect(requests[1]?.provider).toMatchObject({
 				order: ['alibaba'],
-				allow_fallbacks: false
+				allow_fallbacks: true
 			});
 			expect(requests[2]?.provider).toMatchObject({
 				ignore: ['alibaba'],
@@ -10877,5 +11027,354 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 				text.startsWith('Tool execution batching:')
 			)
 		).toBe(true);
+	});
+});
+
+/**
+ * SHA-bound mutation batch approval — the write protocol that replaced the
+ * turn contract DSL (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 Decision 1).
+ *
+ * The property every test here is defending: what the reviewer read is what
+ * executes. The contract lane could not offer that, because the acting model
+ * wrote the executing calls AFTER the review (F08).
+ */
+describe('SHA-bound mutation batch approval', () => {
+	const PROJECT_ID = 'project-1';
+
+	function batchToolSurface() {
+		return executionInputWithReadSurface(
+			[
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				readToolDefinition('get_project_overview'),
+				createTaskToolDefinition()
+			],
+			[
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'get_project_overview',
+				'create_onto_task'
+			]
+		);
+	}
+
+	/** Four creates exceed the direct-write count floor, so the batch is complex. */
+	function proposedBatchRound(): AgenticChatTurnProviderClientEventV1[] {
+		return [
+			{
+				type: 'tool_call',
+				toolCall: ['Permit', 'Cabinets', 'Rough-in', 'Inspection'].map((title, index) => ({
+					index,
+					id: `provider-create-${index + 1}`,
+					type: 'function' as const,
+					function: {
+						name: 'create_onto_task',
+						arguments: JSON.stringify({ project_id: PROJECT_ID, title })
+					}
+				}))
+			},
+			{ type: 'done', finishedReason: 'tool_calls' }
+		];
+	}
+
+	function expectedBatchSha(): string {
+		return mutationBatchSha256(
+			buildMutationBatch(
+				['Permit', 'Cabinets', 'Rough-in', 'Inspection'].map((title, index) => ({
+					id: `provider-create-${index + 1}`,
+					name: 'create_onto_task',
+					canonicalProviderArguments: canonicalizeAgenticChatJson({
+						project_id: PROJECT_ID,
+						title
+					} as never)
+				}))
+			)
+		);
+	}
+
+	function reviewerApproval(sha: string): AgenticChatTurnProviderClientEventV1[] {
+		return [
+			{
+				type: 'tool_call',
+				toolCall: [
+					{
+						index: 0,
+						id: 'reviewer-approval-1',
+						type: 'function',
+						function: {
+							name: 'approve_mutation_batch_review',
+							arguments: JSON.stringify({
+								reason: 'The user asked for exactly these four tasks.',
+								batch_sha256: sha,
+								reference_candidates: []
+							})
+						}
+					}
+				]
+			},
+			{ type: 'done', finishedReason: 'tool_calls' }
+		];
+	}
+
+	function batchProvider(
+		client: ReturnType<typeof clientWithRounds>,
+		semanticReviewer: ReturnType<typeof clientWithRounds>
+	) {
+		return new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoTask: true },
+			true
+		).prepare({
+			executionInput: batchToolSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+	}
+
+	it('shows the reviewer the real arguments, not a description of them', async () => {
+		const client = clientWithRounds([proposedBatchRound()]);
+		const semanticReviewer = clientWithRounds([reviewerApproval(expectedBatchSha())]);
+		const invocation = await batchProvider(client, semanticReviewer);
+
+		await collect(invocation.stream());
+
+		const reviewRequest = semanticReviewer.stream.mock.calls[0]![0];
+		const reviewerUserMessage = reviewRequest.messages
+			.filter((message) => message.role === 'user')
+			.map((message) => message.content)
+			.join('\n');
+		// The exact executable arguments are in the reviewer's evidence.
+		expect(reviewerUserMessage).toContain('"tool":"create_onto_task"');
+		expect(reviewerUserMessage).toContain('Permit');
+		expect(reviewerUserMessage).toContain('Inspection');
+		expect(reviewerUserMessage).toContain(expectedBatchSha());
+		// And the reviewer is offered no way to author replacement calls.
+		expect(
+			reviewRequest.tools.some((tool) =>
+				Object.hasOwn(
+					(tool.function.parameters.properties ?? {}) as Record<string, unknown>,
+					'corrected_contract'
+				)
+			)
+		).toBe(false);
+	});
+
+	it('executes the approved calls unchanged, with no acting pass in between', async () => {
+		const client = clientWithRounds([proposedBatchRound()]);
+		const semanticReviewer = clientWithRounds([reviewerApproval(expectedBatchSha())]);
+		const invocation = await batchProvider(client, semanticReviewer);
+
+		await collect(invocation.stream());
+		const executionSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-approval-1',
+						'approve_mutation_batch_review',
+						{
+							reason: 'The user asked for exactly these four tasks.',
+							batch_sha256: expectedBatchSha(),
+							reference_candidates: []
+						},
+						{
+							status: 'mutation_batch_review_approved',
+							batch_sha256: expectedBatchSha()
+						}
+					)
+				]
+			})
+		);
+
+		const mutatingSteps = executionSteps.filter((step) => step.type === 'mutating_tool');
+		expect(mutatingSteps).toHaveLength(4);
+		// The executed arguments are the proposed arguments, byte for byte.
+		expect(mutatingSteps.map((step) => (step as { arguments: JsonObject }).arguments)).toEqual([
+			{ project_id: PROJECT_ID, title: 'Permit' },
+			{ project_id: PROJECT_ID, title: 'Cabinets' },
+			{ project_id: PROJECT_ID, title: 'Rough-in' },
+			{ project_id: PROJECT_ID, title: 'Inspection' }
+		]);
+		// One acting pass produced the batch; nothing asked the model to write
+		// the calls a second time. The contract lane needed three passes here.
+		expect(client.stream).toHaveBeenCalledTimes(1);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+	});
+
+	// The contract lane spent a forced pass here making the model re-express
+	// calls it had already written as a DSL. That pass is gone: no acting
+	// request is ever forced onto the declare/clarify gate.
+	it('never forces the acting model onto the contract declaration gate', async () => {
+		const client = clientWithRounds([proposedBatchRound()]);
+		const semanticReviewer = clientWithRounds([reviewerApproval(expectedBatchSha())]);
+		const invocation = await batchProvider(client, semanticReviewer);
+
+		await collect(invocation.stream());
+
+		for (const [request] of client.stream.mock.calls) {
+			expect(request.toolChoice).not.toBe('required');
+		}
+		expect(client.stream).toHaveBeenCalledTimes(1);
+	});
+
+	it('fails closed when the approval binds a different batch', async () => {
+		const client = clientWithRounds([proposedBatchRound()]);
+		const semanticReviewer = clientWithRounds([reviewerApproval('f'.repeat(64))]);
+		const invocation = await batchProvider(client, semanticReviewer);
+
+		const steps = await collect(invocation.stream());
+		// The mismatched approval is refused inside the review lane, so no
+		// mutation is ever offered for execution.
+		expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'finish',
+					finishedReason: 'semantic_review_failed'
+				})
+			])
+		);
+	});
+
+	it('returns a rejected batch to the actor and re-reviews the corrected calls', async () => {
+		const correctedTitles = ['Permit', 'Cabinets', 'Rough-in', 'Punch list'];
+		const correctedSha = mutationBatchSha256(
+			buildMutationBatch(
+				correctedTitles.map((title, index) => ({
+					id: `provider-fixed-${index + 1}`,
+					name: 'create_onto_task',
+					canonicalProviderArguments: canonicalizeAgenticChatJson({
+						project_id: PROJECT_ID,
+						title
+					} as never)
+				}))
+			)
+		);
+		const client = clientWithRounds([
+			proposedBatchRound(),
+			[
+				{
+					type: 'tool_call',
+					toolCall: correctedTitles.map((title, index) => ({
+						index,
+						id: `provider-fixed-${index + 1}`,
+						type: 'function' as const,
+						function: {
+							name: 'create_onto_task',
+							arguments: JSON.stringify({ project_id: PROJECT_ID, title })
+						}
+					}))
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'reviewer-revision-1',
+							type: 'function',
+							function: {
+								name: 'request_proposal_revision',
+								arguments: JSON.stringify({
+									reason: 'The fourth task is not the one the user named.',
+									required_correction: 'Create the punch list task instead.',
+									reference_candidates: []
+								})
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			reviewerApproval(correctedSha)
+		]);
+		const invocation = await batchProvider(client, semanticReviewer);
+
+		await collect(invocation.stream());
+		const afterRejection = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-revision-1',
+						'request_proposal_revision',
+						{
+							reason: 'The fourth task is not the one the user named.',
+							required_correction: 'Create the punch list task instead.',
+							reference_candidates: []
+						},
+						{
+							status: 'revision_required',
+							reason: 'The fourth task is not the one the user named.',
+							required_correction: 'Create the punch list task instead.'
+						}
+					)
+				]
+			})
+		);
+
+		// Nothing from the rejected batch reached execution.
+		expect(afterRejection.some((step) => step.type === 'mutating_tool')).toBe(false);
+		// The actor got exactly one more pass, carrying the reviewer's reason,
+		// and its corrected calls went straight back to review.
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+		const revisionRequest = client.stream.mock.calls[1]![0];
+		expect(
+			revisionRequest.messages
+				.filter((message) => message.role === 'system')
+				.map((message) => message.content)
+				.join('\n')
+		).toContain('Create the punch list task instead.');
+		// The second review is bound to the corrected batch, not the first one.
+		expect(
+			semanticReviewer.stream.mock.calls[1]![0].messages.map(
+				(message) => message.content
+			).join('\n')
+		).toContain(correctedSha);
+	});
+
+	it('leaves the direct-write lane alone for a small resolved batch', async () => {
+		const client = clientWithRounds([
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-create-1',
+							type: 'function',
+							function: {
+								name: 'create_onto_task',
+								arguments: JSON.stringify({
+									project_id: PROJECT_ID,
+									title: 'One task'
+								})
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([]);
+		const invocation = await batchProvider(client, semanticReviewer);
+
+		const steps = await collect(invocation.stream());
+
+		// One create in the focused project is the direct lane: no review, no
+		// withholding, one pass. That floor is load-bearing and survives.
+		expect(steps.filter((step) => step.type === 'mutating_tool')).toHaveLength(1);
+		expect(semanticReviewer.stream).not.toHaveBeenCalled();
 	});
 });

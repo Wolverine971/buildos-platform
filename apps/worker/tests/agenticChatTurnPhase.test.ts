@@ -190,9 +190,6 @@ describe('nextTurnPhase (lane-E §1.2 pass ladders)', () => {
 				'synthesis'
 			);
 		}
-		expect(nextTurnPhase('reading', { type: 'budget', limit: 'validation_repairs' })).toBe(
-			'reading'
-		);
 		expect(nextTurnPhase('terminal', read)).toBe('terminal');
 		expect(nextTurnPhase('terminal', { type: 'disposition', decision: 'contract' })).toBe(
 			'terminal'
@@ -235,12 +232,14 @@ function names(surface: ReturnType<typeof surfaceFor>): string[] | null {
 }
 
 describe('surfaceFor', () => {
-	it('mounts the opening surface as given and the full admitted surface once a contract is declared', () => {
-		const opening = ADMITTED.filter((entry) => entry.function.name !== 'declare_turn_contract');
-		expect(surfaceFor('opening', ADMITTED, { openingTools: opening })).toEqual({
-			tools: opening,
-			toolChoice: 'auto'
-		});
+	it('re-mounts the admitted surface on the opening phases and once a contract is declared', () => {
+		// The opening pass proper is assembled by request-builders (contract
+		// schema deferred); the reducer mounts the admitted surface on a repair
+		// or after a cancellation (audit 2026-09-08 F36 removed the unused
+		// openingTools context).
+		for (const phase of ['opening', 'reading', 'contract_cancelled'] as const) {
+			expect(surfaceFor(phase, ADMITTED)).toEqual({ tools: ADMITTED, toolChoice: 'auto' });
+		}
 		expect(names(surfaceFor('contract_declared', ADMITTED))).toEqual(
 			ADMITTED.map((entry) => entry.function.name)
 		);

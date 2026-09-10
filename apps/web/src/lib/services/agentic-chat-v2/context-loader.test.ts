@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/context-loader.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Constants } from '@buildos/shared-types';
 import { START_HERE_CONTEXT_LOAD_MAX_CHARS } from '@buildos/shared-agent-ops/ontology/start-here';
 import { loadFastChatPromptContext } from './context-loader';
 import { compactPreparedPromptContextPayload } from './prepared-prompt-cache';
@@ -133,20 +134,68 @@ function createProjectRpcSupabaseMock(
 	return { rpc, from } as any;
 }
 
-function createTaskRollupQuery(result: QueryResult) {
-	// select(...).in(...).is(...).is(...).order(...).limit(...)
+/**
+ * Postgres rejects the whole query with 22P02 when a `task_state` filter names
+ * a value the enum does not have, and the rollup then degrades to null on
+ * every global turn (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F115 regression).
+ * A hand-rolled mock cannot catch that on its own, so every state_key filter
+ * these tests send is checked against the generated enum.
+ */
+function assertTaskStateFilterIsEnumSafe(column: string, value: unknown): void {
+	if (column !== 'state_key') return;
+	const candidates =
+		typeof value === 'string'
+			? (value.match(/"([^"]+)"/g) ?? []).map((quoted) => quoted.slice(1, -1))
+			: Array.isArray(value)
+				? value
+				: [];
+	const enumValues: readonly string[] = Constants.public.Enums.task_state;
+	for (const candidate of candidates) {
+		if (typeof candidate === 'string' && enumValues.includes(candidate)) continue;
+		throw new Error(
+			`state_key filter sent ${JSON.stringify(candidate)}, which is not a task_state enum value (${enumValues.join(', ')}). Postgres would reject this query with 22P02.`
+		);
+	}
+}
+
+type TaskRollupQueryRecord = {
+	inCalls: Array<[string, unknown[]]>;
+	isCalls: Array<[string, unknown]>;
+	notCalls: Array<[string, string, unknown]>;
+};
+
+function createTaskRollupQuery(result: QueryResult, record?: TaskRollupQueryRecord) {
+	// select(...).in(...).is(...).is(...).is(...).in(...).order(...).limit(...)
+	// — open tasks only, over every accessible project
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F115).
 	const limit = vi.fn().mockResolvedValue(result);
 	const order = vi.fn().mockReturnValue({ limit });
-	const isArchived = vi.fn().mockReturnValue({ order });
-	const is = vi.fn().mockReturnValue({ is: isArchived });
-	const inFn = vi.fn().mockReturnValue({ is });
+	const not = vi.fn().mockImplementation((column: string, operator: string, value: unknown) => {
+		assertTaskStateFilterIsEnumSafe(column, value);
+		record?.notCalls.push([column, operator, value]);
+		return { order };
+	});
+	const stateIn = vi.fn().mockImplementation((column: string, values: unknown[]) => {
+		assertTaskStateFilterIsEnumSafe(column, values);
+		record?.inCalls.push([column, values]);
+		return { order, not };
+	});
+	const is = vi.fn().mockImplementation((column: string, value: unknown) => {
+		record?.isCalls.push([column, value]);
+		return { is, not, in: stateIn };
+	});
+	const inFn = vi.fn().mockImplementation((column: string, values: unknown[]) => {
+		assertTaskStateFilterIsEnumSafe(column, values);
+		record?.inCalls.push([column, values]);
+		return { is };
+	});
 	const select = vi.fn().mockReturnValue({ in: inFn });
 	return { select };
 }
 
 function createGlobalRpcSupabaseMock(
 	payload: Record<string, unknown>,
-	options: { taskRollupRows?: QueryResult } = {}
+	options: { taskRollupRows?: QueryResult; taskRollupQuery?: TaskRollupQueryRecord } = {}
 ) {
 	const rpc = vi.fn().mockImplementation((fn: string) => {
 		if (fn === 'load_fastchat_context') {
@@ -158,10 +207,13 @@ function createGlobalRpcSupabaseMock(
 		if (table === 'users') {
 			return createUsersTimezoneQuery(usersTimezoneRow(MOCK_USER_TIMEZONE));
 		}
-		// The per-project task rollup is the one context-table read the RPC
-		// path makes (turn-executor audit 2026-09-02, Finding 13 / F-02).
+		// The task rollup is the one context-table read the RPC path makes
+		// (turn-executor audit 2026-09-02, Finding 13 / F-02).
 		if (table === 'onto_tasks') {
-			return createTaskRollupQuery(options.taskRollupRows ?? { data: [], error: null });
+			return createTaskRollupQuery(
+				options.taskRollupRows ?? { data: [], error: null },
+				options.taskRollupQuery
+			);
 		}
 		throw new Error('Unexpected fallback query path for global RPC mock');
 	});
@@ -174,8 +226,9 @@ function createGlobalFallbackSupabaseMock(config: {
 	goals: QueryResult;
 	milestones: QueryResult;
 	plans: QueryResult;
-	logs: QueryResult;
 	tasks?: QueryResult;
+	taskRollupRows?: QueryResult;
+	taskRollupQuery?: TaskRollupQueryRecord;
 	events?: QueryResult;
 }) {
 	const rpc = vi.fn().mockImplementation((fn: string) => {
@@ -235,24 +288,45 @@ function createGlobalFallbackSupabaseMock(config: {
 			return { select };
 		}
 
-		if (table === 'onto_project_logs') {
-			const limit = vi.fn().mockResolvedValue(config.logs);
-			const order = vi.fn().mockReturnValue({ limit });
-			const gte = vi.fn().mockReturnValue({ order });
-			const inFn = vi.fn().mockReturnValue({ gte, order });
-			const select = vi.fn().mockReturnValue({ in: inFn });
-			return { select };
-		}
+		// onto_project_logs is deliberately absent: the global fallback no longer
+		// queries it (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F115), so a query
+		// here trips the unexpected-table guard below.
 
 		if (table === 'onto_tasks') {
-			const limit = vi.fn().mockResolvedValue(config.tasks ?? { data: [], error: null });
-			const order = vi.fn().mockReturnValue({ limit });
-			const or = vi.fn().mockReturnValue({ order });
-			// `.or(...)` is the dated-signal query; the task rollup (2026-09-02)
-			// goes straight from the second `.is()` to `.order()`.
-			const isArchived = vi.fn().mockReturnValue({ or, order });
+			// `.or(...)` is the dated-signal query; the open-task rollup chains a
+			// third `.is()` plus a state filter before `.order()`.
+			const signalLimit = vi
+				.fn()
+				.mockResolvedValue(config.tasks ?? { data: [], error: null });
+			const signalOrder = vi.fn().mockReturnValue({ limit: signalLimit });
+			const or = vi.fn().mockReturnValue({ order: signalOrder });
+			const rollupLimit = vi
+				.fn()
+				.mockResolvedValue(config.taskRollupRows ?? { data: [], error: null });
+			const rollupOrder = vi.fn().mockReturnValue({ limit: rollupLimit });
+			const not = vi
+				.fn()
+				.mockImplementation((column: string, operator: string, value: unknown) => {
+					assertTaskStateFilterIsEnumSafe(column, value);
+					config.taskRollupQuery?.notCalls.push([column, operator, value]);
+					return { order: rollupOrder };
+				});
+			const rollupIn = vi.fn().mockImplementation((column: string, values: unknown[]) => {
+				assertTaskStateFilterIsEnumSafe(column, values);
+				config.taskRollupQuery?.inCalls.push([column, values]);
+				return { order: rollupOrder, not };
+			});
+			const isCompleted = vi.fn().mockImplementation((column: string, value: unknown) => {
+				config.taskRollupQuery?.isCalls.push([column, value]);
+				return { not, in: rollupIn };
+			});
+			const isArchived = vi.fn().mockReturnValue({ or, is: isCompleted });
 			const is = vi.fn().mockReturnValue({ is: isArchived });
-			const inFn = vi.fn().mockReturnValue({ is });
+			const inFn = vi.fn().mockImplementation((column: string, values: unknown[]) => {
+				assertTaskStateFilterIsEnumSafe(column, values);
+				config.taskRollupQuery?.inCalls.push([column, values]);
+				return { is };
+			});
 			const select = vi.fn().mockReturnValue({ in: inFn });
 			return { select };
 		}
@@ -600,6 +674,19 @@ describe('loadFastChatPromptContext daily_brief', () => {
 
 describe('loadFastChatPromptContext global', () => {
 	it('uses the migrated global RPC payload when project intelligence is present', async () => {
+		// Nine projects: eight are bundled, the ninth only reaches the prompt
+		// through the project index (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F115).
+		const olderProjects = Array.from({ length: 8 }, (_, index) => ({
+			id: `proj-older-${index + 1}`,
+			name: `Older ${index + 1}`,
+			state_key: 'active',
+			description: null,
+			start_at: null,
+			end_at: null,
+			next_step_short: null,
+			updated_at: `2026-02-${String(14 - index).padStart(2, '0')}T20:00:00.000Z`
+		}));
+		const taskRollupQuery: TaskRollupQueryRecord = { inCalls: [], isCalls: [], notCalls: [] };
 		const supabase = createGlobalRpcSupabaseMock(
 			{
 				projects: [
@@ -612,12 +699,23 @@ describe('loadFastChatPromptContext global', () => {
 						end_at: null,
 						next_step_short: 'Ship it',
 						updated_at: '2026-02-15T20:00:00.000Z'
-					}
+					},
+					...olderProjects
 				],
 				goals: [],
 				milestones: [],
 				plans: [],
-				project_logs: [],
+				project_logs: [
+					{
+						project_id: 'proj-1',
+						entity_type: 'task',
+						entity_id: 'task-logged',
+						action: 'updated',
+						created_at: '2026-02-15T19:30:00.000Z',
+						after_data: { title: 'Logged task', content: 'x'.repeat(4000) },
+						before_data: null
+					}
+				],
 				project_intelligence: {
 					generated_at: '2026-02-15T20:00:00.000Z',
 					scope: 'global',
@@ -720,6 +818,12 @@ describe('loadFastChatPromptContext global', () => {
 							completed_at: '2026-02-01T00:00:00.000Z'
 						},
 						{
+							project_id: 'proj-older-8',
+							state_key: 'todo',
+							due_at: '2000-01-01T00:00:00.000Z',
+							completed_at: null
+						},
+						{
 							project_id: 'proj-other',
 							state_key: 'todo',
 							due_at: null,
@@ -727,7 +831,8 @@ describe('loadFastChatPromptContext global', () => {
 						}
 					],
 					error: null
-				}
+				},
+				taskRollupQuery
 			}
 		);
 
@@ -739,21 +844,71 @@ describe('loadFastChatPromptContext global', () => {
 
 		const data = context.data as Record<string, any>;
 		expect(data.context_meta.source).toBe('rpc');
-		expect(data.context_meta.active_project_count).toBe(1);
+		expect(data.context_meta.active_project_count).toBe(9);
+		expect(data.context_meta.projects_returned).toBe(8);
 		expect(
 			data.projects.map((bundle: { project: { id: string } }) => bundle.project.id)
-		).toEqual(['proj-1']);
-		// One TypeScript query rolls tasks up per bundled project: completed_at
-		// or a terminal state counts as done; overdue is open + past due.
+		).toEqual([
+			'proj-1',
+			'proj-older-1',
+			'proj-older-2',
+			'proj-older-3',
+			'proj-older-4',
+			'proj-older-5',
+			'proj-older-6',
+			'proj-older-7'
+		]);
+		// One TypeScript query rolls open tasks up per project. The query asks
+		// for open tasks only (F115: no `done` count, so the row cap covers a
+		// whole workspace); the loader keeps the same guard for rows that slip
+		// through, so the mock's completed rows are skipped, not counted.
 		expect(data.projects[0].task_rollup).toEqual({
-			total: 5,
 			open: 3,
 			overdue: 1,
 			in_progress: 1,
 			blocked: 1,
-			done: 2,
 			truncated: false
 		});
+		// The state filter names only real `task_state` enum values. A legacy
+		// alias here (the pre-fix filter sent "completed", "closed", ...) makes
+		// Postgres reject the query with 22P02 and the rollup degrades to null
+		// on every global turn, so assert against the generated enum.
+		expect(taskRollupQuery.inCalls).toEqual([
+			['project_id', ['proj-1', ...olderProjects.map((project) => project.id)]],
+			['state_key', ['todo', 'in_progress', 'blocked']]
+		]);
+		for (const [column, values] of taskRollupQuery.inCalls) {
+			if (column !== 'state_key') continue;
+			for (const value of values as string[]) {
+				expect(Constants.public.Enums.task_state).toContain(value);
+			}
+		}
+		expect(taskRollupQuery.isCalls).toEqual([
+			['deleted_at', null],
+			['archived_at', null],
+			['completed_at', null]
+		]);
+		expect(taskRollupQuery.notCalls).toEqual([]);
+		// Every accessible project is in the index with its rollup, including the
+		// ninth that no bundle carries; bundles no longer carry recent_activity.
+		expect(data.project_index.map((entry: { id: string }) => entry.id)).toEqual([
+			'proj-1',
+			...olderProjects.map((project) => project.id)
+		]);
+		expect(data.project_index[0]).toEqual({
+			id: 'proj-1',
+			name: 'Project One',
+			state_key: 'active',
+			next_step_short: 'Ship it',
+			updated_at: '2026-02-15T20:00:00.000Z',
+			task_rollup: { open: 3, overdue: 1, in_progress: 1, blocked: 1, truncated: false }
+		});
+		expect(data.project_index[8]).toMatchObject({
+			id: 'proj-older-8',
+			task_rollup: { open: 1, overdue: 1, in_progress: 0, blocked: 0, truncated: false }
+		});
+		expect(data.projects[0]).not.toHaveProperty('recent_activity');
+		expect(JSON.stringify(data)).not.toContain('Logged task');
 		expect(data.project_intelligence).toMatchObject({
 			scope: 'global',
 			source: 'load_fastchat_context',
@@ -764,7 +919,7 @@ describe('loadFastChatPromptContext global', () => {
 		});
 		expect(supabase.rpc).toHaveBeenCalledTimes(1);
 		// The RPC path reads two tables: users.timezone (alongside every context
-		// load) and the one onto_tasks rollup query for the bundled projects.
+		// load) and the one onto_tasks rollup query for every accessible project.
 		expect(supabase.from.mock.calls.map(([table]: [string]) => table)).toEqual([
 			'users',
 			'onto_tasks'
@@ -1009,16 +1164,11 @@ describe('loadFastChatPromptContext global', () => {
 				],
 				error: null
 			},
-			logs: {
-				data: Array.from({ length: 8 }, (_, index) => ({
-					project_id: 'proj-1',
-					entity_type: 'task',
-					entity_id: `task-${index + 1}`,
-					action: 'updated',
-					created_at: isoFromDays(-(index + 1) / 10),
-					after_data: { title: `Task ${index + 1}` },
-					before_data: null
-				})),
+			taskRollupRows: {
+				data: [
+					{ project_id: 'proj-1', state_key: 'todo', due_at: null, completed_at: null },
+					{ project_id: 'proj-2', state_key: 'blocked', due_at: null, completed_at: null }
+				],
 				error: null
 			}
 		});
@@ -1038,15 +1188,25 @@ describe('loadFastChatPromptContext global', () => {
 			projects_returned: 2,
 			project_limit: 8,
 			includes_doc_structure: false,
-			recent_activity_window_days: 7,
-			recent_activity_max_lookback_days: 21,
 			entity_limits_per_project: {
-				recent_activity: 3,
 				goals: 2,
 				milestones: 2,
 				plans: 2
 			}
 		});
+		expect(data.context_meta).not.toHaveProperty('recent_activity_window_days');
+		expect(data.project_index).toEqual([
+			expect.objectContaining({
+				id: 'proj-1',
+				name: 'Project One',
+				task_rollup: { open: 1, overdue: 0, in_progress: 0, blocked: 0, truncated: false }
+			}),
+			expect.objectContaining({
+				id: 'proj-2',
+				name: 'Project Two',
+				task_rollup: { open: 1, overdue: 0, in_progress: 0, blocked: 1, truncated: false }
+			})
+		]);
 
 		const projectOne = data.projects.find(
 			(bundle: { project: { id: string } }) => bundle.project.id === 'proj-1'
@@ -1071,9 +1231,13 @@ describe('loadFastChatPromptContext global', () => {
 			'plan-active',
 			'plan-blocked'
 		]);
-		expect(
-			projectOne.recent_activity.map((item: { entity_id: string }) => item.entity_id)
-		).toEqual(['task-1', 'task-2', 'task-3']);
+		// F115: the fallback no longer queries onto_project_logs (the mock's
+		// unexpected-table guard proves it), so bundles carry no recent_activity
+		// and the fallback snapshot carries no recent changes.
+		expect(projectOne).not.toHaveProperty('recent_activity');
+		expect(supabase.from.mock.calls.map(([table]: [string]) => table)).not.toContain(
+			'onto_project_logs'
+		);
 		expect(data.project_intelligence).toMatchObject({
 			scope: 'global',
 			source: 'fallback',
@@ -1082,7 +1246,7 @@ describe('loadFastChatPromptContext global', () => {
 				overdue_total: 2,
 				due_soon_total: 2,
 				upcoming_total: 2,
-				recent_change_total: 8
+				recent_change_total: 0
 			}
 		});
 		expect(
@@ -1121,8 +1285,7 @@ describe('loadFastChatPromptContext global', () => {
 			],
 			goals: { data: [], error: null },
 			milestones: { data: [], error: null },
-			plans: { data: [], error: null },
-			logs: { data: [], error: null }
+			plans: { data: [], error: null }
 		});
 
 		const context = await loadFastChatPromptContext({
@@ -1147,7 +1310,12 @@ describe('loadFastChatPromptContext global', () => {
 		});
 	});
 
-	it('prefers the last 7 days of activity, dedupes repeated entities, and only falls back when needed', async () => {
+	// The bundle recent_activity this test used to pin (7-day window, per-entity
+	// dedupe, 21-day fallback) is gone with the logs query it was built from
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F115). What the fallback still
+	// guarantees: every accessible project reaches the index in updated_at
+	// order, the rollup query covers all of them, and no log row is loaded.
+	it('indexes every accessible project without loading project logs', async () => {
 		vi.useFakeTimers();
 		const now = new Date('2026-02-15T20:07:18.308Z');
 		vi.setSystemTime(now);
@@ -1156,16 +1324,9 @@ describe('loadFastChatPromptContext global', () => {
 		const isoFromDays = (daysFromNow: number): string =>
 			new Date(now.getTime() + daysFromNow * dayMs).toISOString();
 
+		const taskRollupQuery: TaskRollupQueryRecord = { inCalls: [], isCalls: [], notCalls: [] };
 		const supabase = createGlobalFallbackSupabaseMock({
 			projectSummaries: [
-				{
-					id: 'proj-1',
-					name: 'Project One',
-					state_key: 'active',
-					description: 'First project',
-					next_step_short: 'Ship project one',
-					updated_at: isoFromDays(-1)
-				},
 				{
 					id: 'proj-2',
 					name: 'Project Two',
@@ -1175,99 +1336,33 @@ describe('loadFastChatPromptContext global', () => {
 					updated_at: isoFromDays(-2)
 				},
 				{
+					id: 'proj-1',
+					name: 'Project One',
+					state_key: 'active',
+					description: 'First project',
+					next_step_short: 'Ship project one',
+					updated_at: isoFromDays(-1)
+				},
+				{
 					id: 'proj-3',
 					name: 'Project Three',
-					state_key: 'planning',
+					state_key: 'paused',
 					description: 'Third project',
-					next_step_short: 'Ship project three',
+					next_step_short: null,
 					updated_at: isoFromDays(-3)
 				}
 			],
 			goals: { data: [], error: null },
 			milestones: { data: [], error: null },
 			plans: { data: [], error: null },
-			logs: {
+			taskRollupQuery,
+			taskRollupRows: {
 				data: [
 					{
-						project_id: 'proj-1',
-						entity_type: 'task',
-						entity_id: 'task-a',
-						action: 'updated',
-						created_at: isoFromDays(-1),
-						after_data: { title: 'Task A' },
-						before_data: null
-					},
-					{
-						project_id: 'proj-1',
-						entity_type: 'task',
-						entity_id: 'task-a',
-						action: 'updated',
-						created_at: isoFromDays(-2),
-						after_data: { title: 'Task A (older)' },
-						before_data: null
-					},
-					{
-						project_id: 'proj-1',
-						entity_type: 'goal',
-						entity_id: 'goal-g',
-						action: 'created',
-						created_at: isoFromDays(-1.5),
-						after_data: {},
-						before_data: null
-					},
-					{
-						project_id: 'proj-1',
-						entity_type: 'document',
-						entity_id: 'doc-b',
-						action: 'updated',
-						created_at: isoFromDays(-5),
-						after_data: { title: 'Doc B' },
-						before_data: null
-					},
-					{
-						project_id: 'proj-1',
-						entity_type: 'document',
-						entity_id: 'doc-c',
-						action: 'updated',
-						created_at: isoFromDays(-8),
-						after_data: { title: 'Doc C' },
-						before_data: null
-					},
-					{
-						project_id: 'proj-2',
-						entity_type: 'project',
-						entity_id: 'proj-2',
-						action: 'created',
-						created_at: isoFromDays(-8),
-						after_data: {},
-						before_data: null
-					},
-					{
-						project_id: 'proj-2',
-						entity_type: 'task',
-						entity_id: 'task-b',
-						action: 'updated',
-						created_at: isoFromDays(-10),
-						after_data: { title: 'Task B' },
-						before_data: null
-					},
-					{
-						project_id: 'proj-2',
-						entity_type: 'document',
-						entity_id: 'doc-z',
-						action: 'updated',
-						created_at: isoFromDays(-15),
-						after_data: { title: 'Doc Z' },
-						before_data: null
-					},
-					{
 						project_id: 'proj-3',
-						entity_type: 'task',
-						entity_id: 'task-old',
-						action: 'updated',
-						created_at: isoFromDays(-25),
-						after_data: { title: 'Too Old' },
-						before_data: null
+						state_key: 'todo',
+						due_at: isoFromDays(-1),
+						completed_at: null
 					}
 				],
 				error: null
@@ -1281,29 +1376,36 @@ describe('loadFastChatPromptContext global', () => {
 		});
 
 		const data = context.data as Record<string, any>;
-		const projectOne = data.projects.find(
-			(bundle: { project: { id: string } }) => bundle.project.id === 'proj-1'
+		expect(supabase.from.mock.calls.map(([table]: [string]) => table)).not.toContain(
+			'onto_project_logs'
 		);
-		const projectTwo = data.projects.find(
-			(bundle: { project: { id: string } }) => bundle.project.id === 'proj-2'
-		);
-		const projectThree = data.projects.find(
-			(bundle: { project: { id: string } }) => bundle.project.id === 'proj-3'
-		);
-		if (!projectOne || !projectTwo || !projectThree) {
-			throw new Error('Expected bundled global projects to include test projects');
+		expect(data.project_index.map((entry: { id: string }) => entry.id)).toEqual([
+			'proj-1',
+			'proj-2',
+			'proj-3'
+		]);
+		expect(data.project_index[2]).toEqual({
+			id: 'proj-3',
+			name: 'Project Three',
+			state_key: 'paused',
+			next_step_short: null,
+			updated_at: isoFromDays(-3),
+			task_rollup: { open: 1, overdue: 1, in_progress: 0, blocked: 0, truncated: false }
+		});
+		// Both onto_tasks queries scope by project id; the rollup is the one with
+		// the open-only state filter and it covers every accessible project.
+		expect(taskRollupQuery.notCalls).toEqual([]);
+		expect(taskRollupQuery.inCalls).toContainEqual([
+			'state_key',
+			['todo', 'in_progress', 'blocked']
+		]);
+		expect(taskRollupQuery.inCalls).toContainEqual([
+			'project_id',
+			['proj-1', 'proj-2', 'proj-3']
+		]);
+		for (const bundle of data.projects) {
+			expect(bundle).not.toHaveProperty('recent_activity');
 		}
-
-		expect(
-			projectOne.recent_activity.map((item: { entity_id: string }) => item.entity_id)
-		).toEqual(['task-a', 'doc-b', 'goal-g']);
-		expect(
-			projectOne.recent_activity.every((item: { title: string | null }) => item.title)
-		).toBe(true);
-		expect(
-			projectTwo.recent_activity.map((item: { entity_id: string }) => item.entity_id)
-		).toEqual(['task-b', 'doc-z', 'proj-2']);
-		expect(projectThree.recent_activity).toEqual([]);
 	});
 });
 

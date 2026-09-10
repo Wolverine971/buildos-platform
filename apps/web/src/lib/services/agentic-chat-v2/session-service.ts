@@ -22,6 +22,8 @@ import {
 	type ChatAttachmentAssetRow
 } from './attachments';
 import type { ChatHistorySnapshot } from './turn-admission';
+import '$lib/services/agentic-chat/tools/registry/install-loop-catalog';
+import { CONTROL_TOOL_NAMES, isLikelyWriteToolName } from '@buildos/agentic-chat-runtime/loop';
 
 const logger = createLogger('FastChatSession');
 
@@ -122,16 +124,6 @@ type PendingClarificationSummary = {
 	candidates: PendingClarificationCandidate[];
 };
 
-type LoadedSkillSummary = {
-	id: string;
-	name: string | null;
-	parentId: string | null;
-	depth: number | null;
-	format: string | null;
-	summary: string | null;
-	materializedTools: string[];
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -154,11 +146,6 @@ function previewText(value: unknown, maxLength: number): string | null {
 	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
-function truncateBlock(value: string, maxLength: number): string {
-	if (value.length <= maxLength) return value;
-	return `${value.slice(0, Math.max(0, maxLength - 3))}...`;
-}
-
 function stringifyPreview(value: unknown, maxLength: number): string | null {
 	const text = typeof value === 'string' ? value : JSON.stringify(value);
 	return previewText(text, maxLength);
@@ -168,112 +155,6 @@ function boundedStoredText(value: unknown, maxLength: number): string | null {
 	if (typeof value !== 'string') return null;
 	const trimmed = value.trim();
 	return trimmed ? trimmed.slice(0, maxLength) : null;
-}
-
-function stringArray(value: unknown): string[] {
-	if (!Array.isArray(value)) return [];
-	return value.filter(
-		(item): item is string => typeof item === 'string' && item.trim().length > 0
-	);
-}
-
-function extractLoadedSkillSummary(row: LoadedSkillExecutionSummaryRow): LoadedSkillSummary | null {
-	if (!row.success || row.tool_name !== 'skill_load' || !isRecord(row.result)) return null;
-	if (row.result.type !== 'skill' || typeof row.result.id !== 'string') return null;
-	const id = row.result.id.trim();
-	if (!id) return null;
-	const parentId = typeof row.result.parent_id === 'string' ? row.result.parent_id.trim() : null;
-	return {
-		id,
-		name: typeof row.result.name === 'string' ? row.result.name.trim() : null,
-		parentId: parentId || null,
-		depth: typeof row.result.depth === 'number' ? row.result.depth : null,
-		format: typeof row.result.format === 'string' ? row.result.format : null,
-		summary: previewText(row.result.summary ?? row.result.description, 220),
-		materializedTools: stringArray(row.result.materialized_tools).slice(0, 8)
-	};
-}
-
-function formatLoadedSkillSummaryLine(skill: LoadedSkillSummary): string {
-	const relation = skill.parentId ? `child of \`${skill.parentId}\`` : 'root';
-	const details = [relation, skill.format ? `format: ${skill.format}` : null].filter(
-		(part): part is string => Boolean(part)
-	);
-	const tools =
-		skill.materializedTools.length > 0
-			? ` Tools exposed: ${skill.materializedTools.map((tool) => `\`${tool}\``).join(', ')}.`
-			: '';
-	const label = skill.name ? ` ${skill.name}.` : '';
-	const summary = skill.summary ? ` ${skill.summary}` : label;
-	return `- \`${skill.id}\` (${details.join('; ')}):${summary}${tools}`;
-}
-
-export const LOADED_SKILLS_LEDGER_PREFIX = 'Previously loaded skills in this session:';
-
-function extractLoadedSkillIdFromLedgerLine(line: string): string | null {
-	const match = line.match(/^\s*-\s+`([^`]+)`/);
-	const id = match?.[1]?.trim();
-	return id || null;
-}
-
-export function extractLoadedSkillIdsFromHistory(
-	messages: Array<Pick<FastChatHistoryMessage, 'role' | 'content'>>
-): string[] {
-	const loadedSkillIds = new Set<string>();
-	for (const message of messages) {
-		if (
-			message.role !== 'system' ||
-			typeof message.content !== 'string' ||
-			!message.content.startsWith(LOADED_SKILLS_LEDGER_PREFIX)
-		) {
-			continue;
-		}
-		for (const line of message.content.split('\n')) {
-			const id = extractLoadedSkillIdFromLedgerLine(line);
-			if (id) loadedSkillIds.add(id);
-		}
-	}
-	return [...loadedSkillIds];
-}
-
-/**
- * Whether composed history already carries the loaded-skills ledger — i.e. a
- * skill was loaded earlier in this session. The skill-load gate (stream
- * orchestrator) treats ledger skills as loaded and does not force a re-load.
- */
-export function historyIncludesLoadedSkillsLedger(
-	messages: Array<Pick<FastChatHistoryMessage, 'role' | 'content'>>
-): boolean {
-	return extractLoadedSkillIdsFromHistory(messages).length > 0;
-}
-
-export function buildLoadedSkillHistorySummary(
-	executions: LoadedSkillExecutionSummaryRow[],
-	maxSkills = 8
-): string | null {
-	if (!Array.isArray(executions) || executions.length === 0) return null;
-	const loadedSkillsById = new Map<string, LoadedSkillSummary>();
-	for (const row of executions) {
-		const loadedSkill = extractLoadedSkillSummary(row);
-		if (!loadedSkill) continue;
-		if (loadedSkillsById.has(loadedSkill.id)) {
-			loadedSkillsById.delete(loadedSkill.id);
-		}
-		loadedSkillsById.set(loadedSkill.id, loadedSkill);
-	}
-	const loadedSkills = Array.from(loadedSkillsById.values()).slice(-Math.max(1, maxSkills));
-	if (loadedSkills.length === 0) return null;
-
-	const lines = [
-		LOADED_SKILLS_LEDGER_PREFIX,
-		...loadedSkills.map(formatLoadedSkillSummaryLine),
-		[
-			'Use this as a skill-continuity ledger.',
-			'Do not call skill_load again just to rediscover one of these summaries, child indexes, or related tools.',
-			'Reload only when the current turn needs full markdown/examples or a different child/reference not listed here.'
-		].join(' ')
-	];
-	return truncateBlock(lines.join('\n'), 2400);
 }
 
 export const PENDING_CLARIFICATION_LEDGER_PREFIX =
@@ -456,14 +337,62 @@ function summarizeInterruptedToolResult(row: InterruptedToolExecutionSummaryRow)
 	return stringifyPreview(row.result, 700);
 }
 
+const INTERRUPTED_WRITE_VERBS: Record<string, string> = {
+	create: 'created',
+	update: 'updated',
+	move: 'moved',
+	delete: 'deleted'
+};
+
+function firstString(...values: unknown[]): string | null {
+	for (const value of values) {
+		if (typeof value === 'string' && value.trim()) return value.trim();
+	}
+	return null;
+}
+
+/**
+ * One line per committed write of an interrupted turn: the next turn must know
+ * which records already exist, or it recreates them
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F118).
+ */
+function summarizeInterruptedWrite(row: InterruptedToolExecutionSummaryRow): string {
+	const match = row.tool_name.trim().match(/^(create|update|move|delete)_(?:onto_)?([a-z_]+)$/);
+	const verb = match ? INTERRUPTED_WRITE_VERBS[match[1]!] : (row.gateway_op ?? row.tool_name);
+	const kind = match ? match[2]!.replace(/_/g, ' ') : null;
+	const result = isRecord(row.result) ? row.result : {};
+	const args = isRecord(row.arguments) ? row.arguments : {};
+	const task = isRecord(result.task) ? result.task : {};
+	const document = isRecord(result.document) ? result.document : {};
+	const title = firstString(
+		result.title,
+		result.name,
+		task.title,
+		document.title,
+		args.title,
+		args.name
+	);
+	const id = firstString(result.id, task.id, document.id, result.entity_id);
+	const parts = [verb, kind, title ? `"${title}"` : null, id ? `(${id})` : null].filter(
+		(part): part is string => Boolean(part)
+	);
+	return previewText(`- ${parts.join(' ')}`, 100) ?? `- ${verb}`;
+}
+
 export function buildInterruptedToolHistorySummary(
 	executions: InterruptedToolExecutionSummaryRow[]
 ): string | null {
 	if (!Array.isArray(executions) || executions.length === 0) return null;
 	const sorted = executions
 		.slice()
-		.sort((a, b) => (a.sequence_index ?? 0) - (b.sequence_index ?? 0));
-	const completed = sorted
+		.sort((a, b) => (a.sequence_index ?? 0) - (b.sequence_index ?? 0))
+		.filter((row) => !CONTROL_TOOL_NAMES.has(row.tool_name.trim().toLowerCase()));
+	const writes = sorted.filter(
+		(row) => row.success && isLikelyWriteToolName(row.tool_name, row.gateway_op)
+	);
+	const reads = sorted.filter((row) => !writes.includes(row));
+	const writeLines = writes.map(summarizeInterruptedWrite);
+	const completed = reads
 		.map((row) => {
 			const summary = summarizeInterruptedToolResult(row);
 			if (!summary) return null;
@@ -472,7 +401,7 @@ export function buildInterruptedToolHistorySummary(
 		})
 		.filter((line): line is string => Boolean(line))
 		.slice(0, 6);
-	const failures = sorted
+	const failures = reads
 		.filter((row) => !row.success && row.error_message)
 		.map((row) => {
 			const op = row.gateway_op ?? row.tool_name;
@@ -482,16 +411,18 @@ export function buildInterruptedToolHistorySummary(
 		.filter((line): line is string => Boolean(line))
 		.slice(0, 4);
 
-	if (completed.length === 0 && failures.length === 0) return null;
+	if (writeLines.length === 0 && completed.length === 0 && failures.length === 0) return null;
 
-	const lines = ['Previous interrupted assistant turn tool results:'];
-	if (completed.length > 0) {
-		lines.push(...completed);
-	}
-	if (failures.length > 0) {
-		lines.push(`Interrupted or failed calls: ${failures.join('; ')}`);
-	}
-	return previewText(lines.join('\n'), 3000);
+	const tail = [
+		...completed,
+		...(failures.length > 0 ? [`Interrupted or failed calls: ${failures.join('; ')}`] : [])
+	];
+	const boundedTail = tail.length > 0 ? previewText(tail.join('\n'), 3000) : null;
+	return [
+		'Previous interrupted assistant turn tool results:',
+		...writeLines,
+		...(boundedTail ? [boundedTail] : [])
+	].join('\n');
 }
 
 /**
@@ -590,15 +521,17 @@ function projectHistorySnapshotWithLineage(
 		executionsByMessageId.set(row.message_id, existing);
 	}
 
+	// Every consumer of this projection feeds the worker lane, which cannot
+	// call skill_load, so the loaded-skills ledger is not appended: it told the
+	// model about a tool it does not have and its dedupe removed the playbook
+	// from every following write turn (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+	// F69). The continuity rows still carry the pending clarification.
 	const orderedContinuityExecutionRows = snapshot.loaded_skill_executions.slice().sort((a, b) => {
 		const aMessageOrder = messageOrderById.get(a.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
 		const bMessageOrder = messageOrderById.get(b.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
 		if (aMessageOrder !== bMessageOrder) return aMessageOrder - bMessageOrder;
 		return (a.sequence_index ?? 0) - (b.sequence_index ?? 0);
 	});
-	const loadedSkillHistorySummary = buildLoadedSkillHistorySummary(
-		orderedContinuityExecutionRows
-	);
 	const latestMessage = orderedMessages.at(-1);
 	const pendingClarificationHistorySummary = buildPendingClarificationHistorySummary({
 		executions: orderedContinuityExecutionRows,
@@ -628,13 +561,6 @@ function projectHistorySnapshotWithLineage(
 		return projected;
 	});
 
-	if (loadedSkillHistorySummary) {
-		historyMessages.push({
-			role: 'system',
-			content: loadedSkillHistorySummary,
-			sourceMessageId: null
-		});
-	}
 	if (pendingClarificationHistorySummary) {
 		historyMessages.push({
 			role: 'system',

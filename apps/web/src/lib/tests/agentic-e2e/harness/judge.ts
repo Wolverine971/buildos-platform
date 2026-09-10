@@ -1,15 +1,44 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/judge.ts
 //
 // LLM-as-judge for fuzzy scenarios. The chat under test runs on the cheap
-// production `balanced` route; the judge deliberately uses a STRONG JSON route
-// (`powerful`) so grading is not bottlenecked by the same weak models we're
-// stress-testing. Returns a 1-5 score; `passed` is computed here, never trusted
-// from the model.
+// production `balanced` route; the judge must be strictly stronger, so grading
+// is never bottlenecked by — or performed by — a model we are stress-testing.
+// Returns a 1-5 score; `passed` is computed here, never trusted from the model.
+//
+// The `powerful` JSON profile is NOT safe for this: its first choice is a flash
+// model and its last fallback is `deepseek/deepseek-v4-flash`, the acting model
+// itself, so a bad run could end with the model under test grading its own work
+// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J6). The judge pins an explicit strong
+// chain instead and asserts the acting model is not in it.
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
 import type { JudgeResult } from './types';
 
 const JUDGE_MAX_ATTEMPTS = 2;
 const JUDGE_DEADLINE_MS = 90_000;
+
+/** Strong graders only, most capable first. Override with AGENTIC_E2E_JUDGE_MODEL. */
+export const JUDGE_MODEL_CHAIN: readonly string[] = [
+	'openai/gpt-5.6-luna',
+	'moonshotai/kimi-k3',
+	'x-ai/grok-4.6'
+];
+
+/** Models a judge may never use, because the battery is grading them. */
+export const JUDGE_FORBIDDEN_MODELS: readonly string[] = [DEEPSEEK_V4_FLASH_MODEL];
+
+export function resolveJudgeModels(override?: string | null): string[] {
+	const pinned = override?.trim();
+	const models = pinned ? [pinned, ...JUDGE_MODEL_CHAIN] : [...JUDGE_MODEL_CHAIN];
+	const unique = Array.from(new Set(models));
+	const forbidden = unique.filter((model) => JUDGE_FORBIDDEN_MODELS.includes(model));
+	if (forbidden.length > 0) {
+		throw new Error(
+			`[agentic-e2e] the quality judge cannot run on a model under test: ${forbidden.join(', ')}`
+		);
+	}
+	return unique;
+}
 
 const JUDGE_SYSTEM_PROMPT = `You are a strict QA judge evaluating an AI assistant that operates inside a
 productivity app (it manages projects, documents, and tasks via tools).
@@ -41,6 +70,7 @@ export async function judgeQuality(params: {
 	// SmartLLM can otherwise route across several models, each with its own
 	// timeout, after the scenario's worker turn has already completed.
 	const signal = AbortSignal.timeout(JUDGE_DEADLINE_MS);
+	const judgeModels = resolveJudgeModels(process.env.AGENTIC_E2E_JUDGE_MODEL);
 
 	for (let attempt = 1; attempt <= JUDGE_MAX_ATTEMPTS; attempt += 1) {
 		try {
@@ -48,7 +78,10 @@ export async function judgeQuality(params: {
 			raw = await llm.getJSONResponse<{ score?: number; reasoning?: string }>({
 				systemPrompt: JUDGE_SYSTEM_PROMPT,
 				userPrompt: `RUBRIC:\n${params.rubric}\n\nTRANSCRIPT:\n${params.transcript}`,
-				profile: 'powerful',
+				models: judgeModels,
+				// `maximum` carries no acting-model fallback, so even an exhausted
+				// explicit chain cannot land on the model under test.
+				profile: 'maximum',
 				temperature: 0,
 				maxTokens: 600,
 				signal,

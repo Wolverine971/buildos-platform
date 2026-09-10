@@ -514,6 +514,23 @@ function noCalendarDataWarning(detail: string): string {
 	return `No calendar data was read (${detail}). Do not assert availability or that time is free from this result.`;
 }
 
+/**
+ * A read that reached no Google source stays a successful tool result (the
+ * ontology events are still evidence, and a calendar outage must not kill the
+ * turn), but the outage is a typed top-level fact rather than prose inside
+ * `warnings`, so the model and `agentic:health` do not have to parse the
+ * sentence (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F85).
+ */
+function calendarReadFailure(
+	read: Pick<AgenticChatCalendarReadSummaryV1, 'coverage' | 'source_failures'>
+): { calendar_read_failed: true; error_code: string } | Record<never, never> {
+	if (read.coverage !== 'unavailable') return {};
+	const errorCode =
+		read.source_failures.map((failure) => failure.reason_code).find(Boolean) ??
+		'calendar_unavailable';
+	return { calendar_read_failed: true, error_code: errorCode };
+}
+
 function errorDetail(error: unknown, fallback: string): string {
 	return error instanceof Error ? error.message : fallback;
 }
@@ -713,7 +730,21 @@ export async function listCalendarEvents(
 				// The provider read produced nothing at all, so the model must not
 				// treat an empty event list as evidence that the time is free.
 				googleEvents = [];
-				googleRead = { ...googleRead, coverage: 'unavailable' };
+				googleRead = {
+					...googleRead,
+					coverage: 'unavailable',
+					source_failures:
+						googleRead.source_failures.length > 0
+							? googleRead.source_failures
+							: [
+									{
+										calendar: '',
+										calendar_source_id: '',
+										connection_id: '',
+										reason_code: 'provider_error'
+									}
+								]
+				};
 				googleError = noCalendarDataWarning(
 					errorDetail(error, 'Failed to load Google events')
 				);
@@ -895,6 +926,7 @@ export async function listCalendarEvents(
 	}
 
 	return {
+		...calendarReadFailure(googleRead),
 		events: pagedEvents,
 		google_event_count: googleEvents.length,
 		ontology_event_count: ontoEvents.length,
@@ -952,6 +984,8 @@ export async function getCalendarEventDetails(
 	if (!context.calendar) {
 		return {
 			source: 'google',
+			calendar_read_failed: true,
+			error_code: CALENDAR_PORT_UNAVAILABLE_REASON,
 			coverage: 'unavailable',
 			reason_code: CALENDAR_PORT_UNAVAILABLE_REASON,
 			calendar_source_id: null,
@@ -974,6 +1008,8 @@ export async function getCalendarEventDetails(
 		const reasonCode = result.reasonCode ?? 'not_found';
 		return {
 			source: 'google',
+			// A missing event is an answer; a provider the host could not reach is not.
+			...(result.reasonCode ? { calendar_read_failed: true, error_code: reasonCode } : {}),
 			coverage: 'unavailable',
 			reason_code: reasonCode,
 			calendar_source_id: result.calendarSourceId,
@@ -1044,6 +1080,8 @@ export async function getProjectCalendar(
 
 	if (!context.calendar) {
 		return {
+			calendar_read_failed: true,
+			error_code: CALENDAR_PORT_UNAVAILABLE_REASON,
 			coverage: 'unavailable',
 			reason_code: CALENDAR_PORT_UNAVAILABLE_REASON,
 			project_id: projectId,

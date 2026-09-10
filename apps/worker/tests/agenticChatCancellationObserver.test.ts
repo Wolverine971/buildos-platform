@@ -10,6 +10,7 @@ import type {
 import {
 	AgenticChatCancellationError,
 	AgenticChatCancellationObserver,
+	DEFAULT_AGENTIC_CHAT_CANCELLATION_POLL_INTERVAL_MS,
 	type AgenticChatCancellationObservationPortV1
 } from '../src/workers/agentic-chat/cancellationObserver';
 import {
@@ -187,7 +188,7 @@ describe('AgenticChatCancellationObserver', () => {
 		expect(observer.activeTurnCount).toBe(0);
 	});
 
-	it('uses one worker-level 500 ms timer for every registered turn', async () => {
+	it('uses one worker-level 2 s timer for every registered turn', async () => {
 		vi.useFakeTimers();
 		const calls: AgenticChatCancellationObservationInputV1[][] = [];
 		const observer = new AgenticChatCancellationObserver(
@@ -203,7 +204,7 @@ describe('AgenticChatCancellationObserver', () => {
 		observer.registerTurn({ turnRunId: 'turn-timer-b', executionGeneration: 1 });
 		observer.start();
 
-		await vi.advanceTimersByTimeAsync(1_500);
+		await vi.advanceTimersByTimeAsync(3 * DEFAULT_AGENTIC_CHAT_CANCELLATION_POLL_INTERVAL_MS);
 		expect(calls).toHaveLength(3);
 		expect(calls.every((inputs) => inputs.length === 2)).toBe(true);
 		await observer.stop();

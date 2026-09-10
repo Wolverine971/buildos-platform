@@ -1,5 +1,5 @@
 // apps/web/src/lib/server/google-calendar-token-crypto.test.ts
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	decryptGoogleCalendarToken,
 	encryptGoogleCalendarToken,
@@ -7,6 +7,9 @@ import {
 	isEncryptedGoogleCalendarToken,
 	type GoogleCalendarTokenContext
 } from './google-calendar-token-crypto';
+
+// A key loaded from .env must not override the process.env fixtures below.
+vi.mock('$env/dynamic/private', () => ({ env: {} }));
 
 const originalKey = process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1;
 

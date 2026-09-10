@@ -13,6 +13,8 @@ import type { AgenticChatTurnProviderToolV1 } from './contracts';
  * and ledger fields. Routing IDs and invented prose fields cannot prove a
  * changed-field postcondition, even after a successful write.
  * Capability admission and semantic review still enforce action and scope.
+ * project_id never reaches this check: the contract parser drops it as scope
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F07).
  */
 export function validateContractEffectFields(
 	contract: TurnContract,
@@ -40,7 +42,7 @@ export function validateContractEffectFields(
 					`Invalid turn contract: Outcome ${index + 1}: ${outcome.entityKind} ${outcome.action} cannot produce required field ${JSON.stringify(field.slice(0, 160))}. Supported effect fields: ${[...fields].sort().join(', ') || 'none for this action'}. ` +
 					(outcome.entityKind === 'document'
 						? 'Put section-level requirements in description and use content for document text.'
-						: 'Project membership is execution scope; omit project_id from required_fields and changes. Use the listed persisted fields for postconditions.')
+						: 'Use the listed persisted fields for postconditions; routing ids are execution scope, not fields.')
 			);
 	});
 }

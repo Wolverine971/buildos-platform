@@ -22,6 +22,8 @@ import type { JsonObject } from '@buildos/shared-types';
 import type { AgenticChatTurnProviderToolV1 } from './contracts';
 import {
 	CONTRACT_PROPOSAL_REVISION_TOOL,
+	MUTATION_BATCH_PROPOSAL_REVISION_TOOL,
+	MUTATION_BATCH_REVIEW_APPROVAL_TOOL,
 	TURN_CONTRACT_REVIEW_APPROVAL_TOOL
 } from './review/controls';
 import { withSchedulingSidecar } from './tool-surface';
@@ -33,6 +35,9 @@ import { withSchedulingSidecar } from './tool-surface';
  * - `disposition_gate`: the model is on the required contract/clarify gate.
  * - `read_only_declared`: the turn was declared read-only (by the model, by a
  *   reviewer downgrade, or because the surface cannot write).
+ * - `batch_withheld`: a proposed mutation batch is held and awaits review.
+ * - `batch_approved`: the reviewer approved the exact batch SHA; the held
+ *   calls execute next, unchanged.
  * - `contract_declared`: a contract is recorded and awaits (or lacks) review.
  * - `contract_reviewed`: the reviewer approved the exact contract SHA.
  * - `contract_carve_out`: the one write-only pass before any mutation ran.
@@ -48,6 +53,8 @@ export type TurnPhase =
 	| 'reading'
 	| 'disposition_gate'
 	| 'read_only_declared'
+	| 'batch_withheld'
+	| 'batch_approved'
 	| 'contract_declared'
 	| 'contract_reviewed'
 	| 'contract_carve_out'
@@ -65,10 +72,14 @@ export type TurnPhaseEvent =
 	| { type: 'gate' }
 	/** An acting-model disposition control executed durably. */
 	| { type: 'disposition'; decision: 'contract' | 'read_only' | 'clarification' | 'cancel' }
+	/** A proposed mutation batch was withheld and sent to independent review. */
+	| { type: 'withhold_batch' }
 	/** An independent reviewer decision executed durably. */
 	| {
 			type: 'review';
 			decision:
+				| 'approve_batch'
+				| 'revise_batch'
 				| 'approve_contract'
 				| 'revise_contract'
 				| 'correct_contract'
@@ -79,7 +90,7 @@ export type TurnPhaseEvent =
 	| { type: 'carve_out' }
 	| { type: 'completion' }
 	/** A budget or ladder floor forced the turn tool-free. */
-	| { type: 'budget'; limit: 'force_synthesis' | 'validation_repairs' | 'rounds' }
+	| { type: 'budget'; limit: 'force_synthesis' }
 	| { type: 'finish' };
 
 /**
@@ -93,8 +104,7 @@ export function nextTurnPhase(phase: TurnPhase, event: TurnPhaseEvent): TurnPhas
 		case 'finish':
 			return 'terminal';
 		case 'budget':
-			if (event.limit === 'force_synthesis') return 'synthesis';
-			return phase;
+			return 'synthesis';
 		case 'gate':
 			return dispositionPending(phase) ? 'disposition_gate' : phase;
 		case 'disposition':
@@ -109,8 +119,20 @@ export function nextTurnPhase(phase: TurnPhase, event: TurnPhaseEvent): TurnPhas
 					return contractPresent(phase) ? 'contract_cancelled' : phase;
 			}
 			return phase;
+		case 'withhold_batch':
+			// A batch can be withheld from any pre-mutation phase, and again
+			// after a rejected batch sends the actor back to propose new calls.
+			return dispositionPending(phase) || phase === 'batch_withheld'
+				? 'batch_withheld'
+				: phase;
 		case 'review':
 			switch (event.decision) {
+				case 'approve_batch':
+					return phase === 'batch_withheld' ? 'batch_approved' : phase;
+				case 'revise_batch':
+					// The held calls are void; the actor proposes new ones and they
+					// are reviewed again.
+					return phase === 'batch_withheld' ? 'reading' : phase;
 				case 'approve_contract':
 					return phase === 'contract_declared' ? 'contract_reviewed' : phase;
 				case 'revise_contract':
@@ -156,6 +178,11 @@ export function contractPending(phase: TurnPhase): boolean {
 	return phase === 'contract_declared' || phase === 'contract_reviewed';
 }
 
+/** A proposed batch is held awaiting review, or was approved and not yet run. */
+export function batchPending(phase: TurnPhase): boolean {
+	return phase === 'batch_withheld' || phase === 'batch_approved';
+}
+
 /** A mutation reached execution this turn (successful or not). */
 export function mutationReached(phase: TurnPhase): boolean {
 	return phase === 'mutating' || phase === 'completion';
@@ -171,11 +198,9 @@ export type TurnSurface = {
 };
 
 /** The reviewer lane has its own surface; it is not an acting phase. */
-export type ReviewerLane = 'contract_review';
+export type ReviewerLane = 'contract_review' | 'mutation_batch_review';
 
 export type TurnSurfaceContext = {
-	/** Tools the opening pass mounted (admitted minus any deferred contract schema). */
-	openingTools?: readonly AgenticChatTurnProviderToolV1[];
 	/** Tools on the request being repaired; a repair restores exactly these on gate and shell passes. */
 	requestTools?: readonly AgenticChatTurnProviderToolV1[];
 	contextType?: string;
@@ -206,10 +231,11 @@ export function surfaceFor(
 	switch (phase) {
 		case 'opening':
 		case 'reading':
-		case 'contract_cancelled': {
-			if (context.repair) return autoSurface(admitted);
-			return autoSurface(context.openingTools ?? admitted);
-		}
+		case 'contract_cancelled':
+			// The opening pass itself is built by request-builders (deferred
+			// contract schema and all); the reducer only ever re-mounts the
+			// admitted surface here, on a repair or after a cancellation.
+			return autoSurface(admitted);
 		case 'disposition_gate': {
 			if (context.repair)
 				return { tools: context.requestTools ?? [], toolChoice: 'required' };
@@ -273,10 +299,42 @@ export function surfaceFor(
 				: safeToolNames;
 			return writeSurface(admitted, firstPhaseToolNames);
 		}
+		case 'batch_withheld':
+			// The batch is held by the harness, not re-proposed by the model, so
+			// this phase mounts no acting surface. A repair restores whatever the
+			// interrupted request had.
+			return context.repair
+				? { tools: context.requestTools ?? [], toolChoice: 'auto' }
+				: { tools: [], toolChoice: 'none' };
+		case 'batch_approved':
+			// Execution runs the held calls directly. Nothing is asked of the
+			// model between approval and execution, which is the whole point:
+			// the executed arguments are the approved arguments.
+			return { tools: [], toolChoice: 'none' };
 		case 'clarification':
 		case 'synthesis':
 		case 'terminal':
 			return { tools: [], toolChoice: 'none' };
+		case 'mutation_batch_review': {
+			const clarificationTool = admitted.find(
+				(tool) => tool.function.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME
+			);
+			const readOnlyDispositionTool = context.allowReadOnlyCorrection
+				? (admitted.find(
+						(tool) => tool.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME
+					) ?? READ_ONLY_DISPOSITION_TOOL)
+				: undefined;
+			if (!clarificationTool) return null;
+			return {
+				tools: [
+					MUTATION_BATCH_REVIEW_APPROVAL_TOOL,
+					...(readOnlyDispositionTool ? [readOnlyDispositionTool] : []),
+					...(context.allowRevision ? [MUTATION_BATCH_PROPOSAL_REVISION_TOOL] : []),
+					clarificationTool
+				],
+				toolChoice: 'required'
+			};
+		}
 		case 'contract_review': {
 			const clarificationTool = admitted.find(
 				(tool) => tool.function.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME

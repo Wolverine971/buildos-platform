@@ -271,7 +271,13 @@ const COMPLETED_STATE_KEYS = new Set([
 const BLOCKED_STATE_KEYS = new Set(['blocked']);
 const UPCOMING_EVENT_DAYS = 14;
 const DUE_SOON_DAYS = 7;
-const ACTIVITY_LIMIT = 3;
+// Overview payloads are bounded at the source: a workspace scan of eight
+// projects has to fit the model's tool budget without losing projects
+// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F113).
+const ACTIVITY_LIMIT = 2;
+const PROJECT_ACTIVITY_LIMIT = 5;
+const MAX_DESCRIPTION_CHARS = 200;
+const MAX_ACTIVITY_TEXT_CHARS = 200;
 const PROJECT_TASK_LIMIT = 8;
 const PROJECT_MILESTONE_LIMIT = 5;
 const PROJECT_RISK_LIMIT = 5;
@@ -280,6 +286,14 @@ const PROJECT_COLLABORATOR_LIMIT = 20;
 
 function normalizeStateKey(value: string | null | undefined): string {
 	return (value ?? '').trim().toLowerCase();
+}
+
+function boundText(value: string | null | undefined, maxChars: number): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	if (trimmed.length <= maxChars) return trimmed;
+	return `${trimmed.slice(0, Math.max(0, maxChars - 3))}...`;
 }
 
 function toTimestamp(value: string | null | undefined): number {
@@ -546,7 +560,7 @@ function buildActivity(rows: ProjectLogRow[], limit: number): OverviewActivity[]
 				entity_id: row.entity_id,
 				action: row.action,
 				title: extractActivityTitle(row) ?? summary.title,
-				description: summary.description,
+				description: boundText(summary.description, MAX_ACTIVITY_TEXT_CHARS) ?? '',
 				changed_by: row.changed_by ?? null,
 				changed_by_actor_id: row.changed_by_actor_id ?? null,
 				change_source: row.change_source ?? null,
@@ -613,8 +627,8 @@ export function buildWorkspaceOverviewPayload(
 			project_id: project.id,
 			name: project.name,
 			state_key: project.state_key,
-			description: project.description ?? null,
-			next_step_short: project.next_step_short ?? null,
+			description: boundText(project.description, MAX_DESCRIPTION_CHARS),
+			next_step_short: boundText(project.next_step_short, MAX_DESCRIPTION_CHARS),
 			updated_at: project.updated_at,
 			counts,
 			entity_counts: entityCounts,
@@ -814,7 +828,7 @@ export function buildProjectOverviewPayload(
 			impact: risk.impact ?? null,
 			updated_at: risk.updated_at ?? null
 		}));
-	const recentActivity = buildActivity(params.projectLogs, PROJECT_EVENT_LIMIT);
+	const recentActivity = buildActivity(params.projectLogs, PROJECT_ACTIVITY_LIMIT);
 	const allCollaborators = [...(params.members ?? [])].sort(
 		sortCollaborators(params.currentActorId)
 	);
@@ -835,10 +849,10 @@ export function buildProjectOverviewPayload(
 			id: params.project.id,
 			name: params.project.name,
 			state_key: params.project.state_key,
-			description: params.project.description ?? null,
+			description: boundText(params.project.description, MAX_DESCRIPTION_CHARS),
 			start_at: params.project.start_at ?? null,
 			end_at: params.project.end_at ?? null,
-			next_step_short: params.project.next_step_short ?? null,
+			next_step_short: boundText(params.project.next_step_short, MAX_DESCRIPTION_CHARS),
 			updated_at: params.project.updated_at
 		},
 		counts,

@@ -82,6 +82,7 @@ const SCRATCHPAD_SENTENCE_PATTERNS = [
 	/^\s*if (?:a )?required (?:id|ids|user value)s? (?:is|are) still missing\b.*\bask one (?:short|concise)/i,
 	/^\s*if ids are still unclear\b.*\bask one concise/i,
 	/^\s*read-loop (?:nudge|escalation|hard stop)\s*:/i,
+	/^\s*context gathering\s*:/i,
 	/^\s*tool rounds remaining before the safety cap\s*:/i,
 	/^\s*repeated ops\s*:/i,
 	/^\s*do not call more read tools\b/i,
@@ -193,12 +194,62 @@ export function sanitizeAssistantFinalText(raw: string): string {
 		return trimmed;
 	}
 
-	const cleanSentences = extractCleanAssistantSentences(trimmed);
-	if (cleanSentences.length === 0) {
-		return '';
+	return removeScratchpadSentences(trimmed);
+}
+
+// Sentence boundary inside one line. The capturing group keeps the separator
+// so a cleaned line can be re-joined exactly as the model wrote it.
+const SENTENCE_BOUNDARY_PATTERN =
+	/((?<=[.!?])\s+|(?<=[.!?])(?=(?:[A-Z0-9"'`<{]|Let me|I'll|I can|I will|Actually|No)))/;
+const LINE_LIST_MARKER_PATTERN = /^\s*(?:[-*+]\s+|\(?\d+[.)]\s+)?/;
+
+/**
+ * Removes only the scratchpad sentences and leaves everything else where it
+ * was: original line breaks, list markers, table rows and in-line separators
+ * survive (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F12). A line whose every
+ * sentence was scratchpad disappears with the blank line that followed it.
+ */
+function removeScratchpadSentences(raw: string): string {
+	const seen = new Set<string>();
+	const outputLines: string[] = [];
+
+	for (const line of raw.replace(/\r/g, '\n').split('\n')) {
+		if (!line.trim()) {
+			outputLines.push('');
+			continue;
+		}
+		const marker = line.match(LINE_LIST_MARKER_PATTERN)?.[0] ?? '';
+		const parts = line.slice(marker.length).split(SENTENCE_BOUNDARY_PATTERN);
+		let rebuilt = '';
+		let keptAny = false;
+		let droppedAny = false;
+		for (let index = 0; index < parts.length; index += 2) {
+			const segment = parts[index] ?? '';
+			const normalized = normalizeAssistantSentence(segment);
+			if (!normalized) continue;
+			// The first sentence carries the line's list marker into pattern
+			// matching, exactly as the flat splitter did.
+			const candidate = index === 0 ? `${marker}${segment}` : segment;
+			if (
+				looksLikeScratchpadSentence(candidate) ||
+				looksLikeContextualScratchpadSentence(candidate) ||
+				seen.has(normalized)
+			) {
+				droppedAny = true;
+				continue;
+			}
+			seen.add(normalized);
+			rebuilt += keptAny ? `${parts[index - 1] ?? ''}${segment}` : `${marker}${segment}`;
+			keptAny = true;
+		}
+		if (!keptAny) continue;
+		outputLines.push(droppedAny ? rebuilt : line);
 	}
 
-	return cleanSentences.join('\n\n');
+	return outputLines
+		.join('\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
 }
 
 function buildGenericToolLeadIn(message: string): string {

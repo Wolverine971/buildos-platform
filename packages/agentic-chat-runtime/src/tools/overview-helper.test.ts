@@ -186,6 +186,63 @@ describe('overview-helper', () => {
 		});
 	});
 
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F113: the overview is bounded where
+	// it is built, so eight projects fit the model budget without dropping any.
+	it('bounds project prose and per-project activity at the source', () => {
+		const now = new Date('2026-03-30T12:00:00.000Z');
+		const longDescription = 'A very long project description. '.repeat(20);
+		const logs = Array.from({ length: 4 }, (_, index) => ({
+			project_id: 'proj-1',
+			entity_type: 'task',
+			entity_id: `task-${index}`,
+			action: 'updated',
+			created_at: `2026-03-30T1${index}:00:00.000Z`,
+			after_data: { title: `Task ${index}`, description: 'x'.repeat(600) },
+			before_data: { title: `Task ${index}`, description: 'y'.repeat(600) }
+		}));
+		const project = {
+			id: 'proj-1',
+			name: '9takes',
+			state_key: 'active',
+			description: longDescription,
+			next_step_short: longDescription,
+			updated_at: '2026-03-30T10:00:00.000Z'
+		};
+
+		const workspace = buildWorkspaceOverviewPayload({
+			now,
+			maybeMore: false,
+			projects: [project],
+			tasks: [],
+			milestones: [],
+			risks: [],
+			events: [],
+			projectLogs: logs
+		});
+		expect(workspace.projects[0]?.description?.length).toBeLessThanOrEqual(200);
+		expect(workspace.projects[0]?.description?.endsWith('...')).toBe(true);
+		expect(workspace.projects[0]?.next_step_short?.length).toBeLessThanOrEqual(200);
+		expect(workspace.projects[0]?.recent_activity).toHaveLength(2);
+		expect(workspace.projects[0]?.recent_activity[0]?.created_at).toBe(
+			'2026-03-30T13:00:00.000Z'
+		);
+		for (const activity of workspace.projects[0]?.recent_activity ?? []) {
+			expect(activity.description.length).toBeLessThanOrEqual(200);
+		}
+
+		const single = buildProjectOverviewPayload({
+			now,
+			project,
+			tasks: [],
+			milestones: [],
+			risks: [],
+			events: [],
+			projectLogs: logs
+		});
+		expect(single.project?.description?.length).toBeLessThanOrEqual(200);
+		expect(single.recent_activity).toHaveLength(4);
+	});
+
 	it('resolves exact project matches and returns ambiguity when multiple names fit', () => {
 		const exact = resolveProjectMatch(
 			[

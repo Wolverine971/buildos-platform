@@ -89,8 +89,8 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	get_document_path: getDocumentPath,
 	get_workspace_overview: getWorkspaceOverview,
 	get_project_overview: getProjectOverview,
-	// Calendar READS only. The four calendar writes and set_project_calendar
-	// stay on the web executor and remain worker-unavailable.
+	// Calendar READS only. The calendar writes execute on the worker through
+	// the reviewed mutation catalog, not through this dispatch table.
 	list_calendar_events: listCalendarEvents,
 	get_calendar_event_details: getCalendarEventDetails,
 	get_project_calendar: getProjectCalendar,

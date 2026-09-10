@@ -3,6 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import {
+	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
 	JSON_PROFILE_MODELS,
 	LLMUsageLogger,
@@ -386,6 +387,7 @@ function createDefaultComposition(
 		publisherConfig: input.config.publisher,
 		providerBudgetMs: input.config.providerBudgetMs,
 		maxProviderRounds: input.config.maxProviderRounds,
+		mutationBatchLaneEnabled: input.config.mutationBatchLaneEnabled,
 		maxToolCalls: input.config.maxToolCalls,
 		maxToolConcurrency: input.config.maxToolConcurrency,
 		onExecutionObservationError: input.onUsageError,
@@ -411,7 +413,9 @@ function createDefaultComposition(
  * calls in that battery the largest that completed was 909, so this leaves real
  * headroom for reasoning plus a long decision while staying a firm bound. Only
  * tokens actually generated are billed, so raising the ceiling does not raise
- * the cost of the calls that already fit.
+ * the cost of the calls that already fit. Reconfirmed against the 2026-09-08
+ * audit window (p50 767 completion tokens, reasoning included) when reviewer
+ * passes moved to `reasoning.effort: low` (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F80).
  */
 export const AGENTIC_CHAT_SEMANTIC_REVIEWER_MAX_TOKENS = 4_000;
 
@@ -431,6 +435,15 @@ export const AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS = 45_000;
  */
 export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze(['openai', 'azure']);
 export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_56_LUNA_MODEL;
+/**
+ * Never a default reviewer fallback: 2026-09-04 GLM 5.3 Flash approved a
+ * dependency correction without declaring its endpoints. An explicit policy
+ * may still name it; the operator has then evaluated it
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F81).
+ */
+export const AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS: ReadonlySet<string> = new Set([
+	GLM_53_FLASH_MODEL
+]);
 
 export function buildAgenticChatSemanticReviewerRoutes(
 	routes: EnabledAgenticChatConfig['provider']['routes'],
@@ -440,16 +453,15 @@ export function buildAgenticChatSemanticReviewerRoutes(
 		routes.flatMap((route) => [route.model, ...(route.fallbackModels ?? [])])
 	);
 	// Preserve the deployed default until a replacement passes semantic replay.
-	// 2026-09-04: GLM 5.3 Flash approved a dependency correction without declaring
-	// its endpoints. An explicit policy opts out of the legacy fallback pool;
-	// only the operator's listed alternatives can then be used.
+	// An explicit policy opts out of the legacy fallback pool; only the
+	// operator's listed alternatives can then be used.
 	const reviewerCandidates = policy
 		? [policy.model, ...policy.fallbackModels]
 		: [
 				DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL,
 				...JSON_PROFILE_MODELS.powerful,
 				...JSON_PROFILE_MODELS.maximum
-			];
+			].filter((model) => !AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS.has(model));
 	if (policy) {
 		for (const candidate of reviewerCandidates) {
 			if (!modelSupportsCapability(candidate, 'tools')) {
@@ -493,10 +505,10 @@ export function buildAgenticChatSemanticReviewerRoutes(
 				id: `${route.id}_semantic_reviewer`,
 				model,
 				fallbackModels: Object.freeze(candidates.slice(1, 4)),
+				// Provider evidence is per model. The acting route's `order` and
+				// `ignore` describe DeepSeek's endpoints (Azure serves it at 112 ms
+				// per token; it serves Luna fine), so none of it carries over.
 				providerRouting: Object.freeze({
-					...(route.providerRouting?.ignore
-						? { ignore: route.providerRouting.ignore }
-						: {}),
 					allow_fallbacks: true,
 					...(model === GPT_56_LUNA_MODEL
 						? { order: AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER }

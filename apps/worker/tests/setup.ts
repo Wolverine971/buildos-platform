@@ -1,9 +1,12 @@
 // apps/worker/tests/setup.ts
-import { beforeEach, vi } from 'vitest';
+import { beforeAll, beforeEach, expect, vi } from 'vitest';
 import { config } from 'dotenv';
+import { assertPostgresTestIpcAccess } from '../../../scripts/testing/postgres-ipc-preflight';
 
 // Load environment variables for testing
 config({ path: '.env.test' });
+
+beforeAll(() => assertPostgresTestIpcAccess(expect.getState().testPath));
 
 function isHttpUrl(value: string | undefined): boolean {
 	if (!value) return false;

@@ -15,7 +15,12 @@ import {
 	assertTurnRunCompleted,
 	assertTurnSucceeded
 } from '../../harness/assertions';
-import { listProjectsByExactName, listTasks, waitForTurnRun } from '../../harness/telemetry';
+import {
+	findProjectByRequestedName,
+	listProjectsByExactName,
+	listTasks,
+	waitForTurnRun
+} from '../../harness/telemetry';
 import { CEDAR_END_DATE, CEDAR_START_DATE, cedarProjectName } from './fixture';
 import {
 	assertBudgetCapPresent,
@@ -64,17 +69,29 @@ export const cedarCase01ProjectCreateScenario: Scenario = {
 					await waitForTurnRun(ctx.db.admin, requireStreamRunId(turn))
 				);
 
-				const projects = await listProjectsByExactName(
+				// The harness name carries run-scoping punctuation the case is not
+				// testing. Match on a normalised key so a model that trims or
+				// normalises `·` still passes a case whose subject is dates,
+				// budget and restraint; report the drift instead of failing
+				// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J9).
+				const matches = await findProjectByRequestedName(
 					ctx.db.admin,
 					ctx.db.actorId,
 					PROJECT_NAME
 				);
-				if (projects.length !== 1) {
+				if (matches.length !== 1) {
 					throw new Error(
-						`[assert] expected exactly one project named "${PROJECT_NAME}", found ${projects.length}`
+						`[assert] expected exactly one project named "${PROJECT_NAME}", found ${matches.length}`
 					);
 				}
-				const projectId = projects[0]!.id;
+				const match = matches[0]!;
+				if (!match.exact) {
+					console.warn(
+						`[soft] project name drifted from the requested string: ` +
+							`requested "${PROJECT_NAME}", saved "${match.project.name}"`
+					);
+				}
+				const projectId = match.project.id;
 				seed.projectId = projectId;
 
 				const project = await readCedarProject(ctx, projectId);

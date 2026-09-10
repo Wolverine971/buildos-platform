@@ -37,7 +37,14 @@ export type BatteryScore = 0 | 1 | 2 | 3 | 4;
  *   judge_infrastructure_failure -> 3  behavior correct, quality left unverified
  *   quality_failure              -> 2  it did the writes; the judge found real gaps
  *   behavior_failure             -> 1  the turn completed and reported, DB disagrees
+ *   misleading_success           -> 0  the prose claimed the change; the DB disagrees
  *   transport_failure            -> 0  the turn never landed a trustworthy result
+ *
+ * `misleading_success` is the rubric's other 0. Before it existed every
+ * deterministic assertion failure scored 1, so the most user-damaging shape —
+ * "I updated that for you" over a database that says otherwise — was
+ * indistinguishable from an honest miss in the diffable number
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J5).
  */
 export const BATTERY_RESULT_CLASS_SCORES: Readonly<Record<Phase0ResultClass, BatteryScore>> = {
 	end_to_end_pass: 4,
@@ -45,6 +52,7 @@ export const BATTERY_RESULT_CLASS_SCORES: Readonly<Record<Phase0ResultClass, Bat
 	judge_infrastructure_failure: 3,
 	quality_failure: 2,
 	behavior_failure: 1,
+	misleading_success: 0,
 	transport_failure: 0
 };
 

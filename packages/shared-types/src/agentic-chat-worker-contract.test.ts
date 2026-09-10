@@ -1,7 +1,6 @@
 // packages/shared-types/src/agentic-chat-worker-contract.test.ts
 import { describe, expect, it } from 'vitest';
 import {
-	AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS,
 	AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS,
 	AGENTIC_CHAT_CLIENT_BUFFER_MAX_BYTES,
 	AGENTIC_CHAT_CLIENT_BUFFER_MAX_EVENTS,
@@ -158,7 +157,6 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		expect(AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES).toBe(512 * 1024);
 		expect(AGENTIC_CHAT_TERMINAL_RETENTION_MS).toBe(7 * 24 * 60 * 60 * 1000);
 		expect(AGENTIC_CHAT_SIGNAL_VERSION).toBe('agentic_chat_signal_v1');
-		expect(AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS).toBe(500);
 		expect(AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS).toBe(128);
 	});
 

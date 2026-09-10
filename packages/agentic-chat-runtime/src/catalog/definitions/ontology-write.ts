@@ -40,7 +40,8 @@ export const ONTOLOGY_WRITE_TOOLS = [
 						type: 'string',
 						default: 'task.default',
 						pattern: '^task\\.',
-						description: 'Task type key.'
+						description:
+							'Work mode taxonomy: task.{work_mode}[.{specialization}]. Modes: execute, create, refine, research, review, coordinate, admin, plan. Omit when unsure; the default is task.default.'
 					},
 					state_key: {
 						type: 'string',
@@ -106,9 +107,9 @@ export const ONTOLOGY_WRITE_TOOLS = [
 					calendar_sync: {
 						type: 'string',
 						enum: ['auto', 'none'],
-						default: 'auto',
+						default: 'none',
 						description:
-							"Required 'none' whenever the user says no calendar event, not on the calendar, or just the task; default 'auto' creates or updates the linked calendar event for any scheduled task."
+							"Calendar side effect for this task write. Defaults to 'none': scheduling a task never puts it on the calendar by itself. Send 'auto' only when the user asked for a calendar event, a time block, or to be scheduled — it creates or updates the linked event."
 					},
 					props: {
 						type: 'object',
@@ -1036,7 +1037,7 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 					project_id: {
 						type: 'string',
 						description:
-							'Optional project UUID used for assignee handle resolution. If omitted, the task project is resolved automatically.'
+							"Optional project UUID of the task; when given it must match the focused project. Not needed for assignee handles, which resolve against the task's own project."
 					},
 					title: {
 						type: 'string',
@@ -1096,9 +1097,9 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 					calendar_sync: {
 						type: 'string',
 						enum: ['auto', 'none'],
-						default: 'auto',
+						default: 'none',
 						description:
-							"Required 'none' whenever the user says no calendar event, not on the calendar, or just the task; default 'auto' creates or updates the linked calendar event for any scheduled task."
+							"Calendar side effect for this task write. Defaults to 'none': scheduling a task never puts it on the calendar by itself. Send 'auto' only when the user asked for a calendar event, a time block, or to be scheduled — it creates or updates the linked event."
 					},
 					props: {
 						type: 'object',

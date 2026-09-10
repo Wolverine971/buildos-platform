@@ -98,7 +98,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								maxItems: 30,
 								items: { type: 'string' },
 								description:
-									'Nonempty changed fields for updates: ["content"] for text, ["due_at"] for reschedules; parent_id/position for tree moves.'
+									'Nonempty changed fields for updates: ["content"] for text, ["due_at"] for reschedules; parent_id/position for tree moves. Never project_id (scope, not a field).'
 							},
 							changes: {
 								type: 'array',
@@ -131,26 +131,26 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								maxLength: 40,
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Null/omit when unused; no placeholders. Create only: optional symbolic reference to one new entity. Omit unless another outcome needs to reference it. Set minimum_successful_effects=1 and declare its title in changes (goals use name). The label does not supply that value. Example labelled goal outcome: {"action":"create","entity_kind":"goal","minimum_successful_effects":1,"label":"launch","changes":[{"field":"name","value":"Publish three episodes"}]}'
+									'Create only: name for one new entity (minimum_successful_effects=1) that a later outcome references. Declare its title in changes so it can be matched — except on a project outcome, whose changes must stay empty.'
 							},
 							src_label: {
 								type: ['string', 'null'],
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Null/omit when unused; no placeholders. Link only: label of the source created by this contract. Declare one relationship outcome per directed edge, minimum_successful_effects=1, no target_ids, and a rel change. Use a src_id change for an existing source.'
+									'Link only: label of the source created in this contract.'
 							},
 							dst_label: {
 								type: ['string', 'null'],
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Null/omit when unused; no placeholders. Link only: label of the destination created by this contract. For depends_on the source is the dependent task and the destination is its prerequisite. Use a dst_id change for an existing destination.'
+									'Link only: label of the destination created in this contract.'
 							},
 							parent_label: {
 								type: ['string', 'null'],
 								maxLength: 40,
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Null/omit when unused; no placeholders. Move/organize only: label of a destination created by this contract. For an existing parent, put its ID in changes as parent_id; omit when using new_parent_title.'
+									'Move/organize only: label of the parent created in this contract.'
 							}
 						},
 						required: ['action', 'entity_kind', 'minimum_successful_effects']
@@ -167,14 +167,15 @@ export const CANCEL_TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: CANCEL_TURN_CONTRACT_TOOL_NAME,
 		description:
-			'Cancel an unfinished turn contract only when the user explicitly cancels or supersedes it. This is control only; never cancel merely because execution is blocked.',
+			'Cancel an unfinished turn contract when the user cancels or supersedes it, or when a read this turn shows every declared outcome is already true, so no write is needed. Cancelling is how a correct "nothing to change" turn ends; leaving the contract open reports it as an unfinished write. This is control only; never cancel because a write failed, was rejected, or looks hard.',
 		parameters: {
 			type: 'object',
 			properties: {
 				reason: {
 					type: 'string',
 					maxLength: 240,
-					description: 'How the current message cancelled or superseded it.'
+					description:
+						'How the current message cancelled or superseded it, or which read showed the outcomes were already satisfied.'
 				}
 			},
 			required: ['reason']

@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/context-loader.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextType, Database } from '@buildos/shared-types';
+import { Constants } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { createLogger } from '$lib/utils/logger';
 import { buildFocusedDocumentContent } from './focused-document-context';
@@ -17,6 +18,7 @@ import type {
 	FastChatWorkSignal,
 	GlobalContextData,
 	GlobalContextProjectBundle,
+	GlobalProjectIndexEntry,
 	LightDocument,
 	LightEvent,
 	LightGoal,
@@ -25,7 +27,6 @@ import type {
 	LightProjectMember,
 	LightProject,
 	ProjectStartHereDocument,
-	LightRecentActivity,
 	LightTask,
 	ProjectContextData,
 	ProjectTaskRollup,
@@ -49,15 +50,12 @@ import { readAgentWorkspaceMetadata } from '$lib/services/agentic-chat/project-d
 const logger = createLogger('FastChatContext');
 
 const GLOBAL_CONTEXT_PROJECT_LIMIT = 8;
-const GLOBAL_CONTEXT_RECENT_ACTIVITY_LIMIT = 3;
-const GLOBAL_CONTEXT_RECENT_ACTIVITY_WINDOW_DAYS = 7;
-const GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS = 21;
 const GLOBAL_CONTEXT_GOAL_LIMIT = 2;
 const GLOBAL_CONTEXT_MILESTONE_LIMIT = 2;
 const GLOBAL_CONTEXT_PLAN_LIMIT = 2;
-// Row cap for the per-project task rollup query (one query for all bundled
-// projects). Above this the counts are reported as a floor.
-const GLOBAL_TASK_ROLLUP_ROW_LIMIT = 1500;
+// Row cap for the open-task rollup query (one query over every accessible
+// project, open tasks only). Above this the counts are reported as a floor.
+const GLOBAL_TASK_ROLLUP_ROW_LIMIT = 2000;
 const FASTCHAT_CONTEXT_RPC = 'load_fastchat_context';
 const FASTCHAT_EVENT_WINDOW_PAST_DAYS = 7;
 const FASTCHAT_EVENT_WINDOW_FUTURE_DAYS = 14;
@@ -1296,156 +1294,6 @@ function extractTitle(payload: unknown): string | null {
 	return normalizeOptionalText(candidate);
 }
 
-type RecentActivityCandidate = LightRecentActivity & {
-	has_specific_title: boolean;
-	timestamp_ms: number;
-	entity_bucket: number;
-};
-
-function formatEntityTypeLabel(entityType: string): string {
-	const normalized = normalizeOptionalText(entityType)?.replace(/[_-]+/g, ' ') ?? 'Activity';
-	return normalized.replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function recentActivityEntityBucket(entityType: string): number {
-	switch (normalizeOptionalText(entityType)?.toLowerCase()) {
-		case 'task':
-			return 0;
-		case 'document':
-			return 1;
-		case 'plan':
-			return 2;
-		case 'milestone':
-			return 3;
-		case 'goal':
-			return 4;
-		case 'project':
-			return 5;
-		default:
-			return 6;
-	}
-}
-
-function resolveRecentActivityTitle(row: ProjectLogRow): {
-	title: string;
-	hasSpecificTitle: boolean;
-} {
-	const specificTitle = extractTitle(row.after_data) ?? extractTitle(row.before_data);
-	return {
-		title: specificTitle ?? formatEntityTypeLabel(row.entity_type),
-		hasSpecificTitle: Boolean(specificTitle)
-	};
-}
-
-function compareRecentActivityLogRows(a: ProjectLogRow, b: ProjectLogRow): number {
-	const timeDelta = toTimestamp(b.created_at) - toTimestamp(a.created_at);
-	if (timeDelta !== 0) return timeDelta;
-
-	const entityDelta =
-		recentActivityEntityBucket(a.entity_type) - recentActivityEntityBucket(b.entity_type);
-	if (entityDelta !== 0) return entityDelta;
-
-	return a.entity_id.localeCompare(b.entity_id);
-}
-
-function compareRecentActivityCandidates(
-	a: RecentActivityCandidate,
-	b: RecentActivityCandidate
-): number {
-	if (a.has_specific_title !== b.has_specific_title) {
-		return a.has_specific_title ? -1 : 1;
-	}
-
-	const timeDelta = b.timestamp_ms - a.timestamp_ms;
-	if (timeDelta !== 0) return timeDelta;
-
-	const entityDelta = a.entity_bucket - b.entity_bucket;
-	if (entityDelta !== 0) return entityDelta;
-
-	return a.entity_id.localeCompare(b.entity_id);
-}
-
-function mapRecentActivity(params: {
-	rows: ProjectLogRow[];
-	projectIds: string[];
-	nowMs: number;
-}): Record<string, LightRecentActivity[]> {
-	const result: Record<string, LightRecentActivity[]> = {};
-	const projectIdSet = new Set(params.projectIds);
-	const recentCutoffMs = params.nowMs - GLOBAL_CONTEXT_RECENT_ACTIVITY_WINDOW_DAYS * DAY_IN_MS;
-	const oldestCutoffMs =
-		params.nowMs - GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS * DAY_IN_MS;
-	const grouped = new Map<string, ProjectLogRow[]>();
-
-	for (const row of params.rows) {
-		if (row.action !== 'created' && row.action !== 'updated') continue;
-		if (!projectIdSet.has(row.project_id)) continue;
-
-		const timestampMs = toTimestamp(row.created_at);
-		if (timestampMs < oldestCutoffMs) continue;
-
-		const bucket = grouped.get(row.project_id);
-		if (bucket) {
-			bucket.push(row);
-			continue;
-		}
-		grouped.set(row.project_id, [row]);
-	}
-
-	for (const projectId of params.projectIds) {
-		const rows = grouped.get(projectId);
-		if (!rows || rows.length === 0) continue;
-
-		const latestByEntity = new Map<string, RecentActivityCandidate>();
-
-		for (const row of [...rows].sort(compareRecentActivityLogRows)) {
-			const key = `${row.entity_type}:${row.entity_id}`;
-			const resolvedTitle = resolveRecentActivityTitle(row);
-			const action = row.action as 'created' | 'updated';
-			const existing = latestByEntity.get(key);
-			if (existing) {
-				if (!existing.has_specific_title && resolvedTitle.hasSpecificTitle) {
-					existing.title = resolvedTitle.title;
-					existing.has_specific_title = true;
-				}
-				continue;
-			}
-
-			latestByEntity.set(key, {
-				entity_type: row.entity_type,
-				entity_id: row.entity_id,
-				title: resolvedTitle.title,
-				action,
-				updated_at: row.created_at,
-				has_specific_title: resolvedTitle.hasSpecificTitle,
-				timestamp_ms: toTimestamp(row.created_at),
-				entity_bucket: recentActivityEntityBucket(row.entity_type)
-			});
-		}
-
-		const deduped = Array.from(latestByEntity.values()).sort(compareRecentActivityCandidates);
-		const recentItems = deduped.filter((item) => item.timestamp_ms >= recentCutoffMs);
-		const fallbackItems = deduped.filter((item) => item.timestamp_ms >= oldestCutoffMs);
-		const selected = (recentItems.length > 0 ? recentItems : fallbackItems).slice(
-			0,
-			GLOBAL_CONTEXT_RECENT_ACTIVITY_LIMIT
-		);
-
-		if (selected.length === 0) continue;
-
-		result[projectId] = selected.map(
-			({
-				has_specific_title: _hasSpecificTitle,
-				timestamp_ms: _timestampMs,
-				entity_bucket: _bucket,
-				...activity
-			}) => activity
-		);
-	}
-
-	return result;
-}
-
 function buildGlobalContextMeta(params: {
 	source: 'rpc' | 'fallback';
 	projectCount: number;
@@ -1461,15 +1309,27 @@ function buildGlobalContextMeta(params: {
 		projects_returned: params.projectsReturned,
 		project_limit: GLOBAL_CONTEXT_PROJECT_LIMIT,
 		includes_doc_structure: false,
-		recent_activity_window_days: GLOBAL_CONTEXT_RECENT_ACTIVITY_WINDOW_DAYS,
-		recent_activity_max_lookback_days: GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS,
 		entity_limits_per_project: {
-			recent_activity: GLOBAL_CONTEXT_RECENT_ACTIVITY_LIMIT,
 			goals: GLOBAL_CONTEXT_GOAL_LIMIT,
 			milestones: GLOBAL_CONTEXT_MILESTONE_LIMIT,
 			plans: GLOBAL_CONTEXT_PLAN_LIMIT
 		}
 	};
+}
+
+/**
+ * Every accessible project as one index entry (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+ * F115). The rollup is attached afterwards, with the bundles', by
+ * attachGlobalTaskRollups.
+ */
+function buildGlobalProjectIndex(projects: LightProject[]): GlobalProjectIndexEntry[] {
+	return projects.map((project) => ({
+		id: project.id,
+		name: project.name,
+		state_key: project.state_key,
+		next_step_short: project.next_step_short,
+		updated_at: project.updated_at
+	}));
 }
 
 type ProjectIntelligenceProject = Pick<
@@ -2005,8 +1865,20 @@ function countNonPausedProjects(projects: Array<{ state_key: string | null }>): 
 
 type TaskRollupRow = Pick<TaskRow, 'project_id' | 'state_key' | 'due_at' | 'completed_at'>;
 
+// The open states the rollup query asks for. state_key is the `task_state`
+// enum, so the filter may only name values the enum actually has: sending a
+// legacy alias like "completed" makes Postgres reject the whole query with
+// 22P02 and the rollup silently degrades to null on every turn. Derive the
+// list from the generated enum and subtract the completed states, so a new
+// enum value is counted as open until someone classifies it here rather than
+// crashing the query. buildTaskRollups keeps COMPLETED_STATE_KEYS as the
+// in-memory guard for rows that slip through on case or a stray completed_at.
+const OPEN_TASK_STATE_KEYS = Constants.public.Enums.task_state.filter(
+	(state) => !isCompletedByState(state)
+);
+
 function emptyTaskRollup(truncated: boolean): ProjectTaskRollup {
-	return { total: 0, open: 0, overdue: 0, in_progress: 0, blocked: 0, done: 0, truncated };
+	return { open: 0, overdue: 0, in_progress: 0, blocked: 0, truncated };
 }
 
 function buildTaskRollups(params: {
@@ -2022,12 +1894,8 @@ function buildTaskRollups(params: {
 	for (const row of params.rows) {
 		const rollup = rollups[row.project_id];
 		if (!rollup) continue;
-		rollup.total += 1;
 		const state = normalizeStateKey(row.state_key);
-		if (row.completed_at || isCompletedByState(state)) {
-			rollup.done += 1;
-			continue;
-		}
+		if (row.completed_at || isCompletedByState(state)) continue;
 		rollup.open += 1;
 		if (state === 'in_progress') rollup.in_progress += 1;
 		if (state === 'blocked') rollup.blocked += 1;
@@ -2038,11 +1906,13 @@ function buildTaskRollups(params: {
 }
 
 /**
- * One query for the task counts of every bundled project (turn-executor audit
- * 2026-09-02, Finding 13 / F-02). The global RPC and its fallback load goals,
- * milestones, plans, and activity per project but no tasks, so a status
- * question used to cost a get_workspace_overview round. Errors degrade to "no
- * rollup" rather than failing the context load.
+ * One query for the open-task counts of every accessible project
+ * (turn-executor audit 2026-09-02, Finding 13 / F-02; widened from the eight
+ * bundled projects to all of them by AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+ * F115). The global RPC and its fallback load goals, milestones, and plans
+ * per project but no tasks, so a status question used to cost a
+ * get_workspace_overview round. Open tasks only, so the row cap covers a
+ * whole workspace; errors degrade to "no rollup" rather than failing the load.
  */
 async function loadGlobalTaskRollups(
 	supabase: SupabaseClient<Database>,
@@ -2056,6 +1926,8 @@ async function loadGlobalTaskRollups(
 		.in('project_id', projectIds)
 		.is('deleted_at', null)
 		.is('archived_at', null)
+		.is('completed_at', null)
+		.in('state_key', OPEN_TASK_STATE_KEYS)
 		.order('updated_at', { ascending: false })
 		.limit(GLOBAL_TASK_ROLLUP_ROW_LIMIT);
 	if (error) {
@@ -2079,7 +1951,12 @@ async function attachGlobalTaskRollups(
 	data: GlobalContextData,
 	onError?: LoadContextParams['onError']
 ): Promise<GlobalContextData> {
-	const projectIds = data.projects.map((bundle) => bundle.project.id);
+	const projectIds = Array.from(
+		new Set([
+			...data.project_index.map((entry) => entry.id),
+			...data.projects.map((bundle) => bundle.project.id)
+		])
+	);
 	if (projectIds.length === 0) return data;
 	const rollups = await loadGlobalTaskRollups(supabase, projectIds, onError);
 	if (!rollups) return data;
@@ -2088,20 +1965,22 @@ async function attachGlobalTaskRollups(
 		projects: data.projects.map((bundle) => ({
 			...bundle,
 			task_rollup: rollups[bundle.project.id] ?? null
+		})),
+		project_index: data.project_index.map((entry) => ({
+			...entry,
+			task_rollup: rollups[entry.id] ?? null
 		}))
 	};
 }
 
 function buildGlobalProjectBundles(params: {
 	projects: LightProject[];
-	recentActivityByProject: Record<string, LightRecentActivity[]>;
 	goalsByProject: Record<string, LightGoal[]>;
 	milestonesByProject: Record<string, LightMilestone[]>;
 	plansByProject: Record<string, LightPlan[]>;
 }): GlobalContextProjectBundle[] {
 	return params.projects.map((project) => ({
 		project,
-		recent_activity: params.recentActivityByProject[project.id] ?? [],
 		goals: params.goalsByProject[project.id] ?? [],
 		milestones: params.milestonesByProject[project.id] ?? [],
 		plans: params.plansByProject[project.id] ?? []
@@ -2147,6 +2026,7 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 	if (allProjects.length === 0) {
 		return {
 			projects: [],
+			project_index: [],
 			project_intelligence:
 				normalizeProjectIntelligenceFromPayload(payload.project_intelligence) ??
 				buildProjectIntelligenceSnapshot({
@@ -2190,9 +2070,8 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 		(row): row is EventRow & { project_id: string } =>
 			typeof row.project_id === 'string' && allProjectIds.includes(row.project_id)
 	);
-	const logs = asArray<ProjectLogRow>(payload.project_logs).filter((row) =>
-		allProjectIds.includes(row.project_id)
-	);
+	// payload.project_logs is deliberately not read (F115): recent changes come
+	// from project_intelligence, and this branch only runs when it is present.
 
 	const goalsByProject = limitAndMapByProject({
 		rows: goals,
@@ -2212,20 +2091,14 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 		limitRows: (rows) => limitGlobalPlansForContext(rows),
 		mapper: mapPlan
 	});
-	const recentActivityByProject = mapRecentActivity({
-		rows: logs,
-		projectIds,
-		nowMs
-	});
-
 	return {
 		projects: buildGlobalProjectBundles({
 			projects: lightProjects,
-			recentActivityByProject,
 			goalsByProject,
 			milestonesByProject,
 			plansByProject
 		}),
+		project_index: buildGlobalProjectIndex(allProjects),
 		project_intelligence:
 			normalizeProjectIntelligenceFromPayload(payload.project_intelligence) ??
 			buildProjectIntelligenceSnapshot({
@@ -2236,8 +2109,7 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 				milestones,
 				tasks,
 				events,
-				logs,
-				titlesByKindId: buildEntityTitleLookup({ plans })
+				logs: []
 			}),
 		context_meta: buildGlobalContextMeta({
 			source: 'rpc',
@@ -2460,6 +2332,7 @@ async function loadGlobalContextData(
 		reportContextLoadError(onError, 'query.global.projects', error, { userId });
 		return {
 			projects: [],
+			project_index: [],
 			project_intelligence: buildProjectIntelligenceSnapshot({
 				scope: 'global',
 				source: 'fallback',
@@ -2528,6 +2401,7 @@ async function loadGlobalContextData(
 	if (allProjectIds.length === 0) {
 		return {
 			projects: [],
+			project_index: [],
 			project_intelligence: buildProjectIntelligenceSnapshot({
 				scope: 'global',
 				source: 'fallback',
@@ -2547,14 +2421,15 @@ async function loadGlobalContextData(
 		};
 	}
 
-	const oldestActivityIso = new Date(
-		nowMs - GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS * DAY_IN_MS
-	).toISOString();
 	const upcomingCutoffIso = new Date(
 		nowMs + PROJECT_INTELLIGENCE_UPCOMING_DAYS * DAY_IN_MS
 	).toISOString();
 
-	const [goalsRes, milestonesRes, plansRes, logsRes, tasksRes, eventsRes] = await Promise.all([
+	// onto_project_logs is no longer queried here (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+	// F115): its rows (with before/after JSONB) fed only the bundle
+	// recent_activity that never rendered once intelligence existed. The
+	// fallback snapshot therefore carries no recent changes.
+	const [goalsRes, milestonesRes, plansRes, tasksRes, eventsRes] = await Promise.all([
 		supabase
 			.from('onto_goals')
 			.select(
@@ -2583,15 +2458,6 @@ async function loadGlobalContextData(
 			.is('archived_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(GLOBAL_CONTEXT_ENTITY_FETCH_LIMIT),
-		supabase
-			.from('onto_project_logs')
-			.select(
-				'project_id, entity_type, entity_id, action, created_at, after_data, before_data'
-			)
-			.in('project_id', allProjectIds)
-			.gte('created_at', oldestActivityIso)
-			.order('created_at', { ascending: false })
-			.limit(500),
 		supabase
 			.from('onto_tasks')
 			.select(
@@ -2635,13 +2501,6 @@ async function loadGlobalContextData(
 			projectCount: projectIds.length
 		});
 	}
-	if (logsRes.error)
-		logger.warn('Failed to load global project activity', { error: logsRes.error });
-	if (logsRes.error) {
-		reportContextLoadError(onError, 'query.global.activity', logsRes.error, {
-			projectCount: projectIds.length
-		});
-	}
 	if (tasksRes.error) {
 		logger.warn('Failed to load global task signals', { error: tasksRes.error });
 		reportContextLoadError(onError, 'query.global.tasks', tasksRes.error, {
@@ -2660,7 +2519,6 @@ async function loadGlobalContextData(
 		MilestoneRow & { project_id: string }
 	>;
 	const planRows = (plansRes.data ?? []) as Array<PlanRow & { project_id: string }>;
-	const logRows = (logsRes.data ?? []) as ProjectLogRow[];
 	const taskRows = (tasksRes.data ?? []) as Array<TaskRow & { project_id: string }>;
 	const eventRows = (eventsRes.data ?? []) as Array<EventRow & { project_id: string }>;
 
@@ -2682,20 +2540,14 @@ async function loadGlobalContextData(
 		limitRows: (rows) => limitGlobalPlansForContext(rows),
 		mapper: mapPlan
 	});
-	const recentActivityByProject = mapRecentActivity({
-		rows: logRows,
-		projectIds,
-		nowMs
-	});
-
 	return {
 		projects: buildGlobalProjectBundles({
 			projects: lightProjects,
-			recentActivityByProject,
 			goalsByProject,
 			milestonesByProject,
 			plansByProject
 		}),
+		project_index: buildGlobalProjectIndex(allProjects),
 		project_intelligence: buildProjectIntelligenceSnapshot({
 			scope: 'global',
 			source: 'fallback',
@@ -2704,10 +2556,7 @@ async function loadGlobalContextData(
 			milestones: milestoneRows,
 			tasks: taskRows,
 			events: eventRows,
-			logs: logRows,
-			// Extend title fallback with plans so recent-change rows referencing
-			// plans don't fall back to the literal "plan" label.
-			titlesByKindId: buildEntityTitleLookup({ plans: planRows })
+			logs: []
 		}),
 		context_meta: buildGlobalContextMeta({
 			source: 'fallback',

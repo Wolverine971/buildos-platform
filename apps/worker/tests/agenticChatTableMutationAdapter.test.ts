@@ -161,7 +161,11 @@ describe('table row create_onto_task', () => {
 					project_id: PROJECT_ID,
 					title: 'New task',
 					assignee_handles: ['@sam'],
-					plan_id: '77777777-7777-4777-8777-777777777777'
+					plan_id: '77777777-7777-4777-8777-777777777777',
+					// A chat task write never schedules an event unless the model
+					// asks: default_calendar_sync_none forces the switch the model
+					// forgot in case 4 of the 2026-09-10 browser rerun.
+					calendar_sync: 'none'
 				},
 				scope: {
 					mode: 'read_write',
@@ -306,6 +310,44 @@ describe('table row create_onto_task', () => {
 		expect(receipt).not.toHaveProperty('calendar_events');
 	});
 
+	// Case 4 of the 2026-09-10 browser rerun: the model set a due date under an
+	// explicit "no calendar event" instruction, omitted calendar_sync, and the
+	// REST default ('auto') created a real event. Silence must mean no event.
+	it('defaults a create to no calendar event when the model omits calendar_sync', async () => {
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: { task: taskReceipt(), calendar_sync: 'skipped' }
+		}));
+		await adapter({ runGateway, taskSync: { syncTaskEvents: vi.fn() } }).execute(
+			input({ args: { project_id: PROJECT_ID, title: 'New task', due_at: '2026-09-18' } })
+		);
+
+		expect(runGateway.mock.calls[0]?.[0]).toMatchObject({
+			args: expect.objectContaining({ calendar_sync: 'none' })
+		});
+	});
+
+	it('still schedules an event when the model explicitly asks for auto', async () => {
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: { task: taskReceipt(), calendar_sync: 'synced' }
+		}));
+		await adapter({ runGateway, taskSync: { syncTaskEvents: vi.fn() } }).execute(
+			input({
+				args: {
+					project_id: PROJECT_ID,
+					title: 'New task',
+					due_at: '2026-09-18',
+					calendar_sync: 'auto'
+				}
+			})
+		);
+
+		expect(runGateway.mock.calls[0]?.[0]).toMatchObject({
+			args: expect.objectContaining({ calendar_sync: 'auto' })
+		});
+	});
+
 	it('carries a removed calendar event count onto the receipt', async () => {
 		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
@@ -400,7 +442,12 @@ describe('table row update_onto_task', () => {
 				userId: USER_ID,
 				op: 'onto.task.update',
 				chatSessionId: SESSION_ID,
-				args: { task_id: TASK_ID, title: 'Updated task', state_key: 'in_progress' },
+				args: {
+					task_id: TASK_ID,
+					title: 'Updated task',
+					state_key: 'in_progress',
+					calendar_sync: 'none'
+				},
 				scope: {
 					mode: 'read_write',
 					allowed_ops: ['onto.task.update'],
@@ -410,6 +457,22 @@ describe('table row update_onto_task', () => {
 				taskSync: expect.objectContaining({ syncTaskEvents: expect.any(Function) })
 			})
 		);
+	});
+
+	// The half that actually failed in case 4: a due-date-only update created
+	// the event. Silence means no event on the update path too.
+	it('defaults an update to no calendar event when the model omits calendar_sync', async () => {
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: { task: gatewayTask(), calendar_sync: 'skipped' }
+		}));
+		await adapter({ runGateway, taskSync: { syncTaskEvents: vi.fn() } }).execute(
+			input({ args: { task_id: TASK_ID, due_at: '2026-09-18' } })
+		);
+
+		expect(runGateway.mock.calls[0]?.[0]).toMatchObject({
+			args: expect.objectContaining({ calendar_sync: 'none' })
+		});
 	});
 
 	it('reports the calendar sync the gateway performed on an update', async () => {
@@ -462,7 +525,8 @@ describe('table row update_onto_task', () => {
 					assignee_actor_ids: [ASSIGNEE_ID],
 					assignee_handles: ['@sam'],
 					goal_id: GOAL_ID,
-					supporting_milestone_id: MILESTONE_ID
+					supporting_milestone_id: MILESTONE_ID,
+					calendar_sync: 'none'
 				},
 				scope: expect.objectContaining({
 					project_ids: [PROJECT_ID],

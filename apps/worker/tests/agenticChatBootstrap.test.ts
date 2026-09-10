@@ -9,6 +9,7 @@ import {
 import { GLM_53_FLASH_MODEL, GPT_56_LUNA_MODEL, JSON_PROFILE_MODELS } from '@buildos/smart-llm';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
 import {
+	AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS,
 	AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER,
 	AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS,
 	buildAgenticChatSemanticReviewerRoutes,
@@ -198,6 +199,73 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(routes[0]?.apiKey).toBe('provider-secret');
 	});
 
+	// 2026-09-04: GLM 5.3 Flash approved a dependency correction without
+	// declaring its endpoints. It stays out of the default chain; an explicit
+	// policy (evaluated by the operator) may still name it.
+	it('keeps the documented bad reviewer out of the default fallback chain', () => {
+		const routes = buildAgenticChatSemanticReviewerRoutes([
+			{
+				id: 'openrouter',
+				kind: 'openrouter',
+				baseUrl: 'https://openrouter.ai/api/v1',
+				apiKey: 'provider-secret',
+				model: 'deepseek/deepseek-v4-flash',
+				fallbackModels: []
+			}
+		]);
+
+		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS.has(GLM_53_FLASH_MODEL)).toBe(
+			true
+		);
+		expect(routes[0]?.model).toBe(GPT_56_LUNA_MODEL);
+		expect(routes[0]?.fallbackModels).not.toContain(GLM_53_FLASH_MODEL);
+		expect(routes[0]?.fallbackModels?.length).toBeGreaterThan(0);
+		expect(
+			[...JSON_PROFILE_MODELS.powerful, ...JSON_PROFILE_MODELS.maximum].includes(
+				GLM_53_FLASH_MODEL
+			)
+		).toBe(true);
+	});
+
+	it('does not carry the acting route provider ignore onto the reviewer', () => {
+		const routes = buildAgenticChatSemanticReviewerRoutes(
+			[
+				{
+					id: 'openrouter',
+					kind: 'openrouter',
+					baseUrl: 'https://openrouter.ai/api/v1',
+					apiKey: 'provider-secret',
+					model: 'deepseek/deepseek-v4-flash',
+					fallbackModels: [],
+					providerRouting: {
+						allow_fallbacks: true,
+						order: ['deepinfra', 'gmicloud', 'alibaba', 'streamlake'],
+						ignore: ['azure', 'digitalocean']
+					}
+				}
+			],
+			{ model: GPT_56_LUNA_MODEL, fallbackModels: [] }
+		);
+
+		expect(routes[0]?.providerRouting).toEqual({
+			allow_fallbacks: true,
+			order: ['openai', 'azure']
+		});
+	});
+
+	it('derives the reviewer route from the shipped acting defaults without losing Azure', () => {
+		const config = loadAgenticChatConfig(environment());
+		const routes = buildAgenticChatSemanticReviewerRoutes(
+			config.provider.routes,
+			config.provider.reviewer
+		);
+		expect(config.provider.routes[0]?.providerRouting?.ignore).toEqual(['azure']);
+		expect(routes[0]?.providerRouting).toEqual({
+			allow_fallbacks: true,
+			order: ['openai', 'azure']
+		});
+	});
+
 	it('routes the reviewer to OpenAI before Azure instead of the acting provider order', () => {
 		const routes = buildAgenticChatSemanticReviewerRoutes(
 			[
@@ -218,11 +286,14 @@ describe('Agentic Chat operational bootstrap', () => {
 			{ model: GPT_56_LUNA_MODEL, fallbackModels: [] }
 		);
 
+		// Provider evidence is per model: the acting route's `ignore` describes
+		// the acting model's endpoints and does not carry over (the acting route
+		// now ignores Azure, which is the reviewer's own fallback endpoint).
 		expect(routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			order: ['openai', 'azure'],
-			ignore: ['digitalocean']
+			order: ['openai', 'azure']
 		});
+		expect(routes[0]?.providerRouting).not.toHaveProperty('ignore');
 		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER).toEqual(['openai', 'azure']);
 		expect(routes[0]?.providerRouting?.order).not.toContain('deepinfra');
 		expect(routes[0]?.fallbackModels).not.toContain('deepseek/deepseek-v4-flash');

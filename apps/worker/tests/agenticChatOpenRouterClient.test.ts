@@ -10,6 +10,7 @@ import {
 } from '../src/workers/agentic-chat/provider/openrouter-client';
 import type { AgenticChatTurnProviderClientEventV1 } from '../src/workers/agentic-chat/provider/contracts';
 import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
+import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/pendingEffects';
 import { AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1 } from '../src/workers/agentic-chat/mutationToolCatalog';
 import { AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 } from '../src/workers/agentic-chat/tools/execution-adapter';
 
@@ -111,7 +112,12 @@ function splitSseResponse(chunks: string[]): Response {
 function harness(
 	fetchImpl: typeof fetch,
 	routes = [route()],
-	options: { maxTokens?: number } = {}
+	options: {
+		maxTokens?: number;
+		/** Settles each lifecycle observation; defaults to immediate success. */
+		settleObservation?: (observation: AgenticChatExecutionObservationInputV1) => Promise<void>;
+		onExecutionObservationError?: (error: unknown) => void;
+	} = {}
 ) {
 	const observations: AgenticChatProviderUsageObservationV1[] = [];
 	const lifecycleObservations: AgenticChatExecutionObservationInputV1[] = [];
@@ -121,22 +127,36 @@ function harness(
 		})
 	};
 	const executionObservations = {
-		observe: vi.fn(async (observation: AgenticChatExecutionObservationInputV1) => {
+		observe: vi.fn((observation: AgenticChatExecutionObservationInputV1) => {
 			lifecycleObservations.push(observation);
+			return options.settleObservation?.(observation) ?? Promise.resolve();
 		})
 	};
+	const pendingEffects = new AgenticChatPendingEffectsRegistry();
 	const client = new AgenticChatOpenRouterClient(
-		{ usage, executionObservations },
+		{
+			usage,
+			executionObservations,
+			pendingEffects,
+			onExecutionObservationError: options.onExecutionObservationError
+		},
 		{
 			routes,
 			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Agentic Chat Worker',
 			fetchImpl,
 			requestTimeoutMs: 10_000,
-			...options
+			...(options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens })
 		}
 	);
-	return { client, usage, observations, executionObservations, lifecycleObservations };
+	return {
+		client,
+		usage,
+		observations,
+		executionObservations,
+		lifecycleObservations,
+		pendingEffects
+	};
 }
 
 async function collect(
@@ -203,7 +223,7 @@ describe('AgenticChatOpenRouterClient', () => {
 		).not.toBe(first);
 	});
 
-	it('streams private reasoning separately, sends no tools, and accounts exact provider usage', async () => {
+	it('drops private reasoning deltas, sends no tools, and accounts exact provider usage', async () => {
 		const fetchImpl = vi.fn(async () =>
 			sseResponse(
 				[
@@ -214,7 +234,11 @@ describe('AgenticChatOpenRouterClient', () => {
 						choices: [
 							{
 								delta: {
+									reasoning: 'private chain',
 									reasoning_content: 'private chain',
+									reasoning_details: [
+										{ type: 'reasoning.text', text: 'private' }
+									],
 									content: '<think>hidden</think>Visible answer'
 								}
 							}
@@ -254,7 +278,6 @@ describe('AgenticChatOpenRouterClient', () => {
 		const test = harness(fetchImpl);
 
 		await expect(collect(test.client.stream(input()))).resolves.toEqual([
-			{ type: 'reasoning', reasoning: 'private chain' },
 			{ type: 'text', content: 'Visible answer' },
 			{
 				type: 'done',
@@ -351,6 +374,7 @@ describe('AgenticChatOpenRouterClient', () => {
 			})
 		]);
 		expect(JSON.stringify(test.lifecycleObservations)).not.toContain('Visible answer');
+		expect(JSON.stringify(test.lifecycleObservations)).not.toContain('private');
 	});
 
 	it('falls back only before accepting a stream and accounts an estimated natural close', async () => {
@@ -910,9 +934,14 @@ describe('AgenticChatOpenRouterClient', () => {
 		expect(firstHeaders['X-OpenRouter-Metadata']).toBe('enabled');
 	});
 
-	it.each([503, 404])(
-		'releases a successful provider pin and permits retry after HTTP %s',
-		async (status) => {
+	// With the pin a preference (fallbacks stay allowed), a 404 on a pinned
+	// pass means no endpoint serves the model: permanent, and the pin goes.
+	it.each([
+		{ status: 503, retryable: true },
+		{ status: 404, retryable: false }
+	])(
+		'releases a successful provider pin after HTTP $status (retryable: $retryable)',
+		async ({ status, retryable }) => {
 			const requests: Array<Record<string, unknown>> = [];
 			const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
 				requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
@@ -966,7 +995,7 @@ describe('AgenticChatOpenRouterClient', () => {
 				{
 					type: 'error',
 					error: `Agentic Chat provider start failed (${status}): pinned route unavailable`,
-					retryable: true
+					retryable
 				}
 			]);
 			await expect(
@@ -989,7 +1018,7 @@ describe('AgenticChatOpenRouterClient', () => {
 			});
 			expect(requests[1]).toMatchObject({
 				model: 'provider/resolved-fallback',
-				provider: { order: ['warm-provider'], allow_fallbacks: false }
+				provider: { order: ['warm-provider'], allow_fallbacks: true }
 			});
 			expect(requests[1]).not.toHaveProperty('models');
 			expect(requests[2]).toMatchObject({
@@ -997,13 +1026,16 @@ describe('AgenticChatOpenRouterClient', () => {
 				models: ['provider/resolved-fallback'],
 				provider: { order: ['default-provider'], allow_fallbacks: true }
 			});
+			// The rejection named no endpoint and the request could have reached
+			// any, so nothing is ignored on no evidence.
+			expect(requests[2]?.provider).not.toHaveProperty('ignore');
 		}
 	);
 
 	// 2026-09-03 battery: a pinned endpoint ignored tool_choice=none and named
 	// neither the pinned model nor a normalizable provider slug, so the pin
-	// survived and `order: [slug], allow_fallbacks: false` sent the bounded
-	// retry straight back to the same endpoint.
+	// survived and `order: [slug]` sent the bounded retry straight back to the
+	// same endpoint.
 	it('releases the route pin when a pinned endpoint ignores tool_choice=none', async () => {
 		const requests: Array<Record<string, unknown>> = [];
 		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
@@ -1063,7 +1095,7 @@ describe('AgenticChatOpenRouterClient', () => {
 		expect(violation.at(-1)).toMatchObject({ type: 'done', finishedReason: 'tool_calls' });
 		expect(requests[1]).toMatchObject({
 			model: 'provider/resolved-fallback',
-			provider: { order: ['warm-provider'], allow_fallbacks: false }
+			provider: { order: ['warm-provider'], allow_fallbacks: true }
 		});
 
 		await expect(
@@ -1205,7 +1237,7 @@ describe('AgenticChatOpenRouterClient', () => {
 			expect(requests).toHaveLength(3);
 			expect(requests[1]).toMatchObject({
 				model: 'provider/primary',
-				provider: { order: ['alibaba'], allow_fallbacks: false }
+				provider: { order: ['alibaba'], allow_fallbacks: true }
 			});
 			expect(requests[2]).toMatchObject({
 				model: 'provider/fallback',
@@ -1255,7 +1287,7 @@ describe('AgenticChatOpenRouterClient', () => {
 				model: 'provider/primary',
 				provider: {
 					order: ['alibaba'],
-					allow_fallbacks: false,
+					allow_fallbacks: true,
 					ignore: ['deepinfra']
 				}
 			});
@@ -1298,7 +1330,7 @@ describe('AgenticChatOpenRouterClient', () => {
 			model: 'provider/primary',
 			provider: {
 				order: ['deepinfra'],
-				allow_fallbacks: false
+				allow_fallbacks: true
 			}
 		});
 		expect(requests[1]?.provider).not.toHaveProperty('ignore');
@@ -2337,6 +2369,161 @@ describe('truncated tool-call attempts and turn budgets', () => {
 		expect(requests[1]?.prompt_cache_key).toBe('agentic-chat-reviewer-v1');
 		expect(requests[2]?.prompt_cache_key).toBe('agentic-chat-reviewer-v1');
 	});
+
+	it('asks for low reasoning effort on contract and mutation reviews only', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			return sseResponse([
+				JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const passRoles = [
+			'acting',
+			'contract_review',
+			'mutation_review',
+			'research_review',
+			'final_response'
+		] as const;
+		for (const [index, passRole] of passRoles.entries()) {
+			await collect(
+				test.client.stream({ ...input(), logicalProviderRound: index + 1, passRole })
+			);
+		}
+		expect(requests.map((request) => request.reasoning)).toEqual([
+			{ exclude: true },
+			{ effort: 'low', exclude: true },
+			{ effort: 'low', exclude: true },
+			{ exclude: true },
+			{ exclude: true }
+		]);
+	});
+
+	// Providers answer a canonical request id with a weight snapshot id.
+	// Re-requesting the snapshot resolved to a different endpoint set (Azure,
+	// p50 21.5 s), so the pin holds the configured id; receipts keep the
+	// reported one.
+	it('pins the configured model when the provider reports a weight snapshot id', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			return sseResponse([
+				JSON.stringify({
+					model: 'deepseek/deepseek-v4-flash-20260423',
+					provider: 'Alibaba',
+					provider_slug: 'alibaba',
+					choices: [{ delta: { content: 'Answer.' } }]
+				}),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'stop' }],
+					usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 }
+				}),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl, [
+			route({ model: 'deepseek/deepseek-v4-flash', fallbackModels: [] })
+		]);
+
+		await collect(test.client.stream(input()));
+		await collect(test.client.stream({ ...input(), logicalProviderRound: 2 }));
+		expect(requests[1]).toMatchObject({
+			model: 'deepseek/deepseek-v4-flash',
+			provider: { order: ['alibaba'] }
+		});
+		expect(requests[1]).not.toHaveProperty('models');
+		expect(test.observations[0]).toMatchObject({
+			modelRequested: 'deepseek/deepseek-v4-flash',
+			modelUsed: 'deepseek/deepseek-v4-flash-20260423'
+		});
+		expect(
+			test.lifecycleObservations.find((o) => o.eventType === 'provider_attempt_ended')
+				?.payload
+		).toMatchObject({
+			model_requested: 'deepseek/deepseek-v4-flash',
+			model_used: 'deepseek/deepseek-v4-flash-20260423'
+		});
+
+		// Semantic rejection of the completed response steers the same identity
+		// the pin holds, so the pin is released and the endpoint retired.
+		const completed = { ...input(), logicalProviderRound: 2 };
+		test.client.rejectRepeatedInvalidToolResponse(completed);
+		await collect(test.client.stream({ ...input(), logicalProviderRound: 3 }));
+		expect(requests[2]).toMatchObject({
+			model: 'deepseek/deepseek-v4-flash',
+			provider: { ignore: ['alibaba'] }
+		});
+		expect(requests[2]?.provider).not.toMatchObject({ order: expect.anything() });
+	});
+
+	// Attempt receipts are filed into the turn's pending set instead of being
+	// awaited on the path to the request or to `done`; the executor drains the
+	// set at finalization, before the terminal fence.
+	it('files attempt receipts as pending effects and never waits for them on the pass', async () => {
+		const releases: Array<() => void> = [];
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({
+					model: 'provider/primary',
+					provider: 'DeepInfra',
+					choices: [{ delta: { content: 'Answer.' }, finish_reason: 'stop' }]
+				}),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl, [route()], {
+			settleObservation: () =>
+				new Promise<void>((resolve) => {
+					releases.push(resolve);
+				})
+		});
+
+		await expect(collect(test.client.stream(input()))).resolves.toEqual([
+			{ type: 'text', content: 'Answer.' },
+			expect.objectContaining({ type: 'done', finishedReason: 'stop' })
+		]);
+		// Both receipts were started (before the request, and before `done`)
+		// and neither has settled, yet the pass completed.
+		expect(test.lifecycleObservations.map((o) => o.eventType)).toEqual([
+			'provider_attempt_started',
+			'provider_attempt_ended'
+		]);
+		expect(test.observations).toHaveLength(1);
+		expect(test.pendingEffects.size(TURN_RUN_ID)).toBe(2);
+
+		const draining = test.pendingEffects.drain(TURN_RUN_ID, 1_000);
+		for (const release of releases) release();
+		await expect(draining).resolves.toBe(true);
+		expect(test.pendingEffects.size(TURN_RUN_ID)).toBe(0);
+	});
+
+	it('reports a failed attempt receipt through the error port without touching the pass', async () => {
+		const errors: unknown[] = [];
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl, [route()], {
+			settleObservation: () => Promise.reject(new Error('observation store down')),
+			onExecutionObservationError: (error) => errors.push(error)
+		});
+
+		await expect(collect(test.client.stream(input()))).resolves.toEqual([
+			{ type: 'text', content: 'ok' },
+			expect.objectContaining({ type: 'done', finishedReason: 'stop' })
+		]);
+		await expect(test.pendingEffects.drain(TURN_RUN_ID, 1_000)).resolves.toBe(true);
+		expect(errors).toHaveLength(2);
+		expect(errors.map((error) => (error as Error).message)).toEqual([
+			'observation store down',
+			'observation store down'
+		]);
+		expect(test.observations[0]).toMatchObject({ status: 'success' });
+	});
 });
 
 // Worker twin of the legacy turn-route-health accumulator (the only 5xx-storm
@@ -2418,8 +2605,9 @@ describe('per-turn route health', () => {
 		const test = harness(fetchImpl);
 
 		await collect(test.client.stream(input()));
-		// The first success pins DeepInfra, so the timed-out attempt below could
-		// have reached no other endpoint and the timeout is attributable to it.
+		// The first success orders DeepInfra first, so the timed-out attempt
+		// below went there and the timeout is attributed to it. Fallbacks stay
+		// allowed on the pinned request; only a timeout carries this attribution.
 		expect(requests[0]?.provider).not.toMatchObject({ order: expect.anything() });
 		const timingOut = collect(
 			test.client.stream({ ...input(), streamRunId: 'stream-run-2', logicalProviderRound: 2 })
@@ -2437,10 +2625,53 @@ describe('per-turn route health', () => {
 		);
 		expect(requests[1]?.provider).toMatchObject({
 			order: ['deepinfra'],
-			allow_fallbacks: false
+			allow_fallbacks: true
 		});
 		expect(requests[2]?.provider).toMatchObject({ ignore: ['deepinfra'] });
 		expect(requests[2]?.provider).not.toMatchObject({ order: expect.anything() });
+	});
+
+	it('does not blame the ordered endpoint for an unnamed rejection on a pinned request', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 2) {
+				return new Response(JSON.stringify({ error: { message: 'upstream error' } }), {
+					status: 502,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+			return sseResponse(okFrames('provider/primary', 'DeepInfra', 'deepinfra'));
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+
+		await collect(test.client.stream(input()));
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					streamRunId: 'stream-run-2',
+					logicalProviderRound: 2
+				})
+			)
+		).resolves.toEqual([
+			{
+				type: 'error',
+				error: 'Agentic Chat provider start failed (502): upstream error',
+				retryable: true
+			}
+		]);
+		await collect(
+			test.client.stream({ ...input(), streamRunId: 'stream-run-3', logicalProviderRound: 3 })
+		);
+		expect(requests[1]?.provider).toMatchObject({
+			order: ['deepinfra'],
+			allow_fallbacks: true
+		});
+		// The pin is released, but with fallbacks allowed the 502 may have come
+		// from any endpoint: nothing is ignored on no evidence.
+		expect(requests[2]?.provider).not.toMatchObject({ order: expect.anything() });
+		expect(requests[2]?.provider).not.toHaveProperty('ignore');
 	});
 
 	it('accumulates a second failed provider instead of replacing the first', async () => {
@@ -2544,7 +2775,7 @@ describe('per-turn route health', () => {
 		}
 		expect(requests[1]?.provider).toMatchObject({
 			order: ['deepinfra'],
-			allow_fallbacks: false
+			allow_fallbacks: true
 		});
 		// The pin is retired and the endpoint that ignored tool_choice=none is
 		// excluded, so the bounded retry cannot be routed straight back to it.

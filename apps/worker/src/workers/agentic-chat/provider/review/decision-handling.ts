@@ -221,10 +221,9 @@ export function buildCandidateGateClarification(
 	group: ReferenceCandidateGroup
 ): CompletedProviderToolCall {
 	const id = `candidate-gate:${request.turnRunId}:${request.logicalProviderRound}`;
-	// The deterministic clarification executor rejects a question that does not
-	// contain every supplied candidate label verbatim, so the question prefix and
-	// every label must share one truncation budget instead of slicing the
-	// assembled question afterwards.
+	// The host renders the candidates as a list beneath the question, so the
+	// question prefix and the labels share one truncation budget only for
+	// length: the assembled question is never sliced afterwards.
 	const questionPrefix = `Which one did you mean by "${group.reference}"? `;
 	const labelBudget = Math.floor(
 		(CANDIDATE_GATE_QUESTION_MAX_LENGTH -

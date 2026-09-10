@@ -24,8 +24,10 @@ export const ONTOLOGY_READ_TOOLS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'list_onto_tasks',
+			// Says what the payload already carries so the model does not follow
+			// each row with a detail read (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F35).
 			description:
-				'List task summaries (id, title, state, and type), optionally filtered by project or state.',
+				'List tasks with id, project_id, project_name, title, description, type_key, state_key, priority, start_at, due_at, completed_at, and props, newest-updated first, optionally filtered by project or state. The result also reports the exact total; raise limit or filter when it exceeds the rows returned. Only assignees and linked plans, goals, milestones, or documents need get_onto_task_details.',
 			parameters: {
 				type: 'object',
 				properties: {

@@ -11,6 +11,11 @@ beforeAll(() => {
 	provideAgenticChatLoopToolCatalog(() => ({
 		ops: {},
 		byToolName: {
+			create_onto_task: {
+				op: 'onto.task.create',
+				tool_name: 'create_onto_task',
+				kind: 'write'
+			},
 			search_project: {
 				op: 'search_project',
 				tool_name: 'search_project',
@@ -26,6 +31,111 @@ beforeAll(() => {
 });
 
 describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
+	// Case 3 of the 2026-09-10 browser rerun: the model declared a contract,
+	// read, found the task already existed, and correctly wrote nothing — and
+	// the turn still finalized `mutation_unfulfilled` with an unfinished-write
+	// notice, because cancel_turn_contract's description forbade cancelling for
+	// anything but an explicit user cancellation. Cancelling is how a correct
+	// "nothing to change" turn ends, and it must produce a clean terminal.
+	it('leaves a correct no-op clean when the contract is cancelled as already satisfied', () => {
+		const answer =
+			'You already have a "Order cabinet hardware" task due Friday, so I left it as is.';
+		const contract = toolExecution(
+			'declare_turn_contract',
+			true,
+			{ status: 'declared' },
+			{
+				outcomes: [
+					{
+						action: 'create',
+						entity_kind: 'task',
+						label: 'cabinet',
+						changes: [{ field: 'title', value: 'Order cabinet hardware' }],
+						minimum_successful_effects: 1
+					}
+				]
+			}
+		);
+		const read = toolExecution('search_project', true, { tasks: [{ id: 'task_1' }] });
+		const cancel = toolExecution(
+			'cancel_turn_contract',
+			true,
+			{ status: 'cancelled' },
+			{
+				reason: 'search_project found the cabinet task already exists'
+			}
+		);
+
+		const result = enforceAgenticChatTerminalTextIntegrityV1({
+			assistantText: answer,
+			finishedReason: 'stop',
+			contextType: 'project',
+			toolExecutions: [contract, read, cancel]
+		});
+
+		expect(result.assistantText).toBe(answer);
+		expect(result.correctionDelta).toBeNull();
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalizationGuard).toBeNull();
+	});
+
+	// A batch approved through SHA-bound review executes as ordinary write
+	// calls, so the terminal truth floor must still catch a half-landed batch
+	// even though no contract was ever declared. Verified, not assumed: this
+	// is the disclosure that stops the user being told four tasks exist when
+	// two do.
+	it('discloses the remainder when an approved batch only half lands', () => {
+		const claim = 'Created all four tasks.';
+		const approval = toolExecution(
+			'approve_mutation_batch_review',
+			true,
+			{ status: 'mutation_batch_review_approved', batch_sha256: 'a'.repeat(64) },
+			{ reason: 'commissioned', batch_sha256: 'a'.repeat(64) }
+		);
+		const executions = [
+			approval,
+			mutationExecution('create_onto_task', true, { title: 'Permit' }, 'c1'),
+			mutationExecution('create_onto_task', true, { title: 'Cabinets' }, 'c2'),
+			mutationExecution('create_onto_task', false, { title: 'Rough-in' }, 'c3'),
+			mutationExecution('create_onto_task', false, { title: 'Inspection' }, 'c4')
+		];
+
+		const result = enforceAgenticChatTerminalTextIntegrityV1({
+			assistantText: claim,
+			finishedReason: 'stop',
+			contextType: 'project',
+			toolExecutions: executions
+		});
+
+		// The claim is corrected against the receipts rather than accepted.
+		expect(result.assistantText).not.toBe(claim);
+		expect(result.correctionDelta).not.toBeNull();
+	});
+
+	it('leaves an honest report of a fully executed approved batch alone', () => {
+		const answer = 'Created both tasks.';
+		const executions = [
+			toolExecution(
+				'approve_mutation_batch_review',
+				true,
+				{ status: 'mutation_batch_review_approved', batch_sha256: 'b'.repeat(64) },
+				{ reason: 'commissioned', batch_sha256: 'b'.repeat(64) }
+			),
+			mutationExecution('create_onto_task', true, { title: 'Permit' }, 'c1'),
+			mutationExecution('create_onto_task', true, { title: 'Cabinets' }, 'c2')
+		];
+
+		const result = enforceAgenticChatTerminalTextIntegrityV1({
+			assistantText: answer,
+			finishedReason: 'stop',
+			contextType: 'project',
+			toolExecutions: executions
+		});
+
+		expect(result.assistantText).toBe(answer);
+		expect(result.correctionDelta).toBeNull();
+	});
+
 	it('corrects a mutation success claim when a declared contract has no write evidence', () => {
 		const emittedText = 'Done — I marked the task complete.';
 		const contract = toolExecution(
@@ -248,4 +358,31 @@ function toolExecution(
 		result
 	};
 	return { toolCall, result: toolResult };
+}
+
+/** A write execution with a mutation receipt, as the executor persists one. */
+function mutationExecution(
+	name: string,
+	success: boolean,
+	args: Record<string, unknown>,
+	id: string
+): FastToolExecution {
+	const toolCall: ChatToolCall = {
+		id,
+		type: 'function',
+		function: { name, arguments: JSON.stringify(args) }
+	};
+	return {
+		toolCall,
+		result: {
+			tool_call_id: toolCall.id,
+			success,
+			result: success
+				? {
+						task: { id: `task-${id}`, title: args.title },
+						message: 'Task created successfully.'
+					}
+				: { error: 'write failed' }
+		}
+	};
 }

@@ -78,7 +78,8 @@ const ACTING_SYSTEM_PROMPT = [
 	'',
 	'## Rules for This Turn',
 	'',
-	'Loaded 1 task.'
+	'Web research: cite every web_visit source in the final answer.',
+	'Playbook for task writes this turn: read the task, then update it.'
 ].join('\n');
 
 function tool(definition: unknown): AgenticChatTurnProviderToolV1 {
@@ -360,7 +361,6 @@ describe('reviewer evidence filter', () => {
 		expect(userMessage).toContain('Ship the intro call first.');
 		expect(userMessage).toContain('Call Northwind.');
 		expect(userMessage).toContain('Tasks loaded:');
-		expect(userMessage).toContain('Loaded 1 task.');
 		expect(userMessage).toContain('list_onto_tasks');
 		expect(userMessage).toContain('declare_turn_contract');
 		expect(userMessage).toContain('declared');
@@ -376,6 +376,28 @@ describe('reviewer evidence filter', () => {
 		expect(userMessage).not.toContain('Never guess entity ids');
 		expect(userMessage).not.toContain('Tools: list_onto_tasks');
 		expect(userMessage).not.toContain(SEMANTIC_COMMISSION_GUIDANCE[0]!);
+		// "Rules for This Turn" is actor material (web rules, playbook), not
+		// evidence of what the user commissioned (audit 2026-09-08 F10).
+		expect(userMessage).not.toContain('Web research: cite every web_visit source');
+		expect(userMessage).not.toContain('Playbook for task writes this turn');
+	});
+
+	it('formats the reviewer prompt as titled blocks and keeps the SHA-binding rule', () => {
+		const review = buildTurnContractReviewRequest(
+			actingRequest(),
+			reviewTools(),
+			contract(),
+			'a'.repeat(64),
+			true,
+			true
+		);
+		const systemPrompt = String(review.messages[0]?.content);
+		expect(systemPrompt.split('\n\n').length).toBeGreaterThanOrEqual(5);
+		expect(systemPrompt).toContain('Role and trust:\n');
+		expect(systemPrompt).toContain('Commission rules:\n- ');
+		expect(systemPrompt).toContain('Quote the exact contract SHA-256 from the user message');
+		expect(systemPrompt).toContain('Choose exactly one available tool.');
+		expect(systemPrompt.length).toBeLessThan(10_000);
 	});
 
 	it('slices the acting prompt on known top-level sections only', () => {
@@ -384,8 +406,7 @@ describe('reviewer evidence filter', () => {
 		expect(sections.map((entry) => entry.section)).toEqual([
 			'Project Start Here',
 			'Current Focus and Purpose',
-			'Location and Loaded Context',
-			'Rules for This Turn'
+			'Location and Loaded Context'
 		]);
 		for (const entry of sections) {
 			expect(REVIEWER_EVIDENCE_SECTION_TITLES).toContain(entry.section);

@@ -3,6 +3,7 @@ import type { JsonObject } from '@buildos/shared-types';
 import { TURN_CONTRACT_TOOL_DEFINITION } from '@buildos/agentic-chat-runtime/catalog';
 import type { AgenticChatTurnProviderToolV1 } from '../contracts';
 import {
+	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../../tools/execution-adapter';
@@ -33,10 +34,12 @@ export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
 /**
  * Actor-register commission guidance: the five rules the acting model needs
  * on every project pass, in its own register. The reviewer keeps the full
- * SEMANTIC_COMMISSION_GUIDANCE; this must stay at most five lines.
+ * SEMANTIC_COMMISSION_GUIDANCE; this must stay at most five lines. The first
+ * line rides the deferred opening pass and the gate alike, so it names no
+ * tool (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02).
  */
 export const ACTOR_COMMISSION_GUIDANCE = Object.freeze([
-	'Commission rules: a simple commissioned change calls the mutation tools directly; a complex one calls declare_turn_contract first with the complete outcome set.',
+	'Commission rules: a simple commissioned change calls the mutation tools directly; a complex one is routed to independent review before execution.',
 	'Ask for clarification only when the user still owns a genuine choice among loaded candidates; never guess among them, and never ask about a value the request, loaded context, or tool schema already resolves.',
 	'A past-tense report that tracked work was completed commissions the matching state change when exactly one loaded entity fits: complete it, carry any user-stated outcome or next step on that entity instead of a new one, omit unstated optional values, and never tell the user a stated next step will go unrecorded.',
 	'A priority, scheduling, or completion instruction commissions only that change; add no workflow-state transition the user did not state. A task push or reschedule changes due_at; use start_at only for an explicit task start.',
@@ -164,6 +167,71 @@ export const CONTRACT_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Ob
 					...(TURN_CONTRACT_TOOL_DEFINITION.function.parameters as unknown as JsonObject),
 					description:
 						'The complete corrected turn contract. It must contain only outcomes already commissioned and values resolved by the turn evidence.'
+				}
+			}
+		}
+	}
+});
+
+/**
+ * Approve the exact proposed batch of tool calls.
+ *
+ * The contract lane's approval bound a SHA over a *description* of the intended
+ * change, and the acting model then re-proposed the calls that actually ran —
+ * so the executed arguments were never the reviewed arguments (F08). This
+ * approval binds the digest of the calls themselves, and the harness executes
+ * the held calls rather than asking for them again.
+ */
+export const MUTATION_BATCH_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
+	type: 'function',
+	function: {
+		name: APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
+		description:
+			'Approve the exact proposed batch of tool calls for execution, unchanged. Approve only when the current user request commissioned every call and the turn evidence resolves every target and value in their arguments without guessing. Enumerate reference_candidates before judging.',
+		parameters: {
+			type: 'object',
+			additionalProperties: false,
+			required: ['reason', 'batch_sha256', 'reference_candidates'],
+			properties: {
+				reason: {
+					type: 'string',
+					maxLength: 400,
+					description:
+						'Concise semantic evidence that these exact calls are safe to execute.'
+				},
+				batch_sha256: {
+					type: 'string',
+					description:
+						'The exact SHA-256 quoted in this request. The harness rejects an approval whose value differs from it.'
+				},
+				reference_candidates: {
+					...REFERENCE_CANDIDATES_PROPERTY
+				}
+			}
+		}
+	}
+});
+
+/**
+ * Reject the batch back to the acting model with a reason. Unlike the contract
+ * lane's revision tool, the reviewer never authors a replacement: it says what
+ * is wrong and the acting model proposes new calls, which are reviewed again.
+ * A reviewer that cannot write content cannot pad a capped field with `##2` or
+ * zero-width characters, which is how six corrupted writes happened (F04).
+ */
+export const MUTATION_BATCH_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
+	...PROPOSAL_REVISION_TOOL,
+	function: {
+		...PROPOSAL_REVISION_TOOL.function,
+		description:
+			"Return the acting model's proposed calls for correction when the user's commission is clear but the calls misstate it: a call the user did not commission, a missing commissioned call, a wrong target, or a value the turn evidence resolves differently. Say what is wrong; the acting model proposes the corrected calls and they are reviewed again. Do not use this when a choice genuinely belongs to the user.",
+		parameters: {
+			...PROPOSAL_REVISION_TOOL.function.parameters,
+			required: ['reason', 'required_correction', 'reference_candidates'],
+			properties: {
+				...(PROPOSAL_REVISION_TOOL.function.parameters.properties as JsonObject),
+				reference_candidates: {
+					...REFERENCE_CANDIDATES_PROPERTY
 				}
 			}
 		}

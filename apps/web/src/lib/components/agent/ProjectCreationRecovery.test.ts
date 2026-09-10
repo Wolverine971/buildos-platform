@@ -84,11 +84,11 @@ describe('ProjectCreationRecovery', () => {
 			onResume: vi.fn()
 		});
 		await tick();
-		const signal = check.mock.calls[0][1] as AbortSignal;
+		const signal = check.mock.calls[0]?.[1] as AbortSignal | undefined;
 		view.unmount();
 		resolve({ status: 'saved', projectIds: ['project'] });
 		await tick();
-		expect(signal.aborted).toBe(true);
+		expect(signal?.aborted).toBe(true);
 		expect(onCreated).not.toHaveBeenCalled();
 	});
 });

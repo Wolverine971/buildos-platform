@@ -21,7 +21,6 @@ import {
 	type AgenticChatContextUsageSnapshotV1,
 	type AgenticChatDomainMetadataSnapshotV1,
 	type AgenticChatHistoryStateV1,
-	type AgenticChatResumeCheckpointSnapshotV1,
 	type AgenticChatSessionEventSnapshotV1,
 	type AgenticChatToolSurfaceV1,
 	type ChatAttachmentRef,
@@ -64,7 +63,7 @@ import {
 	type DomainSensingResult
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import { getDomainIdsForSkillReference } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
-import { getSkillById, listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
+import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import {
 	resolveOperationalSkillPreload,
 	resolveSkillGatePreload,
@@ -97,8 +96,6 @@ import {
 } from './prepared-prompt-cache';
 import { resolveFastChatScaffoldConfigFromEnv } from './scaffold-variant';
 import {
-	buildLoadedSkillHistorySummary,
-	extractLoadedSkillIdsFromHistory,
 	projectWorkerFrozenHistorySnapshot,
 	type LoadedSkillExecutionSummaryRow
 } from './session-service';
@@ -112,11 +109,6 @@ import { applyEmailSurfaceMount, hasActiveEmailConnection } from './email-surfac
 import type { FastChatHistoryMessage } from './types';
 import type { ChatHistorySnapshot } from './turn-admission';
 import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.server';
-import {
-	freezeCheckpointResumeSnapshot,
-	loadLatestActiveCheckpoint,
-	recoverCheckpointResumeLifecycle
-} from './turn-supervisor/checkpoint-service.server';
 import { buildWorkerPromptScaffold, resolveWorkerPromptTools } from './worker-prompt-surface';
 import { createLogger } from '$lib/utils/logger';
 
@@ -144,11 +136,6 @@ const CONTEXT_SHIFT_HINT_TTL_MS = positiveInt(
 	process.env.FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS,
 	120_000,
 	3_600_000
-);
-const SUPERVISOR_RESUMING_STALE_AFTER_MS = positiveInt(
-	process.env.FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS,
-	15 * 60 * 1000,
-	24 * 60 * 60 * 1000
 );
 const MAX_ATTACHMENTS = positiveInt(process.env.AGENT_CHAT_MAX_IMAGE_ATTACHMENTS_PER_TURN, 4, 16);
 const ATTACHMENT_TEXT_MAX_CHARS = positiveInt(
@@ -200,8 +187,8 @@ const TEMP_ATTACHMENT_PATH_PREFIX = 'users';
 /**
  * User-message metadata keys recording the server-selected skill preload.
  * They are the worker lane's only durable trace of a preload: the lane never
- * executes skill_load, so no chat_tool_executions row exists. The next turn's
- * history loaders project them back into the loaded-skills ledger.
+ * executes skill_load, so no chat_tool_executions row exists. They are
+ * telemetry, and the one-shot craft preloads dedupe against them.
  */
 export const SKILL_PRELOADED_ID_METADATA_KEY = 'skill_preloaded_id';
 export const SKILL_PRELOAD_SOURCE_METADATA_KEY = 'skill_preload_source';
@@ -271,12 +258,6 @@ export type AgenticChatWorkerPreparationDependencies = {
 		userId: string;
 		nowMs: number;
 	}) => Promise<boolean>;
-	loadResumeCheckpoint?: (input: {
-		serviceClient: FastChatSupabaseClient;
-		userId: string;
-		sessionId: string;
-		nowMs: number;
-	}) => Promise<AgenticChatResumeCheckpointSnapshotV1 | null>;
 };
 
 /**
@@ -388,15 +369,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 				entityId,
 				projectFocus: input.command.projectFocus
 			});
-	const resumeCheckpoint =
-		sessionIntent.session && !preparedAdmissionLease.hit
-			? await (input.dependencies?.loadResumeCheckpoint ?? loadWorkerResumeCheckpoint)({
-					serviceClient: input.serviceClient,
-					userId: input.userId,
-					sessionId: sessionIntent.session.id,
-					nowMs
-				})
-			: null;
 	const conversationSummary =
 		typeof sessionIntent.session?.summary === 'string' ? sessionIntent.session.summary : null;
 	const agentMetadata = sessionIntent.session?.agent_metadata ?? sessionIntent.inlineMetadata;
@@ -524,6 +496,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	let preparedSurfaceForOverlay: PreparedPromptSurface | null = null;
 	let envelopeForOverlay: LitePromptEnvelope | null = null;
 	let promptContextData: unknown = null;
+	let windowLoadedSkillIds: string[] = [];
 
 	if (preparedInspection.hit) {
 		historySource = 'prepared_prompt';
@@ -558,16 +531,17 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		};
 	} else {
 		historySource = 'admission_window';
-		const rawHistory = sessionIntent.session
+		const ownedHistory = sessionIntent.session
 			? await loadOwnedWorkerHistory({
 					serviceClient: input.serviceClient,
 					userId: input.userId,
 					sessionId: sessionIntent.session.id,
 					limit: HISTORY_LIMIT
 				})
-			: [];
+			: null;
+		windowLoadedSkillIds = ownedHistory?.loadedSkillIds ?? [];
 		const historyComposition = composeFastChatHistory({
-			history: rawHistory,
+			history: ownedHistory?.history ?? [],
 			continuityHint,
 			sessionSummary: conversationSummary,
 			settings: {
@@ -633,16 +607,17 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	// (prepared-prompt-cache.ts buildPreparedPromptHarnessSha), so applying the
 	// overlay after inspection leaves hits matching.
 	//
-	// `alreadyLoadedSkillIds` comes from the loaded-skills ledger in the frozen
-	// history: real skill_load executions (legacy-started sessions) plus the
-	// preload continuity rows this file projects from user-message metadata.
-	// A skill therefore fires once per history window, not once per turn.
-	const alreadyLoadedSkillIds = extractLoadedSkillIdsFromHistory(modelHistory);
+	// The system prompt is rebuilt every turn and earlier turns' prompts are not
+	// in the history, so an operational playbook (task/document/calendar write
+	// rules) renders on every turn its intent fires. Only the one-shot craft
+	// preloads dedupe, against the skills this window already showed; a
+	// prepared hit skips the history query and so carries no such window
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69).
 	const workerSkillPreload = resolveWorkerSkillPreload({
 		message: messageForModel,
 		toolNames: workerPromptToolNames,
 		turnDomainSensing: turnPreparation.turnDomainSensing,
-		alreadyLoadedSkillIds
+		alreadyLoadedCraftSkillIds: windowLoadedSkillIds
 	});
 	// An unresolved dynamic skill gate would ask the worker to call a tool it
 	// cannot execute. Only carry domain sensing into the worker prompt after the
@@ -651,17 +626,10 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const agentWorkspace = resolveAgentWorkspaceFromContextData(promptContextData);
 	const turnSituation = resolveLitePromptTurnSituation({
 		toolNames: workerPromptToolNames,
-		// The lexical turn-intent classifier is retired (always empty); a pending
-		// semantic contract is the one structural write signal admission has.
-		turnIntentRequiresWrite:
-			turnPreparation.turnIntent?.requiresWrite === true ||
-			turnPreparation.pendingTurnContract !== null,
+		// A pending semantic contract is the one structural write signal
+		// admission has (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F44).
+		pendingTurnContract: turnPreparation.pendingTurnContract !== null,
 		latestUserMessage: messageForModel,
-		// 2026-09-04: this used to add two message regexes on top of the mount
-		// check. delegate_task is now mounted on every global and project
-		// surface, so the rule applies whenever the tool is there — the same
-		// contract `webResearch` already uses for the web tools.
-		reviewDelegation: workerPromptToolNames.includes('delegate_task'),
 		livingWorkspace: agentWorkspace?.mode === LIVING_REFERENCE_MODE,
 		// The semantic disposition gate decides whether this particular message
 		// is a capture; admission does not classify it from its wording.
@@ -781,7 +749,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 				streamRunId: input.command.streamRunId,
 				nowIso
 			}),
-			...(resumeCheckpoint ? { resumeCheckpoint } : {}),
 			currentTurn: {
 				message: normalizedMessage,
 				attachmentContextMaxChars: ATTACHMENT_CONTEXT_MAX_CHARS,
@@ -831,11 +798,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		userMessageMetadata.attachments = sanitizeAttachmentRefsForMetadata(
 			attachments
 		) as unknown as Json;
-	}
-	if (resumeCheckpoint) {
-		userMessageMetadata.supervisor_resume_checkpoint_id = resumeCheckpoint.checkpointId;
-		userMessageMetadata.supervisor_resume_original_turn_run_id =
-			resumeCheckpoint.originalTurnRunId;
 	}
 	// Telemetry for the worker lane's skill routing (lane D P1-2) and the
 	// continuity source for the next turn's ledger. The artifact's
@@ -990,27 +952,6 @@ async function defaultHasActiveEmailConnection(input: {
 	});
 }
 
-async function loadWorkerResumeCheckpoint(input: {
-	serviceClient: FastChatSupabaseClient;
-	userId: string;
-	sessionId: string;
-	nowMs: number;
-}): Promise<AgenticChatResumeCheckpointSnapshotV1 | null> {
-	await recoverCheckpointResumeLifecycle({
-		supabase: input.serviceClient,
-		userId: input.userId,
-		staleBefore: new Date(input.nowMs - SUPERVISOR_RESUMING_STALE_AFTER_MS).toISOString(),
-		recoveredAt: new Date(input.nowMs).toISOString()
-	});
-	const checkpoint = await loadLatestActiveCheckpoint({
-		supabase: input.serviceClient,
-		userId: input.userId,
-		sessionId: input.sessionId,
-		now: new Date(input.nowMs).toISOString()
-	});
-	return checkpoint ? freezeCheckpointResumeSnapshot(checkpoint) : null;
-}
-
 type WorkerSessionIntent = {
 	session: ChatSession | null;
 	inlineMetadata: JsonObject;
@@ -1111,7 +1052,7 @@ async function loadOwnedWorkerHistory(params: {
 	userId: string;
 	sessionId: string;
 	limit: number;
-}): Promise<HistoryWithLineage[]> {
+}): Promise<{ history: HistoryWithLineage[]; loadedSkillIds: string[] }> {
 	const { data, error } = await params.serviceClient
 		.from('chat_messages')
 		.select('id, role, content, metadata, created_at')
@@ -1166,102 +1107,73 @@ async function loadOwnedWorkerHistory(params: {
 		toolNames: ['skill_load', 'request_turn_clarification']
 	});
 
-	return projectWorkerFrozenHistorySnapshot({
-		messages: rows.map((row) => ({
-			id: row.id,
-			role: row.role,
-			content: row.content,
-			metadata: row.metadata,
-			created_at: row.created_at
-		})),
-		attachments: attachmentRows,
-		interrupted_tool_executions: interruptedToolExecutions,
-		loaded_skill_executions: [
-			...continuityToolExecutions,
-			...buildSkillPreloadContinuityRows(rows)
-		]
-	});
+	return {
+		history: projectWorkerFrozenHistorySnapshot({
+			messages: rows.map((row) => ({
+				id: row.id,
+				role: row.role,
+				content: row.content,
+				metadata: row.metadata,
+				created_at: row.created_at
+			})),
+			attachments: attachmentRows,
+			interrupted_tool_executions: interruptedToolExecutions,
+			loaded_skill_executions: continuityToolExecutions
+		}),
+		loadedSkillIds: collectWindowLoadedSkillIds({
+			userRows: rows,
+			continuityRows: continuityToolExecutions
+		})
+	};
 }
 
 /**
- * Project worker-lane skill preloads (recorded on the user message at
- * admission) as `skill_load` continuity rows so the loaded-skills ledger sees
- * them. The ledger is what dedupes preloads on the next turn; once the
- * preloading turn leaves the history window, the skill can fire again.
+ * Skill ids whose playbook already rendered inside the history window: real
+ * skill_load executions (legacy-started sessions) plus the worker preloads
+ * recorded on user messages. Read here, out of band, so no loaded-skills
+ * ledger has to ride the prompt for the dedupe to work.
  */
-export function buildSkillPreloadContinuityRows(
-	rows: ReadonlyArray<{ id: string; role: string; metadata: unknown }>
-): LoadedSkillExecutionSummaryRow[] {
-	const continuityRows: LoadedSkillExecutionSummaryRow[] = [];
-	for (const row of rows) {
-		if (row.role !== 'user' || !isRecord(row.metadata)) continue;
-		const skillIdRaw = row.metadata[SKILL_PRELOADED_ID_METADATA_KEY];
-		const skillId = typeof skillIdRaw === 'string' ? skillIdRaw.trim() : '';
-		const skill = skillId ? getSkillById(skillId) : undefined;
-		if (!skill) continue;
-		continuityRows.push({
-			message_id: row.id,
-			provider_tool_call_id: null,
-			tool_name: 'skill_load',
-			gateway_op: null,
-			sequence_index: 0,
-			success: true,
-			error_message: null,
-			arguments: { skill: skill.id, format: 'short' },
-			result: {
-				type: 'skill',
-				id: skill.id,
-				name: skill.name,
-				parent_id: skill.parentId ?? null,
-				depth: typeof skill.depth === 'number' ? skill.depth : null,
-				format: 'preload',
-				summary: skill.summary,
-				materialized_tools: []
-			}
-		});
+function collectWindowLoadedSkillIds(params: {
+	userRows: ReadonlyArray<{ role: string; metadata: unknown }>;
+	continuityRows: ReadonlyArray<LoadedSkillExecutionSummaryRow>;
+}): string[] {
+	const ids = new Set<string>();
+	for (const row of params.continuityRows) {
+		if (!row.success || row.tool_name !== 'skill_load') continue;
+		const result = row.result;
+		if (!isRecord(result) || Array.isArray(result)) continue;
+		const id = typeof result.id === 'string' ? result.id.trim() : '';
+		if (result.type === 'skill' && id) ids.add(id);
 	}
-	return continuityRows;
+	for (const row of params.userRows) {
+		if (row.role !== 'user' || !isRecord(row.metadata)) continue;
+		const raw = row.metadata[SKILL_PRELOADED_ID_METADATA_KEY];
+		const id = typeof raw === 'string' ? raw.trim() : '';
+		if (id) ids.add(id);
+	}
+	return [...ids];
 }
 
 /**
- * Prewarm counterpart of the admission-window projection above: the prepared
- * history must carry the same ledger, or a prepared hit would re-inject a
- * skill the admission-window path skips (P0-2 by another door).
+ * Prewarm hook. The worker prompt carries no loaded-skills ledger any more
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69), so there is nothing to append
+ * to a prepared history; the export stays until the prewarm route drops the
+ * call.
  */
-export async function loadWorkerSkillPreloadLedgerMessage(params: {
+export async function loadWorkerSkillPreloadLedgerMessage(_params: {
 	supabase: FastChatSupabaseClient;
 	userId: string;
 	sessionId: string;
 	limit: number;
 }): Promise<string | null> {
-	// Best-effort: prewarm is a latency optimization and a missing ledger only
-	// risks one duplicate preload on a prepared hit, never a failed request.
-	try {
-		const { data, error } = await params.supabase
-			.from('chat_messages')
-			.select('id, role, metadata')
-			.eq('session_id', params.sessionId)
-			.eq('user_id', params.userId)
-			.eq('role', 'user')
-			.order('created_at', { ascending: false })
-			.order('id', { ascending: false })
-			.limit(params.limit);
-		if (error || !Array.isArray(data)) return null;
-		const rows = data
-			.filter((row): row is typeof row & { id: string } => typeof row.id === 'string')
-			.slice()
-			.reverse();
-		return buildLoadedSkillHistorySummary(buildSkillPreloadContinuityRows(rows));
-	} catch {
-		return null;
-	}
+	return null;
 }
 
 function resolveWorkerSkillPreload(params: {
 	message: string;
 	toolNames: string[];
 	turnDomainSensing: DomainSensingResult | null;
-	alreadyLoadedSkillIds: string[];
+	alreadyLoadedCraftSkillIds: string[];
 }): SkillGatePreload | null {
 	if (!SCAFFOLD.routing.skillPreload) return null;
 	// Operational skills first (Decision 4): they carry the tool packaging and
@@ -1275,13 +1187,12 @@ function resolveWorkerSkillPreload(params: {
 	const operational = resolveOperationalSkillPreload({
 		message: params.message,
 		toolNames: params.toolNames,
-		craftAlternateSkillIds: craftCandidateSkillIds,
-		alreadyLoadedSkillIds: params.alreadyLoadedSkillIds
+		craftAlternateSkillIds: craftCandidateSkillIds
 	});
 	if (operational) return operational;
 	return resolveSkillGatePreload(params.turnDomainSensing, {
 		allowFollowupSkillLoad: false,
-		alreadyLoadedSkillIds: params.alreadyLoadedSkillIds
+		alreadyLoadedSkillIds: params.alreadyLoadedCraftSkillIds
 	});
 }
 

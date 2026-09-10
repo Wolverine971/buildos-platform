@@ -3,20 +3,24 @@
  * Deterministic intent → operational-skill map (2026-09-02 turn executor
  * audit, Finding 4 / Decision 4).
  *
- * The nine BuildOS-operational skills (task_management, document_workspace,
- * plan_management, calendar_management, ...) live in no domain or outcome
- * card, so lexical domain sensing can never preload them, and the reviewed
- * worker lane cannot call skill_load. This module keys a preload off two
- * things the admission path already knows: the tools mounted on the resolved
- * surface (capability) and the mutation verbs in the message (intent). It
- * cannot misfire on prose the way the domain scorer did, and it never names a
- * skill whose tools are absent from the surface — a playbook that tells the
- * model to call an unmounted tool is a turn kill on the worker.
+ * The operational skills (task_management, document_workspace,
+ * plan_management, calendar_management) live in no domain or outcome card, so
+ * lexical domain sensing can never preload them, and the reviewed worker lane
+ * cannot call skill_load. This module keys a preload off two things the
+ * admission path already knows: the tools mounted on the resolved surface
+ * (capability) and the mutation verbs in the message (intent). It cannot
+ * misfire on prose the way the domain scorer did, and it never names a skill
+ * whose tools are absent from the surface — a playbook that tells the model to
+ * call an unmounted tool is a turn kill on the worker. A playbook fires only
+ * on an entity-kind hit; a bare mutation verb is not enough.
  *
- * The same lexicon backs `looksLikeMutationTurn`, which the situational write
- * rules use instead of "write tools are mounted" (Findings 9 and 10): the
- * legacy `resolveFastChatTurnIntent` classifier was retired to an empty
- * snapshot, so this is the only lexical write signal left on either lane.
+ * The same lexicon backs `looksLikeMutationTurn`, the lexical write signal
+ * the situational write rules key off. TODO(AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+ * F75): the WP-A2 note wants the (now four-line) worker write recipe to render
+ * whenever a write tool is mounted on a worker-bound artifact, with this
+ * classifier choosing only the playbook; WP-A1 (F01) kept every situational
+ * block intent-keyed. Settle that in situational-rules.ts; the strong-phrase
+ * additions below narrow the classifier's misses either way.
  */
 
 export type OperationalEntityKind = 'task' | 'document' | 'plan' | 'calendar';
@@ -34,9 +38,13 @@ export type OperationalTurnIntent = {
 	entityKinds: OperationalEntityKind[];
 };
 
+/** Which worked example the worker playbook should show for this turn. */
+export type OperationalExampleHint = 'create' | 'update' | 'organize';
+
 export type OperationalSkillResolution = {
 	skillId: OperationalSkillId;
 	entityKind: OperationalEntityKind;
+	exampleHint: OperationalExampleHint;
 	/** Other operational skills whose intent also fired and whose tools are mounted. */
 	alternateSkillIds: OperationalSkillId[];
 };
@@ -50,10 +58,10 @@ const OPERATIONAL_SKILL_BY_ENTITY: Record<OperationalEntityKind, OperationalSkil
 
 /**
  * A skill is only eligible when at least one of its write tools is mounted on
- * the surface the model will actually see. Calendar tools are not executable
- * on the worker today and plan tools are on no project surface, so those two
- * entries activate automatically once their tools land, without a code change
- * here.
+ * the surface the model will actually see. Task and calendar writes are on the
+ * global and project surfaces, document writes on the project surface; plan
+ * tools are on no surface today, so plan_management stays silent until they
+ * are mounted, without a code change here.
  */
 const OPERATIONAL_SKILL_TOOL_REQUIREMENTS: Record<OperationalEntityKind, readonly string[]> = {
 	task: ['create_onto_task', 'update_onto_task'],
@@ -76,7 +84,15 @@ const STRONG_MUTATION_PATTERNS: RegExp[] = [
 	/\b(?:append|attach|link|unlink|merge|split|tag|untag)\b/i,
 	/\b(?:update|edit|change|revise|rewrite|refresh|bump|push back|pull in|prioriti[sz]e)\s+(?:the|this|that|my|our|its|their|those|these|all|every)\b/i,
 	/\b(?:put|add|schedule|book|block)\b[\s\S]{0,60}\b(?:on|onto|in|into)\s+(?:my|the|our)\s+calendar\b/i,
-	/\b(?:is|are|was|were)\s+(?:a\s+)?mess\b/i
+	/\b(?:is|are|was|were)\s+(?:a\s+)?mess\b/i,
+	// Polite existing-entity asks that open as a question ("Can you schedule a
+	// call…", "Could you assign this to Sam?") still commission a write
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F75).
+	/\b(?:schedule|book|set up|arrange)\s+(?:a|an|the|my|our|this|that|next|another)?\s*(?:quick\s+)?(?:meeting|call|session|appointment|event|standup|sync|check-?in|time block|working session|focus block)\b/i,
+	/\b(?:assign|reassign|hand)\s+(?:this|that|it|the|these|those|my|our)?\s*(?:task|tasks|item|items|work)?\s*(?:to|over to)\b/i,
+	/\bset\s+(?:the|this|that|its|their)\s+(?:title|name|status|state|priority|owner|assignee|due date|deadline|start date|date|estimate|description|parent)\b/i,
+	/\bfix\s+(?:the|this|that|my|our|its)\b/i,
+	/\bput\b[\s\S]{0,40}\bon hold\b/i
 ];
 
 // Phrases that look like verbs but ask for a read.
@@ -109,7 +125,7 @@ const ENTITY_LEXICON: Record<OperationalEntityKind, EntityLexicon> = {
 			/\b(?:assign|reassign|hand)\s+(?:this|that|it|the|these|those)?\s*(?:task|tasks|item|items|work)?\s*(?:to|over to)\b/i,
 			/\bi\s+(?:finished|completed|closed out|wrapped up|knocked out|did|started|kicked off)\s+(?:the|that|this|my|our)\b/i
 		],
-		verbs: /\b(?:add|create|make|open|update|edit|change|rename|complete|finish|close|reopen|archive|delete|remove|drop|move|assign|reassign|prioriti[sz]e|reschedule|schedule|start|block|unblock|bump|push|pull|set|mark|track|log|split|merge|tag)\b/i
+		verbs: /\b(?:add|create|make|open|update|edit|change|rename|complete|finish|close|reopen|archive|delete|remove|drop|move|assign|reassign|prioriti[sz]e|reschedule|schedule|start|block|unblock|bump|push|pull|put|set|fix|mark|track|log|split|merge|tag)\b/i
 	},
 	document: {
 		nouns: /\b(?:documents?|docs?|notes?|pages?|folders?|outlines?|sections?|wiki|write-?ups?|briefs?|specs?|readmes?|document tree|doc tree|knowledge base|reference sheet|research notes?|meeting notes?)\b/i,
@@ -121,7 +137,7 @@ const ENTITY_LEXICON: Record<OperationalEntityKind, EntityLexicon> = {
 			/\bnest\b/i,
 			/\bput\s+(?:this|that|it|these|those)\s+(?:in|into|under)\s+(?:a|the|my|our)?\s*(?:documents?|docs?|notes?|folders?)\b/i
 		],
-		verbs: /\b(?:create|make|write|draft|add|update|edit|change|rename|retitle|revise|rewrite|append|attach|move|file|organi[sz]e|re-?organi[sz]e|restructure|nest|unnest|tidy|clean|declutter|archive|delete|remove|merge|split|save|record|capture|link|unlink)\b/i
+		verbs: /\b(?:create|make|write|draft|add|update|edit|change|rename|retitle|revise|rewrite|fix|append|attach|move|file|organi[sz]e|re-?organi[sz]e|restructure|nest|unnest|tidy|clean|declutter|archive|delete|remove|merge|split|save|record|capture|link|unlink)\b/i
 	},
 	plan: {
 		nouns: /\b(?:plans?|phases?|sprints?|roadmaps?|milestones?|work ?streams?|iterations?|releases?)\b/i,
@@ -202,6 +218,38 @@ export function looksLikeMutationTurn(message: string | null | undefined): boole
 	return classifyOperationalTurnIntent(message).mutation;
 }
 
+// The earliest verb decides which worked example the playbook shows; the
+// update-by-exact-id example is the default.
+const EXAMPLE_HINT_PATTERNS: Array<{ hint: OperationalExampleHint; pattern: RegExp }> = [
+	{
+		hint: 'organize',
+		pattern:
+			/\b(?:organi[sz]e|re-?organi[sz]e|restructure|tidy(?: up)?|clean(?: up)?|declutter|nest|unnest|move|relocate|file|mess)\b/i
+	},
+	{
+		hint: 'create',
+		pattern:
+			/\b(?:add|create|make|open|start|new|track|remind me|write|draft|save|jot|note|capture|record|log|schedule|book|set up)\b/i
+	},
+	{
+		hint: 'update',
+		pattern:
+			/\b(?:update|edit|change|rename|retitle|revise|rewrite|mark|complete|finish|close|reopen|archive|reschedule|reassign|assign|prioriti[sz]e|bump|push|pull|append|attach|set|fix|done)\b/i
+	}
+];
+
+export function resolveOperationalExampleHint(
+	message: string | null | undefined
+): OperationalExampleHint {
+	const text = message?.trim() ?? '';
+	let best: { hint: OperationalExampleHint; index: number } | null = null;
+	for (const { hint, pattern } of EXAMPLE_HINT_PATTERNS) {
+		const index = text.search(pattern);
+		if (index >= 0 && (best === null || index < best.index)) best = { hint, index };
+	}
+	return best?.hint ?? 'update';
+}
+
 export function isOperationalSkillEligibleForTools(
 	entityKind: OperationalEntityKind,
 	toolNames: readonly string[]
@@ -228,6 +276,7 @@ export function resolveOperationalSkillForTurn(params: {
 	return {
 		skillId: OPERATIONAL_SKILL_BY_ENTITY[primary],
 		entityKind: primary,
+		exampleHint: resolveOperationalExampleHint(params.message),
 		alternateSkillIds: rest.map((entityKind) => OPERATIONAL_SKILL_BY_ENTITY[entityKind])
 	};
 }

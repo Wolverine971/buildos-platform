@@ -229,8 +229,6 @@ const ADVISORY_NEXT_STEP =
 	'Use these domains and outcome cards as routing hints. Load an outcome card when output contract or quality criteria would help; load a skill only when the user needs workflow depth. If none of these fit, skill_search finds others.';
 const GATED_NEXT_STEP =
 	'Skill-load gate is ACTIVE for this turn: the request matches skill-covered work. Before drafting the final answer, pick the best-matching id from the ranked Skill-load candidates and call skill_load for it. Skip the load only when that skill is already in the loaded-skills ledger, or the message is a clarification/acknowledgment that produces no new work product.';
-const PRELOADED_NEXT_STEP =
-	'Skill-load gate already satisfied: apply the preloaded skill workflow above directly. Do not call skill_load for the preloaded skill again, and do not call outcome_card_load for the cards listed here — they are routing metadata the preload already covers.';
 
 const NATIVE_OUTCOME_CARD_SIGNALS: NativeOutcomeCardSignal[] = [
 	{
@@ -861,24 +859,13 @@ export function renderDomainSensingPromptContent(
 		preloadSource?: DomainSensingPreloadSource | null;
 	} = {}
 ): string | null {
+	// A preload renders as the bare playbook under its own one-line heading. The
+	// source, gate state, and "do not call skill_load / outcome_card_load"
+	// wrapper were routing jargon the acting model could not act on
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71); the source is telemetry on
+	// the user message.
 	const preloadedSkillPromptContent = options.preloadedSkillPromptContent?.trim() || null;
-	if (preloadedSkillPromptContent) {
-		const source =
-			options.preloadSource === 'operational_intent'
-				? 'operational_intent'
-				: options.preloadSource === 'project_domain_affinity' || !result
-					? 'persisted_project_domain_affinity'
-					: result.source;
-		return [
-			`Source: ${source}.`,
-			'',
-			'Skill-load gate: SATISFIED BY PRELOAD.',
-			'',
-			preloadedSkillPromptContent,
-			'',
-			`Next step: ${PRELOADED_NEXT_STEP}`
-		].join('\n');
-	}
+	if (preloadedSkillPromptContent) return preloadedSkillPromptContent;
 	if (!result) return null;
 	const skillGateCandidateSkillIds = getSkillGateCandidateSkillIds(result);
 

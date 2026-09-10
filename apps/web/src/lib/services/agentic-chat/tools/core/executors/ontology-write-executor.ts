@@ -410,6 +410,18 @@ export type TaskWriteResult = {
 	removed_calendar_event_count?: number;
 };
 
+/**
+ * A task write from chat never creates a calendar event as a side effect. The
+ * REST default is 'auto', which is right for the UI (the user is looking at
+ * the scheduler) and wrong for an agent: case 4 of the 2026-09-10 browser
+ * rerun set a due date under an explicit "no calendar event" instruction and
+ * the tool created one anyway, because nothing forced the switch the model
+ * forgot to send. Silence means no event; the model must ask for 'auto'.
+ */
+function agentCalendarSyncMode(value: unknown): 'auto' | 'none' {
+	return value === 'auto' ? 'auto' : 'none';
+}
+
 function calendarSyncReceiptFields(data: any): Partial<TaskWriteResult> {
 	if (!data || typeof data.calendar_sync !== 'string') return {};
 	return {
@@ -970,9 +982,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.connections !== undefined) {
 			payload.connections = args.connections;
 		}
-		if (args.calendar_sync !== undefined) {
-			payload.calendar_sync = args.calendar_sync;
-		}
+		payload.calendar_sync = agentCalendarSyncMode(args.calendar_sync);
 		if (assigneeResolution.hasInput) {
 			payload.assignee_actor_ids = assigneeResolution.assigneeActorIds;
 		}
@@ -1548,10 +1558,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 
 		// calendar_sync is a side-effect switch, not a task field: it is added
 		// after the no-effect guard so it never masks an otherwise empty patch.
-		const patchBody =
-			args.calendar_sync !== undefined
-				? { ...updateData, calendar_sync: args.calendar_sync }
-				: updateData;
+		const patchBody = {
+			...updateData,
+			calendar_sync: agentCalendarSyncMode(args.calendar_sync)
+		};
 
 		const data = await this.apiRequest(`/api/onto/tasks/${args.task_id}`, {
 			method: 'PATCH',

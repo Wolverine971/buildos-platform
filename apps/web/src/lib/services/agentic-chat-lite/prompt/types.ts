@@ -125,12 +125,21 @@ export type LitePromptProjectDigest = {
 	primaryGoal: string | null;
 	activePlan: string | null;
 	counts: Record<string, number>;
-	priorityTasks: string[];
 	overdueItems: LitePromptTimelineItem[];
 	dueSoonItems: LitePromptTimelineItem[];
 	upcomingItems: LitePromptTimelineItem[];
 	recentChanges: LitePromptTimelineItem[];
 	statusLines: string[];
+};
+
+/**
+ * Loaded work items rendered as lines with ids (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+ * F114): open tasks, goals, milestones, plans, and windowed events that the
+ * Timeline lines do not already carry.
+ */
+export type LitePromptLoadedWork = {
+	lines: string[];
+	renderedEntityIds: string[];
 };
 
 export type LitePromptTimelineSummary = {
@@ -147,6 +156,12 @@ export type LitePromptTimelineSummary = {
 	 * JSON index skips these so each UUID renders once per prompt.
 	 */
 	renderedEntityIds: string[];
+	/**
+	 * The subset carried by the dated lines (overdue, due soon, upcoming). The
+	 * loaded-work lines skip only these: a recent-change line is an event, not
+	 * the item's state, so an open task that was just updated still lists.
+	 */
+	datedEntityIds: string[];
 };
 
 export type LitePromptContextInventory = {

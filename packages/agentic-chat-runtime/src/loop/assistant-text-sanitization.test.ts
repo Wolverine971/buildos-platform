@@ -343,8 +343,97 @@ describe('sanitizeAssistantFinalText', () => {
 				'Updated it. The task is now in progress.'
 			].join('\n');
 			expect(sanitizeAssistantFinalText(leaked)).toBe(
-				'Updated it.\n\nThe task is now in progress.'
+				'Updated it. The task is now in progress.'
 			);
+		});
+	});
+
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F12: removing a scratchpad sentence
+	// must not reflow the rest of the reply. Which sentences the pattern list
+	// removes is lane A's call; these pin the structure that survives around them.
+	describe('keeps the original structure around a removed sentence', () => {
+		it('keeps markdown headers, list markers and single line breaks (lane-A fixture)', () => {
+			const raw = [
+				'Here is where the beta stands:',
+				'',
+				'## Open items',
+				'- Confirm the launch date with the design partners (due Friday).',
+				'- Finish onboarding flow — in progress, due Apr 20.',
+				'- Draft beta invite email — todo.',
+				'',
+				'Existing tasks: 3 open, 0 overdue. Want me to create a task for the pricing decision?'
+			].join('\n');
+
+			expect(sanitizeAssistantFinalText(raw)).toBe(
+				[
+					'Here is where the beta stands:',
+					'',
+					'## Open items',
+					'- Finish onboarding flow — in progress, due Apr 20.',
+					'- Draft beta invite email — todo.',
+					'',
+					'Want me to create a task for the pricing decision?'
+				].join('\n')
+			);
+		});
+
+		it('pins the remaining lane-A fixtures to the current pattern list', () => {
+			expect(
+				sanitizeAssistantFinalText(
+					'I updated the task. Structure: the plan now has three phases. End by Friday if possible.'
+				)
+			).toBe('I updated the task.');
+			expect(
+				sanitizeAssistantFinalText(
+					'The document is 4 pages long. It includes: goals, risks, and a timeline. Perfect.'
+				)
+			).toBe('The document is 4 pages long.');
+			expect(
+				sanitizeAssistantFinalText(
+					'No changes were made. Do not claim the permit was approved — there is no evidence in the records checked.'
+				)
+			).toBe('No changes were made.');
+		});
+
+		it('keeps table rows intact when a scratchpad line precedes them', () => {
+			const raw = [
+				'Safety rules: ground every claim.',
+				'',
+				'| Task | State |',
+				'| --- | --- |',
+				'| Ship beta | in_progress |',
+				'| Draft invite | todo |'
+			].join('\n');
+
+			expect(sanitizeAssistantFinalText(raw)).toBe(
+				[
+					'| Task | State |',
+					'| --- | --- |',
+					'| Ship beta | in_progress |',
+					'| Draft invite | todo |'
+				].join('\n')
+			);
+		});
+
+		it('keeps the list marker when only the first sentence of an item is removed', () => {
+			const raw = [
+				'Write ledger: 2 writes.',
+				'1. Confirm creation with ID. Then the task list follows.',
+				'2. Two tasks are open.'
+			].join('\n');
+
+			expect(sanitizeAssistantFinalText(raw)).toBe(
+				['1. Then the task list follows.', '2. Two tasks are open.'].join('\n')
+			);
+		});
+
+		it('keeps short sentences and in-line separators such as decimals', () => {
+			const raw = [
+				'Safety rules: ground every claim.',
+				'',
+				'Ok. The budget is 3.5 days.'
+			].join('\n');
+			expect(sanitizeAssistantFinalText(raw)).toBe('Ok. The budget is 3.5 days.');
 		});
 	});
 

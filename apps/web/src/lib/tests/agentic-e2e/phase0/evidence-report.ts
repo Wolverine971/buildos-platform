@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { AgentTimingSummary } from '@buildos/shared-types';
+import { classifyReceiptGroundedAssistantDisposition } from '@buildos/agentic-chat-runtime/loop';
 
 import {
 	getExecutionObservations,
@@ -136,6 +137,7 @@ export interface Phase0ExecutionObservationEvidence {
 export type Phase0ResultClass =
 	| 'end_to_end_pass'
 	| 'transport_failure'
+	| 'misleading_success'
 	| 'behavior_failure'
 	| 'quality_failure'
 	| 'judge_infrastructure_failure'
@@ -387,6 +389,7 @@ function judgeEvidence(outcome: CheckedTurnOutcome): Phase0JudgeEvidence {
 const RESULT_CLASSES: readonly Phase0ResultClass[] = [
 	'end_to_end_pass',
 	'transport_failure',
+	'misleading_success',
 	'behavior_failure',
 	'quality_failure',
 	'judge_infrastructure_failure',
@@ -405,6 +408,8 @@ export function classifyPhase0TurnResult(params: {
 	turnRun: TurnRunRow | null;
 	checkOutcome: CheckedTurnOutcome;
 	captureErrors: readonly string[];
+	/** Terminal assistant prose, used only to separate a misleading success from a plain miss. */
+	assistantText?: string | null;
 }): Phase0ResultClass {
 	if (
 		!params.result.completed ||
@@ -416,7 +421,17 @@ export function classifyPhase0TurnResult(params: {
 	) {
 		return 'transport_failure';
 	}
-	if (!params.checkOutcome.deterministicAssertionPassed) return 'behavior_failure';
+	if (!params.checkOutcome.deterministicAssertionPassed) {
+		// The rubric's 0 is "failed OR misleading success". A turn whose prose
+		// claims the change while the database disagrees is the single most
+		// user-damaging failure class, and mapping every assertion failure to
+		// `behavior_failure` (score 1) made it invisible in the diffable number
+		// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J5).
+		return classifyReceiptGroundedAssistantDisposition(params.assistantText ?? '') ===
+			'mutation_claim'
+			? 'misleading_success'
+			: 'behavior_failure';
+	}
 	if (params.checkOutcome.judge.status === 'error') return 'judge_infrastructure_failure';
 	if (params.checkOutcome.judge.status === 'failed') return 'quality_failure';
 	if (params.captureErrors.length > 0) return 'instrument_failure';
@@ -752,7 +767,8 @@ export async function collectPhase0TurnEvidence(params: {
 		result: params.result,
 		turnRun,
 		checkOutcome: params.checkOutcome,
-		captureErrors
+		captureErrors,
+		assistantText: params.result.assistantText
 	});
 
 	return {

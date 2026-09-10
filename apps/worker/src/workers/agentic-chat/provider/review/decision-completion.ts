@@ -14,6 +14,7 @@ import {
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import {
+	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../../tools/execution-adapter';
@@ -53,6 +54,78 @@ type SingleReviewDecision = {
 	fallbackReason: string | null;
 	rejectionCode: ContractReviewRejectionCode | null;
 };
+
+/**
+ * Complete one mutation-batch review decision.
+ *
+ * Far shorter than the contract version, and deliberately so. There is no
+ * corrected-contract to parse, canonicalize, re-validate and re-review, no
+ * effect-field check, and no DSL for the reviewer to get wrong — the reviewer
+ * either approves the exact SHA it was shown, sends the calls back with a
+ * reason, downgrades the turn to read-only, or asks the user.
+ */
+export function completeMutationBatchReviewDecision(
+	input: ReviewDecisionCompletionInput & {
+		batchSha256: string;
+		allowRevision: boolean;
+	}
+): CompletedProviderToolCall[] {
+	const { calls, fallbackReason, rejectionCode } = completeSingleReviewDecision(
+		input,
+		'Independent semantic review'
+	);
+	let resolvedFallback = fallbackReason;
+	let resolvedCode = rejectionCode;
+	if (!resolvedFallback) {
+		const call = calls[0]!;
+		const approval = call.name === APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME;
+		const readOnly = call.name === DECLARE_READ_ONLY_TURN_TOOL_NAME;
+		const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
+		const revision = call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME;
+		resolvedCode =
+			!approval && !readOnly && !clarification && !revision
+				? 'unexpected_control_tool'
+				: revision && !input.allowRevision
+					? 'revision_disallowed'
+					: approval &&
+						  !approvalShaMatches(call.arguments.batch_sha256, input.batchSha256)
+						? 'approval_sha_mismatch'
+						: null;
+		if (resolvedCode) {
+			resolvedFallback =
+				'Independent semantic review returned an invalid or unbound decision.';
+		}
+	}
+	if (resolvedFallback) {
+		throw new AgenticChatProviderExecutionError(
+			'provider_semantic_review_invalid',
+			'transient_infra',
+			'Independent change verification failed.',
+			{
+				kind: 'rejected_contract_review',
+				code: resolvedCode ?? 'provider_failure',
+				finished: input.finished,
+				finishedReason:
+					input.finishedReason && /^[a-z_]{1,64}$/.test(input.finishedReason)
+						? input.finishedReason
+						: null,
+				validationIssueCount: 0,
+				validationIssueFields: [],
+				calls: [...input.toolCalls.values()].map((call) => ({
+					toolName: input.reviewRequest.tools.some(
+						(tool) => tool.function.name === call.name
+					)
+						? call.name
+						: null,
+					argumentBytes: Buffer.byteLength(call.argumentsText, 'utf8'),
+					argumentSha256: createHash('sha256').update(call.argumentsText).digest('hex'),
+					truncated: isToolArgumentsTextTruncated(call.argumentsText)
+				}))
+			} satisfies ContractReviewDiagnostic
+		);
+	}
+	return withDecisionAuthor(calls, 'contract_reviewer');
+}
 
 export function completeTurnContractReviewDecision(
 	input: ReviewDecisionCompletionInput & {

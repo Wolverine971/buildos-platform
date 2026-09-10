@@ -15,9 +15,17 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const DATABASE_TIMESTAMP_PATTERN =
 	/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
+/**
+ * The snapshot write runs detached from the step loop. A 100 KB row lands in
+ * well under a second; anything past this is a hung RPC and is cancelled so it
+ * cannot outlive the turn. The stable snapshot id keeps a late retry idempotent.
+ */
+export const AGENTIC_CHAT_PROMPT_SNAPSHOT_TIMEOUT_MS = 15_000;
 
 type RpcError = { code?: string; message: string };
-type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }>;
+type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }> & {
+	abortSignal?(signal: AbortSignal): RpcResponse;
+};
 
 export type AgenticChatPromptSnapshotRpcClient = {
 	rpc(name: string, args: Record<string, unknown>): RpcResponse;
@@ -43,7 +51,9 @@ export type AgenticChatPromptSnapshotPersistResultV1 = {
 
 export type AgenticChatPromptSnapshotPortV1 = {
 	persist(
-		input: AgenticChatPromptSnapshotPersistInputV1
+		input: AgenticChatPromptSnapshotPersistInputV1,
+		/** Deadline from the executor's detached write; a hung RPC is cancelled through it. */
+		signal?: AbortSignal
 	): Promise<AgenticChatPromptSnapshotPersistResultV1>;
 };
 
@@ -68,10 +78,11 @@ export class SupabaseAgenticChatPromptSnapshotAdapter implements AgenticChatProm
 	constructor(private readonly client: AgenticChatPromptSnapshotRpcClient) {}
 
 	async persist(
-		input: AgenticChatPromptSnapshotPersistInputV1
+		input: AgenticChatPromptSnapshotPersistInputV1,
+		signal?: AbortSignal
 	): Promise<AgenticChatPromptSnapshotPersistResultV1> {
 		validateInput(input);
-		const { data, error } = await this.client.rpc('persist_agentic_chat_prompt_snapshot_v3', {
+		const request = this.client.rpc('persist_agentic_chat_prompt_snapshot_v3', {
 			...agenticChatGenerationWriteFenceArgsV1(input),
 			p_user_id: input.userId,
 			p_prompt_snapshot_id: input.promptSnapshotId,
@@ -84,6 +95,9 @@ export class SupabaseAgenticChatPromptSnapshotAdapter implements AgenticChatProm
 			p_message_chars: input.prompt.messageChars,
 			p_approx_prompt_tokens: input.prompt.approxPromptTokens
 		});
+		const { data, error } = await (signal && request.abortSignal
+			? request.abortSignal(signal)
+			: request);
 		if (error) throw new AgenticChatPromptSnapshotRpcError(error.code ?? '', error.message);
 		if (data === null || data === undefined) throw protocolError('RPC returned no receipt');
 		return parseReceipt(data, input);

@@ -118,6 +118,20 @@ export const DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS = 16;
 export const DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS = 40;
 export const DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY = 4;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+/**
+ * Post-start failure classes that finalize `completed` / `mutation_unfulfilled`
+ * with the partial disclosure once at least one durable write exists. Cancelled,
+ * publisher_overload, stale_context, and uncertain_external_commit stay on the
+ * failure path; pre-start classes never have durable writes.
+ */
+const PARTIAL_COMPLETION_FAILURE_CLASSES: ReadonlySet<AgenticChatRecoveryFailureClassV1> =
+	new Set<AgenticChatRecoveryFailureClassV1>([
+		'timeout_post_start',
+		'permanent',
+		'transient_infra',
+		'unknown',
+		'provider_throttle'
+	]);
 
 type ExecutableClaim = Extract<
 	AgenticChatTurnClaimResultV1,
@@ -266,6 +280,11 @@ type FinalizeTurnInput = {
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		terminalContext: TerminalContextState;
 		runtimeTiming: AgenticChatRuntimeTimingTracker | null;
+	};
+	/** The post-start failure a completed partial absorbed; telemetry still counts it. */
+	partialFailure?: {
+		failureClass: AgenticChatRecoveryFailureClassV1;
+		failureCode: string | null;
 	};
 };
 
@@ -583,7 +602,7 @@ export class AgenticChatTurnExecutor {
 						);
 						if (!promptSnapshotAttempted) {
 							promptSnapshotAttempted = true;
-							await this.persistPromptSnapshot(
+							this.persistPromptSnapshot(
 								envelope,
 								executionInput,
 								preparedProvider,
@@ -618,7 +637,7 @@ export class AgenticChatTurnExecutor {
 					if (step.type === 'read_tool') {
 						if (!promptSnapshotAttempted) {
 							promptSnapshotAttempted = true;
-							await this.persistPromptSnapshot(
+							this.persistPromptSnapshot(
 								envelope,
 								executionInput,
 								preparedProvider,
@@ -675,7 +694,7 @@ export class AgenticChatTurnExecutor {
 					if (step.type === 'mutating_tool') {
 						if (!promptSnapshotAttempted) {
 							promptSnapshotAttempted = true;
-							await this.persistPromptSnapshot(
+							this.persistPromptSnapshot(
 								envelope,
 								executionInput,
 								preparedProvider,
@@ -855,22 +874,25 @@ export class AgenticChatTurnExecutor {
 				combined.signal,
 				executionStarted
 			);
-			// A spent provider budget after durable writes is a partial result, not
-			// a failure: the effects are real and the pending contract carries
+			const terminalFailureCode = specificTerminalFailureCode(error, combined.signal);
+			// A post-start failure after durable writes is a partial result, not a
+			// failure: the effects are real and the pending contract carries
 			// forward. Finalize as completed with the partial disclosure instead of
 			// "An error occurred while streaming." Cancellation, worker shutdown,
-			// publisher overload, and uncertain effects keep the failure path.
+			// publisher overload, stale context, and uncertain effects keep the
+			// failure path (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F56).
 			if (
 				executionStarted &&
 				executionInput !== null &&
-				failureClass === 'timeout_post_start' &&
-				providerBudget.signal.aborted &&
+				PARTIAL_COMPLETION_FAILURE_CLASSES.has(failureClass) &&
+				!isExecutionFenceLost(error) &&
+				!(error instanceof AgenticChatCommittedEffectPersistError) &&
 				!cancellationSignal.aborted &&
 				!job.signal.aborted &&
 				!overload.signal.aborted &&
 				hasSuccessfulDurableEffects(terminalContext.toolExecutions)
 			) {
-				const completed = await this.finalizeBudgetExhaustedAfterDurableWrites({
+				const completed = await this.finalizePartialAfterDurableWrites({
 					envelope,
 					claim: executableClaim,
 					executionInput,
@@ -878,11 +900,12 @@ export class AgenticChatTurnExecutor {
 					runtimeTiming,
 					projection,
 					publisherRegistered,
-					usage
+					usage,
+					partialFailureClass: failureClass,
+					partialFailureCode: terminalFailureCode ?? null
 				});
 				if (completed) return completed;
 			}
-			const terminalFailureCode = specificTerminalFailureCode(error, combined.signal);
 			const assistantText = this.safeAssistantText(
 				claim.turnRunId,
 				publisherRegistered,
@@ -950,15 +973,16 @@ export class AgenticChatTurnExecutor {
 		throwIfAborted(signal);
 	}
 
-	private async persistPromptSnapshot(
+	/** Detached at the first durable step; joined by `drainPendingEffects` before the terminal fence. */
+	private persistPromptSnapshot(
 		envelope: AgenticChatExecutionIdentityV1,
 		executionInput: AgenticChatWorkerExecutionInputV1,
 		preparedProvider: AgenticChatPreparedProviderInvocationV1 | null,
 		signal: AbortSignal
-	): Promise<void> {
+	): void {
 		const prompt = preparedProvider?.promptSnapshot;
 		if (!prompt) return;
-		await this.effects.persistPromptSnapshot(
+		this.effects.persistPromptSnapshot(
 			{
 				...envelope,
 				userId: executionInput.claim.userId,
@@ -1363,7 +1387,7 @@ export class AgenticChatTurnExecutor {
 			signal
 		);
 		const mutationStartedAt = Date.now();
-		await this.observeToolExecution(
+		this.observeToolExecution(
 			executionInput,
 			processingToken,
 			step,
@@ -1416,7 +1440,7 @@ export class AgenticChatTurnExecutor {
 				!(error instanceof AgenticChatEffectExecutionError) ||
 				error.failureClass !== 'permanent'
 			) {
-				await this.observeToolExecution(
+				this.observeToolExecution(
 					executionInput,
 					processingToken,
 					step,
@@ -1464,31 +1488,39 @@ export class AgenticChatTurnExecutor {
 		// arrives after the irreversible boundary. The ledger adapter owns its own
 		// bounded deadline; a fresh signal prevents user cancellation from hiding
 		// an already-committed mutation receipt.
-		await this.ports.toolExecutions.persistMutation(
-			{
-				turnRunId: executionInput.claim.turnRunId,
-				queueJobId: executionInput.claim.queueJobId,
-				processingToken,
-				userId: executionInput.claim.userId,
-				executionGeneration: executionInput.claim.executionGeneration,
-				effectId: mutation.effectId,
-				canonicalArgumentHash: mutation.canonicalArgumentHash,
-				toolExecutionId: createStableAgenticChatToolExecutionIdV1({
+		try {
+			await this.ports.toolExecutions.persistMutation(
+				{
 					turnRunId: executionInput.claim.turnRunId,
-					sequenceIndex
-				}),
-				sequenceIndex,
-				providerToolCallId: step.providerToolCallId,
-				toolName: step.toolName,
-				operationName: step.operationName,
-				arguments: step.arguments,
-				executionTimeMs: telemetry.executionTimeMs,
-				tokensConsumed: telemetry.tokensConsumed,
-				requiresUserAction: telemetry.requiresUserAction,
-				affectedEntities: telemetry.affectedEntities
-			},
-			new AbortController().signal
-		);
+					queueJobId: executionInput.claim.queueJobId,
+					processingToken,
+					userId: executionInput.claim.userId,
+					executionGeneration: executionInput.claim.executionGeneration,
+					effectId: mutation.effectId,
+					canonicalArgumentHash: mutation.canonicalArgumentHash,
+					toolExecutionId: createStableAgenticChatToolExecutionIdV1({
+						turnRunId: executionInput.claim.turnRunId,
+						sequenceIndex
+					}),
+					sequenceIndex,
+					providerToolCallId: step.providerToolCallId,
+					toolName: step.toolName,
+					operationName: step.operationName,
+					arguments: step.arguments,
+					executionTimeMs: telemetry.executionTimeMs,
+					tokensConsumed: telemetry.tokensConsumed,
+					requiresUserAction: telemetry.requiresUserAction,
+					affectedEntities: telemetry.affectedEntities
+				},
+				new AbortController().signal
+			);
+		} catch (error) {
+			// The effect committed at the gateway; only its receipt row failed. The
+			// partial-completion lane must not read this as "not done" and disclose
+			// a write that happened (review of AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+			// F56). Tag it so the terminal path keeps the failure route.
+			throw new AgenticChatCommittedEffectPersistError(mutation.effectId, error);
+		}
 		const chatToolResult: ChatToolResult = {
 			tool_call_id: step.providerToolCallId,
 			result: mutation.downstreamReceipt,
@@ -1505,7 +1537,7 @@ export class AgenticChatTurnExecutor {
 			chatToolResult
 		);
 		markToolExecution();
-		await this.observeToolExecution(
+		this.observeToolExecution(
 			executionInput,
 			processingToken,
 			step,
@@ -1658,7 +1690,7 @@ export class AgenticChatTurnExecutor {
 			chatToolResult
 		);
 		markToolExecution();
-		await this.observeToolExecution(
+		this.observeToolExecution(
 			executionInput,
 			processingToken,
 			step,
@@ -1787,7 +1819,7 @@ export class AgenticChatTurnExecutor {
 			chatToolResult
 		);
 		markToolExecution();
-		await this.observeToolExecution(
+		this.observeToolExecution(
 			executionInput,
 			processingToken,
 			step,
@@ -1900,7 +1932,7 @@ export class AgenticChatTurnExecutor {
 				sequenceIndex,
 				signal
 			);
-			await this.observeToolExecution(
+			this.observeToolExecution(
 				executionInput,
 				processingToken,
 				step,
@@ -1920,7 +1952,7 @@ export class AgenticChatTurnExecutor {
 			return result;
 		}
 		const readStartedAt = Date.now();
-		await this.observeToolExecution(
+		this.observeToolExecution(
 			executionInput,
 			processingToken,
 			step,
@@ -1969,7 +2001,7 @@ export class AgenticChatTurnExecutor {
 					durationMs: elapsedMs(readStartedAt),
 					error
 				});
-				await this.observeToolExecution(
+				this.observeToolExecution(
 					executionInput,
 					processingToken,
 					step,
@@ -1986,17 +2018,23 @@ export class AgenticChatTurnExecutor {
 					},
 					signal
 				);
-				// Policy denials and failed web lookups produce no usable evidence.
-				// Persist failed receipts and continue; ownership/cancellation errors
-				// and failures of unrelated reads still terminate through recovery.
+				// Policy denials, failed web lookups, and anything a shared read
+				// implementation threw (access denial on a guessed id, not-found,
+				// semantic argument checks, database errors) produce no usable
+				// evidence. Persist failed receipts and feed the failure back so the
+				// model can recover, the way mutation failures already do
+				// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F55). Keyed on the adapter's
+				// catch-all code, not the failure class, so allowlist and context
+				// violations, ownership fences, timeouts of private reads, and
+				// cancellation still terminate through recovery.
 				if (
 					!signal.aborted &&
 					error instanceof AgenticChatProviderExecutionError &&
-					(error.code === 'read_tool_egress_blocked_private_content' ||
+					(error.code === 'read_tool_execution_failed' ||
+						error.code === 'read_tool_egress_blocked_private_content' ||
 						error.code === 'read_tool_egress_provenance_required' ||
 						(['web_search', 'web_visit'].includes(step.toolName) &&
 							[
-								'read_tool_execution_failed',
 								'read_tool_timeout',
 								'read_tool_research_review_unavailable',
 								'read_tool_egress_security_capacity_exceeded',
@@ -2011,7 +2049,7 @@ export class AgenticChatTurnExecutor {
 						terminalContext,
 						step,
 						sequenceIndex,
-						error.code,
+						error,
 						markToolExecution,
 						signal
 					);
@@ -2065,7 +2103,7 @@ export class AgenticChatTurnExecutor {
 				durationMs: elapsedMs(ledgerStartedAt),
 				error
 			});
-			await this.observeToolExecution(
+			this.observeToolExecution(
 				executionInput,
 				processingToken,
 				step,
@@ -2116,7 +2154,7 @@ export class AgenticChatTurnExecutor {
 		if (contextShift) {
 			await this.persistSessionHandoff(executionInput, processingToken, contextShift);
 		}
-		await this.observeToolExecution(
+		this.observeToolExecution(
 			executionInput,
 			processingToken,
 			step,
@@ -2229,15 +2267,17 @@ export class AgenticChatTurnExecutor {
 		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' }>,
 		sequenceIndex: number,
-		code: string,
+		readFailure: AgenticChatProviderExecutionError,
 		markToolExecution: () => void,
 		signal: AbortSignal
 	): Promise<AgenticChatProviderFailedToolSynthesisInputV1> {
+		const code = readFailure.code;
 		const policyDenied =
 			code === 'read_tool_egress_blocked_private_content' ||
 			code === 'read_tool_egress_provenance_required';
 		const deniedPageVisit =
 			code === 'read_tool_egress_provenance_required' && step.toolName === 'web_visit';
+		const webResearch = step.toolName === 'web_search' || step.toolName === 'web_visit';
 		const error =
 			code === 'read_tool_egress_blocked_private_content'
 				? 'Email lookup did not run: mailbox egress is restricted after reading private content.'
@@ -2245,7 +2285,9 @@ export class AgenticChatTurnExecutor {
 					? deniedPageVisit
 						? 'Page visit did not run: the URL was not supplied by you or returned by a search this turn.'
 						: 'External lookup did not run: the query or URL was not authorized for this research request.'
-					: 'Live research did not return usable evidence. The lookup service was unavailable, timed out, or could not complete its checks.';
+					: webResearch
+						? 'Live research did not return usable evidence. The lookup service was unavailable, timed out, or could not complete its checks.'
+						: privateReadFailureMessage(readFailure);
 		await abortable(
 			this.ports.toolExecutions.persistFailure(
 				{
@@ -2317,12 +2359,15 @@ export class AgenticChatTurnExecutor {
 					error_code: code,
 					executed: policyDenied ? false : null,
 					retryable: false,
-					instruction: [
-						deniedPageVisit
-							? 'To find an authorized page, use web_search with include_domains for the relevant public domain, then open an exact URL returned by that successful search. Do not guess or modify URLs to bypass authorization.'
-							: 'Do not repeat this failed lookup or route around an authorization denial.',
-						'Continue useful work using loaded context and any successful research results. Disclose which live facts could not be verified; cite only evidence that actually returned.'
-					].join(' ')
+					instruction:
+						webResearch || policyDenied
+							? [
+									deniedPageVisit
+										? 'To find an authorized page, use web_search with include_domains for the relevant public domain, then open an exact URL returned by that successful search. Do not guess or modify URLs to bypass authorization.'
+										: 'Do not repeat this failed lookup or route around an authorization denial.',
+									'Continue useful work using loaded context and any successful research results. Disclose which live facts could not be verified; cite only evidence that actually returned.'
+								].join(' ')
+							: 'Do not repeat this call with the same arguments. If the id was guessed, locate the record with a search or list tool that is available this turn; otherwise continue with the loaded context and tell the user what could not be read.'
 				}
 			}
 		};
@@ -2412,7 +2457,8 @@ export class AgenticChatTurnExecutor {
 		return null;
 	}
 
-	private async observeToolExecution(
+	/** Detached from the tool critical path; joined by `drainPendingEffects` before the terminal fence. */
+	private observeToolExecution(
 		executionInput: AgenticChatWorkerExecutionInputV1,
 		processingToken: string,
 		step: AgenticChatExecutableToolStepV1,
@@ -2421,7 +2467,7 @@ export class AgenticChatTurnExecutor {
 		eventType: 'tool_execution_started' | 'tool_execution_ended',
 		payload: JsonObject,
 		signal: AbortSignal
-	): Promise<void> {
+	): void {
 		const identity =
 			step.type === 'read_tool'
 				? deriveAgenticChatReadPlanningIdentityV1({
@@ -2446,7 +2492,7 @@ export class AgenticChatTurnExecutor {
 			...(identity.exactReadKey ? { exact_read_key: identity.exactReadKey } : {}),
 			...(identity.resourceKey ? { resource_key: identity.resourceKey } : {})
 		};
-		await this.effects.observeToolExecution(
+		this.effects.observeToolExecution(
 			{
 				turnRunId: executionInput.claim.turnRunId,
 				queueJobId: executionInput.claim.queueJobId,
@@ -2585,6 +2631,9 @@ export class AgenticChatTurnExecutor {
 		if (consumptionBillingUserId) {
 			await this.evaluateConsumptionBilling(consumptionBillingUserId);
 		}
+		// Recovery may retire this generation (retry, reclassification); join
+		// the detached telemetry first so its rows are not fenced out.
+		await this.effects.drainPendingEffects(envelope.turnRunId);
 		try {
 			const receipt = await this.awaitTerminal('turn recovery', () =>
 				this.ports.control.recover({
@@ -2658,14 +2707,16 @@ export class AgenticChatTurnExecutor {
 	}
 
 	/**
-	 * Provider budget spent after at least one durable write. The same terminal
-	 * text floors as the happy path run against the tool ledger so the partial
-	 * disclosure ("Done: 2 of 6 moves. Not yet moved: ...") is appended, then
-	 * the turn finalizes `completed` / `mutation_unfulfilled` with the regular
-	 * timing draft and `done` event. Returns null when the terminal text could
-	 * not be made durable, so the caller falls back to the failure path.
+	 * Post-start failure after at least one durable write (spent provider
+	 * budget, stream error after retry, read or ledger timeout, provider
+	 * contract violation). The same terminal text floors as the happy path run
+	 * against the tool ledger so the partial disclosure ("Done: 2 of 6 moves.
+	 * Not yet moved: ...") is appended, then the turn finalizes `completed` /
+	 * `mutation_unfulfilled` with the regular timing draft and `done` event.
+	 * Returns null when the terminal text could not be made durable, so the
+	 * caller falls back to the failure path.
 	 */
-	private async finalizeBudgetExhaustedAfterDurableWrites(params: {
+	private async finalizePartialAfterDurableWrites(params: {
 		envelope: AgenticChatExecutionIdentityV1;
 		claim: ExecutableClaim;
 		executionInput: AgenticChatWorkerExecutionInputV1;
@@ -2674,10 +2725,12 @@ export class AgenticChatTurnExecutor {
 		projection: ProjectionState;
 		publisherRegistered: boolean;
 		usage: AgenticChatTurnUsageV1 | null;
+		partialFailureClass: AgenticChatRecoveryFailureClassV1;
+		partialFailureCode: string | null;
 	}): Promise<AgenticChatTurnExecutionResultV1 | null> {
 		const { claim, executionInput, terminalContext, runtimeTiming } = params;
 		try {
-			// The provider budget signal is spent; terminal work runs on fresh
+			// The provider signal may be spent; terminal work runs on fresh
 			// signals bounded by the overhead deadline like every other terminal step.
 			const requestContext = executionInput.requestPayload.context as JsonObject;
 			const terminalTextIntegrity = enforceAgenticChatTerminalTextIntegrityV1({
@@ -2726,12 +2779,16 @@ export class AgenticChatTurnExecutor {
 				publisherRegistered: params.publisherRegistered,
 				assistantTextOverride: terminalTextIntegrity.assistantText,
 				reevaluateConsumptionBilling: true,
-				terminalEventContext: { executionInput, terminalContext, runtimeTiming }
+				terminalEventContext: { executionInput, terminalContext, runtimeTiming },
+				partialFailure: {
+					failureClass: params.partialFailureClass,
+					failureCode: params.partialFailureCode
+				}
 			});
 		} catch {
 			// Disclosure or drain could not be made durable in time. The committed
-			// effects still exist; the failure path below records the budget
-			// exhaustion exactly as before this completion lane existed.
+			// effects still exist; the failure path below records the failure
+			// exactly as before this completion lane existed.
 			return null;
 		}
 	}
@@ -2749,7 +2806,8 @@ export class AgenticChatTurnExecutor {
 		interruptedReason,
 		publicError,
 		reevaluateConsumptionBilling = false,
-		terminalEventContext
+		terminalEventContext,
+		partialFailure
 	}: FinalizeTurnInput): Promise<AgenticChatTurnExecutionResultV1> {
 		let assistantText =
 			assistantTextOverride ??
@@ -2862,7 +2920,13 @@ export class AgenticChatTurnExecutor {
 				tool_round_count: terminalEventContext?.terminalContext.toolRoundCount ?? 0,
 				tool_call_count: terminalEventContext?.terminalContext.toolExecutions.length ?? 0,
 				...completedMessageMetadata,
-				...interruptedMessageMetadata
+				...interruptedMessageMetadata,
+				...(partialFailure
+					? {
+							partial_failure_class: partialFailure.failureClass,
+							partial_failure_code: partialFailure.failureCode
+						}
+					: {})
 			},
 			promptTokens: status === 'completed' ? (usage?.promptTokens ?? null) : null,
 			completionTokens: status === 'completed' ? (usage?.completionTokens ?? null) : null,
@@ -2902,6 +2966,10 @@ export class AgenticChatTurnExecutor {
 				: null
 		};
 
+		// Detached telemetry (tool observations, provider attempt receipts, the
+		// prompt snapshot) must land inside this generation: join it, bounded,
+		// before the terminal fence closes the write window.
+		await this.effects.drainPendingEffects(claim.turnRunId);
 		let terminal: AgenticChatTerminalFinalizeRpcResultV1;
 		try {
 			terminal = await this.finalizeWithTimingFallback(terminalInput, claim);
@@ -3632,6 +3700,12 @@ function classifyFailure(
 ): AgenticChatRecoveryFailureClassV1 {
 	// Once an irreversible effect reports uncertainty, a concurrent cancellation
 	// cannot downgrade the recovery classification to ordinary cancellation.
+	// A committed-effect persist failure classifies as its cause so recovery
+	// semantics (timeout, database error) are unchanged; only the partial-
+	// completion lane treats the wrapper specially.
+	if (error instanceof AgenticChatCommittedEffectPersistError) {
+		return classifyFailure(error.cause, executionStarted, signal);
+	}
 	if (error instanceof AgenticChatEffectExecutionError) return error.failureClass;
 	if (error instanceof AgenticChatToolExecutionFenceError) return error.failureClass;
 	if (error instanceof AgenticChatToolExecutionTimeoutError) return error.failureClass;
@@ -3651,9 +3725,39 @@ function classifyFailure(
 	return executionStarted ? 'unknown' : 'transient_infra';
 }
 
+/** This worker no longer owns the turn; terminal truth belongs to the DB, not a partial. */
+/**
+ * A mutation effect committed but its receipt row could not be persisted. The
+ * turn must keep the failure route: the ledger knows the effect, and a partial
+ * disclosure would name a committed write as not done.
+ */
+class AgenticChatCommittedEffectPersistError extends Error {
+	readonly effectId: string;
+	readonly cause: unknown;
+	constructor(effectId: string, cause: unknown) {
+		super(
+			cause instanceof Error
+				? cause.message
+				: 'Committed mutation receipt could not be persisted.'
+		);
+		this.name = 'AgenticChatCommittedEffectPersistError';
+		this.effectId = effectId;
+		this.cause = cause;
+	}
+}
+
+function isExecutionFenceLost(error: unknown): boolean {
+	return (
+		error instanceof AgenticChatToolExecutionFenceError ||
+		error instanceof AgenticChatSessionHandoffFenceError
+	);
+}
+
 function specificTerminalFailureCode(error: unknown, signal: AbortSignal): string | undefined {
 	const reason = signal.aborted ? signal.reason : error;
-	const candidate = reason ?? error;
+	const unwrapped =
+		reason instanceof AgenticChatCommittedEffectPersistError ? reason.cause : reason;
+	const candidate = unwrapped ?? error;
 	if (candidate instanceof AgenticChatToolExecutionTimeoutError) return candidate.code;
 	if (candidate instanceof AgenticChatProviderExecutionError) {
 		return canonicalText(candidate.code, 128) ? candidate.code : undefined;
@@ -3688,6 +3792,30 @@ function canonicalErrorMessage(message: string): string {
 
 function errorMessage(error: unknown): string {
 	return canonicalErrorMessage(error instanceof Error ? error.message : String(error));
+}
+
+/**
+ * Model-facing text for a private (non-web) read the adapter reported as
+ * `read_tool_execution_failed`. The shared implementations' own throws
+ * ('permanent': access denial, not-found, semantic argument checks) are
+ * written for the caller and are replayed verbatim; database and PostgREST
+ * failures ('unknown') are replaced so raw driver messages never reach the
+ * model.
+ */
+function privateReadFailureMessage(error: AgenticChatProviderExecutionError): string {
+	if (error.failureClass !== 'permanent') return 'The read could not be completed.';
+	const message = error.message.trim().slice(0, 2_000).trim();
+	// Only the shared read implementations' own caller-facing messages are
+	// replayed. Anything that may embed driver output (PostgREST, SQL state,
+	// row text) is replaced so raw database text never reaches the model
+	// (review of AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F55).
+	if (
+		!message ||
+		/\b(PGRST\d+|SQLSTATE|syntax for type|relation "|column "|violates)\b/i.test(message)
+	) {
+		return 'The read could not be completed.';
+	}
+	return message;
 }
 
 type AgenticChatExecutionBoundaryStage =

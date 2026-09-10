@@ -1,3 +1,4 @@
+// apps/web/src/lib/tests/agentic-e2e/harness/judge.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { getJSONResponse } = vi.hoisted(() => ({
@@ -10,7 +11,12 @@ vi.mock('$lib/services/smart-llm-service', () => ({
 	}
 }));
 
-import { judgeQuality } from './judge';
+import {
+	JUDGE_FORBIDDEN_MODELS,
+	JUDGE_MODEL_CHAIN,
+	judgeQuality,
+	resolveJudgeModels
+} from './judge';
 
 describe('judgeQuality', () => {
 	beforeEach(() => {
@@ -62,5 +68,39 @@ describe('judgeQuality', () => {
 			judgeQuality({ rubric: 'Do the work.', transcript: 'The work was done.' })
 		).rejects.toThrow('second timeout');
 		expect(getJSONResponse).toHaveBeenCalledTimes(2);
+	});
+});
+
+// The `powerful` JSON profile ends its fallback chain on the acting model, so
+// a bad run could have the model under test grade its own work
+// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J6).
+describe('judge model routing', () => {
+	it('never routes the judge to a model the battery is testing', () => {
+		for (const model of JUDGE_MODEL_CHAIN) {
+			expect(JUDGE_FORBIDDEN_MODELS).not.toContain(model);
+		}
+		expect(resolveJudgeModels(null)).toEqual([...JUDGE_MODEL_CHAIN]);
+	});
+
+	it('puts an explicit override first and keeps the strong chain behind it', () => {
+		expect(resolveJudgeModels('moonshotai/kimi-k3')).toEqual([
+			'moonshotai/kimi-k3',
+			...JUDGE_MODEL_CHAIN.filter((model) => model !== 'moonshotai/kimi-k3')
+		]);
+	});
+
+	it('refuses an override that names a model under test', () => {
+		expect(() => resolveJudgeModels(JUDGE_FORBIDDEN_MODELS[0]!)).toThrow(
+			/cannot run on a model under test/
+		);
+	});
+
+	it('sends the pinned chain and the acting-model-free profile to SmartLLM', async () => {
+		getJSONResponse.mockResolvedValueOnce({ score: 5, reasoning: 'Complete.' });
+		await judgeQuality({ rubric: 'Do the work.', transcript: 'Done.' });
+
+		expect(getJSONResponse).toHaveBeenCalledWith(
+			expect.objectContaining({ models: [...JUDGE_MODEL_CHAIN], profile: 'maximum' })
+		);
 	});
 });

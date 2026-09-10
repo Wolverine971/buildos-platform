@@ -74,8 +74,11 @@ export const AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1 = Object.freeze([
  * Tools intentionally removed before the acting worker artifact is signed.
  * Dynamic skill discovery is omitted only after the trusted preload gate has
  * resolved; the retired read-only disposition control is never mounted on the
- * acting provider. Explicit classification prevents either case from becoming
- * a generic unknown-tool escape.
+ * acting provider. No static surface lists it any more
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F28), but an already-prepared
+ * artifact still can, and this entry filters it rather than refusing the turn
+ * as capability_unavailable. Explicit classification prevents either case from
+ * becoming a generic unknown-tool escape.
  */
 export const AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1 = Object.freeze([
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,

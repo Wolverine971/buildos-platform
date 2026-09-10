@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/provider/repair-policy.ts
 
-import { READ_LOOP_REPAIR_RANK, type WriteLedgerEntry } from '@buildos/agentic-chat-runtime/loop';
+import type { WriteLedgerEntry } from '@buildos/agentic-chat-runtime/loop';
 import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from '../mutationToolCatalog';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
@@ -225,15 +225,6 @@ export function buildRequiredPassProseFallbackRequest(
 			'Answer the user now in plain prose from the loaded context. If the user asked for a change, say plainly that it was not made this turn and what they can do next. Do not claim any change was made, and do not narrate internal review, contracts, or this correction.'
 		].join(' ')
 	);
-}
-
-export function contextSaturationRepairRank(
-	status: 'open' | 'narrowing' | 'saturated' | 'must_synthesize'
-): number {
-	if (status === 'narrowing') return READ_LOOP_REPAIR_RANK.nudge;
-	if (status === 'saturated') return READ_LOOP_REPAIR_RANK.stop_and_answer;
-	if (status === 'must_synthesize') return READ_LOOP_REPAIR_RANK.must_synthesize;
-	return 0;
 }
 
 const MAX_BUDGET_SYNTHESIS_RECEIPTS = 20;

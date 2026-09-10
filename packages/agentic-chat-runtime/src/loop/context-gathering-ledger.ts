@@ -44,6 +44,24 @@ const STATUS_RANK: Record<ContextSaturationStatusName, number> = {
 	saturated: 2,
 	must_synthesize: 3
 };
+const STATUS_BY_RANK: ContextSaturationStatusName[] = [
+	'open',
+	'narrowing',
+	'saturated',
+	'must_synthesize'
+];
+
+// Floor by read-round count since the last write round, independent of
+// novelty. The novelty ladder above it can only raise the status
+// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F19: one read-saturation message per round).
+const READ_ROUND_COUNT_FLOOR: ReadonlyArray<{
+	rounds: number;
+	status: ContextSaturationStatusName;
+}> = [
+	{ rounds: 8, status: 'must_synthesize' },
+	{ rounds: 6, status: 'saturated' },
+	{ rounds: 3, status: 'narrowing' }
+];
 
 const SEARCH_ARG_KEYS = ['query', 'q', 'search', 'term'];
 
@@ -65,9 +83,21 @@ export class ContextGatheringLedger {
 		const roundReachedWriteExecutor =
 			params.roundReachedWriteExecutor ?? params.roundPattern.hasWriteOps;
 		if (roundReachedWriteExecutor) {
+			// A write round is progress: the whole ladder restarts, so reads that
+			// preceded the write cannot force the turn tool-free right after it.
 			this.writeRounds += 1;
 			this.lowNoveltyRounds = 0;
 			this.repeatedSearchRounds = 0;
+			this.lastEmittedStatusRank = 0;
+			return this.buildObservation('open', params, {
+				newEvidenceThisRound: false,
+				reasons: []
+			});
+		}
+
+		// Control-only rounds (declarations, reviewer decisions) gather nothing
+		// and leave the ladder where it is.
+		if (params.roundPattern.readOps.length === 0) {
 			return this.buildObservation('open', params, {
 				newEvidenceThisRound: false,
 				reasons: []
@@ -75,16 +105,13 @@ export class ContextGatheringLedger {
 		}
 
 		// Mixed web-research + internal-read rounds use the dedicated research
-		// budget in the orchestrator. Keep this defensive guard here as well so a
-		// future caller cannot accidentally feed those rounds into the
-		// low-novelty saturation ladder.
-		if (
-			params.roundPattern.readOps.length === 0 ||
-			params.roundPattern.researchOps.length > 0
-		) {
-			return this.buildObservation('open', params, {
+		// budget in the orchestrator. They still count toward the read-round
+		// floor, but never feed the low-novelty ladder.
+		if (params.roundPattern.researchOps.length > 0) {
+			const { status, reasons } = this.evaluateStatus(params, null);
+			return this.buildObservation(status, params, {
 				newEvidenceThisRound: false,
-				reasons: []
+				reasons
 			});
 		}
 
@@ -169,67 +196,84 @@ export class ContextGatheringLedger {
 			this.lowNoveltyRounds += 1;
 		}
 
-		const { status, reasons } = this.evaluateStatus(
-			params,
+		const { status, reasons } = this.evaluateStatus(params, {
 			newEvidenceThisRound,
 			roundSemanticReadMisses
-		);
+		});
 		return this.buildObservation(status, params, {
 			newEvidenceThisRound,
 			reasons
 		});
 	}
 
+	/**
+	 * Status = max(count floor, budget guard, novelty ladder). `novelty` is null
+	 * for a mixed research round, which counts toward the floor but carries no
+	 * novelty signal.
+	 */
 	private evaluateStatus(
 		params: ObserveToolRoundParams,
-		newEvidenceThisRound: boolean,
-		roundSemanticReadMisses: number
+		novelty: { newEvidenceThisRound: boolean; roundSemanticReadMisses: number } | null
 	): { status: ContextSaturationStatusName; reasons: string[] } {
 		const reasons: string[] = [];
 		const roundsRemaining = params.maxToolRounds - params.toolRounds;
-		const contextStatus = params.liveContextUsage?.status;
+		let rank = STATUS_RANK.open;
+		const raise = (status: ContextSaturationStatusName): void => {
+			rank = Math.max(rank, STATUS_RANK[status]);
+		};
+
+		const floor = READ_ROUND_COUNT_FLOOR.find((step) => params.toolRounds >= step.rounds);
+		if (floor) {
+			reasons.push(`${params.toolRounds} read rounds without a write`);
+			raise(floor.status);
+		}
+		// The configured round budget (CHAT_MAX_TOOL_ROUNDS) is the only thing
+		// that ends a read loop below the count floor; a budget of 3 reaches it.
 		if (roundsRemaining <= 2) {
 			reasons.push(`${roundsRemaining} tool rounds remain`);
-		}
-		if (contextStatus === 'over_budget') {
-			reasons.push('context window is over budget');
-		} else if (contextStatus === 'near_limit') {
-			reasons.push('context window is near limit');
-		}
-		if (!newEvidenceThisRound) {
-			reasons.push('last read round added no new entity IDs');
-		}
-		if (roundSemanticReadMisses > 0) {
-			reasons.push(
-				`${roundSemanticReadMisses} semantic read ${roundSemanticReadMisses === 1 ? 'miss' : 'misses'} this round`
-			);
-		}
-		if (this.lowNoveltyRounds >= 2) {
-			reasons.push(`${this.lowNoveltyRounds} consecutive low-novelty read rounds`);
-		}
-		if (this.repeatedSearchRounds >= 2) {
-			reasons.push(`${this.repeatedSearchRounds} repeated search rounds`);
+			raise('must_synthesize');
 		}
 
-		if (
-			roundsRemaining <= 2 ||
-			contextStatus === 'over_budget' ||
-			this.lowNoveltyRounds >= 3 ||
-			this.repeatedSearchRounds >= 3
-		) {
-			return { status: 'must_synthesize', reasons };
+		if (novelty) {
+			const contextStatus = params.liveContextUsage?.status;
+			if (contextStatus === 'over_budget') {
+				reasons.push('context window is over budget');
+			} else if (contextStatus === 'near_limit') {
+				reasons.push('context window is near limit');
+			}
+			if (!novelty.newEvidenceThisRound) {
+				reasons.push('last read round added no new entity IDs');
+			}
+			if (novelty.roundSemanticReadMisses > 0) {
+				reasons.push(
+					`${novelty.roundSemanticReadMisses} semantic read ${novelty.roundSemanticReadMisses === 1 ? 'miss' : 'misses'} this round`
+				);
+			}
+			if (this.lowNoveltyRounds >= 2) {
+				reasons.push(`${this.lowNoveltyRounds} consecutive low-novelty read rounds`);
+			}
+			if (this.repeatedSearchRounds >= 2) {
+				reasons.push(`${this.repeatedSearchRounds} repeated search rounds`);
+			}
+
+			if (
+				contextStatus === 'over_budget' ||
+				this.lowNoveltyRounds >= 3 ||
+				this.repeatedSearchRounds >= 3
+			) {
+				raise('must_synthesize');
+			} else if (
+				this.lowNoveltyRounds >= 2 ||
+				this.repeatedSearchRounds >= 2 ||
+				(contextStatus === 'near_limit' && this.lowNoveltyRounds >= 1)
+			) {
+				raise('saturated');
+			} else if (this.lowNoveltyRounds >= 1 || contextStatus === 'near_limit') {
+				raise('narrowing');
+			}
 		}
-		if (
-			this.lowNoveltyRounds >= 2 ||
-			this.repeatedSearchRounds >= 2 ||
-			(contextStatus === 'near_limit' && this.lowNoveltyRounds >= 1)
-		) {
-			return { status: 'saturated', reasons };
-		}
-		if (this.lowNoveltyRounds >= 1 || contextStatus === 'near_limit') {
-			return { status: 'narrowing', reasons };
-		}
-		return { status: 'open', reasons };
+
+		return { status: STATUS_BY_RANK[rank]!, reasons };
 	}
 
 	private buildObservation(
@@ -240,8 +284,17 @@ export class ContextGatheringLedger {
 			reasons: string[];
 		}
 	): ContextGatheringObservation {
+		// The status never steps down between write rounds: once a read streak
+		// has been told to synthesize, a later round that happens to add one new
+		// id does not reopen gathering.
+		const evaluatedRank = STATUS_RANK[statusName];
+		const shouldEmit = evaluatedRank > this.lastEmittedStatusRank;
+		const effectiveRank = Math.max(evaluatedRank, this.lastEmittedStatusRank);
+		if (shouldEmit) {
+			this.lastEmittedStatusRank = evaluatedRank;
+		}
 		const status: ContextSaturationStatus = {
-			status: statusName,
+			status: STATUS_BY_RANK[effectiveRank]!,
 			roundsRemaining: Math.max(0, params.maxToolRounds - params.toolRounds),
 			readRounds: this.readRounds,
 			writeRounds: this.writeRounds,
@@ -253,52 +306,25 @@ export class ContextGatheringLedger {
 			newEvidenceThisRound: round.newEvidenceThisRound,
 			reasons: round.reasons
 		};
-		const rank = STATUS_RANK[statusName];
-		const shouldEmit = rank > this.lastEmittedStatusRank && rank > 0;
-		if (shouldEmit) {
-			this.lastEmittedStatusRank = rank;
-		}
 		return {
 			status,
-			message: shouldEmit ? buildContextGatheringMessage(status, this.searchAttempts) : null,
-			forceSynthesis: statusName === 'must_synthesize'
+			message: shouldEmit ? buildContextGatheringMessage(status.status) : null,
+			forceSynthesis: status.status === 'must_synthesize'
 		};
 	}
 }
 
-function buildContextGatheringMessage(
-	status: ContextSaturationStatus,
-	searchAttempts: Map<string, { label: string; count: number }>
-): string {
-	const label =
-		status.status === 'must_synthesize'
-			? 'must synthesize'
-			: status.status === 'saturated'
-				? 'saturated'
-				: 'narrowing';
-	const searches = Array.from(searchAttempts.values())
-		.map((attempt) => `"${attempt.label}"`)
-		.slice(0, 3);
-	const searchLine =
-		searches.length > 0
-			? `Searches tried: ${searches.join(', ')}${searchAttempts.size > searches.length ? ', ...' : ''}.`
-			: `Searches tried: ${status.searchedCount}.`;
-	const noveltyLine = status.newEvidenceThisRound
-		? 'Last round added new entity IDs.'
-		: 'Last round added no new entity IDs.';
-	const actionLine =
-		status.status === 'must_synthesize'
-			? 'Answer from loaded evidence now; do not gather more context.'
-			: 'Unless one specific missing fact remains, answer from loaded evidence.';
-	return [
-		`Context gathering: ${label}.`,
-		`Rounds remaining: ${status.roundsRemaining}.`,
-		searchLine,
-		`Seen entities: ${status.seenEntityCount}.`,
-		`Semantic read misses: ${status.semanticReadMisses}.`,
-		noveltyLine,
-		actionLine
-	].join(' ');
+// One sentence per level and no counters: every number the earlier message
+// carried (rounds, searches, seen entities, misses) was echoed back to users
+// by weak models and stripped again by the sanitizer.
+function buildContextGatheringMessage(status: ContextSaturationStatusName): string {
+	if (status === 'must_synthesize') {
+		return 'Context gathering: must synthesize. Answer from the loaded evidence now; do not gather more context.';
+	}
+	if (status === 'saturated') {
+		return 'Context gathering: saturated. Only call another read tool if one specific missing fact blocks the answer; otherwise answer from the loaded evidence or perform the requested change now.';
+	}
+	return 'Context gathering: narrowing. Unless one specific missing fact remains, answer from the loaded evidence or perform the requested change now.';
 }
 
 function extractSearchAttempts(toolCall: ChatToolCall): Array<{ key: string; label: string }> {

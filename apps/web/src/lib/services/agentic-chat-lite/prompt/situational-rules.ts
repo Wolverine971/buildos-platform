@@ -10,19 +10,20 @@
  * tool-materialization notices when the situation develops after the seed
  * prompt was built.
  *
- * Trigger design (revised 2026-09-02, turn executor audit Findings 9 and 10):
- * the write block keys off write INTENT — a pending semantic contract, the
- * retired lexical turn-intent flag, a living-reference capture, or a mutation
- * verb in the message — never off "write tools are mounted". Every project
- * turn mounts write tools, so tool presence rendered the block on pure
- * questions. The research block still keys off web-tool presence (those tools
- * mount only when research is plausible) or research phrasing; the mid-turn
- * notice covers tools that materialize after the seed, which is itself an
- * intent signal.
+ * Trigger design (revised 2026-09-02, turn executor audit Findings 9 and 10;
+ * AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F01): every block keys off turn
+ * INTENT, never off "the tool is mounted". The write block keys off a pending
+ * semantic contract, the retired lexical turn-intent flag, a living-reference
+ * capture, or a mutation verb in the message. The research block keys off
+ * research phrasing only — web_search/web_visit and delegate_task ride every
+ * global and project surface since stage S6, so mount-keyed blocks rendered
+ * on "what is overdue?" exactly as on a research turn. The mid-turn notice
+ * covers tools that materialize after the seed, which is itself an intent
+ * signal. Review-delegation rules live on the delegate_task description.
  *
  * Worker-bound artifacts (`dynamicSkillTools: false`) get the worker's own
- * write route — an existing-entity write opens with declare_turn_contract —
- * and lose the "See the X skill" pointers the worker cannot follow.
+ * write recipe (the deterministic direct-write floor, then review for the
+ * rest) and lose the "See the X skill" pointers the worker cannot follow.
  */
 
 import { isWriteToolName } from '@buildos/agentic-chat-runtime/catalog';
@@ -31,14 +32,14 @@ import { looksLikeMutationTurn } from '$lib/services/agentic-chat/tools/domains/
 export type LitePromptTurnSituation = {
 	writeIntent: boolean;
 	webResearch: boolean;
-	reviewDelegation?: boolean;
 	livingWorkspace?: boolean;
 	livingWorkspaceCapture?: boolean;
 	domainProfile?: string | null;
 	domainAffinity?: string | null;
 	/**
 	 * True when the prompt is bound to the reviewed worker lane: no dynamic
-	 * skill tools, and existing-entity writes must open with a turn contract.
+	 * skill tools, and the worker (not the model) routes unresolved
+	 * existing-entity writes to review.
 	 */
 	workerBound?: boolean;
 };
@@ -66,12 +67,15 @@ export const WRITE_TURN_RULE_LINES = [
 ];
 
 /**
- * Worker lane: the reviewed harness withholds any direct write that selects an
- * existing entity and redirects it to the contract route (audit F-A3). Teach
- * that route up front instead of "find the id then write".
+ * Worker lane: an ordered recipe that leads with the direct cases and matches
+ * write-routing.ts (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02). The old line
+ * opened "call declare_turn_contract first, unless ..." while the opening pass
+ * does not mount that tool; a weak model executed the imperative and every
+ * single-target edit took the contract lane. Tool-neutral on purpose: the
+ * worker chooses the route, the model proposes the calls.
  */
 export const WORKER_WRITE_TURN_RULE_LINES = [
-	'- Writing to an existing entity: call declare_turn_contract first, unless the target id is the focused entity, was given by the user, or is the only entity of its kind that a read in this turn returned. Creates inside the focused project can be direct calls.',
+	'- Writing: call the mutation tool directly when the target is a new entity in the focused project, the focused entity or project itself, the only entity of its kind that a read this turn returned, or a full UUID the user typed that a read this turn loaded (up to three such calls in one response). Any other existing-entity write is routed to review by the worker after you propose it; you do not choose the route.',
 	EXACT_ID_RULE_LINE,
 	CLARIFICATION_RULE_LINE,
 	TASK_STATE_RULE_LINE
@@ -105,15 +109,8 @@ export const LIVING_WORKSPACE_RULE_LINES = [
 export const LIVING_WORKSPACE_CAPTURE_RULE_LINE =
 	'- This is an implicit capture turn: perform the smallest relevant durable document write before replying. Do not merely acknowledge or promise an update.';
 
-export const REVIEW_DELEGATION_RULE_LINES = [
-	'- Tool availability alone does not commission an Agent Run. Answer questions and brainstorming directly unless the user requests work that belongs in a reviewed handoff.',
-	'- When the user commissions a reviewed handoff, reuse the relevant entities already loaded, read only missing information, then call delegate_task once with the exact focused project ID, entity IDs, and intended outcomes.',
-	'- For a commissioned handoff, a prose plan, chat table, or proposal document is not a staged change set. delegate_task stages changes for later user review; it does not approve or apply them. Do not substitute direct writes for a requested review, or claim the proposal is staged until the tool succeeds.'
-];
-
-// Conservative on purpose: web-tool mounting is the primary trigger, this
-// regex only buys the block for turns that name web research before any web
-// tool exists on the surface.
+// Conservative on purpose: the block costs ~1,000 chars on every pass it
+// rides, so it buys in only for turns that name web research.
 // Bare "research" is excluded — "research this project" is workspace work.
 const WEB_RESEARCH_TURN_PATTERNS = [
 	/\b(?:search|look\s?up|check|find)\b[\s\S]{0,50}\b(?:the web|online|the internet|google)\b/i,
@@ -134,25 +131,24 @@ export function looksLikeWebResearchTurn(text: string | null | undefined): boole
 }
 
 export function resolveLitePromptTurnSituation(params: {
+	/** Accepted for call-site compatibility; mount state never selects a block (F01). */
 	toolNames: string[];
-	turnIntentRequiresWrite?: boolean | null;
+	/** A complex-write contract carried forward from a prior turn is a write commitment. */
+	pendingTurnContract?: boolean | null;
 	latestUserMessage?: string | null;
-	reviewDelegation?: boolean | null;
 	livingWorkspace?: boolean | null;
 	livingWorkspaceCapture?: boolean | null;
 	domainProfile?: string | null;
 	domainAffinity?: string | null;
 	workerBound?: boolean | null;
 }): LitePromptTurnSituation {
-	const webToolsMounted = params.toolNames.some((name) => WEB_TOOL_NAMES.has(name));
 	const livingWorkspaceCapture = params.livingWorkspaceCapture === true;
 	return {
 		writeIntent:
-			Boolean(params.turnIntentRequiresWrite) ||
+			Boolean(params.pendingTurnContract) ||
 			livingWorkspaceCapture ||
 			looksLikeMutationTurn(params.latestUserMessage),
-		webResearch: webToolsMounted || looksLikeWebResearchTurn(params.latestUserMessage),
-		reviewDelegation: params.reviewDelegation === true,
+		webResearch: looksLikeWebResearchTurn(params.latestUserMessage),
 		livingWorkspace: params.livingWorkspace === true,
 		livingWorkspaceCapture,
 		domainProfile: params.domainProfile ?? null,
@@ -166,7 +162,6 @@ export function hasActiveSituation(situation: LitePromptTurnSituation | null | u
 		situation &&
 			(situation.writeIntent ||
 				situation.webResearch ||
-				situation.reviewDelegation ||
 				situation.livingWorkspace ||
 				situation.livingWorkspaceCapture)
 	);
@@ -198,11 +193,6 @@ export function renderSituationalRulesContent(
 					? WORKER_WEB_RESEARCH_RULE_LINES
 					: WEB_RESEARCH_RULE_LINES)
 			].join('\n')
-		);
-	}
-	if (situation?.reviewDelegation) {
-		blocks.push(
-			['Review-staged Agent Runs are available:', ...REVIEW_DELEGATION_RULE_LINES].join('\n')
 		);
 	}
 	if (situation?.livingWorkspace) {

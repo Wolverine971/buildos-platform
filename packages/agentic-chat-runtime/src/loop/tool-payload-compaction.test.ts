@@ -1270,4 +1270,397 @@ describe('buildToolPayloadForModel', () => {
 		expect(payload.tool_result_truncated).toBe(true);
 		expect(payload.model_payload_truncated).toBe(false);
 	});
+
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F113: no read result ever reaches
+	// the model as a JSON string cut mid-object, and a compacted payload never
+	// trips the outer guard once the security notice is added.
+	describe('structural size guard', () => {
+		const MODEL_BUDGET = 6000;
+		const serialized = (value: unknown) => JSON.stringify(value);
+		// `record_references` ride outside the content budget by design
+		// (bounded to 20 records), so the budget is checked without them.
+		const expectStructured = (payload: Record<string, any>) => {
+			expect(payload).not.toHaveProperty('preview');
+			expect(payload).not.toHaveProperty('original_length');
+			expect(payload.model_context_source).toBe('tool_result_untrusted');
+			const { record_references, ...content } = payload;
+			expect(serialized(content).length).toBeLessThanOrEqual(MODEL_BUDGET);
+			if (record_references) expect(record_references.length).toBeLessThanOrEqual(20);
+		};
+		const uuid = (n: number) => `${String(n).padStart(8, '0')}-0000-4000-8000-000000000000`;
+
+		it('keeps an eight-project workspace overview structured with merged counts', () => {
+			const projects = Array.from({ length: 8 }, (_, index) => ({
+				project_id: uuid(index + 1),
+				name: `Project ${index + 1}`,
+				state_key: 'active',
+				description: `Description ${index + 1}. ${'Long paragraph about the project. '.repeat(30)}`,
+				next_step_short: 'Ship the beta build',
+				updated_at: '2026-09-01T00:00:00.000Z',
+				counts: {
+					active_tasks: 4,
+					blocked_tasks: 1,
+					overdue_tasks: 2,
+					due_soon_tasks: 1,
+					open_milestones: 1,
+					open_plans: 0,
+					open_risks: 1,
+					upcoming_events: 0,
+					collaborators: 2
+				},
+				entity_counts: { tasks: 12, documents: 5, plans: 1, goals: 2, collaborators: 2 },
+				next_milestone: { id: uuid(100 + index), title: 'Beta', due_at: '2026-10-01' },
+				next_event: null,
+				recent_activity: Array.from({ length: 3 }, (_, activity) => ({
+					entity_type: 'task',
+					entity_id: uuid(200 + activity),
+					action: 'update',
+					title: `Task ${activity}`,
+					description: `Changed state from todo to in_progress. ${'More detail. '.repeat(20)}`,
+					changed_by: 'DJ',
+					changed_by_actor_id: uuid(300),
+					change_source: 'web',
+					created_at: '2026-09-01T00:00:00.000Z'
+				}))
+			}));
+			const raw = {
+				generated_at: '2026-09-08T00:00:00.000Z',
+				scope: 'workspace',
+				projects_returned: 8,
+				maybe_more: true,
+				snapshot: {
+					returned_projects: 8,
+					total_accessible_projects: 36,
+					project_limit: 8,
+					has_more_projects: true,
+					totals_scope: 'returned_projects'
+				},
+				totals: { projects: 8, active_tasks: 32, overdue_tasks: 16, collaborators: 16 },
+				entity_totals: {
+					projects: 8,
+					tasks: 96,
+					documents: 40,
+					plans: 8,
+					goals: 16,
+					collaborators: 16
+				},
+				projects,
+				message: 'Workspace overview prepared for 8 of 36 accessible projects.'
+			};
+			expect(serialized(raw).length).toBeGreaterThan(MODEL_BUDGET);
+
+			const payload = buildToolPayloadForModel(
+				toolCall('get_workspace_overview'),
+				toolResult(raw),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload.projects).toHaveLength(8);
+			expect(payload).not.toHaveProperty('projects_omitted');
+			expect(payload.projects[0]).not.toHaveProperty('entity_counts');
+			expect(payload.projects[0].counts).toMatchObject({
+				active_tasks: 4,
+				total_tasks: 12,
+				documents: 5,
+				collaborators: 2
+			});
+			expect(payload.projects[0].next_milestone).toMatchObject({ title: 'Beta' });
+			expect(payload.projects[0].recent_activity.length).toBeLessThanOrEqual(2);
+			expect(payload.projects[7].name).toBe('Project 8');
+			expect(payload.totals).toMatchObject({ projects: 8, total_tasks: 96, documents: 40 });
+			expect(payload).not.toHaveProperty('entity_totals');
+			expect(payload.snapshot.total_accessible_projects).toBe(36);
+		});
+
+		it('keeps twelve long-snippet search results structured and carries scheduling fields', () => {
+			const results = Array.from({ length: 12 }, (_, index) => ({
+				type: 'task',
+				id: uuid(index + 1),
+				project_id: uuid(50),
+				project_name: 'Launch',
+				title: `Task ${index + 1}`,
+				state_key: 'todo',
+				type_key: 'task.execute',
+				score: 0.9 - index * 0.01,
+				rank_score: 0.9,
+				ranking_factors: [{ key: 'type_task', weight: 0.1 }],
+				path: `project:${uuid(50)}/task:${uuid(index + 1)}`,
+				snippet: `Snippet ${index + 1}. ${'Relevant excerpt text. '.repeat(40)}`,
+				matched_fields: ['title', 'description', 'props'],
+				why_matched: 'Matched indexed title, description, props fields for task.',
+				due_at: '2026-10-05T00:00:00.000Z',
+				start_at: null,
+				updated_at: '2026-09-01T00:00:00.000Z',
+				priority: 3,
+				bucket_key: null
+			}));
+			const payload = buildToolPayloadForModel(
+				toolCall('search_all_projects'),
+				toolResult({
+					query: 'launch',
+					search_scope: 'workspace',
+					project_id: null,
+					total_returned: 12,
+					total: 40,
+					maybe_more: true,
+					message: 'Found 12 matches.',
+					results
+				}),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload.results).toHaveLength(12);
+			expect(payload.results[0]).toMatchObject({
+				id: uuid(1),
+				due_at: '2026-10-05T00:00:00.000Z',
+				updated_at: '2026-09-01T00:00:00.000Z',
+				priority: 3
+			});
+			expect(payload.results[0].snippet.length).toBeLessThanOrEqual(200);
+			expect(payload.results[0]).not.toHaveProperty('why_matched');
+			expect(payload.results[0]).not.toHaveProperty('matched_fields');
+			expect(payload.results[0]).not.toHaveProperty('ranking_factors');
+		});
+
+		it('compacts explore_project like a search and keeps the theme, groups and anchors', () => {
+			const payload = buildToolPayloadForModel(
+				toolCall('explore_project'),
+				toolResult({
+					theme: 'pricing',
+					search_scope: 'project',
+					project_id: uuid(50),
+					total_returned: 1,
+					maybe_more: false,
+					results: [
+						{
+							type: 'document',
+							id: uuid(1),
+							project_id: uuid(50),
+							title: 'Pricing notes',
+							score: 0.8,
+							rank_score: 0.8,
+							ranking_factors: [],
+							chunk_anchor: 'tiers',
+							snippet: 'Three tiers.'
+						}
+					],
+					projects: [{ project_id: uuid(50), project_name: 'Launch', result_count: 1 }],
+					materialized_tools: [],
+					total: 1,
+					message: 'Found 1 entity related to "pricing" in this project.'
+				}),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload.theme).toBe('pricing');
+			expect(payload.projects).toEqual([
+				{ project_id: uuid(50), project_name: 'Launch', result_count: 1 }
+			]);
+			expect(payload.results[0]).toMatchObject({
+				chunk_anchor: 'tiers',
+				snippet: 'Three tiers.'
+			});
+			expect(payload.results[0]).not.toHaveProperty('ranking_factors');
+		});
+
+		it('drops props from list_onto_tasks rows and keeps facets', () => {
+			const tasks = Array.from({ length: 20 }, (_, index) => ({
+				id: uuid(index + 1),
+				project_id: uuid(50),
+				project_name: 'Launch',
+				title: `Task ${index + 1}`,
+				description: `Do the thing ${index + 1}. ${'Detail. '.repeat(60)}`,
+				type_key: 'task.execute',
+				state_key: 'todo',
+				priority: 2,
+				start_at: null,
+				due_at: '2026-10-05T00:00:00.000Z',
+				completed_at: null,
+				props: {
+					facets: { context: 'client', scale: 'medium' },
+					body_markdown: 'x'.repeat(400),
+					checklist: Array.from({ length: 10 }, (_, item) => ({ item, done: false }))
+				}
+			}));
+			const payload = buildToolPayloadForModel(
+				toolCall('list_onto_tasks'),
+				toolResult({ tasks, total: 20, message: 'Found 20 ontology tasks.' }),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload.tasks.length + (payload.tasks_omitted ?? 0)).toBe(20);
+			expect(payload.tasks.length).toBeGreaterThanOrEqual(12);
+			expect(payload.tasks[0]).toMatchObject({
+				id: uuid(1),
+				facets: { context: 'client', scale: 'medium' },
+				due_at: '2026-10-05T00:00:00.000Z'
+			});
+			expect(payload.tasks[0]).not.toHaveProperty('props');
+			expect(payload.tasks[0].description.length).toBeLessThanOrEqual(200);
+			expect(payload.total).toBe(20);
+		});
+
+		it('keeps a project detail with twelve described tasks under the budget', () => {
+			const payload = buildToolPayloadForModel(
+				toolCall('get_onto_project_details'),
+				toolResult({
+					message: 'Complete ontology project details loaded.',
+					project: {
+						id: uuid(50),
+						name: 'Launch',
+						description: 'Launch project. '.repeat(80),
+						type_key: 'project.default',
+						state_key: 'active'
+					},
+					counts: { tasks: 30, documents: 14 },
+					tasks: Array.from({ length: 30 }, (_, index) => ({
+						id: uuid(index + 1),
+						title: `Task ${index + 1}`,
+						description: 'A long task description. '.repeat(20),
+						state_key: 'todo',
+						type_key: 'task.execute',
+						priority: 2,
+						due_at: '2026-10-05T00:00:00.000Z',
+						updated_at: '2026-09-01T00:00:00.000Z'
+					})),
+					documents: Array.from({ length: 14 }, (_, index) => ({
+						id: uuid(100 + index),
+						title: `Doc ${index + 1}`,
+						description: 'A long document description. '.repeat(20),
+						content: 'body '.repeat(200)
+					}))
+				}),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload.tasks.total).toBe(30);
+			expect(payload.tasks.items.length).toBeGreaterThan(0);
+			expect(payload.tasks.items[0]).toMatchObject({ id: uuid(1), title: 'Task 1' });
+		});
+
+		it('trims a long document section instead of replacing it with a JSON string', () => {
+			const content = Array.from(
+				{ length: 120 },
+				(_, index) => `Line ${index + 1}: "quoted" text with detail about the section.`
+			).join('\n');
+			expect(content.length).toBeGreaterThan(MODEL_BUDGET);
+			const payload = buildToolPayloadForModel(
+				toolCall('read_document_section'),
+				toolResult({
+					document_id: uuid(1),
+					project_id: uuid(50),
+					title: 'Plan',
+					anchor: 'scope',
+					heading: 'Scope',
+					level: 2,
+					content,
+					message: 'Section "Scope" loaded.'
+				}),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload.payload_truncated).toBe(true);
+			expect(payload.payload_original_length).toBeGreaterThan(MODEL_BUDGET);
+			expect(payload.heading).toBe('Scope');
+			expect(payload.content).toMatch(/^Line 1: "quoted" text/);
+			expect(payload.content.endsWith('...')).toBe(true);
+			expect(payload.content.length).toBeGreaterThan(3000);
+		});
+
+		it('drops trailing items from the largest array of an unknown payload and says how many', () => {
+			const payload = buildToolPayloadForModel(
+				toolCall('list_onto_goals'),
+				toolResult({
+					goals: Array.from({ length: 60 }, (_, index) => ({
+						id: uuid(index + 1),
+						name: `Goal ${index + 1}`,
+						description: 'Goal description. '.repeat(6),
+						state_key: 'active'
+					})),
+					total: 60,
+					message: 'Found 60 ontology goals.'
+				}),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload.goals.length).toBeGreaterThan(1);
+			expect(payload.goals.length).toBeLessThan(60);
+			expect(payload.goals_omitted).toBe(60 - payload.goals.length);
+			expect(payload.goals[0]).toMatchObject({ id: uuid(1), name: 'Goal 1' });
+			expect(payload.total).toBe(60);
+			expect(payload.message).toBe('Found 60 ontology goals.');
+		});
+
+		it('stops echoing the document body in create/update receipts', () => {
+			const body = '# Plan\n\n' + 'A long paragraph of document text. '.repeat(300);
+			const payload = buildToolPayloadForModel(
+				toolCall('update_onto_document'),
+				toolResult({
+					ok: true,
+					op: 'onto.document.update',
+					result: {
+						document: {
+							id: uuid(1),
+							project_id: uuid(50),
+							title: 'Plan',
+							type_key: 'document.default',
+							state_key: 'draft',
+							content: body,
+							props: { body_markdown: body, facets: { stage: 'draft' } },
+							updated_at: '2026-09-01T00:00:00.000Z'
+						},
+						version_warning: null
+					}
+				}),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload).not.toHaveProperty('payload_truncated');
+			expect(payload.result.document).toMatchObject({
+				id: uuid(1),
+				title: 'Plan',
+				content_length: body.length,
+				props: { facets: { stage: 'draft' } }
+			});
+			expect(payload.result.document).not.toHaveProperty('content');
+			expect(payload.result.document.content_preview.length).toBeLessThanOrEqual(300);
+			expect(JSON.stringify(payload)).not.toContain('body_markdown');
+		});
+
+		it('does not re-shape a compacted payload when the security notice pushes it past the budget', () => {
+			// ~5,800 chars before the notice used to become a cut JSON string.
+			const buildRaw = (descriptionChars: number) => ({
+				goals: Array.from({ length: 24 }, (_, index) => ({
+					id: uuid(index + 1),
+					name: `Goal ${index + 1}`,
+					description: 'g'.repeat(descriptionChars)
+				})),
+				total: 24,
+				message: 'Found 24 ontology goals.'
+			});
+			let descriptionChars = 100;
+			while (serialized(buildRaw(descriptionChars)).length < 5750) descriptionChars += 5;
+			const raw = buildRaw(descriptionChars);
+			const rawLength = serialized(raw).length;
+			expect(rawLength).toBeGreaterThan(5700);
+			expect(rawLength).toBeLessThan(MODEL_BUDGET);
+
+			const payload = buildToolPayloadForModel(
+				toolCall('list_onto_goals'),
+				toolResult(raw),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload.goals[0]).toMatchObject({ id: uuid(1), name: 'Goal 1' });
+		});
+	});
 });

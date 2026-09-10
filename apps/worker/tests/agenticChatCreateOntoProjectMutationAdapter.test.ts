@@ -161,6 +161,29 @@ describe('AgenticChatCreateOntoProjectMutationAdapter', () => {
 		});
 	});
 
+	it('defaults missing entities and relationships to empty (harness audit F29)', async () => {
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: successData()
+		}));
+		const adapter = new AgenticChatCreateOntoProjectMutationAdapter({} as never, {
+			runGateway: runGateway as never,
+			now: () => NOW
+		});
+		const input = mutationInput() as Record<string, any>;
+		delete input.arguments.entities;
+		delete input.arguments.relationships;
+
+		await expect(adapter.execute(input as never)).resolves.toMatchObject({
+			project_id: PROJECT_ID
+		});
+		expect(runGateway).toHaveBeenCalledOnce();
+		expect((runGateway.mock.calls[0]?.[0] as any).args).toMatchObject({
+			entities: [],
+			relationships: []
+		});
+	});
+
 	it('rejects graph creation, project scope, fiction profiles, and unreviewed props', async () => {
 		const runGateway = vi.fn();
 		const adapter = new AgenticChatCreateOntoProjectMutationAdapter({} as never, {

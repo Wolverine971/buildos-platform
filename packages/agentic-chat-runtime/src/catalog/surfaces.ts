@@ -71,12 +71,16 @@ export type GatewayToolMaterialization = {
  * Deliberately absent: deletes (`delete_onto_*`) and the contacts tools, which
  * have no worker execution adapter yet, and every relationship/graph tool.
  * Those stay discovery-only. The Gmail group is appended per turn by worker
- * admission when the user actually has a connected mailbox (A8) — mounting
- * ~3.3 KB of email schema for users with no mailbox buys nothing.
+ * admission from the user's mailbox state (A8): the read tools only when a
+ * mailbox is connected, the OAuth handoff only when none is
+ * (`getGatewayEmailSurfaceToolNames`).
+ *
+ * `declare_read_only_turn` is not mounted anywhere: the acting worker never
+ * exposed it, and its one live use, the reviewer lane, builds its own copy
+ * from the definition (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F28).
  */
 const GLOBAL_DIRECT_TOOL_NAMES = [
 	'declare_turn_contract',
-	'declare_read_only_turn',
 	'request_turn_clarification',
 	'cancel_turn_contract',
 	// Overview + cross-project search: the entry points for "what is going on".
@@ -106,8 +110,10 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	// the shell-first carve-out; the adapter shifts the session into the new
 	// project afterwards.
 	'create_onto_project',
-	// Background handoff and live web research.
-	'delegate_task',
+	// Live web research. The background handoff (`delegate_task`) is a
+	// project-surface member only: its adapter requires project_id to equal the
+	// admitted context project, which a global turn never has
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F25).
 	'web_search',
 	'web_visit',
 	// Calendar reads and writes execute on the worker as of 2026-09-04.
@@ -120,10 +126,10 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 
 /**
  * The project surface: the global surface narrowed to one project and widened
- * with the document workspace and this project's calendar binding. The two
- * cross-project searches drop out because `search_project` is the in-scope
- * equivalent and a focused turn that wanted another project would change
- * context, not widen its search.
+ * with the document workspace, the background handoff, and this project's
+ * calendar binding. The two cross-project searches drop out because
+ * `search_project` is the in-scope equivalent and a focused turn that wanted
+ * another project would change context, not widen its search.
  */
 const PROJECT_DIRECT_TOOL_NAMES = [
 	...GLOBAL_DIRECT_TOOL_NAMES.filter(
@@ -142,6 +148,7 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 	'update_onto_document',
 	'move_document_in_tree',
 	'link_onto_entities',
+	'delegate_task',
 	'get_project_calendar',
 	'set_project_calendar'
 ] as const;
@@ -155,7 +162,6 @@ const PROJECT_DIRECT_TOOL_NAMES = [
  */
 const PROJECT_CREATE_DIRECT_TOOL_NAMES = [
 	'declare_turn_contract',
-	'declare_read_only_turn',
 	'request_turn_clarification',
 	'cancel_turn_contract',
 	'create_onto_project',
@@ -167,13 +173,39 @@ const PROJECT_CREATE_DIRECT_TOOL_NAMES = [
  * Gmail read group. Not a static surface member: worker admission appends it
  * for users with an active `user_email_connections` row (A8, 2026-09-04).
  */
-export const GATEWAY_EMAIL_SURFACE_TOOL_NAMES = [
+export const GATEWAY_EMAIL_CONNECTED_SURFACE_TOOL_NAMES = [
 	'get_external_account_status',
 	'list_email_accounts',
 	'search_email_messages',
-	'get_email_message',
+	'get_email_message'
+] as const;
+
+/**
+ * The OAuth handoff. Mounted only while the user has NO connected mailbox: a
+ * user who asks to connect Gmail or check an inbox they never connected needs
+ * the handoff, and a connected user has nothing to hand off
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F33). Gated on a durable account
+ * fact, never on the message text.
+ */
+export const GATEWAY_EMAIL_UNCONNECTED_SURFACE_TOOL_NAMES = [
 	'request_email_account_connection'
 ] as const;
+
+/** The whole per-user email group, for policy and vocabulary checks. */
+export const GATEWAY_EMAIL_SURFACE_TOOL_NAMES = [
+	...GATEWAY_EMAIL_CONNECTED_SURFACE_TOOL_NAMES,
+	...GATEWAY_EMAIL_UNCONNECTED_SURFACE_TOOL_NAMES
+] as const;
+
+/**
+ * The email tools a turn mounts for one mailbox state. Prepare and prewarm
+ * must both select through this so the harness sha stays in lockstep.
+ */
+export function getGatewayEmailSurfaceToolNames(hasConnection: boolean): string[] {
+	return hasConnection
+		? [...GATEWAY_EMAIL_CONNECTED_SURFACE_TOOL_NAMES]
+		: [...GATEWAY_EMAIL_UNCONNECTED_SURFACE_TOOL_NAMES];
+}
 
 const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 	GatewaySurfaceProfileName,

@@ -346,11 +346,9 @@ describe('POST /api/agent/v2/prewarm', () => {
 		);
 	});
 
-	// 2026-09-02 turn executor audit, P0-2 by another door: the prepared
-	// history must carry the same last-turn continuity hint and the same
-	// worker-preload ledger the admission-window path composes, or a prepared
-	// hit renders a different prompt than a miss for the same message.
-	it('threads the last-turn continuity hint and the worker preload ledger into the prepared history', async () => {
+	// 2026-09-08 (F69): preload metadata is no longer rendered as a system
+	// ledger. Prepared history retains recent messages and last-turn continuity.
+	it('preserves last-turn continuity without appending the retired preload ledger', async () => {
 		const cachedContext = {
 			version: 1,
 			key: 'global:none',
@@ -437,11 +435,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 					'Last turn summary: Marked the intro call done'
 				),
 				history: [
-					expect.objectContaining({ role: 'user', content: 'mark the intro call done' }),
-					expect.objectContaining({
-						role: 'system',
-						content: expect.stringContaining('`task_management`')
-					})
+					expect.objectContaining({ role: 'user', content: 'mark the intro call done' })
 				]
 			})
 		);

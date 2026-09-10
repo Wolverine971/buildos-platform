@@ -87,9 +87,9 @@ describe('tool surface size report', () => {
 		// weaker routed models, not description-bloat. Serializes to ~5772 chars; 6200
 		// keeps ~428 chars of headroom.
 		expect(createProject?.chars).toBeLessThanOrEqual(6200);
-		// 2026-09-04 (stage S6): the two project-create profiles collapsed into
-		// one — four controls plus the shell and its child creates, no discovery.
-		expect(projectCreate.toolCount).toBe(7);
+		// 2026-09-08 (F28): declare_read_only_turn was retired from the acting
+		// surface, leaving three controls plus the shell and its child creates.
+		expect(projectCreate.toolCount).toBe(6);
 		// 2026-09-04: budget bumped 2500 → 2750 (measured 2,671). create_onto_task
 		// now names the five UI priority labels instead of "1 is highest, 5
 		// lowest" (told only the endpoints, a model writes 1 for "high" and the
@@ -100,8 +100,10 @@ describe('tool surface size report', () => {
 		// weak routed models, same class as the create_onto_project bump above.
 		// 2026-09-05: ef4ad9a10 added the typed, nonnegative duration_minutes
 		// schema (+147 chars, 2,671 -> 2,818), not more description copy.
-		// Pin that schema below and keep only 32 chars of further headroom.
-		expect(createTask?.chars).toBeLessThanOrEqual(2850);
+		// 2026-09-10: work-mode taxonomy and explicit calendar opt-in guidance
+		// add 238 chars (2,818 -> 3,056). Keep 44 chars of headroom; the full
+		// surface caps below still hold without increasing their budgets.
+		expect(createTask?.chars).toBeLessThanOrEqual(3100);
 	});
 
 	it('retains the reviewed estimate and relationship capabilities behind the size budgets', () => {
@@ -114,6 +116,10 @@ describe('tool surface size report', () => {
 			expect(tool?.function?.parameters.properties.props).toMatchObject({
 				type: 'object',
 				properties: { duration_minutes: { type: 'number', minimum: 0 } }
+			});
+			expect(tool?.function?.parameters.properties.calendar_sync).toMatchObject({
+				default: 'none',
+				enum: ['auto', 'none']
 			});
 		}
 		const contract = tools.find((tool) => tool.function?.name === 'declare_turn_contract');

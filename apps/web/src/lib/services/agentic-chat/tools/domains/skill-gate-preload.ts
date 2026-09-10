@@ -13,14 +13,21 @@
  * Lane-aware rendering (2026-09-02 turn executor audit, Finding 4 / lane D
  * P1-3, P2-1): the web lane keeps the short block because the model can call
  * skill_load with format 'full' for depth. The reviewed worker lane has no
- * such escape, so its block also carries the first worked example, inlines the
- * Judgment block when the skill explicitly asks for `recommended_load_format:
- * full`, says plainly that reference modules and child skills are unavailable,
- * and is capped by characters (~1,500 tokens) rather than by block type.
+ * such escape, so its block is a plain playbook under a one-line heading: the
+ * core blocks, the worked example that matches the turn's intent (update by
+ * exact id when nothing says otherwise), the Judgment block when the skill
+ * explicitly asks for `recommended_load_format: full`, capped by characters
+ * (~1,500 tokens) rather than by block type. No gate wording, no skill_load,
+ * no note about reference modules the worker cannot load
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71).
  *
- * Operational skills (task_management, document_workspace, plan_management,
- * calendar_management) are in no domain or outcome card, so they arrive via the
- * deterministic intent map in operational-skill-intent.ts rather than sensing.
+ * Operational skills (task_management, document_workspace, calendar_management)
+ * are in no domain or outcome card, so they arrive via the deterministic intent
+ * map in operational-skill-intent.ts rather than sensing, and they render on
+ * every turn their intent fires: the system prompt is rebuilt per turn, so a
+ * per-window dedupe just removed the playbook from the next write turn (F69).
+ * Craft preloads (sensing, explicit ask, project affinity) are one-shot and
+ * still dedupe against the skills the history window already showed.
  *
  * Productivity allowlist (founder decision 2026-09-03): marketing, sales, and
  * writing-craft skills left the default chat runtime. Automatic preload is
@@ -44,6 +51,7 @@ import {
 } from './domain-sensing';
 import {
 	resolveOperationalSkillForTurn,
+	type OperationalExampleHint,
 	type OperationalSkillId
 } from './operational-skill-intent';
 
@@ -65,20 +73,21 @@ export type SkillPreloadReason =
  * Everything else — marketing, sales, writing craft, design craft — preloads
  * only on an explicit ask. Marketing skills stay registered, searchable, and
  * loadable; they just stop riding into every turn's prompt for free.
+ *
+ * Only skills a preload route can actually reach are listed: the three
+ * operational skills whose write tools are mounted on a worker surface, the
+ * two outcome-card skills, and the one single-skill domain. A skill in no
+ * domain, outcome card, or intent kind — or whose tools are on no surface —
+ * cannot fire and does not belong here (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+ * F70). skill_search / skill_load and the external gateway are unaffected.
  */
 export const PRODUCTIVITY_PRELOAD_ALLOWLIST: readonly string[] = [
 	'calendar_management',
 	'context_engineering_for_agent_work',
 	'document_workspace',
-	'google_calendar',
-	'people_context',
-	'plan_management',
 	'project_audit',
-	'project_creation',
 	'project_forecast',
-	'research_capture',
-	'task_management',
-	'task_state_updates'
+	'task_management'
 ];
 
 const PRODUCTIVITY_PRELOAD_ALLOWLIST_SET = new Set(PRODUCTIVITY_PRELOAD_ALLOWLIST);
@@ -119,6 +128,10 @@ type SkillPreloadOptions = {
 	alreadyLoadedSkillIds?: string[];
 	/** Keep false for runtimes that can consume a preload but cannot execute skill_load. */
 	allowFollowupSkillLoad?: boolean;
+	/** Worker-lane heading; defaults to a generic playbook line naming the skill. */
+	workerHeading?: string;
+	/** Worker-lane example selection; falls back to the first example. */
+	workerExampleHint?: OperationalExampleHint | null;
 };
 
 export function resolveSkillGatePreload(
@@ -202,13 +215,14 @@ export function resolveSkillPreloadById(
  * Deterministic operational preload for the reviewed worker lane: the message's
  * mutation intent picks the skill, the mounted tools decide eligibility. When a
  * craft (domain-sensing) candidate also fired, it rides along as an alternate
- * so the model can still see the other route without a second block.
+ * so the model can still see the other route without a second block. There is
+ * deliberately no already-loaded dedupe here: an operational playbook is this
+ * turn's write rules, and the prompt that carried it last turn is gone.
  */
 export function resolveOperationalSkillPreload(params: {
 	message: string | null | undefined;
 	toolNames: readonly string[];
 	craftAlternateSkillIds?: string[];
-	alreadyLoadedSkillIds?: string[];
 }): (SkillGatePreload & { skillId: OperationalSkillId }) | null {
 	const resolution = resolveOperationalSkillForTurn({
 		message: params.message,
@@ -224,8 +238,9 @@ export function resolveOperationalSkillPreload(params: {
 		alternates,
 		'operational_intent',
 		{
-			alreadyLoadedSkillIds: params.alreadyLoadedSkillIds,
-			allowFollowupSkillLoad: false
+			allowFollowupSkillLoad: false,
+			workerHeading: `Playbook for ${resolution.entityKind} writes this turn:`,
+			workerExampleHint: resolution.exampleHint
 		},
 		{ explicitAsk: false }
 	).preload;
@@ -288,7 +303,11 @@ function resolveSkillPreload(
 			payload,
 			promptContent: allowFollowupSkillLoad
 				? renderPreloadedSkillPromptContent(payload, remainingCandidates)
-				: renderWorkerPreloadedSkillPromptContent(payload, remainingCandidates),
+				: renderWorkerPreloadedSkillPromptContent(payload, remainingCandidates, {
+						heading:
+							options.workerHeading ?? `Playbook for this turn (${payload.name}):`,
+						exampleHint: options.workerExampleHint ?? null
+					}),
 			materializedToolNames: payload.materialized_tools ?? []
 		}
 	};
@@ -330,31 +349,25 @@ function renderPreloadedSkillPromptContent(
 
 /**
  * Worker-lane block: no follow-up calls exist, so this is the whole playbook
- * the model will ever see for the turn. Procedure + Policy + Contract stay,
- * the first worked example is added, an explicit `full` recommendation pulls
- * the Judgment block in, and the result is capped by characters.
+ * the model will ever see for the turn. A one-line heading, then Procedure +
+ * Policy + Contract, the worked example that matches the turn's intent, an
+ * explicit `full` recommendation pulls the Judgment block in, and the result
+ * is capped by characters.
  */
 function renderWorkerPreloadedSkillPromptContent(
 	payload: SkillHelpPayload,
-	remainingCandidates: string[]
+	remainingCandidates: string[],
+	options: { heading: string; exampleHint: OperationalExampleHint | null }
 ): string {
-	const lines: string[] = [
-		`Preloaded skill: ${payload.id} (${payload.name}) — already loaded at short format. Apply its workflow directly to this turn's work.`
-	];
+	const lines: string[] = [options.heading];
 	const judgment = resolveExplicitFullJudgmentBlock(payload.id);
 	if (judgment) {
 		lines.push('', 'Judgment:', judgment);
 	}
 	pushCoreBlocks(lines, payload);
-	const example = payload.examples?.[0];
+	const example = selectWorkerExample(payload.examples, options.exampleHint);
 	if (example) {
 		lines.push('', 'Worked example:', ...renderExampleLines(example));
-	}
-	if (payload.reference_modules?.length || payload.child_skills?.length) {
-		lines.push(
-			'',
-			'Reference modules and child skills are not loadable on this surface; apply this playbook as written and state platform-specific claims as unverified.'
-		);
 	}
 	if (remainingCandidates.length) {
 		lines.push(
@@ -383,6 +396,25 @@ function pushCoreBlocks(lines: string[], payload: SkillHelpPayload): void {
 	if (payload.output_contract) {
 		lines.push('', `Output contract: ${payload.output_contract}`);
 	}
+}
+
+/**
+ * The example whose title opens with the turn's verb (create / update /
+ * organize); otherwise the first, which the operational skills keep as the
+ * update-by-exact-id case.
+ */
+function selectWorkerExample(
+	examples: SkillExample[] | undefined,
+	hint: OperationalExampleHint | null
+): SkillExample | undefined {
+	if (!examples?.length) return undefined;
+	if (hint) {
+		const match = examples.find((example) =>
+			example.description.trim().toLowerCase().startsWith(hint)
+		);
+		if (match) return match;
+	}
+	return examples[0];
 }
 
 function renderExampleLines(example: SkillExample): string[] {

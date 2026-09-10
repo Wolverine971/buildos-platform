@@ -130,9 +130,20 @@ export default defineConfig({
 			// Exclude LLM tests - they cost money and should be run separately
 			'**/lib/tests/llm/**',
 			'**/lib/tests/llm-simple/**',
-			// Exclude the agentic e2e harness - real turns, real DB writes, real
-			// judge calls; run separately via `pnpm test:agentic` against a dev server
-			'**/lib/tests/agentic-e2e/**'
+			// Exclude only the agentic e2e suites that make real turns, real DB
+			// writes and real judge calls; those run separately via
+			// `pnpm test:agentic` against a dev server. The harness's own unit
+			// tests (assertions, scoring, seeding, the Cedar House oracle guard)
+			// are pure and belong in CI: leaving the whole tree out meant a
+			// broken oracle could only be discovered by paying for a live
+			// battery (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J7).
+			'**/lib/tests/agentic-e2e/__tests__/**',
+			'**/lib/tests/agentic-e2e/scenarios/**/*.scenario.test.ts',
+			'**/lib/tests/agentic-e2e/phase-a/phase-a-control.test.ts',
+			'**/lib/tests/agentic-e2e/phase-a/route-mode-eval.test.ts',
+			'**/lib/tests/agentic-e2e/open-brief/open-brief-control.test.ts',
+			// Playwright specs, not vitest.
+			'**/lib/tests/agentic-e2e/browser/**'
 		],
 		// Suppress console output during tests for cleaner output
 		silent: false, // Set to true to suppress all console output

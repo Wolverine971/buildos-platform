@@ -20,26 +20,32 @@ import {
 } from './streamPublisher';
 
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-// Production canaries measured long-tail final synthesis on StreamLake,
-// Sail Research, Baidu, and Alibaba. Prefer the faster observed pool, but do
-// not use `only`: this route is also cloned for the GPT-5.6-luna semantic reviewer,
-// and a cross-model provider allowlist can force an unrelated fallback model.
+// Provider preference for the acting model (DeepSeek v4 Flash), measured on
+// production passes 2026-09-04 to 09-09 (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+// F78, lane K). Per-pass p50: DeepInfra 5.3 s, Alibaba 5.3 s, StreamLake 7.3 s
+// (n=4), NextBit 7.8 s, Azure 21.5 s at 112 ms per output token and roughly
+// 1.5-4x the cheap tier's price. The previous order named DeepSeek and
+// Cloudflare, which OpenRouter no longer lists for this model, so the
+// effective policy was "Alibaba, then whatever". GMICloud ($0.091/M, 99.5%
+// uptime) never served a call under that order. StreamLake stays last until
+// its p90 holds: 2026-08-27 canaries saw long-tail final synthesis there.
+// Azure is ignored outright for the acting route; it is the endpoint the
+// snapshot-id pin (F77) kept detouring to. DigitalOcean stays outside the
+// order but is not ignored (2026-08-27: measure same-turn cache hits first).
+// Do not use `only`: an allowlist forfeits the availability the ordered
+// preference already keeps, and the semantic reviewer builds its own routing.
 // Mid-stream recovery is owned by the adapter's atomic buffered-pass retry.
-// Decision 2026-08-27: keep DigitalOcean outside the preferred order but do
-// not globally ignore it yet. The audited 18% cache-hit sample predates the
-// per-turn route pin and OpenRouter's endpoint pool is mutable; first measure
-// same-turn hits with the pin, then canary an ignore policy if misses remain.
-// A hard global ignore now would reduce availability without isolating whether
-// provider switching or a provider-internal cache miss caused the cold prefix.
 const DEFAULT_OPENROUTER_PROVIDER_POOL = Object.freeze([
 	'deepinfra',
-	'deepseek',
+	'gmicloud',
 	'alibaba',
-	'cloudflare'
+	'streamlake'
 ]);
+const DEFAULT_OPENROUTER_PROVIDER_IGNORE = Object.freeze(['azure']);
 const DEFAULT_OPENROUTER_PROVIDER_ROUTING = Object.freeze({
 	allow_fallbacks: true,
-	order: DEFAULT_OPENROUTER_PROVIDER_POOL
+	order: DEFAULT_OPENROUTER_PROVIDER_POOL,
+	ignore: DEFAULT_OPENROUTER_PROVIDER_IGNORE
 });
 
 export type AgenticChatProviderConfig = {
@@ -55,6 +61,7 @@ type AgenticChatBaseConfig = {
 	publisher: AgenticChatPublisherConfig;
 	providerBudgetMs: number;
 	maxProviderRounds: number;
+	mutationBatchLaneEnabled: boolean;
 	maxToolCalls: number;
 	maxToolConcurrency: number;
 };
@@ -129,6 +136,16 @@ export function loadAgenticChatConfig(
 		DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS,
 		'CHAT_MAX_TOOL_ROUNDS'
 	);
+	// SHA-bound batch approval replaces the turn contract DSL on the complex
+	// write path (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 Decision 1). On by
+	// default; CHAT_MUTATION_BATCH_LANE=false restores the contract lane for
+	// one deploy if the battery finds a regression. Both the flag and the
+	// contract lane are deleted once the battery confirms the new lane.
+	const mutationBatchLaneEnabled = parseBoolean(
+		environment.CHAT_MUTATION_BATCH_LANE,
+		true,
+		'CHAT_MUTATION_BATCH_LANE'
+	);
 	const maxToolCalls = parsePositiveInteger(
 		environment.CHAT_MAX_TOOL_CALLS,
 		DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
@@ -149,6 +166,7 @@ export function loadAgenticChatConfig(
 		publisher,
 		providerBudgetMs,
 		maxProviderRounds,
+		mutationBatchLaneEnabled,
 		maxToolCalls,
 		maxToolConcurrency,
 		provider: loadProviderConfig(environment)

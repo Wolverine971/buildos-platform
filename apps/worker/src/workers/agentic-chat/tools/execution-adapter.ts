@@ -61,13 +61,12 @@ export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_r
 export const REQUEST_PROPOSAL_REVISION_TOOL_NAME = 'request_proposal_revision';
 /**
  * The reviewer-only control vocabulary the worker recognizes.
- * `approve_mutation_batch_review` belongs to the retired mutation-batch review
- * lane: no request builder offers it (`review/controls.ts` builds only the
- * contract approval and the revision), so it can never be allowlisted, and
- * `buildReviewerMimicryRepairRequest` intercepts an acting model that imitates
- * it before any execution path is reached. The name stays here because that
- * repair still has to recognize it; the executor below does not, because it
- * cannot be reached.
+ * `approve_mutation_batch_review` is the approval of the SHA-bound batch lane
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 Decision 1): the reviewer binds the
+ * digest of the exact proposed calls and the worker then executes those held
+ * calls unchanged. `buildReviewerMimicryRepairRequest` still intercepts an
+ * ACTING model that imitates any of these names; only the reviewer lane can
+ * reach the runners below.
  */
 const WORKER_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
@@ -76,6 +75,7 @@ const WORKER_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
 ] as const);
 const WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
+	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 ] as const);
 export const AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1 = Object.freeze([
@@ -152,6 +152,22 @@ const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
 			contract_sha256: contractSha256,
 			instruction:
 				'The independently reviewed contract may proceed. Execute only its approved semantic outcomes.'
+		});
+	},
+	[APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME]: (args) => {
+		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
+		const batchSha256 = typeof args.batch_sha256 === 'string' ? args.batch_sha256.trim() : '';
+		if (!reason || !/^[0-9a-f]{64}$/.test(batchSha256)) {
+			throw new Error(
+				'Mutation batch review approval failed: provide a reason and the exact reviewed batch SHA-256.'
+			);
+		}
+		return Promise.resolve({
+			status: 'mutation_batch_review_approved',
+			reason,
+			batch_sha256: batchSha256,
+			instruction:
+				'The independently reviewed calls may execute exactly as reviewed. The worker runs them; do not re-propose them.'
 		});
 	},
 	[REQUEST_PROPOSAL_REVISION_TOOL_NAME]: (args) => {

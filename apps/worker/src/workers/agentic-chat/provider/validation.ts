@@ -228,7 +228,7 @@ function validateProjectCreateShellContracts(
 			}
 			if (outcome.requiredFields.length > 0 || (outcome.changes?.length ?? 0) > 0) {
 				errors.push(
-					'Invalid turn contract: The project outcome must omit required_fields and changes because the create_onto_project arguments carry the project values.'
+					'Invalid turn contract: The project outcome must omit required_fields and changes because the create_onto_project arguments carry the project values. Its label is kept without a title change, so child outcomes can still reference it with parent_label.'
 				);
 			}
 		}
@@ -240,7 +240,7 @@ function validateProjectCreateShellContracts(
  * This deterministic layer proves only identity and coarse outcome scope. It
  * deliberately does not compare required_fields with tool argument strings:
  * required_fields are postcondition evidence, while concrete tool arguments
- * are semantically adjudicated by the exact mutation-batch reviewer.
+ * are adjudicated by the contract reviewer before execution.
  */
 export function validateApprovedTurnContractMutations(
 	calls: readonly CompletedProviderToolCall[],

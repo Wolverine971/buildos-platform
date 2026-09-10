@@ -1011,6 +1011,153 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
+	it.each([
+		{
+			label: 'access denial on a guessed project id',
+			failureClass: 'permanent' as const,
+			adapterMessage: 'Project not found or access denied',
+			modelError: 'Project not found or access denied'
+		},
+		{
+			label: 'a database failure',
+			failureClass: 'unknown' as const,
+			adapterMessage: 'canceling statement due to statement timeout',
+			modelError: 'The read could not be completed.'
+		}
+	])(
+		'feeds a private read that threw ($label) back to the model instead of failing the turn',
+		async ({ failureClass, adapterMessage, modelError }) => {
+			const harness = createHarness([]);
+			harness.readTool.execute.mockRejectedValueOnce(
+				new AgenticChatProviderExecutionError(
+					'read_tool_execution_failed',
+					failureClass,
+					adapterMessage
+				)
+			);
+			const continueWithToolResults = vi.fn(
+				({ results }: AgenticChatProviderToolRoundInputV1) => {
+					expect(results).toHaveLength(1);
+					expect(results[0]).toMatchObject({
+						toolName: 'get_onto_project_details',
+						failure: {
+							kind: 'known_execution_failure',
+							error: modelError,
+							toolCategory: null,
+							modelPayload: {
+								error: modelError,
+								error_code: 'read_tool_execution_failed',
+								executed: null,
+								retryable: false,
+								instruction: expect.stringContaining('Do not repeat this call')
+							}
+						}
+					});
+					expect(JSON.stringify(results[0])).not.toContain('statement timeout');
+					return (async function* () {
+						yield {
+							type: 'text_delta',
+							text: 'I could not open that project; here is what your loaded context says.'
+						} as const;
+						yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+					})();
+				}
+			);
+			Object.assign(harness.provider, {
+				prepare: vi.fn(async () => ({
+					stream: () =>
+						(async function* () {
+							yield {
+								type: 'read_tool',
+								logicalProviderRound: 1,
+								callTransitionId: CALL_TRANSITION_ID,
+								resultTransitionId: RESULT_TRANSITION_ID,
+								providerToolCallId: 'provider-guessed-project',
+								toolName: 'get_onto_project_details',
+								arguments: { project_id: 'da000000-0000-4000-8000-0000000000aa' }
+							} as const;
+						})(),
+					continueWithToolResults,
+					release: vi.fn()
+				}))
+			});
+			try {
+				await expect(harness.executor.execute(job())).resolves.toMatchObject({
+					outcome: 'completed',
+					terminalStatus: 'completed'
+				});
+				expect(continueWithToolResults).toHaveBeenCalledOnce();
+				expect(harness.control.recover).not.toHaveBeenCalled();
+				expect(harness.toolExecutions.persistRead).not.toHaveBeenCalled();
+				expect(harness.toolExecutions.persistFailure).toHaveBeenCalledOnce();
+				expect(harness.toolExecutions.persistFailure.mock.calls[0]?.[0]).toMatchObject({
+					failureKind: 'read_failure',
+					toolName: 'get_onto_project_details',
+					error: `read_tool_execution_failed: ${modelError}`
+				});
+				expect(
+					harness.semanticInputs.filter((event) => event.event_type === 'tool_result')
+				).toEqual([
+					expect.objectContaining({
+						event_payload: {
+							type: 'tool_result',
+							result: expect.objectContaining({
+								success: false,
+								error: modelError,
+								error_code: 'read_tool_execution_failed'
+							})
+						}
+					})
+				]);
+			} finally {
+				await harness.publisher.stop();
+			}
+		}
+	);
+
+	it.each(['read_tool_not_allowlisted', 'read_tool_context_invalid'])(
+		'still fails the turn when a private read is rejected with %s',
+		async (code) => {
+			const harness = createHarness(
+				[
+					{
+						type: 'read_tool',
+						logicalProviderRound: 1,
+						callTransitionId: CALL_TRANSITION_ID,
+						resultTransitionId: RESULT_TRANSITION_ID,
+						providerToolCallId: 'provider-unknown-read',
+						toolName: 'get_onto_project_details',
+						arguments: { project_id: 'da000000-0000-4000-8000-000000000001' }
+					}
+				],
+				{
+					recovery: [
+						recoveryReceipt('finalize_failed', { failure_code: 'permanent' }),
+						recoveryReceipt('queue_reconciled', {
+							status: 'failed',
+							failure_code: code
+						})
+					]
+				}
+			);
+			harness.readTool.execute.mockRejectedValueOnce(
+				new AgenticChatProviderExecutionError(code, 'permanent', code)
+			);
+			try {
+				await expect(harness.executor.execute(job())).resolves.toMatchObject({
+					outcome: 'failed',
+					terminalStatus: 'failed'
+				});
+				expect(harness.toolExecutions.persistFailure).not.toHaveBeenCalled();
+				expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+					failureClass: 'permanent'
+				});
+			} finally {
+				await harness.publisher.stop();
+			}
+		}
+	);
+
 	it('consumes provider text without waiting for each durable delivery', async () => {
 		let releasePersistence!: () => void;
 		const persistenceGate = new Promise<void>((resolve) => {
@@ -1062,17 +1209,68 @@ describe('AgenticChatTurnExecutor', () => {
 			terminalStatus: 'completed'
 		});
 		expect(harness.promptSnapshots.persist).toHaveBeenCalledOnce();
-		expect(harness.promptSnapshots.persist).toHaveBeenCalledWith({
-			turnRunId: TURN_RUN_ID,
-			userId: USER_ID,
-			queueJobId: QUEUE_JOB_ID,
-			processingToken: PROCESSING_TOKEN,
-			executionGeneration: EXECUTION_GENERATION,
-			promptSnapshotId: createStableAgenticChatPromptSnapshotIdV1(TURN_RUN_ID),
-			prompt: fixturePromptSnapshot
-		});
+		expect(harness.promptSnapshots.persist).toHaveBeenCalledWith(
+			{
+				turnRunId: TURN_RUN_ID,
+				userId: USER_ID,
+				queueJobId: QUEUE_JOB_ID,
+				processingToken: PROCESSING_TOKEN,
+				executionGeneration: EXECUTION_GENERATION,
+				promptSnapshotId: createStableAgenticChatPromptSnapshotIdV1(TURN_RUN_ID),
+				prompt: fixturePromptSnapshot
+			},
+			expect.any(AbortSignal)
+		);
 		expect(harness.log.indexOf('prompt_snapshot')).toBeGreaterThan(
 			harness.log.indexOf('provider')
+		);
+		await harness.publisher.stop();
+	});
+
+	it('replays the buffered pass without waiting on the prompt snapshot, then joins it before finalizing', async () => {
+		const harness = createHarness([], { promptSnapshot: fixturePromptSnapshot });
+		let snapshotPersisted = false;
+		harness.promptSnapshots.persist.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					setTimeout(() => {
+						snapshotPersisted = true;
+						resolve({
+							outcome: 'persisted',
+							snapshotAvailable: true,
+							promptSnapshotId: createStableAgenticChatPromptSnapshotIdV1(TURN_RUN_ID)
+						});
+					}, 120);
+				})
+		);
+		let snapshotPersistedAtFinish: boolean | null = null;
+		(harness.provider.prepare as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => ({
+			promptSnapshot: fixturePromptSnapshot,
+			stream: () =>
+				(async function* () {
+					yield { type: 'text_delta', text: 'first ' } as const;
+					yield { type: 'text_delta', text: 'second' } as const;
+					snapshotPersistedAtFinish = snapshotPersisted;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})(),
+			release: vi.fn()
+		}));
+		let snapshotPersistedAtFinalize: boolean | null = null;
+		const finalize = harness.control.finalize.getMockImplementation()!;
+		harness.control.finalize.mockImplementation(async (input) => {
+			snapshotPersistedAtFinalize = snapshotPersisted;
+			return finalize(input);
+		});
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(snapshotPersistedAtFinish).toBe(false);
+		expect(snapshotPersistedAtFinalize).toBe(true);
+		expect(harness.promptSnapshotErrors).toEqual([]);
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({ assistantText: 'first second' })
 		);
 		await harness.publisher.stop();
 	});
@@ -1761,6 +1959,64 @@ describe('AgenticChatTurnExecutor', () => {
 			TURN_RUN_ID,
 			EXECUTION_GENERATION
 		);
+		await harness.publisher.stop();
+	});
+
+	it('keeps tool observations off the critical path and joins them before the terminal fence', async () => {
+		const harness = createHarness([
+			{
+				type: 'read_tool',
+				logicalProviderRound: 1,
+				callTransitionId: CALL_TRANSITION_ID,
+				resultTransitionId: RESULT_TRANSITION_ID,
+				providerToolCallId: 'provider-call-1',
+				toolName: 'fixture_project_read',
+				arguments: { projectId: 'project-1' }
+			},
+			{ type: 'text_delta', text: 'done' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		let settledObservations = 0;
+		harness.executionObservations.observe.mockImplementation(async (observation) => {
+			harness.executionObservationInputs.push(observation);
+			await new Promise((resolve) => setTimeout(resolve, 60));
+			settledObservations += 1;
+		});
+		let settledWhenReadRan = -1;
+		let observationsStartedWhenReadRan = -1;
+		harness.readTool.execute.mockImplementationOnce(async () => {
+			settledWhenReadRan = settledObservations;
+			observationsStartedWhenReadRan = harness.executionObservationInputs.length;
+			return {
+				result: { title: 'Fixture project' },
+				executionTimeMs: null,
+				tokensConsumed: null,
+				affectedEntities: [],
+				toolCategory: null,
+				resultCount: null,
+				zeroResult: null,
+				requiresUserAction: null
+			};
+		});
+		let settledAtFinalize = -1;
+		const finalize = harness.control.finalize.getMockImplementation()!;
+		harness.control.finalize.mockImplementation(async (input) => {
+			settledAtFinalize = settledObservations;
+			return finalize(input);
+		});
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		// The `started` row was issued before the read ran but the read did not wait for it.
+		expect(observationsStartedWhenReadRan).toBe(1);
+		expect(settledWhenReadRan).toBe(0);
+		// Both rows landed before terminal truth was written.
+		expect(
+			harness.executionObservationInputs.map((observation) => observation.eventType)
+		).toEqual(['tool_execution_started', 'tool_execution_ended']);
+		expect(settledAtFinalize).toBe(2);
 		await harness.publisher.stop();
 	});
 
@@ -5003,8 +5259,177 @@ describe('AgenticChatTurnExecutor', () => {
 			});
 			expect(terminalInput.assistantText).toContain('Done: 1 of 2 moves.');
 			expect(terminalInput.assistantText).toContain('Not yet moved: Task B.');
+			expect(terminalInput.assistantMetadata).toMatchObject({
+				partial_failure_class: 'timeout_post_start',
+				partial_failure_code: 'provider_budget_exhausted'
+			});
 			expect(typedExecutionFailureLog(processingJob)).toMatchObject({
 				failure_class: 'timeout_post_start',
+				execution_started: true
+			});
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it.each([
+		{
+			label: 'a permanent provider stream failure',
+			error: () =>
+				new AgenticChatProviderExecutionError(
+					'provider_stream_failed',
+					'permanent',
+					'Provider stream failed after retry'
+				),
+			failureClass: 'permanent',
+			failureCode: 'provider_stream_failed'
+		},
+		{
+			label: 'a transient provider failure',
+			error: () =>
+				new AgenticChatProviderExecutionError(
+					'provider_unavailable',
+					'transient_infra',
+					'Provider unavailable after retry'
+				),
+			failureClass: 'transient_infra',
+			failureCode: 'provider_unavailable'
+		}
+	])(
+		'completes with the partial disclosure when $label follows a durable write',
+		async ({ error, failureClass, failureCode }) => {
+			const harness = createHarness([]);
+			const targets = [MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!];
+			installMoveContractFixture(harness, targets, [targets[0]!], []);
+			const prepare = harness.provider.prepare as ReturnType<typeof vi.fn>;
+			const prepared = prepare.getMockImplementation()!;
+			prepare.mockImplementation(async (...args: unknown[]) => ({
+				...(await prepared(...args)),
+				// Round 2 never opens: the provider fails after the first move committed.
+				continueWithToolResults: vi.fn(() => {
+					throw error();
+				})
+			}));
+			const processingJob = job();
+
+			try {
+				await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+					outcome: 'completed',
+					terminalStatus: 'completed',
+					queueReconciled: true
+				});
+				expect(harness.control.recover).not.toHaveBeenCalled();
+				const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+				if (!terminalInput) throw new Error('Partial failure fixture did not finalize');
+				expect(terminalInput).toMatchObject({
+					status: 'completed',
+					finishedReason: 'mutation_unfulfilled',
+					failureCode: null,
+					publicError: null,
+					assistantMetadata: expect.objectContaining({
+						outcome_status: 'unfulfilled',
+						partial_failure_class: failureClass,
+						partial_failure_code: failureCode
+					}),
+					eventPayload: expect.objectContaining({
+						status: 'completed',
+						finished_reason: 'mutation_unfulfilled'
+					})
+				});
+				expect(terminalInput.assistantText).toContain('Done: 1 of 2 moves.');
+				expect(terminalInput.assistantText).toContain('Not yet moved: Task B.');
+				expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+					execution_error_code: failureCode,
+					failure_class: failureClass,
+					execution_started: true
+				});
+			} finally {
+				await harness.publisher.stop();
+			}
+		}
+	);
+
+	it('keeps the failure path when a stale-context fence is lost after a durable write', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'stale_context' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'stale_context'
+				})
+			]
+		});
+		const targets = [MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!];
+		installMoveContractFixture(harness, targets, [targets[0]!], []);
+		const prepare = harness.provider.prepare as ReturnType<typeof vi.fn>;
+		const prepared = prepare.getMockImplementation()!;
+		prepare.mockImplementation(async (...args: unknown[]) => ({
+			...(await prepared(...args)),
+			continueWithToolResults: vi.fn(() => {
+				throw new AgenticChatProviderExecutionError(
+					'provider_context_stale',
+					'stale_context',
+					'Prepared context is stale'
+				);
+			})
+		}));
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed'
+			});
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				failureClass: 'stale_context'
+			});
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'failed' })
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('keeps the failure path when a committed mutation receipt cannot be persisted after a durable write', async () => {
+		// Review of AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F56: the second move
+		// committed at the gateway but its chat_tool_executions row timed out.
+		// The partial-completion lane must not report that move as not done.
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'transient_infra' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'transient_infra'
+				})
+			]
+		});
+		const targets = [MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!];
+		// Both moves execute; the first persists, the second commits at the
+		// gateway and then its receipt row times out.
+		installMoveContractFixture(harness, targets, targets, []);
+		const secondEffectId = MOVE_STEP_TRANSITIONS[1]![3];
+		harness.toolExecutions.persistMutation.mockImplementation(async (input) => {
+			if (input.effectId === secondEffectId) {
+				throw new AgenticChatToolExecutionTimeoutError(10);
+			}
+		});
+		const processingJob = job();
+
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed'
+			});
+			expect(harness.mutation.execute).toHaveBeenCalledTimes(2);
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				failureClass: 'transient_infra'
+			});
+			for (const [terminalInput] of harness.control.finalize.mock.calls) {
+				expect(terminalInput.status).not.toBe('completed');
+				expect(terminalInput.assistantText ?? '').not.toContain('Not yet moved');
+			}
+			expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+				failure_class: 'transient_infra',
 				execution_started: true
 			});
 		} finally {

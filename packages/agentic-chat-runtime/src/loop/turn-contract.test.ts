@@ -5,6 +5,7 @@ import type { FastToolExecution } from './shared';
 import {
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
 	buildFastChatPendingTurnContract,
+	buildPendingTurnContractSystemMessage,
 	deriveImplicitTurnContract,
 	executeCancelTurnContract,
 	executeAgenticChatStandardControlToolV1,
@@ -12,6 +13,7 @@ import {
 	executeDeclareTurnContract,
 	executeRequestTurnClarification,
 	extractDeclaredTurnContract,
+	isPendingTurnContractSystemMessage,
 	mergeTurnContracts,
 	describeDeclaredTurnContractIssues,
 	parseDeclaredTurnContract,
@@ -265,6 +267,7 @@ describe('semantic turn contracts', () => {
 		});
 		if (!contract) throw new Error('Expected a valid goal contract');
 
+		// project_id is scope, not a field (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F07).
 		expect(serializeTurnContractForDeclaration(contract)).toEqual({
 			outcomes: [
 				{
@@ -272,7 +275,7 @@ describe('semantic turn contracts', () => {
 					action: 'create',
 					entity_kind: 'goal',
 					target_ids: [],
-					required_fields: ['name', 'project_id', 'target_date'],
+					required_fields: ['name', 'target_date'],
 					changes: [
 						{ field: 'name', value: 'Publish the first three episodes' },
 						{ field: 'target_date', value: '2026-09-15' }
@@ -281,6 +284,65 @@ describe('semantic turn contracts', () => {
 				}
 			]
 		});
+	});
+
+	it.each([
+		['create', 'task', { required_fields: ['title', 'project_id'] }],
+		['create', 'document', { required_fields: ['project_id'] }],
+		[
+			'update',
+			'task',
+			{
+				target_ids: ['41000000-0000-4000-8000-000000000041'],
+				required_fields: ['due_at', 'projectId'],
+				changes: [{ field: 'project_id', value: '51000000-0000-4000-8000-000000000051' }]
+			}
+		]
+	] as const)(
+		'drops project_id from required_fields and changes on a %s %s and says so',
+		(action, entityKind, overrides) => {
+			const args = {
+				outcomes: [
+					{ action, entity_kind: entityKind, minimum_successful_effects: 1, ...overrides }
+				]
+			};
+			expect(describeDeclaredTurnContractIssues(args)).toEqual([]);
+			const notes: string[] = [];
+			const contract = parseDeclaredTurnContract(args, undefined, notes);
+			expect(contract?.outcomes[0]?.requiredFields).not.toContain('project_id');
+			expect(contract?.outcomes[0]?.changes ?? []).not.toContainEqual(
+				expect.objectContaining({ field: 'project_id' })
+			);
+			expect(notes).toEqual([expect.stringContaining('project_id was dropped')]);
+			const declared = executeAgenticChatStandardControlToolV1({
+				toolName: 'declare_turn_contract',
+				arguments: args
+			});
+			expect(declared.success).toBe(true);
+			expect(declared.result).toMatchObject({
+				status: 'declared',
+				normalization_notes: [expect.stringContaining('project_id was dropped')]
+			});
+		}
+	);
+
+	it('reports no normalization notes on a clean declaration', () => {
+		const declared = executeAgenticChatStandardControlToolV1({
+			toolName: 'declare_turn_contract',
+			arguments: {
+				outcomes: [
+					{
+						action: 'update',
+						entity_kind: 'task',
+						target_ids: ['41000000-0000-4000-8000-000000000041'],
+						changes: [{ field: 'due_at', value: '2026-09-22' }],
+						minimum_successful_effects: 1
+					}
+				]
+			}
+		});
+		expect(declared.success).toBe(true);
+		expect(declared.result).not.toHaveProperty('normalization_notes');
 	});
 
 	it.each(['name', 'title'])(
@@ -318,12 +380,64 @@ describe('semantic turn contracts', () => {
 		}
 	);
 
-	it('still rejects a labelled goal without its declared name', () => {
-		expect(
-			parseDeclaredTurnContract({
-				outcomes: [{ action: 'create', entity_kind: 'goal', label: 'launch' }]
-			})
-		).toBeNull();
+	it('drops the label from a labelled goal without its declared name instead of rejecting it', () => {
+		const notes: string[] = [];
+		const contract = parseDeclaredTurnContract(
+			{ outcomes: [{ action: 'create', entity_kind: 'goal', label: 'launch' }] },
+			undefined,
+			notes
+		);
+		expect(contract?.outcomes[0]).toMatchObject({ action: 'create', entityKind: 'goal' });
+		expect(contract?.outcomes[0]).not.toHaveProperty('label');
+		expect(notes).toEqual([expect.stringContaining('must declare its name in changes')]);
+	});
+
+	// The shell validator rejects any project outcome that carries changes, so
+	// the generic "declare its title in changes" note told the model to do the
+	// one thing that guarantees rejection. Cases 1 and 2 of the 2026-09-10
+	// browser rerun oscillated between the two rules until the repair budget
+	// ran out and no project was ever created. The note must never ask for a
+	// change on a project outcome.
+	it('drops a labelled project create without asking for a title change', () => {
+		const notes: string[] = [];
+		const contract = parseDeclaredTurnContract(
+			{
+				outcomes: [
+					{
+						action: 'create',
+						entity_kind: 'project',
+						label: 'cedar',
+						minimum_successful_effects: 1
+					}
+				]
+			},
+			undefined,
+			notes
+		);
+		expect(contract?.outcomes[0]).toMatchObject({
+			action: 'create',
+			entityKind: 'project'
+		});
+		expect(contract?.outcomes[0]).not.toHaveProperty('label');
+		expect(notes).toHaveLength(1);
+		expect(notes[0]).toContain('cannot be referenced by another outcome');
+		// The contradiction itself: never tell a project outcome to add changes.
+		expect(notes[0]).not.toContain('in changes');
+	});
+
+	it('leaves a project outcome with no changes for the shell validator', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'project',
+					label: 'cedar',
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		expect(contract?.outcomes[0]?.changes ?? []).toEqual([]);
+		expect(contract?.outcomes[0]?.requiredFields ?? []).toEqual([]);
 	});
 
 	it('reports the canonical name field for an unbound labelled goal', () => {
@@ -546,18 +660,13 @@ describe('semantic turn contracts', () => {
 		expect(ledger[0]?.changedValues).not.toHaveProperty('merge_instructions');
 	});
 
-	it('publishes a labelled-goal example accepted by the semantic validator', () => {
-		const definition = AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1.find(
-			(tool) => tool.function.name === 'declare_turn_contract'
-		)!;
-		const schema = definition.function.parameters.properties.outcomes as {
-			items: { properties: { label: { description: string } } };
-		};
-		const example = schema.items.properties.label.description.split(
-			'Example labelled goal outcome: '
-		)[1];
-		expect(example).toBeDefined();
-		const contract = parseDeclaredTurnContract({ outcomes: [JSON.parse(example!)] });
+	it('accepts the canonical labelled-goal outcome shape', () => {
+		// This was the worked example in the label description; the schema
+		// prose no longer needs to carry it (audit 2026-09-08 F06), the shape
+		// it taught still has to parse.
+		const example =
+			'{"action":"create","entity_kind":"goal","minimum_successful_effects":1,"label":"launch","changes":[{"field":"name","value":"Publish three episodes"}]}';
+		const contract = parseDeclaredTurnContract({ outcomes: [JSON.parse(example)] });
 		expect(contract).toMatchObject({
 			outcomes: [
 				{
@@ -1970,7 +2079,132 @@ describe('turn contract symbolic references (label / parent_label)', () => {
 		});
 	});
 
-	it('rejects a labelled create that is not single-effect or has no declared title', () => {
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F06: labels the action cannot consume
+	// are normalized away with a note, the way reviewer corrections already were.
+	it.each([
+		{
+			name: 'a labelled create that is not single-effect',
+			outcome: {
+				action: 'create',
+				entity_kind: 'document',
+				label: 'folders',
+				changes: [{ field: 'title', value: 'Folders' }],
+				minimum_successful_effects: 3
+			},
+			note: 'minimum_successful_effects is 3'
+		},
+		{
+			name: 'a labelled create with no declared title',
+			outcome: {
+				action: 'create',
+				entity_kind: 'document',
+				label: 'folder',
+				minimum_successful_effects: 1
+			},
+			note: 'must declare its title in changes'
+		},
+		{
+			name: 'a label on an update',
+			outcome: {
+				action: 'update',
+				entity_kind: 'task',
+				label: 'nope',
+				target_ids: [DOC_A],
+				minimum_successful_effects: 1
+			},
+			note: 'label was dropped: it is only meaningful on a create outcome'
+		},
+		{
+			name: 'a placeholder label on an update',
+			outcome: {
+				action: 'update',
+				entity_kind: 'task',
+				label: 'N/A',
+				target_ids: [DOC_A],
+				minimum_successful_effects: 1
+			},
+			note: 'label was dropped'
+		},
+		{
+			name: 'a parent_label on an update',
+			outcome: {
+				action: 'update',
+				entity_kind: 'document',
+				parent_label: 'folder',
+				target_ids: [DOC_A],
+				required_fields: ['content'],
+				minimum_successful_effects: 1
+			},
+			note: 'parent_label was dropped'
+		},
+		{
+			name: 'endpoint labels on a create',
+			outcome: {
+				action: 'create',
+				entity_kind: 'task',
+				src_label: 'a',
+				dst_label: 'b',
+				changes: [{ field: 'title', value: 'Order cabinets' }],
+				minimum_successful_effects: 1
+			},
+			note: 'src_label and dst_label were dropped'
+		}
+	])('drops the label with a note instead of rejecting $name', ({ outcome, note }) => {
+		const args = { outcomes: [outcome] };
+		expect(describeDeclaredTurnContractIssues(args)).toEqual([]);
+		const notes: string[] = [];
+		const contract = parseDeclaredTurnContract(args, undefined, notes);
+		expect(contract).not.toBeNull();
+		for (const field of ['label', 'parentLabel', 'srcLabel', 'dstLabel']) {
+			expect(contract?.outcomes[0]).not.toHaveProperty(field);
+		}
+		expect(contract?.outcomes[0]?.requiredFields ?? []).not.toContain('parent_id');
+		expect(notes).toEqual([expect.stringContaining(note)]);
+	});
+
+	it.each([null, ''])('treats a %j label as unused without a note', (label) => {
+		const notes: string[] = [];
+		const contract = parseDeclaredTurnContract(
+			{
+				outcomes: [
+					{
+						action: 'create',
+						entity_kind: 'task',
+						label,
+						changes: [{ field: 'title', value: 'Order cabinets' }],
+						minimum_successful_effects: 1
+					}
+				]
+			},
+			undefined,
+			notes
+		);
+		expect(contract?.outcomes[0]).not.toHaveProperty('label');
+		expect(notes).toEqual([]);
+	});
+
+	it('still rejects a malformed label on a create', () => {
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [
+					{
+						action: 'create',
+						entity_kind: 'document',
+						label: 'Meeting Notes',
+						changes: [{ field: 'title', value: 'Meeting Notes' }],
+						minimum_successful_effects: 1
+					}
+				]
+			})
+		).toEqual([expect.stringContaining('label "meeting notes" must match')]);
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [{ action: 'create', entity_kind: 'document', label: 7 }]
+			})
+		).toEqual([expect.stringContaining('label must be a non-empty string')]);
+	});
+
+	it('explains a dangling parent_label caused by a dropped label', () => {
 		expect(
 			describeDeclaredTurnContractIssues({
 				outcomes: [
@@ -1980,35 +2214,20 @@ describe('turn contract symbolic references (label / parent_label)', () => {
 						label: 'folders',
 						changes: [{ field: 'title', value: 'Folders' }],
 						minimum_successful_effects: 3
-					}
-				]
-			})
-		).toEqual([expect.stringContaining('minimum_successful_effects must be 1 (received 3)')]);
-		expect(
-			describeDeclaredTurnContractIssues({
-				outcomes: [
+					},
 					{
-						action: 'create',
+						action: 'move',
 						entity_kind: 'document',
-						label: 'folder',
-						minimum_successful_effects: 1
-					}
-				]
-			})
-		).toEqual([expect.stringContaining('must declare its title in changes')]);
-		expect(
-			describeDeclaredTurnContractIssues({
-				outcomes: [
-					{
-						action: 'update',
-						entity_kind: 'task',
-						label: 'nope',
 						target_ids: [DOC_A],
+						parent_label: 'folders',
 						minimum_successful_effects: 1
 					}
 				]
 			})
-		).toEqual([expect.stringContaining('label is only meaningful on a create outcome')]);
+		).toEqual([
+			expect.stringContaining('does not match the label of any create outcome'),
+			expect.stringContaining('label "folders" was dropped')
+		]);
 	});
 
 	it('rejects a parent_label that resolves to nothing, a duplicate label, and two destinations for one document', () => {
@@ -2187,5 +2406,26 @@ describe('turn contract symbolic references (label / parent_label)', () => {
 		expect(pending?.contract.outcomes[0]).not.toHaveProperty('parentLabel');
 		expect(pending?.contract.outcomes[0]?.requiredFields).toContain('parent_id');
 		expect(readFastChatPendingTurnContract(pending)).not.toBeNull();
+	});
+
+	it('recognizes its own pending-contract system message and nothing else', () => {
+		const contract = organizeContract();
+		const resolution = resolveTurnContractOutcome({ contract, toolExecutions: [] });
+		const pending = buildFastChatPendingTurnContract({
+			resolution,
+			contextType: 'project',
+			projectId: 'p'
+		});
+		const message = buildPendingTurnContractSystemMessage(pending);
+		expect(message).not.toBeNull();
+		expect(isPendingTurnContractSystemMessage(message!)).toBe(true);
+		expect(isPendingTurnContractSystemMessage(`\n${message!}`)).toBe(true);
+		expect(isPendingTurnContractSystemMessage('Worker write routing: classify')).toBe(false);
+		expect(
+			isPendingTurnContractSystemMessage(
+				'If the user cancels, call cancel_turn_contract. <pending_turn_contract>'
+			)
+		).toBe(false);
+		expect(buildPendingTurnContractSystemMessage(null)).toBeNull();
 	});
 });

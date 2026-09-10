@@ -269,7 +269,23 @@ describe('total assembled prompt size budget', () => {
 		// never made"). +718 chars of template; tool schemas grew 9,333 → 9,709
 		// tokens from the priority/props/dependency descriptions in the same lane.
 		// Measured canonical system prompt 12,237 chars; cap at measured + ~5%.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_850);
+		//
+		// RE-BASELINED 2026-09-10 (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08, WP-A1
+		// prompt-and-context lane). Template: the loaded-context JSON index and
+		// its ~750 chars of count/scope metadata became one completeness sentence
+		// plus work-item lines with ids (F114); the Start Here preamble lost its
+		// second "untrusted" sentence (F18); the reviewed-shell project_create
+		// workflow went ten lines to four (F11); situational rules no longer
+		// render on every turn (F01, not in this canonical). Measured canonical
+		// system prompt 11,261 chars (was 12,780 on this branch before the lane;
+		// the canonical carries three open tasks, so the work lines cost less
+		// than the index they replace); cap at measured + ~5%.
+		// Tool schemas grew 9,709 → 10,410 tokens from the audit's Lane B
+		// description fixes landing in the same window (F29/F33/F35: list_onto_tasks
+		// now says what its payload carries, task type_key names its taxonomy);
+		// the per-turn schema cap follows at measured + ~2.5%. Payload caps hold
+		// (52,958 chars / 13,240 est tokens measured) and stay where they were.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(11_800);
 		// Postdeploy 2026-09-04: add the executable relationship tool and explicit
 		// endpoint references, plus the nested estimate schema. Keep the system
 		// prose cap unchanged; the worker defers the contract from opening passes.
@@ -278,7 +294,7 @@ describe('total assembled prompt size budget', () => {
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
 		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(41_250);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(31_200);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(32_000);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		// 2026-09-05: declare_turn_contract now includes directed relationship

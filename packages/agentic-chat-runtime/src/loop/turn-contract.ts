@@ -417,6 +417,14 @@ function readChanges(value: unknown): ParsedChanges | null {
 type TurnContractIssueSink = { push(issue: string): void } | undefined;
 
 /**
+ * Collects what normalization silently discarded (a label the declared action
+ * cannot consume, a scope id in required_fields). A note never rejects the
+ * outcome; it rides the declared result so the model sees what was kept, and
+ * joins the rejection issues when a later check still fails the contract.
+ */
+type TurnContractNoteSink = TurnContractIssueSink;
+
+/**
  * Echoes a rejected value back to the model so it can see what it sent, bounded
  * because the value is model-controlled and the message travels into the repair
  * prompt, `chat_tool_executions.error_message`, and the activity log. Every
@@ -443,10 +451,28 @@ function rejectOutcome(issues: TurnContractIssueSink, index: number, reason: str
 	return null;
 }
 
+function noteOutcome(notes: TurnContractNoteSink, index: number, note: string): void {
+	notes?.push(`Outcome ${index + 1}: ${note}`);
+}
+
+/** A symbolic field the model actually filled in: null and blank mean "unused". */
+function declaresLabelField(record: UnknownRecord, ...names: string[]): boolean {
+	return names.some((name) => {
+		const value = record[name];
+		return (
+			value !== undefined && value !== null && !(typeof value === 'string' && !value.trim())
+		);
+	});
+}
+
+/** Project membership is execution scope, never a changed field (see normalizeOutcome). */
+const SCOPE_FIELD = 'project_id';
+
 function normalizeOutcome(
 	value: unknown,
 	index: number,
-	issues?: TurnContractIssueSink
+	issues?: TurnContractIssueSink,
+	notes?: TurnContractNoteSink
 ): TurnContractOutcome | null {
 	const record = asRecord(value);
 	if (!record) {
@@ -494,25 +520,40 @@ function normalizeOutcome(
 			`changes must be an array of at most ${MAX_CHANGES_PER_OUTCOME} objects, each with a non-empty "field" and a string, number, boolean, or null "value".`
 		);
 	}
-	const changes = normalizeOutcomeChanges(parsedChanges.changes, entityKind);
+	const declaredChanges = normalizeOutcomeChanges(parsedChanges.changes, entityKind);
 	// A create has no durable entity id until after it executes. Models sometimes
 	// put the containing project id in target_ids, but target_ids means existing
 	// entity ids and would make both pre-execution authorization and completion
 	// impossible. Exact parent/project scope remains protected by the independently
 	// reviewed mutation batch.
 	const targetIds = action === 'create' ? [] : parsedTargetIds;
+	// The same models put that project id in required_fields or changes, but no
+	// write tool reports project_id as a changed field, so the outcome could never
+	// be fulfilled and the worker rejected it instead (3 of 10 production
+	// rejections, AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F07). Scope is dropped the
+	// way target_ids is dropped on a create; membership stays protected by the
+	// reviewed mutation batch.
+	const changes = declaredChanges.filter((change) => change.field !== SCOPE_FIELD);
 	// A declared change is a postcondition: the field must actually be written on
 	// each counted target, so it joins required_fields for fulfillment. Prose
 	// changes join only as postconditions (their text is not a contract value).
-	const requiredFields = Array.from(
+	const declaredRequiredFields = Array.from(
 		new Set([
 			...parsedRequiredFields.map((field) => normalizeOutcomeFieldName(field, entityKind)),
 			...parsedChanges.postconditions.map((field) =>
 				normalizeOutcomeFieldName(field, entityKind)
 			),
-			...changes.map((change) => change.field)
+			...declaredChanges.map((change) => change.field)
 		])
 	);
+	const requiredFields = declaredRequiredFields.filter((field) => field !== SCOPE_FIELD);
+	if (requiredFields.length !== declaredRequiredFields.length) {
+		noteOutcome(
+			notes,
+			index,
+			`${SCOPE_FIELD} was dropped from required_fields and changes: project membership is execution scope, not a changed field.`
+		);
+	}
 	const minimumSuccessfulEffects = readPositiveInteger(
 		record.minimum_successful_effects ?? record.minimumSuccessfulEffects,
 		Math.max(1, targetIds.length)
@@ -533,31 +574,53 @@ function normalizeOutcome(
 				`Either set minimum_successful_effects to at most ${targetIds.length}, or list every target this outcome must change in target_ids.`
 		);
 	}
-	// Symbolic references: a labelled create names exactly one entity, so it
-	// must be a single-effect outcome whose title is declared (the binding key).
-	const label = readLabel(record.label);
-	const parentLabel = readLabel(record.parent_label ?? record.parentLabel);
-	const srcLabel = readLabel(record.src_label ?? record.srcLabel);
-	const dstLabel = readLabel(record.dst_label ?? record.dstLabel);
+	// Symbolic references. A label the declared action can never consume (label
+	// off a create, parent_label off a move/organize, endpoint labels off a
+	// relationship link) is a decoration with no user semantics: drop it with a
+	// note rather than reject the outcome, as reviewer corrections already are
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F06). A labelled create names
+	// exactly one entity, so it must be a single-effect outcome whose title is
+	// declared (the binding key); a create that is not gets its label dropped too.
+	const linksRelationship = action === 'link' && entityKind === 'relationship';
+	const movesEntity = action === 'move' || action === 'organize';
+	let label = action === 'create' ? readLabel(record.label) : undefined;
+	if (action !== 'create' && declaresLabelField(record, 'label')) {
+		noteOutcome(notes, index, 'label was dropped: it is only meaningful on a create outcome.');
+	}
+	const parentLabel = movesEntity
+		? readLabel(record.parent_label ?? record.parentLabel)
+		: undefined;
+	if (!movesEntity && declaresLabelField(record, 'parent_label', 'parentLabel')) {
+		noteOutcome(
+			notes,
+			index,
+			'parent_label was dropped: it is only meaningful on a move or organize outcome.'
+		);
+	}
+	const srcLabel = linksRelationship ? readLabel(record.src_label ?? record.srcLabel) : undefined;
+	const dstLabel = linksRelationship ? readLabel(record.dst_label ?? record.dstLabel) : undefined;
+	if (
+		!linksRelationship &&
+		declaresLabelField(record, 'src_label', 'srcLabel', 'dst_label', 'dstLabel')
+	) {
+		noteOutcome(
+			notes,
+			index,
+			'src_label and dst_label were dropped: they are only meaningful on a relationship link outcome.'
+		);
+	}
 	for (const [field, endpointLabel] of [
 		['src', srcLabel],
 		['dst', dstLabel]
 	] as const) {
-		const raw = record[`${field}_label`] ?? record[`${field}Label`];
+		if (!linksRelationship) break;
 		if (
-			raw !== undefined &&
-			raw !== null &&
+			declaresLabelField(record, `${field}_label`, `${field}Label`) &&
 			(!endpointLabel || !TURN_CONTRACT_LABEL_PATTERN.test(endpointLabel))
 		) {
 			return rejectOutcome(issues, index, `${field}_label must be a valid create label.`);
 		}
-		if (
-			endpointLabel &&
-			(action !== 'link' ||
-				entityKind !== 'relationship' ||
-				minimumSuccessfulEffects !== 1 ||
-				targetIds.length > 0)
-		) {
+		if (endpointLabel && (minimumSuccessfulEffects !== 1 || targetIds.length > 0)) {
 			return rejectOutcome(
 				issues,
 				index,
@@ -590,7 +653,7 @@ function normalizeOutcome(
 		if (srcLabel && srcLabel === dstLabel)
 			return rejectOutcome(issues, index, 'A relationship cannot link a label to itself.');
 	}
-	if (record.label !== undefined && record.label !== null && !label) {
+	if (action === 'create' && declaresLabelField(record, 'label') && !label) {
 		return rejectOutcome(issues, index, 'label must be a non-empty string.');
 	}
 	if (label !== undefined) {
@@ -601,44 +664,46 @@ function normalizeOutcome(
 				`label ${JSON.stringify(label)} must match ${TURN_CONTRACT_LABEL_PATTERN.source} (lowercase letters, digits, "_" or "-", at most 40 characters).`
 			);
 		}
-		if (action !== 'create') {
-			return rejectOutcome(
-				issues,
-				index,
-				'label is only meaningful on a create outcome; other outcomes reference a created entity through parent_label.'
-			);
-		}
-		if (minimumSuccessfulEffects !== 1) {
-			return rejectOutcome(
-				issues,
-				index,
-				`a labelled create outcome names exactly one entity, so minimum_successful_effects must be 1 (received ${minimumSuccessfulEffects}). Split into one labelled create outcome per entity.`
-			);
-		}
 		const titleField = normalizeOutcomeFieldName('title', entityKind);
-		if (!changes.some((change) => change.field === titleField)) {
-			return rejectOutcome(
-				issues,
+		if (minimumSuccessfulEffects !== 1) {
+			noteOutcome(
+				notes,
 				index,
-				`a labelled create outcome must declare its ${titleField} in changes, e.g. [{"field":"${titleField}","value":"Meeting notes"}]; the name is how the created entity is bound to the label.`
+				`label ${JSON.stringify(label)} was dropped: a labelled create names exactly one entity, but minimum_successful_effects is ${minimumSuccessfulEffects}. Split into one labelled create outcome per entity if a later outcome must reference it.`
 			);
+			label = undefined;
+		} else if (entityKind === 'project') {
+			// A project label is unreferenceable: endpoint labels must name a
+			// non-project create and parent_label binds a document parent, so
+			// nothing in a contract can consume it. It is a decoration, and the
+			// generic title note below was actively harmful here — a project
+			// outcome may not carry changes at all (the shell validator requires
+			// them empty because create_onto_project's own arguments carry the
+			// values), so the note told the model to do the one thing that
+			// guarantees rejection. Cases 1 and 2 of the 2026-09-10 browser
+			// rerun oscillated between the two rules until the repair budget ran
+			// out and no project was ever created.
+			noteOutcome(
+				notes,
+				index,
+				`label ${JSON.stringify(label)} was dropped: a project outcome's label cannot be referenced by another outcome, and a project outcome carries no changes. Create the project first, then create its records with their own creation tools using the returned project id.`
+			);
+			label = undefined;
+		} else if (!changes.some((change) => change.field === titleField)) {
+			noteOutcome(
+				notes,
+				index,
+				`label ${JSON.stringify(label)} was dropped: a labelled create must declare its ${titleField} in changes, e.g. [{"field":"${titleField}","value":"Meeting notes"}]; the name is how the created entity is bound to the label.`
+			);
+			label = undefined;
 		}
 	}
-	if (parentLabel !== undefined) {
-		if (!TURN_CONTRACT_LABEL_PATTERN.test(parentLabel)) {
-			return rejectOutcome(
-				issues,
-				index,
-				`parent_label ${JSON.stringify(parentLabel)} must match ${TURN_CONTRACT_LABEL_PATTERN.source}.`
-			);
-		}
-		if (action !== 'move' && action !== 'organize') {
-			return rejectOutcome(
-				issues,
-				index,
-				'parent_label is only meaningful on a move or organize outcome.'
-			);
-		}
+	if (parentLabel !== undefined && !TURN_CONTRACT_LABEL_PATTERN.test(parentLabel)) {
+		return rejectOutcome(
+			issues,
+			index,
+			`parent_label ${JSON.stringify(parentLabel)} must match ${TURN_CONTRACT_LABEL_PATTERN.source}.`
+		);
 	}
 	return {
 		id: readString(record.id, 80) ?? `outcome_${index + 1}`,
@@ -723,7 +788,8 @@ function describeContractReferenceIssues(outcomes: TurnContractOutcome[]): strin
 
 export function parseDeclaredTurnContract(
 	value: unknown,
-	issues?: TurnContractIssueSink
+	issues?: TurnContractIssueSink,
+	notes?: TurnContractNoteSink
 ): TurnContract | null {
 	const record = asRecord(value);
 	if (!record) {
@@ -738,7 +804,7 @@ export function parseDeclaredTurnContract(
 		return null;
 	}
 	const outcomes = rawOutcomes
-		.map((outcome, index) => normalizeOutcome(outcome, index, issues))
+		.map((outcome, index) => normalizeOutcome(outcome, index, issues, notes))
 		.filter((outcome): outcome is TurnContractOutcome => Boolean(outcome));
 	if (outcomes.length !== rawOutcomes.length) return null;
 	const referenceIssues = describeContractReferenceIssues(outcomes);
@@ -761,9 +827,10 @@ export function parseDeclaredTurnContract(
  * model which property to change rather than repeating the whole rule set.
  */
 export function describeDeclaredTurnContractIssues(value: unknown): string[] {
-	const issues: string[] = [];
-	if (parseDeclaredTurnContract(value, issues)) return [];
-	if (issues.length === 0) {
+	const rejections: string[] = [];
+	const notes: string[] = [];
+	if (parseDeclaredTurnContract(value, rejections, notes)) return [];
+	if (rejections.length === 0) {
 		return [
 			'Every outcome must use a supported action and entity kind, valid target/field arrays, and minimum_successful_effects from 1 to 100.'
 		];
@@ -772,10 +839,14 @@ export function describeDeclaredTurnContractIssues(value: unknown): string[] {
 	// wrong. Repairing the first few is what unblocks the turn, and the whole
 	// list travels into the repair prompt, so cap what is echoed rather than
 	// spending the next pass's budget restating the same mistake 20 times.
-	if (issues.length <= MAX_REPORTED_CONTRACT_ISSUES) return issues;
-	const remaining = issues.length - MAX_REPORTED_CONTRACT_ISSUES;
+	// A dropped label can be why a later reference dangles, so the notes ride
+	// along after the rejections in whatever room the cap leaves.
+	if (rejections.length <= MAX_REPORTED_CONTRACT_ISSUES) {
+		return [...rejections, ...notes.slice(0, MAX_REPORTED_CONTRACT_ISSUES - rejections.length)];
+	}
+	const remaining = rejections.length - MAX_REPORTED_CONTRACT_ISSUES;
 	return [
-		...issues.slice(0, MAX_REPORTED_CONTRACT_ISSUES),
+		...rejections.slice(0, MAX_REPORTED_CONTRACT_ISSUES),
 		`${remaining} further outcome${remaining === 1 ? '' : 's'} were rejected for similar reasons; fix these first.`
 	];
 }
@@ -849,17 +920,29 @@ export function buildFastChatPendingTurnContract(params: {
 	};
 }
 
+const PENDING_TURN_CONTRACT_MESSAGE_OPEN_TAG = '<pending_turn_contract>';
+
 export function buildPendingTurnContractSystemMessage(
 	pending: FastChatPendingTurnContract | null | undefined
 ): string | null {
 	if (!pending) return null;
 	return [
-		'<pending_turn_contract>',
+		PENDING_TURN_CONTRACT_MESSAGE_OPEN_TAG,
 		'The prior turn ended before these user-commissioned durable outcomes were fulfilled.',
 		JSON.stringify(pending.contract),
 		'Continue them in this turn. Re-declare the unfinished outcomes alongside any reads, then complete them with durable write effects. If the user explicitly cancels or supersedes this prior commission, call cancel_turn_contract instead and do not perform the cancelled writes. Do not claim completion from prose or read results.',
 		'</pending_turn_contract>'
 	].join('\n');
+}
+
+/**
+ * Whether a system message is the admission-rendered pending contract above.
+ * A host that receives only the frozen history (the worker) keys the
+ * `cancel_turn_contract` mount on it: the tool acts only on a contract carried
+ * forward from a prior turn (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F36).
+ */
+export function isPendingTurnContractSystemMessage(content: string): boolean {
+	return content.trimStart().startsWith(PENDING_TURN_CONTRACT_MESSAGE_OPEN_TAG);
 }
 
 export function isPendingTurnContractInScope(
@@ -909,7 +992,8 @@ export function executeAgenticChatStandardControlToolV1(input: {
 
 	switch (input.toolName) {
 		case DECLARE_TURN_CONTRACT_TOOL_NAME: {
-			const contract = error ? null : parseDeclaredTurnContract(args);
+			const notes: string[] = [];
+			const contract = error ? null : parseDeclaredTurnContract(args, undefined, notes);
 			if (!contract) {
 				return standardControlFailure(
 					'Turn contract validation failed: provide at least one outcome with a supported action and entity_kind.'
@@ -920,6 +1004,7 @@ export function executeAgenticChatStandardControlToolV1(input: {
 				result: {
 					status: 'declared',
 					contract,
+					...(notes.length > 0 ? { normalization_notes: notes } : {}),
 					instruction:
 						'Continue this turn until every declared outcome is backed by successful durable effects, or explain the concrete blocker.'
 				},

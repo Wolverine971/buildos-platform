@@ -12,7 +12,6 @@ import { appendSystemInstruction, forceToolFreeRequest } from '../request-builde
 import type { CompletedProviderToolCall } from '../stream-tool-calls';
 import { surfaceFor } from '../turn-phase';
 import { ACTOR_COMMISSION_GUIDANCE } from './controls';
-import { projectCreateShellGuidance } from './turn-contract';
 
 export function canRequirePreMutationSemanticDisposition(
 	request: AgenticChatTurnProviderRequestV1
@@ -25,6 +24,12 @@ export function canRequirePreMutationSemanticDisposition(
 	);
 }
 
+/**
+ * The shell rules already ride the base request's write-routing message on
+ * this surface (buildWorkerSemanticMutationOrdering); appending them again
+ * here doubled them on every Project Setup opening pass
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F36).
+ */
 export function buildProjectCreateInitialContractGateRequest(
 	request: AgenticChatTurnProviderRequestV1
 ): AgenticChatTurnProviderRequestV1 | null {
@@ -34,14 +39,9 @@ export function buildProjectCreateInitialContractGateRequest(
 	) {
 		return null;
 	}
-	const gate = buildSemanticTurnDispositionGateRequest(request, request.tools, {
+	return buildSemanticTurnDispositionGateRequest(request, request.tools, {
 		allowReads: false
 	});
-	if (!gate) return null;
-	return appendSystemInstruction(
-		gate,
-		projectCreateShellGuidance(request.contextType, request.tools).join(' ')
-	);
 }
 
 export function buildSemanticTurnDispositionGateRequest(

@@ -17,6 +17,15 @@ import {
 } from './skill-gate-preload';
 import { estimateTokensFromText } from '$lib/services/agentic-chat-v2/context-usage';
 import { getSkillById, listAllSkills } from '../skills/registry';
+import {
+	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1,
+	findAgenticChatWorkerUnavailableToolNamesV1
+} from '@buildos/agentic-chat-runtime';
+import {
+	getGatewayDirectToolNamesForProfile,
+	getToolRegistry,
+	type GatewaySurfaceProfileName
+} from '@buildos/agentic-chat-runtime/catalog';
 
 const PROJECT_WRITE_DOCUMENT_TOOLS = [
 	'create_onto_task',
@@ -73,10 +82,11 @@ describe('resolveSkillGatePreload', () => {
 		});
 
 		expect(preload).not.toBeNull();
-		expect(preload?.promptContent).toContain('already loaded at short format');
+		expect(preload?.promptContent).toMatch(/^Playbook for this turn \(.+\):\n/);
 		expect(preload?.promptContent).not.toContain('skill_load');
 		expect(preload?.promptContent).not.toContain('Linked child skills');
 		expect(preload?.promptContent).not.toContain('Need more depth?');
+		expect(preload?.promptContent).not.toContain('already loaded');
 		expect(preload!.promptContent.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
 	});
 
@@ -105,13 +115,16 @@ describe('resolveSkillGatePreload', () => {
 		}
 	});
 
-	it('adds the first worked example and the unavailable-references note on the worker lane', () => {
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71: the worker block is a plain
+	// playbook — no gate wording and no note about references it cannot load.
+	it('adds the update-first worked example and no unavailable-references note on the worker lane', () => {
 		const preload = resolveSkillPreloadById('task_management', {
 			allowFollowupSkillLoad: false
 		});
 		expect(preload?.promptContent).toContain('Worked example:');
-		expect(preload?.promptContent).toContain('Track a real follow-up the user must do later');
-		expect(preload?.promptContent).toContain('not loadable on this surface');
+		expect(preload?.promptContent).toContain('Update an existing task by its exact id');
+		expect(preload?.promptContent).not.toContain('not loadable on this surface');
+		expect(preload?.promptContent).not.toContain('Reference modules');
 		expect(preload?.promptContent).not.toContain('Linked child skills');
 		expect(preload?.promptContent).not.toContain('skill_load');
 	});
@@ -168,7 +181,28 @@ describe('productivity preload allowlist', () => {
 		for (const skillId of PRODUCTIVITY_PRELOAD_ALLOWLIST) {
 			expect(getSkillById(skillId)?.id, skillId).toBe(skillId);
 		}
-		expect(PRODUCTIVITY_PRELOAD_ALLOWLIST).toHaveLength(12);
+		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F70: only skills a preload route
+		// can reach. The six dropped ids are in no domain, outcome card, or
+		// mounted intent kind; they stay registered for skill_search / skill_load.
+		expect([...PRODUCTIVITY_PRELOAD_ALLOWLIST]).toEqual([
+			'calendar_management',
+			'context_engineering_for_agent_work',
+			'document_workspace',
+			'project_audit',
+			'project_forecast',
+			'task_management'
+		]);
+		for (const unreachable of [
+			'google_calendar',
+			'people_context',
+			'plan_management',
+			'project_creation',
+			'research_capture',
+			'task_state_updates'
+		]) {
+			expect(getSkillById(unreachable)?.id, unreachable).toBe(unreachable);
+			expect(isProductivityPreloadSkill(unreachable), unreachable).toBe(false);
+		}
 		expect(isProductivityPreloadSkill('content_strategy_beyond_blogging')).toBe(false);
 		expect(isProductivityPreloadSkill('cold_email_engagement_first_outreach')).toBe(false);
 		expect(isProductivityPreloadSkill('TASK_MANAGEMENT')).toBe(true);
@@ -330,7 +364,7 @@ describe('resolveOperationalSkillPreload', () => {
 		expect(preload).not.toBeNull();
 		expect(preload?.skillId).toBe('task_management');
 		expect(preload?.source).toBe('operational_intent');
-		expect(preload?.promptContent).toContain('Preloaded skill: task_management');
+		expect(preload?.promptContent).toMatch(/^Playbook for task writes this turn:\n/);
 		expect(preload?.promptContent).toContain('update_onto_task');
 		expect(preload?.promptContent).toContain('Worked example:');
 		expect(preload?.promptContent).not.toContain('skill_load');
@@ -365,7 +399,7 @@ describe('resolveOperationalSkillPreload', () => {
 		);
 	});
 
-	it('stays null for reads, read-only surfaces, and already-loaded skills', () => {
+	it('stays null for reads and read-only surfaces', () => {
 		expect(
 			resolveOperationalSkillPreload({
 				message: 'what tasks are due this week?',
@@ -378,18 +412,129 @@ describe('resolveOperationalSkillPreload', () => {
 				toolNames: ['get_workspace_overview']
 			})
 		).toBeNull();
+	});
+
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69: an operational playbook is this
+	// turn's write rules and takes no already-loaded dedupe; the craft route
+	// keeps its one-shot dedupe.
+	it('has no already-loaded dedupe, unlike the craft route', () => {
+		const params: Parameters<typeof resolveOperationalSkillPreload>[0] = {
+			message: 'mark the intro call done',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		};
+		expect(params).not.toHaveProperty('alreadyLoadedSkillIds');
+		expect(resolveOperationalSkillPreload(params)?.skillId).toBe('task_management');
 		expect(
-			resolveOperationalSkillPreload({
-				message: 'mark the intro call done',
-				toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
-				alreadyLoadedSkillIds: ['TASK_MANAGEMENT']
+			resolveSkillPreloadById('project_audit', {
+				allowFollowupSkillLoad: false,
+				alreadyLoadedSkillIds: ['project_audit']
 			})
 		).toBeNull();
+	});
+
+	it('shows the worked example that matches the turn verb, update by default', () => {
+		const update = resolveOperationalSkillPreload({
+			message: 'mark the intro call done',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+		expect(update?.promptContent).toContain('- Update an existing task by its exact id');
+		expect(update?.promptContent).not.toContain('- Create a task for a real follow-up');
+
+		const create = resolveOperationalSkillPreload({
+			message: 'add a task to call the roofer back on Tuesday',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+		expect(create?.promptContent).toContain('- Create a task for a real follow-up');
+		expect(create?.promptContent).not.toContain('- Update an existing task by its exact id');
+
+		const organize = resolveOperationalSkillPreload({
+			message: "This project's documents are a mess, please organize them",
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+		expect(organize?.promptContent).toContain('- Organize unlinked project documents');
+
+		const append = resolveOperationalSkillPreload({
+			message: 'append these notes to the research doc',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+		expect(append?.promptContent).toContain('- Update an existing document by its exact id');
+	});
+});
+
+// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71: the rendered worker block (not
+// the whole file) must name only tools the worker surface actually mounts,
+// must carry no dotted op id a call could be emitted as, and must fit the
+// forty-line budget so a weak model reads it whole.
+describe('worker playbook crosscheck against the mounted surface', () => {
+	const registeredToolNames = new Set(Object.keys(getToolRegistry().byToolName));
+	const omitted = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
+	function workerSurface(profile: GatewaySurfaceProfileName): string[] {
+		const names = getGatewayDirectToolNamesForProfile(profile).filter(
+			(name) => !omitted.has(name)
+		);
+		expect(findAgenticChatWorkerUnavailableToolNamesV1(names)).toEqual([]);
+		return names;
+	}
+	const cases: Array<{ message: string; profile: GatewaySurfaceProfileName; skillId: string }> = [
+		{ message: 'mark the intro call done', profile: 'project', skillId: 'task_management' },
+		{
+			message: 'add a task to call the roofer back',
+			profile: 'project',
+			skillId: 'task_management'
+		},
+		{ message: 'mark the intro call done', profile: 'global', skillId: 'task_management' },
+		{
+			message: "This project's documents are a mess, please organize them",
+			profile: 'project',
+			skillId: 'document_workspace'
+		},
+		{
+			message: 'save this as a note in the project',
+			profile: 'project',
+			skillId: 'document_workspace'
+		},
+		{
+			message: 'append these notes to the research doc',
+			profile: 'project',
+			skillId: 'document_workspace'
+		},
+		{
+			message: 'Can you schedule a call with Ana tomorrow?',
+			profile: 'global',
+			skillId: 'calendar_management'
+		},
+		{
+			message: 'move the standup to 3pm',
+			profile: 'project',
+			skillId: 'calendar_management'
+		}
+	];
+
+	it.each(cases)('$skillId on $profile for "$message"', ({ message, profile, skillId }) => {
+		const mounted = new Set(workerSurface(profile));
+		const preload = resolveOperationalSkillPreload({ message, toolNames: [...mounted] });
+		expect(preload?.skillId).toBe(skillId);
+		const block = preload!.promptContent;
+		const lines = block.split('\n');
+		expect(lines.length, block).toBeLessThanOrEqual(40);
+		expect(block).not.toMatch(/\b(?:onto|cal|util)\.[a-z_]+(?:\.[a-z_]+)*/);
+		expect(block).not.toContain('declare_turn_contract');
+		const namedTools = [...new Set(block.match(/\b[a-z]+(?:_[a-z]+)+\b/g) ?? [])].filter(
+			(token) => registeredToolNames.has(token)
+		);
+		expect(namedTools.length).toBeGreaterThan(0);
+		for (const tool of namedTools) {
+			expect(mounted.has(tool), `${skillId} names ${tool}, not mounted on ${profile}`).toBe(
+				true
+			);
+		}
 	});
 });
 
 describe('renderDomainSensingPromptContent with a preload', () => {
-	it('labels an operational preload by its source', () => {
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71: a preload renders as the bare
+	// playbook. The Source / Skill-load gate / Next step wrapper is gone.
+	it('renders an operational preload as the bare playbook', () => {
 		const preload = resolveOperationalSkillPreload({
 			message: 'mark the intro call done',
 			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
@@ -398,9 +543,13 @@ describe('renderDomainSensingPromptContent with a preload', () => {
 			preloadedSkillPromptContent: preload!.promptContent,
 			preloadSource: preload!.source
 		});
-		expect(content).toContain('Source: operational_intent.');
-		expect(content).toContain('Skill-load gate: SATISFIED BY PRELOAD.');
-		expect(content).toContain('Preloaded skill: task_management');
+		expect(content).toBe(preload!.promptContent);
+		expect(content).toMatch(/^Playbook for task writes this turn:\n/);
+		expect(content).not.toContain('Source:');
+		expect(content).not.toContain('Skill-load gate');
+		expect(content).not.toContain('Next step');
+		expect(content).not.toContain('skill_load');
+		expect(content).not.toContain('outcome_card_load');
 	});
 
 	it('renders a persisted-affinity preload even when lexical sensing found no domain', () => {
@@ -412,9 +561,9 @@ describe('renderDomainSensingPromptContent with a preload', () => {
 			preloadSource: preload!.source
 		});
 
-		expect(content).toContain('Source: persisted_project_domain_affinity.');
-		expect(content).toContain('Skill-load gate: SATISFIED BY PRELOAD.');
-		expect(content).toContain('Preloaded skill: fiction_story_craft');
+		expect(content).toBe(preload!.promptContent);
+		expect(content).not.toContain('Source:');
+		expect(content).not.toContain('Skill-load gate');
 	});
 
 	it('lets persisted affinity override a weak, ungated lexical signal', () => {
@@ -429,8 +578,7 @@ describe('renderDomainSensingPromptContent with a preload', () => {
 			preloadSource: preload!.source
 		});
 
-		expect(content).toContain('Source: persisted_project_domain_affinity.');
-		expect(content).toContain('Preloaded skill: fiction_story_craft');
+		expect(content).toBe(preload!.promptContent);
 		expect(content).not.toContain('Skill-load gate: ACTIVE.');
 	});
 
@@ -443,14 +591,15 @@ describe('renderDomainSensingPromptContent with a preload', () => {
 			preloadedSkillPromptContent: preload!.promptContent
 		});
 
-		expect(content).toContain('Skill-load gate: SATISFIED BY PRELOAD.');
+		expect(content).toBe(preload!.promptContent);
 		expect(content).toContain(preload!.skillId);
 		expect(content).not.toContain('Skill-load gate: ACTIVE.');
+		expect(content).not.toContain('Candidate domains:');
 	});
 
-	it('swaps the gated next step for the preload variant (WP-8)', () => {
+	it('carries no gated next step once a preload is supplied (WP-8)', () => {
 		const sensing = senseColdEmailTurn();
-		const preload = resolveSkillGatePreload(sensing);
+		const preload = resolveSkillGatePreload(sensing, { allowFollowupSkillLoad: false });
 		expect(preload).not.toBeNull();
 
 		const content = renderDomainSensingPromptContent(sensing, {
@@ -458,12 +607,12 @@ describe('renderDomainSensingPromptContent with a preload', () => {
 		});
 
 		// The gated next step demands a skill_load call the preload already
-		// made redundant — it must not survive anywhere in the block.
+		// made redundant — it must not survive anywhere in the block, and the
+		// worker block itself never says skill_load or outcome_card_load.
 		expect(content).not.toContain('Skill-load gate is ACTIVE');
-		expect(content).toContain('Next step: Skill-load gate already satisfied');
-		// The outcome-card hop is a pure pass-through once the default skill
-		// is in-context; the preload next step steers away from it.
-		expect(content).toContain('do not call outcome_card_load');
+		expect(content).not.toContain('Next step:');
+		expect(content).not.toContain('skill_load');
+		expect(content).not.toContain('outcome_card_load');
 	});
 
 	it('keeps the active gate directive when no preload is supplied', () => {

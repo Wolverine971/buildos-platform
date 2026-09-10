@@ -33,6 +33,10 @@ import {
 } from '../executionObservation';
 import { isToolArgumentsTextTruncated } from './stream-tool-calls';
 import { type LocalPromptDump, localPromptDumpsEnabled, startLocalPromptDump } from '../promptDump';
+import {
+	AGENTIC_CHAT_PENDING_EFFECTS_REGISTRY,
+	type AgenticChatPendingEffectsRegistry
+} from '../pendingEffects';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
 /**
@@ -250,11 +254,16 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 	private readonly temperature: number;
 	private readonly maxSseBufferBytes: number;
 	private readonly turnRouteHealth = new Map<string, TurnRouteHealth>();
+	/** Every model id a request can name; the only ids a turn's routing state pins. */
+	private readonly configuredModels: ReadonlySet<string>;
+	private readonly pendingEffects: Pick<AgenticChatPendingEffectsRegistry, 'forTurn'>;
 
 	constructor(
 		private readonly ports: {
 			usage: AgenticChatProviderUsageObserverPortV1;
 			executionObservations?: AgenticChatExecutionObservationPortV1;
+			/** Shared with the executor, which drains a turn's set at finalization. */
+			pendingEffects?: Pick<AgenticChatPendingEffectsRegistry, 'forTurn'>;
 			onUsageError?: (error: unknown) => void;
 			onExecutionObservationError?: (error: unknown) => void;
 		},
@@ -270,6 +279,10 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		}
 	) {
 		this.routes = validateRoutes(options.routes);
+		this.configuredModels = new Set(
+			this.routes.flatMap((route) => [route.model, ...(route.fallbackModels ?? [])])
+		);
+		this.pendingEffects = ports.pendingEffects ?? AGENTIC_CHAT_PENDING_EFFECTS_REGISTRY;
 		this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
 		this.requestTimeoutMs = boundedInteger(
 			options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS,
@@ -466,7 +479,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				const attemptKind: 'primary' | 'retry' =
 					providerAttempt > 1 || attemptedRouteIds.length > 1 ? 'retry' : 'primary';
 				const attemptStartedAtMs = Date.now();
-				await this.observeProviderAttempt(input, route, 'provider_attempt_started', {
+				this.observeProviderAttempt(input, route, 'provider_attempt_started', {
 					round: input.providerRound,
 					logical_provider_round: input.logicalProviderRound,
 					pass_role: passRole,
@@ -486,9 +499,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					if (input.signal.aborted) throwAbort(input.signal);
 					// A 5xx or a timeout before the stream opens is the only 5xx-storm
 					// signal this lane gets. Record the endpoint it can be attributed
-					// to — the one the error named, or the one the request was pinned
-					// to — so the next attempt's `provider.ignore` routes around it
-					// instead of walking back into the same upstream.
+					// to — the one the error named, or the one a timed-out request
+					// was ordered to — so the next attempt's `provider.ignore` routes
+					// around it instead of walking back into the same upstream.
 					this.observeTurnRouteFailure(
 						input.turnRunId,
 						route.model,
@@ -496,7 +509,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					);
 					const failure = routeFailure(route.id, error);
 					failures.push(failure);
-					await this.observeProviderAttempt(input, route, 'provider_attempt_ended', {
+					this.observeProviderAttempt(input, route, 'provider_attempt_ended', {
 						round: input.providerRound,
 						logical_provider_round: input.logicalProviderRound,
 						pass_role: passRole,
@@ -629,7 +642,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			// a `done` the consumer would have to reject permanently.
 			const toolCallTruncation = observedToolCallTruncation(state, input, finishedReason);
 			if (toolCallTruncation) {
-				await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
+				this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 					round: input.providerRound,
 					logical_provider_round: input.logicalProviderRound,
 					pass_role: passRole,
@@ -657,7 +670,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				activeAttemptEnded = true;
 				this.observeTurnRouteFailure(
 					input.turnRunId,
-					state.modelUsed ?? active.route.model,
+					this.routingModel(state.modelUsed, active.route),
 					state.providerSlug ?? normalizeProviderSlug(state.provider)
 				);
 				const message = `Agentic Chat provider truncated a tool call (${toolCallTruncation}, finish_reason=${finishedReason})`;
@@ -680,7 +693,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					!state.toolCallsObservable ||
 					state.finishReason === 'tool_calls' ||
 					state.finishReason === 'function_call');
-			await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
+			this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 				round: input.providerRound,
 				logical_provider_round: input.logicalProviderRound,
 				pass_role: passRole,
@@ -705,7 +718,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			if (toolsDisabledViolation) {
 				this.observeTurnRouteFailure(
 					input.turnRunId,
-					state.modelUsed ?? active.route.model,
+					this.routingModel(state.modelUsed, active.route),
 					state.providerSlug ?? normalizeProviderSlug(state.provider),
 					// The pin is what put this pass on this endpoint, and the
 					// endpoint ignored `tool_choice=none`. Retire the pin even when
@@ -719,16 +732,17 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					true
 				);
 			} else {
+				const routingModel = this.routingModel(state.modelUsed, active.route);
 				this.observeTurnRouteSuccess(
 					input.turnRunId,
-					state.modelUsed ?? active.route.model,
+					routingModel,
 					active.route.model,
 					state.providerSlug,
 					active.route.kind === 'openrouter'
 				);
 				this.getTurnRouteHealth(input.turnRunId, true)!.lastResponse = {
 					identity: responseIdentity(input),
-					model: state.modelUsed ?? active.route.model,
+					model: routingModel,
 					providerSlug: state.providerSlug
 				};
 				await account('success', null, false);
@@ -748,14 +762,14 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			if (active && !input.signal.aborted) {
 				this.observeTurnRouteFailure(
 					input.turnRunId,
-					state.modelUsed ?? active.route.model,
+					this.routingModel(state.modelUsed, active.route),
 					state.providerSlug ?? normalizeProviderSlug(state.provider)
 				);
 			}
 			if (active && !activeAttemptEnded) {
 				const aborted = input.signal.aborted;
 				const attemptEndedAtMs = Date.now();
-				await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
+				this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 					round: input.providerRound,
 					logical_provider_round: input.logicalProviderRound,
 					pass_role: passRole,
@@ -891,17 +905,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				canonicalOptionalHeader(response.headers.get('x-openrouter-request-id'));
 			if (!response.ok) {
 				const { message, providerSlug } = await responseError(response);
-				// A warm provider can accept an auto-tool pass but have no endpoint
-				// for a later required-tool pass. Its pin disables OpenRouter fallback,
-				// so let the existing bounded pass retry run after the catch clears it.
-				// An unpinned 404 still represents a permanent route/model failure.
-				const pinnedEndpointUnavailable =
-					response.status === 404 &&
-					route.kind === 'openrouter' &&
-					Boolean(this.getTurnRouteHealth(input.turnRunId, false)?.pin?.providerSlug);
 				throw new AgenticChatProviderNetworkError(
 					`Agentic Chat provider start failed (${response.status}): ${message}`,
-					isRetryableStatus(response.status) || pinnedEndpointUnavailable,
+					isRetryableStatus(response.status),
 					providerSlug
 				);
 			}
@@ -942,9 +948,15 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			attempt.cleanup();
 			if (input.signal.aborted) throwAbort(input.signal);
 			if (attempt.timedOut()) {
+				// A request whose `order` names one endpoint went there first, so a
+				// timeout before any response is that endpoint holding the request.
+				// Only timeouts carry this attribution: fallbacks stay allowed, so a
+				// 4xx/5xx may have come from any endpoint and names nothing unless
+				// the gateway named it (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F76).
 				throw new AgenticChatProviderNetworkError(
 					`Agentic Chat provider request timed out after ${timeoutMs}ms`,
-					true
+					true,
+					orderedProviderSlug(route)
 				);
 			}
 			throw error;
@@ -985,12 +997,35 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			// keep subsequent passes on the model/provider that owns that warm prefix.
 			// A real failure clears the pin below and restores this fallback list.
 			fallbackModels: modelPin ? [] : reordered.slice(1),
+			// The pin is a preference, not a constraint: `order` puts the warm
+			// endpoint first and the route's own `allow_fallbacks` stays in force.
+			// A hard pin (`allow_fallbacks: false`) turned every pass the pinned
+			// endpoint could not serve into a 404 round trip, a failed receipt,
+			// and a cold retry — 26 of 55 production turns in the audit window
+			// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F76).
 			providerRouting: {
 				...(route.providerRouting ?? {}),
 				...(ignoredProviders.length > 0 ? { ignore: ignoredProviders } : {}),
-				...(pin?.providerSlug ? { order: [pin.providerSlug], allow_fallbacks: false } : {})
+				...(pin?.providerSlug ? { order: [pin.providerSlug] } : {})
 			}
 		};
+	}
+
+	/**
+	 * The model identity a turn's routing state keys on. Providers answer a
+	 * canonical request id with a weight snapshot (`deepseek/deepseek-v4-flash`
+	 * came back as `deepseek/deepseek-v4-flash-20260423`); re-requesting the
+	 * snapshot resolved to a different, slower endpoint set, so the pin holds a
+	 * configured id and receipts keep the reported one
+	 * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F77).
+	 */
+	private routingModel(
+		reportedModel: string | null,
+		route: AgenticChatOpenAiCompatibleRouteV1
+	): string {
+		return reportedModel && this.configuredModels.has(reportedModel)
+			? reportedModel
+			: route.model;
 	}
 
 	private observeTurnRouteFailure(
@@ -1015,8 +1050,8 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				(providerSlug && health.pin.providerSlug === providerSlug))
 		) {
 			// A caller that names the pin itself as the cause also retires the
-			// pinned endpoint, so `order: [slug], allow_fallbacks: false` cannot
-			// be rebuilt onto the same provider on the next pass.
+			// pinned endpoint, so `order: [slug]` cannot be rebuilt onto the same
+			// provider on the next pass.
 			if (options.releasePin === true && health.pin.providerSlug) {
 				health.failedProviderSlugs.add(health.pin.providerSlug);
 			}
@@ -1084,10 +1119,12 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		// across every review, so their cache key is a constant and the prefix
 		// warms across sessions. Acting passes keep the per-session key because
 		// their prefix is the session's own prompt.
+		const contractReview =
+			input.passRole === 'contract_review' || input.passRole === 'mutation_review';
 		const promptCacheKey =
 			input.passRole === 'research_review'
 				? 'buildos:research-review:v1'
-				: input.passRole === 'contract_review' || input.passRole === 'mutation_review'
+				: contractReview
 					? REVIEWER_PROMPT_CACHE_KEY
 					: input.sessionId;
 		if (route.kind === 'openrouter') {
@@ -1098,7 +1135,13 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				...toolSurface,
 				temperature: this.temperature,
 				max_tokens: this.maxTokens,
-				reasoning: { exclude: true },
+				// A contract review is one bounded verdict over a filtered evidence
+				// set. At the provider default 52% of its completion tokens were
+				// hidden reasoning and calls ran p50 10.3 s; a verdict does not
+				// need a document's worth of thinking. Acting and research-review
+				// passes keep the provider default
+				// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F80).
+				reasoning: contractReview ? { effort: 'low', exclude: true } : { exclude: true },
 				provider: {
 					allow_fallbacks: true,
 					data_collection: 'deny',
@@ -1144,15 +1187,36 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		}
 	}
 
-	private async observeProviderAttempt(
+	/**
+	 * Starts the durable attempt receipt and returns without waiting for it.
+	 * The write is tracked in the turn's pending set; the executor drains that
+	 * set at finalization, before the terminal fence, so the row lands while
+	 * the turn is still running (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F50).
+	 * The receipt is not on the path to the next network call: a pass no
+	 * longer pays a serial round trip before its request opens or before its
+	 * `done` is released.
+	 */
+	private observeProviderAttempt(
+		input: ClientInput,
+		route: AgenticChatOpenAiCompatibleRouteV1,
+		eventType: 'provider_attempt_started' | 'provider_attempt_ended',
+		payload: JsonObject
+	): void {
+		if (!this.ports.executionObservations) return;
+		this.pendingEffects
+			.forTurn(input.turnRunId)
+			.enqueue(this.persistProviderAttempt(input, route, eventType, payload));
+	}
+
+	/** Never rejects: observation failures are reported, not raised. */
+	private async persistProviderAttempt(
 		input: ClientInput,
 		route: AgenticChatOpenAiCompatibleRouteV1,
 		eventType: 'provider_attempt_started' | 'provider_attempt_ended',
 		payload: JsonObject
 	): Promise<void> {
-		if (!this.ports.executionObservations) return;
-		const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
 		try {
+			const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
 			const observationSignal = input.signal.aborted
 				? new AbortController().signal
 				: input.signal;
@@ -1317,8 +1381,9 @@ function parseSseLine(
 	const events: AgenticChatTurnProviderClientEventV1[] = [];
 	if (record.delta !== undefined && record.delta !== null) {
 		const delta = requireRecord(record.delta, 'provider delta');
-		const reasoning = extractReasoning(delta);
-		if (reasoning) events.push({ type: 'reasoning', ...reasoning });
+		// Reasoning deltas are not surfaced: the request sends
+		// `reasoning.exclude`, and no consumer reads them. Their tokens are
+		// still accounted from the usage receipt.
 		if (delta.content !== undefined && delta.content !== null) {
 			const normalizedContent = normalizeStreamingContent(
 				delta.content,
@@ -1473,34 +1538,6 @@ function rejectedToolCallPayload(state: StreamState, input: ClientInput): JsonOb
 		rejected_tool_name: REJECTED_TOOL_NAME_PATTERN.test(rejected.name) ? rejected.name : null,
 		advertised_tool_count: input.tools.length
 	};
-}
-
-function extractReasoning(
-	delta: Record<string, unknown>
-): { reasoning?: string; reasoning_details?: unknown[] } | null {
-	const reasoning = [delta.reasoning, delta.reasoning_content, delta.thinking]
-		.map(stringifyReasoning)
-		.filter(Boolean)
-		.join('');
-	const reasoningDetails = Array.isArray(delta.reasoning_details)
-		? delta.reasoning_details
-		: undefined;
-	if (!reasoning && !reasoningDetails) return null;
-	return {
-		...(reasoning ? { reasoning } : {}),
-		...(reasoningDetails ? { reasoning_details: reasoningDetails } : {})
-	};
-}
-
-function stringifyReasoning(value: unknown): string {
-	if (typeof value === 'string') return value;
-	if (Array.isArray(value)) return value.map(stringifyReasoning).filter(Boolean).join('');
-	if (value !== null && typeof value === 'object') {
-		const record = value as Record<string, unknown>;
-		const text = record.text ?? record.content ?? record.value;
-		return typeof text === 'string' ? text : '';
-	}
-	return '';
 }
 
 function normalizeProviderUsage(value: unknown): ProviderUsage | null {
@@ -2087,11 +2124,12 @@ async function responseError(
 }
 
 /**
- * The endpoint a failed attempt can honestly be blamed for. Either the response
- * named it, or the request was constrained to exactly one upstream and could
- * have reached no other. An unconstrained request that fails names nothing:
- * ignoring a provider it may never have touched would shrink the pool for the
- * rest of the turn on no evidence.
+ * The endpoint a failed attempt can honestly be blamed for. Either the error
+ * named it (the gateway's `provider_name`, or the ordered endpoint a timed-out
+ * request went to first), or the request was constrained to exactly one
+ * upstream and could have reached no other. An unconstrained request that
+ * fails names nothing: ignoring a provider it may never have touched would
+ * shrink the pool for the rest of the turn on no evidence.
  */
 function attributedProviderSlug(
 	route: AgenticChatOpenAiCompatibleRouteV1,
@@ -2101,13 +2139,15 @@ function attributedProviderSlug(
 		return error.providerSlug;
 	}
 	if (route.kind !== 'openrouter') return null;
-	const routing = route.providerRouting;
-	if (!routing) return null;
-	if (routing.only?.length === 1) return normalizeProviderSlug(routing.only[0]);
-	if (routing.allow_fallbacks === false && routing.order?.length === 1) {
-		return normalizeProviderSlug(routing.order[0]);
-	}
-	return null;
+	const only = route.providerRouting?.only;
+	return only?.length === 1 ? normalizeProviderSlug(only[0]) : null;
+}
+
+/** The single endpoint a request's `order` sends it to first, when it names one. */
+function orderedProviderSlug(route: AgenticChatOpenAiCompatibleRouteV1): string | null {
+	if (route.kind !== 'openrouter') return null;
+	const order = route.providerRouting?.order;
+	return order?.length === 1 ? normalizeProviderSlug(order[0]) : null;
 }
 
 async function readBoundedResponseText(response: Response, maximumBytes: number): Promise<string> {

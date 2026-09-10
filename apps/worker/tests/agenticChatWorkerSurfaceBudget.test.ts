@@ -130,6 +130,11 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		expect(project.openingBytes).toBeLessThanOrEqual(36_000);
 		// 2026-09-04 postdeploy: admit directed relationships and their symbolic
 		// endpoint schema; lazy contracts still keep the opening pass below 36k.
+		// 2026-09-10 (harness audit): delegate_task moved from global to project
+		// (global opening 31,085 → 26,546 B), list_onto_tasks states its payload
+		// (+303 B) and the create tools carry the realm/work-mode text, while the
+		// contract label descriptions shrank (F06/F07); measured project admitted
+		// 38,300 B, project_create 11,674 B, so the caps hold unchanged.
 		expect(project.admittedBytes).toBeLessThanOrEqual(39_000);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(12_400);
 	});
@@ -163,6 +168,77 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		);
 	});
 
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F36: the cancel control only acts on
+	// a contract carried forward from a prior turn, so it rides the opening pass
+	// only when admission rendered that pending-contract message.
+	it('withholds cancel_turn_contract from the opening pass unless a contract is pending', () => {
+		for (const profile of ['global', 'project'] as const) {
+			const surface = measure(profile);
+			expect(surface.opening.map((tool) => tool.function.name)).not.toContain(
+				'cancel_turn_contract'
+			);
+			expect(surface.admitted.map((tool) => tool.function.name)).toContain(
+				'cancel_turn_contract'
+			);
+			expect(buildWorkerToolSurfaceOverride(surface.input, surface.opening)).toBeNull();
+			const withPending = {
+				...surface.input,
+				artifact: {
+					...surface.input.artifact,
+					history: [
+						{
+							role: 'system',
+							content:
+								'<pending_turn_contract>\n{"outcomes":[]}\n</pending_turn_contract>',
+							sourceMessageId: null,
+							attachments: [],
+							toolCalls: [],
+							toolCallId: null
+						}
+					]
+				}
+			} as unknown as AgenticChatWorkerExecutionInputV1;
+			const pendingOpening = deferComplexWriteContractForInitialPass(
+				withPending,
+				surface.admitted,
+				true
+			);
+			expect(pendingOpening.map((tool) => tool.function.name)).toContain(
+				'cancel_turn_contract'
+			);
+			expect(pendingOpening.map((tool) => tool.function.name)).not.toContain(
+				'declare_turn_contract'
+			);
+		}
+		// A legacy Project Setup artifact admitted with only create_onto_project
+		// gets the gate pair force-mounted, never the cancel control.
+		const shellDefinitions = getGatewaySurfaceForProfile('project_create').filter(
+			(tool) => tool.function.name === 'create_onto_project'
+		);
+		const legacyInput = {
+			artifact: {
+				prepared: {
+					toolSurface: {
+						version: 1,
+						surfaceProfile: 'project_create',
+						toolNames: ['create_onto_project'],
+						definitions: shellDefinitions
+					}
+				}
+			}
+		} as unknown as AgenticChatWorkerExecutionInputV1;
+		const legacyNames = productionToolsFor(
+			legacyInput,
+			ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
+			true
+		).map((tool) => tool.function.name);
+		expect(legacyNames).toEqual([
+			'create_onto_project',
+			'declare_turn_contract',
+			'request_turn_clarification'
+		]);
+	});
+
 	// A calendar or daily-brief turn is a global turn now, and every capability
 	// those profiles used to carry alone is executable here.
 	it('keeps the whole global surface executable, with no capability override', () => {
@@ -175,13 +251,18 @@ describe('Agentic Chat worker-projected surface budget', () => {
 			'create_calendar_event',
 			'update_calendar_event',
 			'delete_calendar_event',
-			'delegate_task',
 			'web_search',
 			'web_visit',
 			'move_onto_task'
 		]) {
 			expect(names, name).toContain(name);
 		}
+		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F25: delegate_task needs a focused
+		// project, so it rides the project surface only.
+		expect(names).not.toContain('delegate_task');
+		expect(measure('project').opening.map((tool) => tool.function.name)).toContain(
+			'delegate_task'
+		);
 	});
 
 	it('attaches scheduling sidecars only to mutation tools of an explicit write pass', () => {

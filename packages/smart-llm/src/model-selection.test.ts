@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	ACTIVE_EXPERIMENT_MODEL,
 	AGENTIC_MODEL_RECOMMENDATIONS,
+	ACTIVE_RUNTIME_MODEL_SET,
+	DEEPSEEK_V41_FLASH_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
@@ -55,6 +57,31 @@ function collectModelIds(value: unknown): string[] {
 }
 
 describe('ensureToolCompatibleModels', () => {
+	it('allows explicit V4.1 Flash selection without promoting the launch endpoint automatically', () => {
+		expect(ACTIVE_RUNTIME_MODEL_SET.has(DEEPSEEK_V41_FLASH_MODEL)).toBe(true);
+		expect(
+			ensureToolCompatibleModels([DEEPSEEK_V41_FLASH_MODEL, DEEPSEEK_V4_FLASH_MODEL])
+		).toEqual([DEEPSEEK_V41_FLASH_MODEL, DEEPSEEK_V4_FLASH_MODEL]);
+		expect(supportsJsonMode(DEEPSEEK_V41_FLASH_MODEL)).toBe(true);
+		for (const route of [
+			OPENROUTER_V2_TEXT_MODELS,
+			OPENROUTER_V2_JSON_MODELS,
+			OPENROUTER_V2_TOOL_MODELS,
+			OPENROUTER_V2_MULTIMODAL_MODELS,
+			TEXT_PROFILE_MODELS.speed
+		]) {
+			expect(route).not.toContain(DEEPSEEK_V41_FLASH_MODEL);
+		}
+		// Price/quality requirements must not bypass the explicit-selection gate.
+		expect(
+			selectModelsByRequirements(
+				{ [DEEPSEEK_V41_FLASH_MODEL]: MODEL_CATALOG[DEEPSEEK_V41_FLASH_MODEL]! },
+				{},
+				'json'
+			)
+		).toEqual([]);
+	});
+
 	it('preserves requested order while filtering to tool-capable models', () => {
 		const requested = [
 			'legacy/google-model',

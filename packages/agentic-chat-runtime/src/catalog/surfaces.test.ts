@@ -7,9 +7,12 @@ import {
 } from '../worker-tool-policy';
 import { AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY } from './definitions';
 import {
+	GATEWAY_EMAIL_CONNECTED_SURFACE_TOOL_NAMES,
 	GATEWAY_EMAIL_SURFACE_TOOL_NAMES,
+	GATEWAY_EMAIL_UNCONNECTED_SURFACE_TOOL_NAMES,
 	GATEWAY_SURFACE_PROFILE_NAMES,
 	getGatewayDirectToolNamesForProfile,
+	getGatewayEmailSurfaceToolNames,
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile,
 	materializeGatewayTools,
@@ -31,9 +34,10 @@ function surfaceNames(tools: ChatToolDefinition[]): string[] {
 	return tools.map((tool) => tool.function.name);
 }
 
+// declare_read_only_turn left every static list on 2026-09-10 (F28): the
+// acting worker never mounted it and the reviewer lane builds its own copy.
 const CONTROL_TOOL_NAMES = [
 	'declare_turn_contract',
-	'declare_read_only_turn',
 	'request_turn_clarification',
 	'cancel_turn_contract'
 ];
@@ -78,7 +82,6 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'update_onto_task',
 			'move_onto_task',
 			'create_onto_project',
-			'delegate_task',
 			'web_search',
 			'web_visit',
 			'list_calendar_events',
@@ -109,6 +112,7 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'update_onto_document',
 			'move_document_in_tree',
 			'link_onto_entities',
+			'delegate_task',
 			'get_project_calendar',
 			'set_project_calendar'
 		]);
@@ -116,6 +120,30 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'search_onto_projects',
 			'search_all_projects',
 			'create_onto_project'
+		]);
+	});
+
+	// The delegate adapter requires project_id to equal the admitted context
+	// project, which a global turn does not have, so every global call failed
+	// after the model had already paid a round (harness audit 2026-09-08, F25).
+	it('mounts delegate_task only where its adapter can succeed', () => {
+		expect(getGatewayDirectToolNamesForProfile('project')).toContain('delegate_task');
+		expect(getGatewayDirectToolNamesForProfile('global')).not.toContain('delegate_task');
+		expect(getGatewayDirectToolNamesForProfile('project_create')).not.toContain(
+			'delegate_task'
+		);
+	});
+
+	it('mounts the retired read-only control on no static surface', () => {
+		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
+			expect(getGatewayDirectToolNamesForProfile(profile), profile).not.toContain(
+				'declare_read_only_turn'
+			);
+		}
+		// The definition stays resolvable for the reviewer lane and for
+		// already-prepared artifacts that still list the name.
+		expect(materializeGatewayTools([], ['declare_read_only_turn']).addedToolNames).toEqual([
+			'declare_read_only_turn'
 		]);
 	});
 
@@ -172,7 +200,7 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 	});
 
 	// The email group is per-user state, not a static surface member: worker
-	// admission appends it only for users with a connected mailbox (A8).
+	// admission appends it from the user's mailbox state (A8).
 	it('keeps the email group off every static surface but resolvable on demand', () => {
 		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
 			const names = getGatewayDirectToolNamesForProfile(profile);
@@ -184,6 +212,33 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			...GATEWAY_EMAIL_SURFACE_TOOL_NAMES
 		]);
 		expect(appended.addedToolNames).toEqual([...GATEWAY_EMAIL_SURFACE_TOOL_NAMES]);
+	});
+
+	// A user with no mailbox who asks "connect my Gmail" used to get a turn with
+	// no email tool at all, while connected users carried a 743 B handoff they
+	// could not use (harness audit 2026-09-08, F33). The two states now mount
+	// disjoint groups; the read/search tools stay gated on a connected mailbox.
+	it('selects the email group by mailbox state', () => {
+		expect(getGatewayEmailSurfaceToolNames(true)).toEqual([
+			'get_external_account_status',
+			'list_email_accounts',
+			'search_email_messages',
+			'get_email_message'
+		]);
+		expect(getGatewayEmailSurfaceToolNames(false)).toEqual([
+			'request_email_account_connection'
+		]);
+		expect(
+			GATEWAY_EMAIL_CONNECTED_SURFACE_TOOL_NAMES.filter((name) =>
+				(GATEWAY_EMAIL_UNCONNECTED_SURFACE_TOOL_NAMES as readonly string[]).includes(name)
+			)
+		).toEqual([]);
+		expect([...GATEWAY_EMAIL_SURFACE_TOOL_NAMES].sort()).toEqual(
+			[
+				...getGatewayEmailSurfaceToolNames(true),
+				...getGatewayEmailSurfaceToolNames(false)
+			].sort()
+		);
 	});
 
 	// list_onto_tasks is only usable on a global turn because project_id is
@@ -208,14 +263,22 @@ describe('static surface descriptions', () => {
 		const violations: string[] = [];
 		for (const profile of GATEWAY_SURFACE_PROFILE_NAMES) {
 			// The email group rides the same immutable surface when it is
-			// appended, so check both shapes of every profile.
+			// appended, so check every mailbox state of every profile.
 			for (const [label, surface] of [
 				[profile, getGatewaySurfaceForProfile(profile)],
 				[
-					`${profile}+email`,
-					materializeGatewayTools(getGatewaySurfaceForProfile(profile), [
-						...GATEWAY_EMAIL_SURFACE_TOOL_NAMES
-					]).tools
+					`${profile}+email_connected`,
+					materializeGatewayTools(
+						getGatewaySurfaceForProfile(profile),
+						getGatewayEmailSurfaceToolNames(true)
+					).tools
+				],
+				[
+					`${profile}+email_unconnected`,
+					materializeGatewayTools(
+						getGatewaySurfaceForProfile(profile),
+						getGatewayEmailSurfaceToolNames(false)
+					).tools
 				]
 			] as const) {
 				const visible = surface.filter((tool) => !omitted.has(tool.function.name));

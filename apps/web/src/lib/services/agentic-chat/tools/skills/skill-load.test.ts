@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.test.ts
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, assert, describe, expect, it, vi } from 'vitest';
 import { getSkillById, listChildSkillsForSkill, listRootSkills } from './registry';
 import { defineMarkdownSkill } from './markdown-skill';
 import { buildSkillLoadPayload, loadSkill } from './skill-load';
@@ -230,14 +230,19 @@ description: Skill fixture with read, write, and destructive related ops.
 		}) as Record<string, unknown>;
 
 		expect(result.type).toBe('skill');
-		expect(typeof result.markdown).toBe('string');
+		assert(typeof result.markdown === 'string');
 		expect(result.markdown).toContain(
 			'Revise chapter 2 dialogue between Elena and Master Thorne'
 		);
 		expect(result.markdown).toContain('Good create signals');
 		expect(result.markdown).toContain("Draft chapter 3: Elena's first magical forging attempt");
 		expect(result.markdown).toContain('task_id: "440c2639-9000-4111-aeea-ee374f8fb925"');
-		expect(result.markdown).toContain('Never emit `update_onto_task({})`.');
+		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71: the update-by-exact-id case
+		// leads the examples; the empty-call guard is the tool schema's job.
+		expect(result.markdown.indexOf('### Update an existing task by its exact id')).toBeLessThan(
+			result.markdown.indexOf('### Create a task for a real follow-up')
+		);
+		expect(result.markdown).not.toContain('### Direct tool packaging');
 		expect(result.markdown).toContain('## Child Skills');
 		expect(result.markdown).toContain('task_state_updates');
 		expect(result.child_skills).toEqual([

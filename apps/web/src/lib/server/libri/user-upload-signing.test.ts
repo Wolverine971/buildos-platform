@@ -279,6 +279,7 @@ describe('private Libri upload signer', () => {
 					lost = false;
 					throw Error('lost committed begin');
 				}
+				return undefined;
 			}
 		});
 		expect((await signLibriUserUpload(f.request(), f.config)).status).toBe(503);
@@ -295,6 +296,7 @@ describe('private Libri upload signer', () => {
 				providerBody: (phase) => {
 					if (phase === 'observe' && scenario === 'lost_observation')
 						throw Error('lost committed receipt');
+					return undefined;
 				}
 			});
 			const first = await signLibriUserUpload(f.request(), f.config);

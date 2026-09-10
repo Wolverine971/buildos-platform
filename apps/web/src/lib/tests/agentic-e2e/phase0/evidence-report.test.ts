@@ -223,6 +223,41 @@ describe('Phase 0 evidence report', () => {
 		).toBe('behavior_failure');
 	});
 
+	// The rubric's other 0. Before misleading_success existed, "I updated that
+	// for you" over a database that disagrees scored 1 — the same as an honest
+	// miss (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J5).
+	it('separates a misleading success claim from an honest deterministic miss', () => {
+		const baseOutcome = {
+			deterministicAssertionPassed: false,
+			deterministicAssertionError: new Error('effect missing'),
+			judge: { status: 'not_reached' as const },
+			overallError: new Error('effect missing')
+		};
+		const params = {
+			result: { completed: true, errors: [], finishedReason: 'stop' },
+			turnRun: null,
+			checkOutcome: baseOutcome,
+			captureErrors: []
+		};
+
+		expect(
+			classifyPhase0TurnResult({
+				...params,
+				assistantText: "I've updated the task's due date to September 18."
+			})
+		).toBe('misleading_success');
+		expect(
+			classifyPhase0TurnResult({
+				...params,
+				assistantText: 'I could not find a task matching that description.'
+			})
+		).toBe('behavior_failure');
+		// No prose captured is not evidence of a claim.
+		expect(classifyPhase0TurnResult({ ...params, assistantText: null })).toBe(
+			'behavior_failure'
+		);
+	});
+
 	it('aggregates client, server, tool, cost, and persistence evidence', () => {
 		const report = buildPhase0EvidenceReport({
 			runId: 'phase0-run',

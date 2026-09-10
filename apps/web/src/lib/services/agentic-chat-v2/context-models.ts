@@ -237,36 +237,40 @@ export type LightProjectMember = {
 	created_at: string | null;
 };
 
-export type LightRecentActivity = {
-	entity_type: string;
-	entity_id: string;
-	title?: string | null;
-	action: 'created' | 'updated';
-	updated_at: string;
-};
-
 /**
- * Per-project task counts for the global preload (turn-executor audit
- * 2026-09-02, Finding 13 / F-02). One TypeScript query over the bundled
- * projects; the RPC is untouched.
+ * Per-project open-task counts for the global preload (turn-executor audit
+ * 2026-09-02, Finding 13 / F-02; widened to every accessible project by
+ * AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F115). One TypeScript query over open
+ * tasks only; the RPC is untouched.
  */
 export type ProjectTaskRollup = {
-	total: number;
 	open: number;
 	overdue: number;
 	in_progress: number;
 	blocked: number;
-	done: number;
 	/** True when the rollup query hit its row cap, so counts are a floor. */
 	truncated: boolean;
 };
 
 export type GlobalContextProjectBundle = {
 	project: LightProject;
-	recent_activity: LightRecentActivity[];
 	goals: LightGoal[];
 	milestones: LightMilestone[];
 	plans: LightPlan[];
+	task_rollup?: ProjectTaskRollup | null;
+};
+
+/**
+ * One line's worth of every accessible project (F115): "which projects do I
+ * have?" and "what is overdue where?" answer from the seed instead of a
+ * truncated get_workspace_overview round.
+ */
+export type GlobalProjectIndexEntry = {
+	id: string;
+	name: string;
+	state_key: LightProject['state_key'];
+	next_step_short: string | null;
+	updated_at: string;
 	task_rollup?: ProjectTaskRollup | null;
 };
 
@@ -280,6 +284,7 @@ export type LinkedEdge = {
 
 export type GlobalContextData = {
 	projects: GlobalContextProjectBundle[];
+	project_index: GlobalProjectIndexEntry[];
 	project_intelligence?: FastChatProjectIntelligence;
 	context_meta?: {
 		generated_at: string;
@@ -294,10 +299,7 @@ export type GlobalContextData = {
 		projects_returned: number;
 		project_limit: number | null;
 		includes_doc_structure: boolean;
-		recent_activity_window_days: number;
-		recent_activity_max_lookback_days: number;
 		entity_limits_per_project: {
-			recent_activity: number | null;
 			goals: number | null;
 			milestones: number | null;
 			plans: number | null;

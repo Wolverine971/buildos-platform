@@ -181,6 +181,8 @@ export function createAgenticChatCompositionRoot(options: {
 	providerCooldownMs?: number;
 	providerBudgetMs?: number;
 	maxProviderRounds?: number;
+	/** SHA-bound batch approval instead of the turn contract DSL (Decision 1). */
+	mutationBatchLaneEnabled?: boolean;
 	maxToolCalls?: number;
 	maxToolConcurrency?: number;
 	concurrentReadsEnabled?: boolean;
@@ -291,7 +293,8 @@ export function createAgenticChatCompositionRoot(options: {
 		},
 		options.providerCooldownMs,
 		options.maxProviderRounds,
-		mutationCapabilities
+		mutationCapabilities,
+		options.mutationBatchLaneEnabled ?? true
 	);
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),

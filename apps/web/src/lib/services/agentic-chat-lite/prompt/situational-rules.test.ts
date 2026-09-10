@@ -18,7 +18,7 @@ describe('resolveLitePromptTurnSituation', () => {
 	it('does not flag writes from mounted write tools alone', () => {
 		const situation = resolveLitePromptTurnSituation({
 			toolNames: ['get_project_overview', 'update_onto_task'],
-			turnIntentRequiresWrite: false,
+			pendingTurnContract: false,
 			latestUserMessage: 'just talked to them, it went well'
 		});
 		expect(situation.writeIntent).toBe(false);
@@ -36,7 +36,7 @@ describe('resolveLitePromptTurnSituation', () => {
 		]) {
 			const situation = resolveLitePromptTurnSituation({
 				toolNames: ['get_project_overview'],
-				turnIntentRequiresWrite: false,
+				pendingTurnContract: false,
 				latestUserMessage: message
 			});
 			expect(situation.writeIntent, message).toBe(true);
@@ -52,7 +52,7 @@ describe('resolveLitePromptTurnSituation', () => {
 		]) {
 			const situation = resolveLitePromptTurnSituation({
 				toolNames: ['get_project_overview', 'update_onto_task', 'update_onto_document'],
-				turnIntentRequiresWrite: false,
+				pendingTurnContract: false,
 				latestUserMessage: message
 			});
 			expect(situation.writeIntent, message).toBe(false);
@@ -62,7 +62,7 @@ describe('resolveLitePromptTurnSituation', () => {
 	it('flags writes from turn intent when no write tool is mounted yet', () => {
 		const situation = resolveLitePromptTurnSituation({
 			toolNames: ['get_project_overview'],
-			turnIntentRequiresWrite: true,
+			pendingTurnContract: true,
 			latestUserMessage: 'ok go ahead'
 		});
 		expect(situation.writeIntent).toBe(true);
@@ -78,11 +78,26 @@ describe('resolveLitePromptTurnSituation', () => {
 		expect(situation.writeIntent).toBe(true);
 	});
 
-	it('flags web research when web tools are mounted', () => {
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F01: web_search/web_visit and
+	// delegate_task ride every global and project surface since stage S6, so a
+	// mount-keyed trigger rendered ~2,050 chars of research and delegation
+	// rules on "what is overdue?". Only research phrasing selects the block.
+	it('does not flag web research from mounted web tools alone', () => {
 		const situation = resolveLitePromptTurnSituation({
-			toolNames: ['web_search', 'web_visit'],
-			turnIntentRequiresWrite: false,
-			latestUserMessage: 'anything'
+			toolNames: ['web_search', 'web_visit', 'delegate_task'],
+			pendingTurnContract: false,
+			latestUserMessage: 'what is overdue?'
+		});
+		expect(situation.webResearch).toBe(false);
+		expect(hasActiveSituation(situation)).toBe(false);
+		expect(renderSituationalRulesContent(situation)).toBeNull();
+	});
+
+	it('flags web research from research phrasing even before web tools are mounted', () => {
+		const situation = resolveLitePromptTurnSituation({
+			toolNames: ['get_project_overview'],
+			pendingTurnContract: false,
+			latestUserMessage: 'search the web for the latest Vercel pricing'
 		});
 		expect(situation.webResearch).toBe(true);
 	});
@@ -90,7 +105,7 @@ describe('resolveLitePromptTurnSituation', () => {
 	it('stays inactive for a pure read turn', () => {
 		const situation = resolveLitePromptTurnSituation({
 			toolNames: ['get_project_overview', 'list_onto_tasks'],
-			turnIntentRequiresWrite: false,
+			pendingTurnContract: false,
 			latestUserMessage: 'what is the status of this project?'
 		});
 		expect(hasActiveSituation(situation)).toBe(false);
@@ -143,20 +158,37 @@ describe('renderSituationalRulesContent', () => {
 		expect(content).not.toContain('web_search');
 	});
 
-	// Audit F-A3 / F-A9: the worker withholds direct writes that select an
-	// existing entity, and it cannot call skill_load, so the worker-bound
-	// block teaches the contract route and drops the skill pointer.
-	it('renders the worker write block with the contract-first route and no skill pointers', () => {
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02: the worker-bound block is an
+	// ordered recipe that leads with the direct cases write-routing.ts accepts
+	// (focused entity, one-hit read of that kind, typed UUID a read loaded) and
+	// names no control tool — the opening pass does not mount
+	// declare_turn_contract, and "call it first, unless ..." sent every
+	// single-target edit through the contract lane. It still cannot call
+	// skill_load, so the skill pointer stays out.
+	it('renders the worker write block as a direct-first recipe with no control tool and no skill pointers', () => {
 		const content = renderSituationalRulesContent({
 			writeIntent: true,
 			webResearch: false,
 			workerBound: true
 		});
 		expect(content).toContain('This turn can write to project data:');
-		expect(content).toContain('call declare_turn_contract first');
-		expect(content).toContain('focused entity');
-		expect(content).toContain('given by the user');
-		expect(content).toContain('only entity of its kind');
+		expect(content).not.toContain('declare_turn_contract');
+		expect(content).not.toContain('given by the user');
+		const recipe = (content ?? '').split('\n').find((line) => line.startsWith('- Writing:'));
+		expect(recipe).toBeDefined();
+		const directCases = [
+			'new entity in the focused project',
+			'focused entity or project',
+			'only entity of its kind that a read this turn returned',
+			'full UUID the user typed that a read this turn loaded'
+		];
+		const positions = directCases.map((phrase) => (recipe ?? '').indexOf(phrase));
+		expect(positions.every((position) => position >= 0)).toBe(true);
+		// The direct cases come first; the review route is the tail.
+		expect(Math.max(...positions)).toBeLessThan(
+			(recipe ?? '').indexOf('routed to review by the worker')
+		);
+		expect(recipe).toContain('you do not choose the route');
 		expect(content).toContain('exact full IDs');
 		expect(content).toContain('state_key');
 		expect(content).not.toContain('task_management skill');
@@ -213,22 +245,19 @@ describe('renderSituationalRulesContent', () => {
 		expect(content).toContain('This turn involves web research:');
 	});
 
-	it('requires the review-only delegate handoff instead of a prose proposal', () => {
+	// F01: the delegation block is gone from the per-turn rules; the
+	// delegate_task description carries the handoff rule for the one tool it
+	// governs, so a mounted delegate_task no longer makes every turn "situational".
+	it('never renders a delegation block, however delegate_task is mounted', () => {
 		const situation = resolveLitePromptTurnSituation({
 			toolNames: ['get_document_tree', 'delegate_task'],
-			latestUserMessage: 'Stage one coherent change set for review.',
-			reviewDelegation: true
+			latestUserMessage: 'Stage one coherent change set for review.'
 		});
 		const content = renderSituationalRulesContent(situation);
 
-		expect(situation.reviewDelegation).toBe(true);
-		expect(content).toContain('Review-staged Agent Runs are available:');
-		expect(content).toContain('Tool availability alone does not commission an Agent Run');
-		expect(content).toContain('read only missing information');
-		expect(content).toContain('then call delegate_task once');
-		expect(content).toContain('proposal document is not a staged change set');
-		expect(content).toContain('does not approve or apply');
-		expect(hasActiveSituation(situation)).toBe(true);
+		expect(content).toBeNull();
+		expect(hasActiveSituation(situation)).toBe(false);
+		expect(situation).not.toHaveProperty('reviewDelegation');
 	});
 
 	it('renders the living-reference agreement without turning brainstorming into canon', () => {
@@ -250,7 +279,7 @@ describe('renderSituationalRulesContent', () => {
 	it('requires a durable write on a living-reference capture turn', () => {
 		const situation = resolveLitePromptTurnSituation({
 			toolNames: ['get_document_outline', 'update_onto_document'],
-			turnIntentRequiresWrite: false,
+			pendingTurnContract: false,
 			latestUserMessage: 'Mara stops trusting Ilyan after she finds the ledger.',
 			livingWorkspace: true,
 			livingWorkspaceCapture: true,
@@ -326,7 +355,8 @@ describe('situational_rules section wiring', () => {
 			scaffold: { dynamicSkillTools: false }
 		});
 		const section = overlaid.sections.find((item) => item.id === 'situational_rules');
-		expect(section?.content).toContain('call declare_turn_contract first');
+		expect(section?.content).toContain('you do not choose the route');
+		expect(section?.content).not.toContain('declare_turn_contract');
 		expect(section?.content).not.toContain('task_management skill');
 	});
 

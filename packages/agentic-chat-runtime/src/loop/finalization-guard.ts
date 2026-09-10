@@ -60,16 +60,18 @@ type EvidenceItem = {
 	stateKey?: string;
 };
 
-const LEAD_IN_PATTERNS = [
-	/\b(i['’]?ll|i will|let me|i['’]?m going to|i am going to)\b/i,
-	/\b(check|look up|inspect|pull up|search|find|update|create|make|verify)\b/i,
-	/\b(give me|one moment|hang on)\b/i
-];
+// A lead-in is a promise to keep working, and it opens a sentence: "I'll pull
+// that up", "Let me check", "First, I'll…", "One moment". A short answer that
+// merely contains a verb such as "check" or "update", or ends on a question,
+// is an answer (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F13).
+const LEAD_IN_OPENER_PATTERN =
+	/(?:^|[.!?:;—–-]\s+)(?:(?:first|then|now|next|okay|ok|sure|got it|alright|of course),?\s+)?(?:i['’]?ll|i will|let me|i['’]?m going to|i am going to|one moment|hang on|give me a (?:moment|second|sec|minute))\b/i;
 
 function isLikelyLeadIn(text: string): boolean {
 	const normalized = text.replace(/\s+/g, ' ').trim();
 	if (!normalized) return false;
 	if (normalized.length > 260) return false;
+	if (normalized.endsWith('?')) return false;
 	const lower = normalized.toLowerCase();
 	if (
 		lower.includes('updated') ||
@@ -81,7 +83,7 @@ function isLikelyLeadIn(text: string): boolean {
 	) {
 		return false;
 	}
-	return LEAD_IN_PATTERNS.some((pattern) => pattern.test(normalized));
+	return LEAD_IN_OPENER_PATTERN.test(normalized);
 }
 
 function findRequiredUserActionQuestion(toolExecutions: FastToolExecution[]): string | null {

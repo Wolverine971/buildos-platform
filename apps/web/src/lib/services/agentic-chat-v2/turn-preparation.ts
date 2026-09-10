@@ -22,13 +22,6 @@ import {
 } from './context-cache-routing';
 import { normalizeFastContextType } from './scope';
 import {
-	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY,
-	readFastChatPendingTurnIntent,
-	resolveFastChatTurnIntent,
-	type FastChatPendingTurnIntent,
-	type FastChatTurnIntent
-} from './turn-intent';
-import {
 	FASTCHAT_PENDING_TURN_CONTRACT_METADATA_KEY,
 	isPendingTurnContractInScope,
 	readFastChatPendingTurnContract,
@@ -38,9 +31,7 @@ import type { FastChatScaffoldConfig } from './scaffold-variant';
 
 export type FastChatTurnPreparation = {
 	sessionMetadata: Record<string, unknown>;
-	pendingTurnIntent: FastChatPendingTurnIntent | null;
 	pendingTurnContract: FastChatPendingTurnContract | null;
-	turnIntent: FastChatTurnIntent;
 	previousDomainState: DomainSessionState | null;
 	priorDomainIds: string[];
 	priorOutcomeCardIds: string[];
@@ -115,10 +106,6 @@ export function resolveFastChatTurnPreparation({
 	scaffold
 }: ResolveFastChatTurnPreparationParams): FastChatTurnPreparation {
 	const sessionMetadata = readMetadataRecord(agentMetadata);
-	const pendingTurnIntent = readFastChatPendingTurnIntent(
-		sessionMetadata[FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY],
-		{ now: new Date(nowMs) }
-	);
 	const parsedPendingTurnContract = readFastChatPendingTurnContract(
 		sessionMetadata[FASTCHAT_PENDING_TURN_CONTRACT_METADATA_KEY]
 	);
@@ -129,19 +116,12 @@ export function resolveFastChatTurnPreparation({
 	)
 		? parsedPendingTurnContract
 		: null;
-	const turnIntent = resolveFastChatTurnIntent({
-		contextType,
-		projectId: projectId ?? null,
-		latestUserMessage,
-		pendingIntent: pendingTurnIntent
-	});
 	const previousDomainState = readDomainSessionState(sessionMetadata.fastchat_domain_state);
 	const priorDomainIds = getActiveDomainIds(previousDomainState);
 	const priorOutcomeCardIds = getActiveOutcomeCardIds(previousDomainState);
 
-	// Lexical mutation inference is shadow/compatibility data, not semantic
-	// routing authority. Domain sensing therefore does not change because a
-	// string classifier happened to see a verb.
+	// Domain sensing is a subject-matter signal, not a write signal: nothing
+	// here classifies the message for mutation verbs.
 	const domainSensingBypassed = scaffold?.routing.domainSensing === false;
 	const turnDomainSensing = domainSensingBypassed
 		? null
@@ -181,9 +161,7 @@ export function resolveFastChatTurnPreparation({
 
 	return {
 		sessionMetadata,
-		pendingTurnIntent,
 		pendingTurnContract,
-		turnIntent,
 		previousDomainState,
 		priorDomainIds,
 		priorOutcomeCardIds,

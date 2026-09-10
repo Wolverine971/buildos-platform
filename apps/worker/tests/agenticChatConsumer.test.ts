@@ -274,6 +274,8 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			publisher: DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,
 			providerBudgetMs: 1200,
 			maxProviderRounds: 4,
+			// SHA-bound batch approval is the default write lane (Decision 1).
+			mutationBatchLaneEnabled: true,
 			maxToolCalls: 9,
 			maxToolConcurrency: 3,
 			provider: {
@@ -287,7 +289,8 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 						fallbackModels: ['provider/fallback-1', 'provider/fallback-2'],
 						providerRouting: {
 							allow_fallbacks: true,
-							order: ['deepinfra', 'deepseek', 'alibaba', 'cloudflare']
+							order: ['deepinfra', 'gmicloud', 'alibaba', 'streamlake'],
+							ignore: ['azure']
 						}
 					}
 				]

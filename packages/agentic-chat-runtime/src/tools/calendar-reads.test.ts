@@ -470,6 +470,8 @@ describe('shared list_calendar_events', () => {
 			source_failures: []
 		});
 		expect(result.warnings).not.toContainEqual(expect.stringContaining('coverage'));
+		expect(result).not.toHaveProperty('calendar_read_failed');
+		expect(result).not.toHaveProperty('error_code');
 	});
 
 	it('reports degraded coverage when 1 of 2 sources succeeds', async () => {
@@ -506,6 +508,8 @@ describe('shared list_calendar_events', () => {
 		);
 		expect(warning).toContain('1 of 2');
 		expect(warning).toContain('rate_limited');
+		// Partial coverage is still a read; only a total outage is flagged.
+		expect(result).not.toHaveProperty('calendar_read_failed');
 	});
 
 	it('reports unavailable coverage and reconnect guidance when 0 of 2 sources succeed', async () => {
@@ -539,6 +543,35 @@ describe('shared list_calendar_events', () => {
 		expect(warning).toContain('reconnect');
 		expect(warning).toContain('calendar-1@example.com');
 		expect(warning).toContain('calendar-2@example.com');
+		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F85: the outage is a typed
+		// top-level fact on a still-successful result.
+		expect(result).toMatchObject({
+			calendar_read_failed: true,
+			error_code: 'reconnect_required'
+		});
+	});
+
+	it('flags a missing server credential as a failed calendar read with its reason code', async () => {
+		const { context } = createContext({
+			calendar: {
+				listEvents: vi.fn(async () =>
+					listResult({
+						sourceCount: 1,
+						successfulSourceCount: 0,
+						sourceFailures: [sourceStatus(1, 'error', 'credentials_not_configured')]
+					})
+				)
+			}
+		});
+
+		const result = await listCalendarEvents(context, RANGE);
+
+		expect(result).toMatchObject({
+			calendar_read_failed: true,
+			error_code: 'credentials_not_configured',
+			events: [],
+			google_read: { coverage: 'unavailable' }
+		});
 	});
 
 	it('marks coverage unavailable when the provider read throws outright', async () => {
@@ -556,6 +589,7 @@ describe('shared list_calendar_events', () => {
 		expect(
 			result.warnings.some((entry: string) => entry.includes('No calendar data was read'))
 		).toBe(true);
+		expect(result).toMatchObject({ calendar_read_failed: true, error_code: 'provider_error' });
 	});
 
 	it('reports unavailable coverage when the host injected no calendar port', async () => {
@@ -573,6 +607,10 @@ describe('shared list_calendar_events', () => {
 		expect(
 			result.warnings.some((entry: string) => entry.includes('No calendar data was read'))
 		).toBe(true);
+		expect(result).toMatchObject({
+			calendar_read_failed: true,
+			error_code: 'calendar_port_unavailable'
+		});
 	});
 
 	it('reads a date-only window in the context timezone and falls back to UTC', async () => {
@@ -762,10 +800,30 @@ describe('shared get_calendar_event_details', () => {
 
 		expect(result).toMatchObject({
 			source: 'google',
+			calendar_read_failed: true,
+			error_code: 'not_connected',
 			coverage: 'unavailable',
 			reason_code: 'not_connected',
 			event: null
 		});
+	});
+
+	it('does not flag a plain missing event as a failed calendar read', async () => {
+		const { context } = createContext({
+			calendar: {
+				getEvent: vi.fn(async () => ({
+					event: null,
+					calendarSourceId: 'source-1',
+					connectionId: 'connection-1',
+					providerCalendarId: 'calendar-1@example.com'
+				}))
+			}
+		});
+
+		const result = await getCalendarEventDetails(context, { event_id: 'google-event-id' });
+
+		expect(result).toMatchObject({ coverage: 'unavailable', reason_code: 'not_found' });
+		expect(result).not.toHaveProperty('calendar_read_failed');
 	});
 
 	it('reports coverage unavailable when the host injected no calendar port', async () => {

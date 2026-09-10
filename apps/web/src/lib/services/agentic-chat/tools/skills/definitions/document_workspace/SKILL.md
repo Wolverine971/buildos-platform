@@ -17,52 +17,51 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/document_w
   BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
   Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
   This file is skill_type: procedure, so Procedure + Contract carry the weight. It is a standalone root (no
-  sibling dependencies), so there is no Routing block. The two domain facts sit in Provenance (the loader reads
-  Provenance as `notes` for this non-preserve_markdown skill).
+  sibling dependencies), so there is no Routing block. The two domain facts sit in Provenance.
+
+  The acting worker renders Activation, the Procedure steps, Policy, Contract, and one Example under a one-line
+  heading, with no follow-up skill calls. Every tool named in those blocks must be mounted on the project worker
+  surface (search_project, list_onto_documents, get_document_tree, get_document_outline, read_document_section,
+  create_onto_document, update_onto_document, move_document_in_tree, link_onto_entities). Related Tools stays in
+  dotted op ids: it is the external gateway contract and the source of materialized_tools. Examples open with the
+  update-by-exact-id case (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71).
 -->
 
 ## Identity
 
-Project document hierarchy playbook for doc tree operations, unlinked docs, task docs, and document CRUD rules.
-This is a **procedure** skill at **task** altitude: an ordered runbook for placing, reorganizing, linking, and
-writing project documents safely.
+Project document hierarchy playbook: create, update, place, and reorganize project documents safely with the document tools on the current surface. This is a **procedure** skill at **task** altitude.
 
 ## Activation
 
 - Create or place a project document in the doc tree
-- Reorganize project documents
-- Link unlinked docs back into the tree
-- Decide whether a document belongs in the project tree or a task workspace
+- Update an existing document's content or title
+- Reorganize project documents or link unlinked docs back into the tree
 - Reason about document hierarchy safely
 
 ## Procedure
 
-1. Decide whether the request is about a project document or a task document.
-2. For project documents, remember the hierarchy lives in doc_structure, not in document-to-document edges.
-3. For project document creation, include at least project_id and title. Include description whenever available; some direct tool surfaces require it.
-4. **Placement can happen at create time.** When creating a project document that should be nested, pass `parent_id` and optional `position` on `create_onto_document` / `onto.document.create`. Use `move_document_in_tree` / `onto.document.tree.move` for existing documents, unlinked documents, or later reorganization. Only claim "nested under X" or "placed in" after the create response returns without a tree placement error or a move call succeeds.
-5. For task workspace documents, use onto.task.docs.\* instead of the project doc tree.
-6. For reorganization or linking unlinked docs, call onto.document.tree.get once, analyze the result, then issue targeted onto.document.tree.move calls.
-7. When moving a document, pass exact document_id and new_position; use new_parent_id only when nesting under a parent.
-8. **Append and merge writes require non-empty `content`.** For `onto.document.update` calls with `update_strategy: "append"` or `update_strategy: "merge_llm"`, always include the actual text to persist. `merge_instructions` alone is not enough — merge/append behavior requires content to merge. The executor will reject no-content append/merge calls.
-9. Only create semantic edges to documents from other entities when that relationship is useful; do not use edges to represent folder structure.
+1. For an update, reuse the exact document_id from the focused context, the user's message, or a read this turn; otherwise find it with search_project, list_onto_documents, or get_document_tree before writing. If several documents fit, ask one clarification instead of guessing.
+2. update_onto_document takes update_strategy "replace" (the default) or "append"; append needs non-empty content, and a title-only or description-only update needs no content at all. To change the body while keeping existing text, read it first with get_document_outline and read_document_section and write the composed value, or append.
+3. For a create, call create_onto_document with project_id, title, and description; pass content when the user gave it, and parent_id (plus optional position) only when a read already returned that parent.
+4. The hierarchy lives in the document tree, not in entity edges. Use move_document_in_tree to place, nest, or rehome an existing document: prefer new_parent_title for grouping, and pass new_parent_id only for a parent UUID a read returned.
+5. For reorganization or unlinked docs, call get_document_tree once with include_documents true, plan every move from that result, then issue the moves; read the tree again only if a move fails.
+6. Claim "nested under X" or "placed in" only after the create returned without a tree placement error or the move returned success.
+7. Use link_onto_entities only for a real relationship between a document and another entity, never to represent folder structure.
 
 ## Contract
 
 After a document write, report:
 
-- What changed: document title, type, and the content action (created, replaced, appended, or merged).
-- Placement: the parent it is nested under in the doc tree, or that it is currently unlinked — stated only after the create/move response confirmed it.
-- For reorganization: which documents moved and where, derived from a single tree read.
-
-Stop conditions before replying: hierarchy changes went through doc_structure / tree-move, not document-to-document edges or graph reorganize; append/merge writes included non-empty `content`; you have not claimed a document is "nested under X" or "placed in" until the create returned without a tree placement error or the move call returned success.
+- What changed: document title, type, and the content action (created, replaced, or appended).
+- Placement: the parent it is nested under, or that it is unlinked — stated only after the create or move response confirmed it.
+- For reorganization: which documents moved and where, derived from the single tree read.
 
 ## Policy
 
-- Do not use onto.project.graph.reorganize for document hierarchy.
-- Do not treat document-to-document edges as the source of truth for hierarchy.
-- delete_onto_document in agentic chat currently exposes only document_id; do not invent archive-mode args until the tool contract changes.
-- Do not call `update_onto_document` with `update_strategy: "append"` or `"merge_llm"` and no `content`. `merge_instructions` alone does not produce new text; the executor rejects the call.
+- Do not use entity edges or a graph reorganization to model document hierarchy; the tree is the source of truth.
+- Do not call update_onto_document with update_strategy "append" and no content; the executor rejects it.
+- Do not invent a parent UUID; use new_parent_title, or a UUID a read returned.
+- Task workspace documents are a separate surface that is not reachable here; say so instead of filing a task document in the project tree.
 
 ## Related Tools
 
@@ -78,23 +77,24 @@ Stop conditions before replying: hierarchy changes went through doc_structure / 
 
 ## Examples
 
-### Create and place a research document
+### Update an existing document by its exact id
 
-- Call `create_onto_document({ project_id, title, description, type_key, content, parent_id, position })` when the intended parent is already known.
-- If the document already exists or needs to be rehomed after creation, use `move_document_in_tree({ document_id, new_parent_id, new_position })`.
-- Only report the document as nested or placed after the create response succeeds without a tree placement error or the move call returns successfully.
+- The focused context, the prior turn, or the user gave the exact document_id: reuse it directly.
+- Otherwise resolve it first with search_project or list_onto_documents; if several documents fit, ask one clarification instead of guessing.
+- To add to the end: `update_onto_document({ document_id: "<exact id>", update_strategy: "append", content: "<the new text>" })`
+- To rewrite a section: read it with get_document_outline and read_document_section, then `update_onto_document({ document_id: "<exact id>", content: "<the full composed document>" })`
+
+### Create and place a document
+
+- Call `create_onto_document({ project_id, title, description, content })`; add parent_id and position only when a read already returned the parent.
+- To nest it afterwards, or to rehome an existing document, call `move_document_in_tree({ project_id, document_id, new_parent_title: "Research" })`.
+- Report the document as nested or placed only after the create returned without a tree placement error or the move returned success.
 
 ### Organize unlinked project documents
 
-- Call `get_document_tree({ ... })` once with `include_documents=true`.
-- Identify unlinked or misplaced documents from that result.
-- Issue targeted `move_document_in_tree({ ... })` calls without repeating `get_document_tree` unless a move fails.
-
-### Attach documentation to a specific task
-
-- Decide whether the document should live in the task workspace rather than the project doc tree.
-- Use the paired `create_task_document` tool instead of project doc tree ops.
-- Resolve the exact task and document intent before attaching; ask one focused question if the destination remains ambiguous.
+- Call `get_document_tree({ project_id, include_documents: true })` once.
+- Identify unlinked or misplaced documents from that result and decide every move before writing.
+- Issue one `move_document_in_tree({ project_id, document_id, new_parent_title })` per document, reusing the exact same new_parent_title for every document in a category; read the tree again only if a move fails.
 
 ## Provenance
 

@@ -5,7 +5,6 @@ import {
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
 	hashCanonicalAdmissionRequestV1,
 	validateTurnInputArtifactV1,
-	type AgenticChatResumeCheckpointSnapshotV1,
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
 import { senseDomains } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
@@ -142,10 +141,7 @@ function dependencies() {
 	let index = 0;
 	return {
 		createId: () => IDS[index++]!,
-		nowMs: () => NOW,
-		loadResumeCheckpoint: vi.fn(
-			async (): Promise<AgenticChatResumeCheckpointSnapshotV1 | null> => null
-		)
+		nowMs: () => NOW
 	};
 }
 
@@ -240,17 +236,6 @@ describe('Agentic Chat worker turn preparation', () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValue({
 			sessionMetadata: { trusted: true },
 			pendingTurnContract: null,
-			turnIntent: {
-				version: 1,
-				requiresWrite: false,
-				action: null,
-				entityKind: 'unknown',
-				operations: [],
-				source: 'none',
-				originalRequestText: null,
-				originatingTurnRunId: null,
-				clearPending: false
-			},
 			priorDomainIds: [],
 			priorOutcomeCardIds: [],
 			turnDomainSensing: null,
@@ -628,7 +613,10 @@ describe('Agentic Chat worker turn preparation', () => {
 	});
 
 	// 2026-09-04: the situation now follows the mount, not the message shape.
-	it('adds the review-delegation situation whenever delegate_task is mounted', async () => {
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F01 (WP-A1): the delegation block
+	// is gone from the situational rules; the rule lives on the delegate_task
+	// description. Admission passes no mount-derived delegation flag any more.
+	it('derives no review-delegation situation from a mounted delegate_task', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
 			selectedSurfaceProfile: 'project',
@@ -669,12 +657,9 @@ describe('Agentic Chat worker turn preparation', () => {
 			dependencies: dependencies()
 		});
 
-		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.objectContaining({
-				turnSituation: expect.objectContaining({ reviewDelegation: true })
-			})
-		);
+		const overlayInput = mocks.applyActiveDomainSignalsOverlay.mock.calls[0]?.[1];
+		expect(overlayInput?.turnSituation).toMatchObject({ writeIntent: true, workerBound: true });
+		expect(overlayInput?.turnSituation).not.toHaveProperty('reviewDelegation');
 	});
 
 	it('omits retired and impossible write controls from a read-only worker artifact', async () => {
@@ -852,17 +837,6 @@ describe('Agentic Chat worker turn preparation', () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValue({
 			sessionMetadata: { trusted: true },
 			pendingTurnContract: null,
-			turnIntent: {
-				version: 1,
-				requiresWrite: false,
-				action: null,
-				entityKind: 'unknown',
-				operations: [],
-				source: 'none',
-				originalRequestText: null,
-				originatingTurnRunId: null,
-				clearPending: false
-			},
 			priorDomainIds: [],
 			priorOutcomeCardIds: [],
 			turnDomainSensing: sensing,
@@ -1122,7 +1096,11 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
-	it('skips re-injecting a skill preloaded inside the history window and carries the ledger', async () => {
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69: the system prompt is rebuilt
+	// every turn and earlier prompts are not in the history, so turn 2 of a
+	// task-editing session gets the task playbook again — and no ledger
+	// message naming skill_load, a tool the worker cannot call.
+	it('renders the operational playbook again on the next write turn and carries no loaded-skills ledger', async () => {
 		const userMessageId = 'e1000000-0000-4000-8000-000000000001';
 		const assistantMessageId = 'e2000000-0000-4000-8000-000000000001';
 		const serviceClient = serviceClientWithTables({
@@ -1191,19 +1169,112 @@ describe('Agentic Chat worker turn preparation', () => {
 			dependencies: dependencies()
 		});
 
-		const ledger = (result.args.p_artifact_history as TurnInputArtifactV1['history']).find(
-			(message: { role: string; content: string }) =>
-				message.role === 'system' &&
-				message.content.startsWith('Previously loaded skills in this session:')
-		);
-		expect(ledger?.content).toContain('`task_management`');
-		expect(ledger?.content).toContain('format: preload');
+		const history = result.args.p_artifact_history as TurnInputArtifactV1['history'];
+		expect(
+			history.some(
+				(message: { role: string; content: string }) =>
+					message.role === 'system' &&
+					message.content.startsWith('Previously loaded skills in this session:')
+			)
+		).toBe(false);
+		expect(
+			history.some((message: { content: string }) => message.content.includes('skill_load'))
+		).toBe(false);
 		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
 			expect.anything(),
-			expect.objectContaining({ skillGatePreload: null })
+			expect.objectContaining({
+				skillGatePreload: expect.objectContaining({
+					skillId: 'task_management',
+					source: 'operational_intent',
+					promptContent: expect.stringMatching(/^Playbook for task writes this turn:\n/)
+				})
+			})
 		);
-		expect(result.args.p_user_message_metadata).not.toHaveProperty('skill_preloaded_id');
-		expect(result.args.p_request_payload).toMatchObject({ skillPreload: null });
+		expect(result.args.p_user_message_metadata).toMatchObject({
+			skill_preloaded_id: 'task_management',
+			skill_preload_source: 'operational_intent'
+		});
+		expect(result.args.p_request_payload).toMatchObject({
+			skillPreload: { skillId: 'task_management', source: 'operational_intent' }
+		});
+	});
+
+	it('still dedupes a one-shot craft preload against the skills the window already showed', async () => {
+		const sensing = senseDomains({
+			currentUserMessage: 'audit this project for blockers and stale work',
+			limit: 3
+		});
+		expect(sensing?.skill_load_required).toBe(true);
+		const priorPreload = (skillId: string | null) =>
+			serviceClientWithTables({
+				chat_sessions: [
+					{
+						id: SESSION_ID,
+						user_id: USER_ID,
+						context_type: 'project',
+						entity_id: PROJECT_ID,
+						summary: null,
+						agent_metadata: {}
+					}
+				],
+				chat_messages: [
+					{
+						id: 'e1000000-0000-4000-8000-000000000001',
+						session_id: SESSION_ID,
+						user_id: USER_ID,
+						role: 'user',
+						content: 'audit this project for blockers and stale work',
+						metadata: skillId
+							? {
+									skill_preloaded_id: skillId,
+									skill_preload_source: 'domain_sensing'
+								}
+							: null,
+						created_at: '2026-08-03T10:00:00.000Z'
+					}
+				],
+				chat_message_attachments: [],
+				chat_tool_executions: []
+			});
+		const admit = async (serviceClient: ReturnType<typeof serviceClientWithTables>) => {
+			mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+				...mocks.resolveFastChatTurnPreparation(),
+				turnDomainSensing: sensing,
+				selectedSurfaceProfile: 'project',
+				tools: toolDefinitions(PROJECT_SURFACE_TOOL_NAMES)
+			});
+			mocks.loadFastChatPromptContext.mockResolvedValueOnce({
+				contextType: 'project',
+				entityId: PROJECT_ID,
+				projectId: PROJECT_ID,
+				data: { source: 'server' }
+			});
+			return prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: serviceClient as never,
+				userId: USER_ID,
+				command: command({
+					sessionId: SESSION_ID,
+					context: { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID },
+					message: 'audit this project for blockers and stale work'
+				}) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: dependencies()
+			});
+		};
+
+		const fresh = await admit(priorPreload(null));
+		expect(fresh.args.p_user_message_metadata).toMatchObject({
+			skill_preloaded_id: 'project_audit'
+		});
+
+		const repeated = await admit(priorPreload('project_audit'));
+		expect(repeated.args.p_user_message_metadata).not.toHaveProperty('skill_preloaded_id');
+		expect(repeated.args.p_request_payload).toMatchObject({ skillPreload: null });
 	});
 
 	// Finding 13: the AI-inbox proposal brief rendered only on the legacy path.
@@ -1429,17 +1500,6 @@ describe('Agentic Chat worker turn preparation', () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValue({
 			sessionMetadata: { trusted: true },
 			pendingTurnContract: null,
-			turnIntent: {
-				version: 1,
-				requiresWrite: false,
-				action: null,
-				entityKind: 'unknown',
-				operations: [],
-				source: 'none',
-				originalRequestText: null,
-				originatingTurnRunId: null,
-				clearPending: false
-			},
 			priorDomainIds: [],
 			priorOutcomeCardIds: [],
 			turnDomainSensing: null,
@@ -1508,7 +1568,6 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		expect(mocks.inspectPreparedAdmissionLease).toHaveBeenCalledTimes(1);
 		expect(mocks.checkProjectAccess).not.toHaveBeenCalled();
-		expect(deps.loadResumeCheckpoint).not.toHaveBeenCalled();
 		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
 		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
 		expect(mocks.loadFastChatPromptContext).not.toHaveBeenCalled();
@@ -1536,17 +1595,6 @@ describe('Agentic Chat worker turn preparation', () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValue({
 			sessionMetadata: {},
 			pendingTurnContract: null,
-			turnIntent: {
-				version: 1,
-				requiresWrite: false,
-				action: null,
-				entityKind: 'unknown',
-				operations: [],
-				source: 'none',
-				originalRequestText: null,
-				originatingTurnRunId: null,
-				clearPending: false
-			},
 			priorDomainIds: [],
 			priorOutcomeCardIds: [],
 			turnDomainSensing: null,
@@ -1626,7 +1674,12 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(result.args.p_request_hash).toBe(expectedHash);
 	});
 
-	it('freezes the selected checkpoint and canonical resume message into the hashed artifact', async () => {
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F44: nothing has written
+	// chat_turn_checkpoints since the supervisor was deleted, so admission no
+	// longer spends an RPC plus a select per non-prepared turn looking for one.
+	// The artifact's optional resumeCheckpoint field stays in the contract; it
+	// is simply never populated here.
+	it('issues no checkpoint query and freezes no resume snapshot on a session turn', async () => {
 		const serviceClient = serviceClientWithTables({
 			chat_sessions: [
 				{
@@ -1642,26 +1695,6 @@ describe('Agentic Chat worker turn preparation', () => {
 			chat_message_attachments: [],
 			chat_tool_executions: []
 		});
-		const resumeContext = {
-			missing_field: 'task_id',
-			instruction: 'Continue after the user identifies the task.'
-		};
-		const resumeMessage =
-			'Continue from the previous supervisor checkpoint.\nDo not re-run completed reads or writes unless the user answer changes the target.\nSupervisor question that paused the previous turn: Which exact task should I use?\nCheckpoint resume context: {"instruction":"Continue after the user identifies the task.","missing_field":"task_id"}';
-		const resumeCheckpoint = {
-			checkpointId: 'a1000000-0000-4000-8000-000000000001',
-			originalTurnRunId: 'a2000000-0000-4000-8000-000000000002',
-			checkpointType: 'supervisor_question' as const,
-			reason: 'repeated_validation_failures',
-			question: 'Which exact task should I use?',
-			resumeContext,
-			resumeMessage,
-			sourceExecutionGeneration: 1,
-			supervisorTransitionId: 'a3000000-0000-5000-8000-000000000003',
-			supervisorSequence: 2
-		};
-		const injected = dependencies();
-		injected.loadResumeCheckpoint.mockResolvedValueOnce(resumeCheckpoint);
 
 		const result = await prepareAgenticChatWorkerAdmission({
 			userClient: {} as never,
@@ -1673,14 +1706,18 @@ describe('Agentic Chat worker turn preparation', () => {
 				mode: 'worker_realtime',
 				contractVersion: 'agentic_chat_worker_v1'
 			},
-			dependencies: injected
+			dependencies: dependencies()
 		});
 
-		expect(result.args.p_artifact_prepared).toMatchObject({ resumeCheckpoint });
-		expect(result.args.p_user_message_metadata).toMatchObject({
-			supervisor_resume_checkpoint_id: resumeCheckpoint.checkpointId,
-			supervisor_resume_original_turn_run_id: resumeCheckpoint.originalTurnRunId
-		});
+		expect(serviceClient.rpc).not.toHaveBeenCalled();
+		expect(serviceClient.from).not.toHaveBeenCalledWith('chat_turn_checkpoints');
+		expect(result.args.p_artifact_prepared).not.toHaveProperty('resumeCheckpoint');
+		expect(result.args.p_user_message_metadata).not.toHaveProperty(
+			'supervisor_resume_checkpoint_id'
+		);
+		expect(result.args.p_user_message_metadata).not.toHaveProperty(
+			'supervisor_resume_original_turn_run_id'
+		);
 		const artifact = {
 			artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 			historySource: result.args.p_history_source,
@@ -2151,7 +2188,6 @@ describe('Agentic Chat worker turn preparation', () => {
 					'create_calendar_event',
 					'update_calendar_event',
 					'delete_calendar_event',
-					'delegate_task',
 					'web_search',
 					'move_onto_task'
 				])

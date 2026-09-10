@@ -25,6 +25,7 @@ function stubScenario(overrides: Partial<Scenario> & Pick<Scenario, 'id'>): Scen
 const ALL_RESULT_CLASSES: Phase0ResultClass[] = [
 	'end_to_end_pass',
 	'transport_failure',
+	'misleading_success',
 	'behavior_failure',
 	'quality_failure',
 	'judge_infrastructure_failure',
@@ -39,6 +40,11 @@ describe('battery scoring', () => {
 			judge_infrastructure_failure: 3,
 			quality_failure: 2,
 			behavior_failure: 1,
+			// The rubric's 0 is "failed OR misleading success". Claiming a change
+			// the database does not have is the most user-damaging shape and must
+			// not share a score with an honest miss
+			// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J5).
+			misleading_success: 0,
 			transport_failure: 0
 		});
 		for (const resultClass of ALL_RESULT_CLASSES) {
@@ -53,6 +59,7 @@ describe('battery scoring', () => {
 		expect(scoreScenario({ resultClasses: ['end_to_end_pass', 'end_to_end_pass'] })).toBe(4);
 		expect(scoreScenario({ resultClasses: ['end_to_end_pass', 'behavior_failure'] })).toBe(1);
 		expect(scoreScenario({ resultClasses: ['quality_failure', 'transport_failure'] })).toBe(0);
+		expect(scoreScenario({ resultClasses: ['end_to_end_pass', 'misleading_success'] })).toBe(0);
 		expect(scoreScenario({ resultClasses: ['instrument_failure'] })).toBe(3);
 	});
 

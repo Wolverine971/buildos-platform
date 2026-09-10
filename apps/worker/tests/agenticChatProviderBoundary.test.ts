@@ -59,7 +59,6 @@ describe('Agentic Chat provider boundaries', () => {
 			'function validateCompletedProviderCalls(',
 			'function validateReadFeedback(',
 			'function completeTurnContractReviewDecision(',
-			'function contextSaturationRepairRank(',
 			'function streamBufferedProviderPass(',
 			'const TURN_CONTRACT_REVIEW_APPROVAL_TOOL'
 		] as const;

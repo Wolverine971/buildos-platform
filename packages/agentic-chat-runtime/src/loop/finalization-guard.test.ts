@@ -580,4 +580,60 @@ describe('applyFinalizationGuard', () => {
 		);
 		expect(guard.text).not.toContain("I'll look that up");
 	});
+
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F13: a short, correct read answer
+	// that happens to contain a verb from the old lead-in word list, or that
+	// offers a follow-up as a question, is the answer and must stay.
+	describe('short read answers are not lead-ins', () => {
+		const readExecution = () => {
+			const call = toolCall('search_project', { query: 'open tasks' });
+			return {
+				toolCall: call,
+				result: toolResult(call, true, {
+					results: [{ id: 'task_1', type: 'task', title: 'Q3 plan', state_key: 'todo' }]
+				})
+			};
+		};
+
+		it.each([
+			'You have 3 open tasks; check the Q3 plan for the rest.',
+			'Nothing is overdue. The inspection is next, Oct 5 — want me to update it?',
+			'Two tasks are due this week. Search the Q3 plan for the design partner list.',
+			"Let me know if you'd like me to update the due date?"
+		])('keeps %j after successful reads', (text) => {
+			const guard = applyFinalizationGuard({
+				finalAssistantText: text,
+				assistantText: text,
+				toolExecutions: [readExecution()]
+			});
+			expect(guard).toEqual({ text, applied: false });
+		});
+
+		it.each([
+			"I'll look that up now.",
+			'Sure! Let me pull up the project first.',
+			"First, I'll check whether that task already exists.",
+			'One moment while I read the current document.'
+		])('still replaces the lead-in %j after successful reads', (text) => {
+			const guard = applyFinalizationGuard({
+				finalAssistantText: text,
+				assistantText: text,
+				toolExecutions: [readExecution()]
+			});
+			expect(guard.applied).toBe(true);
+			expect(guard.reason).toBe('lead_in_after_reads');
+			expect(guard.text).not.toContain(text);
+		});
+
+		it('keeps the empty-reply branch after successful reads', () => {
+			const guard = applyFinalizationGuard({
+				finalAssistantText: '',
+				assistantText: '',
+				toolExecutions: [readExecution()]
+			});
+			expect(guard.applied).toBe(true);
+			expect(guard.reason).toBe('empty_after_reads');
+			expect(guard.text).toContain('task "Q3 plan" (todo)');
+		});
+	});
 });
