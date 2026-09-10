@@ -1,3 +1,4 @@
+<!-- apps/web/docs/technical/components/hyperplexed/ONBOARDING_ACTIVATION_POLISH_2026-09-09.md -->
 <!-- doc-status: point-in-time -->
 
 # Onboarding activation polish — 2026-09-09
@@ -48,5 +49,64 @@ One earlier audit inference was corrected: Svelte effects track state read insid
 ## Deployment boundary
 
 Apply the new database migration before deploying the application changes. Then smoke-test a fresh authenticated account and a resumed account against the real backend, including actual project creation, Google OAuth, and SMS verification/delivery. These external-service checks require configured credentials and authorized test accounts; this pass did not connect a real calendar, send texts, or mutate production.
+
+## Project creation follow-up — local main, 2026-09-09
+
+Implemented directly in `/Users/djwayne/buildos-platform` on `main`, building on the committed
+onboarding work above. All changes remain uncommitted for review; existing unrelated changes were
+preserved. This follow-up adds no migration and does not change the agent's generation contract.
+
+### Findings and changes
+
+- **Launch language — P6:** the selector called creation “Project setup,” while the shared header
+  called it “New project flow.” The composer selected its creation prompt from that display string.
+  The shared context now says “Create a project,” and the composer uses `project_create` semantically.
+  The Projects empty state promises goals, tasks, and saved context rather than guaranteed milestones.
+- **Send/admission — P20/P30:** the first network operations had no visible acknowledgement, and the
+  send lock was released before admission returned. Added immediate “Sending your message…” feedback,
+  a reduced-motion-safe spinner, a polite announcement, and a lock through acceptance/failure.
+  Closing during this state now uses the existing park path.
+- **Detached completion — P22/P30:** onboarding and Today previously treated close-time mutations as
+  the creation result; closing before creation could leave the original draft ready to submit again.
+  Both hosts now persist the original session/source in their existing account-scoped, expiring draft
+  storage. A shared recovery component checks that session and resumes it without an automatic send.
+  While active it uses the lightweight worker endpoint; at rest it loads the existing session parser's
+  successful creation results. Polling backs off from 5s to 15s, stops after 20 active checks, pauses
+  while chat is open, and aborts on unmount. Failed/unknown checks never imply completion.
+- **Saved receipt — P1/P4/P13/P22:** shared-chat project results now have a named saved-project card,
+  exact related counts present in the receipt, and Open project / Open a task links. Ordinary entity
+  chips remain available. A project-only/partial result does not claim that setup is complete or invent
+  a task. Links retain the conversation by opening in a new tab; entry motion respects reduced motion.
+- **Recovery — P6/P13:** the standalone creation route now offers a real load retry. Its close toast
+  describes saved changes instead of claiming a fully created project from any mutation.
+
+### Validation
+
+- 96 focused Vitest tests pass across nine files, including persisted-session recovery, unavailable
+  probes, active/partial results, timer cleanup, no background reads while chat is open, saved receipt
+  links/counts, semantic composer copy, duplicate admission prevention, and onboarding minimize/reload.
+- Svelte analyzer: no issues in changed components; effect suggestions were reviewed. The recovery
+  effect owns cancellable network/timer lifecycle, not derived local state; existing unrelated
+  component advisories were not broadened into this change.
+- Full `pnpm --filter @buildos/web check`: **0 errors, 0 warnings**. The first run exposed two new
+  strict-index errors (fixed) and stale local shared-type declarations (rebuilt from existing source).
+- A temporary Vite fixture renders the real recovery, receipt, and composer with simulated data.
+  After-state screenshots were captured and inspected at 390px and 1280px in light/dark mode. The
+  320px offline state also has no horizontal overflow; new phone actions are at least 44px. Resume,
+  saved handback, and reduced-motion states were checked in the fixture. Screenshots are retained in
+  the task's `project-creation` visualization folder as `phone-light.png`, `phone-dark.png`,
+  `desktop-light.png`, and `desktop-dark.png`. No before-state screenshots were captured in this
+  follow-up. Fixture validation is not an authenticated end-to-end claim.
+
+### Still open
+
+- Authenticated end-to-end creation, closing during a real worker admission/turn, reloading both host
+  routes, and multiple tabs resuming the same session. No production project was created for validation.
+- Creation-session discovery outside these two account/device-local launch drafts; cross-device resume
+  continues to use existing chat history. A deleted/expired session remains a visible recovery error.
+- Rich progress stages and a backend creation ledger that distinguishes complete structure from a
+  partial save. This change deliberately reports what is saved, not whether every requested entity exists.
+- A wider entry-point redesign, memory quality, and choosing a meaningful first task rather than just
+  linking an existing task are separate product work.
 
 The older audit's proposed sample projects, extended first-week teaching, and replacement demo media are separate product work, not silently marked complete by this flow-polish pass.

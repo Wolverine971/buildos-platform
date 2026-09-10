@@ -32,8 +32,8 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 		subtitle: 'Work across projects, tasks, and the calendar.'
 	},
 	project_create: {
-		title: 'New project flow',
-		subtitle: 'Guide creation of a structured project from a spark of an idea.'
+		title: 'Create a project',
+		subtitle: 'Turn your ideas into a project with goals, tasks, and saved context.'
 	},
 	daily_brief_update: {
 		title: 'Daily brief tuning',

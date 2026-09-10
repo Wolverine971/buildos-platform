@@ -24,6 +24,31 @@ function createProps(overrides: Record<string, unknown> = {}) {
 }
 
 describe('AgentComposer', () => {
+	it('uses creation guidance based on context, independent of its display label', () => {
+		render(AgentComposer, {
+			props: createProps({
+				contextType: 'project_create',
+				displayContextLabel: 'Create a project'
+			})
+		});
+		expect(
+			screen.getByPlaceholderText(/Dump everything you're thinking about/)
+		).toBeInTheDocument();
+	});
+
+	it('acknowledges send immediately and prevents duplicate submission during admission', async () => {
+		const onSend = vi.fn();
+		const view = render(AgentComposer, {
+			props: createProps({ inputValue: 'My new project', isStartingStream: true, onSend })
+		});
+		expect(screen.getByRole('status')).toHaveTextContent('Sending your message…');
+		for (const button of screen.getAllByRole('button', { name: 'Send message' })) {
+			expect(button).toBeDisabled();
+		}
+		await fireEvent.submit(view.container.querySelector('form')!);
+		expect(onSend).not.toHaveBeenCalled();
+	});
+
 	it('uses chat copy by default', () => {
 		render(AgentComposer, {
 			props: createProps()

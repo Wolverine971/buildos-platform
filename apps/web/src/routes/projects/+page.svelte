@@ -834,8 +834,8 @@
 					</div>
 					<h2 class="text-xl font-bold text-foreground">No projects yet</h2>
 					<p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
-						Create your first project and BuildOS will help you shape goals, tasks, and
-						milestones.
+						Create your first project and BuildOS will help you shape goals and tasks,
+						and save the context behind them.
 					</p>
 					<div class="mt-6 flex justify-center">
 						<Button variant="primary" size="sm" onclick={handleCreateProject}>

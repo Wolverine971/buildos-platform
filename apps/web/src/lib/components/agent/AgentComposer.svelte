@@ -16,10 +16,13 @@
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type { AgentChatImageAttachment } from './agent-chat.types';
 	import type { VoiceNote } from '$lib/types/voice-notes';
+	import type { ChatContextType } from '@buildos/shared-types';
 
 	interface Props {
 		inputValue: string;
 		isStreaming: boolean;
+		isStartingStream?: boolean;
+		contextType?: ChatContextType | null;
 		isSendDisabled: boolean;
 		allowSendWhileStreaming?: boolean;
 		displayContextLabel: string;
@@ -54,6 +57,8 @@
 	let {
 		inputValue = $bindable(),
 		isStreaming,
+		isStartingStream = false,
+		contextType = null,
 		isSendDisabled,
 		allowSendWhileStreaming = false,
 		displayContextLabel,
@@ -108,6 +113,7 @@
 
 	const placeholder = $derived.by(() => {
 		if (placeholderOverride?.trim()) return placeholderOverride.trim();
+		if (contextType === 'project_create') return CONTEXT_PLACEHOLDERS['new project flow'];
 		const label = displayContextLabel.trim().toLowerCase();
 		if (CONTEXT_PLACEHOLDERS[label]) {
 			return CONTEXT_PLACEHOLDERS[label];
@@ -120,8 +126,9 @@
 
 	const initialRows = 1;
 	const maxRows = 6;
-	const isVoiceBlocked = $derived(isStreaming || disabled);
+	const isVoiceBlocked = $derived(isStreaming || isStartingStream || disabled);
 	const composerHint = $derived.by(() => {
+		if (isStartingStream) return 'Sending your message…';
 		if (disabled) {
 			// Prefer the parent-supplied reason (e.g. "Loading session" /
 			// "Preparing session") over a generic "Loading..." placeholder.
@@ -133,7 +140,7 @@
 
 	function handleSubmit(event: Event) {
 		event.preventDefault();
-		if (disabled || isSendDisabled) return;
+		if (disabled || isSendDisabled || isStartingStream) return;
 		onSend?.();
 	}
 
@@ -403,11 +410,18 @@
 					type="submit"
 					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:cursor-not-allowed disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
 					aria-label="Send message"
-					disabled={disabled || isSendDisabled}
+					disabled={disabled || isSendDisabled || isStartingStream}
 				>
-					<Send class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+					{#if isStartingStream}
+						<LoaderCircle
+							class="h-4 w-4 animate-spin motion-reduce:animate-none sm:h-3.5 sm:w-3.5"
+						/>
+					{:else}
+						<Send class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+					{/if}
 				</button>
 			{/if}
 		{/snippet}
 	</TextareaWithVoice>
+	<div class="sr-only" role="status">{isStartingStream ? 'Sending your message…' : ''}</div>
 </form>

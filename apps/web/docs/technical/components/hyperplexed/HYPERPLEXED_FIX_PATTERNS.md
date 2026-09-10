@@ -580,6 +580,31 @@ loading spinner with `motion-reduce:animate-none` (P11) and keep the count chip 
 
 ---
 
+### P30 · Return a detached creation to its original launch surface
+
+**Finding:** closing or minimizing a creation chat looks like cancellation to the host, even though
+the server is still working. The host offers another submission, or never reveals the saved result.
+
+1. Save the submitted source and original session ID together, scoped to the signed-in account.
+   Closing a window does not clear either. Resume the same session without an automatic resend.
+2. While the conversation is closed, probe the owned worker status with bounded backoff. Load the
+   full conversation only when no active worker is reported; never treat a failed probe as completion.
+   Abort requests/timers when the chat reopens or the host unmounts.
+3. Prove creation with successful persisted tool results, not an affected project ID or generated
+   prose. Show a saved-project receipt without implying that all requested structure was completed.
+4. An empty, failed, or question-only result offers **Resume setup chat** and **Check status**, not an
+   automatic retry of a mutating request. Unknown or slow status remains recoverable.
+5. Keep the send acknowledgement and duplicate-submit guard active through worker admission.
+   Release it on acceptance/failure, not after transport negotiation alone.
+
+Recovery status and receipts are static. Gate optional admission spinners and existing entity-entry
+animations with reduced motion (P11); announce status politely and use 44px actions (P13).
+
+**Reference:** `ProjectCreationRecovery.svelte`, onboarding capture, and Today; see the creation-flow
+follow-up in `ONBOARDING_ACTIVATION_POLISH_2026-09-09.md`.
+
+---
+
 ## Structural layout (drawers, docks, secondary panels)
 
 ### P23 · Edge-anchored tab for secondary modal context

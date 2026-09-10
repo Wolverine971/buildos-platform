@@ -619,7 +619,8 @@ export class AgentChatStreamController {
 			);
 			this.#deps.setUserHasScrolled(false);
 			prewarm.clearPreparedPrompt();
-			this.isStartingStream = false;
+			// Keep the send lock and visible acknowledgement through admission, not just
+			// lease negotiation. The finally block releases it after acceptance/failure.
 
 			// One engine: a stale lease (an AGENTIC_CHAT_WORKER_KILL_EPOCH bump,
 			// or plain expiry) is answered by negotiating a fresh worker lease and

@@ -152,7 +152,7 @@
 	}
 
 	function selectProjectCreate() {
-		onSelect?.({ contextType: 'project_create', label: 'Project setup' });
+		onSelect?.({ contextType: 'project_create', label: 'Create a project' });
 	}
 
 	function goToProjectSelection() {

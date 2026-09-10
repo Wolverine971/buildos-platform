@@ -1968,7 +1968,8 @@
 			entityId: shellRouter.selectedEntityId ?? session.entity_id ?? null,
 			projectId: resolvedProjectFocus?.projectId ?? null,
 			contextLabel: resolvedProjectFocus?.projectName ?? displayContextLabel ?? 'Workspace',
-			hasActiveTurn: stream.isStreaming || Boolean(activeRestoredTurnRunId),
+			hasActiveTurn:
+				stream.isStartingStream || stream.isStreaming || Boolean(activeRestoredTurnRunId),
 			hasSentMessage: stream.hasSentMessage
 		};
 	}
@@ -2054,7 +2055,7 @@
 		if (
 			!embedded &&
 			currentSession?.id &&
-			(stream.isStreaming || Boolean(activeRestoredTurnRunId))
+			(stream.isStartingStream || stream.isStreaming || Boolean(activeRestoredTurnRunId))
 		) {
 			minimizeToStack();
 			return;
@@ -2824,6 +2825,8 @@
 			bind:voiceSupportsLiveTranscript={voice.supportsLiveTranscript}
 			bind:voiceNoteGroupId={voice.noteGroupId}
 			isStreaming={stream.isStreaming}
+			isStartingStream={stream.isStartingStream}
+			contextType={shellRouter.selectedContextType}
 			{isSendDisabled}
 			allowSendWhileStreaming={isTouchDevice}
 			{displayContextLabel}

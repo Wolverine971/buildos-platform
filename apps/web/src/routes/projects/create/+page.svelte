@@ -9,14 +9,19 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import LoadingSkeleton from '$lib/components/ui/LoadingSkeleton.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 
 	let AgentChatModal = $state<any>(null);
 	let showChatModal = $state(false);
 	let loadError = $state<string | null>(null);
+	let isLoading = $state(false);
 
-	onMount(async () => {
+	async function loadChat() {
+		if (isLoading) return;
+		isLoading = true;
+		loadError = null;
 		try {
 			const module = await import('$lib/components/agent/AgentChatModal.svelte');
 			AgentChatModal = module.default;
@@ -24,13 +29,18 @@
 		} catch (err) {
 			console.error('Failed to load AgentChatModal:', err);
 			loadError = 'Failed to load chat interface. Please try again.';
+		} finally {
+			isLoading = false;
 		}
+	}
+	onMount(() => {
+		void loadChat();
 	});
 
 	function handleClose(summary?: DataMutationSummary) {
 		showChatModal = false;
 		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
-			toastService.success('Project created! Head to Projects to explore it.', {
+			toastService.success('Project changes saved. Open your project to review them.', {
 				duration: TOAST_DURATION.LONG
 			});
 		}
@@ -47,15 +57,13 @@
 		<div
 			class="rounded-lg border border-border bg-card p-6 text-center shadow-ink max-w-md w-full"
 		>
-			<h2 class="text-lg font-semibold text-foreground mb-2">Unable to Load</h2>
+			<h2 class="text-lg font-semibold text-foreground mb-2">Couldn’t open project setup</h2>
 			<p class="text-sm text-muted-foreground mb-4">{loadError}</p>
-			<button
-				type="button"
-				class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-semibold shadow-ink pressable"
-				onclick={() => goto('/projects')}
-			>
-				Back to Projects
-			</button>
+			<div class="flex flex-wrap justify-center gap-2">
+				<Button variant="primary" onclick={loadChat}>Try again</Button>
+				<Button variant="outline" onclick={() => goto('/projects')}>Back to Projects</Button
+				>
+			</div>
 		</div>
 	{:else if !AgentChatModal}
 		<LoadingSkeleton message="Preparing project creation..." height="200px" />

@@ -9,6 +9,7 @@ tags: [usability, flow-audit, cheat-sheet, review]
 related_files:
     - apps/web/docs/design/design-principles-checklist.md
     - apps/web/docs/technical/components/hyperplexed/HYPERPLEXED_DESIGN_PLAYBOOK.md
+path: apps/web/docs/design/ux-audit-cheat-sheet.md
 ---
 
 # BuildOS UX Audit Cheat Sheet

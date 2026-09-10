@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import ActivationReceipt from '$lib/components/onboarding-v3/ActivationReceipt.svelte';
+	import ProjectCreationRecovery from '$lib/components/agent/ProjectCreationRecovery.svelte';
 	import {
 		readOnboardingDraft,
 		writeOnboardingDraft,
@@ -67,6 +68,7 @@
 	let chatConfig = $state<{
 		contextType?: ChatContextType;
 		entityId?: string;
+		sessionId?: string;
 		focus?: ProjectFocus | null;
 		draft?: string | null;
 		autoSend?: boolean;
@@ -75,12 +77,17 @@
 	// Quick capture: "what changed?" text handed to the agent chat, which
 	// structures it into project updates (the receipts section shows the result).
 	const savedCapture = untrack(() =>
-		readOnboardingDraft<{ text: string; projectId?: string; source?: string }>(
-			data.user.id,
-			'today-capture'
-		)
+		readOnboardingDraft<{
+			text: string;
+			projectId?: string;
+			source?: string;
+			creationSessionId?: string;
+			submittedSource?: string;
+		}>(data.user.id, 'today-capture')
 	);
 	let captureText = $state(savedCapture?.text ?? '');
+	let creationSessionId = $state<string | null>(savedCapture?.creationSessionId ?? null);
+	let submittedSource = $state(savedCapture?.submittedSource ?? '');
 	let captureVoiceRecording = $state(false);
 	let captureLoading = $state(false);
 	let captureError = $state<string | null>(null);
@@ -99,7 +106,9 @@
 		writeOnboardingDraft(data.user.id, 'today-capture', {
 			text: captureText,
 			projectId: activationId,
-			source: activationSource
+			source: activationSource,
+			creationSessionId,
+			submittedSource
 		});
 	});
 	onMount(() => {
@@ -126,12 +135,17 @@
 	}
 
 	async function prepareCapture(text: string, first: boolean): Promise<boolean> {
+		if (creationSessionId) {
+			await resumeCreation();
+			return false;
+		}
 		if (!text || captureVoiceRecording || captureLoading || chatOpen) return false;
 		captureLoading = true;
 		captureError = null;
 		try {
 			await ensureChatModal();
 			submittedCapture = { text, first };
+			if (first) submittedSource = text;
 			return true;
 		} catch {
 			captureError = 'Chat couldn’t be opened. Your words are saved here; try again.';
@@ -698,7 +712,9 @@
 	}
 
 	function handleChatClose(summary?: DataMutationSummary) {
-		if (submittedCapture && summary?.hasChanges) {
+		if (chatConfig.contextType === 'project_create') {
+			creationSessionId = creationSessionId ?? summary?.sessionId ?? null;
+		} else if (submittedCapture && summary?.hasChanges) {
 			if (captureText.trim() === submittedCapture.text) captureText = '';
 			if (submittedCapture.first && summary.affectedProjectIds[0]) {
 				activationId = summary.affectedProjectIds[0];
@@ -712,6 +728,35 @@
 		refresh();
 		loadInboxCount();
 		loadChanges();
+	}
+
+	async function resumeCreation() {
+		if (!creationSessionId || captureLoading || chatOpen) return;
+		captureLoading = true;
+		try {
+			await ensureChatModal();
+			chatConfig = { contextType: 'project_create', sessionId: creationSessionId };
+			chatOpen = true;
+		} catch {
+			toastService.error(
+				'Could not reopen setup. Your draft is still saved; please try again.'
+			);
+		} finally {
+			captureLoading = false;
+		}
+	}
+
+	function handleCreationRecovered(projectIds: string[]) {
+		const projectId = projectIds[0];
+		if (!projectId) return;
+		activationId = projectId;
+		activationSource = submittedSource;
+		if (captureText.trim() === submittedSource.trim()) captureText = '';
+		creationSessionId = null;
+		submittedSource = '';
+		void loadActivationReceipt();
+		void refresh();
+		void loadChanges();
 	}
 
 	async function openInbox() {
@@ -857,6 +902,17 @@
 			</div>
 		</header>
 
+		{#if creationSessionId}
+			<div class="mt-4">
+				<ProjectCreationRecovery
+					sessionId={creationSessionId}
+					paused={chatOpen}
+					busy={captureLoading}
+					onResume={resumeCreation}
+					onCreated={handleCreationRecovered}
+				/>
+			</div>
+		{/if}
 		{#if activationId}
 			<section class="mt-4" aria-label="Your first project">
 				<ActivationReceipt
@@ -1283,6 +1339,11 @@
 		isOpen={true}
 		contextType={chatConfig.contextType ?? 'global'}
 		entityId={chatConfig.entityId}
+		initialChatSessionId={chatConfig.sessionId ?? null}
+		onSessionChange={(sessionId: string | null) => {
+			if (sessionId && chatConfig.contextType === 'project_create')
+				creationSessionId = sessionId;
+		}}
 		initialProjectFocus={chatConfig.focus ?? null}
 		initialDraft={chatConfig.draft ?? null}
 		autoSendInitialDraft={chatConfig.autoSend ?? false}

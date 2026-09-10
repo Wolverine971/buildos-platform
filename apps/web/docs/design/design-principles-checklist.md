@@ -11,6 +11,7 @@ related_files:
     - apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
     - apps/web/docs/technical/components/hyperplexed/HYPERPLEXED_DESIGN_PLAYBOOK.md
     - apps/web/docs/technical/components/hyperplexed/HYPERPLEXED_AUDIT_TRACKER.md
+path: apps/web/docs/design/design-principles-checklist.md
 ---
 
 # BuildOS Usability and Interaction Principles

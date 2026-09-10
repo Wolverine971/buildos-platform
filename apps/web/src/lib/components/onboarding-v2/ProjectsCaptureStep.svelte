@@ -19,6 +19,7 @@
 	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ActivationReceipt from '$lib/components/onboarding-v3/ActivationReceipt.svelte';
+	import ProjectCreationRecovery from '$lib/components/agent/ProjectCreationRecovery.svelte';
 	import {
 		readOnboardingDraft,
 		writeOnboardingDraft,
@@ -116,6 +117,8 @@
 		draft: string;
 		source: string;
 		notificationId?: string | null;
+		creationSessionId?: string | null;
+		submittedSource?: string;
 	};
 	const restored = untrack(() => readOnboardingDraft<CaptureDraft>(userId, 'capture'));
 	const initialProjectId = untrack(() => savedProjectId ?? initialProjects[0]?.id ?? null);
@@ -127,6 +130,8 @@
 		initialProjectId || restoredIds.length ? 'receipt' : 'capture'
 	);
 	let draftText = $state(typeof restored?.draft === 'string' ? restored.draft : '');
+	let creationSessionId = $state<string | null>(restored?.creationSessionId ?? null);
+	let submittedSource = $state(restored?.submittedSource ?? '');
 	let sourceText = $state(
 		(!initialProjectId || restoredIds[0] === initialProjectId) &&
 			typeof restored?.source === 'string'
@@ -148,7 +153,9 @@
 			projectIds: createdProjectIds,
 			draft: draftText,
 			source: sourceText,
-			notificationId: calendarNotificationId
+			notificationId: calendarNotificationId,
+			creationSessionId,
+			submittedSource
 		});
 	});
 
@@ -185,6 +192,7 @@
 	let chatConfig = $state<{
 		contextType: 'project_create' | 'project';
 		entityId?: string;
+		sessionId?: string;
 		draft?: string | null;
 		autoSend?: boolean;
 	}>({ contextType: 'project_create' });
@@ -201,6 +209,7 @@
 	}
 
 	async function submitCapture() {
+		if (creationSessionId) return resumeCreation();
 		const text = draftText.trim();
 		if (!text || isVoiceRecording || isLoadingChat || showChatModal || busy) return;
 		try {
@@ -211,12 +220,44 @@
 			return;
 		}
 		track('first_capture_submitted', { capture_length: text.length });
+		submittedSource = text;
 		chatConfig = {
 			contextType: 'project_create',
 			draft: text,
 			autoSend: true
 		};
 		showChatModal = true;
+	}
+
+	async function resumeCreation() {
+		if (!creationSessionId || isLoadingChat || showChatModal || busy) return;
+		try {
+			await ensureChatModal();
+			chatConfig = { contextType: 'project_create', sessionId: creationSessionId };
+			showChatModal = true;
+		} catch {
+			toastService.error(
+				'Could not reopen setup. Your draft is still saved; please try again.'
+			);
+		}
+	}
+
+	async function handleCreationRecovered(projectIds: string[]) {
+		const projectId = projectIds[0];
+		if (!projectId) return;
+		createdProjectIds = projectIds;
+		sourceText = submittedSource || draftText;
+		if (draftText.trim() === sourceText.trim()) draftText = '';
+		creationSessionId = null;
+		submittedSource = '';
+		phase = 'receipt';
+		track('first_structure_generated', { project_count: projectIds.length });
+		track('first_project_created', {
+			project_id: projectId,
+			is_first: !hadProjectsBeforeStep
+		});
+		// loadPacket also persists progress; a failed save stays retryable in the receipt.
+		await loadPacket(projectId);
 	}
 
 	async function openAdjustChat() {
@@ -236,6 +277,10 @@
 	async function handleChatClose(summary?: DataMutationSummary) {
 		showChatModal = false;
 		const wasAdjusting = chatConfig.contextType === 'project';
+		if (!wasAdjusting && (creationSessionId || summary?.sessionId)) {
+			creationSessionId = creationSessionId ?? summary?.sessionId ?? null;
+			return;
+		}
 		const firstAffectedId = summary?.affectedProjectIds[0];
 		if (summary?.hasChanges && firstAffectedId) {
 			if (!wasAdjusting) {
@@ -554,6 +599,17 @@
 			</p>
 		</div>
 
+		{#if creationSessionId}
+			<div class="mb-4">
+				<ProjectCreationRecovery
+					sessionId={creationSessionId}
+					paused={showChatModal}
+					busy={isLoadingChat || busy}
+					onResume={resumeCreation}
+					onCreated={handleCreationRecovered}
+				/>
+			</div>
+		{/if}
 		<!-- Composer -->
 		<div
 			class="mb-4 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
@@ -568,6 +624,7 @@
 				rows={6}
 				maxRows={14}
 				autoResize={true}
+				disabled={Boolean(creationSessionId)}
 				voiceNoteSource="onboarding_first_braindump"
 			/>
 
@@ -577,6 +634,7 @@
 					<button
 						type="button"
 						onclick={() => appendChip(chip)}
+						disabled={Boolean(creationSessionId)}
 						class="inline-flex min-h-11 items-center rounded-full border border-border bg-muted/40 px-3 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
 						{chip}
@@ -588,7 +646,11 @@
 				variant="primary"
 				size="lg"
 				onclick={submitCapture}
-				disabled={!draftText.trim() || isVoiceRecording || isLoadingChat || busy}
+				disabled={Boolean(creationSessionId) ||
+					!draftText.trim() ||
+					isVoiceRecording ||
+					isLoadingChat ||
+					busy}
 				loading={isLoadingChat}
 				class="mt-4 w-full shadow-ink"
 			>
@@ -829,6 +891,11 @@
 		isOpen={showChatModal}
 		contextType={chatConfig.contextType}
 		entityId={chatConfig.entityId}
+		initialChatSessionId={chatConfig.sessionId ?? null}
+		onSessionChange={(sessionId: string | null) => {
+			if (sessionId && chatConfig.contextType === 'project_create')
+				creationSessionId = sessionId;
+		}}
 		initialDraft={chatConfig.draft ?? null}
 		autoSendInitialDraft={chatConfig.autoSend ?? false}
 		onClose={handleChatClose}

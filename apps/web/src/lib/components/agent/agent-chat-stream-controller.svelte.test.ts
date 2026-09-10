@@ -760,6 +760,29 @@ describe('AgentChatStreamController', () => {
 		expect(h.inputValue).toBe('');
 	});
 
+	it('keeps send locked while admission is pending and rejects a duplicate submit', async () => {
+		let resolveAdmission!: (response: Response) => void;
+		const h = createHarness({
+			admissionFetchImpl: vi.fn(
+				() =>
+					new Promise<Response>((resolve) => {
+						resolveAdmission = resolve;
+					})
+			) as typeof fetch
+		});
+		const send = h.controller.sendMessage();
+		expect(h.controller.isStartingStream).toBe(true);
+		await vi.waitFor(() => expect(h.admissionCalls).toHaveLength(1));
+		expect(h.controller.isStartingStream).toBe(true);
+		h.inputValue = 'A second submit while waiting';
+		await h.controller.sendMessage();
+		expect(h.admissionCalls).toHaveLength(1);
+		resolveAdmission(admittedResponse(parseBody(h.admissionCalls[0]!)));
+		await send;
+		expect(h.controller.isStartingStream).toBe(false);
+		expect(h.inputValue).toBe('A second submit while waiting');
+	});
+
 	it('does not clobber a newer draft when restoring a failed send', async () => {
 		let resolveAdmission!: (response: Response) => void;
 		const h = createHarness({
