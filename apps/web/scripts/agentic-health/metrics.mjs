@@ -474,7 +474,9 @@ export function buildHealthReport({
 		metrics,
 		notes: [
 			'Output is aggregate-only: no message text, email address, credential, or turn identifier is written.',
-			'Acceptance remains provisional until the window contains seven full post-deploy days.',
+			durationDays >= 7
+				? 'Acceptance window contains at least seven full post-deploy days.'
+				: 'Acceptance remains provisional until the window contains seven full post-deploy days.',
 			'Control-call share preserves the audit definition: control tool executions divided by all tool executions.'
 		]
 	};

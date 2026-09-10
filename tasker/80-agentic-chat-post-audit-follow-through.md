@@ -4,7 +4,8 @@
 
 **Created:** 2026-09-02
 
-**Status:** In progress — WP-0 closed with a baseline-CI exception; WP-1 seven-day window maturing;
+**Status:** In progress — WP-0 closed with a baseline-CI exception; WP-1 seven-day acceptance
+report complete with ten numbered follow-through defects/evidence gaps;
 WP-2 BUILT on branch `one-engine` (21 commits, legacy engine deleted, calendar + email on the
 worker; all suites green; live battery + deploy = merge gate, see
 `docs/technical/reviews/ONE_ENGINE_BRANCH_HANDOFF_2026-09-04.md`); WP-7 committed `a1771c1f7`,
@@ -152,10 +153,86 @@ or a new tracker.
 - WP-1 remains open until at least `2026-09-10T17:44:36Z`, when a single-user report can contain
   seven full post-deploy days and its table can be pasted here. DJ chose the lean report on
   2026-09-03, so no interactive page or nightly refresh will be built.
-- A one-time Codex task follow-up (`agentic-chat-seven-day-proof`) is active for
+- A one-time Codex task follow-up (`agentic-chat-seven-day-proof`) was scheduled for
   **2026-09-10 at 14:00 America/New_York (18:00 UTC)**, after the acceptance window matures.
-  It will run the single-user report, commit aggregate evidence and the metric table, and assign
-  missed targets to numbered defects; it is not a nightly refresh or an acceptance receipt.
+  It ran the single-user report below, committed aggregate evidence and the metric table, and
+  assigned missed targets to numbered defects; it was not a nightly refresh.
+
+### WP-1 seven-day acceptance receipt — 2026-09-10
+
+The single-user, read-only report covers exactly `2026-09-03T17:44:36Z` through
+`2026-09-10T17:44:36Z`: seven full post-deploy days, 111 turns (100 worker, 92 completed worker),
+466 tool executions, 553 model-usage rows, and 1,813 execution observations. The committed
+[aggregate JSON](../docs/technical/reviews/AGENTIC_CHAT_HEALTH_2026-09-10.json) contains no user
+ID, turn ID, message text, email address, or credential.
+
+| Metric                                 |                           Seven-day result | Status        | Target                                          |
+| -------------------------------------- | -----------------------------------------: | ------------- | ----------------------------------------------- |
+| Permanent invalid finish-reason kills  |                                          0 | pass          | 0                                               |
+| Truncation retries completed           |                                        0/0 | no data       | >=90%                                           |
+| Non-allowlisted tool kills / repairs   |                         0 kills; 0 repairs | pass          | 0 kills; repairs counted                        |
+| Reviewer prompt cache / latency        |     20.9% token cache; p50 7.5s; p90 16.4s | fail          | >50% token cache; p90 <30s                      |
+| Reviewer share of worker spend         |                                      27.7% | fail          | <24% and falling                                |
+| Write turns: direct / contract         | 48.6% direct (18/37); restraint canary 0/0 | watch         | Focused edits direct; restraint canary reviewed |
+| Control-round share                    |                            29.0% (135/466) | informational | Reported, not targeted                          |
+| Partial-write disclosure               |                                        3/5 | fail          | 5/5                                             |
+| Sanitizer-altered replies              |                                      23/76 | fail          | <=6/76                                          |
+| Worker skill preloads                  |                 20/34 writes; 0/0 F7 reads | pass          | Fires on writes; zero on F7 reads               |
+| `delegate_task` success                |                                        0/0 | no data       | 100%                                            |
+| Throttle requeue delay                 |                                  0 samples | no data       | 5-65s                                           |
+| Completed worker latency               |                       p50 35.5s; p90 91.6s | fail          | p50 <=21s; p90 <60s                             |
+| Completed workers with zero LLM passes |                                       0/92 | pass          | Telemetry hole reported                         |
+| `internal_cohort_rejected` rows        |                                          0 | pass          | Telemetry hole reported                         |
+| Legacy-lane share                      |                              9.9% (11/111) | watch         | 0 before lane deletion                          |
+
+The two original permanent-failure targets are met. Reviewer latency itself is under its 30-second
+p90 target, but cache efficiency and spend are not. The acceptance run exposed five failed
+targets, two watch gates, and three unexercised production paths:
+
+1. **WP1-D1 — Reviewer token cache remains below target (owner: WP-4,
+   `apps/worker/src/workers/agentic-chat/provider/`).** Token cache is 20.9% against >50%, even
+   though 61.4% of the 70 reviewer calls had some cached tokens. Keep latency's passing result
+   separate from the cache miss and inspect the stable-prefix boundary before changing models.
+2. **WP1-D2 — Reviewer spend share rose above baseline (owner: WP-4,
+   `apps/worker/src/workers/agentic-chat/` + `packages/smart-llm/`).** Reviewer calls consume 27.7%
+   of worker model spend versus the 24% baseline and the <24% target. WP-4's cheaper-model canary
+   is warranted, but still requires its paired restraint cases.
+3. **WP1-D3 — Partial writes are not always disclosed (owner: WP-3,
+   `packages/agentic-chat-runtime/` + `apps/worker/src/workers/agentic-chat/`).** Two of five
+   `mutation_unfulfilled` terminals omitted the required `Done: N of M` disclosure. Treat this as
+   terminal-truth debt in the resumable/effect-ledger path, not a telemetry-only issue.
+4. **WP1-D4 — Reply sanitization still changes too many finals (owner: WP-2,
+   `packages/agentic-chat-runtime/src/loop/`).** The deployed sanitizer changed 23 of the last 76
+   replies against a <=6 target. Inspect these as aggregate classes before changing behavior; the
+   committed artifact deliberately contains no source text.
+5. **WP1-D5 — Completed worker latency regressed (owner: WP-4,
+   `apps/worker/src/workers/agentic-chat/provider/`).** p50 is 35.5s and p90 is 91.6s against <=21s
+   and <60s. Reviewer p90 is only 16.4s, so the route canary must measure end-to-end time rather
+   than assuming the reviewer explains the entire tail.
+6. **WP1-D6 — The restraint canary was not observed (owner: WP-4 paired canary).** Direct-lane
+   adoption reached 18 of 37 write turns, but zero production turns matched the three-plausible-
+   tasks restraint case. Do not ratify a cheaper reviewer from organic telemetry alone.
+7. **WP1-D7 — The legacy lane still handled 11 turns (owner: WP-2,
+   `apps/web/src/lib/services/agentic-chat-v2/`).** The 9.9% share is the durable renegotiation
+   proxy. WP-2 is not accepted until the `one-engine` work is merged, deployed, and a later report
+   shows zero legacy turns.
+8. **WP1-D8 — Truncation retry recovery had no production sample (owner: WP-2 provider harness).**
+   Zero matching retries means the permanent-kill fix is encouraging but the >=90% recovery target
+   is not production-proven; preserve the focused provider test and include it in the merge gate.
+9. **WP1-D9 — `delegate_task` had no production sample (owner: WP-2 tool-adapter harness).** Zero
+   calls leave the 100% success target unproven; keep this as an explicit e2e acceptance case rather
+   than manufacturing production traffic.
+10. **WP1-D10 — Throttle delay had no production sample (owner: WP-3 recovery harness).** Zero
+    throttle jobs leave the 5-65s production target unproven. The deterministic recovery test remains
+    the evidence until a natural production throttle can be measured.
+
+Focused report tests pass **2/2**. The report's maturity note was corrected so a seven-day artifact
+states that the window is mature rather than repeating the provisional warning. Privacy scan,
+changed-file formatting, and diff whitespace checks pass. Documentation health still reports six
+unrelated, already-present unstamped document-service/visual-audit files; this scoped report did not
+modify them. No production row or environment value was changed. WP-1 is complete as a measurement
+package; its numbered defects remain owned by WP-2 through WP-4. WP-4 is now data-unblocked, but
+email enablement remains a separate DJ decision.
 
 ## WP-2 — Retire the legacy web chat lane (the big one)
 

@@ -96,6 +96,9 @@ describe('agentic health metrics', () => {
 		expect(find(report, 'throttle_requeue_delay').status).toBe('pass');
 		expect(find(report, 'completed_worker_latency').details.p90_ms).toBe(50_000);
 		expect(find(report, 'legacy_lane_share').details.legacy_turns).toBe(1);
+		expect(report.notes).toContain(
+			'Acceptance window contains at least seven full post-deploy days.'
+		);
 		expect(JSON.stringify(report)).not.toContain('write prompt');
 		expect(JSON.stringify(report)).not.toContain("email one's done");
 	});
@@ -120,6 +123,9 @@ describe('agentic health metrics', () => {
 
 		expect(find(report, 'sanitizer_edits').details.altered).toBe(1);
 		expect(find(report, 'mutation_unfulfilled_disclosure').status).toBe('fail');
+		expect(report.notes).toContain(
+			'Acceptance remains provisional until the window contains seven full post-deploy days.'
+		);
 	});
 });
 
