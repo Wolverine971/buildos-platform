@@ -81,7 +81,7 @@ export const ONTOLOGY_READ_TOOLS: ChatToolDefinition[] = [
 		function: {
 			name: 'list_onto_documents',
 			description:
-				'List document metadata, not body content. Read a listed document with get_document_outline, then read_document_section.',
+				'List document metadata, not body content. For a short document or a summary needing its whole body, use get_onto_document_details directly. For a specific section in a long document, use get_document_outline then read_document_section. Choose one path; do not routinely load both.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -698,7 +698,7 @@ Use only when older instructions specifically mention search_ontology.`,
 		function: {
 			name: 'get_onto_project_details',
 			description: `Get complete details for a specific ontology project including properties and metadata.
-Use when you need full project information for a known project id.`,
+Use for project properties missing from loaded evidence. If get_project_overview already supplies the requested status, do not reload details just to confirm it.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -734,8 +734,8 @@ Use when you need to reorganize or analyze the complete project graph structure.
 		type: 'function',
 		function: {
 			name: 'get_onto_task_details',
-			description: `Get complete details for a specific ontology task including all properties and relationships.
-Use after a list or search result has identified the task id.`,
+			description: `Get a known task's missing details, such as assignees or relationships needed for the request.
+Task lists include statuses, dates, priorities and description previews. Do not reopen every listed task for a status summary; read details only to fill a specific missing fact.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -792,7 +792,7 @@ Use after listing plans to retrieve the full record for editing or auditing.`,
 		function: {
 			name: 'get_onto_document_details',
 			description: `Get complete details for a specific ontology document including content, description, and metadata.
-Use when you need the full document before editing or linking it.`,
+Use directly for a short document, a summary of its body, or an exact edit. No outline read is required first. If content_truncated is false, the returned content_preview is the complete body; do not read its sections again. For a long document with truncated content, read only the missing sections.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -901,7 +901,7 @@ Useful for showing where a document lives in the hierarchy.`,
 		type: 'function',
 		function: {
 			name: 'get_document_outline',
-			description: `Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use this to scan before reading any section.`,
+			description: `Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use for a targeted section lookup in a long document. For a short document or a whole-document summary, use get_onto_document_details directly instead.`,
 			parameters: {
 				type: 'object',
 				properties: {

@@ -6,7 +6,10 @@ import {
 	validateAgenticChatConsumerConfig,
 	validateAgenticChatDrainTimeout
 } from './consumer';
-import type { AgenticChatOpenAiCompatibleRouteV1 } from './provider/openrouter-client';
+import type {
+	AgenticChatOpenAiCompatibleRouteV1,
+	AgenticChatOpenRouterProviderRoutingV1
+} from './provider/openrouter-client';
 import {
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY,
@@ -47,6 +50,52 @@ const DEFAULT_OPENROUTER_PROVIDER_ROUTING = Object.freeze({
 	order: DEFAULT_OPENROUTER_PROVIDER_POOL,
 	ignore: DEFAULT_OPENROUTER_PROVIDER_IGNORE
 });
+
+// Explicit route experiments keep model-specific measurements out of unrelated defaults.
+// OpenRouter routing contract: https://openrouter.ai/docs/guides/routing/provider-selection
+function resolveProviderRouting(
+	environment: Record<string, string | undefined>
+): AgenticChatOpenRouterProviderRoutingV1 {
+	const isV41 =
+		environment.AGENTIC_CHAT_OPENROUTER_MODEL?.trim() === 'deepseek/deepseek-v4.1-flash';
+	// Morph took 44.6s on a narrow final answer and exhausted a 90s attempt
+	// on another short answer in the Sep 11 QA runs. Other fallbacks stay open.
+	const ignoredProviders = isV41 ? ['azure', 'morph'] : DEFAULT_OPENROUTER_PROVIDER_IGNORE;
+	const order = environment.AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER?.trim();
+	const sort = environment.AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT?.trim();
+	if (order && sort) throw new Error('Choose a provider order or sort, not both');
+	if (sort) {
+		if (sort !== 'latency' && sort !== 'throughput' && sort !== 'price')
+			throw new Error('Invalid AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT');
+		return { allow_fallbacks: true, ignore: ignoredProviders, sort };
+	}
+	if (order) {
+		const providers = order.split(',').map((value) => value.trim());
+		if (
+			providers.length > 16 ||
+			providers.some((value) => !/^[a-z0-9][a-z0-9/_-]{0,63}$/.test(value))
+		)
+			throw new Error('Invalid AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER');
+		return {
+			allow_fallbacks: true,
+			ignore: ignoredProviders,
+			order: [...new Set(providers)]
+		};
+	}
+	// V4.1 is a different endpoint pool from the V4 measurements above.
+	// Sep 11 QA: throughput sorting completed all five-task/three-link turns
+	// in 52–54s, narrow edits in 18–30s, and document edits in 21–26s (3 each).
+	// Fixed ordering had repeated long-tail misses. Preserve fallback availability
+	// and explicit overrides; these samples do not establish a latency guarantee.
+	if (isV41) {
+		return {
+			allow_fallbacks: true,
+			ignore: ignoredProviders,
+			sort: 'throughput'
+		};
+	}
+	return DEFAULT_OPENROUTER_PROVIDER_ROUTING;
+}
 
 export type AgenticChatProviderConfig = {
 	routes: readonly AgenticChatOpenAiCompatibleRouteV1[];
@@ -296,7 +345,7 @@ function loadProviderConfig(environment: NodeJS.ProcessEnv): AgenticChatProvider
 		apiKey,
 		model,
 		fallbackModels,
-		providerRouting: DEFAULT_OPENROUTER_PROVIDER_ROUTING
+		providerRouting: resolveProviderRouting(environment)
 	});
 	const reviewerModelValue = environment.AGENTIC_CHAT_REVIEWER_MODEL;
 	if (!reviewerModelValue && environment.AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS) {

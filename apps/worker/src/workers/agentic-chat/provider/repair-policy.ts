@@ -327,7 +327,8 @@ function describeWriteReceipt(entry: WriteLedgerEntry): string {
 /** Last-resort user receipt, rendered only from this turn's durable ledger. */
 export function renderWriteReceiptFallback(
 	ledger: readonly WriteLedgerEntry[],
-	unfinished: readonly string[]
+	unfinished: readonly string[],
+	introduction = 'I saved these changes, but could not finish the response:'
 ): string | null {
 	const succeeded = ledger.filter((entry) => entry.status === 'success');
 	if (succeeded.length === 0) return null;
@@ -354,7 +355,7 @@ export function renderWriteReceiptFallback(
 	};
 	const failed = ledger.filter((entry) => entry.status === 'failure');
 	return [
-		'I saved these changes, but could not finish the response:',
+		introduction,
 		'',
 		...succeeded.map((entry) => `- ${receipt(entry)}`),
 		...(failed.length

@@ -1,4 +1,5 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.tasks.ts
+import { reconcileLegacyTaskEstimate } from './task-estimate';
 import { isValidUUID, type Json } from '@buildos/shared-types';
 import {
 	AutoOrganizeError,
@@ -615,6 +616,10 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 	if (args.props !== undefined) {
 		changedFieldCount += 1;
 		changedFields.push('props');
+	}
+	if (reconcileLegacyTaskEstimate(existingTask, updateData)) {
+		changedFieldCount += 1;
+		changedFields.push('description');
 	}
 	if (hasGoalInput) {
 		changedFieldCount += 1;

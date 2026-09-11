@@ -225,6 +225,7 @@ function extractChangedValues(
 }
 
 function extractIdFromArgs(entityKind: string | null, args: ParsedArgs): string | undefined {
+	if (entityKind === 'relationship') return readString(args.edge_id); // project_id is not the edge identity
 	if (entityKind) {
 		const direct = readString(args[`${entityKind}_id`]);
 		if (direct) return direct;

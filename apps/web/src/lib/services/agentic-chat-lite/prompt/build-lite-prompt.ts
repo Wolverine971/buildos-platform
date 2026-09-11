@@ -923,7 +923,8 @@ function buildLocationLoadedContextSection(
 					`- Current time (UTC instant, minute precision): ${truncateIsoToMinute(timeline.generatedAt)}`,
 					'- Resolve relative dates ("friday", "tomorrow", "end of day") from the local date above. A weekday name means its next occurrence after today; if today is that weekday it means one week from today unless the user says "today".',
 					`- ${DATE_ARGUMENT_SCOPE_RULE}`,
-					'- Timestamps in tool results are rendered in your timezone with a UTC offset (for example 2026-09-22T23:59:59-04:00); the calendar date is the date part of that string.'
+					'- Timestamps in tool results are rendered in your timezone with a UTC offset (for example 2026-09-22T23:59:59-04:00); the calendar date is the date part of that string.',
+					'- Across daylight-saving transitions, repeated local times need an explicit occurrence or offset; nonexistent times need a replacement. For elapsed durations, add time to the UTC instant and convert the endpoint back to the IANA zone: the start offset may no longer apply. In validation-only answers, omit unrequested endpoint calculations; never invent a valid local time inside a skipped hour.'
 				]
 			: [];
 	const renderMode = timeline
@@ -1260,7 +1261,7 @@ function buildOperatingStrategySection(
 		source: 'lite.strategy',
 		content: [
 			'How to act:',
-			'- Start with the loaded context. If it already answers the request, respond without extra tool calls.',
+			'- Start with loaded context. Read only missing facts; once requested facts are answered or unknown after a relevant search, respond. Do not cycle through search, exploration and lists to prove absence.',
 			// Lead-in coaching is web-only (audit 2026-09-02 F-A10 / C3): the worker
 			// discards prose emitted alongside a disposition call, so on a
 			// worker-bound artifact (dynamicSkillTools=false) the bullet only spends
@@ -1346,13 +1347,13 @@ function buildFinalResponseContractSection(
 		kind: 'static',
 		source: 'lite.final_response_contract',
 		content: [
-			'- Report only what tool results confirm: an entity counts as created, updated, moved, merged, archived, deleted, scheduled, or linked once its write tool succeeded (reading, planning, or loading a schema is preparation, not completion), so name each successful write that matters, state what failed or did not change, and when a requested write could not run at all say "I was unable to <requested action>" and name the blocker.',
+			'- Report only what tool results confirm: writes count only after successful execution. Name material saved changes and failures; preparation is not completion. For a requested write that could not run, say "I was unable to <requested action>" and name the blocker.',
 			// The workspace is a partial record of the world, so silence in it is
 			// not a finding about the world. Reporting an empty read as "no payment
 			// was made" / "the permit was never filed" states something BuildOS
 			// cannot know and the owner may act on.
-			'- Separate recorded facts, bounded search findings, and unknown real-world status, including in conclusions. Todo does not mean work never started or a permit was denied. Say "No approval evidence in the records checked; status unknown." Apply this to payments, photos and deliverables. Scoped searches, partial lists and unread documents cannot prove workspace-wide absence.',
-			'- Link saved projects, tasks and documents using tool-provided record_references URLs as Markdown links, especially when links are requested. Never infer URLs from titles.',
+			'- Separate recorded facts, bounded search findings, and unknown real-world status in every heading and conclusion. Todo and planned dates do not prove work has not started or nothing is completed. Missing permit/payment evidence means "Approval/payment status unknown", never "No, not approved/paid." Say "No completion evidence in the records checked; actual status unknown." Later caveats cannot fix contrary claims. Scoped reads cannot prove workspace-wide absence.',
+			'- Keep brief reports brief: answer requested facts once in a compact list or table; omit incidental metadata, search narration and duplicate recaps. Link saved entities using tool-provided record_references URLs as Markdown links. Never infer URLs from titles.',
 			'- For exact document edits, the original user request and loaded source stay authoritative after correction. Reviewer descriptions summarize scope; they cannot replace requested text.'
 		].join('\n')
 	});

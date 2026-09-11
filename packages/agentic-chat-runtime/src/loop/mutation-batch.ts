@@ -15,6 +15,7 @@
 // get wrong, so there is no rejection class for getting it wrong.
 
 import { createHash } from 'node:crypto';
+import type { JsonObject } from '@buildos/shared-types';
 import type { WriteLedgerEntry } from './write-ledger';
 
 /** One proposed tool call, exactly as the provider streamed it. */
@@ -66,11 +67,13 @@ export function buildMutationBatch(
  */
 export function serializeMutationBatchForReview(
 	batch: MutationBatch
-): { call: number; tool: string; arguments: string }[] {
+): { call: number; tool: string; arguments: JsonObject }[] {
 	return batch.calls.map((call, index) => ({
 		call: index + 1,
 		tool: call.name,
-		arguments: call.canonicalArguments
+		// Render actual JSON values, not an escaped JSON string inside JSON.
+		// The immutable canonical text still binds approval and execution below.
+		arguments: JSON.parse(call.canonicalArguments) as JsonObject
 	}));
 }
 

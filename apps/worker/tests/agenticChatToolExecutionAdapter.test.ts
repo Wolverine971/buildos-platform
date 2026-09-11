@@ -1137,7 +1137,7 @@ describe('AgenticChatToolExecutionAdapter', () => {
 					}
 				],
 				total: 1,
-				message: 'Found 1 ontology tasks. Use get_onto_task_details for full information.'
+				message: 'Found 1 ontology tasks.'
 			},
 			affectedEntities: [],
 			toolCategory: 'search',

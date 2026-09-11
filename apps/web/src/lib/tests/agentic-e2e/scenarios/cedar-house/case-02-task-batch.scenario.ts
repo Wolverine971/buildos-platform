@@ -9,7 +9,6 @@
 import type { Scenario } from '../../harness/types';
 import {
 	assertIsoDate,
-	assertNumericPriorityAtMost,
 	assertToolCalled,
 	assertTurnRunCompleted,
 	assertTurnSucceeded
@@ -17,6 +16,7 @@ import {
 import { listEdges, listTasks, waitForTurnRun } from '../../harness/telemetry';
 import { CEDAR_ALL_TASK_SLUGS, CEDAR_TASKS, seedCedarHouse } from './fixture';
 import {
+	assertDependencyRecorded,
 	assertMinutesRecorded,
 	assertNoCalendarSideEffects,
 	assertWorkerLaneOnly,
@@ -29,7 +29,7 @@ export const cedarCase02TaskBatchScenario: Scenario = {
 	title: 'Case 2 — create five dated, prioritized, dependent tasks in one request',
 	category: 'cedar-house',
 	batteryCase: 2,
-	requiredMutationTools: ['create_onto_task'],
+	requiredMutationTools: ['create_onto_task', 'link_onto_entities'],
 	seed: (ctx) => seedCedarHouse(ctx, { tasks: 'none', label: 'case-02' }),
 	turns: [
 		{
@@ -67,11 +67,11 @@ export const cedarCase02TaskBatchScenario: Scenario = {
 					const fixture = CEDAR_TASKS[slug]!;
 					const task = taskByTitle(tasks, fixture.title);
 					assertIsoDate(task.due_at, fixture.dueDate, `task "${fixture.title}" due`);
-					assertNumericPriorityAtMost(
-						task.priority,
-						fixture.priority,
-						`task "${fixture.title}"`
-					);
+					if (task.priority !== fixture.priority) {
+						throw new Error(
+							`[assert] task "${fixture.title}" priority must equal ${fixture.priority}`
+						);
+					}
 					assertMinutesRecorded(task, fixture.minutes);
 					if (task.state_key !== 'todo') {
 						throw new Error(
@@ -80,29 +80,12 @@ export const cedarCase02TaskBatchScenario: Scenario = {
 						);
 					}
 					if (fixture.prerequisite) {
-						// The prompt says "save the dependencies as relationships if
-						// supported", so a real edge is the better answer and must
-						// pass. Prose stays acceptable; only recording the
-						// dependency nowhere fails
-						// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J9).
-						const text = `${task.title} ${task.description ?? ''}`.toLowerCase();
-						const recordedInText = text.includes(fixture.prerequisite.toLowerCase());
-						const prerequisiteTask = taskByTitle(tasks, fixture.prerequisite);
-						const recordedAsEdge =
-							prerequisiteTask !== undefined &&
-							edges.some(
-								(edge) =>
-									(edge.src_id === task.id &&
-										edge.dst_id === prerequisiteTask.id) ||
-									(edge.src_id === prerequisiteTask.id && edge.dst_id === task.id)
-							);
-						if (!recordedInText && !recordedAsEdge) {
-							throw new Error(
-								`[assert] task "${fixture.title}" recorded its "${fixture.prerequisite}" ` +
-									`prerequisite neither as a relationship edge nor in its text. ` +
-									`Description: "${task.description ?? '(none)'}"`
-							);
-						}
+						// Linking is an admitted, required capability for this battery.
+						assertDependencyRecorded(
+							edges,
+							task,
+							taskByTitle(tasks, fixture.prerequisite)
+						);
 					}
 				}
 

@@ -100,7 +100,7 @@ export interface CedarTaskFixture {
 	dueDate: string;
 	/** Numeric priority as BuildOS stores it (lower = higher priority). */
 	priority: number;
-	/** The audit verified durations in DESCRIPTIONS; no structured estimate field exists. */
+	/** Canonical estimate in props.duration_minutes; legacy prose is a separate fixture. */
 	minutes: number;
 	prerequisite?: string;
 }
@@ -169,6 +169,8 @@ export type CedarTaskSet = 'none' | 'core' | 'all';
 export interface CedarSeedOptions {
 	/** Which pre-existing task rows the case needs. */
 	tasks?: CedarTaskSet;
+	/** Exercise correction of old prose estimates separately from canonical seeds. */
+	legacyEstimateText?: boolean;
 	/** Seed the marketing brief so the case can edit or read it back. */
 	brief?: boolean;
 	/** Label appended to the project name, for readable fixtures in the DB. */
@@ -209,7 +211,12 @@ export function cedarProjectSpec(name: string, options: CedarSeedOptions = {}): 
 					temp_id: task.slug,
 					kind: 'task' as const,
 					title: task.title,
-					description: cedarTaskDescription(task),
+					description: options.legacyEstimateText
+						? cedarTaskDescription(task)
+						: task.prerequisite
+							? `Depends on ${task.prerequisite}.`
+							: '',
+					props: { duration_minutes: task.minutes, fixture_marker: 'cedar-house' },
 					type_key: 'task.default',
 					state_key: 'todo',
 					priority: task.priority,

@@ -4,7 +4,7 @@
 // oracle file stays a plain list of the audit's saved values.
 import { assertNoEventsCreated, assertNoLegacyRows } from '../../harness/assertions';
 import type { ScenarioContext, TurnResult } from '../../harness/types';
-import type { TaskRow } from '../../harness/telemetry';
+import type { EdgeRow, TaskRow } from '../../harness/telemetry';
 
 export interface CedarProjectRow {
 	id: string;
@@ -112,13 +112,34 @@ export function assertContingencyPresent(text: string, label: string): void {
 	}
 }
 
-/** Minutes are stored in task descriptions; the audit verified them there. */
+/** Estimates have one canonical storage field; incidental prose is not evidence. */
 export function assertMinutesRecorded(task: TaskRow, minutes: number): void {
-	const text = `${task.title} ${task.description ?? ''}`;
-	if (!new RegExp(`\\b${minutes}\\b`).test(text)) {
+	const props = task.props as Record<string, unknown> | null;
+	if (props?.duration_minutes !== minutes) {
 		throw new Error(
-			`[assert] task "${task.title}" does not record its ${minutes}-minute estimate. ` +
-				`Description: "${task.description ?? '(none)'}"`
+			`[assert] task "${task.title}" must store props.duration_minutes=${minutes}; ` +
+				`received ${JSON.stringify(props?.duration_minutes)}`
+		);
+	}
+}
+
+export function assertDependencyRecorded(
+	edges: readonly EdgeRow[],
+	task: Pick<TaskRow, 'id' | 'title'>,
+	prerequisite: Pick<TaskRow, 'id' | 'title'>
+): void {
+	if (
+		!edges.some(
+			(edge) =>
+				edge.rel === 'depends_on' &&
+				edge.src_kind === 'task' &&
+				edge.dst_kind === 'task' &&
+				edge.src_id === task.id &&
+				edge.dst_id === prerequisite.id
+		)
+	) {
+		throw new Error(
+			`[assert] missing directed depends_on edge: "${task.title}" → "${prerequisite.title}"`
 		);
 	}
 }

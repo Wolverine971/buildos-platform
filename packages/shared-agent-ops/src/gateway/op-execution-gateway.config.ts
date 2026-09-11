@@ -407,7 +407,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			props: {
 				type: 'object',
 				description:
-					'Optional JSON props merged onto the task. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
+					'Optional JSON props merged onto the task. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep new estimates out of the description. Changing duration_minutes also reconciles an unchanged legacy "Allow N minutes." prefix and its description mirror using the previous saved estimate.'
 			}
 		},
 		required: ['project_id', 'title']
@@ -592,7 +592,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			props: {
 				type: 'object',
 				description:
-					'Optional JSON props merged onto the task. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
+					'Optional JSON props merged onto the task. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep new estimates out of the description. Changing duration_minutes also reconciles an unchanged legacy "Allow N minutes." prefix and its description mirror using the previous saved estimate.'
 			}
 		},
 		required: ['task_id']

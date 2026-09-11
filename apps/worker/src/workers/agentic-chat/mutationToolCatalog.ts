@@ -338,7 +338,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Attach an existing document to a task workspace using exact task and document UUIDs from reads. This worker tool does not create a new document. Direct call is fine when the target id is the focused entity, was given by the user, or is the only task and document a read returned this turn; otherwise declare_turn_contract first.',
+			'Attach an existing document to a task workspace using exact task and document UUIDs from reads. This worker tool does not create a new document.',
 		requiredNames: ['task_id', 'document_id'],
 		reviewedArgumentNames: ['task_id', 'document_id', 'role']
 	},
@@ -357,7 +357,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteSelectionPolicy: 'resolved_existing',
 		// Opening-pass override; see update_onto_document (F02).
 		descriptionOverride:
-			'Create one relationship between two non-project ontology entities using UUIDs from reads or successful creates. For newly requested tasks and dependencies: declare all task creates with labels and one link outcome per edge using src_label/dst_label, then create tasks and use their returned UUIDs here. depends_on points from the dependent task (src) to its prerequisite (dst). Project endpoints are unavailable. Call it directly when both targets are uniquely resolved by the current turn; the worker routes a target it did not resolve to review.',
+			'Create one relationship between two non-project ontology entities using UUIDs from reads or successful creates. For new entities, create them first and use the exact returned IDs here; labels are not accepted as arguments. For "A depends on B", src_id is the UUID of A (the dependent task) and dst_id is the UUID of B (its prerequisite). Project endpoints are unavailable. Call it directly when both targets are uniquely resolved by the current turn; the worker routes a target it did not resolve to review.',
 		requiredNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel'],
 		reviewedArgumentNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel', 'props'],
 		// The catalog text lists `project` as a kind; the worker enum excludes it,
@@ -565,7 +565,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Send one explicit notification-only tag to active members of the focused project. Use exact user UUIDs returned by project-member reads and always pass mode "ping". This worker tool never edits entity content and does not resolve @handles. Direct call is fine when the target id is the focused entity, was given by the user, or is the only entity a read returned this turn; otherwise declare_turn_contract first.',
+			'Send one explicit notification-only tag to active members of the focused project. Use exact user UUIDs returned by project-member reads and always pass mode "ping". This worker tool never edits entity content and does not resolve @handles.',
 		requiredNames: ['project_id', 'entity_type', 'entity_id', 'mode', 'mentioned_user_ids'],
 		reviewedArgumentNames: [
 			'project_id',
@@ -669,7 +669,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Update one existing goal by its exact goal_id from a read: name, description, state, priority, target date, or measurement criteria. Direct call is fine when the target id is the focused entity, was given by the user, or is the only goal a read returned this turn; otherwise declare_turn_contract first.',
+			'Update one existing goal by its exact goal_id from a read: name, description, state, priority, target date, or measurement criteria.',
 		requiredNames: ['goal_id'],
 		reviewedArgumentNames: [
 			'goal_id',
@@ -744,7 +744,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Update one existing plan by its exact plan_id from a read: name, description, plan body, state, or dates. Direct call is fine when the target id is the focused entity, was given by the user, or is the only plan a read returned this turn; otherwise declare_turn_contract first.',
+			'Update one existing plan by its exact plan_id from a read: name, description, plan body, state, or dates.',
 		requiredNames: ['plan_id'],
 		reviewedArgumentNames: [
 			'plan_id',
@@ -823,7 +823,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Update one existing milestone by its exact milestone_id from a read: title, due date, state, or description. Direct call is fine when the target id is the focused entity, was given by the user, or is the only milestone a read returned this turn; otherwise declare_turn_contract first.',
+			'Update one existing milestone by its exact milestone_id from a read: title, due date, state, or description.',
 		requiredNames: ['milestone_id'],
 		reviewedArgumentNames: [
 			'milestone_id',
@@ -895,7 +895,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Update one existing risk by its exact risk_id from a read: title, impact, probability, state, description, mitigation, or owner. Direct call is fine when the target id is the focused entity, was given by the user, or is the only risk a read returned this turn; otherwise declare_turn_contract first.',
+			'Update one existing risk by its exact risk_id from a read: title, impact, probability, state, description, mitigation, or owner.',
 		requiredNames: ['risk_id'],
 		reviewedArgumentNames: [
 			'risk_id',
@@ -923,7 +923,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		// validateToolCalls applies schema defaults before it runs
 		// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F29).
 		descriptionOverride:
-			'Create one standard project and its generated Context document. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support fiction/living-reference projects, custom Context documents, clarifications, embedded child records, or relationships.',
+			'Create one standard project and its generated Context document. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support fiction-book types (project.creative.novel, book, fiction, or screenplay) or living-reference projects, custom Context documents, clarifications, embedded child records, or relationships. Synthetic QA data for standard project types is supported.',
 		requiredNames: ['project'],
 		reviewedArgumentNames: ['project', 'entities', 'relationships'],
 		propertyOverrides: {
@@ -937,7 +937,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 						type: 'string',
 						pattern: '^project\\.[a-z_]+\\.[a-z_]+(?:\\.[a-z_]+)?$',
 						description:
-							'project.{realm}.{domain}[.{variant}]; realm is creative, technical, business, service, education, or personal, e.g. project.technical.software. This tool does not support fiction/living-reference projects.'
+							'project.{realm}.{domain}[.{variant}]; realm is creative, technical, business, service, education, or personal, e.g. project.technical.software. This tool does not support fiction-book types (project.creative.novel, book, fiction, or screenplay) or living-reference projects; synthetic QA data for standard project types is supported.'
 					},
 					description: { type: 'string', description: 'Optional project description.' },
 					state_key: {

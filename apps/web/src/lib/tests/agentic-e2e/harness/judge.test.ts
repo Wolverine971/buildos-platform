@@ -54,11 +54,28 @@ describe('judgeQuality', () => {
 			reasoning: 'The recommendation was generic.'
 		});
 		expect(getJSONResponse).toHaveBeenCalledTimes(2);
-		expect(getJSONResponse.mock.calls[0]?.[0]?.signal).toBe(
+		expect(getJSONResponse.mock.calls[0]?.[0]?.signal).not.toBe(
 			getJSONResponse.mock.calls[1]?.[0]?.signal
 		);
 	});
 
+	it('retains a malformed first verdict and retries only the judge', async () => {
+		const onAttempt = vi.fn();
+		getJSONResponse
+			.mockResolvedValueOnce({ score: 'invalid' })
+			.mockResolvedValueOnce({ score: 4, reasoning: 'Grounded.' });
+		await judgeQuality({ rubric: 'Exact work.', transcript: 'Saved response.', onAttempt });
+		expect(onAttempt.mock.calls[0]?.[0]).toMatchObject({
+			attempt: 1,
+			raw: { score: 'invalid' },
+			error: 'Quality judge returned an invalid verdict'
+		});
+		expect(onAttempt.mock.calls[1]?.[0]).toMatchObject({ attempt: 2, raw: { score: 4 } });
+		expect(getJSONResponse.mock.calls[1]?.[0].userPrompt).toBe(
+			getJSONResponse.mock.calls[0]?.[0].userPrompt
+		);
+		expect(getJSONResponse.mock.calls[1]?.[0].models).toEqual(JUDGE_MODEL_CHAIN.slice(1));
+	});
 	it('surfaces the provider failure after the bounded retry', async () => {
 		getJSONResponse
 			.mockRejectedValueOnce(new Error('first timeout'))
@@ -68,6 +85,31 @@ describe('judgeQuality', () => {
 			judgeQuality({ rubric: 'Do the work.', transcript: 'The work was done.' })
 		).rejects.toThrow('second timeout');
 		expect(getJSONResponse).toHaveBeenCalledTimes(2);
+	});
+	it('keeps each attempt payload separate when a malformed verdict is followed by timeout', async () => {
+		const onAttempt = vi.fn();
+		getJSONResponse
+			.mockResolvedValueOnce({ score: 'invalid' })
+			.mockRejectedValueOnce(new Error('timeout'));
+		await expect(
+			judgeQuality({ rubric: 'Exact work.', transcript: 'Saved response.', onAttempt })
+		).rejects.toThrow('timeout');
+		expect(onAttempt.mock.calls[0]?.[0].raw).toEqual({ score: 'invalid' });
+		expect(onAttempt.mock.calls[1]?.[0].raw).toBeNull();
+	});
+	it('retains the actual judge model and provider returned by usage accounting', async () => {
+		const onAttempt = vi.fn();
+		const usage = {
+			model: 'openai/gpt-5.6-luna',
+			provider: 'OpenAI',
+			providerRequestId: 'qa-request'
+		};
+		getJSONResponse.mockImplementationOnce(async (options) => {
+			await options.onUsage(usage);
+			return { score: 4, reasoning: 'Grounded in the receipt.' };
+		});
+		await judgeQuality({ rubric: 'Exact work.', transcript: 'Saved response.', onAttempt });
+		expect(onAttempt.mock.calls[0]?.[0].usage).toEqual([usage]);
 	});
 });
 

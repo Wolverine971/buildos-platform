@@ -35,6 +35,15 @@ afterEach(() => {
 });
 
 describe('worker local prompt dumps', () => {
+	it('writes isolated gate diagnostics to the configured local directory', () => {
+		const dir = directory();
+		const dump = startLocalPromptDump(identity, '{"messages":[]}', {
+			env: { ...env, AGENTIC_CHAT_LOCAL_PROMPT_DUMP_DIRECTORY: dir }
+		})!;
+		expect(JSON.parse(readFileSync(join(dir, dump.jsonFile), 'utf8')).request).toEqual({
+			messages: []
+		});
+	});
 	it.each([
 		{ NODE_ENV: 'production' },
 		{ NODE_ENV: 'test' },

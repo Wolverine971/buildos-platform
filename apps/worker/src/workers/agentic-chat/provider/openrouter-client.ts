@@ -990,6 +990,20 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			(health.pin && !health.failedModels.has(health.pin.model)
 				? { model: health.pin.model, providerSlug: null }
 				: null);
+		const preferredOrder = route.providerRouting?.order;
+		// A successful fallback is not automatically a preferred endpoint.
+		// Slow Wafer continuations in QA had no cache hits despite the pin.
+		// Respect explicit dynamic sorting, and keep unlisted fallbacks behind
+		// the configured pool instead of promoting them for the whole turn.
+		const providerPin =
+			pin?.providerSlug &&
+			!route.providerRouting?.sort &&
+			(!preferredOrder?.length ||
+				preferredOrder.some(
+					(slug) => pin.providerSlug === slug || pin.providerSlug!.startsWith(`${slug}/`)
+				))
+				? pin.providerSlug
+				: null;
 		return {
 			...route,
 			model: modelPin?.model ?? reordered[0] ?? route.model,
@@ -1006,7 +1020,20 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			providerRouting: {
 				...(route.providerRouting ?? {}),
 				...(ignoredProviders.length > 0 ? { ignore: ignoredProviders } : {}),
-				...(pin?.providerSlug ? { order: [pin.providerSlug] } : {})
+				// Keep the measured fallback order behind the warm endpoint. A
+				// singleton order discarded it and allowed slow unpreferred routes
+				// to serve continuations whenever the warm endpoint was unavailable.
+				...(providerPin
+					? {
+							order: [
+								providerPin,
+								...(route.providerRouting?.order ?? []).filter(
+									(slug) =>
+										slug !== providerPin && !ignoredProviders.includes(slug)
+								)
+							].slice(0, 16)
+						}
+					: {})
 			}
 		};
 	}

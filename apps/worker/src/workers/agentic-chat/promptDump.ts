@@ -49,8 +49,12 @@ export function startLocalPromptDump(
 	serializedRequestBody: string,
 	options: { env?: NodeJS.ProcessEnv; directory?: string; now?: number } = {}
 ): LocalPromptDump | null {
-	if (!localPromptDumpsEnabled(options.env)) return null;
-	const directory = options.directory ?? DEFAULT_DIRECTORY;
+	const env = options.env ?? process.env;
+	if (!localPromptDumpsEnabled(env)) return null;
+	const configuredDirectory = env.AGENTIC_CHAT_LOCAL_PROMPT_DUMP_DIRECTORY?.trim();
+	const directory =
+		options.directory ??
+		(configuredDirectory ? resolve(configuredDirectory) : DEFAULT_DIRECTORY);
 	const now = options.now ?? Date.now();
 	const timestamp = new Date(now).toISOString();
 	const safe = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);

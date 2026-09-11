@@ -1231,8 +1231,28 @@ function implicitOutcomeFromLedgerEntry(
 	const action = normalizeAction(entry.action);
 	const entityKind = normalizeEntityKind(entry.entityKind);
 	if (!action || !entityKind) return null;
+	// A relationship is identified by both endpoints and its relation. Without
+	// these values distinct failed links collapse into one wildcard outcome,
+	// and an unrelated successful link can incorrectly satisfy that outcome.
+	const relationshipChanges =
+		entityKind === 'relationship'
+			? Object.entries(entry.changedValues ?? {})
+					.filter(([field]) =>
+						[
+							'src_id',
+							'dst_id',
+							'rel',
+							'src_kind',
+							'dst_kind',
+							'src_label',
+							'dst_label'
+						].includes(field)
+					)
+					.map(([field, value]) => ({ field, value }))
+			: [];
 	return {
 		id: `implicit_${index + 1}`,
+		...(relationshipChanges.length ? { changes: relationshipChanges } : {}),
 		action,
 		entityKind,
 		targetIds: entry.entityId ? [entry.entityId] : [],

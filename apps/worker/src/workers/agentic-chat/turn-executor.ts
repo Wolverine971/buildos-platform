@@ -2419,7 +2419,7 @@ export class AgenticChatTurnExecutor {
 
 		const chatToolResult: ChatToolResult = {
 			tool_call_id: step.providerToolCallId,
-			result: null,
+			result: { execution_status: 'not_executed', failure_kind: 'validation' },
 			success: false,
 			error: failure.error
 		};

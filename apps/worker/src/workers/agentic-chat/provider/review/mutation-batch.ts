@@ -42,7 +42,8 @@ export const MUTATION_BATCH_REVIEW_SYSTEM_PROMPT = [
 		'What you are judging',
 		'You see the exact tool calls and the exact arguments that will execute if you approve. Nothing is re-proposed afterwards: approving these calls executes these calls.',
 		'Judge the arguments, not a summary of them. A wrong id, a wrong date, an invented value, or a call the user did not ask for is visible here and is yours to catch.',
-		'Calls run in the order shown. A call may carry call_ref and after to wait for an earlier call in the same batch; that is ordering, not a separate commission.'
+		'Each batch is one executable stage, not necessarily the entire commission. Approve a correct prerequisite create stage even when commissioned links or child records need the IDs it will return. Those subsequent calls receive a separate review using durable receipts. Do not demand invented IDs or unsupported label arguments in this stage.',
+		'Calls run in the order shown. A call may carry call_ref and after to wait for an earlier call in the same batch; those fields only order execution and cannot substitute returned IDs into arguments.'
 	],
 	[
 		'Enumerate before judging',
@@ -53,7 +54,7 @@ export const MUTATION_BATCH_REVIEW_SYSTEM_PROMPT = [
 		'Approve only if the current user request commissioned every call in the batch and the turn evidence resolves every target and value in their arguments without guessing. Quote the exact batch SHA-256 from the user message in batch_sha256; the harness rejects any other value.',
 		'Information gathering, research, comparison, analysis, and advice remain read-only when the user says they are meant to inform a later possible change. Phrases such as "before we change" or "so we can decide" do not commission that future change now.',
 		'When declare_read_only_turn is among your tools and the current request commissions no durable change, choose it instead of approving calls the user did not ask for. When it is not among your tools, a prior independent review already established that this turn commissions a durable change.',
-		'When request_proposal_revision is among your tools and the user commission is clear but the calls misstate it — an uncommissioned call, a missing commissioned call, the wrong target, or a value the turn evidence resolves differently — say what is wrong and what must change. The acting model proposes the corrected calls and they are reviewed again. You never author the replacement calls yourself.',
+		'When request_proposal_revision is among your tools and the user commission is clear but the calls misstate it — an uncommissioned call, a missing commissioned call that can already execute with resolved IDs, the wrong target, or a value the turn evidence resolves differently — say what is wrong and what must change. The acting model proposes the corrected calls and they are reviewed again. You never author the replacement calls yourself.',
 		'Clarify when several loaded entities plausibly match one descriptive reference, or a required value is absent from the request, the loaded context, and the tool schema: that choice belongs to the user. Ask one concise user-facing question naming the plausible human-readable choices.',
 		'Choose exactly one available tool. Never broaden or substitute the user commission.'
 	],
@@ -95,6 +96,7 @@ export function buildMutationBatchReviewRequest(
 					`Exact proposed calls (these execute unchanged on approval): ${canonicalizeAgenticChatJson(
 						serializeMutationBatchForReview(batch) as unknown as JsonValue
 					)}`,
+					`Admitted capabilities for subsequent stages: ${availableTools.map((tool) => tool.function.name).join(', ')}.`,
 					`Schemas of the proposed tools: ${canonicalizeAgenticChatJson(
 						proposedSchemas.map((tool) => tool.function) as unknown as JsonValue
 					)}`,
@@ -120,11 +122,19 @@ export function buildMutationBatchReviewRequest(
 export function buildMutationBatchRevisionRequest(
 	request: AgenticChatTurnProviderRequestV1,
 	availableTools: readonly AgenticChatTurnProviderToolV1[],
-	revision: PendingProposalRevision
+	revision: PendingProposalRevision,
+	rejectedBatch: MutationBatch
 ): AgenticChatTurnProviderRequestV1 {
 	return appendSystemInstruction(
 		{
 			...request,
+			messages: [
+				...request.messages,
+				{
+					role: 'assistant',
+					content: `Previous rejected proposal (unexecuted, not authorization or a receipt): ${canonicalizeAgenticChatJson(serializeMutationBatchForReview(rejectedBatch) as unknown as JsonValue)}`
+				}
+			],
 			tools: availableTools,
 			toolChoice: availableTools.length > 0 ? 'auto' : 'none',
 			passRole: 'repair'
@@ -133,7 +143,7 @@ export function buildMutationBatchRevisionRequest(
 			'Independent review returned your proposed tool calls to you for correction; they did not execute and did not reach the user.',
 			`Reason: ${revision.reason || 'not stated'}.`,
 			`Required correction: ${revision.requiredCorrection || 'not stated'}.`,
-			'Propose the corrected calls now, with exact target ids from the loaded context and the full set of changes the user commissioned. They will be reviewed again before anything executes.',
+			'Propose the corrected calls now, with exact target ids from the loaded context and all commissioned changes that can execute with currently resolved IDs. Defer dependent calls until prerequisite receipts return their IDs. They will be reviewed again before anything executes.',
 			'Request clarification only if a choice genuinely belongs to the user. Do not narrate this correction to the user.'
 		].join(' ')
 	);

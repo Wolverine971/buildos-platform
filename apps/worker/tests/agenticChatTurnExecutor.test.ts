@@ -2572,6 +2572,20 @@ describe('AgenticChatTurnExecutor', () => {
 					input.toolName
 				])
 			).toEqual([[2, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.name]]);
+			expect(
+				harness.semanticInputs.find((input) => {
+					const payload = input.event_payload as { result?: { tool_call_id?: string } };
+					return (
+						payload.result?.tool_call_id ===
+						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.callId
+					);
+				})?.event_payload
+			).toMatchObject({
+				result: {
+					success: false,
+					result: { execution_status: 'not_executed', failure_kind: 'validation' }
+				}
+			});
 			const firstPublicResultIndex = harness.log.indexOf('semantic:tool_result:');
 			const validationPublicResultIndex = harness.log.indexOf(
 				'semantic:tool_result:',

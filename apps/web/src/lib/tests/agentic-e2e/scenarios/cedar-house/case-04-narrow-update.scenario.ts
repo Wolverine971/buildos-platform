@@ -34,7 +34,8 @@ export const cedarCase04NarrowUpdateScenario: Scenario = {
 	category: 'cedar-house',
 	batteryCase: 4,
 	requiredMutationTools: ['update_onto_task'],
-	seed: (ctx) => seedCedarHouse(ctx, { tasks: 'core', label: 'case-04' }),
+	seed: (ctx) =>
+		seedCedarHouse(ctx, { tasks: 'core', label: 'case-04', legacyEstimateText: true }),
 	turns: [
 		{
 			label: 'apply a two-field correction',
@@ -71,7 +72,14 @@ export const cedarCase04NarrowUpdateScenario: Scenario = {
 
 				assertIsoDate(cabinets.due_at, CORRECTED_DUE_DATE, 'corrected cabinet due');
 				assertMinutesRecorded(cabinets, CORRECTED_MINUTES);
-				if (/\b90\b/.test(cabinets.description ?? '')) {
+				if (
+					/\b90\s*(?:minutes?|mins?)\b/i.test(
+						JSON.stringify([
+							cabinets.description,
+							(cabinets.props as Record<string, unknown>)?.description
+						])
+					)
+				) {
 					throw new Error(
 						`[assert] the cabinet task still records the superseded 90-minute estimate: ` +
 							`"${cabinets.description ?? ''}"`
@@ -96,6 +104,21 @@ export const cedarCase04NarrowUpdateScenario: Scenario = {
 					'the Cedar House task list'
 				);
 
+				const beforeProps = {
+					...(taskByTitle(before, CABINETS.title).props as Record<string, unknown>)
+				};
+				const afterProps = { ...(cabinets.props as Record<string, unknown>) };
+				for (const props of [beforeProps, afterProps]) {
+					delete props.duration_minutes;
+					delete props.description; // legacy description mirror may be reconciled
+				}
+				assertOnlyAllowedRowFieldsChanged(
+					[{ id: cabinetsId, ...beforeProps }],
+					[{ id: cabinetsId, ...afterProps }],
+					{},
+					'unrelated task props'
+				);
+
 				await assertNoCalendarSideEffects(
 					ctx,
 					seed.projectId!,
@@ -113,6 +136,14 @@ export const cedarCase04NarrowUpdateScenario: Scenario = {
 			assert: async (turn, ctx, seed) => {
 				assertTurnSucceeded(turn);
 				assertNoMutations(turn, 'the prompt explicitly forbids changes');
+				if (
+					!/(?:120\s*(?:minutes?|mins?)|2\s*hours?)/i.test(turn.assistantText) ||
+					!/(?:September\s+22|Sep\.?\s+22|2026-09-22)/i.test(turn.assistantText)
+				) {
+					throw new Error(
+						'[assert] prepared readback omitted the saved September 22 date or 120-minute estimate'
+					);
+				}
 				await assertNoCalendarSideEffects(
 					ctx,
 					seed.projectId!,

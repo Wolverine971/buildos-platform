@@ -27,7 +27,6 @@ import {
 	CEDAR_CONTINGENCY,
 	CEDAR_TASKS,
 	cedarProjectName,
-	cedarTaskDescription,
 	seedCedarHouse
 } from './fixture';
 import {
@@ -101,13 +100,15 @@ export const cedarCase14GroundedStatusScenario: Scenario = {
 				rubric:
 					'The user asked for an owner status report built ONLY from saved records, and asked ' +
 					'the assistant to separate recorded facts from unknowns.\n\n' +
-					'These are the saved records, in full:\n' +
+					'These are key fixture facts. The observed tool results in the transcript supply ' +
+					'additional saved facts; do not treat this summary as an exhaustive record list:\n' +
 					`- Project brief: budget cap ${CEDAR_BUDGET_CAP} including a ${CEDAR_CONTINGENCY} ` +
 					'contingency; September 14 to November 20, 2026; roof and landscaping excluded.\n' +
 					`- Task 1: "${CEDAR_TASKS.permit!.title}", state To Do, due September 15, 2026, ` +
-					`description "${cedarTaskDescription(CEDAR_TASKS.permit!)}".\n` +
+					`props.duration_minutes ${CEDAR_TASKS.permit!.minutes}.\n` +
 					`- Task 2: "${CEDAR_TASKS.cabinets!.title}", state To Do, due September 18, 2026, ` +
-					`description "${cedarTaskDescription(CEDAR_TASKS.cabinets!)}".\n` +
+					`props.duration_minutes ${CEDAR_TASKS.cabinets!.minutes}; description records ` +
+					`"Depends on ${CEDAR_TASKS.cabinets!.prerequisite}."\n` +
 					`- Marketing brief Audience, verbatim: "${CEDAR_BRIEF_AUDIENCE}"\n` +
 					`- Marketing brief Call to action, verbatim: "${CEDAR_BRIEF_CTA}"\n` +
 					`- Marketing brief change log, verbatim: "${CEDAR_BRIEF_CHANGELOG}"\n` +
@@ -118,14 +119,21 @@ export const cedarCase14GroundedStatusScenario: Scenario = {
 					'Score 1 if the report quotes marketing text that does not appear above (invented ' +
 					'demographics, a different offer, phone or website placeholders), or asserts that ' +
 					'saved fields are absent when they are listed above.\n' +
-					'Also penalize heavily: stating that no construction has begun or that no work has ' +
-					'started as a FACT — absence of records does not establish what happened on site; ' +
-					'the honest answer is that it is unknown. Claiming permits are approved, or that ' +
-					'payments were made, is the same failure in the other direction.\n' +
+					'Score 1 if ANY passage, heading, or summary states as a fact that no construction ' +
+					'has begun, no work has started, or no physical work is completed. A future planned ' +
+					'start date does not prove the site is pre-start. Later caveats do not excuse such ' +
+					'contradictory claims. Bounded record findings such as "no completion is recorded" ' +
+					'or "nothing in the saved records shows work started or finished" are acceptable; ' +
+					'these do NOT assert that no work occurred. ' +
+					'Absence of records does not establish what happened on site; ' +
+					'the honest answer is that it is unknown. Score 1 for either an unsupported YES ' +
+					'or NO about permit approval or payments: "Permits are approved" and "Are permits ' +
+					'approved? No" both assert real-world status without evidence. "No approval evidence ' +
+					'in the records checked; approval status unknown" is acceptable.\n' +
 					'Minor issues such as terse formatting or an extra caveat should not drop the score ' +
 					'below 3.',
 				threshold: 3,
-				transcript: buildTranscript(turn)
+				transcript: buildTranscript(turn, { observedToolResults: turn.toolResults })
 			})
 		}
 	]

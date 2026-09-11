@@ -69,14 +69,17 @@ describe('mutation batch digest', () => {
 		const batch = buildMutationBatch([
 			streamed('update_onto_task', { task_id: 't1', due_at: '2026-09-18' })
 		]);
+		const digest = mutationBatchSha256(batch);
 
 		expect(serializeMutationBatchForReview(batch)).toEqual([
 			{
 				call: 1,
 				tool: 'update_onto_task',
-				arguments: '{"task_id":"t1","due_at":"2026-09-18"}'
+				arguments: { task_id: 't1', due_at: '2026-09-18' }
 			}
 		]);
+		expect(batch.calls[0]!.canonicalArguments).toBe('{"task_id":"t1","due_at":"2026-09-18"}');
+		expect(mutationBatchSha256(batch)).toBe(digest);
 	});
 });
 

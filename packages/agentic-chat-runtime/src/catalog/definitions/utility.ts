@@ -97,7 +97,7 @@ export const UTILITY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'get_project_overview',
 			description:
-				'Get a project status snapshot with entity counts, active or blocked work, milestones, risks, upcoming events, activity, and collaborators. Pass project_id when known; otherwise query resolves a name or returns candidates.',
+				'Get a project status snapshot with entity counts, active or blocked work, milestones, risks, upcoming events, activity, and collaborators. Pass project_id when known; otherwise query resolves a name or returns candidates. For a status report start here and read only facts still missing. Do not routinely follow it with project details or re-open every listed task.',
 			parameters: {
 				type: 'object',
 				properties: {

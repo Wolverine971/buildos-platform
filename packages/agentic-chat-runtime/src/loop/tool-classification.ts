@@ -240,6 +240,15 @@ export function classifyToolTraceName(toolName: string): ToolExecutionClassifica
 
 export function isWriteLedgerToolExecution(execution: FastToolExecution): boolean {
 	if (isDuplicateWriteSkippedExecution(execution)) return false;
+	// A rejected proposal never reached the adapter. It remains in the trace,
+	// but cannot become an extra write obligation after a corrected call saves.
+	const payload = unwrapResultRecord(execution.result.result);
+	if (
+		execution.result.success === false &&
+		payload?.execution_status === 'not_executed' &&
+		payload?.failure_kind === 'validation'
+	)
+		return false;
 	const toolName = execution.toolCall.function?.name?.trim() ?? '';
 	if (!toolName) return false;
 	if (toolName === 'move_onto_task' && execution.result.success === true) {

@@ -4,6 +4,9 @@
 // and needs a dev server, so registration, shape and oracle drift are checked
 // here instead of being discovered mid-battery.
 import { describe, expect, it } from 'vitest';
+import type { TaskRow } from '../../harness/telemetry';
+import type { ScenarioContext, TurnResult } from '../../harness/types';
+import { assertMinutesRecorded, assertDependencyRecorded } from './guards';
 
 import { hasCompleteCalendarCoverage } from './case-10-calendar-availability.scenario';
 import { scenarioCatalog } from '../catalog';
@@ -107,6 +110,26 @@ describe('cedar-house battery registration', () => {
 		const statusCase = BATTERY.find((scenario) => scenario.batteryCase === 14);
 		expect(statusCase?.turns[0]?.judge).toBeTypeOf('function');
 	});
+	it('gives the status judge observed records beyond the short fixture summary', async () => {
+		const judge = BATTERY.find((scenario) => scenario.batteryCase === 14)!.turns[0]!.judge!;
+		const receipt = {
+			tool_call_id: 'overview',
+			success: true,
+			result: { scope: 'Saved scope beyond the rubric summary' }
+		};
+		const spec = await judge(
+			{
+				assistantText: 'A report.',
+				toolCalls: [],
+				toolResults: [receipt]
+			} as unknown as TurnResult,
+			{} as ScenarioContext,
+			{ entityIds: {}, notes: {} }
+		);
+		expect(spec.transcript).toContain('Saved scope beyond the rubric summary');
+		expect(spec.rubric).not.toContain('saved records, in full');
+		expect(spec.threshold).toBe(3);
+	});
 
 	it('documents the calendar cases that are not built yet', () => {
 		expect(CEDAR_HOUSE_PENDING_CALENDAR_CASES.map((entry) => entry.batteryCase)).toEqual([12]);
@@ -159,5 +182,53 @@ describe('cedar-house fixture matches the audit oracle', () => {
 		expect(
 			cedarProjectSpec('AE2E · core+brief', { tasks: 'core', brief: true }).entities
 		).toHaveLength(3);
+	});
+});
+
+describe('Cedar House saved-field oracles', () => {
+	const task = {
+		id: 'dependent',
+		title: 'A task mentioning 120',
+		description: 'Allow 120 minutes.'
+	} as TaskRow;
+	it('accepts only the exact numeric structured estimate', () => {
+		for (const props of [null, {}, { duration_minutes: 90 }, { duration_minutes: '120' }]) {
+			expect(() => assertMinutesRecorded({ ...task, props }, 120)).toThrow();
+		}
+		expect(() =>
+			assertMinutesRecorded(
+				{ ...task, description: null, props: { duration_minutes: 120 } },
+				120
+			)
+		).not.toThrow();
+	});
+	it('rejects unrelated and reversed dependency edges', () => {
+		const prerequisite = { id: 'prerequisite', title: 'Permit' };
+		const edge = {
+			id: 'edge',
+			src_id: task.id,
+			dst_id: prerequisite.id,
+			src_kind: 'task',
+			dst_kind: 'task',
+			rel: 'depends_on'
+		};
+		for (const edges of [
+			[],
+			[{ ...edge, rel: 'related_to' }],
+			[{ ...edge, src_id: prerequisite.id, dst_id: task.id }]
+		]) {
+			expect(() => assertDependencyRecorded(edges, task, prerequisite)).toThrow();
+		}
+		expect(() => assertDependencyRecorded([edge], task, prerequisite)).not.toThrow();
+	});
+	it('keeps canonical estimates and an explicit legacy-text variant', () => {
+		const canonical = cedarProjectSpec('canonical', { tasks: 'core' }).entities[1]!;
+		const legacy = cedarProjectSpec('legacy', { tasks: 'core', legacyEstimateText: true })
+			.entities[1]!;
+		expect(canonical).toMatchObject({
+			props: { duration_minutes: 90, fixture_marker: 'cedar-house' }
+		});
+		expect(canonical.description).not.toContain('90 minutes');
+		expect(legacy.description).toContain('90 minutes');
 	});
 });

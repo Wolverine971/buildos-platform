@@ -122,7 +122,7 @@ export function nextTurnPhase(phase: TurnPhase, event: TurnPhaseEvent): TurnPhas
 		case 'withhold_batch':
 			// A batch can be withheld from any pre-mutation phase, and again
 			// after a rejected batch sends the actor back to propose new calls.
-			return dispositionPending(phase) || phase === 'batch_withheld'
+			return dispositionPending(phase) || phase === 'batch_withheld' || phase === 'mutating'
 				? 'batch_withheld'
 				: phase;
 		case 'review':

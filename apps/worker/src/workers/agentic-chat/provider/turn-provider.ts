@@ -211,7 +211,7 @@ type ToolRoundStreamState = {
 	providerPassBudgetExhausted(): boolean;
 	/** Receipt-grounded instruction for the answer that ends a capped turn. */
 	buildProviderPassBudgetInstruction(): string;
-	renderWriteReceiptFallback(): string | null;
+	renderWriteReceiptFallback(introduction?: string): string | null;
 	buildValidationRepairExhaustedInstruction(
 		rejected: readonly { toolName: string; errors: readonly string[] }[]
 	): string;
@@ -395,6 +395,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		} | null = null;
 		let pendingBatchReviewSha256: string | null = null;
 		let approvedMutationBatch: MutationBatch | null = null;
+		let rejectedMutationBatch: MutationBatch | null = null;
+		let reviewedBatchExecuted = false;
 		let batchRevisionCount = 0;
 		// Every completed tool round this turn, so contract labels can bind to the
 		// entities created in earlier rounds before later writes are authorized.
@@ -544,6 +546,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 							// with the reviewer's reason in hand and they are
 							// reviewed again; the reviewer never authors calls, so
 							// it cannot corrupt the arguments it rejected (F04).
+							rejectedMutationBatch = heldMutationBatch.batch;
 							heldMutationBatch = null;
 							pendingBatchReviewSha256 = null;
 							approvedMutationBatch = null;
@@ -627,10 +630,11 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			providerPassBudgetExhausted() {
 				return providerPassCount >= MAX_PROVIDER_PASSES_PER_TURN;
 			},
-			renderWriteReceiptFallback() {
+			renderWriteReceiptFallback(introduction) {
 				return renderWriteReceiptFallback(
 					buildWriteLedger(turnToolExecutions),
-					unfinishedContractOutcomeDescriptions()
+					unfinishedContractOutcomeDescriptions(),
+					introduction
 				);
 			},
 			buildProviderPassBudgetInstruction() {
@@ -675,12 +679,19 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			takeWithheldMutationBatch(value, calls) {
 				if (!semanticReviewRequired || !mutationBatchLaneEnabled) return null;
 				if (
-					!(dispositionPending(phase) || phase === 'batch_withheld') ||
+					!(
+						dispositionPending(phase) ||
+						phase === 'batch_withheld' ||
+						(phase === 'mutating' && reviewedBatchExecuted)
+					) ||
 					!calls.some((call) => reviewedAgenticChatMutationSpecV1(call.name))
 				) {
 					return null;
 				}
-				if (assessDirectWriteBatch(calls, directWriteContext(value)).kind === 'simple') {
+				if (
+					!reviewedBatchExecuted &&
+					assessDirectWriteBatch(calls, directWriteContext(value)).kind === 'simple'
+				) {
 					return null;
 				}
 				// Only reviewed mutations are held. A batch that mixes reads with
@@ -860,8 +871,11 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// A contract-free mutation round is the one bounded direct-write lane.
 				// Its continuation is tool-free so the model cannot split a complex
 				// request into several individually small batches.
+				const reviewedMutationCompleted =
+					roundContainsMutation && approvedMutationBatch !== null;
 				const directSimpleMutationCompleted =
 					!turnContract &&
+					!reviewedMutationCompleted &&
 					completedToolRound.calls.some(
 						(call, index) =>
 							call.kind === 'mutation' && isMutationFeedback(input.results[index]!)
@@ -936,6 +950,11 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				});
 				turnToolExecutions.push(...roundExecutions);
 				if (roundContainsMutation) refreshLabelBindings();
+				if (reviewedMutationCompleted) {
+					reviewedBatchExecuted = true;
+					approvedMutationBatch = null;
+					heldMutationBatch = null;
+				}
 				const state = buildStreamState();
 				const completedToolCalls = roundExecutions.map(({ toolCall }) => toolCall);
 				const pattern = buildRoundToolPattern(completedToolCalls);
@@ -972,6 +991,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					if (completionRequest) {
 						currentRequest = completionRequest;
 					} else if (
+						turnContract &&
 						unfinishedContractOutcomeDescriptions().length === 0 &&
 						buildWriteLedger(turnToolExecutions).some(
 							(entry) =>
@@ -998,15 +1018,23 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				) {
 					// A rejected batch returns to the acting model with the reason.
 					// It proposes new calls; those are withheld and reviewed again.
+					const rejected = rejectedMutationBatch;
+					if (!rejected)
+						throw providerError('provider_rejected_batch_missing', 'permanent');
+					rejectedMutationBatch = null;
 					pendingProposalRevision = null;
 					currentRequest = buildMutationBatchRevisionRequest(
 						currentRequest,
 						admittedTools,
-						proposalRevision
+						proposalRevision,
+						rejected
 					);
 					pendingToolRound = null;
 					toolRoundCompleted = false;
 					nextProviderRound += 1;
+					if (batchRevisionCount > MAX_REVISIONS_PER_TURN) {
+						return this.streamReviewExhaustion(completedToolRound.usage, state);
+					}
 					return this.streamActingPass(currentRequest, completedToolRound.usage, state, {
 						phase: 'continuation'
 					});
@@ -1222,7 +1250,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					);
 				}
 				const forceNoToolSynthesis =
-					directSimpleMutationCompleted || ledgerObservation.forceSynthesis;
+					directSimpleMutationCompleted ||
+					(reviewedMutationCompleted && partialMutationBatch) ||
+					ledgerObservation.forceSynthesis;
 				const clarificationRequiresToolFreeSynthesis =
 					semanticDispositionToolName === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
 				// The clarification the executor accepted is the thing the user has
@@ -1362,6 +1392,13 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		const holdAssistantText =
 			holdAssistantTextForTurnContract ||
 			(initial && canRequirePreMutationSemanticDisposition(request)) ||
+			// A subsequent batch can need review after the disposition controls
+			// have left the surface. Keep its unexecuted claims private too.
+			(this.mutationBatchLaneEnabled &&
+				Boolean(this.ports.semanticReviewer) &&
+				request.tools.some((tool) =>
+					reviewedAgenticChatMutationSpecV1(tool.function.name)
+				)) ||
 			requestOffersSemanticDisposition(request);
 		const toolCalls = createToolCallAccumulator();
 		try {
@@ -1493,53 +1530,45 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						state.setCurrentRequest(request);
 					}
 					calls = disposition.calls;
-					// SHA-bound batch approval takes precedence over the contract
-					// gate: the calls the model just wrote are the artifact the
-					// reviewer judges, so there is nothing to ask the model for
-					// before review and nothing to ask it for after approval.
-					const withheldBatch = state.takeWithheldMutationBatch(request, calls);
-					if (withheldBatch) {
-						keepLease = true;
-						yield* this.streamMutationBatchReview(
-							request,
-							state.getAdmittedTools(),
-							withheldBatch.batch,
-							withheldBatch.sha256,
-							usage,
-							state
-						);
-						return;
+					const validationIssues = validateCompletedProviderCalls(
+						calls,
+						request,
+						state.getAdmittedTools(),
+						state.getLoadedTaskSchedules()
+					);
+					if (validationIssues.length === 0) {
+						// SHA-bound batch approval takes precedence over the contract
+						// gate: the calls the model just wrote are the artifact the
+						// reviewer judges, so there is nothing to ask the model for
+						// before review and nothing to ask it for after approval.
+						const withheldBatch = state.takeWithheldMutationBatch(request, calls);
+						if (withheldBatch) {
+							keepLease = true;
+							yield* this.streamMutationBatchReview(
+								request,
+								state.getAdmittedTools(),
+								withheldBatch.batch,
+								withheldBatch.sha256,
+								usage,
+								state
+							);
+							return;
+						}
+						const preMutationSemanticDispositionGate =
+							state.takePreMutationSemanticDispositionGate(request, calls);
+						if (preMutationSemanticDispositionGate) {
+							state.setCurrentRequest(preMutationSemanticDispositionGate);
+							keepLease = true;
+							yield* this.streamActingPass(
+								preMutationSemanticDispositionGate,
+								usage,
+								state,
+								continuationOptions
+							);
+							return;
+						}
 					}
-					const preMutationSemanticDispositionGate =
-						state.takePreMutationSemanticDispositionGate(request, calls);
-					if (preMutationSemanticDispositionGate) {
-						state.setCurrentRequest(preMutationSemanticDispositionGate);
-						keepLease = true;
-						yield* this.streamActingPass(
-							preMutationSemanticDispositionGate,
-							usage,
-							state,
-							continuationOptions
-						);
-						return;
-					}
-					if (
-						holdAssistantText &&
-						!holdAssistantTextForTurnContract &&
-						assistantCandidate &&
-						!callsIncludeSemanticDisposition(calls)
-					) {
-						yield textDelta(assistantCandidate);
-					}
-					const validationIssues = [
-						...validateCompletedProviderCalls(
-							calls,
-							request,
-							state.getAdmittedTools(),
-							state.getLoadedTaskSchedules()
-						),
-						...state.validateApprovedMutations(calls)
-					];
+					validationIssues.push(...state.validateApprovedMutations(calls));
 					if (validationIssues.length > 0) {
 						const invalidCalls = callsWithValidationIssues(calls, validationIssues);
 						for (const call of invalidCalls) {
@@ -1606,6 +1635,14 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 							emitPlanningSemantic
 						});
 						continue;
+					}
+					if (
+						holdAssistantText &&
+						!holdAssistantTextForTurnContract &&
+						assistantCandidate &&
+						!callsIncludeSemanticDisposition(calls)
+					) {
+						yield textDelta(assistantCandidate);
 					}
 					const normalizedCalls = normalizeCompletedProviderCalls(request, calls);
 					state.setPendingToolRound({ calls: normalizedCalls, usage });
@@ -1765,8 +1802,19 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		try {
 			const executionRequest = appendSystemInstruction(
 				request,
-				'Independent semantic review approved the exact proposed calls and the worker executed them unchanged. Report the result from the receipts; do not re-propose or restate them as intentions.'
+				'Independent review approved this executable stage. Use its receipts to determine what succeeded. Continue any remaining work already commissioned by the user (for example, link newly created tasks using their returned IDs); propose that next stage for its own independent review. Never replay successful creates. call_ref/after order calls but do not substitute returned IDs. Correct a failed call only when its receipt proves no effect applied; do not retry uncertain effects. When the requested work is complete, answer from the receipts.'
 			);
+			const issues = [
+				...validateCompletedProviderCalls(
+					calls,
+					executionRequest,
+					state.getAdmittedTools(),
+					state.getLoadedTaskSchedules()
+				),
+				...state.validateApprovedMutations(calls)
+			];
+			if (issues.length)
+				throw providerError('provider_approved_batch_validation_failed', 'permanent');
 			const normalizedCalls = normalizeCompletedProviderCalls(executionRequest, [...calls]);
 			state.setPendingToolRound({ calls: normalizedCalls, usage: priorUsage });
 			state.setCurrentRequest(executionRequest);
@@ -1800,7 +1848,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			);
 			return;
 		}
-		const allowRevision = state.getBatchRevisionCount() < MAX_REVISIONS_PER_TURN;
+		// The reviewer must always be able to reject incorrect calls. The
+		// continuation bounds actor corrections; exhaustion is not user ambiguity.
+		const allowRevision = true;
 		const allowReadOnlyCorrection = state.getBatchRevisionCount() === 0;
 		let reviewRequest = buildMutationBatchReviewRequest(
 			request,
@@ -1954,6 +2004,25 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			}
 		} finally {
 			if (!pendingReviewTool) state.release();
+		}
+	}
+
+	private async *streamReviewExhaustion(
+		usage: AgenticChatProviderUsageV1 | null,
+		state: ToolRoundStreamState
+	): AsyncGenerator<AgenticChatProviderStepV1> {
+		try {
+			const saved = state.renderWriteReceiptFallback('I saved these changes:');
+			yield state.textDelta(
+				saved
+					? `${saved}\n\nI couldn't complete the remaining changes. No additional changes were saved.`
+					: "I couldn't complete the requested change. Nothing was saved.",
+				false
+			);
+			state.advance({ type: 'finish' });
+			yield { type: 'finish', finishedReason: 'semantic_review_failed', usage };
+		} finally {
+			state.release();
 		}
 	}
 

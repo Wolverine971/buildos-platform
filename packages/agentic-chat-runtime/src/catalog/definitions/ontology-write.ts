@@ -122,7 +122,7 @@ export const ONTOLOGY_WRITE_TOOLS = [
 							}
 						},
 						description:
-							'Additional JSON properties. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
+							'Additional JSON properties. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep new estimates out of the description. Changing duration_minutes also reconciles an unchanged legacy "Allow N minutes." prefix and its description mirror using the previous saved estimate.'
 					}
 				},
 				required: ['project_id', 'title']
@@ -616,7 +616,8 @@ If you provide a non-standard relationship type, the API will normalize it to a 
 					},
 					src_id: {
 						type: 'string',
-						description: 'Source entity UUID'
+						description:
+							'Source entity UUID. For depends_on: the dependent task that waits for the prerequisite.'
 					},
 					dst_kind: {
 						type: 'string',
@@ -625,7 +626,8 @@ If you provide a non-standard relationship type, the API will normalize it to a 
 					},
 					dst_id: {
 						type: 'string',
-						description: 'Destination entity UUID'
+						description:
+							'Destination entity UUID. For depends_on: the prerequisite task that must happen first.'
 					},
 					rel: {
 						type: 'string',
@@ -1112,7 +1114,7 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 							}
 						},
 						description:
-							'Properties to merge with existing props. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep estimates out of the description.'
+							'Properties to merge with existing props. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep new estimates out of the description. Changing duration_minutes also reconciles an unchanged legacy "Allow N minutes." prefix and its description mirror using the previous saved estimate.'
 					}
 				},
 				required: ['task_id']

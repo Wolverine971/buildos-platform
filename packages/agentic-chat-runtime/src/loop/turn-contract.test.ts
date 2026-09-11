@@ -55,6 +55,45 @@ function execution(
 }
 
 describe('semantic turn contracts', () => {
+	it('does not turn a rejected proposal into extra unfinished work after its correction saves', () => {
+		const src = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+		const dst = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+		const rejected = execution(
+			'link_onto_entities',
+			{
+				src_kind: 'task',
+				src_label: 'A',
+				dst_kind: 'task',
+				dst_label: 'B',
+				rel: 'depends_on'
+			},
+			{
+				success: false,
+				result: { execution_status: 'not_executed', failure_kind: 'validation' },
+				error: 'Unsupported labels'
+			}
+		);
+		const saved = execution(
+			'link_onto_entities',
+			{
+				src_kind: 'task',
+				src_id: src,
+				dst_kind: 'task',
+				dst_id: dst,
+				rel: 'depends_on'
+			},
+			{ result: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' } }
+		);
+		const toolExecutions = [rejected, saved];
+		const contract = deriveImplicitTurnContract(toolExecutions);
+		expect(contract?.outcomes).toHaveLength(1);
+		expect(buildWriteLedger(toolExecutions)).toHaveLength(1);
+		expect(resolveTurnContractOutcome({ contract, toolExecutions }).fulfilled).toBe(true);
+		// Genuine failed adapter writes remain visible and cannot be erased by prose.
+		const failed = { ...rejected, result: { ...rejected.result, result: null } };
+		expect(buildWriteLedger([failed])).toMatchObject([{ status: 'failure' }]);
+	});
+
 	it.each(['duration_minutes', 'props.duration_minutes'])(
 		'verifies nested task estimates declared as %s',
 		(field) => {
@@ -1371,6 +1410,42 @@ describe('semantic turn contracts', () => {
 		expect(
 			resolveTurnContractFromExecutions([declaration, rejectedConvenienceEdit])?.outcomes
 		).toEqual([expect.objectContaining({ id: 'organize-documents', action: 'organize' })]);
+	});
+
+	it('counts each dependency and does not credit an unrelated successful edge', () => {
+		const failed = ['cabinets', 'rough-in', 'inspection'].map((src_id) =>
+			execution(
+				'link_onto_entities',
+				{
+					project_id: 'project-a',
+					src_id,
+					dst_id: 'permit',
+					src_kind: 'task',
+					dst_kind: 'task',
+					rel: 'depends_on'
+				},
+				{ success: false, error: 'Could not link' }
+			)
+		);
+		const unrelated = execution(
+			'link_onto_entities',
+			{
+				src_id: 'other',
+				dst_id: 'permit',
+				src_kind: 'task',
+				dst_kind: 'task',
+				rel: 'depends_on'
+			},
+			{ result: { edge_id: 'edge-other' } }
+		);
+		const contract = deriveImplicitTurnContract(failed)!;
+		expect(contract.outcomes).toHaveLength(3);
+		expect(
+			resolveTurnContractOutcome({
+				contract,
+				toolExecutions: [...failed, unrelated]
+			}).outcomes.map((outcome) => outcome.matchedEffects)
+		).toEqual([0, 0, 0]);
 	});
 
 	it('derives an implicit contract from a direct write call', () => {

@@ -1,5 +1,8 @@
 // apps/worker/tests/agenticChatTurnProvider.test.ts
-import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
+import {
+	ONTOLOGY_WRITE_TOOLS,
+	getGatewaySurfaceForContextType
+} from '@buildos/agentic-chat-runtime/catalog';
 // apps/worker/tests/agenticChatTurnProvider.test.ts
 
 import { createHash } from 'node:crypto';
@@ -11041,7 +11044,7 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
  * wrote the executing calls AFTER the review (F08).
  */
 describe('SHA-bound mutation batch approval', () => {
-	it.each(['global', 'project_create'] as const)(
+	it.each(['global', 'project_create', 'project'] as const)(
 		'opens %s on real mutation tools with no contract gate',
 		async (contextType) => {
 			const client = clientWithRounds([
@@ -11079,7 +11082,7 @@ describe('SHA-bound mutation batch approval', () => {
 			await collect(invocation.stream());
 			const opening = client.stream.mock.calls[0]![0];
 			expect(opening.tools.map((tool) => tool.function.name)).toContain(
-				'create_onto_project'
+				contextType === 'project' ? 'create_onto_task' : 'create_onto_project'
 			);
 			expect(opening.tools.map((tool) => tool.function.name)).not.toContain(
 				'declare_turn_contract'
@@ -11087,6 +11090,11 @@ describe('SHA-bound mutation batch approval', () => {
 			expect(opening.tools.map((tool) => tool.function.name)).not.toContain(
 				'cancel_turn_contract'
 			);
+			for (const tool of opening.tools) {
+				expect(tool.function.description, tool.function.name).not.toMatch(
+					/declare_turn_contract|src_label|dst_label/
+				);
+			}
 			expect(opening).not.toHaveProperty('semanticDispositionGate');
 			expect(opening.toolChoice).toBe('auto');
 		}
@@ -11100,13 +11108,15 @@ describe('SHA-bound mutation batch approval', () => {
 				readOnlyTurnToolDefinition(),
 				clarificationToolDefinition(),
 				readToolDefinition('get_project_overview'),
-				createTaskToolDefinition()
+				ONTOLOGY_WRITE_TOOLS.find((tool) => tool.function.name === 'create_onto_task')!,
+				ONTOLOGY_WRITE_TOOLS.find((tool) => tool.function.name === 'link_onto_entities')!
 			],
 			[
 				'declare_read_only_turn',
 				'request_turn_clarification',
 				'get_project_overview',
-				'create_onto_task'
+				'create_onto_task',
+				'link_onto_entities'
 			]
 		);
 	}
@@ -11181,7 +11191,7 @@ describe('SHA-bound mutation batch approval', () => {
 			},
 			2_000,
 			16,
-			{ createOntoTask: true },
+			{ createOntoTask: true, linkOntoEntities: true },
 			true
 		).prepare({
 			executionInput: batchToolSurface(),
@@ -11389,6 +11399,15 @@ describe('SHA-bound mutation batch approval', () => {
 				.map((message) => message.content)
 				.join('\n')
 		).toContain('Create the punch list task instead.');
+		const rejectedEvidence = revisionRequest.messages.find(
+			(message) =>
+				message.role === 'assistant' &&
+				typeof message.content === 'string' &&
+				message.content.startsWith('Previous rejected proposal')
+		);
+		expect(rejectedEvidence?.content).toContain('unexecuted, not authorization or a receipt');
+		expect(rejectedEvidence?.content).toContain('"title":"Inspection"');
+		expect(rejectedEvidence?.content).not.toContain('"title":"Punch list"');
 		// The second review is bound to the corrected batch, not the first one.
 		expect(
 			semanticReviewer.stream.mock.calls[1]![0].messages.map(
@@ -11430,4 +11449,288 @@ describe('SHA-bound mutation batch approval', () => {
 		expect(steps.filter((step) => step.type === 'mutating_tool')).toHaveLength(1);
 		expect(semanticReviewer.stream).not.toHaveBeenCalled();
 	});
+	function approvingReviewer() {
+		let count = 0;
+		return {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>((request) => {
+				const text = request.messages.map((message) => message.content).join('\n');
+				const sha = text.match(/Exact proposed batch SHA-256: ([a-f0-9]{64})/)![1]!;
+				const events = reviewerApproval(sha);
+				(events[0] as { toolCall: Array<{ id: string }> }).toolCall[0]!.id =
+					`stage-review-${++count}`;
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+	}
+	function approvalFeedback(steps: AgenticChatProviderStepV1[]) {
+		const control = steps.find(
+			(step) => step.type === 'read_tool' && step.toolName === 'approve_mutation_batch_review'
+		);
+		if (!control || control.type !== 'read_tool') throw new Error('Missing review control');
+		return durableReadFeedbackFor(
+			control.providerToolCallId,
+			control.toolName,
+			control.arguments,
+			{
+				status: 'mutation_batch_review_approved',
+				batch_sha256: control.arguments.batch_sha256!
+			}
+		);
+	}
+	function successfulWrites(steps: AgenticChatProviderStepV1[]) {
+		return steps
+			.filter((step) => step.type === 'mutating_tool')
+			.map((step, index) => {
+				const feedback = durableMutationFeedback({
+					providerToolCallId: step.providerToolCallId,
+					logicalOperationId: step.logicalOperationId,
+					operationName: step.operationName,
+					toolName: step.toolName,
+					arguments: step.arguments
+				});
+				feedback.execution.result = {
+					task: {
+						id: `a0000000-0000-4000-8000-00000000000${index + 1}`,
+						title: step.arguments.title ?? 'Task'
+					}
+				};
+				return feedback;
+			});
+	}
+	it('creates then independently reviews links using returned IDs without replaying creates', async () => {
+		const links = {
+			src_kind: 'task',
+			src_id: 'a0000000-0000-4000-8000-000000000002',
+			dst_kind: 'task',
+			dst_id: 'a0000000-0000-4000-8000-000000000001',
+			rel: 'depends_on'
+		};
+		const client = clientWithRounds([
+			[{ type: 'text', content: 'The tasks are already created.' }, ...proposedBatchRound()],
+			[
+				{ type: 'text', content: 'The dependency is already saved.' },
+				...providerReadRound('link-stage', links, 'link_onto_entities')
+			],
+			[
+				{ type: 'text', content: 'Created four tasks and saved their dependency.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const reviewer = approvingReviewer();
+		const invocation = await batchProvider(client, reviewer);
+		const firstReview = await collect(invocation.stream());
+		expect(firstReview.some((step) => step.type === 'text_delta')).toBe(false);
+		const creates = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [approvalFeedback(firstReview)]
+			})
+		);
+		const secondReview = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(creates) })
+		);
+		// Even a single link must be reviewed as a new stage of a reviewed turn.
+		expect(secondReview.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(secondReview.some((step) => step.type === 'text_delta')).toBe(false);
+		const savedLinks = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [approvalFeedback(secondReview)]
+			})
+		);
+		expect(savedLinks.filter((step) => step.type === 'mutating_tool')).toEqual([
+			expect.objectContaining({ toolName: 'link_onto_entities', arguments: links })
+		]);
+		const final = await collect(
+			invocation.continueWithToolResults!({ round: 5, results: successfulWrites(savedLinks) })
+		);
+		expect(final.filter((step) => step.type === 'text_delta')).toEqual([
+			{ type: 'text_delta', text: 'Created four tasks and saved their dependency.' }
+		]);
+		expect(reviewer.stream).toHaveBeenCalledTimes(2);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(client.stream.mock.calls[1]![0].toolChoice).toBe('auto');
+		expect(
+			client.stream.mock.calls[1]![0].messages.map((message) => message.content).join('\n')
+		).toContain(links.src_id);
+		for (const [request] of client.stream.mock.calls) {
+			expect(request.tools.map((tool) => tool.function.name)).not.toContain(
+				'approve_mutation_batch_review'
+			);
+		}
+	});
+	it('validates malformed proposed arguments before spending a reviewer pass', async () => {
+		const bad = providerReadRound(
+			'bad-link',
+			{
+				src_kind: 'task',
+				dst_kind: 'task',
+				src_label: 'Cabinets',
+				dst_label: 'Permit',
+				rel: 'depends_on'
+			},
+			'link_onto_entities'
+		);
+		const client = clientWithRounds([
+			bad,
+			[
+				{ type: 'text', content: 'The dependency could not be saved.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const reviewer = approvingReviewer();
+		const invocation = await batchProvider(client, reviewer);
+		const steps = await collect(invocation.stream());
+		expect(steps.some((step) => step.type === 'read_tool' && step.validationFailure)).toBe(
+			true
+		);
+		expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(reviewer.stream).not.toHaveBeenCalled();
+	});
+	it.each([false, true])(
+		'ends exhausted batch corrections with durable receipts, without asking permission (prior writes=%s)',
+		async (priorWrites) => {
+			const links = providerReadRound(
+				'unapproved-link',
+				{
+					src_kind: 'task',
+					src_id: 'a0000000-0000-4000-8000-000000000002',
+					dst_kind: 'task',
+					dst_id: 'a0000000-0000-4000-8000-000000000001',
+					rel: 'depends_on'
+				},
+				'link_onto_entities'
+			);
+			const client = clientWithRounds([
+				...(priorWrites ? [proposedBatchRound()] : []),
+				...Array.from({ length: 3 }, () => (priorWrites ? links : proposedBatchRound()))
+			]);
+			let decisions = 0;
+			const reviewer = {
+				stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
+					decisions += 1;
+					const events =
+						priorWrites && decisions === 1
+							? reviewerApproval(expectedBatchSha())
+							: providerReadRound(
+									`revision-${decisions}`,
+									{
+										reason: 'Wrong target.',
+										required_correction: 'Use the commissioned target.',
+										reference_candidates: []
+									},
+									'request_proposal_revision'
+								);
+					return (async function* () {
+						for (const event of events) yield event;
+					})();
+				})
+			};
+			const invocation = await batchProvider(client, reviewer);
+			let steps = await collect(invocation.stream());
+			let round = 2;
+			if (priorWrites) {
+				const writes = await collect(
+					invocation.continueWithToolResults!({
+						round: round++,
+						results: [approvalFeedback(steps)]
+					})
+				);
+				steps = await collect(
+					invocation.continueWithToolResults!({
+						round: round++,
+						results: successfulWrites(writes)
+					})
+				);
+			}
+			for (let index = 0; index < 3; index += 1) {
+				const rejected = steps.find(
+					(step) =>
+						step.type === 'read_tool' && step.toolName === 'request_proposal_revision'
+				);
+				if (!rejected || rejected.type !== 'read_tool')
+					throw new Error('Missing rejection control');
+				steps = await collect(
+					invocation.continueWithToolResults!({
+						round: round++,
+						results: [
+							durableReadFeedbackFor(
+								rejected.providerToolCallId,
+								rejected.toolName,
+								rejected.arguments,
+								{
+									status: 'revision_required',
+									reason: 'Wrong target.',
+									required_correction: 'Use the commissioned target.'
+								}
+							)
+						]
+					})
+				);
+				expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+			}
+			const text = steps
+				.filter((step) => step.type === 'text_delta')
+				.map((step) => step.text)
+				.join('');
+			expect(text).toContain(priorWrites ? 'Created task: Permit' : 'Nothing was saved.');
+			if (priorWrites) expect(text).toContain("couldn't complete the remaining changes");
+			expect(text).not.toContain('?');
+			expect(steps).toContainEqual(
+				expect.objectContaining({
+					type: 'finish',
+					finishedReason: 'semantic_review_failed'
+				})
+			);
+			expect(client.stream).toHaveBeenCalledTimes(priorWrites ? 4 : 3);
+			expect(reviewer.stream).toHaveBeenCalledTimes(priorWrites ? 4 : 3);
+		}
+	);
+	it.each([false, true])(
+		'handles reconciled failed stages without replaying partially applied batches (partial=%s)',
+		async (partial) => {
+			const corrected = providerReadRound(
+				'corrected-create',
+				{ project_id: PROJECT_ID, title: 'Corrected task' },
+				'create_onto_task'
+			);
+			const client = clientWithRounds([
+				proposedBatchRound(),
+				partial
+					? [
+							{
+								type: 'text',
+								content: 'One task was created; three could not be saved.'
+							},
+							{ type: 'done', finishedReason: 'stop' }
+						]
+					: corrected
+			]);
+			const reviewer = approvingReviewer();
+			const invocation = await batchProvider(client, reviewer);
+			const review = await collect(invocation.stream());
+			const writes = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [approvalFeedback(review)]
+				})
+			);
+			const results = successfulWrites(writes).map((feedback, index) =>
+				partial && index === 0
+					? feedback
+					: failedMutationFeedback({
+							providerToolCallId: feedback.providerToolCallId,
+							toolName: feedback.toolName,
+							arguments: feedback.arguments,
+							error: 'Validated rejection; no effect applied.'
+						})
+			);
+			const next = await collect(invocation.continueWithToolResults!({ round: 3, results }));
+			expect(next.some((step) => step.type === 'mutating_tool')).toBe(false);
+			expect(client.stream.mock.calls[1]![0].toolChoice).toBe(partial ? 'none' : 'auto');
+			expect(reviewer.stream).toHaveBeenCalledTimes(partial ? 1 : 2);
+		}
+	);
 });

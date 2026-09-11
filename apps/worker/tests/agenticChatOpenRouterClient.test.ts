@@ -975,7 +975,10 @@ describe('AgenticChatOpenRouterClient', () => {
 				route({
 					model: 'provider/primary',
 					fallbackModels: ['provider/resolved-fallback'],
-					providerRouting: { order: ['default-provider'], allow_fallbacks: true }
+					providerRouting: {
+						order: ['default-provider', 'warm-provider'],
+						allow_fallbacks: true
+					}
 				})
 			]);
 
@@ -1014,17 +1017,17 @@ describe('AgenticChatOpenRouterClient', () => {
 			expect(requests[0]).toMatchObject({
 				model: 'provider/primary',
 				models: ['provider/resolved-fallback'],
-				provider: { order: ['default-provider'], allow_fallbacks: true }
+				provider: { order: ['default-provider', 'warm-provider'], allow_fallbacks: true }
 			});
 			expect(requests[1]).toMatchObject({
 				model: 'provider/resolved-fallback',
-				provider: { order: ['warm-provider'], allow_fallbacks: true }
+				provider: { order: ['warm-provider', 'default-provider'], allow_fallbacks: true }
 			});
 			expect(requests[1]).not.toHaveProperty('models');
 			expect(requests[2]).toMatchObject({
 				model: 'provider/primary',
 				models: ['provider/resolved-fallback'],
-				provider: { order: ['default-provider'], allow_fallbacks: true }
+				provider: { order: ['default-provider', 'warm-provider'], allow_fallbacks: true }
 			});
 			// The rejection named no endpoint and the request could have reached
 			// any, so nothing is ignored on no evidence.
@@ -2405,6 +2408,66 @@ describe('truncated tool-call attempts and turn budgets', () => {
 	// Re-requesting the snapshot resolved to a different endpoint set (Azure,
 	// p50 21.5 s), so the pin holds the configured id; receipts keep the
 	// reported one.
+	it('retains ordered fallbacks when preferring a warm provider on subsequent rounds', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)));
+			return sseResponse([
+				JSON.stringify({
+					model: 'provider/primary',
+					provider: 'GMICloud',
+					provider_slug: 'gmicloud',
+					choices: [{ delta: { content: 'Answer.' }, finish_reason: 'stop' }]
+				}),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl, [
+			route({
+				providerRouting: {
+					order: ['novita', 'gmicloud', 'deepinfra'],
+					ignore: ['azure'],
+					allow_fallbacks: true
+				}
+			})
+		]);
+		await collect(test.client.stream(input()));
+		await collect(test.client.stream({ ...input(), logicalProviderRound: 2 }));
+		expect(requests[1]?.provider).toMatchObject({
+			order: ['gmicloud', 'novita', 'deepinfra'],
+			ignore: ['azure'],
+			allow_fallbacks: true
+		});
+		expect(requests[1]?.provider).not.toHaveProperty('only');
+	});
+
+	it.each([{ order: ['gmicloud', 'novita', 'deepinfra'] }, { sort: 'throughput' as const }])(
+		'does not let a fallback provider override the configured preference: %j',
+		async (policy) => {
+			const requests: Array<Record<string, unknown>> = [];
+			const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+				requests.push(JSON.parse(String(request?.body)));
+				return sseResponse([
+					JSON.stringify({
+						model: 'provider/primary',
+						provider: 'Wafer',
+						provider_slug: 'wafer',
+						choices: [{ delta: { content: 'Answer.' }, finish_reason: 'stop' }]
+					}),
+					'[DONE]'
+				]);
+			}) as unknown as typeof fetch;
+			const test = harness(fetchImpl, [
+				route({ providerRouting: { ...policy, allow_fallbacks: true } })
+			]);
+			await collect(test.client.stream(input()));
+			await collect(test.client.stream({ ...input(), logicalProviderRound: 2 }));
+			expect(requests[1]?.provider).toMatchObject({ ...policy, allow_fallbacks: true });
+			if ('sort' in policy) expect(requests[1]?.provider).not.toHaveProperty('order');
+			expect(requests[1]?.provider).not.toHaveProperty('only');
+		}
+	);
+
 	it('pins the configured model when the provider reports a weight snapshot id', async () => {
 		const requests: Array<Record<string, unknown>> = [];
 		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {

@@ -29,4 +29,55 @@ describe('Agentic Chat acting provider routing defaults', () => {
 		expect(routing?.order).not.toContain('deepseek');
 		expect(routing?.order).not.toContain('cloudflare');
 	});
+	it('uses the V4.1 measurements only for V4.1 and permits an explicit order override', () => {
+		const environment = {
+			...DEDICATED_PROVIDER_ENV,
+			AGENTIC_CHAT_OPENROUTER_MODEL: 'deepseek/deepseek-v4.1-flash'
+		};
+		expect(loadAgenticChatConfig(environment).provider.routes[0]?.providerRouting).toEqual({
+			allow_fallbacks: true,
+			ignore: ['azure', 'morph'],
+			sort: 'throughput'
+		});
+		expect(loadAgenticChatConfig(environment).provider.routes[0]?.providerRouting).toEqual(
+			loadAgenticChatConfig({
+				...environment,
+				AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT: 'throughput'
+			}).provider.routes[0]?.providerRouting
+		);
+		expect(
+			loadAgenticChatConfig({
+				...environment,
+				AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER: 'deepinfra,gmicloud'
+			}).provider.routes[0]?.providerRouting?.order
+		).toEqual(['deepinfra', 'gmicloud']);
+	});
+});
+
+it('supports explicit measured provider experiments without changing the default route', () => {
+	expect(
+		loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT: 'latency'
+		}).provider.routes[0]?.providerRouting
+	).toEqual({ allow_fallbacks: true, ignore: ['azure'], sort: 'latency' });
+	expect(
+		loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER: 'gmicloud,deepinfra'
+		}).provider.routes[0]?.providerRouting
+	).toEqual({ allow_fallbacks: true, ignore: ['azure'], order: ['gmicloud', 'deepinfra'] });
+	expect(() =>
+		loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER: 'deepinfra',
+			AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT: 'latency'
+		})
+	).toThrow(/order or sort/);
+	expect(() =>
+		loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT: 'fastest'
+		})
+	).toThrow(/Invalid/);
 });

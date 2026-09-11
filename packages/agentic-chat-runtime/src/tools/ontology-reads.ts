@@ -832,7 +832,7 @@ export async function listOntoTasks(
 	return {
 		tasks: normalized,
 		total: count ?? normalized.length,
-		message: `Found ${normalized.length} ontology tasks. Use get_onto_task_details for full information.`
+		message: `Found ${normalized.length} ontology tasks.`
 	};
 }
 

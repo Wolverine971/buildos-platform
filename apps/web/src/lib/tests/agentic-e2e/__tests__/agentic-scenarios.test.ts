@@ -29,7 +29,8 @@ import {
 	teardownProject
 } from '../harness/seed';
 import { releaseTurnForFollowup, teardownChatSession, waitForTurnRun } from '../harness/telemetry';
-import { judgeQuality } from '../harness/judge';
+import { judgeQuality, type JudgeAttempt } from '../harness/judge';
+import { gateSnapshot, captureGateTurn } from '../harness/gate-evidence';
 import { checkTurnBeforeFollowupRelease } from '../harness/turn-sequencing';
 import { evaluateTurnEvidenceChecks } from '../harness/evidence-checks';
 import { readWorkerTurnAttribution } from '../harness/attribution';
@@ -350,6 +351,9 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 								sessionId = undefined;
 								lastTurnContext = null;
 							}
+							const before = await gateSnapshot(c);
+							let judgeInput: unknown = null;
+							const judgeAttempts: JudgeAttempt[] = [];
 							const result = await requireWorkerClient().runTurn({
 								message: turn.message,
 								contextType: turn.contextType,
@@ -452,11 +456,13 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 								judgeTurn: turn.judge
 									? async () => {
 											const j = await turn.judge!(result, c, seed);
+											judgeInput = j;
 											const threshold = j.threshold ?? 3;
 											const verdict = await judgeQuality({
 												rubric: j.rubric,
 												transcript: j.transcript,
-												threshold
+												threshold,
+												onAttempt: (attempt) => judgeAttempts.push(attempt)
 											});
 											return { ...verdict, threshold };
 										}
@@ -464,6 +470,21 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 								captureTurn:
 									PHASE0_CAPTURE || batteryRecorder
 										? async (checkOutcome) => {
+												const captureErrors = await captureGateTurn({
+													ctx: c,
+													scenarioId: scenario.id,
+													repetition,
+													turnIndex: turnIndex + 1,
+													result,
+													evidence: {
+														message: turn.message,
+														before,
+														seed,
+														judgeInput,
+														judgeAttempts,
+														checkOutcome
+													}
+												});
 												if (batteryRecorder) {
 													// Scored from the SAME taxonomy the evidence
 													// report uses, so a scorecard and a Phase 0
@@ -490,7 +511,7 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 																	)
 																: null,
 															checkOutcome,
-															captureErrors: []
+															captureErrors
 														}),
 														error: checkOutcome.overallError
 													});
