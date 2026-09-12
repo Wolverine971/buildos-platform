@@ -79,6 +79,20 @@ export function readSourceProvenance(cwd = process.cwd()): SourceProvenance {
 	return { version: 1, gitSha, dirtyTreeSha256: hash.digest('hex') };
 }
 
+// SHA-256 of zero changed files: the dirty-tree hash of a clean checkout.
+const CLEAN_TREE_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+// Railway source archives omit .git but are the exact clean checkout of the
+// deployed commit. Railway exposes that SHA at runtime, not to build steps.
+// Never fall back to a package version: it is not a revision.
+export function readDeploymentProvenance(
+	env: NodeJS.ProcessEnv = process.env
+): SourceProvenance | null {
+	const gitSha = env.RAILWAY_GIT_COMMIT_SHA?.trim() || env.SOURCE_REVISION?.trim();
+	if (!gitSha || !/^[a-f0-9]{40}$/.test(gitSha)) return null;
+	return { version: 1, gitSha, dirtyTreeSha256: CLEAN_TREE_SHA256 };
+}
+
 export function assertSourceProvenance(
 	expected: SourceProvenance,
 	actual: unknown,

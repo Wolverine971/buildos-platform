@@ -1,23 +1,24 @@
 // apps/worker/scripts/stamp-source-provenance.ts
-import { writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { readSourceProvenance } from '../../../packages/agentic-chat-runtime/src/provenance';
-let provenance;
+import {
+	readDeploymentProvenance,
+	readSourceProvenance,
+	type SourceProvenance
+} from '../../../packages/agentic-chat-runtime/src/provenance';
+
+const target = resolve(__dirname, '../dist/source-provenance.json');
+let provenance: SourceProvenance | null;
 try {
 	provenance = readSourceProvenance();
 } catch {
-	// Railway source archives omit .git. Their deployment revision identifies
-	// the immutable clean checkout; never use a package version as a revision.
-	const gitSha = process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.SOURCE_REVISION;
-	if (!gitSha || !/^[a-f0-9]{40}$/.test(gitSha))
-		throw new Error('Build requires Git or an exact SOURCE_REVISION');
-	provenance = {
-		version: 1,
-		gitSha,
-		dirtyTreeSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
-	};
+	provenance = readDeploymentProvenance();
 }
-writeFileSync(
-	resolve(__dirname, '../dist/source-provenance.json'),
-	JSON.stringify(provenance) + '\n'
-);
+if (provenance) {
+	writeFileSync(target, JSON.stringify(provenance) + '\n');
+} else {
+	// Railway build steps see neither .git nor the deployment SHA. Never fail the
+	// deploy for it, and never leave a stale stamp: the runtime resolves the SHA.
+	rmSync(target, { force: true });
+	console.warn('source-provenance: no Git or SOURCE_REVISION at build; resolved at runtime');
+}

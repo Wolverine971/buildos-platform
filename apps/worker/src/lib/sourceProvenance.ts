@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+	readDeploymentProvenance,
 	readSourceProvenance,
 	type SourceProvenance
 } from '@buildos/agentic-chat-runtime/provenance';
@@ -14,6 +15,8 @@ function capture(): SourceProvenance | null {
 		if (process.env.NODE_ENV !== 'production') return readSourceProvenance();
 		return JSON.parse(readFileSync(resolve(__dirname, '../source-provenance.json'), 'utf8'));
 	} catch {
-		return null; // Unknown is visible and cannot pass the battery preflight.
+		// Railway builds cannot stamp; the deployed SHA is only visible at runtime.
+		// Unknown stays null: visible, and cannot pass the battery preflight.
+		return readDeploymentProvenance();
 	}
 }
