@@ -20,11 +20,22 @@ function coverageRecords(value: unknown): Record<string, unknown>[] {
 }
 
 export function hasCompleteCalendarCoverage(results: unknown): boolean {
-	return coverageRecords(results).some(
-		(read) =>
-			read.coverage === 'complete' &&
-			Number(read.source_count) > 0 &&
-			read.source_count === read.successful_source_count
+	const reads = coverageRecords(results);
+	return (
+		reads.some((read) => Number(read.source_count) > 0) &&
+		reads.every(
+			(read) =>
+				read.coverage === 'complete' &&
+				typeof read.source_count === 'number' &&
+				Number.isInteger(read.source_count) &&
+				read.source_count >= 0 &&
+				(read.source_count > 0 || read.mode === 'none') &&
+				read.source_count === read.successful_source_count &&
+				read.partial === false &&
+				read.failed_source_count === 0 &&
+				Array.isArray(read.source_failures) &&
+				read.source_failures.length === 0
+		)
 	);
 }
 
@@ -58,8 +69,8 @@ export const cedarCase10CalendarAvailabilityScenario: Scenario = {
 			},
 			judge: async (turn) => ({
 				threshold: 4,
-				rubric: 'Verify the three proposed slots against the actual calendar tool results in this transcript. All must be 30 minutes within September 14, 2026, 09:00–17:00 America/New_York, nonoverlapping and at least 15 minutes from every busy interval (including all-day events). All configured sources must have complete successful coverage. The answer must identify source coverage and must not call hypothetical slots verified. If no three slots exist, an accurate explanation earns full credit. Any invented availability or ignored source failure scores 1.',
-				transcript: buildTranscript(turn)
+				rubric: 'Verify the three proposed slots against the actual calendar tool results in this transcript. All must be 30 minutes within September 14, 2026, 09:00–17:00 America/New_York, nonoverlapping and at least 15 minutes from every busy interval (including all-day events). All configured sources must have complete successful coverage, with at least one real source read. A project with no calendar mapping (project_calendar: null, mode: none, source_count: 0) has no configured project Google source; it is not a source failure and does not invalidate a complete connected-user-calendar read. A failed or partial configured source must never be treated as an unmapped project. The answer must identify source coverage and must not call hypothetical slots verified. If no three slots exist, an accurate explanation earns full credit. Any invented availability or ignored source failure scores 1.',
+				transcript: buildTranscript(turn, { observedToolResults: turn.toolResults })
 			})
 		}
 	]

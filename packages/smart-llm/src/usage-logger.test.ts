@@ -224,6 +224,46 @@ describe('LLMUsageLogger', () => {
 		);
 	});
 
+	it('propagates an accounting deadline to the actual Supabase write', async () => {
+		const controller = new AbortController();
+		const abortSignal = vi.fn(
+			(signal: AbortSignal) =>
+				new Promise<{ error: null }>((_resolve, reject) => {
+					signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+				})
+		);
+		const logger = new LLMUsageLogger({
+			supabase: {
+				from: vi.fn(() => ({ upsert: vi.fn(() => ({ abortSignal })) }))
+			} as any,
+			failureMode: 'throw'
+		});
+		const write = logger.logUsageToDatabase(
+			{
+				id: '60000000-0000-5000-8000-000000000006',
+				userId: '11111111-1111-4111-8111-111111111111',
+				operationType: 'agentic_chat_worker_stream',
+				modelRequested: 'provider/model',
+				modelUsed: 'provider/model',
+				promptTokens: 10,
+				completionTokens: 2,
+				totalTokens: 12,
+				inputCost: 0,
+				outputCost: 0,
+				totalCost: 0,
+				responseTimeMs: 100,
+				requestStartedAt: new Date(0),
+				requestCompletedAt: new Date(100),
+				status: 'success'
+			},
+			controller.signal
+		);
+		expect(abortSignal).toHaveBeenCalledWith(controller.signal);
+		const assertion = expect(write).rejects.toThrow('accounting deadline');
+		controller.abort(new Error('accounting deadline'));
+		await assertion;
+	});
+
 	it('can make database failure observable for terminally ordered worker accounting', async () => {
 		const logger = new LLMUsageLogger({
 			supabase: {

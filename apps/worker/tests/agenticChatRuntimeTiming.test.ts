@@ -90,6 +90,7 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 						maxDurationMs: 0
 					},
 					publisherDelivery: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
+					publisherDeliveryLag: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
 					publisherDrain: { durationMs: 6 }
 				}
 			}
@@ -132,6 +133,7 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 						maxDurationMs: 0
 					},
 					publisherDelivery: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
+					publisherDeliveryLag: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
 					publisherDrain: { durationMs: 6 }
 				}
 			},
@@ -210,6 +212,7 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 			publisherQueueing: { count: 1, totalDurationMs: 8, maxDurationMs: 8 },
 			durableAcknowledgement: { count: 1, totalDurationMs: 3, maxDurationMs: 3 },
 			publisherDelivery: { count: 1, totalDurationMs: 11, maxDurationMs: 11 },
+			publisherDeliveryLag: { count: 1, totalDurationMs: 3, maxDurationMs: 3 },
 			publisherDrain: { durationMs: null }
 		});
 	});

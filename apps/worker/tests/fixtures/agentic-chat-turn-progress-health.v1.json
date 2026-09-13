@@ -1,0 +1,433 @@
+[
+	{
+		"name": "queued",
+		"meaning": "Durably accepted and waiting for a worker; no semantic progress is implied.",
+		"input": {
+			"now": "2026-09-13T12:10:00.000Z",
+			"providerActiveTimeoutMs": 300000,
+			"stallTimeoutMs": 420000,
+			"turnRunId": "fixture-queued",
+			"executionGeneration": null,
+			"transportStatus": "queued",
+			"executionPhase": "queued",
+			"acceptedAt": "2026-09-13T12:09:40.000Z",
+			"lastDurableProgressAt": null,
+			"providerActivity": {
+				"state": "not_started",
+				"lastObservedAt": null
+			},
+			"delivery": {
+				"state": "not_started",
+				"lastObservedAt": null
+			}
+		},
+		"projection": {
+			"contractVersion": "agentic_chat_turn_progress_health_v1",
+			"turnRunId": "fixture-queued",
+			"executionGeneration": null,
+			"transportStatus": "queued",
+			"executionPhase": "queued",
+			"executionState": "queued",
+			"queueAgeMs": 20000,
+			"durableProgress": {
+				"lastObservedAt": null,
+				"ageMs": null,
+				"lastEventType": null,
+				"source": "database"
+			},
+			"providerActivity": {
+				"state": "not_started",
+				"lastObservedAt": null,
+				"ageMs": null,
+				"source": "worker_memory"
+			},
+			"delivery": {
+				"state": "not_started",
+				"lastObservedAt": null,
+				"ageMs": null,
+				"disconnected": false,
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null,
+				"delayed": false,
+				"source": "worker_memory"
+			},
+			"stall": {
+				"stalled": false,
+				"reason": null,
+				"thresholdMs": 420000
+			}
+		}
+	},
+	{
+		"name": "preparing",
+		"meaning": "A worker holds the turn and recently saved progress before any model call.",
+		"input": {
+			"now": "2026-09-13T12:10:00.000Z",
+			"providerActiveTimeoutMs": 300000,
+			"stallTimeoutMs": 420000,
+			"turnRunId": "fixture-preparing",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "preparing",
+			"acceptedAt": "2026-09-13T12:09:50.000Z",
+			"lastDurableProgressAt": "2026-09-13T12:09:52.000Z",
+			"lastDurableEventType": "turn_phase",
+			"providerActivity": {
+				"state": "not_started",
+				"lastObservedAt": null
+			},
+			"delivery": {
+				"state": "connected",
+				"lastObservedAt": "2026-09-13T12:09:52.100Z",
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null
+			}
+		},
+		"projection": {
+			"contractVersion": "agentic_chat_turn_progress_health_v1",
+			"turnRunId": "fixture-preparing",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "preparing",
+			"executionState": "active",
+			"queueAgeMs": null,
+			"durableProgress": {
+				"lastObservedAt": "2026-09-13T12:09:52.000Z",
+				"ageMs": 8000,
+				"lastEventType": "turn_phase",
+				"source": "database"
+			},
+			"providerActivity": {
+				"state": "not_started",
+				"lastObservedAt": null,
+				"ageMs": null,
+				"source": "worker_memory"
+			},
+			"delivery": {
+				"state": "connected",
+				"lastObservedAt": "2026-09-13T12:09:52.100Z",
+				"ageMs": 7900,
+				"disconnected": false,
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null,
+				"delayed": false,
+				"source": "worker_memory"
+			},
+			"stall": {
+				"stalled": false,
+				"reason": null,
+				"thresholdMs": 420000
+			}
+		}
+	},
+	{
+		"name": "long_provider_call",
+		"meaning": "No new saved progress for minutes, but a model call started within its deadline is still running.",
+		"input": {
+			"now": "2026-09-13T12:10:00.000Z",
+			"providerActiveTimeoutMs": 300000,
+			"stallTimeoutMs": 420000,
+			"turnRunId": "fixture-long-provider",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "executing",
+			"acceptedAt": "2026-09-13T12:00:00.000Z",
+			"lastDurableProgressAt": "2026-09-13T12:06:30.000Z",
+			"lastDurableEventType": "tool_result",
+			"providerActivity": {
+				"state": "active",
+				"lastObservedAt": "2026-09-13T12:07:00.000Z"
+			},
+			"delivery": {
+				"state": "connected",
+				"lastObservedAt": "2026-09-13T12:06:30.200Z",
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null
+			}
+		},
+		"projection": {
+			"contractVersion": "agentic_chat_turn_progress_health_v1",
+			"turnRunId": "fixture-long-provider",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "executing",
+			"executionState": "provider_active",
+			"queueAgeMs": null,
+			"durableProgress": {
+				"lastObservedAt": "2026-09-13T12:06:30.000Z",
+				"ageMs": 210000,
+				"lastEventType": "tool_result",
+				"source": "database"
+			},
+			"providerActivity": {
+				"state": "active",
+				"lastObservedAt": "2026-09-13T12:07:00.000Z",
+				"ageMs": 180000,
+				"source": "worker_memory"
+			},
+			"delivery": {
+				"state": "connected",
+				"lastObservedAt": "2026-09-13T12:06:30.200Z",
+				"ageMs": 209800,
+				"disconnected": false,
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null,
+				"delayed": false,
+				"source": "worker_memory"
+			},
+			"stall": {
+				"stalled": false,
+				"reason": null,
+				"thresholdMs": 420000
+			}
+		}
+	},
+	{
+		"name": "delivery_disconnected",
+		"meaning": "Work keeps saving progress while live delivery is down; the client must reconcile, not report failure.",
+		"input": {
+			"now": "2026-09-13T12:10:00.000Z",
+			"providerActiveTimeoutMs": 300000,
+			"stallTimeoutMs": 420000,
+			"turnRunId": "fixture-delivery-disconnected",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "executing",
+			"acceptedAt": "2026-09-13T12:00:00.000Z",
+			"lastDurableProgressAt": "2026-09-13T12:09:58.000Z",
+			"lastDurableEventType": "text_delta",
+			"providerActivity": {
+				"state": "active",
+				"lastObservedAt": "2026-09-13T12:09:30.000Z"
+			},
+			"delivery": {
+				"state": "disconnected",
+				"lastObservedAt": "2026-09-13T12:09:20.000Z",
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null
+			}
+		},
+		"projection": {
+			"contractVersion": "agentic_chat_turn_progress_health_v1",
+			"turnRunId": "fixture-delivery-disconnected",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "executing",
+			"executionState": "provider_active",
+			"queueAgeMs": null,
+			"durableProgress": {
+				"lastObservedAt": "2026-09-13T12:09:58.000Z",
+				"ageMs": 2000,
+				"lastEventType": "text_delta",
+				"source": "database"
+			},
+			"providerActivity": {
+				"state": "active",
+				"lastObservedAt": "2026-09-13T12:09:30.000Z",
+				"ageMs": 30000,
+				"source": "worker_memory"
+			},
+			"delivery": {
+				"state": "disconnected",
+				"lastObservedAt": "2026-09-13T12:09:20.000Z",
+				"ageMs": 40000,
+				"disconnected": true,
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null,
+				"delayed": false,
+				"source": "worker_memory"
+			},
+			"stall": {
+				"stalled": false,
+				"reason": null,
+				"thresholdMs": 420000
+			}
+		}
+	},
+	{
+		"name": "delivery_delayed",
+		"meaning": "Progress is saved and the stream is connected, but live delivery is several seconds behind.",
+		"input": {
+			"now": "2026-09-13T12:10:00.000Z",
+			"providerActiveTimeoutMs": 300000,
+			"stallTimeoutMs": 420000,
+			"turnRunId": "fixture-delivery-delayed",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "executing",
+			"acceptedAt": "2026-09-13T12:00:00.000Z",
+			"lastDurableProgressAt": "2026-09-13T12:09:59.000Z",
+			"lastDurableEventType": "text_delta",
+			"providerActivity": {
+				"state": "active",
+				"lastObservedAt": "2026-09-13T12:09:40.000Z"
+			},
+			"delivery": {
+				"state": "connected",
+				"lastObservedAt": "2026-09-13T12:09:51.000Z",
+				"pendingEvents": 6,
+				"oldestPendingAgeMs": 8000
+			}
+		},
+		"projection": {
+			"contractVersion": "agentic_chat_turn_progress_health_v1",
+			"turnRunId": "fixture-delivery-delayed",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "executing",
+			"executionState": "provider_active",
+			"queueAgeMs": null,
+			"durableProgress": {
+				"lastObservedAt": "2026-09-13T12:09:59.000Z",
+				"ageMs": 1000,
+				"lastEventType": "text_delta",
+				"source": "database"
+			},
+			"providerActivity": {
+				"state": "active",
+				"lastObservedAt": "2026-09-13T12:09:40.000Z",
+				"ageMs": 20000,
+				"source": "worker_memory"
+			},
+			"delivery": {
+				"state": "connected",
+				"lastObservedAt": "2026-09-13T12:09:51.000Z",
+				"ageMs": 9000,
+				"disconnected": false,
+				"pendingEvents": 6,
+				"oldestPendingAgeMs": 8000,
+				"delayed": true,
+				"source": "worker_memory"
+			},
+			"stall": {
+				"stalled": false,
+				"reason": null,
+				"thresholdMs": 420000
+			}
+		}
+	},
+	{
+		"name": "stalled",
+		"meaning": "No saved progress past the stall threshold and no bounded model call explains the silence.",
+		"input": {
+			"now": "2026-09-13T12:10:00.000Z",
+			"providerActiveTimeoutMs": 300000,
+			"stallTimeoutMs": 420000,
+			"turnRunId": "fixture-stalled",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "executing",
+			"acceptedAt": "2026-09-13T12:00:00.000Z",
+			"lastDurableProgressAt": "2026-09-13T12:02:00.000Z",
+			"lastDurableEventType": "tool_call",
+			"providerActivity": {
+				"state": "waiting",
+				"lastObservedAt": "2026-09-13T12:01:55.000Z"
+			},
+			"delivery": {
+				"state": "connected",
+				"lastObservedAt": "2026-09-13T12:02:00.300Z",
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null
+			}
+		},
+		"projection": {
+			"contractVersion": "agentic_chat_turn_progress_health_v1",
+			"turnRunId": "fixture-stalled",
+			"executionGeneration": 1,
+			"transportStatus": "running",
+			"executionPhase": "executing",
+			"executionState": "stalled",
+			"queueAgeMs": null,
+			"durableProgress": {
+				"lastObservedAt": "2026-09-13T12:02:00.000Z",
+				"ageMs": 480000,
+				"lastEventType": "tool_call",
+				"source": "database"
+			},
+			"providerActivity": {
+				"state": "waiting",
+				"lastObservedAt": "2026-09-13T12:01:55.000Z",
+				"ageMs": 485000,
+				"source": "worker_memory"
+			},
+			"delivery": {
+				"state": "connected",
+				"lastObservedAt": "2026-09-13T12:02:00.300Z",
+				"ageMs": 479700,
+				"disconnected": false,
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null,
+				"delayed": false,
+				"source": "worker_memory"
+			},
+			"stall": {
+				"stalled": true,
+				"reason": "durable_progress_overdue",
+				"thresholdMs": 420000
+			}
+		}
+	},
+	{
+		"name": "completed",
+		"meaning": "Terminal database truth wins over any older activity or delivery observation.",
+		"input": {
+			"now": "2026-09-13T12:10:00.000Z",
+			"providerActiveTimeoutMs": 300000,
+			"stallTimeoutMs": 420000,
+			"turnRunId": "fixture-completed",
+			"executionGeneration": 1,
+			"transportStatus": "completed",
+			"executionPhase": "finished",
+			"acceptedAt": "2026-09-13T12:00:00.000Z",
+			"lastDurableProgressAt": "2026-09-13T12:03:00.000Z",
+			"lastDurableEventType": "done",
+			"providerActivity": {
+				"state": "finished",
+				"lastObservedAt": "2026-09-13T12:02:58.000Z"
+			},
+			"delivery": {
+				"state": "finished",
+				"lastObservedAt": "2026-09-13T12:03:00.200Z",
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null
+			}
+		},
+		"projection": {
+			"contractVersion": "agentic_chat_turn_progress_health_v1",
+			"turnRunId": "fixture-completed",
+			"executionGeneration": 1,
+			"transportStatus": "completed",
+			"executionPhase": "finished",
+			"executionState": "terminal",
+			"queueAgeMs": null,
+			"durableProgress": {
+				"lastObservedAt": "2026-09-13T12:03:00.000Z",
+				"ageMs": 420000,
+				"lastEventType": "done",
+				"source": "database"
+			},
+			"providerActivity": {
+				"state": "finished",
+				"lastObservedAt": "2026-09-13T12:02:58.000Z",
+				"ageMs": 422000,
+				"source": "worker_memory"
+			},
+			"delivery": {
+				"state": "finished",
+				"lastObservedAt": "2026-09-13T12:03:00.200Z",
+				"ageMs": 419800,
+				"disconnected": false,
+				"pendingEvents": 0,
+				"oldestPendingAgeMs": null,
+				"delayed": false,
+				"source": "worker_memory"
+			},
+			"stall": {
+				"stalled": false,
+				"reason": null,
+				"thresholdMs": 420000
+			}
+		}
+	}
+]

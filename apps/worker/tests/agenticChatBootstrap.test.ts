@@ -49,6 +49,7 @@ function health(
 		...(healthy ? {} : { reason: `runtime_${state}` }),
 		state,
 		activeTurns: 0,
+		progress: null,
 		realtime: {
 			healthy: true,
 			status: 'idle',

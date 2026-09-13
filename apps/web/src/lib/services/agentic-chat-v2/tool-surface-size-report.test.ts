@@ -103,7 +103,9 @@ describe('tool surface size report', () => {
 		// 2026-09-10: work-mode taxonomy and explicit calendar opt-in guidance
 		// add 238 chars (2,818 -> 3,056). Keep 44 chars of headroom; the full
 		// surface caps below still hold without increasing their budgets.
-		expect(createTask?.chars).toBeLessThanOrEqual(3100);
+		// 2026-09-12: explicit task-creation evidence and recurrence guidance added
+		// 156 chars (3,056 -> 3,212). Keep a tight 38-char attribution margin.
+		expect(createTask?.chars).toBeLessThanOrEqual(3250);
 	});
 
 	it('retains the reviewed estimate and relationship capabilities behind the size budgets', () => {
@@ -207,9 +209,11 @@ describe('tool surface size report', () => {
 			toolNames: ['get_project_calendar', 'set_project_calendar']
 		});
 		expect(calendar?.incrementalByProfile.project_create).toMatchObject({ toolCount: 7 });
-		expect(plan?.estimatedTokens).toBeLessThanOrEqual(4_500);
+		// 2026-09-12: the same reviewed task-schema guidance moves the complete
+		// plan bundle to 4,577 estimated tokens. Retain 23 tokens of headroom.
+		expect(plan?.estimatedTokens).toBeLessThanOrEqual(4_600);
 		expect(Math.max(...reports.map((report) => report.estimatedTokens))).toBeLessThanOrEqual(
-			4_500
+			4_600
 		);
 	});
 });

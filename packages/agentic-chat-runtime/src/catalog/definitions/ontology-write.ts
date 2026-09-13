@@ -1114,7 +1114,7 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 							}
 						},
 						description:
-							'Properties to merge with existing props. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120); keep new estimates out of the description. Changing duration_minutes also reconciles an unchanged legacy "Allow N minutes." prefix and its description mirror using the previous saved estimate.'
+							'Properties to merge with existing props. Use { "duration_minutes": <number> } for a time estimate ("90 minutes" -> 90, "2 hours" -> 120). For an estimate change, omit description and props.description unless the user also requested a prose edit. The tool updates an existing generated "Allow N minutes." prefix and its mirror from the previous saved estimate, preserving the remaining text and other props.'
 					}
 				},
 				required: ['task_id']

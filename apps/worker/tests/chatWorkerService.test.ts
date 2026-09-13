@@ -212,6 +212,7 @@ function chatHealth(): AgenticChatBootstrapHealth {
 			healthy: true,
 			state: 'running',
 			activeTurns: 1,
+			progress: null,
 			realtime: {
 				healthy: true,
 				status: 'connected',

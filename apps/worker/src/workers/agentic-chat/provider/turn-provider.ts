@@ -86,7 +86,8 @@ import {
 import { buildTurnContractReviewRequest } from './review/turn-contract';
 import {
 	buildMutationBatchRevisionRequest,
-	buildMutationBatchReviewRequest
+	buildMutationBatchReviewRequest,
+	constrainMutationBatchApprovalShaForRepair
 } from './review/mutation-batch';
 import {
 	type AgenticChatFeedbackToolCall as NormalizedProviderToolCall,
@@ -1818,7 +1819,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			const normalizedCalls = normalizeCompletedProviderCalls(executionRequest, [...calls]);
 			state.setPendingToolRound({ calls: normalizedCalls, usage: priorUsage });
 			state.setCurrentRequest(executionRequest);
-			yield buildPlanningStep(executionRequest, normalizedCalls[0]!.id);
+			// The executor persists tool_call and its activity before running each call.
 			for (const call of normalizedCalls) {
 				yield buildProviderToolStep(executionRequest, call, state);
 			}
@@ -1966,10 +1967,17 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 							'unexpected_finish_reason'
 						].includes(diagnostic.code)
 					) {
+						const repairBaseRequest =
+							diagnostic.code === 'approval_sha_mismatch'
+								? constrainMutationBatchApprovalShaForRepair(
+										reviewRequest,
+										batchSha256
+									)
+								: reviewRequest;
 						reviewRequest = appendSystemInstruction(
 							{
-								...reviewRequest,
-								providerAttempt: (reviewRequest.providerAttempt ?? 1) + 2
+								...repairBaseRequest,
+								providerAttempt: (repairBaseRequest.providerAttempt ?? 1) + 2
 							},
 							`Your previous decision could not be accepted (${diagnostic.code}). Return exactly one valid decision for the same proposed calls. Copy the exact batch SHA for approval. This is an internal format repair, not evidence of user ambiguity.`
 						);
@@ -1994,7 +2002,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					usage: accumulatedReviewUsage
 				});
 				state.setCurrentRequest(request);
-				yield buildPlanningStep(reviewRequest, normalizedCalls[0]!.id);
+				// Review-start remains visible; tool_call is the next durable boundary.
 				for (const call of normalizedCalls) {
 					yield buildProviderToolStep(reviewRequest, call, state);
 				}

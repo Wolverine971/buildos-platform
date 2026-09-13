@@ -12,6 +12,14 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: [
+			...[
+				'dates/civil-date',
+				'ontology/start-here',
+				'ontology/ontology-projects.service'
+			].map((subpath) => ({
+				find: `@buildos/shared-agent-ops/${subpath}`,
+				replacement: sharedAgentOpsSrc(`${subpath}.ts`)
+			})),
 			{
 				find: /^@buildos\/shared-agent-ops$/,
 				replacement: sharedAgentOpsSrc('index.ts')

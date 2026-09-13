@@ -17,10 +17,90 @@ function healthResponse(body: unknown, status = 200): Response {
 
 describe('agentic E2E worker client boundaries', () => {
 	afterEach(() => {
+		vi.restoreAllMocks();
 		vi.useRealTimers();
 		vi.unstubAllGlobals();
 		vi.unstubAllEnvs();
 		delete process.env.AGENTIC_E2E_EXECUTION_MODE;
+	});
+
+	it('retains intake headers and includes prewarm and negotiation in the original total clock', async () => {
+		vi.stubEnv('AGENTIC_BATTERY', 'cedar-house');
+		let clock = 0;
+		vi.spyOn(performance, 'now').mockImplementation(() => clock);
+		const fetchImpl = vi.fn<typeof fetch>(async (url) => {
+			if (url === '/api/agent/v2/prewarm') {
+				clock += 70;
+				return Response.json(
+					{ data: { prepared_prompt: { key: 'prepared-key' } } },
+					{
+						headers: { 'server-timing': 'request;dur=65' }
+					}
+				);
+			}
+			if (url === '/api/agent/v2/transport') {
+				clock += 30;
+				return Response.json(
+					{
+						success: true,
+						timestamp: '2026-09-13T00:00:00.000Z',
+						data: {
+							mode: 'worker_realtime',
+							contractVersion: 'agentic_chat_worker_v1',
+							decisionId: 'a0000000-0000-4000-8000-000000000001',
+							token: 'actl1.claims.signature',
+							expiresAt: '2030-01-01T00:00:00.000Z'
+						}
+					},
+					{ headers: { 'server-timing': 'request;dur=25' } }
+				);
+			}
+			clock += 110;
+			return new Response('admission unavailable', {
+				status: 503,
+				headers: { 'server-timing': 'worker-preparation;dur=80, worker-admission;dur=20' }
+			});
+		});
+		const client = new AgenticE2EWorkerClient({
+			userId: 'test-user',
+			fetchImpl,
+			admin: {},
+			runtime: {},
+			realtimeClient: {}
+		} as never);
+		const result = await client.runTurn({
+			message: 'Read the saved task',
+			contextType: 'project',
+			entityId: 'project-1',
+			sessionId: 'session-1'
+		});
+		expect(result.timing.intakeRequests).toEqual([
+			{
+				phase: 'prewarm',
+				startedMs: 0,
+				responseHeadersMs: 70,
+				status: 200,
+				serverTiming: 'request;dur=65'
+			},
+			{
+				phase: 'transport',
+				startedMs: 70,
+				responseHeadersMs: 100,
+				status: 200,
+				serverTiming: 'request;dur=25'
+			},
+			{
+				phase: 'admission',
+				startedMs: 100,
+				responseHeadersMs: 210,
+				status: 503,
+				serverTiming: 'worker-preparation;dur=80, worker-admission;dur=20'
+			}
+		]);
+		expect(result.timing.responseHeadersMs).toBe(210);
+		expect(result.timing.totalDurationMs).toBe(210);
+		expect(result.errors).toHaveLength(1);
+		expect(fetchImpl).toHaveBeenCalledTimes(3);
 	});
 
 	it('requires a prepared key before a battery follow-up can negotiate admission', async () => {

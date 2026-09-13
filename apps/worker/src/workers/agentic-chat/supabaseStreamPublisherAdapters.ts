@@ -47,7 +47,7 @@ export type AgenticChatRealtimeClient = {
 		topic: string,
 		options: { config: { private: true; broadcast: { ack: true } } }
 	): AgenticChatRealtimeChannel;
-	removeChannel: (channel: AgenticChatRealtimeChannel) => PromiseLike<unknown>;
+	removeChannel(channel: AgenticChatRealtimeChannel): PromiseLike<unknown>;
 };
 
 export type AgenticChatRealtimeHealthV1 = {
@@ -133,21 +133,27 @@ export class SupabaseAgenticChatPersistenceAdapter implements AgenticChatPersist
 
 export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcastPortV1 {
 	private readonly channels = new Map<string, AgenticChatRealtimeChannel>();
+	private readonly openingChannels = new Map<string, Promise<AgenticChatRealtimeChannel>>();
 	private status: AgenticChatRealtimeHealthV1['status'] = 'idle';
 	private lastTransitionAt: string | null = null;
 	private consecutiveFailures = 0;
 	private closed = false;
+	private readonly closeListeners = new Set<() => void>();
 
 	constructor(
 		private readonly client: AgenticChatRealtimeClient,
 		private readonly maxCachedChannels = 256,
-		private readonly subscribeTimeoutMs = 10_000
+		private readonly subscribeTimeoutMs = 10_000,
+		private readonly sendTimeoutMs = 10_000
 	) {
 		if (!Number.isSafeInteger(maxCachedChannels) || maxCachedChannels < 1) {
 			throw new Error('maxCachedChannels must be a positive safe integer');
 		}
 		if (!Number.isSafeInteger(subscribeTimeoutMs) || subscribeTimeoutMs < 1) {
 			throw new Error('subscribeTimeoutMs must be a positive safe integer');
+		}
+		if (!Number.isSafeInteger(sendTimeoutMs) || sendTimeoutMs < 1) {
+			throw new Error('sendTimeoutMs must be a positive safe integer');
 		}
 	}
 
@@ -157,11 +163,13 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		try {
 			channel = await this.channelFor(message.topic);
 			const result =
-				(await channel.send({
-					type: 'broadcast',
-					event: message.event,
-					payload: message.payload
-				})) === 'ok';
+				(await this.sendWithDeadline(
+					channel.send({
+						type: 'broadcast',
+						event: message.event,
+						payload: message.payload
+					})
+				)) === 'ok';
 			if (!result) {
 				await this.evictChannel(message.topic, channel);
 				this.observeFailure();
@@ -170,7 +178,7 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 			this.observeConnected();
 			return 'sent';
 		} catch {
-			if (channel) await this.evictChannel(message.topic, channel);
+			if (channel && !this.closed) await this.evictChannel(message.topic, channel);
 			this.observeFailure();
 			return 'failed';
 		}
@@ -187,6 +195,11 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 	}
 
 	async releaseTopic(topic: string): Promise<void> {
+		try {
+			await this.openingChannels.get(topic);
+		} catch {
+			// Failed subscriptions clean up their own channel.
+		}
 		const channel = this.channels.get(topic);
 		if (!channel) return;
 		this.channels.delete(topic);
@@ -195,22 +208,43 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 
 	async close(): Promise<void> {
 		this.closed = true;
+		for (const listener of [...this.closeListeners]) listener();
+		this.closeListeners.clear();
 		const channels = [...this.channels.values()];
 		this.channels.clear();
 		try {
-			await Promise.all(channels.map((channel) => this.client.removeChannel(channel)));
+			await Promise.all([
+				...channels.map((channel) => this.client.removeChannel(channel)),
+				...Array.from(this.openingChannels.values(), (opening) => opening.catch(() => {}))
+			]);
 		} finally {
 			this.transitionTo('closed');
 		}
 	}
 
 	private async channelFor(topic: string): Promise<AgenticChatRealtimeChannel> {
+		if (this.closed) throw new Error('Realtime adapter is closed');
 		const existing = this.channels.get(topic);
 		if (existing) {
 			this.channels.delete(topic);
 			this.channels.set(topic, existing);
 			return existing;
 		}
+		const pending = this.openingChannels.get(topic);
+		if (pending) return pending;
+		// Supabase returns the same channel for a topic and ignores subscribe()
+		// while it is joining. Share the first callback's promise so a concurrent
+		// claim hint and semantic event cannot strand the second publisher.
+		const opening = this.openChannel(topic);
+		this.openingChannels.set(topic, opening);
+		try {
+			return await opening;
+		} finally {
+			if (this.openingChannels.get(topic) === opening) this.openingChannels.delete(topic);
+		}
+	}
+
+	private async openChannel(topic: string): Promise<AgenticChatRealtimeChannel> {
 		if (this.channels.size >= this.maxCachedChannels) {
 			const oldest = this.channels.entries().next().value as
 				| [string, AgenticChatRealtimeChannel]
@@ -220,11 +254,13 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 				await this.client.removeChannel(oldest[1]);
 			}
 		}
+		if (this.closed) throw new Error('Realtime adapter is closed');
 		const channel = this.client.channel(topic, {
 			config: { private: true, broadcast: { ack: true } }
 		});
 		try {
 			await this.subscribe(channel, topic);
+			if (this.closed) throw new Error('Realtime adapter closed during subscription');
 		} catch (error) {
 			try {
 				await this.client.removeChannel(channel);
@@ -238,29 +274,107 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 	}
 
 	private subscribe(channel: AgenticChatRealtimeChannel, topic: string): Promise<void> {
-		return new Promise((resolve, reject) => {
+		return new Promise((resolvePromise, rejectPromise) => {
 			let settled = false;
-			channel.subscribe((status, error) => {
-				if (status === 'SUBSCRIBED') {
-					this.observeConnected();
-					if (settled) return;
-					settled = true;
-					resolve();
-					return;
-				}
-				this.observeFailure();
-				if (settled) {
-					// A cached channel can fail after its initial subscription. Evict it
-					// so the next durable event attempts a fresh Realtime connection.
-					void this.evictChannel(topic, channel);
-					return;
-				}
+			let subscribed = false;
+			// Every settlement releases this attempt's close listener, so a
+			// long-lived worker does not retain one closure per subscription.
+			let removeCloseListener = () => {};
+			const resolve = () => {
+				removeCloseListener();
+				resolvePromise();
+			};
+			const reject = (error: unknown) => {
+				removeCloseListener();
+				rejectPromise(error);
+			};
+			// The SDK's timeout relies on a callback being registered. Bound our
+			// own wait as well, including a client that never invokes the callback.
+			const timer = setTimeout(() => {
+				if (settled) return;
 				settled = true;
-				reject(
-					error ?? new Error(`Realtime channel ${topic} failed to subscribe: ${status}`)
-				);
+				this.observeFailure();
+				reject(new Error('Realtime subscription deadline exceeded'));
 			}, this.subscribeTimeoutMs);
+			removeCloseListener = this.onClose(() => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				reject(new Error('Realtime adapter closed during subscription'));
+			});
+			try {
+				channel.subscribe((status, error) => {
+					if (settled && !subscribed) return;
+					if (this.closed) {
+						if (!settled) {
+							settled = true;
+							clearTimeout(timer);
+							reject(new Error('Realtime adapter closed during subscription'));
+						}
+						return;
+					}
+					if (status === 'SUBSCRIBED') {
+						this.observeConnected();
+						if (settled) return;
+						settled = true;
+						subscribed = true;
+						clearTimeout(timer);
+						resolve();
+						return;
+					}
+					this.observeFailure();
+					if (settled) {
+						// A cached channel can fail after its initial subscription. Evict it
+						// so the next durable event attempts a fresh Realtime connection.
+						void this.evictChannel(topic, channel);
+						return;
+					}
+					settled = true;
+					clearTimeout(timer);
+					reject(
+						error ??
+							new Error(`Realtime channel ${topic} failed to subscribe: ${status}`)
+					);
+				}, this.subscribeTimeoutMs);
+			} catch (error) {
+				settled = true;
+				clearTimeout(timer);
+				reject(error);
+			}
 		});
+	}
+
+	private async sendWithDeadline(work: PromiseLike<string>): Promise<string> {
+		let timer: NodeJS.Timeout | null = null;
+		let removeCloseListener = () => {};
+		try {
+			return await Promise.race([
+				Promise.resolve(work),
+				new Promise<string>((_resolve, reject) => {
+					timer = setTimeout(
+						() => reject(new Error('Realtime broadcast deadline exceeded')),
+						this.sendTimeoutMs
+					);
+					removeCloseListener = this.onClose(() =>
+						reject(new Error('Realtime adapter closed during broadcast'))
+					);
+				})
+			]);
+		} finally {
+			if (timer) clearTimeout(timer);
+			removeCloseListener();
+		}
+	}
+
+	private onClose(listener: () => void): () => void {
+		if (this.closed) {
+			listener();
+			return () => undefined;
+		}
+		this.closeListeners.add(listener);
+		return () => {
+			this.closeListeners.delete(listener);
+		};
 	}
 
 	private async evictChannel(topic: string, channel: AgenticChatRealtimeChannel): Promise<void> {

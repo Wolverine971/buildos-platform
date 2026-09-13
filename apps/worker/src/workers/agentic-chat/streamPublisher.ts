@@ -1,4 +1,11 @@
 // apps/worker/src/workers/agentic-chat/streamPublisher.ts
+import {
+	emitAgenticChatPersistenceTrace,
+	persistenceErrorCode,
+	type AgenticChatPersistenceTraceSinkV1,
+	type AgenticChatPersistenceTraceV1
+} from './persistenceTrace';
+// apps/worker/src/workers/agentic-chat/streamPublisher.ts
 
 import { randomUUID } from 'node:crypto';
 import {
@@ -60,6 +67,8 @@ export type AgenticChatPublisherTurnV1 = {
 	streamRunId: string;
 	clientTurnId: string | null;
 	executionGeneration: number;
+	/** Database admission time, used only for process-local progress health. */
+	acceptedAt?: string;
 	initialAssistantText?: string;
 	initialSequence?: number;
 	onOverload?: (error: AgenticChatPublisherOverloadError) => void;
@@ -108,11 +117,30 @@ export type AgenticChatPublisherDeliveryV1 =
 	| 'already_persisted'
 	| 'blocked';
 
+/**
+ * A write is accepted only after Postgres returns a receipt for this turn,
+ * execution generation, and the next durable sequence. Live delivery is a
+ * separate, weaker observation and may finish later or require reconciliation.
+ */
+export type AgenticChatPublisherDurableAcceptanceV1 = {
+	outcome: 'persisted' | 'already_persisted';
+	turnRunId: string;
+	executionGeneration: number;
+	sequenceIndex: number;
+	phase: AgentStreamEventPhaseV1;
+	eventType: string;
+	/** Replay receipts prove durability but do not repeat the original commit time. */
+	persistedAt: string | null;
+};
+
 export type AgenticChatTextEnqueueResultV1 = {
+	accepted: Promise<AgenticChatPublisherDurableAcceptanceV1>;
 	delivery: Promise<AgenticChatPublisherDeliveryV1>;
 	pressure: AgenticChatPublisherPressureV1;
 	pressureRelieved: Promise<void> | null;
 };
+
+export type AgenticChatSemanticEnqueueResultV1 = AgenticChatTextEnqueueResultV1;
 
 export type AgenticChatPublisherSnapshotV1 = {
 	turnRunId: string;
@@ -121,9 +149,34 @@ export type AgenticChatPublisherSnapshotV1 = {
 	assistantText: string;
 	pendingBytes: number;
 	pendingEvents: number;
+	pendingPersistenceEvents: number;
+	pendingDeliveryEvents: number;
+	persistenceRetryPending: boolean;
 	reconcileOnly: boolean;
 	blockedReason: 'publisher_overload' | 'ownership_lost' | 'persistence_rejected' | null;
 	busy: boolean;
+};
+
+/**
+ * Process-local per-turn evidence for progress health. `lastDurableProgressAt`
+ * is a database commit time; delivery fields describe live transport only.
+ * Neither is recovery authority.
+ */
+export type AgenticChatPublisherTurnProgressObservationV1 = {
+	turnRunId: string;
+	executionGeneration: number;
+	acceptedAt: string | null;
+	registeredAt: string;
+	durableSequence: number;
+	lastDurableProgressAt: string | null;
+	lastDurableEventType: string | null;
+	lastDelivery: AgenticChatPublisherDeliveryV1 | null;
+	lastDeliveryAt: string | null;
+	reconcileOnly: boolean;
+	blockedReason: AgenticChatPublisherSnapshotV1['blockedReason'];
+	pendingPersistenceEvents: number;
+	pendingDeliveryEvents: number;
+	oldestPendingDeliveryAgeMs: number | null;
 };
 
 export type AgenticChatPublisherWorkerSnapshotV1 = {
@@ -148,6 +201,7 @@ export type AgenticChatPublisherMetricV1 =
 	| 'broadcast_degraded'
 	| 'reconcile_hint_sent'
 	| 'acknowledgement_pending'
+	| 'acknowledgement_coalesced'
 	| 'soft_pressure'
 	| 'publisher_overload';
 
@@ -206,6 +260,10 @@ type TextOperation = {
 	urgent: boolean;
 	inFlight: boolean;
 	enqueuedAtMs: number;
+	attempt: number;
+	attemptStartedAtMs: number | null;
+	retryScheduledAtMs: number | null;
+	acceptanceWaiters: Deferred<AgenticChatPublisherDurableAcceptanceV1>[];
 	waiters: Deferred<AgenticChatPublisherDeliveryV1>[];
 };
 
@@ -216,10 +274,44 @@ type SemanticOperation = {
 	bytes: number;
 	inFlight: boolean;
 	enqueuedAtMs: number;
+	attempt: number;
+	attemptStartedAtMs: number | null;
+	retryScheduledAtMs: number | null;
+	acceptanceWaiter: Deferred<AgenticChatPublisherDurableAcceptanceV1>;
 	waiter: Deferred<AgenticChatPublisherDeliveryV1>;
 };
 
 type Operation = TextOperation | SemanticOperation;
+
+type DeliveryReceipt = AgenticChatTextBatchRpcResultV1 | AgenticChatSemanticEventRpcResultV1;
+type AcceptedDeliveryReceipt = Extract<
+	DeliveryReceipt,
+	{ outcome: 'persisted' | 'already_persisted' }
+>;
+type PublishableDeliveryReceipt = Extract<DeliveryReceipt, { outcome: 'persisted' }>;
+
+type DeliveryOperation =
+	| {
+			kind: 'text';
+			bytes: number;
+			enqueuedAtMs: number;
+			waiters: Deferred<AgenticChatPublisherDeliveryV1>[];
+			receipt: AcceptedDeliveryReceipt;
+			persistenceObservedAtMs: number;
+	  }
+	| {
+			kind: 'semantic';
+			bytes: number;
+			enqueuedAtMs: number;
+			waiter: Deferred<AgenticChatPublisherDeliveryV1>;
+			receipt: AcceptedDeliveryReceipt;
+			persistenceObservedAtMs: number;
+	  };
+
+type SettledDelivery = {
+	pending: DeliveryOperation;
+	delivery: AgenticChatPublisherDeliveryV1;
+};
 
 type TurnState = {
 	context: AgenticChatPublisherTurnV1;
@@ -227,21 +319,26 @@ type TurnState = {
 	assistantText: string;
 	abandoned: boolean;
 	operations: Operation[];
+	deliveries: DeliveryOperation[];
 	pendingBytes: number;
 	busy: boolean;
+	deliveryBusy: boolean;
+	deliveryTask: Promise<void> | null;
 	firstTextSeen: boolean;
 	forceFlush: boolean;
 	retryAtMs: number;
+	persistenceRetryPending: boolean;
 	reconcileOnly: boolean;
 	lastHintAtMs: number;
 	blockedReason: AgenticChatPublisherSnapshotV1['blockedReason'];
 	pressureWaiters: Deferred<void>[];
+	idleWaiters: Deferred<void>[];
+	registeredAtMs: number;
+	lastDurableProgressAt: string | null;
+	lastDurableEventType: string | null;
+	lastDelivery: AgenticChatPublisherDeliveryV1 | null;
+	lastDeliveryAtMs: number | null;
 };
-
-type DeliveryReceipt = AgenticChatTextBatchRpcResultV1 | AgenticChatSemanticEventRpcResultV1;
-type PublishableDeliveryReceipt =
-	| Extract<AgenticChatTextBatchRpcResultV1, { outcome: 'persisted' }>
-	| Extract<AgenticChatSemanticEventRpcResultV1, { outcome: 'persisted' }>;
 
 export class AgenticChatPublisherOverloadError extends Error {
 	readonly code = 'publisher_overload';
@@ -271,6 +368,7 @@ export class AgenticChatPublisherBlockedError extends Error {
 export class AgenticChatStreamPublisher {
 	private readonly config: AgenticChatPublisherConfig;
 	private readonly turns = new Map<string, TurnState>();
+	private readonly deliveryTasks = new Set<Promise<void>>();
 	private timer: NodeJS.Timeout | null = null;
 	private drainPromise: Promise<void> | null = null;
 	private stopPromise: Promise<{
@@ -291,6 +389,7 @@ export class AgenticChatStreamPublisher {
 			createId?: () => string;
 			sleep?: (ms: number) => Promise<void>;
 			onMetric?: (metric: AgenticChatPublisherMetricV1, turnRunId: string) => void;
+			onTrace?: AgenticChatPersistenceTraceSinkV1;
 		},
 		config: Partial<AgenticChatPublisherConfig> = {}
 	) {
@@ -323,6 +422,9 @@ export class AgenticChatStreamPublisher {
 		if (assistantText && initialSequence < 1) {
 			throw new Error('Nonempty initial assistant text requires a durable initial sequence');
 		}
+		if (context.acceptedAt !== undefined && !Number.isFinite(Date.parse(context.acceptedAt))) {
+			throw new Error('acceptedAt must be an ISO timestamp');
+		}
 		if (utf8Bytes(assistantText) > AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES) {
 			throw new Error('Initial assistant text exceeds the supported stream bound');
 		}
@@ -332,15 +434,25 @@ export class AgenticChatStreamPublisher {
 			assistantText,
 			abandoned: false,
 			operations: [],
+			deliveries: [],
 			pendingBytes: 0,
 			busy: false,
+			deliveryBusy: false,
+			deliveryTask: null,
 			firstTextSeen: initialSequence > 0,
 			forceFlush: false,
 			retryAtMs: 0,
+			persistenceRetryPending: false,
 			reconcileOnly: false,
 			lastHintAtMs: Number.NEGATIVE_INFINITY,
 			blockedReason: null,
-			pressureWaiters: []
+			pressureWaiters: [],
+			idleWaiters: [],
+			registeredAtMs: this.now(),
+			lastDurableProgressAt: null,
+			lastDurableEventType: null,
+			lastDelivery: null,
+			lastDeliveryAtMs: null
 		});
 	}
 
@@ -388,17 +500,24 @@ export class AgenticChatStreamPublisher {
 			last.deltaBytes + deltaBytes <= AGENTIC_CHAT_TEXT_BATCH_MAX_BYTES;
 		if (
 			!canMerge &&
-			(state.operations.length + 1 > this.config.turnPendingHardEvents ||
+			(this.pendingEventCount(state) + 1 > this.config.turnPendingHardEvents ||
 				this.pendingEvents + 1 > this.config.workerPendingHardEvents)
 		) {
 			return this.overload(state, textDelta, 'Publisher pending-event hard limit exceeded');
 		}
 
+		const acceptanceWaiter = deferred<AgenticChatPublisherDurableAcceptanceV1>();
 		const waiter = deferred<AgenticChatPublisherDeliveryV1>();
+		// Either half of the split contract may be intentionally ignored by a
+		// caller; keep a rejection observable to awaiters without creating a
+		// process-level unhandled rejection for the unused half.
+		void acceptanceWaiter.promise.catch(() => undefined);
+		void waiter.promise.catch(() => undefined);
 		if (canMerge) {
 			last.textDelta += textDelta;
 			last.assistantText = nextAssistantText;
 			last.deltaBytes += deltaBytes;
+			last.acceptanceWaiters.push(acceptanceWaiter);
 			last.waiters.push(waiter);
 			this.metric('text_coalesced', turnRunId);
 		} else {
@@ -414,10 +533,15 @@ export class AgenticChatStreamPublisher {
 				urgent: immediate,
 				inFlight: false,
 				enqueuedAtMs: this.now(),
+				attempt: 0,
+				attemptStartedAtMs: null,
+				retryScheduledAtMs: null,
+				acceptanceWaiters: [acceptanceWaiter],
 				waiters: [waiter]
 			});
 			this.pendingEvents += 1;
 			this.metric('text_enqueued', turnRunId);
+			this.trace(state, state.operations.at(-1)!, 'enqueued');
 		}
 
 		state.assistantText = nextAssistantText;
@@ -438,13 +562,30 @@ export class AgenticChatStreamPublisher {
 		}
 		if (pendingOp?.kind === 'text' && pendingOp.urgent) this.wake();
 
-		return { delivery: waiter.promise, pressure, pressureRelieved };
+		return {
+			accepted: acceptanceWaiter.promise,
+			delivery: waiter.promise,
+			pressure,
+			pressureRelieved
+		};
 	}
 
+	/**
+	 * Compatibility surface for callers that still need live delivery before
+	 * continuing. New semantic lifecycle callers should use enqueueSemantic()
+	 * and await only `accepted`, then join `delivery` at their terminal drain.
+	 */
 	publishSemantic(
 		turnRunId: string,
 		input: AgenticChatSemanticPublishInputV1
 	): Promise<AgenticChatPublisherDeliveryV1> {
+		return this.enqueueSemantic(turnRunId, input).delivery;
+	}
+
+	enqueueSemantic(
+		turnRunId: string,
+		input: AgenticChatSemanticPublishInputV1
+	): AgenticChatSemanticEnqueueResultV1 {
 		const state = this.requireWritableTurn(turnRunId);
 		validateSemanticInput(input);
 		const bytes =
@@ -458,12 +599,15 @@ export class AgenticChatStreamPublisher {
 		}
 
 		if (
-			state.operations.length + 1 > this.config.turnPendingHardEvents ||
+			this.pendingEventCount(state) + 1 > this.config.turnPendingHardEvents ||
 			this.pendingEvents + 1 > this.config.workerPendingHardEvents
 		) {
 			this.overload(state, '', 'Publisher semantic pending-event hard limit exceeded');
 		}
+		const acceptanceWaiter = deferred<AgenticChatPublisherDurableAcceptanceV1>();
 		const waiter = deferred<AgenticChatPublisherDeliveryV1>();
+		void acceptanceWaiter.promise.catch(() => undefined);
+		void waiter.promise.catch(() => undefined);
 		const precedingOperation = state.operations.at(-1);
 		if (precedingOperation?.kind === 'text') precedingOperation.urgent = true;
 		state.operations.push({
@@ -473,17 +617,30 @@ export class AgenticChatStreamPublisher {
 			bytes,
 			inFlight: false,
 			enqueuedAtMs: this.now(),
+			attempt: 0,
+			attemptStartedAtMs: null,
+			retryScheduledAtMs: null,
+			acceptanceWaiter,
 			waiter
 		});
 		state.pendingBytes += bytes;
 		this.pendingBytes += bytes;
 		this.pendingEvents += 1;
 		this.metric('semantic_enqueued', turnRunId);
+		this.trace(state, state.operations.at(-1)!, 'enqueued');
+		const pressure = this.pressureFor(state);
+		const pressureRelieved = pressure === 'soft_limit' ? this.pressurePromise(state) : null;
+		if (pressure === 'soft_limit') this.metric('soft_pressure', turnRunId);
 		this.wake();
-		return waiter.promise;
+		return {
+			accepted: acceptanceWaiter.promise,
+			delivery: waiter.promise,
+			pressure,
+			pressureRelieved
+		};
 	}
 
-	flushTurn(turnRunId: string): Promise<AgenticChatPublisherDeliveryV1[]> {
+	async flushTurn(turnRunId: string): Promise<AgenticChatPublisherDeliveryV1[]> {
 		const state = this.requireTurn(turnRunId);
 		if (state.blockedReason) {
 			throw new AgenticChatPublisherBlockedError(turnRunId, state.blockedReason);
@@ -492,25 +649,32 @@ export class AgenticChatStreamPublisher {
 		for (const operation of state.operations) {
 			if (operation.kind === 'text') operation.urgent = true;
 		}
-		const deliveries = state.operations.flatMap((operation) =>
+		const deliveries = [...state.deliveries, ...state.operations].flatMap((operation) =>
 			operation.kind === 'text'
 				? operation.waiters.map((waiter) => waiter.promise)
 				: [operation.waiter.promise]
 		);
 		this.wake();
-		return Promise.all(deliveries);
+		const results = await Promise.all(deliveries);
+		await this.waitForTurnIdle(state);
+		return results;
 	}
 
-	/** Deliver a semantic event already committed by a larger database transaction. */
+	/**
+	 * Deliver a semantic event already committed by a larger database transaction.
+	 * When that transaction committed later sequences too, the database refuses an
+	 * exact acknowledgement of this one; the last committed event carries it.
+	 */
 	publishCommittedSemantic(
 		turnRunId: string,
-		receipt: AgenticChatCommittedSemanticEventReceiptV1
+		receipt: AgenticChatCommittedSemanticEventReceiptV1,
+		options: { committedThroughSequence?: number } = {}
 	): Promise<AgenticChatPublisherDeliveryV1> {
 		const state = this.requireTurn(turnRunId);
-		if (state.operations.length || state.busy) {
+		if (this.pendingEventCount(state) || state.busy || state.deliveryBusy) {
 			throw new Error('Committed semantic publication requires a fully drained write slot');
 		}
-		return this.deliverPersisted(state, receipt);
+		return this.deliverPersisted(state, receipt, options.committedThroughSequence ?? null);
 	}
 
 	async publishTerminal(
@@ -519,7 +683,7 @@ export class AgenticChatStreamPublisher {
 		eventPayload: JsonObject
 	): Promise<AgenticChatPublisherDeliveryV1> {
 		const state = this.requireTurn(turnRunId);
-		if (state.operations.length || state.busy) {
+		if (this.pendingEventCount(state) || state.busy || state.deliveryBusy) {
 			throw new Error('Terminal publication requires a fully drained per-turn write slot');
 		}
 		if (
@@ -569,10 +733,13 @@ export class AgenticChatStreamPublisher {
 			durableSequence: state.durableSequence,
 			assistantText: state.assistantText,
 			pendingBytes: state.pendingBytes,
-			pendingEvents: state.operations.length,
+			pendingEvents: this.pendingEventCount(state),
+			pendingPersistenceEvents: state.operations.length,
+			pendingDeliveryEvents: state.deliveries.length,
+			persistenceRetryPending: state.persistenceRetryPending,
 			reconcileOnly: state.reconcileOnly,
 			blockedReason: state.blockedReason,
-			busy: state.busy
+			busy: state.busy || state.deliveryBusy
 		};
 	}
 
@@ -596,9 +763,38 @@ export class AgenticChatStreamPublisher {
 		};
 	}
 
+	/** Process-local per-turn evidence for the worker progress-health surface. */
+	getTurnProgressObservations(): AgenticChatPublisherTurnProgressObservationV1[] {
+		const nowMs = this.now();
+		return [...this.turns.values()].map((state) => {
+			const oldestDelivery = state.deliveries[0];
+			return {
+				turnRunId: state.context.turnRunId,
+				executionGeneration: state.context.executionGeneration,
+				acceptedAt: state.context.acceptedAt ?? null,
+				registeredAt: new Date(state.registeredAtMs).toISOString(),
+				durableSequence: state.durableSequence,
+				lastDurableProgressAt: state.lastDurableProgressAt,
+				lastDurableEventType: state.lastDurableEventType,
+				lastDelivery: state.lastDelivery,
+				lastDeliveryAt:
+					state.lastDeliveryAtMs === null
+						? null
+						: new Date(state.lastDeliveryAtMs).toISOString(),
+				reconcileOnly: state.reconcileOnly,
+				blockedReason: state.blockedReason,
+				pendingPersistenceEvents: state.operations.length,
+				pendingDeliveryEvents: state.deliveries.length,
+				oldestPendingDeliveryAgeMs: oldestDelivery
+					? nonnegativeElapsed(oldestDelivery.persistenceObservedAtMs, nowMs)
+					: null
+			};
+		});
+	}
+
 	unregisterTurn(turnRunId: string): void {
 		const state = this.requireTurn(turnRunId);
-		if (state.busy || state.operations.length) {
+		if (state.busy || state.deliveryBusy || this.pendingEventCount(state)) {
 			throw new Error('Cannot unregister an Agentic Chat turn with pending publisher work');
 		}
 		this.turns.delete(turnRunId);
@@ -649,15 +845,32 @@ export class AgenticChatStreamPublisher {
 		});
 		const result = await Promise.race([drain.then(() => 'drained' as const), timeoutPromise]);
 		if (timeout) clearTimeout(timeout);
+		const pendingEvents = this.pendingEvents;
+		const pendingBytes = this.pendingBytes;
+		if (result !== 'drained') {
+			for (const state of this.turns.values()) {
+				state.abandoned = true;
+				state.reconcileOnly = true;
+				state.blockedReason = 'ownership_lost';
+				this.rejectOperations(
+					state,
+					new AgenticChatPublisherBlockedError(
+						state.context.turnRunId,
+						'publisher_shutdown_drain_timeout'
+					)
+				);
+			}
+		}
 		return {
-			drained: result === 'drained' && this.pendingEvents === 0,
-			pendingEvents: this.pendingEvents,
-			pendingBytes: this.pendingBytes
+			drained: result === 'drained' && pendingEvents === 0,
+			pendingEvents,
+			pendingBytes
 		};
 	}
 
 	private async drainAvailable(): Promise<void> {
 		while (true) {
+			this.scheduleAvailableDeliveries();
 			const textStates = this.collectReadyTextStates();
 			if (textStates.length) {
 				await this.flushTextStates(textStates);
@@ -676,6 +889,38 @@ export class AgenticChatStreamPublisher {
 				continue;
 			}
 			break;
+		}
+		this.scheduleAvailableDeliveries();
+	}
+
+	private scheduleAvailableDeliveries(): void {
+		const availableSlots = Math.max(
+			0,
+			this.config.maxConcurrentSemanticWrites - this.deliveryTasks.size
+		);
+		if (availableSlots === 0) return;
+		const states = [...this.turns.values()]
+			.filter((state) => !state.deliveryBusy && state.deliveries.length > 0)
+			.slice(0, availableSlots);
+		for (const state of states) {
+			state.deliveryBusy = true;
+			const task: Promise<void> = this.flushDeliveryState(state)
+				.catch(() => {
+					if (!state.abandoned) this.blockTurn(state, 'delivery_pump_error');
+				})
+				.finally(() => {
+					// A settled run releases its slot before resolving waiters, and a
+					// continuation may already have started the next run for this turn.
+					if (state.deliveryTask === task) {
+						state.deliveryBusy = false;
+						state.deliveryTask = null;
+					}
+					this.deliveryTasks.delete(task);
+					this.resolveTurnIdle(state);
+					this.wake();
+				});
+			state.deliveryTask = task;
+			this.deliveryTasks.add(task);
 		}
 	}
 
@@ -707,6 +952,7 @@ export class AgenticChatStreamPublisher {
 		states.forEach((state, index) => {
 			state.busy = true;
 			operations[index]!.inFlight = true;
+			this.startAttempt(state, operations[index]!);
 		});
 
 		let response: AgenticChatTextBatchFlushRpcResultV1;
@@ -724,6 +970,14 @@ export class AgenticChatStreamPublisher {
 			states.map(async (state, index) => {
 				const operation = operations[index]!;
 				const result = byIndex.get(index);
+				this.finishAttempt(
+					state,
+					operation,
+					result?.outcome ?? 'missing_result',
+					result?.outcome === 'rejected'
+						? persistenceErrorCode({ code: result.error_code })
+						: null
+				);
 				if (!result) {
 					this.deferRetry(state);
 					return;
@@ -737,18 +991,17 @@ export class AgenticChatStreamPublisher {
 				if (result.outcome === 'persisted')
 					this.metric('text_batch_persisted', state.context.turnRunId);
 				const persistenceObservedAtMs = this.now();
-				const delivery = await this.deliverPersisted(state, result);
-				if (result.outcome === 'persisted') {
-					this.observeDelivery(
+				const acceptedReceipt = this.acceptPersisted(state, result, (acceptance) =>
+					this.acceptOperation(state, operation, acceptance)
+				);
+				if (acceptedReceipt && state.operations[0] === operation) {
+					this.moveOperationToDelivery(
 						state,
 						operation,
-						result,
-						persistenceObservedAtMs,
-						delivery
+						acceptedReceipt,
+						persistenceObservedAtMs
 					);
 				}
-				if (state.operations[0] === operation)
-					this.completeOperation(state, operation, delivery);
 			})
 		);
 	}
@@ -757,6 +1010,7 @@ export class AgenticChatStreamPublisher {
 		const operation = state.operations[0] as SemanticOperation;
 		state.busy = true;
 		operation.inFlight = true;
+		this.startAttempt(state, operation);
 		try {
 			const result = await this.ports.persistence.persistSemantic({
 				turn_run_id: state.context.turnRunId,
@@ -770,13 +1024,19 @@ export class AgenticChatStreamPublisher {
 				projection: operation.input.projection,
 				event_payload: operation.input.eventPayload
 			});
+			this.finishAttempt(state, operation, result.outcome);
 			const persistenceObservedAtMs = this.now();
-			const delivery = await this.deliverPersisted(state, result);
-			if (result.outcome === 'persisted') {
-				this.observeDelivery(state, operation, result, persistenceObservedAtMs, delivery);
+			const acceptedReceipt = this.acceptPersisted(state, result, (acceptance) =>
+				this.acceptOperation(state, operation, acceptance)
+			);
+			if (acceptedReceipt && state.operations[0] === operation) {
+				this.moveOperationToDelivery(
+					state,
+					operation,
+					acceptedReceipt,
+					persistenceObservedAtMs
+				);
 			}
-			if (state.operations[0] === operation)
-				this.completeOperation(state, operation, delivery);
 		} catch (error) {
 			this.handlePersistenceFailure(state, error);
 		}
@@ -784,47 +1044,163 @@ export class AgenticChatStreamPublisher {
 
 	private async deliverPersisted(
 		state: TurnState,
-		receipt: DeliveryReceipt
+		receipt: DeliveryReceipt,
+		committedThroughSequence: number | null
 	): Promise<AgenticChatPublisherDeliveryV1> {
-		if (state.abandoned) return 'blocked';
+		const acceptedReceipt = this.acceptPersisted(state, receipt);
+		return acceptedReceipt
+			? this.deliverAccepted(state, acceptedReceipt, committedThroughSequence)
+			: 'blocked';
+	}
+
+	private acceptPersisted(
+		state: TurnState,
+		receipt: DeliveryReceipt,
+		onAccepted?: (acceptance: AgenticChatPublisherDurableAcceptanceV1) => void
+	): AcceptedDeliveryReceipt | null {
+		if (state.abandoned) return null;
 		if (!this.receiptMatchesTurn(state, receipt)) {
 			this.blockTurn(state, 'receipt_scope_mismatch');
-			return 'blocked';
+			return null;
 		}
 		if ('sequence_index' in receipt) {
 			const expectedSequence = state.durableSequence + 1;
 			if (receipt.sequence_index !== expectedSequence) {
 				this.blockTurn(state, 'receipt_sequence_gap');
-				return 'blocked';
+				return null;
 			}
 			state.durableSequence = receipt.sequence_index;
 		}
 		if (!canPublishAgenticChatStreamWriteV1(receipt)) {
 			if (receipt.outcome === 'already_persisted') {
+				onAccepted?.(this.acceptanceFromReceipt(receipt));
 				this.enterReconcileOnly(state);
-				await this.maybeHint(state, receipt.sequence_index);
-				return 'already_persisted';
+				return receipt;
 			}
 			this.blockTurn(state, receipt.outcome);
-			return 'blocked';
+			return null;
 		}
 		const publishableReceipt = receipt as PublishableDeliveryReceipt;
 		this.observePersistence(state, publishableReceipt);
+		onAccepted?.(this.acceptanceFromReceipt(publishableReceipt));
+		return publishableReceipt;
+	}
+
+	private async deliverAccepted(
+		state: TurnState,
+		receipt: AcceptedDeliveryReceipt,
+		committedThroughSequence: number | null
+	): Promise<AgenticChatPublisherDeliveryV1> {
+		if (state.abandoned || state.blockedReason) return 'blocked';
+		if (receipt.outcome === 'already_persisted') {
+			await this.maybeHint(state, receipt.sequence_index);
+			return 'already_persisted';
+		}
 		if (state.reconcileOnly) {
-			await this.maybeHint(state, publishableReceipt.sequence_index);
+			await this.maybeHint(state, receipt.sequence_index);
 			return 'reconcile_only';
 		}
 
-		const message = this.eventMessage(state, this.eventFromReceipt(publishableReceipt));
+		const message = this.eventMessage(state, this.eventFromReceipt(receipt));
 		if ((await this.tryBroadcast(message)) !== 'sent') {
 			this.enterReconcileOnly(state);
 			this.metric('broadcast_degraded', state.context.turnRunId);
 			return 'reconcile_only';
 		}
-		return this.acknowledge(state, publishableReceipt.sequence_index);
+		if (state.abandoned || state.blockedReason) return 'blocked';
+		if (
+			committedThroughSequence !== null &&
+			committedThroughSequence > receipt.sequence_index
+		) {
+			this.metric('acknowledgement_coalesced', state.context.turnRunId);
+			return 'broadcast_sent_reconcile_pending';
+		}
+		return this.acknowledge(state, receipt.sequence_index);
+	}
+
+	/**
+	 * Deliver this turn's accepted events strictly in sequence order. Consecutive
+	 * successful Broadcasts share one exact-sequence acknowledgement for the last
+	 * event: the database acknowledges only its current durable sequence, so an
+	 * older acknowledgement is necessarily refused once later work is accepted.
+	 * Any failed Broadcast or uncertain acknowledgement remains sticky.
+	 */
+	private async flushDeliveryState(state: TurnState): Promise<void> {
+		const decided: SettledDelivery[] = [];
+		const sent: DeliveryOperation[] = [];
+		const settleSent = (delivery: AgenticChatPublisherDeliveryV1) => {
+			for (const pending of sent.splice(0)) decided.push({ pending, delivery });
+		};
+		while (!this.deliveryBlocked(state)) {
+			const position = decided.length + sent.length;
+			const pending = state.deliveries[position];
+			if (!pending || position >= this.config.turnPendingSoftEvents) break;
+			const receipt = pending.receipt;
+			if (receipt.outcome === 'persisted' && !state.reconcileOnly) {
+				const result = await this.tryBroadcast(
+					this.eventMessage(state, this.eventFromReceipt(receipt))
+				);
+				if (this.deliveryBlocked(state)) return;
+				if (result === 'sent') {
+					sent.push(pending);
+					continue;
+				}
+				this.enterReconcileOnly(state);
+				this.metric('broadcast_degraded', state.context.turnRunId);
+				settleSent('broadcast_sent_reconcile_pending');
+				decided.push({ pending, delivery: 'reconcile_only' });
+				continue;
+			}
+			await this.maybeHint(state, receipt.sequence_index);
+			if (this.deliveryBlocked(state)) return;
+			settleSent('broadcast_sent_reconcile_pending');
+			decided.push({
+				pending,
+				delivery:
+					receipt.outcome === 'already_persisted' ? 'already_persisted' : 'reconcile_only'
+			});
+		}
+		if (this.deliveryBlocked(state)) return;
+		const lastSent = sent.at(-1);
+		if (lastSent) {
+			if (state.reconcileOnly) {
+				settleSent('broadcast_sent_reconcile_pending');
+			} else if (state.durableSequence > lastSent.receipt.sequence_index) {
+				// The next ordered run carries this turn's exact acknowledgement.
+				this.metric('acknowledgement_coalesced', state.context.turnRunId);
+				settleSent('broadcast_sent_reconcile_pending');
+			} else {
+				const delivery = await this.acknowledge(state, lastSent.receipt.sequence_index);
+				if (this.deliveryBlocked(state)) return;
+				settleSent(delivery);
+			}
+		}
+		this.completeDeliveries(state, decided);
+	}
+
+	private deliveryBlocked(state: TurnState): boolean {
+		return state.abandoned || state.blockedReason !== null;
+	}
+
+	private acceptanceFromReceipt(
+		receipt:
+			| PublishableDeliveryReceipt
+			| Extract<DeliveryReceipt, { outcome: 'already_persisted' }>
+	): AgenticChatPublisherDurableAcceptanceV1 {
+		return {
+			outcome: receipt.outcome,
+			turnRunId: receipt.turn_run_id,
+			executionGeneration: receipt.execution_generation,
+			sequenceIndex: receipt.sequence_index,
+			phase: receipt.phase,
+			eventType: receipt.event_type,
+			persistedAt: receipt.outcome === 'persisted' ? receipt.persisted_at : null
+		};
 	}
 
 	private observePersistence(state: TurnState, receipt: PublishableDeliveryReceipt): void {
+		state.lastDurableProgressAt = receipt.persisted_at;
+		state.lastDurableEventType = receipt.event_type;
 		try {
 			state.context.onPersistenceObserved?.({
 				turnRunId: state.context.turnRunId,
@@ -841,7 +1217,7 @@ export class AgenticChatStreamPublisher {
 
 	private observeDelivery(
 		state: TurnState,
-		operation: Operation,
+		operation: { enqueuedAtMs: number },
 		receipt: PublishableDeliveryReceipt,
 		persistenceObservedAtMs: number,
 		delivery: AgenticChatPublisherDeliveryV1
@@ -893,6 +1269,18 @@ export class AgenticChatStreamPublisher {
 			if (result.outcome === 'stale_generation') {
 				this.blockTurn(state, 'stale_generation');
 				return 'blocked';
+			}
+			if (
+				result.outcome === 'newer_snapshot' &&
+				(result.current_sequence <= state.durableSequence ||
+					state.busy ||
+					state.persistenceRetryPending)
+			) {
+				// This turn's own later write committed first; its ordered delivery
+				// carries the next exact acknowledgement. A newer sequence that this
+				// publisher cannot account for remains sticky uncertainty below.
+				this.metric('acknowledgement_coalesced', state.context.turnRunId);
+				return 'broadcast_sent_reconcile_pending';
 			}
 		} catch {
 			// A sent event with an uncertain acknowledgement remains durable and
@@ -961,40 +1349,181 @@ export class AgenticChatStreamPublisher {
 		if (result === 'sent') this.metric('reconcile_hint_sent', state.context.turnRunId);
 	}
 
-	private completeOperation(
+	private moveOperationToDelivery(
 		state: TurnState,
 		operation: Operation,
-		delivery: AgenticChatPublisherDeliveryV1
+		receipt: AcceptedDeliveryReceipt,
+		persistenceObservedAtMs: number
 	): void {
 		if (state.operations[0] !== operation)
 			throw new Error('Per-turn publisher slot lost ordering');
 		state.operations.shift();
-		const bytes = operation.kind === 'text' ? operation.deltaBytes : operation.bytes;
-		state.pendingBytes -= bytes;
-		this.pendingBytes -= bytes;
-		this.pendingEvents -= 1;
 		state.busy = false;
 		state.retryAtMs = 0;
+		state.persistenceRetryPending = false;
 		operation.inFlight = false;
-		if (operation.kind === 'text') {
-			for (const waiter of operation.waiters) waiter.resolve(delivery);
-		} else {
-			operation.waiter.resolve(delivery);
-		}
+		state.deliveries.push(
+			operation.kind === 'text'
+				? {
+						kind: 'text',
+						bytes: operation.deltaBytes,
+						enqueuedAtMs: operation.enqueuedAtMs,
+						waiters: operation.waiters,
+						receipt,
+						persistenceObservedAtMs
+					}
+				: {
+						kind: 'semantic',
+						bytes: operation.bytes,
+						enqueuedAtMs: operation.enqueuedAtMs,
+						waiter: operation.waiter,
+						receipt,
+						persistenceObservedAtMs
+					}
+		);
 		if (!state.operations.length) state.forceFlush = false;
+	}
+
+	private completeDeliveries(state: TurnState, decided: SettledDelivery[]): void {
+		for (const { pending, delivery } of decided) {
+			if (state.deliveries[0] !== pending)
+				throw new Error('Per-turn delivery pump lost ordering');
+			state.deliveries.shift();
+			state.pendingBytes -= pending.bytes;
+			this.pendingBytes -= pending.bytes;
+			this.pendingEvents -= 1;
+			if (pending.receipt.outcome === 'persisted') {
+				this.observeDelivery(
+					state,
+					pending,
+					pending.receipt,
+					pending.persistenceObservedAtMs,
+					delivery
+				);
+			}
+		}
+		const lastDecided = decided.at(-1);
+		if (lastDecided) {
+			state.lastDelivery = lastDecided.delivery;
+			state.lastDeliveryAtMs = this.now();
+		}
+		// Promise continuations may inspect the snapshot or publish a committed
+		// terminal event immediately. Release the slot before resolving them; the
+		// task cleanup cannot reclaim a slot that a newer run now owns.
+		state.deliveryBusy = false;
+		state.deliveryTask = null;
+		for (const { pending, delivery } of decided) {
+			if (pending.kind === 'text') {
+				for (const waiter of pending.waiters) waiter.resolve(delivery);
+			} else {
+				pending.waiter.resolve(delivery);
+			}
+		}
 		this.resolvePressureWaiters();
+		this.resolveTurnIdle(state);
+	}
+
+	private acceptOperation(
+		state: TurnState,
+		operation: Operation,
+		acceptance: AgenticChatPublisherDurableAcceptanceV1
+	): void {
+		this.trace(state, operation, 'accepted', {
+			sequence: state.durableSequence,
+			enqueueToReceiptMs: nonnegativeElapsed(operation.enqueuedAtMs, this.now()),
+			outcome: acceptance.outcome
+		});
+		if (operation.kind === 'text') {
+			for (const waiter of operation.acceptanceWaiters) waiter.resolve(acceptance);
+		} else {
+			operation.acceptanceWaiter.resolve(acceptance);
+		}
+	}
+
+	private trace(
+		state: TurnState,
+		operation: Operation | undefined,
+		stage: AgenticChatPersistenceTraceV1['stage'],
+		details: Partial<AgenticChatPersistenceTraceV1> = {}
+	): void {
+		emitAgenticChatPersistenceTrace(this.ports.onTrace, {
+			event: 'agentic_chat_persistence_trace',
+			lane: 'publisher',
+			stage,
+			turnRunId: state.context.turnRunId,
+			executionGeneration: state.context.executionGeneration,
+			observedAt: new Date().toISOString(),
+			pendingEvents: this.pendingEventCount(state),
+			...(operation
+				? {
+						operationId:
+							operation.kind === 'text'
+								? operation.batchId
+								: operation.input.transitionId,
+						eventType:
+							operation.kind === 'text' ? 'text_delta' : operation.input.eventType,
+						rpc:
+							operation.kind === 'text'
+								? 'flush_agentic_chat_text_batches'
+								: 'persist_agentic_chat_semantic_event',
+						attempt: operation.attempt
+					}
+				: {}),
+			...details
+		});
+	}
+
+	private startAttempt(state: TurnState, operation: Operation): void {
+		const now = this.now();
+		operation.attempt += 1;
+		operation.attemptStartedAtMs = now;
+		this.trace(state, operation, 'attempt_started', {
+			queueWaitMs:
+				operation.attempt === 1
+					? nonnegativeElapsed(operation.enqueuedAtMs, now)
+					: undefined,
+			retryWaitMs:
+				operation.retryScheduledAtMs === null
+					? 0
+					: nonnegativeElapsed(operation.retryScheduledAtMs, now)
+		});
+	}
+
+	private finishAttempt(
+		state: TurnState,
+		operation: Operation,
+		outcome: string,
+		errorCode: string | null = null
+	): void {
+		this.trace(state, operation, 'attempt_finished', {
+			durationMs:
+				operation.attemptStartedAtMs === null
+					? 0
+					: nonnegativeElapsed(operation.attemptStartedAtMs, this.now()),
+			outcome,
+			errorCode
+		});
 	}
 
 	private deferRetry(state: TurnState): void {
 		if (state.abandoned) return;
 		const operation = state.operations[0];
-		if (operation) operation.inFlight = false;
+		if (operation) {
+			operation.inFlight = false;
+			operation.retryScheduledAtMs = this.now();
+			this.trace(state, operation, 'retry_scheduled', {
+				retryDelayMs: this.config.retryDelayMs
+			});
+		}
 		state.busy = false;
 		state.retryAtMs = this.now() + this.config.retryDelayMs;
+		state.persistenceRetryPending = true;
 		this.metric('persistence_retry', state.context.turnRunId);
 	}
 
 	private handlePersistenceFailure(state: TurnState, error: unknown): void {
+		const operation = state.operations[0];
+		if (operation) this.finishAttempt(state, operation, 'failed', persistenceErrorCode(error));
 		const code =
 			typeof error === 'object' && error !== null && 'code' in error
 				? String((error as { code?: unknown }).code ?? '')
@@ -1038,7 +1567,7 @@ export class AgenticChatStreamPublisher {
 			state.context.turnRunId,
 			assistantText,
 			state.pendingBytes + utf8Bytes(unacceptedText),
-			state.operations.length
+			this.pendingEventCount(state)
 		);
 		this.rejectOperations(state, error);
 		try {
@@ -1051,35 +1580,62 @@ export class AgenticChatStreamPublisher {
 	}
 
 	private rejectOperations(state: TurnState, error: Error): void {
+		for (const delivery of state.deliveries) {
+			if (delivery.kind === 'text') {
+				for (const waiter of delivery.waiters) waiter.reject(error);
+			} else {
+				delivery.waiter.reject(error);
+			}
+		}
 		for (const operation of state.operations) {
 			if (operation.kind === 'text') {
+				for (const waiter of operation.acceptanceWaiters) waiter.reject(error);
 				for (const waiter of operation.waiters) waiter.reject(error);
 			} else {
+				operation.acceptanceWaiter.reject(error);
 				operation.waiter.reject(error);
 			}
 		}
 		this.pendingBytes -= state.pendingBytes;
-		this.pendingEvents -= state.operations.length;
+		this.pendingEvents -= this.pendingEventCount(state);
 		state.pendingBytes = 0;
 		state.operations = [];
+		state.deliveries = [];
 		state.busy = false;
+		state.persistenceRetryPending = false;
 		state.forceFlush = false;
 		this.resolvePressureWaiters();
+		// A blocked turn's writers observe the typed error on their next append.
+		// Never park them behind worker-wide pressure after the turn is removed.
+		for (const waiter of state.pressureWaiters.splice(0)) waiter.resolve();
+		this.resolveTurnIdle(state);
 	}
 
 	private pressureFor(state: TurnState): AgenticChatPublisherPressureV1 {
 		return state.pendingBytes >= this.config.turnPendingSoftBytes ||
 			this.pendingBytes >= this.config.workerPendingSoftBytes ||
-			state.operations.length >= this.config.turnPendingSoftEvents ||
+			this.pendingEventCount(state) >= this.config.turnPendingSoftEvents ||
 			this.pendingEvents >= this.config.workerPendingSoftEvents
 			? 'soft_limit'
 			: 'normal';
 	}
 
+	private pendingEventCount(state: TurnState): number {
+		return state.operations.length + state.deliveries.length;
+	}
+
 	private pressurePromise(state: TurnState): Promise<void> {
 		const waiter = deferred<void>();
+		const startedAtMs = this.now();
+		const operation = state.operations.at(-1);
+		this.trace(state, operation, 'pressure_started');
 		state.pressureWaiters.push(waiter);
-		return waiter.promise;
+		return waiter.promise.then(() => {
+			this.trace(state, operation, 'pressure_finished', {
+				durationMs: nonnegativeElapsed(startedAtMs, this.now()),
+				outcome: state.abandoned || state.blockedReason ? 'blocked' : 'relieved'
+			});
+		});
 	}
 
 	private resolvePressure(state: TurnState): void {
@@ -1089,6 +1645,20 @@ export class AgenticChatStreamPublisher {
 
 	private resolvePressureWaiters(): void {
 		for (const state of this.turns.values()) this.resolvePressure(state);
+	}
+
+	private waitForTurnIdle(state: TurnState): Promise<void> {
+		if (!state.busy && !state.deliveryBusy && this.pendingEventCount(state) === 0) {
+			return Promise.resolve();
+		}
+		const waiter = deferred<void>();
+		state.idleWaiters.push(waiter);
+		return waiter.promise;
+	}
+
+	private resolveTurnIdle(state: TurnState): void {
+		if (state.busy || state.deliveryBusy || this.pendingEventCount(state) > 0) return;
+		for (const waiter of state.idleWaiters.splice(0)) waiter.resolve();
 	}
 
 	private enterReconcileOnly(state: TurnState): void {
@@ -1145,7 +1715,12 @@ export class AgenticChatStreamPublisher {
 
 	private hasUrgentWork(): boolean {
 		const now = this.now();
+		const hasDeliveryCapacity =
+			this.deliveryTasks.size < this.config.maxConcurrentSemanticWrites;
 		return [...this.turns.values()].some((state) => {
+			if (hasDeliveryCapacity && !state.deliveryBusy && state.deliveries.length > 0) {
+				return true;
+			}
 			if (state.busy || state.retryAtMs > now) return false;
 			const operation = state.operations[0];
 			return (
@@ -1166,8 +1741,9 @@ export class AgenticChatStreamPublisher {
 	}
 
 	private async waitForIdle(): Promise<void> {
-		while (this.drainPromise || this.pendingEvents > 0) {
+		while (this.drainPromise || this.deliveryTasks.size > 0 || this.pendingEvents > 0) {
 			if (this.drainPromise) await this.drainPromise;
+			else if (this.deliveryTasks.size) await Promise.race(this.deliveryTasks);
 			else {
 				this.wake();
 				await Promise.resolve();

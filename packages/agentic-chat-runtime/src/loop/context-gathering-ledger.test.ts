@@ -94,6 +94,74 @@ function freshRead(round: number): FastToolExecution[] {
 }
 
 describe('ContextGatheringLedger', () => {
+	it('prompts synthesis after complete search breadth without blocking necessary dependent reads', () => {
+		const turn = driver();
+		const first = turn.observe(READ_PATTERN, [
+			...freshRead(1),
+			readExecution(
+				'search_project',
+				{ project_id: 'project-1', query: 'permit' },
+				{
+					maybe_more: false,
+					results: [{ id: 'task-1', state_key: 'todo' }]
+				}
+			),
+			readExecution(
+				'search_project',
+				{ project_id: 'project-1', query: 'payment' },
+				{
+					maybe_more: false,
+					results: []
+				}
+			)
+		]);
+		expect(first.status.status).toBe('narrowing');
+		expect(first.message).toContain('brief status report');
+		expect(first.message).toContain('unknown within the checked scope');
+		expect(first.message).toContain('an unopened content projection');
+		expect(first.forceSynthesis).toBe(false);
+		const dependentRead = turn.observe(READ_PATTERN, [
+			readExecution(
+				'get_onto_task_details',
+				{ task_id: 'task-1' },
+				{ task: { id: 'task-1' } }
+			)
+		]);
+		expect(dependentRead.forceSynthesis).toBe(false);
+		expect(dependentRead.message).toBeNull();
+	});
+
+	it.each(['partial', 'unknown', 'failed', 'duplicate', 'truncated'] as const)(
+		'does not treat %s search coverage as a completed discovery batch',
+		(kind) => {
+			const first = readExecution(
+				'search_project',
+				{ project_id: 'project-1', query: 'permit' },
+				{
+					maybe_more: false,
+					results: [{ id: 'task-1' }]
+				}
+			);
+			const second = readExecution(
+				'search_project',
+				{
+					project_id: 'project-1',
+					query: kind === 'duplicate' ? 'permit' : 'payment'
+				},
+				{
+					...(kind === 'unknown' ? {} : { maybe_more: kind === 'partial' }),
+					...(kind === 'truncated' ? { content_truncated: true } : {}),
+					results: []
+				}
+			);
+			if (kind === 'failed') second.result.success = false;
+			const observed = driver().observe(READ_PATTERN, [...freshRead(1), first, second]);
+			expect(observed.status.status).toBe('open');
+			expect(observed.message).toBeNull();
+			expect(observed.forceSynthesis).toBe(false);
+		}
+	);
+
 	it('escalates on the read-round count floor when every round adds new evidence', () => {
 		const turn = driver();
 		const statuses: string[] = [];

@@ -235,6 +235,13 @@ export class ContextGatheringLedger {
 		}
 
 		if (novelty) {
+			// A wide discovery batch can cover the requested facts in one round.
+			// Remind the actor to assess that coverage now, without closing tools
+			// needed for a real missing fact or a dependent content projection.
+			if (hasCompletedSearchBreadth(params.roundExecutions)) {
+				reasons.push('independent scoped searches completed');
+				raise('narrowing');
+			}
 			const contextStatus = params.liveContextUsage?.status;
 			if (contextStatus === 'over_budget') {
 				reasons.push('context window is over budget');
@@ -308,23 +315,55 @@ export class ContextGatheringLedger {
 		};
 		return {
 			status,
-			message: shouldEmit ? buildContextGatheringMessage(status.status) : null,
+			message: shouldEmit
+				? buildContextGatheringMessage(
+						status.status,
+						round.reasons.includes('independent scoped searches completed')
+					)
+				: null,
 			forceSynthesis: status.status === 'must_synthesize'
 		};
 	}
 }
 
-// One sentence per level and no counters: every number the earlier message
+// One message per level and no counters: every number the earlier message
 // carried (rounds, searches, seen entities, misses) was echoed back to users
 // by weak models and stripped again by the sanitizer.
-function buildContextGatheringMessage(status: ContextSaturationStatusName): string {
+function buildContextGatheringMessage(
+	status: ContextSaturationStatusName,
+	completedSearchBreadth = false
+): string {
 	if (status === 'must_synthesize') {
 		return 'Context gathering: must synthesize. Answer from the loaded evidence now; do not gather more context.';
 	}
 	if (status === 'saturated') {
 		return 'Context gathering: saturated. Only call another read tool if one specific missing fact blocks the answer; otherwise answer from the loaded evidence or perform the requested change now.';
 	}
+	if (completedSearchBreadth) {
+		return 'Context gathering: narrowing. The scoped searches in this batch completed. For a brief status report, answer from loaded record statuses and these results now; report unevidenced real-world progress, approval, or payment as unknown within the checked scope. Do not reopen loaded tasks or expand complete searches into synonyms to prove absence. Read again only for a specific requested fact still missing from loaded evidence, an unopened content projection, or partial or failed coverage; otherwise answer or perform the commissioned change.';
+	}
 	return 'Context gathering: narrowing. Unless one specific missing fact remains, answer from the loaded evidence or perform the requested change now.';
+}
+
+/** Complete results cover their query scope, never the absence of a real-world event. */
+function hasCompletedSearchBreadth(executions: FastToolExecution[]): boolean {
+	const searches = new Set<string>();
+	for (const execution of executions) {
+		if (!execution.result.success) return false;
+		const payload = unwrapGatewayResult(execution.result.result);
+		const record =
+			payload && typeof payload === 'object' && !Array.isArray(payload)
+				? (payload as Record<string, unknown>)
+				: null;
+		if (record?.content_truncated === true || record?.truncated === true) return false;
+		const attempts = extractSearchAttempts(execution.toolCall);
+		if (!attempts.length) continue;
+		if (record?.maybe_more !== false || record?.has_more === true || record?.next_cursor) {
+			return false;
+		}
+		for (const attempt of attempts) searches.add(attempt.key);
+	}
+	return searches.size >= 2;
 }
 
 function extractSearchAttempts(toolCall: ChatToolCall): Array<{ key: string; label: string }> {

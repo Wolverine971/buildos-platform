@@ -31,7 +31,10 @@ describe('createAgenticChatCompositionRoot', () => {
 
 		reportAgenticChatRuntimeTiming(snapshot as never);
 
-		expect(info).toHaveBeenCalledWith('Agentic Chat runtime timing', {
+		expect(info).toHaveBeenCalledOnce();
+		const [label, line] = info.mock.calls[0]!;
+		expect(label).toBe('Agentic Chat runtime timing');
+		expect(JSON.parse(String(line))).toEqual({
 			event: 'agentic_chat_runtime_timing',
 			...snapshot
 		});

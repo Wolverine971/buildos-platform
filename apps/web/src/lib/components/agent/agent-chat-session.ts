@@ -1,4 +1,6 @@
 // apps/web/src/lib/components/agent/agent-chat-session.ts
+import { readChatWorkflowProgress } from '@buildos/shared-types';
+// apps/web/src/lib/components/agent/agent-chat-session.ts
 import { dev } from '$app/environment';
 import type {
 	ChatAttachmentRef,
@@ -735,6 +737,28 @@ function mapLoadedMessagesToUI(
 		let createdForTurn: CreatedEntityRef[] = [];
 		if (msg.role === 'assistant') {
 			const metadata = msg.metadata as Record<string, any> | undefined;
+			const workflow = readChatWorkflowProgress(metadata?.chat_workflow_v1);
+			if (workflow) {
+				const restoredWorkflow: ThinkingBlockMessage = {
+					id: `restored-workflow-${msg.id}`,
+					type: 'thinking_block',
+					content: 'Project review',
+					timestamp: new Date(msg.created_at ?? Date.now()),
+					isCollapsed: false,
+					status: metadata?.interrupted ? 'cancelled' : 'completed',
+					activities: [
+						{
+							id: `workflow-${msg.id}`,
+							content: 'Project review',
+							timestamp: new Date(msg.created_at ?? Date.now()),
+							activityType: 'state_change',
+							status: 'completed',
+							metadata: { workflow, restored: true }
+						}
+					]
+				};
+				uiMessages.push(restoredWorkflow);
+			}
 			const clientTurnId = stringValue(metadata?.client_turn_id);
 			const directSources = [
 				...(sourcesByMessageId.get(msg.id) ?? []),

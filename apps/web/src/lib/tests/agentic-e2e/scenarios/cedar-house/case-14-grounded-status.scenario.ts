@@ -38,17 +38,34 @@ import {
 
 const PROJECT_NAME = cedarProjectName();
 
-/** The exact false-absence claims the audit caught, as patterns. */
+/** Match a missing budget as the subject, not an unknown spend-versus-budget comparison. */
 const FALSE_ABSENCE_PATTERNS: Array<{ pattern: RegExp; claim: string }> = [
 	{
 		pattern: /no budget (?:cap|figure|amount)[^.]{0,60}(?:saved|recorded|set|found|specified)/i,
 		claim: 'denied that any budget cap is saved'
 	},
 	{
-		pattern: /(?:budget|cap)[^.]{0,40}(?:is )?not (?:saved|recorded|set|specified)/i,
+		pattern:
+			/\b(?:budget(?:\s+(?:cap|figure|amount|ceiling|limit))?|cap)\s*(?:[:—-]\s*)?(?:(?:is|was|has been)\s+)?(?:(?:currently|yet|explicitly)\s+)?not\s+(?:saved|recorded|set|specified)\b/i,
 		claim: 'denied that the budget cap is recorded'
+	},
+	{
+		pattern:
+			/\b(?:budget(?:\s+(?:cap|figure|amount|ceiling|limit))?|cap)\s+(?:isn't|wasn't|hasn't been)\s+(?:saved|recorded|set|specified)\b/i,
+		claim: 'denied that the budget cap is recorded'
+	},
+	{
+		pattern:
+			/\bno\s+(?:saved|recorded|specified)\s+budget\s+(?:cap|figure|amount|ceiling|limit)\b/i,
+		claim: 'denied that any budget cap is saved'
 	}
 ];
+
+export function findRecordedBudgetAbsence(text: string): string | null {
+	// Markdown emphasis must not hide an otherwise explicit denial.
+	const plain = text.replace(/[*_`]/g, '').replace(/’/g, "'");
+	return FALSE_ABSENCE_PATTERNS.find(({ pattern }) => pattern.test(plain))?.claim ?? null;
+}
 
 export const cedarCase14GroundedStatusScenario: Scenario = {
 	id: 'cedar-14-grounded-status',
@@ -79,14 +96,13 @@ export const cedarCase14GroundedStatusScenario: Scenario = {
 
 				const text = turn.assistantText;
 				assertBudgetCapPresent(text, 'the owner status report');
-				for (const { pattern, claim } of FALSE_ABSENCE_PATTERNS) {
-					if (pattern.test(text)) {
-						throw new Error(
-							`[assert] the report ${claim}, but the saved project brief carries ` +
-								`${CEDAR_BUDGET_CAP} including ${CEDAR_CONTINGENCY}. ` +
-								`Assistant text: "${text.slice(0, 600)}"`
-						);
-					}
+				const falseAbsence = findRecordedBudgetAbsence(text);
+				if (falseAbsence) {
+					throw new Error(
+						`[assert] the report ${falseAbsence}, but the saved project brief carries ` +
+							`${CEDAR_BUDGET_CAP} including ${CEDAR_CONTINGENCY}. ` +
+							`Assistant text: "${text.slice(0, 600)}"`
+					);
 				}
 
 				await assertNoCalendarSideEffects(

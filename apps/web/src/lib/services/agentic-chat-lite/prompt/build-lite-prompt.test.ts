@@ -311,12 +311,36 @@ describe('buildLitePromptEnvelope', () => {
 			(section) => section.id === 'final_response_contract'
 		);
 		expect(contract?.content.split('\n').filter((line) => line.startsWith('- '))).toHaveLength(
-			4
+			5
 		);
 		expect(contract?.content).toContain('- Report only what tool results confirm');
+		expect(contract?.content).toContain('Calendar results belong only to their query_scope');
 		expect(contract?.content).toContain('- Separate recorded facts, bounded search findings');
+		expect(contract?.content).toContain(
+			'Never conclude "No evidence that work has begun" from plans, todo tasks, or an empty search'
+		);
 		expect(contract?.content).toContain('record_references URLs as Markdown links');
 		expect(contract?.content).toContain('cannot replace requested text');
+		const strategy = envelope.sections.find((section) => section.id === 'operating_strategy');
+		expect(strategy?.content).toContain(
+			'Before the first read, identify only requested facts still missing from it'
+		);
+		expect(strategy?.content).toContain('Batch independent reads with known arguments');
+		expect(strategy?.content).toContain(
+			'Do not refetch a loaded project overview, task list, calendar, or fact'
+		);
+		expect(strategy?.content).toContain(
+			'For a brief status report, make one batched read round of at most eight calls, then answer'
+		);
+		expect(strategy?.content).toContain(
+			'Do not open a second read round to confirm empty or complete results'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'do not HTML-encode &, <, >, quotes, or apostrophes'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'If the user literally wrote an entity such as &amp;, retain those characters'
+		);
 		expect(envelope.systemPrompt).not.toContain('"parameters"');
 		expect(envelope.toolsSummary.discoveryTools).toEqual(['skill_search', 'domain_search']);
 		expect(envelope.toolsSummary.directTools).toContain('get_workspace_overview');

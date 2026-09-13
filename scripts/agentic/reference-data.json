@@ -1,0 +1,209 @@
+{
+	"source": "supabase/migrations/20250601000001_ontology_system.sql",
+	"version": 1,
+	"definitions": [
+		{
+			"key": "context",
+			"name": "Context",
+			"description": "Work context and organizational setting",
+			"allowed_values": [
+				"personal",
+				"client",
+				"commercial",
+				"internal",
+				"open_source",
+				"community",
+				"academic",
+				"nonprofit",
+				"startup"
+			],
+			"applies_to": ["project", "plan"],
+			"is_required": false
+		},
+		{
+			"key": "scale",
+			"name": "Scale",
+			"description": "Project size and typical duration",
+			"allowed_values": ["micro", "small", "medium", "large", "epic"],
+			"applies_to": ["project", "plan", "task"],
+			"is_required": false
+		},
+		{
+			"key": "stage",
+			"name": "Stage",
+			"description": "Current phase in project lifecycle",
+			"allowed_values": [
+				"discovery",
+				"planning",
+				"execution",
+				"launch",
+				"maintenance",
+				"complete"
+			],
+			"applies_to": ["project", "plan"],
+			"is_required": false
+		}
+	],
+	"values": [
+		{
+			"facet_key": "context",
+			"value": "personal",
+			"label": "Personal",
+			"description": "Personal side project or passion project",
+			"color": "#ec4899",
+			"sort_order": 10
+		},
+		{
+			"facet_key": "context",
+			"value": "client",
+			"label": "Client Work",
+			"description": "Client services, consulting, freelance work",
+			"color": "#10b981",
+			"sort_order": 20
+		},
+		{
+			"facet_key": "context",
+			"value": "commercial",
+			"label": "Commercial",
+			"description": "For-profit product or business",
+			"color": "#f59e0b",
+			"sort_order": 30
+		},
+		{
+			"facet_key": "context",
+			"value": "internal",
+			"label": "Internal",
+			"description": "Internal company or team project",
+			"color": "#64748b",
+			"sort_order": 40
+		},
+		{
+			"facet_key": "context",
+			"value": "open_source",
+			"label": "Open Source",
+			"description": "Open source software or community project",
+			"color": "#0ea5e9",
+			"sort_order": 50
+		},
+		{
+			"facet_key": "context",
+			"value": "community",
+			"label": "Community",
+			"description": "Community-driven or volunteer initiative",
+			"color": "#8b5cf6",
+			"sort_order": 60
+		},
+		{
+			"facet_key": "context",
+			"value": "academic",
+			"label": "Academic",
+			"description": "Academic research or educational institution",
+			"color": "#6366f1",
+			"sort_order": 70
+		},
+		{
+			"facet_key": "context",
+			"value": "nonprofit",
+			"label": "Nonprofit",
+			"description": "Social impact, charitable, or nonprofit work",
+			"color": "#22c55e",
+			"sort_order": 80
+		},
+		{
+			"facet_key": "context",
+			"value": "startup",
+			"label": "Startup",
+			"description": "Early-stage venture or startup company",
+			"color": "#ef4444",
+			"sort_order": 90
+		},
+		{
+			"facet_key": "scale",
+			"value": "micro",
+			"label": "Micro",
+			"description": "Less than 1 week of effort",
+			"color": "#22c55e",
+			"sort_order": 10
+		},
+		{
+			"facet_key": "scale",
+			"value": "small",
+			"label": "Small",
+			"description": "1-4 weeks of effort",
+			"color": "#84cc16",
+			"sort_order": 20
+		},
+		{
+			"facet_key": "scale",
+			"value": "medium",
+			"label": "Medium",
+			"description": "1-3 months of effort",
+			"color": "#f59e0b",
+			"sort_order": 30
+		},
+		{
+			"facet_key": "scale",
+			"value": "large",
+			"label": "Large",
+			"description": "3-12 months of effort",
+			"color": "#f97316",
+			"sort_order": 40
+		},
+		{
+			"facet_key": "scale",
+			"value": "epic",
+			"label": "Epic",
+			"description": "More than 1 year of effort",
+			"color": "#ef4444",
+			"sort_order": 50
+		},
+		{
+			"facet_key": "stage",
+			"value": "discovery",
+			"label": "Discovery",
+			"description": "Research, exploration, problem definition",
+			"color": "#a855f7",
+			"sort_order": 10
+		},
+		{
+			"facet_key": "stage",
+			"value": "planning",
+			"label": "Planning",
+			"description": "Planning, design, architecture",
+			"color": "#3b82f6",
+			"sort_order": 20
+		},
+		{
+			"facet_key": "stage",
+			"value": "execution",
+			"label": "Execution",
+			"description": "Active development and implementation",
+			"color": "#f59e0b",
+			"sort_order": 30
+		},
+		{
+			"facet_key": "stage",
+			"value": "launch",
+			"label": "Launch",
+			"description": "Launch preparation and go-live",
+			"color": "#10b981",
+			"sort_order": 40
+		},
+		{
+			"facet_key": "stage",
+			"value": "maintenance",
+			"label": "Maintenance",
+			"description": "Ongoing operation and support",
+			"color": "#64748b",
+			"sort_order": 50
+		},
+		{
+			"facet_key": "stage",
+			"value": "complete",
+			"label": "Complete",
+			"description": "Finished and archived",
+			"color": "#22c55e",
+			"sort_order": 60
+		}
+	]
+}

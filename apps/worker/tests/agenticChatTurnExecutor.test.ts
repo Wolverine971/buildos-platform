@@ -1,8 +1,11 @@
 // apps/worker/tests/agenticChatTurnExecutor.test.ts
+import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/pendingEffects';
+// apps/worker/tests/agenticChatTurnExecutor.test.ts
 import { workerSourceProvenance } from '../src/lib/sourceProvenance';
 // apps/worker/tests/agenticChatTurnExecutor.test.ts
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import {
+	CHAT_WORKFLOW_PROTOTYPE_VERSION,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
 	createAgentStreamEventIdV1
@@ -261,6 +264,7 @@ function createHarness(
 		publisherConfig?: ConstructorParameters<typeof AgenticChatStreamPublisher>[1];
 		timingClockValues?: number[];
 		failBroadcastType?: string;
+		automaticDomainCapture?: 'disabled';
 		promptSnapshot?: AgenticChatPreparedPromptSnapshotV1;
 		promptSnapshotError?: Error;
 		providerBudgetMs?: number;
@@ -276,6 +280,7 @@ function createHarness(
 		consumptionBillingError?: Error;
 		beforeFlushTextBatches?: (inputs: Array<Record<string, unknown>>) => Promise<void>;
 		beforePersistSemantic?: (input: Record<string, unknown>) => Promise<void>;
+		beforeBroadcast?: (message: Record<string, unknown>) => Promise<void>;
 	} = {}
 ) {
 	let sequence = 0;
@@ -356,14 +361,24 @@ function createHarness(
 			};
 		},
 		async acknowledge(input: Record<string, unknown>) {
+			// Mirror the exact-current-sequence SQL contract. Terminal receipts are
+			// committed one sequence past this stream counter by the finalize fixture.
+			const acknowledged = Number(input.acknowledged_sequence);
+			if (acknowledged === sequence + 1) sequence = acknowledged;
+			if (acknowledged > sequence) {
+				throw Object.assign(new Error('agentic_chat_stream_ack_future_sequence'), {
+					code: 'P0001'
+				});
+			}
+			const superseded = acknowledged < sequence;
 			return {
-				outcome: 'acknowledged',
+				outcome: superseded ? 'newer_snapshot' : 'acknowledged',
 				turn_run_id: TURN_RUN_ID,
 				queue_job_id: QUEUE_JOB_ID,
 				execution_generation: EXECUTION_GENERATION,
-				acknowledged_sequence: input.acknowledged_sequence,
-				current_sequence: input.acknowledged_sequence,
-				reconcile_required: false
+				acknowledged_sequence: acknowledged,
+				current_sequence: sequence,
+				reconcile_required: superseded
 			};
 		}
 	};
@@ -373,6 +388,7 @@ function createHarness(
 			broadcast: {
 				async publish(message) {
 					broadcastMessages.push(message as unknown as Record<string, unknown>);
+					await options.beforeBroadcast?.(message as unknown as Record<string, unknown>);
 					if (
 						message.kind === 'event' &&
 						(message.payload as Record<string, unknown>).type ===
@@ -634,18 +650,20 @@ function createHarness(
 			for (const step of steps) yield step;
 		})();
 	});
-	const provider = options.promptSnapshot
-		? {
-				stream: providerStream,
-				prepare: vi.fn(async () => ({
-					promptSnapshot: options.promptSnapshot,
+	const provider =
+		options.promptSnapshot || options.automaticDomainCapture
+			? {
 					stream: providerStream,
-					release: vi.fn()
-				}))
-			}
-		: {
-				stream: providerStream
-			};
+					prepare: vi.fn(async () => ({
+						automaticDomainCapture: options.automaticDomainCapture,
+						promptSnapshot: options.promptSnapshot,
+						stream: providerStream,
+						release: vi.fn()
+					}))
+				}
+			: {
+					stream: providerStream
+				};
 	const promptSnapshots = {
 		persist: vi.fn<NonNullable<ExecutorPorts['promptSnapshots']>['persist']>(async () => {
 			log.push('prompt_snapshot');
@@ -749,6 +767,7 @@ function createHarness(
 			};
 		})
 	};
+	const pendingEffects = new AgenticChatPendingEffectsRegistry();
 	const executor = new AgenticChatTurnExecutor(
 		{
 			control: control as never,
@@ -757,6 +776,7 @@ function createHarness(
 			cancellation: cancellation as never,
 			provider,
 			promptSnapshots,
+			pendingEffects,
 			executionObservations,
 			onPromptSnapshotError: (error) => promptSnapshotErrors.push(error),
 			onResearchCaptureError: (error) => researchCaptureErrors.push(error),
@@ -797,6 +817,7 @@ function createHarness(
 
 	return {
 		executor,
+		pendingEffects,
 		publisher,
 		control,
 		input,
@@ -1196,6 +1217,41 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('starts provider work after durable lifecycle acceptance while the first delivery is gated', async () => {
+		let releaseFirstDelivery!: () => void;
+		const firstDeliveryGate = new Promise<void>((resolve) => {
+			releaseFirstDelivery = resolve;
+		});
+		let firstEventGated = false;
+		const harness = createHarness([{ type: 'finish', finishedReason: 'stop', usage: null }], {
+			beforeBroadcast: async (message) => {
+				if (message.kind !== 'event' || firstEventGated) return;
+				firstEventGated = true;
+				await firstDeliveryGate;
+			}
+		});
+
+		const execution = harness.executor.execute(job());
+		await vi.waitFor(() => {
+			expect(firstEventGated).toBe(true);
+			expect(harness.semanticInputs).toHaveLength(3);
+			expect(harness.provider.stream).toHaveBeenCalledOnce();
+		});
+		expect(streamBroadcastMessages(harness.broadcastMessages)).toHaveLength(1);
+		expect(harness.semanticInputs.map((input) => input.event_type)).toEqual([
+			'turn_phase',
+			'session',
+			'context_usage'
+		]);
+
+		releaseFirstDelivery();
+		await expect(execution).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		await harness.publisher.stop();
+	});
+
 	it('persists one exact prompt snapshot after the first durable response only', async () => {
 		const harness = createHarness(
 			[
@@ -1362,6 +1418,49 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('suppresses automatic domain writes for a read-only workflow while persisting its answer', async () => {
+		const workflow = {
+			version: CHAT_WORKFLOW_PROTOTYPE_VERSION,
+			steps: ['context', 'plan', 'analyst', 'reviewer', 'answer'].map((id) => ({
+				id,
+				label: id,
+				status: 'completed',
+				result: 'Saved finding'
+			}))
+		};
+		const harness = createHarness(
+			[
+				{
+					type: 'semantic',
+					transitionId: CALL_TRANSITION_ID,
+					phase: 'llm',
+					eventType: 'agent_state',
+					currentActivity: 'Review complete',
+					eventPayload: { type: 'agent_state', state: 'thinking', workflow }
+				},
+				{ type: 'text_delta', text: 'Recommendation: schedule the inspection tomorrow.' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{
+				automaticDomainCapture: 'disabled',
+				researchCaptureError: new Error('must not run'),
+				statedFutureCaptureError: new Error('must not run')
+			}
+		);
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed'
+		});
+		expect(harness.researchCapture!.capture).not.toHaveBeenCalled();
+		expect(harness.statedFutureCapture!.capture).not.toHaveBeenCalled();
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'completed',
+				assistantMetadata: expect.objectContaining({ chat_workflow_v1: workflow })
+			})
+		);
+		await harness.publisher.stop();
+	});
+
 	it('reports deterministic research-capture failure without overturning the completed answer', async () => {
 		const error = new Error('research log unavailable');
 		const harness = createHarness(
@@ -1432,6 +1531,76 @@ describe('AgenticChatTurnExecutor', () => {
 		);
 		await harness.publisher.stop();
 	});
+
+	it.each(['completed', 'failed', 'cancelled'] as const)(
+		'joins current-turn usage before billing on %s',
+		async (status) => {
+			const harness = createHarness([], {
+				recovery:
+					status === 'completed'
+						? []
+						: [
+								recoveryReceipt(
+									status === 'cancelled'
+										? 'finalize_cancelled'
+										: 'finalize_failed'
+								),
+								recoveryReceipt('queue_reconciled', { status })
+							]
+			});
+			let releaseUsage!: () => void;
+			let committed = false;
+			harness.pendingEffects.forTurn(TURN_RUN_ID).enqueue(
+				new Promise<void>((resolve) => {
+					releaseUsage = () => {
+						committed = true;
+						resolve();
+					};
+				})
+			);
+			harness.consumptionBilling.evaluate.mockImplementation(async () => {
+				expect(committed).toBe(true);
+				return {
+					userId: USER_ID,
+					billingState: 'explorer_active',
+					billingTier: 'explorer',
+					isFrozen: false,
+					projectCount: 1,
+					lifetimeCreditsUsed: 10,
+					triggerReason: null
+				};
+			});
+			harness.provider.stream.mockImplementation(() =>
+				(async function* () {
+					yield { type: 'text_delta', text: 'saved answer' } as const;
+					if (status === 'cancelled')
+						harness.cancellationController.abort(new Error('cancelled'));
+					if (status === 'failed')
+						throw new AgenticChatProviderExecutionError(
+							'provider_failure',
+							'permanent',
+							'fixture'
+						);
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})()
+			);
+			const drainSpy = vi.spyOn(harness.pendingEffects, 'drain');
+			const execution = harness.executor.execute(job());
+			try {
+				await vi.waitFor(() => expect(drainSpy).toHaveBeenCalled());
+				expect(harness.consumptionBilling.evaluate).not.toHaveBeenCalled();
+				expect(harness.control.finalize).not.toHaveBeenCalled();
+				expect(harness.control.recover).not.toHaveBeenCalled();
+				releaseUsage();
+				await expect(execution).resolves.toMatchObject({ terminalStatus: status });
+				expect(harness.consumptionBilling.evaluate).toHaveBeenCalled();
+			} finally {
+				releaseUsage();
+				await execution;
+				await harness.publisher.stop();
+			}
+		}
+	);
 
 	it('reports consumption-billing failure without overturning terminal truth', async () => {
 		const error = new Error('billing gate unavailable');
@@ -4079,6 +4248,70 @@ describe('AgenticChatTurnExecutor', () => {
 			await harness.publisher.stop();
 		}
 	});
+
+	it.each(['delayed', 'failed', 'stale'] as const)(
+		'keeps the tool-call acceptance fence with %s persistence and no preceding planning event',
+		async (mode) => {
+			let release!: () => void;
+			const held = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			let entered = false;
+			const harness = createHarness(
+				[
+					{
+						type: 'mutating_tool',
+						logicalProviderRound: 1,
+						callTransitionId: CALL_TRANSITION_ID,
+						resultTransitionId: RESULT_TRANSITION_ID,
+						logicalOperationId: LOGICAL_OPERATION_ID,
+						providerToolCallId: 'provider-mutation-call-1',
+						toolName: 'fixture_project_write',
+						operationName: 'update_project',
+						arguments: { projectId: 'project-1', name: 'Updated' },
+						downstreamIdempotencySupported: true
+					},
+					{ type: 'finish', finishedReason: 'stop', usage: null }
+				],
+				{
+					beforePersistSemantic: async (input) => {
+						if (input.event_type !== 'tool_call') return;
+						entered = true;
+						await held;
+						if (mode !== 'delayed')
+							throw Object.assign(
+								new Error(
+									mode === 'stale'
+										? 'stale_generation'
+										: 'event_validation_failed'
+								),
+								{ code: 'P0001' }
+							);
+					}
+				}
+			);
+			try {
+				const executing = harness.executor.execute(job());
+				await vi.waitFor(() => expect(entered).toBe(true));
+				expect(harness.mutation.execute).not.toHaveBeenCalled();
+				expect(harness.toolExecutions.persistMutation).not.toHaveBeenCalled();
+				release();
+				const result = await executing;
+				if (mode === 'delayed') {
+					expect(result.outcome).toBe('completed');
+					expect(harness.mutation.execute).toHaveBeenCalledOnce();
+					expect(harness.toolExecutions.persistMutation).toHaveBeenCalledOnce();
+				} else {
+					expect(result.outcome).not.toBe('completed');
+					expect(harness.mutation.execute).not.toHaveBeenCalled();
+					expect(harness.toolExecutions.persistMutation).not.toHaveBeenCalled();
+				}
+			} finally {
+				release();
+				await harness.publisher.stop();
+			}
+		}
+	);
 
 	it('routes a mutating tool through the effect-boundary port and persists its receipt', async () => {
 		const harness = createHarness([

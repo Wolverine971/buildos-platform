@@ -2,13 +2,13 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "11de4290fca7531cf56007edd2a3ba77171d1b509124f152cec399bf94b28cc3",
+  "catalogSerializedSha256": "9e886da378e6e76c729487668ed8224bb59a652b6cb77847004b0d5d57f93a58",
   "contextSurfaces": [
     {
       "contextType": "global",
-      "estimatedTokens": 7967,
+      "estimatedTokens": 8215,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "3d7130a584a38c3c3f481379fd82d3f9cc3a3601eee01ced39baa30ace680a77",
+      "serializedDefinitionsSha256": "9823fb11bb9d3d76dfe5d9f010e78b8bc3c972876e2dc53aa84465821f5813e2",
       "toolCount": 24,
       "toolNames": [
         "skill_search",
@@ -36,13 +36,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 31867,
+      "totalChars": 32858,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 9253,
+      "estimatedTokens": 9598,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "9d0c13ea5367a611200a3b37e3bef64243e86aaf939e323f24b186c92f52dce1",
+      "serializedDefinitionsSha256": "5e41691ded93ce3b0b677a1e747ee94d9fb5b1e5f307fb668244286f3fda0c37",
       "toolCount": 32,
       "toolNames": [
         "skill_search",
@@ -78,13 +78,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 37012,
+      "totalChars": 38391,
     },
     {
       "contextType": "project_create",
-      "estimatedTokens": 2864,
+      "estimatedTokens": 2903,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "4bee241ae75fcdbac74af9509ac1e08e74847d6b62a83706ff5e3c15e6bbfd09",
+      "serializedDefinitionsSha256": "40a3ac07a5a64b883fc491bff28a5758c3a5ae3b4995249bf881007f1c7ae219",
       "toolCount": 4,
       "toolNames": [
         "request_turn_clarification",
@@ -92,13 +92,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_goal",
         "create_onto_task",
       ],
-      "totalChars": 11455,
+      "totalChars": 11611,
     },
     {
       "contextType": "calendar",
-      "estimatedTokens": 7967,
+      "estimatedTokens": 8215,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "3d7130a584a38c3c3f481379fd82d3f9cc3a3601eee01ced39baa30ace680a77",
+      "serializedDefinitionsSha256": "9823fb11bb9d3d76dfe5d9f010e78b8bc3c972876e2dc53aa84465821f5813e2",
       "toolCount": 24,
       "toolNames": [
         "skill_search",
@@ -126,13 +126,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 31867,
+      "totalChars": 32858,
     },
     {
       "contextType": "daily_brief",
-      "estimatedTokens": 7967,
+      "estimatedTokens": 8215,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "3d7130a584a38c3c3f481379fd82d3f9cc3a3601eee01ced39baa30ace680a77",
+      "serializedDefinitionsSha256": "9823fb11bb9d3d76dfe5d9f010e78b8bc3c972876e2dc53aa84465821f5813e2",
       "toolCount": 24,
       "toolNames": [
         "skill_search",
@@ -160,13 +160,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 31867,
+      "totalChars": 32858,
     },
     {
       "contextType": "general",
-      "estimatedTokens": 7967,
+      "estimatedTokens": 8215,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "3d7130a584a38c3c3f481379fd82d3f9cc3a3601eee01ced39baa30ace680a77",
+      "serializedDefinitionsSha256": "9823fb11bb9d3d76dfe5d9f010e78b8bc3c972876e2dc53aa84465821f5813e2",
       "toolCount": 24,
       "toolNames": [
         "skill_search",
@@ -194,13 +194,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 31867,
+      "totalChars": 32858,
     },
     {
       "contextType": "ontology",
-      "estimatedTokens": 9253,
+      "estimatedTokens": 9598,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "9d0c13ea5367a611200a3b37e3bef64243e86aaf939e323f24b186c92f52dce1",
+      "serializedDefinitionsSha256": "5e41691ded93ce3b0b677a1e747ee94d9fb5b1e5f307fb668244286f3fda0c37",
       "toolCount": 32,
       "toolNames": [
         "skill_search",
@@ -236,13 +236,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 37012,
+      "totalChars": 38391,
     },
     {
       "contextType": "daily_brief_update",
-      "estimatedTokens": 7967,
+      "estimatedTokens": 8215,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "3d7130a584a38c3c3f481379fd82d3f9cc3a3601eee01ced39baa30ace680a77",
+      "serializedDefinitionsSha256": "9823fb11bb9d3d76dfe5d9f010e78b8bc3c972876e2dc53aa84465821f5813e2",
       "toolCount": 24,
       "toolNames": [
         "skill_search",
@@ -270,7 +270,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 31867,
+      "totalChars": 32858,
     },
   ],
   "definitions": [
@@ -336,9 +336,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "create_onto_task",
-      "serialized": "{"type":"function","function":{"name":"create_onto_task","description":"Create future human work in a project when the user asks to add, track, or remember it. Do the work inline instead for research, brainstorming, summaries, or drafts. Link only known entities and assign only known project members. A dependency or prerequisite between two existing records is a relationship (rel \\"depends_on\\"), not description text.","parameters":{"type":"object","additionalProperties":false,"properties":{"project_id":{"type":"string","description":"Project UUID"},"title":{"type":"string","description":"Task title"},"description":{"type":"string","description":"Task description"},"type_key":{"type":"string","default":"task.default","pattern":"^task\\\\.","description":"Work mode taxonomy: task.{work_mode}[.{specialization}]. Modes: execute, create, refine, research, review, coordinate, admin, plan. Omit when unsure; the default is task.default."},"state_key":{"type":"string","default":"todo","enum":["todo","in_progress","blocked","done"],"description":"Initial state."},"priority":{"type":"integer","minimum":1,"maximum":5,"default":3,"description":"Priority 1-5 matching the UI labels: 1=Critical (only for \\"critical\\", \\"urgent\\", \\"top priority\\"), 2=High, 3=Medium (default), 4=Low, 5=Nice to have. \\"high\\" means 2, \\"medium\\" 3, \\"low\\" 4."},"assignee_actor_ids":{"type":"array","maxItems":10,"description":"Active project member actor UUIDs.","items":{"type":"string"}},"assignee_handles":{"type":"array","maxItems":10,"description":"Active project member handles, e.g. @dj.","items":{"type":"string"}},"plan_id":{"type":"string","description":"Optional plan UUID"},"goal_id":{"type":"string","description":"Optional goal UUID"},"supporting_milestone_id":{"type":"string","description":"Optional milestone UUID"},"parent":{"type":"object","description":"Optional primary containment parent","properties":{"kind":{"type":"string"},"id":{"type":"string"},"is_primary":{"type":"boolean"}}},"start_at":{"type":"string","description":"Start date. YYYY-MM-DD for day-level intent (stored as that civil day in the user's timezone); a full ISO datetime only when a clock time was given. Never convert a date to a timestamp yourself."},"due_at":{"type":"string","description":"Due date. Same date rule as start_at."},"calendar_sync":{"type":"string","enum":["auto","none"],"default":"none","description":"Calendar side effect for this task write. Defaults to 'none': scheduling a task never puts it on the calendar by itself. Send 'auto' only when the user asked for a calendar event, a time block, or to be scheduled — it creates or updates the linked event."},"props":{"type":"object","properties":{"duration_minutes":{"type":"number","minimum":0,"description":"Estimated work in minutes. Contract field: props.duration_minutes."}},"description":"Additional JSON properties. Use { \\"duration_minutes\\": <number> } for a time estimate (\\"90 minutes\\" -> 90, \\"2 hours\\" -> 120); keep estimates out of the description."}},"required":["project_id","title"]}}}",
-      "serializedChars": 3056,
-      "serializedSha256": "ba2a719d7d329336b3fb15547e46a51f404302d72d0eee098d6ec38530cac87d",
+      "serialized": "{"type":"function","function":{"name":"create_onto_task","description":"Create future human work in a project when the user asks to add, track, or remember it. Do the work inline instead for research, brainstorming, summaries, or drafts. Link only known entities and assign only known project members. A dependency or prerequisite between two existing records is a relationship (rel \\"depends_on\\"), not description text.","parameters":{"type":"object","additionalProperties":false,"properties":{"project_id":{"type":"string","description":"Project UUID"},"title":{"type":"string","description":"Task title"},"description":{"type":"string","description":"Task description"},"type_key":{"type":"string","default":"task.default","pattern":"^task\\\\.","description":"Work mode taxonomy: task.{work_mode}[.{specialization}]. Modes: execute, create, refine, research, review, coordinate, admin, plan. Omit when unsure; the default is task.default."},"state_key":{"type":"string","default":"todo","enum":["todo","in_progress","blocked","done"],"description":"Initial state."},"priority":{"type":"integer","minimum":1,"maximum":5,"default":3,"description":"Priority 1-5 matching the UI labels: 1=Critical (only for \\"critical\\", \\"urgent\\", \\"top priority\\"), 2=High, 3=Medium (default), 4=Low, 5=Nice to have. \\"high\\" means 2, \\"medium\\" 3, \\"low\\" 4."},"assignee_actor_ids":{"type":"array","maxItems":10,"description":"Active project member actor UUIDs.","items":{"type":"string"}},"assignee_handles":{"type":"array","maxItems":10,"description":"Active project member handles, e.g. @dj.","items":{"type":"string"}},"plan_id":{"type":"string","description":"Optional plan UUID"},"goal_id":{"type":"string","description":"Optional goal UUID"},"supporting_milestone_id":{"type":"string","description":"Optional milestone UUID"},"parent":{"type":"object","description":"Optional primary containment parent","properties":{"kind":{"type":"string"},"id":{"type":"string"},"is_primary":{"type":"boolean"}}},"start_at":{"type":"string","description":"Start date. YYYY-MM-DD for day-level intent (stored as that civil day in the user's timezone); a full ISO datetime only when a clock time was given. Never convert a date to a timestamp yourself."},"due_at":{"type":"string","description":"Due date. Same date rule as start_at."},"calendar_sync":{"type":"string","enum":["auto","none"],"default":"none","description":"Calendar side effect for this task write. Defaults to 'none': scheduling a task never puts it on the calendar by itself. Send 'auto' only when the user asked for a calendar event, a time block, or to be scheduled — it creates or updates the linked event."},"props":{"type":"object","properties":{"duration_minutes":{"type":"number","minimum":0,"description":"Estimated work in minutes. Contract field: props.duration_minutes."}},"description":"Additional JSON properties. Use { \\"duration_minutes\\": <number> } for a time estimate (\\"90 minutes\\" -> 90, \\"2 hours\\" -> 120); keep new estimates out of the description. Changing duration_minutes also reconciles an unchanged legacy \\"Allow N minutes.\\" prefix and its description mirror using the previous saved estimate."}},"required":["project_id","title"]}}}",
+      "serializedChars": 3212,
+      "serializedSha256": "0e276de978f24a5d552c3d6bf89516fdfe5070aabff047b4e81895276eee040e",
     },
     {
       "name": "create_task_document",
@@ -450,9 +450,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_document_outline",
-      "serialized": "{"type":"function","function":{"name":"get_document_outline","description":"Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use this to scan before reading any section.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to outline (required)"}},"required":["document_id"]}}}",
-      "serializedChars": 465,
-      "serializedSha256": "61283b18ed9c42a5cf40fd14a83cb2e031b08db3374af35b1d8d166ee41edd3e",
+      "serialized": "{"type":"function","function":{"name":"get_document_outline","description":"Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use for a targeted section lookup in a long document. For a short document or a whole-document summary, use get_onto_document_details directly instead.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to outline (required)"}},"required":["document_id"]}}}",
+      "serializedChars": 572,
+      "serializedSha256": "9696646cd431e0568fe9cf646439085d3efbf33519a6e18046a80701097ea1b3",
     },
     {
       "name": "get_document_path",
@@ -498,9 +498,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_onto_document_details",
-      "serialized": "{"type":"function","function":{"name":"get_onto_document_details","description":"Get complete details for a specific ontology document including content, description, and metadata.\\nUse when you need the full document before editing or linking it.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to retrieve"}},"required":["document_id"]}}}",
-      "serializedChars": 395,
-      "serializedSha256": "a62de3252936b60fb8d48b616300f87d4bcde190d9c37f224520bfa073dde7a8",
+      "serialized": "{"type":"function","function":{"name":"get_onto_document_details","description":"Get complete details for a specific ontology document including content, description, and metadata.\\nUse directly for a short document, a summary of its body, or an exact edit. No outline read is required first. If content_truncated is false, the returned content_preview is the complete body; do not read its sections again. For a long document with truncated content, read only the missing sections.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to retrieve"}},"required":["document_id"]}}}",
+      "serializedChars": 630,
+      "serializedSha256": "7229c69e02d2550c7328b63c0c60110f6b77d096c65549c53f20f4e5b38f8254",
     },
     {
       "name": "get_onto_goal_details",
@@ -522,9 +522,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_onto_project_details",
-      "serialized": "{"type":"function","function":{"name":"get_onto_project_details","description":"Get complete details for a specific ontology project including properties and metadata.\\nUse when you need full project information for a known project id.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Project ID to retrieve"}},"required":["project_id"]}}}",
-      "serializedChars": 380,
-      "serializedSha256": "1e88da9c4795901553986c3ec9712cec18acf5f065248b948282b7a4507302f3",
+      "serialized": "{"type":"function","function":{"name":"get_onto_project_details","description":"Get complete details for a specific ontology project including properties and metadata.\\nUse for project properties missing from loaded evidence. If get_project_overview already supplies the requested status, do not reload details just to confirm it.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Project ID to retrieve"}},"required":["project_id"]}}}",
+      "serializedChars": 475,
+      "serializedSha256": "c8068159f3a18c5807b7c6cef72ccace9cdee4a164d536f878c420c276547e1b",
     },
     {
       "name": "get_onto_project_graph",
@@ -540,9 +540,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_onto_task_details",
-      "serialized": "{"type":"function","function":{"name":"get_onto_task_details","description":"Get complete details for a specific ontology task including all properties and relationships.\\nUse after a list or search result has identified the task id.","parameters":{"type":"object","properties":{"task_id":{"type":"string","description":"Task ID to retrieve"}},"required":["task_id"]}}}",
-      "serializedChars": 369,
-      "serializedSha256": "de3ed986ff07ed5862047340021d811297eff740faa8c14b88eece47c371841c",
+      "serialized": "{"type":"function","function":{"name":"get_onto_task_details","description":"Get a known task's missing details, such as assignees or relationships needed for the request.\\nTask lists include statuses, dates, priorities and description previews. Do not reopen every listed task for a status summary; read details only to fill a specific missing fact.","parameters":{"type":"object","properties":{"task_id":{"type":"string","description":"Task ID to retrieve"}},"required":["task_id"]}}}",
+      "serializedChars": 486,
+      "serializedSha256": "dd280ffb170225a90c585413e8d6361b8215f3071a1458c830560749e6e7ab88",
     },
     {
       "name": "get_project_calendar",
@@ -552,9 +552,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_project_overview",
-      "serialized": "{"type":"function","function":{"name":"get_project_overview","description":"Get a project status snapshot with entity counts, active or blocked work, milestones, risks, upcoming events, activity, and collaborators. Pass project_id when known; otherwise query resolves a name or returns candidates.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Exact project UUID when already known."},"query":{"type":"string","description":"Project name query when project_id is not yet known."}}}}}",
-      "serializedChars": 527,
-      "serializedSha256": "f2cf7e51d830f3e9b9c48732de9f8a414c2581b48180d77b742f3b5d6aa0b6c0",
+      "serialized": "{"type":"function","function":{"name":"get_project_overview","description":"Get a project status snapshot with entity counts, active or blocked work, milestones, risks, upcoming events, activity, and collaborators. Pass project_id when known; otherwise query resolves a name or returns candidates. For a status report start here and read only facts still missing. Do not routinely follow it with project details or re-open every listed task.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Exact project UUID when already known."},"query":{"type":"string","description":"Project name query when project_id is not yet known."}}}}}",
+      "serializedChars": 671,
+      "serializedSha256": "ba1ee1b54eeb8589e966a793ebcecf8c22f142705b74263ebed4dce5db174a72",
     },
     {
       "name": "get_user_profile_overview",
@@ -570,9 +570,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "link_onto_entities",
-      "serialized": "{"type":"function","function":{"name":"link_onto_entities","description":"Create a relationship edge between two ontology entities.\\nUse this to connect plans, goals, milestones, tasks, documents, or risks.\\nAvoid creating project edges unless the entity is truly a root-level item.\\n\\nIf you provide a non-standard relationship type, the API will normalize it to a canonical relationship and preserve your original value in edge props.original_rel.","parameters":{"type":"object","properties":{"src_kind":{"type":"string","description":"Source entity kind (project, plan, goal, milestone, task, document, risk, metric, source)"},"src_id":{"type":"string","description":"Source entity UUID"},"dst_kind":{"type":"string","description":"Destination entity kind (project, plan, goal, milestone, task, document, risk, metric, source)"},"dst_id":{"type":"string","description":"Destination entity UUID"},"rel":{"type":"string","description":"Relationship type (e.g., supports_goal, targets_milestone, references, has_milestone, addresses, mitigates)"},"props":{"type":"object","description":"Optional edge metadata as JSON object"}},"required":["src_kind","src_id","dst_kind","dst_id","rel"]}}}",
-      "serializedChars": 1189,
-      "serializedSha256": "bf54e06d4d9c8afad579cdaaf15617850d0c59ae925e1b2e980b2bf691b9cf7c",
+      "serialized": "{"type":"function","function":{"name":"link_onto_entities","description":"Create a relationship edge between two ontology entities.\\nUse this to connect plans, goals, milestones, tasks, documents, or risks.\\nAvoid creating project edges unless the entity is truly a root-level item.\\n\\nIf you provide a non-standard relationship type, the API will normalize it to a canonical relationship and preserve your original value in edge props.original_rel.","parameters":{"type":"object","properties":{"src_kind":{"type":"string","description":"Source entity kind (project, plan, goal, milestone, task, document, risk, metric, source)"},"src_id":{"type":"string","description":"Source entity UUID. For depends_on: the dependent task that waits for the prerequisite."},"dst_kind":{"type":"string","description":"Destination entity kind (project, plan, goal, milestone, task, document, risk, metric, source)"},"dst_id":{"type":"string","description":"Destination entity UUID. For depends_on: the prerequisite task that must happen first."},"rel":{"type":"string","description":"Relationship type (e.g., supports_goal, targets_milestone, references, has_milestone, addresses, mitigates)"},"props":{"type":"object","description":"Optional edge metadata as JSON object"}},"required":["src_kind","src_id","dst_kind","dst_id","rel"]}}}",
+      "serializedChars": 1321,
+      "serializedSha256": "1ae803b0a653060d58612d90efc781560e0db6c734be4f7efd45ea452eae9610",
     },
     {
       "name": "link_user_contact",
@@ -600,9 +600,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "list_onto_documents",
-      "serialized": "{"type":"function","function":{"name":"list_onto_documents","description":"List document metadata, not body content. Read a listed document with get_document_outline, then read_document_section.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Filter documents by project ID"},"type_key":{"type":"string","description":"Filter by document type key (e.g., document.context.project, document.knowledge.research)"},"state_key":{"type":"string","enum":["draft","in_review","ready","published","archived"]},"archived":{"type":"boolean","default":false,"description":"When true, return archived records only. Omitted or false returns active records only."},"limit":{"type":"integer","default":20,"minimum":1,"maximum":50,"description":"Maximum number of documents to return"}}}}}",
-      "serializedChars": 814,
-      "serializedSha256": "3a8324abe0a1952278bfd7662a3b03c9661b5f5045d1a85028b9ba2de70bbf53",
+      "serialized": "{"type":"function","function":{"name":"list_onto_documents","description":"List document metadata, not body content. For a short document or a summary needing its whole body, use get_onto_document_details directly. For a specific section in a long document, use get_document_outline then read_document_section. Choose one path; do not routinely load both.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Filter documents by project ID"},"type_key":{"type":"string","description":"Filter by document type key (e.g., document.context.project, document.knowledge.research)"},"state_key":{"type":"string","enum":["draft","in_review","ready","published","archived"]},"archived":{"type":"boolean","default":false,"description":"When true, return archived records only. Omitted or false returns active records only."},"limit":{"type":"integer","default":20,"minimum":1,"maximum":50,"description":"Maximum number of documents to return"}}}}}",
+      "serializedChars": 975,
+      "serializedSha256": "ba3cc01c7251cb80d6d93435c3af1b7bad8fa91c3c830730d53ea24960c336ab",
     },
     {
       "name": "list_onto_goals",
@@ -882,9 +882,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "update_onto_task",
-      "serialized": "{"type":"function","function":{"name":"update_onto_task","description":"Update only the provided task fields: title, description, type, state, priority, assignees, schedule, links, or props. A dependency or prerequisite on another existing record is a relationship (rel \\"depends_on\\"), not description text.","parameters":{"type":"object","properties":{"task_id":{"type":"string","description":"Task UUID"},"project_id":{"type":"string","description":"Optional project UUID of the task; when given it must match the focused project. Not needed for assignee handles, which resolve against the task's own project."},"title":{"type":"string","description":"New task title"},"description":{"type":"string","description":"New description"},"type_key":{"type":"string","description":"Work mode taxonomy: task.{work_mode}[.{specialization}]. Modes: execute, create, refine, research, review, coordinate, admin, plan."},"state_key":{"type":"string","enum":["todo","in_progress","blocked","done"],"description":"New state."},"priority":{"type":"integer","minimum":1,"maximum":5,"description":"New priority. Priority 1-5 matching the UI labels: 1=Critical (only for \\"critical\\", \\"urgent\\", \\"top priority\\"), 2=High, 3=Medium (default), 4=Low, 5=Nice to have. \\"high\\" means 2, \\"medium\\" 3, \\"low\\" 4."},"assignee_actor_ids":{"type":"array","maxItems":10,"description":"Optional full replacement assignee actor ID list (UUIDs) for active project members only. Prefer assignee_handles unless IDs were just retrieved from project members. Use [] to clear assignees. Max 10.","items":{"type":"string"}},"assignee_handles":{"type":"array","maxItems":10,"description":"Optional assignee handles like [\\"@jim\\"]. Resolved against active project members by name/email local-part.","items":{"type":"string"}},"goal_id":{"type":["string","null"],"description":"Optional goal UUID that this task supports (null clears)"},"supporting_milestone_id":{"type":["string","null"],"description":"Optional milestone UUID this task targets (null clears)"},"start_at":{"type":["string","null"],"description":"New start date or null to clear. YYYY-MM-DD for day-level intent (stored as that civil day in the user's timezone); a full ISO datetime only when a clock time was given. Never convert a date to a timestamp yourself."},"due_at":{"type":["string","null"],"description":"New due date or null to clear. Same date rule as start_at."},"calendar_sync":{"type":"string","enum":["auto","none"],"default":"none","description":"Calendar side effect for this task write. Defaults to 'none': scheduling a task never puts it on the calendar by itself. Send 'auto' only when the user asked for a calendar event, a time block, or to be scheduled — it creates or updates the linked event."},"props":{"type":"object","properties":{"duration_minutes":{"type":"number","minimum":0,"description":"Estimated work in minutes. Contract field: props.duration_minutes. Other props are preserved."}},"description":"Properties to merge with existing props. Use { \\"duration_minutes\\": <number> } for a time estimate (\\"90 minutes\\" -> 90, \\"2 hours\\" -> 120); keep estimates out of the description."}},"required":["task_id"]}}}",
-      "serializedChars": 3181,
-      "serializedSha256": "132146029540cee1051f62c31da3ca8ad6197d7327e5fd08f0399cc2e663064f",
+      "serialized": "{"type":"function","function":{"name":"update_onto_task","description":"Update only the provided task fields: title, description, type, state, priority, assignees, schedule, links, or props. A dependency or prerequisite on another existing record is a relationship (rel \\"depends_on\\"), not description text.","parameters":{"type":"object","properties":{"task_id":{"type":"string","description":"Task UUID"},"project_id":{"type":"string","description":"Optional project UUID of the task; when given it must match the focused project. Not needed for assignee handles, which resolve against the task's own project."},"title":{"type":"string","description":"New task title"},"description":{"type":"string","description":"New description"},"type_key":{"type":"string","description":"Work mode taxonomy: task.{work_mode}[.{specialization}]. Modes: execute, create, refine, research, review, coordinate, admin, plan."},"state_key":{"type":"string","enum":["todo","in_progress","blocked","done"],"description":"New state."},"priority":{"type":"integer","minimum":1,"maximum":5,"description":"New priority. Priority 1-5 matching the UI labels: 1=Critical (only for \\"critical\\", \\"urgent\\", \\"top priority\\"), 2=High, 3=Medium (default), 4=Low, 5=Nice to have. \\"high\\" means 2, \\"medium\\" 3, \\"low\\" 4."},"assignee_actor_ids":{"type":"array","maxItems":10,"description":"Optional full replacement assignee actor ID list (UUIDs) for active project members only. Prefer assignee_handles unless IDs were just retrieved from project members. Use [] to clear assignees. Max 10.","items":{"type":"string"}},"assignee_handles":{"type":"array","maxItems":10,"description":"Optional assignee handles like [\\"@jim\\"]. Resolved against active project members by name/email local-part.","items":{"type":"string"}},"goal_id":{"type":["string","null"],"description":"Optional goal UUID that this task supports (null clears)"},"supporting_milestone_id":{"type":["string","null"],"description":"Optional milestone UUID this task targets (null clears)"},"start_at":{"type":["string","null"],"description":"New start date or null to clear. YYYY-MM-DD for day-level intent (stored as that civil day in the user's timezone); a full ISO datetime only when a clock time was given. Never convert a date to a timestamp yourself."},"due_at":{"type":["string","null"],"description":"New due date or null to clear. Same date rule as start_at."},"calendar_sync":{"type":"string","enum":["auto","none"],"default":"none","description":"Calendar side effect for this task write. Defaults to 'none': scheduling a task never puts it on the calendar by itself. Send 'auto' only when the user asked for a calendar event, a time block, or to be scheduled — it creates or updates the linked event."},"props":{"type":"object","properties":{"duration_minutes":{"type":"number","minimum":0,"description":"Estimated work in minutes. Contract field: props.duration_minutes. Other props are preserved."}},"description":"Properties to merge with existing props. Use { \\"duration_minutes\\": <number> } for a time estimate (\\"90 minutes\\" -> 90, \\"2 hours\\" -> 120). For an estimate change, omit description and props.description unless the user also requested a prose edit. The tool updates an existing generated \\"Allow N minutes.\\" prefix and its mirror from the previous saved estimate, preserving the remaining text and other props."}},"required":["task_id"]}}}",
+      "serializedChars": 3413,
+      "serializedSha256": "9accb789a4fa82577d9d05b5e1244201d54b18fb2f849d4bb95305442351b77d",
     },
     {
       "name": "upsert_user_contact",
@@ -908,13 +908,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "metadataOnlyToolNames": [
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/d087141c",
+  "registryVersion": "tool-registry/10f0199a",
   "staticProfiles": [
     {
       "contextType": "global",
-      "estimatedTokens": 7967,
+      "estimatedTokens": 8215,
       "profile": "global",
-      "serializedDefinitionsSha256": "3d7130a584a38c3c3f481379fd82d3f9cc3a3601eee01ced39baa30ace680a77",
+      "serializedDefinitionsSha256": "9823fb11bb9d3d76dfe5d9f010e78b8bc3c972876e2dc53aa84465821f5813e2",
       "toolCount": 24,
       "toolNames": [
         "skill_search",
@@ -942,13 +942,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_calendar_event",
         "delete_calendar_event",
       ],
-      "totalChars": 31867,
+      "totalChars": 32858,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 9253,
+      "estimatedTokens": 9598,
       "profile": "project",
-      "serializedDefinitionsSha256": "9d0c13ea5367a611200a3b37e3bef64243e86aaf939e323f24b186c92f52dce1",
+      "serializedDefinitionsSha256": "5e41691ded93ce3b0b677a1e747ee94d9fb5b1e5f307fb668244286f3fda0c37",
       "toolCount": 32,
       "toolNames": [
         "skill_search",
@@ -984,13 +984,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_project_calendar",
         "set_project_calendar",
       ],
-      "totalChars": 37012,
+      "totalChars": 38391,
     },
     {
       "contextType": "project_create",
-      "estimatedTokens": 2864,
+      "estimatedTokens": 2903,
       "profile": "project_create",
-      "serializedDefinitionsSha256": "4bee241ae75fcdbac74af9509ac1e08e74847d6b62a83706ff5e3c15e6bbfd09",
+      "serializedDefinitionsSha256": "40a3ac07a5a64b883fc491bff28a5758c3a5ae3b4995249bf881007f1c7ae219",
       "toolCount": 4,
       "toolNames": [
         "request_turn_clarification",
@@ -998,7 +998,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_goal",
         "create_onto_task",
       ],
-      "totalChars": 11455,
+      "totalChars": 11611,
     },
   ],
 }

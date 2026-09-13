@@ -50,7 +50,7 @@ export type UsageLogParams = {
 };
 
 export type UsageLogger = {
-	logUsageToDatabase(params: UsageLogParams): Promise<void>;
+	logUsageToDatabase(params: UsageLogParams, signal?: AbortSignal): Promise<void>;
 };
 
 export type UsageLoggerFailureMode = 'swallow' | 'throw';
@@ -79,7 +79,7 @@ export class LLMUsageLogger {
 		this.failureMode = config.failureMode ?? 'swallow';
 	}
 
-	async logUsageToDatabase(params: UsageLogParams): Promise<void> {
+	async logUsageToDatabase(params: UsageLogParams, signal?: AbortSignal): Promise<void> {
 		if (!this.supabase) {
 			if (this.failureMode === 'throw') {
 				throw new Error('Supabase client not configured for strict usage logging');
@@ -183,12 +183,14 @@ export class LLMUsageLogger {
 
 			for (let attempt = 0; attempt < 4; attempt += 1) {
 				const usageLogs = this.supabase.from('llm_usage_logs');
-				const { error } = usageLogId
-					? await usageLogs.upsert(payloadForInsert, {
+				if (signal?.aborted) throw signal.reason;
+				const request = usageLogId
+					? usageLogs.upsert(payloadForInsert, {
 							onConflict: 'id',
 							ignoreDuplicates: true
 						})
-					: await usageLogs.insert(payloadForInsert);
+					: usageLogs.insert(payloadForInsert);
+				const { error } = await (signal ? request.abortSignal(signal) : request);
 
 				if (!error) {
 					return;

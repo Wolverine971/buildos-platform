@@ -1,4 +1,6 @@
 // apps/worker/src/workers/agentic-chat/bootstrap.ts
+import { logAgenticChatPersistenceTrace } from './persistenceTrace';
+// apps/worker/src/workers/agentic-chat/bootstrap.ts
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
@@ -22,6 +24,7 @@ import {
 	type AgenticChatProviderMutationCapabilitiesV1
 } from './mutationToolCatalog';
 import { createAgenticChatCompositionRoot } from './composition-root';
+import { AgenticChatTurnActivityRegistry, withAgenticChatTurnActivityV1 } from './deliveryHealth';
 import { type AgenticChatConfig, loadAgenticChatConfig } from './config';
 import {
 	type AgenticChatExecutionObservationRpcClient,
@@ -339,7 +342,7 @@ function createDefaultComposition(
 	input: AgenticChatBootstrapCompositionFactoryInput
 ): AgenticChatBootstrapCompositionPort {
 	// Worker terminal billing must observe committed current-turn usage whenever
-	// the database is healthy. The provider boundary still catches/report errors
+	// the database is healthy. The executor joins usage before billing; errors are reported
 	// so strict accounting cannot strand terminal user-visible truth.
 	const usageLogger = new LLMUsageLogger({
 		supabase: input.client,
@@ -349,9 +352,13 @@ function createDefaultComposition(
 		input.client as unknown as AgenticChatExecutionObservationRpcClient
 	);
 	const usageObserver = new AgenticChatLlmUsageObserver(usageLogger);
+	// One process-local registry sees provider attempts from both clients for
+	// per-turn progress health; the durable observation writes are unchanged.
+	const turnActivity = new AgenticChatTurnActivityRegistry();
 	const clientPorts = {
 		usage: usageObserver,
-		executionObservations,
+		onPersistenceTrace: logAgenticChatPersistenceTrace,
+		executionObservations: withAgenticChatTurnActivityV1(executionObservations, turnActivity),
 		onUsageError: input.onUsageError,
 		onExecutionObservationError: input.onUsageError
 	};
@@ -379,6 +386,7 @@ function createDefaultComposition(
 		providerClient,
 		semanticReviewerClient,
 		providerConfigured: true,
+		workflowPrototypeUserIds: input.config.workflowPrototypeUserIds,
 		liveVisionEnabled: input.config.liveVisionEnabled,
 		consumptionBillingEnabled: input.config.consumptionBillingEnabled,
 		mutationCapabilities: ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
@@ -391,6 +399,7 @@ function createDefaultComposition(
 		maxToolCalls: input.config.maxToolCalls,
 		maxToolConcurrency: input.config.maxToolConcurrency,
 		onExecutionObservationError: input.onUsageError,
+		turnActivity,
 		onConsumptionBillingError: input.onConsumptionBillingError ?? input.onUsageError
 	});
 }

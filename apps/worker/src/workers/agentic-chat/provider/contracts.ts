@@ -100,6 +100,10 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	executionGeneration: number;
 	providerRound: 'initial' | 'synthesis';
 	logicalProviderRound: number;
+	/** Optional per-pass ceiling; the client also enforces its configured maximum. */
+	maxOutputTokens?: number;
+	/** Explicit low reasoning budget for bounded workflow passes; ordinary calls keep their policy. */
+	reasoningEffort?: 'low';
 	passRole?: AgenticChatProviderPassRoleV1;
 	providerAttempt?: number;
 	/** Turn-level deadline; absent for fixtures and legacy callers. */
@@ -242,6 +246,8 @@ export type AgenticChatPreparedPromptSnapshotV1 = {
 };
 
 export type AgenticChatPreparedProviderInvocationV1 = {
+	/** Read-only workflows must also suppress automatic research/future domain capture. */
+	automaticDomainCapture?: 'disabled';
 	/** Exact immutable prompt sent by this prepared invocation. */
 	promptSnapshot?: AgenticChatPreparedPromptSnapshotV1;
 	/** No network/provider work may begin until the executor calls this after its start fence. */

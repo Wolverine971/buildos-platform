@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/consumerRuntime.ts
 
 import type { SupabaseQueue } from '../../lib/supabaseQueue';
+import type { AgenticChatWorkerProgressHealthV1 } from './deliveryHealth';
 import type { AgenticChatStalledRecoveryHealthV1 } from './stalledRecovery';
 import type { AgenticChatRealtimeHealthV1 } from './supabaseStreamPublisherAdapters';
 
@@ -17,6 +18,10 @@ export type AgenticChatConsumerRuntimeServices = {
 	};
 	realtime: {
 		getHealth(): AgenticChatRealtimeHealthV1;
+	};
+	/** Per-turn progress evidence; informational and never a restart signal. */
+	progress?: {
+		getHealth(): AgenticChatWorkerProgressHealthV1;
 	};
 };
 
@@ -35,6 +40,7 @@ export type AgenticChatConsumerRuntimeHealth = {
 	realtime: AgenticChatRealtimeHealthV1;
 	recovery: AgenticChatStalledRecoveryHealthV1;
 	queue: ReturnType<SupabaseQueue['getHealth']>;
+	progress: AgenticChatWorkerProgressHealthV1 | null;
 };
 
 /**
@@ -82,12 +88,23 @@ export class AgenticChatConsumerRuntime {
 		return this.stopPromise;
 	}
 
+	private readProgressHealth(): AgenticChatWorkerProgressHealthV1 | null {
+		try {
+			return this.services.progress?.getHealth() ?? null;
+		} catch {
+			return null;
+		}
+	}
+
 	getHealth(): AgenticChatConsumerRuntimeHealth {
 		const queue = this.queue.getHealth();
 		const activeTurns = this.queue.getCapacitySnapshot().activeJobs;
 		const realtime = this.services.realtime.getHealth();
 		const recovery = this.services.recovery.getHealth();
-		const operational = { activeTurns, realtime, recovery, queue };
+		const progress = this.readProgressHealth();
+		// A stalled turn is reported, not treated as process unhealthiness: a
+		// restart cannot repair it and would interrupt healthy turns on this worker.
+		const operational = { activeTurns, realtime, recovery, queue, progress };
 		if (this.state === 'running') {
 			if (!queue.healthy) {
 				return {

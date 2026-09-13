@@ -1,4 +1,5 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.test.ts
+import { CHAT_WORKFLOW_PROTOTYPE_VERSION, type ChatWorkflowProgress } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentSSEMessage, ChatSession, ContextShiftPayload } from '@buildos/shared-types';
 import type { CreatedEntityRef, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
@@ -656,6 +657,26 @@ describe('createSSEHandler — routing', () => {
 			context: { turn_id: 'abc' } as any
 		});
 		expect(h.snapshot.lastTurnContext).toEqual({ turn_id: 'abc' });
+	});
+
+	it('retains valid workflow snapshots in activities for replay rendering', () => {
+		const h = createHarness();
+		const workflow: ChatWorkflowProgress = {
+			version: CHAT_WORKFLOW_PROTOTYPE_VERSION,
+			steps: (['context', 'plan', 'analyst', 'reviewer', 'answer'] as const).map((id) => ({
+				id,
+				label: id,
+				status: 'pending'
+			}))
+		};
+		h.handler({
+			type: 'agent_state',
+			state: 'thinking',
+			contextType: 'project',
+			details: 'Review started',
+			workflow
+		});
+		expect(h.calls.addActivity[0]?.metadata).toMatchObject({ workflow });
 	});
 
 	it('routes agent_state through thinking.updateState and sets activity label', () => {

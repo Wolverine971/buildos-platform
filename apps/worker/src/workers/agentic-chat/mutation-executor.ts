@@ -1,4 +1,5 @@
 // apps/worker/src/workers/agentic-chat/mutation-executor.ts
+import { performance } from 'node:perf_hooks';
 import {
 	type AgenticChatRecoveryFailureClassV1,
 	type ChatTurnEffectRpcResultV1,
@@ -29,6 +30,20 @@ export type AgenticChatMutatingToolPortV1 = {
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		signal: AbortSignal;
 	}): Promise<JsonObject>;
+};
+
+/**
+ * One critical-path span inside the irreversible effect lifecycle. Identifiers
+ * and durations only; arguments and downstream receipts are never included.
+ */
+export type AgenticChatMutationSpanV1 = {
+	stage: 'effect_reserve' | 'effect_begin' | 'mutation_adapter' | 'effect_reconcile';
+	state: 'finished' | 'failed';
+	durationMs: number;
+	turnRunId: string;
+	executionGeneration: number;
+	effectId: string;
+	toolName: string;
 };
 
 export type AgenticChatMutationResultV1 = {
@@ -75,6 +90,9 @@ export class AgenticChatMutationExecutor {
 		private readonly ports: {
 			control: AgenticChatEffectControlPortV1;
 			mutatingTool: AgenticChatMutatingToolPortV1;
+			/** Observability only; a throwing sink cannot change the effect outcome. */
+			onSpan?: (span: AgenticChatMutationSpanV1) => void;
+			nowMs?: () => number;
 		},
 		options: { maximumAdapterAttempts?: number } = {}
 	) {
@@ -115,25 +133,32 @@ export class AgenticChatMutationExecutor {
 			downstreamIdempotencySupported: input.step.downstreamIdempotencySupported
 		};
 
-		const reservation = await this.ports.control.reserve({
-			...identity,
-			toolName: input.step.toolName,
-			operationName: input.step.operationName,
-			providerToolCallId: input.step.providerToolCallId
-		});
+		const span = <T>(stage: AgenticChatMutationSpanV1['stage'], run: () => Promise<T>) =>
+			this.span(stage, identity, input.step.toolName, run);
+
+		const reservation = await span('effect_reserve', () =>
+			this.ports.control.reserve({
+				...identity,
+				toolName: input.step.toolName,
+				operationName: input.step.operationName,
+				providerToolCallId: input.step.providerToolCallId
+			})
+		);
 		const replay = replaySucceeded(reservation, stableIdentity);
 		if (replay) return replay;
 		if (reservation.state !== 'reserved') throw stateError(reservation);
 
 		if (input.signal.aborted) {
-			await this.reconcileCancelled(identity);
+			await span('effect_reconcile', () => this.reconcileCancelled(identity));
 			throwAbort(input.signal);
 		}
 
-		const begin = await this.ports.control.begin({
-			...identity,
-			providerToolCallId: input.step.providerToolCallId
-		});
+		const begin = await span('effect_begin', () =>
+			this.ports.control.begin({
+				...identity,
+				providerToolCallId: input.step.providerToolCallId
+			})
+		);
 		const beginReplay = replaySucceeded(begin, stableIdentity);
 		if (beginReplay) return beginReplay;
 		if (begin.outcome !== 'started' || begin.invokeAdapter !== true) {
@@ -142,20 +167,24 @@ export class AgenticChatMutationExecutor {
 
 		let downstreamReceipt: JsonObject;
 		try {
-			downstreamReceipt = await this.invokeAdapter({
-				...input,
-				effectId: stableIdentity.effectId,
-				downstreamIdempotencyKey: stableIdentity.downstreamIdempotencyKey
-			});
+			downstreamReceipt = await span('mutation_adapter', () =>
+				this.invokeAdapter({
+					...input,
+					effectId: stableIdentity.effectId,
+					downstreamIdempotencyKey: stableIdentity.downstreamIdempotencyKey
+				})
+			);
 		} catch (error) {
 			const outcome = mutationFailure(error);
 			const targetState = outcome.disposition === 'known_failed' ? 'failed' : 'uncertain';
-			const reconciliation = await this.ports.control.reconcile({
-				...identity,
-				targetState,
-				downstreamReceipt: null,
-				failureCode: outcome.failureCode
-			});
+			const reconciliation = await span('effect_reconcile', () =>
+				this.ports.control.reconcile({
+					...identity,
+					targetState,
+					downstreamReceipt: null,
+					failureCode: outcome.failureCode
+				})
+			);
 			if (reconciliation.state !== targetState) throw stateError(reconciliation);
 			throw new AgenticChatEffectExecutionError(
 				targetState === 'uncertain' ? 'uncertain_external_commit' : 'permanent',
@@ -164,12 +193,14 @@ export class AgenticChatMutationExecutor {
 			);
 		}
 
-		const reconciliation = await this.ports.control.reconcile({
-			...identity,
-			targetState: 'succeeded',
-			downstreamReceipt,
-			failureCode: null
-		});
+		const reconciliation = await span('effect_reconcile', () =>
+			this.ports.control.reconcile({
+				...identity,
+				targetState: 'succeeded',
+				downstreamReceipt,
+				failureCode: null
+			})
+		);
 		if (reconciliation.state !== 'succeeded') throw stateError(reconciliation);
 		return {
 			effectId: stableIdentity.effectId,
@@ -228,6 +259,38 @@ export class AgenticChatMutationExecutor {
 			}
 		}
 		throw lastError ?? new Error('Mutating adapter did not produce a receipt');
+	}
+
+	private async span<T>(
+		stage: AgenticChatMutationSpanV1['stage'],
+		identity: AgenticChatEffectIdentityV1,
+		toolName: string,
+		run: () => Promise<T>
+	): Promise<T> {
+		const onSpan = this.ports.onSpan;
+		if (!onSpan) return run();
+		const nowMs = this.ports.nowMs ?? (() => performance.now());
+		const startedAtMs = nowMs();
+		let state: AgenticChatMutationSpanV1['state'] = 'failed';
+		try {
+			const value = await run();
+			state = 'finished';
+			return value;
+		} finally {
+			try {
+				onSpan({
+					stage,
+					state,
+					durationMs: Math.max(0, nowMs() - startedAtMs),
+					turnRunId: identity.turnRunId,
+					executionGeneration: identity.executionGeneration,
+					effectId: identity.effectId,
+					toolName
+				});
+			} catch {
+				// Span telemetry must never become part of the effect boundary.
+			}
+		}
 	}
 
 	private async reconcileCancelled(identity: AgenticChatEffectIdentityV1): Promise<void> {

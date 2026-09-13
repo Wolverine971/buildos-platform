@@ -162,6 +162,25 @@ export class AgenticE2EWorkerClient {
 			createTurnTiming(requestStartedAt)
 		);
 		result.sessionId = sessionId;
+		const intakeRequests: NonNullable<TurnResult['timing']['intakeRequests']> = [];
+		result.timing.intakeRequests = intakeRequests;
+		const intakeFetch: typeof fetch = async (input, init) => {
+			const startedMs = performance.now() - requestStartedMs;
+			const response = await this.#fetch(input, init);
+			intakeRequests.push({
+				phase:
+					input === '/api/agent/v2/prewarm'
+						? 'prewarm'
+						: input === '/api/agent/v2/transport'
+							? 'transport'
+							: 'admission',
+				startedMs,
+				responseHeadersMs: performance.now() - requestStartedMs,
+				status: response.status,
+				serverTiming: response.headers.get('server-timing')
+			});
+			return response;
+		};
 
 		const normalizedContextType = normalizeFastContextType(params.contextType);
 		const context = {
@@ -179,7 +198,7 @@ export class AgenticE2EWorkerClient {
 		};
 		let preparedPromptKey: string | null = null;
 		if (process.env.AGENTIC_BATTERY && params.sessionId) {
-			const prewarm = await this.#fetch('/api/agent/v2/prewarm', {
+			const prewarm = await intakeFetch('/api/agent/v2/prewarm', {
 				signal: AbortSignal.timeout(60_000),
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -200,7 +219,7 @@ export class AgenticE2EWorkerClient {
 				);
 		}
 		const lease = await requestAgenticChatTransportLease({
-			fetchImpl: this.#fetch,
+			fetchImpl: intakeFetch,
 			request: {
 				clientTurnId,
 				streamRunId,
@@ -221,7 +240,7 @@ export class AgenticE2EWorkerClient {
 		}
 
 		const admission = await requestAgenticChatWorkerAdmission({
-			fetchImpl: this.#fetch,
+			fetchImpl: intakeFetch,
 			command: {
 				leaseToken: lease.token,
 				clientTurnId,

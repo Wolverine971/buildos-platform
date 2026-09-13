@@ -51,6 +51,7 @@ export function validateCompletedProviderCalls(
 	);
 	validateProjectCreateShellContracts(calls, request, admittedTools, issues);
 	validateExplicitProjectCreateName(calls, request, issues);
+	validateExactDocumentLiterals(calls, request, issues);
 	// Hosted ontology ids are canonical UUIDs. A contract target typo previously
 	// survived semantic parsing, then made the candidate gate ask the user which
 	// member of an explicitly exhaustive set they meant. On a canonical
@@ -78,6 +79,80 @@ export function validateCompletedProviderCalls(
 		addCallValidationErrors(issues, call, errors);
 	}
 	return issues;
+}
+
+const HTML_ENTITY_LITERAL_PAIRS = [
+	['&amp;', '&'],
+	['&lt;', '<'],
+	['&gt;', '>'],
+	['&quot;', '"'],
+	['&#34;', '"'],
+	['&#39;', "'"],
+	['&apos;', "'"]
+] as const;
+
+/**
+ * Reject a model-authored HTML encoding when the user's literal document body
+ * proves the intended characters. This never decodes or rewrites a mutation:
+ * the existing bounded validation loop asks the acting model to propose the
+ * exact content again before semantic review or persistence.
+ */
+function validateExactDocumentLiterals(
+	calls: readonly CompletedProviderToolCall[],
+	request: AgenticChatTurnProviderRequestV1,
+	issues: ToolValidationIssue[]
+): void {
+	const userText = latestUserText(request);
+	if (!userText) return;
+	for (const call of calls) {
+		if (!['create_onto_document', 'update_onto_document'].includes(call.name)) continue;
+		const content = call.arguments.content;
+		if (typeof content !== 'string' || content.length === 0 || userText.includes(content)) {
+			continue;
+		}
+		const transformed = new Map<string, string>();
+		const fullyDecoded = HTML_ENTITY_LITERAL_PAIRS.reduce(
+			(value, [entity, literal]) => value.split(entity).join(literal),
+			content
+		);
+		if (fullyDecoded !== content && userText.includes(fullyDecoded)) {
+			for (const [entity, literal] of HTML_ENTITY_LITERAL_PAIRS) {
+				if (content.includes(entity)) transformed.set(entity, literal);
+			}
+		} else {
+			for (const [entity, literal] of HTML_ENTITY_LITERAL_PAIRS) {
+				let offset = content.indexOf(entity);
+				while (offset >= 0) {
+					const oneLiteral =
+						content.slice(0, offset) + literal + content.slice(offset + entity.length);
+					if (userText.includes(oneLiteral)) {
+						transformed.set(entity, literal);
+						break;
+					}
+					offset = content.indexOf(entity, offset + entity.length);
+				}
+			}
+		}
+		const errors = Array.from(
+			transformed,
+			([entity, literal]) =>
+				`Document content must preserve the user's exact literal text. Do not HTML-encode ${JSON.stringify(literal)} as ${JSON.stringify(entity)}; copy the original content byte-for-byte.`
+		);
+		addCallValidationErrors(issues, call, errors);
+	}
+}
+
+function latestUserText(request: AgenticChatTurnProviderRequestV1): string | null {
+	for (let index = request.messages.length - 1; index >= 0; index -= 1) {
+		const message = request.messages[index];
+		if (message?.role !== 'user') continue;
+		if (typeof message.content === 'string') return message.content;
+		return message.content
+			.filter((part) => part.type === 'text')
+			.map((part) => part.text)
+			.join('\n');
+	}
+	return null;
 }
 
 function addCallValidationErrors(

@@ -285,7 +285,11 @@ describe('total assembled prompt size budget', () => {
 		// now says what its payload carries, task type_key names its taxonomy);
 		// the per-turn schema cap follows at measured + ~2.5%. Payload caps hold
 		// (52,958 chars / 13,240 est tokens measured) and stay where they were.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(11_800);
+		// RE-BASELINED 2026-09-12 after the prompt made evidence discipline
+		// executable: loaded context is explicitly separated from assumptions,
+		// actual status requires persisted evidence, and document text preserves
+		// user-authored instructions verbatim. Measured 13,396 chars; retain 104.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(13_500);
 		// Postdeploy 2026-09-04: add the executable relationship tool and explicit
 		// endpoint references, plus the nested estimate schema. Keep the system
 		// prose cap unchanged; the worker defers the contract from opening passes.
@@ -300,9 +304,11 @@ describe('total assembled prompt size budget', () => {
 		// 2026-09-10: the batch lane removed the contract DSL from acting-model
 		// surfaces. update_onto_task is now the largest mounted schema at 796
 		// estimated tokens. Pin its identity and retain about 5% headroom.
+		// 2026-09-12: reviewed task evidence/recurrence guidance raises it to 854;
+		// keep its identity pinned and 46 estimated tokens of headroom.
 		expect(
 			toolSurface.tools.find((tool) => tool.estimatedTokens === largestToolSchemaTokens)?.name
 		).toBe('update_onto_task');
-		expect(largestToolSchemaTokens).toBeLessThanOrEqual(840);
+		expect(largestToolSchemaTokens).toBeLessThanOrEqual(900);
 	});
 });

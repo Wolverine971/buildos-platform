@@ -15,7 +15,14 @@ import { DEEPSEEK_V4_FLASH_MODEL, type JSONUsageEvent } from '@buildos/smart-llm
 import type { JudgeResult } from './types';
 
 const JUDGE_MAX_ATTEMPTS = 2;
-const JUDGE_DEADLINE_MS = 90_000;
+// A judge that never returns scores 3, so a stalled grader fails the gate for a
+// reason the product never caused. Sep 11 QA: one Case 14 turn burned both 45s
+// attempts on provider stalls while a sibling turn graded the same rubric in
+// 7.5s. `providerRouting` cannot sort by throughput, so the only lever is wall
+// time. 75s per attempt buys a stalling endpoint room to answer without letting
+// a hung request hold the battery open. This is availability only: a low score
+// is still never retried, and the acting model still cannot grade itself.
+const JUDGE_DEADLINE_MS = 150_000;
 
 /** Strong graders only, most capable first. Override with AGENTIC_E2E_JUDGE_MODEL. */
 export const JUDGE_MODEL_CHAIN: readonly string[] = [

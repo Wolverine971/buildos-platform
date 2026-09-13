@@ -157,6 +157,12 @@ describe('worker calendar read port', () => {
 
 		const result = await listCalendarEvents(context, RANGE);
 
+		expect(result.query_scope).toEqual({
+			calendar_scope: 'user',
+			project_id: null,
+			calendar_id: null,
+			calendar_source_id: null
+		});
 		expect(result.google_read).toMatchObject({
 			mode: 'source_aware',
 			coverage: 'complete',

@@ -927,6 +927,16 @@ export async function listCalendarEvents(
 
 	return {
 		...calendarReadFailure(googleRead),
+		// A turn can issue user- and project-scoped reads in parallel. Echo the
+		// normalized scope on the result itself so the model never has to infer
+		// attribution from tool-call order, completion order, or a sibling
+		// get_project_calendar result.
+		query_scope: {
+			calendar_scope: scope,
+			project_id: scope === 'project' ? (projectId ?? null) : null,
+			calendar_id: scope === 'project' ? googleCalendarId : (requestedCalendarId ?? null),
+			calendar_source_id: scope === 'project' ? googleCalendarSourceId : null
+		},
 		events: pagedEvents,
 		google_event_count: googleEvents.length,
 		ontology_event_count: ontoEvents.length,

@@ -11035,6 +11035,118 @@ describe('turn-executor audit 2026-09-02 provider fixes', () => {
 	});
 });
 
+describe('exact document literal validation', () => {
+	function documentInvocation(rounds: AgenticChatTurnProviderClientEventV1[][], message: string) {
+		const client = clientWithRounds(rounds);
+		const baseInput = executionInputWithReadSurface(
+			[createDocumentToolDefinition()],
+			['create_onto_document']
+		);
+		return {
+			client,
+			prepared: new AgenticChatTurnProviderAdapter(
+				{
+					client,
+					capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+				},
+				2_000,
+				16,
+				{ createOntoDocument: true }
+			).prepare({
+				executionInput: {
+					...baseInput,
+					requestPayload: { ...baseInput.requestPayload, message }
+				},
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			})
+		};
+	}
+
+	it('rejects model-authored HTML encoding before the document reaches persistence', async () => {
+		const literal = '# Vendor note\n\nUse copper & oak for the sample.';
+		const encoded = literal.replace('&', '&amp;');
+		const shared = {
+			project_id: 'project-1',
+			title: 'Vendor note',
+			description: 'Exact vendor note'
+		};
+		const { client, prepared } = documentInvocation(
+			[
+				providerReadRound(
+					'encoded-document',
+					{ ...shared, content: encoded },
+					'create_onto_document'
+				),
+				providerReadRound(
+					'literal-document',
+					{ ...shared, content: literal },
+					'create_onto_document'
+				)
+			],
+			`Create a document titled Vendor note with this exact Markdown:\n\n${literal}`
+		);
+		const invocation = await prepared;
+
+		const steps = await collect(invocation.stream());
+
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'encoded-document',
+					validationFailure: expect.objectContaining({
+						error: expect.stringContaining('HTML-encode')
+					})
+				}),
+				expect.objectContaining({
+					type: 'mutating_tool',
+					providerToolCallId: 'literal-document',
+					arguments: expect.objectContaining({ content: literal })
+				})
+			])
+		);
+		expect(
+			steps.some(
+				(step) =>
+					step.type === 'mutating_tool' &&
+					String(step.arguments.content).includes('&amp;')
+			)
+		).toBe(false);
+	});
+
+	it('preserves intentional entity text, quotes, punctuation, and Markdown byte-for-byte', async () => {
+		const literal = '# Exact note\n\n> "A & B"; keep `&amp;` literal.\n\n<tag>: yes!';
+		const args = {
+			project_id: 'project-1',
+			title: 'Exact note',
+			description: 'Exact punctuation fixture',
+			content: literal
+		};
+		const { client, prepared } = documentInvocation(
+			[providerReadRound('exact-document', args, 'create_onto_document')],
+			`Create a document titled Exact note with this exact Markdown:\n\n${literal}`
+		);
+		const invocation = await prepared;
+
+		const steps = await collect(invocation.stream());
+
+		expect(client.stream).toHaveBeenCalledTimes(1);
+		expect(steps.some((step) => step.type === 'read_tool' && step.validationFailure)).toBe(
+			false
+		);
+		expect(steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'mutating_tool',
+					arguments: expect.objectContaining({ content: literal })
+				})
+			])
+		);
+	});
+});
+
 /**
  * SHA-bound mutation batch approval — the write protocol that replaced the
  * turn contract DSL (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 Decision 1).
@@ -11213,7 +11325,7 @@ describe('SHA-bound mutation batch approval', () => {
 			.map((message) => message.content)
 			.join('\n');
 		// The exact executable arguments are in the reviewer's evidence.
-		expect(reviewerUserMessage).toContain('"tool":"create_onto_task"');
+		expect(reviewerUserMessage).toContain('"tool": "create_onto_task"');
 		expect(reviewerUserMessage).toContain('Permit');
 		expect(reviewerUserMessage).toContain('Inspection');
 		expect(reviewerUserMessage).toContain(expectedBatchSha());
@@ -11233,7 +11345,14 @@ describe('SHA-bound mutation batch approval', () => {
 		const semanticReviewer = clientWithRounds([reviewerApproval(expectedBatchSha())]);
 		const invocation = await batchProvider(client, semanticReviewer);
 
-		await collect(invocation.stream());
+		const reviewSteps = await collect(invocation.stream());
+		expect(reviewSteps.filter((step) => step.type === 'semantic')).toEqual([
+			expect.objectContaining({ currentActivity: 'Checking the requested change...' })
+		]);
+		expect(reviewSteps.at(-1)).toMatchObject({
+			type: 'read_tool',
+			toolName: 'approve_mutation_batch_review'
+		});
 		const executionSteps = await collect(
 			invocation.continueWithToolResults!({
 				round: 2,
@@ -11257,6 +11376,8 @@ describe('SHA-bound mutation batch approval', () => {
 
 		const mutatingSteps = executionSteps.filter((step) => step.type === 'mutating_tool');
 		expect(mutatingSteps).toHaveLength(4);
+		// Each next step is a tool call; no extra generic progress save precedes it.
+		expect(executionSteps).toEqual(mutatingSteps);
 		// The executed arguments are the proposed arguments, byte for byte.
 		expect(mutatingSteps.map((step) => (step as { arguments: JsonObject }).arguments)).toEqual([
 			{ project_id: PROJECT_ID, title: 'Permit' },
@@ -11303,6 +11424,50 @@ describe('SHA-bound mutation batch approval', () => {
 				})
 			])
 		);
+	});
+
+	it('constrains only the bounded SHA-mismatch repair to the reviewed batch', async () => {
+		const client = clientWithRounds([proposedBatchRound()]);
+		const semanticReviewer = clientWithRounds([
+			reviewerApproval('f'.repeat(64)),
+			reviewerApproval(expectedBatchSha())
+		]);
+		const invocation = await batchProvider(client, semanticReviewer);
+
+		const steps = await collect(invocation.stream());
+
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+		const firstApproval = semanticReviewer.stream.mock.calls[0]![0].tools.find(
+			(tool) => tool.function.name === 'approve_mutation_batch_review'
+		);
+		const repairedApproval = semanticReviewer.stream.mock.calls[1]![0].tools.find(
+			(tool) => tool.function.name === 'approve_mutation_batch_review'
+		);
+		const firstProperties = firstApproval?.function.parameters.properties;
+		const repairedProperties = repairedApproval?.function.parameters.properties;
+		const firstSha =
+			firstProperties &&
+			typeof firstProperties === 'object' &&
+			!Array.isArray(firstProperties)
+				? firstProperties.batch_sha256
+				: undefined;
+		const repairedSha =
+			repairedProperties &&
+			typeof repairedProperties === 'object' &&
+			!Array.isArray(repairedProperties)
+				? repairedProperties.batch_sha256
+				: undefined;
+		expect(firstSha).not.toHaveProperty('enum');
+		expect(repairedSha).toMatchObject({ enum: [expectedBatchSha()] });
+		expect(steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					toolName: 'approve_mutation_batch_review'
+				})
+			])
+		);
+		expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
 	});
 
 	it('returns a rejected batch to the actor and re-reviews the corrected calls', async () => {
@@ -11406,8 +11571,8 @@ describe('SHA-bound mutation batch approval', () => {
 				message.content.startsWith('Previous rejected proposal')
 		);
 		expect(rejectedEvidence?.content).toContain('unexecuted, not authorization or a receipt');
-		expect(rejectedEvidence?.content).toContain('"title":"Inspection"');
-		expect(rejectedEvidence?.content).not.toContain('"title":"Punch list"');
+		expect(rejectedEvidence?.content).toContain('"title": "Inspection"');
+		expect(rejectedEvidence?.content).not.toContain('"title": "Punch list"');
 		// The second review is bound to the corrected batch, not the first one.
 		expect(
 			semanticReviewer.stream.mock.calls[1]![0].messages.map(
@@ -11449,15 +11614,18 @@ describe('SHA-bound mutation batch approval', () => {
 		expect(steps.filter((step) => step.type === 'mutating_tool')).toHaveLength(1);
 		expect(semanticReviewer.stream).not.toHaveBeenCalled();
 	});
-	function approvingReviewer() {
+	function approvingReviewer(mismatchOnCall?: number) {
 		let count = 0;
 		return {
 			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>((request) => {
 				const text = request.messages.map((message) => message.content).join('\n');
 				const sha = text.match(/Exact proposed batch SHA-256: ([a-f0-9]{64})/)![1]!;
-				const events = reviewerApproval(sha);
+				const reviewCall = ++count;
+				const events = reviewerApproval(
+					reviewCall === mismatchOnCall ? 'f'.repeat(64) : sha
+				);
 				(events[0] as { toolCall: Array<{ id: string }> }).toolCall[0]!.id =
-					`stage-review-${++count}`;
+					`stage-review-${reviewCall}`;
 				return (async function* () {
 					for (const event of events) yield event;
 				})();
@@ -11518,7 +11686,10 @@ describe('SHA-bound mutation batch approval', () => {
 				{ type: 'done', finishedReason: 'stop' }
 			]
 		]);
-		const reviewer = approvingReviewer();
+		// Reproduce Case 2's exact boundary: the create stage is already durable,
+		// then the reviewer semantically approves the link stage but mistypes its
+		// digest once. The bounded retry must preserve the prior receipts.
+		const reviewer = approvingReviewer(2);
 		const invocation = await batchProvider(client, reviewer);
 		const firstReview = await collect(invocation.stream());
 		expect(firstReview.some((step) => step.type === 'text_delta')).toBe(false);
@@ -11549,9 +11720,25 @@ describe('SHA-bound mutation batch approval', () => {
 		expect(final.filter((step) => step.type === 'text_delta')).toEqual([
 			{ type: 'text_delta', text: 'Created four tasks and saved their dependency.' }
 		]);
-		expect(reviewer.stream).toHaveBeenCalledTimes(2);
+		expect(reviewer.stream).toHaveBeenCalledTimes(3);
 		expect(client.stream).toHaveBeenCalledTimes(3);
 		expect(client.stream.mock.calls[1]![0].toolChoice).toBe('auto');
+		const linkReviewSha = reviewer.stream.mock.calls[1]![0].messages.map(
+			(message) => message.content
+		)
+			.join('\n')
+			.match(/Exact proposed batch SHA-256: ([a-f0-9]{64})/)![1]!;
+		const approvalShaSchema = (reviewCall: number) => {
+			const approval = reviewer.stream.mock.calls[reviewCall]![0].tools.find(
+				(tool) => tool.function.name === 'approve_mutation_batch_review'
+			);
+			const properties = approval?.function.parameters.properties;
+			return properties && typeof properties === 'object' && !Array.isArray(properties)
+				? properties.batch_sha256
+				: undefined;
+		};
+		expect(approvalShaSchema(1)).not.toHaveProperty('enum');
+		expect(approvalShaSchema(2)).toMatchObject({ enum: [linkReviewSha] });
 		expect(
 			client.stream.mock.calls[1]![0].messages.map((message) => message.content).join('\n')
 		).toContain(links.src_id);

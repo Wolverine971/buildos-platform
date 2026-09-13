@@ -9,6 +9,7 @@ import {
 } from '@buildos/agentic-chat-runtime/loop';
 import { resolveReviewedTurnContractFromExecutions } from './reviewedTurnContract';
 import {
+	readChatWorkflowProgress,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgentStreamEventV1,
@@ -171,6 +172,7 @@ type PublisherPort = Pick<
 	| 'registerTurn'
 	| 'publishReconcileHint'
 	| 'appendText'
+	| 'enqueueSemantic'
 	| 'publishSemantic'
 	| 'flushTurn'
 	| 'publishCommittedSemantic'
@@ -469,6 +471,7 @@ export class AgenticChatTurnExecutor {
 				streamRunId: executionInput.streamRunId,
 				clientTurnId: executionInput.clientTurnId,
 				executionGeneration: generation,
+				acceptedAt: executionInput.timingBaseline.admittedAt,
 				onOverload: (error) => overload.abort(error),
 				onPersistenceObserved: (observation) => {
 					this.captureRuntimeTiming(runtimeTiming, (timing) =>
@@ -839,12 +842,18 @@ export class AgenticChatTurnExecutor {
 					timing.markPublisherDrainCompleted()
 				);
 			}
-			await this.captureResearch(executionInput, envelope.processingToken, combined.signal);
-			await this.captureStatedFuture(
-				executionInput,
-				envelope.processingToken,
-				combined.signal
-			);
+			if (preparedProvider?.automaticDomainCapture !== 'disabled') {
+				await this.captureResearch(
+					executionInput,
+					envelope.processingToken,
+					combined.signal
+				);
+				await this.captureStatedFuture(
+					executionInput,
+					envelope.processingToken,
+					combined.signal
+				);
+			}
 			await this.publishExecutorLifecycle(
 				executionInput,
 				projection,
@@ -2592,20 +2601,26 @@ export class AgenticChatTurnExecutor {
 				projection.semanticEvents.shift();
 			}
 
+			let durablyAccepted = false;
 			try {
-				await abortable(
-					this.ports.publisher.publishSemantic(claim.turnRunId, {
-						transitionId: step.transitionId,
-						phase: step.phase,
-						eventType: step.eventType,
-						projection: toProjectionJson(projection),
-						eventPayload: step.eventPayload
-					}),
-					signal
-				);
+				const queued = this.ports.publisher.enqueueSemantic(claim.turnRunId, {
+					transitionId: step.transitionId,
+					phase: step.phase,
+					eventType: step.eventType,
+					projection: toProjectionJson(projection),
+					eventPayload: step.eventPayload
+				});
+				void queued.delivery.catch(() => undefined);
+				await abortable(queued.accepted, signal);
+				durablyAccepted = true;
+				if (queued.pressureRelieved) {
+					await abortable(queued.pressureRelieved, signal);
+				}
 			} catch (error) {
-				projection.semanticEvents = priorEvents;
-				projection.currentActivity = priorActivity;
+				if (!durablyAccepted) {
+					projection.semanticEvents = priorEvents;
+					projection.currentActivity = priorActivity;
+				}
 				throw error;
 			}
 		});
@@ -2630,12 +2645,12 @@ export class AgenticChatTurnExecutor {
 		if (executionGeneration < 1) {
 			return result('recovery_required', envelope.turnRunId, executionGeneration);
 		}
+		// Current-turn usage must settle before billing, including recovery paths.
+		// Recovery may retire the generation, so observations must land here too.
+		await this.effects.drainPendingEffects(envelope.turnRunId);
 		if (consumptionBillingUserId) {
 			await this.evaluateConsumptionBilling(consumptionBillingUserId);
 		}
-		// Recovery may retire this generation (retry, reclassification); join
-		// the detached telemetry first so its rows are not fenced out.
-		await this.effects.drainPendingEffects(envelope.turnRunId);
 		try {
 			const receipt = await this.awaitTerminal('turn recovery', () =>
 				this.ports.control.recover({
@@ -2817,6 +2832,22 @@ export class AgenticChatTurnExecutor {
 			'';
 		let mayPublishTerminal = publisherRegistered;
 		if (publisherRegistered) {
+			const beforeDrain = this.ports.publisher.getSnapshot(claim.turnRunId);
+			if (
+				!beforeDrain.persistenceRetryPending &&
+				(beforeDrain.pendingPersistenceEvents > 0 ||
+					beforeDrain.pendingDeliveryEvents > 0 ||
+					beforeDrain.busy)
+			) {
+				try {
+					await this.awaitTerminal('publisher drain before terminal finalization', () =>
+						this.ports.publisher.flushTurn(claim.turnRunId)
+					);
+				} catch {
+					// Durable terminal truth can still converge through the database. A
+					// blocked live-delivery drain is handled by the snapshot/abandon fence.
+				}
+			}
 			const snapshot = this.ports.publisher.getSnapshot(claim.turnRunId);
 			assistantText = assistantTextOverride ?? snapshot.assistantText;
 			if (snapshot.pendingEvents > 0 || snapshot.busy) {
@@ -2824,6 +2855,8 @@ export class AgenticChatTurnExecutor {
 				mayPublishTerminal = false;
 			}
 		}
+		// Join detached usage before billing reads current-turn consumption.
+		await this.effects.drainPendingEffects(claim.turnRunId);
 		if (reevaluateConsumptionBilling) {
 			await this.evaluateConsumptionBilling(claim.userId);
 		}
@@ -2893,6 +2926,11 @@ export class AgenticChatTurnExecutor {
 		// are trustworthy; otherwise it safely falls back to the base terminal CAS.
 		const lastTurnContext =
 			status === 'cancelled' && timingDraft === null ? null : terminalLastTurnContext;
+		const workflowProgress = projection.semanticEvents
+			.slice()
+			.reverse()
+			.map((event) => readChatWorkflowProgress((event as unknown as JsonObject).workflow))
+			.find((value) => value !== null);
 		const terminalInput: AgenticChatTerminalFinalizeInputV1 = {
 			...envelope,
 			userId: claim.userId,
@@ -2907,6 +2945,9 @@ export class AgenticChatTurnExecutor {
 				turn_run_id: claim.turnRunId,
 				execution_generation: claim.executionGeneration,
 				worker_runtime: 'agentic_chat_v1',
+				...(workflowProgress
+					? { chat_workflow_v1: workflowProgress as unknown as JsonObject }
+					: {}),
 				...(turnOutcome
 					? {
 							outcome_status: turnOutcome.status,
@@ -2968,10 +3009,6 @@ export class AgenticChatTurnExecutor {
 				: null
 		};
 
-		// Detached telemetry (tool observations, provider attempt receipts, the
-		// prompt snapshot) must land inside this generation: join it, bounded,
-		// before the terminal fence closes the write window.
-		await this.effects.drainPendingEffects(claim.turnRunId);
 		let terminal: AgenticChatTerminalFinalizeRpcResultV1;
 		try {
 			terminal = await this.finalizeWithTimingFallback(terminalInput, claim);
@@ -3005,7 +3042,8 @@ export class AgenticChatTurnExecutor {
 					const delivery = await this.awaitTerminal('committed-event delivery', () =>
 						this.ports.publisher.publishCommittedSemantic(
 							claim.turnRunId,
-							committedEvent
+							committedEvent,
+							{ committedThroughSequence: terminal.terminal_sequence_index }
 						)
 					);
 					if (
@@ -3104,8 +3142,9 @@ export class AgenticChatTurnExecutor {
 	): Promise<void> {
 		const queued = this.ports.publisher.appendText(turnRunId, text);
 		// A blocked publisher is synchronously visible to a later append or flush.
-		// Handle this detached promise immediately so an early rejection cannot
+		// Handle both detached halves immediately so an early rejection cannot
 		// surface as an unhandled rejection before that authoritative boundary.
+		void queued.accepted.catch(() => undefined);
 		void queued.delivery.catch(() => undefined);
 		if (queued.pressureRelieved) {
 			await abortable(queued.pressureRelieved, signal);

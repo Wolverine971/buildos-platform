@@ -1,4 +1,6 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.ts
+import { readChatWorkflowProgress } from '@buildos/shared-types';
+// apps/web/src/lib/components/agent/agent-chat-sse-handler.ts
 //
 // SSE event handler for AgentChatModal.
 // Extracts ~350 LOC of switch/case logic out of the modal into a factory
@@ -739,11 +741,13 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				return;
 
 			case 'agent_state': {
+				const workflow = readChatWorkflowProgress(event.workflow);
 				const agentState = event.state as AgentLoopState;
 				thinking.updateState(agentState, event.details);
 				if (event.details) {
 					thinking.addActivity(event.details, 'state_change', {
 						state: agentState,
+						...(workflow ? { workflow } : {}),
 						details: event.details,
 						...(event.event_id ? { eventId: event.event_id } : {}),
 						...(event.activity_visibility

@@ -1,6 +1,8 @@
 <!-- apps/web/src/lib/components/agent/ThinkingBlock.svelte -->
 <!-- INKPRINT Design System: Thinking block with terminal-like activity log -->
 <script lang="ts">
+	import { readChatWorkflowProgress } from '@buildos/shared-types';
+	import WorkflowProgressCard from './WorkflowProgressCard.svelte';
 	import {
 		ChevronDown,
 		ChevronRight,
@@ -29,6 +31,14 @@
 	}
 
 	let { block, onToggleCollapse, onClientActionComplete }: Props = $props();
+
+	const workflow = $derived.by(() => {
+		for (let i = block.activities.length - 1; i >= 0; i--) {
+			const value = readChatWorkflowProgress(block.activities[i]?.metadata?.workflow);
+			if (value) return value;
+		}
+		return null;
+	});
 
 	// Expanded state: false = compact (half height), true = full height
 	let isExpanded = $state(false);
@@ -126,166 +136,172 @@
 
 <!-- INKPRINT thinking block card with Thread texture -->
 <div class="thinking-block-wrap">
-	<div
-		class="thinking-block overflow-hidden border border-border bg-card shadow-ink tx tx-thread tx-weak"
-		class:thinking-block-compact={!hasDisplayedActivities}
-		class:thinking-block-with-activity={hasDisplayedActivities}
-		class:thinking-block-active={showAnimatedHammer}
-		class:thinking-block-complete={block.status === 'completed' && !hasDisplayedActivities}
-		class:thinking-block-error={block.status === 'error'}
-	>
-		<!-- No live region on the container: role="status" is implicitly atomic,
+	{#if workflow}
+		<WorkflowProgressCard progress={workflow} status={block.status} />
+	{:else}
+		<div
+			class="thinking-block overflow-hidden border border-border bg-card shadow-ink tx tx-thread tx-weak"
+			class:thinking-block-compact={!hasDisplayedActivities}
+			class:thinking-block-with-activity={hasDisplayedActivities}
+			class:thinking-block-active={showAnimatedHammer}
+			class:thinking-block-complete={block.status === 'completed' && !hasDisplayedActivities}
+			class:thinking-block-error={block.status === 'error'}
+		>
+			<!-- No live region on the container: role="status" is implicitly atomic,
 		     so every appended activity re-announced the whole block. The activity
 		     list below is a role="log", which announces only new entries. -->
-		<button
-			type="button"
-			onclick={() => {
-				if (hasDisplayedActivities) onToggleCollapse(block.id);
-			}}
-			disabled={!hasDisplayedActivities}
-			class="thinking-header"
-			aria-expanded={hasDisplayedActivities ? !block.isCollapsed : undefined}
-			aria-label={hasDisplayedActivities
-				? block.isCollapsed
-					? 'Expand BuildOS thinking log'
-					: 'Collapse BuildOS thinking log'
-				: undefined}
-		>
-			<div class="flex min-w-0 items-center gap-1.5 sm:gap-2">
-				{#if hasDisplayedActivities}
-					{#if block.isCollapsed}
-						<ChevronRight
-							class="h-3 w-3 shrink-0 text-muted-foreground"
-							aria-hidden="true"
-						/>
-					{:else}
-						<ChevronDown
-							class="h-3 w-3 shrink-0 text-muted-foreground"
-							aria-hidden="true"
-						/>
-					{/if}
-				{:else}
-					<span class="thinking-compact-icon" aria-hidden="true">
-						{#if showAnimatedHammer}
-							<span class="glowing-hammer">⚒</span>
-						{:else if block.status === 'completed'}
-							<Check class="h-3.5 w-3.5 text-success" />
-						{:else if block.status === 'error'}
-							<X class="h-3.5 w-3.5 text-destructive" />
-						{:else}
-							<Loader class="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-						{/if}
-					</span>
-				{/if}
-				{#if showAnimatedHammer}
+			<button
+				type="button"
+				onclick={() => {
+					if (hasDisplayedActivities) onToggleCollapse(block.id);
+				}}
+				disabled={!hasDisplayedActivities}
+				class="thinking-header"
+				aria-expanded={hasDisplayedActivities ? !block.isCollapsed : undefined}
+				aria-label={hasDisplayedActivities
+					? block.isCollapsed
+						? 'Expand BuildOS thinking log'
+						: 'Collapse BuildOS thinking log'
+					: undefined}
+			>
+				<div class="flex min-w-0 items-center gap-1.5 sm:gap-2">
 					{#if hasDisplayedActivities}
-						<span class="glowing-hammer shrink-0" aria-hidden="true">⚒</span>
-					{/if}
-				{/if}
-
-				<span
-					class="min-w-0 truncate font-mono text-2xs font-semibold tracking-normal text-foreground {hasDisplayedActivities
-						? 'uppercase sm:text-xs'
-						: ''}"
-				>
-					{hasDisplayedActivities ? headerLabel : compactLabel}
-				</span>
-
-				{#if showAnimatedHammer}
-					<span
-						class="thinking-dots"
-						class:thinking-dots-hidden={hasDisplayedActivities}
-						aria-hidden="true"
-					>
-						<span></span>
-						<span></span>
-						<span></span>
-					</span>
-				{:else if !hasDisplayedActivities}
-					<span class="thinking-compact-detail truncate">{compactDetail}</span>
-				{/if}
-			</div>
-			{#if hasDisplayedActivities}
-				<span class="activity-count-badge">
-					{activitySummary}
-				</span>
-			{/if}
-		</button>
-
-		<!-- INKPRINT activity log panel -->
-		<div
-			class="thinking-body"
-			class:thinking-body-open={hasDisplayedActivities && !block.isCollapsed}
-		>
-			<div class="thinking-body-inner">
-				<div class="p-2 sm:p-2.5">
-					<div
-						bind:this={logContainer}
-						onscroll={handleLogScroll}
-						class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-2xs shadow-ink-inner sm:text-2xs"
-						class:thinking-log-expanded={isExpanded}
-						role="log"
-						aria-label="BuildOS thinking log"
-					>
-						{#each displayedActivities as activity (activity.id)}
-							{@const style = getActivityStyle(activity.activityType)}
-							{@const ActivityIcon = style.icon}
-							<div class="py-0.5">
-								<div class="flex items-center gap-1.5 leading-snug">
-									<!-- Icon -->
-									<span class="shrink-0 {style.color}" aria-hidden="true">
-										<ActivityIcon class="h-3 w-3" />
-									</span>
-
-									<!-- Content -->
-									<span
-										class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-foreground"
-										>{activity.content}</span
-									>
-
-									<!-- Status indicator (for tool calls) -->
-									{#if activity.status === 'pending'}
-										<Loader
-											class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
-											aria-label="Loading"
-										/>
-									{:else if activity.status === 'completed'}
-										<Check
-											class="h-2.5 w-2.5 shrink-0 text-success"
-											aria-label="Completed"
-										/>
-									{:else if activity.status === 'failed'}
-										<X
-											class="h-2.5 w-2.5 shrink-0 text-destructive"
-											aria-label="Failed"
-										/>
-									{/if}
-								</div>
-							</div>
-						{/each}
-					</div>
-					<!-- Expand/collapse toggle for the log height -->
-					{#if displayedActivityCount > 3}
-						<button
-							type="button"
-							onclick={toggleExpand}
-							class="mt-1 flex w-full items-center justify-center gap-1 text-center micro-label font-semibold text-muted-foreground transition-colors hover:text-foreground"
-							aria-label={isExpanded ? 'Show less activity' : 'Show more activity'}
-							aria-expanded={isExpanded}
-						>
-							<ChevronDown
-								class="thinking-log-chevron h-3 w-3 {isExpanded
-									? 'thinking-log-chevron-expanded'
-									: ''}"
+						{#if block.isCollapsed}
+							<ChevronRight
+								class="h-3 w-3 shrink-0 text-muted-foreground"
 								aria-hidden="true"
 							/>
-							{isExpanded ? 'Show less' : 'Show more'}
-						</button>
+						{:else}
+							<ChevronDown
+								class="h-3 w-3 shrink-0 text-muted-foreground"
+								aria-hidden="true"
+							/>
+						{/if}
+					{:else}
+						<span class="thinking-compact-icon" aria-hidden="true">
+							{#if showAnimatedHammer}
+								<span class="glowing-hammer">⚒</span>
+							{:else if block.status === 'completed'}
+								<Check class="h-3.5 w-3.5 text-success" />
+							{:else if block.status === 'error'}
+								<X class="h-3.5 w-3.5 text-destructive" />
+							{:else}
+								<Loader class="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+							{/if}
+						</span>
 					{/if}
+					{#if showAnimatedHammer}
+						{#if hasDisplayedActivities}
+							<span class="glowing-hammer shrink-0" aria-hidden="true">⚒</span>
+						{/if}
+					{/if}
+
+					<span
+						class="min-w-0 truncate font-mono text-2xs font-semibold tracking-normal text-foreground {hasDisplayedActivities
+							? 'uppercase sm:text-xs'
+							: ''}"
+					>
+						{hasDisplayedActivities ? headerLabel : compactLabel}
+					</span>
+
+					{#if showAnimatedHammer}
+						<span
+							class="thinking-dots"
+							class:thinking-dots-hidden={hasDisplayedActivities}
+							aria-hidden="true"
+						>
+							<span></span>
+							<span></span>
+							<span></span>
+						</span>
+					{:else if !hasDisplayedActivities}
+						<span class="thinking-compact-detail truncate">{compactDetail}</span>
+					{/if}
+				</div>
+				{#if hasDisplayedActivities}
+					<span class="activity-count-badge">
+						{activitySummary}
+					</span>
+				{/if}
+			</button>
+
+			<!-- INKPRINT activity log panel -->
+			<div
+				class="thinking-body"
+				class:thinking-body-open={hasDisplayedActivities && !block.isCollapsed}
+			>
+				<div class="thinking-body-inner">
+					<div class="p-2 sm:p-2.5">
+						<div
+							bind:this={logContainer}
+							onscroll={handleLogScroll}
+							class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-2xs shadow-ink-inner sm:text-2xs"
+							class:thinking-log-expanded={isExpanded}
+							role="log"
+							aria-label="BuildOS thinking log"
+						>
+							{#each displayedActivities as activity (activity.id)}
+								{@const style = getActivityStyle(activity.activityType)}
+								{@const ActivityIcon = style.icon}
+								<div class="py-0.5">
+									<div class="flex items-center gap-1.5 leading-snug">
+										<!-- Icon -->
+										<span class="shrink-0 {style.color}" aria-hidden="true">
+											<ActivityIcon class="h-3 w-3" />
+										</span>
+
+										<!-- Content -->
+										<span
+											class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-foreground"
+											>{activity.content}</span
+										>
+
+										<!-- Status indicator (for tool calls) -->
+										{#if activity.status === 'pending'}
+											<Loader
+												class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
+												aria-label="Loading"
+											/>
+										{:else if activity.status === 'completed'}
+											<Check
+												class="h-2.5 w-2.5 shrink-0 text-success"
+												aria-label="Completed"
+											/>
+										{:else if activity.status === 'failed'}
+											<X
+												class="h-2.5 w-2.5 shrink-0 text-destructive"
+												aria-label="Failed"
+											/>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+						<!-- Expand/collapse toggle for the log height -->
+						{#if displayedActivityCount > 3}
+							<button
+								type="button"
+								onclick={toggleExpand}
+								class="mt-1 flex w-full items-center justify-center gap-1 text-center micro-label font-semibold text-muted-foreground transition-colors hover:text-foreground"
+								aria-label={isExpanded
+									? 'Show less activity'
+									: 'Show more activity'}
+								aria-expanded={isExpanded}
+							>
+								<ChevronDown
+									class="thinking-log-chevron h-3 w-3 {isExpanded
+										? 'thinking-log-chevron-expanded'
+										: ''}"
+									aria-hidden="true"
+								/>
+								{isExpanded ? 'Show less' : 'Show more'}
+							</button>
+						{/if}
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	{/if}
 </div>
 
 {#each clientActions as action (action.actionId)}

@@ -1,4 +1,12 @@
 // apps/worker/src/workers/agentic-chat/composition-root.ts
+import {
+	logAgenticChatPersistenceTrace,
+	type AgenticChatPersistenceTraceSinkV1
+} from './persistenceTrace';
+// apps/worker/src/workers/agentic-chat/composition-root.ts
+import { ChatWorkflowPrototypeProvider } from './workflow/prototype-provider';
+import { createWorkflowContextLoader } from './workflow/context-loader';
+// apps/worker/src/workers/agentic-chat/composition-root.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
@@ -30,8 +38,8 @@ import {
 	SupabaseAgenticChatEffectControlAdapter
 } from './effectControl';
 import { SupabaseAgenticChatExecutionInputAdapter } from './executionInput';
-import { AgenticChatMutationExecutor } from './mutation-executor';
-import { AgenticChatTurnExecutor } from './turn-executor';
+import { AgenticChatMutationExecutor, type AgenticChatMutationSpanV1 } from './mutation-executor';
+import { AgenticChatTurnExecutor, DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS } from './turn-executor';
 import {
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderPortV1,
@@ -77,6 +85,11 @@ import {
 	type AgenticChatExecutionObservationRpcClient,
 	SupabaseAgenticChatExecutionObservationAdapter
 } from './executionObservation';
+import {
+	AgenticChatTurnActivityRegistry,
+	projectAgenticChatWorkerProgressHealthV1,
+	withAgenticChatTurnActivityV1
+} from './deliveryHealth';
 import { AgenticChatCreateOntoProjectMutationAdapter } from './createOntoProjectMutationAdapter';
 import { AgenticChatDelegateTaskMutationAdapter } from './delegateTaskMutationAdapter';
 import {
@@ -170,6 +183,7 @@ export function createAgenticChatCompositionRoot(options: {
 	providerClient: AgenticChatTurnProviderClientPortV1;
 	semanticReviewerClient?: AgenticChatTurnProviderClientPortV1;
 	providerConfigured: boolean;
+	workflowPrototypeUserIds?: readonly string[];
 	/** Separate default-off gate for ephemeral current-turn image resolution. */
 	liveVisionEnabled?: boolean;
 	/** Shared default-off gate for terminal consumption-billing re-evaluation. */
@@ -210,6 +224,9 @@ export function createAgenticChatCompositionRoot(options: {
 	onConsumptionBillingError?: (error: unknown) => void;
 	/** Injectable telemetry sink; production emits one bounded structured span summary per turn. */
 	onTimingSnapshot?: AgenticChatRuntimeTimingObserverV1;
+	onPersistenceTrace?: AgenticChatPersistenceTraceSinkV1;
+	/** Shared with provider clients so per-turn health sees their attempt observations. */
+	turnActivity?: AgenticChatTurnActivityRegistry;
 }): AgenticChatCompositionRoot {
 	const consumerConfig: AgenticChatConsumerConfig = {
 		...DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
@@ -247,6 +264,11 @@ export function createAgenticChatCompositionRoot(options: {
 	const promptSnapshots = new SupabaseAgenticChatPromptSnapshotAdapter(rpcClient);
 	const toolExecutions = new SupabaseAgenticChatToolExecutionAdapter(rpcClient);
 	const executionObservations = new SupabaseAgenticChatExecutionObservationAdapter(rpcClient);
+	const turnActivity = options.turnActivity ?? new AgenticChatTurnActivityRegistry();
+	const observedExecutionObservations = withAgenticChatTurnActivityV1(
+		executionObservations,
+		turnActivity
+	);
 	const sessionHandoff = new SupabaseAgenticChatSessionHandoffAdapter(rpcClient);
 	const researchCapture = new SupabaseAgenticChatResearchCaptureAdapter(rpcClient);
 	const statedFutureCapture = new SupabaseAgenticChatStatedFutureCaptureAdapter(
@@ -270,6 +292,22 @@ export function createAgenticChatCompositionRoot(options: {
 	const publisher = new AgenticChatStreamPublisher(
 		{
 			persistence: new SupabaseAgenticChatPersistenceAdapter(rpcClient),
+			onTrace: options.onPersistenceTrace ?? logAgenticChatPersistenceTrace,
+			onMetric: (metric, turnRunId) => {
+				if (
+					metric === 'persistence_retry' ||
+					metric === 'soft_pressure' ||
+					metric === 'publisher_overload'
+				) {
+					console.info(
+						JSON.stringify({
+							event: 'agentic_chat_publisher_metric',
+							metric,
+							turnRunId
+						})
+					);
+				}
+			},
 			broadcast
 		},
 		options.publisherConfig
@@ -284,7 +322,7 @@ export function createAgenticChatCompositionRoot(options: {
 		configured: options.providerConfigured,
 		concurrency: consumerConfig.concurrency
 	});
-	const provider = new AgenticChatTurnProviderAdapter(
+	const directProvider = new AgenticChatTurnProviderAdapter(
 		{
 			client: options.providerClient,
 			semanticReviewer: options.semanticReviewerClient,
@@ -296,6 +334,13 @@ export function createAgenticChatCompositionRoot(options: {
 		mutationCapabilities,
 		options.mutationBatchLaneEnabled ?? true
 	);
+	const provider = new ChatWorkflowPrototypeProvider({
+		direct: directProvider,
+		client: options.providerClient,
+		capacity: providerCapacity,
+		allowedUserIds: options.workflowPrototypeUserIds ?? [],
+		loadContext: createWorkflowContextLoader(options.client)
+	});
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),
 		webSearchReviewer: createAgenticChatWebSearchReviewer(
@@ -321,7 +366,8 @@ export function createAgenticChatCompositionRoot(options: {
 		mutationAdapters.length > 0
 			? new AgenticChatMutationExecutor({
 					control: effectControl,
-					mutatingTool: new AgenticChatMutationAdapterRouter(mutationAdapters)
+					mutatingTool: new AgenticChatMutationAdapterRouter(mutationAdapters),
+					onSpan: reportAgenticChatMutationSpan
 				})
 			: disabledToolPort('mutating_tools_disabled');
 	const executor = new AgenticChatTurnExecutor(
@@ -332,7 +378,7 @@ export function createAgenticChatCompositionRoot(options: {
 			cancellation,
 			provider,
 			promptSnapshots,
-			executionObservations,
+			executionObservations: observedExecutionObservations,
 			onPromptSnapshotError:
 				options.onPromptSnapshotError ??
 				((error) =>
@@ -407,7 +453,18 @@ export function createAgenticChatCompositionRoot(options: {
 		},
 		cancellation,
 		recovery,
-		realtime: broadcast
+		realtime: broadcast,
+		progress: {
+			getHealth: () =>
+				projectAgenticChatWorkerProgressHealthV1({
+					publisher: publisher.getTurnProgressObservations(),
+					activity: turnActivity,
+					now: new Date().toISOString(),
+					providerActiveTimeoutMs:
+						options.providerBudgetMs ?? DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS,
+					stallTimeoutMs: consumer.config.stalledTimeoutMs
+				})
+		}
 	});
 	const capacity = new AgenticChatWorkerCapacityCollector({
 		runtime,
@@ -464,10 +521,20 @@ export function reportAgenticChatStalledRecovery(report: AgenticChatStalledRecov
 }
 
 export function reportAgenticChatRuntimeTiming(snapshot: AgenticChatRuntimeTimingSnapshotV1): void {
-	console.info('Agentic Chat runtime timing', {
-		event: 'agentic_chat_runtime_timing',
-		...snapshot
-	});
+	// One JSON line: object logging truncates nested span aggregates to
+	// `[Object]`, which left retained runs unable to attribute critical paths.
+	console.info(
+		'Agentic Chat runtime timing',
+		JSON.stringify({ event: 'agentic_chat_runtime_timing', ...snapshot })
+	);
+}
+
+/** One JSON line per effect-lifecycle span; identifiers and durations only. */
+export function reportAgenticChatMutationSpan(span: AgenticChatMutationSpanV1): void {
+	console.info(
+		'Agentic Chat mutation span',
+		JSON.stringify({ event: 'agentic_chat_mutation_span', ...span })
+	);
 }
 
 const STALLED_TURN_ALERT_AGE_MS = 10 * 60_000;

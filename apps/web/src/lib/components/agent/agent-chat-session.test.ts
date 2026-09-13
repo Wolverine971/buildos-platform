@@ -1,4 +1,6 @@
 // apps/web/src/lib/components/agent/agent-chat-session.test.ts
+import { CHAT_WORKFLOW_PROTOTYPE_VERSION } from '@buildos/shared-types';
+// apps/web/src/lib/components/agent/agent-chat-session.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -378,6 +380,35 @@ describe('agent-chat-session helpers', () => {
 		expect((block as any).activities.map((activity: any) => activity.id)).toEqual([
 			'restored-tool-tool_execution-exec-1'
 		]);
+	});
+
+	it('restores the workflow card with its reports when a completed conversation is reopened', () => {
+		const workflow = {
+			version: CHAT_WORKFLOW_PROTOTYPE_VERSION,
+			steps: ['context', 'plan', 'analyst', 'reviewer', 'answer'].map((id) => ({
+				id,
+				label: id,
+				status: 'completed',
+				result: 'Saved finding'
+			}))
+		};
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Combined recommendation',
+					created_at: '2026-09-12T12:00:00Z',
+					metadata: { chat_workflow_v1: workflow }
+				}
+			]
+		});
+		expect(snapshot.messages.map((message) => message.type)).toEqual([
+			'thinking_block',
+			'assistant'
+		]);
+		expect((snapshot.messages[0] as any).activities[0].metadata.workflow).toEqual(workflow);
 	});
 
 	it('buildAgentChatSessionSnapshot falls back to compact assistant tool trace metadata', () => {

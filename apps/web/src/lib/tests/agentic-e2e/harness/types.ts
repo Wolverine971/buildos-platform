@@ -18,6 +18,14 @@ export interface TurnTiming {
 	ttftMs: number | null;
 	terminalEventMs: number | null;
 	totalDurationMs: number | null;
+	/** Request headers and elapsed offsets only; all intake remains in the total clock. */
+	intakeRequests?: Array<{
+		phase: 'prewarm' | 'transport' | 'admission';
+		startedMs: number;
+		responseHeadersMs: number;
+		status: number;
+		serverTiming: string | null;
+	}>;
 }
 
 /** Client-observed arrival time for one SSE event, without retaining its payload. */

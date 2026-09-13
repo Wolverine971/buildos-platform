@@ -2,6 +2,7 @@
 
 import { deferred } from './helpers/deferred';
 import { describe, expect, it, vi } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
 import type {
 	AgenticChatSemanticEventRpcResultV1,
 	AgenticChatStreamDeliveryAckRpcResultV1,
@@ -32,6 +33,19 @@ function turn(suffix: string): AgenticChatPublisherTurnV1 {
 		executionGeneration: 1
 	};
 }
+
+const subscriptionTestMessage = {
+	kind: 'reconcile_hint',
+	topic: 'chat-user:user-subscribe',
+	event: 'agent-stream-reconcile',
+	payload: {
+		contract_version: 'agentic_chat_worker_v1',
+		turn_run_id: 'turn-subscribe',
+		session_id: 'session-subscribe',
+		execution_generation: 1,
+		durable_through_sequence: 0
+	}
+} as const;
 
 function createPersistence(
 	turns: AgenticChatPublisherTurnV1[],
@@ -108,15 +122,37 @@ function createPersistence(
 		},
 		async acknowledge(input) {
 			log.push(`ack:${input.turn_run_id}:${input.acknowledged_sequence}`);
-			return {
-				outcome: 'acknowledged',
+			// Mirror acknowledge_agentic_chat_stream_delivery: only the exact current
+			// durable sequence clears reconciliation. A committed terminal receipt is
+			// written by a larger transaction outside this fixture's counter.
+			let current = sequences.get(input.turn_run_id) ?? 0;
+			if (input.acknowledged_sequence === current + 1) {
+				current = input.acknowledged_sequence;
+				sequences.set(input.turn_run_id, current);
+			}
+			if (input.acknowledged_sequence > current) {
+				throw Object.assign(new Error('agentic_chat_stream_ack_future_sequence'), {
+					code: 'P0001'
+				});
+			}
+			const receipt = {
 				turn_run_id: input.turn_run_id,
 				queue_job_id: input.queue_job_id,
 				execution_generation: input.execution_generation,
 				acknowledged_sequence: input.acknowledged_sequence,
-				current_sequence: input.acknowledged_sequence,
-				reconcile_required: false
-			} satisfies AgenticChatStreamDeliveryAckRpcResultV1;
+				current_sequence: current
+			};
+			return input.acknowledged_sequence < current
+				? ({
+						...receipt,
+						outcome: 'newer_snapshot',
+						reconcile_required: true
+					} satisfies AgenticChatStreamDeliveryAckRpcResultV1)
+				: ({
+						...receipt,
+						outcome: 'acknowledged',
+						reconcile_required: false
+					} satisfies AgenticChatStreamDeliveryAckRpcResultV1);
 		}
 	};
 }
@@ -134,6 +170,79 @@ function createBroadcast(log: string[] = [], results: Array<'sent' | 'failed'> =
 }
 
 describe('AgenticChatStreamPublisher', () => {
+	it('traces slow persistence, retries, and pressure without accepting early or leaking payloads', async () => {
+		vi.useFakeTimers();
+		const context = turn('traced');
+		const persistence = createPersistence([context]);
+		const persist = persistence.persistSemantic.bind(persistence);
+		let attempts = 0;
+		persistence.persistSemantic = async (input) => {
+			attempts++;
+			await new Promise((resolve) => setTimeout(resolve, attempts === 1 ? 1000 : 200));
+			if (attempts === 1)
+				throw Object.assign(new Error('private-database-body'), { code: '40001' });
+			return persist(input);
+		};
+		const traces: import('../src/workers/agentic-chat/persistenceTrace').AgenticChatPersistenceTraceV1[] =
+			[];
+		const publisher = new AgenticChatStreamPublisher(
+			{
+				persistence,
+				broadcast: createBroadcast(),
+				onTrace: (trace) => {
+					traces.push(trace);
+					throw new Error('trace sink down');
+				}
+			},
+			{ turnPendingSoftEvents: 1, flushIntervalMs: 10 }
+		);
+		publisher.start();
+		publisher.registerTurn(context);
+		try {
+			const queued = publisher.enqueueSemantic(context.turnRunId, {
+				transitionId: 'traced-operation',
+				phase: 'stream',
+				eventType: 'agent_state',
+				projection: { private: 'private-document-content' },
+				eventPayload: { type: 'agent_state', details: 'private-document-content' }
+			});
+			let accepted = false;
+			void queued.accepted.then(() => {
+				accepted = true;
+			});
+			await vi.advanceTimersByTimeAsync(999);
+			expect(accepted).toBe(false);
+			await vi.advanceTimersByTimeAsync(1001);
+			await expect(queued.accepted).resolves.toMatchObject({
+				outcome: 'persisted',
+				sequenceIndex: 1
+			});
+			await queued.delivery;
+			await queued.pressureRelieved;
+			expect(traces.filter((t) => t.stage === 'attempt_finished')).toMatchObject([
+				{ attempt: 1, durationMs: 1000, outcome: 'failed', errorCode: '40001' },
+				{ attempt: 2, durationMs: 200, outcome: 'persisted' }
+			]);
+			expect(traces.find((t) => t.stage === 'retry_scheduled')).toMatchObject({
+				retryDelayMs: 250
+			});
+			expect(
+				traces.find((t) => t.stage === 'attempt_started' && t.attempt === 2)?.retryWaitMs
+			).toBeGreaterThanOrEqual(250);
+			expect(
+				traces.find((t) => t.stage === 'accepted')?.enqueueToReceiptMs
+			).toBeGreaterThanOrEqual(1450);
+			expect(traces.find((t) => t.stage === 'pressure_finished')).toMatchObject({
+				outcome: 'relieved'
+			});
+			expect(JSON.stringify(traces)).not.toContain('private-');
+			expect(JSON.stringify(traces)).not.toContain(context.processingToken);
+		} finally {
+			await publisher.stop();
+			vi.useRealTimers();
+		}
+	});
+
 	it('emits a claim-time reconcile hint without a durable stream write', async () => {
 		const context = turn('claimed');
 		const broadcast = createBroadcast();
@@ -219,6 +328,297 @@ describe('AgenticChatStreamPublisher', () => {
 		await publisher.stop();
 	});
 
+	it('accepts newer durable progress before delayed Broadcast and covers both events with one exact ACK', async () => {
+		const context = turn('durable-before-delivery');
+		const persistence = createPersistence([context]);
+		const broadcastGate = deferred<'sent'>();
+		const acknowledgementGate = deferred<void>();
+		const exactAcknowledge = persistence.acknowledge.bind(persistence);
+		persistence.acknowledge = vi.fn(async (input) => {
+			await acknowledgementGate.promise;
+			return exactAcknowledge(input);
+		});
+		const broadcast = {
+			publish: vi.fn(async (_message: AgenticChatBroadcastMessageV1) => broadcastGate.promise)
+		};
+		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast });
+		publisher.start();
+		publisher.registerTurn(context);
+
+		const first = publisher.enqueueSemantic(context.turnRunId, {
+			transitionId: 'durable-before-delivery-transition',
+			phase: 'stream',
+			eventType: 'turn_phase',
+			projection: { current_activity: 'Gathering project context' },
+			eventPayload: {
+				type: 'turn_phase',
+				turn_phase: 'acknowledged',
+				message: 'Gathering project context'
+			}
+		});
+		let firstDeliverySettled = false;
+		void first.delivery.finally(() => {
+			firstDeliverySettled = true;
+		});
+
+		await expect(first.accepted).resolves.toEqual({
+			outcome: 'persisted',
+			turnRunId: context.turnRunId,
+			executionGeneration: 1,
+			sequenceIndex: 1,
+			phase: 'stream',
+			eventType: 'turn_phase',
+			persistedAt: '2026-08-02T20:00:00.000Z'
+		});
+		expect(firstDeliverySettled).toBe(false);
+		expect(persistence.acknowledge).not.toHaveBeenCalled();
+
+		const second = publisher.enqueueSemantic(context.turnRunId, {
+			transitionId: 'durable-before-delivery-transition-2',
+			phase: 'prompt',
+			eventType: 'context_snapshot',
+			projection: { current_activity: 'Project context ready' },
+			eventPayload: { type: 'context_snapshot', message: 'Project context ready' }
+		});
+		let secondDeliverySettled = false;
+		void second.delivery.finally(() => {
+			secondDeliverySettled = true;
+		});
+		await expect(second.accepted).resolves.toMatchObject({
+			outcome: 'persisted',
+			sequenceIndex: 2,
+			eventType: 'context_snapshot'
+		});
+		expect(firstDeliverySettled).toBe(false);
+		expect(secondDeliverySettled).toBe(false);
+		expect(publisher.getSnapshot(context.turnRunId)).toMatchObject({
+			durableSequence: 2,
+			pendingEvents: 2
+		});
+
+		broadcastGate.resolve('sent');
+		await vi.waitFor(() => expect(persistence.acknowledge).toHaveBeenCalledOnce());
+		expect(firstDeliverySettled).toBe(false);
+		expect(secondDeliverySettled).toBe(false);
+		expect(persistence.acknowledge).toHaveBeenCalledWith(
+			expect.objectContaining({ acknowledged_sequence: 2 })
+		);
+		acknowledgementGate.resolve();
+		await expect(Promise.all([first.delivery, second.delivery])).resolves.toEqual([
+			'broadcast_acknowledged',
+			'broadcast_acknowledged'
+		]);
+		expect(broadcast.publish.mock.calls.map(([message]) => message.kind)).toEqual([
+			'event',
+			'event'
+		]);
+		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(false);
+		await publisher.stop();
+	});
+
+	it('keeps live delivery when its own later durable write supersedes an ACK', async () => {
+		const context = turn('own-supersession');
+		const persistence = createPersistence([context]);
+		const acknowledgementGate = deferred<void>();
+		const exactAcknowledge = persistence.acknowledge.bind(persistence);
+		const acknowledged: number[] = [];
+		persistence.acknowledge = vi.fn(async (input) => {
+			acknowledged.push(input.acknowledged_sequence);
+			if (input.acknowledged_sequence === 1) await acknowledgementGate.promise;
+			return exactAcknowledge(input);
+		});
+		const broadcast = createBroadcast();
+		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast });
+		publisher.start();
+		publisher.registerTurn(context);
+
+		const text = publisher.appendText(context.turnRunId, 'Reading the project');
+		await text.accepted;
+		await vi.waitFor(() => expect(acknowledged).toEqual([1]));
+		const semantic = publisher.enqueueSemantic(context.turnRunId, {
+			transitionId: 'own-supersession-transition',
+			phase: 'tool',
+			eventType: 'tool_call',
+			projection: { phase: 'tool' },
+			eventPayload: { type: 'tool_call', tool_name: 'onto_project_read' }
+		});
+		await expect(semantic.accepted).resolves.toMatchObject({ sequenceIndex: 2 });
+		acknowledgementGate.resolve();
+
+		// The database refuses ACK 1 once sequence 2 exists. That is supersession by
+		// this turn's own ordered work, not delivery uncertainty.
+		await expect(Promise.all([text.delivery, semantic.delivery])).resolves.toEqual([
+			'broadcast_sent_reconcile_pending',
+			'broadcast_acknowledged'
+		]);
+		expect(acknowledged).toEqual([1, 2]);
+		expect(broadcast.messages.map((message) => message.kind)).toEqual(['event', 'event']);
+		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(false);
+		await publisher.stop();
+	});
+
+	it('does not accept semantic progress when persistence rejects the write', async () => {
+		const context = turn('semantic-persistence-rejected');
+		const persistence = createPersistence([context]);
+		persistence.persistSemantic = vi.fn(async () => {
+			throw Object.assign(new Error('semantic write rejected'), { code: 'P0001' });
+		});
+		const broadcast = createBroadcast();
+		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast });
+		publisher.start();
+		publisher.registerTurn(context);
+
+		const publication = publisher.enqueueSemantic(context.turnRunId, {
+			transitionId: 'semantic-persistence-rejected-transition',
+			phase: 'stream',
+			eventType: 'turn_phase',
+			projection: { current_activity: 'Gathering project context' },
+			eventPayload: { type: 'turn_phase' }
+		});
+
+		await Promise.all([
+			expect(publication.accepted).rejects.toThrow('persistence_error:P0001'),
+			expect(publication.delivery).rejects.toThrow('persistence_error:P0001')
+		]);
+		expect(broadcast.messages).toHaveLength(0);
+		expect(publisher.getSnapshot(context.turnRunId)).toMatchObject({
+			durableSequence: 0,
+			blockedReason: 'persistence_rejected'
+		});
+		await publisher.stop();
+	});
+
+	it('rejects stale-generation acceptance without Broadcast or acknowledgement', async () => {
+		const context = turn('stale-semantic');
+		const persistence = createPersistence([context]);
+		persistence.persistSemantic = vi.fn(async (input) => ({
+			outcome: 'stale_generation' as const,
+			publish_allowed: false as const,
+			turn_run_id: input.turn_run_id,
+			queue_job_id: input.queue_job_id,
+			requested_execution_generation: input.execution_generation,
+			execution_generation: input.execution_generation + 1,
+			status: 'running' as const
+		}));
+		const acknowledge = vi.spyOn(persistence, 'acknowledge');
+		const broadcast = createBroadcast();
+		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast });
+		publisher.start();
+		publisher.registerTurn(context);
+
+		const publication = publisher.enqueueSemantic(context.turnRunId, {
+			transitionId: 'stale-semantic-transition',
+			phase: 'stream',
+			eventType: 'turn_phase',
+			projection: { current_activity: 'Stale worker' },
+			eventPayload: { type: 'turn_phase' }
+		});
+
+		await Promise.all([
+			expect(publication.accepted).rejects.toThrow('stale_generation'),
+			expect(publication.delivery).rejects.toThrow('stale_generation')
+		]);
+		expect(broadcast.messages).toHaveLength(0);
+		expect(acknowledge).not.toHaveBeenCalled();
+		expect(publisher.getSnapshot(context.turnRunId)).toMatchObject({
+			durableSequence: 0,
+			blockedReason: 'ownership_lost'
+		});
+		await publisher.stop();
+	});
+
+	it('settles delayed delivery when a turn is abandoned after durable acceptance', async () => {
+		const context = turn('abandon-delivery');
+		const broadcastGate = deferred<'sent'>();
+		const persistence = createPersistence([context]);
+		const acknowledge = vi.spyOn(persistence, 'acknowledge');
+		const publisher = new AgenticChatStreamPublisher({
+			persistence,
+			broadcast: { publish: async () => broadcastGate.promise }
+		});
+		publisher.start();
+		publisher.registerTurn(context);
+		const publication = publisher.enqueueSemantic(context.turnRunId, {
+			transitionId: 'abandon-delivery-transition',
+			phase: 'stream',
+			eventType: 'turn_phase',
+			projection: { current_activity: 'Gathering project context' },
+			eventPayload: { type: 'turn_phase' }
+		});
+
+		await expect(publication.accepted).resolves.toMatchObject({
+			outcome: 'persisted',
+			sequenceIndex: 1
+		});
+		publisher.abandonTurn(context.turnRunId, 'cancel_requested');
+		await expect(publication.delivery).rejects.toThrow('cancel_requested');
+		broadcastGate.resolve('sent');
+		await vi.waitFor(() => expect(acknowledge).not.toHaveBeenCalled());
+		await publisher.stop();
+	});
+
+	it('bounds persisted delivery backlog and settles it when shutdown drain expires', async () => {
+		vi.useFakeTimers();
+		try {
+			const context = turn('bounded-delivery-backlog');
+			const broadcastGate = deferred<'sent'>();
+			const publisher = new AgenticChatStreamPublisher(
+				{
+					persistence: createPersistence([context]),
+					broadcast: { publish: async () => broadcastGate.promise }
+				},
+				{
+					turnPendingSoftEvents: 1,
+					turnPendingHardEvents: 2,
+					workerPendingSoftEvents: 4,
+					workerPendingHardEvents: 8,
+					shutdownDrainTimeoutMs: 25
+				}
+			);
+			publisher.start();
+			publisher.registerTurn(context);
+			const first = publisher.enqueueSemantic(context.turnRunId, {
+				transitionId: 'bounded-delivery-backlog-1',
+				phase: 'stream',
+				eventType: 'turn_phase',
+				projection: { current_activity: 'First durable event' },
+				eventPayload: { type: 'turn_phase' }
+			});
+			await first.accepted;
+			const second = publisher.enqueueSemantic(context.turnRunId, {
+				transitionId: 'bounded-delivery-backlog-2',
+				phase: 'prompt',
+				eventType: 'context_snapshot',
+				projection: { current_activity: 'Second durable event' },
+				eventPayload: { type: 'context_snapshot' }
+			});
+			await second.accepted;
+			expect(second.pressure).toBe('soft_limit');
+			expect(publisher.getSnapshot(context.turnRunId).pendingEvents).toBe(2);
+
+			const deliveryRejections = Promise.all([
+				expect(first.delivery).rejects.toThrow('publisher_shutdown_drain_timeout'),
+				expect(second.delivery).rejects.toThrow('publisher_shutdown_drain_timeout')
+			]);
+			const stopping = publisher.stop();
+			await vi.advanceTimersByTimeAsync(25);
+			await expect(stopping).resolves.toMatchObject({
+				drained: false,
+				pendingEvents: 2
+			});
+			await deliveryRejections;
+			expect(publisher.getWorkerSnapshot()).toMatchObject({
+				pendingEvents: 0,
+				pendingBytes: 0,
+				pressure: 'normal'
+			});
+			broadcastGate.resolve('sent');
+			await vi.runAllTimersAsync();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('coalesces adjacent text and keeps a semantic transition behind its prefix', async () => {
 		const context = turn('ordered');
 		const log: string[] = [];
@@ -243,15 +643,19 @@ describe('AgenticChatStreamPublisher', () => {
 		});
 
 		await Promise.all([left.delivery, right.delivery, semantic]);
-		expect(publisher.getSnapshot(context.turnRunId).durableSequence).toBe(3);
+		expect(publisher.getSnapshot(context.turnRunId)).toMatchObject({
+			durableSequence: 3,
+			reconcileOnly: false
+		});
 		expect(persistence.textCalls.at(-1)?.[0]).toMatchObject({
 			text_delta: 'BC',
 			assistant_text: 'ABC'
 		});
+		// Both accepted events leave in one ordered delivery run. The database
+		// refuses ACK 2 once sequence 3 exists, so only the exact ACK 3 is sent.
 		expect(log).toEqual([
 			`persist:text:${context.turnRunId}`,
 			'broadcast:event',
-			`ack:${context.turnRunId}:2`,
 			'persist:semantic:tool_call',
 			'broadcast:event',
 			`ack:${context.turnRunId}:3`
@@ -470,9 +874,11 @@ describe('AgenticChatStreamPublisher', () => {
 		publisher.start();
 		publisher.registerTurn(context);
 
-		await expect(
-			publisher.appendText(context.turnRunId, 'bad prefix').delivery
-		).rejects.toThrow('rejected:P0001');
+		const publication = publisher.appendText(context.turnRunId, 'bad prefix');
+		await Promise.all([
+			expect(publication.accepted).rejects.toThrow('rejected:P0001'),
+			expect(publication.delivery).rejects.toThrow('rejected:P0001')
+		]);
 		expect(base.flushTextBatches).toHaveBeenCalledOnce();
 		expect(broadcast.messages).toHaveLength(0);
 		expect(publisher.getSnapshot(context.turnRunId).blockedReason).toBe('persistence_rejected');
@@ -525,10 +931,14 @@ describe('AgenticChatStreamPublisher', () => {
 			return await originalFlush(inputs);
 		};
 		const pending = publisher.appendText(context.turnRunId, '89');
-		void pending.delivery.catch(() => undefined);
+		const pendingRejections = Promise.all([
+			expect(pending.accepted).rejects.toBeInstanceOf(AgenticChatPublisherOverloadError),
+			expect(pending.delivery).rejects.toBeInstanceOf(AgenticChatPublisherOverloadError)
+		]);
 		expect(() => publisher.appendText(context.turnRunId, 'abcdefghij')).toThrow(
 			AgenticChatPublisherOverloadError
 		);
+		await pendingRejections;
 		expect(overloaded).toHaveBeenCalledOnce();
 		expect(overloaded.mock.calls[0]?.[0]).toMatchObject({
 			code: 'publisher_overload',
@@ -723,8 +1133,12 @@ describe('AgenticChatStreamPublisher', () => {
 		publisher.registerTurn(context);
 
 		const pending = publisher.appendText(context.turnRunId, 'late');
-		void pending.delivery.catch(() => undefined);
+		const pendingRejections = Promise.all([
+			expect(pending.accepted).rejects.toThrow('terminalizing'),
+			expect(pending.delivery).rejects.toThrow('terminalizing')
+		]);
 		publisher.abandonTurn(context.turnRunId, 'terminalizing');
+		await pendingRejections;
 		gate.resolve();
 		await vi.waitFor(() => expect(persistence.textCalls).toHaveLength(1));
 		expect(broadcast.messages).toHaveLength(0);
@@ -817,6 +1231,51 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 		expect(client.channel).toHaveBeenCalledOnce();
 	});
 
+	it('shares a pending subscription between the startup hint and first event with the installed SDK', async () => {
+		const client = createClient('https://unused.invalid', 'test-key', {
+			auth: { persistSession: false, autoRefreshToken: false }
+		});
+		// Exercise real topic deduplication and subscribe callback registration;
+		// only the socket transport and message delivery are replaced.
+		vi.spyOn(client.realtime, 'isConnected').mockReturnValue(true);
+		vi.spyOn(client.realtime, 'push').mockImplementation(() => {});
+		vi.spyOn(client.realtime, 'setAuth').mockResolvedValue();
+		const channel = client.channel('chat-user:user-race', {
+			config: { private: true, broadcast: { ack: true } }
+		});
+		const subscribe = vi.spyOn(channel, 'subscribe');
+		const send = vi.spyOn(channel, 'send').mockResolvedValue('ok');
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client);
+		const message = {
+			kind: 'reconcile_hint',
+			topic: 'chat-user:user-race',
+			event: 'agent-stream-reconcile',
+			payload: {
+				contract_version: 'agentic_chat_worker_v1',
+				turn_run_id: 'turn-race',
+				session_id: 'session-race',
+				execution_generation: 1,
+				durable_through_sequence: 0
+			}
+		} as const;
+		try {
+			const first = adapter.publish(message);
+			const second = adapter.publish({
+				...message,
+				payload: { ...message.payload, durable_through_sequence: 1 }
+			});
+			channel.joinPush.trigger('ok', {});
+			await expect(first).resolves.toBe('sent');
+			expect(subscribe).toHaveBeenCalledOnce();
+			await expect(second).resolves.toBe('sent');
+			expect(send).toHaveBeenCalledTimes(2);
+		} finally {
+			channel.joinPush.destroy();
+			await client.realtime.disconnect();
+			vi.restoreAllMocks();
+		}
+	});
+
 	it('fails closed and removes a private channel that cannot subscribe', async () => {
 		const send = vi.fn().mockResolvedValue('ok');
 		const channel = {
@@ -853,6 +1312,140 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 			status: 'degraded',
 			activeChannels: 0
 		});
+	});
+
+	it('bounds a silent Broadcast send and evicts its channel', async () => {
+		vi.useFakeTimers();
+		const channel = {
+			send: vi.fn(() => new Promise<string>(() => {})),
+			subscribe: vi.fn((callback: (status: 'SUBSCRIBED') => void) => {
+				callback('SUBSCRIBED');
+				return channel;
+			})
+		};
+		const client = {
+			channel: vi.fn(() => channel),
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, 256, 100, 25);
+		try {
+			const publication = adapter.publish(subscriptionTestMessage);
+			await vi.advanceTimersByTimeAsync(25);
+			await expect(publication).resolves.toBe('failed');
+			expect(client.removeChannel).toHaveBeenCalledOnce();
+			expect(adapter.getHealth()).toMatchObject({
+				healthy: false,
+				status: 'degraded',
+				activeChannels: 0
+			});
+		} finally {
+			await adapter.close();
+			vi.useRealTimers();
+		}
+	});
+
+	it('releases per-send and per-subscription close listeners after they settle', async () => {
+		const channel = {
+			send: vi.fn(async () => 'ok'),
+			subscribe: vi.fn((callback: (status: 'SUBSCRIBED') => void) => {
+				callback('SUBSCRIBED');
+				return channel;
+			})
+		};
+		const client = {
+			channel: vi.fn(() => channel),
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, 256, 100, 25);
+		for (let index = 0; index < 5; index += 1) {
+			await expect(adapter.publish(subscriptionTestMessage)).resolves.toBe('sent');
+		}
+		expect((adapter as unknown as { closeListeners: Set<unknown> }).closeListeners.size).toBe(
+			0
+		);
+		await adapter.close();
+	});
+
+	it('bounds a silent subscription for both publishers, ignores late success, and allows retry', async () => {
+		vi.useFakeTimers();
+		let callback!: (status: 'SUBSCRIBED') => void;
+		const channel = {
+			send: vi.fn().mockResolvedValue('ok'),
+			subscribe: vi.fn((observe: typeof callback) => {
+				callback = observe;
+				return channel;
+			})
+		};
+		const client = {
+			channel: vi.fn().mockReturnValue(channel),
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, 256, 25);
+		try {
+			const first = adapter.publish(subscriptionTestMessage);
+			const second = adapter.publish(subscriptionTestMessage);
+			const lateCallback = callback;
+			await vi.advanceTimersByTimeAsync(25);
+			await expect(Promise.all([first, second])).resolves.toEqual(['failed', 'failed']);
+			expect(channel.subscribe).toHaveBeenCalledOnce();
+			expect(client.removeChannel).toHaveBeenCalledOnce();
+			lateCallback('SUBSCRIBED');
+			expect(adapter.getHealth()).toMatchObject({ status: 'degraded', activeChannels: 0 });
+			expect(channel.send).not.toHaveBeenCalled();
+			const retried = adapter.publish(subscriptionTestMessage);
+			callback('SUBSCRIBED');
+			await expect(retried).resolves.toBe('sent');
+			expect(channel.subscribe).toHaveBeenCalledTimes(2);
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			await adapter.close();
+			vi.useRealTimers();
+		}
+	});
+
+	it('does not cache or send a channel that finishes subscribing after close', async () => {
+		let callback!: (status: 'SUBSCRIBED') => void;
+		const channel = {
+			send: vi.fn().mockResolvedValue('ok'),
+			subscribe: vi.fn((observe: typeof callback) => {
+				callback = observe;
+				return channel;
+			})
+		};
+		const removeChannel = vi.fn().mockResolvedValue(undefined);
+		const adapter = new SupabaseAgenticChatBroadcastAdapter({
+			channel: () => channel,
+			removeChannel
+		});
+		const publication = adapter.publish(subscriptionTestMessage);
+		const closing = adapter.close();
+		callback('SUBSCRIBED');
+		await closing;
+		await expect(publication).resolves.toBe('failed');
+		expect(channel.send).not.toHaveBeenCalled();
+		expect(removeChannel).toHaveBeenCalledOnce();
+		expect(adapter.getHealth()).toMatchObject({ status: 'closed', activeChannels: 0 });
+	});
+
+	it('clears the adapter deadline when subscribe throws synchronously', async () => {
+		vi.useFakeTimers();
+		const channel = {
+			send: vi.fn(),
+			subscribe: vi.fn(() => {
+				throw new Error('closed socket');
+			})
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter({
+			channel: () => channel,
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		});
+		try {
+			await expect(adapter.publish(subscriptionTestMessage)).resolves.toBe('failed');
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			await adapter.close();
+			vi.useRealTimers();
+		}
 	});
 
 	it('evicts a channel that degrades after subscribing and reconnects on the next event', async () => {

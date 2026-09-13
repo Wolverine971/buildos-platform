@@ -5,35 +5,8 @@ import type { SkillGatePreload } from '$lib/services/agentic-chat/tools/domains/
 import type { ProjectCreateExecutionWorkflow } from '@buildos/agentic-chat-runtime/catalog';
 import type { LitePromptTurnSituation } from './situational-rules';
 
-/**
- * Shared context shape used by both the Lite prompt builder and the data loaders
- * that feed it. Previously lived in `agentic-chat-v2/master-prompt-builder.ts`;
- * moved here as part of the lite prompt consolidation (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
- */
-export type MasterPromptContext = {
-	contextType: ChatContextType;
-	entityId?: string | null;
-	projectId?: string | null;
-	projectName?: string | null;
-	focusEntityType?: string | null;
-	focusEntityId?: string | null;
-	focusEntityName?: string | null;
-	contextLoadSource?:
-		| 'rpc'
-		| 'rpc_null_fallback'
-		| 'rpc_error_fallback'
-		| 'fallback'
-		| 'none'
-		| 'unknown_cached';
-	/**
-	 * IANA zone the prompt clock renders in (from `users.timezone`). Loaders
-	 * always set it; absent/invalid values fall back to UTC at render time.
-	 */
-	timezone?: string | null;
-	conversationSummary?: string | null;
-	entityResolutionHint?: string | null;
-	data?: Record<string, unknown> | string | null;
-};
+import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
+export type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
 
 export const LITE_PROMPT_VARIANT = 'lite_seed_v1' as const;
 

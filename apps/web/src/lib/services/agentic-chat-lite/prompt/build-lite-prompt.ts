@@ -1261,7 +1261,7 @@ function buildOperatingStrategySection(
 		source: 'lite.strategy',
 		content: [
 			'How to act:',
-			'- Start with loaded context. Read only missing facts; once requested facts are answered or unknown after a relevant search, respond. Do not cycle through search, exploration and lists to prove absence.',
+			'- Start with loaded context. Before the first read, identify only requested facts still missing from it. Batch independent reads with known arguments; preserve real dependencies. After each round, subtract answered facts and synthesize when none remain. Do not refetch a loaded project overview, task list, calendar, or fact, or expand one complete scoped no-match into synonym searches unless coverage is partial, paginated, or failed. For a brief status report, make one batched read round of at most eight calls, then answer; unresolved real-world facts stay unknown. Do not open a second read round to confirm empty or complete results: more record types cannot prove an event never happened.',
 			// Lead-in coaching is web-only (audit 2026-09-02 F-A10 / C3): the worker
 			// discards prose emitted alongside a disposition call, so on a
 			// worker-bound artifact (dynamicSkillTools=false) the bullet only spends
@@ -1347,12 +1347,13 @@ function buildFinalResponseContractSection(
 		kind: 'static',
 		source: 'lite.final_response_contract',
 		content: [
-			'- Report only what tool results confirm: writes count only after successful execution. Name material saved changes and failures; preparation is not completion. For a requested write that could not run, say "I was unable to <requested action>" and name the blocker.',
+			'- Report only what tool results confirm: writes count only after successful execution. Name material saved changes and failures; preparation is not completion. For a requested write that could not run, say "I was unable to <requested action>" and name the blocker. Calendar results belong only to their query_scope; never transfer events or coverage between scopes.',
 			// The workspace is a partial record of the world, so silence in it is
 			// not a finding about the world. Reporting an empty read as "no payment
 			// was made" / "the permit was never filed" states something BuildOS
 			// cannot know and the owner may act on.
-			'- Separate recorded facts, bounded search findings, and unknown real-world status in every heading and conclusion. Todo and planned dates do not prove work has not started or nothing is completed. Missing permit/payment evidence means "Approval/payment status unknown", never "No, not approved/paid." Say "No completion evidence in the records checked; actual status unknown." Later caveats cannot fix contrary claims. Scoped reads cannot prove workspace-wide absence.',
+			'- Separate recorded facts, bounded search findings, and unknown real-world status in every heading and conclusion. Label schedule dates as planned or target. Report actual start, completion, approval, and payment only from explicit evidence of that event; otherwise label that actual status unknown. A future planned start and todo tasks provide no evidence of whether work has already begun. Never conclude "No evidence that work has begun" from plans, todo tasks, or an empty search; write "Actual start: unknown from the records checked" and name the bounded search scope when useful. Keep the same evidence qualification in summaries and explanatory sentences.',
+			'- For actual-status questions, use confirmed yes, confirmed no, or unknown. Both yes and no need explicit event evidence. With no approval evidence, write "Permits approved: Unknown — no approval record found in the scope checked." Never start that entry with "No", "None", or "Not yet" and then qualify it later. Likewise: "Planned start: September 14. Actual start: unknown from the records checked." An empty scoped search establishes only that no matching record was found there. A recorded budget cap and unknown actual spend can both be true.',
 			'- Keep brief reports brief: answer requested facts once in a compact list or table; omit incidental metadata, search narration and duplicate recaps. Link saved entities using tool-provided record_references URLs as Markdown links. Never infer URLs from titles.',
 			'- For exact document edits, the original user request and loaded source stay authoritative after correction. Reviewer descriptions summarize scope; they cannot replace requested text.'
 		].join('\n')
@@ -1560,6 +1561,7 @@ function buildSafetyDataRulesSection(
 		// the mid-turn materialization notice otherwise.
 		'- Record user-reported inconsistencies (for example "Chapter 1 says 16, Chapter 2 says 17") as open questions or fix tasks; the user picks the canonical value unless they already stated it.',
 		'- User-visible durable fields (titles, descriptions, document content, project descriptions, props) carry only final user-visible content; control parameters belong in their own tool arguments, not inside text fields.',
+		'- When the user supplies exact or verbatim document text, copy it into the tool argument byte-for-byte. JSON escaping is transport syntax only: do not HTML-encode &, <, >, quotes, or apostrophes. If the user literally wrote an entity such as &amp;, retain those characters exactly.',
 		'- Treat permissions and access as hard constraints.',
 		`- Document placement can happen on create via \`parent_id\` and optional \`position\`; append/merge writes require non-empty content (merge_instructions alone is not enough).${
 			scaffold.dynamicSkillTools

@@ -57,3 +57,4 @@ export * from './cycle.types';
 
 // Export the canonical onto_tasks.priority scale (labels + schema description)
 export * from './onto-task-priority';
+export * from './chat-workflow-prototype';

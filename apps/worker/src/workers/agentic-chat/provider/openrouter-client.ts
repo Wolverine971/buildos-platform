@@ -1,4 +1,10 @@
 // apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts
+import { performance } from 'node:perf_hooks';
+import {
+	emitAgenticChatPersistenceTrace,
+	persistenceErrorCode,
+	type AgenticChatPersistenceTraceSinkV1
+} from '../persistenceTrace';
 import { createHash } from 'node:crypto';
 import {
 	buildOpenRouterChatCompletionBody,
@@ -39,6 +45,9 @@ import {
 } from '../pendingEffects';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
+// A September 12 gate stall waited 90s before fallback. All 118 successful
+// responses opened within 1.8s. Bound opening separately from model generation.
+const DEFAULT_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
 /**
  * Every attempt keeps at least this long, and reserves this much of the turn
  * budget for the executor to finalize after the last provider pass. Below it a
@@ -140,7 +149,10 @@ export type AgenticChatProviderUsageObservationV1 = {
 };
 
 export type AgenticChatProviderUsageObserverPortV1 = {
-	observe(observation: AgenticChatProviderUsageObservationV1): void | Promise<void>;
+	observe(
+		observation: AgenticChatProviderUsageObservationV1,
+		signal?: AbortSignal
+	): void | Promise<void>;
 };
 
 type ClientInput = Parameters<AgenticChatTurnProviderClientPortV1['stream']>[0];
@@ -250,6 +262,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 	private readonly routes: readonly AgenticChatOpenAiCompatibleRouteV1[];
 	private readonly fetchImpl: typeof fetch;
 	private readonly requestTimeoutMs: number;
+	private readonly responseHeadersTimeoutMs: number;
 	private readonly maxTokens: number;
 	private readonly temperature: number;
 	private readonly maxSseBufferBytes: number;
@@ -265,6 +278,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			/** Shared with the executor, which drains a turn's set at finalization. */
 			pendingEffects?: Pick<AgenticChatPendingEffectsRegistry, 'forTurn'>;
 			onUsageError?: (error: unknown) => void;
+			onPersistenceTrace?: AgenticChatPersistenceTraceSinkV1;
 			onExecutionObservationError?: (error: unknown) => void;
 		},
 		options: {
@@ -273,6 +287,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			appName: string;
 			fetchImpl?: typeof fetch;
 			requestTimeoutMs?: number;
+			responseHeadersTimeoutMs?: number;
 			maxTokens?: number;
 			temperature?: number;
 			maxSseBufferBytes?: number;
@@ -287,6 +302,12 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		this.requestTimeoutMs = boundedInteger(
 			options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS,
 			'requestTimeoutMs',
+			1_000,
+			360_000
+		);
+		this.responseHeadersTimeoutMs = boundedInteger(
+			options.responseHeadersTimeoutMs ?? DEFAULT_RESPONSE_HEADERS_TIMEOUT_MS,
+			'responseHeadersTimeoutMs',
 			1_000,
 			360_000
 		);
@@ -356,11 +377,11 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			toolCallsObservable: true
 		};
 
-		const account = async (
+		const account = (
 			status: AgenticChatProviderUsageObservationV1['status'],
 			error: string | null,
 			retryable: boolean
-		): Promise<void> => {
+		): void => {
 			if (accounted) return;
 			let exactUsage: ProviderUsage | null;
 			try {
@@ -401,7 +422,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 						completionTokens
 					})
 				: { inputCost: 0, outputCost: 0, source: 'unknown' as const };
-			await this.observeUsage(
+			this.enqueueUsage(
 				{
 					...(lastPromptDump
 						? {
@@ -467,7 +488,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					retryable,
 					error
 				},
-				input.signal
+				input.executionGeneration
 			);
 		};
 
@@ -534,7 +555,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					message: 'Agentic Chat provider has no available route',
 					retryable: false
 				};
-				await account('failure', failure.message, failure.retryable);
+				account('failure', failure.message, failure.retryable);
 				yield { type: 'error', error: failure.message, retryable: failure.retryable };
 				return;
 			}
@@ -674,7 +695,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					state.providerSlug ?? normalizeProviderSlug(state.provider)
 				);
 				const message = `Agentic Chat provider truncated a tool call (${toolCallTruncation}, finish_reason=${finishedReason})`;
-				await account('failure', message, true);
+				account('failure', message, true);
 				yield {
 					type: 'error',
 					error: message,
@@ -726,7 +747,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					// provider, so the bounded retry can land somewhere else.
 					{ releasePin: true }
 				);
-				await account(
+				account(
 					'failure',
 					'Agentic Chat provider requested tool calls while tool_choice=none',
 					true
@@ -745,7 +766,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					model: routingModel,
 					providerSlug: state.providerSlug
 				};
-				await account('success', null, false);
+				account('success', null, false);
 			}
 			yield {
 				type: 'done',
@@ -801,7 +822,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				activeAttemptEnded = true;
 			}
 			if (input.signal.aborted) {
-				await account('aborted', canonicalError(input.signal.reason), false);
+				account('aborted', canonicalError(input.signal.reason), false);
 				throwAbort(input.signal);
 			}
 			const retryable =
@@ -812,11 +833,11 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				active?.timedOut() === true
 					? `Agentic Chat provider request timed out after ${active.timeoutMs}ms`
 					: canonicalError(error);
-			await account('failure', message, retryable);
+			account('failure', message, retryable);
 			yield { type: 'error', error: message, retryable };
 		} finally {
 			if (!accounted) {
-				await account(
+				account(
 					input.signal.aborted ? 'aborted' : 'failure',
 					input.signal.aborted
 						? canonicalError(input.signal.reason)
@@ -880,11 +901,15 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			: null;
 		onPromptDump(promptDump);
 		const timeoutMs = this.attemptTimeoutMs(input);
-		const attempt = createAttemptSignal(input.signal, timeoutMs);
+		const attempt = createAttemptSignal(
+			input.signal,
+			timeoutMs,
+			Math.min(timeoutMs, this.responseHeadersTimeoutMs)
+		);
 		let httpStatus: number | null = null;
 		let requestId: string | null = null;
 		try {
-			const response = await this.fetchImpl(`${route.baseUrl}/chat/completions`, {
+			const pendingResponse = this.fetchImpl(`${route.baseUrl}/chat/completions`, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${route.apiKey}`,
@@ -898,6 +923,15 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				body,
 				signal: attempt.signal
 			});
+			// Some fetch adapters ignore abort. Bound the await and dispose a late
+			// response without accepting any text or tools from an expired attempt.
+			void pendingResponse.then(
+				(response) => {
+					if (attempt.signal.aborted) void response.body?.cancel().catch(() => undefined);
+				},
+				() => undefined
+			);
+			const response = await abortableProviderRead(() => pendingResponse, attempt.signal);
 			attempt.markResponseOpened();
 			httpStatus = response.status;
 			requestId =
@@ -954,7 +988,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				// 4xx/5xx may have come from any endpoint and names nothing unless
 				// the gateway named it (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F76).
 				throw new AgenticChatProviderNetworkError(
-					`Agentic Chat provider request timed out after ${timeoutMs}ms`,
+					`Agentic Chat provider request timed out after ${attempt.timing().deadlineAtMs - attempt.timing().networkStartedAtMs}ms`,
 					true,
 					orderedProviderSlug(route)
 				);
@@ -1161,14 +1195,17 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				messages: input.messages.map(copyMessage),
 				...toolSurface,
 				temperature: this.temperature,
-				max_tokens: this.maxTokens,
+				max_tokens: Math.min(this.maxTokens, input.maxOutputTokens ?? this.maxTokens),
 				// A contract review is one bounded verdict over a filtered evidence
 				// set. At the provider default 52% of its completion tokens were
 				// hidden reasoning and calls ran p50 10.3 s; a verdict does not
 				// need a document's worth of thinking. Acting and research-review
 				// passes keep the provider default
 				// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F80).
-				reasoning: contractReview ? { effort: 'low', exclude: true } : { exclude: true },
+				reasoning:
+					contractReview || input.reasoningEffort === 'low'
+						? { effort: 'low', exclude: true }
+						: { exclude: true },
 				provider: {
 					allow_fallbacks: true,
 					data_collection: 'deny',
@@ -1185,27 +1222,64 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			messages: input.messages.map(copyMessage),
 			...toolSurface,
 			temperature: this.temperature,
-			max_tokens: this.maxTokens,
+			max_tokens: Math.min(this.maxTokens, input.maxOutputTokens ?? this.maxTokens),
 			stream: true,
 			stream_options: { include_usage: true },
 			prompt_cache_key: promptCacheKey
 		};
 	}
 
-	private async observeUsage(
+	private enqueueUsage(
 		observation: AgenticChatProviderUsageObservationV1,
-		signal: AbortSignal
+		executionGeneration: number
+	): void {
+		// Accounting belongs to the turn, not the provider call's cancellation lifetime.
+		// The executor joins this same bounded registry before billing and terminal truth.
+		this.pendingEffects
+			.forTurn(observation.turnRunId)
+			.enqueue(this.persistUsage(observation, executionGeneration));
+	}
+
+	private async persistUsage(
+		observation: AgenticChatProviderUsageObservationV1,
+		executionGeneration: number
 	): Promise<void> {
-		try {
-			const observationSignal = signal.aborted ? new AbortController().signal : signal;
-			await runWithAbortableDeadline({
-				parentSignal: observationSignal,
-				timeoutMs: PROVIDER_TELEMETRY_TIMEOUT_MS,
-				createTimeoutError: () =>
-					new Error('Agentic Chat provider usage observation timed out'),
-				run: () => Promise.resolve(this.ports.usage.observe(observation))
+		const startedAt = performance.now();
+		const base = {
+			event: 'agentic_chat_persistence_trace' as const,
+			lane: 'usage' as const,
+			turnRunId: observation.turnRunId,
+			executionGeneration,
+			operationId: observation.usageLogId,
+			rpc: 'llm_usage_logs.upsert',
+			passRole: observation.passRole,
+			logicalProviderRound: observation.logicalProviderRound,
+			attempt: observation.providerAttempt
+		};
+		const trace = (
+			outcome: 'started' | 'persisted' | 'failed' | 'timed_out',
+			errorCode: string | null = null
+		) =>
+			emitAgenticChatPersistenceTrace(this.ports.onPersistenceTrace, {
+				...base,
+				stage: outcome === 'started' ? 'attempt_started' : 'attempt_finished',
+				observedAt: new Date().toISOString(),
+				durationMs: Math.max(0, performance.now() - startedAt),
+				outcome,
+				errorCode
 			});
+		const timeoutError = new Error('Agentic Chat provider usage observation timed out');
+		trace('started');
+		try {
+			await runWithAbortableDeadline({
+				parentSignal: new AbortController().signal,
+				timeoutMs: PROVIDER_TELEMETRY_TIMEOUT_MS,
+				createTimeoutError: () => timeoutError,
+				run: (signal) => Promise.resolve(this.ports.usage.observe(observation, signal))
+			});
+			trace('persisted');
 		} catch (error) {
+			trace(error === timeoutError ? 'timed_out' : 'failed', persistenceErrorCode(error));
 			try {
 				this.ports.onUsageError?.(error);
 			} catch {
@@ -1290,56 +1364,65 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObserverPortV1 {
 	constructor(private readonly logger: UsageLogger) {}
 
-	observe(observation: AgenticChatProviderUsageObservationV1): Promise<void> {
-		return this.logger.logUsageToDatabase({
-			id: observation.usageLogId,
-			userId: observation.userId,
-			operationType: 'agentic_chat_worker_stream',
-			modelRequested: observation.modelRequested ?? 'unknown',
-			modelUsed: observation.modelUsed ?? observation.modelRequested ?? 'unknown',
-			provider: observation.provider ?? undefined,
-			promptTokens: observation.promptTokens,
-			completionTokens: observation.completionTokens,
-			totalTokens: observation.totalTokens,
-			inputCost: observation.providerInputCost,
-			outputCost: observation.providerOutputCost,
-			totalCost: observation.providerCost ?? 0,
-			responseTimeMs: Math.max(0, observation.observedAtMs - observation.requestStartedAtMs),
-			requestStartedAt: new Date(observation.requestStartedAtMs),
-			requestCompletedAt: new Date(observation.observedAtMs),
-			status: observation.status === 'success' ? 'success' : 'failure',
-			errorMessage: observation.error ?? undefined,
-			streaming: true,
-			projectId: observation.projectId ?? undefined,
-			chatSessionId: observation.sessionId,
-			turnRunId: observation.turnRunId,
-			streamRunId: observation.streamRunId,
-			clientTurnId: observation.clientTurnId,
-			openrouterRequestId: observation.requestId ?? undefined,
-			openrouterUsageCost: observation.providerCost ?? undefined,
-			openrouterCacheStatus: observation.cacheStatus,
-			openrouterByok: observation.providerByok,
-			openrouterUpstreamInferenceCost: observation.providerUpstreamInferenceCost,
-			reasoningTokens: observation.reasoningTokens,
-			cachedPromptTokens: observation.cachedPromptTokens,
-			cacheWriteTokens: observation.cacheWriteTokens,
-			metadata: {
-				...(observation.localPromptDump
-					? { localPromptDump: observation.localPromptDump }
-					: {}),
-				contextType: observation.contextType,
-				entityId: observation.entityId,
-				routeId: observation.routeId,
-				logicalProviderRound: observation.logicalProviderRound,
-				passRole: observation.passRole,
-				providerAttempt: observation.providerAttempt,
-				attemptedRouteIds: observation.attemptedRouteIds,
-				estimatedUsage: observation.estimated,
-				costSource: observation.costSource,
-				retryable: observation.retryable,
-				providerStatus: observation.status
-			}
-		});
+	observe(
+		observation: AgenticChatProviderUsageObservationV1,
+		signal?: AbortSignal
+	): Promise<void> {
+		return this.logger.logUsageToDatabase(
+			{
+				id: observation.usageLogId,
+				userId: observation.userId,
+				operationType: 'agentic_chat_worker_stream',
+				modelRequested: observation.modelRequested ?? 'unknown',
+				modelUsed: observation.modelUsed ?? observation.modelRequested ?? 'unknown',
+				provider: observation.provider ?? undefined,
+				promptTokens: observation.promptTokens,
+				completionTokens: observation.completionTokens,
+				totalTokens: observation.totalTokens,
+				inputCost: observation.providerInputCost,
+				outputCost: observation.providerOutputCost,
+				totalCost: observation.providerCost ?? 0,
+				responseTimeMs: Math.max(
+					0,
+					observation.observedAtMs - observation.requestStartedAtMs
+				),
+				requestStartedAt: new Date(observation.requestStartedAtMs),
+				requestCompletedAt: new Date(observation.observedAtMs),
+				status: observation.status === 'success' ? 'success' : 'failure',
+				errorMessage: observation.error ?? undefined,
+				streaming: true,
+				projectId: observation.projectId ?? undefined,
+				chatSessionId: observation.sessionId,
+				turnRunId: observation.turnRunId,
+				streamRunId: observation.streamRunId,
+				clientTurnId: observation.clientTurnId,
+				openrouterRequestId: observation.requestId ?? undefined,
+				openrouterUsageCost: observation.providerCost ?? undefined,
+				openrouterCacheStatus: observation.cacheStatus,
+				openrouterByok: observation.providerByok,
+				openrouterUpstreamInferenceCost: observation.providerUpstreamInferenceCost,
+				reasoningTokens: observation.reasoningTokens,
+				cachedPromptTokens: observation.cachedPromptTokens,
+				cacheWriteTokens: observation.cacheWriteTokens,
+				metadata: {
+					...(observation.localPromptDump
+						? { localPromptDump: observation.localPromptDump }
+						: {}),
+					contextType: observation.contextType,
+					entityId: observation.entityId,
+					routeId: observation.routeId,
+					logicalProviderRound: observation.logicalProviderRound,
+					passRole: observation.passRole,
+					providerAttempt: observation.providerAttempt,
+					attemptedRouteIds: observation.attemptedRouteIds,
+					estimatedUsage: observation.estimated,
+					costSource: observation.costSource,
+					retryable: observation.retryable,
+					providerStatus: observation.status
+				}
+			},
+			signal
+		);
 	}
 }
 
@@ -1770,7 +1853,8 @@ function providerFrameError(value: unknown): { message: string; retryable: boole
 
 function createAttemptSignal(
 	external: AbortSignal,
-	timeoutMs: number
+	timeoutMs: number,
+	responseHeadersTimeoutMs: number
 ): {
 	signal: AbortSignal;
 	cleanup(): void;
@@ -1780,18 +1864,21 @@ function createAttemptSignal(
 } {
 	const controller = new AbortController();
 	const networkStartedAtMs = Date.now();
-	const deadlineAtMs = networkStartedAtMs + timeoutMs;
+	let deadlineAtMs = networkStartedAtMs + responseHeadersTimeoutMs;
 	let didTimeout = false;
 	let responseOpenedAtMs: number | null = null;
 	let timeoutFiredAtMs: number | null = null;
 	const onAbort = () => controller.abort(external.reason);
 	if (external.aborted) controller.abort(external.reason);
 	else external.addEventListener('abort', onAbort, { once: true });
-	const timer = setTimeout(() => {
+	const timeOut = () => {
 		didTimeout = true;
 		timeoutFiredAtMs = Date.now();
-		controller.abort(new Error(`Agentic Chat provider timeout after ${timeoutMs}ms`));
-	}, timeoutMs);
+		controller.abort(
+			new Error(`Agentic Chat provider timeout after ${deadlineAtMs - networkStartedAtMs}ms`)
+		);
+	};
+	let timer = setTimeout(timeOut, responseHeadersTimeoutMs);
 	timer.unref?.();
 	return {
 		signal: controller.signal,
@@ -1801,7 +1888,12 @@ function createAttemptSignal(
 		},
 		timedOut: () => didTimeout,
 		markResponseOpened: () => {
+			if (responseOpenedAtMs !== null || controller.signal.aborted) return;
 			responseOpenedAtMs ??= Date.now();
+			clearTimeout(timer);
+			deadlineAtMs = networkStartedAtMs + timeoutMs;
+			timer = setTimeout(timeOut, Math.max(0, deadlineAtMs - Date.now()));
+			timer.unref?.();
 		},
 		timing: () => ({
 			networkStartedAtMs,
@@ -2009,6 +2101,14 @@ function copyTool(tool: AgenticChatTurnProviderToolV1) {
 }
 
 function validateToolSurface(input: ClientInput): void {
+	if (input.reasoningEffort !== undefined && input.reasoningEffort !== 'low')
+		throw new Error('Invalid provider reasoning effort');
+	if (
+		input.maxOutputTokens !== undefined &&
+		(!Number.isSafeInteger(input.maxOutputTokens) || input.maxOutputTokens < 1)
+	) {
+		throw new Error('Provider output token ceiling must be a positive integer');
+	}
 	canonicalProviderAttempt(input.providerAttempt);
 	canonicalProviderPassRole(input.passRole);
 	if (!Array.isArray(input.tools)) {

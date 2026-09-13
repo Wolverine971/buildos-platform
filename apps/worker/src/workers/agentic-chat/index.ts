@@ -4,6 +4,7 @@ export * from './cancellationObserver';
 export * from './capacity';
 export * from './consumer';
 export * from './consumerRuntime';
+export * from './deliveryHealth';
 export * from './effectControl';
 export * from './effectIdentity';
 export * from './executionControl';

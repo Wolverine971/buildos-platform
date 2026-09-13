@@ -36,6 +36,8 @@ export type AgenticChatPreterminalTimingSnapshotV1 = {
 			publisherQueueing: AgenticChatRuntimeTimingAggregateV1;
 			durableAcknowledgement: AgenticChatRuntimeTimingAggregateV1;
 			publisherDelivery: AgenticChatRuntimeTimingAggregateV1;
+			/** Durable acceptance observed until the live delivery decision. */
+			publisherDeliveryLag: AgenticChatRuntimeTimingAggregateV1;
 			publisherDrain: { durationMs: number | null };
 		};
 	};
@@ -87,6 +89,7 @@ export class AgenticChatRuntimeTimingTracker {
 	private readonly publisherQueueing = timingAggregate();
 	private readonly durableAcknowledgement = timingAggregate();
 	private readonly publisherDelivery = timingAggregate();
+	private readonly publisherDeliveryLag = timingAggregate();
 	private providerFinishedAtMs: number | null = null;
 	private publisherDrainStartedAtMs: number | null = null;
 	private publisherDrainCompletedAtMs: number | null = null;
@@ -178,6 +181,7 @@ export class AgenticChatRuntimeTimingTracker {
 		}
 		observeDuration(this.publisherQueueing, observation.queueingMs);
 		observeDuration(this.publisherDelivery, observation.totalDeliveryMs);
+		observeDuration(this.publisherDeliveryLag, observation.deliveryDecisionMs);
 		if (observation.durableAcknowledgementMs !== null) {
 			observeDuration(this.durableAcknowledgement, observation.durableAcknowledgementMs);
 		}
@@ -278,6 +282,7 @@ export class AgenticChatRuntimeTimingTracker {
 					publisherQueueing: { ...this.publisherQueueing },
 					durableAcknowledgement: { ...this.durableAcknowledgement },
 					publisherDelivery: { ...this.publisherDelivery },
+					publisherDeliveryLag: { ...this.publisherDeliveryLag },
 					publisherDrain: {
 						durationMs: duration(
 							this.publisherDrainStartedAtMs,

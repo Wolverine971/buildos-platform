@@ -17,6 +17,8 @@ const sharedAgentOpsSrc = (sub: string) =>
 	fileURLToPath(new URL(`../../packages/shared-agent-ops/src/${sub}`, import.meta.url));
 
 const sharedAgentOpsTestAliases = [
+	'dates/civil-date',
+	'ontology/start-here',
 	'ontology/instantiation.service',
 	'ontology/ontology-projects.service',
 	'ontology/doc-structure.service',

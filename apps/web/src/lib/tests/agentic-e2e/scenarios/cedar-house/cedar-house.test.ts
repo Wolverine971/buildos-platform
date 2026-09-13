@@ -46,9 +46,13 @@ describe('cedar-house battery registration', () => {
 				{
 					result: {
 						google_read: {
+							mode: 'source_aware',
 							coverage: 'complete',
 							source_count: 2,
-							successful_source_count: 2
+							successful_source_count: 2,
+							partial: false,
+							failed_source_count: 0,
+							source_failures: []
 						}
 					}
 				}
@@ -60,6 +64,96 @@ describe('cedar-house battery registration', () => {
 			{ coverage: 'unavailable', source_count: 1, successful_source_count: 0 }
 		])
 			expect(hasCompleteCalendarCoverage([{ result: { google_read } }])).toBe(false);
+	});
+
+	it('distinguishes an unmapped project from a failed configured calendar source', () => {
+		const completeRead = {
+			mode: 'source_aware',
+			coverage: 'complete',
+			source_count: 1,
+			successful_source_count: 1,
+			partial: false,
+			failed_source_count: 0,
+			source_failures: []
+		};
+		const unmappedProject = {
+			...completeRead,
+			mode: 'none',
+			source_count: 0,
+			successful_source_count: 0
+		};
+		const results = (reads: unknown[]) =>
+			reads.map((google_read) => ({ result: { google_read } }));
+		expect(hasCompleteCalendarCoverage(results([completeRead, unmappedProject]))).toBe(true);
+		expect(hasCompleteCalendarCoverage(results([unmappedProject]))).toBe(false);
+		expect(hasCompleteCalendarCoverage([])).toBe(false);
+		for (const failedRead of [
+			{ ...completeRead, coverage: 'degraded' },
+			{ ...completeRead, coverage: 'unavailable' },
+			{ ...completeRead, successful_source_count: 0 },
+			{ ...completeRead, partial: true },
+			{ ...completeRead, failed_source_count: 1 },
+			{ ...completeRead, source_failures: [{ source_id: 'failed-source' }] },
+			{ ...completeRead, source_count: 0, successful_source_count: 0 },
+			{ ...completeRead, source_count: '1', successful_source_count: '1' },
+			{ ...completeRead, source_count: 1.5, successful_source_count: 1.5 },
+			{ ...unmappedProject, partial: true },
+			{ ...unmappedProject, failed_source_count: 1 },
+			{ ...unmappedProject, source_failures: [{ source_id: 'failed-source' }] }
+		]) {
+			expect(hasCompleteCalendarCoverage(results([completeRead, failedRead]))).toBe(false);
+			expect(hasCompleteCalendarCoverage(results([failedRead, completeRead]))).toBe(false);
+		}
+	});
+
+	it('explains unmapped calendars to the judge without exempting failed sources', async () => {
+		const judge = BATTERY.find((scenario) => scenario.batteryCase === 10)!.turns[0]!.judge!;
+		const spec = await judge(
+			{ assistantText: 'Slots.', toolCalls: [], toolResults: [] } as unknown as TurnResult,
+			{} as ScenarioContext,
+			{ entityIds: {}, notes: {} }
+		);
+		expect(spec.rubric).toContain('has no configured project Google source');
+		expect(spec.rubric).toContain('A failed or partial configured source must never');
+		expect(spec.rubric).toContain(
+			'Any invented availability or ignored source failure scores 1'
+		);
+		expect(spec.threshold).toBe(4);
+	});
+
+	it('gives the calendar judge actual intervals and source failures, not just assistant claims', async () => {
+		const observedToolResults = [
+			{
+				tool_call_id: 'calendar-read',
+				tool_name: 'list_calendar_events',
+				success: true,
+				result: {
+					events: [
+						{
+							start_at: '2026-09-14T10:00:00-04:00',
+							end_at: '2026-09-14T11:00:00-04:00'
+						}
+					],
+					google_read: {
+						coverage: 'degraded',
+						source_failures: [{ source_id: 'missing-calendar' }]
+					}
+				}
+			},
+			{ tool_name: 'get_project_calendar', success: true, result: { project_calendar: null } }
+		];
+		const judge = BATTERY.find((scenario) => scenario.batteryCase === 10)!.turns[0]!.judge!;
+		const spec = await judge(
+			{
+				assistantText: 'Everything is free.',
+				toolCalls: [],
+				toolResults: observedToolResults
+			} as unknown as TurnResult,
+			{} as ScenarioContext,
+			{ entityIds: {}, notes: {} }
+		);
+		const evidence = JSON.parse(spec.transcript.split('RESULTING STATE:\n')[1]!);
+		expect(evidence.observedToolResults).toEqual(observedToolResults);
 	});
 
 	it('registers exactly the thirteen built cases', () => {
@@ -225,6 +319,9 @@ describe('Cedar House saved-field oracles', () => {
 		const canonical = cedarProjectSpec('canonical', { tasks: 'core' }).entities[1]!;
 		const legacy = cedarProjectSpec('legacy', { tasks: 'core', legacyEstimateText: true })
 			.entities[1]!;
+		if (canonical.kind !== 'task' || legacy.kind !== 'task') {
+			throw new Error('Expected the core Cedar House fixture entity to be a task');
+		}
 		expect(canonical).toMatchObject({
 			props: { duration_minutes: 90, fixture_marker: 'cedar-house' }
 		});

@@ -280,6 +280,12 @@ describe('shared list_calendar_events', () => {
 				})
 			);
 			expect(result.google_event_count).toBe(1);
+			expect(result.query_scope).toEqual({
+				calendar_scope: 'user',
+				project_id: null,
+				calendar_id: null,
+				calendar_source_id: null
+			});
 			expect(result.events[0]).toMatchObject({
 				source: 'google',
 				external_event_id: 'g1',
@@ -313,7 +319,7 @@ describe('shared list_calendar_events', () => {
 			}
 		});
 
-		await listCalendarEvents(context, { project_id: PROJECT_ID, ...RANGE });
+		const result = await listCalendarEvents(context, { project_id: PROJECT_ID, ...RANGE });
 
 		expect(access.assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
 		expect(listEvents).toHaveBeenCalledWith(
@@ -322,6 +328,12 @@ describe('shared list_calendar_events', () => {
 				calendarId: 'project-calendar@example.com'
 			})
 		);
+		expect(result.query_scope).toEqual({
+			calendar_scope: 'project',
+			project_id: PROJECT_ID,
+			calendar_id: 'project-calendar@example.com',
+			calendar_source_id: 'source-9'
+		});
 		const mappingRead = calls.find((call) => call.table === 'project_calendars');
 		// The mapping row is per member: a service-role client must scope it.
 		expect(mappingRead?.filters).toContainEqual(['eq', 'user_id', USER_ID]);

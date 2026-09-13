@@ -517,6 +517,7 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 				contextType: ChatContextType;
 				details?: string;
 				activity_visibility?: 'activity_log';
+				workflow?: import('./chat-workflow-prototype').ChatWorkflowProgress;
 		  }
 		| { type: 'turn_phase'; turn_phase: AgentTurnPhase; message: string }
 		| { type: 'text'; content: string }

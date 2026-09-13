@@ -168,6 +168,38 @@ async function collect(
 }
 
 describe('AgenticChatOpenRouterClient', () => {
+	it.each([900, 99999])(
+		'bounds requested output tokens (%s) by the configured client ceiling',
+		async (requested) => {
+			const fetchImpl = vi.fn(async () =>
+				sseResponse([
+					JSON.stringify({
+						choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }]
+					}),
+					'[DONE]'
+				])
+			);
+			const { client } = harness(fetchImpl, [route()], { maxTokens: 4000 });
+			await collect(
+				client.stream({ ...input(), maxOutputTokens: requested, reasoningEffort: 'low' })
+			);
+			const body = JSON.parse(
+				(fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body as string
+			);
+			expect(body.max_tokens).toBe(Math.min(requested, 4000));
+			expect(body.reasoning).toEqual({ effort: 'low', exclude: true });
+		}
+	);
+	it.each([0, -1, 1.5, NaN])(
+		'rejects invalid output token ceiling %s before dispatch',
+		async (maxOutputTokens) => {
+			const fetchImpl = vi.fn();
+			const { client } = harness(fetchImpl);
+			await expect(collect(client.stream({ ...input(), maxOutputTokens }))).rejects.toThrow();
+			expect(fetchImpl).not.toHaveBeenCalled();
+		}
+	);
+
 	it('pins replay-stable usage identities per logical provider round and route', () => {
 		const first = createStableAgenticChatProviderUsageLogIdV1({
 			turnRunId: TURN_RUN_ID,
@@ -1472,6 +1504,84 @@ describe('AgenticChatOpenRouterClient', () => {
 		});
 	});
 
+	it('bounds a header stall separately and cancels a late response from a fetch that ignores abort', async () => {
+		vi.useFakeTimers();
+		let resolveResponse!: (response: Response) => void;
+		const cancel = vi.fn();
+		const fetchImpl = vi.fn(
+			() =>
+				new Promise<Response>((resolve) => {
+					resolveResponse = resolve;
+				})
+		) as unknown as typeof fetch;
+		const observe = vi.fn();
+		const client = new AgenticChatOpenRouterClient(
+			{ usage: { observe } },
+			{
+				routes: [route()],
+				httpReferer: 'https://build-os.com',
+				appName: 'BuildOS',
+				fetchImpl,
+				requestTimeoutMs: 90_000
+			}
+		);
+		const collecting = collect(client.stream(input()));
+		await vi.advanceTimersByTimeAsync(10_000);
+		await expect(collecting).resolves.toEqual([
+			{
+				type: 'error',
+				error: 'Agentic Chat provider request timed out after 10000ms',
+				retryable: true
+			}
+		]);
+		expect(observe).toHaveBeenCalledTimes(1);
+		resolveResponse(
+			new Response(new ReadableStream({ cancel }), {
+				headers: { 'content-type': 'text/event-stream' }
+			})
+		);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(cancel).toHaveBeenCalledTimes(1);
+	});
+
+	it('allows an opened response to generate beyond the header limit without restarting its total deadline', async () => {
+		vi.useFakeTimers();
+		let output!: ReadableStreamDefaultController<Uint8Array>;
+		const fetchImpl = vi.fn(
+			async () =>
+				new Response(
+					new ReadableStream<Uint8Array>({
+						start(controller) {
+							output = controller;
+						}
+					}),
+					{ headers: { 'content-type': 'text/event-stream' } }
+				)
+		) as unknown as typeof fetch;
+		const client = new AgenticChatOpenRouterClient(
+			{ usage: { observe: vi.fn() } },
+			{
+				routes: [route()],
+				httpReferer: 'https://build-os.com',
+				appName: 'BuildOS',
+				fetchImpl,
+				requestTimeoutMs: 30_000,
+				responseHeadersTimeoutMs: 1_000
+			}
+		);
+		const collecting = collect(client.stream(input()));
+		await vi.advanceTimersByTimeAsync(2_000);
+		output.enqueue(
+			new TextEncoder().encode(
+				'data: {"choices":[{"delta":{"content":"Answer"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'
+			)
+		);
+		output.close();
+		const events = await collecting;
+		expect(events).toContainEqual({ type: 'text', content: 'Answer' });
+		expect(events.some((event) => event.type === 'error')).toBe(false);
+	});
+
 	it('applies the request timeout after headers while the SSE body is stalled', async () => {
 		vi.useFakeTimers();
 		const fetchImpl = vi.fn(
@@ -1821,14 +1931,15 @@ describe('AgenticChatOpenRouterClient', () => {
 		expect(onUsageError).toHaveBeenCalledOnce();
 	});
 
-	it('awaits usage accounting before exposing the provider terminal event', async () => {
+	it('releases the provider result while usage is pending, then joins usage at the turn fence', async () => {
 		let releaseUsage!: () => void;
 		const usageSettled = new Promise<void>((resolve) => {
 			releaseUsage = resolve;
 		});
+		const pendingEffects = new AgenticChatPendingEffectsRegistry();
 		const observe = vi.fn(() => usageSettled);
 		const client = new AgenticChatOpenRouterClient(
-			{ usage: { observe } },
+			{ usage: { observe }, pendingEffects },
 			{
 				routes: [route()],
 				httpReferer: 'https://build-os.com',
@@ -1836,19 +1947,58 @@ describe('AgenticChatOpenRouterClient', () => {
 				fetchImpl: vi.fn(async () => sseResponse(['[DONE]'])) as unknown as typeof fetch
 			}
 		);
-		const iterator = client.stream(input())[Symbol.asyncIterator]();
-		let terminalExposed = false;
-		const terminal = iterator.next().then((result) => {
-			terminalExposed = true;
-			return result;
+		await expect(collect(client.stream(input()))).resolves.toEqual([
+			{ type: 'done', finishedReason: 'stop', usage: undefined }
+		]);
+		expect(observe).toHaveBeenCalledOnce();
+		expect(pendingEffects.size(TURN_RUN_ID)).toBe(1);
+		let drained = false;
+		const drain = pendingEffects.drain(TURN_RUN_ID, 1_000).then((value) => {
+			drained = true;
+			return value;
 		});
-
-		await vi.waitFor(() => expect(observe).toHaveBeenCalledOnce());
-		expect(terminalExposed).toBe(false);
+		await Promise.resolve();
+		expect(drained).toBe(false);
 		releaseUsage();
-		await expect(terminal).resolves.toEqual({
-			done: false,
-			value: { type: 'done', finishedReason: 'stop', usage: undefined }
+		await expect(drain).resolves.toBe(true);
+	});
+
+	it('keeps usage persistence alive after turn cancellation, with its own bounded deadline', async () => {
+		vi.useFakeTimers();
+		const pendingEffects = new AgenticChatPendingEffectsRegistry();
+		const onUsageError = vi.fn();
+		const onPersistenceTrace = vi.fn();
+		let writeSignal: AbortSignal | undefined;
+		const observe = vi.fn((_observation, signal?: AbortSignal) => {
+			writeSignal = signal;
+			return new Promise<void>(() => undefined); // also tests a client that ignores abort
+		});
+		const client = new AgenticChatOpenRouterClient(
+			{ usage: { observe }, pendingEffects, onUsageError, onPersistenceTrace },
+			{
+				routes: [route()],
+				httpReferer: 'https://build-os.com',
+				appName: 'BuildOS',
+				fetchImpl: vi.fn(async () => sseResponse(['[DONE]'])) as unknown as typeof fetch
+			}
+		);
+		const turn = new AbortController();
+		await collect(client.stream(input(turn.signal)));
+		turn.abort();
+		expect(writeSignal?.aborted).toBe(false);
+		await vi.advanceTimersByTimeAsync(4_999);
+		expect(pendingEffects.size(TURN_RUN_ID)).toBe(1);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(writeSignal?.aborted).toBe(true);
+		await expect(pendingEffects.drain(TURN_RUN_ID, 1_000)).resolves.toBe(true);
+		expect(onUsageError).toHaveBeenCalledOnce();
+		expect(onPersistenceTrace.mock.calls.map(([trace]) => trace.outcome)).toEqual([
+			'started',
+			'timed_out'
+		]);
+		expect(onPersistenceTrace.mock.calls[1]?.[0]).toMatchObject({
+			durationMs: expect.any(Number),
+			executionGeneration: 2
 		});
 	});
 
@@ -1896,52 +2046,55 @@ describe('AgenticChatOpenRouterClient', () => {
 			error: 'rate limited'
 		});
 
-		expect(logger.logUsageToDatabase).toHaveBeenCalledWith({
-			id: '60000000-0000-5000-8000-000000000006',
-			userId: USER_ID,
-			operationType: 'agentic_chat_worker_stream',
-			modelRequested: 'direct/requested',
-			modelUsed: 'direct/resolved',
-			provider: 'Direct Provider',
-			promptTokens: 10,
-			completionTokens: 4,
-			totalTokens: 14,
-			inputCost: 0.0007,
-			outputCost: 0.0013,
-			totalCost: 0.002,
-			responseTimeMs: 250,
-			requestStartedAt: new Date(1_000),
-			requestCompletedAt: new Date(1_250),
-			status: 'failure',
-			errorMessage: 'rate limited',
-			streaming: true,
-			projectId: '40000000-0000-4000-8000-000000000004',
-			chatSessionId: SESSION_ID,
-			turnRunId: TURN_RUN_ID,
-			streamRunId: 'stream-run-1',
-			clientTurnId: 'client-turn-1',
-			openrouterRequestId: 'request-1',
-			openrouterUsageCost: 0.002,
-			openrouterCacheStatus: '50% cache hit',
-			openrouterByok: true,
-			openrouterUpstreamInferenceCost: 0.0015,
-			reasoningTokens: 2,
-			cachedPromptTokens: 5,
-			cacheWriteTokens: 1,
-			metadata: {
-				contextType: 'project',
-				entityId: 'project-1',
-				routeId: 'direct',
-				logicalProviderRound: 3,
-				passRole: 'repair',
-				providerAttempt: 2,
-				attemptedRouteIds: ['openrouter', 'direct'],
-				estimatedUsage: true,
-				costSource: 'provider_reported',
-				retryable: true,
-				providerStatus: 'failure'
-			}
-		});
+		expect(logger.logUsageToDatabase).toHaveBeenCalledWith(
+			{
+				id: '60000000-0000-5000-8000-000000000006',
+				userId: USER_ID,
+				operationType: 'agentic_chat_worker_stream',
+				modelRequested: 'direct/requested',
+				modelUsed: 'direct/resolved',
+				provider: 'Direct Provider',
+				promptTokens: 10,
+				completionTokens: 4,
+				totalTokens: 14,
+				inputCost: 0.0007,
+				outputCost: 0.0013,
+				totalCost: 0.002,
+				responseTimeMs: 250,
+				requestStartedAt: new Date(1_000),
+				requestCompletedAt: new Date(1_250),
+				status: 'failure',
+				errorMessage: 'rate limited',
+				streaming: true,
+				projectId: '40000000-0000-4000-8000-000000000004',
+				chatSessionId: SESSION_ID,
+				turnRunId: TURN_RUN_ID,
+				streamRunId: 'stream-run-1',
+				clientTurnId: 'client-turn-1',
+				openrouterRequestId: 'request-1',
+				openrouterUsageCost: 0.002,
+				openrouterCacheStatus: '50% cache hit',
+				openrouterByok: true,
+				openrouterUpstreamInferenceCost: 0.0015,
+				reasoningTokens: 2,
+				cachedPromptTokens: 5,
+				cacheWriteTokens: 1,
+				metadata: {
+					contextType: 'project',
+					entityId: 'project-1',
+					routeId: 'direct',
+					logicalProviderRound: 3,
+					passRole: 'repair',
+					providerAttempt: 2,
+					attemptedRouteIds: ['openrouter', 'direct'],
+					estimatedUsage: true,
+					costSource: 'provider_reported',
+					retryable: true,
+					providerStatus: 'failure'
+				}
+			},
+			undefined
+		);
 	});
 });
 

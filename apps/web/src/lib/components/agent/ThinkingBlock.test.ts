@@ -2,6 +2,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { CHAT_WORKFLOW_PROTOTYPE_VERSION, type ChatWorkflowProgress } from '@buildos/shared-types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import ThinkingBlock from './ThinkingBlock.svelte';
@@ -36,6 +37,35 @@ function thinkingBlock(): ThinkingBlockMessage {
 
 describe('ThinkingBlock', () => {
 	afterEach(cleanup);
+
+	it('restores specialist findings from durable activity metadata and shows unfinished work as stopped', async () => {
+		const progress: ChatWorkflowProgress = {
+			version: CHAT_WORKFLOW_PROTOTYPE_VERSION,
+			steps: [
+				{ id: 'context', label: 'Gather context', status: 'completed' },
+				{ id: 'plan', label: 'Plan review', status: 'completed' },
+				{
+					id: 'analyst',
+					label: 'Project analyst',
+					status: 'completed',
+					result: '<script>unsafe</script> Book the venue.'
+				},
+				{ id: 'reviewer', label: 'Risk reviewer', status: 'running' },
+				{ id: 'answer', label: 'Combine', status: 'pending' }
+			]
+		};
+		const block = thinkingBlock();
+		block.status = 'cancelled';
+		block.activities = [{ ...activity(1), metadata: { workflow: progress } }];
+		const { container } = render(ThinkingBlock, {
+			props: { block, onToggleCollapse: vi.fn() }
+		});
+		expect(screen.getByText('Review stopped')).toBeInTheDocument();
+		expect(screen.getAllByText('stopped')).toHaveLength(2);
+		expect(screen.getByText('<script>unsafe</script> Book the venue.')).toBeInTheDocument();
+		expect(container.querySelector('script')).toBeNull();
+		expect(screen.queryByRole('log')).toBeNull();
+	});
 
 	it('keeps the compact and expanded log states accessible', async () => {
 		render(ThinkingBlock, {

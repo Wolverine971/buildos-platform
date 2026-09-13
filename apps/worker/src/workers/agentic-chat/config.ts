@@ -1,4 +1,6 @@
 // apps/worker/src/workers/agentic-chat/config.ts
+import { parseChatWorkflowPrototypeUsers } from '@buildos/shared-types';
+// apps/worker/src/workers/agentic-chat/config.ts
 
 import {
 	type AgenticChatConsumerConfig,
@@ -104,6 +106,7 @@ export type AgenticChatProviderConfig = {
 };
 
 type AgenticChatBaseConfig = {
+	workflowPrototypeUserIds?: string[];
 	liveVisionEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
@@ -209,6 +212,9 @@ export function loadAgenticChatConfig(
 
 	return {
 		enabled: true,
+		workflowPrototypeUserIds: parseChatWorkflowPrototypeUsers(
+			environment.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS
+		),
 		liveVisionEnabled,
 		consumptionBillingEnabled,
 		consumer,
