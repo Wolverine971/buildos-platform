@@ -680,9 +680,9 @@ function createHarness(
 	const statedFutureCaptureErrors: unknown[] = [];
 	const consumptionBillingErrors: unknown[] = [];
 	const terminalControlErrors: Array<{
-		stage: 'finalize' | 'finalize_retry' | 'recover';
+		stage: 'claim' | 'claim_readback' | 'finalize' | 'finalize_retry' | 'recover';
 		turnRunId: string;
-		executionGeneration: number;
+		executionGeneration: number | null;
 		error: unknown;
 	}> = [];
 	const input = {
@@ -869,6 +869,62 @@ function normalizedBroadcastEventTypes(messages: Array<Record<string, unknown>>)
 }
 
 describe('AgenticChatTurnExecutor', () => {
+	it('restores a committed claim whose receipt outlived the overhead deadline', async () => {
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'Recovered claim answer' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ overheadTimeoutMs: 100 }
+		);
+		harness.control.claim
+			.mockImplementationOnce(() => new Promise<never>(() => undefined))
+			.mockImplementationOnce(async () => ({
+				...claim,
+				outcome: 'matching_current_claim' as const,
+				executionMayStart: true
+			}));
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed',
+				executionGeneration: EXECUTION_GENERATION
+			});
+			expect(harness.control.claim).toHaveBeenCalledTimes(2);
+			expect(harness.input.load).toHaveBeenCalledOnce();
+			expect(harness.control.recover).not.toHaveBeenCalled();
+			expect(harness.terminalControlErrors).toEqual([
+				expect.objectContaining({
+					stage: 'claim',
+					turnRunId: TURN_RUN_ID,
+					executionGeneration: null
+				})
+			]);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('leaves the turn for stalled recovery when the claim readback also fails', async () => {
+		const harness = createHarness([], { overheadTimeoutMs: 100 });
+		const outage = new Error('claim transport unavailable');
+		harness.control.claim.mockRejectedValueOnce(outage).mockRejectedValueOnce(outage);
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'recovery_required',
+				executionGeneration: null
+			});
+			expect(harness.control.claim).toHaveBeenCalledTimes(2);
+			expect(harness.input.load).not.toHaveBeenCalled();
+			expect(harness.terminalControlErrors.map((report) => report.stage)).toEqual([
+				'claim',
+				'claim_readback'
+			]);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it.each([
 		...[
 			'read_tool_egress_blocked_private_content',
@@ -1243,6 +1299,15 @@ describe('AgenticChatTurnExecutor', () => {
 			'session',
 			'context_usage'
 		]);
+		// Delivery backlog has already been persisted. It must not reserve
+		// additional sequence numbers in the reconciliation projection.
+		expect(
+			(
+				harness.semanticInputs[2]!.projection as {
+					semantic_events: Array<{ sequence_index: number }>;
+				}
+			).semantic_events.map((event) => event.sequence_index)
+		).toEqual([1, 2, 3]);
 
 		releaseFirstDelivery();
 		await expect(execution).resolves.toMatchObject({
@@ -1904,6 +1969,59 @@ describe('AgenticChatTurnExecutor', () => {
 		expect(harness.timingSnapshots).toEqual([]);
 		expect(harness.control.finalize).toHaveBeenCalledOnce();
 		await harness.publisher.stop();
+	});
+
+	it('keeps projection identity aligned with live receipts when text is still awaiting persistence', async () => {
+		let releaseText!: () => void;
+		const heldText = new Promise<void>((resolve) => (releaseText = resolve));
+		let textStarted = false;
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'Checking the calendar. ' },
+				{
+					type: 'read_tool',
+					logicalProviderRound: 1,
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					providerToolCallId: 'delayed-prefix-call',
+					toolName: 'fixture_project_read',
+					arguments: { projectId: 'project-1' }
+				},
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{
+				beforeFlushTextBatches: async () => {
+					textStarted = true;
+					await heldText;
+				}
+			}
+		);
+		try {
+			const executing = harness.executor.execute(job());
+			await vi.waitFor(() => {
+				expect(textStarted).toBe(true);
+				expect(harness.publisher.getSnapshot(TURN_RUN_ID).pendingPersistenceEvents).toBe(2);
+			});
+			expect(harness.readTool.execute).not.toHaveBeenCalled();
+			releaseText();
+			expect((await executing).outcome).toBe('completed');
+			const liveCall = harness.broadcastMessages
+				.map((message) => message.payload as Record<string, unknown>)
+				.find((event) => event?.type === 'tool_call')!;
+			const callProjection = harness.semanticInputs.find(
+				(input) => input.event_type === 'tool_call'
+			)!.projection as { semantic_events: Array<Record<string, unknown>> };
+			const projectedCall = callProjection.semantic_events.find(
+				(event) => event.type === 'tool_call'
+			)!;
+			expect(projectedCall.sequence_index).toBe(5);
+			expect(projectedCall.event_id).toBe(liveCall.event_id);
+			expect(projectedCall.sequence_index).toBe(liveCall.sequence_index);
+			expect(harness.readTool.execute).toHaveBeenCalledOnce();
+		} finally {
+			releaseText();
+			await harness.publisher.stop();
+		}
 	});
 
 	it('streams text, executes a read-only tool, persists reconnect-safe projection, and finalizes', async () => {

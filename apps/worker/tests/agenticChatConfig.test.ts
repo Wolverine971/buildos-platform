@@ -36,7 +36,7 @@ describe('Agentic Chat acting provider routing defaults', () => {
 		};
 		expect(loadAgenticChatConfig(environment).provider.routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			ignore: ['azure', 'morph'],
+			ignore: ['azure', 'morph', 'modal'],
 			sort: 'throughput'
 		});
 		expect(loadAgenticChatConfig(environment).provider.routes[0]?.providerRouting).toEqual(
@@ -51,6 +51,15 @@ describe('Agentic Chat acting provider routing defaults', () => {
 				AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER: 'deepinfra,gmicloud'
 			}).provider.routes[0]?.providerRouting?.order
 		).toEqual(['deepinfra', 'gmicloud']);
+		for (const override of [
+			{ AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER: 'novita,venice' },
+			{ AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT: 'latency' }
+		]) {
+			expect(
+				loadAgenticChatConfig({ ...environment, ...override }).provider.routes[0]
+					?.providerRouting
+			).toMatchObject({ allow_fallbacks: true, ignore: ['azure', 'morph', 'modal'] });
+		}
 	});
 });
 

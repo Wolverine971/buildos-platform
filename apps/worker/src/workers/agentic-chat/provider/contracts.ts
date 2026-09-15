@@ -63,7 +63,7 @@ export type AgenticChatTurnProviderClientEventV1 =
 			 * that contradicts the streamed calls) is retried on another route but
 			 * must not degrade the turn's capacity window the way a 429 does.
 			 */
-			cause?: 'tool_arguments_truncated';
+			cause?: 'tool_arguments_truncated' | 'slow_stream';
 	  };
 
 /**
@@ -106,6 +106,10 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	reasoningEffort?: 'low';
 	passRole?: AgenticChatProviderPassRoleV1;
 	providerAttempt?: number;
+	/** Only the atomic pass buffer may opt in, while its single retry remains. */
+	allowSlowStreamRecovery?: boolean;
+	/** The atomic buffer's last existing attempt; no further retry will follow. */
+	finalBufferedAttempt?: boolean;
 	/** Turn-level deadline; absent for fixtures and legacy callers. */
 	budget?: AgenticChatProviderBudgetV1;
 	signal: AbortSignal;
@@ -334,6 +338,8 @@ export type AgenticChatProviderPortV1 = {
 export type ContractReviewRejectionCode =
 	| 'unexpected_control_tool'
 	| 'revision_disallowed'
+	| 'revision_value_unchanged'
+	| 'revision_evidence_invalid'
 	| 'corrected_contract_invalid'
 	| 'approval_sha_mismatch'
 	| 'decision_schema_invalid'

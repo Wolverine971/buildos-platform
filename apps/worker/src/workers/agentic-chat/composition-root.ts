@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agentic-chat/composition-root.ts
 import {
-	logAgenticChatPersistenceTrace,
-	type AgenticChatPersistenceTraceSinkV1
+	type AgenticChatPersistenceTraceSinkV1,
+	logAgenticChatPersistenceTrace
 } from './persistenceTrace';
 // apps/worker/src/workers/agentic-chat/composition-root.ts
 import { ChatWorkflowPrototypeProvider } from './workflow/prototype-provider';

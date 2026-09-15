@@ -32,6 +32,58 @@ function call(
 }
 
 describe('direct write routing', () => {
+	it('also reviews a source-preservation create that omits the entire content argument', () => {
+		expect(
+			assessDirectWriteBatch(
+				[
+					call('create_onto_document', {
+						project_id: '2',
+						title: 'Source',
+						description: 'Empty proposal'
+					})
+				],
+				{
+					contextType: 'project',
+					entityId: '2',
+					projectId: '2',
+					userMessage: 'Store this exact text: Keep all of it.'
+				}
+			)
+		).toMatchObject({ kind: 'contract_required', reason: 'source_fidelity_requires_review' });
+	});
+
+	it.each([
+		'Store this exact fictional supplier text as quoted source material:\n\n<note>Keep this.</note>',
+		'Create a document containing the following verbatim:\n\nA & B',
+		'Copy the passage word-for-word into a document.',
+		'Preserve the original wording unchanged in the note.',
+		'Save this quoted source material for review.'
+	])('reviews document source fidelity for %s', (userMessage) => {
+		for (const name of ['create_onto_document', 'update_onto_document']) {
+			const assessment = assessDirectWriteBatch(
+				[call(name, { project_id: '2', document_id: '3', content: 'Omitted source.' })],
+				{ contextType: 'document', entityId: '3', projectId: '2', userMessage }
+			);
+			expect(assessment).toMatchObject({
+				kind: 'contract_required',
+				reason: 'source_fidelity_requires_review'
+			});
+		}
+	});
+
+	it.each([
+		'Draft a document with a concise summary of these notes.',
+		'Create a note about exact arithmetic.',
+		'Write a proposal and leave the project budget unchanged.'
+	])('keeps ordinary document composition direct for %s', (userMessage) => {
+		expect(
+			assessDirectWriteBatch(
+				[call('create_onto_document', { project_id: '2', content: 'Draft content.' })],
+				{ contextType: 'project', entityId: '2', projectId: '2', userMessage }
+			)
+		).toEqual({ kind: 'simple', mutationCount: 1 });
+	});
+
 	it('accepts one same-round batch of up to three ordinary mutations', () => {
 		const focused = { contextType: 'project', entityId: '2', projectId: '2' };
 		expect(

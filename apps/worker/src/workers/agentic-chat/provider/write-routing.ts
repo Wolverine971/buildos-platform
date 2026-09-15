@@ -42,6 +42,7 @@ export type DirectWriteBatchAssessment =
 				| 'mutation_count_exceeded'
 				| 'operation_requires_contract'
 				| 'ordered_or_dependent_batch'
+				| 'source_fidelity_requires_review'
 				| 'target_resolution_requires_review';
 			mutationCount: number;
 	  };
@@ -86,6 +87,18 @@ export function assessDirectWriteBatch(
 		return {
 			kind: 'contract_required',
 			reason: 'mutation_count_exceeded',
+			mutationCount: mutationCalls.length
+		};
+	}
+	if (
+		requestsSourcePreservationReview(context?.userMessage) &&
+		mutationCalls.some((call) =>
+			['create_onto_document', 'update_onto_document'].includes(call.name)
+		)
+	) {
+		return {
+			kind: 'contract_required',
+			reason: 'source_fidelity_requires_review',
 			mutationCount: mutationCalls.length
 		};
 	}
@@ -153,6 +166,28 @@ export function assessDirectWriteBatch(
 		};
 	}
 	return { kind: 'simple', mutationCount: mutationCalls.length };
+}
+
+/**
+ * Conservative English-language routing cues, not a source-fidelity validator.
+ * A small create can still omit commissioned source text. Let the existing
+ * reviewer compare the held content against the original user message, even
+ * when target selection is trivial. This neither extracts source boundaries
+ * nor treats a model-authored substring/hash as proof of preservation.
+ */
+function requestsSourcePreservationReview(message?: string | null): boolean {
+	if (!message) return false;
+	return (
+		/\b(?:verbatim|byte[- ]for[- ]byte|word[- ]for[- ]word|quoted\s+(?:source|text|material))\b/i.test(
+			message
+		) ||
+		/\b(?:exact(?:ly)?|unchanged|unmodified)\b[^\n.!?:]{0,100}\b(?:text|wording|content|source|passage|note|transcript|body)\b/i.test(
+			message
+		) ||
+		/\b(?:text|wording|content|source|passage|note|transcript|body)\b[^\n.!?:]{0,100}\b(?:unchanged|unmodified)\b/i.test(
+			message
+		)
+	);
 }
 
 const ARGUMENT_ENTITY_KINDS: Readonly<Record<string, string>> = {
@@ -275,6 +310,8 @@ export function directWriteContractInstruction(
 				return 'At least one proposed operation is destructive, organizational, high-impact, or otherwise contract-only.';
 			case 'ordered_or_dependent_batch':
 				return 'The proposal contains explicit ordering or dependencies.';
+			case 'source_fidelity_requires_review':
+				return 'The user requested source preservation; the document content must be independently compared with the original user message before execution.';
 			case 'target_resolution_requires_review':
 				return 'At least one proposed mutation selects an existing entity or parent project from broader context, so its target resolution requires semantic review.';
 		}

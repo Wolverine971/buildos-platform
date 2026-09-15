@@ -71,23 +71,23 @@ flowchart TD
     I --> J[Save answer and workflow card in chat history]
 ```
 
-| Concern      | Prototype behavior                                                                                                                   |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Ownership    | One existing queue job and one worker turn                                                                                           |
-| Context      | Worker refreshes a bounded snapshot after a current actor-explicit access check                                                      |
-| Admission    | Existing preparation contract remains; some context work is still duplicated                                                         |
-| Plan         | Only two assignment strings; malformed/unavailable planner uses an explicitly labeled fixed plan                                     |
-| Agents       | Separate model messages; neither specialist sees the other's output                                                                  |
-| Concurrency  | Reuses the worker provider capacity; one slot serializes specialists, two allow overlap                                              |
-| Limits       | Four logical passes; completion ceilings 900/3,200/3,200/3,200; configured provider ceiling still applies                            |
-| Time         | Existing turn deadline and per-attempt timeout; context caller limited to 20 seconds                                                 |
-| Model policy | Explicit low reasoning effort on OpenRouter workflow passes; ordinary chat policy unchanged                                          |
-| Failure      | One specialist may produce a labeled partial answer; both failing stops synthesis                                                    |
-| Streaming    | Final editor chunks use the existing batched text publisher; an incomplete editor stream fails instead of completing the answer step |
-| Cancellation | Parent abort reaches each child and capacity wait; leases release when calls unwind                                                  |
-| Persistence  | Durable semantic progress before the next stage; bounded report previews in final message metadata                                   |
-| Recovery     | Realtime/reconciliation can replay progress; completed chat history restores reports                                                 |
-| Restart      | No workflow checkpoint/resume implementation yet; existing worker recovery rules apply                                               |
+| Concern      | Prototype behavior                                                                                                                                                                                                    |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ownership    | One existing queue job and one worker turn                                                                                                                                                                            |
+| Context      | Worker refreshes a bounded snapshot after a current actor-explicit access check                                                                                                                                       |
+| Admission    | Existing preparation contract remains; some context work is still duplicated                                                                                                                                          |
+| Plan         | Only two assignment strings; malformed/unavailable planner uses an explicitly labeled fixed plan                                                                                                                      |
+| Agents       | Separate model messages; neither specialist sees the other's output                                                                                                                                                   |
+| Concurrency  | Reuses the worker provider capacity; one slot serializes specialists, two allow overlap                                                                                                                               |
+| Limits       | Planner 1,200; specialists 4,000 each with bounded JSON role reports (Task 83); editor 3,200; at most six provider calls, with any client transport retries additional; the 4,000 acting client ceiling still applies |
+| Time         | Existing turn deadline and per-attempt timeout; context caller limited to 20 seconds                                                                                                                                  |
+| Model policy | Explicit low reasoning effort on OpenRouter workflow passes; ordinary chat policy unchanged                                                                                                                           |
+| Failure      | A truncated or unverifiable report gets one compact retry if 75 s remain; one failed specialist yields a labeled partial answer; both failing stops synthesis                                                         |
+| Streaming    | Final editor chunks use the existing batched text publisher; an incomplete editor stream fails instead of completing the answer step                                                                                  |
+| Cancellation | Parent abort reaches each child and capacity wait; leases release when calls unwind                                                                                                                                   |
+| Persistence  | Durable semantic progress before the next stage; bounded report previews in final message metadata                                                                                                                    |
+| Recovery     | Realtime/reconciliation can replay progress; completed chat history restores reports                                                                                                                                  |
+| Restart      | No workflow checkpoint/resume implementation yet; existing worker recovery rules apply                                                                                                                                |
 
 The completion caps include hidden reasoning. The first live attempt exhausted both
 specialist caps entirely in reasoning and returned no report. Explicit low effort

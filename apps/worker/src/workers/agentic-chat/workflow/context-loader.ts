@@ -11,8 +11,7 @@ export function createWorkflowContextLoader(client: SupabaseClient<Database>) {
 			warn: (message) => console.warn(`[workflow-context] ${message}`)
 		}
 	});
-	return async (userId: string, projectId: string, signal: AbortSignal) => {
-		signal.throwIfAborted();
+	return (userId: string, projectId: string, signal: AbortSignal) => {
 		const work = async () => {
 			await new WorkerAgenticChatToolAccessAdapter({ client, userId }).assertProjectAccess(
 				projectId,
@@ -31,6 +30,8 @@ export function createWorkflowContextLoader(client: SupabaseClient<Database>) {
 		// The shared loader cannot cancel every DB request yet. Bound the caller and
 		// prevent late results from starting model work; reads may finish in background.
 		return new Promise<Awaited<ReturnType<typeof work>>>((resolve, reject) => {
+			// A throw inside the executor rejects, so an already-aborted signal still rejects.
+			signal.throwIfAborted();
 			const cancel = () => reject(signal.reason);
 			signal.addEventListener('abort', cancel, { once: true });
 			void work()

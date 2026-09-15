@@ -230,6 +230,34 @@ export const MUTATION_BATCH_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV
 			required: ['reason', 'required_correction', 'reference_candidates'],
 			properties: {
 				...(PROPOSAL_REVISION_TOOL.function.parameters.properties as JsonObject),
+				argument_checks: {
+					type: 'array',
+					maxItems: 20,
+					description:
+						'For each correction to an existing scalar argument, cite its one-based call number, argument path, and required value from user intent or the schema. Do not include document bodies. These are comparison evidence, never replacement calls. Omit for structural corrections or prose edits.',
+					items: {
+						type: 'object',
+						additionalProperties: false,
+						required: ['call', 'argument_path', 'required_value'],
+						properties: {
+							call: { type: 'integer', minimum: 1, maximum: 40 },
+							argument_path: {
+								type: 'array',
+								minItems: 1,
+								maxItems: 8,
+								items: { type: 'string', minLength: 1, maxLength: 64 }
+							},
+							required_value: {
+								anyOf: [
+									{ type: 'string', maxLength: 160 },
+									{ type: 'number' },
+									{ type: 'boolean' },
+									{ type: 'null' }
+								]
+							}
+						}
+					}
+				},
 				reference_candidates: {
 					...REFERENCE_CANDIDATES_PROPERTY
 				}

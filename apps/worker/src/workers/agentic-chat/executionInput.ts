@@ -1,10 +1,14 @@
 // apps/worker/src/workers/agentic-chat/executionInput.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V4,
+	AGENTIC_CHAT_WORKFLOW_REQUEST_HASH_VERSION,
+	type AgenticChatRawWorkflowInputV4,
 	type AgenticChatTurnClaimResultV1,
 	type Database,
 	type JsonObject,
 	type TurnInputArtifactV1,
+	validateAgenticChatRawWorkflowInputV4,
 	validateTurnInputArtifactV1
 } from '@buildos/shared-types';
 
@@ -76,6 +80,14 @@ const ARTIFACT_COLUMNS = [
 	'retain_until'
 ].join(',');
 
+// Selected only by the raw workflow loader; ordinary execution never reads v4 columns.
+const RAW_WORKFLOW_ARTIFACT_COLUMNS = [
+	ARTIFACT_COLUMNS,
+	'request',
+	'request_hash',
+	'history_hash'
+].join(',');
+
 export type AgenticChatWorkerExecutionInputV1 = {
 	claim: ExecutableClaim;
 	streamRunId: string;
@@ -84,6 +96,16 @@ export type AgenticChatWorkerExecutionInputV1 = {
 	artifact: TurnInputArtifactV1;
 	timingBaseline: AgenticChatWorkerTimingBaselineV1;
 };
+
+/** A v4 raw request. It carries no prepared context and cannot reach a provider directly. */
+export type AgenticChatRawWorkflowExecutionInputV1 = Omit<
+	AgenticChatWorkerExecutionInputV1,
+	'artifact'
+> & {
+	input: AgenticChatRawWorkflowInputV4;
+};
+
+type LoadedCommand = Omit<AgenticChatWorkerExecutionInputV1, 'artifact'>;
 
 /**
  * Immutable database-clock and admission-category evidence. Runtime elapsed
@@ -129,7 +151,8 @@ export class AgenticChatExecutionInputError extends Error {
 			| 'invalid_command'
 			| 'invalid_artifact'
 			| 'invalid_timing_source'
-			| 'artifact_expired',
+			| 'artifact_expired'
+			| 'raw_workflow_input_requires_preparation',
 		message: string
 	) {
 		super(message);
@@ -144,78 +167,16 @@ export class SupabaseAgenticChatExecutionInputAdapter implements AgenticChatExec
 	) {}
 
 	async load(claim: ExecutableClaim): Promise<AgenticChatWorkerExecutionInputV1> {
-		const { data: rawTurn, error: turnError } = await this.client
-			.from('chat_turn_runs')
-			.select(TURN_COLUMNS)
-			.eq('id', claim.turnRunId)
-			.eq('user_id', claim.userId)
-			.eq('session_id', claim.sessionId)
-			.eq('queue_job_id', claim.queueJobId)
-			.maybeSingle();
-		if (turnError)
-			throw new AgenticChatExecutionInputError('database_error', turnError.message);
-		if (!rawTurn)
-			throw new AgenticChatExecutionInputError('not_found', 'Worker turn is missing');
-
-		const turn = rawTurn as unknown as Record<string, unknown>;
-		if (
-			turn.id !== claim.turnRunId ||
-			turn.session_id !== claim.sessionId ||
-			turn.user_id !== claim.userId ||
-			turn.queue_job_id !== claim.queueJobId ||
-			turn.correlation_id !== claim.correlationId ||
-			turn.execution_generation !== claim.executionGeneration ||
-			turn.execution_mode !== 'worker_realtime' ||
-			turn.status !== 'running' ||
-			turn.input_artifact_id !== claim.inputArtifactId ||
-			turn.user_message_id !== claim.userMessageId ||
-			!canonicalText(turn.stream_run_id, 256) ||
-			!canonicalText(turn.client_turn_id, 256) ||
-			turn.request_payload_version !== 'agentic_chat_request_v1' ||
-			!isJsonObject(turn.request_payload)
-		) {
+		const command = await this.loadCommand(claim);
+		const { timingBaseline } = command;
+		const row = await this.loadArtifactRow(claim, ARTIFACT_COLUMNS);
+		if (row.artifact_version === AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V4) {
 			throw new AgenticChatExecutionInputError(
-				'scope_mismatch',
-				'Worker turn command does not match its fenced claim'
+				'raw_workflow_input_requires_preparation',
+				'Raw workflow input must be prepared by the workflow runner before provider execution'
 			);
 		}
 		if (
-			turn.request_payload.clientTurnId !== turn.client_turn_id ||
-			turn.request_payload.streamRunId !== turn.stream_run_id ||
-			typeof turn.request_payload.message !== 'string' ||
-			!isJsonObject(turn.request_payload.context)
-		) {
-			throw new AgenticChatExecutionInputError(
-				'invalid_command',
-				'Worker request payload is malformed or cross-bound'
-			);
-		}
-		const timingBaseline = parseTimingBaseline(turn);
-
-		const { data: rawArtifact, error: artifactError } = await this.client
-			.from('chat_turn_input_artifacts')
-			.select(ARTIFACT_COLUMNS)
-			.eq('id', claim.inputArtifactId)
-			.eq('turn_run_id', claim.turnRunId)
-			.eq('session_id', claim.sessionId)
-			.eq('user_id', claim.userId)
-			.maybeSingle();
-		if (artifactError) {
-			throw new AgenticChatExecutionInputError('database_error', artifactError.message);
-		}
-		if (!rawArtifact) {
-			throw new AgenticChatExecutionInputError(
-				'not_found',
-				'Worker input artifact is missing'
-			);
-		}
-
-		const row = rawArtifact as unknown as Record<string, unknown>;
-		if (
-			row.id !== claim.inputArtifactId ||
-			row.turn_run_id !== claim.turnRunId ||
-			row.session_id !== claim.sessionId ||
-			row.user_id !== claim.userId ||
 			!Array.isArray(row.history) ||
 			!isJsonObject(row.prepared) ||
 			typeof row.created_at !== 'string' ||
@@ -281,25 +242,179 @@ export class SupabaseAgenticChatExecutionInputAdapter implements AgenticChatExec
 				'Worker history timing evidence does not match its immutable input artifact'
 			);
 		}
-		if (Date.parse(artifact.retainUntil) <= this.now()) {
+		this.assertRetained(artifact.retainUntil);
+
+		return {
+			...command,
+			artifact: {
+				...artifact,
+				...validation.normalizedContent,
+				contentHash: validation.contentHash
+			}
+		};
+	}
+
+	/**
+	 * Loads and re-verifies an agentic_chat_input_v4 request. Nothing here reads
+	 * project context; the workflow runner prepares and checkpoints that separately.
+	 */
+	async loadRawWorkflowInput(
+		claim: ExecutableClaim
+	): Promise<AgenticChatRawWorkflowExecutionInputV1> {
+		const command = await this.loadCommand(claim);
+		const row = await this.loadArtifactRow(claim, RAW_WORKFLOW_ARTIFACT_COLUMNS);
+		if (
+			row.artifact_version !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V4 ||
+			row.prepared !== null ||
+			row.source_prepared_prompt_id !== null ||
+			!isJsonObject(row.request)
+		) {
+			throw new AgenticChatExecutionInputError(
+				'invalid_artifact',
+				'Worker input artifact is not a raw workflow request'
+			);
+		}
+		const input = {
+			artifactVersion: row.artifact_version,
+			request: row.request,
+			historySource: row.history_source,
+			history: row.history,
+			requestHashVersion: AGENTIC_CHAT_WORKFLOW_REQUEST_HASH_VERSION,
+			requestHash: row.request_hash,
+			historyHash: row.history_hash,
+			contentHash: row.content_hash,
+			historyBytes: row.history_bytes,
+			contentBytes: row.content_bytes,
+			createdAt: row.created_at,
+			retainUntil: row.retain_until
+		} as unknown as AgenticChatRawWorkflowInputV4;
+		const validation = await validateAgenticChatRawWorkflowInputV4(input, {
+			artifactId: claim.inputArtifactId,
+			turnRunId: claim.turnRunId,
+			sessionId: claim.sessionId,
+			userId: claim.userId
+		});
+		if (!validation.ok) {
+			throw new AgenticChatExecutionInputError(
+				'invalid_artifact',
+				`Raw workflow request failed validation: ${validation.code}`
+			);
+		}
+		if (
+			input.request.userMessageId !== claim.userMessageId ||
+			input.request.clientTurnId !== command.clientTurnId ||
+			input.request.streamRunId !== command.streamRunId ||
+			input.request.message !== command.requestPayload.message
+		) {
+			throw new AgenticChatExecutionInputError(
+				'invalid_command',
+				'Raw workflow request is not bound to its fenced command'
+			);
+		}
+		this.assertRetained(input.retainUntil);
+		return { ...command, input };
+	}
+
+	private assertRetained(retainUntil: string): void {
+		if (Date.parse(retainUntil) <= this.now()) {
 			throw new AgenticChatExecutionInputError(
 				'artifact_expired',
 				'Worker input artifact is outside its execution retention window'
 			);
 		}
+	}
 
+	private async loadCommand(claim: ExecutableClaim): Promise<LoadedCommand> {
+		const { data: rawTurn, error: turnError } = await this.client
+			.from('chat_turn_runs')
+			.select(TURN_COLUMNS)
+			.eq('id', claim.turnRunId)
+			.eq('user_id', claim.userId)
+			.eq('session_id', claim.sessionId)
+			.eq('queue_job_id', claim.queueJobId)
+			.maybeSingle();
+		if (turnError)
+			throw new AgenticChatExecutionInputError('database_error', turnError.message);
+		if (!rawTurn)
+			throw new AgenticChatExecutionInputError('not_found', 'Worker turn is missing');
+
+		const turn = rawTurn as unknown as Record<string, unknown>;
+		if (
+			turn.id !== claim.turnRunId ||
+			turn.session_id !== claim.sessionId ||
+			turn.user_id !== claim.userId ||
+			turn.queue_job_id !== claim.queueJobId ||
+			turn.correlation_id !== claim.correlationId ||
+			turn.execution_generation !== claim.executionGeneration ||
+			turn.execution_mode !== 'worker_realtime' ||
+			turn.status !== 'running' ||
+			turn.input_artifact_id !== claim.inputArtifactId ||
+			turn.user_message_id !== claim.userMessageId ||
+			!canonicalText(turn.stream_run_id, 256) ||
+			!canonicalText(turn.client_turn_id, 256) ||
+			turn.request_payload_version !== 'agentic_chat_request_v1' ||
+			!isJsonObject(turn.request_payload)
+		) {
+			throw new AgenticChatExecutionInputError(
+				'scope_mismatch',
+				'Worker turn command does not match its fenced claim'
+			);
+		}
+		if (
+			turn.request_payload.clientTurnId !== turn.client_turn_id ||
+			turn.request_payload.streamRunId !== turn.stream_run_id ||
+			typeof turn.request_payload.message !== 'string' ||
+			!isJsonObject(turn.request_payload.context)
+		) {
+			throw new AgenticChatExecutionInputError(
+				'invalid_command',
+				'Worker request payload is malformed or cross-bound'
+			);
+		}
 		return {
 			claim,
 			streamRunId: turn.stream_run_id,
 			clientTurnId: turn.client_turn_id,
 			requestPayload: turn.request_payload,
-			artifact: {
-				...artifact,
-				...validation.normalizedContent,
-				contentHash: validation.contentHash
-			},
-			timingBaseline
+			timingBaseline: parseTimingBaseline(turn)
 		};
+	}
+
+	private async loadArtifactRow(
+		claim: ExecutableClaim,
+		columns: string
+	): Promise<Record<string, unknown>> {
+		const { data: rawArtifact, error: artifactError } = await this.client
+			.from('chat_turn_input_artifacts')
+			.select(columns)
+			.eq('id', claim.inputArtifactId)
+			.eq('turn_run_id', claim.turnRunId)
+			.eq('session_id', claim.sessionId)
+			.eq('user_id', claim.userId)
+			.maybeSingle();
+		if (artifactError) {
+			throw new AgenticChatExecutionInputError('database_error', artifactError.message);
+		}
+		if (!rawArtifact) {
+			throw new AgenticChatExecutionInputError(
+				'not_found',
+				'Worker input artifact is missing'
+			);
+		}
+
+		const row = rawArtifact as unknown as Record<string, unknown>;
+		if (
+			row.id !== claim.inputArtifactId ||
+			row.turn_run_id !== claim.turnRunId ||
+			row.session_id !== claim.sessionId ||
+			row.user_id !== claim.userId
+		) {
+			throw new AgenticChatExecutionInputError(
+				'invalid_artifact',
+				'Worker input artifact scope or shape is invalid'
+			);
+		}
+		return row;
 	}
 }
 

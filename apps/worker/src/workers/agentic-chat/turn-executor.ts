@@ -9,7 +9,6 @@ import {
 } from '@buildos/agentic-chat-runtime/loop';
 import { resolveReviewedTurnContractFromExecutions } from './reviewedTurnContract';
 import {
-	readChatWorkflowProgress,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgentStreamEventV1,
@@ -24,7 +23,8 @@ import {
 	type ContextShiftPayload,
 	type JsonObject,
 	classifyAgenticChatRetryV1,
-	createAgentStreamEventIdV1
+	createAgentStreamEventIdV1,
+	readChatWorkflowProgress
 } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import {
@@ -376,9 +376,7 @@ export class AgenticChatTurnExecutor {
 
 		let claim: AgenticChatTurnClaimResultV1;
 		try {
-			claim = await this.awaitTerminal('turn claim', () =>
-				this.ports.control.claim(envelope)
-			);
+			claim = await this.claimWithReadback(envelope);
 			validateClaimEnvelope(claim, job);
 		} catch {
 			return result('recovery_required', envelope.turnRunId, null);
@@ -2574,7 +2572,11 @@ export class AgenticChatTurnExecutor {
 		const publication = projection.semanticPublishTail.then(async () => {
 			throwIfAborted(signal);
 			const claim = executionInput.claim;
-			const sequence = this.ports.publisher.getSnapshot(claim.turnRunId).durableSequence + 1;
+			const snapshot = this.ports.publisher.getSnapshot(claim.turnRunId);
+			// Queued text batches precede this semantic event and each consume a
+			// durable sequence. Reserve past that prefix before enqueueing below;
+			// delivery-only backlog has already consumed its durable sequences.
+			const sequence = snapshot.durableSequence + snapshot.pendingPersistenceEvents + 1;
 			const event = {
 				...step.eventPayload,
 				contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
@@ -3259,9 +3261,44 @@ export class AgenticChatTurnExecutor {
 		}
 	}
 
+	/**
+	 * A claim commits under the turn lock even when its response is lost or
+	 * outlives the overhead deadline. In the 2026-09-15 combined gate a 12s
+	 * pooler stall parked a committed claim until the 420s stalled-job sweep.
+	 * Claim is idempotent for the queue processing token: a replay returns the
+	 * committed generation as `matching_current_claim`, with `executionMayStart`
+	 * true until the start fence. One readback restores the lost receipt; if it
+	 * fails too, stalled recovery remains the fallback.
+	 */
+	private async claimWithReadback(
+		envelope: AgenticChatExecutionIdentityV1
+	): Promise<AgenticChatTurnClaimResultV1> {
+		try {
+			return await this.awaitTerminal('turn claim', () => this.ports.control.claim(envelope));
+		} catch (error) {
+			this.reportTerminalControlError(
+				'claim',
+				{ turnRunId: envelope.turnRunId, executionGeneration: null },
+				error
+			);
+		}
+		try {
+			return await this.awaitTerminal('turn claim readback', () =>
+				this.ports.control.claim(envelope)
+			);
+		} catch (error) {
+			this.reportTerminalControlError(
+				'claim_readback',
+				{ turnRunId: envelope.turnRunId, executionGeneration: null },
+				error
+			);
+			throw error;
+		}
+	}
+
 	private reportTerminalControlError(
-		stage: 'finalize' | 'finalize_retry' | 'recover',
-		claim: { turnRunId: string; executionGeneration: number },
+		stage: 'claim' | 'claim_readback' | 'finalize' | 'finalize_retry' | 'recover',
+		claim: { turnRunId: string; executionGeneration: number | null },
 		error: unknown
 	): void {
 		this.effects.reportTerminalControlError({

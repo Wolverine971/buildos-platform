@@ -30,6 +30,7 @@ export * from './agent.types';
 
 // Export Agentic Chat worker migration contracts
 export * from './agentic-chat-worker-contract';
+export * from './agentic-chat-workflow-contract';
 
 // Export consumption limits shared by synchronous admission and worker finalization.
 export * from './consumption-billing';

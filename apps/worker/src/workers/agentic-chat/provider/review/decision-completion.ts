@@ -7,6 +7,7 @@ import {
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
+	type MutationBatch,
 	type TurnContract,
 	describeDeclaredTurnContractIssues,
 	isProseTurnContractChange,
@@ -39,6 +40,7 @@ import {
 	findAmbiguousReferenceCandidates,
 	recentUserMessageTexts
 } from './decision-handling';
+import { checkMutationBatchRevisionEvidence } from './revision-evidence';
 
 type ReviewDecisionCompletionInput = {
 	actingRequest: AgenticChatTurnProviderRequestV1;
@@ -67,6 +69,7 @@ type SingleReviewDecision = {
 export function completeMutationBatchReviewDecision(
 	input: ReviewDecisionCompletionInput & {
 		batchSha256: string;
+		batch?: MutationBatch;
 		allowRevision: boolean;
 	}
 ): CompletedProviderToolCall[] {
@@ -90,7 +93,9 @@ export function completeMutationBatchReviewDecision(
 					: approval &&
 						  !approvalShaMatches(call.arguments.batch_sha256, input.batchSha256)
 						? 'approval_sha_mismatch'
-						: null;
+						: revision && input.batch
+							? checkMutationBatchRevisionEvidence(call.arguments, input.batch)
+							: null;
 		if (resolvedCode) {
 			resolvedFallback =
 				'Independent semantic review returned an invalid or unbound decision.';

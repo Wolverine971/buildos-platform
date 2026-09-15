@@ -692,7 +692,7 @@ export class SmartLLMService {
 						model: requestedModel, // Primary model with fallback
 						models: modelsForRequest, // Filtered models for fallback routing
 						messages,
-						temperature: options.temperature || 0.2,
+						temperature: options.temperature ?? 0.2,
 						response_format: useJsonMode ? { type: 'json_object' } : undefined,
 						reasoning: options.reasoning,
 						max_tokens: maxTokens,

@@ -2,9 +2,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+	type SourceProvenance,
 	readDeploymentProvenance,
-	readSourceProvenance,
-	type SourceProvenance
+	readSourceProvenance
 } from '@buildos/agentic-chat-runtime/provenance';
 
 // Capture once, before the service starts. A health request must never hash a

@@ -1526,11 +1526,13 @@ describe('AgenticChatOpenRouterClient', () => {
 			}
 		);
 		const collecting = collect(client.stream(input()));
-		await vi.advanceTimersByTimeAsync(10_000);
+		await vi.advanceTimersByTimeAsync(4_999);
+		expect(observe).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1);
 		await expect(collecting).resolves.toEqual([
 			{
 				type: 'error',
-				error: 'Agentic Chat provider request timed out after 10000ms',
+				error: 'Agentic Chat provider request timed out after 5000ms',
 				retryable: true
 			}
 		]);
@@ -2522,8 +2524,8 @@ describe('truncated tool-call attempts and turn budgets', () => {
 			test.client.stream({ ...input(), logicalProviderRound: 3, passRole: 'mutation_review' })
 		);
 		expect(requests[0]?.prompt_cache_key).toBe(SESSION_ID);
-		expect(requests[1]?.prompt_cache_key).toBe('agentic-chat-reviewer-v1');
-		expect(requests[2]?.prompt_cache_key).toBe('agentic-chat-reviewer-v1');
+		expect(requests[1]?.prompt_cache_key).toBe('agentic-chat-reviewer-v2');
+		expect(requests[2]?.prompt_cache_key).toBe('agentic-chat-reviewer-v2');
 	});
 
 	it('asks for low reasoning effort on contract and mutation reviews only', async () => {
@@ -2828,11 +2830,11 @@ describe('per-turn route health', () => {
 		const timingOut = collect(
 			test.client.stream({ ...input(), streamRunId: 'stream-run-2', logicalProviderRound: 2 })
 		);
-		await vi.advanceTimersByTimeAsync(10_000);
+		await vi.advanceTimersByTimeAsync(5_000);
 		await expect(timingOut).resolves.toEqual([
 			{
 				type: 'error',
-				error: 'Agentic Chat provider request timed out after 10000ms',
+				error: 'Agentic Chat provider request timed out after 5000ms',
 				retryable: true
 			}
 		]);

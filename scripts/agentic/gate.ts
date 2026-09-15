@@ -11,6 +11,7 @@ import {
 	readSourceProvenance
 } from '../../packages/agentic-chat-runtime/src/provenance';
 import { evaluateGateScorecard } from './gate-policy';
+import { writeGateLatencyAnalysis } from './latency-analysis';
 import {
 	prepareGateDatabase,
 	assertGateCalendarConfiguration,
@@ -151,6 +152,19 @@ async function main() {
 		]);
 		if (oracleExit)
 			throw new Error(`Battery oracle tests failed (${oracleExit}); see oracle.log`);
+		const diagnosticsExit = await run('diagnostics-oracle', [
+			'exec',
+			'node',
+			'--import',
+			'tsx',
+			'--test',
+			'scripts/agentic/http-trace.test.mjs',
+			'scripts/agentic/latency-analysis.test.ts'
+		]);
+		if (diagnosticsExit)
+			throw new Error(
+				`Gate diagnostics tests failed (${diagnosticsExit}); see diagnostics-oracle.log`
+			);
 		const envPath = process.env.AGENTIC_GATE_ENV_FILE;
 		if (!envPath)
 			throw new Error(
@@ -213,7 +227,8 @@ async function main() {
 			...process.env,
 			...isolated,
 			NODE_ENV: 'development',
-			NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --conditions=development`,
+			NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --conditions=development --import=${new URL('./http-trace.mjs', import.meta.url).href}`,
+			AGENTIC_GATE_HTTP_TRACE: 'true',
 			CHAT_MUTATION_BATCH_LANE: 'true',
 			AGENTIC_CHAT_LOCAL_PROMPT_DUMPS: 'true',
 			AGENTIC_CHAT_LOCAL_PROMPT_DUMP_DIRECTORY: resolve(output, 'provider-passes'),
@@ -301,6 +316,11 @@ async function main() {
 		process.exitCode = 1;
 	} finally {
 		await stop();
+		try {
+			writeGateLatencyAnalysis(output);
+		} catch (error) {
+			console.warn('[agentic:gate] Latency analysis unavailable:', String(error));
+		}
 		evidence.finishedAt = new Date().toISOString();
 		writeFileSync(resolve(output, 'gate.json'), JSON.stringify(evidence, null, 2) + '\n');
 		console.info(`[agentic:gate] ${evidence.status}: ${output}`);

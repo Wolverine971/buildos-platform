@@ -48,13 +48,15 @@ export async function* streamBufferedProviderPass(
 		const shadowToolCalls = createToolCallAccumulator();
 		let shadowObservable = true;
 
-		for await (const event of client.stream(
-			providerClientRequest({ ...request, providerAttempt })
-		)) {
+		for await (const event of client.stream({
+			...providerClientRequest({ ...request, providerAttempt }),
+			allowSlowStreamRecovery: retriesRemain,
+			finalBufferedAttempt: !retriesRemain
+		})) {
 			throwIfAborted(request.signal);
 			if (event.type === 'error') {
 				if (event.retryable && retriesRemain) {
-					if (event.cause !== 'tool_arguments_truncated') {
+					if (!event.cause) {
 						capacity.markTemporarilyUnavailable(
 							request.turnRunId,
 							retryableFailureCooldownMs

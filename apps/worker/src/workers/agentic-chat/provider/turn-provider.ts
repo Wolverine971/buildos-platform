@@ -12,25 +12,25 @@ import {
 	ContextGatheringLedger,
 	type FastToolExecution,
 	type LoadedTaskSchedule,
+	type MutationBatch,
 	NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE,
 	NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE,
 	type ToolValidationIssue,
 	type TurnContract,
 	type TurnContractOutcome,
 	bindTurnContractLabels,
+	buildMutationBatch,
 	buildOrganizeCommissionRepairInstruction,
 	buildRoundToolPattern,
 	buildWriteLedger,
 	classifyReceiptGroundedAssistantDisposition,
 	isControlToolName,
 	mergeTurnContracts,
+	mutationBatchSha256,
 	parseDeclaredTurnContract,
 	resolveTurnContractOutcome,
 	sanitizeAssistantFinalText,
-	turnContractCreatesProject,
-	type MutationBatch,
-	buildMutationBatch,
-	mutationBatchSha256
+	turnContractCreatesProject
 } from '@buildos/agentic-chat-runtime/loop';
 import {
 	type AgenticChatPreparedProviderInvocationV1,
@@ -85,8 +85,8 @@ import {
 } from './review/disposition';
 import { buildTurnContractReviewRequest } from './review/turn-contract';
 import {
-	buildMutationBatchRevisionRequest,
 	buildMutationBatchReviewRequest,
+	buildMutationBatchRevisionRequest,
 	constrainMutationBatchApprovalShaForRepair
 } from './review/mutation-batch';
 import {
@@ -1927,6 +1927,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						finishedReason: reviewFinishedReason,
 						fallbackReason,
 						batchSha256,
+						batch,
 						allowRevision
 					});
 				} catch (error) {
@@ -1979,7 +1980,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 								...repairBaseRequest,
 								providerAttempt: (repairBaseRequest.providerAttempt ?? 1) + 2
 							},
-							`Your previous decision could not be accepted (${diagnostic.code}). Return exactly one valid decision for the same proposed calls. Copy the exact batch SHA for approval. This is an internal format repair, not evidence of user ambiguity.`
+							diagnostic.code === 'revision_value_unchanged'
+								? 'Your previous revision asked to change an argument to the exact value already held in the proposal. Recheck the same calls against user intent and the schemas. Return a fresh approval only if every call is correct; otherwise return a supported revision, read-only decision, or clarification. No call has executed. A contradictory revision is not authorization.'
+								: `Your previous decision could not be accepted (${diagnostic.code}). Return exactly one valid decision for the same proposed calls. Copy the exact batch SHA for approval. This is an internal format repair, not evidence of user ambiguity.`
 						);
 						continue;
 					}

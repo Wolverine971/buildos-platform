@@ -1,6 +1,9 @@
 // apps/worker/tests/agenticChatExecutionInput.test.ts
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+	AGENTIC_CHAT_WORKFLOW_POLICY_V1,
+	buildAgenticChatWorkflowReviewIntentV1,
+	hashAgenticChatRawWorkflowInputV4,
 	hashTurnInputArtifactContentV1,
 	validateTurnInputArtifactV1,
 	type AgenticChatTurnClaimResultV1,
@@ -357,5 +360,125 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 		).rejects.toMatchObject({
 			code: 'artifact_expired'
 		});
+	});
+});
+
+describe('raw workflow v4 input', () => {
+	const PROJECT_ID = 'a0000000-0000-4000-8000-00000000000a';
+	const MESSAGE = 'What should we prioritize next?';
+	const rawTurn = (message = MESSAGE) =>
+		turnFixture({
+			request_payload: {
+				clientTurnId: CLIENT_TURN_ID,
+				streamRunId: STREAM_RUN_ID,
+				message,
+				attachments: [],
+				context: { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID },
+				reviewIntent: 'project_review',
+				workflowVersion: 'agentic_chat_workflow_v1',
+				inputArtifactVersion: 'agentic_chat_input_v4'
+			}
+		});
+
+	async function rawArtifactRow() {
+		const request = {
+			requestId: INPUT_ARTIFACT_ID,
+			turnRunId: TURN_RUN_ID,
+			sessionId: SESSION_ID,
+			userId: USER_ID,
+			userMessageId: USER_MESSAGE_ID,
+			clientTurnId: CLIENT_TURN_ID,
+			streamRunId: STREAM_RUN_ID,
+			message: MESSAGE,
+			context: { type: 'project' as const, entityId: PROJECT_ID, projectId: PROJECT_ID },
+			reviewIntent: buildAgenticChatWorkflowReviewIntentV1(MESSAGE),
+			policy: AGENTIC_CHAT_WORKFLOW_POLICY_V1,
+			policyRef: 'policy-ref-1',
+			cacheRef: null
+		};
+		const hashes = await hashAgenticChatRawWorkflowInputV4(request, []);
+		return {
+			request,
+			hashes,
+			row: {
+				id: INPUT_ARTIFACT_ID,
+				turn_run_id: TURN_RUN_ID,
+				session_id: SESSION_ID,
+				user_id: USER_ID,
+				source_prepared_prompt_id: null,
+				artifact_version: 'agentic_chat_input_v4',
+				history_source: 'admission_window',
+				history: [],
+				prepared: null,
+				request,
+				request_hash: hashes.requestHash,
+				history_hash: hashes.historyHash,
+				content_hash: hashes.contentHash,
+				history_bytes: hashes.historyBytes,
+				content_bytes: hashes.contentBytes,
+				created_at: '2026-08-03T11:00:00.000+00:00',
+				retain_until: '2026-08-10T11:00:00.000+00:00'
+			} as Record<string, unknown>
+		};
+	}
+
+	it('refuses a raw request on the prepared execution path', async () => {
+		const { row } = await rawArtifactRow();
+		const { client } = clientFor(rawTurn(), row);
+
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
+		).rejects.toMatchObject({ code: 'raw_workflow_input_requires_preparation' });
+	});
+
+	it('loads and re-verifies a raw request without reading prepared context', async () => {
+		const { request, hashes, row } = await rawArtifactRow();
+		const { client } = clientFor(rawTurn(), row);
+
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).loadRawWorkflowInput(
+				claim
+			)
+		).resolves.toMatchObject({
+			claim,
+			streamRunId: STREAM_RUN_ID,
+			clientTurnId: CLIENT_TURN_ID,
+			input: {
+				artifactVersion: 'agentic_chat_input_v4',
+				request,
+				history: [],
+				...hashes
+			}
+		});
+	});
+
+	it('fails closed on a stored hash or command binding that no longer matches', async () => {
+		const tampered = await rawArtifactRow();
+		tampered.row.request_hash = '0'.repeat(64);
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(
+				clientFor(rawTurn(), tampered.row).client,
+				() => NOW
+			).loadRawWorkflowInput(claim)
+		).rejects.toMatchObject({
+			code: 'invalid_artifact',
+			message: expect.stringContaining('request_hash_mismatch')
+		});
+
+		const { row } = await rawArtifactRow();
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(
+				clientFor(rawTurn('A different question?'), row).client,
+				() => NOW
+			).loadRawWorkflowInput(claim)
+		).rejects.toMatchObject({ code: 'invalid_command' });
+
+		const prepared = await artifactFixture();
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(
+				clientFor(turnFixture(), prepared.row).client,
+				() => NOW
+			).loadRawWorkflowInput(claim)
+		).rejects.toMatchObject({ code: 'invalid_artifact' });
 	});
 });

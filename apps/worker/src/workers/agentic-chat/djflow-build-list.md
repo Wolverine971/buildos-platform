@@ -2,7 +2,7 @@
 
 # Chat workflow build list
 
-Updated 2026-09-12. Execution companion to [the architecture](./djflow-architecture.md).
+Updated 2026-09-14. Execution companion to [the architecture](./djflow-architecture.md).
 The [prototype guide](./djflow-prototype.md) describes what currently runs.
 
 ## Current baseline
@@ -61,6 +61,27 @@ passed 207 tests and worker typecheck. Evidence: `output/workflow-prototype/smok
 the earlier buffered run is preserved in `output/workflow-prototype-buffered-baseline-2026-09-12`.
 Full-run evidence: `output/agentic-gate/djflow-streaming-2026-09-12`.
 Diagnostic evidence: `output/agentic-gate/djflow-timing-profile-2026-09-12/timing-analysis.json`.
+
+### 2b. Complete bounded reviews and valid prompt snapshots — done (Task 83, 2026-09-14)
+
+- [x] Classify the reviewer "response limit" from real usage. It was hidden reasoning
+      consuming the cap (3,200 completion, 2,605 reasoning), not parsing or timeout.
+- [x] Bounded JSON role reports, accepted only when findings cite supplied records.
+      Caps are 1,200 / 4,000 / 4,000 / 3,200, inside the 4,000 acting client ceiling.
+- [x] One compact retry per specialist for truncated or invalid reports, only when
+      75 s of budget remain. Otherwise the review is labeled partial.
+- [x] Repair the workflow prompt snapshot: migration `20260914165546` adds a fenced
+      workflow branch to v3. Applied to the isolated QA database only.
+- [x] Live prewarmed replay `1bbcc9d0` (QA):
+    - both specialists completed, as did the snapshot and the terminal step;
+    - domain rows unchanged;
+    - 16.8 s from admission to terminal (one run; different upstream);
+    - $0.0114.
+- [x] Durable workflow contract frozen; v4 storage, dispatch ledger, recovery and readers built with writers off; QA migrations applied (85, 2026-09-14).
+- [ ] Production migrations before any deploy (85). Full gate and a live intentional
+      partial review (89).
+
+Evidence: [Task 83 receipt](../../../../../docs/technical/reviews/CHAT_WORKFLOW_TASK83_BOUNDED_REVIEWS_2026-09-14.md).
 
 ### 3. Make chat submission lightweight and expose preparation progress
 

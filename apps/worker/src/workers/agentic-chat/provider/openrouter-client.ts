@@ -1,9 +1,9 @@
 // apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts
 import { performance } from 'node:perf_hooks';
 import {
+	type AgenticChatPersistenceTraceSinkV1,
 	emitAgenticChatPersistenceTrace,
-	persistenceErrorCode,
-	type AgenticChatPersistenceTraceSinkV1
+	persistenceErrorCode
 } from '../persistenceTrace';
 import { createHash } from 'node:crypto';
 import {
@@ -45,9 +45,14 @@ import {
 } from '../pendingEffects';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
-// A September 12 gate stall waited 90s before fallback. All 118 successful
-// responses opened within 1.8s. Bound opening separately from model generation.
-const DEFAULT_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
+// Sep 13: 1,270/1,275 retained successful acting responses opened within 5s.
+// Bound opening separately; the full generation keeps its own deadline.
+const DEFAULT_RESPONSE_HEADERS_TIMEOUT_MS = 5_000;
+const FINAL_BUFFERED_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
+// A local progress heuristic, not a tokenizer or provider throughput guarantee.
+// Only buffered V4.1 acting passes with an unused retry may abandon a slow stream.
+const SLOW_STREAM_WINDOW_MS = 4_000;
+const SLOW_STREAM_MIN_BYTES_PER_SECOND = 240;
 /**
  * Every attempt keeps at least this long, and reserves this much of the turn
  * budget for the executor to finalize after the last provider pass. Below it a
@@ -57,7 +62,7 @@ const DEFAULT_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
 const MIN_ATTEMPT_TIMEOUT_MS = 5_000;
 const BUDGET_FINALIZATION_RESERVE_MS = 5_000;
 /** Bump when the reviewer prefix (system prompt or tool schemas) changes shape. */
-const REVIEWER_PROMPT_CACHE_KEY = 'agentic-chat-reviewer-v1';
+const REVIEWER_PROMPT_CACHE_KEY = 'agentic-chat-reviewer-v2';
 /**
  * Acting passes can spend hidden reasoning tokens before writing a tool call.
  *
@@ -174,6 +179,7 @@ type ActiveResponse = {
 	cleanup(): void;
 	timedOut(): boolean;
 	timing(): ProviderAttemptTiming;
+	abort(reason: Error): void;
 };
 
 type ProviderAttemptTiming = {
@@ -192,6 +198,8 @@ type StreamState = {
 	requestId: string | null;
 	inThinkingBlock: boolean;
 	completionChars: number;
+	/** Actual output bytes, excluding SSE/tool-delta envelopes and repeated IDs. */
+	generatedBytes: number;
 	toolCalls: Map<number, ObservedToolCall>;
 	toolCallsObservable: boolean;
 };
@@ -250,6 +258,18 @@ class AgenticChatProviderNetworkError extends Error {
 	) {
 		super(message);
 		this.name = 'AgenticChatProviderNetworkError';
+	}
+}
+
+class AgenticChatSlowStreamError extends AgenticChatProviderNetworkError {
+	constructor(
+		readonly windowMs: number,
+		readonly outputBytes: number
+	) {
+		super(
+			'Agentic Chat provider stream made insufficient progress; retrying the buffered pass',
+			true
+		);
 	}
 }
 
@@ -364,6 +384,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		let activeAttemptEnded = false;
 		let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 		let accounted = false;
+		let stopProgressWatch: (() => void) | undefined;
 		const state: StreamState = {
 			rawUsage: null,
 			finishReason: null,
@@ -373,6 +394,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			requestId: null,
 			inThinkingBlock: false,
 			completionChars: 0,
+			generatedBytes: 0,
 			toolCalls: new Map(),
 			toolCallsObservable: true
 		};
@@ -568,6 +590,15 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				active.response.headers.get('x-openrouter-provider')
 			);
 			state.providerSlug = normalizeProviderSlug(state.provider) ?? null;
+			if (
+				input.allowSlowStreamRecovery === true &&
+				attemptedRouteIds.length === 1 &&
+				active.route.kind === 'openrouter' &&
+				isV41FlashModel(state.modelUsed ?? active.route.model) &&
+				['acting', 'repair', 'final_response'].includes(passRole)
+			) {
+				stopProgressWatch = watchStreamProgress(active, state, input);
+			}
 			const activeReader = active.response.body!.getReader();
 			reader = activeReader;
 			const decoder = new TextDecoder();
@@ -814,10 +845,19 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 						? 'aborted'
 						: active.timedOut()
 							? 'provider_timeout'
-							: error instanceof AgenticChatProviderNetworkError && error.retryable
-								? 'provider_retryable_error'
-								: 'provider_permanent_error',
-					usage: null
+							: error instanceof AgenticChatSlowStreamError
+								? 'provider_slow_stream'
+								: error instanceof AgenticChatProviderNetworkError &&
+									  error.retryable
+									? 'provider_retryable_error'
+									: 'provider_permanent_error',
+					usage: null,
+					...(error instanceof AgenticChatSlowStreamError
+						? {
+								progress_window_ms: error.windowMs,
+								progress_output_bytes: error.outputBytes
+							}
+						: {})
 				});
 				activeAttemptEnded = true;
 			}
@@ -834,8 +874,16 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					? `Agentic Chat provider request timed out after ${active.timeoutMs}ms`
 					: canonicalError(error);
 			account('failure', message, retryable);
-			yield { type: 'error', error: message, retryable };
+			yield {
+				type: 'error',
+				error: message,
+				retryable,
+				...(error instanceof AgenticChatSlowStreamError
+					? { cause: 'slow_stream' as const }
+					: {})
+			};
 		} finally {
+			stopProgressWatch?.();
 			if (!accounted) {
 				account(
 					input.signal.aborted ? 'aborted' : 'failure',
@@ -901,10 +949,16 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			: null;
 		onPromptDump(promptDump);
 		const timeoutMs = this.attemptTimeoutMs(input);
+		// The first header cutoff leaves a retry. On the buffer's final attempt,
+		// allow a slower connection instead of spending that last chance at the
+		// same speculative cutoff. The existing attempt/turn budget still wins.
+		const headersTimeoutMs = input.finalBufferedAttempt
+			? Math.max(this.responseHeadersTimeoutMs, FINAL_BUFFERED_RESPONSE_HEADERS_TIMEOUT_MS)
+			: this.responseHeadersTimeoutMs;
 		const attempt = createAttemptSignal(
 			input.signal,
 			timeoutMs,
-			Math.min(timeoutMs, this.responseHeadersTimeoutMs)
+			Math.min(timeoutMs, headersTimeoutMs)
 		);
 		let httpStatus: number | null = null;
 		let requestId: string | null = null;
@@ -969,7 +1023,8 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				timeoutMs,
 				cleanup: attempt.cleanup,
 				timedOut: attempt.timedOut,
-				timing: attempt.timing
+				timing: attempt.timing,
+				abort: attempt.abort
 			};
 		} catch (error) {
 			promptDump?.complete({
@@ -1502,11 +1557,17 @@ function parseSseLine(
 			state.inThinkingBlock = normalizedContent.inThinkingBlock;
 			if (normalizedContent.text) {
 				state.completionChars += normalizedContent.text.length;
+				state.generatedBytes += Buffer.byteLength(normalizedContent.text, 'utf8');
 				events.push({ type: 'text', content: normalizedContent.text });
 			}
 		}
 		if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
 			state.completionChars += JSON.stringify(delta.tool_calls).length;
+			for (const call of delta.tool_calls) {
+				if (typeof call?.function?.arguments === 'string') {
+					state.generatedBytes += Buffer.byteLength(call.function.arguments, 'utf8');
+				}
+			}
 			observeToolCallDelta(state, delta.tool_calls);
 			events.push({ type: 'tool_call', toolCall: delta.tool_calls });
 		}
@@ -1851,6 +1912,50 @@ function providerFrameError(value: unknown): { message: string; retryable: boole
 	};
 }
 
+function isV41FlashModel(model: string): boolean {
+	// OpenRouter can report a dated deployment in either headers or SSE frames.
+	// Both spellings must use the same policy; other models remain ineligible.
+	return /^deepseek\/deepseek-v4\.1-flash(?:-\d{8})?$/.test(model);
+}
+
+function watchStreamProgress(
+	active: ActiveResponse,
+	state: StreamState,
+	input: ClientInput
+): () => void {
+	let startedAtMs = Date.now();
+	let startedBytes = state.generatedBytes;
+	const check = () => {
+		if (active.signal.aborted || state.finishReason !== null) return;
+		if (!isV41FlashModel(state.modelUsed ?? active.route.model)) return;
+		const now = Date.now();
+		// Preserve enough time for the existing retry and terminal settlement.
+		if (
+			input.budget &&
+			input.budget.deadlineAtMs - now <
+				MIN_ATTEMPT_TIMEOUT_MS + BUDGET_FINALIZATION_RESERVE_MS
+		)
+			return;
+		const elapsed = now - startedAtMs;
+		const bytes = state.generatedBytes - startedBytes;
+		// A suspended host is not evidence of slow provider generation.
+		if (
+			elapsed <= SLOW_STREAM_WINDOW_MS * 2 &&
+			bytes * 1_000 < SLOW_STREAM_MIN_BYTES_PER_SECOND * elapsed
+		) {
+			active.abort(new AgenticChatSlowStreamError(elapsed, bytes));
+			return;
+		}
+		startedAtMs = now;
+		startedBytes = state.generatedBytes;
+		timer = setTimeout(check, SLOW_STREAM_WINDOW_MS);
+		timer.unref?.();
+	};
+	let timer = setTimeout(check, SLOW_STREAM_WINDOW_MS);
+	timer.unref?.();
+	return () => clearTimeout(timer);
+}
+
 function createAttemptSignal(
 	external: AbortSignal,
 	timeoutMs: number,
@@ -1861,6 +1966,7 @@ function createAttemptSignal(
 	timedOut(): boolean;
 	markResponseOpened(): void;
 	timing(): ProviderAttemptTiming;
+	abort(reason: Error): void;
 } {
 	const controller = new AbortController();
 	const networkStartedAtMs = Date.now();
@@ -1882,6 +1988,7 @@ function createAttemptSignal(
 	timer.unref?.();
 	return {
 		signal: controller.signal,
+		abort: (reason) => controller.abort(reason),
 		cleanup: () => {
 			clearTimeout(timer);
 			external.removeEventListener('abort', onAbort);

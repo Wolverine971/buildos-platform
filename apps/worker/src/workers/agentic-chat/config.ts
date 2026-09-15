@@ -62,7 +62,11 @@ function resolveProviderRouting(
 		environment.AGENTIC_CHAT_OPENROUTER_MODEL?.trim() === 'deepseek/deepseek-v4.1-flash';
 	// Morph took 44.6s on a narrow final answer and exhausted a 90s attempt
 	// on another short answer in the Sep 11 QA runs. Other fallbacks stay open.
-	const ignoredProviders = isV41 ? ['azure', 'morph'] : DEFAULT_OPENROUTER_PROVIDER_IGNORE;
+	// Sep 13: Modal opened promptly but took 58.1s to generate 1,253 tokens.
+	// A header timeout cannot catch that outlier. Keep other fallbacks available.
+	const ignoredProviders = isV41
+		? ['azure', 'morph', 'modal']
+		: DEFAULT_OPENROUTER_PROVIDER_IGNORE;
 	const order = environment.AGENTIC_CHAT_OPENROUTER_PROVIDER_ORDER?.trim();
 	const sort = environment.AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT?.trim();
 	if (order && sort) throw new Error('Choose a provider order or sort, not both');

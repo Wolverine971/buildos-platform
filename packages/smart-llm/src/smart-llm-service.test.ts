@@ -10,6 +10,8 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_37_FLASH_MODEL,
 	GLM_52_MODEL,
+	GPT_56_LUNA_MODEL,
+	GROK_46_MODEL,
 	KIMI_K3_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from './model-config';
@@ -953,6 +955,63 @@ describe('SmartLLMService OpenRouter data policy', () => {
 			zdr: true,
 			max_price: expect.any(Object)
 		});
+	});
+
+	it('preserves an explicit zero temperature for deterministic JSON grading', async () => {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			return buildJSONCompletion({
+				model: GLM_52_MODEL,
+				content: '{"ok":true}',
+				provider: 'Z.AI'
+			});
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await llm.getJSONResponse({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Grade this result deterministically.',
+			model: GLM_52_MODEL,
+			models: [],
+			temperature: 0,
+			userId: 'zero-temperature-test'
+		});
+
+		expect(requestBodies[0]?.temperature).toBe(0);
+	});
+
+	it('keeps an explicit custom JSON model chain free of profile fallbacks', async () => {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			return buildJSONCompletion({
+				model: GPT_56_LUNA_MODEL,
+				content: '{"score":5}',
+				provider: 'OpenAI'
+			});
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await llm.getJSONResponse({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Grade this result.',
+			models: [GPT_56_LUNA_MODEL, KIMI_K3_MODEL, GROK_46_MODEL],
+			profile: 'custom',
+			temperature: 0,
+			userId: 'custom-chain-test'
+		});
+
+		expect(requestBodies[0]?.model).toBe(GPT_56_LUNA_MODEL);
+		expect(requestBodies[0]?.models).toEqual([KIMI_K3_MODEL, GROK_46_MODEL]);
+		expect(requestBodies[0]?.models).not.toContain(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[0]?.models).not.toContain(ACTIVE_EXPERIMENT_MODEL);
 	});
 
 	it('omits only the ZDR requirement when the evaluation-only opt-in is explicit', async () => {

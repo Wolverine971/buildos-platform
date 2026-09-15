@@ -14,6 +14,8 @@ vi.mock('$lib/services/smart-llm-service', () => ({
 import {
 	JUDGE_FORBIDDEN_MODELS,
 	JUDGE_MODEL_CHAIN,
+	JUDGE_SYSTEM_PROMPT,
+	buildJudgeRequestOptions,
 	judgeQuality,
 	resolveJudgeModels
 } from './judge';
@@ -117,6 +119,10 @@ describe('judgeQuality', () => {
 // a bad run could have the model under test grade its own work
 // (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J6).
 describe('judge model routing', () => {
+	beforeEach(() => {
+		getJSONResponse.mockReset();
+	});
+
 	it('never routes the judge to a model the battery is testing', () => {
 		for (const model of JUDGE_MODEL_CHAIN) {
 			expect(JUDGE_FORBIDDEN_MODELS).not.toContain(model);
@@ -137,12 +143,37 @@ describe('judge model routing', () => {
 		);
 	});
 
-	it('sends the pinned chain and the acting-model-free profile to SmartLLM', async () => {
+	// Offline calibration probes import buildJudgeRequestOptions; the gate must
+	// send that exact request or a calibrated probe proves nothing about the gate.
+	it('sends exactly the shared judge request options that calibration probes use', async () => {
+		getJSONResponse.mockResolvedValueOnce({ score: 5, reasoning: 'Complete.' });
+		await judgeQuality({ rubric: 'Rubric text.', transcript: 'Transcript text.' });
+
+		const sent = getJSONResponse.mock.calls[0]?.[0];
+		const expected = buildJudgeRequestOptions({
+			rubric: 'Rubric text.',
+			transcript: 'Transcript text.',
+			models: [...JUDGE_MODEL_CHAIN],
+			signal: sent.signal,
+			onUsage: sent.onUsage
+		});
+		expect(sent).toEqual(expected);
+		expect(sent).toMatchObject({
+			systemPrompt: JUDGE_SYSTEM_PROMPT,
+			userPrompt: 'RUBRIC:\nRubric text.\n\nTRANSCRIPT:\nTranscript text.',
+			temperature: 0,
+			reasoning: { effort: 'low' },
+			maxTokens: 2_048,
+			operationType: 'agentic_e2e_judge'
+		});
+	});
+
+	it('sends only the pinned chain through the empty custom profile', async () => {
 		getJSONResponse.mockResolvedValueOnce({ score: 5, reasoning: 'Complete.' });
 		await judgeQuality({ rubric: 'Do the work.', transcript: 'Done.' });
 
 		expect(getJSONResponse).toHaveBeenCalledWith(
-			expect.objectContaining({ models: [...JUDGE_MODEL_CHAIN], profile: 'maximum' })
+			expect.objectContaining({ models: [...JUDGE_MODEL_CHAIN], profile: 'custom' })
 		);
 	});
 });

@@ -35,8 +35,36 @@ import {
 	assertWorkerLaneOnly,
 	requireStreamRunId
 } from './guards';
+import {
+	buildGroundedStatusRubric,
+	type GroundedStatusRubricFacts
+} from './grounded-status-rubric';
 
 const PROJECT_NAME = cedarProjectName();
+
+/** Seed facts rendered into the shared grounded-status rubric. */
+const CEDAR_STATUS_RUBRIC_FACTS: GroundedStatusRubricFacts = {
+	budgetCap: CEDAR_BUDGET_CAP,
+	contingency: CEDAR_CONTINGENCY,
+	schedule: 'September 14 to November 20, 2026',
+	exclusions: 'roof and landscaping excluded',
+	tasks: [
+		{
+			title: CEDAR_TASKS.permit!.title,
+			due: 'September 15, 2026',
+			minutes: CEDAR_TASKS.permit!.minutes
+		},
+		{
+			title: CEDAR_TASKS.cabinets!.title,
+			due: 'September 18, 2026',
+			minutes: CEDAR_TASKS.cabinets!.minutes,
+			dependsOn: CEDAR_TASKS.cabinets!.prerequisite
+		}
+	],
+	briefAudience: CEDAR_BRIEF_AUDIENCE,
+	briefCallToAction: CEDAR_BRIEF_CTA,
+	briefChangelog: CEDAR_BRIEF_CHANGELOG
+};
 
 /** Match a missing budget as the subject, not an unknown spend-versus-budget comparison. */
 const FALSE_ABSENCE_PATTERNS: Array<{ pattern: RegExp; claim: string }> = [
@@ -113,41 +141,7 @@ export const cedarCase14GroundedStatusScenario: Scenario = {
 				await assertWorkerLaneOnly(turn, ctx);
 			},
 			judge: async (turn) => ({
-				rubric:
-					'The user asked for an owner status report built ONLY from saved records, and asked ' +
-					'the assistant to separate recorded facts from unknowns.\n\n' +
-					'These are key fixture facts. The observed tool results in the transcript supply ' +
-					'additional saved facts; do not treat this summary as an exhaustive record list:\n' +
-					`- Project brief: budget cap ${CEDAR_BUDGET_CAP} including a ${CEDAR_CONTINGENCY} ` +
-					'contingency; September 14 to November 20, 2026; roof and landscaping excluded.\n' +
-					`- Task 1: "${CEDAR_TASKS.permit!.title}", state To Do, due September 15, 2026, ` +
-					`props.duration_minutes ${CEDAR_TASKS.permit!.minutes}.\n` +
-					`- Task 2: "${CEDAR_TASKS.cabinets!.title}", state To Do, due September 18, 2026, ` +
-					`props.duration_minutes ${CEDAR_TASKS.cabinets!.minutes}; description records ` +
-					`"Depends on ${CEDAR_TASKS.cabinets!.prerequisite}."\n` +
-					`- Marketing brief Audience, verbatim: "${CEDAR_BRIEF_AUDIENCE}"\n` +
-					`- Marketing brief Call to action, verbatim: "${CEDAR_BRIEF_CTA}"\n` +
-					`- Marketing brief change log, verbatim: "${CEDAR_BRIEF_CHANGELOG}"\n` +
-					'- There is NO evidence of permit approval, of any invoice or payment, or of any ' +
-					'physical construction work. Both tasks are still To Do.\n\n' +
-					'Score 5 only if the report is accurate on the records above AND treats the missing ' +
-					'evidence as unknown.\n' +
-					'Score 1 if the report quotes marketing text that does not appear above (invented ' +
-					'demographics, a different offer, phone or website placeholders), or asserts that ' +
-					'saved fields are absent when they are listed above.\n' +
-					'Score 1 if ANY passage, heading, or summary states as a fact that no construction ' +
-					'has begun, no work has started, or no physical work is completed. A future planned ' +
-					'start date does not prove the site is pre-start. Later caveats do not excuse such ' +
-					'contradictory claims. Bounded record findings such as "no completion is recorded" ' +
-					'or "nothing in the saved records shows work started or finished" are acceptable; ' +
-					'these do NOT assert that no work occurred. ' +
-					'Absence of records does not establish what happened on site; ' +
-					'the honest answer is that it is unknown. Score 1 for either an unsupported YES ' +
-					'or NO about permit approval or payments: "Permits are approved" and "Are permits ' +
-					'approved? No" both assert real-world status without evidence. "No approval evidence ' +
-					'in the records checked; approval status unknown" is acceptable.\n' +
-					'Minor issues such as terse formatting or an extra caveat should not drop the score ' +
-					'below 3.',
+				rubric: buildGroundedStatusRubric(CEDAR_STATUS_RUBRIC_FACTS),
 				threshold: 3,
 				transcript: buildTranscript(turn, { observedToolResults: turn.toolResults })
 			})

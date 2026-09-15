@@ -1,9 +1,9 @@
 // apps/worker/src/workers/agentic-chat/streamPublisher.ts
 import {
-	emitAgenticChatPersistenceTrace,
-	persistenceErrorCode,
 	type AgenticChatPersistenceTraceSinkV1,
-	type AgenticChatPersistenceTraceV1
+	type AgenticChatPersistenceTraceV1,
+	emitAgenticChatPersistenceTrace,
+	persistenceErrorCode
 } from './persistenceTrace';
 // apps/worker/src/workers/agentic-chat/streamPublisher.ts
 
@@ -966,44 +966,42 @@ export class AgenticChatStreamPublisher {
 		}
 
 		const byIndex = new Map(response.results.map((result) => [result.input_index, result]));
-		await Promise.all(
-			states.map(async (state, index) => {
-				const operation = operations[index]!;
-				const result = byIndex.get(index);
-				this.finishAttempt(
+		states.forEach((state, index) => {
+			const operation = operations[index]!;
+			const result = byIndex.get(index);
+			this.finishAttempt(
+				state,
+				operation,
+				result?.outcome ?? 'missing_result',
+				result?.outcome === 'rejected'
+					? persistenceErrorCode({ code: result.error_code })
+					: null
+			);
+			if (!result) {
+				this.deferRetry(state);
+				return;
+			}
+			if (result.outcome === 'rejected') {
+				if (isRetryableDatabaseCode(result.error_code)) this.deferRetry(state);
+				else this.blockTurn(state, `rejected:${result.error_code}`);
+				return;
+			}
+
+			if (result.outcome === 'persisted')
+				this.metric('text_batch_persisted', state.context.turnRunId);
+			const persistenceObservedAtMs = this.now();
+			const acceptedReceipt = this.acceptPersisted(state, result, (acceptance) =>
+				this.acceptOperation(state, operation, acceptance)
+			);
+			if (acceptedReceipt && state.operations[0] === operation) {
+				this.moveOperationToDelivery(
 					state,
 					operation,
-					result?.outcome ?? 'missing_result',
-					result?.outcome === 'rejected'
-						? persistenceErrorCode({ code: result.error_code })
-						: null
+					acceptedReceipt,
+					persistenceObservedAtMs
 				);
-				if (!result) {
-					this.deferRetry(state);
-					return;
-				}
-				if (result.outcome === 'rejected') {
-					if (isRetryableDatabaseCode(result.error_code)) this.deferRetry(state);
-					else this.blockTurn(state, `rejected:${result.error_code}`);
-					return;
-				}
-
-				if (result.outcome === 'persisted')
-					this.metric('text_batch_persisted', state.context.turnRunId);
-				const persistenceObservedAtMs = this.now();
-				const acceptedReceipt = this.acceptPersisted(state, result, (acceptance) =>
-					this.acceptOperation(state, operation, acceptance)
-				);
-				if (acceptedReceipt && state.operations[0] === operation) {
-					this.moveOperationToDelivery(
-						state,
-						operation,
-						acceptedReceipt,
-						persistenceObservedAtMs
-					);
-				}
-			})
-		);
+			}
+		});
 	}
 
 	private async flushSemanticState(state: TurnState): Promise<void> {
@@ -1042,7 +1040,7 @@ export class AgenticChatStreamPublisher {
 		}
 	}
 
-	private async deliverPersisted(
+	private deliverPersisted(
 		state: TurnState,
 		receipt: DeliveryReceipt,
 		committedThroughSequence: number | null
@@ -1050,7 +1048,7 @@ export class AgenticChatStreamPublisher {
 		const acceptedReceipt = this.acceptPersisted(state, receipt);
 		return acceptedReceipt
 			? this.deliverAccepted(state, acceptedReceipt, committedThroughSequence)
-			: 'blocked';
+			: Promise.resolve('blocked');
 	}
 
 	private acceptPersisted(

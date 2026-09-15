@@ -8,15 +8,13 @@
 	import { BRAND_TAGLINE, FIRST_PROJECT_PROMPT } from '$lib/constants/brand';
 	import {
 		ArrowRight,
-		Calendar,
 		CheckCircle,
 		ExternalLink,
 		FolderOpen,
 		ListChecks,
 		LoaderCircle,
 		MessageCircle,
-		Sparkles,
-		Target
+		Sparkles
 	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ActivationReceipt from '$lib/components/onboarding-v3/ActivationReceipt.svelte';

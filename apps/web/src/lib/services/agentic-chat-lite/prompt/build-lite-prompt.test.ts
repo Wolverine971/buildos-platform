@@ -319,6 +319,11 @@ describe('buildLitePromptEnvelope', () => {
 		expect(contract?.content).toContain(
 			'Never conclude "No evidence that work has begun" from plans, todo tasks, or an empty search'
 		);
+		// Combined gate 2026-09-15, Case 14: a "planning" state became "Only
+		// planning-stage setup has occurred so far".
+		expect(contract?.content).toContain(
+			'A project or task state such as planning or todo describes the record, not the site'
+		);
 		expect(contract?.content).toContain('record_references URLs as Markdown links');
 		expect(contract?.content).toContain('cannot replace requested text');
 		const strategy = envelope.sections.find((section) => section.id === 'operating_strategy');

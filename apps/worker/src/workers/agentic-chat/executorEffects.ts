@@ -32,9 +32,10 @@ import type {
 import type { AgenticChatStatedFutureCapturePortV1 } from './statedFutureCapture';
 
 export type AgenticChatTerminalControlErrorReportV1 = {
-	stage: 'finalize' | 'finalize_retry' | 'recover';
+	stage: 'claim' | 'claim_readback' | 'finalize' | 'finalize_retry' | 'recover';
 	turnRunId: string;
-	executionGeneration: number;
+	/** Null when the claim receipt was lost, so no generation is known yet. */
+	executionGeneration: number | null;
 	error: unknown;
 };
 
