@@ -1,5 +1,6 @@
 // apps/worker/src/workers/agentic-chat/config.ts
 import { parseChatWorkflowPrototypeUsers } from '@buildos/shared-types';
+import { UNION_ALPHA_MODEL } from '@buildos/smart-llm';
 // apps/worker/src/workers/agentic-chat/config.ts
 
 import {
@@ -58,6 +59,11 @@ const DEFAULT_OPENROUTER_PROVIDER_ROUTING = Object.freeze({
 function resolveProviderRouting(
 	environment: Record<string, string | undefined>
 ): AgenticChatOpenRouterProviderRoutingV1 {
+	const isUnionAlpha = environment.AGENTIC_CHAT_OPENROUTER_MODEL?.trim() === UNION_ALPHA_MODEL;
+	// Union Alpha currently has one anonymous preview endpoint. Do not carry the
+	// DeepSeek-specific provider order/ignore policy into this local experiment.
+	if (isUnionAlpha) return { allow_fallbacks: true };
+
 	const isV41 =
 		environment.AGENTIC_CHAT_OPENROUTER_MODEL?.trim() === 'deepseek/deepseek-v4.1-flash';
 	// Morph took 44.6s on a narrow final answer and exhausted a 90s attempt

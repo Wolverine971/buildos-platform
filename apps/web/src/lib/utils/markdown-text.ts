@@ -133,7 +133,9 @@ export function getProseClasses(
 	size: 'sm' | 'base' | 'lg' = 'base',
 	removeMaxWidth = true
 ): string {
-	const sizeClass = size === 'base' ? 'prose' : `prose-${size}`;
+	// Size modifiers only carry spacing/type scale; list markers and the rest of
+	// the base styles live on `.prose`, so it must always be present.
+	const sizeClass = size === 'base' ? 'prose' : `prose prose-${size}`;
 	const maxWidth = removeMaxWidth ? 'max-w-none' : '';
 
 	return `${sizeClass} dark:prose-invert ${maxWidth}

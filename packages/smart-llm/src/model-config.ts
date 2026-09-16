@@ -6,6 +6,7 @@ export const KIMI_EXPERIMENT_MODEL = 'moonshotai/kimi-k2.6' as const;
 export const KIMI_CODING_MODEL = 'moonshotai/kimi-k2.7-code' as const;
 export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL, KIMI_CODING_MODEL] as const;
 export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
+export const UNION_ALPHA_MODEL = 'stealth/union-alpha' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
 export const GROK_46_MODEL = 'x-ai/grok-4.6' as const;
@@ -38,6 +39,39 @@ export const AGENT_STATE_RECONCILIATION_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 export const AGENT_STATE_RECONCILIATION_MODELS = [AGENT_STATE_RECONCILIATION_MODEL] as const;
 
 export const MODEL_CATALOG: Record<string, ModelProfile> = {
+	[UNION_ALPHA_MODEL]: {
+		id: UNION_ALPHA_MODEL,
+		name: 'Union Alpha',
+		speed: 4,
+		smartness: 4.9,
+		creativity: 4.6,
+		cost: 0,
+		outputCost: 0,
+		provider: 'stealth',
+		bestFor: [
+			'dev-trial',
+			'agentic-workflows',
+			'coding-assistants',
+			'json-mode',
+			'tool-calling',
+			'multimodal',
+			'262k-context'
+		],
+		limitations: [
+			'alpha-model',
+			'not-default-production-routing',
+			'free-availability-temporary',
+			'non-zdr-endpoint',
+			'tool-choice-auto-only',
+			'no-json-schema-enforcement'
+		],
+		capabilities: {
+			jsonMode: true,
+			tools: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
 	[DEEPSEEK_V41_FLASH_MODEL]: {
 		id: DEEPSEEK_V41_FLASH_MODEL,
 		name: 'DeepSeek V4.1 Flash',
@@ -739,6 +773,9 @@ const TEXT_MAXIMUM_ROUTE = [
 
 export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 	new Set<string>([
+		// Explicit-only local trial. Keep it out of every production route while
+		// its anonymous provider, retention policy, and preview availability are evaluated.
+		UNION_ALPHA_MODEL,
 		// Explicitly selectable while launch compatibility/capacity is evaluated.
 		// Keep automatic lanes and the old Flash fallback independent of this ID.
 		DEEPSEEK_V41_FLASH_MODEL,

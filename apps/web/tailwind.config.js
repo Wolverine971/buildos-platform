@@ -260,8 +260,13 @@ export default {
 						},
 						blockquote: {
 							borderLeftColor: 'hsl(var(--border))',
-							color: 'hsl(var(--muted-foreground))'
+							color: 'hsl(var(--muted-foreground))',
+							fontWeight: 'inherit'
 						},
+						// Blockquotes here are notes and callouts, not citations — don't
+						// wrap them in auto-inserted curly quotes.
+						'blockquote p:first-of-type::before': { content: 'none' },
+						'blockquote p:last-of-type::after': { content: 'none' },
 						hr: {
 							borderColor: 'hsl(var(--border))'
 						},

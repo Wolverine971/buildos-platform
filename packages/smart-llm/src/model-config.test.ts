@@ -16,10 +16,28 @@ import {
 	resolveModelPricingProfile,
 	TENCENT_HY3_MODEL,
 	TENCENT_HY3_PREVIEW_MODEL,
+	UNION_ALPHA_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from './model-config';
 
 describe('resolveModelPricingProfile', () => {
+	it('catalogs Union Alpha as a zero-cost explicit dev model', () => {
+		const result = resolveModelPricingProfile(UNION_ALPHA_MODEL);
+
+		expect(result?.modelId).toBe(UNION_ALPHA_MODEL);
+		expect(result?.profile.cost).toBe(0);
+		expect(result?.profile.outputCost).toBe(0);
+		expect(result?.profile.capabilities).toMatchObject({
+			jsonMode: true,
+			tools: true,
+			multimodal: true,
+			longContext: true
+		});
+		expect(result?.profile.capabilities?.structuredOutputs).not.toBe(true);
+		expect(result?.profile.limitations).toContain('non-zdr-endpoint');
+		expect(result?.profile.limitations).toContain('not-default-production-routing');
+	});
+
 	it('prices V4.1 Flash independently from V4, including provider snapshot ids', () => {
 		for (const id of [DEEPSEEK_V41_FLASH_MODEL, 'deepseek/deepseek-v4.1-flash-20260910']) {
 			const result = resolveModelPricingProfile(id);

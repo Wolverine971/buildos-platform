@@ -478,41 +478,26 @@ function buildTurnRunTimelineItem(
 	};
 }
 
-function shouldShowTurnEvent(event: TimelineTurnEventRow): boolean {
-	const type = event.event_type ?? '';
-	const phase = event.phase ?? '';
-	if (!type && !phase) return false;
-	if (
-		[
-			'heartbeat',
-			'token',
-			'chunk',
-			'delta',
-			'debug',
-			'prompt_snapshot',
-			'llm_request',
-			'llm_response'
-		].some((hidden) => type.includes(hidden) || phase.includes(hidden))
-	) {
-		return false;
-	}
-	return true;
-}
-
 function buildTurnEventTimelineItem(
 	sessionId: string,
 	event: TimelineTurnEventRow
 ): AgentTimelineItem | null {
-	if (!event.id || !shouldShowTurnEvent(event)) return null;
+	if (!event.id) return null;
 	const payload = isRecord(event.payload) ? event.payload : {};
+	// Only events that carry user-facing text are steps. Everything else is
+	// telemetry (session, context_usage, timing, tool_call — which the Tools
+	// tab already shows from tool executions) and read as noise when a saved
+	// chat was reopened.
+	const title =
+		stringValue(payload.title) ||
+		stringValue(payload.message) ||
+		stringValue(payload.summary) ||
+		stringValue(payload.detail);
+	if (!title) return null;
 	const payloadPreview = redactedJsonPreview(event.payload);
 	const status = normalizeStatus(
 		stringValue(payload.status) ?? stringValue(payload.state) ?? event.event_type
 	);
-	const title =
-		stringValue(payload.title) ||
-		stringValue(payload.message) ||
-		humanizeIdentifier(event.event_type || event.phase || 'Agent step');
 
 	return {
 		id: `turn_event:${event.id}`,

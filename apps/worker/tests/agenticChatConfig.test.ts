@@ -1,5 +1,6 @@
 // apps/worker/tests/agenticChatConfig.test.ts
 import { describe, expect, it } from 'vitest';
+import { UNION_ALPHA_MODEL } from '@buildos/smart-llm';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
 
 const DEDICATED_PROVIDER_ENV: NodeJS.ProcessEnv = {
@@ -8,6 +9,18 @@ const DEDICATED_PROVIDER_ENV: NodeJS.ProcessEnv = {
 };
 
 describe('Agentic Chat acting provider routing defaults', () => {
+	it('uses neutral provider routing for the local Union Alpha experiment', () => {
+		const config = loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			AGENTIC_CHAT_OPENROUTER_MODEL: UNION_ALPHA_MODEL
+		});
+
+		expect(config.provider.routes[0]?.model).toBe(UNION_ALPHA_MODEL);
+		expect(config.provider.routes[0]?.providerRouting).toEqual({
+			allow_fallbacks: true
+		});
+	});
+
 	// Measured 2026-09-04 to 09-09 (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F78):
 	// DeepInfra and Alibaba p50 5.3 s, StreamLake 7.3 s, Azure 21.5 s at 112 ms
 	// per output token; DeepSeek and Cloudflare no longer list the model.

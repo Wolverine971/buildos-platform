@@ -33,6 +33,7 @@ import {
 	TENCENT_HY3_MODEL,
 	TENCENT_HY3_PREVIEW_MODEL,
 	TEXT_PROFILE_MODELS,
+	UNION_ALPHA_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	TOOL_CALLING_MODEL_ORDER
 } from './model-config';
@@ -80,6 +81,22 @@ describe('ensureToolCompatibleModels', () => {
 				'json'
 			)
 		).toEqual([]);
+	});
+
+	it('allows explicit Union Alpha selection without promoting the preview into production routes', () => {
+		expect(ACTIVE_RUNTIME_MODEL_SET.has(UNION_ALPHA_MODEL)).toBe(true);
+		expect(ensureToolCompatibleModels([UNION_ALPHA_MODEL])).toEqual([UNION_ALPHA_MODEL]);
+		expect(supportsJsonMode(UNION_ALPHA_MODEL)).toBe(true);
+		for (const route of [
+			OPENROUTER_V2_TEXT_MODELS,
+			OPENROUTER_V2_JSON_MODELS,
+			OPENROUTER_V2_TOOL_MODELS,
+			OPENROUTER_V2_MULTIMODAL_MODELS,
+			TEXT_PROFILE_MODELS.speed,
+			TEXT_PROFILE_MODELS.quality
+		]) {
+			expect(route).not.toContain(UNION_ALPHA_MODEL);
+		}
 	});
 
 	it('preserves requested order while filtering to tool-capable models', () => {

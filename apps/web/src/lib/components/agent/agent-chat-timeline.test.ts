@@ -445,3 +445,34 @@ describe('agent-chat-timeline live messages', () => {
 		});
 	});
 });
+
+describe('agent-chat-timeline restored turn events', () => {
+	it('keeps only turn events with user-facing text as steps', () => {
+		const event = (id: string, event_type: string, phase: string, payload: unknown = {}) => ({
+			id,
+			event_type,
+			phase,
+			payload,
+			created_at: '2026-09-16T20:54:30Z'
+		});
+		const items = buildAgentTimeline({
+			sessionId: 'session-1',
+			turnEvents: [
+				event('e1', 'session', 'stream'),
+				event('e2', 'turn_phase', 'stream', {
+					message: 'Request received. Preparing the project context...'
+				}),
+				event('e3', 'context_usage', 'stream', { estimatedTokens: 6100 }),
+				event('e4', 'tool_call', 'tool', { toolName: 'get_onto_project_details' }),
+				event('e5', 'tool_result', 'tool', { success: true }),
+				event('e6', 'timing', 'finalize', { total_ms: 9000 }),
+				event('e7', 'last_turn_context', 'finalize'),
+				event('e8', 'done', 'finalize')
+			]
+		});
+
+		expect(items.map((item) => item.title)).toEqual([
+			'Request received. Preparing the project context...'
+		]);
+	});
+});

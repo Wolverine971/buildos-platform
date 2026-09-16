@@ -704,6 +704,13 @@
 		margin-bottom: 0.18rem;
 	}
 
+	/* prose-sm gives <hr> ~40px of margin on each side, which reads as a
+	   dead gap when the model uses `---` as a section divider. */
+	.agent-markdown :global(hr) {
+		margin-top: 0.75rem;
+		margin-bottom: 0.75rem;
+	}
+
 	.agent-markdown :global(pre) {
 		margin-top: 0.75rem;
 		margin-bottom: 0.75rem;
