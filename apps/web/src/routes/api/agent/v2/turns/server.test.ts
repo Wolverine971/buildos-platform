@@ -573,6 +573,7 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		projectId: PROJECT_ID
 	};
 	const rpc = vi.fn();
+	const adminFrom = vi.fn();
 
 	function reviewBody(overrides: Record<string, unknown> = {}) {
 		const context = (overrides.context as typeof projectContext | undefined) ?? projectContext;
@@ -636,7 +637,8 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
 		mocks.env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED = 'true';
 		mocks.env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS = USER_ID;
-		mocks.createAdminSupabaseClient.mockReturnValue({ from: vi.fn(), rpc });
+		adminFrom.mockReset();
+		mocks.createAdminSupabaseClient.mockReturnValue({ from: adminFrom, rpc });
 		mocks.prepareAgenticChatWorkerAdmission.mockResolvedValue({
 			args: { p_user_id: USER_ID },
 			capacity: { available: true, retryAfterSeconds: 2, reason: 'open' },
@@ -653,7 +655,8 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 	});
 
 	it('saves an eligible review raw in one RPC with no context, prompt, or lease work first', async () => {
-		const response = await POST(postEvent({ body: reviewBody() }) as never);
+		const request = postEvent({ body: reviewBody() });
+		const response = await POST(request as never);
 		const body = await response.json();
 
 		expect(response.status).toBe(202);
@@ -686,6 +689,11 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		// check, history, context load, prompt build, or ordinary admission.
 		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
 		expect(mocks.admitAgenticChatWorkerTurn).not.toHaveBeenCalled();
+		// Exactly one database round trip before the queue: no table reads on the
+		// service client and nothing on the user-scoped client.
+		expect(adminFrom).not.toHaveBeenCalled();
+		expect(request.locals.supabase.from).not.toHaveBeenCalled();
+		expect(request.locals.supabase.rpc).not.toHaveBeenCalled();
 		const serverTiming = response.headers.get('server-timing') ?? '';
 		expect(serverTiming).toContain('prepared-admission;dur=0;desc="workflow_raw"');
 		expect(serverTiming).toMatch(/worker-preparation;dur=[\d.]+/);
