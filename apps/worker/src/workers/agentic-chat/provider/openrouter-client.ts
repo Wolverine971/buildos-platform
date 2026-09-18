@@ -25,6 +25,10 @@ import type {
 	AgenticChatTurnProviderToolV1
 } from './contracts';
 import {
+	AgenticChatProviderDispatchDeniedError,
+	type AgenticChatProviderDispatchPermitV1
+} from './contracts';
+import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
 	isAgenticChatProductionReadToolNameV1
 } from '../tools/execution-adapter';
@@ -176,6 +180,8 @@ type ActiveResponse = {
 	signal: AbortSignal;
 	/** Timeout this attempt was given, after the turn budget was applied. */
 	timeoutMs: number;
+	/** Workflow dispatch reservation for this physical request; null on the ordinary path. */
+	dispatchPermit: AgenticChatProviderDispatchPermitV1 | null;
 	cleanup(): void;
 	timedOut(): boolean;
 	timing(): ProviderAttemptTiming;
@@ -384,6 +390,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		let activeAttemptEnded = false;
 		let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 		let accounted = false;
+		let dispatchDenied = false;
 		let stopProgressWatch: (() => void) | undefined;
 		const state: StreamState = {
 			rawUsage: null,
@@ -413,6 +420,22 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				exactUsage = null;
 			}
 			accounted = true;
+			active?.dispatchPermit?.settle({
+				kind: 'stream_ended',
+				httpStatus: active.response.status,
+				requestId: state.requestId ?? active.requestId,
+				usage: exactUsage
+					? {
+							promptTokens: exactUsage.promptTokens,
+							completionTokens: exactUsage.completionTokens,
+							totalTokens: exactUsage.totalTokens,
+							reasoningTokens: exactUsage.reasoningTokens,
+							cachedPromptTokens: exactUsage.cachedPromptTokens,
+							costUsd: exactUsage.cost,
+							modelUsed: state.modelUsed
+						}
+					: null
+			});
 			active?.promptDump?.complete({
 				status,
 				error,
@@ -540,17 +563,25 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					break;
 				} catch (error) {
 					if (input.signal.aborted) throwAbort(input.signal);
+					// A dispatch gate refused this request before any network I/O. It
+					// says nothing about the route, and no further route may be tried.
+					const denied = error instanceof AgenticChatProviderDispatchDeniedError;
 					// A 5xx or a timeout before the stream opens is the only 5xx-storm
 					// signal this lane gets. Record the endpoint it can be attributed
 					// to — the one the error named, or the one a timed-out request
 					// was ordered to — so the next attempt's `provider.ignore` routes
 					// around it instead of walking back into the same upstream.
-					this.observeTurnRouteFailure(
-						input.turnRunId,
-						route.model,
-						attributedProviderSlug(route, error)
-					);
-					const failure = routeFailure(route.id, error);
+					if (!denied) {
+						this.observeTurnRouteFailure(
+							input.turnRunId,
+							route.model,
+							attributedProviderSlug(route, error)
+						);
+					}
+					const failure = denied
+						? { routeId: route.id, message: canonicalError(error), retryable: false }
+						: routeFailure(route.id, error);
+					dispatchDenied ||= denied;
 					failures.push(failure);
 					this.observeProviderAttempt(input, route, 'provider_attempt_ended', {
 						round: input.providerRound,
@@ -568,6 +599,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 							: 'provider_permanent_error',
 						usage: null
 					});
+					if (denied) break;
 				}
 			}
 
@@ -578,7 +610,12 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					retryable: false
 				};
 				account('failure', failure.message, failure.retryable);
-				yield { type: 'error', error: failure.message, retryable: failure.retryable };
+				yield {
+					type: 'error',
+					error: failure.message,
+					retryable: failure.retryable,
+					...(dispatchDenied ? { cause: 'dispatch_denied' as const } : {})
+				};
 				return;
 			}
 
@@ -669,8 +706,10 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			// responses in the 2026-08-20 battery, so the truncated tool arguments
 			// reached the JSON parser as if the model had finished writing them.
 			// `max_tokens` is a value we chose, so this correction never guesses.
+			// The cap is the `max_tokens` actually sent, including a smaller per-request
+			// ceiling; ordinary calls send none, so their cap stays the client maximum.
 			const finishedReason =
-				exactUsage && exactUsage.completionTokens >= this.maxTokens
+				exactUsage && exactUsage.completionTokens >= this.sentMaxTokens(input)
 					? 'length'
 					: (state.finishReason ?? 'stop');
 			const attemptEndedAtMs = Date.now();
@@ -914,12 +953,32 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		);
 	}
 
+	/** The `max_tokens` value this request sends. */
+	private sentMaxTokens(input: ClientInput): number {
+		return Math.min(this.maxTokens, input.maxOutputTokens ?? this.maxTokens);
+	}
+
 	private async openRoute(
 		route: AgenticChatOpenAiCompatibleRouteV1,
 		input: ClientInput,
 		onPromptDump: (dump: LocalPromptDump | null) => void
 	): Promise<ActiveResponse> {
 		const body = JSON.stringify(this.requestBody(route, input));
+		// Workflow requests reserve budget for this exact body before any network I/O.
+		// A refusal propagates as AgenticChatProviderDispatchDeniedError; nothing is sent.
+		const dispatchPermit = input.dispatchGate
+			? await input.dispatchGate.admit(
+					{
+						routeId: route.id,
+						routeKind: route.kind,
+						model: route.model,
+						fallbackModels: [...(route.fallbackModels ?? [])],
+						serializedRequestBytes: Buffer.byteLength(body, 'utf8'),
+						maxOutputTokens: this.sentMaxTokens(input)
+					},
+					input.signal
+				)
+			: null;
 		const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
 		const passRole = canonicalProviderPassRole(input.passRole);
 		const promptDump = localPromptDumpsEnabled()
@@ -1021,12 +1080,24 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				requestId,
 				signal: attempt.signal,
 				timeoutMs,
+				dispatchPermit,
 				cleanup: attempt.cleanup,
 				timedOut: attempt.timedOut,
 				timing: attempt.timing,
 				abort: attempt.abort
 			};
 		} catch (error) {
+			// Only a non-2xx provider response proves the request was refused; anything
+			// else may have crossed the provider boundary and stays uncertain.
+			dispatchPermit?.settle({
+				kind:
+					httpStatus !== null && (httpStatus < 200 || httpStatus >= 300)
+						? 'provider_error_response'
+						: 'no_provider_receipt',
+				httpStatus,
+				requestId,
+				usage: null
+			});
 			promptDump?.complete({
 				status: input.signal.aborted ? 'aborted' : 'failure',
 				error: canonicalError(error),
@@ -1264,7 +1335,10 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				provider: {
 					allow_fallbacks: true,
 					data_collection: 'deny',
-					...(route.providerRouting ?? {})
+					...(route.providerRouting ?? {}),
+					...(input.dispatchGate
+						? { max_price: { ...input.dispatchGate.providerMaxPrice } }
+						: {})
 				},
 				stream: true,
 				stream_options: { include_usage: true },

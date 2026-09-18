@@ -62,9 +62,79 @@ export type AgenticChatTurnProviderClientEventV1 =
 			 * pressure. A truncated tool call (arguments cut off, or a finish reason
 			 * that contradicts the streamed calls) is retried on another route but
 			 * must not degrade the turn's capacity window the way a 429 does.
+			 * `dispatch_denied` means a dispatch gate refused the physical request
+			 * before any network I/O; it is never produced without a gate.
 			 */
-			cause?: 'tool_arguments_truncated' | 'slow_stream';
+			cause?: 'tool_arguments_truncated' | 'slow_stream' | 'dispatch_denied';
 	  };
+
+/** One physical HTTP request the client is about to send (Tasker 87 dispatch hook). */
+export type AgenticChatProviderDispatchRequestV1 = {
+	routeId: string;
+	routeKind: 'openrouter' | 'openai_compatible';
+	/** Model this request names, after per-turn route health. */
+	model: string;
+	/** Provider-internal fallbacks carried inside the same HTTP request. */
+	fallbackModels: readonly string[];
+	/** Exact UTF-8 bytes of the serialized request body. */
+	serializedRequestBytes: number;
+	/** The `max_tokens` value actually sent. */
+	maxOutputTokens: number;
+};
+
+export type AgenticChatProviderDispatchUsageV1 = {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	reasoningTokens: number | null;
+	cachedPromptTokens: number | null;
+	/** Provider-reported USD cost, when the provider reported one. */
+	costUsd: number | null;
+	modelUsed: string | null;
+};
+
+/**
+ * What the client can prove about one physical request after it ended.
+ * `provider_error_response`: a non-2xx HTTP response before any stream.
+ * `stream_ended`: a response stream was accepted and has closed (any status).
+ * `no_provider_receipt`: the request may have crossed the provider boundary
+ * without a response (timeout, network failure, abort before headers).
+ */
+export type AgenticChatProviderDispatchReceiptV1 = {
+	kind: 'provider_error_response' | 'stream_ended' | 'no_provider_receipt';
+	httpStatus: number | null;
+	requestId: string | null;
+	usage: AgenticChatProviderDispatchUsageV1 | null;
+};
+
+export type AgenticChatProviderDispatchPermitV1 = {
+	/** Records the physical outcome exactly once. Never throws; settlement is asynchronous. */
+	settle(receipt: AgenticChatProviderDispatchReceiptV1): void;
+};
+
+/**
+ * Admission for each physical provider request. The client calls `admit` after it
+ * serializes a request and before any network I/O; a rejection means no request is sent.
+ */
+export type AgenticChatProviderDispatchGateV1 = {
+	/** OpenRouter `provider.max_price`, in USD per million tokens and USD per request. */
+	readonly providerMaxPrice: { prompt: number; completion: number; request: number };
+	admit(
+		request: AgenticChatProviderDispatchRequestV1,
+		signal: AbortSignal
+	): Promise<AgenticChatProviderDispatchPermitV1>;
+};
+
+/** A dispatch gate refused a physical request; nothing was sent. */
+export class AgenticChatProviderDispatchDeniedError extends Error {
+	constructor(
+		readonly code: string,
+		message: string
+	) {
+		super(message);
+		this.name = 'AgenticChatProviderDispatchDeniedError';
+	}
+}
 
 /**
  * Remaining wall-clock budget for the whole turn, set by the executor. Each
@@ -112,6 +182,8 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	finalBufferedAttempt?: boolean;
 	/** Turn-level deadline; absent for fixtures and legacy callers. */
 	budget?: AgenticChatProviderBudgetV1;
+	/** Durable per-request reservation (workflow v1 only). Absent on the ordinary path. */
+	dispatchGate?: AgenticChatProviderDispatchGateV1;
 	signal: AbortSignal;
 };
 
