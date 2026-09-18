@@ -102,6 +102,24 @@ the global cross-project top-3 broker is still unbuilt and unowned.
 
 ---
 
+## 7. Legacy agent-chat caller-cutover path smoke (was 45)
+
+The database retirement, archives, current-model caller conversion, generated contracts, and search
+gate are complete. The caller-cutover commit is an ancestor of later recorded production web
+deployments, so deployment itself is no longer a separate build task. Retain only the real-world
+path checks here:
+
+- [ ] Trigger the affected email-generation path and confirm current `chat_sessions` /
+      `chat_messages` attribution succeeds without a retired-table error.
+- [ ] Exercise the retargeting analytics path and the admin dashboard/user-activity endpoints; prove
+      their current-model counts render and no retired relation is queried.
+- [ ] Re-run the legacy relation search gate after the smokes and record the deployment/date used.
+
+Any failure becomes a narrow repair tracker. A green result deletes this section; Tasker 45 remains
+deleted because its migration and caller-cutover build are complete.
+
+---
+
 ## Done when
 
 Every box above is checked and its result recorded here (green/red + date). Anything that comes

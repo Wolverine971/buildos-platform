@@ -11,30 +11,46 @@
 
 **Verdict + code verification (2026-08-27, this session):** every load-bearing claim in both docs was checked against source and held up. Details in the Landmines section. The prompt audit's F4 fix (phantom `tool_search` reference) is already committed (`ffbd9f1f2`) with drift tests.
 
+**Status reconciled 2026-08-30:** WP-1's streaming/timing implementation, WP-2's route-pin and
+cache-prefix implementation, and WP-3's read-default architecture are in source. WP-3 is
+production-verified. The remaining program is the WP-2 live cache-hit acceptance measurement,
+WP-4's prompt correctness/dedup package, decisions D2/D3, and WP-5's bounded experiments. Do not
+rebuild the completed WP-1/WP-2 mechanics from the original imperative bullets below.
+
 ---
 
 ## Work packages
 
-### WP-1 — Fix serial final-text delivery + add timing spans
+### WP-1 — Fix serial final-text delivery + add timing spans — **IMPLEMENTED**
 
 **The single largest wall-clock defect.** `turn-executor.ts:500-501` awaits each text delta's _durable delivery_ (`await abortable(queued.delivery, ...)`) before pulling the next delta from the provider stream. The publisher's 150ms/3KB batching (`streamPublisher.ts:29-31`) is defeated because there is never more than one pending delta. In the inspected turn: model finished in ~20s, user waited 121s — ~196 deltas × a flush/ack round-trip ≈ the observed ~89s gap.
 
-- Decouple: enqueue deltas without awaiting per-delta durable delivery; keep backpressure via the existing `pressureRelieved` / soft-byte mechanism, and await full drain only at turn end (the terminal receipt already exists).
-- Add timing spans per the investigation's rec #7: provider generation, semantic review, publisher queueing, durable ack, client render — so this class of regression is attributable immediately.
-- Verify the ~88.6s attribution in prod telemetry after deploy (investigation follow-ups #1–2).
+- [x] Decouple text-delta delivery while retaining soft-limit backpressure and the terminal drain
+      fence (`903a59bc3`).
+- [x] Add provider, semantic-review, publisher queue/delivery/ack, drain, and terminal timing spans.
+- [ ] Preserve one explicit production span receipt proving the post-provider gap stays below ~2s.
+      The exact replay in WP-3.7 cleared the user-visible 121s symptom in 8.064s, so this is receipt
+      hygiene rather than an open implementation defect.
 
 **Exit:** the inspected question class answers end-to-end in roughly provider time + seconds, not minutes; post-provider gap < ~2s; spans live.
 
-### WP-2 — Pin (model, provider) per turn; cache prefix fixes
+### WP-2 — Pin (model, provider) per turn; cache prefix fixes — **IMPLEMENTED; LIVE GATE OPEN**
 
 **The single largest token-cost lever, zero prompt edits.** Same model gets 71% cache hits on one upstream provider and 18% on another; nothing pins either across a turn's passes (prompt audit F3).
 
-- On pass 1, record resolved `(model, provider)` from `onRouteObserved`; on passes 2..N send `models: [thatModel]` + `providerRouting: { order: [thatProvider], allow_fallbacks: false }`. Fall back only on real error and accept the cold prefix. Plumbing exists (`types.ts:81`, `smart-llm-service.ts:496`); the worker project-loop already uses `order` steering in prod (`generators.ts:565`).
-- **Delete the false comment** at `smart-llm-service.ts:~1712-1718` ("OpenRouter does not support the provider parameter…") — verified wrong three ways in the prompt audit; it is the likely reason nobody pinned for four months.
-- A/B `ignore: ['DigitalOcean']` for `deepseek-v4-flash` (18% vs 71% on the same model; echoes the project-loop timeout root cause).
-- Round the prompt clock to the minute; drop `cache_age_seconds`; move `final_response_contract` into the contiguous static prefix.
-- Check why `stealth/ox-alpha` served a production pass (audit Q5) — completed Tasker 59 WP-7 was supposed to keep ox out of production fallback pools.
-- Add `× passes` accounting + per-tool-schema budget line to `prompt-size-budget.test.ts` (F11) so the next drift is visible.
+- [x] Pin the successful model/provider for later passes, disable fallback while the pin is healthy,
+      and clear the pin on a real route failure (`21b5268af3`).
+- [x] Remove the false OpenRouter provider-parameter comment.
+- [x] Round the prompt clock, remove `cache_age_seconds` from prompt text, and keep
+      `final_response_contract` in the contiguous static prefix.
+- [x] Add the `× passes`, aggregate tool-schema, and largest-schema budget guards.
+- [x] Record the DigitalOcean decision: keep it outside the preferred order, do not globally ban it
+      without a post-pin sample, and canary an ignore policy only if misses remain.
+- [x] Confirm `stealth/ox-alpha` is absent from the current worker/web production model pools. The
+      historical one-pass route has no live configuration residue to remove.
+- [ ] Measure pass-2+ cache hits on a representative production sample and require >80%, or record
+      why provider reporting makes that threshold unobservable. Use that sample to close or run the
+      DigitalOcean exclusion canary.
 
 **Exit:** cache hit rate on passes 2+ of a turn > 80% in dump telemetry; comment deleted; DigitalOcean decision recorded.
 
@@ -148,10 +164,11 @@ Use this table for the later per-doc re-review: every finding should be either h
 
 ## Recommended order
 
-1. **WP-1** — biggest user-felt win, no design decisions, small diff.
-2. **WP-2** — biggest cost win, no design decisions.
-3. **D1–D3**, then **WP-3** (the real project; WP-4 can run in parallel with it).
-4. **WP-5** last, after WP-3 settles what the prompt needs to say.
+1. Close the small WP-1 production-span receipt and WP-2 cache-hit measurement together.
+2. Resolve **D2/D3**, then execute WP-4's correctness/dedup items one attributable change at a time.
+3. Run WP-5's existing ablations before accepting a prompt rewrite or tool-surface change.
+4. Delete this tracker once those residuals have durable receipts; WP-1/WP-3 are not reasons to
+   keep it open.
 
 ## Landmines
 

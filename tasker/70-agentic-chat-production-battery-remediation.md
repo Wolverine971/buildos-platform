@@ -4,9 +4,18 @@
 
 **Created:** 2026-08-28
 
-**Status:** Active — production correctness and efficiency follow-up
+**Status:** Active — implementation is mostly complete; final bounded deploy and production battery
+remain
 
 **Priority:** P0 for the four correctness failures; P1 for the two control-loop efficiency misses
+
+**Current gate, reconciled 2026-08-30:** WP-1, WP-2, and WP-6 are deployed and have production
+receipts. The reproduced WP-3/WP-4 correctness boundaries are implemented with deterministic and
+partial production proof. Commit `149587286` adds the final locally rehearsed pre-contract schedule
+compiler. Its independent safety review passed on 2026-08-30; deployment and one classified
+zero-retry ≤6-pass receipt remain. After that, WP-7's isolated repetitions, full nine-scenario
+battery, read fixture, and cleanup receipt remain mandatory. The stale broad wording in the
+original kernel below describes the triggering baseline, not the present implementation state.
 
 ## Kernel
 
@@ -668,17 +677,17 @@ are intentionally different:
   output only after all three effects. The labelled organization fixture now continues from the
   created-folder receipt through a separately SHA-approved bound move, its mutation receipt, and
   terminal output. All 88 focused provider tests pass.
-- **The current review target is the single-task schedule contract compiler and its missed aggregate
-  target.** Review the
-  eligibility predicate, stable system-authored tool-call identity, validation fallback, provider
-  round accounting, and mutation-review provenance. In particular, verify that the compiler cannot
-  accept free text, enums, creates, multiple targets/effects, noncanonical IDs, extra required
-  fields, relative dates, or impossible calendar timestamps, and that rejection preserves the old
-  acting-model path. The first production receipt proves the compiled mutation boundary and both
-  review gates, but an extra initial read kept the total at seven passes. The next bounded candidate
-  is to deterministically turn an exact, withheld single-task schedule mutation into the untrusted
-  contract submitted to the existing contract reviewer, eliminating the acting declaration pass;
-  it must be rehearsed locally before another paid run.
+- **The single-task schedule compiler review is complete; its production aggregate target remains
+  open.** The 2026-08-30 independent review covered the eligibility predicate, stable
+  system-authored tool-call identity, validation fallback, provider round accounting, and honest
+  mutation-review provenance. No authorization or replay bypass was found. The compiler rejects
+  free text, enums, creates, multiple targets/effects, noncanonical IDs, extra required fields,
+  relative dates, and impossible calendar timestamps; every declined shape preserves the existing
+  acting-model path. The exact approved contract is the only source of compiled arguments, contract
+  approval remains bound to its SHA, mutation approval remains bound to the exact batch SHA, and
+  the final call still crosses allowlist, schema, approved-contract, supervisor, durable-feedback,
+  and execution-idempotency fences. The first production receipt proves the post-contract compiler
+  boundary and both review gates, but an extra initial read kept the total at seven passes.
 - **That next pre-contract candidate is now implemented and locally rehearsed, but not deployed.**
   It accepts only one policy-withheld `update_onto_task` candidate with a canonical task UUID, no
   scheduling sidecar or extra fields, and one or both exact RFC 3339 `due_at` / `start_at` values.
@@ -845,19 +854,13 @@ passes 5/5 when localhost binding is allowed. The repository-wide test-type chec
 pre-existing/concurrent generated database and fixture typing debt, but reports no error in either
 Tasker 70 test file.
 
-### Next gate after review
+### Next gate after completed compiler review
 
 1. Review the WP-4 pending-choice ledger trust boundary and latest-message expiry invariant. The
    production worker/prewarm path is now proven; decide separately whether the retiring legacy
    atomic SSE snapshot needs parity.
-2. Review the deployed WP-5 single-task schedule compiler boundary. Confirm that the exact
-   approved contract is the only source of compiled arguments and that the ordinary independent
-   mutation reviewer remains mandatory.
-3. Review the locally rehearsed pre-contract optimization: when the acting model proposes one exact
-   existing-task `due_at` / `start_at` mutation and target-resolution policy withholds it, the worker
-   derives an untrusted typed contract and sends that SHA directly to the existing contract
-   reviewer. Confirm the candidate itself cannot execute and both reviews remain mandatory.
-4. After review, deploy this bounded follow-on and run one classified zero-retry reschedule receipt.
+2. Deploy the reviewed pre-contract optimization and run one classified zero-retry reschedule
+   receipt.
    Require the complete trace to remain correct, reconcile every classified pass to
    `llm_pass_count`, keep validation failures at zero, and meet the ≤6-pass release target before
    calling WP-5 complete.
@@ -955,7 +958,10 @@ clarification, lists the candidates, and makes no completion claim.
       the efficiency threshold remains open.
 - [x] Remove the redundant acting declaration pass for an exact withheld single-task schedule
       candidate without weakening contract review; the complete deterministic trace passes locally.
-- [ ] After independent review, deploy it and measure one final classified zero-retry receipt.
+- [x] Independently review the pre-contract compiler boundary. The 2026-08-30 review found no
+      authorization or replay bypass and confirmed both SHA-bound reviews plus the ordinary
+      validation, supervisor, feedback, and execution fences remain mandatory.
+- [ ] Deploy it and measure one final classified zero-retry receipt.
 - Preserve batched evidence and mutation widths; do not trade provider-pass savings for serial tool
   execution.
 - Compare each candidate against the exact production baselines in this tracker.

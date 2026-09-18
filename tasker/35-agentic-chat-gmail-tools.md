@@ -32,11 +32,10 @@ and is **no longer an accurate description of the deployed gating**.
 
 The remaining gap is not Gmail read access. It is:
 
-1. **Worker parity.** No Gmail tool is installed in the worker provider catalog or execution
-   adapter, so Gmail turns must route to legacy. This is now the responsibility of the capability
-   check in [59](59-agentic-chat-worker-cutover-review.md) WP-1 — until Gmail tools exist on the
-   worker, the capability check routes them to legacy automatically, with no message-text guessing.
-   Tracked as [59](59-agentic-chat-worker-cutover-review.md) WP-6.
+1. **Worker parity is deliberately deferred.** No Gmail tool is installed in the worker provider
+   catalog or execution adapter, so the deployed capability gate routes Gmail turns to legacy
+   automatically, with no message-text guessing. Native worker Gmail is an optimization to track
+   separately only when traffic justifies expanding the worker trust boundary.
 2. A seeded malicious-email live fixture (prompt-injection resistance).
 3. Explicit ZDR route enforcement for Gmail content.
 4. The separately scoped local-proposal product (WP-3).

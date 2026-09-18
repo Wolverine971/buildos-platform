@@ -2,15 +2,16 @@
 
 # 67 — Agentic Chat: eliminate redundant read rounds in model planning
 
-**Created 2026-08-27.** Split from
-[tasker 66](66-agentic-chat-tool-execution-graph.md) after the production concurrency canary proved
-that worker scheduling is no longer the dominant constraint for multi-read turns.
+**Created 2026-08-27.** Split from completed Tasker 66 after the production concurrency canary
+proved that worker scheduling is no longer the dominant constraint for multi-read turns.
 
 ## Kernel
 
-The worker can now execute independent tool calls concurrently, but the acting model frequently
-re-reads the same entities or spreads independent discovery across later provider rounds. Faster
-batches do not help enough when the model creates unnecessary batches.
+The worker can now execute independent tool calls concurrently. The next job is to separate four
+causes of extra passes that aggregate telemetry currently conflates: true exact rereads, independent
+reads serialized by the model, intentional projection dependencies, and control/reviewer rounds.
+Faster batches do not help enough when the model creates unnecessary batches, but a required second
+projection or safety review must not be mislabeled as redundant planning.
 
 Teach and measure a tighter planning contract:
 
@@ -24,33 +25,183 @@ This is a model-planning and tool-feedback problem. Tasker 66 continues to own g
 execution safety, conflict serialization, and concurrency rollout. Tasker 65 owns the broader
 read-default and cost program.
 
-## Production evidence that triggered this task
+## Production evidence that triggered this task (initial aggregate interpretation)
 
-The 2026-08-27 three-document canary required three known, independent document reads. Three clean
+The 2026-08-27 three-document canary was intended to compare three known documents. Three clean
 production repetitions all grounded the final answer correctly, but every turn recorded eight
-tool calls across three or four provider rounds:
+tool calls across three or four aggregate tool rounds:
 
-- two turns emitted a width-three read batch, then emitted another width-three read batch later;
+- two turns emitted a width-three outline batch, then a width-three section batch later;
 - one turn emitted widths four, one, and three across its read rounds;
 - the first parallel batches took 1.544–2.120s versus 3.815–3.885s in the serial control, a 44–60%
   batch-level improvement;
-- end-to-end turns still took 29.2–34.2s because extra model passes and redundant tool rounds
-  dominated the saved adapter time.
+- end-to-end turns still took 29.2–34.2s because the dependent section round and historical control
+  passes dominated the saved adapter time.
 
-The mixed task-update control exposed the other failure mode. The model performed three independent
-discovery reads as three separate one-call provider rounds before proposing the three mutations
-together. All three repetitions were correct, but the reads received no concurrency benefit because
-the model never placed them in the same round.
+The mixed task-update control was initially read as the other failure mode: three independent
+discovery reads spread across separate rounds before a batched mutation proposal. The row-level
+trace below shows those pre-mutation calls were contract/reviewer controls, not entity discovery.
 
-The subsequent mutation-concurrency canary made the constraint even clearer. All three repetitions
-correctly emitted the final three updates as one concurrent `[3]` layer, cutting that batch from
-4.050–4.251s serial to 2.113–2.360s concurrent. But each turn first emitted **five separate
-one-read rounds**, increasing total tool calls from six to eight and end-to-end time from the
-serial control's 34.5–39.6s to 47.6–53.6s. Concurrency worked; unnecessary provider passes erased
-the gain.
+The subsequent mutation-concurrency canary correctly emitted the final three updates as one
+concurrent `[3]` layer, cutting that batch from 4.050–4.251s serial to 2.113–2.360s concurrent. Its
+five pre-mutation calls were initially summarized as separate read rounds. They were actually
+contract declaration/revision and reviewer decisions. Concurrency worked; write-policy passes
+erased the gain, but they are not evidence of redundant reads.
 
-The blatant constraint is now **round construction quality**, not whether the worker can execute a
-valid parallel batch.
+At aggregate level this made **round construction quality** look like the next constraint after
+worker concurrency. The trace below corrects what those aggregate `read_tool` counts actually
+contained.
+
+## Initial trace findings — 2026-08-27 ET / 2026-08-28 UTC
+
+The retained production rows do **not** support the strongest version of the diagnosis above. They
+show expensive extra provider passes, but the cited calls were not exact duplicate evidence reads.
+Do not tune the prompt against the old aggregate `read_tool` label until the baseline is corrected.
+
+### Three-document canary
+
+The three retained turns were:
+
+- turn `a88a2801-...` / stream `8c974e...`: eight calls across three tool rounds;
+- turn `3d6320c1-...` / stream `d8b12e...`: eight calls across four tool rounds;
+- turn `5e9722ac-...` / stream `71afc8...`: eight calls across four tool rounds.
+
+Each turn made three `get_document_outline` calls for three distinct document IDs and then three
+`read_document_section` calls for those same IDs. There were zero exact `(tool, canonical args)`
+duplicates and zero turn-memo hits. The other two calls were the historical
+`declare_read_only_turn` and read-only reviewer controls.
+
+That outline -> section expansion was required by the mounted tool surface, not evidence that the
+model forgot a completed read. The canary requested the documents' full contents, but its opening
+`project_basic` surface exposed `get_document_outline` and `read_document_section`, not
+`get_onto_document_details`. The section tool requires a heading anchor returned by the outline.
+The current worker also keeps the artifact's tool list unchanged between continuation requests, so
+the catalog comment that full-body details "materialize after document results" is not implemented
+on this path.
+
+Tasker 65 has since removed `declare_read_only_turn` and its reviewer from the normal read path. A
+current-code replay should therefore establish the new baseline; the expected lean-surface schedule
+is three parallel outlines, three parallel section reads, then synthesis: six evidence calls in two
+evidence rounds, not eight calls in three or four aggregate tool rounds.
+
+### Current production replay baseline — 2026-08-27 ET / 2026-08-28 UTC
+
+The opt-in `tool-graph-parallel-reads` production fixture ran three times with zero harness retries
+against healthy worker release `8f30ae511e625bc7146ae20a24d0fddfe0fc3817`. All three turns passed
+grounding, no-mutation, stream, and durable-terminal assertions.
+
+| Turn                                   | Durable turn time | Evidence calls | Evidence widths | Provider passes | Total tokens |            Cost |
+| -------------------------------------- | ----------------: | -------------: | --------------- | --------------: | -----------: | --------------: |
+| `518658e1-a882-4a34-b3d8-ed0d614dd7f1` |           25.479s |              6 | `[3,3]`         |               3 |       37,382 |     $0.00166419 |
+| `b6c72040-8eac-40b6-8bcf-a651fa0d16aa` |           18.284s |              6 | `[3,3]`         |               3 |       37,356 |     $0.00116239 |
+| `029f102b-db61-403b-8aaf-d6b828cf060f` |           23.014s |              6 | `[3,3]`         |               3 |       37,145 |     $0.00114331 |
+| **Median**                             |       **23.014s** |          **6** | **`[3,3]`**     |           **3** |   **37,356** | **$0.00116239** |
+
+Every run used `deepseek/deepseek-v4-flash` through DeepInfra and emitted:
+
+1. three distinct `get_document_outline` calls in logical provider round 1;
+2. three distinct `read_document_section` calls in logical provider round 2;
+3. final prose with no tools in logical provider round 3.
+
+Across all 18 calls there were zero exact duplicates, zero memo hits, zero tool failures, and zero
+control/reviewer calls. Each run addressed three unique resources and added one section projection
+after each outline. The current fixture therefore passes the lean scan/read acceptance schedule in
+3/3 repetitions. Durable turn time is now 18.284–25.479s versus the historical 29.2–34.2s range,
+consistent with Tasker 65 removing the two old read-only controls. It does **not** reproduce
+redundant or one-read-per-round planning.
+
+This establishes the practical baseline:
+
+- If the product keeps the lean scan/read contract, there is no prompt-planning fix to make for this
+  fixture. The model already batches every currently independent call.
+- Reducing this turn from three provider passes to two requires a tool-surface/product change that
+  makes full-body reads available upfront; it is not achieved by telling the model to skip the
+  anchor dependency.
+- Keep duplicate-read telemetry and targeted model fixtures, but require a current reproduction
+  before changing the production prompt. The old aggregate canaries are not that reproduction.
+
+### Cross-scenario battery handoff
+
+The wider zero-retry production battery reinforced this track's corrected diagnosis: 17 additional
+evidence reads contained zero exact duplicates and zero memo hits, and known sibling calls were
+batched. It did expose four correctness failures and two expensive contract/reviewer loops unrelated
+to redundant read planning. The complete scenario matrix, turn/stream receipts, source trace,
+remediation packages, and production release gate now live in
+[Tasker 70](70-agentic-chat-production-battery-remediation.md).
+
+**Tasker 67 implication:** do not ship the proposed stop-and-batch prompt change from this evidence.
+Keep exact-read telemetry and targeted fixtures here, and require a current redundant-read
+reproduction before changing the production prompt.
+
+### Task-update canaries
+
+The retained serial control traced for this task did not contain three discovery reads. Its six
+calls were a turn declaration, contract approval, mutation-batch approval, and three task updates.
+Likewise, the traced mutation-concurrency turn `49949e5b-29de-4a19-8297-c7401d32df93` made five
+pre-mutation control/reviewer calls followed by one width-three update batch. The five calls were:
+
+1. `declare_turn_contract`;
+2. `request_proposal_revision` after the reviewer rejected an uncommissioned state change;
+3. a corrected `declare_turn_contract`;
+4. `approve_turn_contract_review`;
+5. `approve_mutation_batch_review`.
+
+Those passes are real latency, but they belong to contract/reviewer policy rather than redundant
+discovery planning. Treating every mechanically classified `read_tool` step as an evidence read
+conflates the two problems and would optimize the wrong boundary.
+
+### What the source trace establishes
+
+- Continuation history is structurally correct: the worker appends the exact assistant tool calls,
+  then one `role=tool` result per call with the matching `tool_call_id`, and retains that history on
+  later passes.
+- Tool feedback is compacted and wrapped with source/security metadata, but has no generic envelope
+  for requested projection, complete versus partial coverage, or whether another read is necessary.
+- The batching sidecar explains how same-response calls execute and how `after` dependencies work.
+  It does not tell the model to enumerate all known independent reads, regard successful results as
+  turn memory, or stop once the evidence set is complete.
+- Exact within-turn read memoization already exists, clears before writes, and returns an explicit
+  `served_from_turn_memo` marker. It prevents repeat adapter cost but still leaves a provider pass
+  and tool-call record. None of these cited canaries used it.
+- `chat_tool_executions` durably records sequence, tool, arguments, result, and provider call ID, but
+  not the logical provider round. The execution graph logs round/layer data only through best-effort
+  job logging, so current durable telemetry cannot reconstruct round construction by itself.
+
+### Working diagnosis
+
+There are three separate questions to test instead of one assumed failure:
+
+1. **Tool-surface shape:** should a known-ID, full-content comparison expose the full-document read
+   upfront, or intentionally require the lean outline -> section flow?
+2. **Independent-call planning:** once all arguments are known, does a small rubric reliably cause
+   the acting model to emit all sibling calls in one response?
+3. **True duplicate planning:** after a successful exact read, does the model issue the same logical
+   read again without failure, missing coverage, or post-write invalidation?
+
+Only questions 2 and 3 are prompt/planner defects. Question 1 must be decided before the
+three-call/one-round acceptance threshold is meaningful.
+
+### Concrete implementation and test surface
+
+- `apps/web/src/lib/tests/agentic-e2e/scenarios/tool-graph-parallel-reads.scenario.ts` is the existing
+  production fixture. Its assertion currently accepts any three-or-more outline/section calls and
+  does not grade exact duplicates, projections, or provider rounds. Tighten it only after selecting
+  the direct-detail or lean scan/read contract above.
+- `apps/worker/tests/fixtures/agenticChatToolExecutionGraphModelScenarios.ts` and its grader test are
+  the right deterministic home for independent-read, lookup/fan-out, partial-result, and justified
+  post-write reread schedules. The existing cases grade graph scheduling shapes, not result memory
+  or redundant reads.
+- `apps/worker/src/workers/agentic-chat/provider/request-builders.ts` owns both the short batching
+  sidecar and exact continuation replay. Put any stop-and-batch variant behind a narrow prompt/config
+  seam here rather than editing the large seed prompt first.
+- `packages/agentic-chat-runtime/src/loop/tool-payload-compaction.ts` is the shared boundary for a
+  completion/projection envelope. Any envelope must survive compaction and its size guard.
+- `packages/agentic-chat-runtime/src/catalog/surfaces.ts` and the worker's immutable artifact surface
+  determine whether full-document details are callable. Do not promise result-time materialization
+  unless the worker actually updates the continuation tool surface.
+- `apps/worker/src/workers/agentic-chat/toolExecution.ts`, `turn-executor.ts`, and the corresponding
+  Supabase ledger RPC/migrations are the durable telemetry path. The per-turn aggregate
+  `tool_round_count` is not enough to attribute individual calls to evidence rounds.
 
 ## Questions to answer before changing the prompt
 
@@ -78,12 +229,16 @@ final prose.
 
 ### A. Known independent reads
 
-Prompt supplies three exact entity IDs and requests a comparison.
+Prompt supplies three exact entity IDs and requests a full-content comparison. Run one explicitly
+selected surface contract:
 
-- exactly three logical entity reads;
-- all three appear in the first provider tool round;
-- no duplicate logical read in later rounds;
-- synthesis begins after the first result batch.
+- **Direct-detail variant:** expose `get_onto_document_details`; expect exactly three detail reads in
+  the first evidence round and then synthesis.
+- **Lean scan/read variant:** expose outline plus section reads; expect three parallel outlines,
+  followed by three parallel section reads once anchors are known, and then synthesis.
+
+For both variants, require zero exact duplicate reads. Do not grade a section projection as a
+duplicate of the outline projection merely because both address the same document.
 
 ### B. Lookup then parallel fan-out
 
@@ -122,11 +277,17 @@ One tool result deliberately omits a required field or returns a retryable failu
 
 ### WP-1 — Make redundant planning observable
 
-- Derive a privacy-safe logical read key from tool name plus canonical resource identity and stable
-  projection arguments; do not log returned content.
-- Add per-turn telemetry for `read_call_count`, `unique_logical_read_count`,
-  `redundant_read_count`, `read_provider_round_count`, first complete-evidence round, and justified
-  post-mutation rereads.
+- Derive two privacy-safe identities: an exact read key from tool name plus canonical resource and
+  projection/pagination arguments, and a resource key for grouping multiple projections of the same
+  entity. Do not log returned content.
+- Classify calls as evidence read, control, review, mutation, retry/replay, or memo-served. The raw
+  runtime `read_tool` type is not a sufficient product metric.
+- Add per-turn telemetry for `evidence_read_call_count`, `unique_exact_read_count`,
+  `exact_duplicate_count`, `unique_resource_count`, `additional_projection_count`,
+  `evidence_provider_round_count`, `control_provider_round_count`, first complete-evidence round,
+  and justified post-mutation rereads.
+- Persist the logical provider round (or an equivalent durable per-pass identity) on tool execution
+  telemetry. Preserve graph layer widths durably rather than relying only on best-effort job logs.
 - Distinguish model duplicates from worker retries, replay, and memo-cache hits.
 - Add an admin/eval summary that correlates redundant reads with model route, provider, prompt
   version, pass count, latency, tokens, and cost.
@@ -186,9 +347,11 @@ write restraint, or mutation correctness.
 For the known-three-document fixture, over at least five production repetitions:
 
 - 100% grounded final answers;
-- 100% turns with zero redundant logical reads;
-- at least 80% of turns emit all three reads in one provider round;
-- median read tool rounds ≤ 1 and median logical read calls = 3;
+- 100% turns with zero exact duplicate reads;
+- direct-detail variant: at least 80% emit all three reads in the first evidence round, with median
+  evidence rounds ≤ 1 and median evidence calls = 3;
+- lean scan/read variant: at least 80% emit width three in each of the two dependency-ordered
+  evidence rounds ≤ 2 and median evidence calls = 6;
 - no increase in tool failures, projection reconciliation, or recovery attention;
 - materially lower model passes, token cost, and end-to-end latency than the 2026-08-27 baseline.
 
@@ -207,8 +370,8 @@ unbounded prompt.
 - Never reuse a cached read across a mutation that invalidates its resource scope.
 - Never suppress an intentionally different projection, pagination request, or freshness check as
   a duplicate.
-- Keep graph validation fail-closed; this task must not relax Tasker 66 dependency or conflict
-  checks.
+- Keep graph validation fail-closed; this task must not relax the completed Tasker 66 dependency or
+  conflict checks.
 - Final-answer quality is necessary but insufficient: schedule correctness is a first-class test
   result.
 - Do not optimize synthetic fixtures by embedding their entity names or exact call counts in the
@@ -216,8 +379,15 @@ unbounded prompt.
 
 ## Recommended order
 
-1. WP-1 telemetry and baseline classification.
-2. WP-2 transcript/result-contract trace.
-3. Test-first acceptance fixtures.
-4. WP-3 variants, one change at a time.
-5. WP-4 production canary and prompt/model-route decision.
+1. **WP-0 baseline correction — document fixture complete:** current production is six unique reads
+   in two width-three evidence rounds, zero controls, and zero duplicates. Remove the task-update
+   control from this planner baseline because its extra passes are contract/reviewer policy, not
+   discovery reads.
+2. Decide whether the known-document fixture is testing direct full-body reads or the lean
+   outline -> section contract; make the mounted surface and expected call budget match.
+3. WP-1 telemetry with exact-read/resource identities and durable provider-round attribution.
+4. WP-2 redacted transcript/result-contract trace.
+5. Test-first acceptance fixtures.
+6. WP-3 variants, one change at a time. Start with surface shaping if the product wants direct full
+   documents; otherwise start with the small stop-and-batch rubric.
+7. WP-4 production canary and prompt/model-route decision.
