@@ -100,7 +100,11 @@ function terminal(status: 'completed' | 'failed' | 'cancelled', failureCode: str
 		execution_generation: GENERATION,
 		status,
 		finished_reason:
-			status === 'cancelled' ? 'cancelled' : status === 'completed' ? 'stop' : 'worker_interrupted',
+			status === 'cancelled'
+				? 'cancelled'
+				: status === 'completed'
+					? 'stop'
+					: 'worker_interrupted',
 		failure_code: failureCode
 	};
 }
@@ -117,7 +121,12 @@ function durableReport(role: Specialist, summary: string) {
 				claim: `${role} finding about the venue.`,
 				basis: 'recorded',
 				evidence: [
-					{ kind: 'project_record', id: 'task-1', version: 'v1', label: 'Task: Book the venue' }
+					{
+						kind: 'project_record',
+						id: 'task-1',
+						version: 'v1',
+						label: 'Task: Book the venue'
+					}
 				]
 			}
 		],
@@ -390,11 +399,16 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 				recovered_from_stall: true
 			}),
 			projection: expect.objectContaining({
-				workflow: expect.objectContaining({ terminalOutcome: 'complete', coverageGap: null })
+				workflow: expect.objectContaining({
+					terminalOutcome: 'complete',
+					coverageGap: null
+				})
 			})
 		});
 		// Settles the queue through the ordinary reconciliation after terminal truth.
-		expect(harness.control.recover.mock.calls[1]?.[0]).toMatchObject({ failureClass: 'unknown' });
+		expect(harness.control.recover.mock.calls[1]?.[0]).toMatchObject({
+			failureClass: 'unknown'
+		});
 	});
 
 	it('keeps an unfinished durable prefix with the fixed notice and never extends it', async () => {
@@ -461,7 +475,8 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 		});
 		expect(request.projection.workflow).toMatchObject({
 			terminalOutcome: 'partial',
-			coverageGap: 'The risk and alternatives reviewer did not finish, so this review is partial.'
+			coverageGap:
+				'The risk and alternatives reviewer did not finish, so this review is partial.'
 		});
 	});
 
@@ -559,7 +574,9 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 		// Regression: a stalled generation whose last durable write was an answer batch
 		// fails this snapshot, which left the turn in manual recovery on every sweep.
 		harness.snapshots.load.mockRejectedValue(
-			new Error('Invalid Agentic Chat durable recovery snapshot: durable event window is incomplete')
+			new Error(
+				'Invalid Agentic Chat durable recovery snapshot: durable event window is incomplete'
+			)
 		);
 		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
 			results: [{ outcome: 'terminal_reconciled' }]
@@ -578,7 +595,10 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 			run: runState({ steps: BOTH_ACCEPTED, answer: { text: prefix, status: 'streaming' } }),
 			recoveries: [
 				ordinaryRecovery('finalize_cancelled'),
-				ordinaryRecovery('queue_reconciled', { status: 'cancelled', failure_code: 'cancelled' })
+				ordinaryRecovery('queue_reconciled', {
+					status: 'cancelled',
+					failure_code: 'cancelled'
+				})
 			],
 			finalizations: [terminal('cancelled', 'cancelled')]
 		});

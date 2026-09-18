@@ -562,7 +562,9 @@ describePostgres('workflow runner against the frozen SQL on disposable PostgreSQ
 	}, 60_000);
 
 	it('admits the priced provider fallback in the frozen SQL, including when it leads a request', async () => {
-		for (const [model, snapshot] of Object.entries(AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1)) {
+		for (const [model, snapshot] of Object.entries(
+			AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1
+		)) {
 			const { rows } = await admin.query(
 				'SELECT public.agentic_chat_workflow_pricing_valid_v1($1, $2::jsonb) AS ok',
 				[model, JSON.stringify(snapshot)]

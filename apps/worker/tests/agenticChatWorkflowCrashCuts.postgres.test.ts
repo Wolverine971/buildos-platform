@@ -235,7 +235,9 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 	}
 
 	/** Blocks the editor before its claim reaches the database, then kills the process. */
-	const killBeforeSynthesis = (worker: Parameters<Parameters<typeof killFirstGeneration>[0]['cut']>[0]) =>
+	const killBeforeSynthesis = (
+		worker: Parameters<Parameters<typeof killFirstGeneration>[0]['cut']>[0]
+	) =>
 		worker.hook(async (name, args, run) => {
 			if (name === 'claim_agentic_chat_workflow_step_v1' && args.p_step_key === 'editor') {
 				worker.kill();
@@ -244,7 +246,9 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 		});
 
 	/** Lets the first answer batch commit, then kills the process before the second. */
-	const killMidStream = (worker: Parameters<Parameters<typeof killFirstGeneration>[0]['cut']>[0]) => {
+	const killMidStream = (
+		worker: Parameters<Parameters<typeof killFirstGeneration>[0]['cut']>[0]
+	) => {
 		let batches = 0;
 		worker.hook(async (name, _args, run) => {
 			if (name === 'persist_agentic_chat_workflow_text_batch_v1' && ++batches === 2) {
@@ -272,7 +276,10 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 	describe('(a) kill before synthesis', () => {
 		it('requeues and continues: accepted specialists are reused, the editor runs once from offset zero', async () => {
 			const domainBefore = await e2eDomainRowCounts(admin);
-			const first = await killFirstGeneration({ script: happyScript, cut: killBeforeSynthesis });
+			const first = await killFirstGeneration({
+				script: happyScript,
+				cut: killBeforeSynthesis
+			});
 			expect(first.result.outcome).toBe('recovery_required');
 			let facts = await e2eFacts(admin, first.turnRunId);
 			expect(facts.steps.map((row) => [row.step_key, row.status])).toEqual([
@@ -288,7 +295,10 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 			});
 			const second = await secondGeneration(first.turnRunId);
 
-			expect(second.result).toMatchObject({ outcome: 'completed', terminalStatus: 'completed' });
+			expect(second.result).toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
 			expect(second.provider.callsFor('planner')).toHaveLength(0);
 			expect(second.provider.callsFor('project_analyst')).toHaveLength(0);
 			expect(second.provider.callsFor('risk_reviewer')).toHaveLength(0);
@@ -313,7 +323,10 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 		}, 60_000);
 
 		it('when it may not retry, the sweep terminalizes a model-free partial from the accepted reports', async () => {
-			const first = await killFirstGeneration({ script: happyScript, cut: killBeforeSynthesis });
+			const first = await killFirstGeneration({
+				script: happyScript,
+				cut: killBeforeSynthesis
+			});
 			await exhaustQueueAttempts(first.turnRunId);
 
 			await expect(sweep(first.turnRunId)).resolves.toMatchObject({
@@ -331,7 +344,9 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 				/^Partial review: the combined answer could not be written after its allowed attempts\./
 			);
 			expect(text).toContain('## Project analyst\n\nThe venue is the next blocker.');
-			expect(text).toContain('## Risk and alternatives reviewer\n\nCatering is the main risk.');
+			expect(text).toContain(
+				'## Risk and alternatives reviewer\n\nCatering is the main risk.'
+			);
 			// No model call happened in the sweep: generation 1 never reached the editor.
 			expect(first.provider.callsFor('editor')).toHaveLength(0);
 		}, 60_000);
@@ -354,11 +369,16 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 			});
 			const second = await secondGeneration(first.turnRunId);
 
-			expect(second.result).toMatchObject({ outcome: 'completed', terminalStatus: 'completed' });
+			expect(second.result).toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
 			// Nothing is regenerated: no provider call at all in generation 2.
 			expect(second.provider.calls).toHaveLength(0);
 			const facts = await expectOneTerminalAnswer(first.turnRunId);
-			expect(facts.messages[0]!.content).toBe(`${prefix}${AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE}`);
+			expect(facts.messages[0]!.content).toBe(
+				`${prefix}${AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE}`
+			);
 			expect(facts.run).toMatchObject({
 				terminal_outcome: 'partial',
 				answer_text: prefix,
@@ -397,10 +417,16 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 
 	describe('(c) kill after final-text acceptance, before terminal', () => {
 		it('requeues and reconciles the accepted text with no provider call', async () => {
-			const first = await killFirstGeneration({ script: happyScript, cut: killAfterAcceptance });
+			const first = await killFirstGeneration({
+				script: happyScript,
+				cut: killAfterAcceptance
+			});
 			let facts = await e2eFacts(admin, first.turnRunId);
 			expect(facts.turn.status).toBe('running');
-			expect(facts.run).toMatchObject({ synthesis_status: 'accepted', answer_text: EDITOR_TEXT });
+			expect(facts.run).toMatchObject({
+				synthesis_status: 'accepted',
+				answer_text: EDITOR_TEXT
+			});
 			expect(facts.messages).toHaveLength(0);
 
 			await expect(sweep(first.turnRunId)).resolves.toMatchObject({
@@ -408,7 +434,10 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 			});
 			const second = await secondGeneration(first.turnRunId);
 
-			expect(second.result).toMatchObject({ outcome: 'completed', terminalStatus: 'completed' });
+			expect(second.result).toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
 			expect(second.provider.calls).toHaveLength(0);
 			facts = await expectOneTerminalAnswer(first.turnRunId);
 			expect(facts.messages[0]).toEqual({
@@ -425,7 +454,10 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 		}, 60_000);
 
 		it('when it may not retry, the sweep writes the accepted answer as-is', async () => {
-			const first = await killFirstGeneration({ script: happyScript, cut: killAfterAcceptance });
+			const first = await killFirstGeneration({
+				script: happyScript,
+				cut: killAfterAcceptance
+			});
 			await exhaustQueueAttempts(first.turnRunId);
 
 			await expect(sweep(first.turnRunId)).resolves.toMatchObject({
