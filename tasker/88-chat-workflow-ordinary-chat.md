@@ -3,9 +3,28 @@
 # 88 — Jev freshness radar: after a brain dump, catch what went stale
 
 **Created:** 2026-09-12. **Reshaped by DJ:** 2026-09-18.
-**Status:** Plan and interfaces frozen in
-[`docs/architecture/jev-freshness-radar-v1-plan.md`](../docs/architecture/jev-freshness-radar-v1-plan.md).
-Implementation runs in three lanes directly on `main`, with no worktrees.
+**Status (2026-09-18): built on `main`, off by default, not yet live.**
+- Plan and interfaces are frozen in
+  [`docs/architecture/jev-freshness-radar-v1-plan.md`](../docs/architecture/jev-freshness-radar-v1-plan.md),
+  with lane amendments appended.
+- **Lane A** (`fc8c1edcc`…`3b5ed1955`): 4 migrations, shared types, `JevClient` (live Score/Noul/Choice
+  shapes confirmed), scalar and goal/milestone drafts in `verify-operations`, inbox freshness helpers.
+- **Lane B** (`b6d1642f8`…`1e12e8de2`): the worker scanner, the ledger, auto-apply, inbox cleanup, the
+  bundle, the card, and the read-only backtest.
+- **Lane C** (`1e1a19f26`…`359f152ab`): the chat card, badges and gauges, inbox labels, and the
+  undo, flag and decide routes.
+- **Integration fix** (`fd8b76f4d`): milestone date drafts now keep the user's calendar day.
+- **Verified on merged `main`:**
+  - worker typecheck is clean;
+  - radar and inbox worker suites pass 126/126, including a real disposable-Postgres end-to-end scan;
+  - web freshness, chat session and decide suites pass 116/116;
+  - SQL contracts pass 52/52.
+- **Owed before live use, each with DJ's OK:**
+  1. apply the 4 migrations (`20260918200000`–`200300`) to production;
+  2. set `FRESHNESS_RADAR_MODE=shadow` on the Railway worker;
+  3. enable DJ's `freshness_radar` feature flag;
+  4. run the read-only backtest on DJ's data;
+  5. switch to `live`, then enable `freshness_radar.auto_apply` after about 20 clean scans.
 **Depends on:** nothing blocking. It reuses the Project Review suggestion, approval and inbox machinery.
 The 86/87 workflow is not used for drafting. It is read-only and text-only by contract, and about
 500× the cost per scan.
