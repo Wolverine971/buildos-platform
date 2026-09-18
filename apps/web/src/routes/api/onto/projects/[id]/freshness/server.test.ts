@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
 	undoFreshnessFlags: vi.fn(),
 	markFreshnessFlagNotStale: vi.fn(),
 	replayLoopOperations: vi.fn(),
+	restoreFreshnessRetiredInboxSource: vi.fn(),
 	createAdminSupabaseClient: vi.fn(() => ({ admin: true }))
 }));
 
@@ -22,6 +23,9 @@ vi.mock('$lib/server/freshness-radar.service', () => ({
 }));
 vi.mock('$lib/server/project-suggestion-actions.service', () => ({
 	replayLoopOperations: mocks.replayLoopOperations
+}));
+vi.mock('@buildos/shared-agent-ops', () => ({
+	restoreFreshnessRetiredInboxSource: mocks.restoreFreshnessRetiredInboxSource
 }));
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: mocks.createAdminSupabaseClient
@@ -147,6 +151,38 @@ describe('POST /freshness/scans/[scan_id]/undo', () => {
 				operationId: 'freshness_undo:f'
 			})
 		);
+	});
+
+	it('restores retired inbox items through the shared helper with the admin client', async () => {
+		const payload = {
+			kind: 'inbox_retire',
+			suggestionId: 's1',
+			inboxItemId: 'i1',
+			previousSuggestionStatus: 'pending',
+			previousInboxStatus: 'pending'
+		};
+		const outcomes: unknown[] = [];
+		mocks.undoFreshnessFlags.mockImplementation(async (params: any) => {
+			outcomes.push(await params.restoreInbox({ projectId: PROJECT, flagId: FLAG, payload }));
+			outcomes.push(await params.restoreInbox({ projectId: PROJECT, flagId: FLAG, payload }));
+			outcomes.push(await params.restoreInbox({ projectId: PROJECT, flagId: FLAG, payload }));
+			return { version: 'freshness_undo_v1', undone: [], skipped: [] };
+		});
+		mocks.restoreFreshnessRetiredInboxSource
+			.mockResolvedValueOnce({ ok: true, inboxItem: null })
+			.mockResolvedValueOnce({ ok: false, reason: 'changed_since' })
+			.mockResolvedValueOnce({ ok: false, reason: 'not_found' });
+		expect((await call({ flag_ids: [FLAG] })).status).toBe(200);
+		expect(mocks.restoreFreshnessRetiredInboxSource).toHaveBeenCalledWith({
+			supabase: { admin: true },
+			undo: payload,
+			flagId: FLAG
+		});
+		expect(outcomes).toEqual([
+			{ ok: true },
+			{ ok: false, reason: 'changed_since' },
+			{ ok: false, reason: 'failed', message: 'The inbox item no longer exists' }
+		]);
 	});
 
 	it('rejects unknown keys and non-uuid flag ids', async () => {

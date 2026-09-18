@@ -9,6 +9,7 @@
 
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
+import { restoreFreshnessRetiredInboxSource } from '@buildos/shared-agent-ops';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -52,9 +53,10 @@ export const POST: RequestHandler = async ({ params, locals, request, fetch }) =
 	}
 
 	try {
+		const admin = createAdminSupabaseClient();
 		const result = await undoFreshnessFlags({
 			supabase: locals.supabase,
-			admin: createAdminSupabaseClient(),
+			admin,
 			userId: access.userId,
 			projectId: access.projectId,
 			scanId: params.scan_id,
@@ -68,7 +70,19 @@ export const POST: RequestHandler = async ({ params, locals, request, fetch }) =
 					operationId,
 					operationKind: 'freshness_undo',
 					fetchFn: fetch
-				})
+				}),
+			// Retired inbox items: restore the source suggestion, resync, re-run the budget.
+			restoreInbox: async ({ flagId, payload }) => {
+				const restored = await restoreFreshnessRetiredInboxSource({
+					supabase: admin,
+					undo: payload,
+					flagId
+				});
+				if (restored.ok) return { ok: true };
+				return restored.reason === 'changed_since'
+					? { ok: false, reason: 'changed_since' }
+					: { ok: false, reason: 'failed', message: 'The inbox item no longer exists' };
+			}
 		});
 		if (!result) return ApiResponse.notFound('Scan');
 		return ApiResponse.success(result);
