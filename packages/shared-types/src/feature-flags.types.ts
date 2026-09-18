@@ -3,7 +3,11 @@
 export type FeatureName =
   | "time_play"
   | "migration.dualwrite.projects"
-  | "cycles.profile_settings";
+  | "cycles.profile_settings"
+  | "freshness_radar"
+  | "freshness_radar.surfaces"
+  | "freshness_radar.auto_apply"
+  | "freshness_radar.inbox_cleanup";
 
 export interface FeatureFlag {
   id: string;

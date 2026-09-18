@@ -27,7 +27,8 @@ export type ProjectSuggestionKind =
 	| 'doc_outdated'
 	| 'drift'
 	| 'task_conflict'
-	| 'audit_recommendation';
+	| 'audit_recommendation'
+	| 'freshness_update';
 
 /**
  * 1 = info/low (flags, tags) — one-click apply.
@@ -64,6 +65,7 @@ export type ProjectSuggestionFreshnessState = 'fresh' | 'changed' | 'stale' | 'u
 export type ProjectSuggestionEvidenceType =
 	| 'project'
 	| 'goal'
+	| 'milestone'
 	| 'document'
 	| 'task'
 	| 'calendar_event'
@@ -185,7 +187,10 @@ export interface ProjectLoopRun {
 
 export interface ProjectSuggestion {
 	id: string;
-	run_id: string;
+	/** Parent project loop run. Null only for kind 'freshness_update' (parent is freshness_scan_id). */
+	run_id: string | null;
+	/** Parent freshness radar scan. Set only for kind 'freshness_update'. */
+	freshness_scan_id: string | null;
 	project_id: string;
 	chat_session_id: string | null;
 	agent_run_id: string | null;

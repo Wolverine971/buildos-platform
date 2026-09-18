@@ -8985,6 +8985,476 @@ export type Database = {
         }
         Relationships: []
       }
+      freshness_flags: {
+        Row: {
+          answers: Json
+          applied_after_updated_at: string | null
+          applied_at: string | null
+          applied_via: string | null
+          change_kind: string | null
+          change_kind_probability: number | null
+          created_at: string
+          date_choice: string | null
+          date_choice_probability: number | null
+          disposition: string
+          disposition_reason: string | null
+          evidence: Json | null
+          features: Json
+          id: string
+          model_used: string | null
+          outcome: string | null
+          outcome_at: string | null
+          outcome_source: string | null
+          probability: number
+          project_id: string
+          proposed_operation: Json | null
+          question_set_version: string
+          scan_id: string
+          status: string
+          subject_id: string
+          subject_kind: string
+          subject_snapshot: Json
+          subject_title: string
+          subject_updated_at: string | null
+          suggestion_id: string | null
+          undo_operation: Json | null
+          undone_at: string | null
+          undone_by: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers: Json
+          applied_after_updated_at?: string | null
+          applied_at?: string | null
+          applied_via?: string | null
+          change_kind?: string | null
+          change_kind_probability?: number | null
+          created_at?: string
+          date_choice?: string | null
+          date_choice_probability?: number | null
+          disposition: string
+          disposition_reason?: string | null
+          evidence?: Json | null
+          features?: Json
+          id?: string
+          model_used?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_source?: string | null
+          probability: number
+          project_id: string
+          proposed_operation?: Json | null
+          question_set_version: string
+          scan_id: string
+          status?: string
+          subject_id: string
+          subject_kind: string
+          subject_snapshot: Json
+          subject_title: string
+          subject_updated_at?: string | null
+          suggestion_id?: string | null
+          undo_operation?: Json | null
+          undone_at?: string | null
+          undone_by?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          applied_after_updated_at?: string | null
+          applied_at?: string | null
+          applied_via?: string | null
+          change_kind?: string | null
+          change_kind_probability?: number | null
+          created_at?: string
+          date_choice?: string | null
+          date_choice_probability?: number | null
+          disposition?: string
+          disposition_reason?: string | null
+          evidence?: Json | null
+          features?: Json
+          id?: string
+          model_used?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_source?: string | null
+          probability?: number
+          project_id?: string
+          proposed_operation?: Json | null
+          question_set_version?: string
+          scan_id?: string
+          status?: string
+          subject_id?: string
+          subject_kind?: string
+          subject_snapshot?: Json
+          subject_title?: string
+          subject_updated_at?: string | null
+          suggestion_id?: string | null
+          undo_operation?: Json | null
+          undone_at?: string | null
+          undone_by?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freshness_flags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_flags_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "freshness_scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_flags_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "project_suggestions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_flags_undone_by_fkey"
+            columns: ["undone_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "freshness_flags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      freshness_radar_signals: {
+        Row: {
+          created_at: string
+          due_at: string
+          error_message: string | null
+          finished_at: string | null
+          first_turn_at: string
+          id: string
+          last_turn_at: string
+          last_turn_run_id: string | null
+          max_due_at: string
+          project_id_hints: string[]
+          queue_job_id: string | null
+          session_id: string
+          started_at: string | null
+          status: string
+          turn_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          due_at: string
+          error_message?: string | null
+          finished_at?: string | null
+          first_turn_at?: string
+          id?: string
+          last_turn_at?: string
+          last_turn_run_id?: string | null
+          max_due_at: string
+          project_id_hints?: string[]
+          queue_job_id?: string | null
+          session_id: string
+          started_at?: string | null
+          status?: string
+          turn_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          due_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          first_turn_at?: string
+          id?: string
+          last_turn_at?: string
+          last_turn_run_id?: string | null
+          max_due_at?: string
+          project_id_hints?: string[]
+          queue_job_id?: string | null
+          session_id?: string
+          started_at?: string | null
+          status?: string
+          turn_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freshness_radar_signals_last_turn_run_id_fkey"
+            columns: ["last_turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_radar_signals_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_radar_signals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      freshness_scans: {
+        Row: {
+          candidates_evaluated: number
+          candidates_total: number
+          card_message_id: string | null
+          counts: Json
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          info_chars: number
+          info_cursor_at: string | null
+          info_message_ids: string[]
+          info_session_ids: string[]
+          info_truncated: boolean
+          info_window_start: string | null
+          jev_cost_usd: number
+          jev_input_tokens: number
+          jev_latency_ms: number[]
+          jev_requests: number
+          mode: string
+          model_requested: string | null
+          model_used: string | null
+          policy: Json
+          policy_version: string
+          project_id: string
+          question_set_sha256: string
+          question_set_version: string
+          signal_id: string | null
+          skip_reason: string | null
+          started_at: string | null
+          status: string
+          trigger: string
+          trigger_session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          candidates_evaluated?: number
+          candidates_total?: number
+          card_message_id?: string | null
+          counts?: Json
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          info_chars?: number
+          info_cursor_at?: string | null
+          info_message_ids?: string[]
+          info_session_ids?: string[]
+          info_truncated?: boolean
+          info_window_start?: string | null
+          jev_cost_usd?: number
+          jev_input_tokens?: number
+          jev_latency_ms?: number[]
+          jev_requests?: number
+          mode: string
+          model_requested?: string | null
+          model_used?: string | null
+          policy: Json
+          policy_version: string
+          project_id: string
+          question_set_sha256: string
+          question_set_version: string
+          signal_id?: string | null
+          skip_reason?: string | null
+          started_at?: string | null
+          status?: string
+          trigger: string
+          trigger_session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          candidates_evaluated?: number
+          candidates_total?: number
+          card_message_id?: string | null
+          counts?: Json
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          info_chars?: number
+          info_cursor_at?: string | null
+          info_message_ids?: string[]
+          info_session_ids?: string[]
+          info_truncated?: boolean
+          info_window_start?: string | null
+          jev_cost_usd?: number
+          jev_input_tokens?: number
+          jev_latency_ms?: number[]
+          jev_requests?: number
+          mode?: string
+          model_requested?: string | null
+          model_used?: string | null
+          policy?: Json
+          policy_version?: string
+          project_id?: string
+          question_set_sha256?: string
+          question_set_version?: string
+          signal_id?: string | null
+          skip_reason?: string | null
+          started_at?: string | null
+          status?: string
+          trigger?: string
+          trigger_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freshness_scans_card_message_id_fkey"
+            columns: ["card_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_scans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_scans_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "freshness_radar_signals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_scans_trigger_session_id_fkey"
+            columns: ["trigger_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_scans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      freshness_track_scores: {
+        Row: {
+          answers: Json
+          created_at: string
+          evidence_probability: number | null
+          facts: Json
+          gauge: string
+          id: string
+          model_used: string | null
+          outcome: string | null
+          outcome_at: string | null
+          previous_gauge: string | null
+          project_id: string
+          question_set_version: string
+          scan_id: string
+          score: number | null
+          score_confidence: number | null
+          subject_id: string
+          subject_kind: string
+          subject_title: string
+          target_at: string | null
+          user_id: string
+        }
+        Insert: {
+          answers: Json
+          created_at?: string
+          evidence_probability?: number | null
+          facts: Json
+          gauge: string
+          id?: string
+          model_used?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
+          previous_gauge?: string | null
+          project_id: string
+          question_set_version: string
+          scan_id: string
+          score?: number | null
+          score_confidence?: number | null
+          subject_id: string
+          subject_kind: string
+          subject_title: string
+          target_at?: string | null
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          evidence_probability?: number | null
+          facts?: Json
+          gauge?: string
+          id?: string
+          model_used?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
+          previous_gauge?: string | null
+          project_id?: string
+          question_set_version?: string
+          scan_id?: string
+          score?: number | null
+          score_confidence?: number | null
+          subject_id?: string
+          subject_kind?: string
+          subject_title?: string
+          target_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freshness_track_scores_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_track_scores_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "freshness_scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_track_scores_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       homework_run_events: {
         Row: {
           created_at: string
@@ -9191,6 +9661,10 @@ export type Database = {
           created_at: string
           decided_at: string | null
           expires_at: string | null
+          freshness_checked_at: string | null
+          freshness_flag_id: string | null
+          freshness_note: string | null
+          freshness_state: string
           id: string
           project_id: string | null
           risk_tier: number | null
@@ -9211,6 +9685,10 @@ export type Database = {
           created_at?: string
           decided_at?: string | null
           expires_at?: string | null
+          freshness_checked_at?: string | null
+          freshness_flag_id?: string | null
+          freshness_note?: string | null
+          freshness_state?: string
           id?: string
           project_id?: string | null
           risk_tier?: number | null
@@ -9231,6 +9709,10 @@ export type Database = {
           created_at?: string
           decided_at?: string | null
           expires_at?: string | null
+          freshness_checked_at?: string | null
+          freshness_flag_id?: string | null
+          freshness_note?: string | null
+          freshness_state?: string
           id?: string
           project_id?: string | null
           risk_tier?: number | null
@@ -9245,6 +9727,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inbox_items_freshness_flag_id_fkey"
+            columns: ["freshness_flag_id"]
+            isOneToOne: false
+            referencedRelation: "freshness_flags"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inbox_items_project_id_fkey"
             columns: ["project_id"]
@@ -14468,6 +14957,7 @@ export type Database = {
           decided_at: string | null
           depends_on: string | null
           evidence_refs: Json
+          freshness_scan_id: string | null
           freshness_state: string
           id: string
           kind: string
@@ -14478,7 +14968,7 @@ export type Database = {
           result: Json | null
           reversible: boolean | null
           risk_tier: number
-          run_id: string
+          run_id: string | null
           sort_order: number
           source_fingerprint: string | null
           status: string
@@ -14497,6 +14987,7 @@ export type Database = {
           decided_at?: string | null
           depends_on?: string | null
           evidence_refs?: Json
+          freshness_scan_id?: string | null
           freshness_state?: string
           id?: string
           kind: string
@@ -14507,7 +14998,7 @@ export type Database = {
           result?: Json | null
           reversible?: boolean | null
           risk_tier?: number
-          run_id: string
+          run_id?: string | null
           sort_order?: number
           source_fingerprint?: string | null
           status?: string
@@ -14526,6 +15017,7 @@ export type Database = {
           decided_at?: string | null
           depends_on?: string | null
           evidence_refs?: Json
+          freshness_scan_id?: string | null
           freshness_state?: string
           id?: string
           kind?: string
@@ -14536,7 +15028,7 @@ export type Database = {
           result?: Json | null
           reversible?: boolean | null
           risk_tier?: number
-          run_id?: string
+          run_id?: string | null
           sort_order?: number
           source_fingerprint?: string | null
           status?: string
@@ -14566,6 +15058,13 @@ export type Database = {
             columns: ["depends_on"]
             isOneToOne: false
             referencedRelation: "project_suggestions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_suggestions_freshness_scan_id_fkey"
+            columns: ["freshness_scan_id"]
+            isOneToOne: false
+            referencedRelation: "freshness_scans"
             referencedColumns: ["id"]
           },
           {
@@ -23475,6 +23974,7 @@ export type Database = {
         | "admin_question_tree"
         | "run_cycle"
         | "embed_onto_entity"
+        | "freshness_radar_scan"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -23741,6 +24241,7 @@ export const Constants = {
         "admin_question_tree",
         "run_cycle",
         "embed_onto_entity",
+        "freshness_radar_scan",
       ],
       recurrence_end_reason: [
         "indefinite",

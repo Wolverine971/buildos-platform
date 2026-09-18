@@ -2,6 +2,7 @@
 import type { Database } from './database.types';
 import type { NotificationJobMetadata } from './notification.types';
 import { CYCLE_KINDS, type CycleQueueJobMetadata, type CycleRunOutcome } from './cycle.types';
+import type { FreshnessScanJobMetadata } from './freshness-radar.types';
 
 // Re-export database enums as the single source of truth, minus retired legacy jobs.
 export type QueueJobType = Exclude<Database['public']['Enums']['queue_type'], 'process_brain_dump'>;
@@ -343,6 +344,7 @@ export interface JobMetadataMap {
 	embed_onto_entity: EmbedOntoEntityJobMetadata;
 	admin_question_tree: AdminQuestionTreeJobMetadata;
 	run_cycle: CycleQueueJobMetadata;
+	freshness_radar_scan: FreshnessScanJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -630,11 +632,27 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isProjectActivityBatchFlushMetadata(metadata);
 		case 'run_cycle':
 			return isCycleQueueJobMetadata(metadata);
+		case 'freshness_radar_scan':
+			return isFreshnessScanJobMetadata(metadata);
 		case 'other':
 			return true;
 		default:
 			return true;
 	}
+}
+
+function isFreshnessScanJobMetadata(obj: unknown): obj is FreshnessScanJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return (
+		typeof meta.signalId === 'string' &&
+		meta.signalId.length > 0 &&
+		typeof meta.sessionId === 'string' &&
+		meta.sessionId.length > 0 &&
+		typeof meta.userId === 'string' &&
+		meta.userId.length > 0 &&
+		(meta.correlationId === undefined || typeof meta.correlationId === 'string')
+	);
 }
 
 function isCycleQueueJobMetadata(obj: unknown): obj is CycleQueueJobMetadata {

@@ -53,6 +53,9 @@ export * from './project-loops.types';
 export * from './project-audits.types';
 export * from './project-graph-context.types';
 
+// Export Jev freshness radar (Tasker 88) contracts
+export * from './freshness-radar.types';
+
 // Export Cycles (recurring work definitions and immutable run occurrences)
 export * from './cycle.types';
 
