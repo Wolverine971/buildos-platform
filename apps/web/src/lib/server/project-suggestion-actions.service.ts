@@ -19,6 +19,7 @@ import {
 import { isProjectSuggestionFresh } from '$lib/server/project-loop-snapshot.service';
 import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
 import { captureServerEvent } from '$lib/server/posthog';
+import { recordFreshnessBundleOutcome } from '$lib/server/freshness-radar.service';
 
 type AnySupabase = any;
 
@@ -207,7 +208,7 @@ function isBinaryOrStreamBody(value: unknown): boolean {
 
 function withProjectSuggestionReplayContext(
 	init: RequestInit,
-	params: { suggestionId: string; operationCount: number }
+	params: { operationId: string; operationKind: string; operationCount: number }
 ): RequestInit {
 	const rawBody = init.body;
 	const method = init.method?.toUpperCase();
@@ -239,11 +240,91 @@ function withProjectSuggestionReplayContext(
 			...body,
 			project_review_context: {
 				...PROJECT_SUGGESTION_REPLAY_REVIEW_CONTEXT,
-				operation_id: `project_suggestion:${params.suggestionId}`,
+				operation_kind: params.operationKind,
+				operation_id: params.operationId,
 				entity_count: params.operationCount
 			}
 		})
 	};
+}
+
+export type LoopOperationReplayResult = {
+	appliedCount: number;
+	errors: Array<{ tool: string; error: string }>;
+	/** Per-operation success, aligned with the input operations. */
+	outcomes: boolean[];
+};
+
+/**
+ * Replay stored loop operations through ChatToolExecutor (the agentic chat write path) with
+ * the Project Review replay-suppression context, sequentially, never throwing. Used by
+ * suggestion approval and by the freshness radar's undo (Tasker 88).
+ */
+export async function replayLoopOperations(params: {
+	supabase: AnySupabase;
+	userId: string;
+	chatSessionId: string | null;
+	operations: LoopOperation[];
+	operationId: string;
+	operationKind?: string;
+	fetchFn?: typeof fetch;
+}): Promise<LoopOperationReplayResult> {
+	const { operations } = params;
+	const baseFetch = params.fetchFn ?? fetch;
+	const replayFetch: typeof fetch = (input, init = {}) => {
+		return baseFetch(
+			input,
+			withProjectSuggestionReplayContext(init, {
+				operationId: params.operationId,
+				operationKind:
+					params.operationKind ?? PROJECT_SUGGESTION_REPLAY_REVIEW_CONTEXT.operation_kind,
+				operationCount: operations.length
+			})
+		);
+	};
+	const executor = new ChatToolExecutor(
+		params.supabase,
+		params.userId,
+		params.chatSessionId ?? undefined,
+		replayFetch,
+		undefined,
+		{
+			// Replay is not a chat turn. The linked session can belong to a different project
+			// member, so a user-scoped ledger insert would either violate RLS or misattribute the
+			// replay. The durable audit is the caller's own record, not chat_tool_executions.
+			logExecutions: false
+		}
+	);
+
+	const errors: Array<{ tool: string; error: string }> = [];
+	const outcomes: boolean[] = [];
+	let appliedCount = 0;
+
+	for (const op of operations) {
+		const toolCall: ChatToolCall = {
+			id: globalThis.crypto.randomUUID(),
+			type: 'function',
+			function: { name: op.tool, arguments: JSON.stringify(op.args ?? {}) }
+		};
+		try {
+			const result = await executor.execute(toolCall);
+			if (result.success) {
+				appliedCount += 1;
+				outcomes.push(true);
+			} else {
+				errors.push({ tool: op.tool, error: result.error ?? 'Tool execution failed' });
+				outcomes.push(false);
+			}
+		} catch (error) {
+			errors.push({
+				tool: op.tool,
+				error: error instanceof Error ? error.message : 'Tool execution threw'
+			});
+			outcomes.push(false);
+		}
+	}
+
+	return { appliedCount, errors, outcomes };
 }
 
 export async function refreshLinkedAuditSuggestionCounts(params: {
@@ -438,6 +519,13 @@ export async function decideProjectSuggestion(params: {
 		await syncProjectSuggestionInboxItem(updated);
 		await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
 		await finalizeProjectLoopRunIfComplete(supabase, (updated as { run_id?: string }).run_id);
+		if (updated.kind === 'freshness_update') {
+			await recordFreshnessBundleOutcome({
+				admin: createAdminSupabaseClient(),
+				suggestion: updated,
+				action: 'dismiss'
+			});
+		}
 		emitSuggestionDecisionEvent(userId, 'project_suggestion_dismissed', updated, {
 			reason: feedback.reason ?? null,
 			has_note: Boolean(feedback.note)
@@ -589,66 +677,31 @@ export async function decideProjectSuggestion(params: {
 	await syncProjectSuggestionInboxItem(claimed);
 
 	const suggestion = claimed as unknown as ProjectSuggestion;
-	let chatSessionId: string | null = null;
-	try {
-		chatSessionId = await loadRunChatSessionId({ supabase, runId: suggestion.run_id });
-	} catch (error) {
-		console.warn(
-			`[ProjectSuggestions] Failed to load loop chat session ${suggestion.run_id}:`,
-			error instanceof Error ? error.message : error
-		);
+	// Loop suggestions replay in their run's chat session. Freshness bundles (Tasker 88) have
+	// no run: they carry the trigger chat session themselves.
+	let chatSessionId: string | null = suggestion.run_id ? null : suggestion.chat_session_id;
+	if (suggestion.run_id) {
+		try {
+			chatSessionId = await loadRunChatSessionId({ supabase, runId: suggestion.run_id });
+		} catch (error) {
+			console.warn(
+				`[ProjectSuggestions] Failed to load loop chat session ${suggestion.run_id}:`,
+				error instanceof Error ? error.message : error
+			);
+		}
 	}
 	const operations: LoopOperation[] = Array.isArray(suggestion.operations)
 		? suggestion.operations
 		: [];
-	const baseFetch = params.fetchFn ?? fetch;
-	const projectLoopFetch: typeof fetch = (input, init = {}) => {
-		return baseFetch(
-			input,
-			withProjectSuggestionReplayContext(init, {
-				suggestionId,
-				operationCount: operations.length
-			})
-		);
-	};
-	const executor = new ChatToolExecutor(
+	const replay = await replayLoopOperations({
 		supabase,
 		userId,
-		chatSessionId ?? undefined,
-		projectLoopFetch,
-		undefined,
-		{
-			// Suggestion approval is not a chat turn. The linked loop session can belong
-			// to a different project member, so a user-scoped ledger insert would either
-			// violate RLS or misattribute the replay. The durable audit is the suggestion's
-			// result below (plus the decision event), not chat_tool_executions.
-			logExecutions: false
-		}
-	);
-
-	const errors: Array<{ tool: string; error: string }> = [];
-	let appliedCount = 0;
-
-	for (const op of operations) {
-		const toolCall: ChatToolCall = {
-			id: globalThis.crypto.randomUUID(),
-			type: 'function',
-			function: { name: op.tool, arguments: JSON.stringify(op.args ?? {}) }
-		};
-		try {
-			const result = await executor.execute(toolCall);
-			if (result.success) {
-				appliedCount += 1;
-			} else {
-				errors.push({ tool: op.tool, error: result.error ?? 'Tool execution failed' });
-			}
-		} catch (error) {
-			errors.push({
-				tool: op.tool,
-				error: error instanceof Error ? error.message : 'Tool execution threw'
-			});
-		}
-	}
+		chatSessionId,
+		operations,
+		operationId: `project_suggestion:${suggestionId}`,
+		fetchFn: params.fetchFn
+	});
+	const { appliedCount, errors } = replay;
 
 	const result: ProjectSuggestionResult = {
 		ok: errors.length === 0,
@@ -681,6 +734,13 @@ export async function decideProjectSuggestion(params: {
 	await syncProjectSuggestionInboxItem(updated);
 	await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
 	await finalizeProjectLoopRunIfComplete(supabase, (updated as { run_id?: string }).run_id);
+	await recordFreshnessBundleOutcome({
+		admin,
+		suggestion: updated,
+		action: 'approve',
+		result,
+		operationOutcomes: replay.outcomes
+	});
 	emitSuggestionDecisionEvent(
 		userId,
 		result.ok ? 'project_suggestion_accepted' : 'project_suggestion_application_failed',
