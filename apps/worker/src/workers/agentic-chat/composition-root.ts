@@ -10,6 +10,10 @@ import {
 	type AgenticChatWorkflowV4CompositionOptionsV1,
 	createAgenticChatWorkflowTurnPreparerV1
 } from './workflow/preparation-composition';
+import {
+	type AgenticChatWorkflowStoreClient,
+	SupabaseAgenticChatWorkflowStore
+} from './workflow/workflow-store';
 // apps/worker/src/workers/agentic-chat/composition-root.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
@@ -451,7 +455,11 @@ export function createAgenticChatCompositionRoot(options: {
 		{
 			candidates: stalledCandidates,
 			control,
-			snapshots: new SupabaseAgenticChatRecoverySnapshotAdapter(rpcClient)
+			snapshots: new SupabaseAgenticChatRecoverySnapshotAdapter(rpcClient),
+			// Read only for a workflow turn that may not retry; ordinary turns never reach it.
+			workflowRuns: new SupabaseAgenticChatWorkflowStore(
+				options.client as unknown as AgenticChatWorkflowStoreClient
+			)
 		},
 		{
 			stallTimeoutMs: consumer.config.stalledTimeoutMs,

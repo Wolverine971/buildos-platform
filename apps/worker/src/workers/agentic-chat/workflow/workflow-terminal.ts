@@ -70,7 +70,8 @@ export function decideAgenticChatWorkflowTerminalFromDurableTruthV1(
 			'The review stopped before any specialist finished. Nothing was changed.'
 	});
 	if (code === 'access_revoked') return failure();
-	const coverageGap = workflowCoverageGap(state);
+	// The run cannot continue, so a specialist that never finished is missing coverage.
+	const coverageGap = workflowCoverageGap(state, { terminal: true });
 	if (state.answer.status === 'accepted') {
 		return {
 			status: 'completed',
@@ -99,6 +100,86 @@ export function decideAgenticChatWorkflowTerminalFromDurableTruthV1(
 		};
 	}
 	return failure();
+}
+
+/** The terminal-writer fields for a durable-truth decision; shared by every writer. */
+export type AgenticChatWorkflowTerminalFieldsV1 = {
+	status: 'completed' | 'failed';
+	failureCode: string | null;
+	assistantText: string;
+	terminalOutcome: AgenticChatWorkflowTerminalOutcomeV1;
+	coverageGap: string | null;
+	activity: string;
+	metadata?: JsonObject;
+};
+
+export function agenticChatWorkflowTerminalFieldsV1(
+	decision: AgenticChatWorkflowTerminalDecisionV1
+): AgenticChatWorkflowTerminalFieldsV1 {
+	if (decision.status === 'failed') {
+		return {
+			status: 'failed',
+			failureCode: decision.failureCode,
+			assistantText: '',
+			terminalOutcome: 'failed',
+			coverageGap: decision.message,
+			activity: decision.message
+		};
+	}
+	return {
+		status: 'completed',
+		failureCode: null,
+		assistantText: decision.assistantText,
+		terminalOutcome:
+			decision.answerSource === 'accepted_answer' && decision.quality === 'complete'
+				? 'complete'
+				: 'partial',
+		coverageGap: decision.coverageGap,
+		activity: '',
+		metadata: {
+			workflow_quality: decision.quality,
+			workflow_answer_source: decision.answerSource
+		}
+	};
+}
+
+/**
+ * Stalled-worker recovery for a workflow that may not retry (deadline, budget, attempts,
+ * access, or a non-retryable class). It writes the same durable-truth decision the
+ * in-process terminal path writes, with no model call: bounded and deterministic.
+ * Missing durable truth (`state === null`) can only fail, and never shows content.
+ */
+export function buildAgenticChatWorkflowStalledTerminalInputV1(input: {
+	fence: AgenticChatWorkflowFenceV1;
+	userId: string;
+	state: AgenticChatWorkflowRunStateV1 | null;
+	reason: string;
+	observedAt: string;
+}): {
+	decision: AgenticChatWorkflowTerminalDecisionV1;
+	request: AgenticChatTerminalFinalizeInputV1;
+} {
+	const code = input.reason.replace(/^workflow_/, '');
+	const decision: AgenticChatWorkflowTerminalDecisionV1 = input.state
+		? decideAgenticChatWorkflowTerminalFromDurableTruthV1(input.state, code)
+		: {
+				status: 'failed',
+				failureCode: `workflow_${code}`.slice(0, 128),
+				message:
+					FAILURE_MESSAGES[code] ??
+					'The review stopped before any specialist finished. Nothing was changed.'
+			};
+	const fields = agenticChatWorkflowTerminalFieldsV1(decision);
+	const request = buildAgenticChatWorkflowTerminalInputV1({
+		fence: input.fence,
+		userId: input.userId,
+		...fields,
+		state: input.state,
+		observedAt: input.observedAt,
+		finishedReason: fields.status === 'failed' ? 'worker_interrupted' : undefined,
+		recoveredFromStall: true
+	});
+	return { decision, request };
 }
 
 /** One stable assistant message per turn generation, so a retried finalize is idempotent. */
@@ -153,13 +234,19 @@ export function buildAgenticChatWorkflowTerminalInputV1(input: {
 	activity: string;
 	observedAt: string;
 	metadata?: JsonObject;
+	/** Overrides the default finished reason (stalled recovery records `worker_interrupted`). */
+	finishedReason?: string;
+	/** Marks a terminal write made by stalled-worker recovery, not by the running worker. */
+	recoveredFromStall?: boolean;
 }): AgenticChatTerminalFinalizeInputV1 {
 	const finishedReason =
-		input.status === 'completed'
+		input.finishedReason ??
+		(input.status === 'completed'
 			? 'stop'
 			: input.status === 'cancelled'
 				? 'cancelled'
-				: 'error';
+				: 'error');
+	const stall = input.recoveredFromStall ? { recovered_from_stall: true } : {};
 	const failureCode =
 		input.status === 'completed'
 			? null
@@ -198,7 +285,8 @@ export function buildAgenticChatWorkflowTerminalInputV1(input: {
 			worker_runtime: 'agentic_chat_v1',
 			tool_round_count: 0,
 			tool_call_count: 0,
-			...(input.metadata ?? {})
+			...(input.metadata ?? {}),
+			...stall
 		},
 		promptTokens: null,
 		completionTokens: null,
@@ -209,7 +297,8 @@ export function buildAgenticChatWorkflowTerminalInputV1(input: {
 			status: input.status,
 			finished_reason: finishedReason,
 			failure_code: failureCode,
-			usage: input.status === 'failed' ? { total_tokens: 0 } : null
+			usage: input.status === 'failed' ? { total_tokens: 0 } : null,
+			...stall
 		}
 	};
 }

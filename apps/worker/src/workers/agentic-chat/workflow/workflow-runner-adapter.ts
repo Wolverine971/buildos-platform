@@ -39,6 +39,7 @@ import type {
 } from './workflow-store';
 import {
 	type AgenticChatWorkflowTerminalDecisionV1,
+	agenticChatWorkflowTerminalFieldsV1,
 	buildAgenticChatWorkflowTerminalInputV1,
 	decideAgenticChatWorkflowTerminalFromDurableTruthV1
 } from './workflow-terminal';
@@ -352,23 +353,8 @@ class WorkflowTerminal {
 		decision: AgenticChatWorkflowTerminalDecisionV1,
 		state: AgenticChatWorkflowRunStateV1 | null
 	) {
-		if (decision.status === 'failed') return this.fail(decision.failureCode, decision.message);
-		return this.finalize({
-			status: 'completed',
-			failureCode: null,
-			assistantText: decision.assistantText,
-			terminalOutcome:
-				decision.answerSource === 'accepted_answer' && decision.quality === 'complete'
-					? 'complete'
-					: 'partial',
-			coverageGap: decision.coverageGap,
-			activity: '',
-			state,
-			metadata: {
-				workflow_quality: decision.quality,
-				workflow_answer_source: decision.answerSource
-			}
-		});
+		// The same mapping stalled-worker recovery uses, so both writers agree.
+		return this.finalize({ ...agenticChatWorkflowTerminalFieldsV1(decision), state });
 	}
 
 	private async recover(

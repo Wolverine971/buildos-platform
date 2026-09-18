@@ -15,6 +15,8 @@ import {
 	AgenticChatTerminalFinalizeInputV1
 } from './executionControl';
 import type { AgenticChatRecoverySnapshotPortV1 } from './recoverySnapshot';
+import type { AgenticChatWorkflowStorePortV1 } from './workflow/workflow-store';
+import { buildAgenticChatWorkflowStalledTerminalInputV1 } from './workflow/workflow-terminal';
 
 type StalledQueryError = { code?: string; message: string };
 type StalledQueryResult = PromiseLike<{ data: unknown; error: StalledQueryError | null }>;
@@ -177,6 +179,11 @@ export class AgenticChatStalledRecoverySweep {
 			candidates: AgenticChatStalledCandidateSourcePortV1;
 			control: RecoveryControlPort;
 			snapshots: AgenticChatRecoverySnapshotPortV1;
+			/**
+			 * Durable workflow truth (Tasker 87 slice C). Read only for a workflow turn that
+			 * may not retry; ordinary turns never reach it.
+			 */
+			workflowRuns?: Pick<AgenticChatWorkflowStorePortV1, 'loadRun'>;
 		},
 		options: Partial<{
 			stallTimeoutMs: number;
@@ -371,7 +378,7 @@ export class AgenticChatStalledRecoverySweep {
 				candidate,
 				claim,
 				workflow.failureClass,
-				workflow.terminalFailureCode
+				workflow.terminalReason
 			);
 		} catch (error) {
 			return recoveryResult(
@@ -386,8 +393,10 @@ export class AgenticChatStalledRecoverySweep {
 	/**
 	 * Enforced read-only workflow turns (Tasker 85/87) try their atomic recovery first.
 	 * Every ordinary turn returns `policy_denied` and continues through the unchanged
-	 * ordinary recovery below. A workflow turn that may not retry is finalized as failed
-	 * with its workflow reason; it never falls back to ordinary pre-start retry.
+	 * ordinary recovery below. A workflow turn that may not retry never falls back to
+	 * ordinary pre-start retry: it is terminalized from durable workflow truth (an
+	 * accepted answer, a kept durable prefix, a model-free partial built from accepted
+	 * reports, or a failure when none was accepted), with no model call.
 	 */
 	private async recoverWorkflow(
 		candidate: AgenticChatStalledCandidateV1,
@@ -396,7 +405,8 @@ export class AgenticChatStalledRecoverySweep {
 	): Promise<{
 		result?: AgenticChatStalledRecoveryResultV1;
 		failureClass: AgenticChatRecoveryFailureClassV1;
-		terminalFailureCode?: string;
+		/** The workflow recovery outcome that forbids a retry, e.g. `deadline_expired`. */
+		terminalReason?: string;
 	}> {
 		const control = this.ports.control;
 		if (!control.recoverWorkflow || claim.outcome === 'already_terminal')
@@ -437,10 +447,7 @@ export class AgenticChatStalledRecoverySweep {
 				return { failureClass: 'cancelled' };
 			default:
 				// deadline, budget, attempts, access, or a non-retryable class: terminal.
-				return {
-					failureClass: 'permanent',
-					terminalFailureCode: `workflow_${receipt.outcome}`
-				};
+				return { failureClass: 'permanent', terminalReason: receipt.outcome };
 		}
 	}
 
@@ -448,7 +455,7 @@ export class AgenticChatStalledRecoverySweep {
 		candidate: AgenticChatStalledCandidateV1,
 		claim: AgenticChatTurnClaimResultV1,
 		initialFailureClass: AgenticChatRecoveryFailureClassV1,
-		terminalFailureCode?: string
+		workflowTerminalReason?: string
 	): Promise<AgenticChatStalledRecoveryResultV1> {
 		let failureClass = initialFailureClass;
 		let lastConvergenceError: string | null = null;
@@ -503,18 +510,33 @@ export class AgenticChatStalledRecoverySweep {
 			}
 
 			const status = recovery.outcome === 'finalize_cancelled' ? 'cancelled' : 'failed';
+			let request: AgenticChatTerminalFinalizeInputV1;
+			if (status === 'failed' && workflowTerminalReason && this.ports.workflowRuns) {
+				try {
+					request = await this.workflowTerminalInput(
+						candidate,
+						snapshot.executionGeneration,
+						workflowTerminalReason
+					);
+				} catch (error) {
+					// A partial answer needs durable workflow truth. Re-run the fenced recovery
+					// within the bounded window rather than failing a turn that may have content.
+					lastConvergenceError = `Workflow truth read failed: ${errorMessage(error)}`;
+					continue;
+				}
+			} else {
+				request = buildTerminalInput(
+					candidate,
+					snapshot,
+					status,
+					status === 'failed' && workflowTerminalReason
+						? `workflow_${workflowTerminalReason}`
+						: recovery.failure_code
+				);
+			}
 			let terminal: AgenticChatTerminalFinalizeRpcResultV1;
 			try {
-				terminal = await this.ports.control.finalize(
-					buildTerminalInput(
-						candidate,
-						snapshot,
-						status,
-						status === 'failed' && terminalFailureCode
-							? terminalFailureCode
-							: recovery.failure_code
-					)
-				);
+				terminal = await this.ports.control.finalize(request);
 			} catch (error) {
 				// A lost finalize response is resolved by the next recovery call.
 				lastConvergenceError = `Recovery finalization failed: ${errorMessage(error)}`;
@@ -535,6 +557,35 @@ export class AgenticChatStalledRecoverySweep {
 			'manual_recovery_required',
 			lastConvergenceError ?? 'Recovery did not converge within the bounded retry window'
 		);
+	}
+
+	/**
+	 * The workflow's terminal write from durable truth: three service-role reads and a
+	 * pure decision. A retried call rebuilds the same text and the same stable message id.
+	 */
+	private async workflowTerminalInput(
+		candidate: AgenticChatStalledCandidateV1,
+		executionGeneration: number,
+		reason: string
+	): Promise<AgenticChatTerminalFinalizeInputV1> {
+		const loaded = await this.ports.workflowRuns!.loadRun(candidate.turnRunId);
+		// Truth that names another turn or owner cannot authorize showing any content.
+		const state =
+			loaded && loaded.turnRunId === candidate.turnRunId && loaded.userId === candidate.userId
+				? loaded
+				: null;
+		return buildAgenticChatWorkflowStalledTerminalInputV1({
+			fence: {
+				turnRunId: candidate.turnRunId,
+				queueJobId: candidate.queueJobId,
+				processingToken: candidate.processingToken,
+				executionGeneration
+			},
+			userId: candidate.userId,
+			state,
+			reason,
+			observedAt: this.options.now().toISOString()
+		}).request;
 	}
 }
 

@@ -225,11 +225,20 @@ export function workflowCheckpointV1(
 	};
 }
 
-/** A plain statement of missing coverage; null when both specialists were accepted. */
-export function workflowCoverageGap(state: AgenticChatWorkflowRunStateV1): string | null {
+/**
+ * A plain statement of missing coverage; null when both specialists were accepted.
+ * While the run can continue, only failed or skipped specialists are missing. At a
+ * terminal decision (`terminal: true`), a specialist that never finished is missing too.
+ */
+export function workflowCoverageGap(
+	state: AgenticChatWorkflowRunStateV1,
+	options: { terminal?: boolean } = {}
+): string | null {
 	const missing = (['project_analyst', 'risk_reviewer'] as const).filter((key) => {
 		const status = state.steps[key]?.status;
-		return status === 'failed' || status === 'skipped';
+		return options.terminal
+			? status !== 'accepted'
+			: status === 'failed' || status === 'skipped';
 	});
 	if (!missing.length) return null;
 	const names = missing.map((key) => AGENTIC_CHAT_WORKFLOW_STEP_LABELS_V1[key].toLowerCase());
@@ -256,6 +265,8 @@ const MODEL_FREE_REASONS: Readonly<Record<string, string>> = {
 	deadline_expired: 'this review ran out of time before the combined answer could be written',
 	attempts_exhausted: 'the combined answer could not be written after its allowed attempts',
 	worker_interrupted:
+		'the review was interrupted and could not safely resume before the combined answer was written',
+	finalize_failed:
 		'the review was interrupted and could not safely resume before the combined answer was written'
 };
 
