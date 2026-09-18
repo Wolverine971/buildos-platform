@@ -45,8 +45,6 @@ import {
 	type AnswerMap,
 	type EntityDecision,
 	type InboxDecision,
-	combineEntityDecisions,
-	decideInboxCleanup,
 	rankCardDecisions
 } from './combine';
 import {
@@ -54,8 +52,7 @@ import {
 	buildFreshnessScanContext,
 	candidateSnapshot,
 	entityKey,
-	snapshotsMatch,
-	trackSubjectView
+	snapshotsMatch
 } from './context';
 import { type FreshnessDataPort, type FreshnessDb, SupabaseFreshnessDataPort } from './dataPort';
 import {
@@ -87,14 +84,8 @@ import {
 	updateFlag
 } from './ledger';
 import { labelImplicitOutcomes } from './outcomes';
-import {
-	type FreshnessJevRequest,
-	type R1Subject,
-	buildR1Request,
-	buildR2Request,
-	buildR3Request
-} from './questions';
-import { gaugeChanges, scoreTrackSubjects, trackScoreRows } from './trackScores';
+import { type ScanRequestPlan, decideScan, namespaceAnswers, planScanRequests } from './scanStages';
+import { gaugeChanges, trackScoreRows } from './trackScores';
 
 export const FRESHNESS_RADAR_JOB_TYPE = 'freshness_radar_scan' as const;
 export const FRESHNESS_JEV_OPERATION_TYPE = 'freshness_radar_decisions';
@@ -389,7 +380,7 @@ type JevRun = {
 
 async function askJev(params: {
 	jev: JevDecider;
-	requests: Array<{ name: string; request: FreshnessJevRequest }>;
+	requests: ScanRequestPlan['requests'];
 	timeoutMs: number;
 	signal?: AbortSignal;
 	usage: { userId: string; projectId: string; chatSessionId: string | null; scanId: string };
@@ -445,19 +436,9 @@ async function askJev(params: {
 			continue;
 		}
 		// Namespaced by request: R1/R2/R3 question keys never collide, but keep them apart.
-		for (const [key, answer] of Object.entries(result.answers))
-			answers[`${name}.${key}`] = answer;
+		Object.assign(answers, namespaceAnswers(name, result.answers));
 	}
 	return { answers: answers as AnswerMap, stats, error: errors.length ? errors.join(',') : null };
-}
-
-function scoped(answers: AnswerMap, name: string): AnswerMap {
-	const prefix = `${name}.`;
-	const scopedAnswers: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(answers)) {
-		if (key.startsWith(prefix)) scopedAnswers[key.slice(prefix.length)] = value;
-	}
-	return scopedAnswers as AnswerMap;
 }
 
 function countBy<T extends string>(values: readonly T[]): Record<string, number> {
@@ -678,46 +659,9 @@ export async function runFreshnessProjectScan(params: {
 			return { scanId: scan.id, status: 'skipped', reason: context.skipReason };
 		}
 
-		// [2] Jev requests.
-		const common = {
-			model: deps.model,
-			maxBytes: policy.jev.maxRequestBytes,
-			today: context.today,
-			project: context.project,
-			newInformation: context.newInformation,
-			titleChars: policy.jev.titleChars
-		};
-		const r1 = buildR1Request({
-			...common,
-			dateMentions: context.dateMentions,
-			dateSentenceChars: policy.jev.dateSentenceChars,
-			subjects: context.prefiltered.map(
-				(entry): R1Subject => ({
-					kind: entry.candidate.kind,
-					view: context.entityViews.get(
-						entityKey(entry.candidate.kind, entry.candidate.id)
-					)!
-				})
-			)
-		});
-		const r2 = buildR2Request({
-			...common,
-			subjects: context.trackSubjects.map((subject) => ({ view: trackSubjectView(subject) }))
-		});
-		const r3 = buildR3Request({
-			...common,
-			subjects: context.inboxSubjects.map((subject) => ({ view: subject.view }))
-		});
-		const requests = [
-			r1.request ? { name: 'r1', request: r1.request } : null,
-			r2.request ? { name: 'r2', request: r2.request } : null,
-			r3.request ? { name: 'r3', request: r3.request } : null
-		].filter(
-			(entry): entry is { name: string; request: FreshnessJevRequest } => entry !== null
-		);
-		const evaluatedEntities = context.prefiltered.slice(0, r1.subjects.length);
-		const trackSubjects = context.trackSubjects.slice(0, r2.subjects.length);
-		const inboxSubjects = context.inboxSubjects.slice(0, r3.subjects.length);
+		// [2] Jev requests (shared with the backtest).
+		const plan = planScanRequests(context, deps.model, policy);
+		const { requests, evaluatedEntities, inboxSubjects } = plan;
 		if (!requests.length) {
 			await finishScan(db, scan.id, {
 				status: 'skipped',
@@ -743,31 +687,14 @@ export async function runFreshnessProjectScan(params: {
 		}
 		if (params.abortSignal?.aborted) return await fail('aborted', { jev: jevRun.stats });
 
-		// [3] Code combine.
+		// [3] Code combine (shared with the backtest).
 		const gateEnabled = mode === 'live' && params.flags.autoApply && params.flags.surfaces;
-		const entityDecisions = combineEntityDecisions({
+		const { entityDecisions, trackDecisions, inboxDecisions } = decideScan({
+			context,
+			plan,
 			projectId,
-			entities: evaluatedEntities.map((entry, index) => ({
-				index,
-				candidate: entry.candidate,
-				prefilter: entry.features
-			})),
-			answers: scoped(jevRun.answers, 'r1'),
-			dateMentions: context.dateMentions,
-			sentences: context.sentences,
-			suppressed: context.suppressed,
-			gate: { ...context.gate, enabled: gateEnabled },
-			today: context.today,
-			policy
-		});
-		const trackDecisions = scoreTrackSubjects({
-			subjects: trackSubjects,
-			answers: scoped(jevRun.answers, 'r2'),
-			policy
-		});
-		const inboxDecisions = decideInboxCleanup({
-			items: inboxSubjects,
-			answers: scoped(jevRun.answers, 'r3'),
+			answers: jevRun.answers,
+			gateEnabled,
 			policy
 		});
 		const inboxLive = mode === 'live' && params.flags.inboxCleanup;
