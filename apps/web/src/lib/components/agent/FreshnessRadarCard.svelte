@@ -7,7 +7,11 @@
 	route so a reopened chat shows what already happened.
 -->
 <script lang="ts">
-	import type { FreshnessFlagStatus, FreshnessScanStatusV1 } from '@buildos/shared-types';
+	import type {
+		FreshnessCardPayloadV1,
+		FreshnessFlagStatus,
+		FreshnessScanStatusV1
+	} from '@buildos/shared-types';
 	import {
 		Check,
 		ExternalLink,
@@ -42,8 +46,7 @@
 		retiredUndoableUntil,
 		undoFreshnessScan,
 		type FreshnessBundleState,
-		type FreshnessCardEntityKind,
-		type FreshnessCardPayloadV1
+		type FreshnessCardEntityKind
 	} from './freshness-radar-card';
 
 	let {
