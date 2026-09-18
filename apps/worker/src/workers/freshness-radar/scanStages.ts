@@ -120,6 +120,7 @@ export function decideScan(params: {
 		suppressed: context.suppressed,
 		gate: { ...context.gate, enabled: params.gateEnabled },
 		today: context.today,
+		timeZone: context.timeZone,
 		policy
 	});
 	const trackDecisions = scoreTrackSubjects({

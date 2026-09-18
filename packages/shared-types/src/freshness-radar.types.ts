@@ -164,7 +164,8 @@ export interface FreshnessCardItemV1 {
 	draftInChatPrompt: string | null;
 }
 
-/** Chat card: persisted as an injected chat_messages row (role 'assistant', message_type 'freshness_radar_card'),
+/** Chat card: persisted as an injected chat_messages row (role 'assistant', message_type 'assistant_message';
+ *  the chat_messages message_type CHECK has no card type, so the card is identified by metadata.source + metadata.kind),
  *  metadata = { source:'freshness_radar', kind:'freshness_radar_card', freshness_scan_id, idempotency_key:'freshness-scan:<scanId>:card', card }.
  *  Delivered by the existing chat_messages realtime INSERT subscription and by session hydration. */
 export interface FreshnessCardPayloadV1 {
@@ -193,7 +194,8 @@ export interface FreshnessCardPayloadV1 {
 	}>;
 }
 
-export const FRESHNESS_CARD_MESSAGE_TYPE = 'freshness_radar_card' as const;
+/** The stored message_type. Cards are identified by `FRESHNESS_CARD_METADATA_KIND`, not by this value. */
+export const FRESHNESS_CARD_MESSAGE_TYPE = 'assistant_message' as const;
 export const FRESHNESS_CARD_METADATA_KIND = 'freshness_radar_card' as const;
 export const FRESHNESS_CARD_MAX_ITEMS = 3;
 

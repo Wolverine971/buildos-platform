@@ -115,6 +115,43 @@ export function civilDateInZone(instant: Date | string, timeZone?: string | null
 }
 
 /**
+ * The instant of local midnight for a civil date in a timezone (invalid or missing
+ * zone → UTC). This matches the web milestone editor (`convertDateOnlyToUTC`); a bare
+ * `YYYY-MM-DD` sent to the milestone route is parsed as UTC midnight, which displays
+ * as the previous day west of UTC.
+ */
+export function zonedMidnightIso(civil: string, timeZone?: string | null): string {
+	const [year, month, day] = civil.split('-').map(Number);
+	const zone = isValidTimeZone(timeZone) ? timeZone : 'UTC';
+	const utcMidnight = Date.UTC(year!, month! - 1, day!);
+	const offsetAt = (instant: number) => {
+		const parts = new Intl.DateTimeFormat('en-US', {
+			timeZone: zone,
+			hourCycle: 'h23',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit'
+		}).formatToParts(new Date(instant));
+		const value = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+		const asUtc = Date.UTC(
+			value('year'),
+			value('month') - 1,
+			value('day'),
+			value('hour'),
+			value('minute'),
+			value('second')
+		);
+		return asUtc - instant;
+	};
+	// Re-read the offset at the candidate instant so a DST change that day is honored.
+	const first = utcMidnight - offsetAt(utcMidnight);
+	return new Date(utcMidnight - offsetAt(first)).toISOString();
+}
+
+/**
  * A stored date/timestamp as a civil date. Date-only strings are returned as is;
  * instants are read in the user's timezone (task due_at is stored as the end of
  * the civil day in that zone).

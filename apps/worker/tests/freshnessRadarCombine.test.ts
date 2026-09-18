@@ -402,3 +402,35 @@ describe('inbox cleanup decisions', () => {
 		]);
 	});
 });
+
+describe('date drafts keep the calendar day the user said', () => {
+	it('writes a milestone date as local midnight and leaves task dates as civil dates', () => {
+		const milestone = candidate({
+			id: 'm-1',
+			kind: 'milestone',
+			title: 'Venue contract',
+			state: 'in_progress',
+			dueAt: '2026-09-26T04:00:00.000Z',
+			dueCivil: '2026-09-26'
+		});
+		const milestoneProposal = buildProposal({
+			projectId: 'p1',
+			candidate: milestone,
+			changeKind: 'reschedule_due',
+			dateMention: mention,
+			timeZone: 'America/New_York'
+		});
+		expect(milestoneProposal?.to).toBe('2026-10-03');
+		expect(milestoneProposal?.operation.args.due_at).toBe('2026-10-03T04:00:00.000Z');
+
+		const task = candidate({ id: 't-1', title: 'Venue contract', dueCivil: '2026-09-26' });
+		const taskProposal = buildProposal({
+			projectId: 'p1',
+			candidate: task,
+			changeKind: 'reschedule_due',
+			dateMention: mention,
+			timeZone: 'America/New_York'
+		});
+		expect(taskProposal?.operation.args.due_at).toBe('2026-10-03');
+	});
+});

@@ -15,7 +15,7 @@ import type {
 	LoopOperation
 } from '@buildos/shared-types';
 import type { JevChoiceAnswer, JevNoulAnswer, JevScoreAnswer } from '@buildos/smart-llm';
-import type { FreshnessDateMention, SourcedSentence } from './dates';
+import { type FreshnessDateMention, type SourcedSentence, zonedMidnightIso } from './dates';
 import type { FreshnessPolicyV1 } from './freshnessPolicy';
 import {
 	type GroundingTargetState,
@@ -133,6 +133,8 @@ export function buildProposal(params: {
 	candidate: FreshnessCandidate;
 	changeKind: FreshnessChangeKind;
 	dateMention: FreshnessDateMention | null;
+	/** The user's timezone; milestone dates are written as local midnight. */
+	timeZone?: string | null;
 }): FreshnessProposal | null {
 	const { candidate, changeKind } = params;
 	const tool = toolFor(candidate.kind);
@@ -185,7 +187,12 @@ export function buildProposal(params: {
 		summary: `Move ${fieldLabel} to ${to}`,
 		operation: {
 			tool: tool.tool,
-			args: { [tool.idArg]: candidate.id, project_id: params.projectId, [field]: to },
+			args: {
+				[tool.idArg]: candidate.id,
+				project_id: params.projectId,
+				// Tasks and goals take the civil date; the milestone route parses a bare date as UTC.
+				[field]: candidate.kind === 'milestone' ? zonedMidnightIso(to, params.timeZone) : to
+			},
 			label: `Move the ${fieldLabel} of ${quoted(title)} to ${to}`
 		}
 	};
@@ -364,6 +371,7 @@ export function combineEntityDecisions(params: {
 	suppressed: ReadonlyMap<string, SuppressionReason>;
 	gate: AutoApplyGate;
 	today: string;
+	timeZone?: string | null;
 	policy: FreshnessPolicyV1;
 }): EntityDecision[] {
 	const { policy } = params;
@@ -423,7 +431,13 @@ export function combineEntityDecisions(params: {
 		}
 
 		const proposal = changeKind
-			? buildProposal({ projectId: params.projectId, candidate, changeKind, dateMention })
+			? buildProposal({
+					projectId: params.projectId,
+					candidate,
+					changeKind,
+					dateMention,
+					timeZone: params.timeZone
+				})
 			: null;
 		if (!proposal) {
 			return {

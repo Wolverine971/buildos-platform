@@ -10,7 +10,8 @@ import {
 	relativeAgePhrase,
 	relativeDuePhrase,
 	splitSentences,
-	storedCivilDate
+	storedCivilDate,
+	zonedMidnightIso
 } from '../src/workers/freshness-radar/dates';
 
 const TODAY = '2026-09-18';
@@ -95,5 +96,27 @@ describe('sentences and mentions', () => {
 			['d1', '2026-10-03', 'm2'],
 			['d2', '2026-11-04', 'm1']
 		]);
+	});
+});
+
+describe('zonedMidnightIso', () => {
+	it('returns local midnight so a date-only milestone keeps its calendar day', () => {
+		expect(zonedMidnightIso('2026-10-03', 'America/New_York')).toBe('2026-10-03T04:00:00.000Z');
+		expect(zonedMidnightIso('2026-12-03', 'America/New_York')).toBe('2026-12-03T05:00:00.000Z');
+		expect(zonedMidnightIso('2026-10-03', 'Asia/Tokyo')).toBe('2026-10-02T15:00:00.000Z');
+		expect(
+			civilDateInZone(
+				zonedMidnightIso('2026-10-03', 'America/Los_Angeles'),
+				'America/Los_Angeles'
+			)
+		).toBe('2026-10-03');
+	});
+
+	it('honors a DST change on the day and falls back to UTC for a bad zone', () => {
+		// US clocks fall back on 2026-11-01 at 02:00; midnight is still EDT.
+		expect(zonedMidnightIso('2026-11-01', 'America/New_York')).toBe('2026-11-01T04:00:00.000Z');
+		expect(zonedMidnightIso('2026-03-08', 'America/New_York')).toBe('2026-03-08T05:00:00.000Z');
+		expect(zonedMidnightIso('2026-10-03', 'Not/AZone')).toBe('2026-10-03T00:00:00.000Z');
+		expect(zonedMidnightIso('2026-10-03', null)).toBe('2026-10-03T00:00:00.000Z');
 	});
 });

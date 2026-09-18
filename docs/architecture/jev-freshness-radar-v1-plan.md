@@ -405,7 +405,7 @@ export interface FreshnessFlagRecord {   // mirrors public.freshness_flags 1:1
   undone_at: string | null; undone_by: string | null; outcome: FreshnessOutcome | null; outcome_source: FreshnessOutcomeSource | null;
   outcome_at: string | null; created_at: string; updated_at: string }
 
-/** Chat card: persisted as an injected chat_messages row (role 'assistant', message_type 'freshness_radar_card'),
+/** Chat card: persisted as an injected chat_messages row (role 'assistant', message_type 'assistant_message' — AMENDED 2026-09-18: the message_type CHECK has no card type),
  *  metadata = { source:'freshness_radar', kind:'freshness_radar_card', freshness_scan_id, idempotency_key:'freshness-scan:<scanId>:card', card }.
  *  Delivered by the existing chat_messages realtime INSERT subscription and by session hydration. */
 export interface FreshnessCardPayloadV1 {
@@ -763,3 +763,34 @@ How it works:
 - /Users/djwayne/buildos-platform/apps/web/src/lib/server/project-suggestion-actions.service.ts
 - /Users/djwayne/buildos-platform/packages/shared-agent-ops/src/gateway/op-execution-gateway.worker.ts
 - /Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/AgentChatModal.svelte
+
+---
+
+## Amendments recorded during implementation (2026-09-18)
+
+**Lane A**
+- `database.types.ts` also hand-renders the four new tables.
+- Extra supporting indexes were added. The trigger stores the returned job id on the signal.
+- JevClient:
+  - `timeoutMs` covers the whole call, including the retry;
+  - `retryOnce` defaults to true;
+  - Choice needs at least 2 options.
+- Observed live Score shape: `{score (probability-weighted mean of 0-based level indexes), legend, probabilities, confidence (= the top level's probability)}`. The gauge thresholds fit this scale.
+- `verify-operations` fails closed on undecoded writable arguments. Existing pending suggestions that carry hidden writes will now be quarantined; this is intended. Golden fingerprints for existing shapes are unchanged.
+
+**Lane B**
+- The card is stored as `message_type 'assistant_message'`, identified by `metadata.source` + `metadata.kind`, because the `chat_messages` CHECK has no card type.
+- The auto-apply claim is recorded in `disposition_reason`, because the CHECK has no `auto_applying` disposition.
+- The calendar exclusion covers both `onto_edges` `has_event` links and `task_calendar_events`.
+- Bundle and undo operations carry `project_id`.
+- A scan still running after 15 minutes is failed.
+- Grounding also rejects hedges, questions and title fragments.
+- The optional classifier expedite was skipped.
+
+**Lane C**
+- Undo records outcome `unknown` with source `user_undid`.
+- A rebuilt bundle keeps the scan id.
+- Only the flags whose operation actually applied are marked applied.
+- Actions require write access; reads require read access.
+- Flagged documents render in a list above the document tree.
+
