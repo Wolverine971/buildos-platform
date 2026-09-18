@@ -38,6 +38,7 @@ import type {
 	AgenticChatWorkflowStorePortV1
 } from './workflow-store';
 import {
+	AGENTIC_CHAT_WORKFLOW_STOPPED_MESSAGE,
 	type AgenticChatWorkflowTerminalDecisionV1,
 	agenticChatWorkflowTerminalFieldsV1,
 	buildAgenticChatWorkflowTerminalInputV1,
@@ -343,8 +344,8 @@ class WorkflowTerminal {
 			failureCode: 'cancelled',
 			assistantText: state?.answer.text ?? '',
 			terminalOutcome: 'cancelled',
-			coverageGap: 'Review stopped. Nothing was changed.',
-			activity: 'Review stopped. Nothing was changed.',
+			coverageGap: AGENTIC_CHAT_WORKFLOW_STOPPED_MESSAGE,
+			activity: AGENTIC_CHAT_WORKFLOW_STOPPED_MESSAGE,
 			state
 		});
 	}

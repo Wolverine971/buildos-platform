@@ -16,7 +16,10 @@ import {
 } from './executionControl';
 import type { AgenticChatRecoverySnapshotPortV1 } from './recoverySnapshot';
 import type { AgenticChatWorkflowStorePortV1 } from './workflow/workflow-store';
-import { buildAgenticChatWorkflowStalledTerminalInputV1 } from './workflow/workflow-terminal';
+import {
+	buildAgenticChatWorkflowStalledCancelInputV1,
+	buildAgenticChatWorkflowStalledTerminalInputV1
+} from './workflow/workflow-terminal';
 
 type StalledQueryError = { code?: string; message: string };
 type StalledQueryResult = PromiseLike<{ data: unknown; error: StalledQueryError | null }>;
@@ -374,12 +377,7 @@ export class AgenticChatStalledRecoverySweep {
 			}
 			const workflow = await this.recoverWorkflow(candidate, claim, claimFailureClass(claim));
 			if (workflow.result) return workflow.result;
-			return await this.converge(
-				candidate,
-				claim,
-				workflow.failureClass,
-				workflow.terminalReason
-			);
+			return await this.converge(candidate, claim, workflow.failureClass, workflow.terminal);
 		} catch (error) {
 			return recoveryResult(
 				candidate,
@@ -405,8 +403,8 @@ export class AgenticChatStalledRecoverySweep {
 	): Promise<{
 		result?: AgenticChatStalledRecoveryResultV1;
 		failureClass: AgenticChatRecoveryFailureClassV1;
-		/** The workflow recovery outcome that forbids a retry, e.g. `deadline_expired`. */
-		terminalReason?: string;
+		/** Present only for a workflow turn that must be terminalized now. */
+		terminal?: WorkflowTerminalRecovery;
 	}> {
 		const control = this.ports.control;
 		if (!control.recoverWorkflow || claim.outcome === 'already_terminal')
@@ -444,10 +442,10 @@ export class AgenticChatStalledRecoverySweep {
 			case 'policy_denied':
 				return { failureClass };
 			case 'cancel_requested':
-				return { failureClass: 'cancelled' };
+				return { failureClass: 'cancelled', terminal: { reason: null } };
 			default:
 				// deadline, budget, attempts, access, or a non-retryable class: terminal.
-				return { failureClass: 'permanent', terminalReason: receipt.outcome };
+				return { failureClass: 'permanent', terminal: { reason: receipt.outcome } };
 		}
 	}
 
@@ -455,7 +453,7 @@ export class AgenticChatStalledRecoverySweep {
 		candidate: AgenticChatStalledCandidateV1,
 		claim: AgenticChatTurnClaimResultV1,
 		initialFailureClass: AgenticChatRecoveryFailureClassV1,
-		workflowTerminalReason?: string
+		workflow?: WorkflowTerminalRecovery
 	): Promise<AgenticChatStalledRecoveryResultV1> {
 		let failureClass = initialFailureClass;
 		let lastConvergenceError: string | null = null;
@@ -483,40 +481,20 @@ export class AgenticChatStalledRecoverySweep {
 				);
 			}
 
-			let snapshot;
-			try {
-				snapshot = await this.ports.snapshots.load({
-					turnRunId: candidate.turnRunId,
-					userId: candidate.userId,
-					executionGeneration: claim.executionGeneration
-				});
-			} catch (error) {
-				// Durable truth may have changed after the recovery decision. Re-run
-				// the fenced recovery RPC before classifying this candidate as failed.
-				lastConvergenceError = `Recovery snapshot failed: ${errorMessage(error)}`;
-				continue;
-			}
-			if (isTerminalStatus(snapshot.status)) {
-				failureClass = terminalFailureClass(snapshot.status);
-				continue;
-			}
-			if (snapshot.status !== 'running') {
-				return recoveryResult(
-					candidate,
-					claim.executionGeneration,
-					'manual_recovery_required',
-					`Recovery snapshot has unsupported status: ${snapshot.status}`
-				);
-			}
-
 			const status = recovery.outcome === 'finalize_cancelled' ? 'cancelled' : 'failed';
 			let request: AgenticChatTerminalFinalizeInputV1;
-			if (status === 'failed' && workflowTerminalReason && this.ports.workflowRuns) {
+			if (workflow && this.ports.workflowRuns) {
+				// A workflow turn is terminalized from durable workflow truth, never from the
+				// ordinary stream snapshot: answer batches take stream sequences without event
+				// rows, so that snapshot cannot represent a generation with a durable answer
+				// prefix. The finalize below stays fenced by token and generation, and answers
+				// `already_terminal` or `stale_generation` if the turn moved on meanwhile.
 				try {
 					request = await this.workflowTerminalInput(
 						candidate,
-						snapshot.executionGeneration,
-						workflowTerminalReason
+						claim.executionGeneration,
+						status,
+						workflow.reason ?? 'finalize_failed'
 					);
 				} catch (error) {
 					// A partial answer needs durable workflow truth. Re-run the fenced recovery
@@ -525,12 +503,37 @@ export class AgenticChatStalledRecoverySweep {
 					continue;
 				}
 			} else {
+				let snapshot;
+				try {
+					snapshot = await this.ports.snapshots.load({
+						turnRunId: candidate.turnRunId,
+						userId: candidate.userId,
+						executionGeneration: claim.executionGeneration
+					});
+				} catch (error) {
+					// Durable truth may have changed after the recovery decision. Re-run
+					// the fenced recovery RPC before classifying this candidate as failed.
+					lastConvergenceError = `Recovery snapshot failed: ${errorMessage(error)}`;
+					continue;
+				}
+				if (isTerminalStatus(snapshot.status)) {
+					failureClass = terminalFailureClass(snapshot.status);
+					continue;
+				}
+				if (snapshot.status !== 'running') {
+					return recoveryResult(
+						candidate,
+						claim.executionGeneration,
+						'manual_recovery_required',
+						`Recovery snapshot has unsupported status: ${snapshot.status}`
+					);
+				}
 				request = buildTerminalInput(
 					candidate,
 					snapshot,
 					status,
-					status === 'failed' && workflowTerminalReason
-						? `workflow_${workflowTerminalReason}`
+					status === 'failed' && workflow?.reason
+						? `workflow_${workflow.reason}`
 						: recovery.failure_code
 				);
 			}
@@ -566,6 +569,7 @@ export class AgenticChatStalledRecoverySweep {
 	private async workflowTerminalInput(
 		candidate: AgenticChatStalledCandidateV1,
 		executionGeneration: number,
+		status: 'failed' | 'cancelled',
 		reason: string
 	): Promise<AgenticChatTerminalFinalizeInputV1> {
 		const loaded = await this.ports.workflowRuns!.loadRun(candidate.turnRunId);
@@ -574,7 +578,7 @@ export class AgenticChatStalledRecoverySweep {
 			loaded && loaded.turnRunId === candidate.turnRunId && loaded.userId === candidate.userId
 				? loaded
 				: null;
-		return buildAgenticChatWorkflowStalledTerminalInputV1({
+		const input = {
 			fence: {
 				turnRunId: candidate.turnRunId,
 				queueJobId: candidate.queueJobId,
@@ -583,11 +587,16 @@ export class AgenticChatStalledRecoverySweep {
 			},
 			userId: candidate.userId,
 			state,
-			reason,
 			observedAt: this.options.now().toISOString()
-		}).request;
+		};
+		return status === 'cancelled'
+			? buildAgenticChatWorkflowStalledCancelInputV1(input)
+			: buildAgenticChatWorkflowStalledTerminalInputV1({ ...input, reason }).request;
 	}
 }
+
+/** A workflow turn to terminalize now; `reason` is null for a durable Stop. */
+type WorkflowTerminalRecovery = { reason: string | null };
 
 function settledRecoveryResult(
 	candidate: AgenticChatStalledCandidateV1,

@@ -182,6 +182,34 @@ export function buildAgenticChatWorkflowStalledTerminalInputV1(input: {
 	return { decision, request };
 }
 
+/** The user-facing line for a stopped review, from the live worker or from recovery. */
+export const AGENTIC_CHAT_WORKFLOW_STOPPED_MESSAGE = 'Review stopped. Nothing was changed.';
+
+/**
+ * Stalled-worker recovery of a durable Stop: exactly the in-process cancel. The durable
+ * answer prefix stays the visible partial message, with no notice and nothing regenerated.
+ */
+export function buildAgenticChatWorkflowStalledCancelInputV1(input: {
+	fence: AgenticChatWorkflowFenceV1;
+	userId: string;
+	state: AgenticChatWorkflowRunStateV1 | null;
+	observedAt: string;
+}): AgenticChatTerminalFinalizeInputV1 {
+	return buildAgenticChatWorkflowTerminalInputV1({
+		fence: input.fence,
+		userId: input.userId,
+		status: 'cancelled',
+		failureCode: 'cancelled',
+		assistantText: input.state?.answer.text ?? '',
+		state: input.state,
+		terminalOutcome: 'cancelled',
+		coverageGap: AGENTIC_CHAT_WORKFLOW_STOPPED_MESSAGE,
+		activity: AGENTIC_CHAT_WORKFLOW_STOPPED_MESSAGE,
+		observedAt: input.observedAt,
+		recoveredFromStall: true
+	});
+}
+
 /** One stable assistant message per turn generation, so a retried finalize is idempotent. */
 export function stableAgenticChatWorkflowAnswerMessageIdV1(
 	turnRunId: string,

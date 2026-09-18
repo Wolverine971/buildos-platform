@@ -549,6 +549,59 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 		expect(harness.control.finalize).not.toHaveBeenCalled();
 	});
 
+	it('never depends on the ordinary stream snapshot, which cannot represent answer batches', async () => {
+		const prefix = 'Book the venue first: it blocks every later';
+		const harness = createSweep({
+			workflow: workflowReceipt('attempts_exhausted'),
+			run: runState({ steps: BOTH_ACCEPTED, answer: { text: prefix, status: 'streaming' } }),
+			...settlesAs('completed', null)
+		});
+		// Regression: a stalled generation whose last durable write was an answer batch
+		// fails this snapshot, which left the turn in manual recovery on every sweep.
+		harness.snapshots.load.mockRejectedValue(
+			new Error('Invalid Agentic Chat durable recovery snapshot: durable event window is incomplete')
+		);
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ outcome: 'terminal_reconciled' }]
+		});
+		expect(harness.snapshots.load).not.toHaveBeenCalled();
+		expect(harness.control.finalize.mock.calls[0]![0]).toMatchObject({
+			status: 'completed',
+			assistantText: `${prefix}${AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE}`
+		});
+	});
+
+	it('cancels a durable Stop with exactly the durable prefix, as the live worker would', async () => {
+		const prefix = 'Book the venue first: it blocks every later';
+		const harness = createSweep({
+			workflow: workflowReceipt('cancel_requested'),
+			run: runState({ steps: BOTH_ACCEPTED, answer: { text: prefix, status: 'streaming' } }),
+			recoveries: [
+				ordinaryRecovery('finalize_cancelled'),
+				ordinaryRecovery('queue_reconciled', { status: 'cancelled', failure_code: 'cancelled' })
+			],
+			finalizations: [terminal('cancelled', 'cancelled')]
+		});
+		harness.snapshots.load.mockRejectedValue(new Error('durable event window is incomplete'));
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ outcome: 'terminal_reconciled' }]
+		});
+		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+			failureClass: 'cancelled'
+		});
+		expect(harness.control.finalize.mock.calls[0]![0]).toMatchObject({
+			status: 'cancelled',
+			failureCode: 'cancelled',
+			finishedReason: 'cancelled',
+			assistantText: prefix,
+			assistantMessageId: stableAgenticChatWorkflowAnswerMessageIdV1(TURN_RUN_ID, GENERATION),
+			assistantMetadata: expect.objectContaining({ recovered_from_stall: true }),
+			projection: expect.objectContaining({
+				workflow: expect.objectContaining({ terminalOutcome: 'cancelled' })
+			})
+		});
+	});
+
 	it('without a durable-truth reader, fails with the workflow reason as before', async () => {
 		const harness = createSweep({
 			workflow: workflowReceipt('deadline_expired'),
