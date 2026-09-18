@@ -163,7 +163,7 @@ export function buildProjectLoopSourceFingerprint(ctx: ProjectLoopFingerprintCon
 
 /** Current state of one entity a suggestion mutates, in fingerprint form. */
 export interface ProjectLoopScopedEntity {
-	kind: 'task' | 'document';
+	kind: 'task' | 'document' | 'goal' | 'milestone';
 	id: string;
 	title: string | null;
 	state_key: string | null;
@@ -178,24 +178,42 @@ function dedupeSortedIds(ids: Array<string | null | undefined>): string[] {
 	).sort();
 }
 
+/** Entity ids a suggestion's operations mutate. Goal/milestone ids appear only when present. */
+export interface ProjectLoopSuggestionEntityRefs {
+	taskIds: string[];
+	docIds: string[];
+	goalIds?: string[];
+	milestoneIds?: string[];
+}
+
 /**
- * The task/document ids a suggestion's operations directly mutate. We key on
- * operation TARGETS (not evidence refs): the freshness guard only needs to know
- * whether the entities we are about to WRITE have shifted. task_conflict writes
- * both the operation's `task_id` and the paired `props.loop_conflict_with_task_id`;
- * doc operations write `document_id`. Informational suggestions (drift,
- * audit_recommendation) carry no operations → no targets.
+ * The task/document/goal/milestone ids a suggestion's operations directly
+ * mutate. We key on operation TARGETS (not evidence refs): the freshness guard
+ * only needs to know whether the entities we are about to WRITE have shifted.
+ * task_conflict writes both the operation's `task_id` and the paired
+ * `props.loop_conflict_with_task_id`; doc operations write `document_id`; the
+ * goal and milestone update tools write `goal_id` / `milestone_id` (a task op's
+ * `goal_id` argument is a link, not a goal write). Informational suggestions
+ * (drift, audit_recommendation) carry no operations → no targets.
  */
 export function extractProjectLoopSuggestionEntities(
 	operations: LoopOperation[] | null | undefined
-): { taskIds: string[]; docIds: string[] } {
+): ProjectLoopSuggestionEntityRefs {
 	const ops = Array.isArray(operations) ? operations : [];
 	const taskIds: Array<string | null> = [];
 	const docIds: Array<string | null> = [];
+	const goalIds: Array<string | null> = [];
+	const milestoneIds: Array<string | null> = [];
 	for (const op of ops) {
 		const args = (op?.args ?? {}) as Record<string, unknown>;
 		if (typeof args.task_id === 'string') taskIds.push(args.task_id);
 		if (typeof args.document_id === 'string') docIds.push(args.document_id);
+		if (op?.tool === 'update_onto_goal' && typeof args.goal_id === 'string') {
+			goalIds.push(args.goal_id);
+		}
+		if (op?.tool === 'update_onto_milestone' && typeof args.milestone_id === 'string') {
+			milestoneIds.push(args.milestone_id);
+		}
 		const props =
 			args.props && typeof args.props === 'object'
 				? (args.props as Record<string, unknown>)
@@ -204,7 +222,17 @@ export function extractProjectLoopSuggestionEntities(
 			taskIds.push(props.loop_conflict_with_task_id);
 		}
 	}
-	return { taskIds: dedupeSortedIds(taskIds), docIds: dedupeSortedIds(docIds) };
+	const refs: ProjectLoopSuggestionEntityRefs = {
+		taskIds: dedupeSortedIds(taskIds),
+		docIds: dedupeSortedIds(docIds)
+	};
+	// Optional keys stay absent for task/document-only suggestions, so the
+	// existing refs shape (and every consumer of it) is unchanged.
+	const goals = dedupeSortedIds(goalIds);
+	const milestones = dedupeSortedIds(milestoneIds);
+	if (goals.length) refs.goalIds = goals;
+	if (milestones.length) refs.milestoneIds = milestones;
+	return refs;
 }
 
 /**
@@ -250,7 +278,7 @@ export function buildScopedSuggestionFingerprint(
 export async function loadProjectLoopSuggestionEntityStates(
 	supabase: AnySupabase,
 	projectId: string,
-	refs: { taskIds: string[]; docIds: string[] }
+	refs: ProjectLoopSuggestionEntityRefs
 ): Promise<ProjectLoopScopedEntity[]> {
 	const entities: ProjectLoopScopedEntity[] = [];
 
@@ -300,6 +328,50 @@ export async function loadProjectLoopSuggestionEntityStates(
 		}
 	}
 
+	// Goals and milestones have a nullable updated_at; like tasks and documents
+	// they fall back to created_at so an edit still changes the fingerprint.
+	const goalIds = refs.goalIds ?? [];
+	if (goalIds.length) {
+		const { data } = await supabase
+			.from('onto_goals')
+			.select('id, name, state_key, updated_at, created_at')
+			.eq('project_id', projectId)
+			.in('id', goalIds);
+		const byId = new Map<string, any>((data ?? []).map((g: any) => [g.id as string, g]));
+		for (const id of goalIds) {
+			const g = byId.get(id);
+			entities.push({
+				kind: 'goal',
+				id,
+				title: g?.name ?? null,
+				state_key: g?.state_key ?? null,
+				updated_at: g ? (g.updated_at ?? g.created_at ?? null) : null,
+				parent_id: null
+			});
+		}
+	}
+
+	const milestoneIds = refs.milestoneIds ?? [];
+	if (milestoneIds.length) {
+		const { data } = await supabase
+			.from('onto_milestones')
+			.select('id, title, state_key, updated_at, created_at')
+			.eq('project_id', projectId)
+			.in('id', milestoneIds);
+		const byId = new Map<string, any>((data ?? []).map((m: any) => [m.id as string, m]));
+		for (const id of milestoneIds) {
+			const m = byId.get(id);
+			entities.push({
+				kind: 'milestone',
+				id,
+				title: m?.title ?? null,
+				state_key: m?.state_key ?? null,
+				updated_at: m ? (m.updated_at ?? m.created_at ?? null) : null,
+				parent_id: null
+			});
+		}
+	}
+
 	return entities;
 }
 
@@ -315,7 +387,14 @@ export async function computeProjectSuggestionFreshnessFingerprint(
 	operations: LoopOperation[] | null | undefined
 ): Promise<string | null> {
 	const refs = extractProjectLoopSuggestionEntities(operations);
-	if (!refs.taskIds.length && !refs.docIds.length) return null;
+	if (
+		!refs.taskIds.length &&
+		!refs.docIds.length &&
+		!refs.goalIds?.length &&
+		!refs.milestoneIds?.length
+	) {
+		return null;
+	}
 	const entities = await loadProjectLoopSuggestionEntityStates(supabase, projectId, refs);
 	return buildScopedSuggestionFingerprint(entities);
 }

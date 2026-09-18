@@ -8,6 +8,11 @@ import {
 	mapProjectSuggestionToInboxItem,
 	expireInboxItemsForProject,
 	expireInboxItemsForProjectAuditChildSuggestions,
+	expireProjectSuggestionInboxItemsForManagerBrief,
+	FRESHNESS_RETIRED_SOURCE_STATUS,
+	markInboxItemFreshness,
+	restoreFreshnessRetiredInboxSource,
+	retireInboxSourceForFreshness,
 	syncInboxItemForAgentRun,
 	syncInboxItemForProjectAudit,
 	syncInboxItemForProjectReview,
@@ -16,8 +21,7 @@ import {
 
 type Row = Record<string, any>;
 
-const recentSourceTimestamp = () =>
-	new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+const recentSourceTimestamp = () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
 function createSupabaseMock(tables: Record<string, Row[]>) {
 	const upserts: Row[] = [];
@@ -26,13 +30,23 @@ function createSupabaseMock(tables: Record<string, Row[]>) {
 		from(table: string) {
 			const filters: Array<[string, unknown]> = [];
 			const inFilters: Array<[string, unknown[]]> = [];
+			const notInFilters: Array<[string, unknown[]]> = [];
 			let upsertPayload: Row | null = null;
 			let updatePayload: Row | null = null;
 			const matches = (candidate: Row) =>
 				filters.every(([field, value]) => candidate[field] === value) &&
-				inFilters.every(([field, values]) => values.includes(candidate[field]));
+				inFilters.every(([field, values]) => values.includes(candidate[field])) &&
+				notInFilters.every(([field, values]) => !values.includes(candidate[field]));
 			const builder = {
 				select() {
+					return builder;
+				},
+				limit() {
+					return builder;
+				},
+				not(field: string, operator: string, value: string) {
+					if (operator !== 'in') throw new Error(`Unsupported not operator ${operator}`);
+					notInFilters.push([field, value.replace(/^\(|\)$/g, '').split(',')]);
 					return builder;
 				},
 				eq(field: string, value: unknown) {
@@ -698,5 +712,475 @@ describe('inbox index mappers', () => {
 			status: 'expired',
 			blocked_reason: 'Project was deleted'
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Jev freshness radar (Tasker 88): bundle mapping, exemptions, retire/restore
+// ---------------------------------------------------------------------------
+
+const RADAR_PROJECT = 'project-radar';
+
+function freshnessBundle(overrides: Row = {}): Row {
+	return {
+		id: 'bundle-1',
+		project_id: RADAR_PROJECT,
+		kind: 'freshness_update',
+		status: 'pending',
+		title: 'Freshness update',
+		risk_tier: 1,
+		run_id: null,
+		freshness_scan_id: 'scan-1',
+		operations: [
+			{
+				tool: 'update_onto_task',
+				args: { project_id: RADAR_PROJECT, task_id: 'task-1', state_key: 'done' },
+				label: 'Mark Draft the launch email done'
+			},
+			{
+				tool: 'update_onto_milestone',
+				args: {
+					project_id: RADAR_PROJECT,
+					milestone_id: 'milestone-1',
+					due_at: '2026-10-22'
+				},
+				label: 'Reschedule Shed weather-tight'
+			}
+		],
+		created_at: '2026-09-18T15:00:00.000Z',
+		updated_at: recentSourceTimestamp(),
+		...overrides
+	};
+}
+
+function radarEntityTables(): Record<string, Row[]> {
+	return {
+		onto_projects: [
+			{ id: RADAR_PROJECT, doc_structure: { root: [] }, deleted_at: null, archived_at: null }
+		],
+		onto_tasks: [
+			{
+				id: 'task-1',
+				project_id: RADAR_PROJECT,
+				title: 'Draft the launch email',
+				state_key: 'in_progress',
+				due_at: null,
+				start_at: null,
+				deleted_at: null,
+				archived_at: null
+			}
+		],
+		onto_milestones: [
+			{
+				id: 'milestone-1',
+				project_id: RADAR_PROJECT,
+				title: 'Shed weather-tight',
+				state_key: 'pending',
+				due_at: '2026-10-15T04:00:00.000Z',
+				deleted_at: null,
+				archived_at: null
+			}
+		]
+	};
+}
+
+function retirableSuggestion(overrides: Row = {}): Row {
+	return {
+		id: 'suggestion-obsolete',
+		project_id: RADAR_PROJECT,
+		kind: 'task_conflict',
+		status: 'pending',
+		freshness_state: 'fresh',
+		title: 'Resolve the launch email overlap',
+		operations: [],
+		result: null,
+		created_at: recentSourceTimestamp(),
+		updated_at: recentSourceTimestamp(),
+		...overrides
+	};
+}
+
+function retirableInboxRow(overrides: Row = {}): Row {
+	return {
+		id: 'inbox-obsolete',
+		source_type: 'project_suggestion',
+		source_ref_id: 'suggestion-obsolete',
+		project_id: RADAR_PROJECT,
+		audience: 'project_members',
+		status: 'pending',
+		source_status: 'pending',
+		blocked_reason: null,
+		expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+		created_at: recentSourceTimestamp(),
+		updated_at: recentSourceTimestamp(),
+		...overrides
+	};
+}
+
+describe('freshness_update bundle inbox mapping', () => {
+	it('maps the bundle with a code-authored title, summary, tier 1 and a 72-hour TTL', () => {
+		const row = mapProjectSuggestionToInboxItem(
+			freshnessBundle({ updated_at: '2026-09-18T15:00:00.000Z' })
+		);
+		expect(row).toMatchObject({
+			source_type: 'project_suggestion',
+			source_ref_id: 'bundle-1',
+			audience: 'project_members',
+			status: 'pending',
+			title: 'Update 2 out-of-date items',
+			summary: 'From your update on Sep 18 · 1 task, 1 milestone',
+			risk_tier: 1,
+			action_kinds: ['approve', 'reject'],
+			expires_at: '2026-09-21T15:00:00.000Z'
+		});
+	});
+
+	it('never quotes chat or model text in the bundle row', () => {
+		const row = mapProjectSuggestionToInboxItem(
+			freshnessBundle({
+				title: 'I finished the launch email yesterday',
+				why_now: 'User said: "I finished the launch email yesterday"',
+				rationale: 'quoted chat'
+			})
+		);
+		expect(JSON.stringify(row)).not.toContain('yesterday');
+		expect(JSON.stringify(row)).not.toContain('quoted chat');
+	});
+
+	it('uses a singular title and summary for one operation', () => {
+		const bundle = freshnessBundle();
+		const row = mapProjectSuggestionToInboxItem({
+			...bundle,
+			operations: [bundle.operations[0]]
+		});
+		expect(row?.title).toBe('Update 1 out-of-date item');
+		expect(row?.summary).toMatch(/· 1 task$/);
+	});
+
+	it('is not grouped into an active manager brief and keeps its verified bundle title', async () => {
+		const { supabase, upserts, updates } = createSupabaseMock({
+			...radarEntityTables(),
+			project_suggestions: [freshnessBundle()],
+			inbox_items: [
+				{
+					id: 'inbox-brief',
+					source_type: 'project_review',
+					source_ref_id: 'run-1',
+					project_id: RADAR_PROJECT,
+					status: 'pending'
+				},
+				{
+					id: 'inbox-bundle',
+					source_type: 'project_suggestion',
+					source_ref_id: 'bundle-1',
+					project_id: RADAR_PROJECT,
+					status: 'pending',
+					source_status: 'grouped_into_project_review'
+				}
+			]
+		});
+
+		const row = await syncInboxItemForProjectSuggestion({
+			supabase: supabase as any,
+			suggestionId: 'bundle-1'
+		});
+
+		expect(updates).toHaveLength(0);
+		expect(upserts).toHaveLength(1);
+		expect(row).toMatchObject({
+			status: 'pending',
+			title: 'Update 2 out-of-date items',
+			source_status: expect.stringMatching(/^proposal_verified:[0-9a-f]{64}$/)
+		});
+	});
+
+	it('still groups an ordinary suggestion behind an active manager brief', async () => {
+		const { supabase, upserts } = createSupabaseMock({
+			project_suggestions: [retirableSuggestion()],
+			inbox_items: [
+				{
+					id: 'inbox-brief',
+					source_type: 'project_review',
+					source_ref_id: 'run-1',
+					project_id: RADAR_PROJECT,
+					status: 'pending'
+				},
+				retirableInboxRow()
+			]
+		});
+		const row = await syncInboxItemForProjectSuggestion({
+			supabase: supabase as any,
+			suggestionId: 'suggestion-obsolete'
+		});
+		expect(upserts).toHaveLength(0);
+		expect(row).toMatchObject({
+			status: 'expired',
+			source_status: 'grouped_into_project_review'
+		});
+	});
+
+	it('exempts the bundle from the manager-brief bulk expiry', async () => {
+		const tables = {
+			project_suggestions: [freshnessBundle(), retirableSuggestion()],
+			inbox_items: [
+				retirableInboxRow(),
+				retirableInboxRow({
+					id: 'inbox-bundle',
+					source_ref_id: 'bundle-1'
+				})
+			]
+		};
+		const { supabase } = createSupabaseMock(tables);
+		const expired = await expireProjectSuggestionInboxItemsForManagerBrief({
+			supabase: supabase as any,
+			projectId: RADAR_PROJECT
+		});
+		expect(expired).toBe(1);
+		expect(tables.inbox_items.find((row) => row.id === 'inbox-bundle')).toMatchObject({
+			status: 'pending'
+		});
+		expect(tables.inbox_items.find((row) => row.id === 'inbox-obsolete')).toMatchObject({
+			status: 'expired',
+			source_status: 'grouped_into_project_review'
+		});
+	});
+});
+
+describe('freshness radar inbox cleanup', () => {
+	it('retires an eligible suggestion: source superseded first, then the inbox row', async () => {
+		const tables = {
+			project_suggestions: [retirableSuggestion()],
+			inbox_items: [retirableInboxRow({ status: 'deferred' })]
+		};
+		const { supabase } = createSupabaseMock(tables);
+		const result = await retireInboxSourceForFreshness({
+			supabase: supabase as any,
+			inboxItemId: 'inbox-obsolete',
+			flagId: 'flag-1',
+			reason: 'Already done: the linked task is complete',
+			projectId: RADAR_PROJECT
+		});
+
+		expect(result).toEqual({
+			ok: true,
+			undo: {
+				kind: 'inbox_retire',
+				suggestionId: 'suggestion-obsolete',
+				inboxItemId: 'inbox-obsolete',
+				previousSuggestionStatus: 'pending',
+				previousInboxStatus: 'deferred'
+			},
+			inboxItem: expect.objectContaining({ status: 'expired' })
+		});
+		expect(tables.project_suggestions[0]).toMatchObject({
+			status: 'superseded',
+			freshness_state: 'stale',
+			result: {
+				freshness_retire: {
+					flag_id: 'flag-1',
+					reason: 'Already done: the linked task is complete',
+					previous_freshness_state: 'fresh'
+				}
+			}
+		});
+		expect(tables.inbox_items[0]).toMatchObject({
+			status: 'expired',
+			source_status: FRESHNESS_RETIRED_SOURCE_STATUS,
+			blocked_reason: 'Already done: the linked task is complete',
+			snoozed_until: null
+		});
+		expect(tables.inbox_items[0].expires_at).toEqual(tables.inbox_items[0].decided_at);
+	});
+
+	it('keeps a retired row retired when the superseded source resyncs', async () => {
+		const tables = {
+			project_suggestions: [retirableSuggestion()],
+			inbox_items: [retirableInboxRow()]
+		};
+		const { supabase, upserts } = createSupabaseMock(tables);
+		await retireInboxSourceForFreshness({
+			supabase: supabase as any,
+			inboxItemId: 'inbox-obsolete',
+			flagId: 'flag-1',
+			reason: 'No longer relevant'
+		});
+
+		const row = await syncInboxItemForProjectSuggestion({
+			supabase: supabase as any,
+			suggestionId: 'suggestion-obsolete'
+		});
+
+		expect(upserts).toHaveLength(1);
+		expect(row).toMatchObject({
+			status: 'expired',
+			source_status: FRESHNESS_RETIRED_SOURCE_STATUS,
+			blocked_reason: 'No longer relevant'
+		});
+	});
+
+	it.each([
+		[
+			'a manager brief',
+			retirableInboxRow({ source_type: 'project_review' }),
+			retirableSuggestion()
+		],
+		['a user-audience item', retirableInboxRow({ audience: 'user' }), retirableSuggestion()],
+		['a snoozed item', retirableInboxRow({ status: 'snoozed' }), retirableSuggestion()],
+		[
+			'another project item',
+			retirableInboxRow({ project_id: 'project-other' }),
+			retirableSuggestion()
+		],
+		[
+			'the radar bundle itself',
+			retirableInboxRow(),
+			retirableSuggestion({ kind: 'freshness_update' })
+		]
+	])('refuses to retire %s', async (_label, inboxRow, suggestion) => {
+		const tables = { project_suggestions: [suggestion], inbox_items: [inboxRow] };
+		const { supabase } = createSupabaseMock(tables);
+		const result = await retireInboxSourceForFreshness({
+			supabase: supabase as any,
+			inboxItemId: 'inbox-obsolete',
+			flagId: 'flag-1',
+			reason: 'Obsolete',
+			projectId: RADAR_PROJECT
+		});
+		expect(result).toEqual({ ok: false, reason: 'not_eligible' });
+		expect(tables.project_suggestions[0].status).toBe(suggestion.status);
+		expect(tables.inbox_items[0].status).toBe(inboxRow.status);
+	});
+
+	it('does not retire a suggestion that was already decided', async () => {
+		const tables = {
+			project_suggestions: [retirableSuggestion({ status: 'approved' })],
+			inbox_items: [retirableInboxRow()]
+		};
+		const { supabase } = createSupabaseMock(tables);
+		const result = await retireInboxSourceForFreshness({
+			supabase: supabase as any,
+			inboxItemId: 'inbox-obsolete',
+			flagId: 'flag-1',
+			reason: 'Obsolete'
+		});
+		expect(result).toEqual({ ok: false, reason: 'source_changed' });
+		expect(tables.inbox_items[0].status).toBe('pending');
+	});
+
+	it('restores a retired suggestion, reopens and resyncs its row, and reapplies the budget', async () => {
+		const tables = {
+			project_suggestions: [retirableSuggestion()],
+			inbox_items: [retirableInboxRow({ status: 'deferred' })]
+		};
+		const { supabase, upserts } = createSupabaseMock(tables);
+		const retired = await retireInboxSourceForFreshness({
+			supabase: supabase as any,
+			inboxItemId: 'inbox-obsolete',
+			flagId: 'flag-1',
+			reason: 'Obsolete'
+		});
+		if (!retired.ok) throw new Error('Fixture should retire');
+
+		const restored = await restoreFreshnessRetiredInboxSource({
+			supabase: supabase as any,
+			undo: retired.undo,
+			flagId: 'flag-1'
+		});
+
+		expect(restored.ok).toBe(true);
+		expect(tables.project_suggestions[0]).toMatchObject({
+			status: 'pending',
+			freshness_state: 'fresh',
+			result: null
+		});
+		// Reopened with its previous status; the resync keeps a deferred row deferred
+		// and the budget pass (one row, within budget) promotes it.
+		expect(upserts.at(-1)).toMatchObject({
+			status: 'deferred',
+			source_status: 'pending',
+			blocked_reason: null
+		});
+		expect(tables.inbox_items[0]).toMatchObject({ status: 'pending' });
+	});
+
+	it('refuses to restore when the suggestion changed or another flag retired it', async () => {
+		const tables = {
+			project_suggestions: [retirableSuggestion()],
+			inbox_items: [retirableInboxRow()]
+		};
+		const { supabase } = createSupabaseMock(tables);
+		const retired = await retireInboxSourceForFreshness({
+			supabase: supabase as any,
+			inboxItemId: 'inbox-obsolete',
+			flagId: 'flag-1',
+			reason: 'Obsolete'
+		});
+		if (!retired.ok) throw new Error('Fixture should retire');
+
+		expect(
+			await restoreFreshnessRetiredInboxSource({
+				supabase: supabase as any,
+				undo: retired.undo,
+				flagId: 'flag-other'
+			})
+		).toEqual({ ok: false, reason: 'changed_since' });
+
+		tables.project_suggestions[0].status = 'rejected';
+		expect(
+			await restoreFreshnessRetiredInboxSource({
+				supabase: supabase as any,
+				undo: retired.undo,
+				flagId: 'flag-1'
+			})
+		).toEqual({ ok: false, reason: 'changed_since' });
+		expect(tables.inbox_items[0]).toMatchObject({
+			status: 'expired',
+			source_status: FRESHNESS_RETIRED_SOURCE_STATUS
+		});
+	});
+
+	it('marks an item possibly stale and later resets it to fresh', async () => {
+		const tables = { inbox_items: [retirableInboxRow()] };
+		const { supabase } = createSupabaseMock(tables);
+		await markInboxItemFreshness({
+			supabase: supabase as any,
+			inboxItemId: 'inbox-obsolete',
+			state: 'possibly_stale',
+			note: 'The linked task changed after this was suggested',
+			flagId: 'flag-2',
+			checkedAt: '2026-09-18T16:00:00.000Z'
+		});
+		expect(tables.inbox_items[0]).toMatchObject({
+			freshness_state: 'possibly_stale',
+			freshness_note: 'The linked task changed after this was suggested',
+			freshness_flag_id: 'flag-2',
+			freshness_checked_at: '2026-09-18T16:00:00.000Z'
+		});
+
+		await markInboxItemFreshness({
+			supabase: supabase as any,
+			inboxItemId: 'inbox-obsolete',
+			state: 'fresh',
+			note: 'ignored',
+			flagId: 'flag-3'
+		});
+		expect(tables.inbox_items[0]).toMatchObject({
+			freshness_state: 'fresh',
+			freshness_note: null,
+			freshness_flag_id: 'flag-3'
+		});
+	});
+
+	it('never writes freshness columns during an ordinary resync', async () => {
+		const { supabase, upserts } = createSupabaseMock({
+			project_suggestions: [retirableSuggestion()],
+			inbox_items: [retirableInboxRow({ freshness_state: 'possibly_stale' })]
+		});
+		await syncInboxItemForProjectSuggestion({
+			supabase: supabase as any,
+			suggestionId: 'suggestion-obsolete'
+		});
+		expect(upserts).toHaveLength(1);
+		expect(Object.keys(upserts[0]).filter((key) => key.startsWith('freshness'))).toEqual([]);
 	});
 });

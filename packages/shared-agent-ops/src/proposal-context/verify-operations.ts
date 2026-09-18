@@ -11,7 +11,7 @@ import {
 
 type AnySupabase = any;
 
-type ResolvedEntityKind = 'document' | 'task';
+type ResolvedEntityKind = 'document' | 'task' | 'goal' | 'milestone';
 
 type ResolvedEntity = {
 	id: string;
@@ -20,6 +20,9 @@ type ResolvedEntity = {
 	state_key: string | null;
 	deleted_at: string | null;
 	archived_at: string | null;
+	due_at: string | null;
+	start_at: string | null;
+	target_date: string | null;
 };
 
 export type ProjectSuggestionIntegrityCode =
@@ -71,13 +74,132 @@ export type ProjectSuggestionIntegrityInput = {
 	preview?: ProjectSuggestionPreview | Record<string, unknown> | null;
 	checkModelAlignment?: boolean;
 	expectedStructuralFingerprint?: string | null;
+	/**
+	 * IANA timezone used only to detect a civil-date (YYYY-MM-DD) proposal that
+	 * already matches a stored timestamp. Without it such a proposal is never
+	 * treated as a no-op (fail open to the user, never to a hidden write).
+	 */
+	timezone?: string | null;
 };
 
-const SUPPORTED_TOOLS = new Set([
-	'move_document_in_tree',
-	'update_onto_document',
-	'update_onto_task'
-]);
+type ScalarField = 'state_key' | 'due_at' | 'start_at' | 'target_date';
+
+type UpdateToolSpec = {
+	entityKind: ResolvedEntityKind;
+	idArg: 'task_id' | 'document_id' | 'goal_id' | 'milestone_id';
+	/** Title arguments tolerated only as an exact echo of the current title. */
+	titleArgs: readonly string[];
+	/** Scalar fields decoded with before and after values. */
+	scalarFields: readonly ScalarField[];
+	stateKeys: readonly string[];
+	/**
+	 * Every argument the ChatToolExecutor turns into a write (or a write side
+	 * effect) for this tool, besides the entity id and project_id. An argument in
+	 * this list that the verifier cannot decode fails closed: approval must never
+	 * execute a change the user was not shown.
+	 */
+	mutatingArgs: readonly string[];
+};
+
+const UPDATE_TOOL_SPECS: Record<string, UpdateToolSpec> = {
+	update_onto_task: {
+		entityKind: 'task',
+		idArg: 'task_id',
+		titleArgs: ['title'],
+		scalarFields: ['state_key', 'due_at', 'start_at'],
+		stateKeys: ['todo', 'in_progress', 'blocked', 'done'],
+		mutatingArgs: [
+			'title',
+			'description',
+			'type_key',
+			'state_key',
+			'priority',
+			'goal_id',
+			'supporting_milestone_id',
+			'start_at',
+			'due_at',
+			'props',
+			'assignee_actor_ids',
+			'assignee_handles',
+			'calendar_sync'
+		]
+	},
+	update_onto_document: {
+		entityKind: 'document',
+		idArg: 'document_id',
+		titleArgs: ['title', 'name'],
+		scalarFields: [],
+		stateKeys: [],
+		mutatingArgs: [
+			'title',
+			'name',
+			'description',
+			'summary',
+			'type_key',
+			'type',
+			'state_key',
+			'content',
+			'body_markdown',
+			'body',
+			'text',
+			'markdown',
+			'props',
+			'document',
+			'updates',
+			'document_update'
+		]
+	},
+	update_onto_goal: {
+		entityKind: 'goal',
+		idArg: 'goal_id',
+		titleArgs: ['name'],
+		scalarFields: ['state_key', 'target_date'],
+		stateKeys: ['draft', 'active', 'achieved', 'abandoned'],
+		mutatingArgs: [
+			'name',
+			'description',
+			'type_key',
+			'state_key',
+			'priority',
+			'target_date',
+			'measurement_criteria',
+			'props'
+		]
+	},
+	update_onto_milestone: {
+		entityKind: 'milestone',
+		idArg: 'milestone_id',
+		titleArgs: ['title'],
+		scalarFields: ['state_key', 'due_at'],
+		stateKeys: ['pending', 'in_progress', 'completed', 'missed'],
+		mutatingArgs: ['title', 'due_at', 'state_key', 'description', 'props']
+	}
+};
+
+const SUPPORTED_TOOLS = new Set(['move_document_in_tree', ...Object.keys(UPDATE_TOOL_SPECS)]);
+
+const SCALAR_FIELD_LABELS: Record<ScalarField, string> = {
+	state_key: 'Status',
+	due_at: 'Due date',
+	start_at: 'Start date',
+	target_date: 'Target date'
+};
+
+const STATE_LABELS: Record<string, string> = {
+	todo: 'To do',
+	in_progress: 'In progress',
+	blocked: 'Blocked',
+	done: 'Done',
+	draft: 'Draft',
+	active: 'Active',
+	achieved: 'Achieved',
+	abandoned: 'Abandoned',
+	pending: 'Pending',
+	completed: 'Completed',
+	missed: 'Missed'
+};
+
+const CIVIL_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const NAME_STOP_WORDS = new Set([
 	'a',
@@ -326,7 +448,10 @@ function normalizeEntityRows(rows: unknown): Map<string, ResolvedEntity> {
 			title,
 			state_key: asString(row?.state_key),
 			deleted_at: asString(row?.deleted_at),
-			archived_at: asString(row?.archived_at)
+			archived_at: asString(row?.archived_at),
+			due_at: asString(row?.due_at),
+			start_at: asString(row?.start_at),
+			target_date: asString(row?.target_date)
 		});
 	}
 	return byId;
@@ -335,9 +460,13 @@ function normalizeEntityRows(rows: unknown): Map<string, ResolvedEntity> {
 function idsForOperations(operations: LoopOperation[]): {
 	documentIds: Set<string>;
 	taskIds: Set<string>;
+	goalIds: Set<string>;
+	milestoneIds: Set<string>;
 } {
 	const documentIds = new Set<string>();
 	const taskIds = new Set<string>();
+	const goalIds = new Set<string>();
+	const milestoneIds = new Set<string>();
 	for (const operation of operations) {
 		const args = asRecord(operation.args) ?? {};
 		const documentId = asString(args.document_id);
@@ -348,8 +477,113 @@ function idsForOperations(operations: LoopOperation[]): {
 		if (parentId) documentIds.add(parentId);
 		if (taskId) taskIds.add(taskId);
 		if (conflictTaskId) taskIds.add(conflictTaskId);
+		// goal_id is also a mutating task argument, so only the goal tool's own
+		// target is resolved as a goal.
+		if (operation.tool === 'update_onto_goal') {
+			const goalId = asString(args.goal_id);
+			if (goalId) goalIds.add(goalId);
+		}
+		if (operation.tool === 'update_onto_milestone') {
+			const milestoneId = asString(args.milestone_id);
+			if (milestoneId) milestoneIds.add(milestoneId);
+		}
 	}
-	return { documentIds, taskIds };
+	return { documentIds, taskIds, goalIds, milestoneIds };
+}
+
+function hasOwnArg(args: Record<string, unknown>, key: string): boolean {
+	return Object.prototype.hasOwnProperty.call(args, key) && args[key] !== undefined;
+}
+
+function isValidCivilDate(value: string): boolean {
+	const match = CIVIL_DATE_PATTERN.exec(value);
+	if (!match) return false;
+	const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+	const date = new Date(Date.UTC(year, month - 1, day));
+	return (
+		date.getUTCFullYear() === year &&
+		date.getUTCMonth() === month - 1 &&
+		date.getUTCDate() === day
+	);
+}
+
+function civilDateInZone(value: string, timeZone: string): string | null {
+	const instant = Date.parse(value);
+	if (!Number.isFinite(instant)) return null;
+	try {
+		const parts = new Intl.DateTimeFormat('en-US', {
+			timeZone,
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit'
+		}).formatToParts(new Date(instant));
+		const part = (type: string) => parts.find((entry) => entry.type === type)?.value;
+		const year = part('year');
+		const month = part('month');
+		const day = part('day');
+		return year && month && day ? `${year}-${month}-${day}` : null;
+	} catch {
+		return null;
+	}
+}
+
+/** A proposed scalar value, validated; `invalid` when the executor must not see it. */
+function readProposedScalar(
+	field: ScalarField,
+	value: unknown,
+	spec: UpdateToolSpec
+): { ok: true; value: string | null } | { ok: false } {
+	if (field === 'state_key') {
+		const state = asString(value);
+		return state && spec.stateKeys.includes(state) ? { ok: true, value: state } : { ok: false };
+	}
+	if (value === null) return { ok: true, value: null };
+	const text = asString(value);
+	if (!text) return { ok: false };
+	if (CIVIL_DATE_PATTERN.test(text)) {
+		return isValidCivilDate(text) ? { ok: true, value: text } : { ok: false };
+	}
+	return /^\d{4}-\d{2}-\d{2}T/.test(text) && Number.isFinite(Date.parse(text))
+		? { ok: true, value: text }
+		: { ok: false };
+}
+
+function scalarValueIsCurrent(
+	field: ScalarField,
+	proposed: string | null,
+	current: string | null,
+	timezone: string | null | undefined
+): boolean {
+	if (field === 'state_key') return proposed === current;
+	if (proposed === null || current === null) return proposed === current;
+	const proposedCivil = CIVIL_DATE_PATTERN.test(proposed);
+	const currentCivil = CIVIL_DATE_PATTERN.test(current);
+	if (proposedCivil && currentCivil) return proposed === current;
+	if (!proposedCivil && !currentCivil) return Date.parse(proposed) === Date.parse(current);
+	if (proposedCivil && timezone) return civilDateInZone(current, timezone) === proposed;
+	return false;
+}
+
+function formatScalarValue(field: ScalarField, value: string | null): string {
+	if (field === 'state_key' && value)
+		return STATE_LABELS[value] ?? humanizeLoopOperationKey(value);
+	return formatLoopOperationValue(value);
+}
+
+function scalarSummary(
+	entityKind: ResolvedEntityKind,
+	title: string,
+	scalars: Array<{ field: ScalarField; proposed: string | null }>
+): string {
+	if (scalars.length !== 1) return `Update ${entityKind} "${title}".`;
+	const [only] = scalars;
+	if (only.field === 'state_key') {
+		return `Mark ${entityKind} "${title}" as ${formatScalarValue('state_key', only.proposed).toLowerCase()}.`;
+	}
+	const label = SCALAR_FIELD_LABELS[only.field].toLowerCase();
+	return only.proposed === null
+		? `Clear the ${label} of ${entityKind} "${title}".`
+		: `Change the ${label} of ${entityKind} "${title}" to ${formatScalarValue(only.field, only.proposed)}.`;
 }
 
 function isDescendant(
@@ -447,7 +681,7 @@ export async function verifyProjectSuggestionIntegrity(
 			if (parentId) ids.documentIds.add(parentId);
 		}
 
-		const [documentResult, taskResult] = await Promise.all([
+		const [documentResult, taskResult, goalResult, milestoneResult] = await Promise.all([
 			ids.documentIds.size
 				? supabase
 						.from('onto_documents')
@@ -457,14 +691,40 @@ export async function verifyProjectSuggestionIntegrity(
 			ids.taskIds.size
 				? supabase
 						.from('onto_tasks')
-						.select('id, project_id, title, state_key, deleted_at, archived_at')
+						.select(
+							'id, project_id, title, state_key, due_at, start_at, deleted_at, archived_at'
+						)
 						.in('id', [...ids.taskIds])
+				: Promise.resolve({ data: [], error: null }),
+			ids.goalIds.size
+				? supabase
+						.from('onto_goals')
+						.select(
+							'id, project_id, name, state_key, target_date, deleted_at, archived_at'
+						)
+						.in('id', [...ids.goalIds])
+				: Promise.resolve({ data: [], error: null }),
+			ids.milestoneIds.size
+				? supabase
+						.from('onto_milestones')
+						.select('id, project_id, title, state_key, due_at, deleted_at, archived_at')
+						.in('id', [...ids.milestoneIds])
 				: Promise.resolve({ data: [], error: null })
 		]);
 		if (documentResult.error) throw documentResult.error;
 		if (taskResult.error) throw taskResult.error;
+		if (goalResult.error) throw goalResult.error;
+		if (milestoneResult.error) throw milestoneResult.error;
 		const documents = normalizeEntityRows(documentResult.data);
 		const tasks = normalizeEntityRows(taskResult.data);
+		const goals = normalizeEntityRows(goalResult.data);
+		const milestones = normalizeEntityRows(milestoneResult.data);
+		const entitiesByKind: Record<ResolvedEntityKind, Map<string, ResolvedEntity>> = {
+			document: documents,
+			task: tasks,
+			goal: goals,
+			milestone: milestones
+		};
 
 		const decoded: Array<DecodedLoopOperation & { key: string }> = [];
 		const structuralParts: unknown[] = [];
@@ -617,9 +877,9 @@ export async function verifyProjectSuggestionIntegrity(
 				continue;
 			}
 
-			const entityKind: ResolvedEntityKind =
-				operation.tool === 'update_onto_task' ? 'task' : 'document';
-			const entityId = asString(entityKind === 'task' ? args.task_id : args.document_id);
+			const spec = UPDATE_TOOL_SPECS[operation.tool]!;
+			const entityKind = spec.entityKind;
+			const entityId = asString(args[spec.idArg]);
 			if (!entityId) {
 				return {
 					ok: false,
@@ -632,7 +892,7 @@ export async function verifyProjectSuggestionIntegrity(
 					}
 				};
 			}
-			const entity = entityKind === 'task' ? tasks.get(entityId) : documents.get(entityId);
+			const entity = entitiesByKind[entityKind].get(entityId);
 			const targetError = entityDiagnostic({
 				entity,
 				entityId,
@@ -678,7 +938,80 @@ export async function verifyProjectSuggestionIntegrity(
 				};
 			}
 
-			const changes = updateChanges(args);
+			// Fail closed on any argument the executor would write that this
+			// verifier cannot show the user (for example an undisplayed title
+			// rename or state change riding along with a props flag).
+			for (const key of spec.mutatingArgs) {
+				if (!hasOwnArg(args, key)) continue;
+				if (key === 'props') {
+					if (asRecord(args.props)) continue;
+				} else if ((spec.scalarFields as readonly string[]).includes(key)) {
+					continue;
+				} else if (spec.titleArgs.includes(key)) {
+					if (asString(args[key]) === entity!.title) continue;
+				} else if (key === 'calendar_sync') {
+					if (args.calendar_sync === 'none') continue;
+				}
+				return {
+					ok: false,
+					diagnostic: {
+						code: 'INVALID_OPERATION',
+						message: `${operation.tool} argument "${key}" would change ${entityKind} "${entity!.title}" without being shown`,
+						operation_index: index,
+						tool: operation.tool,
+						entity_kind: entityKind,
+						entity_id: entityId
+					}
+				};
+			}
+
+			const scalars: Array<{
+				field: ScalarField;
+				proposed: string | null;
+				current: string | null;
+			}> = [];
+			for (const field of spec.scalarFields) {
+				if (!hasOwnArg(args, field)) continue;
+				const proposed = readProposedScalar(field, args[field], spec);
+				if (!proposed.ok) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'INVALID_OPERATION',
+							message: `${operation.tool} has an invalid ${field} value`,
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: entityKind,
+							entity_id: entityId
+						}
+					};
+				}
+				const current = entity![field];
+				if (scalarValueIsCurrent(field, proposed.value, current, input.timezone)) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'NO_OP_OPERATION',
+							message: `${entityKind} "${entity!.title}" already has this ${SCALAR_FIELD_LABELS[field].toLowerCase()}`,
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: entityKind,
+							entity_id: entityId,
+							resolved_entity_title: entity!.title
+						}
+					};
+				}
+				scalars.push({ field, proposed: proposed.value, current });
+			}
+
+			const changes: DecodedLoopOperationFieldChange[] = [
+				...scalars.map(({ field, proposed, current }) => ({
+					label: SCALAR_FIELD_LABELS[field],
+					value: formatScalarValue(field, proposed),
+					before: formatScalarValue(field, current)
+				})),
+				...updateChanges(args)
+			];
 			if (changes.length === 0) {
 				return {
 					ok: false,
@@ -698,7 +1031,9 @@ export async function verifyProjectSuggestionIntegrity(
 				? `Mark "${entity!.title}" as outdated.`
 				: conflictTask
 					? `Flag "${entity!.title}" for review against "${conflictTask.title}".`
-					: `Update ${entityKind} "${entity!.title}".`;
+					: scalars.length && !asRecord(args.props)
+						? scalarSummary(entityKind, entity!.title, scalars)
+						: `Update ${entityKind} "${entity!.title}".`;
 			decoded.push({
 				key: `${operation.tool}:${entityId}:${index}`,
 				action: 'update',
@@ -708,7 +1043,7 @@ export async function verifyProjectSuggestionIntegrity(
 				summary,
 				changes
 			});
-			structuralParts.push({
+			const structuralPart: Record<string, unknown> = {
 				tool: operation.tool,
 				target_id: entityId,
 				target_project_id: entity!.project_id,
@@ -721,7 +1056,18 @@ export async function verifyProjectSuggestionIntegrity(
 				referenced_task_id: conflictId,
 				referenced_task_project_id: conflictTask?.project_id ?? null,
 				referenced_task_state: conflictTask?.state_key ?? null
-			});
+			};
+			// Scalar keys exist only on scalar-carrying shapes, so the fingerprint of
+			// every props-only operation stays byte-identical to the pre-scalar one.
+			if (scalars.length) {
+				structuralPart.proposed_scalars = Object.fromEntries(
+					scalars.map(({ field, proposed }) => [field, proposed])
+				);
+				structuralPart.current_scalars = Object.fromEntries(
+					scalars.map(({ field, current }) => [field, current])
+				);
+			}
+			structuralParts.push(structuralPart);
 		}
 
 		if (input.checkModelAlignment !== false) {

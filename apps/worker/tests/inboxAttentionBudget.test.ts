@@ -17,6 +17,7 @@ type Row = {
 	created_at: string;
 	updated_at?: string | null;
 	expires_at?: string | null;
+	freshness_state?: 'fresh' | 'possibly_stale';
 };
 
 function stubSupabase(rows: Row[]) {
@@ -193,5 +194,49 @@ describe('applyProjectAttentionBudget', () => {
 		expect(result.promotedIds).toEqual([]);
 		expect(result.deferredIds).toEqual([]);
 		expect(updates).toEqual([]);
+	});
+
+	it('ranks possibly-stale items below every fresh item, before risk tier (Tasker 88)', async () => {
+		const rows: Row[] = [
+			{
+				id: 'stale-high',
+				status: 'pending',
+				risk_tier: 3,
+				created_at: iso(1 * HOUR),
+				expires_at: future,
+				freshness_state: 'possibly_stale'
+			},
+			{
+				id: 'fresh-low-a',
+				status: 'deferred',
+				risk_tier: 1,
+				created_at: iso(2 * HOUR),
+				expires_at: future,
+				freshness_state: 'fresh'
+			},
+			{
+				id: 'fresh-low-b',
+				status: 'deferred',
+				risk_tier: 1,
+				created_at: iso(3 * HOUR),
+				expires_at: future
+			},
+			{
+				id: 'bundle',
+				status: 'pending',
+				risk_tier: 1,
+				created_at: iso(4 * HOUR),
+				expires_at: future,
+				freshness_state: 'fresh'
+			}
+		];
+		const { client } = stubSupabase(rows);
+		const result = await applyProjectAttentionBudget({
+			supabase: client,
+			projectId: 'project-1'
+		});
+		// Three fresh rows hold the budget; the tier-3 possibly-stale row defers.
+		expect([...result.promotedIds].sort()).toEqual(['fresh-low-a', 'fresh-low-b']);
+		expect(result.deferredIds).toEqual(['stale-high']);
 	});
 });

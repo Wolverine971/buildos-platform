@@ -3,7 +3,12 @@
 // Worker-safe helpers for maintaining the AI Inbox denormalized index. Source
 // tables remain authoritative; these functions only upsert/repair index rows.
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { LoopOperation, ProjectSuggestionPreview } from '@buildos/shared-types';
+import type {
+	FreshnessUndoPayload,
+	InboxFreshnessState,
+	LoopOperation,
+	ProjectSuggestionPreview
+} from '@buildos/shared-types';
 import {
 	projectSuggestionQuarantinedSourceStatus,
 	projectSuggestionVerifiedSourceStatus,
@@ -53,9 +58,22 @@ export interface InboxIndexRow {
 	decided_at?: string | null;
 	created_at?: string;
 	updated_at?: string;
+	/** Jev freshness radar marker (Tasker 88). Never written by upsertInboxItem. */
+	freshness_state?: InboxFreshnessState;
+	freshness_note?: string | null;
+	freshness_flag_id?: string | null;
+	freshness_checked_at?: string | null;
 }
 
 type AnySupabase = SupabaseClient<any, any, any>;
+
+/** project_suggestions.kind for the Jev freshness radar bundle (one per project). */
+const FRESHNESS_UPDATE_KIND = 'freshness_update';
+/** The radar bundle is a 72-hour offer, like its undo window. */
+export const FRESHNESS_UPDATE_INBOX_TTL_MS = 72 * 60 * 60 * 1000;
+/** inbox_items.source_status for an item the radar retired as obsolete. */
+export const FRESHNESS_RETIRED_SOURCE_STATUS = 'freshness_retired';
+const ACTIVE_SUGGESTION_STATUSES = ['pending', 'approved', 'delegated'];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Per-source review TTLs (tasker/28 WP-3). Loop findings and calendar
@@ -231,6 +249,22 @@ function shouldPreserveActiveSnooze(
 	return snoozedUntil !== null && snoozedUntil > Date.now();
 }
 
+/**
+ * A radar-retired row stays retired while its source is still the superseded
+ * suggestion the radar retired. Undo (restoreFreshnessRetiredInboxSource)
+ * clears the marker before it resyncs.
+ */
+function isPreservedFreshnessRetirement(
+	existing: InboxIndexRow | null,
+	incomingSourceStatus: string | null | undefined
+): boolean {
+	return (
+		existing?.status === 'expired' &&
+		existing.source_status === FRESHNESS_RETIRED_SOURCE_STATUS &&
+		incomingSourceStatus === 'superseded'
+	);
+}
+
 function shouldPreserveExpired(
 	existing: InboxIndexRow | null,
 	nextStatus: InboxItemStatus
@@ -292,7 +326,7 @@ async function upsertInboxItem(
 ): Promise<InboxIndexRow | null> {
 	const { data: existingData, error: existingError } = await (supabase as any)
 		.from('inbox_items')
-		.select('status,snoozed_until,expires_at,decided_at,blocked_reason')
+		.select('status,source_status,snoozed_until,expires_at,decided_at,blocked_reason')
 		.eq('source_type', row.source_type)
 		.eq('source_ref_id', row.source_ref_id)
 		.maybeSingle();
@@ -305,7 +339,8 @@ async function upsertInboxItem(
 	}
 	const existing = (existingData ?? null) as InboxIndexRow | null;
 	const preserveSnooze = shouldPreserveActiveSnooze(existing, row.status);
-	const preserveExpired = shouldPreserveExpired(existing, row.status);
+	const preserveRetired = isPreservedFreshnessRetirement(existing, row.source_status);
+	const preserveExpired = preserveRetired || shouldPreserveExpired(existing, row.status);
 	const preserveDeferred = shouldPreserveDeferred(existing, row.status);
 	const expireIncoming = shouldExpireIncoming(
 		preserveDeferred ? { ...row, status: 'deferred' } : row
@@ -314,7 +349,9 @@ async function upsertInboxItem(
 	const payload = {
 		source_type: row.source_type,
 		source_ref_id: row.source_ref_id,
-		source_status: row.source_status ?? null,
+		source_status: preserveRetired
+			? FRESHNESS_RETIRED_SOURCE_STATUS
+			: (row.source_status ?? null),
 		user_id: row.user_id ?? null,
 		project_id: row.project_id ?? null,
 		audience: row.audience,
@@ -518,6 +555,7 @@ export function mapProjectSuggestionToInboxItem(
 	// but it is an observation rather than an executable change or bounded
 	// decision. It must not consume the attention inbox (tasker/52 WP-2).
 	if (kind === 'drift') return null;
+	if (kind === FRESHNESS_UPDATE_KIND) return mapFreshnessBundleToInboxItem(suggestion);
 	const isFinding = kind === 'audit_recommendation' || operations.length === 0;
 	const inboxStatus: InboxItemStatus =
 		status === 'pending'
@@ -555,6 +593,98 @@ export function mapProjectSuggestionToInboxItem(
 			asString(suggestion.updated_at) ?? asString(suggestion.created_at),
 			inboxStatus,
 			kind === 'audit_recommendation' ? AUDIT_RECOMMENDATION_EXPIRY_MS : undefined
+		),
+		created_at: asString(suggestion.created_at) ?? undefined
+	};
+}
+
+const FRESHNESS_KIND_BY_TOOL: Record<string, string> = {
+	update_onto_task: 'task',
+	update_onto_document: 'document',
+	update_onto_goal: 'goal',
+	update_onto_milestone: 'milestone'
+};
+const FRESHNESS_KIND_ORDER = ['task', 'goal', 'milestone', 'document'];
+
+/** Code-authored bundle title; `count` is the verified operation count. */
+export function freshnessBundleInboxTitle(count: number): string {
+	return `Update ${count} out-of-date item${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * "From your update on Sep 18 · 2 tasks, 1 milestone". Built from operation
+ * tools and the suggestion date only: the bundle row never quotes chat.
+ */
+export function freshnessBundleInboxSummary(suggestion: Record<string, unknown>): string {
+	const operations = Array.isArray(suggestion.operations) ? suggestion.operations : [];
+	const counts = new Map<string, number>();
+	for (const operation of operations) {
+		const kind = FRESHNESS_KIND_BY_TOOL[asString(asRecord(operation)?.tool) ?? ''] ?? 'item';
+		counts.set(kind, (counts.get(kind) ?? 0) + 1);
+	}
+	const parts = [...counts.entries()]
+		.sort(
+			([a], [b]) =>
+				(FRESHNESS_KIND_ORDER.indexOf(a) + 1 || 99) -
+				(FRESHNESS_KIND_ORDER.indexOf(b) + 1 || 99)
+		)
+		.map(([kind, count]) => `${count} ${kind}${count === 1 ? '' : 's'}`);
+	const basis = parseTimestamp(
+		asString(suggestion.created_at) ?? asString(suggestion.updated_at)
+	);
+	const date =
+		basis === null
+			? null
+			: new Date(basis).toLocaleDateString('en-US', {
+					month: 'short',
+					day: 'numeric',
+					timeZone: 'UTC'
+				});
+	const lead = date ? `From your update on ${date}` : 'From your recent update';
+	return parts.length ? `${lead} · ${parts.join(', ')}` : lead;
+}
+
+/**
+ * The radar's single per-project bundle (kind freshness_update): a standard
+ * project_suggestion row with a code-authored title and summary, risk tier 1,
+ * approve/reject, and a 72-hour expiry from updated_at.
+ */
+function mapFreshnessBundleToInboxItem(suggestion: Record<string, unknown>): InboxIndexRow | null {
+	const id = asString(suggestion.id);
+	const projectId = asString(suggestion.project_id);
+	if (!id || !projectId) return null;
+	const status = asString(suggestion.status) ?? 'pending';
+	const operations = Array.isArray(suggestion.operations) ? suggestion.operations : [];
+	const inboxStatus: InboxItemStatus =
+		status === 'pending'
+			? 'pending'
+			: status === 'approved' || status === 'delegated'
+				? 'deciding'
+				: status === 'failed'
+					? 'blocked'
+					: 'decided';
+	return {
+		source_type: 'project_suggestion',
+		source_ref_id: id,
+		source_status: status,
+		user_id: null,
+		project_id: projectId,
+		audience: 'project_members',
+		status: inboxStatus,
+		title: freshnessBundleInboxTitle(operations.length),
+		summary: freshnessBundleInboxSummary(suggestion),
+		risk_tier: 1,
+		action_kinds: ['approve', 'reject'],
+		blocked_reason: inboxStatus === 'blocked' ? 'Project suggestion failed to apply' : null,
+		decided_at:
+			inboxStatus === 'pending' || inboxStatus === 'deciding'
+				? null
+				: terminalDecidedAt(suggestion),
+		expires_at: reviewExpiresAt(
+			'project_suggestion',
+			asString(suggestion.updated_at) ?? asString(suggestion.created_at),
+			inboxStatus,
+			FRESHNESS_UPDATE_INBOX_TTL_MS
 		),
 		created_at: asString(suggestion.created_at) ?? undefined
 	};
@@ -910,7 +1040,10 @@ export async function syncInboxItemForProjectSuggestion(params: {
 				})
 			: null;
 	}
-	if (existingSourceStatus === 'grouped_into_project_review') {
+	// The radar bundle is its own per-project attention item: it is never grouped
+	// into (or hidden behind) the project manager brief.
+	const isFreshnessBundle = kind === FRESHNESS_UPDATE_KIND;
+	if (!isFreshnessBundle && existingSourceStatus === 'grouped_into_project_review') {
 		return suggestionId
 			? expireProjectSuggestionInboxItem({
 					supabase: params.supabase,
@@ -922,6 +1055,7 @@ export async function syncInboxItemForProjectSuggestion(params: {
 	}
 	const projectId = asString(suggestion.project_id);
 	if (
+		!isFreshnessBundle &&
 		projectId &&
 		['pending', 'approved', 'delegated'].includes(asString(suggestion.status) ?? 'pending') &&
 		(await projectHasActiveManagerBrief(params.supabase, projectId))
@@ -960,7 +1094,9 @@ export async function syncInboxItemForProjectSuggestion(params: {
 				diagnostic: verification.diagnostic
 			});
 		}
-		row.title = verification.summary.headline;
+		row.title = isFreshnessBundle
+			? freshnessBundleInboxTitle(verification.summary.operation_count)
+			: verification.summary.headline;
 		row.source_status = projectSuggestionVerifiedSourceStatus(
 			verification.summary.structural_fingerprint
 		);
@@ -1064,7 +1200,20 @@ export async function expireProjectSuggestionInboxItemsForManagerBrief(params: {
 	projectId: string;
 	reason?: string;
 }): Promise<number> {
-	const { data, error } = await (params.supabase as any)
+	// The radar bundle is exempt from manager-brief grouping; find its ids first
+	// (inbox rows do not carry the suggestion kind).
+	const { data: bundles, error: bundleError } = await (params.supabase as any)
+		.from('project_suggestions')
+		.select('id')
+		.eq('project_id', params.projectId)
+		.eq('kind', FRESHNESS_UPDATE_KIND)
+		.in('status', ACTIVE_SUGGESTION_STATUSES);
+	if (bundleError) throw bundleError;
+	const exemptIds = ((bundles ?? []) as Record<string, unknown>[])
+		.map((row) => asString(row.id))
+		.filter((id): id is string => Boolean(id));
+
+	let query = (params.supabase as any)
 		.from('inbox_items')
 		.update({
 			status: 'expired',
@@ -1075,8 +1224,9 @@ export async function expireProjectSuggestionInboxItemsForManagerBrief(params: {
 		})
 		.eq('source_type', 'project_suggestion')
 		.eq('project_id', params.projectId)
-		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
-		.select('id');
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred']);
+	if (exemptIds.length) query = query.not('source_ref_id', 'in', `(${exemptIds.join(',')})`);
+	const { data, error } = await query.select('id');
 	if (error) throw error;
 	return (data ?? []).length;
 }
@@ -1151,7 +1301,7 @@ export async function applyProjectAttentionBudget(params: {
 	const none = { promotedIds: [] as string[], deferredIds: [] as string[] };
 	const { data, error } = await (params.supabase as any)
 		.from('inbox_items')
-		.select('id, status, risk_tier, created_at, updated_at, expires_at')
+		.select('id, status, risk_tier, created_at, updated_at, expires_at, freshness_state')
 		.eq('project_id', params.projectId)
 		.eq('audience', 'project_members')
 		.in('status', ['pending', 'deferred'])
@@ -1167,8 +1317,15 @@ export async function applyProjectAttentionBudget(params: {
 
 	const freshness = (row: InboxIndexRow): number =>
 		parseTimestamp(row.updated_at) ?? parseTimestamp(row.created_at) ?? 0;
+	// Items the freshness radar marked "possibly stale" rank below every fresh
+	// item, before risk tier (Tasker 88).
+	const staleRank = (row: InboxIndexRow): number =>
+		row.freshness_state === 'possibly_stale' ? 1 : 0;
 	const ranked = [...candidates].sort(
-		(a, b) => (b.risk_tier ?? 1) - (a.risk_tier ?? 1) || freshness(b) - freshness(a)
+		(a, b) =>
+			staleRank(a) - staleRank(b) ||
+			(b.risk_tier ?? 1) - (a.risk_tier ?? 1) ||
+			freshness(b) - freshness(a)
 	);
 
 	const admitted = new Set(ranked.slice(0, budget).map((row) => row.id));
@@ -1199,6 +1356,235 @@ export async function applyProjectAttentionBudget(params: {
 	}
 
 	return { promotedIds: toPromote, deferredIds: toDefer };
+}
+
+// ---------------------------------------------------------------------------
+// Jev freshness radar inbox cleanup (Tasker 88, plan section 6)
+// ---------------------------------------------------------------------------
+
+export type FreshnessInboxRetireUndo = Extract<FreshnessUndoPayload, { kind: 'inbox_retire' }>;
+
+export type RetireInboxSourceForFreshnessResult =
+	| { ok: true; undo: FreshnessInboxRetireUndo; inboxItem: InboxIndexRow | null }
+	| { ok: false; reason: 'not_found' | 'not_eligible' | 'source_changed' | 'inbox_changed' };
+
+export type RestoreFreshnessRetiredInboxSourceResult =
+	| { ok: true; inboxItem: InboxIndexRow | null }
+	| { ok: false; reason: 'not_found' | 'changed_since' };
+
+const RETIRABLE_INBOX_STATUSES = ['pending', 'deferred'];
+
+/**
+ * Retire one obsolete Project Review suggestion from the AI Inbox.
+ *
+ * Only an individual `project_suggestion` for `project_members` that is pending
+ * or deferred is eligible (manager briefs, audits, agent-run proposals and
+ * calendar suggestions are only ever marked possibly stale). The source changes
+ * first — pending → superseded, conditional on status, with a
+ * `result.freshness_retire` marker — so manager-brief synthesis (which reads
+ * pending suggestions) can no longer pick it up. Then the inbox row expires with
+ * source_status `freshness_retired`, which a later resync preserves. If the
+ * inbox row moved in between, the source change is compensated.
+ */
+export async function retireInboxSourceForFreshness(params: {
+	supabase: AnySupabase;
+	inboxItemId: string;
+	flagId: string;
+	/** Code-authored reason; stored as the inbox row's blocked_reason. */
+	reason: string;
+	/** Optional guard: the item must belong to this project. */
+	projectId?: string;
+}): Promise<RetireInboxSourceForFreshnessResult> {
+	const db = params.supabase as any;
+	const { data: item, error: itemError } = await db
+		.from('inbox_items')
+		.select('id, source_type, source_ref_id, project_id, audience, status')
+		.eq('id', params.inboxItemId)
+		.maybeSingle();
+	if (itemError) throw itemError;
+	if (!item) return { ok: false, reason: 'not_found' };
+	const previousInboxStatus = asString(item.status);
+	if (
+		item.source_type !== 'project_suggestion' ||
+		item.audience !== 'project_members' ||
+		!previousInboxStatus ||
+		!RETIRABLE_INBOX_STATUSES.includes(previousInboxStatus) ||
+		(params.projectId !== undefined && item.project_id !== params.projectId)
+	) {
+		return { ok: false, reason: 'not_eligible' };
+	}
+
+	const suggestionId = asString(item.source_ref_id);
+	if (!suggestionId) return { ok: false, reason: 'not_eligible' };
+	const { data: suggestion, error: suggestionError } = await db
+		.from('project_suggestions')
+		.select('id, kind, status, freshness_state, result')
+		.eq('id', suggestionId)
+		.maybeSingle();
+	if (suggestionError) throw suggestionError;
+	if (!suggestion) return { ok: false, reason: 'not_found' };
+	if (suggestion.kind === FRESHNESS_UPDATE_KIND) return { ok: false, reason: 'not_eligible' };
+	if (suggestion.status !== 'pending') return { ok: false, reason: 'source_changed' };
+
+	const retiredAt = new Date().toISOString();
+	const previousResult = asRecord(suggestion.result);
+	const previousFreshnessState = asString(suggestion.freshness_state);
+	const { data: superseded, error: supersedeError } = await db
+		.from('project_suggestions')
+		.update({
+			status: 'superseded',
+			freshness_state: 'stale',
+			result: {
+				...(previousResult ?? {}),
+				freshness_retire: {
+					flag_id: params.flagId,
+					reason: params.reason,
+					retired_at: retiredAt,
+					previous_freshness_state: previousFreshnessState
+				}
+			}
+		})
+		.eq('id', suggestionId)
+		.eq('status', 'pending')
+		.select('id')
+		.maybeSingle();
+	if (supersedeError) throw supersedeError;
+	if (!superseded) return { ok: false, reason: 'source_changed' };
+
+	const { data: expired, error: expireError } = await db
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: FRESHNESS_RETIRED_SOURCE_STATUS,
+			blocked_reason: params.reason,
+			expires_at: retiredAt,
+			decided_at: retiredAt,
+			snoozed_until: null
+		})
+		.eq('id', params.inboxItemId)
+		.in('status', RETIRABLE_INBOX_STATUSES)
+		.select('*')
+		.maybeSingle();
+	if (expireError) throw expireError;
+	if (!expired) {
+		const { error: revertError } = await db
+			.from('project_suggestions')
+			.update({
+				status: 'pending',
+				freshness_state: previousFreshnessState ?? 'unknown',
+				result: previousResult
+			})
+			.eq('id', suggestionId)
+			.eq('status', 'superseded')
+			.select('id')
+			.maybeSingle();
+		if (revertError) throw revertError;
+		return { ok: false, reason: 'inbox_changed' };
+	}
+
+	return {
+		ok: true,
+		undo: {
+			kind: 'inbox_retire',
+			suggestionId,
+			inboxItemId: params.inboxItemId,
+			previousSuggestionStatus: 'pending',
+			previousInboxStatus: previousInboxStatus as 'pending' | 'deferred'
+		},
+		inboxItem: expired as InboxIndexRow
+	};
+}
+
+/**
+ * Undo retireInboxSourceForFreshness: restore the suggestion (superseded →
+ * pending) only if it still carries this flag's retire marker, reopen the inbox
+ * row, resync it (which re-verifies executable operations) and reapply the
+ * project attention budget.
+ */
+export async function restoreFreshnessRetiredInboxSource(params: {
+	supabase: AnySupabase;
+	undo: FreshnessInboxRetireUndo;
+	flagId: string;
+}): Promise<RestoreFreshnessRetiredInboxSourceResult> {
+	const db = params.supabase as any;
+	const { data: suggestion, error } = await db
+		.from('project_suggestions')
+		.select('id, project_id, status, result')
+		.eq('id', params.undo.suggestionId)
+		.maybeSingle();
+	if (error) throw error;
+	if (!suggestion) return { ok: false, reason: 'not_found' };
+	const result = asRecord(suggestion.result);
+	const marker = asRecord(result?.freshness_retire);
+	if (suggestion.status !== 'superseded' || asString(marker?.flag_id) !== params.flagId) {
+		return { ok: false, reason: 'changed_since' };
+	}
+	const { freshness_retire: _marker, ...restResult } = result ?? {};
+	const { data: restored, error: restoreError } = await db
+		.from('project_suggestions')
+		.update({
+			status: params.undo.previousSuggestionStatus,
+			freshness_state: asString(marker?.previous_freshness_state) ?? 'unknown',
+			result: Object.keys(restResult).length ? restResult : null
+		})
+		.eq('id', params.undo.suggestionId)
+		.eq('status', 'superseded')
+		.select('id')
+		.maybeSingle();
+	if (restoreError) throw restoreError;
+	if (!restored) return { ok: false, reason: 'changed_since' };
+
+	// Clear the retirement so the resync below treats the row as live again.
+	const { error: reopenError } = await db
+		.from('inbox_items')
+		.update({
+			status: params.undo.previousInboxStatus,
+			source_status: params.undo.previousSuggestionStatus,
+			blocked_reason: null,
+			expires_at: null,
+			decided_at: null
+		})
+		.eq('id', params.undo.inboxItemId)
+		.eq('source_status', FRESHNESS_RETIRED_SOURCE_STATUS)
+		.select('id')
+		.maybeSingle();
+	if (reopenError) throw reopenError;
+
+	const inboxItem = await syncInboxItemForProjectSuggestion({
+		supabase: params.supabase,
+		suggestionId: params.undo.suggestionId
+	});
+	const projectId = asString(suggestion.project_id);
+	if (projectId) await applyProjectAttentionBudget({ supabase: params.supabase, projectId });
+	return { ok: true, inboxItem };
+}
+
+/**
+ * Mark (or clear) the radar's "possibly stale" tag on one inbox item. The note
+ * is the caller's: the user's own excerpt only for `audience='user'` items,
+ * otherwise a code-authored phrase. Resyncs never clear these columns.
+ */
+export async function markInboxItemFreshness(params: {
+	supabase: AnySupabase;
+	inboxItemId: string;
+	state: InboxFreshnessState;
+	note?: string | null;
+	flagId?: string | null;
+	checkedAt?: string;
+}): Promise<InboxIndexRow | null> {
+	const { data, error } = await (params.supabase as any)
+		.from('inbox_items')
+		.update({
+			freshness_state: params.state,
+			freshness_note: params.state === 'fresh' ? null : compactText(params.note, 280),
+			freshness_flag_id: params.flagId ?? null,
+			freshness_checked_at: params.checkedAt ?? new Date().toISOString()
+		})
+		.eq('id', params.inboxItemId)
+		.select('*')
+		.maybeSingle();
+	if (error) throw error;
+	return (data ?? null) as InboxIndexRow | null;
 }
 
 export async function syncInboxItemForSource(params: {

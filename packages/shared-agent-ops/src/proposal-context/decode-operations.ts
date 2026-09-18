@@ -10,7 +10,13 @@ export type LoopOperationAction =
 	| 'unlink'
 	| 'other';
 
-export type DecodedLoopOperationFieldChange = { label: string; value: string };
+export type DecodedLoopOperationFieldChange = {
+	label: string;
+	/** The proposed value. */
+	value: string;
+	/** The verified current value, when a scalar field is decoded against live state. */
+	before?: string;
+};
 
 export type DecodedLoopOperation = {
 	action: LoopOperationAction;
@@ -59,8 +65,14 @@ const fieldLabel: Record<string, string> = {
 	description: 'Description',
 	priority: 'Priority',
 	start_date: 'Start date',
-	due_date: 'Due date'
+	due_date: 'Due date',
+	start_at: 'Start date',
+	due_at: 'Due date',
+	target_date: 'Target date'
 };
+
+// Scalar update_* arguments that write a field directly (outside `props`).
+const SCALAR_UPDATE_ARGS = ['state_key', 'due_at', 'start_at', 'target_date'] as const;
 
 export function humanizeLoopOperationKey(key: string): string {
 	if (fieldLabel[key]) return fieldLabel[key];
@@ -123,6 +135,18 @@ export function decodeLoopOperation(op: LoopOperation): DecodedLoopOperation {
 			changes.push({
 				label: humanizeLoopOperationKey(key),
 				value: formatLoopOperationValue(value)
+			});
+		}
+	}
+
+	// Scalar fields written directly by update_* operations.
+	if (action === 'update') {
+		for (const key of SCALAR_UPDATE_ARGS) {
+			if (!Object.prototype.hasOwnProperty.call(args, key) || args[key] === undefined)
+				continue;
+			changes.push({
+				label: humanizeLoopOperationKey(key),
+				value: formatLoopOperationValue(args[key])
 			});
 		}
 	}
