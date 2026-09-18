@@ -14,7 +14,8 @@ const AGENTIC_CHAT_SOURCE_DIR = fileURLToPath(
 
 const FENCED_WRITE_MODULE_USAGE_COUNTS = Object.freeze({
 	effectControl: 3,
-	executionControl: 3,
+	// Tasker 87 added the fenced read-only workflow recovery (`recoverWorkflow`).
+	executionControl: 4,
 	executionObservation: 1,
 	promptSnapshot: 1,
 	researchCapture: 2,

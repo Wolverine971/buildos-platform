@@ -677,6 +677,25 @@ export class AgenticChatStreamPublisher {
 		return this.deliverPersisted(state, receipt, options.committedThroughSequence ?? null);
 	}
 
+	/**
+	 * Deliver a text batch another writer already committed (Tasker 87's fenced
+	 * workflow answer writer). Same drained-slot and exact-sequence rules as
+	 * `publishCommittedSemantic`; the ordinary text queue is not involved.
+	 */
+	publishCommittedText(
+		turnRunId: string,
+		receipt: Extract<
+			AgenticChatTextBatchRpcResultV1,
+			{ outcome: 'persisted' | 'already_persisted' }
+		>
+	): Promise<AgenticChatPublisherDeliveryV1> {
+		const state = this.requireTurn(turnRunId);
+		if (this.pendingEventCount(state) || state.busy || state.deliveryBusy) {
+			throw new Error('Committed text publication requires a fully drained write slot');
+		}
+		return this.deliverPersisted(state, receipt, null);
+	}
+
 	async publishTerminal(
 		turnRunId: string,
 		receipt: AgenticChatTerminalReceiptV1,

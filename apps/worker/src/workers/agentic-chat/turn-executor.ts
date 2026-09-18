@@ -103,6 +103,7 @@ import {
 } from './toolExecutionGraph';
 import { resolveAgenticChatToolExecutionPolicyV1 } from './toolExecutionPolicy';
 import { deriveAgenticChatReadPlanningIdentityV1 } from './readPlanningTelemetry';
+import type { AgenticChatRawWorkflowTurnPortV1 } from './workflow/raw-turn-preparation';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
@@ -319,6 +320,8 @@ export class AgenticChatTurnExecutor {
 			toolExecutions: AgenticChatToolExecutionPortV1;
 			sessionHandoff: AgenticChatSessionHandoffPortV1;
 			mutation: MutationPort;
+			/** Tasker 86: default-off preparation for `agentic_chat_input_v4` turns. */
+			rawWorkflow?: AgenticChatRawWorkflowTurnPortV1;
 			createId?: () => string;
 			timingClock?: AgenticChatMonotonicClockV1;
 		},
@@ -455,9 +458,30 @@ export class AgenticChatTurnExecutor {
 
 		try {
 			throwIfAborted(combined.signal);
-			executionInput = await this.awaitOverhead(combined.signal, 'execution input load', () =>
-				this.ports.input.load(executableClaim)
-			);
+			try {
+				executionInput = await this.awaitOverhead(
+					combined.signal,
+					'execution input load',
+					() => this.ports.input.load(executableClaim)
+				);
+			} catch (error) {
+				// Tasker 86: a raw v4 request has no prepared prompt. When workflow
+				// preparation is wired, it owns the claimed turn from here; otherwise
+				// the original refusal keeps the existing permanent-failure path.
+				if (
+					this.ports.rawWorkflow &&
+					error instanceof AgenticChatExecutionInputError &&
+					error.code === 'raw_workflow_input_requires_preparation'
+				) {
+					return await this.ports.rawWorkflow.execute({
+						envelope,
+						claim: executableClaim,
+						signal: combined.signal,
+						invocationDeadlineAtMs: providerBudgetDeadlineAtMs
+					});
+				}
+				throw error;
+			}
 			throwIfAborted(combined.signal);
 
 			this.ports.publisher.registerTurn({

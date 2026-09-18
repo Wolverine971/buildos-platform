@@ -108,7 +108,8 @@ export class SupabaseAgenticChatStalledCandidateSource
 type RecoveryControlPort = Pick<
 	AgenticChatExecutionControlPortV1,
 	'claim' | 'recover' | 'finalize'
->;
+> &
+	Partial<Pick<AgenticChatExecutionControlPortV1, 'recoverWorkflow'>>;
 
 export type AgenticChatStalledRecoveryOutcomeV1 =
 	| 'requeued'
@@ -364,8 +365,14 @@ export class AgenticChatStalledRecoverySweep {
 			if (generation < 1) {
 				return recoveryResult(candidate, generation, 'manual_recovery_required');
 			}
-			const failureClass = claimFailureClass(claim);
-			return await this.converge(candidate, claim, failureClass);
+			const workflow = await this.recoverWorkflow(candidate, claim, claimFailureClass(claim));
+			if (workflow.result) return workflow.result;
+			return await this.converge(
+				candidate,
+				claim,
+				workflow.failureClass,
+				workflow.terminalFailureCode
+			);
 		} catch (error) {
 			return recoveryResult(
 				candidate,
@@ -376,10 +383,72 @@ export class AgenticChatStalledRecoverySweep {
 		}
 	}
 
+	/**
+	 * Enforced read-only workflow turns (Tasker 85/87) try their atomic recovery first.
+	 * Every ordinary turn returns `policy_denied` and continues through the unchanged
+	 * ordinary recovery below. A workflow turn that may not retry is finalized as failed
+	 * with its workflow reason; it never falls back to ordinary pre-start retry.
+	 */
+	private async recoverWorkflow(
+		candidate: AgenticChatStalledCandidateV1,
+		claim: AgenticChatTurnClaimResultV1,
+		failureClass: AgenticChatRecoveryFailureClassV1
+	): Promise<{
+		result?: AgenticChatStalledRecoveryResultV1;
+		failureClass: AgenticChatRecoveryFailureClassV1;
+		terminalFailureCode?: string;
+	}> {
+		const control = this.ports.control;
+		if (!control.recoverWorkflow || claim.outcome === 'already_terminal')
+			return { failureClass };
+		let receipt;
+		try {
+			receipt = await control.recoverWorkflow({
+				turnRunId: candidate.turnRunId,
+				queueJobId: candidate.queueJobId,
+				processingToken: candidate.processingToken,
+				executionGeneration: claim.executionGeneration,
+				failureClass,
+				errorMessage: 'Agentic Chat worker interrupted while queue ownership was stalled'
+			});
+		} catch {
+			// Nothing committed; the ordinary recovery path stays authoritative.
+			return { failureClass };
+		}
+		const generation = claim.executionGeneration;
+		switch (receipt.outcome) {
+			case 'retry_scheduled':
+			case 'already_requeued':
+				return { result: recoveryResult(candidate, generation, 'requeued'), failureClass };
+			case 'terminal_reconciled':
+				return {
+					result: recoveryResult(candidate, generation, 'terminal_reconciled'),
+					failureClass
+				};
+			case 'stale_generation':
+			case 'ownership_lost':
+				return {
+					result: recoveryResult(candidate, generation, 'stale_owner'),
+					failureClass
+				};
+			case 'policy_denied':
+				return { failureClass };
+			case 'cancel_requested':
+				return { failureClass: 'cancelled' };
+			default:
+				// deadline, budget, attempts, access, or a non-retryable class: terminal.
+				return {
+					failureClass: 'permanent',
+					terminalFailureCode: `workflow_${receipt.outcome}`
+				};
+		}
+	}
+
 	private async converge(
 		candidate: AgenticChatStalledCandidateV1,
 		claim: AgenticChatTurnClaimResultV1,
-		initialFailureClass: AgenticChatRecoveryFailureClassV1
+		initialFailureClass: AgenticChatRecoveryFailureClassV1,
+		terminalFailureCode?: string
 	): Promise<AgenticChatStalledRecoveryResultV1> {
 		let failureClass = initialFailureClass;
 		let lastConvergenceError: string | null = null;
@@ -437,7 +506,14 @@ export class AgenticChatStalledRecoverySweep {
 			let terminal: AgenticChatTerminalFinalizeRpcResultV1;
 			try {
 				terminal = await this.ports.control.finalize(
-					buildTerminalInput(candidate, snapshot, status, recovery.failure_code)
+					buildTerminalInput(
+						candidate,
+						snapshot,
+						status,
+						status === 'failed' && terminalFailureCode
+							? terminalFailureCode
+							: recovery.failure_code
+					)
 				);
 			} catch (error) {
 				// A lost finalize response is resolved by the next recovery call.
@@ -486,7 +562,7 @@ function buildTerminalInput(
 	candidate: AgenticChatStalledCandidateV1,
 	snapshot: Awaited<ReturnType<AgenticChatRecoverySnapshotPortV1['load']>>,
 	status: Extract<ChatTurnTerminalStatusV1, 'failed' | 'cancelled'>,
-	failureCode: AgenticChatRecoveryRpcResultV1['failure_code']
+	failureCode: AgenticChatRecoveryRpcResultV1['failure_code'] | string
 ): AgenticChatTerminalFinalizeInputV1 {
 	const normalizedFailureCode = failureCode ?? (status === 'cancelled' ? 'cancelled' : 'unknown');
 	return {

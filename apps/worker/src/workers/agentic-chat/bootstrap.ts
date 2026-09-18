@@ -25,6 +25,11 @@ import {
 } from './mutationToolCatalog';
 import { createAgenticChatCompositionRoot } from './composition-root';
 import { JevToolSelector } from './provider/jev-tool-selector';
+import {
+	AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS,
+	AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS,
+	buildAgenticChatWorkflowRoutesV1
+} from './workflow/workflow-dispatch';
 import { AgenticChatTurnActivityRegistry, withAgenticChatTurnActivityV1 } from './deliveryHealth';
 import { type AgenticChatConfig, loadAgenticChatConfig } from './config';
 import {
@@ -397,6 +402,16 @@ function createDefaultComposition(
 					usage: usageLogger,
 					onUsageError: input.onUsageError
 				});
+	// Tasker 87: a separate client whose routes use only priced workflow models.
+	const workflowExecutionEnabled = input.config.workflowV4ExecutionEnabled === true;
+	const workflowClient = workflowExecutionEnabled
+		? new AgenticChatOpenRouterClient(clientPorts, {
+				...clientOptions,
+				routes: buildAgenticChatWorkflowRoutesV1(input.config.provider.routes),
+				requestTimeoutMs: AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS,
+				responseHeadersTimeoutMs: AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS
+			})
+		: undefined;
 	return createAgenticChatCompositionRoot({
 		client: input.client,
 		providerClient,
@@ -404,6 +419,11 @@ function createDefaultComposition(
 		...(toolSelector ? { toolSelector } : {}),
 		providerConfigured: true,
 		workflowPrototypeUserIds: input.config.workflowPrototypeUserIds,
+		workflowV4: {
+			preparationEnabled: input.config.workflowV4PreparationEnabled === true,
+			executionEnabled: workflowExecutionEnabled,
+			runnerClient: workflowClient
+		},
 		liveVisionEnabled: input.config.liveVisionEnabled,
 		consumptionBillingEnabled: input.config.consumptionBillingEnabled,
 		mutationCapabilities: ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,

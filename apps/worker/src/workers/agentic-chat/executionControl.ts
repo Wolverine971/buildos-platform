@@ -12,6 +12,10 @@ import {
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
 import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
+import {
+	type AgenticChatWorkflowRecoveryReceiptV1,
+	parseAgenticChatWorkflowRecoveryReceiptV1
+} from './workflow/workflow-store';
 
 type RpcError = { code?: string; message: string };
 type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }>;
@@ -68,6 +72,17 @@ export type AgenticChatExecutionControlPortV1 = {
 		processingToken: string;
 		result: JsonObject;
 	}): Promise<boolean>;
+	/**
+	 * Tasker 85/87 read-only workflow recovery. It returns `policy_denied` for every
+	 * ordinary turn, whose recovery stays with `recover` and its unchanged policy.
+	 */
+	recoverWorkflow?(
+		input: AgenticChatExecutionIdentityV1 & {
+			executionGeneration: number;
+			failureClass: AgenticChatRecoveryFailureClassV1;
+			errorMessage: string | null;
+		}
+	): Promise<AgenticChatWorkflowRecoveryReceiptV1>;
 };
 
 export class AgenticChatExecutionControlRpcError extends Error {
@@ -152,6 +167,31 @@ export class SupabaseAgenticChatExecutionControlAdapter
 			p_error_message: input.errorMessage
 		});
 		return parseRecoveryReceipt(value, input);
+	}
+
+	async recoverWorkflow(
+		input: AgenticChatExecutionIdentityV1 & {
+			executionGeneration: number;
+			failureClass: AgenticChatRecoveryFailureClassV1;
+			errorMessage: string | null;
+		}
+	): Promise<AgenticChatWorkflowRecoveryReceiptV1> {
+		validateExecutionIdentity(input);
+		positiveInteger(input.executionGeneration, 'executionGeneration');
+		if (!isFailureClass(input.failureClass)) throw protocolError('failure class is invalid');
+		if (input.errorMessage !== null && !canonicalText(input.errorMessage, 2_000)) {
+			throw protocolError('recovery error message is invalid');
+		}
+		const value = await this.call('recover_agentic_chat_workflow_turn_v1', {
+			...agenticChatGenerationWriteFenceArgsV1(input),
+			p_failure_class: input.failureClass,
+			p_error_message: input.errorMessage
+		});
+		const receipt = parseAgenticChatWorkflowRecoveryReceiptV1(value);
+		if (receipt.raw.turn_run_id !== input.turnRunId) {
+			throw protocolError('workflow recovery receipt names another turn');
+		}
+		return receipt;
 	}
 
 	async finalize(

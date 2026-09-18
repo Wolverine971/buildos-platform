@@ -1,5 +1,11 @@
 // apps/worker/src/workers/agentic-chat/workflow/role-report.ts
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
+import type {
+	AgenticChatWorkflowEvidenceRefV1,
+	AgenticChatWorkflowEvidenceVersionV1,
+	AgenticChatWorkflowRoleReportV1,
+	JsonObject
+} from '@buildos/shared-types';
 
 /**
  * Tasker 83 bounded role contract for the read-only project review.
@@ -289,6 +295,109 @@ export function workflowReportForEditor(report: ChatWorkflowRoleReportV1) {
 		unknowns: report.unknowns,
 		recommendation: report.recommendation
 	};
+}
+
+/**
+ * Durable evidence (Tasker 85/87): a report may cite only records in the accepted
+ * context's `evidenceVersions`, and each reference carries that record's version.
+ * Labels come from the accepted payload when it names the record, else its kind and id.
+ */
+export type ChatWorkflowDurableEvidenceIndex = ReadonlyMap<
+	string,
+	{ kind: string; version: string; label: string }
+>;
+
+/**
+ * The durable evidence index from Tasker 86's model input: the accepted evidence
+ * versions with their display labels, bounded to the durable label limit.
+ */
+export function durableEvidenceIndexFromModelInputV1(
+	evidence: ReadonlyMap<string, { recordKind: string; version: string; label: string }>
+): ChatWorkflowDurableEvidenceIndex {
+	const index = new Map<string, { kind: string; version: string; label: string }>();
+	for (const [id, entry] of evidence) {
+		index.set(id, {
+			kind: entry.recordKind,
+			version: entry.version,
+			label: boundLabel(entry.label)
+		});
+	}
+	return index;
+}
+
+/** The label map the 83 validator consumes, restricted to accepted evidence. */
+export function durableEvidenceLabels(
+	index: ChatWorkflowDurableEvidenceIndex
+): Map<string, string> {
+	return new Map([...index].map(([id, entry]) => [id, entry.label]));
+}
+
+/** Adds each accepted reference's durable kind and version (SQL re-checks both). */
+export function toDurableWorkflowRoleReport(
+	report: ChatWorkflowRoleReportV1,
+	index: ChatWorkflowDurableEvidenceIndex
+): AgenticChatWorkflowRoleReportV1 {
+	const refs = (items: ChatWorkflowEvidenceRef[]): AgenticChatWorkflowEvidenceRefV1[] =>
+		items.flatMap((ref) => {
+			const entry = index.get(ref.id);
+			return entry
+				? [
+						{
+							kind: 'project_record' as const,
+							id: ref.id,
+							version: entry.version,
+							label: entry.label
+						}
+					]
+				: [];
+		});
+	return {
+		version: report.version,
+		role: report.role,
+		summary: report.summary,
+		findings: report.findings.map((finding) => ({
+			claim: finding.claim,
+			basis: finding.basis,
+			evidence: refs(finding.evidence)
+		})),
+		risks: report.risks.map((risk) => ({ risk: risk.risk, evidence: refs(risk.evidence) })),
+		unknowns: [...report.unknowns],
+		recommendation: report.recommendation,
+		unsupportedReferences: report.unsupportedReferences,
+		unsupportedFindings: report.unsupportedFindings
+	};
+}
+
+/** Reads an accepted durable report back into the renderer's shape. */
+export function fromDurableWorkflowRoleReport(
+	report: AgenticChatWorkflowRoleReportV1
+): ChatWorkflowRoleReportV1 {
+	const refs = (items: AgenticChatWorkflowEvidenceRefV1[]) =>
+		items.map((ref) => ({ id: ref.id, label: ref.label }));
+	return {
+		version: CHAT_WORKFLOW_ROLE_REPORT_VERSION,
+		role: report.role,
+		summary: report.summary,
+		findings: report.findings.map((finding) => ({
+			claim: finding.claim,
+			basis: finding.basis,
+			evidence: refs(finding.evidence)
+		})),
+		risks: report.risks.map((risk) => ({ risk: risk.risk, evidence: refs(risk.evidence) })),
+		unknowns: [...report.unknowns],
+		recommendation: report.recommendation,
+		unsupportedReferences: report.unsupportedReferences,
+		unsupportedFindings: report.unsupportedFindings
+	};
+}
+
+/** SQL bounds evidence labels at 80 code points, including the kind prefix. */
+function boundLabel(value: string): string {
+	const points = Array.from(value.trim().replace(/\s+/g, ' '));
+	if (!points.length) return 'record';
+	return points.length > LABEL_CHARS
+		? `${points.slice(0, LABEL_CHARS - 1).join('')}…`
+		: value.trim().replace(/\s+/g, ' ');
 }
 
 function invalid(reason: string): ChatWorkflowRoleReportParseResult {

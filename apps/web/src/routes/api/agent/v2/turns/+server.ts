@@ -31,6 +31,8 @@ import { consumeAgenticChatTurnRateLimit } from '$lib/server/agentic-chat-turn-r
 
 const logger = createLogger('API:AgentWorkerTurnsV2');
 import { workerAdmissionRequestSchema } from './worker-admission-schema';
+import { admitWorkflowReviewTurnIfEligible } from './workflow-review-admission';
+import type { AgenticChatWorkflowV4AdmissionRpcClient } from '$lib/services/agentic-chat-v2/worker-turn-workflow-admission.server';
 
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -122,6 +124,20 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		);
 	}
 	const serviceClient = createAdminSupabaseClient();
+	// Tasker 86: an eligible explicit project review is saved raw in one RPC;
+	// null keeps every other turn on the unchanged ordinary path below.
+	const workflowReview = await admitWorkflowReviewTurnIfEligible({
+		environment: {
+			AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED:
+				env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED,
+			AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS: env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS
+		},
+		userId: user.id,
+		command: parsed.data,
+		transportDecisionId: lease.decisionId,
+		client: serviceClient as unknown as AgenticChatWorkflowV4AdmissionRpcClient
+	});
+	if (workflowReview) return privateResponse(workflowReview);
 	try {
 		const command = {
 			clientTurnId: parsed.data.clientTurnId,

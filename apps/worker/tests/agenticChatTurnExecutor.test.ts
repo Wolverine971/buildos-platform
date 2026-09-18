@@ -26,6 +26,7 @@ import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancel
 import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/executionControl';
 import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
 import { AgenticChatExecutionInputError } from '../src/workers/agentic-chat/executionInput';
+import type { AgenticChatRawWorkflowTurnPortV1 } from '../src/workers/agentic-chat/workflow/raw-turn-preparation';
 import { createStableAgenticChatEffectIdentityV1 } from '../src/workers/agentic-chat/effectIdentity';
 import {
 	AgenticChatEffectExecutionError,
@@ -281,6 +282,7 @@ function createHarness(
 		beforeFlushTextBatches?: (inputs: Array<Record<string, unknown>>) => Promise<void>;
 		beforePersistSemantic?: (input: Record<string, unknown>) => Promise<void>;
 		beforeBroadcast?: (message: Record<string, unknown>) => Promise<void>;
+		rawWorkflow?: AgenticChatRawWorkflowTurnPortV1;
 	} = {}
 ) {
 	let sequence = 0;
@@ -790,6 +792,7 @@ function createHarness(
 			statedFutureCapture,
 			consumptionBilling,
 			mutation,
+			rawWorkflow: options.rawWorkflow,
 			createId: () => ASSISTANT_MESSAGE_ID,
 			timingClock: timingClockValues
 				? {
@@ -4736,6 +4739,98 @@ describe('AgenticChatTurnExecutor', () => {
 			retry_classification: 'transient_safe',
 			execution_started: false
 		});
+		await harness.publisher.stop();
+	});
+
+	it('keeps the pre-86 permanent refusal for raw v4 input when workflow preparation is off', async () => {
+		const harness = createHarness([], {
+			recovery: [recoveryReceipt('finalize_failed')]
+		});
+		harness.input.load.mockRejectedValueOnce(
+			new AgenticChatExecutionInputError(
+				'raw_workflow_input_requires_preparation',
+				'Raw workflow input must be prepared by the workflow runner before provider execution'
+			)
+		);
+		const processingJob = job();
+
+		await harness.executor.execute(processingJob);
+
+		expect(harness.control.recover).toHaveBeenCalledWith(
+			expect.objectContaining({ failureClass: 'permanent' })
+		);
+		expect(harness.control.begin).not.toHaveBeenCalled();
+		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+			execution_error_code: 'raw_workflow_input_requires_preparation',
+			failure_class: 'permanent',
+			execution_started: false
+		});
+		await harness.publisher.stop();
+	});
+
+	it('hands a claimed raw v4 turn to workflow preparation without touching the provider path', async () => {
+		const rawWorkflow = {
+			execute: vi.fn<AgenticChatRawWorkflowTurnPortV1['execute']>(async (input) => ({
+				outcome: 'failed' as const,
+				turnRunId: input.claim.turnRunId,
+				executionGeneration: input.claim.executionGeneration,
+				terminalStatus: 'failed' as const,
+				queueReconciled: true
+			}))
+		};
+		const harness = createHarness([], { rawWorkflow });
+		harness.input.load.mockRejectedValueOnce(
+			new AgenticChatExecutionInputError(
+				'raw_workflow_input_requires_preparation',
+				'Raw workflow input must be prepared by the workflow runner before provider execution'
+			)
+		);
+		const startedAt = Date.now();
+
+		await expect(harness.executor.execute(job())).resolves.toEqual({
+			outcome: 'failed',
+			turnRunId: TURN_RUN_ID,
+			executionGeneration: EXECUTION_GENERATION,
+			terminalStatus: 'failed',
+			queueReconciled: true
+		});
+		expect(rawWorkflow.execute).toHaveBeenCalledOnce();
+		const input = rawWorkflow.execute.mock.calls[0]![0];
+		expect(input).toMatchObject({
+			envelope: { turnRunId: TURN_RUN_ID, queueJobId: QUEUE_JOB_ID },
+			claim: { turnRunId: TURN_RUN_ID, executionGeneration: EXECUTION_GENERATION }
+		});
+		expect(input.signal).toBeInstanceOf(AbortSignal);
+		expect(input.invocationDeadlineAtMs).toBeGreaterThanOrEqual(startedAt);
+		expect(harness.control.begin).not.toHaveBeenCalled();
+		expect(harness.control.recover).not.toHaveBeenCalled();
+		expect(harness.control.finalize).not.toHaveBeenCalled();
+		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(harness.cancellation.unregisterTurn).toHaveBeenCalledWith(
+			TURN_RUN_ID,
+			EXECUTION_GENERATION
+		);
+		await harness.publisher.stop();
+	});
+
+	it('never routes an ordinary input failure to workflow preparation', async () => {
+		const rawWorkflow = { execute: vi.fn<AgenticChatRawWorkflowTurnPortV1['execute']>() };
+		const harness = createHarness([], {
+			rawWorkflow,
+			recovery: [recoveryReceipt('retry_scheduled')]
+		});
+		harness.input.load.mockRejectedValueOnce(
+			new AgenticChatExecutionInputError('database_error', 'temporary database error')
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'requeued'
+		});
+		expect(rawWorkflow.execute).not.toHaveBeenCalled();
+		expect(harness.control.recover).toHaveBeenCalledWith(
+			expect.objectContaining({ failureClass: 'transient_infra' })
+		);
 		await harness.publisher.stop();
 	});
 

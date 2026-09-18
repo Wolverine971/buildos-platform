@@ -40,6 +40,8 @@ Follow the user's question within your assigned role. You have no tools and cann
 edit records, send messages, browse the web, or claim those actions happened.
 Separate recorded facts, interpretations, and unknowns. Cite records by their supplied
 IDs and names. Give concise findings, not private reasoning or a transcript of thinking.`;
+/** Shared with the durable workflow runner so both lanes send identical read-only rules. */
+export const WORKFLOW_RULES = RULES;
 
 type Assignment = { analyst: string; reviewer: string };
 type Ports = {
