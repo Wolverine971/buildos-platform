@@ -108,6 +108,7 @@ function run(
 		prefilter: { ...features, rank: index }
 	}));
 	return combineEntityDecisions({
+		projectId: 'p1',
 		entities: inputs,
 		answers,
 		dateMentions: [mention],
@@ -157,7 +158,7 @@ describe('threshold matrix', () => {
 		});
 		expect(auto.proposal?.operation).toEqual({
 			tool: 'update_onto_task',
-			args: { task_id: 't-deck', state_key: 'done' },
+			args: { task_id: 't-deck', project_id: 'p1', state_key: 'done' },
 			label: 'Mark "Investor deck" done'
 		});
 		expect(auto.evidence).toMatchObject({
@@ -261,6 +262,7 @@ describe('auto-apply allowlist and rules', () => {
 		expect(decision.proposal?.operation.tool).toBe('update_onto_goal');
 		expect(
 			buildProposal({
+				projectId: 'p1',
 				candidate: { ...deck, state: 'done' },
 				changeKind: 'mark_done',
 				dateMention: null
@@ -268,8 +270,12 @@ describe('auto-apply allowlist and rules', () => {
 		).toBeNull();
 		const blocked = candidate({ id: 't-b', title: 'Investor deck', state: 'blocked' });
 		expect(
-			buildProposal({ candidate: blocked, changeKind: 'mark_in_progress', dateMention: null })
-				?.to
+			buildProposal({
+				projectId: 'p1',
+				candidate: blocked,
+				changeKind: 'mark_in_progress',
+				dateMention: null
+			})?.to
 		).toBe('in_progress');
 		// blocked -> in_progress may be drafted, but is not on the auto-apply allowlist.
 		expect(

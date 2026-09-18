@@ -18,11 +18,11 @@ import type { JevChoiceAnswer, JevNoulAnswer, JevScoreAnswer } from '@buildos/sm
 import type { FreshnessDateMention, SourcedSentence } from './dates';
 import type { FreshnessPolicyV1 } from './freshnessPolicy';
 import {
+	type GroundingTargetState,
 	evidenceExcerpt,
 	looseGround,
 	strictGroundDueDate,
-	strictGroundStateChange,
-	type GroundingTargetState
+	strictGroundStateChange
 } from './grounding';
 import type { FreshnessCandidate, PrefilterFeatures } from './prefilter';
 import { r1QuestionKeys, r2QuestionKeys, r3QuestionKey } from './questions';
@@ -129,6 +129,7 @@ function toolFor(kind: FreshnessEntityKind): { tool: string; idArg: string } | n
 }
 
 export function buildProposal(params: {
+	projectId: string;
 	candidate: FreshnessCandidate;
 	changeKind: FreshnessChangeKind;
 	dateMention: FreshnessDateMention | null;
@@ -155,7 +156,11 @@ export function buildProposal(params: {
 			summary: `Mark ${STATE_LABEL[target] ?? target}`,
 			operation: {
 				tool: tool.tool,
-				args: { [tool.idArg]: candidate.id, state_key: target },
+				args: {
+					[tool.idArg]: candidate.id,
+					project_id: params.projectId,
+					state_key: target
+				},
 				label: `Mark ${quoted(title)} ${STATE_LABEL[target] ?? target}`
 			}
 		};
@@ -180,7 +185,7 @@ export function buildProposal(params: {
 		summary: `Move ${fieldLabel} to ${to}`,
 		operation: {
 			tool: tool.tool,
-			args: { [tool.idArg]: candidate.id, [field]: to },
+			args: { [tool.idArg]: candidate.id, project_id: params.projectId, [field]: to },
 			label: `Move the ${fieldLabel} of ${quoted(title)} to ${to}`
 		}
 	};
@@ -351,6 +356,7 @@ function checkAutoApply(params: {
  * auto-apply caps (over-cap candidates fall back to drafts).
  */
 export function combineEntityDecisions(params: {
+	projectId: string;
 	entities: readonly EntityDecisionInput[];
 	answers: AnswerMap;
 	dateMentions: readonly FreshnessDateMention[];
@@ -416,7 +422,9 @@ export function combineEntityDecisions(params: {
 			};
 		}
 
-		const proposal = changeKind ? buildProposal({ candidate, changeKind, dateMention }) : null;
+		const proposal = changeKind
+			? buildProposal({ projectId: params.projectId, candidate, changeKind, dateMention })
+			: null;
 		if (!proposal) {
 			return {
 				...base,

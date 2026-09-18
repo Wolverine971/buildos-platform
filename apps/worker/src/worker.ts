@@ -36,6 +36,7 @@ import { processAgentRunJob } from './workers/agent-run/agentRunWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
+import { processFreshnessRadarScanJob } from './workers/freshness-radar/signalJob';
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
 import { processQuestionTreeJob } from './workers/question-tree/questionTreeWorker';
 import type { QuestionTreeJobMetadata } from './workers/question-tree/questionTreeContracts';
@@ -469,6 +470,9 @@ export async function startWorker() {
 
 	// Register project loop (reconciliation suggestions) processor
 	queue.process('buildos_project_loop', processProjectLoop);
+
+	// Register Jev freshness radar (Tasker 88) processor; FRESHNESS_RADAR_MODE gates it.
+	queue.process('freshness_radar_scan', processFreshnessRadarScanJob);
 
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);

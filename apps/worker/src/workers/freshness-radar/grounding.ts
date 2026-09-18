@@ -10,10 +10,10 @@
 
 import { projectSuggestionTextNamesEntity } from '@buildos/shared-agent-ops/proposal-context';
 import {
+	type SourcedSentence,
 	addCivilDays,
 	countNonAbsoluteDateMentions,
-	parseAbsoluteDates,
-	type SourcedSentence
+	parseAbsoluteDates
 } from './dates';
 
 export type GroundingTargetState = 'done' | 'in_progress' | 'blocked';

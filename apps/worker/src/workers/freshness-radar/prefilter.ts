@@ -5,7 +5,7 @@
 // with recently updated entities so paraphrased mentions still get a chance.
 
 import type { FreshnessEntityKind } from '@buildos/shared-types';
-import { civilDaysBetween, type FreshnessDateMention } from './dates';
+import { type FreshnessDateMention, civilDaysBetween } from './dates';
 import { sentenceNamesEntity } from './grounding';
 import type { FreshnessPolicyV1 } from './freshnessPolicy';
 

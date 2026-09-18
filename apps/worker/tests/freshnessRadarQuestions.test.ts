@@ -64,7 +64,9 @@ describe('R1 staleness request', () => {
 			'stale_1',
 			'change_1'
 		]);
-		const stale = questions.stale_0 as { instructions: { question: string; rules: string[] } };
+		const stale = questions.stale_0 as unknown as {
+			instructions: { question: string; rules: string[] };
+		};
 		expect(stale.instructions.question).toContain('`entities[0]` (task "Investor \\"deck\\"")');
 		expect(stale.instructions.rules.at(-1)).toBe(RULE_DATA);
 		for (const question of Object.values(questions)) {
@@ -180,7 +182,10 @@ describe('R2 and R3 requests', () => {
 			]
 		});
 		expect(Object.keys(built.request!.questions)).toEqual(['track_0', 'evidence_0']);
-		const track = built.request!.questions.track_0 as { type: string; criteria: string[] };
+		const track = built.request!.questions.track_0 as unknown as {
+			type: string;
+			criteria: string[];
+		};
 		expect(track.type).toBe('score');
 		expect(track.criteria).toHaveLength(4);
 		expect(validateJevQuestions(built.request!.questions)).toBe(true);
