@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/config.ts
 import { parseChatWorkflowPrototypeUsers } from '@buildos/shared-types';
-import { UNION_ALPHA_MODEL } from '@buildos/smart-llm';
+import { PARETO_MODEL } from '@buildos/smart-llm';
 // apps/worker/src/workers/agentic-chat/config.ts
 
 import {
@@ -9,10 +9,12 @@ import {
 	validateAgenticChatConsumerConfig,
 	validateAgenticChatDrainTimeout
 } from './consumer';
-import type {
-	AgenticChatOpenAiCompatibleRouteV1,
-	AgenticChatOpenRouterProviderRoutingV1
+import {
+	DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS,
+	type AgenticChatOpenAiCompatibleRouteV1,
+	type AgenticChatOpenRouterProviderRoutingV1
 } from './provider/openrouter-client';
+import type { JevToolSelectionMode } from './provider/jev-tool-selector';
 import {
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY,
@@ -26,6 +28,7 @@ import {
 } from './streamPublisher';
 
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const PARETO_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
 // Provider preference for the acting model (DeepSeek v4 Flash), measured on
 // production passes 2026-09-04 to 09-09 (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
 // F78, lane K). Per-pass p50: DeepInfra 5.3 s, Alibaba 5.3 s, StreamLake 7.3 s
@@ -59,10 +62,10 @@ const DEFAULT_OPENROUTER_PROVIDER_ROUTING = Object.freeze({
 function resolveProviderRouting(
 	environment: Record<string, string | undefined>
 ): AgenticChatOpenRouterProviderRoutingV1 {
-	const isUnionAlpha = environment.AGENTIC_CHAT_OPENROUTER_MODEL?.trim() === UNION_ALPHA_MODEL;
-	// Union Alpha currently has one anonymous preview endpoint. Do not carry the
-	// DeepSeek-specific provider order/ignore policy into this local experiment.
-	if (isUnionAlpha) return { allow_fallbacks: true };
+	const isPareto = environment.AGENTIC_CHAT_OPENROUTER_MODEL?.trim() === PARETO_MODEL;
+	// Pareto has one Unbiased endpoint. Do not carry the DeepSeek-specific
+	// provider order/ignore policy into this explicit local quality experiment.
+	if (isPareto) return { allow_fallbacks: true };
 
 	const isV41 =
 		environment.AGENTIC_CHAT_OPENROUTER_MODEL?.trim() === 'deepseek/deepseek-v4.1-flash';
@@ -111,6 +114,8 @@ function resolveProviderRouting(
 
 export type AgenticChatProviderConfig = {
 	routes: readonly AgenticChatOpenAiCompatibleRouteV1[];
+	/** Acting-only response-header budget; reviewer clients keep their own default. */
+	responseHeadersTimeoutMs?: number;
 	/** Explicit reviewer policy; no implicit model fallbacks when configured. */
 	reviewer?: { model: string; fallbackModels: readonly string[] };
 };
@@ -124,6 +129,8 @@ type AgenticChatBaseConfig = {
 	providerBudgetMs: number;
 	maxProviderRounds: number;
 	mutationBatchLaneEnabled: boolean;
+	/** Jev opening-pass tool narrowing: on (default), shadow (log only), or off. */
+	jevToolSelection: 'off' | JevToolSelectionMode;
 	maxToolCalls: number;
 	maxToolConcurrency: number;
 };
@@ -208,6 +215,11 @@ export function loadAgenticChatConfig(
 		true,
 		'CHAT_MUTATION_BATCH_LANE'
 	);
+	// Jev opening-pass tool narrowing (docs/research/jev-tool-selection-2026-09-18).
+	// On by default: 0/64 eval misses, fail-open to the full surface, and the one-shot
+	// surface repair restores omitted tools. `shadow` logs the selection without
+	// changing the turn; `off` is the kill switch.
+	const jevToolSelection = parseJevToolSelection(environment.AGENTIC_CHAT_JEV_TOOL_SELECTION);
 	const maxToolCalls = parsePositiveInteger(
 		environment.CHAT_MAX_TOOL_CALLS,
 		DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
@@ -232,6 +244,7 @@ export function loadAgenticChatConfig(
 		providerBudgetMs,
 		maxProviderRounds,
 		mutationBatchLaneEnabled,
+		jevToolSelection,
 		maxToolCalls,
 		maxToolConcurrency,
 		provider: loadProviderConfig(environment)
@@ -326,6 +339,13 @@ function parseBoolean(value: string | undefined, fallback: boolean, name: string
 	throw new Error(`${name} must be exactly true or false`);
 }
 
+function parseJevToolSelection(value: string | undefined): 'off' | JevToolSelectionMode {
+	const normalized = value?.trim() ?? '';
+	if (normalized === '') return 'on';
+	if (normalized === 'off' || normalized === 'shadow' || normalized === 'on') return normalized;
+	throw new Error('AGENTIC_CHAT_JEV_TOOL_SELECTION must be exactly off, shadow, or on');
+}
+
 function parsePositiveInteger(value: string | undefined, fallback: number, name: string): number {
 	if (value === undefined || value.trim() === '') return fallback;
 	if (!/^\d+$/.test(value)) throw new Error(`${name} must be a positive integer`);
@@ -375,6 +395,10 @@ function loadProviderConfig(environment: NodeJS.ProcessEnv): AgenticChatProvider
 			: canonicalRequiredValue(reviewerModelValue, 'AGENTIC_CHAT_REVIEWER_MODEL', 256);
 	return Object.freeze({
 		routes: Object.freeze([route]),
+		responseHeadersTimeoutMs:
+			model === PARETO_MODEL
+				? PARETO_RESPONSE_HEADERS_TIMEOUT_MS
+				: DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS,
 		...(reviewerModel
 			? {
 					reviewer: Object.freeze({

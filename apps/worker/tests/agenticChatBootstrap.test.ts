@@ -357,7 +357,7 @@ describe('Agentic Chat operational bootstrap', () => {
 				config: expect.objectContaining({
 					enabled: true,
 					consumer: expect.objectContaining({ concurrency: 1 }),
-					provider: {
+					provider: expect.objectContaining({
 						routes: [
 							expect.objectContaining({
 								id: 'openrouter',
@@ -365,7 +365,7 @@ describe('Agentic Chat operational bootstrap', () => {
 								fallbackModels: ['provider/fallback']
 							})
 						]
-					}
+					})
 				}),
 				fetchImpl
 			})

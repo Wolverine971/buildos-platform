@@ -69,8 +69,17 @@ export type GatewayToolMaterialization = {
  * dead turn.
  *
  * Deliberately absent: deletes (`delete_onto_*`) and the contacts tools, which
- * have no worker execution adapter yet, and every relationship/graph tool.
- * Those stay discovery-only. The Gmail group is appended per turn by worker
+ * have no worker execution adapter yet, and the relationship readers without a
+ * worker read adapter (`get_entity_relationships`, `get_linked_entities`).
+ * Those stay discovery-only.
+ *
+ * 2026-09-18: the planning layer (goals, plans, milestones, risks, cross-entity
+ * search, tags, project edits) joined both surfaces. Every member already had a
+ * reviewed worker adapter; it stayed off because each schema was paid on every
+ * pass. The worker now asks Jev which schemas a message needs before the
+ * opening pass (apps/worker/.../provider/jev-tool-selector.ts), so a mounted but
+ * irrelevant schema costs ~nothing, and an omitted one is restored by the
+ * one-shot surface repair. The Gmail group is appended per turn by worker
  * admission from the user's mailbox state (A8): the read tools only when a
  * mailbox is connected, the OAuth handoff only when none is
  * (`getGatewayEmailSurfaceToolNames`).
@@ -120,7 +129,36 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	'get_calendar_event_details',
 	'create_calendar_event',
 	'update_calendar_event',
-	'delete_calendar_event'
+	'delete_calendar_event',
+	// Planning layer and cross-entity reach (2026-09-18, see above).
+	'list_onto_projects',
+	'search_onto_tasks',
+	'search_onto_documents',
+	'search_ontology',
+	'get_field_info',
+	'get_onto_project_graph',
+	'update_onto_project',
+	'tag_onto_entity',
+	'list_onto_goals',
+	'search_onto_goals',
+	'get_onto_goal_details',
+	'create_onto_goal',
+	'update_onto_goal',
+	'list_onto_plans',
+	'search_onto_plans',
+	'get_onto_plan_details',
+	'create_onto_plan',
+	'update_onto_plan',
+	'list_onto_milestones',
+	'search_onto_milestones',
+	'get_onto_milestone_details',
+	'create_onto_milestone',
+	'update_onto_milestone',
+	'list_onto_risks',
+	'search_onto_risks',
+	'get_onto_risk_details',
+	'create_onto_risk',
+	'update_onto_risk'
 ] as const;
 
 /**
@@ -135,6 +173,7 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 		(name) =>
 			name !== 'search_onto_projects' &&
 			name !== 'search_all_projects' &&
+			name !== 'list_onto_projects' &&
 			// A focused project turn stays inside its project; creating another
 			// project is a workspace-level move that belongs to the global surface.
 			name !== 'create_onto_project'
@@ -149,7 +188,13 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 	'link_onto_entities',
 	'delegate_task',
 	'get_project_calendar',
-	'set_project_calendar'
+	'set_project_calendar',
+	// Document-tree and relationship companions of the project-only document
+	// and link tools (2026-09-18 planning layer).
+	'list_task_documents',
+	'get_document_path',
+	'create_task_document',
+	'unlink_onto_edge'
 ] as const;
 
 /**

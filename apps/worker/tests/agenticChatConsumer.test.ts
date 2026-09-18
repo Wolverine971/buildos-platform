@@ -277,9 +277,12 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			maxProviderRounds: 4,
 			// SHA-bound batch approval is the default write lane (Decision 1).
 			mutationBatchLaneEnabled: true,
+			// Jev opening-pass tool narrowing is on by default; `off` is the kill switch.
+			jevToolSelection: 'on',
 			maxToolCalls: 9,
 			maxToolConcurrency: 3,
 			provider: {
+				responseHeadersTimeoutMs: 5_000,
 				routes: [
 					{
 						id: 'openrouter',

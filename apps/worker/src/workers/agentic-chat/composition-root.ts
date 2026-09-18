@@ -51,6 +51,7 @@ import {
 	type AgenticChatPromptSnapshotRpcClient,
 	SupabaseAgenticChatPromptSnapshotAdapter
 } from './promptSnapshot';
+import type { AgenticChatToolSelectorPort } from './provider/jev-tool-selector';
 import { AgenticChatTurnProviderAdapter } from './provider/turn-provider';
 import { AgenticChatToolExecutionAdapter } from './tools/execution-adapter';
 import {
@@ -197,6 +198,8 @@ export function createAgenticChatCompositionRoot(options: {
 	maxProviderRounds?: number;
 	/** SHA-bound batch approval instead of the turn contract DSL (Decision 1). */
 	mutationBatchLaneEnabled?: boolean;
+	/** Optional opening-pass schema narrowing (Jev); absent means the full admitted surface. */
+	toolSelector?: AgenticChatToolSelectorPort;
 	maxToolCalls?: number;
 	maxToolConcurrency?: number;
 	concurrentReadsEnabled?: boolean;
@@ -327,7 +330,8 @@ export function createAgenticChatCompositionRoot(options: {
 			client: options.providerClient,
 			semanticReviewer: options.semanticReviewerClient,
 			capacity: providerCapacity,
-			liveVision
+			liveVision,
+			...(options.toolSelector ? { toolSelector: options.toolSelector } : {})
 		},
 		options.providerCooldownMs,
 		options.maxProviderRounds,

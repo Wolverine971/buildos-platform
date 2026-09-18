@@ -47,7 +47,7 @@ import {
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
 // Sep 13: 1,270/1,275 retained successful acting responses opened within 5s.
 // Bound opening separately; the full generation keeps its own deadline.
-const DEFAULT_RESPONSE_HEADERS_TIMEOUT_MS = 5_000;
+export const DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS = 5_000;
 const FINAL_BUFFERED_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
 // A local progress heuristic, not a tokenizer or provider throughput guarantee.
 // Only buffered V4.1 acting passes with an unused retry may abandon a slow stream.
@@ -326,7 +326,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			360_000
 		);
 		this.responseHeadersTimeoutMs = boundedInteger(
-			options.responseHeadersTimeoutMs ?? DEFAULT_RESPONSE_HEADERS_TIMEOUT_MS,
+			options.responseHeadersTimeoutMs ?? DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS,
 			'responseHeadersTimeoutMs',
 			1_000,
 			360_000

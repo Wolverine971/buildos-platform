@@ -12,29 +12,30 @@ import {
 	KIMI_K3_MODEL,
 	MINIMAX_M3_MODEL,
 	NEX_N2_MINI_MODEL,
+	PARETO_MODEL,
 	POOLSIDE_LAGUNA_XS_21_MODEL,
 	resolveModelPricingProfile,
 	TENCENT_HY3_MODEL,
 	TENCENT_HY3_PREVIEW_MODEL,
-	UNION_ALPHA_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from './model-config';
 
 describe('resolveModelPricingProfile', () => {
-	it('catalogs Union Alpha as a zero-cost explicit dev model', () => {
-		const result = resolveModelPricingProfile(UNION_ALPHA_MODEL);
+	it('catalogs Pareto as a paid explicit-only tool model', () => {
+		const result = resolveModelPricingProfile(PARETO_MODEL);
 
-		expect(result?.modelId).toBe(UNION_ALPHA_MODEL);
-		expect(result?.profile.cost).toBe(0);
-		expect(result?.profile.outputCost).toBe(0);
+		expect(result?.modelId).toBe(PARETO_MODEL);
+		expect(result?.profile.cost).toBe(2.5);
+		expect(result?.profile.outputCost).toBe(7.5);
 		expect(result?.profile.capabilities).toMatchObject({
-			jsonMode: true,
 			tools: true,
 			multimodal: true,
 			longContext: true
 		});
+		expect(result?.profile.capabilities?.jsonMode).not.toBe(true);
 		expect(result?.profile.capabilities?.structuredOutputs).not.toBe(true);
 		expect(result?.profile.limitations).toContain('non-zdr-endpoint');
+		expect(result?.profile.limitations).toContain('no-response-format');
 		expect(result?.profile.limitations).toContain('not-default-production-routing');
 	});
 

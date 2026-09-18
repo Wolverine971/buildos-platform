@@ -106,6 +106,7 @@ import {
 	providerError,
 	throwIfAborted
 } from './protocol';
+import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
 import { streamBufferedProviderPass } from './provider-pass';
 import {
 	type SurfaceRepairContext,
@@ -294,6 +295,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			semanticReviewer?: AgenticChatTurnProviderClientPortV1;
 			capacity: AgenticChatProviderCapacity;
 			liveVision?: AgenticChatLiveVisionResolverPortV1;
+			/**
+			 * Narrows the opening pass to the schemas this message needs. Continuations
+			 * inherit the narrowed list; the one-shot surface repair restores the
+			 * admitted surface if the model reaches for an omitted tool.
+			 */
+			toolSelector?: AgenticChatToolSelectorPort;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -1418,6 +1425,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			}
 			if (initial) {
 				request = await this.resolveLiveVision(request);
+				if (this.ports.toolSelector) request = await this.ports.toolSelector.select(request);
 				state.setCurrentRequest(request);
 			}
 			for await (const event of this.providerPass(request, state)) {

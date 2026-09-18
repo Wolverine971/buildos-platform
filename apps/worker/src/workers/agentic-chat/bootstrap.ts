@@ -24,6 +24,7 @@ import {
 	type AgenticChatProviderMutationCapabilitiesV1
 } from './mutationToolCatalog';
 import { createAgenticChatCompositionRoot } from './composition-root';
+import { JevToolSelector } from './provider/jev-tool-selector';
 import { AgenticChatTurnActivityRegistry, withAgenticChatTurnActivityV1 } from './deliveryHealth';
 import { type AgenticChatConfig, loadAgenticChatConfig } from './config';
 import {
@@ -369,7 +370,10 @@ function createDefaultComposition(
 	};
 	const providerClient = new AgenticChatOpenRouterClient(clientPorts, {
 		...clientOptions,
-		routes: input.config.provider.routes
+		routes: input.config.provider.routes,
+		...(input.config.provider.responseHeadersTimeoutMs
+			? { responseHeadersTimeoutMs: input.config.provider.responseHeadersTimeoutMs }
+			: {})
 	});
 	const semanticReviewerClient = new AgenticChatOpenRouterClient(clientPorts, {
 		...clientOptions,
@@ -381,10 +385,23 @@ function createDefaultComposition(
 		maxTokens: AGENTIC_CHAT_SEMANTIC_REVIEWER_MAX_TOKENS,
 		requestTimeoutMs: AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS
 	});
+	const jevMode = input.config.jevToolSelection;
+	const toolSelector =
+		jevMode === 'off'
+			? undefined
+			: new JevToolSelector({
+					// Same validated OpenRouter credential as the acting route.
+					apiKey: input.config.provider.routes[0]!.apiKey,
+					mode: jevMode,
+					fetchImpl: input.fetchImpl,
+					usage: usageLogger,
+					onUsageError: input.onUsageError
+				});
 	return createAgenticChatCompositionRoot({
 		client: input.client,
 		providerClient,
 		semanticReviewerClient,
+		...(toolSelector ? { toolSelector } : {}),
 		providerConfigured: true,
 		workflowPrototypeUserIds: input.config.workflowPrototypeUserIds,
 		liveVisionEnabled: input.config.liveVisionEnabled,

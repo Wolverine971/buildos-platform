@@ -1,6 +1,6 @@
 // apps/worker/tests/agenticChatConfig.test.ts
 import { describe, expect, it } from 'vitest';
-import { UNION_ALPHA_MODEL } from '@buildos/smart-llm';
+import { PARETO_MODEL } from '@buildos/smart-llm';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
 
 const DEDICATED_PROVIDER_ENV: NodeJS.ProcessEnv = {
@@ -9,16 +9,17 @@ const DEDICATED_PROVIDER_ENV: NodeJS.ProcessEnv = {
 };
 
 describe('Agentic Chat acting provider routing defaults', () => {
-	it('uses neutral provider routing for the local Union Alpha experiment', () => {
+	it('uses neutral routing and a measured header budget for the local Pareto experiment', () => {
 		const config = loadAgenticChatConfig({
 			...DEDICATED_PROVIDER_ENV,
-			AGENTIC_CHAT_OPENROUTER_MODEL: UNION_ALPHA_MODEL
+			AGENTIC_CHAT_OPENROUTER_MODEL: PARETO_MODEL
 		});
 
-		expect(config.provider.routes[0]?.model).toBe(UNION_ALPHA_MODEL);
+		expect(config.provider.routes[0]?.model).toBe(PARETO_MODEL);
 		expect(config.provider.routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true
 		});
+		expect(config.provider.responseHeadersTimeoutMs).toBe(10_000);
 	});
 
 	// Measured 2026-09-04 to 09-09 (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F78):
@@ -26,6 +27,7 @@ describe('Agentic Chat acting provider routing defaults', () => {
 	// per output token; DeepSeek and Cloudflare no longer list the model.
 	it('prefers the measured cheap endpoints, keeps fallbacks, and ignores Azure', () => {
 		const config = loadAgenticChatConfig(DEDICATED_PROVIDER_ENV);
+		expect(config.provider.responseHeadersTimeoutMs).toBe(5_000);
 		expect(config.provider.routes).toHaveLength(1);
 		expect(config.provider.routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
