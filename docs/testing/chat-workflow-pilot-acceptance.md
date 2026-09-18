@@ -6,6 +6,20 @@ Status: implementation in progress; **not accepted**. This document is the Taske
 89 evidence index and test plan. Rows become accepted only from retained integrated
 evidence produced by the source identity recorded for that run.
 
+**Task 90 closeout (September 14):** DJ closed the testing handoff after the focused
+repair batch and deferred calendar work. The batch passed 371 distinct focused
+worker tests; the final selected diagnostic passed 12/12 turns, with a manual
+grounding concern the judge missed. The [closeout](../technical/reviews/CHAT_WORKFLOW_TASK90_CLOSEOUT_2026-09-14.md)
+transfers grounding follow-up to 82 and acceptance evidence to 89. Closing the
+tracker does not accept the pilot or trigger another full gate.
+
+**Last complete stabilization receipt (September 14):** Task 90's authorized isolated
+three-repetition gate failed at **45/52**. Cases 2/4 and Case 14 time/read limits
+pass, but Case 8 latency and Case 9/10/14 content/quality failures keep 82/84 open.
+Web, worker, and final snapshot provenance match. See the
+[complete result and next repair steps](../technical/reviews/CHAT_WORKFLOW_TASK90_GATE_RESULT_2026-09-14.md).
+This does not accept any later pilot/browser/restart requirement below.
+
 ## Integration baseline
 
 The initial coordinator receipt is
