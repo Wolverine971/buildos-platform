@@ -363,6 +363,17 @@ turns.
 **User outcome:** a Railway deploy or worker restart during a write turn resumes the turn instead
 of ending it with "an error occurred", and an approved contract is never lost.
 
+**Suspected defect handed over from Tasker 87 (2026-09-18, unverified for ordinary turns).**
+- **What was found:** the workflow crash-cut tests showed that the stall sweep's shared
+  stream-snapshot load fails when a generation's last durable write consumed a sequence
+  without an event row. The turn then stays `running` forever and logs
+  `manual_recovery_required` on every sweep.
+- **Where it was fixed:** only for workflow turns (`7702ca006`), by building their terminal
+  from durable workflow truth.
+- **Why ordinary turns may share it:** an ordinary turn whose worker dies right after a text
+  batch may hit the same blind spot.
+- **What to do:** reproduce this on real SQL before WP-3 changes the ordinary recovery path.
+
 - The turn phase is now a value (`provider/turn-phase.ts`). Persist, at each phase transition, the
   phase, the approved contract SHA, the revision counters, and the effect-ledger cursor onto the
   run row the recovery RPC already reads (`recoverySnapshot.ts`, `stalledRecovery.ts`, the

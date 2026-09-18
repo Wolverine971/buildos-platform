@@ -3,7 +3,7 @@
 # 85 — Define and implement the durable workflow contracts
 
 **Created:** 2026-09-12  
-**Status:** Interface frozen and storage/readers implemented with writers off (2026-09-14; [receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK85_DURABLE_CONTRACTS_2026-09-14.md)). Production migrations applied 2026-09-15. Open: schema ownership and consumer integration through 86–88; live combined-gate acceptance remains unproven and DJ explicitly declined another run.  
+**Status:** Interface frozen and storage/readers implemented with writers off (2026-09-14; [receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK85_DURABLE_CONTRACTS_2026-09-14.md)). Production migrations applied 2026-09-15; the files were committed 2026-09-18 (`bd356380b`). Consumers 86 and 87 are integrated on `main` with no contract amendment or new migration. Open: schema ownership and consumer integration through 86–88; live combined-gate acceptance remains unproven and DJ explicitly declined another run.  
 **Depends on:** 81 baseline; 82/84 accepted before runtime work; 83 done on 2026-09-14 ([receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK83_BOUNDED_REVIEWS_2026-09-14.md)).  
 **Parallel with:** Later support for 86/87/88 as their shared contract owner.  
 **Unblocks:** [86](86-chat-workflow-lightweight-submission.md), [87](87-chat-workflow-recoverable-steps.md), [88](88-chat-workflow-ordinary-chat.md).
@@ -29,8 +29,7 @@
 - All required-proof items below pass in the self-contained SQL contract and the
   worker Postgres race test.
 - **Remaining:**
-    - include the three production-applied migration files in the intended repository
-      change; they remain untracked in the current dirty worktree;
+    - ~~include the three production-applied migration files~~ done 2026-09-18 (`bd356380b`);
     - preserve the gate history as failed/invalid evidence: the 46/52 run exposed
       Case 7 and Case 14 defects, and the later 40/52 run was contaminated by a second
       gate sharing QA. Focused repairs are verified, but live acceptance remains

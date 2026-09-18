@@ -3,7 +3,7 @@
 # 86 — Admit the request quickly and prepare context in the worker
 
 **Created:** 2026-09-12  
-**Status:** Ready to implement against the frozen 85 contract (2026-09-14). The v4 admission RPC and context checkpoint exist in QA; `pg_temp.admit` in `supabase/tests/20260914203008_agentic_chat_workflow_v1.test.sql` is the reference call. Writers stay off until integration.  
+**Status (2026-09-18):** Built and merged on `main` (`a8521ae14`, pushed) behind default-off switches: web `AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED`, worker `AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED` (enable the worker switch first). An eligible explicit review is admitted with one pre-queue RPC (the ordinary path does roughly 9–12 round trips plus prompt construction, estimated from code); the worker gathers context after claim and accepts the immutable checkpoint through 85's fenced RPC. Focused web/worker tests and local disposable-Postgres proofs pass. DJ waived per-change-set gates on 2026-09-18; the live gate and browser acceptance move to [89](89-chat-workflow-integration-acceptance.md). Known limits: the context cache reference is always null (fresh load), and no UI sends `reviewIntent` yet.  
 **Depends on:** [85](85-chat-workflow-durable-contracts.md) contracts; accepted schema/readers before integration.  
 **Parallel with:** 87's pure runner and 88's UI fixtures.  
 **Unblocks:** Real runner integration in 87. Raw model execution stays off until then.

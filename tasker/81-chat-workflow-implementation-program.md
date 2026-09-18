@@ -32,6 +32,11 @@ Residuals moved to three owners:
 The workflow provider now belongs to 87. See the
 [Task 83 receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK83_BOUNDED_REVIEWS_2026-09-14.md).
 
+**September 18 decision:** DJ waived the per-change-set full gate. 86 and 87 are built and
+merged on `main` behind default-off switches, with focused and local real-Postgres proof.
+One full gate plus the live browser/restart acceptance runs once at 89. All work now
+happens directly on `main`; there are no worktrees or integration branches.
+
 **Owner:** One coordinator/integrator. Assign the implementation packages below to other agents.
 
 ## Outcome
@@ -245,10 +250,10 @@ keeps scheduled Project Review synthesis; this program is explicit conversationa
 - [ ] Common source/evidence snapshot distributed; ownership and QA slot recorded.
 - [ ] 82 + 84 stabilization accepted; original scorecards preserved.
 - [x] 83 closed by DJ on 2026-09-14. A complete review was proven live, and partial reviews with fakes; 89 holds the gate and the live partial check ([receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK83_BOUNDED_REVIEWS_2026-09-14.md)).
-- [ ] 85 interface freeze and compatible schema/readers accepted.
-- [ ] 86 worker preparation accepted; raw model dispatch still disabled.
-- [ ] 87 recovery/budget acceptance; raw workflow activated only in isolated cohort.
-- [ ] 88 ordinary-chat browser journey accepted.
+- [x] 85 interface freeze and compatible schema/readers integrated (migrations committed `bd356380b`; consumers 86/87 needed no amendment).
+- [x] 86 worker preparation integrated on `main` (`a8521ae14`), switches off; live acceptance moved to 89.
+- [x] 87 runner, dispatch metering, recovery and slice C integrated on `main`, execution switch off; local real-process restart proven. Real OpenRouter/Railway kill moved to 89.
+- [ ] 88 reshaped by DJ on 2026-09-18 into the Jev freshness radar (see 88); browser journey pending.
 - [ ] 89 final full gate, real restart, timing/cost comparison and residual report accepted.
 
 Put final evidence in durable feature/testing docs and update the workflow build
