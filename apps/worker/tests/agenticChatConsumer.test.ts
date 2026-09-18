@@ -264,6 +264,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			enabled: true,
 			workflowPrototypeUserIds: [],
 			workflowV4PreparationEnabled: false,
+			workflowV4ExecutionEnabled: false,
 			liveVisionEnabled: false,
 			consumptionBillingEnabled: false,
 			consumer: {

@@ -382,6 +382,14 @@ function fenceArgs(fence: AgenticChatWorkflowFenceV1): Record<string, unknown> {
 	};
 }
 
+/** Tasker 87's runner publishes its checkpoint events through the same parser. */
+export function parseAgenticChatWorkflowEventReceiptV1(
+	value: unknown,
+	fence: AgenticChatWorkflowFenceV1
+): AgenticChatWorkflowEventReceiptV1 {
+	return parseEvent(value, fence);
+}
+
 function parseEvent(
 	value: unknown,
 	fence: AgenticChatWorkflowFenceV1

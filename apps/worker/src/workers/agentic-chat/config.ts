@@ -119,6 +119,8 @@ type AgenticChatBaseConfig = {
 	workflowPrototypeUserIds?: string[];
 	/** Tasker 86: worker preparation for raw v4 review turns. Default off. */
 	workflowV4PreparationEnabled?: boolean;
+	/** Tasker 87: durable workflow model execution. Default off; requires preparation. */
+	workflowV4ExecutionEnabled?: boolean;
 	liveVisionEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
@@ -163,6 +165,16 @@ export function loadAgenticChatConfig(
 		false,
 		'AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED'
 	);
+	const workflowV4ExecutionEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED,
+		false,
+		'AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED'
+	);
+	if (workflowV4ExecutionEnabled && !workflowV4PreparationEnabled) {
+		throw new Error(
+			'AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED requires AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED'
+		);
+	}
 	const consumer: AgenticChatConsumerConfig = {
 		concurrency: parsePositiveInteger(
 			environment.CHAT_CONCURRENCY,
@@ -233,6 +245,7 @@ export function loadAgenticChatConfig(
 			environment.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS
 		),
 		workflowV4PreparationEnabled,
+		workflowV4ExecutionEnabled,
 		liveVisionEnabled,
 		consumptionBillingEnabled,
 		consumer,

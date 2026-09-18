@@ -2,6 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { UNION_ALPHA_MODEL } from '@buildos/smart-llm';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
+import {
+	AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1,
+	AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1,
+	buildAgenticChatWorkflowRoutesV1
+} from '../src/workers/agentic-chat/workflow/workflow-dispatch';
 
 const DEDICATED_PROVIDER_ENV: NodeJS.ProcessEnv = {
 	PRIVATE_OPENROUTER_API_KEY: 'provider-secret',
@@ -102,4 +107,66 @@ it('supports explicit measured provider experiments without changing the default
 			AGENTIC_CHAT_OPENROUTER_PROVIDER_SORT: 'fastest'
 		})
 	).toThrow(/Invalid/);
+});
+
+describe('workflow v4 flag matrix (Tasker 86 preparation, Tasker 87 execution)', () => {
+	const load = (flags: NodeJS.ProcessEnv) =>
+		loadAgenticChatConfig({ ...DEDICATED_PROVIDER_ENV, ...flags });
+
+	it('defaults both off', () => {
+		const config = load({});
+		expect(config.workflowV4PreparationEnabled).toBe(false);
+		expect(config.workflowV4ExecutionEnabled).toBe(false);
+	});
+
+	it('allows preparation alone and preparation with execution', () => {
+		expect(load({ AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED: 'true' })).toMatchObject({
+			workflowV4PreparationEnabled: true,
+			workflowV4ExecutionEnabled: false
+		});
+		expect(
+			load({
+				AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED: 'true',
+				AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED: 'true'
+			})
+		).toMatchObject({ workflowV4PreparationEnabled: true, workflowV4ExecutionEnabled: true });
+	});
+
+	it('refuses to start with execution on while preparation is off', () => {
+		expect(() => load({ AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED: 'true' })).toThrow(
+			/requires AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED/
+		);
+		expect(() =>
+			load({
+				AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED: 'false',
+				AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED: 'true'
+			})
+		).toThrow(/requires/);
+	});
+
+	it.each(['TRUE', '1', 'yes', ' true'])('accepts only exact true or false (%s)', (value) => {
+		expect(() =>
+			load({
+				AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED: 'true',
+				AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED: value
+			})
+		).toThrow(/exactly true or false/);
+	});
+
+	it('pins the workflow client to priced models on the configured OpenRouter credential', () => {
+		const routes = load({}).provider.routes;
+		const [route] = buildAgenticChatWorkflowRoutesV1(routes);
+		expect(route).toMatchObject({
+			id: 'openrouter-workflow',
+			kind: 'openrouter',
+			apiKey: routes[0]!.apiKey,
+			baseUrl: routes[0]!.baseUrl,
+			model: 'deepseek/deepseek-v4.1-flash',
+			fallbackModels: [...AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1]
+		});
+		for (const model of [route!.model, ...(route!.fallbackModels ?? [])]) {
+			expect(AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1[model]).toBeDefined();
+		}
+		expect(() => buildAgenticChatWorkflowRoutesV1(routes, {})).toThrow(/pricing snapshots/);
+	});
 });

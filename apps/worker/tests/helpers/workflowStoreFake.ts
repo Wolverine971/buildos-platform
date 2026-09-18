@@ -1115,3 +1115,48 @@ function sqlError(message: string, code = 'P0001'): AgenticChatWorkflowStoreErro
 export function sha256(value: string): string {
 	return createHash('sha256').update(value, 'utf8').digest('hex');
 }
+
+const FAKE_LABELS: Readonly<Record<string, string>> = {
+	'project-1': 'project: Workshop launch',
+	'task-1': 'task: Book the venue',
+	'task-2': 'task: Confirm the caterer'
+};
+
+/**
+ * The model input Tasker 86's preparer builds from an accepted context
+ * (`buildAgenticChatWorkflowModelInputV1`), reproduced for the fake's checkpoint.
+ */
+export function fakeWorkflowModelInput(
+	store: WorkflowStoreFake,
+	question = 'What should we prioritize next?'
+) {
+	const context = store.run.context;
+	if (!context) throw new Error('fake: no accepted context');
+	return workflowModelInputFromContext(context, question);
+}
+
+export function workflowModelInputFromContext(
+	context: NonNullable<AgenticChatWorkflowRunStateV1['context']>,
+	question = 'What should we prioritize next?'
+) {
+	const history = [{ role: 'user' as const, content: 'We are planning the workshop launch.' }];
+	const sharedUserContent = `USER QUESTION\n${question}\n\nFROZEN CONVERSATION (context only)\n${JSON.stringify(
+		history
+	)}\n\nPROJECT EVIDENCE\n${JSON.stringify(context.payload)}`;
+	return {
+		contextId: context.contextId,
+		contextHash: context.contextHash,
+		question,
+		sharedUserContent,
+		evidence: new Map(
+			context.evidenceVersions.map((entry) => [
+				entry.id,
+				{
+					recordKind: entry.kind,
+					version: entry.version,
+					label: FAKE_LABELS[entry.id] ?? `${entry.kind}: ${entry.id}`
+				}
+			])
+		)
+	};
+}

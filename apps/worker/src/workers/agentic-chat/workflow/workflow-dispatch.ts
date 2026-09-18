@@ -48,6 +48,49 @@ export const AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1: Readonly<
 	})
 });
 
+/** The workflow's primary model; every request is priced by a frozen snapshot. */
+export const AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1 = 'deepseek/deepseek-v4.1-flash';
+/** Provider-internal fallback models inside the same request; each must be priced. */
+export const AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1: readonly string[] = Object.freeze([]);
+/** Contract section 3: one physical request may run 90 s, with a 10 s header wait. */
+export const AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS = 90_000;
+export const AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
+
+/**
+ * Workflow routes reuse the configured OpenRouter credential and provider policy but
+ * pin the priced workflow models, so no request can reach an unpriced model. Startup
+ * fails closed if the configuration cannot satisfy that.
+ */
+export function buildAgenticChatWorkflowRoutesV1<
+	Route extends { id: string; kind: string; model: string; fallbackModels?: readonly string[] }
+>(
+	routes: readonly Route[],
+	pricing: Readonly<
+		Record<string, AgenticChatWorkflowPricingSnapshotV1>
+	> = AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1
+): Route[] {
+	const openrouter = routes.find((route) => route.kind === 'openrouter');
+	if (!openrouter) {
+		throw new Error('Workflow execution requires an OpenRouter route for provider max_price');
+	}
+	const models = [
+		AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1,
+		...AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1
+	];
+	const unpriced = models.filter((model) => !pricing[model]);
+	if (unpriced.length) {
+		throw new Error(`Workflow models lack frozen pricing snapshots: ${unpriced.join(', ')}`);
+	}
+	return [
+		{
+			...openrouter,
+			id: `${openrouter.id}-workflow`,
+			model: AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1,
+			fallbackModels: [...AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1]
+		}
+	];
+}
+
 /** OpenRouter `provider.max_price` sent on every workflow request. */
 export const AGENTIC_CHAT_WORKFLOW_PROVIDER_MAX_PRICE_V1 = Object.freeze({
 	prompt: AGENTIC_CHAT_WORKFLOW_MAX_RATES_USD_PER_MILLION.prompt,

@@ -382,7 +382,8 @@ export function createAgenticChatCompositionRoot(options: {
 		input,
 		publisher,
 		control,
-		allowedUserIds: options.workflowPrototypeUserIds ?? []
+		allowedUserIds: options.workflowPrototypeUserIds ?? [],
+		providerCapacity
 	});
 	const executor = new AgenticChatTurnExecutor(
 		{

@@ -24,7 +24,11 @@ import {
 	workflowCheckpointV1,
 	workflowProjectionInputFromRunV1
 } from '../src/workers/agentic-chat/workflow/workflow-projection';
-import { FAKE_CONTEXT_PAYLOAD, FAKE_EVIDENCE } from './helpers/workflowStoreFake';
+import {
+	FAKE_CONTEXT_PAYLOAD,
+	FAKE_EVIDENCE,
+	workflowModelInputFromContext
+} from './helpers/workflowStoreFake';
 import {
 	EDITOR_TEXT,
 	type ScriptedCall,
@@ -210,57 +214,74 @@ describePostgres('workflow runner against the frozen SQL on disposable PostgreSQ
 			{
 				store,
 				client: provider.client,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 2 }),
-				// Tasker 86's preparation seam: accept project context through the store.
-				prepareContext: async ({ fence, run }) => {
-					const canonical = canonicalizeAgenticChatJson(FAKE_CONTEXT_PAYLOAD);
-					const observedAt = new Date().toISOString();
-					const receipt = await store.acceptContext(fence, {
-						contextId: randomUUID(),
-						requestArtifactId: run.requestArtifactId,
-						requestHash: run.requestHash,
-						preparationVersion: 'agentic_chat_prepared_context_v1',
-						contextIdentity: {
-							userId: USER_ID,
-							projectId: PROJECT_ID,
-							accessCheckedAt: observedAt,
-							contextLoadedAt: observedAt,
-							cacheRefUsed: null
-						},
-						evidenceVersions: FAKE_EVIDENCE,
-						payload: FAKE_CONTEXT_PAYLOAD,
-						contextHash: sha256(canonical),
-						contextBytes: Buffer.byteLength(canonical, 'utf8'),
-						...workflowCheckpointV1(
-							randomUUID(),
-							buildAgenticChatWorkflowProjectionV1(
-								workflowProjectionInputFromRunV1(run, {
-									phase: 'assessing',
-									providerActivity: 'idle',
-									observedAt
-								})
-							)
-						)
-					});
-					expect(receipt.outcome).toBe('accepted');
-				}
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 2 })
 			},
 			{ capacityPollMs: 5, settlementDrainMs: 5_000, meter: { settleRetryDelayMs: 5 } }
 		);
+		// Plays Tasker 86's preparer: a fresh generation's first write is the `preparing`
+		// resume, then context acceptance; a later generation reuses durable context.
+		const prepare = async (fence: AgenticChatWorkflowFenceV1) => {
+			const run = (await store.loadRun(fence.turnRunId))!;
+			if (run.context) return { resumeRequired: true, context: run.context };
+			const observedAt = new Date().toISOString();
+			const resumed = await store.resume(
+				fence,
+				workflowCheckpointV1(
+					randomUUID(),
+					buildAgenticChatWorkflowProjectionV1({ phase: 'preparing' })
+				)
+			);
+			expect(resumed.outcome).toBe('resumed');
+			const canonical = canonicalizeAgenticChatJson(FAKE_CONTEXT_PAYLOAD);
+			const receipt = await store.acceptContext(fence, {
+				contextId: randomUUID(),
+				requestArtifactId: run.requestArtifactId,
+				requestHash: run.requestHash,
+				preparationVersion: 'agentic_chat_prepared_context_v1',
+				contextIdentity: {
+					userId: USER_ID,
+					projectId: PROJECT_ID,
+					accessCheckedAt: observedAt,
+					contextLoadedAt: observedAt,
+					cacheRefUsed: null
+				},
+				evidenceVersions: FAKE_EVIDENCE,
+				payload: FAKE_CONTEXT_PAYLOAD,
+				contextHash: sha256(canonical),
+				contextBytes: Buffer.byteLength(canonical, 'utf8'),
+				...workflowCheckpointV1(
+					randomUUID(),
+					buildAgenticChatWorkflowProjectionV1(
+						workflowProjectionInputFromRunV1(run, {
+							phase: 'assessing',
+							providerActivity: 'idle',
+							observedAt
+						})
+					)
+				)
+			});
+			expect(receipt.outcome).toBe('accepted');
+			return {
+				resumeRequired: false,
+				context: (await store.loadRun(fence.turnRunId))!.context!
+			};
+		};
 		const controller = new AbortController();
-		const run = (fence: AgenticChatWorkflowFenceV1, n: number) =>
-			runner.run({
+		const run = async (fence: AgenticChatWorkflowFenceV1, n: number) => {
+			const prepared = await prepare(fence);
+			return runner.run({
 				fence,
 				userId: USER_ID,
 				sessionId: sessions.get(n)!,
 				streamRunId: `runner-stream-${n}`,
 				clientTurnId: `runner-client-${n}`,
 				projectId: PROJECT_ID,
-				question: 'What should we prioritize next?',
-				history: [],
+				modelInput: workflowModelInputFromContext(prepared.context),
+				resumeRequired: prepared.resumeRequired,
 				invocationDeadlineAtMs: Date.now() + 300_000,
 				signal: controller.signal
 			});
+		};
 		return { store, provider, run, controller };
 	}
 

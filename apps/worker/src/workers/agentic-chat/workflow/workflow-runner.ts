@@ -23,11 +23,12 @@ import type {
 	AgenticChatProviderCapacityLeaseV1,
 	AgenticChatProviderCapacitySnapshotV1
 } from '../providerCapacity';
+import type { AgenticChatWorkflowModelInputV1 } from './prepared-context';
 import { WORKFLOW_RULES, parseWorkflowAssignments } from './prototype-provider';
 import {
 	CHAT_WORKFLOW_DISPATCH_POLICY,
 	type ChatWorkflowDurableEvidenceIndex,
-	buildDurableWorkflowEvidenceIndex,
+	durableEvidenceIndexFromModelInputV1,
 	buildSpecialistReportInstructions,
 	durableEvidenceLabels,
 	fromDurableWorkflowRoleReport,
@@ -74,6 +75,16 @@ import {
  * for the executor's single terminal writer (or for workflow recovery to requeue).
  */
 
+/**
+ * The provider-neutral model input Tasker 86 built from the accepted context
+ * checkpoint (`AgenticChatWorkflowModelInputV1`). The runner never re-gathers or
+ * re-snapshots context; it only formats this accepted input.
+ */
+export type AgenticChatWorkflowRunnerModelInputV1 = Pick<
+	AgenticChatWorkflowModelInputV1,
+	'contextId' | 'contextHash' | 'question' | 'sharedUserContent' | 'evidence'
+>;
+
 export type AgenticChatWorkflowRunInputV1 = {
 	fence: AgenticChatWorkflowFenceV1;
 	userId: string;
@@ -81,13 +92,18 @@ export type AgenticChatWorkflowRunInputV1 = {
 	streamRunId: string;
 	clientTurnId: string;
 	projectId: string;
-	/** The admitted, normalized review question from the v4 request. */
-	question: string;
-	/** Frozen admission-window history from the v4 request. */
-	history: ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>;
+	/** Accepted context as model input, bound to the durable context checkpoint. */
+	modelInput: AgenticChatWorkflowRunnerModelInputV1;
+	/**
+	 * Tasker 86 handoff: true only when this generation has made no workflow write
+	 * yet, so the runner's first fenced write must be the generation's single resume.
+	 */
+	resumeRequired: boolean;
 	/** Executor provider-work deadline for this invocation (epoch ms). */
 	invocationDeadlineAtMs: number;
 	signal: AbortSignal;
+	/** Tasker 84 seam: live delivery of already-durable events. Never awaited. */
+	delivery?: { durableEvent(event: JsonObject): unknown };
 };
 
 export type AgenticChatWorkflowRunnerPortsV1 = {
@@ -97,22 +113,6 @@ export type AgenticChatWorkflowRunnerPortsV1 = {
 		getSnapshot(turnRunId?: string): AgenticChatProviderCapacitySnapshotV1;
 		acquire(turnRunId?: string): AgenticChatProviderCapacityLeaseV1;
 	};
-	/**
-	 * Tasker 86 seam: prepares and accepts the context checkpoint when the run is
-	 * still `preparing`. The runner never reads project records itself.
-	 */
-	prepareContext?: (input: {
-		fence: AgenticChatWorkflowFenceV1;
-		run: AgenticChatWorkflowRunStateV1;
-		signal: AbortSignal;
-	}) => Promise<void>;
-	/**
-	 * Current-access recheck before reusing a context accepted by an earlier
-	 * generation. Returning false fails the review instead of using stale authority.
-	 */
-	hasProjectAccess?: (userId: string, projectId: string, signal: AbortSignal) => Promise<boolean>;
-	/** Tasker 84 seam: delivery of already-durable events. Never awaited by the runner. */
-	delivery?: { durableEvent(event: JsonObject): unknown };
 };
 
 export type AgenticChatWorkflowRunnerOptionsV1 = {
@@ -326,51 +326,37 @@ class WorkflowExecution {
 		if (!loaded) return failed('workflow_run_missing', 'This review could not be found.');
 		if (this.state.phase === 'finished') return { kind: 'fenced', reason: 'already_terminal' };
 
-		// Sequences are generation-scoped: resume is this generation's first fenced write.
-		const resumed = await this.ports.store.resume(
-			this.input.fence,
-			this.checkpoint(this.state, this.state.phase)
-		);
-		this.record('resume', null, null, resumed.outcome);
-		this.assertUnfenced(resumed.outcome);
-		this.deliver(resumed.event);
-
-		if (!this.state.context) {
-			if (!this.ports.prepareContext) {
-				return failed(
-					'workflow_context_unavailable',
-					'Project context is not ready for this review.'
-				);
-			}
-			await this.ports.prepareContext({
-				fence: this.input.fence,
-				run: this.state,
-				signal: this.signal
-			});
-			await this.reload();
-			this.record('prepare', null, null, this.state.context ? 'accepted' : 'missing');
-			if (!this.state.context) {
-				return failed(
-					'workflow_context_unavailable',
-					'Project context could not be prepared.'
-				);
-			}
-		} else if (
-			this.state.context.acceptedGeneration !== this.input.fence.executionGeneration &&
-			this.ports.hasProjectAccess &&
-			!(await this.ports.hasProjectAccess(
-				this.input.userId,
-				this.state.projectId,
-				this.signal
-			))
-		) {
-			// Recovery reuses the accepted evidence only while current access still holds.
-			return failed('access_revoked', 'You no longer have access to this project.');
+		// Sequences are generation-scoped and each generation resumes exactly once. When
+		// Tasker 86 already made this generation's first fenced write (its `preparing`
+		// progress and context acceptance), a second resume is never sent.
+		if (this.input.resumeRequired) {
+			const resumed = await this.ports.store.resume(
+				this.input.fence,
+				this.checkpoint(this.state, this.state.phase)
+			);
+			this.record('resume', null, null, resumed.outcome);
+			this.assertUnfenced(resumed.outcome);
+			this.deliver(resumed.event);
 		}
-		this.evidence = buildDurableWorkflowEvidenceIndex(
-			this.state.context!.evidenceVersions,
-			this.state.context!.payload
-		);
+
+		// Preparation hands over only an accepted checkpoint; the runner never gathers context.
+		const context = this.state.context;
+		if (!context) {
+			return failed(
+				'workflow_context_unavailable',
+				'Project context is not ready for this review.'
+			);
+		}
+		if (
+			context.contextId !== this.input.modelInput.contextId ||
+			context.contextHash !== this.input.modelInput.contextHash
+		) {
+			return failed(
+				'workflow_context_mismatch',
+				'This review could not verify its project context.'
+			);
+		}
+		this.evidence = durableEvidenceIndexFromModelInputV1(this.input.modelInput.evidence);
 		this.sharedPrompt = this.buildSharedPrompt();
 
 		// Once answer text is durable, no later generation may regenerate it.
@@ -1205,6 +1191,8 @@ class WorkflowExecution {
 						event.usage?.completionTokens ?? event.usage?.completion_tokens ?? 0;
 				}
 			}
+			// A stream that ends quietly because this invocation stopped is not a result.
+			signal.throwIfAborted();
 		} catch (error) {
 			// Durable-write outcomes from the answer writer and cancellation propagate;
 			// anything else is a failed provider call.
@@ -1370,9 +1358,9 @@ class WorkflowExecution {
 	}
 
 	private deliver(event: AgenticChatWorkflowEventReceiptV1): void {
-		if (!event || !this.ports.delivery) return;
+		if (!event || !this.input.delivery) return;
 		try {
-			const pending = this.ports.delivery.durableEvent(event);
+			const pending = this.input.delivery.durableEvent(event);
 			if (pending && typeof (pending as Promise<unknown>).catch === 'function') {
 				void (pending as Promise<unknown>).catch(() => undefined);
 			}
@@ -1390,14 +1378,12 @@ class WorkflowExecution {
 		this.transitions.push({ atMs: this.now(), operation, stepKey, stepAttemptId, outcome });
 	}
 
+	/** Tasker 86's shared content verbatim, plus the citable accepted records. */
 	private buildSharedPrompt(): string {
-		const history = this.input.history.slice(-6).map((message) => ({
-			role: message.role,
-			content: message.content.slice(0, 1_500)
-		}));
-		return `USER QUESTION\n${this.input.question}\n\nFROZEN CONVERSATION (context only)\n${JSON.stringify(
-			history
-		)}\n\nPROJECT EVIDENCE\n${renderWorkflowEvidenceBrief(this.state.context!.payload, this.evidence)}`;
+		const records = [...this.evidence].map(
+			([id, entry]) => `${id} | ${entry.kind} | ${entry.label}`
+		);
+		return `${this.input.modelInput.sharedUserContent}\n\nCITABLE RECORDS (id | kind | label)\n${records.join('\n')}`;
 	}
 
 	private classify(error: unknown): AgenticChatWorkflowRunOutcomeV1 {
@@ -1456,26 +1442,6 @@ class AnswerWriter {
 		this.durable += delta;
 		this.pending = this.pending.slice(delta.length);
 	}
-}
-
-/** Compact packet for every model call: citable records first, then the accepted context. */
-export function renderWorkflowEvidenceBrief(
-	payload: JsonObject,
-	evidence: ChatWorkflowDurableEvidenceIndex,
-	maxBytes = 96 * 1_024
-): string {
-	const records = [...evidence].map(([id, entry]) => `${id} | ${entry.kind} | ${entry.label}`);
-	let brief = '';
-	for (const cap of [5_000, 1_500, 400]) {
-		const packet = JSON.stringify(payload, (_key, value) =>
-			typeof value === 'string' && value.length > cap
-				? `${value.slice(0, cap)}\n[Truncated]`
-				: value
-		);
-		brief = `CITABLE RECORDS (id | kind | label)\n${records.join('\n')}\n\nACCEPTED CONTEXT\n${packet}`;
-		if (utf8Bytes(brief) <= maxBytes) return brief;
-	}
-	return brief;
 }
 
 function plannerAssignments(

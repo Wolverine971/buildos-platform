@@ -7,7 +7,7 @@ import {
 	type AgenticChatWorkflowRunnerOptionsV1
 } from '../src/workers/agentic-chat/workflow/workflow-runner';
 import { AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE } from '../src/workers/agentic-chat/workflow/workflow-projection';
-import { WorkflowStoreFake } from './helpers/workflowStoreFake';
+import { WorkflowStoreFake, fakeWorkflowModelInput } from './helpers/workflowStoreFake';
 import {
 	EDITOR_TEXT,
 	type ScriptedCall,
@@ -45,6 +45,8 @@ function harness(
 		invocationMs?: number;
 		delivery?: { durableEvent(event: JsonObject): unknown };
 		runner?: AgenticChatWorkflowRunnerOptionsV1;
+		/** Tasker 86 handoff: false when preparation already wrote this generation. */
+		resumeRequired?: boolean;
 	} = {}
 ) {
 	const store = options.store ?? seededStore();
@@ -57,12 +59,7 @@ function harness(
 	});
 	const delivered: JsonObject[] = [];
 	const runner = new AgenticChatWorkflowRunner(
-		{
-			store,
-			client: provider.client,
-			capacity,
-			delivery: options.delivery ?? { durableEvent: (event) => void delivered.push(event) }
-		},
+		{ store, client: provider.client, capacity },
 		{
 			capacityPollMs: 5,
 			settlementDrainMs: 2_000,
@@ -79,10 +76,11 @@ function harness(
 			streamRunId: 'stream-run-1',
 			clientTurnId: 'client-turn-1',
 			projectId: 'project-1',
-			question: 'What should we prioritize next?',
-			history: [{ role: 'user', content: 'We are planning the workshop launch.' }],
+			modelInput: fakeWorkflowModelInput(store),
+			resumeRequired: options.resumeRequired ?? true,
 			invocationDeadlineAtMs: Date.now() + (options.invocationMs ?? 300_000),
-			signal
+			signal,
+			delivery: options.delivery ?? { durableEvent: (event) => void delivered.push(event) }
 		});
 	return { store, provider, capacity, runner, run, delivered, controller };
 }

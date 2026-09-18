@@ -307,22 +307,19 @@ export type ChatWorkflowDurableEvidenceIndex = ReadonlyMap<
 	{ kind: string; version: string; label: string }
 >;
 
-export function buildDurableWorkflowEvidenceIndex(
-	evidenceVersions: readonly AgenticChatWorkflowEvidenceVersionV1[],
-	payload: JsonObject
+/**
+ * The durable evidence index from Tasker 86's model input: the accepted evidence
+ * versions with their display labels, bounded to the durable label limit.
+ */
+export function durableEvidenceIndexFromModelInputV1(
+	evidence: ReadonlyMap<string, { recordKind: string; version: string; label: string }>
 ): ChatWorkflowDurableEvidenceIndex {
-	const data = isRecord(payload.data) ? payload.data : payload;
-	const named = buildWorkflowEvidenceIndex({
-		contextType: 'project',
-		data
-	} as unknown as MasterPromptContext);
 	const index = new Map<string, { kind: string; version: string; label: string }>();
-	for (const entry of evidenceVersions) {
-		if (index.has(entry.id)) continue;
-		index.set(entry.id, {
-			kind: entry.kind,
+	for (const [id, entry] of evidence) {
+		index.set(id, {
+			kind: entry.recordKind,
 			version: entry.version,
-			label: boundLabel(named.get(entry.id) ?? `${entry.kind}: ${entry.id}`)
+			label: boundLabel(entry.label)
 		});
 	}
 	return index;
