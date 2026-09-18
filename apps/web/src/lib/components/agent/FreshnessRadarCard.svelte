@@ -346,7 +346,7 @@
 								>
 							</a>
 							<span
-								class="ml-auto shrink-0 text-xs font-semibold tabular-nums text-muted-foreground"
+								class="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground"
 								aria-label="{percent} likely out of date, model estimate"
 							>
 								{percent}
