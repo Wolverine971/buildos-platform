@@ -74,7 +74,7 @@ and shared-file handoffs are specified in 81; all full gates run sequentially.
 | [85 — Durable contracts](85-chat-workflow-durable-contracts.md)                         | Freeze interfaces; add compatible v4 readers and fenced request/context/step/cost/recovery storage with writers off.         |
 | [86 — Lightweight submission](86-chat-workflow-lightweight-submission.md)               | Save raw requests atomically, gather context in the worker, preserve ordinary admission and measure acknowledgement latency. |
 | [87 — Recoverable steps](87-chat-workflow-recoverable-steps.md)                         | Reuse accepted work after restart, meter every physical dispatch and reconcile streaming without duplicate answers.          |
-| [88 — Ordinary-chat experience](88-chat-workflow-ordinary-chat.md)                      | Add explicit project review in the existing composer with clear progress, findings, cancellation and reconnect states.       |
+| [88 — Jev freshness radar](88-chat-workflow-ordinary-chat.md)                            | After a brain dump, Jev flags stale tasks/docs/goals, auto-applies very-confident low-risk edits with undo, drafts the rest, retires obsolete inbox items. |
 | [89 — Integration acceptance](89-chat-workflow-integration-acceptance.md)               | Prove browser/restart/fault behavior, compare latency/cost/usefulness and publish a repeatable local test handoff.           |
 
 ### Paid launch readiness

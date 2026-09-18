@@ -1,89 +1,86 @@
 <!-- tasker/88-chat-workflow-ordinary-chat.md -->
 
-# 88 — Bring project review into ordinary chat
+# 88 — Jev freshness radar: after a brain dump, catch what went stale
 
-**Created:** 2026-09-12  
-**Status:** New-state code can start; 85's interface is frozen (2026-09-14). Render from `projection.workflow` (`AgenticChatWorkflowProjectionV1`) through reconciliation, with no table grants.  
-**Depends on:** 85 event/request contract; 86 and 87 accepted before live activation.  
-**Parallel with:** 86 admission and 87 runner in isolated worktrees.  
-**Unblocks:** 89's final ordinary-chat browser acceptance.
+**Created:** 2026-09-12. **Reshaped by DJ:** 2026-09-18.
+**Status:** Plan and interfaces frozen in
+[`docs/architecture/jev-freshness-radar-v1-plan.md`](../docs/architecture/jev-freshness-radar-v1-plan.md).
+Implementation runs in three lanes directly on `main`, with no worktrees.
+**Depends on:** nothing blocking. It reuses the Project Review suggestion, approval and inbox machinery.
+The 86/87 workflow is not used for drafting. It is read-only and text-only by contract, and about
+500× the cost per scan.
 
 ## Outcome
 
-An enabled user can choose **Review project** in the ordinary project-chat composer,
-send a question, and follow the work in the same conversation. They do not need to
-type `/workflow`, visit a lab, or understand worker/agent internals. The interface
-makes it obvious whether work is submitting, waiting, preparing, progressing,
-recovering, finished, partial, failed, or cancelled.
+After DJ brain dumps about a project in chat, BuildOS notices which tasks, documents, goals and
+milestones the new information probably made stale.
 
-Read [81](81-chat-workflow-implementation-program.md), 85's frozen request/events,
-and [the current prototype](../apps/worker/src/workers/agentic-chat/djflow-prototype.md).
-Reuse `WorkflowProgressCard.svelte`, existing findings metadata and durable stream
-reconciliation. The current lab already proves progress/streamed synthesis; build
-the ordinary-chat entry and missing states instead of a second chat implementation.
+1. It scores each one with the Jev decision model (`typesafe/jev-1.13`, about $0.0005 per scan).
+2. Very-confident, low-risk updates are applied automatically, with undo.
+3. The rest are drafted for one-tap approval.
+4. The same pass retires AI Inbox items the new information made obsolete, again with undo.
+5. It also gauges whether each goal and milestone is on track.
 
-## Work
+Every judgment is written to a calibration ledger, so the percentages can be tuned from real outcomes.
 
-1. Add a compact, explicit review action to the project composer for the server-enabled
-   cohort. Bind review intent to the next immutable submission, show that choice
-   clearly, and reset it after acceptance. An ordinary following message stays ordinary.
-   Retrying an uncertain submission keeps its original identity and intent; changing
-   intent requires a new submission, not rewriting an in-flight turn.
-2. Reuse the message/composer lifecycle. Show **Sending** immediately while admission
-   is pending, **Queued** only after durable acceptance, then actual worker progress.
-   Avoid a second setup modal, agent configuration form, new conversation, or mandatory
-   confirmation for a read-only review.
-3. Present one compact progress summary with expandable accepted findings. Stream only
-   the editor's answer as assistant text. Hide specialist drafts and implementation
-   terminology; users need progress, evidence, coverage gaps and outcomes.
-4. Map 84/85/87 states to truthful copy. Delivery disconnected is **Reconnecting**,
-   not execution failed; a recovering worker says work is being resumed and retains
-   completed steps. A long phase displays elapsed time and available actions without
-   inventing an ETA or claiming progress that has not occurred.
-5. Make completed, partial, failed and cancelled outcomes visually/textually distinct.
-   Partial review names missing coverage. Remove the active Stop control after terminal
-   truth arrives. If starting over is appropriate, make it an explicit new turn;
-   never automatically replay a paid review because the user refreshes.
-6. Preserve one answer through remount, session switching, out-of-order events,
-   reconnect and saved-message hydration. Durable terminal/checkpoint state takes
-   precedence over stale local optimistic state.
-7. Keep normal chat, attachments, unsupported/global contexts, keyboard submission,
-   mobile layout, focus and screen-reader announcements working. Cohort visibility
-   is a convenience; server admission is the permission boundary. Do not expose raw
-   provider prompts, private execution receipts or cost ledger internals in the UI.
+## DJ's decisions (2026-09-18)
 
-## Ownership and parallel work
+- **Scope: ambitious.** Staleness scores, the flags card, "Update these", the on-track gauge and
+  inbox cleanup all ship in the first version. The cohort is DJ first.
+- **Surfaces: all three.**
+  - A card in the chat right after the dump.
+  - One AI Inbox item per project, within the 3-per-project attention budget.
+  - A "may be out of date" badge on each flagged entity.
+- **Updates: auto-apply when very confident.** Everything else is drafted for approval.
+- **Inbox cleanup: auto-retire with undo.** Borderline items are marked "possibly stale".
 
-Own narrow changes in `apps/web/src/lib/components/agent/`:
-`WorkflowProgressCard.svelte`, `ThinkingBlock.svelte`, `AgentChatModal.svelte`,
-`agent-chat-session.ts`, `agent-chat-sse-handler.ts` and related tests. Reuse existing
-styling/components. Load the installed Svelte writing and best-practice skills
-before analyzing/editing components, and run their required analyzer.
+## Coordinator defaults (DJ may veto; from plan section 10)
 
-85 owns shared event types; 86 owns server admission. Do not invent a browser-only
-workflow flag that grants access or edit the server contract independently. 62 owns
-broader modal decomposition: coordinate file ownership and avoid folding that
-refactor into this feature. Existing-state fixtures may be built before the contract
-freeze; new-state fixtures wait for its real types. Live activation waits for 86/87.
+1. **Auto-apply scope.** Tasks only: status to in progress, blocked or done, and absolute due dates
+   the user literally stated. Goals, milestones and documents are always drafted.
+2. **Auto-apply starts gated.** Drafts, the card and badges go live first. Auto-apply switches on
+   after DJ's first ~20 live scans show zero grounding violations in the ledger.
+3. **No generative rewriting by the radar.** For text and document changes, "Draft in chat"
+   pre-fills a normal chat message.
+4. **Badge visibility.** Badges are visible only to the person whose brain dump produced them,
+   because the evidence quotes private chat.
+5. **Percentages.** Raw percentages are shown with a "model estimate" hint. They are uncalibrated
+   until about 50 labelled outcomes exist.
+6. **Retire scope.** Only individual Project Review suggestions auto-retire. Briefs, audits, agent
+   proposals and calendar items are only marked "possibly stale".
+7. **Timing.** The card appears about 60–90 seconds after the last message, so a multi-message
+   dump becomes one scan. Undo and the bundle both last 72 hours.
 
-## Acceptance and handoff
+## Displaced original scope
 
-- Component/controller fixtures cover sending → queued → preparation → parallel work
-  → streamed answer → full/partial completion; failed/cancelled/reconnecting/recovering
-  branches; Stop races; refresh; switching away/back; duplicate and stale events.
-- An ordinary follow-up does not inherit review mode. Double submit is deduplicated;
-  changed mode cannot mutate the accepted request. Non-cohort callers cannot activate
-  a review by tampering with client state.
-- Existing normal-chat tests pass. No extra subscription per step, page polling loop,
-  or duplicate answer renderer is introduced.
-- Run narrow session/SSE/ThinkingBlock/progress tests through `test-gate`, the Svelte
-  analyzer and relevant web check serially. Coordinator runs the complete gate.
-- In the real ordinary-chat browser, submit without `/workflow`, observe actual
-  incremental answer text, Stop one review, reload one, and view an intentionally
-  partial result. Record first UI feedback, first progress, first visible answer and
-  terminal times separately. Browser screenshots supplement durable readback.
+The original 88 was an explicit **Review project** entry in the ordinary chat composer, using the
+86/87 workflow. It is displaced, not cancelled. A "Review deeper" action on the radar card needs
+that entry. The UI note from 87 still applies: after a finish from a visible prefix, the editor step
+reads `claimed`, so render from the terminal outcome.
 
-Return an inspectable UI, transition fixtures, accessibility/keyboard results,
-source identity and browser evidence. Leave Workflow Lab as the internal diagnostic
-path during acceptance. This task does not enable general production access or remove
-the rollback lane. Completion requires the real chat journey, not only mocked states.
+## Lanes (disjoint files; see plan section 8)
+
+- **A — schema, contracts, shared core:**
+  - four new migrations;
+  - `freshness-radar.types.ts` and the additive type edits;
+  - the generic `JevClient` in `packages/smart-llm`;
+  - scalar/goal/milestone support in `verify-operations`;
+  - freshness helpers in `inbox-index`.
+- **B — worker scanner:** `apps/worker/src/workers/freshness-radar/**`, the queue registration,
+  and the read-only backtest script.
+- **C — web:**
+  - the badge, undo and flag routes;
+  - the null-`run_id` approval path;
+  - `FreshnessRadarCard` in chat, badges and the gauge in the project UI, and inbox labels.
+
+## Acceptance
+
+- Focused lane tests, plus SQL/RLS on a local disposable Postgres. No hosted database.
+- Migrations are applied to QA and then production only with DJ's explicit OK.
+- Rollout order:
+  1. Cohort flag on for DJ in `shadow` mode.
+  2. Then `live` without auto-apply.
+  3. Then auto-apply once the ledger gate above passes.
+- **Backtest:** replay DJ's recent chat sessions read-only through the scanner and report precision
+  and calibration. This runs on production data only with DJ's explicit OK.
+- The live browser journey (dump → card → Update these → Undo → badge → inbox) is recorded in 89.
