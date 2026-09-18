@@ -1,0 +1,65 @@
+{
+	"version": "freshness_card_v1",
+	"scanId": "00000000-0000-4000-8000-000000000001",
+	"projectId": "33333333-3333-4333-8333-333333333333",
+	"projectName": "Pop-up store",
+	"createdAt": "2026-09-18T15:00:00.000Z",
+	"headline": "1 item may be out of date in Pop-up store; 1 task was updated automatically",
+	"moreCount": 0,
+	"items": [
+		{
+			"flagId": "00000000-0000-4000-8000-000000000002",
+			"entity": {
+				"kind": "task",
+				"id": "aaaaaaa1-0000-4000-8000-000000000002",
+				"title": "Venue contract"
+			},
+			"probability": 0.8,
+			"disposition": "drafted",
+			"proposal": {
+				"summary": "Move due date to 2026-10-03",
+				"field": "due_at",
+				"from": "2026-09-30",
+				"to": "2026-10-03"
+			},
+			"evidenceExcerpt": "The venue contract is now due Oct 3.",
+			"draftInChatPrompt": null
+		}
+	],
+	"bundle": {
+		"suggestionId": "00000000-0000-4000-8000-000000000003",
+		"operationCount": 1
+	},
+	"autoApplied": [
+		{
+			"flagId": "00000000-0000-4000-8000-000000000004",
+			"entity": {
+				"kind": "task",
+				"id": "aaaaaaa1-0000-4000-8000-000000000001",
+				"title": "Investor deck"
+			},
+			"summary": "Mark done",
+			"undoableUntil": "2026-09-21T15:00:00.000Z"
+		}
+	],
+	"inboxCleanup": {
+		"retired": [
+			{
+				"flagId": "00000000-0000-4000-8000-000000000005",
+				"title": "Resolve the investor deck overlap"
+			}
+		],
+		"possiblyStaleCount": 0
+	},
+	"gaugeChanges": [
+		{
+			"entity": {
+				"kind": "goal",
+				"id": "bbbbbbb1-0000-4000-8000-000000000001",
+				"title": "Open the store"
+			},
+			"from": null,
+			"to": "at_risk"
+		}
+	]
+}

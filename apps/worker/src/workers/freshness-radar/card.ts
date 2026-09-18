@@ -5,10 +5,17 @@
 // by session hydration. Idempotent through the unique (session_id,
 // metadata->>'idempotency_key') index: 23505 means already delivered.
 // The row's `content` enters chat history, so it states facts only.
+//
+// Amendment: the plan names message_type 'freshness_radar_card', but the
+// production chat_messages_message_type_check allows only user_message,
+// assistant_message, system_notification, operation_summary and phase_update,
+// and no radar migration extends it (proven by freshnessRadar.postgres.test.ts).
+// The row is therefore an 'assistant_message'; the card is identified by
+// metadata { source: 'freshness_radar', kind: 'freshness_radar_card' }, which is
+// exactly what the web hydration and realtime paths key on.
 
 import {
 	FRESHNESS_CARD_MAX_ITEMS,
-	FRESHNESS_CARD_MESSAGE_TYPE,
 	FRESHNESS_CARD_METADATA_KIND,
 	type FreshnessCardItemV1,
 	type FreshnessCardPayloadV1,
@@ -17,6 +24,20 @@ import {
 } from '@buildos/shared-types';
 import { type EntityDecision, draftInChatPrompt } from './combine';
 import type { FreshnessDb } from './dataPort';
+
+/** chat_messages.message_type of the card row (see the amendment above). */
+export const FRESHNESS_CARD_ROW_MESSAGE_TYPE = 'assistant_message' as const;
+export const FRESHNESS_CARD_SOURCE = 'freshness_radar' as const;
+
+/** True for the radar's injected card row (keyed on metadata, like the web). */
+export function isFreshnessCardRow(row: { role?: unknown; metadata?: unknown }): boolean {
+	const metadata = row.metadata as Record<string, unknown> | null | undefined;
+	return (
+		row.role === 'assistant' &&
+		metadata?.source === FRESHNESS_CARD_SOURCE &&
+		metadata?.kind === FRESHNESS_CARD_METADATA_KIND
+	);
+}
 
 export function freshnessCardIdempotencyKey(scanId: string): string {
 	return `freshness-scan:${scanId}:card`;
@@ -173,9 +194,9 @@ export async function deliverFreshnessCard(params: {
 			user_id: params.userId,
 			role: 'assistant',
 			content: cardContent(params.card),
-			message_type: FRESHNESS_CARD_MESSAGE_TYPE,
+			message_type: FRESHNESS_CARD_ROW_MESSAGE_TYPE,
 			metadata: {
-				source: 'freshness_radar',
+				source: FRESHNESS_CARD_SOURCE,
 				kind: FRESHNESS_CARD_METADATA_KIND,
 				freshness_scan_id: params.card.scanId,
 				idempotency_key: idempotencyKey,
@@ -192,9 +213,10 @@ export async function deliverFreshnessCard(params: {
 		.from('chat_messages')
 		.select('id, metadata')
 		.eq('session_id', params.sessionId)
-		.eq('message_type', FRESHNESS_CARD_MESSAGE_TYPE)
+		.eq('role', 'assistant')
+		.eq('message_type', FRESHNESS_CARD_ROW_MESSAGE_TYPE)
 		.order('created_at', { ascending: false })
-		.limit(20);
+		.limit(50);
 	if (existing.error) return null;
 	const match = (
 		(existing.data ?? []) as Array<{ id: string; metadata: Record<string, unknown> | null }>

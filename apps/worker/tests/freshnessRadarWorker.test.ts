@@ -12,7 +12,7 @@ import {
 	runAutoApply,
 	type AutoApplyCandidate
 } from '../src/workers/freshness-radar/autoApply';
-import { deliverFreshnessCard } from '../src/workers/freshness-radar/card';
+import { deliverFreshnessCard, isFreshnessCardRow } from '../src/workers/freshness-radar/card';
 import { buildFreshnessScanContext } from '../src/workers/freshness-radar/context';
 import { SupabaseFreshnessDataPort } from '../src/workers/freshness-radar/dataPort';
 import { FRESHNESS_POLICY_V1 } from '../src/workers/freshness-radar/freshnessPolicy';
@@ -108,6 +108,19 @@ class MemoryDb {
 	}
 
 	private check(table: string, row: Row): string | null {
+		if (
+			table === 'chat_messages' &&
+			row.message_type !== undefined &&
+			![
+				'user_message',
+				'assistant_message',
+				'system_notification',
+				'operation_summary',
+				'phase_update'
+			].includes(row.message_type)
+		) {
+			return 'chat_messages_message_type_check'; // the production CHECK
+		}
 		if (table === 'freshness_flags') {
 			if (
 				row.disposition === 'auto_applied' &&
@@ -925,9 +938,7 @@ describe('freshness_radar_scan job', () => {
 			jev_requests: 3
 		});
 		expect(db.table('freshness_flags')).toHaveLength(0);
-		expect(
-			db.table('chat_messages').filter((row) => row.role === 'assistant' && row.message_type)
-		).toHaveLength(0);
+		expect(db.table('chat_messages').filter(isFreshnessCardRow)).toHaveLength(0);
 		expect(
 			db.table('project_suggestions').filter((row) => row.kind === 'freshness_update')
 		).toHaveLength(0);
@@ -971,9 +982,7 @@ describe('freshness_radar_scan job', () => {
 		expect(
 			db.table('project_suggestions').filter((row) => row.kind === 'freshness_update')
 		).toHaveLength(0);
-		expect(
-			db.table('chat_messages').filter((row) => row.message_type === 'freshness_radar_card')
-		).toHaveLength(0);
+		expect(db.table('chat_messages').filter(isFreshnessCardRow)).toHaveLength(0);
 		expect(db.table('inbox_items')[0]!.status).toBe('pending');
 		expect(db.table('onto_tasks').find((row) => row.id === T_DECK)!.state_key).toBe(
 			'in_progress'
@@ -1068,9 +1077,7 @@ describe('freshness_radar_scan job', () => {
 		});
 
 		// Card: one injected assistant row with the frozen idempotency key.
-		const cards = db
-			.table('chat_messages')
-			.filter((row) => row.message_type === 'freshness_radar_card');
+		const cards = db.table('chat_messages').filter(isFreshnessCardRow);
 		expect(cards).toHaveLength(1);
 		const scan = db.table('freshness_scans')[0]!;
 		expect(cards[0]!.metadata).toMatchObject({
@@ -1530,7 +1537,8 @@ describe('card delivery', () => {
 		expect(db.table('chat_messages')).toHaveLength(1);
 		expect(db.table('chat_messages')[0]).toMatchObject({
 			role: 'assistant',
-			message_type: 'freshness_radar_card'
+			message_type: 'assistant_message',
+			metadata: { source: 'freshness_radar', kind: 'freshness_radar_card' }
 		});
 	});
 });
@@ -1652,9 +1660,7 @@ describe('draft bundle supersede', () => {
 			status: 'superseded'
 		});
 		expect(deps.draftDeps.syncInbox).toHaveBeenCalledTimes(2);
-		const card = db
-			.table('chat_messages')
-			.find((row) => row.message_type === 'freshness_radar_card')!.metadata.card;
+		const card = db.table('chat_messages').find(isFreshnessCardRow)!.metadata.card;
 		expect(card.bundle).toEqual({ suggestionId: bundles[0]!.id, operationCount: 2 });
 	});
 
@@ -1676,9 +1682,7 @@ describe('draft bundle supersede', () => {
 				disposition_reason: 'verify_model_entity_mismatch'
 			}
 		);
-		const card = db
-			.table('chat_messages')
-			.find((row) => row.message_type === 'freshness_radar_card')!.metadata.card;
+		const card = db.table('chat_messages').find(isFreshnessCardRow)!.metadata.card;
 		expect(card.bundle).toBeNull();
 		expect(card.items[0]).toMatchObject({ disposition: 'surfaced', proposal: null });
 	});
