@@ -117,6 +117,8 @@ export type AgenticChatProviderConfig = {
 
 type AgenticChatBaseConfig = {
 	workflowPrototypeUserIds?: string[];
+	/** Tasker 86: worker preparation for raw v4 review turns. Default off. */
+	workflowV4PreparationEnabled?: boolean;
 	liveVisionEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
@@ -155,6 +157,11 @@ export function loadAgenticChatConfig(
 		environment.PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE,
 		false,
 		'PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE'
+	);
+	const workflowV4PreparationEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED,
+		false,
+		'AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED'
 	);
 	const consumer: AgenticChatConsumerConfig = {
 		concurrency: parsePositiveInteger(
@@ -225,6 +232,7 @@ export function loadAgenticChatConfig(
 		workflowPrototypeUserIds: parseChatWorkflowPrototypeUsers(
 			environment.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS
 		),
+		workflowV4PreparationEnabled,
 		liveVisionEnabled,
 		consumptionBillingEnabled,
 		consumer,

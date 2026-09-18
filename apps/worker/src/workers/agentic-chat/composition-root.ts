@@ -6,6 +6,10 @@ import {
 // apps/worker/src/workers/agentic-chat/composition-root.ts
 import { ChatWorkflowPrototypeProvider } from './workflow/prototype-provider';
 import { createWorkflowContextLoader } from './workflow/context-loader';
+import {
+	type AgenticChatWorkflowV4CompositionOptionsV1,
+	createAgenticChatWorkflowTurnPreparerV1
+} from './workflow/preparation-composition';
 // apps/worker/src/workers/agentic-chat/composition-root.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
@@ -184,6 +188,8 @@ export function createAgenticChatCompositionRoot(options: {
 	semanticReviewerClient?: AgenticChatTurnProviderClientPortV1;
 	providerConfigured: boolean;
 	workflowPrototypeUserIds?: readonly string[];
+	/** Tasker 86: default-off raw v4 review preparation (and Tasker 87's runner). */
+	workflowV4?: AgenticChatWorkflowV4CompositionOptionsV1;
 	/** Separate default-off gate for ephemeral current-turn image resolution. */
 	liveVisionEnabled?: boolean;
 	/** Shared default-off gate for terminal consumption-billing re-evaluation. */
@@ -370,6 +376,14 @@ export function createAgenticChatCompositionRoot(options: {
 					onSpan: reportAgenticChatMutationSpan
 				})
 			: disabledToolPort('mutating_tools_disabled');
+	const rawWorkflow = createAgenticChatWorkflowTurnPreparerV1({
+		options: options.workflowV4,
+		client: options.client,
+		input,
+		publisher,
+		control,
+		allowedUserIds: options.workflowPrototypeUserIds ?? []
+	});
 	const executor = new AgenticChatTurnExecutor(
 		{
 			control,
@@ -408,7 +422,8 @@ export function createAgenticChatCompositionRoot(options: {
 				((error) =>
 					console.error('Agentic Chat consumption billing evaluation failed', error)),
 			onTimingSnapshot: options.onTimingSnapshot ?? reportAgenticChatRuntimeTiming,
-			mutation
+			mutation,
+			rawWorkflow
 		},
 		{
 			providerBudgetMs: options.providerBudgetMs,

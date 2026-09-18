@@ -387,6 +387,7 @@ function createDefaultComposition(
 		semanticReviewerClient,
 		providerConfigured: true,
 		workflowPrototypeUserIds: input.config.workflowPrototypeUserIds,
+		workflowV4: { preparationEnabled: input.config.workflowV4PreparationEnabled === true },
 		liveVisionEnabled: input.config.liveVisionEnabled,
 		consumptionBillingEnabled: input.config.consumptionBillingEnabled,
 		mutationCapabilities: ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
