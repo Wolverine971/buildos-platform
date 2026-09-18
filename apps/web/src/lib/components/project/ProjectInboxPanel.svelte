@@ -60,6 +60,9 @@
 		project?: { id: string; name: string | null } | null;
 		can_decide?: boolean;
 		decision_disabled_reason?: string | null;
+		/** Freshness radar (Tasker 88): newer information may have made this item obsolete. */
+		freshness_state?: 'fresh' | 'possibly_stale' | null;
+		freshness_note?: string | null;
 		source_payload?: Record<string, unknown> | null;
 		source_context?: {
 			project_loop_run?: ProjectLoopRunContext | null;
@@ -187,7 +190,8 @@
 		doc_outdated: 'Outdated',
 		drift: 'Drift',
 		task_conflict: 'Conflict',
-		audit_recommendation: 'Audit'
+		audit_recommendation: 'Audit',
+		freshness_update: 'Out of date'
 	};
 
 	const evidenceTypeLabel: Record<string, string> = {
@@ -1173,6 +1177,19 @@
 												agent?.label ||
 												'Review item'}
 										</p>
+										{#if item.freshness_state === 'possibly_stale'}
+											<span
+												class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
+												title={item.freshness_note ||
+													'Newer information may have made this outdated.'}
+											>
+												<span
+													class="h-1.5 w-1.5 rounded-full bg-warning"
+													aria-hidden="true"
+												></span>
+												May be outdated
+											</span>
+										{/if}
 									</div>
 									{#if payload?.why_now}
 										<p class="mt-1 break-words text-xs text-foreground/80">

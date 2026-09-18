@@ -9,6 +9,8 @@
 		TrendingUp
 	} from '$lib/icons/lucide';
 	import type { Milestone, Project, Risk } from '$lib/types/onto';
+	import OnTrackGauge from '$lib/components/project/freshness/OnTrackGauge.svelte';
+	import { getProjectFreshnessContext } from '$lib/components/project/freshness/freshness-context.svelte';
 	import type { ProjectTasksCoverage } from '$lib/types/project-full-data';
 
 	type TaskSegment = {
@@ -38,6 +40,15 @@
 
 	let { project, tasksCoverage, milestones, risks, onOpenTasks, onOpenMilestone }: Props =
 		$props();
+
+	// Freshness radar (Tasker 88): on-track gauge per milestone, when one was scored.
+	const freshness = getProjectFreshnessContext();
+	const GAUGE_WORDS = {
+		on_track: 'on track',
+		at_risk: 'at risk',
+		off_track: 'off track',
+		unknown: 'on-track unknown'
+	} as const;
 
 	const snapshotMs = $derived.by(() => {
 		const coverageTime = Date.parse(tasksCoverage.as_of);
@@ -359,10 +370,11 @@
 				<div class="timeline-line" aria-hidden="true"></div>
 				{#each timelinePoints as point (point.key)}
 					{#if point.kind === 'milestone' && point.milestoneId}
+						{@const gauge = freshness?.gaugeFor('milestone', point.milestoneId) ?? null}
 						<button
 							type="button"
 							class="timeline-point timeline-button pressable"
-							aria-label={`Open milestone ${point.label}, ${timelineState(point)}, ${formatDate(point.date)}`}
+							aria-label={`Open milestone ${point.label}, ${timelineState(point)}, ${formatDate(point.date)}${gauge ? `, ${GAUGE_WORDS[gauge.gauge]} (model estimate)` : ''}`}
 							onclick={() => onOpenMilestone(point.milestoneId!)}
 						>
 							<span class={['timeline-dot', timelineDotClass(point)]}>
@@ -374,6 +386,9 @@
 							<span class="text-2xs text-muted-foreground">
 								{timelineState(point)} · {formatDate(point.date)}
 							</span>
+							{#if gauge}
+								<OnTrackGauge gauge={gauge.gauge} size="xs" subject={point.label} />
+							{/if}
 						</button>
 					{:else}
 						<div class="timeline-point">

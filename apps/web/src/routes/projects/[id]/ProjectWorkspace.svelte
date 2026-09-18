@@ -38,6 +38,11 @@
 	import ProjectMemoryCard from '$lib/components/project/ProjectMemoryCard.svelte';
 	import ProjectEntitySearchCombobox from '$lib/components/project/v2/ProjectEntitySearchCombobox.svelte';
 	import PulseStrip from '$lib/components/project/v2/PulseStrip.svelte';
+	import OnTrackGauge from '$lib/components/project/freshness/OnTrackGauge.svelte';
+	import {
+		ProjectFreshnessState,
+		setProjectFreshnessContext
+	} from '$lib/components/project/freshness/freshness-context.svelte';
 	import {
 		resolveEntityOpenAction,
 		type EntityOpenAction
@@ -118,6 +123,8 @@
 
 	let { data }: { data: PageData } = $props();
 	const initialData = untrack(() => data);
+	// Freshness radar (Tasker 88): one read per page feeds every badge and gauge below.
+	const freshness = setProjectFreshnessContext(new ProjectFreshnessState(initialData.projectId));
 
 	function projectFromPageData(source: PageData): Project {
 		return source.skeleton
@@ -937,6 +944,7 @@
 	onMount(() => {
 		syncWorkspaceFromUrl(new URL(window.location.href));
 		hydrationPromise = hydrateProject();
+		void freshness.refresh();
 		// Ignore the store's initial value; only react to new completed mutations.
 		let initial = true;
 		const unsubscribe = dataMutationEvents.subscribe((event) => {
@@ -946,9 +954,11 @@
 			}
 			if (!event || !mutationAffectsProject(event.summary, project.id)) return;
 			void refreshQueue.enqueue(event.summary);
+			freshness.scheduleRefresh();
 		});
 		return () => {
 			unsubscribe();
+			freshness.destroy();
 		};
 	});
 </script>
@@ -1366,6 +1376,10 @@
 															(milestone) =>
 																milestone.goal_id === goal.id
 														)}
+														{@const goalGauge = freshness.gaugeFor(
+															'goal',
+															goal.id
+														)}
 														<button
 															type="button"
 															class="entity-row"
@@ -1391,6 +1405,12 @@
 																		: ''}
 																</p>
 															</div>
+															{#if goalGauge}
+																<OnTrackGauge
+																	gauge={goalGauge.gauge}
+																	size="xs"
+																/>
+															{/if}
 															<ChevronRight
 																class="h-4 w-4 shrink-0 text-muted-foreground"
 															/>

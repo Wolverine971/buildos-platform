@@ -63,6 +63,8 @@
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { toastService } from '$lib/stores/toast.store';
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
+	import FreshnessBadge from '$lib/components/project/freshness/FreshnessBadge.svelte';
+	import { getProjectFreshnessContext } from '$lib/components/project/freshness/freshness-context.svelte';
 	import type { Task, TaskState } from '$lib/types/onto';
 	import type {
 		ProjectActiveTaskBucketKey,
@@ -75,6 +77,7 @@
 	} from '$lib/utils/project-task-board';
 
 	const recentlyCreated = getRecentlyCreatedContext();
+	const freshness = getProjectFreshnessContext();
 
 	type WorkflowColumnKey = 'backlog' | 'in_progress' | 'blocked' | 'done';
 	type ColumnKey = WorkflowColumnKey | 'archived';
@@ -876,75 +879,89 @@
 						{@const isArchivedCard = !!task.deleted_at}
 						{@const justCreated = recentlyCreated?.has(task.id) ?? false}
 						{@const justCompleted = recentlyCompletedIds.has(task.id)}
-						<button
-							type="button"
-							draggable={canEdit}
-							ondragstart={(e) => handleDragStart(e, task)}
-							ondragend={handleDragEnd}
-							onclick={() => onEditTask(task.id)}
-							use:preloadEntityModal={'task'}
-							title={isArchivedCard ? 'Drag to a state column to restore' : undefined}
-							class="group min-h-[44px] w-full rounded-md border border-border bg-card px-2.5 py-2 text-left shadow-none transition-all hover:border-foreground/20 hover:shadow-ink focus:outline-none focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable
+						{@const freshFlag = freshness?.flagFor('task', task.id) ?? null}
+						<div class="relative">
+							<button
+								type="button"
+								draggable={canEdit}
+								ondragstart={(e) => handleDragStart(e, task)}
+								ondragend={handleDragEnd}
+								onclick={() => onEditTask(task.id)}
+								use:preloadEntityModal={'task'}
+								title={isArchivedCard
+									? 'Drag to a state column to restore'
+									: undefined}
+								class="group min-h-[44px] w-full rounded-md border border-border bg-card px-2.5 py-2 text-left shadow-none transition-all hover:border-foreground/20 hover:shadow-ink focus:outline-none focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable
 								{isDragging ? 'opacity-40 shadow-ink-strong' : ''}
 								{isPending ? 'opacity-70' : ''}
 								{isArchivedCard ? 'opacity-70' : ''}
 								{justCreated ? 'entity-just-created' : ''}
 								{justCompleted ? 'task-just-completed' : ''}
+								{freshFlag ? 'pb-8' : ''}
 								{canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
-						>
-							<p
-								class="text-sm font-medium text-foreground line-clamp-2 leading-snug
-									{col.key === 'done' || isArchivedCard ? 'line-through text-muted-foreground' : ''}"
 							>
-								{task.title}
-							</p>
-							{#if task.description}
 								<p
-									class="mt-0.5 line-clamp-1 text-xs leading-snug text-muted-foreground"
+									class="text-sm font-medium text-foreground line-clamp-2 leading-snug
+									{col.key === 'done' || isArchivedCard ? 'line-through text-muted-foreground' : ''}"
 								>
-									{task.description}
+									{task.title}
 								</p>
-							{/if}
-							{#if prio || due || assignee || archivedAt}
-								<div class="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-									{#if prio && !isArchivedCard}
-										<span class="text-2xs font-semibold {prio.className}"
-											>{prio.label}</span
-										>
-									{/if}
-									{#if due}
-										<span
-											class="inline-flex items-center gap-1 text-2xs font-medium {due.isOverdue
-												? 'text-destructive'
-												: 'text-muted-foreground'}"
-										>
-											{#if due.isOverdue}
-												<AlertTriangle class="w-3 h-3" />
-											{:else}
+								{#if task.description}
+									<p
+										class="mt-0.5 line-clamp-1 text-xs leading-snug text-muted-foreground"
+									>
+										{task.description}
+									</p>
+								{/if}
+								{#if prio || due || assignee || archivedAt}
+									<div class="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+										{#if prio && !isArchivedCard}
+											<span class="text-2xs font-semibold {prio.className}"
+												>{prio.label}</span
+											>
+										{/if}
+										{#if due}
+											<span
+												class="inline-flex items-center gap-1 text-2xs font-medium {due.isOverdue
+													? 'text-destructive'
+													: 'text-muted-foreground'}"
+											>
+												{#if due.isOverdue}
+													<AlertTriangle class="w-3 h-3" />
+												{:else}
+													<Clock class="w-3 h-3" />
+												{/if}
+												{due.label}
+											</span>
+										{/if}
+										{#if assignee && !isArchivedCard}
+											<span
+												class="inline-flex items-center gap-1 text-2xs text-muted-foreground"
+											>
+												<User class="w-3 h-3" />
+												{assignee}
+											</span>
+										{/if}
+										{#if archivedAt}
+											<span
+												class="inline-flex items-center gap-1 text-2xs italic text-muted-foreground/80"
+											>
 												<Clock class="w-3 h-3" />
-											{/if}
-											{due.label}
-										</span>
-									{/if}
-									{#if assignee && !isArchivedCard}
-										<span
-											class="inline-flex items-center gap-1 text-2xs text-muted-foreground"
-										>
-											<User class="w-3 h-3" />
-											{assignee}
-										</span>
-									{/if}
-									{#if archivedAt}
-										<span
-											class="inline-flex items-center gap-1 text-2xs italic text-muted-foreground/80"
-										>
-											<Clock class="w-3 h-3" />
-											{archivedAt}
-										</span>
-									{/if}
-								</div>
+												{archivedAt}
+											</span>
+										{/if}
+									</div>
+								{/if}
+							</button>
+							{#if freshFlag}
+								<FreshnessBadge
+									kind="task"
+									id={task.id}
+									flag={freshFlag}
+									class="absolute bottom-2 left-2.5 z-10"
+								/>
 							{/if}
-						</button>
+						</div>
 					{/each}
 				{/if}
 

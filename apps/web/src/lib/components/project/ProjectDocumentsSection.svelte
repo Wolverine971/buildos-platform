@@ -5,6 +5,8 @@
 	import { ChevronDown, FileText, Plus } from '$lib/icons/lucide';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { DocTreeView } from '$lib/components/ontology/doc-tree';
+	import FreshnessBadge from '$lib/components/project/freshness/FreshnessBadge.svelte';
+	import { getProjectFreshnessContext } from '$lib/components/project/freshness/freshness-context.svelte';
 	import type { Document } from '$lib/types/onto';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 
@@ -57,12 +59,50 @@
 
 	let docTreeViewRef = $state<{ refresh: () => void } | null>(null);
 
+	// Freshness radar (Tasker 88): flagged documents surface above the tree.
+	const freshness = getProjectFreshnessContext();
+	const flaggedDocuments = $derived.by(() => {
+		if (!freshness) return [];
+		const byId = new Map(documents.map((document) => [document.id, document]));
+		return freshness
+			.flaggedIds('document')
+			.map((documentId) => byId.get(documentId))
+			.filter((document): document is Document => Boolean(document));
+	});
+
 	$effect(() => {
 		onTreeRefChange?.(docTreeViewRef);
 	});
 </script>
 
+{#snippet freshnessStrip()}
+	{#if flaggedDocuments.length > 0}
+		<ul
+			class="space-y-1 border-b border-border px-3 py-2 sm:px-4"
+			aria-label="Documents that may be out of date"
+		>
+			{#each flaggedDocuments as document (document.id)}
+				<li class="flex min-w-0 items-center gap-2">
+					<button
+						type="button"
+						class="inline-flex min-h-9 min-w-0 items-center gap-2 rounded-md text-left text-sm font-medium text-foreground hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						onclick={() => onOpenDocument(document.id)}
+					>
+						<FileText
+							class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+							aria-hidden="true"
+						/>
+						<span class="truncate">{document.title}</span>
+					</button>
+					<FreshnessBadge kind="document" id={document.id} class="ml-auto shrink-0" />
+				</li>
+			{/each}
+		</ul>
+	{/if}
+{/snippet}
+
 {#snippet documentTree()}
+	{@render freshnessStrip()}
 	<DocTreeView
 		bind:this={docTreeViewRef}
 		{projectId}
