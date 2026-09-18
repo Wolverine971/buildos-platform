@@ -45,13 +45,39 @@ export const AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1: Readonly<
 		requestUsd: '0',
 		source: 'openrouter_models_api',
 		observedAt: '2026-09-12T00:00:00Z'
+	}),
+	/**
+	 * The provider fallback. Prompt and completion rates are the OpenRouter price the
+	 * repository records for this model (`MODEL_CATALOG` in
+	 * packages/smart-llm/src/model-config.ts, recorded 2026-07-17). The catalog has no
+	 * cache-read rate, so this carries the contract's admitted cache-read ceiling, not an
+	 * observed rate; no charge is computed from it. Every rate is at or below the frozen
+	 * admitted maximums, and policy v1's SQL allowlist already names this model, so it
+	 * needs no new policy version.
+	 */
+	'deepseek/deepseek-v4-flash': Object.freeze({
+		version: 'agentic_chat_workflow_pricing_v1',
+		model: 'deepseek/deepseek-v4-flash',
+		canonicalModel: 'deepseek/deepseek-v4-flash',
+		promptUsdPerMillion: '0.098',
+		completionUsdPerMillion: '0.196',
+		cacheReadUsdPerMillion: '0.006',
+		requestUsd: '0',
+		source: 'openrouter_models_api',
+		observedAt: '2026-07-17T00:00:00Z'
 	})
 });
 
 /** The workflow's primary model; every request is priced by a frozen snapshot. */
 export const AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1 = 'deepseek/deepseek-v4.1-flash';
-/** Provider-internal fallback models inside the same request; each must be priced. */
-export const AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1: readonly string[] = Object.freeze([]);
+/**
+ * Provider fallback models inside the same request (OpenRouter `models`); each must be
+ * priced. Route health may promote a fallback to the request's first model, so every
+ * entry reserves and settles under its own snapshot.
+ */
+export const AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1: readonly string[] = Object.freeze([
+	'deepseek/deepseek-v4-flash'
+]);
 /** Contract section 3: one physical request may run 90 s, with a 10 s header wait. */
 export const AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS = 90_000;
 export const AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
@@ -161,6 +187,33 @@ export type AgenticChatWorkflowDispatchMeterOptionsV1 = {
 	settleRetryDelayMs?: number;
 	onLedger?: (entry: AgenticChatWorkflowLedgerEntryV1) => void;
 };
+
+/**
+ * The rates a provider receipt without a cost is charged at. One HTTP request may be
+ * served by any of its models, so the highest priced rate among them applies: a
+ * request led by the cheaper fallback that the provider served with the primary is
+ * never undercharged.
+ */
+export function agenticChatWorkflowChargePricingV1(
+	models: readonly string[],
+	pricing: Readonly<Record<string, AgenticChatWorkflowPricingSnapshotV1>>
+): AgenticChatWorkflowPricingSnapshotV1 {
+	const snapshots = models.map((model) => pricing[model]);
+	const first = snapshots[0];
+	if (!first || snapshots.some((snapshot) => !snapshot)) {
+		throw new Error('Every workflow request model needs a frozen pricing snapshot');
+	}
+	const highest = (field: 'promptUsdPerMillion' | 'completionUsdPerMillion') =>
+		snapshots.reduce(
+			(max, snapshot) => (Number(snapshot![field]) > Number(max) ? snapshot![field] : max),
+			first[field]
+		);
+	return {
+		...first,
+		promptUsdPerMillion: highest('promptUsdPerMillion'),
+		completionUsdPerMillion: highest('completionUsdPerMillion')
+	};
+}
 
 /** Converts a provider receipt into an integer micro-USD charge, rounded up. */
 export function computeAgenticChatWorkflowActualMicroUsdV1(
@@ -302,6 +355,11 @@ export class AgenticChatWorkflowDispatchMeter {
 				'every model in the request needs a frozen pricing snapshot and an OpenRouter max price'
 			);
 		}
+		// A missing provider cost is charged at the highest rate this request could incur.
+		const chargePricing = agenticChatWorkflowChargePricingV1(
+			[request.model, ...request.fallbackModels],
+			this.pricing
+		);
 		if (
 			!Number.isSafeInteger(request.serializedRequestBytes) ||
 			request.serializedRequestBytes < 1 ||
@@ -413,7 +471,7 @@ export class AgenticChatWorkflowDispatchMeter {
 						settlement,
 						'settled',
 						receipt,
-						computeAgenticChatWorkflowActualMicroUsdV1(receipt.usage, pricing),
+						computeAgenticChatWorkflowActualMicroUsdV1(receipt.usage, chargePricing),
 						'provider_usage'
 					);
 				} else if (receipt.kind === 'provider_error_response') {

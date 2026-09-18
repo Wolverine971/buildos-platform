@@ -13,12 +13,18 @@ import {
 	hashAgenticChatWorkflowRequestV1
 } from '@buildos/shared-types';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
+import type { AgenticChatOpenAiCompatibleRouteV1 } from '../src/workers/agentic-chat/provider/openrouter-client';
 import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/executionControl';
 import {
 	SupabaseAgenticChatWorkflowStore,
 	type AgenticChatWorkflowFenceV1
 } from '../src/workers/agentic-chat/workflow/workflow-store';
 import { AgenticChatWorkflowRunner } from '../src/workers/agentic-chat/workflow/workflow-runner';
+import {
+	AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1,
+	buildAgenticChatWorkflowRoutesV1
+} from '../src/workers/agentic-chat/workflow/workflow-dispatch';
+import { DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
 import {
 	buildAgenticChatWorkflowProjectionV1,
 	workflowCheckpointV1,
@@ -31,12 +37,14 @@ import {
 } from './helpers/workflowStoreFake';
 import {
 	EDITOR_TEXT,
+	PRICED_MODEL,
 	type ScriptedCall,
 	type ScriptedReply,
 	happyScript,
 	plannerReply,
 	reportReply,
-	scriptedWorkflowProvider
+	scriptedWorkflowProvider,
+	workflowRoute
 } from './helpers/workflowProviderScript';
 
 /**
@@ -206,10 +214,11 @@ describePostgres('workflow runner against the frozen SQL on disposable PostgreSQ
 
 	function runnerFor(
 		script: (call: ScriptedCall) => ScriptedReply,
-		failRpc?: (name: string) => boolean
+		failRpc?: (name: string) => boolean,
+		routes?: AgenticChatOpenAiCompatibleRouteV1[]
 	) {
 		const store = new SupabaseAgenticChatWorkflowStore(supabaseShim(service, failRpc) as never);
-		const provider = scriptedWorkflowProvider(script);
+		const provider = scriptedWorkflowProvider(script, { routes });
 		const runner = new AgenticChatWorkflowRunner(
 			{
 				store,
@@ -550,6 +559,58 @@ describePostgres('workflow runner against the frozen SQL on disposable PostgreSQ
 			(row) => row.step === 'planner'
 		)!;
 		expect(planner.actual).toBe(190_000);
+	}, 60_000);
+
+	it('admits the priced provider fallback in the frozen SQL, including when it leads a request', async () => {
+		for (const [model, snapshot] of Object.entries(AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1)) {
+			const { rows } = await admin.query(
+				'SELECT public.agentic_chat_workflow_pricing_valid_v1($1, $2::jsonb) AS ok',
+				[model, JSON.stringify(snapshot)]
+			);
+			expect({ model, ok: rows[0]!.ok }).toEqual({ model, ok: true });
+		}
+
+		// The production workflow route: priced primary, priced fallback in one request.
+		const [route] = buildAgenticChatWorkflowRoutesV1([workflowRoute()]);
+		const fence = await admitAndClaim(4, 'What is the fastest safe path to launch?');
+		const pinned = runnerFor(happyScript, undefined, [route!]);
+		const result = await pinned.run(fence, 4);
+		expect(result.outcome).toMatchObject({ kind: 'completed', answerSource: 'editor' });
+		const priced = Object.keys(AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1);
+		expect(pinned.provider.calls[0]!.body).toMatchObject({
+			model: PRICED_MODEL,
+			models: [DEEPSEEK_V4_FLASH_MODEL]
+		});
+		// Every request, before or after route health pins the serving model, names only
+		// priced models.
+		for (const call of pinned.provider.calls) {
+			for (const model of [call.body.model, ...(call.body.models ?? [])]) {
+				expect(priced).toContain(model);
+			}
+		}
+
+		// Route health can promote the fallback to lead a request; it reserves under its own
+		// snapshot and the SQL validator admits it.
+		const promoted = await admitAndClaim(5, 'Which commitments conflict?');
+		const led = runnerFor(happyScript, undefined, [
+			{ ...route!, model: DEEPSEEK_V4_FLASH_MODEL, fallbackModels: [PRICED_MODEL] }
+		]);
+		expect((await led.run(promoted, 5)).outcome).toMatchObject({ kind: 'completed' });
+		const { rows } = await admin.query(
+			`SELECT model_requested, pricing->>'model' AS priced, state, actual_micro_usd::bigint AS actual
+			FROM public.chat_turn_workflow_dispatches WHERE turn_run_id = $1 ORDER BY reserved_at`,
+			[promoted.turnRunId]
+		);
+		expect(rows).toHaveLength(4);
+		expect(rows[0]).toMatchObject({
+			model_requested: DEEPSEEK_V4_FLASH_MODEL,
+			priced: DEEPSEEK_V4_FLASH_MODEL
+		});
+		for (const row of rows) {
+			expect(row.priced).toBe(row.model_requested);
+			expect(row.state).toBe('settled');
+			expect(Number(row.actual)).toBe(1_100);
+		}
 	}, 60_000);
 });
 

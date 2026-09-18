@@ -13,8 +13,16 @@ import {
 } from '../src/workers/agentic-chat/provider/contracts';
 import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/pendingEffects';
 import {
+	AGENTIC_CHAT_WORKFLOW_ADMITTED_MODELS,
+	AGENTIC_CHAT_WORKFLOW_MAX_RATES_USD_PER_MILLION
+} from '@buildos/shared-types';
+import { DEEPSEEK_V4_FLASH_MODEL, MODEL_CATALOG } from '@buildos/smart-llm';
+import {
+	AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1,
 	AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1,
+	AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1,
 	AgenticChatWorkflowDispatchMeter,
+	buildAgenticChatWorkflowRoutesV1,
 	computeAgenticChatWorkflowActualMicroUsdV1
 } from '../src/workers/agentic-chat/workflow/workflow-dispatch';
 import { WorkflowStoreFake } from './helpers/workflowStoreFake';
@@ -584,5 +592,121 @@ describe('computeAgenticChatWorkflowActualMicroUsdV1', () => {
 	it('prices actual tokens at the admitted rates when the provider reports no cost', () => {
 		// 2000 * 0.30 + 400 * 1.20 = 1080 micro-USD.
 		expect(computeAgenticChatWorkflowActualMicroUsdV1(usage(null), PRICING)).toBe(1_080);
+	});
+});
+
+describe('workflow provider fallback (DeepSeek V4 Flash)', () => {
+	const FALLBACK = DEEPSEEK_V4_FLASH_MODEL;
+
+	it('prices the fallback from the model catalog, within every frozen admitted maximum', () => {
+		expect(AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1).toEqual([FALLBACK]);
+		const snapshot = AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1[FALLBACK]!;
+		const catalog = MODEL_CATALOG[FALLBACK]!;
+		expect(Number(snapshot.promptUsdPerMillion)).toBe(catalog.cost);
+		expect(Number(snapshot.completionUsdPerMillion)).toBe(catalog.outputCost);
+		for (const [model, priced] of Object.entries(AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1)) {
+			expect(priced.model).toBe(model);
+			expect(AGENTIC_CHAT_WORKFLOW_ADMITTED_MODELS).toContain(model);
+			expect(Number(priced.promptUsdPerMillion)).toBeLessThanOrEqual(
+				AGENTIC_CHAT_WORKFLOW_MAX_RATES_USD_PER_MILLION.prompt
+			);
+			expect(Number(priced.completionUsdPerMillion)).toBeLessThanOrEqual(
+				AGENTIC_CHAT_WORKFLOW_MAX_RATES_USD_PER_MILLION.completion
+			);
+			expect(Number(priced.cacheReadUsdPerMillion)).toBeLessThanOrEqual(
+				AGENTIC_CHAT_WORKFLOW_MAX_RATES_USD_PER_MILLION.cacheRead
+			);
+			expect(priced).toMatchObject({ requestUsd: '0', source: 'openrouter_models_api' });
+		}
+	});
+
+	it('sends the priced fallback inside one metered request under the admitted max_price', async () => {
+		const { store, meter, gate } = await claimedMeter();
+		const fetchImpl = vi.fn(async () => sse(10));
+		// The configured route's own fallbacks are replaced by the priced workflow list.
+		const routes = buildAgenticChatWorkflowRoutesV1([
+			route({ model: 'provider/unpriced', fallbackModels: ['provider/also-unpriced'] })
+		]);
+		const events = await collect(
+			client(fetchImpl as unknown as typeof fetch, routes).stream(
+				input({ dispatchGate: gate, maxOutputTokens: 900 })
+			)
+		);
+		expect(events.at(-1)).toMatchObject({ type: 'done' });
+		const body = bodyOf(fetchImpl);
+		expect(body.model).toBe(AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1);
+		expect(body.models).toEqual([FALLBACK]);
+		expect(body.provider.max_price).toEqual({ prompt: 0.3, completion: 1.2, request: 0 });
+		expect(await meter.drain(1_000)).toBe(true);
+		// One HTTP request is one physical dispatch, priced by the model it leads with.
+		expect([...store.dispatches.values()]).toEqual([
+			expect.objectContaining({
+				state: 'settled',
+				physicalAttempt: 1,
+				actualMicroUsd: 1_100,
+				pricing: AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1[PRICED]
+			})
+		]);
+	});
+
+	it('reserves under the fallback snapshot when it leads, and never undercharges a missing cost', async () => {
+		const { store, meter, gate } = await claimedMeter();
+		const permit = await gate.admit(
+			{
+				routeId: 'openrouter-workflow',
+				routeKind: 'openrouter',
+				// Route health promoted the fallback; the provider may still serve the primary.
+				model: FALLBACK,
+				fallbackModels: [PRICED],
+				serializedRequestBytes: 4_000,
+				maxOutputTokens: 900
+			},
+			new AbortController().signal
+		);
+		permit.settle({
+			kind: 'stream_ended',
+			httpStatus: 200,
+			requestId: 'gen-2',
+			usage: {
+				promptTokens: 1_000,
+				completionTokens: 100,
+				totalTokens: 1_100,
+				reasoningTokens: null,
+				cachedPromptTokens: null,
+				costUsd: null,
+				modelUsed: PRICED
+			}
+		});
+		expect(await meter.drain(1_000)).toBe(true);
+		const [row] = [...store.dispatches.values()];
+		expect(row).toMatchObject({
+			state: 'settled',
+			pricing: AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1[FALLBACK],
+			// 1000 * 0.30 + 100 * 1.20 at the primary's higher rate, not 1000 * 0.098 + 100 * 0.196.
+			actualMicroUsd: 420
+		});
+	});
+
+	it('still refuses the workflow route and any request that names an unpriced model', async () => {
+		expect(() =>
+			buildAgenticChatWorkflowRoutesV1([route()], {
+				[PRICED]: AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1[PRICED]!
+			})
+		).toThrow(`Workflow models lack frozen pricing snapshots: ${FALLBACK}`);
+		const { store, gate } = await claimedMeter();
+		await expect(
+			gate.admit(
+				{
+					routeId: 'openrouter-workflow',
+					routeKind: 'openrouter',
+					model: PRICED,
+					fallbackModels: [FALLBACK, 'provider/unpriced'],
+					serializedRequestBytes: 4_000,
+					maxOutputTokens: 900
+				},
+				new AbortController().signal
+			)
+		).rejects.toMatchObject({ code: 'pricing_unavailable' });
+		expect(store.dispatches.size).toBe(0);
 	});
 });
