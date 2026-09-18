@@ -4,6 +4,7 @@
 	import { onDestroy } from 'svelte';
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import CreatedEntityCards from './CreatedEntityCards.svelte';
+	import FreshnessRadarCard from './FreshnessRadarCard.svelte';
 	import { getProseClasses } from '$lib/utils/markdown';
 	import { observeAgentMarkdownTables, renderAgentMarkdown } from './agent-chat-markdown';
 	import type { UIMessage, ThinkingBlockMessage } from './agent-chat.types';
@@ -25,6 +26,8 @@
 		onDeleteVoiceNote?: (groupId: string, noteId: string) => void;
 		onSelectSuggestion?: (text: string) => void;
 		onClientActionComplete?: (completion: AgentClientActionCompletion) => void | Promise<void>;
+		/** Freshness radar card "Draft in chat": pre-fill the composer with this text. */
+		onDraftInChat?: (text: string) => void;
 		selectedContextType?: ChatContextType | null;
 		resolvedProjectFocus?: ProjectFocus | null;
 		/** Id of the assistant message currently receiving streamed text, if any. */
@@ -43,6 +46,7 @@
 		onDeleteVoiceNote,
 		onSelectSuggestion,
 		onClientActionComplete,
+		onDraftInChat,
 		selectedContextType = null,
 		resolvedProjectFocus = null,
 		streamingMessageId = null,
@@ -509,6 +513,10 @@
 			{:else if message.type === 'created_entities'}
 				{#if message.data?.entities?.length}
 					<CreatedEntityCards entities={message.data.entities} />
+				{/if}
+			{:else if message.type === 'freshness_card'}
+				{#if message.data?.card}
+					<FreshnessRadarCard card={message.data.card} {onDraftInChat} />
 				{/if}
 			{:else if message.type === 'activity'}
 				{#if dev}

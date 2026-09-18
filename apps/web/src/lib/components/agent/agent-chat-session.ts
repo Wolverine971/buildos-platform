@@ -35,6 +35,7 @@ import {
 } from './agent-chat-tool-presenter';
 import { formatElapsedDuration } from './agent-chat-formatters';
 import { timelineItemsFromMessages } from './agent-chat-timeline';
+import { buildFreshnessCardUIMessage, isFreshnessCardMetadata } from './freshness-radar-card';
 
 export type PreparedPromptClient = {
 	id: string;
@@ -734,6 +735,11 @@ function mapLoadedMessagesToUI(
 	const seenCreatedIds = new Set<string>();
 
 	for (const msg of messages) {
+		// Freshness radar card (Tasker 88): an injected assistant row that renders as a card.
+		if (msg.role === 'assistant' && isFreshnessCardMetadata(msg.metadata)) {
+			uiMessages.push(buildFreshnessCardUIMessage(msg));
+			continue;
+		}
 		let createdForTurn: CreatedEntityRef[] = [];
 		if (msg.role === 'assistant') {
 			const metadata = msg.metadata as Record<string, any> | undefined;

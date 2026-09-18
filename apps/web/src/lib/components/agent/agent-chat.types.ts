@@ -133,7 +133,9 @@ export interface UIMessage {
 		| 'thinking_block'
 		| 'clarification'
 		| 'agent_peer'
-		| 'created_entities';
+		| 'created_entities'
+		/** Freshness radar card (Tasker 88); `data.card` is a FreshnessCardPayloadV1. */
+		| 'freshness_card';
 	data?: any;
 	timestamp: Date;
 	tool_calls?: any;

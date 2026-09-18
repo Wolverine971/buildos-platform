@@ -11,6 +11,7 @@ import {
 	extractAffectedEntitiesFromToolExecution,
 	normalizeAffectedEntityKind
 } from '$lib/services/agentic-chat/tools/core/affected-entities';
+import { freshnessEntityHref, readFreshnessCardFromMetadata } from './freshness-radar-card';
 
 const MAX_PREVIEW_CHARS = 700;
 const MAX_FULL_JSON_CHARS = 12_000;
@@ -416,11 +417,53 @@ function buildCreatedEntityChangeTimelineItem(
 	};
 }
 
+/** The freshness radar card (Tasker 88) reads as one status line, linked to what it flagged. */
+function buildFreshnessCardTimelineItem(
+	sessionId: string,
+	message: TimelineChatMessageRow
+): AgentTimelineItem | null {
+	const card = readFreshnessCardFromMetadata(message.metadata);
+	if (!card) return null;
+	const projectRef: AgentTimelineEntityRef = {
+		kind: 'project',
+		id: card.projectId,
+		title: card.projectName || null,
+		projectId: card.projectId,
+		url: `/projects/${card.projectId}`,
+		operation: 'linked'
+	};
+	const entityRefs: AgentTimelineEntityRef[] = card.items.map((item) => ({
+		kind: item.entity.kind,
+		id: item.entity.id,
+		title: item.entity.title,
+		projectId: card.projectId,
+		url: freshnessEntityHref(card.projectId, item.entity),
+		operation: 'read'
+	}));
+	const titles = card.items.map((item) => item.entity.title).join(', ');
+	return {
+		id: `message:${message.id}`,
+		sessionId,
+		messageId: message.id,
+		source: 'message',
+		kind: 'status',
+		status: 'completed',
+		timestamp: fallbackTimestamp(message.created_at, card.createdAt),
+		title: 'Out-of-date check',
+		summary: truncate(card.headline, 180),
+		detailPreview: titles ? truncate(titles, MAX_PREVIEW_CHARS) : null,
+		projectRef,
+		entityRefs: [projectRef, ...entityRefs]
+	};
+}
+
 function buildMessageTimelineItem(
 	sessionId: string,
 	message: TimelineChatMessageRow
 ): AgentTimelineItem | null {
 	if (!message.id || !message.role) return null;
+	const freshnessCard = buildFreshnessCardTimelineItem(sessionId, message);
+	if (freshnessCard) return freshnessCard;
 	const role = message.role === 'user' ? 'User message' : 'Assistant message';
 	const content = (message.content ?? '').replace(/\s+/g, ' ').trim();
 	return {

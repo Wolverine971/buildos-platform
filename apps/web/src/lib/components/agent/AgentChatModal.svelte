@@ -71,6 +71,10 @@
 		mergeAgentTimelineItems,
 		timelineItemsFromMessages
 	} from './agent-chat-timeline';
+	import {
+		buildFreshnessCardUIMessage,
+		freshnessScanIdFromMetadata
+	} from './freshness-radar-card';
 	import { toastService } from '$lib/stores/toast.store';
 	import { haptic } from '$lib/utils/haptic';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
@@ -348,6 +352,16 @@
 	function appendInjectedAgentMessage(row: ChatMessageRow): void {
 		if (!row?.id || row.role !== 'assistant') return;
 		if (row.session_id !== currentSession?.id) return;
+		// Freshness radar card (Tasker 88): one card per scan, rendered as a card.
+		const freshnessScanId = freshnessScanIdFromMetadata(row.metadata);
+		if (freshnessScanId) {
+			const seen = messages.some(
+				(m) =>
+					m.id === row.id || freshnessScanIdFromMetadata(m.metadata) === freshnessScanId
+			);
+			if (!seen) messages = [...messages, buildFreshnessCardUIMessage(row)];
+			return;
+		}
 		const agentRunId = (row.metadata as any)?.agent_run_id;
 		if (!agentRunId) return; // only agent-run injected messages flow through here
 		if (messages.some((m) => m.id === row.id) || messageHasAgentRun(agentRunId)) return;
@@ -1044,6 +1058,14 @@
 			console.error('[AgentChatModal] Failed to export support packet', exportError);
 			toastService.error('Could not export support packet');
 		}
+	}
+
+	/** Freshness radar card "Draft in chat": pre-fill the composer; the user sends it. */
+	function handleFreshnessDraftInChat(text: string) {
+		const existingDraft = inputValue.trim();
+		inputValue = existingDraft ? `${existingDraft}\n\n${text}` : text;
+		handleChatTabChange('chat');
+		haptic('light');
 	}
 
 	function handleAskAboutTimelineItem(item: AgentTimelineItem) {
@@ -2671,6 +2693,7 @@
 		onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
 		onSelectSuggestion={handleSelectSuggestion}
 		onClientActionComplete={handleClientActionComplete}
+		onDraftInChat={handleFreshnessDraftInChat}
 		{compact}
 	/>
 {/snippet}
