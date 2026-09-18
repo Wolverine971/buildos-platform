@@ -172,13 +172,21 @@ describe('tool surface size report', () => {
 		// definition; the worker's reviewed rewrite the model actually sees is
 		// ~2.2k) plus the control-tool and schedule-field description work. A
 		// General Chat "create a project" turn was a dead turn before this.
-		expect(global?.totalChars).toBeLessThanOrEqual(40_000);
+		// RE-BASELINED 2026-09-18 (planning layer + Jev tool selection): 31 reviewed
+		// tools joined both surfaces (goals, plans, milestones, risks, project edits,
+		// tags, task docs, unlink, typed searches). Measured global 51 tools / 55,333,
+		// project 62 / 63,047. This is now the catalog Jev chooses from, not what
+		// every pass carries: the worker sends the opening pass only the schemas Jev
+		// selects (~18.5k chars on average across the 90-run live eval in
+		// docs/research/jev-tool-selection-2026-09-18). Caps at measured + ~5%.
+		expect(global?.totalChars).toBeLessThanOrEqual(58_100);
 		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
 		// contract reference/null handling, +321 for typed task estimates, +396
 		// for get_onto_document_details, +1,190 for link_onto_entities. These
 		// committed capabilities explain all 2,745 chars (38,833 -> 41,578).
 		// Do not remove capabilities to fit the old surface or relax other caps.
-		expect(project?.totalChars).toBeLessThanOrEqual(42_000);
+		// 2026-09-18: see the planning-layer note above.
+		expect(project?.totalChars).toBeLessThanOrEqual(66_200);
 		// Bumped 2026-09-04: 15,250 → 15,700. Measured 15,458 — +426 from the
 		// create_onto_task description work noted above, and +516 already present
 		// on this branch from the control-tool descriptions (declare_turn_contract).

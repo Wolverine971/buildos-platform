@@ -141,9 +141,16 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// project_create 7,800 B. Caps retain about five percent headroom.
 		// 2026-09-12 (workflow prototype): project_create measured 8,212 B after
 		// the shared contract additions; retain a tight eight-byte ratchet margin.
-		expect(global.openingBytes).toBeLessThanOrEqual(28_100);
-		expect(project.openingBytes).toBeLessThanOrEqual(36_300);
-		expect(project.admittedBytes).toBeLessThanOrEqual(36_300);
+		// 2026-09-18 (planning layer + Jev tool selection): 31 reviewed tools
+		// joined (goals, plans, milestones, risks, project edits, tags, task docs,
+		// unlink, typed searches). Measured global 49 tools / 48,704 B, project
+		// 60 tools / 58,212 B. These caps now bound what Jev chooses from and what
+		// a Jev fallback or surface repair pays, not the typical pass: on the live
+		// eval (docs/research/jev-tool-selection-2026-09-18, 90 runs, 0 misses) the
+		// opening pass carried ~18.5k chars on average. Caps keep ~5% headroom.
+		expect(global.openingBytes).toBeLessThanOrEqual(51_200);
+		expect(project.openingBytes).toBeLessThanOrEqual(61_200);
+		expect(project.admittedBytes).toBeLessThanOrEqual(61_200);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_220);
 	});
 

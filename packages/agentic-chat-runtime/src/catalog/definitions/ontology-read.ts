@@ -403,7 +403,7 @@ Do not call for plain task metadata updates (title/state/priority) unless docume
 		function: {
 			name: 'search_onto_tasks',
 			description:
-				'Task-only keyword search with project context. Prefer search_project/search_all_projects unless task state/archive filters are needed. Multi-word terms match in any order; explicit "A OR B" matches alternatives.',
+				'Task-only keyword search with project context. Prefer the general project search unless task state/archive filters are needed. Multi-word terms match in any order; explicit "A OR B" matches alternatives.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -475,7 +475,7 @@ Do not call for plain task metadata updates (title/state/priority) unless docume
 		function: {
 			name: 'search_onto_documents',
 			description:
-				'Document-only search across title, description, and body; returns metadata, not full content. Prefer search_project/search_all_projects unless document filters are needed.',
+				'Document-only search across title, description, and body; returns metadata, not full content. Prefer the general project search unless document filters are needed.',
 			parameters: {
 				type: 'object',
 				properties: {

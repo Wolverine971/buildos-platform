@@ -53,7 +53,7 @@ const REQUIRED_CONTROLS = new Set([
 	'declare_read_only_turn',
 	'request_turn_clarification'
 ]);
-const LOOKUPS = ['search_all_projects', 'search_project', 'search_onto_projects', 'search_ontology'];
+const LOOKUPS = ['search_all_projects', 'search_project', 'search_onto_projects'];
 const TASK_READS = ['list_onto_tasks', 'get_onto_task_details', 'search_onto_tasks', ...LOOKUPS];
 const DOCUMENT_READS = [
 	'list_onto_documents',
@@ -83,7 +83,9 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 	read_document_section: ['get_document_outline'],
 	create_onto_document: DOCUMENT_READS,
 	update_onto_document: DOCUMENT_READS,
-	move_document_in_tree: [...DOCUMENT_READS, 'get_document_path'],
+	// Organizing into a new folder needs the folder created first; Jev scored that
+	// implicit need 0.37 on the planning-layer surface, too close to the threshold.
+	move_document_in_tree: [...DOCUMENT_READS, 'get_document_path', 'create_onto_document'],
 	create_task_document: [...TASK_READS, 'list_task_documents'],
 	link_onto_entities: [...TASK_READS, ...DOCUMENT_READS],
 	unlink_onto_edge: ['get_onto_project_graph', ...TASK_READS, ...DOCUMENT_READS],
@@ -343,7 +345,8 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 			dump?.complete({ ...receipt });
 			// Off the critical path. The row costs ~$0.0003, so a turn's billing join
 			// may miss it; that is cheaper than delaying the first model pass.
-			if (responseBody) this.logUsage(request, receipt, responseBody, usageLogId, started, dump);
+			if (responseBody)
+				this.logUsage(request, receipt, responseBody, usageLogId, started, dump);
 		}
 		request.signal.throwIfAborted();
 		return selectedRequest;

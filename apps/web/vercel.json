@@ -1,5 +1,6 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"buildCommand": "pnpm run build:standalone",
 	"crons": [
 		{
 			"path": "/api/cron/gmail-connection-health",

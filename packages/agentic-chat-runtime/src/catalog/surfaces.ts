@@ -77,9 +77,9 @@ export type GatewayToolMaterialization = {
  * search, tags, project edits) joined both surfaces. Every member already had a
  * reviewed worker adapter; it stayed off because each schema was paid on every
  * pass. The worker now asks Jev which schemas a message needs before the
- * opening pass (apps/worker/.../provider/jev-tool-selector.ts), so a mounted but
- * irrelevant schema costs ~nothing, and an omitted one is restored by the
- * one-shot surface repair. The Gmail group is appended per turn by worker
+ * opening pass (the worker's Jev tool selector), so a mounted but irrelevant
+ * schema costs ~nothing, and an omitted one is restored by the one-shot
+ * surface repair. `search_ontology` stays off: it is a compatibility alias. The Gmail group is appended per turn by worker
  * admission from the user's mailbox state (A8): the read tools only when a
  * mailbox is connected, the OAuth handoff only when none is
  * (`getGatewayEmailSurfaceToolNames`).
@@ -134,7 +134,6 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	'list_onto_projects',
 	'search_onto_tasks',
 	'search_onto_documents',
-	'search_ontology',
 	'get_field_info',
 	'get_onto_project_graph',
 	'update_onto_project',

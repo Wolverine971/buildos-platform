@@ -10,9 +10,9 @@ import {
 	validateAgenticChatDrainTimeout
 } from './consumer';
 import {
-	DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS,
 	type AgenticChatOpenAiCompatibleRouteV1,
-	type AgenticChatOpenRouterProviderRoutingV1
+	type AgenticChatOpenRouterProviderRoutingV1,
+	DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS
 } from './provider/openrouter-client';
 import type { JevToolSelectionMode } from './provider/jev-tool-selector';
 import {

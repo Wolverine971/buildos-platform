@@ -23,9 +23,9 @@ import type {
 } from '../turn-executor';
 import { parseAgenticChatWorkflowEventReceiptV1 } from './preparation-store';
 import type {
-	AgenticChatWorkflowRunner,
 	AgenticChatWorkflowRunOutcomeV1,
-	AgenticChatWorkflowRunResultV1
+	AgenticChatWorkflowRunResultV1,
+	AgenticChatWorkflowRunner
 } from './workflow-runner';
 import type {
 	AgenticChatWorkflowPreparedTurnV1,

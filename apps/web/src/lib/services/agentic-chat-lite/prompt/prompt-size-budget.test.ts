@@ -293,12 +293,18 @@ describe('total assembled prompt size budget', () => {
 		// Postdeploy 2026-09-04: add the executable relationship tool and explicit
 		// endpoint references, plus the nested estimate schema. Keep the system
 		// prose cap unchanged; the worker defers the contract from opening passes.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(55_000);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(13_750);
+		// RE-BASELINED 2026-09-18 (planning layer + Jev tool selection): the canonical
+		// project surface grew to the full planning catalog (tool schemas 10,410 →
+		// 15,762 est tokens; payload 76,814 chars / 19,204 est tokens). These caps now
+		// bound the unnarrowed catalog, which a Jev fallback or surface repair pays;
+		// Jev-selected opening passes carried ~40% of it on the live eval
+		// (docs/research/jev-tool-selection-2026-09-18). Caps at measured + ~5%.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(80_700);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(20_200);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(41_250);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(32_000);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(60_500);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(49_700);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		// 2026-09-10: the batch lane removed the contract DSL from acting-model

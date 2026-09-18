@@ -99,7 +99,35 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'get_calendar_event_details',
 			'create_calendar_event',
 			'update_calendar_event',
-			'delete_calendar_event'
+			'delete_calendar_event',
+			// Planning layer (2026-09-18): mounted because Jev narrows each opening pass.
+			'list_onto_projects',
+			'search_onto_tasks',
+			'search_onto_documents',
+			'get_field_info',
+			'get_onto_project_graph',
+			'update_onto_project',
+			'tag_onto_entity',
+			'list_onto_goals',
+			'search_onto_goals',
+			'get_onto_goal_details',
+			'create_onto_goal',
+			'update_onto_goal',
+			'list_onto_plans',
+			'search_onto_plans',
+			'get_onto_plan_details',
+			'create_onto_plan',
+			'update_onto_plan',
+			'list_onto_milestones',
+			'search_onto_milestones',
+			'get_onto_milestone_details',
+			'create_onto_milestone',
+			'update_onto_milestone',
+			'list_onto_risks',
+			'search_onto_risks',
+			'get_onto_risk_details',
+			'create_onto_risk',
+			'update_onto_risk'
 		]);
 	});
 
@@ -113,6 +141,7 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 				(name) =>
 					name !== 'search_onto_projects' &&
 					name !== 'search_all_projects' &&
+					name !== 'list_onto_projects' &&
 					name !== 'create_onto_project'
 			),
 			'get_onto_project_details',
@@ -125,12 +154,17 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'link_onto_entities',
 			'delegate_task',
 			'get_project_calendar',
-			'set_project_calendar'
+			'set_project_calendar',
+			'list_task_documents',
+			'get_document_path',
+			'create_task_document',
+			'unlink_onto_edge'
 		]);
 		expect([...global].filter((name) => !projectSet.has(name))).toEqual([
 			'search_onto_projects',
 			'search_all_projects',
-			'create_onto_project'
+			'create_onto_project',
+			'list_onto_projects'
 		]);
 	});
 

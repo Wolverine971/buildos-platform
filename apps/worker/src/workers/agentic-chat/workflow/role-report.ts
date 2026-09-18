@@ -2,9 +2,7 @@
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
 import type {
 	AgenticChatWorkflowEvidenceRefV1,
-	AgenticChatWorkflowEvidenceVersionV1,
-	AgenticChatWorkflowRoleReportV1,
-	JsonObject
+	AgenticChatWorkflowRoleReportV1
 } from '@buildos/shared-types';
 
 /**

@@ -28,8 +28,8 @@ import { WORKFLOW_RULES, parseWorkflowAssignments } from './prototype-provider';
 import {
 	CHAT_WORKFLOW_DISPATCH_POLICY,
 	type ChatWorkflowDurableEvidenceIndex,
-	durableEvidenceIndexFromModelInputV1,
 	buildSpecialistReportInstructions,
+	durableEvidenceIndexFromModelInputV1,
 	durableEvidenceLabels,
 	fromDurableWorkflowRoleReport,
 	parseWorkflowRoleReport,
@@ -49,17 +49,17 @@ import {
 	acceptedWorkflowReports,
 	buildAgenticChatWorkflowProjectionV1,
 	renderModelFreeWorkflowAnswer,
-	workflowProjectionInputFromRunV1,
 	utf8Bytes,
-	workflowCheckpointV1
+	workflowCheckpointV1,
+	workflowProjectionInputFromRunV1
 } from './workflow-projection';
 import {
-	AgenticChatWorkflowStoreError,
 	type AgenticChatWorkflowCheckpointV1,
 	type AgenticChatWorkflowEventReceiptV1,
 	type AgenticChatWorkflowFenceV1,
 	type AgenticChatWorkflowRunStateV1,
 	type AgenticChatWorkflowStepRowV1,
+	AgenticChatWorkflowStoreError,
 	type AgenticChatWorkflowStorePortV1
 } from './workflow-store';
 
@@ -816,7 +816,7 @@ class WorkflowExecution {
 				if (this.state.answer.status === 'accepted')
 					return { outcome: 'already_accepted' as const, event: null };
 				if (!this.ownsClaim('editor', writer.attemptId)) throw error;
-				return await send();
+				return send();
 			}
 		});
 		this.record('synthesis', 'editor', writer.attemptId, receipt.outcome);
@@ -1031,7 +1031,7 @@ class WorkflowExecution {
 					};
 				}
 				if (!this.ownsClaim(stepKey, attemptId)) throw error;
-				return await send();
+				return send();
 			}
 		});
 		this.record('fail', stepKey, attemptId, receipt.outcome);
