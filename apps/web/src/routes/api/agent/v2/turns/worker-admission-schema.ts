@@ -141,7 +141,10 @@ export const workerAdmissionRequestSchema = z
 		projectFocus: projectFocusSchema.nullable().optional().default(null),
 		lastTurnContext: boundedRecord.nullable().optional().default(null),
 		voiceNoteGroupId: nullableUuid.optional().default(null),
-		preparedPromptKey: canonicalText(2048).nullable().optional().default(null)
+		preparedPromptKey: canonicalText(2048).nullable().optional().default(null),
+		// Tasker 86: a request only. The server switch, cohort, and shape decide
+		// whether it is admitted as a raw v4 project review.
+		reviewIntent: z.literal('project_review').nullable().optional().default(null)
 	})
 	.strict()
 	.superRefine((value, context) => {

@@ -48,6 +48,7 @@ import {
 	acceptedWorkflowReports,
 	buildAgenticChatWorkflowProjectionV1,
 	renderModelFreeWorkflowAnswer,
+	workflowProjectionInputFromRunV1,
 	utf8Bytes,
 	workflowCheckpointV1
 } from './workflow-projection';
@@ -1348,11 +1349,13 @@ class WorkflowExecution {
 				: this.waitingForCapacity > 0
 					? 'waiting_for_capacity'
 					: 'idle';
-		return buildAgenticChatWorkflowProjectionV1(state, {
-			phase,
-			providerActivity: activity,
-			observedAt: new Date(this.now()).toISOString()
-		});
+		return buildAgenticChatWorkflowProjectionV1(
+			workflowProjectionInputFromRunV1(state, {
+				phase,
+				providerActivity: activity,
+				observedAt: new Date(this.now()).toISOString()
+			})
+		);
 	}
 
 	private checkpoint(

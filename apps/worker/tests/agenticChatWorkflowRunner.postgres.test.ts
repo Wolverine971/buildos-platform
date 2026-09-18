@@ -21,7 +21,8 @@ import {
 import { AgenticChatWorkflowRunner } from '../src/workers/agentic-chat/workflow/workflow-runner';
 import {
 	buildAgenticChatWorkflowProjectionV1,
-	workflowCheckpointV1
+	workflowCheckpointV1,
+	workflowProjectionInputFromRunV1
 } from '../src/workers/agentic-chat/workflow/workflow-projection';
 import { FAKE_CONTEXT_PAYLOAD, FAKE_EVIDENCE } from './helpers/workflowStoreFake';
 import {
@@ -232,11 +233,13 @@ describePostgres('workflow runner against the frozen SQL on disposable PostgreSQ
 						contextBytes: Buffer.byteLength(canonical, 'utf8'),
 						...workflowCheckpointV1(
 							randomUUID(),
-							buildAgenticChatWorkflowProjectionV1(run, {
-								phase: 'assessing',
-								providerActivity: 'idle',
-								observedAt
-							})
+							buildAgenticChatWorkflowProjectionV1(
+								workflowProjectionInputFromRunV1(run, {
+									phase: 'assessing',
+									providerActivity: 'idle',
+									observedAt
+								})
+							)
 						)
 					});
 					expect(receipt.outcome).toBe('accepted');

@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-input-artifact-store.server.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V4,
 	AGENTIC_CHAT_INPUT_RETENTION_MS,
 	hashTurnInputArtifactContentV1,
 	normalizeTurnInputArtifactContentV1,
@@ -40,7 +41,8 @@ export type TurnInputArtifactStoreErrorCode =
 	| 'source_lineage_mismatch'
 	| 'history_bytes_mismatch'
 	| 'content_bytes_mismatch'
-	| 'artifact_expired';
+	| 'artifact_expired'
+	| 'raw_workflow_input';
 
 export class TurnInputArtifactStoreError extends Error {
 	constructor(
@@ -177,6 +179,14 @@ export async function readVerifiedTurnInputArtifact(params: {
 	}
 
 	const row = data as unknown as TurnInputArtifactRow;
+	// Tasker 86: a raw v4 request carries no prepared prompt and is read only by
+	// the worker's workflow preparation. Refuse it explicitly, never as v2/v3.
+	if (row.artifact_version === AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V4) {
+		throw new TurnInputArtifactStoreError(
+			'raw_workflow_input',
+			'Raw workflow input is not a prepared turn input artifact'
+		);
+	}
 	const artifact = artifactFromRow(row);
 	const validation = await verifyArtifact(artifact, params.excludedMessageId);
 
