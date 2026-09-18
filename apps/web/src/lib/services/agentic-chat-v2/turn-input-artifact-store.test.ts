@@ -182,6 +182,30 @@ describe('turn input artifact store', () => {
 		expect(stored.sourcePreparedPromptId).toBe(IDS.prepared);
 	});
 
+	it('refuses a raw v4 workflow request instead of reading it as a prepared artifact', async () => {
+		const mock = createSupabaseMock({
+			row: await storedRowFixture({
+				artifact_version: 'agentic_chat_input_v4',
+				prepared: null,
+				source_prepared_prompt_id: null
+			})
+		});
+
+		await expect(
+			readVerifiedTurnInputArtifact({
+				supabase: mock.supabase as any,
+				id: IDS.artifact,
+				turnRunId: IDS.turn,
+				sessionId: IDS.session,
+				userId: IDS.user,
+				excludedMessageId: IDS.admittedMessage,
+				nowMs: Date.parse(CREATED_AT)
+			})
+		).rejects.toMatchObject({ code: 'raw_workflow_input' });
+		// The prepared column list is unchanged: ordinary readers never select v4 columns.
+		expect(mock.selectCalls[0]).not.toContain('request');
+	});
+
 	it('rejects a frozen history that includes the newly admitted message', async () => {
 		const mock = createSupabaseMock();
 		const content = contentFixture();
