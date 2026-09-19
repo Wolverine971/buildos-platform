@@ -118,3 +118,31 @@ describe('AgentComposer', () => {
 		expect(onAttachmentFiles).toHaveBeenCalledWith([image, pdf]);
 	});
 });
+
+describe('Project review composer', () => {
+	it('offers an explicit toggle and labels the read-only review send', async () => {
+		const onToggleReview = vi.fn();
+		const view = render(AgentComposer, {
+			props: createProps({ reviewAvailable: true, onToggleReview })
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Review project' }));
+		expect(onToggleReview).toHaveBeenCalledOnce();
+		await view.rerender({ reviewSelected: true });
+		expect(screen.getByRole('button', { name: 'Review project' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		expect(screen.getByText(/Read-only; no project changes/)).toBeInTheDocument();
+		expect(
+			screen.getAllByRole('button', { name: 'Send project review' }).length
+		).toBeGreaterThan(0);
+		expect(screen.queryByRole('button', { name: 'Attach image' })).toBeNull();
+	});
+
+	it('hides the review choice outside the rollout and blocks incompatible drafts', async () => {
+		const view = render(AgentComposer, { props: createProps() });
+		expect(screen.queryByRole('button', { name: 'Review project' })).toBeNull();
+		await view.rerender({ reviewAvailable: true, reviewDisabled: true });
+		expect(screen.getByRole('button', { name: 'Review project' })).toBeDisabled();
+	});
+});

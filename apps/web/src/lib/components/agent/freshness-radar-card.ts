@@ -109,6 +109,19 @@ export function draftInChatPromptFor(item: CardItem): string {
 	return `Update "${item.entity.title}" to reflect what I just said.`;
 }
 
+/** The card is a lead to investigate, not authority that an entity is still stale. */
+export function reviewDeeperPromptFor(card: FreshnessCardPayloadV1): string {
+	const leads = card.items
+		.slice(0, 5)
+		.map((item) => `- ${item.entity.kind}: "${item.entity.title.slice(0, 180)}"`)
+		.join('\n');
+	const date = new Date(card.createdAt);
+	const checkedAt = Number.isFinite(date.getTime())
+		? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+		: 'this conversation';
+	return `Review this project's current state, priorities, and risks in light of the freshness check from ${checkedAt}. Verify what is still relevant against current project context; these flags may already be resolved. Recommend the next steps without making changes.${leads ? `\n\nItems to investigate:\n${leads}` : ''}`;
+}
+
 // ---------------------------------------------------------------------------
 // Live state
 // ---------------------------------------------------------------------------

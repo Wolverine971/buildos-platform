@@ -1,5 +1,9 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.ts
-import { readChatWorkflowProgress } from '@buildos/shared-types';
+import {
+	readAgentChatWorkflowProgress,
+	readDurableChatWorkflowProgress,
+	workflowProgressActivity
+} from './agent-chat-workflow';
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.ts
 //
 // SSE event handler for AgentChatModal.
@@ -741,7 +745,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				return;
 
 			case 'agent_state': {
-				const workflow = readChatWorkflowProgress(event.workflow);
+				const workflow = readAgentChatWorkflowProgress(event.workflow);
 				const agentState = event.state as AgentLoopState;
 				thinking.updateState(agentState, event.details);
 				if (event.details) {
@@ -756,6 +760,36 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 					});
 				}
 				state.setCurrentActivity(computeAgentStateActivity(agentState, event.details));
+				return;
+			}
+
+			case 'workflow_progress': {
+				const workflow = readDurableChatWorkflowProgress(event.workflow);
+				if (!workflow) return;
+				const activity = workflowProgressActivity(workflow);
+				const blockId = thinking.ensure();
+				thinking.update(blockId, (block) => ({
+					...block,
+					content: activity,
+					activities: [
+						...block.activities.filter((entry) => !entry.metadata?.durableWorkflow),
+						{
+							id: `workflow-${blockId}`,
+							content: activity,
+							timestamp: new Date(),
+							activityType: 'state_change',
+							status: workflow.terminalOutcome === 'failed' ? 'failed' : 'completed',
+							metadata: {
+								workflow,
+								durableWorkflow: true,
+								eventId: event.event_id,
+								turnRunId: event.turn_run_id,
+								clientTurnId: event.client_turn_id
+							}
+						}
+					]
+				}));
+				state.setCurrentActivity(activity);
 				return;
 			}
 

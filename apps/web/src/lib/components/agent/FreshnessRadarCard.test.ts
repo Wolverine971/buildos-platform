@@ -280,3 +280,17 @@ describe('FreshnessRadarCard', () => {
 		expect(screen.queryByRole('button', { name: /Update these/ })).toBeNull();
 	});
 });
+
+describe('Review deeper', () => {
+	it('prepares a review through its host without approving any changes', async () => {
+		const card = freshnessCardFixture();
+		const onReviewDeeper = vi.fn();
+		const fetchFn = makeFetch(statusFixture());
+		render(FreshnessRadarCard, { props: { card, onReviewDeeper, fetchFn } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Review deeper' }));
+		expect(onReviewDeeper).toHaveBeenCalledWith(card);
+		expect(fetchFn.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(
+			true
+		);
+	});
+});

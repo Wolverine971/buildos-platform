@@ -1,5 +1,9 @@
 // apps/web/src/routes/api/chat/sessions/[id]/server.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import { workflowProjectionFixture } from '$lib/components/agent/agent-chat-workflow.fixture';
+
+const adminMocks = vi.hoisted(() => ({ createAdmin: vi.fn() }));
+vi.mock('$lib/supabase/admin', () => ({ createAdminSupabaseClient: adminMocks.createAdmin }));
 
 import { GET } from './+server';
 
@@ -15,6 +19,83 @@ function createQuery(result: unknown) {
 }
 
 describe('GET /api/chat/sessions/[id]', () => {
+	it.each(['partial', 'cancelled', 'failed'] as const)(
+		'restores owned %s workflow progress even without an assistant message',
+		async (terminalOutcome) => {
+			const turnId = 'd4000000-0000-4000-8000-000000000001';
+			const workflow = workflowProjectionFixture({ phase: 'finished', terminalOutcome });
+			const messages = [
+				{
+					id: 'user-message-1',
+					role: 'user',
+					content: 'Review the project',
+					created_at: '2026-09-19T12:00:00Z',
+					metadata: {
+						review_intent: 'project_review',
+						idempotency_key: `chat-turn:${turnId}:user`
+					}
+				}
+			];
+			const streamQuery = createQuery({
+				data: [{ turn_run_id: turnId, workflow }],
+				error: null
+			});
+			const admin = { from: vi.fn(() => streamQuery) };
+			adminMocks.createAdmin.mockReturnValue(admin);
+			const supabase = {
+				from: vi.fn((table: string) => {
+					if (table === 'chat_sessions')
+						return createQuery({
+							data: {
+								id: 'session-1',
+								user_id: 'user-1',
+								context_type: 'global',
+								entity_id: null,
+								agent_metadata: null
+							},
+							error: null
+						});
+					if (table === 'chat_messages')
+						return createQuery({ data: messages, error: null });
+					return createQuery({ data: [], error: null });
+				})
+			};
+			const response = await GET({
+				params: { id: 'session-1' },
+				url: new URL('http://localhost/api/chat/sessions/session-1'),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				}
+			} as any);
+			expect(response.status).toBe(200);
+			const payload = await response.json();
+			expect(payload.data.messages[0].metadata.chat_workflow_v1).toEqual(workflow);
+			expect(admin.from).toHaveBeenCalledExactlyOnceWith('chat_turn_stream_state');
+			expect(streamQuery.select).toHaveBeenCalledExactlyOnceWith(
+				'turn_run_id, workflow:projection->workflow'
+			);
+			expect(streamQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
+			expect(streamQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
+			expect(streamQuery.in).toHaveBeenCalledExactlyOnceWith('turn_run_id', [turnId]);
+			expect(JSON.stringify(payload)).not.toContain('assistant_text');
+		}
+	);
+
+	it('does not read private workflow snapshots before session ownership is established', async () => {
+		adminMocks.createAdmin.mockClear();
+		const response = await GET({
+			params: { id: 'session-1' },
+			url: new URL('http://localhost/api/chat/sessions/session-1'),
+			locals: {
+				supabase: { from: vi.fn(() => createQuery({ data: null, error: null })) },
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+		expect(response.status).toBe(404);
+		expect(adminMocks.createAdmin).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		['document', 'onto_documents', 'title'],
 		['task', 'onto_tasks', 'title'],

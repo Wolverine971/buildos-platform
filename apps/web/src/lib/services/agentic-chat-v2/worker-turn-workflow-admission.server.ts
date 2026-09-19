@@ -69,7 +69,7 @@ export type AgenticChatWorkflowV4EligibilityV1 =
 /**
  * The browser may only ask for a review. The server switch, the cohort, and the
  * pilot shape (project-wide, text-only, bounded question) decide whether v4
- * applies; anything else keeps the unchanged ordinary path.
+ * applies. The route rejects unsupported explicit reviews; ordinary turns are unchanged.
  */
 export function evaluateAgenticChatWorkflowV4Admission(input: {
 	policy: AgenticChatWorkflowV4AdmissionPolicyV1;

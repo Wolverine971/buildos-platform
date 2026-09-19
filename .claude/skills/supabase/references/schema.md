@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 246 tables, grouped by domain.
+Complete column listing for all 250 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-09-16T20:50:53.924Z
+**Schema generated:** 2026-09-19T22:44:35.735Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -28,7 +28,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Daily Briefs](#daily-briefs) (5 tables)
 - [Monitoring & Analytics](#monitoring--analytics) (10 tables)
 - [Web & Webhooks](#web--webhooks) (4 tables)
-- [Other](#other) (43 tables)
+- [Other](#other) (47 tables)
 
 ---
 
@@ -320,7 +320,7 @@ activity_score `number` · created_at `string` · due_at `string` · entity_coun
 
 ### project_suggestions
 
-agent_run_id `string?` · applied_at `string?` · chat_session_id `string?` · confidence `number?` · created_at `string` · decided_at `string?` · depends_on `string?` · evidence_refs `Json` · freshness_state `string` · id `string` · kind `string` · operations `Json` · preview `Json?` · project_id `string` · rationale `string?` · result `Json?` · reversible `boolean?` · risk_tier `number` · run_id `string` · sort_order `number` · source_fingerprint `string?` · status `string` · title `string` · undo_operations `Json?` · updated_at `string` · user_feedback `Json?` · why_now `string?`
+agent_run_id `string?` · applied_at `string?` · chat_session_id `string?` · confidence `number?` · created_at `string` · decided_at `string?` · depends_on `string?` · evidence_refs `Json` · freshness_scan_id `string?` · freshness_state `string` · id `string` · kind `string` · operations `Json` · preview `Json?` · project_id `string` · rationale `string?` · result `Json?` · reversible `boolean?` · risk_tier `number` · run_id `string?` · sort_order `number` · source_fingerprint `string?` · status `string` · title `string` · undo_operations `Json?` · updated_at `string` · user_feedback `Json?` · why_now `string?`
 
 ### project_synthesis
 
@@ -958,6 +958,22 @@ category `string` · created_at `string` · feedback_text `string` · id `string
 
 first_submission `string?` · id `string` · ip_address `unknown` · is_blocked `boolean?` · last_submission `string?` · submission_count `number?`
 
+### freshness_flags
+
+answers `Json` · applied_after_updated_at `string?` · applied_at `string?` · applied_via `string?` · change_kind `string?` · change_kind_probability `number?` · created_at `string` · date_choice `string?` · date_choice_probability `number?` · disposition `string` · disposition_reason `string?` · evidence `Json?` · features `Json` · id `string` · model_used `string?` · outcome `string?` · outcome_at `string?` · outcome_source `string?` · probability `number` · project_id `string` · proposed_operation `Json?` · question_set_version `string` · scan_id `string` · status `string` · subject_id `string` · subject_kind `string` · subject_snapshot `Json` · subject_title `string` · subject_updated_at `string?` · suggestion_id `string?` · undo_operation `Json?` · undone_at `string?` · undone_by `string?` · updated_at `string` · user_id `string`
+
+### freshness_radar_signals
+
+created_at `string` · due_at `string` · error_message `string?` · finished_at `string?` · first_turn_at `string` · id `string` · last_turn_at `string` · last_turn_run_id `string?` · max_due_at `string` · project_id_hints `string[]` · queue_job_id `string?` · session_id `string` · started_at `string?` · status `string` · turn_count `number` · updated_at `string` · user_id `string`
+
+### freshness_scans
+
+candidates_evaluated `number` · candidates_total `number` · card_message_id `string?` · counts `Json` · created_at `string` · error_message `string?` · finished_at `string?` · id `string` · info_chars `number` · info_cursor_at `string?` · info_message_ids `string[]` · info_session_ids `string[]` · info_truncated `boolean` · info_window_start `string?` · jev_cost_usd `number` · jev_input_tokens `number` · jev_latency_ms `number[]` · jev_requests `number` · mode `string` · model_requested `string?` · model_used `string?` · policy `Json` · policy_version `string` · project_id `string` · question_set_sha256 `string` · question_set_version `string` · signal_id `string?` · skip_reason `string?` · started_at `string?` · status `string` · trigger `string` · trigger_session_id `string?` · updated_at `string` · user_id `string`
+
+### freshness_track_scores
+
+answers `Json` · created_at `string` · evidence_probability `number?` · facts `Json` · gauge `string` · id `string` · model_used `string?` · outcome `string?` · outcome_at `string?` · previous_gauge `string?` · project_id `string` · question_set_version `string` · scan_id `string` · score `number?` · score_confidence `number?` · subject_id `string` · subject_kind `string` · subject_title `string` · target_at `string?` · user_id `string`
+
 ### homework_run_events
 
 created_at `string` · event `Json` · id `string` · iteration `number` · run_id `string` · seq `number`
@@ -972,7 +988,7 @@ budgets `Json` · chat_session_id `string?` · completed_at `string?` · complet
 
 ### inbox_items
 
-action_kinds `string[]` · audience `string` · blocked_reason `string?` · created_at `string` · decided_at `string?` · expires_at `string?` · id `string` · project_id `string?` · risk_tier `number?` · snoozed_until `string?` · source_ref_id `string` · source_status `string?` · source_type `string` · status `string` · summary `string?` · title `string` · updated_at `string` · user_id `string?`
+action_kinds `string[]` · audience `string` · blocked_reason `string?` · created_at `string` · decided_at `string?` · expires_at `string?` · freshness_checked_at `string?` · freshness_flag_id `string?` · freshness_note `string?` · freshness_state `string` · id `string` · project_id `string?` · risk_tier `number?` · snoozed_until `string?` · source_ref_id `string` · source_status `string?` · source_type `string` · status `string` · summary `string?` · title `string` · updated_at `string` · user_id `string?`
 
 ### legacy_entity_mappings
 

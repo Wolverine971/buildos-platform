@@ -12,6 +12,7 @@
 		Square,
 		X
 	} from 'lucide-svelte';
+	import { ListChecks } from '$lib/icons/lucide';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type { AgentChatImageAttachment } from './agent-chat.types';
@@ -23,6 +24,10 @@
 		isStreaming: boolean;
 		isStartingStream?: boolean;
 		contextType?: ChatContextType | null;
+		reviewAvailable?: boolean;
+		reviewSelected?: boolean;
+		reviewDisabled?: boolean;
+		onToggleReview?: () => void;
 		isSendDisabled: boolean;
 		allowSendWhileStreaming?: boolean;
 		displayContextLabel: string;
@@ -59,6 +64,10 @@
 		isStreaming,
 		isStartingStream = false,
 		contextType = null,
+		reviewAvailable = false,
+		reviewSelected = false,
+		reviewDisabled = false,
+		onToggleReview,
 		isSendDisabled,
 		allowSendWhileStreaming = false,
 		displayContextLabel,
@@ -91,7 +100,7 @@
 
 	let dragDepth = $state(0);
 	let fileInput: HTMLInputElement | null = $state(null);
-	const isDropActive = $derived(dragDepth > 0 && !disabled && !isStreaming);
+	const isDropActive = $derived(dragDepth > 0 && !disabled && !isStreaming && !reviewSelected);
 
 	// Generic labels like "general chat" / "project chat" / "open-ended chat" /
 	// the unconfigured placeholder don't read naturally with "Ask about ...".
@@ -112,6 +121,7 @@
 	};
 
 	const placeholder = $derived.by(() => {
+		if (reviewSelected) return 'What should we review across this project?';
 		if (placeholderOverride?.trim()) return placeholderOverride.trim();
 		if (contextType === 'project_create') return CONTEXT_PLACEHOLDERS['new project flow'];
 		const label = displayContextLabel.trim().toLowerCase();
@@ -126,7 +136,7 @@
 
 	const initialRows = 1;
 	const maxRows = 6;
-	const isVoiceBlocked = $derived(isStreaming || isStartingStream || disabled);
+	const isVoiceBlocked = $derived(isStreaming || isStartingStream || disabled || reviewSelected);
 	const composerHint = $derived.by(() => {
 		if (isStartingStream) return 'Sending your message…';
 		if (disabled) {
@@ -154,7 +164,7 @@
 	}
 
 	function handleDragEnter(event: DragEvent) {
-		if (disabled || isStreaming || !hasImageDrag(event)) return;
+		if (disabled || isStreaming || reviewSelected || !hasImageDrag(event)) return;
 		event.preventDefault();
 		dragDepth += 1;
 	}
@@ -166,7 +176,8 @@
 		// dropped file, blowing away the in-flight conversation view.
 		event.preventDefault();
 		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = disabled || isStreaming ? 'none' : 'copy';
+			event.dataTransfer.dropEffect =
+				disabled || isStreaming || reviewSelected ? 'none' : 'copy';
 		}
 	}
 
@@ -183,16 +194,16 @@
 		// Swallow the drop unconditionally (see handleDragOver — the default
 		// action is a page navigation), then decide whether to attach.
 		event.preventDefault();
-		if (disabled || isStreaming) return;
+		if (disabled || isStreaming || reviewSelected) return;
 		const files = filesFromList(event.dataTransfer?.files);
-		if (!files.length) return;
+		if (!files.length || reviewSelected) return;
 		onAttachmentFiles?.(files);
 	}
 
 	function handlePaste(event: ClipboardEvent) {
-		if (disabled || isStreaming) return;
+		if (disabled || isStreaming || reviewSelected) return;
 		const files = filesFromList(event.clipboardData?.files);
-		if (!files.length) return;
+		if (!files.length || reviewSelected) return;
 		event.preventDefault();
 		onAttachmentFiles?.(files);
 	}
@@ -201,7 +212,7 @@
 		const input = event.currentTarget as HTMLInputElement;
 		const files = filesFromList(input.files);
 		input.value = '';
-		if (!files.length) return;
+		if (!files.length || reviewSelected) return;
 		onAttachmentFiles?.(files);
 	}
 
@@ -246,6 +257,32 @@
 				<FileImage class="h-4 w-4" />
 				Drop image to attach
 			</div>
+		</div>
+	{/if}
+
+	{#if reviewAvailable || reviewSelected}
+		<div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+			<button
+				type="button"
+				aria-pressed={reviewSelected}
+				class="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8 {reviewSelected
+					? 'border-accent bg-accent/10 text-accent'
+					: 'border-border bg-card text-muted-foreground hover:border-accent hover:text-accent'}"
+				disabled={disabled || isStartingStream || isStreaming || reviewDisabled}
+				onclick={onToggleReview}
+			>
+				<ListChecks class="h-3.5 w-3.5" aria-hidden="true" />
+				Review project
+			</button>
+			{#if reviewSelected}
+				<p class="text-xs text-muted-foreground">
+					Specialists review this message. Read-only; no project changes.
+				</p>
+			{:else if reviewDisabled && (imageAttachments.length > 0 || voiceNoteGroupId || isVoiceRecording || isVoiceTranscribing)}
+				<p class="text-xs text-muted-foreground">
+					Use a text-only message to review the project.
+				</p>
+			{/if}
 		</div>
 	{/if}
 
@@ -358,7 +395,7 @@
 				tabindex="-1"
 				onchange={handleFileInputChange}
 			/>
-			{#if !isStreaming}
+			{#if !isStreaming && !reviewSelected}
 				<button
 					type="button"
 					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
@@ -409,7 +446,7 @@
 				<button
 					type="submit"
 					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:cursor-not-allowed disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-					aria-label="Send message"
+					aria-label={reviewSelected ? 'Send project review' : 'Send message'}
 					disabled={disabled || isSendDisabled || isStartingStream}
 				>
 					{#if isStartingStream}

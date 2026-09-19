@@ -10,6 +10,11 @@ import {
 import { ApiResponse } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { buildAgentTimeline } from '$lib/components/agent/agent-chat-timeline';
+import {
+	readDurableChatWorkflowProgress,
+	workflowMessageTurnId
+} from '$lib/components/agent/agent-chat-workflow';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type {
 	AgentTimelineEntityRef,
 	AgentTimelineItem
@@ -577,6 +582,52 @@ export const GET: RequestHandler = async ({
 
 	if (turnRunsError) {
 		return ApiResponse.databaseError(turnRunsError);
+	}
+
+	// Workflow snapshots are server-only. Read just the UI projection for turn ids
+	// present in this owned session's bounded message window; never load raw context.
+	const workflowTurnIds = [
+		...new Set(
+			messagesWithAttachments.flatMap((message) => {
+				const metadata = message.metadata as Record<string, unknown> | null;
+				if (
+					metadata?.review_intent !== 'project_review' &&
+					!readDurableChatWorkflowProgress(metadata?.chat_workflow_v1)
+				)
+					return [];
+				const id = workflowMessageTurnId(message.metadata);
+				return id ? [id] : [];
+			})
+		)
+	];
+	if (workflowTurnIds.length > 0) {
+		const { data: workflowSnapshots, error: workflowError } = await createAdminSupabaseClient()
+			.from('chat_turn_stream_state')
+			.select('turn_run_id, workflow:projection->workflow')
+			.eq('session_id', sessionId)
+			.eq('user_id', user.id)
+			.in('turn_run_id', workflowTurnIds)
+			.limit(MESSAGE_LIMIT);
+		if (workflowError) return ApiResponse.databaseError(workflowError);
+		const workflows = new Map(
+			(workflowSnapshots ?? []).flatMap((snapshot) => {
+				const workflow = readDurableChatWorkflowProgress(snapshot.workflow);
+				return workflow ? [[snapshot.turn_run_id, workflow] as const] : [];
+			})
+		);
+		messagesWithAttachments = messagesWithAttachments.map((message) => {
+			const turnId = workflowMessageTurnId(message.metadata);
+			const workflow = turnId ? workflows.get(turnId) : null;
+			return workflow
+				? {
+						...message,
+						metadata: {
+							...(message.metadata as Record<string, unknown> | null),
+							chat_workflow_v1: workflow
+						}
+					}
+				: message;
+		});
 	}
 
 	const { data: turnEvents, error: turnEventsError } = await supabase

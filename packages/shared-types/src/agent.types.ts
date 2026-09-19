@@ -520,6 +520,10 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 				workflow?: import('./chat-workflow-prototype').ChatWorkflowProgress;
 		  }
 		| { type: 'turn_phase'; turn_phase: AgentTurnPhase; message: string }
+		| {
+				type: 'workflow_progress';
+				workflow: import('./agentic-chat-workflow-contract').AgenticChatWorkflowProjectionV1;
+		  }
 		| { type: 'text'; content: string }
 		| { type: 'text_delta'; content: string }
 		| { type: 'tool_call'; tool_call: ChatToolCall }

@@ -24,6 +24,7 @@ import { verifyProjectSuggestionIntegrity } from '@buildos/shared-agent-ops/prop
 import { parseFreshnessCardPayloadV1 } from '@buildos/shared-types';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { buildFreshnessScanContext } from '../src/workers/freshness-radar/context';
 import { SupabaseFreshnessDataPort } from '../src/workers/freshness-radar/dataPort';
 import { FRESHNESS_POLICY_V1 } from '../src/workers/freshness-radar/freshnessPolicy';
 import {
@@ -742,6 +743,42 @@ describePostgres('freshness radar on a disposable PostgreSQL', () => {
 
 	const one = async (sql: string, params: unknown[] = []) =>
 		(await pg.client.query(sql, params)).rows[0];
+
+	it('does not replay the previous scan message or skip a later message in the same millisecond', async () => {
+		const cursor = '2026-09-18T14:50:00.123456+00:00';
+		const nextMessage = 'The caterer has now confirmed the quote and delivery for the opening.';
+		await pg.client.query('BEGIN');
+		try {
+			await pg.client.query(
+				`UPDATE public.chat_messages SET created_at = $1 WHERE session_id = $2 AND content = $3`,
+				[cursor, SESSION, DUMP]
+			);
+			await pg.client.query(
+				`INSERT INTO public.chat_messages (session_id, user_id, role, content, message_type, created_at)
+				 VALUES ($1, $2, 'user', $3, 'user_message', '2026-09-18T14:50:00.123789+00:00')`,
+				[SESSION, USER, nextMessage]
+			);
+			await pg.client.query(
+				`INSERT INTO public.freshness_scans
+				 (project_id, user_id, trigger, mode, status, info_cursor_at,
+				  question_set_version, question_set_sha256, policy_version, policy)
+				 VALUES ($1, $2, 'chat_turn', 'live', 'completed', $3, 'test', 'test', 'test', '{}')`,
+				[PROJECT, USER, cursor]
+			);
+			const context = await buildFreshnessScanContext({
+				port: deps.port,
+				projectId: PROJECT,
+				userId: USER,
+				extraSessionIds: [SESSION],
+				now: NOW,
+				policy: FRESHNESS_POLICY_V1
+			});
+			expect(context.messages.map((message) => message.text)).toEqual([nextMessage]);
+			expect(context.window.start).toBe(await deps.port.loadLastScanCursor(PROJECT, USER));
+		} finally {
+			await pg.client.query('ROLLBACK');
+		}
+	});
 
 	it('runs a live scan end to end under the real constraints and helpers', async () => {
 		const logs: string[] = [];

@@ -11,6 +11,7 @@ import {
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
 import { describe, expect, it, vi } from 'vitest';
 import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancellationObserver';
+import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/executionControl';
 import {
 	AgenticChatExecutionInputError,
 	type AgenticChatRawWorkflowExecutionInputV1
@@ -327,7 +328,7 @@ function createHarness(
 	};
 
 	const control = {
-		finalize: vi.fn(async (value: Record<string, unknown>) => {
+		finalize: vi.fn(async (value: AgenticChatTerminalFinalizeInputV1) => {
 			calls.push(`finalize:${String(value.status)}`);
 			sequence += 1;
 			if (durable.run) durable.run.phase = 'finished';
@@ -583,6 +584,12 @@ describe('AgenticChatWorkflowTurnPreparer', () => {
 			}
 		});
 		expect(harness.publisher.publishTerminal).toHaveBeenCalledOnce();
+		expect(finalize.eventPayload.workflow).toEqual(finalize.projection.workflow);
+		expect(harness.publisher.publishTerminal).toHaveBeenCalledWith(
+			TURN_RUN_ID,
+			expect.anything(),
+			expect.objectContaining({ workflow: finalize.projection.workflow })
+		);
 		expect(harness.calls.slice(-2)).toEqual(['finalize:failed', 'recover:unknown']);
 		// Timing is one line per preparation, at provider readiness; the runner's
 		// own outcome is reported by the terminal it wrote.

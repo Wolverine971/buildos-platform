@@ -198,6 +198,13 @@ describe('AgenticChatWorkflowRunnerAdapter', () => {
 				})
 			})
 		});
+		expect(request.eventPayload.workflow).toEqual(request.projection.workflow);
+		expect(request.assistantMetadata.chat_workflow_v1).toEqual(request.projection.workflow);
+		expect(h.publisher.publishTerminal).toHaveBeenCalledWith(
+			h.store.turnRunId,
+			expect.anything(),
+			expect.objectContaining({ workflow: request.projection.workflow })
+		);
 		// Stream drained before terminal truth; queue reconciled by workflow recovery.
 		expect(h.order.indexOf('flush')).toBeLessThan(h.order.indexOf('terminal'));
 		expect(h.recoverWorkflow).toHaveBeenLastCalledWith(

@@ -34,6 +34,7 @@ import type { PreparedPromptClient } from './agent-chat-session';
 import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
 import { workerActivityForStatus } from './agent-chat-worker-status';
+import { parseAdmissionResponse } from '$lib/services/agentic-chat-v2/worker-turn-adoption';
 
 export interface SessionBootstrapTarget {
 	contextType: ChatContextType;
@@ -92,6 +93,8 @@ export interface StreamControllerPrewarmDeps {
 
 export interface StreamControllerDeps {
 	getInputValue(): string;
+	getReviewIntent?(): 'project_review' | null;
+	onReviewAdmitted?(): void;
 	setInputValue(value: string): void;
 	getSelectedContextType(): ChatContextType | null;
 	getSelectedEntityId(): string | undefined;
@@ -121,7 +124,9 @@ export interface StreamControllerDeps {
 	clearPendingToolState(): void;
 	handleSSEMessage(event: AgentSSEMessage): void;
 	hydrateSessionFromEvent(session: ChatSession): void;
-	adoptWorkerAdmissionResponse(value: unknown): AgenticChatWorkerTurnDescriptorV1;
+	adoptWorkerAdmissionResponse(
+		value: unknown
+	): AgenticChatWorkerTurnDescriptorV1 | Promise<AgenticChatWorkerTurnDescriptorV1>;
 	discoverWorkerSession?(sessionId: string): Promise<unknown>;
 	reconcileTurnFromSession?(request: StreamTurnReconcileRequest): void | Promise<void>;
 	setUserHasScrolled(value: boolean): void;
@@ -176,6 +181,7 @@ const WORKER_KNOWN_NOT_ADMITTED_CODES = new Set([
 	'WORKER_CAPACITY_EXCEEDED',
 	'WORKER_ADMISSION_CONFLICT',
 	'INVALID_WORKER_COMMAND',
+	'WORKFLOW_REVIEW_UNAVAILABLE',
 	'INVALID_FIELD',
 	'FORBIDDEN',
 	'WORKER_SESSION_CONFLICT'
@@ -433,6 +439,7 @@ export class AgentChatStreamController {
 		const optimisticAttachmentRefs = this.#deps.attachments.buildReadyRefs(true);
 		const sentImageAttachments = this.#deps.attachments.getDraftSnapshot();
 		const activeVoiceNoteGroupId = this.#deps.voice.noteGroupId;
+		const reviewIntent = this.#deps.getReviewIntent?.() ?? null;
 		if (
 			(!trimmed && streamAttachmentRefs.length === 0) ||
 			this.#deps.voice.isInitializing ||
@@ -464,6 +471,18 @@ export class AgentChatStreamController {
 			return;
 		}
 		if (this.isStartingStream) return;
+		if (
+			reviewIntent &&
+			(selectedContextType !== 'project' ||
+				(this.#deps.getResolvedProjectFocus()?.focusType ?? 'project-wide') !==
+					'project-wide' ||
+				sentImageAttachments.length > 0 ||
+				activeVoiceNoteGroupId ||
+				this.#deps.voice.isRecording)
+		) {
+			this.error = 'Project review needs project-wide focus and a text-only message.';
+			return;
+		}
 
 		this.isStartingStream = true;
 		let userMessage: UIMessage | null = null;
@@ -480,14 +499,13 @@ export class AgentChatStreamController {
 			const requestProjectFocus = this.#deps.getResolvedProjectFocus();
 			const prewarm = this.#deps.getPrewarm();
 			const currentPrewarmKey = prewarm.resolveCurrentKey();
-			let matchingPreparedPrompt = await this.#resolvePreparedPromptForSend(
-				prewarm,
-				currentPrewarmKey
-			);
+			let matchingPreparedPrompt = reviewIntent
+				? null
+				: await this.#resolvePreparedPromptForSend(prewarm, currentPrewarmKey);
 			let sessionForTurn = this.#deps.getCurrentSession();
-			// Every UI send is worker-owned (one-engine stage S8) and needs a
-			// durable session id before transport negotiation.
-			if (!sessionForTurn?.id) {
+			// Raw reviews create their session atomically during admission; context
+			// and prompt preparation belong to the durable worker after claim.
+			if (!sessionForTurn?.id && !reviewIntent) {
 				try {
 					sessionForTurn = await this.#deps.ensureSessionReady(
 						buildSessionBootstrapTarget(
@@ -513,7 +531,7 @@ export class AgentChatStreamController {
 				);
 			}
 
-			if (!sessionForTurn?.id) {
+			if (!sessionForTurn?.id && !reviewIntent) {
 				this.error = 'Unable to prepare a chat session right now.';
 				return;
 			}
@@ -541,7 +559,7 @@ export class AgentChatStreamController {
 					request: {
 						clientTurnId,
 						streamRunId: transportStreamRunId,
-						sessionId: sessionForTurn!.id,
+						sessionId: sessionForTurn?.id ?? null,
 						context: transportContext,
 						supportedModes: ['worker_realtime'],
 						supportedContractVersions: ['agentic_chat_worker_v1'],
@@ -630,26 +648,27 @@ export class AgentChatStreamController {
 			let readmissionsRemaining = 1;
 			for (;;) {
 				workerAdmissionAttempted = true;
-				workerAdmissionSessionId = sessionForTurn.id;
+				workerAdmissionSessionId = sessionForTurn?.id ?? null;
 				const admission = await requestAgenticChatWorkerAdmission({
 					fetchImpl: this.#fetch,
 					command: {
 						leaseToken: transportLease.token,
 						clientTurnId,
 						streamRunId: transportStreamRunId,
-						sessionId: sessionForTurn.id,
+						sessionId: sessionForTurn?.id ?? null,
 						context: transportContext,
 						message: trimmed,
 						attachments: streamAttachmentRefs,
 						projectFocus: requestProjectFocus,
 						lastTurnContext: this.#deps.getLastTurnContext(),
 						voiceNoteGroupId: activeVoiceNoteGroupId,
-						preparedPromptKey: matchingPreparedPrompt?.key ?? null
+						preparedPromptKey: matchingPreparedPrompt?.key ?? null,
+						reviewIntent
 					}
 				});
 
 				if (admission.response.ok) {
-					const descriptor = this.#deps.adoptWorkerAdmissionResponse(admission.payload);
+					const { descriptor } = parseAdmissionResponse(admission.payload);
 					if (
 						descriptor.handle.clientTurnId !== clientTurnId ||
 						descriptor.handle.streamRunId !== transportStreamRunId
@@ -658,6 +677,9 @@ export class AgentChatStreamController {
 							'Worker admission did not return the negotiated turn handle'
 						);
 					}
+					workerAdmissionSessionId = descriptor.handle.sessionId;
+					await this.#deps.adoptWorkerAdmissionResponse(admission.payload);
+					if (reviewIntent) this.#deps.onReviewAdmitted?.();
 					return;
 				}
 
@@ -688,6 +710,10 @@ export class AgentChatStreamController {
 				err instanceof AgenticChatWorkerUnavailableResponseError
 					? err.message
 					: 'Failed to send message. Please try again.';
+			if (reviewIntent && workerAdmissionAttempted && !this.#deps.getCurrentSession()) {
+				this.error =
+					'The review may have started. Reopen it from chat history before sending again.';
+			}
 			this.isStreaming = false;
 			this.currentActivity = '';
 			this.activeTurnHandle = null;

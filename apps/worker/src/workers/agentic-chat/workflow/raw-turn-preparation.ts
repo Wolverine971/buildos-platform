@@ -7,7 +7,8 @@ import {
 	type AgenticChatRecoveryFailureClassV1,
 	type AgenticChatTerminalFinalizeRpcResultV1,
 	type AgenticChatTurnClaimResultV1,
-	type ChatTurnTerminalStatusV1
+	type ChatTurnTerminalStatusV1,
+	type JsonObject
 } from '@buildos/shared-types';
 import { abortable, runWithAbortableDeadline } from '../abortableDeadline';
 import { AgenticChatCancellationError } from '../cancellationObserver';
@@ -750,6 +751,7 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 					projection: buildAgenticChatWorkflowStreamProjectionV1(workflow, message),
 					eventPayload: {
 						type: 'done',
+						workflow: workflow as unknown as JsonObject,
 						status,
 						finished_reason: finishedReason,
 						failure_code: failureCode,
@@ -774,6 +776,7 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 				await this.terminalStep(state, () =>
 					this.ports.publisher.publishTerminal(claim.turnRunId, receipt, {
 						type: 'done',
+						workflow: workflow as unknown as JsonObject,
 						status,
 						finished_reason: finishedReason,
 						failure_code: failureCode

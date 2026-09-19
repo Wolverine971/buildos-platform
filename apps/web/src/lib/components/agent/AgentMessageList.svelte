@@ -12,7 +12,7 @@
 	import { dev } from '$app/environment';
 	import VoiceNoteGroupPanel from '$lib/components/voice-notes/VoiceNoteGroupPanel.svelte';
 	import type { VoiceNote } from '$lib/types/voice-notes';
-	import type { ChatContextType } from '@buildos/shared-types';
+	import type { ChatContextType, FreshnessCardPayloadV1 } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { AgentClientActionCompletion } from './agent-chat-client-actions';
 
@@ -28,6 +28,9 @@
 		onClientActionComplete?: (completion: AgentClientActionCompletion) => void | Promise<void>;
 		/** Freshness radar card "Draft in chat": pre-fill the composer with this text. */
 		onDraftInChat?: (text: string) => void;
+		onReviewDeeper?: (card: FreshnessCardPayloadV1) => void;
+		reviewProjectId?: string | null;
+		reviewDisabled?: boolean;
 		selectedContextType?: ChatContextType | null;
 		resolvedProjectFocus?: ProjectFocus | null;
 		/** Id of the assistant message currently receiving streamed text, if any. */
@@ -47,6 +50,9 @@
 		onSelectSuggestion,
 		onClientActionComplete,
 		onDraftInChat,
+		onReviewDeeper,
+		reviewProjectId = null,
+		reviewDisabled = false,
 		selectedContextType = null,
 		resolvedProjectFocus = null,
 		streamingMessageId = null,
@@ -516,7 +522,14 @@
 				{/if}
 			{:else if message.type === 'freshness_card'}
 				{#if message.data?.card}
-					<FreshnessRadarCard card={message.data.card} {onDraftInChat} />
+					<FreshnessRadarCard
+						card={message.data.card}
+						{onDraftInChat}
+						onReviewDeeper={message.data.card.projectId === reviewProjectId
+							? onReviewDeeper
+							: undefined}
+						{reviewDisabled}
+					/>
 				{/if}
 			{:else if message.type === 'activity'}
 				{#if dev}

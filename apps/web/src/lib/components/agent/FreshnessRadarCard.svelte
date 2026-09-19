@@ -52,11 +52,15 @@
 	let {
 		card,
 		onDraftInChat,
+		onReviewDeeper,
+		reviewDisabled = false,
 		fetchFn = fetch
 	}: {
 		card: FreshnessCardPayloadV1;
 		/** Pre-fills the chat composer; the button is hidden without a handler. */
 		onDraftInChat?: (prompt: string) => void;
+		onReviewDeeper?: (card: FreshnessCardPayloadV1) => void;
+		reviewDisabled?: boolean;
 		fetchFn?: typeof fetch;
 	} = $props();
 
@@ -424,6 +428,19 @@
 				>, opens in a new tab</span
 			>
 		</a>
+	{/if}
+
+	{#if onReviewDeeper}
+		<button
+			type="button"
+			class="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:min-h-9"
+			disabled={busy !== null || reviewDisabled}
+			onclick={() => onReviewDeeper?.(card)}
+		>
+			<MessageSquare class="h-3.5 w-3.5" aria-hidden="true" />
+			Review deeper
+		</button>
+		<p class="mt-1 text-xs text-muted-foreground">Prepare a read-only review in chat.</p>
 	{/if}
 
 	{#if bundleState !== 'none'}

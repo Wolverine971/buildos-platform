@@ -244,7 +244,7 @@ export class AgenticChatWorkerDiscoveryHttpError extends Error {
 	}
 }
 
-function parseAdmissionResponse(value: unknown): {
+export function parseAdmissionResponse(value: unknown): {
 	descriptor: AgenticChatWorkerTurnDescriptorV1;
 	source: 'admission' | 'matching_duplicate';
 } {

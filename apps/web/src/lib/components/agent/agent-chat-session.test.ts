@@ -1,5 +1,6 @@
 // apps/web/src/lib/components/agent/agent-chat-session.test.ts
 import { CHAT_WORKFLOW_PROTOTYPE_VERSION } from '@buildos/shared-types';
+import { workflowProjectionFixture } from './agent-chat-workflow.fixture';
 // apps/web/src/lib/components/agent/agent-chat-session.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatSession } from '@buildos/shared-types';
@@ -409,6 +410,102 @@ describe('agent-chat-session helpers', () => {
 			'assistant'
 		]);
 		expect((snapshot.messages[0] as any).activities[0].metadata.workflow).toEqual(workflow);
+	});
+
+	it.each([
+		['complete', 'completed'],
+		['partial', 'completed'],
+		['failed', 'error'],
+		['cancelled', 'cancelled']
+	] as const)(
+		'restores the durable %s outcome independently of the legacy interruption flag',
+		(terminalOutcome, status) => {
+			const workflow = workflowProjectionFixture({ phase: 'finished', terminalOutcome });
+			const snapshot = buildAgentChatSessionSnapshot({
+				session: makeSession(),
+				messages: [
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						content: 'Saved review',
+						created_at: '2026-09-19T12:00:00Z',
+						metadata: { interrupted: true, chat_workflow_v1: workflow }
+					}
+				]
+			});
+			expect(snapshot.messages[0]).toMatchObject({
+				type: 'thinking_block',
+				status,
+				activities: [{ metadata: { workflow } }]
+			});
+		}
+	);
+
+	it.each(['failed', 'cancelled'] as const)(
+		'restores a %s review after its user request when no assistant answer exists',
+		(terminalOutcome) => {
+			const workflow = workflowProjectionFixture({ phase: 'finished', terminalOutcome });
+			const snapshot = buildAgentChatSessionSnapshot({
+				session: makeSession(),
+				messages: [
+					{
+						id: 'user-1',
+						role: 'user',
+						content: 'Review this project',
+						created_at: '2026-09-19T12:00:00Z',
+						metadata: {
+							review_intent: 'project_review',
+							idempotency_key: 'chat-turn:d4000000-0000-4000-8000-000000000001:user',
+							chat_workflow_v1: workflow
+						}
+					}
+				]
+			});
+			expect(snapshot.messages.map((message) => message.type)).toEqual([
+				'user',
+				'thinking_block'
+			]);
+			expect(snapshot.messages[1]).toMatchObject({
+				status: terminalOutcome === 'failed' ? 'error' : 'cancelled',
+				activities: [{ metadata: { workflow } }]
+			});
+		}
+	);
+
+	it('renders one durable review when both request and answer carry its snapshot', () => {
+		const turnId = 'd4000000-0000-4000-8000-000000000001';
+		const workflow = workflowProjectionFixture({
+			phase: 'finished',
+			terminalOutcome: 'partial'
+		});
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'Review this project',
+					created_at: '2026-09-19T12:00:00Z',
+					metadata: {
+						review_intent: 'project_review',
+						idempotency_key: `chat-turn:${turnId}:user`,
+						chat_workflow_v1: workflow
+					}
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Saved review',
+					created_at: '2026-09-19T12:00:10Z',
+					metadata: { turn_run_id: turnId, chat_workflow_v1: workflow }
+				}
+			]
+		});
+		expect(snapshot.messages.map((message) => message.type)).toEqual([
+			'user',
+			'thinking_block',
+			'assistant'
+		]);
 	});
 
 	it('buildAgentChatSessionSnapshot falls back to compact assistant tool trace metadata', () => {

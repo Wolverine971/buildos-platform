@@ -23,7 +23,7 @@ const WORKER_TURN_RUN_ID = 'd4000000-0000-4000-8000-000000000001';
 
 function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
 	return {
-		id: 'session-1',
+		id: 'd2000000-0000-4000-8000-000000000002',
 		user_id: 'user-1',
 		context_type: 'project',
 		entity_id: 'project-1',
@@ -203,7 +203,7 @@ function createHarness(
 	});
 	const reconcileTurnFromSession = vi.fn(async () => {});
 	const ensureSessionReady = vi.fn(async () => {
-		const ensured = makeSession({ id: 'ensured-session' });
+		const ensured = makeSession({ id: 'd2000000-0000-4000-8000-000000000003' });
 		if (overrides.hydrateOnEnsure !== false) {
 			currentSession = ensured;
 		}
@@ -350,6 +350,81 @@ function workerHandle(overrides: Partial<TurnHandleV1> = {}): TurnHandleV1 {
 }
 
 describe('AgentChatStreamController', () => {
+	it('submits a fresh project review without prompt preparation or session bootstrap', async () => {
+		const wait = vi.fn();
+		const h = createHarness({
+			currentSession: null,
+			waitForPreparedPrompt: wait,
+			admissionFetchImpl: async (_input, init) =>
+				admittedResponse(JSON.parse(String(init?.body)), { sessionId: WORKER_SESSION_ID })
+		});
+		h.deps.getReviewIntent = () => 'project_review';
+		h.deps.onReviewAdmitted = vi.fn();
+		await h.controller.sendMessage();
+		expect(h.controller.error).toBeNull();
+		expect(h.ensureSessionReady).not.toHaveBeenCalled();
+		expect(h.prewarm.matchingFreshPreparedPrompt).not.toHaveBeenCalled();
+		expect(wait).not.toHaveBeenCalled();
+		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
+			sessionId: null,
+			reviewIntent: 'project_review',
+			preparedPromptKey: null
+		});
+		expect(h.adoptWorkerAdmissionResponse).toHaveBeenCalledOnce();
+		expect(h.deps.onReviewAdmitted).toHaveBeenCalledOnce();
+	});
+
+	it('keeps the review draft and intent when the rollout is unavailable', async () => {
+		const h = createHarness({
+			admissionFetchImpl: async () =>
+				Response.json(
+					{
+						success: false,
+						error: 'Review is unavailable',
+						code: 'WORKFLOW_REVIEW_UNAVAILABLE'
+					},
+					{ status: 409 }
+				)
+		});
+		h.deps.getReviewIntent = () => 'project_review';
+		h.deps.onReviewAdmitted = vi.fn();
+		await h.controller.sendMessage();
+		expect(h.inputValue).toBe('hello');
+		expect(h.messages).toHaveLength(0);
+		expect(h.controller.error).toBe('Review is unavailable');
+		expect(h.deps.onReviewAdmitted).not.toHaveBeenCalled();
+		expect(h.discoverWorkerSession).not.toHaveBeenCalled();
+		expect(h.admissionCalls).toHaveLength(1);
+	});
+
+	it('does not offer a duplicate draft when fresh-review admission loses its response', async () => {
+		const h = createHarness({
+			currentSession: null,
+			admissionFetchImpl: async () => {
+				throw new Error('connection lost');
+			}
+		});
+		h.deps.getReviewIntent = () => 'project_review';
+		await h.controller.sendMessage();
+		expect(h.inputValue).toBe('');
+		expect(h.messages).toHaveLength(1);
+		expect(h.controller.error).toContain('Reopen it from chat history');
+		expect(h.admissionCalls).toHaveLength(1);
+		expect(h.ensureSessionReady).not.toHaveBeenCalled();
+	});
+
+	it('rejects review attachments before admission', async () => {
+		const h = createHarness({
+			readyRefs: [makeAttachmentRef()],
+			draftAttachments: [makeDraftAttachment()]
+		});
+		h.deps.getReviewIntent = () => 'project_review';
+		await h.controller.sendMessage();
+		expect(h.controller.error).toContain('text-only');
+		expect(h.transportCalls).toHaveLength(0);
+		expect(h.inputValue).toBe('hello');
+	});
+
 	it.each(['document', 'task', 'goal', 'plan', 'milestone', 'risk', 'requirement'] as const)(
 		'sends the saved %s focus on the next turn after history restore',
 		async (focusType) => {
@@ -401,14 +476,14 @@ describe('AgentChatStreamController', () => {
 		]);
 		const negotiation = parseBody(h.transportCalls[0]!);
 		expect(negotiation).toMatchObject({
-			sessionId: 'session-1',
+			sessionId: 'd2000000-0000-4000-8000-000000000002',
 			supportedModes: ['worker_realtime'],
 			supportedContractVersions: ['agentic_chat_worker_v1']
 		});
 		const admission = parseBody(h.admissionCalls[0]!);
 		expect(admission).toMatchObject({
 			message: 'Build the plan',
-			sessionId: 'session-1',
+			sessionId: 'd2000000-0000-4000-8000-000000000002',
 			context: { type: 'project', entityId: 'project-1', projectId: 'project-1' },
 			preparedPromptKey: 'prepared-key',
 			leaseToken: 'actl1.claims.signature'
@@ -419,7 +494,7 @@ describe('AgentChatStreamController', () => {
 			executionMode: 'worker_realtime',
 			streamRunId: admission.streamRunId,
 			clientTurnId: admission.clientTurnId,
-			sessionId: 'session-1',
+			sessionId: 'd2000000-0000-4000-8000-000000000002',
 			turnRunId: WORKER_TURN_RUN_ID
 		});
 	});
@@ -431,16 +506,18 @@ describe('AgentChatStreamController', () => {
 
 		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
 		expect(h.messages).toHaveLength(1);
-		expect(h.messages[0]?.session_id).toBe('ensured-session');
-		expect(parseBody(h.transportCalls[0]!)).toMatchObject({ sessionId: 'ensured-session' });
+		expect(h.messages[0]?.session_id).toBe('d2000000-0000-4000-8000-000000000003');
+		expect(parseBody(h.transportCalls[0]!)).toMatchObject({
+			sessionId: 'd2000000-0000-4000-8000-000000000003'
+		});
 		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
 			message: 'First turn',
-			sessionId: 'ensured-session',
+			sessionId: 'd2000000-0000-4000-8000-000000000003',
 			preparedPromptKey: 'prepared-key'
 		});
 		expect(h.controller.activeTurnHandle).toMatchObject({
 			executionMode: 'worker_realtime',
-			sessionId: 'ensured-session'
+			sessionId: 'd2000000-0000-4000-8000-000000000003'
 		});
 	});
 
@@ -454,10 +531,10 @@ describe('AgentChatStreamController', () => {
 		await h.controller.sendMessage();
 
 		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
-		expect(h.messages[0]?.session_id).toBe('ensured-session');
+		expect(h.messages[0]?.session_id).toBe('d2000000-0000-4000-8000-000000000003');
 		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
 			message: 'First turn',
-			sessionId: 'ensured-session',
+			sessionId: 'd2000000-0000-4000-8000-000000000003',
 			preparedPromptKey: null
 		});
 	});
@@ -483,7 +560,7 @@ describe('AgentChatStreamController', () => {
 		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
 		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
 			message: 'First turn',
-			sessionId: 'ensured-session',
+			sessionId: 'd2000000-0000-4000-8000-000000000003',
 			preparedPromptKey: 'prepared-late-key'
 		});
 	});

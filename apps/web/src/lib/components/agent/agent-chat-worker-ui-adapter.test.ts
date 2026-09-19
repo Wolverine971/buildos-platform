@@ -12,6 +12,7 @@ import {
 	AgentChatWorkerUiAdapter,
 	type AgentChatWorkerUiAdapterPort
 } from './agent-chat-worker-ui-adapter';
+import { workflowProjectionFixture } from './agent-chat-workflow.fixture';
 
 const SESSION_ID = 'd2000000-0000-4000-8000-000000000001';
 const TURN_ID = 'd4000000-0000-4000-8000-000000000001';
@@ -101,6 +102,106 @@ function harness() {
 }
 
 describe('AgentChatWorkerUiAdapter', () => {
+	it('restores a workflow projection before finalizing a partial turn at the same sequence', () => {
+		const h = harness();
+		const workflow = workflowProjectionFixture({
+			phase: 'finished',
+			terminalOutcome: 'partial'
+		});
+		workflow.steps[3]!.status = 'claimed';
+		h.adapter.applyReconciliation(
+			receipt({
+				status: 'completed',
+				projection: {
+					version: 'agentic_chat_ui_projection_v1',
+					current_activity: '',
+					semantic_events: [],
+					workflow
+				} as unknown as JsonObject,
+				projection_durable_sequence: 3,
+				response_watermark: 3,
+				terminal_event_id: createAgentStreamEventIdV1(TURN_ID, 1, 3)
+			})
+		);
+		expect(h.port.applySemanticEvent).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ type: 'workflow_progress', workflow })
+		);
+		expect(h.port.applySemanticEvent).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ type: 'done' })
+		);
+		expect(h.order.indexOf('semantic:workflow_progress')).toBeLessThan(
+			h.order.indexOf('semantic:done')
+		);
+		expect(h.onTerminal).toHaveBeenCalledExactlyOnceWith('completed');
+	});
+
+	it('normalizes live workflow progress and applies terminal workflow truth before done', () => {
+		const h = harness();
+		h.adapter.applyReconciliation(receipt());
+		const workflow = workflowProjectionFixture({ phase: 'executing' });
+		h.adapter.applyLiveEvent(event(1, 'workflow_progress', { workflow }));
+		const finished = { ...workflow, phase: 'finished', terminalOutcome: 'cancelled' };
+		h.adapter.applyLiveEvent(event(2, 'done', { status: 'cancelled', workflow: finished }));
+		expect(h.port.applySemanticEvent).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ type: 'workflow_progress', workflow })
+		);
+		expect(h.port.applySemanticEvent).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ type: 'workflow_progress', workflow: finished })
+		);
+		expect(h.port.applySemanticEvent).toHaveBeenNthCalledWith(
+			3,
+			expect.objectContaining({ type: 'done', finished_reason: 'cancelled' })
+		);
+		expect(h.onTerminal).toHaveBeenCalledExactlyOnceWith('cancelled');
+	});
+
+	it('deduplicates reconciled workflow snapshots and restores progress in a new generation', () => {
+		const h = harness();
+		const workflow = workflowProjectionFixture({ phase: 'executing' });
+		const snapshot = receipt({
+			projection: {
+				version: 'agentic_chat_ui_projection_v1',
+				semantic_events: [],
+				workflow
+			} as unknown as JsonObject,
+			projection_durable_sequence: 2,
+			response_watermark: 2
+		});
+		h.adapter.applyReconciliation(snapshot);
+		h.adapter.applyReconciliation(snapshot);
+		expect(h.port.applySemanticEvent).toHaveBeenCalledOnce();
+		h.adapter.applyReconciliation({
+			...snapshot,
+			execution_generation: 2,
+			generation_changed: true
+		});
+		expect(h.port.applySemanticEvent).toHaveBeenCalledTimes(2);
+		expect(h.port.beginGeneration).toHaveBeenCalledTimes(2);
+	});
+
+	it('reports an invalid workflow snapshot while still restoring ordinary terminal truth', () => {
+		const h = harness();
+		h.adapter.applyReconciliation(
+			receipt({
+				status: 'failed',
+				projection: {
+					version: 'agentic_chat_ui_projection_v1',
+					semantic_events: [],
+					workflow: { phase: 'finished' }
+				}
+			})
+		);
+		expect(h.port.onError).toHaveBeenCalledOnce();
+		expect(h.port.applySemanticEvent).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ type: 'done' })
+		);
+		expect(h.onTerminal).toHaveBeenCalledExactlyOnceWith('failed');
+	});
+
 	it('applies authoritative text before semantic projection and skips reconciled text deltas', () => {
 		const h = harness();
 		const projectedToolCall = event(1, 'tool_call', {

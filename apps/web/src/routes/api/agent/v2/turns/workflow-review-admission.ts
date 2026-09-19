@@ -2,8 +2,8 @@
 //
 // Tasker 86 branch of worker turn admission, kept beside +server.ts so the route
 // stays under the route-size guard. It runs after lease verification and returns
-// null whenever the ordinary path must handle the turn, so a disabled switch,
-// a user outside the cohort, or an unsupported shape leaves ordinary chat untouched.
+// null only for ordinary turns. Explicit read-only reviews must never silently
+// fall through to an ordinary turn that could execute mutations.
 import { json } from '@sveltejs/kit';
 import {
 	admitAgenticChatWorkflowV4Turn,
@@ -37,13 +37,21 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 		command: input.command
 	});
 	if (!eligibility.eligible) {
-		if (eligibility.reason !== 'not_requested') {
-			logger.info('Project review request kept on the ordinary path', {
-				reason: eligibility.reason,
-				clientTurnId: input.command.clientTurnId
-			});
+		if (eligibility.reason === 'not_requested') return null;
+		if (eligibility.reason === 'disabled' || eligibility.reason === 'not_in_cohort') {
+			return ApiResponse.error(
+				'Project review is not available right now. Your draft has been kept.',
+				HttpStatus.CONFLICT,
+				'WORKFLOW_REVIEW_UNAVAILABLE'
+			);
 		}
-		return null;
+		return ApiResponse.error(
+			eligibility.reason === 'message_bounds'
+				? 'Enter a project review question between 3 and 6,000 characters (up to 24 KB).'
+				: 'Project review needs project-wide focus and a text-only message.',
+			HttpStatus.UNPROCESSABLE_ENTITY,
+			'INVALID_WORKER_COMMAND'
+		);
 	}
 
 	const startedAt = performance.now();

@@ -13,7 +13,7 @@
 <script lang="ts">
 	import { onDestroy, getContext, untrack } from 'svelte';
 	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-	import type { Database } from '@buildos/shared-types';
+	import type { Database, FreshnessCardPayloadV1 } from '@buildos/shared-types';
 	import { browser, dev } from '$app/environment';
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -73,7 +73,8 @@
 	} from './agent-chat-timeline';
 	import {
 		buildFreshnessCardUIMessage,
-		freshnessScanIdFromMetadata
+		freshnessScanIdFromMetadata,
+		reviewDeeperPromptFor
 	} from './freshness-radar-card';
 	import { toastService } from '$lib/stores/toast.store';
 	import { haptic } from '$lib/utils/haptic';
@@ -117,7 +118,10 @@
 		createAgenticChatWorkerRealtimeRuntime,
 		type AgenticChatWorkerRealtimeRuntimeClient
 	} from '$lib/services/agentic-chat-v2/worker-realtime-runtime';
-	import { AgenticChatWorkerTurnAdoption } from '$lib/services/agentic-chat-v2/worker-turn-adoption';
+	import {
+		AgenticChatWorkerTurnAdoption,
+		parseAdmissionResponse
+	} from '$lib/services/agentic-chat-v2/worker-turn-adoption';
 	import { createAgentChatWorkerUiAdapter } from './agent-chat-worker-ui-adapter';
 	import { workerActivityForStatus } from './agent-chat-worker-status';
 	import {
@@ -501,6 +505,44 @@
 		}
 	}
 	let inputValue = $state('');
+	let projectReviewAvailable = $state(false);
+	let reviewSelection = $state<{ projectId: string; sessionId: string | null } | null>(null);
+	const reviewProjectId = $derived(
+		shellRouter.selectedContextType === 'project' &&
+			(!resolvedProjectFocus || resolvedProjectFocus.focusType === 'project-wide')
+			? attachmentProjectId
+			: null
+	);
+	const reviewSelected = $derived(
+		reviewSelection !== null && reviewSelection.projectId === reviewProjectId
+	);
+
+	$effect(() => {
+		if (!browser || !(isOpen || embedded) || hidden) return;
+		const controller = new AbortController();
+		void fetch('/api/agent/v2/capabilities', { cache: 'no-store', signal: controller.signal })
+			.then(async (response) => {
+				const body = response.ok ? await response.json() : null;
+				if (!controller.signal.aborted)
+					projectReviewAvailable =
+						body?.success === true && body.data?.projectReview === true;
+			})
+			.catch(() => {
+				if (!controller.signal.aborted) projectReviewAvailable = false;
+			});
+		return () => controller.abort();
+	});
+
+	$effect(() => {
+		if (
+			reviewSelection &&
+			(reviewSelection.projectId !== reviewProjectId ||
+				(reviewSelection.sessionId !== (currentSession?.id ?? null) &&
+					!stream.isStartingStream))
+		) {
+			reviewSelection = null;
+		}
+	});
 	let appliedInitialDraftKey = $state('');
 	let autoSentDraftKey = $state('');
 	const attachments = createAttachmentController({
@@ -602,6 +644,10 @@
 
 	const stream = createAgentChatStreamController({
 		getInputValue: () => inputValue,
+		getReviewIntent: () => (reviewSelected ? 'project_review' : null),
+		onReviewAdmitted: () => {
+			reviewSelection = null;
+		},
 		setInputValue: (value) => {
 			inputValue = value;
 		},
@@ -652,9 +698,19 @@
 		},
 		handleSSEMessage: (event) => handleSSEMessage(event),
 		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
-		adoptWorkerAdmissionResponse: (value) => {
+		adoptWorkerAdmissionResponse: async (value) => {
 			if (!workerAdoption) {
 				throw new Error('Worker admission runtime is unavailable');
+			}
+			const { descriptor } = parseAdmissionResponse(value);
+			if (!currentSession) {
+				// A raw review creates its session in admission, without a prewarm round trip.
+				const projectId = reviewProjectId;
+				const snapshot = await loadAgentChatSessionSnapshot(descriptor.handle.sessionId);
+				if (currentSession || projectId !== reviewProjectId) {
+					throw new Error('Chat focus changed while the review was starting');
+				}
+				hydrateSessionFromEvent(snapshot.session);
 			}
 			return workerAdoption.adoptAdmissionResponse(value);
 		},
@@ -785,6 +841,7 @@
 		getSelectedEntityId: () => shellRouter.selectedEntityId,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		getIsPreparingSession: () => isPreparingSession,
+		getIsProjectReview: () => reviewSelected,
 		// A worker turn keeps its handle until terminal truth arrives. Include that
 		// authoritative ownership so adoption/reconciliation transitions can never
 		// restart prewarm while the worker is still active.
@@ -998,6 +1055,15 @@
 	// Streaming only blocks send on non-touch devices (touch uses Send & Stop).
 	const hasSendableImageAttachments = $derived(attachments.hasSendableImageAttachments);
 	const hasBlockedImageAttachments = $derived(attachments.hasPendingOrFailedImageAttachments);
+	const reviewDisabled = $derived(
+		isSessionBusy ||
+			stream.isStartingStream ||
+			stream.isStreaming ||
+			activeRestoredTurnRunId !== null ||
+			voice.isBusy ||
+			voice.noteGroupId !== null ||
+			attachments.imageAttachments.length > 0
+	);
 	const isSendDisabled = $derived(
 		!shellRouter.selectedContextType ||
 			isSessionBusy ||
@@ -1062,10 +1128,36 @@
 
 	/** Freshness radar card "Draft in chat": pre-fill the composer; the user sends it. */
 	function handleFreshnessDraftInChat(text: string) {
+		reviewSelection = null;
 		const existingDraft = inputValue.trim();
 		inputValue = existingDraft ? `${existingDraft}\n\n${text}` : text;
 		handleChatTabChange('chat');
 		haptic('light');
+	}
+
+	function toggleProjectReview() {
+		if (reviewSelected) {
+			reviewSelection = null;
+			return;
+		}
+		if (!projectReviewAvailable || !reviewProjectId || reviewDisabled) return;
+		reviewSelection = { projectId: reviewProjectId, sessionId: currentSession?.id ?? null };
+		showExistingImagePicker = false;
+		if (!inputValue.trim())
+			inputValue =
+				'Review this project’s progress, priorities, and risks. What needs attention next?';
+	}
+
+	function handleReviewDeeper(card: FreshnessCardPayloadV1) {
+		if (!projectReviewAvailable || card.projectId !== reviewProjectId || reviewDisabled) return;
+		const draft = reviewDeeperPromptFor(card);
+		const existingDraft = inputValue.trim();
+		inputValue = existingDraft ? `${existingDraft}\n\n${draft}` : draft;
+		reviewSelection = { projectId: card.projectId, sessionId: currentSession?.id ?? null };
+		showExistingImagePicker = false;
+		handleChatTabChange('chat');
+		haptic('light');
+		toastService.success('Project review ready in the composer');
 	}
 
 	function handleAskAboutTimelineItem(item: AgentTimelineItem) {
@@ -1100,6 +1192,7 @@
 
 	function resetConversation(options: { preserveContext?: boolean } = {}) {
 		const { preserveContext = true } = options;
+		reviewSelection = null;
 
 		voice.stop();
 		cancelSessionBootstrap();
@@ -2694,6 +2787,9 @@
 		onSelectSuggestion={handleSelectSuggestion}
 		onClientActionComplete={handleClientActionComplete}
 		onDraftInChat={handleFreshnessDraftInChat}
+		onReviewDeeper={projectReviewAvailable ? handleReviewDeeper : undefined}
+		{reviewProjectId}
+		{reviewDisabled}
 		{compact}
 	/>
 {/snippet}
@@ -2850,6 +2946,10 @@
 			isStreaming={stream.isStreaming}
 			isStartingStream={stream.isStartingStream}
 			contextType={shellRouter.selectedContextType}
+			reviewAvailable={projectReviewAvailable && Boolean(reviewProjectId)}
+			{reviewSelected}
+			{reviewDisabled}
+			onToggleReview={toggleProjectReview}
 			{isSendDisabled}
 			allowSendWhileStreaming={isTouchDevice}
 			{displayContextLabel}

@@ -34,6 +34,8 @@ export interface PrewarmControllerDeps {
 	getIsPreparingSession(): boolean;
 	/** True while the current turn is starting, streaming, or being restored. */
 	getIsTurnActive(): boolean;
+	/** Review context is prepared by the worker after durable admission. */
+	getIsProjectReview?(): boolean;
 	getCurrentSession(): ChatSession | null;
 	getCanPrimeActiveChatSession(): boolean;
 	/**
@@ -350,7 +352,7 @@ export class PrewarmController {
 		const contextType = this.#deps.getSelectedContextType();
 		if (!contextType) return;
 		if (this.#deps.getIsPreparingSession()) return;
-		if (this.#deps.getIsTurnActive()) return;
+		if (this.#deps.getIsTurnActive() || this.#deps.getIsProjectReview?.()) return;
 
 		const focus = this.#deps.getResolvedProjectFocus();
 		const prewarmEntityId = this.#deps.getSelectedEntityId() ?? focus?.projectId;

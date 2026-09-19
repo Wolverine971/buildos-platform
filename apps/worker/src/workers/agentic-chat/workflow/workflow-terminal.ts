@@ -313,6 +313,7 @@ export function buildAgenticChatWorkflowTerminalInputV1(input: {
 			worker_runtime: 'agentic_chat_v1',
 			tool_round_count: 0,
 			tool_call_count: 0,
+			chat_workflow_v1: workflow as unknown as JsonObject,
 			...(input.metadata ?? {}),
 			...stall
 		},
@@ -322,6 +323,7 @@ export function buildAgenticChatWorkflowTerminalInputV1(input: {
 		projection: buildAgenticChatWorkflowStreamProjectionV1(workflow, input.activity),
 		eventPayload: {
 			type: 'done',
+			workflow: workflow as unknown as JsonObject,
 			status: input.status,
 			finished_reason: finishedReason,
 			failure_code: failureCode,

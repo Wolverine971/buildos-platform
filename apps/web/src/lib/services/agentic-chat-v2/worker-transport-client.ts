@@ -32,7 +32,7 @@ export type AgenticChatWorkerCommand = {
 	leaseToken: string;
 	clientTurnId: string;
 	streamRunId: string;
-	sessionId: string;
+	sessionId: string | null;
 	context: AgentChatTransportLeaseRequestV1['context'];
 	message: string;
 	attachments: ChatAttachmentRef[];
@@ -40,6 +40,7 @@ export type AgenticChatWorkerCommand = {
 	lastTurnContext: LastTurnContext | null;
 	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
+	reviewIntent?: 'project_review' | null;
 };
 
 /**
@@ -200,7 +201,8 @@ function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 			: null,
 		lastTurnContext: command.lastTurnContext,
 		voiceNoteGroupId: command.voiceNoteGroupId,
-		preparedPromptKey: command.preparedPromptKey
+		preparedPromptKey: command.preparedPromptKey,
+		...(command.reviewIntent ? { reviewIntent: command.reviewIntent } : {})
 	};
 }
 

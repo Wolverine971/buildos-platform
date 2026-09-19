@@ -1,5 +1,10 @@
 // apps/web/src/lib/components/agent/agent-chat-session.ts
-import { readChatWorkflowProgress } from '@buildos/shared-types';
+import {
+	readAgentChatWorkflowProgress,
+	workflowMessageTurnId,
+	workflowThinkingStatus,
+	type AgentChatWorkflowProgress
+} from './agent-chat-workflow';
 // apps/web/src/lib/components/agent/agent-chat-session.ts
 import { dev } from '$app/environment';
 import type {
@@ -711,6 +716,38 @@ function mapLoadedMessageToUI(msg: LoadedChatMessage): UIMessage {
 	};
 }
 
+function restoredWorkflowBlock(
+	msg: LoadedChatMessage,
+	workflow: AgentChatWorkflowProgress
+): ThinkingBlockMessage {
+	const fallback =
+		msg.role === 'assistant'
+			? msg.metadata?.interrupted
+				? 'cancelled'
+				: 'completed'
+			: 'active';
+	const status = workflowThinkingStatus(workflow, fallback);
+	return {
+		id: `restored-workflow-${msg.id}`,
+		type: 'thinking_block',
+		content: 'Project review',
+		timestamp: new Date(msg.created_at),
+		metadata: { turn_run_id: workflowMessageTurnId(msg.metadata) },
+		isCollapsed: false,
+		status,
+		activities: [
+			{
+				id: `workflow-${msg.id}`,
+				content: 'Project review',
+				timestamp: new Date(msg.created_at),
+				activityType: 'state_change',
+				status: status === 'error' ? 'failed' : 'completed',
+				metadata: { workflow, restored: true, durableWorkflow: true }
+			}
+		]
+	};
+}
+
 function mapLoadedMessagesToUI(
 	loadedMessages: LoadedChatMessage[] | undefined,
 	toolExecutions: LoadedChatToolExecution[] | undefined
@@ -733,6 +770,16 @@ function mapLoadedMessagesToUI(
 	const uiMessages: UIMessage[] = [];
 	// Ids already turned into chips, so an entity never gets a duplicate chip.
 	const seenCreatedIds = new Set<string>();
+	const assistantWorkflowTurns = new Set(
+		messages.flatMap((msg) => {
+			const turnId = workflowMessageTurnId(msg.metadata);
+			return msg.role === 'assistant' &&
+				turnId &&
+				readAgentChatWorkflowProgress(msg.metadata?.chat_workflow_v1)
+				? [turnId]
+				: [];
+		})
+	);
 
 	for (const msg of messages) {
 		// Freshness radar card (Tasker 88): an injected assistant row that renders as a card.
@@ -743,27 +790,9 @@ function mapLoadedMessagesToUI(
 		let createdForTurn: CreatedEntityRef[] = [];
 		if (msg.role === 'assistant') {
 			const metadata = msg.metadata as Record<string, any> | undefined;
-			const workflow = readChatWorkflowProgress(metadata?.chat_workflow_v1);
+			const workflow = readAgentChatWorkflowProgress(metadata?.chat_workflow_v1);
 			if (workflow) {
-				const restoredWorkflow: ThinkingBlockMessage = {
-					id: `restored-workflow-${msg.id}`,
-					type: 'thinking_block',
-					content: 'Project review',
-					timestamp: new Date(msg.created_at ?? Date.now()),
-					isCollapsed: false,
-					status: metadata?.interrupted ? 'cancelled' : 'completed',
-					activities: [
-						{
-							id: `workflow-${msg.id}`,
-							content: 'Project review',
-							timestamp: new Date(msg.created_at ?? Date.now()),
-							activityType: 'state_change',
-							status: 'completed',
-							metadata: { workflow, restored: true }
-						}
-					]
-				};
-				uiMessages.push(restoredWorkflow);
+				uiMessages.push(restoredWorkflowBlock(msg, workflow));
 			}
 			const clientTurnId = stringValue(metadata?.client_turn_id);
 			const directSources = [
@@ -792,6 +821,13 @@ function mapLoadedMessagesToUI(
 		}
 
 		uiMessages.push(mapLoadedMessageToUI(msg));
+		if (msg.role === 'user') {
+			const workflow = readAgentChatWorkflowProgress(msg.metadata?.chat_workflow_v1);
+			const turnId = workflowMessageTurnId(msg.metadata);
+			if (workflow && (!turnId || !assistantWorkflowTurns.has(turnId))) {
+				uiMessages.push(restoredWorkflowBlock(msg, workflow));
+			}
+		}
 
 		// Inline chips for whatever this turn created, placed right after its reply.
 		if (createdForTurn.length > 0) {

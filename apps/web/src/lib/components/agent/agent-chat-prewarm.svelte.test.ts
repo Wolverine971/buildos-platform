@@ -655,3 +655,12 @@ describe('PrewarmController — reset', () => {
 		expect(h.prewarm).toHaveBeenCalledTimes(2);
 	});
 });
+
+describe('Project review preparation ownership', () => {
+	it('does not prepare context in the browser while project review is selected', () => {
+		const h = createHarness();
+		h.deps.getIsProjectReview = () => true;
+		expect(h.controller.orchestrate()).toBeUndefined();
+		expect(h.prewarm).not.toHaveBeenCalled();
+	});
+});

@@ -25,6 +25,7 @@ import {
 	readFreshnessCardFromMetadata,
 	remainingBundleOperationCount,
 	retiredUndoableUntil,
+	reviewDeeperPromptFor,
 	undoFreshnessScan
 } from './freshness-radar-card';
 import { freshnessCardFixture, freshnessCardMetadata } from './freshness-radar-card.fixture';
@@ -326,4 +327,15 @@ describe('worker card fixture', () => {
 			expect(message.data.card.version).toBe('freshness_card_v1');
 		}
 	);
+});
+
+describe('deeper review prompt', () => {
+	it('treats card items as leads to recheck, without asking for changes', () => {
+		const prompt = reviewDeeperPromptFor(freshnessCardFixture());
+		expect(prompt).toContain('these flags may already be resolved');
+		expect(prompt).toContain('without making changes');
+		expect(prompt).toContain('Send investor deck');
+		expect(prompt).toContain('Sep 18, 2026');
+		expect(prompt).not.toContain('task-1');
+	});
 });

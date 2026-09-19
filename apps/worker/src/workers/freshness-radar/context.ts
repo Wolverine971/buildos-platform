@@ -322,7 +322,9 @@ function windowStartFor(now: Date, lastCursor: string | null, policy: FreshnessP
 		return new Date(now.getTime() - config.firstScanLookbackHours * HOUR_MS).toISOString();
 	}
 	const floor = now.getTime() - config.maxLookbackDays * DAY_MS;
-	return new Date(Math.max(Date.parse(lastCursor), floor)).toISOString();
+	// Keep Postgres microseconds in the exclusive query bound. A Date round-trip
+	// truncates them and makes the previous scan's last message look new again.
+	return Date.parse(lastCursor) >= floor ? lastCursor : new Date(floor).toISOString();
 }
 
 export function selectWindowMessages(params: {

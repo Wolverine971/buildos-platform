@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/agent/ThinkingBlock.svelte -->
 <!-- INKPRINT Design System: Thinking block with terminal-like activity log -->
 <script lang="ts">
-	import { readChatWorkflowProgress } from '@buildos/shared-types';
+	import { readAgentChatWorkflowProgress } from './agent-chat-workflow';
 	import WorkflowProgressCard from './WorkflowProgressCard.svelte';
 	import {
 		ChevronDown,
@@ -34,7 +34,7 @@
 
 	const workflow = $derived.by(() => {
 		for (let i = block.activities.length - 1; i >= 0; i--) {
-			const value = readChatWorkflowProgress(block.activities[i]?.metadata?.workflow);
+			const value = readAgentChatWorkflowProgress(block.activities[i]?.metadata?.workflow);
 			if (value) return value;
 		}
 		return null;

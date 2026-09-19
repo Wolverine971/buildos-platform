@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-09-18T19:46:48.738Z
+// Generated on: 2026-09-19T22:44:35.735Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1843,6 +1843,120 @@ export type DatabaseSchema = {
 		last_submission: string | null;
 		submission_count: number | null;
 	};
+	freshness_flags: {
+		answers: Json;
+		applied_after_updated_at: string | null;
+		applied_at: string | null;
+		applied_via: string | null;
+		change_kind: string | null;
+		change_kind_probability: number | null;
+		created_at: string;
+		date_choice: string | null;
+		date_choice_probability: number | null;
+		disposition: string;
+		disposition_reason: string | null;
+		evidence: Json | null;
+		features: Json;
+		id: string;
+		model_used: string | null;
+		outcome: string | null;
+		outcome_at: string | null;
+		outcome_source: string | null;
+		probability: number;
+		project_id: string;
+		proposed_operation: Json | null;
+		question_set_version: string;
+		scan_id: string;
+		status: string;
+		subject_id: string;
+		subject_kind: string;
+		subject_snapshot: Json;
+		subject_title: string;
+		subject_updated_at: string | null;
+		suggestion_id: string | null;
+		undo_operation: Json | null;
+		undone_at: string | null;
+		undone_by: string | null;
+		updated_at: string;
+		user_id: string;
+	};
+	freshness_radar_signals: {
+		created_at: string;
+		due_at: string;
+		error_message: string | null;
+		finished_at: string | null;
+		first_turn_at: string;
+		id: string;
+		last_turn_at: string;
+		last_turn_run_id: string | null;
+		max_due_at: string;
+		project_id_hints: string[];
+		queue_job_id: string | null;
+		session_id: string;
+		started_at: string | null;
+		status: string;
+		turn_count: number;
+		updated_at: string;
+		user_id: string;
+	};
+	freshness_scans: {
+		candidates_evaluated: number;
+		candidates_total: number;
+		card_message_id: string | null;
+		counts: Json;
+		created_at: string;
+		error_message: string | null;
+		finished_at: string | null;
+		id: string;
+		info_chars: number;
+		info_cursor_at: string | null;
+		info_message_ids: string[];
+		info_session_ids: string[];
+		info_truncated: boolean;
+		info_window_start: string | null;
+		jev_cost_usd: number;
+		jev_input_tokens: number;
+		jev_latency_ms: number[];
+		jev_requests: number;
+		mode: string;
+		model_requested: string | null;
+		model_used: string | null;
+		policy: Json;
+		policy_version: string;
+		project_id: string;
+		question_set_sha256: string;
+		question_set_version: string;
+		signal_id: string | null;
+		skip_reason: string | null;
+		started_at: string | null;
+		status: string;
+		trigger: string;
+		trigger_session_id: string | null;
+		updated_at: string;
+		user_id: string;
+	};
+	freshness_track_scores: {
+		answers: Json;
+		created_at: string;
+		evidence_probability: number | null;
+		facts: Json;
+		gauge: string;
+		id: string;
+		model_used: string | null;
+		outcome: string | null;
+		outcome_at: string | null;
+		previous_gauge: string | null;
+		project_id: string;
+		question_set_version: string;
+		scan_id: string;
+		score: number | null;
+		score_confidence: number | null;
+		subject_id: string;
+		subject_kind: string;
+		subject_title: string;
+		target_at: string | null;
+		user_id: string;
+	};
 	homework_run_events: {
 		created_at: string;
 		event: Json;
@@ -1898,6 +2012,10 @@ export type DatabaseSchema = {
 		created_at: string;
 		decided_at: string | null;
 		expires_at: string | null;
+		freshness_checked_at: string | null;
+		freshness_flag_id: string | null;
+		freshness_note: string | null;
+		freshness_state: string;
 		id: string;
 		project_id: string | null;
 		risk_tier: number | null;
@@ -3151,6 +3269,7 @@ export type DatabaseSchema = {
 		decided_at: string | null;
 		depends_on: string | null;
 		evidence_refs: Json;
+		freshness_scan_id: string | null;
 		freshness_state: string;
 		id: string;
 		kind: string;
@@ -3161,7 +3280,7 @@ export type DatabaseSchema = {
 		result: Json | null;
 		reversible: boolean | null;
 		risk_tier: number;
-		run_id: string;
+		run_id: string | null;
 		sort_order: number;
 		source_fingerprint: string | null;
 		status: string;
@@ -4388,6 +4507,10 @@ export const tableNames = [
 	'feature_flags',
 	'feedback',
 	'feedback_rate_limit',
+	'freshness_flags',
+	'freshness_radar_signals',
+	'freshness_scans',
+	'freshness_track_scores',
 	'homework_run_events',
 	'homework_run_iterations',
 	'homework_runs',

@@ -822,19 +822,19 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
 	});
 
-	it('keeps ordinary chat unchanged while the switch is off, even when a review is requested', async () => {
+	it('rejects an explicit review when disabled without starting ordinary chat', async () => {
 		mocks.env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED = undefined;
 		const response = await POST(postEvent({ body: reviewBody() }) as never);
 		const body = await response.json();
 
-		expect(response.status).toBe(202);
-		expect(body.data.reviewMode).toBeUndefined();
+		expect(response.status).toBe(409);
+		expect(body.code).toBe('WORKFLOW_REVIEW_UNAVAILABLE');
 		expect(rpc).not.toHaveBeenCalled();
-		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledOnce();
-		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledOnce();
+		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
+		expect(mocks.admitAgenticChatWorkerTurn).not.toHaveBeenCalled();
 	});
 
-	it('routes every non-eligible request to the ordinary path', async () => {
+	it('keeps ordinary chat unchanged and rejects unsupported explicit reviews', async () => {
 		const ordinary: Array<[string, () => Record<string, unknown>]> = [
 			['no review requested', () => reviewBody({ reviewIntent: null })],
 			['field omitted', withoutReviewIntent],
@@ -874,18 +874,22 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 			resetAgenticChatTurnRateLimitForTests();
 			vi.clearAllMocks();
 			const response = await POST(postEvent({ body: body() }) as never);
-			expect(response.status, label).toBe(202);
+			const ordinaryTurn = label === 'no review requested' || label === 'field omitted';
+			expect(response.status, label).toBe(ordinaryTurn ? 202 : 422);
 			expect(rpc, label).not.toHaveBeenCalled();
-			expect(mocks.prepareAgenticChatWorkerAdmission, label).toHaveBeenCalledOnce();
+			expect(mocks.prepareAgenticChatWorkerAdmission, label).toHaveBeenCalledTimes(
+				ordinaryTurn ? 1 : 0
+			);
 		}
 
-		// A user outside the internal cohort stays ordinary too.
+		// A user outside the internal cohort cannot silently start an ordinary turn.
 		mocks.env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS = 'd1000000-0000-4000-8000-0000000000ff';
 		resetAgenticChatTurnRateLimitForTests();
 		vi.clearAllMocks();
-		await POST(postEvent({ body: reviewBody() }) as never);
+		const denied = await POST(postEvent({ body: reviewBody() }) as never);
+		expect(denied.status).toBe(409);
 		expect(rpc).not.toHaveBeenCalled();
-		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledOnce();
+		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
 	});
 
 	it('rejects any review intent value other than the one explicit request', async () => {

@@ -461,6 +461,9 @@ class WorkflowTerminal {
 			try {
 				await this.ports.publisher.publishTerminal(this.fence.turnRunId, receipt, {
 					type: 'done',
+					...(receipt.status === request.status
+						? { workflow: request.projection.workflow }
+						: {}),
 					status: receipt.status,
 					finished_reason: request.finishedReason,
 					failure_code: request.failureCode

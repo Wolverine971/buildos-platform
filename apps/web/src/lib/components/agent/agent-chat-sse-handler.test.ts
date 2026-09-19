@@ -1,5 +1,6 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.test.ts
 import { CHAT_WORKFLOW_PROTOTYPE_VERSION, type ChatWorkflowProgress } from '@buildos/shared-types';
+import { workflowProjectionFixture } from './agent-chat-workflow.fixture';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentSSEMessage, ChatSession, ContextShiftPayload } from '@buildos/shared-types';
 import type { CreatedEntityRef, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
@@ -461,7 +462,7 @@ function createHarness(
 			return currentThinkingBlockId;
 		},
 		update(blockId, updater) {
-			const fake: ThinkingBlockMessage = {
+			const fake: ThinkingBlockMessage = calls.updateBlocks.at(-1) ?? {
 				id: blockId ?? 'block-1',
 				content: '',
 				type: 'thinking_block',
@@ -677,6 +678,30 @@ describe('createSSEHandler — routing', () => {
 			workflow
 		});
 		expect(h.calls.addActivity[0]?.metadata).toMatchObject({ workflow });
+	});
+
+	it('updates a single durable workflow activity through planning, findings, and partial completion', () => {
+		const h = createHarness();
+		const started = workflowProjectionFixture({ phase: 'assessing' });
+		h.handler({ type: 'workflow_progress', workflow: started });
+		expect(h.snapshot.currentActivity).toBe('Planning the project review');
+		const finished = workflowProjectionFixture({
+			phase: 'finished',
+			terminalOutcome: 'partial'
+		});
+		finished.steps[1]!.status = 'accepted';
+		finished.steps[1]!.acceptedFinding = { summary: 'Saved finding', evidence: [] };
+		h.handler({ type: 'workflow_progress', workflow: finished });
+		const block = h.calls.updateBlocks.at(-1)!;
+		expect(block.activities).toHaveLength(1);
+		expect(block.activities[0]?.metadata).toMatchObject({ workflow: finished });
+		expect(h.snapshot.currentActivity).toBe('Partial review ready');
+	});
+
+	it('ignores a malformed workflow event without replacing the progress card', () => {
+		const h = createHarness();
+		h.handler({ type: 'workflow_progress', workflow: { phase: 'finished' } as any });
+		expect(h.calls.updateBlocks).toHaveLength(0);
 	});
 
 	it('routes agent_state through thinking.updateState and sets activity label', () => {

@@ -12,6 +12,7 @@ import {
 import type { AgenticChatWorkerApplicationObserver } from '$lib/services/agentic-chat-v2/worker-realtime-coordinator';
 import type { AgenticChatWorkerReconciledReceipt } from '$lib/services/agentic-chat-v2/worker-realtime-inbox';
 import { workerActivityForStatus } from './agent-chat-worker-status';
+import { readDurableChatWorkflowProgress } from './agent-chat-workflow';
 
 const WORKER_UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_PROJECTION_EVENTS = 128;
@@ -106,6 +107,11 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 			receipt.projection_durable_sequence
 		);
 		for (const event of projection.semanticEvents) this.#applySemanticEvent(event);
+		this.#applyWorkflowSnapshot(
+			receipt.projection.workflow,
+			receipt.execution_generation,
+			receipt.projection_durable_sequence
+		);
 		for (const event of receipt.durable_events) {
 			// Reconciliation text already includes every delta through the response
 			// watermark. Re-appending a retained delta would duplicate output.
@@ -170,10 +176,49 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 
 	#applySemanticEvent(event: AgentStreamEventV1): void {
 		if (this.#appliedSemanticEventIds.has(event.event_id)) return;
+		// Terminal events carry the same final workflow truth as reconciliation. Apply
+		// it first: a completed turn can still contain a deliberately partial review.
+		if (event.type === 'done') {
+			this.#applyWorkflowSnapshot(
+				'workflow' in event ? event.workflow : undefined,
+				event.execution_generation,
+				event.sequence_index
+			);
+		}
 		const normalized = toAgentSSEMessage(event);
 		if (!normalized) throw new Error(`Unsupported worker UI event: ${event.type}`);
 		this.#port.applySemanticEvent(normalized);
 		this.#appliedSemanticEventIds.add(event.event_id);
+	}
+
+	#applyWorkflowSnapshot(
+		value: unknown,
+		executionGeneration: number,
+		sequenceIndex: number
+	): void {
+		if (value === undefined || value === null) return;
+		const workflow = readDurableChatWorkflowProgress(value);
+		if (!workflow) {
+			this.#reportError(new Error('Worker workflow projection is invalid'));
+			return;
+		}
+		// Snapshot identity is intentionally separate from a wire event at the same
+		// sequence; otherwise a terminal projection would swallow its done event.
+		const eventId = `workflow-projection:${this.#handle.turnRunId}:${executionGeneration}:${sequenceIndex}`;
+		if (this.#appliedSemanticEventIds.has(eventId)) return;
+		this.#port.applySemanticEvent({
+			type: 'workflow_progress',
+			workflow,
+			event_id: eventId,
+			stream_run_id: this.#handle.streamRunId,
+			client_turn_id: this.#handle.clientTurnId,
+			turn_run_id: this.#handle.turnRunId,
+			sequence_index: sequenceIndex,
+			phase: 'llm',
+			event_type: 'workflow_progress',
+			durable: true
+		});
+		this.#appliedSemanticEventIds.add(eventId);
 	}
 
 	#applySyntheticTerminal(
@@ -349,6 +394,12 @@ function toAgentSSEMessage(event: AgentStreamEventV1): AgentSSEMessage | null {
 		event_type: event.event_type,
 		durable: event.durable
 	};
+	if (event.type === 'workflow_progress') {
+		const workflow = readDurableChatWorkflowProgress(
+			'workflow' in event ? event.workflow : undefined
+		);
+		return workflow ? { ...common, type: 'workflow_progress', workflow } : null;
+	}
 	if (event.type === 'text_delta') {
 		const text = readTextDelta(event);
 		return text

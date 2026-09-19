@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import ThinkingBlock from './ThinkingBlock.svelte';
 import type { ActivityEntry, ThinkingBlockMessage } from './agent-chat.types';
+import { workflowProjectionFixture } from './agent-chat-workflow.fixture';
 
 const source = readFileSync(
 	resolve(process.cwd(), 'src/lib/components/agent/ThinkingBlock.svelte'),
@@ -37,6 +38,22 @@ function thinkingBlock(): ThinkingBlockMessage {
 
 describe('ThinkingBlock', () => {
 	afterEach(cleanup);
+
+	it('renders a durable workflow result restored into ordinary chat activities', () => {
+		const workflow = workflowProjectionFixture({
+			phase: 'finished',
+			terminalOutcome: 'partial'
+		});
+		workflow.steps[1]!.status = 'accepted';
+		workflow.steps[1]!.acceptedFinding = { summary: 'Saved specialist finding', evidence: [] };
+		const block = thinkingBlock();
+		block.status = 'completed';
+		block.activities = [{ ...activity(1), metadata: { workflow } }];
+		render(ThinkingBlock, { block, onToggleCollapse: vi.fn() });
+		expect(screen.getByText('Partial review ready')).toBeInTheDocument();
+		expect(screen.getByText('Saved specialist finding')).toBeInTheDocument();
+		expect(screen.queryByRole('log')).toBeNull();
+	});
 
 	it('restores specialist findings from durable activity metadata and shows unfinished work as stopped', async () => {
 		const progress: ChatWorkflowProgress = {
