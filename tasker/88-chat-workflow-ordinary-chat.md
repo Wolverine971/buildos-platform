@@ -3,7 +3,16 @@
 # 88 — Jev freshness radar: after a brain dump, catch what went stale
 
 **Created:** 2026-09-12. **Reshaped by DJ:** 2026-09-18.
-**Status (2026-09-18): built on `main`, off by default, not yet live.**
+**Status (2026-09-19 01:30 UTC): LIVE for DJ only.**
+- Deployed at `262e86bfc`.
+- Production migrations `20260918200000`–`200300` are applied and recorded in the ledger.
+- `FRESHNESS_RADAR_MODE=live` is set on `daily-brief-worker`.
+- DJ's flags `freshness_radar`, `.surfaces` and `.inbox_cleanup` are ON; `.auto_apply` is OFF,
+  gated on the ledger.
+- The first real scans still need watching. See the
+  [handoff](../docs/technical/reviews/AGENTIC_CHAT_HANDOFF_2026-09-19.md).
+
+**Build status (2026-09-18):** built on `main`.
 - Plan and interfaces are frozen in
   [`docs/architecture/jev-freshness-radar-v1-plan.md`](../docs/architecture/jev-freshness-radar-v1-plan.md),
   with lane amendments appended.
@@ -19,12 +28,10 @@
   - radar and inbox worker suites pass 126/126, including a real disposable-Postgres end-to-end scan;
   - web freshness, chat session and decide suites pass 116/116;
   - SQL contracts pass 52/52.
-- **Owed before live use, each with DJ's OK:**
-  1. apply the 4 migrations (`20260918200000`–`200300`) to production;
-  2. set `FRESHNESS_RADAR_MODE=shadow` on the Railway worker;
-  3. enable DJ's `freshness_radar` feature flag;
-  4. run the read-only backtest on DJ's data;
-  5. switch to `live`, then enable `freshness_radar.auto_apply` after about 20 clean scans.
+- **Remaining:**
+  - observe the first live scans;
+  - enable `freshness_radar.auto_apply` after about 20 clean scans, with DJ's OK;
+  - run the backtest only with DJ's new OK (he declined it on 09-18).
 **Depends on:** nothing blocking. It reuses the Project Review suggestion, approval and inbox machinery.
 The 86/87 workflow is not used for drafting. It is read-only and text-only by contract, and about
 500× the cost per scan.

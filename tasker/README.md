@@ -26,6 +26,12 @@ live verification, or a named exit gate is still pending.
 
 ## Current focus
 
+- **Start here for Agentic Chat (2026-09-19):**
+  [handoff](../docs/technical/reviews/AGENTIC_CHAT_HANDOFF_2026-09-19.md).
+  - The Jev freshness radar ([88](88-chat-workflow-ordinary-chat.md)) is live for DJ, with
+    auto-apply off.
+  - The 86/87 workflow is merged and deployed with its switches off.
+  - One final acceptance run remains at [89](89-chat-workflow-integration-acceptance.md).
 - **Chat workflow implementation:** [81](81-chat-workflow-implementation-program.md)
   coordinates the new chat-first pilot. DJ closed the Task 90 testing handoff after
   the focused repairs and deferred calendar work; see the
