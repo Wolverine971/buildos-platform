@@ -227,6 +227,38 @@ describe('Agentic Chat worker transport client', () => {
 		});
 	});
 
+	it('preserves the document organization intent for workflow admission', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			Response.json(
+				{
+					success: true,
+					data: { outcome: 'newly_admitted', reviewMode: 'project_review' }
+				},
+				{ status: 202 }
+			)
+		);
+		await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command: {
+				leaseToken: workerLease.token,
+				clientTurnId: request.clientTurnId,
+				streamRunId: request.streamRunId,
+				sessionId: null,
+				context: { type: 'project', entityId: SESSION_ID, projectId: SESSION_ID },
+				message: 'Suggest a structure for our project documents.',
+				attachments: [],
+				projectFocus: null,
+				lastTurnContext: null,
+				voiceNoteGroupId: null,
+				preparedPromptKey: null,
+				reviewIntent: 'document_organization'
+			}
+		});
+		const submittedBody = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+		expect(submittedBody.reviewIntent).toBe('document_organization');
+		expect(workerAdmissionRequestSchema.safeParse(submittedBody).success).toBe(true);
+	});
+
 	it('returns non-success admission responses without parsing them as authority', async () => {
 		const response = Response.json({ code: 'WORKER_CAPACITY_EXCEEDED' }, { status: 503 });
 		const result = await requestAgenticChatWorkerAdmission({

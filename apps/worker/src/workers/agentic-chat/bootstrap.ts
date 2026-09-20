@@ -9,6 +9,7 @@ import {
 	GPT_56_LUNA_MODEL,
 	JSON_PROFILE_MODELS,
 	LLMUsageLogger,
+	JevClient,
 	modelSupportsCapability
 } from '@buildos/smart-llm';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from './capacity';
@@ -25,6 +26,7 @@ import {
 } from './mutationToolCatalog';
 import { createAgenticChatCompositionRoot } from './composition-root';
 import { JevToolSelector } from './provider/jev-tool-selector';
+import { SPECIALIST_SHADOW_POLICY } from './workflow/specialist-selection-policy';
 import {
 	AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS,
 	AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS,
@@ -422,6 +424,22 @@ function createDefaultComposition(
 		workflowV4: {
 			preparationEnabled: input.config.workflowV4PreparationEnabled === true,
 			executionEnabled: workflowExecutionEnabled,
+			specialistWorkflowsEnabled: input.config.specialistWorkflowsEnabled === true,
+			documentReadToolsEnabled: input.config.documentReadToolsEnabled === true,
+			selectionDecider:
+				workflowExecutionEnabled && input.config.jevSpecialistSelection === 'shadow'
+					? new JevClient({
+							apiKey: input.config.provider.routes.find(
+								(route) => route.kind === 'openrouter'
+							)!.apiKey,
+							model: SPECIALIST_SHADOW_POLICY.model,
+							timeoutMs: SPECIALIST_SHADOW_POLICY.timeoutMs,
+							maxRequestBytes: SPECIALIST_SHADOW_POLICY.maxRequestBytes,
+							retryOnce: false,
+							fetchImpl: input.fetchImpl,
+							title: 'BuildOS Specialist Shadow'
+						})
+					: undefined,
 			runnerClient: workflowClient
 		},
 		liveVisionEnabled: input.config.liveVisionEnabled,

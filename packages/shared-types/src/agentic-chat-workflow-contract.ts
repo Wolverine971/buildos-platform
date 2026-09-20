@@ -75,6 +75,22 @@ export const AGENTIC_CHAT_WORKFLOW_POLICY_V1 = {
 
 export type AgenticChatWorkflowPolicyV1 = typeof AGENTIC_CHAT_WORKFLOW_POLICY_V1;
 
+/** Explicit additive policy: old requests still forbid all model tools. */
+export const AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF = 'internal-document-organization:v3';
+export const AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1 = {
+	...AGENTIC_CHAT_WORKFLOW_POLICY_V1,
+	version: 'agentic_chat_document_read_policy_v1',
+	modelTools: 'bounded_document_read_v1'
+} as const;
+export type AgenticChatWorkflowPolicy =
+	| AgenticChatWorkflowPolicyV1
+	| typeof AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1;
+export function agenticChatWorkflowPolicyForRef(policyRef: string): AgenticChatWorkflowPolicy {
+	return policyRef === AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF
+		? AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1
+		: AGENTIC_CHAT_WORKFLOW_POLICY_V1;
+}
+
 export const AGENTIC_CHAT_WORKFLOW_ADMITTED_MODELS = [
 	'deepseek/deepseek-v4.1-flash',
 	'deepseek/deepseek-v4-flash'
@@ -131,7 +147,7 @@ export type AgenticChatRawWorkflowRequestV4 = {
 	message: string;
 	context: { type: 'project'; entityId: string; projectId: string };
 	reviewIntent: AgenticChatProjectReviewIntentV1;
-	policy: AgenticChatWorkflowPolicyV1;
+	policy: AgenticChatWorkflowPolicy;
 	policyRef: string;
 	cacheRef: { id: string; generation: string } | null;
 };
@@ -623,7 +639,9 @@ export async function validateAgenticChatRawWorkflowInputV4(
 	}
 	if (
 		canonicalizeAgenticChatJson(typed.policy as unknown as JsonValue) !==
-		canonicalizeAgenticChatJson(AGENTIC_CHAT_WORKFLOW_POLICY_V1 as unknown as JsonValue)
+		canonicalizeAgenticChatJson(
+			agenticChatWorkflowPolicyForRef(typed.policyRef) as unknown as JsonValue
+		)
 	) {
 		return fail('invalid_policy', 'Request policy is not the server workflow policy');
 	}

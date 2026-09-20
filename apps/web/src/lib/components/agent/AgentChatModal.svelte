@@ -47,6 +47,7 @@
 		TurnHandleV1
 	} from '@buildos/shared-types';
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import type { AgenticChatWorkerCommand } from '$lib/services/agentic-chat-v2/worker-transport-client';
 	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
 	import {
@@ -506,16 +507,33 @@
 	}
 	let inputValue = $state('');
 	let projectReviewAvailable = $state(false);
-	let reviewSelection = $state<{ projectId: string; sessionId: string | null } | null>(null);
+	let documentOrganizationAvailable = $state(false);
+	let reviewSelection = $state<{
+		projectId: string;
+		sessionId: string | null;
+		intent: NonNullable<AgenticChatWorkerCommand['reviewIntent']>;
+	} | null>(null);
 	const reviewProjectId = $derived(
 		shellRouter.selectedContextType === 'project' &&
 			(!resolvedProjectFocus || resolvedProjectFocus.focusType === 'project-wide')
 			? attachmentProjectId
 			: null
 	);
-	const reviewSelected = $derived(
-		reviewSelection !== null && reviewSelection.projectId === reviewProjectId
-	);
+	const selectedReviewIntent = $derived.by(() => {
+		if (
+			!reviewSelection ||
+			reviewSelection.projectId !== reviewProjectId ||
+			(reviewSelection.sessionId !== (currentSession?.id ?? null) && !stream.isStartingStream)
+		)
+			return null;
+		const available =
+			reviewSelection.intent === 'document_organization'
+				? documentOrganizationAvailable
+				: projectReviewAvailable;
+		return available ? reviewSelection.intent : null;
+	});
+	const reviewSelected = $derived(selectedReviewIntent === 'project_review');
+	const documentOrganizationSelected = $derived(selectedReviewIntent === 'document_organization');
 
 	$effect(() => {
 		if (!browser || !(isOpen || embedded) || hidden) return;
@@ -523,12 +541,18 @@
 		void fetch('/api/agent/v2/capabilities', { cache: 'no-store', signal: controller.signal })
 			.then(async (response) => {
 				const body = response.ok ? await response.json() : null;
-				if (!controller.signal.aborted)
+				if (!controller.signal.aborted) {
 					projectReviewAvailable =
 						body?.success === true && body.data?.projectReview === true;
+					documentOrganizationAvailable =
+						body?.success === true && body.data?.documentOrganization === true;
+				}
 			})
 			.catch(() => {
-				if (!controller.signal.aborted) projectReviewAvailable = false;
+				if (!controller.signal.aborted) {
+					projectReviewAvailable = false;
+					documentOrganizationAvailable = false;
+				}
 			});
 		return () => controller.abort();
 	});
@@ -537,6 +561,9 @@
 		if (
 			reviewSelection &&
 			(reviewSelection.projectId !== reviewProjectId ||
+				(reviewSelection.intent === 'document_organization'
+					? !documentOrganizationAvailable
+					: !projectReviewAvailable) ||
 				(reviewSelection.sessionId !== (currentSession?.id ?? null) &&
 					!stream.isStartingStream))
 		) {
@@ -644,7 +671,7 @@
 
 	const stream = createAgentChatStreamController({
 		getInputValue: () => inputValue,
-		getReviewIntent: () => (reviewSelected ? 'project_review' : null),
+		getReviewIntent: () => selectedReviewIntent,
 		onReviewAdmitted: () => {
 			reviewSelection = null;
 		},
@@ -841,7 +868,7 @@
 		getSelectedEntityId: () => shellRouter.selectedEntityId,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		getIsPreparingSession: () => isPreparingSession,
-		getIsProjectReview: () => reviewSelected,
+		getIsProjectReview: () => selectedReviewIntent !== null,
 		// A worker turn keeps its handle until terminal truth arrives. Include that
 		// authoritative ownership so adoption/reconciliation transitions can never
 		// restart prewarm while the worker is still active.
@@ -1135,17 +1162,27 @@
 		haptic('light');
 	}
 
-	function toggleProjectReview() {
-		if (reviewSelected) {
+	function toggleWorkflowReview(intent: NonNullable<AgenticChatWorkerCommand['reviewIntent']>) {
+		if (selectedReviewIntent === intent) {
 			reviewSelection = null;
 			return;
 		}
-		if (!projectReviewAvailable || !reviewProjectId || reviewDisabled) return;
-		reviewSelection = { projectId: reviewProjectId, sessionId: currentSession?.id ?? null };
+		const available =
+			intent === 'document_organization'
+				? documentOrganizationAvailable
+				: projectReviewAvailable;
+		if (!available || !reviewProjectId || reviewDisabled) return;
+		reviewSelection = {
+			projectId: reviewProjectId,
+			sessionId: currentSession?.id ?? null,
+			intent
+		};
 		showExistingImagePicker = false;
 		if (!inputValue.trim())
 			inputValue =
-				'Review this project’s progress, priorities, and risks. What needs attention next?';
+				intent === 'document_organization'
+					? 'Suggest how to organize this project’s documents. Identify overlap, gaps, and a clear document structure.'
+					: 'Review this project’s progress, priorities, and risks. What needs attention next?';
 	}
 
 	function handleReviewDeeper(card: FreshnessCardPayloadV1) {
@@ -1153,7 +1190,11 @@
 		const draft = reviewDeeperPromptFor(card);
 		const existingDraft = inputValue.trim();
 		inputValue = existingDraft ? `${existingDraft}\n\n${draft}` : draft;
-		reviewSelection = { projectId: card.projectId, sessionId: currentSession?.id ?? null };
+		reviewSelection = {
+			projectId: card.projectId,
+			sessionId: currentSession?.id ?? null,
+			intent: 'project_review'
+		};
 		showExistingImagePicker = false;
 		handleChatTabChange('chat');
 		haptic('light');
@@ -2947,9 +2988,13 @@
 			isStartingStream={stream.isStartingStream}
 			contextType={shellRouter.selectedContextType}
 			reviewAvailable={projectReviewAvailable && Boolean(reviewProjectId)}
+			documentOrganizationAvailable={documentOrganizationAvailable &&
+				Boolean(reviewProjectId)}
 			{reviewSelected}
+			{documentOrganizationSelected}
 			{reviewDisabled}
-			onToggleReview={toggleProjectReview}
+			onToggleReview={() => toggleWorkflowReview('project_review')}
+			onToggleDocumentOrganization={() => toggleWorkflowReview('document_organization')}
 			{isSendDisabled}
 			allowSendWhileStreaming={isTouchDevice}
 			{displayContextLabel}

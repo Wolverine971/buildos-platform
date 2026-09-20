@@ -8,11 +8,16 @@ import { ApiResponse } from '$lib/utils/api-response';
 export const GET: RequestHandler = async ({ locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	const policy = resolveAgenticChatWorkflowV4AdmissionPolicy({
+		AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED: env.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED,
 		AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED: env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED,
 		AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS: env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS
 	});
 	const response = user?.id
 		? ApiResponse.success({
+				documentOrganization:
+					policy.enabled &&
+					policy.specialistWorkflowsEnabled === true &&
+					policy.cohortUserIds.includes(user.id.toLowerCase()),
 				projectReview:
 					policy.enabled && policy.cohortUserIds.includes(user.id.toLowerCase())
 			})

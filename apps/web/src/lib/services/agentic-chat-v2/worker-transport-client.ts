@@ -40,7 +40,7 @@ export type AgenticChatWorkerCommand = {
 	lastTurnContext: LastTurnContext | null;
 	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
-	reviewIntent?: 'project_review' | null;
+	reviewIntent?: 'project_review' | 'document_organization' | null;
 };
 
 /**

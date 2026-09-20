@@ -1,5 +1,6 @@
 // apps/worker/tests/agenticChatOpenRouterClient.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DOCUMENT_READ_TOOL } from '@buildos/agentic-chat-runtime/specialists';
 import {
 	AGENTIC_CHAT_ACTING_MAX_TOKENS,
 	AgenticChatLlmUsageObserver,
@@ -168,6 +169,38 @@ async function collect(
 }
 
 describe('AgenticChatOpenRouterClient', () => {
+	it.each(['ordinary', 'no_meter', 'wrong_role', 'altered_schema', 'extra_tool'])(
+		'rejects the document surface with %s before any request',
+		async (violation) => {
+			const fetchImpl = vi.fn();
+			const { client } = harness(fetchImpl);
+			const gate = {
+				providerMaxPrice: { prompt: 0.3, completion: 1.2, request: 0 },
+				admit: vi.fn()
+			};
+			const tool = structuredClone(DOCUMENT_READ_TOOL);
+			if (violation === 'altered_schema')
+				tool.function.parameters.properties.documentIds.maxItems = 100;
+			await expect(
+				collect(
+					client.stream({
+						...input(),
+						toolChoice: 'auto',
+						tools:
+							violation === 'extra_tool'
+								? [tool, readToolDefinition('list_onto_projects')]
+								: [tool],
+						workflowToolPolicy:
+							violation === 'ordinary' ? undefined : 'bounded_document_read_v1',
+						dispatchGate: violation === 'no_meter' ? undefined : gate,
+						passRole: violation === 'wrong_role' ? 'final_response' : 'acting'
+					})
+				)
+			).rejects.toThrow();
+			expect(fetchImpl).not.toHaveBeenCalled();
+			expect(gate.admit).not.toHaveBeenCalled();
+		}
+	);
 	it.each([900, 99999])(
 		'bounds requested output tokens (%s) by the configured client ceiling',
 		async (requested) => {

@@ -87,6 +87,7 @@ function admittedResponse(
 			success: true,
 			data: {
 				outcome: 'newly_admitted',
+				...(request.reviewIntent ? { reviewMode: 'project_review' } : {}),
 				handle: {
 					contractVersion: 'agentic_chat_worker_v1',
 					executionMode: 'worker_realtime',
@@ -350,52 +351,65 @@ function workerHandle(overrides: Partial<TurnHandleV1> = {}): TurnHandleV1 {
 }
 
 describe('AgentChatStreamController', () => {
-	it('submits a fresh project review without prompt preparation or session bootstrap', async () => {
-		const wait = vi.fn();
-		const h = createHarness({
-			currentSession: null,
-			waitForPreparedPrompt: wait,
-			admissionFetchImpl: async (_input, init) =>
-				admittedResponse(JSON.parse(String(init?.body)), { sessionId: WORKER_SESSION_ID })
-		});
-		h.deps.getReviewIntent = () => 'project_review';
-		h.deps.onReviewAdmitted = vi.fn();
-		await h.controller.sendMessage();
-		expect(h.controller.error).toBeNull();
-		expect(h.ensureSessionReady).not.toHaveBeenCalled();
-		expect(h.prewarm.matchingFreshPreparedPrompt).not.toHaveBeenCalled();
-		expect(wait).not.toHaveBeenCalled();
-		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
-			sessionId: null,
-			reviewIntent: 'project_review',
-			preparedPromptKey: null
-		});
-		expect(h.adoptWorkerAdmissionResponse).toHaveBeenCalledOnce();
-		expect(h.deps.onReviewAdmitted).toHaveBeenCalledOnce();
-	});
+	it.each(['project_review', 'document_organization'] as const)(
+		'submits a fresh %s without prompt preparation or session bootstrap',
+		async (reviewIntent) => {
+			const wait = vi.fn();
+			const h = createHarness({
+				currentSession: null,
+				waitForPreparedPrompt: wait,
+				admissionFetchImpl: async (_input, init) =>
+					admittedResponse(JSON.parse(String(init?.body)), {
+						sessionId: WORKER_SESSION_ID
+					})
+			});
+			h.deps.getReviewIntent = () => reviewIntent;
+			h.deps.onReviewAdmitted = vi.fn();
+			await h.controller.sendMessage();
+			expect(h.controller.error).toBeNull();
+			expect(h.ensureSessionReady).not.toHaveBeenCalled();
+			expect(h.prewarm.matchingFreshPreparedPrompt).not.toHaveBeenCalled();
+			expect(wait).not.toHaveBeenCalled();
+			expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
+				sessionId: null,
+				reviewIntent,
+				preparedPromptKey: null
+			});
+			expect(h.adoptWorkerAdmissionResponse).toHaveBeenCalledOnce();
+			expect(h.adoptWorkerAdmissionResponse).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({ reviewMode: 'project_review' })
+				})
+			);
+			expect(h.deps.onReviewAdmitted).toHaveBeenCalledOnce();
+		}
+	);
 
-	it('keeps the review draft and intent when the rollout is unavailable', async () => {
-		const h = createHarness({
-			admissionFetchImpl: async () =>
-				Response.json(
-					{
-						success: false,
-						error: 'Review is unavailable',
-						code: 'WORKFLOW_REVIEW_UNAVAILABLE'
-					},
-					{ status: 409 }
-				)
-		});
-		h.deps.getReviewIntent = () => 'project_review';
-		h.deps.onReviewAdmitted = vi.fn();
-		await h.controller.sendMessage();
-		expect(h.inputValue).toBe('hello');
-		expect(h.messages).toHaveLength(0);
-		expect(h.controller.error).toBe('Review is unavailable');
-		expect(h.deps.onReviewAdmitted).not.toHaveBeenCalled();
-		expect(h.discoverWorkerSession).not.toHaveBeenCalled();
-		expect(h.admissionCalls).toHaveLength(1);
-	});
+	it.each(['project_review', 'document_organization'] as const)(
+		'keeps the %s draft and intent when the rollout is unavailable',
+		async (reviewIntent) => {
+			const h = createHarness({
+				admissionFetchImpl: async () =>
+					Response.json(
+						{
+							success: false,
+							error: 'Review is unavailable',
+							code: 'WORKFLOW_REVIEW_UNAVAILABLE'
+						},
+						{ status: 409 }
+					)
+			});
+			h.deps.getReviewIntent = () => reviewIntent;
+			h.deps.onReviewAdmitted = vi.fn();
+			await h.controller.sendMessage();
+			expect(h.inputValue).toBe('hello');
+			expect(h.messages).toHaveLength(0);
+			expect(h.controller.error).toBe('Review is unavailable');
+			expect(h.deps.onReviewAdmitted).not.toHaveBeenCalled();
+			expect(h.discoverWorkerSession).not.toHaveBeenCalled();
+			expect(h.admissionCalls).toHaveLength(1);
+		}
+	);
 
 	it('does not offer a duplicate draft when fresh-review admission loses its response', async () => {
 		const h = createHarness({
@@ -413,17 +427,43 @@ describe('AgentChatStreamController', () => {
 		expect(h.ensureSessionReady).not.toHaveBeenCalled();
 	});
 
-	it('rejects review attachments before admission', async () => {
-		const h = createHarness({
-			readyRefs: [makeAttachmentRef()],
-			draftAttachments: [makeDraftAttachment()]
-		});
-		h.deps.getReviewIntent = () => 'project_review';
-		await h.controller.sendMessage();
-		expect(h.controller.error).toContain('text-only');
-		expect(h.transportCalls).toHaveLength(0);
-		expect(h.inputValue).toBe('hello');
-	});
+	it.each(['project_review', 'document_organization'] as const)(
+		'rejects %s attachments before admission',
+		async (reviewIntent) => {
+			const h = createHarness({
+				readyRefs: [makeAttachmentRef()],
+				draftAttachments: [makeDraftAttachment()]
+			});
+			h.deps.getReviewIntent = () => reviewIntent;
+			await h.controller.sendMessage();
+			expect(h.controller.error).toContain('text-only');
+			expect(h.transportCalls).toHaveLength(0);
+			expect(h.inputValue).toBe('hello');
+		}
+	);
+
+	it.each(['global', 'document-focus', 'voice'] as const)(
+		'rejects document organization in %s context before admission',
+		async (context) => {
+			const h = createHarness({ voiceNoteGroupId: context === 'voice' ? 'voice-1' : null });
+			h.deps.getReviewIntent = () => 'document_organization';
+			if (context === 'global') h.selectedContextType = 'global';
+			if (context === 'document-focus')
+				h.deps.getResolvedProjectFocus = () => ({
+					focusType: 'document',
+					focusEntityId: 'document-1',
+					focusEntityName: 'Notes',
+					projectId: 'project-1',
+					projectName: 'Project'
+				});
+			await h.controller.sendMessage();
+			expect(h.controller.error).toBe(
+				'Document organization needs project-wide focus and a text-only message.'
+			);
+			expect(h.transportCalls).toHaveLength(0);
+			expect(h.inputValue).toBe('hello');
+		}
+	);
 
 	it.each(['document', 'task', 'goal', 'plan', 'milestone', 'risk', 'requirement'] as const)(
 		'sends the saved %s focus on the next turn after history restore',

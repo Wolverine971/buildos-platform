@@ -91,6 +91,8 @@ describe('workflow v4 admission policy', () => {
 	it('ships off and parses only an exact server switch plus the explicit cohort', () => {
 		expect(resolveAgenticChatWorkflowV4AdmissionPolicy({})).toEqual({
 			enabled: false,
+			specialistWorkflowsEnabled: false,
+			documentReadToolsEnabled: false,
 			cohortUserIds: []
 		});
 		for (const value of ['TRUE', '1', 'yes', 'on', '']) {
@@ -105,7 +107,12 @@ describe('workflow v4 admission policy', () => {
 				AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED: 'true',
 				AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS: `${USER_ID.toUpperCase()}, *, not-a-uuid`
 			})
-		).toEqual({ enabled: true, cohortUserIds: [USER_ID] });
+		).toEqual({
+			enabled: true,
+			specialistWorkflowsEnabled: false,
+			documentReadToolsEnabled: false,
+			cohortUserIds: [USER_ID]
+		});
 	});
 
 	it('admits only an explicit, enabled, cohort, project-wide, text-only question', () => {
@@ -343,5 +350,62 @@ describe('workflow v4 admission RPC', () => {
 				})
 			).rejects.toMatchObject({ code: 'protocol_error' });
 		}
+	});
+});
+
+describe('document organization admission', () => {
+	it('selects the read-capable profile only behind its separate server switch', async () => {
+		const cmd = command({ reviewIntent: 'document_organization' });
+		const eligibility = evaluateAgenticChatWorkflowV4Admission({
+			policy: { ...ON, specialistWorkflowsEnabled: true, documentReadToolsEnabled: true },
+			userId: USER_ID,
+			command: cmd
+		});
+		if (!eligibility.eligible) throw new Error(eligibility.reason);
+		const input = await buildAgenticChatWorkflowV4AdmissionArgs({
+			userId: USER_ID,
+			command: cmd,
+			eligibility,
+			transportDecisionId: DECISION_ID
+		});
+		expect(input.p_policy_ref).toBe('internal-document-organization:v3');
+		expect(input.p_policy.modelTools).toBe('bounded_document_read_v1');
+		expect(input.p_specialist_snapshot?.profileVersion).toBe(2);
+		const db = client({ data: receipt(input) });
+		await admitAgenticChatWorkflowV4Turn({ client: db, args: input });
+		expect(db.rpc).toHaveBeenCalledExactlyOnceWith(
+			'create_agentic_chat_document_review_turn_v3',
+			input
+		);
+	});
+	it('requires its own flag and admits a server-owned immutable snapshot with one RPC', async () => {
+		const cmd = command({ reviewIntent: 'document_organization' });
+		expect(
+			evaluateAgenticChatWorkflowV4Admission({ policy: ON, userId: USER_ID, command: cmd })
+		).toEqual({ eligible: false, reason: 'disabled' });
+		const eligibility = evaluateAgenticChatWorkflowV4Admission({
+			policy: { ...ON, specialistWorkflowsEnabled: true },
+			userId: USER_ID,
+			command: cmd
+		});
+		if (!eligibility.eligible) throw new Error(eligibility.reason);
+		const input = await buildAgenticChatWorkflowV4AdmissionArgs({
+			userId: USER_ID,
+			command: cmd,
+			eligibility,
+			transportDecisionId: DECISION_ID
+		});
+		expect(input.p_policy_ref).toBe('internal-document-organization:v2');
+		expect(input.p_specialist_snapshot?.slots.project_analyst.definition.id).toBe(
+			'document_organizer'
+		);
+		expect(input.p_specialist_snapshot_hash).toMatch(/^[a-f0-9]{64}$/);
+		expect(input.p_request_hash).not.toBe((await args()).p_request_hash);
+		const db = client({ data: receipt(input) });
+		await admitAgenticChatWorkflowV4Turn({ client: db, args: input });
+		expect(db.rpc).toHaveBeenCalledExactlyOnceWith(
+			'create_agentic_chat_document_review_turn_v2',
+			input
+		);
 	});
 });

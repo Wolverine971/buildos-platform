@@ -12,7 +12,7 @@
 		Square,
 		X
 	} from 'lucide-svelte';
-	import { ListChecks } from '$lib/icons/lucide';
+	import { FolderTree, ListChecks } from '$lib/icons/lucide';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type { AgentChatImageAttachment } from './agent-chat.types';
@@ -26,8 +26,11 @@
 		contextType?: ChatContextType | null;
 		reviewAvailable?: boolean;
 		reviewSelected?: boolean;
+		documentOrganizationAvailable?: boolean;
+		documentOrganizationSelected?: boolean;
 		reviewDisabled?: boolean;
 		onToggleReview?: () => void;
+		onToggleDocumentOrganization?: () => void;
 		isSendDisabled: boolean;
 		allowSendWhileStreaming?: boolean;
 		displayContextLabel: string;
@@ -66,8 +69,11 @@
 		contextType = null,
 		reviewAvailable = false,
 		reviewSelected = false,
+		documentOrganizationAvailable = false,
+		documentOrganizationSelected = false,
 		reviewDisabled = false,
 		onToggleReview,
+		onToggleDocumentOrganization,
 		isSendDisabled,
 		allowSendWhileStreaming = false,
 		displayContextLabel,
@@ -100,7 +106,15 @@
 
 	let dragDepth = $state(0);
 	let fileInput: HTMLInputElement | null = $state(null);
-	const isDropActive = $derived(dragDepth > 0 && !disabled && !isStreaming && !reviewSelected);
+	const workflowSelected = $derived(reviewSelected || documentOrganizationSelected);
+	const sendLabel = $derived(
+		documentOrganizationSelected
+			? 'Send document organization review'
+			: reviewSelected
+				? 'Send project review'
+				: 'Send message'
+	);
+	const isDropActive = $derived(dragDepth > 0 && !disabled && !isStreaming && !workflowSelected);
 
 	// Generic labels like "general chat" / "project chat" / "open-ended chat" /
 	// the unconfigured placeholder don't read naturally with "Ask about ...".
@@ -121,6 +135,8 @@
 	};
 
 	const placeholder = $derived.by(() => {
+		if (documentOrganizationSelected)
+			return 'What should we improve about this project’s documents?';
 		if (reviewSelected) return 'What should we review across this project?';
 		if (placeholderOverride?.trim()) return placeholderOverride.trim();
 		if (contextType === 'project_create') return CONTEXT_PLACEHOLDERS['new project flow'];
@@ -136,7 +152,9 @@
 
 	const initialRows = 1;
 	const maxRows = 6;
-	const isVoiceBlocked = $derived(isStreaming || isStartingStream || disabled || reviewSelected);
+	const isVoiceBlocked = $derived(
+		isStreaming || isStartingStream || disabled || workflowSelected
+	);
 	const composerHint = $derived.by(() => {
 		if (isStartingStream) return 'Sending your message…';
 		if (disabled) {
@@ -164,7 +182,7 @@
 	}
 
 	function handleDragEnter(event: DragEvent) {
-		if (disabled || isStreaming || reviewSelected || !hasImageDrag(event)) return;
+		if (disabled || isStreaming || workflowSelected || !hasImageDrag(event)) return;
 		event.preventDefault();
 		dragDepth += 1;
 	}
@@ -177,7 +195,7 @@
 		event.preventDefault();
 		if (event.dataTransfer) {
 			event.dataTransfer.dropEffect =
-				disabled || isStreaming || reviewSelected ? 'none' : 'copy';
+				disabled || isStreaming || workflowSelected ? 'none' : 'copy';
 		}
 	}
 
@@ -194,16 +212,16 @@
 		// Swallow the drop unconditionally (see handleDragOver — the default
 		// action is a page navigation), then decide whether to attach.
 		event.preventDefault();
-		if (disabled || isStreaming || reviewSelected) return;
+		if (disabled || isStreaming || workflowSelected) return;
 		const files = filesFromList(event.dataTransfer?.files);
-		if (!files.length || reviewSelected) return;
+		if (!files.length || workflowSelected) return;
 		onAttachmentFiles?.(files);
 	}
 
 	function handlePaste(event: ClipboardEvent) {
-		if (disabled || isStreaming || reviewSelected) return;
+		if (disabled || isStreaming || workflowSelected) return;
 		const files = filesFromList(event.clipboardData?.files);
-		if (!files.length || reviewSelected) return;
+		if (!files.length || workflowSelected) return;
 		event.preventDefault();
 		onAttachmentFiles?.(files);
 	}
@@ -212,7 +230,7 @@
 		const input = event.currentTarget as HTMLInputElement;
 		const files = filesFromList(input.files);
 		input.value = '';
-		if (!files.length || reviewSelected) return;
+		if (!files.length || workflowSelected) return;
 		onAttachmentFiles?.(files);
 	}
 
@@ -260,27 +278,51 @@
 		</div>
 	{/if}
 
-	{#if reviewAvailable || reviewSelected}
-		<div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-			<button
-				type="button"
-				aria-pressed={reviewSelected}
-				class="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8 {reviewSelected
-					? 'border-accent bg-accent/10 text-accent'
-					: 'border-border bg-card text-muted-foreground hover:border-accent hover:text-accent'}"
-				disabled={disabled || isStartingStream || isStreaming || reviewDisabled}
-				onclick={onToggleReview}
-			>
-				<ListChecks class="h-3.5 w-3.5" aria-hidden="true" />
-				Review project
-			</button>
-			{#if reviewSelected}
+	{#if reviewAvailable || reviewSelected || documentOrganizationAvailable}
+		<div
+			class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5"
+			role="group"
+			aria-label="Project workflows"
+		>
+			{#if reviewAvailable || reviewSelected}
+				<button
+					type="button"
+					aria-pressed={reviewSelected}
+					class="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8 {reviewSelected
+						? 'border-accent bg-accent/10 text-accent'
+						: 'border-border bg-card text-muted-foreground hover:border-accent hover:text-accent'}"
+					disabled={disabled || isStartingStream || isStreaming || reviewDisabled}
+					onclick={onToggleReview}
+				>
+					<ListChecks class="h-3.5 w-3.5" aria-hidden="true" />
+					Review project
+				</button>
+			{/if}
+			{#if documentOrganizationAvailable}
+				<button
+					type="button"
+					aria-pressed={documentOrganizationSelected}
+					class="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8 {documentOrganizationSelected
+						? 'border-accent bg-accent/10 text-accent'
+						: 'border-border bg-card text-muted-foreground hover:border-accent hover:text-accent'}"
+					disabled={disabled || isStartingStream || isStreaming || reviewDisabled}
+					onclick={onToggleDocumentOrganization}
+				>
+					<FolderTree class="h-3.5 w-3.5" aria-hidden="true" />
+					Organize documents
+				</button>
+			{/if}
+			{#if documentOrganizationSelected}
+				<p class="text-xs text-muted-foreground">
+					A specialist suggests a document structure. Read-only; no project changes.
+				</p>
+			{:else if reviewSelected}
 				<p class="text-xs text-muted-foreground">
 					Specialists review this message. Read-only; no project changes.
 				</p>
 			{:else if reviewDisabled && (imageAttachments.length > 0 || voiceNoteGroupId || isVoiceRecording || isVoiceTranscribing)}
 				<p class="text-xs text-muted-foreground">
-					Use a text-only message to review the project.
+					Use a text-only message for a specialist review.
 				</p>
 			{/if}
 		</div>
@@ -395,7 +437,7 @@
 				tabindex="-1"
 				onchange={handleFileInputChange}
 			/>
-			{#if !isStreaming && !reviewSelected}
+			{#if !isStreaming && !workflowSelected}
 				<button
 					type="button"
 					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
@@ -446,7 +488,7 @@
 				<button
 					type="submit"
 					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:cursor-not-allowed disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-					aria-label={reviewSelected ? 'Send project review' : 'Send message'}
+					aria-label={sendLabel}
 					disabled={disabled || isSendDisabled || isStartingStream}
 				>
 					{#if isStartingStream}

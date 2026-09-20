@@ -314,8 +314,7 @@ export class AgenticChatWorkflowDispatchMeter {
 	): Promise<AgenticChatProviderDispatchPermitV1> {
 		signal.throwIfAborted();
 		const physicalAttempt = gate.nextPhysicalAttempt();
-		const kind: AgenticChatWorkflowDispatchKindV1 =
-			physicalAttempt === 1 ? gate.firstKind : 'provider_fallback';
+		const kind = gate.kindForPhysicalAttempt(physicalAttempt);
 		const base = {
 			stepKey: gate.stepKey,
 			stepAttemptId: gate.stepAttemptId,
@@ -577,6 +576,7 @@ export class AgenticChatWorkflowStepDispatchGate implements AgenticChatProviderD
 	/** Physical requests that received a permit. */
 	dispatches = 0;
 	private physicalAttempts = 0;
+	private logicalPassStart = 1;
 
 	constructor(
 		private readonly meter: AgenticChatWorkflowDispatchMeter,
@@ -593,6 +593,16 @@ export class AgenticChatWorkflowStepDispatchGate implements AgenticChatProviderD
 		signal: AbortSignal
 	): Promise<AgenticChatProviderDispatchPermitV1> {
 		return this.meter.admit(this, request, signal);
+	}
+
+	/** @internal */
+	kindForPhysicalAttempt(physicalAttempt: number): AgenticChatWorkflowDispatchKindV1 {
+		return physicalAttempt === this.logicalPassStart ? this.firstKind : 'provider_fallback';
+	}
+
+	/** A tool-result continuation is another logical pass, within the same physical cap. */
+	beginContinuation(): void {
+		this.logicalPassStart = this.physicalAttempts + 1;
 	}
 
 	/** @internal */

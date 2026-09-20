@@ -344,3 +344,26 @@ describe('workflow preparation wiring', () => {
 		expect(ports.client).toBeDefined();
 	});
 });
+
+it('preserves document structure and prioritizes document evidence for document organization', () => {
+	const data = context({
+		tasks: rows('task', 240),
+		documents: rows('document', 100),
+		doc_structure: { root: [{ id: 'document-0' }] }
+	});
+	const built = buildAgenticChatWorkflowContextV1({
+		context: data,
+		userId: USER_ID,
+		projectId: PROJECT_ID,
+		accessCheckedAt: '2026-09-19T00:00:00Z',
+		contextLoadedAt: '2026-09-19T00:00:01Z',
+		documentOrganization: true
+	});
+	expect((built.payload.data as any).doc_structure).toEqual({ root: [{ id: 'document-0' }] });
+	expect((built.payload.data as any).documents).toHaveLength(100);
+	expect((built.payload.data as any).tasks.length).toBeLessThan(240);
+	expect(built.coverage.omittedRecords).toBeGreaterThan(0);
+	expect((built.payload.data as any).documentReviewScope).toContain(
+		'full document bodies are not loaded'
+	);
+});

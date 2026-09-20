@@ -146,3 +146,100 @@ describe('Project review composer', () => {
 		expect(screen.getByRole('button', { name: 'Review project' })).toBeDisabled();
 	});
 });
+
+describe('Document organization composer', () => {
+	it('gates the new choice independently from project review', async () => {
+		const view = render(AgentComposer, { props: createProps({ reviewAvailable: true }) });
+		expect(screen.getByRole('button', { name: 'Review project' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Organize documents' })).toBeNull();
+		await view.rerender({ reviewAvailable: false, documentOrganizationAvailable: true });
+		expect(screen.queryByRole('button', { name: 'Review project' })).toBeNull();
+		expect(screen.getByRole('button', { name: 'Organize documents' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+	});
+
+	it('offers an editable read-only draft without sending when the specialist is selected', async () => {
+		const onToggleDocumentOrganization = vi.fn();
+		const onSend = vi.fn();
+		const view = render(AgentComposer, {
+			props: createProps({
+				reviewAvailable: true,
+				documentOrganizationAvailable: true,
+				inputValue: 'Focus on our meeting notes.',
+				onToggleDocumentOrganization,
+				onSend
+			})
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Organize documents' }));
+		expect(onToggleDocumentOrganization).toHaveBeenCalledOnce();
+		expect(onSend).not.toHaveBeenCalled();
+		await view.rerender({ documentOrganizationSelected: true });
+		expect(screen.getByRole('button', { name: 'Organize documents' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		expect(screen.getByRole('button', { name: 'Review project' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+		const draft = screen.getByPlaceholderText(
+			'What should we improve about this project’s documents?'
+		);
+		expect(draft).toHaveValue('Focus on our meeting notes.');
+		expect(draft).not.toBeDisabled();
+		await fireEvent.input(draft, {
+			target: { value: 'Keep archived decisions easy to find.' }
+		});
+		expect(draft).toHaveValue('Keep archived decisions easy to find.');
+		expect(
+			screen.getByText(
+				/A specialist suggests a document structure. Read-only; no project changes./
+			)
+		).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Attach image' })).toBeNull();
+		for (const button of screen.getAllByRole('button', {
+			name: 'Send document organization review'
+		})) {
+			expect(button).not.toBeDisabled();
+		}
+		expect(onSend).not.toHaveBeenCalled();
+		await fireEvent.submit(view.container.querySelector('form')!);
+		expect(onSend).toHaveBeenCalledOnce();
+	});
+
+	it.each(['reviewDisabled', 'disabled', 'isStartingStream', 'isStreaming'])(
+		'blocks the specialist choice while %s',
+		(blockedState) => {
+			const onToggleDocumentOrganization = vi.fn();
+			render(AgentComposer, {
+				props: createProps({
+					documentOrganizationAvailable: true,
+					[blockedState]: true,
+					onToggleDocumentOrganization
+				})
+			});
+			const choice = screen.getByRole('button', { name: 'Organize documents' });
+			expect(choice).toBeDisabled();
+			// Native activation respects disabled; fireEvent directly dispatches an event.
+			choice.click();
+			expect(onToggleDocumentOrganization).not.toHaveBeenCalled();
+		}
+	);
+
+	it('rejects image input while the read-only document workflow is selected', async () => {
+		const onAttachmentFiles = vi.fn();
+		const { container } = render(AgentComposer, {
+			props: createProps({
+				documentOrganizationAvailable: true,
+				documentOrganizationSelected: true,
+				onAttachmentFiles
+			})
+		});
+		await fireEvent.change(container.querySelector('input[type="file"]')!, {
+			target: { files: [new File(['image'], 'notes.png', { type: 'image/png' })] }
+		});
+		expect(onAttachmentFiles).not.toHaveBeenCalled();
+	});
+});

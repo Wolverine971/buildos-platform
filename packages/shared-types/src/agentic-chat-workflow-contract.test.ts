@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V4,
 	AGENTIC_CHAT_WORKFLOW_POLICY_V1,
+	AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1,
+	AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF,
 	AGENTIC_CHAT_WORKFLOW_REQUEST_HASH_VERSION,
 	buildAgenticChatWorkflowReviewIntentV1,
 	computeAgenticChatWorkflowReservationMicroUsdV1,
@@ -78,6 +80,23 @@ async function codeFor(input: AgenticChatRawWorkflowInputV4, expected = EXPECTED
 }
 
 describe('agentic chat workflow v1 contract', () => {
+	it('binds document-read permission to its explicit policy reference', async () => {
+		const policy = AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1;
+		expect(
+			await codeFor(
+				await rawInput(
+					request({ policy, policyRef: AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF })
+				)
+			)
+		).toBe('ok');
+		expect(await codeFor(await rawInput(request({ policy })))).not.toBe('ok');
+		expect(
+			await codeFor(
+				await rawInput(request({ policyRef: AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF }))
+			)
+		).not.toBe('ok');
+		expect(policy.maxSpendMicroUsd).toBe(AGENTIC_CHAT_WORKFLOW_POLICY_V1.maxSpendMicroUsd);
+	});
 	it('pins the fixed read-only pilot policy the database stores', () => {
 		expect(AGENTIC_CHAT_WORKFLOW_POLICY_V1).toEqual({
 			version: 'agentic_chat_project_review_policy_v1',

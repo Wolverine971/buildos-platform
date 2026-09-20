@@ -128,6 +128,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	// null keeps every other turn on the unchanged ordinary path below.
 	const workflowReview = await admitWorkflowReviewTurnIfEligible({
 		environment: {
+			AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED: env.AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED,
+			AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED:
+				env.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED,
 			AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED:
 				env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED,
 			AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS: env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS

@@ -184,6 +184,8 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	budget?: AgenticChatProviderBudgetV1;
 	/** Durable per-request reservation (workflow v1 only). Absent on the ordinary path. */
 	dispatchGate?: AgenticChatProviderDispatchGateV1;
+	/** Host-authorized document specialist surface; requires durable dispatch metering. */
+	workflowToolPolicy?: 'bounded_document_read_v1';
 	signal: AbortSignal;
 };
 

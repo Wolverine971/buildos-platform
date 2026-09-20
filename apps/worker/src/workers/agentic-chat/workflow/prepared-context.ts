@@ -84,6 +84,8 @@ export type BuiltAgenticChatWorkflowContextV1 = {
 type RecordEntry = { kind: string; record: Record<string, JsonValue> };
 
 export function buildAgenticChatWorkflowContextV1(input: {
+	documentOrganization?: boolean;
+	documentReadTools?: boolean;
 	context: MasterPromptContext;
 	userId: string;
 	projectId: string;
@@ -108,7 +110,11 @@ export function buildAgenticChatWorkflowContextV1(input: {
 	const counters = { truncatedStrings: 0 };
 	const sanitize = (value: unknown) => toSafeJson(value, 0, counters);
 
-	const project = sanitizeRecord(data.project, sanitize, ['doc_structure']);
+	const project = sanitizeRecord(
+		data.project,
+		sanitize,
+		input.documentOrganization ? [] : ['doc_structure']
+	);
 	if (!project) {
 		throw new AgenticChatWorkflowContextError(
 			'context_unavailable',
@@ -129,6 +135,7 @@ export function buildAgenticChatWorkflowContextV1(input: {
 	const startHere = isRecord(data.start_here) ? sanitizeRecord(data.start_here, sanitize) : null;
 	const contextMeta = isRecord(data.context_meta) ? sanitize(data.context_meta) : null;
 
+	const documentStructure = input.documentOrganization ? sanitize(data.doc_structure) : null;
 	let omittedRecords = 0;
 	const build = () => {
 		const evidence = buildEvidence({
@@ -143,6 +150,14 @@ export function buildAgenticChatWorkflowContextV1(input: {
 			timezone: typeof input.context.timezone === 'string' ? input.context.timezone : null,
 			loadedAt: input.contextLoadedAt,
 			data: {
+				...(input.documentOrganization
+					? {
+							doc_structure: documentStructure,
+							documentReviewScope: input.documentReadTools
+								? 'Bounded document inventory; full text is absent from this initial context. Only explicit saved document-read results contain text. Inspect context_meta and coverage for inventory limits and each read result for excerpt limits.'
+								: 'Bounded inventory of document titles and summaries; full document bodies are not loaded. Inspect context_meta for source limits and coverage for further truncation.'
+						}
+					: {}),
 				project,
 				start_here: startHere,
 				goals: records(collections.get('goals')),
@@ -176,9 +191,12 @@ export function buildAgenticChatWorkflowContextV1(input: {
 		built.payloadBytes > AGENTIC_CHAT_WORKFLOW_LIMITS.contextMaxBytes ||
 		built.jsonbTextBytes > MAX_JSONB_TEXT_BYTES
 	) {
-		const source = DROP_ORDER.map((key) => collections.get(key)!).find(
-			(entries) => entries.length > 0
-		);
+		const dropOrder: readonly CollectionKey[] = input.documentOrganization
+			? ['events', 'tasks', 'plans', 'milestones', 'goals', 'documents']
+			: DROP_ORDER;
+		const source = dropOrder
+			.map((key) => collections.get(key)!)
+			.find((entries) => entries.length > 0);
 		if (!source) {
 			throw new AgenticChatWorkflowContextError(
 				'context_too_large',

@@ -1,4 +1,11 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-store.ts
+import { verifyDocumentReadResult } from './document-read-tool';
+import {
+	isDocumentSpecialistPolicyRef,
+	documentSnapshotMatchesPolicy,
+	type SpecialistSnapshotV2
+} from '@buildos/agentic-chat-runtime/specialists';
+import { loadSpecialistSnapshotV2 } from './specialist-snapshot-store';
 import type {
 	AgenticChatRecoveryFailureClassV1,
 	AgenticChatWorkflowContextOutcomeV1,
@@ -75,6 +82,8 @@ export type AgenticChatWorkflowDispatchRowV1 = {
 
 /** Durable workflow truth, read with the service role; the only input the runner trusts. */
 export type AgenticChatWorkflowRunStateV1 = {
+	specialistSnapshot?: SpecialistSnapshotV2;
+	documentReadResult?: JsonObject;
 	turnRunId: string;
 	sessionId: string;
 	userId: string;
@@ -179,6 +188,12 @@ export type AgenticChatWorkflowRecoveryReceiptV1 = {
 };
 
 export type AgenticChatWorkflowStorePortV1 = {
+	readDocuments?(
+		fence: AgenticChatWorkflowFenceV1,
+		stepAttemptId: string,
+		documentIds: string[]
+	): Promise<{ outcome: string; result?: JsonObject }>;
+
 	/** Service-role read of durable truth; null when the turn has no workflow row. */
 	loadRun(turnRunId: string): Promise<AgenticChatWorkflowRunStateV1 | null>;
 	/** First fenced write of every generation: republish truth and reseed answer text. */
@@ -326,6 +341,7 @@ export type AgenticChatWorkflowStoreClient = {
 };
 
 const RUN_COLUMNS = [
+	'policy_ref',
 	'turn_run_id',
 	'session_id',
 	'user_id',
@@ -392,6 +408,8 @@ const FENCED: readonly string[] = [
 
 /** Service-role adapter over the frozen RPCs. Tables are private; reads are service-only. */
 export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStorePortV1 {
+	private readonly snapshots = new Map<string, SpecialistSnapshotV2>();
+	private readonly documentReads = new Map<string, JsonObject>();
 	constructor(private readonly client: AgenticChatWorkflowStoreClient) {}
 
 	async loadRun(turnRunId: string): Promise<AgenticChatWorkflowRunStateV1 | null> {
@@ -414,7 +432,67 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 		]);
 		if (stepResponse.error) throw storeError('load_steps', stepResponse.error);
 		if (dispatchResponse.error) throw storeError('load_dispatches', dispatchResponse.error);
-		return parseRunState(runResponse.data, stepResponse.data, dispatchResponse.data);
+		const state = parseRunState(runResponse.data, stepResponse.data, dispatchResponse.data);
+		const policyRef = (runResponse.data as Record<string, unknown>).policy_ref;
+		if (isDocumentSpecialistPolicyRef(policyRef)) {
+			let snapshot = this.snapshots.get(turnRunId);
+			if (!snapshot) {
+				snapshot = await loadSpecialistSnapshotV2(this.client, state);
+				if (this.snapshots.size >= 128) this.snapshots.clear();
+				this.snapshots.set(turnRunId, snapshot);
+			}
+			if (!documentSnapshotMatchesPolicy(snapshot, String(policyRef)))
+				throw new AgenticChatWorkflowStoreProtocolError('Specialist policy mismatch');
+			state.specialistSnapshot = structuredClone(snapshot);
+			if (snapshot.profileVersion === 2) {
+				let result = this.documentReads.get(turnRunId);
+				if (!result) {
+					const response = await this.client
+						.from('chat_turn_document_read_batches')
+						.select('request_hash,result,result_hash')
+						.eq('turn_run_id', turnRunId)
+						.maybeSingle();
+					if (response.error) throw storeError('load_document_reads', response.error);
+					if (response.data) {
+						const row = response.data as Record<string, unknown>;
+						if (row.request_hash !== state.requestHash)
+							throw new AgenticChatWorkflowStoreProtocolError(
+								'Document-read binding mismatch'
+							);
+						result = verifyDocumentReadResult(row.result, row.result_hash);
+						if (this.documentReads.size >= 128) this.documentReads.clear();
+						this.documentReads.set(turnRunId, result);
+					}
+				}
+				if (result) state.documentReadResult = structuredClone(result);
+			}
+		} else if (
+			typeof policyRef === 'string' &&
+			policyRef.startsWith('internal-document-organization:')
+		) {
+			throw new AgenticChatWorkflowStoreProtocolError('Unsupported specialist profile');
+		}
+		return state;
+	}
+
+	async readDocuments(
+		fence: AgenticChatWorkflowFenceV1,
+		stepAttemptId: string,
+		documentIds: string[]
+	) {
+		const receipt = await this.call('read_agentic_chat_documents_v1', {
+			...fenceArgs(fence),
+			p_step_attempt_id: stepAttemptId,
+			p_document_ids: documentIds
+		});
+		if (typeof receipt.outcome !== 'string')
+			throw new AgenticChatWorkflowStoreProtocolError('Document read outcome missing');
+		return {
+			outcome: receipt.outcome,
+			...(['read', 'replayed'].includes(receipt.outcome)
+				? { result: verifyDocumentReadResult(receipt.result, receipt.result_hash) }
+				: {})
+		};
 	}
 
 	async resume(fence: AgenticChatWorkflowFenceV1, checkpoint: AgenticChatWorkflowCheckpointV1) {

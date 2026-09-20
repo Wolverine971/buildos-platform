@@ -1,13 +1,17 @@
 // apps/worker/scripts/preview-specialists.ts
 // Read-only catalog/selection preview. No credentials, database, or model calls.
 import {
-	SPECIALIST_REGISTRY_V1,
+	SPECIALIST_REGISTRY_V3,
+	buildDocumentOrganizationSnapshotV2,
+	buildDocumentReadSnapshotV2,
+	DOCUMENT_READ_LIMITS,
+	hashSpecialistSnapshotV2,
 	ProjectReviewAgentSelectorV1,
 	type AgentSelectionInputV1
 } from '@buildos/agentic-chat-runtime/specialists';
 
 async function main() {
-	const definitions = SPECIALIST_REGISTRY_V1.list();
+	const definitions = SPECIALIST_REGISTRY_V3.list();
 	const selector = new ProjectReviewAgentSelectorV1();
 	const baseline: AgentSelectionInputV1 = {
 		intent: 'project_review',
@@ -28,14 +32,32 @@ async function main() {
 	const selections = await Promise.all(
 		scenarios.map(async ({ name, input }) => ({ name, receipt: await selector.select(input) }))
 	);
+	const documentOrganization = buildDocumentOrganizationSnapshotV2();
+	const snapshotHash = await hashSpecialistSnapshotV2(documentOrganization);
+	const documentReads = buildDocumentReadSnapshotV2();
+	const documentReadsHash = await hashSpecialistSnapshotV2(documentReads);
 	if (process.argv.includes('--json')) {
-		process.stdout.write(JSON.stringify({ definitions, selections }, null, 2) + '\n');
+		process.stdout.write(
+			JSON.stringify(
+				{
+					definitions,
+					selections,
+					documentOrganization,
+					snapshotHash,
+					documentReads,
+					documentReadsHash,
+					documentReadLimits: DOCUMENT_READ_LIMITS
+				},
+				null,
+				2
+			) + '\n'
+		);
 		return;
 	}
 	const lines = [
 		'# Specialist catalog',
 		'',
-		'The current project review uses these exact version-1 definitions. This preview makes no model calls.',
+		'Project review uses analyst + reviewer; document organization uses document organizer + reviewer. This preview makes no model calls.',
 		'',
 		'## Definitions',
 		''
@@ -81,6 +103,12 @@ async function main() {
 		);
 	}
 	lines.push(
+		'',
+		`Document organization profile: ${documentOrganization.version}; fixed selector ${documentOrganization.selector.id}@1. Snapshot SHA-256: ${snapshotHash}.`,
+		'',
+		`Read-capable profile: document_organization@2, document_organizer@2; one batch of ${DOCUMENT_READ_LIMITS.maxDocuments} documents, up to ${DOCUMENT_READ_LIMITS.maxCharactersPerDocument} characters / ${DOCUMENT_READ_LIMITS.maxSerializedBytesPerDocument} serialized bytes each. Snapshot SHA-256: ${documentReadsHash}.`,
+		'',
+		'Enable only after migration and deployment: AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED=true on web and every worker.',
 		'',
 		'Definitions describe capabilities; the host must authorize them. Adding a definition alone does not enable execution, tools, or a new workflow.',
 		''

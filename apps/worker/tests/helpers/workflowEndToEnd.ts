@@ -1,4 +1,7 @@
 // apps/worker/tests/helpers/workflowEndToEnd.ts
+import { loadSpecialistSnapshotV2 } from '../../src/workers/agentic-chat/workflow/specialist-snapshot-store';
+import type { SpecialistShadowObserver } from '../../src/workers/agentic-chat/workflow/specialist-selection-shadow';
+// apps/worker/tests/helpers/workflowEndToEnd.ts
 //
 // DISPOSABLE DATABASE ONLY. The Tasker 86 → 87 worker path against the frozen SQL:
 // real admission RPC, real claim, real v4 input reader, real preparation store,
@@ -162,6 +165,10 @@ export function buildE2EWorker(input: {
 	shim: ReturnType<typeof createPgSupabaseShim>;
 	client: AgenticChatTurnProviderClientPortV1;
 	runner?: AgenticChatWorkflowRunnerOptionsV1;
+	specialistWorkflowsEnabled?: boolean;
+	documentReadToolsEnabled?: boolean;
+	observeSelection?: SpecialistShadowObserver;
+	context?: MasterPromptContext;
 	onError?: (report: { stage: string; turnRunId: string; error: unknown }) => void;
 }) {
 	const { shim } = input;
@@ -201,11 +208,15 @@ export function buildE2EWorker(input: {
 		input: new SupabaseAgenticChatExecutionInputAdapter(shim as never),
 		store: new SupabaseAgenticChatWorkflowPreparationStore(shim as never, shim as never),
 		loadContext: (async ({ projectId }: { projectId: string }) =>
-			e2eProjectContext(projectId)) as never,
+			input.context ?? e2eProjectContext(projectId)) as never,
 		publisher,
 		control,
 		runner: adapter,
 		allowedUserIds: [E2E_USER_ID],
+		specialistWorkflowsEnabled: input.specialistWorkflowsEnabled,
+		documentReadToolsEnabled: input.documentReadToolsEnabled,
+		observeSelection: input.observeSelection,
+		loadSpecialistSnapshot: (identity) => loadSpecialistSnapshotV2(shim as never, identity),
 		onTiming: () => undefined,
 		onError: input.onError ?? (() => undefined)
 	});

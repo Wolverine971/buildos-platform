@@ -7,10 +7,18 @@
 // locks, and the worker gathers context after claim.
 import { randomUUID } from 'node:crypto';
 import {
+	buildDocumentOrganizationSnapshotV2,
+	buildDocumentReadSnapshotV2,
+	hashSpecialistSnapshotV2,
+	DOCUMENT_ORGANIZATION_POLICY_REF,
+	type SpecialistSnapshotV2
+} from '@buildos/agentic-chat-runtime/specialists';
+import {
 	AGENTIC_CHAT_WORKFLOW_LIMITS,
-	AGENTIC_CHAT_WORKFLOW_POLICY_V1,
+	AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF,
+	agenticChatWorkflowPolicyForRef,
 	type AgenticChatProjectReviewIntentV1,
-	type AgenticChatWorkflowPolicyV1,
+	type AgenticChatWorkflowPolicy,
 	buildAgenticChatWorkflowReviewIntentV1,
 	hashAgenticChatWorkflowRequestV1,
 	normalizeAgenticChatText,
@@ -23,16 +31,24 @@ export const AGENTIC_CHAT_WORKFLOW_V4_POLICY_REF = 'internal-project-review:v1';
 export type AgenticChatWorkflowV4AdmissionPolicyV1 = {
 	/** AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED, exactly `true`. Default off. */
 	enabled: boolean;
+	specialistWorkflowsEnabled?: boolean;
+	documentReadToolsEnabled?: boolean;
 	/** The existing internal cohort, AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS. */
 	cohortUserIds: readonly string[];
 };
 
 export function resolveAgenticChatWorkflowV4AdmissionPolicy(environment: {
 	AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED?: string;
+	AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED?: string;
+	AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED?: string;
 	AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS?: string;
 }): AgenticChatWorkflowV4AdmissionPolicyV1 {
 	return {
 		enabled: environment.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED?.trim() === 'true',
+		specialistWorkflowsEnabled:
+			environment.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED?.trim() === 'true',
+		documentReadToolsEnabled:
+			environment.AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED?.trim() === 'true',
 		cohortUserIds: parseChatWorkflowPrototypeUsers(
 			environment.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS
 		)
@@ -49,7 +65,7 @@ export type AgenticChatWorkflowV4CommandV1 = {
 	attachments: readonly unknown[];
 	projectFocus: { focusType: string } | null;
 	voiceNoteGroupId: string | null;
-	reviewIntent: 'project_review' | null;
+	reviewIntent: 'project_review' | 'document_organization' | null;
 };
 
 export type AgenticChatWorkflowV4IneligibleReasonV1 =
@@ -63,7 +79,13 @@ export type AgenticChatWorkflowV4IneligibleReasonV1 =
 	| 'message_bounds';
 
 export type AgenticChatWorkflowV4EligibilityV1 =
-	| { eligible: true; projectId: string; message: string }
+	| {
+			eligible: true;
+			projectId: string;
+			message: string;
+			profile?: 'document_organization';
+			documentReadTools?: boolean;
+	  }
 	| { eligible: false; reason: AgenticChatWorkflowV4IneligibleReasonV1 };
 
 /**
@@ -77,7 +99,16 @@ export function evaluateAgenticChatWorkflowV4Admission(input: {
 	command: AgenticChatWorkflowV4CommandV1;
 }): AgenticChatWorkflowV4EligibilityV1 {
 	const { command } = input;
-	if (command.reviewIntent !== 'project_review') return ineligible('not_requested');
+	if (
+		command.reviewIntent !== 'project_review' &&
+		command.reviewIntent !== 'document_organization'
+	)
+		return ineligible('not_requested');
+	if (
+		command.reviewIntent === 'document_organization' &&
+		!input.policy.specialistWorkflowsEnabled
+	)
+		return ineligible('disabled');
 	if (!input.policy.enabled) return ineligible('disabled');
 	if (!input.policy.cohortUserIds.includes(input.userId.toLowerCase())) {
 		return ineligible('not_in_cohort');
@@ -100,7 +131,17 @@ export function evaluateAgenticChatWorkflowV4Admission(input: {
 	) {
 		return ineligible('message_bounds');
 	}
-	return { eligible: true, projectId, message };
+	return {
+		eligible: true,
+		projectId,
+		message,
+		...(command.reviewIntent === 'document_organization'
+			? {
+					profile: 'document_organization' as const,
+					...(input.policy.documentReadToolsEnabled ? { documentReadTools: true } : {})
+				}
+			: {})
+	};
 }
 
 export type AgenticChatWorkflowV4AdmissionRpcArgs = {
@@ -116,10 +157,12 @@ export type AgenticChatWorkflowV4AdmissionRpcArgs = {
 	p_project_id: string;
 	p_message: string;
 	p_review_intent: AgenticChatProjectReviewIntentV1;
-	p_policy: AgenticChatWorkflowPolicyV1;
+	p_policy: AgenticChatWorkflowPolicy;
 	p_policy_ref: string;
 	p_request_hash: string;
 	p_cache_ref: null;
+	p_specialist_snapshot?: SpecialistSnapshotV2;
+	p_specialist_snapshot_hash?: string;
 };
 
 /**
@@ -138,6 +181,17 @@ export async function buildAgenticChatWorkflowV4AdmissionArgs(input: {
 	const createId = input.createId ?? randomUUID;
 	const { projectId, message } = input.eligibility;
 	const reviewIntent = buildAgenticChatWorkflowReviewIntentV1(message);
+	const snapshot =
+		input.eligibility.profile === 'document_organization'
+			? input.eligibility.documentReadTools
+				? buildDocumentReadSnapshotV2()
+				: buildDocumentOrganizationSnapshotV2()
+			: null;
+	const policyRef = snapshot
+		? snapshot.profileVersion === 2
+			? AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF
+			: DOCUMENT_ORGANIZATION_POLICY_REF
+		: AGENTIC_CHAT_WORKFLOW_V4_POLICY_REF;
 	const context = { type: 'project' as const, entityId: projectId, projectId };
 	const requestHash = await hashAgenticChatWorkflowRequestV1({
 		clientTurnId: input.command.clientTurnId,
@@ -145,8 +199,8 @@ export async function buildAgenticChatWorkflowV4AdmissionArgs(input: {
 		context,
 		message,
 		reviewIntent,
-		policy: AGENTIC_CHAT_WORKFLOW_POLICY_V1,
-		policyRef: AGENTIC_CHAT_WORKFLOW_V4_POLICY_REF
+		policy: agenticChatWorkflowPolicyForRef(policyRef),
+		policyRef
 	});
 	return {
 		p_user_id: input.userId,
@@ -161,10 +215,16 @@ export async function buildAgenticChatWorkflowV4AdmissionArgs(input: {
 		p_project_id: projectId,
 		p_message: message,
 		p_review_intent: reviewIntent,
-		p_policy: AGENTIC_CHAT_WORKFLOW_POLICY_V1,
-		p_policy_ref: AGENTIC_CHAT_WORKFLOW_V4_POLICY_REF,
+		p_policy: agenticChatWorkflowPolicyForRef(policyRef),
+		p_policy_ref: policyRef,
 		p_request_hash: requestHash,
-		p_cache_ref: null
+		p_cache_ref: null,
+		...(snapshot
+			? {
+					p_specialist_snapshot: snapshot,
+					p_specialist_snapshot_hash: await hashSpecialistSnapshotV2(snapshot)
+				}
+			: {})
 	};
 }
 
@@ -173,7 +233,10 @@ type RpcResult = { data: unknown; error: RpcError | null };
 
 export type AgenticChatWorkflowV4AdmissionRpcClient = {
 	rpc(
-		name: 'create_agentic_chat_workflow_turn_with_job_v1',
+		name:
+			| 'create_agentic_chat_workflow_turn_with_job_v1'
+			| 'create_agentic_chat_document_review_turn_v2'
+			| 'create_agentic_chat_document_review_turn_v3',
 		args: AgenticChatWorkflowV4AdmissionRpcArgs
 	): PromiseLike<RpcResult>;
 };
@@ -234,7 +297,11 @@ export async function admitAgenticChatWorkflowV4Turn(input: {
 	args: AgenticChatWorkflowV4AdmissionRpcArgs;
 }): Promise<AgenticChatWorkflowV4AdmissionResultV1> {
 	const { data, error } = await input.client.rpc(
-		'create_agentic_chat_workflow_turn_with_job_v1',
+		input.args.p_specialist_snapshot
+			? input.args.p_specialist_snapshot.profileVersion === 2
+				? 'create_agentic_chat_document_review_turn_v3'
+				: 'create_agentic_chat_document_review_turn_v2'
+			: 'create_agentic_chat_workflow_turn_with_job_v1',
 		input.args
 	);
 	if (error) {

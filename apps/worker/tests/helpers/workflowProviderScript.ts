@@ -15,6 +15,7 @@ export type ScriptedReply =
 	| {
 			kind: 'text';
 			text: string;
+			toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;
 			completionTokens?: number;
 			promptTokens?: number;
 			/** Provider-reported USD cost; null omits it from usage. */
@@ -120,6 +121,13 @@ export function scriptedWorkflowProvider(
 							})
 						);
 					}
+					if (reply.toolCalls) {
+						controller.enqueue(
+							encoder.encode(
+								`data: ${JSON.stringify({ id, model: PRICED_MODEL, choices: [{ delta: { tool_calls: reply.toolCalls.map((call, index) => ({ index, id: call.id, type: 'function', function: { name: call.name, arguments: JSON.stringify(call.arguments) } })) } }] })}\n\n`
+							)
+						);
+					}
 					const promptTokens = reply.promptTokens ?? 2_000;
 					const completionTokens = reply.completionTokens ?? 400;
 					controller.enqueue(
@@ -128,7 +136,12 @@ export function scriptedWorkflowProvider(
 								id,
 								model: PRICED_MODEL,
 								choices: [
-									{ delta: {}, finish_reason: reply.finishReason ?? 'stop' }
+									{
+										delta: {},
+										finish_reason:
+											reply.finishReason ??
+											(reply.toolCalls ? 'tool_calls' : 'stop')
+									}
 								],
 								usage: {
 									prompt_tokens: promptTokens,
@@ -184,6 +197,7 @@ export function scriptedWorkflowProvider(
 
 export function roleOf(system: string): WorkflowRole {
 	if (system.includes('ROLE: Planner')) return 'planner';
+	if (system.includes('ROLE: Document organizer')) return 'project_analyst';
 	if (system.includes('ROLE: Project analyst')) return 'project_analyst';
 	if (system.includes('ROLE: Risk and alternatives reviewer')) return 'risk_reviewer';
 	if (system.includes('ROLE: Editor')) return 'editor';

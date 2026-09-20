@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 			'route-agentic-chat-worker-lease-secret-at-least-32-bytes',
 		AGENTIC_CHAT_WORKER_KILL_EPOCH: '0',
 		AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED: undefined as string | undefined,
+		AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED: undefined as string | undefined,
 		AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS: undefined as string | undefined
 	},
 	createAdminSupabaseClient: vi.fn(),
@@ -636,6 +637,7 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET = SECRET;
 		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
 		mocks.env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED = 'true';
+		mocks.env.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED = undefined;
 		mocks.env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS = USER_ID;
 		adminFrom.mockReset();
 		mocks.createAdminSupabaseClient.mockReturnValue({ from: adminFrom, rpc });
@@ -652,6 +654,30 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		});
 		mocks.admitAgenticChatWorkerTurn.mockResolvedValue(admitted());
 		respondWith(() => workflowReceipt());
+	});
+
+	it('keeps document selection fail-closed, then admits the enabled profile through its atomic RPC', async () => {
+		const request = () =>
+			postEvent({ body: reviewBody({ reviewIntent: 'document_organization' }) });
+		const disabled = await POST(request() as never);
+		expect(disabled.status).toBe(409);
+		expect((await disabled.json()).code).toBe('WORKFLOW_REVIEW_UNAVAILABLE');
+		expect(rpc).not.toHaveBeenCalled();
+		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
+		mocks.env.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED = 'true';
+		const enabled = await POST(request() as never);
+		expect(enabled.status).toBe(202);
+		expect((await enabled.json()).data.reviewMode).toBe('project_review');
+		expect(rpc).toHaveBeenCalledWith(
+			'create_agentic_chat_document_review_turn_v2',
+			expect.objectContaining({
+				p_policy_ref: 'internal-document-organization:v2',
+				p_specialist_snapshot: expect.objectContaining({
+					profileId: 'document_organization'
+				})
+			})
+		);
+		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
 	});
 
 	it('saves an eligible review raw in one RPC with no context, prompt, or lease work first', async () => {

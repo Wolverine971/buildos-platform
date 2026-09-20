@@ -1,4 +1,7 @@
 // apps/worker/src/workers/agentic-chat/workflow/preparation-composition.ts
+import { loadSpecialistSnapshotV2 } from './specialist-snapshot-store';
+import type { JevDecider } from '@buildos/smart-llm';
+import { JevSpecialistSelectionShadow } from './specialist-selection-shadow';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { AgenticChatExecutionControlPortV1 } from '../executionControl';
@@ -27,6 +30,9 @@ import {
 export type AgenticChatWorkflowV4CompositionOptionsV1 = {
 	/** AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED; off means the port is not installed. */
 	preparationEnabled: boolean;
+	specialistWorkflowsEnabled?: boolean;
+	documentReadToolsEnabled?: boolean;
+	selectionDecider?: JevDecider;
 	/** Tasker 87 supplies the durable runner; until then preparation ends in a readable failure. */
 	runner?: AgenticChatWorkflowRunnerPortV1;
 	/**
@@ -65,6 +71,23 @@ export function createAgenticChatWorkflowTurnPreparerV1(input: {
 		control: input.control,
 		runner: runner ?? unavailableAgenticChatWorkflowRunner,
 		allowedUserIds: input.allowedUserIds,
+		specialistWorkflowsEnabled: input.options.specialistWorkflowsEnabled,
+		documentReadToolsEnabled: input.options.documentReadToolsEnabled,
+		observeSelection:
+			input.options.executionEnabled && input.options.selectionDecider
+				? new JevSpecialistSelectionShadow({
+						client: input.client as unknown as AgenticChatWorkflowStoreClient,
+						decider: input.options.selectionDecider,
+						specialistWorkflowsEnabled: input.options.specialistWorkflowsEnabled,
+						documentReadToolsEnabled: input.options.documentReadToolsEnabled,
+						onError: (code) => console.warn(JSON.stringify({ event: code }))
+					}).observe
+				: undefined,
+		loadSpecialistSnapshot: (identity) =>
+			loadSpecialistSnapshotV2(
+				input.client as unknown as AgenticChatWorkflowStoreClient,
+				identity
+			),
 		onError: (report) =>
 			console.warn(
 				JSON.stringify({

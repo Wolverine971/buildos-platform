@@ -144,7 +144,11 @@ export const workerAdmissionRequestSchema = z
 		preparedPromptKey: canonicalText(2048).nullable().optional().default(null),
 		// Tasker 86: a request only. The server switch, cohort, and shape decide
 		// whether it is admitted as a raw v4 project review.
-		reviewIntent: z.literal('project_review').nullable().optional().default(null)
+		reviewIntent: z
+			.enum(['project_review', 'document_organization'])
+			.nullable()
+			.optional()
+			.default(null)
 	})
 	.strict()
 	.superRefine((value, context) => {

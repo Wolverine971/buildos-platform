@@ -23,6 +23,8 @@ const logger = createLogger('API:AgentWorkflowReviewTurns');
 export async function admitWorkflowReviewTurnIfEligible(input: {
 	environment: {
 		AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED?: string;
+		AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED?: string;
+		AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED?: string;
 		AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS?: string;
 	};
 	userId: string;

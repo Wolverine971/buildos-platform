@@ -27,7 +27,8 @@ import {
 import {
 	AgenticChatWorkerUnavailableResponseError,
 	requestAgenticChatTransportLease,
-	requestAgenticChatWorkerAdmission
+	requestAgenticChatWorkerAdmission,
+	type AgenticChatWorkerCommand
 } from '$lib/services/agentic-chat-v2/worker-transport-client';
 import { AgentRequestError, buildAgentRequestError } from './agent-chat-session';
 import type { PreparedPromptClient } from './agent-chat-session';
@@ -93,7 +94,7 @@ export interface StreamControllerPrewarmDeps {
 
 export interface StreamControllerDeps {
 	getInputValue(): string;
-	getReviewIntent?(): 'project_review' | null;
+	getReviewIntent?(): AgenticChatWorkerCommand['reviewIntent'];
 	onReviewAdmitted?(): void;
 	setInputValue(value: string): void;
 	getSelectedContextType(): ChatContextType | null;
@@ -480,7 +481,10 @@ export class AgentChatStreamController {
 				activeVoiceNoteGroupId ||
 				this.#deps.voice.isRecording)
 		) {
-			this.error = 'Project review needs project-wide focus and a text-only message.';
+			this.error =
+				reviewIntent === 'document_organization'
+					? 'Document organization needs project-wide focus and a text-only message.'
+					: 'Project review needs project-wide focus and a text-only message.';
 			return;
 		}
 

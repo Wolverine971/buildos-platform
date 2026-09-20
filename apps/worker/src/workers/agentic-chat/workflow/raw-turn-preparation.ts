@@ -1,4 +1,13 @@
 // apps/worker/src/workers/agentic-chat/workflow/raw-turn-preparation.ts
+import {
+	isDocumentSpecialistPolicyRef,
+	documentSnapshotMatchesPolicy,
+	type SpecialistSnapshotV2
+} from '@buildos/agentic-chat-runtime/specialists';
+import type { SpecialistSnapshotIdentity } from './specialist-snapshot-store';
+import { specialistStepLabels } from './workflow-projection';
+import type { SpecialistShadowObserver } from './specialist-selection-shadow';
+// apps/worker/src/workers/agentic-chat/workflow/raw-turn-preparation.ts
 import { randomUUID } from 'node:crypto';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
@@ -96,6 +105,12 @@ export type AgenticChatWorkflowTurnPreparerPortsV1 = {
 	runner: AgenticChatWorkflowRunnerPortV1;
 	/** The existing internal workflow cohort; the web admission gate applies it too. */
 	allowedUserIds: readonly string[];
+	specialistWorkflowsEnabled?: boolean;
+	documentReadToolsEnabled?: boolean;
+	observeSelection?: SpecialistShadowObserver;
+	loadSpecialistSnapshot?: (
+		identity: SpecialistSnapshotIdentity
+	) => Promise<SpecialistSnapshotV2>;
 	createId?: () => string;
 	now?: () => number;
 	monotonicNow?: () => number;
@@ -166,6 +181,7 @@ type TraceState = {
 };
 
 type PreparationState = {
+	specialistSnapshot?: SpecialistSnapshotV2;
 	envelope: AgenticChatExecutionIdentityV1;
 	claim: ExecutableClaim;
 	fence: AgenticChatWorkflowFenceV1;
@@ -305,6 +321,44 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 			return this.failTerminal(state, 'workflow_input_invalid');
 		}
 		if (run.phase === 'finished') return this.reconcileTerminal(state);
+		if (isDocumentSpecialistPolicyRef(raw.input.request.policyRef)) {
+			if (!this.ports.specialistWorkflowsEnabled)
+				return this.failTerminal(state, 'workflow_not_enabled');
+			try {
+				if (!this.ports.loadSpecialistSnapshot)
+					throw new Error('Specialist snapshot loader unavailable');
+				state.specialistSnapshot = await this.store(state, 'read specialist snapshot', () =>
+					this.ports.loadSpecialistSnapshot!({
+						turnRunId: claim.turnRunId,
+						userId: claim.userId,
+						sessionId: claim.sessionId,
+						projectId,
+						requestHash: raw.input.requestHash
+					})
+				);
+				if (
+					!documentSnapshotMatchesPolicy(
+						state.specialistSnapshot,
+						raw.input.request.policyRef
+					)
+				)
+					throw new Error('Specialist policy mismatch');
+				if (
+					state.specialistSnapshot.profileVersion === 2 &&
+					!this.ports.documentReadToolsEnabled
+				)
+					return this.failTerminal(state, 'workflow_not_enabled');
+			} catch (error) {
+				this.ports.onError?.({
+					stage: 'specialist_snapshot',
+					turnRunId: claim.turnRunId,
+					error
+				});
+				return this.failTerminal(state, 'workflow_input_invalid');
+			}
+		} else if (raw.input.request.policyRef !== 'internal-project-review:v1') {
+			return this.failTerminal(state, 'workflow_input_invalid');
+		}
 
 		let accepted: AgenticChatPreparedWorkflowContextV1;
 		let resumeRequired: boolean;
@@ -331,6 +385,38 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 		state.trace.acceptedBytes = accepted.payloadBytes;
 		state.trace.acceptedEvidence = accepted.evidenceVersions.length;
 		await this.settleDelivery(state);
+		if (this.ports.observeSelection) {
+			try {
+				await runWithAbortableDeadline({
+					parentSignal: state.signal,
+					timeoutMs: 2500,
+					createTimeoutError: () => new Error('specialist_shadow_timeout'),
+					run: (signal) =>
+						this.ports.observeSelection!({
+							prepared: {
+								envelope: state.envelope,
+								claim,
+								request: raw.input,
+								context: accepted,
+								deadlines: {
+									workflowDeadlineAt: run.deadlineAt,
+									invocationDeadlineAtMs: state.invocationDeadlineAtMs
+								}
+							},
+							snapshot: state.specialistSnapshot,
+							signal
+						})
+				});
+			} catch {
+				state.signal.throwIfAborted();
+				this.ports.onError?.({
+					stage: 'specialist_shadow',
+					turnRunId: claim.turnRunId,
+					error: new Error('specialist_shadow_unavailable')
+				});
+			}
+		}
+		state.signal.throwIfAborted();
 		const timing = this.emitTiming(state, 'provider_ready', null);
 		const prepared: AgenticChatWorkflowPreparedTurnV1 = {
 			version: 'agentic_chat_workflow_prepared_turn_v1',
@@ -381,7 +467,10 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 
 		// 1. Truthful "gathering context" progress. Resume is the contract's first
 		//    fenced write of every generation and commits exactly one event.
-		const preparing = buildAgenticChatWorkflowProjectionV1({ phase: 'preparing' });
+		const preparing = buildAgenticChatWorkflowProjectionV1({
+			phase: 'preparing',
+			stepLabels: specialistStepLabels(state.specialistSnapshot)
+		});
 		const resumeTransitionId = this.createId();
 		const progressStartedAt = this.mono();
 		const resumed = await this.store(
@@ -458,6 +547,8 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 				);
 			}
 			built = buildAgenticChatWorkflowContextV1({
+				documentOrganization: !!state.specialistSnapshot,
+				documentReadTools: state.specialistSnapshot?.profileVersion === 2,
 				context,
 				userId: claim.userId,
 				projectId,
@@ -489,7 +580,10 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 		//    point: every await above observed the bounded signal.
 		await this.settleDelivery(state);
 		state.signal.throwIfAborted();
-		const assessing = buildAgenticChatWorkflowProjectionV1({ phase: 'assessing' });
+		const assessing = buildAgenticChatWorkflowProjectionV1({
+			phase: 'assessing',
+			stepLabels: specialistStepLabels(state.specialistSnapshot)
+		});
 		const contextId = this.createId();
 		const transitionId = this.createId();
 		const checkpointStartedAt = this.mono();
@@ -720,6 +814,7 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 		const failureCode = status === 'cancelled' ? 'cancelled' : code!;
 		const finishedReason = status === 'cancelled' ? 'cancelled' : 'error';
 		const workflow = buildAgenticChatWorkflowProjectionV1({
+			stepLabels: specialistStepLabels(state.specialistSnapshot),
 			phase: 'finished',
 			terminalOutcome: status,
 			coverageGap: message

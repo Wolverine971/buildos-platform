@@ -1,5 +1,8 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-projection.ts
-import { PROJECT_REVIEW_SPECIALISTS_V1 } from '@buildos/agentic-chat-runtime/specialists';
+import {
+	PROJECT_REVIEW_SPECIALISTS_V1,
+	type SpecialistSnapshotV2
+} from '@buildos/agentic-chat-runtime/specialists';
 import {
 	AGENTIC_CHAT_WORKFLOW_CONTRACT_VERSION,
 	AGENTIC_CHAT_WORKFLOW_PROGRESS_EVENT_TYPE,
@@ -72,6 +75,7 @@ export type AgenticChatWorkflowDurableStepV1 = {
 };
 
 export type AgenticChatWorkflowProjectionInputV1 = {
+	stepLabels?: Partial<Record<AgenticChatWorkflowStepKeyV1, string>>;
 	phase: AgenticChatWorkflowPhaseV1;
 	terminalOutcome?: AgenticChatWorkflowTerminalOutcomeV1 | null;
 	/** Durable step rows; missing keys render as never-started `pending` steps. */
@@ -111,7 +115,7 @@ export function buildAgenticChatWorkflowProjectionV1(
 			const step = durable.get(key);
 			return {
 				key,
-				label: AGENTIC_CHAT_WORKFLOW_STEP_LABELS_V1[key],
+				label: input.stepLabels?.[key] ?? AGENTIC_CHAT_WORKFLOW_STEP_LABELS_V1[key],
 				status: step?.status ?? 'pending',
 				quality: step?.quality ?? null,
 				attemptsUsed: step?.attemptsUsed ?? 0,
@@ -168,6 +172,7 @@ export function workflowProjectionInputFromRunV1(
 	});
 	return {
 		phase: options.phase,
+		stepLabels: specialistStepLabels(state.specialistSnapshot),
 		terminalOutcome:
 			options.terminalOutcome === undefined ? state.terminalOutcome : options.terminalOutcome,
 		steps,
@@ -242,7 +247,12 @@ export function workflowCoverageGap(
 			: status === 'failed' || status === 'skipped';
 	});
 	if (!missing.length) return null;
-	const names = missing.map((key) => AGENTIC_CHAT_WORKFLOW_STEP_LABELS_V1[key].toLowerCase());
+	const names = missing.map((key) =>
+		(
+			specialistStepLabels(state.specialistSnapshot)[key] ??
+			AGENTIC_CHAT_WORKFLOW_STEP_LABELS_V1[key]
+		).toLowerCase()
+	);
 	return `The ${names.join(' and the ')} did not finish, so this review is partial.`;
 }
 
@@ -285,7 +295,9 @@ export function renderModelFreeWorkflowAnswer(
 		'the combined answer could not be written';
 	const sections = (['project_analyst', 'risk_reviewer'] as const).map((key) => {
 		const report = acceptedReport(state, key);
-		const label = AGENTIC_CHAT_WORKFLOW_STEP_LABELS_V1[key];
+		const label =
+			specialistStepLabels(state.specialistSnapshot)[key] ??
+			AGENTIC_CHAT_WORKFLOW_STEP_LABELS_V1[key];
 		if (!report) return `## ${label}\n\nThis part of the review did not finish.`;
 		const rendered = renderWorkflowRoleReport(fromDurableWorkflowRoleReport(report), 1);
 		return `## ${label}\n\n${boundText(rendered, 12_000)}`;
@@ -321,4 +333,15 @@ function boundText(text: string, maximum: number): string {
 
 export function utf8Bytes(value: string): number {
 	return Buffer.byteLength(value, 'utf8');
+}
+
+export function specialistStepLabels(
+	snapshot?: SpecialistSnapshotV2
+): Partial<Record<AgenticChatWorkflowStepKeyV1, string>> {
+	return snapshot
+		? {
+				project_analyst: snapshot.slots.project_analyst.definition.label,
+				risk_reviewer: snapshot.slots.risk_reviewer.definition.label
+			}
+		: {};
 }

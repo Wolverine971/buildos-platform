@@ -1,5 +1,6 @@
 // apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts
 import { performance } from 'node:perf_hooks';
+import { DOCUMENT_READ_TOOL } from '@buildos/agentic-chat-runtime/specialists';
 import {
 	type AgenticChatPersistenceTraceSinkV1,
 	emitAgenticChatPersistenceTrace,
@@ -2294,6 +2295,19 @@ function validateToolSurface(input: ClientInput): void {
 	canonicalProviderPassRole(input.passRole);
 	if (!Array.isArray(input.tools)) {
 		throw new Error('Agentic Chat provider tool surface must be an array');
+	}
+	if (input.workflowToolPolicy !== undefined) {
+		if (
+			input.workflowToolPolicy !== 'bounded_document_read_v1' ||
+			!input.dispatchGate ||
+			input.passRole !== 'acting' ||
+			input.toolChoice !== 'auto' ||
+			canonicalizeAgenticChatJson(input.tools as unknown as JsonValue) !==
+				canonicalizeAgenticChatJson([DOCUMENT_READ_TOOL] as unknown as JsonValue)
+		) {
+			throw new Error('Invalid workflow document tool surface');
+		}
+		return;
 	}
 	if (input.toolChoice === 'none') {
 		if (input.tools.length !== 0) {

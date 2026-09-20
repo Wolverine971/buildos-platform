@@ -126,6 +126,10 @@ type AgenticChatBaseConfig = {
 	workflowV4PreparationEnabled?: boolean;
 	/** Tasker 87: durable workflow model execution. Default off; requires preparation. */
 	workflowV4ExecutionEnabled?: boolean;
+	specialistWorkflowsEnabled?: boolean;
+	documentReadToolsEnabled?: boolean;
+	/** Counterfactual specialist/tool selection only; never enables routing. */
+	jevSpecialistSelection?: 'off' | 'shadow';
 	liveVisionEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
@@ -171,6 +175,21 @@ export function loadAgenticChatConfig(
 		environment.AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED,
 		false,
 		'AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED'
+	);
+	const documentReadToolsEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED,
+		false,
+		'AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED'
+	);
+	const jevSpecialistSelection =
+		environment.AGENTIC_CHAT_JEV_SPECIALIST_SELECTION?.trim() || 'off';
+	if (jevSpecialistSelection !== 'off' && jevSpecialistSelection !== 'shadow') {
+		throw new Error('AGENTIC_CHAT_JEV_SPECIALIST_SELECTION must be off or shadow');
+	}
+	const specialistWorkflowsEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED,
+		false,
+		'AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED'
 	);
 	const workflowV4ExecutionEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED,
@@ -258,6 +277,9 @@ export function loadAgenticChatConfig(
 		),
 		workflowV4PreparationEnabled,
 		workflowV4ExecutionEnabled,
+		specialistWorkflowsEnabled,
+		documentReadToolsEnabled,
+		jevSpecialistSelection,
 		liveVisionEnabled,
 		consumptionBillingEnabled,
 		consumer,

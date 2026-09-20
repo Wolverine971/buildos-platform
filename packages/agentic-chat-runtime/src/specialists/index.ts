@@ -2,3 +2,4 @@
 export * from './registry';
 export * from './project-review-v1';
 export * from './selector';
+export * from './document-organization';
