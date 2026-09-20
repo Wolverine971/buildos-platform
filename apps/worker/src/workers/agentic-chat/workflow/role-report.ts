@@ -1,5 +1,9 @@
 // apps/worker/src/workers/agentic-chat/workflow/role-report.ts
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
+import {
+	PROJECT_REVIEW_SPECIALISTS_V1,
+	type ProjectReviewSpecialistIdV1
+} from '@buildos/agentic-chat-runtime/specialists';
 import type {
 	AgenticChatWorkflowEvidenceRefV1,
 	AgenticChatWorkflowRoleReportV1
@@ -20,11 +24,14 @@ export const CHAT_WORKFLOW_ROLE_REPORT_VERSION = 'chat_workflow_role_report_v1' 
 
 export const CHAT_WORKFLOW_DISPATCH_POLICY = {
 	planner: { maxOutputTokens: 1_200, attempts: 1 },
-	specialist: { maxOutputTokens: 4_000, attempts: 2 },
+	specialist: {
+		maxOutputTokens: PROJECT_REVIEW_SPECIALISTS_V1.project_analyst.limits.maxOutputTokens,
+		attempts: PROJECT_REVIEW_SPECIALISTS_V1.project_analyst.limits.maxAttempts
+	},
 	editor: { maxOutputTokens: 3_200, attempts: 1 },
-	reasoningEffort: 'low',
+	reasoningEffort: PROJECT_REVIEW_SPECIALISTS_V1.project_analyst.modelPolicy.reasoningEffort,
 	/** A compact retry starts only when this much of the provider budget remains. */
-	retryMinRemainingMs: 75_000,
+	retryMinRemainingMs: PROJECT_REVIEW_SPECIALISTS_V1.project_analyst.limits.retryMinRemainingMs,
 	/**
 	 * Application-level provider calls: planner, two specialists with one compact
 	 * retry each, and editor. Client transport retries or route fallbacks inside one
@@ -51,7 +58,7 @@ const COMPACT_COUNTS = { findings: 3, risks: 2, unknowns: 2 } as const;
 const LABEL_CHARS = 80;
 const MAX_EVIDENCE_RECORDS = 2_000;
 
-export type ChatWorkflowSpecialistRole = 'project_analyst' | 'risk_reviewer';
+export type ChatWorkflowSpecialistRole = ProjectReviewSpecialistIdV1;
 export type ChatWorkflowEvidenceRef = { id: string; label: string };
 
 export type ChatWorkflowRoleReportV1 = {

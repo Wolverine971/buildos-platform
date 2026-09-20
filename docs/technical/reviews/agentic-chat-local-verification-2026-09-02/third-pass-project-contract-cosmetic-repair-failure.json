@@ -1,0 +1,238 @@
+{
+	"passed": false,
+	"pinInitialDeepInfra": false,
+	"at": "2026-09-03T04:27:35.168Z",
+	"durationMs": 26073,
+	"failure": "Agentic Chat read-only provider protocol failed: provider_tool_validation_repair_exhausted",
+	"validationFailures": [
+		{
+			"logicalProviderRound": 1,
+			"type": "read_tool",
+			"callTransitionId": "63f59beb-7fe5-51ae-94dd-b9ed1e298daa",
+			"resultTransitionId": "aab7c088-3f44-596c-b3e4-c239c705a1d9",
+			"providerToolCallId": "chatcmpl-tool-afe15ecb4aada730",
+			"toolName": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"minimum_successful_effects": 1,
+						"required_fields": ["type_key"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"label": "launch_goal",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "due_at"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					}
+				],
+				"summary": "Create a \"Weekly Audio Launch\" project with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\"."
+			},
+			"validationFailure": {
+				"error": "Tool validation failed: Invalid turn contract: Outcome 2: a labelled create outcome must declare its name in changes, e.g. [{\"field\":\"name\",\"value\":\"Meeting notes\"}]; the name is how the created entity is bound to the label.",
+				"toolCategory": null
+			}
+		},
+		{
+			"logicalProviderRound": 2,
+			"type": "read_tool",
+			"callTransitionId": "d5098105-9a82-5eae-b29a-8cab78f29c24",
+			"resultTransitionId": "2af3374b-7e17-5023-b11d-c80629e75889",
+			"providerToolCallId": "chatcmpl-tool-98acd27796453bf6",
+			"toolName": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"minimum_successful_effects": 1,
+						"required_fields": ["type_key"]
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"label": "launch_goal",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "due_at"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					}
+				],
+				"summary": "Create a \"Weekly Audio Launch\" project with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\"."
+			},
+			"validationFailure": {
+				"error": "Tool validation failed: Invalid turn contract: Outcome 2: a labelled create outcome must declare its name in changes, e.g. [{\"field\":\"name\",\"value\":\"Meeting notes\"}]; the name is how the created entity is bound to the label.",
+				"toolCategory": null
+			}
+		},
+		{
+			"logicalProviderRound": 3,
+			"type": "read_tool",
+			"callTransitionId": "cd936db9-c2f9-52c3-a650-dd964f2204bf",
+			"resultTransitionId": "e3fc890c-6b6a-5071-8a67-6f502c9ab136",
+			"providerToolCallId": "chatcmpl-tool-9cc65b340a57ee35",
+			"toolName": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"minimum_successful_effects": 1,
+						"required_fields": ["type_key"]
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"label": "launch_goal",
+						"minimum_successful_effects": 1,
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					}
+				],
+				"summary": "Create a \"Weekly Audio Launch\" project with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\"."
+			},
+			"validationFailure": {
+				"error": "Tool validation failed: Invalid turn contract: Outcome 2: a labelled create outcome must declare its name in changes, e.g. [{\"field\":\"name\",\"value\":\"Meeting notes\"}]; the name is how the created entity is bound to the label.",
+				"toolCategory": null
+			}
+		}
+	],
+	"requests": [
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": {
+				"allow_fallbacks": true,
+				"data_collection": "deny",
+				"order": ["deepinfra", "deepseek", "alibaba", "cloudflare"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": {
+				"allow_fallbacks": false,
+				"data_collection": "deny",
+				"order": ["deepinfra"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": {
+				"allow_fallbacks": false,
+				"data_collection": "deny",
+				"order": ["deepinfra"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		}
+	],
+	"calls": [],
+	"completion": {
+		"status": "fulfilled",
+		"fulfilled": true,
+		"outcomes": [],
+		"contract": null
+	},
+	"usage": [
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": "DeepInfra",
+			"cost": 0.00038502,
+			"promptTokens": 3660,
+			"completionTokens": 309,
+			"status": "success"
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": "DeepInfra",
+			"cost": 0.000184212,
+			"promptTokens": 4306,
+			"completionTokens": 304,
+			"status": "success"
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": "DeepInfra",
+			"cost": 0.000239922,
+			"promptTokens": 4947,
+			"completionTokens": 293,
+			"status": "success"
+		}
+	],
+	"capacity": {
+		"observedAtMs": 1788409655168,
+		"configured": true,
+		"available": true,
+		"activeRequests": 0,
+		"concurrency": 1,
+		"degradedUntilMs": null
+	}
+}

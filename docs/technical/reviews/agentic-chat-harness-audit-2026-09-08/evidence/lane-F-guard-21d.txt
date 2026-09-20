@@ -1,0 +1,14 @@
+21-day window since 2026-08-19T11:30:55.219Z
+explore_project              n   10 guarded   9   90% raw p50/p90 14587 28009 model p50/p90 10058 11300
+get_workspace_overview       n   17 guarded  13   76% raw p50/p90 12430 24927 model p50/p90 8558 10159
+search_all_projects          n   30 guarded  11   37% raw p50/p90 5216 10135 model p50/p90 5655 9005
+get_document_tree            n   51 guarded  16   31% raw p50/p90 3689 11158 model p50/p90 3951 6790
+update_onto_document         n    4 guarded   1   25% raw p50/p90 6522 13066 model p50/p90 4420 6724
+get_project_overview         n   71 guarded  10   14% raw p50/p90 4676 5954 model p50/p90 5120 6770
+search_project               n   44 guarded   6   14% raw p50/p90 1161 8685 model p50/p90 1439 7960
+list_onto_tasks              n   42 guarded   3    7% raw p50/p90 1907 4618 model p50/p90 3164 6554
+get_onto_project_details     n   35 guarded   2    6% raw p50/p90 4576 8115 model p50/p90 5069 6488
+read_document_section        n  326 guarded   6    2% raw p50/p90 333 1047 model p50/p90 815 1488
+get_document_outline         n  269 guarded   4    1% raw p50/p90 257 1390 model p50/p90 743 1898
+create_onto_document         n   98 guarded   1    1% raw p50/p90 545 1240 model p50/p90 1026 1724
+get_onto_document_details    n    3 guarded   0    0% raw p50/p90 1927 11461 model p50/p90 1744 4770

@@ -1,0 +1,98 @@
+
+=== catalog global (28 tools) ===
+skill_search                          484B  desc=   53  params=  346  props= 4  req=0  enums=0/0
+domain_search                         338B  desc=   50  params=  202  props= 2  req=0  enums=0/0
+declare_turn_contract                4354B  desc=  233  params= 4027  props= 2  req=1  enums=2/25
+declare_read_only_turn                449B  desc=  203  params=  151  props= 1  req=1  enums=0/0
+request_turn_clarification           1277B  desc=  180  params=  998  props= 3  req=2  enums=0/0
+cancel_turn_contract                  420B  desc=  162  params=  165  props= 1  req=1  enums=0/0
+get_workspace_overview                412B  desc=  166  params=  151  props= 1  req=0  enums=0/0
+get_project_overview                  527B  desc=  221  params=  213  props= 2  req=0  enums=0/0
+search_onto_projects                  641B  desc=  139  params=  409  props= 4  req=1  enums=1/5
+search_all_projects                  1084B  desc=  288  params=  704  props= 4  req=1  enums=1/9
+explore_project                      1070B  desc=  339  params=  639  props= 4  req=1  enums=1/10
+get_document_outline                  465B  desc=  231  params=  141  props= 1  req=1  enums=0/0
+read_document_section                 721B  desc=  357  params=  270  props= 2  req=2  enums=0/0
+get_onto_document_details             395B  desc=  165  params=  131  props= 1  req=1  enums=0/0
+list_onto_tasks                       615B  desc=   90  params=  437  props= 4  req=0  enums=1/4
+get_onto_task_details                 369B  desc=  155  params=  119  props= 1  req=1  enums=0/0
+create_onto_task                     2818B  desc=  347  params= 2380  props=16  req=2  enums=2/6
+update_onto_task                     3062B  desc=  234  params= 2737  props=15  req=1  enums=2/6
+move_onto_task                       1632B  desc=  913  params=  629  props= 4  req=3  enums=0/0
+create_onto_project                  6028B  desc=  782  params= 5151  props= 6  req=3  enums=9/58
+delegate_task                        3120B  desc= 1273  params= 1757  props=12  req=1  enums=4/8
+web_search                           1281B  desc=  271  params=  927  props= 6  req=1  enums=1/2
+web_visit                            1657B  desc=  282  params= 1291  props=10  req=1  enums=2/6
+list_calendar_events                 1282B  desc=  106  params= 1083  props= 9  req=0  enums=1/3
+get_calendar_event_details            986B  desc=  158  params=  729  props= 6  req=0  enums=1/3
+create_calendar_event                1458B  desc=   76  params= 1288  props=12  req=2  enums=1/3
+update_calendar_event                1661B  desc=  101  params= 1466  props=13  req=0  enums=1/3
+delete_calendar_event                 986B  desc=   64  params=  828  props= 7  req=0  enums=1/3
+TOTAL 39592 bytes (sum of tools)
+
+=== catalog project (35 tools) ===
+skill_search                          484B  desc=   53  params=  346  props= 4  req=0  enums=0/0
+domain_search                         338B  desc=   50  params=  202  props= 2  req=0  enums=0/0
+declare_turn_contract                4354B  desc=  233  params= 4027  props= 2  req=1  enums=2/25
+declare_read_only_turn                449B  desc=  203  params=  151  props= 1  req=1  enums=0/0
+request_turn_clarification           1277B  desc=  180  params=  998  props= 3  req=2  enums=0/0
+cancel_turn_contract                  420B  desc=  162  params=  165  props= 1  req=1  enums=0/0
+get_workspace_overview                412B  desc=  166  params=  151  props= 1  req=0  enums=0/0
+get_project_overview                  527B  desc=  221  params=  213  props= 2  req=0  enums=0/0
+explore_project                      1070B  desc=  339  params=  639  props= 4  req=1  enums=1/10
+get_document_outline                  465B  desc=  231  params=  141  props= 1  req=1  enums=0/0
+read_document_section                 721B  desc=  357  params=  270  props= 2  req=2  enums=0/0
+get_onto_document_details             395B  desc=  165  params=  131  props= 1  req=1  enums=0/0
+list_onto_tasks                       615B  desc=   90  params=  437  props= 4  req=0  enums=1/4
+get_onto_task_details                 369B  desc=  155  params=  119  props= 1  req=1  enums=0/0
+create_onto_task                     2818B  desc=  347  params= 2380  props=16  req=2  enums=2/6
+update_onto_task                     3062B  desc=  234  params= 2737  props=15  req=1  enums=2/6
+move_onto_task                       1632B  desc=  913  params=  629  props= 4  req=3  enums=0/0
+delegate_task                        3120B  desc= 1273  params= 1757  props=12  req=1  enums=4/8
+web_search                           1281B  desc=  271  params=  927  props= 6  req=1  enums=1/2
+web_visit                            1657B  desc=  282  params= 1291  props=10  req=1  enums=2/6
+list_calendar_events                 1282B  desc=  106  params= 1083  props= 9  req=0  enums=1/3
+get_calendar_event_details            986B  desc=  158  params=  729  props= 6  req=0  enums=1/3
+create_calendar_event                1458B  desc=   76  params= 1288  props=12  req=2  enums=1/3
+update_calendar_event                1661B  desc=  101  params= 1466  props=13  req=0  enums=1/3
+delete_calendar_event                 986B  desc=   64  params=  828  props= 7  req=0  enums=1/3
+get_onto_project_details              380B  desc=  154  params=  128  props= 1  req=1  enums=0/0
+search_project                        753B  desc=  112  params=  554  props= 4  req=2  enums=1/9
+list_onto_documents                   814B  desc=  119  params=  603  props= 5  req=0  enums=1/5
+get_document_tree                     848B  desc=  275  params=  481  props= 3  req=1  enums=0/0
+create_onto_document                 1850B  desc=  138  params= 1619  props= 9  req=3  enums=1/5
+update_onto_document                 1824B  desc=  466  params= 1253  props= 9  req=1  enums=2/8
+move_document_in_tree                1102B  desc=  252  params=  756  props= 5  req=2  enums=0/0
+link_onto_entities                   1189B  desc=  371  params=  723  props= 6  req=5  enums=0/0
+get_project_calendar                  256B  desc=   47  params=  116  props= 1  req=1  enums=0/0
+set_project_calendar                  758B  desc=   50  params=  615  props= 7  req=1  enums=1/2
+TOTAL 41613 bytes (sum of tools)
+
+=== catalog project_create (7 tools) ===
+declare_turn_contract                4354B  desc=  233  params= 4027  props= 2  req=1  enums=2/25
+declare_read_only_turn                449B  desc=  203  params=  151  props= 1  req=1  enums=0/0
+request_turn_clarification           1277B  desc=  180  params=  998  props= 3  req=2  enums=0/0
+cancel_turn_contract                  420B  desc=  162  params=  165  props= 1  req=1  enums=0/0
+create_onto_project                  6028B  desc=  782  params= 5151  props= 6  req=3  enums=9/58
+create_onto_goal                     1089B  desc=   58  params=  942  props= 9  req=2  enums=1/4
+create_onto_task                     2818B  desc=  347  params= 2380  props=16  req=2  enums=2/6
+TOTAL 16435 bytes (sum of tools)
+
+=== email group ===
+get_external_account_status           520B desc=220 params=200 props=1 req=1
+list_email_accounts                   336B desc=211 params=33 props=0 req=0
+search_email_messages                1163B desc=334 params=735 props=4 req=2
+get_email_message                     580B desc=210 params=280 props=2 req=2
+request_email_account_connection      743B desc=308 params=330 props=2 req=2
+EMAIL TOTAL 3342
+
+=== full vocabulary ===
+CHAT_TOOL_DEFINITIONS                              90 tools 86583 B
+ONTOLOGY_READ_TOOLS                                33 tools 20903 B
+ONTOLOGY_WRITE_TOOLS                               28 tools 38007 B
+UTILITY_TOOL_DEFINITIONS                           17 tools 16934 B
+CALENDAR_TOOL_DEFINITIONS                          7 tools 7395 B
+EMAIL_TOOL_DEFINITIONS                             5 tools 3348 B
+GATEWAY_TOOL_DEFINITIONS                           11 tools 5919 B
+AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1  4 tools 6505 B
+AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY                 105 tools 99005 B

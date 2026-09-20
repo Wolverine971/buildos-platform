@@ -1,0 +1,76 @@
+{
+	"numTotalTestSuites": 2,
+	"numPassedTestSuites": 2,
+	"numFailedTestSuites": 0,
+	"numPendingTestSuites": 0,
+	"numTotalTests": 4,
+	"numPassedTests": 4,
+	"numFailedTests": 0,
+	"numPendingTests": 0,
+	"numTodoTests": 0,
+	"snapshot": {
+		"added": 0,
+		"failure": false,
+		"filesAdded": 0,
+		"filesRemoved": 0,
+		"filesRemovedList": [],
+		"filesUnmatched": 0,
+		"filesUpdated": 0,
+		"matched": 0,
+		"total": 0,
+		"unchecked": 0,
+		"uncheckedKeysByFile": [],
+		"unmatched": 0,
+		"updated": 0,
+		"didUpdate": false
+	},
+	"startTime": 1788398200811,
+	"success": true,
+	"testResults": [
+		{
+			"assertionResults": [
+				{
+					"ancestorTitles": ["agentic chat e2e scenarios (real model + tools + DB)"],
+					"fullName": "agentic chat e2e scenarios (real model + tools + DB) [document] Add a structured document to a project",
+					"status": "passed",
+					"title": "[document] Add a structured document to a project",
+					"duration": 20276.355958,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agentic chat e2e scenarios (real model + tools + DB)"],
+					"fullName": "agentic chat e2e scenarios (real model + tools + DB) [task] Create a scheduled, prioritized task",
+					"status": "passed",
+					"title": "[task] Create a scheduled, prioritized task",
+					"duration": 18530.959625,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agentic chat e2e scenarios (real model + tools + DB)"],
+					"fullName": "agentic chat e2e scenarios (real model + tools + DB) [task] Write nothing on a passing mention, and ask instead of guessing when ambiguous",
+					"status": "passed",
+					"title": "[task] Write nothing on a passing mention, and ask instead of guessing when ambiguous",
+					"duration": 55773.11891599999,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agentic chat e2e scenarios (real model + tools + DB)"],
+					"fullName": "agentic chat e2e scenarios (real model + tools + DB) [task] Apply three operations from one dictated sentence",
+					"status": "passed",
+					"title": "[task] Apply three operations from one dictated sentence",
+					"duration": 70131.37766599999,
+					"failureMessages": [],
+					"meta": {}
+				}
+			],
+			"startTime": 1788398215326,
+			"endTime": 1788398380038.3777,
+			"status": "passed",
+			"message": "",
+			"name": "/Users/djwayne/buildos-platform/apps/web/src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts"
+		}
+	]
+}

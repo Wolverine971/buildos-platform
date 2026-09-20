@@ -1,0 +1,322 @@
+{
+	"prepared_admission_lease": {
+		"turns": 55,
+		"requested": {
+			"true": 55
+		},
+		"hit": {
+			"true": 28,
+			"false": 27
+		},
+		"miss_reason": {
+			"ineligible": 3,
+			"not_found": 5,
+			"admission_race_retry": 14,
+			"stale_history": 3,
+			"stale_context": 2
+		},
+		"inspection_ms": {
+			"p50": 126,
+			"p90": 190
+		},
+		"skill_preload": {
+			"hook_craft_short_form": 1,
+			"document_workspace": 8,
+			"none": 31,
+			"cold_email_engagement_first_outreach": 1,
+			"task_management": 11,
+			"calendar_management": 3
+		}
+	},
+	"sessions": {
+		"n": 19,
+		"with_summary": 8,
+		"status": {
+			"active": 19
+		},
+		"message_count": {
+			"p50": 4,
+			"max": 16
+		}
+	},
+	"primary_user_turn_share": 1,
+	"rpc_global": {
+		"runs_ms": [488, 298, 286],
+		"sample": {
+			"ms": 488,
+			"total_chars": 222026,
+			"top": {
+				"goals": {
+					"chars": 20857,
+					"len": 55
+				},
+				"plans": {
+					"chars": 13336,
+					"len": 41
+				},
+				"projects": {
+					"chars": 23936,
+					"len": 44
+				},
+				"milestones": {
+					"chars": 3556,
+					"len": 10
+				},
+				"project_logs": {
+					"chars": 145091,
+					"len": 210
+				},
+				"project_intelligence": {
+					"chars": 15165
+				}
+			},
+			"project_intelligence": {
+				"scope": {
+					"chars": 8
+				},
+				"counts": {
+					"chars": 130
+				},
+				"limits": {
+					"chars": 87
+				},
+				"source": {
+					"chars": 23
+				},
+				"windows": {
+					"chars": 100
+				},
+				"timezone": {
+					"chars": 5
+				},
+				"maybe_more": {
+					"chars": 97
+				},
+				"project_id": {
+					"chars": 4
+				},
+				"generated_at": {
+					"chars": 34
+				},
+				"project_name": {
+					"chars": 4
+				},
+				"upcoming_work": {
+					"chars": 1069,
+					"len": 3
+				},
+				"recent_changes": {
+					"chars": 4496,
+					"len": 16
+				},
+				"project_summaries": {
+					"chars": 2650,
+					"len": 8
+				},
+				"overdue_or_due_soon": {
+					"chars": 6256,
+					"len": 16
+				}
+			},
+			"pi_timezone": "UTC",
+			"pi_windows": {
+				"due_soon_days": 7,
+				"upcoming_days": 30,
+				"recent_changes_days": 7,
+				"recent_changes_max_lookback_days": 21
+			}
+		}
+	},
+	"rpc_project": [
+		{
+			"project_id": "3128fd62-ab7c-43d0-b7ed-f343cd2d838a",
+			"runs_ms": [144, 115],
+			"sample": {
+				"ms": 144,
+				"total_chars": 8574,
+				"top": {
+					"goals": {
+						"chars": 1879,
+						"len": 5
+					},
+					"plans": {
+						"chars": 2,
+						"len": 0
+					},
+					"tasks": {
+						"chars": 2,
+						"len": 0
+					},
+					"events": {
+						"chars": 2,
+						"len": 0
+					},
+					"members": {
+						"chars": 334,
+						"len": 1
+					},
+					"project": {
+						"chars": 987
+					},
+					"documents": {
+						"chars": 911,
+						"len": 3
+					},
+					"milestones": {
+						"chars": 2,
+						"len": 0
+					},
+					"linked_edges": {
+						"chars": 2,
+						"len": 0
+					},
+					"entity_counts": {
+						"chars": 161
+					},
+					"focus_entity_id": {
+						"chars": 4
+					},
+					"linked_entities": {
+						"chars": 2
+					},
+					"focus_entity_full": {
+						"chars": 4
+					},
+					"focus_entity_type": {
+						"chars": 4
+					},
+					"project_intelligence": {
+						"chars": 4054
+					}
+				},
+				"project_intelligence": {
+					"scope": {
+						"chars": 9
+					},
+					"counts": {
+						"chars": 131
+					},
+					"limits": {
+						"chars": 87
+					},
+					"source": {
+						"chars": 23
+					},
+					"windows": {
+						"chars": 100
+					},
+					"timezone": {
+						"chars": 5
+					},
+					"maybe_more": {
+						"chars": 100
+					},
+					"project_id": {
+						"chars": 38
+					},
+					"generated_at": {
+						"chars": 34
+					},
+					"project_name": {
+						"chars": 32
+					},
+					"upcoming_work": {
+						"chars": 2,
+						"len": 0
+					},
+					"recent_changes": {
+						"chars": 2951,
+						"len": 11
+					},
+					"project_summaries": {
+						"chars": 338,
+						"len": 1
+					},
+					"overdue_or_due_soon": {
+						"chars": 2,
+						"len": 0
+					}
+				},
+				"pi_timezone": "UTC",
+				"pi_windows": {
+					"due_soon_days": 7,
+					"upcoming_days": 30,
+					"recent_changes_days": 7,
+					"recent_changes_max_lookback_days": 21
+				}
+			}
+		},
+		{
+			"project_id": "e256363c-2da0-4313-abaf-fea4fcc6da87",
+			"runs_ms": [98, 99],
+			"sample": {
+				"ms": 98,
+				"total_chars": 4,
+				"top": {},
+				"project_intelligence": {},
+				"pi_timezone": null,
+				"pi_windows": null
+			}
+		},
+		{
+			"project_id": "ad4580e6-19aa-4f94-95a1-e00ed1337bb6",
+			"runs_ms": [103, 95],
+			"sample": {
+				"ms": 103,
+				"total_chars": 4,
+				"top": {},
+				"project_intelligence": {},
+				"pi_timezone": null,
+				"pi_windows": null
+			}
+		}
+	],
+	"invalidation_token_rpc": {
+		"ms": 105,
+		"error": null,
+		"token_len": 42
+	},
+	"start_here": {
+		"projects_with_membership": 74,
+		"docs": 52,
+		"chars": {
+			"p50": 2610,
+			"p90": 9646,
+			"max": 23756
+		},
+		"over_2400": 26,
+		"over_12000": 3
+	},
+	"tasks_per_project": {
+		"projects_with_tasks": 41,
+		"open": {
+			"p50": 4,
+			"p90": 33,
+			"max": 84
+		},
+		"projects_open_gt_6": 15,
+		"projects_open_gt_18": 8,
+		"open_undated_share": 0.83
+	},
+	"materialized_snapshot_rows_now": 0,
+	"prepared_rows": {
+		"n": 17,
+		"consumed": 5,
+		"by_context": {
+			"project": 8,
+			"project_create": 9
+		}
+	},
+	"history_system_rows": {
+		"kinds": {
+			"continuity_hint": 22,
+			"interrupted_tool_receipts": 4,
+			"loaded_skills_ledger": 32,
+			"compressed_memory": 12,
+			"pending_contract": 4,
+			"Pending clarification from the immediate": 8
+		},
+		"system_chars_share": 0.45,
+		"artifacts": 55
+	}
+}

@@ -1,0 +1,78 @@
+{
+	"passed": false,
+	"at": "2026-09-03T04:22:16.807Z",
+	"durationMs": 9649,
+	"finishReason": "tool_calls",
+	"failure": null,
+	"issues": [
+		[
+			"Invalid turn contract: Outcome 1: a labelled create outcome must declare its title in changes, e.g. [{\"field\":\"title\",\"value\":\"Meeting notes\"}]; the name is how the created entity is bound to the label.",
+			"Invalid turn contract: Outcome 2: a labelled create outcome must declare its name in changes, e.g. [{\"field\":\"name\",\"value\":\"Meeting notes\"}]; the name is how the created entity is bound to the label.",
+			"Invalid turn contract: Outcome 3: a labelled create outcome must declare its title in changes, e.g. [{\"field\":\"title\",\"value\":\"Meeting notes\"}]; the name is how the created entity is bound to the label.",
+			"Invalid turn contract: Outcome 4: a labelled create outcome must declare its title in changes, e.g. [{\"field\":\"title\",\"value\":\"Meeting notes\"}]; the name is how the created entity is bound to the label.",
+			"Invalid turn contract: Outcome 5: a labelled create outcome must declare its title in changes, e.g. [{\"field\":\"title\",\"value\":\"Meeting notes\"}]; the name is how the created entity is bound to the label."
+		]
+	],
+	"calls": [
+		{
+			"id": "chatcmpl-tool-beda3e20c4d112c3",
+			"name": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"id": "create-project",
+						"label": "audio_project",
+						"minimum_successful_effects": 1,
+						"parent_label": "audio_project"
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"id": "create-goal",
+						"label": "launch_goal",
+						"minimum_successful_effects": 1,
+						"parent_label": "audio_project"
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"id": "create-task-1",
+						"label": "task1",
+						"minimum_successful_effects": 1,
+						"parent_label": "audio_project"
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"id": "create-task-2",
+						"label": "task2",
+						"minimum_successful_effects": 1,
+						"parent_label": "audio_project"
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"id": "create-task-3",
+						"label": "task3",
+						"minimum_successful_effects": 1,
+						"parent_label": "audio_project"
+					}
+				]
+			},
+			"canonicalArguments": "{\"outcomes\":[{\"action\":\"create\",\"entity_kind\":\"project\",\"id\":\"create-project\",\"label\":\"audio_project\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"},{\"action\":\"create\",\"entity_kind\":\"goal\",\"id\":\"create-goal\",\"label\":\"launch_goal\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"},{\"action\":\"create\",\"entity_kind\":\"task\",\"id\":\"create-task-1\",\"label\":\"task1\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"},{\"action\":\"create\",\"entity_kind\":\"task\",\"id\":\"create-task-2\",\"label\":\"task2\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"},{\"action\":\"create\",\"entity_kind\":\"task\",\"id\":\"create-task-3\",\"label\":\"task3\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"}]}",
+			"canonicalProviderArguments": "{\"outcomes\":[{\"action\":\"create\",\"entity_kind\":\"project\",\"id\":\"create-project\",\"label\":\"audio_project\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"},{\"action\":\"create\",\"entity_kind\":\"goal\",\"id\":\"create-goal\",\"label\":\"launch_goal\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"},{\"action\":\"create\",\"entity_kind\":\"task\",\"id\":\"create-task-1\",\"label\":\"task1\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"},{\"action\":\"create\",\"entity_kind\":\"task\",\"id\":\"create-task-2\",\"label\":\"task2\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"},{\"action\":\"create\",\"entity_kind\":\"task\",\"id\":\"create-task-3\",\"label\":\"task3\",\"minimum_successful_effects\":1,\"parent_label\":\"audio_project\"}]}"
+		}
+	],
+	"usage": [
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": "DeepInfra",
+			"cost": 0.00022473,
+			"promptTokens": 1911,
+			"completionTokens": 293,
+			"status": "success"
+		}
+	]
+}

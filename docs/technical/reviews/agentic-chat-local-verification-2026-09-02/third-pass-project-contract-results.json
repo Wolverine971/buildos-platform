@@ -1,0 +1,252 @@
+{
+	"passed": true,
+	"pinInitialDeepInfra": false,
+	"at": "2026-09-03T04:29:17.756Z",
+	"durationMs": 12293,
+	"failure": null,
+	"validationFailures": [
+		{
+			"logicalProviderRound": 1,
+			"type": "read_tool",
+			"callTransitionId": "4dcc1cf6-8616-5ef8-bb52-7c5df9bbdd19",
+			"resultTransitionId": "7e80779f-2981-57ef-a522-29cef0f1d5dd",
+			"providerToolCallId": "chatcmpl-tool-be0c65db6441c3f3",
+			"toolName": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "type_key"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "due_at"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"],
+						"target_ids": []
+					}
+				],
+				"summary": "Create a \"Weekly Audio Launch\" project with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\"."
+			},
+			"validationFailure": {
+				"error": "Tool validation failed: Invalid turn contract: The project outcome must omit required_fields and changes because the create_onto_project arguments carry the project values.",
+				"toolCategory": null
+			}
+		}
+	],
+	"requests": [
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": {
+				"allow_fallbacks": true,
+				"data_collection": "deny",
+				"order": ["deepinfra", "deepseek", "alibaba", "cloudflare"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": {
+				"allow_fallbacks": false,
+				"data_collection": "deny",
+				"order": ["deepinfra"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		}
+	],
+	"calls": [
+		{
+			"logicalProviderRound": 2,
+			"type": "read_tool",
+			"callTransitionId": "2c59ae0b-d98b-5de5-a0a2-046b1a1ca62d",
+			"resultTransitionId": "5484a5a8-91b1-5365-a0d4-7189eca5c11f",
+			"providerToolCallId": "chatcmpl-tool-ac36e081c989bb3b",
+			"toolName": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"minimum_successful_effects": 1
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "due_at"]
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"]
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"]
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 1,
+						"required_fields": ["title"]
+					}
+				],
+				"summary": "Create a \"Weekly Audio Launch\" project with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\"."
+			},
+			"decidedBy": "acting_model"
+		}
+	],
+	"counts": {
+		"project": 1,
+		"goal": 1,
+		"task": 3
+	},
+	"completion": {
+		"status": "fulfilled",
+		"fulfilled": true,
+		"outcomes": [
+			{
+				"id": "outcome_1",
+				"fulfilled": true,
+				"matchedEffects": 1,
+				"requiredEffects": 1,
+				"missingTargetIds": [],
+				"missingRequiredFields": []
+			},
+			{
+				"id": "outcome_2",
+				"fulfilled": true,
+				"matchedEffects": 1,
+				"requiredEffects": 1,
+				"missingTargetIds": [],
+				"missingRequiredFields": []
+			},
+			{
+				"id": "outcome_3",
+				"fulfilled": true,
+				"matchedEffects": 3,
+				"requiredEffects": 1,
+				"missingTargetIds": [],
+				"missingRequiredFields": []
+			},
+			{
+				"id": "outcome_4",
+				"fulfilled": true,
+				"matchedEffects": 3,
+				"requiredEffects": 1,
+				"missingTargetIds": [],
+				"missingRequiredFields": []
+			},
+			{
+				"id": "outcome_5",
+				"fulfilled": true,
+				"matchedEffects": 3,
+				"requiredEffects": 1,
+				"missingTargetIds": [],
+				"missingRequiredFields": []
+			}
+		],
+		"contract": {
+			"version": 1,
+			"source": "declared",
+			"summary": "Create a \"Weekly Audio Launch\" project with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\".",
+			"outcomes": [
+				{
+					"id": "outcome_1",
+					"action": "create",
+					"entityKind": "project",
+					"targetIds": [],
+					"requiredFields": [],
+					"minimumSuccessfulEffects": 1
+				},
+				{
+					"id": "outcome_2",
+					"action": "create",
+					"entityKind": "goal",
+					"targetIds": [],
+					"requiredFields": ["name", "target_date"],
+					"minimumSuccessfulEffects": 1
+				},
+				{
+					"id": "outcome_3",
+					"action": "create",
+					"entityKind": "task",
+					"targetIds": [],
+					"requiredFields": ["title"],
+					"minimumSuccessfulEffects": 1
+				},
+				{
+					"id": "outcome_4",
+					"action": "create",
+					"entityKind": "task",
+					"targetIds": [],
+					"requiredFields": ["title"],
+					"minimumSuccessfulEffects": 1
+				},
+				{
+					"id": "outcome_5",
+					"action": "create",
+					"entityKind": "task",
+					"targetIds": [],
+					"requiredFields": ["title"],
+					"minimumSuccessfulEffects": 1
+				}
+			]
+		}
+	},
+	"usage": [
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": "DeepInfra",
+			"cost": 0.000125892,
+			"promptTokens": 3660,
+			"completionTokens": 303,
+			"status": "success"
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": "DeepInfra",
+			"cost": 0.000169992,
+			"promptTokens": 4224,
+			"completionTokens": 266,
+			"status": "success"
+		}
+	],
+	"capacity": {
+		"observedAtMs": 1788409757756,
+		"configured": true,
+		"available": true,
+		"activeRequests": 0,
+		"concurrency": 1,
+		"degradedUntilMs": null
+	}
+}

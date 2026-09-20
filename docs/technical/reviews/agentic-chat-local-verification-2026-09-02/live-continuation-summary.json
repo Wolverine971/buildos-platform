@@ -1,0 +1,134 @@
+{
+	"migration": {
+		"version": "20260902150000",
+		"name": "agentic_chat_recovery_throttle_backoff_seconds",
+		"sha256": "962a5b7972f2d9eaa2fcd099fe501b651c0f4c0fe940e3934abacd242bceeaac",
+		"preflight": "function already patched; receipt absent",
+		"applied": "exact migration replayed idempotently through isolated CLI directory",
+		"postflight": "receipt present; isolated dry run up to date; ACL postgres and service_role only"
+	},
+	"runtime": {
+		"web": "http://localhost:5173",
+		"worker": "https://agentic-chat-worker-production.up.railway.app",
+		"worker_release": "98c5dffdaeee7a22c9ff9b427bdd0a2a5a4b9278",
+		"database_project": "iwifjtlebphefldmwbkh",
+		"note": "current local web code; hosted worker does not include local provider fix"
+	},
+	"live_scenarios": [
+		{
+			"title": "[document] Add a structured document to a project",
+			"status": "passed",
+			"duration_ms": 20276.355958
+		},
+		{
+			"title": "[task] Create a scheduled, prioritized task",
+			"status": "passed",
+			"duration_ms": 18530.959625
+		},
+		{
+			"title": "[task] Write nothing on a passing mention, and ask instead of guessing when ambiguous",
+			"status": "passed",
+			"duration_ms": 55773.11891599999
+		},
+		{
+			"title": "[task] Apply three operations from one dictated sentence",
+			"status": "passed",
+			"duration_ms": 70131.37766599999
+		},
+		{
+			"title": "[document] Edit a document, then edit it again from context alone",
+			"status": "failed",
+			"duration_ms": 20775.196125000002
+		},
+		{
+			"title": "[task] Close a task named only by company, cold, and carry the next step forward",
+			"status": "passed",
+			"duration_ms": 57463.630917
+		},
+		{
+			"title": "[project] Create a fully specified project through an approved contract",
+			"status": "failed",
+			"duration_ms": 84175.953167
+		}
+	],
+	"browser": {
+		"projectId": "5104f6a6-5e33-4cf7-8295-63af9ceff707",
+		"sessionId": "d6c8273e-6636-40ed-8526-f1f45bce8a7d",
+		"project_creation_turn": "0e2fcaf6-e078-40c9-919e-3f5c11bfd62d",
+		"followup_turn": "576250fd-b62c-41a2-9100-35dcf8c851ea",
+		"cancelled_turn": "d90d6b9d-b469-466a-9382-1a7384b9802a",
+		"cancel_to_terminal_ms": 337.796,
+		"task_state": "done",
+		"document_content": "The launch audience is new subscribers.",
+		"post_cancel_response": "AFTER STOP OK",
+		"history_followup_turn": "4dbe9a2b-bfc8-48e3-9bcc-8bd18364267f",
+		"history_followup_response": "HISTORY FOLLOWUP OK",
+		"parked_after_running": {
+			"turn_id": "fe85f873-74fa-4519-916f-38a3f3de1f29",
+			"duration_ms": 31797.519,
+			"observed": [
+				"worker running",
+				"minimized card working",
+				"completed card previews current answer",
+				"restored answer ends RAINBOW TEST COMPLETE"
+			]
+		}
+	},
+	"known_failed_turns": [
+		{
+			"id": "3be9d0cd-c3c2-46b5-b336-75f9707b5463",
+			"scenario": "document-edit-context",
+			"failure": "Pinned Alibaba route: HTTP 404 No endpoints found; fallback filtered to zero endpoints."
+		},
+		{
+			"id": "de80ff46-9fa4-4832-9ccb-8e2507d5d995",
+			"scenario": "project-create-contract (followup)",
+			"failure": "Pinned Alibaba route: HTTP 404 No endpoints found."
+		},
+		{
+			"id": "c927868d-cc3a-4da7-97f4-88cef5bf1d8a",
+			"scenario": "browser long answer after history reopen",
+			"failure": "read_tool_execution_failed on request_turn_clarification after acting model returned text; zero durable edits; root cause not isolated."
+		}
+	],
+	"additional_findings": [
+		{
+			"scenario": "minimize during admission",
+			"status": "unresolved",
+			"observation": "Idle Paused card can remain while a subsequently admitted turn runs; buildParkPayload omits isStartingStream."
+		},
+		{
+			"scenario": "latest-request adherence",
+			"turn_id": "2cc6b429-faa5-46be-8858-34909fc1ec1a",
+			"status": "failed behavior despite completed turn",
+			"request": "Return the integers from 1 through 200 in order, one per line, followed by PARKED STATUS OK. Use no tools.",
+			"observed": "Answered preceding newsletter strategy prompt and ended PARKED RESPONSE COMPLETE.",
+			"prompt_snapshot_verification": "Correct new request was present in final user position; not a missing-input cache failure."
+		},
+		{
+			"scenario": "dashboard after public-page login",
+			"status": "unresolved outside modal change",
+			"observation": "Dashboard consumer logged missing Supabase context."
+		}
+	],
+	"verification": {
+		"focused_web_checks_passed": 106,
+		"overlaps_prior_full_run": true,
+		"web_svelte_check": {
+			"errors": 0,
+			"warnings": 0
+		},
+		"prior_deterministic_checks_passed": 3150,
+		"prior_opt_in_tests_skipped": 11,
+		"live_scenarios_passed": 5,
+		"live_scenarios_failed": 2,
+		"live_test_retries": 0
+	},
+	"cleanup": {
+		"remaining_test_projects": 0,
+		"remaining_browser_tasks": 0,
+		"remaining_browser_documents": 0,
+		"active_browser_turns": 0,
+		"diagnostic_sessions": "Retained under existing seven-day worker evidence policy."
+	}
+}

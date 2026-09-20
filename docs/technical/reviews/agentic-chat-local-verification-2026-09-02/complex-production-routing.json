@@ -1,0 +1,510 @@
+{
+	"model": "deepseek/deepseek-v4-flash",
+	"reviewer": "openai/gpt-5.6-luna",
+	"scope": "local provider and prompt source; in-memory tools; no Supabase or queue",
+	"reports": [
+		{
+			"id": "complex-four-creates",
+			"passed": true,
+			"elapsedMs": 45029,
+			"message": "Add exactly four independent tasks named Draft A, Draft B, Draft C, and Draft D in this project. Give each priority 3. Do not create any other entities.",
+			"text": "All four tasks have been created in the **Local newsletter fixture** project:\n\n| Task | State | Priority |\n|---|---|---|\n| **Draft A** | todo | 3 |\n| **Draft B** | todo | 3 |\n| **Draft C** | todo | 3 |\n| **Draft D** | todo | 3 |\n\nNo other entities were created. The project now has six open tasks total (the two existing ones plus these four).",
+			"requests": [
+				{
+					"role": "acting",
+					"round": 1,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 9007
+				},
+				{
+					"role": "acting",
+					"round": 2,
+					"toolChoice": "required",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"declare_turn_contract",
+						"request_turn_clarification"
+					],
+					"chars": 11942
+				},
+				{
+					"role": "contract_review",
+					"round": 3,
+					"toolChoice": "required",
+					"toolNames": [
+						"approve_turn_contract_review",
+						"declare_read_only_turn",
+						"request_proposal_revision",
+						"request_turn_clarification"
+					],
+					"chars": 14512
+				},
+				{
+					"role": "contract_review",
+					"round": 4,
+					"toolChoice": "required",
+					"toolNames": [
+						"approve_turn_contract_review",
+						"request_proposal_revision",
+						"request_turn_clarification"
+					],
+					"chars": 19845
+				},
+				{
+					"role": "acting",
+					"round": 5,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"declare_turn_contract",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 18363
+				},
+				{
+					"role": "mutation_review",
+					"round": 5,
+					"toolChoice": "required",
+					"toolNames": [
+						"approve_mutation_batch_review",
+						"request_proposal_revision",
+						"request_turn_clarification"
+					],
+					"chars": 21901
+				},
+				{
+					"role": "acting",
+					"round": 7,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"declare_turn_contract",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 22941
+				}
+			],
+			"calls": [
+				{
+					"logicalProviderRound": 2,
+					"type": "read_tool",
+					"callTransitionId": "32089a4c-3013-56b6-8b15-39405dd26754",
+					"resultTransitionId": "15dab081-3503-5411-a648-d67c676f5403",
+					"providerToolCallId": "chatcmpl-tool-8224341e58ac6d26",
+					"toolName": "declare_turn_contract",
+					"arguments": {
+						"outcomes": [
+							{
+								"action": "create",
+								"entity_kind": "task",
+								"minimum_successful_effects": 1,
+								"required_fields": ["title", "priority", "project_id"],
+								"target_ids": [
+									"42000000-0000-4000-8000-000000000003",
+									"42000000-0000-4000-8000-000000000004",
+									"42000000-0000-4000-8000-000000000005",
+									"42000000-0000-4000-8000-000000000006"
+								]
+							},
+							{
+								"action": "create",
+								"entity_kind": "task",
+								"minimum_successful_effects": 1,
+								"required_fields": ["title", "priority", "project_id"]
+							},
+							{
+								"action": "create",
+								"entity_kind": "task",
+								"minimum_successful_effects": 1,
+								"required_fields": ["title", "priority", "project_id"]
+							},
+							{
+								"action": "create",
+								"entity_kind": "task",
+								"minimum_successful_effects": 1,
+								"required_fields": ["title", "priority", "project_id"]
+							}
+						],
+						"summary": "Create four independent tasks (Draft A, Draft B, Draft C, Draft D) in the Local newsletter fixture project, each with priority 3."
+					},
+					"decidedBy": "acting_model"
+				},
+				{
+					"logicalProviderRound": 3,
+					"type": "read_tool",
+					"callTransitionId": "7b5ab605-caf6-5c73-9875-8864382256bd",
+					"resultTransitionId": "fd490d54-295b-527b-b639-6db938bcfccd",
+					"providerToolCallId": "call_fHBkYWUUSZX9xt0uMwDiukWh",
+					"toolName": "request_proposal_revision",
+					"arguments": {
+						"corrected_contract": {
+							"summary": "Create exactly four independent tasks named Draft A, Draft B, Draft C, and Draft D in the Local newsletter fixture project, each with priority 3.",
+							"outcomes": [
+								{
+									"id": "draft_a",
+									"action": "create",
+									"entity_kind": "task",
+									"description": "Create the task Draft A in the Local newsletter fixture project with priority 3.",
+									"target_ids": [],
+									"required_fields": ["title", "priority", "project_id"],
+									"changes": [
+										{
+											"field": "title",
+											"value": "Draft A"
+										},
+										{
+											"field": "priority",
+											"value": "3"
+										},
+										{
+											"field": "project_id",
+											"value": "41000000-0000-4000-8000-000000000001"
+										}
+									],
+									"minimum_successful_effects": 1,
+									"label": "draft-a-create-task"
+								},
+								{
+									"id": "draft_b",
+									"action": "create",
+									"entity_kind": "task",
+									"description": "Create the task Draft B in the Local newsletter fixture project with priority 3.",
+									"target_ids": [],
+									"required_fields": ["title", "priority", "project_id"],
+									"changes": [
+										{
+											"field": "title",
+											"value": "Draft B"
+										},
+										{
+											"field": "priority",
+											"value": "3"
+										},
+										{
+											"field": "project_id",
+											"value": "41000000-0000-4000-8000-000000000001"
+										}
+									],
+									"minimum_successful_effects": 1,
+									"label": "draft-b-create-task"
+								},
+								{
+									"id": "draft_c",
+									"action": "create",
+									"entity_kind": "task",
+									"description": "Create the task Draft C in the Local newsletter fixture project with priority 3.",
+									"target_ids": [],
+									"required_fields": ["title", "priority", "project_id"],
+									"changes": [
+										{
+											"field": "title",
+											"value": "Draft C"
+										},
+										{
+											"field": "priority",
+											"value": "3"
+										},
+										{
+											"field": "project_id",
+											"value": "41000000-0000-4000-8000-000000000001"
+										}
+									],
+									"minimum_successful_effects": 1,
+									"label": "draft-c-create-task"
+								},
+								{
+									"id": "draft_d",
+									"action": "create",
+									"entity_kind": "task",
+									"description": "Create the task Draft D in the Local newsletter fixture project with priority 3.",
+									"target_ids": [],
+									"required_fields": ["title", "priority", "project_id"],
+									"changes": [
+										{
+											"field": "title",
+											"value": "Draft D"
+										},
+										{
+											"field": "priority",
+											"value": "3"
+										},
+										{
+											"field": "project_id",
+											"value": "41000000-0000-4000-8000-000000000001"
+										}
+									],
+									"minimum_successful_effects": 1,
+									"label": "draft-d-create-task"
+								}
+							]
+						},
+						"reason": "The user explicitly commissioned four new tasks with distinct exact titles, all in project 41000000-0000-4000-8000-000000000001, each priority 3. The proposal has four creates but omits the required title, priority, and project_id changes, so it cannot produce the commissioned values.",
+						"reference_candidates": [
+							{
+								"candidates": [
+									{
+										"id": "41000000-0000-4000-8000-000000000001",
+										"title": "Local newsletter fixture"
+									}
+								],
+								"reference": "this project"
+							}
+						],
+						"required_correction": "Keep exactly four independent task-create outcomes, with no target IDs. Set title respectively to Draft A, Draft B, Draft C, and Draft D; set priority to 3 and project_id to 41000000-0000-4000-8000-000000000001 on each outcome. Do not create any other entities."
+					},
+					"decidedBy": "contract_reviewer"
+				},
+				{
+					"logicalProviderRound": 4,
+					"type": "read_tool",
+					"callTransitionId": "8232e540-c828-5f6a-a463-c0d46f716565",
+					"resultTransitionId": "90916c5a-5673-5e2b-a9b1-adc15b4c8a4f",
+					"providerToolCallId": "call_2i6VKpN6gQuAyypgetj6SmwC",
+					"toolName": "approve_turn_contract_review",
+					"arguments": {
+						"contract_sha256": "59d3649af441834a9403354aa07ce156428af75e92272e124c718b768de65d2d",
+						"reason": "The current user request explicitly commissions exactly four new independent task entities, with titles Draft A through Draft D, each priority 3, all assigned to the uniquely identified Local newsletter fixture project. The proposed contract contains exactly those four create outcomes, preserves the requested values, creates no other entities, and has no existing-task targets.",
+						"reference_candidates": [
+							{
+								"candidates": [
+									{
+										"id": "41000000-0000-4000-8000-000000000001",
+										"title": "Local newsletter fixture"
+									}
+								],
+								"reference": "this project"
+							}
+						]
+					},
+					"decidedBy": "contract_reviewer"
+				},
+				{
+					"logicalProviderRound": 5,
+					"type": "read_tool",
+					"callTransitionId": "e85ca9c9-c6a3-562b-bb6f-75e764e027db",
+					"resultTransitionId": "a4d9e1d7-c217-53fd-befd-cfe80ac20c2a",
+					"providerToolCallId": "call_7RGnpoqxcjq1zZgFuQ9GgYHD",
+					"toolName": "approve_mutation_batch_review",
+					"arguments": {
+						"batch_sha256": "35deba6d166b394fdc5023e48d0037341cfd26e49e0ecc857804710805e74358",
+						"reason": "All four proposed create_onto_task mutations are commissioned by the approved contract: they create exactly Draft A, Draft B, Draft C, and Draft D in project 41000000-0000-4000-8000-000000000001, each with priority 3. No extra entities or unsupported targets/values are included."
+					},
+					"decidedBy": "mutation_batch_reviewer"
+				},
+				{
+					"logicalProviderRound": 5,
+					"type": "mutating_tool",
+					"callTransitionId": "8238eb80-4caa-5066-ad89-124d3954c40a",
+					"resultTransitionId": "fd313f64-fff9-5c50-97e5-4935005e4b96",
+					"logicalOperationId": "0aedcd65-84e2-5541-a4bd-ec953ca45701",
+					"providerToolCallId": "chatcmpl-tool-82d89cce356122f6",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 3,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Draft A"
+					},
+					"downstreamIdempotencySupported": true
+				},
+				{
+					"logicalProviderRound": 5,
+					"type": "mutating_tool",
+					"callTransitionId": "d6696769-e9e9-5acc-ac70-2e767e1b7e45",
+					"resultTransitionId": "d8783009-4331-50ef-a74a-1554abeb1deb",
+					"logicalOperationId": "877213a5-f0a9-59f2-abc8-ae64478bc0de",
+					"providerToolCallId": "chatcmpl-tool-a762af5c98f229eb",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 3,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Draft B"
+					},
+					"downstreamIdempotencySupported": true
+				},
+				{
+					"logicalProviderRound": 5,
+					"type": "mutating_tool",
+					"callTransitionId": "8212246b-b2cf-55f4-8185-0f3c5864608d",
+					"resultTransitionId": "b108a932-35e8-57d1-bd76-5fecb7a574ad",
+					"logicalOperationId": "5772e405-756c-5afe-9c67-01491a040f15",
+					"providerToolCallId": "chatcmpl-tool-9d3f5cde684df10b",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 3,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Draft C"
+					},
+					"downstreamIdempotencySupported": true
+				},
+				{
+					"logicalProviderRound": 5,
+					"type": "mutating_tool",
+					"callTransitionId": "2585f5e7-b9a0-5053-ab20-b74a54e85e1d",
+					"resultTransitionId": "4203d34f-e59f-51cb-98ab-cc744cc6dc1d",
+					"logicalOperationId": "a0de84e1-42b8-5e5c-a072-f4c331172712",
+					"providerToolCallId": "chatcmpl-tool-82f27cfdc1a369af",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 3,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Draft D"
+					},
+					"downstreamIdempotencySupported": true
+				}
+			],
+			"writes": [
+				{
+					"logicalProviderRound": 5,
+					"type": "mutating_tool",
+					"callTransitionId": "8238eb80-4caa-5066-ad89-124d3954c40a",
+					"resultTransitionId": "fd313f64-fff9-5c50-97e5-4935005e4b96",
+					"logicalOperationId": "0aedcd65-84e2-5541-a4bd-ec953ca45701",
+					"providerToolCallId": "chatcmpl-tool-82d89cce356122f6",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 3,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Draft A"
+					},
+					"downstreamIdempotencySupported": true
+				},
+				{
+					"logicalProviderRound": 5,
+					"type": "mutating_tool",
+					"callTransitionId": "d6696769-e9e9-5acc-ac70-2e767e1b7e45",
+					"resultTransitionId": "d8783009-4331-50ef-a74a-1554abeb1deb",
+					"logicalOperationId": "877213a5-f0a9-59f2-abc8-ae64478bc0de",
+					"providerToolCallId": "chatcmpl-tool-a762af5c98f229eb",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 3,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Draft B"
+					},
+					"downstreamIdempotencySupported": true
+				},
+				{
+					"logicalProviderRound": 5,
+					"type": "mutating_tool",
+					"callTransitionId": "8212246b-b2cf-55f4-8185-0f3c5864608d",
+					"resultTransitionId": "b108a932-35e8-57d1-bd76-5fecb7a574ad",
+					"logicalOperationId": "5772e405-756c-5afe-9c67-01491a040f15",
+					"providerToolCallId": "chatcmpl-tool-9d3f5cde684df10b",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 3,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Draft C"
+					},
+					"downstreamIdempotencySupported": true
+				},
+				{
+					"logicalProviderRound": 5,
+					"type": "mutating_tool",
+					"callTransitionId": "2585f5e7-b9a0-5053-ab20-b74a54e85e1d",
+					"resultTransitionId": "4203d34f-e59f-51cb-98ab-cc744cc6dc1d",
+					"logicalOperationId": "a0de84e1-42b8-5e5c-a072-f4c331172712",
+					"providerToolCallId": "chatcmpl-tool-82f27cfdc1a369af",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 3,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Draft D"
+					},
+					"downstreamIdempotencySupported": true
+				}
+			],
+			"usage": [
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "DeepInfra",
+					"role": "acting",
+					"cost": 0.00041904,
+					"promptTokens": 3932,
+					"completionTokens": 362,
+					"status": "success"
+				},
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "DeepInfra",
+					"role": "acting",
+					"cost": 0.000402408,
+					"promptTokens": 4010,
+					"completionTokens": 333,
+					"status": "success"
+				},
+				{
+					"model": "openai/gpt-5.6-luna",
+					"provider": "OpenAI",
+					"role": "contract_review",
+					"cost": 0.00222115,
+					"promptTokens": 4373,
+					"completionTokens": 945,
+					"status": "success"
+				},
+				{
+					"model": "openai/gpt-5.6-luna",
+					"provider": "OpenAI",
+					"role": "contract_review",
+					"cost": 0.00160045,
+					"promptTokens": 5423,
+					"completionTokens": 209,
+					"status": "success"
+				},
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "DeepInfra",
+					"role": "acting",
+					"cost": 0.000576198,
+					"promptTokens": 6939,
+					"completionTokens": 346,
+					"status": "success"
+				},
+				{
+					"model": "openai/gpt-5.6-luna",
+					"provider": "OpenAI",
+					"role": "mutation_review",
+					"cost": 0.0014524,
+					"promptTokens": 5138,
+					"completionTokens": 145,
+					"status": "success"
+				},
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "DeepInfra",
+					"role": "acting",
+					"cost": 0.00038961,
+					"promptTokens": 8231,
+					"completionTokens": 97,
+					"status": "success"
+				}
+			],
+			"error": null
+		}
+	]
+}

@@ -1,0 +1,102 @@
+{
+	"scope": "Synthetic read-only model replay; no database writes. Actual production reviewer request builder and OpenRouter client, model openai/gpt-5.6-luna, 4000 output-token cap, provider order openai/azure.",
+	"before": [
+		{
+			"case": "task",
+			"passes": [
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "request_proposal_revision",
+					"harness_decision": "request_turn_clarification",
+					"decided_by": "harness_review_fallback"
+				}
+			]
+		},
+		{
+			"case": "document",
+			"passes": [
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "request_proposal_revision",
+					"harness_decision": "request_turn_clarification",
+					"decided_by": "harness_review_fallback"
+				}
+			]
+		},
+		{
+			"case": "relationships",
+			"passes": [
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "request_proposal_revision",
+					"harness_decision": "request_turn_clarification",
+					"decided_by": "harness_review_fallback"
+				}
+			]
+		}
+	],
+	"after": [
+		{
+			"case": "task",
+			"passes": [
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "request_proposal_revision",
+					"harness_decision": "request_proposal_revision",
+					"decided_by": "contract_reviewer"
+				},
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "approve_turn_contract_review",
+					"harness_decision": "approve_turn_contract_review",
+					"decided_by": "contract_reviewer"
+				}
+			]
+		},
+		{
+			"case": "document",
+			"passes": [
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "request_proposal_revision",
+					"harness_decision": "request_proposal_revision",
+					"decided_by": "contract_reviewer"
+				},
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "approve_turn_contract_review",
+					"harness_decision": "approve_turn_contract_review",
+					"decided_by": "contract_reviewer"
+				}
+			]
+		},
+		{
+			"case": "relationships",
+			"passes": [
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "request_proposal_revision",
+					"harness_decision": "request_proposal_revision",
+					"decided_by": "contract_reviewer"
+				},
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "approve_turn_contract_review",
+					"harness_decision": "approve_turn_contract_review",
+					"decided_by": "contract_reviewer"
+				}
+			]
+		},
+		{
+			"case": "created_dependencies",
+			"passes": [
+				{
+					"finish_reason": "tool_calls",
+					"model_tool": "approve_turn_contract_review",
+					"harness_decision": "approve_turn_contract_review",
+					"decided_by": "contract_reviewer"
+				}
+			]
+		}
+	]
+}

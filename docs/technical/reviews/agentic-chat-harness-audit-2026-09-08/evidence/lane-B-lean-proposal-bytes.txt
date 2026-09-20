@@ -1,0 +1,36 @@
+
+=== global lean (calendarConnected=true) ===
+  drop cancel_turn_contract (mount only when a pending contract exists) -420
+  trim update_onto_task 3256 -> 2923 (-333)
+  trim create_onto_project 2383 -> 1924 (-459)
+  drop delegate_task (cannot succeed off a focused project) -1805
+  trim list_calendar_events 1282 -> 999 (-283)
+  trim get_calendar_event_details 986 -> 769 (-217)
+  trim create_calendar_event 1487 -> 1167 (-320)
+  trim update_calendar_event 1827 -> 1490 (-337)
+  trim delete_calendar_event 1155 -> 826 (-329)
+  BEFORE 24 tools 28350 B  ->  AFTER 22 tools 23845 B  (-4505 B, -16%)
+
+=== global lean (calendarConnected=false) ===
+  BEFORE 24 tools 28350 B  ->  AFTER 17 tools 18589 B  (-9761 B, -34%)
+
+=== project lean (calendarConnected=true) ===
+  drop cancel_turn_contract (mount only when a pending contract exists) -420
+  drop get_workspace_overview on project (cross-project read on focused turn) -412
+  trim update_onto_task 3256 -> 2923 (-333)
+  trim list_calendar_events 1282 -> 999 (-283)
+  trim get_calendar_event_details 986 -> 769 (-217)
+  trim create_calendar_event 1487 -> 1167 (-320)
+  trim update_calendar_event 1827 -> 1490 (-337)
+  trim delete_calendar_event 1155 -> 826 (-329)
+  trim update_onto_document 1642 -> 1206 (-436)
+  trim link_onto_entities 1506 -> 1393 (-113)
+  BEFORE 31 tools 34425 B  ->  AFTER 29 tools 31223 B  (-3202 B, -9%)
+
+=== project lean (calendarConnected=false) ===
+  BEFORE 31 tools 34425 B  ->  AFTER 22 tools 24948 B  (-9477 B, -28%)
+
+=== project_create lean ===
+  drop cancel_turn_contract (mount only when a pending contract exists) -420
+  trim create_onto_project 2383 -> 1924 (-459)
+  BEFORE 6 tools 12377 B  ->  AFTER 5 tools 11497 B

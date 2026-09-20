@@ -1,0 +1,429 @@
+{
+	"model": "deepseek/deepseek-v4-flash",
+	"reviewer": "openai/gpt-5.6-luna",
+	"scope": "local provider and prompt source; in-memory tools; no Supabase or queue",
+	"reports": [
+		{
+			"id": "text-only",
+			"passed": true,
+			"elapsedMs": 3274,
+			"message": "Reply with exactly LOCAL SMOKE OK. Do not use tools.",
+			"text": "LOCAL SMOKE OK",
+			"requests": [
+				{
+					"role": "acting",
+					"round": 1,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 8907
+				}
+			],
+			"calls": [],
+			"writes": [],
+			"usage": [
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "acting",
+					"cost": 0.000353892364,
+					"promptTokens": 3934,
+					"completionTokens": 30,
+					"status": "success"
+				}
+			],
+			"error": null
+		},
+		{
+			"id": "read-only",
+			"passed": true,
+			"elapsedMs": 8869,
+			"message": "How many tasks are open in this project, and what are their names? Check the actual task list. Do not change anything.",
+			"text": "Let me pull the live task list for thisThere are **2 open tasks** in the **Local newsletter fixture** project, both in the \"todo\" state:\n\n1. **Draft welcome email**\n2. **Build landing page**\n\nBoth are currently at priority 3 (medium). Nothing was changed.",
+			"requests": [
+				{
+					"role": "acting",
+					"round": 1,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 8973
+				},
+				{
+					"role": "acting",
+					"round": 2,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 9915
+				}
+			],
+			"calls": [
+				{
+					"logicalProviderRound": 1,
+					"type": "read_tool",
+					"callTransitionId": "8fa87981-a096-56fa-8191-08ea8efb4037",
+					"resultTransitionId": "633d7f58-6fa0-5b93-bf17-572d3ae8bc0e",
+					"providerToolCallId": "call_243fe7338f5344c3932b599d",
+					"toolName": "list_onto_tasks",
+					"arguments": {
+						"project_id": "41000000-0000-4000-8000-000000000001"
+					}
+				}
+			],
+			"writes": [],
+			"usage": [
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "acting",
+					"cost": 0.00010278296,
+					"promptTokens": 3946,
+					"completionTokens": 143,
+					"status": "success"
+				},
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "acting",
+					"cost": 0.000115808042,
+					"promptTokens": 4197,
+					"completionTokens": 91,
+					"status": "success"
+				}
+			],
+			"error": null
+		},
+		{
+			"id": "single-create",
+			"passed": true,
+			"elapsedMs": 9144,
+			"message": "Add a task titled Proofread launch checklist with priority 2 in this project. Do not change anything else.",
+			"text": "Done. I added **Proofread launch checklist** as a new task with priority **2** in the **Local newsletter fixture** project. Its state is set to **todo**, and no other tasks or project details were changed.",
+			"requests": [
+				{
+					"role": "acting",
+					"round": 1,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 8961
+				},
+				{
+					"role": "final_response",
+					"round": 2,
+					"toolChoice": "none",
+					"toolNames": [],
+					"chars": 9872
+				}
+			],
+			"calls": [
+				{
+					"logicalProviderRound": 1,
+					"type": "mutating_tool",
+					"callTransitionId": "17b2ab90-5719-5d8e-9017-ee6562ba6e82",
+					"resultTransitionId": "5a5977a4-7eae-54c0-b1e8-19f631d9d530",
+					"logicalOperationId": "c469b848-c3b0-5d00-b944-78f25c8bcf3c",
+					"providerToolCallId": "call_76f9fab2a8cf4cc7afdf744d",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 2,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Proofread launch checklist"
+					},
+					"downstreamIdempotencySupported": true
+				}
+			],
+			"writes": [
+				{
+					"logicalProviderRound": 1,
+					"type": "mutating_tool",
+					"callTransitionId": "17b2ab90-5719-5d8e-9017-ee6562ba6e82",
+					"resultTransitionId": "5a5977a4-7eae-54c0-b1e8-19f631d9d530",
+					"logicalOperationId": "c469b848-c3b0-5d00-b944-78f25c8bcf3c",
+					"providerToolCallId": "call_76f9fab2a8cf4cc7afdf744d",
+					"toolName": "create_onto_task",
+					"operationName": "onto.task.create",
+					"arguments": {
+						"priority": 2,
+						"project_id": "41000000-0000-4000-8000-000000000001",
+						"title": "Proofread launch checklist"
+					},
+					"downstreamIdempotencySupported": true
+				}
+			],
+			"usage": [
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "acting",
+					"cost": 0.000104732292,
+					"promptTokens": 3942,
+					"completionTokens": 156,
+					"status": "success"
+				},
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "final_response",
+					"cost": 0.000204414042,
+					"promptTokens": 2171,
+					"completionTokens": 68,
+					"status": "success"
+				}
+			],
+			"error": null
+		},
+		{
+			"id": "exact-update",
+			"passed": true,
+			"elapsedMs": 8060,
+			"message": "Mark task 42000000-0000-4000-8000-000000000001 (Draft welcome email) done. Change only its state.",
+			"text": "The task **\"Draft welcome email\"** has been marked as done. Only its state was changed — priority, title, and project remain as they were.",
+			"requests": [
+				{
+					"role": "acting",
+					"round": 1,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 8952
+				},
+				{
+					"role": "final_response",
+					"round": 2,
+					"toolChoice": "none",
+					"toolNames": [],
+					"chars": 9820
+				}
+			],
+			"calls": [
+				{
+					"logicalProviderRound": 1,
+					"type": "mutating_tool",
+					"callTransitionId": "8ffb2f80-fc96-5177-ab33-8795bf140ccc",
+					"resultTransitionId": "f272d187-28e0-557b-a8be-01ff26e127af",
+					"logicalOperationId": "94b3b505-033b-5b7b-ab0f-683f44e051d2",
+					"providerToolCallId": "call_f07d67db10d44949aa28dd41",
+					"toolName": "update_onto_task",
+					"operationName": "onto.task.update",
+					"arguments": {
+						"state_key": "done",
+						"task_id": "42000000-0000-4000-8000-000000000001"
+					},
+					"downstreamIdempotencySupported": false
+				}
+			],
+			"writes": [
+				{
+					"logicalProviderRound": 1,
+					"type": "mutating_tool",
+					"callTransitionId": "8ffb2f80-fc96-5177-ab33-8795bf140ccc",
+					"resultTransitionId": "f272d187-28e0-557b-a8be-01ff26e127af",
+					"logicalOperationId": "94b3b505-033b-5b7b-ab0f-683f44e051d2",
+					"providerToolCallId": "call_f07d67db10d44949aa28dd41",
+					"toolName": "update_onto_task",
+					"operationName": "onto.task.update",
+					"arguments": {
+						"state_key": "done",
+						"task_id": "42000000-0000-4000-8000-000000000001"
+					},
+					"downstreamIdempotencySupported": false
+				}
+			],
+			"usage": [
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "acting",
+					"cost": 0.000103048778,
+					"promptTokens": 3953,
+					"completionTokens": 141,
+					"status": "success"
+				},
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "final_response",
+					"cost": 0.000203084952,
+					"promptTokens": 2150,
+					"completionTokens": 71,
+					"status": "success"
+				}
+			],
+			"error": null
+		},
+		{
+			"id": "ambiguous-target",
+			"passed": true,
+			"elapsedMs": 13300,
+			"message": "Mark the email task done.",
+			"text": "Got it — there are two email tasks in this project:\n\n1. **Draft welcome email**\n2. **Send follow-up email**\n\nWhich one would you like to mark as done?",
+			"requests": [
+				{
+					"role": "acting",
+					"round": 1,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 8884
+				},
+				{
+					"role": "final_response",
+					"round": 2,
+					"toolChoice": "none",
+					"toolNames": [],
+					"chars": 10222
+				}
+			],
+			"calls": [
+				{
+					"logicalProviderRound": 1,
+					"type": "read_tool",
+					"callTransitionId": "110efab8-b8c4-5183-b8a7-1957042092bd",
+					"resultTransitionId": "799d58a1-8d17-592a-9562-c95c112ad493",
+					"providerToolCallId": "call_1af8269b976a4c0bbae85559",
+					"toolName": "request_turn_clarification",
+					"arguments": {
+						"candidates": [
+							{
+								"id": "42000000-0000-4000-8000-000000000001",
+								"kind": "task",
+								"label": "Draft welcome email"
+							},
+							{
+								"id": "42000000-0000-4000-8000-000000000002",
+								"kind": "task",
+								"label": "Send follow-up email"
+							}
+						],
+						"question": "Which email task would you like to mark done?",
+						"reason": "Two email-related tasks exist in the project; \"the email task\" is ambiguous."
+					},
+					"decidedBy": "acting_model"
+				}
+			],
+			"writes": [],
+			"usage": [
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "acting",
+					"cost": 0.0004120179,
+					"promptTokens": 3928,
+					"completionTokens": 361,
+					"status": "success"
+				},
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "final_response",
+					"cost": 0.000203705194,
+					"promptTokens": 2219,
+					"completionTokens": 40,
+					"status": "success"
+				}
+			],
+			"error": null
+		},
+		{
+			"id": "complex-four-creates",
+			"passed": false,
+			"elapsedMs": 9528,
+			"message": "Add exactly four independent tasks named Draft A, Draft B, Draft C, and Draft D in this project. Give each priority 3. Do not create any other entities.",
+			"text": "",
+			"requests": [
+				{
+					"role": "acting",
+					"round": 1,
+					"toolChoice": "auto",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"create_onto_task",
+						"update_onto_task",
+						"request_turn_clarification",
+						"cancel_turn_contract"
+					],
+					"chars": 9007
+				},
+				{
+					"role": "acting",
+					"round": 2,
+					"toolChoice": "required",
+					"toolNames": [
+						"get_project_overview",
+						"list_onto_tasks",
+						"declare_turn_contract",
+						"request_turn_clarification"
+					],
+					"chars": 11942
+				}
+			],
+			"calls": [],
+			"writes": [],
+			"usage": [
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "StreamLake",
+					"role": "acting",
+					"cost": 0.000155857954,
+					"promptTokens": 3955,
+					"completionTokens": 438,
+					"status": "success"
+				},
+				{
+					"model": "deepseek/deepseek-v4-flash",
+					"provider": "openrouter",
+					"role": "acting",
+					"cost": null,
+					"promptTokens": 4263,
+					"completionTokens": 0,
+					"status": "failure"
+				}
+			],
+			"error": {
+				"message": "Agentic Chat provider start failed (404): No endpoints found for deepseek/deepseek-v4-flash.",
+				"code": "provider_stream_error",
+				"stack": "AgenticChatProviderExecutionError: Agentic Chat provider start failed (404): No endpoints found for deepseek/deepseek-v4-flash.\n    at AgenticChatTurnProviderAdapter.streamActingPass (/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/provider/turn-provider.ts:1188:12)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at AgenticChatTurnProviderAdapter.streamActingPass (/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/provider/turn-provider.ts:1298:7)\n    at /tmp/agentic-local-live-20260903.ts:49:20\n    at ViteNodeRunner.runModule (file:///Users/djwayne/buildos-platform/node_modules/.pnpm/vite-node@3.2.4_@types+node@20.19.17_jiti@1.21.7_terser@5.47.1_tsx@4.20.6_yaml@2.8.3/node_modules/vite-node/dist/client.mjs:397:4)\n    at ViteNodeRunner.directRequest (file:///Users/djwayne/buildos-platform/node_modules/.pnpm/vite-node@3.2.4_@types+node@20.19.17_jiti@1.21.7_terser@5.47.1_tsx@4.20.6_yaml@2.8.3/node_modules/vite-node/dist/client.mjs:375:3)\n    at ViteNodeRunner.cachedRequest (file:///Users/djwayne/buildos-platform/node_modules/.pnpm/vite-node@3.2.4_@types+node@20.19.17_jiti@1.21.7_terser@5.47.1_tsx@4.20.6_yaml@2.8.3/node_modules/vite-node/dist/client.mjs:189:11)\n    at ViteNodeRunner.executeFile (file:///Users/djwayne/buildos-platform/node_modules/.pnpm/vite-node@3.2.4_@types+node@20.19.17_jiti@1.21.7_terser@5.47.1_tsx@4.20.6_yaml@2.8.3/node_modules/vite-node/dist/client.mjs:162:10)\n    at CAC.run (file:///Users/djwayne/buildos-platform/node_modules/.pnpm/vite-node@3.2.4_@types+node@20.19.17_jiti@1.21.7_terser@5.47.1_tsx@4.20.6_yaml@2.8.3/node_modules/vite-node/dist/cli.mjs:102:28)"
+			}
+		}
+	]
+}

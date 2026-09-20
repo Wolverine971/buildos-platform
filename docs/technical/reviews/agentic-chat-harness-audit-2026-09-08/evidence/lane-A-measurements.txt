@@ -1,0 +1,75 @@
+# Lane A measurements (node, extracted from source at HEAD 226e51c31)
+
+## Worker runtime messages
+  9672  2418t Reviewer system prompt (TURN_CONTRACT_REVIEW_SYSTEM_PROMPT)
+  3556   889t   of which SEMANTIC_COMMISSION_GUIDANCE (14 rules)
+  1046   262t   of which CONTRACT_DECLARATION_GUIDANCE (2)
+  1048   262t ACTOR_COMMISSION_GUIDANCE (5 rules)
+  2436   609t Worker write routing msg: opening pass (contract deferred)
+  3299   825t Worker write routing msg: contract mounted (full)
+  2500   625t Semantic disposition gate instruction (allowReads)
+   581   146t TOOL_EXECUTION_BATCHING_INSTRUCTION
+   840   210t Situational: worker write rules (4 lines)
+  1258   315t Situational: worker web research rules (5 lines)
+   736   184t Situational: review delegation rules (3 lines)
+   653   164t Situational: living workspace rules (4 lines)
+   990   248t Situational: web-lane WEB_RESEARCH_RULE_LINES (dead on worker)
+   261    66t Tool-result security wrapper per result (canonical JSON)
+   770   193t Validation repair base lines (8)
+
+## Acting prompt static sections (worker scaffold: dynamicSkillTools=false)
+   113    29t Header + visible-content contract
+   482   121t Identity and Mission
+   289    73t Capabilities, Skills, and Tools (worker)
+   378    95t Operating Strategy (worker)
+  1073   269t Operating Strategy (default scaffold, for comparison)
+  1160   290t Final Response Contract
+  1701   426t Safety and Data Rules (worker, no member bullet)
+  1794   449t Safety and Data Rules (default scaffold)
+  4271  1068t STATIC PREFIX global/project (worker)
+   546   137t project_create: Operating Strategy (reviewed_shell)
+  1051   263t project_create: Safety (reviewed_shell)
+  2272   568t project_create STATIC PREFIX (worker)
+   393    99t Focus workflow: OVERVIEW_GUIDANCE_LITE (global, renders)
+   516   129t Focus workflow: PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE (project, DOES NOT render on worker)
+  1316   329t Focus workflow: PROJECT_CREATE_REVIEWED_SHELL_WORKFLOW_LITE
+  2772   693t Focus workflow: PROJECT_CREATE_COMPOUND_WORKFLOW_LITE (dead in prod)
+   174    44t DATE_ARGUMENT_SCOPE_RULE
+--- bullet counts: identity 4 strategy 4 final 4 safety 7
+
+## Sanitizer false-positive test
+--- IN (283 chars)
+Here is where the beta stands:
+
+## Open items
+- Confirm the launch date with the design partners (due Friday).
+- Finish onboarding flow — in progress, due Apr 20.
+- Draft beta invite email — todo.
+
+Existing tasks: 3 open, 0 overdue. Want me to create a task for the pricing decision?
+--- OUT (185 chars)
+Here is where the beta stands:
+
+## Open items
+
+- Finish onboarding flow — in progress, due Apr 20.
+
+- Draft beta invite email — todo.
+
+Want me to create a task for the pricing decision?
+
+--- IN (88 chars)
+I updated the task. Structure: the plan now has three phases. End by Friday if possible.
+--- OUT (19 chars)
+I updated the task.
+
+--- IN (81 chars)
+The document is 4 pages long. It includes: goals, risks, and a timeline. Perfect.
+--- OUT (29 chars)
+The document is 4 pages long.
+
+--- IN (105 chars)
+No changes were made. Do not claim the permit was approved — there is no evidence in the records checked.
+--- OUT (21 chars)
+No changes were made.
+

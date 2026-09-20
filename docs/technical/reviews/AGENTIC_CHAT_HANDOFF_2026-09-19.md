@@ -9,6 +9,22 @@
 
 ## Read this first
 
+**Latest continuation, September 19, 8:16pm EDT:** DJ deployed the UI changes at `8951b7dc9`
+and requested an inexpensive smoke. One real-model durable review passed for **$0.00573078**,
+along with 79 free recovery/admission/restoration checks. The tested worker revision matches
+Railway's successful deployment; its durable review switches and allowlist remain unset.
+See the [light-smoke results and boundaries](AGENTIC_CHAT_LIGHT_SMOKE_2026-09-19.md).
+Specialist definitions can proceed; full hosted acceptance remains deferred.
+
+**Earlier continuation, September 19:** DJ explicitly deferred research and the full Agentic Chat QA gate.
+The first live radar scans were inspected; see the
+[radar follow-up](AGENTIC_CHAT_RADAR_LIVE_CHECK_2026-09-19.md). The current local change set adds
+the composer’s **Review project** choice, durable workflow progress/restoration, and the freshness
+card’s **Review deeper** draft action. Production rollout switches remain unchanged. See the
+[UI implementation record](AGENTIC_CHAT_REVIEW_UI_2026-09-19.md) and the proposed
+[specialist agents/Jev next steps](../../architecture/SPECIALIST_AGENTS_AND_JEV_NEXT_STEPS_2026-09-19.md).
+The original handoff below records the earlier deployment state.
+
 - **The most urgent task is the freshness radar.** It went live for DJ's account minutes before
   this was written.
 - Your first job is to watch its first real scans, fix anything that breaks, and report the
@@ -17,17 +33,17 @@
 
 ## 1. What is live right now
 
-| Item | State |
-|---|---|
-| `main` / origin | In sync at `262e86bfc`. Everything below is committed and pushed. |
-| Web (Vercel) | Deployed from the push. |
-| `agentic-chat-worker` (Railway, 4 replicas) | Running `262e86bfc`. |
-| `daily-brief-worker` (Railway) | Running `262e86bfc`. **This is the general job-queue worker, and the radar runs here**, not on the chat worker. |
-| Production migrations | Applied and recorded in the ledger: `20260914165546`, `…203007`, `…203008` (86/87), and `20260918200000`–`200300` (radar). |
-| Radar mode | `FRESHNESS_RADAR_MODE=live` on `daily-brief-worker`. |
-| DJ's radar feature flags | ON: `freshness_radar`, `freshness_radar.surfaces`, `freshness_radar.inbox_cleanup`. **OFF: `freshness_radar.auto_apply`.** |
-| 86/87 workflow switches | All OFF: `AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED`, `…_V4_PREPARATION_ENABLED`, `AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED`. |
-| Jev chat tool narrowing (another session's work) | `AGENTIC_CHAT_JEV_TOOL_SELECTION` defaults to `on`, so it affects every chat turn. This was not built here. |
+| Item                                             | State                                                                                                                         |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `main` / origin                                  | In sync at `262e86bfc`. Everything below is committed and pushed.                                                             |
+| Web (Vercel)                                     | Deployed from the push.                                                                                                       |
+| `agentic-chat-worker` (Railway, 4 replicas)      | Running `262e86bfc`.                                                                                                          |
+| `daily-brief-worker` (Railway)                   | Running `262e86bfc`. **This is the general job-queue worker, and the radar runs here**, not on the chat worker.               |
+| Production migrations                            | Applied and recorded in the ledger: `20260914165546`, `…203007`, `…203008` (86/87), and `20260918200000`–`200300` (radar).    |
+| Radar mode                                       | `FRESHNESS_RADAR_MODE=live` on `daily-brief-worker`.                                                                          |
+| DJ's radar feature flags                         | ON: `freshness_radar`, `freshness_radar.surfaces`, `freshness_radar.inbox_cleanup`. **OFF: `freshness_radar.auto_apply`.**    |
+| 86/87 workflow switches                          | All OFF: `AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED`, `…_V4_PREPARATION_ENABLED`, `AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED`. |
+| Jev chat tool narrowing (another session's work) | `AGENTIC_CHAT_JEV_TOOL_SELECTION` defaults to `on`, so it affects every chat turn. This was not built here.                   |
 
 DJ's user id is `255735ad-a34b-4ca9-942c-397ed8cc1435`.
 
@@ -40,17 +56,17 @@ After DJ brain dumps about a project in agentic chat, the radar works like this:
 2. **Queue job.** The trigger then enqueues a `freshness_radar_scan` job.
 3. **Scan.** The worker builds a small context and asks Jev (`typesafe/jev-1.13`, via
    `https://openrouter.ai/api/alpha/decisions`) three batches of typed questions:
-   - is each item stale, and what change would fix it;
-   - is each goal or milestone on track;
-   - is any pending inbox item now obsolete.
+    - is each item stale, and what change would fix it;
+    - is each goal or milestone on track;
+    - is any pending inbox item now obsolete.
 4. **Decide.** Code applies thresholds, grounding checks and the allowlist. Every judgment is
    written to the ledger (`freshness_scans`, `freshness_flags`, `freshness_track_scores`).
 5. **Surfaces** (live mode only):
-   - a chat card (an injected `chat_messages` row: `message_type 'assistant_message'`,
-     `metadata.kind='freshness_radar_card'`);
-   - one AI Inbox bundle per project (a `project_suggestions` row, kind `freshness_update`);
-   - badges and gauges in the project UI;
-   - inbox auto-retire, with undo.
+    - a chat card (an injected `chat_messages` row: `message_type 'assistant_message'`,
+      `metadata.kind='freshness_radar_card'`);
+    - one AI Inbox bundle per project (a `project_suggestions` row, kind `freshness_update`);
+    - badges and gauges in the project UI;
+    - inbox auto-retire, with undo.
 
 **Sources of truth:**
 
@@ -59,15 +75,15 @@ After DJ brain dumps about a project in agentic chat, the radar works like this:
 - Tracker: `tasker/88-chat-workflow-ordinary-chat.md`. It holds DJ's decisions and the coordinator
   defaults he may veto.
 - Code:
-  - `apps/worker/src/workers/freshness-radar/**`
-  - `packages/smart-llm/src/jev-client.ts`
-  - `packages/shared-types/src/freshness-radar.types.ts`
-  - `packages/shared-agent-ops/src/inbox-index.ts`
-  - `packages/shared-agent-ops/src/proposal-context/verify-operations.ts`
-  - `apps/web/src/lib/server/freshness-radar.service.ts`
-  - `apps/web/src/routes/api/onto/projects/[id]/freshness/**`
-  - `apps/web/src/lib/components/agent/FreshnessRadarCard.svelte`
-  - `apps/web/src/lib/components/project/freshness/**`
+    - `apps/worker/src/workers/freshness-radar/**`
+    - `packages/smart-llm/src/jev-client.ts`
+    - `packages/shared-types/src/freshness-radar.types.ts`
+    - `packages/shared-agent-ops/src/inbox-index.ts`
+    - `packages/shared-agent-ops/src/proposal-context/verify-operations.ts`
+    - `apps/web/src/lib/server/freshness-radar.service.ts`
+    - `apps/web/src/routes/api/onto/projects/[id]/freshness/**`
+    - `apps/web/src/lib/components/agent/FreshnessRadarCard.svelte`
+    - `apps/web/src/lib/components/project/freshness/**`
 
 **DJ's decisions (2026-09-18):**
 
@@ -123,9 +139,9 @@ from public.freshness_flags where scan_id = '<scan id>' order by probability des
   Check `railway logs --service daily-brief-worker` (always pass `--service`: the CLI is linked to
   `libri-worker` by default).
 - **Scan `skipped`.** Read `skip_reason`. Common causes:
-  - no window text;
-  - the chat session is not linked to the project;
-  - everything was excluded because the chat already edited it.
+    - no window text;
+    - the chat session is not linked to the project;
+    - everything was excluded because the chat already edited it.
 - **Scan `failed`.** Any Jev or network failure fails closed and silently: no card is posted and
   nothing is written. The key the worker uses is `PRIVATE_OPENROUTER_API_KEY` on
   `daily-brief-worker`.
@@ -144,6 +160,7 @@ live scans with **zero grounding violations** among candidates that would have a
 
 While the flag is off, such a candidate is recorded as `disposition='drafted'` with
 `disposition_reason='draft_auto_apply_disabled'` and `features->>'auto_apply_check'='passed'`.
+
 - A violation is one of these candidates that DJ marked "Not out of date"
   (`outcome_source='user_marked_not_stale'`), dismissed, or undid.
 - A success is `user_approved`.
@@ -155,6 +172,7 @@ Before asking DJ, report a count, a precision figure, and one or two example fla
 `pnpm --filter @buildos/worker backtest:freshness` replays past chats read-only through the same
 scanner stages and reports AUROC, a reliability chart, top-3 precision, would-auto-apply precision
 (target ≥ 0.95), and retire precision.
+
 - It needs the triple opt-in: `FRESHNESS_BACKTEST_DJ_OK=yes`, `--confirm DJ-OK:<date>`, and
   `--execute`.
 - It reads production data. **DJ declined it on 2026-09-18.** Do not run it without a new, explicit
@@ -172,6 +190,7 @@ deploy: `project_suggestions`/`inbox_items` rows with quarantine reasons created
 
 DJ waived the full gate after each change set on 2026-09-18. **One** full gate plus live acceptance
 runs here. See `tasker/89-chat-workflow-integration-acceptance.md`. Still owed:
+
 - `pnpm agentic:gate` on the isolated QA database. The latest real results were 46/52 (09-15) and
   an invalid 40/52 (a second gate shared the QA database). **There is no lock on the QA
   database:** before running, check `ps` and `ls -lt output/agentic-gate` for another gate.
@@ -203,23 +222,23 @@ runs here. See `tasker/89-chat-workflow-integration-acceptance.md`. Still owed:
   branches.
 - **Other sessions edit this same checkout,** including Codex and the Jev tool-selector work
   (`provider/jev-tool-selector.ts`, `catalog/surfaces.ts`, `agenticChatWorkerSurfaceBudget.test.ts`).
-  - Commit only your own files: `git add -- <paths>` then `git commit -m ... -- <paths>`.
-  - Check `git diff --cached --name-only` first.
-  - Never `git add -A`, `commit -a`, `stash`, `reset`, or check out over someone else's files.
-  - Commit only when DJ asks. **Do not push**; DJ pushes.
+    - Commit only your own files: `git add -- <paths>` then `git commit -m ... -- <paths>`.
+    - Check `git diff --cached --name-only` first.
+    - Never `git add -A`, `commit -a`, `stash`, `reset`, or check out over someone else's files.
+    - Commit only when DJ asks. **Do not push**; DJ pushes.
 - **`supabase db query --linked` is PRODUCTION** (ref `iwifjt…`). QA (`daudvq…`) is reached only
   through `--workdir <scratch>` with a QA `project-ref`.
 - **Applying a migration to prod:**
-  - Never run a blanket `supabase db push`, because the ledger has drifted.
-  - Apply one file at a time, wrapped in `BEGIN`/`COMMIT`, with `supabase db query --linked --file`.
-  - Then run `supabase migration repair --status applied <version> --linked`.
-  - Run a read-only precheck and a postcheck.
-  - Every production write needs DJ's explicit OK.
+    - Never run a blanket `supabase db push`, because the ledger has drifted.
+    - Apply one file at a time, wrapped in `BEGIN`/`COMMIT`, with `supabase db query --linked --file`.
+    - Then run `supabase migration repair --status applied <version> --linked`.
+    - Run a read-only precheck and a postcheck.
+    - Every production write needs DJ's explicit OK.
 - **Validation.** Use narrow `pnpm --filter <pkg> exec vitest run <files>` through the machine-wide
   `test-gate` (at most 2 heavy runs at once). Never run root `test:run`, `verify` or `pre-push`, and
   never pass worker or pool flags.
-  - The radar's Postgres end-to-end test needs the sandbox disabled.
-  - Worker typecheck needs `pnpm --filter @buildos/shared-types build` first.
+    - The radar's Postgres end-to-end test needs the sandbox disabled.
+    - Worker typecheck needs `pnpm --filter @buildos/shared-types build` first.
 - **Milestone dates.** The web milestone route parses a bare `YYYY-MM-DD` as UTC midnight, which
   shows as the previous day in the US. Radar milestone drafts send local midnight (`zonedMidnightIso`).
   Task and goal drafts keep civil dates.
@@ -246,23 +265,23 @@ runs here. See `tasker/89-chat-workflow-integration-acceptance.md`. Still owed:
 ## 6. What changed on 2026-09-18 (for reference)
 
 - **Housekeeping:**
-  - `bd356380b`: the three prod-applied workflow migrations, SQL tests and contract.
-  - `e1d14e942`: trackers.
+    - `bd356380b`: the three prod-applied workflow migrations, SQL tests and contract.
+    - `e1d14e942`: trackers.
 - **86/87 merged:** `a8521ae14`.
 - **87 finished:**
-  - `2b35755aa`: stall → best durable answer.
-  - `49a5de7b2`: priced V4 Flash fallback.
-  - `7702ca006`: crash cuts, plus the stuck-stall fix.
-  - `b90e573bf`: real restart proof.
+    - `2b35755aa`: stall → best durable answer.
+    - `49a5de7b2`: priced V4 Flash fallback.
+    - `7702ca006`: crash cuts, plus the stuck-stall fix.
+    - `b90e573bf`: real restart proof.
 - **Radar:**
-  - Plan: `c2acac6c2`.
-  - Lane A (`fc8c1edcc`…`3b5ed1955`): schema, `JevClient`, verify-ops, inbox helpers.
-  - Lane B (`b6d1642f8`…`1e12e8de2`): scanner and backtest.
-  - Lane C (`1e1a19f26`…`359f152ab`): card, badges, routes.
-  - Integration fix: `fd8b76f4d`.
-  - Tracker: `262e86bfc`.
+    - Plan: `c2acac6c2`.
+    - Lane A (`fc8c1edcc`…`3b5ed1955`): schema, `JevClient`, verify-ops, inbox helpers.
+    - Lane B (`b6d1642f8`…`1e12e8de2`): scanner and backtest.
+    - Lane C (`1e1a19f26`…`359f152ab`): card, badges, routes.
+    - Integration fix: `fd8b76f4d`.
+    - Tracker: `262e86bfc`.
 - **Test evidence on merged `main`:**
-  - radar and inbox worker suites: 126/126, including a real disposable-Postgres end-to-end scan;
-  - web freshness, chat session and decide suites: 116/116;
-  - SQL contracts: 52/52;
-  - worker typecheck clean.
+    - radar and inbox worker suites: 126/126, including a real disposable-Postgres end-to-end scan;
+    - web freshness, chat session and decide suites: 116/116;
+    - SQL contracts: 52/52;
+    - worker typecheck clean.

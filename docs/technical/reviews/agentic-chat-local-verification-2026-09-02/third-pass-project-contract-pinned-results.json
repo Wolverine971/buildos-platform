@@ -1,0 +1,150 @@
+{
+	"passed": true,
+	"pinInitialDeepInfra": true,
+	"at": "2026-09-03T04:24:54.477Z",
+	"durationMs": 14566,
+	"failure": null,
+	"validationFailures": [
+		{
+			"logicalProviderRound": 1,
+			"type": "read_tool",
+			"callTransitionId": "0c8d1ccd-c94a-5da2-b0d6-af8aaa3773d7",
+			"resultTransitionId": "cd936012-eee9-502d-9157-28ea1b128ae9",
+			"providerToolCallId": "call_e5e0950d381342f3b2579f0b",
+			"toolName": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "type_key"]
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "due_at"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 3,
+						"required_fields": ["title"],
+						"target_ids": []
+					}
+				],
+				"summary": "Create project \"Weekly Audio Launch\" with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\""
+			},
+			"validationFailure": {
+				"error": "Tool validation failed: Invalid turn contract: The project outcome must omit required_fields and changes because the create_onto_project arguments carry the project values.",
+				"toolCategory": null
+			}
+		}
+	],
+	"requests": [
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": {
+				"allow_fallbacks": false,
+				"data_collection": "deny",
+				"order": ["deepinfra"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": {
+				"allow_fallbacks": true,
+				"data_collection": "deny",
+				"order": ["deepinfra", "deepseek", "alibaba", "cloudflare"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash-20260423",
+			"provider": {
+				"allow_fallbacks": false,
+				"data_collection": "deny",
+				"order": ["nextbit"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		}
+	],
+	"calls": [
+		{
+			"logicalProviderRound": 2,
+			"type": "read_tool",
+			"callTransitionId": "b039f9dd-966a-5629-a42c-92a85af9e5db",
+			"resultTransitionId": "811864cf-4e6a-5df0-bb5f-acbaca4204f7",
+			"providerToolCallId": "call_d0bf0eda2cba45ec85e50e5f",
+			"toolName": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"minimum_successful_effects": 1
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "due_at"]
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 3,
+						"required_fields": ["title"]
+					}
+				],
+				"summary": "Create project \"Weekly Audio Launch\" with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\""
+			},
+			"decidedBy": "acting_model"
+		}
+	],
+	"counts": {
+		"project": 1,
+		"goal": 1,
+		"task": 3
+	},
+	"usage": [
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": "openrouter",
+			"cost": null,
+			"promptTokens": 4048,
+			"completionTokens": 0,
+			"status": "failure"
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash-20260423",
+			"provider": "NextBit",
+			"cost": 0.000165732,
+			"promptTokens": 3613,
+			"completionTokens": 219,
+			"status": "success"
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": "NextBit",
+			"cost": 0.000227192,
+			"promptTokens": 4096,
+			"completionTokens": 197,
+			"status": "success"
+		}
+	],
+	"capacity": {
+		"observedAtMs": 1788409494477,
+		"configured": true,
+		"available": true,
+		"activeRequests": 0,
+		"concurrency": 1,
+		"degradedUntilMs": null
+	}
+}

@@ -1,0 +1,396 @@
+{
+	"since": "2026-09-04T17:14:00.000Z",
+	"executions": 246,
+	"rows": [
+		{
+			"tool": "get_document_tree",
+			"n": 7,
+			"fail": 0,
+			"raw_p50": 2412,
+			"raw_p90": 11723,
+			"raw_max": 11723,
+			"model_p50": 2674,
+			"model_p90": 6752,
+			"model_max": 6752,
+			"guarded": 2,
+			"guarded_share": 0.29
+		},
+		{
+			"tool": "create_onto_document",
+			"n": 8,
+			"fail": 0,
+			"raw_p50": 1921,
+			"raw_p90": 11485,
+			"raw_max": 11485,
+			"model_p50": 2417,
+			"model_p90": 6723,
+			"model_max": 6723,
+			"guarded": 1,
+			"guarded_share": 0.13
+		},
+		{
+			"tool": "update_onto_document",
+			"n": 2,
+			"fail": 0,
+			"raw_p50": 13066,
+			"raw_p90": 13066,
+			"raw_max": 13066,
+			"model_p50": 6724,
+			"model_p90": 6724,
+			"model_max": 6724,
+			"guarded": 1,
+			"guarded_share": 0.5
+		},
+		{
+			"tool": "read_document_section",
+			"n": 35,
+			"fail": 2,
+			"raw_p50": 323,
+			"raw_p90": 943,
+			"raw_max": 5671,
+			"model_p50": 820,
+			"model_p90": 1440,
+			"model_max": 6171,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "declare_turn_contract",
+			"n": 34,
+			"fail": 10,
+			"raw_p50": 557,
+			"raw_p90": 1754,
+			"raw_max": 3323,
+			"model_p50": 823,
+			"model_p90": 2020,
+			"model_max": 3589,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "create_onto_task",
+			"n": 21,
+			"fail": 0,
+			"raw_p50": 738,
+			"raw_p90": 1248,
+			"raw_max": 1338,
+			"model_p50": 1128,
+			"model_p90": 1343,
+			"model_max": 1413,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "get_document_outline",
+			"n": 17,
+			"fail": 0,
+			"raw_p50": 1025,
+			"raw_p90": 1028,
+			"raw_max": 1125,
+			"model_p50": 1521,
+			"model_p90": 1524,
+			"model_max": 1655,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "request_proposal_revision",
+			"n": 16,
+			"fail": 0,
+			"raw_p50": 1865,
+			"raw_p90": 4405,
+			"raw_max": 5093,
+			"model_p50": 2135,
+			"model_p90": 4675,
+			"model_max": 5363,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "get_onto_task_details",
+			"n": 16,
+			"fail": 0,
+			"raw_p50": 748,
+			"raw_p90": 812,
+			"raw_max": 926,
+			"model_p50": 1237,
+			"model_p90": 1296,
+			"model_max": 1414,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "request_turn_clarification",
+			"n": 15,
+			"fail": 4,
+			"raw_p50": 440,
+			"raw_p90": 846,
+			"raw_max": 898,
+			"model_p50": 711,
+			"model_p90": 1117,
+			"model_max": 1169,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "approve_turn_contract_review",
+			"n": 14,
+			"fail": 0,
+			"raw_p50": 760,
+			"raw_p90": 782,
+			"raw_max": 782,
+			"model_p50": 1033,
+			"model_p90": 1055,
+			"model_max": 1055,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "create_onto_goal",
+			"n": 10,
+			"fail": 0,
+			"raw_p50": 1210,
+			"raw_p90": 1412,
+			"raw_max": 1412,
+			"model_p50": 1471,
+			"model_p90": 1673,
+			"model_max": 1673,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "list_onto_tasks",
+			"n": 8,
+			"fail": 0,
+			"raw_p50": 2026,
+			"raw_p90": 2162,
+			"raw_max": 2162,
+			"model_p50": 3283,
+			"model_p90": 3419,
+			"model_max": 3419,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "list_calendar_events",
+			"n": 8,
+			"fail": 0,
+			"raw_p50": 1081,
+			"raw_p90": 1466,
+			"raw_max": 1466,
+			"model_p50": 1346,
+			"model_p90": 1731,
+			"model_max": 1731,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "get_project_overview",
+			"n": 6,
+			"fail": 0,
+			"raw_p50": 4652,
+			"raw_p90": 4728,
+			"raw_max": 4728,
+			"model_p50": 5110,
+			"model_p90": 5193,
+			"model_max": 5193,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "create_onto_project",
+			"n": 5,
+			"fail": 0,
+			"raw_p50": 747,
+			"raw_p90": 761,
+			"raw_max": 761,
+			"model_p50": 1011,
+			"model_p90": 1025,
+			"model_max": 1025,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "search_all_projects",
+			"n": 5,
+			"fail": 0,
+			"raw_p50": 3140,
+			"raw_p90": 5660,
+			"raw_max": 5660,
+			"model_p50": 3429,
+			"model_p90": 6018,
+			"model_max": 6018,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "web_search",
+			"n": 3,
+			"fail": 0,
+			"raw_p50": 7355,
+			"raw_p90": 7726,
+			"raw_max": 7726,
+			"model_p50": 7316,
+			"model_p90": 7648,
+			"model_max": 7648,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "get_onto_document_details",
+			"n": 3,
+			"fail": 0,
+			"raw_p50": 1927,
+			"raw_p90": 11461,
+			"raw_max": 11461,
+			"model_p50": 1744,
+			"model_p90": 4770,
+			"model_max": 4770,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "update_onto_task",
+			"n": 3,
+			"fail": 0,
+			"raw_p50": 590,
+			"raw_p90": 1074,
+			"raw_max": 1074,
+			"model_p50": 1069,
+			"model_p90": 1557,
+			"model_max": 1557,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "get_external_account_status",
+			"n": 3,
+			"fail": 0,
+			"raw_p50": 868,
+			"raw_p90": 871,
+			"raw_max": 871,
+			"model_p50": 1140,
+			"model_p90": 1143,
+			"model_max": 1143,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "web_visit",
+			"n": 2,
+			"fail": 1,
+			"raw_p50": 9810,
+			"raw_p90": 9810,
+			"raw_max": 9810,
+			"model_p50": 10067,
+			"model_p90": 10067,
+			"model_max": 10067,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "list_email_accounts",
+			"n": 2,
+			"fail": 0,
+			"raw_p50": 850,
+			"raw_p90": 850,
+			"raw_max": 850,
+			"model_p50": 1114,
+			"model_p90": 1114,
+			"model_max": 1114,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "move_document_in_tree",
+			"n": 1,
+			"fail": 0,
+			"raw_p50": 1510,
+			"raw_p90": 1510,
+			"raw_max": 1510,
+			"model_p50": 1776,
+			"model_p90": 1776,
+			"model_max": 1776,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "search_project",
+			"n": 1,
+			"fail": 0,
+			"raw_p50": 2132,
+			"raw_p90": 2132,
+			"raw_max": 2132,
+			"model_p50": 2399,
+			"model_p90": 2399,
+			"model_max": 2399,
+			"guarded": 0,
+			"guarded_share": 0
+		},
+		{
+			"tool": "search_onto_projects",
+			"n": 1,
+			"fail": 0,
+			"raw_p50": 5508,
+			"raw_p90": 5508,
+			"raw_max": 5508,
+			"model_p50": 6475,
+			"model_p90": 6475,
+			"model_max": 6475,
+			"guarded": 0,
+			"guarded_share": 0
+		}
+	],
+	"tz_offsets_in_results": {
+		"web_visit": {
+			"Z": 1
+		},
+		"web_search": {
+			"Z": 3
+		},
+		"get_onto_document_details": {
+			"-04:00": 7
+		},
+		"create_onto_goal": {
+			"+00:00": 20
+		},
+		"update_onto_task": {
+			"+00:00": 8
+		},
+		"get_onto_task_details": {
+			"-04:00": 32,
+			"+00:00": 15
+		},
+		"update_onto_document": {
+			"+00:00": 4
+		},
+		"create_onto_document": {
+			"+00:00": 16
+		},
+		"get_document_tree": {
+			"-04:00": 27,
+			"Z": 3,
+			"+00:00": 6
+		},
+		"create_onto_task": {
+			"+00:00": 57
+		},
+		"get_project_overview": {
+			"-04:00": 76,
+			"-05:00": 4,
+			"+00:00": 34,
+			"Z": 2
+		},
+		"list_onto_tasks": {
+			"-04:00": 25,
+			"+00:00": 15
+		},
+		"list_calendar_events": {
+			"-04:00": 12,
+			"Z": 4
+		},
+		"search_onto_projects": {
+			"-04:00": 11
+		}
+	}
+}

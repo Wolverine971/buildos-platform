@@ -1,0 +1,1988 @@
+{
+	"A1-prompt-and-context": {
+		"owns": [
+			"apps/web/src/lib/services/agentic-chat-lite/prompt/**",
+			"apps/web/src/lib/services/agentic-chat-v2/context-loader.ts",
+			"apps/web/src/lib/services/agentic-chat-v2/context-models.ts",
+			"supabase/migrations/* (only if F114/F115 truly need a new RPC cap; prefer no migration this pass)"
+		],
+		"note": "F02: ONLY the situational-rules.ts part (rewrite WORKER_WRITE_TURN_RULE_LINES[0] as the ordered recipe leading with the direct cases; match the code: focused entity, one-hit read of that kind, or a typed UUID that a read this turn loaded). The controls.ts and mutationToolCatalog.ts parts of F02 belong to other packages. F01: render the web-research block only when looksLikeWebResearchTurn (or equivalent research phrasing) and delete the review-delegation block from situational rules (it lives in the delegate_task description; WP-B adds one restraint sentence there). F117: web side only (pass the user timezone into the intelligence day buckets and any date the prompt renders); worker receipts belong to WP-B. F114: the verifier's cheapest step (render projectDigest priorityTasks/statusLines even when intelligence exists; digest slice 5 -> 18 with 80-char descriptions; keep the JSON index only for unlinked documents). F115: render all accessible project names with ids and open/overdue counts on global; stop loading project_logs for the global bundle. F116: START_HERE_INLINE_PROMPT_MAX_CHARS=8000 for the prompt only, cut at the last heading boundary, name omitted headings. F18/F11: dedupe the untrusted statements and the triple project_create rules without changing any rule's meaning. Update prompt-size-budget.test.ts ratchets honestly (re-baseline with a comment naming this audit).",
+		"findings": [
+			{
+				"id": "F02",
+				"severity": "P1",
+				"title": "The opening pass carries two incompatible write routes, one of them naming a tool that is not mounted",
+				"claim": "WORKER_WRITE_TURN_RULE_LINES[0] says \"Writing to an existing entity: call declare_turn_contract first, unless \u2026\" and 9 of 17 mutation tool descriptionOverrides end the same way, but on global/project the opening pass removes declare_turn_contract and the worker's routing message opens with \"the large complex-write contract route is deferred in this opening pass \u2026 propose the complete concrete mutation batch\" \u2014 then 1,300 chars later in the same message ACTOR_COMMISSION_GUIDANCE[0] says \"a complex one calls declare_turn_contract first with the complete outcome set\". The gate instruction repeats that line while mounting no mutation tools.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.ts",
+						"lines": "74",
+						"note": "W1: call declare_turn_contract first"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "(9 of 17 descriptionOverride entries)",
+						"note": "tool descriptions also say declare_turn_contract first"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/tool-surface.ts",
+						"lines": "57-69,121-137",
+						"note": "declare_turn_contract removed from the opening pass"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "397-398",
+						"note": "routing message says contract route deferred, propose the batch"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "404",
+						"note": "ACTOR_COMMISSION_GUIDANCE[0] in the same message says declare first"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/controls.ts",
+						"lines": "39",
+						"note": "ACTOR_COMMISSION_GUIDANCE source"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/disposition.ts",
+						"lines": "72",
+						"note": "gate repeats the line with no mutation tools mounted"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/repair-policy.ts",
+						"lines": "143-232",
+						"note": "unmounted tool call triggers one-shot surface repair"
+					}
+				],
+				"proposed_fix": "One sentence on the opening pass that matches the deferral (\"Propose the concrete tool calls. The worker routes anything that touches an existing entity it did not resolve to review; you do not choose the route.\"), delete \"declare_turn_contract first\" from W1 and from the nine tool descriptions (Lane B), and drop ACTOR_COMMISSION_GUIDANCE from the deferred variant.",
+				"risk": "Report notes the fix spans Lane B tool descriptions; \"given by the user\" in W1 already overstates the code per Lane I \u00a73.2",
+				"verifier_corrections": "",
+				"verifier_better_fix": "",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F01",
+				"severity": "P1",
+				"title": "\"Rules for This Turn\" is no longer situational: 2,050 chars of web-research and delegation rules render on every worker turn",
+				"claim": "resolveLitePromptTurnSituation sets webResearch whenever a web tool is mounted and admission sets reviewDelegation whenever delegate_task is mounted; since stage S6 both are on every global and project surface, so hasActiveSituation is always true and the 2,050-char section renders on \"what is overdue?\" exactly as on a research turn \u2014 even though the file's own header says these rules were moved out of Operating Strategy because an always-on placement measured zero effect. The bytes also ride inside the reviewer's evidence slice.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.ts",
+						"lines": "147,154",
+						"note": "webResearch set when a web tool is mounted"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+						"lines": "664",
+						"note": "reviewDelegation set when delegate_task is mounted"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/surfaces.ts",
+						"lines": "110-112",
+						"note": "web tools and delegate_task on every global/project surface since S6"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.ts",
+						"lines": "5-11",
+						"note": "header states always-on placement measured zero effect"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.ts",
+						"lines": "90-96,108-112",
+						"note": "R1-R5 web rules and D1-D3 delegation rules"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "159",
+						"note": "same bytes included in reviewer evidence slice"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.ts",
+						"lines": "18-19, 46, 147",
+						"note": "premise 'those tools mount only when research is plausible' no longer true; webToolsMounted trigger"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+						"lines": "660-664",
+						"note": "delegation block keyed on mount by design"
+					}
+				],
+				"proposed_fix": "Render web rules only on looksLikeWebResearchTurn, or have the worker append them as a system notice after the first successful web_search (the worker already appends notices deterministically); delete the delegation block and put one sentence in the delegate_task description.",
+				"risk": "Research turns that are not detectable by phrasing would only receive the web rules after the first web call; R5 (\"do not repeat a denied query\") describes an egress block the model cannot see coming regardless",
+				"verifier_corrections": "",
+				"verifier_better_fix": "",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F116",
+				"severity": "P2",
+				"title": "START HERE is cut at 2,400 chars from the end for half of DJ's projects (09-02 \u00a72.6 still live)",
+				"claim": "The loader keeps 12,000 chars of the START HERE document but the prompt excerpt truncates at 2,400 chars from the start and appends a headings list, dropping Decisions / Current state / Open questions \u2014 the sections the prompt tells the model to use it for; 26 of DJ's 52 START HERE docs exceed 2,400 (p90 9,646).",
+				"evidence": [
+					{
+						"file": "packages/shared-agent-ops/src/ontology/start-here.ts",
+						"lines": "5-6, 711-748",
+						"note": "START_HERE_PROMPT_MAX_CHARS 2400 vs LOAD 12000; truncateByChars from the start"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts",
+						"lines": "611-660",
+						"note": "section says 'use this first for purpose, decisions, current state, open questions'"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/context-loader.ts",
+						"lines": "743-758, 2371-2426",
+						"note": "12,000-char load via two sequential queries"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-F-evidence2.json",
+						"lines": "start_here",
+						"note": "52 docs; 26 > 2,400; p50 2,610; p90 9,646"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/focused-document-context.ts",
+						"lines": "3-11"
+					},
+					{
+						"file": "packages/shared-agent-ops/src/ontology/start-here.ts",
+						"lines": "5"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/tool-payload-compaction.ts",
+						"lines": "971, 1732-1749"
+					}
+				],
+				"proposed_fix": "Render the managed status block + every heading + the body to 8,000 chars cut at a heading boundary with omitted headings named; or a section-priority excerpt (status, decisions, current state, open questions first). Minimal version: raise the constant to 8,000.",
+				"risk": "Low.",
+				"verifier_corrections": "'+1.4k tokens on the p90 project only' understates cost: the 26 docs between 2,400 and 8,000 chars each grow the prompt by up to ~1.4k tokens per pass, billed on every pass of every project turn. Still small next to the 9.7k-token tool schemas, but it is not p90-only.",
+				"verifier_better_fix": "Do not raise the shared constant; add START_HERE_INLINE_PROMPT_MAX_CHARS=8000 (or pass 8000 at build-lite-prompt.ts:624) so the MCP project-status excerpt keeps its 2,400 budget, and cut at the last heading boundary before the budget, naming omitted headings. Regenerate the start_here materialized/prepared prompts by nothing more than a deploy \u2014 the loader already retains 12,000 chars.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F114",
+				"severity": "P1",
+				"title": "Project context renders <=6 task refs with no descriptions; the computed 'Top open tasks' digest is never shown",
+				"claim": "'What's open in this project?' cannot be answered from context for 15 of DJ's 41 projects: the loader fetches 18 tasks with 280-char descriptions, the index renders at most 6 refs per kind minus anything already listed in dated/recent lines (which carry no state or priority), descriptions are never rendered, 83% of open tasks are undated so never appear in dated lines, and buildProjectDigest's 'Loaded work / Top open tasks' lines are shadowed whenever intelligence exists \u2014 always in production.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts",
+						"lines": "57, 1783-1817, 1939-1965, 2002-2027",
+						"note": "LOADED_CONTEXT_ENTITY_REF_LIMIT = 6; exclusion of already-rendered ids; ref = {id,title,state_key,date,priority}"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts",
+						"lines": "1485-1575, 1638-1660",
+						"note": "digest computes priorityTasks/counts/statusLines; buildTimelineSummary prefers intelligence lines on 37/37 snapshots"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/context-loader.ts",
+						"lines": "702-714, 1092, 1157-1240",
+						"note": "mapTask keeps a 280-char description no renderer reads; entity_scopes completeness meta built then stripped"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-F-evidence2.json",
+						"lines": "tasks_per_project",
+						"note": "15/41 projects >6 open tasks, p90 33, 83% undated"
+					}
+				],
+				"proposed_fix": "Render every open task (cap 40) as one line \u2014 id, title, state, priority, local due date, first 80 chars of description; goals/milestones/plans likewise (cap 12); replace the JSON index and its ~750 chars of count metadata with a one-line completeness statement derived from context_meta.entity_scopes.",
+				"risk": "Bounded by the cap; large projects show 40 + 'N more'.",
+				"verifier_corrections": "'Render every open task (cap 40)' cannot be done in prompt code alone: the RPC caps tasks at 18 (load_fastchat_context.sql:504 LIMIT 18) and the loader at 18 (context-loader.ts:78), so a SQL function migration is required, and that project branch is also served to MCP/API-key agents via op-execution-gateway.projects.ts:115 (harmless growth, but a second consumer). The size-budget ratchet the 09-02 \u00a76 keeps (prompt-size-budget.test.ts:272, 12,850 chars) must be re-baselined. If the JSON index is deleted, unlinked-document refs must be preserved \u2014 the index is the only place unlinked docs get ids when the Knowledge Map is rendered (build-lite-prompt.ts:1949-1957). The '+0-2k tokens on p90' estimate is ~5k chars net after removing the index; still within the stated token range.",
+				"verifier_better_fix": "Cheapest first step with most of the value: render the already-computed projectDigest.priorityTasks/statusLines even when intelligence exists (one branch change in buildTimelineSummary), raise the digest slice from 5 to the loaded 18 with an 80-char description, and keep the index only for unlinked documents; raise the RPC/loader cap to 40 in a follow-up migration once the ratchet is re-baselined.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F115",
+				"severity": "P1",
+				"title": "Global context loads 222 KB to render 8 of 46 projects and an id-less metadata JSON; 'which projects do I have' needs a truncated tool round",
+				"claim": "The global RPC returns every project's summary plus goals/milestones/plans/logs for all projects (145 KB of project_logs with before/after JSONB) and the loader keeps 8 bundles; the prompt renders 8 project lines, 3 overdue of 86, and a 783-char JSON index with zero entity ids, then steers to get_workspace_overview (max 20, guarded 76%) or search_onto_projects (query required). There is no single-round answer to 'list my projects'.",
+				"evidence": [
+					{
+						"file": "packages/shared-types/src/functions/load_fastchat_context.sql",
+						"lines": "47-288",
+						"note": "global branch: all summaries, per-project ranked goals/milestones/plans, logs \u22646 per project with after_data/before_data"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/context-loader.ts",
+						"lines": "47, 2136-2249",
+						"note": "GLOBAL_CONTEXT_PROJECT_LIMIT = 8; logs mapped to recent_activity that only renders when no intelligence exists"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts",
+						"lines": "1651-1655, 2275-2292, 2345, 2478-2495",
+						"note": "bundle activity unused with intelligence; 10 status lines max; 'use get_workspace_overview'; 3 overdue + 5 due soon"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/definitions/utility.ts",
+						"lines": "84-91",
+						"note": "get_workspace_overview project_limit maximum 20"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-F-evidence2.json",
+						"lines": "rpc_global",
+						"note": "222,026 chars, project_logs 145,091, 288-488 ms"
+					}
+				],
+				"proposed_fix": "Return from the global RPC only what renders: every project as {id, name, state, next_step\u2264120, open, overdue, due_soon} (\u224890 chars \u00d7 46 \u2248 4 KB) using the existing rollup query; drop project_logs/plans/milestones/goal descriptions; render overdue top 10 by recency and all due-soon; delete the metadata JSON.",
+				"risk": "Users with hundreds of projects need a line cap (e.g. 80 + 'N more'); nobody is near it.",
+				"verifier_corrections": "Cited context-loader.ts:47 is :51 in the working tree. 'Using the existing rollup query' understates the work: today it is a web-side onto_tasks query after the RPC, so it must be ported into SQL. '300-500 ms \u2192 ~100 ms' and 'the model reports 8 projects as the whole workspace or invents the rest' are unmeasured \u2014 the prompt does tell the model more projects exist (:2344), and no lane cites a live turn doing this; the real, evidenced cost is one tool round returning a guarded payload.",
+				"verifier_better_fix": "Two small changes capture most of the value without a prompt redesign: drop project_logs (and goal/plan descriptions) from the global RPC branch \u2014 145 KB of the 222 KB that nothing renders \u2014 and mount list_onto_projects (limit \u226450, already registered and worker-executable) on the global surface so 'list my projects' is one un-guarded round. The full per-project {open, overdue, due_soon} rollup-in-SQL rewrite can follow.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F117",
+				"severity": "P2",
+				"title": "Day buckets and rendered dates are UTC while the frame promises local; write receipts return UTC",
+				"claim": "build_fastchat_project_intelligence computes days_delta and overdue/due-soon buckets with date_trunc on UTC now() and stamps timezone 'UTC'; formatDate renders UTC dates; the frame states the local date and that 'timestamps in tool results are rendered in your timezone', but write receipts are 100% +00:00 and reads mix -04:00 and +00:00 in one payload. The 09-02 P2 item is unfixed.",
+				"evidence": [
+					{
+						"file": "packages/shared-types/src/functions/build_fastchat_project_intelligence.sql",
+						"lines": "33, 314, 343, 382",
+						"note": "'timezone','UTC'; date_trunc('day', ...) days_delta"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts",
+						"lines": "788-800, 2543-2577, 2934-2936",
+						"note": "local frame and tool-result promise; formatDate = toISOString().slice(0,10)"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-F-toolsizes-post0904.json",
+						"lines": "tz_offsets_in_results",
+						"note": "create_onto_task 57/57 +00:00; get_onto_task_details 32 \u00d7 -04:00, 15 \u00d7 +00:00"
+					}
+				],
+				"proposed_fix": "Pass the user's zone into the intelligence function (or bucket in TS from the same rows); render all loaded-context dates as local YYYY-MM-DD; one normalizer in the worker execution adapter that renders every tool-result timestamp as local ISO with offset.",
+				"risk": "Low; one SQL parameter plus two helpers.",
+				"verifier_corrections": "The read half is already fixed (de43925ca / 4ac73bde7, on origin/main): projectReadResultInstantsToTimezone runs on every shared read; the 'mixed offsets in one payload' claim is an artifact of aggregating a window that spans pre- and post-deploy executions, not a per-payload observation. 'Buckets computed with date_trunc' is wrong \u2014 bucket membership uses instant comparisons and is zone-correct; only days_delta and the rendered date strings are UTC-day. Remaining true defects: intelligence/loaded-context date lines and relative-day labels in the prompt are UTC, and write receipts are never projected.",
+				"verifier_better_fix": "Skip the SQL parameter (migration + gen:all + a SECURITY DEFINER signature change). TS-only: in build-lite-prompt.ts thread the `timezone` already in scope at :1584 into formatWorkSignalLines/formatRecentChangeLines/formatTimelineItem and replace formatDate/dayDelta with an Intl-zoned civil-day version (describeLocalClock at :982 already shows the pattern), recomputing the relative day from signal.date instead of trusting SQL days_delta. For write receipts, apply the existing exported projectReadResultInstantsToTimezone (runtime index.ts:27) to mutation results in the worker at the same boundary the read path uses, with the memoized turnTimezoneFor(userId, turnRunId) \u2014 one call, no new helper. Update build-lite-prompt.test.ts date expectations accordingly.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F18",
+				"severity": "P2",
+				"title": "\"Untrusted\" is stated 5+ times in the system prompt and 261 chars per tool result, on every pass",
+				"claim": "The untrusted-data rule appears in Safety, the focus header, the Start Here preamble, the focus-document preamble, the continuity hint, and as a 261-char model_context_notice on every tool result. A six-read turn carries ~1.6k chars of wrapper into every later pass.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts",
+						"lines": "1370,582-583,632,720-721",
+						"note": "Safety rule, focus header, Start Here preamble, focus-document preamble"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/last-turn-context.ts",
+						"lines": "510-511",
+						"note": "continuity hint restates untrusted"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/tool-payload-compaction.ts",
+						"lines": "41-42,238-260",
+						"note": "261-char model_context_notice on every tool result"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/tool-payload-compaction.ts",
+						"lines": "238-260",
+						"note": "addToolResultSecurityNotice"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/request-builders.ts",
+						"lines": "262",
+						"note": "buildToolPayloadForModel call site"
+					}
+				],
+				"proposed_fix": "One rule in the cacheable prefix, one-word tags elsewhere (\"source\":\"tool_result\"); keep the long sentence only on web_visit/email results, where injected text actually arrives.",
+				"risk": "not stated in report",
+				"verifier_corrections": "Three of the five 'restatements' are already the one-line tags the fix asks for (:582-583 and :720-721 are 25-60 char parentheticals, not full sentences), so the redundancy is mostly the tool-result wrapper plus :632 and :1370. The cost is real but small: earlier-pass messages are byte-identical across passes and hit provider prefix caching, so the marginal cost is ~65 tokens per new result and cached tokens for the rest. The fix's claim that injected text 'actually arrives' only via web_visit/email is wrong for this codebase: the case-9 hostile source (cedar-house/fixture.ts:78-92) is a stored document read back through get_onto_document_details/read_document_section, and the continuity hint is client-provided; restricting the sentence to web/email removes it from the exact canary path.",
+				"verifier_better_fix": "Take the D8 variant, not the A10 variant: keep model_context_source:'tool_result_untrusted' and tool_name on every result (turn-provider test 5510 still passes), drop model_context_notice everywhere (-157 chars/result), and rely on the Safety rule at build-lite-prompt.ts:1370, which already names 'tool results' as untrusted source data; update the four expectations in tool-payload-compaction.test.ts. Rerun cedar-house case 9 turn 2 before merging.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F11",
+				"severity": "P3",
+				"title": "project_create states its rules three times per turn",
+				"claim": "The focus workflow (1,316 chars), the gate system message (1,043) and the reviewer user message (1,043) all say shell-first / entities: [] / which child tools exist; the create_onto_project description says it a fourth time; \"state_key vs props.facets.stage\" is already enum-enforced.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts",
+						"lines": "146-157",
+						"note": "PROJECT_CREATE_REVIEWED_SHELL_WORKFLOW_LITE, 1,316 chars"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/disposition.ts",
+						"lines": "40-45",
+						"note": "gate shell guidance, 1,043 chars"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "99-103",
+						"note": "reviewer user message shell guidance, 1,043 chars"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "893-894",
+						"note": "create_onto_project description says it a fourth time"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "911-960",
+						"note": "state_key vs props.facets.stage enum-enforced"
+					}
+				],
+				"proposed_fix": "Keep the tool description + one shell block at the gate; cut the focus workflow to four lines.",
+				"risk": "not stated in report",
+				"verifier_corrections": "",
+				"verifier_better_fix": "",
+				"consequence_better_fix": ""
+			}
+		]
+	},
+	"A2-admission-and-skills": {
+		"owns": [
+			"apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+			"apps/web/src/lib/services/agentic-chat-v2/turn-preparation.ts",
+			"apps/web/src/lib/services/agentic-chat-v2/session-service.ts (loaded-skills history summary only)",
+			"apps/web/src/lib/services/agentic-chat/tools/domains/skill-gate-preload.ts",
+			"apps/web/src/lib/services/agentic-chat/tools/domains/domain-sensing.ts (the preload wrapper/render text only)",
+			"apps/web/src/lib/services/agentic-chat/tools/domains/operational-skill-intent.ts",
+			"apps/web/src/lib/services/agentic-chat/tools/skills/definitions/task_management/SKILL.md",
+			"apps/web/src/lib/services/agentic-chat/tools/skills/definitions/document_workspace/SKILL.md",
+			"packages/agentic-chat-runtime/src/loop/turn-intent.ts"
+		],
+		"note": "F44: remove the dead lexical intent classifier call and the two dead checkpoint queries from admission (verify each is dead by reading; keep resumeCheckpoint field handling in the artifact untouched). F69: the verifier's two-line version: pass alreadyLoadedSkillIds: [] for operational preloads only, keep dedupe for craft/explicit-ask, and skip the loaded-skills history summary on the worker lane so skill_load never appears in a worker prompt. F70: trim the productivity allowlist to skills that can actually fire on the worker and fix the catalog comments. F71: rewrite the worker-rendered blocks of task_management and document_workspace so every step names only tools mounted on the worker surfaces (read packages/agentic-chat-runtime/src/catalog/surfaces.ts), <= 40 lines each, update example first; and replace the preload wrapper (Source / Skill-load gate: SATISFIED BY PRELOAD / Next step: do not call skill_load / outcome_card_load / references unavailable) with a plain one-line heading such as \"Playbook for task writes this turn:\". F75: keep the classifier for the playbook only; do not gate the write rule on it (WP-A1 makes the write rule short enough to render whenever write tools are mounted) -- coordinate by reading situational-rules.ts after WP-A1 if it has landed, otherwise leave a TODO comment naming F75.",
+		"findings": [
+			{
+				"id": "F44",
+				"severity": "P2",
+				"title": "Web admission still runs the retired lexical intent classifier and two dead checkpoint queries on every non-prepared turn",
+				"claim": "resolveFastChatTurnIntent returns emptyIntent() unconditionally, buildFastChatPendingTurnIntent returns null, and the only reader (turnIntent?.requiresWrite === true) is always false. Separately, loadWorkerResumeCheckpoint issues an RPC (recover_agentic_chat_resume_checkpoints) plus a chat_turn_checkpoints select on every turn without a prepared-admission hit (50 of 55 production turns) although nothing has written that table since the supervisor was deleted in f28e8f7bc; createTurnCheckpoint and persist_agentic_chat_supervisor_question_checkpoint have no callers.",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/turn-intent.ts",
+						"lines": "68-76, 115-124, 143-151",
+						"note": "every function returns empty/null/false; expiry check at :95-98 for a value nulled by 08-13/08-14 migrations"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+						"lines": "657",
+						"note": "only reader: turnIntent?.requiresWrite === true, always false"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+						"lines": "391-398, 993-1012",
+						"note": "loadWorkerResumeCheckpoint: RPC + chat_turn_checkpoints select per non-prepared turn"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/checkpoint-service.server.ts",
+						"lines": "104",
+						"note": "createTurnCheckpoint has no caller; 486-line file"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/request-builders.ts",
+						"lines": "174-177",
+						"note": "still injects resumeCheckpoint.resumeMessage if present"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/turn-preparation.ts",
+						"lines": "118-136",
+						"note": "turn-intent wiring"
+					}
+				],
+				"proposed_fix": "Delete loop/turn-intent.ts, the web turn-intent.ts wrapper and turn-preparation.ts:118-136 wiring (270 + 16 + ~20 lines); delete checkpoint-service.server.ts, loadWorkerResumeCheckpoint and the resumeCheckpoint plumbing (486 + ~40 lines); inline or delete the two TurnDigest/TurnSupervisorDecision type imports.",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "None material. Note that the fix removes TS only; the SQL RPCs, the chat_turn_checkpoints table and the validate_agentic_chat_turn_intent_snapshot_v1 trigger remain and need no migration. situational-rules.ts:138/151 turnIntentRequiresWrite should collapse to the pendingTurnContract signal at the same time.",
+				"verifier_better_fix": "Same deletion, staged: (1) drop loadWorkerResumeCheckpoint + resumeCheckpoint plumbing and the checkpoint service first (that is the two live DB calls per turn); (2) then delete turn-intent.ts, the web wrapper, turn-preparation.ts:118-136 and loop/turn-outcome.ts together, since turn-outcome imports turn-intent.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F69",
+				"severity": "P1",
+				"title": "Once-per-history-window dedupe removes the playbook from every following write turn of the same kind while the prompt is rebuilt each turn",
+				"claim": "The system prompt (including `Rules for This Turn`) is regenerated per turn and prior turns' system prompts are not in `modelHistory`; the dedupe treats the playbook as remembered. On turns 2\u20135 of a task-editing session the model gets a 485-char ledger system message saying `task_management` is \"loaded\" plus \"Do not call skill_load again \u2026 Reload only when the current turn needs full markdown/examples\" \u2014 and no playbook.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+						"lines": "636-646",
+						"note": "comment: 'A skill therefore fires once per history window, not once per turn'"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+						"lines": "1192-1222",
+						"note": "synthesized loaded_skill_executions from skill_preloaded_id metadata"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+						"lines": "126",
+						"note": "HISTORY_LIMIT default 10"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/session-service.ts",
+						"lines": "250-271",
+						"note": "ledger text; :262-266 names skill_load; :631-637 appended as a system message"
+					},
+					{
+						"file": "tasker/80-agentic-chat-post-audit-follow-through.md",
+						"lines": "335-338",
+						"note": "WP-5 proposes widening to a per-session ledger, which would remove the playbook from every later turn of the session"
+					}
+				],
+				"proposed_fix": "Pick one: (a) render the playbook on every turn where the intent fires and delete the continuity-row projection, the ledger message on the worker lane and `alreadyLoadedSkillIds` (keep `skill_preloaded_id` metadata as telemetry only) \u2014 cost ~1,000 tokens per write turn of that kind; or (b) fold the ~400-token essentials into the tool descriptions / a per-entity string that always renders on write turns, and delete the preload dedupe with it (the G8 direction). Do not implement WP-5's per-session ledger. Decision for DJ: (a) costs tokens on repeat writes; (b) is the structural change.",
+				"risk": "(a) increases spend on write-heavy sessions; guard with the prompt-size budget test and the health report's preload breakdown. (b) is a prompt-architecture change; the restraint canary and the three battery write classes must be rerun.",
+				"verifier_corrections": "'9 of 17 write turns had no preload; the window dedupe is one of the two possible causes' is speculative attribution: lane-G-skill-preloads-since-0904.json has no per-turn cause breakdown, so the share owed to dedupe vs classifier misses is unmeasured. The playbook is absent on those turns, but the model still sees its own prior tool calls in history, which partially substitutes for the rule text.",
+				"verifier_better_fix": "Two-line change instead of (a) or (b): in resolveWorkerSkillPreload pass alreadyLoadedSkillIds: [] to resolveOperationalSkillPreload only (operational playbooks are per-turn rules), keep the dedupe for craft/explicit-ask preloads (one-shot playbooks), and skip buildLoadedSkillHistorySummary when composing worker-lane history so skill_load never appears in a worker prompt. Keep skill_preloaded_id metadata as telemetry.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F70",
+				"severity": "P2",
+				"title": "Half the productivity allowlist can never fire; the list and catalog overstate what the worker has",
+				"claim": "Of 12 allowlisted skills, `google_calendar`, `project_creation`, `research_capture`, `task_state_updates` and `people_context` are in no domain, no outcome card and no intent kind; `plan_management` is in the intent map but its tools are mounted on no surface; so 6 of 12 are unreachable and production shows 2 firing.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/tools/domains/skill-gate-preload.ts",
+						"lines": "69-82",
+						"note": "PRODUCTIVITY_PRELOAD_ALLOWLIST"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/tools/domains/catalog.ts",
+						"lines": "381, 427",
+						"note": "people_context appears only as a capability id, never as a skill"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/tools/domains/operational-skill-intent.ts",
+						"lines": "44-49, 58-63",
+						"note": "intent map covers task/document/plan/calendar only"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/surfaces.ts",
+						"lines": "125-147",
+						"note": "no plan tools on any surface"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/worker-tool-policy.ts",
+						"lines": "49-71",
+						"note": "all six people_context tools unavailable"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/skills/registry.ts",
+						"lines": "67-68",
+						"note": "google_calendar and calendar_management are two skills for one tool set"
+					}
+				],
+				"proposed_fix": "Shrink the allowlist to what can fire (task, document, calendar, audit, forecast, context-engineering) or to what G8 keeps; delete `google_calendar`; rewrite or unpublish `project_creation` (payload shape no longer matches the shell adapter); route `plan` and contact capabilities to Lane B as mount decisions.",
+				"risk": "Marketing pages list these skills; unpublishing changes public content. Guard: `skill-registry-disk-parity.test.ts`.",
+				"verifier_corrections": "operational-skill-intent.ts:52-56 comment still says 'Calendar tools are not executable on the worker today' \u2014 stale since 09-04; create/update_calendar_event are on the global surface, so calendar_management IS reachable now (consistent with the finding's reachable list, but the source comment contradicts it). google_calendar's skill id is referenced by a public blog (apps/web/src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md), so deletion changes public content beyond the marketing skill list. Deleting (rather than rewriting) project_creation would break registry/capability-catalog.ts:44-55, which the external gateway uses.",
+				"verifier_better_fix": "Shrink the allowlist to the reachable set (it only gates automatic preload; skill_search/skill_load and the gateway are unaffected). Rewrite project_creation's Contract/Examples to the shell-only payload rather than unpublishing it, since capability-catalog.ts depends on the id. Fold google_calendar's unique content into calendar_management and redirect the blog. Fix the stale calendar comment in operational-skill-intent.ts.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F71",
+				"severity": "P2",
+				"title": "What renders from the operational SKILL.md files is written for a different runtime",
+				"claim": "The rendered blocks (a) name tools by dotted op ids the tools array does not use (task_management 16, document_workspace 17 references), (b) tell the model to use tools that are not mounted (`onto.task.docs.*`, `delete_onto_document`, `onto.task.search`), (c) repeat rules the same section and the tool description already carry (exact-id rule 5x on a task-write turn; `state_key` rule verbatim twice in the same section), (d) render a create example on update turns because only `examples[0]` renders, and (e) carry 15 lines of `### Direct tool packaging` that the parser never lifts.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/skills/definitions/task_management/SKILL.md",
+						"lines": "65-67, 70-84, 95, 102, 141",
+						"note": "packaging sub-bullets under H4 dropped by parser; only update-by-exact-id example is example 4"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/skills/definitions/document_workspace/SKILL.md",
+						"lines": "44, 64",
+						"note": "onto.task.docs.* and delete_onto_document references"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/skills/markdown-skill.ts",
+						"lines": "263-277",
+						"note": "parser only lifts numbered items from Procedure"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/tools/domains/skill-gate-preload.ts",
+						"lines": "349",
+						"note": "only examples[0] renders"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.ts",
+						"lines": "54-58, 73-78",
+						"note": "TASK_STATE_RULE_LINE and EXACT_ID_RULE_LINE duplicate skill content"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "269-270, 471-472",
+						"note": "tool description overrides already carry the exact-id rule"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/surfaces.ts",
+						"lines": "203-210",
+						"note": "one-engine removed alias folding, so a dotted name emitted as a call is an unknown tool"
+					}
+				],
+				"proposed_fix": "Rewrite the three reachable operational skills in tool names only, <=40 lines each, with the update example first for task/document; delete the packaging sub-bullets; remove rules already in the write rules or the tool description overrides.",
+				"risk": "Marketing pages render the same files; keep the public copy readable. Guard: the `crosscheck-skill-tools.mjs` script as a test.",
+				"verifier_corrections": "(a) is false for task_management: its rendered worker block contains no dotted op ids; the '16 references' count comes from the whole file (the lane-G crosscheck script counts Related Tools ops and inline mentions file-wide). The name-translation risk is real only for document_workspace. (b) `onto.task.search` is in an unrendered example, not in the worker block. (e) the packaging sub-bullets are dropped only in short format; 'full' loads render preserved markdown (skill-load.ts:313-323), so /skills and the gateway do see them. '5x on a task-write turn' counts EXACT_ID_RULE_LINE, which is a different rule.",
+				"verifier_better_fix": "Scope the rewrite to the sections the worker renders (Activation, Procedure numbered steps, Policy, Contract, Examples) in snake tool names, put the update-by-exact-id example first, and delete the H4 packaging block. Do NOT rewrite `## Related Tools` into snake names: skill-load.ts:175-190 looks those dotted ops up in registry.ops to produce materialized_tools, normalizeGatewayOpName is now identity (gateway-op-aliases.ts:16-18), and the ops are the external MCP/agent-call contract \u2014 renaming them silently empties materialized_tools. Alternatively render only examples that match the turn's intent (update example on update turns) via a tiny selector in renderWorkerPreloadedSkillPromptContent instead of examples[0]. Add the rendered-block (not file-wide) crosscheck as the test.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F75",
+				"severity": "P3",
+				"title": "One regex classifier gates both the playbook and the worker's write-route rule",
+				"claim": "`looksLikeMutationTurn` decides whether the model is told \"Writing to an existing entity: call declare_turn_contract first\" and which playbook fires. Its question-lead rule drops polite asks that lack a strong pattern \u2014 \"Can you schedule a call with Ana tomorrow?\" hits no `STRONG_MUTATION_PATTERNS` entry (the calendar idiom requires \"on/onto my calendar\") \u2014 so such a turn gets neither the calendar playbook nor the write rules, and the worker's redirect-to-contract behavior (audit F-A3) is the model's first notice.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/tools/domains/operational-skill-intent.ts",
+						"lines": "68-80, 90-91, 182-184, 201-203",
+						"note": "STRONG_MUTATION_PATTERNS, question-lead rule, looksLikeMutationTurn"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.ts",
+						"lines": "74",
+						"note": "declare_turn_contract write rule keyed on the same classifier"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+						"lines": "206",
+						"note": "skill_preloaded_id metadata key written per user message"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/lane-H-telemetry.md",
+						"lines": "266-276",
+						"note": "preload breakdown by turn class; situational_rules up to 8,877 chars when a preload fires"
+					}
+				],
+				"proposed_fix": "Render the 840-char worker write rules whenever a write tool is on the surface (the 09-02 objection was rendering on pure questions; the worker rules are four lines, not the old block), and use the classifier only to choose the playbook.",
+				"risk": "not stated in report",
+				"verifier_corrections": "Wrong file path (agentic-chat/tools/domains, not agentic-chat-lite). 'The worker's redirect-to-contract behavior is the model's first notice' is false for the eight common update tools whose descriptions state the rule. The example turn (calendar create) never routes to the contract, so '\u22121 round on classifier misses' does not apply to it; it applies only to existing-entity misses on the three tools without the description rule or when the model ignores descriptions. H11's alternative fix is not implementable at prompt-build time.",
+				"verifier_better_fix": "Keep the intent gate. Add the 'otherwise declare_turn_contract first' sentence to link_onto_entities, update_calendar_event and delete_calendar_event descriptions; extend STRONG_MUTATION_PATTERNS with schedule/book/assign/set the/fix/put \u2026 on hold so polite existing-entity asks classify; tighten the preload gate by requiring an entity-kind hit rather than strongMutation alone for the playbook (addresses H11 without a new signal).",
+				"consequence_better_fix": ""
+			}
+		]
+	},
+	"B-tool-surface": {
+		"owns": [
+			"packages/agentic-chat-runtime/src/catalog/**",
+			"packages/agentic-chat-runtime/src/worker-tool-policy.ts",
+			"apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+			"apps/worker/src/workers/agentic-chat/createOntoProjectMutationAdapter.ts",
+			"apps/worker/src/workers/agentic-chat/tableMutationAdapter.ts",
+			"apps/worker/src/workers/agentic-chat/mutation-argument-normalizers.ts"
+		],
+		"note": "F25: remove delegate_task from the global surface (keep on project). F28: stop mounting declare_read_only_turn on the acting surfaces and delete the four strip sites that exist only because it was mounted (keep the reviewer-side definition if the reviewer lane still uses it -- verify). F30: fix update_onto_document description (merge_llm advertised x3 but rejected; dead merge_instructions param). F35: list_onto_tasks description says what the payload carries so the model does not do N+1 detail reads; update_onto_task.project_id description stops claiming it is required. F29: the verifier's worker-only version: drop entities/relationships from requiredNames and the projected schema, tolerate empty arrays at the boundary, default missing arrays to [] in normalizeProjectShell, restore the realm list plus one type_key example; leave the shared validator alone. F37: fix stale comments and mismatched enums across sibling tools where cheap. F33: mount request_email_account_connection when the user has NO connected mailbox (the inverse of today), keep the read/search tools gated on a connected mailbox. F02 (this package's part): trim \"; otherwise declare_turn_contract first\" from the three description overrides that ride the opening pass (update_onto_task, update_onto_document, link_onto_entities) and make the remaining sentence say the worker routes unresolved targets to review. Also add one restraint sentence to the delegate_task description (from the deleted review-delegation rules: only delegate when the user asks for background work). Also F117 worker side: write receipts render instants in the user timezone with offset like reads do (find where mutation receipts format dates; if it is outside your files, report it instead of editing). Update the per-profile description test that forbids naming unmounted tools, and the catalog fitness snapshot, honestly.",
+		"findings": [
+			{
+				"id": "F25",
+				"severity": "P1",
+				"title": "`delegate_task` is mounted on `global` but can never succeed there",
+				"claim": "GLOBAL_DIRECT_TOOL_NAMES includes delegate_task, but the adapter requires project_id to equal the admitted context project and throws mutation_project_scope_mismatch otherwise; on a global turn requestProjectId returns the explicit context project, which is null, so every global call fails after the model has already paid a round. Production agrees: 10 calls, 6 failed (60%) in the 14-day table. Its 660-char override description says \"Exact focused project UUID\" while the tool is mounted where nothing is focused. Cost: 1,805 B on every global opening pass.",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/surfaces.ts",
+						"lines": "107",
+						"note": "GLOBAL_DIRECT_TOOL_NAMES includes delegate_task"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/delegateTaskMutationAdapter.ts",
+						"lines": "81-88",
+						"note": "requires project_id === admitted context project, throws mutation_project_scope_mismatch"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationAdapterBoundary.ts",
+						"lines": "90-110",
+						"note": "requestProjectId returns explicit context project, null on global"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "1073",
+						"note": "override description says 'Exact focused project UUID'"
+					},
+					{
+						"file": "docs/technical/reviews/AGENTIC_CHAT_TURN_EXECUTOR_AUDIT_2026-09-02.md",
+						"lines": "\u00a72.5",
+						"note": "14-day prod: 10 delegate_task calls, 6 failed"
+					}
+				],
+				"proposed_fix": "Remove delegate_task from GLOBAL_DIRECT_TOOL_NAMES (surfaces.ts:107); keep it on the project surface where the adapter can succeed.",
+				"risk": "Not stated in report beyond: users in global context lose an affordance that already cannot succeed there.",
+				"verifier_corrections": "'Production agrees: 10 calls, 6 failed' is misattributed and stale (enum-cast failures on 08-30, fixed by migration 20260830195800; 4/4 since; 0 calls in the 09-08 window). 'Can never succeed there' is true for UI-originated turns but an API caller can pass context.projectId on a non-project type. Cited line 1073 is off by ~15 lines.",
+				"verifier_better_fix": "Two options for DJ: (a) delete from global as proposed, updating the two pinned-list tests; or (b) make the affordance real instead of removing it: in delegateTaskMutationAdapter.ts:81-88 accept the explicit project_id when the context is not project-scoped (contextProjectId === null), since :111 already enforces write access on that project and the write-routing floor already sends global-context parent-project selection to the contract lane. Either way fix the 'ontology' context branch in requestProjectId or route ontology like project.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F28",
+				"severity": "P2",
+				"title": "`declare_read_only_turn` mounted on all surfaces and stripped at four sites",
+				"claim": "declare_read_only_turn is mounted in all three direct-name lists, then removed at four sites (worker-tool-policy.ts:81, tool-surface.ts:92 artifact-only set, tool-surface.ts:161, tool-surface.ts:185). 57 non-test references across worker/runtime/web. Its one live use is the reviewer lane, which builds its own copy anyway. 2 reviewer calls in prod, 1 in battery; never mounted for the actor.",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/surfaces.ts",
+						"lines": "80, 159",
+						"note": "mounted in all three direct-name lists"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/worker-tool-policy.ts",
+						"lines": "81",
+						"note": "strip site 1"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/tool-surface.ts",
+						"lines": "92, 161, 185",
+						"note": "strip sites 2-4"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-phase.ts",
+						"lines": "284-288, 304-312",
+						"note": "reviewer lane builds its own copy"
+					}
+				],
+				"proposed_fix": "Keep the definition for the reviewer lane; remove the mounts from the three direct-name lists and three of the four strip sites.",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "Reference count is overstated: rg over ts+svelte excluding tests gives 44 lines in 16 files, not 57. The '2 reviewer calls in prod, 1 in battery' figures are database claims I could not verify read-only.",
+				"verifier_better_fix": "Remove the name from the three direct lists and the surfaces.test.ts:36 expectation, but keep two of the four strips rather than one: worker-tool-policy.ts:81 (so any already-prepared artifact that still lists the name is filtered instead of refused as capability_unavailable by findAgenticChatWorkerUnavailableToolNamesV1, and worker-tool-policy.test.ts:93 pins it) and tool-surface.ts:185 (AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1 still contains the definition the reviewer lane needs). The two artifact-side strips at tool-surface.ts:92 and :161 become dead once no new artifact carries the name and can go. Reviewer hardening (SHA-bound approvals, fail-closed to clarification) is untouched because turn-phase.ts builds its own copy.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F30",
+				"severity": "P2",
+				"title": "`update_onto_document` advertises `merge_llm` x3 and a dead `merge_instructions` param",
+				"claim": "content: \"Required when update_strategy is append or merge_llm\"; merge_instructions: \"Used with append/merge_llm\"; update_strategy override: \"This tool does not support merge_llm\". merge_instructions has no reviewed consumer on the worker path (the gateway only sees replace/append) yet is a reviewed argument. A weak model reads three mentions of a mode and one denial; when it tries the mode, the normalizer throws mutation_arguments_not_admitted. reject_merge_llm_update_strategy is reachable only because the provider validator does not enforce enums, though the schema override already restricts update_strategy to replace|append.",
+				"evidence": [
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-B-top8-schemas.txt",
+						"lines": "update_onto_document",
+						"note": "three merge_llm mentions vs one denial"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "270",
+						"note": "merge_instructions is a reviewed argument"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "280-287",
+						"note": "update_strategy override restricts to replace|append"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutation-argument-normalizers.ts",
+						"lines": "107-115",
+						"note": "reject_merge_llm_update_strategy throws mutation_arguments_not_admitted"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/tool-validation.ts",
+						"lines": "173-178",
+						"note": "generic validation does not enforce nested enums"
+					}
+				],
+				"proposed_fix": "Drop merge_instructions from the reviewed arguments, rewrite the content/update_strategy descriptions to name only replace|append, and drop the contract sentence (B4).",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "'merge_llm \u00d73 vs one denial' double-counts: it is three mentions total, of which one is the denial. 'The gateway only sees replace/append' is true only because the worker normalizer rejects merge_llm first; the gateway itself accepts merge_llm and treats it as append (op-execution-gateway.core.ts:511). The -436 B figure bundles the B4 contract-sentence removal; the merge-only trim is ~-266 B. No live evidence of a model attempting merge_llm was found in the battery/telemetry evidence files, so the cheap-model impact is plausible but unobserved.",
+				"verifier_better_fix": "Do the edit on the worker side only: drop `merge_instructions` from reviewedArgumentNames and add worker `propertyOverrides` for `content` ('Required when update_strategy is append') rather than editing the shared base definition, because `ontology-write.ts` still serves the web executor (ontology-write-executor.ts:2289 runs a real merge_llm) and the MCP/agent-call callers. Update the pinned reviewed-field list in `apps/worker/tests/agenticChatTurnProvider.test.ts:4252-4262` in the same change. Keep the `reject_merge_llm_update_strategy` normalizer as the fail-closed second lock (its test at agenticChatTableMutationAdapter.test.ts:1098 stays green). Leave the contract-sentence removal to B4's own verdict; it is not part of this finding's evidence and the restraint canary is about update_onto_task, not this tool.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F35",
+				"severity": "P3",
+				"title": "`list_onto_tasks` undersells its payload and nudges N+1 reads; `update_onto_task.project_id` is a lie",
+				"claim": "list_onto_tasks orders by updated_at desc, caps at 50, and has no due-date filter or sort \u2014 \"What is due this week across my projects\" on a workspace with more than 50 active tasks is silently incomplete and the model cannot know. Its schema description says the tool returns \"id, title, state, and type\" while the implementation also returns description, priority, start_at, due_at, completed_at, props, project_name, and the payload message says \"Use get_onto_task_details for full information\" \u2014 nudging a weak model into N+1 detail reads for data it already has. update_onto_task.project_id is described as \"used for assignee handle resolution\", is a reviewed argument, and is deleted unconditionally by drop_scope_only_project_id before the gateway sees it. Related: no list_onto_projects on any surface, so \"list all my projects\" goes through get_workspace_overview (max 20) or search_onto_projects (query required).",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/ontology-reads.ts",
+						"lines": "803, 815-816",
+						"note": "orders by updated_at desc, cap 50, no due-date filter"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/definitions/ontology-read.ts",
+						"lines": "28",
+						"note": "description says 'id, title, state, and type'"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/ontology-reads.ts",
+						"lines": "788-802",
+						"note": "implementation returns description, priority, start_at, due_at, completed_at, props, project_name"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/ontology-reads.ts",
+						"lines": "832",
+						"note": "payload says 'Use get_onto_task_details for full information'"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "466",
+						"note": "update_onto_task.project_id reviewed with false description"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutation-argument-normalizers.ts",
+						"lines": "167-169",
+						"note": "drop_scope_only_project_id deletes it unconditionally"
+					}
+				],
+				"proposed_fix": "Rewrite the list_onto_tasks description and payload message to state the real fields; add a due-date filter/sort and a truncation signal; drop project_id from update_onto_task's reviewed arguments (\u2212333 B with the B4 sentence).",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "(1) Line drift: order is at ontology-reads.ts:805, payload message at :835; the false project_id description is at packages/agentic-chat-runtime/src/catalog/definitions/ontology-write.ts:1039, not mutationToolCatalog.ts:466. (2) 'the model cannot know' is false \u2014 the payload already carries an exact `total` (count:'exact'); only the message text omits it. (3) update_onto_task.project_id is not inert/'a lie' \u2014 it is read by resolveProjectFence as a project-scope fence (with a dedicated test) before drop_scope_only_project_id runs; only its description is wrong. (4) The N+1 attribution to the payload message is speculative \u2014 get_onto_task_details genuinely adds assignees and linked entities, and the 11/11 battery count is co-occurrence, not causation. (5) project_id alone is ~162 B, not 333 B.",
+				"verifier_better_fix": "Keep project_id as a reviewed argument (it is the scope fence with test coverage) and fix only its description via the spec's existing `propertyOverrides` on update_onto_task in mutationToolCatalog.ts, e.g. 'Optional project UUID of the task; must match the admitted turn context. Not needed for assignee handles \u2014 they resolve against the task's own project.' (or fix the source text at ontology-write.ts:1039). For list_onto_tasks: rewrite ontology-read.ts:28 to list the real fields (title, description, state, type, priority, start/due/completed, props, project_name), change the payload message at ontology-reads.ts:835 to 'Found N of TOTAL tasks (newest-updated first; raise limit or filter by project/state to see more). get_onto_task_details adds assignees and linked goals/milestones/documents.' so the existing `total` is surfaced, and optionally add an order:'due_at' / due_before parameter \u2014 all additive, no kept invariant touched. Mounting list_onto_projects on the global surface is a separate, larger decision (immutable surface token cost per surfaces.ts comment).",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F29",
+				"severity": "P2",
+				"title": "`create_onto_project` requires two arrays that must be empty; realm vocabulary lost in override",
+				"claim": "The worker override keeps entities and relationships required with maxItems: 0 because the shared validator demands the arrays. The description says \"Pass empty entities and relationships arrays\" \u2014 a rule that exists to satisfy a validator, not the user. The override also replaces the catalog's type_key guidance and drops the realm vocabulary the catalog had (\"realm is creative, technical, business, service, education, or personal\"), leaving a regex ^project\\.[a-z_]+\\.[a-z_]+ and no example. 459 B of the 2,383 B schema is the two dead arrays.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "915-916, 983-1010",
+						"note": "entities/relationships required with maxItems: 0"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/project-create-args.ts",
+						"lines": "390-405",
+						"note": "shared validator demands the arrays"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/definitions/ontology-write.ts",
+						"lines": "767",
+						"note": "catalog realm vocabulary"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "936-941",
+						"note": "override drops realm vocabulary, leaves regex with no example"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/tool-validation.ts",
+						"lines": "396-430, 600-636",
+						"note": "validateUpdateToolArgs and validateCanonicalUpdateArgs, same rules"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/tool-validation.ts",
+						"lines": "437-460, 534-546",
+						"note": "duplicated UUID check"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/tool-validation.ts",
+						"lines": "462-520",
+						"note": "tool_schema-only guards, dead on worker"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/project-create-args.ts",
+						"lines": "389-403",
+						"note": "rejects missing entities/relationships"
+					}
+				],
+				"proposed_fix": "Drop entities and relationships from the reviewed schema and default them in the validator; restore the realm vocabulary and an example for type_key in the override.",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "Cheap-model impact is speculative \u2014 zero observed entities/relationships or type_key failures in the 09-08 window. D10's 'same rules' is wrong: validateUpdateToolArgs has the update_onto_document append/merge content rule and stricter null handling; deleting it loses coverage. Removing the arrays from the schema also removes them from reviewedArgumentNames (schema is projected from that list), which would make a model that still sends [] fail the boundary check unless tolerated.",
+				"verifier_better_fix": "Worker-only change, leave the shared validator alone: drop entities/relationships from requiredNames and the projected schema, allow them as tolerated-empty at the boundary (or strip empty arrays before assertMutationAdapterBoundary), and have normalizeProjectShell default missing arrays to []; restore the realm list plus one example (e.g. project.technical.software) in the type_key override; update the shell guidance sentence at turn-contract.ts:380. For D10, delete validateCanonicalUpdateArgs rather than validateUpdateToolArgs, or fold the document-content rule into the op-keyed path first.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F37",
+				"severity": "P3",
+				"title": "Stale comments and mismatched enums/vocabularies across sibling tools",
+				"claim": "A stale comment in decision-handling.ts still describes the old clarification rule already fixed in turn-contract.ts:955-960. link_onto_entities src_kind/dst_kind descriptions list project while the override enum excludes it; rel is required but the resolver defaults it from the kind pair. create_onto_task.type_key says \"Task type key.\" with default task.default while update_onto_task.type_key teaches a work-mode taxonomy \u2014 two vocabularies for one column. explore_project.types enum has event; search_all_projects.types and search_project.types do not. shared-read-dispatch.ts:88-91 still says the calendar writes stay on the web executor \u2014 false since 09-04. search_buildos survives as an alias against the one-name rule. create/update_onto_task keep a nested parent object and plan_id / assignee_actor_ids with no evidence of use after parents/connections were dropped for zero use.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/decision-handling.ts",
+						"lines": "223-226",
+						"note": "stale clarification-rule comment"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "337-346",
+						"note": "link_onto_entities kind enum excludes project while descriptions list it"
+					},
+					{
+						"file": "packages/shared-agent-ops/src/ontology/edge-relationship-resolver.ts",
+						"lines": "31-120",
+						"note": "rel defaulted from kind pair though required"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/definitions/ontology-write.ts",
+						"lines": "82-96",
+						"note": "parent kept after parents/connections dropped for zero use"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/shared-read-dispatch.ts",
+						"lines": "72, 88-91",
+						"note": "search_buildos alias; false calendar-writes comment"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/metadata.ts",
+						"lines": "36",
+						"note": "search_buildos alias in metadata"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/surfaces.ts",
+						"lines": "184-187",
+						"note": "one-name rule"
+					}
+				],
+				"proposed_fix": "Fix the stale comments; align link_onto_entities kind text with its enum and make rel optional; unify create/update_onto_task type_key guidance; align types enums across explore/search tools; drop the search_buildos alias; re-run the zero-use audit for parent, plan_id, assignee_actor_ids.",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "Sub-claims (f) and (g) are wrong as defects: the resolver does not default an absent rel, and the types-enum mismatch mirrors real executor support (no event search on search_all_projects/search_project). search_buildos is not mounted anywhere, so it carries no model-path cost. Line drift: the alias is at shared-read-dispatch.ts:73 and the calendar comment at :88-89.",
+				"verifier_better_fix": "Do the safe subset: fix the two stale comments (decision-handling.ts:223-226, shared-read-dispatch.ts:88-89); add `description` to the link_onto_entities propertyOverrides so the merged text matches the enum (drops the project mention); rewrite create_onto_task.type_key to the same work-mode taxonomy text as update_onto_task. Leave rel required, leave the types enums as they are (or add a one-line note in explore_project that event is explore-only), and treat search_buildos removal as a separate name-space cleanup touching registry, metadata, telemetry, taxonomy, web executor and presenter plus shared-read-dispatch.test.ts.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F33",
+				"severity": "P2",
+				"title": "Gmail connect handoff is mounted only for users already connected",
+				"claim": "The email group, including request_email_account_connection (the OAuth handoff) and get_external_account_status, is appended only when user_email_connections has an active readable row. A user with no mailbox who asks \"connect my Gmail\" or \"check my inbox\" gets a turn with no email tool and a model that cannot even stage the handoff. For connected users the handoff tool is 743 B of dead weight unless they add a second account.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/email-surface-mount.server.ts",
+						"lines": "43-86",
+						"note": "email group appended only for users with an active connection"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/surfaces.ts",
+						"lines": "169-175",
+						"note": "email group definition"
+					}
+				],
+				"proposed_fix": "Invert the predicate for the connect tools: mount request_email_account_connection (and get_external_account_status) for users without an active connection, and the read tools only for connected users.",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "The proposed inversion is not free: it adds ~1,263 B (743 + 520) to every turn of every un-connected user, which is most users, partially reversing the A8 saving that the report elsewhere praises; the net byte story is a trade, not a pure win. get_external_account_status is only marginally useful for an un-connected user (its answer is 'nothing connected'), so mounting only the 743 B handoff is the cleaner inversion. Also note the handoff needs two calls (confirmation_required \u2192 user_confirmed) so a cheap model still needs the confirmation flow to work.",
+				"verifier_better_fix": "Change `applyEmailSurfaceMount(tools, hasConnection)` to select the group by state \u2014 connected: the five read tools minus the handoff; un-connected: only `request_email_account_connection` (743 B), optionally paired with a one-line prompt hint \u2014 so both prepare and prewarm stay in lockstep through the same function and the harness sha still matches. Update the mount tests at email-surface-mount.server.test.ts:108 ('appends the whole group once, and nothing without a connection') and the surface-budget guard for un-connected surfaces. If bytes matter more than in-chat connect, the cheaper alternative is a ~100 B prompt line for un-connected users pointing to the Gmail settings page, with no tool mounted.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F02",
+				"severity": "P1",
+				"title": "The opening pass carries two incompatible write routes, one of them naming a tool that is not mounted",
+				"claim": "WORKER_WRITE_TURN_RULE_LINES[0] says \"Writing to an existing entity: call declare_turn_contract first, unless \u2026\" and 9 of 17 mutation tool descriptionOverrides end the same way, but on global/project the opening pass removes declare_turn_contract and the worker's routing message opens with \"the large complex-write contract route is deferred in this opening pass \u2026 propose the complete concrete mutation batch\" \u2014 then 1,300 chars later in the same message ACTOR_COMMISSION_GUIDANCE[0] says \"a complex one calls declare_turn_contract first with the complete outcome set\". The gate instruction repeats that line while mounting no mutation tools.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.ts",
+						"lines": "74",
+						"note": "W1: call declare_turn_contract first"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"lines": "(9 of 17 descriptionOverride entries)",
+						"note": "tool descriptions also say declare_turn_contract first"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/tool-surface.ts",
+						"lines": "57-69,121-137",
+						"note": "declare_turn_contract removed from the opening pass"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "397-398",
+						"note": "routing message says contract route deferred, propose the batch"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "404",
+						"note": "ACTOR_COMMISSION_GUIDANCE[0] in the same message says declare first"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/controls.ts",
+						"lines": "39",
+						"note": "ACTOR_COMMISSION_GUIDANCE source"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/disposition.ts",
+						"lines": "72",
+						"note": "gate repeats the line with no mutation tools mounted"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/repair-policy.ts",
+						"lines": "143-232",
+						"note": "unmounted tool call triggers one-shot surface repair"
+					}
+				],
+				"proposed_fix": "One sentence on the opening pass that matches the deferral (\"Propose the concrete tool calls. The worker routes anything that touches an existing entity it did not resolve to review; you do not choose the route.\"), delete \"declare_turn_contract first\" from W1 and from the nine tool descriptions (Lane B), and drop ACTOR_COMMISSION_GUIDANCE from the deferred variant.",
+				"risk": "Report notes the fix spans Lane B tool descriptions; \"given by the user\" in W1 already overstates the code per Lane I \u00a73.2",
+				"verifier_corrections": "",
+				"verifier_better_fix": "",
+				"consequence_better_fix": ""
+			}
+		]
+	},
+	"C-contract-and-reviewer-text": {
+		"owns": [
+			"apps/worker/src/workers/agentic-chat/provider/review/**",
+			"apps/worker/src/workers/agentic-chat/provider/tool-surface.ts",
+			"apps/worker/src/workers/agentic-chat/provider/contract-fields.ts",
+			"apps/worker/src/workers/agentic-chat/provider/turn-phase.ts",
+			"packages/agentic-chat-runtime/src/loop/turn-contract.ts",
+			"packages/agentic-chat-runtime/src/loop/turn-contract.test.ts"
+		],
+		"note": "This package does NOT replace the contract lane (that is a DJ decision). It takes the verifier-approved Tier 1 changes only. F06 Tier 1: in normalizeOutcome apply the action-aware label normalization that decision-completion.ts already applies to reviewer corrections (drop label on non-creates, parent_label outside move/organize, src/dst_label outside relationship links; drop the label with an issue note, not a rejection, on a labelled create with minimum_successful_effects>1 or no title change); cut the four label descriptions in controls.ts from ~1,150 chars to ~250 (drop the worked example and the triple no-placeholder warnings); flip the affected rejection tests to normalization assertions. F07: filter project_id (post-normalizeOutcomeFieldName) out of requiredFields for every action in normalizeOutcome with a comment mirroring the target_ids one; update agenticChatDocumentContractFields.test.ts to expect acceptance; add \"never project_id (scope, not a field)\" to the required_fields schema description in controls.ts; KEEP the fieldless document-update rejection. F10: (a) stop sending actor rules to the reviewer -- drop \"Rules for This Turn\" from REVIEWER_EVIDENCE_SECTION_TITLES or keep only the preloaded-playbook block by duplicating the delimiter strings on the worker (never import web source); (b) format-only rewrite of TURN_CONTRACT_REVIEW_SYSTEM_PROMPT with paragraph breaks and short block headers, merging the four clarification sentences into one block, keeping every tested sentence verbatim and every SEMANTIC_COMMISSION_GUIDANCE line; the reviewer system prompt must stay byte-identical across reviews (cache key). F02 (this package's part): reword ACTOR_COMMISSION_GUIDANCE[0] to the tool-neutral form (\"a simple commissioned change calls the mutation tools directly; a complex one is routed to independent review before execution\") so the block is valid on the deferred variant and the gate; keep lines 1-4. F36: extend deferComplexWriteContractForInitialPass (or surfaceFor) so cancel_turn_contract is also dropped on the opening pass when no pending contract exists. F39: after a single-outcome project contract the answer pass must not mount create_onto_project. F43: stale phase instructions must not accumulate as system messages for the rest of the turn -- replace the previous phase instruction instead of appending, if request-builders.ts is needed for that, report it rather than editing (WP-E does not own it either; leave a precise TODO).",
+		"findings": [
+			{
+				"id": "F06",
+				"severity": "P1",
+				"title": "Contract labels (label/src_label/dst_label/parent_label) carry ~330 lines and 12 rejection paths for a feature the model barely uses",
+				"claim": "Of the 31 runtime contract rejection paths, 12 exist only for labels; the label machinery totals ~330 lines plus 4 schema properties and ~800 of the 3,712 characters of schema prose. Labels produced 3 of the 10 production rejections, appeared once across the 6d787284c battery evidence and zero times in the 4ac73bde7 and a1771c1f7 batteries, and the SQL carry-forward never understood them.",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/definitions/controls.ts",
+						"lines": "18-159",
+						"note": "declare_turn_contract schema; label fields = 1,532 B"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/turn-contract.ts",
+						"lines": "445-663",
+						"note": "21 per-outcome rejection reasons"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/turn-contract.ts",
+						"lines": "668-746",
+						"note": "5 cross-outcome + 2 top-level rejection reasons"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/contract-fields.ts",
+						"lines": "17-45",
+						"note": "2 worker field checks"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-B-battery-tool-calls.txt",
+						"lines": "all",
+						"note": "6 of 23 declare_turn_contract calls failed; 4 label misuse, 2 required_fields"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/turn-contract.ts",
+						"lines": "552-667, 668-723",
+						"note": "12 label-only rejection paths (~170 lines of validation)"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/turn-contract.ts",
+						"lines": "1309-1391",
+						"note": "bindTurnContractLabels, 83 lines"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/turn-contract.ts",
+						"lines": "1396-1450",
+						"note": "label branches of resolveOutcome, ~60 lines"
+					}
+				],
+				"proposed_fix": "Drop label/src_label/dst_label/parent_label and the 12 label rejection paths; keep bindTurnContractLabels step 4 (parent-by-title move, :1367-1383) so 'create folder X and move docs into it' fulfils via new_parent_title, and let multi-phase creates use the existing takeContractCompletionContinuation pass (turn-provider.ts:1050-1058).",
+				"risk": "Multi-phase create-then-reference commissions must fulfil through new_parent_title or the continuation pass instead of labels; report does not state further risk.",
+				"verifier_corrections": "",
+				"verifier_better_fix": "",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F07",
+				"severity": "P1",
+				"title": "Contract validation rejects scope ids in required_fields and empty-field document updates instead of normalizing",
+				"claim": "9 of 24 production contract turns (37.5%) had a declare_turn_contract rejected; 5 of the 10 rejections were required_fields containing project_id (3) or a document update with empty required_fields (2), shapes the validator could accept by normalizing the way target_ids is already stripped on creates. Each rejected turn costs on average +1.6 passes, +38k prompt tokens and +38 s versus a clean contract turn.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/contract-fields.ts",
+						"lines": "33-45",
+						"note": "document update with no fields rejected (:33); unknown required field such as project_id rejected (:36-45)"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/turn-contract.ts",
+						"lines": "493-497",
+						"note": "target_ids on a create is silently dropped; the same tolerance is not extended to required_fields"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/turn-contract.ts",
+						"lines": "446-762",
+						"note": "31 runtime rejection paths in normalizeOutcome / describeContractReferenceIssues / parseDeclaredTurnContract"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/write-ledger.ts",
+						"lines": "109-130",
+						"note": "NON_EFFECT_ARGUMENTS already lists the *_id scope set to strip"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-D-contract-rejections.json",
+						"lines": "1-120",
+						"note": "turns 0784af15, 2785785a, d8aee58d (project_id), 258954cd, 3206de31 (empty document update), ab4e567e (estimated_minutes), 629f7353 (project outcome with required_fields); rejected avg 7.22 passes / 110,488 tokens / 102.5 s vs clean 5.6 / 72,177 / 64.9 s"
+					}
+				],
+				"proposed_fix": "In normalizeOutcome, strip scope ids (project_id and the *_id set in NON_EFFECT_ARGUMENTS) from required_fields as target_ids is stripped on creates. In validateContractEffectFields, replace the document-update empty-fields rejection with acceptance (fulfilment then = any successful update on the target, which the reviewer still adjudicates).",
+				"risk": "Accepting an empty-field document update loosens fulfilment to 'any successful update on the target'; the reviewer still adjudicates. Not otherwise stated in report.",
+				"verifier_corrections": "",
+				"verifier_better_fix": "",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F10",
+				"severity": "P2",
+				"title": "Reviewer prompt: one 9,672-char paragraph, four clarification rules, actor syntax, and actor rules in the evidence",
+				"claim": "TURN_CONTRACT_REVIEW_SYSTEM_PROMPT is 9,672 chars / 2,418 tokens, 71 sentences, 0 paragraph breaks. 3,556 chars are SEMANTIC_COMMISSION_GUIDANCE (14 rules) whose 5-line digest the actor also receives twice per complex write, so any drift is a reviewer/actor disagreement paid as a revision round; 1,046 chars are CONTRACT_DECLARATION_GUIDANCE (declaration syntax that is actor material, and corrected_contract already carries the JSON schema); clarification is instructed four separate times and \"never\" appears 13 times; the evidence slice includes \"Rules for This Turn\" and hence the 2,050 chars of actor web/delegation rules, contradicting the docstring; project-create shell rules reach the reviewer a second time after the gate already appended them.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "46-70",
+						"note": "TURN_CONTRACT_REVIEW_SYSTEM_PROMPT, joined with ' '"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/controls.ts",
+						"lines": "16-31",
+						"note": "SEMANTIC_COMMISSION_GUIDANCE"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/controls.ts",
+						"lines": "160-166",
+						"note": "corrected_contract already carries the JSON schema"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "61,64,66,67",
+						"note": "clarification instructed four times"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "145-160",
+						"note": "evidence slice includes Rules for This Turn, contradicting docstring at :145-150"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "99-103",
+						"note": "shell rules reach the reviewer a second time"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/disposition.ts",
+						"lines": "40-45",
+						"note": "gate already appended shell rules to the acting request"
+					}
+				],
+				"proposed_fix": "Five short blocks, \u22645,000 chars (role and trust; enumerate candidates; approve/clarify/revise decision rule; commission rules; project-create rules only when the contract creates a project); drop CONTRACT_DECLARATION_GUIDANCE; slice only the playbook out of \"Rules for This Turn\" (or nothing once A1 lands); pass shell guidance to the reviewer only when the acting request did not already carry it \u2014 or better, once, at the reviewer rather than the gate; verdict-only reviewer per Lane I \u00a73.1 would shrink the prompt by roughly half.",
+				"risk": "not stated in report",
+				"verifier_corrections": "",
+				"verifier_better_fix": "",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F36",
+				"severity": "P3",
+				"title": "`cancel_turn_contract` rides every turn; only meaningful with a pending contract",
+				"claim": "cancel_turn_contract is correctly wired (turn-provider.ts:520-525; pending-contract carry-forward is live via DB trigger apply_agentic_chat_terminal_pending_contract_v1), but it is only meaningful on a turn whose session carries fastchat_pending_turn_contract. Zero calls in production and battery.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-provider.ts",
+						"lines": "520-525",
+						"note": "cancel wiring"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/catalog/surfaces.ts",
+						"lines": "80, 159",
+						"note": "mounted on all three direct-name lists"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-provider.ts",
+						"lines": "330, 484-489, 197-198",
+						"note": "providerToolCallCount and accessors: 0 call sites"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-phase.ts",
+						"lines": "178, 211",
+						"note": "openingTools never passed"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-phase.ts",
+						"lines": "82, 95-97",
+						"note": "budget:validation_repairs / budget:rounds never dispatched"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/README.md",
+						"lines": "93",
+						"note": "documents nonexistent review/mutation-batch.ts"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/validation.ts",
+						"lines": "239-244",
+						"note": "cites the deleted batch reviewer"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "417",
+						"note": "projectCreateShellGuidance appended (also at disposition.ts:41-44) \u2014 twice"
+					}
+				],
+				"proposed_fix": "Mount cancel_turn_contract only on turns whose session carries fastchat_pending_turn_contract.",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "The fix as proposed (config on the surfaces lists) is insufficient: tool-surface.ts:180-191 re-adds cancel_turn_contract on every write-capable pass in production regardless of the artifact's toolNames. The \u2212420 B is only realized if the worker's standard-control force-mount also excludes it. 'Zero calls in production and battery' is asserted, not verifiable from code; the carry-forward path is rare by construction (requires a prior turn ending with an unfulfilled declared contract in the same context/project scope, turn-contract.ts:866-874).",
+				"verifier_better_fix": "Two edits: (1) in tool-surface.ts productionToolsFor, exclude CANCEL_TURN_CONTRACT_TOOL_NAME from the force-mounted standard controls (the force-mount exists for the legacy project-create surface and needs only declare_turn_contract + request_turn_clarification); (2) in web admission, append 'cancel_turn_contract' to the surface toolNames only when `turnPreparation.pendingTurnContract !== null` (same per-turn append mechanism as the Gmail group, surfaces.ts:74-76). Keep the tool definition and the turn-provider handler. Separately delete the dead counters/openingTools/budget variants and fix README.md:93 and validation.ts:243, and remove the duplicate shell-guidance append in disposition.ts:43.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F39",
+				"severity": "P2",
+				"title": "After a single-outcome project contract, the answer pass still mounts create_onto_project",
+				"claim": "On approval of a project contract the carve-out surface [create_onto_project] becomes currentRequest. After the shell mutation round, buildContinuationRequest inherits request.tools, and the completion switch returns null when every outcome is fulfilled (single-outcome contracts, the exact 09-04 case 1 shape \"create the project \u2026 do not create tasks yet\"). The answer pass therefore offers create_onto_project with toolChoice auto; a second call is authorized by validateApprovedTurnContractMutations (create outcomes skip the target check) and would create a duplicate project. The comment claiming the switch prevents shell duplication holds only when child outcomes remain. No test asserts the post-shell surface.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-provider.ts",
+						"lines": "921-933",
+						"note": "carve-out surface [create_onto_project] becomes currentRequest on approval"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/request-builders.ts",
+						"lines": "305",
+						"note": "buildContinuationRequest inherits request.tools verbatim"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-provider.ts",
+						"lines": "834-845",
+						"note": "completion switch returns null when all outcomes fulfilled; comment at :839-841 claims shell duplication prevented"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/validation.ts",
+						"lines": "336-343",
+						"note": "create outcomes skip the target check \u2192 second call authorized"
+					},
+					{
+						"file": "apps/worker/tests/agenticChatTurnProvider.test.ts",
+						"lines": "5054-5284",
+						"note": "checks steps, not tools; no post-shell surface assertion"
+					}
+				],
+				"proposed_fix": "After a mutation round whose contract is fully fulfilled, mount the tool-free surface (forceToolFreeRequest) or reject calls for outcomes already at minimumSuccessfulEffects.",
+				"risk": "not stated in report",
+				"verifier_corrections": "Impact is structurally open but not observed: the exact 09-04 case-1 turn 629f7353 (read from chat_tool_executions) shows one create_onto_project then a clean answer, and the audit's re-call precedent (0fa59a3e, delegate_task x6) was a model retrying a failure, not a success. Minor: cited turn-provider lines 921-933 are 919-931 in the working tree. The broad form of the proposed fix ('tool-free after any fully fulfilled contract') would also stop a model from finishing targets beyond minimumSuccessfulEffects on a minimum<targets update contract, which the completion switch deliberately leaves open today.",
+				"verifier_better_fix": "Scope it to the shell path: in the branch at turn-provider.ts:833-846, when the round contained a successful create_onto_project and takeContractCompletionContinuation returns null, set currentRequest = forceToolFreeRequest(currentRequest) (the shell is the only outcome and it is durable). Optionally also make turnContractOutcomeAuthorizesCall reject a create_ call for a targetless create outcome whose successful creates of that entityKind already equal minimumSuccessfulEffects \u2014 extra creates on a create outcome are duplicates by definition, while update outcomes stay untouched.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F43",
+				"severity": "P3",
+				"title": "Stale phase instructions accumulate as system messages for the rest of the turn",
+				"claim": "appendSystemInstruction appends; nothing removes. By the answer pass of an organize turn the model carries the gate instruction (\"choose exactly one control tool now\"), the approval instruction, the organize instruction, the carve-out's \"for exactly this one pass\", and any ladder nudges, all still imperative. The reviewer is protected (buildReviewerEvidence drops worker system messages); the actor is not.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/request-builders.ts",
+						"lines": "56-64",
+						"note": "appendSystemInstruction only appends"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts",
+						"lines": "173-179",
+						"note": "buildReviewerEvidence strips worker system messages \u2014 actor gets no such protection"
+					}
+				],
+				"proposed_fix": "Tag phase instructions and replace the previous phase instruction instead of appending.",
+				"risk": "not stated in report",
+				"verifier_corrections": "The claim that the stale imperative is 'often' the one a weak model matches is unmeasured; by design the current phase instruction is always the most recent system message. Cost of the accumulation is negligible at acting-model prices.",
+				"verifier_better_fix": "Tag only phase instructions (gate, post-disposition, carve-out, organize, completion) with a marker and replace the prior tagged message; leave ladder nudges, batching, disposition notices, and admission-time pending-contract/proposal-focus messages untouched. Update the ladder test only if its expectations change (they should not).",
+				"consequence_better_fix": ""
+			}
+		]
+	},
+	"D-transport-and-models": {
+		"owns": [
+			"apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+			"apps/worker/src/workers/agentic-chat/config.ts",
+			"apps/worker/src/workers/agentic-chat/bootstrap.ts",
+			"apps/worker/tests/agenticChatOpenRouterClient*.test.ts",
+			"apps/worker/tests/agenticChatConfig*.test.ts",
+			"apps/worker/tests/agenticChatBootstrap*.test.ts",
+			"apps/worker/.env.example"
+		],
+		"note": "F76 (verifier version): drop allow_fallbacks:false so the pin is a preference; delete pinnedEndpointUnavailable; keep the timeout attribution branch but attribute only timeouts (not 4xx/5xx) to a single-entry order; update the three pin tests including the one at ~:2400. F77 (verifier version): pin the reported model only when it is a configured id (compute configured = routes.flatMap(model + fallbackModels); pin state.modelUsed if configured includes it else active.route.model); keep state.modelUsed for receipts; preserve the resolved-fallback affinity test at ~:914. F78: make the provider order reflect what actually serves DeepSeek v4 flash cheaply and fast (measured: DeepInfra p50 5.3 s, Alibaba 5.3 s but 23% pinned-404; NextBit 7.8 s; Azure 21.5 s and 112 ms/token) -- put the fast cheap endpoints first, add the slow/expensive ones (Azure) to an ignore list, and document the measured reason in a comment; keep allow_fallbacks true. F80: set the reviewer route reasoning effort explicitly (low) and confirm max_tokens on the reviewer is sized for a verdict, not a document. F81: remove the documented bad reviewer from the default reviewer fallback chain. F50 (this package's part): make observeProviderAttempt fire-and-forget into a per-turn pending set that the executor drains at finalization (WP-E adds the drain hook on executorEffects; expose a small API: enqueue(promise) / drain(deadlineMs)). If the drain API must live in a file you do not own, put it in a NEW small module apps/worker/src/workers/agentic-chat/pendingEffects.ts and tell WP-E its name in your receipt. F104: delete the dead per-turn degradation latch. F109: delete the dead reasoning-event extraction downstream (keep usage accounting of reasoning tokens).",
+		"findings": [
+			{
+				"id": "F76",
+				"severity": "P1",
+				"title": "Hard route pin fails one pass in 47% of turns",
+				"claim": "`applyTurnRouteHealth` sends `provider.order: [pinnedSlug], allow_fallbacks: false` after the first successful pass. When the pinned endpoint cannot serve the next pass, OpenRouter returns `404 No endpoints found` in ~200\u2013480 ms; the client marks the attempt retryable, writes a failed `provider_attempt_ended`, a failed usage row, bans the slug for the rest of the turn, and `provider-pass.ts:56-66` retries on another provider. In the window: 18 such 404s, every one the pass after Alibaba; plus 9 `429`s on pinned DeepInfra, which a soft preference would have routed around inside OpenRouter. 26 of 55 turns paid for this. The retry lands cold: median continuation cache 4% when the provider switched vs 80% when it held. The pin's purpose (keep the warm prefix) is defeated by its own failure mode in 26/55 turns. Side effect: a pin-caused 404 also adds the model to `failedModels` (:1005), so with fallback models configured the primary model would be demoted for the rest of the turn on no model evidence. Also flagged as over-engineering.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "975-996",
+						"note": "pin: order: [slug], allow_fallbacks: false"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/config.ts",
+						"lines": "35-43",
+						"note": "default order deepinfra, deepseek, alibaba, cloudflare with allow_fallbacks: true; deepseek and cloudflare served zero calls; NextBit/Phala/StreamLake/Azure are not in the order"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-h-turns.json",
+						"lines": "n/a",
+						"note": "404 turns: 069c45f4, 89797082, 0d8019ca, c4cb3552, 8a2fcdd3, 579e0c95, 0d86e1cf, 259f6a28, f9640b74, a7e21a65, 78adb24c, 629f7353, f0c2b495, a2dcf99c, 2785785a, d8aee58d, 258954cd, 363b8fff, 3206de31; 429 turns: b7b715f6, 487cfd9c, 5792be5e, ab4e567e, 308f3497"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "991",
+						"note": "provider.order: [pinnedSlug], allow_fallbacks: false"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "893-905",
+						"note": "comment describing the mechanism and pinnedEndpointUnavailable marked retryable"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "1013",
+						"note": "slug banned for rest of turn"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "1005",
+						"note": "pin-caused 404 adds model to failedModels"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/provider-pass.ts",
+						"lines": "56-66",
+						"note": "retry on another provider"
+					}
+				],
+				"proposed_fix": "Drop `allow_fallbacks: false` at :991 so the pin is a preference; delete `pinnedEndpointUnavailable` (:898-905) and the `allow_fallbacks === false` attribution branch (:2107-2109); update the three pin tests. ~15 lines.",
+				"risk": "OpenRouter may still route the `tool_choice: 'required'` gate pass off Alibaba (cold cache, no failure); the same-provider rate is the canary (lane-K-pin-snapshot-cache.mjs).",
+				"verifier_corrections": "(1) The failedModels side effect is overstated: with no fallback model configured (prod shows only deepseek-v4-flash as acting model) `reordered` is a single entry, and a successful retry on the same model deletes it from failedModels and promotes it to preferredModels (:1041-1045), so the demotion lasts one pass and only matters when AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS is set. (2) The 'warm continuations' benefit is speculative: the pinned provider still cannot serve the required-tool gate pass, so OpenRouter's in-request fallback also lands cold; the real, measurable saving is the failed attempt itself (~200-480 ms round trip + provider_attempt_started/ended + usage row) and the 429 route-around. (3) On snapshot-id requests only 1 failure was a 404 (the other was a timeout). (4) The H1 alternative 'treat pinned 404 as release the pin and retry on the configured order' is already what the code does (:492-496 + :1012-1023), so it is a no-op proposal.",
+				"verifier_better_fix": "Drop `allow_fallbacks: false` at :991 and delete `pinnedEndpointUnavailable` (:898-905), but do NOT delete the :2107-2109 attribution branch outright: it is what makes a pre-stream timeout on a pinned request add that provider to `ignore` (09-02 fix, test 'excludes the pinned provider the request timed out on' at apps/worker/tests/agenticChatOpenRouterClient.test.ts:2400). With a soft pin that attribution becomes a guess, so either accept the loss explicitly (update :2400 to expect no `ignore`) or keep attributing timeouts only (not 4xx/5xx) to a single-entry `order`. Expected tests to update: :914 (404 case now permanent/unpinned), :988-993, :1066, :1208, :1258, :1301, :2440, :2547 (all assert `allow_fallbacks: false`). Canary: same-provider continuation rate from lane-K-pin-snapshot-cache.mjs (currently 31/57 single-provider turns).",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F77",
+				"severity": "P1",
+				"title": "Pin re-requests the provider's snapshot model id, detouring to Azure",
+				"claim": "`observeTurnRouteSuccess` is called with `state.modelUsed ?? active.route.model` (:724) and stores it as the pin's `model` (:1037); `applyTurnRouteHealth` then sends it as the request model (:983). Providers report `deepseek/deepseek-v4-flash-20260423`; 37 of 292 requests asked OpenRouter for that id. OpenRouter resolves the dated id to a different endpoint set: 11 of those went to Azure (p50 21.5 s / p90 31.1 s per pass; $0.21/$0.56 per M \u2014 scenario I), 2 got `404 No endpoints found for \u2026-20260423`, and 15 turns switched weight snapshots mid-turn.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "724",
+						"note": "observeTurnRouteSuccess called with state.modelUsed ?? active.route.model"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "1037",
+						"note": "pin stores provider-reported model string"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "983",
+						"note": "pinned model sent as request model"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-K-pin-snapshot-cache.mjs",
+						"lines": "1",
+						"note": "37 snapshot-id requests, 11 to Azure, 2\u00d7404"
+					}
+				],
+				"proposed_fix": "Pin `active.route.model` (the requested canonical id) and keep `modelUsed` for receipts only. 2 lines.",
+				"risk": "None beyond a test expectation; `agenticChatOpenRouterClient.test.ts:740` already asserts the direct-route case.",
+				"verifier_corrections": "The 2 failures on snapshot-id requests are 1x404 + 1x request timeout (final_response), not 2x404. The stated risk ('none beyond a test expectation; :740 already asserts the direct-route case') is wrong: the proposed 2-line fix (pin active.route.model) breaks the deliberate resolved-fallback pin \u2014 test 'releases a successful provider pin and permits retry after HTTP %s' (apps/worker/tests/agenticChatOpenRouterClient.test.ts:914-1000) asserts requests[1].model === 'provider/resolved-fallback' after OpenRouter resolved the `models` fallback, and pinning the requested primary there would re-request a model the warm provider may not serve (a new 404 class). ",
+				"verifier_better_fix": "Pin the reported model only when it is a configured id: at the :722 call site (or inside observeTurnRouteSuccess) compute `const configured = this.routes.flatMap(r => [r.model, ...(r.fallbackModels ?? [])])` and pass `configured.includes(state.modelUsed) ? state.modelUsed : active.route.model` as the pin model; keep `state.modelUsed` untouched for receipts/usage rows and `lastResponse`. Preserves the resolved-fallback affinity test at :914 and removes snapshot-id requests. ~3 lines.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F78",
+				"severity": "P2",
+				"title": "Provider order is half dead and the cheap endpoints are unused",
+				"claim": "`config.ts:34-39` prefers `deepinfra, deepseek, alibaba, cloudflare`. OpenRouter's live endpoint list for this model has no DeepSeek and no Cloudflare endpoint. DeepInfra served 12% of successful calls (it 429s: 7 of 9 pinned 429s). Alibaba (51%, $0.134/M) and NextBit (26%, $0.150/M) carried most traffic; StreamLake ($0.089) and GMICloud ($0.091, 99.5% uptime) never appear. The comment at `config.ts:23-25` names Alibaba as long-tail and then prefers it at :37. Measured p50 per-pass latency: Alibaba 5.3 s, DeepInfra 5.3 s, NextBit 7.8 s, StreamLake 7.3 s (n=4), Azure 21.5 s. The effective policy is 'Alibaba, then whatever'.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/config.ts",
+						"lines": "34-43",
+						"note": "provider order deepinfra, deepseek, alibaba, cloudflare"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/config.ts",
+						"lines": "23-25",
+						"note": "comment names Alibaba as long-tail, then prefers it at :37"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-K-usage-report.json",
+						"lines": "1",
+						"note": "byModelUsed provider share; byProvider latency"
+					}
+				],
+				"proposed_fix": "`order: ['deepinfra', 'streamlake', 'gmicloud', 'alibaba']` and drop the dead names; keep `allow_fallbacks: true`. 1 line.",
+				"risk": "The 08-27 note about StreamLake tail latency \u2014 canary the p90 per pass for a day.",
+				"verifier_corrections": "(1) 'Traffic lands on slower endpoints' is not supported: Alibaba p50 5.3 s equals DeepInfra and beats StreamLake 7.3 s (n=4) and NextBit 7.8 s; the proposed order trades latency for price and the 08-27 comment already flagged StreamLake as long-tail \u2014 live StreamLake uptime is the lowest of the cheap tier. GMICloud has zero observed calls, so its latency is unknown. (2) The observed mix is mostly a consequence of F76/F77 (DeepInfra 429 -> pin lands on Alibaba -> gate-pass 404 -> NextBit/Phala/Azure), not of the order alone; reordering without the F76 fix still pins the whole turn on whichever provider first succeeds. (3) The -25% cost estimate assumes the cheap endpoints actually serve; DeepInfra produced 7 of 9 429s in the window, so realised savings depend on availability.",
+				"verifier_better_fix": "Config-only and cheap, but sequence it after F76/F77 so the order actually governs the turn, and canary p50/p90 per provider for a day. Given live uptime and the 08-27 note, `['deepinfra', 'gmicloud', 'alibaba', 'streamlake']` (StreamLake last, DigitalOcean still excluded) is the safer first step; promote StreamLake only if its p90 holds. Also fix the stale :23-25 comment so it no longer contradicts the order.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F80",
+				"severity": "P1",
+				"title": "Reviewer latency tripled; reasoning effort unset",
+				"claim": "Reviewer calls are p50 10.3 s / p90 17.3 s (09-02 audit: 3.6 s / 8.1 s on OpenAI), 1.65 per write turn, \u224817 s of a 60.7 s write-turn provider time. Completion p50 767 tokens, 52% of reviewer completion tokens are hidden reasoning; no `reasoning.effort` is sent (`openrouter-client.ts:1101`; policy `openrouter-request.ts:74-76`). `temperature: 0` from `bootstrap.ts:372` is dropped for Luna (`openrouter-request.ts:143-145`). The mandatory `reference_candidates` enumeration added on 09-02 is the likely output growth; default reasoning effort is the other half. The reviewer is 26% of spend.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "1101",
+						"note": "reasoning: { exclude: true } with no effort"
+					},
+					{
+						"file": "packages/smart-llm/src/openrouter-request.ts",
+						"lines": "74-76",
+						"note": "policy has only temperature: 'omit' for Luna"
+					},
+					{
+						"file": "packages/smart-llm/src/openrouter-request.ts",
+						"lines": "143-145",
+						"note": "temperature dropped for Luna"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/bootstrap.ts",
+						"lines": "372",
+						"note": "reviewer temperature: 0"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-K-usage-report.json",
+						"lines": "1",
+						"note": "contract_review p50_ms 10334, p90_ms 17321, reasoning_tokens 18460 of 35606"
+					}
+				],
+				"proposed_fix": "Send `reasoning: { effort: 'low', exclude: true }` for reviewer pass roles; keep the schema. Canary: the reviewed-write turns in the 09-04 battery plus the three-email-task restraint case; require identical approve/revise/clarify decisions. Then decide scenario C/D (flash reviewer) on the same canary. 3 lines.",
+				"risk": "Reviewer decision quality at low effort must match current decisions on the canary set; not measured for the restraint canaries at effort: 'low'.",
+				"verifier_corrections": "The causal split between the 09-02 reference_candidates enumeration and default reasoning effort is asserted, not measured. The -5 to -7 s per call estimate is optimistic: p50 completion is 767 tokens of which ~460 are reasoning; effort 'low' does not zero reasoning, so a 2-5 s reduction is the defensible range until the canary runs. Note also that normalizeReasoningForModel keys policy on the primary model only, so `effort: 'low'` would be forwarded verbatim to the Gemini 3.7 Flash fallback (whose own policy demands minimum 'medium') if the reviewer ever falls back \u2014 cosmetic given 43/43 calls on OpenAI, but worth one line.",
+				"verifier_better_fix": "Same change, gated as the finding proposes: `reasoning: { effort: 'low', exclude: true }` when passRole is contract_review/mutation_review (leave research_review and acting unchanged), then replay the 09-04 reviewed-write battery plus the three-email-task restraint case and require identical approve/revise/clarify decisions before keeping it. Measure completion/reasoning tokens per reviewer call before and after so the reference_candidates-vs-effort split becomes a fact rather than a guess.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F81",
+				"severity": "P2",
+				"title": "Default reviewer fallback chain contains a documented bad reviewer",
+				"claim": "With no `AGENTIC_CHAT_REVIEWER_MODEL` set, `bootstrap.ts:446-452` builds candidates from `JSON_PROFILE_MODELS.powerful` + `maximum`; the resulting `models` fallback array is `[gemini-3.7-flash, glm-5.3-flash, glm-5.2]`. `:443-444` says GLM 5.3 Flash approved a correction without declaring its endpoints. Fallbacks also lose the request policy (temperature, reasoning) because `buildOpenRouterChatCompletionBody` keys policy on the primary model only. Zero fallbacks fired in the window (43/43 on OpenAI), so this is latent.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/bootstrap.ts",
+						"lines": "446-452",
+						"note": "candidates from JSON_PROFILE_MODELS.powerful + maximum"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/bootstrap.ts",
+						"lines": "443-444",
+						"note": "comment: GLM 5.3 Flash approved a dependency correction without declaring its endpoints"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/bootstrap.ts",
+						"lines": "432-433",
+						"note": "reviewer model openai/gpt-5.6-luna, provider order ['openai','azure']"
+					}
+				],
+				"proposed_fix": "Set `AGENTIC_CHAT_REVIEWER_MODEL` and an explicit, evaluated `AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS` on the Railway service, or replace the profile pools at :450-451 with an explicit list. 2 env vars.",
+				"risk": "None.",
+				"verifier_corrections": "Minor: the policy loss applies only to OpenRouter's in-request fallback. Once a fallback actually answers, observeTurnRouteSuccess (:1031-1049) promotes it to preferredModels and applyTurnRouteHealth (:953-993) makes it the primary on later passes, at which point its own policy applies.",
+				"verifier_better_fix": "Env-only: config.ts:283-306 already parses AGENTIC_CHAT_REVIEWER_MODEL / AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS; an explicit policy opts out of the pool (fallbackModels [] when unset) and keeps the OpenAI-first order for Luna (:500-503). Covered by agenticChatBootstrap.test.ts:118-143. Avoid the in-code 'replace the pools' variant: the 'fails at startup' test at :237-251 builds the acting route from the pools and would need rewriting.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F50",
+				"severity": "P1",
+				"title": "Observation rows on the tool critical path",
+				"claim": "`observeToolExecution` is awaited before a read runs and after it, and around every mutation; the provider adds two per pass. 14 RPCs per model turn, 5 s deadline each. The `ended` row duplicates the ledger row; the planning fields (`graph_layer_*`, `read_epoch`, `memo_served`, `exact_read_key`) are the only unique data.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "1922-1935, 2117-2134",
+						"note": "observation awaited before and after each read"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "1363-1376, 1509-1526",
+						"note": "observation awaited around every mutation"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "469, 499",
+						"note": "two provider attempt observations per pass"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "2425-2455",
+						"note": "planning fields are the only unique data in observation rows"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "469-477",
+						"note": "provider_attempt_started awaited before fetch"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "665-735",
+						"note": "ended receipt awaited before done"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "348-450",
+						"note": "usage upsert awaited before done"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-K-timing.mjs",
+						"lines": "1",
+						"note": "non-model time in loop p50 6.0 s / p90 14.5 s"
+					}
+				],
+				"proposed_fix": "Put the planning fields on `persist_agentic_chat_read_tool_execution` / `\u2026mutation_tool_execution` (one migration), drop `tool_execution_started/ended`, keep provider attempt observations but fire them without awaiting.",
+				"risk": "Invariant: the 08-06 forensics use case (tool that never ends) is covered by the 30 s tool deadline and the ledger `failure` row; forensics continue via ledger + attempt rows.",
+				"verifier_corrections": "The E2 fix is larger and riskier than 'one migration': `tool_execution_ended` observation rows are the source for the 09-02 read-planning views (20260902040000_...read_planning_observability.sql:134-160 and :363), the lifecycle observations view (20260806010000:247), the e2e harness telemetry (apps/web/src/lib/tests/agentic-e2e/harness/telemetry.ts:377-418 filters phase='tool' && eventType='tool_execution_ended'), and the canary script reads the lifecycle view (scripts/verify-agentic-chat-read-canary.ts:98). Rejected/validation-failure tool calls (turn-executor.ts:1892-1919) have a planning observation but no successful ledger row. And the ledger RPC is a fatal port: moving the observation RPC's RAISE-on-invalid planning fields onto it turns swallowed telemetry validation into turn failures unless the validation is loosened. The 'forensics via ledger' invariant holds, but the 08-06 `started` row also survives under fire-and-forget (the RPC still runs).",
+				"verifier_better_fix": "Fire-and-forget all four observation calls without any schema change: in executorEffects.observeToolExecution and openrouter-client.observeProviderAttempt, start the `attempt(...)` promise, add it to a per-turn pending set, and drain the set (Promise.allSettled with the existing 5 s deadline) once at finalization before the terminal fence. Zero migrations, views/harness/canary untouched, same rows land, ~20 lines, and it removes ~14 serial round trips per 3-read + 1-write turn \u2014 the same RPC savings E2 claims. K11's ~10-line 'started only' version is the minimal safe first cut.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F104",
+				"severity": "P2",
+				"title": "Per-turn provider degradation latch is dead machinery",
+				"claim": "`capacity.acquire(turnRunId)` runs once per turn at prepare time (`turn-provider.ts:311`). Every `markTemporarilyUnavailable` (`provider-pass.ts:59`, `turn-provider.ts:1210, 1758`) happens after it, keyed to the same turn, and the retry continues immediately. The capacity collector calls `getSnapshot()` with no turn id (`capacity.ts:112`), so `degradedUntilMs` is always null there (`providerCapacity.ts:98-100`). Nothing can observe the latch. Lines: `providerCapacity.ts:34, 79-90, 95-100, 110`, three call sites, `capacity.ts:162-167`, the `retryableFailureCooldownMs` constructor arg and its validation (`turn-provider.ts:269-280`), and their tests.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-provider.ts",
+						"lines": "311",
+						"note": "capacity.acquire(turnRunId) once per turn at prepare"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/provider-pass.ts",
+						"lines": "59",
+						"note": "markTemporarilyUnavailable after acquire"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-provider.ts",
+						"lines": "1210, 1758",
+						"note": "other markTemporarilyUnavailable call sites"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/providerCapacity.ts",
+						"lines": "34, 79-100, 110",
+						"note": "latch state; degradedUntilMs always null without turn id"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/capacity.ts",
+						"lines": "112, 162-167",
+						"note": "getSnapshot() with no turn id"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-provider.ts",
+						"lines": "269-280",
+						"note": "retryableFailureCooldownMs constructor arg and validation"
+					}
+				],
+				"proposed_fix": "Keep the concurrency lease; delete the latch. ~60 lines + tests.",
+				"risk": "not stated in report",
+				"verifier_corrections": "Minor: the `event.cause !== 'tool_arguments_truncated'` carve-out at provider-pass.ts:58 and its test at agenticChatTurnProvider.test.ts:9146 exist only to serve the latch and go with it; the finding's line list omits them and the two comments (README.md:82, provider/contracts.ts:65) that describe the cooldown.",
+				"verifier_better_fix": "Delete as proposed, but drop the whole `capacity` parameter from streamBufferedProviderPass and the `retryableFailureCooldownMs` positional arg together, and keep `AgenticChatProviderCapacitySnapshotV1` minimal (configured/available/activeRequests/concurrency) so capacity.ts:162-167 simplifies to `available === (configured && activeRequests < concurrency)`. Update README.md:82 and provider/contracts.ts:65 in the same commit.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F109",
+				"severity": "P3",
+				"title": "Reasoning-event extraction is dead downstream",
+				"claim": "`parseSseLine` emits `reasoning` events (:1321, helpers :1478-1505); every consumer drops them (`provider-pass.ts:55`, `turn-provider.ts:1196, 1598, 1748`); the request already sends `reasoning.exclude: true`. Only the dev prompt dump ever records them.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "1321, 1478-1505",
+						"note": "reasoning event emission and helpers"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/provider-pass.ts",
+						"lines": "55",
+						"note": "drops reasoning events"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-provider.ts",
+						"lines": "1196, 1598, 1748",
+						"note": "drops reasoning events"
+					}
+				],
+				"proposed_fix": "Delete 28 lines and the event variant, or keep only for the dump behind `localPromptDumpsEnabled()`.",
+				"risk": "not stated in report",
+				"verifier_corrections": "Two tests hard-code the event and must change with the deletion: apps/worker/tests/agenticChatOpenRouterClient.test.ts:257 expects `{ type: 'reasoning', reasoning: 'private chain' }` in the streamed output, and apps/worker/tests/agenticChatTurnProvider.test.ts:707 feeds one into clientWith(). Removing the union member from contracts.ts:43 also makes those literals a type error. The finding's 'only the dev prompt dump ever records them' is accurate; the \u221228 line estimate is right for openrouter-client.ts alone (1 + 16 + 10) but excludes the contracts.ts variant and the four consumer lines (~+6) and the two test edits.",
+				"verifier_better_fix": "Delete outright rather than keeping a dump-only path: parseSseLine is a pure function with no dump handle, so preserving reasoning 'for the dump' would require threading promptDump into the parser. Remove extractReasoning/stringifyReasoning, the push at :1321, the contracts.ts:43 variant, the guards at provider-pass.ts:55 and turn-provider.ts:1196-1200/1598/1748, and drop the reasoning fixture line from the two tests (the openrouter test then expects [text, done]). Optionally also delete the never-populated reasoningChannelChunks/Chars fields in runtime loop/shared.ts:130-135.",
+				"consequence_better_fix": ""
+			}
+		]
+	},
+	"E-executor-resilience": {
+		"owns": [
+			"apps/worker/src/workers/agentic-chat/turn-executor.ts",
+			"apps/worker/src/workers/agentic-chat/executorEffects.ts",
+			"apps/worker/src/workers/agentic-chat/cancellationObserver.ts",
+			"apps/worker/src/workers/agentic-chat/promptSnapshot.ts",
+			"apps/worker/src/workers/agentic-chat/tools/execution-adapter.ts",
+			"apps/worker/tests/agenticChatTurnExecutor*.test.ts",
+			"apps/worker/tests/agenticChatExecution*.test.ts",
+			"apps/web/src/lib/services/agentic-chat-v2/turn-persistence.ts (only if F118 lives there)"
+		],
+		"note": "F55 (verifier version): key on error.code === read_tool_execution_failed (the adapter catch-all) rather than failure class, so read_tool_not_allowlisted / read_tool_context_invalid / ownership / cancellation stay terminal; branch persistRecoverableReadFailure so non-web reads get the adapter message, substituting a generic \"The read could not be completed\" for unknown-class DB errors; keep failureKind read_failure and the identity triple in feedback.ts untouched. F53: raise the cancellation poll from 500 ms to a value that costs <1 RPC/s per turn (e.g. 1,500 ms) or make it event-driven if a cheap signal exists; document the latency trade in a comment. F67: give the inline prompt-snapshot await a deadline (do not block the opening pass on it). F118: interrupted-turn receipts must prefer write receipts over harness control results when filling the six slots (find the composer; if it is a web file outside your ownership, report the exact location instead of editing). F56: finalize completed + mutation_unfulfilled with the disclosure line on ANY terminal after >=1 durable write (not only budget exhaustion), keeping zero-write terminals as failed; reuse the existing budget-expiry path. F50 (this package's part): fire-and-forget the tool observation calls in executorEffects.observeToolExecution into a per-turn pending set, drained once (Promise.allSettled with the existing 5 s deadline) at finalization before the terminal fence; coordinate with WP-D which may add pendingEffects.ts -- if it exists when you get there, use it; otherwise create the same module name and API (enqueue(promise) / drain(deadlineMs)). Zero migrations; the same rows must still land.",
+		"findings": [
+			{
+				"id": "F55",
+				"severity": "P1",
+				"title": "Any thrown non-web read error kills the turn",
+				"claim": "`executeReadTool` feeds a failure back to the model only for `web_search`/`web_visit` and the two egress-policy codes. Every other throw from a shared read \u2014 `AgenticChatToolAccessDeniedError` on a hallucinated or foreign `project_id`, argument throws like 'project_id is required for get_document_tree', calendar/email errors, DB errors \u2014 is mapped to `read_tool_execution_failed` and re-thrown -> terminal `failed`, 'An error occurred while streaming.' The mutation path already does the right thing (`persistKnownMutationFailure`). Production: `read_tool_execution_failed` \u00d72 in 14 days.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "1993-2011",
+						"note": "feedback only for web_search/web_visit and egress-policy codes"
+					},
+					{
+						"file": "apps/worker/tests/agenticChatTurnExecutor.test.ts",
+						"lines": "848-857",
+						"note": "test covers exactly those cases"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/workerAccessAdapter.ts",
+						"lines": "79-88",
+						"note": "AgenticChatToolAccessDeniedError on hallucinated/foreign project_id"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/ontology-structure-reads.ts",
+						"lines": "81-161",
+						"note": "argument throws"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/ontology-search.ts",
+						"lines": "449-504",
+						"note": "argument throws"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/overview-reads.ts",
+						"lines": "260-388",
+						"note": "argument throws"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/tools/execution-adapter.ts",
+						"lines": "520-528",
+						"note": "mapped to read_tool_execution_failed and re-thrown"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "1608-1717",
+						"note": "persistKnownMutationFailure \u2014 mutation path already feeds failure back"
+					}
+				],
+				"proposed_fix": "Route every `permanent`/`unknown` read failure through `persistRecoverableReadFailure` with the adapter's message as the model payload; keep `transient_infra` + ownership/cancellation as terminal. ~150 lines.",
+				"risk": "Invariant: failure rows still persist (`failureKind: 'read_failure'`) so the next turn's context sees the attempt.",
+				"verifier_corrections": "Missing-required-argument and malformed-UUID throws are caught pre-execution by the validation-repair loop, so the reachable class is narrower than stated: access denial on a well-formed hallucinated id, not-found throws, semantic argument checks, and DB/PostgREST errors. Calendar/email provider failures are already rendered as successful warning results, not throws. The proposed fix keys on failure class ('permanent'/'unknown'), which would also sweep read_tool_not_allowlisted and read_tool_context_invalid (execution-adapter.ts:347, :413, both 'permanent') into model-visible feedback and change the fail-closed-on-unknown-tool terminal behaviour.",
+				"verifier_better_fix": "Key on error.code === 'read_tool_execution_failed' (the adapter's catch-all for shared-read throws) rather than on failure class, so read_tool_not_allowlisted / read_tool_context_invalid / ownership / cancellation stay terminal. Branch the fixed 'Live research did not return usable evidence' text in persistRecoverableReadFailure (:2237-2247) so non-web reads get the adapter message, but substitute a generic 'The read could not be completed' for 'unknown'-class DB errors so raw PostgREST messages do not reach the model. Keep failureKind 'read_failure' and the identity triple in feedback.ts untouched; the 226e51c31 feedback fix already accepts known_execution_failure for reads. ~40 lines, not 150.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F53",
+				"severity": "P2",
+				"title": "Cancellation poll at 500 ms",
+				"claim": "`observe_agentic_chat_turn_cancellations` runs every 500 ms while any turn is registered \u2014 ~60 RPCs on a 30 s turn, ~200 on a 100 s write turn. Cancels are 2 of 296 turns in 14 days. The DB corrects the terminal outcome regardless (`recover` returns `finalize_cancelled` when `cancel_requested_at` is set), so the poller's unique value is provider-stream abort latency.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/cancellationObserver.ts",
+						"lines": "97",
+						"note": "500 ms poller"
+					},
+					{
+						"file": "packages/shared-types/src/agentic-chat-worker-contract.ts",
+						"lines": "26",
+						"note": "interval constant"
+					},
+					{
+						"file": "supabase/migrations/20260802031000_agentic_chat_worker_execution_recovery.sql",
+						"lines": "429-443",
+						"note": "recover returns finalize_cancelled whenever cancel_requested_at is set"
+					}
+				],
+				"proposed_fix": "2 s interval (a user-visible cancel takes \u22642 s instead of \u22640.5 s). 1 constant.",
+				"risk": "Invariant: none; the classification path is unchanged (DB-side cancel reclassification). Cancel latency rises from \u22640.5 s to \u22642 s.",
+				"verifier_corrections": "Minor: the poller is one RPC per worker per tick across all registered turns, not per turn (irrelevant at consumerConcurrency=1). The observer test apps/worker/tests/agenticChatCancellationObserver.test.ts:190-208 ('uses one worker-level 500 ms timer', expects 3 calls in 1_500 ms) pins the constant and must be updated with the fix; the finding lists it as '1 constant'.",
+				"verifier_better_fix": "Same constant change, plus update the 500 ms observer test. If cancel latency during silent phases matters, the cheaper lever than a faster poll is that every write RPC already returns cancel_requested \u2014 the publisher already aborts on it \u2014 so 2 s (or even 3 s) is safe; no need for adaptive polling.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F67",
+				"severity": "P3",
+				"title": "Prompt snapshot awaited inline with no deadline",
+				"claim": "`persistPromptSnapshot` is awaited inside the step loop on the first text/tool step; `executorEffects.persistPromptSnapshot` wraps it in `abortable` without a timeout. A slow 100 KB write stalls replay of the already-buffered pass; a hung RPC stalls it until the provider budget aborts the turn.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "586, 621, 678",
+						"note": "awaited inline in the step loop"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/executorEffects.ts",
+						"lines": "62-72",
+						"note": "abortable without a timeout"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "922-925",
+						"note": "snapshot id is stable"
+					}
+				],
+				"proposed_fix": "Fire-and-forget with the 5 s observation deadline.",
+				"risk": "Invariant: the snapshot id is stable (:922-925), so a late write is idempotent.",
+				"verifier_corrections": "Cited :922-925 is the finally block; the stable id is built at :966-968 / promptSnapshot.ts:96-106. A hung RPC ends in a budget-aborted failed turn, not just a stall. The FOR UPDATE row lock means the DB-side write still serializes with text flushes; the win is the network/RTT portion.",
+				"verifier_better_fix": "Detach the write at the first durable step but keep the promise, and join it under runWithAbortableDeadline (5 s, reuse AGENTIC_CHAT_EXECUTION_OBSERVATION_TIMEOUT_MS) right before finalize/recover rather than pure fire-and-forget; also thread the deadline signal into the adapter via `.abortSignal()` so a hung fetch is actually cancelled instead of orphaned.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F118",
+				"severity": "P2",
+				"title": "Interrupted-turn receipts spend their six slots on harness control results and drop the writes",
+				"claim": "After an interrupted turn the history receipt takes the first six successful tool results by sequence as 700-char JSON previews, control tools included; in the persisted sample three slots were declare_turn_contract / request_proposal_revision / approve_turn_contract_review, two of five goal creates appeared and none of the six task creates.",
+				"evidence": [
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/session-service.ts",
+						"lines": "443-458, 460-496",
+						"note": "summarizeInterruptedToolResult stringifies 700 chars; .slice(0, 6) at :474 with no control-tool filter"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts",
+						"lines": "1152-1159",
+						"note": "interrupted executions loaded for interrupted assistant messages only"
+					}
+				],
+				"proposed_fix": "Filter CONTROL_TOOL_NAMES, render one line per durable write ('created task <title> (<id>)'), include every write rather than six, cap only the prose.",
+				"risk": "None.",
+				"verifier_corrections": "Risk 'None' is slightly overstated: session-service.test.ts (:455-520 projection test, :524-560 web_visit test) asserts read results (web_search 'Launch risks', web_visit content) survive in the receipt, so a fix that renders only durable writes breaks those tests and drops read evidence the next turn may need. 'Include every write' also collides with the 3,000-char previewText cap at :495 on long interrupted turns unless writes are exempted from it.",
+				"verifier_better_fix": "In buildInterruptedToolHistorySummary: drop rows whose tool_name is in CONTROL_TOOL_NAMES; render every successful write-class row (tool-classification's write prefixes/ops) first as one ~100-char line with kind, title and id, exempt from the 3,000-char cap; then fill remaining slots with read summaries as today. Keeps the existing tests green and the read evidence intact.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F56",
+				"severity": "P1",
+				"title": "Partial-fulfilment completion only for budget exhaustion",
+				"claim": "`finalizeBudgetExhaustedAfterDurableWrites` runs only when `failureClass === 'timeout_post_start' && providerBudget.signal.aborted`. A provider stream error after retry, a read timeout, a ledger timeout, or E7's read throw after two of six moves committed still ends `failed`, without `last_turn_context` (`includesTerminalEventPair` is completed/cancelled only) and with the generic error. The DB pending-contract trigger recomputes from tool rows, but the user is told nothing was done.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "855-877",
+						"note": "finalizeBudgetExhaustedAfterDurableWrites gated on timeout_post_start && aborted"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "2809-2816",
+						"note": "includesTerminalEventPair is completed/cancelled only"
+					}
+				],
+				"proposed_fix": "Apply the same 'durable writes exist -> complete with disclosure' lane to every post-start failure class except `cancelled`, `publisher_overload`, and `uncertain_external_commit`. ~40 lines.",
+				"risk": "Invariant: never complete over an uncertain effect (already enforced by `hasSuccessfulDurableEffects` + the effect ledger).",
+				"verifier_corrections": "Cheap-model impact is only partly model-driven: stream errors and read/ledger timeouts are infra, but provider_tool_finish_reason_invalid (x3, DJ) and provider_tool_validation_repair_exhausted are model-caused 'permanent' post-start failures that this lane would also cover. The 'E7 read throw after two of six moves' example disappears once F55 lands. Health dashboards keyed on status='failed' will stop seeing these post-write infra failures; the fix should note that the typed failure log remains the signal.",
+				"verifier_better_fix": "Replace the `failureClass === 'timeout_post_start' && providerBudget.signal.aborted` conjunct with an allowlist of classes {'timeout_post_start','permanent','transient_infra','unknown','provider_throttle'} and keep every other existing conjunct (cancellation/job/overload signals, hasSuccessfulDurableEffects). Explicitly exclude 'stale_context' as well as cancelled/publisher_overload/uncertain_external_commit. Record the original failure code in assistantMetadata (e.g. partial_failure_code) so telemetry can still count the infra failure on a completed row.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F50",
+				"severity": "P1",
+				"title": "Observation rows on the tool critical path",
+				"claim": "`observeToolExecution` is awaited before a read runs and after it, and around every mutation; the provider adds two per pass. 14 RPCs per model turn, 5 s deadline each. The `ended` row duplicates the ledger row; the planning fields (`graph_layer_*`, `read_epoch`, `memo_served`, `exact_read_key`) are the only unique data.",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "1922-1935, 2117-2134",
+						"note": "observation awaited before and after each read"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "1363-1376, 1509-1526",
+						"note": "observation awaited around every mutation"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "469, 499",
+						"note": "two provider attempt observations per pass"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "2425-2455",
+						"note": "planning fields are the only unique data in observation rows"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "469-477",
+						"note": "provider_attempt_started awaited before fetch"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "665-735",
+						"note": "ended receipt awaited before done"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
+						"lines": "348-450",
+						"note": "usage upsert awaited before done"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-K-timing.mjs",
+						"lines": "1",
+						"note": "non-model time in loop p50 6.0 s / p90 14.5 s"
+					}
+				],
+				"proposed_fix": "Put the planning fields on `persist_agentic_chat_read_tool_execution` / `\u2026mutation_tool_execution` (one migration), drop `tool_execution_started/ended`, keep provider attempt observations but fire them without awaiting.",
+				"risk": "Invariant: the 08-06 forensics use case (tool that never ends) is covered by the 30 s tool deadline and the ledger `failure` row; forensics continue via ledger + attempt rows.",
+				"verifier_corrections": "The E2 fix is larger and riskier than 'one migration': `tool_execution_ended` observation rows are the source for the 09-02 read-planning views (20260902040000_...read_planning_observability.sql:134-160 and :363), the lifecycle observations view (20260806010000:247), the e2e harness telemetry (apps/web/src/lib/tests/agentic-e2e/harness/telemetry.ts:377-418 filters phase='tool' && eventType='tool_execution_ended'), and the canary script reads the lifecycle view (scripts/verify-agentic-chat-read-canary.ts:98). Rejected/validation-failure tool calls (turn-executor.ts:1892-1919) have a planning observation but no successful ledger row. And the ledger RPC is a fatal port: moving the observation RPC's RAISE-on-invalid planning fields onto it turns swallowed telemetry validation into turn failures unless the validation is loosened. The 'forensics via ledger' invariant holds, but the 08-06 `started` row also survives under fire-and-forget (the RPC still runs).",
+				"verifier_better_fix": "Fire-and-forget all four observation calls without any schema change: in executorEffects.observeToolExecution and openrouter-client.observeProviderAttempt, start the `attempt(...)` promise, add it to a per-turn pending set, and drain the set (Promise.allSettled with the existing 5 s deadline) once at finalization before the terminal fence. Zero migrations, views/harness/canary untouched, same rows land, ~20 lines, and it removes ~14 serial round trips per 3-read + 1-write turn \u2014 the same RPC savings E2 claims. K11's ~10-line 'started only' version is the minimal safe first cut.",
+				"consequence_better_fix": ""
+			}
+		]
+	},
+	"F-guards-compaction-reads": {
+		"owns": [
+			"packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.ts",
+			"packages/agentic-chat-runtime/src/loop/finalization-guard.ts",
+			"packages/agentic-chat-runtime/src/loop/tool-payload-compaction.ts",
+			"packages/agentic-chat-runtime/src/loop/read-loop-escalation.ts",
+			"packages/agentic-chat-runtime/src/loop/context-gathering-ledger.ts",
+			"packages/agentic-chat-runtime/src/tools/overview-helper.ts",
+			"packages/agentic-chat-runtime/src/tools/calendar-reads.ts",
+			"apps/worker/src/workers/agentic-chat/provider/turn-provider.ts (F15 and F19 only)",
+			"the matching *.test.ts files"
+		],
+		"note": "F12: remove only the matched sentence; re-join with the original separators (newlines, list markers, table rows preserved); keep the pattern list; add the lane-A false-positive fixture (evidence/lane-A-sanitizer-false-positive-test.ts) as a regression test. F13: the lead-in replacement fires only on an actual lead-in shape (i'll / let me / first i / ... ) with no terminal question mark and no completion word; keep the empty-reply branch; add \"You have 3 open tasks; check the Q3 plan for the rest.\" as a must-not-replace fixture. F15: put a blank line between pre-tool lead-in prose and the final answer when both are emitted. F113 (verifier version): set every ontology compactor target to MAX_MODEL_TOOL_PAYLOAD_CHARS minus the notice margin (as the web path does) so the outer guard never fires on a compacted payload; bound overview payloads at the source (description <= 200, no entity_counts duplication, activity <= 2); search results carry due_at/priority/updated_at instead of a long snippet; do NOT touch request-builders.ts replay (Finding 11 addendum). F85 (verifier version): keep success semantics (a calendar outage must not kill the turn) but add top-level calendar_read_failed: true + error_code to the payload when zero Google sources were readable, so the model does not parse prose; make the outage queryable in telemetry columns (zero_result/result_count null + coverage) if the adapter is in your files, else report. F19: collapse the two read-saturation ladders into one message per round (keep the novelty ledger as the source of truth; the count ladder becomes a floor inside it); delete the unreachable roundsRemaining <= 2 branch.",
+		"findings": [
+			{
+				"id": "F12",
+				"severity": "P1",
+				"title": "Sanitizer re-join flattens markdown lists/tables and drops short sentences whenever any of 144 patterns matches",
+				"claim": "When any sanitizeAssistantFinalText pattern matches one sentence, the whole reply is split on newlines and sentence boundaries and re-joined with \\n\\n, flattening markdown lists and tables and dropping sentences shorter than 8 characters. The sanitizer runs inside the guard, again on the final text, and on every history message at admission. Production: 11 of 50 sampled replies altered (target <= 6/76).",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.ts",
+						"lines": "102",
+						"note": "^\\s*(?:congratulate|confirm|\u2026) anchor deletes a legitimate bullet"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.ts",
+						"lines": "98",
+						"note": "deletes \"Existing tasks: 3 open, 0 overdue.\""
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.ts",
+						"lines": "186-211,258-274",
+						"note": "sentences re-joined with \\n\\n, reflowing lists"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.ts",
+						"lines": "68,74,76,81",
+						"note": "further generic anchors that hit legitimate prose"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-provider.ts",
+						"lines": "1768,1802",
+						"note": "runs on every worker reply"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-v2/history-composer.ts",
+						"lines": "120-137",
+						"note": "runs on every prior assistant message replayed into history"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-A-sanitizer-false-positive-test.ts",
+						"lines": "1-24",
+						"note": "reproduction; outputs in evidence/lane-A-measurements.txt"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.ts",
+						"lines": "186-201",
+						"note": "split + re-join with \\n\\n; drops sentences < 8 chars"
+					}
+				],
+				"proposed_fix": "Structural half: remove only the matched sentence; re-join with the original separators; keep list markers. Lane A decides which of the 144 patterns survive.",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "",
+				"verifier_better_fix": "",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F13",
+				"severity": "P2",
+				"title": "The finalization guard replaces a short, correct read-turn answer that offers a follow-up",
+				"claim": "isLikelyLeadIn is true for any candidate \u2264260 chars without the words updated/created/deleted/completed/finished/found that contains check|look up|inspect|pull up|search|find|update|create|make|verify as a plain word. shouldReplaceReadLeadIn then swaps the reply for the generic read-evidence text whenever a read succeeded and no write ran; on the worker the replacement is appended to what the user already saw. \"Nothing is overdue. The inspection is next, Oct 5 \u2014 want me to update it?\" qualifies.",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/finalization-guard.ts",
+						"lines": "63-86",
+						"note": "isLikelyLeadIn heuristic"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/finalization-guard.ts",
+						"lines": "573-574",
+						"note": "shouldReplaceReadLeadIn"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/terminalTextIntegrity.ts",
+						"lines": "71-83",
+						"note": "replacement appended to what the user already saw"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/finalization-guard.ts",
+						"lines": "62-80",
+						"note": "LEAD_IN_PATTERNS and isLikelyLeadIn"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/finalization-guard.ts",
+						"lines": "487-629",
+						"note": "applyFinalizationGuard"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/terminalTextIntegrity.ts",
+						"lines": "29-75",
+						"note": "order of terminal floors"
+					}
+				],
+				"proposed_fix": "Require an actual lead-in shape (pattern group 1, i'll|let me|\u2026) and no terminal question mark; keep the empty-reply branch.",
+				"risk": "not stated in report",
+				"verifier_corrections": "",
+				"verifier_better_fix": "",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F15",
+				"severity": "P3",
+				"title": "Pre-tool lead-in prose is glued to the final answer without a separator",
+				"claim": "turn-provider.ts flushes the held assistantCandidate of a tool pass when no disposition is among its calls; the next pass's answer follows as another text_delta with no separator. Retained answers show the seam: \"Let me check whether this task already exists before doing anythingThat task already exists\u2026\" (56a65b9c), \"\u2026to give you an accurate pictureHere is the owner status report\" (90f7354d), \"Let me read the current document content to make a precise updateWhich one did you mean\u2026\" (579e0c95).",
+				"evidence": [
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-provider.ts",
+						"lines": "1314-1321",
+						"note": "held assistantCandidate flushed without separator"
+					},
+					{
+						"file": "artifacts/agentic-chat-postdeploy-6d787284c-runs.json",
+						"lines": "turns 56a65b9c, 90f7354d, 579e0c95",
+						"note": "fused lead-in + answer text"
+					}
+				],
+				"proposed_fix": "Emit lead-ins as activity-log semantics, or append \\n\\n when flushing.",
+				"risk": "not stated in report",
+				"verifier_corrections": "The flush at :1314-1321 is not the sole mechanism \u2014 the live-stream path (:1193) produces the same fused text on surfaces where holdAssistantText is false. The 'three or four fused lead-ins' cheap-model claim is an extrapolation; the batteries show one seam per affected answer.",
+				"verifier_better_fix": "Track 'streamed text ended without trailing whitespace' in streamActingPass and prefix '\\n\\n' onto the first text_delta of any subsequent pass (covers both the held flush and the live-stream path with one rule, instead of patching :1320 alone). Expect to update the few provider tests that pin exact text_delta sequences (e.g. agenticChatTurnProvider.test.ts ~5457). Do not route lead-ins to activity-log semantics: that changes what the user sees and would need a UI change for no extra benefit.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F113",
+				"severity": "P1",
+				"title": "The 6,000-char size guard replaces read results with a cut JSON string, and hits the tools the prompt steers to",
+				"claim": "applyToolPayloadSizeGuard replaces any payload over 6,000 chars with {truncated, original_length, preview: JSON.slice(0,6000)} \u2014 an escaped mid-object cut that re-serializes to 8.5-11k chars. The tools with no compactor are the overview tools the prompt recommends five times on global, and two compactors' own item caps (12 \u00d7 700-char snippets; 12 tasks \u00d7 ~550 chars) exceed the guard by construction.",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/tool-payload-compaction.ts",
+						"lines": "8, 767-801, 1732-1749",
+						"note": "6,000 guard; no compactor for get_workspace_overview/explore_project/get_project_overview/list_onto_tasks/outline/section; JSON-string preview"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/tool-payload-compaction.ts",
+						"lines": "902-951, 996-1066",
+						"note": "search keeps 12 \u00d7 700-char snippets and drops due_at/priority; project details 12 tasks \u00d7 360-char descriptions \u2014 both exceed 6,000"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/overview-helper.ts",
+						"lines": "571-710",
+						"note": "workspace overview emits the untruncated description + 16 count fields + activity per project \u22481.5 KB \u00d7 8"
+					},
+					{
+						"file": "apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts",
+						"lines": "105-109, 2345, 2472",
+						"note": "prompt sends the model to get_workspace_overview / get_project_overview for status, 'more projects' and the backlog"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/evidence/lane-F-guard-21d.txt",
+						"lines": "1-14",
+						"note": "21-day re-run: get_workspace_overview 13/17 guarded, explore_project 9/10, search_all_projects 11/30, get_document_tree 16/51, get_project_overview 10/71"
+					}
+				],
+				"proposed_fix": "No JSON-string previews anywhere: give every read tool a structural budget fit (fitPayloadToBudget, already used for web) that drops items and says 'N more not shown'; bound overview payloads at the source (description \u2264200, drop entity_counts duplication, activity \u22642); make search results carry due_at/priority/updated_at instead of a 700-char snippet; stop echoing document bodies in create/update receipts.",
+				"risk": "Low; all changes are in result shaping, covered by existing compaction tests.",
+				"verifier_corrections": "Cited build-lite-prompt.ts:105-109 is the DATE_ARGUMENT_SCOPE_RULE, not overview steering \u2014 the steering lines are :2344 and :2472. 'Five times on global' is 6 mentions file-wide. The finding also misses a second trigger: addToolResultSecurityNotice (:230-258) re-runs the guard after adding ~250 chars of notice, so compactor outputs between ~5,750 and 6,000 chars also degrade; the web path already subtracts a 400-char margin (WEB_COMPACT_TARGET_CHARS) and the ontology compactors do not.",
+				"verifier_better_fix": "Same direction, but set every ontology compactor target to MAX_MODEL_TOOL_PAYLOAD_CHARS minus the notice margin (as the web path does) so the outer guard never fires on a compacted payload, and keep the change inside tool-payload-compaction.ts plus overview-helper source bounds \u2014 do not touch request-builders.ts replay, which the Finding-11 addendum protects.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F85",
+				"severity": "P1",
+				"title": "Calendar reads report success while every source fails, so the model retries and telemetry sees nothing",
+				"claim": "8 list_calendar_events rows all carry success: true with events: [] and a warning that all connected sources failed (provider_error on 09-04 17:17Z, credentials_not_configured 20:42Z, credentials_unreadable 09-05 00:36Z; the memory index says five calendar secrets are still owed on Railway). chat_tool_executions.success/zero_result and tool_execution_ended.status all say success, so agentic:health cannot see that the calendar has not worked since the merge. dfc7fa13 called it 5x with varied arguments; 89797082 called get_external_account_status 3x and list_calendar_events 2x. Because the tool reports success, neither the read-loop ladder nor the success flag sees a failure and the model keeps trying.",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/calendar-reads.ts",
+						"lines": "124-134",
+						"note": "zero-source outage rendered as a 'No calendar data was read' warning inside a successful result"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/calendar-reads.ts",
+						"lines": "514",
+						"note": "'No calendar data was read (...). Do not assert availability' warning text"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/tools/shared-read-dispatch.ts",
+						"lines": "94",
+						"note": "list_calendar_events dispatch entry"
+					},
+					{
+						"file": "docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/lane-H-telemetry.md",
+						"lines": "190,213-217",
+						"note": "8 calls, 0 recorded failures; repeated calls in dfc7fa13 and 89797082; S10 all three runs returned no calendar data"
+					},
+					{
+						"file": "artifacts/agentic-chat-postdeploy-a1771c1f7.md",
+						"lines": "case 10 (\"Route proof\")",
+						"note": "only pass, on the deleted web engine after a 60 s DeepSeek timeout and Gemini fallback"
+					},
+					{
+						"file": "artifacts/agentic-chat-postdeploy-6d787284c-evidence.json",
+						"lines": "n/a",
+						"note": "calendarProbeResults: provider_error \u00d72; response invents an OAuth/transient explanation"
+					},
+					{
+						"file": "artifacts/agentic-chat-postdeploy-4ac73bde7-evidence.json",
+						"lines": "n/a",
+						"note": "credentials_not_configured; honest response"
+					},
+					{
+						"file": "artifacts/agentic-chat-failed-cases-ef4ad9a-evidence.json",
+						"lines": "n/a",
+						"note": "calendar_case: credentials_unreadable"
+					}
+				],
+				"proposed_fix": "Return success: false, error_code: <source failure> when zero sources were readable (keep partial coverage as success with partial: true); set the worker calendar secrets on Railway.",
+				"risk": "A false failure would trigger the read repair path, bounded by the existing repair rank.",
+				"verifier_corrections": "The read-loop ladder does not key on success, so success:false would not change escalation; the context-gathering ledger already treats failed results as no evidence. Ontology events are a readable source that survives a Google outage, so 'zero sources readable' overstates. The current warning-in-success shape is a deliberate, tested design that exists so a calendar outage does not kill the turn \u2014 the proposed change would either throw (terminal under F55) or requires a new failed-read channel and is therefore dependent on F55 landing first. The telemetry blindness claim is real and unaddressed.",
+				"verifier_better_fix": "Do I11 first: set the five Railway variables and verify with /health and \u00a75 case 5 \u2014 this removes the production trigger. For visibility, keep success semantics and make the outage queryable instead: have searchTelemetryColumns (or the adapter at execution-adapter.ts:570) emit zero_result=null/result_count=null plus persist result->google_read->>coverage so agentic:health can count coverage='unavailable' rows; optionally add a top-level `calendar_read_failed: true` + `error_code` to the payload so the model does not have to parse prose. Only after F55 ships, consider throwing a typed permanent error when coverage is unavailable AND no ontology events were found.",
+				"consequence_better_fix": ""
+			},
+			{
+				"id": "F19",
+				"severity": "P2",
+				"title": "Two read-saturation ladders run per read round, and their roundsRemaining <= 2 branch is unreachable",
+				"claim": "turn-provider.ts calls ContextGatheringLedger.observeToolRound (novelty/repeated-search ladder, 477 lines, own system message) and then selectReadLoopRepairEscalation (count ladder, own system message), merging by readLoopRepairRank = max(...); both can append an instruction in the same round. The roundsRemaining <= 2 branch in both is unreachable because maxProviderRounds defaults to 16 but MAX_PROVIDER_PASSES_PER_TURN = 12 ends the turn first; production rounds top out at 9.",
+				"evidence": [
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/context-gathering-ledger.ts",
+						"lines": "268-302",
+						"note": "ledger narrowing message with counters"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/repair-instructions.ts",
+						"lines": "613-720",
+						"note": "read-loop nudge/escalation/hard stop with counters"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.ts",
+						"lines": "84-88",
+						"note": "five sanitizer patterns exist only to strip echoed counters"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-provider.ts",
+						"lines": "175",
+						"note": "MAX_PROVIDER_PASSES_PER_TURN = 12"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/provider/turn-provider.ts",
+						"lines": "160",
+						"note": "DEFAULT_MAX_PROVIDER_ROUNDS = 16 (unreachable)"
+					},
+					{
+						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"lines": "117",
+						"note": "DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/read-loop-escalation.ts",
+						"lines": "24-38",
+						"note": "count ladder 3/6/8; roundsRemaining <= 2 at :28 dead"
+					},
+					{
+						"file": "packages/agentic-chat-runtime/src/loop/context-gathering-ledger.ts",
+						"lines": "183-233",
+						"note": "novelty ledger; roundsRemaining triggers at :191, :215 dead"
+					}
+				],
+				"proposed_fix": "Keep ContextGatheringLedger (it carries novelty, which the count ladder cannot) and derive the count thresholds inside it; delete read-loop-escalation.ts and contextSaturationRepairRank. Fix the unreachable roundsRemaining guard against the 12-pass cap.",
+				"risk": "Not stated in report.",
+				"verifier_corrections": "The stated cause of unreachability is secondary: the roundsRemaining <= 2 branch is dead primarily because readOnlyRoundCount >= 8 in the same selector fires first at any budget >= 10, independent of the 12-pass cap. The branch is not dead code in the repo sense \u2014 two worker tests deliberately pass a budget of 3 to reach it. 'Five sanitizer patterns strip echoed counters' overstates: only one of the five (:85) is a counter; the others strip echoed instruction sentences. Cheap-model impact ('conflicting steering') is plausible but unmeasured \u2014 lane H reports sanitizer alterations were 21 whitespace characters across 50 replies, so no observed echo problem.",
+				"verifier_better_fix": "Fold the 3/6/8 count thresholds into ContextGatheringLedger.evaluateStatus (rank = max(novelty status, count status)), reset lastEmittedStatusRank on write rounds to preserve the 'reset on any write round' contract, keep counting mixed read+research rounds, and emit one message per round. Delete read-loop-escalation.ts, contextSaturationRepairRank, the dead framing/pendingWriteCommission branches, and the gatewayModeActive parameter. Keep DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS plumbing (or lower the default to 12 to match the pass cap) rather than deleting it, so the two budget-3 tests and CHAT_MAX_TOOL_ROUNDS stay valid; add a sanitizer pattern for 'Context gathering:' if the merged message keeps counters, or drop the counters as A11 suggests.",
+				"consequence_better_fix": ""
+			}
+		]
+	}
+}

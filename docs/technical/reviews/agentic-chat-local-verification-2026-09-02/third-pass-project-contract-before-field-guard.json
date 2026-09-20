@@ -1,0 +1,132 @@
+{
+	"passed": true,
+	"at": "2026-09-03T04:23:57.748Z",
+	"durationMs": 19098,
+	"failure": null,
+	"validationFailures": [
+		{
+			"logicalProviderRound": 1,
+			"type": "read_tool",
+			"callTransitionId": "1602f053-5dce-514d-bfe9-dcf8ef24b29f",
+			"resultTransitionId": "12158e9b-f067-5f7d-8754-b7fb2628c6e7",
+			"providerToolCallId": "call_bc1f9d82f26e44bbb93b3ce4",
+			"toolName": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "type_key", "entities", "relationships"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "due_at", "project_id"],
+						"target_ids": []
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 3,
+						"required_fields": ["title", "project_id"],
+						"target_ids": []
+					}
+				],
+				"summary": "Create a project \"Weekly Audio Launch\" with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\""
+			},
+			"validationFailure": {
+				"error": "Tool validation failed: Invalid turn contract: The project outcome must omit required_fields and changes because the create_onto_project arguments carry the project values.",
+				"toolCategory": null
+			}
+		}
+	],
+	"requests": [
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": {
+				"allow_fallbacks": true,
+				"data_collection": "deny",
+				"order": ["deepinfra", "deepseek", "alibaba", "cloudflare"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash-20260423",
+			"provider": {
+				"allow_fallbacks": false,
+				"data_collection": "deny",
+				"order": ["nextbit"]
+			},
+			"toolChoice": "required",
+			"tools": ["declare_turn_contract", "request_turn_clarification"]
+		}
+	],
+	"calls": [
+		{
+			"logicalProviderRound": 2,
+			"type": "read_tool",
+			"callTransitionId": "8bcdf777-31f0-5e3f-809b-25a33eacec25",
+			"resultTransitionId": "0a60609d-46bc-51a1-a4f1-aac405bb797b",
+			"providerToolCallId": "call_aa2a6a65d49c4202b19e678e",
+			"toolName": "declare_turn_contract",
+			"arguments": {
+				"outcomes": [
+					{
+						"action": "create",
+						"entity_kind": "project",
+						"minimum_successful_effects": 1
+					},
+					{
+						"action": "create",
+						"entity_kind": "goal",
+						"minimum_successful_effects": 1,
+						"required_fields": ["name", "due_at", "project_id"]
+					},
+					{
+						"action": "create",
+						"entity_kind": "task",
+						"minimum_successful_effects": 3,
+						"required_fields": ["title", "project_id"]
+					}
+				],
+				"summary": "Create a project \"Weekly Audio Launch\" with a goal \"Publish three episodes\" due 2026-09-30 and three tasks: \"Define format\", \"Outline first episode\", \"Record pilot\""
+			},
+			"decidedBy": "acting_model"
+		}
+	],
+	"counts": {
+		"project": 1,
+		"goal": 1,
+		"task": 3
+	},
+	"usage": [
+		{
+			"model": "deepseek/deepseek-v4-flash-20260423",
+			"provider": "NextBit",
+			"cost": 0.00057274,
+			"promptTokens": 3613,
+			"completionTokens": 239,
+			"status": "success"
+		},
+		{
+			"model": "deepseek/deepseek-v4-flash",
+			"provider": "NextBit",
+			"cost": 0.000232512,
+			"promptTokens": 4116,
+			"completionTokens": 206,
+			"status": "success"
+		}
+	],
+	"capacity": {
+		"observedAtMs": 1788409437748,
+		"configured": true,
+		"available": true,
+		"activeRequests": 0,
+		"concurrency": 1,
+		"degradedUntilMs": null
+	}
+}

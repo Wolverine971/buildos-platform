@@ -1,0 +1,86 @@
+{
+	"target_release": "ef4ad9a10efd38268be8982b6b8565ec0472c78f",
+	"comparison_release": "4ac73bde73bdf34c747f3db8cc272139a59c8097",
+	"scope": "Only the five previously non-full-credit cases were rerun.",
+	"project_name": "[QA FAILED RETEST ef4ad9a] Cedar House Renovation",
+	"project_id": "ad4580e6-19aa-4f94-95a1-e00ed1337bb6",
+	"browser_session_ids": [
+		"bdc51341-833f-46a4-8dae-e2c400d86a70",
+		"218a2428-6b86-4e05-856d-7816083f57a4",
+		"0d4ae151-02f3-427d-b1b5-f5bc67371b51"
+	],
+	"worker_deployment": "e0a70228-016d-419d-aba8-716636a08bb4",
+	"web_deployment_status_url": "https://vercel.com/djwayne35gmailcoms-projects/build-os/3XYKXqx79jRRkp8iMC13EHDZhNMx",
+	"status": "complete",
+	"score": 10,
+	"maximum_score": 20,
+	"percentage": 50.0,
+	"grade": "F",
+	"previous_score": 13,
+	"previous_maximum_score": 20,
+	"cases": [
+		{
+			"case": 2,
+			"title": "Five-task batch and dependencies",
+			"prompt": "In this project create exactly these five tasks, all initially not started, with no calendar events: (1) \"QA — Confirm permit requirements\", due September 15, 2026, priority high, 60 minutes; (2) \"QA — Order kitchen cabinets\", due September 18, 2026, priority high, 90 minutes, depends on Confirm permit requirements; (3) \"QA — Electrical rough-in\", due September 28, 2026, priority high, 480 minutes, depends on Confirm permit requirements; (4) \"QA — Kitchen inspection\", due September 30, 2026, priority medium, 60 minutes, depends on Electrical rough-in; (5) \"QA — Bathroom inspection\", due October 2, 2026, priority medium, 60 minutes. These are due dates, not appointments. Save the dependencies as relationships if supported. Do not mark the permit approved. Report any fields you cannot save.",
+			"status": "tested",
+			"previous_score": 3,
+			"score": 2,
+			"rationale": "The first turn produced a false project/document ambiguity. Three recovery prompts eventually produced five correct task records, but two turns failed after partial writes and all three dependency edges remain absent.",
+			"matching_turn_ids": [
+				"ab4e567e-226e-4cd7-ad3b-fd728e3f1000",
+				"9a31d293-dc9a-4cda-a0b8-9f65f088f10d",
+				"65307e1e-52b2-4019-aa96-0a3285614401",
+				"78adb24c-7382-4421-ac3b-6b0a9f734dd3"
+			]
+		},
+		{
+			"case": 4,
+			"title": "Narrow task update",
+			"prompt": "Change only the existing \"QA — Order kitchen cabinets\" task: due date September 22, 2026; estimate 120 minutes instead of 90. Keep its exact title, high priority, not-started state, and permit prerequisite unchanged. Do not create another task or a calendar event.",
+			"status": "tested",
+			"previous_score": 3,
+			"score": 1,
+			"rationale": "Both the named-record prompt and an exact-UUID recovery were blocked by harness semantic-review fallback before update_onto_task. Saved state remains Sep 18 local and 90 minutes.",
+			"matching_turn_ids": [
+				"bd67667d-f390-4f73-88f9-b963a11857b0",
+				"f0c2b495-7147-40d4-8a63-55dc6188d4a2"
+			]
+		},
+		{
+			"case": 10,
+			"title": "Personal calendar availability",
+			"prompt": "Calendar test: read my connected calendar for September 4, 2026, 9:00 AM–5:00 PM America/New_York. Propose three non-overlapping 30-minute slots for a synthetic Cedar House planning session, with at least 15 minutes between each proposal and any existing busy event. Consider all-day busy events. Do not create, update, cancel, or invite anyone. State which calendars you could actually check and distinguish verified availability from assumptions. You may keep existing event titles private; busy intervals are enough.",
+			"status": "tested",
+			"previous_score": 1,
+			"score": 1,
+			"rationale": "Both connected personal sources returned credentials_unreadable, leaving coverage unavailable. The response accurately declined to claim verified availability and made no calendar write.",
+			"matching_turn_ids": ["396bebc2-2ad8-4ca3-b374-225bf3d8359a"]
+		},
+		{
+			"case": 13,
+			"title": "Fresh-chat saved facts and links",
+			"prompt": "Find the project \"[QA FAILED RETEST ef4ad9a] Cedar House Renovation\". From saved records, tell me: its budget cap and contingency; how many tasks actually exist; the cabinet task’s current due date and estimated minutes; and the exact Audience and Call to action text currently saved in \"QA — Cedar House Marketing Brief\". Give record links. Do not make changes, and do not assume a requested edit was successfully saved.",
+			"status": "tested",
+			"previous_score": 3,
+			"score": 3,
+			"rationale": "All requested saved facts were accurate. Task and document links were clickable, while the project reference remained plain text.",
+			"matching_turn_ids": ["dae1e6ab-f95b-4ed6-a4e1-437623bdbddd"]
+		},
+		{
+			"case": 14,
+			"title": "Grounded owner report",
+			"prompt": "Give a brief owner status report for [QA FAILED RETEST ef4ad9a] Cedar House Renovation using saved records. What is planned, what construction work is actually completed, are permits approved, and what invoices or payments are evidenced? Distinguish recorded facts from unknowns. Include current task statuses, the budget cap, and the marketing brief revision status. Do not make any changes.",
+			"status": "tested",
+			"previous_score": 3,
+			"score": 3,
+			"rationale": "Saved project, task, and document facts and links were accurate. The report still made stronger absence claims than its reads support, despite also labeling permit approval unknown.",
+			"matching_turn_ids": ["9959665d-0632-4efa-908d-541889668e6d"]
+		}
+	],
+	"start_here_followup": {
+		"score_excluded": true,
+		"async_refresh": "passed after project chat closed",
+		"open_document_navigation": "failed; modal closed and project Overview remained selected"
+	}
+}

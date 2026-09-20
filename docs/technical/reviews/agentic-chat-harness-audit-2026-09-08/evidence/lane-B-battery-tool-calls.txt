@@ -1,0 +1,41 @@
+files: agentic-chat-failed-cases-ef4ad9a-runs.json, agentic-chat-postdeploy-4ac73bde7-runs.json, agentic-chat-postdeploy-6d787284c-runs.json, agentic-chat-postdeploy-a1771c1f7-runs.json
+turns: 48 {"global":11,"project":19,"project_create":1,"undefined":17}
+
+tool                             calls fail contexts
+read_document_section              31    2   project/global/
+declare_turn_contract              23    6   global/project/project_create/
+request_proposal_revision          17    0   project/global/
+get_document_outline               16    0   project/global/
+create_onto_task                   15    0   project/
+request_turn_clarification         14    5   project/global/
+get_onto_task_details              11    0   project
+list_onto_tasks                    11    0   global/project/
+approve_turn_contract_review       10    0   global/project/project_create/
+list_calendar_events                9    0   global/
+create_onto_document                6    0   project/
+get_project_overview                6    0   global/
+search_all_projects                 6    0   global/
+search_project                      4    0   project/
+create_onto_project                 3    0   global/project_create/
+update_onto_task                    3    0   project/
+get_document_tree                   3    0   project/
+get_external_account_status         3    0   global
+approve_mutation_batch_review       3    0   
+skill_load                          2    0   
+search_onto_projects                1    0   global
+update_onto_document                1    0   project
+list_email_accounts                 1    0   global
+declare_read_only_turn              1    0   
+skill_search                        1    0   
+get_onto_project_details            1    0   
+
+failure messages:
+  3 request_turn_clarification :: Tool validation failed: Turn clarification failed: the question must name every supplied candidate label verbatim; missing "America/New_York
+  2 declare_turn_contract :: Tool validation failed: Invalid turn contract: Outcome 1: label is only meaningful on a create outcome; other outcomes reference a created e
+  2 read_document_section :: Tool validation failed: Missing required parameter: anchor
+  1 declare_turn_contract :: Tool validation failed: Invalid turn contract: Outcome 1: a labelled create outcome names exactly one entity, so minimum_successful_effects 
+  1 declare_turn_contract :: Tool validation failed: Invalid turn contract: Outcome 1: task create cannot produce required field "project_id". Supported effect fields: a
+  1 request_turn_clarification :: Tool validation failed: Turn clarification failed: the question must name every supplied candidate label verbatim; missing "QA — Bathroom in
+  1 declare_turn_contract :: Tool validation failed: Invalid turn contract: Outcome 1: task create cannot produce required field "estimated_minutes". Supported effect fi
+  1 declare_turn_contract :: Tool validation failed: Invalid turn contract: Outcome 1: task create cannot produce required field "estimate_minutes". Supported effect fie
+  1 request_turn_clarification :: Tool validation failed: Turn clarification failed: the question must name every supplied candidate label verbatim; missing "QA — Kitchen ins

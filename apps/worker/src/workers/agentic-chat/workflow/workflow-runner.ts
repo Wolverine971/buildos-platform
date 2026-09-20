@@ -2,6 +2,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
+	PROJECT_REVIEW_SPECIALIST_IDS_V1,
+	PROJECT_REVIEW_SPECIALISTS_V1,
+	type ProjectReviewSpecialistIdV1
+} from '@buildos/agentic-chat-runtime/specialists';
+import {
 	AGENTIC_CHAT_WORKFLOW_MAX_OUTPUT_TOKENS,
 	AGENTIC_CHAT_WORKFLOW_PLANNER_RESULT_VERSION,
 	AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1,
@@ -196,11 +201,11 @@ export class AgenticChatWorkflowRunner {
 	}
 }
 
-type Specialist = 'project_analyst' | 'risk_reviewer';
-const SPECIALISTS: readonly Specialist[] = ['project_analyst', 'risk_reviewer'];
-const SPECIALIST_ROUNDS: Record<Specialist, { first: number; retry: number; role: string }> = {
-	project_analyst: { first: 2, retry: 5, role: 'Project analyst' },
-	risk_reviewer: { first: 3, retry: 6, role: 'Risk and alternatives reviewer' }
+type Specialist = ProjectReviewSpecialistIdV1;
+const SPECIALISTS = PROJECT_REVIEW_SPECIALIST_IDS_V1;
+const SPECIALIST_ROUNDS: Record<Specialist, { first: number; retry: number }> = {
+	project_analyst: { first: 2, retry: 5 },
+	risk_reviewer: { first: 3, retry: 6 }
 };
 const PLANNER_TASK =
 	'Assign two complementary investigations for the user question. Return only JSON with keys analyst and reviewer, each a short assignment string. Do not add agents or tools.';
@@ -211,13 +216,11 @@ export const AGENTIC_CHAT_WORKFLOW_FIXED_ASSIGNMENTS_V1 = Object.freeze({
 	planner: { source: 'fixed_fallback', objective: 'Plan the review' },
 	project_analyst: {
 		source: 'fixed_fallback',
-		objective:
-			'Find the highest-impact next steps grounded in the saved plan, commitments, and constraints.'
+		objective: PROJECT_REVIEW_SPECIALISTS_V1.project_analyst.instructions.defaultAssignment
 	},
 	risk_reviewer: {
 		source: 'fixed_fallback',
-		objective:
-			'Independently identify risks, missing evidence, conflicting commitments, and useful alternatives.'
+		objective: PROJECT_REVIEW_SPECIALISTS_V1.risk_reviewer.instructions.defaultAssignment
 	},
 	editor: { source: 'fixed', objective: 'Synthesize the accepted specialist reports.' }
 });
@@ -527,6 +530,7 @@ class WorkflowExecution {
 	}
 
 	private async runSpecialist(key: Specialist, signal: AbortSignal): Promise<void> {
+		const definition = PROJECT_REVIEW_SPECIALISTS_V1[key];
 		for (;;) {
 			signal.throwIfAborted();
 			const step = this.state.steps[key];
@@ -561,7 +565,7 @@ class WorkflowExecution {
 					stepAttemptId: attemptId,
 					firstKind: retrying ? 'corrective' : 'specialist',
 					round: retrying ? rounds.retry : rounds.first,
-					role: rounds.role,
+					role: definition.label,
 					task: buildSpecialistReportInstructions(
 						objectiveOf(assignment ?? step.assignment),
 						retrying
@@ -574,7 +578,7 @@ class WorkflowExecution {
 							: undefined
 					),
 					userContent: this.sharedPrompt,
-					maxOutputTokens: AGENTIC_CHAT_WORKFLOW_MAX_OUTPUT_TOKENS[key],
+					maxOutputTokens: definition.limits.maxOutputTokens,
 					signal
 				});
 				lease.release();
@@ -610,7 +614,10 @@ class WorkflowExecution {
 					const retryable =
 						RETRYABLE_ATTEMPT_CODES.has(attemptError.code) &&
 						(attemptNumber ?? step.attemptsUsed + 1) <
-							this.state.limits.maxStepAttempts &&
+							Math.min(
+								this.state.limits.maxStepAttempts,
+								definition.limits.maxAttempts
+							) &&
 						this.retryWindowOpen();
 					const failed = await this.failAttempt(
 						key,
@@ -1118,11 +1125,15 @@ class WorkflowExecution {
 			boundaryAtMs: () => this.physicalBoundaryMs()
 		});
 		const { fence } = this.input;
+		const specialist =
+			args.stepKey === 'project_analyst' || args.stepKey === 'risk_reviewer'
+				? PROJECT_REVIEW_SPECIALISTS_V1[args.stepKey]
+				: null;
 		const request: AgenticChatTurnProviderClientRequestV1 = {
 			messages: [
 				{
 					role: 'system',
-					content: `${WORKFLOW_RULES}\n\nROLE: ${args.role}\n${args.task}`
+					content: `${specialist?.instructions.system ?? WORKFLOW_RULES}\n\nROLE: ${args.role}\n${args.task}`
 				},
 				{ role: 'user', content: args.userContent }
 			],
@@ -1143,7 +1154,9 @@ class WorkflowExecution {
 			providerRound: args.round === 1 ? 'initial' : 'synthesis',
 			passRole: args.stepKey === 'editor' ? 'final_response' : 'acting',
 			maxOutputTokens: args.maxOutputTokens,
-			reasoningEffort: CHAT_WORKFLOW_DISPATCH_POLICY.reasoningEffort,
+			reasoningEffort:
+				specialist?.modelPolicy.reasoningEffort ??
+				CHAT_WORKFLOW_DISPATCH_POLICY.reasoningEffort,
 			// The client holds its own 5 s reserve; this keeps each physical request inside
 			// both the invocation and the persisted whole-run deadline.
 			budget: {

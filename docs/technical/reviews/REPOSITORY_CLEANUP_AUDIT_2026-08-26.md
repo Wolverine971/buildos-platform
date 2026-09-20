@@ -2,7 +2,7 @@
 
 # Repository cleanup audit and roadmap
 
-**Status:** Current — P0, P1.1, and P1.2 implemented and verified 2026-08-26
+**Status:** Current — P0, P1.1, P1.2, and the first P1.4 slice implemented and verified 2026-08-26
 **Scope:** Web application, worker processes, shared packages, Supabase, repository tooling, CI, documentation, and agent ergonomics  
 **Audit date:** 2026-08-26
 
@@ -123,7 +123,7 @@ The public web stream endpoint is now a thin HTTP adapter over an explicit `lega
 
 The compatibility handler remains intentionally large but is now physically and conceptually quarantined. Gmail, Calendar, OAuth handoff, and worker-disabled image execution remain parity-gated. Future extraction should proceed one lifecycle seam at a time inside the legacy boundary; capability retirement still requires worker parity or an explicit product decision.
 
-### P1.3 — Execute the `DocumentModal` decomposition
+### P1.3 — Execute the `DocumentModal` decomposition — deferred by owner direction
 
 `DocumentModal.svelte` is about 4,500 lines and owns document lifecycle, autosave, conflicts, publishing, tree navigation, assets, versions, nested modals, and presentation. Activate `tasker/48-document-modal-decomposition.md` nearly as written: characterize races first, establish typed clients, extract document/public-page controllers, then split stable UI seams.
 
@@ -131,9 +131,30 @@ The existing `{@html}` path is intentionally sanitized through `renderMarkdown`;
 
 `AgentChatModal.svelte` should follow the same ownership principle: separate session lifecycle, transport/prewarm, composer state, timeline navigation, and presentation rather than creating a generic mega-store.
 
-### P1.4 — Decompose the general worker process without splitting deployment
+The implementation is intentionally deferred. `tasker/48-document-modal-decomposition.md` is the
+current execution handoff and records the owner-directed pause; do not pull this work into adjacent
+cleanup opportunistically.
+
+### P1.4 — Decompose the general worker process without splitting deployment — in progress
 
 Extract `app.ts`, route modules, `bootstrap.ts`, and scheduler-domain modules while retaining one Railway service. Migrate the eight `createLegacyJob` processor adapters to the native `ProcessingJob` contract one domain at a time. Split deployed services only when operational evidence requires it.
+
+The first slice is complete. `src/index.ts` is now an environment-first 11-line entrypoint,
+`src/bootstrap.ts` owns process startup and shutdown, `src/app.ts` owns Express composition, and
+health, ontology classification, brief queueing, general enqueue, and queue inspection/cleanup each
+have explicit route modules. HTTP behavior is covered at the composition boundary, and the worker
+HTTP size guard now has zero grandfathered files. A post-split parity review also pins the complete
+route inventory, queue-before-scheduler-before-listener startup order, graceful queue/HTTP/telemetry
+drain, and startup-failure cleanup in 11 focused tests. Scheduler-domain extraction and the eight
+processor compatibility adapters remain.
+
+The first scheduler-domain slice is also complete: Saved Operative timing, stale-lock recovery,
+database claiming, Agent Run creation, and queue admission now live in
+`src/scheduler/agentOperatives.ts`. `scheduler.ts` retains cron composition and stable re-exports,
+so deployment and callers are unchanged. A 31-test focused scheduler battery includes explicit
+proof that a replica must win the schedule lock before creating or queueing a run, and that a lost
+lock race produces no work. Daily Brief, SMS, maintenance, and recurring-run domains remain to be
+extracted before scheduler ownership is complete.
 
 ### P1.5 — Standardize package development and test resolution
 
@@ -182,6 +203,6 @@ Do not combine Express 5, Zod 4, Vitest 4, OpenAI 7, Stripe 22, Tailwind 4, and 
 2. Patch the production dependency graph.
 3. Enforce the migration ledger and disposable SQL tests.
 4. ✅ Canonicalize project-route ownership.
-5. ✅ Quarantine the legacy Agentic Chat HTTP/SSE host; execute the `DocumentModal` decomposition.
-6. Decompose worker bootstrap/scheduler ownership.
+5. ✅ Quarantine the legacy Agentic Chat HTTP/SSE host; defer the documented `DocumentModal` workstream.
+6. ◐ Decompose worker ownership: bootstrap/HTTP complete; scheduler domains and processor adapters remain.
 7. Standardize package resolution, then ratchet warnings and workflow speed.

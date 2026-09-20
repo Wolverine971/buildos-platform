@@ -1,5 +1,6 @@
 // apps/worker/tests/agenticChatWorkflowRunner.test.ts
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import type { JsonObject } from '@buildos/shared-types';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
 import {
@@ -114,6 +115,26 @@ const slowSpecialists =
 			: happyScript(call));
 
 describe('AgenticChatWorkflowRunner — slice A: persistent runner', () => {
+	it('preserves deployed v1 specialist prompts and dispatch limits after definition extraction', async () => {
+		const h = harness();
+		await h.run();
+		// Captured from 8951b7dc9 before extraction, using happyScript's planner assignments.
+		const promptHashes = {
+			project_analyst: 'fa67974f5d5403834d33c06a276e9c45243273642d91aa732e2c32bf8d177201',
+			risk_reviewer: 'ebcb483d828c57cc86bdb5b85867915d91e48261da8ed4c32c7ee3ce3244cc1b'
+		};
+		for (const role of ['project_analyst', 'risk_reviewer'] as const) {
+			const calls = h.provider.callsFor(role);
+			expect(calls).toHaveLength(1);
+			expect(
+				createHash('sha256').update(calls[0]!.body.messages[0].content).digest('hex')
+			).toBe(promptHashes[role]);
+			expect(calls[0]!.body).toMatchObject({ max_tokens: 4_000, tool_choice: 'none' });
+			expect(calls[0]!.body.tools ?? []).toEqual([]);
+		}
+		expect(h.store.run.answer.status).toBe('accepted');
+	});
+
 	it('runs planner, both specialists, and the editor, committing each result with its progress event', async () => {
 		const h = harness();
 		const result = await h.run();

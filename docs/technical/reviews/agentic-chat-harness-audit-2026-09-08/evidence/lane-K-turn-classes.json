@@ -1,0 +1,34 @@
+{
+	"read_only": {
+		"turns": 29,
+		"mean_calls": 4,
+		"mean_actCalls": 4,
+		"mean_revCalls": 0,
+		"mean_actPrompt": 50431,
+		"mean_actCached": 22572,
+		"mean_actCompletion": 1603,
+		"mean_revPrompt": 0,
+		"mean_revCached": 0,
+		"mean_revCompletion": 0,
+		"mean_cost": 0.00469,
+		"mean_actCost": 0.00469,
+		"mean_revCost": 0,
+		"mean_wallMs": 25512
+	},
+	"reviewed_write": {
+		"turns": 26,
+		"mean_calls": 6,
+		"mean_actCalls": 4,
+		"mean_revCalls": 2,
+		"mean_actPrompt": 63387,
+		"mean_actCached": 27461,
+		"mean_actCompletion": 2351,
+		"mean_revPrompt": 14041,
+		"mean_revCached": 3267,
+		"mean_revCompletion": 1381,
+		"mean_cost": 0.01095,
+		"mean_actCost": 0.00654,
+		"mean_revCost": 0.0044,
+		"mean_wallMs": 60677
+	}
+}

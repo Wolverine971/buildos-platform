@@ -1,0 +1,1119 @@
+{
+	"schemaVersion": 1,
+	"purpose": "Read-only reassessment of the 2026-09-10 Cedar House gate; not a replacement scorecard or rerun.",
+	"baseline": {
+		"gitSha": "38bf64c996314b80d989d04139bd9fcd23d52dd1",
+		"runId": "cedar-house-d8f1e841-aab",
+		"score": "38/52",
+		"strictGate": "failed",
+		"isolatedProjectRef": "daudvqczjqxhpzstlfih"
+	},
+	"limitations": [
+		"Seed task rows were cleaned up; values below are durable tool execution receipts, not fresh post-run task-table reads.",
+		"Only selected failed/slow turns were queried; production was not queried or changed."
+	],
+	"taskCreateDurations": [
+		{
+			"streamRunId": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"turnRunId": "a74c385b-ebdd-44fe-9e0f-d3b1944f7ce2",
+			"sequenceIndex": 4,
+			"success": true,
+			"title": "QA — Confirm permit requirements",
+			"requestedDuration": 60,
+			"returnedDuration": 60,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"turnRunId": "a74c385b-ebdd-44fe-9e0f-d3b1944f7ce2",
+			"sequenceIndex": 5,
+			"success": true,
+			"title": "QA — Order kitchen cabinets",
+			"requestedDuration": 90,
+			"returnedDuration": 90,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"turnRunId": "a74c385b-ebdd-44fe-9e0f-d3b1944f7ce2",
+			"sequenceIndex": 6,
+			"success": true,
+			"title": "QA — Electrical rough-in",
+			"requestedDuration": 480,
+			"returnedDuration": 480,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"turnRunId": "a74c385b-ebdd-44fe-9e0f-d3b1944f7ce2",
+			"sequenceIndex": 7,
+			"success": true,
+			"title": "QA — Kitchen inspection",
+			"requestedDuration": 60,
+			"returnedDuration": 60,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"turnRunId": "a74c385b-ebdd-44fe-9e0f-d3b1944f7ce2",
+			"sequenceIndex": 8,
+			"success": true,
+			"title": "QA — Bathroom inspection",
+			"requestedDuration": 60,
+			"returnedDuration": 60,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"turnRunId": "5d18e824-4594-42f4-af8b-912a080f56e3",
+			"sequenceIndex": 4,
+			"success": true,
+			"title": "QA — Confirm permit requirements",
+			"requestedDuration": 60,
+			"returnedDuration": 60,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"turnRunId": "5d18e824-4594-42f4-af8b-912a080f56e3",
+			"sequenceIndex": 5,
+			"success": true,
+			"title": "QA — Order kitchen cabinets",
+			"requestedDuration": 90,
+			"returnedDuration": 90,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"turnRunId": "5d18e824-4594-42f4-af8b-912a080f56e3",
+			"sequenceIndex": 6,
+			"success": true,
+			"title": "QA — Electrical rough-in",
+			"requestedDuration": 480,
+			"returnedDuration": 480,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"turnRunId": "5d18e824-4594-42f4-af8b-912a080f56e3",
+			"sequenceIndex": 7,
+			"success": true,
+			"title": "QA — Kitchen inspection",
+			"requestedDuration": 60,
+			"returnedDuration": 60,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"turnRunId": "5d18e824-4594-42f4-af8b-912a080f56e3",
+			"sequenceIndex": 8,
+			"success": true,
+			"title": "QA — Bathroom inspection",
+			"requestedDuration": 60,
+			"returnedDuration": 60,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"turnRunId": "690456d3-aec0-4494-81cf-e6410e72c36a",
+			"sequenceIndex": 4,
+			"success": true,
+			"title": "QA — Confirm permit requirements",
+			"requestedDuration": 60,
+			"returnedDuration": 60,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"turnRunId": "690456d3-aec0-4494-81cf-e6410e72c36a",
+			"sequenceIndex": 5,
+			"success": true,
+			"title": "QA — Order kitchen cabinets",
+			"requestedDuration": 90,
+			"returnedDuration": 90,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"turnRunId": "690456d3-aec0-4494-81cf-e6410e72c36a",
+			"sequenceIndex": 6,
+			"success": true,
+			"title": "QA — Electrical rough-in",
+			"requestedDuration": 480,
+			"returnedDuration": 480,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"turnRunId": "690456d3-aec0-4494-81cf-e6410e72c36a",
+			"sequenceIndex": 7,
+			"success": true,
+			"title": "QA — Kitchen inspection",
+			"requestedDuration": 60,
+			"returnedDuration": 60,
+			"returnedDescription": null
+		},
+		{
+			"streamRunId": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"turnRunId": "690456d3-aec0-4494-81cf-e6410e72c36a",
+			"sequenceIndex": 8,
+			"success": true,
+			"title": "QA — Bathroom inspection",
+			"requestedDuration": 60,
+			"returnedDuration": 60,
+			"returnedDescription": null
+		}
+	],
+	"narrowTaskUpdates": [
+		{
+			"stream_run_id": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"turn_run_id": "c804f15c-1d26-4620-8916-6a62f8bae01a",
+			"sequence_index": 4,
+			"tool_name": "update_onto_task",
+			"success": true,
+			"arguments": {
+				"props": {
+					"duration_minutes": 120
+				},
+				"due_at": "2026-09-22",
+				"task_id": "b9a2f99c-a40c-461e-b0d0-676279b167cc",
+				"calendar_sync": "none"
+			},
+			"saved_props": {
+				"description": "Allow 90 minutes. Depends on QA — Confirm permit requirements.",
+				"duration_minutes": 120
+			},
+			"saved_description": "Allow 90 minutes. Depends on QA — Confirm permit requirements.",
+			"error_message": null
+		},
+		{
+			"stream_run_id": "4b02c349-e334-4d97-9e40-37c5176fc94b",
+			"turn_run_id": "b13380a3-0518-40fc-8df9-3402e3a9c66d",
+			"sequence_index": 4,
+			"tool_name": "update_onto_task",
+			"success": true,
+			"arguments": {
+				"props": {
+					"duration_minutes": 120
+				},
+				"due_at": "2026-09-22",
+				"task_id": "a89eaee9-a04d-4a3e-8e28-db20db7b46e2",
+				"description": "Allow 120 minutes. Depends on QA — Confirm permit requirements."
+			},
+			"saved_props": {
+				"description": "Allow 90 minutes. Depends on QA — Confirm permit requirements.",
+				"duration_minutes": 120
+			},
+			"saved_description": "Allow 120 minutes. Depends on QA — Confirm permit requirements.",
+			"error_message": null
+		},
+		{
+			"stream_run_id": "9cb321b8-a384-43dc-b5e8-b29b254b966f",
+			"turn_run_id": "b9e20e5d-a107-4eb1-8914-7a69fdcb3927",
+			"sequence_index": 3,
+			"tool_name": "update_onto_task",
+			"success": true,
+			"arguments": {
+				"props": {
+					"duration_minutes": 120
+				},
+				"due_at": "2026-09-22",
+				"task_id": "4d4ce5a4-b5f0-4d3d-8a1b-a5e45b487c19",
+				"description": "Depends on QA — Confirm permit requirements."
+			},
+			"saved_props": {
+				"description": "Allow 90 minutes. Depends on QA — Confirm permit requirements.",
+				"duration_minutes": 120
+			},
+			"saved_description": "Depends on QA — Confirm permit requirements.",
+			"error_message": null
+		}
+	],
+	"projectFailureSequence": [
+		{
+			"turnRunId": "67c0e15a-9e1e-4dd7-8ac3-7f8ae9592256",
+			"sequenceIndex": 1,
+			"tool": "request_proposal_revision",
+			"success": true,
+			"error": null,
+			"reason": "The user clearly commissioned this project creation, and the fields otherwise match the request. However, the proposed create_onto_project call targets explicitly synthetic/fictional renovation data, while the tool schema states it does not support fiction/living-reference projects; approving it would violate the tool's stated capability.",
+			"requiredCorrection": "Do not execute this unsupported fictional-project creation through create_onto_project; propose a tool-supported alternative or report that no available creation call can safely satisfy the request. Preserve the exact requested name and dates if a supported alternative exists.",
+			"projectFacets": null
+		},
+		{
+			"turnRunId": "67c0e15a-9e1e-4dd7-8ac3-7f8ae9592256",
+			"sequenceIndex": 2,
+			"tool": "request_proposal_revision",
+			"success": true,
+			"error": null,
+			"reason": "The sole proposed call creates a synthetic/fictional project, but the tool schema explicitly says create_onto_project does not support fiction/living-reference projects. The user did commission creation, yet this exact call cannot safely satisfy it.",
+			"requiredCorrection": "Replace this unsupported create_onto_project call with a tool-supported creation path, or state that no available tool can safely create the requested fictional project. Preserve the exact requested name, dates, budget, scope, and no-task/calendar constraint if a supported path exists.",
+			"projectFacets": null
+		},
+		{
+			"turnRunId": "67c0e15a-9e1e-4dd7-8ac3-7f8ae9592256",
+			"sequenceIndex": 3,
+			"tool": "approve_mutation_batch_review",
+			"success": true,
+			"error": null,
+			"reason": "The user explicitly commissioned creation of this new standard construction project, with the exact name, dates, description, budget, scope exclusions, and planning status represented in the sole call. No existing entity is referenced, and the synthetic QA label does not make this a fiction/living-reference project; it is ordinary project test data supported by the schema.",
+			"requiredCorrection": null,
+			"projectFacets": null
+		},
+		{
+			"turnRunId": "67c0e15a-9e1e-4dd7-8ac3-7f8ae9592256",
+			"sequenceIndex": 4,
+			"tool": "create_onto_project",
+			"success": false,
+			"error": "Facet validation failed for project: scale=small: Unknown facet key: scale; stage=planning: Unknown facet key: stage",
+			"reason": null,
+			"requiredCorrection": null,
+			"projectFacets": {
+				"scale": "small",
+				"stage": "planning"
+			}
+		},
+		{
+			"turnRunId": "67c0e15a-9e1e-4dd7-8ac3-7f8ae9592256",
+			"sequenceIndex": 5,
+			"tool": "create_onto_project",
+			"success": false,
+			"error": "Tool validation failed: Mutation create_onto_project is not part of the independently approved batch. Do not execute it; either finish from the approved calls or propose a new batch for independent review.",
+			"reason": null,
+			"requiredCorrection": null,
+			"projectFacets": null
+		},
+		{
+			"turnRunId": "67c0e15a-9e1e-4dd7-8ac3-7f8ae9592256",
+			"sequenceIndex": 6,
+			"tool": "create_onto_project",
+			"success": false,
+			"error": "Tool validation failed: Mutation create_onto_project is not part of the independently approved batch. Do not execute it; either finish from the approved calls or propose a new batch for independent review.",
+			"reason": null,
+			"requiredCorrection": null,
+			"projectFacets": null
+		},
+		{
+			"turnRunId": "7776ac5a-5257-4f81-acdb-78276b208591",
+			"sequenceIndex": 1,
+			"tool": "approve_mutation_batch_review",
+			"success": true,
+			"error": null,
+			"reason": "The user explicitly commissioned creation of exactly one construction project, with no tasks or calendar events. The proposed call creates one project with the exact requested name, dates, budget, scope, exclusions, success criteria, timezone, and synthetic-data context; entities and relationships are empty as requested.",
+			"requiredCorrection": null,
+			"projectFacets": null
+		},
+		{
+			"turnRunId": "7776ac5a-5257-4f81-acdb-78276b208591",
+			"sequenceIndex": 2,
+			"tool": "create_onto_project",
+			"success": false,
+			"error": "Facet validation failed for project: scale=small: Unknown facet key: scale; stage=planning: Unknown facet key: stage",
+			"reason": null,
+			"requiredCorrection": null,
+			"projectFacets": {
+				"scale": "small",
+				"stage": "planning"
+			}
+		},
+		{
+			"turnRunId": "7776ac5a-5257-4f81-acdb-78276b208591",
+			"sequenceIndex": 3,
+			"tool": "create_onto_project",
+			"success": false,
+			"error": "Tool validation failed: Mutation create_onto_project is not part of the independently approved batch. Do not execute it; either finish from the approved calls or propose a new batch for independent review.",
+			"reason": null,
+			"requiredCorrection": null,
+			"projectFacets": null
+		},
+		{
+			"turnRunId": "7776ac5a-5257-4f81-acdb-78276b208591",
+			"sequenceIndex": 4,
+			"tool": "create_onto_project",
+			"success": false,
+			"error": "Tool validation failed: Mutation create_onto_project is not part of the independently approved batch. Do not execute it; either finish from the approved calls or propose a new batch for independent review.",
+			"reason": null,
+			"requiredCorrection": null,
+			"projectFacets": null
+		}
+	],
+	"facetReferenceTableCounts": [
+		{
+			"table_name": "onto_facet_definitions",
+			"count": 0
+		},
+		{
+			"table_name": "onto_facet_values",
+			"count": 0
+		}
+	],
+	"batchControlsAndDependencyAttempts": [
+		{
+			"stream_run_id": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"sequence_index": 1,
+			"tool_name": "request_proposal_revision",
+			"success": true,
+			"arguments": {
+				"reason": "The user commissioned exactly five task creations plus three dependencies: Order kitchen cabinets and Electrical rough-in depend on Confirm permit requirements, and Kitchen inspection depends on Electrical rough-in. The proposed batch creates all five tasks but includes no dependency relationships, so it does not satisfy the full commission. The task fields otherwise match the requested dates, due",
+				"required_correction": "Preserve the five proposed task creations and add the three requested depends_on relationships, ordered after the relevant task-creation results so their new task IDs can be used. Keep all tasks initially not started, with no calendar events, and report any dependency field limitation if relationships cannot be saved.",
+				"reference_candidates": []
+			},
+			"error_message": null
+		},
+		{
+			"stream_run_id": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"sequence_index": 2,
+			"tool_name": "request_proposal_revision",
+			"success": true,
+			"arguments": {
+				"reason": "The batch creates the five commissioned tasks with matching dates, priorities, estimates, todo state, and no calendar sync, but it omits the three explicitly commissioned depends_on relationships: cabinets→permit, electrical rough-in→permit, and kitchen inspection→electrical rough-in.",
+				"required_correction": "Keep the five task creations unchanged and add three depends_on relationship calls after the relevant creations, using the newly created task IDs. Preserve todo state, no calendar events, and all specified fields; report any inability to save relationships.",
+				"reference_candidates": []
+			},
+			"error_message": null
+		},
+		{
+			"stream_run_id": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"sequence_index": 3,
+			"tool_name": "approve_mutation_batch_review",
+			"success": true,
+			"arguments": {
+				"reason": "The current user message explicitly commissions exactly these five task creations and the three dependency relationships. The proposed dates, priorities (high=2, medium=3), estimates, todo state, project, and no-calendar setting match the request. The dependency directions are correct: cabinets→permit, electrical rough-in→permit, and kitchen inspection→electrical rough-in; the labels uniquely bind",
+				"batch_sha256": "16d759810d5fcab452177a41854cd255e09222a8c2f421cc1d27150169b66e81",
+				"reference_candidates": []
+			},
+			"error_message": null
+		},
+		{
+			"stream_run_id": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"sequence_index": 9,
+			"tool_name": "link_onto_entities",
+			"success": false,
+			"arguments": {
+				"rel": "depends_on",
+				"dst_kind": "task",
+				"src_kind": "task",
+				"dst_label": "QA — Confirm permit requirements",
+				"src_label": "QA — Order kitchen cabinets"
+			},
+			"error_message": "link_onto_entities contains unsupported arguments: dst_label, src_label"
+		},
+		{
+			"stream_run_id": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"sequence_index": 10,
+			"tool_name": "link_onto_entities",
+			"success": false,
+			"arguments": {
+				"rel": "depends_on",
+				"dst_kind": "task",
+				"src_kind": "task",
+				"dst_label": "QA — Confirm permit requirements",
+				"src_label": "QA — Electrical rough-in"
+			},
+			"error_message": "link_onto_entities contains unsupported arguments: dst_label, src_label"
+		},
+		{
+			"stream_run_id": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"sequence_index": 11,
+			"tool_name": "link_onto_entities",
+			"success": false,
+			"arguments": {
+				"rel": "depends_on",
+				"dst_kind": "task",
+				"src_kind": "task",
+				"dst_label": "QA — Electrical rough-in",
+				"src_label": "QA — Kitchen inspection"
+			},
+			"error_message": "link_onto_entities contains unsupported arguments: dst_label, src_label"
+		},
+		{
+			"stream_run_id": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"sequence_index": 1,
+			"tool_name": "request_proposal_revision",
+			"success": true,
+			"arguments": {
+				"reason": "The batch correctly creates the five commissioned tasks with the resolved dates, priorities, estimates, project, and todo state, but it omits three explicitly commissioned dependency relationships: Order kitchen cabinets and Electrical rough-in must depend on Confirm permit requirements, and Kitchen inspection must depend on Electrical rough-in.",
+				"required_correction": "Preserve the five task creations exactly, with no calendar events, and add the corresponding depends_on relationships after the referenced tasks exist. Do not add a permit-approval state change or any unrelated fields.",
+				"reference_candidates": []
+			},
+			"error_message": null
+		},
+		{
+			"stream_run_id": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"sequence_index": 2,
+			"tool_name": "request_proposal_revision",
+			"success": true,
+			"arguments": {
+				"reason": "The proposed batch omits three explicitly commissioned depends_on relationships: Order kitchen cabinets and Electrical rough-in must depend on Confirm permit requirements, and Kitchen inspection must depend on Electrical rough-in. The five task creations otherwise match the requested dates, priorities, estimates, project, todo state, and no-calendar setting.",
+				"required_correction": "Preserve the five task creations exactly and add the three depends_on relationships after the referenced tasks are created. Do not add permit approval, calendar events, or unrelated changes.",
+				"reference_candidates": [
+					{
+						"reference": "this project",
+						"candidates": [
+							{
+								"id": "7c407f29-de71-491e-af5b-a9be31a17448",
+								"title": "AE2E · run=cedar-house-d8f1e841-aab · [QA BATTERY] Cedar House Renovation · bff53a56"
+							}
+						]
+					}
+				]
+			},
+			"error_message": null
+		},
+		{
+			"stream_run_id": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"sequence_index": 3,
+			"tool_name": "approve_mutation_batch_review",
+			"success": true,
+			"arguments": {
+				"reason": "The request explicitly commissions exactly these five new tasks in the identified project, with the shown due dates, priorities, estimates, todo state, and no calendar events. The create-task schema does not support dependency relationships, so those cannot be saved by this batch and should be reported rather than invented. No permit-approval or other unrequested change is included.",
+				"batch_sha256": "02b704c470cafb9276f251be48b922d7e4bfe6b2d734bb6169540b472f7aa004",
+				"reference_candidates": [
+					{
+						"reference": "this project",
+						"candidates": [
+							{
+								"id": "7c407f29-de71-491e-af5b-a9be31a17448",
+								"title": "AE2E · run=cedar-house-d8f1e841-aab · [QA BATTERY] Cedar House Renovation · bff53a56"
+							}
+						]
+					}
+				]
+			},
+			"error_message": null
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"sequence_index": 1,
+			"tool_name": "request_proposal_revision",
+			"success": true,
+			"arguments": {
+				"reason": "The batch correctly commissions creation of the five specified tasks with the resolved project, dates, priorities, estimates, initial todo state, and no calendar sync, but it omits three explicitly requested dependency relationships. The proposal schema has no relationship/dependency field, so these calls cannot fully satisfy the commission as submitted.",
+				"required_correction": "Revise the proposal to preserve all five task creations and add supported depends_on relationships: Order kitchen cabinets and Electrical rough-in depend on Confirm permit requirements; Kitchen inspection depends on Electrical rough-in. If the create tool cannot represent relationships, use the supported relationship mechanism in the corrected proposal and report any field that remains unsaveable;",
+				"reference_candidates": []
+			},
+			"error_message": null
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"sequence_index": 2,
+			"tool_name": "request_proposal_revision",
+			"success": true,
+			"arguments": {
+				"reason": "The five task creates match the explicit commission, and the three dependency edges are the correct edges. However, calls 6–8 use src_label/dst_label, which are not fields in the exact link_onto_entities schema (it requires UUID src_id/dst_id); these calls cannot execute as proposed.",
+				"required_correction": "Preserve the five creates and all three depends_on relationships. Revise each link to use the UUIDs returned by the corresponding successful task creates, with src as the dependent task and dst as its prerequisite; order links after the creates and report any field that remains unsaveable.",
+				"reference_candidates": []
+			},
+			"error_message": null
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"sequence_index": 3,
+			"tool_name": "approve_mutation_batch_review",
+			"success": true,
+			"arguments": {
+				"reason": "The user explicitly commissioned exactly these five new tasks in the named project, with the shown due dates, priorities, estimates, initial todo state, and no calendar events. No existing-entity target is referenced. Dependencies were requested only if supported; this proposed create-task schema has no dependency field, so the five commissioned creations are safe to execute as submitted.",
+				"batch_sha256": "88fcc47a3abcf289cedbe7bf00c71908ba8858fde834d53f73d31f2b9343c26a",
+				"reference_candidates": []
+			},
+			"error_message": null
+		}
+	],
+	"selectedFinals": [
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"finished_reason": "stop",
+			"content": "All five tasks were created in the project, each in the not-started state, with no calendar events created (calendar sync was skipped for every task, so these are due dates only, not appointments).\n\n| Task | Due | Priority | Estimate |\n|---|---|---|---|\n| [QA — Confirm permit requirements](/projects/3ee4dc0a-9ff5-4258-b552-e31cf040fd8e/tasks/2bc56b16-559b-4acf-b8cb-6466076421a1) | Sep 15, 2026 | high | 60 min |\n| [QA — Order kitchen cabinets](/projects/3ee4dc0a-9ff5-4258-b552-e31cf040fd8e/tasks/465800ba-76cb-464c-8ea1-cb17fc44010a) | Sep 18, 2026 | high | 90 min |\n| [QA — Electrical rough-in](/projects/3ee4dc0a-9ff5-4258-b552-e31cf040fd8e/tasks/b0b1a0a2-7c32-4e5f-94bc-8f135c1980e9) | Sep 28, 2026 | high | 480 min |\n| [QA — Kitchen inspection](/projects/3ee4dc0a-9ff5-4258-b552-e31cf040fd8e/tasks/4057c5dc-f63d-462d-9691-b4616f6fecc8) | Sep 30, 2026 | medium | 60 min |\n| [QA — Bathroom inspection](/projects/3ee4dc0a-9ff5-4258-b552-e31cf040fd8e/tasks/a195c6e2-c3c3-464f-8875-87a9d690202c) | Oct 2, 2026 | medium | 60 min |\n\nEach task's state is recorded as not started (todo). Nothing was set for the permit itself — no approval was recorded, and no state, date, or outcome changed on any existing item.\n\nWhat I could not save: the three requested dependencies. The task creation surface used here has no dependency/relationship field, and no relationship-linking tool was available in this write, so the following edges are not recorded in BuildOS:\n- Order kitchen cabinets → depends on Confirm permit requirements\n- Electrical rough-in → depends on Confirm permit requirements\n- Kitchen inspection → depends on Electrical rough-in\n\nIf you want those links stored, tell me and I'll propose them as a separate relationship write once a supported linking operation is available."
+		},
+		{
+			"stream_run_id": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"finished_reason": "stop",
+			"content": "I'll confirm the task's current state before writing.\n\nUpdated the existing task [QA — Order kitchen cabinets](/projects/20f568d5-e8ec-44e8-b0e6-2dd541761546/tasks/b9a2f99c-a40c-461e-b0d0-676279b167cc):\n\n- Due date: September 22, 2026 (due at 11:59 p.m. America/New_York)\n- Estimate: 120 minutes, up from 90\n- Unchanged: title, priority (still high / 2), state (still todo), and the permit prerequisite dependency\n- No calendar event was created or touched (calendar sync skipped), and no additional task was created\n\nOne thing worth your attention: the task's description still reads \"Allow 90 minutes. Depends on QA — Confirm permit requirements.\" I left that text untouched per your instruction to keep the prerequisite as-is, so the structured estimate (120 minutes) and the prose estimate (90 minutes) now disagree. If you want, I can update just that sentence to 120 minutes."
+		},
+		{
+			"stream_run_id": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"finished_reason": "stop",
+			"content": "All five tasks are created in the Cedar House project. They are all in the not-started (todo) state, scheduled as due dates only — no calendar events were created.\n\n| Task | Due | Priority | Estimate |\n|---|---|---|---|\n| [QA — Confirm permit requirements](/projects/7c407f29-de71-491e-af5b-a9be31a17448/tasks/d636830a-07a9-4476-96c1-a32fc3185313) | Sep 15, 2026 | high | 60 min |\n| [QA — Order kitchen cabinets](/projects/7c407f29-de71-491e-af5b-a9be31a17448/tasks/7093fc93-9dc7-4f13-80b1-a34dafe2836f) | Sep 18, 2026 | high | 90 min |\n| [QA — Electrical rough-in](/projects/7c407f29-de71-491e-af5b-a9be31a17448/tasks/a3c89b35-72bd-477f-a213-18e5a4c788da) | Sep 28, 2026 | high | 480 min |\n| [QA — Kitchen inspection](/projects/7c407f29-de71-491e-af5b-a9be31a17448/tasks/f22a60c9-52d2-4748-a06f-02d289c56e84) | Sep 30, 2026 | medium | 60 min |\n| [QA — Bathroom inspection](/projects/7c407f29-de71-491e-af5b-a9be31a17448/tasks/f7d4579e-34c2-4ba2-81b2-8ee35a11554e) | Oct 2, 2026 | medium | 60 min |\n\nFields I could not save:\n\n- **The three dependencies.** No relationship tool was available on this turn's surface, so the depends-on links (Order kitchen cabinets → Confirm permit requirements, Electrical rough-in → Confirm permit requirements, Kitchen inspection → Electrical rough-in) were not recorded. The tasks exist, but the dependency graph does not yet reflect them.\n- **Owners.** You didn't name assignees, so all five are unassigned. There is also no plan, goal, or milestone parent in this project — the tasks sit directly under project scope.\n\nTwo things to confirm in the records: no permit approval was recorded or applied — \"Confirm permit requirements\" remains a not-started task, so permit status is unknown; and priority was stored numerically (2 for high, 3 for medium), which is my mapping — worth a glance to confirm it matches how you read priority levels here."
+		},
+		{
+			"stream_run_id": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"finished_reason": "mutation_unfulfilled",
+			"content": "Five tasks were created in the Cedar House Renovation project, each starting in the not-started state with no calendar events booked:\n\n- [QA — Confirm permit requirements](/projects/6c91dfbe-7f7b-4952-bfb1-37a3d033d510/tasks/c952b494-bb4a-4431-90a7-74d134ee1bdb) — due September 15, 2026, high priority, 60 minutes\n- [QA — Order kitchen cabinets](/projects/6c91dfbe-7f7b-4952-bfb1-37a3d033d510/tasks/fbbbd257-93d2-4d17-8f23-ee646ccdb9d9) — due September 18, 2026, high priority, 90 minutes\n- [QA — Electrical rough-in](/projects/6c91dfbe-7f7b-4952-bfb1-37a3d033d510/tasks/23f3b933-b5f5-4bb4-a5da-84afdf77bbc2) — due September 28, 2026, high priority, 480 minutes\n- [QA — Kitchen inspection](/projects/6c91dfbe-7f7b-4952-bfb1-37a3d033d510/tasks/33b3e1ae-649d-4bfa-ab72-a55e4e8eda9f) — due September 30, 2026, medium priority, 60 minutes\n- [QA — Bathroom inspection](/projects/6c91dfbe-7f7b-4952-bfb1-37a3d033d510/tasks/f8d829de-b24c-42c0-a247-7b0df8d7e537) — due October 2, 2026, medium priority, 60 minutes\n\nDates were saved as due dates, not appointments, and no events were created. None of the tasks has an owner assigned.\n\nThe dependency relationships were **not** saved. All three link attempts failed and were rejected by the relationship tool, so these dependencies currently do not exist in the project:\n\n- Order kitchen cabinets → depends on Confirm permit requirements\n- Electrical rough-in → depends on Confirm permit requirements\n- Kitchen inspection → depends on Electrical rough-in\n\nIf you want, I can retry those three links using the task record IDs above, so the dependencies land as real relationships. Separately, nothing about permit approval was recorded — the permit task remains an open to-do, and no approval status was set.\n\nDone: 0 of 1 link. Not yet linked: relationship link."
+		}
+	],
+	"ownerReportReads": [
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 1,
+			"tool_name": "list_onto_tasks",
+			"arguments": {
+				"limit": 50,
+				"project_id": "22676da9-2715-45f6-a210-773ff2c7ec94"
+			},
+			"execution_time_ms": 498,
+			"success": true
+		},
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 2,
+			"tool_name": "list_onto_documents",
+			"arguments": {
+				"limit": 50,
+				"project_id": "22676da9-2715-45f6-a210-773ff2c7ec94"
+			},
+			"execution_time_ms": 460,
+			"success": true
+		},
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 3,
+			"tool_name": "search_project",
+			"arguments": {
+				"limit": 25,
+				"query": "invoice payment permit construction completed approved",
+				"project_id": "22676da9-2715-45f6-a210-773ff2c7ec94"
+			},
+			"execution_time_ms": 2077,
+			"success": true
+		},
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 4,
+			"tool_name": "get_document_outline",
+			"arguments": {
+				"document_id": "ed1cb6a2-f9ae-478b-8d0c-15dbb0beb2ae"
+			},
+			"execution_time_ms": 1021,
+			"success": true
+		},
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 5,
+			"tool_name": "get_onto_document_details",
+			"arguments": {
+				"document_id": "ed1cb6a2-f9ae-478b-8d0c-15dbb0beb2ae"
+			},
+			"execution_time_ms": 351,
+			"success": true
+		},
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 6,
+			"tool_name": "explore_project",
+			"arguments": {
+				"limit": 20,
+				"theme": "budget spend invoices payments permits inspections",
+				"project_id": "22676da9-2715-45f6-a210-773ff2c7ec94"
+			},
+			"execution_time_ms": 1059,
+			"success": true
+		},
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 7,
+			"tool_name": "list_calendar_events",
+			"arguments": {
+				"limit": 50,
+				"time_max": "2026-12-31",
+				"time_min": "2026-09-01",
+				"project_id": "22676da9-2715-45f6-a210-773ff2c7ec94",
+				"calendar_scope": "project"
+			},
+			"execution_time_ms": 427,
+			"success": true
+		},
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 8,
+			"tool_name": "get_onto_task_details",
+			"arguments": {
+				"task_id": "33f0bcb1-adfa-4d7d-bf5a-2c7f179d5b93"
+			},
+			"execution_time_ms": 510,
+			"success": true
+		},
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 9,
+			"tool_name": "get_onto_task_details",
+			"arguments": {
+				"task_id": "9251e8c0-76ef-4738-848a-585bc7121213"
+			},
+			"execution_time_ms": 518,
+			"success": true
+		},
+		{
+			"stream_run_id": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"turn_run_id": "47f23a11-cb45-4429-8c7b-62c7c4a8c4f3",
+			"sequence_index": 10,
+			"tool_name": "get_project_overview",
+			"arguments": {
+				"project_id": "22676da9-2715-45f6-a210-773ff2c7ec94"
+			},
+			"execution_time_ms": 349,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 1,
+			"tool_name": "list_onto_tasks",
+			"arguments": {
+				"limit": 50,
+				"project_id": "76f04fe6-5234-44cc-9ee4-39917dd4bfd6"
+			},
+			"execution_time_ms": 242,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 2,
+			"tool_name": "list_onto_documents",
+			"arguments": {
+				"limit": 50,
+				"project_id": "76f04fe6-5234-44cc-9ee4-39917dd4bfd6"
+			},
+			"execution_time_ms": 300,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 3,
+			"tool_name": "search_project",
+			"arguments": {
+				"limit": 25,
+				"query": "permit approval inspection",
+				"project_id": "76f04fe6-5234-44cc-9ee4-39917dd4bfd6"
+			},
+			"execution_time_ms": 775,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 4,
+			"tool_name": "search_project",
+			"arguments": {
+				"limit": 25,
+				"query": "invoice payment budget spend",
+				"project_id": "76f04fe6-5234-44cc-9ee4-39917dd4bfd6"
+			},
+			"execution_time_ms": 754,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 5,
+			"tool_name": "get_document_outline",
+			"arguments": {
+				"document_id": "d7cccea4-bb14-4dbc-8820-cfcb764dfeb7"
+			},
+			"execution_time_ms": 357,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 6,
+			"tool_name": "get_project_overview",
+			"arguments": {
+				"project_id": "76f04fe6-5234-44cc-9ee4-39917dd4bfd6"
+			},
+			"execution_time_ms": 272,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 7,
+			"tool_name": "get_onto_project_details",
+			"arguments": {
+				"project_id": "76f04fe6-5234-44cc-9ee4-39917dd4bfd6"
+			},
+			"execution_time_ms": 454,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 8,
+			"tool_name": "list_calendar_events",
+			"arguments": {
+				"time_max": "2026-12-31",
+				"time_min": "2026-09-01",
+				"project_id": "76f04fe6-5234-44cc-9ee4-39917dd4bfd6",
+				"calendar_scope": "project"
+			},
+			"execution_time_ms": 348,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 9,
+			"tool_name": "read_document_section",
+			"arguments": {
+				"anchor": "cedar-house-marketing-brief",
+				"document_id": "d7cccea4-bb14-4dbc-8820-cfcb764dfeb7"
+			},
+			"execution_time_ms": 310,
+			"success": true
+		},
+		{
+			"stream_run_id": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"turn_run_id": "a035a49d-018d-4520-85dc-740a92d893aa",
+			"sequence_index": 10,
+			"tool_name": "get_onto_document_details",
+			"arguments": {
+				"document_id": "d7cccea4-bb14-4dbc-8820-cfcb764dfeb7"
+			},
+			"execution_time_ms": 376,
+			"success": true
+		},
+		{
+			"stream_run_id": "58b77a27-761f-4677-a44f-6a10aa4a1384",
+			"turn_run_id": "5ce23d9d-91a8-4ab5-aa97-65bd45411b05",
+			"sequence_index": 1,
+			"tool_name": "get_project_overview",
+			"arguments": {
+				"project_id": "e08c0717-fb05-4e3e-b4f8-19f6852eea91"
+			},
+			"execution_time_ms": 373,
+			"success": true
+		},
+		{
+			"stream_run_id": "58b77a27-761f-4677-a44f-6a10aa4a1384",
+			"turn_run_id": "5ce23d9d-91a8-4ab5-aa97-65bd45411b05",
+			"sequence_index": 2,
+			"tool_name": "list_onto_tasks",
+			"arguments": {
+				"limit": 50,
+				"project_id": "e08c0717-fb05-4e3e-b4f8-19f6852eea91"
+			},
+			"execution_time_ms": 223,
+			"success": true
+		},
+		{
+			"stream_run_id": "58b77a27-761f-4677-a44f-6a10aa4a1384",
+			"turn_run_id": "5ce23d9d-91a8-4ab5-aa97-65bd45411b05",
+			"sequence_index": 3,
+			"tool_name": "get_document_tree",
+			"arguments": {
+				"project_id": "e08c0717-fb05-4e3e-b4f8-19f6852eea91",
+				"include_documents": true
+			},
+			"execution_time_ms": 379,
+			"success": true
+		},
+		{
+			"stream_run_id": "58b77a27-761f-4677-a44f-6a10aa4a1384",
+			"turn_run_id": "5ce23d9d-91a8-4ab5-aa97-65bd45411b05",
+			"sequence_index": 4,
+			"tool_name": "list_onto_documents",
+			"arguments": {
+				"limit": 50,
+				"project_id": "e08c0717-fb05-4e3e-b4f8-19f6852eea91"
+			},
+			"execution_time_ms": 246,
+			"success": true
+		},
+		{
+			"stream_run_id": "58b77a27-761f-4677-a44f-6a10aa4a1384",
+			"turn_run_id": "5ce23d9d-91a8-4ab5-aa97-65bd45411b05",
+			"sequence_index": 5,
+			"tool_name": "get_onto_document_details",
+			"arguments": {
+				"document_id": "f2912e10-f47d-49ef-8b4f-70d25fe9138c"
+			},
+			"execution_time_ms": 354,
+			"success": true
+		},
+		{
+			"stream_run_id": "58b77a27-761f-4677-a44f-6a10aa4a1384",
+			"turn_run_id": "5ce23d9d-91a8-4ab5-aa97-65bd45411b05",
+			"sequence_index": 6,
+			"tool_name": "get_onto_task_details",
+			"arguments": {
+				"task_id": "2b85dfe3-95f5-4814-9d86-64ad8afedcaf"
+			},
+			"execution_time_ms": 487,
+			"success": true
+		},
+		{
+			"stream_run_id": "58b77a27-761f-4677-a44f-6a10aa4a1384",
+			"turn_run_id": "5ce23d9d-91a8-4ab5-aa97-65bd45411b05",
+			"sequence_index": 7,
+			"tool_name": "search_project",
+			"arguments": {
+				"limit": 25,
+				"query": "permit invoice payment budget spend inspection",
+				"project_id": "e08c0717-fb05-4e3e-b4f8-19f6852eea91"
+			},
+			"execution_time_ms": 591,
+			"success": true
+		},
+		{
+			"stream_run_id": "58b77a27-761f-4677-a44f-6a10aa4a1384",
+			"turn_run_id": "5ce23d9d-91a8-4ab5-aa97-65bd45411b05",
+			"sequence_index": 8,
+			"tool_name": "explore_project",
+			"arguments": {
+				"limit": 25,
+				"theme": "construction completion, permits, invoices and payments",
+				"project_id": "e08c0717-fb05-4e3e-b4f8-19f6852eea91"
+			},
+			"execution_time_ms": 783,
+			"success": true
+		}
+	],
+	"selectedProviderPasses": [
+		{
+			"stream_run_id": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"pass_role": "acting",
+			"provider_round": "1",
+			"provider_attempt": "1",
+			"route_id": "openrouter",
+			"model_requested": "deepseek/deepseek-v4.1-flash",
+			"model_used": "deepseek/deepseek-v4.1-flash",
+			"provider": "DeepInfra",
+			"response_time_ms": 41644
+		},
+		{
+			"stream_run_id": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"pass_role": "acting",
+			"provider_round": "2",
+			"provider_attempt": "1",
+			"route_id": "openrouter",
+			"model_requested": "deepseek/deepseek-v4.1-flash",
+			"model_used": "deepseek/deepseek-v4.1-flash",
+			"provider": "DeepInfra",
+			"response_time_ms": 42596
+		},
+		{
+			"stream_run_id": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"pass_role": "mutation_review",
+			"provider_round": "2",
+			"provider_attempt": "1",
+			"route_id": "openrouter_semantic_reviewer",
+			"model_requested": "openai/gpt-5.6-luna",
+			"model_used": "openai/gpt-5.6-luna",
+			"provider": "OpenAI",
+			"response_time_ms": 3606
+		},
+		{
+			"stream_run_id": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"pass_role": "repair",
+			"provider_round": "3",
+			"provider_attempt": "1",
+			"route_id": "openrouter",
+			"model_requested": "deepseek/deepseek-v4.1-flash",
+			"model_used": "deepseek/deepseek-v4.1-flash",
+			"provider": "DeepInfra",
+			"response_time_ms": 10052
+		},
+		{
+			"stream_run_id": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"pass_role": "mutation_review",
+			"provider_round": "3",
+			"provider_attempt": "1",
+			"route_id": "openrouter_semantic_reviewer",
+			"model_requested": "openai/gpt-5.6-luna",
+			"model_used": "openai/gpt-5.6-luna",
+			"provider": "OpenAI",
+			"response_time_ms": 3329
+		},
+		{
+			"stream_run_id": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"pass_role": "final_response",
+			"provider_round": "5",
+			"provider_attempt": "1",
+			"route_id": "openrouter",
+			"model_requested": "deepseek/deepseek-v4.1-flash",
+			"model_used": "deepseek/deepseek-v4.1-flash-20260910",
+			"provider": "GMICloud",
+			"response_time_ms": 5297
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"pass_role": "acting",
+			"provider_round": "1",
+			"provider_attempt": "1",
+			"route_id": "openrouter",
+			"model_requested": "deepseek/deepseek-v4.1-flash",
+			"model_used": "deepseek/deepseek-v4.1-flash",
+			"provider": "DeepInfra",
+			"response_time_ms": 83652
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"pass_role": "mutation_review",
+			"provider_round": "1",
+			"provider_attempt": "1",
+			"route_id": "openrouter_semantic_reviewer",
+			"model_requested": "openai/gpt-5.6-luna",
+			"model_used": "openai/gpt-5.6-luna",
+			"provider": "OpenAI",
+			"response_time_ms": 4086
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"pass_role": "repair",
+			"provider_round": "2",
+			"provider_attempt": "1",
+			"route_id": "openrouter",
+			"model_requested": "deepseek/deepseek-v4.1-flash",
+			"model_used": "deepseek/deepseek-v4.1-flash-20260910",
+			"provider": "GMICloud",
+			"response_time_ms": 9231
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"pass_role": "mutation_review",
+			"provider_round": "2",
+			"provider_attempt": "1",
+			"route_id": "openrouter_semantic_reviewer",
+			"model_requested": "openai/gpt-5.6-luna",
+			"model_used": "openai/gpt-5.6-luna",
+			"provider": "OpenAI",
+			"response_time_ms": 5422
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"pass_role": "repair",
+			"provider_round": "3",
+			"provider_attempt": "1",
+			"route_id": "openrouter",
+			"model_requested": "deepseek/deepseek-v4.1-flash",
+			"model_used": "deepseek/deepseek-v4.1-flash-20260910",
+			"provider": "GMICloud",
+			"response_time_ms": 8430
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"pass_role": "mutation_review",
+			"provider_round": "3",
+			"provider_attempt": "1",
+			"route_id": "openrouter_semantic_reviewer",
+			"model_requested": "openai/gpt-5.6-luna",
+			"model_used": "openai/gpt-5.6-luna",
+			"provider": "OpenAI",
+			"response_time_ms": 5831
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"pass_role": "final_response",
+			"provider_round": "5",
+			"provider_attempt": "1",
+			"route_id": "openrouter",
+			"model_requested": "deepseek/deepseek-v4.1-flash",
+			"model_used": "deepseek/deepseek-v4.1-flash",
+			"provider": "DeepInfra",
+			"response_time_ms": 13436
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"pass_role": "final_response",
+			"provider_round": "6",
+			"provider_attempt": "1",
+			"route_id": "openrouter",
+			"model_requested": "deepseek/deepseek-v4.1-flash",
+			"model_used": "deepseek/deepseek-v4.1-flash",
+			"provider": "DeepInfra",
+			"response_time_ms": 31977
+		}
+	],
+	"providerPassSummary": [
+		{
+			"streamRunId": "3d961677-dfdc-4094-8e1a-ec27a45a602e",
+			"passes": 5,
+			"reviewPasses": 0,
+			"actorMs": 24352,
+			"reviewMs": 0
+		},
+		{
+			"streamRunId": "3f56fb53-49cc-4eed-8321-c0a074bd1f63",
+			"passes": 4,
+			"reviewPasses": 0,
+			"actorMs": 18260,
+			"reviewMs": 0
+		},
+		{
+			"streamRunId": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"passes": 6,
+			"reviewPasses": 2,
+			"actorMs": 99589,
+			"reviewMs": 6935
+		},
+		{
+			"streamRunId": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"passes": 7,
+			"reviewPasses": 3,
+			"actorMs": 24485,
+			"reviewMs": 14824
+		},
+		{
+			"streamRunId": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"passes": 7,
+			"reviewPasses": 3,
+			"actorMs": 25461,
+			"reviewMs": 15886
+		},
+		{
+			"streamRunId": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"passes": 8,
+			"reviewPasses": 3,
+			"actorMs": 146726,
+			"reviewMs": 15339
+		}
+	],
+	"cleanupCheck": [
+		{
+			"stream_run_id": "41982606-9d7c-4e44-abf1-f3a78bcaddda",
+			"receipts": 1,
+			"rows_still_present": 0,
+			"matching_live_rows": 0
+		},
+		{
+			"stream_run_id": "4b02c349-e334-4d97-9e40-37c5176fc94b",
+			"receipts": 1,
+			"rows_still_present": 0,
+			"matching_live_rows": 0
+		},
+		{
+			"stream_run_id": "7a9c33e0-d0f8-46be-926e-9fdcf294bff5",
+			"receipts": 5,
+			"rows_still_present": 0,
+			"matching_live_rows": 0
+		},
+		{
+			"stream_run_id": "8eba9a72-2134-4af3-87da-25ea65d28ffc",
+			"receipts": 5,
+			"rows_still_present": 0,
+			"matching_live_rows": 0
+		},
+		{
+			"stream_run_id": "9cb321b8-a384-43dc-b5e8-b29b254b966f",
+			"receipts": 1,
+			"rows_still_present": 0,
+			"matching_live_rows": 0
+		},
+		{
+			"stream_run_id": "e6f95e94-14fe-4b43-bea6-494b9062198f",
+			"receipts": 5,
+			"rows_still_present": 0,
+			"matching_live_rows": 0
+		}
+	]
+}

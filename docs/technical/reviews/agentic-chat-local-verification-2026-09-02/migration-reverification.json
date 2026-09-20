@@ -1,0 +1,25 @@
+{
+	"verified_at": "2026-09-03 02:15:27 UTC",
+	"project_id": "iwifjtlebphefldmwbkh",
+	"local_migration_sha256": "962a5b7972f2d9eaa2fcd099fe501b651c0f4c0fe940e3934abacd242bceeaac",
+	"verification": [
+		{
+			"migration_receipt": [
+				{
+					"name": "agentic_chat_recovery_throttle_backoff_seconds",
+					"version": "20260902150000"
+				}
+			],
+			"seconds_branch_present": true,
+			"seconds_backoff_present": true,
+			"seconds_jitter_present": true,
+			"infrastructure_backoff_preserved": true,
+			"execute_acl": "{postgres=X/postgres,service_role=X/postgres}",
+			"anon_can_execute": false,
+			"authenticated_can_execute": false,
+			"service_role_can_execute": true
+		}
+	],
+	"result": "Already applied and recorded; no duplicate migration was necessary.",
+	"worker_release_rechecked": "f28e8f7bc2fd41718c4141dc6d4fd40dd09a45d3"
+}

@@ -1,0 +1,20 @@
+SEMANTIC_COMMISSION_GUIDANCE lines 14 chars 3556
+ACTOR_COMMISSION_GUIDANCE lines 5 chars 1048
+CONTRACT_DECLARATION_GUIDANCE lines 2 chars 1046
+TURN_CONTRACT_REVIEW_SYSTEM_PROMPT own lines 16 total lines 32 total chars 9672 ~tokens 2418
+Semantic disposition gate instruction lines 14 chars (incl ACTOR) 2647 ~tokens 662
+Worker write routing (full) lines 9 chars 2250 +ACTOR 1048 =  3299
+Worker write routing (lazy/opening) lines 8 chars 1389 +ACTOR 1048 = total 2438 ~tokens 610
+TOOL_EXECUTION_BATCHING_INSTRUCTION chars 581
+TURN_CONTRACT_TOOL_DEFINITION JSON chars 4354 ~tokens 1089 properties 2
+CANCEL_TURN_CONTRACT_TOOL_DEFINITION JSON chars 420 ~tokens 105 properties 1
+DECLARE_READ_ONLY_TURN_TOOL_DEFINITION JSON chars 449 ~tokens 113 properties 1
+REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION JSON chars 1277 ~tokens 320 properties 3
+declare_turn_contract outcome fields 12 required 3 optional 9 actions 14 entity_kinds 11
+REFERENCE_CANDIDATES_PROPERTY JSON chars 890
+TURN_CONTRACT_REVIEW_APPROVAL_TOOL JSON chars 1630
+CONTRACT_PROPOSAL_REVISION_TOOL JSON chars 6442
+Reviewer tools total chars (first review: approval+read_only+revision+clarification) 9798 ~tokens 2450
+Reviewer fixed prefix (system prompt + tools) chars 19470 ~tokens 4868
+repair-policy.ts literal string chars total 9032
+Carve-out instruction chars (excl contract JSON) 380 + batching 581

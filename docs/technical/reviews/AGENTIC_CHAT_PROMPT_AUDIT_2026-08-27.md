@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/AGENTIC_CHAT_PROMPT_AUDIT_2026-08-27.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-27; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Prompt Audit — 2026-08-27
 
 **Scope:** `apps/web/.prompt-dumps/` (19 user turns / 55 provider passes, 2026-08-22 → 2026-08-25),

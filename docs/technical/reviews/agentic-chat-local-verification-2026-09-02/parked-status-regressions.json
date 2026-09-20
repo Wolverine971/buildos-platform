@@ -1,0 +1,562 @@
+{
+	"numTotalTestSuites": 10,
+	"numPassedTestSuites": 10,
+	"numFailedTestSuites": 0,
+	"numPendingTestSuites": 0,
+	"numTotalTests": 55,
+	"numPassedTests": 55,
+	"numFailedTests": 0,
+	"numPendingTests": 0,
+	"numTodoTests": 0,
+	"snapshot": {
+		"added": 0,
+		"failure": false,
+		"filesAdded": 0,
+		"filesRemoved": 0,
+		"filesRemovedList": [],
+		"filesUnmatched": 0,
+		"filesUpdated": 0,
+		"matched": 0,
+		"total": 0,
+		"unchecked": 0,
+		"uncheckedKeysByFile": [],
+		"unmatched": 0,
+		"updated": 0,
+		"didUpdate": false
+	},
+	"startTime": 1788398587496,
+	"success": true,
+	"testResults": [
+		{
+			"assertionResults": [
+				{
+					"ancestorTitles": ["chat-session-notification.bridge"],
+					"fullName": "chat-session-notification.bridge parks an idle chat as an idle card without scheduling a probe",
+					"status": "passed",
+					"title": "parks an idle chat as an idle card without scheduling a probe",
+					"duration": 3.5909169999999904,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["chat-session-notification.bridge"],
+					"fullName": "chat-session-notification.bridge re-parking the same session updates the existing card instead of duplicating",
+					"status": "passed",
+					"title": "re-parking the same session updates the existing card instead of duplicating",
+					"duration": 0.5348749999999427,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["chat-session-notification.bridge"],
+					"fullName": "chat-session-notification.bridge view action removes the card and dispatches buildos:open-agent-chat with the parked context",
+					"status": "passed",
+					"title": "view action removes the card and dispatches buildos:open-agent-chat with the parked context",
+					"duration": 1.1676670000000513,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["chat-session-notification.bridge"],
+					"fullName": "chat-session-notification.bridge dismiss action removes the card and finalizes the session server-side",
+					"status": "passed",
+					"title": "dismiss action removes the card and finalizes the session server-side",
+					"duration": 2.943749999999909,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["chat-session-notification.bridge"],
+					"fullName": "chat-session-notification.bridge omits context_type from the close body when the parked context is null",
+					"status": "passed",
+					"title": "omits context_type from the close body when the parked context is null",
+					"duration": 0.7939159999999674,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["chat-session-notification.bridge"],
+					"fullName": "chat-session-notification.bridge keeps a queued worker turn processing until the owned gateway reports completion",
+					"status": "passed",
+					"title": "keeps a queued worker turn processing until the owned gateway reports completion",
+					"duration": 2.280208000000016,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["chat-session-notification.bridge"],
+					"fullName": "chat-session-notification.bridge keeps a running worker turn processing until the owned gateway reports completion",
+					"status": "passed",
+					"title": "keeps a running worker turn processing until the owned gateway reports completion",
+					"duration": 0.8984169999999949,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["chat-session-notification.bridge"],
+					"fullName": "chat-session-notification.bridge stops probing once the card is resolved externally",
+					"status": "passed",
+					"title": "stops probing once the card is resolved externally",
+					"duration": 0.6459580000000642,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["chat-session-notification.bridge"],
+					"fullName": "chat-session-notification.bridge marks a never-ending turn as stale after the probe window",
+					"status": "passed",
+					"title": "marks a never-ending turn as stale after the probe window",
+					"duration": 3.276666999999975,
+					"failureMessages": [],
+					"meta": {}
+				}
+			],
+			"startTime": 1788398593052,
+			"endTime": 1788398593068.2766,
+			"status": "passed",
+			"message": "",
+			"name": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/chat-session-notification.bridge.test.ts"
+		},
+		{
+			"assertionResults": [
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers deriveSessionTitle prefers a non-placeholder manual title and falls back to auto title",
+					"status": "passed",
+					"title": "deriveSessionTitle prefers a non-placeholder manual title and falls back to auto title",
+					"duration": 0.8576250000000414,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot restores project focus, filters messages, and sorts voice notes",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot restores project focus, filters messages, and sorts voice notes",
+					"duration": 2.3581669999999804,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot keeps inbox proposal sessions in project context",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot keeps inbox proposal sessions in project context",
+					"duration": 0.4497910000000047,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot restores persisted tool executions before assistant replies",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot restores persisted tool executions before assistant replies",
+					"duration": 3.045458999999994,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot inserts created-entity chips inline after the turn that made them",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot inserts created-entity chips inline after the turn that made them",
+					"duration": 0.7570410000000152,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot exposes active turn runs for restore polling",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot exposes active turn runs for restore polling",
+					"duration": 0.31899999999996,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot dedupes tool executions matched by both message and turn id",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot dedupes tool executions matched by both message and turn id",
+					"duration": 0.6576249999999959,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot falls back to compact assistant tool trace metadata",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot falls back to compact assistant tool trace metadata",
+					"duration": 0.5696670000000381,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot restores granular Libri and web labels from metadata traces",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot restores granular Libri and web labels from metadata traces",
+					"duration": 6.492208000000005,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot restores readable discovery and orchestration labels",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot restores readable discovery and orchestration labels",
+					"duration": 1.322166999999979,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot restores presenter labels for previously mislabeled tools",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot restores presenter labels for previously mislabeled tools",
+					"duration": 0.41537500000004,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot restores project overview labels with project names",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot restores project overview labels with project names",
+					"duration": 0.2741250000000264,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers buildAgentChatSessionSnapshot restores document outline and section labels with titles",
+					"status": "passed",
+					"title": "buildAgentChatSessionSnapshot restores document outline and section labels with titles",
+					"duration": 0.21550000000002,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers prewarmAgentContext returns parsed session data from the v2 prewarm endpoint",
+					"status": "passed",
+					"title": "prewarmAgentContext returns parsed session data from the v2 prewarm endpoint",
+					"duration": 1.0577499999999986,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers prewarmAgentContext throws a status-aware AgentRequestError on HTTP failure",
+					"status": "passed",
+					"title": "prewarmAgentContext throws a status-aware AgentRequestError on HTTP failure",
+					"duration": 0.3597080000000119,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers probeActiveTurnRun reports a queued worker turn",
+					"status": "passed",
+					"title": "probeActiveTurnRun reports a queued worker turn",
+					"duration": 0.2197500000000332,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers probeActiveTurnRun reports a running worker turn",
+					"status": "passed",
+					"title": "probeActiveTurnRun reports a running worker turn",
+					"duration": 0.10266599999999926,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers probeActiveTurnRun reports completion only for a valid empty worker list",
+					"status": "passed",
+					"title": "probeActiveTurnRun reports completion only for a valid empty worker list",
+					"duration": 0.08945800000003601,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers probeActiveTurnRun keeps polling on malformed or mismatched receipts",
+					"status": "passed",
+					"title": "probeActiveTurnRun keeps polling on malformed or mismatched receipts",
+					"duration": 0.07162499999998317,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers probeActiveTurnRun keeps polling on malformed or mismatched receipts",
+					"status": "passed",
+					"title": "probeActiveTurnRun keeps polling on malformed or mismatched receipts",
+					"duration": 0.04312499999997499,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers probeActiveTurnRun returns null on failure so callers keep polling",
+					"status": "passed",
+					"title": "probeActiveTurnRun returns null on failure so callers keep polling",
+					"duration": 0.04508299999997689,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers warmAgentChatStreamTransport calls the stream route warmup endpoint",
+					"status": "passed",
+					"title": "warmAgentChatStreamTransport calls the stream route warmup endpoint",
+					"duration": 5.4222500000000196,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["agent-chat-session helpers"],
+					"fullName": "agent-chat-session helpers loadAgentChatSessionSnapshot throws the backend error when session restore fails",
+					"status": "passed",
+					"title": "loadAgentChatSessionSnapshot throws the backend error when session restore fails",
+					"duration": 0.49345900000002985,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["syncBrowserTimezone"],
+					"fullName": "syncBrowserTimezone posts the browser zone to /api/users/timezone",
+					"status": "passed",
+					"title": "posts the browser zone to /api/users/timezone",
+					"duration": 0.18208299999997735,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["syncBrowserTimezone"],
+					"fullName": "syncBrowserTimezone skips the request when the browser reports no zone or plain UTC",
+					"status": "passed",
+					"title": "skips the request when the browser reports no zone or plain UTC",
+					"duration": 0.11045799999999417,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["syncBrowserTimezone"],
+					"fullName": "syncBrowserTimezone never throws when the request fails",
+					"status": "passed",
+					"title": "never throws when the request fails",
+					"duration": 0.23750000000001137,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["syncBrowserTimezone"],
+					"fullName": "syncBrowserTimezone runs at most once per page load unless forced",
+					"status": "passed",
+					"title": "runs at most once per page load unless forced",
+					"duration": 0.06679100000002336,
+					"failureMessages": [],
+					"meta": {}
+				}
+			],
+			"startTime": 1788398592267,
+			"endTime": 1788398592293.2375,
+			"status": "passed",
+			"message": "",
+			"name": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-session.test.ts"
+		},
+		{
+			"assertionResults": [
+				{
+					"ancestorTitles": ["Agentic Chat worker turn gateway"],
+					"fullName": "Agentic Chat worker turn gateway returns one exact owned worker handle and hides absence",
+					"status": "passed",
+					"title": "returns one exact owned worker handle and hides absence",
+					"duration": 1.4276250000000346,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["Agentic Chat worker turn gateway"],
+					"fullName": "Agentic Chat worker turn gateway lists only a bounded active session scope",
+					"status": "passed",
+					"title": "lists only a bounded active session scope",
+					"duration": 0.7641249999999786,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["Agentic Chat worker turn gateway"],
+					"fullName": "Agentic Chat worker turn gateway rejects ambiguous, over-bound, malformed, and failed lookup results",
+					"status": "passed",
+					"title": "rejects ambiguous, over-bound, malformed, and failed lookup results",
+					"duration": 0.8489579999999819,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["Agentic Chat worker turn gateway"],
+					"fullName": "Agentic Chat worker turn gateway maps running, queued, and already-terminal cancellation receipts",
+					"status": "passed",
+					"title": "maps running, queued, and already-terminal cancellation receipts",
+					"duration": 0.8151670000000308,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["Agentic Chat worker turn gateway"],
+					"fullName": "Agentic Chat worker turn gateway hides absent ownership and rejects malformed cancellation receipts",
+					"status": "passed",
+					"title": "hides absent ownership and rejects malformed cancellation receipts",
+					"duration": 0.20058299999999463,
+					"failureMessages": [],
+					"meta": {}
+				}
+			],
+			"startTime": 1788398592347,
+			"endTime": 1788398592351.8152,
+			"status": "passed",
+			"message": "",
+			"name": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-turn-gateway.test.ts"
+		},
+		{
+			"assertionResults": [
+				{
+					"ancestorTitles": ["GET /api/agent/v2/turns"],
+					"fullName": "GET /api/agent/v2/turns authenticates and requires exactly one valid session id",
+					"status": "passed",
+					"title": "authenticates and requires exactly one valid session id",
+					"duration": 3.0926250000002256,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["GET /api/agent/v2/turns"],
+					"fullName": "GET /api/agent/v2/turns returns a private, ownership-scoped active list",
+					"status": "passed",
+					"title": "returns a private, ownership-scoped active list",
+					"duration": 1.600166000000172,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["GET /api/agent/v2/turns"],
+					"fullName": "GET /api/agent/v2/turns keeps lookup failures private",
+					"status": "passed",
+					"title": "keeps lookup failures private",
+					"duration": 0.3415410000002339,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns authenticates and validates the strict user command before creating an admin client",
+					"status": "passed",
+					"title": "authenticates and validates the strict user command before creating an admin client",
+					"duration": 4.081290999999965,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns rejects tamper, expiry, future issuance, and cross-bound replay before preparation",
+					"status": "passed",
+					"title": "rejects tamper, expiry, future issuance, and cross-bound replay before preparation",
+					"duration": 1.8669999999997344,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns rejects legacy mode and a stale worker kill epoch before durable work",
+					"status": "passed",
+					"title": "rejects legacy mode and a stale worker kill epoch before durable work",
+					"duration": 0.39804199999980483,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns prepares server-owned inputs once and returns a private immutable handle for new admission",
+					"status": "passed",
+					"title": "prepares server-owned inputs once and returns a private immutable handle for new admission",
+					"duration": 0.34504100000003746,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns retries once without the prepared prompt when durable admission races an invalidation",
+					"status": "passed",
+					"title": "retries once without the prepared prompt when durable admission races an invalidation",
+					"duration": 0.5002919999997175,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns does not retry a non-prepared admission failure",
+					"status": "passed",
+					"title": "does not retry a non-prepared admission failure",
+					"duration": 0.24966700000004494,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns passes strict attachment references into trusted worker preparation",
+					"status": "passed",
+					"title": "passes strict attachment references into trusted worker preparation",
+					"duration": 0.6382079999998496,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns returns a matching worker duplicate but never adopts a legacy duplicate",
+					"status": "passed",
+					"title": "returns a matching worker duplicate but never adopts a legacy duplicate",
+					"duration": 0.37629100000003746,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns hides active, request-hash, and session conflicts behind one boundary",
+					"status": "passed",
+					"title": "hides active, request-hash, and session conflicts behind one boundary",
+					"duration": 0.5417499999998654,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns returns 429 only for the emergency per-user queue safety ceiling",
+					"status": "passed",
+					"title": "returns 429 only for the emergency per-user queue safety ceiling",
+					"duration": 0.5110829999998714,
+					"failureMessages": [],
+					"meta": {}
+				},
+				{
+					"ancestorTitles": ["POST /api/agent/v2/turns"],
+					"fullName": "POST /api/agent/v2/turns keeps preparation and corrupt database receipt details private",
+					"status": "passed",
+					"title": "keeps preparation and corrupt database receipt details private",
+					"duration": 0.29120800000009694,
+					"failureMessages": [],
+					"meta": {}
+				}
+			],
+			"startTime": 1788398594244,
+			"endTime": 1788398594259.2913,
+			"status": "passed",
+			"message": "",
+			"name": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/turns/server.test.ts"
+		}
+	]
+}

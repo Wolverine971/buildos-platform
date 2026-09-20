@@ -1,0 +1,591 @@
+{
+	"summary": {
+		"window_since": "2026-09-04T17:14:00.000Z",
+		"turns": 55,
+		"by_status": {
+			"completed": 48,
+			"failed": 5,
+			"cancelled": 2
+		},
+		"by_context": {
+			"project": 37,
+			"project_create": 3,
+			"global": 15
+		},
+		"prepared_prompt_hit": {
+			"true": 5,
+			"false": 50
+		},
+		"miss_reasons": {},
+		"request_prewarmed_context": {
+			"true": 5,
+			"false": 50
+		},
+		"cache_source": {
+			"null": 55
+		},
+		"history_strategy": {
+			"raw_history": 43,
+			"compressed_history": 12
+		},
+		"history_for_model_count": {
+			"0": 19,
+			"2": 2,
+			"3": 3,
+			"4": 8,
+			"5": 9,
+			"6": 7,
+			"7": 3,
+			"8": 4
+		},
+		"raw_history_count": {
+			"0": 19,
+			"2": 5,
+			"3": 8,
+			"4": 1,
+			"5": 3,
+			"6": 3,
+			"7": 4,
+			"9": 3,
+			"10": 1,
+			"11": 2,
+			"12": 5,
+			"13": 1
+		},
+		"llm_pass_count": {
+			"1": 2,
+			"2": 10,
+			"3": 6,
+			"4": 8,
+			"5": 12,
+			"6": 6,
+			"7": 5,
+			"8": 3,
+			"9": 2,
+			"11": 1
+		},
+		"tool_round_count": {
+			"0": 2,
+			"1": 9,
+			"2": 9,
+			"3": 14,
+			"4": 8,
+			"5": 6,
+			"6": 4,
+			"7": 2,
+			"9": 1
+		}
+	},
+	"system_prompt_chars_by_context": {
+		"global": {
+			"n": 15,
+			"p50": 14484,
+			"p90": 19235,
+			"max": 19487
+		},
+		"project": {
+			"n": 37,
+			"p50": 13718,
+			"p90": 18108,
+			"max": 20157
+		},
+		"project_create": {
+			"n": 0,
+			"p50": null,
+			"p90": null,
+			"max": null
+		}
+	},
+	"section_summary": {},
+	"artifacts": {
+		"n": 55,
+		"history_source": {
+			"prepared_prompt": 5,
+			"admission_window": 50
+		},
+		"with_prepared_prompt": 5,
+		"history_bytes": {
+			"p50": 3224,
+			"p90": 5727,
+			"max": 8453
+		},
+		"content_bytes": {
+			"p50": 117927,
+			"p90": 155473
+		}
+	},
+	"prepared_rows_in_window": 17,
+	"prepared_rows_consumed": 5,
+	"prepared_errors": [],
+	"context_snapshot_rows": 1,
+	"per_snapshot": [
+		{
+			"snapshot_id": "6e0ab92a-ddcd-56ec-a313-7bea4040170c",
+			"turn_run_id": "a7e21a65-e6ba-4f13-adea-bab25e217d5b",
+			"context_type": "global",
+			"system_prompt_chars": 13617,
+			"message_chars": 21011,
+			"approx_prompt_tokens": 5256,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "eb0d9307-972b-55e2-89a6-b66142752a7a",
+			"turn_run_id": "a2dcf99c-2e02-4a9b-a9eb-2cc073535592",
+			"context_type": "project",
+			"system_prompt_chars": 17595,
+			"message_chars": 25046,
+			"approx_prompt_tokens": 6264,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "ca8cc4e0-bdfc-5ea5-87de-6b71d1e21830",
+			"turn_run_id": "308f3497-4db6-4f5b-8bfc-8be9c6a7e918",
+			"context_type": "project",
+			"system_prompt_chars": 13475,
+			"message_chars": 23520,
+			"approx_prompt_tokens": 5883,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "7fd1ed34-b308-5a4b-8f8f-f6bc97e418c7",
+			"turn_run_id": "396bebc2-2ad8-4ca3-b374-225bf3d8359a",
+			"context_type": "global",
+			"system_prompt_chars": 19235,
+			"message_chars": 22094,
+			"approx_prompt_tokens": 5524,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "581d603b-bd77-50ee-9edf-ddc99f4988e6",
+			"turn_run_id": "2785785a-6300-402e-bcc9-c6b04dd687c9",
+			"context_type": "project",
+			"system_prompt_chars": 17959,
+			"message_chars": 24745,
+			"approx_prompt_tokens": 6188,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "3fbe8a56-5f2b-5120-b87a-b094b87a4109",
+			"turn_run_id": "629f7353-8f32-4333-9302-6e638abff800",
+			"context_type": "global",
+			"system_prompt_chars": 19487,
+			"message_chars": 22508,
+			"approx_prompt_tokens": 5628,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "3097b0e2-5356-5629-b91f-8dbf8cc222cf",
+			"turn_run_id": "d8aee58d-918b-445a-bac4-5e94244f8fc7",
+			"context_type": "project",
+			"system_prompt_chars": 18241,
+			"message_chars": 25152,
+			"approx_prompt_tokens": 6290,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "cadc4a01-9f11-551c-83f1-b3c55e4953a4",
+			"turn_run_id": "258954cd-53dc-4b02-876d-2e573ad977b9",
+			"context_type": "project",
+			"system_prompt_chars": 14652,
+			"message_chars": 22189,
+			"approx_prompt_tokens": 5549,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "6c116372-cf84-5add-ad66-d3eb678c2bac",
+			"turn_run_id": "ab4e567e-226e-4cd7-ad3b-fd728e3f1000",
+			"context_type": "project",
+			"system_prompt_chars": 12318,
+			"message_chars": 18209,
+			"approx_prompt_tokens": 4555,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "5a9926ce-bd79-5013-9b25-949d1d24976c",
+			"turn_run_id": "363b8fff-3975-4058-a64a-5aa8f097ca76",
+			"context_type": "project",
+			"system_prompt_chars": 19238,
+			"message_chars": 26861,
+			"approx_prompt_tokens": 6718,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "1099451c-8820-5641-8d9c-ce6836a512b5",
+			"turn_run_id": "bfa823cd-04f3-4898-aeec-664e1382a692",
+			"context_type": "project",
+			"system_prompt_chars": 16866,
+			"message_chars": 20154,
+			"approx_prompt_tokens": 5039,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "be862653-6b8d-5070-beb1-5f77ee59bb1e",
+			"turn_run_id": "9a31d293-dc9a-4cda-a0b8-9f65f088f10d",
+			"context_type": "project",
+			"system_prompt_chars": 12317,
+			"message_chars": 19540,
+			"approx_prompt_tokens": 4888,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "015a2db3-3c48-558a-9779-d10200e591ab",
+			"turn_run_id": "3206de31-db11-4173-b145-c188cd9601c2",
+			"context_type": "project",
+			"system_prompt_chars": 13053,
+			"message_chars": 16937,
+			"approx_prompt_tokens": 4236,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "90b2e6b7-ecd0-5ec6-9092-b29f5424f1ff",
+			"turn_run_id": "65307e1e-52b2-4019-aa96-0a3285614401",
+			"context_type": "project",
+			"system_prompt_chars": 12954,
+			"message_chars": 20123,
+			"approx_prompt_tokens": 5034,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "390a030d-274c-55fe-b5f7-e4c47ed089ea",
+			"turn_run_id": "35f3e826-4203-468e-99d2-6ec4cbbc1250",
+			"context_type": "project",
+			"system_prompt_chars": 17933,
+			"message_chars": 20632,
+			"approx_prompt_tokens": 5159,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "ec1d2191-18b5-52cf-94e8-ea61b727e03c",
+			"turn_run_id": "78adb24c-7382-4421-ac3b-6b0a9f734dd3",
+			"context_type": "project",
+			"system_prompt_chars": 13718,
+			"message_chars": 21375,
+			"approx_prompt_tokens": 5347,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "d34278fb-a296-53da-be1e-c8b3aea2cba7",
+			"turn_run_id": "f3fb0de6-282b-4058-afd9-b7b10bb8dbcb",
+			"context_type": "project",
+			"system_prompt_chars": 20157,
+			"message_chars": 23568,
+			"approx_prompt_tokens": 5893,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "2a065b81-cb92-5f3f-a11c-3b616b9061bd",
+			"turn_run_id": "bd67667d-f390-4f73-88f9-b963a11857b0",
+			"context_type": "project",
+			"system_prompt_chars": 18108,
+			"message_chars": 23311,
+			"approx_prompt_tokens": 5830,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "072d4231-b821-5364-bf03-c77010cba644",
+			"turn_run_id": "f0c2b495-7147-40d4-8a63-55dc6188d4a2",
+			"context_type": "project",
+			"system_prompt_chars": 18033,
+			"message_chars": 23043,
+			"approx_prompt_tokens": 5764,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "4e160a5f-ae52-51f0-9e19-3b752312dc4a",
+			"turn_run_id": "41b899e8-6dd7-4e18-8d0c-a34d5b910630",
+			"context_type": "project",
+			"system_prompt_chars": 17882,
+			"message_chars": 23247,
+			"approx_prompt_tokens": 5815,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "674c2a33-a128-546a-8f37-edc7ffb458cd",
+			"turn_run_id": "aacf658a-5b28-4c76-b16f-eff62e012a80",
+			"context_type": "project",
+			"system_prompt_chars": 17997,
+			"message_chars": 23793,
+			"approx_prompt_tokens": 5951,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "a9f8cbe8-6415-5539-a190-2f4316097e4c",
+			"turn_run_id": "dae1e6ab-f95b-4ed6-a4e1-437623bdbddd",
+			"context_type": "global",
+			"system_prompt_chars": 15140,
+			"message_chars": 17901,
+			"approx_prompt_tokens": 4476,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "c15cfb44-f7d3-53e6-a663-f815fbe2130a",
+			"turn_run_id": "9959665d-0632-4efa-908d-541889668e6d",
+			"context_type": "global",
+			"system_prompt_chars": 14298,
+			"message_chars": 19811,
+			"approx_prompt_tokens": 4955,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "ee2d079c-2f18-57c8-8953-4dd95fce11b1",
+			"turn_run_id": "069c45f4-7dfe-4e4a-8318-01aad42e73fc",
+			"context_type": "global",
+			"system_prompt_chars": 18026,
+			"message_chars": 21731,
+			"approx_prompt_tokens": 5434,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "ce10b74c-190b-5d21-9073-c01089afbf78",
+			"turn_run_id": "407d881c-5b0a-4212-b5b9-5402821b4aa6",
+			"context_type": "global",
+			"system_prompt_chars": 13636,
+			"message_chars": 19210,
+			"approx_prompt_tokens": 4805,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "ff0a0138-c4d5-5c25-a58f-5762b38cdbf2",
+			"turn_run_id": "a223e515-ff2e-41ea-af81-bcca3bcaf557",
+			"context_type": "project",
+			"system_prompt_chars": 16441,
+			"message_chars": 20295,
+			"approx_prompt_tokens": 5075,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "b3efbf70-0472-578e-b51d-79ff1bfadbfc",
+			"turn_run_id": "89797082-9106-458d-9345-43a789312893",
+			"context_type": "global",
+			"system_prompt_chars": 17774,
+			"message_chars": 21324,
+			"approx_prompt_tokens": 5332,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "9af2a6cc-33c4-55e3-b62a-c8ac7e1a5a35",
+			"turn_run_id": "0784af15-d5b2-4b24-b9f8-fcd27e4533b4",
+			"context_type": "project",
+			"system_prompt_chars": 10933,
+			"message_chars": 17411,
+			"approx_prompt_tokens": 4356,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "09fb7bb3-ce5f-516a-9a1b-694f789632a2",
+			"turn_run_id": "0d8019ca-dbf4-4479-b16f-a6b98c72bc9c",
+			"context_type": "global",
+			"system_prompt_chars": 13655,
+			"message_chars": 21309,
+			"approx_prompt_tokens": 5330,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "061b1401-61c1-59e2-946f-34d1c46326b6",
+			"turn_run_id": "56a65b9c-966a-4bda-98dd-c893c8bbcb10",
+			"context_type": "project",
+			"system_prompt_chars": 12450,
+			"message_chars": 20465,
+			"approx_prompt_tokens": 5120,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "ecd0ca9a-4c00-58a3-b911-76d20e716410",
+			"turn_run_id": "8a2fcdd3-edb3-4767-b4da-75c7c8d6df2a",
+			"context_type": "project",
+			"system_prompt_chars": 12445,
+			"message_chars": 18105,
+			"approx_prompt_tokens": 4529,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "e612f3a6-a4f7-5adc-ba3c-56dc86038b65",
+			"turn_run_id": "0d86e1cf-aaa8-4e85-ba4d-53c42bb0829e",
+			"context_type": "project",
+			"system_prompt_chars": 17013,
+			"message_chars": 22925,
+			"approx_prompt_tokens": 5734,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "97c3534b-1e0f-52f8-a01c-385161dd1fad",
+			"turn_run_id": "b7b715f6-c419-4220-867f-bd1660fa7df3",
+			"context_type": "project",
+			"system_prompt_chars": 12450,
+			"message_chars": 18503,
+			"approx_prompt_tokens": 4627,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "8b1c5b2b-db9f-56d0-817f-1553cef154c4",
+			"turn_run_id": "c4cb3552-a35f-444f-b767-f9874ae03de0",
+			"context_type": "project",
+			"system_prompt_chars": 12450,
+			"message_chars": 21039,
+			"approx_prompt_tokens": 5263,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "fcb3035f-903d-5035-aacb-29e60c0fa4a9",
+			"turn_run_id": "579e0c95-0082-447b-95b8-93566c36b01d",
+			"context_type": "project",
+			"system_prompt_chars": 12445,
+			"message_chars": 19899,
+			"approx_prompt_tokens": 4977,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "65987712-8231-52b8-9436-2b70db2287a7",
+			"turn_run_id": "4f4689a1-a4dc-457a-91a0-6a5ef172842a",
+			"context_type": "project",
+			"system_prompt_chars": 16852,
+			"message_chars": 20411,
+			"approx_prompt_tokens": 5103,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "33977e5a-2c4f-5612-ae2c-548b66c10be1",
+			"turn_run_id": "994570bf-1550-4805-a2b9-8aef4cb29d33",
+			"context_type": "global",
+			"system_prompt_chars": 13633,
+			"message_chars": 17078,
+			"approx_prompt_tokens": 4271,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "693a6972-81ab-5634-bb3e-affa3f0d54d2",
+			"turn_run_id": "2cf5693f-654b-44f3-a426-233d10a612d2",
+			"context_type": "project",
+			"system_prompt_chars": 12812,
+			"message_chars": 16001,
+			"approx_prompt_tokens": 4001,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "b635c963-2697-5195-8057-de643faab973",
+			"turn_run_id": "90f7354d-5a7a-47ea-ab4b-8b7abdbc0753",
+			"context_type": "global",
+			"system_prompt_chars": 12885,
+			"message_chars": 19496,
+			"approx_prompt_tokens": 4877,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "13089a11-80b8-5eba-814c-6ee615a85931",
+			"turn_run_id": "8b99327c-3c16-4454-9f34-53378656abf8",
+			"context_type": "global",
+			"system_prompt_chars": 19032,
+			"message_chars": 23818,
+			"approx_prompt_tokens": 5955,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "b7c61e5c-037e-5f23-b944-88ade5342c5e",
+			"turn_run_id": "dfc7fa13-db96-49b1-9e0a-65279b46197f",
+			"context_type": "global",
+			"system_prompt_chars": 18622,
+			"message_chars": 23253,
+			"approx_prompt_tokens": 5814,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "2ea0b061-18df-520d-8d85-75392df9bcf8",
+			"turn_run_id": "aadd9245-13bc-4d5d-9370-d41dfec9b5b5",
+			"context_type": "project",
+			"system_prompt_chars": 11767,
+			"message_chars": 18528,
+			"approx_prompt_tokens": 4635,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "d871a17d-5614-5e92-b18c-ecfc2a0bb87f",
+			"turn_run_id": "629b87f4-7f81-4878-a0ee-fa0a6bfc66a8",
+			"context_type": "global",
+			"system_prompt_chars": 14484,
+			"message_chars": 23373,
+			"approx_prompt_tokens": 5845,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "4da9405d-5f53-52d9-8eb6-e6f2d2840832",
+			"turn_run_id": "3d28d12f-c86b-4065-b787-3ddbffb1fc18",
+			"context_type": "project",
+			"system_prompt_chars": 16545,
+			"message_chars": 20422,
+			"approx_prompt_tokens": 5107,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "dce5c0ef-7c14-55ec-8968-361674b257cd",
+			"turn_run_id": "f9640b74-43d8-4512-b834-a7cb81f85858",
+			"context_type": "project",
+			"system_prompt_chars": 13284,
+			"message_chars": 22204,
+			"approx_prompt_tokens": 5554,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "c1f8f9b7-e584-5025-acfb-725502f72a61",
+			"turn_run_id": "487cfd9c-9cf0-49cd-b82c-e7bf3965e13e",
+			"context_type": "project",
+			"system_prompt_chars": 13284,
+			"message_chars": 21702,
+			"approx_prompt_tokens": 5429,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "a4eaa970-f6c3-5c72-9db6-3827b9ccc22f",
+			"turn_run_id": "259f6a28-2555-47d1-b54f-aa6828941f9b",
+			"context_type": "project",
+			"system_prompt_chars": 13284,
+			"message_chars": 19434,
+			"approx_prompt_tokens": 4860,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "e8d83bdc-80f7-5fba-8a22-601621be50ce",
+			"turn_run_id": "3d431e40-ad3e-4a8e-a708-3c210748938d",
+			"context_type": "project",
+			"system_prompt_chars": 17705,
+			"message_chars": 25019,
+			"approx_prompt_tokens": 6257,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "1fcd4397-d228-51dd-b1fe-5a986217e25c",
+			"turn_run_id": "5792be5e-c770-4dd2-8b45-4a73a44722ba",
+			"context_type": "project",
+			"system_prompt_chars": 13409,
+			"message_chars": 19830,
+			"approx_prompt_tokens": 4962,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "f79c77c1-c3af-591e-92f9-c64167263a8e",
+			"turn_run_id": "65d9d292-ad59-4955-ade4-7a30d1a310d9",
+			"context_type": "project",
+			"system_prompt_chars": 13350,
+			"message_chars": 16562,
+			"approx_prompt_tokens": 4142,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "c4ad94bc-2050-5675-b698-42b59b60e11f",
+			"turn_run_id": "a1a85bdf-0ab9-4d5a-bc35-09880b63720a",
+			"context_type": "project",
+			"system_prompt_chars": 17807,
+			"message_chars": 24349,
+			"approx_prompt_tokens": 6091,
+			"sections": {}
+		},
+		{
+			"snapshot_id": "37b7953a-f3c2-50d4-a7d6-9b06d9bb68e0",
+			"turn_run_id": "7e2aed93-7f7b-4a63-ab26-529803707ca6",
+			"context_type": "global",
+			"system_prompt_chars": 14459,
+			"message_chars": 18985,
+			"approx_prompt_tokens": 4747,
+			"sections": {}
+		}
+	]
+}

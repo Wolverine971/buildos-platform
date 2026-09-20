@@ -1,0 +1,101 @@
+
+=== global ===
+catalog:   28 tools 39621 B
+signed:    25 tools 38347 B   (web resolveWorkerPromptTools)
+admitted:  25 tools 32705 B   (worker productionToolsFor, full mutation-pass surface)
+opening:   24 tools 28350 B   (contract deferred)
+opening tools:
+  update_onto_task                  3256
+  create_onto_task                  2818
+  create_onto_project               2383
+  update_calendar_event             1827
+  delegate_task                     1805
+  create_calendar_event             1487
+  move_onto_task                    1299
+  list_calendar_events              1282
+  web_search                        1281
+  request_turn_clarification        1277
+  delete_calendar_event             1155
+  search_all_projects               1084
+  explore_project                   1070
+  get_calendar_event_details         986
+  web_visit                          750
+  read_document_section              721
+  search_onto_projects               641
+  list_onto_tasks                    615
+  get_project_overview               527
+  get_document_outline               465
+  cancel_turn_contract               420
+  get_workspace_overview             412
+  get_onto_document_details          395
+  get_onto_task_details              369
+
+=== global +email ===
+catalog:   28 tools 39621 B
+signed:    30 tools 41694 B   (web resolveWorkerPromptTools)
+admitted:  30 tools 36052 B   (worker productionToolsFor, full mutation-pass surface)
+opening:   29 tools 31697 B   (contract deferred)
+
+=== project ===
+catalog:   35 tools 41649 B
+signed:    32 tools 40375 B   (web resolveWorkerPromptTools)
+admitted:  32 tools 38780 B   (worker productionToolsFor, full mutation-pass surface)
+opening:   31 tools 34425 B   (contract deferred)
+opening tools:
+  update_onto_task                  3256
+  create_onto_task                  2818
+  update_calendar_event             1827
+  create_onto_document              1806
+  delegate_task                     1805
+  update_onto_document              1642
+  link_onto_entities                1506
+  create_calendar_event             1487
+  move_document_in_tree             1410
+  move_onto_task                    1299
+  list_calendar_events              1282
+  web_search                        1281
+  request_turn_clarification        1277
+  delete_calendar_event             1155
+  explore_project                   1070
+  get_calendar_event_details         986
+  get_document_tree                  848
+  list_onto_documents                814
+  set_project_calendar               761
+  search_project                     753
+  web_visit                          750
+  read_document_section              721
+  list_onto_tasks                    615
+  get_project_overview               527
+  get_document_outline               465
+  cancel_turn_contract               420
+  get_workspace_overview             412
+  get_onto_document_details          395
+  get_onto_project_details           380
+  get_onto_task_details              369
+  get_project_calendar               256
+
+=== project +email ===
+catalog:   35 tools 41649 B
+signed:    37 tools 43722 B   (web resolveWorkerPromptTools)
+admitted:  37 tools 42127 B   (worker productionToolsFor, full mutation-pass surface)
+opening:   36 tools 37772 B   (contract deferred)
+
+=== project_create ===
+catalog:   7 tools 16443 B
+signed:    6 tools 15993 B   (web resolveWorkerPromptTools)
+admitted:  6 tools 12377 B   (worker productionToolsFor, full mutation-pass surface)
+opening:   6 tools 12377 B   (contract deferred)
+opening tools:
+  declare_turn_contract             4354
+  create_onto_task                  2818
+  create_onto_project               2383
+  request_turn_clarification        1277
+  create_onto_goal                  1118
+  cancel_turn_contract               420
+
+global names mounted by catalog but absent on opening pass: [
+  'skill_search',
+  'domain_search',
+  'declare_turn_contract',
+  'declare_read_only_turn'
+]

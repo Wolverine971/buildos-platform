@@ -1,5 +1,6 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-dispatch.ts
 import { randomUUID } from 'node:crypto';
+import { PROJECT_REVIEW_SPECIALISTS_V1 } from '@buildos/agentic-chat-runtime/specialists';
 import {
 	AGENTIC_CHAT_WORKFLOW_LIMITS,
 	AGENTIC_CHAT_WORKFLOW_MAX_OUTPUT_TOKENS,
@@ -69,17 +70,18 @@ export const AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1: Readonly<
 });
 
 /** The workflow's primary model; every request is priced by a frozen snapshot. */
-export const AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1 = 'deepseek/deepseek-v4.1-flash';
+export const AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1 =
+	PROJECT_REVIEW_SPECIALISTS_V1.project_analyst.modelPolicy.primaryModel;
 /**
  * Provider fallback models inside the same request (OpenRouter `models`); each must be
  * priced. Route health may promote a fallback to the request's first model, so every
  * entry reserves and settles under its own snapshot.
  */
-export const AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1: readonly string[] = Object.freeze([
-	'deepseek/deepseek-v4-flash'
-]);
+export const AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1 =
+	PROJECT_REVIEW_SPECIALISTS_V1.project_analyst.modelPolicy.fallbackModels;
 /** Contract section 3: one physical request may run 90 s, with a 10 s header wait. */
-export const AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS = 90_000;
+export const AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS =
+	PROJECT_REVIEW_SPECIALISTS_V1.project_analyst.limits.requestTimeoutMs;
 export const AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
 
 /**

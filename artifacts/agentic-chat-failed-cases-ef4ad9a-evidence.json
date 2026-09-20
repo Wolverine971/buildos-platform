@@ -1,0 +1,157 @@
+{
+	"project": {
+		"id": "ad4580e6-19aa-4f94-95a1-e00ed1337bb6",
+		"name": "[QA FAILED RETEST ef4ad9a] Cedar House Renovation",
+		"description": "Synthetic test data. Renovating a fictional 1,200 sq ft house: kitchen, one bathroom, and electrical upgrades. Budget cap $85,000 including a $10,000 contingency. Start September 14, 2026; target completion November 20, 2026. Excludes roof replacement and landscaping. Success criteria: inspections passed, owner walkthrough accepted, total spend within the cap.",
+		"state_key": "planning",
+		"start_at": "2026-09-14T04:00:00Z",
+		"end_at": "2026-11-21T04:59:59Z",
+		"created_at": "2026-09-05T00:38:01.740109Z",
+		"updated_at": "2026-09-05T00:51:29.655021Z"
+	},
+	"tasks": [
+		{
+			"id": "f48d3634-ab4e-4ce5-b4ff-db1193768af0",
+			"title": "QA — Bathroom inspection",
+			"state_key": "todo",
+			"priority": 3,
+			"due_at": "2026-10-03T03:59:59Z",
+			"duration_minutes": 60
+		},
+		{
+			"id": "802ad5e3-004e-457c-83f4-67cf38c24fb9",
+			"title": "QA — Confirm permit requirements",
+			"state_key": "todo",
+			"priority": 2,
+			"due_at": "2026-09-16T03:59:59Z",
+			"duration_minutes": 60
+		},
+		{
+			"id": "8d7b4e16-0b52-4963-a957-256c630a5d12",
+			"title": "QA — Electrical rough-in",
+			"state_key": "todo",
+			"priority": 2,
+			"due_at": "2026-09-29T03:59:59Z",
+			"duration_minutes": 480
+		},
+		{
+			"id": "8a80e41e-254a-4a25-9fcd-549f084e2126",
+			"title": "QA — Kitchen inspection",
+			"state_key": "todo",
+			"priority": 3,
+			"due_at": "2026-10-01T03:59:59Z",
+			"duration_minutes": 60
+		},
+		{
+			"id": "7afff306-09c1-4699-9cc5-8b513f2c80c4",
+			"title": "QA — Order kitchen cabinets",
+			"state_key": "todo",
+			"priority": 2,
+			"due_at": "2026-09-19T03:59:59Z",
+			"due_date_america_new_york": "2026-09-18",
+			"duration_minutes": 90
+		}
+	],
+	"edges": [],
+	"events": [],
+	"documents": [
+		{
+			"id": "9a0eb949-fda0-4d51-b006-cf3feb46b23f",
+			"title": "QA — Cedar House Marketing Brief",
+			"content_length": 613,
+			"updated_at": "2026-09-05T00:49:39.067104Z",
+			"audience": "Local homeowners considering a kitchen renovation.",
+			"call_to_action": "Book a 20-minute discovery call.",
+			"change_log": ["2026-09-03: Initial draft."],
+			"attempted_selective_edit_persisted": false
+		},
+		{
+			"id": "7ba6d441-bee8-439d-86c9-60491c7097dd",
+			"title": "[QA FAILED RETEST ef4ad9a] Cedar House Renovation Context Document",
+			"content_length": 1225,
+			"updated_at": "2026-09-05T00:51:36.014856Z",
+			"managed_status": {
+				"state": "planning",
+				"now": "5 open tasks · 0 overdue",
+				"next_step": "Review and assign the QA tasks to advance the project milestones.",
+				"refreshed_at": "2026-09-05T00:51:35.749Z"
+			},
+			"where_the_detail_lives": [
+				{
+					"title": "QA — Cedar House Marketing Brief",
+					"id": "9a0eb949-fda0-4d51-b006-cf3feb46b23f"
+				}
+			]
+		}
+	],
+	"calendar_case": {
+		"source_count": 2,
+		"successful_source_count": 0,
+		"failed_source_count": 2,
+		"coverage": "unavailable",
+		"google_event_count": 0,
+		"ontology_event_count": 0,
+		"failures": [
+			{
+				"source": "source_1",
+				"reason_code": "credentials_unreadable"
+			},
+			{
+				"source": "source_2",
+				"reason_code": "credentials_unreadable"
+			}
+		],
+		"diagnosis": "The deployed worker could not decrypt stored credentials; Google was not contacted.",
+		"response_truthfulness": "The assistant did not claim verified availability and made no calendar write."
+	},
+	"mutation_review_evidence": {
+		"task_update": {
+			"turn_run_ids": [
+				"bd67667d-f390-4f73-88f9-b963a11857b0",
+				"f0c2b495-7147-40d4-8a63-55dc6188d4a2"
+			],
+			"record_read": true,
+			"contract_declared": true,
+			"update_tool_called": false,
+			"fallback_tool": "request_turn_clarification",
+			"fallback_reason": "Independent semantic review returned an invalid or unbound decision.",
+			"saved_update": false
+		},
+		"document_update": {
+			"turn_run_id": "aacf658a-5b28-4c76-b16f-eff62e012a80",
+			"record_read": true,
+			"contract_declared": true,
+			"update_tool_called": false,
+			"fallback_tool": "request_turn_clarification",
+			"fallback_reason": "Independent semantic review returned an invalid or unbound decision.",
+			"saved_update": false
+		},
+		"task_batch": {
+			"final_task_count": 5,
+			"final_edge_count": 0,
+			"failed_after_partial_writes": [
+				"9a31d293-dc9a-4cda-a0b8-9f65f088f10d",
+				"65307e1e-52b2-4019-aa96-0a3285614401"
+			],
+			"failure_code": "provider_forced_synthesis_failed"
+		}
+	},
+	"start_here_ui": {
+		"before_chat_close": {
+			"displayed_open_tasks": 0,
+			"displayed_documents": 0,
+			"snapshot_refreshed_at": "2026-09-05T00:38:04.835Z"
+		},
+		"after_chat_close": {
+			"displayed_open_tasks": 5,
+			"displayed_overdue_tasks": 0,
+			"displayed_marketing_document": true,
+			"snapshot_refreshed_at": "2026-09-05T00:51:35.749Z"
+		},
+		"async_refresh_result": "passed",
+		"open_document_result": "failed",
+		"open_document_observed_url": "https://build-os.com/projects/ad4580e6-19aa-4f94-95a1-e00ed1337bb6",
+		"expected_document_url": "https://build-os.com/projects/ad4580e6-19aa-4f94-95a1-e00ed1337bb6/documents/7ba6d441-bee8-439d-86c9-60491c7097dd"
+	},
+	"privacy": "Calendar account identifiers and email addresses are omitted."
+}

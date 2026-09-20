@@ -35,7 +35,8 @@
 		"cycles:backfill-daily-brief": "tsx src/scripts/backfillDailyBriefCycles.ts",
 		"cycles:shadow-daily-brief": "tsx src/scripts/reportDailyBriefCycleShadow.ts",
 		"cost-reconciliation:report": "tsx src/scripts/reportAgentRunCostReconciliation.ts",
-		"libri:admission-audit": "tsx src/scripts/reportLibriOcrAdmission.ts"
+		"libri:admission-audit": "tsx src/scripts/reportLibriOcrAdmission.ts",
+		"specialists:preview": "node --conditions=development --import tsx scripts/preview-specialists.ts"
 	},
 	"dependencies": {
 		"@breezystack/lamejs": "^1.2.7",

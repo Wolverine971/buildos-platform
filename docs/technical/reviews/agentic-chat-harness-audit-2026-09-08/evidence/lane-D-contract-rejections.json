@@ -1,0 +1,151 @@
+{
+	"source": "lane-h-turns.json (55 turns 2026-09-04..09-08)",
+	"contract_turns": 24,
+	"rejected_turns": [
+		{
+			"id": "0784af15",
+			"day": "2026-09-04",
+			"passes": 7,
+			"acting_calls": 5,
+			"reviewer_calls": 2,
+			"cost": 0.01643,
+			"dur_s": 91.6,
+			"prompt_total": 108824,
+			"errors": [
+				"Tool validation failed: Invalid turn contract: Outcome 1: a labelled create outcome names exactly one entity, so minimum_successful_effects must be 1 (received ",
+				"Tool validation failed: Invalid turn contract: Outcome 1: task create cannot produce required field \"project_id\". Supported effect fields: assignee_actor_ids, a"
+			]
+		},
+		{
+			"id": "579e0c95",
+			"day": "2026-09-04",
+			"passes": 8,
+			"acting_calls": 7,
+			"reviewer_calls": 2,
+			"cost": 0.01312,
+			"dur_s": 76.9,
+			"prompt_total": 104828,
+			"errors": [
+				"Tool validation failed: Invalid turn contract: Outcome 1: label is only meaningful on a create outcome; other outcomes reference a created entity through parent"
+			]
+		},
+		{
+			"id": "629f7353",
+			"day": "2026-09-05",
+			"passes": 6,
+			"acting_calls": 6,
+			"reviewer_calls": 1,
+			"cost": 0.01459,
+			"dur_s": 119.9,
+			"prompt_total": 74141,
+			"errors": [
+				"Tool validation failed: Invalid turn contract: The project outcome must omit required_fields and changes because the create_onto_project arguments carry the pro"
+			]
+		},
+		{
+			"id": "ab4e567e",
+			"day": "2026-09-05",
+			"passes": 5,
+			"acting_calls": 7,
+			"reviewer_calls": 1,
+			"cost": 0.01339,
+			"dur_s": 172.4,
+			"prompt_total": 83507,
+			"errors": [
+				"Tool validation failed: Invalid turn contract: Outcome 1: task create cannot produce required field \"estimated_minutes\". Supported effect fields: assignee_actor"
+			]
+		},
+		{
+			"id": "78adb24c",
+			"day": "2026-09-05",
+			"passes": 6,
+			"acting_calls": 6,
+			"reviewer_calls": 1,
+			"cost": 0.01518,
+			"dur_s": 108.8,
+			"prompt_total": 88549,
+			"errors": [
+				"Tool validation failed: Invalid turn contract: Outcome 1: src_label must reference a non-project create outcome of the declared endpoint kind. Invalid turn cont"
+			]
+		},
+		{
+			"id": "2785785a",
+			"day": "2026-09-05",
+			"passes": 8,
+			"acting_calls": 8,
+			"reviewer_calls": 1,
+			"cost": 0.01207,
+			"dur_s": 91.5,
+			"prompt_total": 132321,
+			"errors": [
+				"Tool validation failed: Invalid turn contract: Outcome 1: document create cannot produce required field \"project_id\". Supported effect fields: content, descript"
+			]
+		},
+		{
+			"id": "d8aee58d",
+			"day": "2026-09-05",
+			"passes": 9,
+			"acting_calls": 9,
+			"reviewer_calls": 2,
+			"cost": 0.01649,
+			"dur_s": 90.2,
+			"prompt_total": 149082,
+			"errors": [
+				"Tool validation failed: Invalid turn contract: Outcome 1: document create cannot produce required field \"project_id\". Supported effect fields: content, descript"
+			]
+		},
+		{
+			"id": "258954cd",
+			"day": "2026-09-05",
+			"passes": 11,
+			"acting_calls": 10,
+			"reviewer_calls": 2,
+			"cost": 0.02232,
+			"dur_s": 118.7,
+			"prompt_total": 206568,
+			"errors": [
+				"Tool validation failed: Invalid turn contract: Outcome 1: document update must name the changed fields in required_fields or scalar changes. For a text edit use"
+			]
+		},
+		{
+			"id": "3206de31",
+			"day": "2026-09-08",
+			"passes": 5,
+			"acting_calls": 5,
+			"reviewer_calls": 1,
+			"cost": 0.00766,
+			"dur_s": 52.4,
+			"prompt_total": 46570,
+			"errors": [
+				"Tool validation failed: Invalid turn contract: Outcome 1: document update must name the changed fields in required_fields or scalar changes. For a text edit use"
+			]
+		}
+	],
+	"rejection_reasons": {
+		"label_rule": 3,
+		"required_field:project_id": 3,
+		"project_create_must_omit_fields": 1,
+		"required_field:other": 1,
+		"document_update_empty_required_fields": 2
+	},
+	"averages": {
+		"with_rejection": {
+			"n": 9,
+			"passes": 7.22,
+			"acting_calls": 7,
+			"reviewer_calls": 1.44,
+			"cost_usd": 0.01,
+			"dur_s": 102.49,
+			"prompt_total": 110487.78
+		},
+		"without_rejection": {
+			"n": 15,
+			"passes": 5.6,
+			"acting_calls": 4.53,
+			"reviewer_calls": 1.8,
+			"cost_usd": 0.01,
+			"dur_s": 64.88,
+			"prompt_total": 72177.2
+		}
+	}
+}

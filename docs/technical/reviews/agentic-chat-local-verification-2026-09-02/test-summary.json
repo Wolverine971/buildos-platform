@@ -1,0 +1,2049 @@
+{
+	"total": {
+		"passed": 3150,
+		"skipped": 11
+	},
+	"files": [
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/AgentChatActivityTabs.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/AgentComposer.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/AgentRunDock.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/AgentWorkForms.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/ChatSessionAuditActions.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/ProjectActionSelector.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/ThinkingBlock.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/WorkPanel.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-attachments.svelte.test.ts",
+			"status": "passed",
+			"passed": 19,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-client-actions.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-formatters.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-markdown.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-modal-craft.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-prewarm.svelte.test.ts",
+			"status": "passed",
+			"passed": 45,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-session.test.ts",
+			"status": "passed",
+			"passed": 23,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-shell-router.svelte.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-skill-activity.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-sse-handler.test.ts",
+			"status": "passed",
+			"passed": 57,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-step-export.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts",
+			"status": "passed",
+			"passed": 36,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-thinking-state.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-timeline.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-tool-presenter.test.ts",
+			"status": "passed",
+			"passed": 51,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-voice.svelte.test.ts",
+			"status": "passed",
+			"passed": 22,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-worker-status.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/components/agent/agent-chat-worker-ui-adapter.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/project-domain-profiles.test.ts",
+			"status": "passed",
+			"passed": 18,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/access-checks.test.ts",
+			"status": "passed",
+			"passed": 12,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/agent-run-atomic-dispatch-trigger-cast.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/agent-state-sanitization.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/attachments.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/cancel-reason-channel.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/context-cache-routing.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/context-cache.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/context-loader.test.ts",
+			"status": "passed",
+			"passed": 20,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/empty-synthesis-retry.regression.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/entity-resolution.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/exact-entity-id.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/history-composer.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/history-state-trigger-composition.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/input-v3-lifecycle-snapshots.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/last-turn-context.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/legacy-live-vision-config.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/materialized-context-cache.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/materialized-context-cache.server.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/model-tiering.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/mutation-partial-recovery.regression.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/p3-attachment-reference-contract.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/p3-live-vision-resolution.postgres.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/p4-checkpoint-resume-lifecycle.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/p4-research-capture.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/p4-stated-future-evidence.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/p4-supervisor-question-checkpoint.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/p5-prompt-snapshot-tool-definitions.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/people-synthesis-timeout.regression.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2a-active-status-index.postgres.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2a-queue-function-lockdown.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2a-queue-type.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2a-stream-signal-foundation.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2a-trust-foundation.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2b-admission-claim.postgres.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2b-effect-foundation.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2b-effect-rpcs.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2b-execution-recovery.postgres.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2b-terminal-control.postgres.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2c-cancel-observation.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2c-private-realtime-authorization.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2c-reconciliation.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2c-stream-delivery-ack.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase2c-stream-write.postgres.test.ts",
+			"status": "passed",
+			"passed": 21,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/phase5-retention-cleanup.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prepared-admission-lease.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prepared-admission-lease.server.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-cache.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-consumer.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-history.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-dump-files.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-eval-comparison.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-eval-runner.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-evaluator.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-json.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-observability.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-replay-runner.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-variant.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/read-loop-synthesis.golden.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/reconciliation.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/reschedule-noop-update.regression.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/scaffold-variant.test.ts",
+			"status": "passed",
+			"passed": 15,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/scope.test.ts",
+			"status": "passed",
+			"passed": 39,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/session-metadata.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/session-service.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/skill-activity.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-attachments.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-events.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts",
+			"status": "passed",
+			"passed": 63,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-protocol.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-request-client.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-request.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-execution-context.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-project-id.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts",
+			"status": "passed",
+			"passed": 59,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-surface-size-report.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-trace.test.ts",
+			"status": "passed",
+			"passed": 18,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/transport-decision.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/transport-lease.test.ts",
+			"status": "passed",
+			"passed": 12,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-admission.postgres.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-admission.test.ts",
+			"status": "passed",
+			"passed": 12,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-input-artifact-store.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-observability-writer.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-outcome.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-persistence.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-preparation.test.ts",
+			"status": "passed",
+			"passed": 14,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-route-health.regression.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-run-conflicts.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-phase2d-composed-flow.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-realtime-channel.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-realtime-coordinator.test.ts",
+			"status": "passed",
+			"passed": 12,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-realtime-inbox.test.ts",
+			"status": "passed",
+			"passed": 13,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-realtime-runtime.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-transport-client.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-transport-routing.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-turn-admission.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-turn-adoption.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-turn-capacity.test.ts",
+			"status": "passed",
+			"passed": 15,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-turn-gateway.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.test.ts",
+			"status": "passed",
+			"passed": 23,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent-runs/server.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/shared/error-utils.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/search-ranking.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-lite/preview/build-lite-prompt-preview.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.test.ts",
+			"status": "passed",
+			"passed": 59,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-lite/prompt/prompt-size-budget.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.test.ts",
+			"status": "passed",
+			"passed": 26,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-lite/shadow/compare-lite-shadow.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/context-gathering-ledger.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/finalization-runner.test.ts",
+			"status": "passed",
+			"passed": 20,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/llm-pass-runner.test.ts",
+			"status": "passed",
+			"passed": 20,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/prompt-dump-debug.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.test.ts",
+			"status": "passed",
+			"passed": 82,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/round-analysis.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-classification.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-round-runner.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-validation.test.ts",
+			"status": "passed",
+			"passed": 12,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/turn-route-health.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/turn-security-policy.test.ts",
+			"status": "passed",
+			"passed": 15,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/write-ledger.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/checkpoint-service.test.ts",
+			"status": "passed",
+			"passed": 13,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution-service.test.ts",
+			"status": "passed",
+			"passed": 109,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/google-calendar/server.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent-call/buildos/server.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/affected-entities.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/catalog-fitness.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.test.ts",
+			"status": "passed",
+			"passed": 25,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/tool-schema-compat.test.ts",
+			"status": "passed",
+			"passed": 13,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/update-strategies.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/corsair-mcp/client.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/resources/resource-registry.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/domains/domain-load.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/domains/domain-research-queue.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/domains/domain-sensing.test.ts",
+			"status": "passed",
+			"passed": 40,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/domains/domain-session-state.test.ts",
+			"status": "passed",
+			"passed": 13,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/domains/domain-used-signals.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/domains/operational-skill-intent.test.ts",
+			"status": "passed",
+			"passed": 10,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/domains/skill-gate-preload.test.ts",
+			"status": "passed",
+			"passed": 21,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/email-tool-registry.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-search.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-authoring-validation.test.ts",
+			"status": "passed",
+			"passed": 19,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-discoverability.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.test.ts",
+			"status": "passed",
+			"passed": 22,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-output-contract.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-reference-load.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-registry-disk-parity.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-related-ops-integrity.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-search.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/webvisit/index.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/webvisit/markdown.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/webvisit/parser.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/outcome-cards/outcome-card-load.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/http-stream/lifecycle.server.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/websearch/index.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/argument-pipeline.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/call-decoder.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/execution-orchestration.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/execution-runner.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/gateway-executor.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/ontology-scope-evidence.test.ts",
+			"status": "passed",
+			"passed": 12,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/result-adapter.test.ts",
+			"status": "passed",
+			"passed": 18,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/result-observer.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/same-turn-document-registry.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/same-turn-ontology-ownership.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/schema-validator.test.ts",
+			"status": "passed",
+			"passed": 10,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/scope-guards.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/tool-dispatch.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/tool-execution-architecture.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/legacy-execution/tool-execution/tool-policies.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/stream/route-boundary.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/stream/server.test.ts",
+			"status": "passed",
+			"passed": 47,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/transport/server.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/turns/server.test.ts",
+			"status": "passed",
+			"passed": 14,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/prewarm/server.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent-call/bootstrap/[setupToken]/server.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent-runs/[id]/commit/server.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent-runs/[id]/chat-session/server.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/base-executor.abort.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/calendar-datetime.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/calendar-executor.edge-integrity.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/calendar-executor.event-id-routing.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/calendar-executor.multi-account.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/calendar-executor.personal-event.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/email-executor.test.ts",
+			"status": "passed",
+			"passed": 18,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/external-executor.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-doc-tree-tools.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-project-create.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.outline.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.payload.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.project-access.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.projects-access.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.search-url.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.search.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-tag-handles.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-task-assignee-handles.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-task-move.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.write-integrity.test.ts",
+			"status": "passed",
+			"passed": 18,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/utility-executor.overview.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/utility-executor.project-access.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/turns/[id]/server.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/turns/[id]/cancel/server.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/turns/[id]/reconcile/server.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatBootstrap.test.ts",
+			"status": "passed",
+			"passed": 12,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatCancellationObserver.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatCapacity.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatCapacityHttp.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatCatalogPolicy.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatCompositionRoot.test.ts",
+			"status": "passed",
+			"passed": 12,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatConsumer.test.ts",
+			"status": "passed",
+			"passed": 18,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatConsumerFactory.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatConsumptionBilling.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatContractMutationCompiler.test.ts",
+			"status": "passed",
+			"passed": 20,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatCreateOntoDocumentMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatCreateOntoProjectMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatCreateOntoTaskMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatDelegateTaskMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 13,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatEffectControl.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatExecutionControl.test.ts",
+			"status": "passed",
+			"passed": 15,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatExecutionInput.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatExecutionObservation.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatFixtureLoad.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatGatewayDocumentRelationshipMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 10,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatGatewayEdgeMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatGatewayEntityMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 13,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatGatewayProjectMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatLifecycleIdentity.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatLiveVision.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatMoveOntoTaskMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatMutationAdapterRouter.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatMutationExecutor.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatMutationReviewExecutionPlan.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatMutationSurfacePolicy.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatOpenRouterClient.test.ts",
+			"status": "passed",
+			"passed": 43,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatPhase5FailureMatrixAudit.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatProductionNaming.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatPromptSnapshot.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatProviderBoundary.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatProviderCapacity.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatReadPlanningTelemetry.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatRecoverySnapshot.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatReliabilityContractAudit.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatResearchCapture.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatReviewCandidateGate.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatReviewDecisionCompletion.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatReviewRequestEvidence.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatRuntimeBoundary.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatRuntimeSourceAliases.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatRuntimeTiming.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatSessionHandoff.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatStalledRecovery.test.ts",
+			"status": "passed",
+			"passed": 15,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatStatedFutureCapture.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatStreamPublisher.test.ts",
+			"status": "passed",
+			"passed": 18,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatTagOntoEntityPingMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatTerminalTextIntegrity.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatTimingPayload.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatToolExecution.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatToolExecutionAdapter.test.ts",
+			"status": "passed",
+			"passed": 33,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatToolExecutionGraph.test.ts",
+			"status": "passed",
+			"passed": 29,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatToolExecutionGraphModelScenarios.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatToolExecutionGraphOllama.live.test.ts",
+			"status": "passed",
+			"passed": 0,
+			"skipped": 5
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatToolExecutionGraphOpenRouter.live.test.ts",
+			"status": "passed",
+			"passed": 0,
+			"skipped": 6
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatToolExecutionGraphReleaseGate.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatToolExecutionPolicy.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatTurnExecutor.test.ts",
+			"status": "passed",
+			"passed": 71,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatTurnPhase.test.ts",
+			"status": "passed",
+			"passed": 18,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatTurnProvider.test.ts",
+			"status": "passed",
+			"passed": 91,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatUpdateOntoTaskMutationAdapter.test.ts",
+			"status": "passed",
+			"passed": 13,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatWorkerAccessAdapter.test.ts",
+			"status": "passed",
+			"passed": 10,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatWorkerSurfaceBudget.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/apps/worker/tests/agenticChatWriteRouting.test.ts",
+			"status": "passed",
+			"passed": 20,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/source-entrypoints.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/contracts.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/last-turn-context.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/lifecycle-observability.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/parity-scenarios.test.ts",
+			"status": "passed",
+			"passed": 12,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/parity.test.ts",
+			"status": "passed",
+			"passed": 9,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/portability.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/worker-tool-policy.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/catalog/portability.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/catalog/registry.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/catalog/surfaces.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/supervisor/deterministic-supervisor.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/supervisor/entity-index.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/tools/ontology-detail-reads.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/tools/ontology-explore.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/tools/ontology-relationship-reads.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/tools/ontology-search.test.ts",
+			"status": "passed",
+			"passed": 13,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/tools/ontology-structure-reads.test.ts",
+			"status": "passed",
+			"passed": 4,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/tools/ontology-task-detail.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/tools/ontology-task-documents.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/tools/overview-helper.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/tools/shared-read-dispatch.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.test.ts",
+			"status": "passed",
+			"passed": 22,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/context-shift.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/durable-text-validation.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/finalization-guard.test.ts",
+			"status": "passed",
+			"passed": 21,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/project-create-args.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/project-semantics.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/read-loop-escalation.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/read-memo.test.ts",
+			"status": "passed",
+			"passed": 8,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/repair-instructions.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/research-capture.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/round-analysis.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/search-telemetry.test.ts",
+			"status": "passed",
+			"passed": 16,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/stated-future-capture.test.ts",
+			"status": "passed",
+			"passed": 2,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/synthesis-context.test.ts",
+			"status": "passed",
+			"passed": 6,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/tool-arguments.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/tool-catalog.test.ts",
+			"status": "passed",
+			"passed": 1,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/tool-failure.test.ts",
+			"status": "passed",
+			"passed": 7,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/tool-payload-compaction.test.ts",
+			"status": "passed",
+			"passed": 31,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/turn-contract.test.ts",
+			"status": "passed",
+			"passed": 61,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/turn-intent.test.ts",
+			"status": "passed",
+			"passed": 5,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/loop/web-egress-policy.test.ts",
+			"status": "passed",
+			"passed": 11,
+			"skipped": 0
+		},
+		{
+			"file": "/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/src/catalog/definitions/ontology-write.test.ts",
+			"status": "passed",
+			"passed": 3,
+			"skipped": 0
+		}
+	],
+	"sharedTypesPassed": 9
+}

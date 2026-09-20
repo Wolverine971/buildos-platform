@@ -1,0 +1,2368 @@
+{
+	"since": "2026-09-04T17:14:00.000Z",
+	"artifacts": 55,
+	"sectionSummary": {
+		"global::capabilities_skills_tools": {
+			"n": 15,
+			"p50": 289,
+			"p90": 289,
+			"max": 289
+		},
+		"global::final_response_contract": {
+			"n": 15,
+			"p50": 617,
+			"p90": 1160,
+			"max": 1160
+		},
+		"global::focus_purpose": {
+			"n": 15,
+			"p50": 646,
+			"p90": 646,
+			"max": 646
+		},
+		"global::identity_mission": {
+			"n": 15,
+			"p50": 482,
+			"p90": 482,
+			"max": 482
+		},
+		"global::location_loaded_context": {
+			"n": 15,
+			"p50": 7496,
+			"p90": 7634,
+			"max": 7679
+		},
+		"global::operating_strategy": {
+			"n": 15,
+			"p50": 378,
+			"p90": 378,
+			"max": 378
+		},
+		"global::safety_data_rules": {
+			"n": 15,
+			"p50": 1701,
+			"p90": 1701,
+			"max": 1701
+		},
+		"global::situational_rules": {
+			"n": 15,
+			"p50": 2493,
+			"p90": 6883,
+			"max": 6883
+		},
+		"project::capabilities_skills_tools": {
+			"n": 37,
+			"p50": 289,
+			"p90": 289,
+			"max": 289
+		},
+		"project::final_response_contract": {
+			"n": 37,
+			"p50": 617,
+			"p90": 1160,
+			"max": 1160
+		},
+		"project::focus_purpose": {
+			"n": 37,
+			"p50": 637,
+			"p90": 1271,
+			"max": 1389
+		},
+		"project::identity_mission": {
+			"n": 37,
+			"p50": 482,
+			"p90": 482,
+			"max": 482
+		},
+		"project::location_loaded_context": {
+			"n": 37,
+			"p50": 3768,
+			"p90": 4085,
+			"max": 4735
+		},
+		"project::operating_strategy": {
+			"n": 37,
+			"p50": 378,
+			"p90": 378,
+			"max": 378
+		},
+		"project::project_knowledge_map": {
+			"n": 37,
+			"p50": 732,
+			"p90": 899,
+			"max": 1070
+		},
+		"project::project_start_here": {
+			"n": 37,
+			"p50": 1600,
+			"p90": 1716,
+			"max": 1716
+		},
+		"project::safety_data_rules": {
+			"n": 37,
+			"p50": 1701,
+			"p90": 1701,
+			"max": 1701
+		},
+		"project::situational_rules": {
+			"n": 37,
+			"p50": 2493,
+			"p90": 6903,
+			"max": 8877
+		},
+		"project_create::focus_purpose": {
+			"n": 3,
+			"p50": 1963,
+			"p90": 1965,
+			"max": 1965
+		},
+		"project_create::identity_mission": {
+			"n": 3,
+			"p50": 482,
+			"p90": 482,
+			"max": 482
+		},
+		"project_create::location_loaded_context": {
+			"n": 3,
+			"p50": 86,
+			"p90": 86,
+			"max": 86
+		},
+		"project_create::operating_strategy": {
+			"n": 3,
+			"p50": 546,
+			"p90": 546,
+			"max": 546
+		},
+		"project_create::safety_data_rules": {
+			"n": 3,
+			"p50": 1051,
+			"p90": 1051,
+			"max": 1051
+		}
+	},
+	"payloadSummary": {
+		"project_create": {
+			"n": 3,
+			"p50": 220,
+			"p90": 220,
+			"max": 220
+		},
+		"project": {
+			"n": 37,
+			"p50": 12166,
+			"p90": 14821,
+			"max": 15660
+		},
+		"global": {
+			"n": 15,
+			"p50": 33393,
+			"p90": 34302,
+			"max": 35071
+		}
+	},
+	"histSummary": {
+		"global::assistant": {
+			"n": 6,
+			"p50": 1690,
+			"p90": 2689,
+			"max": 2689
+		},
+		"global::system": {
+			"n": 10,
+			"p50": 538,
+			"p90": 1091,
+			"max": 1091
+		},
+		"global::user": {
+			"n": 6,
+			"p50": 519,
+			"p90": 674,
+			"max": 674
+		},
+		"project::assistant": {
+			"n": 46,
+			"p50": 718,
+			"p90": 1175,
+			"max": 1200
+		},
+		"project::system": {
+			"n": 72,
+			"p50": 615,
+			"p90": 979,
+			"max": 2517
+		},
+		"project::user": {
+			"n": 45,
+			"p50": 674,
+			"p90": 823,
+			"max": 852
+		}
+	},
+	"rows": [
+		{
+			"turn": "3e8002a4-3e4e-477f-bb40-07a3013372c6",
+			"ctx": "project_create",
+			"system_prompt_chars": 4393,
+			"sections": {
+				"identity_mission": 482,
+				"operating_strategy": 546,
+				"safety_data_rules": 1051,
+				"focus_purpose": 1965,
+				"location_loaded_context": 86
+			},
+			"context_payload_chars": 220,
+			"tool_surface_chars": 19781,
+			"history_bytes": 2,
+			"content_bytes": 39437,
+			"history_count": 0
+		},
+		{
+			"turn": "8ab282a5-edc7-4169-9820-a7834e10afdf",
+			"ctx": "project_create",
+			"system_prompt_chars": 4391,
+			"sections": {
+				"identity_mission": 482,
+				"operating_strategy": 546,
+				"safety_data_rules": 1051,
+				"focus_purpose": 1963,
+				"location_loaded_context": 86
+			},
+			"context_payload_chars": 220,
+			"tool_surface_chars": 19781,
+			"history_bytes": 2,
+			"content_bytes": 38238,
+			"history_count": 0
+		},
+		{
+			"turn": "a2dcf99c-2e02-4a9b-a9eb-2cc073535592",
+			"ctx": "project",
+			"system_prompt_chars": 17595,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6613,
+				"project_start_here": 1508,
+				"focus_purpose": 600,
+				"location_loaded_context": 3901,
+				"project_knowledge_map": 553
+			},
+			"context_payload_chars": 14821,
+			"tool_surface_chars": 44651,
+			"history_bytes": 5007,
+			"content_bytes": 133764,
+			"history_count": 4,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 6,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "bfa823cd-04f3-4898-aeec-664e1382a692",
+			"ctx": "project",
+			"system_prompt_chars": 16866,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 5808,
+				"project_start_here": 1591,
+				"focus_purpose": 1046,
+				"location_loaded_context": 3396,
+				"project_knowledge_map": 605
+			},
+			"context_payload_chars": 11290,
+			"tool_surface_chars": 44651,
+			"history_bytes": 2,
+			"content_bytes": 115986,
+			"history_count": 0,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 0,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0,
+				"linked_edges": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"linked_edges",
+				"doc_structure",
+				"events_window",
+				"focus_entity_id",
+				"linked_entities",
+				"focus_entity_full",
+				"focus_entity_type",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "3206de31-db11-4173-b145-c188cd9601c2",
+			"ctx": "project",
+			"system_prompt_chars": 13053,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 1773,
+				"project_start_here": 1591,
+				"focus_purpose": 1271,
+				"location_loaded_context": 3393,
+				"project_knowledge_map": 605
+			},
+			"context_payload_chars": 11363,
+			"tool_surface_chars": 44717,
+			"history_bytes": 1683,
+			"content_bytes": 113801,
+			"history_count": 2,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 0,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0,
+				"linked_edges": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"linked_edges",
+				"doc_structure",
+				"events_window",
+				"focus_entity_id",
+				"linked_entities",
+				"focus_entity_full",
+				"focus_entity_type",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "308f3497-4db6-4f5b-8bfc-8be9c6a7e918",
+			"ctx": "project",
+			"system_prompt_chars": 13475,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"project_start_here": 1508,
+				"focus_purpose": 600,
+				"location_loaded_context": 3901,
+				"project_knowledge_map": 553,
+				"situational_rules": 2493
+			},
+			"context_payload_chars": 13820,
+			"tool_surface_chars": 44651,
+			"history_bytes": 8453,
+			"content_bytes": 122547,
+			"history_count": 8,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 6,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "363b8fff-3975-4058-a64a-5aa8f097ca76",
+			"ctx": "project",
+			"system_prompt_chars": 19238,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6905,
+				"project_start_here": 1508,
+				"focus_purpose": 600,
+				"location_loaded_context": 4735,
+				"project_knowledge_map": 1070
+			},
+			"context_payload_chars": 15660,
+			"tool_surface_chars": 44651,
+			"history_bytes": 5727,
+			"content_bytes": 149557,
+			"history_count": 6,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 6,
+				"events": 0,
+				"members": 1,
+				"documents": 4,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "35f3e826-4203-468e-99d2-6ec4cbbc1250",
+			"ctx": "project",
+			"system_prompt_chars": 17933,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6653,
+				"project_start_here": 1591,
+				"focus_purpose": 1271,
+				"location_loaded_context": 3393,
+				"project_knowledge_map": 605
+			},
+			"context_payload_chars": 11363,
+			"tool_surface_chars": 44717,
+			"history_bytes": 2,
+			"content_bytes": 114373,
+			"history_count": 0,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 0,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0,
+				"linked_edges": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"linked_edges",
+				"doc_structure",
+				"events_window",
+				"focus_entity_id",
+				"linked_entities",
+				"focus_entity_full",
+				"focus_entity_type",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "069c45f4-7dfe-4e4a-8318-01aad42e73fc",
+			"ctx": "global",
+			"system_prompt_chars": 18026,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 6883,
+				"focus_purpose": 449,
+				"location_loaded_context": 7242
+			},
+			"context_payload_chars": 33385,
+			"tool_surface_chars": 33331,
+			"history_bytes": 2,
+			"content_bytes": 146563,
+			"history_count": 0,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "2785785a-6300-402e-bcc9-c6b04dd687c9",
+			"ctx": "project",
+			"system_prompt_chars": 17959,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6608,
+				"project_start_here": 1508,
+				"focus_purpose": 600,
+				"location_loaded_context": 4085,
+				"project_knowledge_map": 738
+			},
+			"context_payload_chars": 14635,
+			"tool_surface_chars": 44651,
+			"history_bytes": 4653,
+			"content_bytes": 137652,
+			"history_count": 5,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 6,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "f3fb0de6-282b-4058-afd9-b7b10bb8dbcb",
+			"ctx": "project",
+			"system_prompt_chars": 20157,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"project_start_here": 1591,
+				"focus_purpose": 1271,
+				"location_loaded_context": 3393,
+				"project_knowledge_map": 605,
+				"situational_rules": 8877
+			},
+			"context_payload_chars": 11308,
+			"tool_surface_chars": 44717,
+			"history_bytes": 928,
+			"content_bytes": 115919,
+			"history_count": 2,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 0,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0,
+				"linked_edges": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"linked_edges",
+				"doc_structure",
+				"events_window",
+				"focus_entity_id",
+				"linked_entities",
+				"focus_entity_full",
+				"focus_entity_type",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "407d881c-5b0a-4212-b5b9-5402821b4aa6",
+			"ctx": "global",
+			"system_prompt_chars": 13636,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 2493,
+				"focus_purpose": 449,
+				"location_loaded_context": 7242
+			},
+			"context_payload_chars": 33385,
+			"tool_surface_chars": 33331,
+			"history_bytes": 2781,
+			"content_bytes": 140192,
+			"history_count": 5,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "b7b715f6-c419-4220-867f-bd1660fa7df3",
+			"ctx": "project",
+			"system_prompt_chars": 12450,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 2493,
+				"project_start_here": 1600,
+				"focus_purpose": 637,
+				"location_loaded_context": 3483,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12175,
+			"tool_surface_chars": 40356,
+			"history_bytes": 3096,
+			"content_bytes": 116684,
+			"history_count": 4,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "d8aee58d-918b-445a-bac4-5e94244f8fc7",
+			"ctx": "project",
+			"system_prompt_chars": 18241,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6531,
+				"project_start_here": 1508,
+				"focus_purpose": 600,
+				"location_loaded_context": 4258,
+				"project_knowledge_map": 924
+			},
+			"context_payload_chars": 15251,
+			"tool_surface_chars": 44651,
+			"history_bytes": 4748,
+			"content_bytes": 141341,
+			"history_count": 5,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 6,
+				"events": 0,
+				"members": 1,
+				"documents": 3,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "258954cd-53dc-4b02-876d-2e573ad977b9",
+			"ctx": "project",
+			"system_prompt_chars": 14652,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1508,
+				"focus_purpose": 600,
+				"location_loaded_context": 4561,
+				"project_knowledge_map": 1070
+			},
+			"context_payload_chars": 15645,
+			"tool_surface_chars": 44651,
+			"history_bytes": 5522,
+			"content_bytes": 138095,
+			"history_count": 6,
+			"data_counts": {
+				"goals": 5,
+				"plans": 0,
+				"tasks": 6,
+				"events": 0,
+				"members": 1,
+				"documents": 4,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "89797082-9106-458d-9345-43a789312893",
+			"ctx": "global",
+			"system_prompt_chars": 17774,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 6631,
+				"focus_purpose": 449,
+				"location_loaded_context": 7242
+			},
+			"context_payload_chars": 33385,
+			"tool_surface_chars": 33331,
+			"history_bytes": 2,
+			"content_bytes": 145884,
+			"history_count": 0,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "f83a56f1-0fed-4ec4-bc4a-22333c5e20c4",
+			"ctx": "project_create",
+			"system_prompt_chars": 4214,
+			"sections": {
+				"identity_mission": 482,
+				"operating_strategy": 546,
+				"safety_data_rules": 1051,
+				"focus_purpose": 1786,
+				"location_loaded_context": 86
+			},
+			"context_payload_chars": 220,
+			"tool_surface_chars": 17855,
+			"history_bytes": 2,
+			"content_bytes": 32226,
+			"history_count": 0
+		},
+		{
+			"turn": "0784af15-d5b2-4b24-b9f8-fcd27e4533b4",
+			"ctx": "project",
+			"system_prompt_chars": 10933,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 2493,
+				"project_start_here": 1600,
+				"focus_purpose": 637,
+				"location_loaded_context": 2147,
+				"project_knowledge_map": 551
+			},
+			"context_payload_chars": 6524,
+			"tool_surface_chars": 40356,
+			"history_bytes": 3159,
+			"content_bytes": 89726,
+			"history_count": 4,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 0,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "8a2fcdd3-edb3-4767-b4da-75c7c8d6df2a",
+			"ctx": "project",
+			"system_prompt_chars": 12445,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 2493,
+				"project_start_here": 1600,
+				"focus_purpose": 637,
+				"location_loaded_context": 3478,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12445,
+			"tool_surface_chars": 40356,
+			"history_bytes": 3250,
+			"content_bytes": 104065,
+			"history_count": 5,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "0d8019ca-dbf4-4479-b16f-a6b98c72bc9c",
+			"ctx": "global",
+			"system_prompt_chars": 13655,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 2493,
+				"focus_purpose": 449,
+				"location_loaded_context": 7261
+			},
+			"context_payload_chars": 34008,
+			"tool_surface_chars": 33331,
+			"history_bytes": 4779,
+			"content_bytes": 145490,
+			"history_count": 4,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "a223e515-ff2e-41ea-af81-bcca3bcaf557",
+			"ctx": "project",
+			"system_prompt_chars": 16441,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 6657,
+				"project_start_here": 1600,
+				"focus_purpose": 637,
+				"location_loaded_context": 3491,
+				"project_knowledge_map": 551
+			},
+			"context_payload_chars": 11118,
+			"tool_surface_chars": 40356,
+			"history_bytes": 2,
+			"content_bytes": 111400,
+			"history_count": 0,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "56a65b9c-966a-4bda-98dd-c893c8bbcb10",
+			"ctx": "project",
+			"system_prompt_chars": 12450,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 2493,
+				"project_start_here": 1600,
+				"focus_purpose": 637,
+				"location_loaded_context": 3483,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12465,
+			"tool_surface_chars": 40356,
+			"history_bytes": 5556,
+			"content_bytes": 106369,
+			"history_count": 6,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "c4cb3552-a35f-444f-b767-f9874ae03de0",
+			"ctx": "project",
+			"system_prompt_chars": 12450,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 2493,
+				"project_start_here": 1600,
+				"focus_purpose": 637,
+				"location_loaded_context": 3483,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12166,
+			"tool_surface_chars": 40356,
+			"history_bytes": 6445,
+			"content_bytes": 106932,
+			"history_count": 8,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "579e0c95-0082-447b-95b8-93566c36b01d",
+			"ctx": "project",
+			"system_prompt_chars": 12445,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 2493,
+				"project_start_here": 1600,
+				"focus_purpose": 637,
+				"location_loaded_context": 3478,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12431,
+			"tool_surface_chars": 40356,
+			"history_bytes": 5222,
+			"content_bytes": 123348,
+			"history_count": 7,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "994570bf-1550-4805-a2b9-8aef4cb29d33",
+			"ctx": "global",
+			"system_prompt_chars": 13633,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 2493,
+				"focus_purpose": 449,
+				"location_loaded_context": 7239
+			},
+			"context_payload_chars": 34144,
+			"tool_surface_chars": 33331,
+			"history_bytes": 2,
+			"content_bytes": 144368,
+			"history_count": 0,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "2cf5693f-654b-44f3-a426-233d10a612d2",
+			"ctx": "project",
+			"system_prompt_chars": 12812,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 1651,
+				"project_start_here": 1600,
+				"focus_purpose": 1389,
+				"location_loaded_context": 3768,
+				"project_knowledge_map": 899
+			},
+			"context_payload_chars": 14403,
+			"tool_surface_chars": 40356,
+			"history_bytes": 2,
+			"content_bytes": 107810,
+			"history_count": 0,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 3,
+				"milestones": 0,
+				"linked_edges": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"linked_edges",
+				"doc_structure",
+				"events_window",
+				"focus_entity_id",
+				"linked_entities",
+				"focus_entity_full",
+				"focus_entity_type",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "4f4689a1-a4dc-457a-91a0-6a5ef172842a",
+			"ctx": "project",
+			"system_prompt_chars": 16852,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 6903,
+				"project_start_here": 1600,
+				"focus_purpose": 637,
+				"location_loaded_context": 3475,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12163,
+			"tool_surface_chars": 40356,
+			"history_bytes": 2,
+			"content_bytes": 112993,
+			"history_count": 0,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "0d86e1cf-aaa8-4e85-ba4d-53c42bb0829e",
+			"ctx": "project",
+			"system_prompt_chars": 17013,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 6890,
+				"project_start_here": 1600,
+				"focus_purpose": 637,
+				"location_loaded_context": 3482,
+				"project_knowledge_map": 899
+			},
+			"context_payload_chars": 13460,
+			"tool_surface_chars": 40356,
+			"history_bytes": 3230,
+			"content_bytes": 116249,
+			"history_count": 5,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 3,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "90f7354d-5a7a-47ea-ab4b-8b7abdbc0753",
+			"ctx": "global",
+			"system_prompt_chars": 12885,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 428,
+				"safety_data_rules": 1518,
+				"situational_rules": 1651,
+				"focus_purpose": 449,
+				"location_loaded_context": 7333
+			},
+			"context_payload_chars": 35071,
+			"tool_surface_chars": 33331,
+			"history_bytes": 3672,
+			"content_bytes": 155473,
+			"history_count": 3,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "8b99327c-3c16-4454-9f34-53378656abf8",
+			"ctx": "global",
+			"system_prompt_chars": 19032,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 6883,
+				"focus_purpose": 646,
+				"location_loaded_context": 7679
+			},
+			"context_payload_chars": 34302,
+			"tool_surface_chars": 40883,
+			"history_bytes": 2,
+			"content_bytes": 158013,
+			"history_count": 0,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "629b87f4-7f81-4878-a0ee-fa0a6bfc66a8",
+			"ctx": "global",
+			"system_prompt_chars": 14484,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"focus_purpose": 646,
+				"location_loaded_context": 7521
+			},
+			"context_payload_chars": 33571,
+			"tool_surface_chars": 40883,
+			"history_bytes": 4954,
+			"content_bytes": 153691,
+			"history_count": 4,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "a7e21a65-e6ba-4f13-adea-bab25e217d5b",
+			"ctx": "global",
+			"system_prompt_chars": 13617,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 1651,
+				"focus_purpose": 646,
+				"location_loaded_context": 7496
+			},
+			"context_payload_chars": 34002,
+			"tool_surface_chars": 40883,
+			"history_bytes": 3375,
+			"content_bytes": 162240,
+			"history_count": 3,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "dfc7fa13-db96-49b1-9e0a-65279b46197f",
+			"ctx": "global",
+			"system_prompt_chars": 18622,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 6631,
+				"focus_purpose": 646,
+				"location_loaded_context": 7521
+			},
+			"context_payload_chars": 33241,
+			"tool_surface_chars": 40883,
+			"history_bytes": 2,
+			"content_bytes": 154856,
+			"history_count": 0,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "487cfd9c-9cf0-49cd-b82c-e7bf3965e13e",
+			"ctx": "project",
+			"system_prompt_chars": 13284,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1716,
+				"focus_purpose": 637,
+				"location_loaded_context": 3829,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12344,
+			"tool_surface_chars": 41857,
+			"history_bytes": 5954,
+			"content_bytes": 109709,
+			"history_count": 6,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "5792be5e-c770-4dd2-8b45-4a73a44722ba",
+			"ctx": "project",
+			"system_prompt_chars": 13409,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1716,
+				"focus_purpose": 637,
+				"location_loaded_context": 3843,
+				"project_knowledge_map": 843
+			},
+			"context_payload_chars": 13266,
+			"tool_surface_chars": 41857,
+			"history_bytes": 4136,
+			"content_bytes": 110684,
+			"history_count": 6,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 3,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "7e2aed93-7f7b-4a63-ab26-529803707ca6",
+			"ctx": "global",
+			"system_prompt_chars": 14459,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"focus_purpose": 646,
+				"location_loaded_context": 7496
+			},
+			"context_payload_chars": 33233,
+			"tool_surface_chars": 40883,
+			"history_bytes": 2,
+			"content_bytes": 151778,
+			"history_count": 0,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "aadd9245-13bc-4d5d-9370-d41dfec9b5b5",
+			"ctx": "project",
+			"system_prompt_chars": 11767,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1716,
+				"focus_purpose": 637,
+				"location_loaded_context": 2493,
+				"project_knowledge_map": 551
+			},
+			"context_payload_chars": 6678,
+			"tool_surface_chars": 41857,
+			"history_bytes": 3428,
+			"content_bytes": 93500,
+			"history_count": 4,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 0,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "3d431e40-ad3e-4a8e-a708-3c210748938d",
+			"ctx": "project",
+			"system_prompt_chars": 17705,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 6903,
+				"project_start_here": 1716,
+				"focus_purpose": 637,
+				"location_loaded_context": 3840,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12619,
+			"tool_surface_chars": 41857,
+			"history_bytes": 4578,
+			"content_bytes": 137081,
+			"history_count": 6,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "65d9d292-ad59-4955-ade4-7a30d1a310d9",
+			"ctx": "project",
+			"system_prompt_chars": 13350,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 1651,
+				"project_start_here": 1716,
+				"focus_purpose": 1230,
+				"location_loaded_context": 4033,
+				"project_knowledge_map": 843
+			},
+			"context_payload_chars": 14021,
+			"tool_surface_chars": 41857,
+			"history_bytes": 2,
+			"content_bytes": 109657,
+			"history_count": 0,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 3,
+				"milestones": 0,
+				"linked_edges": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"linked_edges",
+				"doc_structure",
+				"events_window",
+				"focus_entity_id",
+				"linked_entities",
+				"focus_entity_full",
+				"focus_entity_type",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "a1a85bdf-0ab9-4d5a-bc35-09880b63720a",
+			"ctx": "project",
+			"system_prompt_chars": 17807,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 6890,
+				"project_start_here": 1716,
+				"focus_purpose": 637,
+				"location_loaded_context": 3844,
+				"project_knowledge_map": 843
+			},
+			"context_payload_chars": 13412,
+			"tool_surface_chars": 41857,
+			"history_bytes": 3981,
+			"content_bytes": 121481,
+			"history_count": 6,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 3,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "3d28d12f-c86b-4065-b787-3ddbffb1fc18",
+			"ctx": "project",
+			"system_prompt_chars": 16545,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 6657,
+				"project_start_here": 1716,
+				"focus_purpose": 637,
+				"location_loaded_context": 3107,
+				"project_knowledge_map": 551
+			},
+			"context_payload_chars": 8285,
+			"tool_surface_chars": 41857,
+			"history_bytes": 2,
+			"content_bytes": 106454,
+			"history_count": 0,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 2,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "259f6a28-2555-47d1-b54f-aa6828941f9b",
+			"ctx": "project",
+			"system_prompt_chars": 13284,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1716,
+				"focus_purpose": 637,
+				"location_loaded_context": 3829,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12054,
+			"tool_surface_chars": 41857,
+			"history_bytes": 3172,
+			"content_bytes": 120477,
+			"history_count": 4,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "f9640b74-43d8-4512-b834-a7cb81f85858",
+			"ctx": "project",
+			"system_prompt_chars": 13284,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 617,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1716,
+				"focus_purpose": 637,
+				"location_loaded_context": 3829,
+				"project_knowledge_map": 732
+			},
+			"context_payload_chars": 12045,
+			"tool_surface_chars": 41857,
+			"history_bytes": 6773,
+			"content_bytes": 110202,
+			"history_count": 8,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "629f7353-8f32-4333-9302-6e638abff800",
+			"ctx": "global",
+			"system_prompt_chars": 19487,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6883,
+				"focus_purpose": 646,
+				"location_loaded_context": 7591
+			},
+			"context_payload_chars": 33393,
+			"tool_surface_chars": 42214,
+			"history_bytes": 2,
+			"content_bytes": 158439,
+			"history_count": 0,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "396bebc2-2ad8-4ca3-b374-225bf3d8359a",
+			"ctx": "global",
+			"system_prompt_chars": 19235,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6631,
+				"focus_purpose": 646,
+				"location_loaded_context": 7591
+			},
+			"context_payload_chars": 33393,
+			"tool_surface_chars": 42214,
+			"history_bytes": 2,
+			"content_bytes": 157753,
+			"history_count": 0,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "ab4e567e-226e-4cd7-ad3b-fd728e3f1000",
+			"ctx": "project",
+			"system_prompt_chars": 12318,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1654,
+				"focus_purpose": 644,
+				"location_loaded_context": 2549,
+				"project_knowledge_map": 558
+			},
+			"context_payload_chars": 6694,
+			"tool_surface_chars": 44399,
+			"history_bytes": 3262,
+			"content_bytes": 97012,
+			"history_count": 4,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 0,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "9a31d293-dc9a-4cda-a0b8-9f65f088f10d",
+			"ctx": "project",
+			"system_prompt_chars": 12317,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1654,
+				"focus_purpose": 644,
+				"location_loaded_context": 2548,
+				"project_knowledge_map": 558
+			},
+			"context_payload_chars": 6653,
+			"tool_surface_chars": 44399,
+			"history_bytes": 5569,
+			"content_bytes": 98727,
+			"history_count": 7,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 0,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "65307e1e-52b2-4019-aa96-0a3285614401",
+			"ctx": "project",
+			"system_prompt_chars": 12954,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1654,
+				"focus_purpose": 644,
+				"location_loaded_context": 3185,
+				"project_knowledge_map": 558
+			},
+			"context_payload_chars": 8516,
+			"tool_surface_chars": 44399,
+			"history_bytes": 4964,
+			"content_bytes": 103753,
+			"history_count": 7,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 2,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "78adb24c-7382-4421-ac3b-6b0a9f734dd3",
+			"ctx": "project",
+			"system_prompt_chars": 13718,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"project_start_here": 1654,
+				"focus_purpose": 644,
+				"location_loaded_context": 3949,
+				"project_knowledge_map": 558
+			},
+			"context_payload_chars": 11282,
+			"tool_surface_chars": 44399,
+			"history_bytes": 5938,
+			"content_bytes": 111552,
+			"history_count": 8,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "bd67667d-f390-4f73-88f9-b963a11857b0",
+			"ctx": "project",
+			"system_prompt_chars": 18108,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6883,
+				"project_start_here": 1654,
+				"focus_purpose": 644,
+				"location_loaded_context": 3949,
+				"project_knowledge_map": 558
+			},
+			"context_payload_chars": 11657,
+			"tool_surface_chars": 44399,
+			"history_bytes": 3224,
+			"content_bytes": 117927,
+			"history_count": 5,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "f0c2b495-7147-40d4-8a63-55dc6188d4a2",
+			"ctx": "project",
+			"system_prompt_chars": 18033,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6808,
+				"project_start_here": 1654,
+				"focus_purpose": 644,
+				"location_loaded_context": 3949,
+				"project_knowledge_map": 558
+			},
+			"context_payload_chars": 11358,
+			"tool_surface_chars": 44399,
+			"history_bytes": 2808,
+			"content_bytes": 117252,
+			"history_count": 5,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "41b899e8-6dd7-4e18-8d0c-a34d5b910630",
+			"ctx": "project",
+			"system_prompt_chars": 17882,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6657,
+				"project_start_here": 1654,
+				"focus_purpose": 644,
+				"location_loaded_context": 3949,
+				"project_knowledge_map": 558
+			},
+			"context_payload_chars": 11282,
+			"tool_surface_chars": 44399,
+			"history_bytes": 2803,
+			"content_bytes": 122620,
+			"history_count": 5,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 1,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "aacf658a-5b28-4c76-b16f-eff62e012a80",
+			"ctx": "project",
+			"system_prompt_chars": 17997,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 6606,
+				"project_start_here": 1654,
+				"focus_purpose": 644,
+				"location_loaded_context": 3934,
+				"project_knowledge_map": 739
+			},
+			"context_payload_chars": 12173,
+			"tool_surface_chars": 44399,
+			"history_bytes": 3636,
+			"content_bytes": 133610,
+			"history_count": 5,
+			"data_counts": {
+				"goals": 0,
+				"plans": 0,
+				"tasks": 5,
+				"events": 0,
+				"members": 1,
+				"documents": 2,
+				"milestones": 0
+			},
+			"data_keys": [
+				"goals",
+				"plans",
+				"tasks",
+				"events",
+				"members",
+				"project",
+				"documents",
+				"milestones",
+				"start_here",
+				"context_meta",
+				"doc_structure",
+				"events_window",
+				"project_intelligence"
+			]
+		},
+		{
+			"turn": "dae1e6ab-f95b-4ed6-a4e1-437623bdbddd",
+			"ctx": "global",
+			"system_prompt_chars": 15140,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 2493,
+				"focus_purpose": 646,
+				"location_loaded_context": 7634
+			},
+			"context_payload_chars": 33099,
+			"tool_surface_chars": 42214,
+			"history_bytes": 2,
+			"content_bytes": 154077,
+			"history_count": 0,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		},
+		{
+			"turn": "9959665d-0632-4efa-908d-541889668e6d",
+			"ctx": "global",
+			"system_prompt_chars": 14298,
+			"sections": {
+				"identity_mission": 482,
+				"capabilities_skills_tools": 289,
+				"operating_strategy": 378,
+				"final_response_contract": 1160,
+				"safety_data_rules": 1701,
+				"situational_rules": 1651,
+				"focus_purpose": 646,
+				"location_loaded_context": 7634
+			},
+			"context_payload_chars": 33802,
+			"tool_surface_chars": 42214,
+			"history_bytes": 3254,
+			"content_bytes": 164350,
+			"history_count": 3,
+			"data_counts": {
+				"projects": 8
+			},
+			"data_keys": ["projects", "context_meta", "project_intelligence"],
+			"bundle_count": 8
+		}
+	]
+}

@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/AGENTIC_CHAT_READ_DEFAULT_WRITE_CONTRACT_INVESTIGATION_2026-08-27.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-27; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat default-read and write-contract investigation
 
 Date: 2026-08-27

@@ -1,0 +1,245 @@
+{
+	"schema_version": 1,
+	"generated_at": "2026-09-09T02:19:56.040Z",
+	"window": {
+		"since": "2026-09-04T17:14:00.000Z",
+		"until": "2026-09-09T02:19:53.398Z",
+		"duration_days": 4.379,
+		"mature_seven_day_window": false,
+		"user_scope": "all_users"
+	},
+	"counts": {
+		"turns": 55,
+		"worker_turns": 55,
+		"completed_worker_turns": 48,
+		"tool_executions": 246,
+		"usage_rows": 292,
+		"observation_rows": 1057
+	},
+	"metrics": [
+		{
+			"id": "provider_finish_reason_invalid_kills",
+			"label": "Invalid finish-reason kills",
+			"baseline": "3 of DJ's 31 turns",
+			"target": "0",
+			"status": "pass",
+			"value": "0",
+			"details": {
+				"kills": 0
+			}
+		},
+		{
+			"id": "truncation_retry_completion",
+			"label": "Truncation retries completed",
+			"baseline": "n/a (new)",
+			"target": ">=90%",
+			"status": "no_data",
+			"value": "n/a (0/0)",
+			"details": {
+				"retry_turns": 0,
+				"completed_turns": 0,
+				"completion_rate": null
+			}
+		},
+		{
+			"id": "provider_tool_not_allowlisted",
+			"label": "Non-allowlisted tool kills / repairs",
+			"baseline": "Theo Von turn + others",
+			"target": "0 kills; repairs counted",
+			"status": "pass",
+			"value": "0 kills; 0 explicit / 0 inferred repairs",
+			"details": {
+				"kills": 0,
+				"explicit_surface_repairs": 0,
+				"inferred_completed_repair_turns": 0,
+				"telemetry_note": null
+			}
+		},
+		{
+			"id": "reviewer_cache_latency",
+			"label": "Reviewer cache / latency",
+			"baseline": "0% cache; Azure tail 63-73s",
+			"target": ">50% token cache; p90 <30s",
+			"status": "fail",
+			"value": "23.3% cache; p50 9.5s / p90 17.3s",
+			"details": {
+				"calls": 43,
+				"call_hit_rate": 0.6511627906976745,
+				"token_cache_rate": 0.23267802701392332,
+				"p50_ms": 9498,
+				"p90_ms": 17307
+			}
+		},
+		{
+			"id": "reviewer_spend_share",
+			"label": "Reviewer share of worker spend",
+			"baseline": "24%",
+			"target": "<24% (falling)",
+			"status": "fail",
+			"value": "25.7%",
+			"details": {
+				"reviewer_cost_usd": 0.114492,
+				"worker_model_cost_usd": 0.44631,
+				"share": 0.25652937390919417
+			}
+		},
+		{
+			"id": "write_lane_share",
+			"label": "Write turns: direct / contract",
+			"baseline": "Contract for every existing-entity edit",
+			"target": "Focused edits direct; restraint canary reviewed",
+			"status": "watch",
+			"value": "36.4% direct (8/22)",
+			"details": {
+				"write_turns": 22,
+				"direct_turns": 8,
+				"contract_turns": 14,
+				"restraint_canary_turns": 0,
+				"restraint_canary_reviewed": 0
+			}
+		},
+		{
+			"id": "control_call_share",
+			"label": "Control-call share",
+			"baseline": "22.3%",
+			"target": "Reported, not targeted",
+			"status": "informational",
+			"value": "32.1% (79/246)",
+			"details": {
+				"control_calls": 79,
+				"tool_executions": 246,
+				"share": 0.32113821138211385
+			}
+		},
+		{
+			"id": "mutation_unfulfilled_disclosure",
+			"label": "Partial-write disclosure",
+			"baseline": "0 disclosed",
+			"target": "Every partial fulfilment says Done: N of M",
+			"status": "pass",
+			"value": "2/2 disclosed",
+			"details": {
+				"partial_turns": 2,
+				"disclosed_turns": 2,
+				"missing_disclosure": 0
+			}
+		},
+		{
+			"id": "sanitizer_edits",
+			"label": "Sanitizer-altered replies",
+			"baseline": "38/76",
+			"target": "<=6/76",
+			"status": "fail",
+			"value": "11/50 altered",
+			"details": {
+				"sample_size": 50,
+				"altered": 11
+			}
+		},
+		{
+			"id": "worker_skill_preloads",
+			"label": "Worker skill preloads",
+			"baseline": "Never fired on prepared hits",
+			"target": "Fires on writes; 0 on F7 reads",
+			"status": "pass",
+			"value": "11/22 writes; 0/0 F7 reads",
+			"details": {
+				"worker_write_turns": 22,
+				"preloaded_worker_write_turns": 11,
+				"f7_read_turns": 0,
+				"preloaded_f7_read_turns": 0,
+				"preload_breakdown": {
+					"document_workspace:operational_intent": 5,
+					"task_management:operational_intent": 6
+				}
+			}
+		},
+		{
+			"id": "delegate_task_success",
+			"label": "delegate_task success",
+			"baseline": "4/4 since 08-30",
+			"target": "100%",
+			"status": "no_data",
+			"value": "n/a (0/0)",
+			"details": {
+				"calls": 0,
+				"successes": 0,
+				"success_rate": null
+			}
+		},
+		{
+			"id": "throttle_requeue_delay",
+			"label": "Throttle requeue delay",
+			"baseline": "60-120s",
+			"target": "5-65s",
+			"status": "no_data",
+			"value": "no samples",
+			"details": {
+				"throttle_jobs": 0,
+				"measurable_delays": 0,
+				"in_target_range": 0,
+				"p50_seconds": null,
+				"p90_seconds": null
+			}
+		},
+		{
+			"id": "completed_worker_latency",
+			"label": "Completed worker turn latency",
+			"baseline": "p50 21s / p90 70s",
+			"target": "p50 <=21s; p90 <60s",
+			"status": "fail",
+			"value": "p50 45.1s / p90 99.1s",
+			"details": {
+				"samples": 48,
+				"completed_worker_turns": 48,
+				"p50_ms": 45084.447,
+				"p90_ms": 99128.683
+			}
+		},
+		{
+			"id": "telemetry_zero_llm_passes",
+			"label": "Completed workers with 0 LLM passes",
+			"baseline": "~20%",
+			"target": "Reported for WP-6",
+			"status": "pass",
+			"value": "0% (0/48)",
+			"details": {
+				"turns": 0,
+				"completed_worker_turns": 48,
+				"share": 0
+			}
+		},
+		{
+			"id": "telemetry_internal_cohort_rejected",
+			"label": "internal_cohort_rejected rows",
+			"baseline": "Audit telemetry hole",
+			"target": "Reported for WP-6",
+			"status": "pass",
+			"value": "0",
+			"details": {
+				"rows": 0
+			}
+		},
+		{
+			"id": "legacy_lane_share",
+			"label": "Legacy-lane turn share",
+			"baseline": "Second harness exists",
+			"target": "0 before WP-2 lane deletion",
+			"status": "pass",
+			"value": "0% (0/55)",
+			"details": {
+				"legacy_turns": 0,
+				"all_turns": 55,
+				"by_execution_mode": {
+					"worker_realtime": 55
+				},
+				"note": "This is the durable execution-mode proxy for transport renegotiation."
+			}
+		}
+	],
+	"notes": [
+		"Output is aggregate-only: no message text, email address, credential, or turn identifier is written.",
+		"Acceptance remains provisional until the window contains seven full post-deploy days.",
+		"Control-call share preserves the audit definition: control tool executions divided by all tool executions."
+	]
+}

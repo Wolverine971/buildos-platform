@@ -1,0 +1,96 @@
+{
+	"generatedAt": "2026-09-09T02:33:30.993Z",
+	"head": "6d70b36e1 (working tree)",
+	"agentic_e2e_lines": {
+		"total": 15796,
+		"files": 82,
+		"harness": 4911,
+		"scenarios_general": 4107,
+		"scenarios_cedar_house": 1791,
+		"phase_a": 1235,
+		"phase0": 1349,
+		"open_brief": 772,
+		"browser": 1099,
+		"runner": 532
+	},
+	"dead_or_legacy_lines": {
+		"prompt_eval_src": 1659,
+		"prompt_eval_tests": 799,
+		"turn_observability_writer": 576,
+		"agent_orchestrator_pkg": 10783,
+		"phase_a_plus_open_brief_e2e": 2007,
+		"attribution_legacy_path_est": 150
+	},
+	"package_scripts": {
+		"test_agentic_variants": 14,
+		"compare_evidence": 1,
+		"agentic_health": 1,
+		"report_agentic_tools": 1
+	},
+	"env_knobs_read_by_e2e": 35,
+	"cedar_house": {
+		"registered_cases": 11,
+		"turns": 12,
+		"write_cases": 6,
+		"cold_cases": 2,
+		"judged_cases": 1,
+		"pending_calendar_cases": 3
+	},
+	"catalog": {
+		"scenarios": 30,
+		"turns_approx": 40,
+		"unconditionally_skipped": 1
+	},
+	"worker_tests": {
+		"agentic_files": 72,
+		"agentic_lines": 40983,
+		"turn_provider_lines": 10881,
+		"turn_provider_its": 99
+	},
+	"last_battery": {
+		"artifact": "artifacts/agentic-chat-postdeploy-6d787284c.md",
+		"score": "27/52 (F)",
+		"mode": "manual browser",
+		"turn_seconds": [55.3, 10.2, 27.5, 91.6, 64.8, 95.6, 76.9, 52.9, 60.4, 30.1, 50.1],
+		"mean_s": 55.9,
+		"median_s": 55.3
+	},
+	"retention_days": {
+		"prompt_snapshots": 14,
+		"rendered_dump": 2,
+		"input_artifacts": 7,
+		"local_prompt_dumps": 2
+	},
+	"measured_prompt_bytes": {
+		"worker_global_tools": 31085,
+		"worker_project_tools": 34269,
+		"worker_project_create_tools": 11465,
+		"web_canonical_system_prompt_chars": 12737,
+		"web_canonical_payload_chars": 50125,
+		"web_canonical_est_tokens": 12532
+	},
+	"model_cost_per_1m_input": {
+		"deepseek-v4-flash": 0.098,
+		"gpt-5.6-luna": 0.2,
+		"gemini-3.7-flash": 0.375,
+		"deepseek-v4-pro": 0.435,
+		"glm-5.2": 0.9226
+	},
+	"replay_cost_usd_at_15k_tokens": {
+		"50x3 deepseek-v4-flash": 0.22,
+		"50x3 gpt-5.6-luna": 0.45,
+		"50x3 gemini-3.7-flash": 0.84,
+		"50x3 deepseek-v4-pro": 0.98,
+		"50x3 glm-5.2": 2.08,
+		"50x3 all five": 4.57
+	},
+	"prompt_eval_scenarios": {
+		"total": 13,
+		"require_done_emitted": 13,
+		"require_gateway_op_ops": 8,
+		"expect_first_lane": 4,
+		"worker_persists_gateway_op": false,
+		"worker_persists_first_lane": false,
+		"worker_event_done_emitted": false
+	}
+}

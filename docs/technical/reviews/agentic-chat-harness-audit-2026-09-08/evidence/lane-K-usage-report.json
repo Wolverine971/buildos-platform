@@ -1,0 +1,410 @@
+{
+	"since": "2026-09-04T17:14:00Z",
+	"rows": 292,
+	"turns": 55,
+	"users": 1,
+	"byRole": {
+		"acting": {
+			"calls": 210,
+			"success": 183,
+			"failure": 27,
+			"prompt_tokens": 2759379,
+			"cached_prompt_tokens": 1214464,
+			"cache_rate": 0.44,
+			"calls_with_any_cache": 139,
+			"completion_tokens": 93484,
+			"reasoning_tokens": 37408,
+			"cost_usd": 0.2673,
+			"p50_prompt": 15197,
+			"p90_prompt": 19829,
+			"p50_completion": 335,
+			"p90_completion": 1138,
+			"max_completion": 2616,
+			"p50_ms": 6068,
+			"p90_ms": 18841,
+			"p50_hit": 0.1990281827016521,
+			"p90_hit": 0.9626394953905871
+		},
+		"contract_review": {
+			"calls": 40,
+			"success": 40,
+			"failure": 0,
+			"prompt_tokens": 363715,
+			"cached_prompt_tokens": 84944,
+			"cache_rate": 0.234,
+			"calls_with_any_cache": 28,
+			"completion_tokens": 35606,
+			"reasoning_tokens": 18460,
+			"cost_usd": 0.1139,
+			"p50_prompt": 8765,
+			"p90_prompt": 11878,
+			"p50_completion": 767,
+			"p90_completion": 1707,
+			"max_completion": 2270,
+			"p50_ms": 10334,
+			"p90_ms": 17321,
+			"p50_hit": 0.30776148934256675,
+			"p90_hit": 0.3775927947598253
+		},
+		"final_response": {
+			"calls": 23,
+			"success": 20,
+			"failure": 3,
+			"prompt_tokens": 148420,
+			"cached_prompt_tokens": 57600,
+			"cache_rate": 0.388,
+			"calls_with_any_cache": 14,
+			"completion_tokens": 7074,
+			"reasoning_tokens": 3319,
+			"cost_usd": 0.0158,
+			"p50_prompt": 7629,
+			"p90_prompt": 8883,
+			"p50_completion": 305,
+			"p90_completion": 612,
+			"max_completion": 1235,
+			"p50_ms": 5584,
+			"p90_ms": 12507,
+			"p50_hit": 0.5234281819730789,
+			"p90_hit": 0.7914805908622466
+		},
+		"repair": {
+			"calls": 16,
+			"success": 15,
+			"failure": 1,
+			"prompt_tokens": 202769,
+			"cached_prompt_tokens": 96512,
+			"cache_rate": 0.476,
+			"calls_with_any_cache": 11,
+			"completion_tokens": 7076,
+			"reasoning_tokens": 2633,
+			"cost_usd": 0.023,
+			"p50_prompt": 12986,
+			"p90_prompt": 16746,
+			"p50_completion": 230,
+			"p90_completion": 781,
+			"max_completion": 3023,
+			"p50_ms": 6891,
+			"p90_ms": 25819,
+			"p50_hit": 0.24459572435208407,
+			"p90_hit": 0.9462498074849838
+		},
+		"research_review": {
+			"calls": 3,
+			"success": 3,
+			"failure": 0,
+			"prompt_tokens": 1356,
+			"cached_prompt_tokens": 0,
+			"cache_rate": 0,
+			"calls_with_any_cache": 0,
+			"completion_tokens": 288,
+			"reasoning_tokens": 79,
+			"cost_usd": 0.0006,
+			"p50_prompt": 434,
+			"p90_prompt": 490,
+			"p50_completion": 100,
+			"p90_completion": 100,
+			"max_completion": 100,
+			"p50_ms": 2143,
+			"p90_ms": 2345,
+			"p50_hit": 0,
+			"p90_hit": 0
+		}
+	},
+	"byModelUsed": {
+		"deepseek/deepseek-v4-flash": {
+			"calls": 230,
+			"failures": 29,
+			"prompt": 2908528,
+			"cache_rate": 0.467,
+			"cost": 0.2711,
+			"providers": {
+				"Alibaba": 104,
+				"openrouter": 27,
+				"NextBit": 54,
+				"DeepInfra": 26,
+				"Phala": 3,
+				"StreamLake": 5,
+				"Azure": 11
+			}
+		},
+		"openai/gpt-5.6-luna": {
+			"calls": 43,
+			"failures": 0,
+			"prompt": 365071,
+			"cache_rate": 0.233,
+			"cost": 0.1145,
+			"providers": {
+				"OpenAI": 43
+			}
+		},
+		"deepseek/deepseek-v4-flash-20260423": {
+			"calls": 19,
+			"failures": 2,
+			"prompt": 202040,
+			"cache_rate": 0.049,
+			"cost": 0.035,
+			"providers": {
+				"NextBit": 3,
+				"Phala": 3,
+				"Alibaba": 7,
+				"Azure": 4,
+				"openrouter": 2
+			}
+		}
+	},
+	"byProvider": {
+		"Alibaba|acting": {
+			"calls": 98,
+			"failures": 0,
+			"cache_rate": 0.458,
+			"p50_ms": 5274,
+			"p90_ms": 11977,
+			"cost": 0.147
+		},
+		"openrouter|acting": {
+			"calls": 27,
+			"failures": 27,
+			"cache_rate": null,
+			"p50_ms": null,
+			"p90_ms": null,
+			"cost": 0
+		},
+		"NextBit|acting": {
+			"calls": 43,
+			"failures": 0,
+			"cache_rate": 0.442,
+			"p50_ms": 7769,
+			"p90_ms": 18071,
+			"cost": 0.0591
+		},
+		"OpenAI|contract_review": {
+			"calls": 40,
+			"failures": 0,
+			"cache_rate": 0.234,
+			"p50_ms": 10334,
+			"p90_ms": 17321,
+			"cost": 0.1139
+		},
+		"NextBit|final_response": {
+			"calls": 7,
+			"failures": 0,
+			"cache_rate": 0.507,
+			"p50_ms": 5142,
+			"p90_ms": 15956,
+			"cost": 0.0055
+		},
+		"DeepInfra|acting": {
+			"calls": 23,
+			"failures": 0,
+			"cache_rate": 0.385,
+			"p50_ms": 5316,
+			"p90_ms": 20840,
+			"cost": 0.0239
+		},
+		"Alibaba|repair": {
+			"calls": 4,
+			"failures": 0,
+			"cache_rate": 0.225,
+			"p50_ms": 6333,
+			"p90_ms": 6817,
+			"cost": 0.0079
+		},
+		"NextBit|repair": {
+			"calls": 7,
+			"failures": 0,
+			"cache_rate": 0.928,
+			"p50_ms": 7916,
+			"p90_ms": 13507,
+			"cost": 0.0036
+		},
+		"Phala|repair": {
+			"calls": 2,
+			"failures": 0,
+			"cache_rate": 0,
+			"p50_ms": 22222,
+			"p90_ms": 22222,
+			"cost": 0.0059
+		},
+		"Alibaba|final_response": {
+			"calls": 9,
+			"failures": 2,
+			"cache_rate": 0.621,
+			"p50_ms": 5584,
+			"p90_ms": 6261,
+			"cost": 0.0038
+		},
+		"Phala|acting": {
+			"calls": 4,
+			"failures": 0,
+			"cache_rate": 0.609,
+			"p50_ms": 6275,
+			"p90_ms": 16808,
+			"cost": 0.0083
+		},
+		"StreamLake|acting": {
+			"calls": 4,
+			"failures": 0,
+			"cache_rate": 0.728,
+			"p50_ms": 7330,
+			"p90_ms": 14233,
+			"cost": 0.003
+		},
+		"Azure|acting": {
+			"calls": 11,
+			"failures": 0,
+			"cache_rate": 0.128,
+			"p50_ms": 21541,
+			"p90_ms": 31053,
+			"cost": 0.026
+		},
+		"Azure|final_response": {
+			"calls": 2,
+			"failures": 0,
+			"cache_rate": 0,
+			"p50_ms": 10005,
+			"p90_ms": 10005,
+			"cost": 0.0036
+		},
+		"Azure|repair": {
+			"calls": 2,
+			"failures": 0,
+			"cache_rate": 0,
+			"p50_ms": 29323,
+			"p90_ms": 29323,
+			"cost": 0.0056
+		},
+		"openrouter|repair": {
+			"calls": 1,
+			"failures": 1,
+			"cache_rate": null,
+			"p50_ms": null,
+			"p90_ms": null,
+			"cost": 0
+		},
+		"openrouter|final_response": {
+			"calls": 1,
+			"failures": 1,
+			"cache_rate": null,
+			"p50_ms": null,
+			"p90_ms": null,
+			"cost": 0
+		},
+		"StreamLake|final_response": {
+			"calls": 1,
+			"failures": 0,
+			"cache_rate": 0,
+			"p50_ms": 11589,
+			"p90_ms": 11589,
+			"cost": 0.0006
+		},
+		"DeepInfra|final_response": {
+			"calls": 3,
+			"failures": 0,
+			"cache_rate": 0.032,
+			"p50_ms": 3699,
+			"p90_ms": 12507,
+			"cost": 0.0022
+		},
+		"OpenAI|research_review": {
+			"calls": 3,
+			"failures": 0,
+			"cache_rate": 0,
+			"p50_ms": 2143,
+			"p90_ms": 2345,
+			"cost": 0.0006
+		}
+	},
+	"failures": [
+		{
+			"msg": "Agentic Chat provider start failed (404): No endpoints found for deepseek/deepseek-v4-flash.",
+			"n": 18,
+			"roles": {
+				"acting": 18
+			},
+			"providers": {
+				"openrouter": 18
+			},
+			"retryable": {
+				"true": 18
+			}
+		},
+		{
+			"msg": "Agentic Chat provider start failed (429): Provider returned error",
+			"n": 9,
+			"roles": {
+				"acting": 8,
+				"repair": 1
+			},
+			"providers": {
+				"openrouter": 9
+			},
+			"retryable": {
+				"true": 9
+			}
+		},
+		{
+			"msg": "Agentic Chat provider requested tool calls while tool_choice=none",
+			"n": 2,
+			"roles": {
+				"final_response": 2
+			},
+			"providers": {
+				"Alibaba": 2
+			},
+			"retryable": {
+				"true": 2
+			}
+		},
+		{
+			"msg": "Agentic Chat provider request timed out after Nms",
+			"n": 1,
+			"roles": {
+				"final_response": 1
+			},
+			"providers": {
+				"openrouter": 1
+			},
+			"retryable": {
+				"true": 1
+			}
+		},
+		{
+			"msg": "Agentic Chat provider start failed (404): No endpoints found for deepseek/deepseek-v4-flash-20260423.",
+			"n": 1,
+			"roles": {
+				"acting": 1
+			},
+			"providers": {
+				"openrouter": 1
+			},
+			"retryable": {
+				"true": 1
+			}
+		}
+	],
+	"reasoning": {
+		"acting_calls": 183,
+		"calls_with_reasoning": 127,
+		"reasoning_tokens": 37408,
+		"completion_tokens": 93484,
+		"calls_at_cap_4000": 0,
+		"completion_ge_2000": 3
+	},
+	"perTurn": {
+		"turns": 55,
+		"p50_calls": 5,
+		"p90_calls": 9,
+		"max_calls": 12,
+		"p50_prompt": 61451,
+		"p90_prompt": 127680,
+		"max_prompt": 206568,
+		"p50_cost": 0.0063154100000000005,
+		"p90_cost": 0.01564123,
+		"max_cost": 0.022318000000000005,
+		"total_cost": 0.4463,
+		"turns_with_reviewer": 26,
+		"turns_with_failure_row": 26,
+		"turns_with_snapshot_model_switch": 15,
+		"reviewer_cost": 0.1145
+	}
+}

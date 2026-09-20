@@ -1,0 +1,35 @@
+{
+	"window": {
+		"since": "2026-09-04T18:00:00.000Z",
+		"until": "2026-09-09T02:00:00.000Z",
+		"duration_days": 4.333,
+		"mature_seven_day_window": false,
+		"user_scope": "all_users"
+	},
+	"counts": {
+		"turns": 38,
+		"worker_turns": 38,
+		"completed_worker_turns": 32,
+		"tool_executions": 174,
+		"usage_rows": 203,
+		"observation_rows": 743
+	},
+	"worker_skill_preloads": {
+		"id": "worker_skill_preloads",
+		"label": "Worker skill preloads",
+		"baseline": "Never fired on prepared hits",
+		"target": "Fires on writes; 0 on F7 reads",
+		"status": "pass",
+		"value": "8/17 writes; 0/0 F7 reads",
+		"details": {
+			"worker_write_turns": 17,
+			"preloaded_worker_write_turns": 8,
+			"f7_read_turns": 0,
+			"preloaded_f7_read_turns": 0,
+			"preload_breakdown": {
+				"document_workspace:operational_intent": 4,
+				"task_management:operational_intent": 4
+			}
+		}
+	}
+}

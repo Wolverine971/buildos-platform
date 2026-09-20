@@ -1,0 +1,201 @@
+{
+	"run": {
+		"id": "7e2af43a-76e4-4bea-b170-8d5e1ae33b81",
+		"brief": {
+			"issues": [
+				{
+					"summary": "The project must pass inspections and stay within $85,000, but the plan lacks kitchen cabinet installation, bathroom fixture installation, and budget tracking tasks, leaving gaps in the dependencies and a risk of overspending.",
+					"category": "task_drift",
+					"headline": "Key installation and budget tracking tasks are missing",
+					"severity": "critical",
+					"candidate_ids": ["3006f012-b8a3-488a-b91b-abd236cd8dd0"],
+					"evidence_refs": [
+						{
+							"title": "[QA RETEST 6d78728] Cedar House Renovation",
+							"reason": "The project description requires passed inspections and total spending within $85,000, but the current task list does not cover the installation work needed to meet those goals.",
+							"entity_type": "project"
+						}
+					],
+					"recommendation": "Add kitchen cabinet installation, bathroom fixture installation, and budget tracking tasks."
+				},
+				{
+					"summary": "The document 'QA — Cedar House Marketing Brief' does not relate to the current renovation execution phase and may cause confusion.",
+					"category": "document_quality",
+					"headline": "Outdated marketing document",
+					"severity": "minor",
+					"candidate_ids": ["796dc67d-2a97-4e93-a921-491a2f26b665"],
+					"evidence_refs": [],
+					"recommendation": "Flag the document as outdated."
+				}
+			],
+			"source": "llm",
+			"version": 2,
+			"decision": {
+				"options": [
+					{
+						"id": "accept",
+						"label": "Add the tasks",
+						"description": "Add kitchen cabinet installation, bathroom fixture installation, and budget tracking tasks to the project."
+					},
+					{
+						"id": "reject",
+						"label": "Keep the current plan",
+						"description": "Keep the current task list, with potential risks to passing inspections and controlling the budget."
+					}
+				],
+				"question": "Should we add the missing kitchen installation, bathroom installation, and budget tracking tasks?",
+				"candidate_ids": ["3006f012-b8a3-488a-b91b-abd236cd8dd0"],
+				"evidence_refs": [
+					{
+						"title": "[QA RETEST 6d78728] Cedar House Renovation",
+						"reason": "The project description requires passed inspections and total spending within $85,000, but the current task list does not cover the installation work needed to meet those goals.",
+						"entity_type": "project"
+					}
+				],
+				"recommendation": "I recommend adding these tasks to meet the project's success criteria.",
+				"why_user_needed": "I need your approval to add the missing construction steps and budget tracking to the task list.",
+				"recommended_option_id": "accept",
+				"recommended_suggestion_id": null
+			},
+			"bottom_line": "The plan is missing kitchen and bathroom installation tasks and budget tracking, putting the inspection and $85,000 budget goals at risk.",
+			"current_goal": "Renovation of a fictional 1,200 sq ft house: kitchen, one bathroom, and electrical upgrades. Budget cap $85,000 including a $10,000 contingency. Excludes roof replacement and landscaping. Success means inspections passed, owner walkthrough accepted, and total spend within the cap.",
+			"generated_at": "2026-09-04T17:27:16.776Z",
+			"what_changed": [
+				{
+					"summary": "The review found gaps in the task list: kitchen installation, bathroom installation, and budget tracking.",
+					"candidate_ids": ["3006f012-b8a3-488a-b91b-abd236cd8dd0"],
+					"evidence_refs": [
+						{
+							"title": "[QA RETEST 6d78728] Cedar House Renovation",
+							"reason": "The project description requires passed inspections and total spending within $85,000, but the current task list does not cover the installation work needed to meet those goals.",
+							"entity_type": "project"
+						}
+					]
+				},
+				{
+					"summary": "The review flagged 'QA — Cedar House Marketing Brief' as potentially outdated because the current project phase does not include marketing.",
+					"candidate_ids": ["796dc67d-2a97-4e93-a921-491a2f26b665"],
+					"evidence_refs": []
+				}
+			],
+			"candidate_ids": [
+				"3006f012-b8a3-488a-b91b-abd236cd8dd0",
+				"796dc67d-2a97-4e93-a921-491a2f26b665"
+			],
+			"state_summary": "The plan covers cabinet ordering, electrical rough-in, and inspections, but lacks kitchen cabinet installation, bathroom fixture installation, and budget tracking, risking inspection delays and spending above $85,000.",
+			"open_decisions": [
+				"QA — Order kitchen cabinets",
+				"QA — Bathroom inspection",
+				"QA — Kitchen inspection"
+			],
+			"recent_changes": ["3 documents in scope", "5 open tasks tracked"],
+			"recommendation": "Add kitchen cabinet installation, bathroom fixture installation, and budget tracking tasks, then connect the installation work to the inspection tasks.",
+			"attention_level": "urgent",
+			"cluster_members": [],
+			"next_best_action": "QA — Order kitchen cabinets",
+			"what_matters_now": [
+				{
+					"summary": "Add the missing installation and budget tracking tasks to align the plan with the project's success criteria.",
+					"candidate_ids": ["3006f012-b8a3-488a-b91b-abd236cd8dd0"],
+					"evidence_refs": [
+						{
+							"title": "[QA RETEST 6d78728] Cedar House Renovation",
+							"reason": "The project description requires passed inspections and total spending within $85,000, but the current task list does not cover the installation work needed to meet those goals.",
+							"entity_type": "project"
+						}
+					]
+				},
+				{
+					"summary": "Flag the outdated marketing document to avoid confusion.",
+					"candidate_ids": ["796dc67d-2a97-4e93-a921-491a2f26b665"],
+					"evidence_refs": []
+				}
+			],
+			"decision_item_ids": ["3006f012-b8a3-488a-b91b-abd236cd8dd0"],
+			"stale_assumptions": [],
+			"no_attention_reason": null,
+			"safe_cleanup_item_ids": ["796dc67d-2a97-4e93-a921-491a2f26b665"],
+			"contradictions_or_drift": [],
+			"tensions_or_contradictions": []
+		},
+		"status": "waiting_review",
+		"summary": "3 suggestions: 1 organization, 1 outdated-doc, 1 drift, 0 task-conflict.",
+		"user_id": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+		"cost_usd": 0.0022512,
+		"created_at": "2026-09-04T17:26:19.481435+00:00",
+		"project_id": "5e97b8d7-d7f2-43e8-8382-da5915b96f86",
+		"started_at": "2026-09-04T17:26:20.485+00:00",
+		"updated_at": "2026-09-04T17:27:17.37182+00:00",
+		"finished_at": "2026-09-04T17:27:17.309+00:00",
+		"queue_job_id": "buildos_project_loop_42465fe0-37db-412c-adc2-0fe34844fa54",
+		"error_message": null,
+		"trigger_reason": "burst",
+		"chat_session_id": "2c1785f4-3a55-418d-bb5b-a3907137712c",
+		"suggestion_count": 3
+	},
+	"inbox": {
+		"id": "b1a7c519-ab75-4eec-a078-9516f0c6dfc5",
+		"title": "The plan is missing kitchen and bathroom installation tasks and budget tracking, putting the inspection and $85,000 budget goals at risk.",
+		"status": "pending",
+		"summary": "Add kitchen cabinet installation, bathroom fixture installation, and budget tracking tasks, then connect the installation work to the inspection tasks.",
+		"user_id": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+		"audience": "project_members",
+		"risk_tier": 3,
+		"created_at": "2026-09-04T17:27:17.706+00:00",
+		"decided_at": null,
+		"expires_at": "2026-09-18T17:26:19.481+00:00",
+		"project_id": "5e97b8d7-d7f2-43e8-8382-da5915b96f86",
+		"updated_at": "2026-09-04T17:27:17.706+00:00",
+		"source_type": "project_review",
+		"action_kinds": ["discuss", "snooze", "dismiss"],
+		"snoozed_until": null,
+		"source_ref_id": "7e2af43a-76e4-4bea-b170-8d5e1ae33b81",
+		"source_status": "waiting_review",
+		"blocked_reason": null
+	},
+	"suggestion": {
+		"id": "3006f012-b8a3-488a-b91b-abd236cd8dd0",
+		"kind": "drift",
+		"title": "The task list is missing key construction and installation steps",
+		"result": null,
+		"run_id": "7e2af43a-76e4-4bea-b170-8d5e1ae33b81",
+		"status": "pending",
+		"preview": {
+			"kind": "drift",
+			"after": [
+				"Suggested additions: Install kitchen cabinets, Install bathroom fixtures, Track budget vs. cap ($85k)."
+			],
+			"before": [
+				"Current tasks: Order kitchen cabinets, Electrical rough-in, Inspection tasks (kitchen/bathroom), Confirm permit requirements."
+			],
+			"impact": "Without follow-up installation tasks after electrical rough-in, the plan lacks steps to complete the kitchen and bathroom, risking inspection scheduling problems, delays, and overspending.",
+			"summary": "The task list lacks key installation steps, including cabinets and bathroom fixtures, and budget tracking needed to support passed inspections and completion within budget."
+		},
+		"why_now": "The plan includes cabinet ordering, electrical rough-in, and inspections, but lacks installation tasks needed to prepare the kitchen and bathroom for inspection.",
+		"rationale": "The project requires passed inspections, which depend on completed kitchen and bathroom installation. The plan includes electrical rough-in but omits those installation tasks. It also lacks budget tracking against the $85,000 cap, creating a risk of overspending.",
+		"risk_tier": 2,
+		"applied_at": null,
+		"confidence": 4,
+		"created_at": "2026-09-04T17:26:57.626406+00:00",
+		"decided_at": null,
+		"depends_on": null,
+		"operations": [],
+		"project_id": "5e97b8d7-d7f2-43e8-8382-da5915b96f86",
+		"reversible": true,
+		"sort_order": 2,
+		"updated_at": "2026-09-04T17:26:57.626406+00:00",
+		"agent_run_id": null,
+		"evidence_refs": [
+			{
+				"title": "[QA RETEST 6d78728] Cedar House Renovation",
+				"reason": "The project description requires passed inspections and total spending within $85,000, but the current task list does not cover the installation work needed to meet those goals.",
+				"entity_type": "project"
+			}
+		],
+		"user_feedback": null,
+		"chat_session_id": null,
+		"freshness_state": "fresh",
+		"undo_operations": [],
+		"source_fingerprint": null
+	}
+}

@@ -1,0 +1,34 @@
+tool | on surface | catalog props | reviewed props | dropped props | catalog desc B | override desc B
+create_onto_document       | YES |  9 |  8 | props | 138 | -
+update_onto_document       | YES |  9 |  9 | - | 466 | 329
+move_document_in_tree      | YES |  5 |  5 | - | 252 | 527
+create_task_document       | no  |  9 |  3 | title,description,type_key,state_key,content,props | 152 | 328
+link_onto_entities         | YES |  6 |  6 | - | 371 | 507
+unlink_onto_edge           | no  |  1 |  1 | - | 37 | 114
+create_onto_task           | YES | 16 | 16 | - | 347 | -
+update_onto_task           | YES | 15 | 15 | - | 234 | 401
+move_onto_task             | YES |  4 |  4 | - | 913 | 551
+tag_onto_entity            | no  |  7 |  6 | mentioned_handles | 196 | 412
+create_onto_goal           | YES |  9 |  9 | - | 58 | -
+update_onto_goal           | no  |  9 |  9 | - | 115 | 303
+create_onto_plan           | no  | 13 |  9 | goal_id,milestone_id,parent,parents | 72 | -
+update_onto_plan           | no  |  9 |  9 | - | 110 | 276
+create_onto_milestone      | no  | 11 |  7 | props,parent,parents,connections | 59 | -
+update_onto_milestone      | no  |  6 |  6 | - | 92 | 284
+create_onto_risk           | no  | 12 |  8 | props,parent,parents,connections | 63 | -
+update_onto_risk           | no  | 10 | 10 | - | 109 | 299
+create_onto_project        | YES |  6 |  3 | context_document,clarifications,meta | 782 | 347
+update_onto_project        | no  |  7 |  7 | - | 83 | -
+delegate_task              | YES | 12 |  7 | context_type,scope_mode,effort,run_template,review | 1273 | 660
+create_calendar_event      | YES | 12 | 12 | - | 76 | -
+update_calendar_event      | YES | 13 | 13 | - | 101 | 224
+delete_calendar_event      | YES |  7 |  7 | - | 64 | 190
+set_project_calendar       | YES |  7 |  6 | calendar_id | 50 | 143
+
+Reviewed specs NOT on any surface: create_task_document, unlink_onto_edge, tag_onto_entity, update_onto_goal, create_onto_plan, update_onto_plan, create_onto_milestone, update_onto_milestone, create_onto_risk, update_onto_risk, update_onto_project
+
+Catalog write tools (TOOL_METADATA category=write) not reviewed and not deferred:
+write-signed total: 39
+Read tools in catalog (non-write) that are NOT on any surface:
+search_buildos, search_onto_tasks, search_onto_goals, search_onto_plans, list_onto_goals, list_onto_plans, list_onto_milestones, list_onto_risks, list_onto_projects, search_onto_documents, search_onto_milestones, search_onto_risks, search_ontology, get_onto_project_graph, get_onto_goal_details, get_onto_plan_details, get_onto_milestone_details, get_onto_risk_details, get_entity_relationships, get_linked_entities, list_task_documents, get_document_path, get_field_info, get_user_profile_overview, search_user_contacts, list_user_contact_candidates, list_corsair_mcp_tools, get_buildos_overview, get_buildos_usage_guide
+count 29 of 52

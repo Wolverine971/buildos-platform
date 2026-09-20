@@ -1,4 +1,5 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-projection.ts
+import { PROJECT_REVIEW_SPECIALISTS_V1 } from '@buildos/agentic-chat-runtime/specialists';
 import {
 	AGENTIC_CHAT_WORKFLOW_CONTRACT_VERSION,
 	AGENTIC_CHAT_WORKFLOW_PROGRESS_EVENT_TYPE,
@@ -42,8 +43,8 @@ export const AGENTIC_CHAT_WORKFLOW_STEP_LABELS_V1: Readonly<
 	Record<AgenticChatWorkflowStepKeyV1, string>
 > = {
 	planner: 'Plan the review',
-	project_analyst: 'Project analyst',
-	risk_reviewer: 'Risk and alternatives reviewer',
+	project_analyst: PROJECT_REVIEW_SPECIALISTS_V1.project_analyst.label,
+	risk_reviewer: PROJECT_REVIEW_SPECIALISTS_V1.risk_reviewer.label,
 	editor: 'Combine recommendations'
 };
 
