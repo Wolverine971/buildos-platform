@@ -576,7 +576,7 @@ function scalarSummary(
 	scalars: Array<{ field: ScalarField; proposed: string | null }>
 ): string {
 	if (scalars.length !== 1) return `Update ${entityKind} "${title}".`;
-	const [only] = scalars;
+	const only = scalars[0]!;
 	if (only.field === 'state_key') {
 		return `Mark ${entityKind} "${title}" as ${formatScalarValue('state_key', only.proposed).toLowerCase()}.`;
 	}

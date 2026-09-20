@@ -167,6 +167,7 @@ export function buildE2EWorker(input: {
 	runner?: AgenticChatWorkflowRunnerOptionsV1;
 	specialistWorkflowsEnabled?: boolean;
 	documentReadToolsEnabled?: boolean;
+	documentEvidenceHandoffEnabled?: boolean;
 	observeSelection?: SpecialistShadowObserver;
 	context?: MasterPromptContext;
 	onError?: (report: { stage: string; turnRunId: string; error: unknown }) => void;
@@ -215,6 +216,7 @@ export function buildE2EWorker(input: {
 		allowedUserIds: [E2E_USER_ID],
 		specialistWorkflowsEnabled: input.specialistWorkflowsEnabled,
 		documentReadToolsEnabled: input.documentReadToolsEnabled,
+		documentEvidenceHandoffEnabled: input.documentEvidenceHandoffEnabled,
 		observeSelection: input.observeSelection,
 		loadSpecialistSnapshot: (identity) => loadSpecialistSnapshotV2(shim as never, identity),
 		onTiming: () => undefined,

@@ -1,23 +1,29 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-runner.ts
 import { DOCUMENT_READ_TOOL } from '@buildos/agentic-chat-runtime/specialists';
 import {
+	type CompletedProviderToolCall,
 	appendToolCallDelta,
 	assertToolCallFinishReason,
 	completeToolCalls,
-	createToolCallAccumulator,
-	type CompletedProviderToolCall
+	createToolCallAccumulator
 } from '../provider/stream-tool-calls';
 import type { AgenticChatTurnProviderMessageV1 } from '../provider/contracts';
 import type { AgenticChatWorkflowStepDispatchGate } from './workflow-dispatch';
-import { documentIdsForSpecialistCall, savedDocumentReadPrompt } from './document-read-tool';
+import {
+	documentEvidenceHandoffPrompt,
+	documentIdsForSpecialistCall,
+	savedDocumentReadPrompt
+} from './document-read-tool';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
-	PROJECT_REVIEW_SPECIALIST_IDS_V1,
 	PROJECT_REVIEW_SPECIALISTS_V1,
+	PROJECT_REVIEW_SPECIALIST_IDS_V1,
 	type ProjectReviewSpecialistIdV1
 } from '@buildos/agentic-chat-runtime/specialists';
 import {
+	AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_STEPS_V1,
+	AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_VERSION,
 	AGENTIC_CHAT_WORKFLOW_MAX_OUTPUT_TOKENS,
 	AGENTIC_CHAT_WORKFLOW_PLANNER_RESULT_VERSION,
 	AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1,
@@ -419,7 +425,10 @@ class WorkflowExecution {
 				}
 			: AGENTIC_CHAT_WORKFLOW_FIXED_ASSIGNMENTS_V1;
 		const plan: JsonObject = {
-			version: AGENTIC_CHAT_WORKFLOW_PLAN_VERSION,
+			version:
+				snapshot?.profileVersion === 3
+					? AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_VERSION
+					: AGENTIC_CHAT_WORKFLOW_PLAN_VERSION,
 			contextId: this.state.context!.contextId,
 			requestHash: this.state.requestHash,
 			planner: accepted
@@ -429,7 +438,9 @@ class WorkflowExecution {
 						resultHash: current.resultHash
 					}
 				: { outcome: 'fixed_fallback', stepAttemptId: null, resultHash: null },
-			steps: AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1 as unknown as JsonValue,
+			steps: (snapshot?.profileVersion === 3
+				? AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_STEPS_V1
+				: AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1) as unknown as JsonValue,
 			assignments: accepted
 				? {
 						planner: fixed.planner,
@@ -534,6 +545,13 @@ class WorkflowExecution {
 	// ---------------------------------------------------------------------------
 
 	private async runSpecialists(): Promise<void> {
+		if (this.state.specialistSnapshot?.profileVersion === 3) {
+			// A failed/no-read organizer still permits an independent inventory review.
+			// Fences, access loss and requeue propagate before any reviewer request.
+			await this.runSpecialist('project_analyst', this.signal);
+			await this.runSpecialist('risk_reviewer', this.signal);
+			return;
+		}
 		const group = new AbortController();
 		const signal = AbortSignal.any([this.signal, group.signal]);
 		const errors: unknown[] = [];
@@ -952,6 +970,7 @@ class WorkflowExecution {
 				this.state.steps[stepKey] = {
 					...step,
 					status: 'claimed',
+					...(receipt.inputEvidence ? { inputEvidence: receipt.inputEvidence } : {}),
 					attemptsUsed: receipt.attemptNumber ?? step.attemptsUsed + 1,
 					attemptIds: step.attemptIds.includes(attemptId)
 						? step.attemptIds
@@ -1141,9 +1160,22 @@ class WorkflowExecution {
 	private async callSpecialistModel(
 		args: Parameters<WorkflowExecution['callModel']>[0]
 	): Promise<ModelCall> {
+		if (
+			args.stepKey === 'risk_reviewer' &&
+			this.state.specialistSnapshot?.profileVersion === 3
+		) {
+			// The claim atomically returns the pinned handoff; no live read or extra round trip.
+			const handoff = documentEvidenceHandoffPrompt({
+				binding: this.state.steps.risk_reviewer?.inputEvidence,
+				context: this.state.context,
+				result: this.state.documentReadResult,
+				organizerStatus: this.state.steps.project_analyst?.status
+			});
+			return this.callModel({ ...args, userContent: args.userContent + handoff });
+		}
 		const enabled =
 			args.stepKey === 'project_analyst' &&
-			this.state.specialistSnapshot?.profileVersion === 2;
+			(this.state.specialistSnapshot?.profileVersion ?? 0) >= 2;
 		if (!enabled) return this.callModel(args);
 		const gate = this.meter.forStepAttempt({
 			stepKey: args.stepKey,
@@ -1322,6 +1354,7 @@ class WorkflowExecution {
 				}
 				if (event.type === 'error') {
 					if (event.cause === 'dispatch_denied' && gate.lastDenial) {
+						this.assertUnfenced(gate.lastDenial.code);
 						return { kind: 'denied', code: gate.lastDenial.code };
 					}
 					return { kind: 'transport_error', message: event.error };
@@ -1523,6 +1556,11 @@ class WorkflowExecution {
 	}
 
 	private assertUnfenced(outcome: string): void {
+		if (outcome === 'access_revoked')
+			throw new WorkflowFailure(
+				'workflow_access_revoked',
+				'You no longer have access to this project. The review stopped.'
+			);
 		if (AGENTIC_CHAT_WORKFLOW_FENCED_DENIALS.has(outcome)) throw fencedStop(outcome);
 	}
 

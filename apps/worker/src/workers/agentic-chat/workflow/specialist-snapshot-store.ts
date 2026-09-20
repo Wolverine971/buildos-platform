@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agentic-chat/workflow/specialist-snapshot-store.ts
 import {
-	parseSpecialistSnapshotV2,
-	type SpecialistSnapshotV2
+	type SpecialistSnapshotV2,
+	parseSpecialistSnapshotV2
 } from '@buildos/agentic-chat-runtime/specialists';
 import type { AgenticChatWorkflowStoreClient } from './workflow-store';
 

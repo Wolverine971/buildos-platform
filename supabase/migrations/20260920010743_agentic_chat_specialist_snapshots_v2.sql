@@ -1,3 +1,4 @@
+-- supabase/migrations/20260920010743_agentic_chat_specialist_snapshots_v2.sql
 -- Private, immutable specialist selection pinned at admission. The existing v1
 -- execution graph remains frozen; this v2 profile binds definitions to its slots.
 CREATE TABLE public.chat_turn_specialist_snapshots (

@@ -101,7 +101,9 @@ describePostgres('workflow v4 admission against disposable PostgreSQL', () => {
 				p_policy: 'jsonb',
 				p_policy_ref: 'text',
 				p_request_hash: 'text',
-				p_cache_ref: 'jsonb'
+				p_cache_ref: 'jsonb',
+				p_specialist_snapshot: 'jsonb',
+				p_specialist_snapshot_hash: 'text'
 			};
 			const call = (Object.keys(args) as Array<keyof AgenticChatWorkflowV4AdmissionRpcArgs>)
 				.map((key) => `${key} => ${literal(args[key], types[key])}`)

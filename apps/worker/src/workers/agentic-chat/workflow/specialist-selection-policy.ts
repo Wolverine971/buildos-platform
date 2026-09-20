@@ -10,15 +10,15 @@ import {
 	type SpecialistSnapshotV2
 } from '@buildos/agentic-chat-runtime/specialists';
 import {
-	canonicalizeAgenticChatJson,
+	type AgenticChatPreparedWorkflowContextV1,
 	type JsonValue,
-	type AgenticChatPreparedWorkflowContextV1
+	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import {
 	JEV_DEFAULT_MODEL,
-	parseJevAnswers,
 	type JevChoiceQuestion,
-	type JevDecisionResult
+	type JevDecisionResult,
+	parseJevAnswers
 } from '@buildos/smart-llm';
 
 export const SPECIALIST_SHADOW_POLICY = Object.freeze({
@@ -91,8 +91,12 @@ export function specialistSelectionBundles(input: {
 			input.snapshot?.slots.risk_reviewer.definition ??
 			PROJECT_REVIEW_SPECIALISTS_V1.risk_reviewer;
 		const organizer = (version: 1 | 2) =>
-			input.snapshot?.profileVersion === version
-				? input.snapshot.slots.project_analyst.definition
+			(
+				version === 1
+					? input.snapshot?.profileVersion === 1
+					: (input.snapshot?.profileVersion ?? 0) >= 2
+			)
+				? input.snapshot!.slots.project_analyst.definition
 				: version === 1
 					? DOCUMENT_ORGANIZER_V1
 					: DOCUMENT_ORGANIZER_V2;
@@ -100,14 +104,23 @@ export function specialistSelectionBundles(input: {
 			id: 'document_inventory',
 			description:
 				'Document organizer plus independent reviewer: propose groups, names and gaps using inventory metadata only. Cannot establish content duplication.',
-			specialists: [ref(organizer(1)), ref(reviewer)],
+			specialists: [
+				ref(organizer(1)),
+				ref(
+					input.snapshot?.profileVersion === 1
+						? reviewer
+						: PROJECT_REVIEW_SPECIALISTS_V1.risk_reviewer
+				)
+			],
 			tools: []
 		});
 		if (input.documentReadToolsEnabled)
 			bundles.push({
 				id: 'document_read',
 				description:
-					'Document organizer plus independent inventory reviewer: inspect document content for organization or overlap. One bounded read batch; no edits.',
+					input.snapshot?.profileVersion === 3
+						? 'Document organizer followed by an independent reviewer of the same saved document text: inspect organization or overlap. One bounded read batch; no edits.'
+						: 'Document organizer plus independent inventory reviewer: inspect document content for organization or overlap. One bounded read batch; no edits.',
 				specialists: [ref(organizer(2)), ref(reviewer)],
 				tools: ['read_project_documents']
 			});
@@ -123,7 +136,7 @@ export function buildSpecialistShadowInput(input: {
 }) {
 	const bundles = specialistSelectionBundles(input);
 	const baseline: SpecialistBundleId = input.snapshot
-		? input.snapshot.profileVersion === 2
+		? input.snapshot.profileVersion >= 2
 			? 'document_read'
 			: 'document_inventory'
 		: 'project_review';

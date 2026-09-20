@@ -128,6 +128,7 @@ type AgenticChatBaseConfig = {
 	workflowV4ExecutionEnabled?: boolean;
 	specialistWorkflowsEnabled?: boolean;
 	documentReadToolsEnabled?: boolean;
+	documentEvidenceHandoffEnabled?: boolean;
 	/** Counterfactual specialist/tool selection only; never enables routing. */
 	jevSpecialistSelection?: 'off' | 'shadow';
 	liveVisionEnabled: boolean;
@@ -175,6 +176,11 @@ export function loadAgenticChatConfig(
 		environment.AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED,
 		false,
 		'AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED'
+	);
+	const documentEvidenceHandoffEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED,
+		false,
+		'AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED'
 	);
 	const documentReadToolsEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED,
@@ -279,6 +285,7 @@ export function loadAgenticChatConfig(
 		workflowV4ExecutionEnabled,
 		specialistWorkflowsEnabled,
 		documentReadToolsEnabled,
+		documentEvidenceHandoffEnabled,
 		jevSpecialistSelection,
 		liveVisionEnabled,
 		consumptionBillingEnabled,

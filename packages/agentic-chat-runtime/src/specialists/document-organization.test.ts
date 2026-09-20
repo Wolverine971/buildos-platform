@@ -6,12 +6,30 @@ import {
 	parseSpecialistSnapshotV2,
 	SPECIALIST_REGISTRY_V2,
 	buildDocumentReadSnapshotV2,
+	buildDocumentEvidenceSnapshotV2,
 	documentSnapshotMatchesPolicy,
 	DOCUMENT_READ_TOOL_ID
 } from './document-organization';
 import { SPECIALIST_REGISTRY_V1 } from './project-review-v1';
 
 describe('immutable specialist profile', () => {
+	it('versions shared evidence without changing the old inventory reviewer', async () => {
+		const s = buildDocumentEvidenceSnapshotV2();
+		expect(await parseSpecialistSnapshotV2(s, await hashSpecialistSnapshotV2(s))).toEqual(s);
+		expect(documentSnapshotMatchesPolicy(s, 'internal-document-organization:v4')).toBe(true);
+		expect(documentSnapshotMatchesPolicy(s, 'internal-document-organization:v3')).toBe(false);
+		expect(s.slots.risk_reviewer.definition.version).toBe(2);
+		expect(s.slots.risk_reviewer.definition.capabilities.allowedToolIds).toEqual([]);
+		expect(s.plannerTask).not.toContain('reviewer has inventory evidence only');
+		expect(s.editorTask).toContain('[[document:FULL_UUID|Document title]]');
+		const old = buildDocumentReadSnapshotV2();
+		expect(old.slots.risk_reviewer.definition.version).toBe(1);
+		expect(old.plannerTask).toContain('reviewer has inventory evidence only');
+		s.slots.risk_reviewer.definition = { ...s.slots.risk_reviewer.definition, version: 1 };
+		await expect(
+			parseSpecialistSnapshotV2(s, await hashSpecialistSnapshotV2(s))
+		).rejects.toThrow();
+	});
 	it('pins the bounded read tool to organizer v2 and its new policy only', async () => {
 		const s = buildDocumentReadSnapshotV2();
 		expect(await parseSpecialistSnapshotV2(s, await hashSpecialistSnapshotV2(s))).toEqual(s);

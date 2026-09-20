@@ -139,7 +139,7 @@ class FakeQuery {
 		if (this.op === 'insert') {
 			const inserted: Row[] = [];
 			for (const raw of this.insertRows) {
-				const row = {
+				const row: Row = {
 					id: raw.id ?? `gen-${++this.db.nextId}`,
 					created_at: raw.created_at ?? '2026-09-18T18:00:00.000Z',
 					...raw
@@ -690,12 +690,10 @@ describe('undoFreshnessFlags', () => {
 
 	it('releases the claim when the write path refuses the reverse operation', async () => {
 		const db = seed([autoFlag()]);
-		const replay = vi
-			.fn()
-			.mockResolvedValue({
-				appliedCount: 0,
-				errors: [{ tool: 'update_onto_task', error: 'Forbidden' }]
-			});
+		const replay = vi.fn().mockResolvedValue({
+			appliedCount: 0,
+			errors: [{ tool: 'update_onto_task', error: 'Forbidden' }]
+		});
 		const result = await undoFreshnessFlags({
 			supabase: db,
 			admin: db,

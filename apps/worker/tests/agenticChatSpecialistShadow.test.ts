@@ -1,6 +1,9 @@
 // apps/worker/tests/agenticChatSpecialistShadow.test.ts
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { buildDocumentReadSnapshotV2 } from '@buildos/agentic-chat-runtime/specialists';
+import {
+	buildDocumentReadSnapshotV2,
+	buildDocumentEvidenceSnapshotV2
+} from '@buildos/agentic-chat-runtime/specialists';
 import type { AgenticChatPreparedWorkflowContextV1 } from '@buildos/shared-types';
 import { JevClient } from '@buildos/smart-llm';
 import {
@@ -108,7 +111,13 @@ describe('Jev specialist shadow policy', () => {
 	});
 	it('binds saved definitions and the baseline while keeping the baseline and document content out of Jev state', () => {
 		const snapshot = structuredClone(buildDocumentReadSnapshotV2());
-		snapshot.slots.project_analyst.definition.instructions.system = 'Historical expertise';
+		snapshot.slots.project_analyst.definition = {
+			...snapshot.slots.project_analyst.definition,
+			instructions: {
+				...snapshot.slots.project_analyst.definition.instructions,
+				system: 'Historical expertise'
+			}
+		};
 		const input = buildSpecialistShadowInput({
 			question: 'x'.repeat(5000),
 			context,
@@ -234,4 +243,24 @@ describe('bounded optional shadow observer', () => {
 		expect(rpc).not.toHaveBeenCalled();
 		expect(decide).not.toHaveBeenCalled();
 	});
+});
+
+it('pins the shared-evidence baseline identities without changing inventory candidates', () => {
+	const input = buildSpecialistShadowInput({
+		question: 'Compare these documents',
+		context,
+		specialistWorkflowsEnabled: true,
+		documentReadToolsEnabled: true,
+		snapshot: buildDocumentEvidenceSnapshotV2()
+	});
+	expect(input.baseline).toBe('document_read');
+	const bundles = input.request.state.bundles;
+	expect(bundles.find((b) => b.id === 'document_read')?.specialists).toMatchObject([
+		{ id: 'document_organizer', version: 2 },
+		{ id: 'risk_reviewer', version: 2 }
+	]);
+	expect(bundles.find((b) => b.id === 'document_inventory')?.specialists[1]?.version).toBe(1);
+	expect(bundles.find((b) => b.id === 'document_read')?.description).toContain(
+		'same saved document text'
+	);
 });

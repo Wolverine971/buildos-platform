@@ -8,9 +8,34 @@
 // Only a narrow PostgREST subset is used (select/eq/in/is/gt/gte/lte/order/
 // limit/maybeSingle) so the disposable-Postgres test shim can serve it.
 
+type FreshnessDbResult = {
+	data: unknown;
+	error: { message: string; code?: string } | null;
+};
+
+type FreshnessQuery = PromiseLike<FreshnessDbResult> & {
+	select(columns: string): FreshnessQuery;
+	insert(value: unknown): FreshnessQuery;
+	upsert(value: unknown, options?: { onConflict?: string }): FreshnessQuery;
+	update(value: Record<string, unknown>): FreshnessQuery;
+	eq(column: string, value: unknown): FreshnessQuery;
+	neq(column: string, value: unknown): FreshnessQuery;
+	gt(column: string, value: unknown): FreshnessQuery;
+	gte(column: string, value: unknown): FreshnessQuery;
+	lt(column: string, value: unknown): FreshnessQuery;
+	lte(column: string, value: unknown): FreshnessQuery;
+	in(column: string, values: readonly unknown[]): FreshnessQuery;
+	is(column: string, value: null): FreshnessQuery;
+	not(column: string, operator: string, value: unknown): FreshnessQuery;
+	order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): FreshnessQuery;
+	limit(count: number): FreshnessQuery;
+	single(): PromiseLike<FreshnessDbResult>;
+	maybeSingle(): PromiseLike<FreshnessDbResult>;
+};
+
 export type FreshnessDb = {
-	from: (table: string) => any;
-	rpc: (fn: string, args?: Record<string, unknown>) => any;
+	from(table: string): FreshnessQuery;
+	rpc(fn: string, args?: Record<string, unknown>): PromiseLike<FreshnessDbResult>;
 };
 
 export type FreshnessTaskRow = {
@@ -236,7 +261,7 @@ const ENTITY_ROW_CAP = 1_000;
 const LOG_ROW_CAP = 500;
 const MESSAGE_ROW_CAP = 200;
 
-function unwrap<T>(result: { data: T | null; error: { message: string } | null }, what: string): T {
+function unwrap<T>(result: FreshnessDbResult, what: string): T {
 	if (result.error)
 		throw new Error(`freshness radar read failed (${what}): ${result.error.message}`);
 	return (result.data ?? ([] as unknown)) as T;

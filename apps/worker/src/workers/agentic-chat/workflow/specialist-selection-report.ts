@@ -1,8 +1,8 @@
 // apps/worker/src/workers/agentic-chat/workflow/specialist-selection-report.ts
 import {
-	selectionHash,
 	type SpecialistShadowInput,
-	type SpecialistShadowResult
+	type SpecialistShadowResult,
+	selectionHash
 } from './specialist-selection-policy';
 export type SpecialistShadowRow = {
 	turn_run_id: string;

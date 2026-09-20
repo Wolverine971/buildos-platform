@@ -183,8 +183,12 @@ async function loadUserFlags(
 			'freshness_radar.auto_apply',
 			'freshness_radar.inbox_cleanup'
 		]);
+	const rows = (!result.error && Array.isArray(result.data) ? result.data : []) as Array<{
+		enabled: boolean;
+		feature_name: string;
+	}>;
 	const enabled = new Set(
-		((result.error ? [] : result.data) ?? [])
+		rows
 			.filter((row: { enabled: boolean }) => row.enabled === true)
 			.map((row: { feature_name: string }) => row.feature_name)
 	);
@@ -307,7 +311,7 @@ export async function processFreshnessRadarScanJob(
 			.select('id');
 		if (claimed.error)
 			throw new Error(`freshness signal claim failed: ${claimed.error.message}`);
-		if (!(claimed.data ?? []).length) {
+		if (!Array.isArray(claimed.data) || claimed.data.length === 0) {
 			await log(`Freshness signal ${signal.id} was already claimed or deferred; skipping.`);
 			return { success: true, skipped: 'not_claimed' };
 		}

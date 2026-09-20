@@ -1,11 +1,15 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-store.ts
-import { verifyDocumentReadResult } from './document-read-tool';
+import { documentEvidenceHandoffPrompt, verifyDocumentReadResult } from './document-read-tool';
 import {
-	isDocumentSpecialistPolicyRef,
+	type SpecialistSnapshotV2,
 	documentSnapshotMatchesPolicy,
-	type SpecialistSnapshotV2
+	isDocumentSpecialistPolicyRef
 } from '@buildos/agentic-chat-runtime/specialists';
 import { loadSpecialistSnapshotV2 } from './specialist-snapshot-store';
+import {
+	AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF,
+	agenticChatWorkflowPlanVersionForRef
+} from '@buildos/shared-types';
 import type {
 	AgenticChatRecoveryFailureClassV1,
 	AgenticChatWorkflowContextOutcomeV1,
@@ -54,6 +58,7 @@ export type AgenticChatWorkflowCheckpointV1 = {
 };
 
 export type AgenticChatWorkflowStepRowV1 = {
+	inputEvidence?: JsonObject;
 	key: AgenticChatWorkflowStepKeyV1;
 	status: AgenticChatWorkflowStepStatusV1;
 	attemptsUsed: number;
@@ -138,6 +143,7 @@ export type AgenticChatWorkflowPlanReceiptV1 = {
 	event: AgenticChatWorkflowEventReceiptV1;
 };
 export type AgenticChatWorkflowClaimReceiptV1 = {
+	inputEvidence?: JsonObject;
 	outcome: AgenticChatWorkflowStepClaimOutcomeV1;
 	stepAttemptId: string | null;
 	attemptNumber: number | null;
@@ -423,7 +429,13 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 		const [stepResponse, dispatchResponse] = await Promise.all([
 			this.client
 				.from('chat_turn_workflow_steps')
-				.select(STEP_COLUMNS)
+				.select(
+					STEP_COLUMNS +
+						((runResponse.data as Record<string, unknown>).policy_ref ===
+						AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF
+							? ',input_evidence'
+							: '')
+				)
 				.eq('turn_run_id', turnRunId),
 			this.client
 				.from('chat_turn_workflow_dispatches')
@@ -444,7 +456,7 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 			if (!documentSnapshotMatchesPolicy(snapshot, String(policyRef)))
 				throw new AgenticChatWorkflowStoreProtocolError('Specialist policy mismatch');
 			state.specialistSnapshot = structuredClone(snapshot);
-			if (snapshot.profileVersion === 2) {
+			if (snapshot.profileVersion >= 2) {
 				let result = this.documentReads.get(turnRunId);
 				if (!result) {
 					const response = await this.client
@@ -471,6 +483,17 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 			policyRef.startsWith('internal-document-organization:')
 		) {
 			throw new AgenticChatWorkflowStoreProtocolError('Unsupported specialist profile');
+		}
+		if (
+			state.specialistSnapshot?.profileVersion === 3 &&
+			state.steps.risk_reviewer?.inputEvidence
+		) {
+			documentEvidenceHandoffPrompt({
+				binding: state.steps.risk_reviewer.inputEvidence,
+				context: state.context,
+				result: state.documentReadResult,
+				organizerStatus: state.steps.project_analyst?.status
+			});
 		}
 		return state;
 	}
@@ -542,7 +565,7 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 		const receipt = await this.call('install_agentic_chat_workflow_plan_v1', {
 			...fenceArgs(fence),
 			p_context_id: input.contextId,
-			p_plan_version: 'agentic_chat_project_review_plan_v1',
+			p_plan_version: input.plan.version,
 			p_plan: input.plan,
 			p_plan_hash: input.planHash,
 			...checkpointArgs(input)
@@ -580,8 +603,12 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 				'dependency_failed',
 				'attempts_exhausted',
 				'budget_exhausted',
-				'deadline_expired'
+				'deadline_expired',
+				'access_revoked'
 			]) as AgenticChatWorkflowStepClaimOutcomeV1,
+			...(isObject(receipt.input_evidence)
+				? { inputEvidence: receipt.input_evidence as JsonObject }
+				: {}),
 			stepAttemptId: nullableString(receipt.step_attempt_id),
 			attemptNumber: nullableInteger(receipt.attempt_number),
 			assignment: isObject(receipt.assignment) ? (receipt.assignment as JsonObject) : null,
@@ -668,7 +695,8 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 				'dispatch_limit',
 				'budget_exhausted',
 				'synthesis_headroom_required',
-				'deadline_expired'
+				'deadline_expired',
+				'access_revoked'
 			]) as AgenticChatWorkflowDispatchReserveOutcomeV1,
 			settlementToken: nullableString(receipt.settlement_token),
 			reservedMicroUsd: nullableInteger(receipt.reserved_micro_usd),
@@ -687,7 +715,8 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 				'already_started',
 				'reservation_required',
 				'stale_claim',
-				'deadline_expired'
+				'deadline_expired',
+				'access_revoked'
 			]) as AgenticChatWorkflowDispatchBeginOutcomeV1,
 			dispatchPermitted: receipt.dispatch_permitted === true
 		};
@@ -854,9 +883,13 @@ function parseRunState(
 	const steps: AgenticChatWorkflowRunStateV1['steps'] = {};
 	for (const value of stepValues) {
 		const row = requireObject(value, 'workflow step');
-		if (row.plan_version !== 'agentic_chat_project_review_plan_v1') continue;
+		if (row.plan_version !== agenticChatWorkflowPlanVersionForRef(String(run.policy_ref)))
+			continue;
 		const key = row.step_key as AgenticChatWorkflowStepKeyV1;
 		steps[key] = {
+			...(isObject(row.input_evidence)
+				? { inputEvidence: row.input_evidence as JsonObject }
+				: {}),
 			key,
 			status: row.status as AgenticChatWorkflowStepStatusV1,
 			attemptsUsed: integer(row.attempts_used, 'attempts_used'),

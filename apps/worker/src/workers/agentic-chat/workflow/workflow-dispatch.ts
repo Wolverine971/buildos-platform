@@ -130,6 +130,7 @@ export const AGENTIC_CHAT_WORKFLOW_PROVIDER_MAX_PRICE_V1 = Object.freeze({
 export const AGENTIC_CHAT_WORKFLOW_MIN_DISPATCH_WINDOW_MS = 5_000;
 
 export type AgenticChatWorkflowDispatchDenialCodeV1 =
+	| 'access_revoked'
 	| 'pricing_unavailable'
 	| 'request_too_large'
 	| 'dispatch_limit'

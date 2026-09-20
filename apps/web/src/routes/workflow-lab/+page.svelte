@@ -28,6 +28,11 @@
 			A planner divides your question between a project analyst and a risk reviewer. BuildOS
 			combines their findings into one recommendation.
 		</p>
+		<a
+			href="/workflow-lab/specialists"
+			class="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-accent underline-offset-4 hover:underline"
+			>Open specialist workbench →</a
+		>
 	</header>
 	{#if review}
 		<div class="flex items-center justify-between gap-3">

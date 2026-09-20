@@ -10,9 +10,9 @@ import {
 } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
 import {
-	PROJECT_REVIEW_SPECIALISTS_V1,
 	PROJECT_REVIEW_RULES_PREAMBLE_V1,
-	PROJECT_REVIEW_RULES_V1
+	PROJECT_REVIEW_RULES_V1,
+	PROJECT_REVIEW_SPECIALISTS_V1
 } from '@buildos/agentic-chat-runtime/specialists';
 import type { AgenticChatProviderCapacity } from '../providerCapacity';
 import { buildPromptSnapshot } from '../provider/request-builders';

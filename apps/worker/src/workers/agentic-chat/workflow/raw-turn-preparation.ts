@@ -1,8 +1,8 @@
 // apps/worker/src/workers/agentic-chat/workflow/raw-turn-preparation.ts
 import {
-	isDocumentSpecialistPolicyRef,
+	type SpecialistSnapshotV2,
 	documentSnapshotMatchesPolicy,
-	type SpecialistSnapshotV2
+	isDocumentSpecialistPolicyRef
 } from '@buildos/agentic-chat-runtime/specialists';
 import type { SpecialistSnapshotIdentity } from './specialist-snapshot-store';
 import { specialistStepLabels } from './workflow-projection';
@@ -107,6 +107,7 @@ export type AgenticChatWorkflowTurnPreparerPortsV1 = {
 	allowedUserIds: readonly string[];
 	specialistWorkflowsEnabled?: boolean;
 	documentReadToolsEnabled?: boolean;
+	documentEvidenceHandoffEnabled?: boolean;
 	observeSelection?: SpecialistShadowObserver;
 	loadSpecialistSnapshot?: (
 		identity: SpecialistSnapshotIdentity
@@ -344,8 +345,13 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 				)
 					throw new Error('Specialist policy mismatch');
 				if (
-					state.specialistSnapshot.profileVersion === 2 &&
+					state.specialistSnapshot.profileVersion >= 2 &&
 					!this.ports.documentReadToolsEnabled
+				)
+					return this.failTerminal(state, 'workflow_not_enabled');
+				if (
+					state.specialistSnapshot.profileVersion === 3 &&
+					!this.ports.documentEvidenceHandoffEnabled
 				)
 					return this.failTerminal(state, 'workflow_not_enabled');
 			} catch (error) {
@@ -548,7 +554,7 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 			}
 			built = buildAgenticChatWorkflowContextV1({
 				documentOrganization: !!state.specialistSnapshot,
-				documentReadTools: state.specialistSnapshot?.profileVersion === 2,
+				documentReadTools: (state.specialistSnapshot?.profileVersion ?? 0) >= 2,
 				context,
 				userId: claim.userId,
 				projectId,
@@ -686,7 +692,7 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 		}
 	}
 
-	private async handleThrown(
+	private handleThrown(
 		state: PreparationState,
 		error: unknown
 	): Promise<AgenticChatTurnExecutionResultV1> {
@@ -788,16 +794,14 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 		}
 	}
 
-	private async failTerminal(
+	private failTerminal(
 		state: PreparationState,
 		code: AgenticChatWorkflowPreparationFailureCodeV1
 	): Promise<AgenticChatTurnExecutionResultV1> {
 		return this.finalizeTerminal(state, 'failed', code);
 	}
 
-	private async cancelTerminal(
-		state: PreparationState
-	): Promise<AgenticChatTurnExecutionResultV1> {
+	private cancelTerminal(state: PreparationState): Promise<AgenticChatTurnExecutionResultV1> {
 		return this.finalizeTerminal(state, 'cancelled', null);
 	}
 
@@ -923,14 +927,14 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 		}
 	}
 
-	private async fenced(
+	private fenced(
 		state: PreparationState,
 		outcome: 'stale_generation' | 'ownership_lost' | 'cancel_requested' | 'already_terminal'
 	): Promise<AgenticChatTurnExecutionResultV1> {
 		if (outcome === 'cancel_requested') return this.cancelTerminal(state);
 		if (outcome === 'already_terminal') return this.reconcileTerminal(state);
 		// The old owner stops without writing; the current owner holds truth.
-		return this.finish(state, 'stale_generation', null);
+		return Promise.resolve(this.finish(state, 'stale_generation', null));
 	}
 
 	private finish(

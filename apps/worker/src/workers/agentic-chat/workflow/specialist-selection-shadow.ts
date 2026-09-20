@@ -6,10 +6,10 @@ import { runWithAbortableDeadline } from '../abortableDeadline';
 import type { AgenticChatWorkflowPreparedTurnV1 } from './workflow-runner-port';
 import type { AgenticChatWorkflowStoreClient } from './workflow-store';
 import {
+	SPECIALIST_SHADOW_POLICY,
 	buildSpecialistShadowInput,
 	interpretSpecialistShadow,
 	selectionHash,
-	SPECIALIST_SHADOW_POLICY,
 	unavailableShadow
 } from './specialist-selection-policy';
 
@@ -107,7 +107,7 @@ export class JevSpecialistSelectionShadow {
 		}
 	};
 
-	private async rpc(name: string, args: Record<string, unknown>, signal: AbortSignal) {
+	private rpc(name: string, args: Record<string, unknown>, signal: AbortSignal) {
 		return runWithAbortableDeadline({
 			parentSignal: signal,
 			timeoutMs: 600,

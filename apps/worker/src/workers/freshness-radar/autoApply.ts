@@ -275,7 +275,13 @@ export async function reconcileClaimedAutoApplies(params: {
 		throw new Error(`freshness radar reconcile read failed: ${result.error.message}`);
 	let reconciled = 0;
 	let released = 0;
-	for (const row of (result.data ?? []) as Array<Record<string, any>>) {
+	for (const row of (result.data ?? []) as Array<{
+		id: unknown;
+		subject_id: unknown;
+		subject_title?: unknown;
+		subject_snapshot?: Record<string, unknown> | null;
+		proposed_operation?: { args?: Record<string, unknown> } | null;
+	}>) {
 		const args = (row.proposed_operation?.args ?? {}) as Record<string, unknown>;
 		const field: 'state_key' | 'due_at' | null =
 			typeof args.state_key === 'string'

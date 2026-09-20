@@ -5,6 +5,8 @@ import {
 	AGENTIC_CHAT_WORKFLOW_POLICY_V1,
 	AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1,
 	AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF,
+	AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF,
+	AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_V1,
 	AGENTIC_CHAT_WORKFLOW_REQUEST_HASH_VERSION,
 	buildAgenticChatWorkflowReviewIntentV1,
 	computeAgenticChatWorkflowReservationMicroUsdV1,
@@ -206,5 +208,25 @@ describe('agentic chat workflow v1 contract', () => {
 		await expect(
 			codeFor(mutate((input) => (input.retainUntil = '2026-09-20T12:00:00.000+00:00')))
 		).resolves.toBe('invalid_retention');
+	});
+});
+
+it('hashes and validates the new evidence policy without upgrading old admitted requests', async () => {
+	const input = await rawInput(
+		request({
+			policyRef: AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF,
+			policy: AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_V1
+		})
+	);
+	expect((await validateAgenticChatRawWorkflowInputV4(input, EXPECTED)).ok).toBe(true);
+	const downgraded = await rawInput(
+		request({
+			policyRef: AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF,
+			policy: AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1
+		})
+	);
+	expect(await validateAgenticChatRawWorkflowInputV4(downgraded, EXPECTED)).toMatchObject({
+		ok: false,
+		code: 'invalid_policy'
 	});
 });

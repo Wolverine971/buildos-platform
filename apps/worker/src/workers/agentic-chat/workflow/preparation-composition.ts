@@ -32,6 +32,7 @@ export type AgenticChatWorkflowV4CompositionOptionsV1 = {
 	preparationEnabled: boolean;
 	specialistWorkflowsEnabled?: boolean;
 	documentReadToolsEnabled?: boolean;
+	documentEvidenceHandoffEnabled?: boolean;
 	selectionDecider?: JevDecider;
 	/** Tasker 87 supplies the durable runner; until then preparation ends in a readable failure. */
 	runner?: AgenticChatWorkflowRunnerPortV1;
@@ -73,6 +74,7 @@ export function createAgenticChatWorkflowTurnPreparerV1(input: {
 		allowedUserIds: input.allowedUserIds,
 		specialistWorkflowsEnabled: input.options.specialistWorkflowsEnabled,
 		documentReadToolsEnabled: input.options.documentReadToolsEnabled,
+		documentEvidenceHandoffEnabled: input.options.documentEvidenceHandoffEnabled,
 		observeSelection:
 			input.options.executionEnabled && input.options.selectionDecider
 				? new JevSpecialistSelectionShadow({

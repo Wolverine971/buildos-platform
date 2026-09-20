@@ -82,10 +82,20 @@ export const AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1 = {
 	version: 'agentic_chat_document_read_policy_v1',
 	modelTools: 'bounded_document_read_v1'
 } as const;
+/** Shared evidence uses a new pinned plan; older read profiles remain parallel. */
+export const AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF = 'internal-document-organization:v4';
+export const AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_V1 = {
+	...AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1,
+	version: 'agentic_chat_document_evidence_policy_v1',
+	maxSpecialistConcurrency: 1
+} as const;
 export type AgenticChatWorkflowPolicy =
 	| AgenticChatWorkflowPolicyV1
-	| typeof AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1;
+	| typeof AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1
+	| typeof AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_V1;
 export function agenticChatWorkflowPolicyForRef(policyRef: string): AgenticChatWorkflowPolicy {
+	if (policyRef === AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF)
+		return AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_V1;
 	return policyRef === AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF
 		? AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1
 		: AGENTIC_CHAT_WORKFLOW_POLICY_V1;
@@ -119,6 +129,24 @@ export const AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1 = [
 		dependsOn: ['project_analyst', 'risk_reviewer']
 	}
 ] as const;
+
+export const AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_VERSION =
+	'agentic_chat_document_evidence_plan_v1' as const;
+export const AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_STEPS_V1 = [
+	AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1[0],
+	AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1[1],
+	{
+		key: 'risk_reviewer',
+		capability: 'risk_and_alternatives',
+		dependsOn: ['planner', 'project_analyst']
+	},
+	AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1[3]
+] as const;
+export function agenticChatWorkflowPlanVersionForRef(policyRef: string) {
+	return policyRef === AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF
+		? AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_VERSION
+		: AGENTIC_CHAT_WORKFLOW_PLAN_VERSION;
+}
 
 export type AgenticChatProjectReviewIntentV1 = {
 	kind: 'project_review';
@@ -240,6 +268,14 @@ export type AgenticChatWorkflowPlanV1 = {
 	assignments: Record<AgenticChatWorkflowStepKeyV1, JsonObject>;
 };
 
+export type AgenticChatDocumentEvidencePlanV1 = Omit<
+	AgenticChatWorkflowPlanV1,
+	'version' | 'steps'
+> & {
+	version: typeof AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_VERSION;
+	steps: typeof AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_STEPS_V1;
+};
+
 export type AgenticChatWorkflowStepStatusV1 =
 	| 'pending'
 	| 'claimed'
@@ -350,6 +386,7 @@ export type AgenticChatWorkflowPlanOutcomeV1 =
 	| 'deadline_expired'
 	| AgenticChatWorkflowFencedOutcomeV1;
 export type AgenticChatWorkflowStepClaimOutcomeV1 =
+	| 'access_revoked'
 	| 'claimed'
 	| 'claim_conflict'
 	| 'already_accepted'
@@ -374,6 +411,7 @@ export type AgenticChatWorkflowStepFailureOutcomeV1 =
 	| 'stale_claim'
 	| AgenticChatWorkflowFencedOutcomeV1;
 export type AgenticChatWorkflowDispatchReserveOutcomeV1 =
+	| 'access_revoked'
 	| 'reserved'
 	| 'already_reserved'
 	| 'reservation_conflict'
@@ -385,6 +423,7 @@ export type AgenticChatWorkflowDispatchReserveOutcomeV1 =
 	| 'deadline_expired'
 	| AgenticChatWorkflowFencedOutcomeV1;
 export type AgenticChatWorkflowDispatchBeginOutcomeV1 =
+	| 'access_revoked'
 	| 'dispatching'
 	| 'already_started'
 	| 'reservation_required'

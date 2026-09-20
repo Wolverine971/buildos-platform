@@ -8,8 +8,8 @@ import {
 	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
 	JSON_PROFILE_MODELS,
-	LLMUsageLogger,
 	JevClient,
+	LLMUsageLogger,
 	modelSupportsCapability
 } from '@buildos/smart-llm';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from './capacity';
@@ -426,6 +426,7 @@ function createDefaultComposition(
 			executionEnabled: workflowExecutionEnabled,
 			specialistWorkflowsEnabled: input.config.specialistWorkflowsEnabled === true,
 			documentReadToolsEnabled: input.config.documentReadToolsEnabled === true,
+			documentEvidenceHandoffEnabled: input.config.documentEvidenceHandoffEnabled,
 			selectionDecider:
 				workflowExecutionEnabled && input.config.jevSpecialistSelection === 'shadow'
 					? new JevClient({

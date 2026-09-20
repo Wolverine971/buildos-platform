@@ -93,6 +93,7 @@ describe('workflow v4 admission policy', () => {
 			enabled: false,
 			specialistWorkflowsEnabled: false,
 			documentReadToolsEnabled: false,
+			documentEvidenceHandoffEnabled: false,
 			cohortUserIds: []
 		});
 		for (const value of ['TRUE', '1', 'yes', 'on', '']) {
@@ -111,6 +112,7 @@ describe('workflow v4 admission policy', () => {
 			enabled: true,
 			specialistWorkflowsEnabled: false,
 			documentReadToolsEnabled: false,
+			documentEvidenceHandoffEnabled: false,
 			cohortUserIds: [USER_ID]
 		});
 	});
@@ -409,3 +411,39 @@ describe('document organization admission', () => {
 		);
 	});
 });
+
+it.each([
+	{ read: true, handoff: true, version: 3, policy: 'v4', rpc: 'v4' },
+	{ read: true, handoff: false, version: 2, policy: 'v3', rpc: 'v3' },
+	{ read: false, handoff: true, version: 1, policy: 'v2', rpc: 'v2' }
+])(
+	'gates shared evidence independently: $read / $handoff',
+	async ({ read, handoff, version, policy, rpc }) => {
+		const cmd = command({ reviewIntent: 'document_organization' });
+		const eligibility = evaluateAgenticChatWorkflowV4Admission({
+			policy: {
+				...ON,
+				specialistWorkflowsEnabled: true,
+				documentReadToolsEnabled: read,
+				documentEvidenceHandoffEnabled: handoff
+			},
+			userId: USER_ID,
+			command: cmd
+		});
+		if (!eligibility.eligible) throw new Error(eligibility.reason);
+		const input = await buildAgenticChatWorkflowV4AdmissionArgs({
+			userId: USER_ID,
+			command: cmd,
+			eligibility,
+			transportDecisionId: DECISION_ID
+		});
+		expect(input.p_specialist_snapshot?.profileVersion).toBe(version);
+		expect(input.p_policy_ref).toBe(`internal-document-organization:${policy}`);
+		const db = client({ data: receipt(input) });
+		await admitAgenticChatWorkflowV4Turn({ client: db, args: input });
+		expect(db.rpc).toHaveBeenCalledExactlyOnceWith(
+			`create_agentic_chat_document_review_turn_${rpc}`,
+			input
+		);
+	}
+);

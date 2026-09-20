@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import {
 	buildDocumentOrganizationSnapshotV2,
 	buildDocumentReadSnapshotV2,
+	buildDocumentEvidenceSnapshotV2,
 	hashSpecialistSnapshotV2,
 	DOCUMENT_ORGANIZATION_POLICY_REF,
 	type SpecialistSnapshotV2
@@ -16,6 +17,7 @@ import {
 import {
 	AGENTIC_CHAT_WORKFLOW_LIMITS,
 	AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF,
+	AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF,
 	agenticChatWorkflowPolicyForRef,
 	type AgenticChatProjectReviewIntentV1,
 	type AgenticChatWorkflowPolicy,
@@ -33,6 +35,7 @@ export type AgenticChatWorkflowV4AdmissionPolicyV1 = {
 	enabled: boolean;
 	specialistWorkflowsEnabled?: boolean;
 	documentReadToolsEnabled?: boolean;
+	documentEvidenceHandoffEnabled?: boolean;
 	/** The existing internal cohort, AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS. */
 	cohortUserIds: readonly string[];
 };
@@ -41,12 +44,15 @@ export function resolveAgenticChatWorkflowV4AdmissionPolicy(environment: {
 	AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED?: string;
 	AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED?: string;
 	AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED?: string;
+	AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED?: string;
 	AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS?: string;
 }): AgenticChatWorkflowV4AdmissionPolicyV1 {
 	return {
 		enabled: environment.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED?.trim() === 'true',
 		specialistWorkflowsEnabled:
 			environment.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED?.trim() === 'true',
+		documentEvidenceHandoffEnabled:
+			environment.AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED?.trim() === 'true',
 		documentReadToolsEnabled:
 			environment.AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED?.trim() === 'true',
 		cohortUserIds: parseChatWorkflowPrototypeUsers(
@@ -85,6 +91,7 @@ export type AgenticChatWorkflowV4EligibilityV1 =
 			message: string;
 			profile?: 'document_organization';
 			documentReadTools?: boolean;
+			documentEvidenceHandoff?: boolean;
 	  }
 	| { eligible: false; reason: AgenticChatWorkflowV4IneligibleReasonV1 };
 
@@ -138,7 +145,13 @@ export function evaluateAgenticChatWorkflowV4Admission(input: {
 		...(command.reviewIntent === 'document_organization'
 			? {
 					profile: 'document_organization' as const,
-					...(input.policy.documentReadToolsEnabled ? { documentReadTools: true } : {})
+					...(input.policy.documentReadToolsEnabled
+						? {
+								documentReadTools: true,
+								documentEvidenceHandoff:
+									input.policy.documentEvidenceHandoffEnabled === true
+							}
+						: {})
 				}
 			: {})
 	};
@@ -184,13 +197,17 @@ export async function buildAgenticChatWorkflowV4AdmissionArgs(input: {
 	const snapshot =
 		input.eligibility.profile === 'document_organization'
 			? input.eligibility.documentReadTools
-				? buildDocumentReadSnapshotV2()
+				? input.eligibility.documentEvidenceHandoff
+					? buildDocumentEvidenceSnapshotV2()
+					: buildDocumentReadSnapshotV2()
 				: buildDocumentOrganizationSnapshotV2()
 			: null;
 	const policyRef = snapshot
-		? snapshot.profileVersion === 2
-			? AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF
-			: DOCUMENT_ORGANIZATION_POLICY_REF
+		? snapshot.profileVersion === 3
+			? AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF
+			: snapshot.profileVersion === 2
+				? AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF
+				: DOCUMENT_ORGANIZATION_POLICY_REF
 		: AGENTIC_CHAT_WORKFLOW_V4_POLICY_REF;
 	const context = { type: 'project' as const, entityId: projectId, projectId };
 	const requestHash = await hashAgenticChatWorkflowRequestV1({
@@ -236,7 +253,8 @@ export type AgenticChatWorkflowV4AdmissionRpcClient = {
 		name:
 			| 'create_agentic_chat_workflow_turn_with_job_v1'
 			| 'create_agentic_chat_document_review_turn_v2'
-			| 'create_agentic_chat_document_review_turn_v3',
+			| 'create_agentic_chat_document_review_turn_v3'
+			| 'create_agentic_chat_document_review_turn_v4',
 		args: AgenticChatWorkflowV4AdmissionRpcArgs
 	): PromiseLike<RpcResult>;
 };
@@ -298,9 +316,11 @@ export async function admitAgenticChatWorkflowV4Turn(input: {
 }): Promise<AgenticChatWorkflowV4AdmissionResultV1> {
 	const { data, error } = await input.client.rpc(
 		input.args.p_specialist_snapshot
-			? input.args.p_specialist_snapshot.profileVersion === 2
-				? 'create_agentic_chat_document_review_turn_v3'
-				: 'create_agentic_chat_document_review_turn_v2'
+			? input.args.p_specialist_snapshot.profileVersion === 3
+				? 'create_agentic_chat_document_review_turn_v4'
+				: input.args.p_specialist_snapshot.profileVersion === 2
+					? 'create_agentic_chat_document_review_turn_v3'
+					: 'create_agentic_chat_document_review_turn_v2'
 			: 'create_agentic_chat_workflow_turn_with_job_v1',
 		input.args
 	);

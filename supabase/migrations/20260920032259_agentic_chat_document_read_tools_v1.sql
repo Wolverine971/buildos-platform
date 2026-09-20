@@ -1,3 +1,4 @@
+-- supabase/migrations/20260920032259_agentic_chat_document_read_tools_v1.sql
 -- Additive bounded document-read policy. Existing policy references remain tool-free.
 CREATE FUNCTION public.agentic_chat_workflow_policy_for_ref_v2(p_ref text)
 RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public AS $$

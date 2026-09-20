@@ -91,7 +91,7 @@ export async function labelImplicitOutcomes(params: {
 		.is('outcome', null)
 		.lt('applied_at', keptBefore)
 		.select('id');
-	if (!kept.error) summary.autoKept = (kept.data ?? []).length;
+	if (!kept.error) summary.autoKept = Array.isArray(kept.data) ? kept.data.length : 0;
 
 	// Entity flags past the horizon with no outcome yet.
 	const horizon = new Date(now.getTime() - policy.outcomes.horizonDays * DAY_MS).toISOString();
@@ -161,7 +161,7 @@ export async function labelImplicitOutcomes(params: {
 				.in('id', ids)
 				.is('outcome', null)
 				.select('id');
-			return result.error ? 0 : (result.data ?? []).length;
+			return result.error || !Array.isArray(result.data) ? 0 : result.data.length;
 		};
 		summary.stale = await write(groups.stale, 'stale', 'field_changed_within_horizon');
 		summary.notStale = await write(groups.notStale, 'not_stale', 'unchanged_within_horizon');

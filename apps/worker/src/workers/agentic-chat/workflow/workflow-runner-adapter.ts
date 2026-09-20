@@ -280,7 +280,7 @@ class WorkflowTerminal {
 		private readonly report: (stage: string, error: unknown) => void
 	) {}
 
-	async settle(outcome: AgenticChatWorkflowRunOutcomeV1, signal: AbortSignal): Promise<Handled> {
+	settle(outcome: AgenticChatWorkflowRunOutcomeV1, signal: AbortSignal): Promise<Handled> {
 		switch (outcome.kind) {
 			case 'completed':
 				return this.finalize({
@@ -307,7 +307,7 @@ class WorkflowTerminal {
 			case 'fenced':
 				if (outcome.reason === 'already_terminal') return this.reconciled();
 				// The old owner stops without writing; the current owner holds truth.
-				return this.done('stale_generation', null);
+				return Promise.resolve(this.done('stale_generation', null));
 			case 'aborted': {
 				const reason = signal.reason;
 				if (reason instanceof AgenticChatCancellationError) return this.cancel();
@@ -325,7 +325,7 @@ class WorkflowTerminal {
 		}
 	}
 
-	private async fail(failureCode: string, message: string): Promise<Handled> {
+	private fail(failureCode: string, message: string): Promise<Handled> {
 		return this.finalize({
 			status: 'failed',
 			failureCode,
@@ -350,7 +350,7 @@ class WorkflowTerminal {
 		});
 	}
 
-	private async decide(
+	private decide(
 		decision: AgenticChatWorkflowTerminalDecisionV1,
 		state: AgenticChatWorkflowRunStateV1 | null
 	) {

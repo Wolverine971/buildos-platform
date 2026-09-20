@@ -181,3 +181,15 @@ describe('workflow v4 flag matrix (Tasker 86 preparation, Tasker 87 execution)',
 		expect(() => buildAgenticChatWorkflowRoutesV1(routes, {})).toThrow(/pricing snapshots/);
 	});
 });
+
+it('keeps shared document evidence off until explicitly enabled', () => {
+	expect(loadAgenticChatConfig(DEDICATED_PROVIDER_ENV).documentEvidenceHandoffEnabled).toBe(
+		false
+	);
+	expect(
+		loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED: 'true'
+		}).documentEvidenceHandoffEnabled
+	).toBe(true);
+});

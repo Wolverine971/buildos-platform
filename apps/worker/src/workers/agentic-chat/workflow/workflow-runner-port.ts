@@ -81,10 +81,11 @@ export type AgenticChatWorkflowRunnerPortV1 = {
 
 /** Production default until Tasker 87 supplies durable dispatch: never calls a model. */
 export const unavailableAgenticChatWorkflowRunner: AgenticChatWorkflowRunnerPortV1 = {
-	run: async () => ({
-		kind: 'unavailable',
-		reason: 'workflow_model_execution_not_enabled'
-	})
+	run: () =>
+		Promise.resolve({
+			kind: 'unavailable',
+			reason: 'workflow_model_execution_not_enabled'
+		})
 };
 
 /** One structured, privacy-safe line per preparation; identifiers, counts, and durations only. */
