@@ -4,26 +4,158 @@
 	import ChatSessionAuditActions from '$lib/components/agent/ChatSessionAuditActions.svelte';
 	import type { PageData } from './$types';
 	import type { WorkbenchVersionSummary } from '$lib/types/specialist-workbench';
+	import type { PublishedSpecialistSelection } from '$lib/services/agentic-chat-v2/worker-transport-client';
+	type Recommendation = {
+		id: string;
+		status: 'selected' | 'uncertain' | 'unavailable' | 'pending';
+		selected: WorkbenchVersionSummary | null;
+		ranking: Array<{ name: string; draftId: string; version: number; probability: number }>;
+		confidence: number | null;
+		margin: number | null;
+		reason: string;
+		durationMs: number | null;
+		costUsd: number | null;
+	};
+	type RecommendationRequest = { requestId: string; projectId: string; question: string };
 	let { data }: { data: PageData } = $props();
 	let projectId = $state('');
 	let question = $state(
 		'What should we prioritize next, and what risks or missing information could change that recommendation?'
 	);
 	let specialistKey = $state('');
+	let suggestedVersions = $state.raw<WorkbenchVersionSummary[]>([]);
+	const availableSpecialists = $derived([
+		...data.publishedSpecialists,
+		...suggestedVersions.filter(
+			(suggested) =>
+				!data.publishedSpecialists.some(
+					(version) =>
+						version.draftId === suggested.draftId &&
+						version.version === suggested.version
+				)
+		)
+	]);
 	const selectedSpecialist = $derived(
-		data.publishedSpecialists.find(
+		availableSpecialists.find(
 			(version) => `${version.draftId}:${version.version}` === specialistKey
 		) ?? null
+	);
+	let recommendation = $state.raw<Recommendation | null>(null);
+	let recommendationRequest: RecommendationRequest | null = null;
+	let recommendationGeneration = 0;
+	let recommendationPending = $state(false);
+	let recommendationError = $state('');
+	let appliedRecommendation = $state.raw<PublishedSpecialistSelection | null>(null);
+	const selectedDecision = $derived(
+		appliedRecommendation &&
+			selectedSpecialist &&
+			appliedRecommendation.draftId === selectedSpecialist.draftId &&
+			appliedRecommendation.version === selectedSpecialist.version &&
+			appliedRecommendation.snapshotHash === selectedSpecialist.snapshotHash &&
+			appliedRecommendation.selectionProjectId === projectId &&
+			appliedRecommendation.selectionQuestion === question.trim()
+			? appliedRecommendation
+			: null
 	);
 	let review = $state<{
 		projectId: string;
 		question: string;
 		name: string;
-		specialist: WorkbenchVersionSummary | null;
+		specialist: (WorkbenchVersionSummary & PublishedSpecialistSelection) | null;
 	} | null>(null);
 	// The chat session that actually exists for this review, reported by the modal. Never
 	// guessed from the project or from "most recent"; cleared whenever a new review starts.
 	let sessionId = $state<string | null>(null);
+
+	function clearRecommendation() {
+		recommendationGeneration += 1;
+		recommendation = null;
+		recommendationRequest = null;
+		recommendationError = '';
+		appliedRecommendation = null;
+	}
+
+	async function askJev() {
+		if (recommendationPending || !projectId || question.trim().length < 3) return;
+		const request = recommendationRequest ?? {
+			requestId: crypto.randomUUID(),
+			projectId,
+			question: question.trim()
+		};
+		recommendationRequest = request;
+		const generation = ++recommendationGeneration;
+		recommendationPending = true;
+		recommendationError = '';
+		recommendation = null;
+		appliedRecommendation = null;
+		try {
+			const response = await fetch('/api/agent/specialists/recommendations', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				cache: 'no-store',
+				body: JSON.stringify(request)
+			});
+			const body = await response.json();
+			if (
+				generation !== recommendationGeneration ||
+				request.projectId !== projectId ||
+				request.question !== question.trim()
+			)
+				return;
+			if (!response.ok || !body.recommendation) {
+				throw new Error(
+					typeof body.error === 'string'
+						? body.error
+						: 'Jev could not recommend a specialist. You can still choose one yourself.'
+				);
+			}
+			recommendation = body.recommendation as Recommendation;
+		} catch (cause) {
+			if (generation === recommendationGeneration) {
+				recommendationError =
+					cause instanceof Error
+						? cause.message
+						: 'Jev is unavailable. You can still choose a specialist yourself.';
+			}
+		} finally {
+			recommendationPending = false;
+		}
+	}
+
+	function useRecommendation() {
+		const version = recommendation?.selected;
+		const request = recommendationRequest;
+		if (
+			!version ||
+			recommendation?.status !== 'selected' ||
+			!request ||
+			request.projectId !== projectId ||
+			request.question !== question.trim()
+		)
+			return;
+		if (
+			!availableSpecialists.some(
+				(item) => item.draftId === version.draftId && item.version === version.version
+			)
+		) {
+			suggestedVersions = [...suggestedVersions, version];
+		}
+		specialistKey = `${version.draftId}:${version.version}`;
+		appliedRecommendation = {
+			draftId: version.draftId,
+			version: version.version,
+			snapshotHash: version.snapshotHash,
+			selectionDecisionId: recommendation.id,
+			selectionQuestion: request.question,
+			selectionProjectId: request.projectId
+		};
+	}
+
+	function percent(value: number | null) {
+		return typeof value === 'number' && Number.isFinite(value)
+			? `${Math.round(value * 100)}%`
+			: '—';
+	}
 	function start(event: SubmitEvent) {
 		event.preventDefault();
 		const project = data.projects.find((project) => project.id === projectId);
@@ -33,7 +165,9 @@
 				projectId,
 				question: question.trim(),
 				name: project.name,
-				specialist: selectedSpecialist ? { ...selectedSpecialist } : null
+				specialist: selectedSpecialist
+					? { ...selectedSpecialist, ...selectedDecision }
+					: null
 			};
 		}
 	}
@@ -114,6 +248,7 @@
 				>Project
 				<select
 					bind:value={projectId}
+					onchange={clearRecommendation}
 					required
 					class="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2"
 				>
@@ -128,11 +263,12 @@
 					Specialist
 					<select
 						bind:value={specialistKey}
+						onchange={() => (appliedRecommendation = null)}
 						aria-describedby="specialist-selection-help"
 						class="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2"
 					>
 						<option value="">Built-in project analyst</option>
-						{#each data.publishedSpecialists as version (`${version.draftId}:${version.version}`)}
+						{#each availableSpecialists as version (`${version.draftId}:${version.version}`)}
 							<option value={`${version.draftId}:${version.version}`}>
 								{version.name} · v{version.version}
 							</option>
@@ -165,6 +301,7 @@
 				>What would you like to understand?
 				<textarea
 					bind:value={question}
+					oninput={clearRecommendation}
 					required
 					minlength="3"
 					maxlength="6000"
@@ -172,6 +309,93 @@
 					class="mt-2 block w-full resize-y rounded-md border border-border bg-background px-3 py-2 leading-relaxed"
 				></textarea>
 			</label>
+			{#if data.jevRecommendationsEnabled && data.publishedSpecialistsEnabled}
+				<section
+					class="rounded-lg border border-border bg-muted/20 p-4"
+					aria-labelledby="jev-heading"
+				>
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<div>
+							<h2 id="jev-heading" class="text-sm font-semibold text-foreground">
+								Choose with Jev
+							</h2>
+							<p class="mt-1 text-xs text-muted-foreground">
+								Rank your published specialists for this question, then choose
+								whether to use the result.
+							</p>
+						</div>
+						<button
+							type="button"
+							onclick={askJev}
+							disabled={recommendationPending ||
+								!projectId ||
+								question.trim().length < 3 ||
+								availableSpecialists.length === 0}
+							class="min-h-11 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground disabled:opacity-40"
+						>
+							{recommendationPending ? 'Asking Jev…' : 'Ask Jev'}
+						</button>
+					</div>
+					{#if recommendationError}<p role="alert" class="mt-3 text-sm text-destructive">
+							{recommendationError}
+						</p>{/if}
+					{#if recommendation}
+						<div class="mt-4 space-y-3" role="status" aria-live="polite">
+							<p class="text-sm font-medium text-foreground">
+								{#if recommendation.status === 'selected' && recommendation.selected}
+									Jev suggests {recommendation.selected.name} · v{recommendation
+										.selected.version}
+								{:else if recommendation.status === 'uncertain'}Jev is unsure which
+									specialist fits best.
+								{:else if recommendation.status === 'pending'}Jev is still ranking
+									this question. Ask again to check the same request.
+								{:else}Jev could not make a recommendation.{/if}
+							</p>
+							<p class="text-xs leading-relaxed text-muted-foreground">
+								{recommendation.reason}
+							</p>
+							{#if recommendation.ranking.length > 0}
+								<ol class="space-y-2" aria-label="Specialist ranking">
+									{#each recommendation.ranking.slice(0, 5) as ranked (`${ranked.draftId}:${ranked.version}`)}
+										<li
+											class="flex items-center justify-between gap-3 text-xs text-foreground"
+										>
+											<span>{ranked.name} · v{ranked.version}</span><span
+												class="tabular-nums text-muted-foreground"
+												>{percent(ranked.probability)}</span
+											>
+										</li>
+									{/each}
+								</ol>
+							{/if}
+							<p class="text-xs text-muted-foreground">
+								Confidence {percent(recommendation.confidence)} · Lead {percent(
+									recommendation.margin
+								)}
+								{#if recommendation.durationMs !== null}
+									· {Math.round(recommendation.durationMs)} ms{/if}
+								{#if recommendation.costUsd !== null}
+									· ${recommendation.costUsd.toFixed(4)}{/if}
+							</p>
+							{#if recommendation.status === 'selected' && recommendation.selected}
+								<button
+									type="button"
+									onclick={useRecommendation}
+									disabled={!!selectedDecision}
+									class="min-h-11 rounded-md border border-accent/50 px-3 py-2 text-sm font-medium text-foreground disabled:opacity-50"
+								>
+									{selectedDecision
+										? 'Selected for this review'
+										: 'Use this specialist'}
+								</button>
+								<p class="text-xs text-muted-foreground">
+									Start the review below when you’re ready.
+								</p>
+							{/if}
+						</div>
+					{/if}
+				</section>
+			{/if}
 			<p class="text-sm text-muted-foreground">
 				Reads saved project context and shows both specialists’ findings. This review does
 				not edit your project or search the web.

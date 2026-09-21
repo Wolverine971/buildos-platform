@@ -194,8 +194,9 @@ export default defineConfig(({ mode }) => {
 			target: 'es2020',
 			cssTarget: 'chrome80',
 
-			// Use esbuild for faster minification
-			minify: isProd ? 'esbuild' : false,
+			// Oxc is Vite 8's default minifier (30-90x faster than terser for
+			// ~0.5-2% worse compression). esbuild is now an optional dependency.
+			minify: isProd ? 'oxc' : false,
 
 			// Source maps only in dev
 			sourcemap: isDev,
@@ -209,32 +210,33 @@ export default defineConfig(({ mode }) => {
 			// CSS code splitting
 			cssCodeSplit: true,
 
-			// Rollup options for better chunking
+			// NOTE: keep this key as `rollupOptions`, not `rolldownOptions`.
+			// In Vite 8 the two are aliases, but the alias is only installed
+			// after config merging: `rolldownOptions ??= rollupOptions`. Because
+			// SvelteKit sets `build.rollupOptions` from its own config hook,
+			// declaring `rolldownOptions` here would win the `??=` and silently
+			// drop Kit's options (server input, asset file names). `build.*`
+			// is also not on Vite's deprecation-warning path - only
+			// `optimizeDeps.rollupOptions` warns.
 			rollupOptions: {
 				output: {
-					// Manual chunks for better caching (only for client-side chunks)
-					manualChunks: (id) => {
-						// Skip SSR externals and node_modules that might be external
-						if (id.includes('node_modules')) {
-							// UI libraries
-							if (
-								id.includes('@tiptap/core') ||
-								id.includes('@tiptap/starter-kit') ||
-								id.includes('@tiptap/extension')
-							) {
-								return 'ui-vendor';
-							}
-							// Heavy vendors (these are less likely to be external)
-							if (id.includes('openai')) {
-								return 'ai-vendor';
-							}
-							if (id.includes('googleapis') || id.includes('google-auth-library')) {
-								return 'google-vendor';
-							}
-							if (id.includes('stripe')) {
-								return 'stripe-vendor';
-							}
-						}
+					// Manual chunks for better caching (client-side chunks only).
+					// Vite 8 / Rolldown replaces the `manualChunks` callback with
+					// declarative `codeSplitting.groups`. Server-only packages here
+					// are SSR externals and simply never match on the client.
+					codeSplitting: {
+						groups: [
+							{
+								name: 'ui-vendor',
+								test: /node_modules[\\/]@tiptap[\\/](core|starter-kit|extension)/
+							},
+							{ name: 'ai-vendor', test: /node_modules[\\/]openai[\\/]/ },
+							{
+								name: 'google-vendor',
+								test: /node_modules[\\/](googleapis|google-auth-library)[\\/]/
+							},
+							{ name: 'stripe-vendor', test: /node_modules[\\/]stripe[\\/]/ }
+						]
 					}
 				}
 			}

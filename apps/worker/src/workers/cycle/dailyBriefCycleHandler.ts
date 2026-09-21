@@ -1,3 +1,4 @@
+// apps/worker/src/workers/cycle/dailyBriefCycleHandler.ts
 import type { CycleHandler } from './cycleHandlerRegistry';
 import type { BriefJobData } from '../shared/queueUtils';
 import { createLegacyJob } from '../shared/jobAdapter';
@@ -60,7 +61,9 @@ export const processDailyBriefCycle: CycleHandler<'daily_brief'> = async ({ run,
 					summary:
 						briefResult.status === 'stale'
 							? `Skipped stale Daily Brief occurrence for ${briefResult.briefDate}.`
-							: `Daily brief for ${briefResult.briefDate} is already processing.`,
+							: briefResult.status === 'skipped_no_projects'
+								? `Skipped Daily Brief for ${briefResult.briefDate} because no eligible projects were found.`
+								: `Daily brief for ${briefResult.briefDate} is already processing.`,
 					artifact_refs: artifactRefs
 				};
 

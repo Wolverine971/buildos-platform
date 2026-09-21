@@ -95,6 +95,8 @@ describe('workflow v4 admission policy', () => {
 			documentReadToolsEnabled: false,
 			documentEvidenceHandoffEnabled: false,
 			publishedSpecialistsEnabled: false,
+			projectReviewV2Enabled: false,
+			projectReviewV3Enabled: false,
 			cohortUserIds: []
 		});
 		for (const value of ['TRUE', '1', 'yes', 'on', '']) {
@@ -115,6 +117,8 @@ describe('workflow v4 admission policy', () => {
 			documentReadToolsEnabled: false,
 			documentEvidenceHandoffEnabled: false,
 			publishedSpecialistsEnabled: false,
+			projectReviewV2Enabled: false,
+			projectReviewV3Enabled: false,
 			cohortUserIds: [USER_ID]
 		});
 	});
@@ -449,3 +453,56 @@ it.each([
 		);
 	}
 );
+
+it.each([false, true])('pins source-bound v3 independently of the v2 switch (%s)', async (v2) => {
+	const policy = { ...ON, projectReviewV2Enabled: v2, projectReviewV3Enabled: true };
+	const eligibility = evaluateAgenticChatWorkflowV4Admission({
+		policy,
+		userId: USER_ID,
+		command: command()
+	});
+	if (!eligibility.eligible) throw new Error(eligibility.reason);
+	const input = await buildAgenticChatWorkflowV4AdmissionArgs({
+		userId: USER_ID,
+		command: command(),
+		eligibility,
+		transportDecisionId: DECISION_ID
+	});
+	expect(input.p_policy_ref).toBe('internal-project-review:v3');
+	expect(input.p_policy.version).toBe('agentic_chat_project_review_policy_v3');
+	expect(
+		evaluateAgenticChatWorkflowV4Admission({
+			policy,
+			userId: USER_ID,
+			command: command({ reviewIntent: undefined })
+		}).eligible
+	).toBe(false);
+});
+
+it('selects project review v2 only through the server flag and keeps ordinary chat out', async () => {
+	const policy = { ...ON, projectReviewV2Enabled: true };
+	const eligibility = evaluateAgenticChatWorkflowV4Admission({
+		policy,
+		userId: USER_ID,
+		command: command()
+	});
+	expect(eligibility).toMatchObject({ eligible: true, projectReviewV2: true });
+	if (!eligibility.eligible) throw new Error(eligibility.reason);
+	const v2 = await buildAgenticChatWorkflowV4AdmissionArgs({
+		userId: USER_ID,
+		command: command(),
+		eligibility,
+		transportDecisionId: DECISION_ID
+	});
+	expect(v2.p_policy_ref).toBe('internal-project-review:v2');
+	expect(v2.p_policy.version).toBe('agentic_chat_project_review_policy_v2');
+	expect(v2.p_specialist_snapshot).toBeUndefined();
+	expect((await args()).p_policy_ref).toBe('internal-project-review:v1');
+	expect(
+		evaluateAgenticChatWorkflowV4Admission({
+			policy,
+			userId: USER_ID,
+			command: command({ reviewIntent: null })
+		})
+	).toEqual({ eligible: false, reason: 'not_requested' });
+});

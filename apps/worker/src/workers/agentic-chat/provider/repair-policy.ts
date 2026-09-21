@@ -22,6 +22,26 @@ const REVIEWER_ONLY_CONTROL_TOOL_NAMES = new Set([
 ]);
 const MAX_WITHHELD_CANDIDATE_CHARS = 1_500;
 
+/** A promise to execute a next stage is not a completed batch answer. */
+export function hasUnfinishedBatchAction(text: string): boolean {
+	return /(?:^|[.!?:;]\s+)(?:(?:first|then|now|next),?\s+)?(?:i['’]ll|i will|let me|i['’]m going to|i am going to)\s+(?:now\s+)?(?:propose|create|update|delete|save|link|unlink|move|apply|execute|add|remove|schedule)\b/i.test(
+		text.trim()
+	);
+}
+
+export function buildBatchPromiseRepairRequest(
+	request: AgenticChatTurnProviderRequestV1
+): AgenticChatTurnProviderRequestV1 {
+	return appendSystemInstruction(
+		{
+			...request,
+			logicalProviderRound: request.logicalProviderRound + 1,
+			passRole: 'repair'
+		},
+		'The previous draft stopped after promising another execution stage and was withheld. Continue only work already requested by the user, using the actual saved receipts and returned IDs. Never replay successful writes. Propose remaining calls through the existing independent review; this instruction grants no additional permission. If the request is already complete, answer from receipts. If a remaining step cannot be completed, say what remains undone. Do not end with a promise to continue working.'
+	);
+}
+
 export function buildUnavailableSkillRepairRequest(
 	request: AgenticChatTurnProviderRequestV1,
 	calls: readonly CompletedProviderToolCall[],

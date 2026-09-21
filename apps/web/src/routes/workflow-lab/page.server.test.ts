@@ -89,6 +89,7 @@ describe('workflow lab published specialist picker', () => {
 		expect(result).toEqual({
 			projects: [{ id: 'project-1', name: 'Launch' }],
 			publishedSpecialists: [version],
+			jevRecommendationsEnabled: false,
 			publishedSpecialistsEnabled: true,
 			specialistLoadError: null
 		});

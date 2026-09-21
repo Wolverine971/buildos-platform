@@ -130,6 +130,8 @@ type AgenticChatBaseConfig = {
 	documentReadToolsEnabled?: boolean;
 	documentEvidenceHandoffEnabled?: boolean;
 	publishedSpecialistsEnabled?: boolean;
+	projectReviewV2Enabled?: boolean;
+	projectReviewV3Enabled?: boolean;
 	/** Counterfactual specialist/tool selection only; never enables routing. */
 	jevSpecialistSelection?: 'off' | 'shadow';
 	liveVisionEnabled: boolean;
@@ -182,6 +184,16 @@ export function loadAgenticChatConfig(
 		environment.AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED,
 		false,
 		'AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED'
+	);
+	const projectReviewV3Enabled = parseBoolean(
+		environment.AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED,
+		false,
+		'AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED'
+	);
+	const projectReviewV2Enabled = parseBoolean(
+		environment.AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED,
+		false,
+		'AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED'
 	);
 	const publishedSpecialistsEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED,
@@ -292,6 +304,8 @@ export function loadAgenticChatConfig(
 		specialistWorkflowsEnabled,
 		documentReadToolsEnabled,
 		publishedSpecialistsEnabled,
+		projectReviewV2Enabled,
+		projectReviewV3Enabled,
 		documentEvidenceHandoffEnabled,
 		jevSpecialistSelection,
 		liveVisionEnabled,

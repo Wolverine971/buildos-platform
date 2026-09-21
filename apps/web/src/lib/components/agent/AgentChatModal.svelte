@@ -47,7 +47,10 @@
 		TurnHandleV1
 	} from '@buildos/shared-types';
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
-	import type { AgenticChatWorkerCommand } from '$lib/services/agentic-chat-v2/worker-transport-client';
+	import type {
+		AgenticChatWorkerCommand,
+		PublishedSpecialistSelection
+	} from '$lib/services/agentic-chat-v2/worker-transport-client';
 	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
 	import {
@@ -178,7 +181,7 @@
 		composerPlaceholder?: string;
 		/** Explicit version for document reviews in this host; ordinary chat is unchanged. */
 		publishedSpecialist?:
-			| (NonNullable<AgenticChatWorkerCommand['publishedSpecialist']> & {
+			| (PublishedSpecialistSelection & {
 					name: string;
 			  })
 			| null;

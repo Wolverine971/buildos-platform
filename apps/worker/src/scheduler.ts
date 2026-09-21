@@ -45,6 +45,7 @@ import {
 	persistDailyBriefCycleShadowMetrics
 } from './workers/cycle/cycleMetrics';
 import { runDailyBriefCycleShadow } from './workers/cycle/dailyBriefCycleShadow';
+import { getDailyBriefEligibleUserIds } from './workers/brief/dailyBriefEligibility';
 import { checkAndScheduleAgentOperatives } from './scheduler/agentOperatives';
 import { runAgenticChatSensitiveTranscriptCleanup } from './scheduler/agenticChatRetention';
 import { runPreparedPromptRetentionCleanup } from './scheduler/promptArtifactRetention';
@@ -610,8 +611,31 @@ async function checkAndScheduleBriefs() {
 
 		console.log(`📋 Found ${preferences.length} active preference(s)`);
 
+		// An active schedule is not enough to make a brief useful. Resolve
+		// ontology eligibility before engagement and user lookups so accounts with
+		// no briefable project content do not enter the queue at all.
+		const preferenceUserIds = preferences
+			.map((preference) => preference.user_id)
+			.filter(Boolean);
+		const eligibleUserIds = await getDailyBriefEligibleUserIds(preferenceUserIds);
+		const eligiblePreferences = preferences.filter((preference) =>
+			eligibleUserIds.has(preference.user_id)
+		);
+		const skippedProjectlessCount = preferences.length - eligiblePreferences.length;
+
+		if (skippedProjectlessCount > 0) {
+			console.log(
+				`⏭️ Skipping ${skippedProjectlessCount} active brief preference(s) with no eligible ontology projects`
+			);
+		}
+
+		if (eligiblePreferences.length === 0) {
+			console.log('✅ No active brief preferences have eligible ontology projects');
+			return;
+		}
+
 		// PHASE 0: Batch fetch user timezones and names (centralized source of truth)
-		const userIds = preferences.map((p) => p.user_id).filter(Boolean);
+		const userIds = eligiblePreferences.map((preference) => preference.user_id);
 		const { data: users } = await supabase
 			.from('users')
 			.select('id, timezone, name, email')
@@ -644,7 +668,7 @@ async function checkAndScheduleBriefs() {
 			}
 		>();
 
-		if (ENGAGEMENT_BACKOFF_ENABLED && preferences.length > 0) {
+		if (ENGAGEMENT_BACKOFF_ENABLED && eligiblePreferences.length > 0) {
 			console.log('🔍 Batch checking engagement status for all users (optimized)...');
 
 			try {
@@ -666,8 +690,8 @@ async function checkAndScheduleBriefs() {
 
 				// Fallback to original behavior if batch fails
 				const MAX_CONCURRENT_CHECKS = 20;
-				for (let i = 0; i < preferences.length; i += MAX_CONCURRENT_CHECKS) {
-					const batch = preferences.slice(i, i + MAX_CONCURRENT_CHECKS);
+				for (let i = 0; i < eligiblePreferences.length; i += MAX_CONCURRENT_CHECKS) {
+					const batch = eligiblePreferences.slice(i, i + MAX_CONCURRENT_CHECKS);
 
 					const engagementChecks = await Promise.allSettled(
 						batch.map(async (preference) => {
@@ -710,7 +734,7 @@ async function checkAndScheduleBriefs() {
 			};
 		}> = [];
 
-		for (const preference of preferences) {
+		for (const preference of eligiblePreferences) {
 			if (!preference.user_id) {
 				console.warn('Skipping preference with no user_id');
 				continue;

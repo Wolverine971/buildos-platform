@@ -41,7 +41,7 @@ export interface BriefJobExecutionOptions {
 }
 
 export interface BriefJobExecutionResult {
-	status: 'generated' | 'existing' | 'already_processing' | 'stale';
+	status: 'generated' | 'existing' | 'already_processing' | 'stale' | 'skipped_no_projects';
 	briefId: string | null;
 	briefDate: string;
 	notificationOutcome?: BriefNotificationOutcome;
@@ -504,6 +504,31 @@ export async function processBriefJob(
 			job.signal
 		);
 		throwIfJobAborted(job);
+
+		if (ontologyBrief.status === 'skipped_no_projects') {
+			const message = `No eligible ontology projects for ${validatedBriefDate}; brief generation skipped`;
+			console.log(`⏭️ ${message} for user ${job.data.userId}`);
+			await job.log(message);
+
+			if (manageQueueRecord) {
+				await mergeBriefJobMetadata(
+					job,
+					{
+						skipReason: 'no_eligible_projects',
+						skippedAt: new Date().toISOString()
+					},
+					'record projectless brief skip metadata'
+				);
+				await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
+			}
+
+			return {
+				status: 'skipped_no_projects',
+				briefId: null,
+				briefDate: validatedBriefDate
+			};
+		}
+
 		const brief: { id: string } = { id: ontologyBrief.id };
 
 		try {

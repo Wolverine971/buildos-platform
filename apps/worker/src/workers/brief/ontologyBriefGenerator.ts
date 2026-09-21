@@ -47,6 +47,7 @@ import type { YesterdayPlanItem } from './ontologyPrompts.js';
 // ============================================================================
 
 export interface OntologyDailyBriefResult {
+	status: 'generated';
 	id: string;
 	userId: string;
 	actorId: string;
@@ -58,6 +59,17 @@ export interface OntologyDailyBriefResult {
 	generationStatus: string;
 	projectBriefIds: string[];
 }
+
+export interface OntologyDailyBriefSkippedResult {
+	status: 'skipped_no_projects';
+	userId: string;
+	actorId: string;
+	briefDate: string;
+}
+
+export type OntologyDailyBriefGenerationResult =
+	| OntologyDailyBriefResult
+	| OntologyDailyBriefSkippedResult;
 
 interface ProjectBriefLLMResponse {
 	briefMarkdown?: string;
@@ -386,17 +398,21 @@ function normalizeLLMProjectBriefMarkdown(
 // ============================================================================
 
 async function updateProgress(
-	briefId: string,
+	briefId: string | null,
 	progress: { step: string; progress: number },
 	jobId?: string
 ): Promise<void> {
-	// Update ontology daily brief progress
-	await supabase
-		.from('ontology_daily_briefs')
-		.update({
-			updated_at: new Date().toISOString()
-		})
-		.eq('id', briefId);
+	// A project-eligibility preflight runs before a brief row exists. Keep queue
+	// progress current without creating a placeholder brief that may immediately
+	// become a failed empty-state record.
+	if (briefId) {
+		await supabase
+			.from('ontology_daily_briefs')
+			.update({
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', briefId);
+	}
 
 	// Also update job metadata if job ID is provided
 	if (jobId) {
@@ -1083,7 +1099,7 @@ export async function generateOntologyDailyBrief(
 	timezone: string,
 	jobId?: string,
 	signal?: AbortSignal
-): Promise<OntologyDailyBriefResult> {
+): Promise<OntologyDailyBriefGenerationResult> {
 	throwIfAborted(signal);
 	console.log(`[OntologyBrief] Starting generation for user ${userId} on ${briefDate}`);
 
@@ -1111,6 +1127,28 @@ export async function generateOntologyDailyBrief(
 
 	const briefDateInUserTz = briefDate || getDateInTimezone(new Date(), userTimezone);
 	const briefDateObj = parseISO(briefDateInUserTz + 'T00:00:00');
+
+	// Resolve project eligibility before creating a daily brief row. Having no
+	// eligible project content is an expected empty state, not a retryable worker
+	// failure and not a failed brief artifact.
+	await updateProgress(null, { step: 'loading_ontology_data', progress: 10 }, jobId);
+	const projectsData = await dataLoader.loadUserOntologyData(
+		userId,
+		actorId,
+		briefDateObj,
+		userTimezone
+	);
+	const recentlyPausedProjects = await dataLoader.loadRecentlyPausedProjects(userId, actorId);
+
+	if (projectsData.length === 0 && recentlyPausedProjects.length === 0) {
+		console.log(`[OntologyBrief] No eligible ontology projects for user ${userId}; skipping`);
+		return {
+			status: 'skipped_no_projects',
+			userId,
+			actorId,
+			briefDate: briefDateInUserTz
+		};
+	}
 
 	// Create or update the ontology daily brief record
 	const briefMetadata: Partial<OntologyBriefMetadata> = {
@@ -1143,22 +1181,6 @@ export async function generateOntologyDailyBrief(
 
 	try {
 		throwIfAborted(signal);
-		// Step 1: Load ontology data
-		await updateProgress(dailyBrief.id, { step: 'loading_ontology_data', progress: 10 }, jobId);
-
-		const projectsData = await dataLoader.loadUserOntologyData(
-			userId,
-			actorId,
-			briefDateObj,
-			userTimezone
-		);
-
-		const recentlyPausedProjects = await dataLoader.loadRecentlyPausedProjects(userId, actorId);
-
-		if (projectsData.length === 0 && recentlyPausedProjects.length === 0) {
-			throw new Error('No ontology projects found for user');
-		}
-
 		console.log(
 			`[OntologyBrief] Loaded ${projectsData.length} active projects and ${recentlyPausedProjects.length} paused notices for user ${userId}`
 		);
@@ -1490,6 +1512,7 @@ export async function generateOntologyDailyBrief(
 		console.log(`[OntologyBrief] Successfully generated brief for user ${userId}`);
 
 		return {
+			status: 'generated',
 			id: finalBrief.id,
 			userId: finalBrief.user_id,
 			actorId: finalBrief.actor_id,

@@ -10,13 +10,19 @@ import {
 	type AgenticChatWorkflowPhaseV1,
 	type AgenticChatWorkflowProjectionV1,
 	type AgenticChatWorkflowResultQualityV1,
-	type AgenticChatWorkflowRoleReportV1,
+	type AgenticChatWorkflowRoleReport,
+	type AgenticChatWorkflowRoleReportV3,
 	type AgenticChatWorkflowStepKeyV1,
 	type AgenticChatWorkflowStepStatusV1,
 	type AgenticChatWorkflowTerminalOutcomeV1,
 	type JsonObject
 } from '@buildos/shared-types';
-import { fromDurableWorkflowRoleReport, renderWorkflowRoleReport } from './role-report';
+import {
+	fromDurableWorkflowRoleReport,
+	renderWorkflowRoleReport,
+	durableEvidenceIndexFromPreparedContext
+} from './role-report';
+import { renderSourceBoundSelection, sourceBoundUnits } from './source-bound-report';
 import type {
 	AgenticChatWorkflowCheckpointV1,
 	AgenticChatWorkflowRunStateV1
@@ -259,7 +265,7 @@ export function workflowCoverageGap(
 /** Accepted durable reports, in step order. Results that fail the shape check are ignored. */
 export function acceptedWorkflowReports(
 	state: AgenticChatWorkflowRunStateV1
-): AgenticChatWorkflowRoleReportV1[] {
+): AgenticChatWorkflowRoleReport[] {
 	return (['project_analyst', 'risk_reviewer'] as const).flatMap((key) => {
 		const report = acceptedReport(state, key);
 		return report ? [report] : [];
@@ -289,6 +295,17 @@ export function renderModelFreeWorkflowAnswer(
 	state: AgenticChatWorkflowRunStateV1,
 	reasonCode: string
 ): string {
+	if (state.policyRef === 'internal-project-review:v3') {
+		if (!state.context) throw new Error('source_context_unavailable');
+		const units = sourceBoundUnits(
+			acceptedWorkflowReports(state) as AgenticChatWorkflowRoleReportV3[],
+			{
+				...state.context,
+				evidence: durableEvidenceIndexFromPreparedContext(state.context)
+			}
+		);
+		return `Partial review: the combined selection could not finish.\n\n${renderSourceBoundSelection(JSON.stringify({ selection: units.map((unit) => unit.id) }), units, acceptedWorkflowReports(state).length !== 2)}`;
+	}
 	const reason =
 		MODEL_FREE_REASONS[reasonCode] ??
 		MODEL_FREE_REASONS[reasonCode.replace(/^(dispatch_|workflow_)/, '')] ??
@@ -312,19 +329,27 @@ export const AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE =
 function acceptedReport(
 	state: AgenticChatWorkflowRunStateV1,
 	key: 'project_analyst' | 'risk_reviewer'
-): AgenticChatWorkflowRoleReportV1 | null {
+): AgenticChatWorkflowRoleReport | null {
 	const step = state.steps[key];
 	const result = step?.status === 'accepted' ? step.result : null;
 	if (
 		!result ||
-		result.version !== 'chat_workflow_role_report_v1' ||
+		(result.version !== 'chat_workflow_role_report_v1' &&
+			!(
+				result.version === 'chat_workflow_role_report_v3' &&
+				state.policyRef === 'internal-project-review:v3'
+			) &&
+			!(
+				result.version === 'chat_workflow_role_report_v2' &&
+				state.policyRef === 'internal-project-review:v2'
+			)) ||
 		result.role !== key ||
 		typeof result.summary !== 'string' ||
 		!Array.isArray(result.findings)
 	) {
 		return null;
 	}
-	return result as unknown as AgenticChatWorkflowRoleReportV1;
+	return result as unknown as AgenticChatWorkflowRoleReport;
 }
 
 function boundText(text: string, maximum: number): string {

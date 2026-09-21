@@ -18,6 +18,9 @@ export type AgenticChatTerminalTextIntegrityResultV1 = {
 	finalizationGuard: FinalizationGuardResult | null;
 };
 
+const UNFULFILLED_TURN_NOTICE =
+	'I could not finish the full request in this turn. The remaining work is still pending.';
+
 /**
  * Apply the same deterministic terminal safety floors as the legacy loop after
  * every provider/tool round is durable and before the worker's terminal CAS.
@@ -49,14 +52,34 @@ export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 		explicitMutationRequested: mutationRequested,
 		unfulfilledOutcomes
 	});
-	const guard = applyFinalizationGuard({
+	let guard = applyFinalizationGuard({
 		finalAssistantText: integrityText,
 		assistantText: input.assistantText,
 		toolExecutions: input.toolExecutions,
 		mutationRequested,
 		unfulfilledOutcomes
 	});
-	const guardedAssistantText = guard.applied ? guard.text : integrityText;
+	let guardedAssistantText = guard.applied ? guard.text : integrityText;
+	// A failed continuation can leave only successful write receipts: those receipts
+	// prove the saved changes, but not completion of the whole request. Preserve the
+	// host's explicit partial outcome even when the batch lane declared no contract.
+	// Do not infer disclosure from words such as "pending" in task titles or content.
+	if (
+		input.finishedReason === 'mutation_unfulfilled' &&
+		mutationRequested &&
+		!guardedAssistantText.includes(UNFULFILLED_TURN_NOTICE)
+	) {
+		guardedAssistantText = [guardedAssistantText.trim(), UNFULFILLED_TURN_NOTICE]
+			.filter(Boolean)
+			.join('\n\n');
+		guard = {
+			...guard,
+			applied: true,
+			text: guardedAssistantText,
+			reason: guard.reason ?? 'incomplete_mutation_after_reads',
+			finishedReason: 'mutation_unfulfilled'
+		};
+	}
 	const finishedReason =
 		guard.finishedReason && input.finishedReason === 'stop'
 			? guard.finishedReason

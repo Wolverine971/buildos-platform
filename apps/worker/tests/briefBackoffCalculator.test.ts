@@ -219,6 +219,30 @@ describe('BriefBackoffCalculator', () => {
 	});
 
 	describe('Dormant account check-in (60+ days)', () => {
+		it('loads only completed briefs for individual fallback decisions', async () => {
+			mockUserLastVisit(120);
+			const briefQuery = {
+				select: vi.fn(),
+				eq: vi.fn(),
+				order: vi.fn(),
+				limit: vi.fn(),
+				single: vi.fn().mockResolvedValue({
+					data: null,
+					error: { code: 'PGRST116' }
+				})
+			};
+			briefQuery.select.mockReturnValue(briefQuery);
+			briefQuery.eq.mockReturnValue(briefQuery);
+			briefQuery.order.mockReturnValue(briefQuery);
+			briefQuery.limit.mockReturnValue(briefQuery);
+			mockSupabase.from.mockReturnValueOnce(briefQuery);
+
+			await calculator.shouldSendDailyBrief('user-1');
+
+			expect(briefQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
+			expect(briefQuery.eq).toHaveBeenCalledWith('generation_status', 'completed');
+		});
+
 		it('should send dormant check-in if no brief has ever been sent', async () => {
 			mockUserLastVisit(60);
 			mockLastBriefSent(null);

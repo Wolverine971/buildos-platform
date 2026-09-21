@@ -17,9 +17,11 @@ const {
 }));
 
 vi.mock('$lib/services/calendar-service', () => ({
-	CalendarService: vi.fn().mockImplementation(() => ({
-		hasValidConnection: hasValidConnectionMock
-	}))
+	CalendarService: vi.fn().mockImplementation(function () {
+		return {
+			hasValidConnection: hasValidConnectionMock
+		};
+	})
 }));
 
 vi.mock('$lib/server/google-calendar-connection-status', () => ({
@@ -36,19 +38,23 @@ vi.mock('$lib/server/google-calendar-target.service', () => ({
 
 vi.mock('$lib/services/calendar-analysis.service', () => ({
 	CalendarAnalysisService: {
-		getInstance: vi.fn(() => ({
-			analyzeUserCalendar: analyzeUserCalendarMock,
-			getAnalysisHistory: getAnalysisHistoryMock,
-			getCalendarProjects: getCalendarProjectsMock
-		}))
+		getInstance: vi.fn(function () {
+			return {
+				analyzeUserCalendar: analyzeUserCalendarMock,
+				getAnalysisHistory: getAnalysisHistoryMock,
+				getCalendarProjects: getCalendarProjectsMock
+			};
+		})
 	}
 }));
 
 vi.mock('$lib/services/errorLogger.service', () => ({
 	ErrorLoggerService: {
-		getInstance: vi.fn(() => ({
-			logError: logErrorMock
-		}))
+		getInstance: vi.fn(function () {
+			return {
+				logError: logErrorMock
+			};
+		})
 	}
 }));
 

@@ -236,6 +236,7 @@ export class BriefBackoffCalculator {
 			.from('ontology_daily_briefs')
 			.select('brief_date, generation_completed_at')
 			.eq('user_id', userId)
+			.eq('generation_status', 'completed')
 			.order('brief_date', { ascending: false })
 			.limit(1)
 			.single();

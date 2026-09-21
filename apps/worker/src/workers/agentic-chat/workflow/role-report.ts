@@ -6,8 +6,12 @@ import {
 } from '@buildos/agentic-chat-runtime/specialists';
 import type {
 	AgenticChatWorkflowEvidenceRefV1,
-	AgenticChatWorkflowRoleReportV1
+	AgenticChatWorkflowRoleReport,
+	AgenticChatWorkflowReviewOutcomeV2
 } from '@buildos/shared-types';
+import { collectRecordLabels } from './prepared-context';
+import type { AgenticChatWorkflowEvidenceVersionV1, JsonObject } from '@buildos/shared-types';
+import { AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2 } from '@buildos/shared-types';
 
 /**
  * Tasker 83 bounded role contract for the read-only project review.
@@ -79,8 +83,15 @@ export type ChatWorkflowRoleReportV1 = {
 	unsupportedFindings: number;
 };
 
+export type ChatWorkflowRoleReportV2 = Omit<ChatWorkflowRoleReportV1, 'version'> & {
+	version: typeof AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2;
+	outcome: AgenticChatWorkflowReviewOutcomeV2;
+	specialist: { id: string; version: number };
+};
+export type ChatWorkflowRoleReport = ChatWorkflowRoleReportV1 | ChatWorkflowRoleReportV2;
+
 export type ChatWorkflowRoleReportParseResult =
-	| { ok: true; report: ChatWorkflowRoleReportV1 }
+	| { ok: true; report: ChatWorkflowRoleReport }
 	| { ok: false; reason: string };
 
 const EVIDENCE_KINDS: Record<string, string> = {
@@ -134,16 +145,17 @@ export function buildWorkflowEvidenceIndex(context: MasterPromptContext): Map<st
 
 export function buildSpecialistReportInstructions(
 	assignment: string,
-	retry?: { reason: string }
+	retry?: { reason: string },
+	projectReviewV2 = false
 ): string {
 	const L = CHAT_WORKFLOW_ROLE_REPORT_LIMITS;
 	const counts = retry ? COMPACT_COUNTS : L;
 	return `${assignment}
 
 Return only one JSON object, with no Markdown or commentary:
-{"summary":"...","findings":[{"claim":"...","basis":"recorded","evidence":["<record id>"]}],"risks":[{"risk":"...","evidence":["<record id>"]}],"unknowns":["..."],"recommendation":"..."}
-- findings: 1-${counts.findings} items. Each claim is under 240 characters and cites 1-${L.referencesPerItem} record ids copied exactly from PROJECT EVIDENCE. A finding without a supplied id is discarded.
-- basis is "recorded" only when the records state it; otherwise "inferred".
+{${projectReviewV2 ? '"outcome":"findings",' : ''}"summary":"...","findings":[{"claim":"...","basis":"recorded","evidence":["<record id>"]}],"risks":[{"risk":"...","evidence":["<record id>"]}],"unknowns":["..."],"recommendation":"..."}
+- findings: ${projectReviewV2 ? '0' : '1'}-${counts.findings} items. Each claim is under 240 characters and cites 1-${L.referencesPerItem} record ids copied exactly from PROJECT EVIDENCE. A finding without a supplied id is discarded.
+${projectReviewV2 ? '- outcome must be findings, no_material_findings, insufficient_evidence, or needs_clarification. Use findings only with at least one supported finding. Other outcomes require empty findings and risks; insufficient_evidence and needs_clarification require a specific unknown. Every risk must cite a supplied record. Never fabricate a finding; limit a clean review to inspected evidence.\n' : ''}- basis is "recorded" only when the records state it; otherwise "inferred".
 - risks: at most ${counts.risks}; unknowns: at most ${counts.unknowns}. Each is under 200 characters.
 - summary is under 240 characters; recommendation is under 400 characters.
 Keep private reasoning brief. The whole response, including reasoning, has a small token budget.${
@@ -157,6 +169,18 @@ export function parseWorkflowRoleReport(
 	text: string,
 	role: ChatWorkflowSpecialistRole,
 	evidence: ReadonlyMap<string, string>
+): { ok: true; report: ChatWorkflowRoleReportV1 } | { ok: false; reason: string };
+export function parseWorkflowRoleReport(
+	text: string,
+	role: ChatWorkflowSpecialistRole,
+	evidence: ReadonlyMap<string, string>,
+	specialist: { id: string; version: number } | undefined
+): ChatWorkflowRoleReportParseResult;
+export function parseWorkflowRoleReport(
+	text: string,
+	role: ChatWorkflowSpecialistRole,
+	evidence: ReadonlyMap<string, string>,
+	specialist?: { id: string; version: number }
 ): ChatWorkflowRoleReportParseResult {
 	const L = CHAT_WORKFLOW_ROLE_REPORT_LIMITS;
 	let data: unknown;
@@ -171,12 +195,24 @@ export function parseWorkflowRoleReport(
 		return invalid('the report was not valid JSON');
 	}
 	if (!isRecord(data)) return invalid('the report was not a JSON object');
+	const outcomes = [
+		'findings',
+		'no_material_findings',
+		'insufficient_evidence',
+		'needs_clarification'
+	];
+	if (specialist && !outcomes.includes(String(data.outcome)))
+		return invalid('a valid explicit review outcome is required');
 	const summary = boundedText(data.summary, L.summaryChars);
 	if (!summary) return invalid(`summary must be 1-${L.summaryChars} characters`);
 	const recommendation = boundedText(data.recommendation, L.recommendationChars);
 	if (!recommendation)
 		return invalid(`recommendation must be 1-${L.recommendationChars} characters`);
-	if (!Array.isArray(data.findings) || !data.findings.length || data.findings.length > L.findings)
+	if (
+		!Array.isArray(data.findings) ||
+		(!specialist && !data.findings.length) ||
+		data.findings.length > L.findings
+	)
 		return invalid(`findings must list 1-${L.findings} items`);
 	const risksInput = data.risks ?? [];
 	if (!Array.isArray(risksInput) || risksInput.length > L.risks)
@@ -214,7 +250,8 @@ export function parseWorkflowRoleReport(
 		if (!refs.length) unsupportedFindings++;
 		else findings.push({ claim, basis: item.basis, evidence: refs });
 	}
-	if (!findings.length) return invalid('no finding cited a supplied project record');
+	if (!findings.length && (!specialist || data.outcome === 'findings'))
+		return invalid('no finding cited a supplied project record');
 
 	const risks: ChatWorkflowRoleReportV1['risks'] = [];
 	for (const item of risksInput) {
@@ -223,6 +260,8 @@ export function parseWorkflowRoleReport(
 		if (!risk) return invalid(`each risk must be 1-${L.riskChars} characters`);
 		const refs = references(item.evidence);
 		if (!refs) return invalid(`each risk may cite at most ${L.referencesPerItem} record ids`);
+		if (specialist && !refs.length)
+			return invalid('each risk must cite a supplied project record');
 		risks.push({ risk, evidence: refs });
 	}
 	const unknowns: string[] = [];
@@ -232,10 +271,24 @@ export function parseWorkflowRoleReport(
 		unknowns.push(unknown);
 	}
 
+	if (specialist && data.outcome !== 'findings' && (data.findings.length || risks.length))
+		return invalid('an abstention must have empty findings and risks');
+	if (
+		specialist &&
+		['insufficient_evidence', 'needs_clarification'].includes(String(data.outcome)) &&
+		!unknowns.length
+	)
+		return invalid('an evidence gap or clarification needs a specific unknown');
 	return {
 		ok: true,
 		report: {
-			version: CHAT_WORKFLOW_ROLE_REPORT_VERSION,
+			...(specialist
+				? {
+						version: AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2,
+						outcome: data.outcome as AgenticChatWorkflowReviewOutcomeV2,
+						specialist: { ...specialist }
+					}
+				: { version: CHAT_WORKFLOW_ROLE_REPORT_VERSION }),
 			role,
 			summary,
 			findings,
@@ -249,16 +302,16 @@ export function parseWorkflowRoleReport(
 }
 
 /** Human-readable step result. The caller still bounds it to the progress contract. */
-export function renderWorkflowRoleReport(
-	report: ChatWorkflowRoleReportV1,
-	attempts: number
-): string {
+export function renderWorkflowRoleReport(report: ChatWorkflowRoleReport, attempts: number): string {
 	const cite = (refs: ChatWorkflowEvidenceRef[]) =>
 		refs.length ? ` [${refs.map((ref) => ref.label).join('; ')}]` : '';
 	const lines = [
 		report.summary,
 		'',
-		'Findings',
+		...(report.version === AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2 &&
+		report.outcome !== 'findings'
+			? [`Outcome: ${report.outcome.replaceAll('_', ' ')}`]
+			: ['Findings']),
 		...report.findings.map(
 			(finding, i) => `${i + 1}. ${finding.claim} (${finding.basis})${cite(finding.evidence)}`
 		)
@@ -285,11 +338,14 @@ export function renderWorkflowRoleReport(
 }
 
 /** The editor sees accepted reports only, with record names beside their ids. */
-export function workflowReportForEditor(report: ChatWorkflowRoleReportV1) {
+export function workflowReportForEditor(report: ChatWorkflowRoleReport) {
 	const refs = (items: ChatWorkflowEvidenceRef[]) =>
 		items.map((ref) => `${ref.label} (${ref.id})`);
 	return {
 		role: report.role,
+		...(report.version === AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2
+			? { outcome: report.outcome, specialist: report.specialist }
+			: {}),
 		summary: report.summary,
 		findings: report.findings.map((finding) => ({
 			claim: finding.claim,
@@ -311,6 +367,23 @@ export type ChatWorkflowDurableEvidenceIndex = ReadonlyMap<
 	string,
 	{ kind: string; version: string; label: string }
 >;
+
+export function durableEvidenceIndexFromPreparedContext(context: {
+	payload: JsonObject;
+	evidenceVersions: AgenticChatWorkflowEvidenceVersionV1[];
+}): ChatWorkflowDurableEvidenceIndex {
+	const labels = collectRecordLabels(context.payload);
+	return new Map(
+		context.evidenceVersions.map((entry) => [
+			entry.id,
+			{
+				kind: entry.kind,
+				version: entry.version,
+				label: boundLabel(labels.get(entry.id) ?? `${entry.kind}: ${entry.id}`)
+			}
+		])
+	);
+}
 
 /**
  * The durable evidence index from Tasker 86's model input: the accepted evidence
@@ -339,9 +412,9 @@ export function durableEvidenceLabels(
 
 /** Adds each accepted reference's durable kind and version (SQL re-checks both). */
 export function toDurableWorkflowRoleReport(
-	report: ChatWorkflowRoleReportV1,
+	report: ChatWorkflowRoleReport,
 	index: ChatWorkflowDurableEvidenceIndex
-): AgenticChatWorkflowRoleReportV1 {
+): AgenticChatWorkflowRoleReport {
 	const refs = (items: ChatWorkflowEvidenceRef[]): AgenticChatWorkflowEvidenceRefV1[] =>
 		items.flatMap((ref) => {
 			const entry = index.get(ref.id);
@@ -357,7 +430,13 @@ export function toDurableWorkflowRoleReport(
 				: [];
 		});
 	return {
-		version: report.version,
+		...(report.version === AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2
+			? {
+					version: report.version,
+					outcome: report.outcome,
+					specialist: { ...report.specialist }
+				}
+			: { version: report.version }),
 		role: report.role,
 		summary: report.summary,
 		findings: report.findings.map((finding) => ({
@@ -375,12 +454,27 @@ export function toDurableWorkflowRoleReport(
 
 /** Reads an accepted durable report back into the renderer's shape. */
 export function fromDurableWorkflowRoleReport(
-	report: AgenticChatWorkflowRoleReportV1
-): ChatWorkflowRoleReportV1 {
+	report: AgenticChatWorkflowRoleReport
+): ChatWorkflowRoleReport {
+	// V3's compatibility fields are host-authored. Extractive synthesis has its
+	// own renderer; legacy progress/detail callers receive the bounded v2 shape.
+	if (report.version === 'chat_workflow_role_report_v3') {
+		const { claims: _claims, contextHash: _hash, ...compatible } = report;
+		return fromDurableWorkflowRoleReport({
+			...compatible,
+			version: 'chat_workflow_role_report_v2'
+		});
+	}
 	const refs = (items: AgenticChatWorkflowEvidenceRefV1[]) =>
 		items.map((ref) => ({ id: ref.id, label: ref.label }));
 	return {
-		version: CHAT_WORKFLOW_ROLE_REPORT_VERSION,
+		...(report.version === AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2
+			? {
+					version: report.version,
+					outcome: report.outcome,
+					specialist: { ...report.specialist }
+				}
+			: { version: CHAT_WORKFLOW_ROLE_REPORT_VERSION }),
 		role: report.role,
 		summary: report.summary,
 		findings: report.findings.map((finding) => ({

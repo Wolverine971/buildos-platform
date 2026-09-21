@@ -19,6 +19,8 @@ import {
 } from '@buildos/agentic-chat-runtime/specialists';
 import {
 	AGENTIC_CHAT_WORKFLOW_LIMITS,
+	AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF,
+	AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF,
 	AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF,
 	AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF,
 	agenticChatWorkflowPolicyForRef,
@@ -40,6 +42,8 @@ export type AgenticChatWorkflowV4AdmissionPolicyV1 = {
 	documentReadToolsEnabled?: boolean;
 	documentEvidenceHandoffEnabled?: boolean;
 	publishedSpecialistsEnabled?: boolean;
+	projectReviewV2Enabled?: boolean;
+	projectReviewV3Enabled?: boolean;
 	/** The existing internal cohort, AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS. */
 	cohortUserIds: readonly string[];
 };
@@ -50,9 +54,15 @@ export function resolveAgenticChatWorkflowV4AdmissionPolicy(environment: {
 	AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED?: string;
 	AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED?: string;
 	AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED?: string;
+	AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED?: string;
+	AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED?: string;
 	AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS?: string;
 }): AgenticChatWorkflowV4AdmissionPolicyV1 {
 	return {
+		projectReviewV3Enabled:
+			environment.AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED?.trim() === 'true',
+		projectReviewV2Enabled:
+			environment.AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED?.trim() === 'true',
 		publishedSpecialistsEnabled:
 			environment.AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED?.trim() === 'true',
 		enabled: environment.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED?.trim() === 'true',
@@ -98,6 +108,8 @@ export type AgenticChatWorkflowV4EligibilityV1 =
 			projectId: string;
 			message: string;
 			profile?: 'document_organization';
+			projectReviewV2?: boolean;
+			projectReviewV3?: boolean;
 			documentReadTools?: boolean;
 			documentEvidenceHandoff?: boolean;
 	  }
@@ -157,6 +169,12 @@ export function evaluateAgenticChatWorkflowV4Admission(input: {
 		eligible: true,
 		projectId,
 		message,
+		...(command.reviewIntent === 'project_review' && input.policy.projectReviewV3Enabled
+			? { projectReviewV3: true }
+			: {}),
+		...(command.reviewIntent === 'project_review' && input.policy.projectReviewV2Enabled
+			? { projectReviewV2: true }
+			: {}),
 		...(command.reviewIntent === 'document_organization'
 			? {
 					profile: 'document_organization' as const,
@@ -228,7 +246,11 @@ export async function buildAgenticChatWorkflowV4AdmissionArgs(input: {
 			: snapshot.profileVersion === 2
 				? AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF
 				: DOCUMENT_ORGANIZATION_POLICY_REF
-		: AGENTIC_CHAT_WORKFLOW_V4_POLICY_REF;
+		: input.eligibility.projectReviewV3
+			? AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF
+			: input.eligibility.projectReviewV2
+				? AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF
+				: AGENTIC_CHAT_WORKFLOW_V4_POLICY_REF;
 	const context = { type: 'project' as const, entityId: projectId, projectId };
 	const requestHash = await hashAgenticChatWorkflowRequestV1({
 		clientTurnId: input.command.clientTurnId,

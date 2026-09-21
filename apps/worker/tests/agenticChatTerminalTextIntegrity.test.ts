@@ -31,6 +31,45 @@ beforeAll(() => {
 });
 
 describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
+	it.each(['', 'I completed 5 requested changes.', 'Created the task "Pending permit".'])(
+		'visibly discloses a host-known unfinished request after successful writes: %j',
+		(assistantText) => {
+			const result = enforceAgenticChatTerminalTextIntegrityV1({
+				assistantText,
+				finishedReason: 'mutation_unfulfilled',
+				contextType: 'project',
+				toolExecutions: [
+					mutationExecution('create_onto_task', true, { title: 'Pending permit' }, 'c1')
+				]
+			});
+
+			expect(result.assistantText).toContain(
+				'I could not finish the full request in this turn.'
+			);
+			expect(result.assistantText).toContain('The remaining work is still pending.');
+			expect(result.assistantText).toBe(`${assistantText}${result.correctionDelta}`);
+			expect(result.finishedReason).toBe('mutation_unfulfilled');
+			expect(result.finalizationGuard?.applied).toBe(true);
+			expect(result.finalizationGuard?.text).toContain(
+				'The remaining work is still pending.'
+			);
+		}
+	);
+
+	it('does not append the host disclosure again when it is already present', () => {
+		const assistantText =
+			'Created the task. I could not finish the full request in this turn. The remaining work is still pending.';
+		const result = enforceAgenticChatTerminalTextIntegrityV1({
+			assistantText,
+			finishedReason: 'mutation_unfulfilled',
+			contextType: 'project',
+			toolExecutions: [mutationExecution('create_onto_task', true, { title: 'Permit' }, 'c1')]
+		});
+		expect(result.assistantText).toBe(assistantText);
+		expect(result.correctionDelta).toBeNull();
+		expect(result.finishedReason).toBe('mutation_unfulfilled');
+	});
+
 	// Case 3 of the 2026-09-10 browser rerun: the model declared a contract,
 	// read, found the task already existed, and correctly wrote nothing — and
 	// the turn still finalized `mutation_unfulfilled` with an unfinished-write

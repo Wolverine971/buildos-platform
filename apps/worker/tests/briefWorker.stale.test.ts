@@ -266,6 +266,52 @@ describe('processBriefJob stale daily brief guard', () => {
 		);
 	});
 
+	it('completes projectless jobs as a no-op without failure effects or notifications', async () => {
+		mocks.mockGenerateOntologyDailyBrief.mockResolvedValue({
+			status: 'skipped_no_projects',
+			userId: 'user-1',
+			actorId: 'actor-1',
+			briefDate: '2026-04-12'
+		});
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+
+		const result = await processBriefJob(job);
+
+		expect(result).toEqual({
+			status: 'skipped_no_projects',
+			briefId: null,
+			briefDate: '2026-04-12'
+		});
+		expect(mocks.mockUpdateJobStatus).toHaveBeenLastCalledWith(
+			'job-stale-brief',
+			'completed',
+			'brief',
+			undefined,
+			'claim-token'
+		);
+		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalled();
+		expect(mocks.mockRpc).not.toHaveBeenCalled();
+		expect(job.log).toHaveBeenCalledWith(
+			'No eligible ontology projects for 2026-04-12; brief generation skipped'
+		);
+		expect(mocks.mockUpdates).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					table: 'queue_jobs',
+					payload: expect.objectContaining({
+						metadata: expect.objectContaining({
+							skipReason: 'no_eligible_projects'
+						})
+					})
+				})
+			])
+		);
+	});
+
 	it('completes jobs for already completed briefs without generating, but re-emits brief.completed (dedup-safe)', async () => {
 		mocks.mockResponses.existingBrief = {
 			data: {

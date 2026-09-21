@@ -75,6 +75,25 @@ export const AGENTIC_CHAT_WORKFLOW_POLICY_V1 = {
 
 export type AgenticChatWorkflowPolicyV1 = typeof AGENTIC_CHAT_WORKFLOW_POLICY_V1;
 
+/** Opt-in evidence/abstention contract. Existing admissions keep the v1 behavior. */
+export const AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF = 'internal-project-review:v2';
+export const AGENTIC_CHAT_PROJECT_REVIEW_POLICY_V2 = {
+	...AGENTIC_CHAT_WORKFLOW_POLICY_V1,
+	version: 'agentic_chat_project_review_policy_v2'
+} as const;
+export const AGENTIC_CHAT_PROJECT_REVIEW_PREPARATION_V2 =
+	'agentic_chat_project_review_preparation_v2';
+export const AGENTIC_CHAT_PROJECT_REVIEW_PAYLOAD_V2 = 'agentic_chat_project_review_payload_v2';
+export const AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2 = 'chat_workflow_role_report_v2';
+
+/** Source-bound reports and buffered, selection-only synthesis; reuses the v2 evidence recipe. */
+export const AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF = 'internal-project-review:v3';
+export const AGENTIC_CHAT_PROJECT_REVIEW_POLICY_V3 = {
+	...AGENTIC_CHAT_WORKFLOW_POLICY_V1,
+	version: 'agentic_chat_project_review_policy_v3'
+} as const;
+export const AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V3 = 'chat_workflow_role_report_v3';
+
 /** Explicit additive policy: old requests still forbid all model tools. */
 export const AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF = 'internal-document-organization:v3';
 export const AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1 = {
@@ -91,9 +110,15 @@ export const AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_V1 = {
 } as const;
 export type AgenticChatWorkflowPolicy =
 	| AgenticChatWorkflowPolicyV1
+	| typeof AGENTIC_CHAT_PROJECT_REVIEW_POLICY_V2
+	| typeof AGENTIC_CHAT_PROJECT_REVIEW_POLICY_V3
 	| typeof AGENTIC_CHAT_DOCUMENT_READ_POLICY_V1
 	| typeof AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_V1;
 export function agenticChatWorkflowPolicyForRef(policyRef: string): AgenticChatWorkflowPolicy {
+	if (policyRef === AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF)
+		return AGENTIC_CHAT_PROJECT_REVIEW_POLICY_V3;
+	if (policyRef === AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF)
+		return AGENTIC_CHAT_PROJECT_REVIEW_POLICY_V2;
 	if (policyRef === AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF)
 		return AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_V1;
 	return policyRef === AGENTIC_CHAT_DOCUMENT_READ_POLICY_REF
@@ -251,6 +276,43 @@ export type AgenticChatWorkflowRoleReportV1 = {
 	unsupportedReferences: number;
 	unsupportedFindings: number;
 };
+
+export type AgenticChatWorkflowReviewOutcomeV2 =
+	| 'findings'
+	| 'no_material_findings'
+	| 'insufficient_evidence'
+	| 'needs_clarification';
+export type AgenticChatWorkflowRoleReportV2 = Omit<AgenticChatWorkflowRoleReportV1, 'version'> & {
+	version: typeof AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2;
+	outcome: AgenticChatWorkflowReviewOutcomeV2;
+	specialist: { id: string; version: number };
+};
+export type AgenticChatWorkflowSourceClaimV1 =
+	| {
+			id: string;
+			kind: 'excerpt';
+			source: string;
+			field: string;
+			quote: string;
+			span: { encoding: 'unicode_code_points'; start: number; end: number };
+	  }
+	| {
+			id: string;
+			kind: 'overdue_tasks';
+			sources: string[];
+			relation: 'count' | 'all' | 'some' | 'none';
+			overdue: number;
+			unknown: number;
+	  };
+export type AgenticChatWorkflowRoleReportV3 = Omit<AgenticChatWorkflowRoleReportV2, 'version'> & {
+	version: typeof AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V3;
+	contextHash: string;
+	claims: AgenticChatWorkflowSourceClaimV1[];
+};
+export type AgenticChatWorkflowRoleReport =
+	| AgenticChatWorkflowRoleReportV1
+	| AgenticChatWorkflowRoleReportV2
+	| AgenticChatWorkflowRoleReportV3;
 
 export type AgenticChatWorkflowPlannerResultV1 = {
 	version: typeof AGENTIC_CHAT_WORKFLOW_PLANNER_RESULT_VERSION;

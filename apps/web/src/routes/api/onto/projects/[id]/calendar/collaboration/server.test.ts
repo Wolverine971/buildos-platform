@@ -4,9 +4,11 @@ import type { RequestEvent } from './$types';
 
 const { getProjectCalendarCollaborationMock, ProjectCalendarServiceMock } = vi.hoisted(() => ({
 	getProjectCalendarCollaborationMock: vi.fn(),
-	ProjectCalendarServiceMock: vi.fn().mockImplementation(() => ({
-		getProjectCalendarCollaboration: getProjectCalendarCollaborationMock
-	}))
+	ProjectCalendarServiceMock: vi.fn().mockImplementation(function () {
+		return {
+			getProjectCalendarCollaboration: getProjectCalendarCollaborationMock
+		};
+	})
 }));
 
 vi.mock('$lib/services/project-calendar.service', () => ({

@@ -7,11 +7,13 @@ const updateEventMock = vi.fn();
 const deleteEventMock = vi.fn();
 
 vi.mock('./onto-event-sync.service', () => ({
-	OntoEventSyncService: vi.fn().mockImplementation(() => ({
-		createEvent: createEventMock,
-		updateEvent: updateEventMock,
-		deleteEvent: deleteEventMock
-	}))
+	OntoEventSyncService: vi.fn().mockImplementation(function () {
+		return {
+			createEvent: createEventMock,
+			updateEvent: updateEventMock,
+			deleteEvent: deleteEventMock
+		};
+	})
 }));
 
 type Fixtures = {

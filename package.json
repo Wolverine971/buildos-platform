@@ -4,7 +4,7 @@
 	"private": true,
 	"description": "BuildOS Platform - AI-powered productivity platform monorepo",
 	"scripts": {
-		"dev": "turbo dev",
+		"dev": "node scripts/dev.mjs",
 		"build": "turbo build",
 		"test": "turbo test --concurrency=2",
 		"test:run": "turbo test:run --concurrency=2",

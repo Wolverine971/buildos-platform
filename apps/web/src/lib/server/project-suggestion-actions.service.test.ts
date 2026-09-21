@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('$lib/services/agentic-chat/tools/core/tool-executor', () => ({
 	ChatToolExecutor: vi
 		.fn()
-		.mockImplementation((supabase, userId, sessionId, fetchFn, llm, options) => {
+		.mockImplementation(function (supabase, userId, sessionId, fetchFn, llm, options) {
 			mocks.chatExecutorConstructor(supabase, userId, sessionId, fetchFn, llm, options);
 			return { execute: mocks.executeTool };
 		})
@@ -33,7 +33,9 @@ vi.mock('@buildos/shared-agent-ops', () => ({
 	syncInboxItemForProjectSuggestion: mocks.syncInboxItemForProjectSuggestion,
 	verifyProjectSuggestionIntegrity: mocks.verifyProjectSuggestionIntegrity,
 	quarantineProjectSuggestionInboxItem: mocks.quarantineProjectSuggestionInboxItem,
-	readProjectSuggestionStructuralFingerprint: vi.fn(() => null)
+	readProjectSuggestionStructuralFingerprint: vi.fn(function () {
+		return null;
+	})
 }));
 
 vi.mock('$lib/server/project-loop-snapshot.service', () => ({
@@ -55,7 +57,7 @@ type QueryResult = { data: unknown; error: null | { message: string } };
 function makeSupabase(script: Record<string, QueryResult[]>) {
 	const updates: Array<{ table: string; payload: Record<string, unknown> }> = [];
 	const supabase = {
-		from: vi.fn((table: string) => {
+		from: vi.fn(function (table: string) {
 			const builder: any = {
 				select: vi.fn(() => builder),
 				eq: vi.fn(() => builder),
@@ -96,7 +98,7 @@ describe('decideProjectSuggestion', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.createAdminSupabaseClient.mockReturnValue({
-			from: vi.fn(() => {
+			from: vi.fn(function () {
 				const builder: any = {
 					select: vi.fn(() => builder),
 					eq: vi.fn(() => builder),

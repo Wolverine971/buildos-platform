@@ -33,7 +33,9 @@ const {
 		ontoCreateEventMock: vi.fn(),
 		ontoDeleteEventMock: vi.fn(),
 		recurrenceBuildMock: vi.fn(),
-		createAdminMock: vi.fn(() => adminClient),
+		createAdminMock: vi.fn(function () {
+			return adminClient;
+		}),
 		adminClient
 	};
 });
@@ -50,16 +52,18 @@ vi.mock('$lib/supabase/admin', () => ({
 }));
 
 vi.mock('$lib/services/calendar-service', () => ({
-	CalendarService: vi.fn().mockImplementation((client, options) => ({
-		client,
-		options,
-		hasStoredConnection: legacyHasStoredConnectionMock,
-		updateCalendarEvent: legacyUpdateMock,
-		deleteCalendarEvent: legacyDeleteMock,
-		disconnectCalendar: legacyDisconnectMock,
-		shareCalendar: legacyShareMock,
-		unshareCalendar: legacyUnshareMock
-	}))
+	CalendarService: vi.fn().mockImplementation(function (client, options) {
+		return {
+			client,
+			options,
+			hasStoredConnection: legacyHasStoredConnectionMock,
+			updateCalendarEvent: legacyUpdateMock,
+			deleteCalendarEvent: legacyDeleteMock,
+			disconnectCalendar: legacyDisconnectMock,
+			shareCalendar: legacyShareMock,
+			unshareCalendar: legacyUnshareMock
+		};
+	})
 }));
 
 vi.mock('$lib/services/recurrence-pattern.service', () => ({
@@ -69,10 +73,12 @@ vi.mock('$lib/services/recurrence-pattern.service', () => ({
 }));
 
 vi.mock('$lib/services/ontology/onto-event-sync.service', () => ({
-	OntoEventSyncService: vi.fn().mockImplementation(() => ({
-		createEvent: ontoCreateEventMock,
-		deleteEvent: ontoDeleteEventMock
-	}))
+	OntoEventSyncService: vi.fn().mockImplementation(function () {
+		return {
+			createEvent: ontoCreateEventMock,
+			deleteEvent: ontoDeleteEventMock
+		};
+	})
 }));
 
 vi.mock('$lib/server/google-calendar-read.service', () => ({
@@ -80,9 +86,11 @@ vi.mock('$lib/server/google-calendar-read.service', () => ({
 }));
 
 vi.mock('$lib/server/google-calendar-target.service', () => ({
-	GoogleCalendarTargetService: vi.fn().mockImplementation(() => ({
-		hasActiveTarget: targetHasActiveMock
-	}))
+	GoogleCalendarTargetService: vi.fn().mockImplementation(function () {
+		return {
+			hasActiveTarget: targetHasActiveMock
+		};
+	})
 }));
 
 vi.mock('$lib/server/google-calendar-write.service', async (importOriginal) => {
@@ -90,11 +98,13 @@ vi.mock('$lib/server/google-calendar-write.service', async (importOriginal) => {
 		await importOriginal<typeof import('$lib/server/google-calendar-write.service')>();
 	return {
 		...original,
-		GoogleCalendarWriteService: vi.fn().mockImplementation(() => ({
-			createEvent: writeCreateMock,
-			updateEvent: writeUpdateMock,
-			deleteEvent: writeDeleteMock
-		}))
+		GoogleCalendarWriteService: vi.fn().mockImplementation(function () {
+			return {
+				createEvent: writeCreateMock,
+				updateEvent: writeUpdateMock,
+				deleteEvent: writeDeleteMock
+			};
+		})
 	};
 });
 
@@ -121,17 +131,23 @@ function eventFor(body: Record<string, unknown>, supabase: Record<string, unknow
 
 function scheduleSupabase(task: Record<string, unknown>) {
 	const taskQuery: any = {
-		select: vi.fn(() => taskQuery),
-		eq: vi.fn(() => taskQuery),
-		is: vi.fn(() => taskQuery),
+		select: vi.fn(function () {
+			return taskQuery;
+		}),
+		eq: vi.fn(function () {
+			return taskQuery;
+		}),
+		is: vi.fn(function () {
+			return taskQuery;
+		}),
 		single: vi.fn().mockResolvedValue({ data: task, error: null })
 	};
 	const edgeInsert = vi.fn().mockResolvedValue({ error: null });
 	return {
 		rpc: vi.fn().mockResolvedValue({ data: 'actor-1', error: null }),
-		from: vi.fn((table: string) =>
-			table === 'onto_tasks' ? taskQuery : { insert: edgeInsert }
-		),
+		from: vi.fn(function (table: string) {
+			return table === 'onto_tasks' ? taskQuery : { insert: edgeInsert };
+		}),
 		edgeInsert
 	};
 }
@@ -465,7 +481,9 @@ describe('multi-account /api/calendar mutations', () => {
 	});
 
 	it('keeps Google Calendar runtime errors on the shared route error path', async () => {
-		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(function () {
+			return undefined;
+		});
 		writeUpdateMock.mockRejectedValue(
 			new GoogleCalendarWriteError(
 				'CALENDAR_PROVIDER_EVENT_ID_MISSING',

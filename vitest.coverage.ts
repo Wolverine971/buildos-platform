@@ -18,7 +18,9 @@ export function coverageConfig(include: string[]) {
 			'text-summary' | 'json-summary' | 'lcov' | 'html'
 		>,
 		reportsDirectory: './coverage',
-		all: true,
+		// `coverage.all` was removed in Vitest 4. Coverage now reports only
+		// loaded files unless `include` is set explicitly - which it is, by
+		// every caller of this helper.
 		include,
 		exclude: coverageExclude
 	};

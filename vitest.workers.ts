@@ -10,15 +10,17 @@
 // run (turbo fan-out, parallel agents, several editor sessions) multiplies
 // it, which is how a laptop ends up swap-thrashing and frozen.
 //
-// Locally we cap the pool at a small fixed size and spawn lazily. CI keeps
-// vitest's defaults. Env overrides (VITEST_MAX_FORKS / VITEST_MIN_FORKS,
-// or the THREADS variants) always win over these values because vitest
-// applies them after config resolution, so an agent session can tighten
-// further without touching the repo.
+// Locally we cap the pool at a small fixed size. CI keeps vitest's
+// defaults. The `VITEST_MAX_WORKERS` env override always wins over this
+// value because vitest applies it after config resolution, so an agent
+// session can tighten further without touching the repo.
+//
+// Vitest 4 removed `minWorkers` and collapsed the pool-specific env vars
+// (VITEST_MAX_FORKS / VITEST_MAX_THREADS) into VITEST_MAX_WORKERS.
 
 const LOCAL_MAX_WORKERS = 4;
 
-export function localWorkerLimits(): { maxWorkers?: number; minWorkers?: number } {
+export function localWorkerLimits(): { maxWorkers?: number } {
 	if (process.env.CI) return {};
-	return { maxWorkers: LOCAL_MAX_WORKERS, minWorkers: 1 };
+	return { maxWorkers: LOCAL_MAX_WORKERS };
 }

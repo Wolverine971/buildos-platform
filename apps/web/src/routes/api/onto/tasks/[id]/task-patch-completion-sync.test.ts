@@ -7,15 +7,19 @@ const queueProjectLoopReviewSignalAsyncMock = vi.hoisted(() => vi.fn());
 let capturedAtomicArgs: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/ontology/task-event-sync.service', () => ({
-	TaskEventSyncService: vi.fn().mockImplementation(() => ({
-		syncTaskEvents: syncTaskEventsMock
-	}))
+	TaskEventSyncService: vi.fn().mockImplementation(function () {
+		return {
+			syncTaskEvents: syncTaskEventsMock
+		};
+	})
 }));
 
 vi.mock('$lib/services/ontology/onto-event-sync.service', () => ({
-	OntoEventSyncService: vi.fn().mockImplementation(() => ({
-		deleteEvent: vi.fn()
-	}))
+	OntoEventSyncService: vi.fn().mockImplementation(function () {
+		return {
+			deleteEvent: vi.fn()
+		};
+	})
 }));
 
 vi.mock('$lib/services/ontology/auto-organizer.service', () => ({

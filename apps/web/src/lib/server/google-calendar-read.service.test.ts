@@ -1,5 +1,5 @@
 // apps/web/src/lib/server/google-calendar-read.service.test.ts
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoogleCalendarConnectionError } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
 import { GoogleCalendarReadService } from './google-calendar-read.service';
 import type { CalendarTarget } from './google-calendar-target.service';
@@ -307,6 +307,15 @@ describe('GoogleCalendarReadService', () => {
 });
 
 describe('GoogleCalendarReadService failure classification', () => {
+	// Vitest 4's `restoreAllMocks` only restores genuine spies. `console.warn` is
+	// already a `vi.fn()` from vitest.setup.ts, so `vi.spyOn` hands back that same
+	// mock rather than wrapping an original. Clear before each case, not after:
+	// the earlier describes in this file also warn, so an afterEach-only clear
+	// still leaves the first case here counting their calls.
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});

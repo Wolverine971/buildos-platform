@@ -190,7 +190,11 @@ describe('Daily Brief Cycle handler', () => {
 
 	it.each([
 		['already_processing' as const, 'Daily brief for 2026-08-25 is already processing.'],
-		['stale' as const, 'Skipped stale Daily Brief occurrence for 2026-08-25.']
+		['stale' as const, 'Skipped stale Daily Brief occurrence for 2026-08-25.'],
+		[
+			'skipped_no_projects' as const,
+			'Skipped Daily Brief for 2026-08-25 because no eligible projects were found.'
+		]
 	])('normalizes %s as a no-change outcome', async (status, summary) => {
 		vi.mocked(processBriefJob).mockResolvedValue({
 			status,

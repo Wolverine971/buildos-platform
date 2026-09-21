@@ -12,7 +12,7 @@ const DEFAULT_PREFERENCES = {
 	frequency: 'daily',
 	day_of_week: 1, // Monday
 	time_of_day: '09:00:00',
-	is_active: true
+	is_active: false
 };
 
 const briefPreferencesUpdateSchema = z
@@ -43,24 +43,12 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			throw error;
 		}
 
-		// If no preferences exist, create default ones
+		// Reads must not silently opt a user into scheduled generation. Return an
+		// inactive default shape and persist it only after an explicit POST.
 		if (!preferences) {
-			const { data: newPreferences, error: createError } = await supabase
-				.from('user_brief_preferences')
-				.insert({
-					user_id: user.id,
-					...DEFAULT_PREFERENCES
-				})
-				.select()
-				.single();
-
-			if (createError) {
-				throw createError;
-			}
-
 			return ApiResponse.success({
 				preferences: {
-					...newPreferences,
+					...DEFAULT_PREFERENCES,
 					timezone: userData?.timezone || 'UTC'
 				}
 			});

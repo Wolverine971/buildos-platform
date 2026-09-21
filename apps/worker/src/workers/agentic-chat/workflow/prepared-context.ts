@@ -2,6 +2,8 @@
 import { createHash } from 'node:crypto';
 import {
 	AGENTIC_CHAT_WORKFLOW_LIMITS,
+	AGENTIC_CHAT_PROJECT_REVIEW_PAYLOAD_V2,
+	AGENTIC_CHAT_PROJECT_REVIEW_PREPARATION_V2,
 	type AgenticChatPreparedWorkflowContextV1,
 	type AgenticChatRawWorkflowInputV4,
 	type AgenticChatWorkflowEvidenceVersionV1,
@@ -30,7 +32,17 @@ const MAX_JSONB_TEXT_BYTES = 327_680 - 4_096;
 const MODEL_HISTORY_MESSAGES = 6;
 const MODEL_HISTORY_MESSAGE_CHARS = 1_500;
 
-type CollectionKey = 'goals' | 'milestones' | 'plans' | 'tasks' | 'documents' | 'events';
+type CollectionKey =
+	| 'goals'
+	| 'milestones'
+	| 'plans'
+	| 'tasks'
+	| 'documents'
+	| 'events'
+	| 'risks'
+	| 'relationships'
+	| 'activity'
+	| 'prior_suggestions';
 const COLLECTIONS: ReadonlyArray<readonly [CollectionKey, string]> = [
 	['goals', 'goal'],
 	['milestones', 'milestone'],
@@ -39,6 +51,27 @@ const COLLECTIONS: ReadonlyArray<readonly [CollectionKey, string]> = [
 	['documents', 'document'],
 	['events', 'event']
 ];
+const REVIEW_COLLECTIONS: ReadonlyArray<readonly [CollectionKey, string]> = [
+	...COLLECTIONS,
+	['risks', 'risk'],
+	['relationships', 'relationship'],
+	['activity', 'activity'],
+	['prior_suggestions', 'prior suggestion']
+];
+const REVIEW_DROP_ORDER: readonly CollectionKey[] = [
+	'events',
+	'activity',
+	'prior_suggestions',
+	'plans',
+	'goals',
+	'tasks',
+	'milestones',
+	'relationships',
+	'documents',
+	'risks'
+];
+/** Leave headroom for history, instructions and escaped JSON inside the provider's 128 KiB request. */
+export const PROJECT_REVIEW_CONTEXT_MAX_BYTES_V2 = 64_000;
 /** Least central records leave first when the checkpoint must shrink. */
 const DROP_ORDER: readonly CollectionKey[] = [
 	'events',
@@ -69,7 +102,9 @@ export type AgenticChatWorkflowContextCoverageV1 = {
 
 /** A checkpoint ready for `accept_agentic_chat_workflow_context_v1`. */
 export type BuiltAgenticChatWorkflowContextV1 = {
-	preparationVersion: typeof AGENTIC_CHAT_WORKFLOW_PREPARATION_VERSION;
+	preparationVersion:
+		| typeof AGENTIC_CHAT_WORKFLOW_PREPARATION_VERSION
+		| typeof AGENTIC_CHAT_PROJECT_REVIEW_PREPARATION_V2;
 	contextIdentity: AgenticChatPreparedWorkflowContextV1['contextIdentity'];
 	evidenceVersions: AgenticChatWorkflowEvidenceVersionV1[];
 	payload: JsonObject;
@@ -84,6 +119,7 @@ export type BuiltAgenticChatWorkflowContextV1 = {
 type RecordEntry = { kind: string; record: Record<string, JsonValue> };
 
 export function buildAgenticChatWorkflowContextV1(input: {
+	projectReviewV2?: boolean;
 	documentOrganization?: boolean;
 	documentReadTools?: boolean;
 	context: MasterPromptContext;
@@ -122,7 +158,8 @@ export function buildAgenticChatWorkflowContextV1(input: {
 		);
 	}
 	const collections = new Map<CollectionKey, RecordEntry[]>();
-	for (const [key, kind] of COLLECTIONS) {
+	const recipeCollections = input.projectReviewV2 ? REVIEW_COLLECTIONS : COLLECTIONS;
+	for (const [key, kind] of recipeCollections) {
 		const rows = Array.isArray(data[key]) ? (data[key] as unknown[]) : [];
 		collections.set(
 			key,
@@ -145,7 +182,9 @@ export function buildAgenticChatWorkflowContextV1(input: {
 			observedAt: input.contextLoadedAt
 		});
 		const payload: JsonObject = {
-			version: AGENTIC_CHAT_WORKFLOW_CONTEXT_PAYLOAD_VERSION,
+			version: input.projectReviewV2
+				? AGENTIC_CHAT_PROJECT_REVIEW_PAYLOAD_V2
+				: AGENTIC_CHAT_WORKFLOW_CONTEXT_PAYLOAD_VERSION,
 			projectId: input.projectId,
 			timezone: typeof input.context.timezone === 'string' ? input.context.timezone : null,
 			loadedAt: input.contextLoadedAt,
@@ -166,13 +205,59 @@ export function buildAgenticChatWorkflowContextV1(input: {
 				tasks: records(collections.get('tasks')),
 				documents: records(collections.get('documents')),
 				events: records(collections.get('events')),
-				context_meta: contextMeta
+				context_meta: contextMeta,
+				...(input.projectReviewV2
+					? {
+							risks: records(collections.get('risks')),
+							relationships: records(collections.get('relationships')),
+							activity: records(collections.get('activity')),
+							prior_suggestions: records(collections.get('prior_suggestions'))
+						}
+					: {})
 			},
 			coverage: {
 				includedRecords: evidence.length,
 				omittedRecords,
 				truncatedStrings: counters.truncatedStrings,
-				evidenceLimit: AGENTIC_CHAT_WORKFLOW_LIMITS.evidenceMaxEntries
+				evidenceLimit: AGENTIC_CHAT_WORKFLOW_LIMITS.evidenceMaxEntries,
+				...(input.projectReviewV2
+					? {
+							families: Object.fromEntries(
+								recipeCollections.map(([key]) => {
+									const source =
+										isRecord(data.review_coverage) &&
+										isRecord(data.review_coverage[key])
+											? data.review_coverage[key]
+											: null;
+									const included = collections.get(key)?.length ?? 0;
+									const supplied = Array.isArray(data[key])
+										? data[key].length
+										: 0;
+									const total =
+										typeof source?.total === 'number' &&
+										Number.isSafeInteger(source.total) &&
+										source.total >= supplied
+											? source.total
+											: supplied;
+									return [
+										key,
+										{
+											status: !Array.isArray(data[key])
+												? 'unavailable'
+												: total > included
+													? 'truncated'
+													: included
+														? 'loaded'
+														: 'empty',
+											included,
+											total,
+											omitted: total - included
+										}
+									];
+								})
+							)
+						}
+					: {})
 			}
 		};
 		const canonical = canonicalizeAgenticChatJson(payload);
@@ -188,12 +273,17 @@ export function buildAgenticChatWorkflowContextV1(input: {
 	let built = build();
 	while (
 		built.evidence.length > AGENTIC_CHAT_WORKFLOW_LIMITS.evidenceMaxEntries ||
-		built.payloadBytes > AGENTIC_CHAT_WORKFLOW_LIMITS.contextMaxBytes ||
+		built.payloadBytes >
+			(input.projectReviewV2
+				? PROJECT_REVIEW_CONTEXT_MAX_BYTES_V2
+				: AGENTIC_CHAT_WORKFLOW_LIMITS.contextMaxBytes) ||
 		built.jsonbTextBytes > MAX_JSONB_TEXT_BYTES
 	) {
-		const dropOrder: readonly CollectionKey[] = input.documentOrganization
-			? ['events', 'tasks', 'plans', 'milestones', 'goals', 'documents']
-			: DROP_ORDER;
+		const dropOrder: readonly CollectionKey[] = input.projectReviewV2
+			? REVIEW_DROP_ORDER
+			: input.documentOrganization
+				? ['events', 'tasks', 'plans', 'milestones', 'goals', 'documents']
+				: DROP_ORDER;
 		const source = dropOrder
 			.map((key) => collections.get(key)!)
 			.find((entries) => entries.length > 0);
@@ -209,7 +299,9 @@ export function buildAgenticChatWorkflowContextV1(input: {
 	}
 
 	return {
-		preparationVersion: AGENTIC_CHAT_WORKFLOW_PREPARATION_VERSION,
+		preparationVersion: input.projectReviewV2
+			? AGENTIC_CHAT_PROJECT_REVIEW_PREPARATION_V2
+			: AGENTIC_CHAT_WORKFLOW_PREPARATION_VERSION,
 		contextIdentity: {
 			userId: input.userId,
 			projectId: input.projectId,
@@ -318,7 +410,7 @@ function buildEvidence(input: {
 	const ordered: RecordEntry[] = [
 		{ kind: 'project', record: input.project },
 		...(input.startHere ? [{ kind: 'start_here', record: input.startHere }] : []),
-		...COLLECTIONS.flatMap(([key]) => input.collections.get(key) ?? [])
+		...[...input.collections.values()].flat()
 	];
 	const seen = new Set<string>();
 	const evidence: AgenticChatWorkflowEvidenceVersionV1[] = [];
@@ -340,7 +432,7 @@ function recordVersion(record: Record<string, JsonValue>): string {
 	return `sha256:${sha256Hex(canonicalizeAgenticChatJson(record)).slice(0, 32)}`;
 }
 
-function collectRecordLabels(payload: JsonObject): Map<string, string> {
+export function collectRecordLabels(payload: JsonObject): Map<string, string> {
 	const labels = new Map<string, string>();
 	const data = payload.data;
 	if (!isRecord(data)) return labels;
@@ -355,7 +447,7 @@ function collectRecordLabels(payload: JsonObject): Map<string, string> {
 	};
 	add('project', data.project);
 	add('start here', data.start_here);
-	for (const [key, kind] of COLLECTIONS) {
+	for (const [key, kind] of REVIEW_COLLECTIONS) {
 		const rows = data[key];
 		if (Array.isArray(rows)) for (const row of rows) add(kind, row);
 	}

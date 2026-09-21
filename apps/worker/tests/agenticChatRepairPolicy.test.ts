@@ -17,6 +17,8 @@ import type {
 	AgenticChatTurnProviderToolV1
 } from '../src/workers/agentic-chat/provider/contracts';
 import {
+	buildBatchPromiseRepairRequest,
+	hasUnfinishedBatchAction,
 	buildProviderPassBudgetSynthesisInstruction,
 	buildRequiredPassProseFallbackRequest,
 	buildReviewerMimicryRepairRequest,
@@ -24,6 +26,33 @@ import {
 	buildUnavailableSurfaceToolRepairRequest
 } from '../src/workers/agentic-chat/provider/repair-policy';
 import type { CompletedProviderToolCall } from '../src/workers/agentic-chat/provider/stream-tool-calls';
+
+describe('unfinished batch action', () => {
+	it.each([
+		"All five tasks are created. Now I'll propose the dependency stage.",
+		'Next, I will link the saved tasks.',
+		'Let me update the remaining task.'
+	])('recognizes an execution promise: %s', (text) => {
+		expect(hasUnfinishedBatchAction(text)).toBe(true);
+	});
+	it.each([
+		'Created and linked all five tasks.',
+		'I can link these later if you want.',
+		'I will keep this in mind.',
+		'Your note says: "I will create a launch plan."',
+		'The dependency was not saved. Please choose its target.'
+	])('leaves completed answers, offers and quoted source alone: %s', (text) => {
+		expect(hasUnfinishedBatchAction(text)).toBe(false);
+	});
+	it('keeps the exact permitted surface and the existing turn budget', () => {
+		const original = request([tool(MUTATION_TOOL_NAME)]);
+		const result = buildBatchPromiseRepairRequest(original);
+		expect(result.tools).toBe(original.tools);
+		expect(result.signal).toBe(original.signal);
+		expect(result.logicalProviderRound).toBe(original.logicalProviderRound + 1);
+		expect(lastInstruction(result)).toContain('grants no additional permission');
+	});
+});
 
 const READ_TOOL_NAME = 'get_project_overview';
 const MUTATION_TOOL_NAME = 'create_onto_task';

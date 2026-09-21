@@ -122,6 +122,55 @@ describe('buildTurnAttributionFromEvents', () => {
 });
 
 describe('buildWorkerTurnAttributionFromUsage', () => {
+	const workerUsage = {
+		id: 'worker',
+		model_requested: 'test/model',
+		model_used: 'test/model',
+		provider: 'test-provider',
+		profile: null,
+		operation_type: 'agentic_chat_worker_stream',
+		prompt_tokens: 10,
+		completion_tokens: 2,
+		total_tokens: 12,
+		total_cost_usd: 0.001,
+		request_started_at: '2026-09-21T00:00:00.000Z',
+		request_completed_at: '2026-09-21T00:00:01.000Z'
+	};
+	const selectorUsage = {
+		...workerUsage,
+		id: 'selector',
+		operation_type: 'agentic_chat_tool_selection',
+		model_used: 'typesafe/jev-1.13',
+		provider: 'typesafe'
+	};
+	it('retains attributed Jev selection alongside the acting and review passes', () => {
+		const result = buildWorkerTurnAttributionFromUsage([selectorUsage, workerUsage]);
+		expect(result.outcomeClass).toBe('native');
+		expect(result.passes.map((pass) => pass.passRole)).toEqual([
+			'agentic_chat_tool_selection',
+			'agentic_chat_worker_stream'
+		]);
+		expect(result.passes[0]).toMatchObject({
+			model: 'typesafe/jev-1.13',
+			provider: 'typesafe'
+		});
+	});
+	it('requires a worker model pass and attribution for every selector receipt', () => {
+		expect(buildWorkerTurnAttributionFromUsage([selectorUsage]).outcomeClass).toBe(
+			'unattributed'
+		);
+		expect(
+			buildWorkerTurnAttributionFromUsage([{ ...selectorUsage, provider: null }, workerUsage])
+				.outcomeClass
+		).toBe('unattributed');
+		expect(
+			buildWorkerTurnAttributionFromUsage([
+				selectorUsage,
+				workerUsage,
+				{ ...workerUsage, operation_type: 'unexpected_pass' }
+			]).outcomeClass
+		).toBe('unattributed');
+	});
 	it('uses exact worker provider usage without requiring legacy intervention events', () => {
 		const result = buildWorkerTurnAttributionFromUsage([
 			{

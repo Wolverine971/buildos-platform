@@ -12,6 +12,8 @@ import type { SpecialistShadowObserver } from './specialist-selection-shadow';
 import { randomUUID } from 'node:crypto';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+	AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF,
+	AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF,
 	type AgenticChatCommittedSemanticEventReceiptV1,
 	type AgenticChatPreparedWorkflowContextV1,
 	type AgenticChatRecoveryFailureClassV1,
@@ -110,6 +112,8 @@ export type AgenticChatWorkflowTurnPreparerPortsV1 = {
 	documentReadToolsEnabled?: boolean;
 	documentEvidenceHandoffEnabled?: boolean;
 	publishedSpecialistsEnabled?: boolean;
+	projectReviewV2Enabled?: boolean;
+	projectReviewV3Enabled?: boolean;
 	observeSelection?: SpecialistShadowObserver;
 	loadSpecialistSnapshot?: (
 		identity: SpecialistSnapshotIdentity
@@ -369,6 +373,12 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 				});
 				return this.failTerminal(state, 'workflow_input_invalid');
 			}
+		} else if (raw.input.request.policyRef === AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF) {
+			if (!this.ports.projectReviewV3Enabled)
+				return this.failTerminal(state, 'workflow_not_enabled');
+		} else if (raw.input.request.policyRef === AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF) {
+			if (!this.ports.projectReviewV2Enabled)
+				return this.failTerminal(state, 'workflow_not_enabled');
 		} else if (raw.input.request.policyRef !== 'internal-project-review:v1') {
 			return this.failTerminal(state, 'workflow_input_invalid');
 		}
@@ -401,6 +411,8 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 		const shadowSnapshot = state.specialistSnapshot;
 		if (
 			this.ports.observeSelection &&
+			raw.input.request.policyRef !== AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF &&
+			raw.input.request.policyRef !== AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF &&
 			shadowSnapshot?.version !== PUBLISHED_SPECIALIST_SNAPSHOT_VERSION
 		) {
 			try {
@@ -551,7 +563,17 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 			// Raced here as well, so a loader that ignores its signal still
 			// cannot deliver a late result into this preparation.
 			const context = await abortable(
-				this.ports.loadContext({ userId: claim.userId, projectId, signal: contextSignal }),
+				this.ports.loadContext({
+					userId: claim.userId,
+					projectId,
+					signal: contextSignal,
+					...([
+						AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF,
+						AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF
+					].includes(state.raw!.input.request.policyRef)
+						? { projectReviewV2: true, question: state.raw!.input.request.message }
+						: {})
+				}),
 				contextSignal
 			);
 			state.trace.contextLoadMs = this.mono() - loadStartedAt;
@@ -564,6 +586,10 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 				);
 			}
 			built = buildAgenticChatWorkflowContextV1({
+				projectReviewV2: [
+					AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF,
+					AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF
+				].includes(state.raw!.input.request.policyRef),
 				documentOrganization: !!state.specialistSnapshot,
 				documentReadTools: (state.specialistSnapshot?.profileVersion ?? 0) >= 2,
 				context,

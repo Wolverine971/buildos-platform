@@ -157,8 +157,15 @@ export async function readWorkerTurnAttribution(
 export function buildWorkerTurnAttributionFromUsage(
 	rows: LlmUsageLogRow[]
 ): HarnessTurnAttribution {
-	const workerRows = rows.filter((row) => row.operation_type === 'agentic_chat_worker_stream');
-	const passes = workerRows.map((row, index) => ({
+	// Tool selection is a paid worker pass too. Keep its receipt in the audit;
+	// ignoring it hides cost, while treating it as a legacy pass rejects every
+	// Jev-enabled turn despite complete attribution.
+	const attributedRows = rows.filter(
+		(row) =>
+			row.operation_type === 'agentic_chat_worker_stream' ||
+			row.operation_type === 'agentic_chat_tool_selection'
+	);
+	const passes = attributedRows.map((row, index) => ({
 		pass: index + 1,
 		passRole: row.operation_type,
 		requestedProfile: row.profile,
@@ -169,8 +176,8 @@ export function buildWorkerTurnAttributionFromUsage(
 		streamRetryCount: 0
 	}));
 	const fullyAttributed =
-		rows.length > 0 &&
-		workerRows.length === rows.length &&
+		rows.some((row) => row.operation_type === 'agentic_chat_worker_stream') &&
+		attributedRows.length === rows.length &&
 		passes.every((pass) => Boolean(pass.model && pass.provider && pass.passRole));
 
 	return {

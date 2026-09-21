@@ -15,9 +15,11 @@ vi.mock('$lib/services/async-activity-logger', () => ({
 }));
 
 vi.mock('$lib/services/ontology/task-event-sync.service', () => ({
-	TaskEventSyncService: vi.fn().mockImplementation(() => ({
-		syncTaskEvents: vi.fn()
-	}))
+	TaskEventSyncService: vi.fn().mockImplementation(function () {
+		return {
+			syncTaskEvents: vi.fn()
+		};
+	})
 }));
 
 vi.mock('$lib/services/ontology/auto-organizer.service', () => ({

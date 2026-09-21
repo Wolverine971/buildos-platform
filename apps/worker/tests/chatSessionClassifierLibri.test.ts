@@ -14,9 +14,11 @@ vi.mock('../src/lib/supabase', () => ({
 }));
 
 vi.mock('../src/lib/services/smart-llm-service', () => ({
-	SmartLLMService: vi.fn().mockImplementation(() => ({
-		getJSONResponse: mockGetJSONResponse
-	}))
+	SmartLLMService: vi.fn().mockImplementation(function () {
+		return {
+			getJSONResponse: mockGetJSONResponse
+		};
+	})
 }));
 
 vi.mock('../src/workers/shared/queueUtils', () => ({

@@ -17,9 +17,11 @@ vi.mock('$lib/supabase/admin', () => ({
 }));
 
 vi.mock('$lib/services/email-service', () => ({
-	EmailService: vi.fn(() => ({
-		sendEmail: sendEmailMock
-	}))
+	EmailService: vi.fn(function () {
+		return {
+			sendEmail: sendEmailMock
+		};
+	})
 }));
 
 import { config, POST } from './+server';

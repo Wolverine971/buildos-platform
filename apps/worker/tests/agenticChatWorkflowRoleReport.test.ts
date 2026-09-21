@@ -184,3 +184,51 @@ describe('workflow role report contract', () => {
 		);
 	});
 });
+
+describe('project review v2 outcomes', () => {
+	const parseV2 = (value: unknown) =>
+		parseWorkflowRoleReport(JSON.stringify(value), 'risk_reviewer', evidence, {
+			id: 'risk_reviewer',
+			version: 3
+		});
+	it.each(['no_material_findings', 'insufficient_evidence', 'needs_clarification'])(
+		'accepts %s without manufacturing a finding',
+		(outcome) => {
+			const result = parseV2({ ...valid, outcome, findings: [], risks: [] });
+			expect(result).toMatchObject({
+				ok: true,
+				report: {
+					version: 'chat_workflow_role_report_v2',
+					outcome,
+					findings: [],
+					specialist: { id: 'risk_reviewer', version: 3 }
+				}
+			});
+			if (!result.ok) throw new Error(result.reason);
+			expect(workflowReportForEditor(result.report)).toMatchObject({ outcome });
+			expect(renderWorkflowRoleReport(result.report, 1)).toContain(
+				`Outcome: ${outcome.replaceAll('_', ' ')}`
+			);
+		}
+	);
+	it('requires evidence for findings and risks and an explanation for missing evidence', () => {
+		for (const report of [
+			{ ...valid, outcome: 'findings', findings: [] },
+			{
+				...valid,
+				outcome: 'findings',
+				risks: [{ risk: 'A speculative risk', evidence: [] }]
+			},
+			{ ...valid, outcome: 'no_material_findings' },
+			{ ...valid, outcome: 'insufficient_evidence', findings: [], risks: [], unknowns: [] },
+			{ ...valid, outcome: 'anything' }
+		])
+			expect(parseV2(report).ok).toBe(false);
+	});
+	it('ignores a model-supplied specialist identity and requires an explicit outcome', () => {
+		expect(parseV2(valid).ok).toBe(false);
+		expect(
+			parseV2({ ...valid, outcome: 'findings', specialist: { id: 'intruder', version: 999 } })
+		).toMatchObject({ ok: true, report: { specialist: { id: 'risk_reviewer', version: 3 } } });
+	});
+});

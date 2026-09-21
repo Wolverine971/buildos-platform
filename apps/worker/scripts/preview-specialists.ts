@@ -1,9 +1,10 @@
 // apps/worker/scripts/preview-specialists.ts
 // Read-only catalog/selection preview. No credentials, database, or model calls.
 import {
-	SPECIALIST_REGISTRY_V3,
+	SPECIALIST_REGISTRY_V6,
 	buildDocumentOrganizationSnapshotV2,
 	buildDocumentReadSnapshotV2,
+	buildDocumentEvidenceSnapshotV2,
 	DOCUMENT_READ_LIMITS,
 	hashSpecialistSnapshotV2,
 	ProjectReviewAgentSelectorV1,
@@ -11,7 +12,7 @@ import {
 } from '@buildos/agentic-chat-runtime/specialists';
 
 async function main() {
-	const definitions = SPECIALIST_REGISTRY_V3.list();
+	const definitions = SPECIALIST_REGISTRY_V6.list();
 	const selector = new ProjectReviewAgentSelectorV1();
 	const baseline: AgentSelectionInputV1 = {
 		intent: 'project_review',
@@ -36,6 +37,8 @@ async function main() {
 	const snapshotHash = await hashSpecialistSnapshotV2(documentOrganization);
 	const documentReads = buildDocumentReadSnapshotV2();
 	const documentReadsHash = await hashSpecialistSnapshotV2(documentReads);
+	const documentEvidence = buildDocumentEvidenceSnapshotV2();
+	const documentEvidenceHash = await hashSpecialistSnapshotV2(documentEvidence);
 	if (process.argv.includes('--json')) {
 		process.stdout.write(
 			JSON.stringify(
@@ -46,6 +49,8 @@ async function main() {
 					snapshotHash,
 					documentReads,
 					documentReadsHash,
+					documentEvidence,
+					documentEvidenceHash,
 					documentReadLimits: DOCUMENT_READ_LIMITS
 				},
 				null,
@@ -107,6 +112,11 @@ async function main() {
 		`Document organization profile: ${documentOrganization.version}; fixed selector ${documentOrganization.selector.id}@1. Snapshot SHA-256: ${snapshotHash}.`,
 		'',
 		`Read-capable profile: document_organization@2, document_organizer@2; one batch of ${DOCUMENT_READ_LIMITS.maxDocuments} documents, up to ${DOCUMENT_READ_LIMITS.maxCharactersPerDocument} characters / ${DOCUMENT_READ_LIMITS.maxSerializedBytesPerDocument} serialized bytes each. Snapshot SHA-256: ${documentReadsHash}.`,
+		'',
+		`Shared-evidence profile: document_organization@3; document_organizer@2 followed by risk_reviewer@2 using the saved read batch. Snapshot SHA-256: ${documentEvidenceHash}.`,
+		'',
+		'Project review v3: project_analyst@3 + risk_reviewer@4; source-bound excerpts, computed dates and selection-only synthesis. Requires its migration and AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED on worker and web.',
+		'Project review v2: project_analyst@2 + risk_reviewer@3; richer saved evidence and explicit abstention. Requires its migration and AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED on worker and web.',
 		'',
 		'Enable only after migration and deployment: AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED=true on web and every worker.',
 		'',

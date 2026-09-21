@@ -13,14 +13,16 @@ const { saveIntentAndStakesMock, completeOnboardingV3Mock, ensureActorIdMock, sa
 vi.mock('$lib/server/onboarding-progress', () => ({ saveOnboardingProgress: saveProgressMock }));
 
 vi.mock('$lib/server/onboarding.service', () => ({
-	OnboardingServerService: vi.fn().mockImplementation(() => ({
-		saveIntentAndStakes: saveIntentAndStakesMock,
-		completeOnboardingV3: completeOnboardingV3Mock,
-		saveUserInputs: vi.fn(),
-		saveUserInputOnly: vi.fn(),
-		getUserContextSummary: vi.fn(),
-		completeOnboarding: vi.fn()
-	}))
+	OnboardingServerService: vi.fn().mockImplementation(function () {
+		return {
+			saveIntentAndStakes: saveIntentAndStakesMock,
+			completeOnboardingV3: completeOnboardingV3Mock,
+			saveUserInputs: vi.fn(),
+			saveUserInputOnly: vi.fn(),
+			getUserContextSummary: vi.fn(),
+			completeOnboarding: vi.fn()
+		};
+	})
 }));
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({

@@ -427,6 +427,8 @@ function createDefaultComposition(
 			specialistWorkflowsEnabled: input.config.specialistWorkflowsEnabled === true,
 			documentReadToolsEnabled: input.config.documentReadToolsEnabled === true,
 			publishedSpecialistsEnabled: input.config.publishedSpecialistsEnabled === true,
+			projectReviewV2Enabled: input.config.projectReviewV2Enabled === true,
+			projectReviewV3Enabled: input.config.projectReviewV3Enabled === true,
 			documentEvidenceHandoffEnabled: input.config.documentEvidenceHandoffEnabled,
 			selectionDecider:
 				workflowExecutionEnabled && input.config.jevSpecialistSelection === 'shadow'

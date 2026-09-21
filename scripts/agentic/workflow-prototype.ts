@@ -9,7 +9,10 @@ import { parse } from 'dotenv';
 import { prepareGateDatabase } from './preflight';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const output = resolve(root, 'output/workflow-prototype');
+const output = resolve(
+	root,
+	process.env.WORKFLOW_PROTOTYPE_OUTPUT_DIR ?? 'output/workflow-prototype'
+);
 mkdirSync(output, { recursive: true });
 const children: ChildProcess[] = [];
 const testGate = process.env.PATH?.split(':')
@@ -53,8 +56,7 @@ function start(label: string, args: string[], env: NodeJS.ProcessEnv, cwd: strin
 async function ready(url: string, child: ChildProcess) {
 	const deadline = Date.now() + 90_000;
 	while (Date.now() < deadline) {
-		if (child.exitCode !== null)
-			throw new Error('Service exited; inspect output/workflow-prototype logs');
+		if (child.exitCode !== null) throw new Error(`Service exited; inspect ${output} logs`);
 		try {
 			const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
 			if (response.ok) return;
@@ -176,9 +178,7 @@ async function main() {
 				smoke.once('exit', (code) => resolve(code ?? 1))
 			);
 		}
-		console.info(
-			`Workflow smoke ${code === 0 ? 'passed' : 'failed'}; evidence in output/workflow-prototype.`
-		);
+		console.info(`Workflow smoke ${code === 0 ? 'passed' : 'failed'}; evidence in ${output}.`);
 		if (code !== 0) process.exitCode = code;
 	}
 	console.info(

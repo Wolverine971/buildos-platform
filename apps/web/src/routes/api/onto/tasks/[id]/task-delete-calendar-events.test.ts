@@ -4,9 +4,11 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 const deleteEventMock = vi.fn();
 
 vi.mock('$lib/services/ontology/onto-event-sync.service', () => ({
-	OntoEventSyncService: vi.fn().mockImplementation(() => ({
-		deleteEvent: deleteEventMock
-	}))
+	OntoEventSyncService: vi.fn().mockImplementation(function () {
+		return {
+			deleteEvent: deleteEventMock
+		};
+	})
 }));
 
 vi.mock('$lib/services/async-activity-logger', () => ({

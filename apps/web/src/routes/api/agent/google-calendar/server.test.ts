@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/agent/google-calendar/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { legacyHasStoredConnectionMock, legacyHasValidConnectionMock } = vi.hoisted(() => ({
@@ -6,11 +7,15 @@ const { legacyHasStoredConnectionMock, legacyHasValidConnectionMock } = vi.hoist
 }));
 
 vi.mock('$lib/services/calendar-service', () => {
-	const CalendarService = vi.fn().mockImplementation(() => ({
-		hasStoredConnection: legacyHasStoredConnectionMock,
-		hasValidConnection: legacyHasValidConnectionMock
-	}));
-	(CalendarService as any).getToolDefinitions = vi.fn(() => []);
+	const CalendarService = vi.fn().mockImplementation(function () {
+		return {
+			hasStoredConnection: legacyHasStoredConnectionMock,
+			hasValidConnection: legacyHasValidConnectionMock
+		};
+	});
+	(CalendarService as any).getToolDefinitions = vi.fn(function () {
+		return [];
+	});
 	return {
 		CalendarService,
 		CalendarConnectionError: class CalendarConnectionError extends Error {

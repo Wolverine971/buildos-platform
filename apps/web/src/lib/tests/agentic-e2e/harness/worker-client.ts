@@ -248,6 +248,7 @@ export class AgenticE2EWorkerClient {
 				sessionId,
 				context,
 				message: params.message,
+				reviewIntent: params.reviewIntent ?? null,
 				attachments: [],
 				projectFocus: null,
 				lastTurnContext: params.lastTurnContext ?? null,

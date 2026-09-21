@@ -32,6 +32,13 @@ export type PublishedSpecialistReference = {
 	draftId: string;
 	version: number;
 	snapshotHash: string;
+	selectionDecisionId?: string;
+};
+
+/** Host-only provenance used to keep a recommendation scoped to its original question. */
+export type PublishedSpecialistSelection = PublishedSpecialistReference & {
+	selectionQuestion?: string;
+	selectionProjectId?: string;
 };
 
 export type AgenticChatWorkerCommand = {
@@ -215,7 +222,13 @@ function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 					publishedSpecialist: {
 						draftId: command.publishedSpecialist.draftId,
 						version: command.publishedSpecialist.version,
-						snapshotHash: command.publishedSpecialist.snapshotHash
+						snapshotHash: command.publishedSpecialist.snapshotHash,
+						...(command.publishedSpecialist.selectionDecisionId
+							? {
+									selectionDecisionId:
+										command.publishedSpecialist.selectionDecisionId
+								}
+							: {})
 					}
 				}
 			: {})

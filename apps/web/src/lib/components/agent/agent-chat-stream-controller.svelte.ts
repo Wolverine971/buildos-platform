@@ -29,7 +29,8 @@ import {
 	AgenticChatWorkerUnavailableResponseError,
 	requestAgenticChatTransportLease,
 	requestAgenticChatWorkerAdmission,
-	type AgenticChatWorkerCommand
+	type AgenticChatWorkerCommand,
+	type PublishedSpecialistSelection
 } from '$lib/services/agentic-chat-v2/worker-transport-client';
 import { AgentRequestError, buildAgentRequestError } from './agent-chat-session';
 import type { PreparedPromptClient } from './agent-chat-session';
@@ -96,7 +97,7 @@ export interface StreamControllerPrewarmDeps {
 export interface StreamControllerDeps {
 	getInputValue(): string;
 	getReviewIntent?(): AgenticChatWorkerCommand['reviewIntent'];
-	getPublishedSpecialist?(): AgenticChatWorkerCommand['publishedSpecialist'];
+	getPublishedSpecialist?(): PublishedSpecialistSelection | null | undefined;
 	onReviewAdmitted?(): void;
 	setInputValue(value: string): void;
 	getSelectedContextType(): ChatContextType | null;
@@ -446,6 +447,25 @@ export class AgentChatStreamController {
 		const reviewIntent =
 			this.#deps.getReviewIntent?.() ??
 			(selectedSpecialist && isChatWorkflowCommand(trimmed) ? 'document_organization' : null);
+		const submittedMessage =
+			reviewIntent === 'document_organization' &&
+			selectedSpecialist &&
+			isChatWorkflowCommand(trimmed)
+				? trimmed.replace(/^\/workflow(?:\s|$)/i, '').trim()
+				: trimmed;
+		const selectionDecisionId =
+			selectedSpecialist?.selectionDecisionId &&
+			selectedSpecialist.selectionQuestion === submittedMessage &&
+			selectedSpecialist.selectionProjectId ===
+				resolveEffectiveProjectId({
+					contextType: normalizeFastContextType(
+						this.#deps.getSelectedContextType() ?? 'global'
+					),
+					entityId: this.#deps.getSelectedEntityId(),
+					projectFocus: this.#deps.getResolvedProjectFocus()
+				})
+				? selectedSpecialist.selectionDecisionId
+				: undefined;
 		// Take a value copy before any await: a picker change or a lease retry must
 		// never replace the immutable version chosen for this submission.
 		const publishedSpecialist =
@@ -453,13 +473,10 @@ export class AgentChatStreamController {
 				? {
 						draftId: selectedSpecialist.draftId,
 						version: selectedSpecialist.version,
-						snapshotHash: selectedSpecialist.snapshotHash
+						snapshotHash: selectedSpecialist.snapshotHash,
+						...(selectionDecisionId ? { selectionDecisionId } : {})
 					}
 				: null;
-		const submittedMessage =
-			publishedSpecialist && isChatWorkflowCommand(trimmed)
-				? trimmed.replace(/^\/workflow(?:\s|$)/i, '').trim()
-				: trimmed;
 		if (
 			(!trimmed && streamAttachmentRefs.length === 0) ||
 			this.#deps.voice.isInitializing ||

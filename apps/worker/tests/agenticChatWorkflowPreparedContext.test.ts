@@ -16,7 +16,8 @@ import {
 	AgenticChatWorkflowContextError,
 	buildAgenticChatWorkflowContextV1,
 	buildAgenticChatWorkflowModelInputV1,
-	hashAgenticChatWorkflowContextPayloadV1
+	hashAgenticChatWorkflowContextPayloadV1,
+	PROJECT_REVIEW_CONTEXT_MAX_BYTES_V2
 } from '../src/workers/agentic-chat/workflow/prepared-context';
 import { AgenticChatWorkflowTurnPreparer } from '../src/workers/agentic-chat/workflow/raw-turn-preparation';
 import {
@@ -366,4 +367,56 @@ it('preserves document structure and prioritizes document evidence for document 
 	expect((built.payload.data as any).documentReviewScope).toContain(
 		'full document bodies are not loaded'
 	);
+});
+
+describe('project review v2 evidence recipe', () => {
+	const review = (data: Record<string, unknown>) =>
+		buildAgenticChatWorkflowContextV1({
+			context: context(data),
+			userId: USER_ID,
+			projectId: PROJECT_ID,
+			accessCheckedAt: LOADED_AT,
+			contextLoadedAt: LOADED_AT,
+			projectReviewV2: true
+		});
+	it('preserves new evidence families and distinguishes empty, unavailable and truncated coverage', () => {
+		const data = {
+			risks: rows('risk', 2),
+			relationships: rows('edge', 1),
+			activity: [],
+			prior_suggestions: rows('suggestion', 1),
+			review_coverage: { risks: { total: 8 } }
+		};
+		const built = review(data);
+		expect(built.preparationVersion).toBe('agentic_chat_project_review_preparation_v2');
+		expect(built.payload.version).toBe('agentic_chat_project_review_payload_v2');
+		expect(built.payload.coverage).toMatchObject({
+			families: {
+				risks: { status: 'truncated', included: 2, total: 8, omitted: 6 },
+				relationships: { status: 'loaded' },
+				activity: { status: 'empty' },
+				documents: { status: 'unavailable' }
+			}
+		});
+		expect(built.evidenceVersions.map((e) => e.id)).toEqual(
+			expect.arrayContaining(['risk-0', 'edge-0', 'suggestion-0'])
+		);
+		const old = build(context(data));
+		expect(old.payload.data).not.toHaveProperty('risks');
+		expect(old.evidenceVersions).not.toEqual(built.evidenceVersions);
+	});
+	it('keeps provider headroom and counts omissions after shrinking the packet', () => {
+		const built = review({
+			tasks: rows('task', 200, { description: 'x'.repeat(4000) }),
+			risks: rows('risk', 2)
+		});
+		expect(built.payloadBytes).toBeLessThanOrEqual(PROJECT_REVIEW_CONTEXT_MAX_BYTES_V2);
+		expect(built.payload.coverage).toMatchObject({
+			families: {
+				tasks: { status: 'truncated', total: 200 },
+				risks: { status: 'loaded', included: 2 }
+			}
+		});
+		expect(built.coverage.omittedRecords).toBeGreaterThan(0);
+	});
 });

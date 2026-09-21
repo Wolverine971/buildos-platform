@@ -24,10 +24,12 @@ vi.mock('@buildos/shared-agent-ops', () => ({
 	applyProjectAttentionBudget: mocks.applyProjectAttentionBudget,
 	quarantineProjectSuggestionInboxItem: mocks.quarantineProjectSuggestionInboxItem,
 	syncInboxItemForProjectAudit: mocks.syncInboxItemForProjectAudit,
-	readProjectSuggestionStructuralFingerprint: vi.fn(() => null)
+	readProjectSuggestionStructuralFingerprint: vi.fn(function () {
+		return null;
+	})
 }));
 vi.mock('$lib/services/agentic-chat/tools/core/tool-executor', () => ({
-	ChatToolExecutor: vi.fn().mockImplementation((...args: unknown[]) => {
+	ChatToolExecutor: vi.fn().mockImplementation(function (...args: unknown[]) {
 		mocks.chatExecutorConstructor(...args);
 		return { execute: mocks.executeTool };
 	})

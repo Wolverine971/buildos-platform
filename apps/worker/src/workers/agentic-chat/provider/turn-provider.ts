@@ -110,6 +110,8 @@ import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
 import { streamBufferedProviderPass } from './provider-pass';
 import {
 	type SurfaceRepairContext,
+	buildBatchPromiseRepairRequest,
+	hasUnfinishedBatchAction,
 	buildPartialMutationBatchSynthesisInstruction,
 	buildProviderPassBudgetSynthesisInstruction,
 	buildRequiredPassProseFallbackRequest,
@@ -253,6 +255,10 @@ type ToolRoundStreamState = {
 	hasIncompleteApprovedContract(): boolean;
 	/** One bounded pass that sends the model back to finish the approved contract. */
 	takeContractCompletionContinuation(request: ClientRequest): ClientRequest | null;
+	takeBatchPromiseContinuation(
+		request: ClientRequest,
+		assistantCandidate: string
+	): { request: ClientRequest } | { fallback: string } | null;
 	validateApprovedMutations(calls: readonly CompletedProviderToolCall[]): ToolValidationIssue[];
 	/** Scheduling values this turn's reads loaded, so a no-op reschedule fails validation. */
 	getLoadedTaskSchedules(): ReadonlyMap<string, LoadedTaskSchedule>;
@@ -405,6 +411,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		let approvedMutationBatch: MutationBatch | null = null;
 		let rejectedMutationBatch: MutationBatch | null = null;
 		let reviewedBatchExecuted = false;
+		let batchPromiseContinuationUsed = false;
 		let batchRevisionCount = 0;
 		// Every completed tool round this turn, so contract labels can bind to the
 		// entities created in earlier rounds before later writes are authorized.
@@ -798,6 +805,31 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (!continuation) return null;
 				advance({ type: 'completion' });
 				return continuation;
+			},
+			takeBatchPromiseContinuation(value, candidate) {
+				if (
+					!mutationBatchLaneEnabled ||
+					!reviewedBatchExecuted ||
+					phase !== 'mutating' ||
+					value.toolChoice !== 'auto' ||
+					!hasUnfinishedBatchAction(candidate)
+				)
+					return null;
+				const ledger = buildWriteLedger(turnToolExecutions);
+				// Partial/uncertain effects follow the existing receipt-only path.
+				if (!ledger.length || ledger.some((entry) => entry.status !== 'success'))
+					return null;
+				if (batchPromiseContinuationUsed) {
+					return {
+						fallback: renderWriteReceiptFallback(
+							ledger,
+							[],
+							'I saved the changes below, but the additional step was not completed. The remaining work is still pending.'
+						)!
+					};
+				}
+				batchPromiseContinuationUsed = true;
+				return { request: buildBatchPromiseRepairRequest(value) };
 			},
 			validateApprovedMutations(calls) {
 				// Production assembly refuses mutation capabilities without this lane.
@@ -1425,7 +1457,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			}
 			if (initial) {
 				request = await this.resolveLiveVision(request);
-				if (this.ports.toolSelector) request = await this.ports.toolSelector.select(request);
+				if (this.ports.toolSelector)
+					request = await this.ports.toolSelector.select(request);
 				state.setCurrentRequest(request);
 			}
 			for await (const event of this.providerPass(request, state)) {
@@ -1698,6 +1731,28 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						state,
 						continuationOptions
 					);
+					return;
+				}
+				const batchContinuation = state.takeBatchPromiseContinuation(
+					request,
+					assistantCandidate
+				);
+				if (batchContinuation) {
+					if ('request' in batchContinuation) {
+						state.setCurrentRequest(batchContinuation.request);
+						keepLease = true;
+						yield* this.streamActingPass(
+							batchContinuation.request,
+							usage,
+							state,
+							continuationOptions
+						);
+					} else {
+						yield textDelta(batchContinuation.fallback);
+						this.ports.capacity.markAvailable(request.turnRunId);
+						state.advance({ type: 'finish' });
+						yield { type: 'finish', finishedReason: 'mutation_unfulfilled', usage };
+					}
 					return;
 				}
 				if (holdAssistantTextForTurnContract) {

@@ -12,9 +12,11 @@ vi.mock('$lib/server/ontology-project-access', () => ({
 }));
 
 vi.mock('$lib/services/ontology/onto-event-sync.service', () => ({
-	OntoEventSyncService: vi.fn().mockImplementation(() => ({
-		listProjectEvents: listProjectEventsMock
-	}))
+	OntoEventSyncService: vi.fn().mockImplementation(function () {
+		return {
+			listProjectEvents: listProjectEventsMock
+		};
+	})
 }));
 
 import { GET } from './+server';

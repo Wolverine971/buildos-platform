@@ -5,9 +5,11 @@ import type { RequestEvent } from './$types';
 const sendEmailMock = vi.fn();
 
 vi.mock('$lib/services/email-service', () => ({
-	EmailService: vi.fn().mockImplementation(() => ({
-		sendEmail: sendEmailMock
-	}))
+	EmailService: vi.fn().mockImplementation(function () {
+		return {
+			sendEmail: sendEmailMock
+		};
+	})
 }));
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({

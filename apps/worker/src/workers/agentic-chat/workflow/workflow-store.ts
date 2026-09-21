@@ -87,6 +87,7 @@ export type AgenticChatWorkflowDispatchRowV1 = {
 
 /** Durable workflow truth, read with the service role; the only input the runner trusts. */
 export type AgenticChatWorkflowRunStateV1 = {
+	policyRef?: string;
 	specialistSnapshot?: ExecutableSpecialistSnapshot;
 	documentReadResult?: JsonObject;
 	turnRunId: string;
@@ -922,6 +923,7 @@ function parseRunState(
 	const contextId = nullableString(run.context_id);
 	const planHash = nullableString(run.plan_hash);
 	return {
+		policyRef: String(run.policy_ref),
 		turnRunId: String(run.turn_run_id),
 		sessionId: String(run.session_id),
 		userId: String(run.user_id),

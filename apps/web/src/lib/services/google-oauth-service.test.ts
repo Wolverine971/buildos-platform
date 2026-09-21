@@ -9,10 +9,12 @@ const { logAPIErrorMock, logDatabaseErrorMock } = vi.hoisted(() => ({
 
 vi.mock('./errorLogger.service', () => ({
 	ErrorLoggerService: {
-		getInstance: vi.fn(() => ({
-			logAPIError: logAPIErrorMock,
-			logDatabaseError: logDatabaseErrorMock
-		}))
+		getInstance: vi.fn(function () {
+			return {
+				logAPIError: logAPIErrorMock,
+				logDatabaseError: logDatabaseErrorMock
+			};
+		})
 	}
 }));
 

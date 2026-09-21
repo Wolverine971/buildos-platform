@@ -33,6 +33,8 @@ export function createWorkflowContextLoader(client: SupabaseClient<Database>) {
 export type AgenticChatWorkflowPreparationContextLoaderV1 = (input: {
 	userId: string;
 	projectId: string;
+	projectReviewV2?: boolean;
+	question?: string;
 	signal: AbortSignal;
 }) => Promise<MasterPromptContext>;
 
@@ -51,8 +53,44 @@ export function createWorkflowPreparationContextLoader(
 			warn: (message) => console.warn(`[workflow-preparation-context] ${message}`)
 		}
 	});
-	return ({ userId, projectId, signal }) =>
+	return ({ userId, projectId, signal, projectReviewV2, question }) =>
 		boundedBySignal(signal, async () => {
+			if (projectReviewV2) {
+				// One actor-authorized RPC captures all recipe families in the same transaction.
+				const rpc = client as unknown as {
+					rpc(
+						name: string,
+						args: Record<string, unknown>
+					): {
+						abortSignal(
+							signal: AbortSignal
+						): PromiseLike<{ data: unknown; error: unknown }>;
+					};
+				};
+				const result = await rpc
+					.rpc('load_agentic_chat_project_review_evidence_v2', {
+						p_user_id: userId,
+						p_project_id: projectId,
+						p_question: question ?? ''
+					})
+					.abortSignal(signal);
+				signal.throwIfAborted();
+				if (
+					result.error ||
+					!result.data ||
+					typeof result.data !== 'object' ||
+					Array.isArray(result.data)
+				)
+					throw new Error('Project review evidence is unavailable');
+				return {
+					contextType: 'project',
+					timezone: reviewTimezone(result.data),
+					entityId: projectId,
+					projectId,
+					contextLoadSource: 'rpc',
+					data: result.data
+				} as MasterPromptContext;
+			}
 			const context = await loader.loadFastChatPromptContext({
 				supabase: client,
 				userId,
@@ -62,6 +100,19 @@ export function createWorkflowPreparationContextLoader(
 			signal.throwIfAborted();
 			return context;
 		});
+}
+
+function reviewTimezone(data: object): string {
+	const value = (data as Record<string, unknown>).review_timezone;
+	if (typeof value === 'string' && value.trim()) {
+		try {
+			new Intl.DateTimeFormat('en-US', { timeZone: value.trim() });
+			return value.trim();
+		} catch {
+			/* Same UTC fallback as the ordinary context loader. */
+		}
+	}
+	return 'UTC';
 }
 
 /**

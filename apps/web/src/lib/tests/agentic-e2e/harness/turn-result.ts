@@ -18,6 +18,8 @@ export interface RunTurnParams {
 	sessionId?: string;
 	/** Continuity context emitted by the preceding turn. */
 	lastTurnContext?: LastTurnContext | null;
+	/** Explicit durable review admission; a /workflow prefix only tests the older prototype. */
+	reviewIntent?: 'project_review' | 'document_organization';
 }
 
 export function createTurnTiming(requestStartedAt = new Date().toISOString()): TurnTiming {

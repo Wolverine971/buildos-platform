@@ -3,6 +3,8 @@
 	import { untrack } from 'svelte';
 	import {
 		createSpecialistWorkbenchDraftV1,
+		createSpecialistStarterDraftV1,
+		SPECIALIST_STARTERS_V1,
 		type SpecialistWorkbenchDraftV1,
 		type SpecialistWorkbenchPreviewV1
 	} from '@buildos/agentic-chat-runtime/specialists';
@@ -15,6 +17,9 @@
 	} from '$lib/types/specialist-workbench';
 
 	type Published = { version: WorkbenchVersionSummary; snapshot: unknown };
+	type DraftSelection =
+		| { kind: 'saved'; id: string }
+		| { kind: 'starter'; id: (typeof SPECIALIST_STARTERS_V1)[number]['id'] };
 
 	let { initial }: { initial: WorkbenchData } = $props();
 	// The route keys this editor by its loaded data. Within that editing session,
@@ -38,7 +43,9 @@
 	let busy = $state<'save' | 'preview' | 'publish' | 'inspect' | 'upload' | null>(null);
 	let error = $state('');
 	let notice = $state('');
-	let pendingSelection = $state<string | null>(null);
+	let pendingSelection = $state<DraftSelection | null>(null);
+	let showStarters = $state(!first);
+	let untouchedTemplateJson = $state(first ? '' : JSON.stringify(initialDraft));
 	let pendingDraftId = '';
 
 	const payload = $derived({
@@ -62,27 +69,35 @@
 		notice = '';
 	}
 
-	function loadDraft(id: string) {
-		const row = drafts.find((item) => item.id === id);
-		draft = copyDraft(row?.draft ?? createSpecialistWorkbenchDraftV1());
+	function loadDraft(selection: DraftSelection) {
+		const row =
+			selection.kind === 'saved' ? drafts.find((item) => item.id === selection.id) : null;
+		draft = copyDraft(
+			row?.draft ??
+				(selection.kind === 'starter'
+					? createSpecialistStarterDraftV1(selection.id)
+					: createSpecialistWorkbenchDraftV1())
+		);
 		expertiseText = draft.expertise.join(', ');
 		selectedId = row?.id ?? '';
 		pendingDraftId = '';
 		revision = row?.revision ?? 0;
 		savedJson = row ? JSON.stringify(row.draft) : '';
+		untouchedTemplateJson = row ? '' : JSON.stringify(draft);
 		previewResult = null;
 		previewJson = '';
 		inspected = null;
 		pendingSelection = null;
+		showStarters = false;
 		clearNotice();
 	}
 
-	function chooseDraft(id: string) {
-		if (id && id === selectedId) return;
-		const isUntouchedTemplate =
-			!selectedId && draftJson === JSON.stringify(createSpecialistWorkbenchDraftV1());
-		if (dirty && !isUntouchedTemplate) pendingSelection = id;
-		else loadDraft(id);
+	function chooseDraft(selection: DraftSelection) {
+		if (selection.kind === 'saved' && selection.id === selectedId) return;
+		showStarters = false;
+		const isUntouchedTemplate = !selectedId && draftJson === untouchedTemplateJson;
+		if (dirty && !isUntouchedTemplate) pendingSelection = selection;
+		else loadDraft(selection);
 	}
 
 	async function request<T>(body: unknown): Promise<T> {
@@ -282,11 +297,11 @@
 				value={selectedId}
 				disabled={!!busy}
 				onchange={(event) => {
-					chooseDraft(event.currentTarget.value);
+					chooseDraft({ kind: 'saved', id: event.currentTarget.value });
 					event.currentTarget.value = selectedId;
 				}}
 			>
-				{#if !selectedId}<option value="">New document organizer</option>{/if}
+				{#if !selectedId}<option value="">New specialist · {draft.name}</option>{/if}
 				{#each drafts as item (item.id)}
 					<option value={item.id}>{item.draft.name} · draft {item.revision}</option>
 				{/each}
@@ -297,9 +312,41 @@
 			size="sm"
 			icon={Plus}
 			disabled={!!busy}
-			onclick={() => chooseDraft('')}>New specialist</Button
+			onclick={() => (showStarters = !showStarters)}>New specialist</Button
 		>
 	</div>
+
+	{#if showStarters}
+		<section
+			class="rounded-xl border border-border bg-card p-4"
+			aria-labelledby="starter-heading"
+		>
+			<h2 id="starter-heading" class="font-semibold text-foreground">
+				Choose a starting point
+			</h2>
+			<p class="mt-1 text-sm text-muted-foreground">
+				Start with a focused draft, then make its instructions, tools, and knowledge your
+				own.
+			</p>
+			<div class="mt-4 grid gap-3 md:grid-cols-3">
+				{#each SPECIALIST_STARTERS_V1 as starter (starter.id)}
+					<button
+						type="button"
+						disabled={!!busy}
+						onclick={() => chooseDraft({ kind: 'starter', id: starter.id })}
+						class="rounded-lg border border-border bg-background p-4 text-left transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+					>
+						<span class="block text-sm font-semibold text-foreground"
+							>{starter.name}</span
+						>
+						<span class="mt-2 block text-xs leading-relaxed text-muted-foreground"
+							>{starter.description}</span
+						>
+					</button>
+				{/each}
+			</div>
+		</section>
+	{/if}
 
 	{#if pendingSelection !== null}
 		<div
@@ -314,7 +361,9 @@
 				size="sm"
 				variant="outline"
 				disabled={!!busy}
-				onclick={() => loadDraft(pendingSelection ?? '')}>Discard edits and switch</Button
+				onclick={() => {
+					if (pendingSelection) loadDraft(pendingSelection);
+				}}>Discard edits and switch</Button
 			>
 			<Button
 				size="sm"

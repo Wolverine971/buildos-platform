@@ -7,13 +7,17 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
-	createAdminSupabaseClient: vi.fn(() => ({}))
+	createAdminSupabaseClient: vi.fn(function () {
+		return {};
+	})
 }));
 
 vi.mock('$lib/server/google-calendar-write.service', () => ({
-	GoogleCalendarWriteService: vi.fn().mockImplementation(() => ({
-		hasActiveTarget: mocks.hasActiveTarget
-	}))
+	GoogleCalendarWriteService: vi.fn().mockImplementation(function () {
+		return {
+			hasActiveTarget: mocks.hasActiveTarget
+		};
+	})
 }));
 
 vi.mock('$lib/services/calendar-service', () => ({
@@ -21,7 +25,7 @@ vi.mock('$lib/services/calendar-service', () => ({
 }));
 
 vi.mock('$lib/services/time-block.service', () => ({
-	TimeBlockService: vi.fn().mockImplementation((...args) => {
+	TimeBlockService: vi.fn().mockImplementation(function (...args) {
 		mocks.timeBlockConstructor(...args);
 		return { kind: 'time-block-service' };
 	})

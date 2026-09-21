@@ -12169,6 +12169,96 @@ describe('SHA-bound mutation batch approval', () => {
 			);
 		}
 	});
+	it('withholds a next-stage promise and reviews the resumed link without replaying creates', async () => {
+		const links = {
+			src_kind: 'task',
+			src_id: 'a0000000-0000-4000-8000-000000000002',
+			dst_kind: 'task',
+			dst_id: 'a0000000-0000-4000-8000-000000000001',
+			rel: 'depends_on'
+		};
+		const client = clientWithRounds([
+			proposedBatchRound(),
+			[
+				{
+					type: 'text',
+					content:
+						"All four tasks are created. Now I'll propose the dependency-relationship stage for independent review, using the IDs returned by the creates."
+				},
+				{ type: 'done', finishedReason: 'stop' }
+			],
+			providerReadRound('resumed-link', links, 'link_onto_entities'),
+			[
+				{ type: 'text', content: 'Created the tasks and linked their dependency.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const reviewer = approvingReviewer();
+		const invocation = await batchProvider(client, reviewer);
+		const firstReview = await collect(invocation.stream());
+		const creates = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [approvalFeedback(firstReview)]
+			})
+		);
+		const secondReview = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(creates) })
+		);
+		expect(
+			secondReview.some((step) => step.type === 'text_delta' || step.type === 'mutating_tool')
+		).toBe(false);
+		const savedLinks = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [approvalFeedback(secondReview)]
+			})
+		);
+		expect(savedLinks.filter((step) => step.type === 'mutating_tool')).toEqual([
+			expect.objectContaining({ toolName: 'link_onto_entities', arguments: links })
+		]);
+		const final = await collect(
+			invocation.continueWithToolResults!({ round: 5, results: successfulWrites(savedLinks) })
+		);
+		expect(final.filter((step) => step.type === 'text_delta')).toEqual([
+			{ type: 'text_delta', text: 'Created the tasks and linked their dependency.' }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(4);
+		expect(reviewer.stream).toHaveBeenCalledTimes(2);
+		const repair = client.stream.mock.calls[2]![0];
+		expect(repair.passRole).toBe('repair');
+		expect(repair.toolChoice).toBe('auto');
+		expect(repair.tools).toEqual(client.stream.mock.calls[1]![0].tools);
+		expect(repair.messages.at(-1)?.content).toContain('Never replay successful writes');
+	});
+	it('bounds repeated next-stage promises and ends with only saved receipts', async () => {
+		const promise = [
+			{ type: 'text', content: "All four tasks are created. Now I'll link them." },
+			{ type: 'done', finishedReason: 'stop' }
+		] as AgenticChatTurnProviderClientEventV1[];
+		const client = clientWithRounds([proposedBatchRound(), promise, promise]);
+		const reviewer = approvingReviewer();
+		const invocation = await batchProvider(client, reviewer);
+		const review = await collect(invocation.stream());
+		const creates = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+		);
+		const final = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(creates) })
+		);
+		expect(final.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(final.filter((step) => step.type === 'text_delta')).toEqual([
+			expect.objectContaining({
+				text: expect.stringContaining('remaining work is still pending')
+			})
+		]);
+		expect(final.at(-1)).toMatchObject({
+			type: 'finish',
+			finishedReason: 'mutation_unfulfilled'
+		});
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+	});
 	it('validates malformed proposed arguments before spending a reviewer pass', async () => {
 		const bad = providerReadRound(
 			'bad-link',

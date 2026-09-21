@@ -27,7 +27,9 @@ vi.mock('googleapis', () => ({
 }));
 
 vi.mock('$lib/utils/activityLogger', () => ({
-	ActivityLogger: vi.fn().mockImplementation(() => ({ logActivity: activityMock }))
+	ActivityLogger: vi.fn().mockImplementation(function () {
+		return { logActivity: activityMock };
+	})
 }));
 
 vi.mock('./google-oauth-service', () => {
@@ -37,21 +39,25 @@ vi.mock('./google-oauth-service', () => {
 
 	return {
 		GoogleOAuthConnectionError,
-		GoogleOAuthService: vi.fn().mockImplementation((client, _credentials, runtimeOptions) => {
-			googleOAuthConstructorCalls.push({ client, runtimeOptions });
-			return client === adminSupabase
-				? { disconnectCalendar: adminDisconnectMock }
-				: {
-						disconnectCalendar: userDisconnectMock,
-						hasValidConnection: userHasValidConnectionMock
-					};
-		})
+		GoogleOAuthService: vi
+			.fn()
+			.mockImplementation(function (client, _credentials, runtimeOptions) {
+				googleOAuthConstructorCalls.push({ client, runtimeOptions });
+				return client === adminSupabase
+					? { disconnectCalendar: adminDisconnectMock }
+					: {
+							disconnectCalendar: userDisconnectMock,
+							hasValidConnection: userHasValidConnectionMock
+						};
+			})
 	};
 });
 
 vi.mock('./errorLogger.service', () => ({
 	ErrorLoggerService: {
-		getInstance: vi.fn(() => ({ logCalendarError: vi.fn() }))
+		getInstance: vi.fn(function () {
+			return { logCalendarError: vi.fn() };
+		})
 	}
 }));
 

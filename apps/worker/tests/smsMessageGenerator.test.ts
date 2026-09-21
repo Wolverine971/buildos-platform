@@ -16,7 +16,7 @@ import { SMSMessageGenerator, type EventContext } from '../src/lib/services/smsM
 // Mock SmartLLMService to test template fallback without API key
 vi.mock('../src/lib/services/smart-llm-service', () => {
 	return {
-		SmartLLMService: vi.fn().mockImplementation(() => {
+		SmartLLMService: vi.fn().mockImplementation(function () {
 			return {
 				generateText: vi.fn().mockRejectedValue(new Error('LLM mock error')),
 				generateTextDetailed: vi.fn().mockRejectedValue(new Error('LLM mock error'))

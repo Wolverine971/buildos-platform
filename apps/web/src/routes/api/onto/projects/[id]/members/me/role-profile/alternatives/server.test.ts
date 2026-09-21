@@ -11,9 +11,11 @@ vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 }));
 
 vi.mock('$lib/services/smart-llm-service', () => ({
-	SmartLLMService: vi.fn().mockImplementation(() => ({
-		generateText: generateTextMock
-	}))
+	SmartLLMService: vi.fn().mockImplementation(function () {
+		return {
+			generateText: generateTextMock
+		};
+	})
 }));
 
 vi.mock('../../../../../../shared/error-logging', () => ({

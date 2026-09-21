@@ -34,11 +34,13 @@ vi.mock('$lib/utils/email-config', () => ({
 
 vi.mock('./errorLogger.service', () => ({
 	ErrorLoggerService: {
-		getInstance: vi.fn(() => ({
-			logAPIError: logAPIErrorMock,
-			logDatabaseError: logDatabaseErrorMock,
-			logError: vi.fn()
-		}))
+		getInstance: vi.fn(function () {
+			return {
+				logAPIError: logAPIErrorMock,
+				logDatabaseError: logDatabaseErrorMock,
+				logError: vi.fn()
+			};
+		})
 	}
 }));
 

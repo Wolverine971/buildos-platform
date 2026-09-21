@@ -51,7 +51,7 @@ const DEFAULT_PREFERENCES: Omit<BriefPreferences, 'id' | 'user_id' | 'created_at
 		frequency: 'daily',
 		day_of_week: 1, // Monday
 		time_of_day: '09:00:00',
-		is_active: true
+		is_active: false
 	};
 
 function createBriefPreferencesStore() {
