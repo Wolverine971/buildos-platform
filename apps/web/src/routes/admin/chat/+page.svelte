@@ -17,6 +17,7 @@
 		HardDrive,
 		Network
 	} from 'lucide-svelte';
+	import { Workflow } from '$lib/icons/lucide';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -644,6 +645,19 @@
 				<div>
 					<h3 class="text-base font-semibold text-foreground">Sessions</h3>
 					<p class="text-sm text-muted-foreground">View all chats</p>
+				</div>
+			</div>
+		</a>
+
+		<a
+			href="/admin/chat/workflows"
+			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			<div class="flex items-center gap-3">
+				<Workflow class="h-7 w-7 text-accent shrink-0" />
+				<div>
+					<h3 class="text-base font-semibold text-foreground">Workflows</h3>
+					<p class="text-sm text-muted-foreground">Multi-agent traces and export</p>
 				</div>
 			</div>
 		</a>

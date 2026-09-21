@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/agentic-chat-harness-audit-2026-09-08/lane-D-runtime-loop.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Audited on 2026-09-09 against the working tree on top of `6d70b36e1`; some cited files have since been deleted.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Lane D — Shared runtime loop modules (`packages/agentic-chat-runtime`)
 
 Audit date: 2026-09-09T02Z. Tree: working tree on top of `6d70b36e1` (main). Read-only.

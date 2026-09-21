@@ -265,6 +265,10 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			workflowPrototypeUserIds: [],
 			workflowV4PreparationEnabled: false,
 			workflowV4ExecutionEnabled: false,
+			specialistWorkflowsEnabled: false,
+			documentReadToolsEnabled: false,
+			documentEvidenceHandoffEnabled: false,
+			jevSpecialistSelection: 'off',
 			liveVisionEnabled: false,
 			consumptionBillingEnabled: false,
 			consumer: {

@@ -34,6 +34,11 @@ import {
 	compactPromptSnapshot
 } from './chat-session-audit-compact';
 import type { AuditTurnRun, ChatSessionAuditPayload } from './chat-session-audit-types';
+import {
+	buildWorkflowCostsSection,
+	buildWorkflowEvidenceSection,
+	buildWorkflowReportSection
+} from './chat-workflow-audit-export';
 export type {
 	AuditPromptEvalRun,
 	AuditTimelineEvent,
@@ -338,6 +343,26 @@ export const buildChatSessionAuditFilename = (payload: ChatSessionAuditPayload):
 	return `${buildChatSessionAuditBaseName(payload)}.md`;
 };
 
+/** Workflow turns, when the session has any: saved graph, agents, evidence and costs per run. */
+export const buildWorkflowRunsSection = (payload: ChatSessionAuditPayload): string[] => {
+	const runs = payload.workflows?.runs ?? [];
+	if (runs.length === 0) return [];
+	// The run report starts at `#`; nest it two levels under this `##` section.
+	const demote = (line: string) => line.replace(/^(#{1,4}) /, '##$1 ');
+	const lines = [
+		`## Workflow Runs (${runs.length})`,
+		'',
+		`_Multi-agent workflow turns saved by the engine. Captured at ${payload.workflows?.captured_at ?? 'unknown'}; this capture is not atomic across queries._`,
+		''
+	];
+	for (const run of runs) {
+		lines.push(...buildWorkflowReportSection(run).map(demote));
+		lines.push(...buildWorkflowEvidenceSection(run).map(demote));
+		lines.push(...buildWorkflowCostsSection(run).map(demote));
+	}
+	return lines;
+};
+
 export const buildChatSessionAuditMarkdown = (payload: ChatSessionAuditPayload): string => {
 	const gist = deriveAuditGist(payload);
 	const lines: string[] = [];
@@ -349,6 +374,7 @@ export const buildChatSessionAuditMarkdown = (payload: ChatSessionAuditPayload):
 	lines.push(...buildToolCallSection(payload));
 	lines.push(...buildLlmCallSection(payload));
 	lines.push(...buildTurnSummarySection(payload));
+	lines.push(...buildWorkflowRunsSection(payload));
 	lines.push(...buildPromptVariantComparisonSection(payload.turn_runs));
 	lines.push(...buildDiagnosticsSection(payload, gist));
 	lines.push(...buildTimelineSection(payload));
@@ -359,15 +385,19 @@ export const buildChatSessionAuditMarkdown = (payload: ChatSessionAuditPayload):
 
 export const fetchChatSessionAuditPayload = async (
 	sessionId: string,
-	fetcher: typeof fetch = fetch
+	fetcher: typeof fetch = fetch,
+	options: { turnRunId?: string | null } = {}
 ): Promise<ChatSessionAuditPayload> => {
 	const trimmedSessionId = sessionId.trim();
 	if (!trimmedSessionId) {
 		throw new Error('Chat session ID is required');
 	}
 
+	// The optional turn run id is validated server-side against the session; a mismatch is 404.
+	const turnRunId = options.turnRunId?.trim();
+	const query = turnRunId ? `?turn_run_id=${encodeURIComponent(turnRunId)}` : '';
 	const response = await fetcher(
-		`/api/admin/chat/sessions/${encodeURIComponent(trimmedSessionId)}`
+		`/api/admin/chat/sessions/${encodeURIComponent(trimmedSessionId)}${query}`
 	);
 	const result = (await response.json().catch(() => null)) as ChatSessionAuditResponse | null;
 

@@ -15,24 +15,35 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { buildSessionDetailPayload } from './session-detail-payload';
 import { loadPromptEvalResultsForTurnRuns } from '$lib/services/agentic-chat-v2/prompt-eval-runner';
+import { buildChatWorkflowAuditPayload } from '$lib/services/admin/chat-workflow-audit-build';
+import { isOptionalTableMissing, loadWorkflowAuditRows } from './workflow-audit-loader';
 
-const isOptionalTableMissing = (error: unknown): boolean => {
-	const maybe = error as { code?: string; message?: string } | null;
-	if (!maybe) return false;
-	if (maybe.code === '42P01') return true;
-	return typeof maybe.message === 'string' && /does not exist/i.test(maybe.message);
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Audit payloads are private records; never let a shared cache hold one. */
+const privateNoStore = (response: Response): Response => {
+	response.headers.set('Cache-Control', 'private, no-store');
+	response.headers.set('Pragma', 'no-cache');
+	return response;
 };
 
-export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }) => {
+export const GET: RequestHandler = async ({ params, url, locals: { safeGetSession } }) => {
 	const sessionId = params.id;
 	const { user } = await safeGetSession();
 
 	if (!user?.id) {
-		return ApiResponse.unauthorized();
+		return privateNoStore(ApiResponse.unauthorized());
 	}
 
 	if (!user.is_admin) {
-		return ApiResponse.forbidden('Admin access required');
+		return privateNoStore(ApiResponse.forbidden('Admin access required'));
+	}
+
+	// Optional deep-link target. It only narrows the caller's view; the payload is still the
+	// whole session, and the id must belong to this session or the request is rejected.
+	const requestedTurnRunId = url.searchParams.get('turn_run_id')?.trim() || null;
+	if (requestedTurnRunId && !UUID_PATTERN.test(requestedTurnRunId)) {
+		return privateNoStore(ApiResponse.badRequest('turn_run_id must be a UUID'));
 	}
 
 	try {
@@ -65,7 +76,7 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 			.single();
 
 		if (sessionError || !sessionRow) {
-			return ApiResponse.notFound('Session not found');
+			return privateNoStore(ApiResponse.notFound('Session not found'));
 		}
 
 		const [
@@ -296,10 +307,20 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 			throw promptSnapshotError;
 		if (turnEventError && !isOptionalTableMissing(turnEventError)) throw turnEventError;
 		const turnRunIds = (turnRunRows ?? []).map((row) => row.id);
-		const { evalRuns, assertions } = await loadPromptEvalResultsForTurnRuns(
-			adminSupabase,
-			turnRunIds
-		);
+		if (requestedTurnRunId && !turnRunIds.includes(requestedTurnRunId)) {
+			return privateNoStore(ApiResponse.notFound('Turn run not found in this session'));
+		}
+		const capturedAt = new Date().toISOString();
+		const [{ evalRuns, assertions }, workflowRows] = await Promise.all([
+			loadPromptEvalResultsForTurnRuns(adminSupabase, turnRunIds),
+			loadWorkflowAuditRows({
+				client: adminSupabase as unknown as Parameters<
+					typeof loadWorkflowAuditRows
+				>[0]['client'],
+				sessionId,
+				turnRunIds
+			})
+		]);
 
 		const payload = buildSessionDetailPayload({
 			sessionRow,
@@ -314,10 +335,16 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 			evalRuns,
 			evalAssertions: assertions
 		});
+		payload.workflows = buildChatWorkflowAuditPayload({
+			rows: workflowRows,
+			turnRuns: payload.turn_runs,
+			llmCalls: payload.llm_calls,
+			capturedAt
+		});
 
-		return ApiResponse.success(payload);
+		return privateNoStore(ApiResponse.success(payload));
 	} catch (err) {
 		console.error('Session detail error:', err);
-		return ApiResponse.internalError(err, 'Failed to load session details');
+		return privateNoStore(ApiResponse.internalError(err, 'Failed to load session details'));
 	}
 };

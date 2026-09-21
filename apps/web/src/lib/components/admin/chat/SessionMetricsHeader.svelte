@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/admin/chat/SessionMetricsHeader.svelte -->
 <script lang="ts">
-	import { Download, FileArchive } from 'lucide-svelte';
+	import { Download, FileArchive, Workflow } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		formatCurrency,
@@ -35,6 +35,16 @@
 		</div>
 	</div>
 	<div class="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+		{#if (sessionDetail.workflows?.runs.length ?? 0) > 0}
+			<a
+				href={`/admin/chat/workflows?chat_session_id=${encodeURIComponent(sessionDetail.session.id)}`}
+				class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-foreground shadow-ink pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				title="Open the multi-agent workflow inspector for this session"
+			>
+				<Workflow class="h-3.5 w-3.5 shrink-0" />
+				Workflows ({sessionDetail.workflows?.runs.length ?? 0})
+			</a>
+		{/if}
 		<Button onclick={onExport} icon={Download} variant="secondary" size="sm" class="pressable">
 			Export Markdown
 		</Button>

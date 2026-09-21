@@ -19,7 +19,8 @@
 		ExternalLink,
 		FileArchive,
 		LoaderCircle,
-		MoreHorizontal
+		MoreHorizontal,
+		Workflow
 	} from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { portal } from '$lib/actions/portal';
@@ -40,6 +41,12 @@
 		variant?: 'standalone' | 'desktop' | 'menu';
 		includeLogs?: boolean;
 		includeExports?: boolean;
+		/**
+		 * Also link the multi-agent workflow inspector (`/admin/chat/workflows`). Off by
+		 * default so ordinary chat headers keep their current controls; workflow hosts
+		 * such as the lab turn it on.
+		 */
+		includeWorkflowTrace?: boolean;
 		showTopDivider?: boolean;
 		/** Called after a menu item is activated (lets a host close its dropdown). */
 		onItemClick?: () => void;
@@ -50,6 +57,7 @@
 		variant = 'standalone',
 		includeLogs = true,
 		includeExports = true,
+		includeWorkflowTrace = false,
 		showTopDivider = false,
 		onItemClick
 	}: Props = $props();
@@ -65,8 +73,16 @@
 	const adminSessionHref = $derived(
 		sessionId ? `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId)}` : null
 	);
+	const workflowTraceHref = $derived(
+		sessionId && includeWorkflowTrace
+			? `/admin/chat/workflows?chat_session_id=${encodeURIComponent(sessionId)}`
+			: null
+	);
 	const hasVisibleActions = $derived(
-		visible && ((includeLogs && Boolean(adminSessionHref)) || includeExports)
+		visible &&
+			((includeLogs && Boolean(adminSessionHref)) ||
+				Boolean(workflowTraceHref) ||
+				includeExports)
 	);
 
 	async function exportAudit(format: 'markdown' | 'bundle') {
@@ -145,6 +161,22 @@
 			<span>Logs</span>
 		</a>
 	{/if}
+	{#if workflowTraceHref}
+		<a
+			href={workflowTraceHref}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="flex w-full items-center gap-2 px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+			role="menuitem"
+			onclick={() => {
+				mobileMenuOpen = false;
+				onItemClick?.();
+			}}
+		>
+			<Workflow class="h-3.5 w-3.5 shrink-0" />
+			<span>Trace</span>
+		</a>
+	{/if}
 	{#if includeExports}
 		<button
 			type="button"
@@ -193,6 +225,19 @@
 			>
 				<ExternalLink class="h-3.5 w-3.5 shrink-0" />
 				<span>Logs</span>
+			</a>
+		{/if}
+
+		{#if workflowTraceHref}
+			<a
+				href={workflowTraceHref}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				title="Open the multi-agent workflow trace for this session"
+			>
+				<Workflow class="h-3.5 w-3.5 shrink-0" />
+				<span>Trace</span>
 			</a>
 		{/if}
 

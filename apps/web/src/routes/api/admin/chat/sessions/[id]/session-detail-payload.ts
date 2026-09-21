@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/chat/sessions/[id]/session-detail-payload.ts
 import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
+import type { ChatWorkflowAuditPayload } from '$lib/services/admin/chat-workflow-audit-types';
 
 type TimelineSeverity = 'info' | 'success' | 'warning' | 'error';
 type TimelineType =
@@ -828,6 +829,8 @@ export interface SessionDetailPayload {
 	timeline: TimelineEvent[];
 	timing_metrics: TimingDataRow | null;
 	turn_runs: SessionTurnRunPayload[];
+	/** Multi-agent workflow records, attached by the route after the base payload is built. */
+	workflows?: ChatWorkflowAuditPayload | null;
 }
 
 interface BuildPayloadInput {

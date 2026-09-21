@@ -42,6 +42,13 @@ const evidence: Record<string, unknown> = {
 };
 let stopping = false;
 
+function gateEnvPath(): string | undefined {
+	if (process.env.AGENTIC_GATE_ENV_FILE?.trim()) return process.env.AGENTIC_GATE_ENV_FILE.trim();
+	const localEnvPath = resolve(root, '.env.local');
+	if (!existsSync(localEnvPath)) return undefined;
+	return parse(readFileSync(localEnvPath)).AGENTIC_GATE_ENV_FILE?.trim() || undefined;
+}
+
 async function stop() {
 	if (stopping) return;
 	stopping = true;
@@ -165,7 +172,7 @@ async function main() {
 			throw new Error(
 				`Gate diagnostics tests failed (${diagnosticsExit}); see diagnostics-oracle.log`
 			);
-		const envPath = process.env.AGENTIC_GATE_ENV_FILE;
+		const envPath = gateEnvPath();
 		if (!envPath)
 			throw new Error(
 				'Set AGENTIC_GATE_ENV_FILE to an isolated test-database env file. Ports alone do not isolate the shared chat queue. See docs/testing/agentic-chat-gate.md.'

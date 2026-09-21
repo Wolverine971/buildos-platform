@@ -1,4 +1,6 @@
 // apps/web/src/lib/services/admin/chat-session-audit-types.ts
+import type { ChatWorkflowAuditPayload } from './chat-workflow-audit-types';
+
 export type AuditRecord = Record<string, unknown>;
 
 export type AuditTimelineType =
@@ -113,6 +115,8 @@ export interface ChatSessionAuditPayload {
 	timeline: AuditTimelineEvent[];
 	timing_metrics: AuditRecord | null;
 	turn_runs: AuditTurnRun[];
+	/** Multi-agent workflow records (Tasker 91). Absent on payloads from older servers. */
+	workflows?: ChatWorkflowAuditPayload | null;
 }
 
 export type SessionListItem = {

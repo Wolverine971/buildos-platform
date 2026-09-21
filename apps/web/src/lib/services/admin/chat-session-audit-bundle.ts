@@ -44,6 +44,13 @@ import {
 	type AuditCapabilityManifest
 } from './chat-session-audit-compact';
 import type { ChatSessionAuditPayload } from './chat-session-audit-types';
+import {
+	buildWorkflowRunFiles,
+	buildWorkflowSummaryLines,
+	escapeMarkdownInline,
+	storedHashesForRun,
+	workflowFolderName
+} from './chat-workflow-audit-export';
 
 export const buildChatSessionAuditBundleName = (payload: ChatSessionAuditPayload): string => {
 	return buildChatSessionAuditBaseName(payload);
@@ -85,6 +92,24 @@ const buildReadme = (
 		metricLine('Cost (USD)', payload.metrics.total_cost_usd),
 		''
 	);
+	const workflowRuns = payload.workflows?.runs ?? [];
+	if (workflowRuns.length > 0) {
+		lines.push(
+			`## Workflows (${workflowRuns.length})`,
+			'',
+			`Multi-agent workflow turns saved by the engine. Captured at ${payload.workflows?.captured_at ?? 'unknown'}; this capture is not atomic across queries. Each run has its own folder under \`workflows/\`; \`raw/workflows.json\` holds the full versioned audit payload and \`manifest.json\` lists stored hashes and coverage.`,
+			''
+		);
+		for (const run of workflowRuns) {
+			lines.push(
+				`### ${escapeMarkdownInline(`Workflow ${run.turn_index ?? '?'} · ${run.outcome_label} · ${run.policy_ref ?? 'policy ?'}`)}`,
+				'',
+				...buildWorkflowSummaryLines(run),
+				`- Folder: \`workflows/${workflowFolderName(run)}/\``,
+				''
+			);
+		}
+	}
 	lines.push(
 		'## Files',
 		'',
@@ -96,9 +121,52 @@ const buildReadme = (
 		'- [`diagnostics.md`](./diagnostics.md) — outcome, flags, notable LLM passes',
 		'- [`capabilities.md`](./capabilities.md) — available/loaded tools, skills, domains, and outcome cards',
 		'- [`raw/`](./raw/) — JSON records. `timeline.json` and `turn_runs.json` are compact; full prompt snapshots are split into `prompt_snapshots.json`.',
+		...(workflowRuns.length > 0
+			? [
+					'- [`workflows/`](./workflows/) — one folder per multi-agent workflow turn: `workflow.md`, `flow.mmd`, `timeline.md`, `costs.md`, `evidence.md`, `agents/<step>/`, `raw/`.',
+					'- [`raw/workflows.json`](./raw/workflows.json) — the full versioned workflow audit payload.',
+					'- [`manifest.json`](./manifest.json) — schema versions, scope, counts, stored record hashes and coverage.'
+				]
+			: []),
 		''
 	);
 	return section(lines);
+};
+
+const buildSessionWorkflowManifest = (
+	payload: ChatSessionAuditPayload
+): Record<string, unknown> => {
+	const workflows = payload.workflows;
+	const runs = workflows?.runs ?? [];
+	return {
+		schema_version: 'chat_session_audit_bundle_v1',
+		audit_version: workflows?.version ?? null,
+		exported_at: new Date().toISOString(),
+		captured_at: workflows?.captured_at ?? null,
+		atomic: false,
+		incomplete: runs.some((run) => !run.is_terminal),
+		scope: { kind: 'session', session_id: payload.session.id, turn_run_id: null },
+		counts: {
+			messages: payload.messages.length,
+			turns: payload.turn_runs.length,
+			ordinary_turns: workflows?.ordinary_turn_ids.length ?? null,
+			workflow_runs: runs.length,
+			steps: runs.reduce((n, r) => n + r.steps.length, 0),
+			dispatches: runs.reduce((n, r) => n + r.dispatches.length, 0),
+			redactions: workflows?.counts.redactions ?? 0
+		},
+		stored_record_hashes: Object.fromEntries(
+			runs.map((run) => [run.turn_run_id, storedHashesForRun(run)])
+		),
+		exported_file_hashes: null,
+		exported_file_hashes_note:
+			'Not computed for the session bundle; export a single workflow for per-file hashes.',
+		coverage: {
+			tables: workflows?.tables ?? null,
+			notes: workflows?.notes ?? [],
+			runs: Object.fromEntries(runs.map((run) => [run.turn_run_id, run.coverage]))
+		}
+	};
 };
 
 const buildTranscriptFile = (payload: ChatSessionAuditPayload) =>
@@ -235,6 +303,18 @@ export const buildChatSessionAuditBundleFiles = (
 ): Record<string, string> => {
 	const gist = deriveAuditGist(payload);
 	const capabilityManifest = buildCapabilityManifest(payload);
+	const workflowRuns = payload.workflows?.runs ?? [];
+	const workflowFiles: Record<string, string> = {};
+	if (workflowRuns.length > 0) {
+		for (const run of workflowRuns) {
+			Object.assign(
+				workflowFiles,
+				buildWorkflowRunFiles(payload, run, `workflows/${workflowFolderName(run)}/`)
+			);
+		}
+		workflowFiles['raw/workflows.json'] = `${toJson(payload.workflows)}\n`;
+		workflowFiles['manifest.json'] = `${toJson(buildSessionWorkflowManifest(payload))}\n`;
+	}
 	return {
 		'README.md': buildReadme(payload, gist),
 		'transcript.md': buildTranscriptFile(payload),
@@ -254,7 +334,8 @@ export const buildChatSessionAuditBundleFiles = (
 		'raw/turn_events.json': `${toJson(buildCompactTurnEvents(payload))}\n`,
 		'raw/prompt_snapshots.json': `${toJson(buildPromptSnapshotRecords(payload))}\n`,
 		'raw/capabilities.json': `${toJson(capabilityManifest)}\n`,
-		'raw/timing_metrics.json': `${toJson(payload.timing_metrics)}\n`
+		'raw/timing_metrics.json': `${toJson(payload.timing_metrics)}\n`,
+		...workflowFiles
 	};
 };
 

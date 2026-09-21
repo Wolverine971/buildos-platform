@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/workflow-lab/+page.svelte -->
 <script lang="ts">
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
+	import ChatSessionAuditActions from '$lib/components/agent/ChatSessionAuditActions.svelte';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 	let projectId = $state('');
@@ -8,11 +9,16 @@
 		'What should we prioritize next, and what risks or missing information could change that recommendation?'
 	);
 	let review = $state<{ projectId: string; question: string; name: string } | null>(null);
+	// The chat session that actually exists for this review, reported by the modal. Never
+	// guessed from the project or from "most recent"; cleared whenever a new review starts.
+	let sessionId = $state<string | null>(null);
 	function start(event: SubmitEvent) {
 		event.preventDefault();
 		const project = data.projects.find((project) => project.id === projectId);
-		if (project && question.trim().length >= 3)
+		if (project && question.trim().length >= 3) {
+			sessionId = null;
 			review = { projectId, question: question.trim(), name: project.name };
+		}
 	}
 </script>
 
@@ -36,10 +42,18 @@
 	</header>
 	{#if review}
 		<div class="flex items-center justify-between gap-3">
-			<p class="text-sm text-muted-foreground">
+			<p class="min-w-0 truncate text-sm text-muted-foreground">
 				Reviewing <strong class="text-foreground">{review.name}</strong>
 			</p>
-			<a class="text-sm underline" href="/workflow-lab" data-sveltekit-reload>New review</a>
+			<div class="flex shrink-0 items-center gap-2">
+				<!-- Admin-only: Logs / Trace / Export for the real session. Renders nothing until
+				     the modal reports a session id, and nothing for non-admins. Links open in a
+				     new tab so the running review is never lost. -->
+				<ChatSessionAuditActions {sessionId} includeWorkflowTrace={true} />
+				<a class="text-sm underline" href="/workflow-lab" data-sveltekit-reload
+					>New review</a
+				>
+			</div>
 		</div>
 		<div class="min-h-[36rem] flex-1 overflow-hidden rounded-xl border border-border bg-card">
 			<AgentChatModal
@@ -56,8 +70,12 @@
 				}}
 				initialDraft={`/workflow ${review.question}`}
 				autoSendInitialDraft={true}
+				onSessionChange={(id) => {
+					sessionId = id;
+				}}
 				onClose={() => {
 					review = null;
+					sessionId = null;
 				}}
 				composerPlaceholder="Start another review with /workflow …"
 			/>
