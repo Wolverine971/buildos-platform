@@ -266,6 +266,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			workflowV4PreparationEnabled: false,
 			workflowV4ExecutionEnabled: false,
 			specialistWorkflowsEnabled: false,
+			publishedSpecialistsEnabled: false,
 			documentReadToolsEnabled: false,
 			documentEvidenceHandoffEnabled: false,
 			jevSpecialistSelection: 'off',
