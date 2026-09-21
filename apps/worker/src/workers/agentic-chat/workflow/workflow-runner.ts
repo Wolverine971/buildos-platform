@@ -21,20 +21,19 @@ import {
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
+	PROJECT_REVIEW_EDITOR_TASK_V2,
+	PROJECT_REVIEW_EDITOR_TASK_V3,
 	PROJECT_REVIEW_SPECIALISTS_V1,
 	PROJECT_REVIEW_SPECIALISTS_V2,
-	PROJECT_REVIEW_EDITOR_TASK_V2,
 	PROJECT_REVIEW_SPECIALISTS_V3,
-	PROJECT_REVIEW_EDITOR_TASK_V3,
 	PROJECT_REVIEW_SPECIALIST_IDS_V1,
 	type ProjectReviewSpecialistIdV1
 } from '@buildos/agentic-chat-runtime/specialists';
 import {
-	AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF,
-	AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF,
-	type AgenticChatWorkflowRoleReportV3,
 	AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_STEPS_V1,
 	AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_VERSION,
+	AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF,
+	AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF,
 	AGENTIC_CHAT_WORKFLOW_MAX_OUTPUT_TOKENS,
 	AGENTIC_CHAT_WORKFLOW_PLANNER_RESULT_VERSION,
 	AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1,
@@ -43,6 +42,7 @@ import {
 	type AgenticChatWorkflowDispatchKindV1,
 	type AgenticChatWorkflowPhaseV1,
 	type AgenticChatWorkflowResultQualityV1,
+	type AgenticChatWorkflowRoleReportV3,
 	type AgenticChatWorkflowStepKeyV1,
 	type JsonObject,
 	type JsonValue,
@@ -70,11 +70,11 @@ import {
 	workflowReportForEditor
 } from './role-report';
 import {
+	type SourceBoundContext,
 	parseSourceBoundReport,
-	sourceBoundReportInstructions,
-	sourceBoundUnits,
 	renderSourceBoundSelection,
-	type SourceBoundContext
+	sourceBoundReportInstructions,
+	sourceBoundUnits
 } from './source-bound-report';
 import {
 	AGENTIC_CHAT_WORKFLOW_FENCED_DENIALS,

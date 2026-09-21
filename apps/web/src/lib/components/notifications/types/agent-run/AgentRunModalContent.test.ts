@@ -4,6 +4,7 @@ import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import AgentRunModalContent from './AgentRunModalContent.svelte';
+import NotificationModal from '../../NotificationModal.svelte';
 import type { AgentRunNotification } from '$lib/types/notification.types';
 
 const { toastErrorMock, notificationRemoveMock, notificationMinimizeMock } = vi.hoisted(() => ({
@@ -20,6 +21,9 @@ vi.mock('$lib/stores/toast.store', () => ({
 		warning: vi.fn()
 	}
 }));
+
+vi.mock('$lib/stores/aiInboxCount.store', () => ({ loadAiInboxCount: vi.fn() }));
+vi.mock('$lib/stores/projectDataMutations', () => ({ notifyDataMutation: vi.fn() }));
 
 vi.mock('$lib/stores/notification.store', () => ({
 	notificationStore: {
@@ -84,6 +88,26 @@ function notification(overrides: Partial<AgentRunNotification['data']> = {}): Ag
 		progress: { type: 'indeterminate', message: 'Finished partially' },
 		actions: {}
 	};
+}
+
+function reviewNotification(): AgentRunNotification {
+	const item = notification({ runStatus: 'proposal_ready' });
+	item.data.result!.proposed_changes = {
+		run_id: 'run-1',
+		status: 'pending',
+		created_at: '2026-09-21T12:00:00Z',
+		changes: [
+			{
+				id: 'change-1',
+				op: 'onto.task.update',
+				action: 'update',
+				entity_type: 'task',
+				before: { title: 'Previous title' },
+				after: { title: 'Reviewed title' }
+			}
+		]
+	};
+	return item;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -224,5 +248,123 @@ describe('AgentRunModalContent Chat bridge', () => {
 		expect(opened).not.toHaveBeenCalled();
 
 		window.removeEventListener('buildos:open-agent-chat', opened);
+	});
+	it('opens the actual review immediately without a fallback modal or activity fetch', async () => {
+		const fetchMock = vi.fn(async () => jsonResponse(200, { data: { events: [] } }));
+		vi.stubGlobal('fetch', fetchMock);
+		render(NotificationModal, { props: { notification: reviewNotification() } });
+		expect(screen.getByRole('button', { name: 'Accept 1 change' })).toBeInTheDocument();
+		expect(screen.getAllByRole('dialog')).toHaveLength(1);
+		expect(screen.getAllByRole('button', { name: 'Chat' })).toHaveLength(1);
+		expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument();
+		expect(fetchMock).not.toHaveBeenCalled();
+		const details = screen.getByText('Review context and activity').closest('details')!;
+		details.open = true;
+		await fireEvent(details, new Event('toggle'));
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+	});
+
+	it('keeps the same review mounted through realtime commit status updates', async () => {
+		let resolveCommit!: (response: Response) => void;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				() =>
+					new Promise<Response>((resolve) => {
+						resolveCommit = resolve;
+					})
+			)
+		);
+		const onClose = vi.fn();
+		const item = reviewNotification();
+		const { rerender } = render(AgentRunModalContent, {
+			props: { notification: item, onClose }
+		});
+		const originalDialog = screen.getByRole('dialog');
+		await fireEvent.click(screen.getByRole('button', { name: 'Accept 1 change' }));
+		await rerender({
+			notification: { ...item, data: { ...item.data, runStatus: 'running' } },
+			onClose
+		});
+		expect(screen.getByRole('dialog')).toBe(originalDialog);
+		expect(screen.getByText('Reviewed title')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Applying…' })).toBeDisabled();
+		expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument();
+		await rerender({
+			notification: { ...item, data: { ...item.data, runStatus: 'completed' } },
+			onClose
+		});
+		expect(screen.getByRole('dialog')).toBe(originalDialog);
+		expect(onClose).not.toHaveBeenCalled();
+		resolveCommit(jsonResponse(200, { data: { applied: 1, failed: 0, rejected: 0 } }));
+		await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+	});
+	it('does not close the next notification when the previous review finishes saving', async () => {
+		let resolveCommit!: (response: Response) => void;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				() =>
+					new Promise<Response>((resolve) => {
+						resolveCommit = resolve;
+					})
+			)
+		);
+		const { rerender } = render(NotificationModal, {
+			props: { notification: reviewNotification() }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Accept 1 change' }));
+		const next = reviewNotification();
+		next.id = 'notification-2';
+		next.data.runId = 'run-2';
+		await rerender({ notification: next });
+		expect(screen.getByRole('button', { name: 'Accept 1 change' })).toBeEnabled();
+		resolveCommit(jsonResponse(200, { data: { applied: 1, failed: 0, rejected: 0 } }));
+		await waitFor(() => expect(notificationRemoveMock).toHaveBeenCalledWith('notification-1'));
+		expect(notificationRemoveMock).not.toHaveBeenCalledWith('notification-2');
+		expect(screen.getByRole('button', { name: 'Accept 1 change' })).toBeEnabled();
+	});
+	it('keeps the proposal visible when reopened while the server reports running', async () => {
+		let resolveCommit!: (response: Response) => void;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				() =>
+					new Promise<Response>((resolve) => {
+						resolveCommit = resolve;
+					})
+			)
+		);
+		const item = reviewNotification();
+		const view = render(NotificationModal, { props: { notification: item } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Accept 1 change' }));
+		view.unmount();
+		render(NotificationModal, {
+			props: { notification: { ...item, data: { ...item.data, runStatus: 'running' } } }
+		});
+		try {
+			expect(screen.getByText('Reviewed title')).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Applying…' })).toBeDisabled();
+			expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument();
+		} finally {
+			resolveCommit(jsonResponse(503, { error: 'Please retry' }));
+		}
+		expect(await screen.findByRole('alert')).toHaveTextContent('Please retry');
+	});
+
+	it('shows an activity fetch error and allows retry without reopening the review', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(503, { error: 'Unavailable' }))
+			.mockResolvedValueOnce(jsonResponse(200, { data: { events: [] } }));
+		vi.stubGlobal('fetch', fetchMock);
+		render(AgentRunModalContent, { props: { notification: reviewNotification() } });
+		const details = screen.getByText('Review context and activity').closest('details')!;
+		details.open = true;
+		await fireEvent(details, new Event('toggle'));
+		expect(await screen.findByRole('alert')).toHaveTextContent('Could not load activity');
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry activity' }));
+		await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 });

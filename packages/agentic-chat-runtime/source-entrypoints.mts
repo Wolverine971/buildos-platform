@@ -1,9 +1,9 @@
-// packages/agentic-chat-runtime/source-entrypoints.ts
+// packages/agentic-chat-runtime/source-entrypoints.mts
 import { fileURLToPath } from 'node:url';
 
 export const AGENTIC_CHAT_RUNTIME_SOURCE_ENTRYPOINTS = {
 	'@buildos/agentic-chat-runtime': './src/index.ts',
-	'@buildos/agentic-chat-runtime/provenance': './src/provenance.ts',
+	'@buildos/agentic-chat-runtime/provenance': './src/provenance.mts',
 	'@buildos/agentic-chat-runtime/catalog': './src/catalog/index.ts',
 	'@buildos/agentic-chat-runtime/context': './src/context/index.ts',
 	'@buildos/agentic-chat-runtime/context/loader': './src/context/context-loader.ts',

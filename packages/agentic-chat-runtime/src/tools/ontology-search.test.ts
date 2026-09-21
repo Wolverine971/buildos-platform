@@ -1,10 +1,13 @@
 // packages/agentic-chat-runtime/src/tools/ontology-search.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import {
 	AgenticChatOntologySearchInputError,
+	AgenticChatOntologySearchQueryError,
 	normalizeOptionalOntologySearchProjectId,
 	searchAllProjects,
+	searchProject,
 	searchOntologyEntities
 } from './ontology-search';
 import {
@@ -21,6 +24,8 @@ const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
 const SHARED_PROJECT_ID = '50000000-0000-4000-8000-000000000005';
 const NOW = new Date('2026-08-08T12:00:00.000Z').getTime();
 
+afterEach(() => vi.useRealTimers());
+
 function makeBuilder(rows: unknown[]) {
 	const builder: Record<string, any> = {};
 	for (const method of ['select', 'eq', 'in', 'is', 'not', 'or', 'order', 'limit']) {
@@ -35,19 +40,18 @@ function makeBuilder(rows: unknown[]) {
 }
 
 function contextWith(input: {
-	rpc?: ReturnType<typeof vi.fn>;
+	rpc?: (...args: any[]) => any;
 	tables?: Record<string, unknown[]>;
 	projectSummaries?: Array<{ id: string; state_key?: string | null }>;
 	embeddings?: { embedQuery: ReturnType<typeof vi.fn> };
 }) {
 	const builders = new Map<string, ReturnType<typeof makeBuilder>>();
 	const client = {
-		rpc:
-			input.rpc ??
-			vi.fn(async () => ({
-				data: [],
-				error: null
-			})),
+		rpc: vi.fn((...args: unknown[]) => {
+			const response = input.rpc?.(...args) ?? Promise.resolve({ data: [], error: null });
+			// Match the PostgREST thenable modifier, retaining the caller's spy.
+			return Object.assign(response, { abortSignal: vi.fn(() => response) });
+		}),
 		from: vi.fn((table: string) => {
 			const builder = makeBuilder(input.tables?.[table] ?? []);
 			builders.set(table, builder);
@@ -242,7 +246,10 @@ describe('shared ontology search', () => {
 		);
 
 		expect(payload.results.map((row) => row.id)).toEqual(['shared', 'semantic', 'lexical']);
-		expect(embedQuery).toHaveBeenCalledWith('vocabulary mismatch');
+		expect(embedQuery).toHaveBeenCalledWith('vocabulary mismatch', {
+			signal: expect.any(AbortSignal)
+		});
+		expect(payload.search_coverage).toEqual({ lexical: 'complete', semantic: 'complete' });
 		expect(rpc).toHaveBeenCalledWith(
 			'onto_search_semantic',
 			expect.objectContaining({
@@ -299,6 +306,172 @@ describe('shared ontology search', () => {
 				{ now: () => NOW }
 			)
 		).resolves.toMatchObject({ results: [{ id: 'lexical', score: 0.9 }] });
+	});
+
+	it('bounds a hung embedding, reports partial coverage, and never dispatches a late vector read', async () => {
+		vi.useFakeTimers();
+		let finishEmbedding!: (value: number[]) => void;
+		let embeddingSignal: AbortSignal | undefined;
+		const rpc = vi.fn(async (_name: string) => ({
+			data: [{ type: 'document', id: 'lexical', score: 0.9 }],
+			error: null
+		}));
+		const { context } = contextWith({
+			rpc,
+			tables: { onto_projects: [{ id: PROJECT_ID }] },
+			embeddings: {
+				embedQuery: vi.fn((_text, options) => {
+					embeddingSignal = options.signal;
+					return new Promise<number[]>((resolve) => {
+						finishEmbedding = resolve;
+					});
+				})
+			}
+		});
+		const result = searchProject(context, {
+			project_id: PROJECT_ID,
+			query: 'construction inspection',
+			types: ['document']
+		});
+		await vi.advanceTimersByTimeAsync(4_999);
+		expect(embeddingSignal?.aborted).toBe(false);
+		await vi.advanceTimersByTimeAsync(1);
+		await expect(result).resolves.toMatchObject({
+			results: [{ id: 'lexical' }],
+			search_coverage: { lexical: 'complete', semantic: 'timed_out' },
+			message: expect.stringContaining('No matches does not establish absence')
+		});
+		expect(embeddingSignal?.aborted).toBe(true);
+		finishEmbedding([0.1]);
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(rpc.mock.calls.map(([name]) => name)).toEqual(['onto_search_entities']);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('passes the remaining semantic budget to the actual PostgREST fetch and aborts it', async () => {
+		vi.useFakeTimers();
+		let rpcSignal: AbortSignal | undefined;
+		const { context } = contextWith({
+			embeddings: {
+				embedQuery: vi.fn(
+					() =>
+						new Promise<number[]>((resolve) => setTimeout(() => resolve([0.1]), 4_000))
+				)
+			}
+		});
+		context.client = createClient('https://example.supabase.co', 'test-key', {
+			auth: { persistSession: false, autoRefreshToken: false },
+			global: {
+				fetch: vi.fn(async (url, init) => {
+					if (String(url).includes('onto_search_semantic')) {
+						rpcSignal = init?.signal as AbortSignal;
+						return new Promise<Response>((_resolve, reject) => {
+							rpcSignal!.addEventListener('abort', () => reject(rpcSignal!.reason), {
+								once: true
+							});
+						});
+					}
+					return new Response('[]', { headers: { 'Content-Type': 'application/json' } });
+				})
+			}
+		}) as never;
+		const result = searchAllProjects(context, { query: 'inspection', types: ['document'] });
+		await vi.advanceTimersByTimeAsync(4_000);
+		expect(rpcSignal?.aborted).toBe(false);
+		await vi.advanceTimersByTimeAsync(1_000);
+		await expect(result).resolves.toMatchObject({
+			results: [],
+			search_coverage: { semantic: 'timed_out' }
+		});
+		expect(rpcSignal?.aborted).toBe(true);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('propagates turn cancellation instead of returning a fallback', async () => {
+		vi.useFakeTimers();
+		const controller = new AbortController();
+		const reason = new Error('Turn ownership lost');
+		let finishEmbedding!: (value: number[]) => void;
+		const { context, client } = contextWith({
+			embeddings: {
+				embedQuery: vi.fn(
+					() =>
+						new Promise<number[]>((resolve) => {
+							finishEmbedding = resolve;
+						})
+				)
+			}
+		});
+		context.signal = controller.signal;
+		const result = searchAllProjects(context, { query: 'inspection', types: ['document'] });
+		const rejected = expect(result).rejects.toBe(reason);
+		await vi.advanceTimersByTimeAsync(1);
+		controller.abort(reason);
+		await rejected;
+		finishEmbedding([0.1]);
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(client.rpc).toHaveBeenCalledTimes(1);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('does not start access or search for an already cancelled turn', async () => {
+		const { context, getActorId, client } = contextWith({});
+		const reason = new Error('Cancelled');
+		context.signal = AbortSignal.abort(reason);
+		await expect(searchAllProjects(context, { query: 'inspection' })).rejects.toBe(reason);
+		expect(getActorId).not.toHaveBeenCalled();
+		expect(client.rpc).not.toHaveBeenCalled();
+	});
+
+	it('keeps lexical failures fatal and cancels a concurrent semantic lookup', async () => {
+		let signal: AbortSignal | undefined;
+		const { context } = contextWith({
+			rpc: vi.fn(async () => ({
+				data: null,
+				error: { code: '42501', message: 'permission denied' }
+			})),
+			embeddings: {
+				embedQuery: vi.fn((_text, options) => {
+					signal = options.signal;
+					return new Promise(() => {});
+				})
+			}
+		});
+		await expect(
+			searchAllProjects(context, { query: 'inspection', types: ['document'] })
+		).rejects.toBeInstanceOf(AgenticChatOntologySearchQueryError);
+		expect(signal?.aborted).toBe(true);
+	});
+
+	it('never starts semantic work before project authorization', async () => {
+		const embedQuery = vi.fn();
+		const { context, client, assertProjectAccess } = contextWith({
+			embeddings: { embedQuery }
+		});
+		assertProjectAccess.mockRejectedValue(new Error('Access denied'));
+		await expect(
+			searchProject(context, { project_id: PROJECT_ID, query: 'inspection' })
+		).rejects.toThrow('Access denied');
+		expect(embedQuery).not.toHaveBeenCalled();
+		expect(client.rpc).not.toHaveBeenCalled();
+	});
+
+	it('reports a failed semantic RPC as unavailable instead of complete empty coverage', async () => {
+		const { context } = contextWith({
+			rpc: vi.fn(async (name) =>
+				name === 'onto_search_semantic'
+					? { data: null, error: { message: 'offline' } }
+					: { data: [], error: null }
+			),
+			embeddings: { embedQuery: vi.fn(async () => [0.1]) }
+		});
+		await expect(
+			searchAllProjects(context, { query: 'inspection', types: ['document'] })
+		).resolves.toMatchObject({
+			results: [],
+			search_coverage: { lexical: 'complete', semantic: 'unavailable' },
+			message: expect.stringContaining('No matches does not establish absence')
+		});
 	});
 
 	it('scopes workspace event reads to owner/member project summaries', async () => {

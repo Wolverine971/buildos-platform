@@ -131,6 +131,9 @@ const MIGRATIONS = [
 	}
 	it('checks source quotes and calculated dates in SQL against the accepted checkpoint', async () => {
 		const loaded = await evidence();
+		if (!loaded.data || typeof loaded.data !== 'object') {
+			throw new Error('Project review evidence fixture returned invalid data');
+		}
 		const tasks = ['2026-09-16', '2026-09-19', '2026-09-29', '2026-10-01', '2026-10-03'].map(
 			(day, i) => ({
 				id: `task-${i}`,

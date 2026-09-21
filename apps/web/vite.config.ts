@@ -2,12 +2,12 @@
 import { fileURLToPath, URL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readSourceProvenance } from '../../packages/agentic-chat-runtime/src/provenance';
+import { readSourceProvenance } from '../../packages/agentic-chat-runtime/src/provenance.mts';
 import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
 import viteCompression from 'vite-plugin-compression';
-import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints';
+import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints.mts';
 
 export const agenticChatRuntimeSourceAliases = createAgenticChatRuntimeSourceAliases(
 	new URL('../../packages/agentic-chat-runtime/', import.meta.url)

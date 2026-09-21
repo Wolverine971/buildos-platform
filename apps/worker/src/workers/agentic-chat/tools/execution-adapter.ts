@@ -96,7 +96,7 @@ export function isAgenticChatControlToolNameV1(value: unknown): value is string 
 function createWorkerEmbeddingsPortFromEnv(): AgenticChatEmbeddingsPortV1 | undefined {
 	const client = createEmbeddingsClientFromEnv(process.env);
 	if (!client) return undefined;
-	return { embedQuery: (text) => client.embedOne(text) };
+	return { embedQuery: (text, options) => client.embedOne(text, options) };
 }
 
 const MAX_RESULT_BYTES = 480 * 1024;
@@ -475,7 +475,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 					if (sharedReadTool) {
 						return executeAgenticChatSharedReadToolV1({
 							toolName,
-							context: sharedContext!,
+							context: { ...sharedContext!, signal: deadlineSignal },
 							arguments: input.arguments
 						});
 					}

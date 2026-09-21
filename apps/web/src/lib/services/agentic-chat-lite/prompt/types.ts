@@ -30,6 +30,7 @@ export type LitePromptSectionId =
 	| 'identity_mission'
 	| 'operating_strategy'
 	| 'safety_data_rules'
+	| 'dates_time'
 	| 'capabilities_skills_tools'
 	| 'situational_rules'
 	| 'project_start_here'

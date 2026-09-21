@@ -1,4 +1,4 @@
-// packages/agentic-chat-runtime/src/provenance.ts
+// packages/agentic-chat-runtime/src/provenance.mts
 // Node-only entrypoint. Never export this from the browser/runtime barrel.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';

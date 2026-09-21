@@ -25,6 +25,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { notificationStore } from '$lib/stores/notification.store';
 	import { agentRunsStore } from '$lib/services/agentRunsRealtime.service';
+	import { pendingAgentRunReviews } from '$lib/services/agent-run-review.client';
 	import {
 		agentRunAccessLabel,
 		agentRunDisplayTitle,
@@ -60,6 +61,33 @@
 	let result = $derived(notification?.data.result ?? null);
 	let metrics = $derived(notification?.data.metrics ?? null);
 	let proposedChangeSet = $derived((result?.proposed_changes ?? null) as ChangeSet | null);
+	// The commit emits running/completed realtime updates before its HTTP response.
+	// Keep the reviewed proposal mounted until that response settles the decision.
+	let committingChangeSet = $state.raw<ChangeSet | null>(null);
+	let reviewApplying = $state(false);
+	const pendingReview = $derived($pendingAgentRunReviews.get(runId));
+	const savingReview = $derived(reviewApplying || Boolean(pendingReview));
+	const reviewChangeSet = $derived(
+		committingChangeSet ??
+			pendingReview?.changeSet ??
+			(runStatus === 'proposal_ready' ? proposedChangeSet : null)
+	);
+	const isReview = $derived(Boolean(reviewChangeSet?.changes.length));
+	let showReviewDetails = $state(false);
+	let eventsRequested = false;
+
+	function handleReviewApplying(applying: boolean) {
+		reviewApplying = applying;
+		if (applying && !committingChangeSet) {
+			committingChangeSet = $state.snapshot(reviewChangeSet);
+		}
+	}
+
+	function toggleReviewDetails(event: Event) {
+		showReviewDetails = (event.currentTarget as HTMLDetailsElement).open;
+		if (showReviewDetails && !eventsRequested) void loadEvents();
+	}
+
 	let failedChangeSet = $derived(
 		proposedChangeSet?.changes.some(
 			(change) => typeof change.error === 'string' && change.error.trim()
@@ -98,7 +126,8 @@
 	);
 
 	let events = $state<AgentRunEventRow[]>([]);
-	let loadingEvents = $state(true);
+	let loadingEvents = $state(false);
+	let eventsError = $state<string | null>(null);
 	let openingChat = $state(false);
 	let channel: RealtimeChannel | null = null;
 
@@ -138,7 +167,7 @@
 		}
 	}
 
-	let headIcon = $derived(statusIcon(runStatus));
+	let headIcon = $derived(statusIcon(isReview ? 'proposal_ready' : runStatus));
 
 	function projectHref(projectId?: string | null): string | null {
 		return projectId ? `/projects/${projectId}` : null;
@@ -170,17 +199,20 @@
 	}
 
 	async function loadEvents() {
-		if (!runId) return;
+		if (!runId || eventsRequested || loadingEvents) return;
+		loadingEvents = true;
+		eventsError = null;
 		try {
 			const response = await fetch(`/api/agent-runs/${runId}`, {
 				headers: { accept: 'application/json' }
 			});
-			if (response.ok) {
-				const body = await response.json().catch(() => null);
-				const rows: AgentRunEventRow[] = body?.data?.events ?? [];
-				events = rows.slice().sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
-			}
+			if (!response.ok) throw new Error('Activity request failed');
+			const body = await response.json();
+			const rows: AgentRunEventRow[] = body?.data?.events ?? [];
+			events = rows.slice().sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
+			eventsRequested = true;
 		} catch (error) {
+			eventsError = 'Could not load activity. Try again.';
 			console.warn('[AgentRunModal] Failed to load events', error);
 		} finally {
 			loadingEvents = false;
@@ -212,8 +244,10 @@
 	}
 
 	onMount(() => {
-		void loadEvents();
-		void subscribe();
+		if (!isReview) {
+			void loadEvents();
+			if (isActive) void subscribe();
+		}
 	});
 
 	onDestroy(() => {
@@ -299,20 +333,26 @@
 		});
 	}
 
-	function handleDismiss() {
+	function createDismissHandler() {
 		const id = notification?.id;
 		const dismiss = notification?.actions?.dismiss;
 		const callback = onClose;
-		if (!id && !callback) return;
-		deferNotificationUpdate(() => {
-			if (callback) callback();
-			else if (dismiss) dismiss();
-			else if (id) notificationStore.remove(id);
-		});
+		return () => {
+			if (!id && !callback) return;
+			deferNotificationUpdate(() => {
+				if (callback) callback();
+				else if (dismiss) dismiss();
+				else if (id) notificationStore.remove(id);
+			});
+		};
+	}
+
+	function handleDismiss() {
+		createDismissHandler()();
 	}
 
 	function handleClose() {
-		if (isActive) handleMinimize();
+		if (isReview || isActive) handleMinimize();
 		else handleDismiss();
 	}
 
@@ -416,7 +456,7 @@
 		isOpen={true}
 		onClose={handleClose}
 		title={displayTitle}
-		size={runStatus === 'proposal_ready' || failedChangeSet ? 'xl' : 'lg'}
+		size={isReview || failedChangeSet ? 'xl' : 'lg'}
 		variant="bottom-sheet"
 		showCloseButton={true}
 	>
@@ -445,7 +485,9 @@
 						{/if}
 						<div class="flex items-center gap-2 flex-wrap">
 							<span class="text-xs font-medium text-foreground"
-								>{agentRunStatusLabel(runStatus)}</span
+								>{isReview
+									? 'Ready for review'
+									: agentRunStatusLabel(runStatus)}</span
 							>
 							<span class="text-xs text-muted-foreground">·</span>
 							<span class="text-xs text-muted-foreground">{sourceLabel}</span>
@@ -463,22 +505,21 @@
 				</div>
 
 				<!-- Steer / pause / resume (live runs; needs_input uses the answer box) -->
-				{#if runStatus === 'running' || runStatus === 'paused' || runStatus === 'queued'}
+				{#if !isReview && (runStatus === 'running' || runStatus === 'paused' || runStatus === 'queued')}
 					<AgentRunSteerControl {runId} {runStatus} {appliedSteerMessages} />
 				{/if}
 
 				<!-- Proposal review — the run staged changes for your approval (review run) -->
-				{#if runStatus === 'proposal_ready' && proposedChangeSet?.changes?.length}
+				{#if isReview && reviewChangeSet}
 					<ChangeSetReview
 						{runId}
-						changeSet={proposedChangeSet}
+						changeSet={reviewChangeSet}
 						acceptLabel="Accept"
 						dismissLabel="Dismiss"
 						approveAllLabel="Accept"
 						rejectAllLabel="Dismiss"
-						onApplied={handleDismiss}
-						onChat={canOpenChat ? handleOpenChat : undefined}
-						{openingChat}
+						onApplied={createDismissHandler()}
+						onApplying={handleReviewApplying}
 					/>
 				{:else if failedChangeSet}
 					<ChangeSetFailureSummary
@@ -526,154 +567,204 @@
 					</div>
 				{/if}
 
-				<!-- Result summary / answer -->
-				{#if result?.summary || result?.answer}
-					<div class="space-y-2 rounded-lg border border-border bg-muted/40 p-3">
-						{#if result.summary}
-							<div>
-								<div class="micro-label text-muted-foreground">Summary</div>
-								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
-									{@html renderMarkdown(result.summary)}
-								</div>
-							</div>
-						{/if}
-						{#if result.answer && result.answer !== result.summary}
-							<div>
-								<div class="micro-label text-muted-foreground">Answer</div>
-								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
-									{@html renderMarkdown(result.answer)}
-								</div>
-							</div>
-						{/if}
-					</div>
-				{/if}
-
-				<!-- Error -->
-				{#if runStatus === 'failed' && notification.data.error}
-					<div class="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-						<div class="micro-label text-destructive">Error</div>
-						<p class="text-sm text-destructive mt-0.5 whitespace-pre-wrap">
-							{notification.data.error}
-						</p>
-					</div>
-				{/if}
-
-				<!-- Entities touched -->
-				{#if result?.entities_touched?.length}
-					<div>
-						<div class="micro-label mb-1.5 text-muted-foreground">
-							Changes ({result.entities_touched.length})
-						</div>
-						<div class="flex flex-wrap gap-1.5">
-							{#each result.entities_touched as entity (`${entity.type}:${entity.id}:${entity.action}`)}
-								{@const href = entityHref(entity)}
-								{#if href}
-									<a
-										{href}
-										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground transition-colors hover:border-accent/50 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-										title={entity.description}
-									>
-										<span class="text-muted-foreground">{entity.action}</span>
-										{entityLabel(entity)}
-									</a>
-								{:else}
-									<span
-										class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
-										title={entity.description}
-									>
-										<span class="text-muted-foreground">{entity.action}</span>
-										{entityLabel(entity)}
-									</span>
-								{/if}
-							{/each}
-						</div>
-					</div>
-				{/if}
-
-				<!-- Open questions (continuable runs render them in the answer box above) -->
-				{#if result?.open_questions?.length && !canAnswerRun}
-					<div>
-						<div class="micro-label mb-1.5 text-muted-foreground">Open questions</div>
-						<ul class="list-disc list-inside space-y-0.5">
-							{#each result.open_questions as q}
-								<li class="text-sm text-foreground">{q}</li>
-							{/each}
-						</ul>
-					</div>
-				{/if}
-
-				<!-- Narration / event log -->
-				<div>
-					<div class="micro-label mb-1.5 text-muted-foreground">Activity</div>
-					<div
-						class="rounded-lg border border-border bg-card max-h-64 overflow-y-auto divide-y divide-border/60"
-					>
-						{#if loadingEvents && events.length === 0}
-							<div class="flex items-center gap-2 p-3 text-xs text-muted-foreground">
-								<LoaderCircle
-									class="h-4 w-4 animate-spin motion-reduce:animate-none"
-									aria-hidden="true"
-								/>
-								Loading activity…
-							</div>
-						{:else if events.length === 0}
-							<div class="p-3 text-xs text-muted-foreground">No activity yet.</div>
-						{:else}
-							{#each events as event (event.id)}
-								{@const line = eventLine(event)}
-								{#if line.text}
-									{@const LineIcon = line.icon}
-									<div class="flex items-start gap-2 p-2.5">
-										<LineIcon
-											class="w-3.5 h-3.5 mt-0.5 flex-shrink-0 {line.cls}"
-										/>
-										<span class="text-xs text-foreground break-words"
-											>{line.text}</span
-										>
+				{#snippet runDetails()}
+					<!-- Result summary / answer -->
+					{#if result?.summary || result?.answer}
+						<div class="space-y-2 rounded-lg border border-border bg-muted/40 p-3">
+							{#if result.summary}
+								<div>
+									<div class="micro-label text-muted-foreground">Summary</div>
+									<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
+										{@html renderMarkdown(result.summary)}
 									</div>
-								{/if}
-							{/each}
-						{/if}
-					</div>
-				</div>
+								</div>
+							{/if}
+							{#if result.answer && result.answer !== result.summary}
+								<div>
+									<div class="micro-label text-muted-foreground">Answer</div>
+									<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
+										{@html renderMarkdown(result.answer)}
+									</div>
+								</div>
+							{/if}
+						</div>
+					{/if}
 
-				<!-- Metrics -->
-				{#if metrics}
-					<div class="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-						<div class="rounded-lg bg-muted/40 p-2">
-							<div class="text-sm font-medium text-foreground">
-								{metrics.tool_calls ?? 0}
-							</div>
-							<div class="micro-label text-muted-foreground">Tools</div>
+					<!-- Error -->
+					{#if runStatus === 'failed' && notification.data.error}
+						<div class="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+							<div class="micro-label text-destructive">Error</div>
+							<p class="text-sm text-destructive mt-0.5 whitespace-pre-wrap">
+								{notification.data.error}
+							</p>
 						</div>
-						<div class="rounded-lg bg-muted/40 p-2">
-							<div class="text-sm font-medium text-foreground">
-								{(metrics.tokens ?? 0).toLocaleString()}
+					{/if}
+
+					<!-- Entities touched -->
+					{#if result?.entities_touched?.length}
+						<div>
+							<div class="micro-label mb-1.5 text-muted-foreground">
+								Changes ({result.entities_touched.length})
 							</div>
-							<div class="micro-label text-muted-foreground">Tokens</div>
+							<div class="flex flex-wrap gap-1.5">
+								{#each result.entities_touched as entity (`${entity.type}:${entity.id}:${entity.action}`)}
+									{@const href = entityHref(entity)}
+									{#if href}
+										<a
+											{href}
+											class="inline-flex min-h-11 items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground transition-colors hover:border-accent/50 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+											title={entity.description}
+										>
+											<span class="text-muted-foreground"
+												>{entity.action}</span
+											>
+											{entityLabel(entity)}
+										</a>
+									{:else}
+										<span
+											class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
+											title={entity.description}
+										>
+											<span class="text-muted-foreground"
+												>{entity.action}</span
+											>
+											{entityLabel(entity)}
+										</span>
+									{/if}
+								{/each}
+							</div>
 						</div>
-						<div class="rounded-lg bg-muted/40 p-2">
-							<div class="text-sm font-medium text-foreground">
-								${(metrics.cost_usd ?? 0).toFixed(3)}
+					{/if}
+
+					<!-- Open questions (continuable runs render them in the answer box above) -->
+					{#if result?.open_questions?.length && !canAnswerRun}
+						<div>
+							<div class="micro-label mb-1.5 text-muted-foreground">
+								Open questions
 							</div>
-							<div class="micro-label text-muted-foreground">Cost</div>
+							<ul class="list-disc list-inside space-y-0.5">
+								{#each result.open_questions as q}
+									<li class="text-sm text-foreground">{q}</li>
+								{/each}
+							</ul>
 						</div>
-						<div class="rounded-lg bg-muted/40 p-2">
-							<div class="text-sm font-medium text-foreground">
-								{formatDuration(metrics.duration_ms)}
-							</div>
-							<div class="micro-label text-muted-foreground">Time</div>
+					{/if}
+
+					<!-- Narration / event log -->
+					<div>
+						<div class="micro-label mb-1.5 text-muted-foreground">Activity</div>
+						<div
+							class="rounded-lg border border-border bg-card max-h-64 overflow-y-auto divide-y divide-border/60"
+						>
+							{#if loadingEvents && events.length === 0}
+								<div
+									class="flex items-center gap-2 p-3 text-xs text-muted-foreground"
+								>
+									<LoaderCircle
+										class="h-4 w-4 animate-spin motion-reduce:animate-none"
+										aria-hidden="true"
+									/>
+									Loading activity…
+								</div>
+							{:else if eventsError}
+								<div class="flex items-center justify-between gap-2 p-3">
+									<p role="alert" class="text-xs text-destructive">
+										{eventsError}
+									</p>
+									<Button onclick={loadEvents} variant="outline" size="sm"
+										>Retry activity</Button
+									>
+								</div>
+							{:else if events.length === 0}
+								<div class="p-3 text-xs text-muted-foreground">
+									No activity yet.
+								</div>
+							{:else}
+								{#each events as event (event.id)}
+									{@const line = eventLine(event)}
+									{#if line.text}
+										{@const LineIcon = line.icon}
+										<div class="flex items-start gap-2 p-2.5">
+											<LineIcon
+												class="w-3.5 h-3.5 mt-0.5 flex-shrink-0 {line.cls}"
+											/>
+											<span class="text-xs text-foreground break-words"
+												>{line.text}</span
+											>
+										</div>
+									{/if}
+								{/each}
+							{/if}
 						</div>
 					</div>
+
+					<!-- Metrics -->
+					{#if metrics}
+						<div class="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+							<div class="rounded-lg bg-muted/40 p-2">
+								<div class="text-sm font-medium text-foreground">
+									{metrics.tool_calls ?? 0}
+								</div>
+								<div class="micro-label text-muted-foreground">Tools</div>
+							</div>
+							<div class="rounded-lg bg-muted/40 p-2">
+								<div class="text-sm font-medium text-foreground">
+									{(metrics.tokens ?? 0).toLocaleString()}
+								</div>
+								<div class="micro-label text-muted-foreground">Tokens</div>
+							</div>
+							<div class="rounded-lg bg-muted/40 p-2">
+								<div class="text-sm font-medium text-foreground">
+									${(metrics.cost_usd ?? 0).toFixed(3)}
+								</div>
+								<div class="micro-label text-muted-foreground">Cost</div>
+							</div>
+							<div class="rounded-lg bg-muted/40 p-2">
+								<div class="text-sm font-medium text-foreground">
+									{formatDuration(metrics.duration_ms)}
+								</div>
+								<div class="micro-label text-muted-foreground">Time</div>
+							</div>
+						</div>
+					{/if}
+				{/snippet}
+				{#if isReview}
+					<details
+						ontoggle={toggleReviewDetails}
+						class="rounded-lg border border-border bg-muted/20 p-3"
+					>
+						<summary class="cursor-pointer text-xs font-medium text-muted-foreground"
+							>Review context and activity</summary
+						>
+						{#if showReviewDetails}
+							<div class="mt-3 space-y-4">{@render runDetails()}</div>
+						{/if}
+					</details>
+				{:else}
+					{@render runDetails()}
 				{/if}
 			</div>
 		{/snippet}
 
 		{#snippet footer()}
 			<div
-				class="flex flex-col-reverse gap-2 border-t border-border bg-muted/50 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end sm:px-4"
+				class="flex gap-2 border-t border-border bg-muted/50 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 {isReview
+					? 'items-center justify-between sm:justify-end'
+					: 'flex-col-reverse sm:flex-row sm:items-center sm:justify-end'}"
 			>
-				{#if isActive}
+				{#if isReview}
+					{#if canOpenChat}
+						<Button
+							onclick={handleOpenChat}
+							variant="outline"
+							size="sm"
+							disabled={openingChat || savingReview}
+							loading={openingChat}
+							icon={MessageSquare}>Chat</Button
+						>
+					{/if}
+					<Button onclick={handleMinimize} variant="ghost" size="sm">Close</Button>
+				{:else if isActive}
 					{#if canOpenChat}
 						<Button
 							onclick={handleOpenChat}

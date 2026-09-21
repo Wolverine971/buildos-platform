@@ -5,18 +5,22 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { Plus, Pencil, Trash2, Check, X, Clock, MessageCircle } from '$lib/icons/lucide';
 	import DocumentProposalDiff from './DocumentProposalDiff.svelte';
-	import { toastService } from '$lib/stores/toast.store';
-	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
-	import { loadAiInboxCount } from '$lib/stores/aiInboxCount.store';
+	import ChangeSetFailureSummary from './ChangeSetFailureSummary.svelte';
+	import { untrack } from 'svelte';
+	import {
+		pendingAgentRunReviews,
+		submitAgentRunReview,
+		type PendingReviewCommit
+	} from '$lib/services/agent-run-review.client';
 	import type { ChangeSet, ProposedChange, ProposedChangeAction } from '@buildos/shared-types';
 
 	let {
 		runId,
 		changeSet,
 		onApplied,
+		onApplying,
 		acceptLabel = 'Apply',
 		dismissLabel = 'Reject',
-		approveAllLabel = 'Approve',
 		rejectAllLabel = 'Reject',
 		chatLabel = 'Chat',
 		openingChat = false,
@@ -27,6 +31,7 @@
 		runId: string;
 		changeSet: ChangeSet;
 		onApplied?: () => void;
+		onApplying?: (applying: boolean) => void;
 		acceptLabel?: string;
 		dismissLabel?: string;
 		approveAllLabel?: string;
@@ -43,6 +48,15 @@
 	// the change set prop ever changes while the modal is open.
 	let overrides = $state<Record<string, 'approved' | 'rejected'>>({});
 	let applying = $state(false);
+	let observedCommit: PendingReviewCommit | null = null;
+	const pendingCommit = $derived($pendingAgentRunReviews.get(runId));
+	let errorMessage = $state<string | null>(null);
+	let failedChangeSet = $state.raw<ChangeSet | null>(null);
+	let finished = $state(false);
+	let dismissing = $state(false);
+	const busy = $derived(
+		applying || Boolean(pendingCommit) || openingChat || snoozing || finished
+	);
 
 	function decisionFor(id: string): 'approved' | 'rejected' {
 		return overrides[id] ?? 'approved';
@@ -55,9 +69,6 @@
 
 	function setDecision(id: string, decision: 'approved' | 'rejected') {
 		overrides[id] = decision;
-	}
-	function setAll(decision: 'approved' | 'rejected') {
-		overrides = Object.fromEntries(changeSet.changes.map((c) => [c.id, decision]));
 	}
 
 	const ACTION_META: Record<
@@ -117,97 +128,117 @@
 		);
 	}
 
-	// Best-effort project scope for the mutation signal: any `project_id` referenced by a
-	// change, plus the entity id of any project-level change. Empty = scope unknown.
-	function collectAffectedProjectIds(set: ChangeSet): string[] {
-		const ids = new Set<string>();
-		for (const change of set.changes) {
-			for (const payload of [change.after, change.before]) {
-				const pid = (payload as Record<string, unknown> | null | undefined)?.project_id;
-				if (typeof pid === 'string' && pid) ids.add(pid);
-			}
-			if (change.entity_type === 'project') {
-				const projectEntityId = change.entity_id ?? change.applied_entity_id;
-				if (typeof projectEntityId === 'string' && projectEntityId)
-					ids.add(projectEntityId);
-			}
-		}
-		return Array.from(ids);
-	}
-
-	async function apply() {
-		if (applying || !runId) return;
-		applying = true;
-		try {
-			const body = {
-				decisions: changeSet.changes.map((c) => ({
-					change_id: c.id,
-					decision: decisionFor(c.id)
-				}))
-			};
-			const res = await fetch(`/api/agent-runs/${runId}/commit`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body)
+	// A save can start in another inbox surface or outlive this component.
+	$effect(() => {
+		const commit = pendingCommit;
+		if (commit && commit !== observedCommit) {
+			untrack(() => {
+				void observeCommit(commit);
 			});
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) {
-				toastService.error(payload?.error || 'Could not apply the changes');
-				return;
-			}
-			void loadAiInboxCount({ force: true });
-			const r = payload?.data;
-			const failed = r?.failed ?? 0;
-			if (failed > 0) {
-				toastService.warning(
-					`Applied ${r.applied}, ${failed} failed, ${r.rejected} rejected. Use Chat for follow-up.`
-				);
-				onApplied?.();
-				return;
-			}
-			// Tell the rest of the app to refetch so the applied changes show up live.
-			const applied = r?.applied ?? 0;
-			if (applied > 0) {
-				notifyDataMutation({
-					hasChanges: true,
-					totalMutations: applied,
-					affectedProjectIds: collectAffectedProjectIds(changeSet),
-					hasMessagesSent: false
-				});
-			}
-			onApplied?.();
-		} catch {
-			toastService.error('Could not apply the changes');
+		}
+	});
+
+	async function observeCommit(commit: PendingReviewCommit) {
+		observedCommit = commit;
+		const complete = onApplied;
+		const setApplying = onApplying;
+		applying = true;
+		dismissing = commit.dismissing;
+		overrides = Object.fromEntries(
+			commit.decisions.map((decision) => [decision.change_id, decision.decision])
+		);
+		errorMessage = null;
+		setApplying?.(true);
+		try {
+			const outcome = await commit.promise;
+			finished = Boolean(outcome.result);
+			errorMessage = outcome.error;
+			failedChangeSet = outcome.result?.failed ? (outcome.result.change_set ?? null) : null;
+			if (outcome.result && !outcome.result.failed) complete?.();
 		} finally {
 			applying = false;
+			setApplying?.(false);
 		}
+	}
+
+	function apply(rejectAll = false) {
+		if (busy || !runId) return;
+		const snapshot = $state.snapshot(changeSet);
+		const commit = submitAgentRunReview(
+			runId,
+			snapshot,
+			snapshot.changes.map((change) => ({
+				change_id: change.id,
+				decision: rejectAll ? 'rejected' : decisionFor(change.id)
+			}))
+		);
+		void observeCommit(commit);
 	}
 </script>
 
 <div class="space-y-3 rounded-lg border border-info/40 bg-info/5 p-3">
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<div class="micro-label text-info">
-			Proposed changes ({changeSet.changes.length}) — review before applying
+	<div
+		class="sticky top-0 z-10 -mx-3 -mt-3 flex flex-wrap items-center justify-between gap-2 rounded-t-lg border-b border-info/20 bg-card p-3"
+	>
+		<div>
+			<div class="micro-label text-info">
+				{changeSet.changes.length} proposed change{changeSet.changes.length === 1
+					? ''
+					: 's'}
+			</div>
+			{#if changeSet.changes.length > 1 && !finished}
+				<p class="mt-1 text-xs text-muted-foreground">
+					{approvedCount} selected · Unselected changes will be dismissed.
+				</p>
+			{/if}
 		</div>
-		<div class="flex flex-wrap items-center justify-end gap-1">
-			<button
-				type="button"
-				class="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-muted-foreground underline transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
-				onclick={() => setAll('approved')}
-				disabled={applying}>{approveAllLabel} all</button
-			>
-			<span class="text-xs text-muted-foreground" aria-hidden="true">·</span>
-			<button
-				type="button"
-				class="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-muted-foreground underline transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
-				onclick={() => setAll('rejected')}
-				disabled={applying}>{rejectAllLabel} all</button
-			>
-		</div>
+		{#if !finished}
+			<div class="flex flex-wrap items-center gap-2">
+				<Button
+					onclick={() => apply(true)}
+					variant="outline"
+					size="sm"
+					disabled={busy}
+					loading={applying && dismissing}
+				>
+					<X class="h-3.5 w-3.5" />
+					{changeSet.changes.length === 1 ? dismissLabel : `${rejectAllLabel} all`}
+				</Button>
+				<Button
+					onclick={() => apply()}
+					variant="primary"
+					size="sm"
+					disabled={busy || approvedCount === 0}
+					loading={applying && !dismissing}
+				>
+					<Check class="h-3.5 w-3.5" />
+					{applying && !dismissing
+						? 'Applying…'
+						: `${acceptLabel} ${approvedCount} change${approvedCount === 1 ? '' : 's'}`}
+				</Button>
+			</div>
+		{/if}
 	</div>
 
+	{#if errorMessage}
+		<p
+			role="alert"
+			class="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+		>
+			{errorMessage}
+		</p>
+	{/if}
+	{#if failedChangeSet}
+		<ChangeSetFailureSummary changeSet={failedChangeSet} />
+	{/if}
+	{#if applying}
+		<p role="status" class="text-xs text-muted-foreground">
+			{dismissing ? 'Dismissing changes…' : 'Applying changes…'}
+		</p>
+	{/if}
+
 	<div class="space-y-2">
-		{#each changeSet.changes as change (change.id)}
+		{#each changeSet.changes as change, index (change.id)}
 			{@const meta = ACTION_META[change.action] ?? ACTION_META.update}
 			{@const ActionIcon = meta.icon}
 			{@const rejected = decisionFor(change.id) === 'rejected'}
@@ -224,34 +255,25 @@
 							>{change.entity_type}</span
 						>
 					</div>
-					<div
-						class="inline-flex min-h-11 overflow-hidden rounded-md border border-border"
-					>
-						<button
-							type="button"
-							onclick={() => setDecision(change.id, 'approved')}
-							disabled={applying}
-							aria-pressed={!rejected}
-							class="inline-flex min-h-11 min-w-11 flex-1 items-center justify-center gap-1 px-3 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none {rejected
-								? 'text-muted-foreground hover:bg-muted'
-								: 'bg-success/10 text-success'}"
+					{#if changeSet.changes.length > 1}
+						<label
+							class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground"
 						>
-							<Check class="h-3 w-3 shrink-0" />
-							{acceptLabel}
-						</button>
-						<button
-							type="button"
-							onclick={() => setDecision(change.id, 'rejected')}
-							disabled={applying}
-							aria-pressed={rejected}
-							class="inline-flex min-h-11 min-w-11 flex-1 items-center justify-center gap-1 border-l border-border px-3 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none {rejected
-								? 'bg-muted text-foreground'
-								: 'text-muted-foreground hover:bg-muted'}"
-						>
-							<X class="h-3 w-3 shrink-0" />
-							{dismissLabel}
-						</button>
-					</div>
+							<input
+								type="checkbox"
+								checked={!rejected}
+								disabled={busy}
+								onchange={(event) =>
+									setDecision(
+										change.id,
+										event.currentTarget.checked ? 'approved' : 'rejected'
+									)}
+								aria-label={`Include change ${index + 1}: ${meta.label} ${change.entity_type}`}
+								class="h-4 w-4 rounded border-border text-accent focus:ring-accent"
+							/>
+							Include
+						</label>
+					{/if}
 				</div>
 
 				{#if change.rationale}
@@ -331,18 +353,5 @@
 				{/if}
 			</div>
 		{/if}
-		<Button
-			onclick={apply}
-			variant="primary"
-			size="md"
-			disabled={applying}
-			class="w-full sm:w-auto"
-		>
-			{applying
-				? 'Applying…'
-				: approvedCount === 0
-					? `${dismissLabel} all & finish`
-					: `${acceptLabel} ${approvedCount} change${approvedCount === 1 ? '' : 's'}`}
-		</Button>
 	</div>
 </div>

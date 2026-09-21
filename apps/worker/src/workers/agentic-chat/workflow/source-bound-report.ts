@@ -3,11 +3,11 @@
 import { createHash } from 'node:crypto';
 import {
 	AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V3,
-	canonicalizeAgenticChatJson,
+	type AgenticChatWorkflowReviewOutcomeV2,
 	type AgenticChatWorkflowRoleReportV3,
 	type AgenticChatWorkflowSourceClaimV1,
-	type AgenticChatWorkflowReviewOutcomeV2,
-	type JsonObject
+	type JsonObject,
+	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type { ChatWorkflowDurableEvidenceIndex, ChatWorkflowSpecialistRole } from './role-report';
 
@@ -244,7 +244,7 @@ function bindClaim(
 			typeof raw.quote !== 'string' ||
 			!raw.quote.trim() ||
 			Array.from(raw.quote).length > 240 ||
-			/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(raw.quote)
+			containsUnsafeControlCharacter(raw.quote)
 		)
 			throw new Error('excerpt_shape_invalid');
 		const source = catalog.get(raw.source);
@@ -329,8 +329,20 @@ function escapeMarkdown(text: string): string {
 		.replace(/&/g, '&amp;')
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;')
-		.replace(/[\\`*_{}\[\]()#!|~]/g, '\\$&')
+		.replace(/[\\`*_{}[\]()#!|~]/g, '\\$&')
 		.replace(/[\r\n]+/g, ' ');
+}
+function containsUnsafeControlCharacter(value: string): boolean {
+	return Array.from(value).some((character) => {
+		const codePoint = character.codePointAt(0)!;
+		return (
+			codePoint <= 0x08 ||
+			codePoint === 0x0b ||
+			codePoint === 0x0c ||
+			(codePoint >= 0x0e && codePoint <= 0x1f) ||
+			codePoint === 0x7f
+		);
+	});
 }
 function object(value: unknown): value is Record<string, unknown> {
 	return !!value && typeof value === 'object' && !Array.isArray(value);

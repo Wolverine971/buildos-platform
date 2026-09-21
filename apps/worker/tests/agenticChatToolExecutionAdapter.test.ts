@@ -5,6 +5,7 @@ import {
 	agenticChatEmailSearchReceiptKeyV1,
 	agenticChatEmailTurnStateForPortV1,
 	type AgenticChatEmailReadPortV1,
+	type AgenticChatEmbeddingsPortV1,
 	type AgenticChatToolAccessPortV1
 } from '@buildos/agentic-chat-runtime/tools';
 import {
@@ -128,6 +129,7 @@ function adapterWith(
 	options: {
 		now?: () => number;
 		timeoutMs?: number;
+		embeddings?: AgenticChatEmbeddingsPortV1;
 		webResearchTimeoutMs?: number;
 		webResearch?: WebResearchPort;
 		webSearchReviewer?: AgenticChatWebSearchReviewPort;
@@ -805,6 +807,39 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		).rejects.toMatchObject({ code: 'read_tool_egress_provenance_required' });
 		expect(authorize).not.toHaveBeenCalled();
 		expect(search).not.toHaveBeenCalled();
+	});
+
+	it('propagates the outer read deadline to shared semantic search without a late RPC', async () => {
+		let embeddingSignal: AbortSignal | undefined;
+		let finishEmbedding!: (value: number[]) => void;
+		const client = {
+			...fakeSharedClient({ onto_projects: [{ id: PROJECT_ID }] }),
+			rpc: vi.fn(async (_name: string) => ({ data: [], error: null }))
+		};
+		const adapter = adapterWith(client, accessStub(), {
+			timeoutMs: 25,
+			embeddings: {
+				embedQuery: (_text, options) => {
+					embeddingSignal = options?.signal;
+					return new Promise<number[]>((resolve) => {
+						finishEmbedding = resolve;
+					});
+				}
+			}
+		});
+		await expect(
+			adapter.execute(
+				requestFor('search_project', {
+					project_id: PROJECT_ID,
+					query: 'inspection',
+					types: ['document']
+				})
+			)
+		).rejects.toMatchObject({ code: 'read_tool_timeout' });
+		expect(embeddingSignal?.aborted).toBe(true);
+		finishEmbedding([0.1]);
+		await Promise.resolve();
+		expect(client.rpc.mock.calls.map(([name]) => name)).toEqual(['onto_search_entities']);
 	});
 
 	it('bounds a hung search review and never dispatches the query after its deadline', async () => {

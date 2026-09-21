@@ -1,3 +1,4 @@
+-- supabase/migrations/20260921154425_fix_daily_brief_projectless_scheduling.sql
 -- Only successful briefs should advance engagement backoff. Failed or
 -- abandoned rows are generation attempts, not delivered briefs.
 create or replace function public.get_latest_ontology_daily_briefs(user_ids uuid[])

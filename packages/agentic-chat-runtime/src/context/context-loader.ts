@@ -3135,49 +3135,74 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 	}
 
 	const PROMPT_CONTEXT_DEFAULT_TIMEZONE = 'UTC';
+	// One line of the identity section; a longer or multi-line value is a
+	// malformed profile, not a name, and must not reshape the prompt.
+	const PROMPT_CONTEXT_DISPLAY_NAME_MAX_CHARS = 80;
+
+	type UserPromptProfile = { timezone: string; userDisplayName: string | null };
+	const DEFAULT_USER_PROMPT_PROFILE: UserPromptProfile = {
+		timezone: PROMPT_CONTEXT_DEFAULT_TIMEZONE,
+		userDisplayName: null
+	};
+
+	function normalizeDisplayName(value: unknown): string | null {
+		if (typeof value !== 'string') return null;
+		const collapsed = value.replace(/\s+/g, ' ').trim();
+		if (!collapsed) return null;
+		return collapsed.length > PROMPT_CONTEXT_DISPLAY_NAME_MAX_CHARS
+			? collapsed.slice(0, PROMPT_CONTEXT_DISPLAY_NAME_MAX_CHARS).trimEnd()
+			: collapsed;
+	}
 
 	/**
-	 * Resolve the IANA zone the prompt clock renders in. `users.timezone` is the
-	 * centralized source of truth (see /api/users/calendar-preferences); a missing,
-	 * blank, or invalid value falls back to UTC so the prompt always carries a
-	 * usable zone. Never throws — a failed lookup must not fail the turn.
+	 * Resolve the two profile values the prompt renders: the IANA zone the
+	 * clock uses and the user's display name on the identity line. `users.timezone`
+	 * is the centralized source of truth (see /api/users/calendar-preferences); a
+	 * missing, blank, or invalid value falls back to UTC so the prompt always
+	 * carries a usable zone. `users.name` (2026-09-21) is optional and renders as
+	 * "the signed-in user" when absent. One query, never throws — a failed lookup
+	 * must not fail the turn.
 	 */
-	async function resolveUserPromptTimezone(
+	async function resolveUserPromptProfile(
 		supabase: LoadContextParams['supabase'],
 		userId: string,
 		onError: LoadContextParams['onError']
-	): Promise<string> {
+	): Promise<UserPromptProfile> {
 		try {
 			const { data, error } = await supabase
 				.from('users')
-				.select('timezone')
+				.select('timezone, name')
 				.eq('id', userId)
 				.maybeSingle();
 			if (error) {
 				reportContextLoadError(onError, 'users.timezone', error, { userId });
-				return PROMPT_CONTEXT_DEFAULT_TIMEZONE;
+				return DEFAULT_USER_PROMPT_PROFILE;
 			}
 			const timezone = typeof data?.timezone === 'string' ? data.timezone.trim() : '';
-			return timezone && isValidIanaTimezone(timezone)
-				? timezone
-				: PROMPT_CONTEXT_DEFAULT_TIMEZONE;
+			return {
+				timezone:
+					timezone && isValidIanaTimezone(timezone)
+						? timezone
+						: PROMPT_CONTEXT_DEFAULT_TIMEZONE,
+				userDisplayName: normalizeDisplayName(data?.name)
+			};
 		} catch (error) {
 			reportContextLoadError(onError, 'users.timezone', error, { userId });
-			return PROMPT_CONTEXT_DEFAULT_TIMEZONE;
+			return DEFAULT_USER_PROMPT_PROFILE;
 		}
 	}
 
 	async function loadFastChatPromptContext(
 		params: LoadContextParams
 	): Promise<MasterPromptContext> {
-		// The timezone lookup runs alongside the context load (no added latency)
+		// The profile lookup runs alongside the context load (no added latency)
 		// and is attached after the fact so every return path below carries it,
 		// including the daily_brief and early-return branches.
-		const [timezone, context] = await Promise.all([
-			resolveUserPromptTimezone(params.supabase, params.userId, params.onError),
+		const [profile, context] = await Promise.all([
+			resolveUserPromptProfile(params.supabase, params.userId, params.onError),
 			loadFastChatPromptContextBody(params)
 		]);
-		return { ...context, timezone };
+		return { ...context, timezone: profile.timezone, userDisplayName: profile.userDisplayName };
 	}
 
 	async function loadFastChatPromptContextBody(

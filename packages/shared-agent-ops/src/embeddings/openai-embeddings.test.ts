@@ -1,5 +1,5 @@
 // packages/shared-agent-ops/src/embeddings/openai-embeddings.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	OPENAI_EMBEDDINGS_URL,
 	OPENROUTER_EMBEDDINGS_URL,
@@ -20,6 +20,7 @@ function okResponse(embeddings: number[][]) {
 }
 
 const noSleep = () => Promise.resolve();
+afterEach(() => vi.useRealTimers());
 
 describe('createOpenAiEmbeddingsClient', () => {
 	it('rejects an empty api key', () => {
@@ -66,6 +67,90 @@ describe('createOpenAiEmbeddingsClient', () => {
 		const fetchImpl = vi.fn(async () => okResponse([[1]]));
 		const client = createOpenAiEmbeddingsClient({ apiKey: 'k', fetchImpl, sleep: noSleep });
 		await expect(client.embed(['a', 'b'])).rejects.toBeInstanceOf(OpenAiEmbeddingsError);
+	});
+
+	it('does not start a request when already cancelled', async () => {
+		const fetchImpl = vi.fn();
+		const reason = new Error('Cancelled');
+		const client = createOpenAiEmbeddingsClient({ apiKey: 'k', fetchImpl });
+		await expect(client.embedOne('x', { signal: AbortSignal.abort(reason) })).rejects.toBe(
+			reason
+		);
+		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+
+	it('passes cancellation to fetch, settles a non-cooperative transport, and never retries', async () => {
+		const controller = new AbortController();
+		const reason = new Error('Read deadline');
+		const fetchImpl = vi.fn((_url, init) => {
+			expect(init.signal).toBe(controller.signal);
+			controller.abort(reason);
+			return new Promise<never>(() => {});
+		});
+		const sleep = vi.fn(noSleep);
+		const client = createOpenAiEmbeddingsClient({ apiKey: 'k', fetchImpl, sleep });
+		await expect(client.embedOne('x', { signal: controller.signal })).rejects.toBe(reason);
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(sleep).not.toHaveBeenCalled();
+	});
+
+	it('cancels response-body consumption without retrying', async () => {
+		const controller = new AbortController();
+		const reason = new Error('Read deadline');
+		const fetchImpl = vi.fn(async () => ({
+			...okResponse([[1]]),
+			json: () => {
+				controller.abort(reason);
+				return new Promise<never>(() => {});
+			}
+		}));
+		const client = createOpenAiEmbeddingsClient({ apiKey: 'k', fetchImpl });
+		await expect(client.embedOne('x', { signal: controller.signal })).rejects.toBe(reason);
+		expect(fetchImpl).toHaveBeenCalledOnce();
+	});
+
+	it('clears retry backoff on cancellation without sending the next attempt', async () => {
+		vi.useFakeTimers();
+		const controller = new AbortController();
+		const reason = new Error('Read deadline');
+		const fetchImpl = vi.fn(async () => ({
+			ok: false,
+			status: 503,
+			text: async () => 'busy',
+			json: async () => ({})
+		}));
+		const client = createOpenAiEmbeddingsClient({ apiKey: 'k', fetchImpl });
+		const request = client.embedOne('x', { signal: controller.signal });
+		const rejected = expect(request).rejects.toBe(reason);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(vi.getTimerCount()).toBe(1);
+		controller.abort(reason);
+		await rejected;
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('does not start another batch after cancellation', async () => {
+		const controller = new AbortController();
+		const reason = new Error('Cancelled');
+		const fetchImpl = vi.fn(async () => ({
+			...okResponse(Array.from({ length: 96 }, () => [1])),
+			json: async () => {
+				controller.abort(reason);
+				return {
+					data: Array.from({ length: 96 }, (_, index) => ({ index, embedding: [1] }))
+				};
+			}
+		}));
+		const client = createOpenAiEmbeddingsClient({ apiKey: 'k', fetchImpl });
+		await expect(
+			client.embed(
+				Array.from({ length: 100 }, () => 'x'),
+				{ signal: controller.signal }
+			)
+		).rejects.toBe(reason);
+		expect(fetchImpl).toHaveBeenCalledOnce();
 	});
 
 	it('splits oversized batches across requests', async () => {

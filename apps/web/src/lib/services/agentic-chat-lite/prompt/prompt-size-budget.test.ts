@@ -14,6 +14,21 @@ import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/c
 import { buildPromptCostBreakdown } from '$lib/services/agentic-chat-v2/prompt-cost-breakdown';
 import { buildToolSurfaceSizeReport } from '$lib/services/agentic-chat-v2/tool-surface-size-report';
 import { buildLitePromptEnvelope } from './index';
+import {
+	buildWorkerPromptScaffold,
+	resolveWorkerPromptTools
+} from '$lib/services/agentic-chat-v2/worker-prompt-surface';
+
+// RE-AIMED 2026-09-21: until today this test built the envelope with the
+// DEFAULT scaffold and measured the WEB-lane prompt (13,710 chars), which
+// carries a skill catalog, lead-in coaching, and skill_load rules that the
+// production worker path never renders (worker-turn-preparation.server.ts →
+// buildWorkerPromptScaffold → dynamicSkillTools: false). Every prompt review
+// that started from this dump reviewed text that does not ship. The canonical
+// turn now uses the worker scaffold and the worker tool surface, so the
+// numbers below are the production artifact.
+const WORKER_TOOLS = resolveWorkerPromptTools(getGatewaySurfaceForContextType('project')).tools;
+const WORKER_SCAFFOLD = buildWorkerPromptScaffold({});
 
 afterEach(() => {
 	vi.unstubAllEnvs();
@@ -27,6 +42,8 @@ function buildCanonicalProjectEnvelope() {
 		projectName: 'Launch Alpha',
 		now: '2026-04-14T19:00:00Z',
 		timezone: 'America/New_York',
+		tools: WORKER_TOOLS,
+		scaffold: WORKER_SCAFFOLD,
 		data: {
 			project: {
 				id: 'project-1',
@@ -161,7 +178,7 @@ describe('total assembled prompt size budget', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 
 		const envelope = buildCanonicalProjectEnvelope();
-		const tools = getGatewaySurfaceForContextType('project');
+		const tools = WORKER_TOOLS;
 		const breakdown = buildPromptCostBreakdown({
 			systemPrompt: envelope.systemPrompt,
 			history: [],
@@ -289,7 +306,23 @@ describe('total assembled prompt size budget', () => {
 		// executable: loaded context is explicitly separated from assumptions,
 		// actual status requires persisted evidence, and document text preserves
 		// user-authored instructions verbatim. Measured 13,396 chars; retain 104.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(13_500);
+		// RE-BASELINED 2026-09-21 (static-frame rewrite + re-aim at the worker
+		// path). Measured on the worker scaffold with the worker tool surface:
+		//   system prompt 10,701 chars  (the web-lane dump this test used to
+		//                               measure was 13,710; the pre-rewrite worker
+		//                               prompt on the same fixture was 11,381)
+		//   payload       72,981 chars / 18,246 est tokens
+		//   tool schemas  15,556 est tokens (unchanged; Jev narrows per pass)
+		// What changed in the template: Capabilities section dropped on the worker
+		// lane (289), anti-echo bullet folded into the preamble (~330), the four
+		// date/DST rules moved from the dynamic Location section into the static
+		// Dates and Time section (prefix-cacheable, same chars), and the four
+		// project-status lines that Focus already carried no longer repeat in
+		// Location (~300). The two "actual status" contract bullets were tried as
+		// one concise bullet (9,849 chars) and RESTORED verbatim the same day
+		// after case 14 regressed to 3/6 on the Pareto route; measured with them
+		// back: system prompt 10,701 chars. Caps at measured + ~5%.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(11_250);
 		// Postdeploy 2026-09-04: add the executable relationship tool and explicit
 		// endpoint references, plus the nested estimate schema. Keep the system
 		// prose cap unchanged; the worker defers the contract from opening passes.
@@ -299,12 +332,12 @@ describe('total assembled prompt size budget', () => {
 		// bound the unnarrowed catalog, which a Jev fallback or surface repair pays;
 		// Jev-selected opening passes carried ~40% of it on the live eval
 		// (docs/research/jev-tool-selection-2026-09-18). Caps at measured + ~5%.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(80_700);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(20_200);
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(76_600);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(19_150);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(60_500);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(49_700);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(57_450);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(49_000);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		// 2026-09-10: the batch lane removed the contract DSL from acting-model

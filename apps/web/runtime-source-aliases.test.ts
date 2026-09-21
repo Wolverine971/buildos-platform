@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_RUNTIME_SOURCE_ENTRYPOINTS,
 	type AgenticChatRuntimeSourceAlias
-} from '../../packages/agentic-chat-runtime/source-entrypoints';
+} from '../../packages/agentic-chat-runtime/source-entrypoints.mts';
 import { agenticChatRuntimeSourceAliases as viteAliases } from './vite.config';
 import { agenticChatRuntimeSourceAliases as vitestAliases } from './vitest.config';
 

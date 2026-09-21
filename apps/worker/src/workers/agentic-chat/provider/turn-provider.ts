@@ -111,7 +111,6 @@ import { streamBufferedProviderPass } from './provider-pass';
 import {
 	type SurfaceRepairContext,
 	buildBatchPromiseRepairRequest,
-	hasUnfinishedBatchAction,
 	buildPartialMutationBatchSynthesisInstruction,
 	buildProviderPassBudgetSynthesisInstruction,
 	buildRequiredPassProseFallbackRequest,
@@ -119,6 +118,7 @@ import {
 	buildUnavailableSkillRepairRequest,
 	buildUnavailableSurfaceToolRepairRequest,
 	buildValidationRepairExhaustedSynthesisInstruction,
+	hasUnfinishedBatchAction,
 	renderWriteReceiptFallback
 } from './repair-policy';
 import {

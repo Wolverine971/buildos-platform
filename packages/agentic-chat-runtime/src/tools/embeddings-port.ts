@@ -10,5 +10,5 @@
 
 export type AgenticChatEmbeddingsPortV1 = {
 	/** Embed one query/theme text; returns the raw embedding vector. */
-	embedQuery(text: string): Promise<number[]>;
+	embedQuery(text: string, options?: { signal?: AbortSignal }): Promise<number[]>;
 };

@@ -9,6 +9,7 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"allowJs": false,
+		"allowImportingTsExtensions": true,
 		"noUncheckedIndexedAccess": true,
 		"types": ["node", "vitest/globals", "@testing-library/jest-dom"]
 	},

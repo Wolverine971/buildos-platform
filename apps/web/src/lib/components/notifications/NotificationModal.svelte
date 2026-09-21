@@ -15,6 +15,7 @@
 	import { LoaderCircle, CircleCheck, AlertCircle } from '$lib/icons/lucide';
 	import { agentRunDisplayTitle } from '$lib/services/agent-run-notification-data';
 	import type { Notification } from '$lib/types/notification.types';
+	import AgentRunModalContent from './types/agent-run/AgentRunModalContent.svelte';
 
 	// Props
 	let { notification }: { notification: Notification } = $props();
@@ -23,7 +24,6 @@
 	let ProjectSynthesisModalContent = $state<any>(null);
 	let CalendarAnalysisModalContent = $state<any>(null);
 	let TimeBlockModalContent = $state<any>(null);
-	let AgentRunModalContent = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
@@ -51,14 +51,6 @@
 							'./types/time-block/TimeBlockModalContent.svelte'
 						);
 						TimeBlockModalContent = module.default;
-					}
-					break;
-				case 'agent-run':
-					if (!AgentRunModalContent) {
-						const module = await import(
-							'./types/agent-run/AgentRunModalContent.svelte'
-						);
-						AgentRunModalContent = module.default;
 					}
 					break;
 				default:
@@ -149,15 +141,17 @@
 {#if typeSpecificComponent}
 	<!-- Type-specific modal content - already has Modal wrapper -->
 	{@const TypeSpecificComponent = typeSpecificComponent}
-	<TypeSpecificComponent
-		{notification}
-		onminimize={handleMinimize}
-		onclose={handleDismiss}
-		oncancel={handleDismiss}
-		onMinimize={handleMinimize}
-		onClose={handleDismiss}
-		onCancel={handleDismiss}
-	/>
+	{#key notification.id}
+		<TypeSpecificComponent
+			{notification}
+			onminimize={notificationStore.minimize.bind(null, notification.id)}
+			onclose={notificationStore.remove.bind(null, notification.id)}
+			oncancel={notificationStore.remove.bind(null, notification.id)}
+			onMinimize={notificationStore.minimize.bind(null, notification.id)}
+			onClose={notificationStore.remove.bind(null, notification.id)}
+			onCancel={notificationStore.remove.bind(null, notification.id)}
+		/>
+	{/key}
 {:else}
 	<!-- Generic fallback modal -->
 	<Modal isOpen={true} onClose={handleClose} title={modalTitle} size="lg" showCloseButton={true}>

@@ -22,6 +22,12 @@ export type MasterPromptContext = {
 	 * always set it; absent/invalid values fall back to UTC at render time.
 	 */
 	timezone?: string | null;
+	/**
+	 * The signed-in user's display name (from `users.name`, trimmed), rendered
+	 * on the prompt's identity line. Loaded alongside the timezone in the same
+	 * query; null when the profile has no name or the lookup failed.
+	 */
+	userDisplayName?: string | null;
 	conversationSummary?: string | null;
 	entityResolutionHint?: string | null;
 	data?: Record<string, unknown> | string | null;

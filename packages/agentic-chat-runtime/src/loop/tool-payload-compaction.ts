@@ -937,6 +937,15 @@ function compactOntologySearchPayload(payload: unknown): unknown {
 		? [...record.materialized_tools, ...inferredMaterializedTools]
 		: inferredMaterializedTools;
 	const kept = results.slice(0, MAX_SEARCH_RESULT_ITEMS);
+	const coverage = record.search_coverage;
+	const searchCoverage =
+		coverage &&
+		['complete', 'not_requested'].includes(coverage.lexical) &&
+		['complete', 'timed_out', 'unavailable', 'not_configured', 'not_requested'].includes(
+			coverage.semantic
+		)
+			? { lexical: coverage.lexical, semantic: coverage.semantic }
+			: undefined;
 	const buildPayload = (snippetBudget: number): Record<string, unknown> => {
 		const compactPayload: Record<string, unknown> = {
 			query: record.query,
@@ -947,6 +956,7 @@ function compactOntologySearchPayload(payload: unknown): unknown {
 				typeof record.total_returned === 'number' ? record.total_returned : results.length,
 			total: typeof record.total === 'number' ? record.total : results.length,
 			maybe_more: Boolean(record.maybe_more),
+			search_coverage: searchCoverage,
 			message: record.message,
 			materialized_tools: compactMaterializedTools(materializedToolHints),
 			results: kept.map((result: any) => compactSearchResult(result, snippetBudget)),
@@ -2024,6 +2034,7 @@ function compactMarkdownOutline(outline: unknown): unknown {
 // Keys the structural fit never drops: the notice wrapper, the tool's own
 // verdict, and the arguments that identify what was asked.
 const PROTECTED_PAYLOAD_KEYS = new Set([
+	'search_coverage',
 	'model_context_notice',
 	'model_context_source',
 	'tool_name',

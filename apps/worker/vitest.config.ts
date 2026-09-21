@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 import { localWorkerLimits } from '../../vitest.workers';
 import { fileURLToPath } from 'node:url';
 import { coverageConfig } from '../../vitest.coverage';
-import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints';
+import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints.mts';
 
 export const agenticChatRuntimeSourceAliases = createAgenticChatRuntimeSourceAliases(
 	new URL('../../packages/agentic-chat-runtime/', import.meta.url)

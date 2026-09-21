@@ -11,18 +11,18 @@ const PROJECT_ID = '00000000-0000-4000-8000-000000000002';
 
 function projectClient(
 	rpcResult: { data: unknown; error: unknown },
-	timezone = 'America/New_York'
+	timezone = 'America/New_York',
+	name: string | null = null
 ) {
 	const rpc = vi.fn().mockResolvedValue(rpcResult);
+	const select = vi.fn(() => ({
+		eq: vi.fn(() => ({
+			maybeSingle: vi.fn().mockResolvedValue({ data: { timezone, name }, error: null })
+		}))
+	}));
 	const from = vi.fn((table: string) => {
 		if (table === 'users') {
-			return {
-				select: vi.fn(() => ({
-					eq: vi.fn(() => ({
-						maybeSingle: vi.fn().mockResolvedValue({ data: { timezone }, error: null })
-					}))
-				}))
-			};
+			return { select };
 		}
 		if (table === 'onto_documents') {
 			const query = {
@@ -36,8 +36,48 @@ function projectClient(
 		}
 		throw new Error(`Unexpected context query: ${table}`);
 	});
-	return { client: { rpc, from } as unknown as SupabaseClient<Database>, rpc, from };
+	return { client: { rpc, from } as unknown as SupabaseClient<Database>, rpc, from, select };
 }
+
+describe('user prompt profile', () => {
+	it('loads the display name with the timezone in one users query and normalizes it', async () => {
+		const { client, select } = projectClient(
+			{ data: null, error: null },
+			'America/New_York',
+			'  DJ \n Wayne  '
+		);
+		const { loadFastChatPromptContext } = createFastChatContextLoader({
+			logger: { warn: vi.fn() }
+		});
+		const context = await loadFastChatPromptContext({
+			supabase: client,
+			userId: USER_ID,
+			contextType: 'global'
+		});
+		expect(context).toMatchObject({
+			timezone: 'America/New_York',
+			userDisplayName: 'DJ Wayne'
+		});
+		// One lookup for both values: no second users round trip per turn.
+		expect(select).toHaveBeenCalledExactlyOnceWith('timezone, name');
+	});
+
+	it('renders no name for a blank or absent profile name and bounds a runaway value', async () => {
+		const loader = createFastChatContextLoader({ logger: { warn: vi.fn() } });
+		const blank = await loader.loadFastChatPromptContext({
+			supabase: projectClient({ data: null, error: null }, 'UTC', '   ').client,
+			userId: USER_ID,
+			contextType: 'global'
+		});
+		expect(blank.userDisplayName).toBeNull();
+		const long = await loader.loadFastChatPromptContext({
+			supabase: projectClient({ data: null, error: null }, 'UTC', 'x'.repeat(200)).client,
+			userId: USER_ID,
+			contextType: 'global'
+		});
+		expect(long.userDisplayName).toHaveLength(80);
+	});
+});
 
 describe('portable context loading', () => {
 	it('loads project context through the runtime entry point without a web host', async () => {

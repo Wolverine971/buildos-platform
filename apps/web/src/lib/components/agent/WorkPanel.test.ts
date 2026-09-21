@@ -3,6 +3,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import WorkPanel from './WorkPanel.svelte';
+import { workRunsStore } from '$lib/stores/workRunsStore';
+import type { AgentRunRow } from '$lib/services/agentRunsRealtime.service';
+import { loadAiInboxCount } from '$lib/stores/aiInboxCount.store';
+
+vi.mock('$lib/stores/toast.store', () => ({
+	toastService: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() }
+}));
+vi.mock('$lib/stores/aiInboxCount.store', () => ({ loadAiInboxCount: vi.fn() }));
+vi.mock('$lib/stores/projectDataMutations', () => ({ notifyDataMutation: vi.fn() }));
 
 vi.mock('$lib/services/agentRunsRealtime.service', async () => {
 	const { writable } = await import('svelte/store');
@@ -37,6 +46,7 @@ describe('WorkPanel accessibility contract', () => {
 	let trigger: HTMLButtonElement;
 
 	beforeEach(() => {
+		workRunsStore.set(new Map());
 		trigger = document.createElement('button');
 		trigger.textContent = 'Open work';
 		document.body.appendChild(trigger);
@@ -76,6 +86,72 @@ describe('WorkPanel accessibility contract', () => {
 		trigger.remove();
 		vi.unstubAllGlobals();
 		vi.clearAllMocks();
+	});
+
+	it('keeps the next review open when a save from the previous review finishes', async () => {
+		const runs = ['first', 'second'].map(
+			(id) =>
+				({
+					id,
+					label: `${id} review`,
+					goal: 'Update task title',
+					status: 'proposal_ready',
+					context_type: 'project',
+					project_id: 'project-1',
+					project: { id: 'project-1', name: 'Test project' },
+					trigger: 'chat',
+					scope_mode: 'read_write',
+					review_required: true,
+					created_at: '2026-09-21T12:00:00Z',
+					updated_at: '2026-09-21T12:00:00Z',
+					change_set: {
+						run_id: id,
+						status: 'pending',
+						created_at: '2026-09-21T12:00:00Z',
+						changes: [
+							{
+								id: `${id}-change`,
+								op: 'onto.task.update',
+								action: 'update',
+								entity_type: 'task',
+								before: { title: `${id} task` },
+								after: { title: `${id} updated` }
+							}
+						]
+					}
+				}) as AgentRunRow
+		);
+		workRunsStore.set(new Map(runs.map((run) => [run.id, run])));
+		let resolveCommit!: (response: Response) => void;
+		const fetchMock = vi.fn(
+			() =>
+				new Promise<Response>((resolve) => {
+					resolveCommit = resolve;
+				})
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		render(WorkPanel, { props: { open: true } });
+		await fireEvent.click(
+			screen.getByRole('button', { name: /Open Test project: Update task · first updated/ })
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Accept 1 change' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		await fireEvent.click(
+			await screen.findByRole('button', {
+				name: /Open Test project: Update task · second updated/
+			})
+		);
+		expect(screen.getByText('second updated')).toBeInTheDocument();
+		resolveCommit(
+			new Response(JSON.stringify({ data: { applied: 1, rejected: 0, failed: 0 } }), {
+				status: 200
+			})
+		);
+		await waitFor(() => expect(loadAiInboxCount).toHaveBeenCalledWith({ force: true }));
+		await waitFor(() => expect(screen.queryByText('first updated')).not.toBeInTheDocument());
+		await waitFor(() => expect(screen.getByText('second updated')).toBeInTheDocument());
+		expect(screen.getByRole('button', { name: 'Accept 1 change' })).toBeEnabled();
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('uses modal semantics, closes with Escape, and releases the inert background', async () => {

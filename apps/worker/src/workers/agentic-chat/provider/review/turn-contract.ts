@@ -146,6 +146,7 @@ export const ACTING_PROMPT_SECTION_TITLES = Object.freeze([
 	'Operating Strategy',
 	'Final Response Contract',
 	'Safety and Data Rules',
+	'Dates and Time',
 	'Current Tool Surface',
 	'Rules for This Turn',
 	'Project Starter Profile',

@@ -34,10 +34,39 @@ export class OpenAiEmbeddingsError extends Error {
 
 export type OpenAiEmbeddingsClient = {
 	/** Embed a batch of texts, preserving input order. */
-	embed(texts: string[]): Promise<number[][]>;
+	embed(texts: string[], options?: { signal?: AbortSignal }): Promise<number[][]>;
 	/** Embed a single text (query-side convenience). */
-	embedOne(text: string): Promise<number[]>;
+	embedOne(text: string, options?: { signal?: AbortSignal }): Promise<number[]>;
 };
+
+/** Bound injected transports too, and never start work after cancellation. */
+function withSignal<T>(signal: AbortSignal | undefined, run: () => Promise<T>): Promise<T> {
+	signal?.throwIfAborted();
+	if (!signal) return run();
+	return new Promise<T>((resolve, reject) => {
+		const onAbort = () => {
+			cleanup();
+			reject(signal.reason);
+		};
+		const cleanup = () => signal.removeEventListener('abort', onAbort);
+		signal.addEventListener('abort', onAbort, { once: true });
+		void Promise.resolve()
+			.then(() => {
+				signal.throwIfAborted();
+				return run();
+			})
+			.then(
+				(value) => {
+					cleanup();
+					resolve(value);
+				},
+				(error) => {
+					cleanup();
+					reject(error);
+				}
+			);
+	});
+}
 
 type FetchLike = (
 	input: string,
@@ -66,25 +95,44 @@ export function createOpenAiEmbeddingsClient(options: {
 	const model = options.model ?? ONTO_EMBEDDING_MODEL;
 	const url = options.url ?? OPENAI_EMBEDDINGS_URL;
 	const dimensions = options.dimensions;
-	const sleep =
-		options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+	async function waitForRetry(ms: number, signal?: AbortSignal): Promise<void> {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		try {
+			await withSignal(signal, () =>
+				options.sleep
+					? options.sleep(ms)
+					: new Promise<void>((resolve) => {
+							timer = setTimeout(resolve, ms);
+						})
+			);
+		} finally {
+			if (timer !== undefined) clearTimeout(timer);
+		}
+	}
 
-	async function requestBatch(texts: string[]): Promise<number[][]> {
+	async function requestBatch(texts: string[], signal?: AbortSignal): Promise<number[][]> {
 		let lastError: OpenAiEmbeddingsError | null = null;
 		for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+			signal?.throwIfAborted();
 			try {
-				const response = await fetchImpl(url, {
-					method: 'POST',
-					headers: {
-						Authorization: `Bearer ${apiKey}`,
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(
-						dimensions ? { model, input: texts, dimensions } : { model, input: texts }
-					)
-				});
+				const response = await withSignal(signal, () =>
+					fetchImpl(url, {
+						method: 'POST',
+						...(signal ? { signal } : {}),
+						headers: {
+							Authorization: `Bearer ${apiKey}`,
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify(
+							dimensions
+								? { model, input: texts, dimensions }
+								: { model, input: texts }
+						)
+					})
+				);
 				if (!response.ok) {
-					const body = await response.text().catch(() => '');
+					const body = await withSignal(signal, () => response.text()).catch(() => '');
+					signal?.throwIfAborted();
 					const retryable = response.status === 429 || response.status >= 500;
 					lastError = new OpenAiEmbeddingsError(
 						`Embeddings request failed: ${response.status} ${body.slice(0, 300)}`,
@@ -92,9 +140,10 @@ export function createOpenAiEmbeddingsClient(options: {
 					);
 					if (!retryable) throw lastError;
 				} else {
-					const payload = (await response.json()) as {
+					const payload = (await withSignal(signal, () => response.json())) as {
 						data?: Array<{ index?: number; embedding?: number[] }>;
 					};
+					signal?.throwIfAborted();
 					const rows = payload.data ?? [];
 					if (rows.length !== texts.length) {
 						throw new OpenAiEmbeddingsError(
@@ -114,6 +163,8 @@ export function createOpenAiEmbeddingsClient(options: {
 					return ordered;
 				}
 			} catch (error) {
+				// Cancellation is terminal; it must never become a retryable provider error.
+				signal?.throwIfAborted();
 				if (error instanceof OpenAiEmbeddingsError) {
 					lastError = error;
 					if (!error.retryable) throw error;
@@ -125,26 +176,30 @@ export function createOpenAiEmbeddingsClient(options: {
 				}
 			}
 			if (attempt < MAX_ATTEMPTS) {
-				await sleep(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
+				await waitForRetry(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), signal);
 			}
 		}
 		throw lastError ?? new OpenAiEmbeddingsError('Embeddings request failed');
 	}
 
-	async function embed(texts: string[]): Promise<number[][]> {
+	async function embed(
+		texts: string[],
+		requestOptions: { signal?: AbortSignal } = {}
+	): Promise<number[][]> {
+		requestOptions.signal?.throwIfAborted();
 		if (texts.length === 0) return [];
 		const results: number[][] = [];
 		for (let start = 0; start < texts.length; start += MAX_BATCH_SIZE) {
 			const batch = texts.slice(start, start + MAX_BATCH_SIZE);
-			results.push(...(await requestBatch(batch)));
+			results.push(...(await requestBatch(batch, requestOptions.signal)));
 		}
 		return results;
 	}
 
 	return {
 		embed,
-		embedOne: async (text: string) => {
-			const [embedding] = await embed([text]);
+		embedOne: async (text, requestOptions) => {
+			const [embedding] = await embed([text], requestOptions);
 			if (!embedding) {
 				throw new OpenAiEmbeddingsError('Embeddings response returned no rows');
 			}

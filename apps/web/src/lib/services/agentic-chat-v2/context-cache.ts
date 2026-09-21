@@ -4,7 +4,10 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { buildAgenticChatContextCacheKeyInput, normalizeAgenticChatContextType } from './scope';
 
 export const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
-export const FASTCHAT_CONTEXT_CACHE_VERSION = 3;
+// 4 (2026-09-21): snapshots gained `userDisplayName`; bumping retires cached
+// snapshots that predate it so the identity line names the user on the next
+// turn instead of whenever the old snapshot happens to expire.
+export const FASTCHAT_CONTEXT_CACHE_VERSION = 4;
 
 export type FastChatPromptContextSnapshot = {
 	contextType: ChatContextType;
@@ -23,6 +26,8 @@ export type FastChatPromptContextSnapshot = {
 		| 'unknown_cached';
 	/** IANA zone the prompt clock renders in; null means "fall back to UTC". */
 	timezone?: string | null;
+	/** The user's display name for the identity line; null renders "the signed-in user". */
+	userDisplayName?: string | null;
 	data?: Record<string, unknown> | string | null;
 };
 
@@ -124,6 +129,7 @@ export function normalizeFastChatContextSnapshot(
 		focusEntityName: readString(record, 'focusEntityName', 'focus_entity_name'),
 		contextLoadSource,
 		timezone: readString(record, 'timezone', 'timezone'),
+		userDisplayName: readString(record, 'userDisplayName', 'user_display_name'),
 		data:
 			data && typeof data === 'object' && !Array.isArray(data)
 				? (data as Record<string, unknown>)
@@ -182,6 +188,7 @@ export function buildFastChatContextCacheEntry(params: {
 			focusEntityName: params.context.focusEntityName ?? null,
 			contextLoadSource: params.context.contextLoadSource ?? undefined,
 			timezone: params.context.timezone ?? null,
+			userDisplayName: params.context.userDisplayName ?? null,
 			data: params.context.data ?? null
 		}
 	};

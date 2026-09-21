@@ -4,7 +4,7 @@ import { localWorkerLimits } from '../../vitest.workers';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { fileURLToPath } from 'node:url';
 import { coverageConfig } from '../../vitest.coverage';
-import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints';
+import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints.mts';
 
 const sharedAgentOpsSrc = (sub: string) =>
 	fileURLToPath(new URL(`../../packages/shared-agent-ops/src/${sub}`, import.meta.url));

@@ -25,6 +25,7 @@ const LITE_SECTION_TITLE_KEYS: Record<string, string> = {
 	'Current Tool Surface': 'tool_surface_dynamic',
 	'Operating Strategy': 'operating_strategy',
 	'Safety and Data Rules': 'safety_data_rules',
+	'Dates and Time': 'dates_time',
 	'Rules for This Turn': 'situational_rules',
 	'Project Starter Profile': 'situational_rules',
 	'Project Creation Boundaries': 'situational_rules',

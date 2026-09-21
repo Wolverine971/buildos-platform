@@ -139,6 +139,42 @@ describe('buildToolPayloadForModel', () => {
 		expect(JSON.stringify(payload)).not.toContain('extra_large_field');
 	});
 
+	it.each(['search_project', 'search_all_projects', 'search_ontology'])(
+		'preserves coverage and its warning through %s prompt compaction',
+		(name) => {
+			for (const semantic of [
+				'complete',
+				'timed_out',
+				'unavailable',
+				'not_configured',
+				'not_requested'
+			]) {
+				const search_coverage = { lexical: 'complete', semantic };
+				const message = 'Semantic search timed out; no matches does not establish absence.';
+				const payload = buildToolPayloadForModel(
+					toolCall(name),
+					toolResult({
+						query: 'inspection',
+						search_scope: 'project',
+						project_id: 'project-1',
+						search_coverage,
+						message,
+						results: Array.from({ length: 50 }, (_, index) => ({
+							type: 'document',
+							id: `doc-${index}`,
+							title: 'Inspection',
+							snippet: 'Long source text '.repeat(400)
+						}))
+					}),
+					parseArgs
+				) as Record<string, any>;
+				expect(payload.search_coverage).toEqual(search_coverage);
+				expect(payload.message).toBe(message);
+				expect(JSON.stringify(payload).length).toBeLessThanOrEqual(6000);
+			}
+		}
+	);
+
 	it('infers materialized tools from compacted ontology search results', () => {
 		const payload = buildToolPayloadForModel(
 			toolCall('search_project'),

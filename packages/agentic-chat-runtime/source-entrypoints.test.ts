@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_RUNTIME_SOURCE_ENTRYPOINTS,
 	createAgenticChatRuntimeSourceAliases
-} from './source-entrypoints';
+} from './source-entrypoints.mts';
 
 type PackageExport = {
 	types: string;

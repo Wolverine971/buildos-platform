@@ -6,8 +6,8 @@ import {
 } from '@buildos/agentic-chat-runtime/specialists';
 import type {
 	AgenticChatWorkflowEvidenceRefV1,
-	AgenticChatWorkflowRoleReport,
-	AgenticChatWorkflowReviewOutcomeV2
+	AgenticChatWorkflowReviewOutcomeV2,
+	AgenticChatWorkflowRoleReport
 } from '@buildos/shared-types';
 import { collectRecordLabels } from './prepared-context';
 import type { AgenticChatWorkflowEvidenceVersionV1, JsonObject } from '@buildos/shared-types';

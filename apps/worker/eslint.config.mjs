@@ -52,6 +52,7 @@ export default [
 			// Error Prevention
 			'no-console': 'off',
 			'no-unused-vars': 'off',
+			'no-redeclare': 'off',
 			'@typescript-eslint/no-unused-vars': [
 				'error',
 				{
@@ -59,6 +60,7 @@ export default [
 					varsIgnorePattern: '^_'
 				}
 			],
+			'@typescript-eslint/no-redeclare': 'error',
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'@typescript-eslint/explicit-function-return-type': 'off',
 

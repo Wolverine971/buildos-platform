@@ -60,6 +60,8 @@ export type AgenticChatSharedReadContextV1 = {
 	 * of reporting a stored instant as a UTC calendar day.
 	 */
 	timezone: string | null;
+	/** Host cancellation/deadline, consumed by cancellable read implementations. */
+	signal?: AbortSignal;
 	embeddings?: AgenticChatEmbeddingsPortV1;
 	/** Host adapter over Google Calendar reads; unset on hosts without calendar access. */
 	calendar?: AgenticChatCalendarReadPortV1;

@@ -5765,10 +5765,12 @@ describe('AgenticChatTurnExecutor', () => {
 			const harness = createHarness([]);
 			const targets = [MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!];
 			installMoveContractFixture(harness, targets, [targets[0]!], []);
-			const prepare = harness.provider.prepare as ReturnType<typeof vi.fn>;
-			const prepared = prepare.getMockImplementation()!;
-			prepare.mockImplementation(async (...args: unknown[]) => ({
-				...(await prepared(...args)),
+			const prepare = vi.mocked(harness.provider.prepare!);
+			const prepared = prepare.getMockImplementation() as () => Promise<
+				Record<string, unknown>
+			>;
+			prepare.mockImplementation(async () => ({
+				...(await prepared()),
 				// Round 2 never opens: the provider fails after the first move committed.
 				continueWithToolResults: vi.fn(() => {
 					throw error();
@@ -5825,10 +5827,10 @@ describe('AgenticChatTurnExecutor', () => {
 		});
 		const targets = [MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!];
 		installMoveContractFixture(harness, targets, [targets[0]!], []);
-		const prepare = harness.provider.prepare as ReturnType<typeof vi.fn>;
-		const prepared = prepare.getMockImplementation()!;
-		prepare.mockImplementation(async (...args: unknown[]) => ({
-			...(await prepared(...args)),
+		const prepare = vi.mocked(harness.provider.prepare!);
+		const prepared = prepare.getMockImplementation() as () => Promise<Record<string, unknown>>;
+		prepare.mockImplementation(async () => ({
+			...(await prepared()),
 			continueWithToolResults: vi.fn(() => {
 				throw new AgenticChatProviderExecutionError(
 					'provider_context_stale',

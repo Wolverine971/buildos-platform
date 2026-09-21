@@ -98,7 +98,7 @@ import {
 function createWebEmbeddingsPortFromEnv(): AgenticChatEmbeddingsPortV1 | undefined {
 	const client = createEmbeddingsClientFromEnv(privateEnv);
 	if (!client) return undefined;
-	return { embedQuery: (text) => client.embedOne(text) };
+	return { embedQuery: (text, options) => client.embedOne(text, options) };
 }
 
 /**

@@ -7,7 +7,7 @@
 //   - A run becomes a card only when first observed in an ACTIVE status. Runs
 //     first seen already terminal are history and never pop a card.
 //   - Tracked runs are followed through to their terminal status; the card then
-//     auto-minimizes after a beat (it is not auto-removed — the user dismisses).
+//     auto-minimizes after a beat, except while the user is reading a review.
 //   - A dismissed run is never resurrected by a later store update.
 //
 // Mirrors the time-block bridge (store-subscription → notification sync).
@@ -245,9 +245,13 @@ function startAutoMinimize(notificationId: string): void {
 	clearAutoMinimize(notificationId);
 	if (typeof window === 'undefined') return;
 	const timer = setTimeout(() => {
-		if (get(notificationStore).notifications.has(notificationId)) {
-			notificationStore.minimize(notificationId);
-		}
+		const state = get(notificationStore);
+		const notification = state.notifications.get(notificationId);
+		const readingReview =
+			state.expandedId === notificationId &&
+			notification?.type === 'agent-run' &&
+			Boolean(notification.data.result?.proposed_changes?.changes.length);
+		if (notification && !readingReview) notificationStore.minimize(notificationId);
 		autoMinimizeTimers.delete(notificationId);
 	}, AUTO_MINIMIZE_MS);
 	autoMinimizeTimers.set(notificationId, timer);

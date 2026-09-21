@@ -59,6 +59,14 @@ const WORKSPACE_TARGETED_SEMANTIC_MIN_SIMILARITY = 0.3;
 // corpus produces unrelated tail matches. Keep the broader scope above the
 // observed production false-positive score (0.046) without weakening project recall.
 const WORKSPACE_TARGETED_LEXICAL_MIN_SCORE = 0.05;
+// Semantic recall is optional. Bound embedding + vector lookup together so a
+// degraded provider cannot consume the entire 30s read-tool deadline.
+const SEMANTIC_SEARCH_TIMEOUT_MS = 5_000;
+
+type SemanticSearchResult = {
+	status: 'complete' | 'timed_out' | 'unavailable' | 'not_configured' | 'not_requested';
+	rows: OntologySearchRow[];
+};
 
 export type SharedOntologySearchRequest = {
 	query?: string;
@@ -94,6 +102,10 @@ export type OntologySearchPayload = {
 	project_id: string | null;
 	total_returned: number;
 	maybe_more: boolean;
+	search_coverage: {
+		lexical: 'complete' | 'not_requested';
+		semantic: SemanticSearchResult['status'];
+	};
 	results: Array<ReturnType<typeof rankSearchResult>>;
 	total: number;
 	message: string;
@@ -209,37 +221,61 @@ async function searchSemanticForQuery(input: {
 	query: string;
 	types: string[] | null;
 	limit: number;
-}): Promise<OntologySearchRow[] | null> {
-	if (!input.context.embeddings) return null;
-
+}): Promise<SemanticSearchResult> {
+	const parentSignal = input.context.signal;
+	parentSignal?.throwIfAborted();
+	if (!input.context.embeddings) return { status: 'not_configured', rows: [] };
+	const controller = new AbortController();
+	const timeoutError = new Error('Semantic search exceeded its 5000ms budget');
+	const onParentAbort = () => controller.abort(parentSignal!.reason);
+	parentSignal?.addEventListener('abort', onParentAbort, { once: true });
+	const timer = setTimeout(() => controller.abort(timeoutError), SEMANTIC_SEARCH_TIMEOUT_MS);
+	const signal = controller.signal;
+	let onAbort: () => void = () => {};
 	try {
-		const queryEmbedding = await input.context.embeddings.embedQuery(input.query);
-		const { data, error } = await (input.context.client as any).rpc('onto_search_semantic', {
-			p_actor_id: input.actorId,
-			p_query_embedding: formatPgVectorLiteral(queryEmbedding),
-			p_project_id: input.projectId ?? undefined,
-			p_types: input.types && input.types.length > 0 ? input.types : undefined,
-			p_limit: input.limit,
-			p_min_similarity: input.projectId
-				? PROJECT_TARGETED_SEMANTIC_MIN_SIMILARITY
-				: WORKSPACE_TARGETED_SEMANTIC_MIN_SIMILARITY
+		const aborted = new Promise<never>((_resolve, reject) => {
+			onAbort = () => reject(signal.reason);
+			signal.addEventListener('abort', onAbort, { once: true });
 		});
-		if (error) {
-			console.warn('[ontology-search] semantic channel unavailable; using lexical fallback', {
-				code: typeof error.code === 'string' ? error.code : undefined,
-				message: typeof error.message === 'string' ? error.message : 'semantic RPC failed'
-			});
-			return null;
-		}
-		return ((data as OntologySearchRow[] | null) ?? []).filter(Boolean);
+		const rows = await Promise.race([
+			aborted,
+			(async () => {
+				const queryEmbedding = await input.context.embeddings!.embedQuery(input.query, {
+					signal
+				});
+				// A custom port may ignore cancellation. Never dispatch a late database read.
+				signal.throwIfAborted();
+				const { data, error } = await (input.context.client as any)
+					.rpc('onto_search_semantic', {
+						p_actor_id: input.actorId,
+						p_query_embedding: formatPgVectorLiteral(queryEmbedding),
+						p_project_id: input.projectId ?? undefined,
+						p_types: input.types && input.types.length > 0 ? input.types : undefined,
+						p_limit: input.limit,
+						p_min_similarity: input.projectId
+							? PROJECT_TARGETED_SEMANTIC_MIN_SIMILARITY
+							: WORKSPACE_TARGETED_SEMANTIC_MIN_SIMILARITY
+					})
+					.abortSignal(signal);
+				signal.throwIfAborted();
+				if (error) throw error;
+				return ((data as OntologySearchRow[] | null) ?? []).filter(Boolean);
+			})()
+		]);
+		return { status: 'complete', rows };
 	} catch (error) {
-		// Targeted search must remain available when the optional embedding
-		// provider is degraded. explore_project retains the strict error path;
-		// the hybrid smart path falls back to its proven lexical channel.
+		// Host cancellation (including the overall read deadline) remains fatal.
+		parentSignal?.throwIfAborted();
+		const status = signal.reason === timeoutError ? 'timed_out' : 'unavailable';
 		console.warn('[ontology-search] semantic channel unavailable; using lexical fallback', {
+			status,
 			message: error instanceof Error ? error.message : String(error)
 		});
-		return null;
+		return { status, rows: [] };
+	} finally {
+		clearTimeout(timer);
+		signal.removeEventListener('abort', onAbort);
+		parentSignal?.removeEventListener('abort', onParentAbort);
 	}
 }
 
@@ -303,6 +339,7 @@ export async function searchOntologyEntities(
 	request: SharedOntologySearchRequest,
 	options: { now?: () => number } = {}
 ): Promise<OntologySearchPayload> {
+	context.signal?.throwIfAborted();
 	const query = typeof request.query === 'string' ? request.query.trim() : '';
 	if (!query) throw new AgenticChatOntologySearchInputError('Query is required');
 
@@ -335,9 +372,11 @@ export async function searchOntologyEntities(
 	const candidateLimit = Math.min(50, Math.max(limit, limit * 3));
 	const nowMs = options.now?.() ?? Date.now();
 	const actorId = await context.access.getActorId();
+	context.signal?.throwIfAborted();
 
 	if (projectId) {
 		await context.access.assertProjectAccess(projectId, 'read');
+		context.signal?.throwIfAborted();
 		const { data: project, error } = await (context.client as any)
 			.from('onto_projects')
 			.select('id')
@@ -347,9 +386,15 @@ export async function searchOntologyEntities(
 		if (error) throw new AgenticChatOntologySearchQueryError('project', error);
 		if (!project) throw new AgenticChatOntologySearchProjectNotFoundError();
 	}
+	context.signal?.throwIfAborted();
 
 	const shouldSearchRpcTypes = rpcTypes === null || rpcTypes.length > 0;
-	const [rpcResults, semanticResults, taskBucketResults, eventResults] = await Promise.all([
+	// Also stop the optional channel when a required search branch fails first.
+	const searchController = new AbortController();
+	const searchSignal = context.signal
+		? AbortSignal.any([context.signal, searchController.signal])
+		: searchController.signal;
+	const [rpcResults, semantic, taskBucketResults, eventResults] = await Promise.all([
 		shouldSearchRpcTypes
 			? (async () => {
 					const { data, error } = await (context.client as any).rpc(
@@ -368,14 +413,14 @@ export async function searchOntologyEntities(
 			: Promise.resolve([]),
 		shouldSearchRpcTypes
 			? searchSemanticForQuery({
-					context,
+					context: { ...context, signal: searchSignal },
 					actorId,
 					projectId,
 					query,
 					types: rpcTypes,
 					limit: candidateLimit
 				})
-			: Promise.resolve(null),
+			: Promise.resolve<SemanticSearchResult>({ status: 'not_requested', rows: [] }),
 		shouldSearchTaskBuckets
 			? searchTaskBucketsForQuery({
 					client: context.client,
@@ -388,7 +433,9 @@ export async function searchOntologyEntities(
 		shouldSearchEvents
 			? searchEventsForQuery({ context, projectId, query, limit: candidateLimit })
 			: Promise.resolve([])
-	]);
+	]).finally(() => searchController.abort(new Error('Search finished')));
+	context.signal?.throwIfAborted();
+	const semanticResults = semantic.rows;
 
 	const precisionCalibratedRpcResults = projectId
 		? rpcResults
@@ -431,12 +478,19 @@ export async function searchOntologyEntities(
 		project_id: projectId,
 		total_returned: results.length,
 		maybe_more: maybeMore,
+		search_coverage: {
+			lexical: shouldSearchRpcTypes ? 'complete' : 'not_requested',
+			semantic: semantic.status
+		},
 		results,
 		total: results.length,
 		message:
-			searchScope === 'project'
+			(searchScope === 'project'
 				? `Found ${results.length} BuildOS matches in this project.`
-				: `Found ${results.length} BuildOS matches across accessible projects.`
+				: `Found ${results.length} BuildOS matches across accessible projects.`) +
+			(semantic.status === 'complete' || semantic.status === 'not_requested'
+				? ''
+				: ` Semantic search ${semantic.status === 'timed_out' ? 'timed out' : 'was unavailable'}; results may omit meaning-based matches. No matches does not establish absence.`)
 	};
 }
 
@@ -472,6 +526,7 @@ async function runAgenticSearch(
 		project_id: payload.project_id,
 		total_returned: payload.total_returned,
 		maybe_more: payload.maybe_more,
+		search_coverage: payload.search_coverage,
 		results: payload.results,
 		materialized_tools: inferMaterializedToolsFromEntityResults({ results: payload.results }),
 		total: payload.total,

@@ -9,7 +9,7 @@ import {
 	readSourceProvenance,
 	readDeploymentProvenance,
 	assertSourceProvenance
-} from '../../packages/agentic-chat-runtime/src/provenance';
+} from '../../packages/agentic-chat-runtime/src/provenance.mts';
 
 test('fingerprints staged, unstaged, untracked and deleted executable files; ignores reports and secrets', () => {
 	const root = mkdtempSync(join(tmpdir(), 'agentic-provenance-'));

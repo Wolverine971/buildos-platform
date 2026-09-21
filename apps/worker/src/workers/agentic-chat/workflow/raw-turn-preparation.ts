@@ -11,9 +11,9 @@ import type { SpecialistShadowObserver } from './specialist-selection-shadow';
 // apps/worker/src/workers/agentic-chat/workflow/raw-turn-preparation.ts
 import { randomUUID } from 'node:crypto';
 import {
-	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF,
 	AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF,
+	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgenticChatCommittedSemanticEventReceiptV1,
 	type AgenticChatPreparedWorkflowContextV1,
 	type AgenticChatRecoveryFailureClassV1,

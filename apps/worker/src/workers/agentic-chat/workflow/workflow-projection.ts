@@ -18,9 +18,9 @@ import {
 	type JsonObject
 } from '@buildos/shared-types';
 import {
+	durableEvidenceIndexFromPreparedContext,
 	fromDurableWorkflowRoleReport,
-	renderWorkflowRoleReport,
-	durableEvidenceIndexFromPreparedContext
+	renderWorkflowRoleReport
 } from './role-report';
 import { renderSourceBoundSelection, sourceBoundUnits } from './source-bound-report';
 import type {

@@ -76,6 +76,28 @@ describe('fastchat context cache helpers', () => {
 		});
 	});
 
+	it('round-trips the user display name through cache entries and snapshot normalization', () => {
+		const entry = buildFastChatContextCacheEntry({
+			cacheKey: 'v2|global|none|none|none',
+			context: { contextType: 'global', userDisplayName: 'DJ Wayne' },
+			createdAt: '2026-03-10T12:00:00.000Z'
+		});
+		expect(entry.context.userDisplayName).toBe('DJ Wayne');
+		expect(normalizeFastChatContextSnapshot(entry.context)?.userDisplayName).toBe('DJ Wayne');
+		expect(
+			normalizeFastChatContextSnapshot(JSON.parse(JSON.stringify(entry.context)))
+				?.userDisplayName
+		).toBe('DJ Wayne');
+		// Snake-case legacy casing and snapshots written before the field existed.
+		expect(
+			normalizeFastChatContextSnapshot({ contextType: 'global', user_display_name: 'DJ' })
+				?.userDisplayName
+		).toBe('DJ');
+		expect(
+			normalizeFastChatContextSnapshot({ contextType: 'global' })?.userDisplayName
+		).toBeNull();
+	});
+
 	it('round-trips the prompt timezone through cache entries and snapshot normalization', () => {
 		const entry = buildFastChatContextCacheEntry({
 			cacheKey: 'v2|global|none|none|none',

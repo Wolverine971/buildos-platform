@@ -99,6 +99,10 @@
 		selectedRun ? synthesizeAgentRunNotification(selectedRun) : null
 	);
 
+	function closeRunDetail(runId: string) {
+		if (selectedRunId === runId) selectedRunId = null;
+	}
+
 	const DOT: Record<string, string> = {
 		success: 'bg-success',
 		warning: 'bg-warning',
@@ -522,12 +526,14 @@
 
 <!-- Detail (reuses the rich run modal, rendered above the panel) -->
 {#if open && selectedNotification}
-	<AgentRunModalContent
-		notification={selectedNotification}
-		onMinimize={() => (selectedRunId = null)}
-		onClose={() => (selectedRunId = null)}
-		onCancel={() => (selectedRunId = null)}
-	/>
+	{#key selectedNotification.data.runId}
+		<AgentRunModalContent
+			notification={selectedNotification}
+			onMinimize={closeRunDetail.bind(null, selectedNotification.data.runId)}
+			onClose={closeRunDetail.bind(null, selectedNotification.data.runId)}
+			onCancel={closeRunDetail.bind(null, selectedNotification.data.runId)}
+		/>
+	{/key}
 {/if}
 
 <AgentRunDispatchModal

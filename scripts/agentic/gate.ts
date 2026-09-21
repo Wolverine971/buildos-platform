@@ -9,7 +9,7 @@ import { parse } from 'dotenv';
 import {
 	assertSourceProvenance,
 	readSourceProvenance
-} from '../../packages/agentic-chat-runtime/src/provenance';
+} from '../../packages/agentic-chat-runtime/src/provenance.mts';
 import { evaluateGateScorecard } from './gate-policy';
 import { writeGateLatencyAnalysis } from './latency-analysis';
 import {

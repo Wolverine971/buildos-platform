@@ -5,7 +5,7 @@ import {
 	readDeploymentProvenance,
 	readSourceProvenance,
 	type SourceProvenance
-} from '../../../packages/agentic-chat-runtime/src/provenance';
+} from '../../../packages/agentic-chat-runtime/src/provenance.mts';
 
 const target = resolve(__dirname, '../dist/source-provenance.json');
 let provenance: SourceProvenance | null;
