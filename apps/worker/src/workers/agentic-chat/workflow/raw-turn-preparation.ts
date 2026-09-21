@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/workflow/raw-turn-preparation.ts
 import {
-	type SpecialistSnapshotV2,
+	type ExecutableSpecialistSnapshot,
+	PUBLISHED_SPECIALIST_SNAPSHOT_VERSION,
 	documentSnapshotMatchesPolicy,
 	isDocumentSpecialistPolicyRef
 } from '@buildos/agentic-chat-runtime/specialists';
@@ -108,10 +109,11 @@ export type AgenticChatWorkflowTurnPreparerPortsV1 = {
 	specialistWorkflowsEnabled?: boolean;
 	documentReadToolsEnabled?: boolean;
 	documentEvidenceHandoffEnabled?: boolean;
+	publishedSpecialistsEnabled?: boolean;
 	observeSelection?: SpecialistShadowObserver;
 	loadSpecialistSnapshot?: (
 		identity: SpecialistSnapshotIdentity
-	) => Promise<SpecialistSnapshotV2>;
+	) => Promise<ExecutableSpecialistSnapshot>;
 	createId?: () => string;
 	now?: () => number;
 	monotonicNow?: () => number;
@@ -182,7 +184,7 @@ type TraceState = {
 };
 
 type PreparationState = {
-	specialistSnapshot?: SpecialistSnapshotV2;
+	specialistSnapshot?: ExecutableSpecialistSnapshot;
 	envelope: AgenticChatExecutionIdentityV1;
 	claim: ExecutableClaim;
 	fence: AgenticChatWorkflowFenceV1;
@@ -345,6 +347,11 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 				)
 					throw new Error('Specialist policy mismatch');
 				if (
+					state.specialistSnapshot.version === PUBLISHED_SPECIALIST_SNAPSHOT_VERSION &&
+					!this.ports.publishedSpecialistsEnabled
+				)
+					return this.failTerminal(state, 'workflow_not_enabled');
+				if (
 					state.specialistSnapshot.profileVersion >= 2 &&
 					!this.ports.documentReadToolsEnabled
 				)
@@ -391,7 +398,11 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 		state.trace.acceptedBytes = accepted.payloadBytes;
 		state.trace.acceptedEvidence = accepted.evidenceVersions.length;
 		await this.settleDelivery(state);
-		if (this.ports.observeSelection) {
+		const shadowSnapshot = state.specialistSnapshot;
+		if (
+			this.ports.observeSelection &&
+			shadowSnapshot?.version !== PUBLISHED_SPECIALIST_SNAPSHOT_VERSION
+		) {
 			try {
 				await runWithAbortableDeadline({
 					parentSignal: state.signal,
@@ -409,7 +420,7 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 									invocationDeadlineAtMs: state.invocationDeadlineAtMs
 								}
 							},
-							snapshot: state.specialistSnapshot,
+							snapshot: shadowSnapshot,
 							signal
 						})
 				});

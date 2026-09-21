@@ -671,6 +671,8 @@ export interface WorkflowAuditRun {
 		synthesis_accepted_at: string | null;
 	};
 	steps: WorkflowAuditStep[];
+	/** Step rows saved for this turn under another plan version; kept verbatim (redacted), not merged. */
+	unmatched_step_rows: JsonRecord[];
 	dispatches: WorkflowAuditDispatch[];
 	tool_calls: WorkflowAuditToolCall[];
 	specialist_snapshot: {

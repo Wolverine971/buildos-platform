@@ -91,6 +91,22 @@ describe('ChatSessionAuditActions', () => {
 		expect(screen.queryByRole('button', { name: /^export$/i })).not.toBeInTheDocument();
 	});
 
+	it('shows the workflow Trace link wherever Logs is shown, and hides it with Logs', () => {
+		const withLogs = render(ChatSessionAuditActions, {
+			props: { sessionId: 'session-1', variant: 'desktop', includeExports: false }
+		});
+		const trace = screen.getByRole('link', { name: /trace/i });
+		expect(trace).toHaveAttribute('href', '/admin/chat/workflows?chat_session_id=session-1');
+		expect(trace).toHaveAttribute('target', '_blank');
+		withLogs.unmount();
+
+		render(ChatSessionAuditActions, {
+			props: { sessionId: 'session-1', variant: 'menu', includeLogs: false }
+		});
+		expect(screen.queryByRole('menuitem', { name: /trace/i })).not.toBeInTheDocument();
+		expect(screen.queryByRole('link', { name: /trace/i })).not.toBeInTheDocument();
+	});
+
 	it('can render only audit export rows inside a host menu', () => {
 		render(ChatSessionAuditActions, {
 			props: {

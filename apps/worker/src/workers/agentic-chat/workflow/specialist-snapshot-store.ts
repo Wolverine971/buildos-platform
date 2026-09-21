@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agentic-chat/workflow/specialist-snapshot-store.ts
 import {
-	type SpecialistSnapshotV2,
-	parseSpecialistSnapshotV2
+	type ExecutableSpecialistSnapshot,
+	parseExecutableSpecialistSnapshot
 } from '@buildos/agentic-chat-runtime/specialists';
 import type { AgenticChatWorkflowStoreClient } from './workflow-store';
 
@@ -16,7 +16,7 @@ export type SpecialistSnapshotIdentity = {
 export async function loadSpecialistSnapshotV2(
 	client: AgenticChatWorkflowStoreClient,
 	identity: SpecialistSnapshotIdentity
-): Promise<SpecialistSnapshotV2> {
+): Promise<ExecutableSpecialistSnapshot> {
 	const { data, error } = await client
 		.from('chat_turn_specialist_snapshots')
 		.select('turn_run_id,user_id,session_id,project_id,request_hash,snapshot,snapshot_hash')
@@ -35,5 +35,5 @@ export async function loadSpecialistSnapshotV2(
 		typeof row.snapshot_hash !== 'string'
 	)
 		throw new Error('Specialist snapshot missing or binding invalid');
-	return parseSpecialistSnapshotV2(row.snapshot, row.snapshot_hash);
+	return parseExecutableSpecialistSnapshot(row.snapshot, row.snapshot_hash);
 }

@@ -1,5 +1,9 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-runner.ts
-import { DOCUMENT_READ_TOOL } from '@buildos/agentic-chat-runtime/specialists';
+import {
+	DOCUMENT_READ_TOOL,
+	DOCUMENT_READ_TOOL_ID,
+	publishedSpecialistReferencePrompt
+} from '@buildos/agentic-chat-runtime/specialists';
 import {
 	type CompletedProviderToolCall,
 	appendToolCallDelta,
@@ -1160,6 +1164,13 @@ class WorkflowExecution {
 	private async callSpecialistModel(
 		args: Parameters<WorkflowExecution['callModel']>[0]
 	): Promise<ModelCall> {
+		if (args.stepKey === 'project_analyst')
+			args = {
+				...args,
+				userContent:
+					args.userContent +
+					publishedSpecialistReferencePrompt(this.state.specialistSnapshot)
+			};
 		if (
 			args.stepKey === 'risk_reviewer' &&
 			this.state.specialistSnapshot?.profileVersion === 3
@@ -1175,7 +1186,10 @@ class WorkflowExecution {
 		}
 		const enabled =
 			args.stepKey === 'project_analyst' &&
-			(this.state.specialistSnapshot?.profileVersion ?? 0) >= 2;
+			(this.state.specialistSnapshot?.profileVersion ?? 0) >= 2 &&
+			this.state.specialistSnapshot?.slots.project_analyst.definition.capabilities.allowedToolIds.includes(
+				DOCUMENT_READ_TOOL_ID
+			);
 		if (!enabled) return this.callModel(args);
 		const gate = this.meter.forStepAttempt({
 			stepKey: args.stepKey,

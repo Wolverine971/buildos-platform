@@ -17,6 +17,7 @@ import type {
 	TurnHandleV1
 } from '@buildos/shared-types';
 import { SvelteDate } from 'svelte/reactivity';
+import { isChatWorkflowCommand } from '@buildos/shared-types';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { AgentStreamEventGuard } from '$lib/services/agentic-chat-v2/stream-protocol';
 import {
@@ -95,6 +96,7 @@ export interface StreamControllerPrewarmDeps {
 export interface StreamControllerDeps {
 	getInputValue(): string;
 	getReviewIntent?(): AgenticChatWorkerCommand['reviewIntent'];
+	getPublishedSpecialist?(): AgenticChatWorkerCommand['publishedSpecialist'];
 	onReviewAdmitted?(): void;
 	setInputValue(value: string): void;
 	getSelectedContextType(): ChatContextType | null;
@@ -440,7 +442,24 @@ export class AgentChatStreamController {
 		const optimisticAttachmentRefs = this.#deps.attachments.buildReadyRefs(true);
 		const sentImageAttachments = this.#deps.attachments.getDraftSnapshot();
 		const activeVoiceNoteGroupId = this.#deps.voice.noteGroupId;
-		const reviewIntent = this.#deps.getReviewIntent?.() ?? null;
+		const selectedSpecialist = this.#deps.getPublishedSpecialist?.();
+		const reviewIntent =
+			this.#deps.getReviewIntent?.() ??
+			(selectedSpecialist && isChatWorkflowCommand(trimmed) ? 'document_organization' : null);
+		// Take a value copy before any await: a picker change or a lease retry must
+		// never replace the immutable version chosen for this submission.
+		const publishedSpecialist =
+			reviewIntent === 'document_organization' && selectedSpecialist
+				? {
+						draftId: selectedSpecialist.draftId,
+						version: selectedSpecialist.version,
+						snapshotHash: selectedSpecialist.snapshotHash
+					}
+				: null;
+		const submittedMessage =
+			publishedSpecialist && isChatWorkflowCommand(trimmed)
+				? trimmed.replace(/^\/workflow(?:\s|$)/i, '').trim()
+				: trimmed;
 		if (
 			(!trimmed && streamAttachmentRefs.length === 0) ||
 			this.#deps.voice.isInitializing ||
@@ -661,13 +680,14 @@ export class AgentChatStreamController {
 						streamRunId: transportStreamRunId,
 						sessionId: sessionForTurn?.id ?? null,
 						context: transportContext,
-						message: trimmed,
+						message: submittedMessage,
 						attachments: streamAttachmentRefs,
 						projectFocus: requestProjectFocus,
 						lastTurnContext: this.#deps.getLastTurnContext(),
 						voiceNoteGroupId: activeVoiceNoteGroupId,
 						preparedPromptKey: matchingPreparedPrompt?.key ?? null,
-						reviewIntent
+						reviewIntent,
+						publishedSpecialist
 					}
 				});
 

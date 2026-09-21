@@ -15,10 +15,53 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { buildSessionDetailPayload } from './session-detail-payload';
 import { loadPromptEvalResultsForTurnRuns } from '$lib/services/agentic-chat-v2/prompt-eval-runner';
-import { buildChatWorkflowAuditPayload } from '$lib/services/admin/chat-workflow-audit-build';
+import {
+	buildChatWorkflowAuditPayload,
+	emptyWorkflowTableCoverage
+} from '$lib/services/admin/chat-workflow-audit-build';
 import { isOptionalTableMissing, loadWorkflowAuditRows } from './workflow-audit-loader';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Turn list page size. A deep-linked turn past this page is resolved by id below.
+const TURN_RUN_PAGE_SIZE = 500;
+const TURN_RUN_COLUMNS = `
+          id,
+          stream_run_id,
+          client_turn_id,
+          source,
+          context_type,
+          entity_id,
+          project_id,
+          gateway_enabled,
+          request_message,
+          user_message_id,
+          assistant_message_id,
+          status,
+          finished_reason,
+          failure_code,
+          tool_round_count,
+          tool_call_count,
+          validation_failure_count,
+          llm_pass_count,
+          first_lane,
+          first_help_path,
+          first_skill_path,
+          first_canonical_op,
+          history_strategy,
+          history_compressed,
+          raw_history_count,
+          history_for_model_count,
+          cache_source,
+          cache_age_seconds,
+          request_prewarmed_context,
+          prompt_snapshot_id,
+          timing_metric_id,
+          started_at,
+          finished_at,
+          created_at,
+          updated_at
+        `;
 
 /** Audit payloads are private records; never let a shared cache hold one. */
 const privateNoStore = (response: Response): Response => {
@@ -209,48 +252,10 @@ export const GET: RequestHandler = async ({ params, url, locals: { safeGetSessio
 				.maybeSingle(),
 			adminSupabase
 				.from('chat_turn_runs')
-				.select(
-					`
-          id,
-          stream_run_id,
-          client_turn_id,
-          source,
-          context_type,
-          entity_id,
-          project_id,
-          gateway_enabled,
-          request_message,
-          user_message_id,
-          assistant_message_id,
-          status,
-          finished_reason,
-          failure_code,
-          tool_round_count,
-          tool_call_count,
-          validation_failure_count,
-          llm_pass_count,
-          first_lane,
-          first_help_path,
-          first_skill_path,
-          first_canonical_op,
-          history_strategy,
-          history_compressed,
-          raw_history_count,
-          history_for_model_count,
-          cache_source,
-          cache_age_seconds,
-          request_prewarmed_context,
-          prompt_snapshot_id,
-          timing_metric_id,
-          started_at,
-          finished_at,
-          created_at,
-          updated_at
-        `
-				)
+				.select(TURN_RUN_COLUMNS)
 				.eq('session_id', sessionId)
 				.order('started_at', { ascending: true })
-				.limit(500),
+				.limit(TURN_RUN_PAGE_SIZE),
 			adminSupabase
 				.from('chat_prompt_snapshots')
 				.select(
@@ -288,6 +293,7 @@ export const GET: RequestHandler = async ({ params, url, locals: { safeGetSessio
           sequence_index,
           phase,
           event_type,
+          execution_generation,
           payload,
           created_at
         `
@@ -306,19 +312,52 @@ export const GET: RequestHandler = async ({ params, url, locals: { safeGetSessio
 		if (promptSnapshotError && !isOptionalTableMissing(promptSnapshotError))
 			throw promptSnapshotError;
 		if (turnEventError && !isOptionalTableMissing(turnEventError)) throw turnEventError;
-		const turnRunIds = (turnRunRows ?? []).map((row) => row.id);
-		if (requestedTurnRunId && !turnRunIds.includes(requestedTurnRunId)) {
-			return privateNoStore(ApiResponse.notFound('Turn run not found in this session'));
+		const turnRuns = [...(turnRunRows ?? [])];
+		if (requestedTurnRunId && !turnRuns.some((row) => row.id === requestedTurnRunId)) {
+			// The turn list is paged; a later turn is still this session's. Resolve it by id
+			// (scoped to the session) before deciding it does not belong here.
+			const { data: requestedTurnRun, error: requestedTurnRunError } = await adminSupabase
+				.from('chat_turn_runs')
+				.select(TURN_RUN_COLUMNS)
+				.eq('id', requestedTurnRunId)
+				.eq('session_id', sessionId)
+				.maybeSingle();
+			if (requestedTurnRunError && !isOptionalTableMissing(requestedTurnRunError)) {
+				throw requestedTurnRunError;
+			}
+			if (!requestedTurnRun) {
+				return privateNoStore(ApiResponse.notFound('Turn run not found in this session'));
+			}
+			turnRuns.push(requestedTurnRun);
 		}
+		const turnRunIds = turnRuns.map((row) => row.id);
 		const capturedAt = new Date().toISOString();
 		const [{ evalRuns, assertions }, workflowRows] = await Promise.all([
 			loadPromptEvalResultsForTurnRuns(adminSupabase, turnRunIds),
+			// The workflow join is additive. If it fails for a reason other than a missing
+			// table, the ordinary audit must still load; the failure becomes coverage.
 			loadWorkflowAuditRows({
 				client: adminSupabase as unknown as Parameters<
 					typeof loadWorkflowAuditRows
 				>[0]['client'],
 				sessionId,
 				turnRunIds
+			}).catch((workflowError: unknown) => {
+				console.error('Workflow audit load error:', workflowError);
+				const detail =
+					workflowError instanceof Error
+						? workflowError.message
+						: 'Workflow records could not be loaded';
+				return {
+					runs: [],
+					steps: [],
+					dispatches: [],
+					snapshots: [],
+					readBatches: [],
+					shadows: [],
+					inputArtifacts: [],
+					tables: emptyWorkflowTableCoverage('unavailable', detail)
+				};
 			})
 		]);
 
@@ -329,7 +368,7 @@ export const GET: RequestHandler = async ({ params, url, locals: { safeGetSessio
 			llmCalls: usageRows ?? [],
 			operations: operationRows ?? [],
 			timingData: timingData ?? null,
-			turnRuns: turnRunRows ?? [],
+			turnRuns,
 			promptSnapshots: promptSnapshotRows ?? [],
 			turnEvents: turnEventRows ?? [],
 			evalRuns,

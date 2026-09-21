@@ -9,7 +9,6 @@ import { zipSync, strToU8 } from 'fflate';
 import { codeFence, metricLine, stringOrDash, tableCell, toJson } from './chat-session-audit-gist';
 import type { ChatSessionAuditPayload } from './chat-session-audit-types';
 import type {
-	ChatWorkflowAuditPayload,
 	WorkflowAuditGraphEdge,
 	WorkflowAuditRun,
 	WorkflowAuditStep
@@ -46,6 +45,32 @@ export const escapeMarkdownInline = (value: unknown, maxLength = 200): string =>
 		.replace(/([\\`*_[\]#|])/g, '\\$1')
 		.trim();
 	return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+};
+
+/**
+ * Nest a Markdown section deeper by `by` levels without touching fenced code. Sections are
+ * arrays of chunks; a chunk is either one line or a self-contained fenced block from
+ * `codeFence`, and fences may also arrive as separate lines. Only a heading outside a fence
+ * moves; headings cap at six levels.
+ */
+export const demoteMarkdownHeadings = (chunks: string[], by: number): string[] => {
+	let openFence: string | null = null;
+	return chunks.map((chunk) => {
+		const out =
+			openFence === null
+				? chunk.replace(/^(#{1,6})(?= )/, (hashes) =>
+						'#'.repeat(Math.min(6, hashes.length + by))
+					)
+				: chunk;
+		for (const line of chunk.split('\n')) {
+			const fence = line.match(/^(`{3,}|~{3,})/)?.[1];
+			if (!fence) continue;
+			if (openFence === null) openFence = fence;
+			else if (fence[0] === openFence[0] && fence.length >= openFence.length)
+				openFence = null;
+		}
+		return out;
+	});
 };
 
 const mermaidLabel = (value: unknown, maxLength = 60): string => {
@@ -951,25 +976,12 @@ export const buildWorkflowAuditMarkdown = (
 	];
 	if (runs.length === 0) lines.push('_No workflow runs matched this scope._', '');
 	for (const run of runs) {
-		lines.push(
-			...buildWorkflowReportSection(run).map((line, i) =>
-				i === 0 ? line.replace(/^# /, '## ') : line.replace(/^(#{2,5}) /, '#$1 ')
-			)
-		);
-		lines.push(
-			...buildWorkflowTranscriptSection(payload, run).map((line) =>
-				line.replace(/^(#{2,5}) /, '#$1 ')
-			)
-		);
-		lines.push(
-			...buildWorkflowEvidenceSection(run).map((line) => line.replace(/^(#{2,5}) /, '#$1 '))
-		);
-		lines.push(
-			...buildWorkflowCostsSection(run).map((line) => line.replace(/^(#{2,5}) /, '#$1 '))
-		);
-		lines.push(
-			...buildWorkflowTimelineSection(run).map((line) => line.replace(/^(#{2,5}) /, '#$1 '))
-		);
+		// Each run report starts at `#`; nest every run one level under the document title.
+		lines.push(...demoteMarkdownHeadings(buildWorkflowReportSection(run), 1));
+		lines.push(...demoteMarkdownHeadings(buildWorkflowTranscriptSection(payload, run), 1));
+		lines.push(...demoteMarkdownHeadings(buildWorkflowEvidenceSection(run), 1));
+		lines.push(...demoteMarkdownHeadings(buildWorkflowCostsSection(run), 1));
+		lines.push(...demoteMarkdownHeadings(buildWorkflowTimelineSection(run), 1));
 		lines.push(
 			'<details>',
 			`<summary>Raw records for turn ${run.turn_run_id}</summary>`,

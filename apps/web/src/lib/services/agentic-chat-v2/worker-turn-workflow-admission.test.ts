@@ -94,6 +94,7 @@ describe('workflow v4 admission policy', () => {
 			specialistWorkflowsEnabled: false,
 			documentReadToolsEnabled: false,
 			documentEvidenceHandoffEnabled: false,
+			publishedSpecialistsEnabled: false,
 			cohortUserIds: []
 		});
 		for (const value of ['TRUE', '1', 'yes', 'on', '']) {
@@ -113,6 +114,7 @@ describe('workflow v4 admission policy', () => {
 			specialistWorkflowsEnabled: false,
 			documentReadToolsEnabled: false,
 			documentEvidenceHandoffEnabled: false,
+			publishedSpecialistsEnabled: false,
 			cohortUserIds: [USER_ID]
 		});
 	});

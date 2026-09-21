@@ -44,7 +44,10 @@ export type SpecialistWorkbenchVersionV1 = {
 	activation: 'catalog_only';
 	definition: Omit<SpecialistDefinitionV1, 'knowledge'> & {
 		knowledge: readonly (
-			| SpecialistDefinitionV1['knowledge'][number]
+			| Extract<
+					SpecialistDefinitionV1['knowledge'][number],
+					{ source: 'prepared_project_context' }
+			  >
 			| {
 					id: 'reference_packet';
 					version: 1;

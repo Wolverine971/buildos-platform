@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-projection.ts
 import {
-	PROJECT_REVIEW_SPECIALISTS_V1,
-	type SpecialistSnapshotV2
+	type ExecutableSpecialistSnapshot,
+	PROJECT_REVIEW_SPECIALISTS_V1
 } from '@buildos/agentic-chat-runtime/specialists';
 import {
 	AGENTIC_CHAT_WORKFLOW_CONTRACT_VERSION,
@@ -336,7 +336,7 @@ export function utf8Bytes(value: string): number {
 }
 
 export function specialistStepLabels(
-	snapshot?: SpecialistSnapshotV2
+	snapshot?: ExecutableSpecialistSnapshot
 ): Partial<Record<AgenticChatWorkflowStepKeyV1, string>> {
 	return snapshot
 		? {

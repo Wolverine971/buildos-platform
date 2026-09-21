@@ -128,6 +128,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	// null keeps every other turn on the unchanged ordinary path below.
 	const workflowReview = await admitWorkflowReviewTurnIfEligible({
 		environment: {
+			AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED:
+				env.AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED,
 			AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED: env.AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED,
 			AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED:
 				env.AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED,
@@ -140,7 +142,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		userId: user.id,
 		command: parsed.data,
 		transportDecisionId: lease.decisionId,
-		client: serviceClient as unknown as AgenticChatWorkflowV4AdmissionRpcClient
+		client: serviceClient as unknown as AgenticChatWorkflowV4AdmissionRpcClient,
+		workbenchClient:
+			serviceClient as unknown as import('$lib/services/agentic-chat-v2/specialist-workbench.server').SpecialistWorkbenchClient
 	});
 	if (workflowReview) return privateResponse(workflowReview);
 	try {

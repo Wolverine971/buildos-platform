@@ -144,6 +144,15 @@ export const workerAdmissionRequestSchema = z
 		preparedPromptKey: canonicalText(2048).nullable().optional().default(null),
 		// Tasker 86: a request only. The server switch, cohort, and shape decide
 		// whether it is admitted as a raw v4 project review.
+		publishedSpecialist: z
+			.object({
+				draftId: z.string().uuid(),
+				version: z.number().int().min(1).max(50),
+				snapshotHash: z.string().regex(/^[a-f0-9]{64}$/)
+			})
+			.strict()
+			.nullable()
+			.optional(),
 		reviewIntent: z
 			.enum(['project_review', 'document_organization'])
 			.nullable()
@@ -152,6 +161,13 @@ export const workerAdmissionRequestSchema = z
 	})
 	.strict()
 	.superRefine((value, context) => {
+		if (value.publishedSpecialist && value.reviewIntent !== 'document_organization') {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['publishedSpecialist'],
+				message: 'A published specialist requires document organization review'
+			});
+		}
 		if (
 			value.context.type === 'project' &&
 			(!value.context.entityId ||

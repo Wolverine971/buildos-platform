@@ -3,12 +3,24 @@
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 	import ChatSessionAuditActions from '$lib/components/agent/ChatSessionAuditActions.svelte';
 	import type { PageData } from './$types';
+	import type { WorkbenchVersionSummary } from '$lib/types/specialist-workbench';
 	let { data }: { data: PageData } = $props();
 	let projectId = $state('');
 	let question = $state(
 		'What should we prioritize next, and what risks or missing information could change that recommendation?'
 	);
-	let review = $state<{ projectId: string; question: string; name: string } | null>(null);
+	let specialistKey = $state('');
+	const selectedSpecialist = $derived(
+		data.publishedSpecialists.find(
+			(version) => `${version.draftId}:${version.version}` === specialistKey
+		) ?? null
+	);
+	let review = $state<{
+		projectId: string;
+		question: string;
+		name: string;
+		specialist: WorkbenchVersionSummary | null;
+	} | null>(null);
 	// The chat session that actually exists for this review, reported by the modal. Never
 	// guessed from the project or from "most recent"; cleared whenever a new review starts.
 	let sessionId = $state<string | null>(null);
@@ -17,7 +29,12 @@
 		const project = data.projects.find((project) => project.id === projectId);
 		if (project && question.trim().length >= 3) {
 			sessionId = null;
-			review = { projectId, question: question.trim(), name: project.name };
+			review = {
+				projectId,
+				question: question.trim(),
+				name: project.name,
+				specialist: selectedSpecialist ? { ...selectedSpecialist } : null
+			};
 		}
 	}
 </script>
@@ -44,12 +61,15 @@
 		<div class="flex items-center justify-between gap-3">
 			<p class="min-w-0 truncate text-sm text-muted-foreground">
 				Reviewing <strong class="text-foreground">{review.name}</strong>
+				{#if review.specialist}
+					with {review.specialist.name} · v{review.specialist.version}
+				{/if}
 			</p>
 			<div class="flex shrink-0 items-center gap-2">
 				<!-- Admin-only: Logs / Trace / Export for the real session. Renders nothing until
 				     the modal reports a session id, and nothing for non-admins. Links open in a
 				     new tab so the running review is never lost. -->
-				<ChatSessionAuditActions {sessionId} includeWorkflowTrace={true} />
+				<ChatSessionAuditActions {sessionId} />
 				<a class="text-sm underline" href="/workflow-lab" data-sveltekit-reload
 					>New review</a
 				>
@@ -69,6 +89,7 @@
 					focusEntityName: null
 				}}
 				initialDraft={`/workflow ${review.question}`}
+				publishedSpecialist={review.specialist}
 				autoSendInitialDraft={true}
 				onSessionChange={(id) => {
 					sessionId = id;
@@ -102,6 +123,44 @@
 						>{/each}
 				</select>
 			</label>
+			{#if data.publishedSpecialistsEnabled}
+				<label class="block text-sm font-medium text-foreground">
+					Specialist
+					<select
+						bind:value={specialistKey}
+						aria-describedby="specialist-selection-help"
+						class="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2"
+					>
+						<option value="">Built-in project analyst</option>
+						{#each data.publishedSpecialists as version (`${version.draftId}:${version.version}`)}
+							<option value={`${version.draftId}:${version.version}`}>
+								{version.name} · v{version.version}
+							</option>
+						{/each}
+					</select>
+				</label>
+				<p id="specialist-selection-help" class="text-sm text-muted-foreground">
+					{#if selectedSpecialist}
+						This published version works alongside a risk reviewer. Its instructions,
+						knowledge, and allowed tools are fixed for each run; later draft edits do
+						not change it.
+					{:else if data.publishedSpecialists.length === 0}
+						Publish a specialist in the workbench to use its instructions and knowledge
+						in a document review here.
+					{:else}
+						Choose a published specialist to run a document review with its instructions
+						and knowledge.
+					{/if}
+				</p>
+				{#if data.specialistLoadError}
+					<p role="status" class="text-sm text-destructive">{data.specialistLoadError}</p>
+				{/if}
+			{:else}
+				<p class="text-sm text-muted-foreground">
+					Published specialist runs are not enabled yet. You can keep building and
+					publishing versions in the specialist workbench.
+				</p>
+			{/if}
 			<label class="block text-sm font-medium text-foreground"
 				>What would you like to understand?
 				<textarea
@@ -121,7 +180,7 @@
 				type="submit"
 				disabled={!projectId || question.trim().length < 3}
 				class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-40"
-				>Start project review</button
+				>{selectedSpecialist ? 'Run specialist review' : 'Start project review'}</button
 			>
 			{#if data.projects.length === 0}<p class="text-sm text-muted-foreground">
 					Create a project first, then return here to review it.

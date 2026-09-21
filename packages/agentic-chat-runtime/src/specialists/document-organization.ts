@@ -272,7 +272,7 @@ export function isDocumentSpecialistPolicyRef(ref: unknown): boolean {
 	);
 }
 export function documentSnapshotMatchesPolicy(
-	snapshot: SpecialistSnapshotV2,
+	snapshot: Pick<SpecialistSnapshotV2, 'profileVersion'>,
 	ref: string
 ): boolean {
 	return (

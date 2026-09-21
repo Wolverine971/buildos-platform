@@ -37,7 +37,8 @@ import type { AuditTurnRun, ChatSessionAuditPayload } from './chat-session-audit
 import {
 	buildWorkflowCostsSection,
 	buildWorkflowEvidenceSection,
-	buildWorkflowReportSection
+	buildWorkflowReportSection,
+	demoteMarkdownHeadings
 } from './chat-workflow-audit-export';
 export type {
 	AuditPromptEvalRun,
@@ -348,7 +349,7 @@ export const buildWorkflowRunsSection = (payload: ChatSessionAuditPayload): stri
 	const runs = payload.workflows?.runs ?? [];
 	if (runs.length === 0) return [];
 	// The run report starts at `#`; nest it two levels under this `##` section.
-	const demote = (line: string) => line.replace(/^(#{1,4}) /, '##$1 ');
+	const demote = (section: string[]) => demoteMarkdownHeadings(section, 2);
 	const lines = [
 		`## Workflow Runs (${runs.length})`,
 		'',
@@ -356,9 +357,9 @@ export const buildWorkflowRunsSection = (payload: ChatSessionAuditPayload): stri
 		''
 	];
 	for (const run of runs) {
-		lines.push(...buildWorkflowReportSection(run).map(demote));
-		lines.push(...buildWorkflowEvidenceSection(run).map(demote));
-		lines.push(...buildWorkflowCostsSection(run).map(demote));
+		lines.push(...demote(buildWorkflowReportSection(run)));
+		lines.push(...demote(buildWorkflowEvidenceSection(run)));
+		lines.push(...demote(buildWorkflowCostsSection(run)));
 	}
 	return lines;
 };

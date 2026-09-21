@@ -14,6 +14,7 @@ import {
 	buildWorkflowAuditBundleZip,
 	buildWorkflowAuditMarkdown,
 	buildWorkflowMermaid,
+	demoteMarkdownHeadings,
 	escapeMarkdownInline,
 	safePathSegment
 } from './chat-workflow-audit-export';
@@ -323,7 +324,7 @@ const rows = (): WorkflowAuditRowSet => ({
 });
 
 const sessionPayload = (withWorkflows: boolean): ChatSessionAuditPayload => {
-	const payload = buildSessionDetailPayload({
+	const detail = buildSessionDetailPayload({
 		sessionRow: {
 			id: 'session-1',
 			user_id: 'user-1',
@@ -368,12 +369,29 @@ const sessionPayload = (withWorkflows: boolean): ChatSessionAuditPayload => {
 		turnEvents: [],
 		evalRuns: [],
 		evalAssertions: []
-	}) as ChatSessionAuditPayload;
+	});
+	const payload: ChatSessionAuditPayload = {
+		...detail,
+		messages: detail.messages.map((row) => ({ ...row })),
+		tool_executions: detail.tool_executions.map((row) => ({ ...row })),
+		llm_calls: detail.llm_calls.map((row) => ({ ...row })),
+		operations: detail.operations.map((row) => ({ ...row })),
+		timing_metrics: detail.timing_metrics ? { ...detail.timing_metrics } : null,
+		turn_runs: detail.turn_runs.map((run) => ({
+			...run,
+			prompt_snapshot: run.prompt_snapshot ? { ...run.prompt_snapshot } : null,
+			events: run.events.map((event) => ({ ...event })),
+			eval_runs: run.eval_runs.map((evaluation) => ({
+				...evaluation,
+				assertions: evaluation.assertions.map((assertion) => ({ ...assertion }))
+			}))
+		}))
+	};
 	if (withWorkflows) {
 		payload.workflows = buildChatWorkflowAuditPayload({
 			rows: rows(),
-			turnRuns: payload.turn_runs,
-			llmCalls: payload.llm_calls,
+			turnRuns: detail.turn_runs,
+			llmCalls: detail.llm_calls,
 			capturedAt: T(100)
 		});
 	}
@@ -388,6 +406,36 @@ describe('safety helpers', () => {
 		expect(escapeMarkdownInline('# Title <b>x</b> [link](y) | z')).toBe(
 			'\\# Title &lt;b&gt;x&lt;/b&gt; \\[link\\](y) \\| z'
 		);
+	});
+});
+
+describe('demoteMarkdownHeadings', () => {
+	it('nests headings outside fences only, whether the fence is one chunk or separate lines', () => {
+		const section = [
+			'# Report',
+			'```markdown\n# inside a self-contained fence\n## still inside\n```',
+			'## After the block',
+			'````text',
+			'## inside an open fence',
+			'```',
+			'# still inside (shorter fence does not close it)',
+			'````',
+			'###### Deepest'
+		];
+		expect(demoteMarkdownHeadings(section, 2)).toEqual([
+			'### Report',
+			'```markdown\n# inside a self-contained fence\n## still inside\n```',
+			'#### After the block',
+			'````text',
+			'## inside an open fence',
+			'```',
+			'# still inside (shorter fence does not close it)',
+			'````',
+			'###### Deepest'
+		]);
+		expect(demoteMarkdownHeadings(['#hashtag not a heading'], 1)).toEqual([
+			'#hashtag not a heading'
+		]);
 	});
 });
 

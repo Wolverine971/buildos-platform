@@ -85,6 +85,21 @@ function receipt(value: unknown): Record<string, any> {
 		throw new SpecialistWorkbenchStoreError(503, 'Invalid specialist storage outcome.');
 	return r;
 }
+/** Picker data only: never fetch mutable drafts or published knowledge packets. */
+export async function listPublishedSpecialistVersions(
+	client: SpecialistWorkbenchClient,
+	userId: string
+): Promise<WorkbenchVersionSummary[]> {
+	return checked(
+		await client
+			.from(versionTable)
+			.select(versionColumns)
+			.eq('user_id', userId)
+			.order('created_at', { ascending: false })
+			.limit(1000)
+	).map(versionSummary);
+}
+
 export async function listSpecialistWorkbench(
 	client: SpecialistWorkbenchClient,
 	userId: string
@@ -96,16 +111,11 @@ export async function listSpecialistWorkbench(
 			.eq('user_id', userId)
 			.order('updated_at', { ascending: false })
 			.limit(20),
-		client
-			.from(versionTable)
-			.select(versionColumns)
-			.eq('user_id', userId)
-			.order('created_at', { ascending: false })
-			.limit(1000)
+		listPublishedSpecialistVersions(client, userId)
 	]);
 	return {
 		drafts: await Promise.all(checked(drafts).map(draftRow)),
-		versions: checked(versions).map(versionSummary)
+		versions
 	};
 }
 export async function saveSpecialistWorkbenchDraft(

@@ -32,11 +32,20 @@ function createQuery(result: QueryResult) {
 	return query;
 }
 
-function createAdminSupabase(resultsByTable: Record<string, QueryResult>) {
+// A table may answer with one result for every query, or with one result per query in call
+// order (the last one repeats), for routes that query the same table more than once.
+type TableResults = QueryResult | QueryResult[];
+
+function createAdminSupabase(resultsByTable: Record<string, TableResults>) {
 	const queriesByTable = new Map<string, any[]>();
 	return {
 		from: vi.fn((table: string) => {
-			const query = createQuery(resultsByTable[table] ?? { data: [], error: null });
+			const configured = resultsByTable[table] ?? { data: [], error: null };
+			const priorCalls = queriesByTable.get(table)?.length ?? 0;
+			const result = Array.isArray(configured)
+				? (configured[priorCalls] ?? configured[configured.length - 1]!)
+				: configured;
+			const query = createQuery(result);
 			queriesByTable.set(table, [...(queriesByTable.get(table) ?? []), query]);
 			return query;
 		}),
@@ -48,7 +57,7 @@ const SESSION = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const TURN = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const OTHER_TURN = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-const baseTables = (): Record<string, QueryResult> => ({
+const baseTables = (): Record<string, TableResults> => ({
 	chat_sessions: {
 		data: {
 			id: SESSION,
@@ -158,14 +167,87 @@ describe('GET /api/admin/chat/sessions/[id] — workflow audit', () => {
 	});
 
 	it('rejects a turn_run_id that belongs to another session', async () => {
-		const admin = createAdminSupabase(baseTables());
+		const tables = baseTables();
+		// First query: the session's turn page. Second: the explicit id lookup, scoped to the
+		// session, which finds nothing.
+		tables.chat_turn_runs = [tables.chat_turn_runs as QueryResult, { data: null, error: null }];
+		const admin = createAdminSupabase(tables);
 		createAdminSupabaseClientMock.mockReturnValue(admin);
 		const response = await call(
 			`http://localhost/api/admin/chat/sessions/${SESSION}?turn_run_id=${OTHER_TURN}`,
 			{ id: 'admin', is_admin: true }
 		);
 		expect(response.status).toBe(404);
+		const lookup = admin.queriesByTable.get('chat_turn_runs')?.[1];
+		expect(lookup.eq).toHaveBeenCalledWith('id', OTHER_TURN);
+		expect(lookup.eq).toHaveBeenCalledWith('session_id', SESSION);
 		expect(admin.from).not.toHaveBeenCalledWith('chat_turn_workflow_runs');
+	});
+
+	it('resolves a deep-linked turn that falls past the first page of turns', async () => {
+		const tables = baseTables();
+		const lateTurn = {
+			id: OTHER_TURN,
+			status: 'completed',
+			request_message: 'Later review',
+			started_at: '2026-09-20T13:00:01.000Z',
+			finished_at: '2026-09-20T13:01:00.000Z'
+		};
+		tables.chat_turn_runs = [
+			tables.chat_turn_runs as QueryResult,
+			{ data: lateTurn, error: null }
+		];
+		const admin = createAdminSupabase(tables);
+		createAdminSupabaseClientMock.mockReturnValue(admin);
+		const response = await call(
+			`http://localhost/api/admin/chat/sessions/${SESSION}?turn_run_id=${OTHER_TURN}`,
+			{ id: 'admin', is_admin: true }
+		);
+		const body = await response.json();
+		expect(response.status).toBe(200);
+		expect(body.data.turn_runs.map((turn: { id: string }) => turn.id)).toEqual([
+			TURN,
+			OTHER_TURN
+		]);
+		// The late turn joins the workflow lookup too.
+		expect(admin.queriesByTable.get('chat_turn_workflow_runs')?.[0].in).toHaveBeenCalledWith(
+			'turn_run_id',
+			[TURN, OTHER_TURN]
+		);
+	});
+
+	it('selects the execution generation on turn events so recoveries can be audited', async () => {
+		const admin = createAdminSupabase(baseTables());
+		createAdminSupabaseClientMock.mockReturnValue(admin);
+		await call(`http://localhost/api/admin/chat/sessions/${SESSION}`, {
+			id: 'admin',
+			is_admin: true
+		});
+		const eventColumns = admin.queriesByTable.get('chat_turn_events')?.[0].select.mock
+			.calls[0][0] as string;
+		expect(eventColumns).toContain('execution_generation');
+	});
+
+	it('reports child tables as unavailable when the runs table itself is missing', async () => {
+		const tables = baseTables();
+		tables.chat_turn_workflow_runs = {
+			data: null,
+			error: { code: '42P01', message: 'relation "chat_turn_workflow_runs" does not exist' }
+		};
+		const admin = createAdminSupabase(tables);
+		createAdminSupabaseClientMock.mockReturnValue(admin);
+		const response = await call(`http://localhost/api/admin/chat/sessions/${SESSION}`, {
+			id: 'admin',
+			is_admin: true
+		});
+		const body = await response.json();
+		expect(response.status).toBe(200);
+		const coverage = body.data.workflows.tables;
+		expect(coverage.chat_turn_workflow_runs.status).toBe('unavailable');
+		expect(coverage.chat_turn_workflow_steps.status).toBe('unavailable');
+		expect(coverage.chat_turn_workflow_steps.detail).toContain('Not queried');
+		expect(coverage.chat_turn_workflow_dispatches.status).toBe('unavailable');
+		expect(admin.from).not.toHaveBeenCalledWith('chat_turn_workflow_steps');
 	});
 
 	it('joins workflow tables through the session turn ids and reports table coverage', async () => {

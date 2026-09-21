@@ -69,6 +69,8 @@
 	let payload = $state<ChatSessionAuditPayload | null>(null);
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
+	// Set when a deep-linked turn_run_id was rejected by the server; the session still loads.
+	let runWarning = $state<string | null>(null);
 	let isExporting = $state(false);
 	let exportMenuOpen = $state(false);
 	let lastLoadedAt = $state<string | null>(null);
@@ -110,8 +112,9 @@
 		};
 	}
 
-	// URL → state. Shallow replaceState updates below do not mutate $page.url, so read the
-	// browser location while tracking the page store for real navigations.
+	// URL → state. The page store re-emits after our own shallow replaceState calls (with the
+	// pre-update url), so read the browser location, and act only on what a real navigation
+	// changes: the session, or a run other than the one this page itself put in the URL.
 	$effect(() => {
 		if (!browser) return;
 		$page.url.href;
@@ -120,30 +123,42 @@
 			sessionId = current.session;
 			sessionInput = current.session ?? '';
 			payload = null;
+			requestedRunId = current.run;
 			selectedRunId = null;
-			selectedNodeId = null;
+			selectedNodeId = current.node;
 			error = null;
+			runWarning = null;
+		} else if (current.run !== untrack(() => selectedRunId ?? requestedRunId)) {
+			requestedRunId = current.run;
+			selectedRunId = null;
+			selectedNodeId = current.node;
 		}
-		requestedRunId = current.run;
 		if (current.view && VIEWS.some((v) => v.id === current.view)) view = current.view;
 		if (current.node) selectedNodeId = current.node;
 	});
 
+	// Load once per session. The deep-linked run rides along for server-side validation only;
+	// changing the selected run afterwards never refetches.
 	$effect(() => {
 		if (!browser || !sessionId) return;
-		void load(sessionId, requestedRunId);
+		void load(
+			sessionId,
+			untrack(() => requestedRunId)
+		);
 	});
 
-	// Pick a run once the payload lands: the requested one, else the first workflow turn.
+	// Resolve the selection once the payload lands: keep a valid selection, else take the
+	// requested run when it is a workflow turn, else the first workflow turn.
 	$effect(() => {
 		if (!payload) return;
-		const candidate =
-			untrack(() => selectedRunId) ?? requestedRunId ?? runs[0]?.turn_run_id ?? null;
-		if (candidate && runs.some((r) => r.turn_run_id === candidate)) {
-			if (candidate !== untrack(() => selectedRunId)) selectedRunId = candidate;
-		} else if (!candidate) {
-			selectedRunId = null;
-		}
+		const current = untrack(() => selectedRunId);
+		if (current && runs.some((r) => r.turn_run_id === current)) return;
+		const requested = requestedRunId;
+		const next =
+			(requested && runs.some((r) => r.turn_run_id === requested) ? requested : null) ??
+			runs[0]?.turn_run_id ??
+			null;
+		if (next !== current) selectedRunId = next;
 	});
 
 	// state → URL (shallow), so a reload or a shared link lands on the same run/view/node.
@@ -151,7 +166,8 @@
 		if (!browser || !routerReady || !sessionId) return;
 		const url = new URL(window.location.href);
 		url.searchParams.set(SESSION_PARAM, sessionId);
-		if (selectedRunId) url.searchParams.set(RUN_PARAM, selectedRunId);
+		const runParam = selectedRunId ?? requestedRunId;
+		if (runParam) url.searchParams.set(RUN_PARAM, runParam);
 		else url.searchParams.delete(RUN_PARAM);
 		url.searchParams.set(VIEW_PARAM, view);
 		if (selectedNodeId) url.searchParams.set(NODE_PARAM, selectedNodeId);
@@ -180,10 +196,28 @@
 			error = null;
 		}
 		try {
-			const next = await fetchChatSessionAuditPayload(id, fetch, { turnRunId: runId });
+			let next: ChatSessionAuditPayload;
+			let rejectedRunId: string | null = null;
+			try {
+				next = await fetchChatSessionAuditPayload(id, fetch, { turnRunId: runId });
+			} catch (err) {
+				// A stale or foreign turn_run_id is rejected server-side (404). Fall back to
+				// the whole session once and say so, instead of leaving the page empty.
+				if (!runId) throw err;
+				next = await fetchChatSessionAuditPayload(id, fetch);
+				rejectedRunId = runId;
+			}
 			if (current !== requestId) return;
 			payload = next;
 			lastLoadedAt = new Date().toISOString();
+			if (rejectedRunId) {
+				runWarning = `The requested turn run ${rejectedRunId} is not in this session; showing the session's workflows instead.`;
+				// Drop the rejected id so the selection falls through to the first workflow
+				// turn. The load effect does not depend on it, so nothing refetches.
+				if (requestedRunId === rejectedRunId) requestedRunId = null;
+			} else if (!silent) {
+				runWarning = null;
+			}
 		} catch (err) {
 			if (current !== requestId) return;
 			error = err instanceof Error ? err.message : 'Failed to load the workflow audit';
@@ -458,6 +492,12 @@
 					</p>{/if}
 			</div>
 
+			{#if runWarning}
+				<p class="mt-2 flex items-center gap-2 text-xs text-warning">
+					<AlertTriangle class="h-3.5 w-3.5" />
+					{runWarning}
+				</p>
+			{/if}
 			{#if requestedRunId && payload && !runs.some((r) => r.turn_run_id === requestedRunId)}
 				<p class="mt-2 flex items-center gap-2 text-xs text-warning">
 					<AlertTriangle class="h-3.5 w-3.5" /> The requested turn run is in this session but

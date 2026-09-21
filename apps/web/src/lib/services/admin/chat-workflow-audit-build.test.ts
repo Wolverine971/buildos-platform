@@ -1051,6 +1051,40 @@ describe('buildChatWorkflowAuditPayload — sequential evidence handoff', () => 
 	});
 });
 
+describe('buildChatWorkflowAuditPayload — step rows under another plan version', () => {
+	it('keeps them out of the derived steps but in the raw records, and never repeats a step key', () => {
+		const rows = parallelReviewRows();
+		const analyst = rows.steps.find((row) => row.step_key === 'project_analyst')!;
+		rows.steps.push({
+			...analyst,
+			plan_version: 'agentic_chat_document_evidence_plan_v1',
+			status: 'failed',
+			attempt_ids: ['att-stale-1'],
+			accepted_attempt_id: null
+		});
+		// The primary key forbids a second row for the same plan version, but a duplicate must
+		// still not crash a keyed render.
+		rows.steps.push({ ...analyst });
+		const payload = buildChatWorkflowAuditPayload({
+			rows,
+			turnRuns: parallelTurnRuns(),
+			llmCalls: usageLogs(),
+			capturedAt: T(100)
+		});
+		const run = payload.runs[0]!;
+		const keys = run.steps.map((step) => step.key);
+		expect(new Set(keys).size).toBe(keys.length);
+		expect(run.steps.find((step) => step.key === 'project_analyst')?.status).toBe('accepted');
+		expect(run.unmatched_step_rows).toHaveLength(1);
+		expect(run.unmatched_step_rows[0]?.plan_version).toBe(
+			'agentic_chat_document_evidence_plan_v1'
+		);
+		const note = run.coverage.find((entry) => entry.scope === 'plan');
+		expect(note?.status).toBe('not_applicable');
+		expect(note?.detail).toContain('different plan version');
+	});
+});
+
 describe('buildChatWorkflowAuditPayload — parallel profile with unshared reads', () => {
 	it('shows the old parallel reviewer did not receive the organizer reads', () => {
 		const rows = evidenceHandoffRows();

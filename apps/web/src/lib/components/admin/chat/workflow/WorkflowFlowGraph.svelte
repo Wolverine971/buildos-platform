@@ -176,7 +176,7 @@
 					<text
 						x={box.x + 8}
 						y={box.y + 11}
-						class="fill-accent text-[10px] font-semibold uppercase tracking-wider"
+						class="fill-accent text-2xs font-semibold uppercase tracking-wider"
 						>parallel</text
 					>
 				{/if}
@@ -199,7 +199,7 @@
 							x={point.x}
 							y={point.y}
 							text-anchor="middle"
-							class="fill-muted-foreground text-[10px]"
+							class="fill-muted-foreground text-2xs"
 							>{edge.label.length > 34
 								? `${edge.label.slice(0, 33)}…`
 								: edge.label}</text
@@ -240,11 +240,11 @@
 							class="stroke-foreground/20"
 						/>
 					{/if}
-					<text x={nx + 12} y={ny + 22} class="fill-foreground text-[12px] font-semibold"
+					<text x={nx + 12} y={ny + 22} class="fill-foreground text-xs font-semibold"
 						>{node.label.length > 26 ? `${node.label.slice(0, 25)}…` : node.label}</text
 					>
 					{#if node.sublabel}
-						<text x={nx + 12} y={ny + 39} class="fill-muted-foreground text-[10px]"
+						<text x={nx + 12} y={ny + 39} class="fill-muted-foreground text-2xs"
 							>{node.sublabel.length > 32
 								? `${node.sublabel.slice(0, 31)}…`
 								: node.sublabel}</text
@@ -253,7 +253,7 @@
 					<text
 						x={nx + 12}
 						y={ny + 57}
-						class="fill-muted-foreground text-[10px] uppercase tracking-wider"
+						class="fill-muted-foreground text-2xs uppercase tracking-wider"
 						>{node.kind === 'shadow'
 							? `observation · ${stateLabel(node.state)}`
 							: stateLabel(node.state)}</text

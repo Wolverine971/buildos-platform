@@ -351,6 +351,111 @@ function workerHandle(overrides: Partial<TurnHandleV1> = {}): TurnHandleV1 {
 }
 
 describe('AgentChatStreamController', () => {
+	it('pins the selected published version through a lease retry and reads the new selection on the next send', async () => {
+		const selected = {
+			draftId: 'd8000000-0000-4000-8000-000000000001',
+			version: 1,
+			snapshotHash: 'a'.repeat(64)
+		};
+		const originalSelection = { ...selected };
+		let attempts = 0;
+		const h = createHarness({
+			inputValue: '/workflow Review the launch documents.',
+			admissionFetchImpl: async (_input, init) => {
+				attempts += 1;
+				if (attempts === 1) {
+					// Simulate a host selection changing while admission is in flight.
+					selected.version = 2;
+					selected.snapshotHash = 'b'.repeat(64);
+					return Response.json(
+						{ success: false, error: 'Refresh lease', code: 'TRANSPORT_RENEGOTIATE' },
+						{ status: 409 }
+					);
+				}
+				return admittedResponse(JSON.parse(String(init?.body)));
+			}
+		});
+		h.deps.getPublishedSpecialist = () => selected;
+		await h.controller.sendMessage();
+		expect(h.controller.error).toBeNull();
+		expect(h.admissionCalls).toHaveLength(2);
+		for (const call of h.admissionCalls) {
+			expect(parseBody(call)).toMatchObject({
+				reviewIntent: 'document_organization',
+				publishedSpecialist: originalSelection,
+				message: 'Review the launch documents.',
+				preparedPromptKey: null
+			});
+		}
+		expect(parseBody(h.admissionCalls[0]!).clientTurnId).toBe(
+			parseBody(h.admissionCalls[1]!).clientTurnId
+		);
+		const firstHandle = h.controller.activeTurnHandle;
+		if (!firstHandle || firstHandle.executionMode !== 'worker_realtime')
+			throw new Error('Expected an admitted worker turn');
+		h.controller.finishWorkerTurn(firstHandle, 'completed');
+		await h.controller.sendMessage('/workflow Review the updated launch documents.');
+		expect(parseBody(h.admissionCalls[2]!).publishedSpecialist).toEqual(selected);
+		expect(parseBody(h.admissionCalls[2]!).clientTurnId).not.toBe(
+			parseBody(h.admissionCalls[1]!).clientTurnId
+		);
+		const secondHandle = h.controller.activeTurnHandle;
+		if (!secondHandle || secondHandle.executionMode !== 'worker_realtime')
+			throw new Error('Expected the second admitted worker turn');
+		h.controller.finishWorkerTurn(secondHandle, 'completed');
+		h.deps.getPublishedSpecialist = () => null;
+		await h.controller.sendMessage('/workflow Use the built-in review now.');
+		expect(parseBody(h.admissionCalls[3]!)).not.toHaveProperty('publishedSpecialist');
+		expect(parseBody(h.admissionCalls[3]!)).not.toHaveProperty('reviewIntent');
+		expect(parseBody(h.admissionCalls[3]!).message).toBe(
+			'/workflow Use the built-in review now.'
+		);
+	});
+
+	it.each([null, 'project_review'] as const)(
+		'does not attach the selected specialist to %s chat',
+		async (reviewIntent) => {
+			const h = createHarness();
+			h.deps.getReviewIntent = () => reviewIntent;
+			h.deps.getPublishedSpecialist = () => ({
+				draftId: 'd8000000-0000-4000-8000-000000000001',
+				version: 1,
+				snapshotHash: 'a'.repeat(64)
+			});
+			await h.controller.sendMessage();
+			expect(parseBody(h.admissionCalls[0]!)).not.toHaveProperty('publishedSpecialist');
+		}
+	);
+
+	it('preserves the custom workflow draft and selection when publication admission is unavailable', async () => {
+		const h = createHarness({
+			currentSession: null,
+			inputValue: '/workflow Review our docs.',
+			admissionFetchImpl: async () =>
+				Response.json(
+					{
+						success: false,
+						error: 'Specialist unavailable',
+						code: 'WORKFLOW_REVIEW_UNAVAILABLE'
+					},
+					{ status: 409 }
+				)
+		});
+		const selected = {
+			draftId: 'd8000000-0000-4000-8000-000000000001',
+			version: 1,
+			snapshotHash: 'a'.repeat(64)
+		};
+		h.deps.getPublishedSpecialist = () => selected;
+		h.deps.onReviewAdmitted = vi.fn();
+		await h.controller.sendMessage();
+		expect(h.inputValue).toBe('/workflow Review our docs.');
+		expect(h.messages).toHaveLength(0);
+		expect(h.controller.error).toBe('Specialist unavailable');
+		expect(h.deps.getPublishedSpecialist()).toBe(selected);
+		expect(h.deps.onReviewAdmitted).not.toHaveBeenCalled();
+	});
+
 	it.each(['project_review', 'document_organization'] as const)(
 		'submits a fresh %s without prompt preparation or session bootstrap',
 		async (reviewIntent) => {

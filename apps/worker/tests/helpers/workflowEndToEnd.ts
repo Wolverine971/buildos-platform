@@ -168,6 +168,7 @@ export function buildE2EWorker(input: {
 	specialistWorkflowsEnabled?: boolean;
 	documentReadToolsEnabled?: boolean;
 	documentEvidenceHandoffEnabled?: boolean;
+	publishedSpecialistsEnabled?: boolean;
 	observeSelection?: SpecialistShadowObserver;
 	context?: MasterPromptContext;
 	onError?: (report: { stage: string; turnRunId: string; error: unknown }) => void;
@@ -217,6 +218,7 @@ export function buildE2EWorker(input: {
 		specialistWorkflowsEnabled: input.specialistWorkflowsEnabled,
 		documentReadToolsEnabled: input.documentReadToolsEnabled,
 		documentEvidenceHandoffEnabled: input.documentEvidenceHandoffEnabled,
+		publishedSpecialistsEnabled: input.publishedSpecialistsEnabled,
 		observeSelection: input.observeSelection,
 		loadSpecialistSnapshot: (identity) => loadSpecialistSnapshotV2(shim as never, identity),
 		onTiming: () => undefined,

@@ -215,13 +215,19 @@ export async function loadWorkflowAuditRows(
 		.filter((id): id is string => typeof id === 'string' && id.length > 0);
 
 	if (workflowTurnIds.length === 0) {
+		// Children resolve only through workflow turn ids. With none, they were not queried:
+		// that is a clean "nothing here" when the runs table answered, and the runs table's own
+		// gap (missing table, failed load) when it did not.
+		const runsAnswered = runs.coverage.status === 'available';
 		for (const table of Object.keys(tables) as WorkflowAuditTable[]) {
 			if (table === 'chat_turn_workflow_runs') continue;
-			tables[table] = {
-				status: 'available',
-				detail: 'No workflow turns in this session.',
-				count: 0
-			};
+			tables[table] = runsAnswered
+				? { status: 'available', detail: 'No workflow turns in this session.', count: 0 }
+				: {
+						status: runs.coverage.status,
+						detail: `Not queried: chat_turn_workflow_runs was ${runs.coverage.status}${runs.coverage.detail ? ` (${runs.coverage.detail})` : ''}.`,
+						count: 0
+					};
 		}
 		return {
 			runs: runRows,

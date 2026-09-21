@@ -10,11 +10,19 @@ export type SpecialistDefinitionV1 = Readonly<{
 	description: string;
 	expertise: readonly string[];
 	instructions: Readonly<{ system: string; defaultAssignment: string }>;
-	knowledge: readonly Readonly<{
-		id: string;
-		version: number;
-		source: 'prepared_project_context';
-	}>[];
+	knowledge: readonly (
+		| Readonly<{
+				id: string;
+				version: number;
+				source: 'prepared_project_context';
+		  }>
+		| Readonly<{
+				id: 'reference_packet';
+				version: 1;
+				source: 'pinned_reference_packet_v1';
+				contentHash: string;
+		  }>
+	)[];
 	/** Versioned contracts resolved by the host's input/output validators. */
 	inputContract: string;
 	outputContract: string;

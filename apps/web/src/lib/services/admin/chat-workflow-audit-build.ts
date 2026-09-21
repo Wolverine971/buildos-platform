@@ -40,7 +40,6 @@ import {
 	type WorkflowAuditTiming,
 	type WorkflowAuditToolCall,
 	type WorkflowAuditToolDocument,
-	type WorkflowDispatchRow,
 	type WorkflowRunRow,
 	type WorkflowStepRow
 } from './chat-workflow-audit-types';
@@ -998,7 +997,8 @@ const buildTimeline = (params: {
 			...base,
 			id: `step:${step.key}:claimed`,
 			at: step.claimed_at,
-			end_at: step.finished_at,
+			// Falls back to the answer receipt for a finalized editor, so the lane closes.
+			end_at: step.timing.ended_at,
 			kind: 'step',
 			lane: step.key,
 			title: `${step.label} claimed`,
@@ -1404,7 +1404,22 @@ const buildRun = (params: {
 		});
 	}
 
-	const stepRows = rows.steps.filter((row) => row.turn_run_id === turnRunId);
+	// Step rows are keyed by (turn_run_id, plan_version, step_key). A turn can carry rows saved
+	// under another plan version; the engine ignores them and so does this inspector, or the
+	// same step key would appear twice. They are reported, not merged.
+	const turnStepRows = rows.steps.filter((row) => row.turn_run_id === turnRunId);
+	const runPlanVersion = asString(run.plan_version);
+	const stepRows = runPlanVersion
+		? turnStepRows.filter((row) => (row.plan_version ?? runPlanVersion) === runPlanVersion)
+		: turnStepRows;
+	const otherPlanStepRows = turnStepRows.length - stepRows.length;
+	if (otherPlanStepRows > 0) {
+		coverage.push({
+			scope: 'plan',
+			status: 'not_applicable',
+			detail: `${otherPlanStepRows} step row${otherPlanStepRows === 1 ? '' : 's'} saved under a different plan version than the run (${runPlanVersion}) were left out of the derived graph; they remain in the raw records.`
+		});
+	}
 	const dispatchRows = rows.dispatches.filter((row) => row.turn_run_id === turnRunId);
 	const snapshotRow = rows.snapshots.find((row) => row.turn_run_id === turnRunId);
 	const batchRows = rows.readBatches.filter((row) => row.turn_run_id === turnRunId);
@@ -1594,12 +1609,14 @@ const buildRun = (params: {
 	);
 
 	// Steps in plan order, then any saved step rows the plan does not mention.
-	const orderedKeys = [
-		...planSteps.map((step) => step.key),
-		...stepRows
-			.map((row) => row.step_key)
-			.filter((key) => !planSteps.some((step) => step.key === key))
-	];
+	const orderedKeys = Array.from(
+		new Set([
+			...planSteps.map((step) => step.key),
+			...stepRows
+				.map((row) => row.step_key)
+				.filter((key) => !planSteps.some((step) => step.key === key))
+		])
+	);
 	const contextEvidence = asRecordArray(run.evidence_versions).map((entry) => ({
 		kind: asString(entry.kind) ?? 'unknown',
 		id: asString(entry.id) ?? '',
@@ -2025,6 +2042,9 @@ const buildRun = (params: {
 			synthesis_accepted_at: asString(run.synthesis_accepted_at)
 		},
 		steps,
+		unmatched_step_rows: turnStepRows
+			.filter((row) => !stepRows.includes(row))
+			.map((row) => redact({ ...row }) as JsonRecord),
 		dispatches: dedupedDispatches,
 		tool_calls: toolCalls,
 		specialist_snapshot: specialistSnapshot

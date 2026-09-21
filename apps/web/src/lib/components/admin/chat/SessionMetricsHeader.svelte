@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/admin/chat/SessionMetricsHeader.svelte -->
 <script lang="ts">
-	import { Download, FileArchive, Workflow } from 'lucide-svelte';
+	import { Download, FileArchive, Workflow } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		formatCurrency,

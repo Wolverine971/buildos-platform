@@ -28,6 +28,12 @@ export class AgenticChatWorkerUnavailableResponseError extends Error {
 	}
 }
 
+export type PublishedSpecialistReference = {
+	draftId: string;
+	version: number;
+	snapshotHash: string;
+};
+
 export type AgenticChatWorkerCommand = {
 	leaseToken: string;
 	clientTurnId: string;
@@ -41,6 +47,7 @@ export type AgenticChatWorkerCommand = {
 	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
 	reviewIntent?: 'project_review' | 'document_organization' | null;
+	publishedSpecialist?: PublishedSpecialistReference | null;
 };
 
 /**
@@ -202,7 +209,16 @@ function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 		lastTurnContext: command.lastTurnContext,
 		voiceNoteGroupId: command.voiceNoteGroupId,
 		preparedPromptKey: command.preparedPromptKey,
-		...(command.reviewIntent ? { reviewIntent: command.reviewIntent } : {})
+		...(command.reviewIntent ? { reviewIntent: command.reviewIntent } : {}),
+		...(command.reviewIntent === 'document_organization' && command.publishedSpecialist
+			? {
+					publishedSpecialist: {
+						draftId: command.publishedSpecialist.draftId,
+						version: command.publishedSpecialist.version,
+						snapshotHash: command.publishedSpecialist.snapshotHash
+					}
+				}
+			: {})
 	};
 }
 

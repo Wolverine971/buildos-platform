@@ -21,7 +21,7 @@
 		LoaderCircle,
 		MoreHorizontal,
 		Workflow
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import { page } from '$app/stores';
 	import { portal } from '$lib/actions/portal';
 	import { toastService } from '$lib/stores/toast.store';
@@ -42,9 +42,8 @@
 		includeLogs?: boolean;
 		includeExports?: boolean;
 		/**
-		 * Also link the multi-agent workflow inspector (`/admin/chat/workflows`). Off by
-		 * default so ordinary chat headers keep their current controls; workflow hosts
-		 * such as the lab turn it on.
+		 * Link the multi-agent workflow inspector (`/admin/chat/workflows`). Follows
+		 * `includeLogs` unless a host overrides it, so Trace appears wherever admins see Logs.
 		 */
 		includeWorkflowTrace?: boolean;
 		showTopDivider?: boolean;
@@ -57,7 +56,7 @@
 		variant = 'standalone',
 		includeLogs = true,
 		includeExports = true,
-		includeWorkflowTrace = false,
+		includeWorkflowTrace,
 		showTopDivider = false,
 		onItemClick
 	}: Props = $props();
@@ -73,8 +72,9 @@
 	const adminSessionHref = $derived(
 		sessionId ? `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId)}` : null
 	);
+	const showWorkflowTrace = $derived(includeWorkflowTrace ?? includeLogs);
 	const workflowTraceHref = $derived(
-		sessionId && includeWorkflowTrace
+		sessionId && showWorkflowTrace
 			? `/admin/chat/workflows?chat_session_id=${encodeURIComponent(sessionId)}`
 			: null
 	);

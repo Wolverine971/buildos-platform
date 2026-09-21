@@ -176,6 +176,12 @@
 		conversationOnly?: boolean;
 		/** Optional host-specific composer placeholder for focused embedded chats. */
 		composerPlaceholder?: string;
+		/** Explicit version for document reviews in this host; ordinary chat is unchanged. */
+		publishedSpecialist?:
+			| (NonNullable<AgenticChatWorkerCommand['publishedSpecialist']> & {
+					name: string;
+			  })
+			| null;
 		inboxResolutionActions?: AgentChatResolutionAction[];
 		/** Reports the active chat session id so embedding surfaces can render
 		 * session-level chrome (e.g. ChatSessionAuditActions) in their own header. */
@@ -200,6 +206,7 @@
 		embedded = false,
 		conversationOnly = false,
 		composerPlaceholder,
+		publishedSpecialist = null,
 		inboxResolutionActions = [],
 		onSessionChange
 	}: Props = $props();
@@ -672,6 +679,7 @@
 	const stream = createAgentChatStreamController({
 		getInputValue: () => inputValue,
 		getReviewIntent: () => selectedReviewIntent,
+		getPublishedSpecialist: () => publishedSpecialist,
 		onReviewAdmitted: () => {
 			reviewSelection = null;
 		},
@@ -2972,6 +2980,13 @@
 					onSelectAsset={handleAttachExistingImage}
 				/>
 			</div>
+		{/if}
+		{#if publishedSpecialist}
+			<p class="mb-2 text-xs text-muted-foreground">
+				Document reviews use <strong class="font-medium text-foreground"
+					>{publishedSpecialist.name} · v{publishedSpecialist.version}</strong
+				>. Use /workflow or Organize documents to run it. Other messages use project chat.
+			</p>
 		{/if}
 		<AgentComposer
 			bind:voiceInputRef={voice.ref}

@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-store.ts
 import { documentEvidenceHandoffPrompt, verifyDocumentReadResult } from './document-read-tool';
 import {
-	type SpecialistSnapshotV2,
+	type ExecutableSpecialistSnapshot,
 	documentSnapshotMatchesPolicy,
 	isDocumentSpecialistPolicyRef
 } from '@buildos/agentic-chat-runtime/specialists';
@@ -87,7 +87,7 @@ export type AgenticChatWorkflowDispatchRowV1 = {
 
 /** Durable workflow truth, read with the service role; the only input the runner trusts. */
 export type AgenticChatWorkflowRunStateV1 = {
-	specialistSnapshot?: SpecialistSnapshotV2;
+	specialistSnapshot?: ExecutableSpecialistSnapshot;
 	documentReadResult?: JsonObject;
 	turnRunId: string;
 	sessionId: string;
@@ -414,7 +414,7 @@ const FENCED: readonly string[] = [
 
 /** Service-role adapter over the frozen RPCs. Tables are private; reads are service-only. */
 export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStorePortV1 {
-	private readonly snapshots = new Map<string, SpecialistSnapshotV2>();
+	private readonly snapshots = new Map<string, ExecutableSpecialistSnapshot>();
 	private readonly documentReads = new Map<string, JsonObject>();
 	constructor(private readonly client: AgenticChatWorkflowStoreClient) {}
 

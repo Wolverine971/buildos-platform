@@ -209,6 +209,7 @@ export interface TurnEventRow {
 	sequence_index?: number | string | null;
 	phase?: string | null;
 	event_type?: string | null;
+	execution_generation?: number | string | null;
 	payload?: unknown;
 	created_at?: string | null;
 }

@@ -227,7 +227,7 @@ describe('Agentic Chat worker transport client', () => {
 		});
 	});
 
-	it('preserves the document organization intent for workflow admission', async () => {
+	it('preserves the document organization intent and exact published version for workflow admission', async () => {
 		const fetchImpl = vi.fn<typeof fetch>(async () =>
 			Response.json(
 				{
@@ -251,11 +251,21 @@ describe('Agentic Chat worker transport client', () => {
 				lastTurnContext: null,
 				voiceNoteGroupId: null,
 				preparedPromptKey: null,
-				reviewIntent: 'document_organization'
+				reviewIntent: 'document_organization',
+				publishedSpecialist: {
+					draftId: 'd8000000-0000-4000-8000-000000000001',
+					version: 2,
+					snapshotHash: 'a'.repeat(64)
+				}
 			}
 		});
 		const submittedBody = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
 		expect(submittedBody.reviewIntent).toBe('document_organization');
+		expect(submittedBody.publishedSpecialist).toEqual({
+			draftId: 'd8000000-0000-4000-8000-000000000001',
+			version: 2,
+			snapshotHash: 'a'.repeat(64)
+		});
 		expect(workerAdmissionRequestSchema.safeParse(submittedBody).success).toBe(true);
 	});
 

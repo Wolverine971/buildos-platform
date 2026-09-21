@@ -18,6 +18,12 @@ import {
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 
+import {
+	getSpecialistWorkbenchVersion,
+	SpecialistWorkbenchStoreError,
+	type SpecialistWorkbenchClient
+} from '$lib/services/agentic-chat-v2/specialist-workbench.server';
+
 const logger = createLogger('API:AgentWorkflowReviewTurns');
 
 export async function admitWorkflowReviewTurnIfEligible(input: {
@@ -26,12 +32,14 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 		AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED?: string;
 		AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED?: string;
 		AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED?: string;
+		AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED?: string;
 		AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS?: string;
 	};
 	userId: string;
 	command: AgenticChatWorkflowV4CommandV1;
 	transportDecisionId: string;
 	client: AgenticChatWorkflowV4AdmissionRpcClient;
+	workbenchClient?: SpecialistWorkbenchClient;
 	createId?: () => string;
 }): Promise<Response | null> {
 	const eligibility = evaluateAgenticChatWorkflowV4Admission({
@@ -62,11 +70,34 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 	let admissionMs = 0;
 	let result: AgenticChatWorkflowV4AdmissionResultV1;
 	try {
-		// Pure CPU: normalization, review intent, and one SHA-256 request echo.
+		// An explicit selection adds one owner-scoped immutable catalog read.
+		let published;
+		const ref = input.command.publishedSpecialist;
+		if (ref) {
+			if (!input.workbenchClient)
+				throw new SpecialistWorkbenchStoreError(503, 'Specialist storage unavailable.');
+			const selected = await getSpecialistWorkbenchVersion(
+				input.workbenchClient,
+				input.userId,
+				ref.draftId,
+				ref.version
+			);
+			if (
+				selected.version.snapshotHash !== ref.snapshotHash ||
+				selected.snapshot.draftId !== ref.draftId ||
+				selected.snapshot.definition.version !== ref.version
+			)
+				throw new SpecialistWorkbenchStoreError(
+					409,
+					'The selected specialist version could not be verified. Select it again.'
+				);
+			published = { snapshot: selected.snapshot, snapshotHash: ref.snapshotHash };
+		}
 		const args = await buildAgenticChatWorkflowV4AdmissionArgs({
 			userId: input.userId,
 			command: input.command,
 			eligibility,
+			published,
 			transportDecisionId: input.transportDecisionId,
 			createId: input.createId
 		});
@@ -91,8 +122,8 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 		outcome: result.outcome,
 		preparationMs,
 		admissionMs,
-		// The admission RPC is the only database round trip before the queue.
-		preQueueDbRoundTrips: 1,
+		// Built-ins use one RPC; custom selection adds the catalog read.
+		preQueueDbRoundTrips: input.command.publishedSpecialist ? 2 : 1,
 		sessionCreated: result.outcome === 'newly_admitted' ? result.sessionCreated : null,
 		historyMessageCount: result.outcome === 'newly_admitted' ? result.historyMessageCount : null
 	});
@@ -145,6 +176,12 @@ function outcomeResponse(result: AgenticChatWorkflowV4AdmissionResultV1): Respon
 }
 
 function errorResponse(error: unknown): Response {
+	if (error instanceof SpecialistWorkbenchStoreError)
+		return ApiResponse.error(
+			'Selected specialist is unavailable. Your draft has been kept. Select a published version and try again.',
+			HttpStatus.CONFLICT,
+			'WORKFLOW_REVIEW_UNAVAILABLE'
+		);
 	if (error instanceof AgenticChatWorkflowV4AdmissionError) {
 		if (error.code === 'session_conflict') {
 			return ApiResponse.error(
