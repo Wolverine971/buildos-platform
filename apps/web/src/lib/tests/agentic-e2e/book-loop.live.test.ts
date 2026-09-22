@@ -22,14 +22,20 @@ const IGNORED = new Set(['updated_at', 'search_vector', 'embedding', 'content_em
 type Row = Record<string, unknown>;
 
 function label(row: Row) {
-	return String(row.title ?? row.name ?? `${row.rel ?? ''} ${row.src_kind ?? ''}→${row.dst_kind ?? ''}`);
+	return String(
+		row.title ?? row.name ?? `${row.rel ?? ''} ${row.src_kind ?? ''}→${row.dst_kind ?? ''}`
+	);
 }
 
 function diffRows(before: Row[], after: Row[]) {
 	const old = new Map(before.map((row) => [row.id, row]));
 	const now = new Map(after.map((row) => [row.id, row]));
-	const created = after.filter((row) => !old.has(row.id)).map((row) => ({ id: row.id, label: label(row), row }));
-	const removed = before.filter((row) => !now.has(row.id)).map((row) => ({ id: row.id, label: label(row) }));
+	const created = after
+		.filter((row) => !old.has(row.id))
+		.map((row) => ({ id: row.id, label: label(row), row }));
+	const removed = before
+		.filter((row) => !now.has(row.id))
+		.map((row) => ({ id: row.id, label: label(row) }));
 	const updated = after
 		.filter((row) => old.has(row.id))
 		.map((row) => {
@@ -61,7 +67,7 @@ describe.runIf(process.env.BOOK_LOOP === 'true')('book dogfood loop', () => {
 		const { userId, cookie } = await loginAndGetCookie({ baseUrl, email, password });
 		const db = await provisionTestUser({ userId, email });
 		async function snapshot() {
-			const rows: Record<string, Row[]> = {};
+			const rows = {} as Record<(typeof TABLES)[number], Row[]>;
 			for (const table of TABLES) {
 				const { data, error } = await db.admin
 					.from(table)
@@ -72,13 +78,24 @@ describe.runIf(process.env.BOOK_LOOP === 'true')('book dogfood loop', () => {
 				// Soft-deleted rows stay in the snapshot so deletes show up as `deleted_at` changes.
 				rows[table] = (data ?? []) as Row[];
 			}
-			const { data, error } = await db.admin.from('onto_projects').select('*').eq('id', projectId).single();
+			const { data, error } = await db.admin
+				.from('onto_projects')
+				.select('*')
+				.eq('id', projectId)
+				.single();
 			if (error) throw error;
 			return { project: data as Row, rows };
 		}
 
 		const before = await snapshot();
-		const client = await createAgenticE2EWorkerClient({ baseUrl, cookie, email, password, userId, admin: db.admin });
+		const client = await createAgenticE2EWorkerClient({
+			baseUrl,
+			cookie,
+			email,
+			password,
+			userId,
+			admin: db.admin
+		});
 		let result;
 		try {
 			result = await client.runTurn({
@@ -114,7 +131,12 @@ describe.runIf(process.env.BOOK_LOOP === 'true')('book dogfood loop', () => {
 					totalDurationMs: result.timing.totalDurationMs,
 					projectChanges: projectDiff,
 					diff,
-					documentsAfter: after.rows.onto_documents.map((d) => ({ id: d.id, title: d.title, type_key: d.type_key, content: d.content }))
+					documentsAfter: after.rows.onto_documents.map((d) => ({
+						id: d.id,
+						title: d.title,
+						type_key: d.type_key,
+						content: d.content
+					}))
 				},
 				null,
 				2

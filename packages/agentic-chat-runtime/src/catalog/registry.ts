@@ -128,6 +128,7 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	call_corsair_mcp_tool: { op: 'util.corsair_mcp.tool.call', kind: 'write' },
 	web_search: { op: 'util.web.search', kind: 'read' },
 	web_visit: { op: 'util.web.visit', kind: 'read' },
+	web_navigate: { op: 'util.web.navigate', kind: 'read' },
 	get_buildos_overview: { op: 'util.buildos.overview', kind: 'read' },
 	get_buildos_usage_guide: { op: 'util.buildos.usage_guide', kind: 'read' },
 	delegate_task: { op: 'util.agent.delegate', kind: 'write' },

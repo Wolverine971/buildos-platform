@@ -202,9 +202,9 @@ At session end, the worker already classifies/cleans up chats and updates projec
 
 1. Detect durable orientation facts: explicit decisions, non-goals, changed definition of done, stable vocabulary, resolved/open questions.
 2. Map each fact to a named authored section.
-3. Propose an append/edit through the staged mutation flow.
+3. Propose a full-section rewrite through the staged mutation flow (contract below).
 4. Never write into managed fences.
-5. Never silently rewrite prose.
+5. Never rewrite prose without review: every capture is a staged proposal.
 
 This keeps the Start Here document current without letting a background worker silently become the author of trusted project context.
 
@@ -241,6 +241,14 @@ A lower-frequency Agent Run can propose cleanup:
 - suggest missing links into the document tree.
 
 Output is staged suggestions, not silent writes.
+
+Since tasker/93, each session-end capture already does part of this for the sections it
+rewrites: same-title decisions and terms collapse, answered open questions are dropped, and
+_Current state_ is replaced. A librarian pass is still needed for three things: semantic
+duplicates with different titles, text outside the authored sections (such as a stale
+creation preamble), and docs damaged before 2026-09-22 that no new capture touches. A
+one-time reconcile of the damaged docs was deferred on 2026-09-22. Production then had 7
+such docs, all DJ's.
 
 ---
 
@@ -300,7 +308,7 @@ This avoids duplicating two separate "project narrative" systems.
 | Fast chat context loader | Runs one extra bounded query for the Start Here body in project/ontology contexts.                                                                                                                                                                   |
 | Lite prompt builder      | Adds a guarded `project_start_here` section and keeps `focus_purpose`.                                                                                                                                                                               |
 | Snapshot worker          | Renders deterministic `status` and `map` managed regions.                                                                                                                                                                                            |
-| Session-end worker       | Adds staged authored-section capture proposals after chat classification/activity processing.                                                                                                                                                        |
+| Session-end worker       | After chat classification/activity processing, stages one reviewable full-section reconcile proposal per project and supersedes older pending ones.                                                                                                  |
 | Daily brief loader       | Consumes bounded Start Here excerpts for scoped project narratives.                                                                                                                                                                                  |
 | External tool gateway    | API-key + MCP project reads (`onto.project.get`, `onto.project.status.get`) return a bounded `start_here` excerpt so third-party agents get the same orientation as internal chat. MCP `fetch` of a project leads its text with the Start Here body. |
 | Document versioning      | The recency guard preserves `updated_at` for managed-only refreshes; authored changes still bump recency.                                                                                                                                            |
@@ -317,7 +325,7 @@ This avoids duplicating two separate "project narrative" systems.
 | P2    | Lite prompt injects guarded `project_start_here` before `focus_purpose`.               | Implemented |
 | P3    | Create/backfill Start Here docs on project create and via an explicit backfill script. | Implemented |
 | P4    | Managed status/map refresh with recency guard.                                         | Implemented |
-| P5    | Session-end staged authored capture proposals.                                         | Implemented |
+| P5    | Session-end staged authored capture proposals (reconcile contract, tasker/93).         | Implemented |
 | P6    | Daily brief Start Here excerpts.                                                       | Implemented |
 | P7    | Broader librarian/project-loop reconciliation for Start Here cleanup suggestions.      | Future      |
 
@@ -335,7 +343,8 @@ P0-P2 make agents orient around the Start Here doc. P3-P6 make it self-maintaini
 - Snapshot worker (consumer + worker-side producer `queueProjectContextSnapshot`): `apps/worker/src/workers/ontology/projectContextSnapshotWorker.ts`
 - Web-side snapshot producer: `apps/web/src/lib/server/project-context-snapshot.service.ts`
 - Snapshot producers (call sites): `apps/web/src/routes/api/onto/projects/instantiate/+server.ts`, `apps/web/src/lib/services/calendar-analysis.service.ts` (create), `apps/worker/src/workers/chat/chatSessionClassifier.ts` (session end)
-- Session-end capture path: `apps/worker/src/workers/chat/chatSessionClassifier.ts` and `apps/worker/src/workers/chat/startHereCaptureProcessor.ts`
+- Session-end capture path: `apps/worker/src/workers/chat/chatSessionClassifier.ts` and `apps/worker/src/workers/chat/startHereCaptureProcessor.ts`; reconcile guards in `start-here.ts` (`reconcileStartHereAuthoredSections`); superseded-run inbox mapping in `packages/shared-agent-ops/src/inbox-index.ts` (`mapAgentRunToInboxItem`)
+- Capture tests: `apps/worker/tests/startHereCaptureProcessor.test.ts`, `packages/shared-agent-ops/src/ontology/start-here.test.ts`, and the production replay in `apps/web/src/lib/services/ontology/start-here.regression.test.ts`. They use the byte-exact fixtures in `packages/shared-agent-ops/src/ontology/__fixtures__/`, which Prettier ignores.
 - Daily brief loader: `apps/worker/src/workers/brief/ontologyBriefDataLoader.ts`
 - External-agent surfacing (shared loader `loadProjectStartHereExcerpt`): `packages/shared-agent-ops/src/ontology/start-here.service.ts`
 - External gateway project reads: `packages/shared-agent-ops/src/gateway/op-execution-gateway.projects.ts` (`onto.project.get`), `op-execution-gateway.project-status.ts` (`onto.project.status.get`), tool description in `op-execution-gateway.config.ts`
@@ -348,7 +357,7 @@ P0-P2 make agents orient around the Start Here doc. P3-P6 make it self-maintaini
 ## 12. Open Questions
 
 1. What exact fields should `managed:status` render, and which are too volatile for prompt prefix stability?
-2. What bar should session-end capture use for "durable enough" after real-world review volume is visible?
+2. What bar should session-end capture use for "durable enough" after real-world review volume is visible? Nobody has checked the reconcile contract (tasker/93) against a live model yet.
 3. Should proposal-ready Start Here runs get a dedicated notification or surface inside the project document UI?
 4. Should the existing project-loop/librarian pass suggest Start Here cleanup when the authored sections drift?
 5. Is the initial 1,200-character daily brief excerpt enough, or should it prefer specific authored sections over a simple bounded excerpt?

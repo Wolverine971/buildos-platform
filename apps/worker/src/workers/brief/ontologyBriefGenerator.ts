@@ -255,10 +255,6 @@ function formatRecentChangeEntry(change: ProjectRecentChange): string {
 	return `- ${change.kind} ${change.action}: ${change.title}${actor}`;
 }
 
-function containsStaleSchedulingLanguage(content: string): boolean {
-	return /\btime\s*blocks?\b/i.test(content);
-}
-
 function sanitizeNextStepShort(value: string | null | undefined): string | null {
 	const text = value?.replace(/\s+/g, ' ').trim();
 	return text ? text.slice(0, 120) : null;
@@ -377,12 +373,12 @@ async function mapWithConcurrency<T, R>(
 	return results;
 }
 
-function normalizeLLMProjectBriefMarkdown(
+export function normalizeLLMProjectBriefMarkdown(
 	project: ProjectBriefData,
 	response: ProjectBriefLLMResponse
 ): string | null {
 	const raw = typeof response.briefMarkdown === 'string' ? response.briefMarkdown.trim() : '';
-	if (!raw || containsStaleSchedulingLanguage(raw)) return null;
+	if (!raw) return null;
 
 	const expectedHeading = `## [${project.project.name}](/projects/${project.project.id})`;
 	if (raw.startsWith('## ')) {

@@ -94,7 +94,10 @@ import {
 	type AgenticChatExecutorEffectPortsV1,
 	AgenticChatExecutorEffects
 } from './executorEffects';
-import { createStableAgenticChatReadToolTransitionIdV1 } from './readToolIdentity';
+import {
+	createStableAgenticChatReadToolProgressTransitionIdV1,
+	createStableAgenticChatReadToolTransitionIdV1
+} from './readToolIdentity';
 import {
 	AgenticChatSessionHandoffFenceError,
 	type AgenticChatSessionHandoffPortV1,
@@ -155,6 +158,16 @@ export type AgenticChatTurnUsageV1 = AgenticChatProviderUsageV1;
 export type AgenticChatTurnProviderStepV1 = AgenticChatProviderStepV1;
 export type AgenticChatTurnProviderPortV1 = AgenticChatProviderPortV1;
 
+export type AgenticChatReadToolProgressV1 = {
+	/** One human-readable line, e.g. `Jev: not here (4%) → "Pricing" (91%)`. */
+	message: string;
+	/** Structured step for richer rendering; kept small (a few hundred bytes). */
+	data: JsonObject;
+};
+
+/** Cap per tool call: each event is a durable row and a projection slot. */
+export const AGENTIC_CHAT_MAX_READ_TOOL_PROGRESS_EVENTS = 16;
+
 export type AgenticChatReadToolPortV1 = {
 	execute(input: {
 		toolName: string;
@@ -165,6 +178,11 @@ export type AgenticChatReadToolPortV1 = {
 		decidedBy?: AgenticChatControlDecisionAuthorV1;
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		signal: AbortSignal;
+		/**
+		 * Best-effort live sub-steps for long reads (web_navigate). Never awaited
+		 * by the tool; publication failures are dropped, never fatal to the tool.
+		 */
+		onProgress?: (progress: AgenticChatReadToolProgressV1) => void;
 	}): Promise<AgenticChatReadToolExecutionV1>;
 	prepareTurnToolBatchSecurity?(input: {
 		userId: string;
@@ -1997,6 +2015,38 @@ export class AgenticChatTurnExecutor {
 				providerToolCallId: step.providerToolCallId,
 				toolName: step.toolName
 			});
+			let progressIndex = 0;
+			const onProgress = (progress: AgenticChatReadToolProgressV1) => {
+				if (progressIndex >= AGENTIC_CHAT_MAX_READ_TOOL_PROGRESS_EVENTS || signal.aborted)
+					return;
+				const index = progressIndex++;
+				const message = progress.message.slice(0, 300);
+				void this.publishSemantic(
+					executionInput,
+					projection,
+					{
+						type: 'semantic',
+						transitionId: createStableAgenticChatReadToolProgressTransitionIdV1({
+							turnRunId: executionInput.claim.turnRunId,
+							executionGeneration: executionInput.claim.executionGeneration,
+							providerToolCallId: step.providerToolCallId,
+							index
+						}),
+						phase: 'tool',
+						eventType: 'tool_progress',
+						currentActivity: message,
+						eventPayload: {
+							type: 'tool_progress',
+							tool_call_id: step.providerToolCallId,
+							tool_name: step.toolName,
+							step_index: index,
+							message,
+							data: progress.data
+						}
+					},
+					signal
+				).catch(() => undefined);
+			};
 			try {
 				toolResult = await abortable(
 					this.ports.readTool.execute({
@@ -2006,7 +2056,8 @@ export class AgenticChatTurnExecutor {
 						providerToolCallId: step.providerToolCallId,
 						...(step.decidedBy ? { decidedBy: step.decidedBy } : {}),
 						executionInput,
-						signal
+						signal,
+						onProgress
 					}),
 					signal
 				);
@@ -2052,7 +2103,7 @@ export class AgenticChatTurnExecutor {
 					(error.code === 'read_tool_execution_failed' ||
 						error.code === 'read_tool_egress_blocked_private_content' ||
 						error.code === 'read_tool_egress_provenance_required' ||
-						(['web_search', 'web_visit'].includes(step.toolName) &&
+						(['web_search', 'web_visit', 'web_navigate'].includes(step.toolName) &&
 							[
 								'read_tool_timeout',
 								'read_tool_research_review_unavailable',
@@ -2295,8 +2346,12 @@ export class AgenticChatTurnExecutor {
 			code === 'read_tool_egress_blocked_private_content' ||
 			code === 'read_tool_egress_provenance_required';
 		const deniedPageVisit =
-			code === 'read_tool_egress_provenance_required' && step.toolName === 'web_visit';
-		const webResearch = step.toolName === 'web_search' || step.toolName === 'web_visit';
+			code === 'read_tool_egress_provenance_required' &&
+			(step.toolName === 'web_visit' || step.toolName === 'web_navigate');
+		const webResearch =
+			step.toolName === 'web_search' ||
+			step.toolName === 'web_visit' ||
+			step.toolName === 'web_navigate';
 		const error =
 			code === 'read_tool_egress_blocked_private_content'
 				? 'Email lookup did not run: mailbox egress is restricted after reading private content.'
@@ -2382,7 +2437,7 @@ export class AgenticChatTurnExecutor {
 						webResearch || policyDenied
 							? [
 									deniedPageVisit
-										? 'To find an authorized page, use web_search with include_domains for the relevant public domain, then open an exact URL returned by that successful search. Do not guess or modify URLs to bypass authorization.'
+										? "To reach a page linked from one you already opened, call web_navigate from that page with a goal; it follows the page's own links. Otherwise use web_search with include_domains for the relevant public domain and open an exact returned URL. Do not guess or modify URLs to bypass authorization."
 										: 'Do not repeat this failed lookup or route around an authorization denial.',
 									'Continue useful work using loaded context and any successful research results. Disclose which live facts could not be verified; cite only evidence that actually returned.'
 								].join(' ')

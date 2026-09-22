@@ -1290,8 +1290,7 @@ describe('table row update_onto_project', () => {
 				end_at: null,
 				props: {
 					color: 'blue',
-					preferences: { secret: true },
-					agent_workspace: { mode: 'living_reference' }
+					preferences: { secret: true }
 				}
 			}
 		});
@@ -1310,8 +1309,7 @@ describe('table row update_onto_project', () => {
 					end_at: null,
 					props: {
 						color: 'blue',
-						preferences: { hidden: true },
-						agent_workspace: { domain_profile: 'fiction_story' }
+						preferences: { hidden: true }
 					}
 				}
 			}
@@ -1325,7 +1323,7 @@ describe('table row update_onto_project', () => {
 				state_key: 'active',
 				start_at: '2026-08-11T00:00:00.000Z',
 				end_at: null,
-				props: { color: 'blue', agent_workspace: { domain_profile: 'fiction_story' } }
+				props: { color: 'blue' }
 			},
 			message: 'Updated ontology project "Renamed project"'
 		});
@@ -1373,7 +1371,6 @@ describe('table row update_onto_project', () => {
 				input({
 					project_id: PROJECT_ID,
 					props: {
-						agent_workspace: { mode: 'living_reference' },
 						preferences: { hidden: true }
 					}
 				})

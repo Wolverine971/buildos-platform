@@ -108,6 +108,12 @@ const workspacePackageAliases = [
 		)
 	},
 	{
+		find: /^@buildos\/shared-agent-ops\/web\/navigation$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-agent-ops/src/web/navigation.ts', import.meta.url)
+		)
+	},
+	{
 		find: /^@buildos\/shared-agent-ops\/web\/safe-fetch$/,
 		replacement: fileURLToPath(
 			new URL('../../packages/shared-agent-ops/src/web/safe-fetch.ts', import.meta.url)

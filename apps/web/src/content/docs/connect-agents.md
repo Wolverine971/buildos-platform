@@ -8,7 +8,7 @@ seoDescription: Connect Claude Code, ChatGPT, Codex, OpenClaw, and custom MCP or
 seoKeywords: BuildOS agents, MCP connector, Claude Code MCP, ChatGPT Actions, ChatGPT remote MCP, Codex MCP, OpenClaw, agent keys, OAuth remote MCP
 icon: Plug
 order: 9
-lastUpdated: 2026-09-01
+lastUpdated: 2026-09-22
 path: apps/web/src/content/docs/connect-agents.md
 ---
 
@@ -25,6 +25,7 @@ BuildOS is usually a workspace with many projects. After an agent connects, it s
 1. If using MCP, initialize the MCP connection and call `tools/list`. If using the JSON-RPC gateway, call `call.dial` first, then `tools/list`.
 2. Use the direct tool names returned by `tools/list`.
 3. If it is about to work inside an existing project, call `get_onto_project_status` with the `project_id` first.
+4. If the project it needs is missing, or a call fails with `project_not_granted_to_connector`, give you the `grant_url` from the response and retry after you approve. See [When an agent can't see a project](#when-an-agent-cant-see-a-project).
 
 `get_onto_project_status` is the BuildOS equivalent of `git status` for a project. It returns the compact snapshot an agent needs before deeper reads or writes: START HERE orientation context, project description, task/document/plan/goal/collaborator counts, active collaborators, recent changes, overdue and due-soon tasks, and upcoming events.
 
@@ -60,7 +61,9 @@ The MCP endpoint supports three profiles:
 4. Pick a **scope**:
     - `read_only` — reads only, no writes.
     - `read_write` — reads plus the writes you whitelist.
-5. Choose **which projects** the key can see — all of them or an explicit list.
+5. Choose **which projects** the key can see:
+    - **All standard projects** (default) — every project you own, including ones you create later.
+    - **Only selected projects** — a fixed list. Picking every project here freezes today's list, so BuildOS warns you and offers to switch to All standard projects.
 6. If you picked `read_write`, whitelist the specific write ops.
 7. Copy the profile-specific setup block. The one-time secret shows only once; BuildOS stores a prefix for identification and never the full key.
 8. Save it in the profile's config, secret store, Action auth field, or connector backend.
@@ -214,12 +217,25 @@ Choose **OpenClaw** when generating the key. Store the values in OpenClaw env, S
 
 ## What you can scope
 
-| Control                | What it does                                                                       |
-| ---------------------- | ---------------------------------------------------------------------------------- |
-| **Mode**               | `read_only` blocks every write op. `read_write` allows the ones you whitelist.     |
-| **Project scope**      | All projects or an explicit allowlist. Keys can't reach projects outside the list. |
-| **Write op whitelist** | Per-op toggle for every mutation the gateway exposes.                              |
-| **Audit trail**        | Every call is logged with the key prefix, the op, and the entity touched.          |
+| Control                | What it does                                                                                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Mode**               | `read_only` blocks every write op. `read_write` allows the ones you whitelist.                                              |
+| **Project scope**      | All standard projects (includes future ones) or a fixed list. Shared and restricted projects always need an explicit grant. |
+| **Write op whitelist** | Per-op toggle for every mutation the gateway exposes.                                                                       |
+| **Audit trail**        | Every call is logged with the key prefix, the op, and the entity touched.                                                   |
+
+## When an agent can't see a project
+
+If a key is limited to selected projects and your agent reaches for one outside that list, BuildOS doesn't just refuse. The response includes a `grant_url`, and project lists include a count of projects the agent can't see. Neither ever shows the hidden projects' names. Open the link and choose:
+
+- **Share just this project** — adds that one project, at the key's existing read or read/write level.
+- **Share all my projects** — switches the key to All standard projects, so this won't come up again.
+
+The agent retries and keeps working. The key isn't rotated and nothing reconnects. Every grant is logged. You can also open `/profile/agent-keys/<key id>/grant` directly to see and share everything a key can't reach yet.
+
+Saving a key from the Agent Keys editor re-issues a static key's secret, so update the client's config afterward. The grant page never rotates the key. OAuth connectors are always edited in place.
+
+Projects marked **restricted**, and projects someone else shared with you, are never included automatically. Grant them one by one.
 
 ## Permission bundles
 

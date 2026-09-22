@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	buildTaskConflictCandidatePairs,
 	buildHeuristicProjectManagerBrief,
+	generateDocOrganization,
 	generateDrift,
 	generateProjectBrief,
 	generateProjectManagerBrief,
@@ -538,6 +539,44 @@ describe('project loop generators', () => {
 		expect(brief.decision_item_ids).toEqual([]);
 	});
 
+	it('keeps decision options whose ids are snake_case keys', async () => {
+		const brief = await generateProjectManagerBrief({
+			llm: makeLlm({
+				brief: {
+					attention_level: 'decision',
+					decision: {
+						question: 'Which announcement task should stay?',
+						recommendation: 'Merge the draft into the launch announcement task.',
+						why_user_needed: 'Only you know which task the team is working from.',
+						options: [
+							{ id: 'keep_both', label: 'Keep both tasks', description: null },
+							{
+								id: 'merge_tasks',
+								label: 'Merge the two tasks',
+								description: 'Fold the draft task into the announcement task.'
+							}
+						],
+						recommended_option_id: 'merge_tasks',
+						recommended_suggestion_id: 'suggestion-1',
+						candidate_ids: ['suggestion-1']
+					}
+				}
+			}),
+			ctx: makeContext(),
+			candidates: makeReviewCandidates(),
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(brief.decision?.options.map((option) => option.id)).toEqual([
+			'keep_both',
+			'merge_tasks'
+		]);
+		expect(brief.decision?.options[0]?.label).toBe('Keep both tasks');
+		expect(brief.decision?.recommended_option_id).toBe('merge_tasks');
+		expect(brief.decision?.recommended_suggestion_id).toBe('suggestion-1');
+	});
+
 	it('turns task conflicts into reversible non-destructive task flags', async () => {
 		const suggestions = await generateTaskConflicts({
 			llm: makeLlm({
@@ -727,6 +766,83 @@ describe('project loop generators', () => {
 		});
 
 		expect(suggestions).toEqual([]);
+	});
+
+	it('drops a whole suggestion when any proposed operation fails sanitization', async () => {
+		const base = makeContext();
+		const ctx: LoopContext = {
+			...base,
+			documents: [
+				...base.documents,
+				{
+					id: 'doc-2',
+					title: 'Launch checklist',
+					type_key: 'document.checklist',
+					state_key: 'active',
+					description: null,
+					updated_at: '2026-06-22T00:00:00.000Z',
+					parent_id: null
+				},
+				{
+					id: 'doc-3',
+					title: 'Launch copy',
+					type_key: 'document.notes',
+					state_key: 'active',
+					description: null,
+					updated_at: '2026-06-22T00:00:00.000Z',
+					parent_id: null
+				}
+			]
+		};
+		const move = (documentId: string, position: number) => ({
+			tool: 'move_document_in_tree',
+			args: { document_id: documentId, new_parent_id: 'doc-1', new_position: position },
+			label: `Move ${documentId} under Launch plan`
+		});
+		// tests/setup.ts already silences console.warn; this spy reads its calls.
+		const warn = vi.spyOn(console, 'warn');
+
+		const suggestions = await generateDocOrganization({
+			llm: makeLlm({
+				suggestions: [
+					{
+						title: 'Group all launch material under "Launch plan"',
+						preview: {
+							kind: 'doc_tree',
+							summary: 'Move three documents under Launch plan.'
+						},
+						// One invented id among valid moves: approving the rest
+						// would apply less than the card describes.
+						operations: [move('doc-2', 0), move('doc-invented', 1), move('doc-3', 2)]
+					},
+					{
+						title: 'Group the checklist and copy under "Launch plan"',
+						preview: {
+							kind: 'doc_tree',
+							summary: 'Move two documents under Launch plan.'
+						},
+						operations: [move('doc-2', 0), move('doc-3', 1)]
+					}
+				]
+			}),
+			ctx,
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions).toHaveLength(1);
+		expect(suggestions[0]).toMatchObject({
+			kind: 'doc_org',
+			title: 'Group the checklist and copy under "Launch plan"',
+			operations: [
+				{ args: { document_id: 'doc-2', project_id: 'project-1' } },
+				{ args: { document_id: 'doc-3', project_id: 'project-1' } }
+			]
+		});
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining('1 of 3 proposed operations were invalid'),
+			{ projectId: 'project-1' }
+		);
 	});
 
 	it('emits drift as an evidence-backed no-op review item', async () => {

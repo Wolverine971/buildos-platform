@@ -62,10 +62,6 @@ import {
 	isAppendOrMergeUpdateStrategy
 } from '$lib/services/agentic-chat/shared/update-value-validation';
 import { TASK_STATES } from '$lib/types/onto';
-import {
-	AGENT_WORKSPACE_PROP,
-	readAgentWorkspaceMetadata
-} from '$lib/services/agentic-chat/project-domain-profiles';
 
 const logger = createLogger('OntologyWriteExecutor');
 
@@ -314,16 +310,6 @@ function buildContextDocumentSpec(
 	args: CreateOntoProjectArgs
 ): CreateOntoProjectArgs['context_document'] {
 	const provided = args.context_document;
-	const agentWorkspace = readAgentWorkspaceMetadata(args.project.props);
-	const withWorkspaceMetadata = (
-		props: Record<string, unknown> | undefined
-	): Record<string, unknown> | undefined => {
-		if (!agentWorkspace) return props;
-		return {
-			...(props ?? {}),
-			[AGENT_WORKSPACE_PROP]: agentWorkspace
-		};
-	};
 	// Support both content (new) and body_markdown (legacy) parameters
 	const providedContent = provided?.content ?? provided?.body_markdown;
 	if (provided?.title?.trim() && providedContent?.trim()) {
@@ -332,8 +318,7 @@ function buildContextDocumentSpec(
 			content: providedContent,
 			body_markdown: providedContent, // Keep for backwards compat
 			type_key: provided.type_key ?? 'document.context.project',
-			state_key: provided.state_key ?? 'draft',
-			props: withWorkspaceMetadata(provided.props)
+			state_key: provided.state_key ?? 'draft'
 		};
 	}
 
@@ -356,8 +341,7 @@ function buildContextDocumentSpec(
 		spark,
 		goals: entityGoals,
 		tasks: entityTasks.map((task) => ({ title: task.title, stateKey: task.state_key })),
-		generatedAt: new Date().toISOString(),
-		props: agentWorkspace ? { [AGENT_WORKSPACE_PROP]: agentWorkspace } : undefined
+		generatedAt: new Date().toISOString()
 	});
 }
 

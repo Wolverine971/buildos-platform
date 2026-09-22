@@ -9,6 +9,7 @@ import {
 import {
 	getLatestPublicPageReviewForDocument,
 	isPublicPageReviewReusableForDocument,
+	PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE,
 	runPublicPageContentReview
 } from '$lib/server/public-page-content-review.service';
 import { ensureDocumentAccessForPublicPage } from '../../../shared-public-page';
@@ -58,6 +59,15 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 					? 'Content review flagged this page and admin marked it not okay. Update the document and try publishing again.'
 					: 'Content review flagged this page and is awaiting admin approval. Ask an admin to review and mark this content okay.';
 			return ApiResponse.error(message, 422, 'CONTENT_REVIEW_FLAGGED', { review });
+		}
+		if (review.status === 'error') {
+			// The review could not run (e.g. LLM outage). Fail closed and ask for a retry.
+			return ApiResponse.error(
+				review.summary ?? PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE,
+				503,
+				'CONTENT_REVIEW_UNAVAILABLE',
+				{ review }
+			);
 		}
 
 		const publicPage = await confirmDocumentPublicPage(

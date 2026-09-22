@@ -1,7 +1,11 @@
 // packages/agentic-chat-runtime/src/loop/web-egress-policy.ts
 import type { JsonObject } from '@buildos/shared-types';
 
-export type AgenticChatWebEgressToolName = 'web_search' | 'web_visit' | 'search_email_messages';
+export type AgenticChatWebEgressToolName =
+	| 'web_search'
+	| 'web_visit'
+	| 'web_navigate'
+	| 'search_email_messages';
 
 export type AgenticChatWebEgressProvenanceDecision =
 	| { allowed: true }
@@ -17,6 +21,7 @@ export type AgenticChatWebEgressProvenanceDecision =
 const WEB_EGRESS_TOOL_NAMES = new Set<AgenticChatWebEgressToolName>([
 	'web_search',
 	'web_visit',
+	'web_navigate',
 	'search_email_messages'
 ]);
 
@@ -98,6 +103,27 @@ export function evaluateAgenticChatWebEgressProvenance(params: {
 			return { allowed: false, reason: 'search_review_required' };
 		}
 		return { allowed: true };
+	}
+
+	if (toolName === 'web_navigate') {
+		// The start URL follows web_visit provenance. Every later hop is a link
+		// copied verbatim from a fetched page and chosen by a decision model that
+		// cannot author text, so no model-written URL ever leaves the worker. The
+		// goal goes only to that model, never to a website.
+		const requestedUrl = canonicalizeHttpUrl(readNonemptyText(params.arguments.url));
+		if (!requestedUrl || !readNonemptyText(params.arguments.goal)) {
+			return { allowed: false, reason: 'invalid_web_egress_arguments' };
+		}
+		if (hasNegatedWebEgressRequest(params.userMessage, 'visit')) {
+			return { allowed: false, reason: 'url_not_explicitly_requested' };
+		}
+		if (
+			extractHttpUrls(params.userMessage).has(requestedUrl) ||
+			params.knownResearchUrl === true
+		) {
+			return { allowed: true };
+		}
+		return { allowed: false, reason: 'url_not_explicitly_requested' };
 	}
 
 	if (toolName === 'web_visit') {

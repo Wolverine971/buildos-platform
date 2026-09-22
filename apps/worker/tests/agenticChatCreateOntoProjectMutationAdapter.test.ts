@@ -184,7 +184,21 @@ describe('AgenticChatCreateOntoProjectMutationAdapter', () => {
 		});
 	});
 
-	it('rejects graph creation, project scope, fiction profiles, and unreviewed props', async () => {
+	it('admits creative book and novel project types', async () => {
+		for (const typeKey of ['project.creative.novel', 'project.creative.book.nonfiction']) {
+			const runGateway = vi.fn(async () => ({ ok: true, data: successData() }));
+			const adapter = new AgenticChatCreateOntoProjectMutationAdapter({} as never, {
+				runGateway: runGateway as never
+			});
+			const input = mutationInput() as any;
+			input.arguments.project.type_key = typeKey;
+			await adapter.execute(input);
+			expect(runGateway).toHaveBeenCalledOnce();
+			expect((runGateway.mock.calls[0] as any)[0].args.project.type_key).toBe(typeKey);
+		}
+	});
+
+	it('rejects graph creation, project scope, and unreviewed props', async () => {
 		const runGateway = vi.fn();
 		const adapter = new AgenticChatCreateOntoProjectMutationAdapter({} as never, {
 			runGateway: runGateway as never
@@ -207,14 +221,8 @@ describe('AgenticChatCreateOntoProjectMutationAdapter', () => {
 			failureCode: 'mutation_context_invalid'
 		});
 
-		const fiction = mutationInput() as any;
-		fiction.arguments.project.type_key = 'project.creative.novel';
-		await expect(adapter.execute(fiction)).rejects.toMatchObject({
-			failureCode: 'mutation_arguments_not_admitted'
-		});
-
 		const reserved = mutationInput() as any;
-		reserved.arguments.project.props.agent_workspace = { mode: 'living_reference' };
+		reserved.arguments.project.props.unsupported_field = { mode: 'custom' };
 		await expect(adapter.execute(reserved)).rejects.toMatchObject({
 			failureCode: 'mutation_arguments_not_admitted'
 		});

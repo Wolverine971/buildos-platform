@@ -53,6 +53,7 @@
 	} from '$lib/services/agentic-chat-v2/worker-transport-client';
 	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
+	import { mergeToolProgressStep, type ToolProgressStep } from './agent-chat-tool-progress';
 	import {
 		findThinkingBlockById,
 		type ActivityEntry,
@@ -1880,6 +1881,30 @@
 		}));
 	}
 
+	function appendToolProgress(toolCallId: string, step: ToolProgressStep): boolean {
+		if (!currentThinkingBlockId) return false;
+		let matched = false;
+		updateThinkingBlock(currentThinkingBlockId, (block) => {
+			const index = block.activities.findIndex(
+				(activity) =>
+					activity.toolCallId === toolCallId && activity.activityType === 'tool_call'
+			);
+			if (index === -1) return block;
+			matched = true;
+			const activity = block.activities[index]!;
+			const activities = [...block.activities];
+			activities[index] = {
+				...activity,
+				metadata: {
+					...activity.metadata,
+					progressSteps: mergeToolProgressStep(activity.metadata?.progressSteps, step)
+				}
+			};
+			return { ...block, activities };
+		});
+		return matched;
+	}
+
 	function updateActivityStatus(
 		toolCallId: string,
 		status: 'completed' | 'failed',
@@ -2345,6 +2370,7 @@
 			updateState: updateThinkingBlockState,
 			upsertSkillActivity: upsertSkillActivityInThinkingBlock,
 			updateActivityStatus,
+			appendToolProgress,
 			finalize: finalizeThinkingBlock,
 			getCurrentBlockId: () => currentThinkingBlockId
 		},

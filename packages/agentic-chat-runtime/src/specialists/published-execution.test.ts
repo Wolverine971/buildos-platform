@@ -52,6 +52,68 @@ describe('explicit published specialist execution', () => {
 			)
 		).toEqual(snapshot);
 	});
+	it('accepts a frozen recommendation and rejects an altered inner receipt on recovery', async () => {
+		const published = await catalog();
+		const candidate = {
+			draftId: published.snapshot.draftId,
+			version: 1,
+			draftRevision: 1,
+			snapshotHash: published.snapshotHash,
+			name: published.snapshot.definition.label,
+			createdAt: '2026-09-22T00:00:00Z',
+			description: published.snapshot.definition.description,
+			expertise: [...published.snapshot.definition.expertise],
+			documentReadEnabled: true
+		};
+		const input = {
+			version: 'specialist_recommendation_input_v1' as const,
+			policy: 'jev_specialist_choice_v1' as const,
+			projectId: 'ad000000-0000-4000-8000-000000000002',
+			question: 'Review our saved research.',
+			candidates: [candidate]
+		};
+		const result = {
+			status: 'selected' as const,
+			selected: candidate,
+			ranking: [
+				{ draftId: candidate.draftId, version: 1, name: candidate.name, probability: 0.9 }
+			],
+			confidence: 0.9,
+			margin: 0.8,
+			reason: 'Best fit',
+			durationMs: 20,
+			costUsd: 0.0001,
+			provider: {
+				model: 'typesafe/jev-1.13',
+				requestId: 'mock',
+				inputTokens: 20,
+				outputTokens: 4,
+				attempts: 1
+			}
+		};
+		const recommendation = {
+			id: 'ad000000-0000-4000-8000-000000000003',
+			input,
+			inputHash: await hashSpecialistWorkbenchValue(input),
+			result,
+			resultHash: await hashSpecialistWorkbenchValue(result)
+		};
+		const snapshot = await buildPublishedSpecialistSnapshotV3({ ...published, recommendation });
+		expect(snapshot.editorTask).toContain('Answer the user question directly');
+		expect(
+			await parseExecutableSpecialistSnapshot(
+				snapshot,
+				await hashExecutableSpecialistSnapshot(snapshot)
+			)
+		).toEqual(snapshot);
+		snapshot.recommendation!.result.selected!.snapshotHash = '0'.repeat(64);
+		await expect(
+			parseExecutableSpecialistSnapshot(
+				snapshot,
+				await hashExecutableSpecialistSnapshot(snapshot)
+			)
+		).rejects.toThrow('Invalid specialist recommendation receipt');
+	});
 	it.each(['modelPolicy', 'budgetPolicy', 'limits', 'capabilities', 'inputContract'])(
 		'rejects a rehashed catalog with escalated %s',
 		async (key) => {

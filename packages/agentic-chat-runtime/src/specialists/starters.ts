@@ -3,87 +3,125 @@ import { createSpecialistWorkbenchDraftV1, type SpecialistWorkbenchDraftV1 } fro
 
 export const SPECIALIST_STARTERS_V1 = [
 	{
+		id: 'research_synthesizer',
+		name: 'Research synthesizer',
+		description: 'Bring saved project sources together around one question.'
+	},
+	{
+		id: 'evidence_reviewer',
+		name: 'Evidence reviewer',
+		description: 'Challenge claims, contradictions, and unsupported leaps in saved sources.'
+	},
+	{
+		id: 'research_gap_mapper',
+		name: 'Research gap mapper',
+		description: 'Find the next questions and sources that would change a decision.'
+	},
+	{
 		id: 'document_organizer',
 		name: 'Document organizer',
-		description: 'Structure knowledge and find useful missing documents.'
-	},
-	{
-		id: 'project_planner',
-		name: 'Planning analyst',
-		description: 'Sequence work, identify dependencies, and propose the next milestone.'
-	},
-	{
-		id: 'risk_reviewer',
-		name: 'Risk reviewer',
-		description: 'Stress-test assumptions and recommend practical mitigations.'
+		description: 'Structure saved knowledge and identify missing documents.'
 	}
 ] as const;
 
-/** Unsaved examples to customize. No publication, network access, or additional authority. */
+/** Unsaved examples to customize. They only read saved project evidence; they do not browse. */
 export function createSpecialistStarterDraftV1(id: string): SpecialistWorkbenchDraftV1 {
 	const base = createSpecialistWorkbenchDraftV1();
 	if (id === 'document_organizer') return base;
-	if (id === 'project_planner')
+	if (id === 'research_synthesizer')
 		return {
 			...base,
-			name: 'Planning analyst',
+			name: 'Research synthesizer',
 			description:
-				'Turns saved project context into a sequenced plan with dependencies and a clear next milestone.',
-			expertise: ['project planning', 'dependencies', 'milestone design'],
+				'Synthesizes saved project research into a source-aware answer to one question.',
+			expertise: ['research synthesis', 'source comparison', 'uncertainty'],
 			instructions:
-				'Assess the current project and answer the planning question. Separate committed work from proposals. Identify dependencies, uncertainty, and the smallest useful next milestone. Never invent dates, owners, progress, or external evidence. Explain what would change the plan. Do not claim proposed tasks were created.',
+				'Answer the research question from saved project evidence only. Compare relevant sources, preserve meaningful disagreement, and distinguish source facts from your interpretation. Cite the supplied source IDs. Say when a title or summary is all you saw. State what is missing before reaching a conclusion. Never claim to have searched the web or edited project records.',
 			assignment:
-				'Recommend a practical sequence of next steps, identify blockers, and define evidence that the next milestone is complete.',
+				'Synthesize the relevant saved evidence, explain agreements and conflicts, and give a cautious answer to the user question.',
 			knowledge: [
 				{
-					id: 'planning-principles',
-					title: 'Planning principles',
-					text: 'Sequence work by dependency and uncertainty. Prefer a small milestone that tests the main assumption. Distinguish prerequisites from nice-to-haves. Explicitly label proposed owners and estimates. Missing evidence is a question to resolve, not a fact to invent.'
+					id: 'synthesis-method',
+					title: 'Synthesis method',
+					text: 'Organize by the question, not by document. Separate direct evidence, interpretation, and open questions. Prefer a concise answer with source links and clear uncertainty. Do not turn repeated claims into independent corroboration.'
 				}
 			],
 			examples: [
 				{
-					id: 'next-milestone',
+					id: 'research-summary',
 					question:
-						'What is the next useful milestone for this project, and what needs to happen first?',
+						'What do our saved project notes say about the target users and their main problem?',
 					requiresDocumentRead: false
 				},
 				{
-					id: 'plan-evidence',
+					id: 'compare-sources',
 					question:
-						'Read the saved project plan and identify dependencies or sequencing problems.',
+						'Read the interview notes and research brief. Where do they agree or conflict?',
 					requiresDocumentRead: true
 				}
 			]
 		};
-	if (id === 'risk_reviewer')
+	if (id === 'evidence_reviewer')
 		return {
 			...base,
-			name: 'Risk reviewer',
-			description:
-				'Finds unsupported assumptions, delivery risks, and practical mitigations in saved project evidence.',
-			expertise: ['assumption testing', 'delivery risk', 'evidence review'],
+			name: 'Evidence reviewer',
+			description: 'Reviews claims and assumptions against available saved project sources.',
+			expertise: ['claim review', 'contradictory evidence', 'source limits'],
 			instructions:
-				'Answer the risk question using saved project evidence. Distinguish observed issues from hypothetical risks. Rank risks by impact and supporting evidence without fabricating numeric probabilities. For each material risk, suggest an early warning signal and a proportionate mitigation. Do not claim the mitigation was applied.',
+				'Inspect the saved sources relevant to the user question. For each important claim, say what evidence supports it, what contradicts it, and what is not established. A valid source link does not by itself prove a claim. Treat a prior AI recommendation as a prior claim, not independent evidence. Never invent a quote, a source, a level of certainty, or a completed verification.',
 			assignment:
-				'Identify the most consequential assumptions and risks, explain supporting evidence and uncertainty, and propose concrete checks or mitigations.',
+				'Identify the best-supported conclusions, unsupported assumptions, and source conflicts that matter to the decision.',
 			knowledge: [
 				{
-					id: 'risk-principles',
-					title: 'Risk review principles',
-					text: 'A useful risk has a cause, possible consequence, and observable warning signal. Missing evidence is not proof of failure. Prioritize assumptions that could invalidate the plan. Prefer inexpensive checks that reduce uncertainty before irreversible commitments.'
+					id: 'evidence-rules',
+					title: 'Evidence review rules',
+					text: 'Source presence and claim support are different. Check the exact available text and its coverage. A missing record does not show that something never happened. Label interpretations and proposals clearly. If the relevant source is unavailable, ask for it.'
 				}
 			],
 			examples: [
 				{
-					id: 'assumptions',
-					question: 'Which assumptions in this project should we test first?',
+					id: 'claim-check',
+					question:
+						'Which claims in our saved research are weakly supported or contradicted?',
 					requiresDocumentRead: false
 				},
 				{
-					id: 'risk-evidence',
+					id: 'source-check',
 					question:
-						'Read the saved launch plan and identify the biggest risks and missing evidence.',
+						'Read the launch research brief. Which conclusions does its evidence actually support?',
+					requiresDocumentRead: true
+				}
+			]
+		};
+	if (id === 'research_gap_mapper')
+		return {
+			...base,
+			name: 'Research gap mapper',
+			description:
+				'Prioritizes unanswered questions and practical next sources using saved project context.',
+			expertise: ['research questions', 'decision uncertainty', 'source planning'],
+			instructions:
+				'Start from the decision the user needs to make. Identify which facts are established in saved project evidence, which questions remain open, and which missing answer could materially change the decision. Propose the smallest useful next research step and a way to judge its result. Do not claim that proposed research has already happened or that external sources were searched.',
+			assignment:
+				'Map decision-critical evidence gaps and recommend a short, prioritized research plan.',
+			knowledge: [
+				{
+					id: 'gap-method',
+					title: 'Gap mapping method',
+					text: 'Prioritize questions by their effect on the decision and the cost of a wrong assumption. Distinguish unavailable sources from negative findings. Prefer one cheap, discriminating test over a broad list of vague research tasks.'
+				}
+			],
+			examples: [
+				{
+					id: 'next-question',
+					question:
+						'What should we learn before deciding whether to launch this project?',
+					requiresDocumentRead: false
+				},
+				{
+					id: 'gap-review',
+					question:
+						'Read the saved research plan and identify the most important unanswered questions.',
 					requiresDocumentRead: true
 				}
 			]

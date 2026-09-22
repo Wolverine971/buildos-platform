@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/public-page.service.ts
 import { updateDocNodeMetadata } from '$lib/services/ontology/doc-structure.service';
 import {
+	PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE,
 	runPublicPageContentReview,
 	type PublicPageReviewAttempt
 } from '$lib/server/public-page-content-review.service';
@@ -693,6 +694,30 @@ export async function syncLivePublicPageForDocument(
 					? `${message}: ${reviewError.message}`
 					: message,
 			review: null
+		};
+	}
+	if (review.status === 'error') {
+		// The review could not run (e.g. LLM outage). Fail closed: keep the last
+		// published snapshot and surface a retryable message, not a policy block.
+		const message = review.summary ?? PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE;
+		const { data: unavailableRow } = await (supabase as any)
+			.from('onto_public_pages')
+			.update({
+				last_live_sync_error: message,
+				updated_by: actorId
+			})
+			.eq('id', existing.id)
+			.select('*')
+			.maybeSingle();
+		return {
+			isLivePublic: true,
+			synced: false,
+			blocked: false,
+			page: unavailableRow
+				? toPublicPageState(unavailableRow as Record<string, any>)
+				: ({ ...existing, last_live_sync_error: message } as PublicPageState),
+			error: message,
+			review
 		};
 	}
 	if (review.status === 'flagged') {

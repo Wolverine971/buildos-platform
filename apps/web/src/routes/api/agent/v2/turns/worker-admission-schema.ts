@@ -148,7 +148,8 @@ export const workerAdmissionRequestSchema = z
 			.object({
 				draftId: z.string().uuid(),
 				version: z.number().int().min(1).max(50),
-				snapshotHash: z.string().regex(/^[a-f0-9]{64}$/)
+				snapshotHash: z.string().regex(/^[a-f0-9]{64}$/),
+				selectionDecisionId: z.string().uuid().optional()
 			})
 			.strict()
 			.nullable()

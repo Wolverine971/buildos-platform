@@ -23,7 +23,6 @@ import {
 import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 import {
-	demoteAgentWorkspaceForProjectType,
 	sanitizeProjectForClient,
 	sanitizeProjectPropsPatchInput
 } from '$lib/utils/project-props-sanitizer';
@@ -780,12 +779,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (typeof type_key === 'string') {
 			const typeKey = type_key.trim().toLowerCase();
 			updateData.type_key = typeKey;
-			// Demote-only: a retype may clear fiction routing, never set it.
-			const demoted = demoteAgentWorkspaceForProjectType(
-				updateData.props ?? existingProject.props,
-				typeKey
-			);
-			if (demoted) updateData.props = demoted;
 		}
 
 		// Handle next_step fields - user can manually set/edit these

@@ -234,8 +234,10 @@ function isWebPayloadTool(toolName: string | undefined): boolean {
 	return (
 		normalized === 'web_search' ||
 		normalized === 'web_visit' ||
+		normalized === 'web_navigate' ||
 		normalized === 'util.web.search' ||
-		normalized === 'util.web.visit'
+		normalized === 'util.web.visit' ||
+		normalized === 'util.web.navigate'
 	);
 }
 

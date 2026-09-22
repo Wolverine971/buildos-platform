@@ -23,6 +23,10 @@ import {
 	SpecialistWorkbenchStoreError,
 	type SpecialistWorkbenchClient
 } from '$lib/services/agentic-chat-v2/specialist-workbench.server';
+import {
+	loadSelectedSpecialistRecommendation,
+	SpecialistRecommendationError
+} from '$lib/services/agentic-chat-v2/specialist-recommendations.server';
 
 const logger = createLogger('API:AgentWorkflowReviewTurns');
 
@@ -33,6 +37,7 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 		AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED?: string;
 		AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED?: string;
 		AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED?: string;
+		AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED?: string;
 		AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED?: string;
 		AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED?: string;
 		AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS?: string;
@@ -93,7 +98,27 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 					409,
 					'The selected specialist version could not be verified. Select it again.'
 				);
-			published = { snapshot: selected.snapshot, snapshotHash: ref.snapshotHash };
+			let recommendation;
+			if (ref.selectionDecisionId) {
+				if (input.environment.AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED?.trim() !== 'true')
+					throw new SpecialistRecommendationError(
+						409,
+						'Jev recommendations are not enabled.'
+					);
+				recommendation = await loadSelectedSpecialistRecommendation({
+					client: input.workbenchClient,
+					userId: input.userId,
+					id: ref.selectionDecisionId,
+					projectId: eligibility.projectId,
+					question: eligibility.message,
+					selected: ref
+				});
+			}
+			published = {
+				snapshot: selected.snapshot,
+				snapshotHash: ref.snapshotHash,
+				...(recommendation ? { recommendation } : {})
+			};
 		}
 		const args = await buildAgenticChatWorkflowV4AdmissionArgs({
 			userId: input.userId,
@@ -125,7 +150,11 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 		preparationMs,
 		admissionMs,
 		// Built-ins use one RPC; custom selection adds the catalog read.
-		preQueueDbRoundTrips: input.command.publishedSpecialist ? 2 : 1,
+		preQueueDbRoundTrips: input.command.publishedSpecialist?.selectionDecisionId
+			? 3
+			: input.command.publishedSpecialist
+				? 2
+				: 1,
 		sessionCreated: result.outcome === 'newly_admitted' ? result.sessionCreated : null,
 		historyMessageCount: result.outcome === 'newly_admitted' ? result.historyMessageCount : null
 	});
@@ -178,7 +207,10 @@ function outcomeResponse(result: AgenticChatWorkflowV4AdmissionResultV1): Respon
 }
 
 function errorResponse(error: unknown): Response {
-	if (error instanceof SpecialistWorkbenchStoreError)
+	if (
+		error instanceof SpecialistWorkbenchStoreError ||
+		error instanceof SpecialistRecommendationError
+	)
 		return ApiResponse.error(
 			'Selected specialist is unavailable. Your draft has been kept. Select a published version and try again.',
 			HttpStatus.CONFLICT,

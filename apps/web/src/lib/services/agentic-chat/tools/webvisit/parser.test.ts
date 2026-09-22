@@ -64,6 +64,21 @@ describe('web visit parser', () => {
 		expect(parsed.content).not.toContain('Related classes should not dominate');
 	});
 
+	it('keeps page text inside a whole-page ASP.NET <form> wrapper', () => {
+		const html = `<html><head><title>Procurement</title></head><body><form id="aspnetForm" method="post">
+			<select name="lang"><option>Afrikaans</option><option>Español</option></select>
+			<div><h1>Procurement and Contracts</h1>
+			<p>${'MDOT publishes bid opportunities on eMMA. '.repeat(8)}</p></div>
+		</form></body></html>`;
+		const parsed = parseHtmlToText(html, {
+			mode: 'reader',
+			baseUrl: 'https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=11'
+		});
+		expect(parsed.content).toContain('Procurement and Contracts');
+		expect(parsed.content).toContain('MDOT publishes bid opportunities');
+		expect(parsed.content).not.toContain('Afrikaans');
+	});
+
 	it('extracts sanitized JSON-LD structured data', () => {
 		const html = `
 			<html>

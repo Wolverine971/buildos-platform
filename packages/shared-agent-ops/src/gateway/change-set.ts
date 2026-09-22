@@ -709,3 +709,186 @@ export async function commitChangeSet(params: {
 		}
 	};
 }
+
+const INTERRUPTED_COMMIT_CHANGE_ERROR =
+	'Not applied: the approval was interrupted before this change ran, so nothing changed for it. Propose it again if you still want it.';
+
+export type StalledCommitRecovery =
+	| { outcome: 'returned_to_review' }
+	| {
+			outcome: 'finalized';
+			runStatus: 'completed' | 'partial';
+			applied: number;
+			notApplied: number;
+	  }
+	| { outcome: 'skipped'; reason: 'not_found' | 'not_stalled' | 'no_change_set' | 'raced' };
+
+/**
+ * Recover a commit that claimed its run (proposal_ready -> running) and died
+ * before writing a terminal status, e.g. a web function killed mid-commit. The
+ * Agent Run stranded sweep used to see a jobless 'running' run and finalize it
+ * 'failed', which discarded the user's approval and left the Change Set pending
+ * (production run aecfb6b1, 2026-09-04).
+ *
+ * This cannot finish the commit for the user. Per-change decisions live only in
+ * the commit request and are saved with the terminal write, so a replay could
+ * apply a change the user dismissed. Instead:
+ * - Nothing applied (no successful commit telemetry row): hand the proposal back
+ *   to review (running -> proposal_ready) so the user can approve it again.
+ * - Some changes applied: finalize with what landed, and mark the rest not
+ *   applied. Returning it to review would re-run writes that already happened.
+ *
+ * Both transitions compare-and-swap on the stale commit_started_at, so a D9b
+ * re-entry that re-claimed the run wins and this becomes a no-op. The D9b caveat
+ * applies here too: a write that landed without its telemetry row counts as not
+ * applied.
+ */
+export async function recoverStalledCommit(params: {
+	admin: SupabaseClient<Database>;
+	runId: string;
+	now?: Date;
+}): Promise<StalledCommitRecovery> {
+	const { admin, runId } = params;
+	const nowMs = (params.now ?? new Date()).getTime();
+
+	const { data: run, error: runError } = await admin
+		.from('agent_runs')
+		.select(AGENT_RUN_CHANGE_SET_SELECT as '*')
+		.eq('id', runId)
+		.maybeSingle();
+	if (runError) throw new Error(`Failed to load stalled commit ${runId}: ${runError.message}`);
+	if (!run) return { outcome: 'skipped', reason: 'not_found' };
+
+	const commitStartedAt = run.commit_started_at;
+	const startedMs = commitStartedAt ? Date.parse(commitStartedAt) : Number.NaN;
+	if (
+		run.status !== 'running' ||
+		!commitStartedAt ||
+		!Number.isFinite(startedMs) ||
+		nowMs - startedMs <= STALE_COMMIT_MS
+	) {
+		return { outcome: 'skipped', reason: 'not_stalled' };
+	}
+	const changeSet = asChangeSet(run.change_set, runId);
+	if (!changeSet || changeSet.changes.length === 0) {
+		return { outcome: 'skipped', reason: 'no_change_set' };
+	}
+
+	const { data: appliedRows, error: appliedError } = await admin
+		.from('agent_tool_executions')
+		.select('proposed_change_id, entity_id, entity_kind')
+		.eq('agent_run_id', runId)
+		.eq('user_id', run.user_id)
+		.eq('mutation_mode', 'commit')
+		.eq('success', true);
+	if (appliedError) {
+		throw new Error(`Failed to load applied changes for ${runId}: ${appliedError.message}`);
+	}
+	const appliedByChangeId = new Map<
+		string,
+		{ entityId: string | null; entityKind: string | null }
+	>();
+	for (const row of appliedRows ?? []) {
+		const changeId = (row as { proposed_change_id?: unknown }).proposed_change_id;
+		if (typeof changeId !== 'string') continue;
+		appliedByChangeId.set(changeId, {
+			entityId: (row as { entity_id?: string | null }).entity_id ?? null,
+			entityKind: (row as { entity_kind?: string | null }).entity_kind ?? null
+		});
+	}
+
+	if (appliedByChangeId.size === 0) {
+		const { data: returned, error: returnError } = await admin
+			.from('agent_runs')
+			.update({ status: 'proposal_ready', commit_started_at: null })
+			.eq('id', runId)
+			.eq('status', 'running')
+			.eq('commit_started_at', commitStartedAt)
+			.select('id')
+			.maybeSingle();
+		if (returnError) {
+			throw new Error(`Failed to return ${runId} to review: ${returnError.message}`);
+		}
+		if (!returned) return { outcome: 'skipped', reason: 'raced' };
+		await syncRecoveredRunInbox(admin, runId);
+		return { outcome: 'returned_to_review' };
+	}
+
+	let applied = 0;
+	let notApplied = 0;
+	const entitiesTouched: EntityTouch[] = [];
+	for (const change of changeSet.changes) {
+		const prior = appliedByChangeId.get(change.id);
+		if (!prior) {
+			notApplied += 1;
+			change.error = INTERRUPTED_COMMIT_CHANGE_ERROR;
+			continue;
+		}
+		applied += 1;
+		change.decision = 'approved';
+		change.error = undefined;
+		const appliedId = prior.entityId ?? change.entity_id ?? undefined;
+		change.applied_entity_id = appliedId;
+		if (appliedId) {
+			entitiesTouched.push(
+				entityTouchFromAppliedChange(
+					change,
+					appliedId,
+					prior.entityKind,
+					run.project_id ?? null
+				)
+			);
+		}
+	}
+	changeSet.status = notApplied === 0 ? 'applied' : 'partially_applied';
+	const runStatus: 'completed' | 'partial' = notApplied === 0 ? 'completed' : 'partial';
+
+	const priorResult =
+		run.result && typeof run.result === 'object' && !Array.isArray(run.result)
+			? (run.result as Record<string, unknown>)
+			: {};
+	const priorTouched = Array.isArray(priorResult.entities_touched)
+		? (priorResult.entities_touched as EntityTouch[])
+		: [];
+	const { data: finalized, error: finalizeError } = await admin
+		.from('agent_runs')
+		.update({
+			status: runStatus,
+			change_set: changeSet as never,
+			result: {
+				...priorResult,
+				entities_touched: [...priorTouched, ...entitiesTouched],
+				proposed_changes: changeSet
+			} as never,
+			completed_at: new Date(nowMs).toISOString(),
+			error:
+				notApplied === 0
+					? null
+					: `commit interrupted: ${applied} of ${applied + notApplied} change(s) applied before the approval stopped`
+		})
+		.eq('id', runId)
+		.eq('status', 'running')
+		.eq('commit_started_at', commitStartedAt)
+		.select('id')
+		.maybeSingle();
+	if (finalizeError) {
+		throw new Error(`Failed to finalize stalled commit ${runId}: ${finalizeError.message}`);
+	}
+	if (!finalized) return { outcome: 'skipped', reason: 'raced' };
+	await syncRecoveredRunInbox(admin, runId);
+	return { outcome: 'finalized', runStatus, applied, notApplied };
+}
+
+async function syncRecoveredRunInbox(
+	admin: SupabaseClient<Database>,
+	runId: string
+): Promise<void> {
+	try {
+		await syncInboxItemForAgentRun({ supabase: admin as any, runId });
+	} catch (error) {
+		console.warn('[AI Inbox] Failed to sync recovered stalled commit', {
+			runId,
+			error: error instanceof Error ? error.message : String(error)
+		});
+	}
+}

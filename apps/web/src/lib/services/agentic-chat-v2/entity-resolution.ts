@@ -11,26 +11,6 @@ export type RecentEntityType =
 	| 'milestone'
 	| 'risk';
 
-export type ExplicitEntityMention = {
-	entityType: RecentEntityType;
-	id: string;
-	name?: string;
-};
-
-const UUID_PATTERN = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
-const ENTITY_CHIP_REGEX = new RegExp(
-	String.raw`\[\[(project|task|goal|plan|document|milestone|risk):(${UUID_PATTERN})\|([^\]]+)\]\]`,
-	'g'
-);
-const PROJECT_ID_REGEX = new RegExp(
-	String.raw`\*\*([^*]+?)\*\*.*?ID:\s*\`(${UUID_PATTERN})\``,
-	'g'
-);
-const NAMED_UUID_REGEX = new RegExp(
-	String.raw`\*\*([^*]+?)\*\*\s*\(\s*\`(${UUID_PATTERN})\`\s*\)`,
-	'g'
-);
-
 const ENTITY_LABELS: Record<RecentEntityType, string> = {
 	project: 'project',
 	task: 'task',
@@ -59,78 +39,6 @@ function normalizeText(value: string | null | undefined): string | null {
 	if (typeof value !== 'string') return null;
 	const normalized = value.replace(/\s+/g, ' ').trim();
 	return normalized.length > 0 ? normalized : null;
-}
-
-function inferEntityTypeFromLine(line: string): RecentEntityType {
-	const normalized = line.toLowerCase();
-	if (normalized.includes('document')) return 'document';
-	if (normalized.includes('goal')) return 'goal';
-	if (normalized.includes('plan')) return 'plan';
-	if (normalized.includes('milestone')) return 'milestone';
-	if (normalized.includes('risk')) return 'risk';
-	if (normalized.includes('project')) return 'project';
-	return 'task';
-}
-
-function pushMention(
-	target: ExplicitEntityMention[],
-	entityType: RecentEntityType,
-	id: string,
-	name?: string | null
-): void {
-	const normalizedId = normalizeText(id);
-	if (!normalizedId) return;
-	const normalizedName = normalizeText(name ?? null) ?? undefined;
-	const existing = target.find(
-		(item) => item.entityType === entityType && item.id === normalizedId
-	);
-	if (existing) {
-		if (!existing.name && normalizedName) {
-			existing.name = normalizedName;
-		}
-		return;
-	}
-
-	target.push({
-		entityType,
-		id: normalizedId,
-		name: normalizedName
-	});
-}
-
-export function extractExplicitEntityMentionsFromText(text: string): ExplicitEntityMention[] {
-	if (!normalizeText(text)) return [];
-
-	const mentions: ExplicitEntityMention[] = [];
-	const lines = text
-		.split(/\r?\n/)
-		.map((line) => line.replace(/\s+/g, ' ').trim())
-		.filter(Boolean);
-
-	for (const rawLine of lines) {
-		const line = rawLine.trim();
-		if (!line) continue;
-
-		for (const match of line.matchAll(ENTITY_CHIP_REGEX)) {
-			const [, entityType, id, name] = match;
-			if (!entityType || !id || !name) continue;
-			pushMention(mentions, entityType as RecentEntityType, id, name);
-		}
-
-		for (const match of line.matchAll(PROJECT_ID_REGEX)) {
-			const [, name, id] = match;
-			if (!name || !id) continue;
-			pushMention(mentions, 'project', id, name);
-		}
-
-		for (const match of line.matchAll(NAMED_UUID_REGEX)) {
-			const [, name, id] = match;
-			if (!name || !id) continue;
-			pushMention(mentions, inferEntityTypeFromLine(line), id, name);
-		}
-	}
-
-	return mentions;
 }
 
 function formatPreviewList(

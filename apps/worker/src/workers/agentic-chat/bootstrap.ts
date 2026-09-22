@@ -26,6 +26,12 @@ import {
 } from './mutationToolCatalog';
 import { createAgenticChatCompositionRoot } from './composition-root';
 import { JevToolSelector } from './provider/jev-tool-selector';
+import {
+	WEB_NAVIGATE_DECISION_TIMEOUT_MS,
+	WEB_NAVIGATE_MAX_REQUEST_BYTES,
+	WEB_NAVIGATE_MODEL,
+	createWorkerWebNavigatePort
+} from './tools/web-navigate';
 import { SPECIALIST_SHADOW_POLICY } from './workflow/specialist-selection-policy';
 import {
 	AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS,
@@ -404,6 +410,24 @@ function createDefaultComposition(
 					usage: usageLogger,
 					onUsageError: input.onUsageError
 				});
+	// web_navigate: Jev picks links, code fetches politely, Tavily renders pages a
+	// plain fetch cannot read. Same OpenRouter credential as the acting route.
+	const webNavigator = createWorkerWebNavigatePort({
+		jev: new JevClient({
+			apiKey: (
+				input.config.provider.routes.find((route) => route.kind === 'openrouter') ??
+				input.config.provider.routes[0]!
+			).apiKey,
+			model: WEB_NAVIGATE_MODEL,
+			timeoutMs: WEB_NAVIGATE_DECISION_TIMEOUT_MS,
+			maxRequestBytes: WEB_NAVIGATE_MAX_REQUEST_BYTES,
+			title: 'BuildOS Web Navigation',
+			usage: usageLogger,
+			...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {})
+		}),
+		tavilyApiKey:
+			process.env.PRIVATE_TAVILY_API_KEY?.trim() || process.env.TAVILY_API_KEY?.trim() || null
+	});
 	// Tasker 87: a separate client whose routes use only priced workflow models.
 	const workflowExecutionEnabled = input.config.workflowV4ExecutionEnabled === true;
 	const workflowClient = workflowExecutionEnabled
@@ -419,6 +443,7 @@ function createDefaultComposition(
 		providerClient,
 		semanticReviewerClient,
 		...(toolSelector ? { toolSelector } : {}),
+		webNavigator,
 		providerConfigured: true,
 		workflowPrototypeUserIds: input.config.workflowPrototypeUserIds,
 		workflowV4: {

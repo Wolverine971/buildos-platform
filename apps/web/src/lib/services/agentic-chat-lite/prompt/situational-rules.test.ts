@@ -68,16 +68,6 @@ describe('resolveLitePromptTurnSituation', () => {
 		expect(situation.writeIntent).toBe(true);
 	});
 
-	it('flags writes on an implicit living-reference capture turn', () => {
-		const situation = resolveLitePromptTurnSituation({
-			toolNames: ['get_document_outline', 'update_onto_document'],
-			latestUserMessage: 'Mara stops trusting Ilyan after she finds the ledger.',
-			livingWorkspace: true,
-			livingWorkspaceCapture: true
-		});
-		expect(situation.writeIntent).toBe(true);
-	});
-
 	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F01: web_search/web_visit and
 	// delegate_task ride every global and project surface since stage S6, so a
 	// mount-keyed trigger rendered ~2,050 chars of research and delegation
@@ -202,8 +192,6 @@ describe('renderSituationalRulesContent', () => {
 			const content = renderSituationalRulesContent({
 				writeIntent: true,
 				webResearch: false,
-				livingWorkspace: true,
-				livingWorkspaceCapture: true,
 				workerBound
 			});
 			const clarificationMentions = (content ?? '')
@@ -258,40 +246,6 @@ describe('renderSituationalRulesContent', () => {
 		expect(content).toBeNull();
 		expect(hasActiveSituation(situation)).toBe(false);
 		expect(situation).not.toHaveProperty('reviewDelegation');
-	});
-
-	it('renders the living-reference agreement without turning brainstorming into canon', () => {
-		const content = renderSituationalRulesContent({
-			writeIntent: true,
-			webResearch: false,
-			livingWorkspace: true,
-			domainProfile: 'fiction_story',
-			domainAffinity: 'writing.fiction'
-		});
-		expect(content).toContain('active living-reference agreement');
-		expect(content).toContain('Domain affinity: writing.fiction (fiction_story)');
-		expect(content).toContain('updates to the project reference');
-		expect(content).toContain('assistant-generated options are proposals, not durable facts');
-		expect(content).toContain('add hierarchy only when document density makes grouping useful');
-		expect(content).not.toContain('This is an implicit capture turn');
-	});
-
-	it('requires a durable write on a living-reference capture turn', () => {
-		const situation = resolveLitePromptTurnSituation({
-			toolNames: ['get_document_outline', 'update_onto_document'],
-			pendingTurnContract: false,
-			latestUserMessage: 'Mara stops trusting Ilyan after she finds the ledger.',
-			livingWorkspace: true,
-			livingWorkspaceCapture: true,
-			domainProfile: 'fiction_story',
-			domainAffinity: 'writing.fiction'
-		});
-		const content = renderSituationalRulesContent(situation);
-
-		expect(situation.livingWorkspaceCapture).toBe(true);
-		expect(content).toContain('This is an implicit capture turn');
-		expect(content).toContain('perform the smallest relevant durable document write');
-		expect(content).toContain('Do not merely acknowledge or promise an update');
 	});
 });
 

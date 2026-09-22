@@ -45,6 +45,7 @@ import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
 import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
 import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
 import type { AgenticChatWebSearchReviewPort } from './web-search-review';
+import { type WebNavigatePort, describeWebNavigationStep } from './web-navigate';
 import {
 	type AgentRunWebUrlCapabilityLedger,
 	createAgentRunWebUrlCapabilityLedger
@@ -205,7 +206,8 @@ const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
 
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
 	'web_search',
-	'web_visit'
+	'web_visit',
+	'web_navigate'
 ] as const);
 
 /**
@@ -316,6 +318,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			timeoutMs?: number;
 			webResearchTimeoutMs?: number;
 			webResearch?: WebResearchPort;
+			webNavigator?: WebNavigatePort;
 			webSearchReviewer?: AgenticChatWebSearchReviewPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
 			createCalendarPort?: (userId: string) => AgenticChatCalendarReadPortV1;
@@ -351,6 +354,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			Math.floor(options.turnSecurityStateTtlMs ?? TURN_SECURITY_STATE_TTL_MS)
 		);
 		this.webResearch = options.webResearch;
+		this.webNavigator = options.webNavigator;
 		this.webSearchReviewer = options.webSearchReviewer;
 		this.createAccessAdapter =
 			options.createAccessAdapter ??
@@ -410,6 +414,12 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 				if (provenance.reason === 'search_review_required') reviewRequired = true;
 				else throw providerError('read_tool_egress_provenance_required', 'permanent');
 			}
+		}
+		if (toolName === 'web_navigate') {
+			// Only the start URL, goal, and page budget reach the navigator.
+			webArguments = { url: input.arguments.url ?? null, goal: input.arguments.goal ?? null };
+			if (typeof input.arguments.max_pages === 'number')
+				webArguments.max_pages = input.arguments.max_pages;
 		}
 		if (toolName === 'web_visit') {
 			// Do not forward extra model-authored fields to the HTTP adapter.
@@ -491,6 +501,38 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 					if (reviewControlTool) {
 						return WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1[toolName](input.arguments);
 					}
+					if (input.toolName === 'web_navigate') {
+						if (!this.webNavigator) {
+							throw new AgenticChatProviderExecutionError(
+								'read_tool_execution_failed',
+								'transient_infra',
+								'Agentic Chat web_navigate is not configured'
+							);
+						}
+						const claim = input.executionInput.claim;
+						return requireResultRecord(
+							await this.webNavigator.navigate(webArguments, {
+								signal: deadlineSignal,
+								...(input.onProgress
+									? {
+											onStep: (navigationStep) =>
+												input.onProgress?.(
+													describeWebNavigationStep(navigationStep)
+												)
+										}
+									: {}),
+								usage: {
+									operationType: 'agentic_chat_web_navigation',
+									userId: claim.userId,
+									chatSessionId: claim.sessionId,
+									metadata: {
+										turnRunId: claim.turnRunId,
+										providerToolCallId: input.providerToolCallId
+									}
+								}
+							})
+						);
+					}
 					const executeWebResearch =
 						input.toolName === 'web_search'
 							? this.webResearch?.search
@@ -566,6 +608,8 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			turnSecurityState.webUrls.observeSearchResult(payload);
 		if (turnSecurityState && toolName === 'web_visit')
 			turnSecurityState.webUrls.observeVisitResult(payload);
+		if (turnSecurityState && toolName === 'web_navigate')
+			turnSecurityState.webUrls.observeNavigationResult(payload);
 		// Control decisions record their author on the durable row so a reviewer
 		// veto is never mistaken for acting-model hesitation after the fact.
 		if (input.decidedBy && isAgenticChatControlToolNameV1(input.toolName)) {
@@ -774,6 +818,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	}
 
 	private readonly webResearch: WebResearchPort | undefined;
+	private readonly webNavigator: WebNavigatePort | undefined;
 	private readonly webSearchReviewer: AgenticChatWebSearchReviewPort | undefined;
 }
 

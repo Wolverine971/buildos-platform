@@ -110,6 +110,16 @@ type RegexRule = {
 const INLINE_ASSET_RENDER_REGEX =
 	/\/api\/onto\/assets\/([0-9a-fA-F-]{36})\/render(?:\?[^\s)\]]*)?/g;
 
+/**
+ * User-facing summary when the LLM policy review could not run. Publishing and
+ * live sync are refused (fail closed) and the user is asked to retry.
+ */
+export const PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE =
+	'Content review is temporarily unavailable. Please try again in a few minutes.';
+
+// Deterministic detectors match fixed formats (keys, tokens, SSNs; card numbers
+// are Luhn-checked below), never meaning. Judging harmful, sexual, illegal, or
+// hateful content belongs to the LLM review, which fails closed.
 const POLICY_RULES: RegexRule[] = [
 	{
 		code: 'secret_private_key',
@@ -145,52 +155,6 @@ const POLICY_RULES: RegexRule[] = [
 		recommendation: 'Remove sensitive personal identifiers before publishing.',
 		source: 'both',
 		patterns: [/\b\d{3}-\d{2}-\d{4}\b/]
-	},
-	{
-		code: 'harm_instruction',
-		category: 'self_harm_or_violence',
-		severity: 'high',
-		message: 'Possible self-harm or violence instructions detected.',
-		recommendation: 'Remove instructional harmful content before publishing.',
-		source: 'both',
-		patterns: [
-			/\b(how to|guide to|steps to)\b[\s\S]{0,60}\b(make|build)\b[\s\S]{0,60}\b(bomb|explosive|weapon)\b/i,
-			/\b(how to|ways to|best way to)\b[\s\S]{0,60}\b(kill myself|commit suicide|self[- ]harm)\b/i
-		]
-	},
-	{
-		code: 'sexual_minors',
-		category: 'sexual_content',
-		severity: 'high',
-		message: 'Possible sexual content involving minors detected.',
-		recommendation: 'Remove prohibited sexual content before publishing.',
-		source: 'both',
-		patterns: [
-			/\b(child|minor|underage)\b[\s\S]{0,40}\b(nude|porn|sex|explicit)\b/i,
-			/\b(nude|porn|sex|explicit)\b[\s\S]{0,40}\b(child|minor|underage)\b/i
-		]
-	},
-	{
-		code: 'illegal_instruction',
-		category: 'illegal_activity',
-		severity: 'high',
-		message: 'Possible illegal activity instructions detected.',
-		recommendation: 'Remove illegal instructional guidance before publishing.',
-		source: 'both',
-		patterns: [
-			/\b(how to|guide to|steps to)\b[\s\S]{0,50}\b(buy|sell|traffic|smuggle|counterfeit)\b[\s\S]{0,40}\b(drugs|ids?|passports?|documents?)\b/i
-		]
-	},
-	{
-		code: 'hate_harassment',
-		category: 'hate_or_harassment',
-		severity: 'medium',
-		message: 'Possible hate or harassment language detected.',
-		recommendation: 'Remove abusive or hateful language before publishing.',
-		source: 'both',
-		patterns: [
-			/\b(kill all|exterminate|eradicate)\b[\s\S]{0,30}\b(immigrants|muslims|jews|blacks|gays|lesbians|trans people|women)\b/i
-		]
 	}
 ];
 
@@ -548,8 +512,16 @@ Be conservative about safety, but do not flag benign factual discussion unless i
 			projectId: document.project_id
 		})) as Record<string, unknown>;
 
-		const rawStatus = toStringOrNull(response?.status);
-		const status: 'passed' | 'flagged' = rawStatus === 'flagged' ? 'flagged' : 'passed';
+		// An empty or malformed verdict is a failed review, never an implicit pass.
+		const rawStatus = toStringOrNull(response?.status)?.toLowerCase();
+		if (rawStatus !== 'passed' && rawStatus !== 'flagged') {
+			console.error('[PublicPageReview] LLM review returned no usable status', {
+				documentId: document.id,
+				status: rawStatus ?? null
+			});
+			return null;
+		}
+		const status: 'passed' | 'flagged' = rawStatus;
 		const summary = toStringOrNull(response?.summary);
 		const findings = parseLlmFindings(response?.findings);
 		const reasons = dedupeReasons(
@@ -566,7 +538,11 @@ Be conservative about safety, but do not flag benign factual discussion unless i
 			findings,
 			reasons
 		};
-	} catch {
+	} catch (error) {
+		console.error('[PublicPageReview] LLM review failed', {
+			documentId: document.id,
+			error: error instanceof Error ? error.message : String(error)
+		});
 		return null;
 	}
 }
@@ -661,6 +637,16 @@ export function isPublicPageReviewReusableForDocument(
 	document: DocumentLike
 ): boolean {
 	if (review.policy_version !== PUBLIC_PAGE_CONTENT_POLICY_VERSION) return false;
+	// A review that could not run is never a verdict; always review again.
+	if (review.status === 'error') return false;
+	// A pass only counts when the LLM review actually ran. Older rows passed on
+	// keyword rules alone when the LLM failed (fail-open); never reuse those.
+	if (
+		review.status === 'passed' &&
+		readMetadataString(review.review_metadata, 'provider') !== 'rule_engine+smart_llm'
+	) {
+		return false;
+	}
 	const reviewDocumentUpdatedAt = readMetadataString(
 		review.review_metadata,
 		'document_updated_at'
@@ -740,12 +726,19 @@ export async function runPublicPageContentReview(
 	]);
 
 	const wasFlaggedByLlm = llmResult?.status === 'flagged';
+	const llmReviewFailed = !hasDeterministicCredentialFinding && llmResult === null;
 	const reviewReasons = dedupeReasons([
 		...buildReasons(mergedFindings),
 		...(llmResult?.status === 'flagged' ? llmResult.reasons : [])
 	]);
+	// Deterministic findings block on their own. Without them, only a completed
+	// LLM review can pass a page; an LLM failure fails closed as a retryable error.
 	const status: PublicPageReviewStatus =
-		mergedFindings.length > 0 || wasFlaggedByLlm ? 'flagged' : 'passed';
+		mergedFindings.length > 0 || wasFlaggedByLlm
+			? 'flagged'
+			: llmReviewFailed
+				? 'error'
+				: 'passed';
 	if (status === 'flagged' && reviewReasons.length === 0) {
 		reviewReasons.push(
 			llmResult?.summary ?? 'Content was flagged by public page policy checks.'
@@ -753,13 +746,17 @@ export async function runPublicPageContentReview(
 	}
 	const textOnlyFindings = mergedFindings.filter((finding) => finding.source === 'text');
 	const imageOnlyFindings = mergedFindings.filter((finding) => finding.source === 'image');
-	const summary = llmResult?.summary ?? toReviewSummary(status, reviewReasons);
+	const summary =
+		status === 'error'
+			? PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE
+			: (llmResult?.summary ?? toReviewSummary(status, reviewReasons));
 
 	const reviewMetadata = {
 		provider: llmResult ? 'rule_engine+smart_llm' : 'rule_engine',
 		llm_review_skipped_reason: hasDeterministicCredentialFinding
 			? 'deterministic_credential_finding'
 			: null,
+		llm_review_failed: llmReviewFailed,
 		document_updated_at: getDocumentUpdatedAt(document),
 		scanned: {
 			content_char_count: content.length,

@@ -139,7 +139,7 @@ export const TOOL_CATEGORIES = {
 		costTier: 'low'
 	},
 	web_research: {
-		tools: ['web_search', 'web_visit'],
+		tools: ['web_search', 'web_visit', 'web_navigate'],
 		averageTokens: 700,
 		costTier: 'medium'
 	},

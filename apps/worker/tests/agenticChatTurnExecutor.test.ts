@@ -34,6 +34,7 @@ import {
 } from '../src/workers/agentic-chat/mutation-executor';
 import { createStableAgenticChatLifecycleTransitionIdV1 } from '../src/workers/agentic-chat/lifecycleIdentity';
 import {
+	AGENTIC_CHAT_MAX_READ_TOOL_PROGRESS_EVENTS,
 	AgenticChatTurnExecutor,
 	type AgenticChatTurnProviderStepV1
 } from '../src/workers/agentic-chat/turn-executor';
@@ -2033,6 +2034,63 @@ describe('AgenticChatTurnExecutor', () => {
 			releaseText();
 			await harness.publisher.stop();
 		}
+	});
+
+	it('streams capped, ordered tool_progress events from a running read tool before its result', async () => {
+		const harness = createHarness([
+			{
+				type: 'read_tool',
+				logicalProviderRound: 1,
+				callTransitionId: CALL_TRANSITION_ID,
+				resultTransitionId: RESULT_TRANSITION_ID,
+				providerToolCallId: 'provider-call-1',
+				toolName: 'fixture_project_read',
+				arguments: { projectId: 'project-1' }
+			},
+			{
+				type: 'finish',
+				finishedReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 4, totalTokens: 14 }
+			}
+		]);
+		harness.readTool.execute.mockImplementationOnce(async (input) => {
+			for (let i = 0; i < 20; i += 1)
+				input.onProgress?.({ message: `Step ${i}`, data: { kind: 'opened', page: i } });
+			return {
+				result: { title: 'Fixture project' },
+				executionTimeMs: null,
+				tokensConsumed: null,
+				affectedEntities: [],
+				toolCategory: null,
+				resultCount: null,
+				zeroResult: null,
+				requiresUserAction: null
+			};
+		});
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed'
+		});
+		const types = harness.semanticInputs.map((event) => event.event_type);
+		const progress = harness.semanticInputs.filter(
+			(event) => event.event_type === 'tool_progress'
+		);
+		expect(progress).toHaveLength(AGENTIC_CHAT_MAX_READ_TOOL_PROGRESS_EVENTS);
+		expect(types.indexOf('tool_call')).toBeLessThan(types.indexOf('tool_progress'));
+		expect(types.lastIndexOf('tool_progress')).toBeLessThan(types.indexOf('tool_result'));
+		expect(new Set(progress.map((event) => event.transition_id)).size).toBe(progress.length);
+		expect(
+			progress.map((event) => (event.event_payload as Record<string, unknown>).step_index)
+		).toEqual(Array.from({ length: AGENTIC_CHAT_MAX_READ_TOOL_PROGRESS_EVENTS }, (_, i) => i));
+		expect(progress[0]!.event_payload).toEqual({
+			type: 'tool_progress',
+			tool_call_id: 'provider-call-1',
+			tool_name: 'fixture_project_read',
+			step_index: 0,
+			message: 'Step 0',
+			data: { kind: 'opened', page: 0 }
+		});
+		await harness.publisher.stop();
 	});
 
 	it('streams text, executes a read-only tool, persists reconnect-safe projection, and finalizes', async () => {

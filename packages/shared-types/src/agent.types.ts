@@ -528,6 +528,15 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 		| { type: 'text_delta'; content: string }
 		| { type: 'tool_call'; tool_call: ChatToolCall }
 		| { type: 'tool_result'; result: Record<string, any> }
+		| {
+				/** A live sub-step inside a running tool call (e.g. web_navigate). */
+				type: 'tool_progress';
+				tool_call_id: string;
+				tool_name: string;
+				step_index: number;
+				message: string;
+				data?: Record<string, unknown>;
+		  }
 		| SkillActivityEvent
 		| { type: 'context_shift'; context_shift: ContextShiftPayload }
 		| { type: 'timing'; timing: AgentTimingSummary }

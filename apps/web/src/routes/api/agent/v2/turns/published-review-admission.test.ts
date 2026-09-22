@@ -27,7 +27,7 @@ async function fixture() {
 		eq: vi.fn().mockReturnThis(),
 		maybeSingle: vi.fn(async () => result)
 	};
-	const workbenchClient = { from: vi.fn(() => query) };
+	const workbenchClient = { from: vi.fn(() => query), rpc: vi.fn() };
 	const rpc = vi.fn(async (_name: string, a: any) => ({
 		data: {
 			outcome: 'newly_admitted',
@@ -73,9 +73,69 @@ async function fixture() {
 		client: { rpc },
 		workbenchClient: workbenchClient as never
 	};
-	return { input, result, query, rpc, snapshot };
+	return { input, result, query, rpc, snapshot, workbenchClient };
 }
 describe('published specialist route admission', () => {
+	it('carries an owner-scoped Jev decision into the immutable admitted snapshot', async () => {
+		const f = await fixture();
+		const id = randomUUID();
+		const candidate = {
+			draftId: f.snapshot.draftId,
+			version: 1,
+			draftRevision: 1,
+			snapshotHash: f.result.data.snapshot_hash,
+			name: f.snapshot.definition.label,
+			createdAt: '2026-09-22T00:00:00Z',
+			description: f.snapshot.definition.description,
+			expertise: [...f.snapshot.definition.expertise],
+			documentReadEnabled: true
+		};
+		const input = {
+			version: 'specialist_recommendation_input_v1',
+			policy: 'jev_specialist_choice_v1',
+			projectId,
+			question: f.input.command.message,
+			candidates: [candidate]
+		};
+		const result = {
+			status: 'selected',
+			selected: candidate,
+			ranking: [
+				{ draftId: candidate.draftId, version: 1, name: candidate.name, probability: 0.9 }
+			],
+			confidence: 0.9,
+			margin: 0.8,
+			reason: 'Best match',
+			durationMs: 10,
+			costUsd: 0.0001,
+			provider: null
+		};
+		const receipt = {
+			id,
+			input,
+			inputHash: await hashSpecialistWorkbenchValue(input),
+			result,
+			resultHash: await hashSpecialistWorkbenchValue(result)
+		};
+		f.workbenchClient.rpc.mockResolvedValue({
+			data: { outcome: 'selected', receipt },
+			error: null
+		});
+		Object.assign(f.input.command.publishedSpecialist, { selectionDecisionId: id });
+		Object.assign(f.input.environment, { AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED: 'true' });
+		const response = await admitWorkflowReviewTurnIfEligible(f.input);
+		expect(response?.status).toBe(202);
+		expect(f.workbenchClient.rpc).toHaveBeenCalledWith('get_specialist_recommendation_v1', {
+			p_user_id: userId,
+			p_project_id: projectId,
+			p_id: id,
+			p_question: f.input.command.message,
+			p_draft_id: candidate.draftId,
+			p_version: 1,
+			p_snapshot_hash: candidate.snapshotHash
+		});
+		expect(f.rpc.mock.calls[0]![1].p_specialist_snapshot.recommendation).toEqual(receipt);
+	});
 	it('scopes the catalog read to the owner and exact version, then admits the copied snapshot', async () => {
 		const f = await fixture();
 		const response = await admitWorkflowReviewTurnIfEligible(f.input);

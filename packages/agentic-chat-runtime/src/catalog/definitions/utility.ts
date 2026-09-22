@@ -527,6 +527,39 @@ For discovery or multiple sources, use web_search first. Persisted public pages 
 	{
 		type: 'function',
 		function: {
+			name: 'web_navigate',
+			description:
+				"Click through a website toward a goal. From a start URL, BuildOS reads each page and follows that page's own links (never guessed URLs) until one answers the goal, then returns that page's relevant text and the path taken. Use when the answer is probably linked from a known page (an event on a calendar, a bids or pricing page, a docs section) instead of guessing URLs or searching again.",
+			parameters: {
+				type: 'object',
+				properties: {
+					url: {
+						type: 'string',
+						description:
+							'Absolute http/https start URL: supplied by the user or returned by web_search, web_visit, or web_navigate.'
+					},
+					goal: {
+						type: 'string',
+						maxLength: 300,
+						description:
+							'The specific information to find, phrased as a need (e.g. "open electrical bids and their due dates"). Sent only to the navigation model, never to websites.'
+					},
+					max_pages: {
+						type: 'integer',
+						minimum: 1,
+						maximum: 8,
+						default: 5,
+						description: 'Most pages to open.'
+					}
+				},
+				required: ['url', 'goal']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
 			name: 'get_buildos_overview',
 			description: `Return the canonical BuildOS overview reference.
 Use this whenever the user asks broad questions such as:

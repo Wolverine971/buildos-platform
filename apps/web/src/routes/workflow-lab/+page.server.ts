@@ -40,9 +40,10 @@ export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 	return {
 		projects: projects.map(({ id, name }) => ({ id, name })),
 		...catalog,
-		// The authenticated, persisted recommendation route is not implemented yet.
-		// Keep its WIP controls unavailable until that boundary exists end to end.
-		jevRecommendationsEnabled: false,
+		jevRecommendationsEnabled:
+			publishedSpecialistsEnabled &&
+			env.AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED?.trim() === 'true' &&
+			!!env.PRIVATE_OPENROUTER_API_KEY?.trim(),
 		publishedSpecialistsEnabled
 	};
 };

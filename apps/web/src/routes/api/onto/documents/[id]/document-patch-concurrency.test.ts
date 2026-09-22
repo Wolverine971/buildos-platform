@@ -71,7 +71,7 @@ const EDITOR_REVISION = getDocumentEditorRevision({
 });
 const CLASSIFIED_METADATA = {
 	type_key: 'document.context.workflow',
-	props: { tags: ['testing'], _classification: { confidence: 0.72 }, agent_workspace: 'preserve' }
+	props: { tags: ['testing'], _classification: { confidence: 0.72 }, custom_field: 'preserve' }
 };
 
 type EqFilter = { column: string; value: unknown };

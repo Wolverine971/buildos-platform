@@ -847,10 +847,7 @@ export function getSkillGateCandidateSkillLoadFormats(
 	);
 }
 
-export type DomainSensingPreloadSource =
-	| 'domain_sensing'
-	| 'project_domain_affinity'
-	| 'operational_intent';
+export type DomainSensingPreloadSource = 'domain_sensing' | 'operational_intent';
 
 export function renderDomainSensingPromptContent(
 	result: DomainSensingResult | null,

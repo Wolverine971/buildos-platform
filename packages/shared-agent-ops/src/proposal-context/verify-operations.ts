@@ -36,7 +36,6 @@ export type ProjectSuggestionIntegrityCode =
 	| 'INVALID_DESTINATION'
 	| 'NO_OP_OPERATION'
 	| 'MODEL_ENTITY_MISMATCH'
-	| 'PREVIEW_OPERATION_COUNT_MISMATCH'
 	| 'EXPECTED_STATE_CHANGED'
 	| 'RESOLUTION_FAILED';
 
@@ -51,8 +50,6 @@ export type ProjectSuggestionIntegrityDiagnostic = {
 	actual_project_id?: string;
 	resolved_entity_title?: string;
 	resolved_destination_title?: string;
-	expected_operation_count?: number;
-	preview_operation_count?: number;
 };
 
 export type VerifiedProjectSuggestionChangeSummary = {
@@ -274,16 +271,6 @@ export function projectSuggestionTextNamesEntity(text: string, entityTitle: stri
 	const overlap = titleTokens.filter((token) => textTokens.has(token)).length;
 	const required = Math.min(3, Math.max(2, Math.ceil(titleTokens.length * 0.5)));
 	return overlap >= required;
-}
-
-function readPreviewOperationCount(
-	preview: ProjectSuggestionIntegrityInput['preview']
-): number | null {
-	const text = previewText(preview);
-	if (!text) return null;
-	const explicit = text.match(/\b(\d+)\s+(?:document\s+)?(?:moves?|changes?|operations?)\b/i);
-	const count = explicit?.[1];
-	return count ? Number.parseInt(count, 10) : null;
 }
 
 function readTreeState(docStructure: unknown): {
@@ -1068,21 +1055,6 @@ export async function verifyProjectSuggestionIntegrity(
 				);
 			}
 			structuralParts.push(structuralPart);
-		}
-
-		if (input.checkModelAlignment !== false) {
-			const previewCount = readPreviewOperationCount(input.preview);
-			if (previewCount !== null && previewCount !== input.operations.length) {
-				return {
-					ok: false,
-					diagnostic: {
-						code: 'PREVIEW_OPERATION_COUNT_MISMATCH',
-						message: `Preview describes ${previewCount} changes but ${input.operations.length} operations would execute`,
-						expected_operation_count: input.operations.length,
-						preview_operation_count: previewCount
-					}
-				};
-			}
 		}
 
 		const fingerprint = structuralFingerprint(structuralParts);

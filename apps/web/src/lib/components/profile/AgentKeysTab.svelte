@@ -701,19 +701,25 @@
 	}
 
 	function projectScopeDescription(caller: BuildosAgentCallerSummary): string {
-		if (!caller.allowed_project_ids || caller.allowed_project_ids.length === 0) {
-			return unavailableProjectCount(caller) > 0
-				? `${projectCountLabel(unavailableProjectCount(caller))} no longer available in your workspace`
-				: 'All visible BuildOS projects';
-		}
-
-		const visibleProjects = caller.allowed_project_ids.map(projectName).join(', ');
+		const explicitNames = (caller.allowed_project_ids ?? []).map(projectName).join(', ');
 		const unavailableCount = unavailableProjectCount(caller);
-		if (unavailableCount === 0) {
-			return visibleProjects;
+		const unavailableNote =
+			unavailableCount > 0
+				? `; ${projectCountLabel(unavailableCount)} no longer available in your workspace`
+				: '';
+
+		if (caller.project_scope_mode === 'all_unrestricted') {
+			const explicitNote = explicitNames ? `, plus ${explicitNames}` : '';
+			return `All of my standard BuildOS projects, including ones I create later${explicitNote}${unavailableNote}`;
 		}
 
-		return `${visibleProjects}; ${projectCountLabel(unavailableCount)} no longer available in your workspace`;
+		if (!explicitNames) {
+			return unavailableCount > 0
+				? `${projectCountLabel(unavailableCount)} no longer available in your workspace`
+				: 'No projects yet';
+		}
+
+		return `Only ${explicitNames}${unavailableNote}`;
 	}
 
 	function allowedOpsDescription(caller: BuildosAgentCallerSummary): string {
@@ -787,6 +793,7 @@
 			`- Allowed ops: ${allowedOpsDescription(params.caller)}.`,
 			'- Use the direct tool names returned by tools/list for BuildOS reads and writes.',
 			'- When working inside an existing project, call get_onto_project_status first if tools/list returned it. Treat it like git status for BuildOS: a current snapshot with the project description, counts, collaborators, recent changes, due-soon work, and upcoming events.',
+			'- If a project I mention is missing, or a tool fails with reason project_not_granted_to_connector, give me the grant_url from the response so I can approve access, then retry. Do not guess project ids.',
 			'- Use tool_search only when the exact BuildOS tool is unknown.',
 			'- Use tool_schema when write arguments are uncertain, then call the returned direct tool_name.',
 			'- Do not perform writes unless I explicitly ask you to.',

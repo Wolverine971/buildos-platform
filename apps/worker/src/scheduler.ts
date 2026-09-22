@@ -178,10 +178,12 @@ export async function runScheduledAgentRunStrandedSweep(): Promise<boolean> {
 			summary.childrenCancelled > 0 ||
 			summary.finalizedFailed > 0 ||
 			summary.finalizedPartial > 0 ||
+			summary.commitsReturnedToReview > 0 ||
+			summary.commitsFinalized > 0 ||
 			summary.errors > 0
 		) {
 			console.log(
-				`🩺 Agent Run stranded sweep: scanned=${summary.scanned}, requeued=${summary.requeuedContinuations}, synthesisWoken=${summary.synthesisWoken}, childrenCancelled=${summary.childrenCancelled}, finalizedFailed=${summary.finalizedFailed}, finalizedPartial=${summary.finalizedPartial}, errors=${summary.errors}`
+				`🩺 Agent Run stranded sweep: scanned=${summary.scanned}, requeued=${summary.requeuedContinuations}, synthesisWoken=${summary.synthesisWoken}, childrenCancelled=${summary.childrenCancelled}, finalizedFailed=${summary.finalizedFailed}, finalizedPartial=${summary.finalizedPartial}, commitsReturnedToReview=${summary.commitsReturnedToReview}, commitsFinalized=${summary.commitsFinalized}, errors=${summary.errors}`
 			);
 		}
 	})()

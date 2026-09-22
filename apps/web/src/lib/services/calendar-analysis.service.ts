@@ -39,6 +39,17 @@ function formatDateYYYYMMDD(date: Date): string {
 	return `${year}-${month}-${day}`;
 }
 
+/**
+ * Google Calendar `eventType` values that are structurally not project work.
+ * `focusTime` is intentionally kept: focus blocks are project signal.
+ * https://developers.google.com/calendar/api/v3/reference/events#eventType
+ */
+const NON_WORK_GOOGLE_EVENT_TYPES: ReadonlySet<string> = new Set([
+	'outOfOffice',
+	'workingLocation',
+	'birthday'
+]);
+
 function providerEventId(event: AnalysisCalendarEvent): string {
 	return event.providerEventId || event.id || 'unknown';
 }
@@ -469,7 +480,7 @@ export class CalendarAnalysisService extends ApiService {
 				);
 			}
 
-			// Filter out declined events and all-day personal events
+			// Filter out declined, cancelled, untitled, and non-work Google event types
 			const relevantEvents = this.filterRelevantEvents(events);
 
 			if (DEBUG_LOGGING) {
@@ -590,51 +601,9 @@ export class CalendarAnalysisService extends ApiService {
 				return false;
 			}
 
-			// Skip all-day and timed events that look personal (expanded heuristic)
-			const title = (event.summary || '').toLowerCase();
-			const personalKeywords = [
-				// Current keywords
-				'birthday',
-				'anniversary',
-				'vacation',
-				'holiday',
-				'pto',
-				'out of office',
-				'ooo',
-				// Medical/Health (9 keywords)
-				'therapy',
-				'dentist',
-				'doctor',
-				'appointment',
-				'checkup',
-				'physical',
-				'medical',
-				'pelvic floor',
-				'cardio',
-				// Family/Kids (6 keywords)
-				'kindergarten',
-				'school',
-				'dismissal',
-				'co-op',
-				'daycare',
-				'early dismissal',
-				// Personal Chores (4 keywords)
-				'trash',
-				'curb',
-				'mop',
-				'maintenance',
-				// Social (3 keywords)
-				'housewarming',
-				'couples night',
-				'visit',
-				// Additional personal indicators (3 keywords)
-				'bring to school',
-				'pick up',
-				'drop off'
-			];
-
-			// Filter both all-day and timed personal events
-			if (personalKeywords.some((keyword) => title.includes(keyword))) {
+			// Skip Google system event types that never represent project work.
+			// Whether a titled event is personal is left to the LLM grouping step.
+			if (event.eventType && NON_WORK_GOOGLE_EVENT_TYPES.has(event.eventType)) {
 				return false;
 			}
 
@@ -701,9 +670,11 @@ Group related calendar events and identify project themes. Focus on:
 **DO NOT** group these types of events (they are personal, not work projects):
 - Personal appointments (dentist, doctor, therapy, medical, checkup)
 - Family events (birthday, kindergarten, school, daycare, dismissal)
-- Household tasks (trash, maintenance, mop, errands)
-- Social events without work context (couples night, housewarming, visit)
+- Household tasks (take out trash, car maintenance, mop, errands)
+- Social events without work context (couples night, housewarming, visiting family)
 - One-off personal commitments (pick up, drop off, bring to school)
+
+Judge by what the event is, not by single words: "Server maintenance window", "Site visit with Henderson GC" and "School district RFP" are work.
 
 ## Events to INCLUDE in Grouping
 

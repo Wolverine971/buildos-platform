@@ -33,6 +33,8 @@ vi.mock('$lib/server/public-page.service', () => ({
 vi.mock('$lib/server/public-page-content-review.service', () => ({
 	getLatestPublicPageReviewForDocument: getLatestPublicPageReviewForDocumentMock,
 	isPublicPageReviewReusableForDocument: isPublicPageReviewReusableForDocumentMock,
+	PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE:
+		'Content review is temporarily unavailable. Please try again in a few minutes.',
 	runPublicPageContentReview: runPublicPageContentReviewMock
 }));
 

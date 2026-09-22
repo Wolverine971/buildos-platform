@@ -44,7 +44,6 @@ import {
 	START_HERE_DOCUMENT_TYPE_KEY
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { pickStartHereDocument } from '../tools/start-here-selector';
-import { readAgentWorkspaceMetadata } from './project-domain-profiles';
 
 const GLOBAL_CONTEXT_PROJECT_LIMIT = 8;
 const GLOBAL_CONTEXT_GOAL_LIMIT = 2;
@@ -119,7 +118,7 @@ type ContextDocumentRow = Pick<
 >;
 type ProjectStartHereDocumentRow = Pick<
 	DocumentRow,
-	'id' | 'title' | 'content' | 'props' | 'created_at' | 'updated_at'
+	'id' | 'title' | 'content' | 'created_at' | 'updated_at'
 >;
 type ProjectStartHereDocumentCandidateRow = Pick<
 	DocumentRow,
@@ -730,8 +729,7 @@ function mapStartHereDocument(row: ProjectStartHereDocumentRow): ProjectStartHer
 		title: row.title ?? 'START HERE',
 		content: truncatedContent,
 		content_truncated: truncatedContent.length < content.length,
-		updated_at: row.updated_at,
-		agent_workspace: readAgentWorkspaceMetadata(row.props)
+		updated_at: row.updated_at
 	};
 }
 
@@ -2286,7 +2284,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 
 		const { data: documentRow, error: documentError } = await supabase
 			.from('onto_documents')
-			.select('id, title, content, props, created_at, updated_at')
+			.select('id, title, content, created_at, updated_at')
 			.eq('id', selected.id)
 			.eq('project_id', projectId)
 			.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)

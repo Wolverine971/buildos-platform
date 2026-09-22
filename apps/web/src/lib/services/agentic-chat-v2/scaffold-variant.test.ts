@@ -22,7 +22,6 @@ describe('resolveFastChatScaffoldConfig', () => {
 			routing: {
 				domainSensing: true,
 				skillPreload: true,
-				skillGateRepair: true,
 				leanDiscovery: true
 			},
 			recovery: {
@@ -50,8 +49,7 @@ describe('resolveFastChatScaffoldConfig', () => {
 			},
 			routing: {
 				domainSensing: true,
-				skillPreload: true,
-				skillGateRepair: true
+				skillPreload: true
 			}
 		});
 		expect(resolveFastChatScaffoldConfig('no-server-skill-routing')).toMatchObject({
@@ -62,8 +60,7 @@ describe('resolveFastChatScaffoldConfig', () => {
 			},
 			routing: {
 				domainSensing: false,
-				skillPreload: false,
-				skillGateRepair: false
+				skillPreload: false
 			}
 		});
 	});

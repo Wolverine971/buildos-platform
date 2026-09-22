@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/gateway/op-execution-gateway.project-create.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -76,7 +77,7 @@ describe('project gateway create parity', () => {
 		});
 	});
 
-	it('strips server-owned project props, returns created refs, and queues the snapshot', async () => {
+	it('strips hidden project props, returns created refs, and queues the snapshot', async () => {
 		const fixture = admin();
 		const result = await EXTERNAL_OP_HANDLERS['onto.project.create'](context(fixture.client), {
 			project: {
@@ -86,8 +87,7 @@ describe('project gateway create parity', () => {
 				state_key: 'active',
 				props: {
 					facets: { stage: 'execution' },
-					preferences: { hidden: true },
-					agent_workspace: { mode: 'living_reference' }
+					preferences: { hidden: true }
 				}
 			},
 			entities: [],

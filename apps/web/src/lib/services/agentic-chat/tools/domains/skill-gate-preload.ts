@@ -2,13 +2,10 @@
 /**
  * Skill-gate preload (WP-7, speed audit 2026-07-08).
  *
- * Domain sensing can know the top skill candidate before the first LLM pass,
- * and a persisted project-domain profile can supply it after project context
- * loads. Making the model call skill_load costs a full pass (and up to three
- * when post-hoc gate repair fires). The server loads the trusted candidate in
- * short format and injects it into the prompt instead — mirroring the existing
- * project_create preload precedent. Gate repair stays as the fallback for
- * sensing misses that have no trusted project affinity.
+ * Domain sensing can know the top skill candidate before the first LLM pass.
+ * Making the model call skill_load costs a full pass. The server loads the
+ * trusted candidate in short format and injects it into the prompt instead —
+ * mirroring the existing project_create preload precedent.
  *
  * Lane-aware rendering (2026-09-02 turn executor audit, Finding 4 / lane D
  * P1-3, P2-1): the web lane keeps the short block because the model can call
@@ -26,8 +23,8 @@
  * map in operational-skill-intent.ts rather than sensing, and they render on
  * every turn their intent fires: the system prompt is rebuilt per turn, so a
  * per-window dedupe just removed the playbook from the next write turn (F69).
- * Craft preloads (sensing, explicit ask, project affinity) are one-shot and
- * still dedupe against the skills the history window already showed.
+ * Craft preloads (sensing, explicit ask) are one-shot and still dedupe against
+ * the skills the history window already showed.
  *
  * Productivity allowlist (founder decision 2026-09-03): marketing, sales, and
  * writing-craft skills left the default chat runtime. Automatic preload is
@@ -58,15 +55,10 @@ import {
 export type SkillGatePreloadSource = DomainSensingPreloadSource;
 
 /**
- * Why a preload was admitted. `productivity_allowlist` is the automatic route,
- * `explicit_ask` is the narrow escape a craft skill has to earn per turn, and
- * `project_domain_affinity` is a persisted per-project selection the user
- * already made (it is not automatic sensing).
+ * Why a preload was admitted. `productivity_allowlist` is the automatic route
+ * and `explicit_ask` is the narrow escape a craft skill has to earn per turn.
  */
-export type SkillPreloadReason =
-	| 'productivity_allowlist'
-	| 'explicit_ask'
-	| 'project_domain_affinity';
+export type SkillPreloadReason = 'productivity_allowlist' | 'explicit_ask';
 
 /**
  * Skills the runtime may preload automatically (founder decision 2026-09-03).
@@ -196,22 +188,6 @@ export function isExplicitSkillAskTurn(sensing: DomainSensingResult | null | und
 }
 
 /**
- * Preload a trusted skill selected by persisted project-domain affinity rather
- * than lexical sensing. The same loaded-skill ledger and short-format contract
- * apply, so affinity activation does not add an extra agent round trip.
- */
-export function resolveSkillPreloadById(
-	skillId: string | null | undefined,
-	options: SkillPreloadOptions = {}
-): SkillGatePreload | null {
-	const normalizedSkillId = skillId?.trim();
-	if (!normalizedSkillId) return null;
-	return resolveSkillPreload(normalizedSkillId, [], 'project_domain_affinity', options, {
-		explicitAsk: false
-	}).preload;
-}
-
-/**
  * Deterministic operational preload for the reviewed worker lane: the message's
  * mutation intent picks the skill, the mounted tools decide eligibility. When a
  * craft (domain-sensing) candidate also fired, it rides along as an alternate
@@ -253,14 +229,9 @@ export function resolveOperationalSkillPreload(params: {
  */
 function resolvePreloadReason(
 	skillId: string,
-	source: SkillGatePreload['source'],
 	admission: SkillPreloadAdmission
 ): SkillPreloadReason | null {
 	if (isProductivityPreloadSkill(skillId)) return 'productivity_allowlist';
-	// A persisted project domain profile is a selection the user already made
-	// for this project; it is not the default runtime sensing this decision
-	// restricts. The lexical and operational routes get no such pass.
-	if (source === 'project_domain_affinity') return 'project_domain_affinity';
 	return admission.explicitAsk ? 'explicit_ask' : null;
 }
 
@@ -283,7 +254,7 @@ function resolveSkillPreload(
 		return { preload: null };
 	}
 
-	const reason = resolvePreloadReason(skillId, source, admission);
+	const reason = resolvePreloadReason(skillId, admission);
 	if (!reason) {
 		return { preload: null, gate_suppressed_by: 'not_allowlisted' };
 	}
@@ -352,9 +323,10 @@ function renderPreloadedSkillPromptContent(
  * the model will ever see for the turn. A one-line heading, then Procedure +
  * Policy + Contract, the worked example that matches the turn's intent, an
  * explicit `full` recommendation pulls the Judgment block in, and the result
- * is capped by characters.
+ * is capped by characters. Exported only so tests can render skills no
+ * admission route reaches; production callers go through resolveSkillPreload.
  */
-function renderWorkerPreloadedSkillPromptContent(
+export function renderWorkerPreloadedSkillPromptContent(
 	payload: SkillHelpPayload,
 	remainingCandidates: string[],
 	options: { heading: string; exampleHint: OperationalExampleHint | null }

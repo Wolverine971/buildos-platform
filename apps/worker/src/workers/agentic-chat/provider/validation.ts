@@ -187,15 +187,23 @@ function validateExplicitProjectCreateName(
 			project && typeof project === 'object' && !Array.isArray(project)
 				? (project as JsonObject).name
 				: null;
+		// The expected name is lifted from prose, so it misfires on possessives
+		// and descriptions ("called 'Dad's Garage'" reads as "Dad", "named after
+		// my dog" as "after my dog"). The failure it guards is the model cutting
+		// a long explicit name short ("Agentic Worker PC1" -> "Agentic Worker",
+		// 841fbe501), so only a strict shortened prefix fails; a different,
+		// longer, or re-cased name passes and a misfire costs nothing.
 		if (
-			typeof proposedName === 'string' &&
-			canonicalDisplayName(proposedName) === canonicalDisplayName(expectedName)
+			!isShortenedProjectName(
+				typeof proposedName === 'string' ? proposedName : '',
+				expectedName
+			)
 		) {
 			continue;
 		}
 		const error =
 			`The user explicitly named this project ${JSON.stringify(expectedName)}. ` +
-			`create_onto_project.project.name must preserve that exact name; received ${JSON.stringify(proposedName ?? null)}.`;
+			`create_onto_project.project.name must preserve that exact name, not a shortened form; received ${JSON.stringify(proposedName ?? null)}.`;
 		addCallValidationErrors(issues, call, [error]);
 	}
 }
@@ -216,8 +224,15 @@ function explicitProjectCreateName(request: AgenticChatTurnProviderRequestV1): s
 	return name ? name.slice(0, 300) : null;
 }
 
-function canonicalDisplayName(value: string): string {
-	return value.normalize('NFC').trim().replace(/\s+/g, ' ');
+function projectNameKey(value: string): string {
+	return value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/** True only when `proposed` is `expected` with its end cut off. */
+function isShortenedProjectName(proposed: string, expected: string): boolean {
+	const proposedKey = projectNameKey(proposed);
+	const expectedKey = projectNameKey(expected);
+	return proposedKey.length < expectedKey.length && expectedKey.startsWith(proposedKey);
 }
 
 /**

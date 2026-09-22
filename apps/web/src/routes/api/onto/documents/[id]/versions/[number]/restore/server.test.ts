@@ -22,7 +22,7 @@ const head = {
 	state_key: 'draft',
 	type_key: 'document.default',
 	updated_at: loadedAt,
-	props: { agent_workspace: { source: 'current' }, custom: 'keep' }
+	props: { note: 'current', custom: 'keep' }
 };
 const snapshot = {
 	title: 'Earlier',
@@ -31,7 +31,7 @@ const snapshot = {
 	state_key: 'draft',
 	type_key: 'document.default',
 	project_id: 'project-1',
-	props: { agent_workspace: { source: 'old' } }
+	props: { note: 'old' }
 };
 
 function fixture(
@@ -164,7 +164,7 @@ describe('guarded document version restore', () => {
 		});
 		expect(f.committed).toMatchObject({
 			content: 'Earlier content',
-			props: { agent_workspace: head.props.agent_workspace, custom: 'keep' }
+			props: { note: 'old', custom: 'keep', body_markdown: 'Earlier content' }
 		});
 		expect(f.inserted).toHaveLength(1);
 		expect(f.inserted[0]).toMatchObject({

@@ -3,7 +3,6 @@ import type { OntologyProjectSummary } from '../ontology/ontology-projects.servi
 import { logUpdateAsync } from '../ops/async-activity-logger';
 import { TYPE_KEY_PATTERNS } from '../ontology/onto';
 import {
-	demoteAgentWorkspaceForProjectType,
 	sanitizeProjectForClient,
 	sanitizeProjectPropsPatchInput
 } from '../utils/project-props-sanitizer';
@@ -224,13 +223,6 @@ export async function updateProject(context: ToolExecutionContext, args: Record<
 			);
 		}
 		updateData.type_key = typeKey;
-		// A retype can only clear routing the new type no longer supports; the
-		// stored agent_workspace is otherwise server-owned and never promoted here.
-		const demoted = demoteAgentWorkspaceForProjectType(
-			updateData.props ?? access.entity?.props,
-			typeKey
-		);
-		if (demoted) updateData.props = demoted;
 		changed += 1;
 	}
 	if (archivedAtUpdate !== undefined) {

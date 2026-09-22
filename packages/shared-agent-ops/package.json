@@ -297,6 +297,11 @@
 			"import": "./dist/web/safe-fetch.mjs",
 			"require": "./dist/web/safe-fetch.js"
 		},
+		"./web/navigation": {
+			"types": "./dist/web/navigation.d.ts",
+			"import": "./dist/web/navigation.mjs",
+			"require": "./dist/web/navigation.js"
+		},
 		"./web/search-cache": {
 			"types": "./dist/web/search-cache.d.ts",
 			"import": "./dist/web/search-cache.mjs",

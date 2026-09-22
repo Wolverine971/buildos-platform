@@ -486,48 +486,25 @@ describe('buildLitePromptEnvelope', () => {
 		expect(overlaid.systemPrompt).not.toContain('Candidate domains:');
 	});
 
-	it('renders a project-affinity skill preload when lexical domain sensing is empty', async () => {
-		const { resolveSkillPreloadById } = await import(
-			'$lib/services/agentic-chat/tools/domains/skill-gate-preload'
-		);
-		const preload = resolveSkillPreloadById('fiction_story_craft');
-		expect(preload).not.toBeNull();
-
-		const base = buildLitePromptEnvelope({
-			contextType: 'project',
-			entityId: 'project-fiction',
-			projectId: 'project-fiction',
-			domainSensingResult: null
-		});
-		const overlaid = applyActiveDomainSignalsOverlay(base, {
-			currentUserMessage: 'Give me three options for what Mara does next.',
-			domainSensingResult: null,
-			skillGatePreload: preload
-		});
-
-		const rulesSection = overlaid.sections.find(
-			(section) => section.id === 'situational_rules'
-		);
-		expect(rulesSection?.content).toContain(preload!.promptContent.trim());
-		expect(rulesSection?.slots).toMatchObject({ preloadedSkillId: 'fiction_story_craft' });
-		expect(overlaid.sections.map((section) => section.id)).toContain('situational_rules');
-	});
-
 	it('replaces a stale per-turn overlay section instead of stacking one', async () => {
-		const { resolveSkillPreloadById } = await import(
+		const { resolveOperationalSkillPreload } = await import(
 			'$lib/services/agentic-chat/tools/domains/skill-gate-preload'
 		);
-		const preload = resolveSkillPreloadById('fiction_story_craft');
+		const preload = resolveOperationalSkillPreload({
+			message: 'mark the intro call done',
+			toolNames: ['create_onto_task', 'update_onto_task']
+		});
+		expect(preload?.skillId).toBe('task_management');
 		const stale = applyActiveDomainSignalsOverlay(
 			buildLitePromptEnvelope({
 				contextType: 'project',
-				entityId: 'project-fiction',
-				projectId: 'project-fiction',
+				entityId: 'project-1',
+				projectId: 'project-1',
 				domainSensingResult: null
 			}),
 			{ domainSensingResult: null, skillGatePreload: preload }
 		);
-		expect(stale.systemPrompt).toContain('Preloaded skill: fiction_story_craft');
+		expect(stale.systemPrompt).toContain('Playbook for task writes this turn:');
 
 		const overlaid = applyActiveDomainSignalsOverlay(stale, {
 			domainSensingResult: null,
@@ -538,7 +515,7 @@ describe('buildLitePromptEnvelope', () => {
 		);
 
 		expect(overlaySections).toHaveLength(1);
-		expect(overlaid.systemPrompt).not.toContain('Preloaded skill: fiction_story_craft');
+		expect(overlaid.systemPrompt).not.toContain('Playbook for task writes this turn:');
 		expect(overlaid.systemPrompt).toContain('This turn can write to project data:');
 	});
 
@@ -1351,42 +1328,6 @@ describe('buildLitePromptEnvelope', () => {
 		);
 	});
 
-	it('adds a compact fiction starter profile only when the creation message warrants it', () => {
-		const envelope = buildLitePromptEnvelope({
-			contextType: 'project_create',
-			entityId: null,
-			projectId: null,
-			currentUserMessage:
-				'Create an ongoing room for the novel I am writing. Keep it organized as I add characters, plot beats, and chapters.'
-		});
-		const starter = envelope.sections.find(
-			(section) => section.source === 'lite.project_create_domain_profile'
-		);
-
-		expect(starter?.id).toBe('situational_rules');
-		expect(starter?.content).toContain('Fiction story workspace (fiction_story)');
-		expect(starter?.content).toContain('parts, acts, chapters, scenes, and beats');
-		expect(starter?.content).toContain('They are not milestones or delivery dates');
-		expect(starter?.content).toContain('document.creative.structure');
-		expect(starter?.content).toContain('document.creative.character');
-		expect(starter?.content).toContain('every supplied part name');
-		expect(starter?.content).toContain('never create a title-only placeholder');
-		expect(starter?.content).toContain('content completeness');
-		expect(starter?.content).toContain('agent_workspace.mode to `living_reference`');
-		expect(envelope.systemPrompt).not.toContain('Skill-load gate');
-		expect(envelope.systemPrompt).not.toContain('domain_search');
-
-		const safetyIndex = envelope.sections.findIndex(
-			(section) => section.id === 'safety_data_rules'
-		);
-		const starterIndex = envelope.sections.findIndex(
-			(section) => section.source === 'lite.project_create_domain_profile'
-		);
-		const focusIndex = envelope.sections.findIndex((section) => section.id === 'focus_purpose');
-		expect(starterIndex).toBeGreaterThan(safetyIndex);
-		expect(starterIndex).toBeLessThan(focusIndex);
-	});
-
 	it('folds the timeline and retrieval boundaries into one loaded-context section', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'project',
@@ -1722,17 +1663,12 @@ describe('buildLitePromptEnvelope', () => {
 		);
 		expect(envelope.toolsSummary.directTools).not.toContain('declare_turn_contract');
 		expect(envelope.toolsSummary.directTools).not.toContain('cancel_turn_contract');
-		expect(envelope.sections.map((section) => section.source)).not.toContain(
-			'lite.project_create_domain_profile'
-		);
 
 		const overlaid = applyActiveDomainSignalsOverlay(envelope, {
 			currentUserMessage: 'Create a fantasy novel project with a goal and two tasks.',
 			projectCreateWorkflow: 'reviewed_shell'
 		});
-		expect(overlaid.sections.map((section) => section.source)).not.toContain(
-			'lite.project_create_domain_profile'
-		);
+		expect(overlaid).toBe(envelope);
 	});
 
 	it('retains the declared-contract instructions on the rollback project-create surface', () => {

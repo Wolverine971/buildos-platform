@@ -18,7 +18,6 @@ export type FinalizationGuardReason =
 	| 'empty_after_tools'
 	| 'empty_after_user_action_required'
 	| 'lead_in_after_successful_writes'
-	| 'lead_in_after_reads'
 	| 'empty_after_successful_writes'
 	| 'empty_after_failed_writes'
 	| 'empty_after_reads'
@@ -43,7 +42,6 @@ type ApplyFinalizationGuardParams = {
 	// "I gathered context before the turn ended" read summary, which reads as a
 	// completed answer and is the root of the "did you update it?" complaint pattern.
 	mutationRequested?: boolean;
-	expectedWriteToolNames?: string[];
 	/**
 	 * Declared contract outcomes the write ledger could not prove complete. Any
 	 * entry marks the turn `mutation_unfulfilled` even when the prose is left
@@ -63,7 +61,9 @@ type EvidenceItem = {
 // A lead-in is a promise to keep working, and it opens a sentence: "I'll pull
 // that up", "Let me check", "First, I'll…", "One moment". A short answer that
 // merely contains a verb such as "check" or "update", or ends on a question,
-// is an answer (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F13).
+// is an answer (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F13). Only consulted once
+// the ledger or turn contract already proves the requested change unfinished,
+// so a misfire swaps one honest "not done yet" notice for another.
 const LEAD_IN_OPENER_PATTERN =
 	/(?:^|[.!?:;—–-]\s+)(?:(?:first|then|now|next|okay|ok|sure|got it|alright|of course),?\s+)?(?:i['’]?ll|i will|let me|i['’]?m going to|i am going to|one moment|hang on|give me a (?:moment|second|sec|minute))\b/i;
 
@@ -522,7 +522,6 @@ export function applyFinalizationGuard(
 	let failedReads = 0;
 	let otherSuccesses = 0;
 	let otherFailures = 0;
-	const successfulWriteToolNames = new Set<string>();
 
 	for (const execution of toolExecutions) {
 		if (isDuplicateWriteSkippedExecution(execution)) continue;
@@ -532,10 +531,8 @@ export function applyFinalizationGuard(
 		// check so an `{ ok: false }` write is not counted as completed.
 		const success = didGatewayExecSucceed(execution);
 		if (category === 'write') {
-			if (success) {
-				successfulWrites += 1;
-				successfulWriteToolNames.add(execution.toolCall.function?.name?.trim() ?? '');
-			} else failedWrites += 1;
+			if (success) successfulWrites += 1;
+			else failedWrites += 1;
 		} else if (category === 'read_discovery') {
 			if (success) successfulReads += 1;
 			else failedReads += 1;
@@ -548,19 +545,15 @@ export function applyFinalizationGuard(
 
 	// A requested mutation that never ran (no write succeeded or failed) must not be
 	// papered over with a lead-in like "let me update that" — the change did not happen.
-	const expectedWriteToolNames = Array.from(new Set(params.expectedWriteToolNames ?? []));
 	const unfulfilledOutcomes = params.unfulfilledOutcomes ?? [];
 	// Declared outcomes are the reviewed authority for what this turn owed. Any
 	// outcome the ledger could not prove complete keeps the turn unfulfilled even
-	// when every expected tool name ran at least once (2 of 6 moves is 2 moves).
+	// when some write already landed (2 of 6 moves is 2 moves).
 	const declaredOutcomesUnfulfilled =
 		params.mutationRequested === true && unfulfilledOutcomes.length > 0;
 	const mutationIncomplete =
 		params.mutationRequested === true &&
-		(declaredOutcomesUnfulfilled ||
-			(expectedWriteToolNames.length > 0
-				? expectedWriteToolNames.some((toolName) => !successfulWriteToolNames.has(toolName))
-				: successfulWrites === 0 && failedWrites === 0));
+		(declaredOutcomesUnfulfilled || (successfulWrites === 0 && failedWrites === 0));
 	// Prose that already names the unfinished remainder is honest; replacing it
 	// with the generic incomplete notice would drop the specific list.
 	const partialDisclosurePresent =
@@ -570,10 +563,10 @@ export function applyFinalizationGuard(
 		looksLikeUnfulfilledMutationDisclosure(candidate);
 	const unfulfilledFinishedReason: FinalizationGuardFinishedReason | undefined =
 		declaredOutcomesUnfulfilled ? 'mutation_unfulfilled' : undefined;
-	const shouldReplaceWriteLeadIn =
-		!partialDisclosurePresent && successfulWrites > 0 && candidate && isLikelyLeadIn(candidate);
-	const shouldReplaceReadLeadIn =
-		successfulWrites === 0 && successfulReads > 0 && candidate && isLikelyLeadIn(candidate);
+	// Non-empty prose is replaced only when the ledger or turn contract proves the
+	// requested change is unfinished. A wording-only "is this a lead-in?" check on
+	// read-only or fully written turns appended "I gathered context…" / "I
+	// completed the requested change." under correct answers in production.
 	const shouldReplaceMutationLeadIn =
 		!partialDisclosurePresent &&
 		mutationIncomplete &&
@@ -583,11 +576,7 @@ export function applyFinalizationGuard(
 		!partialDisclosurePresent &&
 		mutationIncomplete &&
 		classifyReceiptGroundedAssistantDisposition(candidate) === 'mutation_claim';
-	const shouldReplaceLeadIn =
-		shouldReplaceWriteLeadIn ||
-		shouldReplaceReadLeadIn ||
-		shouldReplaceMutationLeadIn ||
-		shouldReplaceMutationClaim;
+	const shouldReplaceLeadIn = shouldReplaceMutationLeadIn || shouldReplaceMutationClaim;
 	const shouldSynthesizeEmpty = !candidate;
 
 	if (!shouldReplaceLeadIn && !shouldSynthesizeEmpty) {
@@ -621,11 +610,7 @@ export function applyFinalizationGuard(
 	return {
 		text: synthesized.text,
 		applied: true,
-		reason: shouldReplaceWriteLeadIn
-			? 'lead_in_after_successful_writes'
-			: shouldReplaceReadLeadIn
-				? 'lead_in_after_reads'
-				: synthesized.reason,
+		reason: synthesized.reason,
 		finishedReason: synthesized.finishedReason ?? unfulfilledFinishedReason
 	};
 }

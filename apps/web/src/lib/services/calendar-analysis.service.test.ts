@@ -390,3 +390,84 @@ describe('CalendarAnalysisService source provenance', () => {
 		]);
 	});
 });
+
+describe('CalendarAnalysisService relevant-event filter', () => {
+	function googleEvent(id: string, summary: string, overrides: Record<string, unknown> = {}) {
+		return {
+			id,
+			providerEventId: id,
+			providerCalendarId: 'work@example.com',
+			calendarSourceId: 'source-a',
+			status: 'confirmed',
+			summary,
+			start: { dateTime: '2026-09-15T14:00:00.000Z' },
+			end: { dateTime: '2026-09-15T15:00:00.000Z' },
+			organizer: { email: 'owner@example.com', self: true },
+			attendees: [],
+			...overrides
+		};
+	}
+
+	it('passes work titles to analysis and drops only structural non-work Google event types', async () => {
+		const workTitles = [
+			'Site visit with Henderson GC',
+			'Laptop setup',
+			'Server maintenance window',
+			'Holiday campaign planning',
+			'Client appointment – Acme',
+			'HVAC preventive maintenance – Riverside Plaza'
+		];
+		const events = [
+			...workTitles.map((title, index) => googleEvent(`work-${index}`, title)),
+			googleEvent('focus-1', 'Deep work: bid estimate', { eventType: 'focusTime' }),
+			googleEvent('default-1', 'Weekly standup', { eventType: 'default' }),
+			googleEvent('ooo-1', 'Out of office', { eventType: 'outOfOffice' }),
+			googleEvent('wl-1', 'Home', { eventType: 'workingLocation' }),
+			googleEvent('bday-1', "Sam's birthday", { eventType: 'birthday' }),
+			googleEvent('declined-1', 'Vendor sync', {
+				attendees: [{ email: 'me@example.com', self: true, responseStatus: 'declined' }]
+			}),
+			googleEvent('cancelled-1', 'Cancelled kickoff', { status: 'cancelled' }),
+			googleEvent('untitled-1', '   ')
+		];
+		const sourceRead = {
+			listEvents: vi.fn().mockResolvedValue({
+				events,
+				partial: false,
+				warnings: [],
+				sourceStatuses: [
+					{
+						calendarSourceId: 'source-a',
+						connectionId: 'connection-a',
+						providerCalendarId: 'work@example.com',
+						status: 'success',
+						itemCount: events.length
+					}
+				]
+			})
+		};
+		const { supabase } = makeSupabase({
+			calendar_analyses: [{ data: { id: 'analysis-1' }, error: null }]
+		});
+		const service = CalendarAnalysisService.getInstance(supabase as any, {
+			multiCalendarReadService: sourceRead,
+			hasAnalysisTarget: vi.fn().mockResolvedValue(true)
+		});
+		const analyzeEventPatterns = vi
+			.spyOn(service as any, 'analyzeEventPatterns')
+			.mockResolvedValue([]);
+
+		const result = await service.analyzeUserCalendar('user-1');
+
+		expect(analyzeEventPatterns).toHaveBeenCalledTimes(1);
+		const analyzedTitles = (
+			analyzeEventPatterns.mock.calls[0]![0] as { events: Array<{ summary: string }> }
+		).events.map((event) => event.summary);
+		expect(analyzedTitles).toEqual([
+			...workTitles,
+			'Deep work: bid estimate',
+			'Weekly standup'
+		]);
+		expect(result.eventsAnalyzed).toBe(workTitles.length + 2);
+	});
+});

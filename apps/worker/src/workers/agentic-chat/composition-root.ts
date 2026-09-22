@@ -19,6 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import { createAgentRunWebResearchPort } from '../agent-run/webResearchPort';
+import type { WebNavigatePort } from './tools/web-navigate';
 import { createAgenticChatWebSearchReviewer } from './tools/web-search-review';
 import type { AgenticChatQueueAgeClient } from './capacity';
 import {
@@ -216,6 +217,7 @@ export function createAgenticChatCompositionRoot(options: {
 	concurrentMutationsEnabled?: boolean;
 	/** Injectable for tests; production reuses the worker's SSRF-safe native web port. */
 	webResearch?: WebResearchPort;
+	webNavigator?: WebNavigatePort;
 	/**
 	 * Injectable for tests. Production composes the source-aware Google Calendar
 	 * services, `OntoEventSyncService` and the shared project-calendar service
@@ -357,6 +359,7 @@ export function createAgenticChatCompositionRoot(options: {
 	});
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),
+		...(options.webNavigator ? { webNavigator: options.webNavigator } : {}),
 		webSearchReviewer: createAgenticChatWebSearchReviewer(
 			options.semanticReviewerClient ?? options.providerClient
 		)

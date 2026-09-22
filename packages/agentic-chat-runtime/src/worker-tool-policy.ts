@@ -97,6 +97,7 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1 = Object.freeze([
 	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
 	'web_search',
 	'web_visit',
+	'web_navigate',
 	...AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1
 ] as const);
 

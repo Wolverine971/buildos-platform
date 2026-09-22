@@ -110,7 +110,7 @@ describePostgres('agent run stranded sweep (integration)', () => {
 					SELECT id, user_id, status, run_template, depth, parent_run_id,
 						started_at, updated_at, budgets, orchestration_state, trigger,
 						context_type, project_id, scope_mode, effort, allowed_ops,
-						review_required
+						review_required, commit_started_at
 					FROM public.agent_runs
 					WHERE status::text = ANY(${sqlArray(statuses)})
 						AND updated_at < '${updatedBefore}'
@@ -198,6 +198,42 @@ describePostgres('agent run stranded sweep (integration)', () => {
 					WHERE run_id = '${runId}' AND kind = 'cancel' AND consumed_at IS NULL
 				)
 			`);
+		},
+		// Mirrors recoverStalledCommit's STATE TRANSITIONS in SQL (its change-set
+		// bookkeeping is unit-tested in apps/web change-set-commit.test.ts). This
+		// proves the real schema and triggers accept them and that the sweep routes
+		// dead commits here instead of finalizeRun.
+		async recoverStalledCommit(runId) {
+			const stale = psql(`
+				SELECT COALESCE(commit_started_at::text, '') FROM public.agent_runs
+				WHERE id = '${runId}' AND status = 'running'
+					AND commit_started_at < NOW() - INTERVAL '2 minutes'
+			`);
+			if (!stale) return { outcome: 'skipped', reason: 'not_stalled' };
+			const applied = Number(
+				psql(`
+					SELECT COUNT(*) FROM public.agent_tool_executions
+					WHERE agent_run_id = '${runId}' AND mutation_mode = 'commit' AND success
+				`)
+			);
+			const transition =
+				applied === 0
+					? `status = 'proposal_ready', commit_started_at = NULL`
+					: `status = 'partial', completed_at = NOW(),
+						error = 'commit interrupted: ${applied} change(s) applied before the approval stopped'`;
+			const count = psql(`
+				WITH updated AS (
+					UPDATE public.agent_runs SET ${transition}
+					WHERE id = '${runId}' AND status = 'running'
+						AND commit_started_at = '${stale}'
+					RETURNING id
+				)
+				SELECT COUNT(*) FROM updated
+			`);
+			if (Number(count) === 0) return { outcome: 'skipped', reason: 'raced' };
+			return applied === 0
+				? { outcome: 'returned_to_review' }
+				: { outcome: 'finalized', runStatus: 'partial', applied, notApplied: 1 };
 		}
 	};
 
@@ -293,6 +329,21 @@ describePostgres('agent run stranded sweep (integration)', () => {
 		applyMigration('20260719040000_agent_run_cost_reconciliation.sql');
 		applyMigration('20260719050000_agent_run_cost_rpc_privileges.sql');
 		applyMigration('20260720010000_deep_research_hardening.sql');
+		applyMigration('20260831151000_agent_run_review_completion_guard.sql');
+
+		// Production parity for the D9b commit columns (20260702000000) and the
+		// commit telemetry the stalled-commit recovery reads.
+		psql(`ALTER TABLE public.agent_runs ADD COLUMN commit_started_at TIMESTAMPTZ NULL`);
+		psql(`
+			CREATE TABLE public.agent_tool_executions (
+				id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+				agent_run_id UUID NOT NULL,
+				user_id UUID NOT NULL,
+				mutation_mode TEXT NULL,
+				proposed_change_id TEXT NULL,
+				success BOOLEAN NOT NULL
+			)
+		`);
 
 		// agent_run_signals is not part of the deep-research fixture; add the minimal
 		// shape the cancel-signal mechanism uses.
@@ -320,7 +371,71 @@ describePostgres('agent run stranded sweep (integration)', () => {
 	});
 
 	beforeEach(() => {
-		psql('TRUNCATE public.queue_jobs, public.agent_runs, public.agent_run_signals CASCADE');
+		psql(
+			'TRUNCATE public.queue_jobs, public.agent_runs, public.agent_run_signals, public.agent_tool_executions CASCADE'
+		);
+	});
+
+	const insertStalledCommit = (id: string): void => {
+		// A review run the user approved: the web commit claimed it
+		// (proposal_ready -> running, commit_started_at) and died 21 minutes ago.
+		psql(`
+			INSERT INTO public.agent_runs (
+				id, user_id, trigger, label, goal, context_type, project_id, scope_mode,
+				allowed_ops, review_required, status, change_set, result, budgets,
+				commit_started_at, updated_at
+			) VALUES (
+				'${id}', '${USER_ID}', 'chat', 'Update project START HERE', 'Review',
+				'project', '30000000-0000-4000-8000-000000000001', 'read_write',
+				ARRAY['onto.document.update'], TRUE, 'running',
+				'{"status":"pending","changes":[{"id":"change-1","op":"onto.document.update"}]}',
+				'{"summary":"Review"}', '{}',
+				'${minutesAgo(21)}', '${minutesAgo(21)}'
+			)
+		`);
+	};
+
+	it('returns a dead commit to review while a dead worker run beside it still fails', async () => {
+		const commitRun = '40000000-0000-4000-8000-000000000001';
+		const workerRun = '40000000-0000-4000-8000-000000000002';
+		insertStalledCommit(commitRun);
+		psql(`
+			INSERT INTO public.agent_runs (
+				id, user_id, trigger, label, goal, context_type, scope_mode, status,
+				started_at, updated_at
+			) VALUES (
+				'${workerRun}', '${USER_ID}', 'chat', 'Worker', 'Work', 'global', 'read_only',
+				'running', '${minutesAgo(30)}', '${minutesAgo(15)}'
+			)
+		`);
+
+		const summary = await sweep();
+
+		expect(summary).toMatchObject({ commitsReturnedToReview: 1, finalizedFailed: 1 });
+		expect(
+			psql(
+				`SELECT status || '|' || COALESCE(commit_started_at::text, 'null') || '|' || COALESCE(error, 'null') FROM public.agent_runs WHERE id = '${commitRun}'`
+			)
+		).toBe('proposal_ready|null|null');
+		expect(psql(`SELECT status FROM public.agent_runs WHERE id = '${workerRun}'`)).toBe(
+			'failed'
+		);
+	});
+
+	it('closes a dead commit that already applied a change as partial, never re-offering it', async () => {
+		const commitRun = '40000000-0000-4000-8000-000000000003';
+		insertStalledCommit(commitRun);
+		psql(`
+			INSERT INTO public.agent_tool_executions (agent_run_id, user_id, mutation_mode, proposed_change_id, success)
+			VALUES ('${commitRun}', '${USER_ID}', 'commit', 'change-1', TRUE)
+		`);
+
+		const summary = await sweep();
+
+		expect(summary).toMatchObject({ commitsFinalized: 1, finalizedFailed: 0 });
+		expect(psql(`SELECT status FROM public.agent_runs WHERE id = '${commitRun}'`)).toBe(
+			'partial'
+		);
 	});
 
 	it('wakes synthesis for a researching root whose children have all settled', async () => {

@@ -1357,6 +1357,13 @@
 					}
 					return;
 				}
+				if (response.status === 503 && review?.status === 'error') {
+					toastService.warning(
+						review.summary ??
+							'Content review is temporarily unavailable. Please try again in a few minutes.'
+					);
+					return;
+				}
 				if (response.status === 409 && suggestedSlugBase) {
 					publicPageDraft = {
 						...requestedDraft,
@@ -2077,6 +2084,10 @@
 				if (requestLiveSync && liveSyncBlocked) {
 					toastService.warning(
 						'The document was saved, but the live page update is blocked by content review.'
+					);
+				} else if (requestLiveSync && syncReview?.status === 'error') {
+					toastService.warning(
+						'The document was saved, but content review is temporarily unavailable, so the live page was not updated. Please try again in a few minutes.'
 					);
 				} else if (requestLiveSync && liveSyncError) {
 					toastService.warning(
@@ -3488,6 +3499,20 @@
 					{latestPublicPageReviewGuidance}
 				</p>
 			{/if}
+		</div>
+	{:else if latestPublicPageReview?.status === 'error'}
+		<div
+			class="rounded-md border border-warning/30 bg-warning/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
+			role="status"
+		>
+			<p class="micro-label text-warning">CONTENT REVIEW UNAVAILABLE</p>
+			<p class="text-xs text-foreground leading-snug">
+				{latestPublicPageReview.summary ??
+					'Content review is temporarily unavailable. Please try again in a few minutes.'}
+			</p>
+			<p class="text-xs text-muted-foreground leading-snug">
+				Your latest changes were not published. The saved document is safe.
+			</p>
 		</div>
 	{:else if latestPublicPageReview?.status === 'passed'}
 		<p class="text-xs text-muted-foreground">Last content review passed.</p>

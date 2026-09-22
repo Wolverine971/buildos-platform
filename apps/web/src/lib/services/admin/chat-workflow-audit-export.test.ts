@@ -559,6 +559,25 @@ describe('workflow-scoped export', () => {
 		expect(markdown).not.toContain('SECRET-SETTLE');
 		expect(markdown).toContain('## Capture coverage');
 	});
+	it('makes a saved specialist recommendation inspectable in the workflow export', () => {
+		const selected = sessionPayload(true);
+		selected.workflows!.runs[0]!.specialist_snapshot!.raw!.recommendation = {
+			id: 'decision-1',
+			inputHash: HASH('1'),
+			resultHash: HASH('2'),
+			result: {
+				status: 'selected',
+				selected: { name: 'Research | Synthesizer', version: 1 },
+				ranking: [{ name: 'Research | Synthesizer', version: 1, probability: 0.82 }],
+				costUsd: 0.0001
+			}
+		};
+		const markdown = buildWorkflowAuditMarkdown(selected, scope);
+		expect(markdown).toContain('Specialist recommendation');
+		expect(markdown).toContain('Research \\| Synthesizer');
+		expect(markdown).toContain('Jev recommendation cost (outside workflow cap)');
+		expect(markdown).toContain('$0.000100');
+	});
 });
 
 describe('whole-session export integration', () => {

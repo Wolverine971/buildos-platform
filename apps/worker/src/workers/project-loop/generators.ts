@@ -542,6 +542,29 @@ function sanitizeOperations(
 	return ops;
 }
 
+/**
+ * A suggestion's title and preview describe every operation the model
+ * proposed. When sanitizing drops any of them (an invented id, a disallowed
+ * tool, a missing target), approving the rest would apply less than the card
+ * says, so the whole suggestion is dropped (null) instead of shipping part of it.
+ */
+function sanitizeCompleteOperations(
+	generator: Exclude<ProjectLoopOperationType, 'project_loop_brief'>,
+	suggestion: RawSuggestion,
+	params: Parameters<typeof sanitizeOperations>[1]
+): LoopOperation[] | null {
+	const operations = sanitizeOperations(suggestion.operations, params);
+	const proposedCount = Array.isArray(suggestion.operations) ? suggestion.operations.length : 0;
+	if (operations.length < proposedCount) {
+		console.warn(
+			`[ProjectLoops] ${generator} dropped a suggestion: ${proposedCount - operations.length} of ${proposedCount} proposed operations were invalid`,
+			{ projectId: params.projectId }
+		);
+		return null;
+	}
+	return operations;
+}
+
 async function callGenerator(params: {
 	llm: SmartLLMService;
 	userId: string;
@@ -894,6 +917,12 @@ const REVIEW_ISSUE_SEVERITIES = new Set<ProjectReviewIssueSeverity>([
 	'important',
 	'critical'
 ]);
+
+/** Option and suggestion ids are machine keys (often snake_case), never prose. */
+function briefId(value: unknown, maxLength: number): string | null {
+	if (typeof value !== 'string') return null;
+	return value.trim().slice(0, maxLength) || null;
+}
 
 function plainBriefText(value: unknown, maxLength: number): string | null {
 	const text = truncate(value, maxLength);
@@ -1319,7 +1348,7 @@ function sanitizeManagerBrief(params: {
 			.filter((candidate): candidate is ProjectReviewSynthesisCandidate =>
 				Boolean(candidate)
 			);
-		const requestedSuggestionId = plainBriefText(rawDecision.recommended_suggestion_id, 80);
+		const requestedSuggestionId = briefId(rawDecision.recommended_suggestion_id, 80);
 		const recommendedCandidate = requestedSuggestionId
 			? candidateById.get(requestedSuggestionId)
 			: null;
@@ -1329,7 +1358,7 @@ function sanitizeManagerBrief(params: {
 						if (!option || typeof option !== 'object' || Array.isArray(option))
 							return null;
 						const record = option as Record<string, unknown>;
-						const id = plainBriefText(record.id, 60);
+						const id = briefId(record.id, 60);
 						const label = plainBriefText(record.label, 100);
 						if (!id || !label) return null;
 						return {
@@ -1654,12 +1683,12 @@ export async function generateDocOrganization(params: {
 
 	const suggestions: ProposedSuggestion[] = [];
 	for (const s of raw) {
-		const operations = sanitizeOperations(s.operations, {
+		const operations = sanitizeCompleteOperations('project_loop_doc_organization', s, {
 			projectId: ctx.projectId,
 			allowedTools,
 			knownDocIds
 		});
-		if (!operations.length || !s.title) continue;
+		if (!operations?.length || !s.title) continue;
 		suggestions.push({
 			kind: 'doc_org',
 			risk_tier: 2,
@@ -1749,14 +1778,14 @@ export async function generateOutdatedDocs(params: {
 
 	const suggestions: ProposedSuggestion[] = [];
 	for (const s of raw) {
-		const operations = sanitizeOperations(s.operations, {
+		const operations = sanitizeCompleteOperations('project_loop_outdated_docs', s, {
 			projectId: ctx.projectId,
 			allowedTools,
 			knownDocIds
 		});
 		// Outdated-doc operations don't carry project_id in the tool schema, but
 		// forcing it is harmless and ignored by update_onto_document.
-		if (!operations.length || !s.title) continue;
+		if (!operations?.length || !s.title) continue;
 		suggestions.push({
 			kind: 'doc_outdated',
 			risk_tier: 1,
@@ -1926,11 +1955,12 @@ export async function generateTaskConflicts(params: {
 
 	const suggestions: ProposedSuggestion[] = [];
 	for (const s of raw) {
-		const sanitizedOperations = sanitizeOperations(s.operations, {
+		const sanitizedOperations = sanitizeCompleteOperations('project_loop_task_conflicts', s, {
 			projectId: ctx.projectId,
 			allowedTools,
 			knownTaskIds
 		});
+		if (!sanitizedOperations) continue;
 		const evidenceRefs = sanitizeEvidenceRefs(s.evidence_refs, ctx);
 		if (evidenceRefs.filter((ref) => ref.entity_type === 'task').length < 2) continue;
 		const operations = filterTaskConflictOperations(sanitizedOperations, {
@@ -1938,7 +1968,15 @@ export async function generateTaskConflicts(params: {
 			evidenceRefs,
 			candidatePairKeys
 		});
-		if (operations.length !== 1 || !s.title) continue;
+		// A conflict filter drop means the model proposed something unusable;
+		// never ship the surviving remainder as if it were the whole suggestion.
+		if (
+			operations.length !== 1 ||
+			operations.length !== sanitizedOperations.length ||
+			!s.title
+		) {
+			continue;
+		}
 		suggestions.push({
 			kind: 'task_conflict',
 			risk_tier: 1,

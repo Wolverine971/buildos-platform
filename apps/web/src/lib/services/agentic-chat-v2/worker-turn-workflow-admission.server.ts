@@ -14,6 +14,7 @@ import {
 	buildPublishedSpecialistSnapshotV3,
 	type SpecialistWorkbenchVersionV1,
 	type PublishedSpecialistRefV1,
+	type SpecialistRecommendationReceiptV1,
 	DOCUMENT_ORGANIZATION_POLICY_REF,
 	type ExecutableSpecialistSnapshot
 } from '@buildos/agentic-chat-runtime/specialists';
@@ -221,7 +222,11 @@ export async function buildAgenticChatWorkflowV4AdmissionArgs(input: {
 	userId: string;
 	command: Pick<AgenticChatWorkflowV4CommandV1, 'clientTurnId' | 'streamRunId' | 'sessionId'>;
 	eligibility: Extract<AgenticChatWorkflowV4EligibilityV1, { eligible: true }>;
-	published?: { snapshot: SpecialistWorkbenchVersionV1; snapshotHash: string };
+	published?: {
+		snapshot: SpecialistWorkbenchVersionV1;
+		snapshotHash: string;
+		recommendation?: SpecialistRecommendationReceiptV1;
+	};
 	transportDecisionId: string;
 	createId?: () => string;
 }): Promise<AgenticChatWorkflowV4AdmissionRpcArgs> {

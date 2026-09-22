@@ -20,6 +20,18 @@ same ontology the BuildOS app uses.
 3. Read deeper only where the status points: `search_onto_tasks`, `search_onto_documents`,
    `get_onto_document_details`, `get_document_tree`, `search_ontology`.
 
+## When a project is missing
+
+The user may have limited this connector to some projects. Two signals mean a project exists
+but is not shared with you:
+
+- a list or search result carries `connector_scope.ungranted_project_count`, or
+- a call fails with `error.details.reason = "project_not_granted_to_connector"`.
+
+Give the user the `grant_url` from that response. It opens a one-click approval page in
+BuildOS. Retry after they approve; no reconnect is needed. Do not guess project ids or retry
+before the user acts.
+
 ## Writing
 
 - Write tools exist only when the user approved write access. If a write fails with a scope

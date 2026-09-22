@@ -62,6 +62,7 @@ export default defineConfig({
 		'src/email/gmail-read-oauth.service.ts',
 		'src/email/gmail-read-gateway.ts',
 		'src/web/safe-fetch.ts',
+		'src/web/navigation.ts',
 		'src/web/search-cache.ts',
 		'src/web/native-search.ts',
 		'src/inbox-index.ts',

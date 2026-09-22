@@ -9,14 +9,16 @@ import {
 import {
 	isProductivityPreloadSkill,
 	PRODUCTIVITY_PRELOAD_ALLOWLIST,
+	renderWorkerPreloadedSkillPromptContent,
 	resolveOperationalSkillPreload,
 	resolveSkillGatePreload,
 	resolveSkillGatePreloadDecision,
-	resolveSkillPreloadById,
 	WORKER_PRELOAD_MAX_CHARS
 } from './skill-gate-preload';
 import { estimateTokensFromText } from '$lib/services/agentic-chat-v2/context-usage';
 import { getSkillById, listAllSkills } from '../skills/registry';
+import { loadSkill } from '../skills/skill-load';
+import { isSkillHelpPayload } from '../skills/types';
 import {
 	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1,
 	findAgenticChatWorkerUnavailableToolNamesV1
@@ -40,6 +42,28 @@ function senseColdEmailTurn() {
 	return senseDomains({
 		currentUserMessage: 'Write a cold email to a newsletter creator about BuildOS.',
 		limit: 3
+	});
+}
+
+// Explicit fiction ask; domain-sensing.test.ts pins it to fiction_story_craft.
+function senseFictionAskTurn() {
+	return senseDomains({
+		currentUserMessage:
+			'Help me plan what happens to this character next in the novel. Give me three options.'
+	});
+}
+
+/**
+ * Worker-lane block for any registered skill, rendered exactly as
+ * resolveSkillPreload renders a craft preload (same load options, default
+ * heading, no example hint). No admission route reaches every skill.
+ */
+function renderWorkerBlockForSkill(skillId: string): string {
+	const payload = loadSkill(skillId, { format: 'short', surface: 'chat_internal' });
+	if (!isSkillHelpPayload(payload)) return '';
+	return renderWorkerPreloadedSkillPromptContent(payload, [], {
+		heading: `Playbook for this turn (${payload.name}):`,
+		exampleHint: null
 	});
 }
 
@@ -96,9 +120,7 @@ describe('resolveSkillGatePreload', () => {
 	it('keeps every worker block under the character cap and engages the cap at least once', () => {
 		const rendered = listAllSkills().map((skill) => ({
 			id: skill.id,
-			content:
-				resolveSkillPreloadById(skill.id, { allowFollowupSkillLoad: false })
-					?.promptContent ?? ''
+			content: renderWorkerBlockForSkill(skill.id)
 		}));
 		for (const { id, content } of rendered) {
 			expect(content.length, id).toBeGreaterThan(0);
@@ -118,9 +140,11 @@ describe('resolveSkillGatePreload', () => {
 	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71: the worker block is a plain
 	// playbook — no gate wording and no note about references it cannot load.
 	it('adds the update-first worked example and no unavailable-references note on the worker lane', () => {
-		const preload = resolveSkillPreloadById('task_management', {
-			allowFollowupSkillLoad: false
+		const preload = resolveOperationalSkillPreload({
+			message: 'mark the intro call done',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
 		});
+		expect(preload?.skillId).toBe('task_management');
 		expect(preload?.promptContent).toContain('Worked example:');
 		expect(preload?.promptContent).toContain('Update an existing task by its exact id');
 		expect(preload?.promptContent).not.toContain('not loadable on this surface');
@@ -130,19 +154,24 @@ describe('resolveSkillGatePreload', () => {
 	});
 
 	it('inlines the Judgment block only for an explicit recommended_load_format: full', () => {
-		const fiction = resolveSkillPreloadById('fiction_story_craft', {
+		const fiction = resolveSkillGatePreload(senseFictionAskTurn(), {
 			allowFollowupSkillLoad: false
 		});
+		expect(fiction?.skillId).toBe('fiction_story_craft');
+		expect(fiction?.reason).toBe('explicit_ask');
 		expect(fiction?.promptContent).toContain('Judgment:');
 		expect(fiction?.promptContent).toContain('Canon ledger');
 		expect(fiction!.promptContent.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
 		// preserve_markdown alone derives `full`; it must not earn the block.
-		const tasks = resolveSkillPreloadById('task_management', {
-			allowFollowupSkillLoad: false
+		const tasks = resolveOperationalSkillPreload({
+			message: 'mark the intro call done',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
 		});
+		expect(tasks?.skillId).toBe('task_management');
 		expect(tasks?.promptContent).not.toContain('Judgment:');
 		// Web lane keeps the short block untouched.
-		const webFiction = resolveSkillPreloadById('fiction_story_craft');
+		const webFiction = resolveSkillGatePreload(senseFictionAskTurn());
+		expect(webFiction?.skillId).toBe('fiction_story_craft');
 		expect(webFiction?.promptContent).not.toContain('Judgment:');
 		expect(webFiction?.promptContent).not.toContain('Worked example:');
 	});
@@ -290,65 +319,6 @@ describe('productivity preload allowlist', () => {
 			expect(resolveSkillGatePreload(sensing, { allowFollowupSkillLoad: false })).toBeNull();
 		}
 	});
-
-	it('keeps the persisted project affinity route open for a craft skill', () => {
-		// A project domain profile is a selection the user already made; it is not
-		// the automatic sensing this decision restricts.
-		const preload = resolveSkillPreloadById('fiction_story_craft');
-		expect(preload?.reason).toBe('project_domain_affinity');
-	});
-});
-
-describe('resolveSkillPreloadById', () => {
-	it('preloads a trusted project-affinity skill without lexical sensing', () => {
-		const preload = resolveSkillPreloadById('fiction_story_craft');
-
-		expect(preload).not.toBeNull();
-		expect(preload?.skillId).toBe('fiction_story_craft');
-		expect(preload?.source).toBe('project_domain_affinity');
-		expect(preload?.format).toBe('short');
-		expect(preload?.payload.markdown).toBeUndefined();
-		expect(preload?.promptContent.length).toBeLessThan(9_000);
-		expect(preload?.promptContent).toContain('Character–Arc–Scene Sweep');
-		expect(preload?.promptContent).toContain('traits, backstory, wants, fears');
-		expect(preload?.promptContent).toContain('Causal bridge');
-		expect(preload?.promptContent).toContain('No project facts changed');
-		expect(preload?.materializedToolNames).toEqual(
-			expect.arrayContaining([
-				'create_onto_document',
-				'get_document_outline',
-				'read_document_section',
-				'search_project',
-				'update_onto_document'
-			])
-		);
-		expect(preload?.payload.write_ops).toEqual(
-			expect.arrayContaining(['onto.document.create', 'onto.document.update'])
-		);
-	});
-
-	it('preloads a complete calendar bundle before the first model pass', () => {
-		const preload = resolveSkillPreloadById('calendar_management');
-
-		expect(preload?.materializedToolNames).toEqual([
-			'create_calendar_event',
-			'delete_calendar_event',
-			'get_calendar_event_details',
-			'get_project_calendar',
-			'list_calendar_events',
-			'set_project_calendar',
-			'update_calendar_event'
-		]);
-		expect(preload?.payload.destructive_ops).toContain('cal.event.delete');
-	});
-
-	it('skips an affinity preload already present in the history ledger', () => {
-		expect(
-			resolveSkillPreloadById('fiction_story_craft', {
-				alreadyLoadedSkillIds: ['FICTION_STORY_CRAFT']
-			})
-		).toBeNull();
-	});
 });
 
 // 2026-09-02 turn executor audit, Finding 4 / Decision 4: the operational
@@ -385,6 +355,25 @@ describe('resolveOperationalSkillPreload', () => {
 		});
 		expect(preload?.skillId).toBe('document_workspace');
 		expect(preload?.promptContent).toContain('move_document_in_tree');
+	});
+
+	it('preloads a complete calendar bundle before the first model pass', () => {
+		const preload = resolveOperationalSkillPreload({
+			message: 'Can you schedule a call with Ana tomorrow?',
+			toolNames: ['create_calendar_event', 'update_calendar_event']
+		});
+
+		expect(preload?.skillId).toBe('calendar_management');
+		expect(preload?.materializedToolNames).toEqual([
+			'create_calendar_event',
+			'delete_calendar_event',
+			'get_calendar_event_details',
+			'get_project_calendar',
+			'list_calendar_events',
+			'set_project_calendar',
+			'update_calendar_event'
+		]);
+		expect(preload?.payload.destructive_ops).toContain('cal.event.delete');
 	});
 
 	it('names the craft candidate as an alternate when both fire', () => {
@@ -424,8 +413,15 @@ describe('resolveOperationalSkillPreload', () => {
 		};
 		expect(params).not.toHaveProperty('alreadyLoadedSkillIds');
 		expect(resolveOperationalSkillPreload(params)?.skillId).toBe('task_management');
+		const auditSensing = senseDomains({
+			currentUserMessage: 'audit this project for blockers and stale work',
+			limit: 3
+		});
 		expect(
-			resolveSkillPreloadById('project_audit', {
+			resolveSkillGatePreload(auditSensing, { allowFollowupSkillLoad: false })?.skillId
+		).toBe('project_audit');
+		expect(
+			resolveSkillGatePreload(auditSensing, {
 				allowFollowupSkillLoad: false,
 				alreadyLoadedSkillIds: ['project_audit']
 			})
@@ -550,36 +546,6 @@ describe('renderDomainSensingPromptContent with a preload', () => {
 		expect(content).not.toContain('Next step');
 		expect(content).not.toContain('skill_load');
 		expect(content).not.toContain('outcome_card_load');
-	});
-
-	it('renders a persisted-affinity preload even when lexical sensing found no domain', () => {
-		const preload = resolveSkillPreloadById('fiction_story_craft');
-		expect(preload).not.toBeNull();
-
-		const content = renderDomainSensingPromptContent(null, {
-			preloadedSkillPromptContent: preload!.promptContent,
-			preloadSource: preload!.source
-		});
-
-		expect(content).toBe(preload!.promptContent);
-		expect(content).not.toContain('Source:');
-		expect(content).not.toContain('Skill-load gate');
-	});
-
-	it('lets persisted affinity override a weak, ungated lexical signal', () => {
-		const weakSensing = senseDomains({
-			currentUserMessage: 'Which option feels strongest?'
-		});
-		expect(weakSensing?.skill_load_required ?? false).toBe(false);
-		const preload = resolveSkillPreloadById('fiction_story_craft');
-
-		const content = renderDomainSensingPromptContent(weakSensing, {
-			preloadedSkillPromptContent: preload!.promptContent,
-			preloadSource: preload!.source
-		});
-
-		expect(content).toBe(preload!.promptContent);
-		expect(content).not.toContain('Skill-load gate: ACTIVE.');
 	});
 
 	it('replaces the active gate directive with the preloaded skill block', () => {

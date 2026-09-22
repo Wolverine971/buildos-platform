@@ -370,6 +370,7 @@ interface HandlerHarness {
 			result: ActivityUpdateResult;
 		}>;
 		upsertSkillActivity: number;
+		appendToolProgress: Array<{ toolCallId: string; step: Record<string, unknown> }>;
 		finalize: Array<{ status?: string; note?: string }>;
 		hydrateSessionFromEvent: number;
 		attachServerTiming: number;
@@ -429,6 +430,7 @@ function createHarness(
 		updateState: [],
 		updateActivityStatus: [],
 		upsertSkillActivity: 0,
+		appendToolProgress: [],
 		finalize: [],
 		hydrateSessionFromEvent: 0,
 		attachServerTiming: 0,
@@ -483,6 +485,10 @@ function createHarness(
 		},
 		upsertSkillActivity() {
 			calls.upsertSkillActivity += 1;
+		},
+		appendToolProgress(toolCallId, step) {
+			calls.appendToolProgress.push({ toolCallId, step: { ...step } });
+			return true;
 		},
 		updateActivityStatus(toolCallId, status, errorMessage, toolResult) {
 			const result = nextActivityUpdateResult;
@@ -846,6 +852,30 @@ describe('createSSEHandler — tool call + result', () => {
 		expect(h.calls.updateBlocks).toHaveLength(1);
 		expect(h.calls.updateBlocks[0]?.activities).toHaveLength(1);
 		expect(h.calls.updateBlocks[0]?.activities[0]?.toolCallId).toBe('call-1');
+	});
+
+	it('tool_progress attaches a live sub-step to its running tool row', () => {
+		const h = createHarness();
+		h.handler({
+			type: 'tool_progress',
+			tool_call_id: 'call-7',
+			tool_name: 'web_navigate',
+			step_index: 2,
+			message: 'Jev: not here (4%) → "Pricing" (91%) · 300ms',
+			data: { kind: 'decided', answer: 0.04 }
+		});
+		expect(h.calls.appendToolProgress).toEqual([
+			{
+				toolCallId: 'call-7',
+				step: {
+					index: 2,
+					message: 'Jev: not here (4%) → "Pricing" (91%) · 300ms',
+					kind: 'decided',
+					data: { kind: 'decided', answer: 0.04 }
+				}
+			}
+		]);
+		expect(h.calls.addActivity).toHaveLength(0);
 	});
 
 	it('tool_result updates a matching activity and records mutation + toast', () => {

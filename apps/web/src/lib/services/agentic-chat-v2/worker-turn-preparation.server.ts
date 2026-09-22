@@ -50,10 +50,6 @@ import {
 	type LitePromptSection,
 	type LitePromptToolsSummary
 } from '$lib/services/agentic-chat-lite/prompt';
-import {
-	LIVING_REFERENCE_MODE,
-	resolveAgentWorkspaceFromContextData
-} from '$lib/services/agentic-chat/project-domain-profiles';
 import { listOutcomeCards } from '$lib/services/agentic-chat/tools/outcome-cards/catalog';
 import {
 	mergeDomainSessionState,
@@ -494,10 +490,9 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	let historyState: AgenticChatHistoryStateV1;
 	// Both history paths feed the same per-turn overlay below. A prepared hit
 	// hands over its byte-bound surface; a miss hands over the freshly built
-	// envelope. `promptContextData` is whatever loaded context the prompt saw.
+	// envelope.
 	let preparedSurfaceForOverlay: PreparedPromptSurface | null = null;
 	let envelopeForOverlay: LitePromptEnvelope | null = null;
-	let promptContextData: unknown = null;
 	let windowLoadedSkillIds: string[] = [];
 
 	if (preparedInspection.hit) {
@@ -513,9 +508,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		);
 		preparedSurfaceProfile = preparedInspection.surfaceKey;
 		preparedSurfaceForOverlay = preparedInspection.surface;
-		promptContextData = isRecord(preparedInspection.row.context_payload)
-			? preparedInspection.row.context_payload.data
-			: null;
 		preparedArtifact = {
 			sourcePreparedPromptId: preparedPromptId,
 			sourcePreparedSurface: {
@@ -578,7 +570,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			conversationSummary,
 			entityResolutionHint: buildEntityResolutionHint(requestLastTurnContext)
 		};
-		promptContextData = promptContext.data;
 		envelopeForOverlay = buildLitePromptEnvelope({
 			...promptContext,
 			tools: workerPromptTools,
@@ -625,19 +616,12 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	// cannot execute. Only carry domain sensing into the worker prompt after the
 	// trusted preload has already satisfied that gate.
 	const workerPromptDomainSensing = workerSkillPreload ? turnPreparation.turnDomainSensing : null;
-	const agentWorkspace = resolveAgentWorkspaceFromContextData(promptContextData);
 	const turnSituation = resolveLitePromptTurnSituation({
 		toolNames: workerPromptToolNames,
 		// A pending semantic contract is the one structural write signal
 		// admission has (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F44).
 		pendingTurnContract: turnPreparation.pendingTurnContract !== null,
 		latestUserMessage: messageForModel,
-		livingWorkspace: agentWorkspace?.mode === LIVING_REFERENCE_MODE,
-		// The semantic disposition gate decides whether this particular message
-		// is a capture; admission does not classify it from its wording.
-		livingWorkspaceCapture: false,
-		domainProfile: agentWorkspace?.domain_profile ?? null,
-		domainAffinity: agentWorkspace?.domain_affinity ?? null,
 		workerBound: WORKER_PROMPT_SCAFFOLD.dynamicSkillTools === false
 	});
 	const overlayInput = {

@@ -124,6 +124,7 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F25).
 	'web_search',
 	'web_visit',
+	'web_navigate',
 	// Calendar reads and writes execute on the worker as of 2026-09-04.
 	'list_calendar_events',
 	'get_calendar_event_details',

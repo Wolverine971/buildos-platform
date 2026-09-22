@@ -5,6 +5,8 @@ export type AgentRunWebUrlCapabilityLedger = {
 	allowsVisit(value: unknown): boolean;
 	observeSearchResult(value: unknown): void;
 	observeVisitResult(value: unknown): void;
+	/** Pages a web_navigate call actually loaded; links it merely saw grant nothing. */
+	observeNavigationResult(value: unknown): void;
 };
 
 /**
@@ -40,6 +42,14 @@ export function createAgentRunWebUrlCapabilityLedger(
 		observeVisitResult(value) {
 			const result = asRecord(value);
 			for (const candidate of [result?.url, result?.final_url]) {
+				const canonical = canonicalizePublicHttpUrl(candidate);
+				if (canonical) allowedUrls.add(canonical);
+			}
+		},
+		observeNavigationResult(value) {
+			const result = asRecord(value);
+			const visited = Array.isArray(result?.visited_urls) ? result.visited_urls : [];
+			for (const candidate of visited.slice(0, 32)) {
 				const canonical = canonicalizePublicHttpUrl(candidate);
 				if (canonical) allowedUrls.add(canonical);
 			}

@@ -122,6 +122,25 @@ A single server-side `commitChangeSet(run_id, decisions)`:
 4. Records `applied_entity_id` per change; promotes applied changes into the run's `entities_touched` with project/title/url metadata for the run detail and completion message.
 5. Sets Change Set `status` → `applied` / `partially_applied`; updates `agent_runs.status` → `completed` or `partial`.
 6. **Partial failure:** a failed change records `error` and does not roll back already-applied siblings unless they're declared dependent; the user sees exactly what landed. (Atomicity granularity is an open question — start per-change with clear reporting.)
+7. **Crash recovery.** The commit claims the run (`proposal_ready` -> `running`) and stamps
+   `commit_started_at`. It refreshes that stamp after each applied change and writes the
+   terminal status last, with no surrounding transaction. If the process dies in between, two
+   paths recover the run:
+    - **D9b re-entry:** a new commit request against a `running` run whose `commit_started_at`
+      is more than 2 minutes old compare-and-swaps the claim and skips changes that already have
+      a successful `agent_tool_executions` commit row. The review UI does not offer this retry
+      after a reload, because it only renders reviews for `proposal_ready` runs.
+    - **Stranded sweep (2026-09-22):** `agentRunStrandedSweep` routes any `running` run that
+      has `commit_started_at` to `recoverStalledCommit` in `change-set.ts`, never to its
+      worker-run "stranded: no active worker" failure. A run with no applied change goes back to
+      `proposal_ready`, so the proposal reappears in the AI Inbox for the user to approve again.
+      A run with some applied changes is finalized `partial` (or `completed` if every change
+      landed). Applied changes are recorded, and the rest carry a "Not applied: the approval was
+      interrupted…" error. The sweep cannot finish the commit itself: per-change decisions exist
+      only in the commit request until the terminal write, so a replay could apply a change the
+      user dismissed. Persisting decisions at claim time would allow automatic completion. The
+      one production casualty before this fix was run `aecfb6b1`, approved 2026-09-04 and left
+      `failed`.
 
 ---
 

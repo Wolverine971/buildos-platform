@@ -15,10 +15,15 @@
 		Zap,
 		BookOpen,
 		HelpCircle,
-		Info
+		Info,
+		Globe,
+		Sparkles,
+		Ban,
+		CornerUpLeft
 	} from 'lucide-svelte';
 	import type { ActivityType, ThinkingBlockMessage } from './agent-chat.types';
 	import AgentClientActionCard from './AgentClientActionCard.svelte';
+	import { readToolProgressSteps, type ToolProgressStep } from './agent-chat-tool-progress';
 	import {
 		collectGmailConnectionClientActions,
 		type AgentClientActionCompletion
@@ -110,6 +115,26 @@
 
 	function getActivityStyle(type: ActivityType) {
 		return ACTIVITY_STYLES[type] || ACTIVITY_STYLES.general;
+	}
+
+	// Sub-steps inside a running tool (web_navigate's live trail): one quiet
+	// line per page opened, Jev decision, retry, or backtrack.
+	const TRAIL_STYLES: Record<string, { icon: typeof Info; color: string }> = {
+		opened: { icon: Globe, color: 'text-muted-foreground' },
+		decided: { icon: Sparkles, color: 'text-info' },
+		escalating: { icon: RefreshCw, color: 'text-warning' },
+		backtracking: { icon: CornerUpLeft, color: 'text-warning' },
+		load_failed: { icon: Ban, color: 'text-destructive' },
+		decision_failed: { icon: X, color: 'text-destructive' }
+	};
+
+	function getTrailStyle(step: ToolProgressStep) {
+		if (step.kind === 'finished') {
+			return step.data?.outcome === 'found'
+				? { icon: Check, color: 'text-success' }
+				: { icon: CircleDot, color: 'text-muted-foreground' };
+		}
+		return TRAIL_STYLES[step.kind] ?? { icon: CircleDot, color: 'text-muted-foreground' };
 	}
 
 	// Auto-follow: keep the newest log entry in view while the turn is active —
@@ -243,6 +268,9 @@
 							{#each displayedActivities as activity (activity.id)}
 								{@const style = getActivityStyle(activity.activityType)}
 								{@const ActivityIcon = style.icon}
+								{@const trail = readToolProgressSteps(
+									activity.metadata?.progressSteps
+								)}
 								<div class="py-0.5">
 									<div class="flex items-center gap-1.5 leading-snug">
 										<!-- Icon -->
@@ -274,6 +302,36 @@
 											/>
 										{/if}
 									</div>
+									{#if trail.length > 0}
+										<ol class="tool-trail" aria-label="Steps for this action">
+											{#each trail as step, stepIndex (step.index)}
+												{@const trailStyle = getTrailStyle(step)}
+												{@const TrailIcon = trailStyle.icon}
+												{@const live =
+													activity.status === 'pending' &&
+													stepIndex === trail.length - 1}
+												<li
+													class="tool-trail-step"
+													class:tool-trail-step-live={live}
+												>
+													<TrailIcon
+														class="mt-px h-2.5 w-2.5 shrink-0 {trailStyle.color}"
+														aria-hidden="true"
+													/>
+													<span
+														class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
+														>{step.message}</span
+													>
+													{#if live}
+														<Loader
+															class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
+															aria-hidden="true"
+														/>
+													{/if}
+												</li>
+											{/each}
+										</ol>
+									{/if}
 								</div>
 							{/each}
 						</div>
@@ -309,6 +367,44 @@
 {/each}
 
 <style>
+	.tool-trail {
+		margin: 0.125rem 0 0.25rem 0.3rem;
+		padding-left: 0.6rem;
+		border-left: 1px solid hsl(var(--border));
+		list-style: none;
+	}
+
+	.tool-trail-step {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.375rem;
+		padding: 0.0625rem 0;
+		line-height: 1.35;
+		color: hsl(var(--muted-foreground));
+		animation: tool-trail-in 180ms ease-out both;
+	}
+
+	.tool-trail-step-live {
+		color: hsl(var(--foreground));
+	}
+
+	@keyframes tool-trail-in {
+		from {
+			opacity: 0;
+			transform: translateY(-2px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.tool-trail-step {
+			animation: none;
+		}
+	}
+
 	.thinking-block-wrap {
 		display: flex;
 		width: 100%;

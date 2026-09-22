@@ -5,8 +5,12 @@ vi.mock('$lib/services/ontology/doc-structure.service', () => ({
 	updateDocNodeMetadata: vi.fn()
 }));
 
+const runPublicPageContentReviewMock = vi.hoisted(() => vi.fn());
+
 vi.mock('$lib/server/public-page-content-review.service', () => ({
-	runPublicPageContentReview: vi.fn()
+	PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE:
+		'Content review is temporarily unavailable. Please try again in a few minutes.',
+	runPublicPageContentReview: runPublicPageContentReviewMock
 }));
 
 import {
@@ -15,7 +19,8 @@ import {
 	normalizePublicPageSlugBase,
 	normalizePublicPageSlugPrefix,
 	prepareDocumentPublicPagePreview,
-	splitPublicPageSlugForDisplay
+	splitPublicPageSlugForDisplay,
+	syncLivePublicPageForDocument
 } from './public-page.service';
 
 describe('public-page.service slug helpers', () => {
@@ -144,5 +149,93 @@ describe('prepareDocumentPublicPagePreview', () => {
 			p_slug_base: 'market-map',
 			p_exclude_page_id: null
 		});
+	});
+});
+
+describe('syncLivePublicPageForDocument', () => {
+	function createLivePageSupabase() {
+		const livePageRow = {
+			id: 'page-1',
+			project_id: 'project-1',
+			document_id: 'doc-1',
+			slug: 'dj-wayne-market-map',
+			slug_prefix: 'dj-wayne',
+			slug_base: 'market-map',
+			title: 'Market Map',
+			status: 'published',
+			public_status: 'live',
+			visibility: 'public',
+			live_sync_enabled: true,
+			published_content: 'Old published content',
+			deleted_at: null
+		};
+		const updates: Array<Record<string, unknown>> = [];
+		const supabase = {
+			from: vi.fn((table: string) => {
+				if (table !== 'onto_public_pages') throw new Error(`Unexpected table: ${table}`);
+				let pendingUpdate: Record<string, unknown> | null = null;
+				const builder: any = {
+					select: vi.fn(() => builder),
+					eq: vi.fn(() => builder),
+					is: vi.fn(() => builder),
+					update: vi.fn((payload: Record<string, unknown>) => {
+						pendingUpdate = payload;
+						updates.push(payload);
+						return builder;
+					}),
+					maybeSingle: vi.fn(async () => ({
+						data: { ...livePageRow, ...(pendingUpdate ?? {}) },
+						error: null
+					})),
+					single: vi.fn(async () => ({
+						data: { ...livePageRow, ...(pendingUpdate ?? {}) },
+						error: null
+					}))
+				};
+				return builder;
+			})
+		};
+		return { supabase, updates };
+	}
+
+	it('refuses to sync with a retryable message when content review is unavailable', async () => {
+		const { supabase, updates } = createLivePageSupabase();
+		runPublicPageContentReviewMock.mockResolvedValueOnce({
+			id: 'review-error',
+			status: 'error',
+			summary:
+				'Content review is temporarily unavailable. Please try again in a few minutes.',
+			reasons: [],
+			admin_decision: null
+		});
+
+		const result = await syncLivePublicPageForDocument(
+			supabase as any,
+			{
+				id: 'doc-1',
+				project_id: 'project-1',
+				title: 'Market Map',
+				description: null,
+				content: 'New content that has not been reviewed',
+				props: {}
+			} as any,
+			'actor-1',
+			'user-1'
+		);
+
+		expect(result.synced).toBe(false);
+		expect(result.blocked).toBe(false);
+		expect(result.error).toBe(
+			'Content review is temporarily unavailable. Please try again in a few minutes.'
+		);
+		expect(result.error).not.toMatch(/admin/i);
+		expect(result.review?.status).toBe('error');
+		expect(updates).toEqual([
+			expect.objectContaining({
+				last_live_sync_error:
+					'Content review is temporarily unavailable. Please try again in a few minutes.'
+			})
+		]);
+		expect(updates.some((update) => 'published_content' in update)).toBe(false);
 	});
 });

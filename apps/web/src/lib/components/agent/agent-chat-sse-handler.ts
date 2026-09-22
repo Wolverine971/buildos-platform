@@ -1,4 +1,5 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.ts
+import type { ToolProgressStep } from './agent-chat-tool-progress';
 import {
 	readAgentChatWorkflowProgress,
 	readDurableChatWorkflowProgress,
@@ -354,6 +355,8 @@ export interface ThinkingBlockDeps {
 		errorMessage?: string,
 		toolResult?: Record<string, any>
 	): ActivityUpdateResult;
+	/** Attach a live sub-step to a running tool row. Returns false when no row matches. */
+	appendToolProgress?(toolCallId: string, step: ToolProgressStep): boolean;
 	finalize(status?: 'completed' | 'interrupted' | 'cancelled' | 'error', note?: string): void;
 	getCurrentBlockId(): string | null;
 }
@@ -821,6 +824,17 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 
 			case 'tool_result':
 				handleToolResult(event);
+				return;
+
+			case 'tool_progress':
+				if (typeof event.tool_call_id === 'string' && typeof event.message === 'string') {
+					thinking.appendToolProgress?.(event.tool_call_id, {
+						index: event.step_index,
+						message: event.message,
+						kind: typeof event.data?.kind === 'string' ? event.data.kind : 'step',
+						...(event.data ? { data: event.data } : {})
+					});
+				}
 				return;
 
 			case 'skill_activity':

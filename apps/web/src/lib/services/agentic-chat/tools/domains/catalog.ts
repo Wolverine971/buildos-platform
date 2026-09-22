@@ -775,8 +775,12 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 			// development", "character development", "story beats", "what
 			// happens next", "character options") hit marketing and coaching
 			// messages constantly and would preload fiction_story_craft over the
-			// correct skill. Established fiction projects route via their
-			// persisted workspace affinity, not these aliases.
+			// correct skill. Fiction projects have no project-level route (the
+			// persisted workspace affinity was removed 2026-09-22): the skill
+			// preloads only on a turn whose message hits one of these aliases
+			// with an explicit request shape (isExplicitSkillAskTurn). Otherwise
+			// it is reachable only where skill_search / skill_load are mounted,
+			// which excludes the worker lane.
 			'fiction writing',
 			'novel writing',
 			'book writing',

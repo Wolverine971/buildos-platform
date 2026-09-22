@@ -18,7 +18,17 @@ import { provideAgenticChatLoopToolCatalog } from './tool-catalog';
 provideAgenticChatLoopToolCatalog(() => ({
 	ops: {},
 	byToolName: {
-		move_onto_task: { op: 'onto.task.move', tool_name: 'move_onto_task', kind: 'write' }
+		create_onto_document: {
+			op: 'onto.document.create',
+			tool_name: 'create_onto_document',
+			kind: 'write'
+		},
+		move_onto_task: { op: 'onto.task.move', tool_name: 'move_onto_task', kind: 'write' },
+		search_onto_documents: {
+			op: 'onto.document.search',
+			tool_name: 'search_onto_documents',
+			kind: 'read'
+		}
 	}
 }));
 
@@ -161,6 +171,74 @@ describe('receipt-grounded assistant disposition', () => {
 				'Perhaps suggest updating it or marking tasks done.'
 			)
 		).toBeNull();
+	});
+});
+
+describe('document link and placement claims', () => {
+	function execution(
+		name: string,
+		args: Record<string, unknown>,
+		result: unknown
+	): FastToolExecution {
+		const toolCall: ChatToolCall = {
+			id: `${name}:1`,
+			type: 'function',
+			function: { name, arguments: JSON.stringify(args) }
+		};
+		return { toolCall, result: { tool_call_id: toolCall.id, success: true, result } };
+	}
+
+	const createRootDocument = () =>
+		execution(
+			'create_onto_document',
+			{ project_id: 'project_1', title: 'Launch pitch', type_key: 'document.default' },
+			{
+				document: { id: 'doc_1', title: 'Launch pitch' },
+				structure: { version: 1, root: [{ id: 'doc_1', order: 0 }] },
+				structure_error: null
+			}
+		);
+
+	it('accepts a root placement claim after a successful document create without a parent', () => {
+		// Production misfire: the create placed the document at the tree root,
+		// yet the reply got "Correction: I did not move or place the document".
+		const text =
+			"Created **Launch pitch** as a new project document. I created it at the root of the project's document tree since no parent folder was specified.\n\nIf you'd like it nested under another document, let me know where it should go.";
+		expect(
+			enforceMutationOutcomeIntegrity(text, {
+				contextType: 'project',
+				toolExecutions: [createRootDocument()],
+				explicitMutationRequested: true
+			})
+		).toBe(text);
+	});
+
+	it('does not correct a read-only answer that describes an existing link', () => {
+		const text = 'Your pitch document is linked to the Launch goal.';
+		expect(
+			enforceMutationOutcomeIntegrity(text, {
+				contextType: 'project',
+				toolExecutions: [
+					execution(
+						'search_onto_documents',
+						{ query: 'pitch' },
+						{ documents: [{ id: 'doc_1', title: 'Pitch' }] }
+					)
+				],
+				explicitMutationRequested: false
+			})
+		).toBe(text);
+	});
+
+	it('still corrects a link claim when the only write was a document create', () => {
+		const text = 'Created the Pitch doc and linked it to the Launch goal.';
+		expect(
+			enforceMutationOutcomeIntegrity(text, {
+				contextType: 'project',
+				toolExecutions: [createRootDocument()],
+				explicitMutationRequested: true
+			})
+		).toBe(`${text}\n\nCorrection: I did not create a document link.`);
 	});
 });
 

@@ -89,18 +89,6 @@
 			}
 		}
 
-		const spamPatterns = [
-			/https?:\/\/[^\s]+/i,
-			/\b(bitcoin|crypto|investment|loan|money)\b/i,
-			/(.)\1{10,}/
-		];
-
-		for (const pattern of spamPatterns) {
-			if (pattern.test(trimmedFeedback)) {
-				return 'Your message looks like spam. Please revise it and try again.';
-			}
-		}
-
 		return null;
 	}
 

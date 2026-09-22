@@ -1,6 +1,9 @@
 // apps/web/src/lib/server/agent-call/change-set-commit.test.ts
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { commitChangeSet } from '../../../../../../packages/shared-agent-ops/src/gateway/change-set';
+import {
+	commitChangeSet,
+	recoverStalledCommit
+} from '../../../../../../packages/shared-agent-ops/src/gateway/change-set';
 import type { ChangeSet, ProposedChange } from '@buildos/shared-types';
 
 const gatewayMocks = vi.hoisted(() => ({
@@ -339,6 +342,178 @@ describe('commitChangeSet', () => {
 		expect(outcome.ok).toBe(false);
 		expect((outcome as any).error.code).toBe('CONFLICT');
 		expect(gatewayMocks.runGatewayWriteOp).not.toHaveBeenCalled();
+	});
+
+	describe('recoverStalledCommit (sweep recovery of a dead web commit)', () => {
+		const tenMinutesAgo = () => new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+		function twoChangeRun() {
+			const run = buildStagedRun({ commit_started_at: tenMinutesAgo() });
+			const changeSet = run.change_set as ChangeSet;
+			changeSet.changes.push({
+				...changeSet.changes[0]!,
+				id: 'change-2',
+				entity_id: 'document-2',
+				after: { document_id: 'document-2', content: 'new 2' }
+			});
+			return run;
+		}
+
+		it('returns a commit that applied nothing to review instead of failing it', async () => {
+			const run = buildStagedRun({ commit_started_at: tenMinutesAgo() });
+			const supabase = createSupabaseMock(
+				{
+					agent_runs: [
+						{ data: run, error: null },
+						{ data: { id: 'run-1' }, error: null }
+					]
+				},
+				{ agent_tool_executions: { data: [], error: null } }
+			);
+
+			const outcome = await recoverStalledCommit({
+				admin: supabase.client as any,
+				runId: 'run-1'
+			});
+
+			expect(outcome).toEqual({ outcome: 'returned_to_review' });
+			expect(supabase.updates).toEqual([
+				{
+					table: 'agent_runs',
+					payload: { status: 'proposal_ready', commit_started_at: null }
+				}
+			]);
+			expect(inboxMocks.syncInboxItemForAgentRun).toHaveBeenCalledWith(
+				expect.objectContaining({ runId: 'run-1' })
+			);
+			expect(gatewayMocks.runGatewayWriteOp).not.toHaveBeenCalled();
+		});
+
+		it('records what landed when a commit died part-way, and marks the rest not applied', async () => {
+			const supabase = createSupabaseMock(
+				{
+					agent_runs: [
+						{ data: twoChangeRun(), error: null },
+						{ data: { id: 'run-1' }, error: null }
+					]
+				},
+				{
+					agent_tool_executions: {
+						data: [
+							{
+								proposed_change_id: 'change-1',
+								entity_id: 'document-1',
+								entity_kind: 'document'
+							}
+						],
+						error: null
+					}
+				}
+			);
+
+			const outcome = await recoverStalledCommit({
+				admin: supabase.client as any,
+				runId: 'run-1'
+			});
+
+			expect(outcome).toEqual({
+				outcome: 'finalized',
+				runStatus: 'partial',
+				applied: 1,
+				notApplied: 1
+			});
+			const payload = supabase.updates[0]?.payload as Record<string, any>;
+			expect(payload.status).toBe('partial');
+			expect(payload.error).toBe(
+				'commit interrupted: 1 of 2 change(s) applied before the approval stopped'
+			);
+			expect(payload.change_set.status).toBe('partially_applied');
+			expect(payload.change_set.changes[0]).toMatchObject({
+				id: 'change-1',
+				decision: 'approved',
+				applied_entity_id: 'document-1'
+			});
+			expect(payload.change_set.changes[1].error).toMatch(/^Not applied:/);
+			expect(payload.result.entities_touched).toContainEqual(
+				expect.objectContaining({ type: 'document', id: 'document-1' })
+			);
+			expect(gatewayMocks.runGatewayWriteOp).not.toHaveBeenCalled();
+		});
+
+		it('completes a commit whose every change landed before the terminal write', async () => {
+			const supabase = createSupabaseMock(
+				{
+					agent_runs: [
+						{
+							data: buildStagedRun({ commit_started_at: tenMinutesAgo() }),
+							error: null
+						},
+						{ data: { id: 'run-1' }, error: null }
+					]
+				},
+				{
+					agent_tool_executions: {
+						data: [{ proposed_change_id: 'change-1', entity_id: 'document-1' }],
+						error: null
+					}
+				}
+			);
+
+			const outcome = await recoverStalledCommit({
+				admin: supabase.client as any,
+				runId: 'run-1'
+			});
+
+			expect(outcome).toMatchObject({ outcome: 'finalized', runStatus: 'completed' });
+			const payload = supabase.updates[0]?.payload as Record<string, any>;
+			expect(payload).toMatchObject({ status: 'completed', error: null });
+			expect(payload.change_set.status).toBe('applied');
+		});
+
+		it('leaves a commit that is still inside its heartbeat window alone', async () => {
+			const supabase = createSupabaseMock({
+				agent_runs: [
+					{
+						data: buildStagedRun({
+							commit_started_at: new Date(Date.now() - 30_000).toISOString()
+						}),
+						error: null
+					}
+				]
+			});
+
+			const outcome = await recoverStalledCommit({
+				admin: supabase.client as any,
+				runId: 'run-1'
+			});
+
+			expect(outcome).toEqual({ outcome: 'skipped', reason: 'not_stalled' });
+			expect(supabase.updates).toEqual([]);
+		});
+
+		it('yields to a D9b re-entry that re-claimed the run first', async () => {
+			const supabase = createSupabaseMock(
+				{
+					agent_runs: [
+						{
+							data: buildStagedRun({ commit_started_at: tenMinutesAgo() }),
+							error: null
+						},
+						// compare-and-swap on the stale commit_started_at matched no row
+						{ data: null, error: null }
+					]
+				},
+				{ agent_tool_executions: { data: [], error: null } }
+			);
+
+			const outcome = await recoverStalledCommit({
+				admin: supabase.client as any,
+				runId: 'run-1'
+			});
+
+			expect(outcome).toEqual({ outcome: 'skipped', reason: 'raced' });
+			expect(inboxMocks.syncInboxItemForAgentRun).not.toHaveBeenCalled();
+		});
 	});
 
 	it('does not re-enter a running run that never recorded commit_started_at', async () => {

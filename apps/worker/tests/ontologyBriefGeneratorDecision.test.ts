@@ -12,7 +12,10 @@ vi.mock('../src/lib/services/smart-llm-service.js', () => ({
 	SmartLLMService: vi.fn()
 }));
 
-import { getProjectLlmBriefDecision } from '../src/workers/brief/ontologyBriefGenerator';
+import {
+	getProjectLlmBriefDecision,
+	normalizeLLMProjectBriefMarkdown
+} from '../src/workers/brief/ontologyBriefGenerator';
 
 function createProjectBriefData(overrides: Partial<ProjectBriefData> = {}): ProjectBriefData {
 	return {
@@ -183,5 +186,41 @@ describe('getProjectLlmBriefDecision', () => {
 
 		expect(decision.weeklyCommitmentCount).toBe(1);
 		expect(decision.shouldUseLlm).toBe(false);
+	});
+});
+
+describe('normalizeLLMProjectBriefMarkdown', () => {
+	// A retired guard discarded any LLM brief that said "time block", back when
+	// the prompt fed time-block data. A user's own task can say it too.
+	it('keeps an LLM brief that names a time-block task', () => {
+		const project = createProjectBriefData({
+			todaysTasks: [
+				{
+					id: 'task-1',
+					project_id: 'project-1',
+					title: 'Set up weekly time blocks',
+					state_key: 'todo',
+					type_key: 'task.execute',
+					archived_at: null,
+					completed_at: null,
+					created_by: 'actor-1',
+					deleted_at: null,
+					description: null,
+					facet_scale: null,
+					props: {},
+					search_vector: null,
+					idempotency_key: null,
+					priority: null,
+					due_at: '2026-05-20T15:00:00.000Z',
+					start_at: null,
+					updated_at: '2026-05-19T12:00:00.000Z',
+					created_at: '2026-05-19T12:00:00.000Z'
+				}
+			]
+		});
+		const briefMarkdown =
+			'## [Project 1](/projects/project-1)\n\n**Today:** Set up weekly time blocks so the rest of the week has room for deep work.';
+
+		expect(normalizeLLMProjectBriefMarkdown(project, { briefMarkdown })).toBe(briefMarkdown);
 	});
 });

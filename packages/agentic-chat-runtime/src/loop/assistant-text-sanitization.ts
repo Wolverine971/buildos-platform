@@ -160,30 +160,6 @@ const CONTEXTUAL_SCRATCHPAD_SENTENCE_PATTERNS = [
 	/^\s*anyway,\s*since\b/i
 ];
 
-const USER_FACING_LEAD_IN_PATTERNS = [
-	/^(?:i'll|i will|let me|i can|i'm going to|first,\s*i'll)\b/i
-];
-
-export function sanitizeToolPassLeadIn(raw: string, message: string): string {
-	const trimmed = raw.trim();
-	if (!trimmed) {
-		return '';
-	}
-
-	const cleanSentences = extractCleanAssistantSentences(trimmed, {
-		includeContextualScratchpad: true
-	});
-	const preferredLeadIn = cleanSentences.find((sentence) =>
-		USER_FACING_LEAD_IN_PATTERNS.some((pattern) => pattern.test(sentence))
-	);
-
-	if (preferredLeadIn) {
-		return preferredLeadIn;
-	}
-
-	return buildGenericToolLeadIn(message);
-}
-
 export function sanitizeAssistantFinalText(raw: string): string {
 	const trimmed = raw.trim();
 	if (!trimmed) {
@@ -252,58 +228,10 @@ function removeScratchpadSentences(raw: string): string {
 		.trim();
 }
 
-function buildGenericToolLeadIn(message: string): string {
-	const normalizedMessage = message.trim().toLowerCase();
-	if (normalizedMessage.includes('calendar') || normalizedMessage.includes('event')) {
-		return "I'll check BuildOS and the relevant calendar details.";
-	}
-	if (normalizedMessage.includes('project')) {
-		return "I'll look that up in BuildOS and gather the relevant project details.";
-	}
-	if (normalizedMessage.includes('task')) {
-		return "I'll look that up in BuildOS and gather the relevant task details.";
-	}
-	return "I'll look that up in BuildOS and gather the relevant details.";
-}
-
 function containsScratchpadMarkers(raw: string): boolean {
 	return splitAssistantTextIntoSentences(raw).some((sentence) =>
 		looksLikeScratchpadSentence(sentence)
 	);
-}
-
-function extractCleanAssistantSentences(
-	raw: string,
-	options: { includeContextualScratchpad?: boolean } = {}
-): string[] {
-	const sentences = splitAssistantTextIntoSentences(raw);
-	const includeContextualScratchpad =
-		options.includeContextualScratchpad ||
-		sentences.some((sentence) => looksLikeScratchpadSentence(sentence));
-	const cleanSentences: string[] = [];
-	const seen = new Set<string>();
-
-	for (const sentence of sentences) {
-		if (
-			looksLikeScratchpadSentence(sentence) ||
-			(includeContextualScratchpad && looksLikeContextualScratchpadSentence(sentence))
-		) {
-			continue;
-		}
-
-		const normalized = normalizeAssistantSentence(sentence);
-		if (!normalized || normalized.length < 8) {
-			continue;
-		}
-		if (seen.has(normalized)) {
-			continue;
-		}
-
-		seen.add(normalized);
-		cleanSentences.push(normalized);
-	}
-
-	return cleanSentences;
 }
 
 function splitAssistantTextIntoSentences(raw: string): string[] {

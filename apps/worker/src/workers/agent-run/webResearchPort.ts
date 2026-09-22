@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agent-run/webResearchPort.ts
-import sanitizeHtml from 'sanitize-html';
 import { type WebResearchPort, WebResearchPortError } from '@buildos/shared-agent-ops';
 import { fetchPublicUrl } from '@buildos/shared-agent-ops/web/safe-fetch';
+import { readHtmlMainText, readHtmlTitle } from '@buildos/shared-agent-ops/web/navigation';
 import { ExpiringSingleFlightCache } from '@buildos/shared-agent-ops/web/search-cache';
 import {
 	LayeredNativeSearchCache,
@@ -192,13 +192,6 @@ function clampInteger(value: unknown, fallback: number, min: number, max: number
 	return Math.min(Math.max(Math.floor(value), min), max);
 }
 
-function compactText(value: unknown, maxChars: number): string | undefined {
-	if (typeof value !== 'string') return undefined;
-	const compact = value.replace(/\s+/g, ' ').trim();
-	if (!compact) return undefined;
-	return compact.length > maxChars ? `${compact.slice(0, maxChars)}...` : compact;
-}
-
 function normalizeSearchArgs(args: Record<string, unknown>): NormalizedNativeSearchRequest {
 	try {
 		return normalizeNativeSearchRequest(args);
@@ -334,54 +327,6 @@ function normalizePlainText(value: string): string {
 		.trim();
 }
 
-function decodeHtmlEntities(value: string): string {
-	return value
-		.replace(/&#x([0-9a-f]+);/gi, (match, hex: string) => {
-			const codePoint = Number.parseInt(hex, 16);
-			return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
-		})
-		.replace(/&#(\d+);/g, (match, decimal: string) => {
-			const codePoint = Number.parseInt(decimal, 10);
-			return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
-		})
-		.replace(/&quot;/gi, '"')
-		.replace(/&#39;|&apos;/gi, "'")
-		.replace(/&lt;/gi, '<')
-		.replace(/&gt;/gi, '>')
-		.replace(/&amp;/gi, '&');
-}
-
-function stripHtmlToText(html: string): { title?: string; content: string } {
-	const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
-	const title = titleMatch
-		? compactText(
-				decodeHtmlEntities(sanitizeHtml(titleMatch[1] ?? '', { allowedTags: [] })),
-				500
-			)
-		: undefined;
-	const body = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? html;
-	// Convert block-level boundaries to newlines first (a linear single-tag
-	// pass) so adjacent blocks don't run together after flattening.
-	const withBreaks = body.replace(
-		/<\/?(?:article|aside|blockquote|br|dd|div|dl|dt|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|td|th|tr|ul)\b[^>]*>/gi,
-		'\n'
-	);
-	// sanitize-html strips ALL remaining tags and, via nonTextTags, discards the
-	// CONTENT of executable/embedded tags. This replaces a `<tag>[\s\S]*?</tag>`
-	// regex that backtracked quadratically (~35s on a 2MB page of unclosed
-	// <script> tags); sanitize-html tokenizes linearly instead.
-	const content = normalizePlainText(
-		decodeHtmlEntities(
-			sanitizeHtml(withBreaks, {
-				allowedTags: [],
-				allowedAttributes: {},
-				nonTextTags: ['script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form']
-			})
-		)
-	);
-	return { title, content };
-}
-
 function normalizeContentType(value: string | null): string | undefined {
 	const primary = value?.split(';')[0]?.trim().toLowerCase();
 	return primary || undefined;
@@ -447,9 +392,10 @@ async function performVisit(
 	let title: string | undefined;
 	let text: string;
 	if (isHtml) {
-		const parsed = stripHtmlToText(response.body);
-		title = parsed.title;
-		text = parsed.content;
+		// Main-content reader: drops site chrome and keeps <form>-wrapped
+		// ASP.NET/SharePoint bodies that the old whole-body stripper emptied.
+		title = readHtmlTitle(response.body);
+		text = readHtmlMainText(response.body).text;
 	} else if (isReadableTextType(contentType)) {
 		text = normalizePlainText(response.body);
 	} else {

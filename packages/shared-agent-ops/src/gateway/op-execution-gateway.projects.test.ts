@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/gateway/op-execution-gateway.projects.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -12,8 +13,7 @@ const existingProject = {
 	end_at: null,
 	props: {
 		retained: true,
-		preferences: { system: true },
-		agent_workspace: { domain_profile: 'fiction_story' }
+		preferences: { system: true }
 	}
 };
 
@@ -91,8 +91,7 @@ describe('project gateway update parity', () => {
 			state_key: 'active',
 			props: {
 				color: 'blue',
-				preferences: { overwrite: true },
-				agent_workspace: { mode: 'living_reference' }
+				preferences: { overwrite: true }
 			}
 		});
 
@@ -102,8 +101,7 @@ describe('project gateway update parity', () => {
 			props: {
 				retained: true,
 				color: 'blue',
-				preferences: { system: true },
-				agent_workspace: { domain_profile: 'fiction_story' }
+				preferences: { system: true }
 			}
 		});
 		expect(selected).toEqual([ONTO_PROJECT_MUTATION_SELECT]);
@@ -116,8 +114,7 @@ describe('project gateway update parity', () => {
 				facet_stage: 'execution',
 				props: {
 					retained: true,
-					color: 'blue',
-					agent_workspace: { domain_profile: 'fiction_story' }
+					color: 'blue'
 				}
 			},
 			message: 'Updated ontology project "Fixture project".'
@@ -145,40 +142,13 @@ describe('project gateway update parity', () => {
 		};
 	}
 
-	it('retypes a novel to a nonfiction book and demotes its fiction profile', async () => {
+	it('retypes a project without touching its props', async () => {
 		const payloads: Record<string, unknown>[] = [];
 		await updateProject(context(capturingAdmin(payloads)), {
 			project_id: PROJECT_ID,
 			type_key: 'project.creative.book.nonfiction'
 		});
 		expect(payloads[0]).toMatchObject({ type_key: 'project.creative.book.nonfiction' });
-		expect(payloads[0]!.props).toEqual({ retained: true, preferences: { system: true } });
-	});
-
-	it('never promotes a profile through a retype or props patch', async () => {
-		mocks.loadCoreEntityForAccess.mockResolvedValueOnce({
-			kind: 'project',
-			entity: { ...existingProject, props: { retained: true } },
-			project: { id: PROJECT_ID, name: 'Fixture project' },
-			projectId: PROJECT_ID
-		});
-		const payloads: Record<string, unknown>[] = [];
-		await updateProject(context(capturingAdmin(payloads)), {
-			project_id: PROJECT_ID,
-			type_key: 'project.creative.novel',
-			props: { agent_workspace: { domain_profile: 'fiction_story', mode: 'living_reference' } }
-		});
-		expect(payloads[0]).toMatchObject({ type_key: 'project.creative.novel' });
-		// The server-owned key is stripped, leaving no props write at all.
-		expect(payloads[0]!.props).toBeUndefined();
-	});
-
-	it('keeps the fiction profile when the new type is still fiction', async () => {
-		const payloads: Record<string, unknown>[] = [];
-		await updateProject(context(capturingAdmin(payloads)), {
-			project_id: PROJECT_ID,
-			type_key: 'project.creative.screenplay'
-		});
 		expect(payloads[0]!.props).toBeUndefined();
 	});
 
@@ -190,15 +160,14 @@ describe('project gateway update parity', () => {
 		expect(admin.from).not.toHaveBeenCalled();
 	});
 
-	it('rejects a props-only patch when every supplied key is server-owned', async () => {
+	it('rejects a props-only patch when every supplied key is hidden', async () => {
 		const admin = { from: vi.fn() };
 
 		await expect(
 			updateProject(context(admin), {
 				project_id: PROJECT_ID,
 				props: {
-					preferences: { hidden: true },
-					agent_workspace: { mode: 'living_reference' }
+					preferences: { hidden: true }
 				}
 			})
 		).rejects.toMatchObject({

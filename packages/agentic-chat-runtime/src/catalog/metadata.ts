@@ -778,6 +778,20 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		timeoutMs: 60000,
 		category: 'read'
 	},
+	web_navigate: {
+		summary:
+			"Click through a website's own links toward a goal and return the page that answers it.",
+		capabilities: [
+			'Finds pages linked from a known page: event details, bids, pricing, docs sections',
+			'A fast decision model picks each link; no URL is ever guessed',
+			'Honors robots.txt and paces requests per site',
+			'Falls back to a rendering crawler for bot-walled or JavaScript-only pages',
+			'Returns goal-relevant passages plus the path taken'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		timeoutMs: 60000,
+		category: 'read'
+	},
 	get_buildos_overview: {
 		summary:
 			'High-level BuildOS overview covering mission, architecture, and documentation map.',

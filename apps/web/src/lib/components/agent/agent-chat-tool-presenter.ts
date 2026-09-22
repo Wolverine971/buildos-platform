@@ -1051,6 +1051,22 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		return url || modeDetails;
 	}
 
+	function webNavigateTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		let site: string | undefined;
+		try {
+			site =
+				typeof args.url === 'string'
+					? new URL(args.url).hostname.replace(/^www\./, '')
+					: undefined;
+		} catch {
+			site = firstDisplayLabel(args.url);
+		}
+		const goal = firstDisplayLabel(args.goal);
+		if (site && goal) return `${site} · ${goal}`;
+		return site || goal;
+	}
+
 	function resolveProjectNameFromArgs(args: Record<string, any> | undefined): string | undefined {
 		if (!args || typeof args !== 'object') return undefined;
 		return resolveEntityName(
@@ -1480,6 +1496,10 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		web_visit: (args) => ({
 			action: 'Visiting web page',
 			target: webVisitTarget(args)
+		}),
+		web_navigate: (args) => ({
+			action: 'Navigating web',
+			target: webNavigateTarget(args)
 		}),
 		libri_overview: (args) => ({
 			action: 'Loading Libri overview',

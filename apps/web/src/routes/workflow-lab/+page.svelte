@@ -110,6 +110,10 @@
 				);
 			}
 			recommendation = body.recommendation as Recommendation;
+			// A stuck claim or a failed Jev call would replay forever under the same ID; the next
+			// ask starts a new decision. Network errors keep the ID so a retry replays unbilled.
+			if (recommendation.status === 'pending' || recommendation.status === 'unavailable')
+				recommendationRequest = null;
 		} catch (cause) {
 			if (generation === recommendationGeneration) {
 				recommendationError =
@@ -354,8 +358,8 @@
 										.selected.version}
 								{:else if recommendation.status === 'uncertain'}Jev is unsure which
 									specialist fits best.
-								{:else if recommendation.status === 'pending'}Jev is still ranking
-									this question. Ask again to check the same request.
+								{:else if recommendation.status === 'pending'}Jev has not finished
+									this request.
 								{:else}Jev could not make a recommendation.{/if}
 							</p>
 							<p class="text-xs leading-relaxed text-muted-foreground">

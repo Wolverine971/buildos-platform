@@ -11,7 +11,7 @@ export interface EmailTemplateRenderOptions {
 	referrerPolicy?: string;
 }
 
-function escapeHtmlText(value: string): string {
+export function escapeHtmlText(value: string): string {
 	return value
 		.replace(/&/g, '&amp;')
 		.replace(/</g, '&lt;')

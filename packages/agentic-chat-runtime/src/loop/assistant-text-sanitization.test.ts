@@ -1,6 +1,6 @@
 // packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.test.ts
 import { describe, it, expect } from 'vitest';
-import { sanitizeAssistantFinalText, sanitizeToolPassLeadIn } from './assistant-text-sanitization';
+import { sanitizeAssistantFinalText } from './assistant-text-sanitization';
 
 describe('sanitizeAssistantFinalText', () => {
 	it('returns text unchanged when no scratchpad markers are present', () => {
@@ -112,21 +112,6 @@ describe('sanitizeAssistantFinalText', () => {
 		const text =
 			'After creation, your project is ready and you can start with the first task immediately.';
 		expect(sanitizeAssistantFinalText(text)).toBe(text);
-	});
-
-	it('does not emit short scratchpad filler as a tool-pass lead-in', () => {
-		expect(sanitizeToolPassLeadIn('This is fine.', 'create a project')).toBe(
-			"I'll look that up in BuildOS and gather the relevant project details."
-		);
-	});
-
-	it('does not emit success claims as tool-pass lead-ins', () => {
-		expect(
-			sanitizeToolPassLeadIn(
-				'Done — Safe Write Target is back to todo status.',
-				'Set the task named A Safe Write Target back to todo/open.'
-			)
-		).toBe("I'll look that up in BuildOS and gather the relevant task details.");
 	});
 
 	it('strips legacy scratchpad patterns (actually/no, wait/tool schema echoes)', () => {

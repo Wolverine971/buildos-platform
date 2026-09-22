@@ -1,6 +1,7 @@
 // packages/agentic-chat-runtime/src/specialists/workbench.test.ts
 import { describe, expect, it } from 'vitest';
 import { DOCUMENT_ORGANIZER_V2 } from './document-organization';
+import { SPECIALIST_STARTERS_V1, createSpecialistStarterDraftV1 } from './starters';
 import {
 	createSpecialistWorkbenchDraftV1,
 	parseSpecialistWorkbenchDraftV1,
@@ -13,6 +14,24 @@ const id = 'fd000000-0000-4000-8000-000000000001';
 const compile = (draft = createSpecialistWorkbenchDraftV1()) =>
 	compileSpecialistWorkbenchVersionV1({ draftId: id, draftRevision: 2, version: 1, draft });
 describe('specialist workbench contracts', () => {
+	it('offers publishable research starters within the existing read-only capability', async () => {
+		expect(SPECIALIST_STARTERS_V1.slice(0, 3).map((starter) => starter.id)).toEqual([
+			'research_synthesizer',
+			'evidence_reviewer',
+			'research_gap_mapper'
+		]);
+		for (const starter of SPECIALIST_STARTERS_V1) {
+			const draft = createSpecialistStarterDraftV1(starter.id);
+			expect((await previewSpecialistWorkbenchDraftV1(draft)).canPublish).toBe(true);
+			const version = await compile(draft);
+			expect(version.definition.capabilities).toMatchObject({
+				domainAccess: 'read_only',
+				allowedWorkflowIds: [],
+				allowedToolIds: ['read_project_documents']
+			});
+			expect(version.definition.label).toBe(starter.name);
+		}
+	});
 	it('compiles only the supported workflow/tool/model/budget and pins the knowledge packet', async () => {
 		const snapshot = await compile();
 		expect(snapshot.activation).toBe('catalog_only');

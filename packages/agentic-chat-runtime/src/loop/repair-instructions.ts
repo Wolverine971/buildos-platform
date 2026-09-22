@@ -225,7 +225,6 @@ type EnforceMutationOutcomeIntegrityParams = {
 	toolExecutions: FastToolExecution[];
 	latestUserText?: string;
 	explicitMutationRequested?: boolean;
-	expectedWriteToolNames?: string[];
 	/**
 	 * Declared outcomes still unfulfilled at finalization. After at least one
 	 * successful write, prose that does not disclose the unfinished remainder
@@ -263,33 +262,12 @@ function enforceMutationOutcomeIntegrityCore(
 	if (!finalText) return finalText;
 
 	const mutationOutcomes = summarizeMutationOutcomes(params.toolExecutions);
-	const successfulWriteToolNames = new Set(
-		params.toolExecutions
-			.filter((execution) => didWriteExecutionSucceed(execution))
-			.map((execution) => execution.toolCall.function?.name?.trim() ?? '')
-			.filter(Boolean)
-	);
-	const missingExpectedWriteTools = Array.from(
-		new Set(params.expectedWriteToolNames ?? [])
-	).filter((toolName) => !successfulWriteToolNames.has(toolName));
 	if (
 		mutationOutcomes.attempted === 0 &&
 		params.explicitMutationRequested === true &&
 		looksLikeMutationSuccessClaim(finalText)
 	) {
 		return buildNoExecutionMutationFailureMessage();
-	}
-	if (
-		missingExpectedWriteTools.length > 0 &&
-		params.explicitMutationRequested === true &&
-		!looksLikeWriteFailureDisclosure(finalText) &&
-		!looksLikePureClarifyingQuestion(finalText)
-	) {
-		return buildPartialMutationDisclosure(
-			finalText,
-			missingExpectedWriteTools,
-			mutationOutcomes.succeeded
-		);
 	}
 
 	if (mutationOutcomes.attempted > 0) {
@@ -337,43 +315,20 @@ function enforceMutationOutcomeIntegrityCore(
 		}
 	}
 
-	const unsupportedClaims = collectUnsupportedDocumentClaims(finalText, params.toolExecutions);
-	if (unsupportedClaims.length > 0 && !looksLikeDocumentClaimCorrection(finalText)) {
-		return appendDocumentClaimCorrection(finalText, unsupportedClaims);
+	// Only a turn that changed something can overclaim a link or placement it
+	// did not make. On a read-only turn "X is linked to Y" describes existing
+	// state, and the lexical claim check below cannot tell the two apart.
+	if (mutationOutcomes.succeeded > 0) {
+		const unsupportedClaims = collectUnsupportedDocumentClaims(
+			finalText,
+			params.toolExecutions
+		);
+		if (unsupportedClaims.length > 0 && !looksLikeDocumentClaimCorrection(finalText)) {
+			return appendDocumentClaimCorrection(finalText, unsupportedClaims);
+		}
 	}
 
 	return finalText;
-}
-
-function buildPartialMutationDisclosure(
-	finalText: string,
-	missingToolNames: string[],
-	successfulWriteCount: number
-): string {
-	const remaining = missingToolNames.map(describeWriteTool).join(', ');
-	const status =
-		successfulWriteCount > 0
-			? 'I completed only part of the requested change.'
-			: 'The requested change has not run yet.';
-	return `${finalText.trim()}\n\n${status} Still unfinished: ${remaining}. The request remains pending.`;
-}
-
-function describeWriteTool(toolName: string): string {
-	const match =
-		/^(create|update|delete)_onto_(document|task|project|goal|plan|milestone|risk)$/.exec(
-			toolName
-		);
-	if (match) {
-		const [, action, entity] = match;
-		return `${entity} ${action}`;
-	}
-	if (toolName === 'create_calendar_event') return 'event creation';
-	if (toolName === 'update_calendar_event') return 'event update';
-	if (toolName === 'delete_calendar_event') return 'event deletion';
-	if (toolName === 'move_document_in_tree') return 'document organization';
-	if (toolName === 'link_onto_entities') return 'entity link';
-	if (toolName === 'unlink_onto_edge') return 'entity unlink';
-	return toolName.replaceAll('_', ' ');
 }
 
 const MAX_DISCLOSED_MISSING_TARGETS = 10;
@@ -654,10 +609,6 @@ export function collectGatewayWriteIntentOps(toolExecutions: FastToolExecution[]
 	return Array.from(ops).sort();
 }
 
-function looksLikePureClarifyingQuestion(text: string): boolean {
-	return text.includes('?') && !looksLikeActionSuccessClaim(text);
-}
-
 type ReceiptGroundedAssistantDisposition = 'mutation_claim' | 'clarification_question';
 
 /**
@@ -777,11 +728,9 @@ function hasSuccessfulDocumentPlacementWrite(toolExecutions: FastToolExecution[]
 		if (!didWriteExecutionSucceed(execution)) return false;
 		const op = getWriteOperationName(execution);
 		if (op === 'move_document_in_tree' || op === 'onto.document.tree.move') return true;
-		if (op !== 'create_onto_document' && op !== 'onto.document.create') return false;
-
-		const parsed = parseToolArguments(execution.toolCall.function?.arguments);
-		const parentId = parsed.args.parent_id;
-		return typeof parentId === 'string' && parentId.trim().length > 0;
+		// A created document is placed in the tree — under its parent, or at the
+		// root when none was given — so the create itself is the placement.
+		return op === 'create_onto_document' || op === 'onto.document.create';
 	});
 }
 

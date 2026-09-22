@@ -10,7 +10,9 @@ const TEST_TOOL_CATALOG = {
 		[
 			['create_onto_document', 'write'],
 			['create_onto_milestone', 'write'],
+			['create_onto_task', 'write'],
 			['get_workspace_overview', 'read'],
+			['search_onto_tasks', 'read'],
 			['search_project', 'read'],
 			['tool_schema', 'read'],
 			['update_onto_task', 'write']
@@ -68,7 +70,9 @@ describe('applyFinalizationGuard', () => {
 		});
 	});
 
-	it('replaces an intent lead-in after a successful write', () => {
+	it('does not rewrite lead-in-shaped prose after a successful write', () => {
+		// The write ledger, not the wording, decides whether a turn is unfinished.
+		// With the change saved and nothing outstanding, the prose stays as written.
 		const call = toolCall('create_onto_milestone', { title: 'Launch' });
 		const guard = applyFinalizationGuard({
 			finalAssistantText: "I'll create that milestone now.",
@@ -76,9 +80,39 @@ describe('applyFinalizationGuard', () => {
 			toolExecutions: [{ toolCall: call, result: toolResult(call, true) }]
 		});
 
-		expect(guard.applied).toBe(true);
-		expect(guard.reason).toBe('lead_in_after_successful_writes');
-		expect(guard.text).toBe('I completed the requested change.');
+		expect(guard).toEqual({ text: "I'll create that milestone now.", applied: false });
+	});
+
+	it('keeps the production task-creation answer unchanged after successful writes', () => {
+		// Production misfire: "I completed the requested change." was appended
+		// under a correct report of the tasks the ledger shows were created.
+		const text =
+			'Added these tasks:\n\n**Book the first 3 guests** — todo\n\n**Record the trailer** — todo\n\nWant me to set due dates or priorities on any of these?';
+		const guests = toolCall('create_onto_task', { title: 'Book the first 3 guests' }, 'c1');
+		const trailer = toolCall('create_onto_task', { title: 'Record the trailer' }, 'c2');
+		const guard = applyFinalizationGuard({
+			finalAssistantText: text,
+			assistantText: text,
+			// The worker derives this from the executed write ops.
+			mutationRequested: true,
+			toolExecutions: [
+				{
+					toolCall: guests,
+					result: toolResult(guests, true, {
+						task: { id: 'task_guests', title: 'Book the first 3 guests' }
+					})
+				},
+				{
+					toolCall: trailer,
+					result: toolResult(trailer, true, {
+						task: { id: 'task_trailer', title: 'Record the trailer' }
+					})
+				}
+			]
+		});
+
+		expect(guard).toEqual({ text, applied: false });
+		expect(guard.text).not.toContain('I completed the requested change.');
 	});
 
 	it('does not rewrite a useful final answer', () => {
@@ -438,25 +472,6 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).not.toContain('I completed');
 	});
 
-	it('keeps an empty compound mutation unfulfilled when only one write succeeded', () => {
-		const call = toolCall('create_onto_document', { title: 'Handoff' });
-		const guard = applyFinalizationGuard({
-			finalAssistantText: '',
-			assistantText: '',
-			mutationRequested: true,
-			expectedWriteToolNames: ['update_onto_task', 'create_onto_document'],
-			toolExecutions: [{ toolCall: call, result: toolResult(call, true) }]
-		});
-
-		expect(guard).toMatchObject({
-			applied: true,
-			reason: 'incomplete_mutation_after_reads',
-			finishedReason: 'mutation_unfulfilled'
-		});
-		expect(guard.text).toContain('completed 1 requested change');
-		expect(guard.text).toContain('remaining request stays pending');
-	});
-
 	it('marks a turn mutation_unfulfilled without rewriting prose that already discloses the remainder', () => {
 		const call = toolCall('update_onto_task', { task_id: 'task_1', state_key: 'done' });
 		const text =
@@ -550,41 +565,10 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).toContain('Not yet completed: Task B, Task C.');
 	});
 
-	it('replaces a read-only lead-in after successful reads with evidence', () => {
-		const call = toolCall('search_project', { query: 'user guide suite' });
-		const guard = applyFinalizationGuard({
-			finalAssistantText: "I'll look that up now.",
-			assistantText: "I'll look that up now.",
-			toolExecutions: [
-				{
-					toolCall: call,
-					result: toolResult(call, true, {
-						results: [
-							{
-								id: '82dfb1b6-e39d-48cb-8c32-d13c3e620daa',
-								type: 'task',
-								title: 'Create User Guide Suite (ADHD/TPM/Writers/Devs)',
-								state_key: 'todo'
-							}
-						]
-					})
-				}
-			]
-		});
-
-		expect(guard.applied).toBe(true);
-		expect(guard.reason).toBe('lead_in_after_reads');
-		expect(guard.text).toContain('I gathered context before the turn ended.');
-		expect(guard.text).toContain(
-			'task "Create User Guide Suite (ADHD/TPM/Writers/Devs)" (todo)'
-		);
-		expect(guard.text).not.toContain("I'll look that up");
-	});
-
-	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F13: a short, correct read answer
-	// that happens to contain a verb from the old lead-in word list, or that
-	// offers a follow-up as a question, is the answer and must stay.
-	describe('short read answers are not lead-ins', () => {
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F13 narrowed the lead-in heuristic;
+	// the 2026-09-22 cleanup removed it from turns with no unfinished mutation.
+	// A non-empty reply after reads is the answer, whatever its wording.
+	describe('read-only replies are not rewritten', () => {
 		const readExecution = () => {
 			const call = toolCall('search_project', { query: 'open tasks' });
 			return {
@@ -599,7 +583,11 @@ describe('applyFinalizationGuard', () => {
 			'You have 3 open tasks; check the Q3 plan for the rest.',
 			'Nothing is overdue. The inspection is next, Oct 5 — want me to update it?',
 			'Two tasks are due this week. Search the Q3 plan for the design partner list.',
-			"Let me know if you'd like me to update the due date?"
+			"Let me know if you'd like me to update the due date?",
+			"I'll look that up now.",
+			'Sure! Let me pull up the project first.',
+			"First, I'll check whether that task already exists.",
+			'One moment while I read the current document.'
 		])('keeps %j after successful reads', (text) => {
 			const guard = applyFinalizationGuard({
 				finalAssistantText: text,
@@ -609,20 +597,49 @@ describe('applyFinalizationGuard', () => {
 			expect(guard).toEqual({ text, applied: false });
 		});
 
-		it.each([
-			"I'll look that up now.",
-			'Sure! Let me pull up the project first.',
-			"First, I'll check whether that task already exists.",
-			'One moment while I read the current document.'
-		])('still replaces the lead-in %j after successful reads', (text) => {
-			const guard = applyFinalizationGuard({
-				finalAssistantText: text,
-				assistantText: text,
-				toolExecutions: [readExecution()]
+		// Production misfire: a correct read-only answer got "I gathered context
+		// before the turn ended. Found: …" appended under it.
+		const EXACT_MATCH_ANSWER =
+			'Here\'s the exact match:\n\n**Task: "Track and optimize partnerships"** — State: Todo.\n\nThat\'s the exact task matching your search query. No changes made — this was a read-only check.';
+		const partnershipSearch = () => {
+			const call = toolCall('search_onto_tasks', {
+				query: 'Track and optimize partnerships'
 			});
-			expect(guard.applied).toBe(true);
-			expect(guard.reason).toBe('lead_in_after_reads');
-			expect(guard.text).not.toContain(text);
+			return {
+				toolCall: call,
+				result: toolResult(call, true, {
+					results: [
+						{
+							id: 'task_partnerships',
+							type: 'task',
+							title: 'Track and optimize partnerships',
+							state_key: 'todo'
+						}
+					]
+				})
+			};
+		};
+
+		it('keeps the production read-only exact-match answer unchanged', () => {
+			const guard = applyFinalizationGuard({
+				finalAssistantText: EXACT_MATCH_ANSWER,
+				assistantText: EXACT_MATCH_ANSWER,
+				toolExecutions: [partnershipSearch()]
+			});
+			expect(guard).toEqual({ text: EXACT_MATCH_ANSWER, applied: false });
+		});
+
+		it('keeps the answer when the streamed text opens with a pre-tool lead-in', () => {
+			// The worker guards the whole streamed turn text, so a round-one "Let me
+			// search…" sits in front of the real answer.
+			const streamed = `Let me search for that task.\n\n${EXACT_MATCH_ANSWER}`;
+			const guard = applyFinalizationGuard({
+				finalAssistantText: streamed,
+				assistantText: streamed,
+				toolExecutions: [partnershipSearch()]
+			});
+			expect(guard).toEqual({ text: streamed, applied: false });
+			expect(guard.text).not.toContain('I gathered context before the turn ended');
 		});
 
 		it('keeps the empty-reply branch after successful reads', () => {

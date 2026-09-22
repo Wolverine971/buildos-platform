@@ -34,7 +34,6 @@ import {
 } from './types';
 import { buildStartHerePromptExcerpt } from '@buildos/shared-agent-ops/ontology/start-here';
 import { renderSituationalRulesContent, type LitePromptTurnSituation } from './situational-rules';
-import { renderProjectCreationProfileGuidance } from '$lib/services/agentic-chat/project-domain-profiles';
 
 // work_capability_* dropped 2026-07-10 (WP-7): normalizeGatewayToolName maps
 // the legacy names to outcome_card_* before definitions materialize, so tool
@@ -287,11 +286,6 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 		focusEntityIds,
 		knowledgeMapRendered: Boolean(knowledgeMapSection)
 	};
-	const projectCreateDomainProfileSection =
-		input.contextType === 'project_create' && input.projectCreateWorkflow !== 'reviewed_shell'
-			? buildProjectCreateDomainProfileSection(input.currentUserMessage)
-			: null;
-
 	// project_create fork (prompt audit WP-3): this context exposes a lane-specific
 	// bounded creation surface, so the shared static frame — skill catalog,
 	// discovery-routing strategy, write-lifecycle safety rules — would instruct
@@ -312,9 +306,6 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 						scaffold,
 						input.projectCreateWorkflow ?? 'web_compound'
 					),
-					...(projectCreateDomainProfileSection
-						? [projectCreateDomainProfileSection]
-						: []),
 					buildFocusPurposeSection(
 						focus,
 						projectDigest,
@@ -378,15 +369,9 @@ export function applyActiveDomainSignalsOverlay(
 		| 'projectCreateWorkflow'
 	>
 ): LitePromptEnvelope {
-	// project_create still skips the skill/domain gate, but it can receive one
-	// compact server-selected starter profile on the web-owned compound path.
-	// The reviewed shell lane excludes it because its adapter rejects fiction and
-	// custom context payloads.
+	// project_create skips the skill/domain gate and per-turn situational rules.
 	if (envelope.contextInventory.focus.contextType === 'project_create') {
-		return applyProjectCreateDomainProfileOverlay(
-			envelope,
-			input.projectCreateWorkflow === 'reviewed_shell' ? null : input.currentUserMessage
-		);
+		return envelope;
 	}
 	const scaffold = resolvePromptScaffold(input.scaffold);
 	const situationalRulesSection = buildSituationalRulesSection(
@@ -478,48 +463,6 @@ function insertSectionAfter(
 	const anchorIndex = sections.findIndex((item) => item.id === anchorId);
 	if (anchorIndex < 0) return [section, ...sections];
 	return [...sections.slice(0, anchorIndex + 1), section, ...sections.slice(anchorIndex + 1)];
-}
-
-function buildProjectCreateDomainProfileSection(
-	currentUserMessage: string | null | undefined
-): LitePromptSection | null {
-	const guidance = renderProjectCreationProfileGuidance(currentUserMessage);
-	if (!guidance) return null;
-	return makeSection({
-		id: 'situational_rules',
-		title: 'Project Starter Profile',
-		kind: 'dynamic',
-		source: 'lite.project_create_domain_profile',
-		slots: {
-			profileId: guidance.profile.id,
-			domainAffinity: guidance.profile.domainAffinity
-		},
-		content: guidance.content
-	});
-}
-
-function applyProjectCreateDomainProfileOverlay(
-	envelope: LitePromptEnvelope,
-	currentUserMessage: string | null | undefined
-): LitePromptEnvelope {
-	const nextProfileSection = buildProjectCreateDomainProfileSection(currentUserMessage);
-	const sectionsWithoutProfile = envelope.sections.filter(
-		(section) => section.source !== 'lite.project_create_domain_profile'
-	);
-	const sections = nextProfileSection
-		? insertSectionAfter(sectionsWithoutProfile, nextProfileSection, 'safety_data_rules')
-		: sectionsWithoutProfile;
-	if (
-		sections.length === envelope.sections.length &&
-		sections.every((section, index) => section === envelope.sections[index])
-	) {
-		return envelope;
-	}
-	return {
-		...envelope,
-		sections,
-		systemPrompt: renderSystemPrompt(sections)
-	};
 }
 
 // Rewritten 2026-09-21 (static-frame rewrite, founder framing): say who the

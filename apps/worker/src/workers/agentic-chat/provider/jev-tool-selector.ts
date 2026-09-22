@@ -105,7 +105,10 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 	set_project_calendar: ['get_project_calendar'],
 	search_email_messages: ['list_email_accounts', 'get_email_message'],
 	get_email_message: ['list_email_accounts', 'search_email_messages'],
-	web_search: ['web_visit']
+	// A search's results are start points to read or click through.
+	web_search: ['web_visit', 'web_navigate'],
+	web_visit: ['web_navigate'],
+	web_navigate: ['web_visit']
 };
 
 export function selectJevToolDefinitions(

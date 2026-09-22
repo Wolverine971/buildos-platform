@@ -7,7 +7,18 @@ import type {
 	WebVisitStructuredDataItem
 } from './types';
 
-const STRIP_BLOCK_TAGS = ['script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form'];
+// <form> is not stripped: ASP.NET/SharePoint sites wrap the whole body in one, so
+// stripping it emptied Maryland procurement pages. Form controls are dropped instead.
+const STRIP_BLOCK_TAGS = [
+	'script',
+	'style',
+	'noscript',
+	'svg',
+	'canvas',
+	'iframe',
+	'select',
+	'textarea'
+];
 const NOISE_TAGS = ['header', 'footer', 'nav', 'aside'];
 const DEFAULT_MAX_LINKS = 20;
 const MAX_STRUCTURED_DATA_ITEMS = 40;

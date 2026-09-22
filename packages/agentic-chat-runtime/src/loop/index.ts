@@ -29,7 +29,6 @@ export * from './search-telemetry';
 export * from './shared';
 export * from './skill-lookup';
 export * from './stated-future-capture';
-export * from './synthesis-context';
 export * from './tool-arguments';
 export * from './tool-catalog';
 export * from './tool-classification';

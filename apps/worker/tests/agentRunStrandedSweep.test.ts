@@ -10,6 +10,7 @@ import type {
 	StrandedRunRow,
 	StrandedSweepStore
 } from '../src/workers/agent-run/agentRunStrandedSweep';
+import type { StalledCommitRecovery } from '../../../packages/shared-agent-ops/src/gateway/change-set';
 
 const NOW = new Date('2026-07-20T12:00:00.000Z');
 const ROOT_ID = '10000000-0000-4000-8000-000000000001';
@@ -41,6 +42,7 @@ function candidate(overrides: Partial<StrandedRunRow> = {}): StrandedRunRow {
 		effort: 'standard',
 		allowed_ops: null,
 		review_required: false,
+		commit_started_at: null,
 		...overrides
 	};
 }
@@ -89,7 +91,10 @@ function makeStore(overrides: Partial<StrandedSweepStore> = {}): {
 		enqueueContinuation: vi.fn(async () => ({}) as { errorMessage?: string }),
 		wakeSynthesis: vi.fn(async () => ({ jobId: 'agent-run-job-1' })),
 		finalizeRun: vi.fn(async () => true),
-		ensureCancelSignal: vi.fn(async () => undefined)
+		ensureCancelSignal: vi.fn(async () => undefined),
+		recoverStalledCommit: vi.fn(
+			async () => ({ outcome: 'returned_to_review' }) as StalledCommitRecovery
+		)
 	};
 	// Overrides replace the base spies in place so `mocks` and `store` are the same
 	// object — assertions on `mocks.<method>` observe the override that ran.
@@ -383,6 +388,62 @@ describe('runAgentRunStrandedSweep', () => {
 			expect.objectContaining({ runId: ROOT_ID, status: 'failed' })
 		);
 		expect(summary.finalizedFailed).toBe(1);
+	});
+
+	it('recovers a dead web commit instead of finalizing the approval as failed', async () => {
+		// Production run aecfb6b1 (2026-09-04): the user approved a proposal, the
+		// commit claimed the run and died, and this sweep marked it "stranded: no
+		// active worker" with the Change Set still pending.
+		const stalledCommit = candidate({
+			status: 'running',
+			review_required: true,
+			scope_mode: 'read_write',
+			context_type: 'project',
+			commit_started_at: minutesAgo(21)
+		});
+		const { store, mocks } = makeStore({
+			listStrandedCandidates: vi.fn(async () => [stalledCommit])
+		});
+
+		const summary = await run(store);
+
+		expect(mocks.recoverStalledCommit).toHaveBeenCalledWith(ROOT_ID);
+		expect(mocks.finalizeRun).not.toHaveBeenCalled();
+		expect(mocks.enqueueContinuation).not.toHaveBeenCalled();
+		expect(mocks.listActiveDedupKeys).not.toHaveBeenCalled();
+		expect(summary).toMatchObject({
+			commitsReturnedToReview: 1,
+			commitsFinalized: 0,
+			finalizedFailed: 0
+		});
+	});
+
+	it('counts a partially applied commit as finalized and a lost race as nothing', async () => {
+		const { store } = makeStore({
+			listStrandedCandidates: vi.fn(async () => [
+				candidate({ id: CHILD_IDS[0], commit_started_at: minutesAgo(30) }),
+				candidate({ id: CHILD_IDS[1], commit_started_at: minutesAgo(30) })
+			]),
+			recoverStalledCommit: vi
+				.fn()
+				.mockResolvedValueOnce({
+					outcome: 'finalized',
+					runStatus: 'partial',
+					applied: 1,
+					notApplied: 1
+				})
+				.mockResolvedValueOnce({ outcome: 'skipped', reason: 'raced' })
+		});
+
+		const summary = await run(store);
+
+		expect(summary).toMatchObject({
+			scanned: 2,
+			commitsReturnedToReview: 0,
+			commitsFinalized: 1,
+			finalizedFailed: 0,
+			errors: 0
+		});
 	});
 
 	it('isolates per-candidate failures and keeps scanning', async () => {

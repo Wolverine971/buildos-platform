@@ -41,8 +41,6 @@ const PROJECT_FIELDS = new Set([
 ]);
 const PROJECT_STATES = new Set(['planning', 'active', 'paused', 'completed', 'cancelled']);
 const PROJECT_TYPE_PATTERN = /^project\.[a-z_]+\.[a-z_]+(?:\.[a-z_]+)?$/;
-const FICTION_PROJECT_TYPE_PATTERN =
-	/^project\.creative\.(?:novel|book|fiction|screenplay)(?:\.|$)/i;
 const FACET_VALUES = {
 	context: new Set([
 		'personal',
@@ -233,13 +231,6 @@ function normalizeProjectShell(
 			'project.type_key must use project.{realm}.{domain} lowercase format'
 		);
 	}
-	if (FICTION_PROJECT_TYPE_PATTERN.test(typeKey)) {
-		throw knownFailure(
-			'mutation_arguments_not_admitted',
-			'This tool cannot create fiction or living-reference projects'
-		);
-	}
-
 	const project: Record<string, unknown> = { name, type_key: typeKey };
 	if (args.project.description !== undefined) {
 		if (typeof args.project.description !== 'string') {

@@ -165,6 +165,7 @@ export function isReadLikeOperation(name: string): boolean {
 	if (!normalized) return false;
 	return (
 		normalized === 'web_visit' ||
+		normalized === 'web_navigate' ||
 		normalized.startsWith('x.search.') ||
 		READ_TOOL_PREFIXES.some((prefix) => normalized.startsWith(prefix)) ||
 		READ_OP_SUFFIXES.some((suffix) => normalized.endsWith(suffix)) ||
@@ -216,8 +217,10 @@ export function isWebResearchToolName(toolName: string): boolean {
 	return (
 		normalized === 'web_search' ||
 		normalized === 'web_visit' ||
+		normalized === 'web_navigate' ||
 		normalized === 'util.web.search' ||
-		normalized === 'util.web.visit'
+		normalized === 'util.web.visit' ||
+		normalized === 'util.web.navigate'
 	);
 }
 

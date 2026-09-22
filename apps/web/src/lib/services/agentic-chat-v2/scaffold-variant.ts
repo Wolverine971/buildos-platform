@@ -22,7 +22,6 @@ export type FastChatScaffoldConfig = {
 	routing: {
 		domainSensing: boolean;
 		skillPreload: boolean;
-		skillGateRepair: boolean;
 		leanDiscovery: boolean;
 	};
 	recovery: {
@@ -76,7 +75,6 @@ export function resolveFastChatScaffoldConfig(
 		routing: {
 			domainSensing: true,
 			skillPreload: true,
-			skillGateRepair: true,
 			leanDiscovery: parseBooleanFlag(environment.leanDiscovery, true)
 		},
 		recovery: {
@@ -106,7 +104,6 @@ export function resolveFastChatScaffoldConfig(
 			config.prompt.domainSensing = false;
 			config.routing.domainSensing = false;
 			config.routing.skillPreload = false;
-			config.routing.skillGateRepair = false;
 			break;
 		case 'no-soft-forced-synthesis':
 			config.recovery.softForcedSynthesis = false;

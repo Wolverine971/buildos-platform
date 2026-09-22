@@ -7,9 +7,15 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
 	createSpecialistWorkbenchDraftV1,
+	createSpecialistStarterDraftV1,
 	buildDocumentReadSnapshotV2,
 	hashExecutableSpecialistSnapshot
 } from '@buildos/agentic-chat-runtime/specialists';
+import type { JevDecider } from '@buildos/smart-llm';
+import {
+	recommendPublishedSpecialist,
+	loadSelectedSpecialistRecommendation
+} from '../../web/src/lib/services/agentic-chat-v2/specialist-recommendations.server';
 import {
 	saveSpecialistWorkbenchDraft,
 	publishSpecialistWorkbenchVersion,
@@ -97,7 +103,8 @@ function script(call: ScriptedCall): ScriptedReply {
 				'20260920041644_agentic_chat_specialist_selection_shadow_v1.sql',
 				'20260920154843_agentic_chat_document_evidence_handoff_v1.sql',
 				'20260920162616_agentic_chat_specialist_workbench_v1.sql',
-				'20260921002731_agentic_chat_published_specialist_execution_v1.sql'
+				'20260921002731_agentic_chat_published_specialist_execution_v1.sql',
+				'20260921041759_agentic_chat_specialist_recommendations_v1.sql'
 			]) {
 				try {
 					await admin.query(
@@ -375,6 +382,210 @@ function script(call: ScriptedCall): ScriptedReply {
 			} finally {
 				await worker.stop();
 			}
+		});
+		it('pins one Jev recommendation, replays without billing, and binds its receipt to admission', async () => {
+			const id = randomUUID();
+			const draft = createSpecialistStarterDraftV1('research_synthesizer');
+			await saveSpecialistWorkbenchDraft(catalog, E2E_USER_ID, id, 0, draft);
+			const published = await publishSpecialistWorkbenchVersion(catalog, E2E_USER_ID, id, 1);
+			const question = 'What do the saved sources say about this project?';
+			const requestId = randomUUID();
+			const decide = vi.fn(async (request: any) => {
+				const criteria = request.questions.specialist.criteria as Record<string, string>;
+				const keys = Object.keys(criteria);
+				const chosen = keys.find((key) => criteria[key]!.includes('Research synthesizer'))!;
+				const probabilities = Object.fromEntries(
+					keys.map((key) => [key, key === chosen ? 0.85 : 0.15 / (keys.length - 1)])
+				);
+				return {
+					ok: true,
+					answers: {
+						specialist: {
+							type: 'choice',
+							choice: chosen,
+							probabilities,
+							confidence: 0.85
+						}
+					},
+					receipt: {
+						modelRequested: 'typesafe/jev-1.13',
+						modelUsed: 'typesafe/jev-1.13',
+						requestId: 'mock-request',
+						inputTokens: 80,
+						outputTokens: 10,
+						costUsd: 0.0001,
+						durationMs: 18,
+						requestBytes: 1200,
+						questionCount: 1,
+						attempts: 1
+					}
+				};
+			});
+			const request = {
+				client: catalog,
+				decider: { decide } as unknown as JevDecider,
+				userId: E2E_USER_ID,
+				projectId: E2E_PROJECT_ID,
+				requestId,
+				question
+			};
+			const first = await recommendPublishedSpecialist(request);
+			expect(first).toMatchObject({
+				status: 'selected',
+				selected: { draftId: id, version: 1 }
+			});
+			expect(await recommendPublishedSpecialist(request)).toEqual(first);
+			expect(decide).toHaveBeenCalledOnce();
+			await expect(
+				recommendPublishedSpecialist({ ...request, question: 'Another question' })
+			).rejects.toMatchObject({ status: 409 });
+			await expect(
+				recommendPublishedSpecialist({ ...request, userId: randomUUID() })
+			).rejects.toMatchObject({ status: 404 });
+			expect(decide).toHaveBeenCalledOnce();
+			const selected = {
+				draftId: id,
+				version: 1,
+				snapshotHash: published.version.snapshotHash
+			};
+			const receipt = await loadSelectedSpecialistRecommendation({
+				client: catalog,
+				userId: E2E_USER_ID,
+				id: requestId,
+				projectId: E2E_PROJECT_ID,
+				question,
+				selected
+			});
+			await expect(
+				loadSelectedSpecialistRecommendation({
+					client: catalog,
+					userId: E2E_USER_ID,
+					id: requestId,
+					projectId: E2E_PROJECT_ID,
+					question: 'Different question',
+					selected
+				})
+			).rejects.toMatchObject({ status: 409 });
+			const admission = await buildAgenticChatWorkflowV4AdmissionArgs({
+				userId: E2E_USER_ID,
+				command: { clientTurnId: randomUUID(), streamRunId: randomUUID(), sessionId: null },
+				eligibility: {
+					eligible: true,
+					projectId: E2E_PROJECT_ID,
+					message: question,
+					profile: 'document_organization',
+					documentReadTools: true
+				},
+				published: {
+					snapshot: published.snapshot,
+					snapshotHash: selected.snapshotHash,
+					recommendation: receipt
+				},
+				transportDecisionId: randomUUID()
+			});
+			expect(
+				(await admitAgenticChatWorkflowV4Turn({ client: shim as never, args: admission }))
+					.outcome
+			).toBe('newly_admitted');
+			const saved = await admin.query(
+				'SELECT snapshot FROM public.chat_turn_specialist_snapshots WHERE turn_run_id=$1',
+				[admission.p_turn_run_id]
+			);
+			expect(saved.rows[0].snapshot.recommendation).toEqual(receipt);
+			const tampered = await buildAgenticChatWorkflowV4AdmissionArgs({
+				userId: E2E_USER_ID,
+				command: { clientTurnId: randomUUID(), streamRunId: randomUUID(), sessionId: null },
+				eligibility: {
+					eligible: true,
+					projectId: E2E_PROJECT_ID,
+					message: question,
+					profile: 'document_organization',
+					documentReadTools: true
+				},
+				published: { snapshot: published.snapshot, snapshotHash: selected.snapshotHash },
+				transportDecisionId: randomUUID()
+			});
+			(tampered.p_specialist_snapshot as { recommendation?: typeof receipt }).recommendation =
+				structuredClone(receipt);
+			(
+				tampered.p_specialist_snapshot as { recommendation: typeof receipt }
+			).recommendation.input.question = 'A different question';
+			tampered.p_specialist_snapshot_hash = await hashExecutableSpecialistSnapshot(
+				tampered.p_specialist_snapshot
+			);
+			await expect(
+				admitAgenticChatWorkflowV4Turn({ client: shim as never, args: tampered })
+			).rejects.toThrow('specialist_recommendation_snapshot_binding_invalid');
+			await admin.query('SET ROLE authenticated');
+			try {
+				await expect(
+					admin.query('SELECT * FROM public.agentic_chat_specialist_recommendations')
+				).rejects.toThrow('permission denied');
+				await expect(
+					admin.query(
+						'SELECT public.begin_specialist_recommendation_v1(NULL,NULL,NULL,NULL)'
+					)
+				).rejects.toThrow('permission denied');
+			} finally {
+				await admin.query('RESET ROLE');
+			}
+		});
+		it('records tiny Jev probabilities and costs that PostgreSQL re-canonicalizes', async () => {
+			// PostgreSQL prints 3e-7 as 0.0000003, so a raw JavaScript hash of it never matches.
+			const probe = await admin.query(
+				`SELECT public.agentic_chat_canonical_json_v1('{"costUsd":3e-7}'::jsonb) AS canonical`
+			);
+			expect(probe.rows[0].canonical).toBe('{"costUsd":0.0000003}');
+			const id = randomUUID();
+			await saveSpecialistWorkbenchDraft(
+				catalog,
+				E2E_USER_ID,
+				id,
+				0,
+				createSpecialistStarterDraftV1('evidence_reviewer')
+			);
+			await publishSpecialistWorkbenchVersion(catalog, E2E_USER_ID, id, 1);
+			const decide = vi.fn(async (request: any) => {
+				const keys = Object.keys(request.questions.specialist.criteria as object);
+				const chosen = keys.find((key) => key !== 'none')!;
+				const rest = keys.filter((key) => key !== chosen);
+				const probabilities = Object.fromEntries([
+					[chosen, 1 - 2e-7 * rest.length],
+					...rest.map((key) => [key, 2e-7])
+				]);
+				return {
+					ok: true,
+					answers: {
+						specialist: {
+							type: 'choice',
+							choice: chosen,
+							probabilities,
+							confidence: 0.99
+						}
+					},
+					receipt: {
+						modelRequested: 'typesafe/jev-1.13',
+						modelUsed: 'typesafe/jev-1.13',
+						requestId: 'mock-tiny',
+						inputTokens: 80,
+						outputTokens: 10,
+						costUsd: 3e-7,
+						durationMs: 0.4,
+						requestBytes: 1200,
+						questionCount: 1,
+						attempts: 1
+					}
+				};
+			});
+			const result = await recommendPublishedSpecialist({
+				client: catalog,
+				decider: { decide } as unknown as JevDecider,
+				userId: E2E_USER_ID,
+				projectId: E2E_PROJECT_ID,
+				requestId: randomUUID(),
+				question: 'Which saved claims are weakly supported?'
+			});
+			expect(result).toMatchObject({ status: 'selected', costUsd: 0, durationMs: 0 });
 		});
 	}
 );

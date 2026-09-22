@@ -68,6 +68,7 @@ export { default as Columns2 } from 'lucide-svelte/icons/columns-2';
 export { default as Compass } from 'lucide-svelte/icons/compass';
 export { default as ContactRound } from 'lucide-svelte/icons/contact-round';
 export { default as Copy } from 'lucide-svelte/icons/copy';
+export { default as CornerUpLeft } from 'lucide-svelte/icons/corner-up-left';
 export { default as Cpu } from 'lucide-svelte/icons/cpu';
 export { default as CreditCard } from 'lucide-svelte/icons/credit-card';
 export { default as Database } from 'lucide-svelte/icons/database';

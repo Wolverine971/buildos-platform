@@ -244,9 +244,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		updatePayload.props = {
 			...currentProps,
 			...(snapshot.props ?? {}),
-			body_markdown: snapshot.content ?? '',
-			// Routing state is server-owned and is not restored from historical props.
-			agent_workspace: currentProps.agent_workspace
+			body_markdown: snapshot.content ?? ''
 		} as OntoDocumentUpdate['props'];
 
 		let newVersion: { number: number; id: string } | null = null;

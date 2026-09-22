@@ -95,6 +95,7 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'create_onto_project',
 			'web_search',
 			'web_visit',
+			'web_navigate',
 			'list_calendar_events',
 			'get_calendar_event_details',
 			'create_calendar_event',

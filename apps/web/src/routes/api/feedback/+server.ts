@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/feedback/+server.ts
 import type { RequestHandler } from './$types';
-import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
+import { escapeHtmlText, generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { emailColors } from '$lib/utils/email-styles';
@@ -42,7 +42,10 @@ function validateFeedbackData(data: FeedbackRequest): string | null {
 	}
 
 	// Validate rating if provided
-	if (data.rating !== undefined && (data.rating < 1 || data.rating > 5)) {
+	if (
+		data.rating !== undefined &&
+		(!Number.isInteger(data.rating) || data.rating < 1 || data.rating > 5)
+	) {
 		return 'Invalid rating (must be 1-5)';
 	}
 
@@ -54,20 +57,9 @@ function validateFeedbackData(data: FeedbackRequest): string | null {
 		}
 	}
 
-	// Check for spam patterns
-	const spamPatterns = [
-		/https?:\/\/[^\s]+/gi, // URLs
-		/\b(bitcoin|crypto|investment|loan|money|viagra|casino|gambling)\b/gi, // Common spam words
-		/(.)\1{10,}/g, // Repeated characters
-		/\b(buy|sell|cheap|free|win|click|urgent|limited)\b/gi // More spam indicators
-	];
-
-	for (const pattern of spamPatterns) {
-		if (pattern.test(data.feedback_text)) {
-			return 'Message appears to contain spam';
-		}
-	}
-
+	// No content-based spam filtering: keyword/URL heuristics rejected real bug
+	// reports. Abuse is bounded by the honeypot, length limits, and the per-IP
+	// rate limit; the notification email escapes every user-supplied value.
 	return null;
 }
 
@@ -146,11 +138,22 @@ async function sendFeedbackNotification(feedback: any) {
 
 		const categoryDisplay =
 			categoryDisplayNames[feedback.category as keyof typeof categoryDisplayNames] ||
-			feedback.category;
+			String(feedback.category ?? '');
+
+		// Every user-supplied value is HTML-escaped before it enters the email body.
+		const safeCategory = escapeHtmlText(categoryDisplay);
+		const safeEmail = feedback.user_email ? escapeHtmlText(String(feedback.user_email)) : '';
+		const safeIp = feedback.user_ip ? escapeHtmlText(String(feedback.user_ip)) : '';
+		const safeText = escapeHtmlText(String(feedback.feedback_text ?? ''));
+		const safeId = escapeHtmlText(String(feedback.id ?? ''));
+		const rating: number | null =
+			Number.isInteger(feedback.rating) && feedback.rating >= 1 && feedback.rating <= 5
+				? feedback.rating
+				: null;
 
 		// Create warm and appreciative email content
 		const emailContent = `
-			<h2>🎉 New ${categoryDisplay} from a BuildOS User!</h2>
+			<h2>🎉 New ${safeCategory} from a BuildOS User!</h2>
 
 			<p>Hey! Someone just took the time to share some valuable feedback with us. Love seeing this - it means people are actually using what we're building and care enough to help make it better! 🙌</p>
 
@@ -158,7 +161,7 @@ async function sendFeedbackNotification(feedback: any) {
 				feedback.user_email
 					? `<div style="background-color: ${emailColors.primaryLight}; border: 1px solid ${emailColors.primary}; padding: 16px; border-radius: 12px; margin: 20px 0;">
 					<h3 style="margin-top: 0; color: ${emailColors.primaryDark};">💌 They left their email!</h3>
-					<p style="margin-bottom: 0;"><strong>${feedback.user_email}</strong> - Don't forget to reply personally! These are the users who really care about what we're doing.</p>
+					<p style="margin-bottom: 0;"><strong>${safeEmail}</strong> - Don't forget to reply personally! These are the users who really care about what we're doing.</p>
 				</div>`
 					: `<div style="background-color: ${emailColors.warningLight}; border: 1px solid ${emailColors.warning}; padding: 16px; border-radius: 12px; margin: 20px 0;">
 					<h3 style="margin-top: 0; color: ${emailColors.warningDark};">📬 Anonymous feedback</h3>
@@ -168,16 +171,16 @@ async function sendFeedbackNotification(feedback: any) {
 
 			<div style="background-color: ${emailColors.backgroundAlt}; padding: 20px; border-radius: 12px; margin: 20px 0;">
 				<h3 style="margin-top: 0; color: ${emailColors.text};">📋 What they shared</h3>
-				<p><strong>Type:</strong> ${categoryDisplay}</p>
-				${feedback.rating ? `<p><strong>Rating:</strong> ${'★'.repeat(feedback.rating)}${'☆'.repeat(5 - feedback.rating)} (${feedback.rating}/5) ${feedback.rating >= 4 ? '- Nice! 🎯' : feedback.rating === 3 ? '- Room for improvement 💪' : '- We need to do better 🔧'}</p>` : ''}
+				<p><strong>Type:</strong> ${safeCategory}</p>
+				${rating !== null ? `<p><strong>Rating:</strong> ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)} (${rating}/5) ${rating >= 4 ? '- Nice! 🎯' : rating === 3 ? '- Room for improvement 💪' : '- We need to do better 🔧'}</p>` : ''}
 				<p><strong>Submitted:</strong> ${new Date(feedback.created_at).toLocaleString()}</p>
-				${feedback.user_ip ? `<p><strong>Location:</strong> ${feedback.user_ip}</p>` : ''}
+				${safeIp ? `<p><strong>Location:</strong> ${safeIp}</p>` : ''}
 			</div>
 
 			<div style="background-color: ${emailColors.background}; border: 2px solid ${emailColors.border}; padding: 20px; border-radius: 12px; margin: 20px 0;">
 				<h3 style="margin-top: 0; color: ${emailColors.text};">💬 Their message:</h3>
 				<div style="background-color: ${emailColors.backgroundAlt}; padding: 16px; border-radius: 8px; border-left: 4px solid ${emailColors.primary};">
-					<p style="white-space: pre-wrap; line-height: 1.6; margin: 0; font-style: italic;">"${feedback.feedback_text}"</p>
+					<p style="white-space: pre-wrap; line-height: 1.6; margin: 0; font-style: italic;">"${safeText}"</p>
 				</div>
 			</div>
 
@@ -212,9 +215,9 @@ async function sendFeedbackNotification(feedback: any) {
 
 			<div style="font-size: 14px; color: #6b7280;">
 				<p><strong>Feedback Details:</strong></p>
-				<p>ID: ${feedback.id}<br>
+				<p>ID: ${safeId}<br>
 				Submitted: ${new Date(feedback.created_at).toLocaleString()}<br>
-				${feedback.user_email ? `Contact: ${feedback.user_email}` : 'Contact: Anonymous'}</p>
+				${safeEmail ? `Contact: ${safeEmail}` : 'Contact: Anonymous'}</p>
 				<p style="margin-top: 16px;"><em>This notification was sent from your BuildOS feedback system.</em></p>
 			</div>
 		`;

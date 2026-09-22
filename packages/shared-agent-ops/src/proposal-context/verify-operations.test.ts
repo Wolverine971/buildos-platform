@@ -203,27 +203,6 @@ describe('verifyProjectSuggestionIntegrity', () => {
 		});
 	});
 
-	it('quarantines an explicit preview/operation count mismatch', async () => {
-		const result = await verifyProjectSuggestionIntegrity(createSupabaseMock(baseTables()), {
-			projectId,
-			operations: [moveOperation()],
-			title: 'Move The Mirror Moment under Mood Board Carousel Strategy',
-			preview: {
-				summary: 'Move The Mirror Moment under Mood Board Carousel Strategy.',
-				impact: '2 moves: 2 documents change parents.'
-			}
-		});
-
-		expect(result).toMatchObject({
-			ok: false,
-			diagnostic: {
-				code: 'PREVIEW_OPERATION_COUNT_MISMATCH',
-				expected_operation_count: 1,
-				preview_operation_count: 2
-			}
-		});
-	});
-
 	it('uses a post-generation renamed entity as current display truth after initial verification', async () => {
 		const tables = baseTables({ target: { title: 'The Mirror Moment — Renamed Today' } });
 		const result = await verifyProjectSuggestionIntegrity(createSupabaseMock(tables), {
@@ -1005,19 +984,6 @@ describe('scalar operations', () => {
 		expect(misaligned).toMatchObject({
 			ok: false,
 			diagnostic: { code: 'MODEL_ENTITY_MISMATCH', entity_kind: 'goal' }
-		});
-	});
-
-	it('refuses a preview that claims a different number of changes', async () => {
-		const result = await verifyProjectSuggestionIntegrity(createSupabaseMock(scalarTables()), {
-			projectId,
-			operations: [taskOp({ state_key: 'done' })],
-			title: 'Update 2 out-of-date items',
-			preview: { summary: '2 changes from your update' }
-		});
-		expect(result).toMatchObject({
-			ok: false,
-			diagnostic: { code: 'PREVIEW_OPERATION_COUNT_MISMATCH' }
 		});
 	});
 });

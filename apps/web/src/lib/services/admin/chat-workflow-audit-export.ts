@@ -221,6 +221,55 @@ export const buildWorkflowReportSection = (run: WorkflowAuditRun): string[] => {
 		...buildWorkflowSummaryLines(run),
 		''
 	];
+	const recommendation = run.specialist_snapshot?.raw?.recommendation;
+	const decision =
+		recommendation && typeof recommendation === 'object' && !Array.isArray(recommendation)
+			? (recommendation as Record<string, unknown>)
+			: null;
+	const result =
+		decision?.result && typeof decision.result === 'object' && !Array.isArray(decision.result)
+			? (decision.result as Record<string, unknown>)
+			: null;
+	const selected =
+		result?.selected && typeof result.selected === 'object' && !Array.isArray(result.selected)
+			? (result.selected as Record<string, unknown>)
+			: null;
+	if (decision && result) {
+		lines.push(
+			'## Specialist recommendation',
+			'',
+			metricLine('Decision', escapeMarkdownInline(decision.id)),
+			metricLine('Policy', 'jev_specialist_choice_v1'),
+			metricLine('Outcome', escapeMarkdownInline(result.status)),
+			metricLine(
+				'Selected',
+				selected
+					? `${escapeMarkdownInline(selected.name)} · v${escapeMarkdownInline(selected.version)}`
+					: 'none'
+			),
+			metricLine('Input hash', escapeMarkdownInline(decision.inputHash)),
+			metricLine('Result hash', escapeMarkdownInline(decision.resultHash)),
+			metricLine(
+				'Jev recommendation cost (outside workflow cap)',
+				typeof result.costUsd === 'number' ? usdPlain(result.costUsd) : 'unknown'
+			),
+			''
+		);
+		const ranking = Array.isArray(result.ranking) ? result.ranking.slice(0, 20) : [];
+		if (ranking.length) {
+			lines.push('| Ranked specialist | Jev probability |', '| --- | ---: |');
+			for (const item of ranking) {
+				const row =
+					item && typeof item === 'object' && !Array.isArray(item)
+						? (item as Record<string, unknown>)
+						: {};
+				lines.push(
+					`| ${tableCell(row.name)} · v${tableCell(row.version)} | ${typeof row.probability === 'number' && Number.isFinite(row.probability) ? `${Math.round(row.probability * 100)}%` : '-'} |`
+				);
+			}
+			lines.push('');
+		}
+	}
 	lines.push(
 		'## Request',
 		'',

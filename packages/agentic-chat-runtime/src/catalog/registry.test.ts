@@ -100,6 +100,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'update_onto_risk onto.risk.update write',
 	'update_onto_task onto.task.update write',
 	'upsert_user_contact util.contact.upsert write',
+	'web_navigate util.web.navigate read',
 	'web_search util.web.search read',
 	'web_visit util.web.visit read'
 ]);

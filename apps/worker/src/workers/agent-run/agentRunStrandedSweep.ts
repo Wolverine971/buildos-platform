@@ -19,9 +19,15 @@
 // The sweep never touches a run that still has a live (pending/processing) queue
 // job, and never re-drives a run parked waiting for the USER (paused /
 // needs_input / proposal_ready): those legitimately have no queue job.
+//
+// A 'running' run with commit_started_at is not worker execution at all: it is a
+// web Change Set commit (the user approved a proposal) that died mid-commit. It is
+// recovered through recoverStalledCommit, which returns it to review or records
+// what applied, never finalized 'failed' (that discarded the user's approval).
 
 import type { Database, Json } from '@buildos/shared-types';
 import { validateAgentRunMetadata } from '@buildos/shared-types';
+import { type StalledCommitRecovery, recoverStalledCommit } from '@buildos/shared-agent-ops';
 import { supabase } from '../../lib/supabase';
 import { queueConfig } from '../../config/queueConfig';
 import {
@@ -60,6 +66,8 @@ export interface AgentRunStrandedSweepSummary {
 	childrenCancelled: number;
 	finalizedFailed: number;
 	finalizedPartial: number;
+	commitsReturnedToReview: number;
+	commitsFinalized: number;
 	errors: number;
 }
 
@@ -81,6 +89,8 @@ export interface StrandedRunRow {
 	effort: string;
 	allowed_ops: string[] | null;
 	review_required: boolean;
+	/** Set only while a web Change Set commit holds the run (D9b). */
+	commit_started_at: string | null;
 }
 
 export interface StrandedParentRow {
@@ -123,6 +133,9 @@ export interface StrandedSweepStore {
 	// Best-effort idempotent: inserts a system cancel signal only when no
 	// unconsumed cancel signal already exists for the run.
 	ensureCancelSignal(runId: string): Promise<void>;
+	// Recover a dead web commit (see recoverStalledCommit); compare-and-swap on
+	// commit_started_at, so a live D9b re-entry wins.
+	recoverStalledCommit(runId: string): Promise<StalledCommitRecovery>;
 }
 
 export interface AgentRunStrandedSweepOptions {
@@ -138,7 +151,7 @@ export function createStrandedSweepStore(): StrandedSweepStore {
 			const { data, error } = await supabase
 				.from('agent_runs')
 				.select(
-					'id, user_id, status, run_template, depth, parent_run_id, started_at, updated_at, budgets, orchestration_state, trigger, context_type, project_id, scope_mode, effort, allowed_ops, review_required'
+					'id, user_id, status, run_template, depth, parent_run_id, started_at, updated_at, budgets, orchestration_state, trigger, context_type, project_id, scope_mode, effort, allowed_ops, review_required, commit_started_at'
 				)
 				.in('status', statuses)
 				.lt('updated_at', updatedBefore)
@@ -232,6 +245,9 @@ export function createStrandedSweepStore(): StrandedSweepStore {
 					`[agentRunStrandedSweep] failed to insert cancel signal for ${runId}: ${insertError.message}`
 				);
 			}
+		},
+		recoverStalledCommit(runId) {
+			return recoverStalledCommit({ admin: supabase, runId });
 		}
 	};
 }
@@ -412,6 +428,16 @@ async function handleCandidate(
 	graceMs: number,
 	summary: AgentRunStrandedSweepSummary
 ): Promise<void> {
+	// A dead web commit, not a dead worker: no queue job ever drove it, so none of
+	// the worker recovery below applies. Its heartbeat bumps updated_at, so a live
+	// commit never reaches this sweep's grace window.
+	if (run.status === 'running' && run.commit_started_at) {
+		const recovery = await store.recoverStalledCommit(run.id);
+		if (recovery.outcome === 'returned_to_review') summary.commitsReturnedToReview += 1;
+		else if (recovery.outcome === 'finalized') summary.commitsFinalized += 1;
+		return;
+	}
+
 	// Case 4: a non-terminal child whose parent has gone terminal. The parent is
 	// done, so the child's work is moot — signal it (in case a worker is somehow
 	// still alive) and force-cancel once the parent has been terminal past grace.
@@ -491,6 +517,8 @@ export async function runAgentRunStrandedSweep(
 		childrenCancelled: 0,
 		finalizedFailed: 0,
 		finalizedPartial: 0,
+		commitsReturnedToReview: 0,
+		commitsFinalized: 0,
 		errors: 0
 	};
 

@@ -1,4 +1,5 @@
 // apps/web/src/lib/components/agent/agent-chat-session.ts
+import { buildWebNavigateTrailFromResult } from './agent-chat-tool-progress';
 import {
 	readAgentChatWorkflowProgress,
 	workflowMessageTurnId,
@@ -677,7 +678,10 @@ function buildRestoredToolBlock(params: {
 			error: source.errorMessage ?? undefined,
 			status: source.success ? 'completed' : 'failed',
 			durationMs: source.durationMs ?? undefined,
-			tokensConsumed: source.tokensConsumed ?? undefined
+			tokensConsumed: source.tokensConsumed ?? undefined,
+			...(source.toolName === 'web_navigate'
+				? { progressSteps: buildWebNavigateTrailFromResult(source.result) }
+				: {})
 		}
 	}));
 	const timestamp = params.timestamp ?? sortedSources[0]?.createdAt ?? new Date().toISOString();
