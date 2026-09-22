@@ -103,7 +103,8 @@ function reviewNotification(): AgentRunNotification {
 				action: 'update',
 				entity_type: 'task',
 				before: { title: 'Previous title' },
-				after: { title: 'Reviewed title' }
+				after: { title: 'Reviewed title' },
+				rationale: 'Apply the reviewed title.'
 			}
 		]
 	};

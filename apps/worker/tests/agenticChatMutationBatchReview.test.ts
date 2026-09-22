@@ -6,7 +6,11 @@ import {
 	mutationBatchSha256,
 	serializeMutationBatchForReview
 } from '@buildos/agentic-chat-runtime/loop';
-import { REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION } from '@buildos/agentic-chat-runtime/catalog';
+import {
+	ONTOLOGY_WRITE_TOOLS,
+	REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION
+} from '@buildos/agentic-chat-runtime/catalog';
+import { SEMANTIC_COMMISSION_GUIDANCE } from '../src/workers/agentic-chat/provider/review/controls';
 import type { AgenticChatTurnProviderRequestV1 } from '../src/workers/agentic-chat/provider/contracts';
 import {
 	buildMutationBatchReviewRequest,
@@ -146,5 +150,124 @@ describe('mutation batch review presentation', () => {
 			)
 		).toBe(true);
 		expect(mutationBatchSha256(batch)).toBe(digest);
+	});
+});
+
+/**
+ * Tasker 92 slice B. Case 2 of the 2026-09-21 gate: the reviewer revised five
+ * task creates over unrequested `type_key` values ("optional fields should not
+ * be invented") while the schema said "omit when unsure", costing a repair and
+ * a second review. One policy now reaches the reviewer twice — in the proposed
+ * tool's schema and in the commission rules — for each of the three cases.
+ * These fixtures pin prompt content, not model behavior.
+ */
+describe('work-type classification policy reaches the reviewer', () => {
+	const CREATE_POLICY = 'Set it only when the user states or clearly implies the work mode';
+	const UPDATE_POLICY = 'Include it only when the user asks to reclassify the task';
+	const REVIEWER_POLICY = SEMANTIC_COMMISSION_GUIDANCE.find((line) =>
+		line.startsWith('An unstated optional classification')
+	);
+	const PROJECT_ID = '3f6d8f10-3f0f-4c7e-9a8e-6a2d9b9d0c11';
+	const TASK_ID = '9b1a2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d';
+
+	function taskTools() {
+		return ONTOLOGY_WRITE_TOOLS.filter((tool) =>
+			['create_onto_task', 'update_onto_task'].includes(tool.function.name)
+		);
+	}
+
+	function requestFor(userMessage: string): AgenticChatTurnProviderRequestV1 {
+		return {
+			messages: [{ role: 'user', content: userMessage }],
+			tools: [REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION, ...taskTools()],
+			toolChoice: 'auto',
+			userId: 'qa-user',
+			sessionId: 'qa-session',
+			turnRunId: 'qa-turn',
+			streamRunId: 'qa-stream',
+			clientTurnId: 'qa-client-turn',
+			contextType: 'project',
+			entityId: PROJECT_ID,
+			projectId: PROJECT_ID,
+			queueJobId: 'qa-job',
+			processingToken: 'qa-processing-token',
+			executionGeneration: 1,
+			providerRound: 'initial',
+			logicalProviderRound: 1,
+			signal: new AbortController().signal
+		};
+	}
+
+	function reviewFor(userMessage: string, batch: ReturnType<typeof batchWith>) {
+		const request = requestFor(userMessage);
+		const review = buildMutationBatchReviewRequest(
+			request,
+			request.tools,
+			batch,
+			mutationBatchSha256(batch),
+			true,
+			true
+		);
+		return {
+			system: String(review.messages[0]?.content),
+			user: String(review.messages[1]?.content)
+		};
+	}
+
+	it('declares the reviewer rule once: approve either way on creates, uncommissioned on updates', () => {
+		expect(REVIEWER_POLICY).toBeDefined();
+		expect(REVIEWER_POLICY).toContain('approve it omitted or plausibly set');
+		expect(REVIEWER_POLICY).toContain('revise only a contradiction of a stated one');
+		expect(REVIEWER_POLICY).toContain('Reclassifying an entity unasked is uncommissioned');
+	});
+
+	it('ordinary unclassified creation: schema says omit, reviewer says approve', () => {
+		const batch = batchWith(
+			{
+				project_id: PROJECT_ID,
+				title: 'QA — Confirm permit requirements',
+				due_at: '2026-09-15'
+			},
+			'create_onto_task'
+		);
+		const { system, user } = reviewFor(
+			'Create the task "QA — Confirm permit requirements" due September 15.',
+			batch
+		);
+		expect(user).toContain(CREATE_POLICY);
+		expect(user).toContain('otherwise omit it and the tool stores task.default');
+		expect(user).not.toContain('Omit when unsure');
+		expect(system).toContain(REVIEWER_POLICY!);
+	});
+
+	it('explicit classification: the user-stated work mode is honored, and the reviewer revises only a contradiction', () => {
+		const batch = batchWith(
+			{
+				project_id: PROJECT_ID,
+				title: 'Kickoff with the electrician',
+				type_key: 'task.coordinate.meeting'
+			},
+			'create_onto_task'
+		);
+		const { system, user } = reviewFor(
+			'Add a meeting task: kickoff with the electrician.',
+			batch
+		);
+		expect(user).toContain('"type_key": "task.coordinate.meeting"');
+		expect(user).toContain('a meeting is task.coordinate.meeting');
+		expect(system).toContain('revise only a contradiction of a stated one');
+	});
+
+	it('unsupported addition: reclassifying an existing task the user did not ask about stays revisable', () => {
+		const batch = batchWith(
+			{ task_id: TASK_ID, state_key: 'done', type_key: 'task.review' },
+			'update_onto_task'
+		);
+		const { system, user } = reviewFor('I finished the electrical rough-in.', batch);
+		expect(user).toContain(UPDATE_POLICY);
+		expect(system).toContain('Reclassifying an entity unasked is uncommissioned');
+		expect(system).toContain(
+			'A priority, scheduling, or completion instruction commissions only that change.'
+		);
 	});
 });

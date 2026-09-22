@@ -181,12 +181,12 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		type_key: {
 			type: 'string',
-			description: `Task work mode taxonomy. Format: task.{work_mode}[.{specialization}]
-Work modes: execute (default), create, refine, research, review, coordinate, admin, plan.
+			description: `Optional task work-mode taxonomy. Format: task.{work_mode}[.{specialization}]
+Work modes: execute, create, refine, research, review, coordinate, admin, plan. Stored default when omitted: task.default.
 Specializations: task.coordinate.meeting, task.coordinate.standup, task.execute.deploy, task.execute.checklist.
-Use the most specific type that matches the task nature.`,
+Set it only when the user states or clearly implies the work mode; otherwise omit it.`,
 			required: false,
-			example: 'task.execute'
+			example: 'task.coordinate.meeting'
 		},
 		props: {
 			type: 'string',

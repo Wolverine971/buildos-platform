@@ -44,6 +44,7 @@ import {
 } from '../src/workers/agentic-chat/provider/contracts';
 import { AgenticChatToolExecutionAdapter } from '../src/workers/agentic-chat/tools/execution-adapter';
 import { createStableAgenticChatPromptSnapshotIdV1 } from '../src/workers/agentic-chat/promptSnapshot';
+import { AgenticChatReadToolFenceTimeoutError } from '../src/workers/agentic-chat/readToolFence';
 import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/runtimeTiming';
 import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/streamPublisher';
 import {
@@ -1737,7 +1738,11 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
-	it('does not create a snapshot when the provider produces no response text', async () => {
+	it('snapshots the prompt of every started turn, even one with no response text', async () => {
+		// The write used to wait for the first durable step, which put its
+		// exclusive turn-row lock in the same instant as the first tool batch's
+		// ownership checks (case 14, 2026-09-21 gate). It now starts before the
+		// provider request, so an empty or failed pass still leaves its prompt.
 		const harness = createHarness([{ type: 'finish', finishedReason: 'stop', usage: null }], {
 			promptSnapshot: fixturePromptSnapshot
 		});
@@ -1745,7 +1750,10 @@ describe('AgenticChatTurnExecutor', () => {
 		await expect(harness.executor.execute(job())).resolves.toMatchObject({
 			outcome: 'completed'
 		});
-		expect(harness.promptSnapshots.persist).not.toHaveBeenCalled();
+		expect(harness.promptSnapshots.persist).toHaveBeenCalledOnce();
+		expect(harness.log.indexOf('prompt_snapshot')).toBeGreaterThan(
+			harness.log.indexOf('provider')
+		);
 		await harness.publisher.stop();
 	});
 
@@ -6251,3 +6259,386 @@ function installMoveContractFixture(
 		}))
 	});
 }
+
+/**
+ * Case 14, repetition 1 of the 2026-09-21 gate (turn 8f1ed224): five parallel
+ * reads, four-wide concurrency, and a stalled ownership check. Retained
+ * evidence showed four `claim_agentic_chat_turn` requests started within 1 ms,
+ * none cancelled at the 10 s deadline, all returning HTTP 500 after ~46 s, and
+ * the turn failing as `failure_class: unknown` with error code `Error`.
+ */
+function readBurstSteps(count: number) {
+	return Array.from({ length: count }, (_, index) => ({
+		type: 'read_tool' as const,
+		callTransitionId: `c000000${index + 1}-0000-4000-8000-00000000000c`,
+		resultTransitionId: `d000000${index + 1}-0000-4000-8000-00000000000d`,
+		providerToolCallId: `provider-burst-read-${index + 1}`,
+		toolName: 'fixture_project_read',
+		arguments: { projectId: `da000000-0000-4000-8000-00000000000${index + 1}` }
+	}));
+}
+
+function prepareReadBurst(
+	harness: ReturnType<typeof createHarness>,
+	count: number,
+	continueWithToolResults: ReturnType<typeof vi.fn>,
+	promptSnapshot?: AgenticChatPreparedPromptSnapshotV1
+) {
+	Object.assign(harness.provider, {
+		prepare: vi.fn(async () => ({
+			...(promptSnapshot ? { promptSnapshot } : {}),
+			stream: () => {
+				harness.log.push('provider');
+				return (async function* () {
+					for (const step of readBurstSteps(count)) yield step;
+				})();
+			},
+			continueWithToolResults,
+			release: vi.fn()
+		}))
+	});
+}
+
+function finishAfterReads() {
+	return vi.fn(() =>
+		(async function* () {
+			yield { type: 'text_delta', text: 'Every read is in.' } as const;
+			yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+		})()
+	);
+}
+
+describe('AgenticChatTurnExecutor read-tool fence sharing', () => {
+	it('shares one fence claim per burst, cancels it at the deadline, and fails as transient infrastructure (case 14 reproduction)', async () => {
+		const harness = createHarness([], {
+			overheadTimeoutMs: 100,
+			maxToolConcurrency: 4,
+			recovery: [recoveryReceipt('retry_scheduled')]
+		});
+		const fenceSignals: Array<AbortSignal | undefined> = [];
+		let calls = 0;
+		harness.control.claim.mockImplementation(((_input: unknown, signal?: AbortSignal) => {
+			calls += 1;
+			if (calls === 1) return Promise.resolve(claim);
+			fenceSignals.push(signal);
+			harness.log.push(`fence_claim:${fenceSignals.length}`);
+			if (fenceSignals.length === 1) return new Promise<never>(() => undefined);
+			return Promise.resolve({
+				...claim,
+				outcome: 'matching_current_claim' as const,
+				executionMayStart: false
+			});
+		}) as never);
+		const continueWithToolResults = vi.fn();
+		prepareReadBurst(harness, 5, continueWithToolResults);
+		const processingJob = job();
+
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'requeued',
+				terminalStatus: null
+			});
+			// One admission claim, one shared check for the four-wide burst, and one
+			// fresh check for the fifth read that only starts once a slot frees.
+			expect(harness.control.claim).toHaveBeenCalledTimes(3);
+			expect(fenceSignals).toHaveLength(2);
+			expect(fenceSignals[0]?.aborted).toBe(true);
+			expect(fenceSignals[0]?.reason).toBeInstanceOf(AgenticChatReadToolFenceTimeoutError);
+			expect(fenceSignals[1]?.aborted).toBe(false);
+			// The burst never reached a tool; only the freshly fenced fifth read ran.
+			expect(harness.readTool.execute).toHaveBeenCalledTimes(1);
+			expect(harness.readTool.execute.mock.calls[0]?.[0]).toMatchObject({
+				providerToolCallId: 'provider-burst-read-5'
+			});
+			expect(continueWithToolResults).not.toHaveBeenCalled();
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				failureClass: 'transient_infra',
+				errorMessage: expect.stringContaining(
+					'read-tool fence claim exceeded its 100ms overhead deadline'
+				)
+			});
+			const graph = processingJob.log.mock.calls
+				.map(([message]) => JSON.parse(message) as Record<string, unknown>)
+				.find((record) => record.event === 'agentic_chat_tool_execution_graph');
+			expect(graph).toMatchObject({
+				call_count: 5,
+				failed_call_count: 4,
+				max_observed_concurrency: 4
+			});
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('issues one ownership check for a four-wide read burst and runs every read', async () => {
+		const harness = createHarness([], { maxToolConcurrency: 4 });
+		const continueWithToolResults = finishAfterReads();
+		prepareReadBurst(harness, 4, continueWithToolResults);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			// Admission claim plus one shared fence claim for the whole burst.
+			expect(harness.control.claim).toHaveBeenCalledTimes(2);
+			expect(harness.readTool.execute).toHaveBeenCalledTimes(4);
+			expect(harness.toolExecutions.persistRead).toHaveBeenCalledTimes(4);
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assistantMetadata: expect.objectContaining({ tool_call_count: 4 })
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('starts no read when the shared ownership check names another generation', async () => {
+		const harness = createHarness([], {
+			maxToolConcurrency: 4,
+			recovery: [recoveryReceipt('stale_generation')]
+		});
+		let calls = 0;
+		harness.control.claim.mockImplementation((() => {
+			calls += 1;
+			return Promise.resolve(
+				calls === 1
+					? claim
+					: {
+							...claim,
+							outcome: 'matching_current_claim' as const,
+							executionMayStart: false,
+							executionGeneration: EXECUTION_GENERATION + 1
+						}
+			);
+		}) as never);
+		const continueWithToolResults = finishAfterReads();
+		prepareReadBurst(harness, 4, continueWithToolResults);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toBeDefined();
+			expect(harness.control.claim).toHaveBeenCalledTimes(2);
+			expect(harness.readTool.execute).not.toHaveBeenCalled();
+			expect(harness.toolExecutions.persistRead).not.toHaveBeenCalled();
+			expect(continueWithToolResults).not.toHaveBeenCalled();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('starts no read when the shared ownership check reports a cancellation request', async () => {
+		const harness = createHarness([], {
+			maxToolConcurrency: 4,
+			recovery: [
+				recoveryReceipt('finalize_cancelled'),
+				recoveryReceipt('queue_reconciled', {
+					status: 'cancelled',
+					failure_code: 'cancelled'
+				})
+			]
+		});
+		let calls = 0;
+		harness.control.claim.mockImplementation((() => {
+			calls += 1;
+			return Promise.resolve(
+				calls === 1
+					? claim
+					: {
+							...claim,
+							outcome: 'cancel_requested' as const,
+							executionMayStart: false
+						}
+			);
+		}) as never);
+		const continueWithToolResults = finishAfterReads();
+		prepareReadBurst(harness, 4, continueWithToolResults);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'cancelled'
+			});
+			expect(harness.control.claim).toHaveBeenCalledTimes(2);
+			expect(harness.readTool.execute).not.toHaveBeenCalled();
+			expect(continueWithToolResults).not.toHaveBeenCalled();
+			expect(harness.control.recover).toHaveBeenCalledWith(
+				expect.objectContaining({ failureClass: 'cancelled' })
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('starts the prompt-snapshot write before the first tool batch so the fence never queues behind its row lock', async () => {
+		const harness = createHarness([], { promptSnapshot: fixturePromptSnapshot });
+		let calls = 0;
+		harness.control.claim.mockImplementation((() => {
+			calls += 1;
+			if (calls > 1) harness.log.push('fence_claim');
+			return Promise.resolve(
+				calls === 1
+					? claim
+					: {
+							...claim,
+							outcome: 'matching_current_claim' as const,
+							executionMayStart: false
+						}
+			);
+		}) as never);
+		const continueWithToolResults = finishAfterReads();
+		prepareReadBurst(harness, 1, continueWithToolResults, fixturePromptSnapshot);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed'
+			});
+			expect(harness.promptSnapshots.persist).toHaveBeenCalledOnce();
+			const snapshotAt = harness.log.indexOf('prompt_snapshot');
+			expect(snapshotAt).toBeGreaterThan(harness.log.indexOf('provider'));
+			expect(snapshotAt).toBeLessThan(harness.log.indexOf('fence_claim'));
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+});
+
+describe('AgenticChatTurnExecutor completion receipts', () => {
+	function completionReceipt(harness: ReturnType<typeof createHarness>) {
+		const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+		if (!terminalInput) throw new Error('fixture did not finalize');
+		return (terminalInput.assistantMetadata as Record<string, unknown>).completion_receipt as
+			| Record<string, unknown>
+			| undefined;
+	}
+
+	it('persists a fulfilled receipt only when the ledger proves every contract outcome', async () => {
+		const harness = createHarness([]);
+		const targets = [MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!];
+		installMoveContractFixture(harness, targets, targets, [
+			{ type: 'text_delta', text: 'Moved both tasks into Backlog.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed'
+			});
+			expect(completionReceipt(harness)).toMatchObject({
+				version: 1,
+				expectation: 'turn_contract',
+				contractSha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+				stages: [],
+				unreviewedWriteCallIds: targets.map((taskId) => `provider-move-${taskId}`),
+				failedUnreviewedWriteCallIds: [],
+				request: {
+					disposition: 'request_fulfilled',
+					outcomeStatus: 'fulfilled',
+					reasons: []
+				}
+			});
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('persists a partial receipt naming the unmet outcome when only some targets moved', async () => {
+		const harness = createHarness([]);
+		installMoveContractFixture(
+			harness,
+			MOVE_TASK_IDS,
+			[MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!],
+			[
+				{ type: 'text_delta', text: 'Moved Task A and Task B into Backlog.' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			]
+		);
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			const receipt = completionReceipt(harness);
+			expect(receipt).toMatchObject({
+				expectation: 'turn_contract',
+				request: {
+					disposition: 'request_partial',
+					outcomeStatus: 'unfulfilled',
+					reasons: expect.arrayContaining([
+						'outcome_unfulfilled',
+						'missing_targets:outcome_1'
+					])
+				}
+			});
+			const outcomes = (receipt?.request as { outcomes: Array<Record<string, unknown>> })
+				.outcomes;
+			expect(outcomes[0]).toMatchObject({
+				fulfilled: false,
+				matchedEffects: 2,
+				requiredEffects: MOVE_TASK_IDS.length
+			});
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('leaves no receipt on a cancelled terminal', async () => {
+		const harness = createHarness(
+			[
+				{
+					type: 'mutating_tool',
+					logicalProviderRound: 1,
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					logicalOperationId: LOGICAL_OPERATION_ID,
+					providerToolCallId: 'provider-mutation-call-receipt-cancelled',
+					toolName: 'fixture_project_write',
+					operationName: 'update_project',
+					arguments: { projectId: 'project-1', name: 'Updated' },
+					downstreamIdempotencySupported: true
+				},
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{
+				recovery: [
+					recoveryReceipt('finalize_cancelled'),
+					recoveryReceipt('queue_reconciled', {
+						status: 'cancelled',
+						failure_code: 'cancelled'
+					})
+				]
+			}
+		);
+		harness.mutation.execute.mockImplementationOnce(async () => {
+			harness.cancellationController.abort(
+				new AgenticChatCancellationError({
+					turn_run_id: TURN_RUN_ID,
+					execution_generation: EXECUTION_GENERATION,
+					signal_id: 'c0000000-0000-4000-8000-00000000000c',
+					cancel_reason: 'user_cancelled',
+					cancel_source: 'browser',
+					cancel_requested_at: '2026-08-03T12:00:00.000Z',
+					consumed_at: '2026-08-03T12:00:00.100Z'
+				})
+			);
+			return {
+				effectId: EFFECT_ID,
+				canonicalArgumentHash: 'a'.repeat(64),
+				downstreamIdempotencyKey: `chat-effect:${EFFECT_ID}`,
+				downstreamReceipt: { mutationId: 'fixture-mutation-1' },
+				replayed: false
+			};
+		});
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'cancelled',
+				terminalStatus: 'cancelled'
+			});
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'cancelled' })
+			);
+			expect(completionReceipt(harness)).toBeUndefined();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+});

@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChatMessage } from '@buildos/shared-types';
 import { ChatCompressionService } from './chat-compression-service';
 
+type ChatCompressionServiceInternals = {
+	compressMessageGroup(
+		messages: ChatMessage[],
+		contextType: string,
+		userId?: string
+	): Promise<string>;
+};
+
 function message(overrides: Partial<ChatMessage>): ChatMessage {
 	return {
 		id: crypto.randomUUID(),
@@ -72,7 +80,7 @@ describe('ChatCompressionService.smartCompress', () => {
 		} as never;
 		const service = new ChatCompressionService(supabase as never);
 		const summarize = vi
-			.spyOn(service as never, 'compressMessageGroup')
+			.spyOn(service as unknown as ChatCompressionServiceInternals, 'compressMessageGroup')
 			.mockResolvedValue('The user supplied a long project brief.');
 		const messages = [message({ content: 'Detailed project context. '.repeat(200) })];
 

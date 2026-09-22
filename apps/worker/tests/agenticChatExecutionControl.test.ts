@@ -327,6 +327,53 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 		]);
 	});
 
+	it('forwards the caller abort signal to the claim RPC only when the builder supports it', async () => {
+		const receipt = executionReceipt({
+			outcome: 'matching_current_claim',
+			execution_may_start: false,
+			input_artifact_id: INPUT_ARTIFACT_ID,
+			user_message_id: USER_MESSAGE_ID
+		});
+		const abortSignal = vi.fn();
+		const request = {
+			then: (
+				onFulfilled: (value: { data: unknown; error: null }) => unknown,
+				onRejected?: (reason: unknown) => unknown
+			) => Promise.resolve({ data: receipt, error: null }).then(onFulfilled, onRejected),
+			abortSignal
+		};
+		abortSignal.mockImplementation(() => request);
+		const rpc = vi.fn(() => request);
+		const adapter = new SupabaseAgenticChatExecutionControlAdapter({
+			rpc
+		} as unknown as AgenticChatExecutionRpcClient);
+		const controller = new AbortController();
+
+		await expect(adapter.claim(identity, controller.signal)).resolves.toMatchObject({
+			outcome: 'matching_current_claim',
+			executionMayStart: false
+		});
+		expect(abortSignal).toHaveBeenCalledWith(controller.signal);
+		expect(rpc).toHaveBeenCalledWith('claim_agentic_chat_turn', {
+			p_turn_run_id: TURN_RUN_ID,
+			p_queue_job_id: QUEUE_JOB_ID,
+			p_processing_token: PROCESSING_TOKEN
+		});
+
+		abortSignal.mockClear();
+		await expect(adapter.claim(identity)).resolves.toMatchObject({
+			outcome: 'matching_current_claim'
+		});
+		expect(abortSignal).not.toHaveBeenCalled();
+
+		// A client without the modifier still claims; the deadline then only
+		// bounds the caller's wait, not the request.
+		const { adapter: plainAdapter } = adapterFor([receipt]);
+		await expect(plainAdapter.claim(identity, controller.signal)).resolves.toMatchObject({
+			outcome: 'matching_current_claim'
+		});
+	});
+
 	it('rejects a forged claim authority receipt', async () => {
 		const { adapter } = adapterFor([
 			executionReceipt({

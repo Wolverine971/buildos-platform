@@ -18,7 +18,10 @@ import {
 } from './workflow/workflow-store';
 
 type RpcError = { code?: string; message: string };
-type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }>;
+type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }> & {
+	/** Supabase builders expose `abortSignal`; test doubles may omit it. */
+	abortSignal?(signal: AbortSignal): RpcResponse;
+};
 
 export type AgenticChatExecutionRpcClient = {
 	rpc(name: string, args: Record<string, unknown>): RpcResponse;
@@ -53,7 +56,17 @@ export type AgenticChatTerminalFinalizeInputV1 = AgenticChatExecutionIdentityV1 
 };
 
 export type AgenticChatExecutionControlPortV1 = {
-	claim(input: AgenticChatExecutionIdentityV1): Promise<AgenticChatTurnClaimResultV1>;
+	/**
+	 * Claim or re-verify ownership. `signal` carries the caller's deadline so a
+	 * timed-out check cancels its HTTP request instead of running on in the
+	 * background; in the 2026-09-21 gate four abandoned claims held pool slots
+	 * and lock-queue positions for 46 s after the executor had given up on them.
+	 * Cancelling the request does not prove the database statement stopped.
+	 */
+	claim(
+		input: AgenticChatExecutionIdentityV1,
+		signal?: AbortSignal
+	): Promise<AgenticChatTurnClaimResultV1>;
 	begin(
 		input: AgenticChatExecutionIdentityV1 & { executionGeneration: number }
 	): Promise<AgenticChatExecutionStartRpcResultV1>;
@@ -127,13 +140,20 @@ export class SupabaseAgenticChatExecutionControlAdapter
 {
 	constructor(private readonly client: AgenticChatExecutionRpcClient) {}
 
-	async claim(input: AgenticChatExecutionIdentityV1): Promise<AgenticChatTurnClaimResultV1> {
+	async claim(
+		input: AgenticChatExecutionIdentityV1,
+		signal?: AbortSignal
+	): Promise<AgenticChatTurnClaimResultV1> {
 		validateExecutionIdentity(input);
-		const value = await this.call('claim_agentic_chat_turn', {
-			p_turn_run_id: input.turnRunId,
-			p_queue_job_id: input.queueJobId,
-			p_processing_token: input.processingToken
-		});
+		const value = await this.call(
+			'claim_agentic_chat_turn',
+			{
+				p_turn_run_id: input.turnRunId,
+				p_queue_job_id: input.queueJobId,
+				p_processing_token: input.processingToken
+			},
+			signal
+		);
 		return parseClaimReceipt(value, input);
 	}
 
@@ -350,8 +370,15 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		return value;
 	}
 
-	private async call(name: string, args: Record<string, unknown>): Promise<unknown> {
-		const { data, error } = await this.client.rpc(name, args);
+	private async call(
+		name: string,
+		args: Record<string, unknown>,
+		signal?: AbortSignal
+	): Promise<unknown> {
+		const request = this.client.rpc(name, args);
+		const { data, error } = await (signal && request.abortSignal
+			? request.abortSignal(signal)
+			: request);
 		if (error) {
 			throw new AgenticChatExecutionControlRpcError(name, error.code ?? '', error.message);
 		}

@@ -49,6 +49,45 @@ describe('ontology write tool definitions', () => {
 		expect(relationships.items).not.toHaveProperty('oneOf');
 	});
 
+	it('states one optional work-type policy on task creation and update', () => {
+		// Case 2 of the 2026-09-21 gate: the reviewer revised a batch over
+		// unrequested type_key classifications while the schema said "omit when
+		// unsure". Actor schema and reviewer guidance now carry one policy.
+		const create = getToolProperties('create_onto_task').type_key as {
+			default?: string;
+			pattern?: string;
+			description?: string;
+		};
+		expect(create.default).toBe('task.default');
+		expect(create.pattern).toBe('^task\\.');
+		expect(create.description).toContain('Optional');
+		expect(create.description).toContain(
+			'Set it only when the user states or clearly implies the work mode'
+		);
+		expect(create.description).toContain('otherwise omit it and the tool stores task.default');
+		for (const mode of [
+			'execute',
+			'create',
+			'refine',
+			'research',
+			'review',
+			'coordinate',
+			'admin',
+			'plan'
+		]) {
+			expect(create.description).toContain(mode);
+		}
+
+		const update = getToolProperties('update_onto_task').type_key as {
+			default?: string;
+			description?: string;
+		};
+		expect(update).not.toHaveProperty('default');
+		expect(update.description).toContain(
+			'Include it only when the user asks to reclassify the task'
+		);
+	});
+
 	it('exposes document merge strategy only on document updates', () => {
 		for (const toolName of [
 			'update_onto_task',

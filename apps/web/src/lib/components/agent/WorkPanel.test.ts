@@ -115,11 +115,12 @@ describe('WorkPanel accessibility contract', () => {
 								action: 'update',
 								entity_type: 'task',
 								before: { title: `${id} task` },
-								after: { title: `${id} updated` }
+								after: { title: `${id} updated` },
+								rationale: 'Apply the reviewed task title.'
 							}
 						]
 					}
-				}) as AgentRunRow
+				}) as unknown as AgentRunRow
 		);
 		workRunsStore.set(new Map(runs.map((run) => [run.id, run])));
 		let resolveCommit!: (response: Response) => void;

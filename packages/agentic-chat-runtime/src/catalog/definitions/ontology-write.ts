@@ -41,7 +41,7 @@ export const ONTOLOGY_WRITE_TOOLS = [
 						default: 'task.default',
 						pattern: '^task\\.',
 						description:
-							'Work mode taxonomy: task.{work_mode}[.{specialization}]. Modes: execute, create, refine, research, review, coordinate, admin, plan. Omit when unsure; the default is task.default.'
+							'Optional work-mode taxonomy task.{work_mode}[.{specialization}]; modes: execute, create, refine, research, review, coordinate, admin, plan. Set it only when the user states or clearly implies the work mode (a meeting is task.coordinate.meeting); otherwise omit it and the tool stores task.default.'
 					},
 					state_key: {
 						type: 'string',
@@ -1052,7 +1052,7 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 					type_key: {
 						type: 'string',
 						description:
-							'Work mode taxonomy: task.{work_mode}[.{specialization}]. Modes: execute, create, refine, research, review, coordinate, admin, plan.'
+							'Work-mode taxonomy task.{work_mode}[.{specialization}]; modes: execute, create, refine, research, review, coordinate, admin, plan. Include it only when the user asks to reclassify the task.'
 					},
 					state_key: {
 						type: 'string',

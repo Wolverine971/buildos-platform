@@ -3,10 +3,12 @@ import { workerSourceProvenance } from '../../lib/sourceProvenance';
 import { randomUUID } from 'node:crypto';
 import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime/context';
 import {
+	buildAgenticChatCompletionReceiptV1,
 	extractContextShiftPayload,
 	hasSuccessfulDurableEffects,
 	resolveTurnContractOutcome
 } from '@buildos/agentic-chat-runtime/loop';
+import { contractSha256 } from './provider/validation';
 import { resolveReviewedTurnContractFromExecutions } from './reviewedTurnContract';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
@@ -74,6 +76,10 @@ import {
 	SYSTEM_AGENTIC_CHAT_MONOTONIC_CLOCK
 } from './runtimeTiming';
 import { createStableAgenticChatPromptSnapshotIdV1 } from './promptSnapshot';
+import {
+	AgenticChatReadToolFenceTimeoutError,
+	AgenticChatSharedReadToolFenceV1
+} from './readToolFence';
 import { buildAgenticChatAsyncTimingDraftV1 } from './timingPayload';
 import {
 	type AgenticChatReadToolExecutionV1,
@@ -308,6 +314,8 @@ export class AgenticChatTurnExecutor {
 
 	/** Every never-fatal side effect goes through one facade with one error policy. */
 	private readonly effects: AgenticChatExecutorEffects;
+	/** One in-flight ownership check per turn identity for a burst of parallel reads. */
+	private readonly readToolFence: AgenticChatSharedReadToolFenceV1;
 
 	constructor(
 		private readonly ports: AgenticChatExecutorEffectPortsV1 & {
@@ -336,6 +344,7 @@ export class AgenticChatTurnExecutor {
 		} = {}
 	) {
 		this.effects = new AgenticChatExecutorEffects(ports);
+		this.readToolFence = new AgenticChatSharedReadToolFenceV1(ports.control);
 		this.providerBudgetMs = options.providerBudgetMs ?? DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS;
 		if (!Number.isSafeInteger(this.providerBudgetMs) || this.providerBudgetMs < 1) {
 			throw new Error('Agentic Chat provider budget must be a positive safe integer');
@@ -592,7 +601,6 @@ export class AgenticChatTurnExecutor {
 			throwIfAborted(combined.signal);
 
 			let finished = false;
-			let promptSnapshotAttempted = false;
 			const pendingToolResults: AgenticChatProviderToolSynthesisInputV1[] = [];
 			const pendingToolExecutions: AgenticChatPendingToolExecutionV1[] = [];
 			let toolCallCount = 0;
@@ -613,6 +621,11 @@ export class AgenticChatTurnExecutor {
 			let providerStream: AsyncIterable<AgenticChatProviderStepV1> = preparedProvider
 				? preparedProvider.stream()
 				: this.ports.provider.stream!(legacyStreamInput);
+			// The snapshot RPC takes the turn row's exclusive lock for its whole
+			// transaction. Dispatching it here lets it overlap the first model
+			// request instead of the first tool batch, whose ownership checks
+			// need that same lock (case 14, 2026-09-21 gate).
+			this.persistPromptSnapshot(envelope, executionInput, preparedProvider, combined.signal);
 			while (!finished) {
 				for await (const step of iterateWithAbort(providerStream, combined.signal)) {
 					this.captureRuntimeTiming(runtimeTiming, (timing) =>
@@ -626,15 +639,6 @@ export class AgenticChatTurnExecutor {
 							step.text,
 							combined.signal
 						);
-						if (!promptSnapshotAttempted) {
-							promptSnapshotAttempted = true;
-							this.persistPromptSnapshot(
-								envelope,
-								executionInput,
-								preparedProvider,
-								combined.signal
-							);
-						}
 						continue;
 					}
 					if (step.type === 'semantic') {
@@ -661,15 +665,6 @@ export class AgenticChatTurnExecutor {
 						continue;
 					}
 					if (step.type === 'read_tool') {
-						if (!promptSnapshotAttempted) {
-							promptSnapshotAttempted = true;
-							this.persistPromptSnapshot(
-								envelope,
-								executionInput,
-								preparedProvider,
-								combined.signal
-							);
-						}
 						toolCallCount += 1;
 						if (toolCallCount > this.maxToolCalls) {
 							throw new AgenticChatProviderExecutionError(
@@ -718,15 +713,6 @@ export class AgenticChatTurnExecutor {
 						continue;
 					}
 					if (step.type === 'mutating_tool') {
-						if (!promptSnapshotAttempted) {
-							promptSnapshotAttempted = true;
-							this.persistPromptSnapshot(
-								envelope,
-								executionInput,
-								preparedProvider,
-								combined.signal
-							);
-						}
 						toolCallCount += 1;
 						if (toolCallCount > this.maxToolCalls) {
 							throw new AgenticChatProviderExecutionError(
@@ -1005,7 +991,7 @@ export class AgenticChatTurnExecutor {
 		throwIfAborted(signal);
 	}
 
-	/** Detached at the first durable step; joined by `drainPendingEffects` before the terminal fence. */
+	/** Detached before the first provider request; joined by `drainPendingEffects` before the terminal fence. */
 	private persistPromptSnapshot(
 		envelope: AgenticChatExecutionIdentityV1,
 		executionInput: AgenticChatWorkerExecutionInputV1,
@@ -2551,12 +2537,19 @@ export class AgenticChatTurnExecutor {
 		signal: AbortSignal
 	): Promise<void> {
 		throwIfAborted(signal);
-		const receipt = await this.awaitOverhead(signal, 'read-tool fence claim', () =>
-			this.ports.control.claim({
-				turnRunId: executionInput.claim.turnRunId,
-				queueJobId: executionInput.claim.queueJobId,
-				processingToken
-			})
+		const receipt = await this.awaitOverhead(
+			signal,
+			'read-tool fence claim',
+			(deadlineSignal) =>
+				this.readToolFence.claim(
+					{
+						turnRunId: executionInput.claim.turnRunId,
+						queueJobId: executionInput.claim.queueJobId,
+						processingToken
+					},
+					deadlineSignal
+				),
+			() => new AgenticChatReadToolFenceTimeoutError(this.overheadTimeoutMs)
 		);
 		if (receipt.outcome === 'cancel_requested') {
 			throw new AgenticChatToolExecutionFenceError('cancel_requested', 'cancelled');
@@ -2943,6 +2936,21 @@ export class AgenticChatTurnExecutor {
 						finishedReason
 					})
 				: null;
+		// Tasker 92 C: a versioned, ledger-derived receipt that separates "this
+		// batch was approved" from "the verified effects fulfil the whole request".
+		// Computed only for completed terminals; cancelled, failed, stale, and
+		// pre-start paths leave none. Pure over the ledger, so a finalize replay
+		// yields the identical receipt and writes nothing else.
+		const completionReceipt =
+			status === 'completed' && terminalEventContext
+				? buildAgenticChatCompletionReceiptV1({
+						contract: turnContract,
+						contractSha256: turnContract ? contractSha256(turnContract) : null,
+						toolExecutions: terminalEventContext.terminalContext.toolExecutions,
+						finishedReason,
+						partialFailureClass: partialFailure?.failureClass ?? null
+					})
+				: null;
 		const timingDraft =
 			includesTerminalEventPair || includesFailureEventPair
 				? this.buildTimingDraft(terminalEventContext.runtimeTiming, finishedReason)
@@ -2985,6 +2993,9 @@ export class AgenticChatTurnExecutor {
 									}
 								: {})
 						}
+					: {}),
+				...(completionReceipt
+					? { completion_receipt: completionReceipt as unknown as JsonObject }
 					: {}),
 				tool_round_count: terminalEventContext?.terminalContext.toolRoundCount ?? 0,
 				tool_call_count: terminalEventContext?.terminalContext.toolExecutions.length ?? 0,
@@ -3221,20 +3232,24 @@ export class AgenticChatTurnExecutor {
 	private awaitOverhead<T>(
 		parentSignal: AbortSignal,
 		label: string,
-		run: (signal: AbortSignal) => PromiseLike<T>
+		run: (signal: AbortSignal) => PromiseLike<T>,
+		createTimeoutError: () => Error = () =>
+			new Error(
+				`Agentic Chat ${label} exceeded its ${this.overheadTimeoutMs}ms overhead deadline`
+			)
 	): Promise<T> {
 		return runWithAbortableDeadline({
 			parentSignal,
 			timeoutMs: this.overheadTimeoutMs,
-			createTimeoutError: () =>
-				new Error(
-					`Agentic Chat ${label} exceeded its ${this.overheadTimeoutMs}ms overhead deadline`
-				),
+			createTimeoutError,
 			run
 		});
 	}
 
-	private awaitTerminal<T>(label: string, run: () => PromiseLike<T>): Promise<T> {
+	private awaitTerminal<T>(
+		label: string,
+		run: (signal: AbortSignal) => PromiseLike<T>
+	): Promise<T> {
 		return this.awaitOverhead(new AbortController().signal, label, run);
 	}
 
@@ -3298,7 +3313,9 @@ export class AgenticChatTurnExecutor {
 		envelope: AgenticChatExecutionIdentityV1
 	): Promise<AgenticChatTurnClaimResultV1> {
 		try {
-			return await this.awaitTerminal('turn claim', () => this.ports.control.claim(envelope));
+			return await this.awaitTerminal('turn claim', (signal) =>
+				this.ports.control.claim(envelope, signal)
+			);
 		} catch (error) {
 			this.reportTerminalControlError(
 				'claim',
@@ -3307,8 +3324,8 @@ export class AgenticChatTurnExecutor {
 			);
 		}
 		try {
-			return await this.awaitTerminal('turn claim readback', () =>
-				this.ports.control.claim(envelope)
+			return await this.awaitTerminal('turn claim readback', (signal) =>
+				this.ports.control.claim(envelope, signal)
 			);
 		} catch (error) {
 			this.reportTerminalControlError(
@@ -3811,6 +3828,7 @@ function classifyFailure(
 	if (error instanceof AgenticChatEffectExecutionError) return error.failureClass;
 	if (error instanceof AgenticChatToolExecutionFenceError) return error.failureClass;
 	if (error instanceof AgenticChatToolExecutionTimeoutError) return error.failureClass;
+	if (error instanceof AgenticChatReadToolFenceTimeoutError) return error.failureClass;
 	if (error instanceof AgenticChatSessionHandoffFenceError) return error.failureClass;
 	if (error instanceof AgenticChatSessionHandoffRpcError) return error.failureClass;
 	if (error instanceof AgenticChatSessionHandoffTimeoutError) return error.failureClass;
@@ -3861,6 +3879,7 @@ function specificTerminalFailureCode(error: unknown, signal: AbortSignal): strin
 		reason instanceof AgenticChatCommittedEffectPersistError ? reason.cause : reason;
 	const candidate = unwrapped ?? error;
 	if (candidate instanceof AgenticChatToolExecutionTimeoutError) return candidate.code;
+	if (candidate instanceof AgenticChatReadToolFenceTimeoutError) return candidate.code;
 	if (candidate instanceof AgenticChatProviderExecutionError) {
 		return canonicalText(candidate.code, 128) ? candidate.code : undefined;
 	}

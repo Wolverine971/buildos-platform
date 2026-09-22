@@ -4,6 +4,7 @@ import type { ChatContextType, Json } from '@buildos/shared-types';
 import type { PromptSnapshotRow } from './prompt-observability';
 import {
 	TurnObservabilityWriter,
+	type TurnObservabilityWriterParams,
 	type TurnObservabilityTimingState
 } from './turn-observability-writer.server';
 
@@ -150,15 +151,18 @@ function createWriter(
 	params: {
 		supabase?: ReturnType<typeof createSupabaseMock>;
 		timingState?: TurnObservabilityTimingState;
-		logger?: { warn: ReturnType<typeof vi.fn> };
-		logError?: ReturnType<typeof vi.fn>;
+		logger?: TurnObservabilityWriterParams['logger'];
+		logError?: TurnObservabilityWriterParams['logError'];
 		createId?: () => string;
 		nowMs?: () => number;
 	} = {}
 ) {
 	const supabase = params.supabase ?? createSupabaseMock();
-	const logger = params.logger ?? { warn: vi.fn() };
-	const logError = params.logError ?? vi.fn();
+	const logger: TurnObservabilityWriterParams['logger'] = params.logger ?? {
+		warn: vi.fn<TurnObservabilityWriterParams['logger']['warn']>()
+	};
+	const logError: TurnObservabilityWriterParams['logError'] =
+		params.logError ?? vi.fn<TurnObservabilityWriterParams['logError']>();
 	const timingState = params.timingState ?? buildTimingState();
 	const writer = new TurnObservabilityWriter({
 		supabase: supabase as any,
@@ -445,8 +449,10 @@ describe('TurnObservabilityWriter', () => {
 	});
 
 	it('logs detached task failures through injected logger and reporter', async () => {
-		const logger = { warn: vi.fn() };
-		const logError = vi.fn();
+		const logger: TurnObservabilityWriterParams['logger'] = {
+			warn: vi.fn<TurnObservabilityWriterParams['logger']['warn']>()
+		};
+		const logError = vi.fn<TurnObservabilityWriterParams['logError']>();
 		const { writer } = createWriter({ logger, logError });
 		const error = new Error('detached write failed');
 
