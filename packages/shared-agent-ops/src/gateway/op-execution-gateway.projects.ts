@@ -1,11 +1,18 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.projects.ts
 import type { OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import { logUpdateAsync } from '../ops/async-activity-logger';
+import { TYPE_KEY_PATTERNS } from '../ontology/onto';
 import {
+	demoteAgentWorkspaceForProjectType,
 	sanitizeProjectForClient,
 	sanitizeProjectPropsPatchInput
 } from '../utils/project-props-sanitizer';
-import { assertAccessibleProject, loadVisibleProjects } from './op-execution-gateway.access';
+import {
+	assertAccessibleProject,
+	loadVisibleProjects,
+	PROJECT_NOT_GRANTED_TO_CONNECTOR,
+	type VisibleProjectContext
+} from './op-execution-gateway.access';
 import { getExternalAgentActivityContext } from './op-execution-gateway.activity';
 import { ONTO_PROJECT_MUTATION_SELECT } from './op-execution-gateway.config';
 import { loadCoreEntityForAccess } from './op-execution-gateway.entity-access';
@@ -45,6 +52,22 @@ function serializeProjectSummary(project: OntologyProjectSummary) {
 	};
 }
 
+/**
+ * Lets a connector agent tell the user a project may exist but is not shared
+ * with it. Only a count is exposed — never names of ungranted projects.
+ */
+function connectorScopeNote(visible: VisibleProjectContext) {
+	if (visible.ungrantedProjectCount <= 0) return {};
+	const count = visible.ungrantedProjectCount;
+	return {
+		connector_scope: {
+			reason: PROJECT_NOT_GRANTED_TO_CONNECTOR,
+			ungranted_project_count: count,
+			note: `${count} more project${count === 1 ? ' is' : 's are'} in the user's workspace but not shared with this connector. If the project you need is missing, ask the user to grant access (connector_scope.grant_url when present), then retry.`
+		}
+	};
+}
+
 export async function listProjects(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const requestedState = normalizeEntityStateFilter(args.state_key, 'project');
@@ -62,7 +85,8 @@ export async function listProjects(context: ToolExecutionContext, args: Record<s
 	return {
 		projects,
 		total: filteredProjects.length,
-		pagination: buildPaginationForRows(offset, limit, filteredProjects.length, projects.length)
+		pagination: buildPaginationForRows(offset, limit, filteredProjects.length, projects.length),
+		...connectorScopeNote(visible)
 	};
 }
 
@@ -104,7 +128,8 @@ export async function searchProjects(context: ToolExecutionContext, args: Record
 		projects: results,
 		results,
 		total: filteredProjects.length,
-		pagination: buildPaginationForRows(offset, limit, filteredProjects.length, results.length)
+		pagination: buildPaginationForRows(offset, limit, filteredProjects.length, results.length),
+		...connectorScopeNote(visible)
 	};
 }
 
@@ -189,6 +214,24 @@ export async function updateProject(context: ToolExecutionContext, args: Record<
 			};
 			changed += 1;
 		}
+	}
+	if (args.type_key !== undefined) {
+		const typeKey = (requireTrimmedString(args.type_key, 'type_key') ?? '').toLowerCase();
+		if (!TYPE_KEY_PATTERNS.project!.test(typeKey)) {
+			throw new ExternalToolGatewayError(
+				'VALIDATION_ERROR',
+				'type_key must look like project.{realm}.{initiative}[.{variant}], e.g. project.creative.book.nonfiction'
+			);
+		}
+		updateData.type_key = typeKey;
+		// A retype can only clear routing the new type no longer supports; the
+		// stored agent_workspace is otherwise server-owned and never promoted here.
+		const demoted = demoteAgentWorkspaceForProjectType(
+			updateData.props ?? access.entity?.props,
+			typeKey
+		);
+		if (demoted) updateData.props = demoted;
+		changed += 1;
 	}
 	if (archivedAtUpdate !== undefined) {
 		updateData.archived_at = archivedAtUpdate;

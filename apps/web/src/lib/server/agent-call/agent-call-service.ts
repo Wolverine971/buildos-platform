@@ -582,6 +582,7 @@ export class BuildosAgentCallService {
 			scope: currentScope,
 			toolName,
 			arguments: normalizeToolArguments(params.arguments),
+			connectorOrigin: new URL(request.url).origin,
 			...(hasSecurityEventOptions(this.securityEventOptions)
 				? { securityEventOptions: this.securityEventOptions }
 				: {})
@@ -674,7 +675,15 @@ export class BuildosAgentCallService {
 			projectScopeMode,
 			scope: storedScope
 		});
-		if (!Array.isArray(storedScope.project_ids)) return resolvedScope;
+		// The stored granted scope is a snapshot of every project at dial time.
+		// Only fence the session when the agent itself asked for specific
+		// projects; otherwise projects created or granted mid-session must count.
+		const requestedProjectIds = isRecord(session.requested_scope)
+			? session.requested_scope.project_ids
+			: undefined;
+		if (!Array.isArray(requestedProjectIds) || !Array.isArray(storedScope.project_ids)) {
+			return resolvedScope;
+		}
 
 		const sessionFence = new Set(storedScope.project_ids);
 		return {

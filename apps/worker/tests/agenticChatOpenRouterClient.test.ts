@@ -223,6 +223,20 @@ describe('AgenticChatOpenRouterClient', () => {
 			expect(body.reasoning).toEqual({ effort: 'low', exclude: true });
 		}
 	);
+	it('turns reasoning off when a pass asks for none', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+				'[DONE]'
+			])
+		);
+		const { client } = harness(fetchImpl, [route()], { maxTokens: 4000 });
+		await collect(client.stream({ ...input(), reasoningEffort: 'none' }));
+		const body = JSON.parse(
+			(fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body as string
+		);
+		expect(body.reasoning).toEqual({ enabled: false });
+	});
 	it.each([0, -1, 1.5, NaN])(
 		'rejects invalid output token ceiling %s before dispatch',
 		async (maxOutputTokens) => {

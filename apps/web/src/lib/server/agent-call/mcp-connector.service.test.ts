@@ -351,6 +351,8 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			expect(callArgs.callerId).toBe('caller-1');
 			expect(callArgs.callSessionId).toBe('session-test');
 			expect(callArgs.scope.mode).toBe('read_only');
+			// Scope denials need the public origin to build a one-click grant link.
+			expect(callArgs.connectorOrigin).toBe('https://build-os.com');
 		});
 
 		it('sets isError when the gateway returns a tool-level failure', async () => {

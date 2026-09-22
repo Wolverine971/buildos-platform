@@ -1046,6 +1046,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'project_id',
 			'name',
 			'description',
+			'type_key',
 			'state_key',
 			'start_at',
 			'end_at',

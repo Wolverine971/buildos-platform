@@ -1178,6 +1178,11 @@ Archived destinations and tasks with project assets, schedules, or recurrence ar
 						type: 'string',
 						description: 'New description'
 					},
+					type_key: {
+						type: 'string',
+						description:
+							'Only when the user corrects what the project is, e.g. project.creative.book.nonfiction.'
+					},
 					state_key: {
 						type: 'string',
 						enum: ['planning', 'active', 'paused', 'completed', 'cancelled'],

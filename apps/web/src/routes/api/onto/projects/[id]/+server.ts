@@ -23,9 +23,11 @@ import {
 import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 import {
+	demoteAgentWorkspaceForProjectType,
 	sanitizeProjectForClient,
 	sanitizeProjectPropsPatchInput
 } from '$lib/utils/project-props-sanitizer';
+import { TYPE_KEY_PATTERNS } from '@buildos/shared-agent-ops/ontology/onto';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
 import {
@@ -544,6 +546,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			name,
 			description,
 			state_key,
+			type_key,
 			props,
 			facet_context,
 			facet_scale,
@@ -558,6 +561,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			name !== undefined ||
 			description !== undefined ||
 			state_key !== undefined ||
+			type_key !== undefined ||
 			props !== undefined ||
 			facet_context !== undefined ||
 			facet_scale !== undefined ||
@@ -569,6 +573,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (!hasUpdates) {
 			return ApiResponse.badRequest('No update fields provided');
+		}
+
+		if (
+			type_key !== undefined &&
+			(typeof type_key !== 'string' ||
+				!TYPE_KEY_PATTERNS.project!.test(type_key.trim().toLowerCase()))
+		) {
+			return ApiResponse.badRequest(
+				'type_key must look like project.{realm}.{initiative}[.{variant}]'
+			);
 		}
 
 		if (state_key !== undefined) {
@@ -761,6 +775,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 
 			updateData.props = mergedProps;
+		}
+
+		if (typeof type_key === 'string') {
+			const typeKey = type_key.trim().toLowerCase();
+			updateData.type_key = typeKey;
+			// Demote-only: a retype may clear fiction routing, never set it.
+			const demoted = demoteAgentWorkspaceForProjectType(
+				updateData.props ?? existingProject.props,
+				typeKey
+			);
+			if (demoted) updateData.props = demoted;
 		}
 
 		// Handle next_step fields - user can manually set/edit these

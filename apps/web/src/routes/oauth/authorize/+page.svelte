@@ -238,9 +238,9 @@
 							<span
 								class="mt-1.5 block text-sm leading-relaxed text-muted-foreground"
 							>
-								Limit this connector to the projects checked below. With write
-								access, new projects it creates are added to this list
-								automatically.
+								Limit this connector to the projects checked below. Projects you
+								create later won't be visible to it unless you share them. With
+								write access, new projects it creates are added automatically.
 							</span>
 						</span>
 					</label>

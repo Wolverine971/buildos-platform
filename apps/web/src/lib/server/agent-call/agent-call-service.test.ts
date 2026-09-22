@@ -602,9 +602,77 @@ describe('BuildosAgentCallService', () => {
 			toolName: 'list_onto_projects',
 			arguments: {
 				limit: 10
-			}
+			},
+			connectorOrigin: 'https://example.com'
 		});
 		expect(response.structuredContent).toEqual({ ok: true });
 		expect(response.content[0]?.type).toBe('text');
+	});
+
+	it('lets an open session see projects created or granted after the dial', async () => {
+		const { resolveEffectiveAgentProjectScope } = await import('./project-access.service');
+		vi.mocked(resolveEffectiveAgentProjectScope).mockResolvedValueOnce({
+			mode: 'read_only',
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS],
+			project_ids: [
+				'44444444-4444-4444-4444-444444444444',
+				'55555555-5555-4555-8555-555555555555'
+			],
+			write_project_ids: []
+		});
+		const state: SessionState = {
+			sessions: {
+				'33333333-3333-3333-3333-333333333333': createSessionRow({ status: 'active' })
+			},
+			nextId: 1
+		};
+		const { BuildosAgentCallService } = await import('./agent-call-service');
+		const service = new BuildosAgentCallService(createAdminMock(state));
+
+		await service.callTool(
+			new Request('https://example.com', { headers: { authorization: 'Bearer token' } }),
+			{ call_id: '33333333-3333-3333-3333-333333333333', name: 'list_onto_projects' }
+		);
+
+		expect(executeBuildosAgentGatewayToolMock.mock.calls[0]?.[0].scope.project_ids).toEqual([
+			'44444444-4444-4444-4444-444444444444',
+			'55555555-5555-4555-8555-555555555555'
+		]);
+	});
+
+	it('keeps the dial-time fence when the agent asked for specific projects', async () => {
+		const { resolveEffectiveAgentProjectScope } = await import('./project-access.service');
+		vi.mocked(resolveEffectiveAgentProjectScope).mockResolvedValueOnce({
+			mode: 'read_only',
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS],
+			project_ids: [
+				'44444444-4444-4444-4444-444444444444',
+				'55555555-5555-4555-8555-555555555555'
+			],
+			write_project_ids: []
+		});
+		const state: SessionState = {
+			sessions: {
+				'33333333-3333-3333-3333-333333333333': createSessionRow({
+					status: 'active',
+					requested_scope: {
+						mode: 'read_only',
+						project_ids: ['44444444-4444-4444-4444-444444444444']
+					}
+				})
+			},
+			nextId: 1
+		};
+		const { BuildosAgentCallService } = await import('./agent-call-service');
+		const service = new BuildosAgentCallService(createAdminMock(state));
+
+		await service.callTool(
+			new Request('https://example.com', { headers: { authorization: 'Bearer token' } }),
+			{ call_id: '33333333-3333-3333-3333-333333333333', name: 'list_onto_projects' }
+		);
+
+		expect(executeBuildosAgentGatewayToolMock.mock.calls[0]?.[0].scope.project_ids).toEqual([
+			'44444444-4444-4444-4444-444444444444'
+		]);
 	});
 });

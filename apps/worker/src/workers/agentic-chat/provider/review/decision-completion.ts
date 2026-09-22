@@ -13,6 +13,7 @@ import {
 	isProseTurnContractChange,
 	parseDeclaredTurnContract,
 	parseRequestExpectation,
+	reconcileRequestExpectationWithApprovedBatch,
 	requestExpectationsMatch,
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
@@ -83,6 +84,7 @@ export function completeMutationBatchReviewDecision(
 	);
 	let resolvedFallback = fallbackReason;
 	let resolvedCode = rejectionCode;
+	let decisionCalls = calls;
 	if (!resolvedFallback) {
 		const call = calls[0]!;
 		const approval = call.name === APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME;
@@ -117,6 +119,16 @@ export function completeMutationBatchReviewDecision(
 				resolvedCode = 'decision_schema_invalid';
 				resolvedFallback =
 					'The request expectation is invalid or changes the frozen user commission.';
+			} else if (!input.requestExpectation && input.batch) {
+				// The first expectation is frozen from this approval; align it with
+				// the exact calls this same decision approves (book loop 2026-09-22).
+				const reconciled = reconcileRequestExpectationWithApprovedBatch(
+					expectation,
+					input.batch
+				);
+				if (reconciled !== expectation) {
+					decisionCalls = [withRequestExpectation(call, reconciled)];
+				}
 			}
 		}
 	}
@@ -148,7 +160,7 @@ export function completeMutationBatchReviewDecision(
 			} satisfies ContractReviewDiagnostic
 		);
 	}
-	return withDecisionAuthor(calls, 'contract_reviewer');
+	return withDecisionAuthor(decisionCalls, 'contract_reviewer');
 }
 
 export function completeTurnContractReviewDecision(
@@ -445,6 +457,27 @@ function usesInternalContractFieldNames(value: unknown): boolean {
 				'dstLabel'
 			].some((field) => field in outcome)
 	);
+}
+
+function withRequestExpectation(
+	call: CompletedProviderToolCall,
+	expectation: TurnContract
+): CompletedProviderToolCall {
+	const argumentsValue: JsonObject = {
+		...call.arguments,
+		request_expectation: serializeTurnContractForDeclaration(expectation)
+	};
+	const providerArguments: JsonObject = { ...argumentsValue };
+	if (call.scheduling?.callRef) providerArguments.call_ref = call.scheduling.callRef;
+	if (call.scheduling && call.scheduling.after.length > 0) {
+		providerArguments.after = [...call.scheduling.after];
+	}
+	return {
+		...call,
+		arguments: argumentsValue,
+		canonicalArguments: canonicalizeAgenticChatJson(argumentsValue),
+		canonicalProviderArguments: canonicalizeAgenticChatJson(providerArguments)
+	};
 }
 
 function normalizeCorrectedContractCall(

@@ -22,7 +22,7 @@ import { AGENTIC_CHAT_WORKFLOW_ROLE_REPORT_VERSION_V2 } from '@buildos/shared-ty
  * hidden reasoning, which the DeepSeek V4.1 Flash reviewer spent at 1.6k-2.6k
  * tokens across the retained QA runs (a 3,200 cap left ~600 visible tokens).
  * The acting client clamps every request to AGENTIC_CHAT_ACTING_MAX_TOKENS
- * (4,000), so no role asks for more than that.
+ * (12,000), so no role asks for more than that.
  */
 export const CHAT_WORKFLOW_ROLE_REPORT_VERSION = 'chat_workflow_role_report_v1' as const;
 

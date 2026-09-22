@@ -172,8 +172,12 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	logicalProviderRound: number;
 	/** Optional per-pass ceiling; the client also enforces its configured maximum. */
 	maxOutputTokens?: number;
-	/** Explicit low reasoning budget for bounded workflow passes; ordinary calls keep their policy. */
-	reasoningEffort?: 'low';
+	/**
+	 * Explicit reasoning budget. `low` for bounded workflow passes; `none` turns
+	 * thinking off (the only control DeepSeek V4.1 Flash honors on OpenRouter —
+	 * it ignores `effort`). Ordinary calls keep their policy.
+	 */
+	reasoningEffort?: 'low' | 'none';
 	passRole?: AgenticChatProviderPassRoleV1;
 	providerAttempt?: number;
 	/** Only the atomic pass buffer may opt in, while its single retry remains. */

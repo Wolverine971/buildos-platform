@@ -512,6 +512,11 @@ export function mapAgentRunToInboxItem(run: Record<string, unknown>): InboxIndex
 		setStatus !== 'pending'
 	) {
 		inboxStatus = 'decided';
+	} else if (status === 'cancelled' && asString(run.error)?.startsWith('superseded:')) {
+		// A newer proposal replaced this one (e.g. Start Here capture keeps one
+		// pending proposal per project). Nothing is broken; nothing to decide.
+		inboxStatus = 'expired';
+		blockedReason = 'Replaced by a newer proposal';
 	} else if (status === 'failed' || status === 'cancelled') {
 		inboxStatus = 'blocked';
 		blockedReason = asString(run.error) ?? `Agent run ended as ${status}`;
@@ -535,7 +540,9 @@ export function mapAgentRunToInboxItem(run: Record<string, unknown>): InboxIndex
 		action_kinds: ['approve', 'reject'],
 		blocked_reason: blockedReason,
 		decided_at:
-			inboxStatus === 'decided' || inboxStatus === 'blocked' ? terminalDecidedAt(run) : null,
+			inboxStatus === 'decided' || inboxStatus === 'blocked' || inboxStatus === 'expired'
+				? terminalDecidedAt(run)
+				: null,
 		expires_at: reviewExpiresAt('agent_run', asString(run.created_at), inboxStatus),
 		created_at: asString(run.created_at) ?? undefined
 	};

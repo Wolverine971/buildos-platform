@@ -56,9 +56,14 @@ export function buildEmptyReplyRepairRequest(
 			...request,
 			logicalProviderRound: request.logicalProviderRound + 1,
 			passRole: 'repair',
-			emptyReplyRepairAttempted: true
+			emptyReplyRepairAttempted: true,
+			// An empty reply usually means hidden reasoning consumed the whole output
+			// cap (book loop t01: 4,000/4,000 reasoning tokens). Re-asking with
+			// thinking on starved identically — even at `effort: low`, which
+			// DeepSeek V4.1 Flash ignores — so the repair answers without it.
+			reasoningEffort: 'none'
 		},
-		'The previous reply was empty: no text and no tool calls reached the user. Answer now from the actual saved receipts and returned IDs. Never replay successful writes. If work the user requested remains, propose it through the existing independent review or say exactly what remains undone. Do not reply with an empty message.'
+		'The previous reply was empty: no text and no tool calls reached the user. Answer now from the actual saved receipts and returned IDs. Never replay successful writes. If work the user requested remains, call the mutation tools for it now (the system holds complex batches for independent review) or say exactly what remains undone; describing a change does not stage or save it. Do not reply with an empty message.'
 	);
 }
 

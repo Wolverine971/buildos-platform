@@ -287,6 +287,34 @@
 		projectChoices.length > 0 &&
 			projectChoices.every((project) => selectedProjectIds.includes(project.id))
 	);
+	// "Select All" in selected mode freezes today's list; new projects stay invisible.
+	let selectedModeCoversEverything = $derived(
+		projectScopeMode === 'selected' &&
+			availableProjects.some((project) => isInheritedByAllMode(project)) &&
+			availableProjects
+				.filter((project) => isInheritedByAllMode(project))
+				.every((project) => selectedProjectIds.includes(project.id))
+	);
+
+	function isInheritedByAllMode(project: BuildosAgentAvailableProject): boolean {
+		return !project.is_shared && project.external_agent_access !== 'restricted';
+	}
+
+	function switchToAllStandardProjects() {
+		projectScopeMode = 'all_unrestricted';
+		pruneInheritedSelections();
+	}
+
+	// All mode already includes owned standard projects; keeping them as explicit
+	// grants would only preserve access if a project is later restricted.
+	function pruneInheritedSelections() {
+		const inheritedIds = new Set(
+			availableProjects
+				.filter((project) => isInheritedByAllMode(project))
+				.map((project) => project.id)
+		);
+		selectedProjectIds = selectedProjectIds.filter((id) => !inheritedIds.has(id));
+	}
 
 	onMount(() => {
 		void loadCallers();
@@ -2046,6 +2074,7 @@
 								name="agent-project-scope"
 								value="all_unrestricted"
 								bind:group={projectScopeMode}
+								onchange={pruneInheritedSelections}
 								class="mt-0.5 h-3.5 w-3.5"
 							/>
 							<span>
@@ -2103,6 +2132,26 @@
 							{/if}
 						</div>
 					</div>
+
+					{#if selectedModeCoversEverything}
+						<div
+							class="flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+							role="status"
+						>
+							<span class="text-foreground">
+								This freezes today's list. Projects you create later won't be
+								visible to this agent.
+							</span>
+							<Button
+								variant="secondary"
+								size="sm"
+								onclick={switchToAllStandardProjects}
+								class="shrink-0"
+							>
+								Use All standard projects
+							</Button>
+						</div>
+					{/if}
 
 					{#if editingCaller && unavailableProjectCount(editingCaller) > 0}
 						<div

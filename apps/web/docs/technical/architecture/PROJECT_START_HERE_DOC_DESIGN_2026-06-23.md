@@ -4,7 +4,7 @@
 
 **Status:** Implemented - initial end-to-end path
 **Date:** 2026-06-23
-**Last Updated:** 2026-06-24
+**Last Updated:** 2026-09-22
 **Owner:** DJ
 **Scope:** One continually maintained orientation document per project. This is the canonical first stop for an AI agent or human trying to understand what is going on in the project.
 **Companion:** [`PROJECT_KNOWLEDGE_LAYER_DESIGN_2026-06-16.md`](./PROJECT_KNOWLEDGE_LAYER_DESIGN_2026-06-16.md)
@@ -114,7 +114,7 @@ The document should capture what structured tables cannot.
 - Product/ - Architecture, Roadmap
 - Marketing/ - GTM Plan, Audience Notes
   _(Auto-generated from the project knowledge map. Use get_document_outline, then read_document_section to drill in.)_
-      <!-- /managed:map -->
+  <!-- /managed:map -->
 ```
 
 Rules:
@@ -207,6 +207,28 @@ At session end, the worker already classifies/cleans up chats and updates projec
 5. Never silently rewrite prose.
 
 This keeps the Start Here document current without letting a background worker silently become the author of trusted project context.
+
+**Reconcile, don't append (tasker/93, 2026-09-22).** The first capture contract appended
+snippets and never showed the model the current document, so each session re-derived the
+same facts in new words (production doc `1fc5b3c2…` ended with two "What this is"
+paragraphs, duplicate decisions, and invented `_(YYYY-MM-DD)_`/2025 dates). Capture now:
+
+- sends the model the current authored sections, the read-only text outside them, today's
+  date in the user's timezone, and the project's creation date;
+- accepts only `{ sections: [{ section, markdown, rationale }], outside_note? }`, where
+  `markdown` is the section's complete new body. The retired `updates` snippet shape is
+  ignored, because treating a snippet as a full body would wipe the section;
+- reconciles in code (`reconcileStartHereAuthoredSections` in `start-here.ts`): an empty
+  section never replaces a non-empty one, decision stamps are limited to today, a message
+  day, or a date already recorded (placeholders on carried-over bullets are dropped, and any
+  stamp before the project's creation is dropped), list bullets collapse on a stemmed
+  bold-title key with the newest wording winning, each section has a length cap, and
+  sections too long to show the model in full are read-only for that capture;
+- keeps one pending proposal per project. A new capture builds on the newest unreviewed
+  proposal when it still applies cleanly, then marks older pending runs `cancelled` with a
+  `superseded:` error, which the AI Inbox shows as expired rather than blocked.
+
+Review stays mandatory. The proposal diff now shows removals, because rewrites replace text.
 
 ### 6.4 Librarian Reconciliation
 

@@ -51,3 +51,6 @@ packages/agent-orchestrator/src/testing/harness/results/*.json
 packages/agent-orchestrator/src/testing/harness/results/analysis/
 packages/agent-orchestrator/src/testing/harness/corpus/*.json
 packages/agent-orchestrator/src/testing/harness/fixtures/*.json
+
+# Byte-exact production document captures used as regression fixtures.
+**/__fixtures__/**

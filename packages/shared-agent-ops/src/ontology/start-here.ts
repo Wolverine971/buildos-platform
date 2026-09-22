@@ -375,7 +375,16 @@ function findSectionBounds(
 } | null {
 	const match = sectionHeadingRegex(section).exec(body);
 	if (!match || match.index === undefined) return null;
-	const headingEnd = match.index + match[0].length;
+	return sectionBoundsAfterHeading(body, match.index + match[0].length);
+}
+
+function sectionBoundsAfterHeading(
+	body: string,
+	headingEnd: number
+): {
+	start: number;
+	end: number;
+} {
 	const rest = body.slice(headingEnd);
 	const nextHeadingMatch = /^##\s+.+$/im.exec(rest);
 	// A managed-region fence also terminates an authored section. Authored content
@@ -440,6 +449,445 @@ export function appendStartHereAuthoredSectionUpdates(
 	}
 	const finalBody = applyLineEnding(nextBody, lineEnding);
 	return finalBody === currentBody ? currentBody : finalBody;
+}
+
+// ---------------------------------------------------------------------------
+// Section reconciliation (tasker/93). Session-end capture used to append
+// snippets, so every chat re-derived the same facts in new words and the doc
+// grew contradictions. Capture now returns each changed section's COMPLETE new
+// body; these helpers swap bodies in place and apply deterministic guards the
+// model cannot bypass (never wipe a section, no invented dates, no repeated
+// decision/term bullets, bounded length).
+// ---------------------------------------------------------------------------
+
+export type StartHereAuthoredSections = Partial<Record<StartHereAuthoredSectionName, string>>;
+
+export const START_HERE_SECTION_MAX_CHARS: Record<StartHereAuthoredSectionName, number> = {
+	'What this is': 1600,
+	'Non-goals': 2000,
+	'Current state': 1600,
+	Decisions: 4000,
+	'Vocabulary and mental model': 3000,
+	'Open questions': 2000
+};
+
+const START_HERE_LIST_SECTIONS = new Set<StartHereAuthoredSectionName>([
+	'Non-goals',
+	'Decisions',
+	'Vocabulary and mental model',
+	'Open questions'
+]);
+
+type SectionOccurrence = { headingStart: number; start: number; end: number };
+
+function isInsideRanges(index: number, ranges: StartHereManagedRegionRange[]): boolean {
+	return ranges.some((range) => index >= range.from && index < range.to);
+}
+
+/** Every `## <section>` occurrence outside managed fences, in document order. */
+function findAllSectionOccurrences(
+	body: string,
+	section: StartHereAuthoredSectionName
+): SectionOccurrence[] {
+	const managedRanges = findStartHereManagedRegionRanges(body);
+	const occurrences: SectionOccurrence[] = [];
+	const headingPattern = new RegExp(`^##\\s+${escapeRegExp(section)}\\s*$`, 'gim');
+	for (const match of body.matchAll(headingPattern)) {
+		if (match.index === undefined || isInsideRanges(match.index, managedRanges)) continue;
+		const bounds = sectionBoundsAfterHeading(body, match.index + match[0].length);
+		occurrences.push({ headingStart: match.index, ...bounds });
+	}
+	return occurrences;
+}
+
+function joinMarkdownBlocks(...blocks: string[]): string {
+	return blocks
+		.map((block, index) =>
+			index === 0
+				? block.trimEnd()
+				: index === blocks.length - 1
+					? block.trimStart()
+					: block.trim()
+		)
+		.filter(Boolean)
+		.join('\n\n');
+}
+
+/**
+ * Current body of each authored section, keyed by name. A section whose heading
+ * appears more than once (legacy append damage) returns every occurrence's body
+ * joined, so a full-section rewrite sees — and then replaces — all of it.
+ */
+export function readStartHereAuthoredSections(body: string): StartHereAuthoredSections {
+	const normalized = normalizeMarkdownLineEndings(body);
+	const sections: StartHereAuthoredSections = {};
+	for (const section of START_HERE_AUTHORED_SECTION_NAMES) {
+		const occurrences = findAllSectionOccurrences(normalized, section);
+		if (occurrences.length === 0) continue;
+		sections[section] = occurrences
+			.map((occurrence) => normalized.slice(occurrence.start, occurrence.end).trim())
+			.filter(Boolean)
+			.join('\n\n');
+	}
+	return sections;
+}
+
+/**
+ * The document minus managed regions and the six authored sections: the
+ * creation preamble, custom `##` sections, and the H1 title. Capture shows it to
+ * the model read-only so a contradiction there can be flagged, never edited.
+ */
+export function stripStartHereAuthoredSections(body: string): string {
+	let next = stripStartHereManagedRegions(body);
+	for (const section of START_HERE_AUTHORED_SECTION_NAMES) {
+		for (const occurrence of findAllSectionOccurrences(next, section).reverse()) {
+			next = joinMarkdownBlocks(
+				next.slice(0, occurrence.headingStart),
+				next.slice(occurrence.end)
+			);
+		}
+	}
+	return next.trim();
+}
+
+/** Authoring scaffolding ("> _Capture target: ..._", legacy backfill lines) removed. */
+export function stripStartHereScaffolding(value: string): string {
+	return stripPromptNoiseLines(value);
+}
+
+function insertAuthoredSection(
+	body: string,
+	section: StartHereAuthoredSectionName,
+	markdown: string
+): string {
+	const block = `## ${section}\n\n${markdown}`;
+	const order = START_HERE_AUTHORED_SECTION_NAMES.indexOf(section);
+	// Keep canonical order: before the next authored section that exists...
+	for (const later of START_HERE_AUTHORED_SECTION_NAMES.slice(order + 1)) {
+		const next = findAllSectionOccurrences(body, later)[0];
+		if (next) {
+			return joinMarkdownBlocks(
+				body.slice(0, next.headingStart),
+				block,
+				body.slice(next.headingStart)
+			);
+		}
+	}
+	// ...else after the last earlier authored section that exists...
+	for (const earlier of START_HERE_AUTHORED_SECTION_NAMES.slice(0, order).reverse()) {
+		const occurrences = findAllSectionOccurrences(body, earlier);
+		const previous = occurrences[occurrences.length - 1];
+		if (previous) {
+			return joinMarkdownBlocks(body.slice(0, previous.end), block, body.slice(previous.end));
+		}
+	}
+	// ...else before the managed map fence, never inside it.
+	const mapRange = findStartHereManagedRegionRanges(body).find((range) => range.name === 'map');
+	if (mapRange) {
+		return joinMarkdownBlocks(body.slice(0, mapRange.from), block, body.slice(mapRange.from));
+	}
+	return joinMarkdownBlocks(body, block);
+}
+
+function replaceAuthoredSection(
+	body: string,
+	section: StartHereAuthoredSectionName,
+	markdown: string
+): string {
+	const occurrences = findAllSectionOccurrences(body, section);
+	const [first, ...duplicates] = occurrences;
+	if (!first) return insertAuthoredSection(body, section, markdown);
+
+	let next = body;
+	// Duplicate headings come after the first; removing them back to front keeps
+	// the first occurrence's offsets valid. Their text was part of what the
+	// rewrite read, so the new body supersedes it.
+	for (const duplicate of duplicates.reverse()) {
+		next = joinMarkdownBlocks(next.slice(0, duplicate.headingStart), next.slice(duplicate.end));
+	}
+	return joinMarkdownBlocks(next.slice(0, first.start), markdown, next.slice(first.end));
+}
+
+/**
+ * Replace the named authored sections' bodies wholesale. Managed fences, the
+ * preamble, and sections not named in `updates` are untouched. An update whose
+ * sanitized markdown is empty is ignored: a rewrite can never delete a section.
+ */
+export function replaceStartHereAuthoredSections(
+	currentBody: string,
+	updates: StartHereAuthoredSectionUpdate[]
+): string {
+	const lineEnding = preferredLineEnding(currentBody);
+	let nextBody = normalizeMarkdownLineEndings(currentBody);
+	for (const update of updates) {
+		if (!START_HERE_AUTHORED_SECTION_NAMES.includes(update.section)) continue;
+		const markdown = sanitizeStartHereAuthoredMarkdown(update.markdown);
+		if (!markdown) continue;
+		nextBody = replaceAuthoredSection(nextBody, update.section, markdown);
+	}
+	const finalBody = applyLineEnding(nextBody, lineEnding);
+	return finalBody === currentBody ? currentBody : finalBody;
+}
+
+export type StartHereDateStampPolicy = {
+	/** The user's civil date today (YYYY-MM-DD). */
+	today: string;
+	/** No stamp may predate this civil date (the project's creation day). */
+	earliest?: string | null;
+	/** Further dates a stamp may carry, e.g. the civil dates of chat messages. */
+	allowed?: Iterable<string>;
+};
+
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_STAMP_PATTERN = /[ \t]*[_*]\(\s*(\d{4}-\d{2}-\d{2}|YYYY-MM-DD)\s*\)[_*]/gi;
+const DATE_PLACEHOLDER_PATTERN = /\bYYYY-MM-DD\b/gi;
+const PLACEHOLDER_STAMP_PATTERN = /[ \t]*[_*]\(\s*YYYY-MM-DD\s*\)[_*]/gi;
+
+function collectDateStamps(markdown: string): string[] {
+	return [...markdown.matchAll(DATE_STAMP_PATTERN)]
+		.map((match) => match[1] ?? '')
+		.filter((date) => ISO_DATE_PATTERN.test(date));
+}
+
+/**
+ * Code owns the `_(YYYY-MM-DD)_` decision stamps. A stamp survives only when it
+ * falls between the project's creation day and today AND is today, an allowed
+ * date (a chat message's day), or already recorded. The literal placeholder
+ * becomes today; any other stamp — a model-guessed date — is dropped, since no
+ * date is more honest than a wrong one.
+ */
+export function normalizeStartHereDateStamps(
+	markdown: string,
+	policy: StartHereDateStampPolicy
+): string {
+	const inRange = (date: string) =>
+		ISO_DATE_PATTERN.test(date) &&
+		date <= policy.today &&
+		(!policy.earliest || date >= policy.earliest);
+	const allowed = new Set([policy.today, ...(policy.allowed ?? [])].filter(inRange));
+	return markdown
+		.replace(DATE_STAMP_PATTERN, (stamp, date: string) => {
+			if (/^YYYY-MM-DD$/i.test(date)) return ` _(${policy.today})_`;
+			return allowed.has(date) ? stamp : '';
+		})
+		.replace(DATE_PLACEHOLDER_PATTERN, policy.today)
+		.replace(/[ \t]+$/gm, '');
+}
+
+const BULLET_KEY_STOPWORDS = new Set([
+	'a',
+	'an',
+	'and',
+	'are',
+	'as',
+	'at',
+	'be',
+	'by',
+	'for',
+	'in',
+	'is',
+	'of',
+	'on',
+	'the',
+	'to',
+	'with'
+]);
+const BULLET_KEY_SUFFIXES: Array<[string, string]> = [
+	['ility', 'il'],
+	['ies', 'y'],
+	['ity', ''],
+	['ness', ''],
+	['ing', ''],
+	['ed', ''],
+	['es', ''],
+	['s', ''],
+	['e', '']
+];
+
+function stemBulletKeyToken(token: string): string {
+	for (const [suffix, replacement] of BULLET_KEY_SUFFIXES) {
+		if (token.length > suffix.length + 2 && token.endsWith(suffix)) {
+			return token.slice(0, -suffix.length) + replacement;
+		}
+	}
+	return token;
+}
+
+/**
+ * Identity of a bullet: its bold title (or, untitled, its text) reduced to a
+ * sorted set of stemmed content words, so "Book Contract locked in" and
+ * "**Book Contract locked**" collide while different decisions do not.
+ */
+function bulletKey(text: string): string | null {
+	const withoutStamps = text.replace(DATE_STAMP_PATTERN, '');
+	const bold = /^\s{0,3}[-*+]\s+\*\*(.+?)\*\*/.exec(withoutStamps);
+	const source = bold?.[1] ?? withoutStamps.replace(/^\s{0,3}[-*+]\s+/, '');
+	const tokens = source
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, ' ')
+		.split(' ')
+		.filter((token) => token && !BULLET_KEY_STOPWORDS.has(token))
+		.map(stemBulletKeyToken);
+	return tokens.length > 0 ? [...new Set(tokens)].sort().join(' ') : null;
+}
+
+// Top-level only: a 2+ space indent is a nested item that belongs to its parent.
+const TOP_LEVEL_BULLET_PATTERN = /^ ?[-*+]\s+/;
+
+type MarkdownBlock = { bullet: boolean; lines: string[] };
+
+/** Top-level bullets (with their continuation lines) and paragraphs, in order. */
+function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
+	const blocks: MarkdownBlock[] = [];
+	let current: MarkdownBlock | null = null;
+	let afterBlank = false;
+	for (const line of normalizeMarkdownLineEndings(markdown).split('\n')) {
+		if (!line.trim()) {
+			afterBlank = true;
+			continue;
+		}
+		if (TOP_LEVEL_BULLET_PATTERN.test(line)) {
+			current = { bullet: true, lines: [line] };
+			blocks.push(current);
+		} else if (current && (!afterBlank || (current.bullet && /^\s{2,}/.test(line)))) {
+			current.lines.push(line);
+		} else {
+			current = { bullet: false, lines: [line] };
+			blocks.push(current);
+		}
+		afterBlank = false;
+	}
+	return blocks;
+}
+
+/** Bullets as a tight list; paragraphs separated by one blank line. */
+function renderMarkdownBlocks(blocks: MarkdownBlock[]): string {
+	let output = '';
+	blocks.forEach((block, index) => {
+		const text = block.lines.join('\n');
+		if (index === 0) output = text;
+		else output += (block.bullet && blocks[index - 1]?.bullet ? '\n' : '\n\n') + text;
+	});
+	return output;
+}
+
+function isStruckBullet(block: MarkdownBlock): boolean {
+	return /^\s{0,3}[-*+]\s+~~/.test(block.lines[0] ?? '');
+}
+
+/**
+ * Collapse bullets that restate the same decision/term/question. The LAST
+ * occurrence wins (newest wording). Struck-through bullets (`- ~~...~~`) are
+ * intentional history and never collapse. Bullets are re-emitted as a tight list.
+ */
+export function dedupeStartHereBulletList(markdown: string): string {
+	const seen = new Set<string>();
+	const kept: MarkdownBlock[] = [];
+	for (const block of parseMarkdownBlocks(markdown).reverse()) {
+		const key =
+			block.bullet && !isStruckBullet(block) ? bulletKey(block.lines.join(' ')) : null;
+		if (key) {
+			if (seen.has(key)) continue;
+			seen.add(key);
+		}
+		kept.unshift(block);
+	}
+	return renderMarkdownBlocks(kept);
+}
+
+/**
+ * A `_(YYYY-MM-DD)_` placeholder already in the document marks an old record
+ * whose real date was never captured. When the rewrite carries that bullet
+ * forward, drop the placeholder instead of letting it become today.
+ */
+function dropCarriedPlaceholderStamps(markdown: string, currentSection: string): string {
+	const carriedKeys = new Set(
+		parseMarkdownBlocks(currentSection)
+			.filter((block) => block.bullet && /\bYYYY-MM-DD\b/i.test(block.lines.join(' ')))
+			.map((block) => bulletKey(block.lines.join(' ')))
+			.filter((key): key is string => Boolean(key))
+	);
+	if (carriedKeys.size === 0) return markdown;
+	const blocks = parseMarkdownBlocks(markdown);
+	for (const block of blocks) {
+		const key = block.bullet ? bulletKey(block.lines.join(' ')) : null;
+		if (key && carriedKeys.has(key)) {
+			block.lines = block.lines.map((line) => line.replace(PLACEHOLDER_STAMP_PATTERN, ''));
+		}
+	}
+	return renderMarkdownBlocks(blocks);
+}
+
+export type StartHereReconcileSkipReason = 'empty' | 'too_long' | 'unchanged' | 'locked';
+
+export type StartHereReconcileResult = {
+	body: string;
+	applied: StartHereAuthoredSectionUpdate[];
+	skipped: Array<{ section: StartHereAuthoredSectionName; reason: StartHereReconcileSkipReason }>;
+};
+
+function comparableSectionText(value: string): string {
+	return value.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Apply full-section rewrites (model output) to a Start Here body behind
+ * deterministic guards. Per section, first answer wins; `lockedSections` (e.g.
+ * sections too long to show the model in full) are never rewritten.
+ */
+export function reconcileStartHereAuthoredSections(params: {
+	currentBody: string;
+	rewrites: StartHereAuthoredSectionUpdate[];
+	dates: StartHereDateStampPolicy;
+	lockedSections?: Iterable<StartHereAuthoredSectionName>;
+}): StartHereReconcileResult {
+	const current = readStartHereAuthoredSections(params.currentBody);
+	const locked = new Set(params.lockedSections ?? []);
+	const seen = new Set<StartHereAuthoredSectionName>();
+	const applied: StartHereAuthoredSectionUpdate[] = [];
+	const skipped: StartHereReconcileResult['skipped'] = [];
+
+	for (const rewrite of params.rewrites) {
+		const section = rewrite.section;
+		if (!START_HERE_AUTHORED_SECTION_NAMES.includes(section) || seen.has(section)) continue;
+		seen.add(section);
+		if (locked.has(section)) {
+			skipped.push({ section, reason: 'locked' });
+			continue;
+		}
+
+		const currentText = stripStartHereScaffolding(current[section] ?? '');
+		let markdown = stripStartHereScaffolding(
+			sanitizeStartHereAuthoredMarkdown(rewrite.markdown)
+		);
+		markdown = dropCarriedPlaceholderStamps(markdown, currentText);
+		markdown = normalizeStartHereDateStamps(markdown, {
+			...params.dates,
+			allowed: [...(params.dates.allowed ?? []), ...collectDateStamps(currentText)]
+		});
+		if (START_HERE_LIST_SECTIONS.has(section)) markdown = dedupeStartHereBulletList(markdown);
+		markdown = markdown.trim();
+
+		if (!markdown) {
+			skipped.push({ section, reason: 'empty' });
+			continue;
+		}
+		if (markdown.length > Math.max(START_HERE_SECTION_MAX_CHARS[section], currentText.length)) {
+			skipped.push({ section, reason: 'too_long' });
+			continue;
+		}
+		if (comparableSectionText(markdown) === comparableSectionText(currentText)) {
+			skipped.push({ section, reason: 'unchanged' });
+			continue;
+		}
+		applied.push({ section, markdown });
+	}
+
+	return {
+		body: replaceStartHereAuthoredSections(params.currentBody, applied),
+		applied,
+		skipped
+	};
 }
 
 function insertStatusRegion(body: string, block: string): string {

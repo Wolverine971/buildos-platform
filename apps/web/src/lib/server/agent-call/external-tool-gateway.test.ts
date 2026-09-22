@@ -3994,3 +3994,126 @@ describe('external tool gateway', () => {
 		});
 	});
 });
+
+describe('connector grant links for ungranted projects', () => {
+	const GRANTED_ID = '44444444-4444-4444-4444-444444444444';
+	const NEW_PROJECT_ID = '66666666-6666-4666-8666-666666666666';
+	const CALLER_ID = '77777777-7777-4777-8777-777777777777';
+	const summary = (id: string, name: string) => ({
+		id,
+		name,
+		description: null,
+		type_key: 'project.internal',
+		state_key: 'active',
+		updated_at: '2026-09-22T00:00:00.000Z',
+		task_count: 0,
+		goal_count: 0,
+		plan_count: 0,
+		document_count: 0,
+		owner_actor_id: 'actor-owner-1',
+		access_role: 'owner',
+		access_level: 'admin',
+		is_shared: false
+	});
+	const emptyState = (): State => ({
+		documents: [],
+		tasks: [],
+		toolExecutions: [],
+		nextTaskId: 1,
+		nextToolExecutionId: 1
+	});
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		ensureActorIdMock.mockResolvedValue('actor-1');
+		fetchProjectSummariesMock.mockResolvedValue([
+			summary(GRANTED_ID, 'Granted Project'),
+			summary(NEW_PROJECT_ID, 'Created After The Key')
+		]);
+	});
+
+	it('returns the grant reason and a one-click grant URL for an owned but ungranted project', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(emptyState()),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: CALLER_ID,
+			scope: {
+				mode: 'read_only',
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS],
+				project_ids: [GRANTED_ID]
+			},
+			toolName: 'get_onto_project_details',
+			arguments: { project_id: NEW_PROJECT_ID },
+			connectorOrigin: 'https://build-os.com'
+		});
+
+		expect(result).toMatchObject({
+			ok: false,
+			error: {
+				code: 'FORBIDDEN',
+				details: {
+					reason: 'project_not_granted_to_connector',
+					project_id: NEW_PROJECT_ID,
+					grant_url: `https://build-os.com/profile/agent-keys/${CALLER_ID}/grant?project=${NEW_PROJECT_ID}`
+				}
+			}
+		});
+		expect(JSON.stringify(result)).not.toContain('Created After The Key');
+	});
+
+	it('keeps the old denial, with no grant link, for a project the user cannot see', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(emptyState()),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: CALLER_ID,
+			scope: {
+				mode: 'read_only',
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS],
+				project_ids: [GRANTED_ID]
+			},
+			toolName: 'get_onto_project_details',
+			arguments: { project_id: '88888888-8888-4888-8888-888888888888' },
+			connectorOrigin: 'https://build-os.com'
+		});
+
+		expect(result).toMatchObject({
+			ok: false,
+			error: { code: 'FORBIDDEN', message: 'Project is outside the allowed call scope' }
+		});
+		expect(JSON.stringify(result)).not.toContain('grant_url');
+	});
+
+	it('adds a grant URL to the project list note when projects are hidden from the connector', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(emptyState()),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: CALLER_ID,
+			scope: {
+				mode: 'read_only',
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS],
+				project_ids: [GRANTED_ID]
+			},
+			toolName: 'list_onto_projects',
+			arguments: {},
+			connectorOrigin: 'https://build-os.com'
+		});
+
+		expect(result).toMatchObject({
+			ok: true,
+			result: {
+				total: 1,
+				connector_scope: {
+					reason: 'project_not_granted_to_connector',
+					ungranted_project_count: 1,
+					grant_url: `https://build-os.com/profile/agent-keys/${CALLER_ID}/grant`
+				}
+			}
+		});
+	});
+});

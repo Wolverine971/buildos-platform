@@ -68,3 +68,39 @@ export function sanitizeProjectPropsPatchInput(props: unknown): Record<string, u
 	}
 	return next;
 }
+
+/**
+ * Project types the `fiction_story` workspace profile applies to. The runtime
+ * profile shares this matcher so routing and retype demotion cannot drift.
+ * `project.creative.book.nonfiction` is the nonfiction book variant.
+ */
+export function isFictionProjectTypeKey(typeKey: string): boolean {
+	return (
+		/^project\.creative\.(?:novel|book|fiction|screenplay)(?:\.|$)/i.test(typeKey) &&
+		!/^project\.creative\.book\.non_?fiction$/i.test(typeKey)
+	);
+}
+
+const FICTION_WORKSPACE_PROFILE_ID = 'fiction_story';
+
+/**
+ * Demote-only: after a project retype, drop a stored fiction domain profile the
+ * new type no longer supports. Never sets or promotes a profile, and keeps
+ * `mode` (living reference is not fiction-specific). Returns null when the
+ * props need no change. 2026-09-22 book loop: a nonfiction book scaffolded as a
+ * novel kept loading fiction routing because nothing could clear it.
+ */
+export function demoteAgentWorkspaceForProjectType(
+	props: unknown,
+	typeKey: string
+): Record<string, unknown> | null {
+	if (!isPlainObject(props) || !isPlainObject(props.agent_workspace)) return null;
+	const workspace = props.agent_workspace;
+	if (workspace.domain_profile !== FICTION_WORKSPACE_PROFILE_ID) return null;
+	if (isFictionProjectTypeKey(typeKey)) return null;
+	const { domain_profile: _profile, domain_affinity: _affinity, ...rest } = workspace;
+	const next: Record<string, unknown> = { ...props };
+	if (Object.keys(rest).length > 0) next.agent_workspace = rest;
+	else delete next.agent_workspace;
+	return next;
+}

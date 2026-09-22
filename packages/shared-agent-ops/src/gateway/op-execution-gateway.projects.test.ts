@@ -125,6 +125,71 @@ describe('project gateway update parity', () => {
 		expect(JSON.stringify(result)).not.toContain('preferences');
 	});
 
+	function capturingAdmin(payloads: Record<string, unknown>[]) {
+		return {
+			from: vi.fn(() => ({
+				update: vi.fn((payload: Record<string, unknown>) => {
+					payloads.push(payload);
+					return {
+						eq: () => ({
+							select: () => ({
+								single: async () => ({
+									data: { ...existingProject, ...payload },
+									error: null
+								})
+							})
+						})
+					};
+				})
+			}))
+		};
+	}
+
+	it('retypes a novel to a nonfiction book and demotes its fiction profile', async () => {
+		const payloads: Record<string, unknown>[] = [];
+		await updateProject(context(capturingAdmin(payloads)), {
+			project_id: PROJECT_ID,
+			type_key: 'project.creative.book.nonfiction'
+		});
+		expect(payloads[0]).toMatchObject({ type_key: 'project.creative.book.nonfiction' });
+		expect(payloads[0]!.props).toEqual({ retained: true, preferences: { system: true } });
+	});
+
+	it('never promotes a profile through a retype or props patch', async () => {
+		mocks.loadCoreEntityForAccess.mockResolvedValueOnce({
+			kind: 'project',
+			entity: { ...existingProject, props: { retained: true } },
+			project: { id: PROJECT_ID, name: 'Fixture project' },
+			projectId: PROJECT_ID
+		});
+		const payloads: Record<string, unknown>[] = [];
+		await updateProject(context(capturingAdmin(payloads)), {
+			project_id: PROJECT_ID,
+			type_key: 'project.creative.novel',
+			props: { agent_workspace: { domain_profile: 'fiction_story', mode: 'living_reference' } }
+		});
+		expect(payloads[0]).toMatchObject({ type_key: 'project.creative.novel' });
+		// The server-owned key is stripped, leaving no props write at all.
+		expect(payloads[0]!.props).toBeUndefined();
+	});
+
+	it('keeps the fiction profile when the new type is still fiction', async () => {
+		const payloads: Record<string, unknown>[] = [];
+		await updateProject(context(capturingAdmin(payloads)), {
+			project_id: PROJECT_ID,
+			type_key: 'project.creative.screenplay'
+		});
+		expect(payloads[0]!.props).toBeUndefined();
+	});
+
+	it('rejects a malformed project type_key', async () => {
+		const admin = { from: vi.fn() };
+		await expect(
+			updateProject(context(admin), { project_id: PROJECT_ID, type_key: 'novel' })
+		).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+		expect(admin.from).not.toHaveBeenCalled();
+	});
+
 	it('rejects a props-only patch when every supplied key is server-owned', async () => {
 		const admin = { from: vi.fn() };
 

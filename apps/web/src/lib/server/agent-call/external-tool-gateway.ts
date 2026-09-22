@@ -55,6 +55,10 @@ import type { ActivityLogActorContext } from '$lib/services/async-activity-logge
 
 type ToolHelpFormat = 'short' | 'full';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 const EXTERNAL_DISCOVERY_TOOL_NAMES = new Set<BuildosAgentDiscoveryToolName>([
 	'skill_load',
 	'tool_search',
@@ -415,6 +419,70 @@ function buildExternalOpHelp(
 	return help;
 }
 
+const PROJECT_NOT_GRANTED_TO_CONNECTOR = 'project_not_granted_to_connector';
+
+/** Owner-facing page where one click grants a project (or everything) to this connector. */
+export function buildConnectorGrantUrl(params: {
+	origin: string;
+	callerId: string;
+	projectId?: string;
+}): string {
+	const url = new URL(
+		`/profile/agent-keys/${encodeURIComponent(params.callerId)}/grant`,
+		params.origin
+	);
+	if (params.projectId) url.searchParams.set('project', params.projectId);
+	return url.toString();
+}
+
+/**
+ * The shared gateway cannot know the public origin or the grant route, so it
+ * reports `project_not_granted_to_connector`; this adds the link the agent can
+ * hand to the user.
+ */
+export function attachConnectorGrantLinks(
+	result: Record<string, unknown>,
+	params: { origin?: string; callerId?: string }
+): Record<string, unknown> {
+	const { origin, callerId } = params;
+	if (!origin || !callerId) return result;
+
+	const error = isRecord(result.error) ? result.error : null;
+	const errorDetails = error && isRecord(error.details) ? error.details : null;
+	if (errorDetails?.reason === PROJECT_NOT_GRANTED_TO_CONNECTOR) {
+		const projectId =
+			typeof errorDetails.project_id === 'string' ? errorDetails.project_id : undefined;
+		return {
+			...result,
+			error: {
+				...error,
+				details: {
+					...errorDetails,
+					grant_url: buildConnectorGrantUrl({ origin, callerId, projectId })
+				}
+			}
+		};
+	}
+
+	const payload = isRecord(result.result) ? result.result : null;
+	const connectorScope =
+		payload && isRecord(payload.connector_scope) ? payload.connector_scope : null;
+	if (connectorScope?.reason === PROJECT_NOT_GRANTED_TO_CONNECTOR) {
+		return {
+			...result,
+			result: {
+				...payload,
+				connector_scope: {
+					...connectorScope,
+					grant_url: buildConnectorGrantUrl({ origin, callerId })
+				}
+			}
+		};
+	}
+
+	return result;
+}
+
 export async function executeBuildosAgentGatewayTool(params: {
 	admin: any;
 	userId: string;
@@ -426,6 +494,8 @@ export async function executeBuildosAgentGatewayTool(params: {
 	toolName: string;
 	arguments?: Record<string, unknown>;
 	securityEventOptions?: SecurityEventLogOptions;
+	/** Public origin used to build owner-facing grant links in scope denials. */
+	connectorOrigin?: string;
 }): Promise<Record<string, unknown>> {
 	switch (params.toolName) {
 		case 'skill_load': {
@@ -518,9 +588,14 @@ export async function executeBuildosAgentGatewayTool(params: {
 
 	const directEntry = findExternalDirectTool(params.scope, params.toolName);
 	if (directEntry) {
-		return runGatewayOp({
-			...params,
+		const { connectorOrigin, ...gatewayParams } = params;
+		const result = await runGatewayOp({
+			...gatewayParams,
 			arguments: buildDirectToolGatewayArguments(directEntry, params.arguments)
+		});
+		return attachConnectorGrantLinks(result, {
+			origin: connectorOrigin,
+			callerId: params.callerId
 		});
 	}
 

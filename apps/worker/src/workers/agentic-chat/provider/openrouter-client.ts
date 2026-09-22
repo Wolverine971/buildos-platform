@@ -77,8 +77,14 @@ const REVIEWER_PROMPT_CACHE_KEY = 'agentic-chat-reviewer-v2';
  * both runs, and the truncation guard correctly rejected the incomplete call.
  * This matches the reviewed semantic-reviewer ceiling and keeps a firm bound;
  * calls that already fit are billed only for the tokens they generate.
+ *
+ * 2026-09-22 book loop: DeepSeek V4.1 Flash spent 4,000/4,000 tokens on hidden
+ * reasoning while composing a commissioned ~20-call restructure (project, goal,
+ * nine plans, five tasks, three document rewrites) and returned nothing, twice.
+ * It ignores `reasoning.effort` and `reasoning.max_tokens`, so the only lever is
+ * room: 12,000 leaves space for reasoning plus a batch of document-sized calls.
  */
-export const AGENTIC_CHAT_ACTING_MAX_TOKENS = 4_000;
+export const AGENTIC_CHAT_ACTING_MAX_TOKENS = 12_000;
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_SSE_BUFFER_BYTES = 256 * 1024;
 const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
@@ -1349,9 +1355,11 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				// passes keep the provider default
 				// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F80).
 				reasoning:
-					contractReview || input.reasoningEffort === 'low'
-						? { effort: 'low', exclude: true }
-						: { exclude: true },
+					input.reasoningEffort === 'none'
+						? { enabled: false }
+						: contractReview || input.reasoningEffort === 'low'
+							? { effort: 'low', exclude: true }
+							: { exclude: true },
 				provider: {
 					allow_fallbacks: true,
 					data_collection: 'deny',
@@ -2030,6 +2038,15 @@ function watchStreamProgress(
 				MIN_ATTEMPT_TIMEOUT_MS + BUDGET_FINALIZATION_RESERVE_MS
 		)
 			return;
+		// Reasoning is requested with `exclude: true`, so a thinking model emits
+		// nothing until its first text or tool call. Judge throughput only once
+		// output has begun; the attempt deadline still bounds a silent stream.
+		if (state.generatedBytes === 0) {
+			startedAtMs = now;
+			timer = setTimeout(check, SLOW_STREAM_WINDOW_MS);
+			timer.unref?.();
+			return;
+		}
 		const elapsed = now - startedAtMs;
 		const bytes = state.generatedBytes - startedBytes;
 		// A suspended host is not evidence of slow provider generation.
@@ -2302,7 +2319,11 @@ function copyTool(tool: AgenticChatTurnProviderToolV1) {
 }
 
 function validateToolSurface(input: ClientInput): void {
-	if (input.reasoningEffort !== undefined && input.reasoningEffort !== 'low')
+	if (
+		input.reasoningEffort !== undefined &&
+		input.reasoningEffort !== 'low' &&
+		input.reasoningEffort !== 'none'
+	)
 		throw new Error('Invalid provider reasoning effort');
 	if (
 		input.maxOutputTokens !== undefined &&

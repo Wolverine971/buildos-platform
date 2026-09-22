@@ -177,6 +177,32 @@ describe('inbox index mappers', () => {
 		});
 	});
 
+	it('expires a superseded agent-run proposal instead of blocking it (tasker/93)', () => {
+		const run = {
+			id: 'agent-run-old',
+			user_id: 'user-1',
+			label: 'Update project START HERE',
+			change_set: { status: 'pending', changes: [{ id: 'change-1' }] },
+			created_at: '2026-09-20T12:00:00.000Z',
+			completed_at: '2026-09-22T12:00:00.000Z'
+		};
+		expect(
+			mapAgentRunToInboxItem({
+				...run,
+				status: 'cancelled',
+				error: 'superseded: replaced by newer Start Here proposal agent-run-new'
+			})
+		).toMatchObject({
+			status: 'expired',
+			blocked_reason: 'Replaced by a newer proposal',
+			decided_at: '2026-09-22T12:00:00.000Z',
+			expires_at: null
+		});
+		expect(
+			mapAgentRunToInboxItem({ ...run, status: 'cancelled', error: 'User cancelled' })
+		).toMatchObject({ status: 'blocked', blocked_reason: 'User cancelled' });
+	});
+
 	it('expires a calendar suggestion when its event window has passed (48h grace)', () => {
 		const row = mapCalendarSuggestionToInboxItem({
 			id: 'calendar-1',

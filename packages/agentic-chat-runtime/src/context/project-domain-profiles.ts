@@ -5,6 +5,8 @@
 // few domain distinctions needed before a project exists and persists a compact
 // affinity signal that later project chats can use without lexical rediscovery.
 
+import { isFictionProjectTypeKey } from '@buildos/shared-agent-ops/utils/project-props-sanitizer';
+
 type JsonRecord = Record<string, unknown>;
 
 export const AGENT_WORKSPACE_PROP = 'agent_workspace';
@@ -49,8 +51,7 @@ export const FICTION_STORY_PROFILE: ProjectDomainProfile = {
 	domainAffinity: 'writing.fiction',
 	runtimeSkillId: 'fiction_story_craft',
 	matchesRuntimeSkillTurn: looksLikeFictionStoryCraftTurn,
-	matchesProjectType: (typeKey) =>
-		/^project\.creative\.(?:novel|book|fiction|screenplay)(?:\.|$)/i.test(typeKey),
+	matchesProjectType: isFictionProjectTypeKey,
 	matchesUserMessage: (message) =>
 		FICTION_STRONG_SIGNAL.test(message) ||
 		FICTION_WRITING_CONTEXT.test(message) ||

@@ -293,6 +293,86 @@ describe('work-type classification policy reaches the reviewer', () => {
 		}
 	);
 
+	it('freezes a first expectation aligned with the exact approved calls (book loop 2026-09-22)', () => {
+		const PLAN_A = '39f201a1-c209-47d0-999d-6400b242cb90';
+		const PLAN_B = '4698bf3f-5bbc-4bd2-8315-2d37e804e9e8';
+		const request = requestFor('Fix the project so it fits a nonfiction book.');
+		const batch = buildMutationBatch([
+			{
+				id: 'plan-a',
+				name: 'update_onto_plan',
+				canonicalProviderArguments: canonicalizeAgenticChatJson({
+					plan_id: PLAN_A,
+					name: 'Phase 2: Chapter & Framework Blueprint',
+					description: 'Map the frameworks.'
+				})
+			},
+			{
+				id: 'plan-b',
+				name: 'update_onto_plan',
+				canonicalProviderArguments: canonicalizeAgenticChatJson({
+					plan_id: PLAN_B,
+					description: 'Clarity and usefulness feedback.'
+				})
+			}
+		]);
+		const sha = mutationBatchSha256(batch);
+		const reviewRequest = buildMutationBatchReviewRequest(
+			request,
+			request.tools,
+			batch,
+			sha,
+			true,
+			true,
+			null
+		);
+		const toolCalls = createToolCallAccumulator();
+		appendToolCallDelta(toolCalls, [
+			{
+				index: 0,
+				id: 'approval',
+				type: 'function',
+				function: {
+					name: 'approve_mutation_batch_review',
+					arguments: JSON.stringify({
+						reason: 'Covers every plan.',
+						batch_sha256: sha,
+						reference_candidates: [],
+						request_expectation: {
+							outcomes: [
+								{
+									id: 'plans',
+									action: 'update',
+									entity_kind: 'plan',
+									target_ids: [PLAN_A, PLAN_B],
+									required_fields: ['name', 'description'],
+									minimum_successful_effects: 2
+								}
+							]
+						}
+					})
+				}
+			}
+		]);
+		const [approved] = completeMutationBatchReviewDecision({
+			actingRequest: request,
+			reviewRequest,
+			batch,
+			batchSha256: sha,
+			toolCalls,
+			finished: true,
+			finishedReason: 'tool_calls',
+			fallbackReason: null,
+			allowRevision: true,
+			requestExpectation: null
+		});
+		const frozen = parseRequestExpectation(approved!.arguments.request_expectation)!;
+		expect(frozen.outcomes[0]!.requiredFields).toEqual(['description']);
+		expect(JSON.parse(approved!.canonicalArguments).request_expectation).toEqual(
+			approved!.arguments.request_expectation
+		);
+	});
+
 	it('declares the reviewer rule once: approve either way on creates, uncommissioned on updates', () => {
 		expect(REVIEWER_POLICY).toBeDefined();
 		expect(REVIEWER_POLICY).toContain('approve it omitted or plausibly set');

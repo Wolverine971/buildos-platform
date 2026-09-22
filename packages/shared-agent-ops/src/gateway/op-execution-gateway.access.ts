@@ -14,17 +14,63 @@ import type { ToolExecutionContext } from './op-execution-gateway.types';
 export type VisibleProjectContext = {
 	projects: OntologyProjectSummary[];
 	projectMap: Map<string, OntologyProjectSummary>;
+	/** User-visible projects this connector has not been granted (0 when unscoped). */
+	ungrantedProjectCount: number;
 };
+
+/** Error reason for a project the user can see but this connector was not granted. */
+export const PROJECT_NOT_GRANTED_TO_CONNECTOR = 'project_not_granted_to_connector';
+
+/**
+ * The connector's allowed projects, plus the ids the user can see that fall
+ * outside the connector scope. The extra set lets a denial say "ask the user
+ * to grant this" instead of a dead-end FORBIDDEN, without widening access.
+ */
+export class ScopedProjectMap extends Map<string, OntologyProjectSummary> {
+	readonly ungrantedProjectIds: ReadonlySet<string>;
+
+	constructor(
+		entries: Iterable<readonly [string, OntologyProjectSummary]>,
+		ungrantedProjectIds: Iterable<string> = []
+	) {
+		super(entries);
+		this.ungrantedProjectIds = new Set(ungrantedProjectIds);
+	}
+}
 
 export function buildAllowedProjectSet(
 	scope: AgentCallScope,
 	projects: OntologyProjectSummary[]
-): Map<string, OntologyProjectSummary> {
+): ScopedProjectMap {
 	const requestedIds = Array.isArray(scope.project_ids) ? new Set(scope.project_ids) : null;
-	const filtered = requestedIds
-		? projects.filter((project) => requestedIds.has(project.id))
-		: projects;
-	return new Map(filtered.map((project) => [project.id, project]));
+	if (!requestedIds) {
+		return new ScopedProjectMap(projects.map((project) => [project.id, project]));
+	}
+	const allowed: OntologyProjectSummary[] = [];
+	const ungranted: string[] = [];
+	for (const project of projects) {
+		if (requestedIds.has(project.id)) allowed.push(project);
+		else ungranted.push(project.id);
+	}
+	return new ScopedProjectMap(
+		allowed.map((project) => [project.id, project]),
+		ungranted
+	);
+}
+
+function isUngrantedProject(
+	projectMap: Map<string, OntologyProjectSummary>,
+	projectId: string
+): boolean {
+	return projectMap instanceof ScopedProjectMap && projectMap.ungrantedProjectIds.has(projectId);
+}
+
+function projectNotGrantedError(subject: string, projectId: string): ExternalToolGatewayError {
+	return new ExternalToolGatewayError(
+		'FORBIDDEN',
+		`${subject} is in the user's BuildOS workspace, but this connector has not been granted access to that project. Ask the user to approve access (details.grant_url when present, otherwise BuildOS → Profile → Agent keys), then retry.`,
+		{ reason: PROJECT_NOT_GRANTED_TO_CONNECTOR, project_id: projectId }
+	);
 }
 
 export function assertAccessibleProject(
@@ -37,6 +83,9 @@ export function assertAccessibleProject(
 
 	const project = projectMap.get(projectId);
 	if (!project) {
+		if (isUngrantedProject(projectMap, projectId)) {
+			throw projectNotGrantedError('This project', projectId);
+		}
 		throw new ExternalToolGatewayError(
 			'FORBIDDEN',
 			'Project is outside the allowed call scope'
@@ -56,6 +105,9 @@ export function assertVisibleEntityProject(
 
 	const project = projectMap.get(projectId);
 	if (!project) {
+		if (isUngrantedProject(projectMap, projectId)) {
+			throw projectNotGrantedError('This entity', projectId);
+		}
 		throw new ExternalToolGatewayError('FORBIDDEN', 'Entity is outside the allowed call scope');
 	}
 
@@ -77,7 +129,8 @@ export async function loadVisibleProjects(
 
 	return {
 		projects: visibleProjects,
-		projectMap
+		projectMap,
+		ungrantedProjectCount: projectMap.ungrantedProjectIds.size
 	};
 }
 

@@ -207,7 +207,7 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 	 */
 	normalize_project_row_update: ({ args }) => {
 		let changed = 0;
-		for (const field of ['name', 'description'] as const) {
+		for (const field of ['name', 'description', 'type_key'] as const) {
 			if (args[field] !== undefined) changed += 1;
 		}
 		if (args.state_key !== undefined) {

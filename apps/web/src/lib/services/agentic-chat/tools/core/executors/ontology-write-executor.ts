@@ -1450,6 +1450,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 
 		if (args.name !== undefined) updateData.name = args.name;
 		if (args.description !== undefined) updateData.description = args.description;
+		if (args.type_key !== undefined) updateData.type_key = args.type_key;
 		if (stateValue !== undefined) {
 			updateData.state_key = this.normalizeProjectState(stateValue);
 		}

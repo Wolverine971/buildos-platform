@@ -42,6 +42,12 @@ const workspacePackageAliases = [
 		)
 	},
 	{
+		find: /^@buildos\/shared-agent-ops\/ontology\/start-here$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-agent-ops/src/ontology/start-here.ts', import.meta.url)
+		)
+	},
+	{
 		find: /^@buildos\/shared-agent-ops\/ontology\/task-move.service$/,
 		replacement: fileURLToPath(
 			new URL(

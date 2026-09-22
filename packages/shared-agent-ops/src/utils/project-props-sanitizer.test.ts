@@ -1,6 +1,8 @@
 // packages/shared-agent-ops/src/utils/project-props-sanitizer.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	demoteAgentWorkspaceForProjectType,
+	isFictionProjectTypeKey,
 	sanitizeProjectPropsForClient,
 	sanitizeProjectPropsPatchInput
 } from './project-props-sanitizer';
@@ -32,5 +34,40 @@ describe('sanitizeProjectPropsForClient', () => {
 		expect(sanitizeProjectPropsForClient(props)).toEqual({
 			agent_workspace: { mode: 'living_reference' }
 		});
+	});
+});
+
+describe('fiction project types and retype demotion', () => {
+	it('treats the nonfiction book variant as non-fiction', () => {
+		expect(isFictionProjectTypeKey('project.creative.novel')).toBe(true);
+		expect(isFictionProjectTypeKey('project.creative.book')).toBe(true);
+		expect(isFictionProjectTypeKey('project.creative.book.nonfiction')).toBe(false);
+		expect(isFictionProjectTypeKey('project.business.launch')).toBe(false);
+	});
+
+	it('drops only the fiction profile, keeping living-reference mode', () => {
+		expect(
+			demoteAgentWorkspaceForProjectType(
+				{
+					facets: { scale: 'medium' },
+					agent_workspace: {
+						mode: 'living_reference',
+						domain_profile: 'fiction_story',
+						domain_affinity: 'writing.fiction'
+					}
+				},
+				'project.creative.book.nonfiction'
+			)
+		).toEqual({ facets: { scale: 'medium' }, agent_workspace: { mode: 'living_reference' } });
+	});
+
+	it('never adds a profile and ignores fiction-to-fiction retypes', () => {
+		expect(demoteAgentWorkspaceForProjectType({ a: 1 }, 'project.creative.novel')).toBeNull();
+		expect(
+			demoteAgentWorkspaceForProjectType(
+				{ agent_workspace: { domain_profile: 'fiction_story' } },
+				'project.creative.screenplay'
+			)
+		).toBeNull();
 	});
 });

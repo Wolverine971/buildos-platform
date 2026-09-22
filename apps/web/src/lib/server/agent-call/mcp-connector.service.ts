@@ -603,7 +603,8 @@ async function runMcpSearch(params: {
 		scope: readScope,
 		toolName: searchToolName,
 		arguments: { query: params.query, limit: 20 },
-		securityEventOptions: params.securityEventOptions
+		securityEventOptions: params.securityEventOptions,
+		connectorOrigin: params.origin
 	});
 	if (result.ok === false || result.error) {
 		return result;
@@ -659,7 +660,8 @@ async function runMcpFetch(params: {
 		scope: readScope,
 		toolName,
 		arguments: { [config.idArg]: entityId },
-		securityEventOptions: params.securityEventOptions
+		securityEventOptions: params.securityEventOptions,
+		connectorOrigin: params.origin
 	});
 	const entity = result[config.resultKey];
 	if (!isRecord(entity)) {
@@ -968,7 +970,8 @@ async function dispatchAuthenticatedMcpMethod(params: {
 				scope: auth.scope,
 				toolName,
 				arguments: toolArgs,
-				securityEventOptions: params.securityEventOptions
+				securityEventOptions: params.securityEventOptions,
+				connectorOrigin: params.url.origin
 			});
 			return wrapMcpToolResult(result);
 		}

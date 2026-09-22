@@ -44,7 +44,10 @@ import { AgentCallBootstrapLinkService } from './bootstrap-link.service';
 import { ensureUserBuildosAgent } from './callee-resolution';
 import { hashAgentCallerToken } from './caller-auth';
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
-import { replaceExplicitProjectPermissions } from './project-access.service';
+import {
+	replaceExplicitProjectPermissions,
+	resolveEffectiveAgentProjectScope
+} from './project-access.service';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -813,6 +816,49 @@ export class CallerProvisioningError extends Error {
 	}
 }
 
+export type ConnectorGrantProject = {
+	id: string;
+	name: string;
+	description: string | null;
+};
+
+export type ConnectorProjectGrantContext = {
+	caller: {
+		id: string;
+		provider: string;
+		caller_key: string;
+		metadata: Record<string, unknown>;
+		scope_mode: 'read_only' | 'read_write';
+		project_scope_mode: BuildosAgentProjectScopeMode;
+		is_oauth: boolean;
+	};
+	/** The project named in the grant link, when it is visible to the user. */
+	project: ConnectorGrantProject | null;
+	project_already_granted: boolean;
+	/** User-visible projects this connector cannot use yet. */
+	ungranted_projects: ConnectorGrantProject[];
+};
+
+const MAX_PROJECTS_PER_GRANT = 100;
+
+function isOAuthCallerRecord(caller: ExternalAgentCallerRecord): boolean {
+	return caller.metadata?.auth_scheme === 'oauth' || caller.caller_key.startsWith('oauth:');
+}
+
+function stringArray(value: unknown): string[] {
+	return Array.isArray(value)
+		? value.filter((entry): entry is string => typeof entry === 'string')
+		: [];
+}
+
+type ActiveOAuthGrant = {
+	id: string;
+	scope_mode: string;
+	allowed_ops: unknown;
+	allowed_project_ids: unknown;
+	project_scope_mode: unknown;
+};
+
 export class CallerProvisioningService {
 	constructor(
 		private readonly admin: any = createAdminSupabaseClient(),
@@ -1113,11 +1159,22 @@ export class CallerProvisioningService {
 			body.project_scope_mode,
 			extractProjectScopeModeFromPolicy(caller.policy)
 		);
-		const allowedProjectIds =
+		const resolvedProjectIds =
 			(await this.resolveAllowedProjectIds(userId, requestedProjectIds)) ?? [];
+		// Under "all standard projects", explicit rows for owned standard projects
+		// are redundant, and they would keep access if the project is later
+		// restricted. Only shared/restricted exceptions stay explicit.
+		const allowedProjectIds =
+			projectScopeMode === 'all_unrestricted'
+				? await this.dropInheritedProjectIds(userId, resolvedProjectIds)
+				: resolvedProjectIds;
 		const effectiveAllowedOps = allowedOps ?? defaultAllowedOpsForMode(scopeMode);
-		const isOAuth =
-			caller.metadata?.auth_scheme === 'oauth' || caller.caller_key.startsWith('oauth:');
+		const previousScopeMode = extractScopeModeFromPolicy(caller.policy);
+		const previousProjectScopeMode = normalizeProjectScopeMode(
+			caller.project_scope_mode,
+			extractProjectScopeModeFromPolicy(caller.policy)
+		);
+		const isOAuth = isOAuthCallerRecord(caller);
 		let oauthGrants: Array<{ id: string; scope_mode: string }> = [];
 		if (isOAuth) {
 			const { data: grants, error: grantsError } = await this.admin
@@ -1197,7 +1254,303 @@ export class CallerProvisioningService {
 			});
 		}
 
+		await logSecurityEvent(
+			{
+				eventType: 'agent.caller.permissions_updated',
+				category: 'agent',
+				outcome: 'success',
+				severity: 'medium',
+				actorType: 'user',
+				actorUserId: userId,
+				externalAgentCallerId: callerId,
+				targetType: 'external_agent_caller',
+				targetId: callerId,
+				metadata: {
+					provider: caller.provider,
+					callerKey: caller.caller_key,
+					previousScopeMode,
+					scopeMode,
+					previousProjectScopeMode,
+					projectScopeMode,
+					explicitProjectCount: allowedProjectIds.length,
+					isOAuth
+				}
+			},
+			{ ...this.securityEventOptions, supabase: this.admin }
+		);
+
 		return { caller: mapCallerSummary(updatedCaller as ExternalAgentCallerRecord) };
+	}
+
+	/**
+	 * Everything the one-click grant page needs: who the connector is, the
+	 * project named in the agent's grant link, and what it still cannot see.
+	 */
+	async getProjectGrantContextForUser(
+		userId: string,
+		callerId: string,
+		projectId?: string | null
+	): Promise<ConnectorProjectGrantContext> {
+		const caller = await this.loadGrantableCaller(userId, callerId);
+		const isOAuth = isOAuthCallerRecord(caller);
+		const oauthGrants = isOAuth ? await this.loadActiveOAuthGrants(userId, callerId) : [];
+		const visibleProjects = await this.loadVisibleProjects(userId);
+
+		const grantedSets = isOAuth
+			? await Promise.all(
+					oauthGrants.map(async (grant) =>
+						this.resolveGrantedProjectIds({
+							userId,
+							callerId,
+							oauthGrantId: grant.id,
+							projectScopeMode: normalizeProjectScopeMode(grant.project_scope_mode),
+							scopeMode:
+								grant.scope_mode === 'read_write' ? 'read_write' : 'read_only'
+						})
+					)
+				)
+			: [
+					await this.resolveGrantedProjectIds({
+						userId,
+						callerId,
+						projectScopeMode: normalizeProjectScopeMode(
+							caller.project_scope_mode,
+							extractProjectScopeModeFromPolicy(caller.policy)
+						),
+						scopeMode: extractScopeModeFromPolicy(caller.policy)
+					})
+				];
+		// A project counts as granted only when every live authorization has it.
+		const isGranted = (id: string) => grantedSets.every((granted) => granted.has(id));
+
+		const toGrantProject = (project: {
+			id: string;
+			name: string;
+			description?: string | null;
+		}): ConnectorGrantProject => ({
+			id: project.id,
+			name: project.name,
+			description: project.description ?? null
+		});
+		const requested =
+			projectId && isValidUUID(projectId)
+				? (visibleProjects.find((project) => project.id === projectId) ?? null)
+				: null;
+
+		const scopeMode = isOAuth
+			? oauthGrants.every((grant) => grant.scope_mode === 'read_write')
+				? 'read_write'
+				: 'read_only'
+			: extractScopeModeFromPolicy(caller.policy);
+		const projectScopeMode = isOAuth
+			? oauthGrants.every(
+					(grant) =>
+						normalizeProjectScopeMode(grant.project_scope_mode) === 'all_unrestricted'
+				)
+				? 'all_unrestricted'
+				: 'selected'
+			: normalizeProjectScopeMode(
+					caller.project_scope_mode,
+					extractProjectScopeModeFromPolicy(caller.policy)
+				);
+
+		return {
+			caller: {
+				id: caller.id,
+				provider: caller.provider,
+				caller_key: caller.caller_key,
+				metadata: caller.metadata ?? {},
+				scope_mode: scopeMode,
+				project_scope_mode: projectScopeMode,
+				is_oauth: isOAuth
+			},
+			project: requested ? toGrantProject(requested) : null,
+			project_already_granted: requested ? isGranted(requested.id) : false,
+			ungranted_projects: visibleProjects
+				.filter((project) => !isGranted(project.id))
+				.map(toGrantProject)
+		};
+	}
+
+	/**
+	 * Adds explicit grants without touching the connector's other grants or
+	 * its project scope mode. Access level follows the connector: a read-only
+	 * connector gets read-only project access.
+	 */
+	async grantProjectsForUser(
+		userId: string,
+		callerId: string,
+		projectIds: unknown
+	): Promise<{ granted_project_ids: string[] }> {
+		const requestedIds = normalizeAllowedProjectIds(projectIds) ?? [];
+		if (requestedIds.length === 0) {
+			throw new CallerProvisioningError('Choose at least one project to grant', 400);
+		}
+		if (requestedIds.length > MAX_PROJECTS_PER_GRANT) {
+			throw new CallerProvisioningError(
+				`Grant at most ${MAX_PROJECTS_PER_GRANT} projects at a time`,
+				400
+			);
+		}
+
+		const caller = await this.loadGrantableCaller(userId, callerId);
+		const grantIds = (await this.resolveAllowedProjectIds(userId, requestedIds)) ?? [];
+		const isOAuth = isOAuthCallerRecord(caller);
+
+		const addToAuthorization = async (params: {
+			oauthGrantId?: string;
+			accessMode: 'read_only' | 'read_write';
+		}): Promise<string[]> => {
+			let existingQuery = this.admin
+				.from('external_agent_project_permissions')
+				.select('project_id')
+				.eq('external_agent_caller_id', callerId)
+				.is('revoked_at', null);
+			existingQuery = params.oauthGrantId
+				? existingQuery.eq('agent_oauth_grant_id', params.oauthGrantId)
+				: existingQuery.is('agent_oauth_grant_id', null);
+			const { data: existingRows, error: existingError } = await existingQuery;
+			if (existingError) {
+				throw new CallerProvisioningError('Failed to load project permissions', 500);
+			}
+			const existing = new Set(
+				((existingRows ?? []) as Array<{ project_id?: unknown }>).map((row) =>
+					String(row.project_id)
+				)
+			);
+			const missing = grantIds.filter((projectId) => !existing.has(projectId));
+			if (missing.length === 0) return [];
+
+			const { error } = await this.admin.from('external_agent_project_permissions').insert(
+				missing.map((projectId) => ({
+					user_id: userId,
+					external_agent_caller_id: callerId,
+					agent_oauth_grant_id: params.oauthGrantId ?? null,
+					project_id: projectId,
+					access_mode: params.accessMode,
+					source: 'selected',
+					granted_by: userId
+				}))
+			);
+			if (error) {
+				throw new CallerProvisioningError('Failed to save project permissions', 500);
+			}
+			return missing;
+		};
+
+		const added = new Set<string>();
+		if (isOAuth) {
+			const oauthGrants = await this.loadActiveOAuthGrants(userId, callerId);
+			for (const grant of oauthGrants) {
+				const accessMode = grant.scope_mode === 'read_write' ? 'read_write' : 'read_only';
+				for (const projectId of await addToAuthorization({
+					oauthGrantId: grant.id,
+					accessMode
+				})) {
+					added.add(projectId);
+				}
+				const { error } = await this.admin
+					.from('agent_oauth_grants')
+					.update({
+						allowed_project_ids: Array.from(
+							new Set([...stringArray(grant.allowed_project_ids), ...grantIds])
+						)
+					})
+					.eq('id', grant.id);
+				if (error) throw new CallerProvisioningError('Failed to update OAuth grant', 500);
+			}
+		} else {
+			for (const projectId of await addToAuthorization({
+				accessMode: extractScopeModeFromPolicy(caller.policy)
+			})) {
+				added.add(projectId);
+			}
+		}
+
+		// Keep the legacy policy list in sync: the agent-call dial path still
+		// negotiates selected-mode scope from it.
+		const policy = isRecord(caller.policy) ? caller.policy : {};
+		const { error: policyError } = await this.admin
+			.from('external_agent_callers')
+			.update({
+				policy: {
+					...policy,
+					allowed_project_ids: Array.from(
+						new Set([...stringArray(policy.allowed_project_ids), ...grantIds])
+					)
+				}
+			})
+			.eq('id', callerId)
+			.eq('user_id', userId);
+		if (policyError) {
+			throw new CallerProvisioningError('Failed to update connector permissions', 500);
+		}
+
+		await logSecurityEvent(
+			{
+				eventType: 'agent.caller.project_access_granted',
+				category: 'agent',
+				outcome: 'success',
+				severity: 'medium',
+				actorType: 'user',
+				actorUserId: userId,
+				externalAgentCallerId: callerId,
+				targetType: 'external_agent_caller',
+				targetId: callerId,
+				metadata: {
+					provider: caller.provider,
+					callerKey: caller.caller_key,
+					projectIds: grantIds,
+					newlyGrantedCount: added.size,
+					isOAuth
+				}
+			},
+			{ ...this.securityEventOptions, supabase: this.admin }
+		);
+
+		return { granted_project_ids: grantIds };
+	}
+
+	/**
+	 * Switches a connector to "all standard projects" in place, keeping its
+	 * read/write level and any shared/restricted exceptions.
+	 */
+	async switchToAllProjectsForUser(
+		userId: string,
+		callerId: string
+	): Promise<{ caller: BuildosAgentCallerSummary }> {
+		const caller = await this.loadGrantableCaller(userId, callerId);
+		let scopeMode = extractScopeModeFromPolicy(caller.policy);
+		let allowedOps = extractAllowedOpsFromPolicy(caller.policy, scopeMode);
+		let explicitProjectIds = stringArray(caller.policy?.allowed_project_ids);
+		if (isOAuthCallerRecord(caller)) {
+			// OAuth grants carry the consented level; never let this click widen it.
+			const oauthGrants = await this.loadActiveOAuthGrants(userId, callerId);
+			scopeMode = oauthGrants.every((grant) => grant.scope_mode === 'read_write')
+				? 'read_write'
+				: 'read_only';
+			const grantOps = oauthGrants
+				.map((grant) => stringArray(grant.allowed_ops))
+				.find((ops) => ops.length > 0);
+			allowedOps = extractAllowedOpsFromPolicy(
+				{ scope_mode: scopeMode, allowed_ops: grantOps },
+				scopeMode
+			);
+			explicitProjectIds = Array.from(
+				new Set(oauthGrants.flatMap((grant) => stringArray(grant.allowed_project_ids)))
+			);
+		}
+
+		const visibleProjectIds = new Set(
+			(await this.loadVisibleProjects(userId)).map((project) => project.id)
+		);
+		return this.updatePermissionsForUser(userId, callerId, {
+			scope_mode: scopeMode,
+			// Always pass the current list so a narrowed read-only key never widens.
+			allowed_ops: allowedOps,
+			project_scope_mode: 'all_unrestricted',
+			allowed_project_ids: explicitProjectIds.filter((id) => visibleProjectIds.has(id))
+		});
 	}
 
 	async getUsageDetailForUser(
@@ -1615,6 +1968,92 @@ export class CallerProvisioningService {
 	private async loadVisibleProjects(userId: string) {
 		const actorId = await ensureActorId(this.admin, userId);
 		return fetchProjectSummaries(this.admin, actorId);
+	}
+
+	private async loadGrantableCaller(
+		userId: string,
+		callerId: string
+	): Promise<ExternalAgentCallerRecord> {
+		if (!isValidUUID(callerId)) {
+			throw new CallerProvisioningError('caller_id must be a valid UUID', 400);
+		}
+		const { data, error } = await this.admin
+			.from('external_agent_callers')
+			.select('*')
+			.eq('id', callerId)
+			.eq('user_id', userId)
+			.maybeSingle();
+		if (error) throw new CallerProvisioningError('Failed to load connector', 500);
+		if (!data) throw new CallerProvisioningError('Connector not found', 404);
+		const caller = data as ExternalAgentCallerRecord;
+		if (caller.status === 'revoked') {
+			throw new CallerProvisioningError(
+				'This connector was revoked. Create a new key or reconnect instead.',
+				409
+			);
+		}
+		return caller;
+	}
+
+	private async loadActiveOAuthGrants(
+		userId: string,
+		callerId: string
+	): Promise<ActiveOAuthGrant[]> {
+		const { data, error } = await this.admin
+			.from('agent_oauth_grants')
+			.select('id, scope_mode, allowed_ops, allowed_project_ids, project_scope_mode')
+			.eq('user_id', userId)
+			.eq('external_agent_caller_id', callerId)
+			.eq('status', 'active');
+		if (error) throw new CallerProvisioningError('Failed to load OAuth grants', 500);
+		const grants = (data ?? []) as ActiveOAuthGrant[];
+		if (grants.length === 0) {
+			throw new CallerProvisioningError(
+				'This OAuth connector has no active grant. Reconnect it to change access.',
+				409
+			);
+		}
+		return grants;
+	}
+
+	private async resolveGrantedProjectIds(params: {
+		userId: string;
+		callerId: string;
+		oauthGrantId?: string;
+		projectScopeMode: BuildosAgentProjectScopeMode;
+		scopeMode: 'read_only' | 'read_write';
+	}): Promise<Set<string>> {
+		const scope = await resolveEffectiveAgentProjectScope({
+			admin: this.admin,
+			userId: params.userId,
+			callerId: params.callerId,
+			oauthGrantId: params.oauthGrantId,
+			projectScopeMode: params.projectScopeMode,
+			scope: { mode: params.scopeMode }
+		});
+		return new Set(scope.project_ids);
+	}
+
+	/** Drops ids that "all standard projects" already includes. */
+	private async dropInheritedProjectIds(userId: string, projectIds: string[]): Promise<string[]> {
+		if (projectIds.length === 0) return projectIds;
+		const visibleProjects = await this.loadVisibleProjects(userId);
+		const sharedIds = new Set(
+			visibleProjects.filter((project) => project.is_shared).map((project) => project.id)
+		);
+		const { data, error } = await this.admin
+			.from('onto_projects')
+			.select('id, external_agent_access')
+			.in('id', projectIds);
+		if (error) {
+			throw new CallerProvisioningError('Failed to load project connector settings', 500);
+		}
+		const standardIds = new Set(
+			((data ?? []) as Array<{ id?: unknown; external_agent_access?: unknown }>)
+				.filter((row) => row.external_agent_access === 'standard')
+				.map((row) => String(row.id))
+		);
+		return projectIds.filter((id) => sharedIds.has(id) || !standardIds.has(id));
 	}
 
 	private async loadUsageForCallers(

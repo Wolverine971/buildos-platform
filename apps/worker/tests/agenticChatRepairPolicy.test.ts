@@ -60,6 +60,7 @@ describe('unfinished batch action', () => {
 		expect(repair!.tools).toBe(original.tools);
 		expect(repair!.passRole).toBe('repair');
 		expect(repair!.emptyReplyRepairAttempted).toBe(true);
+		expect(repair!.reasoningEffort).toBe('none');
 		expect(repair!.logicalProviderRound).toBe(original.logicalProviderRound + 1);
 		expect(lastInstruction(repair!)).toContain('Never replay successful writes');
 		expect(buildEmptyReplyRepairRequest(repair!)).toBeNull();
