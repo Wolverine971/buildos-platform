@@ -4,6 +4,7 @@ import { canonicalizeAgenticChatJson, type JsonObject } from '@buildos/shared-ty
 import {
 	buildMutationBatch,
 	mutationBatchSha256,
+	parseRequestExpectation,
 	serializeMutationBatchForReview
 } from '@buildos/agentic-chat-runtime/loop';
 import {
@@ -17,6 +18,11 @@ import {
 	buildMutationBatchRevisionRequest,
 	formatMutationBatchForReview
 } from '../src/workers/agentic-chat/provider/review/mutation-batch';
+import { completeMutationBatchReviewDecision } from '../src/workers/agentic-chat/provider/review/decision-completion';
+import {
+	appendToolCallDelta,
+	createToolCallAccumulator
+} from '../src/workers/agentic-chat/provider/stream-tool-calls';
 
 const INSPECTION_ID = '95c966a1-74ef-4d9c-953a-104f539232a3';
 const ELECTRICAL_ID = '687144d4-165f-4f06-bb63-f417c99f4549';
@@ -134,6 +140,11 @@ describe('mutation batch review presentation', () => {
 			},
 			batch
 		);
+		// A correction may legitimately propose nothing (the reviewer struck the
+		// only call), so the pass is never forced onto a tool call: forcing it
+		// re-proposed an already executed create in the 2026-09-22 gate.
+		expect(revision.toolChoice).toBe('auto');
+		expect(revision.passRole).toBe('repair');
 
 		expect(JSON.parse(rendered)).toEqual(serializeMutationBatchForReview(batch));
 		expect(review.messages[1]!.content).toContain(rendered);
@@ -213,6 +224,74 @@ describe('work-type classification policy reaches the reviewer', () => {
 			user: String(review.messages[1]?.content)
 		};
 	}
+
+	it.each(['missing', 'malformed', 'shrunk'] as const)(
+		'rejects a %s completion checklist before approving writes',
+		(mode) => {
+			const request = requestFor('Create five tasks.');
+			const batch = batchWith(
+				{ project_id: PROJECT_ID, title: 'First task' },
+				'create_onto_task'
+			);
+			const sha = mutationBatchSha256(batch);
+			const expectation = {
+				outcomes: [{ action: 'create', entity_kind: 'task', minimum_successful_effects: 5 }]
+			};
+			const frozen = mode === 'shrunk' ? parseRequestExpectation(expectation) : null;
+			const reviewRequest = buildMutationBatchReviewRequest(
+				request,
+				request.tools,
+				batch,
+				sha,
+				true,
+				true,
+				frozen
+			);
+			const approval = reviewRequest.tools.find(
+				(tool) => tool.function.name === 'approve_mutation_batch_review'
+			)!;
+			if (!frozen)
+				expect(approval.function.parameters.required).toContain('request_expectation');
+			const args: JsonObject = {
+				reason: 'Commissioned',
+				batch_sha256: sha,
+				reference_candidates: []
+			};
+			if (mode === 'malformed') args.request_expectation = { outcomes: [] };
+			if (mode === 'shrunk')
+				args.request_expectation = {
+					outcomes: [
+						{ action: 'create', entity_kind: 'task', minimum_successful_effects: 1 }
+					]
+				};
+			const toolCalls = createToolCallAccumulator();
+			appendToolCallDelta(toolCalls, [
+				{
+					index: 0,
+					id: 'approval',
+					type: 'function',
+					function: {
+						name: 'approve_mutation_batch_review',
+						arguments: JSON.stringify(args)
+					}
+				}
+			]);
+			expect(() =>
+				completeMutationBatchReviewDecision({
+					actingRequest: request,
+					reviewRequest,
+					batch,
+					batchSha256: sha,
+					toolCalls,
+					finished: true,
+					finishedReason: 'tool_calls',
+					fallbackReason: null,
+					allowRevision: true,
+					requestExpectation: frozen
+				})
+			).toThrow('Independent change verification failed');
+		}
+	);
 
 	it('declares the reviewer rule once: approve either way on creates, uncommissioned on updates', () => {
 		expect(REVIEWER_POLICY).toBeDefined();

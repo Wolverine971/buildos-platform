@@ -1137,8 +1137,27 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		);
 		const failed = models.filter((model) => health.failedModels.has(model));
 		const reordered = [...preferred, ...healthy, ...failed];
+		const configuredIgnore = route.providerRouting?.ignore ?? [];
+		const orderedPool = route.providerRouting?.order ?? [];
+		const failedSlugs = Array.from(health.failedProviderSlugs);
+		const inPool = (slug: string) =>
+			orderedPool.some((member) => slug === member || slug.startsWith(`${member}/`));
+		// Remembered failures must never exclude the whole configured pool. For a
+		// single-provider model that turns one slow endpoint into a guaranteed
+		// 404 "All providers have been ignored" (2026-09-22 gate, case 5). When
+		// every ordered endpoint has failed, retry the pool instead of nothing.
+		const poolExhausted =
+			orderedPool.length > 0 &&
+			orderedPool.every(
+				(member) =>
+					configuredIgnore.includes(member) ||
+					failedSlugs.some((slug) => slug === member || slug.startsWith(`${member}/`))
+			);
 		const ignoredProviders = Array.from(
-			new Set([...(route.providerRouting?.ignore ?? []), ...health.failedProviderSlugs])
+			new Set([
+				...configuredIgnore,
+				...(poolExhausted ? failedSlugs.filter((slug) => !inPool(slug)) : failedSlugs)
+			])
 		);
 		const pin =
 			health.pin &&

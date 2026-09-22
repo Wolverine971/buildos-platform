@@ -12,6 +12,8 @@ import {
 	describeDeclaredTurnContractIssues,
 	isProseTurnContractChange,
 	parseDeclaredTurnContract,
+	parseRequestExpectation,
+	requestExpectationsMatch,
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import {
@@ -62,8 +64,9 @@ type SingleReviewDecision = {
  *
  * Far shorter than the contract version, and deliberately so. There is no
  * corrected-contract to parse, canonicalize, re-validate and re-review, no
- * effect-field check, and no DSL for the reviewer to get wrong — the reviewer
- * either approves the exact SHA it was shown, sends the calls back with a
+ * effect-field authorization check. The first approval also records a complete
+ * request checklist using the existing outcome format, solely for completion.
+ * The reviewer either approves the exact SHA it was shown, sends the calls back with a
  * reason, downgrades the turn to read-only, or asks the user.
  */
 export function completeMutationBatchReviewDecision(
@@ -71,6 +74,7 @@ export function completeMutationBatchReviewDecision(
 		batchSha256: string;
 		batch?: MutationBatch;
 		allowRevision: boolean;
+		requestExpectation?: TurnContract | null;
 	}
 ): CompletedProviderToolCall[] {
 	const { calls, fallbackReason, rejectionCode } = completeSingleReviewDecision(
@@ -99,6 +103,21 @@ export function completeMutationBatchReviewDecision(
 		if (resolvedCode) {
 			resolvedFallback =
 				'Independent semantic review returned an invalid or unbound decision.';
+		}
+		if (
+			approval &&
+			(!input.requestExpectation || call.arguments.request_expectation !== undefined)
+		) {
+			const expectation = parseRequestExpectation(call.arguments.request_expectation);
+			if (
+				!expectation ||
+				(input.requestExpectation &&
+					!requestExpectationsMatch(input.requestExpectation, expectation))
+			) {
+				resolvedCode = 'decision_schema_invalid';
+				resolvedFallback =
+					'The request expectation is invalid or changes the frozen user commission.';
+			}
 		}
 	}
 	if (resolvedFallback) {

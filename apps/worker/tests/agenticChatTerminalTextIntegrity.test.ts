@@ -31,6 +31,40 @@ beforeAll(() => {
 });
 
 describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
+	it('discloses checklist items that never appeared in the write ledger at finalization', () => {
+		const request_expectation = {
+			outcomes: [
+				{
+					id: 'tasks',
+					action: 'create',
+					entity_kind: 'task',
+					description: 'Create all five requested tasks',
+					minimum_successful_effects: 5
+				}
+			]
+		};
+		const approval = toolExecution(
+			'approve_mutation_batch_review',
+			true,
+			{
+				status: 'mutation_batch_review_approved',
+				batch_sha256: 'a'.repeat(64),
+				request_expectation
+			},
+			{ batch_sha256: 'a'.repeat(64), request_expectation }
+		);
+		const result = enforceAgenticChatTerminalTextIntegrityV1({
+			assistantText: 'All done.',
+			finishedReason: 'stop',
+			contextType: 'project',
+			toolExecutions: [
+				approval,
+				mutationExecution('create_onto_task', true, { title: 'Only task' }, 'only')
+			]
+		});
+		expect(result.finishedReason).toBe('mutation_unfulfilled');
+		expect(result.correctionDelta).toContain('Create all five requested tasks');
+	});
 	it.each(['', 'I completed 5 requested changes.', 'Created the task "Pending permit".'])(
 		'visibly discloses a host-known unfinished request after successful writes: %j',
 		(assistantText) => {

@@ -20,17 +20,17 @@ Requires `PRIVATE_OPENROUTER_API_KEY` in `apps/web/.env`.
 Pin the ordinary live prompt suite to one exact model:
 
 ```bash
-LLM_TEST_MODEL=x-ai/grok-4.6 \
+LLM_TEST_MODEL=x-ai/grok-4.7 \
 pnpm test:llm -- src/lib/tests/llm/__tests__/lite-prompt-live.test.ts --retry=0
 ```
 
 Run the opt-in blind comparison against the production baseline and save the result:
 
 ```bash
-LLM_BAKEOFF_CANDIDATE_MODEL=x-ai/grok-4.6 \
+LLM_BAKEOFF_CANDIDATE_MODEL=x-ai/grok-4.7 \
 LLM_BAKEOFF_BASELINE_MODEL=deepseek/deepseek-v4-flash \
 LLM_BAKEOFF_JUDGE_MODEL=z-ai/glm-5.2 \
-LLM_BAKEOFF_OUTPUT_PATH=/tmp/grok-46-bakeoff-result.json \
+LLM_BAKEOFF_OUTPUT_PATH=/tmp/grok-47-bakeoff-result.json \
 pnpm test:llm -- src/lib/tests/llm/__tests__/model-bakeoff-live.test.ts --retry=0
 ```
 

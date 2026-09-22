@@ -12,7 +12,7 @@ import {
 	GLM_52_MODEL,
 	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL,
+	GROK_47_MODEL,
 	JSON_PROFILE_MODELS,
 	KIMI_CODING_MODEL,
 	KIMI_EXPERIMENT_MODEL,
@@ -35,6 +35,7 @@ import {
 	TENCENT_HY3_PREVIEW_MODEL,
 	TEXT_PROFILE_MODELS,
 	XIAOMI_MIMO_V25_MODEL,
+	XIAOMI_MIMO_V26_FLASH_MODEL,
 	TOOL_CALLING_MODEL_ORDER
 } from './model-config';
 import {
@@ -92,11 +93,36 @@ describe('ensureToolCompatibleModels', () => {
 			OPENROUTER_V2_JSON_MODELS,
 			OPENROUTER_V2_TOOL_MODELS,
 			OPENROUTER_V2_MULTIMODAL_MODELS,
-			TEXT_PROFILE_MODELS.speed,
-			TEXT_PROFILE_MODELS.quality
+			...Object.values(TEXT_PROFILE_MODELS),
+			...Object.values(JSON_PROFILE_MODELS)
 		]) {
 			expect(route).not.toContain(PARETO_MODEL);
 		}
+	});
+
+	it('allows explicit MiMo 2.6 Flash evaluation without bypassing the production ZDR gate', () => {
+		expect(ACTIVE_RUNTIME_MODEL_SET.has(XIAOMI_MIMO_V26_FLASH_MODEL)).toBe(true);
+		expect(ensureToolCompatibleModels([XIAOMI_MIMO_V26_FLASH_MODEL])).toEqual([
+			XIAOMI_MIMO_V26_FLASH_MODEL
+		]);
+		expect(supportsJsonMode(XIAOMI_MIMO_V26_FLASH_MODEL)).toBe(true);
+		for (const route of [
+			OPENROUTER_V2_TEXT_MODELS,
+			OPENROUTER_V2_JSON_MODELS,
+			OPENROUTER_V2_TOOL_MODELS,
+			OPENROUTER_V2_MULTIMODAL_MODELS,
+			...Object.values(TEXT_PROFILE_MODELS),
+			...Object.values(JSON_PROFILE_MODELS)
+		]) {
+			expect(route).not.toContain(XIAOMI_MIMO_V26_FLASH_MODEL);
+		}
+		expect(
+			selectModelsByRequirements(
+				{ [XIAOMI_MIMO_V26_FLASH_MODEL]: MODEL_CATALOG[XIAOMI_MIMO_V26_FLASH_MODEL]! },
+				{},
+				'json'
+			)
+		).toEqual([]);
 	});
 
 	it('preserves requested order while filtering to tool-capable models', () => {
@@ -304,7 +330,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GPT_56_LUNA_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GLM_53_FLASH_MODEL);
-		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GROK_46_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GROK_47_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(KIMI_K3_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(KIMI_CODING_MODEL);
@@ -319,7 +345,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GPT_56_LUNA_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GLM_53_FLASH_MODEL);
-		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GROK_46_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GROK_47_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(KIMI_K3_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
@@ -337,7 +363,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GPT_56_LUNA_MODEL);
-		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GROK_46_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GROK_47_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(KIMI_K3_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(KIMI_CODING_MODEL);
@@ -359,7 +385,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(TEXT_PROFILE_MODELS.quality).not.toContain(GLM_52_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(DEEPSEEK_V4_PRO_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(GPT_56_LUNA_MODEL);
-		expect(TEXT_PROFILE_MODELS.quality).toContain(GROK_46_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality).toContain(GROK_47_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).not.toContain(KIMI_K3_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).not.toContain(KIMI_CODING_MODEL);
 		expect(TEXT_PROFILE_MODELS.creative[0]).toBe(GLM_53_FLASH_MODEL);
@@ -367,7 +393,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(TEXT_PROFILE_MODELS.maximum).toEqual([...MAXIMUM_WORK_MODEL_ORDER]);
 		expect(TEXT_PROFILE_MODELS.maximum[0]).toBe(MAXIMUM_WORK_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).toContain(GPT_56_LUNA_MODEL);
-		expect(TEXT_PROFILE_MODELS.maximum).toContain(GROK_46_MODEL);
+		expect(TEXT_PROFILE_MODELS.maximum).toContain(GROK_47_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).toContain(GLM_53_FLASH_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).not.toContain(KIMI_CODING_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).not.toContain(KIMI_EXPERIMENT_MODEL);
@@ -379,7 +405,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(JSON_PROFILE_MODELS.powerful).toContain(GLM_52_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum[0]).toBe(KIMI_K3_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).toContain(GPT_56_LUNA_MODEL);
-		expect(JSON_PROFILE_MODELS.maximum).toContain(GROK_46_MODEL);
+		expect(JSON_PROFILE_MODELS.maximum).toContain(GROK_47_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).toContain(GLM_53_FLASH_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).not.toContain(KIMI_CODING_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
@@ -411,7 +437,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(supportsJsonMode(TENCENT_HY3_MODEL)).toBe(false);
 		expect(supportsJsonMode(POOLSIDE_LAGUNA_XS_21_MODEL)).toBe(false);
 		expect(supportsJsonMode(GPT_56_LUNA_MODEL)).toBe(true);
-		expect(supportsJsonMode(GROK_46_MODEL)).toBe(true);
+		expect(supportsJsonMode(GROK_47_MODEL)).toBe(true);
 		expect(supportsJsonMode(KIMI_K3_MODEL)).toBe(true);
 		expect(supportsJsonMode(KIMI_EXPERIMENT_MODEL)).toBe(true);
 		expect(supportsJsonMode(KIMI_CODING_MODEL)).toBe(true);

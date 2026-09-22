@@ -1,6 +1,7 @@
 // packages/agentic-chat-runtime/src/loop/completion-receipt.ts
 import type { FastToolExecution } from './shared';
 import { isWriteLedgerToolExecution, didGatewayExecSucceed } from './tool-classification';
+import { extractReviewedRequestExpectation } from './request-expectation';
 import {
 	type TurnContract,
 	type TurnContractOutcomeResult,
@@ -20,10 +21,10 @@ import {
  *
  * - each `stage` is one reviewer-approved batch, bound to the exact batch
  *   SHA-256 the reviewer echoed, with the write executions that ran under it;
- * - `request` is the host's verdict on the entire request, taken from the
- *   reviewed contract resolution. Without a reviewed contract there is no
+ * - `request` is the host's verdict on the durable request, taken from the
+ *   first reviewer's pre-write checklist or an explicit contract. Without either there is no
  *   request-level expectation to verify, so the verdict is `request_unverified`,
- *   never fulfilled. A post-start partial failure or an uncertain commit can
+ *   never fulfilled. Implicit contracts only describe attempted writes. A post-start partial failure or an uncertain commit can
  *   never become fulfilled either.
  *
  * Only `request_fulfilled` may ever justify a host-rendered final change summary
@@ -61,7 +62,9 @@ export type AgenticChatCompletionReceiptV1 = {
 	version: typeof AGENTIC_CHAT_COMPLETION_RECEIPT_VERSION;
 	/** SHA-256 of the reviewed contract bytes, when a contract governed the turn. */
 	contractSha256: string | null;
-	expectation: 'turn_contract' | 'none';
+	expectation: 'turn_contract' | 'reviewed_request' | 'none';
+	/** Frozen before writes by the first batch reviewer; never inferred from saved writes. */
+	requestExpectation?: TurnContract;
 	stages: AgenticChatCompletionStageV1[];
 	/** Successful writes that ran outside any approved stage (simple direct writes). */
 	unreviewedWriteCallIds: string[];
@@ -122,8 +125,12 @@ export function buildAgenticChatCompletionReceiptV1(
 	}
 	if (open) stages.push(finishStage(open));
 
+	const requestExpectation = extractReviewedRequestExpectation(executions);
+	// An implicit contract describes attempted writes, not the user's request.
+	const declaredContract = input.contract?.source !== 'implicit' ? input.contract : null;
+	const expectation = requestExpectation ?? declaredContract;
 	const resolution = resolveTurnContractOutcome({
-		contract: input.contract,
+		contract: expectation,
 		toolExecutions: executions,
 		finishedReason: input.finishedReason
 	});
@@ -133,7 +140,7 @@ export function buildAgenticChatCompletionReceiptV1(
 	if (partialFailureClass === 'uncertain_external_commit') {
 		disposition = 'request_uncertain';
 		reasons.push('uncertain_external_commit');
-	} else if (!input.contract) {
+	} else if (!expectation) {
 		disposition = 'request_unverified';
 		reasons.push('no_reviewed_contract');
 		if (partialFailureClass) reasons.push(`partial_failure:${partialFailureClass}`);
@@ -141,6 +148,9 @@ export function buildAgenticChatCompletionReceiptV1(
 		disposition = 'request_partial';
 		reasons.push(`partial_failure:${partialFailureClass}`);
 		if (!resolution.fulfilled) reasons.push(`outcome_${resolution.status}`);
+	} else if (input.finishedReason === 'mutation_unfulfilled' && resolution.fulfilled) {
+		disposition = 'request_partial';
+		reasons.push('mutation_unfulfilled');
 	} else if (resolution.fulfilled) {
 		disposition = 'request_fulfilled';
 	} else {
@@ -165,8 +175,13 @@ export function buildAgenticChatCompletionReceiptV1(
 
 	return {
 		version: AGENTIC_CHAT_COMPLETION_RECEIPT_VERSION,
-		contractSha256: input.contract ? input.contractSha256 : null,
-		expectation: input.contract ? 'turn_contract' : 'none',
+		contractSha256: declaredContract ? input.contractSha256 : null,
+		expectation: requestExpectation
+			? 'reviewed_request'
+			: declaredContract
+				? 'turn_contract'
+				: 'none',
+		...(requestExpectation ? { requestExpectation } : {}),
 		stages,
 		unreviewedWriteCallIds,
 		failedUnreviewedWriteCallIds,
@@ -185,7 +200,7 @@ export function isAgenticChatRequestFulfilledV1(
 ): boolean {
 	return (
 		receipt?.version === AGENTIC_CHAT_COMPLETION_RECEIPT_VERSION &&
-		receipt.expectation === 'turn_contract' &&
+		receipt.expectation !== 'none' &&
 		receipt.request.disposition === 'request_fulfilled' &&
 		receipt.stages.every((stage) => stage.disposition === 'stage_approved')
 	);

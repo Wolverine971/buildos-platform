@@ -15,6 +15,7 @@ export * from './durable-text-validation';
 export * from './entity-kind-repair';
 export * from './entity-result-materialization';
 export * from './completion-receipt';
+export * from './request-expectation';
 export * from './finalization-guard';
 export * from './model-routing-types';
 export * from './no-tool-synthesis';

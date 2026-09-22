@@ -16,7 +16,9 @@ import {
 } from '@buildos/shared-types';
 import {
 	type MutationBatch,
-	serializeMutationBatchForReview
+	type TurnContract,
+	serializeMutationBatchForReview,
+	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from '../contracts';
 import { providerError } from '../protocol';
@@ -52,6 +54,13 @@ export const MUTATION_BATCH_REVIEW_SYSTEM_PROMPT = [
 		'For a correction to an existing short scalar argument (such as priority, date, state, or ID), include argument_checks with the one-based call number, argument_path, and required_value grounded in user intent or the schema. Compare that required value with the exact held argument before rejecting. These checks are evidence only and never authorize or edit a call. For structural corrections and document prose, explain the defect without copying content into checks.',
 		'Do not request a revision whose only correction is to add calls that cannot execute until this batch returns IDs. Never invent IDs or accept unsupported label arguments as substitutes. Still reject wrong or uncommissioned arguments in the prerequisite calls themselves.',
 		'Calls run in the order shown. A call may carry call_ref and after to wait for an earlier call in the same batch; those fields only order execution and cannot substitute returned IDs into arguments.'
+	],
+	[
+		'Whole-request completion checklist',
+		'On the first approval, supply request_expectation from the original user commission, independently of which calls are currently proposed. Include every requested durable outcome, count, existing target, required field and scalar value. Include later dependent stages even though their IDs do not exist yet. Do not infer completion expectations from the writes that happened.',
+		'For example, when asked to create tasks and link their dependencies, enumerate the named task creates with labels, and the future relationship outcomes with src_label/dst_label and the required rel. Prerequisite-only batches may still be approved; the checklist keeps the links owed.',
+		'This checklist uses the existing outcome format only for completion checking. It does not authorize calls, replace the batch digest, or ask the acting model to declare a contract. Do not copy document bodies into it; list content in required_fields and check exact text against the original user wording at each batch review.',
+		'When a frozen request expectation is supplied, preserve it. A later stage cannot remove unfinished outcomes, change counts, or replace requested values to match the work already done. Omit request_expectation on subsequent approvals.'
 	],
 	[
 		'Enumerate before judging',
@@ -96,7 +105,8 @@ export function buildMutationBatchReviewRequest(
 	batch: MutationBatch,
 	batchSha256: string,
 	allowDispositionCorrection: boolean,
-	allowRevision: boolean
+	allowRevision: boolean,
+	requestExpectation: TurnContract | null = null
 ): AgenticChatTurnProviderRequestV1 {
 	const surface = surfaceFor('mutation_batch_review', availableTools, {
 		allowRevision,
@@ -122,6 +132,9 @@ export function buildMutationBatchReviewRequest(
 					`Exact proposed batch SHA-256: ${batchSha256}`,
 					`Exact proposed calls (these execute unchanged on approval): ${formatMutationBatchForReview(batch)}`,
 					`Admitted capabilities for subsequent stages: ${availableTools.map((tool) => tool.function.name).join(', ')}.`,
+					requestExpectation
+						? `Frozen request expectation (completion only, not write authority): ${JSON.stringify(serializeTurnContractForDeclaration(requestExpectation))}`
+						: 'Establish the whole-request expectation in this approval before these writes execute.',
 					`Schemas of the proposed tools: ${canonicalizeAgenticChatJson(
 						proposedSchemas.map((tool) => tool.function) as unknown as JsonValue
 					)}`,
@@ -130,6 +143,28 @@ export function buildMutationBatchReviewRequest(
 			}
 		],
 		...surface,
+		tools: surface.tools.map((tool) => {
+			if (
+				requestExpectation ||
+				tool.function.name !== MUTATION_BATCH_REVIEW_APPROVAL_TOOL.function.name
+			)
+				return tool;
+			return {
+				...tool,
+				function: {
+					...tool.function,
+					parameters: {
+						...tool.function.parameters,
+						required: [
+							...(Array.isArray(tool.function.parameters.required)
+								? tool.function.parameters.required
+								: []),
+							'request_expectation'
+						]
+					}
+				}
+			};
+		}),
 		providerRound: 'synthesis',
 		passRole: 'mutation_review',
 		semanticDispositionGate: false
@@ -201,6 +236,11 @@ export function buildMutationBatchRevisionRequest(
 				}
 			],
 			tools: availableTools,
+			// Stays `auto`: a reviewer's correction can leave nothing to execute
+			// (the user asked for the project only), and a forced tool call then
+			// re-proposes writes that already landed. The 2026-09-22 DeepSeek gate
+			// created a project twice that way; same-turn replay protection in the
+			// provider now refuses identical batches regardless of this choice.
 			toolChoice: availableTools.length > 0 ? 'auto' : 'none',
 			passRole: 'repair'
 		},

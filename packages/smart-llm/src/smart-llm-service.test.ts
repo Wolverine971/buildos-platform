@@ -11,7 +11,7 @@ import {
 	GEMINI_37_FLASH_MODEL,
 	GLM_52_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL,
+	GROK_47_MODEL,
 	KIMI_K3_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from './model-config';
@@ -1002,14 +1002,14 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		await llm.getJSONResponse({
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'Grade this result.',
-			models: [GPT_56_LUNA_MODEL, KIMI_K3_MODEL, GROK_46_MODEL],
+			models: [GPT_56_LUNA_MODEL, KIMI_K3_MODEL, GROK_47_MODEL],
 			profile: 'custom',
 			temperature: 0,
 			userId: 'custom-chain-test'
 		});
 
 		expect(requestBodies[0]?.model).toBe(GPT_56_LUNA_MODEL);
-		expect(requestBodies[0]?.models).toEqual([KIMI_K3_MODEL, GROK_46_MODEL]);
+		expect(requestBodies[0]?.models).toEqual([KIMI_K3_MODEL, GROK_47_MODEL]);
 		expect(requestBodies[0]?.models).not.toContain(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[0]?.models).not.toContain(ACTIVE_EXPERIMENT_MODEL);
 	});

@@ -34,7 +34,9 @@ import {
 	isAgenticChatStandardControlToolNameV1,
 	isAgenticChatWebEgressToolName,
 	normalizeAgenticChatWebSearchArguments,
-	searchTelemetryColumns
+	parseRequestExpectation,
+	searchTelemetryColumns,
+	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import { runWithAbortableDeadline } from '../abortableDeadline';
 import type { AgenticChatReadToolPortV1 } from '../turn-executor';
@@ -162,10 +164,17 @@ const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
 				'Mutation batch review approval failed: provide a reason and the exact reviewed batch SHA-256.'
 			);
 		}
+		const expectation = parseRequestExpectation(args.request_expectation);
+		if (args.request_expectation !== undefined && !expectation) {
+			throw new Error('Mutation batch review approval failed: invalid request expectation.');
+		}
 		return Promise.resolve({
 			status: 'mutation_batch_review_approved',
 			reason,
 			batch_sha256: batchSha256,
+			...(expectation
+				? { request_expectation: serializeTurnContractForDeclaration(expectation) }
+				: {}),
 			instruction:
 				'The independently reviewed calls may execute exactly as reviewed. The worker runs them; do not re-propose them.'
 		});

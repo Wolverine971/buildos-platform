@@ -6,7 +6,13 @@ import {
 	buildAgenticChatCompletionReceiptV1,
 	isAgenticChatRequestFulfilledV1
 } from './completion-receipt';
-import { type TurnContract, parseDeclaredTurnContract } from './turn-contract';
+import {
+	type TurnContract,
+	deriveImplicitTurnContract,
+	parseDeclaredTurnContract,
+	serializeTurnContractForDeclaration
+} from './turn-contract';
+import { extractReviewedRequestExpectation } from './request-expectation';
 
 const PERMIT = 'a1000000-0000-4000-8000-000000000001';
 const CABINETS = 'a2000000-0000-4000-8000-000000000002';
@@ -37,6 +43,22 @@ function approval(id: string, sha: string): FastToolExecution {
 	return execution('approve_mutation_batch_review', { reason: 'ok', batch_sha256: sha }, id, {
 		result: { status: 'mutation_batch_review_approved', batch_sha256: sha }
 	});
+}
+
+function requestApproval(id = 'approve-request', expectation = contract()): FastToolExecution {
+	const request_expectation = serializeTurnContractForDeclaration(expectation);
+	return execution(
+		'approve_mutation_batch_review',
+		{ batch_sha256: SHA_A, request_expectation },
+		id,
+		{
+			result: {
+				status: 'mutation_batch_review_approved',
+				batch_sha256: SHA_A,
+				request_expectation
+			}
+		}
+	);
 }
 
 function createTask(id: string, taskId: string, title: string, due?: string): FastToolExecution {
@@ -103,6 +125,102 @@ const CREATES = [
 ];
 
 describe('buildAgenticChatCompletionReceiptV1', () => {
+	it('never promotes an after-the-fact implicit contract into whole-request completion', () => {
+		const executions = [approval('old-approval', SHA_A), ...CREATES];
+		const receipt = buildAgenticChatCompletionReceiptV1({
+			contract: deriveImplicitTurnContract(executions),
+			contractSha256: CONTRACT_SHA,
+			toolExecutions: executions,
+			finishedReason: 'stop'
+		});
+		expect(receipt).toMatchObject({
+			expectation: 'none',
+			contractSha256: null,
+			request: {
+				disposition: 'request_unverified',
+				reasons: ['no_reviewed_contract']
+			}
+		});
+		expect(isAgenticChatRequestFulfilledV1(receipt)).toBe(false);
+	});
+
+	it('uses the pre-write request checklist to catch a dependency that was never proposed', () => {
+		const executions = [requestApproval(), ...CREATES];
+		const receipt = buildAgenticChatCompletionReceiptV1({
+			contract: deriveImplicitTurnContract(executions),
+			contractSha256: CONTRACT_SHA,
+			toolExecutions: executions,
+			finishedReason: 'stop'
+		});
+		expect(receipt.expectation).toBe('reviewed_request');
+		expect(receipt.request.disposition).toBe('request_partial');
+		expect(receipt.request.outcomes.map((outcome) => outcome.fulfilled)).toEqual([
+			true,
+			true,
+			false
+		]);
+		expect(receipt.requestExpectation).toEqual(contract());
+		expect(isAgenticChatRequestFulfilledV1(receipt)).toBe(false);
+	});
+
+	it.each([
+		['correct', CABINETS, PERMIT, true, 'request_fulfilled'],
+		['reversed', PERMIT, CABINETS, true, 'request_partial'],
+		['wrong target', ELECTRICAL, PERMIT, true, 'request_partial'],
+		['failed', CABINETS, PERMIT, false, 'request_partial']
+	] as const)(
+		'reconciles a later %s dependency using IDs from the saved creates',
+		(_, src, dst, ok, disposition) => {
+			const receipt = buildAgenticChatCompletionReceiptV1({
+				contract: null,
+				contractSha256: null,
+				finishedReason: 'stop',
+				toolExecutions: [
+					requestApproval(),
+					...CREATES,
+					approval('approve-link', SHA_B),
+					link('link', src, dst, ok)
+				]
+			});
+			expect(receipt.request.disposition).toBe(disposition);
+			expect(isAgenticChatRequestFulfilledV1(receipt)).toBe(
+				disposition === 'request_fulfilled'
+			);
+		}
+	);
+
+	it('does not let a later approval shrink the original checklist', () => {
+		const smaller = { ...contract(), outcomes: contract().outcomes.slice(0, 2) };
+		const executions = [requestApproval(), ...CREATES, requestApproval('shrink', smaller)];
+		expect(extractReviewedRequestExpectation(executions)).toEqual(contract());
+	});
+
+	it.each(['late', 'missing-first', 'mismatched-result', 'failed-approval', 'invalid'])(
+		'does not trust a %s request expectation',
+		(mode) => {
+			const approved = requestApproval();
+			let executions: FastToolExecution[] = [approved, ...CREATES];
+			if (mode === 'late') executions = [...CREATES, approved];
+			if (mode === 'missing-first')
+				executions = [approval('old', SHA_A), approved, ...CREATES];
+			if (mode === 'mismatched-result')
+				approved.result.result = {
+					...approved.result.result,
+					request_expectation: serializeTurnContractForDeclaration({
+						...contract(),
+						outcomes: contract().outcomes.slice(0, 2)
+					})
+				};
+			if (mode === 'failed-approval') approved.result.success = false;
+			if (mode === 'invalid')
+				approved.result.result = {
+					...approved.result.result,
+					request_expectation: { outcomes: [] }
+				};
+			expect(extractReviewedRequestExpectation(executions)).toBeNull();
+		}
+	);
+
 	it('fulfils only when every reviewed outcome is met across all approved stages', () => {
 		const receipt = buildAgenticChatCompletionReceiptV1({
 			contract: contract(),

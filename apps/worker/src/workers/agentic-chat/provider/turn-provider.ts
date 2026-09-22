@@ -24,12 +24,17 @@ import {
 	buildRoundToolPattern,
 	buildWriteLedger,
 	classifyReceiptGroundedAssistantDisposition,
+	extractReviewedRequestExpectation,
 	isControlToolName,
 	mergeTurnContracts,
 	mutationBatchSha256,
 	parseDeclaredTurnContract,
+	parseRequestExpectation,
+	requestExpectationsMatch,
 	resolveTurnContractOutcome,
 	sanitizeAssistantFinalText,
+	serializeMutationBatchForReview,
+	serializeTurnContractForDeclaration,
 	turnContractCreatesProject
 } from '@buildos/agentic-chat-runtime/loop';
 import {
@@ -108,9 +113,10 @@ import {
 } from './protocol';
 import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
 import { streamBufferedProviderPass } from './provider-pass';
+import { TurnCreateReplayGuard, createReplayRepairInstruction } from './create-replay';
 import {
 	type SurfaceRepairContext,
-	buildBatchPromiseRepairRequest,
+	buildEmptyReplyRepairRequest,
 	buildPartialMutationBatchSynthesisInstruction,
 	buildProviderPassBudgetSynthesisInstruction,
 	buildRequiredPassProseFallbackRequest,
@@ -118,7 +124,6 @@ import {
 	buildUnavailableSkillRepairRequest,
 	buildUnavailableSurfaceToolRepairRequest,
 	buildValidationRepairExhaustedSynthesisInstruction,
-	hasUnfinishedBatchAction,
 	renderWriteReceiptFallback
 } from './repair-policy';
 import {
@@ -235,7 +240,11 @@ type ToolRoundStreamState = {
 	takeWithheldMutationBatch(
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[]
-	): { batch: MutationBatch; sha256: string } | null;
+	):
+		| { batch: MutationBatch; sha256: string }
+		| { replayRepair: ClientRequest }
+		| { replayRefusal: true; fallback: string; finishedReason: 'stop' | 'mutation_unfulfilled' }
+		| null;
 	getHeldMutationBatch(): {
 		batch: MutationBatch;
 		calls: readonly CompletedProviderToolCall[];
@@ -255,10 +264,9 @@ type ToolRoundStreamState = {
 	hasIncompleteApprovedContract(): boolean;
 	/** One bounded pass that sends the model back to finish the approved contract. */
 	takeContractCompletionContinuation(request: ClientRequest): ClientRequest | null;
-	takeBatchPromiseContinuation(
-		request: ClientRequest,
-		assistantCandidate: string
-	): { request: ClientRequest } | { fallback: string } | null;
+	getRequestExpectation(): TurnContract | null;
+	takeRequestCompletionContinuation(request: ClientRequest): ClientRequest | null;
+	getRequestCompletionFallback(): string | null;
 	validateApprovedMutations(calls: readonly CompletedProviderToolCall[]): ToolValidationIssue[];
 	/** Scheduling values this turn's reads loaded, so a no-op reschedule fails validation. */
 	getLoadedTaskSchedules(): ReadonlyMap<string, LoadedTaskSchedule>;
@@ -409,9 +417,15 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		} | null = null;
 		let pendingBatchReviewSha256: string | null = null;
 		let approvedMutationBatch: MutationBatch | null = null;
+		// Digests of reviewed batches this turn already executed. A re-proposal of
+		// the same bytes is a replay, never a new proposal (2026-09-22 gate, case 1).
+		const executedMutationBatchShas = new Set<string>();
+		const createReplayGuard = new TurnCreateReplayGuard();
+		let createReplayRepairUsed = false;
 		let rejectedMutationBatch: MutationBatch | null = null;
 		let reviewedBatchExecuted = false;
-		let batchPromiseContinuationUsed = false;
+		let requestCompletionContinuationUsed = false;
+		let requestExpectation: TurnContract | null = null;
 		let batchRevisionCount = 0;
 		// Every completed tool round this turn, so contract labels can bind to the
 		// entities created in earlier rounds before later writes are authorized.
@@ -473,13 +487,14 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		// What the turn still owes the user when a budget ends it. Declared
 		// outcomes no successful write fulfilled, in the contract's own words.
 		const unfinishedContractOutcomeDescriptions = (): string[] => {
-			if (!turnContract) return [];
+			const expectation = requestExpectation ?? turnContract;
+			if (!expectation) return [];
 			const resolution = resolveTurnContractOutcome({
-				contract: turnContract,
+				contract: expectation,
 				toolExecutions: turnToolExecutions
 			});
 			if (resolution.fulfilled) return [];
-			return turnContract.outcomes
+			return expectation.outcomes
 				.filter((_, index) => resolution.outcomes[index]?.fulfilled === false)
 				.map((outcome) =>
 					[
@@ -717,6 +732,67 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				);
 				const batch = buildMutationBatch(mutationCalls);
 				const sha256 = mutationBatchSha256(batch);
+				const repeats = createReplayGuard.find(mutationCalls);
+				const exactBatchReplay = executedMutationBatchShas.has(sha256);
+				const onlySavedBatch = exactBatchReplay && calls.length === mutationCalls.length;
+				const onlySavedCreates =
+					repeats.length === calls.length &&
+					repeats.every((repeat) => repeat.exactSavedReplay) &&
+					new Set(repeats.map((repeat) => repeat.attempts[0]!.callId)).size ===
+						calls.length;
+				if (exactBatchReplay || repeats.length > 0) {
+					const ledger = buildWriteLedger(turnToolExecutions);
+					const unconfirmed = ledger.some((entry) => entry.status !== 'success');
+					// A changed create is a collision, not proof the changed fields
+					// were saved. A mixed batch is withheld intact so call_ref/after
+					// cannot bind to a removed call. One correction can reuse saved
+					// IDs and submit only the still-needed work for fresh review.
+					if (
+						repeats.length > 0 &&
+						!onlySavedBatch &&
+						!onlySavedCreates &&
+						!unconfirmed &&
+						!createReplayRepairUsed
+					) {
+						createReplayRepairUsed = true;
+						return {
+							replayRepair: appendSystemInstruction(
+								{
+									...value,
+									messages: [
+										...value.messages,
+										{
+											role: 'assistant',
+											content: `Previous withheld proposal (unexecuted, not authorization or a receipt):\n${JSON.stringify(serializeMutationBatchForReview(buildMutationBatch(calls)))}`
+										}
+									],
+									logicalProviderRound: value.logicalProviderRound + 1,
+									providerAttempt: undefined,
+									passRole: 'repair',
+									toolChoice: 'auto'
+								},
+								createReplayRepairInstruction(repeats)
+							)
+						};
+					}
+					const unfinished = unfinishedContractOutcomeDescriptions();
+					if (!onlySavedBatch && !onlySavedCreates) {
+						unfinished.push(
+							'The new or changed actions in the repeated proposal were not executed.'
+						);
+					}
+					const partial = unconfirmed || unfinished.length > 0;
+					const introduction = partial
+						? 'I stopped a repeated attempt. Some requested work is not confirmed complete. These changes were saved:'
+						: 'Those changes were already saved earlier in this turn, so nothing was repeated:';
+					return {
+						replayRefusal: true,
+						finishedReason: partial ? 'mutation_unfulfilled' : 'stop',
+						fallback:
+							renderWriteReceiptFallback(ledger, unfinished, introduction) ??
+							'I stopped a repeated attempt. No saved changes are confirmed. Check the affected items before retrying; no further work is running.'
+					};
+				}
 				heldMutationBatch = { batch, calls: mutationCalls, sha256 };
 				pendingBatchReviewSha256 = sha256;
 				advance({ type: 'withhold_batch' });
@@ -806,30 +882,58 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				advance({ type: 'completion' });
 				return continuation;
 			},
-			takeBatchPromiseContinuation(value, candidate) {
+			getRequestExpectation() {
+				return requestExpectation;
+			},
+			takeRequestCompletionContinuation(value) {
+				const expectation = requestExpectation;
 				if (
-					!mutationBatchLaneEnabled ||
 					!reviewedBatchExecuted ||
+					!expectation ||
+					requestCompletionContinuationUsed ||
 					phase !== 'mutating' ||
-					value.toolChoice !== 'auto' ||
-					!hasUnfinishedBatchAction(candidate)
+					value.toolChoice !== 'auto'
 				)
 					return null;
+				const remaining = unfinishedContractOutcomeDescriptions();
+				if (!remaining.length) return null;
 				const ledger = buildWriteLedger(turnToolExecutions);
-				// Partial/uncertain effects follow the existing receipt-only path.
-				if (!ledger.length || ledger.some((entry) => entry.status !== 'success'))
-					return null;
-				if (batchPromiseContinuationUsed) {
-					return {
-						fallback: renderWriteReceiptFallback(
-							ledger,
-							[],
-							'I saved the changes below, but the additional step was not completed. The remaining work is still pending.'
-						)!
-					};
-				}
-				batchPromiseContinuationUsed = true;
-				return { request: buildBatchPromiseRepairRequest(value) };
+				// An uncertain/failed write must not become a blind retry.
+				if (ledger.some((entry) => entry.status !== 'success')) return null;
+				requestCompletionContinuationUsed = true;
+				return appendSystemInstruction(
+					{
+						...value,
+						logicalProviderRound: value.logicalProviderRound + 1,
+						providerAttempt: undefined,
+						passRole: 'repair',
+						toolChoice: 'auto'
+					},
+					[
+						'The proposed final answer was withheld: the original request still has unfulfilled outcomes.',
+						`Frozen completion checklist (not write permission): ${JSON.stringify(serializeTurnContractForDeclaration(expectation))}`,
+						`Still unfulfilled: ${JSON.stringify(remaining)}.`,
+						'Use the successful execution receipts and returned IDs already in the conversation. Complete only missing work; never repeat saved creates or retry uncertain writes. Any new mutation must pass the normal independent batch review. Do not change the checklist to match what happened.',
+						'If you cannot complete the missing work safely, say what remains undone. Do not claim the entire request is complete.'
+					].join('\n')
+				);
+			},
+			getRequestCompletionFallback() {
+				if (!reviewedBatchExecuted) return null;
+				const expectation = requestExpectation;
+				const remaining = unfinishedContractOutcomeDescriptions();
+				if (expectation && remaining.length === 0) return null;
+				const introduction = expectation
+					? 'Some requested work is still unfinished. These changes were saved:'
+					: 'I can confirm the saved changes below, but could not verify that the entire request is complete:';
+				return (
+					renderWriteReceiptFallback(
+						buildWriteLedger(turnToolExecutions),
+						remaining,
+						introduction
+					) ??
+					`No saved changes are confirmed. ${remaining.length ? `Still pending: ${remaining.join('; ')}.` : 'The entire request could not be verified.'}`
+				);
 			},
 			validateApprovedMutations(calls) {
 				// Production assembly refuses mutation capabilities without this lane.
@@ -989,8 +1093,13 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					};
 				});
 				turnToolExecutions.push(...roundExecutions);
+				requestExpectation = extractReviewedRequestExpectation(turnToolExecutions);
+				createReplayGuard.record(roundExecutions);
 				if (roundContainsMutation) refreshLabelBindings();
 				if (reviewedMutationCompleted) {
+					if (approvedMutationBatch) {
+						executedMutationBatchShas.add(mutationBatchSha256(approvedMutationBatch));
+					}
 					reviewedBatchExecuted = true;
 					approvedMutationBatch = null;
 					heldMutationBatch = null;
@@ -1147,6 +1256,22 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						);
 					}
 					const approved = heldMutationBatch;
+					const proposedExpectation = parseRequestExpectation(
+						batchReviewApproval.arguments.request_expectation
+					);
+					const persistedExpectation = parseRequestExpectation(
+						approvalResult.request_expectation
+					);
+					if (
+						proposedExpectation &&
+						(!persistedExpectation ||
+							!requestExpectationsMatch(proposedExpectation, persistedExpectation))
+					) {
+						throw providerError(
+							'provider_request_expectation_identity_mismatch',
+							'permanent'
+						);
+					}
 					pendingBatchReviewSha256 = null;
 					approvedMutationBatch = approved.batch;
 					advance({ type: 'review', decision: 'approve_batch' });
@@ -1430,6 +1555,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				state.hasIncompleteApprovedContract() ||
 				request.semanticDispositionGate === true);
 		const holdAssistantText =
+			state.getRequestCompletionFallback() !== null ||
 			holdAssistantTextForTurnContract ||
 			(initial && canRequirePreMutationSemanticDisposition(request)) ||
 			// A subsequent batch can need review after the disposition controls
@@ -1584,6 +1710,28 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						// reviewer judges, so there is nothing to ask the model for
 						// before review and nothing to ask it for after approval.
 						const withheldBatch = state.takeWithheldMutationBatch(request, calls);
+						if (withheldBatch && 'replayRepair' in withheldBatch) {
+							state.setCurrentRequest(withheldBatch.replayRepair);
+							keepLease = true;
+							yield* this.streamActingPass(
+								withheldBatch.replayRepair,
+								usage,
+								state,
+								continuationOptions
+							);
+							return;
+						}
+						if (withheldBatch && 'replayRefusal' in withheldBatch) {
+							yield textDelta(withheldBatch.fallback);
+							this.ports.capacity.markAvailable(request.turnRunId);
+							state.advance({ type: 'finish' });
+							yield {
+								type: 'finish',
+								finishedReason: withheldBatch.finishedReason,
+								usage
+							};
+							return;
+						}
 						if (withheldBatch) {
 							keepLease = true;
 							yield* this.streamMutationBatchReview(
@@ -1733,26 +1881,24 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					);
 					return;
 				}
-				const batchContinuation = state.takeBatchPromiseContinuation(
-					request,
-					assistantCandidate
-				);
-				if (batchContinuation) {
-					if ('request' in batchContinuation) {
-						state.setCurrentRequest(batchContinuation.request);
-						keepLease = true;
-						yield* this.streamActingPass(
-							batchContinuation.request,
-							usage,
-							state,
-							continuationOptions
-						);
-					} else {
-						yield textDelta(batchContinuation.fallback);
-						this.ports.capacity.markAvailable(request.turnRunId);
-						state.advance({ type: 'finish' });
-						yield { type: 'finish', finishedReason: 'mutation_unfulfilled', usage };
-					}
+				const requestCompletion = state.takeRequestCompletionContinuation(request);
+				if (requestCompletion) {
+					state.setCurrentRequest(requestCompletion);
+					keepLease = true;
+					yield* this.streamActingPass(
+						requestCompletion,
+						usage,
+						state,
+						continuationOptions
+					);
+					return;
+				}
+				const requestFallback = state.getRequestCompletionFallback();
+				if (requestFallback) {
+					yield textDelta(requestFallback);
+					this.ports.capacity.markAvailable(request.turnRunId);
+					state.advance({ type: 'finish' });
+					yield { type: 'finish', finishedReason: 'mutation_unfulfilled', usage };
 					return;
 				}
 				if (holdAssistantTextForTurnContract) {
@@ -1789,6 +1935,21 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					yield textDelta(assistantCandidate);
 				}
 				if (!streamedText) {
+					// An empty completion after saved writes turned case 2 of the
+					// 2026-09-22 gate into a permanent failure. Re-ask once; a second
+					// empty reply still fails the pass.
+					const emptyReplyRepair = buildEmptyReplyRepairRequest(request);
+					if (emptyReplyRepair) {
+						state.setCurrentRequest(emptyReplyRepair);
+						keepLease = true;
+						yield* this.streamActingPass(
+							emptyReplyRepair,
+							usage,
+							state,
+							continuationOptions
+						);
+						return;
+					}
 					throw providerError('provider_no_assistant_text', 'permanent');
 				}
 				this.ports.capacity.markAvailable(request.turnRunId);
@@ -1922,7 +2083,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			batch,
 			batchSha256,
 			allowReadOnlyCorrection,
-			allowRevision
+			allowRevision,
+			state.getRequestExpectation()
 		);
 		let accumulatedReviewUsage = priorUsage;
 		let pendingReviewTool = false;
@@ -1991,7 +2153,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						fallbackReason,
 						batchSha256,
 						batch,
-						allowRevision
+						allowRevision,
+						requestExpectation: state.getRequestExpectation()
 					});
 				} catch (error) {
 					if (
@@ -2302,6 +2465,18 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		let currentRequest = forceToolFreeRequest(request);
 		let accumulatedUsage = priorUsage;
 		try {
+			const requestFallback = state.getRequestCompletionFallback();
+			if (!clarification && requestFallback) {
+				yield state.textDelta(requestFallback, false);
+				this.ports.capacity.markAvailable(request.turnRunId);
+				state.advance({ type: 'finish' });
+				yield {
+					type: 'finish',
+					finishedReason: 'mutation_unfulfilled',
+					usage: accumulatedUsage
+				};
+				return;
+			}
 			for (let retryCount = 0; retryCount <= MAX_FORCED_SYNTHESIS_RETRIES; retryCount += 1) {
 				let finished = false;
 				let requestedTools = false;

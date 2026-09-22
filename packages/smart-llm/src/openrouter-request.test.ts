@@ -4,7 +4,7 @@ import {
 	GEMINI_37_FLASH_MODEL,
 	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL,
+	GROK_47_MODEL,
 	KIMI_K3_MODEL
 } from './model-config';
 import {
@@ -163,7 +163,7 @@ describe('buildOpenRouterChatCompletionBody', () => {
 
 	it('keeps temperature for models that support it', () => {
 		const body = buildOpenRouterChatCompletionBody({
-			model: GROK_46_MODEL,
+			model: GROK_47_MODEL,
 			messages: [{ role: 'user', content: 'Analyze this.' }],
 			temperature: 0.4
 		});

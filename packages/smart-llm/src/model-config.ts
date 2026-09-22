@@ -9,12 +9,13 @@ export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
 export const PARETO_MODEL = 'unbiased/pareto' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
-export const GROK_46_MODEL = 'x-ai/grok-4.6' as const;
+export const GROK_47_MODEL = 'x-ai/grok-4.7' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
 export const DEEPSEEK_V41_FLASH_MODEL = 'deepseek/deepseek-v4.1-flash' as const;
 export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
 export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;
 export const XIAOMI_MIMO_V25_MODEL = 'xiaomi/mimo-v2.5' as const;
+export const XIAOMI_MIMO_V26_FLASH_MODEL = 'xiaomi/mimo-v2.6-flash' as const;
 export const TENCENT_HY3_PREVIEW_MODEL = 'tencent/hy3-preview' as const;
 export const TENCENT_HY3_MODEL = 'tencent/hy3' as const;
 export const GLM_52_MODEL = 'z-ai/glm-5.2' as const;
@@ -27,7 +28,7 @@ export const ACTIVE_EXPERIMENT_MODEL = GLM_53_FLASH_MODEL;
 export const ACTIVE_EXPERIMENT_MODELS = [
 	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL
+	GROK_47_MODEL
 ] as const;
 export const MAXIMUM_WORK_MODEL = KIMI_K3_MODEL;
 // Universal last-resort fallback used only when lane resolution yields no models.
@@ -459,6 +460,53 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
+	[XIAOMI_MIMO_V26_FLASH_MODEL]: {
+		id: XIAOMI_MIMO_V26_FLASH_MODEL,
+		name: 'Xiaomi MiMo-V2.6-Flash',
+		// Xiaomi's launch scorecard places Flash near frontier agent models:
+		// DeepSWE 67.9, AutomationBench 52.3, and Toolathlon 73.6. Keep it
+		// below independently validated premium models until broader telemetry lands.
+		// https://mimo.mi.com/docs/en-US/news/latest/v2-6
+		speed: 4.5,
+		smartness: 4.95,
+		creativity: 4.5,
+		cost: 0.14,
+		outputCost: 0.28,
+		provider: 'xiaomi',
+		bestFor: [
+			'evaluation-only',
+			'low-cost-omnimodal',
+			'agentic-workflows',
+			'long-horizon-coding',
+			'json-mode',
+			'structured-output',
+			'tool-calling',
+			'image-video-audio-understanding',
+			'1m-context',
+			'quality-value-profile'
+		],
+		// OpenRouter exposed only Xiaomi's 30-day-retention endpoint at launch.
+		// BuildOS production requests require ZDR, so keep this explicitly
+		// selectable for anonymized evaluation but out of automatic routes until a
+		// ZDR endpoint appears. MiMo 2.5 remains the production fallback meanwhile.
+		// https://openrouter.ai/providers
+		limitations: [
+			'new-model',
+			'single-provider-xiaomi',
+			'provider-retention-30-days',
+			'non-zdr-endpoint',
+			'not-default-production-routing',
+			'launch-telemetry-limited'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
 	[QWEN_37_PLUS_EXPERIMENT_MODEL]: {
 		id: QWEN_37_PLUS_EXPERIMENT_MODEL,
 		name: 'Qwen 3.7 Plus',
@@ -528,20 +576,26 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	[GROK_46_MODEL]: {
-		id: GROK_46_MODEL,
-		name: 'Grok 4.6',
-		speed: 3.8,
+	[GROK_47_MODEL]: {
+		id: GROK_47_MODEL,
+		name: 'Grok 4.7',
+		// Independent AA testing puts 4.7 at 46.4 on the Intelligence Index and
+		// fourth on its native-harness Coding Agent Index. OpenRouter discounts the
+		// standard endpoint below xAI list price, but doubles rates above 200k input.
+		// https://openrouter.ai/x-ai/grok-4.7
+		speed: 4,
 		smartness: 5,
 		creativity: 4.9,
-		cost: 2,
-		outputCost: 6,
+		cost: 1.6,
+		outputCost: 4.8,
 		provider: 'x-ai',
 		bestFor: [
 			'premium-reasoning',
 			'long-running-agents',
 			'agentic-coding',
 			'visual-application-development',
+			'professional-knowledge-work',
+			'document-and-presentation-creation',
 			'complex-synthesis',
 			'structured-output',
 			'tool-calling',
@@ -552,6 +606,8 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		limitations: [
 			'higher-cost-than-defaults',
 			'premium-evaluation-lane',
+			'long-prompts-double-price',
+			'high-reasoning-token-use',
 			'launch-telemetry-limited'
 		],
 		capabilities: {
@@ -667,10 +723,11 @@ export function modelSupportsCapability(
 	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
 }
 
-// Reviewed 2026-08-26 against OpenRouter model pages/API and production
+// Reviewed 2026-09-21 against OpenRouter model pages/API and production
 // telemetry. Keep models without response_format out of JSON routes, keep
 // premium candidates out of automatic lanes, and reserve K3 for an explicit
-// maximum profile.
+// maximum profile. MiMo 2.6 Flash is explicit-only until OpenRouter offers a
+// ZDR endpoint; MiMo 2.5 remains in production routes until then.
 const OPENROUTER_TEXT_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_37_FLASH_MODEL,
@@ -727,13 +784,13 @@ const JSON_POWERFUL_ROUTE = [
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL,
+	GROK_47_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const JSON_MAXIMUM_ROUTE = [
 	KIMI_K3_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL,
+	GROK_47_MODEL,
 	GLM_53_FLASH_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
@@ -751,21 +808,21 @@ const TEXT_QUALITY_ROUTE = [
 	GLM_53_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL,
+	GROK_47_MODEL,
 	MINIMAX_M3_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const TEXT_CREATIVE_ROUTE = [
 	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL,
+	GROK_47_MODEL,
 	MINIMAX_M3_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const TEXT_MAXIMUM_ROUTE = [
 	KIMI_K3_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL,
+	GROK_47_MODEL,
 	GLM_53_FLASH_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
@@ -779,6 +836,9 @@ export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 		// Explicitly selectable while launch compatibility/capacity is evaluated.
 		// Keep automatic lanes and the old Flash fallback independent of this ID.
 		DEEPSEEK_V41_FLASH_MODEL,
+		// Strong launch benchmarks and value, but the only current OpenRouter
+		// endpoint retains prompts for 30 days and is excluded by production ZDR.
+		XIAOMI_MIMO_V26_FLASH_MODEL,
 		...OPENROUTER_TEXT_ROUTE,
 		...OPENROUTER_JSON_ROUTE,
 		...OPENROUTER_TOOL_ROUTE,

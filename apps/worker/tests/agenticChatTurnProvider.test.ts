@@ -477,6 +477,9 @@ function durableReadFeedbackFor(
 	argumentsValue: JsonObject = {},
 	result: JsonObject = { ok: true }
 ): AgenticChatProviderReadSynthesisInputV1 {
+	if (toolName === 'approve_mutation_batch_review' && argumentsValue.request_expectation) {
+		result = { ...result, request_expectation: argumentsValue.request_expectation };
+	}
 	return {
 		providerToolCallId,
 		toolName,
@@ -7775,8 +7778,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		});
 		expect(capacity.getSnapshot().available).toBe(true);
 
+		const noTextClient = clientWith([{ type: 'done' }]);
 		const noText = new AgenticChatTurnProviderAdapter({
-			client: clientWith([{ type: 'done' }]),
+			client: noTextClient,
 			capacity
 		});
 		const empty = await noText.prepare({
@@ -7788,6 +7792,36 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			code: 'provider_no_assistant_text',
 			failureClass: 'permanent'
 		});
+		// One bounded re-ask, then the permanent failure.
+		expect(noTextClient.stream).toHaveBeenCalledTimes(2);
+		expect(noTextClient.stream.mock.calls[1]?.[0].messages.at(-1)).toMatchObject({
+			role: 'system',
+			content: expect.stringContaining('The previous reply was empty')
+		});
+		expect(capacity.getSnapshot().available).toBe(true);
+
+		const recoveredClient = clientWithRounds([
+			[{ type: 'done' }],
+			[
+				{ type: 'text', content: 'Recovered from receipts.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const recovered = await new AgenticChatTurnProviderAdapter({
+			client: recoveredClient,
+			capacity
+		}).prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		const recoveredSteps = await collect(recovered.stream());
+		expect(recoveredSteps).toEqual([
+			expect.objectContaining({ type: 'text_delta', text: 'Recovered from receipts.' }),
+			expect.objectContaining({ type: 'finish', finishedReason: 'stop' })
+		]);
+		expect(recoveredClient.stream).toHaveBeenCalledTimes(2);
+		expect(recoveredClient.stream.mock.calls[1]?.[0].passRole).toBe('repair');
 
 		const valid = new AgenticChatTurnProviderAdapter({
 			client: clientWith([
@@ -11473,7 +11507,39 @@ describe('SHA-bound mutation batch approval', () => {
 		);
 	}
 
-	function reviewerApproval(sha: string): AgenticChatTurnProviderClientEventV1[] {
+	function requestChecklist(includeLink = false): JsonObject {
+		return {
+			outcomes: [
+				...['Permit', 'Cabinets', 'Rough-in', 'Inspection'].map((title, index) => ({
+					id: `task-${index}`,
+					action: 'create',
+					entity_kind: 'task',
+					description: title,
+					label: `task-${index}`,
+					changes: [{ field: 'title', value: title }],
+					minimum_successful_effects: 1
+				})),
+				...(includeLink
+					? [
+							{
+								id: 'dependency',
+								action: 'link',
+								entity_kind: 'relationship',
+								description: 'Cabinets depends on Permit',
+								src_label: 'task-1',
+								dst_label: 'task-0',
+								changes: [{ field: 'rel', value: 'depends_on' }],
+								minimum_successful_effects: 1
+							}
+						]
+					: [])
+			]
+		};
+	}
+	function reviewerApproval(
+		sha: string,
+		expectation = requestChecklist()
+	): AgenticChatTurnProviderClientEventV1[] {
 		return [
 			{
 				type: 'tool_call',
@@ -11487,7 +11553,8 @@ describe('SHA-bound mutation batch approval', () => {
 							arguments: JSON.stringify({
 								reason: 'The user asked for exactly these four tasks.',
 								batch_sha256: sha,
-								reference_candidates: []
+								reference_candidates: [],
+								request_expectation: expectation
 							})
 						}
 					}
@@ -11499,13 +11566,14 @@ describe('SHA-bound mutation batch approval', () => {
 
 	function batchProvider(
 		client: ReturnType<typeof clientWithRounds>,
-		semanticReviewer: ReturnType<typeof clientWithRounds>
+		semanticReviewer: ReturnType<typeof clientWithRounds>,
+		capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
 	) {
 		return new AgenticChatTurnProviderAdapter(
 			{
 				client,
 				semanticReviewer,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+				capacity
 			},
 			2_000,
 			16,
@@ -11569,7 +11637,8 @@ describe('SHA-bound mutation batch approval', () => {
 						{
 							reason: 'The user asked for exactly these four tasks.',
 							batch_sha256: expectedBatchSha(),
-							reference_candidates: []
+							reference_candidates: [],
+							request_expectation: requestChecklist()
 						},
 						{
 							status: 'mutation_batch_review_approved',
@@ -11595,6 +11664,62 @@ describe('SHA-bound mutation batch approval', () => {
 		// the calls a second time. The contract lane needed three passes here.
 		expect(client.stream).toHaveBeenCalledTimes(1);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+	});
+
+	it('never executes a batch this turn already executed, even when the model proposes it again', async () => {
+		// 2026-09-22 gate, case 1: after the reviewer struck a follow-up goal, the
+		// repair pass re-proposed the original create batch, the reviewer approved
+		// the identical digest, and the project existed twice.
+		const client = clientWithRounds([proposedBatchRound(), proposedBatchRound()]);
+		const semanticReviewer = clientWithRounds([
+			reviewerApproval(expectedBatchSha()),
+			reviewerApproval(expectedBatchSha())
+		]);
+		const invocation = await batchProvider(client, semanticReviewer);
+		await collect(invocation.stream());
+		const executionSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-approval-1',
+						'approve_mutation_batch_review',
+						{
+							reason: 'The user asked for exactly these four tasks.',
+							batch_sha256: expectedBatchSha(),
+							reference_candidates: [],
+							request_expectation: requestChecklist()
+						},
+						{
+							status: 'mutation_batch_review_approved',
+							batch_sha256: expectedBatchSha()
+						}
+					)
+				]
+			})
+		);
+		const mutatingSteps = executionSteps.filter((step) => step.type === 'mutating_tool');
+		expect(mutatingSteps).toHaveLength(4);
+
+		const afterExecution = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: successfulWrites(mutatingSteps)
+			})
+		);
+		// The second proposal carried the same digest: no review, no execution,
+		// and the user gets the receipts once.
+		expect(afterExecution.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(afterExecution.some((step) => step.type === 'read_tool')).toBe(false);
+		expect(
+			afterExecution
+				.filter((step) => step.type === 'text_delta')
+				.map((step) => (step as { text: string }).text)
+				.join('')
+		).toMatch(/already saved earlier in this turn/);
+		expect(afterExecution.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+		expect(client.stream).toHaveBeenCalledTimes(2);
 	});
 
 	// The contract lane spent a forced pass here making the model re-express
@@ -12035,7 +12160,7 @@ describe('SHA-bound mutation batch approval', () => {
 		expect(steps.filter((step) => step.type === 'mutating_tool')).toHaveLength(1);
 		expect(semanticReviewer.stream).not.toHaveBeenCalled();
 	});
-	function approvingReviewer(mismatchOnCall?: number) {
+	function approvingReviewer(mismatchOnCall?: number, expectation = requestChecklist()) {
 		let count = 0;
 		return {
 			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>((request) => {
@@ -12043,7 +12168,8 @@ describe('SHA-bound mutation batch approval', () => {
 				const sha = text.match(/Exact proposed batch SHA-256: ([a-f0-9]{64})/)![1]!;
 				const reviewCall = ++count;
 				const events = reviewerApproval(
-					reviewCall === mismatchOnCall ? 'f'.repeat(64) : sha
+					reviewCall === mismatchOnCall ? 'f'.repeat(64) : sha,
+					expectation
 				);
 				(events[0] as { toolCall: Array<{ id: string }> }).toolCall[0]!.id =
 					`stage-review-${reviewCall}`;
@@ -12088,6 +12214,271 @@ describe('SHA-bound mutation batch approval', () => {
 				return feedback;
 			});
 	}
+	function replayProposal(
+		calls: Array<{ name: string; args: JsonObject }>
+	): AgenticChatTurnProviderClientEventV1[] {
+		return [
+			{
+				type: 'tool_call',
+				toolCall: calls.map((call, index) => ({
+					index,
+					id: `repeated-${index}`,
+					type: 'function',
+					function: { name: call.name, arguments: JSON.stringify(call.args) }
+				}))
+			},
+			{ type: 'done', finishedReason: 'tool_calls' }
+		];
+	}
+
+	it.each([['Inspection', 'Permit', 'Rough-in', 'Cabinets'], ['Permit']])(
+		'does not recreate a reordered batch or subset: %j',
+		async (...titles) => {
+			const client = clientWithRounds([
+				proposedBatchRound(),
+				replayProposal(
+					titles.map((title) => ({
+						name: 'create_onto_task',
+						args: { project_id: PROJECT_ID, title }
+					}))
+				)
+			]);
+			const reviewer = approvingReviewer();
+			const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+			const invocation = await batchProvider(client, reviewer, capacity);
+			const review = await collect(invocation.stream());
+			const writes = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [approvalFeedback(review)]
+				})
+			);
+			const end = await collect(
+				invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+			);
+			expect(writes.filter((step) => step.type === 'mutating_tool')).toHaveLength(4);
+			expect(
+				end.some((step) => step.type === 'mutating_tool' || step.type === 'read_tool')
+			).toBe(false);
+			expect(end.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+			expect(reviewer.stream).toHaveBeenCalledTimes(1);
+			expect(client.stream).toHaveBeenCalledTimes(2);
+			expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+		}
+	);
+
+	it('preserves a new read bundled with an otherwise identical already-saved batch', async () => {
+		const client = clientWithRounds([
+			proposedBatchRound(),
+			replayProposal([
+				...['Permit', 'Cabinets', 'Rough-in', 'Inspection'].map((title) => ({
+					name: 'create_onto_task',
+					args: { project_id: PROJECT_ID, title } as JsonObject
+				})),
+				{ name: 'get_project_overview', args: { project_id: PROJECT_ID } }
+			]),
+			providerReadRound('remaining-read', { project_id: PROJECT_ID }, 'get_project_overview'),
+			[
+				{ type: 'text', content: 'The saved tasks are visible in the overview.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const reviewer = approvingReviewer();
+		const invocation = await batchProvider(client, reviewer);
+		const review = await collect(invocation.stream());
+		const writes = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+		);
+		const reads = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+		);
+		expect(reads.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(reads.filter((step) => step.type === 'read_tool' && step.validationFailure)).toEqual(
+			[]
+		);
+		const read = reads.find((step) => step.type === 'read_tool');
+		if (!read || read.type !== 'read_tool') throw new Error('Expected the corrected read');
+		expect(read.toolName).toBe('get_project_overview');
+		const end = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedbackFor(read.providerToolCallId, read.toolName, read.arguments, {
+						tasks: []
+					})
+				]
+			})
+		);
+		expect(end.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+		expect(client.stream).toHaveBeenCalledTimes(4);
+	});
+
+	it('does not count one saved item as multiple newly requested creates', async () => {
+		const copies = () =>
+			replayProposal(
+				['Permit', 'Permit'].map((title) => ({
+					name: 'create_onto_task',
+					args: { project_id: PROJECT_ID, title }
+				}))
+			);
+		const client = clientWithRounds([proposedBatchRound(), copies(), copies()]);
+		const reviewer = approvingReviewer();
+		const invocation = await batchProvider(client, reviewer);
+		const review = await collect(invocation.stream());
+		const writes = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+		);
+		const end = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+		);
+		expect(end.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(end.at(-1)).toMatchObject({
+			type: 'finish',
+			finishedReason: 'mutation_unfulfilled'
+		});
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+	});
+
+	it('bounds the correction of reworded creates and ends honestly if they are repeated again', async () => {
+		const changed = { description: 'Reworded after the first save' };
+		const client = clientWithRounds([
+			proposedBatchRound(),
+			proposedBatchRound(changed),
+			proposedBatchRound(changed)
+		]);
+		const reviewer = approvingReviewer();
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await batchProvider(client, reviewer, capacity);
+		const review = await collect(invocation.stream());
+		const writes = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+		);
+		const end = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+		);
+		expect(end.some((step) => step.type === 'mutating_tool' || step.type === 'read_tool')).toBe(
+			false
+		);
+		expect(end.at(-1)).toMatchObject({
+			type: 'finish',
+			finishedReason: 'mutation_unfulfilled'
+		});
+		expect(
+			end
+				.filter((step) => step.type === 'text_delta')
+				.map((step) => step.text)
+				.join('')
+		).toContain('new or changed actions');
+		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		const repair = client.stream.mock.calls[2]![0];
+		expect(repair).toMatchObject({ passRole: 'repair', toolChoice: 'auto' });
+		expect(repair.messages.map((message) => message.content).join('\n')).toContain(
+			'a0000000-0000-4000-8000-000000000001'
+		);
+		expect(repair.messages.map((message) => message.content).join('\n')).toContain(
+			'unexecuted, not authorization or a receipt'
+		);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('withholds mixed repeated creates and links, then reviews and executes only the corrected link', async () => {
+		const links = {
+			src_kind: 'task',
+			src_id: 'a0000000-0000-4000-8000-000000000002',
+			dst_kind: 'task',
+			dst_id: 'a0000000-0000-4000-8000-000000000001',
+			rel: 'depends_on'
+		};
+		const client = clientWithRounds([
+			proposedBatchRound(),
+			replayProposal([
+				{ name: 'create_onto_task', args: { project_id: PROJECT_ID, title: 'Permit' } },
+				{ name: 'link_onto_entities', args: links }
+			]),
+			providerReadRound('remaining-link', links, 'link_onto_entities'),
+			[
+				{ type: 'text', content: 'Created the four tasks and saved the dependency.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const reviewer = approvingReviewer();
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await batchProvider(client, reviewer, capacity);
+		const review = await collect(invocation.stream());
+		const writes = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+		);
+		const linkReview = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+		);
+		expect(linkReview.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(reviewer.stream).toHaveBeenCalledTimes(2);
+		const linkWrites = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [approvalFeedback(linkReview)]
+			})
+		);
+		expect(linkWrites).toEqual([
+			expect.objectContaining({
+				type: 'mutating_tool',
+				toolName: 'link_onto_entities',
+				arguments: links
+			})
+		]);
+		const end = await collect(
+			invocation.continueWithToolResults!({ round: 5, results: successfulWrites(linkWrites) })
+		);
+		expect(end.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+		expect(client.stream).toHaveBeenCalledTimes(4);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('does not retry unconfirmed creates or claim that an all-failed batch was saved', async () => {
+		const client = clientWithRounds([
+			proposedBatchRound(),
+			proposedBatchRound({ description: 'Another attempt' })
+		]);
+		const reviewer = approvingReviewer();
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await batchProvider(client, reviewer, capacity);
+		const review = await collect(invocation.stream());
+		const writes = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+		);
+		const end = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: successfulWrites(writes).map((feedback) =>
+					failedMutationFeedback({
+						providerToolCallId: feedback.providerToolCallId,
+						toolName: feedback.toolName,
+						arguments: feedback.arguments,
+						error: 'No successful receipt available.'
+					})
+				)
+			})
+		);
+		expect(end.some((step) => step.type === 'mutating_tool' || step.type === 'read_tool')).toBe(
+			false
+		);
+		expect(end.at(-1)).toMatchObject({
+			type: 'finish',
+			finishedReason: 'mutation_unfulfilled'
+		});
+		expect(
+			end
+				.filter((step) => step.type === 'text_delta')
+				.map((step) => step.text)
+				.join('')
+		).toContain('No saved changes are confirmed');
+		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
 	it('creates then independently reviews links using returned IDs without replaying creates', async () => {
 		const links = {
 			src_kind: 'task',
@@ -12193,7 +12584,7 @@ describe('SHA-bound mutation batch approval', () => {
 				{ type: 'done', finishedReason: 'stop' }
 			]
 		]);
-		const reviewer = approvingReviewer();
+		const reviewer = approvingReviewer(undefined, requestChecklist(true));
 		const invocation = await batchProvider(client, reviewer);
 		const firstReview = await collect(invocation.stream());
 		const creates = await collect(
@@ -12229,7 +12620,7 @@ describe('SHA-bound mutation batch approval', () => {
 		expect(repair.passRole).toBe('repair');
 		expect(repair.toolChoice).toBe('auto');
 		expect(repair.tools).toEqual(client.stream.mock.calls[1]![0].tools);
-		expect(repair.messages.at(-1)?.content).toContain('Never replay successful writes');
+		expect(repair.messages.at(-1)?.content).toContain('never repeat saved creates');
 	});
 	it('bounds repeated next-stage promises and ends with only saved receipts', async () => {
 		const promise = [
@@ -12237,7 +12628,7 @@ describe('SHA-bound mutation batch approval', () => {
 			{ type: 'done', finishedReason: 'stop' }
 		] as AgenticChatTurnProviderClientEventV1[];
 		const client = clientWithRounds([proposedBatchRound(), promise, promise]);
-		const reviewer = approvingReviewer();
+		const reviewer = approvingReviewer(undefined, requestChecklist(true));
 		const invocation = await batchProvider(client, reviewer);
 		const review = await collect(invocation.stream());
 		const creates = await collect(
@@ -12249,7 +12640,7 @@ describe('SHA-bound mutation batch approval', () => {
 		expect(final.some((step) => step.type === 'mutating_tool')).toBe(false);
 		expect(final.filter((step) => step.type === 'text_delta')).toEqual([
 			expect.objectContaining({
-				text: expect.stringContaining('remaining work is still pending')
+				text: expect.stringContaining('Some requested work is still unfinished')
 			})
 		]);
 		expect(final.at(-1)).toMatchObject({
@@ -12258,6 +12649,146 @@ describe('SHA-bound mutation batch approval', () => {
 		});
 		expect(client.stream).toHaveBeenCalledTimes(3);
 		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+	});
+	it.each(['Everything is done.', 'The four tasks were saved.'])(
+		'checks the original request even when the closing text makes no next-step promise: %s',
+		async (candidate) => {
+			const links = {
+				src_kind: 'task',
+				src_id: 'a0000000-0000-4000-8000-000000000002',
+				dst_kind: 'task',
+				dst_id: 'a0000000-0000-4000-8000-000000000001',
+				rel: 'depends_on'
+			};
+			const client = clientWithRounds([
+				proposedBatchRound(),
+				[
+					{ type: 'text', content: candidate },
+					{ type: 'done', finishedReason: 'stop' }
+				],
+				providerReadRound('missing-link', links, 'link_onto_entities'),
+				[
+					{ type: 'text', content: 'Created the tasks and saved their dependency.' },
+					{ type: 'done', finishedReason: 'stop' }
+				]
+			]);
+			const reviewer = approvingReviewer(undefined, requestChecklist(true));
+			const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+			const invocation = await batchProvider(client, reviewer, capacity);
+			const review = await collect(invocation.stream());
+			const creates = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [approvalFeedback(review)]
+				})
+			);
+			const nextReview = await collect(
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: successfulWrites(creates)
+				})
+			);
+			expect(
+				nextReview.some(
+					(step) => step.type === 'text_delta' || step.type === 'mutating_tool'
+				)
+			).toBe(false);
+			expect(client.stream.mock.calls[2]![0]).toMatchObject({
+				passRole: 'repair',
+				toolChoice: 'auto'
+			});
+			const linkWrites = await collect(
+				invocation.continueWithToolResults!({
+					round: 4,
+					results: [approvalFeedback(nextReview)]
+				})
+			);
+			expect(linkWrites).toEqual([
+				expect.objectContaining({
+					type: 'mutating_tool',
+					toolName: 'link_onto_entities',
+					arguments: links
+				})
+			]);
+			const final = await collect(
+				invocation.continueWithToolResults!({
+					round: 5,
+					results: successfulWrites(linkWrites)
+				})
+			);
+			expect(final).toContainEqual({
+				type: 'text_delta',
+				text: 'Created the tasks and saved their dependency.'
+			});
+			expect(final.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+			expect(reviewer.stream).toHaveBeenCalledTimes(2);
+			expect(capacity.getSnapshot()).toMatchObject({ activeRequests: 0 });
+		}
+	);
+	it('names an omitted dependency after one unsuccessful completion repair', async () => {
+		const done = [
+			{ type: 'text', content: 'Everything is done.' },
+			{ type: 'done', finishedReason: 'stop' }
+		] as AgenticChatTurnProviderClientEventV1[];
+		const client = clientWithRounds([proposedBatchRound(), done, done]);
+		const reviewer = approvingReviewer(undefined, requestChecklist(true));
+		const invocation = await batchProvider(client, reviewer);
+		const review = await collect(invocation.stream());
+		const creates = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+		);
+		const final = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(creates) })
+		);
+		const text = final
+			.filter((step) => step.type === 'text_delta')
+			.map((step) => step.text)
+			.join('');
+		expect(text).toContain('Cabinets depends on Permit');
+		expect(text).not.toContain('Everything is done');
+		expect(final.at(-1)).toMatchObject({ finishedReason: 'mutation_unfulfilled' });
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+	});
+	it.each(['Nothing more to propose:', 'Creating the tasks was completed successfully.'])(
+		'does not trigger a wording-based repair after the complete checklist is satisfied: %s',
+		async (answer) => {
+			const client = clientWithRounds([
+				proposedBatchRound(),
+				[
+					{ type: 'text', content: answer },
+					{ type: 'done', finishedReason: 'stop' }
+				]
+			]);
+			const reviewer = approvingReviewer();
+			const invocation = await batchProvider(client, reviewer);
+			const review = await collect(invocation.stream());
+			const writes = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [approvalFeedback(review)]
+				})
+			);
+			const final = await collect(
+				invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+			);
+			expect(final).toContainEqual({ type: 'text_delta', text: answer });
+			expect(final.at(-1)).toMatchObject({ finishedReason: 'stop' });
+			expect(client.stream).toHaveBeenCalledTimes(2);
+			expect(reviewer.stream).toHaveBeenCalledTimes(1);
+		}
+	);
+	it('rejects an approval whose durable checklist differs before any writes execute', async () => {
+		const invocation = await batchProvider(
+			clientWithRounds([proposedBatchRound()]),
+			approvingReviewer(undefined, requestChecklist(true))
+		);
+		const review = await collect(invocation.stream());
+		const feedback = approvalFeedback(review);
+		feedback.execution.result.request_expectation = requestChecklist();
+		await expect(async () =>
+			collect(invocation.continueWithToolResults!({ round: 2, results: [feedback] }))
+		).rejects.toMatchObject({ code: 'provider_request_expectation_identity_mismatch' });
 	});
 	it('validates malformed proposed arguments before spending a reviewer pass', async () => {
 		const bad = providerReadRound(
@@ -12427,7 +12958,12 @@ describe('SHA-bound mutation batch approval', () => {
 			);
 			const next = await collect(invocation.continueWithToolResults!({ round: 3, results }));
 			expect(next.some((step) => step.type === 'mutating_tool')).toBe(false);
-			expect(client.stream.mock.calls[1]![0].toolChoice).toBe(partial ? 'none' : 'auto');
+			if (partial) {
+				expect(client.stream).toHaveBeenCalledTimes(1);
+				expect(next.at(-1)).toMatchObject({ finishedReason: 'mutation_unfulfilled' });
+			} else {
+				expect(client.stream.mock.calls[1]![0].toolChoice).toBe('auto');
+			}
 			expect(reviewer.stream).toHaveBeenCalledTimes(partial ? 1 : 2);
 		}
 	);

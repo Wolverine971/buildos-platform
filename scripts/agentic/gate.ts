@@ -15,7 +15,8 @@ import { writeGateLatencyAnalysis } from './latency-analysis';
 import {
 	prepareGateDatabase,
 	assertGateCalendarConfiguration,
-	assertGateCalendarConnection
+	assertGateCalendarConnection,
+	assertGateModelAllowed
 } from './preflight';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -192,6 +193,11 @@ async function main() {
 		]) {
 			if (!isolated[key]?.trim()) throw new Error(`Gate env file is missing ${key}`);
 		}
+		// Refuse models outside the cost allowlist before any service boots or model spends.
+		const gateModel = assertGateModelAllowed(isolated);
+		console.info(
+			`[agentic:gate] acting model ${gateModel.model}; known three-repetition spend ${gateModel.knownRunCostUsd === null ? 'unknown' : `about $${gateModel.knownRunCostUsd.toFixed(2)}`}`
+		);
 		// Refuse accidental reuse of the normal development/production queue.
 		for (const file of ['apps/web/.env', 'apps/worker/.env']) {
 			if (

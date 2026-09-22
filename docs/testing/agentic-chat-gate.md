@@ -158,8 +158,15 @@ and retries once. It does not change Vitest pool/worker limits.
   the services keep their startup code. Hold commits, or run the gate from a separate
   worktree snapshot.
 - **Check OpenRouter credits first.** An exhausted balance returns HTTP 402 at stream
-  start, which the runtime records as a generic `provider_stream_error`. A complete gate
-  costs about $0.50, including judge calls.
+  start, which the runtime records as a generic `provider_stream_error`.
+- **Cost is set by the acting model, not by the gate.** Measured three-repetition spend
+  from the OpenRouter usage counter: `deepseek/deepseek-v4.1-flash` about $0.29,
+  `unbiased/pareto` about $1.66 (2026-09-22). The gate reads
+  `AGENTIC_CHAT_OPENROUTER_MODEL` from the env file and refuses any model outside
+  `AGENTIC_GATE_ALLOWED_MODELS` (default: the DeepSeek model) before anything boots, so a
+  cost estimate taken from one model can never authorize a run on a dearer one. Quote the
+  model and its measured figure when asking for approval; check the credits counter before
+  and after, since that delta is the real cost. A three-repetition DeepSeek gate measured $0.32 on 2026-09-22 (usage-counter delta).
 
 ## CI and deployment
 

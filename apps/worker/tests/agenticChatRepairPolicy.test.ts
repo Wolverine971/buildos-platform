@@ -19,6 +19,7 @@ import type {
 import {
 	buildBatchPromiseRepairRequest,
 	hasUnfinishedBatchAction,
+	buildEmptyReplyRepairRequest,
 	buildProviderPassBudgetSynthesisInstruction,
 	buildRequiredPassProseFallbackRequest,
 	buildReviewerMimicryRepairRequest,
@@ -31,7 +32,11 @@ describe('unfinished batch action', () => {
 	it.each([
 		"All five tasks are created. Now I'll propose the dependency stage.",
 		'Next, I will link the saved tasks.',
-		'Let me update the remaining task.'
+		'Let me update the remaining task.',
+		// 2026-09-22 gate, case 2 repetition 2: delivered as the final answer, links never proposed.
+		'The five task creates were approved and executed successfully. The remaining commissioned work is the three dependency relationships using the returned task IDs. Proposing that stage for independent review:',
+		'Saved all five tasks. Now proposing the dependency links.',
+		'Tasks are saved. Next step: the three depends_on links for review:'
 	])('recognizes an execution promise: %s', (text) => {
 		expect(hasUnfinishedBatchAction(text)).toBe(true);
 	});
@@ -40,9 +45,24 @@ describe('unfinished batch action', () => {
 		'I can link these later if you want.',
 		'I will keep this in mind.',
 		'Your note says: "I will create a launch plan."',
-		'The dependency was not saved. Please choose its target.'
+		'The dependency was not saved. Please choose its target.',
+		'Proposing nothing further; every requested change is saved.',
+		'Creating the link is not possible: the target task does not exist.',
+		'I saved the changes below, but the additional step was not completed. The remaining work is still pending.',
+		'Summary of saved tasks:\n- Order kitchen cabinets\n- Confirm permit requirements'
 	])('leaves completed answers, offers and quoted source alone: %s', (text) => {
 		expect(hasUnfinishedBatchAction(text)).toBe(false);
+	});
+	it('re-asks once after an empty completion and never twice', () => {
+		const original = request([tool(MUTATION_TOOL_NAME)]);
+		const repair = buildEmptyReplyRepairRequest(original);
+		expect(repair).not.toBeNull();
+		expect(repair!.tools).toBe(original.tools);
+		expect(repair!.passRole).toBe('repair');
+		expect(repair!.emptyReplyRepairAttempted).toBe(true);
+		expect(repair!.logicalProviderRound).toBe(original.logicalProviderRound + 1);
+		expect(lastInstruction(repair!)).toContain('Never replay successful writes');
+		expect(buildEmptyReplyRepairRequest(repair!)).toBeNull();
 	});
 	it('keeps the exact permitted surface and the existing turn budget', () => {
 		const original = request([tool(MUTATION_TOOL_NAME)]);

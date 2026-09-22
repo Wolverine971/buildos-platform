@@ -22,10 +22,43 @@ const REVIEWER_ONLY_CONTROL_TOOL_NAMES = new Set([
 ]);
 const MAX_WITHHELD_CANDIDATE_CHARS = 1_500;
 
+const FUTURE_ACTION_PROMISE =
+	/(?:^|[.!?:;]\s+)(?:(?:first|then|now|next),?\s+)?(?:i['’]ll|i will|let me|i['’]m going to|i am going to)\s+(?:now\s+)?(?:propose|create|update|delete|save|link|unlink|move|apply|execute|add|remove|schedule)\b/i;
+// "Proposing that stage for independent review:" (2026-09-22 gate, case 2): a
+// gerund-led sentence announcing the next stage, with no negation in the clause.
+const GERUND_ACTION_PROMISE =
+	/(?:^|[.!?:;]\s+)(?:(?:first|then|now|next),?\s+)?(?:proposing|creating|updating|deleting|saving|linking|unlinking|moving|applying|executing|adding|removing|scheduling)\s+(?!nothing\b|no\b|none\b)(?:that|the|this|these|those|a|an|each|all|remaining|next|dependency|dependencies|task|tasks|link|links|stage|step|calls?|review)\b(?![^.!?:]*\b(?:not|never|cannot|can['’]t|won['’]t|isn['’]t|aren['’]t)\b)/i;
+// An answer that ends by handing off to a next stage or review ("...for review:").
+const TRAILING_STAGE_HANDOFF =
+	/\b(?:propos\w*|review|stage|step|next|calls?|batch)\b[^.!?\n]{0,80}:\s*$/i;
+
 /** A promise to execute a next stage is not a completed batch answer. */
 export function hasUnfinishedBatchAction(text: string): boolean {
-	return /(?:^|[.!?:;]\s+)(?:(?:first|then|now|next),?\s+)?(?:i['’]ll|i will|let me|i['’]m going to|i am going to)\s+(?:now\s+)?(?:propose|create|update|delete|save|link|unlink|move|apply|execute|add|remove|schedule)\b/i.test(
-		text.trim()
+	const trimmed = text.trim();
+	return (
+		FUTURE_ACTION_PROMISE.test(trimmed) ||
+		GERUND_ACTION_PROMISE.test(trimmed) ||
+		TRAILING_STAGE_HANDOFF.test(trimmed)
+	);
+}
+
+/**
+ * A completion with neither text nor tool calls (2026-09-22 gate, case 2: an
+ * empty final pass turned five saved creates into a permanent failure). One
+ * bounded re-ask; the second empty reply still fails the pass.
+ */
+export function buildEmptyReplyRepairRequest(
+	request: AgenticChatTurnProviderRequestV1
+): AgenticChatTurnProviderRequestV1 | null {
+	if (request.emptyReplyRepairAttempted) return null;
+	return appendSystemInstruction(
+		{
+			...request,
+			logicalProviderRound: request.logicalProviderRound + 1,
+			passRole: 'repair',
+			emptyReplyRepairAttempted: true
+		},
+		'The previous reply was empty: no text and no tool calls reached the user. Answer now from the actual saved receipts and returned IDs. Never replay successful writes. If work the user requested remains, propose it through the existing independent review or say exactly what remains undone. Do not reply with an empty message.'
 	);
 }
 

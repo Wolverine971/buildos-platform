@@ -2984,8 +2984,12 @@ export class AgenticChatTurnExecutor {
 					: {}),
 				...(turnOutcome
 					? {
-							outcome_status: turnOutcome.status,
-							...(turnContract
+							outcome_status:
+								completionReceipt?.expectation === 'reviewed_request'
+									? completionReceipt.request.outcomeStatus
+									: turnOutcome.status,
+							...(turnContract &&
+							completionReceipt?.expectation !== 'reviewed_request'
 								? {
 										turn_contract: turnContract as unknown as JsonObject,
 										turn_contract_outcomes:

@@ -6134,13 +6134,31 @@ function installMoveContractFixture(
 	harness: ReturnType<typeof createHarness>,
 	declaredTargetIds: string[],
 	movedTargetIds: string[],
-	roundTwoSteps: AgenticChatTurnProviderStepV1[] | null
+	roundTwoSteps: AgenticChatTurnProviderStepV1[] | null,
+	batchExpectation = false
 ): void {
+	const requestExpectation = {
+		outcomes: [
+			{
+				action: 'move',
+				entity_kind: 'task',
+				target_ids: declaredTargetIds,
+				minimum_successful_effects: declaredTargetIds.length
+			}
+		]
+	};
 	harness.readTool.execute.mockImplementation(async (input) => {
 		if (input.providerToolCallId === 'provider-declare-moves') {
 			return {
 				result: {
 					status: 'declared',
+					...(batchExpectation
+						? {
+								status: 'mutation_batch_review_approved',
+								batch_sha256: 'a'.repeat(64),
+								request_expectation: requestExpectation
+							}
+						: {}),
 					contract: {
 						version: 1,
 						source: 'declared',
@@ -6205,8 +6223,16 @@ function installMoveContractFixture(
 						callTransitionId: CALL_TRANSITION_ID,
 						resultTransitionId: RESULT_TRANSITION_ID,
 						providerToolCallId: 'provider-declare-moves',
-						toolName: 'declare_turn_contract',
+						toolName: batchExpectation
+							? 'approve_mutation_batch_review'
+							: 'declare_turn_contract',
 						arguments: {
+							...(batchExpectation
+								? {
+										batch_sha256: 'a'.repeat(64),
+										request_expectation: requestExpectation
+									}
+								: {}),
 							outcomes: [
 								{
 									action: 'move',
@@ -6511,6 +6537,38 @@ describe('AgenticChatTurnExecutor completion receipts', () => {
 			| Record<string, unknown>
 			| undefined;
 	}
+	it('persists the original batch checklist and reports unproposed targets as unfinished', async () => {
+		const harness = createHarness([]);
+		installMoveContractFixture(
+			harness,
+			MOVE_TASK_IDS,
+			[MOVE_TASK_IDS[0]!],
+			[
+				{ type: 'text_delta', text: 'All done.' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			true
+		);
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed'
+			});
+			expect(completionReceipt(harness)).toMatchObject({
+				expectation: 'reviewed_request',
+				request: { disposition: 'request_partial', outcomeStatus: 'unfulfilled' },
+				requestExpectation: {
+					outcomes: [expect.objectContaining({ targetIds: MOVE_TASK_IDS })]
+				}
+			});
+			const terminal = harness.control.finalize.mock.calls[0]![0];
+			expect(terminal.assistantMetadata).toMatchObject({ outcome_status: 'unfulfilled' });
+			expect(terminal.assistantMetadata).not.toHaveProperty('turn_contract');
+			expect(terminal.assistantText).toContain('Task F');
+			expect(terminal.finishedReason).toBe('mutation_unfulfilled');
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
 
 	it('persists a fulfilled receipt only when the ledger proves every contract outcome', async () => {
 		const harness = createHarness([]);

@@ -909,6 +909,62 @@ describe('AgenticChatOpenRouterClient', () => {
 		});
 	});
 
+	it('retries the configured provider pool instead of ignoring every member of it', async () => {
+		// 2026-09-22 gate, case 5: a single-provider model timed out once, the retry
+		// sent provider.ignore for that sole provider, and OpenRouter answered 404
+		// "All providers have been ignored".
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 1) {
+				return sseResponse([
+					JSON.stringify({
+						openrouter_metadata: {
+							strategy: 'fallback',
+							attempt: 1,
+							attempts: [
+								{ model: 'unbiased/pareto', provider: 'Unbiased', status: 408 }
+							]
+						},
+						error: { code: 408, message: 'provider timed out' }
+					})
+				]);
+			}
+			return sseResponse([
+				JSON.stringify({
+					model: 'unbiased/pareto',
+					provider: 'Unbiased',
+					choices: [{ delta: { content: 'Recovered' }, finish_reason: 'stop' }]
+				}),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl, [
+			route({
+				model: 'unbiased/pareto',
+				fallbackModels: [],
+				providerRouting: { order: ['unbiased'], allow_fallbacks: true }
+			})
+		]);
+		await expect(collect(test.client.stream(input()))).resolves.toEqual([
+			{ type: 'error', error: 'provider timed out', retryable: true }
+		]);
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					streamRunId: 'stream-run-2',
+					logicalProviderRound: 2
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text', content: 'Recovered' },
+			{ type: 'done', finishedReason: 'stop', usage: undefined }
+		]);
+		expect(requests[1]?.provider).not.toMatchObject({ ignore: expect.anything() });
+		expect(requests[1]?.provider).toMatchObject({ order: ['unbiased'] });
+	});
+
 	it('keeps failed model and provider health for later retries in the same turn', async () => {
 		const requests: Array<Record<string, unknown>> = [];
 		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {

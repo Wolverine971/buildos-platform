@@ -202,6 +202,8 @@ export type AgenticChatTurnProviderRequestV1 = AgenticChatTurnProviderClientRequ
 	liveVisionRequest?: Omit<AgenticChatLiveVisionResolveInputV1, 'signal'>;
 	semanticDispositionGate?: boolean;
 	unavailableSkillRepairAttempted?: boolean;
+	/** One bounded re-ask after a completion that carried neither text nor tool calls. */
+	emptyReplyRepairAttempted?: boolean;
 };
 
 /**

@@ -7,7 +7,7 @@ import {
 	GLM_52_MODEL,
 	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_46_MODEL,
+	GROK_47_MODEL,
 	KIMI_CODING_MODEL,
 	KIMI_K3_MODEL,
 	MINIMAX_M3_MODEL,
@@ -17,7 +17,8 @@ import {
 	resolveModelPricingProfile,
 	TENCENT_HY3_MODEL,
 	TENCENT_HY3_PREVIEW_MODEL,
-	XIAOMI_MIMO_V25_MODEL
+	XIAOMI_MIMO_V25_MODEL,
+	XIAOMI_MIMO_V26_FLASH_MODEL
 } from './model-config';
 
 describe('resolveModelPricingProfile', () => {
@@ -76,6 +77,28 @@ describe('resolveModelPricingProfile', () => {
 		});
 		expect(result?.profile.limitations).toContain('launch-discount-temporary');
 		expect(result?.profile.limitations).toContain('not-balanced-production-routing');
+	});
+
+	it('catalogs MiMo 2.6 Flash as a high-value explicit-only non-ZDR candidate', () => {
+		const result = resolveModelPricingProfile('xiaomi/mimo-v2.6-flash-20260921');
+
+		expect(result?.modelId).toBe(XIAOMI_MIMO_V26_FLASH_MODEL);
+		expect(result?.profile.cost).toBe(0.14);
+		expect(result?.profile.outputCost).toBe(0.28);
+		expect(result?.profile.smartness).toBe(4.95);
+		expect(result?.profile.smartness).toBeGreaterThan(
+			resolveModelPricingProfile(XIAOMI_MIMO_V25_MODEL)!.profile.smartness
+		);
+		expect(result?.profile.capabilities).toMatchObject({
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		});
+		expect(result?.profile.limitations).toContain('non-zdr-endpoint');
+		expect(result?.profile.limitations).toContain('not-default-production-routing');
 	});
 
 	it('normalizes provider date-suffixed model ids for pricing', () => {
@@ -152,14 +175,14 @@ describe('resolveModelPricingProfile', () => {
 
 	it('prices the premium evaluation and maximum-work roster', () => {
 		const luna = resolveModelPricingProfile(GPT_56_LUNA_MODEL);
-		const grok = resolveModelPricingProfile(GROK_46_MODEL);
+		const grok = resolveModelPricingProfile(GROK_47_MODEL);
 		const kimi = resolveModelPricingProfile(KIMI_K3_MODEL);
 
 		expect(luna?.profile.cost).toBe(0.2);
 		expect(luna?.profile.outputCost).toBe(1.2);
-		expect(grok?.modelId).toBe(GROK_46_MODEL);
-		expect(grok?.profile.cost).toBe(2);
-		expect(grok?.profile.outputCost).toBe(6);
+		expect(grok?.modelId).toBe(GROK_47_MODEL);
+		expect(grok?.profile.cost).toBe(1.6);
+		expect(grok?.profile.outputCost).toBe(4.8);
 		expect(kimi?.profile.cost).toBe(3);
 		expect(kimi?.profile.outputCost).toBe(15);
 	});

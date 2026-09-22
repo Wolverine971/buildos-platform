@@ -10,7 +10,7 @@ import { DEEPSEEK_V4_FLASH_MODEL, type JSONRequestOptions } from '@buildos/smart
 export const JUDGE_MODEL_CHAIN: readonly string[] = [
 	'openai/gpt-5.6-luna',
 	'moonshotai/kimi-k3',
-	'x-ai/grok-4.6'
+	'x-ai/grok-4.7'
 ];
 
 /** Models a judge may never use, because the battery is grading them. */

@@ -235,6 +235,41 @@ function requestFor(
 }
 
 describe('AgenticChatToolExecutionAdapter', () => {
+	it('persists the reviewer checklist with the batch approval without a database call', async () => {
+		const client = fakeSharedClient();
+		const adapter = adapterWith(client, accessStub());
+		const request_expectation = {
+			outcomes: [
+				{
+					id: 'tasks',
+					action: 'create',
+					entity_kind: 'task',
+					minimum_successful_effects: 5
+				}
+			]
+		};
+		const result = await adapter.execute(
+			requestFor('approve_mutation_batch_review', {
+				reason: 'The user asked for five tasks.',
+				batch_sha256: 'a'.repeat(64),
+				request_expectation
+			})
+		);
+		expect(result.result).toMatchObject({
+			status: 'mutation_batch_review_approved',
+			request_expectation
+		});
+		expect(client.from).not.toHaveBeenCalled();
+		await expect(
+			adapter.execute(
+				requestFor('approve_mutation_batch_review', {
+					reason: 'The user asked for five tasks.',
+					batch_sha256: 'a'.repeat(64),
+					request_expectation: { outcomes: [] }
+				})
+			)
+		).rejects.toThrow('invalid request expectation');
+	});
 	it('allowlists exactly the shared read tools for provider and executor composition', () => {
 		const composedNames = [
 			...AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,

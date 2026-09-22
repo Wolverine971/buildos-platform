@@ -205,6 +205,11 @@ export const MUTATION_BATCH_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 
 					description:
 						'The exact SHA-256 quoted in this request. The harness rejects an approval whose value differs from it.'
 				},
+				request_expectation: {
+					...(TURN_CONTRACT_TOOL_DEFINITION.function.parameters as unknown as JsonObject),
+					description:
+						'On the first approval, record ALL durable outcomes commissioned by the user, including later stages that need newly returned IDs. This is a completion checklist, never permission to execute calls. Preserve it unchanged on subsequent approvals. Use labels for new entities and src_label/dst_label for their future links; include the relation in changes. Do not invent IDs or build this list only from the current batch.'
+				},
 				reference_candidates: {
 					...REFERENCE_CANDIDATES_PROPERTY
 				}
