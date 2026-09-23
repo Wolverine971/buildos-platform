@@ -2,7 +2,7 @@
 
 # Agentic Chat worker audit (2026-09-23)
 
-Status: audit complete, nothing changed in code. Findings verified against source on 2026-09-23; decisions pending DJ.
+Status: acted on 2026-09-23 (see "What shipped" at the end). Findings verified against source on 2026-09-23.
 
 Scope: `apps/worker/src/workers/agentic-chat` (118 files, ~51K lines, 63K lines of tests), upstream web admission (`apps/web/src/routes/api/agent/v2/turns`, `apps/web/src/lib/services/agentic-chat-v2`), downstream delivery (`streamPublisher.ts` → Realtime → `apps/web/src/lib/components/agent`), and `packages/agentic-chat-runtime`. Method: import-graph script plus four read-only deep dives (hot-path performance, web↔worker seams, runtime-package boundaries, workflow/specialist layer). No tests, builds, or paid runs.
 
@@ -12,14 +12,14 @@ The safety core is strong: generation fences, fail-closed tool surfaces, a durab
 
 What is weak is everything around that core:
 
-| Area | Grade | Why |
-| --- | --- | --- |
-| Correctness and safety design | Strong | Fences, generations, effect ledger, fail-closed admission |
-| User-visible speed | Weak | All model passes buffered (answer lands in one burst); worker in US East, database in US West; ~20–60 serial DB round trips per turn |
-| Failure behavior at the seams | Weak | Queued turns never expire; crash mid-turn is 7–8 minutes of dead air |
-| Organization | Weak | 54 files flat at the root; four 2.7K–4.4K line files; mixed naming |
-| Duplication and dead code | Medium-weak | 12 copies of one UUID helper; 3 conflicting DB retry policies; ~1.6K dead lines in the runtime; ~12K lines of legacy executor still in web |
-| Test signal | Mixed | Broad coverage, but the paid gate admits turns through a path production no longer uses |
+| Area                          | Grade       | Why                                                                                                                                        |
+| ----------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Correctness and safety design | Strong      | Fences, generations, effect ledger, fail-closed admission                                                                                  |
+| User-visible speed            | Weak        | All model passes buffered (answer lands in one burst); worker in US East, database in US West; ~20–60 serial DB round trips per turn       |
+| Failure behavior at the seams | Weak        | Queued turns never expire; crash mid-turn is 7–8 minutes of dead air                                                                       |
+| Organization                  | Weak        | 54 files flat at the root; four 2.7K–4.4K line files; mixed naming                                                                         |
+| Duplication and dead code     | Medium-weak | 12 copies of one UUID helper; 3 conflicting DB retry policies; ~1.6K dead lines in the runtime; ~12K lines of legacy executor still in web |
+| Test signal                   | Mixed       | Broad coverage, but the paid gate admits turns through a path production no longer uses                                                    |
 
 ## Tier 1: behavior and risk (fix first)
 
@@ -55,10 +55,10 @@ Already good: wake listener with coalescing and 1s durable fallback; detached ef
 - **Copy-paste helpers.** Hash-to-UUID formatter ×12, local `sha256` ×5 (33 `createHash` sites), `requireRecord` ×12, `canonicalUuid` ×14, `throwIfAborted` ×7, "settle within timeout" ×5, `['call_ref','after']` ×4, reviewer tool names defined 8+ times across worker, runtime, and web. Eight modules each define a near-identical `*RpcError`/`*ProtocolError` pair.
 - **Pure provider modules import from an IO adapter.** Seven provider modules import reviewer tool-name constants from `tools/execution-adapter.ts`, which pulls in `SupabaseClient` and the embeddings client. Move the names to the runtime catalog.
 - **God files with clean seams.**
-  - `turn-executor.ts` (4,359): one 3,185-line class. `execute()` 627 lines, read runner 419, mutation runner 298, finalize 296. Types (117–333) and ~840 lines of pure helpers (3519–4360) split cleanly; the runners need a `TurnRun` context object first (they share an 8–10 argument positional list).
-  - `provider/turn-provider.ts` (2,694): `prepareInvocation` is a class hidden in a closure (~40 `let`s, a 35-method state object). Review lanes (2112–2654) move out cleanly.
-  - `provider/openrouter-client.ts` (2,717): already module-level functions; split into routing, usage, SSE parsing, watchdog, validation.
-  - `mutation-argument-normalizers.ts` (1,249): three registries; split normalizers from receipt builders. `normalizeLegacyProjectState` duplicates the runtime alias table with a different unknown-value fallback.
+    - `turn-executor.ts` (4,359): one 3,185-line class. `execute()` 627 lines, read runner 419, mutation runner 298, finalize 296. Types (117–333) and ~840 lines of pure helpers (3519–4360) split cleanly; the runners need a `TurnRun` context object first (they share an 8–10 argument positional list).
+    - `provider/turn-provider.ts` (2,694): `prepareInvocation` is a class hidden in a closure (~40 `let`s, a 35-method state object). Review lanes (2112–2654) move out cleanly.
+    - `provider/openrouter-client.ts` (2,717): already module-level functions; split into routing, usage, SSE parsing, watchdog, validation.
+    - `mutation-argument-normalizers.ts` (1,249): three registries; split normalizers from receipt builders. `normalizeLegacyProjectState` duplicates the runtime alias table with a different unknown-value fallback.
 - **Workflow layer.** Ordinary turns pay essentially nothing for it. But the v1 `/workflow` prototype still wraps every turn (`composition-root.ts:360`), the durable runner imports its rules from the prototype (`workflow-runner.ts:60`), and Workflow Lab plain reviews still run the prototype, so Lab evaluations measure a different context builder than users get. The specialist-selection shadow adds up to 2.5s to reviews and its Jev spend skips the usage ledger. Core modules import from `workflow/` (`executionControl.ts:15-18`, `stalledRecovery.ts:18-22`, `config.ts:19`). Five `djflow*.md` docs (2.1K lines) in `src` are stale.
 - **Web leftovers.** ~11.8K lines of legacy tool executors (`tools/core` plus webvisit/websearch/corsair/buildos) are live only via suggestion replay (Tier 1 item 6). Dead in production: transport lease route and client (~600), `model-tiering.ts`, `limits.ts`, `stream-protocol.ts` (~530), SSE-era reconcile paths in the controller and modal (~150), lite shadow/preview and two admin routes (~1K). Two resume state machines run at once on session open.
 - **Stream payload contract is typed only on the consuming side.** The worker publishes `JsonObject`; the web casts to `AgentSSEMessage`. The UI projection version and 128-event cap are defined three times.
@@ -110,3 +110,22 @@ Blast radius of the move: 118 source files, 114 test files, 108 path-header comm
 8. Suggestion replay through the gateway with an allowlist; then delete the legacy web executor stack.
 
 Anything that changes chat behavior needs a paid `pnpm agentic:gate` run with DJ's explicit approval, and step 3 should land first so the gate covers the production path.
+
+## What shipped (2026-09-23)
+
+DJ's decisions: move the worker West; fixed receipt text after simple writes; ambitious cleanup; live answer text and the stranded-turn deadline left to Claude (display-only preview lane; 10-minute deadline).
+
+| Commit               | What                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Railway (no commit)  | `agentic-chat-worker` moved from `us-east4` to `us-west2` (California, next to Supabase `us-west-1`), 4 replicas. First post-move turn: worker start → provider 153ms (median was 521ms), provider finish → terminal 179ms (was 621ms).                                                                                                                                                                                                                    |
+| 514550574            | Folder reorganization into `host/ turn/ stream/ effects/ mutations/ tools/ provider/ workflow/ shared/`, kebab-case, by codemod. djflow notes archived.                                                                                                                                                                                                                                                                                                    |
+| dbbc8a60a (DJ sweep) | Unified database retry rule (`shared/postgres-failure.ts`); runtime `supervisor/`, `ports.ts`, `contracts.ts`, `entity-kind-repair.ts` deleted (~2.2K lines); gate harness admits through the production inline path; `/api/agent/v2/transport` deleted.                                                                                                                                                                                                   |
+| 3be154c2c            | Splits: `turn-executor` 4,359 → 1,208 lines, `turn-provider` 2,694 → 854, `openrouter-client` 2,721 → 786.                                                                                                                                                                                                                                                                                                                                                 |
+| a63be9294            | Shared identity hash (golden-tested), deadline and scheduling helpers, reviewer tool names in the runtime catalog; mutation normalizers split without a cycle; v1 `/workflow` prototype and Jev specialist shadow deleted; Workflow Lab sends durable review intents; suggestion approve/undo replays through `runGatewayWriteOp` with a 5-tool allowlist and the legacy web `ChatToolExecutor` stack (~15K lines) is deleted; dead web chat code removed. |
+| 695e1fa5d            | Stranded queued turns expire after 10 minutes (migration `20260924000000`, per-minute cron repurposed); "Taking longer than usual…" after 20s; generation-0 cancel receipts accepted (also fixes Stop on a queued turn).                                                                                                                                                                                                                                   |
+| 71bdfb068            | Flags (default off): `AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT`, `AGENTIC_CHAT_LIVE_TEXT_PREVIEW`. No-flag speedups: concurrent setup reads, reads start once the tool_call is queued, research query skipped without web research, reviewer/context-finder requests start before their status event, incremental byte counting.                                                                                                                             |
+| b1270d468            | Folder boundaries enforced by `no-restricted-imports`.                                                                                                                                                                                                                                                                                                                                                                                                     |
+
+Pending: paid gate with both flags on; apply migration `20260924000000` to production before the web deploy, then `pnpm gen:all`; push; flip flags after the gate.
+
+Still open from this audit: regex classification of model prose on the hot path (`classifyReceiptGroundedAssistantDisposition`, `looksLikeConservativeStatedFuture`); crash mid-turn still takes ~6–8 minutes to recover (heartbeat-lease design proposed); a timed-out turn shows no error after a reload; payload growth of the semantic projection; `pass tools with tool_choice none` on synthesis (needs cache data from `llm_usage_logs`).
