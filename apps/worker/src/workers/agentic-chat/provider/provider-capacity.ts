@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/provider/provider-capacity.ts
 
-import { MAX_AGENTIC_CHAT_CONCURRENCY } from '../host/concurrency-bounds';
+import { MAX_AGENTIC_CHAT_CONCURRENCY } from '../shared/concurrency-bounds';
 
 export type AgenticChatProviderCapacitySnapshotV1 = {
 	observedAtMs: number;

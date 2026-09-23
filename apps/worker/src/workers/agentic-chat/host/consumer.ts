@@ -3,7 +3,7 @@
 import type { AgenticChatTurnJobV1 } from '@buildos/shared-types';
 import { type ProcessingJob, SupabaseQueue } from '../../../lib/supabaseQueue';
 import { MAX_QUEUE_DRAIN_TIMEOUT_MS } from '../../../config/shutdownBudget';
-import { MAX_AGENTIC_CHAT_CONCURRENCY } from './concurrency-bounds';
+import { MAX_AGENTIC_CHAT_CONCURRENCY } from '../shared/concurrency-bounds';
 
 export { MAX_AGENTIC_CHAT_CONCURRENCY };
 

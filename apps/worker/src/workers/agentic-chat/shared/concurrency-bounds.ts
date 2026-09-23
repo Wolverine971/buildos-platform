@@ -1,4 +1,4 @@
-// apps/worker/src/workers/agentic-chat/host/concurrency-bounds.ts
+// apps/worker/src/workers/agentic-chat/shared/concurrency-bounds.ts
 
 /**
  * The original rollout contract allowed a second slot after the live smoke.

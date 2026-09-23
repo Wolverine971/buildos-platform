@@ -4,7 +4,7 @@ import type { QueueCapacitySnapshot } from '../../../lib/supabaseQueue';
 import type { AgenticChatConsumerRuntimeHealth } from './consumer-runtime';
 import type { AgenticChatProviderCapacitySnapshotV1 } from '../provider/provider-capacity';
 import type { AgenticChatPublisherWorkerSnapshotV1 } from '../stream/stream-publisher';
-import { MAX_AGENTIC_CHAT_CONCURRENCY } from './concurrency-bounds';
+import { MAX_AGENTIC_CHAT_CONCURRENCY } from '../shared/concurrency-bounds';
 
 const MAX_PROVIDER_SNAPSHOT_AGE_MS = 15_000;
 
