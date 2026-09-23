@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	AgenticChatRuntimeTimingError,
 	AgenticChatRuntimeTimingTracker
-} from '../src/workers/agentic-chat/runtimeTiming';
+} from '../src/workers/agentic-chat/stream/runtime-timing';
 
 const BASELINE = {
 	admittedAt: '2026-08-03T11:59:50.000Z',

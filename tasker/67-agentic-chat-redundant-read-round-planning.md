@@ -199,7 +199,7 @@ three-call/one-round acceptance threshold is meaningful.
 - `packages/agentic-chat-runtime/src/catalog/surfaces.ts` and the worker's immutable artifact surface
   determine whether full-document details are callable. Do not promise result-time materialization
   unless the worker actually updates the continuation tool surface.
-- `apps/worker/src/workers/agentic-chat/toolExecution.ts`, `turn-executor.ts`, and the corresponding
+- `apps/worker/src/workers/agentic-chat/tools/tool-execution.ts`, `turn-executor.ts`, and the corresponding
   Supabase ledger RPC/migrations are the durable telemetry path. The per-turn aggregate
   `tool_round_count` is not enough to attribute individual calls to evidence rounds.
 

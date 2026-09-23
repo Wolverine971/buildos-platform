@@ -10,27 +10,37 @@ The worker consumes shared contracts from `@buildos/shared-types`, static catalo
 
 Treat the decoded artifact tool surface as untrusted input. Provider surfaces fail closed, mutation admission remains a security fence, and retained unversioned surfaces stay readable only for the documented artifact-retention window. Web-only capability discovery must be resolved before admission rather than reimplemented here.
 
-Gmail, Calendar, browser OAuth handoff, and worker-disabled image execution remain explicit web capability paths until reviewed worker parity lands. Their existence does not make the general worker a rollback host: compatible new turns stay worker-owned, and infrastructure uncertainty returns retryable unavailability.
+Calendar reads and writes and Gmail reads run in this worker (calendar writes since 2026-09-04; see `AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1` in `@buildos/agentic-chat-runtime`). Browser OAuth handoff and the tools listed in `AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1` (deletes, graph reorganization, profile and contact reads) are not available to worker turns. Their existence does not make the general worker a rollback host: compatible new turns stay worker-owned, and infrastructure uncertainty returns retryable unavailability.
 
-## Calendar migration boundary
+## Folder map
+
+| Folder       | Owns                                                                                                                                                                                                        |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `host/`      | Process and queue: `bootstrap`, `composition-root` (the only place adapters are wired), `config`, the queue `consumer` and its runtime, wake listener, capacity and delivery health, stalled-turn recovery. |
+| `turn/`      | One turn's lifecycle: `turn-executor` (claim → provider loop → tools → finalize), execution input and control RPCs, the generation `write-fence`, cancellation, session handoff, terminal text integrity.   |
+| `provider/`  | Model passes: the turn coordinator, OpenRouter transport, tool surfaces, validation, repair, the reviewer lanes under `review/`, and provider capacity.                                                     |
+| `tools/`     | Read tools and the tool batch: the read execution adapter, calendar/email/web ports, the execution graph and policy, read fences, and live vision.                                                          |
+| `mutations/` | Reviewed writes: the mutation catalog (a data table), argument normalizers, the adapter boundary and router, and the three adapters.                                                                        |
+| `stream/`    | Delivery to the browser: the stream publisher (persist, then broadcast), its Supabase adapters, and runtime timing.                                                                                         |
+| `effects/`   | Never-fatal side effects: observations, prompt snapshots and local dumps, research and stated-future capture, billing, persistence traces.                                                                  |
+| `workflow/`  | The durable multi-agent review lane (preparation, runner, dispatch, projection, terminal).                                                                                                                  |
+| `shared/`    | Small host-neutral helpers used across folders.                                                                                                                                                             |
+
+Dependency direction: `host/` composes everything and nothing imports it except the process entrypoints. `provider/` never imports `host/`, `stream/`, `effects/`, or `mutations/`. File names are kebab-case; the `V1` suffix is for wire contracts and persisted shapes that carry a version, not for new internal symbols.
+
+## Calendar
 
 `tools/calendar-services.ts` composes the source-aware Calendar provider services shared with web
 through `@buildos/shared-agent-ops/calendar/google-calendar-runtime`. It covers credential refresh,
 source/default resolution, aggregated reads, event writes and compensating cleanup, and provider
-project-calendar resources. Construct it per execution; it does not register tools or enable a lane.
+project-calendar resources. Construct it per execution.
 
 The worker uses the OAuth client kind stored with each connection: dedicated Calendar grants need
 `PRIVATE_GOOGLE_CALENDAR_CLIENT_ID` / `PRIVATE_GOOGLE_CALENDAR_CLIENT_SECRET`; migrated shared-login
 grants need `PRIVATE_GOOGLE_CLIENT_ID` / `PRIVATE_GOOGLE_CLIENT_SECRET`. Both use the versioned
 `PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V1`. Missing configuration fails closed, with no fallback to
-the other OAuth client or the singleton token table. Secret values stay server-side.
-
-Before registering the seven Calendar tools, their adapters must derive `userId` from the trusted
-claim, enforce project/task/ontology-event access separately from provider source ownership, preserve
-the web's ontology-event and project-mapping behavior, and integrate the reviewed mutation/effect
-ledger contracts. Calendar content reads must also participate in the read adapter's private-content
-egress fence. The unavailable-tool policy and the Agent Run source-aware-user fallback guard remain
-unchanged until those gates and the calendar end-to-end proof pass.
+the other OAuth client or the singleton token table. Secret values stay server-side. Startup health
+reports which of these variables are missing (names only).
 
 ## Provider ownership
 
@@ -97,7 +107,7 @@ These modules are worker-private implementation details unless exported through 
 
 ## Executor side effects
 
-`executorEffects.ts` is the one facade for the never-fatal ports the executor is composed with (prompt snapshots, execution observations, research and stated-future capture, consumption billing, timing snapshots, terminal-control error reports). Every effect is attempted, a failure is handed to its `on*Error` reporter, and a reporter that throws is swallowed; none of them can change the durable ledger, the published stream, or the terminal status. Ports that carry turn truth (control, publisher, tool executions, session handoff, mutation) stay fatal and are not behind the facade. Tool observations, provider attempt receipts and the prompt snapshot are started detached into the turn's `pendingEffects` set and joined once, under the observation deadline, immediately before each terminal fence (`finalize` and `recover`); a join that misses the deadline is reported, never fatal, and the rows are still fenced by generation.
+`effects/executor-effects.ts` is the one facade for the never-fatal ports the executor is composed with (prompt snapshots, execution observations, research and stated-future capture, consumption billing, timing snapshots, terminal-control error reports). Every effect is attempted, a failure is handed to its `on*Error` reporter, and a reporter that throws is swallowed; none of them can change the durable ledger, the published stream, or the terminal status. Ports that carry turn truth (control, publisher, tool executions, session handoff, mutation) stay fatal and are not behind the facade. Tool observations, provider attempt receipts and the prompt snapshot are started detached into the turn's `pendingEffects` set and joined once, under the observation deadline, immediately before each terminal fence (`finalize` and `recover`); a join that misses the deadline is reported, never fatal, and the rows are still fenced by generation.
 
 ## Tool execution batches
 
@@ -105,8 +115,8 @@ One multi-result provider response is one execution batch. Optional `call_ref`/`
 same-response dependencies; since 2026-09-02 they are mounted only on the contract carve-out and
 completion write surfaces (`withSchedulingSidecar` in `provider/tool-surface.ts`), never on reads or
 controls, and the batching system message is sent only when a mounted tool carries them. They are
-preserved in provider history and removed before domain validation or adapter dispatch. `toolExecutionGraph.ts` validates and layers the batch, while
-`toolExecutionPolicy.ts` adds worker-owned resource conflicts and keeps unknown-scope mutations
+preserved in provider history and removed before domain validation or adapter dispatch. `tools/execution-graph.ts` validates and layers the batch, while
+`tools/execution-policy.ts` adds worker-owned resource conflicts and keeps unknown-scope mutations
 serial.
 
 Concurrent execution is the production default after the staged rollout. `CHAT_MAX_TOOL_CONCURRENCY=4`

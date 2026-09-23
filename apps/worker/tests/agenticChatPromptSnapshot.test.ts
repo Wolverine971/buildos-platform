@@ -6,7 +6,7 @@ import {
 	AgenticChatPromptSnapshotProtocolError,
 	SupabaseAgenticChatPromptSnapshotAdapter,
 	createStableAgenticChatPromptSnapshotIdV1
-} from '../src/workers/agentic-chat/promptSnapshot';
+} from '../src/workers/agentic-chat/effects/prompt-snapshot';
 import {
 	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 	type AgenticChatPreparedPromptSnapshotV1

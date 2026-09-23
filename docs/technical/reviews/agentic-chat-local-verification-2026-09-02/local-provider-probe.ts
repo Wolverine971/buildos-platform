@@ -6,7 +6,7 @@ import { buildLitePromptEnvelope } from '/Users/djwayne/buildos-platform/apps/we
 import { AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY } from '@buildos/agentic-chat-runtime/catalog';
 import { AgenticChatTurnProviderAdapter } from '/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/provider/turn-provider.ts';
 import { AgenticChatOpenRouterClient } from '/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts';
-import { AgenticChatProviderCapacity } from '/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/providerCapacity.ts';
+import { AgenticChatProviderCapacity } from '/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/provider/provider-capacity.ts';
 import { GPT_56_LUNA_MODEL } from '@buildos/smart-llm';
 
 // Real prompt builder, provider adapter, state machine, and transport. All tool

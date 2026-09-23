@@ -199,7 +199,7 @@ and "Guard against empty task writes" (`:145-150`), never reach the worker becau
 `examples[0]` renders (`skill-gate-preload.ts:349`). The exact-`task_id` rule appears three
 times in the rendered block (step 6, Policy line 4, Contract stop condition) and a fourth time in
 the write rules (`EXACT_ID_RULE_LINE`) and a fifth in the worker's `update_onto_task` description
-override (`apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts:471-472`). Step 8 (state
+override (`apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts:471-472`). Step 8 (state
 coverage) is the same sentence as `TASK_STATE_RULE_LINE` (`situational-rules.ts:57-58`), which
 renders in the same section on the same turn because both key off the same classifier.
 
@@ -421,7 +421,7 @@ parser never lifts.
 
 **Evidence.** §3; `task_management/SKILL.md:65-67`, `:70-84`, `:95`, `:102`, `:141`;
 `document_workspace/SKILL.md:44`, `:64`; `markdown-skill.ts:263-277`; `skill-gate-preload.ts:349`;
-`situational-rules.ts:54-58`, `:73-78`; `apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts:269-270`,
+`situational-rules.ts:54-58`, `:73-78`; `apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts:269-270`,
 `:471-472`; §2.7 cross-check.
 
 **Cheap-model impact.** Name translation (`onto.document.tree.get` → `get_document_tree`) is a

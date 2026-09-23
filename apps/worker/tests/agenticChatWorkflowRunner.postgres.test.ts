@@ -12,9 +12,9 @@ import {
 	canonicalizeAgenticChatJson,
 	hashAgenticChatWorkflowRequestV1
 } from '@buildos/shared-types';
-import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
+import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
 import type { AgenticChatOpenAiCompatibleRouteV1 } from '../src/workers/agentic-chat/provider/openrouter-client';
-import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/executionControl';
+import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/turn/execution-control';
 import {
 	SupabaseAgenticChatWorkflowStore,
 	type AgenticChatWorkflowFenceV1

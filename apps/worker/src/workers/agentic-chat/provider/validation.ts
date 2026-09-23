@@ -14,7 +14,7 @@ import {
 	turnContractCreatesProject,
 	validateToolCalls
 } from '@buildos/agentic-chat-runtime/loop';
-import { reviewedAgenticChatMutationSpecV1 } from '../mutationToolCatalog';
+import { reviewedAgenticChatMutationSpecV1 } from '../mutations/tool-catalog';
 import { validateContractEffectFields } from './contract-fields';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from './contracts';
 import { completedProviderCallToChatToolCall } from './feedback';

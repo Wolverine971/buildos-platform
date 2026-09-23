@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import type { JsonObject } from '@buildos/shared-types';
-import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
+import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
 import {
 	AgenticChatWorkflowRunner,
 	type AgenticChatWorkflowRunnerOptionsV1

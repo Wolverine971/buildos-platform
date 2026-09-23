@@ -231,7 +231,7 @@ Test updates forced by other packages' concurrent edits (assertions live in
 
 ## Handoffs (files this package does not own)
 
-1. **F02, worker** — `apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts`:
+1. **F02, worker** — `apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts`:
    remove the "; otherwise declare_turn_contract first" tail from the nine
    `descriptionOverride` strings that ride the opening pass (e.g. the
    `update_onto_risk` override at ~:893). `provider/review/controls.ts:39`:

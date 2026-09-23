@@ -9,8 +9,8 @@ import type {
 	AgenticChatTurnProviderRequestV1
 } from '../src/workers/agentic-chat/provider/contracts';
 import { streamBufferedProviderPass } from '../src/workers/agentic-chat/provider/provider-pass';
-import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/pendingEffects';
-import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
+import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/effects/pending-effects';
+import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/effects/execution-observation';
 
 afterEach(() => vi.useRealTimers());
 const V41 = 'deepseek/deepseek-v4.1-flash';

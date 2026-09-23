@@ -454,8 +454,8 @@ Hosted migration:
 Implementation record and proof:
 
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_2C_SLICE_2_PUBLISHER_PLAN_2026-08-02.md`
-- `apps/worker/src/workers/agentic-chat/streamPublisher.ts`
-- `apps/worker/src/workers/agentic-chat/supabaseStreamPublisherAdapters.ts`
+- `apps/worker/src/workers/agentic-chat/stream/stream-publisher.ts`
+- `apps/worker/src/workers/agentic-chat/stream/supabase-stream-publisher-adapters.ts`
 - `apps/worker/tests/agenticChatStreamPublisher.test.ts`
 - `supabase/tests/20260802034000_agentic_chat_worker_stream_delivery_ack.test.sql`
 - `apps/web/src/lib/services/agentic-chat-v2/phase2c-stream-delivery-ack.postgres.test.ts`
@@ -481,8 +481,8 @@ Local migration:
 Implementation record and proof:
 
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_2C_SLICE_3_CANCELLATION_OBSERVER_PLAN_2026-08-02.md`
-- `apps/worker/src/workers/agentic-chat/cancellationObserver.ts`
-- `apps/worker/src/workers/agentic-chat/supabaseCancellationObserverAdapter.ts`
+- `apps/worker/src/workers/agentic-chat/turn/cancellation-observer.ts`
+- `apps/worker/src/workers/agentic-chat/turn/supabase-cancellation-observer-adapter.ts`
 - `apps/worker/tests/agenticChatCancellationObserver.test.ts`
 - `supabase/tests/20260802035000_agentic_chat_worker_cancel_observation.test.sql`
 - `apps/web/src/lib/services/agentic-chat-v2/phase2c-cancel-observation.postgres.test.ts`
@@ -546,7 +546,7 @@ Implementation record and proof:
 - `apps/web/src/lib/services/agentic-chat-v2/worker-realtime-inbox.ts`
 - `apps/web/src/lib/services/agentic-chat-v2/worker-realtime-inbox.test.ts`
 - `packages/shared-types/src/agentic-chat-worker-contract.ts`
-- `apps/worker/src/workers/agentic-chat/streamPublisher.ts`
+- `apps/worker/src/workers/agentic-chat/stream/stream-publisher.ts`
 
 The shared contract now owns both Broadcast event names and the reconcile-hint payload. The browser channel opens only the exact private user topic, exposes observable readiness, relies on the Supabase client's auth propagation and transient channel rejoin, and replaces a terminally closed channel with one bounded channel-level timer. It exposes no send path.
 

@@ -1,14 +1,14 @@
 // apps/worker/src/workers/agentic-chat/provider/steps.ts
 import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/catalog';
 import type { ToolValidationIssue } from '@buildos/agentic-chat-runtime/loop';
-import { createStableAgenticChatMutationLogicalOperationIdV1 } from '../effectIdentity';
-import { createStableAgenticChatReadToolTransitionIdV1 } from '../readToolIdentity';
+import { createStableAgenticChatMutationLogicalOperationIdV1 } from '../effects/effect-identity';
+import { createStableAgenticChatReadToolTransitionIdV1 } from '../tools/read-tool-identity';
 import {
 	isAgenticChatControlToolNameV1,
 	isAgenticChatProductionReadToolNameV1
 } from '../tools/execution-adapter';
-import type { AgenticChatReadToolExecutionV1 } from '../toolExecution';
-import { reviewedAgenticChatMutationSpecV1 } from '../mutationToolCatalog';
+import type { AgenticChatReadToolExecutionV1 } from '../tools/tool-execution';
+import { reviewedAgenticChatMutationSpecV1 } from '../mutations/tool-catalog';
 import type { AgenticChatProviderStepV1, AgenticChatTurnProviderRequestV1 } from './contracts';
 import type { AgenticChatFeedbackToolCall } from './feedback';
 import {

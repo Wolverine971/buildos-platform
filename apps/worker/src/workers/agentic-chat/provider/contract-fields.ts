@@ -5,7 +5,7 @@ import {
 	getSafeWriteToolNamesForTurnContract,
 	getWriteLedgerChangedFields
 } from '@buildos/agentic-chat-runtime/loop';
-import { reviewedAgenticChatMutationSpecV1 } from '../mutationToolCatalog';
+import { reviewedAgenticChatMutationSpecV1 } from '../mutations/tool-catalog';
 import type { AgenticChatTurnProviderToolV1 } from './contracts';
 
 /**

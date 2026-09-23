@@ -3,7 +3,7 @@ import {
 	AgenticChatSessionHandoffFenceError,
 	AgenticChatSessionHandoffProtocolError,
 	SupabaseAgenticChatSessionHandoffAdapter
-} from '../src/workers/agentic-chat/sessionHandoff';
+} from '../src/workers/agentic-chat/turn/session-handoff';
 
 const TURN_RUN_ID = '11111111-1111-4111-8111-111111111111';
 const QUEUE_JOB_ID = '22222222-2222-4222-8222-222222222222';

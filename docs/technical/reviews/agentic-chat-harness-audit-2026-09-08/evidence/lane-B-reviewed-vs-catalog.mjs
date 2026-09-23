@@ -3,7 +3,7 @@ const cat = await import(
 	'/Users/djwayne/buildos-platform/packages/agentic-chat-runtime/dist/catalog/index.mjs'
 );
 const mc = await import(
-	'/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts'
+	'/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts'
 );
 const SPECS = mc.AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1;
 const bytes = (t) => Buffer.byteLength(JSON.stringify(t), 'utf8');

@@ -319,7 +319,7 @@ array, and atomically rejects assistant/user/tool drift.
 Current uncommitted campaign files:
 
 - `apps/worker/src/workers/agentic-chat/openRouterReadOnlyClient.ts`
-- `apps/worker/src/workers/agentic-chat/promptSnapshot.ts`
+- `apps/worker/src/workers/agentic-chat/effects/prompt-snapshot.ts`
 - `apps/worker/tests/agenticChatOpenRouterReadOnlyClient.test.ts`
 - `apps/worker/tests/agenticChatPromptSnapshot.test.ts`
 - `apps/web/src/lib/services/agentic-chat-v2/p5-prompt-snapshot-tool-definitions.postgres.test.ts`
@@ -792,7 +792,7 @@ focused two-scenario retest is necessary but not sufficient for exit.
   `packages/agentic-chat-runtime/src/loop/tool-validation.ts`
 - Provider client/deadline cleanup deployed in `e995c1c2`:
   `apps/worker/src/workers/agentic-chat/openRouterReadOnlyClient.ts` and
-  `apps/worker/src/workers/agentic-chat/abortableDeadline.ts`
+  `apps/worker/src/workers/agentic-chat/shared/abortable-deadline.ts`
 - Worker provider configuration deployed in `fd5b84ed`, awaiting canary proof:
   `apps/worker/src/workers/agentic-chat/phase3Config.ts`
 

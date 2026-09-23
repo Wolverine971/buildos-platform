@@ -1,7 +1,7 @@
 // apps/worker/tests/agenticChatWorkflowRunnerAdapter.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancellationObserver';
-import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
+import { AgenticChatCancellationError } from '../src/workers/agentic-chat/turn/cancellation-observer';
+import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
 import { createAgenticChatWorkflowTurnPreparerV1 } from '../src/workers/agentic-chat/workflow/preparation-composition';
 import { AgenticChatWorkflowRunner } from '../src/workers/agentic-chat/workflow/workflow-runner';
 import { AgenticChatWorkflowRunnerAdapter } from '../src/workers/agentic-chat/workflow/workflow-runner-adapter';

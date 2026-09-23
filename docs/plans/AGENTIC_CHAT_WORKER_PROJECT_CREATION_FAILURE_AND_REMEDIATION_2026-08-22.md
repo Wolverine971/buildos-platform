@@ -91,8 +91,8 @@ Relevant implementation surfaces:
 - `packages/agentic-chat-runtime/src/loop/repair-instructions.ts`
 - `packages/agentic-chat-runtime/src/loop/turn-contract.ts`
 - `apps/worker/src/workers/agentic-chat/readOnlyProvider.ts`
-- `apps/worker/src/workers/agentic-chat/createOntoProjectMutationAdapter.ts`
-- `apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts`
+- `apps/worker/src/workers/agentic-chat/mutations/create-onto-project-adapter.ts`
+- `apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts`
 
 ## Required remediation
 

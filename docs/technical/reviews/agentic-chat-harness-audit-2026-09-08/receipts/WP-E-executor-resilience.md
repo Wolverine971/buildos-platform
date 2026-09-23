@@ -8,11 +8,11 @@ Findings: F55, F53, F67, F118, F56, F50 (executor half).
 
 Files changed (all left unstaged):
 
-- `apps/worker/src/workers/agentic-chat/turn-executor.ts`
-- `apps/worker/src/workers/agentic-chat/executorEffects.ts`
-- `apps/worker/src/workers/agentic-chat/promptSnapshot.ts`
-- `apps/worker/src/workers/agentic-chat/cancellationObserver.ts`
-- `apps/worker/src/workers/agentic-chat/pendingEffects.ts` (new, shared with WP-D: this package
+- `apps/worker/src/workers/agentic-chat/turn/turn-executor.ts`
+- `apps/worker/src/workers/agentic-chat/effects/executor-effects.ts`
+- `apps/worker/src/workers/agentic-chat/effects/prompt-snapshot.ts`
+- `apps/worker/src/workers/agentic-chat/turn/cancellation-observer.ts`
+- `apps/worker/src/workers/agentic-chat/effects/pending-effects.ts` (new, shared with WP-D: this package
   wrote the per-turn `AgenticChatPendingEffects` class with the agreed `enqueue(promise)` /
   `drain(deadlineMs)` API; WP-D appended the turn-keyed `AgenticChatPendingEffectsRegistry` and the
   `AGENTIC_CHAT_PENDING_EFFECTS_REGISTRY` singleton, which the executor now shares)
@@ -230,7 +230,7 @@ Not run (per machine rules): typecheck, lint, svelte-check, any suite.
    (`'uses one worker-level 500 ms timer for every registered turn'`): rename to `... 2 s timer ...`
    and change `await vi.advanceTimersByTimeAsync(1_500)` to
    `await vi.advanceTimersByTimeAsync(3 * DEFAULT_AGENTIC_CHAT_CANCELLATION_POLL_INTERVAL_MS)`
-   (import it from `../src/workers/agentic-chat/cancellationObserver`); the `toHaveLength(3)`
+   (import it from `../src/workers/agentic-chat/turn/cancellation-observer`); the `toHaveLength(3)`
    assertion then holds.
 2. **F53 shared constant** — `packages/shared-types/src/agentic-chat-worker-contract.ts:26`
    `AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS = 500` is no longer imported anywhere in the

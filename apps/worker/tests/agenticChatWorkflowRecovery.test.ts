@@ -4,8 +4,8 @@ import {
 	AgenticChatExecutionControlRpcError,
 	SupabaseAgenticChatExecutionControlAdapter,
 	type AgenticChatExecutionRpcClient
-} from '../src/workers/agentic-chat/executionControl';
-import { AgenticChatStalledRecoverySweep } from '../src/workers/agentic-chat/stalledRecovery';
+} from '../src/workers/agentic-chat/turn/execution-control';
+import { AgenticChatStalledRecoverySweep } from '../src/workers/agentic-chat/host/stalled-recovery';
 import { AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE } from '../src/workers/agentic-chat/workflow/workflow-projection';
 import { stableAgenticChatWorkflowAnswerMessageIdV1 } from '../src/workers/agentic-chat/workflow/workflow-terminal';
 

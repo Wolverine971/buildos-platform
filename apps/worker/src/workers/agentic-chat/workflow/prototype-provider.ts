@@ -14,7 +14,7 @@ import {
 	PROJECT_REVIEW_RULES_V1,
 	PROJECT_REVIEW_SPECIALISTS_V1
 } from '@buildos/agentic-chat-runtime/specialists';
-import type { AgenticChatProviderCapacity } from '../providerCapacity';
+import type { AgenticChatProviderCapacity } from '../provider/provider-capacity';
 import { buildPromptSnapshot } from '../provider/request-builders';
 import { AgenticChatProviderExecutionError } from '../provider/contracts';
 import type {

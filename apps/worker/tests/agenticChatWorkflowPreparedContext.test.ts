@@ -10,7 +10,7 @@ import {
 } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
 import { describe, expect, it, vi } from 'vitest';
-import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
+import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import { createAgenticChatWorkflowTurnPreparerV1 } from '../src/workers/agentic-chat/workflow/preparation-composition';
 import {
 	AgenticChatWorkflowContextError,

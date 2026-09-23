@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	AgenticChatMutationAdapterError,
 	AgenticChatMutationExecutor
-} from '../src/workers/agentic-chat/mutation-executor';
+} from '../src/workers/agentic-chat/mutations/mutation-executor';
 import {
 	createStableAgenticChatEffectIdentityV1,
 	createStableAgenticChatMutationLogicalOperationIdV1
-} from '../src/workers/agentic-chat/effectIdentity';
+} from '../src/workers/agentic-chat/effects/effect-identity';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';

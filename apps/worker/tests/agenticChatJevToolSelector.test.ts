@@ -7,8 +7,8 @@ import type {
 } from '@buildos/shared-types';
 import type { UsageLogger } from '@buildos/smart-llm';
 import { describe, expect, it, vi } from 'vitest';
-import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
-import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import type {
 	AgenticChatProviderStepV1,
 	AgenticChatTurnProviderClientEventV1,
@@ -23,7 +23,7 @@ import {
 	buildJevToolSelectionBody,
 	selectJevToolDefinitions
 } from '../src/workers/agentic-chat/provider/jev-tool-selector';
-import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
+import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';

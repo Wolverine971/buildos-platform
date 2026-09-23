@@ -5,7 +5,7 @@ import {
 	SupabaseAgenticChatExecutionObservationAdapter,
 	createStableAgenticChatExecutionObservationKeyV1,
 	type AgenticChatExecutionObservationInputV1
-} from '../src/workers/agentic-chat/executionObservation';
+} from '../src/workers/agentic-chat/effects/execution-observation';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const TURN_RUN_ID = '30000000-0000-4000-8000-000000000003';

@@ -5,7 +5,7 @@
 // test, so UI fixtures cannot drift from worker semantics. `meaning` explains
 // the state for the UI owner; it is not user-facing copy.
 
-import type { AgenticChatTurnProgressHealthInputV1 } from '../../src/workers/agentic-chat/deliveryHealth';
+import type { AgenticChatTurnProgressHealthInputV1 } from '../../src/workers/agentic-chat/host/delivery-health';
 
 const NOW = '2026-09-13T12:10:00.000Z';
 const ACCEPTED_AT = '2026-09-13T12:00:00.000Z';

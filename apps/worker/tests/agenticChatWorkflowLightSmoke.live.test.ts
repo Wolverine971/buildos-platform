@@ -8,7 +8,7 @@ import { parse } from 'dotenv';
 import { Client } from 'pg';
 import { expect, test } from 'vitest';
 import { computeAgenticChatWorkflowReservationMicroUsdV1 } from '@buildos/shared-types';
-import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/pendingEffects';
+import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/effects/pending-effects';
 import {
 	AgenticChatOpenRouterClient,
 	type AgenticChatProviderUsageObservationV1

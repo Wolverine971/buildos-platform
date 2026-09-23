@@ -399,7 +399,7 @@ write.
 - Read WP-1's reviewer cost and cache numbers first. If the reviewer share is already under ~15%
   with caching, stop here and record why.
 - Otherwise canary one cheaper model on the semantic reviewer routes
-  (`apps/worker/src/workers/agentic-chat/bootstrap.ts` `buildAgenticChatSemanticReviewerRoutes`)
+  (`apps/worker/src/workers/agentic-chat/host/bootstrap.ts` `buildAgenticChatSemanticReviewerRoutes`)
   behind the existing route ordering, with the restraint canaries from the audit as the gate: the
   three-plausible-email-tasks case must be withheld, the single-hit organize must be approved, the
   reviewer-mimicry case must be rejected. Run the provider suite's reviewer fixtures against the

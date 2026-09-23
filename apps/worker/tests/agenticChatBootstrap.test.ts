@@ -1,13 +1,13 @@
 // apps/worker/tests/agenticChatBootstrap.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import type { AgenticChatWorkerCapacityEvidenceV1 } from '../src/workers/agentic-chat/capacity';
-import type { AgenticChatConsumerRuntimeHealth } from '../src/workers/agentic-chat/consumerRuntime';
+import type { AgenticChatWorkerCapacityEvidenceV1 } from '../src/workers/agentic-chat/host/capacity';
+import type { AgenticChatConsumerRuntimeHealth } from '../src/workers/agentic-chat/host/consumer-runtime';
 import {
 	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1
-} from '../src/workers/agentic-chat/mutationToolCatalog';
+} from '../src/workers/agentic-chat/mutations/tool-catalog';
 import { GLM_53_FLASH_MODEL, GPT_56_LUNA_MODEL, JSON_PROFILE_MODELS } from '@buildos/smart-llm';
-import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
+import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import {
 	AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS,
 	AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER,
@@ -17,7 +17,7 @@ import {
 	summarizeAgenticChatCalendarCredentialsV1,
 	summarizeAgenticChatMutationCapabilitiesV1,
 	type AgenticChatBootstrapCompositionPort
-} from '../src/workers/agentic-chat/bootstrap';
+} from '../src/workers/agentic-chat/host/bootstrap';
 
 function environment(): NodeJS.ProcessEnv {
 	return {

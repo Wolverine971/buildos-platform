@@ -3,7 +3,7 @@ import {
 	AgenticChatOpenRouterClient,
 	type AgenticChatOpenAiCompatibleRouteV1
 } from '../../src/workers/agentic-chat/provider/openrouter-client';
-import { AgenticChatPendingEffectsRegistry } from '../../src/workers/agentic-chat/pendingEffects';
+import { AgenticChatPendingEffectsRegistry } from '../../src/workers/agentic-chat/effects/pending-effects';
 
 /**
  * Drives the real AgenticChatOpenRouterClient (and therefore the real physical

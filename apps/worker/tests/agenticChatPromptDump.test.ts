@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	localPromptDumpsEnabled,
 	startLocalPromptDump
-} from '../src/workers/agentic-chat/promptDump';
+} from '../src/workers/agentic-chat/effects/prompt-dump';
 
 const env = { NODE_ENV: 'development', AGENTIC_CHAT_LOCAL_PROMPT_DUMPS: 'true' };
 const identity = {

@@ -5,11 +5,11 @@ import {
 	createAgenticChatCompositionRoot,
 	reportAgenticChatRuntimeTiming,
 	reportAgenticChatStalledRecovery
-} from '../src/workers/agentic-chat/composition-root';
+} from '../src/workers/agentic-chat/host/composition-root';
 import {
 	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 	normalizeAgenticChatMutationCapabilitiesV1
-} from '../src/workers/agentic-chat/mutationToolCatalog';
+} from '../src/workers/agentic-chat/mutations/tool-catalog';
 
 function supabaseClient() {
 	return {

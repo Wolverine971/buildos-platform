@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import type { JevDecider } from '@buildos/smart-llm';
 import type { SpecialistSnapshotV2 } from '@buildos/agentic-chat-runtime/specialists';
-import { runWithAbortableDeadline } from '../abortableDeadline';
+import { runWithAbortableDeadline } from '../shared/abortable-deadline';
 import type { AgenticChatWorkflowPreparedTurnV1 } from './workflow-runner-port';
 import type { AgenticChatWorkflowStoreClient } from './workflow-store';
 import {

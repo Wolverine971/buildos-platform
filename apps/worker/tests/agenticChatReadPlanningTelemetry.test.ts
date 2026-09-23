@@ -1,6 +1,6 @@
 // apps/worker/tests/agenticChatReadPlanningTelemetry.test.ts
 import { describe, expect, it } from 'vitest';
-import { deriveAgenticChatReadPlanningIdentityV1 } from '../src/workers/agentic-chat/readPlanningTelemetry';
+import { deriveAgenticChatReadPlanningIdentityV1 } from '../src/workers/agentic-chat/effects/read-planning-telemetry';
 
 describe('Agentic Chat read-planning telemetry identity', () => {
 	it('uses a stable exact-read key independent of argument key order and scheduling sidecars', () => {

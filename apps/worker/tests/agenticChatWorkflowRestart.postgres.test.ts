@@ -15,12 +15,12 @@ import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 import type { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/executionControl';
-import { SupabaseAgenticChatRecoverySnapshotAdapter } from '../src/workers/agentic-chat/recoverySnapshot';
+import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/turn/execution-control';
+import { SupabaseAgenticChatRecoverySnapshotAdapter } from '../src/workers/agentic-chat/host/recovery-snapshot';
 import {
 	AgenticChatStalledRecoverySweep,
 	SupabaseAgenticChatStalledCandidateSource
-} from '../src/workers/agentic-chat/stalledRecovery';
+} from '../src/workers/agentic-chat/host/stalled-recovery';
 import { AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1 } from '../src/workers/agentic-chat/workflow/workflow-dispatch';
 import { SupabaseAgenticChatWorkflowStore } from '../src/workers/agentic-chat/workflow/workflow-store';
 import { stableAgenticChatWorkflowAnswerMessageIdV1 } from '../src/workers/agentic-chat/workflow/workflow-terminal';

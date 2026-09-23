@@ -1,7 +1,7 @@
 // apps/worker/src/lib/workerOperationalHealth.ts
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import type { GeneralWorkerRuntimeLifecycleHealth } from './generalWorkerRuntimeLifecycle';
-import type { AgenticChatBootstrapHealth } from '../workers/agentic-chat/bootstrap';
+import type { AgenticChatBootstrapHealth } from '../workers/agentic-chat/host/bootstrap';
 
 export type WorkerEventLoopLagSnapshot = {
 	meanMs: number;

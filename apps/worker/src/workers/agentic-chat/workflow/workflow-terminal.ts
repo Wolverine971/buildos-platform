@@ -6,7 +6,7 @@ import {
 	type AgenticChatWorkflowTerminalOutcomeV1,
 	type JsonObject
 } from '@buildos/shared-types';
-import type { AgenticChatTerminalFinalizeInputV1 } from '../executionControl';
+import type { AgenticChatTerminalFinalizeInputV1 } from '../turn/execution-control';
 import {
 	AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE,
 	acceptedWorkflowReports,

@@ -8,19 +8,19 @@ import type {
 	ChatTurnTerminalStatusV1,
 	JsonObject
 } from '@buildos/shared-types';
-import { AgenticChatCancellationError } from '../cancellationObserver';
+import { AgenticChatCancellationError } from '../turn/cancellation-observer';
 import type {
 	AgenticChatExecutionControlPortV1,
 	AgenticChatTerminalFinalizeInputV1
-} from '../executionControl';
+} from '../turn/execution-control';
 import {
 	AgenticChatPublisherOverloadError,
 	type AgenticChatStreamPublisher
-} from '../streamPublisher';
+} from '../stream/stream-publisher';
 import type {
 	AgenticChatTurnExecutionOutcomeV1,
 	AgenticChatTurnExecutionResultV1
-} from '../turn-executor';
+} from '../turn/turn-executor';
 import { parseAgenticChatWorkflowEventReceiptV1 } from './preparation-store';
 import type {
 	AgenticChatWorkflowRunOutcomeV1,

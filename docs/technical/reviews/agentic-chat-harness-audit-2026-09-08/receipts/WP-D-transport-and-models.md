@@ -9,9 +9,9 @@ Findings: F76, F77, F78, F80, F81, F50 (client half), F104, F109.
 Files changed (all left unstaged):
 
 - `apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts`
-- `apps/worker/src/workers/agentic-chat/config.ts`
-- `apps/worker/src/workers/agentic-chat/bootstrap.ts`
-- `apps/worker/src/workers/agentic-chat/pendingEffects.ts` (shared new module; WP-E wrote the
+- `apps/worker/src/workers/agentic-chat/host/config.ts`
+- `apps/worker/src/workers/agentic-chat/host/bootstrap.ts`
+- `apps/worker/src/workers/agentic-chat/effects/pending-effects.ts` (shared new module; WP-E wrote the
   per-turn `AgenticChatPendingEffects` class, this package appended the turn-keyed
   `AgenticChatPendingEffectsRegistry` + `AGENTIC_CHAT_PENDING_EFFECTS_REGISTRY` singleton)
 - `apps/worker/.env.example`
@@ -228,14 +228,14 @@ handoffs land: `agenticChatTurnProvider.test.ts` (3 `allow_fallbacks: false` ass
     - Optional: delete the never-populated `reasoningChannelChunks`/`reasoningChannelChars` fields
       in `packages/agentic-chat-runtime/src/loop/shared.ts:130-135`.
 4. **F104 latch deletion** (verifier version; no owner in this pass):
-    - `apps/worker/src/workers/agentic-chat/providerCapacity.ts`: delete `degradedUntilMs` from
+    - `apps/worker/src/workers/agentic-chat/provider/provider-capacity.ts`: delete `degradedUntilMs` from
       `AgenticChatProviderCapacitySnapshotV1` (:11), the `degradedUntilByTurn` map (:34),
       `markTemporarilyUnavailable` (:79-85) and `markAvailable` (:87-90), the sweep and
       `degradedUntilMs` in `getSnapshot` (:92-110; `available` becomes
       `configured && activeRequests < concurrency`), the `'temporarily degraded'` branch of the
       `acquire` error message (:58-64), and `assertTurnRunId` if unused; drop the `turnRunId`
       parameter of `acquire`/`getSnapshot` (keep `AgenticChatProviderCapacityError` and the lease).
-    - `apps/worker/src/workers/agentic-chat/capacity.ts:162-167`: `validProviderSnapshot` loses the
+    - `apps/worker/src/workers/agentic-chat/host/capacity.ts:162-167`: `validProviderSnapshot` loses the
       `degradedUntilMs` clauses; `available === (configured && activeRequests < concurrency)`.
     - `apps/worker/src/workers/agentic-chat/provider/provider-pass.ts`: remove the `capacity`
       (:34) and `retryableFailureCooldownMs` (:35) parameters of `streamBufferedProviderPass`, the
@@ -260,7 +260,7 @@ handoffs land: `agenticChatTurnProvider.test.ts` (3 `allow_fallbacks: false` ass
       `apps/worker/tests/agenticChatTurnProvider.test.ts` — remove the `cooldown` spies and
       `expect(cooldown).not.toHaveBeenCalled()` at :6251/:6313 and :6975/:7028, and the
       `degradedUntilMs` assertion at :9145-9146.
-    - `apps/worker/src/workers/agentic-chat/composition-root.ts:285-295`: if the adapter's
+    - `apps/worker/src/workers/agentic-chat/host/composition-root.ts:285-295`: if the adapter's
       positional `retryableFailureCooldownMs` is passed there, drop that argument.
 5. **F50, WP-E** — nothing further required: `executorEffects.ts` already uses
    `AGENTIC_CHAT_PENDING_EFFECTS_REGISTRY.forTurn/drain` and the executor drains before the

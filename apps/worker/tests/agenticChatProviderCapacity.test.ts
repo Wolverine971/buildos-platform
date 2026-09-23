@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	AgenticChatProviderCapacity,
 	AgenticChatProviderCapacityError
-} from '../src/workers/agentic-chat/providerCapacity';
+} from '../src/workers/agentic-chat/provider/provider-capacity';
 
 describe('AgenticChatProviderCapacity', () => {
 	it('reserves the only provider slot and releases it idempotently', () => {

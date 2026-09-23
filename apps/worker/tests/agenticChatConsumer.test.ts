@@ -6,10 +6,10 @@ import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
 import {
 	DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
 	createAgenticChatConsumer
-} from '../src/workers/agentic-chat/consumer';
-import { AgenticChatConsumerRuntime } from '../src/workers/agentic-chat/consumerRuntime';
-import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
-import { DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG } from '../src/workers/agentic-chat/streamPublisher';
+} from '../src/workers/agentic-chat/host/consumer';
+import { AgenticChatConsumerRuntime } from '../src/workers/agentic-chat/host/consumer-runtime';
+import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
+import { DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG } from '../src/workers/agentic-chat/stream/stream-publisher';
 
 const { rpcMock } = vi.hoisted(() => ({
 	rpcMock:

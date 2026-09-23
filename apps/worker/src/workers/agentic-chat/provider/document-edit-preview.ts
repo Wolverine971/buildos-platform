@@ -185,7 +185,8 @@ export async function previewDocumentEditCalls(
 					.catch((): DocumentEditPreviewOutcome => ({ status: 'unavailable' }));
 				outcomes.set(call.id, { outcome, chained });
 				if (outcome.status !== 'previewed') blocked = true;
-				else if (typeof outcome.next_content === 'string') baseContent = outcome.next_content;
+				else if (typeof outcome.next_content === 'string')
+					baseContent = outcome.next_content;
 				// It changed the body without saying how: later calls cannot be previewed exactly.
 				else if (outcome.preview) blocked = true;
 			}

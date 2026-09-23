@@ -51,7 +51,7 @@ describe('GeneralWorkerRuntimeLifecycle', () => {
 		expect(generalSource).not.toContain('collectAgenticChatWorkerCapacityEvidence');
 		expect(generalSource).not.toContain('AGENTIC_CHAT_CAPACITY_PATH');
 		expect(generalSource).not.toContain("queue.process('agentic_chat_turn'");
-		expect(dedicatedSource).toContain("from './workers/agentic-chat/bootstrap'");
+		expect(dedicatedSource).toContain("from './workers/agentic-chat/host/bootstrap'");
 	});
 
 	it('starts and stops only the general queue exactly once', async () => {

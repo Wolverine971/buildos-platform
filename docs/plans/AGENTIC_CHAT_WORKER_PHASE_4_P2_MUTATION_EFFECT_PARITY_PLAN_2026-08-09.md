@@ -93,7 +93,7 @@ Implementation:
 
 - `supabase/migrations/20260809010000_agentic_chat_mutation_tool_execution_ledger.sql`
 - `supabase/tests/20260809010000_agentic_chat_mutation_tool_execution_ledger.test.sql`
-- `apps/worker/src/workers/agentic-chat/toolExecution.ts`
+- `apps/worker/src/workers/agentic-chat/tools/tool-execution.ts`
 - `apps/worker/src/workers/agentic-chat/fixtureMutationExecutor.ts`
 - `apps/worker/src/workers/agentic-chat/fixtureTurnExecutor.ts`
 

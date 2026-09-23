@@ -17,7 +17,7 @@ and accepts an immutable prepared checkpoint. Unsupported and ordinary requests
 retain their working prepared-admission behavior.
 
 Read [81](81-chat-workflow-implementation-program.md), the frozen contract from 85,
-and [the architecture's admission section](../apps/worker/src/workers/agentic-chat/djflow-architecture.md).
+and [the architecture's admission section](../docs/archive/agentic-chat-djflow/djflow-architecture.md).
 Current v3 admission requires a prepared artifact: this is a versioned contract
 change, not moving one function below `enqueue`. Shared portable context extraction
 already exists in `packages/agentic-chat-runtime/src/context/`; use it.

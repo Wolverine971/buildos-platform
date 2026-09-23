@@ -24,9 +24,9 @@ import {
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
-import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import { buildMutationBatch, mutationBatchSha256 } from '@buildos/agentic-chat-runtime/loop';
-import { reviewedAgenticChatMutationSpecV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
+import { reviewedAgenticChatMutationSpecV1 } from '../src/workers/agentic-chat/mutations/tool-catalog';
 import {
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderFailedToolSynthesisInputV1,
@@ -38,10 +38,10 @@ import {
 	type AgenticChatTurnProviderMessageV1,
 	type AgenticChatTurnProviderRequestV1
 } from '../src/workers/agentic-chat/provider/contracts';
-import { createStableAgenticChatMutationLogicalOperationIdV1 } from '../src/workers/agentic-chat/effectIdentity';
-import type { AgenticChatLiveVisionResolverPortV1 } from '../src/workers/agentic-chat/liveVision';
-import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
-import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/readToolIdentity';
+import { createStableAgenticChatMutationLogicalOperationIdV1 } from '../src/workers/agentic-chat/effects/effect-identity';
+import type { AgenticChatLiveVisionResolverPortV1 } from '../src/workers/agentic-chat/tools/live-vision';
+import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
+import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/tools/read-tool-identity';
 import { EVIDENCE_COVERAGE_INSTRUCTION_PREFIX } from '../src/workers/agentic-chat/provider/request-builders';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
 import type { AgenticChatDocumentEditPreviewPort } from '../src/workers/agentic-chat/provider/document-edit-preview';

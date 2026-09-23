@@ -244,7 +244,7 @@ acting/reviewer handoff, not execution concurrency.
 - The durable `chat_sessions` row still had `context_type=project_create`, a null entity, and no
   `fastchat_last_context_shift`; therefore the fixture stopped before its project-scoped follow-up.
 
-The source trace matches the receipt. `apps/worker/src/workers/agentic-chat/turn-executor.ts`
+The source trace matches the receipt. `apps/worker/src/workers/agentic-chat/turn/turn-executor.ts`
 copies the extracted shift into terminal context and publishes a semantic event. It does not
 persist the session handoff. The legacy HTTP handler has an explicit
 `fastchat_last_context_shift` metadata update after extracting the same receipt. The worker path

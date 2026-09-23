@@ -1,12 +1,12 @@
 // apps/worker/tests/agenticChatTimingPayload.test.ts
 import { describe, expect, it } from 'vitest';
-import type { AgenticChatWorkerTimingBaselineV1 } from '../src/workers/agentic-chat/executionInput';
-import { AgenticChatRuntimeTimingTracker } from '../src/workers/agentic-chat/runtimeTiming';
+import type { AgenticChatWorkerTimingBaselineV1 } from '../src/workers/agentic-chat/turn/execution-input';
+import { AgenticChatRuntimeTimingTracker } from '../src/workers/agentic-chat/stream/runtime-timing';
 import {
 	AgenticChatTimingPayloadError,
 	buildAgenticChatAsyncTimingDraftV1,
 	finalizeAgenticChatAsyncTimingSummaryV1
-} from '../src/workers/agentic-chat/timingPayload';
+} from '../src/workers/agentic-chat/stream/timing-payload';
 
 const IMMEDIATE_BASELINE: AgenticChatWorkerTimingBaselineV1 = {
 	admittedAt: '2026-08-03T11:59:57.000Z',

@@ -141,15 +141,15 @@ Focused controller/UI coverage is 32/32. The complete Agentic Chat gate is now 1
 
 Implemented locally:
 
-- `apps/worker/src/workers/agentic-chat/executionControl.ts`
-- `apps/worker/src/workers/agentic-chat/executionInput.ts`
-- `apps/worker/src/workers/agentic-chat/effectControl.ts`
-- `apps/worker/src/workers/agentic-chat/effectIdentity.ts`
+- `apps/worker/src/workers/agentic-chat/turn/execution-control.ts`
+- `apps/worker/src/workers/agentic-chat/turn/execution-input.ts`
+- `apps/worker/src/workers/agentic-chat/effects/effect-control.ts`
+- `apps/worker/src/workers/agentic-chat/effects/effect-identity.ts`
 - `apps/worker/src/workers/agentic-chat/fixtureMutationExecutor.ts`
 - `apps/worker/src/workers/agentic-chat/fixtureTurnExecutor.ts`
 - `apps/worker/src/workers/agentic-chat/fixtureConsumer.ts`
-- `apps/worker/src/workers/agentic-chat/recoverySnapshot.ts`
-- `apps/worker/src/workers/agentic-chat/stalledRecovery.ts`
+- `apps/worker/src/workers/agentic-chat/host/recovery-snapshot.ts`
+- `apps/worker/src/workers/agentic-chat/host/stalled-recovery.ts`
 - `apps/worker/tests/agenticChatFixtureLoad.test.ts`
 - `apps/web/src/lib/services/agentic-chat-v2/worker-phase2d-composed-flow.test.ts`
 - `supabase/tests/20260803001000_agentic_chat_worker_phase2d_behavior_matrix.test.sql`

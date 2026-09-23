@@ -3,8 +3,8 @@
 import { randomUUID } from 'node:crypto';
 import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/catalog';
 import type { UsageLogger } from '@buildos/smart-llm';
-import { runWithAbortableDeadline } from '../abortableDeadline';
-import { startLocalPromptDump } from '../promptDump';
+import { runWithAbortableDeadline } from '../shared/abortable-deadline';
+import { startLocalPromptDump } from '../effects/prompt-dump';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from './contracts';
 import { appendSystemInstruction } from './request-builders';
 

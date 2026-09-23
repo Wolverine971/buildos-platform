@@ -4,14 +4,14 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { AgenticChatTurnClaimResultV1, TurnInputArtifactV1 } from '@buildos/shared-types';
 import { parseChatWorkflowPrototypeUsers, readChatWorkflowProgress } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
-import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import type {
 	AgenticChatProviderInputV1,
 	AgenticChatProviderStepV1,
 	AgenticChatTurnProviderClientRequestV1,
 	AgenticChatTurnProviderClientPortV1
 } from '../src/workers/agentic-chat/provider/contracts';
-import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
+import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
 import {
 	ChatWorkflowPrototypeProvider,
 	WORKFLOW_RULES_PREAMBLE,

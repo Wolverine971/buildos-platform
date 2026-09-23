@@ -46,7 +46,7 @@ afterEach(() => {
 
 describe('Agentic Chat worker queue wake', () => {
 	it('keeps the topic contract the worker subscribes to', () => {
-		// Must match apps/worker/src/workers/agentic-chat/queueWakeListener.ts.
+		// Must match apps/worker/src/workers/agentic-chat/host/queue-wake-listener.ts.
 		expect(AGENTIC_CHAT_QUEUE_WAKE_TOPIC).toBe('agentic-chat-queue:wake');
 		expect(AGENTIC_CHAT_QUEUE_WAKE_EVENT).toBe('wake');
 		expect(AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS).toBeLessThanOrEqual(150);

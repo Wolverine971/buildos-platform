@@ -11,11 +11,12 @@ import type { AgenticChatTurnProviderClientPortV1 } from '../src/workers/agentic
 import {
 	localPromptDumpsEnabled,
 	startLocalPromptDump
-} from '../src/workers/agentic-chat/promptDump';
+} from '../src/workers/agentic-chat/effects/prompt-dump';
 
 const files = vi.hoisted(() => ({ directory: '' }));
-vi.mock('../src/workers/agentic-chat/promptDump', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../src/workers/agentic-chat/promptDump')>();
+vi.mock('../src/workers/agentic-chat/effects/prompt-dump', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('../src/workers/agentic-chat/effects/prompt-dump')>();
 	return {
 		...actual,
 		localPromptDumpsEnabled: vi.fn(() => true),

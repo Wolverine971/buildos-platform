@@ -10,7 +10,7 @@
 //
 // Run: node --import tsx --conditions=development tests/helpers/workflowWorkerProcess.ts
 import { Client } from 'pg';
-import { AgenticChatPendingEffectsRegistry } from '../../src/workers/agentic-chat/pendingEffects';
+import { AgenticChatPendingEffectsRegistry } from '../../src/workers/agentic-chat/effects/pending-effects';
 import { AgenticChatOpenRouterClient } from '../../src/workers/agentic-chat/provider/openrouter-client';
 import { buildAgenticChatWorkflowRoutesV1 } from '../../src/workers/agentic-chat/workflow/workflow-dispatch';
 import { buildE2EWorker, leaseAndClaimE2E } from './workflowEndToEnd';

@@ -9,7 +9,7 @@ import {
 	type AgenticChatWorkflowRecoveryOutcomeV1,
 	type JsonObject
 } from '@buildos/shared-types';
-import type { AgenticChatExecutionIdentityV1 } from '../executionControl';
+import type { AgenticChatExecutionIdentityV1 } from '../turn/execution-control';
 import type { BuiltAgenticChatWorkflowContextV1 } from './prepared-context';
 
 /**

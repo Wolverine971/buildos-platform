@@ -6,8 +6,8 @@ import type { FrozenChatAttachmentV1 } from '@buildos/shared-types';
 import {
 	SupabaseAgenticChatLiveVisionResolver,
 	type AgenticChatLiveVisionResolveInputV1
-} from '../src/workers/agentic-chat/liveVision';
-import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
+} from '../src/workers/agentic-chat/tools/live-vision';
+import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/effects/execution-observation';
 
 const TURN_ID = '10000000-0000-4000-8000-000000000001';
 const JOB_ID = '20000000-0000-4000-8000-000000000001';

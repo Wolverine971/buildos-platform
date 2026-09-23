@@ -1,7 +1,7 @@
 // apps/worker/src/http/agenticChatCapacity.ts
 
 import { isWorkerAuthorized } from './auth';
-import type { AgenticChatWorkerCapacityEvidenceV1 } from '../workers/agentic-chat/capacity';
+import type { AgenticChatWorkerCapacityEvidenceV1 } from '../workers/agentic-chat/host/capacity';
 
 export const AGENTIC_CHAT_CAPACITY_PATH = '/agentic-chat/capacity';
 export const AGENTIC_CHAT_CAPACITY_TIMEOUT_MS = 1_500;

@@ -7,7 +7,7 @@ import {
 	agenticChatQueueWakeEnabled,
 	type AgenticChatQueueWakeChannel,
 	type AgenticChatQueueWakeRealtimeClient
-} from '../src/workers/agentic-chat/queueWakeListener';
+} from '../src/workers/agentic-chat/host/queue-wake-listener';
 
 type Status = 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR';
 

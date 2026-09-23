@@ -217,7 +217,7 @@ No typecheck or lint was run (integration agent). Prettier was run on every touc
    (lines ~613-720, including the `framing`/`pendingWriteCommission` branches) — no callers remain —
    and drop the `gatewayModeActive` parameter at ~476-485 if its callers pass nothing. Update
    `repair-instructions.test.ts` accordingly.
-3. `apps/worker/src/workers/agentic-chat/turn-executor.ts:117`: optionally lower
+3. `apps/worker/src/workers/agentic-chat/turn/turn-executor.ts:117`: optionally lower
    `DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS` 16 → 12 to match `MAX_PROVIDER_PASSES_PER_TURN` (the
    `apps/web/src/lib/services/agentic-chat-v2/limits.ts` comment says keep them aligned). Keep the
    plumbing; the budget-3 tests depend on it.

@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agentic-chat/provider/repair-policy.ts
 
 import type { WriteLedgerEntry } from '@buildos/agentic-chat-runtime/loop';
-import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from '../mutationToolCatalog';
+import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from '../mutations/tool-catalog';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,

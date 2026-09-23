@@ -38,10 +38,10 @@ import {
 	searchTelemetryColumns,
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
-import { runWithAbortableDeadline } from '../abortableDeadline';
-import type { AgenticChatReadToolPortV1 } from '../turn-executor';
+import { runWithAbortableDeadline } from '../shared/abortable-deadline';
+import type { AgenticChatReadToolPortV1 } from '../turn/turn-executor';
 import { AgenticChatProviderExecutionError } from '../provider/contracts';
-import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
+import { WorkerAgenticChatToolAccessAdapter } from './worker-access-adapter';
 import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
 import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
 import type { AgenticChatWebSearchReviewPort } from './web-search-review';

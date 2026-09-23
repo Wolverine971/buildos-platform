@@ -126,7 +126,7 @@ Do not copy the Phase 3 runtime into a new implementation.
 - `apps/worker/src/workers/agentic-chat/phase3Bootstrap.ts` validates configuration and constructs
   the provider, isolated chat queue, publisher, cancellation observer, stalled recovery, and capacity
   collector.
-- `apps/worker/src/workers/agentic-chat/consumerRuntime.ts` owns the chat-only lifecycle. It proves
+- `apps/worker/src/workers/agentic-chat/host/consumer-runtime.ts` owns the chat-only lifecycle. It proves
   the queue registers only `agentic_chat_turn`; starts publisher → cancellation → recovery → queue;
   and drains recovery → queue → cancellation → publisher.
 - `apps/worker/src/http/agenticChatCapacity.ts` is the authenticated, bounded capacity projection.

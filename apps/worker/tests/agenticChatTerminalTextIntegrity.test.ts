@@ -5,7 +5,7 @@ import {
 	type FastToolExecution
 } from '@buildos/agentic-chat-runtime/loop';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
-import { enforceAgenticChatTerminalTextIntegrityV1 } from '../src/workers/agentic-chat/terminalTextIntegrity';
+import { enforceAgenticChatTerminalTextIntegrityV1 } from '../src/workers/agentic-chat/turn/terminal-text-integrity';
 
 beforeAll(() => {
 	provideAgenticChatLoopToolCatalog(() => ({

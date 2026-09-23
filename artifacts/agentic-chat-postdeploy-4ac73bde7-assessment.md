@@ -65,7 +65,7 @@ Acceptance: replay the exact production contract; finish `stop` with one fulfill
 
 ## 2. Restore dependencies as an executable workflow
 
-[surfaces.ts](../packages/agentic-chat-runtime/src/catalog/surfaces.ts) deliberately omits relationship tools from both fixed surfaces. [provider/tool-surface.ts](../apps/worker/src/workers/agentic-chat/provider/tool-surface.ts) admits only tools present in the artifact and keeps the surface fixed during the turn. The production prompt confirms the omission. The adapter already exists in [mutationToolCatalog.ts](../apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts), with project scope and endpoint normalization.
+[surfaces.ts](../packages/agentic-chat-runtime/src/catalog/surfaces.ts) deliberately omits relationship tools from both fixed surfaces. [provider/tool-surface.ts](../apps/worker/src/workers/agentic-chat/provider/tool-surface.ts) admits only tools present in the artifact and keeps the surface fixed during the turn. The production prompt confirms the omission. The adapter already exists in [mutationToolCatalog.ts](../apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts), with project scope and endpoint normalization.
 
 Proposed sequence:
 

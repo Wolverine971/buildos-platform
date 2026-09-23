@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
 import { createFastChatContextLoader } from '@buildos/agentic-chat-runtime/context/loader';
-import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
+import { WorkerAgenticChatToolAccessAdapter } from '../tools/worker-access-adapter';
 
 /** Service-role reads require a fresh actor-explicit access check for each workflow. */
 export function createWorkflowContextLoader(client: SupabaseClient<Database>) {

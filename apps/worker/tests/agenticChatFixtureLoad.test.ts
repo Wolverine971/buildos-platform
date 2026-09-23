@@ -7,12 +7,12 @@ import type {
 	AgenticChatTextBatchInputV1
 } from '@buildos/shared-types';
 import { describe, expect, it } from 'vitest';
-import { AgenticChatCancellationObserver } from '../src/workers/agentic-chat/cancellationObserver';
+import { AgenticChatCancellationObserver } from '../src/workers/agentic-chat/turn/cancellation-observer';
 import {
 	AgenticChatStreamPublisher,
 	type AgenticChatPersistencePortV1,
 	type AgenticChatPublisherTurnV1
-} from '../src/workers/agentic-chat/streamPublisher';
+} from '../src/workers/agentic-chat/stream/stream-publisher';
 
 const ACTIVE_TURNS = 100;
 const TEXT_BYTES_PER_TURN = 1_024;

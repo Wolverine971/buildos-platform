@@ -98,7 +98,7 @@ The freeze must cover:
 
 - Own changes in `packages/shared-types/src/agentic-chat-worker-contract.ts`,
   `chat-workflow-prototype.ts`, generated database types, dedicated workflow-store
-  interfaces, and `apps/worker/src/workers/agentic-chat/executionInput.ts` readers.
+  interfaces, and `apps/worker/src/workers/agentic-chat/turn/execution-input.ts` readers.
   Add an explicit prepared/raw input union. The ordinary direct provider rejects raw
   input; the workflow path cannot dispatch without accepted context and reservation.
 - Add versioned atomic raw-admission support, prepared-context acceptance, step

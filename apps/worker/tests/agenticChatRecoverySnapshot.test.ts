@@ -5,7 +5,7 @@ import {
 	AgenticChatRecoverySnapshotProtocolError,
 	AgenticChatRecoverySnapshotRpcError,
 	SupabaseAgenticChatRecoverySnapshotAdapter
-} from '../src/workers/agentic-chat/recoverySnapshot';
+} from '../src/workers/agentic-chat/host/recovery-snapshot';
 
 const TURN_RUN_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';

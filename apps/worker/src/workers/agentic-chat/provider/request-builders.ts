@@ -15,8 +15,8 @@ import {
 	buildToolValidationRepairInstruction,
 	parseToolArguments
 } from '@buildos/agentic-chat-runtime/loop';
-import type { AgenticChatWorkerExecutionInputV1 } from '../executionInput';
-import type { AgenticChatProviderMutationCapabilitiesV1 } from '../mutationToolCatalog';
+import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
+import type { AgenticChatProviderMutationCapabilitiesV1 } from '../mutations/tool-catalog';
 import {
 	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 	type AgenticChatPreparedProviderInvocationV1,

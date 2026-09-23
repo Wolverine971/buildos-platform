@@ -47,14 +47,14 @@ one streamed answer. A restart reuses accepted work. Stop, partial results, fail
 and reconnects are clear. The pilot remains explicitly enabled, project-scoped,
 text-only, and read-only.
 
-This program implements the remaining [workflow build list](../apps/worker/src/workers/agentic-chat/djflow-build-list.md).
+This program implements the remaining [workflow build list](../docs/archive/agentic-chat-djflow/djflow-build-list.md).
 It does not authorize production deployment, general autonomous writes, web research,
 a new queue, or a general-purpose agent platform.
 
 ## Read the baseline correctly
 
-Read the [architecture](../apps/worker/src/workers/agentic-chat/djflow-architecture.md),
-[prototype guide](../apps/worker/src/workers/agentic-chat/djflow-prototype.md),
+Read the [architecture](../docs/archive/agentic-chat-djflow/djflow-architecture.md),
+[prototype guide](../docs/archive/agentic-chat-djflow/djflow-prototype.md),
 [startup-stall report](../docs/technical/reviews/DJFLOW_STARTUP_STALL_2026-09-12.md),
 and [mandatory gate](../docs/testing/agentic-chat-gate.md).
 

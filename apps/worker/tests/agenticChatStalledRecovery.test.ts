@@ -1,13 +1,13 @@
 // apps/worker/tests/agenticChatStalledRecovery.test.ts
 import { createAgentStreamEventIdV1 } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
-import { AgenticChatExecutionControlRpcError } from '../src/workers/agentic-chat/executionControl';
+import { AgenticChatExecutionControlRpcError } from '../src/workers/agentic-chat/turn/execution-control';
 import {
 	AgenticChatStalledCandidateSourceError,
 	AgenticChatStalledRecoverySweep,
 	SupabaseAgenticChatStalledCandidateSource,
 	type AgenticChatStalledReadQuery
-} from '../src/workers/agentic-chat/stalledRecovery';
+} from '../src/workers/agentic-chat/host/stalled-recovery';
 
 const TURN_RUN_ID = '10000000-0000-4000-8000-000000000001';
 const QUEUE_JOB_ID = '20000000-0000-4000-8000-000000000002';

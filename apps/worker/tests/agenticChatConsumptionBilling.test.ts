@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	SupabaseAgenticChatConsumptionBillingAdapter,
 	type AgenticChatConsumptionBillingRpcClient
-} from '../src/workers/agentic-chat/consumptionBilling';
+} from '../src/workers/agentic-chat/effects/consumption-billing';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 

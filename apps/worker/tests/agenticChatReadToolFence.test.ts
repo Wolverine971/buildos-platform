@@ -4,8 +4,8 @@ import {
 	AGENTIC_CHAT_READ_TOOL_FENCE_SHARE_WINDOW_MS,
 	AgenticChatReadToolFenceTimeoutError,
 	AgenticChatSharedReadToolFenceV1
-} from '../src/workers/agentic-chat/readToolFence';
-import type { AgenticChatReadToolFenceClaimPortV1 } from '../src/workers/agentic-chat/readToolFence';
+} from '../src/workers/agentic-chat/tools/read-tool-fence';
+import type { AgenticChatReadToolFenceClaimPortV1 } from '../src/workers/agentic-chat/tools/read-tool-fence';
 
 const TURN_RUN_ID = '30000000-0000-4000-8000-000000000003';
 const QUEUE_JOB_ID = '40000000-0000-4000-8000-000000000004';

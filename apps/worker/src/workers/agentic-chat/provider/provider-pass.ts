@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/provider/provider-pass.ts
 
-import type { AgenticChatProviderCapacity } from '../providerCapacity';
+import type { AgenticChatProviderCapacity } from './provider-capacity';
 import type {
 	AgenticChatTurnProviderClientEventV1,
 	AgenticChatTurnProviderClientPortV1,

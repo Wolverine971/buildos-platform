@@ -11,7 +11,7 @@ import {
 	type AgenticChatProviderDispatchReceiptV1,
 	type AgenticChatTurnProviderClientEventV1
 } from '../src/workers/agentic-chat/provider/contracts';
-import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/pendingEffects';
+import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/effects/pending-effects';
 import {
 	AGENTIC_CHAT_WORKFLOW_ADMITTED_MODELS,
 	AGENTIC_CHAT_WORKFLOW_MAX_RATES_USD_PER_MILLION

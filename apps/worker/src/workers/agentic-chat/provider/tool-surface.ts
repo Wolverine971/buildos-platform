@@ -16,12 +16,12 @@ import {
 	canonicalizeAgenticChatJson,
 	decodeAgenticChatToolSurfaceV1
 } from '@buildos/shared-types';
-import type { AgenticChatWorkerExecutionInputV1 } from '../executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
 import {
 	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1,
 	type AgenticChatProviderMutationCapabilitiesV1,
 	reviewedAgenticChatMutationSpecV1
-} from '../mutationToolCatalog';
+} from '../mutations/tool-catalog';
 import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
 	isAgenticChatProductionReadToolNameV1

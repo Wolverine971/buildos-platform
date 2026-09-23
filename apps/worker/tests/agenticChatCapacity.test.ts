@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	AgenticChatWorkerCapacityCollector,
 	SupabaseAgenticChatReadyQueueAgeAdapter
-} from '../src/workers/agentic-chat/capacity';
+} from '../src/workers/agentic-chat/host/capacity';
 
 const NOW = Date.parse('2026-08-03T12:00:00.000Z');
 

@@ -10,7 +10,7 @@ import {
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
-import { SupabaseAgenticChatExecutionInputAdapter } from '../src/workers/agentic-chat/executionInput';
+import { SupabaseAgenticChatExecutionInputAdapter } from '../src/workers/agentic-chat/turn/execution-input';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';

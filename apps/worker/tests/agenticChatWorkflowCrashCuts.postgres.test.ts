@@ -11,14 +11,14 @@
 import { resolve } from 'node:path';
 import type { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancellationObserver';
-import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/executionControl';
-import { SupabaseAgenticChatRecoverySnapshotAdapter } from '../src/workers/agentic-chat/recoverySnapshot';
+import { AgenticChatCancellationError } from '../src/workers/agentic-chat/turn/cancellation-observer';
+import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/turn/execution-control';
+import { SupabaseAgenticChatRecoverySnapshotAdapter } from '../src/workers/agentic-chat/host/recovery-snapshot';
 import {
 	type AgenticChatStalledRecoveryReportV1,
 	AgenticChatStalledRecoverySweep,
 	SupabaseAgenticChatStalledCandidateSource
-} from '../src/workers/agentic-chat/stalledRecovery';
+} from '../src/workers/agentic-chat/host/stalled-recovery';
 import { AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE } from '../src/workers/agentic-chat/workflow/workflow-projection';
 import { SupabaseAgenticChatWorkflowStore } from '../src/workers/agentic-chat/workflow/workflow-store';
 import { stableAgenticChatWorkflowAnswerMessageIdV1 } from '../src/workers/agentic-chat/workflow/workflow-terminal';

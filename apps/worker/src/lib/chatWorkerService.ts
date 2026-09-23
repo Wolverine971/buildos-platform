@@ -10,7 +10,7 @@ import {
 import type {
 	AgenticChatBootstrap,
 	AgenticChatBootstrapHealth
-} from '../workers/agentic-chat/bootstrap';
+} from '../workers/agentic-chat/host/bootstrap';
 import {
 	type WorkerEventLoopLagMonitor,
 	buildAgenticChatOperationalHealthChecks

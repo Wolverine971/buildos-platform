@@ -1,8 +1,8 @@
 // apps/worker/tests/agenticChatStatedFutureCapture.test.ts
-import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import { AGENTIC_CHAT_INPUT_ARTIFACT_VERSION } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
-import { SupabaseAgenticChatStatedFutureCaptureAdapter } from '../src/workers/agentic-chat/statedFutureCapture';
+import { SupabaseAgenticChatStatedFutureCaptureAdapter } from '../src/workers/agentic-chat/effects/stated-future-capture';
 
 const TURN_RUN_ID = '30000000-0000-4000-8000-000000000003';
 const USER_ID = '10000000-0000-4000-8000-000000000001';

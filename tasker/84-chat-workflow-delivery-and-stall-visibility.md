@@ -62,7 +62,7 @@ not prove the critical path or justify deleting acknowledgements.
 
 ## Ownership and parallel boundary
 
-Own `apps/worker/src/workers/agentic-chat/streamPublisher.ts`,
+Own `apps/worker/src/workers/agentic-chat/stream/stream-publisher.ts`,
 `supabaseStreamPublisherAdapters.ts`, their tests, and narrow existing health/observation
 adapters. 82 owns ordinary prompts/review fixes. Coordinate executor/composition
 wiring through 81. Use existing durable event/stream state for stabilization. If

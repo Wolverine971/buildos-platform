@@ -67,9 +67,9 @@ Tests exercise the actual completion/receipt functions and rendered Svelte works
 
 ## Files
 
-- `apps/worker/src/workers/agentic-chat/reviewedTurnContract.ts`
-- `apps/worker/src/workers/agentic-chat/terminalTextIntegrity.ts`
-- `apps/worker/src/workers/agentic-chat/turn-executor.ts`
+- `apps/worker/src/workers/agentic-chat/turn/reviewed-turn-contract.ts`
+- `apps/worker/src/workers/agentic-chat/turn/terminal-text-integrity.ts`
+- `apps/worker/src/workers/agentic-chat/turn/turn-executor.ts`
 - `apps/worker/tests/agenticChatReviewedTurnContract.test.ts`
 - `apps/web/src/routes/projects/[id]/ProjectWorkspace.svelte`
 - `apps/web/src/routes/projects/[id]/ProjectWorkspace.test.ts`

@@ -5,9 +5,9 @@ import type {
 	AgenticChatRecoveryFailureClassV1,
 	JsonObject
 } from '@buildos/shared-types';
-import type { AgenticChatWorkerExecutionInputV1 } from '../executionInput';
-import type { AgenticChatLiveVisionResolveInputV1 } from '../liveVision';
-import type { AgenticChatReadToolExecutionV1 } from '../toolExecution';
+import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
+import type { AgenticChatLiveVisionResolveInputV1 } from '../tools/live-vision';
+import type { AgenticChatReadToolExecutionV1 } from '../tools/tool-execution';
 
 export type AgenticChatProviderUsageV1 = {
 	promptTokens: number;

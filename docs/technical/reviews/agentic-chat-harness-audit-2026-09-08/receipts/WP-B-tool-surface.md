@@ -13,9 +13,9 @@ Files edited (all inside the ownership list, all left unstaged):
 - `packages/agentic-chat-runtime/src/catalog/definitions/ontology-read.ts`
 - `packages/agentic-chat-runtime/src/catalog/definitions/ontology-write.ts`
 - `packages/agentic-chat-runtime/src/worker-tool-policy.ts` (comment only)
-- `apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts`
-- `apps/worker/src/workers/agentic-chat/createOntoProjectMutationAdapter.ts`
-- `apps/worker/src/workers/agentic-chat/mutation-argument-normalizers.ts` (comment only)
+- `apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts`
+- `apps/worker/src/workers/agentic-chat/mutations/create-onto-project-adapter.ts`
+- `apps/worker/src/workers/agentic-chat/mutations/argument-normalizers.ts` (comment only)
 
 `tableMutationAdapter.ts` was read and left unchanged (see F117).
 
@@ -246,7 +246,7 @@ Handoffs).
    project after `link_onto_entities`); definition SHAs change for `list_onto_tasks`,
    `create_onto_task`, `update_onto_task`, `request_email_account_connection`; `catalogSerializedSha256`
    changes. Nothing else.
-7. `apps/worker/src/workers/agentic-chat/turn-executor.ts:1492-1496` (F117 worker side): before
+7. `apps/worker/src/workers/agentic-chat/turn/turn-executor.ts:1492-1496` (F117 worker side): before
    building `chatToolResult`, project the model-visible copy —
    `result: projectReadResultInstantsToTimezone(mutation.downstreamReceipt, timezone)` — using the
    already-exported helper from `@buildos/agentic-chat-runtime` (runtime `index.ts:27`). Get
@@ -257,7 +257,7 @@ Handoffs).
    like the read path projects only at dispatch). Test: a `create_onto_task` receipt with
    `due_at: '2026-09-11T00:00:00+00:00'` for a user in `America/New_York` reaches the provider as
    `2026-09-10T20:00:00-04:00`.
-8. `apps/worker/src/workers/agentic-chat/mutationAdapterBoundary.ts:98` (F25 verifier item): treat
+8. `apps/worker/src/workers/agentic-chat/mutations/adapter-boundary.ts:98` (F25 verifier item): treat
    `context.type === 'ontology'` like `'project'` (`surfaces.ts` already routes ontology → project
    and `execution-adapter.ts:408` already pairs them), so a `delegate_task` on an ontology-context
    turn that carries only `entityId` resolves its fence instead of failing

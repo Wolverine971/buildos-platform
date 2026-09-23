@@ -148,7 +148,7 @@ The excluded groups are calendar create/update/delete and project-calendar
 binding, seven ontology deletes, graph reorganization, contact upsert/candidate
 resolution/linking, opaque external Corsair mutation, agent delegation,
 change-set commit, and the browser OAuth handoff. Review
-`apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts` and
+`apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts` and
 `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P2_S5_MUTATION_ADAPTER_INVENTORY_2026-08-10.md`
 for the exact machine-readable ledger.
 

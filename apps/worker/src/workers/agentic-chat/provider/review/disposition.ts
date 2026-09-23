@@ -5,7 +5,7 @@ import {
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
 import { isPureReadToolName } from '@buildos/agentic-chat-runtime/loop';
-import { reviewedAgenticChatMutationSpecV1 } from '../../mutationToolCatalog';
+import { reviewedAgenticChatMutationSpecV1 } from '../../mutations/tool-catalog';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from '../contracts';
 import { providerError } from '../protocol';
 import { appendSystemInstruction, forceToolFreeRequest } from '../request-builders';

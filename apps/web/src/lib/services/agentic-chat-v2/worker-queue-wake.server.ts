@@ -6,7 +6,7 @@ import { env } from '$env/dynamic/private';
 /**
  * Private Realtime Broadcast topic the dedicated chat worker listens on. Must
  * match AGENTIC_CHAT_QUEUE_WAKE_TOPIC in
- * apps/worker/src/workers/agentic-chat/queueWakeListener.ts. Browser clients
+ * apps/worker/src/workers/agentic-chat/host/queue-wake-listener.ts. Browser clients
  * cannot join or publish it: realtime.messages only authorizes
  * `chat-user:<auth.uid()>` for authenticated users, and the service role
  * bypasses RLS.

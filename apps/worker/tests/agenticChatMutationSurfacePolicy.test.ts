@@ -8,12 +8,12 @@ import {
 	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1,
 	AGENTIC_CHAT_TABLE_MUTATION_TOOL_NAMES_V1,
 	normalizeAgenticChatMutationCapabilitiesV1
-} from '../src/workers/agentic-chat/mutationToolCatalog';
+} from '../src/workers/agentic-chat/mutations/tool-catalog';
 import {
 	AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1,
 	AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1,
 	AGENTIC_CHAT_MUTATION_RECEIPT_POST_PROCESSORS_V1
-} from '../src/workers/agentic-chat/mutation-argument-normalizers';
+} from '../src/workers/agentic-chat/mutations/argument-normalizers';
 
 describe('Agentic Chat mutation surface policy', () => {
 	it('partitions every signed write into the reviewed or explicitly deferred surface', () => {

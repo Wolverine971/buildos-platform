@@ -75,7 +75,7 @@ Deliverables, with what already exists in the tree:
 
 | Deliverable                              | Existing code                                             | Gap                                                                                                                             |
 | ---------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Chat-specific stale-turn sweeper         | `apps/worker/src/workers/agentic-chat/stalledRecovery.ts` | Verify it is productionized against turn progress, queue claim state, execution/irreversible boundaries, generation, wall clock |
+| Chat-specific stale-turn sweeper         | `apps/worker/src/workers/agentic-chat/host/stalled-recovery.ts` | Verify it is productionized against turn progress, queue claim state, execution/irreversible boundaries, generation, wall clock |
 | Phase 2 fencing coverage audit           | `executionControl.ts`, `effectControl.ts`                 | No automated proof that fencing is present on **every** checkpoint/event/snapshot/message/tool-exec/finalization write          |
 | Stable effect-id inventory               | `effectIdentity.ts`, `mutationAdapterRouter.ts`           | No automated inventory proving the contract holds for every chat-reachable mutating tool                                        |
 | Typed retry classification               | Phase 2 typed codes exist                                 | Expand to safe-before-start / transient-safe / permanent / cancelled / uncertain-external-commit                                |

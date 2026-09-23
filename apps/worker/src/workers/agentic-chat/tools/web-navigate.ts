@@ -27,7 +27,7 @@ import {
 	normalizeReadableText,
 	readHtmlPage
 } from '@buildos/shared-agent-ops/web/navigation';
-import type { AgenticChatReadToolProgressV1 } from '../turn-executor';
+import type { AgenticChatReadToolProgressV1 } from '../turn/turn-executor';
 
 export const WEB_NAVIGATE_TOOL_NAME = 'web_navigate';
 export const WEB_NAVIGATE_USER_AGENT = 'BuildOS-AgentRun/1.0';

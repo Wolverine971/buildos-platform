@@ -20,11 +20,11 @@ import {
 	type GatewaySurfaceProfileName,
 	getGatewaySurfaceForProfile
 } from '@buildos/agentic-chat-runtime/catalog';
-import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import {
 	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 	reviewedAgenticChatMutationSpecV1
-} from '../src/workers/agentic-chat/mutationToolCatalog';
+} from '../src/workers/agentic-chat/mutations/tool-catalog';
 import {
 	buildWorkerToolSurfaceOverride,
 	deferComplexWriteContractForInitialPass,

@@ -4,7 +4,7 @@
 
 # Lane E — The executor and durable machinery
 
-**Scope.** `apps/worker/src/workers/agentic-chat/turn-executor.ts` (3,971 lines) and the 27 modules
+**Scope.** `apps/worker/src/workers/agentic-chat/turn/turn-executor.ts` (3,971 lines) and the 27 modules
 it composes (14,839 lines in the lane), the 32 SQL RPCs they call, and the recovery SQL. Working
 tree at HEAD `6d70b36e1` plus the uncommitted 09-08 feedback-kind fix. Read-only; every claim
 below cites `file:line` in the working tree. Line numbers are for `apps/worker/src/workers/agentic-chat/`

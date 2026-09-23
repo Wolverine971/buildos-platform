@@ -12,11 +12,11 @@ import {
 	AgenticChatCancellationObserver,
 	DEFAULT_AGENTIC_CHAT_CANCELLATION_POLL_INTERVAL_MS,
 	type AgenticChatCancellationObservationPortV1
-} from '../src/workers/agentic-chat/cancellationObserver';
+} from '../src/workers/agentic-chat/turn/cancellation-observer';
 import {
 	AgenticChatCancellationObservationRpcError,
 	SupabaseAgenticChatCancellationObservationAdapter
-} from '../src/workers/agentic-chat/supabaseCancellationObserverAdapter';
+} from '../src/workers/agentic-chat/turn/supabase-cancellation-observer-adapter';
 
 function observation(
 	turnRunId: string,

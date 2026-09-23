@@ -1,9 +1,9 @@
 // apps/worker/tests/agenticChatTurnExecutor.test.ts
-import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/pendingEffects';
+import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/effects/pending-effects';
 // apps/worker/tests/agenticChatTurnExecutor.test.ts
 import { workerSourceProvenance } from '../src/lib/sourceProvenance';
 // apps/worker/tests/agenticChatTurnExecutor.test.ts
-import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import {
 	CHAT_WORKFLOW_PROTOTYPE_VERSION,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
@@ -22,37 +22,37 @@ import {
 import { provideAgenticChatLoopToolCatalog } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
-import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancellationObserver';
-import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/executionControl';
-import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
-import { AgenticChatExecutionInputError } from '../src/workers/agentic-chat/executionInput';
+import { AgenticChatCancellationError } from '../src/workers/agentic-chat/turn/cancellation-observer';
+import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/turn/execution-control';
+import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/effects/execution-observation';
+import { AgenticChatExecutionInputError } from '../src/workers/agentic-chat/turn/execution-input';
 import type { AgenticChatRawWorkflowTurnPortV1 } from '../src/workers/agentic-chat/workflow/raw-turn-preparation';
-import { createStableAgenticChatEffectIdentityV1 } from '../src/workers/agentic-chat/effectIdentity';
+import { createStableAgenticChatEffectIdentityV1 } from '../src/workers/agentic-chat/effects/effect-identity';
 import {
 	AgenticChatEffectExecutionError,
 	AgenticChatMutationExecutor
-} from '../src/workers/agentic-chat/mutation-executor';
-import { createStableAgenticChatLifecycleTransitionIdV1 } from '../src/workers/agentic-chat/lifecycleIdentity';
+} from '../src/workers/agentic-chat/mutations/mutation-executor';
+import { createStableAgenticChatLifecycleTransitionIdV1 } from '../src/workers/agentic-chat/turn/lifecycle-identity';
 import {
 	AGENTIC_CHAT_MAX_READ_TOOL_PROGRESS_EVENTS,
 	AgenticChatTurnExecutor,
 	type AgenticChatTurnProviderStepV1
-} from '../src/workers/agentic-chat/turn-executor';
+} from '../src/workers/agentic-chat/turn/turn-executor';
 import {
 	AgenticChatProviderExecutionError,
 	type AgenticChatPreparedPromptSnapshotV1,
 	type AgenticChatProviderToolRoundInputV1
 } from '../src/workers/agentic-chat/provider/contracts';
 import { AgenticChatToolExecutionAdapter } from '../src/workers/agentic-chat/tools/execution-adapter';
-import { createStableAgenticChatPromptSnapshotIdV1 } from '../src/workers/agentic-chat/promptSnapshot';
-import { AgenticChatReadToolFenceTimeoutError } from '../src/workers/agentic-chat/readToolFence';
-import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/runtimeTiming';
-import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/streamPublisher';
+import { createStableAgenticChatPromptSnapshotIdV1 } from '../src/workers/agentic-chat/effects/prompt-snapshot';
+import { AgenticChatReadToolFenceTimeoutError } from '../src/workers/agentic-chat/tools/read-tool-fence';
+import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/stream/runtime-timing';
+import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/stream/stream-publisher';
 import {
 	AgenticChatToolExecutionTimeoutError,
 	SupabaseAgenticChatToolExecutionAdapter
-} from '../src/workers/agentic-chat/toolExecution';
-import { AgenticChatTableMutationAdapter } from '../src/workers/agentic-chat/tableMutationAdapter';
+} from '../src/workers/agentic-chat/tools/tool-execution';
+import { AgenticChatTableMutationAdapter } from '../src/workers/agentic-chat/mutations/table-adapter';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';

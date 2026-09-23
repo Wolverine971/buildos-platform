@@ -10,12 +10,12 @@ import {
 } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
 import { describe, expect, it, vi } from 'vitest';
-import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancellationObserver';
-import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/executionControl';
+import { AgenticChatCancellationError } from '../src/workers/agentic-chat/turn/cancellation-observer';
+import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/turn/execution-control';
 import {
 	AgenticChatExecutionInputError,
 	type AgenticChatRawWorkflowExecutionInputV1
-} from '../src/workers/agentic-chat/executionInput';
+} from '../src/workers/agentic-chat/turn/execution-input';
 import {
 	AgenticChatWorkflowStoreRpcError,
 	type AgenticChatWorkflowDurableRunV1,

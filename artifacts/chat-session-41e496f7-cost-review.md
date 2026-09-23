@@ -17,7 +17,7 @@ The admin visualization is a cumulative waterfall. The second Luna bar reaches $
 
 The edit turn took 83.16 seconds, with nine logical model passes, eleven physical attempts including two failed starts, and seven tool calls. Review generation alone consumed 28% of its elapsed time. Luna accounted for 36% of provider-reported spend across the whole session.
 
-**Why Luna is selected.** [bootstrap.ts](/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/bootstrap.ts:430) explicitly places `GPT_56_LUNA_MODEL` first in the reviewer candidate list, ahead of the general JSON profiles. The route excludes the acting model and its fallbacks, and overrides provider preference to OpenAI/Azure. Consequently changing the ordinary chat model does not change this reviewer.
+**Why Luna is selected.** [bootstrap.ts](/Users/djwayne/buildos-platform/apps/worker/src/workers/agentic-chat/host/bootstrap.ts:430) explicitly places `GPT_56_LUNA_MODEL` first in the reviewer candidate list, ahead of the general JSON profiles. The route excludes the acting model and its fallbacks, and overrides provider preference to OpenAI/Azure. Consequently changing the ordinary chat model does not change this reviewer.
 
 Commit `ff8b125b2f` on August 17 introduced this preference. Its comment records a cheaper GLM fallback turning an informational pricing-research request into an irrelevant clarification. That explains the historical decision; it does not establish that every newer cheap model is unsuitable. There is no dedicated configurable reviewer model policy in this builder today.
 

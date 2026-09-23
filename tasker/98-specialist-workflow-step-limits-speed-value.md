@@ -307,7 +307,7 @@ plan per question.
 ## Phase 1 — Make the step limits fit the model
 
 1. **Confirm the cause (paid, about $0.01–0.03, ask first).** Rerun one pilot scenario with
-   `AGENTIC_CHAT_LOCAL_PROMPT_DUMPS=true` (see `apps/worker/src/workers/agentic-chat/promptDump.ts`;
+   `AGENTIC_CHAT_LOCAL_PROMPT_DUMPS=true` (see `apps/worker/src/workers/agentic-chat/effects/prompt-dump.ts`;
    verify the harness's `AgenticChatOpenRouterClient` actually writes dumps) and read, per planner,
    analyst, reviewer, and editor call: `finish_reason`, completion vs reasoning tokens, and whether
    the text is empty, truncated, or malformed. Record the numbers; they size the fix.

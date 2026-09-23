@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	AgenticChatDelegateTaskMutationAdapter,
 	classifyDispatchError
-} from '../src/workers/agentic-chat/delegateTaskMutationAdapter';
+} from '../src/workers/agentic-chat/mutations/delegate-task-adapter';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_ID = '22222222-2222-4222-8222-222222222222';

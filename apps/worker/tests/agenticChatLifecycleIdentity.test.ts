@@ -1,6 +1,6 @@
 // apps/worker/tests/agenticChatLifecycleIdentity.test.ts
 import { describe, expect, it } from 'vitest';
-import { createStableAgenticChatLifecycleTransitionIdV1 } from '../src/workers/agentic-chat/lifecycleIdentity';
+import { createStableAgenticChatLifecycleTransitionIdV1 } from '../src/workers/agentic-chat/turn/lifecycle-identity';
 
 const TURN_RUN_ID = '30000000-0000-4000-8000-000000000003';
 

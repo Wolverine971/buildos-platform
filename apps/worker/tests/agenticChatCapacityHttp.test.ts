@@ -8,7 +8,7 @@ import {
 	AGENTIC_CHAT_CAPACITY_PATH,
 	respondWithAgenticChatCapacity
 } from '../src/http/agenticChatCapacity';
-import type { AgenticChatWorkerCapacityEvidenceV1 } from '../src/workers/agentic-chat/capacity';
+import type { AgenticChatWorkerCapacityEvidenceV1 } from '../src/workers/agentic-chat/host/capacity';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 

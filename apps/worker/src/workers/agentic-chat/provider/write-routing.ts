@@ -2,7 +2,7 @@
 import {
 	type AgenticChatReviewedMutationSpecV1,
 	reviewedAgenticChatMutationSpecV1
-} from '../mutationToolCatalog';
+} from '../mutations/tool-catalog';
 import type { CompletedProviderToolCall } from './stream-tool-calls';
 
 export const MAX_DIRECT_SIMPLE_MUTATIONS_PER_TURN = 3;

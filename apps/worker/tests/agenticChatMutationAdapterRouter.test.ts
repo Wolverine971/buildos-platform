@@ -3,12 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	AgenticChatMutationAdapterRouter,
 	selectAgenticChatMutationAdapterEntriesV1
-} from '../src/workers/agentic-chat/mutationAdapterRouter';
+} from '../src/workers/agentic-chat/mutations/adapter-router';
 import {
 	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1,
 	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 	normalizeAgenticChatMutationCapabilitiesV1
-} from '../src/workers/agentic-chat/mutationToolCatalog';
+} from '../src/workers/agentic-chat/mutations/tool-catalog';
 
 describe('AgenticChatMutationAdapterRouter', () => {
 	it('dispatches by admitted tool name and rejects missing adapters', async () => {

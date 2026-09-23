@@ -27,24 +27,24 @@ import {
 	type ChatTurnTerminalStatusV1,
 	type JsonObject
 } from '@buildos/shared-types';
-import { abortable, runWithAbortableDeadline } from '../abortableDeadline';
-import { AgenticChatCancellationError } from '../cancellationObserver';
+import { abortable, runWithAbortableDeadline } from '../shared/abortable-deadline';
+import { AgenticChatCancellationError } from '../turn/cancellation-observer';
 import type {
 	AgenticChatExecutionControlPortV1,
 	AgenticChatExecutionIdentityV1
-} from '../executionControl';
+} from '../turn/execution-control';
 import {
 	AgenticChatExecutionInputError,
 	type AgenticChatRawWorkflowExecutionInputV1
-} from '../executionInput';
+} from '../turn/execution-input';
 import {
 	AgenticChatPublisherOverloadError,
 	type AgenticChatStreamPublisher
-} from '../streamPublisher';
+} from '../stream/stream-publisher';
 import type {
 	AgenticChatTurnExecutionOutcomeV1,
 	AgenticChatTurnExecutionResultV1
-} from '../turn-executor';
+} from '../turn/turn-executor';
 import type { AgenticChatWorkflowPreparationContextLoaderV1 } from './context-loader';
 import {
 	AgenticChatWorkflowContextError,

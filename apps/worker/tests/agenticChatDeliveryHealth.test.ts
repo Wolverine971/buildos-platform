@@ -9,8 +9,8 @@ import {
 	projectAgenticChatWorkerProgressHealthV1,
 	withAgenticChatTurnActivityV1,
 	type AgenticChatTurnProgressHealthInputV1
-} from '../src/workers/agentic-chat/deliveryHealth';
-import type { AgenticChatPublisherTurnProgressObservationV1 } from '../src/workers/agentic-chat/streamPublisher';
+} from '../src/workers/agentic-chat/host/delivery-health';
+import type { AgenticChatPublisherTurnProgressObservationV1 } from '../src/workers/agentic-chat/stream/stream-publisher';
 
 const NOW = '2026-09-13T12:10:00.000Z';
 const NOW_MS = Date.parse(NOW);

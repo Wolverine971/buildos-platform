@@ -48,19 +48,19 @@ import {
 	type AgenticChatTurnProviderToolV1,
 	type AgenticChatTurnProviderRequestV1 as ClientRequest
 } from './contracts';
-import { AgenticChatProviderCapacity, AgenticChatProviderCapacityError } from '../providerCapacity';
-import { createStableAgenticChatReadToolTransitionIdV1 } from '../readToolIdentity';
+import { AgenticChatProviderCapacity, AgenticChatProviderCapacityError } from './provider-capacity';
+import { createStableAgenticChatReadToolTransitionIdV1 } from '../tools/read-tool-identity';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
 } from '../tools/execution-adapter';
-import type { AgenticChatReadToolExecutionV1 } from '../toolExecution';
-import type { AgenticChatLiveVisionResolverPortV1 } from '../liveVision';
+import type { AgenticChatReadToolExecutionV1 } from '../tools/tool-execution';
+import type { AgenticChatLiveVisionResolverPortV1 } from '../tools/live-vision';
 import {
 	type AgenticChatProviderMutationCapabilitiesV1,
 	reviewedAgenticChatMutationSpecV1
-} from '../mutationToolCatalog';
+} from '../mutations/tool-catalog';
 import {
 	buildContractCompletionRequest,
 	buildTurnContractWriteCarveOutRequest

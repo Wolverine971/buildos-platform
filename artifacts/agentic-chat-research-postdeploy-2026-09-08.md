@@ -40,7 +40,7 @@ Second QA request explicitly directed a search with `include_domains: ["mailchim
 
 `apps/worker/src/workers/agentic-chat/provider/feedback.ts` required `call.kind === 'mutation'` for every `known_execution_failure`, even though the executor now uses that failure kind for recoverable reads. Removed that obsolete restriction. Tool-call ID, tool name, exact canonical arguments, error text, category, and payload consistency are still validated. No search authorization or safe-fetch checks were removed.
 
-`apps/worker/src/workers/agentic-chat/turn-executor.ts` now distinguishes a denied page URL in its user-facing error. The model-only feedback explains how to obtain an authorized page through a targeted domain search. Other denial/unavailability cases retain the existing bounded failure guidance.
+`apps/worker/src/workers/agentic-chat/turn/turn-executor.ts` now distinguishes a denied page URL in its user-facing error. The model-only feedback explains how to obtain an authorized page through a targeted domain search. Other denial/unavailability cases retain the existing bounded failure guidance.
 
 `apps/web/src/lib/services/agentic-chat-lite/prompt/situational-rules.ts` now tells the worker to use include_domains for official sources and search for a missing page instead of guessing its path. This prompt improvement is guidance, not a deterministic guarantee of model source selection.
 

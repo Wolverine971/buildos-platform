@@ -55,7 +55,7 @@ Implementation and proof:
 
 - `packages/shared-types/src/agentic-chat-worker-contract.ts`
 - `packages/shared-types/src/agentic-chat-worker-contract.test.ts`
-- `apps/worker/src/workers/agentic-chat/streamPublisher.ts`
+- `apps/worker/src/workers/agentic-chat/stream/stream-publisher.ts`
 - `apps/web/src/lib/services/agentic-chat-v2/worker-realtime-channel.ts`
 - `apps/web/src/lib/services/agentic-chat-v2/worker-realtime-channel.test.ts`
 - `apps/web/src/lib/services/agentic-chat-v2/worker-realtime-inbox.ts`

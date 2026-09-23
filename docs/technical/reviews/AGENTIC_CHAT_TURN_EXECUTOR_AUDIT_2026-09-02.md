@@ -265,7 +265,7 @@ Acting: `AGENTIC_CHAT_OPENROUTER_MODEL` (DeepSeek v4 flash in production), provi
 deepinfra, deepseek, alibaba, cloudflare with fallbacks allowed, `max_tokens` 4,000, reasoning
 excluded from the stream but billed. Reviewer: a second OpenRouter client at temperature 0,
 `max_tokens` 4,000, hardcoded to prefer `openai/gpt-5.6-luna`
-(`apps/worker/src/workers/agentic-chat/bootstrap.ts:354-392`). The comment in `config.ts:22-33`
+(`apps/worker/src/workers/agentic-chat/host/bootstrap.ts:354-392`). The comment in `config.ts:22-33`
 still calls it "the Gemini semantic reviewer". If every candidate were an acting model the
 reviewer would silently fall back to the acting model (`bootstrap.ts:376-380`).
 

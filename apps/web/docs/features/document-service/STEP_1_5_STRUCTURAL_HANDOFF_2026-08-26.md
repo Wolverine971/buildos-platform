@@ -115,7 +115,7 @@ Worker routing is confirmed at:
 
 - `apps/worker/src/workers/agentic-chat/gatewayEntityMutationAdapter.ts:38` and `:228`
   (`update_onto_document`)
-- `apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts:76` (capability `updateOntoDocument`)
+- `apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts:76` (capability `updateOntoDocument`)
 
 ⚠️ **Confirm the live capability flag state before assuming production impact.** The Phase 4 battery
 evidence docs list `updateOntoDocument` among enabled mutation capabilities, but verify against the

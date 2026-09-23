@@ -1,7 +1,7 @@
 // apps/worker/tests/agenticChatConfig.test.ts
 import { describe, expect, it } from 'vitest';
 import { PARETO_MODEL } from '@buildos/smart-llm';
-import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
+import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import {
 	AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1,
 	AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1,

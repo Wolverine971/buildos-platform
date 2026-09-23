@@ -1,6 +1,6 @@
 // apps/worker/tests/agenticChatWorkerAccessAdapter.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { WorkerAgenticChatToolAccessAdapter } from '../src/workers/agentic-chat/workerAccessAdapter';
+import { WorkerAgenticChatToolAccessAdapter } from '../src/workers/agentic-chat/tools/worker-access-adapter';
 
 const ensureActorIdMock = vi.hoisted(() => vi.fn());
 const fetchProjectSummariesMock = vi.hoisted(() => vi.fn());

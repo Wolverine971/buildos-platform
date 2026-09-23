@@ -14,7 +14,7 @@ import {
 	serializeTurnContractForDeclaration,
 	turnContractCreatesProject
 } from '@buildos/agentic-chat-runtime/loop';
-import { reviewedAgenticChatMutationSpecV1 } from '../../mutationToolCatalog';
+import { reviewedAgenticChatMutationSpecV1 } from '../../mutations/tool-catalog';
 import type {
 	AgenticChatTurnProviderMessageV1,
 	AgenticChatTurnProviderRequestV1,

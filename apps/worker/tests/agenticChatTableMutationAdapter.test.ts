@@ -13,10 +13,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1,
 	AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1
-} from '../src/workers/agentic-chat/mutation-argument-normalizers';
-import { AgenticChatMutationAdapterError } from '../src/workers/agentic-chat/mutation-executor';
-import { reviewedAgenticChatGatewayMutationSpecV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
-import { AgenticChatTableMutationAdapter } from '../src/workers/agentic-chat/tableMutationAdapter';
+} from '../src/workers/agentic-chat/mutations/argument-normalizers';
+import { AgenticChatMutationAdapterError } from '../src/workers/agentic-chat/mutations/mutation-executor';
+import { reviewedAgenticChatGatewayMutationSpecV1 } from '../src/workers/agentic-chat/mutations/tool-catalog';
+import { AgenticChatTableMutationAdapter } from '../src/workers/agentic-chat/mutations/table-adapter';
 
 const USER_ID = '55555555-5555-4555-8555-555555555555';
 const SESSION_ID = '66666666-6666-4666-8666-666666666666';

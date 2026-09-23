@@ -1,6 +1,6 @@
 // apps/worker/tests/agenticChatToolExecutionPolicy.test.ts
 import { describe, expect, it } from 'vitest';
-import { resolveAgenticChatToolExecutionPolicyV1 } from '../src/workers/agentic-chat/toolExecutionPolicy';
+import { resolveAgenticChatToolExecutionPolicyV1 } from '../src/workers/agentic-chat/tools/execution-policy';
 
 describe('Agentic Chat tool execution policy', () => {
 	it('allows independent row-local mutations to run concurrently', () => {

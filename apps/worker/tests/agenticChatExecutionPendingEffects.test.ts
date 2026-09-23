@@ -1,17 +1,17 @@
 // apps/worker/tests/agenticChatExecutionPendingEffects.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AGENTIC_CHAT_EXECUTION_OBSERVATION_TIMEOUT_MS } from '../src/workers/agentic-chat/executionObservation';
-import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
-import { AgenticChatExecutorEffects } from '../src/workers/agentic-chat/executorEffects';
+import { AGENTIC_CHAT_EXECUTION_OBSERVATION_TIMEOUT_MS } from '../src/workers/agentic-chat/effects/execution-observation';
+import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/effects/execution-observation';
+import { AgenticChatExecutorEffects } from '../src/workers/agentic-chat/effects/executor-effects';
 import {
 	AgenticChatPendingEffects,
 	AgenticChatPendingEffectsRegistry
-} from '../src/workers/agentic-chat/pendingEffects';
+} from '../src/workers/agentic-chat/effects/pending-effects';
 import {
 	AGENTIC_CHAT_PROMPT_SNAPSHOT_TIMEOUT_MS,
 	type AgenticChatPromptSnapshotPersistInputV1,
 	createStableAgenticChatPromptSnapshotIdV1
-} from '../src/workers/agentic-chat/promptSnapshot';
+} from '../src/workers/agentic-chat/effects/prompt-snapshot';
 
 const TURN_RUN_ID = '30000000-0000-4000-8000-000000000003';
 

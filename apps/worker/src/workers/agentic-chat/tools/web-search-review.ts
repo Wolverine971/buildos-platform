@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/tools/web-search-review.ts
 import type { JsonObject } from '@buildos/shared-types';
-import type { AgenticChatWorkerExecutionInputV1 } from '../executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
 import { appendToolCallDelta, createToolCallAccumulator } from '../provider/stream-tool-calls';
 import {
 	AgenticChatProviderExecutionError,

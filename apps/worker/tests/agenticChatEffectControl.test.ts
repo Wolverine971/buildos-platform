@@ -4,7 +4,7 @@ import {
 	AgenticChatEffectControlProtocolError,
 	AgenticChatEffectControlRpcError,
 	SupabaseAgenticChatEffectControlAdapter
-} from '../src/workers/agentic-chat/effectControl';
+} from '../src/workers/agentic-chat/effects/effect-control';
 
 const EFFECT_ID = '10000000-0000-5000-8000-000000000001';
 const TURN_RUN_ID = '20000000-0000-4000-8000-000000000002';

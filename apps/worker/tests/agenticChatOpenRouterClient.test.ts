@@ -10,9 +10,9 @@ import {
 	type AgenticChatProviderUsageObservationV1
 } from '../src/workers/agentic-chat/provider/openrouter-client';
 import type { AgenticChatTurnProviderClientEventV1 } from '../src/workers/agentic-chat/provider/contracts';
-import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
-import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/pendingEffects';
-import { AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1 } from '../src/workers/agentic-chat/mutationToolCatalog';
+import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/effects/execution-observation';
+import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/effects/pending-effects';
+import { AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1 } from '../src/workers/agentic-chat/mutations/tool-catalog';
 import { AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 } from '../src/workers/agentic-chat/tools/execution-adapter';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';

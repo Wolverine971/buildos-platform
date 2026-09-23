@@ -566,7 +566,7 @@ survive requeue.
 ## 9. Stream, answer identity, and UI projection
 
 84's delivery boundary has two different receipts. These are its final names in
-`apps/worker/src/workers/agentic-chat/streamPublisher.ts`:
+`apps/worker/src/workers/agentic-chat/stream/stream-publisher.ts`:
 
 ```ts
 type AgenticChatPublisherDurableAcceptanceV1 = {
@@ -1033,7 +1033,7 @@ Reader behavior is explicit:
 | valid v4 plus context and current dispatch permit      | rejected                                  | fixed workflow call allowed                                                         |
 | unknown version or hash mismatch                       | rejected before model work                | rejected before model work                                                          |
 
-Implemented readers (`apps/worker/src/workers/agentic-chat/executionInput.ts`):
+Implemented readers (`apps/worker/src/workers/agentic-chat/turn/execution-input.ts`):
 `load()` throws `raw_workflow_input_requires_preparation` for any v4 row without
 selecting v4 columns, and `loadRawWorkflowInput()` re-verifies every request, history,
 and content hash, byte count, retention, and command binding through
@@ -1113,7 +1113,7 @@ Implemented with every writer, dispatch, and recovery activation off:
 - `packages/shared-types/src/agentic-chat-workflow-contract.ts`: constants, types,
   outcome unions, request/content hash builders, reservation formula, and
   `validateAgenticChatRawWorkflowInputV4`.
-- `apps/worker/src/workers/agentic-chat/executionInput.ts`: the v4 refusal on the
+- `apps/worker/src/workers/agentic-chat/turn/execution-input.ts`: the v4 refusal on the
   prepared path and `loadRawWorkflowInput()`.
 
 Proof:

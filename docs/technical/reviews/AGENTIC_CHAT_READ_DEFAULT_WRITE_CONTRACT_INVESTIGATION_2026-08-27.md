@@ -89,7 +89,7 @@ The read-only declaration and its reviewer consumed 17,681 prompt/completion tok
 
 The 439 ms workspace read was not the source of the two-minute response. It was also not completely valueless: the preloaded workspace context already contained project orientation, recent activity, and aggregate workspace signals, but the overview result supplied the project-by-project task rollup used in the answer. The product issue is that a task-status question had to fetch a second workspace summary instead of receiving the relevant rollup in its initial context. This should be fixed by enriching or specializing the preload, not by forbidding a useful read when the loaded context is insufficient.
 
-There was a second, larger latency problem after the models finished. The final model call began at approximately 13:33:25 and reported a 19.728 s provider duration, but the final message was not durable until 13:35:13. The trace contains approximately 196 final text-delta sequences. The executor currently [appends each text delta and awaits its individual delivery](../../../apps/worker/src/workers/agentic-chat/turn-executor.ts#L498-L503) before accepting the next delta, even though the publisher is [configured to batch at 3 KB or 150 ms](../../../apps/worker/src/workers/agentic-chat/streamPublisher.ts#L29-L31). That serial acknowledgement path appears to account for roughly 89 seconds between model completion and the final durable response. This is separate from the read-only design, and is likely the largest single wall-clock defect in this trace.
+There was a second, larger latency problem after the models finished. The final model call began at approximately 13:33:25 and reported a 19.728 s provider duration, but the final message was not durable until 13:35:13. The trace contains approximately 196 final text-delta sequences. The executor currently [appends each text delta and awaits its individual delivery](../../../apps/worker/src/workers/agentic-chat/turn/turn-executor.ts#L498-L503) before accepting the next delta, even though the publisher is [configured to batch at 3 KB or 150 ms](../../../apps/worker/src/workers/agentic-chat/stream/stream-publisher.ts#L29-L31). That serial acknowledgement path appears to account for roughly 89 seconds between model completion and the final durable response. This is separate from the read-only design, and is likely the largest single wall-clock defect in this trace.
 
 ## Why the UI showed “a lot of nothing”
 
@@ -151,7 +151,7 @@ This is a strong contract for an operation such as “organize these documents i
 
 `request_turn_clarification` is not a general write-permission prompt. It is for a real unresolved choice: multiple plausible targets, or a required value that neither the user nor loaded context resolves. It prevents a write rather than asking the user to approve an already clear instruction.
 
-There are also narrower confirmation boundaries for actual impact. For example, a clean cross-project task move executes immediately, but a move that must remove incompatible relationships or assignees returns an impact preview and `confirmation_token`. The user must [confirm those exact effects in a later turn](../../../apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts#L199-L219). Irreversible delete tools are currently [deferred from the reviewed worker surface](../../../apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts#L513-L548) under `irreversible_delete_without_tombstone`.
+There are also narrower confirmation boundaries for actual impact. For example, a clean cross-project task move executes immediately, but a move that must remove incompatible relationships or assignees returns an impact preview and `confirmation_token`. The user must [confirm those exact effects in a later turn](../../../apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts#L199-L219). Irreversible delete tools are currently [deferred from the reviewed worker surface](../../../apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts#L513-L548) under `irreversible_delete_without_tombstone`.
 
 Those are appropriate places for confirmation. A normal task update is not.
 
@@ -286,14 +286,14 @@ Keep the existing durable contract, but narrow it to the complex writes it is go
 - [Worker read/final/pre-mutation gates](../../../apps/worker/src/workers/agentic-chat/provider/turn-provider.ts#L480-L525)
 - [Independent contract reviewer](../../../apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts)
 - [Independent exact mutation-batch reviewer](../../../apps/worker/src/workers/agentic-chat/provider/review/mutation-batch.ts)
-- [Mutation admission and operation-specific confirmation policy](../../../apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts)
+- [Mutation admission and operation-specific confirmation policy](../../../apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts)
 
 ### Visible activity and streaming
 
 - [Generic “Planning the first step” event](../../../apps/worker/src/workers/agentic-chat/provider/steps.ts#L24-L45)
 - [UI labels for read-only control activity](../../../apps/web/src/lib/components/agent/agent-chat-tool-presenter.ts#L1139-L1144)
-- [Per-text-delta delivery await](../../../apps/worker/src/workers/agentic-chat/turn-executor.ts#L498-L503)
-- [Publisher batching configuration](../../../apps/worker/src/workers/agentic-chat/streamPublisher.ts#L29-L47)
+- [Per-text-delta delivery await](../../../apps/worker/src/workers/agentic-chat/turn/turn-executor.ts#L498-L503)
+- [Publisher batching configuration](../../../apps/worker/src/workers/agentic-chat/stream/stream-publisher.ts#L29-L47)
 
 ## Suggested follow-up questions for another agent
 

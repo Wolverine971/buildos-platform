@@ -194,7 +194,7 @@ and the worker preload ledger into the prepared history` — 1 of 7 fails. Cause
 Decisions / conflicts between packages
 
 - **F02 remaining six overrides** (WP-A1 handoff 1 vs WP-B "deliberately left alone"):
-  `apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts` still ends the `create_task_document`,
+  `apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts` still ends the `create_task_document`,
   `tag_onto_entity`, `update_onto_goal/plan/milestone/risk` descriptions with "otherwise
   declare*turn_contract first". WP-B narrowed F02 to the three opening-pass tools; WP-A1 wants all nine.
   The F75 verifier's suggestion to \_add* that sentence to `link_onto_entities` /

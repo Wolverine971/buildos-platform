@@ -7,8 +7,8 @@ import {
 	AgenticChatMutationAdapterError,
 	AgenticChatMutationExecutor,
 	type AgenticChatMutationSpanV1
-} from '../src/workers/agentic-chat/mutation-executor';
-import { createStableAgenticChatEffectIdentityV1 } from '../src/workers/agentic-chat/effectIdentity';
+} from '../src/workers/agentic-chat/mutations/mutation-executor';
+import { createStableAgenticChatEffectIdentityV1 } from '../src/workers/agentic-chat/effects/effect-identity';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';

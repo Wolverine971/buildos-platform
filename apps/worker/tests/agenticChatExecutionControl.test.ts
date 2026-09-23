@@ -6,7 +6,7 @@ import {
 	SupabaseAgenticChatExecutionControlAdapter,
 	type AgenticChatExecutionRpcClient,
 	type AgenticChatTerminalFinalizeInputV1
-} from '../src/workers/agentic-chat/executionControl';
+} from '../src/workers/agentic-chat/turn/execution-control';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';

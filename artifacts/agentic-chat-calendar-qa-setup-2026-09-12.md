@@ -43,7 +43,7 @@ load-bearing duration and tool-count limits held. This is a **failed gate**:
   real source, no failures, and the QA busy event. The project read reported
   `mode: none`, zero sources and no mapping. The other two repetitions passed.
 - Final checkout provenance differed from the verified startup services. A
-  source-tree prose file, `apps/worker/src/workers/agentic-chat/djflow-architecture.md`,
+  source-tree prose file, `docs/archive/agentic-chat-djflow/djflow-architecture.md`,
   was modified during the run; the current provenance implementation includes
   files under `apps` regardless of extension. No passing provenance claim is made.
 

@@ -5,7 +5,7 @@ import type {
 	AgenticChatTurnProviderClientEventV1,
 	AgenticChatTurnProviderClientRequestV1
 } from '../src/workers/agentic-chat/provider/contracts';
-import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import {
 	AgenticChatOpenRouterClient,
 	createStableAgenticChatProviderUsageLogIdV1

@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1,
 	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1
-} from '../src/workers/agentic-chat/mutationToolCatalog';
+} from '../src/workers/agentic-chat/mutations/tool-catalog';
 import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,

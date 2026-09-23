@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AgenticChatOpenRouterClient } from '../src/workers/agentic-chat/provider/openrouter-client';
 import type { AgenticChatTurnProviderClientEventV1 } from '../src/workers/agentic-chat/provider/contracts';
-import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/pendingEffects';
+import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/effects/pending-effects';
 import { createProviderCapture, providerCallTiming } from './helpers/providerCapture';
 
 /** The paid pilot's capture must observe calls without changing or prolonging them. */

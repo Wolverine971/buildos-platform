@@ -19,8 +19,8 @@ import {
 	type AgenticChatTurnClaimResultV1
 } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
-import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/executionControl';
-import { SupabaseAgenticChatExecutionInputAdapter } from '../src/workers/agentic-chat/executionInput';
+import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/turn/execution-control';
+import { SupabaseAgenticChatExecutionInputAdapter } from '../src/workers/agentic-chat/turn/execution-input';
 import { SupabaseAgenticChatWorkflowPreparationStore } from '../src/workers/agentic-chat/workflow/preparation-store';
 import {
 	buildAgenticChatWorkflowContextV1,

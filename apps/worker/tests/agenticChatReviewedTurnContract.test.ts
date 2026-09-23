@@ -8,8 +8,8 @@ import {
 	type FastToolExecution
 } from '@buildos/agentic-chat-runtime/loop';
 import { contractSha256 } from '../src/workers/agentic-chat/provider/validation';
-import { resolveReviewedTurnContractFromExecutions } from '../src/workers/agentic-chat/reviewedTurnContract';
-import { enforceAgenticChatTerminalTextIntegrityV1 } from '../src/workers/agentic-chat/terminalTextIntegrity';
+import { resolveReviewedTurnContractFromExecutions } from '../src/workers/agentic-chat/turn/reviewed-turn-contract';
+import { enforceAgenticChatTerminalTextIntegrityV1 } from '../src/workers/agentic-chat/turn/terminal-text-integrity';
 
 const TARGET = 'aa000000-0000-4000-8000-000000000001';
 

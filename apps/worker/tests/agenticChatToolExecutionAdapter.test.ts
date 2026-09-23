@@ -15,7 +15,7 @@ import {
 import type { AgenticChatTurnProviderClientRequestV1 } from '../src/workers/agentic-chat/provider/contracts';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import type { WebNavigatePort } from '../src/workers/agentic-chat/tools/web-navigate';
-import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import {
 	AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,

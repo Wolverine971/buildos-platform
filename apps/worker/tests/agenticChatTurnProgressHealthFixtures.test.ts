@@ -2,7 +2,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { projectAgenticChatTurnProgressHealthV1 } from '../src/workers/agentic-chat/deliveryHealth';
+import { projectAgenticChatTurnProgressHealthV1 } from '../src/workers/agentic-chat/host/delivery-health';
 import { canonicalAgenticChatTurnProgressHealthCasesV1 } from './fixtures/agenticChatTurnProgressHealthCases';
 
 const fixtures = JSON.parse(

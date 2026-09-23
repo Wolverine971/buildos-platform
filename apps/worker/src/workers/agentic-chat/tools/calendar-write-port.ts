@@ -40,8 +40,8 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fromZonedTime } from 'date-fns-tz';
 import { AgenticChatToolAccessDeniedError } from '@buildos/agentic-chat-runtime/tools';
-import { knownFailure, uncertainFailure } from '../mutationAdapterBoundary';
-import { WorkerAgenticChatToolAccessAdapter } from '../workerAccessAdapter';
+import { knownFailure, uncertainFailure } from '../mutations/adapter-boundary';
+import { WorkerAgenticChatToolAccessAdapter } from './worker-access-adapter';
 import {
 	type WorkerGoogleCalendarServicesOptions,
 	createWorkerGoogleCalendarServices

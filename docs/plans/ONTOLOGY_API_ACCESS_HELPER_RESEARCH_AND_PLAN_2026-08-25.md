@@ -416,7 +416,7 @@ The recommended approvals are:
 - `apps/web/src/routes/api/onto/assets/shared.ts`
 - `apps/web/src/routes/api/onto/shared/error-logging.ts`
 - `packages/shared-agent-ops/src/ontology/ontology-projects.service.ts`
-- `apps/worker/src/workers/agentic-chat/workerAccessAdapter.ts`
+- `apps/worker/src/workers/agentic-chat/tools/worker-access-adapter.ts`
 - `supabase/migrations/20260428000019_fix_ensure_actor_for_user_nullable_name.sql`
 - `supabase/migrations/20260514000500_add_project_member_access_helper.sql`
 - `supabase/migrations/20260514001000_tighten_public_project_internal_access.sql`

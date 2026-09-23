@@ -20,7 +20,7 @@
 						"note": "W1: call declare_turn_contract first"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "(9 of 17 descriptionOverride entries)",
 						"note": "tool descriptions also say declare_turn_contract first"
 					},
@@ -318,12 +318,12 @@
 						"note": "reviewer user message shell guidance, 1,043 chars"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "893-894",
 						"note": "create_onto_project description says it a fourth time"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "911-960",
 						"note": "state_key vs props.facets.stage enum-enforced"
 					}
@@ -506,7 +506,7 @@
 						"note": "TASK_STATE_RULE_LINE and EXACT_ID_RULE_LINE duplicate skill content"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "269-270, 471-472",
 						"note": "tool description overrides already carry the exact-id rule"
 					},
@@ -561,10 +561,10 @@
 		"owns": [
 			"packages/agentic-chat-runtime/src/catalog/**",
 			"packages/agentic-chat-runtime/src/worker-tool-policy.ts",
-			"apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
-			"apps/worker/src/workers/agentic-chat/createOntoProjectMutationAdapter.ts",
-			"apps/worker/src/workers/agentic-chat/tableMutationAdapter.ts",
-			"apps/worker/src/workers/agentic-chat/mutation-argument-normalizers.ts"
+			"apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
+			"apps/worker/src/workers/agentic-chat/mutations/create-onto-project-adapter.ts",
+			"apps/worker/src/workers/agentic-chat/mutations/table-adapter.ts",
+			"apps/worker/src/workers/agentic-chat/mutations/argument-normalizers.ts"
 		],
 		"note": "F25: remove delegate_task from the global surface (keep on project). F28: stop mounting declare_read_only_turn on the acting surfaces and delete the four strip sites that exist only because it was mounted (keep the reviewer-side definition if the reviewer lane still uses it -- verify). F30: fix update_onto_document description (merge_llm advertised x3 but rejected; dead merge_instructions param). F35: list_onto_tasks description says what the payload carries so the model does not do N+1 detail reads; update_onto_task.project_id description stops claiming it is required. F29: the verifier's worker-only version: drop entities/relationships from requiredNames and the projected schema, tolerate empty arrays at the boundary, default missing arrays to [] in normalizeProjectShell, restore the realm list plus one type_key example; leave the shared validator alone. F37: fix stale comments and mismatched enums across sibling tools where cheap. F33: mount request_email_account_connection when the user has NO connected mailbox (the inverse of today), keep the read/search tools gated on a connected mailbox. F02 (this package's part): trim \"; otherwise declare_turn_contract first\" from the three description overrides that ride the opening pass (update_onto_task, update_onto_document, link_onto_entities) and make the remaining sentence say the worker routes unresolved targets to review. Also add one restraint sentence to the delegate_task description (from the deleted review-delegation rules: only delegate when the user asks for background work). Also F117 worker side: write receipts render instants in the user timezone with offset like reads do (find where mutation receipts format dates; if it is outside your files, report it instead of editing). Update the per-profile description test that forbids naming unmounted tools, and the catalog fitness snapshot, honestly.",
 		"findings": [
@@ -580,17 +580,17 @@
 						"note": "GLOBAL_DIRECT_TOOL_NAMES includes delegate_task"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/delegateTaskMutationAdapter.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/delegate-task-adapter.ts",
 						"lines": "81-88",
 						"note": "requires project_id === admitted context project, throws mutation_project_scope_mismatch"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationAdapterBoundary.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/adapter-boundary.ts",
 						"lines": "90-110",
 						"note": "requestProjectId returns explicit context project, null on global"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "1073",
 						"note": "override description says 'Exact focused project UUID'"
 					},
@@ -651,17 +651,17 @@
 						"note": "three merge_llm mentions vs one denial"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "270",
 						"note": "merge_instructions is a reviewed argument"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "280-287",
 						"note": "update_strategy override restricts to replace|append"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutation-argument-normalizers.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/argument-normalizers.ts",
 						"lines": "107-115",
 						"note": "reject_merge_llm_update_strategy throws mutation_arguments_not_admitted"
 					},
@@ -704,12 +704,12 @@
 						"note": "payload says 'Use get_onto_task_details for full information'"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "466",
 						"note": "update_onto_task.project_id reviewed with false description"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutation-argument-normalizers.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/argument-normalizers.ts",
 						"lines": "167-169",
 						"note": "drop_scope_only_project_id deletes it unconditionally"
 					}
@@ -727,7 +727,7 @@
 				"claim": "The worker override keeps entities and relationships required with maxItems: 0 because the shared validator demands the arrays. The description says \"Pass empty entities and relationships arrays\" \u2014 a rule that exists to satisfy a validator, not the user. The override also replaces the catalog's type_key guidance and drops the realm vocabulary the catalog had (\"realm is creative, technical, business, service, education, or personal\"), leaving a regex ^project\\.[a-z_]+\\.[a-z_]+ and no example. 459 B of the 2,383 B schema is the two dead arrays.",
 				"evidence": [
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "915-916, 983-1010",
 						"note": "entities/relationships required with maxItems: 0"
 					},
@@ -742,7 +742,7 @@
 						"note": "catalog realm vocabulary"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "936-941",
 						"note": "override drops realm vocabulary, leaves regex with no example"
 					},
@@ -785,7 +785,7 @@
 						"note": "stale clarification-rule comment"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "337-346",
 						"note": "link_onto_entities kind enum excludes project while descriptions list it"
 					},
@@ -856,7 +856,7 @@
 						"note": "W1: call declare_turn_contract first"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts",
+						"file": "apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts",
 						"lines": "(9 of 17 descriptionOverride entries)",
 						"note": "tool descriptions also say declare_turn_contract first"
 					},
@@ -1168,14 +1168,14 @@
 	"D-transport-and-models": {
 		"owns": [
 			"apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts",
-			"apps/worker/src/workers/agentic-chat/config.ts",
-			"apps/worker/src/workers/agentic-chat/bootstrap.ts",
+			"apps/worker/src/workers/agentic-chat/host/config.ts",
+			"apps/worker/src/workers/agentic-chat/host/bootstrap.ts",
 			"apps/worker/tests/agenticChatOpenRouterClient*.test.ts",
 			"apps/worker/tests/agenticChatConfig*.test.ts",
 			"apps/worker/tests/agenticChatBootstrap*.test.ts",
 			"apps/worker/.env.example"
 		],
-		"note": "F76 (verifier version): drop allow_fallbacks:false so the pin is a preference; delete pinnedEndpointUnavailable; keep the timeout attribution branch but attribute only timeouts (not 4xx/5xx) to a single-entry order; update the three pin tests including the one at ~:2400. F77 (verifier version): pin the reported model only when it is a configured id (compute configured = routes.flatMap(model + fallbackModels); pin state.modelUsed if configured includes it else active.route.model); keep state.modelUsed for receipts; preserve the resolved-fallback affinity test at ~:914. F78: make the provider order reflect what actually serves DeepSeek v4 flash cheaply and fast (measured: DeepInfra p50 5.3 s, Alibaba 5.3 s but 23% pinned-404; NextBit 7.8 s; Azure 21.5 s and 112 ms/token) -- put the fast cheap endpoints first, add the slow/expensive ones (Azure) to an ignore list, and document the measured reason in a comment; keep allow_fallbacks true. F80: set the reviewer route reasoning effort explicitly (low) and confirm max_tokens on the reviewer is sized for a verdict, not a document. F81: remove the documented bad reviewer from the default reviewer fallback chain. F50 (this package's part): make observeProviderAttempt fire-and-forget into a per-turn pending set that the executor drains at finalization (WP-E adds the drain hook on executorEffects; expose a small API: enqueue(promise) / drain(deadlineMs)). If the drain API must live in a file you do not own, put it in a NEW small module apps/worker/src/workers/agentic-chat/pendingEffects.ts and tell WP-E its name in your receipt. F104: delete the dead per-turn degradation latch. F109: delete the dead reasoning-event extraction downstream (keep usage accounting of reasoning tokens).",
+		"note": "F76 (verifier version): drop allow_fallbacks:false so the pin is a preference; delete pinnedEndpointUnavailable; keep the timeout attribution branch but attribute only timeouts (not 4xx/5xx) to a single-entry order; update the three pin tests including the one at ~:2400. F77 (verifier version): pin the reported model only when it is a configured id (compute configured = routes.flatMap(model + fallbackModels); pin state.modelUsed if configured includes it else active.route.model); keep state.modelUsed for receipts; preserve the resolved-fallback affinity test at ~:914. F78: make the provider order reflect what actually serves DeepSeek v4 flash cheaply and fast (measured: DeepInfra p50 5.3 s, Alibaba 5.3 s but 23% pinned-404; NextBit 7.8 s; Azure 21.5 s and 112 ms/token) -- put the fast cheap endpoints first, add the slow/expensive ones (Azure) to an ignore list, and document the measured reason in a comment; keep allow_fallbacks true. F80: set the reviewer route reasoning effort explicitly (low) and confirm max_tokens on the reviewer is sized for a verdict, not a document. F81: remove the documented bad reviewer from the default reviewer fallback chain. F50 (this package's part): make observeProviderAttempt fire-and-forget into a per-turn pending set that the executor drains at finalization (WP-E adds the drain hook on executorEffects; expose a small API: enqueue(promise) / drain(deadlineMs)). If the drain API must live in a file you do not own, put it in a NEW small module apps/worker/src/workers/agentic-chat/effects/pending-effects.ts and tell WP-E its name in your receipt. F104: delete the dead per-turn degradation latch. F109: delete the dead reasoning-event extraction downstream (keep usage accounting of reasoning tokens).",
 		"findings": [
 			{
 				"id": "F76",
@@ -1189,7 +1189,7 @@
 						"note": "pin: order: [slug], allow_fallbacks: false"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/config.ts",
+						"file": "apps/worker/src/workers/agentic-chat/host/config.ts",
 						"lines": "35-43",
 						"note": "default order deepinfra, deepseek, alibaba, cloudflare with allow_fallbacks: true; deepseek and cloudflare served zero calls; NextBit/Phala/StreamLake/Azure are not in the order"
 					},
@@ -1270,12 +1270,12 @@
 				"claim": "`config.ts:34-39` prefers `deepinfra, deepseek, alibaba, cloudflare`. OpenRouter's live endpoint list for this model has no DeepSeek and no Cloudflare endpoint. DeepInfra served 12% of successful calls (it 429s: 7 of 9 pinned 429s). Alibaba (51%, $0.134/M) and NextBit (26%, $0.150/M) carried most traffic; StreamLake ($0.089) and GMICloud ($0.091, 99.5% uptime) never appear. The comment at `config.ts:23-25` names Alibaba as long-tail and then prefers it at :37. Measured p50 per-pass latency: Alibaba 5.3 s, DeepInfra 5.3 s, NextBit 7.8 s, StreamLake 7.3 s (n=4), Azure 21.5 s. The effective policy is 'Alibaba, then whatever'.",
 				"evidence": [
 					{
-						"file": "apps/worker/src/workers/agentic-chat/config.ts",
+						"file": "apps/worker/src/workers/agentic-chat/host/config.ts",
 						"lines": "34-43",
 						"note": "provider order deepinfra, deepseek, alibaba, cloudflare"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/config.ts",
+						"file": "apps/worker/src/workers/agentic-chat/host/config.ts",
 						"lines": "23-25",
 						"note": "comment names Alibaba as long-tail, then prefers it at :37"
 					},
@@ -1313,7 +1313,7 @@
 						"note": "temperature dropped for Luna"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/bootstrap.ts",
+						"file": "apps/worker/src/workers/agentic-chat/host/bootstrap.ts",
 						"lines": "372",
 						"note": "reviewer temperature: 0"
 					},
@@ -1336,17 +1336,17 @@
 				"claim": "With no `AGENTIC_CHAT_REVIEWER_MODEL` set, `bootstrap.ts:446-452` builds candidates from `JSON_PROFILE_MODELS.powerful` + `maximum`; the resulting `models` fallback array is `[gemini-3.7-flash, glm-5.3-flash, glm-5.2]`. `:443-444` says GLM 5.3 Flash approved a correction without declaring its endpoints. Fallbacks also lose the request policy (temperature, reasoning) because `buildOpenRouterChatCompletionBody` keys policy on the primary model only. Zero fallbacks fired in the window (43/43 on OpenAI), so this is latent.",
 				"evidence": [
 					{
-						"file": "apps/worker/src/workers/agentic-chat/bootstrap.ts",
+						"file": "apps/worker/src/workers/agentic-chat/host/bootstrap.ts",
 						"lines": "446-452",
 						"note": "candidates from JSON_PROFILE_MODELS.powerful + maximum"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/bootstrap.ts",
+						"file": "apps/worker/src/workers/agentic-chat/host/bootstrap.ts",
 						"lines": "443-444",
 						"note": "comment: GLM 5.3 Flash approved a dependency correction without declaring its endpoints"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/bootstrap.ts",
+						"file": "apps/worker/src/workers/agentic-chat/host/bootstrap.ts",
 						"lines": "432-433",
 						"note": "reviewer model openai/gpt-5.6-luna, provider order ['openai','azure']"
 					}
@@ -1364,12 +1364,12 @@
 				"claim": "`observeToolExecution` is awaited before a read runs and after it, and around every mutation; the provider adds two per pass. 14 RPCs per model turn, 5 s deadline each. The `ended` row duplicates the ledger row; the planning fields (`graph_layer_*`, `read_epoch`, `memo_served`, `exact_read_key`) are the only unique data.",
 				"evidence": [
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "1922-1935, 2117-2134",
 						"note": "observation awaited before and after each read"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "1363-1376, 1509-1526",
 						"note": "observation awaited around every mutation"
 					},
@@ -1379,7 +1379,7 @@
 						"note": "two provider attempt observations per pass"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "2425-2455",
 						"note": "planning fields are the only unique data in observation rows"
 					},
@@ -1432,12 +1432,12 @@
 						"note": "other markTemporarilyUnavailable call sites"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/providerCapacity.ts",
+						"file": "apps/worker/src/workers/agentic-chat/provider/provider-capacity.ts",
 						"lines": "34, 79-100, 110",
 						"note": "latch state; degradedUntilMs always null without turn id"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/capacity.ts",
+						"file": "apps/worker/src/workers/agentic-chat/host/capacity.ts",
 						"lines": "112, 162-167",
 						"note": "getSnapshot() with no turn id"
 					},
@@ -1485,10 +1485,10 @@
 	},
 	"E-executor-resilience": {
 		"owns": [
-			"apps/worker/src/workers/agentic-chat/turn-executor.ts",
-			"apps/worker/src/workers/agentic-chat/executorEffects.ts",
-			"apps/worker/src/workers/agentic-chat/cancellationObserver.ts",
-			"apps/worker/src/workers/agentic-chat/promptSnapshot.ts",
+			"apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
+			"apps/worker/src/workers/agentic-chat/effects/executor-effects.ts",
+			"apps/worker/src/workers/agentic-chat/turn/cancellation-observer.ts",
+			"apps/worker/src/workers/agentic-chat/effects/prompt-snapshot.ts",
 			"apps/worker/src/workers/agentic-chat/tools/execution-adapter.ts",
 			"apps/worker/tests/agenticChatTurnExecutor*.test.ts",
 			"apps/worker/tests/agenticChatExecution*.test.ts",
@@ -1503,7 +1503,7 @@
 				"claim": "`executeReadTool` feeds a failure back to the model only for `web_search`/`web_visit` and the two egress-policy codes. Every other throw from a shared read \u2014 `AgenticChatToolAccessDeniedError` on a hallucinated or foreign `project_id`, argument throws like 'project_id is required for get_document_tree', calendar/email errors, DB errors \u2014 is mapped to `read_tool_execution_failed` and re-thrown -> terminal `failed`, 'An error occurred while streaming.' The mutation path already does the right thing (`persistKnownMutationFailure`). Production: `read_tool_execution_failed` \u00d72 in 14 days.",
 				"evidence": [
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "1993-2011",
 						"note": "feedback only for web_search/web_visit and egress-policy codes"
 					},
@@ -1513,7 +1513,7 @@
 						"note": "test covers exactly those cases"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/workerAccessAdapter.ts",
+						"file": "apps/worker/src/workers/agentic-chat/tools/worker-access-adapter.ts",
 						"lines": "79-88",
 						"note": "AgenticChatToolAccessDeniedError on hallucinated/foreign project_id"
 					},
@@ -1538,7 +1538,7 @@
 						"note": "mapped to read_tool_execution_failed and re-thrown"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "1608-1717",
 						"note": "persistKnownMutationFailure \u2014 mutation path already feeds failure back"
 					}
@@ -1556,7 +1556,7 @@
 				"claim": "`observe_agentic_chat_turn_cancellations` runs every 500 ms while any turn is registered \u2014 ~60 RPCs on a 30 s turn, ~200 on a 100 s write turn. Cancels are 2 of 296 turns in 14 days. The DB corrects the terminal outcome regardless (`recover` returns `finalize_cancelled` when `cancel_requested_at` is set), so the poller's unique value is provider-stream abort latency.",
 				"evidence": [
 					{
-						"file": "apps/worker/src/workers/agentic-chat/cancellationObserver.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/cancellation-observer.ts",
 						"lines": "97",
 						"note": "500 ms poller"
 					},
@@ -1584,17 +1584,17 @@
 				"claim": "`persistPromptSnapshot` is awaited inside the step loop on the first text/tool step; `executorEffects.persistPromptSnapshot` wraps it in `abortable` without a timeout. A slow 100 KB write stalls replay of the already-buffered pass; a hung RPC stalls it until the provider budget aborts the turn.",
 				"evidence": [
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "586, 621, 678",
 						"note": "awaited inline in the step loop"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/executorEffects.ts",
+						"file": "apps/worker/src/workers/agentic-chat/effects/executor-effects.ts",
 						"lines": "62-72",
 						"note": "abortable without a timeout"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "922-925",
 						"note": "snapshot id is stable"
 					}
@@ -1635,12 +1635,12 @@
 				"claim": "`finalizeBudgetExhaustedAfterDurableWrites` runs only when `failureClass === 'timeout_post_start' && providerBudget.signal.aborted`. A provider stream error after retry, a read timeout, a ledger timeout, or E7's read throw after two of six moves committed still ends `failed`, without `last_turn_context` (`includesTerminalEventPair` is completed/cancelled only) and with the generic error. The DB pending-contract trigger recomputes from tool rows, but the user is told nothing was done.",
 				"evidence": [
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "855-877",
 						"note": "finalizeBudgetExhaustedAfterDurableWrites gated on timeout_post_start && aborted"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "2809-2816",
 						"note": "includesTerminalEventPair is completed/cancelled only"
 					}
@@ -1658,12 +1658,12 @@
 				"claim": "`observeToolExecution` is awaited before a read runs and after it, and around every mutation; the provider adds two per pass. 14 RPCs per model turn, 5 s deadline each. The `ended` row duplicates the ledger row; the planning fields (`graph_layer_*`, `read_epoch`, `memo_served`, `exact_read_key`) are the only unique data.",
 				"evidence": [
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "1922-1935, 2117-2134",
 						"note": "observation awaited before and after each read"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "1363-1376, 1509-1526",
 						"note": "observation awaited around every mutation"
 					},
@@ -1673,7 +1673,7 @@
 						"note": "two provider attempt observations per pass"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "2425-2455",
 						"note": "planning fields are the only unique data in observation rows"
 					},
@@ -1790,7 +1790,7 @@
 						"note": "shouldReplaceReadLeadIn"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/terminalTextIntegrity.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/terminal-text-integrity.ts",
 						"lines": "71-83",
 						"note": "replacement appended to what the user already saw"
 					},
@@ -1805,7 +1805,7 @@
 						"note": "applyFinalizationGuard"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/terminalTextIntegrity.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/terminal-text-integrity.ts",
 						"lines": "29-75",
 						"note": "order of terminal floors"
 					}
@@ -1962,7 +1962,7 @@
 						"note": "DEFAULT_MAX_PROVIDER_ROUNDS = 16 (unreachable)"
 					},
 					{
-						"file": "apps/worker/src/workers/agentic-chat/turn-executor.ts",
+						"file": "apps/worker/src/workers/agentic-chat/turn/turn-executor.ts",
 						"lines": "117",
 						"note": "DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS"
 					},

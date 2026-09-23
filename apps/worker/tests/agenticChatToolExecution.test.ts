@@ -9,7 +9,7 @@ import {
 	type AgenticChatMutationToolExecutionPersistInputV1,
 	type AgenticChatToolExecutionPersistInputV1,
 	type AgenticChatToolFailurePersistInputV1
-} from '../src/workers/agentic-chat/toolExecution';
+} from '../src/workers/agentic-chat/tools/tool-execution';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';

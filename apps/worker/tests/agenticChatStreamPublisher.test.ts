@@ -15,11 +15,11 @@ import {
 	type AgenticChatBroadcastMessageV1,
 	type AgenticChatPersistencePortV1,
 	type AgenticChatPublisherTurnV1
-} from '../src/workers/agentic-chat/streamPublisher';
+} from '../src/workers/agentic-chat/stream/stream-publisher';
 import {
 	SupabaseAgenticChatBroadcastAdapter,
 	SupabaseAgenticChatPersistenceAdapter
-} from '../src/workers/agentic-chat/supabaseStreamPublisherAdapters';
+} from '../src/workers/agentic-chat/stream/supabase-stream-publisher-adapters';
 
 function turn(suffix: string): AgenticChatPublisherTurnV1 {
 	return {
@@ -183,7 +183,7 @@ describe('AgenticChatStreamPublisher', () => {
 				throw Object.assign(new Error('private-database-body'), { code: '40001' });
 			return persist(input);
 		};
-		const traces: import('../src/workers/agentic-chat/persistenceTrace').AgenticChatPersistenceTraceV1[] =
+		const traces: import('../src/workers/agentic-chat/effects/persistence-trace').AgenticChatPersistenceTraceV1[] =
 			[];
 		const publisher = new AgenticChatStreamPublisher(
 			{

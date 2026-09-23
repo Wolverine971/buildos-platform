@@ -5,7 +5,7 @@ import {
 	type AgenticChatPersistenceTraceSinkV1,
 	emitAgenticChatPersistenceTrace,
 	persistenceErrorCode
-} from '../persistenceTrace';
+} from '../effects/persistence-trace';
 import { createHash } from 'node:crypto';
 import {
 	buildOpenRouterChatCompletionBody,
@@ -36,18 +36,22 @@ import {
 import {
 	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1,
 	reviewedAgenticChatMutationSpecV1
-} from '../mutationToolCatalog';
-import { runWithAbortableDeadline } from '../abortableDeadline';
+} from '../mutations/tool-catalog';
+import { runWithAbortableDeadline } from '../shared/abortable-deadline';
 import {
 	type AgenticChatExecutionObservationPortV1,
 	createStableAgenticChatExecutionObservationKeyV1
-} from '../executionObservation';
+} from '../effects/execution-observation';
 import { isToolArgumentsTextTruncated } from './stream-tool-calls';
-import { type LocalPromptDump, localPromptDumpsEnabled, startLocalPromptDump } from '../promptDump';
+import {
+	type LocalPromptDump,
+	localPromptDumpsEnabled,
+	startLocalPromptDump
+} from '../effects/prompt-dump';
 import {
 	AGENTIC_CHAT_PENDING_EFFECTS_REGISTRY,
 	type AgenticChatPendingEffectsRegistry
-} from '../pendingEffects';
+} from '../effects/pending-effects';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
 // Sep 13: 1,270/1,275 retained successful acting responses opened within 5s.

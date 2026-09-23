@@ -13,7 +13,7 @@ import {
 	stripToolDiscoveryHintsFromPayload
 } from '@buildos/agentic-chat-runtime/loop';
 import { AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1 } from '@buildos/agentic-chat-runtime/tools';
-import type { AgenticChatReadToolExecutionV1 } from '../toolExecution';
+import type { AgenticChatReadToolExecutionV1 } from '../tools/tool-execution';
 import type {
 	AgenticChatProviderMutationSynthesisInputV1,
 	AgenticChatProviderReadSynthesisInputV1,

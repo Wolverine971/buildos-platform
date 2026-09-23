@@ -5,31 +5,31 @@ import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1,
 	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1
-} from '../src/workers/agentic-chat/mutationToolCatalog';
-import { agenticChatGenerationWriteFenceArgsV1 } from '../src/workers/agentic-chat/writeFence';
+} from '../src/workers/agentic-chat/mutations/tool-catalog';
+import { agenticChatGenerationWriteFenceArgsV1 } from '../src/workers/agentic-chat/turn/write-fence';
 
 const AGENTIC_CHAT_SOURCE_DIR = fileURLToPath(
 	new URL('../src/workers/agentic-chat/', import.meta.url)
 );
 
 const FENCED_WRITE_MODULE_USAGE_COUNTS = Object.freeze({
-	effectControl: 3,
+	'effects/effect-control': 3,
 	// Tasker 87 added the fenced read-only workflow recovery (`recoverWorkflow`).
-	executionControl: 4,
-	executionObservation: 1,
-	promptSnapshot: 1,
-	researchCapture: 2,
-	statedFutureCapture: 1,
-	supabaseStreamPublisherAdapters: 2,
-	toolExecution: 3
+	'turn/execution-control': 4,
+	'effects/execution-observation': 1,
+	'effects/prompt-snapshot': 1,
+	'effects/research-capture': 2,
+	'effects/stated-future-capture': 1,
+	'stream/supabase-stream-publisher-adapters': 2,
+	'tools/tool-execution': 3
 });
 
 // One table-driven adapter plus the two writes whose execution row still names
 // a constructor. Adding a reviewed write must not add a file here.
 const REVIEWED_MUTATION_ADAPTER_FILES = Object.freeze([
-	'createOntoProjectMutationAdapter.ts',
-	'delegateTaskMutationAdapter.ts',
-	'tableMutationAdapter.ts'
+	'create-onto-project-adapter.ts',
+	'delegate-task-adapter.ts',
+	'table-adapter.ts'
 ]);
 
 describe('Agentic Chat Phase 5 reliability contract audit', () => {
@@ -61,12 +61,12 @@ describe('Agentic Chat Phase 5 reliability contract audit', () => {
 	});
 
 	it('keeps every reviewed mutation adapter behind the common stable-effect boundary', () => {
-		const discovered = readdirSync(AGENTIC_CHAT_SOURCE_DIR)
-			.filter((fileName) => /MutationAdapter\.ts$/.test(fileName))
+		const discovered = readdirSync(`${AGENTIC_CHAT_SOURCE_DIR}/mutations`)
+			.filter((fileName) => /-adapter\.ts$/.test(fileName))
 			.sort();
 		expect(discovered).toEqual([...REVIEWED_MUTATION_ADAPTER_FILES].sort());
 		for (const fileName of discovered) {
-			const source = readFileSync(`${AGENTIC_CHAT_SOURCE_DIR}/${fileName}`, 'utf8');
+			const source = readFileSync(`${AGENTIC_CHAT_SOURCE_DIR}/mutations/${fileName}`, 'utf8');
 			expect(source, `${fileName} bypasses the stable effect boundary`).toMatch(
 				/assertMutationAdapterBoundary\(/
 			);

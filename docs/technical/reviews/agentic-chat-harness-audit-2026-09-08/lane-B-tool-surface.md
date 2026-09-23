@@ -5,7 +5,7 @@
 Agentic chat harness audit, 2026-09-08. Working tree at `226e51c31` (HEAD moved from `6d70b36e1` during
 the audit; no lane-B source file changed between the two). Read-only; all numbers are computed from the
 built `packages/agentic-chat-runtime/dist` (built 2026-09-08 22:09, newer than every catalog source) and
-from `apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts` imported directly under Node 24 type
+from `apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts` imported directly under Node 24 type
 stripping. Scripts and raw outputs live in `evidence/lane-B-*`.
 
 The question for this lane: what does the acting model actually see in the `tools` array, what does it

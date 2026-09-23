@@ -1,6 +1,6 @@
 // apps/worker/tests/agenticChatCreateOntoProjectMutationAdapter.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { AgenticChatCreateOntoProjectMutationAdapter } from '../src/workers/agentic-chat/createOntoProjectMutationAdapter';
+import { AgenticChatCreateOntoProjectMutationAdapter } from '../src/workers/agentic-chat/mutations/create-onto-project-adapter';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const DOCUMENT_ID = '22222222-2222-4222-8222-222222222222';

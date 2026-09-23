@@ -277,7 +277,7 @@ Relevant source ownership:
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Parse and validate the two capability lists                     | [`phase3Config.ts`](../../apps/worker/src/workers/agentic-chat/phase3Config.ts)                                                             |
 | Require provider capability to have matching adapter capability | [`phase3Assembly.ts`](../../apps/worker/src/workers/agentic-chat/phase3Assembly.ts)                                                         |
-| Reviewed mutation specs and capability names                    | [`mutationToolCatalog.ts`](../../apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts)                                               |
+| Reviewed mutation specs and capability names                    | [`mutationToolCatalog.ts`](../../apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts)                                               |
 | Document-create adapter                                         | [`createOntoDocumentMutationAdapter.ts`](../../apps/worker/src/workers/agentic-chat/createOntoDocumentMutationAdapter.ts)                   |
 | Document-tree move adapter                                      | [`gatewayDocumentRelationshipMutationAdapter.ts`](../../apps/worker/src/workers/agentic-chat/gatewayDocumentRelationshipMutationAdapter.ts) |
 | Task-update adapter                                             | [`updateOntoTaskMutationAdapter.ts`](../../apps/worker/src/workers/agentic-chat/updateOntoTaskMutationAdapter.ts)                           |

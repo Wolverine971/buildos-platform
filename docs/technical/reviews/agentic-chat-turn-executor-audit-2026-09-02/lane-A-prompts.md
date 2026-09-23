@@ -35,7 +35,7 @@ ladder. That matters for §5 (repair-instructions liveness).
 
 - **Acting model:** `AGENTIC_CHAT_OPENROUTER_MODEL` env over OpenRouter; provider preference order
   `deepinfra → deepseek → alibaba → cloudflare`, fallbacks allowed, DigitalOcean deliberately out of the
-  preferred order (`apps/worker/src/workers/agentic-chat/config.ts:22-40`). Up to 3 fallback models
+  preferred order (`apps/worker/src/workers/agentic-chat/host/config.ts:22-40`). Up to 3 fallback models
   (`config.ts:302-322`). Not verifiable from the tree which model id is set in Railway; recent receipts
   say `deepseek/deepseek-v4-flash`.
 - **Reviewer model:** a separate OpenRouter client at **temperature 0, max 4,000 tokens**, routed to

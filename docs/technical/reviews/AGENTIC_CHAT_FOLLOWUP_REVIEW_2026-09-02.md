@@ -34,7 +34,7 @@ In the new document follow-up, the reviewer replaced the initial contract with i
 
 Validate corrected contracts against real receipt fields before accepting them: for this edit, use `required_fields:["content"]` and express the section-level requirement in `description`. Give the batch reviewer the original content/diff and teach it that full replacement can implement a section edit when other sections are preserved. Never require an unavailable section-edit strategy. Adding a dedicated section-edit tool is optional later work.
 
-Relevant code: [receipt fulfillment](../../../packages/agentic-chat-runtime/src/loop/turn-contract.ts#L1283), [document tool modes](../../../apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts#L102), [mutation reviewer construction](../../../apps/worker/src/workers/agentic-chat/provider/review/mutation-batch.ts#L91).
+Relevant code: [receipt fulfillment](../../../packages/agentic-chat-runtime/src/loop/turn-contract.ts#L1283), [document tool modes](../../../apps/worker/src/workers/agentic-chat/mutations/tool-catalog.ts#L102), [mutation reviewer construction](../../../apps/worker/src/workers/agentic-chat/provider/review/mutation-batch.ts#L91).
 
 The inspected records did not retain the rejected replacement bodies, so whether the first replacement actually modified unrelated text remains unproven. The invented contract fields and absence of mutations are confirmed.
 

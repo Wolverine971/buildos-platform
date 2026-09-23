@@ -3,7 +3,7 @@ import {
 	compileAgenticChatToolExecutionGraphV1,
 	executeAgenticChatToolExecutionGraphV1,
 	type AgenticChatToolExecutionCallInputV1
-} from '../src/workers/agentic-chat/toolExecutionGraph';
+} from '../src/workers/agentic-chat/tools/execution-graph';
 
 function call(
 	providerCallIndex: number,

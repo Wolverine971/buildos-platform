@@ -19,15 +19,15 @@ import {
 	hashAgenticChatWorkflowRequestV1
 } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
-import { SupabaseAgenticChatExecutionControlAdapter } from '../../src/workers/agentic-chat/executionControl';
-import { SupabaseAgenticChatExecutionInputAdapter } from '../../src/workers/agentic-chat/executionInput';
+import { SupabaseAgenticChatExecutionControlAdapter } from '../../src/workers/agentic-chat/turn/execution-control';
+import { SupabaseAgenticChatExecutionInputAdapter } from '../../src/workers/agentic-chat/turn/execution-input';
 import type { AgenticChatTurnProviderClientPortV1 } from '../../src/workers/agentic-chat/provider/contracts';
-import { AgenticChatProviderCapacity } from '../../src/workers/agentic-chat/providerCapacity';
+import { AgenticChatProviderCapacity } from '../../src/workers/agentic-chat/provider/provider-capacity';
 import {
 	type AgenticChatBroadcastMessageV1,
 	AgenticChatStreamPublisher
-} from '../../src/workers/agentic-chat/streamPublisher';
-import { SupabaseAgenticChatPersistenceAdapter } from '../../src/workers/agentic-chat/supabaseStreamPublisherAdapters';
+} from '../../src/workers/agentic-chat/stream/stream-publisher';
+import { SupabaseAgenticChatPersistenceAdapter } from '../../src/workers/agentic-chat/stream/supabase-stream-publisher-adapters';
 import { SupabaseAgenticChatWorkflowPreparationStore } from '../../src/workers/agentic-chat/workflow/preparation-store';
 import { AgenticChatWorkflowTurnPreparer } from '../../src/workers/agentic-chat/workflow/raw-turn-preparation';
 import {

@@ -40,7 +40,7 @@ Evidence file: `evidence/lane-J-measurements.json`. All line numbers are working
    `chat_sessions` row directly, negotiates a lease, posts a worker admission, then waits up to
    315 s (`worker-client.ts:46`) for the durable terminal event, with a 30 s reconciliation retry.
    The turn is executed by **whatever worker drains the queue** — in practice the hosted Railway
-   service (`apps/worker/src/workers/agentic-chat/consumer.ts:64` registers the single job type;
+   service (`apps/worker/src/workers/agentic-chat/host/consumer.ts:64` registers the single job type;
    there is no cohort/partition filter anywhere in `apps/worker/src` or
    `apps/web/src/lib/services/agentic-chat-v2`).
 4. **Assertions.** Each scenario asserts on three surfaces: stream events (`turn.toolCalls`,
@@ -131,7 +131,7 @@ The README's "Model/scaffold comparisons" section (`agentic-e2e/README.md:115-14
 pinning a model with `FASTCHAT_EVAL_PINNED_MODELS`; that variable has **zero** non-test consumers
 in `apps/web/src` or `apps/worker/src` (only `model-tiering.ts`, which is itself imported only by
 `agentic-chat-v2/index.ts`). The acting model is fixed by the worker's Railway environment
-(`apps/worker/src/workers/agentic-chat/config.ts:263-268`). So "run the battery under model X" is
+(`apps/worker/src/workers/agentic-chat/host/config.ts:263-268`). So "run the battery under model X" is
 not possible from the harness at all.
 
 ### 3.2 What already exists to close it

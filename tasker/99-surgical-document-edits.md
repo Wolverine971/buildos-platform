@@ -188,7 +188,7 @@ budget/skill/executor pass. Typecheck clean (shared, worker). Budgets still fit 
 web payload 77,768/78,100).
 
 New files this round: `apps/worker/src/workers/agentic-chat/provider/document-edit-preview.ts`. Also touched:
-`apps/worker/src/workers/agentic-chat/composition-root.ts`, `packages/shared-agent-ops/src/gateway/op-execution-gateway.worker.ts`.
+`apps/worker/src/workers/agentic-chat/host/composition-root.ts`, `packages/shared-agent-ops/src/gateway/op-execution-gateway.worker.ts`.
 
 Pending (paid, needs DJ): replay p05 (`output/book-loop/p05-msg.txt`) on DJ's outline — the edits are his real
 intent — on DeepSeek V4 Flash; p05's failed run cost ~4.3¢, so expect ≤ that. Target: all four cards land with

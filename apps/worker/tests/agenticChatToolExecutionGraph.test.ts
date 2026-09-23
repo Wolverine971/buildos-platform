@@ -8,7 +8,7 @@ import {
 	executeAgenticChatToolExecutionGraphV1,
 	type AgenticChatToolExecutionCallInputV1,
 	type AgenticChatToolExecutionGraphV1
-} from '../src/workers/agentic-chat/toolExecutionGraph';
+} from '../src/workers/agentic-chat/tools/execution-graph';
 
 function call(
 	providerCallIndex: number,

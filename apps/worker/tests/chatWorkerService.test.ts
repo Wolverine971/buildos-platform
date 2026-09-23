@@ -10,7 +10,7 @@ import {
 	createChatWorkerService,
 	type ChatWorkerBootstrapPort
 } from '../src/lib/chatWorkerService';
-import type { AgenticChatBootstrapHealth } from '../src/workers/agentic-chat/bootstrap';
+import type { AgenticChatBootstrapHealth } from '../src/workers/agentic-chat/host/bootstrap';
 import { requireDedicatedChatWorkerProductionProfile } from '../src/config/chatWorkerProfile';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -124,7 +124,7 @@ describe('dedicated Agentic Chat worker composition', () => {
 		for (const [, importedPath] of workerImports) {
 			expect(importedPath).toMatch(/^agentic-chat\//);
 		}
-		expect(entrypoint).toContain("from './workers/agentic-chat/bootstrap'");
+		expect(entrypoint).toContain("from './workers/agentic-chat/host/bootstrap'");
 		expect(entrypoint).not.toContain('startScheduler(');
 		expect(entrypoint).not.toContain('startWorker(');
 	});

@@ -13,12 +13,12 @@ import {
 import { AgenticChatOpenRouterClient } from '../../../../apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts';
 import { buildWorkerSemanticMutationOrdering } from '../../../../apps/worker/src/workers/agentic-chat/provider/review/turn-contract.ts';
 import { AgenticChatTurnProviderAdapter } from '../../../../apps/worker/src/workers/agentic-chat/provider/turn-provider.ts';
-import { AgenticChatProviderCapacity } from '../../../../apps/worker/src/workers/agentic-chat/providerCapacity.ts';
+import { AgenticChatProviderCapacity } from '../../../../apps/worker/src/workers/agentic-chat/provider/provider-capacity.ts';
 import type {
 	AgenticChatTurnProviderClientRequestV1,
 	AgenticChatProviderStepV1
 } from '../../../../apps/worker/src/workers/agentic-chat/provider/contracts.ts';
-import type { AgenticChatWorkerExecutionInputV1 } from '../../../../apps/worker/src/workers/agentic-chat/executionInput.ts';
+import type { AgenticChatWorkerExecutionInputV1 } from '../../../../apps/worker/src/workers/agentic-chat/turn/execution-input.ts';
 
 provideAgenticChatLoopToolCatalog(() => ({ ops: {}, byToolName: {} }));
 const secretLine = readFileSync(new URL('../../../../apps/web/.env', import.meta.url), 'utf8')

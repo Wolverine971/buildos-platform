@@ -4,7 +4,7 @@ import 'dotenv/config';
 import { supabase } from './lib/supabase';
 import { type ChatWorkerService, createChatWorkerService } from './lib/chatWorkerService';
 import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
-import { createAgenticChatBootstrap } from './workers/agentic-chat/bootstrap';
+import { createAgenticChatBootstrap } from './workers/agentic-chat/host/bootstrap';
 import { requireDedicatedChatWorkerProductionProfile } from './config/chatWorkerProfile';
 
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 28_000;

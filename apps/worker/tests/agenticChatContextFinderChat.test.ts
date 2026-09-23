@@ -6,12 +6,12 @@ import type {
 	TurnInputArtifactV1
 } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
-import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
+import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import {
 	ChatContextFinder,
 	contextSelectionTransitionId
 } from '../src/workers/agentic-chat/provider/chat-context-finder';
-import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
+import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import type {
 	AgenticChatProviderStepV1,
 	AgenticChatTurnProviderClientEventV1,
@@ -19,7 +19,7 @@ import type {
 	AgenticChatTurnProviderRequestV1
 } from '../src/workers/agentic-chat/provider/contracts';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
-import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
+import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const OTHER_USER = '10000000-0000-4000-8000-000000000009';

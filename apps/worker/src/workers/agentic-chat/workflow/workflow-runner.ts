@@ -55,7 +55,7 @@ import type {
 import type {
 	AgenticChatProviderCapacityLeaseV1,
 	AgenticChatProviderCapacitySnapshotV1
-} from '../providerCapacity';
+} from '../provider/provider-capacity';
 import type { AgenticChatWorkflowModelInputV1 } from './prepared-context';
 import { WORKFLOW_RULES, parseWorkflowAssignments } from './prototype-provider';
 import {
