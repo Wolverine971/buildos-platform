@@ -37,9 +37,7 @@ export default [
 			ecmaVersion: 2022,
 			sourceType: 'module',
 			parserOptions: {
-				// tsconfig.json excludes co-located *.test.ts (kept out of dist);
-				// tsconfig.tests.json is the project that owns them.
-				project: ['./tsconfig.json', './tsconfig.tests.json']
+				project: './tsconfig.json'
 			},
 			globals: {
 				...globals.node,
@@ -117,11 +115,18 @@ export default [
 	},
 
 	/* ---------- Test files ---------- */
+	// tsconfig.json excludes co-located *.test.ts (kept out of dist), and giving
+	// them tsconfig.tests.json as a second type-aware project doubled lint memory
+	// and OOMed CI. They lint syntactically; typecheck:tests owns their types.
 	{
 		files: ['**/*.test.ts', '**/*.spec.ts'],
+		languageOptions: {
+			parserOptions: { project: null }
+		},
 		rules: {
 			'@typescript-eslint/no-explicit-any': 'off',
-			'@typescript-eslint/no-non-null-assertion': 'off'
+			'@typescript-eslint/no-non-null-assertion': 'off',
+			'@typescript-eslint/prefer-optional-chain': 'off'
 		}
 	},
 
