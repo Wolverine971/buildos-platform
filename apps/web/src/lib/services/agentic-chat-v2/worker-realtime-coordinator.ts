@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-realtime-coordinator.ts
 import type {
+	AgenticChatLiveTextPreviewV1,
 	AgenticChatReconcileRpcResultV1,
 	AgentStreamEventV1,
 	TurnHandleV1
@@ -10,6 +11,7 @@ import {
 	type AgenticChatWorkerReconciliationReason,
 	type AgenticChatWorkerTurnObserver
 } from './worker-realtime-inbox';
+import { parseAgenticChatLiveTextPreview } from './worker-realtime-preview';
 
 type WorkerTurnHandle = Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
 
@@ -20,6 +22,11 @@ export type AgenticChatWorkerReconciliationRequest = Parameters<
 export type AgenticChatWorkerApplicationObserver = {
 	applyLiveEvent(event: AgentStreamEventV1): void;
 	applyReconciliation(receipt: AgenticChatWorkerReconciledReceipt): void;
+	/**
+	 * Display-only live answer preview. Delivered outside the sequenced inbox:
+	 * it never advances the durable cursor, buffers, or triggers reconciliation.
+	 */
+	applyPreview?(preview: AgenticChatLiveTextPreviewV1): void;
 };
 
 export type AgenticChatWorkerRealtimeCoordinatorOptions = {
@@ -45,6 +52,7 @@ export type AgenticChatWorkerRealtimeCoordinatorOptions = {
 
 type CoordinatedTurn = {
 	handle: WorkerTurnHandle;
+	observer: AgenticChatWorkerApplicationObserver;
 	unregisterInbox: (() => void) | null;
 	queuedRequest: AgenticChatWorkerReconciliationRequest | null;
 	inFlightRequest: AgenticChatWorkerReconciliationRequest | null;
@@ -196,6 +204,7 @@ export class AgenticChatWorkerRealtimeCoordinator {
 
 		const state: CoordinatedTurn = {
 			handle: input.handle,
+			observer: input.observer,
 			unregisterInbox: null,
 			queuedRequest: null,
 			inFlightRequest: null,
@@ -250,6 +259,23 @@ export class AgenticChatWorkerRealtimeCoordinator {
 		state.inFlightController = null;
 		state.unregisterInbox?.();
 		state.unregisterInbox = null;
+	}
+
+	/**
+	 * Route a live-preview broadcast to its registered turn. Invalid, unknown,
+	 * cross-session, or terminal-turn previews are dropped silently: a preview is
+	 * never evidence of anything, so it never requests reconciliation.
+	 */
+	receivePreview(value: unknown): void {
+		const preview = parseAgenticChatLiveTextPreview(value);
+		if (!preview) return;
+		const state = this.#turns.get(preview.turn_run_id);
+		if (!state || state.terminal || preview.session_id !== state.handle.sessionId) return;
+		try {
+			state.observer.applyPreview?.(preview);
+		} catch (error) {
+			this.#reportError(error);
+		}
 	}
 
 	requestAll(reason: AgenticChatWorkerReconciliationReason = 'watchdog'): void {

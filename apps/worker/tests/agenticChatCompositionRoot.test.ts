@@ -65,6 +65,30 @@ describe('createAgenticChatCompositionRoot', () => {
 		expect(assembly.consumptionBilling).toBeNull();
 	});
 
+	it('hands the provider the untouched acting client unless the live preview flag is on', () => {
+		const providerClient = { stream: vi.fn() };
+		const actingClient = (assembly: ReturnType<typeof createAgenticChatCompositionRoot>) =>
+			(assembly.provider as unknown as { ports: { client: Record<string, unknown> } }).ports
+				.client;
+
+		const off = createAgenticChatCompositionRoot({
+			client: supabaseClient() as never,
+			providerClient: providerClient as never,
+			providerConfigured: true
+		});
+		expect(actingClient(off)).toBe(providerClient);
+
+		const on = createAgenticChatCompositionRoot({
+			client: supabaseClient() as never,
+			providerClient: providerClient as never,
+			providerConfigured: true,
+			liveTextPreviewEnabled: true
+		});
+		expect(actingClient(on)).not.toBe(providerClient);
+		expect(actingClient(on).livePreview).toMatchObject({ publish: expect.any(Function) });
+		expect(providerClient.stream).not.toHaveBeenCalled();
+	});
+
 	it('composes terminal consumption billing only behind its shared default-off gate', () => {
 		const assembly = createAgenticChatCompositionRoot({
 			client: supabaseClient() as never,

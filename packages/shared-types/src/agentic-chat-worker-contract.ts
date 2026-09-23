@@ -27,6 +27,13 @@ export const AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS = 128;
 export const AGENTIC_CHAT_RECONCILE_MAX_DURABLE_EVENTS = 64;
 export const AGENTIC_CHAT_REALTIME_STREAM_EVENT = 'agent-stream-event' as const;
 export const AGENTIC_CHAT_REALTIME_RECONCILE_EVENT = 'agent-stream-reconcile' as const;
+/**
+ * Display-only live answer preview (never durable, never sequenced). Rides the
+ * same private `chat-user:<id>` channel as the durable stream events.
+ */
+export const AGENTIC_CHAT_REALTIME_PREVIEW_EVENT = 'agentic_chat_preview' as const;
+/** Cap on one preview's cumulative text; a longer pass freezes at this prefix. */
+export const AGENTIC_CHAT_LIVE_TEXT_PREVIEW_MAX_BYTES = 16 * 1024;
 export const AGENTIC_CHAT_CLIENT_BUFFER_MAX_EVENTS = 128;
 export const AGENTIC_CHAT_CLIENT_BUFFER_MAX_BYTES = 1024 * 1024;
 export const AGENTIC_CHAT_CLIENT_MAX_TRACKED_TURNS = 8;
@@ -589,6 +596,32 @@ export type AgenticChatRealtimeBroadcastV1 =
 			event: typeof AGENTIC_CHAT_REALTIME_RECONCILE_EVENT;
 			payload: AgenticChatRealtimeReconcileHintV1;
 	  };
+
+/**
+ * One live-preview update for the pass currently streaming. Display-only: it
+ * is never persisted, never enters the sequenced inbox, and durable events
+ * always supersede it. `text` is the pass's cumulative visible text so far
+ * (robust to dropped messages), capped at AGENTIC_CHAT_LIVE_TEXT_PREVIEW_MAX_BYTES.
+ * `seq` strictly increases across every update of one turn generation.
+ * `durable_sequence_floor` is the last durable sequence already enqueued for
+ * the turn when the update was sent: any durable event above it is newer truth.
+ */
+export type AgenticChatLiveTextPreviewV1 = {
+	contract_version: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
+	turn_run_id: string;
+	session_id: string;
+	execution_generation: number;
+	pass_key: string;
+	seq: number;
+	text: string;
+	state: 'streaming' | 'discard';
+	durable_sequence_floor: number;
+};
+
+export type AgenticChatRealtimePreviewBroadcastV1 = {
+	event: typeof AGENTIC_CHAT_REALTIME_PREVIEW_EVENT;
+	payload: AgenticChatLiveTextPreviewV1;
+};
 
 export type TurnSnapshotV1 = {
 	contract_version: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;

@@ -259,6 +259,8 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			contextFinderGlobal: 'off',
 			documentReadToolsEnabled: false,
 			documentEvidenceHandoffEnabled: false,
+			directWriteReceiptTextEnabled: false,
+			liveTextPreviewEnabled: false,
 			liveVisionEnabled: false,
 			projectReviewV2Enabled: false,
 			projectReviewV3Enabled: false,

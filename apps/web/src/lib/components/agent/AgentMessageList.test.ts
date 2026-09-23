@@ -84,6 +84,33 @@ describe('AgentMessageList', () => {
 		expect(bubble.querySelector('.agent-markdown p')).toBe(firstParagraph);
 	});
 
+	it('renders the live preview after durable text on the streaming bubble only', async () => {
+		const reply: UIMessage = {
+			id: 'a-live',
+			type: 'assistant',
+			content: longReply,
+			timestamp: at,
+			metadata: { turn_run_id: 'turn-live' }
+		};
+		const withPreview = {
+			...baseProps([reply], 'a-live'),
+			livePreview: { turnRunId: 'turn-live', text: '\n\nStill writing this part' }
+		};
+		const { rerender } = render(AgentMessageList, withPreview);
+		const bubble = () => screen.getByTestId('agent-chat-assistant-message');
+		expect(bubble().textContent).toContain('Still writing this part');
+		expect(bubble().querySelector('.agent-live-preview')).not.toBeNull();
+		// Display-only: the message itself never carries preview text.
+		expect(reply.content).toBe(longReply);
+
+		await rerender({ ...withPreview, livePreview: null });
+		expect(bubble().textContent).not.toContain('Still writing this part');
+		expect(bubble().querySelector('.agent-live-preview')).toBeNull();
+
+		await rerender({ ...withPreview, streamingMessageId: null });
+		expect(bubble().textContent).not.toContain('Still writing this part');
+	});
+
 	it('exposes scrollToLatest for the modal', () => {
 		const { component } = render(
 			AgentMessageList,

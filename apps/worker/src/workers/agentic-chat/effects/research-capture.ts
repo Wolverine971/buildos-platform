@@ -1,8 +1,10 @@
 // apps/worker/src/workers/agentic-chat/effects/research-capture.ts
 import {
+	RESEARCH_CAPTURE_MINIMUM_CALLS,
 	type ResearchToolCall,
 	buildResearchEntryFromCalls,
 	buildResearchLogDescription,
+	isResearchCaptureToolName,
 	renderResearchEntry
 } from '@buildos/agentic-chat-runtime/loop';
 import {
@@ -67,6 +69,34 @@ export class AgenticChatResearchCaptureProtocolError extends Error {
 		super(`Invalid Agentic Chat research-capture receipt: ${message}`);
 		this.name = 'AgenticChatResearchCaptureProtocolError';
 	}
+}
+
+/**
+ * Whether `load_agentic_chat_research_capture_evidence` could report this turn
+ * eligible, decided from the executing generation's in-memory tool ledger so a
+ * turn that did no web research skips that locking query entirely.
+ *
+ * The query counts every `chat_tool_executions` row of the turn whose trimmed,
+ * lower-cased tool name is a research tool (the runtime's
+ * `isResearchCaptureToolName` set, success or failure alike) and needs
+ * `RESEARCH_CAPTURE_MINIMUM_CALLS`. On the completed path that runs capture,
+ * every row this generation wrote is already in the ledger: each read, read
+ * failure, validation failure, and dependency skip is recorded right after its
+ * row is acknowledged, and a row whose write was not acknowledged fails the turn
+ * before capture. Only a first generation is known to have no earlier rows (a
+ * workflow requeue can clear the start boundary and run a later generation), so
+ * any other generation always runs the query. Tool names are structured
+ * identifiers, not free text.
+ */
+export function agenticChatResearchCaptureMayQualifyV1(input: {
+	executionGeneration: number;
+	toolNames: readonly string[];
+}): boolean {
+	if (input.executionGeneration !== 1) return true;
+	return (
+		input.toolNames.filter((name) => isResearchCaptureToolName(name)).length >=
+		RESEARCH_CAPTURE_MINIMUM_CALLS
+	);
 }
 
 /** Durable-evidence reader plus atomic, terminal-effect Research Log append. */

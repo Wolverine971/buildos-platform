@@ -31,6 +31,7 @@ import {
 	SYSTEM_AGENTIC_CHAT_MONOTONIC_CLOCK
 } from '../stream/runtime-timing';
 import { createStableAgenticChatPromptSnapshotIdV1 } from '../effects/prompt-snapshot';
+import { agenticChatResearchCaptureMayQualifyV1 } from '../effects/research-capture';
 import { abortable, throwIfAborted } from '../shared/abortable-deadline';
 import { AgenticChatExecutorEffects } from '../effects/executor-effects';
 import { enforceAgenticChatTerminalTextIntegrityV1 } from './terminal-text-integrity';
@@ -691,6 +692,7 @@ export class AgenticChatTurnExecutor {
 				await this.captureResearch(
 					executionInput,
 					envelope.processingToken,
+					terminalContext,
 					combined.signal
 				);
 				await this.captureStatedFuture(
@@ -814,9 +816,21 @@ export class AgenticChatTurnExecutor {
 	private async captureResearch(
 		executionInput: AgenticChatWorkerExecutionInputV1,
 		processingToken: string,
+		terminalContext: TerminalContextState,
 		signal: AbortSignal
 	): Promise<void> {
-		await this.effects.captureResearch({ executionInput, processingToken, signal });
+		// The evidence query can only report `not_eligible` (a skip) for a turn
+		// whose ledger holds too few web-research calls, so that turn skips it.
+		if (
+			agenticChatResearchCaptureMayQualifyV1({
+				executionGeneration: executionInput.claim.executionGeneration,
+				toolNames: terminalContext.toolExecutions.map(
+					(execution) => execution.toolCall.function.name
+				)
+			})
+		) {
+			await this.effects.captureResearch({ executionInput, processingToken, signal });
+		}
 		throwIfAborted(signal);
 	}
 

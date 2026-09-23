@@ -341,6 +341,71 @@ function describeWriteReceipt(entry: WriteLedgerEntry): string {
 	].join(': ');
 }
 
+/** Ledger text shown to the user: one line, no markdown or markup, bounded. */
+function cleanReceiptText(text: string): string {
+	return text
+		.replace(/[\r\n]+/g, ' ')
+		.replace(/[\\`*_<>[\]]/g, '')
+		.trim()
+		.slice(0, 240);
+}
+
+const DIRECT_WRITE_RECEIPT_VERBS: Readonly<Record<string, string>> = {
+	create: 'created',
+	update: 'updated',
+	delete: 'deleted',
+	move: 'moved',
+	link: 'linked',
+	unlink: 'unlinked',
+	organize: 'reorganized',
+	set: 'set',
+	assign: 'assigned',
+	complete: 'completed',
+	archive: 'archived',
+	restore: 'restored',
+	tag: 'tagged'
+};
+
+/** Ledger entity kinds whose raw name reads poorly to a user. */
+const DIRECT_WRITE_RECEIPT_KINDS: Readonly<Record<string, string>> = {
+	event: 'calendar event',
+	calendar: 'project calendar',
+	asset: 'image',
+	entity: 'item'
+};
+
+function describeDirectWrite(entry: WriteLedgerEntry): string {
+	const verb = DIRECT_WRITE_RECEIPT_VERBS[entry.action ?? ''] ?? 'saved';
+	const rawKind = entry.entityKind ?? 'item';
+	if (rawKind === 'relationship') return `${verb} the items`;
+	const kind = DIRECT_WRITE_RECEIPT_KINDS[rawKind] ?? rawKind.replace(/_/g, ' ');
+	const title = entry.title ? cleanReceiptText(entry.title) : '';
+	const target = title
+		? `${kind} “${title}”`
+		: `${entry.action === 'create' ? 'a new' : 'the'} ${kind}`;
+	const parentTitle =
+		entry.action === 'move' && entry.parentTitle ? cleanReceiptText(entry.parentTitle) : '';
+	return `${verb} ${target}${parentTitle ? ` into “${parentTitle}”` : ''}`;
+}
+
+/**
+ * The closing answer for a simple direct write whose every call landed,
+ * rendered instead of a tool-free model pass: `Done — created task “Draft Q3
+ * plan”.` for one receipt, a short list for two or three. Built only from the
+ * durable ledger (action, entity kind, title) with the same sanitizing as the
+ * last-resort receipt, so it never names tools, contracts, or review. Null
+ * unless every entry succeeded.
+ */
+export function renderDirectWriteReceipt(ledger: readonly WriteLedgerEntry[]): string | null {
+	if (ledger.length === 0 || ledger.some((entry) => entry.status !== 'success')) return null;
+	const lines = ledger.map(describeDirectWrite);
+	if (lines.length === 1) return `Done — ${lines[0]}.`;
+	return [
+		'Done:',
+		...lines.map((line) => `- ${line.charAt(0).toUpperCase()}${line.slice(1)}`)
+	].join('\n');
+}
+
 /** Last-resort user receipt, rendered only from this turn's durable ledger. */
 export function renderWriteReceiptFallback(
 	ledger: readonly WriteLedgerEntry[],
@@ -349,12 +414,7 @@ export function renderWriteReceiptFallback(
 ): string | null {
 	const succeeded = ledger.filter((entry) => entry.status === 'success');
 	if (succeeded.length === 0) return null;
-	const clean = (text: string) =>
-		text
-			.replace(/[\r\n]+/g, ' ')
-			.replace(/[\\`*_<>[\]]/g, '')
-			.trim()
-			.slice(0, 240);
+	const clean = cleanReceiptText;
 	const verbs: Record<string, string> = {
 		create: 'Created',
 		update: 'Updated',

@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-realtime-channel.ts
 import {
+	AGENTIC_CHAT_REALTIME_PREVIEW_EVENT,
 	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
 	AGENTIC_CHAT_REALTIME_STREAM_EVENT
 } from '@buildos/shared-types';
@@ -51,7 +52,12 @@ export class AgenticChatWorkerRealtimeChannel {
 		private readonly client: AgenticChatRealtimeClientLike,
 		private readonly inbox: AgenticChatWorkerRealtimeInbox,
 		private readonly onStatus?: (status: AgenticChatWorkerChannelStatus, error?: Error) => void,
-		private readonly closedReconnectDelayMs = 1_000
+		private readonly closedReconnectDelayMs = 1_000,
+		/**
+		 * Display-only live answer previews. They bypass the sequenced inbox
+		 * entirely: never buffered, never a gap, never a reconciliation trigger.
+		 */
+		private readonly onPreview?: (payload: unknown) => void
 	) {
 		if (!Number.isSafeInteger(closedReconnectDelayMs) || closedReconnectDelayMs < 1) {
 			throw new Error('closedReconnectDelayMs must be a positive safe integer');
@@ -133,6 +139,21 @@ export class AgenticChatWorkerRealtimeChannel {
 					this.inbox.receiveReconcileHint(broadcastPayload(message));
 				}
 			);
+			const onPreview = this.onPreview;
+			if (onPreview) {
+				nextChannel.on(
+					'broadcast',
+					{ event: AGENTIC_CHAT_REALTIME_PREVIEW_EVENT },
+					(message) => {
+						if (epoch !== this.#epoch) return;
+						try {
+							onPreview(broadcastPayload(message));
+						} catch {
+							// A preview is display-only; it can never disturb the channel.
+						}
+					}
+				);
+			}
 			this.#channel = nextChannel;
 			nextChannel.subscribe((status, error) => {
 				if (epoch !== this.#epoch) return;

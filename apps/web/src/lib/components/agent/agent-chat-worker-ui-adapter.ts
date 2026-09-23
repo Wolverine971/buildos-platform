@@ -2,6 +2,7 @@
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	createAgentStreamEventIdV1,
+	type AgenticChatLiveTextPreviewV1,
 	type AgenticChatReconcileAssistantMessageV1,
 	type AgentSSEMessage,
 	type AgentStreamEventV1,
@@ -11,6 +12,17 @@ import {
 } from '@buildos/shared-types';
 import type { AgenticChatWorkerApplicationObserver } from '$lib/services/agentic-chat-v2/worker-realtime-coordinator';
 import type { AgenticChatWorkerReconciledReceipt } from '$lib/services/agentic-chat-v2/worker-realtime-inbox';
+import {
+	LIVE_TEXT_PREVIEW_STALE_MS,
+	type LiveTextPreviewState,
+	clearLiveTextPreview,
+	createLiveTextPreviewState,
+	expireLiveTextPreview,
+	liveTextPreviewSuffix,
+	observeDurableLiveEvent,
+	observeDurableReconciliation,
+	receiveLiveTextPreview
+} from '$lib/services/agentic-chat-v2/worker-realtime-preview';
 import {
 	isWorkerQueueTimeout,
 	WORKER_QUEUE_TIMEOUT_FINISHED_REASON,
@@ -54,6 +66,15 @@ export type AgentChatWorkerUiAdapterPort = {
 		finishedReason: string | null;
 		failureCode: string | null;
 	}): void;
+	/**
+	 * Display-only live preview: `text` is shown after the durable assistant text
+	 * (it already carries any paragraph join); null removes it. Never persist it.
+	 */
+	setAssistantPreview?(input: {
+		handle: WorkerTurnHandle;
+		executionGeneration: number;
+		text: string | null;
+	}): void;
 	onError?(error: unknown): void;
 };
 
@@ -71,6 +92,11 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 	#terminal = false;
 	#terminalNotified = false;
 	#appliedSemanticEventIds = new Set<string>();
+	/** Durable assistant text as applied to the port; the preview renders after it. */
+	#durableText = '';
+	#preview: LiveTextPreviewState = createLiveTextPreviewState();
+	#previewShown = '';
+	#previewTimer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(input: {
 		handle: WorkerTurnHandle;
@@ -88,9 +114,11 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 		if (this.#terminal) return;
 		this.#assertReceiptIdentity(receipt);
 		const generationChanged = this.#executionGeneration !== receipt.execution_generation;
+		const durableTextBefore = generationChanged ? '' : this.#durableText;
 		if (generationChanged) {
 			this.#executionGeneration = receipt.execution_generation;
 			this.#appliedSemanticEventIds = new Set();
+			this.#preview = createLiveTextPreviewState();
 			this.#port.beginGeneration({
 				handle: this.#handle,
 				executionGeneration: receipt.execution_generation,
@@ -107,6 +135,22 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 			assistantMessage: receipt.assistant_message,
 			status: receipt.status
 		});
+		this.#durableText = receipt.text;
+		this.#preview = observeDurableReconciliation(this.#preview, {
+			watermark: receipt.response_watermark,
+			eventsAbove: (after) => {
+				let count = 0;
+				let allText = true;
+				for (const event of receipt.durable_events) {
+					if (event.sequence_index <= after) continue;
+					count += 1;
+					if (event.type !== 'text_delta') allText = false;
+				}
+				return { count, allText };
+			},
+			durableTextBefore
+		});
+		this.#syncPreview();
 
 		const projection = this.#parseProjection(
 			receipt.projection,
@@ -170,17 +214,31 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 		if (event.type === 'text_delta') {
 			const text = readTextDelta(event);
 			if (!text) throw new Error('Worker text delta is invalid');
+			this.#preview = observeDurableLiveEvent(this.#preview, {
+				sequence: event.sequence_index,
+				isText: true,
+				durableTextBefore: this.#durableText
+			});
 			this.#port.appendAssistantText({
 				handle: this.#handle,
 				executionGeneration: event.execution_generation,
 				text
 			});
+			this.#durableText += text;
+			this.#syncPreview();
 			return;
 		}
 		if (event.type === 'text') {
 			throw new Error('Worker transport cannot publish a non-snapshot text event');
 		}
 
+		// Durable truth above the preview's floor supersedes it before it renders.
+		this.#preview = observeDurableLiveEvent(this.#preview, {
+			sequence: event.sequence_index,
+			isText: false,
+			durableTextBefore: this.#durableText
+		});
+		this.#syncPreview();
 		this.#applySemanticEvent(event);
 		if (event.type === 'done') {
 			const status = readTerminalStatus(event);
@@ -190,6 +248,58 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 				readNullableString(event, 'failure_code')
 			);
 		}
+	}
+
+	/**
+	 * Display-only live preview from the coordinator (outside the sequenced
+	 * inbox). Only the adopted handle's current generation can show one.
+	 */
+	applyPreview(preview: AgenticChatLiveTextPreviewV1): void {
+		if (
+			this.#terminal ||
+			preview.turn_run_id !== this.#handle.turnRunId ||
+			preview.session_id !== this.#handle.sessionId ||
+			preview.execution_generation !== this.#executionGeneration
+		) {
+			return;
+		}
+		this.#preview = receiveLiveTextPreview(this.#preview, preview, this.#now());
+		this.#syncPreview();
+	}
+
+	/** Push the preview suffix when it changes; a caught-up or diverged settle ends it. */
+	#syncPreview(): void {
+		this.#preview = expireLiveTextPreview(this.#preview, this.#now());
+		const suffix = this.#terminal
+			? ''
+			: liveTextPreviewSuffix(this.#preview, this.#durableText);
+		if (!suffix) this.#preview = clearLiveTextPreview(this.#preview);
+		this.#schedulePreviewExpiry();
+		if (suffix === this.#previewShown || this.#executionGeneration === null) return;
+		this.#previewShown = suffix;
+		try {
+			this.#port.setAssistantPreview?.({
+				handle: this.#handle,
+				executionGeneration: this.#executionGeneration,
+				text: suffix || null
+			});
+		} catch (error) {
+			this.#reportError(error);
+		}
+	}
+
+	#schedulePreviewExpiry(): void {
+		if (this.#previewTimer !== null) {
+			clearTimeout(this.#previewTimer);
+			this.#previewTimer = null;
+		}
+		const active = this.#preview.active;
+		if (!active) return;
+		const delayMs = Math.max(1, active.receivedAt + LIVE_TEXT_PREVIEW_STALE_MS - this.#now());
+		this.#previewTimer = setTimeout(() => {
+			this.#previewTimer = null;
+			this.#syncPreview();
+		}, delayMs);
 	}
 
 	#applySemanticEvent(event: AgentStreamEventV1): void {
@@ -282,6 +392,7 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 	): void {
 		if (this.#terminal) return;
 		this.#terminal = true;
+		this.#syncPreview();
 		this.#port.finishTurn({
 			handle: this.#handle,
 			status,

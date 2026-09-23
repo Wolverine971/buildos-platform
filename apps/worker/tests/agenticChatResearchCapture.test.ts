@@ -2,7 +2,10 @@
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import { AGENTIC_CHAT_INPUT_ARTIFACT_VERSION } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
-import { SupabaseAgenticChatResearchCaptureAdapter } from '../src/workers/agentic-chat/effects/research-capture';
+import {
+	SupabaseAgenticChatResearchCaptureAdapter,
+	agenticChatResearchCaptureMayQualifyV1
+} from '../src/workers/agentic-chat/effects/research-capture';
 
 const TURN_RUN_ID = '30000000-0000-4000-8000-000000000003';
 const USER_ID = '10000000-0000-4000-8000-000000000001';
@@ -217,5 +220,47 @@ describe('SupabaseAgenticChatResearchCaptureAdapter', () => {
 				signal: new AbortController().signal
 			})
 		).rejects.toThrow('evidence receipt scope is inconsistent');
+	});
+});
+
+describe('agenticChatResearchCaptureMayQualifyV1', () => {
+	it('lets a first generation skip the evidence query below the shared research threshold', () => {
+		expect(agenticChatResearchCaptureMayQualifyV1({ executionGeneration: 1, toolNames: [] })).toBe(
+			false
+		);
+		expect(
+			agenticChatResearchCaptureMayQualifyV1({
+				executionGeneration: 1,
+				toolNames: ['web_search', 'list_onto_tasks', 'get_onto_project_details']
+			})
+		).toBe(false);
+		// web_navigate is not a research-capture tool in the SQL counter either.
+		expect(
+			agenticChatResearchCaptureMayQualifyV1({
+				executionGeneration: 1,
+				toolNames: ['web_search', 'web_navigate']
+			})
+		).toBe(false);
+	});
+
+	it('runs the query once the ledger holds enough research calls, normalized like the SQL', () => {
+		expect(
+			agenticChatResearchCaptureMayQualifyV1({
+				executionGeneration: 1,
+				toolNames: ['web_search', 'web_visit']
+			})
+		).toBe(true);
+		expect(
+			agenticChatResearchCaptureMayQualifyV1({
+				executionGeneration: 1,
+				toolNames: [' Web_Search ', 'util.web.visit']
+			})
+		).toBe(true);
+	});
+
+	it('always runs the query for a later generation, whose earlier rows are not in memory', () => {
+		expect(agenticChatResearchCaptureMayQualifyV1({ executionGeneration: 2, toolNames: [] })).toBe(
+			true
+		);
 	});
 });

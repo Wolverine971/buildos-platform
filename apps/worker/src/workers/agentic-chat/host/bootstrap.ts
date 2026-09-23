@@ -606,6 +606,8 @@ function createDefaultComposition(
 		providerBudgetMs: input.config.providerBudgetMs,
 		maxProviderRounds: input.config.maxProviderRounds,
 		mutationBatchLaneEnabled: input.config.mutationBatchLaneEnabled,
+		directWriteReceiptTextEnabled: input.config.directWriteReceiptTextEnabled,
+		liveTextPreviewEnabled: input.config.liveTextPreviewEnabled,
 		maxToolCalls: input.config.maxToolCalls,
 		maxToolConcurrency: input.config.maxToolConcurrency,
 		onExecutionObservationError: input.onUsageError,

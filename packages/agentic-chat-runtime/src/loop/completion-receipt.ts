@@ -27,9 +27,12 @@ import {
  *   never fulfilled. Implicit contracts only describe attempted writes. A post-start partial failure or an uncertain commit can
  *   never become fulfilled either.
  *
- * Only `request_fulfilled` may ever justify a host-rendered final change summary
- * that skips the closing model call. Nothing consumes the receipt that way yet;
- * it is evidence for inspectors and the precondition for that later change.
+ * The receipt itself never skips the closing model call; it is evidence for
+ * inspectors. The one exception is a separate, flag-gated worker policy
+ * (`AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT`): a contract-free round of simple
+ * writes that all succeeded, with no reads, clarification, or open question in
+ * structured state, closes with deterministic receipt text instead of a model
+ * pass (see the worker's `provider/turn-state.ts`).
  */
 export const AGENTIC_CHAT_COMPLETION_RECEIPT_VERSION = 1 as const;
 

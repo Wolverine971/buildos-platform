@@ -481,4 +481,70 @@ describe('raw workflow v4 input', () => {
 			).loadRawWorkflowInput(claim)
 		).rejects.toMatchObject({ code: 'invalid_artifact' });
 	});
+
+	it('issues the turn and artifact selects together instead of one after the other', async () => {
+		const { artifact, row } = await artifactFixture();
+		const pending = new Map<string, (value: { data: unknown; error: null }) => void>();
+		const tables: string[] = [];
+		const client = {
+			from: vi.fn((table: string) => {
+				tables.push(table);
+				const query = {
+					select: vi.fn(() => query),
+					eq: vi.fn(() => query),
+					maybeSingle: vi.fn(
+						() =>
+							new Promise<{ data: unknown; error: null }>((resolve) =>
+								pending.set(table, resolve)
+							)
+					)
+				};
+				return query;
+			})
+		};
+		const loading = new SupabaseAgenticChatExecutionInputAdapter(
+			client as never,
+			() => NOW
+		).load(claim);
+
+		await vi.waitFor(() => expect(pending.size).toBe(2));
+		// Both reads are in flight before either returns, in the original order.
+		expect(tables).toEqual(['chat_turn_runs', 'chat_turn_input_artifacts']);
+		pending.get('chat_turn_input_artifacts')!({ data: row, error: null });
+		pending.get('chat_turn_runs')!({ data: turnFixture(), error: null });
+		await expect(loading).resolves.toMatchObject({ claim, artifact });
+	});
+
+	it('keeps the command failure authoritative when both concurrent selects fail', async () => {
+		const client = {
+			from: vi.fn((table: string) => {
+				const query = {
+					select: vi.fn(() => query),
+					eq: vi.fn(() => query),
+					maybeSingle: vi.fn(async () =>
+						table === 'chat_turn_runs'
+							? { data: null, error: { message: 'turn read failed' } }
+							: { data: null, error: { message: 'artifact read failed' } }
+					)
+				};
+				return query;
+			})
+		};
+		const adapter = new SupabaseAgenticChatExecutionInputAdapter(client as never, () => NOW);
+
+		await expect(adapter.load(claim)).rejects.toMatchObject({
+			code: 'database_error',
+			message: 'turn read failed'
+		});
+		await expect(adapter.loadRawWorkflowInput(claim)).rejects.toMatchObject({
+			code: 'database_error',
+			message: 'turn read failed'
+		});
+
+		// A valid command still surfaces the artifact's own failure afterward.
+		const { client: artifactMissing } = clientFor(turnFixture(), null);
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(artifactMissing, () => NOW).load(claim)
+		).rejects.toMatchObject({ code: 'not_found', message: 'Worker input artifact is missing' });
+	});
 });

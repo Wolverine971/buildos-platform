@@ -211,3 +211,30 @@ it('keeps shared document evidence off until explicitly enabled', () => {
 		}).documentEvidenceHandoffEnabled
 	).toBe(true);
 });
+
+it('keeps direct-write receipt text off until explicitly enabled', () => {
+	const load = (value?: string) =>
+		loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			...(value === undefined ? {} : { AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: value })
+		}).directWriteReceiptTextEnabled;
+	expect(load()).toBe(false);
+	expect(load('')).toBe(false);
+	expect(load('false')).toBe(false);
+	expect(load('true')).toBe(true);
+	expect(() => load('yes')).toThrow(
+		'AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT must be exactly true or false'
+	);
+});
+
+it('keeps the live text preview off until explicitly enabled', () => {
+	const load = (value?: string) =>
+		loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			...(value === undefined ? {} : { AGENTIC_CHAT_LIVE_TEXT_PREVIEW: value })
+		}).liveTextPreviewEnabled;
+	expect(load()).toBe(false);
+	expect(load('false')).toBe(false);
+	expect(load('true')).toBe(true);
+	expect(() => load('on')).toThrow(/exactly true or false/);
+});

@@ -199,6 +199,32 @@ export type AgenticChatTurnProviderClientPortV1 = {
 	): AsyncIterable<AgenticChatTurnProviderClientEventV1>;
 	/** Avoid the completed response's route on the next already-budgeted repair. Does not retry. */
 	rejectRepeatedInvalidToolResponse?(input: AgenticChatTurnProviderClientRequestV1): void;
+	/**
+	 * Display-only live answer preview for this client's user-facing passes
+	 * (AGENTIC_CHAT_LIVE_TEXT_PREVIEW). Only the acting client carries it; reviewer
+	 * clients never do. Absent means passes are exactly as fully buffered as before.
+	 */
+	livePreview?: AgenticChatLiveTextPreviewPortV1;
+};
+
+/**
+ * One display-only preview update for a streaming pass. Never durable: the
+ * buffered pass still decides what reaches the executor, and durable events
+ * supersede the preview on the client.
+ */
+export type AgenticChatLiveTextPreviewUpdateV1 = {
+	turnRunId: string;
+	executionGeneration: number;
+	/** Unique per physical pass attempt; a retry gets a new key. */
+	passKey: string;
+	/** Cumulative visible text of this attempt so far (capped); empty on discard. */
+	text: string;
+	state: 'streaming' | 'discard';
+};
+
+export type AgenticChatLiveTextPreviewPortV1 = {
+	/** Fire-and-forget. Must never throw, block, or change the turn. */
+	publish(update: AgenticChatLiveTextPreviewUpdateV1): void;
 };
 
 /** Internal request state shared by the provider coordinator and extracted helpers. */

@@ -706,6 +706,8 @@
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
 	let currentAssistantMessageIndex = $state<number | null>(null);
+	/** Display-only live answer preview for the streaming worker turn; never stored on a message. */
+	let workerLivePreview = $state<{ turnRunId: string; text: string } | null>(null);
 	let pendingAssistantText = '';
 	let pendingAssistantTextFlushHandle: number | null = null;
 	let currentThinkingBlockId = $state<string | null>(null);
@@ -2427,6 +2429,7 @@
 							updateTurnState: ({ handle: workerHandle, status, currentActivity }) =>
 								stream.updateWorkerTurnState(workerHandle, status, currentActivity),
 							finishTurn: finishWorkerTurn,
+							setAssistantPreview: setWorkerAssistantPreview,
 							onError: (error) => {
 								if (dev)
 									console.warn(
@@ -2695,6 +2698,65 @@
 	}
 
 	/**
+	 * Live answer preview (display-only): rendered after the durable text of the
+	 * turn's streaming bubble. A bubble created only to hold a preview is dropped
+	 * again when the preview ends before any durable text arrived.
+	 */
+	function setWorkerAssistantPreview(input: {
+		handle: WorkerTurnHandle;
+		executionGeneration: number;
+		text: string | null;
+	}) {
+		const turnRunId = input.handle.turnRunId;
+		const placeholderId = `worker-assistant:${turnRunId}`;
+		const existingIndex = messages.findIndex(
+			(message) =>
+				message.role === 'assistant' &&
+				message.type === 'assistant' &&
+				message.metadata?.turn_run_id === turnRunId
+		);
+		if (!input.text) {
+			if (workerLivePreview?.turnRunId === turnRunId) workerLivePreview = null;
+			const existing = existingIndex >= 0 ? messages[existingIndex] : null;
+			if (existing && existing.id === placeholderId && !existing.content) {
+				messages = messages.filter((_, index) => index !== existingIndex);
+				currentAssistantMessageIndex = null;
+			}
+			return;
+		}
+		if (existingIndex >= 0) {
+			currentAssistantMessageId = messages[existingIndex]!.id;
+			currentAssistantMessageIndex = existingIndex;
+		} else {
+			const createdAt = new Date().toISOString();
+			currentAssistantMessageIndex = messages.length;
+			messages = [
+				...messages,
+				{
+					id: placeholderId,
+					renderKey: `turn:${turnRunId}:assistant`,
+					session_id: input.handle.sessionId,
+					role: 'assistant',
+					type: 'assistant',
+					content: '',
+					created_at: createdAt,
+					timestamp: new Date(createdAt),
+					metadata: {
+						turn_run_id: turnRunId,
+						stream_run_id: input.handle.streamRunId,
+						client_turn_id: input.handle.clientTurnId,
+						execution_generation: input.executionGeneration,
+						execution_mode: 'worker_realtime'
+					}
+				}
+			];
+			currentAssistantMessageId = placeholderId;
+		}
+		workerLivePreview = { turnRunId, text: input.text };
+		noteWorkerTextStarted();
+	}
+
+	/**
 	 * First reply text for the live turn: the thinking block switches from
 	 * "Thinking…" to "Writing the response…" and the client clock records time
 	 * to first text (send press → words on screen, the number users feel).
@@ -2934,6 +2996,7 @@
 		selectedContextType={shellRouter.selectedContextType}
 		{resolvedProjectFocus}
 		streamingMessageId={currentAssistantMessageId}
+		livePreview={workerLivePreview}
 		onToggleThinkingBlock={toggleThinkingBlockCollapse}
 		bind:container={messagesContainer}
 		onScroll={handleScroll}

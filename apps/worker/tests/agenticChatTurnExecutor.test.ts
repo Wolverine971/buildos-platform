@@ -1690,6 +1690,24 @@ describe('AgenticChatTurnExecutor', () => {
 		const error = new Error('research log unavailable');
 		const harness = createHarness(
 			[
+				{
+					type: 'read_tool',
+					logicalProviderRound: 1,
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					providerToolCallId: 'provider-research-search',
+					toolName: 'web_search',
+					arguments: { query: 'inspection lead times' }
+				},
+				{
+					type: 'read_tool',
+					logicalProviderRound: 1,
+					callTransitionId: SECOND_CALL_TRANSITION_ID,
+					resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+					providerToolCallId: 'provider-research-visit',
+					toolName: 'web_visit',
+					arguments: { url: 'https://example.com/lead-times' }
+				},
 				{ type: 'text_delta', text: 'completed research answer' },
 				{ type: 'finish', finishedReason: 'stop', usage: null }
 			],
@@ -1713,6 +1731,45 @@ describe('AgenticChatTurnExecutor', () => {
 		);
 		await harness.publisher.stop();
 	});
+
+	it.each([
+		['no tool calls', []],
+		['one web-research call', ['web_search']],
+		['private reads only', ['fixture_project_read', 'fixture_task_read']]
+	] as const)(
+		'skips the research evidence query for a turn with %s, and still completes',
+		async (_label, toolNames) => {
+			const transitions = [
+				[CALL_TRANSITION_ID, RESULT_TRANSITION_ID],
+				[SECOND_CALL_TRANSITION_ID, SECOND_RESULT_TRANSITION_ID]
+			] as const;
+			const harness = createHarness(
+				[
+					...toolNames.map((toolName, index) => ({
+						type: 'read_tool' as const,
+						logicalProviderRound: 1,
+						callTransitionId: transitions[index]![0],
+						resultTransitionId: transitions[index]![1],
+						providerToolCallId: `provider-no-research-${index + 1}`,
+						toolName,
+						arguments: { query: 'lead times' }
+					})),
+					{ type: 'text_delta', text: 'answer without research' },
+					{ type: 'finish', finishedReason: 'stop', usage: null }
+				],
+				// The fake would report this error if the capture port were reached.
+				{ researchCaptureError: new Error('evidence query must not run') }
+			);
+
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(harness.researchCapture!.capture).not.toHaveBeenCalled();
+			expect(harness.researchCaptureErrors).toEqual([]);
+			await harness.publisher.stop();
+		}
+	);
 
 	it('reports deterministic stated-future failure without overturning the completed answer', async () => {
 		const error = new Error('stated-future task unavailable');
@@ -2169,7 +2226,12 @@ describe('AgenticChatTurnExecutor', () => {
 				expect(textStarted).toBe(true);
 				expect(harness.publisher.getSnapshot(TURN_RUN_ID).pendingPersistenceEvents).toBe(2);
 			});
-			expect(harness.readTool.execute).not.toHaveBeenCalled();
+			// The read may already overlap its queued tool_call, but nothing durable
+			// for it happens until that tool_call is persisted behind the held text.
+			expect(harness.toolExecutions.persistRead).not.toHaveBeenCalled();
+			expect(harness.semanticInputs.map((input) => input.event_type)).not.toContain(
+				'tool_result'
+			);
 			releaseText();
 			expect((await executing).outcome).toBe('completed');
 			const liveCall = harness.broadcastMessages
@@ -2526,8 +2588,11 @@ describe('AgenticChatTurnExecutor', () => {
 			outcome: 'completed',
 			terminalStatus: 'completed'
 		});
-		// The `started` row was issued before the read ran but the read did not wait for it.
-		expect(observationsStartedWhenReadRan).toBe(1);
+		// The read overlaps its own tool_call write, so it runs before the `started`
+		// row, which is issued only once that tool_call is durable (keeping the
+		// observation rows identical when a tool_call is never accepted). The
+		// read never waits for an observation to settle.
+		expect(observationsStartedWhenReadRan).toBe(0);
 		expect(settledWhenReadRan).toBe(0);
 		// Both rows landed before terminal truth was written.
 		expect(
@@ -6915,6 +6980,285 @@ describe('AgenticChatTurnExecutor completion receipts', () => {
 				expect.objectContaining({ status: 'cancelled' })
 			);
 			expect(completionReceipt(harness)).toBeUndefined();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+});
+
+describe('AgenticChatTurnExecutor live reads overlap their own tool_call write', () => {
+	const readExecution = {
+		result: { title: 'Fixture project' },
+		executionTimeMs: null,
+		tokensConsumed: null,
+		affectedEntities: [],
+		toolCategory: null,
+		resultCount: null,
+		zeroResult: null,
+		requiresUserAction: null
+	};
+	const liveReadStep = {
+		type: 'read_tool',
+		logicalProviderRound: 1,
+		callTransitionId: CALL_TRANSITION_ID,
+		resultTransitionId: RESULT_TRANSITION_ID,
+		providerToolCallId: 'provider-overlap-read',
+		toolName: 'fixture_project_read',
+		arguments: { projectId: 'project-1' }
+	} as const;
+
+	function toolCallId(input: Record<string, unknown>): string | null {
+		const payload = input.event_payload as { type?: string; tool_call?: { id?: string } };
+		return payload.type === 'tool_call' ? (payload.tool_call?.id ?? null) : null;
+	}
+
+	/** Holds each tool_call write until its own read starts (or 250 ms, so a serial order fails instead of hanging). */
+	function holdToolCallsUntilTheirReadStarts(events: string[]) {
+		const started = new Map<string, () => void>();
+		const readStarted = new Map<string, Promise<void>>();
+		const gate = (id: string) => {
+			if (!readStarted.has(id)) {
+				readStarted.set(id, new Promise<void>((resolve) => started.set(id, resolve)));
+			}
+			return readStarted.get(id)!;
+		};
+		return {
+			beforePersistSemantic: async (input: Record<string, unknown>) => {
+				const id = toolCallId(input);
+				if (!id) return;
+				events.push(`tool_call_persist_started:${id}`);
+				await Promise.race([
+					gate(id),
+					new Promise<void>((resolve) => setTimeout(resolve, 250))
+				]);
+				events.push(`tool_call_persisted:${id}`);
+			},
+			readStarted(id: string) {
+				events.push(`read_started:${id}`);
+				void gate(id);
+				started.get(id)!();
+			}
+		};
+	}
+
+	it('starts a live read while its tool_call is being persisted and keeps every durable write behind it', async () => {
+		const events: string[] = [];
+		const hold = holdToolCallsUntilTheirReadStarts(events);
+		const harness = createHarness(
+			[
+				liveReadStep,
+				{ type: 'text_delta', text: 'Read it.' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ beforePersistSemantic: hold.beforePersistSemantic }
+		);
+		harness.readTool.execute.mockImplementationOnce(async (input) => {
+			hold.readStarted(input.providerToolCallId);
+			return readExecution;
+		});
+		harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
+			events.push('ledger_row');
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(events).toEqual([
+				'tool_call_persist_started:provider-overlap-read',
+				'read_started:provider-overlap-read',
+				'tool_call_persisted:provider-overlap-read',
+				'ledger_row'
+			]);
+			// Durable stream order and sequence numbers are unchanged.
+			expect(harness.semanticInputs.map((input) => input.event_type)).toEqual([
+				'turn_phase',
+				'session',
+				'context_usage',
+				'tool_call',
+				'tool_result',
+				'turn_phase'
+			]);
+			const sequences = streamBroadcastMessages(harness.broadcastMessages).map(
+				(message) => (message.payload as Record<string, unknown>).sequence_index as number
+			);
+			expect(sequences).toEqual(sequences.map((_, index) => sequences[0]! + index));
+			expect(
+				harness.executionObservationInputs.map((observation) => observation.eventType)
+			).toEqual(['tool_execution_started', 'tool_execution_ended']);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('lets each read in a parallel burst start before its own tool_call is durable', async () => {
+		const events: string[] = [];
+		const hold = holdToolCallsUntilTheirReadStarts(events);
+		const harness = createHarness([], {
+			maxToolConcurrency: 3,
+			beforePersistSemantic: hold.beforePersistSemantic
+		});
+		harness.readTool.execute.mockImplementation(async (input) => {
+			hold.readStarted(input.providerToolCallId);
+			return readExecution;
+		});
+		harness.toolExecutions.persistRead.mockImplementation(async (input) => {
+			events.push(`ledger_row:${input.providerToolCallId}`);
+		});
+		const continueWithToolResults = finishAfterReads();
+		prepareReadBurst(harness, 3, continueWithToolResults);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			const types = harness.semanticInputs.map((input) => input.event_type);
+			for (const step of readBurstSteps(3)) {
+				const id = step.providerToolCallId;
+				// The read ran while its tool_call was still in flight...
+				expect(events.indexOf(`read_started:${id}`)).toBeGreaterThan(-1);
+				expect(events.indexOf(`read_started:${id}`)).toBeLessThan(
+					events.indexOf(`tool_call_persisted:${id}`)
+				);
+				// ...and its ledger row and tool_result still follow that tool_call.
+				expect(events.indexOf(`tool_call_persisted:${id}`)).toBeLessThan(
+					events.indexOf(`ledger_row:${id}`)
+				);
+				const callIndex = harness.semanticInputs.findIndex(
+					(input) => toolCallId(input) === id
+				);
+				const resultIndex = harness.semanticInputs.findIndex(
+					(input) =>
+						input.event_type === 'tool_result' &&
+						(
+							(input.event_payload as Record<string, unknown>).result as Record<
+								string,
+								unknown
+							>
+						).tool_call_id === id
+				);
+				expect(callIndex).toBeGreaterThan(-1);
+				expect(resultIndex).toBeGreaterThan(callIndex);
+			}
+			expect(types.filter((type) => type === 'tool_call')).toHaveLength(3);
+			expect(types.filter((type) => type === 'tool_result')).toHaveLength(3);
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('fails exactly as before when the tool_call is rejected, abandoning the in-flight read', async () => {
+		const readSignals: AbortSignal[] = [];
+		const harness = createHarness([liveReadStep, { type: 'finish', finishedReason: 'stop', usage: null }], {
+			beforePersistSemantic: async (input) => {
+				if (toolCallId(input)) {
+					throw Object.assign(new Error('agentic_chat_stream_write_rejected'), {
+						code: 'P0001'
+					});
+				}
+			},
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'unknown' }),
+				recoveryReceipt('queue_reconciled', { status: 'failed', failure_code: 'unknown' })
+			]
+		});
+		// A read that would never settle on its own.
+		harness.readTool.execute.mockImplementationOnce((input) => {
+			readSignals.push(input.signal);
+			return new Promise(() => undefined);
+		});
+		const processingJob = job();
+
+		try {
+			// Every assertion below except the abandoned read matches the pre-overlap
+			// executor, which never started this read.
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				failureClass: 'unknown',
+				errorMessage: `Agentic Chat publisher blocked for ${TURN_RUN_ID}: persistence_error:P0001:agentic_chat_stream_write_rejected`
+			});
+			expect(harness.control.finalize).toHaveBeenCalledOnce();
+			expect(harness.control.finalize.mock.calls[0]?.[0]).toMatchObject({
+				status: 'failed',
+				finishedReason: 'error',
+				failureCode: 'unknown',
+				publicError: 'An error occurred while streaming.',
+				assistantText: ''
+			});
+			expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+				execution_error_code: 'AgenticChatPublisherBlockedError',
+				failure_class: 'unknown',
+				publisher_block_outcome: 'persistence_error:P0001:agentic_chat_stream_write_rejected'
+			});
+			expect(harness.toolExecutions.persistRead).not.toHaveBeenCalled();
+			expect(harness.toolExecutions.persistFailure).not.toHaveBeenCalled();
+			expect(harness.executionObservationInputs).toEqual([]);
+			expect(
+				harness.semanticInputs.map((input) => input.event_type)
+			).toEqual(['turn_phase', 'session', 'context_usage']);
+			expect(
+				streamBroadcastMessages(harness.broadcastMessages).map(
+					(message) => (message.payload as Record<string, unknown>).type
+				)
+			).toEqual(['turn_phase', 'session', 'context_usage']);
+			expect(readSignals).toHaveLength(1);
+			expect(readSignals[0]!.aborted).toBe(true);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('fails exactly as before when the tool_call never becomes durable before the budget', async () => {
+		const harness = createHarness([liveReadStep, { type: 'finish', finishedReason: 'stop', usage: null }], {
+			failSemanticType: 'tool_call',
+			providerBudgetMs: 50,
+			publisherConfig: { retryDelayMs: 1 },
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'timeout_post_start'
+				})
+			]
+		});
+		const processingJob = job();
+
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				failureClass: 'timeout_post_start',
+				errorMessage: 'Agentic Chat provider budget exhausted after 50ms'
+			});
+			expect(harness.control.finalize.mock.calls[0]?.[0]).toMatchObject({
+				status: 'failed',
+				failureCode: 'provider_budget_exhausted',
+				assistantText: ''
+			});
+			expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+				execution_error_code: 'provider_budget_exhausted',
+				failure_class: 'timeout_post_start'
+			});
+			expect(harness.toolExecutions.persistRead).not.toHaveBeenCalled();
+			expect(harness.executionObservationInputs).toEqual([]);
+			expect(harness.semanticInputs.map((input) => input.event_type)).not.toContain(
+				'tool_result'
+			);
+			expect(
+				streamBroadcastMessages(harness.broadcastMessages).map(
+					(message) => (message.payload as Record<string, unknown>).type
+				)
+			).toEqual(['turn_phase', 'session', 'context_usage']);
 		} finally {
 			await harness.publisher.stop();
 		}

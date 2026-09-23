@@ -26,7 +26,12 @@ import {
 	type AgenticChatTurnExecutorPorts,
 	type AgenticChatTurnProviderStepV1
 } from './executor-contracts';
-import { canonicalText, canonicalUuid, elapsedMs } from './executor-helpers';
+import {
+	canonicalText,
+	canonicalUuid,
+	combineAbortSignals,
+	elapsedMs
+} from './executor-helpers';
 import { executionErrorCode, logAgenticChatExecutionBoundary } from './executor-failures';
 import {
 	type AgenticChatReadPlanningContextV1,
@@ -37,6 +42,16 @@ import {
 	recordTerminalToolExecution
 } from './turn-run';
 import type { AgenticChatTurnRunServices } from './turn-run-services';
+
+type LiveReadOutcomeV1 =
+	| { ok: true; value: AgenticChatReadToolExecutionV1 }
+	| { ok: false; error: unknown };
+
+/** A live read already running behind its durably accepted tool_call. */
+type LiveReadAttemptV1 = {
+	startedAt: number;
+	outcome: Promise<LiveReadOutcomeV1>;
+};
 
 export class AgenticChatReadToolRunner {
 	constructor(
@@ -71,29 +86,33 @@ export class AgenticChatReadToolRunner {
 		if (!canonicalText(step.toolName, 256)) throw new Error('Fixture tool name is invalid');
 		await this.services.assertCurrentReadToolFence(executionInput, processingToken, signal);
 
-		await this.services.publishSemantic(
-			executionInput,
-			projection,
-			{
-				type: 'semantic',
-				transitionId: step.callTransitionId,
-				phase: 'tool',
-				eventType: 'tool_call',
-				currentActivity: READ_TOOL_ACTIVITY,
-				eventPayload: {
-					type: 'tool_call',
-					tool_call: {
-						id: step.providerToolCallId,
-						type: 'function',
-						function: {
-							name: step.toolName,
-							arguments: JSON.stringify(step.arguments)
-						}
+		const toolCallEvent: Extract<AgenticChatTurnProviderStepV1, { type: 'semantic' }> = {
+			type: 'semantic',
+			transitionId: step.callTransitionId,
+			phase: 'tool',
+			eventType: 'tool_call',
+			currentActivity: READ_TOOL_ACTIVITY,
+			eventPayload: {
+				type: 'tool_call',
+				tool_call: {
+					id: step.providerToolCallId,
+					type: 'function',
+					function: {
+						name: step.toolName,
+						arguments: JSON.stringify(step.arguments)
 					}
 				}
-			},
-			signal
-		);
+			}
+		};
+		// Only a live read does I/O worth overlapping; validation failures and
+		// memo-served reads keep the plain sequence.
+		const liveRead =
+			step.validationFailure || step.memoServed
+				? null
+				: await this.startLiveReadBehindToolCall(run, step, toolCallEvent, signal);
+		if (!liveRead) {
+			await this.services.publishSemantic(executionInput, projection, toolCallEvent, signal);
+		}
 		throwIfAborted(signal);
 		if (step.validationFailure) {
 			const result = await this.persistReadValidationFailure(
@@ -121,7 +140,7 @@ export class AgenticChatReadToolRunner {
 			);
 			return result;
 		}
-		const readStartedAt = Date.now();
+		const readStartedAt = liveRead?.startedAt ?? Date.now();
 		this.services.observeToolExecution(
 			executionInput,
 			processingToken,
@@ -142,60 +161,11 @@ export class AgenticChatReadToolRunner {
 			validateReadToolExecution(toolResult);
 			validateMemoServedExecution(toolResult);
 		} else {
-			await logAgenticChatExecutionBoundary(job, executionInput, {
-				stage: 'read_op',
-				state: 'started',
-				providerToolCallId: step.providerToolCallId,
-				toolName: step.toolName
-			});
-			let progressIndex = 0;
-			const onProgress = (progress: AgenticChatReadToolProgressV1) => {
-				if (progressIndex >= AGENTIC_CHAT_MAX_READ_TOOL_PROGRESS_EVENTS || signal.aborted)
-					return;
-				const index = progressIndex++;
-				const message = progress.message.slice(0, 300);
-				void this.services
-					.publishSemantic(
-						executionInput,
-						projection,
-						{
-							type: 'semantic',
-							transitionId: createStableAgenticChatReadToolProgressTransitionIdV1({
-								turnRunId: executionInput.claim.turnRunId,
-								executionGeneration: executionInput.claim.executionGeneration,
-								providerToolCallId: step.providerToolCallId,
-								index
-							}),
-							phase: 'tool',
-							eventType: 'tool_progress',
-							currentActivity: message,
-							eventPayload: {
-								type: 'tool_progress',
-								tool_call_id: step.providerToolCallId,
-								tool_name: step.toolName,
-								step_index: index,
-								message,
-								data: progress.data
-							}
-						},
-						signal
-					)
-					.catch(() => undefined);
-			};
 			try {
-				toolResult = await abortable(
-					this.ports.readTool.execute({
-						processingToken,
-						toolName: step.toolName,
-						arguments: step.arguments,
-						providerToolCallId: step.providerToolCallId,
-						...(step.decidedBy ? { decidedBy: step.decidedBy } : {}),
-						executionInput,
-						signal,
-						onProgress
-					}),
-					signal
-				);
+				if (!liveRead) throw new Error('Live read was not started behind its tool_call');
+				const attempt = await liveRead.outcome;
+				if (!attempt.ok) throw attempt.error;
+				toolResult = attempt.value;
 				validateReadToolExecution(toolResult);
 			} catch (error) {
 				await logAgenticChatExecutionBoundary(job, executionInput, {
@@ -463,6 +433,125 @@ export class AgenticChatReadToolRunner {
 			arguments: step.arguments,
 			execution: toolResult
 		};
+	}
+
+	/**
+	 * Starts a live read as soon as its tool_call event holds its place in the
+	 * publisher's per-turn FIFO rather than after that event is durable, so the
+	 * read overlaps its own tool_call write instead of queueing behind it.
+	 *
+	 * Ordering: the read starts only after the tool_call is enqueued, and its
+	 * progress events chain behind that publication. This method returns only
+	 * once the tool_call is durably accepted (and publisher pressure relieved),
+	 * and nothing durable for this read (started observation, ledger row,
+	 * tool_result, session handoff) happens before it returns, so persisted
+	 * order, sequence numbers, and the projection are unchanged.
+	 *
+	 * Failure: a tool_call that fails before it is enqueued throws here before
+	 * any read starts. One that fails later throws the same error from this same
+	 * boundary after the in-flight read is abandoned (its signal aborted, its
+	 * outcome never used). A read persists nothing itself, so a crash at any
+	 * point leaves only rows recovery can already see today: no durable tool_call
+	 * means no ledger row and no tool_result for it.
+	 */
+	private async startLiveReadBehindToolCall(
+		run: TurnRun,
+		step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' }>,
+		toolCallEvent: Extract<AgenticChatTurnProviderStepV1, { type: 'semantic' }>,
+		signal: AbortSignal
+	): Promise<LiveReadAttemptV1> {
+		const { job, executionInput, processingToken, projection } = run;
+		const toolCall = this.services.startSemantic(
+			executionInput,
+			projection,
+			toolCallEvent,
+			signal
+		);
+		await toolCall.enqueued;
+
+		const abandon = new AbortController();
+		const readScope = combineAbortSignals([signal, abandon.signal]);
+		const startedAt = Date.now();
+		await logAgenticChatExecutionBoundary(job, executionInput, {
+			stage: 'read_op',
+			state: 'started',
+			providerToolCallId: step.providerToolCallId,
+			toolName: step.toolName
+		});
+		let progressIndex = 0;
+		const onProgress = (progress: AgenticChatReadToolProgressV1) => {
+			if (
+				progressIndex >= AGENTIC_CHAT_MAX_READ_TOOL_PROGRESS_EVENTS ||
+				signal.aborted ||
+				readScope.signal.aborted
+			)
+				return;
+			const index = progressIndex++;
+			const message = progress.message.slice(0, 300);
+			// Chains behind the tool_call publication, so it never persists first.
+			void this.services
+				.publishSemantic(
+					executionInput,
+					projection,
+					{
+						type: 'semantic',
+						transitionId: createStableAgenticChatReadToolProgressTransitionIdV1({
+							turnRunId: executionInput.claim.turnRunId,
+							executionGeneration: executionInput.claim.executionGeneration,
+							providerToolCallId: step.providerToolCallId,
+							index
+						}),
+						phase: 'tool',
+						eventType: 'tool_progress',
+						currentActivity: message,
+						eventPayload: {
+							type: 'tool_progress',
+							tool_call_id: step.providerToolCallId,
+							tool_name: step.toolName,
+							step_index: index,
+							message,
+							data: progress.data
+						}
+					},
+					signal
+				)
+				.catch(() => undefined);
+		};
+		// Settled into a value so a read that fails while the tool_call is still
+		// in flight is observed, never raised ahead of the tool_call's outcome.
+		const outcome = (async () => {
+			throwIfAborted(readScope.signal);
+			return abortable(
+				this.ports.readTool.execute({
+					processingToken,
+					toolName: step.toolName,
+					arguments: step.arguments,
+					providerToolCallId: step.providerToolCallId,
+					...(step.decidedBy ? { decidedBy: step.decidedBy } : {}),
+					executionInput,
+					signal: readScope.signal,
+					onProgress
+				}),
+				readScope.signal
+			);
+		})().then(
+			(value): LiveReadOutcomeV1 => {
+				readScope.dispose();
+				return { ok: true, value };
+			},
+			(error: unknown): LiveReadOutcomeV1 => {
+				readScope.dispose();
+				return { ok: false, error };
+			}
+		);
+
+		try {
+			await toolCall.accepted;
+		} catch (error) {
+			abandon.abort(error);
+			throw error;
+		}
+		return { startedAt, outcome };
 	}
 
 	private async persistRecoverableReadFailure(

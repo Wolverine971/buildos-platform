@@ -103,7 +103,10 @@ export class AgenticChatWorkerRealtimeRuntime {
 				// defer its watchdog; any other status keeps durable polling as-is.
 				this.coordinator.setLiveChannelSubscribed(status === 'subscribed');
 				options.onStatus?.(status, error);
-			}
+			},
+			undefined,
+			// Live answer previews go straight to the turn's observer, outside the inbox.
+			(payload) => this.coordinator.receivePreview(payload)
 		);
 	}
 

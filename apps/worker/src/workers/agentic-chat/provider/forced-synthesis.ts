@@ -45,6 +45,54 @@ export type ProviderLaneContext = {
 };
 
 /**
+ * Send a provider pass now and replay it when the caller iterates. Passes are
+ * buffered upstream, so the first `next()` issues the request and settles only
+ * once the whole response is in. Starting it before a status step is yielded
+ * lets the network wait overlap the executor persisting that status; the
+ * consumer still sees the status first and then the pass's events, unchanged.
+ */
+export function startProviderPass<T>(pass: AsyncGenerator<T>): AsyncGenerator<T> {
+	const head = pass.next();
+	// A consumer that stops at the status step never awaits the head.
+	head.catch(() => undefined);
+	return (async function* () {
+		let delegated = false;
+		try {
+			const first = await head;
+			if (first.done) return;
+			yield first.value;
+			delegated = true;
+			yield* pass;
+		} finally {
+			if (!delegated) await pass.return(undefined);
+		}
+	})();
+}
+
+/**
+ * The closing answer for a simple direct write that fully landed, rendered
+ * from the durable write ledger instead of a tool-free model pass
+ * (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT). It emits what a successful
+ * synthesis pass emits — one text delta, then `finish` carrying the usage
+ * already spent — with no provider call.
+ */
+export async function* streamDirectWriteReceipt(
+	context: Pick<ProviderLaneContext, 'ports'>,
+	text: string,
+	priorUsage: AgenticChatProviderUsageV1 | null,
+	state: ToolRoundStreamState
+): AsyncGenerator<AgenticChatProviderStepV1> {
+	try {
+		context.ports.capacity.markAvailable(state.turnRunId);
+		yield state.textDelta(text, false);
+		state.advance({ type: 'finish' });
+		yield { type: 'finish', finishedReason: 'stop', usage: priorUsage };
+	} finally {
+		state.release();
+	}
+}
+
+/**
  * Whether a partial answer from a dead synthesis attempt is worth showing. The
  * floor sits just above a disposable lead-in ("Here are", "Let me check"), which
  * is worse than an honest failure because it reads as a complete answer.

@@ -21,6 +21,7 @@ import {
 	type AgentStreamEventV1,
 	type AgenticChatCommittedSemanticEventReceiptV1,
 	type AgenticChatRealtimeBroadcastV1,
+	type AgenticChatRealtimePreviewBroadcastV1,
 	type AgenticChatSemanticEventRpcResultV1,
 	type AgenticChatStreamDeliveryAckRpcResultV1,
 	type AgenticChatTerminalReceiptV1,
@@ -237,7 +238,22 @@ export type AgenticChatBroadcastMessageV1 =
 	| (Extract<AgenticChatRealtimeBroadcastV1, { event: 'agent-stream-reconcile' }> & {
 			kind: 'reconcile_hint';
 			topic: string;
+	  })
+	| (AgenticChatRealtimePreviewBroadcastV1 & {
+			kind: 'live_text_preview';
+			topic: string;
 	  });
+
+/**
+ * Where a display-only live preview for a registered turn goes, and the durable
+ * floor it must carry. Null when the turn is not registered or can no longer write.
+ */
+export type AgenticChatLiveTextPreviewTargetV1 = {
+	topic: string;
+	sessionId: string;
+	executionGeneration: number;
+	durableSequenceFloor: number;
+};
 
 export type AgenticChatBroadcastPortV1 = {
 	publish(message: AgenticChatBroadcastMessageV1): Promise<'sent' | 'failed'>;
@@ -316,6 +332,8 @@ type TurnState = {
 	context: AgenticChatPublisherTurnV1;
 	durableSequence: number;
 	assistantText: string;
+	/** UTF-8 bytes of `assistantText`, kept incrementally (see `utf8BytesAfterAppend`). */
+	assistantTextBytes: number;
 	abandoned: boolean;
 	operations: Operation[];
 	deliveries: DeliveryOperation[];
@@ -424,13 +442,15 @@ export class AgenticChatStreamPublisher {
 		if (context.acceptedAt !== undefined && !Number.isFinite(Date.parse(context.acceptedAt))) {
 			throw new Error('acceptedAt must be an ISO timestamp');
 		}
-		if (utf8Bytes(assistantText) > AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES) {
+		const assistantTextBytes = utf8Bytes(assistantText);
+		if (assistantTextBytes > AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES) {
 			throw new Error('Initial assistant text exceeds the supported stream bound');
 		}
 		this.turns.set(context.turnRunId, {
 			context,
 			durableSequence: initialSequence,
 			assistantText,
+			assistantTextBytes,
 			abandoned: false,
 			operations: [],
 			deliveries: [],
@@ -478,7 +498,13 @@ export class AgenticChatStreamPublisher {
 			);
 		}
 		const nextAssistantText = state.assistantText + textDelta;
-		if (utf8Bytes(nextAssistantText) > AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES) {
+		const nextAssistantTextBytes = utf8BytesAfterAppend(
+			state.assistantText,
+			state.assistantTextBytes,
+			textDelta,
+			deltaBytes
+		);
+		if (nextAssistantTextBytes > AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES) {
 			return this.overload(
 				state,
 				textDelta,
@@ -544,6 +570,7 @@ export class AgenticChatStreamPublisher {
 		}
 
 		state.assistantText = nextAssistantText;
+		state.assistantTextBytes = nextAssistantTextBytes;
 		state.pendingBytes += deltaBytes;
 		this.pendingBytes += deltaBytes;
 		const pendingOp = state.operations.at(-1);
@@ -758,6 +785,26 @@ export class AgenticChatStreamPublisher {
 			reconcileOnly: state.reconcileOnly,
 			blockedReason: state.blockedReason,
 			busy: state.busy || state.deliveryBusy
+		};
+	}
+
+	/**
+	 * Target and durable floor for a display-only live preview. The floor is the
+	 * last sequence this turn's already-enqueued writes will occupy: each pending
+	 * operation persists as exactly one sequence. A trailing text batch that can
+	 * still absorb later text is excluded, so text appended after this call always
+	 * lands above the floor. Null (never throws) once the turn cannot write.
+	 */
+	getLiveTextPreviewTarget(turnRunId: string): AgenticChatLiveTextPreviewTargetV1 | null {
+		const state = this.turns.get(turnRunId);
+		if (!state || state.abandoned || state.blockedReason || !this.accepting) return null;
+		const tail = state.operations.at(-1);
+		const mergeableTail = tail?.kind === 'text' && !tail.inFlight ? 1 : 0;
+		return {
+			topic: `chat-user:${state.context.userId}`,
+			sessionId: state.context.sessionId,
+			executionGeneration: state.context.executionGeneration,
+			durableSequenceFloor: state.durableSequence + state.operations.length - mergeableTail
 		};
 	}
 
@@ -1576,6 +1623,12 @@ export class AgenticChatStreamPublisher {
 
 	private overload(state: TurnState, unacceptedText: string, message: string): never {
 		const assistantText = state.assistantText + unacceptedText;
+		state.assistantTextBytes = utf8BytesAfterAppend(
+			state.assistantText,
+			state.assistantTextBytes,
+			unacceptedText,
+			utf8Bytes(unacceptedText)
+		);
 		state.assistantText = assistantText;
 		state.blockedReason = 'publisher_overload';
 		state.reconcileOnly = true;
@@ -1870,6 +1923,31 @@ function deferred<T>(): Deferred<T> {
 
 function utf8Bytes(value: string): number {
 	return Buffer.byteLength(value, 'utf8');
+}
+
+/**
+ * Exactly `utf8Bytes(text + delta)` without re-encoding `text`. UTF-8 length is
+ * additive except across one boundary: a trailing lone high surrogate and a
+ * leading lone low surrogate each encode as U+FFFD (3 bytes) alone but as one
+ * 4-byte code point once joined.
+ */
+function utf8BytesAfterAppend(
+	text: string,
+	textBytes: number,
+	delta: string,
+	deltaBytes: number
+): number {
+	const joinsSurrogatePair =
+		isHighSurrogate(text.charCodeAt(text.length - 1)) && isLowSurrogate(delta.charCodeAt(0));
+	return textBytes + deltaBytes - (joinsSurrogatePair ? 2 : 0);
+}
+
+function isHighSurrogate(code: number): boolean {
+	return code >= 0xd800 && code <= 0xdbff;
+}
+
+function isLowSurrogate(code: number): boolean {
+	return code >= 0xdc00 && code <= 0xdfff;
 }
 
 function nonnegativeElapsed(startedAtMs: number, finishedAtMs: number): number {

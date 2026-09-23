@@ -11,7 +11,12 @@ import {
 } from '../contracts';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../../tools/read-tool-identity';
 import { formatDocumentEditPreviewsForReview } from '../document-edit-preview';
-import { type ProviderLaneContext, streamForcedSynthesis } from '../forced-synthesis';
+import {
+	type ProviderLaneContext,
+	type ProviderPass,
+	startProviderPass,
+	streamForcedSynthesis
+} from '../forced-synthesis';
 import {
 	canonicalError,
 	canonicalFinishedReason,
@@ -92,6 +97,11 @@ export async function* streamMutationBatchReview(
 	let accumulatedReviewUsage = priorUsage;
 	let pendingReviewTool = false;
 	try {
+		// The first review request goes out while the executor persists the
+		// review status; the status still reaches it before any review event.
+		let primedReview: ReturnType<ProviderPass> | null = startProviderPass(
+			context.providerPass(reviewRequest, state, reviewer)
+		);
 		yield {
 			type: 'semantic',
 			transitionId: createStableAgenticChatReadToolTransitionIdV1({
@@ -118,7 +128,10 @@ export async function* streamMutationBatchReview(
 			let fallbackReason: string | null = null;
 			let reviewFinishedReason: string | null = null;
 			try {
-				for await (const event of context.providerPass(reviewRequest, state, reviewer)) {
+				const reviewPass =
+					primedReview ?? context.providerPass(reviewRequest, state, reviewer);
+				primedReview = null;
+				for await (const event of reviewPass) {
 					throwIfAborted(request.signal);
 					if (finished) throw providerError('provider_event_after_done', 'unknown');
 					if (event.type === 'text') continue;
@@ -308,6 +321,11 @@ export async function* streamTurnContractReview(
 	let accumulatedReviewUsage = priorUsage;
 	let pendingReviewTool = false;
 	try {
+		// The first review request goes out while the executor persists the
+		// review status; the status still reaches it before any review event.
+		let primedReview: ReturnType<ProviderPass> | null = startProviderPass(
+			context.providerPass(reviewRequest, state, reviewer)
+		);
 		yield {
 			type: 'semantic',
 			transitionId: createStableAgenticChatReadToolTransitionIdV1({
@@ -337,7 +355,10 @@ export async function* streamTurnContractReview(
 			let fallbackReason: string | null = null;
 			let reviewFinishedReason: string | null = null;
 			try {
-				for await (const event of context.providerPass(reviewRequest, state, reviewer)) {
+				const reviewPass =
+					primedReview ?? context.providerPass(reviewRequest, state, reviewer);
+				primedReview = null;
+				for await (const event of reviewPass) {
 					throwIfAborted(request.signal);
 					if (finished) throw providerError('provider_event_after_done', 'unknown');
 					if (event.type === 'text') continue;

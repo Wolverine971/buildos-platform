@@ -31,7 +31,12 @@ import {
 	streamReviewExhaustion,
 	streamTurnContractReview
 } from './review/lanes';
-import { streamForcedSynthesis } from './forced-synthesis';
+import {
+	type ProviderPass,
+	startProviderPass,
+	streamDirectWriteReceipt,
+	streamForcedSynthesis
+} from './forced-synthesis';
 import { canonicalError, canonicalFinishedReason, normalizeUsage, providerError } from './protocol';
 import { throwIfAborted } from '../shared/abortable-deadline';
 import type { AgenticChatContextFinderPort } from './chat-context-finder';
@@ -155,7 +160,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		 * and the contract lane with it once the battery confirms the new lane
 		 * — it exists to make the cutover reviewable, not to be configurable.
 		 */
-		private readonly mutationBatchLaneEnabled = false
+		private readonly mutationBatchLaneEnabled = false,
+		/**
+		 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: close a simple direct write that
+		 * fully landed on ledger receipt text instead of a tool-free model pass.
+		 */
+		private readonly directWriteReceiptTextEnabled = false
 	) {
 		if (
 			!Number.isSafeInteger(retryableFailureCooldownMs) ||
@@ -220,7 +230,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			lease,
 			semanticReviewRequired: Boolean(this.ports.semanticReviewer),
 			mutationBatchLaneEnabled: this.mutationBatchLaneEnabled,
-			maxProviderRounds: this.maxProviderRounds
+			maxProviderRounds: this.maxProviderRounds,
+			directWriteReceiptTextEnabled: this.directWriteReceiptTextEnabled
 		});
 		return {
 			promptSnapshot,
@@ -269,6 +280,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				return streamForcedSynthesis(this.laneContext, next.request, next.usage, state, {
 					clarification: next.clarification
 				});
+			case 'direct_write_receipt':
+				return streamDirectWriteReceipt(this.laneContext, next.text, next.usage, state);
 		}
 	}
 
@@ -365,6 +378,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				);
 				return;
 			}
+			let openingPass: ReturnType<ProviderPass> | null = null;
 			if (initial) {
 				// Started first so project load + Jev ranking overlap vision and tool selection.
 				const finding = this.ports.contextFinder?.find(request) ?? null;
@@ -374,14 +388,16 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (this.ports.toolSelector)
 					request = await this.ports.toolSelector.select(request);
 				const found = finding ? await finding : null;
-				if (found) {
-					yield found.step;
-					if (found.injection)
-						request = appendSystemInstruction(request, found.injection);
-				}
+				if (found?.injection) request = appendSystemInstruction(request, found.injection);
 				state.setCurrentRequest(request);
+				if (found) {
+					// The opening request goes out while the executor persists the
+					// "Working from" status; the status still reaches it first.
+					openingPass = startProviderPass(this.providerPass(request, state));
+					yield found.step;
+				}
 			}
-			for await (const event of this.providerPass(request, state)) {
+			for await (const event of openingPass ?? this.providerPass(request, state)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {

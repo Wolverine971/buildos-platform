@@ -167,9 +167,8 @@ export class SupabaseAgenticChatExecutionInputAdapter implements AgenticChatExec
 	) {}
 
 	async load(claim: ExecutableClaim): Promise<AgenticChatWorkerExecutionInputV1> {
-		const command = await this.loadCommand(claim);
+		const [command, row] = await this.loadCommandAndArtifactRow(claim, ARTIFACT_COLUMNS);
 		const { timingBaseline } = command;
-		const row = await this.loadArtifactRow(claim, ARTIFACT_COLUMNS);
 		if (row.artifact_version === AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V4) {
 			throw new AgenticChatExecutionInputError(
 				'raw_workflow_input_requires_preparation',
@@ -261,8 +260,10 @@ export class SupabaseAgenticChatExecutionInputAdapter implements AgenticChatExec
 	async loadRawWorkflowInput(
 		claim: ExecutableClaim
 	): Promise<AgenticChatRawWorkflowExecutionInputV1> {
-		const command = await this.loadCommand(claim);
-		const row = await this.loadArtifactRow(claim, RAW_WORKFLOW_ARTIFACT_COLUMNS);
+		const [command, row] = await this.loadCommandAndArtifactRow(
+			claim,
+			RAW_WORKFLOW_ARTIFACT_COLUMNS
+		);
 		if (
 			row.artifact_version !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V4 ||
 			row.prepared !== null ||
@@ -322,6 +323,25 @@ export class SupabaseAgenticChatExecutionInputAdapter implements AgenticChatExec
 				'Worker input artifact is outside its execution retention window'
 			);
 		}
+	}
+
+	/**
+	 * The two selects are independent: both are keyed only by the fenced claim
+	 * (the artifact id is `claim.inputArtifactId`, never read from the turn row),
+	 * so they run concurrently. Failure precedence is unchanged: the command's
+	 * error wins, and an artifact error surfaces only after the command passed
+	 * every check. Both are plain reads, so the artifact select a failed command
+	 * no longer needed has no effect.
+	 */
+	private async loadCommandAndArtifactRow(
+		claim: ExecutableClaim,
+		artifactColumns: string
+	): Promise<[LoadedCommand, Record<string, unknown>]> {
+		const command = this.loadCommand(claim);
+		const artifactRow = this.loadArtifactRow(claim, artifactColumns);
+		// Observed below; never an unhandled rejection when the command fails first.
+		void artifactRow.catch(() => undefined);
+		return [await command, await artifactRow];
 	}
 
 	private async loadCommand(claim: ExecutableClaim): Promise<LoadedCommand> {

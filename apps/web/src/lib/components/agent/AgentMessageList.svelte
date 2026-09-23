@@ -73,6 +73,11 @@
 		resolvedProjectFocus?: ProjectFocus | null;
 		/** Id of the assistant message currently receiving streamed text, if any. */
 		streamingMessageId?: string | null;
+		/**
+		 * Display-only live answer preview for the streaming bubble of this turn.
+		 * Rendered after the durable text; never part of the message itself.
+		 */
+		livePreview?: { turnRunId: string; text: string } | null;
 		/** Reduce empty-state and message chrome for constrained embedded conversations. */
 		compact?: boolean;
 	}
@@ -96,6 +101,7 @@
 		selectedContextType = null,
 		resolvedProjectFocus = null,
 		streamingMessageId = null,
+		livePreview = null,
 		compact = false
 	}: Props = $props();
 
@@ -135,6 +141,20 @@
 			? readRecordIdsByTurn(messages)
 			: new Map<string, Set<string>>()
 	);
+
+	function hasLivePreview(message: UIMessage): boolean {
+		return (
+			livePreview !== null &&
+			message.id === streamingMessageId &&
+			message.metadata?.turn_run_id === livePreview.turnRunId
+		);
+	}
+
+	/** Durable text, plus the live preview on the streaming bubble. */
+	function assistantDisplayText(message: UIMessage): string {
+		const content = message.content ?? '';
+		return hasLivePreview(message) ? content + livePreview!.text : content;
+	}
 
 	const streamingMessage = $derived.by(() => {
 		if (!streamingMessageId) return null;
@@ -215,7 +235,7 @@
 	$effect.pre(() => {
 		const message = streamingMessage;
 		const key = message ? rowKey(message) : null;
-		const text = message?.content ?? '';
+		const text = message ? assistantDisplayText(message) : '';
 		untrack(() => {
 			syncReveal(key, text);
 			// Stream over: stop following and leave the scroll where it is.
@@ -229,7 +249,7 @@
 		isStreaming: boolean
 	): { text: string; blocks: string[] | null } {
 		const key = rowKey(message);
-		const content = message.content ?? '';
+		const content = assistantDisplayText(message);
 		if (!isStreaming) {
 			return {
 				text: content,
@@ -934,6 +954,7 @@
 						{#if body.blocks}
 							<div
 								class="agent-markdown {proseClasses} min-w-0 overflow-x-auto break-words"
+								class:agent-live-preview={hasLivePreview(message)}
 							>
 								{#each body.blocks as blockHtml, blockIndex (blockIndex)}
 									{@html blockHtml}
@@ -942,6 +963,7 @@
 						{:else}
 							<div
 								class="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+								class:agent-live-preview={hasLivePreview(message)}
 							>
 								{body.text}
 							</div>
@@ -1304,6 +1326,35 @@
 	.agent-markdown {
 		color: hsl(var(--foreground));
 		overflow-wrap: anywhere;
+	}
+
+	/* Live answer preview: a soft caret after the text while the model is still
+	   writing it. Only exists during a preview; still under reduced motion. */
+	.agent-live-preview.agent-markdown :global(> :last-child::after),
+	.agent-live-preview:not(.agent-markdown)::after {
+		content: '';
+		display: inline-block;
+		width: 2px;
+		height: 1em;
+		margin-left: 2px;
+		vertical-align: text-bottom;
+		border-radius: 1px;
+		background: hsl(var(--muted-foreground));
+		opacity: 0.6;
+		animation: agent-live-caret 1.1s ease-in-out infinite;
+	}
+
+	@keyframes agent-live-caret {
+		50% {
+			opacity: 0.15;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.agent-live-preview.agent-markdown :global(> :last-child::after),
+		.agent-live-preview:not(.agent-markdown)::after {
+			animation: none;
+		}
 	}
 
 	.agent-markdown :global(> :first-child) {

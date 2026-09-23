@@ -158,10 +158,20 @@ type AgenticChatBaseConfig = {
 	providerBudgetMs: number;
 	maxProviderRounds: number;
 	mutationBatchLaneEnabled: boolean;
+	/**
+	 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: a simple direct write that fully landed
+	 * closes on ledger receipt text instead of a tool-free model pass. Default off.
+	 */
+	directWriteReceiptTextEnabled?: boolean;
 	/** Jev opening-pass tool narrowing: on (default), shadow (log only), or off. */
 	jevToolSelection: 'off' | JevToolSelectionMode;
 	maxToolCalls: number;
 	maxToolConcurrency: number;
+	/**
+	 * AGENTIC_CHAT_LIVE_TEXT_PREVIEW: broadcast a display-only preview of the answer
+	 * while a user-facing pass streams. Default off; off is byte-identical to before.
+	 */
+	liveTextPreviewEnabled?: boolean;
 };
 
 export type AgenticChatConfig = AgenticChatBaseConfig & {
@@ -310,6 +320,13 @@ export function loadAgenticChatConfig(
 		true,
 		'CHAT_MUTATION_BATCH_LANE'
 	);
+	// Skips the tool-free closing pass after a simple direct write that fully
+	// landed (one billed pass, ~2–5 s). Off until the gate judges the copy.
+	const directWriteReceiptTextEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT,
+		false,
+		'AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT'
+	);
 	// Jev opening-pass tool narrowing (docs/research/jev-tool-selection-2026-09-18).
 	// On by default: 0/64 eval misses, fail-open to the full surface, and the one-shot
 	// surface repair restores omitted tools. `shadow` logs the selection without
@@ -324,6 +341,11 @@ export function loadAgenticChatConfig(
 		environment.CHAT_MAX_TOOL_CONCURRENCY,
 		DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY,
 		'CHAT_MAX_TOOL_CONCURRENCY'
+	);
+	const liveTextPreviewEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_LIVE_TEXT_PREVIEW,
+		false,
+		'AGENTIC_CHAT_LIVE_TEXT_PREVIEW'
 	);
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
@@ -352,9 +374,11 @@ export function loadAgenticChatConfig(
 		providerBudgetMs,
 		maxProviderRounds,
 		mutationBatchLaneEnabled,
+		directWriteReceiptTextEnabled,
 		jevToolSelection,
 		maxToolCalls,
 		maxToolConcurrency,
+		liveTextPreviewEnabled,
 		provider: loadProviderConfig(environment)
 	};
 }

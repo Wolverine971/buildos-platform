@@ -35,6 +35,19 @@ import {
 	toProjectionJson
 } from './turn-run';
 
+/**
+ * One semantic publication, split at the point the event entered the
+ * publisher's per-turn queue. `accepted` is exactly what `publishSemantic`
+ * awaits (durable acceptance, then pressure relief) and rejects with the same
+ * error. `enqueued` resolves once the event holds its place in the publisher's
+ * FIFO, so everything enqueued later persists after it; if the publication fails
+ * before that point, `enqueued` rejects with that same error.
+ */
+export type AgenticChatSemanticPublicationV1 = {
+	enqueued: Promise<void>;
+	accepted: Promise<void>;
+};
+
 export class AgenticChatTurnRunServices {
 	/** One in-flight ownership check per turn identity for a burst of parallel reads. */
 	private readonly readToolFence: AgenticChatSharedReadToolFenceV1;
@@ -56,6 +69,21 @@ export class AgenticChatTurnRunServices {
 		step: Extract<AgenticChatTurnProviderStepV1, { type: 'semantic' }>,
 		signal: AbortSignal
 	): Promise<void> {
+		await this.startSemantic(executionInput, projection, step, signal).accepted;
+	}
+
+	/**
+	 * `publishSemantic` for a caller that may overlap independent work with the
+	 * durable write once the event is queued. The caller must still await
+	 * `accepted` before anything that depends on the event being durable.
+	 * Step validation throws synchronously, before any state changes.
+	 */
+	startSemantic(
+		executionInput: AgenticChatWorkerExecutionInputV1,
+		projection: ProjectionState,
+		step: Extract<AgenticChatTurnProviderStepV1, { type: 'semantic' }>,
+		signal: AbortSignal
+	): AgenticChatSemanticPublicationV1 {
 		canonicalUuid(step.transitionId, 'transitionId');
 		if (!canonicalText(step.currentActivity, 1_000)) {
 			throw new Error('Fixture current activity is invalid');
@@ -63,6 +91,12 @@ export class AgenticChatTurnRunServices {
 		if (step.eventPayload.type !== step.eventType) {
 			throw new Error('Fixture semantic payload type mismatch');
 		}
+		let markEnqueued!: () => void;
+		let failBeforeEnqueue!: (error: unknown) => void;
+		const enqueued = new Promise<void>((resolve, reject) => {
+			markEnqueued = resolve;
+			failBeforeEnqueue = reject;
+		});
 		const publication = projection.semanticPublishTail.then(async () => {
 			throwIfAborted(signal);
 			const claim = executionInput.claim;
@@ -106,6 +140,7 @@ export class AgenticChatTurnRunServices {
 					projection: toProjectionJson(projection),
 					eventPayload: step.eventPayload
 				});
+				markEnqueued();
 				void queued.delivery.catch(() => undefined);
 				await abortable(queued.accepted, signal);
 				durablyAccepted = true;
@@ -121,7 +156,10 @@ export class AgenticChatTurnRunServices {
 			}
 		});
 		projection.semanticPublishTail = publication.catch(() => undefined);
-		await publication;
+		// A no-op once `enqueued` has resolved: only a pre-enqueue failure reaches it.
+		void publication.catch(failBeforeEnqueue);
+		void enqueued.catch(() => undefined);
+		return { enqueued, accepted: publication };
 	}
 
 	async persistSessionHandoff(

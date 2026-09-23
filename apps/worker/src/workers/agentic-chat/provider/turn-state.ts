@@ -23,6 +23,7 @@ import {
 	buildRoundToolPattern,
 	buildWriteLedger,
 	classifyReceiptGroundedAssistantDisposition,
+	doesToolExecutionRequireUserAction,
 	extractReviewedRequestExpectation,
 	isControlToolName,
 	mergeTurnContracts,
@@ -82,6 +83,7 @@ import {
 	buildPartialMutationBatchSynthesisInstruction,
 	buildProviderPassBudgetSynthesisInstruction,
 	buildValidationRepairExhaustedSynthesisInstruction,
+	renderDirectWriteReceipt,
 	renderWriteReceiptFallback
 } from './repair-policy';
 import {
@@ -232,7 +234,9 @@ export type ToolRoundContinuation =
 			request: ClientRequest;
 			usage: AgenticChatProviderUsageV1 | null;
 			clarification: ClarificationRender | null;
-	  };
+	  }
+	/** A simple direct write fully landed: its ledger receipt closes the turn without a model pass. */
+	| { lane: 'direct_write_receipt'; text: string; usage: AgenticChatProviderUsageV1 | null };
 
 export type ProviderTurnStateInit = {
 	/** The base request built at preparation (turn identity and surface context). */
@@ -247,6 +251,11 @@ export type ProviderTurnStateInit = {
 	semanticReviewRequired: boolean;
 	mutationBatchLaneEnabled: boolean;
 	maxProviderRounds: number;
+	/**
+	 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: a simple direct write that fully
+	 * landed closes on ledger receipt text instead of a tool-free model pass.
+	 */
+	directWriteReceiptTextEnabled?: boolean;
 };
 
 type HeldMutationBatch = {
@@ -271,6 +280,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	private readonly semanticReviewRequired: boolean;
 	private readonly mutationBatchLaneEnabled: boolean;
 	private readonly maxProviderRounds: number;
+	private readonly directWriteReceiptTextEnabled: boolean;
 
 	private released = false;
 	private streamed = false;
@@ -352,6 +362,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.semanticReviewRequired = init.semanticReviewRequired;
 		this.mutationBatchLaneEnabled = init.mutationBatchLaneEnabled;
 		this.maxProviderRounds = init.maxProviderRounds;
+		this.directWriteReceiptTextEnabled = init.directWriteReceiptTextEnabled === true;
 		this.currentRequest = init.initialRequest;
 		this.phase =
 			init.initialRequest.semanticDispositionGate === true ? 'disposition_gate' : 'opening';
@@ -1338,6 +1349,19 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			if (!clarificationRequiresToolFreeSynthesis) {
 				this.advance({ type: 'budget', limit: 'force_synthesis' });
 			}
+			const directWriteReceipt =
+				directSimpleMutationCompleted &&
+				!partialMutationBatch &&
+				!clarificationRequiresToolFreeSynthesis
+					? this.directWriteReceiptText(completedToolRound.calls, roundExecutions)
+					: null;
+			if (directWriteReceipt) {
+				return {
+					lane: 'direct_write_receipt',
+					text: directWriteReceipt,
+					usage: completedToolRound.usage
+				};
+			}
 			return {
 				lane: 'forced_synthesis',
 				request: this.currentRequest,
@@ -1350,6 +1374,35 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			request: this.currentRequest,
 			usage: completedToolRound.usage
 		};
+	}
+
+	/**
+	 * The receipt that replaces the closing model pass after a simple direct
+	 * write, or null when the model may still owe the user an answer. Decided
+	 * from structured turn state only; neither the user's nor the model's words
+	 * are read here, so anything prose would have to settle keeps the pass.
+	 */
+	private directWriteReceiptText(
+		calls: readonly NormalizedProviderToolCall[],
+		roundExecutions: readonly FastToolExecution[]
+	): string | null {
+		if (!this.directWriteReceiptTextEnabled) return null;
+		// No contract, reviewer checklist, or reviewed stage governs the turn.
+		if (this.turnContract || this.requestExpectation || this.reviewedBatchExecuted) return null;
+		// The write round is the turn's only tool round: no read result the model
+		// has not yet reported on, and no earlier attempt that failed.
+		if (this.turnToolExecutions.length !== roundExecutions.length) return null;
+		// The model saw the user's images this turn and may owe a description.
+		if (this.baseRequest.liveVisionRequest) return null;
+		if (calls.some((call) => call.kind !== 'mutation')) return null;
+		// A result that asks the user something reaches them through the model.
+		if (roundExecutions.some((execution) => doesToolExecutionRequireUserAction(execution))) {
+			return null;
+		}
+		const ledger = buildWriteLedger(this.turnToolExecutions);
+		// One receipt per call: a skipped duplicate or an unledgered tool keeps the pass.
+		if (ledger.length !== calls.length) return null;
+		return renderDirectWriteReceipt(ledger);
 	}
 
 	private refreshLabelBindings(): void {

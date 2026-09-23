@@ -91,6 +91,10 @@ import {
 	SupabaseAgenticChatPersistenceAdapter
 } from '../stream/supabase-stream-publisher-adapters';
 import {
+	AgenticChatLiveTextPreviewBroadcaster,
+	withAgenticChatLiveTextPreviewV1
+} from '../stream/live-text-preview';
+import {
 	type AgenticChatToolExecutionPortV1,
 	type AgenticChatToolExecutionRpcClient,
 	SupabaseAgenticChatToolExecutionAdapter
@@ -215,6 +219,10 @@ export function createAgenticChatCompositionRoot(options: {
 	maxProviderRounds?: number;
 	/** SHA-bound batch approval instead of the turn contract DSL (Decision 1). */
 	mutationBatchLaneEnabled?: boolean;
+	/** AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: ledger receipt instead of the closing pass. Default off. */
+	directWriteReceiptTextEnabled?: boolean;
+	/** AGENTIC_CHAT_LIVE_TEXT_PREVIEW: display-only live answer preview. Default off. */
+	liveTextPreviewEnabled?: boolean;
 	/** Optional opening-pass schema narrowing (Jev); absent means the full admitted surface. */
 	toolSelector?: AgenticChatToolSelectorPort;
 	contextFinder?: AgenticChatContextFinderPort;
@@ -344,9 +352,16 @@ export function createAgenticChatCompositionRoot(options: {
 		configured: options.providerConfigured,
 		concurrency: consumerConfig.concurrency
 	});
+	// Off: the acting client passes through untouched and no preview port exists.
+	const actingClient = options.liveTextPreviewEnabled
+		? withAgenticChatLiveTextPreviewV1(
+				options.providerClient,
+				new AgenticChatLiveTextPreviewBroadcaster({ publisher, broadcast })
+			)
+		: options.providerClient;
 	const provider = new AgenticChatTurnProviderAdapter(
 		{
-			client: options.providerClient,
+			client: actingClient,
 			semanticReviewer: options.semanticReviewerClient,
 			capacity: providerCapacity,
 			liveVision,
@@ -359,7 +374,8 @@ export function createAgenticChatCompositionRoot(options: {
 		options.providerCooldownMs,
 		options.maxProviderRounds,
 		mutationCapabilities,
-		options.mutationBatchLaneEnabled ?? true
+		options.mutationBatchLaneEnabled ?? true,
+		options.directWriteReceiptTextEnabled ?? false
 	);
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),
