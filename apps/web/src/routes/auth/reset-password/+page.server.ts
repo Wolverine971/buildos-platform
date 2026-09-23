@@ -153,9 +153,10 @@ export const load: PageServerLoad = async ({
 			},
 			securityEventOptions
 		);
+		// The error text arrives in the URL, so anyone can craft it; log it, show fixed copy.
 		return {
 			hasRecoverySession: false,
-			recoveryError: decodeAuthError(authError)
+			recoveryError: RECOVERY_LINK_INVALID_MESSAGE
 		};
 	}
 
@@ -264,6 +265,8 @@ export const actions: Actions = {
 			},
 			securityEventOptions
 		);
-		throw redirect(303, '/auth/login?message=Password updated successfully');
+		// The reset session is now a signed-in session, so a hop through /auth/login would bounce
+		// to /today and drop any notice. The page confirms and continues into the app itself.
+		return { passwordUpdated: true };
 	}
 };

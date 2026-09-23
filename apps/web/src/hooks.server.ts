@@ -490,17 +490,16 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 	// Keep the public homepage out of the authenticated app bundle and data path.
 	// Preserve auth/toast query parameters when old links still land on `/`.
-	// Completed users land on /today (the remembered-project surface, tasker/26);
-	// users who haven't finished onboarding go into the flow instead of an empty
-	// /today — the tasker/26 first-structured-win forcing function lives there, and
-	// explore/skip users have onboarding_completed_at set so they pass through.
+	// Signed-in users land on /today (the remembered-project surface, tasker/26).
+	// /today owns the onboarding decision (needsOnboarding): users with no
+	// projects go into the flow, while older accounts that have projects but a
+	// null onboarding_completed_at stay out of it.
 	if (
 		pathname === '/' &&
 		event.locals.user &&
 		(event.request.method === 'GET' || event.request.method === 'HEAD')
 	) {
-		const dest = event.locals.user.onboarding_completed_at ? '/today' : '/onboarding';
-		throw redirect(303, `${dest}${event.url.search}`);
+		throw redirect(303, `/today${event.url.search}`);
 	}
 
 	const mutationGuardEnabled =

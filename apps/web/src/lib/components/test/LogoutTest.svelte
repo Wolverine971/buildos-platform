@@ -22,7 +22,7 @@
 		testResults = ['Starting standard logout...'];
 
 		try {
-			await logout('/auth/login?message=Logged out successfully');
+			await logout('/auth/login?signed_out=1');
 			testResults = [...testResults, 'Standard logout completed'];
 		} catch (error) {
 			testResults = [...testResults, `Error: ${getErrorMessage(error)}`];

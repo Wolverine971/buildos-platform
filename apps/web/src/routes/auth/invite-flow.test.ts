@@ -74,6 +74,10 @@ vi.mock('$lib/utils/ontology-client-logger', () => ({
 
 import LoginPage from './login/+page.svelte';
 import RegisterPage from './register/+page.svelte';
+import { AUTH_ERROR_COPY, AUTH_NOTICE_COPY, GENERIC_AUTH_ERROR } from '$lib/utils/auth-status';
+
+const PHISHING_TEXT = 'Your account is locked. Verify at evil.co';
+const CLEAN_URL_OPTIONS = { replaceState: true, keepFocus: true, noScroll: true };
 
 function okJson(payload: Record<string, unknown>) {
 	return Promise.resolve({
@@ -202,22 +206,71 @@ describe('Auth invite flow', () => {
 		});
 	});
 
-	it('shows the signed-out state and URL errors inline, then clears them from the URL', async () => {
-		setPageUrl(
-			'http://localhost/auth/login?signed_out=1&error=Authentication%20failed&redirect=/today'
-		);
+	it('shows the signed-out state and URL errors inline, then clears them from history', async () => {
+		setPageUrl('http://localhost/auth/login?signed_out=1&error=state_mismatch&redirect=/today');
 
 		render(LoginPage);
 
 		expect(screen.getByRole('heading', { name: /you’re signed out/i })).toBeInTheDocument();
-		expect(screen.getByRole('alert')).toHaveTextContent('Authentication failed');
+		expect(screen.getByRole('alert')).toHaveTextContent(AUTH_ERROR_COPY.state_mismatch);
+		// A replacing goto (not shallow replaceState) so Back can't bring the status back.
 		await waitFor(() => {
-			expect(replaceStateMock).toHaveBeenCalledWith(
-				'http://localhost/auth/login?redirect=%2Ftoday',
-				{}
+			expect(gotoMock).toHaveBeenCalledWith(
+				'/auth/login?redirect=%2Ftoday',
+				CLEAN_URL_OPTIONS
 			);
 		});
+		expect(replaceStateMock).not.toHaveBeenCalled();
 		expect(toastErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('never renders URL text as a sign-in notice or error', async () => {
+		const params = new URLSearchParams({ message: PHISHING_TEXT, error: PHISHING_TEXT });
+		setPageUrl(`http://localhost/auth/login?${params}`);
+
+		render(LoginPage);
+
+		expect(screen.queryByText(PHISHING_TEXT)).not.toBeInTheDocument();
+		expect(screen.queryByRole('status')).not.toBeInTheDocument();
+		expect(screen.getByRole('alert')).toHaveTextContent(GENERIC_AUTH_ERROR);
+		await waitFor(() => {
+			expect(gotoMock).toHaveBeenCalledWith('/auth/login', CLEAN_URL_OPTIONS);
+		});
+	});
+
+	it('shows known notice codes with fixed copy and ignores unknown ones', async () => {
+		setPageUrl('http://localhost/auth/login?notice=account_exists');
+		const { unmount } = render(LoginPage);
+		expect(screen.getByRole('status')).toHaveTextContent(AUTH_NOTICE_COPY.account_exists);
+		unmount();
+
+		setPageUrl(`http://localhost/auth/login?notice=${encodeURIComponent(PHISHING_TEXT)}`);
+		render(LoginPage);
+		expect(screen.queryByRole('status')).not.toBeInTheDocument();
+		expect(screen.queryByText(PHISHING_TEXT)).not.toBeInTheDocument();
+	});
+
+	it('maps register error codes to fixed copy and never shows URL text', async () => {
+		setPageUrl('http://localhost/auth/register?error=policy_unverified&redirect=/today');
+		const { unmount } = render(RegisterPage);
+		await waitFor(() => {
+			expect(screen.getByText(AUTH_ERROR_COPY.policy_unverified)).toBeInTheDocument();
+		});
+		await waitFor(() => {
+			expect(gotoMock).toHaveBeenCalledWith(
+				'/auth/register?redirect=%2Ftoday',
+				CLEAN_URL_OPTIONS
+			);
+		});
+		unmount();
+
+		setPageUrl(`http://localhost/auth/register?error=${encodeURIComponent(PHISHING_TEXT)}`);
+		render(RegisterPage);
+		await waitFor(() => {
+			expect(screen.getByText(GENERIC_AUTH_ERROR)).toBeInTheDocument();
+		});
+		expect(screen.queryByText(PHISHING_TEXT)).not.toBeInTheDocument();
+		expect(toastSuccessMock).not.toHaveBeenCalled();
 	});
 
 	it('keeps the invite redirect on the sign-in link after registration requires email confirmation', async () => {

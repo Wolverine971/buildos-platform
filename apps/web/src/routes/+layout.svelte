@@ -643,6 +643,9 @@
 
 		resetResourceLoaders();
 		forceOnboardingActive = false;
+		// Toasts can hold the previous account's content (a paused "document updated" toast
+		// with its diff expanded), and the container stays mounted on the login screen.
+		toastService?.clear();
 
 		if (!browser) return;
 

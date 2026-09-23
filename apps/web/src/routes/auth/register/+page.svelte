@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { BRAND_TAGLINE } from '$lib/constants/brand';
 	import { page } from '$app/stores';
-	import { afterNavigate, goto, replaceState } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import { PUBLIC_GOOGLE_CLIENT_ID } from '$env/static/public';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -13,6 +13,7 @@
 	import AnimatedBrainBolt from '$lib/components/layout/AnimatedBrainBolt.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
+	import { authErrorMessage } from '$lib/utils/auth-status';
 	import { logAuthClientError } from '$lib/utils/auth-client-logger';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { getFirstTouchAttribution } from '$lib/services/posthog';
@@ -121,22 +122,28 @@
 		return null;
 	}
 
-	// URL status from OAuth callbacks. Errors render inline (toasts are not mounted for
-	// signed-out visitors).
+	// URL status from OAuth callbacks. The URL carries only an error code; the copy comes from
+	// a fixed table so a crafted link can't put its own words on this page. Errors render
+	// inline (toasts are not mounted for signed-out visitors).
 	afterNavigate(() => {
 		const url = new URL($page.url);
-		const message = url.searchParams.get('message');
 		const urlError = url.searchParams.get('error');
-		if (!message && !urlError) return;
+		if (!urlError && !url.searchParams.has('message')) return;
 
-		if (message) toastService.success(message);
-		if (urlError) error = urlError;
+		if (urlError) error = authErrorMessage(urlError) ?? '';
 
 		url.searchParams.delete('message');
 		url.searchParams.delete('error');
-		// The first afterNavigate runs just before SvelteKit marks its router started, and
-		// replaceState throws in dev until then; one microtask later it is ready.
-		queueMicrotask(() => replaceState(url.toString(), {}));
+		// A replacing goto rewrites SvelteKit's own history entry, so Back can't restore the
+		// status. The first afterNavigate runs just before the router has started; one
+		// microtask later it is ready to navigate.
+		queueMicrotask(() => {
+			void goto(`${url.pathname}${url.search}${url.hash}`, {
+				replaceState: true,
+				keepFocus: true,
+				noScroll: true
+			});
+		});
 	});
 
 	// Google OAuth remains the same

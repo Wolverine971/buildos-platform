@@ -2,6 +2,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { logServerError } from '$lib/server/error-tracking';
+import { authErrorCodeForGoogleError, authErrorPath } from '$lib/utils/auth-status';
 import { getAuthUserCreatedAt, inferAuthUserJustCreated } from '$lib/utils/auth-profile';
 import {
 	getSecurityEventLogOptions,
@@ -59,18 +60,7 @@ export const load: PageServerLoad = async ({ url, request, platform, locals: { s
 				hasState: Boolean(state)
 			}
 		});
-		const errorDescriptions: Record<string, string> = {
-			access_denied: 'You denied access to your Google account',
-			invalid_request: 'Invalid OAuth request',
-			unauthorized_client: 'Unauthorized OAuth client',
-			unsupported_response_type: 'Unsupported response type',
-			invalid_scope: 'Invalid OAuth scope requested',
-			server_error: 'Google OAuth server error',
-			temporarily_unavailable: 'Google OAuth temporarily unavailable'
-		};
-
-		const errorMsg = errorDescriptions[oauthError] || `Authentication failed: ${oauthError}`;
-		throw redirect(303, `/auth/login?error=${encodeURIComponent(errorMsg)}`);
+		throw redirect(303, authErrorPath('/auth/login', authErrorCodeForGoogleError(oauthError)));
 	}
 
 	if (!code) {
@@ -103,10 +93,7 @@ export const load: PageServerLoad = async ({ url, request, platform, locals: { s
 				hasState: Boolean(state)
 			}
 		});
-		throw redirect(
-			303,
-			`/auth/login?error=${encodeURIComponent('No authorization code received')}`
-		);
+		throw redirect(303, authErrorPath('/auth/login', 'google_failed'));
 	}
 
 	console.log('Exchanging code for session...');
@@ -145,10 +132,7 @@ export const load: PageServerLoad = async ({ url, request, platform, locals: { s
 				state
 			}
 		});
-		throw redirect(
-			303,
-			`/auth/login?error=${encodeURIComponent('Authentication failed. Please try again.')}`
-		);
+		throw redirect(303, authErrorPath('/auth/login', 'google_failed'));
 	}
 
 	if (!data.session || !data.user) {
@@ -180,7 +164,7 @@ export const load: PageServerLoad = async ({ url, request, platform, locals: { s
 				state
 			}
 		});
-		throw redirect(303, `/auth/login?error=${encodeURIComponent('Failed to create session')}`);
+		throw redirect(303, authErrorPath('/auth/login', 'session_failed'));
 	}
 
 	console.log('Gmail OAuth successful for user:', data.user.id);

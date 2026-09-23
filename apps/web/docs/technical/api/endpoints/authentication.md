@@ -80,11 +80,11 @@ The Authentication & Account API handles user authentication, session management
 
 ---
 
-### 2. `POST /auth/login` - User Login
+### 2. `POST /api/auth/login` - User Login
 
 **Purpose:** Authenticate user and create session.
 
-**File:** `src/routes/auth/login/+server.ts`
+**File:** `src/routes/api/auth/login/+server.ts`
 
 **Authentication:** None (public)
 

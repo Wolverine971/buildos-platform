@@ -76,17 +76,35 @@ describe('Authenticated Pages', () => {
 		it('redirects an un-onboarded authenticated user into /onboarding, preserving the query string', async () => {
 			const { load } = await import('../+page.server');
 
-			// mockUser.onboarding_completed_at is null → route into the onboarding flow.
+			// mockUser.onboarding_completed_at is null and they have no projects → onboarding.
 			await expect(
 				load({
 					locals: {
-						safeGetSession: vi.fn().mockResolvedValue({ user: mockUser })
+						safeGetSession: vi.fn().mockResolvedValue({ user: mockUser }),
+						supabase: { from: vi.fn(() => createCountQuery(0)) }
 					},
 					url: new URL('https://build-os.com/?open=agent-chat')
 				} as any)
 			).rejects.toMatchObject({
 				status: 303,
 				location: '/onboarding?open=agent-chat'
+			});
+		});
+
+		it('sends a returning user with projects to /today even when onboarding is unset', async () => {
+			const { load } = await import('../+page.server');
+
+			await expect(
+				load({
+					locals: {
+						safeGetSession: vi.fn().mockResolvedValue({ user: mockUser }),
+						supabase: { from: vi.fn(() => createCountQuery(2)) }
+					},
+					url: new URL('https://build-os.com/?open=agent-chat')
+				} as any)
+			).rejects.toMatchObject({
+				status: 303,
+				location: '/today?open=agent-chat'
 			});
 		});
 

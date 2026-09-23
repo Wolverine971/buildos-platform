@@ -2,6 +2,7 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { GoogleOAuthHandler } from '$lib/utils/google-oauth';
+import { authErrorPath } from '$lib/utils/auth-status';
 import {
 	getSecurityEventLogOptions,
 	getSecurityRequestContext,
@@ -33,10 +34,7 @@ export const load: PageServerLoad = async ({ url, request, platform, locals, coo
 			},
 			securityEventOptions
 		);
-		throw redirect(
-			303,
-			`/auth/login?error=${encodeURIComponent('Authentication state mismatch. Please try again.')}`
-		);
+		throw redirect(303, authErrorPath('/auth/login', 'state_mismatch'));
 	}
 
 	// Pass locals to the handler so it can update server-side auth state

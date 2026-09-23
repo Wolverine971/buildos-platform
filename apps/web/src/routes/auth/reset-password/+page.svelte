@@ -1,7 +1,10 @@
 <!-- apps/web/src/routes/auth/reset-password/+page.svelte -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import type { ActionData, PageData } from './$types';
+	import { toastService } from '$lib/stores/toast.store';
+	import { AUTH_NOTICE_COPY } from '$lib/utils/auth-status';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -38,12 +41,32 @@
 			class="space-y-6"
 			use:enhance={() => {
 				loading = true;
-				return async ({ update }) => {
+				return async ({ result, update }) => {
+					// The reset session is a signed-in session: confirm with a toast (it survives the
+					// navigation) and go straight into the app.
+					if (result.type === 'success' && result.data?.passwordUpdated) {
+						toastService.success(AUTH_NOTICE_COPY.password_updated);
+						await goto('/today');
+						return;
+					}
 					loading = false;
 					update();
 				};
 			}}
 		>
+			{#if form?.passwordUpdated}
+				<!-- Without JavaScript the action result renders here instead of the toast. -->
+				<div
+					role="status"
+					class="rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-foreground"
+				>
+					{AUTH_NOTICE_COPY.password_updated}
+					<a href="/today" class="ml-1 font-medium text-accent hover:opacity-80">
+						Continue to BuildOS →
+					</a>
+				</div>
+			{/if}
+
 			{#if data.recoveryError}
 				<div
 					class="rounded-lg border border-destructive/50 bg-destructive/10 text-foreground px-4 py-3"

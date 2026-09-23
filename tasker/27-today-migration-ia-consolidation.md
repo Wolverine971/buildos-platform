@@ -104,7 +104,7 @@ invite targets — only change the fallback:
 - `apps/web/src/routes/auth/register/+page.server.ts:9` (already-signed-in guard)
 - `apps/web/src/routes/onboarding/+page.server.ts:54` (post-onboarding redirect)
 - `apps/web/src/routes/auth/login/+page.svelte:207` (client `destination ?? '/dashboard'`)
-- `apps/web/src/routes/auth/login/+server.ts:173` (login success `/dashboard?auth_success=true`)
+- ~~`auth/login/+server.ts` (login success `/dashboard?auth_success=true`)~~ — unused handler deleted 2026-09-23; sign-in posts to `/api/auth/login`
 - `apps/web/src/routes/auth/google/login-callback/+page.server.ts:47` (`successPath`)
 - `apps/web/src/routes/auth/google/register-callback/+page.server.ts:47` (`successPath`)
 - `apps/web/src/routes/auth/google/gmail-callback/+page.server.ts:16,249` (default)

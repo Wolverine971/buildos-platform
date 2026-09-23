@@ -2,6 +2,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getTodayFeed } from '$lib/server/today-feed.service';
+import { needsOnboarding } from '$lib/server/project-visibility';
 
 export const load: PageServerLoad = async ({
 	locals: { safeGetSession, supabase, serverTiming },
@@ -16,11 +17,12 @@ export const load: PageServerLoad = async ({
 		throw redirect(303, '/auth/login?redirect=%2Ftoday');
 	}
 
-	// Don't strand a user who hasn't finished onboarding on /today (bare-domain,
-	// logo, or bookmark). Route them into the flow; the WP-0 first-run state is a
-	// backstop, but /onboarding is where the first structured win is manufactured.
-	// Explore/skip users have onboarding_completed_at set, so they fall through.
-	if (!user.onboarding_completed_at) {
+	// Don't strand a new user on an empty /today (bare-domain, logo, or bookmark). Route them
+	// into the flow; the WP-0 first-run state is a backstop, but /onboarding is where the first
+	// structured win is manufactured. Explore/skip users have onboarding_completed_at set, and
+	// returning users who already have projects (some with the flag still null) stay here —
+	// sign-in lands on /today, so they'd otherwise get onboarding on every sign-in.
+	if (await needsOnboarding(supabase, user)) {
 		throw redirect(303, '/onboarding');
 	}
 

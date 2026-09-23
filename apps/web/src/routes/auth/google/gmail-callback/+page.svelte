@@ -3,13 +3,15 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { authErrorMessage, authErrorPath } from '$lib/utils/auth-status';
 
 	let error = '';
 	let timeoutReached = false;
 
 	onMount(() => {
 		// Check for error in URL params
-		const urlError = $page.url.searchParams.get('error');
+		// Fixed copy only: the URL text is never shown.
+		const urlError = authErrorMessage($page.url.searchParams.get('error'));
 		if (urlError) {
 			error = urlError;
 		}
@@ -19,7 +21,7 @@
 			timeoutReached = true;
 			if (!error) {
 				console.warn('OAuth callback timeout reached, redirecting to login');
-				goto('/auth/login?error=Authentication timeout. Please try again.');
+				goto(authErrorPath('/auth/login', 'timeout'));
 			}
 		}, 10000); // 10 second timeout
 

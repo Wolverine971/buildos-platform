@@ -64,8 +64,7 @@ describe('GoogleOAuthHandler registration guardrails', () => {
 			expect(locals.user).toBeNull();
 			expect(error).toMatchObject({
 				status: 303,
-				location:
-					'/auth/login?message=Account%20already%20exists.%20Please%20sign%20in%20instead.'
+				location: '/auth/login?notice=account_exists'
 			});
 		}
 	});
@@ -126,9 +125,39 @@ describe('GoogleOAuthHandler registration guardrails', () => {
 			expect(locals.user).toBeNull();
 			expect(error).toMatchObject({
 				status: 303,
-				location:
-					'/auth/register?error=We%20could%20not%20verify%20your%20policy%20acceptance.%20Please%20try%20again.'
+				location: '/auth/register?error=policy_unverified'
 			});
 		}
+	});
+});
+
+describe('GoogleOAuthHandler error redirects', () => {
+	it.each([
+		['access_denied', 'google_cancelled'],
+		['temporarily_unavailable', 'google_unavailable'],
+		['Your account is locked. Verify at evil.example', 'google_failed']
+	])('sends Google error %j to sign-in as a fixed code', async (googleError, code) => {
+		const handler = new GoogleOAuthHandler({ auth: {} } as any);
+		const url = new URL('https://build-os.com/auth/google/login-callback');
+		url.searchParams.set('error', googleError);
+
+		await expect(
+			handler.handleCallback(url, { redirectPath: '/auth/login', successPath: '/today' })
+		).rejects.toMatchObject({ status: 303, location: `/auth/login?error=${code}` });
+	});
+
+	it('never puts the failure message in the URL when session setup fails', async () => {
+		const handler = new GoogleOAuthHandler({ auth: { signOut: vi.fn() } } as any);
+		vi.spyOn(handler, 'exchangeCodeForTokens').mockResolvedValue({ access_token: 'a' });
+		vi.spyOn(handler, 'authenticateWithSupabase').mockRejectedValue(
+			new Error('raw provider detail')
+		);
+
+		await expect(
+			handler.handleCallback(
+				new URL('https://build-os.com/auth/google/login-callback?code=abc'),
+				{ redirectPath: '/auth/login', successPath: '/today' }
+			)
+		).rejects.toMatchObject({ status: 303, location: '/auth/login?error=session_failed' });
 	});
 });

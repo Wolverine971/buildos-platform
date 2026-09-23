@@ -4,6 +4,12 @@ import { PRIVATE_GOOGLE_CLIENT_ID, PRIVATE_GOOGLE_CLIENT_SECRET } from '$env/sta
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
+import {
+	authErrorCodeForGoogleError,
+	authErrorPath,
+	authNoticePath,
+	type AuthErrorCode
+} from '$lib/utils/auth-status';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
@@ -45,15 +51,17 @@ export class GoogleOAuthError extends Error {
 	}
 }
 
-const ERROR_DESCRIPTIONS: Record<string, string> = {
-	access_denied: 'You denied access to your Google account',
-	invalid_request: 'Invalid OAuth request',
-	unauthorized_client: 'Unauthorized OAuth client',
-	unsupported_response_type: 'Unsupported response type',
-	invalid_scope: 'Invalid OAuth scope requested',
-	server_error: 'Google OAuth server error',
-	temporarily_unavailable: 'Google OAuth temporarily unavailable'
-};
+type AuthScreenPath = '/auth/login' | '/auth/register';
+
+/** Which sign-in error code a failed step shows; the URL never carries the raw message. */
+function authErrorCodeFor(error: unknown, fallback: AuthErrorCode): AuthErrorCode {
+	if (!(error instanceof GoogleOAuthError)) return fallback;
+	if (error.code === 'profile_setup_failed') return 'account_setup_failed';
+	if (error.code === 'no_session_created' || error.code === 'session_creation_failed') {
+		return 'session_failed';
+	}
+	return fallback;
+}
 
 function decodeOAuthRedirect(state: string | null): string | null {
 	if (!state) return null;
@@ -225,9 +233,8 @@ export class GoogleOAuthHandler {
 	/**
 	 * Handle OAuth callback errors
 	 */
-	handleOAuthError(error: string, redirectPath: string): never {
-		const errorMsg = ERROR_DESCRIPTIONS[error] || `Authentication failed: ${error}`;
-		throw redirect(303, `${redirectPath}?error=${encodeURIComponent(errorMsg)}`);
+	handleOAuthError(error: string, redirectPath: AuthScreenPath): never {
+		throw redirect(303, authErrorPath(redirectPath, authErrorCodeForGoogleError(error)));
 	}
 
 	/**
@@ -374,7 +381,7 @@ export class GoogleOAuthHandler {
 	async handleCallback(
 		url: URL,
 		config: {
-			redirectPath: string;
+			redirectPath: AuthScreenPath;
 			successPath: string;
 			isRegistration?: boolean;
 			legalAcceptanceToken?: string;
@@ -395,7 +402,6 @@ export class GoogleOAuthHandler {
 		// Handle OAuth errors
 		if (error) {
 			console.error('Google OAuth error:', error);
-			const errorMsg = ERROR_DESCRIPTIONS[error] || `Authentication failed: ${error}`;
 			await logSecurityEvent(
 				{
 					eventType: config.isRegistration
@@ -414,7 +420,10 @@ export class GoogleOAuthHandler {
 				},
 				this.securityEventOptions
 			);
-			throw redirect(303, `${config.redirectPath}?error=${encodeURIComponent(errorMsg)}`);
+			throw redirect(
+				303,
+				authErrorPath(config.redirectPath, authErrorCodeForGoogleError(error))
+			);
 		}
 
 		if (!code) {
@@ -436,10 +445,7 @@ export class GoogleOAuthHandler {
 				},
 				this.securityEventOptions
 			);
-			throw redirect(
-				303,
-				`${config.redirectPath}?error=${encodeURIComponent('No authorization code received')}`
-			);
+			throw redirect(303, authErrorPath(config.redirectPath, 'google_failed'));
 		}
 
 		// Process authentication
@@ -474,7 +480,10 @@ export class GoogleOAuthHandler {
 				},
 				this.securityEventOptions
 			);
-			throw redirect(303, `${config.redirectPath}?error=${encodeURIComponent(errorMessage)}`);
+			throw redirect(
+				303,
+				authErrorPath(config.redirectPath, authErrorCodeFor(error, 'google_failed'))
+			);
 		}
 
 		// Step 2: Authenticate with Supabase
@@ -509,7 +518,10 @@ export class GoogleOAuthHandler {
 				},
 				this.securityEventOptions
 			);
-			throw redirect(303, `${config.redirectPath}?error=${encodeURIComponent(errorMessage)}`);
+			throw redirect(
+				303,
+				authErrorPath(config.redirectPath, authErrorCodeFor(error, 'session_failed'))
+			);
 		}
 
 		// Step 3: Handle registration-specific logic
@@ -532,10 +544,7 @@ export class GoogleOAuthHandler {
 				},
 				this.securityEventOptions
 			);
-			throw redirect(
-				303,
-				`/auth/login?message=${encodeURIComponent('Account already exists. Please sign in instead.')}`
-			);
+			throw redirect(303, authNoticePath('/auth/login', 'account_exists'));
 		}
 
 		if (config.isRegistration && authResult.isNewUser) {
@@ -573,10 +582,7 @@ export class GoogleOAuthHandler {
 					);
 				}
 				await this.clearAuthSession();
-				throw redirect(
-					303,
-					`/auth/register?error=${encodeURIComponent('We could not verify your policy acceptance. Please try again.')}`
-				);
+				throw redirect(303, authErrorPath('/auth/register', 'policy_unverified'));
 			}
 
 			// UTM attribution can't ride the OAuth redirect; the client-side

@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/auth/login/+page.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { afterNavigate, goto, preloadCode, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, preloadCode } from '$app/navigation';
 	import { PUBLIC_GOOGLE_CLIENT_ID } from '$env/static/public';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
@@ -10,11 +10,13 @@
 	import { CircleCheck, Eye, EyeOff } from '$lib/icons/lucide';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
+	import { authErrorMessage, authNoticeMessage } from '$lib/utils/auth-status';
 	import { logAuthClientError } from '$lib/utils/auth-client-logger';
 
-	// Status handed over in the URL (sign-out, password reset, OAuth failures) is read once so
-	// the server render already shows it. Toasts are not mounted for signed-out visitors, so
-	// these render inline.
+	// Status handed over in the URL (sign-out, OAuth failures) is read once so the server render
+	// already shows it. The URL carries only codes; the copy comes from a fixed table so a
+	// crafted link can't put its own words in a notice. Toasts are not mounted for signed-out
+	// visitors, so these render inline.
 	const initialParams = new URL($page.url).searchParams;
 	const signedOut = initialParams.has('signed_out');
 
@@ -23,8 +25,8 @@
 	let email = $state('');
 	let password = $state('');
 	let showPassword = $state(false);
-	let error = $state(initialParams.get('error') ?? '');
-	let notice = $state(initialParams.get('message') ?? '');
+	let error = $state(authErrorMessage(initialParams.get('error')) ?? '');
+	let notice = $state(authNoticeMessage(initialParams.get('notice')) ?? '');
 	let emailError = $state('');
 	let redirectParam = $derived(normalizeRedirectPath($page.url.searchParams.get('redirect')));
 	let redirectQuery = $derived(
@@ -267,19 +269,24 @@
 		if (event.persisted) googleLoading = false;
 	}
 
-	// Drop the one-time status params so a refresh or bookmark doesn't replay them.
+	// Drop the one-time status params so a refresh, bookmark, or Back doesn't replay them. A
+	// replacing goto (not shallow replaceState) rewrites SvelteKit's own history entry; shallow
+	// state keeps the original URL, which Back would restore. The page stays mounted, so the
+	// status already read above stays on screen.
+	const STATUS_PARAMS = ['signed_out', 'notice', 'message', 'error'];
 	afterNavigate(() => {
 		const url = new URL($page.url);
-		const hadStatus = ['signed_out', 'message', 'error'].some((key) =>
-			url.searchParams.has(key)
-		);
-		if (!hadStatus) return;
-		url.searchParams.delete('signed_out');
-		url.searchParams.delete('message');
-		url.searchParams.delete('error');
-		// The first afterNavigate runs just before SvelteKit marks its router started, and
-		// replaceState throws in dev until then; one microtask later it is ready.
-		queueMicrotask(() => replaceState(url.toString(), {}));
+		if (!STATUS_PARAMS.some((key) => url.searchParams.has(key))) return;
+		for (const key of STATUS_PARAMS) url.searchParams.delete(key);
+		// The first afterNavigate runs just before SvelteKit marks its router started; one
+		// microtask later it is ready to navigate.
+		queueMicrotask(() => {
+			void goto(`${url.pathname}${url.search}${url.hash}`, {
+				replaceState: true,
+				keepFocus: true,
+				noScroll: true
+			});
+		});
 	});
 </script>
 
