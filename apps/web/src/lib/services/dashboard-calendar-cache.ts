@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/dashboard-calendar-cache.ts
 import { browser } from '$app/environment';
+import { page } from '$app/state';
 import { addDays, addMonths, startOfDay } from 'date-fns';
 import { getMonthDates, getWeekDates } from '$lib/utils/schedulingUtils';
 import { requireApiData } from '$lib/utils/api-client-helpers';
@@ -47,9 +48,14 @@ const MAX_ITEM_WINDOWS = 8;
 const MAX_PROVIDER_WINDOWS = 6;
 const PROVIDER_MAX_RESULTS = 500;
 
+// The account the cached data belongs to. Sign-in/out are client-side navigations, so the
+// module outlives a session; a different user must never paint (or save) the last one's data.
+let ownerUserId: string | null = null;
 let itemWindows: ItemsEntry[] = [];
 // Bumped by invalidate so a response that started before a write never re-enters the cache.
 let generation = 0;
+// Bumped when the owner changes so a response from the previous account stores nothing.
+let ownerEpoch = 0;
 const itemRequests = new Map<string, Promise<DashboardCalendarPayload>>();
 let metaEntry: TimedEntry<DashboardCalendarMeta> | null = null;
 // Once a toggle is flipped in this tab it stays authoritative for the session, so a meta read
@@ -226,6 +232,7 @@ export function loadDashboardCalendar(
 	if (inFlight && !options.force) return inFlight;
 
 	const requestGeneration = generation;
+	const requestEpoch = ownerEpoch;
 	const params = new URLSearchParams({
 		start: range.start.toISOString(),
 		end: range.end.toISOString(),
@@ -236,21 +243,24 @@ export function loadDashboardCalendar(
 			requireApiData<DashboardCalendarPayload>(response, 'Failed to load calendar')
 		)
 		.then((payload) => {
+			const sameOwner = requestEpoch === ownerEpoch;
 			const meta =
-				payload.meta && preferencesOverride
+				payload.meta && preferencesOverride && sameOwner
 					? { ...payload.meta, preferences: preferencesOverride }
 					: payload.meta;
-			for (const project of Object.values(payload.projects ?? {})) {
-				projectSummaries.set(project.id, project);
+			if (sameOwner) {
+				for (const project of Object.values(payload.projects ?? {})) {
+					projectSummaries.set(project.id, project);
+				}
 			}
-			if (requestGeneration === generation) {
+			if (sameOwner && requestGeneration === generation) {
 				storeItems(range, payload.items ?? []);
 				if (meta) storeMeta(meta);
 			}
 			return {
 				items: payload.items ?? [],
 				projects: payload.projects ?? {},
-				meta: meta ?? metaEntry?.value
+				meta: meta ?? (sameOwner ? metaEntry?.value : undefined)
 			};
 		})
 		.finally(() => {
@@ -284,6 +294,7 @@ export function loadDashboardCalendarProviderEvents(
 	if (inFlight && !options.force) return inFlight;
 
 	const requestGeneration = generation;
+	const requestEpoch = ownerEpoch;
 
 	const request = fetchConnectedGoogleCalendarEvents({
 		start: range.start.toISOString(),
@@ -291,7 +302,7 @@ export function loadDashboardCalendarProviderEvents(
 		maxResults: PROVIDER_MAX_RESULTS
 	})
 		.then((payload) => {
-			if (requestGeneration === generation) {
+			if (requestEpoch === ownerEpoch && requestGeneration === generation) {
 				providerWindows.delete(key);
 				providerWindows.set(key, { value: payload, fetchedAt: Date.now() });
 				if (providerWindows.size > MAX_PROVIDER_WINDOWS) {
@@ -318,6 +329,27 @@ export function updateDashboardCalendarPreferences(
 	}
 }
 
+/**
+ * Bind the cache to the signed-in user before reading it. When the user differs from the
+ * one the cache was filled for (sign-out, account switch), everything goes: items, Google
+ * events, meta (connected account emails), project labels, in-flight requests, and the
+ * display-preference override, so nothing from the last account is painted or saved.
+ */
+export function setDashboardCalendarCacheOwner(userId: string | null | undefined): void {
+	const next = userId ?? null;
+	if (next === ownerUserId) return;
+	ownerUserId = next;
+	ownerEpoch += 1;
+	generation += 1;
+	itemWindows = [];
+	itemRequests.clear();
+	metaEntry = null;
+	preferencesOverride = null;
+	projectSummaries.clear();
+	providerWindows.clear();
+	providerRequests.clear();
+}
+
 /** Drop cached data after a write so the next read reflects it. */
 export function invalidateDashboardCalendar(options: { meta?: boolean } = {}): void {
 	generation += 1;
@@ -333,6 +365,8 @@ export function invalidateDashboardCalendar(options: { meta?: boolean } = {}): v
  */
 export function prefetchDashboardCalendar(): void {
 	if (!browser) return;
+	// Callers do not pass the user; the root layout always carries it in page data.
+	setDashboardCalendarCacheOwner(page.data?.user?.id);
 	const today = new Date();
 	const saved = readSavedDashboardCalendarState();
 	const cached = peekDashboardCalendarItems(today, saved.viewMode);

@@ -103,6 +103,38 @@ describe('CalendarItemPanel', () => {
 		expect(screen.getByRole('button', { name: /Tomorrow/ })).toBeDisabled();
 	});
 
+	it('hides "Tomorrow" for a task already due later in the week', async () => {
+		const onReschedule = vi.fn();
+		render(CalendarItemPanel, {
+			props: {
+				item: calendarItem({
+					item_kind: 'range',
+					title: 'Draft the offer sheet',
+					start_at: new Date(2026, 8, 22, 9).toISOString(),
+					end_at: new Date(2026, 8, 25, 17).toISOString()
+				}),
+				detail: {
+					type: 'task',
+					data: {
+						id: 'task-1',
+						state_key: 'todo',
+						start_at: new Date(2026, 8, 22, 9).toISOString(),
+						due_at: new Date(2026, 8, 25, 17).toISOString()
+					}
+				},
+				project: null,
+				onClose: vi.fn(),
+				onReschedule
+			}
+		});
+
+		expect(screen.queryByRole('button', { name: /Tomorrow/ })).toBeNull();
+		const nextWeek = screen.getByRole('button', { name: /Next week/ });
+		expect(nextWeek).toBeEnabled();
+		await fireEvent.click(nextWeek);
+		expect(onReschedule).toHaveBeenCalledWith('nextWeek');
+	});
+
 	it('gives Google events their duration, meeting link, and guests', () => {
 		render(CalendarItemPanel, {
 			props: {

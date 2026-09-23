@@ -39,6 +39,7 @@
 	import {
 		describeCalendarItemTiming,
 		htmlToPlainText,
+		offersQuickReschedule,
 		planQuickReschedule,
 		type CalendarItemTiming,
 		type CalendarTimingInput,
@@ -158,6 +159,10 @@
 
 	let tomorrowPlan = $derived(task ? planQuickReschedule(task, 'tomorrow') : null);
 	let nextWeekPlan = $derived(task ? planQuickReschedule(task, 'nextWeek') : null);
+	// A move that would pull the deadline earlier is hidden, not just disabled. Until the
+	// task loads, both stay visible (disabled) so the row does not jump.
+	let showTomorrow = $derived(!task || offersQuickReschedule(task, 'tomorrow'));
+	let showNextWeek = $derived(!task || offersQuickReschedule(task, 'nextWeek'));
 
 	let meetingUrl = $derived(
 		typeof item.props?.meeting_url === 'string' ? (item.props.meeting_url as string) : null
@@ -447,27 +452,33 @@
 					>
 						Mark done
 					</Button>
-					<span class="ml-1 text-xs text-muted-foreground">Move to</span>
-					<Button
-						variant="outline"
-						size="sm"
-						loading={busyAction === 'tomorrow'}
-						disabled={busy || !tomorrowPlan}
-						title={planTitle(tomorrowPlan)}
-						onclick={() => onReschedule?.('tomorrow')}
-					>
-						Tomorrow
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						loading={busyAction === 'nextWeek'}
-						disabled={busy || !nextWeekPlan}
-						title={planTitle(nextWeekPlan)}
-						onclick={() => onReschedule?.('nextWeek')}
-					>
-						Next week
-					</Button>
+					{#if showTomorrow || showNextWeek}
+						<span class="ml-1 text-xs text-muted-foreground">Move to</span>
+					{/if}
+					{#if showTomorrow}
+						<Button
+							variant="outline"
+							size="sm"
+							loading={busyAction === 'tomorrow'}
+							disabled={busy || !tomorrowPlan}
+							title={planTitle(tomorrowPlan)}
+							onclick={() => onReschedule?.('tomorrow')}
+						>
+							Tomorrow
+						</Button>
+					{/if}
+					{#if showNextWeek}
+						<Button
+							variant="outline"
+							size="sm"
+							loading={busyAction === 'nextWeek'}
+							disabled={busy || !nextWeekPlan}
+							title={planTitle(nextWeekPlan)}
+							onclick={() => onReschedule?.('nextWeek')}
+						>
+							Next week
+						</Button>
+					{/if}
 				{/if}
 			</div>
 		{:else if meetingUrl}

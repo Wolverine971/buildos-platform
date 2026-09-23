@@ -366,3 +366,88 @@ describe('AssetDetailModal gallery', () => {
 		expect(stageImage().style.transform).toBe('scale(1)');
 	});
 });
+
+describe('AssetDetailModal move while stepping', () => {
+	it('holds the viewer on the image being moved and detaches only its own old link', async () => {
+		stubAnimations();
+		const calls: Array<{ method: string; url: string }> = [];
+		let releasePost!: () => void;
+		const linksById: Record<string, string> = { a: 'doc-brand', b: 'doc-site' };
+		global.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? 'GET';
+			calls.push({ method, url });
+			const id = /\/api\/onto\/assets\/([^/?]+)$/.exec(url)?.[1];
+			if (method === 'GET' && id) {
+				return okJson({
+					data: {
+						asset: { ...assetPayload([]).data.asset, id, caption: `Image ${id}` },
+						links: [
+							{
+								id: `link-${id}`,
+								asset_id: id,
+								project_id: 'project-1',
+								entity_kind: 'document',
+								entity_id: linksById[id],
+								role: 'attachment'
+							}
+						]
+					}
+				});
+			}
+			if (method === 'POST') {
+				return new Promise<Response>((resolve) => {
+					releasePost = () =>
+						resolve({
+							ok: true,
+							status: 200,
+							json: async () => ({ data: {} })
+						} as Response);
+				});
+			}
+			return okJson({ data: {} });
+		}) as typeof fetch;
+
+		const onUpdated = vi.fn();
+		render(AssetDetailModal, {
+			props: {
+				isOpen: true,
+				projectId: 'project-1',
+				assetId: 'a',
+				assetIds: ['a', 'b'],
+				documentOptions: DOCUMENTS,
+				onUpdated
+			}
+		});
+
+		const picker = (await screen.findByLabelText('In document')) as HTMLSelectElement;
+		await waitFor(() => expect(picker.value).toBe('doc-brand'));
+		await fireEvent.change(picker, { target: { value: 'doc-site' } });
+		await waitFor(() => expect(calls.some((call) => call.method === 'POST')).toBe(true));
+
+		// Every way of stepping is held while the move is in flight.
+		expect(screen.getByRole('button', { name: 'Next image' })).toBeDisabled();
+		await fireEvent.click(screen.getByRole('button', { name: 'Next image' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Show image 2 of 2' }));
+		await fireEvent.keyDown(window, { key: 'ArrowRight' });
+		expect(screen.getByText('1 / 2')).toBeInTheDocument();
+		expect(screen.getByDisplayValue('Image a')).toBeInTheDocument();
+
+		releasePost();
+		await waitFor(() => expect(onUpdated).toHaveBeenCalled());
+		expect(calls.filter((call) => call.method !== 'GET')).toEqual([
+			{ method: 'POST', url: '/api/onto/assets/a/links' },
+			{
+				method: 'DELETE',
+				url: '/api/onto/assets/a/links?entity_kind=document&entity_id=doc-brand&role=attachment'
+			}
+		]);
+
+		// Once it settles, stepping works again.
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Next image' })).toBeEnabled()
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Next image' }));
+		expect(await screen.findByDisplayValue('Image b')).toBeInTheDocument();
+	});
+});

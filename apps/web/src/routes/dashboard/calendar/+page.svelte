@@ -35,6 +35,7 @@
 		peekDashboardCalendarProviderEvents,
 		readSavedDashboardCalendarState,
 		saveDashboardCalendarState,
+		setDashboardCalendarCacheOwner,
 		updateDashboardCalendarPreferences,
 		type DashboardCalendarViewMode
 	} from '$lib/services/dashboard-calendar-cache';
@@ -50,6 +51,8 @@
 		GoogleCalendarSourceSummary
 	} from '$lib/types/google-calendar-integration';
 	import type { Component } from 'svelte';
+
+	let { data } = $props();
 
 	type ViewMode = DashboardCalendarViewMode;
 	type LayerKey = 'events' | 'range' | 'start' | 'due';
@@ -107,6 +110,10 @@
 	const detailCache = new Map<string, CalendarItemDetail>();
 	// Details load on hover (after a short rest) and on click; both share one request.
 	const detailRequests = new Map<string, Promise<CalendarItemDetail | null>>();
+	// Bumped by every task write and refresh: a detail read that started earlier may still be
+	// shown by its own caller, but never cached, so a stale due date can't feed a later
+	// reschedule plan or Undo.
+	let detailGeneration = 0;
 	let intentTimer: ReturnType<typeof setTimeout> | null = null;
 	let panelBusy = $state<CalendarPanelAction | null>(null);
 	// Latest-wins guards: only the newest range/provider/detail request may write state.
@@ -417,6 +424,7 @@
 	}
 
 	function handleRefresh() {
+		clearItemDetails();
 		invalidateDashboardCalendar({ meta: true });
 		void loadCalendarItems({ force: true });
 	}
@@ -440,6 +448,22 @@
 		return payload;
 	}
 
+	/** Drop every cached and in-flight detail (refresh, editor closed). */
+	function clearItemDetails() {
+		detailGeneration += 1;
+		detailCache.clear();
+		detailRequests.clear();
+	}
+
+	/** After a write to a task, its next detail read starts fresh. */
+	function invalidateTaskDetail(taskId: string) {
+		detailGeneration += 1;
+		// Same key getDetailKey builds for every calendar row of this task.
+		const key = `task:${taskId}`;
+		detailCache.delete(key);
+		detailRequests.delete(key);
+	}
+
 	function fetchItemDetail(item: CalendarItem): Promise<CalendarItemDetail | null> {
 		const key = getDetailKey(item);
 		const cached = detailCache.get(key);
@@ -447,6 +471,7 @@
 		const inFlight = detailRequests.get(key);
 		if (inFlight) return inFlight;
 
+		const requestGeneration = detailGeneration;
 		const request = (async (): Promise<CalendarItemDetail | null> => {
 			// Provider events already carry everything the panel shows.
 			if (item.source_table === 'google_calendar') return { type: 'event', data: {} };
@@ -471,11 +496,11 @@
 			return null;
 		})()
 			.then((result) => {
-				if (result) detailCache.set(key, result);
+				if (result && requestGeneration === detailGeneration) detailCache.set(key, result);
 				return result;
 			})
 			.finally(() => {
-				detailRequests.delete(key);
+				if (detailRequests.get(key) === request) detailRequests.delete(key);
 			});
 		detailRequests.set(key, request);
 		return request;
@@ -528,11 +553,7 @@
 	}
 
 	function applyTaskUpdate(taskId: string, updated: Record<string, any>) {
-		for (const [key, cached] of detailCache) {
-			if (cached.type === 'task' && cached.data?.id === taskId) {
-				detailCache.set(key, { ...cached, data: { ...cached.data, ...updated } });
-			}
-		}
+		invalidateTaskDetail(taskId);
 		if (detail?.type === 'task' && detail.data?.id === taskId) {
 			detail = { ...detail, data: { ...detail.data, ...updated } };
 		}
@@ -579,7 +600,9 @@
 		}
 	}
 
+	/** The loaded task behind the panel; never a detail that is still loading. */
 	function currentTask(): Record<string, any> | null {
+		if (detailLoading) return null;
 		return detail?.type === 'task' ? detail.data : null;
 	}
 
@@ -677,12 +700,14 @@
 		editEventId = null;
 		editProjectId = null;
 		// The edit may have changed any cached detail (title, dates, links).
-		detailCache.clear();
+		clearItemDetails();
 		invalidateDashboardCalendar();
 		void loadCalendarItems({ force: true });
 	}
 
 	onMount(() => {
+		// Before any cache read: a different signed-in user starts from an empty cache.
+		setDashboardCalendarCacheOwner(data.user?.id);
 		// The calendar always opens on today; the view and hidden calendars persist.
 		const saved = readSavedDashboardCalendarState();
 		viewMode = saved.viewMode;

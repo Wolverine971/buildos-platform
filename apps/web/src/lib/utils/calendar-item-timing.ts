@@ -82,7 +82,14 @@ function completedLabel(completedAt: Date, now: Date): string {
 }
 
 function describeAllDay(start: Date, end: Date | null, now: Date): CalendarItemTiming {
-	const exclusiveEnd = end && end > start ? end : addDays(startOfDay(start), 1);
+	// All-day ends are normally midnight-exclusive, but an event edited with the "All-day"
+	// checkbox can keep a clock time; that end still covers its whole last day.
+	const exclusiveEnd =
+		end && end > start
+			? end.getTime() === startOfDay(end).getTime()
+				? end
+				: addDays(startOfDay(end), 1)
+			: addDays(startOfDay(start), 1);
 	const days = Math.max(1, differenceInCalendarDays(exclusiveEnd, startOfDay(start)));
 	const lastDay = addDays(startOfDay(exclusiveEnd), -1);
 	const today = startOfDay(now);
@@ -214,13 +221,34 @@ export interface QuickReschedulePlan {
 	patch: { start_at?: string; due_at?: string };
 }
 
+type QuickRescheduleTask = { start_at?: string | null; due_at?: string | null };
+
+function quickRescheduleTargetDay(preset: QuickReschedulePreset, now: Date): Date {
+	return addDays(startOfDay(now), preset === 'tomorrow' ? 1 : 7);
+}
+
+/**
+ * False when the task's deadline already falls after the preset's day: moving there would
+ * pull the deadline earlier, so the action is not offered at all.
+ */
+export function offersQuickReschedule(
+	task: QuickRescheduleTask,
+	preset: QuickReschedulePreset,
+	now: Date = new Date()
+): boolean {
+	const due = task.due_at ? new Date(task.due_at) : null;
+	if (!due || Number.isNaN(due.getTime())) return true;
+	return differenceInCalendarDays(quickRescheduleTargetDay(preset, now), due) >= 0;
+}
+
 /**
  * Move a task to tomorrow or a week out (same offsets the overdue triage uses) while
  * keeping its time of day and, when it has both dates, the span between them.
- * Returns null when the task has no dates or is already on the target day.
+ * Returns null when the task has no dates, is already on the target day, or is due after
+ * it. A deadline never moves earlier and a shifted start never lands before today.
  */
 export function planQuickReschedule(
-	task: { start_at?: string | null; due_at?: string | null },
+	task: QuickRescheduleTask,
 	preset: QuickReschedulePreset,
 	now: Date = new Date()
 ): QuickReschedulePlan | null {
@@ -228,15 +256,22 @@ export function planQuickReschedule(
 	const start = task.start_at ? new Date(task.start_at) : null;
 	const anchor = due ?? start;
 	if (!anchor || Number.isNaN(anchor.getTime())) return null;
+	if (!offersQuickReschedule(task, preset, now)) return null;
 
-	const targetDay = addDays(startOfDay(now), preset === 'tomorrow' ? 1 : 7);
+	const today = startOfDay(now);
+	const targetDay = quickRescheduleTargetDay(preset, now);
 	const days = differenceInCalendarDays(targetDay, anchor);
 	if (days === 0) return null;
 
 	const patch: QuickReschedulePlan['patch'] = {};
 	if (due) patch.due_at = addDays(due, days).toISOString();
-	if (start && !Number.isNaN(start.getTime()))
-		patch.start_at = addDays(start, days).toISOString();
+	if (start && !Number.isNaN(start.getTime())) {
+		const moved = addDays(start, days);
+		// A long-overdue span keeps its deadline shift but restarts today, at its own time.
+		patch.start_at = (
+			moved < today ? addDays(moved, differenceInCalendarDays(today, moved)) : moved
+		).toISOString();
+	}
 	return { targetDay, days, patch };
 }
 

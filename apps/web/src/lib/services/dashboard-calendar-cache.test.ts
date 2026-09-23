@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CalendarItem, DashboardCalendarMeta } from '$lib/types/calendar-items';
 
 vi.mock('$app/environment', () => ({ browser: true }));
+const pageState = vi.hoisted(() => ({ data: { user: { id: 'user-a' } as { id: string } | null } }));
+vi.mock('$app/state', () => ({ page: pageState }));
 
 type CacheModule = typeof import('./dashboard-calendar-cache');
 
@@ -64,10 +66,23 @@ describe('dashboard calendar cache', () => {
 	beforeEach(async () => {
 		vi.resetModules();
 		localStorage.clear();
+		pageState.data.user = { id: 'user-a' };
 		fetchMock = vi.fn(async (url: string) => {
 			const params = new URL(url, 'http://localhost').searchParams;
 			return jsonResponse({
 				items: [item('task-1', '2026-09-23T15:00:00.000Z')],
+				projects: {
+					'project-1': {
+						id: 'project-1',
+						name: 'Samos Offers',
+						state_key: 'active',
+						description: null,
+						facet_stage: null,
+						facet_scale: null
+					}
+				},
+				events: [],
+				partial: false,
 				...(params.get('meta') === '1' ? { meta } : {})
 			});
 		});
@@ -143,6 +158,60 @@ describe('dashboard calendar cache', () => {
 		const refreshed = await cache.loadDashboardCalendar(SEPT, 'month', { force: true });
 		expect(refreshed.meta?.preferences).toEqual(flipped);
 		expect(cache.peekDashboardCalendarMeta()?.preferences).toEqual(flipped);
+	});
+
+	it('starts empty for a different user, with no carried-over toggles', async () => {
+		cache.setDashboardCalendarCacheOwner('user-a');
+		await cache.loadDashboardCalendar(SEPT, 'month');
+		await cache.loadDashboardCalendarProviderEvents(SEPT, 'month');
+		cache.updateDashboardCalendarPreferences({ ...meta.preferences, show_events: false });
+		expect(cache.peekDashboardCalendarItems(SEPT, 'month')).not.toBeNull();
+		expect(cache.peekDashboardCalendarProject('project-1')).not.toBeNull();
+
+		// Same user again (e.g. a remount) keeps everything.
+		cache.setDashboardCalendarCacheOwner('user-a');
+		expect(cache.peekDashboardCalendarMeta()?.preferences.show_events).toBe(false);
+
+		cache.setDashboardCalendarCacheOwner('user-b');
+		expect(cache.peekDashboardCalendarItems(SEPT, 'month')).toBeNull();
+		expect(cache.peekDashboardCalendarProviderEvents(SEPT, 'month')).toBeNull();
+		expect(cache.peekDashboardCalendarMeta()).toBeNull();
+		expect(cache.peekDashboardCalendarProject('project-1')).toBeNull();
+
+		// B's own meta comes back as the server sent it, not with A's flipped toggle.
+		const fresh = await cache.loadDashboardCalendar(SEPT, 'month');
+		expect(fresh.meta?.preferences).toEqual(meta.preferences);
+		expect(cache.peekDashboardCalendarMeta()?.preferences).toEqual(meta.preferences);
+	});
+
+	it('does not let a response from the previous user land in the cache', async () => {
+		cache.setDashboardCalendarCacheOwner('user-a');
+		const pending = deferred<Response>();
+		fetchMock.mockImplementationOnce(() => pending.promise);
+
+		const request = cache.loadDashboardCalendar(SEPT, 'month');
+		cache.setDashboardCalendarCacheOwner('user-b');
+		pending.resolve(
+			jsonResponse({ items: [item('a-task', '2026-09-23T15:00:00.000Z')], meta })
+		);
+		await request;
+
+		expect(cache.peekDashboardCalendarItems(SEPT, 'month')).toBeNull();
+		expect(cache.peekDashboardCalendarMeta()).toBeNull();
+		// The next read starts its own request instead of sharing the old account's.
+		expect(cache.loadDashboardCalendar(SEPT, 'month')).not.toBe(request);
+	});
+
+	it('binds a prefetch to the signed-in user from page data', async () => {
+		cache.setDashboardCalendarCacheOwner('user-a');
+		await cache.loadDashboardCalendar(SEPT, 'month');
+		expect(cache.peekDashboardCalendarMeta()).not.toBeNull();
+
+		pageState.data.user = { id: 'user-b' };
+		cache.prefetchDashboardCalendar();
+
+		expect(cache.peekDashboardCalendarMeta()).toBeNull();
+		expect(cache.peekDashboardCalendarItems(SEPT, 'month')).toBeNull();
 	});
 
 	it('prefetches the saved view and the Google read when calendars were connected', async () => {

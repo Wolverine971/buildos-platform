@@ -125,8 +125,13 @@
 	const shownAsset = $derived(asset && asset.id === currentId ? asset : null);
 	const imageLoaded = $derived(Boolean(currentId) && loadedImageId === currentId);
 
+	// A write acting on the image on screen holds the viewer on it: no closing and no stepping
+	// (arrows, keys, swipe, thumbnails) until it settles. Renames capture their id, so they
+	// don't lock; stepping away is how a pending rename gets committed.
+	const locked = $derived(deleting || queueing || unlinking || placing);
+
 	function closeModal() {
-		if (deleting || queueing || unlinking || placing) return;
+		if (locked) return;
 		isOpen = false;
 		onClose?.();
 	}
@@ -236,7 +241,7 @@
 	});
 
 	function goTo(id: string | undefined) {
-		if (!id || id === currentId) return;
+		if (!id || id === currentId || locked) return;
 		// Blurring commits a pending rename for the image being left.
 		if (nameInput && document.activeElement === nameInput) nameInput.blur();
 		showMenu = false;
@@ -428,7 +433,10 @@
 	/** File the image under one document (or back on the shelf) via attachment links. */
 	async function moveToDocument(nextDocumentId: string | null) {
 		const id = currentId;
-		if (!id || !canEdit || nextDocumentId === currentDocumentId) return;
+		// Capture this image's links now: `links` follows whatever image is on screen, and
+		// deleting another image's links would leave this one attached to two documents.
+		const previousLinks = documentAttachmentLinks;
+		if (!id || asset?.id !== id || !canEdit || nextDocumentId === currentDocumentId) return;
 		placing = true;
 		formError = null;
 		try {
@@ -448,7 +456,7 @@
 				}
 			}
 			// Inline links mark embeds inside a document's content; only attachments move.
-			for (const link of documentAttachmentLinks) {
+			for (const link of previousLinks) {
 				if (link.entity_id === nextDocumentId) continue;
 				const params = new URLSearchParams({
 					entity_kind: 'document',
@@ -524,7 +532,9 @@
 	}
 
 	function handleWindowKeydown(event: KeyboardEvent) {
-		if (!isOpen || !hasGallery || showDeleteConfirm || event.defaultPrevented) return;
+		if (!isOpen || !hasGallery || locked || showDeleteConfirm || event.defaultPrevented) {
+			return;
+		}
 		if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
 		const target = event.target;
 		if (
@@ -580,7 +590,7 @@
 	function handleStagePointerUp(event: PointerEvent) {
 		if (!swipeStart) return;
 		// A zoomed image is being inspected; swiping must not change images under it.
-		if (zoomed) {
+		if (zoomed || locked) {
 			swipeStart = null;
 			return;
 		}
@@ -605,6 +615,7 @@
 				type="button"
 				class="{controlButton} w-11"
 				onclick={() => step(-1)}
+				disabled={locked}
 				aria-label="Previous image"
 				title="Previous (←)"
 			>
@@ -625,6 +636,7 @@
 								? 'border-accent opacity-100 ring-2 ring-accent/40'
 								: 'border-border opacity-50 hover:opacity-100'}"
 							onclick={() => goTo(id)}
+							disabled={locked}
 							aria-label={`Show image ${index + 1} of ${gallery.length}`}
 							aria-current={active ? 'true' : undefined}
 						>
@@ -644,6 +656,7 @@
 				type="button"
 				class="{controlButton} w-11"
 				onclick={() => step(1)}
+				disabled={locked}
 				aria-label="Next image"
 				title="Next (→)"
 			>

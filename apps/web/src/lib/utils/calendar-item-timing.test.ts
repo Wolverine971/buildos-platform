@@ -6,6 +6,7 @@ import {
 	formatDurationMinutes,
 	formatTimeRange,
 	htmlToPlainText,
+	offersQuickReschedule,
 	planQuickReschedule
 } from './calendar-item-timing';
 
@@ -134,6 +135,61 @@ describe('describeCalendarItemTiming', () => {
 			tone: 'now'
 		});
 	});
+
+	it('treats a midnight all-day end as exclusive', () => {
+		const timing = describeCalendarItemTiming(
+			{
+				kind: 'event',
+				allDay: true,
+				start: new Date(2026, 8, 22),
+				end: new Date(2026, 8, 23)
+			},
+			NOW
+		);
+		expect(timing).toMatchObject({
+			dateLabel: 'Tue, Sep 22',
+			durationLabel: null,
+			relativeLabel: 'Today',
+			tone: 'now'
+		});
+	});
+
+	it('keeps an all-day event with clock times on its own day', () => {
+		// The "All-day event" checkbox can keep 9:00–10:00; that is still today, not yesterday.
+		const timing = describeCalendarItemTiming(
+			{
+				kind: 'event',
+				allDay: true,
+				start: new Date(2026, 8, 22, 9),
+				end: new Date(2026, 8, 22, 10)
+			},
+			NOW
+		);
+		expect(timing).toMatchObject({
+			dateLabel: 'Tue, Sep 22',
+			durationLabel: null,
+			relativeLabel: 'Today',
+			tone: 'now'
+		});
+	});
+
+	it('counts the last day of a multi-day all-day event that ends mid-day', () => {
+		const timing = describeCalendarItemTiming(
+			{
+				kind: 'event',
+				allDay: true,
+				start: new Date(2026, 8, 21, 9),
+				end: new Date(2026, 8, 23, 12)
+			},
+			NOW
+		);
+		expect(timing).toMatchObject({
+			dateLabel: 'Mon, Sep 21 – Wed, Sep 23',
+			durationLabel: '3 days',
+			relativeLabel: 'Day 2 of 3',
+			tone: 'now'
+		});
+	});
 });
 
 describe('planQuickReschedule', () => {
@@ -166,6 +222,39 @@ describe('planQuickReschedule', () => {
 		expect(
 			planQuickReschedule({ due_at: new Date(2026, 8, 23, 8).toISOString() }, 'tomorrow', NOW)
 		).toBeNull();
+	});
+
+	it('never pulls a later deadline earlier', () => {
+		// Starts today, due Friday: "Tomorrow" is not offered and plans nothing.
+		const task = {
+			start_at: new Date(2026, 8, 22, 9).toISOString(),
+			due_at: new Date(2026, 8, 25, 17).toISOString()
+		};
+		expect(offersQuickReschedule(task, 'tomorrow', NOW)).toBe(false);
+		expect(planQuickReschedule(task, 'tomorrow', NOW)).toBeNull();
+
+		// A week out is still later than Friday, so that one moves both dates forward.
+		expect(offersQuickReschedule(task, 'nextWeek', NOW)).toBe(true);
+		const plan = planQuickReschedule(task, 'nextWeek', NOW);
+		expect(new Date(plan!.patch.due_at!)).toEqual(new Date(2026, 8, 29, 17));
+		expect(new Date(plan!.patch.start_at!)).toEqual(new Date(2026, 8, 26, 9));
+
+		const farOut = { due_at: new Date(2026, 9, 20, 17).toISOString() };
+		expect(offersQuickReschedule(farOut, 'nextWeek', NOW)).toBe(false);
+		expect(planQuickReschedule(farOut, 'nextWeek', NOW)).toBeNull();
+	});
+
+	it('moves an overdue task forward without leaving its start in the past', () => {
+		const task = {
+			start_at: new Date(2026, 8, 10, 9).toISOString(),
+			due_at: new Date(2026, 8, 20, 17).toISOString()
+		};
+		expect(offersQuickReschedule(task, 'tomorrow', NOW)).toBe(true);
+		const plan = planQuickReschedule(task, 'tomorrow', NOW);
+		expect(plan?.days).toBe(3);
+		expect(new Date(plan!.patch.due_at!)).toEqual(new Date(2026, 8, 23, 17));
+		// Shifting by 3 days would land on Sep 13; it restarts today at its own time.
+		expect(new Date(plan!.patch.start_at!)).toEqual(new Date(2026, 8, 22, 9));
 	});
 });
 
