@@ -5,6 +5,10 @@ import { ensureAssetAccess } from '../../shared';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30; // 30 minutes
+// Each call mints a new signed URL, so an uncached redirect makes the browser
+// re-download an image it already has (and wastes viewer prefetches). Cache the
+// redirect privately for a little less than the signed URL lives.
+const REDIRECT_CACHE_SECONDS = SIGNED_URL_TTL_SECONDS - 5 * 60;
 
 function parsePositiveNumber(value: string | null): number | undefined {
 	if (!value) return undefined;
@@ -109,7 +113,8 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 	return new Response(null, {
 		status: 302,
 		headers: {
-			Location: data.signedUrl
+			Location: data.signedUrl,
+			'Cache-Control': `private, max-age=${REDIRECT_CACHE_SECONDS}`
 		}
 	});
 };

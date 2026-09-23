@@ -25,20 +25,30 @@ import { GET } from './+server';
 const START = '2026-08-30T04:00:00.000Z';
 const END = '2026-10-04T04:00:00.000Z';
 
-function createSupabase(options: { preferences?: Record<string, boolean> | null } = {}) {
+function createSupabase(
+	options: {
+		preferences?: Record<string, boolean> | null;
+		items?: Record<string, unknown>[];
+		projects?: Record<string, unknown>[];
+	} = {}
+) {
 	const maybeSingle = vi.fn().mockResolvedValue({
 		data: options.preferences ?? null,
 		error: null
 	});
 	const eq = vi.fn(() => ({ maybeSingle }));
-	const select = vi.fn(() => ({ eq }));
+	const inFilter = vi.fn().mockResolvedValue({ data: options.projects ?? [], error: null });
+	const select = vi.fn(() => ({ eq, in: inFilter }));
 	return {
 		rpc: vi.fn().mockResolvedValue({
-			data: [{ calendar_item_id: 'item-1', item_type: 'task', item_kind: 'due' }],
+			data: options.items ?? [
+				{ calendar_item_id: 'item-1', item_type: 'task', item_kind: 'due' }
+			],
 			error: null
 		}),
 		from: vi.fn(() => ({ select })),
-		select
+		select,
+		inFilter
 	};
 }
 
@@ -121,6 +131,34 @@ describe('GET /api/calendar/dashboard', () => {
 		expect(body.data.items).toHaveLength(1);
 		expect(body.data.meta.connections).toBeNull();
 		expect(body.data.meta.connectionsError).toBe(true);
+	});
+
+	it('labels items with their projects in one lookup', async () => {
+		const supabase = createSupabase({
+			items: [
+				{ calendar_item_id: 'a', project_id: 'project-1' },
+				{ calendar_item_id: 'b', project_id: 'project-1' },
+				{ calendar_item_id: 'c', project_id: null }
+			],
+			projects: [
+				{
+					id: 'project-1',
+					name: 'Samos Offers',
+					state_key: 'active',
+					description: 'x'.repeat(500),
+					facet_stage: null,
+					facet_scale: null
+				}
+			]
+		});
+
+		const response = await callGet({ start: START, end: END }, supabase);
+		const body = await response.json();
+
+		expect(supabase.from).toHaveBeenCalledWith('onto_projects');
+		expect(supabase.inFilter).toHaveBeenCalledWith('id', ['project-1']);
+		expect(body.data.projects['project-1'].name).toBe('Samos Offers');
+		expect(body.data.projects['project-1'].description.length).toBe(401);
 	});
 
 	it('skips the connection list for users without multi-calendar access', async () => {

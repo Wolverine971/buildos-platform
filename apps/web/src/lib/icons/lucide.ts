@@ -249,6 +249,7 @@ export { default as UserPlus } from 'lucide-svelte/icons/user-plus';
 export { default as UserX } from 'lucide-svelte/icons/user-x';
 export { default as Users } from 'lucide-svelte/icons/users';
 export { default as Users2 } from 'lucide-svelte/icons/users-2';
+export { default as Video } from 'lucide-svelte/icons/video';
 export { default as Volume2 } from 'lucide-svelte/icons/volume-2';
 export { default as Waves } from 'lucide-svelte/icons/waves';
 export { default as Workflow } from 'lucide-svelte/icons/workflow';

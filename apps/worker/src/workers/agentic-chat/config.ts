@@ -16,6 +16,7 @@ import {
 } from './provider/openrouter-client';
 import type { ChatContextFinderMode } from './provider/chat-context-finder';
 import type { JevToolSelectionMode } from './provider/jev-tool-selector';
+import type { AgenticChatWorkflowReasoningPolicyV1 } from './workflow/workflow-runner';
 import {
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY,
@@ -137,6 +138,8 @@ type AgenticChatBaseConfig = {
 	jevSpecialistSelection?: 'off' | 'shadow';
 	/** Jev ranks project records and sections for published specialist reviews. Default off. */
 	contextFinderEnabled?: boolean;
+	/** Workflow steps whose hidden reasoning is off. Default: none (definitions' `low`). */
+	workflowReasoning?: AgenticChatWorkflowReasoningPolicyV1;
 	/** Ordinary project chat: Jev-ranked "Working from" chips (off|shadow|chips|on). */
 	contextFinderChat?: ChatContextFinderMode;
 	/** Users whose project chats are ranked; empty ranks nobody. */
@@ -221,6 +224,9 @@ export function loadAgenticChatConfig(
 		environment.AGENTIC_CHAT_CONTEXT_FINDER_ENABLED,
 		false,
 		'AGENTIC_CHAT_CONTEXT_FINDER_ENABLED'
+	);
+	const workflowReasoning = parseWorkflowReasoningOffSteps(
+		environment.AGENTIC_CHAT_WORKFLOW_REASONING_OFF_STEPS
 	);
 	const contextFinderChat = parseContextFinderChat(environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT);
 	const contextFinderChatUserIds = parseChatWorkflowPrototypeUsers(
@@ -325,6 +331,7 @@ export function loadAgenticChatConfig(
 		documentEvidenceHandoffEnabled,
 		jevSpecialistSelection,
 		contextFinderEnabled,
+		workflowReasoning,
 		contextFinderChat,
 		contextFinderChatUserIds,
 		liveVisionEnabled,
@@ -427,6 +434,26 @@ function parseBoolean(value: string | undefined, fallback: boolean, name: string
 	if (value === 'true') return true;
 	if (value === 'false') return false;
 	throw new Error(`${name} must be exactly true or false`);
+}
+
+const WORKFLOW_STEP_KEYS = ['planner', 'project_analyst', 'risk_reviewer', 'editor'] as const;
+
+/** `all`, or a comma list of workflow steps whose hidden reasoning is switched off. */
+function parseWorkflowReasoningOffSteps(
+	value: string | undefined
+): AgenticChatWorkflowReasoningPolicyV1 {
+	const trimmed = value?.trim() ?? '';
+	if (!trimmed) return Object.freeze({});
+	const steps = trimmed === 'all' ? WORKFLOW_STEP_KEYS : trimmed.split(',').map((s) => s.trim());
+	const policy: Partial<Record<(typeof WORKFLOW_STEP_KEYS)[number], 'none'>> = {};
+	for (const step of steps) {
+		if (!(WORKFLOW_STEP_KEYS as readonly string[]).includes(step))
+			throw new Error(
+				'AGENTIC_CHAT_WORKFLOW_REASONING_OFF_STEPS must be all or a comma list of planner, project_analyst, risk_reviewer, editor'
+			);
+		policy[step as (typeof WORKFLOW_STEP_KEYS)[number]] = 'none';
+	}
+	return Object.freeze(policy);
 }
 
 function parseContextFinderChat(value: string | undefined): ChatContextFinderMode {

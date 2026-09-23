@@ -20,6 +20,10 @@ export default {
 	kit: {
 		adapter: adapter({
 			runtime: 'nodejs22.x',
+			// Run next to the database. The build_os Supabase project is in us-west-1
+			// (N. California); the unset default (iad1, Washington DC) made every auth
+			// check and query cross the country (~70ms each, several per request).
+			regions: ['sfo1'],
 			// Defaults for every function. Routes that need more can override
 			// with `export const config = { maxDuration, memory }` at the top
 			// of their +server.ts / +page.server.ts / +layout.server.ts.

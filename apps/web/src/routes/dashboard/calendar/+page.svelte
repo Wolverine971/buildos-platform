@@ -1,34 +1,20 @@
 <!-- apps/web/src/routes/dashboard/calendar/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { format } from 'date-fns';
-	import {
-		ArrowLeft,
-		Ban,
-		CheckCircle2,
-		ChevronRight,
-		Circle,
-		CircleDot,
-		Clock,
-		ExternalLink,
-		FileText,
-		FolderOpen,
-		ListChecks,
-		LoaderCircle,
-		MapPin,
-		Milestone,
-		Pause,
-		SlidersHorizontal,
-		Target
-	} from '$lib/icons/lucide';
+	import { ArrowLeft, SlidersHorizontal } from '$lib/icons/lucide';
 	import CalendarView from '$lib/components/scheduling/CalendarView.svelte';
-	import CalendarItemDrawer from '$lib/components/scheduling/CalendarItemDrawer.svelte';
+	import CalendarItemPanel, {
+		type CalendarPanelAction
+	} from '$lib/components/scheduling/CalendarItemPanel.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { debounce } from '$lib/utils/performance-optimization';
-	import { parseLocalDate } from '$lib/utils/schedulingUtils';
+	import {
+		planQuickReschedule,
+		type QuickReschedulePreset
+	} from '$lib/utils/calendar-item-timing';
+	import { toastService } from '$lib/stores/toast.store';
 	import {
 		BUILDOS_CALENDAR_SOURCE_ID,
 		decorateDashboardCalendarItems,
@@ -45,6 +31,7 @@
 		loadDashboardCalendarProviderEvents,
 		peekDashboardCalendarItems,
 		peekDashboardCalendarMeta,
+		peekDashboardCalendarProject,
 		peekDashboardCalendarProviderEvents,
 		readSavedDashboardCalendarState,
 		saveDashboardCalendarState,
@@ -52,7 +39,11 @@
 		type DashboardCalendarViewMode
 	} from '$lib/services/dashboard-calendar-cache';
 	import { apiRequest } from '$lib/utils/api-client-helpers';
-	import type { CalendarItem, DashboardCalendarMeta } from '$lib/types/calendar-items';
+	import type {
+		CalendarItem,
+		CalendarItemDetail,
+		DashboardCalendarMeta
+	} from '$lib/types/calendar-items';
 	import type {
 		ConnectedGoogleCalendarEventsPayload,
 		GoogleCalendarConnectionsPayload,
@@ -67,44 +58,6 @@
 		connectionLabel: string;
 		emailAddress: string;
 	};
-
-	interface ProjectInfo {
-		id: string;
-		name: string;
-		state_key: string;
-		description: string | null;
-		facet_stage: string | null;
-		facet_scale: string | null;
-		facet_context: string | null;
-	}
-
-	interface LinkedEntity {
-		id: string;
-		name?: string;
-		title?: string;
-		state_key?: string;
-		type_key?: string;
-		due_at?: string;
-		edge_rel?: string;
-	}
-
-	interface LinkedEntities {
-		plans: LinkedEntity[];
-		goals: LinkedEntity[];
-		milestones: LinkedEntity[];
-		documents: LinkedEntity[];
-		dependentTasks: LinkedEntity[];
-	}
-
-	type ItemDetail =
-		| {
-				type: 'task';
-				data: any;
-				linkedEntities: LinkedEntities | null;
-				project: ProjectInfo | null;
-		  }
-		| { type: 'event'; data: any; project: ProjectInfo | null }
-		| null;
 
 	const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 	// The dashboard calendar shows the full day; working hours only shape scheduling.
@@ -137,7 +90,7 @@
 	let showSettings = $state(false);
 
 	let selectedItem = $state<CalendarItem | null>(null);
-	let detail = $state<ItemDetail>(null);
+	let detail = $state<CalendarItemDetail | null>(null);
 	let detailLoading = $state(false);
 	let detailError = $state<string | null>(null);
 	let showDetailDrawer = $state(false);
@@ -151,8 +104,11 @@
 	let editEventId = $state<string | null>(null);
 	let editProjectId = $state<string | null>(null);
 
-	const detailCache = new Map<string, ItemDetail>();
-	const projectCache = new Map<string, ProjectInfo>();
+	const detailCache = new Map<string, CalendarItemDetail>();
+	// Details load on hover (after a short rest) and on click; both share one request.
+	const detailRequests = new Map<string, Promise<CalendarItemDetail | null>>();
+	let intentTimer: ReturnType<typeof setTimeout> | null = null;
+	let panelBusy = $state<CalendarPanelAction | null>(null);
 	// Latest-wins guards: only the newest range/provider/detail request may write state.
 	let itemsRequestId = 0;
 	let providerRequestId = 0;
@@ -474,106 +430,186 @@
 		);
 	}
 
-	async function fetchProjectInfo(projectId: string): Promise<ProjectInfo | null> {
-		if (projectCache.has(projectId)) {
-			return projectCache.get(projectId) ?? null;
-		}
-		try {
-			const response = await fetch(`/api/onto/projects/${projectId}`);
-			const json = await response.json();
-			if (!response.ok || !json?.data?.project) return null;
-			const p = json.data.project;
-			const info: ProjectInfo = {
-				id: p.id,
-				name: p.name,
-				state_key: p.state_key,
-				description: p.description,
-				facet_stage: p.facet_stage,
-				facet_scale: p.facet_scale,
-				facet_context: p.facet_context
-			};
-			projectCache.set(projectId, info);
-			return info;
-		} catch {
+	function getDetailKey(item: CalendarItem): string {
+		return `${item.item_type}:${item.task_id || item.event_id || item.calendar_item_id}`;
+	}
+
+	async function readJson(response: Response, fallbackMessage: string) {
+		const payload = await response.json().catch(() => null);
+		if (!response.ok) throw new Error(payload?.error || fallbackMessage);
+		return payload;
+	}
+
+	function fetchItemDetail(item: CalendarItem): Promise<CalendarItemDetail | null> {
+		const key = getDetailKey(item);
+		const cached = detailCache.get(key);
+		if (cached) return Promise.resolve(cached);
+		const inFlight = detailRequests.get(key);
+		if (inFlight) return inFlight;
+
+		const request = (async (): Promise<CalendarItemDetail | null> => {
+			// Provider events already carry everything the panel shows.
+			if (item.source_table === 'google_calendar') return { type: 'event', data: {} };
+			if (item.item_type === 'task' && item.task_id) {
+				const payload = await readJson(
+					await fetch(`/api/onto/tasks/${item.task_id}`),
+					'Failed to load task'
+				);
+				return {
+					type: 'task',
+					data: payload?.data?.task ?? payload?.task ?? {},
+					linkedEntities: payload?.data?.linkedEntities ?? payload?.linkedEntities ?? null
+				};
+			}
+			if (item.event_id) {
+				const payload = await readJson(
+					await fetch(`/api/onto/events/${item.event_id}`),
+					'Failed to load event'
+				);
+				return { type: 'event', data: payload?.data?.event ?? payload?.event ?? {} };
+			}
 			return null;
-		}
+		})()
+			.then((result) => {
+				if (result) detailCache.set(key, result);
+				return result;
+			})
+			.finally(() => {
+				detailRequests.delete(key);
+			});
+		detailRequests.set(key, request);
+		return request;
 	}
 
 	async function loadItemDetail(item: CalendarItem) {
-		const cacheKey = `${item.item_type}:${item.task_id || item.event_id || item.calendar_item_id}`;
 		// A slower detail for a previously clicked item must not replace this one.
 		const requestId = ++detailRequestId;
-		const isCurrent = () => requestId === detailRequestId;
-		if (detailCache.has(cacheKey)) {
-			detail = detailCache.get(cacheKey) ?? null;
-			detailLoading = false;
-			return;
-		}
-
-		detailLoading = true;
+		const cached = detailCache.get(getDetailKey(item));
+		detail = cached ?? null;
 		detailError = null;
+		detailLoading = !cached;
+		if (cached) return;
+
 		try {
-			if (item.source_table === 'google_calendar') {
-				const providerDetail: ItemDetail = {
-					type: 'event',
-					data: {
-						title: item.title,
-						description: item.props?.description ?? null,
-						location: item.props?.location ?? null,
-						external_link: item.props?.external_link ?? null,
-						organizer: item.props?.organizer ?? null
-					},
-					project: null
-				};
-				detail = providerDetail;
-				detailCache.set(cacheKey, providerDetail);
-				return;
-			}
-
-			if (item.item_type === 'task' && item.task_id) {
-				const [taskResponse, projectInfo] = await Promise.all([
-					fetch(`/api/onto/tasks/${item.task_id}`),
-					item.project_id ? fetchProjectInfo(item.project_id) : Promise.resolve(null)
-				]);
-				const data = await taskResponse.json();
-				if (!taskResponse.ok) {
-					throw new Error(data?.error || 'Failed to load task');
-				}
-				const taskDetail: ItemDetail = {
-					type: 'task',
-					data: data.data?.task ?? data.task,
-					linkedEntities: data.data?.linkedEntities ?? data.linkedEntities ?? null,
-					project: projectInfo
-				};
-				detailCache.set(cacheKey, taskDetail);
-				if (isCurrent()) detail = taskDetail;
-				return;
-			}
-
-			if (item.event_id) {
-				const [eventResponse, projectInfo] = await Promise.all([
-					fetch(`/api/onto/events/${item.event_id}`),
-					item.project_id ? fetchProjectInfo(item.project_id) : Promise.resolve(null)
-				]);
-				const data = await eventResponse.json();
-				if (!eventResponse.ok) {
-					throw new Error(data?.error || 'Failed to load event');
-				}
-				const eventDetail: ItemDetail = {
-					type: 'event',
-					data: data.data?.event ?? data.event,
-					project: projectInfo
-				};
-				detailCache.set(cacheKey, eventDetail);
-				if (isCurrent()) detail = eventDetail;
-			}
+			const result = await fetchItemDetail(item);
+			if (requestId === detailRequestId) detail = result;
 		} catch (err) {
-			if (!isCurrent()) return;
+			if (requestId !== detailRequestId) return;
 			console.error('[DashboardCalendar] Failed to load item detail:', err);
 			detailError = err instanceof Error ? err.message : 'Failed to load details';
 		} finally {
-			if (isCurrent()) detailLoading = false;
+			if (requestId === detailRequestId) detailLoading = false;
 		}
+	}
+
+	/** Resting on a chip warms its details so the panel opens already filled in. */
+	function handleEventIntent(event: any) {
+		if (intentTimer) clearTimeout(intentTimer);
+		intentTimer = null;
+		const item = resolveCalendarItem(event);
+		if (!item || item.source_table === 'google_calendar') return;
+		if (detailCache.has(getDetailKey(item))) return;
+		intentTimer = setTimeout(() => {
+			intentTimer = null;
+			void fetchItemDetail(item).catch(() => undefined);
+		}, 150);
+	}
+
+	async function patchTask(taskId: string, updates: Record<string, unknown>) {
+		const payload = await readJson(
+			await fetch(`/api/onto/tasks/${taskId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(updates)
+			}),
+			'Failed to update task'
+		);
+		return (payload?.data?.task ?? null) as Record<string, any> | null;
+	}
+
+	function applyTaskUpdate(taskId: string, updated: Record<string, any>) {
+		for (const [key, cached] of detailCache) {
+			if (cached.type === 'task' && cached.data?.id === taskId) {
+				detailCache.set(key, { ...cached, data: { ...cached.data, ...updated } });
+			}
+		}
+		if (detail?.type === 'task' && detail.data?.id === taskId) {
+			detail = { ...detail, data: { ...detail.data, ...updated } };
+		}
+		if (selectedItem?.task_id === taskId && typeof updated.state_key === 'string') {
+			selectedItem = { ...selectedItem, state_key: updated.state_key };
+		}
+		invalidateDashboardCalendar();
+		void loadCalendarItems({ force: true });
+	}
+
+	async function undoTaskAction(taskId: string, undo: Record<string, unknown>) {
+		try {
+			const updated = await patchTask(taskId, undo);
+			applyTaskUpdate(taskId, { ...undo, ...(updated ?? {}) });
+			toastService.success('Undone');
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Could not undo that change');
+		}
+	}
+
+	async function runTaskAction(
+		action: CalendarPanelAction,
+		updates: Record<string, unknown>,
+		undo: Record<string, unknown>,
+		message: string
+	) {
+		const taskId = selectedItem?.task_id;
+		if (!taskId || panelBusy) return;
+		panelBusy = action;
+		try {
+			const updated = await patchTask(taskId, updates);
+			applyTaskUpdate(taskId, { ...updates, ...(updated ?? {}) });
+			// The drawer makes the rest of the page inert, toasts included; close it so
+			// the Undo action stays reachable.
+			closeDetail();
+			toastService.success(message, {
+				action: { label: 'Undo', onClick: () => void undoTaskAction(taskId, undo) }
+			});
+		} catch (err) {
+			console.error('[DashboardCalendar] Quick action failed:', err);
+			toastService.error(err instanceof Error ? err.message : 'Could not update the task');
+		} finally {
+			panelBusy = null;
+		}
+	}
+
+	function currentTask(): Record<string, any> | null {
+		return detail?.type === 'task' ? detail.data : null;
+	}
+
+	function handleMarkDone() {
+		const previous = currentTask()?.state_key ?? selectedItem?.state_key ?? 'todo';
+		void runTaskAction(
+			'done',
+			{ state_key: 'done' },
+			{ state_key: previous === 'done' ? 'todo' : previous },
+			'Marked done'
+		);
+	}
+
+	function handleReopen() {
+		void runTaskAction('reopen', { state_key: 'todo' }, { state_key: 'done' }, 'Reopened');
+	}
+
+	function handleReschedule(preset: QuickReschedulePreset) {
+		const task = currentTask();
+		const plan = task ? planQuickReschedule(task, preset) : null;
+		if (!task || !plan) return;
+		const undo = Object.fromEntries(
+			Object.keys(plan.patch).map((key) => [key, task[key] ?? null])
+		);
+		void runTaskAction(
+			preset,
+			plan.patch,
+			undo,
+			`Moved to ${format(plan.targetDay, 'EEE, MMM d')}`
+		);
 	}
 
 	async function handleEventClick(event: any) {
@@ -646,141 +682,6 @@
 		void loadCalendarItems({ force: true });
 	}
 
-	function formatRange(start: string, end: string | null, allDay: boolean | null) {
-		const startDate = parseLocalDate(start);
-		const endDate = parseLocalDate(end ?? start);
-		const sameDay = startDate.toDateString() === endDate.toDateString();
-		if (allDay) {
-			const displayEnd =
-				end && endDate > startDate ? new Date(endDate.getTime() - 1) : startDate;
-			if (displayEnd.toDateString() === startDate.toDateString()) {
-				return `${format(startDate, 'MMM d, yyyy')} (All day)`;
-			}
-			return `${format(startDate, 'MMM d, yyyy')} - ${format(
-				displayEnd,
-				'MMM d, yyyy'
-			)} (All day)`;
-		}
-		if (!end || end === start) {
-			return format(startDate, 'MMM d, yyyy h:mm a');
-		}
-		if (sameDay) {
-			return `${format(startDate, 'MMM d, yyyy h:mm a')} - ${format(endDate, 'h:mm a')}`;
-		}
-		return `${format(startDate, 'MMM d, yyyy h:mm a')} - ${format(
-			endDate,
-			'MMM d, yyyy h:mm a'
-		)}`;
-	}
-
-	function getDescription(detailData: ItemDetail): string | null {
-		if (!detailData) return null;
-		if (detailData.type === 'event') {
-			return detailData.data?.description ?? null;
-		}
-		const props = detailData.data?.props ?? {};
-		return props.description || props.details || (detailData.data?.description ?? null);
-	}
-
-	function getExternalLink(detailData: ItemDetail): string | null {
-		if (!detailData) return null;
-		if (detailData.type === 'event') {
-			return detailData.data?.external_link || detailData.data?.props?.external_link || null;
-		}
-		return detailData.data?.props?.external_link || null;
-	}
-
-	function getTaskMarkerLabel(itemKind: string): string {
-		if (itemKind === 'range') return 'Scheduled';
-		if (itemKind === 'start') return 'Start marker';
-		if (itemKind === 'due') return 'Due marker';
-		return itemKind;
-	}
-
-	function getStateLabel(stateKey: string | null | undefined): string {
-		if (!stateKey) return 'Unknown';
-		const labels: Record<string, string> = {
-			todo: 'To Do',
-			in_progress: 'In Progress',
-			blocked: 'Blocked',
-			done: 'Done',
-			planning: 'Planning',
-			active: 'Active',
-			paused: 'Paused',
-			completed: 'Completed',
-			cancelled: 'Cancelled',
-			scheduled: 'Scheduled'
-		};
-		return (
-			labels[stateKey] || stateKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-		);
-	}
-
-	function getStateColor(stateKey: string | null | undefined): string {
-		if (!stateKey) return 'bg-muted text-muted-foreground';
-		const colors: Record<string, string> = {
-			todo: 'bg-muted text-muted-foreground',
-			in_progress: 'bg-info/10 text-info',
-			blocked: 'bg-destructive/10 text-destructive',
-			done: 'bg-success/10 text-success',
-			planning: 'bg-accent/10 text-accent',
-			active: 'bg-info/10 text-info',
-			paused: 'bg-warning/10 text-warning',
-			completed: 'bg-success/10 text-success',
-			cancelled: 'bg-muted text-muted-foreground line-through',
-			scheduled: 'bg-info/10 text-info'
-		};
-		return colors[stateKey] || 'bg-muted text-muted-foreground';
-	}
-
-	function getPriorityLabel(priority: number | null | undefined): string | null {
-		if (priority == null) return null;
-		if (priority >= 4) return 'Critical';
-		if (priority === 3) return 'High';
-		if (priority === 2) return 'Medium';
-		if (priority === 1) return 'Low';
-		return null;
-	}
-
-	function getPriorityColor(priority: number | null | undefined): string {
-		if (priority == null) return '';
-		if (priority >= 4) return 'bg-destructive/10 text-destructive';
-		if (priority === 3) return 'bg-accent/10 text-accent';
-		if (priority === 2) return 'bg-warning/10 text-warning';
-		return 'bg-muted text-muted-foreground';
-	}
-
-	function getScaleLabel(scale: string | null | undefined): string | null {
-		if (!scale) return null;
-		return scale.charAt(0).toUpperCase() + scale.slice(1);
-	}
-
-	function getStageLabel(stage: string | null | undefined): string | null {
-		if (!stage) return null;
-		return stage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-	}
-
-	function openProject(projectId: string | null) {
-		if (!projectId) return;
-		const url = resolve('/projects/[id]', { id: projectId });
-		if (browser) {
-			window.open(url, '_blank', 'noopener');
-		} else {
-			goto(url);
-		}
-	}
-
-	function openTaskPage(taskId: string | null, projectId: string | null) {
-		if (!taskId || !projectId) return;
-		const params = new URLSearchParams({ entity: 'task', entity_id: taskId });
-		const url = `${resolve('/projects/[id]', { id: projectId })}?${params}`;
-		if (browser) {
-			window.open(url, '_blank', 'noopener');
-		} else {
-			goto(url);
-		}
-	}
-
 	onMount(() => {
 		// The calendar always opens on today; the view and hidden calendars persist.
 		const saved = readSavedDashboardCalendarState();
@@ -788,6 +689,9 @@
 		hiddenCalendarSourceIds = saved.hiddenCalendarSourceIds;
 		applyMeta(peekDashboardCalendarMeta());
 		void loadCalendarItems();
+		return () => {
+			if (intentTimer) clearTimeout(intentTimer);
+		};
 	});
 </script>
 
@@ -829,6 +733,7 @@
 				onviewModeChange={handleViewModeChange}
 				onrefresh={handleRefresh}
 				oneventClick={handleEventClick}
+				oneventIntent={handleEventIntent}
 			>
 				{#snippet toolbarStart()}
 					<a
@@ -948,326 +853,20 @@
 </div>
 
 {#if showDetailDrawer && selectedItem}
-	<CalendarItemDrawer
-		isOpen={showDetailDrawer}
+	<CalendarItemPanel
+		item={selectedItem}
+		{detail}
+		project={peekDashboardCalendarProject(selectedItem.project_id)}
+		loading={detailLoading}
+		error={detailError}
+		busyAction={panelBusy}
 		onClose={closeDetail}
-		title={getDashboardCalendarItemTitle(selectedItem)}
-		subtitle={selectedItem.item_type === 'task'
-			? `Task · ${getTaskMarkerLabel(selectedItem.item_kind)}`
-			: isConnectedGoogleCalendarItem(selectedItem)
-				? `Google Calendar · ${selectedItem.calendar_source_label || 'Connected calendar'}`
-				: 'BuildOS event'}
-	>
-		<div class="space-y-3">
-			<!-- Status badges row -->
-			{#if detailLoading}
-				<div
-					class="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center"
-				>
-					<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
-					Loading details…
-				</div>
-			{:else if detailError}
-				<div
-					class="rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-sm text-destructive tx tx-static tx-weak"
-				>
-					{detailError}
-				</div>
-			{:else if detail}
-				<!-- Badges -->
-				<div class="flex flex-wrap items-center gap-2">
-					{#if detail.data?.state_key}
-						<span
-							class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium {getStateColor(
-								detail.data.state_key
-							)}"
-						>
-							{#if detail.data.state_key === 'done' || detail.data.state_key === 'completed'}
-								<CheckCircle2 class="h-3 w-3" />
-							{:else if detail.data.state_key === 'in_progress' || detail.data.state_key === 'active'}
-								<CircleDot class="h-3 w-3" />
-							{:else if detail.data.state_key === 'blocked'}
-								<Ban class="h-3 w-3" />
-							{:else if detail.data.state_key === 'paused'}
-								<Pause class="h-3 w-3" />
-							{:else}
-								<Circle class="h-3 w-3" />
-							{/if}
-							{getStateLabel(detail.data.state_key)}
-						</span>
-					{/if}
-					{#if detail.type === 'task'}
-						{@const priorityLabel = getPriorityLabel(detail.data?.priority)}
-						{#if priorityLabel}
-							<span
-								class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {getPriorityColor(
-									detail.data?.priority
-								)}"
-							>
-								{priorityLabel}
-							</span>
-						{/if}
-						{@const scaleLabel = getScaleLabel(detail.data?.facet_scale)}
-						{#if scaleLabel}
-							<span
-								class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground"
-							>
-								{scaleLabel}
-							</span>
-						{/if}
-					{/if}
-				</div>
-
-				<!-- Date/time -->
-				<div
-					class="flex min-w-0 items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm text-foreground"
-				>
-					<Clock class="h-4 w-4 shrink-0 text-muted-foreground" />
-					<span class="min-w-0 break-words"
-						>{formatRange(
-							selectedItem.start_at,
-							selectedItem.end_at,
-							selectedItem.all_day
-						)}</span
-					>
-				</div>
-
-				<!-- Task-specific: due date and start date if different from calendar item -->
-				{#if detail.type === 'task'}
-					{#if detail.data?.due_at && detail.data.due_at !== selectedItem.end_at}
-						<div class="flex min-w-0 items-start gap-2 text-sm text-muted-foreground">
-							<Target class="h-3.5 w-3.5 shrink-0" />
-							<span class="min-w-0 break-words"
-								>Due: {format(new Date(detail.data.due_at), 'MMM d, yyyy')}</span
-							>
-						</div>
-					{/if}
-					{#if detail.data?.completed_at}
-						<div class="flex min-w-0 items-start gap-2 text-sm text-success">
-							<CheckCircle2 class="h-3.5 w-3.5 shrink-0" />
-							<span class="min-w-0 break-words"
-								>Completed: {format(
-									new Date(detail.data.completed_at),
-									'MMM d, yyyy'
-								)}</span
-							>
-						</div>
-					{/if}
-				{/if}
-
-				<!-- Event-specific: location -->
-				{#if detail.type === 'event' && detail.data?.location}
-					<div class="flex min-w-0 items-start gap-2 text-sm text-muted-foreground">
-						<MapPin class="h-3.5 w-3.5 shrink-0" />
-						<span class="min-w-0 break-words">{detail.data.location}</span>
-					</div>
-				{/if}
-
-				<!-- Description -->
-				{@const description = getDescription(detail)}
-				{#if description}
-					<div class="rounded-lg border border-border bg-card p-3">
-						<div
-							class="break-words text-sm text-foreground whitespace-pre-wrap leading-relaxed"
-						>
-							{description}
-						</div>
-					</div>
-				{/if}
-
-				<!-- External link -->
-				{@const externalLink = getExternalLink(detail)}
-				{#if externalLink}
-					<a
-						href={externalLink}
-						target="_blank"
-						rel="noreferrer"
-						class="inline-flex items-center gap-2 text-sm font-medium text-accent hover:underline"
-					>
-						<ExternalLink class="h-3.5 w-3.5" />
-						Open in external calendar
-					</a>
-				{/if}
-
-				<!-- Linked entities (tasks only) -->
-				{#if detail.type === 'task' && detail.linkedEntities}
-					{@const le = detail.linkedEntities}
-					{#if le.plans.length > 0 || le.goals.length > 0 || le.milestones.length > 0 || le.documents.length > 0 || le.dependentTasks.length > 0}
-						<div class="space-y-2">
-							<h3 class="micro-label">Linked entities</h3>
-							<div class="space-y-1">
-								{#each le.plans as plan (plan.id)}
-									<div
-										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-									>
-										<ListChecks class="h-3.5 w-3.5 shrink-0 text-accent" />
-										<span class="min-w-0 truncate text-foreground"
-											>{plan.name || plan.title || 'Untitled Plan'}</span
-										>
-									</div>
-								{/each}
-								{#each le.goals as goal (goal.id)}
-									<div
-										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-									>
-										<Target class="h-3.5 w-3.5 shrink-0 text-warning" />
-										<span class="min-w-0 truncate text-foreground"
-											>{goal.name || goal.title || 'Untitled Goal'}</span
-										>
-									</div>
-								{/each}
-								{#each le.milestones as milestone (milestone.id)}
-									<div
-										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-									>
-										<Milestone class="h-3.5 w-3.5 shrink-0 text-info" />
-										<span class="min-w-0 truncate text-foreground"
-											>{milestone.title ||
-												milestone.name ||
-												'Untitled Milestone'}</span
-										>
-										{#if milestone.due_at}
-											<span
-												class="ml-auto text-xs text-muted-foreground shrink-0"
-											>
-												{format(new Date(milestone.due_at), 'MMM d')}
-											</span>
-										{/if}
-									</div>
-								{/each}
-								{#each le.documents as doc (doc.id)}
-									<div
-										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-									>
-										<FileText class="h-3.5 w-3.5 shrink-0 text-info" />
-										<span class="min-w-0 truncate text-foreground"
-											>{doc.title || doc.name || 'Untitled Document'}</span
-										>
-									</div>
-								{/each}
-								{#each le.dependentTasks as depTask (depTask.id)}
-									<div
-										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-									>
-										<ChevronRight
-											class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-										/>
-										<span class="min-w-0 truncate text-foreground"
-											>{depTask.title ||
-												depTask.name ||
-												'Untitled Task'}</span
-										>
-										{#if depTask.state_key}
-											<span
-												class="ml-auto inline-flex items-center rounded-full px-1.5 py-0.5 text-2xs font-medium {getStateColor(
-													depTask.state_key
-												)}"
-											>
-												{getStateLabel(depTask.state_key)}
-											</span>
-										{/if}
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-				{/if}
-
-				<!-- Project section -->
-				{#if detail.project}
-					<div class="space-y-2 pt-1">
-						<h3 class="micro-label">Project</h3>
-						<button
-							onclick={() => openProject(detail?.project?.id ?? null)}
-							class="w-full rounded-lg border border-border bg-card p-2.5 text-left hover:border-accent/50 hover:bg-muted/50 transition-colors motion-reduce:transition-none shadow-ink pressable"
-						>
-							<div class="flex min-w-0 items-center gap-2">
-								<FolderOpen class="h-4 w-4 shrink-0 text-accent" />
-								<span class="min-w-0 truncate text-sm font-medium text-foreground">
-									{detail.project.name}
-								</span>
-							</div>
-							<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-								<span
-									class="inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium {getStateColor(
-										detail.project.state_key
-									)}"
-								>
-									{getStateLabel(detail.project.state_key)}
-								</span>
-								{#if detail.project.facet_stage}
-									<span
-										class="inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium bg-muted text-muted-foreground"
-									>
-										{getStageLabel(detail.project.facet_stage)}
-									</span>
-								{/if}
-								{#if detail.project.facet_scale}
-									<span
-										class="inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium bg-muted text-muted-foreground"
-									>
-										{getScaleLabel(detail.project.facet_scale)}
-									</span>
-								{/if}
-							</div>
-							{#if detail.project.description}
-								<p
-									class="mt-2 break-words text-xs text-muted-foreground line-clamp-2"
-								>
-									{detail.project.description}
-								</p>
-							{/if}
-						</button>
-					</div>
-				{/if}
-
-				<!-- Actions -->
-				{#if selectedItem?.item_type === 'task' || (selectedItem?.event_id && selectedItem?.project_id)}
-					<div class="flex flex-wrap gap-2 pt-2 border-t border-border">
-						{#if selectedItem?.item_type === 'task'}
-							<Button
-								variant="primary"
-								size="sm"
-								onclick={openTaskEditor}
-								disabled={!selectedItem?.task_id || !selectedItem?.project_id}
-							>
-								Edit Task
-							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() =>
-									openTaskPage(
-										selectedItem?.task_id ?? null,
-										selectedItem?.project_id ?? null
-									)}
-							>
-								Full Page
-							</Button>
-						{:else if selectedItem?.event_id && selectedItem?.project_id}
-							<Button
-								variant="primary"
-								size="sm"
-								onclick={openEventEditor}
-								disabled={!selectedItem?.event_id || !selectedItem?.project_id}
-							>
-								Edit Event
-							</Button>
-						{/if}
-						{#if !detail.project && selectedItem?.project_id}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => openProject(selectedItem?.project_id ?? null)}
-							>
-								Open Project
-							</Button>
-						{/if}
-					</div>
-				{/if}
-			{/if}
-		</div>
-	</CalendarItemDrawer>
+		onMarkDone={handleMarkDone}
+		onReopen={handleReopen}
+		onReschedule={handleReschedule}
+		onEditTask={openTaskEditor}
+		onEditEvent={openEventEditor}
+	/>
 {/if}
 
 {#if showTaskModal && editTaskId && editProjectId}

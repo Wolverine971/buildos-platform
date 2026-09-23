@@ -410,14 +410,19 @@ describe('ProjectWorkspace edge states', () => {
 		render(ProjectWorkspace, { props: { data: data as any } });
 		expect(await screen.findByText(doc.title)).toBeInTheDocument();
 		vi.mocked(fetch).mockClear();
-		vi.mocked(fetch).mockResolvedValueOnce(
-			apiResponse({
-				structure: data.project.doc_structure,
-				documents: { [doc.id]: { ...doc, title: 'Edited through chat' } },
-				unlinked: [],
-				archived: []
-			})
-		);
+		vi.mocked(fetch).mockImplementation(async (input) => {
+			const url = String(input);
+			if (url === `/api/onto/projects/${PROJECT_ID}/doc-tree/images`)
+				return apiResponse({ images: [], links: [] });
+			if (url === `/api/onto/projects/${PROJECT_ID}/doc-tree?include_content=false`)
+				return apiResponse({
+					structure: data.project.doc_structure,
+					documents: { [doc.id]: { ...doc, title: 'Edited through chat' } },
+					unlinked: [],
+					archived: []
+				});
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
 		notifyDataMutation({
 			hasChanges: true,
 			totalMutations: 1,
@@ -434,11 +439,15 @@ describe('ProjectWorkspace edge states', () => {
 		});
 		expect(await screen.findByText('Edited through chat')).toBeInTheDocument();
 		expect(screen.queryByText(doc.title)).not.toBeInTheDocument();
-		expect(fetch).toHaveBeenCalledTimes(1);
 		expect(fetch).toHaveBeenCalledWith(
 			`/api/onto/projects/${PROJECT_ID}/doc-tree?include_content=false`,
 			undefined
 		);
+		expect(
+			vi.mocked(fetch).mock.calls.filter(
+				([url]) => String(url) === `/api/onto/projects/${PROJECT_ID}/doc-tree?include_content=false`
+			)
+		).toHaveLength(1);
 	});
 
 	it('labels old counts and reloads the latest snapshot when returning to the workspace', async () => {
@@ -932,9 +941,11 @@ describe('ProjectWorkspace edge states', () => {
 		expect(
 			await within(docs).findByRole('button', { name: /Unlinked documents \(1\)/ })
 		).toBeInTheDocument();
-		expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/doc-tree'))).toBe(
-			false
-		);
+		expect(
+			vi.mocked(fetch).mock.calls.some(([url]) =>
+				String(url).includes('/doc-tree?include_content=false')
+			)
+		).toBe(false);
 	});
 
 	it('keeps Activity focused on recent chats, change history, and the project schedule', async () => {

@@ -62,6 +62,7 @@ import {
 } from './promptSnapshot';
 import type { AgenticChatToolSelectorPort } from './provider/jev-tool-selector';
 import type { AgenticChatContextFinderPort } from './provider/chat-context-finder';
+import { createGatewayDocumentEditPreviewPort } from './provider/document-edit-preview';
 import { AgenticChatTurnProviderAdapter } from './provider/turn-provider';
 import { AgenticChatToolExecutionAdapter } from './tools/execution-adapter';
 import {
@@ -346,7 +347,10 @@ export function createAgenticChatCompositionRoot(options: {
 			capacity: providerCapacity,
 			liveVision,
 			...(options.toolSelector ? { toolSelector: options.toolSelector } : {}),
-			...(options.contextFinder ? { contextFinder: options.contextFinder } : {})
+			...(options.contextFinder ? { contextFinder: options.contextFinder } : {}),
+			...(mutationCapabilities.updateOntoDocument
+				? { documentEditPreview: createGatewayDocumentEditPreviewPort(options.client) }
+				: {})
 		},
 		options.providerCooldownMs,
 		options.maxProviderRounds,

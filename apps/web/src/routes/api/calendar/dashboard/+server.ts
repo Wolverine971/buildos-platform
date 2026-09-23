@@ -5,7 +5,11 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { GoogleCalendarConnectionService } from '$lib/server/google-calendar-connection.service';
 import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import { ApiResponse } from '$lib/utils/api-response';
-import type { CalendarItem, DashboardCalendarPayload } from '$lib/types/calendar-items';
+import type {
+	CalendarItem,
+	DashboardCalendarPayload,
+	DashboardCalendarProjectSummary
+} from '$lib/types/calendar-items';
 import type { RequestHandler } from './$types';
 
 /**
@@ -30,6 +34,44 @@ const querySchema = z
 	});
 
 const ITEM_LIMIT = 2000;
+// Project blurbs label the side panel; the full description lives on the project page.
+const PROJECT_DESCRIPTION_MAX = 400;
+
+/**
+ * One indexed lookup for the projects the items reference, so the side panel can name the
+ * project without fetching the whole project graph. RLS scopes it like the items.
+ */
+async function loadProjectSummaries(
+	supabase: App.Locals['supabase'],
+	items: CalendarItem[]
+): Promise<Record<string, DashboardCalendarProjectSummary>> {
+	const ids = Array.from(
+		new Set(items.map((item) => item.project_id).filter((id): id is string => Boolean(id)))
+	);
+	if (ids.length === 0) return {};
+
+	const { data, error } = await supabase
+		.from('onto_projects')
+		.select('id, name, state_key, description, facet_stage, facet_scale')
+		.in('id', ids);
+	if (error) {
+		console.warn('[DashboardCalendar] Failed to load project summaries:', error);
+		return {};
+	}
+
+	return Object.fromEntries(
+		(data ?? []).map((project) => [
+			project.id,
+			{
+				...project,
+				description:
+					project.description && project.description.length > PROJECT_DESCRIPTION_MAX
+						? `${project.description.slice(0, PROJECT_DESCRIPTION_MAX).trimEnd()}…`
+						: project.description
+			}
+		])
+	);
+}
 
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
@@ -85,8 +127,10 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			return ApiResponse.internalError(itemsResult.error, 'Failed to load calendar items');
 		}
 
+		const items = (itemsResult.data ?? []) as CalendarItem[];
 		const payload: DashboardCalendarPayload = {
-			items: (itemsResult.data ?? []) as CalendarItem[]
+			items,
+			projects: await loadProjectSummaries(supabase, items)
 		};
 
 		if (includeMeta) {

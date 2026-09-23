@@ -480,7 +480,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			edits: {
 				type: 'array',
 				description:
-					'Preferred for changing part of a document: exact find-and-replace pairs applied together (all or nothing). Copy old_text exactly from the document; it must match exactly one place unless replace_all is true. An empty new_text deletes the text (a whole deleted line also loses its blank line). Do not combine with content.',
+					'Preferred for changing part of a document: exact find-and-replace pairs applied together (all or nothing). Keep each old_text to the smallest span copied exactly from the document that is unique, usually one line; send one edit per changed line rather than a whole block. It must match exactly one place unless replace_all is true. An empty new_text deletes the text (a whole deleted line also loses its blank line). Do not combine with content.',
 				items: {
 					type: 'object',
 					additionalProperties: false,

@@ -11,6 +11,7 @@ import {
 	EXTERNAL_OP_HANDLERS,
 	extractWriteEntityMeta,
 	normalizeGatewayError,
+	previewDocumentUpdate,
 	type CalendarPort,
 	type TaskSyncPort,
 	type ToolExecutionContext
@@ -203,6 +204,43 @@ export async function runGatewayWriteOp(params: {
 			entityProjectId: meta.entityProjectId ?? null,
 			entityTitle: meta.entityTitle ?? null
 		};
+	} catch (error) {
+		const normalized = normalizeGatewayError(error);
+		return {
+			ok: false,
+			error: {
+				code: normalized.code,
+				message: normalized.message,
+				details: normalized.details
+			}
+		};
+	}
+}
+
+export type GatewayDocumentUpdatePreviewResult =
+	| { ok: true; data: Awaited<ReturnType<typeof previewDocumentUpdate>> }
+	| { ok: false; error: NonNullable<GatewayWriteOpResult['error']> };
+
+/**
+ * Dry run of an update_onto_document call under the same argument validation,
+ * scope, and access checks as `runGatewayWriteOp`. Nothing is written.
+ */
+export async function previewGatewayDocumentUpdate(params: {
+	admin: GatewaySupabaseClient;
+	userId: string;
+	scope: AgentCallScope;
+	args?: Record<string, unknown>;
+}): Promise<GatewayDocumentUpdatePreviewResult> {
+	const preparedArgs = normalizeAndValidateGatewayWriteArgs('onto.document.update', params.args);
+	if (!preparedArgs.ok) return { ok: false, error: preparedArgs.error };
+	const context: ToolExecutionContext = {
+		admin: params.admin,
+		userId: params.userId,
+		callerId: undefined,
+		scope: params.scope
+	};
+	try {
+		return { ok: true, data: await previewDocumentUpdate(context, preparedArgs.args) };
 	} catch (error) {
 		const normalized = normalizeGatewayError(error);
 		return {

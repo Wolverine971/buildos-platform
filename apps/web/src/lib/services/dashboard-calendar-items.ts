@@ -152,6 +152,45 @@ export function decorateDashboardCalendarItems(
 	});
 }
 
+export type DashboardCalendarAttendee = {
+	name: string | null;
+	email: string | null;
+	response: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+	organizer: boolean;
+	self: boolean;
+	optional: boolean;
+};
+
+const ATTENDEE_RESPONSES = new Set(['accepted', 'declined', 'tentative', 'needsAction']);
+
+function mapAttendees(event: ConnectedGoogleCalendarEvent): DashboardCalendarAttendee[] {
+	return (event.attendees ?? [])
+		.filter((attendee) => !attendee.resource && (attendee.email || attendee.displayName))
+		.map((attendee) => ({
+			name: attendee.displayName ?? null,
+			email: attendee.email ?? null,
+			response: ATTENDEE_RESPONSES.has(attendee.responseStatus ?? '')
+				? (attendee.responseStatus as DashboardCalendarAttendee['response'])
+				: 'needsAction',
+			organizer: Boolean(attendee.organizer),
+			self: Boolean(attendee.self),
+			optional: Boolean(attendee.optional)
+		}));
+}
+
+function meetingUrl(event: ConnectedGoogleCalendarEvent): string | null {
+	const video = event.conferenceData?.entryPoints?.find(
+		(entry) => entry.entryPointType === 'video' && entry.uri
+	);
+	return event.hangoutLink ?? video?.uri ?? null;
+}
+
+/** Guests the side panel shows for a provider event (empty for BuildOS items). */
+export function getDashboardCalendarAttendees(item: CalendarItem): DashboardCalendarAttendee[] {
+	const value = item.props?.attendees;
+	return Array.isArray(value) ? (value as DashboardCalendarAttendee[]) : [];
+}
+
 export function mapConnectedGoogleEvent(
 	event: ConnectedGoogleCalendarEvent,
 	sources: CalendarSourceLookup
@@ -199,6 +238,9 @@ export function mapConnectedGoogleEvent(
 			description: event.description ?? null,
 			location: event.location ?? null,
 			organizer: event.organizer ?? null,
+			attendees: mapAttendees(event),
+			meeting_url: meetingUrl(event),
+			is_recurring: Boolean(event.recurringEventId),
 			ical_uid: event.iCalUID ?? null
 		},
 		calendar_source_id: event.calendarSourceId,

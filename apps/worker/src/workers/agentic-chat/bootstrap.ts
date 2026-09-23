@@ -583,7 +583,8 @@ function createDefaultComposition(
 							title: 'BuildOS Context Finder'
 						})
 					: undefined,
-			runnerClient: workflowClient
+			runnerClient: workflowClient,
+			reasoning: input.config.workflowReasoning
 		},
 		liveVisionEnabled: input.config.liveVisionEnabled,
 		consumptionBillingEnabled: input.config.consumptionBillingEnabled,

@@ -552,19 +552,23 @@ const ASSIGNMENT_MAX_BYTES = 12_000;
 export function parseWorkflowAssignments(text: string): Assignment | null {
 	try {
 		const data = JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
-		if (
-			!data ||
-			typeof data !== 'object' ||
-			!['analyst', 'reviewer'].every(
-				(key) =>
-					typeof data[key] === 'string' &&
-					data[key].trim().length >= 3 &&
-					data[key].length <= ASSIGNMENT_MAX_CHARS &&
-					Buffer.byteLength(data[key], 'utf8') <= ASSIGNMENT_MAX_BYTES
-			)
-		)
-			return null;
-		return { analyst: data.analyst.trim(), reviewer: data.reviewer.trim() };
+		if (!data || typeof data !== 'object') return null;
+		// Tasker 98 pilot: 1 of 14 plans nested each value as {"role", "assignment"}.
+		const assignmentOf = (value: unknown): string | null => {
+			const text =
+				value && typeof value === 'object'
+					? (value as { assignment?: unknown }).assignment
+					: value;
+			return typeof text === 'string' &&
+				text.trim().length >= 3 &&
+				text.length <= ASSIGNMENT_MAX_CHARS &&
+				Buffer.byteLength(text, 'utf8') <= ASSIGNMENT_MAX_BYTES
+				? text.trim()
+				: null;
+		};
+		const analyst = assignmentOf(data.analyst);
+		const reviewer = assignmentOf(data.reviewer);
+		return analyst && reviewer ? { analyst, reviewer } : null;
 	} catch {
 		return null;
 	}

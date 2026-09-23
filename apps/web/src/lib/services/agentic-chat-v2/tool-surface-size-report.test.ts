@@ -188,8 +188,9 @@ describe('tool surface size report', () => {
 		// for get_onto_document_details, +1,190 for link_onto_entities. These
 		// committed capabilities explain all 2,745 chars (38,833 -> 41,578).
 		// Do not remove capabilities to fit the old surface or relax other caps.
-		// 2026-09-18: see the planning-layer note above.
-		expect(project?.totalChars).toBeLessThanOrEqual(66_200);
+		// 2026-09-23: surgical document edits add edits and section_edits to
+		// update_onto_document. Measured 67,096 chars; retain about 5% headroom.
+		expect(project?.totalChars).toBeLessThanOrEqual(70_500);
 		// Bumped 2026-09-04: 15,250 → 15,700. Measured 15,458 — +426 from the
 		// create_onto_task description work noted above, and +516 already present
 		// on this branch from the control-tool descriptions (declare_turn_contract).

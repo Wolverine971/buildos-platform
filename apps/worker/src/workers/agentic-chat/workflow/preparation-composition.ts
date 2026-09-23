@@ -18,7 +18,10 @@ import {
 	SupabaseAgenticChatWorkflowPreparationStore
 } from './preparation-store';
 import { AgenticChatWorkflowTurnPreparer } from './raw-turn-preparation';
-import { AgenticChatWorkflowRunner } from './workflow-runner';
+import {
+	type AgenticChatWorkflowReasoningPolicyV1,
+	AgenticChatWorkflowRunner
+} from './workflow-runner';
 import { AgenticChatWorkflowRunnerAdapter } from './workflow-runner-adapter';
 import {
 	type AgenticChatWorkflowStoreClient,
@@ -54,6 +57,8 @@ export type AgenticChatWorkflowV4CompositionOptionsV1 = {
 	 */
 	executionEnabled?: boolean;
 	runnerClient?: AgenticChatTurnProviderClientPortV1;
+	/** AGENTIC_CHAT_WORKFLOW_REASONING_OFF_STEPS: host-owned hidden reasoning per step. */
+	reasoning?: AgenticChatWorkflowReasoningPolicyV1;
 };
 
 /**
@@ -140,15 +145,20 @@ function createWorkflowRunnerPort(
 	);
 	const recoverWorkflow = input.control.recoverWorkflow.bind(input.control);
 	return new AgenticChatWorkflowRunnerAdapter({
-		runner: new AgenticChatWorkflowRunner({
-			store,
-			client: input.options.runnerClient,
-			capacity: input.providerCapacity
-		}),
+		runner: new AgenticChatWorkflowRunner(
+			{
+				store,
+				client: input.options.runnerClient,
+				capacity: input.providerCapacity
+			},
+			{ reasoning: input.options.reasoning }
+		),
 		store,
 		control: { finalize: input.control.finalize.bind(input.control), recoverWorkflow },
 		publisher: input.publisher,
-		onRunSummary: (summary) => console.info(JSON.stringify(summary)),
+		// The reasoning setting is host-owned and not stored with the run; log it per run.
+		onRunSummary: (summary) =>
+			console.info(JSON.stringify({ ...summary, reasoning: input.options?.reasoning ?? {} })),
 		onError: (report) =>
 			console.warn(
 				JSON.stringify({

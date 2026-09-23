@@ -186,6 +186,23 @@ describe('workflow v4 flag matrix (Tasker 86 preparation, Tasker 87 execution)',
 	});
 });
 
+it('parses host-owned workflow reasoning: default none, all, a step list, or a refusal', () => {
+	const load = (value?: string) =>
+		loadAgenticChatConfig({
+			...DEDICATED_PROVIDER_ENV,
+			...(value === undefined ? {} : { AGENTIC_CHAT_WORKFLOW_REASONING_OFF_STEPS: value })
+		}).workflowReasoning;
+	expect(load()).toEqual({});
+	expect(load('all')).toEqual({
+		planner: 'none',
+		project_analyst: 'none',
+		risk_reviewer: 'none',
+		editor: 'none'
+	});
+	expect(load('planner, editor')).toEqual({ planner: 'none', editor: 'none' });
+	expect(() => load('reviewer')).toThrow(/REASONING_OFF_STEPS/);
+});
+
 it('keeps shared document evidence off until explicitly enabled', () => {
 	expect(loadAgenticChatConfig(DEDICATED_PROVIDER_ENV).documentEvidenceHandoffEnabled).toBe(
 		false

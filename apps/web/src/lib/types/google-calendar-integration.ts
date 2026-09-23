@@ -81,6 +81,20 @@ export type ConnectedGoogleCalendarEvent = {
 		displayName?: string | null;
 		email?: string | null;
 	} | null;
+	attendees?: Array<{
+		email?: string | null;
+		displayName?: string | null;
+		responseStatus?: string | null;
+		organizer?: boolean | null;
+		self?: boolean | null;
+		optional?: boolean | null;
+		resource?: boolean | null;
+	}> | null;
+	hangoutLink?: string | null;
+	conferenceData?: {
+		entryPoints?: Array<{ entryPointType?: string | null; uri?: string | null }> | null;
+	} | null;
+	recurringEventId?: string | null;
 	calendarSourceId: string;
 	contributingCalendarSourceIds: string[];
 	connectionId: string;

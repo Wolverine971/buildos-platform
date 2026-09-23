@@ -72,7 +72,12 @@ export type AppliedDocumentEdit = {
 
 export type ResolveDocumentEditsResult =
 	| { status: 'resolved'; next_content: string; applied: AppliedDocumentEdit[] }
-	| { status: 'rejected'; failures: DocumentEditFailure[] };
+	| {
+			status: 'rejected';
+			failures: DocumentEditFailure[];
+			/** Edits that resolved and would apply once the failures are fixed. */
+			matched_edits?: string[];
+	  };
 
 export type ResolveDocumentEditsInput = {
 	project_id: string;
@@ -266,6 +271,48 @@ function alignReplacementPadding(oldText: string, newText: string): string {
 	return next;
 }
 
+/**
+ * A multi-line old_text usually fails because the model dropped, merged, or
+ * reworded one line of a block it copied. Find where the copy starts in the
+ * document and name the first line that differs, so the retry can anchor on
+ * one line instead of resending the whole block.
+ */
+function diagnoseBlockMismatch(
+	content: string,
+	oldText: string
+): { message: string; suggestion: { line: number; text: string } } | null {
+	const wanted = oldText
+		.split('\n')
+		.map((line) => foldForMatch(line.trim()).text)
+		.filter(Boolean);
+	if (wanted.length < 2) return null;
+	const docLines = content.split('\n');
+	const folded = docLines.map((line) => foldForMatch(line.trim()).text);
+	const starts = folded.flatMap((line, index) => (line === wanted[0] ? [index] : []));
+	if (starts.length !== 1) return null;
+
+	let docIndex = starts[0]!;
+	for (let wantedIndex = 0; wantedIndex < wanted.length; wantedIndex += 1) {
+		while (docIndex < folded.length && !folded[docIndex]) docIndex += 1;
+		if (folded[docIndex] === wanted[wantedIndex]) {
+			docIndex += 1;
+			continue;
+		}
+		const lineNumber = docIndex + 1;
+		const documentLine = snippet(docLines[docIndex] ?? '');
+		const skipped = folded.slice(docIndex + 1).findIndex((line) => line) + docIndex + 1;
+		const detail =
+			folded[skipped] === wanted[wantedIndex]
+				? `old_text leaves out document line ${lineNumber}`
+				: `old_text line ${wantedIndex + 1} differs from document line ${lineNumber}`;
+		return {
+			message: `old_text copies a block starting at line ${starts[0]! + 1}, but ${detail}: "${documentLine}". Anchor on the single line you are changing instead of the whole block, or copy the block exactly.`,
+			suggestion: { line: lineNumber, text: documentLine }
+		};
+	}
+	return null;
+}
+
 type PlannedOperation = {
 	edit: string;
 	range: Range;
@@ -315,6 +362,15 @@ function planTextEdit(
 	}
 
 	if (ranges.length === 0) {
+		const divergence = diagnoseBlockMismatch(content, oldText);
+		if (divergence) {
+			return {
+				edit: label,
+				code: 'ANCHOR_NOT_FOUND',
+				message: divergence.message,
+				suggestions: [divergence.suggestion]
+			};
+		}
 		const suggestions = suggestLines(content, oldText);
 		return {
 			edit: label,
@@ -648,7 +704,17 @@ export function resolveDocumentEdits(input: ResolveDocumentEditsInput): ResolveD
 			}
 		}
 	}
-	if (failures.length > 0) return { status: 'rejected', failures: dedupeFailures(failures) };
+	if (failures.length > 0) {
+		const failed = new Set(failures.map((failure) => failure.edit));
+		const matched = [...new Set(planned.map((operation) => operation.edit))].filter(
+			(edit) => !failed.has(edit)
+		);
+		return {
+			status: 'rejected',
+			failures: dedupeFailures(failures),
+			...(matched.length > 0 ? { matched_edits: matched } : {})
+		};
+	}
 
 	const selections: DocumentPatchSelection[] = planned.map((operation, index) => ({
 		op_id: `${operation.edit}#${index}`,
@@ -709,7 +775,10 @@ function dedupeFailures(failures: DocumentEditFailure[]): DocumentEditFailure[] 
 }
 
 /** One model-actionable message covering every failed edit. */
-export function formatDocumentEditFailures(failures: DocumentEditFailure[]): string {
+export function formatDocumentEditFailures(
+	failures: DocumentEditFailure[],
+	matchedEdits: readonly string[] = []
+): string {
 	const lines = failures.map((failure) => {
 		const parts = [`${failure.edit}: ${failure.code} \u2014 ${failure.message}`];
 		for (const suggestion of failure.suggestions ?? []) {
@@ -723,7 +792,11 @@ export function formatDocumentEditFailures(failures: DocumentEditFailure[]): str
 		}
 		return parts.join('\n');
 	});
-	return `No edits were applied; the document is unchanged.\n${lines.join('\n')}`;
+	const matched =
+		matchedEdits.length > 0
+			? `\n${matchedEdits.join(', ')} matched and will apply once the failed edit${failures.length === 1 ? ' is' : 's are'} fixed: resend every edit, changing only the failed one${failures.length === 1 ? '' : 's'}.`
+			: '';
+	return `No edits were applied; the document is unchanged.\n${lines.join('\n')}${matched}`;
 }
 
 // ---------------------------------------------------------------------------

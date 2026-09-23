@@ -6,6 +6,7 @@ import {
 	BUILDOS_CALENDAR_SOURCE_ID,
 	decorateDashboardCalendarItems,
 	getCalendarSourceIds,
+	getDashboardCalendarAttendees,
 	getDashboardCalendarItemTitle,
 	isConnectedGoogleCalendarItem,
 	isDashboardCalendarItemVisible,
@@ -102,6 +103,69 @@ describe('dashboard connected calendar items', () => {
 				location: 'Home'
 			}
 		});
+	});
+
+	it('carries guests, the meeting link, and recurrence for the side panel', () => {
+		const mapped = mapConnectedGoogleEvent(
+			{
+				summary: 'Client sync',
+				start: { dateTime: '2026-08-13T18:00:00-04:00' },
+				end: { dateTime: '2026-08-13T19:00:00-04:00' },
+				attendees: [
+					{ email: 'dj@example.com', responseStatus: 'accepted', self: true },
+					{ email: 'ana@example.com', displayName: 'Ana', responseStatus: 'tentative' },
+					{ email: 'room@example.com', resource: true, responseStatus: 'accepted' },
+					{ email: 'sam@example.com', responseStatus: 'mystery' }
+				],
+				conferenceData: {
+					entryPoints: [
+						{ entryPointType: 'phone', uri: 'tel:+1' },
+						{ entryPointType: 'video', uri: 'https://meet.google.com/abc' }
+					]
+				},
+				recurringEventId: 'series-1',
+				calendarSourceId: 'source-a',
+				contributingCalendarSourceIds: [],
+				connectionId: 'connection-a',
+				connectionLabel: 'djwayne3',
+				calendarSummary: 'DJ Wayne 3',
+				providerCalendarId: 'djwayne3@gmail.com',
+				providerEventId: 'provider-event-2'
+			},
+			new Map([['source-a', source('source-a')]])
+		);
+
+		expect(mapped?.props).toMatchObject({
+			meeting_url: 'https://meet.google.com/abc',
+			is_recurring: true
+		});
+		expect(getDashboardCalendarAttendees(mapped!)).toEqual([
+			{
+				name: null,
+				email: 'dj@example.com',
+				response: 'accepted',
+				organizer: false,
+				self: true,
+				optional: false
+			},
+			{
+				name: 'Ana',
+				email: 'ana@example.com',
+				response: 'tentative',
+				organizer: false,
+				self: false,
+				optional: false
+			},
+			{
+				name: null,
+				email: 'sam@example.com',
+				response: 'needsAction',
+				organizer: false,
+				self: false,
+				optional: false
+			}
+		]);
+		expect(getDashboardCalendarAttendees(item({}))).toEqual([]);
 	});
 
 	it('labels BuildOS-only items and source-aware internal events for filtering', () => {

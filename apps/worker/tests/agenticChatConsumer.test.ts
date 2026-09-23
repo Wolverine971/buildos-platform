@@ -248,6 +248,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 		expect(config).toEqual({
 			enabled: true,
 			workflowPrototypeUserIds: [],
+			workflowReasoning: {},
 			workflowV4PreparationEnabled: false,
 			workflowV4ExecutionEnabled: false,
 			specialistWorkflowsEnabled: false,

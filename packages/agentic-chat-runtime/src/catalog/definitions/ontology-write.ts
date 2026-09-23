@@ -1327,7 +1327,7 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 			description: [
 				'Update an existing ontology document: title, state, body markdown, or metadata.',
 				'Change part of the body with edits or section_edits; never resend the whole body to change a few lines. content is only for a whole-body rewrite (replace) or adding at the end (append).',
-				'Edit example: update_onto_document({ document_id, edits: [{ old_text: "**Exclusions:** TBD", new_text: "" }] })'
+				'Edit example: update_onto_document({ document_id, edits: [{ old_text: "- Launch: May 3", new_text: "- Launch: May 10" }] })'
 			].join(' '),
 			parameters: {
 				type: 'object',
@@ -1358,7 +1358,7 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 					edits: {
 						type: 'array',
 						description:
-							'Change part of the body: exact old_text (must match once unless replace_all) → new_text; empty new_text deletes. All or none apply.',
+							'Change part of the body. old_text: the smallest exact unique span, usually one line, never a whole block; one edit per changed line. Empty new_text deletes. All or none apply.',
 						items: {
 							type: 'object',
 							additionalProperties: false,

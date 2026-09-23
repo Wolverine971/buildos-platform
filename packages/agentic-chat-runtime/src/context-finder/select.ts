@@ -157,8 +157,13 @@ export function selectProjectContext(input: {
 	skipIds?: ReadonlySet<string>;
 	pins?: ReadonlySet<string>;
 	drops?: ReadonlySet<string>;
+	/** A smaller share of the budget when several projects split one prompt (workspace.ts). */
+	budgetChars?: number;
+	maxSummaries?: number;
 }): ContextPlanV1 {
 	const policy = CONTEXT_FINDER_POLICY;
+	const budgetChars = Math.min(input.budgetChars ?? policy.budgetChars, policy.budgetChars);
+	const maxSummaries = Math.min(input.maxSummaries ?? policy.maxSummaries, policy.maxSummaries);
 	const skip = input.skipIds ?? new Set<string>();
 	const drops = input.drops ?? new Set<string>();
 	const pins = input.pins ?? new Set<string>();
@@ -184,7 +189,7 @@ export function selectProjectContext(input: {
 		const sections = scoredSectionsFor(entity, input.scores);
 		const size = contextItemExcerpts(entity, sections, { pinned: isPinned }).chars;
 		// Skip what doesn't fit and keep packing smaller, lower-ranked items.
-		if (!isPinned && chars + size > policy.budgetChars) continue;
+		if (!isPinned && chars + size > budgetChars) continue;
 		chars += size;
 		full.push({
 			kind: entity.kind,
@@ -201,7 +206,7 @@ export function selectProjectContext(input: {
 		.filter((x) => x.p >= policy.floor)
 		.slice(0, policy.summaryCandidates)
 		.filter((x) => !fullIds.has(x.entity.id))
-		.slice(0, policy.maxSummaries)
+		.slice(0, maxSummaries)
 		.map(({ entity, p }) => ({
 			kind: entity.kind,
 			id: entity.id,

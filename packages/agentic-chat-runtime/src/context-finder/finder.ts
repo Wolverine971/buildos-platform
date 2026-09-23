@@ -58,6 +58,9 @@ export async function findProjectContext(input: {
 	plan?: ContextPlanV1;
 	recentConversation?: readonly { role: string; content: string }[];
 	skipIds?: ReadonlySet<string>;
+	/** Budget share when several projects split one prompt (workspace.ts). */
+	budgetChars?: number;
+	maxSummaries?: number;
 	signal?: AbortSignal;
 	timeoutMs?: number;
 	usage?: { operationType: string; userId?: string; projectId?: string; chatSessionId?: string };
@@ -91,7 +94,9 @@ export async function findProjectContext(input: {
 		scores: ranking.scores,
 		checked: ranking.checked,
 		unchecked: ranking.unchecked,
-		skipIds: skip
+		skipIds: skip,
+		budgetChars: input.budgetChars,
+		maxSummaries: input.maxSummaries
 	});
 	return {
 		evidence: materializeContextPlan({ plan, entities, ranker }),

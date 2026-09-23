@@ -155,6 +155,16 @@ export type AgenticChatWorkflowRunnerPortsV1 = {
 	};
 };
 
+/**
+ * Host-owned hidden reasoning per step. `none` sends `reasoning: { enabled: false }`, which
+ * DeepSeek V4.1 Flash honors (Tasker 98 replay, 2026-09-23: 0 reasoning tokens) where it ignores
+ * `effort`. A step left out keeps its definition's frozen setting (`low`); definitions are not
+ * edited because published snapshots must equal the host baseline.
+ */
+export type AgenticChatWorkflowReasoningPolicyV1 = Readonly<
+	Partial<Record<AgenticChatWorkflowStepKeyV1, 'low' | 'none'>>
+>;
+
 export type AgenticChatWorkflowRunnerOptionsV1 = {
 	now?: () => number;
 	ids?: () => string;
@@ -170,6 +180,7 @@ export type AgenticChatWorkflowRunnerOptionsV1 = {
 	requeueMinRunRemainingMs?: number;
 	maxAnswerChars?: number;
 	meter?: AgenticChatWorkflowDispatchMeterOptionsV1;
+	reasoning?: AgenticChatWorkflowReasoningPolicyV1;
 };
 
 export type AgenticChatWorkflowRunOutcomeV1 =
@@ -1445,6 +1456,7 @@ class WorkflowExecution {
 			passRole: args.stepKey === 'editor' ? 'final_response' : 'acting',
 			maxOutputTokens: args.maxOutputTokens,
 			reasoningEffort:
+				this.options.reasoning?.[args.stepKey] ??
 				specialist?.modelPolicy.reasoningEffort ??
 				CHAT_WORKFLOW_DISPATCH_POLICY.reasoningEffort,
 			// The client holds its own 5 s reserve; this keeps each physical request inside

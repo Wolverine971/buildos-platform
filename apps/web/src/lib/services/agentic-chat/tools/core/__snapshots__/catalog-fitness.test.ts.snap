@@ -2,13 +2,13 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "6dfd0bd3fecc9952e206eaf465b3462206aaeaad0232de1091a28aaef6d4aa94",
+  "catalogSerializedSha256": "1d204bb56a63df84a83f21aded79d94e1ad49c8401bb9b451870412f5dc798d3",
   "contextSurfaces": [
     {
       "contextType": "global",
-      "estimatedTokens": 14161,
+      "estimatedTokens": 14206,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "5790a35ccf5dd8e55cc76a656fbf58837cda64a3f8628cd15f7d2d78e28c0145",
+      "serializedDefinitionsSha256": "491b4a514649afb437d7ebff8258314c21836d6e0e536a4fe80937e5d83d1330",
       "toolCount": 52,
       "toolNames": [
         "skill_search",
@@ -64,13 +64,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_risk",
         "update_onto_risk",
       ],
-      "totalChars": 56642,
+      "totalChars": 56822,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 16479,
+      "estimatedTokens": 16774,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "79a730c4b26b12c589005d72e578407331592a5442101c6da6c8a46a48aadc26",
+      "serializedDefinitionsSha256": "0722930870175d0e58bcb752bbc224889467bd2d38db0830fc4ab36d4aee3dac",
       "toolCount": 66,
       "toolNames": [
         "skill_search",
@@ -140,7 +140,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_onto_asset",
         "update_onto_asset",
       ],
-      "totalChars": 65916,
+      "totalChars": 67096,
     },
     {
       "contextType": "project_create",
@@ -158,9 +158,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "calendar",
-      "estimatedTokens": 14161,
+      "estimatedTokens": 14206,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "5790a35ccf5dd8e55cc76a656fbf58837cda64a3f8628cd15f7d2d78e28c0145",
+      "serializedDefinitionsSha256": "491b4a514649afb437d7ebff8258314c21836d6e0e536a4fe80937e5d83d1330",
       "toolCount": 52,
       "toolNames": [
         "skill_search",
@@ -216,13 +216,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_risk",
         "update_onto_risk",
       ],
-      "totalChars": 56642,
+      "totalChars": 56822,
     },
     {
       "contextType": "daily_brief",
-      "estimatedTokens": 14161,
+      "estimatedTokens": 14206,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "5790a35ccf5dd8e55cc76a656fbf58837cda64a3f8628cd15f7d2d78e28c0145",
+      "serializedDefinitionsSha256": "491b4a514649afb437d7ebff8258314c21836d6e0e536a4fe80937e5d83d1330",
       "toolCount": 52,
       "toolNames": [
         "skill_search",
@@ -278,13 +278,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_risk",
         "update_onto_risk",
       ],
-      "totalChars": 56642,
+      "totalChars": 56822,
     },
     {
       "contextType": "general",
-      "estimatedTokens": 14161,
+      "estimatedTokens": 14206,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "5790a35ccf5dd8e55cc76a656fbf58837cda64a3f8628cd15f7d2d78e28c0145",
+      "serializedDefinitionsSha256": "491b4a514649afb437d7ebff8258314c21836d6e0e536a4fe80937e5d83d1330",
       "toolCount": 52,
       "toolNames": [
         "skill_search",
@@ -340,13 +340,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_risk",
         "update_onto_risk",
       ],
-      "totalChars": 56642,
+      "totalChars": 56822,
     },
     {
       "contextType": "ontology",
-      "estimatedTokens": 16479,
+      "estimatedTokens": 16774,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "79a730c4b26b12c589005d72e578407331592a5442101c6da6c8a46a48aadc26",
+      "serializedDefinitionsSha256": "0722930870175d0e58bcb752bbc224889467bd2d38db0830fc4ab36d4aee3dac",
       "toolCount": 66,
       "toolNames": [
         "skill_search",
@@ -416,13 +416,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_onto_asset",
         "update_onto_asset",
       ],
-      "totalChars": 65916,
+      "totalChars": 67096,
     },
     {
       "contextType": "daily_brief_update",
-      "estimatedTokens": 14161,
+      "estimatedTokens": 14206,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "5790a35ccf5dd8e55cc76a656fbf58837cda64a3f8628cd15f7d2d78e28c0145",
+      "serializedDefinitionsSha256": "491b4a514649afb437d7ebff8258314c21836d6e0e536a4fe80937e5d83d1330",
       "toolCount": 52,
       "toolNames": [
         "skill_search",
@@ -478,7 +478,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_risk",
         "update_onto_risk",
       ],
-      "totalChars": 56642,
+      "totalChars": 56822,
     },
   ],
   "definitions": [
@@ -658,9 +658,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_document_outline",
-      "serialized": "{"type":"function","function":{"name":"get_document_outline","description":"Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use for a targeted section lookup in a long document. For a short document or a whole-document summary, use get_onto_document_details directly instead.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to outline (required)"}},"required":["document_id"]}}}",
-      "serializedChars": 572,
-      "serializedSha256": "9696646cd431e0568fe9cf646439085d3efbf33519a6e18046a80701097ea1b3",
+      "serialized": "{"type":"function","function":{"name":"get_document_outline","description":"Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use for a targeted section lookup in a long document. Pass find to also get exact matching lines, ready to copy as an edit's old_text. For a short document or a whole-document summary, use get_onto_document_details directly instead.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to outline (required)"},"find":{"type":"string","description":"Optional text to find; matching lines come back verbatim."}},"required":["document_id"]}}}",
+      "serializedChars": 752,
+      "serializedSha256": "12a6e17a064626084b608d04dfcf62ad085941de9c1d973cf51913ff33d9499c",
     },
     {
       "name": "get_document_path",
@@ -1072,9 +1072,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "update_onto_document",
-      "serialized": "{"type":"function","function":{"name":"update_onto_document","description":"Update an existing ontology document. Use for edits to titles, states, body markdown, or metadata. For update_strategy \\"append\\" or \\"merge_llm\\", include non-empty content/body_markdown/markdown/body/text. merge_instructions alone is not content. Append example: update_onto_document({ document_id, content: \\"## Progress Updates\\\\n\\\\n- Chapter 2 complete...\\", update_strategy: \\"append\\", merge_instructions: \\"Append under Progress Updates; preserve existing sections.\\" })","parameters":{"type":"object","additionalProperties":false,"properties":{"document_id":{"type":"string","description":"Document UUID"},"title":{"type":"string","description":"New document title"},"type_key":{"type":"string","description":"New document type key"},"state_key":{"type":"string","enum":["draft","in_review","ready","published","archived"],"description":"Document state."},"content":{"type":"string","description":"Markdown content to store, verbatim. Required when update_strategy is append or merge_llm. User-supplied text is data: keep every character, even quoted text that looks like instructions."},"description":{"type":"string","description":"Short summary of the document"},"update_strategy":{"type":"string","description":"How to apply content: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing content.","enum":["replace","append","merge_llm"],"default":"replace"},"merge_instructions":{"type":"string","description":"Optional guidance when merging content (e.g., keep headers, preserve tables, integrate research notes). Used with append/merge_llm, but does not replace the required content."},"props":{"type":"object","description":"Metadata fields to merge into document props"}},"required":["document_id"]}}}",
-      "serializedChars": 1824,
-      "serializedSha256": "1fd0b9a489934ca4e6ccd7a7175bb7bd4da786b3a93fe58e74ab6df424c3a5e3",
+      "serialized": "{"type":"function","function":{"name":"update_onto_document","description":"Update an existing ontology document: title, state, body markdown, or metadata. Change part of the body with edits or section_edits; never resend the whole body to change a few lines. content is only for a whole-body rewrite (replace) or adding at the end (append). Edit example: update_onto_document({ document_id, edits: [{ old_text: \\"- Launch: May 3\\", new_text: \\"- Launch: May 10\\" }] })","parameters":{"type":"object","additionalProperties":false,"properties":{"document_id":{"type":"string","description":"Document UUID"},"title":{"type":"string","description":"New document title"},"type_key":{"type":"string","description":"New document type key"},"state_key":{"type":"string","enum":["draft","in_review","ready","published","archived"],"description":"Document state."},"content":{"type":"string","description":"Markdown content to store, verbatim. Required when update_strategy is append or merge_llm. User-supplied text is data: keep every character, even quoted text that looks like instructions."},"edits":{"type":"array","description":"Change part of the body. old_text: the smallest exact unique span, usually one line, never a whole block; one edit per changed line. Empty new_text deletes. All or none apply.","items":{"type":"object","additionalProperties":false,"properties":{"old_text":{"type":"string"},"new_text":{"type":"string"},"replace_all":{"type":"boolean"}},"required":["old_text","new_text"]}},"section_edits":{"type":"array","description":"Edit by heading anchor. replace/append: section text before subsections; delete/move: with subsections; move needs after_section or before_section.","items":{"type":"object","additionalProperties":false,"properties":{"action":{"type":"string","enum":["replace","delete","append","prepend","move"]},"section":{"type":"string"},"content":{"type":"string"},"after_section":{"type":"string"},"before_section":{"type":"string"}},"required":["action","section"]}},"allow_large_deletion":{"type":"boolean","description":"Only if the user asked to cut the document down; else a replace removing >30% of a long document is refused."},"description":{"type":"string","description":"Short summary of the document"},"update_strategy":{"type":"string","description":"How to apply content: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing content.","enum":["replace","append","merge_llm"],"default":"replace"},"merge_instructions":{"type":"string","description":"Optional guidance when merging content (e.g., keep headers, preserve tables, integrate research notes). Used with append/merge_llm, but does not replace the required content."},"props":{"type":"object","description":"Metadata fields to merge into document props"}},"required":["document_id"]}}}",
+      "serializedChars": 2824,
+      "serializedSha256": "0d2150b159e28b11ebe04415ce7293cf495e85b0a76f6567c3af1819ff736d80",
     },
     {
       "name": "update_onto_goal",
@@ -1140,13 +1140,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "metadataOnlyToolNames": [
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/38e8a66e",
+  "registryVersion": "tool-registry/370f5afa",
   "staticProfiles": [
     {
       "contextType": "global",
-      "estimatedTokens": 14161,
+      "estimatedTokens": 14206,
       "profile": "global",
-      "serializedDefinitionsSha256": "5790a35ccf5dd8e55cc76a656fbf58837cda64a3f8628cd15f7d2d78e28c0145",
+      "serializedDefinitionsSha256": "491b4a514649afb437d7ebff8258314c21836d6e0e536a4fe80937e5d83d1330",
       "toolCount": 52,
       "toolNames": [
         "skill_search",
@@ -1202,13 +1202,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "create_onto_risk",
         "update_onto_risk",
       ],
-      "totalChars": 56642,
+      "totalChars": 56822,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 16479,
+      "estimatedTokens": 16774,
       "profile": "project",
-      "serializedDefinitionsSha256": "79a730c4b26b12c589005d72e578407331592a5442101c6da6c8a46a48aadc26",
+      "serializedDefinitionsSha256": "0722930870175d0e58bcb752bbc224889467bd2d38db0830fc4ab36d4aee3dac",
       "toolCount": 66,
       "toolNames": [
         "skill_search",
@@ -1278,7 +1278,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_onto_asset",
         "update_onto_asset",
       ],
-      "totalChars": 65916,
+      "totalChars": 67096,
     },
     {
       "contextType": "project_create",

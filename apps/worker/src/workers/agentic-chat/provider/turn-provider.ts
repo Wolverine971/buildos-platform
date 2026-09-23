@@ -112,6 +112,12 @@ import {
 	throwIfAborted
 } from './protocol';
 import type { AgenticChatContextFinderPort } from './chat-context-finder';
+import {
+	type AgenticChatDocumentEditPreviewPort,
+	type DocumentEditPreviewV1,
+	formatDocumentEditPreviewsForReview,
+	previewDocumentEditCalls
+} from './document-edit-preview';
 import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
 import { streamBufferedProviderPass } from './provider-pass';
 import { TurnCreateReplayGuard, createReplayRepairInstruction } from './create-replay';
@@ -272,6 +278,9 @@ type ToolRoundStreamState = {
 	validateApprovedMutations(calls: readonly CompletedProviderToolCall[]): ToolValidationIssue[];
 	/** Scheduling values this turn's reads loaded, so a no-op reschedule fails validation. */
 	getLoadedTaskSchedules(): ReadonlyMap<string, LoadedTaskSchedule>;
+	/** Verified document-edit previews by provider call id, for the batch reviewer. */
+	recordDocumentEditPreviews(previews: ReadonlyMap<string, DocumentEditPreviewV1>): void;
+	getDocumentEditPreviews(): ReadonlyMap<string, DocumentEditPreviewV1>;
 	/**
 	 * The one way a pass emits prose. Text from different passes is one reply
 	 * to the user, so the first text of a pass is separated from the previous
@@ -322,6 +331,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			 * with tool selection, and publishes "Working from" chips. Fail-open.
 			 */
 			contextFinder?: AgenticChatContextFinderPort;
+			/**
+			 * Dry-runs body-changing document updates before review: a failing edit
+			 * returns to the actor without a review round, a passing one reaches the
+			 * reviewer with its verified diff. Fail-open.
+			 */
+			documentEditPreview?: AgenticChatDocumentEditPreviewPort;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -540,6 +555,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		// A reschedule to one of these changes nothing, so it is rejected before
 		// execution instead of succeeding and being reported as a move.
 		const turnTaskSchedules = new Map<string, LoadedTaskSchedule>();
+		const documentEditPreviews = new Map<string, DocumentEditPreviewV1>();
 		const currentUserMessage = executionInput.requestPayload.message;
 		// Images the user attached to this message: a structured selection, so
 		// naming/filing one of them needs no reviewer (write-routing).
@@ -658,6 +674,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			},
 			getLoadedTaskSchedules() {
 				return turnTaskSchedules;
+			},
+			recordDocumentEditPreviews(previews) {
+				for (const [callId, preview] of previews) documentEditPreviews.set(callId, preview);
+			},
+			getDocumentEditPreviews() {
+				return documentEditPreviews;
 			},
 			textDelta(text, continuesPass) {
 				const separated =
@@ -1727,6 +1749,16 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						state.getAdmittedTools(),
 						state.getLoadedTaskSchedules()
 					);
+					if (validationIssues.length === 0 && this.ports.documentEditPreview) {
+						const previewed = await previewDocumentEditCalls(
+							this.ports.documentEditPreview,
+							calls,
+							request
+						);
+						throwIfAborted(request.signal);
+						validationIssues.push(...previewed.issues);
+						state.recordDocumentEditPreviews(previewed.previews);
+					}
 					if (validationIssues.length === 0) {
 						// SHA-bound batch approval takes precedence over the contract
 						// gate: the calls the model just wrote are the artifact the
@@ -2107,7 +2139,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			batchSha256,
 			allowReadOnlyCorrection,
 			allowRevision,
-			state.getRequestExpectation()
+			state.getRequestExpectation(),
+			formatDocumentEditPreviewsForReview(batch, state.getDocumentEditPreviews())
 		);
 		let accumulatedReviewUsage = priorUsage;
 		let pendingReviewTool = false;

@@ -421,6 +421,7 @@
 				"getDashboardCalendarProviderRange",
 				"peekDashboardCalendarItems",
 				"metaHasReadableSources",
+				"peekDashboardCalendarProject",
 				"peekDashboardCalendarMeta",
 				"loadDashboardCalendar",
 				"peekDashboardCalendarProviderEvents",
@@ -442,6 +443,7 @@
 				"isConnectedGoogleCalendarItem",
 				"isDashboardCalendarItemVisible",
 				"decorateDashboardCalendarItems",
+				"getDashboardCalendarAttendees",
 				"mapConnectedGoogleEvent",
 				"mergeDashboardCalendarItems"
 			]
@@ -1304,20 +1306,6 @@
 			"exports": ["resolveDocumentAgentMutationAction"]
 		},
 		{
-			"file": "src/lib/components/projects/project-list.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_LIST_SCOPE_OPTIONS",
-				"normalizeProjectListScope",
-				"getProjectListScopeLabel",
-				"matchesProjectListScope",
-				"addProjectCollaborationFlags",
-				"formatProjectUpdatedLabel",
-				"formatProjectUpdatedTitle"
-			]
-		},
-		{
 			"file": "src/lib/components/profile/profile-tabs.ts",
 			"type": "component",
 			"components": [],
@@ -1428,6 +1416,20 @@
 			]
 		},
 		{
+			"file": "src/lib/components/projects/project-list.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_LIST_SCOPE_OPTIONS",
+				"normalizeProjectListScope",
+				"getProjectListScopeLabel",
+				"matchesProjectListScope",
+				"addProjectCollaborationFlags",
+				"formatProjectUpdatedLabel",
+				"formatProjectUpdatedTitle"
+			]
+		},
+		{
 			"file": "src/lib/components/ui/live-transcript-preview.ts",
 			"type": "component",
 			"components": [],
@@ -1503,6 +1505,23 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ontology/doc-tree/tree-images.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"treeImageTitle",
+				"treeImageThumbnailUrl",
+				"groupTreeImages",
+				"treeImageViewerOrder"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["createDragDropState"]
+		},
+		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 			"type": "component",
 			"components": [],
@@ -1531,23 +1550,6 @@
 				"formatRelationshipLabel",
 				"getFilteredSections"
 			]
-		},
-		{
-			"file": "src/lib/components/ontology/doc-tree/tree-images.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"treeImageTitle",
-				"treeImageThumbnailUrl",
-				"groupTreeImages",
-				"treeImageViewerOrder"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["createDragDropState"]
 		},
 		{
 			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
@@ -1826,7 +1828,6 @@
 		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/notifications/notification-preview.ts",
 		"src/lib/components/ontology/document-agent-mutation.ts",
-		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/profile/profile-tabs.ts",
 		"src/lib/components/profile/settings-navigation.ts",
 		"src/lib/components/project/entity-modal-data.ts",
@@ -1835,15 +1836,16 @@
 		"src/lib/components/project/project-mutation-refresh.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
+		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ontology/doc-tree/tree-images.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/profile/cycles/cycle-presenter.ts",
 		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/project/v2/board-a11y.ts",

@@ -124,6 +124,8 @@
 		onviewModeChange?: (mode: 'day' | 'week' | 'month') => void;
 		onrefresh?: () => void;
 		oneventClick?: (event: any) => void;
+		/** Pointer or focus rests on an event: a cue to warm its details. */
+		oneventIntent?: (event: any) => void;
 	}
 
 	let {
@@ -147,7 +149,8 @@
 		ondateChange,
 		onviewModeChange,
 		onrefresh,
-		oneventClick
+		oneventClick,
+		oneventIntent
 	}: Props = $props();
 
 	// Internal date state
@@ -234,6 +237,12 @@
 
 	function handleEventClick(event: any) {
 		oneventClick?.(event);
+	}
+
+	function intentHandlers(event: CalendarDayEvent) {
+		if (!oneventIntent) return {};
+		const fire = () => oneventIntent?.(event);
+		return { onpointerenter: fire, onfocus: fire };
 	}
 
 	function getDayBounds(date: Date): { start: Date; end: Date } {
@@ -492,7 +501,15 @@
 		return `${formatTime(event.start)} - ${formatTime(event.end)}`;
 	}
 
+	/** Due markers are 30-minute blocks ending at the deadline; start markers begin on time. */
+	function getEventClockTime(event: CalendarDayEvent): Date {
+		return getTaskMarkerKind(event) === 'due' ? event.end : event.start;
+	}
+
 	function getEventDayLabel(event: CalendarDayEvent): string {
+		const markerKind = getTaskMarkerKind(event);
+		if (markerKind === 'due' && !event.allDay) return `Due ${formatTime(event.end)}`;
+		if (markerKind === 'start' && !event.allDay) return `Starts ${formatTime(event.start)}`;
 		if (event.allDay) {
 			if (event.spansMultipleDays) return getEventRangeLabel(event);
 			return 'All day';
@@ -933,6 +950,7 @@
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
+										{...intentHandlers(event)}
 										class="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left transition-[filter] hover:brightness-[0.97] motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 											event
 										)}"
@@ -983,12 +1001,13 @@
 								{@const markerKind = getTaskMarkerKind(event)}
 								<button
 									onclick={() => handleEventClick(event)}
+									{...intentHandlers(event)}
 									class="flex w-full items-stretch gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/60 motion-reduce:transition-none pressable"
 								>
 									<span
 										class="w-16 shrink-0 pt-px text-right text-xs tabular-nums text-muted-foreground"
 									>
-										{formatTime(event.start)}
+										{formatTime(getEventClockTime(event))}
 									</span>
 									<span
 										class="w-1 shrink-0 rounded-full {getBarClass(event)}"
@@ -1104,6 +1123,7 @@
 								{@const markerKind = getTaskMarkerKind(event)}
 								<button
 									onclick={() => handleEventClick(event)}
+									{...intentHandlers(event)}
 									class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-2xs leading-tight transition-[filter] hover:brightness-95 motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 										event
 									)}"
@@ -1156,6 +1176,7 @@
 								{@const markerKind = getTaskMarkerKind(event)}
 								<button
 									onclick={() => handleEventClick(event)}
+									{...intentHandlers(event)}
 									class="absolute overflow-hidden rounded-md bg-card px-1.5 py-1 text-left text-2xs leading-tight transition-[filter] hover:z-10 hover:brightness-95 motion-reduce:transition-none pressable"
 									style={getWeekTimedEventStyle(layout)}
 									title={getEventTitle(event)}
@@ -1173,7 +1194,7 @@
 										>
 									</span>
 									<span class="relative block tabular-nums text-muted-foreground">
-										{formatCompactTime(event.start)}
+										{formatCompactTime(getEventClockTime(event))}
 									</span>
 								</button>
 							{/each}
@@ -1202,6 +1223,7 @@
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
+										{...intentHandlers(event)}
 										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-muted motion-reduce:transition-none pressable"
 									>
 										{@render glyph(event)}
@@ -1309,6 +1331,7 @@
 											{@const markerKind = getTaskMarkerKind(event)}
 											<button
 												onclick={() => handleEventClick(event)}
+												{...intentHandlers(event)}
 												class="flex h-5 w-full items-center gap-1.5 overflow-hidden rounded px-1 text-left text-2xs leading-none transition-colors hover:bg-muted motion-reduce:transition-none pressable"
 												title={getEventTitle(event)}
 											>
@@ -1351,6 +1374,7 @@
 								{@const markerKind = getTaskMarkerKind(segment.event)}
 								<button
 									onclick={() => handleEventClick(segment.event)}
+									{...intentHandlers(segment.event)}
 									class="absolute z-10 flex h-5 items-center gap-1 overflow-hidden bg-card px-1.5 text-left text-2xs font-medium leading-5 text-foreground transition-[filter] hover:brightness-95 motion-reduce:transition-none pressable"
 									style={getMonthSegmentStyle(segment)}
 									title={`${segment.event.title} - ${getEventRangeLabel(segment.event)}${segment.event.sourceLabel ? ` · ${segment.event.sourceLabel}` : ''}`}
@@ -1391,6 +1415,7 @@
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
+										{...intentHandlers(event)}
 										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-xs transition-colors hover:bg-muted motion-reduce:transition-none pressable"
 									>
 										{@render glyph(event)}

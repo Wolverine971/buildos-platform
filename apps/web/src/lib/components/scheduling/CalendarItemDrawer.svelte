@@ -19,12 +19,22 @@
 		title = '',
 		subtitle = '',
 		onClose = () => {},
+		eyebrow,
+		summary,
+		footer,
 		children
 	}: {
 		isOpen?: boolean;
 		title?: string;
+		/** Plain-text kind label shown above the title (e.g. "Task · Due date"). */
 		subtitle?: string;
 		onClose?: () => void;
+		/** Rich replacement for `subtitle` (e.g. with a kind glyph). */
+		eyebrow?: Snippet;
+		/** Always-visible block under the title, e.g. when and how long. */
+		summary?: Snippet;
+		/** Pinned action bar at the bottom of the drawer. */
+		footer?: Snippet;
 		children?: Snippet;
 	} = $props();
 
@@ -151,7 +161,8 @@
 <svelte:window onkeydown={handleWindowKeydown} />
 
 {#if isOpen}
-	<div bind:this={portalRootElement} use:portal class="fixed inset-0 z-50">
+	<!-- Above the sticky app nav (z-100), below Modals (z-9999) and toasts. -->
+	<div bind:this={portalRootElement} use:portal class="fixed inset-0 z-[1000]">
 		<button
 			type="button"
 			class="absolute inset-0 bg-black/30"
@@ -163,32 +174,37 @@
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby={titleId}
-			aria-describedby={subtitle ? subtitleId : undefined}
+			aria-describedby={subtitle || eyebrow ? subtitleId : undefined}
 			tabindex="-1"
 			onkeydown={handleDrawerKeydown}
 			class="absolute right-0 top-0 flex h-full w-full max-w-lg flex-col border-l border-border bg-background shadow-ink-strong tx tx-frame tx-weak"
 			in:fly={drawerMotion(180)}
 			out:fly={drawerMotion(160)}
 		>
-			<header
-				class="shrink-0 border-b border-border px-4 py-3 bg-muted/30 tx tx-strip tx-weak"
-			>
-				<div class="flex items-start justify-between gap-2">
+			<header class="shrink-0 border-b border-border bg-card px-4 pb-4 pt-3">
+				<div class="flex items-start justify-between gap-3">
 					<div class="min-w-0 flex-1">
+						{#if eyebrow || subtitle}
+							<div
+								id={subtitleId}
+								class="mb-1.5 flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
+							>
+								{#if eyebrow}
+									{@render eyebrow()}
+								{:else}
+									{subtitle}
+								{/if}
+							</div>
+						{/if}
 						<h2
 							id={titleId}
-							class="text-sm font-semibold text-foreground leading-tight truncate"
+							class="break-words text-lg font-semibold leading-snug text-foreground"
 						>
 							{title}
 						</h2>
-						{#if subtitle}
-							<p id={subtitleId} class="micro-label mt-0.5">
-								{subtitle}
-							</p>
-						{/if}
 					</div>
 					<button
-						class="shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted pressable transition-colors motion-reduce:transition-none"
+						class="-mr-1 shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none pressable"
 						aria-label="Close drawer"
 						onclick={onClose}
 						data-calendar-item-drawer-close
@@ -196,12 +212,22 @@
 						<X class="h-4 w-4" />
 					</button>
 				</div>
+				{#if summary}
+					<div class="mt-3">
+						{@render summary()}
+					</div>
+				{/if}
 			</header>
-			<div
-				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-			>
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
 				{@render children?.()}
 			</div>
+			{#if footer}
+				<footer
+					class="shrink-0 border-t border-border bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
+				>
+					{@render footer()}
+				</footer>
+			{/if}
 		</div>
 	</div>
 {/if}

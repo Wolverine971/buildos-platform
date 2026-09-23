@@ -69,6 +69,7 @@ import {
 	resolveDocumentEdits,
 	summarizeDocumentChange,
 	type AppliedDocumentEdit,
+	type DocumentChangeSummaryV1,
 	type DocumentSectionEditV1,
 	type DocumentTextEditV1
 } from '../ontology/document-edits';
@@ -730,6 +731,167 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 	};
 }
 
+type DocumentBodyUpdate = {
+	/** Raw whole-body content argument, when the call carried one. */
+	contentCandidate: string | undefined;
+	edits: ReturnType<typeof readDocumentEditArgs>;
+	appliedEdits: AppliedDocumentEdit[] | undefined;
+	/** The body this call would store, or undefined for a metadata-only update. */
+	nextContent: string | undefined;
+};
+
+/**
+ * The body an update_onto_document call would store. Shared by the write and
+ * its dry-run preview so the reviewer's diff is exactly what executes.
+ */
+async function resolveDocumentBodyUpdate(params: {
+	existingDocument: { project_id: string; content?: unknown; props?: unknown };
+	documentId: string;
+	args: Record<string, unknown>;
+	strategy: 'replace' | 'append' | 'merge_llm';
+	nextTypeKey: unknown;
+}): Promise<DocumentBodyUpdate> {
+	const { existingDocument, documentId, args, strategy } = params;
+	const contentCandidate =
+		args.content !== undefined || args.body_markdown !== undefined
+			? typeof args.content === 'string'
+				? args.content
+				: typeof args.body_markdown === 'string'
+					? args.body_markdown
+					: ''
+			: undefined;
+
+	if (isAppendOrMergeUpdateStrategy(strategy) && !getDocumentUpdateContentCandidate(args)) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`update_onto_document ${strategy} requires non-empty content.`
+		);
+	}
+
+	const edits = readDocumentEditArgs(args);
+	if (edits && contentCandidate !== undefined) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'Pass either content (whole-body replace or append) or edits/section_edits (change part of the document), not both.'
+		);
+	}
+
+	if (edits) {
+		const resolution = resolveDocumentEdits({
+			project_id: existingDocument.project_id,
+			document_id: documentId,
+			content: documentBodyOf(existingDocument),
+			...edits
+		});
+		if (resolution.status === 'rejected') {
+			throw new ExternalToolGatewayError(
+				'VALIDATION_ERROR',
+				formatDocumentEditFailures(resolution.failures, resolution.matched_edits),
+				{ edit_failures: resolution.failures }
+			);
+		}
+		assertContentWithinCap(resolution.next_content, 'content');
+		return {
+			contentCandidate,
+			edits,
+			appliedEdits: resolution.applied,
+			nextContent: resolution.next_content
+		};
+	}
+
+	if (contentCandidate === undefined) {
+		return { contentCandidate, edits, appliedEdits: undefined, nextContent: undefined };
+	}
+
+	const normalizedContent = normalizeMarkdownInput(contentCandidate) ?? '';
+	const resolvedContent = await resolveExternalDocumentContentWithStrategy({
+		strategy,
+		newContent: normalizedContent,
+		existingLoader: async () => documentBodyOf(existingDocument)
+	});
+	const nextContent =
+		params.nextTypeKey === START_HERE_DOCUMENT_TYPE_KEY
+			? preserveCurrentStartHereManagedRegions(
+					typeof existingDocument.content === 'string' ? existingDocument.content : '',
+					resolvedContent
+				)
+			: resolvedContent;
+	if (strategy === 'replace' && args.allow_large_deletion !== true) {
+		const refusal = largeDeletionRefusal(documentBodyOf(existingDocument), nextContent);
+		if (refusal) throw new ExternalToolGatewayError('VALIDATION_ERROR', refusal);
+	}
+	assertContentWithinCap(nextContent, 'content');
+	return { contentCandidate, edits, appliedEdits: undefined, nextContent };
+}
+
+/**
+ * Dry run of onto.document.update: the same access checks and body resolution
+ * as the write, without writing. The chat worker runs it before review so a
+ * missed anchor goes straight back to the acting model and the reviewer judges
+ * a server-verified diff (tasker 98 p05).
+ */
+export async function previewDocumentUpdate(
+	context: ToolExecutionContext,
+	args: Record<string, unknown>
+): Promise<{
+	document_id: string;
+	title: string | null;
+	document_change: Omit<DocumentChangeSummaryV1, 'revert_patch'> | null;
+	edits_applied?: AppliedDocumentEdit[];
+}> {
+	const documentId = args.document_id;
+	if (typeof documentId !== 'string' || !isValidUUID(documentId)) {
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'document_id must be a valid UUID');
+	}
+	const visible = await loadVisibleProjects(context);
+	const { data: existingDocument, error } = await context.admin
+		.from('onto_documents')
+		.select(ONTO_DOCUMENT_SELECT)
+		.eq('id', documentId)
+		.in(
+			'project_id',
+			visible.projects.map((project) => project.id)
+		)
+		.maybeSingle();
+	if (error) {
+		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to load document');
+	}
+	if (!existingDocument) throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
+	const project = assertVisibleEntityProject(visible.projectMap, existingDocument.project_id);
+	assertProjectWriteAccess(project, context.scope);
+
+	const bodyUpdate = await resolveDocumentBodyUpdate({
+		existingDocument,
+		documentId,
+		args,
+		strategy: normalizeDocumentUpdateStrategy(args.update_strategy),
+		nextTypeKey:
+			args.type_key !== undefined
+				? resolveDocumentTypeKey(args.type_key)
+				: existingDocument.type_key
+	});
+	const title = typeof existingDocument.title === 'string' ? existingDocument.title : null;
+	const summary =
+		bodyUpdate.nextContent === undefined
+			? null
+			: summarizeDocumentChange({
+					project_id: project.id,
+					document_id: documentId,
+					title,
+					before: documentBodyOf(existingDocument),
+					after: bodyUpdate.nextContent
+				});
+	const documentChange = summary
+		? (({ revert_patch: _revertPatch, ...rest }) => rest)(summary)
+		: null;
+	return {
+		document_id: documentId,
+		title,
+		document_change: documentChange,
+		...(bodyUpdate.appliedEdits ? { edits_applied: bodyUpdate.appliedEdits } : {})
+	};
+}
+
 async function updateDocument(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const documentId = args.document_id;
 	if (typeof documentId !== 'string' || !isValidUUID(documentId)) {
@@ -830,80 +992,21 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		changedFieldCount += 1;
 	}
 
-	const documentContentCandidate =
-		args.content !== undefined || args.body_markdown !== undefined
-			? typeof args.content === 'string'
-				? args.content
-				: typeof args.body_markdown === 'string'
-					? args.body_markdown
-					: ''
-			: undefined;
-
-	if (isAppendOrMergeUpdateStrategy(strategy) && !getDocumentUpdateContentCandidate(args)) {
-		throw new ExternalToolGatewayError(
-			'VALIDATION_ERROR',
-			`update_onto_document ${strategy} requires non-empty content.`
-		);
-	}
-
-	const documentEdits = readDocumentEditArgs(args);
-	if (documentEdits && documentContentCandidate !== undefined) {
-		throw new ExternalToolGatewayError(
-			'VALIDATION_ERROR',
-			'Pass either content (whole-body replace or append) or edits/section_edits (change part of the document), not both.'
-		);
-	}
-	let appliedEdits: AppliedDocumentEdit[] | undefined;
-
-	if (documentEdits) {
-		const resolution = resolveDocumentEdits({
-			project_id: existingDocument.project_id,
-			document_id: documentId,
-			content: documentBodyOf(existingDocument),
-			...documentEdits
-		});
-		if (resolution.status === 'rejected') {
-			throw new ExternalToolGatewayError(
-				'VALIDATION_ERROR',
-				formatDocumentEditFailures(resolution.failures),
-				{ edit_failures: resolution.failures }
-			);
-		}
-		appliedEdits = resolution.applied;
-		assertContentWithinCap(resolution.next_content, 'content');
-		updateData.content = resolution.next_content;
-		mergedProps.body_markdown = resolution.next_content;
-		propsTouched = true;
-		changedFieldCount += 1;
-	}
-
-	if (documentContentCandidate !== undefined) {
-		const normalizedContent = normalizeMarkdownInput(documentContentCandidate) ?? '';
-		const resolvedContent = await resolveExternalDocumentContentWithStrategy({
-			strategy,
-			newContent: normalizedContent,
-			existingLoader: async () => documentBodyOf(existingDocument)
-		});
-		const nextTypeKey =
-			typeof updateData.type_key === 'string'
-				? updateData.type_key
-				: existingDocument.type_key;
-		const nextContent =
-			nextTypeKey === START_HERE_DOCUMENT_TYPE_KEY
-				? preserveCurrentStartHereManagedRegions(
-						typeof existingDocument.content === 'string'
-							? existingDocument.content
-							: '',
-						resolvedContent
-					)
-				: resolvedContent;
-		if (strategy === 'replace' && args.allow_large_deletion !== true) {
-			const refusal = largeDeletionRefusal(documentBodyOf(existingDocument), nextContent);
-			if (refusal) throw new ExternalToolGatewayError('VALIDATION_ERROR', refusal);
-		}
-		assertContentWithinCap(nextContent, 'content');
-		updateData.content = nextContent;
-		mergedProps.body_markdown = nextContent;
+	const nextTypeKey =
+		typeof updateData.type_key === 'string' ? updateData.type_key : existingDocument.type_key;
+	const bodyUpdate = await resolveDocumentBodyUpdate({
+		existingDocument,
+		documentId,
+		args,
+		strategy,
+		nextTypeKey
+	});
+	const documentContentCandidate = bodyUpdate.contentCandidate;
+	const documentEdits = bodyUpdate.edits;
+	let appliedEdits = bodyUpdate.appliedEdits;
+	if (bodyUpdate.nextContent !== undefined) {
+		updateData.content = bodyUpdate.nextContent;
+		mergedProps.body_markdown = bodyUpdate.nextContent;
 		propsTouched = true;
 		changedFieldCount += 1;
 	}
@@ -969,7 +1072,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 			if (resolution.status === 'rejected') {
 				throw new ExternalToolGatewayError(
 					'CONFLICT',
-					`The document changed while the agent was editing it, and the edit no longer applies. Re-read and retry.\n${formatDocumentEditFailures(resolution.failures)}`,
+					`The document changed while the agent was editing it, and the edit no longer applies. Re-read and retry.\n${formatDocumentEditFailures(resolution.failures, resolution.matched_edits)}`,
 					{ edit_failures: resolution.failures }
 				);
 			}

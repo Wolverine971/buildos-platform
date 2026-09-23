@@ -79,6 +79,8 @@ describe('/api/onto/assets/[id]/render', () => {
 
 		expect(response.status).toBe(302);
 		expect(response.headers.get('Location')).toBe('https://storage.example/signed-image');
+		// Reusing one signed URL lets the browser cache (and prefetch) the pixels.
+		expect(response.headers.get('Cache-Control')).toBe('private, max-age=1500');
 		expect(ensureAssetAccessMock).toHaveBeenCalledWith(
 			expect.anything(),
 			'asset-1',

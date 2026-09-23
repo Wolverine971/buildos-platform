@@ -45,8 +45,47 @@ export type DashboardCalendarMeta = {
 	connectionsError: boolean;
 };
 
+/** Just enough of a project to label calendar items and the side panel. */
+export type DashboardCalendarProjectSummary = {
+	id: string;
+	name: string;
+	state_key: string;
+	description: string | null;
+	facet_stage: string | null;
+	facet_scale: string | null;
+};
+
 /** GET /api/calendar/dashboard — every layer in range, plus meta when `meta=1`. */
 export type DashboardCalendarPayload = {
 	items: CalendarItem[];
+	/** Projects referenced by `items`, keyed by id. */
+	projects?: Record<string, DashboardCalendarProjectSummary>;
 	meta?: DashboardCalendarMeta;
 };
+
+export type CalendarLinkedEntity = {
+	id: string;
+	name?: string;
+	title?: string;
+	state_key?: string;
+	type_key?: string;
+	due_at?: string;
+	edge_rel?: string;
+};
+
+export type CalendarLinkedEntities = {
+	plans: CalendarLinkedEntity[];
+	goals: CalendarLinkedEntity[];
+	milestones: CalendarLinkedEntity[];
+	documents: CalendarLinkedEntity[];
+	dependentTasks: CalendarLinkedEntity[];
+};
+
+/** What the calendar side panel loads for a clicked item beyond the calendar row. */
+export type CalendarItemDetail =
+	| {
+			type: 'task';
+			data: Record<string, any>;
+			linkedEntities: CalendarLinkedEntities | null;
+	  }
+	| { type: 'event'; data: Record<string, any> };

@@ -115,6 +115,26 @@ const slowSpecialists =
 			: happyScript(call));
 
 describe('AgenticChatWorkflowRunner — slice A: persistent runner', () => {
+	it('applies host-owned reasoning per step and keeps the frozen default elsewhere', async () => {
+		const h = harness({ runner: { reasoning: { planner: 'none', risk_reviewer: 'none' } } });
+		await h.run();
+		const reasoningOf = (role: 'planner' | 'project_analyst' | 'risk_reviewer' | 'editor') =>
+			h.provider.callsFor(role)[0]!.body.reasoning;
+		expect(reasoningOf('planner')).toEqual({ enabled: false });
+		expect(reasoningOf('risk_reviewer')).toEqual({ enabled: false });
+		expect(reasoningOf('project_analyst')).toEqual({ effort: 'low', exclude: true });
+		expect(reasoningOf('editor')).toEqual({ effort: 'low', exclude: true });
+		expect(h.store.run.answer.status).toBe('accepted');
+
+		const defaults = harness();
+		await defaults.run();
+		for (const role of ['planner', 'project_analyst', 'risk_reviewer', 'editor'] as const)
+			expect(defaults.provider.callsFor(role)[0]!.body.reasoning).toEqual({
+				effort: 'low',
+				exclude: true
+			});
+	});
+
 	it('accepts the specific planner assignments large projects produce', async () => {
 		// Tasker 98 pilot: valid 1,400–2,700-character assignments failed a 1,000 bound.
 		const analyst = `Start from the outreach research list. ${'Cross-check each named contact against its task. '.repeat(50)}`;
@@ -143,6 +163,24 @@ describe('AgenticChatWorkflowRunner — slice A: persistent runner', () => {
 			status: 'failed',
 			failureCode: 'workflow_planner_invalid'
 		});
+
+		// The pilot's one nested plan: each value an object carrying its assignment.
+		const nested = harness({
+			script: (call) =>
+				call.role === 'planner'
+					? plan(
+							JSON.stringify({
+								analyst: { role: 'project_analyst', assignment: analyst },
+								reviewer: { role: 'risk_reviewer', assignment: 'Challenge.' }
+							})
+						)
+					: happyScript(call)
+		});
+		await nested.run();
+		expect(nested.store.run.steps.planner).toMatchObject({ status: 'accepted' });
+		expect(nested.provider.callsFor('risk_reviewer')[0]!.body.messages[0].content).toContain(
+			'Challenge.'
+		);
 	});
 
 	it('keeps an invalid plan and a planner provider failure apart; both install the fixed plan', async () => {

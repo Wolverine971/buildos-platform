@@ -92,7 +92,7 @@
 	function preloadDestination() {
 		if (destinationPreloaded) return;
 		destinationPreloaded = true;
-		const target = new URL(resolveRedirectTarget() ?? '/dashboard', $page.url.origin);
+		const target = new URL(resolveRedirectTarget() ?? '/today', $page.url.origin);
 		void preloadCode(target.pathname).catch(() => {});
 	}
 
@@ -188,7 +188,7 @@
 			const redirectTarget = resolveRedirectTarget();
 			const pendingRedirect =
 				!redirectTarget && result?.data?.hasPendingInvites ? PENDING_INVITES_PATH : null;
-			const destination = redirectTarget ?? pendingRedirect ?? '/dashboard';
+			const destination = redirectTarget ?? pendingRedirect ?? '/today';
 
 			await goto(destination, {
 				invalidateAll: true // This ensures all load functions re-run

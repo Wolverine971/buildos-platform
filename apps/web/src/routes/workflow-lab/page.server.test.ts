@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
 	fetchProjectSummaries: vi.fn()
 }));
 vi.mock('$env/dynamic/private', () => ({ env: state.env }));
+vi.mock('$app/environment', () => ({ dev: false }));
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: state.createAdminSupabaseClient
 }));
@@ -89,6 +90,7 @@ describe('workflow lab published specialist picker', () => {
 		expect(result).toEqual({
 			projects: [{ id: 'project-1', name: 'Launch' }],
 			publishedSpecialists: [version],
+			contextFinderEnabled: false,
 			jevRecommendationsEnabled: false,
 			publishedSpecialistsEnabled: true,
 			specialistLoadError: null

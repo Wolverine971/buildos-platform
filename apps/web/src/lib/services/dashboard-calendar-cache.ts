@@ -8,7 +8,8 @@ import type {
 	CalendarItem,
 	DashboardCalendarDisplayPreferences,
 	DashboardCalendarMeta,
-	DashboardCalendarPayload
+	DashboardCalendarPayload,
+	DashboardCalendarProjectSummary
 } from '$lib/types/calendar-items';
 import type { ConnectedGoogleCalendarEventsPayload } from '$lib/types/google-calendar-integration';
 
@@ -54,6 +55,8 @@ let metaEntry: TimedEntry<DashboardCalendarMeta> | null = null;
 // Once a toggle is flipped in this tab it stays authoritative for the session, so a meta read
 // racing the debounced preference save can never flip it back.
 let preferencesOverride: DashboardCalendarDisplayPreferences | null = null;
+// Project labels accumulate across windows for the session; they rarely change.
+const projectSummaries = new Map<string, DashboardCalendarProjectSummary>();
 const providerWindows = new Map<string, TimedEntry<ConnectedGoogleCalendarEventsPayload>>();
 const providerRequests = new Map<string, Promise<ConnectedGoogleCalendarEventsPayload>>();
 
@@ -179,6 +182,12 @@ export function metaHasReadableSources(meta: DashboardCalendarMeta | null | unde
 	);
 }
 
+export function peekDashboardCalendarProject(
+	projectId: string | null | undefined
+): DashboardCalendarProjectSummary | null {
+	return projectId ? (projectSummaries.get(projectId) ?? null) : null;
+}
+
 export function peekDashboardCalendarMeta(): DashboardCalendarMeta | null {
 	return metaEntry?.value ?? null;
 }
@@ -231,12 +240,16 @@ export function loadDashboardCalendar(
 				payload.meta && preferencesOverride
 					? { ...payload.meta, preferences: preferencesOverride }
 					: payload.meta;
+			for (const project of Object.values(payload.projects ?? {})) {
+				projectSummaries.set(project.id, project);
+			}
 			if (requestGeneration === generation) {
 				storeItems(range, payload.items ?? []);
 				if (meta) storeMeta(meta);
 			}
 			return {
 				items: payload.items ?? [],
+				projects: payload.projects ?? {},
 				meta: meta ?? metaEntry?.value
 			};
 		})

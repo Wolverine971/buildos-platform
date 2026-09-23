@@ -171,6 +171,37 @@ describe('Auth invite flow', () => {
 		expect(global.fetch).toHaveBeenCalledTimes(1);
 	});
 
+	it('lands on /today after login when there is no redirect or pending invite', async () => {
+		setPageUrl('http://localhost/auth/login');
+		(global.fetch as any).mockImplementation((input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url === '/api/auth/login') {
+				return okJson({
+					success: true,
+					data: {
+						user: { id: 'user-1', email: 'user@example.com' },
+						hasPendingInvites: false
+					}
+				});
+			}
+			throw new Error(`Unhandled fetch: ${url}`);
+		});
+
+		render(LoginPage);
+
+		await fireEvent.input(screen.getByLabelText(/email/i), {
+			target: { value: 'user@example.com' }
+		});
+		await fireEvent.input(screen.getByLabelText(/^password/i), {
+			target: { value: 'Password1' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+		await waitFor(() => {
+			expect(gotoMock).toHaveBeenCalledWith('/today', { invalidateAll: true });
+		});
+	});
+
 	it('shows the signed-out state and URL errors inline, then clears them from the URL', async () => {
 		setPageUrl(
 			'http://localhost/auth/login?signed_out=1&error=Authentication%20failed&redirect=/today'

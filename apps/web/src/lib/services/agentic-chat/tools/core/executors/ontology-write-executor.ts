@@ -1765,7 +1765,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 					: []
 			});
 			if (resolution.status === 'rejected') {
-				throw new Error(formatDocumentEditFailures(resolution.failures));
+				throw new Error(
+					formatDocumentEditFailures(resolution.failures, resolution.matched_edits)
+				);
 			}
 			updateData.content = resolution.next_content;
 		}

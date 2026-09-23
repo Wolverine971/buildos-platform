@@ -44,6 +44,7 @@ import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provide
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/readToolIdentity';
 import { EVIDENCE_COVERAGE_INSTRUCTION_PREFIX } from '../src/workers/agentic-chat/provider/request-builders';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
+import type { AgenticChatDocumentEditPreviewPort } from '../src/workers/agentic-chat/provider/document-edit-preview';
 import { AgenticChatOpenRouterClient } from '../src/workers/agentic-chat/provider/openrouter-client';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
@@ -11600,6 +11601,134 @@ describe('SHA-bound mutation batch approval', () => {
 			signal: new AbortController().signal
 		});
 	}
+
+	describe('document edit preview before review (tasker 98 p05)', () => {
+		const DOCUMENT_ID = '1cad2618-3188-43ac-98ff-e715a8a8013d';
+
+		function documentSurface() {
+			return executionInputWithReadSurface(
+				[
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					readToolDefinition('get_document_outline'),
+					ONTOLOGY_WRITE_TOOLS.find(
+						(tool) => tool.function.name === 'update_onto_document'
+					)!
+				],
+				[
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'get_document_outline',
+					'update_onto_document'
+				]
+			);
+		}
+
+		function editRound(id: string, oldText: string): AgenticChatTurnProviderClientEventV1[] {
+			return [
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id,
+							type: 'function' as const,
+							function: {
+								name: 'update_onto_document',
+								arguments: JSON.stringify({
+									document_id: DOCUMENT_ID,
+									edits: [
+										{
+											old_text: oldText,
+											new_text: '**Card 5 · Paranoid and Cynical**'
+										}
+									]
+								})
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			];
+		}
+
+		function previewProvider(
+			client: ReturnType<typeof clientWithRounds>,
+			semanticReviewer: ReturnType<typeof clientWithRounds>,
+			documentEditPreview: AgenticChatDocumentEditPreviewPort
+		) {
+			return new AgenticChatTurnProviderAdapter(
+				{
+					client,
+					semanticReviewer,
+					capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+					documentEditPreview
+				},
+				2_000,
+				16,
+				{ updateOntoDocument: true },
+				true
+			).prepare({
+				executionInput: documentSurface(),
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+		}
+
+		it('returns a missed anchor to the acting model without spending a review', async () => {
+			const client = clientWithRounds([
+				editRound('provider-edit-1', '**Card 5 · People Are Paranoid**'),
+				editRound('provider-edit-2', '**Card 5 · People Are Naturally Paranoid**')
+			]);
+			const semanticReviewer = clientWithRounds([]);
+			const preview = vi.fn(async ({ args }: { args: Record<string, unknown> }) => {
+				const [edit] = args.edits as Array<{ old_text: string }>;
+				return edit!.old_text.includes('Naturally')
+					? {
+							status: 'previewed' as const,
+							preview: {
+								document_id: DOCUMENT_ID,
+								title: 'Book Contract',
+								lines_added: 1,
+								lines_removed: 1,
+								changed_lines: [
+									'- **Card 5 · People Are Naturally Paranoid**',
+									'+ **Card 5 · Paranoid and Cynical**'
+								],
+								changed_lines_truncated: false
+							}
+						}
+					: {
+							status: 'rejected' as const,
+							message:
+								'No edits were applied; the document is unchanged.\nedits[0]: ANCHOR_NOT_FOUND — old_text was not found. Did you mean line 56?'
+						};
+			});
+			const invocation = await previewProvider(client, semanticReviewer, { preview });
+
+			await collect(invocation.stream());
+
+			expect(preview).toHaveBeenCalledTimes(2);
+			expect(preview.mock.calls[0]![0]).toMatchObject({
+				userId: expect.any(String),
+				args: { document_id: DOCUMENT_ID }
+			});
+			// The repair pass carries the server's answer, and only the corrected
+			// proposal reaches the reviewer.
+			const repair = client.stream.mock.calls[1]![0];
+			expect(JSON.stringify(repair.messages)).toContain(
+				'Checked against the stored document before review'
+			);
+			expect(JSON.stringify(repair.messages)).toContain('Did you mean line 56?');
+			expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+			const reviewText = semanticReviewer.stream.mock.calls[0]![0].messages.map((message) =>
+				String(message.content)
+			).join('\n');
+			expect(reviewText).toContain('Server preview of the held document changes');
+			expect(reviewText).toContain('+ **Card 5 · Paranoid and Cynical**');
+			expect(reviewText).toContain('Never cite a SHA as a defect');
+		});
+	});
 
 	it('shows the reviewer the real arguments, not a description of them', async () => {
 		const client = clientWithRounds([proposedBatchRound()]);

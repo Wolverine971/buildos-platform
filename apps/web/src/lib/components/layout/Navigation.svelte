@@ -852,8 +852,10 @@
 
 				<!-- Desktop Navigation -->
 				{#if user}
+					<!-- Resting on a nav link starts that page's data load before the click. -->
 					<div
 						class="hidden md:ml-3 lg:ml-4 xl:ml-6 2xl:ml-8 md:flex md:gap-0.5 lg:gap-0.5 xl:gap-1"
+						data-sveltekit-preload-data="hover"
 					>
 						{#each navItems as item (item.href)}
 							{@const Icon = item.icon}
@@ -1381,6 +1383,7 @@
 					{#each navItems as item (item.href)}
 						{@const Icon = item.icon}
 						<a
+							data-sveltekit-preload-data="tap"
 							href={item.href}
 							onclick={() => handleMenuItemClick(item.href)}
 							class="relative flex items-center px-3 py-2 text-base font-bold rounded-md transition-colors

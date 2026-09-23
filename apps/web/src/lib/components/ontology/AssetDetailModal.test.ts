@@ -42,7 +42,11 @@ function stubAnimations() {
 	window.scrollTo = vi.fn();
 	if (!Element.prototype.animate) {
 		Element.prototype.animate = vi.fn(() => {
-			const animation: Partial<Animation> = { cancel: vi.fn(), play: vi.fn(), pause: vi.fn() };
+			const animation: Partial<Animation> = {
+				cancel: vi.fn(),
+				play: vi.fn(),
+				pause: vi.fn()
+			};
 			Object.defineProperty(animation, 'finished', {
 				value: Promise.resolve(animation as Animation)
 			});
@@ -336,5 +340,29 @@ describe('AssetDetailModal gallery', () => {
 		expect(onClose).not.toHaveBeenCalled();
 		expect(screen.getByText('1 / 2')).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Show image 3 of 3' })).toBeNull();
+	});
+
+	it('zooms only on click, never on hover, and resets when stepping away', async () => {
+		const { container } = renderGallery();
+		await screen.findByDisplayValue('Image a');
+		const stageImage = () =>
+			container.ownerDocument.querySelector(
+				'img[src="/api/onto/assets/a/render?width=2500"], img[src="/api/onto/assets/b/render?width=2500"]'
+			) as HTMLImageElement;
+
+		await fireEvent.pointerMove(stageImage(), { pointerType: 'mouse' });
+		expect(stageImage().style.transform).toBe('scale(1)');
+
+		await fireEvent.click(stageImage());
+		expect(stageImage().style.transform).toBe('scale(2)');
+		expect(stageImage()).toHaveClass('cursor-zoom-out');
+
+		await fireEvent.click(stageImage());
+		expect(stageImage().style.transform).toBe('scale(1)');
+
+		await fireEvent.click(stageImage());
+		await fireEvent.click(screen.getByRole('button', { name: 'Next image' }));
+		await screen.findByDisplayValue('Image b');
+		expect(stageImage().style.transform).toBe('scale(1)');
 	});
 });

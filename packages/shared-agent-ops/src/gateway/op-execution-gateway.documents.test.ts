@@ -1,6 +1,6 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.documents.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { EXTERNAL_OP_HANDLERS } from './op-execution-gateway.core';
+import { EXTERNAL_OP_HANDLERS, previewDocumentUpdate } from './op-execution-gateway.core';
 
 const { writeDocumentHeadAndVersionMock, logUpdateAsyncMock, project } = vi.hoisted(() => ({
 	writeDocumentHeadAndVersionMock: vi.fn(),
@@ -345,5 +345,53 @@ describe('agent gateway surgical document edits', () => {
 			details: { edit_failures: [expect.objectContaining({ code: 'ANCHOR_NOT_FOUND' })] }
 		});
 		expect(writeDocumentHeadAndVersionMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('agent gateway document update preview', () => {
+	const doc = {
+		...staleDocument,
+		content: 'Scope: 60k words.\n\n**Exclusions:** TBD\n\n## Next\n\nBody',
+		props: {}
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('returns the exact diff an edit would make without writing', async () => {
+		const preview = await previewDocumentUpdate(buildContext(createAdmin([doc])), {
+			document_id: doc.id,
+			edits: [{ old_text: '**Exclusions:** TBD', new_text: '' }]
+		});
+
+		expect(writeDocumentHeadAndVersionMock).not.toHaveBeenCalled();
+		expect(preview).toMatchObject({
+			document_id: doc.id,
+			title: 'Plan',
+			document_change: { lines_added: 0, lines_removed: 2 },
+			edits_applied: [{ edit: 'edits[0]', match: 'exact', lines: [3] }]
+		});
+		expect(preview.document_change).not.toHaveProperty('revert_patch');
+	});
+
+	it('fails the same way the write would', async () => {
+		await expect(
+			previewDocumentUpdate(buildContext(createAdmin([doc])), {
+				document_id: doc.id,
+				edits: [{ old_text: '**Exclusions:** none', new_text: '' }]
+			})
+		).rejects.toMatchObject({
+			code: 'VALIDATION_ERROR',
+			message: expect.stringContaining('Did you mean line 3?')
+		});
+	});
+
+	it('reports no body change for a metadata-only update', async () => {
+		const preview = await previewDocumentUpdate(buildContext(createAdmin([doc])), {
+			document_id: doc.id,
+			title: 'Renamed'
+		});
+		expect(preview.document_change).toBeNull();
 	});
 });

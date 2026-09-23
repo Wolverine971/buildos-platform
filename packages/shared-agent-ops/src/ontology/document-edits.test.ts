@@ -135,6 +135,61 @@ describe('resolveDocumentEdits: text edits', () => {
 		expect(formatDocumentEditFailures(result.failures)).toContain('Did you mean line 7?');
 	});
 
+	it('names the line a copied block left out, and which edits already matched', () => {
+		const card = [
+			'**Card 9 · The Ledger**',
+			'- **Reader promise:** You will see leverage points.',
+			'- **Example / evidence:** **[GAP]**',
+			'- **Takeaway:** Look twice.'
+		].join('\n');
+		const doc = `${CONTRACT}\n\n${card}`;
+		const result = resolveDocumentEdits({
+			...IDS,
+			content: doc,
+			edits: [
+				{
+					old_text: [
+						'**Card 9 · The Ledger**',
+						'- **Reader promise:** You will see leverage points.',
+						'- **Takeaway:** Look twice.'
+					].join('\n'),
+					new_text: 'rewritten card'
+				},
+				{ old_text: '~60,000 words', new_text: '~55,000 words' }
+			]
+		});
+		expect(result).toMatchObject({
+			status: 'rejected',
+			matched_edits: ['edits[1]'],
+			failures: [
+				{
+					edit: 'edits[0]',
+					code: 'ANCHOR_NOT_FOUND',
+					suggestions: [{ line: 32, text: '- **Example / evidence:** **[GAP]**' }]
+				}
+			]
+		});
+		if (result.status !== 'rejected') return;
+		expect(result.failures[0]?.message).toContain('leaves out document line 32');
+		expect(formatDocumentEditFailures(result.failures, result.matched_edits)).toContain(
+			'edits[1] matched and will apply once the failed edit is fixed'
+		);
+	});
+
+	it('names the first differing line of a reworded block', () => {
+		const result = resolve(CONTRACT, [
+			{
+				old_text: '**Scope Cap:** ~60,000 words.\n\n**Exclusions:** none',
+				new_text: ''
+			}
+		]);
+		expect(result).toMatchObject({ status: 'rejected' });
+		if (result.status !== 'rejected') return;
+		expect(result.failures[0]?.message).toContain(
+			'old_text line 2 differs from document line 7'
+		);
+	});
+
 	it('is all-or-nothing and reports every failing edit', () => {
 		const result = resolve(CONTRACT, [
 			{

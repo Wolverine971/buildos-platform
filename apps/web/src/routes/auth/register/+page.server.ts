@@ -6,6 +6,6 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
 	const { session, user } = await safeGetSession();
 
 	if (session && user) {
-		throw redirect(303, '/dashboard');
+		throw redirect(303, '/today');
 	}
 };

@@ -3,7 +3,7 @@
 	Image viewer: the image large, its name (editable inline), a meta line, and a
 	Download button. Rare actions (re-read text, detach, delete) live in the ⋯ menu.
 	With `assetIds`, arrows + a thumbnail strip step through the caller's images
-	(also ← → keys and swipe); hovering an image with a mouse zooms into it.
+	(also ← → keys and swipe); clicking the image zooms into that spot.
 	OCR text, summary, and alt text still exist for search and agents; they are
 	deliberately not shown here.
 -->
@@ -94,9 +94,9 @@
 	let stripRef = $state<HTMLDivElement | null>(null);
 	let caption = $state('');
 
-	// Hover zoom (mouse only). Clicking the image turns it off/on.
-	let zoomEnabled = $state(true);
-	let hovering = $state(false);
+	// Click-to-zoom: a click zooms into that spot, a mouse pans while zoomed, and
+	// another click zooms back out. Nothing happens on plain hover.
+	let zoomed = $state(false);
 	let zoomScale = $state(2);
 	let zoomOrigin = $state({ x: 50, y: 50 });
 	let swipeStart: { x: number; y: number } | null = null;
@@ -124,7 +124,6 @@
 	// Header and actions only ever describe the image on screen.
 	const shownAsset = $derived(asset && asset.id === currentId ? asset : null);
 	const imageLoaded = $derived(Boolean(currentId) && loadedImageId === currentId);
-	const zoomed = $derived(zoomEnabled && hovering);
 
 	function closeModal() {
 		if (deleting || queueing || unlinking || placing) return;
@@ -228,8 +227,7 @@
 			loadedImageId = null;
 			formError = null;
 			showMenu = false;
-			hovering = false;
-			zoomEnabled = true;
+			zoomed = false;
 			removedIds = new Set();
 			currentId = assetId;
 			detailsCache.clear();
@@ -242,8 +240,7 @@
 		// Blurring commits a pending rename for the image being left.
 		if (nameInput && document.activeElement === nameInput) nameInput.blur();
 		showMenu = false;
-		hovering = false;
-		zoomEnabled = true;
+		zoomed = false;
 		currentId = id;
 	}
 
@@ -414,9 +411,17 @@
 	const documentAttachmentLinks = $derived(
 		links.filter((link) => link.entity_kind === 'document' && link.role === 'attachment')
 	);
+	// Match the tree: a link to a document the tree doesn't show counts as the shelf.
+	const placementLinks = $derived(
+		links.filter(
+			(link) =>
+				link.entity_kind === 'document' &&
+				(!documentOptions || documentOptions.some((option) => option.id === link.entity_id))
+		)
+	);
 	const currentDocumentId = $derived(
-		documentAttachmentLinks[0]?.entity_id ??
-			links.find((link) => link.entity_kind === 'document')?.entity_id ??
+		placementLinks.find((link) => link.role === 'attachment')?.entity_id ??
+			placementLinks[0]?.entity_id ??
 			null
 	);
 
@@ -534,23 +539,37 @@
 
 	const clampPercent = (fraction: number) => Math.min(100, Math.max(0, fraction * 100));
 
-	/** Follow the cursor; zoom far enough to show real pixels (2×–4×). */
-	function trackZoom(event: PointerEvent) {
-		if (event.pointerType !== 'mouse') return;
-		const image = event.currentTarget as HTMLImageElement;
+	/** Pointer position on the unscaled image, as transform-origin percentages. */
+	function pointOnImage(event: MouseEvent, image: HTMLImageElement) {
 		const stage = image.offsetParent?.getBoundingClientRect();
-		if (!stage) return;
-		// offset* ignore the zoom transform, so the origin maps onto the unscaled image.
-		const width = Math.max(1, image.offsetWidth);
-		const height = Math.max(1, image.offsetHeight);
-		zoomOrigin = {
-			x: clampPercent((event.clientX - stage.left - image.offsetLeft) / width),
-			y: clampPercent((event.clientY - stage.top - image.offsetTop) / height)
+		if (!stage) return zoomOrigin;
+		// offset* ignore the zoom transform, so the point maps onto the unscaled image.
+		return {
+			x: clampPercent(
+				(event.clientX - stage.left - image.offsetLeft) / Math.max(1, image.offsetWidth)
+			),
+			y: clampPercent(
+				(event.clientY - stage.top - image.offsetTop) / Math.max(1, image.offsetHeight)
+			)
 		};
-		if (!hovering) {
-			zoomScale = Math.min(4, Math.max(2, image.naturalWidth / width));
-			hovering = true;
+	}
+
+	/** Zoom into the clicked spot, far enough to show real pixels (2×–4×); click again to leave. */
+	function toggleZoom(event: MouseEvent) {
+		if (zoomed) {
+			zoomed = false;
+			return;
 		}
+		const image = event.currentTarget as HTMLImageElement;
+		zoomScale = Math.min(4, Math.max(2, image.naturalWidth / Math.max(1, image.offsetWidth)));
+		zoomOrigin = pointOnImage(event, image);
+		zoomed = true;
+	}
+
+	/** While zoomed, a mouse pans by moving across the image. */
+	function panZoom(event: PointerEvent) {
+		if (!zoomed || event.pointerType !== 'mouse') return;
+		zoomOrigin = pointOnImage(event, event.currentTarget as HTMLImageElement);
 	}
 
 	function handleStagePointerDown(event: PointerEvent) {
@@ -560,6 +579,11 @@
 
 	function handleStagePointerUp(event: PointerEvent) {
 		if (!swipeStart) return;
+		// A zoomed image is being inspected; swiping must not change images under it.
+		if (zoomed) {
+			swipeStart = null;
+			return;
+		}
 		const dx = event.clientX - swipeStart.x;
 		const dy = event.clientY - swipeStart.y;
 		swipeStart = null;
@@ -572,57 +596,60 @@
 <svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
 
 {#snippet galleryBar()}
+	<!-- Arrows hug the strip; with many images the strip grows until they reach the edges. -->
 	<div
-		class="relative z-10 flex items-center gap-2 border-t border-border bg-muted px-3 py-2 sm:px-4"
+		class="relative z-10 flex justify-center border-t border-border bg-muted px-3 py-2 sm:px-4"
 	>
-		<button
-			type="button"
-			class="{controlButton} w-11"
-			onclick={() => step(-1)}
-			aria-label="Previous image"
-			title="Previous (←)"
-		>
-			<ChevronLeft class="h-5 w-5" />
-		</button>
+		<div class="flex min-w-0 max-w-full items-center gap-2">
+			<button
+				type="button"
+				class="{controlButton} w-11"
+				onclick={() => step(-1)}
+				aria-label="Previous image"
+				title="Previous (←)"
+			>
+				<ChevronLeft class="h-5 w-5" />
+			</button>
 
-		<div
-			bind:this={stripRef}
-			class="relative min-w-0 flex-1 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-		>
-			<div class="mx-auto flex w-max gap-1.5 px-0.5">
-				{#each gallery as id, index (id)}
-					{@const active = index === galleryIndex}
-					<button
-						type="button"
-						data-index={index}
-						class="h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-card transition-[opacity,box-shadow,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-12 sm:w-12 {active
-							? 'border-accent opacity-100 ring-2 ring-accent/40'
-							: 'border-border opacity-50 hover:opacity-100'}"
-						onclick={() => goTo(id)}
-						aria-label={`Show image ${index + 1} of ${gallery.length}`}
-						aria-current={active ? 'true' : undefined}
-					>
-						<img
-							src={thumbnailSrc(id)}
-							alt=""
-							loading="lazy"
-							decoding="async"
-							class="h-full w-full object-cover"
-						/>
-					</button>
-				{/each}
+			<div
+				bind:this={stripRef}
+				class="relative min-w-0 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+			>
+				<div class="flex w-max gap-1.5 px-0.5">
+					{#each gallery as id, index (id)}
+						{@const active = index === galleryIndex}
+						<button
+							type="button"
+							data-index={index}
+							class="h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-card transition-[opacity,box-shadow,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-12 sm:w-12 {active
+								? 'border-accent opacity-100 ring-2 ring-accent/40'
+								: 'border-border opacity-50 hover:opacity-100'}"
+							onclick={() => goTo(id)}
+							aria-label={`Show image ${index + 1} of ${gallery.length}`}
+							aria-current={active ? 'true' : undefined}
+						>
+							<img
+								src={thumbnailSrc(id)}
+								alt=""
+								loading="lazy"
+								decoding="async"
+								class="h-full w-full object-cover"
+							/>
+						</button>
+					{/each}
+				</div>
 			</div>
-		</div>
 
-		<button
-			type="button"
-			class="{controlButton} w-11"
-			onclick={() => step(1)}
-			aria-label="Next image"
-			title="Next (→)"
-		>
-			<ChevronRight class="h-5 w-5" />
-		</button>
+			<button
+				type="button"
+				class="{controlButton} w-11"
+				onclick={() => step(1)}
+				aria-label="Next image"
+				title="Next (→)"
+			>
+				<ChevronRight class="h-5 w-5" />
+			</button>
+		</div>
 	</div>
 {/snippet}
 
@@ -847,7 +874,7 @@
 		>
 			{#if currentId}
 				{#key currentId}
-					<!-- Hover zoom is a mouse-only visual aid; the click just toggles it. -->
+					<!-- Click-to-zoom is a visual aid; keyboard users get the full image already. -->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 					<img
 						src={imageSrc(currentId)}
@@ -857,10 +884,8 @@
 						draggable="false"
 						onload={() => (loadedImageId = currentId)}
 						onerror={() => (loadedImageId = currentId)}
-						onpointerenter={trackZoom}
-						onpointermove={trackZoom}
-						onpointerleave={() => (hovering = false)}
-						onclick={() => (zoomEnabled = !zoomEnabled)}
+						onpointermove={panZoom}
+						onclick={toggleZoom}
 						style:transform={zoomed ? `scale(${zoomScale})` : 'scale(1)'}
 						style:transform-origin={`${zoomOrigin.x}% ${zoomOrigin.y}%`}
 						class="h-auto w-auto max-w-full select-none rounded-md object-contain shadow-ink transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none {hasGallery

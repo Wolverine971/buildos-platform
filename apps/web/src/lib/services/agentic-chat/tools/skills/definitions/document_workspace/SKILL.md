@@ -41,7 +41,7 @@ Project document hierarchy playbook: create, update, place, and reorganize proje
 ## Procedure
 
 1. For an update, reuse the exact document_id from the focused context, the user's message, or a read this turn; otherwise find it with search_project, list_onto_documents, or get_document_tree before writing. If several documents fit, ask one clarification instead of guessing.
-2. To change part of an existing body, use edits, never a resent body: find the exact text with get_document_outline (pass find with a word from the target) or read_document_section, then send `edits: [{ old_text, new_text }]` with old_text copied exactly (empty new_text deletes), or section_edits for a whole section by its anchor. content is only for a whole-body rewrite (update_strategy "replace", the default) or adding at the end ("append", non-empty content). A title-only or description-only update needs no content at all.
+2. To change part of an existing body, use edits, never a resent body: find the exact text with get_document_outline (pass find with a word from the target) or read_document_section, then send `edits: [{ old_text, new_text }]` with old_text copied exactly and kept to the smallest unique span, usually one line, one edit per changed line, never a whole block (empty new_text deletes), or section_edits for a whole section by its anchor. content is only for a whole-body rewrite (update_strategy "replace", the default) or adding at the end ("append", non-empty content). A title-only or description-only update needs no content at all.
 3. For a create, call create_onto_document with project_id, title, and description; pass content when the user gave it, and parent_id (plus optional position) only when a read already returned that parent.
 4. The hierarchy lives in the document tree, not in entity edges. Use move_document_in_tree to place, nest, or rehome an existing document: prefer new_parent_title for grouping, and pass new_parent_id only for a parent UUID a read returned.
 5. For reorganization or unlinked docs, call get_document_tree once with include_documents true, plan every move from that result, then issue the moves; read the tree again only if a move fails.
@@ -83,7 +83,7 @@ After a document write, report:
 - The focused context, the prior turn, or the user gave the exact document_id: reuse it directly.
 - Otherwise resolve it first with search_project or list_onto_documents; if several documents fit, ask one clarification instead of guessing.
 - To add to the end: `update_onto_document({ document_id: "<exact id>", update_strategy: "append", content: "<the new text>" })`
-- To remove or change a line: `get_document_outline({ document_id, find: "Exclusions" })`, then `update_onto_document({ document_id: "<exact id>", edits: [{ old_text: "<exact line>", new_text: "" }] })`
+- To change a line: `get_document_outline({ document_id, find: "Launch" })`, then `update_onto_document({ document_id: "<exact id>", edits: [{ old_text: "<the exact line>", new_text: "<the new line>" }] })`; to change three lines of one card, send three one-line edits in the same call
 - To rewrite a section: `update_onto_document({ document_id: "<exact id>", section_edits: [{ action: "replace", section: "<anchor>", content: "<new section text>" }] })`
 
 ### Create and place a document
