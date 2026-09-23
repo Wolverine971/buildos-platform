@@ -539,6 +539,8 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 		  }
 		| SkillActivityEvent
 		| { type: 'context_shift'; context_shift: ContextShiftPayload }
+		/** "Working from" chips for a project turn (context finder). */
+		| import('./context-selection').ContextSelectionEventV1
 		| { type: 'timing'; timing: AgentTimingSummary }
 		| TemplateCreationEvent
 		| { type: 'error'; error: string; turn_rejected?: boolean }

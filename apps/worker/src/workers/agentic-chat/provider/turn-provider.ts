@@ -111,6 +111,7 @@ import {
 	providerError,
 	throwIfAborted
 } from './protocol';
+import type { AgenticChatContextFinderPort } from './chat-context-finder';
 import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
 import { streamBufferedProviderPass } from './provider-pass';
 import { TurnCreateReplayGuard, createReplayRepairInstruction } from './create-replay';
@@ -316,6 +317,11 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			 * admitted surface if the model reaches for an omitted tool.
 			 */
 			toolSelector?: AgenticChatToolSelectorPort;
+			/**
+			 * Ranks the project's records for this message on the opening pass, concurrently
+			 * with tool selection, and publishes "Working from" chips. Fail-open.
+			 */
+			contextFinder?: AgenticChatContextFinderPort;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -1589,9 +1595,19 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				return;
 			}
 			if (initial) {
+				// Started first so project load + Jev ranking overlap vision and tool selection.
+				const finding = this.ports.contextFinder?.find(request) ?? null;
+				// If an earlier step throws, the finding is abandoned; never leave it unhandled.
+				finding?.catch(() => undefined);
 				request = await this.resolveLiveVision(request);
 				if (this.ports.toolSelector)
 					request = await this.ports.toolSelector.select(request);
+				const found = finding ? await finding : null;
+				if (found) {
+					yield found.step;
+					if (found.injection)
+						request = appendSystemInstruction(request, found.injection);
+				}
 				state.setCurrentRequest(request);
 			}
 			for await (const event of this.providerPass(request, state)) {

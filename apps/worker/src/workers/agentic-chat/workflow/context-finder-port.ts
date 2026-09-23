@@ -4,11 +4,11 @@
 // bounded preparation step), then let the shared context finder rank and select evidence.
 // A curated plan from Workflow Lab is only materialized; it never calls Jev again.
 import {
-	findProjectContext,
-	loadContextFinderProject,
 	type ContextEvidenceV1,
 	type ContextFinderDecider,
-	type ContextFinderReadClient
+	type ContextFinderReadClient,
+	findProjectContext,
+	loadContextFinderProject
 } from '@buildos/agentic-chat-runtime/context-finder';
 import type { PublishedSpecialistContextFinderV1 } from '@buildos/agentic-chat-runtime/specialists';
 

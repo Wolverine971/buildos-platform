@@ -61,6 +61,7 @@ import {
 	SupabaseAgenticChatPromptSnapshotAdapter
 } from './promptSnapshot';
 import type { AgenticChatToolSelectorPort } from './provider/jev-tool-selector';
+import type { AgenticChatContextFinderPort } from './provider/chat-context-finder';
 import { AgenticChatTurnProviderAdapter } from './provider/turn-provider';
 import { AgenticChatToolExecutionAdapter } from './tools/execution-adapter';
 import {
@@ -211,6 +212,7 @@ export function createAgenticChatCompositionRoot(options: {
 	mutationBatchLaneEnabled?: boolean;
 	/** Optional opening-pass schema narrowing (Jev); absent means the full admitted surface. */
 	toolSelector?: AgenticChatToolSelectorPort;
+	contextFinder?: AgenticChatContextFinderPort;
 	maxToolCalls?: number;
 	maxToolConcurrency?: number;
 	concurrentReadsEnabled?: boolean;
@@ -343,7 +345,8 @@ export function createAgenticChatCompositionRoot(options: {
 			semanticReviewer: options.semanticReviewerClient,
 			capacity: providerCapacity,
 			liveVision,
-			...(options.toolSelector ? { toolSelector: options.toolSelector } : {})
+			...(options.toolSelector ? { toolSelector: options.toolSelector } : {}),
+			...(options.contextFinder ? { contextFinder: options.contextFinder } : {})
 		},
 		options.providerCooldownMs,
 		options.maxProviderRounds,

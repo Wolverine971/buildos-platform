@@ -24,7 +24,8 @@
 		Inbox,
 		Mail,
 		Bot,
-		CreditCard
+		CreditCard,
+		Workflow
 	} from '$lib/icons/lucide';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
@@ -68,6 +69,8 @@
 		subscription?: any;
 		hasConnectedAgents?: boolean;
 		emailSuggestionsEnabled?: boolean;
+		/** Owner-only (and local dev) link to the Workflow Lab. */
+		workflowLabNavEnabled?: boolean;
 	};
 
 	type IdleWindow = Window & {
@@ -83,7 +86,8 @@
 		stripeEnabled = false,
 		subscription = null,
 		hasConnectedAgents = false,
-		emailSuggestionsEnabled = false
+		emailSuggestionsEnabled = false,
+		workflowLabNavEnabled = false
 	}: Props = $props();
 
 	let showUserMenu = $state(false);
@@ -221,13 +225,18 @@
 		return 'BuildOS chat';
 	});
 
-	const navItems = [
+	const baseNavItems = [
 		{ href: '/today', label: 'Today', icon: Sun },
 		{ href: '/dashboard', label: 'Dashboard', icon: Home },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
 		// { href: '/time-blocks', label: 'Time Blocks', icon: Clock },
 		{ href: '/history', label: 'History', icon: StickyNote }
 	];
+	const navItems = $derived(
+		workflowLabNavEnabled
+			? [...baseNavItems, { href: '/workflow-lab', label: 'Workflows', icon: Workflow }]
+			: baseNavItems
+	);
 
 	const loadingAccentClass =
 		'animate-pulse-accent motion-reduce:animate-none ring-1 ring-accent/60 shadow-ink-strong';

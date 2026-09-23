@@ -24,10 +24,12 @@ import type {
 	AgentTimingSummary,
 	ChatContextType,
 	ChatSession,
+	ContextSelectionEventV1,
 	ContextShiftPayload,
 	ContextUsageSnapshot,
 	SkillActivityEvent
 } from '@buildos/shared-types';
+import { parseContextSelectionEventV1 } from '@buildos/shared-types';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type {
 	ActivityEntry,
@@ -411,6 +413,9 @@ export interface SSEHandlerDeps {
 
 	// Created-entity chips appended inline at the end of a turn that created entities.
 	addCreatedEntitiesMessage(entities: CreatedEntityRef[]): void;
+
+	/** "Working from" chips: attach a turn's context selection to its user message. */
+	attachContextSelection?(selection: ContextSelectionEventV1): void;
 
 	isDev?: boolean;
 }
@@ -840,6 +845,12 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			case 'skill_activity':
 				thinking.upsertSkillActivity(event);
 				return;
+
+			case 'context_selection': {
+				const selection = parseContextSelectionEventV1(event);
+				if (selection?.visible) deps.attachContextSelection?.(selection);
+				return;
+			}
 
 			case 'context_shift':
 				if (event.context_shift) {

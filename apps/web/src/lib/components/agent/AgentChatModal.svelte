@@ -40,7 +40,11 @@
 	import { onDestroy, getAbortSignal, getContext, tick, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-	import type { Database, FreshnessCardPayloadV1 } from '@buildos/shared-types';
+	import type {
+		ContextSelectionEventV1,
+		Database,
+		FreshnessCardPayloadV1
+	} from '@buildos/shared-types';
 	import { browser, dev } from '$app/environment';
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -2421,6 +2425,7 @@
 		processedToolCallIds,
 		processedToolResultIds,
 		addCreatedEntitiesMessage,
+		attachContextSelection,
 		isDev: dev
 	};
 
@@ -2475,6 +2480,24 @@
 		addActivityToThinkingBlock(`${action}: ${details}`, 'context_shift', {
 			focus
 		});
+	}
+
+	/** "Working from" chips ride on the turn's user message; the latest selection wins. */
+	function attachContextSelection(selection: ContextSelectionEventV1) {
+		const index = messages.findLastIndex(
+			(message) =>
+				message.type === 'user' &&
+				message.metadata?.client_turn_id === selection.client_turn_id
+		);
+		if (index === -1) return;
+		const target = messages[index]!;
+		// Replace, never mutate: the timeline cache keys on message identity.
+		const next = [...messages];
+		next[index] = {
+			...target,
+			metadata: { ...(target.metadata ?? {}), context_selection: selection }
+		};
+		messages = next;
 	}
 
 	function addCreatedEntitiesMessage(entities: CreatedEntityRef[]) {

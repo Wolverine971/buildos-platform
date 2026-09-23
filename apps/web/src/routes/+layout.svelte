@@ -101,6 +101,7 @@
 	});
 	let hasConnectedAgents = $derived(Boolean(data.hasConnectedAgents));
 	let emailSuggestionsEnabled = $derived(Boolean(data.emailSuggestionsEnabled));
+	let workflowLabNavEnabled = $derived(Boolean(data.workflowLabNavEnabled));
 	type BillingContext = {
 		subscription: any | null;
 		trialStatus: any | null;
@@ -970,7 +971,8 @@
 		completedOnboarding,
 		onboardingProgress,
 		hasConnectedAgents,
-		emailSuggestionsEnabled
+		emailSuggestionsEnabled,
+		workflowLabNavEnabled
 	}));
 	let footerProps = $derived.by(() => ({ user }));
 	let onboardingModalProps = $derived.by(() => ({

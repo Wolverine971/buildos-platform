@@ -25,6 +25,11 @@ import {
 	type AgenticChatProviderMutationCapabilitiesV1
 } from './mutationToolCatalog';
 import { createAgenticChatCompositionRoot } from './composition-root';
+import type { ContextFinderReadClient } from '@buildos/agentic-chat-runtime/context-finder';
+import {
+	CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
+	ChatContextFinder
+} from './provider/chat-context-finder';
 import { JevToolSelector } from './provider/jev-tool-selector';
 import {
 	WEB_NAVIGATE_DECISION_TIMEOUT_MS,
@@ -478,6 +483,30 @@ function createDefaultComposition(
 					usage: usageLogger,
 					onUsageError: input.onUsageError
 				});
+	// Ordinary project chat: Jev-ranked "Working from" chips (CONTEXT_FINDER_2026-09-22.md).
+	const contextFinderChatMode = input.config.contextFinderChat ?? 'off';
+	const contextFinder =
+		contextFinderChatMode === 'off' || !input.config.contextFinderChatUserIds?.length
+			? undefined
+			: new ChatContextFinder({
+					mode: contextFinderChatMode,
+					userIds: input.config.contextFinderChatUserIds,
+					// Service client; the turn's project access was checked at admission.
+					client: input.client as unknown as ContextFinderReadClient,
+					decider: new JevClient({
+						apiKey: (
+							input.config.provider.routes.find(
+								(route) => route.kind === 'openrouter'
+							) ?? input.config.provider.routes[0]!
+						).apiKey,
+						timeoutMs: CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
+						maxRequestBytes: 96_000,
+						retryOnce: false,
+						usage: usageLogger,
+						...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
+						title: 'BuildOS Context Finder (chat)'
+					})
+				});
 	// web_navigate: Jev picks links, code fetches politely, Tavily renders pages a
 	// plain fetch cannot read. Same OpenRouter credential as the acting route.
 	const webNavigator = createWorkerWebNavigatePort({
@@ -511,6 +540,7 @@ function createDefaultComposition(
 		providerClient,
 		semanticReviewerClient,
 		...(toolSelector ? { toolSelector } : {}),
+		...(contextFinder ? { contextFinder } : {}),
 		webNavigator,
 		providerConfigured: true,
 		workflowPrototypeUserIds: input.config.workflowPrototypeUserIds,

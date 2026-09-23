@@ -14,6 +14,7 @@ import {
 	type AgenticChatOpenRouterProviderRoutingV1,
 	DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS
 } from './provider/openrouter-client';
+import type { ChatContextFinderMode } from './provider/chat-context-finder';
 import type { JevToolSelectionMode } from './provider/jev-tool-selector';
 import {
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
@@ -136,6 +137,10 @@ type AgenticChatBaseConfig = {
 	jevSpecialistSelection?: 'off' | 'shadow';
 	/** Jev ranks project records and sections for published specialist reviews. Default off. */
 	contextFinderEnabled?: boolean;
+	/** Ordinary project chat: Jev-ranked "Working from" chips (off|shadow|chips|on). */
+	contextFinderChat?: ChatContextFinderMode;
+	/** Users whose project chats are ranked; empty ranks nobody. */
+	contextFinderChatUserIds?: string[];
 	liveVisionEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
@@ -216,6 +221,10 @@ export function loadAgenticChatConfig(
 		environment.AGENTIC_CHAT_CONTEXT_FINDER_ENABLED,
 		false,
 		'AGENTIC_CHAT_CONTEXT_FINDER_ENABLED'
+	);
+	const contextFinderChat = parseContextFinderChat(environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT);
+	const contextFinderChatUserIds = parseChatWorkflowPrototypeUsers(
+		environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS
 	);
 	const specialistWorkflowsEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED,
@@ -316,6 +325,8 @@ export function loadAgenticChatConfig(
 		documentEvidenceHandoffEnabled,
 		jevSpecialistSelection,
 		contextFinderEnabled,
+		contextFinderChat,
+		contextFinderChatUserIds,
 		liveVisionEnabled,
 		consumptionBillingEnabled,
 		consumer,
@@ -416,6 +427,12 @@ function parseBoolean(value: string | undefined, fallback: boolean, name: string
 	if (value === 'true') return true;
 	if (value === 'false') return false;
 	throw new Error(`${name} must be exactly true or false`);
+}
+
+function parseContextFinderChat(value: string | undefined): ChatContextFinderMode {
+	const mode = value?.trim() || 'off';
+	if (mode === 'off' || mode === 'shadow' || mode === 'chips' || mode === 'on') return mode;
+	throw new Error('AGENTIC_CHAT_CONTEXT_FINDER_CHAT must be exactly off, shadow, chips, or on');
 }
 
 function parseJevToolSelection(value: string | undefined): 'off' | JevToolSelectionMode {

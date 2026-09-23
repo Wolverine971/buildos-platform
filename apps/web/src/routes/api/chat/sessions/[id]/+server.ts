@@ -1,7 +1,8 @@
 // apps/web/src/routes/api/chat/sessions/[id]/+server.ts
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
-import type { ProjectFocus } from '@buildos/shared-types';
+import type { ContextSelectionEventV1, ProjectFocus } from '@buildos/shared-types';
+import { parseContextSelectionEventV1 } from '@buildos/shared-types';
 import {
 	buildProjectWideFocus,
 	isProjectScopedContext,
@@ -650,6 +651,27 @@ export const GET: RequestHandler = async ({
 		return ApiResponse.databaseError(turnEventsError);
 	}
 	const turnEvents = newestTurnEvents ? [...newestTurnEvents].reverse() : newestTurnEvents;
+
+	// "Working from" chips: the worker persists one context_selection event per project turn.
+	// Join the latest visible one onto its user message so reopened chats show them too.
+	const contextSelections = new Map<string, ContextSelectionEventV1>();
+	for (const event of turnEvents ?? []) {
+		if (event.event_type !== 'context_selection') continue;
+		const selection = parseContextSelectionEventV1(event.payload);
+		if (selection?.visible) contextSelections.set(selection.client_turn_id, selection);
+	}
+	if (contextSelections.size > 0) {
+		messagesWithAttachments = messagesWithAttachments.map((message) => {
+			if (message.role !== 'user') return message;
+			const metadata = message.metadata as Record<string, unknown> | null;
+			const clientTurnId = metadata?.client_turn_id;
+			const selection =
+				typeof clientTurnId === 'string' ? contextSelections.get(clientTurnId) : undefined;
+			return selection
+				? { ...message, metadata: { ...(metadata ?? {}), context_selection: selection } }
+				: message;
+		});
+	}
 
 	let voiceNotes: any[] = [];
 	let voiceNoteGroups: any[] = [];

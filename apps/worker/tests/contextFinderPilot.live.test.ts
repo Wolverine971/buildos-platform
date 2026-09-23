@@ -326,6 +326,13 @@ type Result = {
 									}
 								}
 							});
+							if (!preview.plan) {
+								spent += previewJevUsd;
+								console.warn(
+									`Preview ranking unavailable; skipping ${scenario.key}/${arm}`
+								);
+								continue;
+							}
 							let plan = preview.plan;
 							const full = new Set(
 								plan.items

@@ -1,5 +1,6 @@
 // apps/web/src/routes/+layout.server.ts
 import type { LayoutServerLoad } from './$types';
+import { dev } from '$app/environment';
 import { env as privateEnv } from '$env/dynamic/private';
 import {
 	onboardingProgress as getOnboardingProgress,
@@ -101,6 +102,9 @@ async function hasConnectedAgents(
 	}
 }
 
+/** The Workflows nav link: the owner's account in production, anyone signed in during local dev. */
+const WORKFLOW_LAB_NAV_EMAIL = 'djwayne35@gmail.com';
+
 export const load: LayoutServerLoad = async ({
 	locals: { safeGetSession, supabase, serverTiming },
 	url,
@@ -131,7 +135,8 @@ export const load: LayoutServerLoad = async ({
 			billingContext: createEmptyBillingContext(false),
 			pendingInvites: [],
 			hasConnectedAgents: false,
-			emailSuggestionsEnabled: false
+			emailSuggestionsEnabled: false,
+			workflowLabNavEnabled: false
 		};
 	}
 
@@ -232,6 +237,7 @@ export const load: LayoutServerLoad = async ({
 		billingContext,
 		pendingInvites: pendingInvitesResult,
 		hasConnectedAgents: agentConnectionStatus,
-		emailSuggestionsEnabled: isGmailRelevancePhaseAReviewUserAllowed(user.id, privateEnv)
+		emailSuggestionsEnabled: isGmailRelevancePhaseAReviewUserAllowed(user.id, privateEnv),
+		workflowLabNavEnabled: dev || user.email?.trim().toLowerCase() === WORKFLOW_LAB_NAV_EMAIL
 	};
 };

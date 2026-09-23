@@ -13,8 +13,8 @@ import {
 } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
 import {
-	contextEvidenceRecords,
-	type ContextEvidenceV1
+	type ContextEvidenceV1,
+	contextEvidenceRecords
 } from '@buildos/agentic-chat-runtime/context-finder';
 
 /**

@@ -8,6 +8,8 @@
 	import CreatedEntityCards from './CreatedEntityCards.svelte';
 	import FreshnessRadarCard from './FreshnessRadarCard.svelte';
 	import CaptureReceiptChip from './CaptureReceiptChip.svelte';
+	import ContextSelectionChips from './ContextSelectionChips.svelte';
+	import { contextSelectionOf, readRecordIdsByTurn } from './context-selection-chips';
 	import { ArrowDown } from '$lib/icons/lucide';
 	import { getProseClasses } from '$lib/utils/markdown';
 	import {
@@ -113,6 +115,14 @@
 	const REVEAL_SNAP_INITIAL_CHARS = 400;
 	/** Follow-after-tap (scroll policy below): set only by the pill mid-stream. */
 	let followingLatest = false;
+
+	// "Working from" read ticks. Skipped entirely unless some turn carries a selection, so
+	// ordinary chats pay nothing while text streams.
+	const readIdsByTurn = $derived.by(() =>
+		messages.some((message) => message.type === 'user' && message.metadata?.context_selection)
+			? readRecordIdsByTurn(messages)
+			: new Map<string, Set<string>>()
+	);
 
 	const streamingMessage = $derived.by(() => {
 		if (!streamingMessageId) return null;
@@ -876,6 +886,15 @@
 								</div>
 							</div>
 						</div>
+						{#if message.metadata?.context_selection}
+							{@const selection = contextSelectionOf(message)}
+							{#if selection}
+								<ContextSelectionChips
+									{selection}
+									readIds={readIdsByTurn.get(selection.turn_run_id)}
+								/>
+							{/if}
+						{/if}
 					</div>
 				{:else if message.type === 'assistant'}
 					{@const body = assistantBody(message, message.id === streamingMessageId)}

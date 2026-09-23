@@ -1,6 +1,7 @@
 // apps/web/src/routes/workflow-lab/+page.server.ts
 import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
+import { dev } from '$app/environment';
 import { parseChatWorkflowPrototypeUsers } from '@buildos/shared-types';
 import {
 	ensureActorId,
@@ -17,7 +18,9 @@ import type { WorkbenchVersionSummary } from '$lib/types/specialist-workbench';
 export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) error(401, 'Sign in to use the workflow lab');
+	// Local dev always opens the lab; starting a review still passes the admission gates.
 	if (
+		!dev &&
 		!parseChatWorkflowPrototypeUsers(env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS).includes(
 			user.id
 		)
