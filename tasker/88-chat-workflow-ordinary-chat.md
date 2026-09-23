@@ -3,7 +3,21 @@
 # 88 — Jev freshness radar: after a brain dump, catch what went stale
 
 **Created:** 2026-09-12. **Reshaped by DJ:** 2026-09-18.
+**Follow-up (2026-09-19, ~21:10 UTC):** two real live scans completed successfully for DJ Wayne
+Studio, with no card-worthy result. A repeated-message cursor defect was reproduced on real local
+PostgreSQL and fixed locally; focused tests pass 28/28, full gate and deployment remain pending.
+The first-scan exclusion policy also filtered all recently imported entities. See the
+[live check and next actions](../docs/technical/reviews/AGENTIC_CHAT_RADAR_LIVE_CHECK_2026-09-19.md).
+
+**UI follow-up (2026-09-19, local):** implemented **Review project** in the composer, durable
+workflow stages/findings/recovery in ordinary chat, and **Review deeper** on matching-project
+freshness cards. Review deeper preserves the existing draft and waits for Send. Review access
+remains gated by the server switch/cohort; unavailable explicit reviews cannot become ordinary
+mutating turns. Research, full QA gate, and activation are deferred by DJ. Details:
+[implementation record](../docs/technical/reviews/AGENTIC_CHAT_REVIEW_UI_2026-09-19.md).
+
 **Status (2026-09-19 01:30 UTC): LIVE for DJ only.**
+
 - Deployed at `262e86bfc`.
 - Production migrations `20260918200000`–`200300` are applied and recorded in the ledger.
 - `FRESHNESS_RADAR_MODE=live` is set on `daily-brief-worker`.
@@ -13,6 +27,7 @@
   [handoff](../docs/technical/reviews/AGENTIC_CHAT_HANDOFF_2026-09-19.md).
 
 **Build status (2026-09-18):** built on `main`.
+
 - Plan and interfaces are frozen in
   [`docs/architecture/jev-freshness-radar-v1-plan.md`](../docs/architecture/jev-freshness-radar-v1-plan.md),
   with lane amendments appended.
@@ -24,17 +39,17 @@
   undo, flag and decide routes.
 - **Integration fix** (`fd8b76f4d`): milestone date drafts now keep the user's calendar day.
 - **Verified on merged `main`:**
-  - worker typecheck is clean;
-  - radar and inbox worker suites pass 126/126, including a real disposable-Postgres end-to-end scan;
-  - web freshness, chat session and decide suites pass 116/116;
-  - SQL contracts pass 52/52.
+    - worker typecheck is clean;
+    - radar and inbox worker suites pass 126/126, including a real disposable-Postgres end-to-end scan;
+    - web freshness, chat session and decide suites pass 116/116;
+    - SQL contracts pass 52/52.
 - **Remaining:**
-  - observe the first live scans;
-  - enable `freshness_radar.auto_apply` after about 20 clean scans, with DJ's OK;
-  - run the backtest only with DJ's new OK (he declined it on 09-18).
-**Depends on:** nothing blocking. It reuses the Project Review suggestion, approval and inbox machinery.
-The 86/87 workflow is not used for drafting. It is read-only and text-only by contract, and about
-500× the cost per scan.
+    - observe the first live scans;
+    - enable `freshness_radar.auto_apply` after about 20 clean scans, with DJ's OK;
+    - run the backtest only with DJ's new OK (he declined it on 09-18).
+      **Depends on:** nothing blocking. It reuses the Project Review suggestion, approval and inbox machinery.
+      The 86/87 workflow is not used for drafting. It is read-only and text-only by contract, and about
+      500× the cost per scan.
 
 ## Outcome
 
@@ -54,9 +69,9 @@ Every judgment is written to a calibration ledger, so the percentages can be tun
 - **Scope: ambitious.** Staleness scores, the flags card, "Update these", the on-track gauge and
   inbox cleanup all ship in the first version. The cohort is DJ first.
 - **Surfaces: all three.**
-  - A card in the chat right after the dump.
-  - One AI Inbox item per project, within the 3-per-project attention budget.
-  - A "may be out of date" badge on each flagged entity.
+    - A card in the chat right after the dump.
+    - One AI Inbox item per project, within the 3-per-project attention budget.
+    - A "may be out of date" badge on each flagged entity.
 - **Updates: auto-apply when very confident.** Everything else is drafted for approval.
 - **Inbox cleanup: auto-retire with undo.** Borderline items are marked "possibly stale".
 
@@ -87,26 +102,26 @@ reads `claimed`, so render from the terminal outcome.
 ## Lanes (disjoint files; see plan section 8)
 
 - **A — schema, contracts, shared core:**
-  - four new migrations;
-  - `freshness-radar.types.ts` and the additive type edits;
-  - the generic `JevClient` in `packages/smart-llm`;
-  - scalar/goal/milestone support in `verify-operations`;
-  - freshness helpers in `inbox-index`.
+    - four new migrations;
+    - `freshness-radar.types.ts` and the additive type edits;
+    - the generic `JevClient` in `packages/smart-llm`;
+    - scalar/goal/milestone support in `verify-operations`;
+    - freshness helpers in `inbox-index`.
 - **B — worker scanner:** `apps/worker/src/workers/freshness-radar/**`, the queue registration,
   and the read-only backtest script.
 - **C — web:**
-  - the badge, undo and flag routes;
-  - the null-`run_id` approval path;
-  - `FreshnessRadarCard` in chat, badges and the gauge in the project UI, and inbox labels.
+    - the badge, undo and flag routes;
+    - the null-`run_id` approval path;
+    - `FreshnessRadarCard` in chat, badges and the gauge in the project UI, and inbox labels.
 
 ## Acceptance
 
 - Focused lane tests, plus SQL/RLS on a local disposable Postgres. No hosted database.
 - Migrations are applied to QA and then production only with DJ's explicit OK.
 - Rollout order:
-  1. Cohort flag on for DJ in `shadow` mode.
-  2. Then `live` without auto-apply.
-  3. Then auto-apply once the ledger gate above passes.
+    1. Cohort flag on for DJ in `shadow` mode.
+    2. Then `live` without auto-apply.
+    3. Then auto-apply once the ledger gate above passes.
 - **Backtest:** replay DJ's recent chat sessions read-only through the scanner and report precision
   and calibration. This runs on production data only with DJ's explicit OK.
 - The live browser journey (dump → card → Update these → Undo → badge → inbox) is recorded in 89.

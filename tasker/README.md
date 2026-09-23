@@ -26,12 +26,30 @@ live verification, or a named exit gate is still pending.
 
 ## Current focus
 
+- **Surgical document edits (2026-09-23):**
+  [99 — Remove or replace a line without rewriting the doc](99-surgical-document-edits.md)
+  shipped in 5014e3ef5 (p04 passed) and preview-before-review in 4ebe44389. The p05 replay and
+  the gate still need DJ's approval.
+- **Specialist workflow readiness (2026-09-23):**
+  [98 — Step limits, speed audit, value test](98-specialist-workflow-step-limits-speed-value.md)
+  is ready for another agent. The planner failed validation in 11 of 12 pilot reviews (likely hidden
+  reasoning tokens against 1,200/4,000-token caps, enforced in code and SQL); reviews take 15–171 s.
+  Fix the limits, audit where the time goes, then test whether specialists beat one chat answer with
+  the same evidence. Paid runs need DJ's approval; the OpenRouter balance is low.
+- **Supervisor reliability and specialist quality (2026-09-21):**
+  [92 — Takeover handoff](92-agentic-chat-supervisor-reliability-and-specialist-handoff.md)
+  starts with the retained ownership-check timeout, then task-classification policy, explicit
+  completion receipts, and answer comparison. The latest gate failed 48/52. Every paid test or
+  rerun requires DJ's explicit approval; begin with existing evidence and free local tests.
+- **Workflow Lab inspection (2026-09-20):** [91 — Multi-agent trace and export](91-workflow-lab-audit-and-export.md)
+  is ready for another implementation agent: lab log links, specialist flow/evidence inspection,
+  and a complete offline audit bundle. See its current production/local scope before starting.
 - **Start here for Agentic Chat (2026-09-19):**
   [handoff](../docs/technical/reviews/AGENTIC_CHAT_HANDOFF_2026-09-19.md).
-  - The Jev freshness radar ([88](88-chat-workflow-ordinary-chat.md)) is live for DJ, with
-    auto-apply off.
-  - The 86/87 workflow is merged and deployed with its switches off.
-  - One final acceptance run remains at [89](89-chat-workflow-integration-acceptance.md).
+    - The Jev freshness radar ([88](88-chat-workflow-ordinary-chat.md)) is live for DJ, with
+      auto-apply off.
+    - The 86/87 workflow is merged and deployed with its switches off.
+    - One final acceptance run remains at [89](89-chat-workflow-integration-acceptance.md).
 - **Chat workflow implementation:** [81](81-chat-workflow-implementation-program.md)
   coordinates the new chat-first pilot. DJ closed the Task 90 testing handoff after
   the focused repairs and deferred calendar work; see the
@@ -72,16 +90,18 @@ The package numbers identify owners, not a strictly numeric execution sequence.
 83 (closed 2026-09-14) → 85 → 86 → 87 → 88, with 89 owning acceptance throughout. Parallel development
 and shared-file handoffs are specified in 81; all full gates run sequentially.
 
-| Tracker                                                                                 | Remaining kernel                                                                                                             |
-| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| [81 — Workflow implementation program](81-chat-workflow-implementation-program.md)      | Coordinate source baseline, task dependencies, file ownership, integration gates and pilot completion.                       |
-| [82 — Regression repairs](82-chat-workflow-regression-repairs.md)                       | Repair dependency completion, exact document text and status grounding/read bounds; pass the full strict gate with 84.       |
-| [84 — Delivery and stall visibility](84-chat-workflow-delivery-and-stall-visibility.md) | Let computation advance after durable acceptance, preserve ordered delivery/reconciliation and expose per-turn progress age. |
-| [85 — Durable contracts](85-chat-workflow-durable-contracts.md)                         | Freeze interfaces; add compatible v4 readers and fenced request/context/step/cost/recovery storage with writers off.         |
-| [86 — Lightweight submission](86-chat-workflow-lightweight-submission.md)               | Save raw requests atomically, gather context in the worker, preserve ordinary admission and measure acknowledgement latency. |
-| [87 — Recoverable steps](87-chat-workflow-recoverable-steps.md)                         | Reuse accepted work after restart, meter every physical dispatch and reconcile streaming without duplicate answers.          |
-| [88 — Jev freshness radar](88-chat-workflow-ordinary-chat.md)                            | After a brain dump, Jev flags stale tasks/docs/goals, auto-applies very-confident low-risk edits with undo, drafts the rest, retires obsolete inbox items. |
-| [89 — Integration acceptance](89-chat-workflow-integration-acceptance.md)               | Prove browser/restart/fault behavior, compare latency/cost/usefulness and publish a repeatable local test handoff.           |
+| Tracker                                                                                                                | Remaining kernel                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [81 — Workflow implementation program](81-chat-workflow-implementation-program.md)                                     | Coordinate source baseline, task dependencies, file ownership, integration gates and pilot completion.                                                           |
+| [82 — Regression repairs](82-chat-workflow-regression-repairs.md)                                                      | Repair dependency completion, exact document text and status grounding/read bounds; pass the full strict gate with 84.                                           |
+| [84 — Delivery and stall visibility](84-chat-workflow-delivery-and-stall-visibility.md)                                | Let computation advance after durable acceptance, preserve ordered delivery/reconciliation and expose per-turn progress age.                                     |
+| [85 — Durable contracts](85-chat-workflow-durable-contracts.md)                                                        | Freeze interfaces; add compatible v4 readers and fenced request/context/step/cost/recovery storage with writers off.                                             |
+| [86 — Lightweight submission](86-chat-workflow-lightweight-submission.md)                                              | Save raw requests atomically, gather context in the worker, preserve ordinary admission and measure acknowledgement latency.                                     |
+| [87 — Recoverable steps](87-chat-workflow-recoverable-steps.md)                                                        | Reuse accepted work after restart, meter every physical dispatch and reconcile streaming without duplicate answers.                                              |
+| [88 — Jev freshness radar](88-chat-workflow-ordinary-chat.md)                                                          | After a brain dump, Jev flags stale tasks/docs/goals, auto-applies very-confident low-risk edits with undo, drafts the rest, retires obsolete inbox items.       |
+| [89 — Integration acceptance](89-chat-workflow-integration-acceptance.md)                                              | Prove browser/restart/fault behavior, compare latency/cost/usefulness and publish a repeatable local test handoff.                                               |
+| [91 — Workflow Lab trace and export](91-workflow-lab-audit-and-export.md)                                              | Add lab log links, a multi-agent execution/evidence inspector, and a complete Markdown/ZIP audit export.                                                         |
+| [92 — Supervisor reliability and specialist handoff](92-agentic-chat-supervisor-reliability-and-specialist-handoff.md) | Repair stalled ownership checks, align task classification, define complete-request receipts, and compare specialist answers; paid validation requires approval. |
 
 ### Paid launch readiness
 
@@ -115,17 +135,20 @@ and shared-file handoffs are specified in 81; all full gates run sequentially.
 
 ### Product, IA, and experiments
 
-| Tracker                                                                           | Remaining kernel                                                                                              |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| [27 — `/today` migration and IA](27-today-migration-ia-consolidation.md)          | Live-verify WP-0/WP-2, finish the redirect flip, then resolve the remaining IA packages and owner decisions.  |
-| [34 — Holistic Project Review synthesis](34-project-review-holistic-synthesis.md) | Build and evaluate the evidence-bound cross-family synthesis.                                                 |
-| [40 — Working notes and artifacts](40-working-notes-artifacts.md)                 | Decide the durable note contract and build the channel-agnostic human-facing refresh path.                    |
-| [41 — Open-brief cohort 1](41-open-brief-cohort-1.md)                             | Clear the veto packet, finish both runners, execute the paid cohort, and produce the blind readout.           |
-| [43 — Re-entry Compass](43-reentry-compass-experiment.md)                         | Parked after a failed Phase 0 gate; revisit only when the stated user-volume and routing preconditions exist. |
-| [44 — One Clear Next Move](44-one-clear-next-move-experiment.md)                  | Run Phase 0 before authorizing a treatment or production experiment.                                          |
-| [48 — `DocumentModal` decomposition](48-document-modal-decomposition.md)          | Explicitly deferred by owner; resume only as a focused workstream with characterization first.                |
-| [52 — AI Inbox review-loop remediation](52-ai-inbox-review-loop-remediation.md)   | WP-1/WP-2 are applied and WP-3 is local; deploy the runtime and verify the one-brief behavior live.           |
-| [53 — Projects list simplification](53-projects-list-purpose-simplification.md)   | Validate the page purpose, ratify the wireframe, then implement and journey-test the simplified launcher.     |
+| Tracker                                                                                           | Remaining kernel                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [27 — `/today` migration and IA](27-today-migration-ia-consolidation.md)                          | Live-verify WP-0/WP-2, finish the redirect flip, then resolve the remaining IA packages and owner decisions.                                                                                                                                                                                                             |
+| [34 — Holistic Project Review synthesis](34-project-review-holistic-synthesis.md)                 | Build and evaluate the evidence-bound cross-family synthesis.                                                                                                                                                                                                                                                            |
+| [40 — Working notes and artifacts](40-working-notes-artifacts.md)                                 | Decide the durable note contract and build the channel-agnostic human-facing refresh path.                                                                                                                                                                                                                               |
+| [41 — Open-brief cohort 1](41-open-brief-cohort-1.md)                                             | Clear the veto packet, finish both runners, execute the paid cohort, and produce the blind readout.                                                                                                                                                                                                                      |
+| [43 — Re-entry Compass](43-reentry-compass-experiment.md)                                         | Parked after a failed Phase 0 gate; revisit only when the stated user-volume and routing preconditions exist.                                                                                                                                                                                                            |
+| [44 — One Clear Next Move](44-one-clear-next-move-experiment.md)                                  | Run Phase 0 before authorizing a treatment or production experiment.                                                                                                                                                                                                                                                     |
+| [48 — `DocumentModal` decomposition](48-document-modal-decomposition.md)                          | Explicitly deferred by owner; resume only as a focused workstream with characterization first.                                                                                                                                                                                                                           |
+| [52 — AI Inbox review-loop remediation](52-ai-inbox-review-loop-remediation.md)                   | WP-1/WP-2 are applied and WP-3 is local; deploy the runtime and verify the one-brief behavior live.                                                                                                                                                                                                                      |
+| [53 — Projects list simplification](53-projects-list-purpose-simplification.md)                   | Validate the page purpose, ratify the wireframe, then implement and journey-test the simplified launcher.                                                                                                                                                                                                                |
+| [93 — START HERE capture reconciles, not appends](93-start-here-capture-synthesize-not-append.md) | Superseded by checkpoint capture (tasker 95, live in `6660f80ce`). Only the damaged-doc cleanup remains, and DJ deferred it.                                                                                                                                                                                             |
+| [96 — Capture follow-ups from the book loop](96-capture-followups-from-book-loop.md)              | Second pass built 2026-09-23 and uncommitted. Current state now needs cited evidence plus write receipts (status reads 11/11), and `restates`/`kind` are verified. Open: a request recorded as done (~1/3; structural fix documented, DJ holding), stale untouched lines, Finding 8, and the receipt-chip browser check. |
+| [97 — Chat as a writing partner](97-chat-as-writing-partner.md)                                   | Built 2026-09-23 and uncommitted. Re-entry answers lead with the work, interviews ask at most 3 questions, and START HERE shows when newer docs exist. DJ declined the gate for now; the prompt-size payload cap is nearly exhausted.                                                                                    |
 
 ### Research, data, and model migration
 
