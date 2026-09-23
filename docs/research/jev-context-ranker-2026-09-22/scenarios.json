@@ -1,0 +1,197 @@
+{
+	"_about": "Hand labels for the Jev context-ranker eval. IDs are 8-char prefixes resolved against the project dump. must = the answer is wrong or incomplete without it; helpful = a good agent would use it. mustSections = the headings whose text holds the answer. Labeled 2026-09-22 from the live project inventory.",
+	"projects": {
+		"9takes": "05c40ed8-9dbe-4893-bd64-8aeec90eab40",
+		"school": "2ab7e1c0-1229-4431-8494-e9841944e96d"
+	},
+	"scenarios": [
+		{
+			"key": "9t-marketing-status",
+			"project": "9takes",
+			"message": "What's the current status of my marketing plans?",
+			"must": [
+				"d561215a",
+				"18408591",
+				"712c115c",
+				"4ea4112f",
+				"aa17b080",
+				"1809a045",
+				"5e4148e9"
+			],
+			"helpful": [
+				"7e63e84b",
+				"0e755579",
+				"1d2d2315",
+				"10d85552",
+				"460eb095",
+				"6d264243",
+				"217841f4",
+				"810f1d0d",
+				"bb276dc1",
+				"375de88d",
+				"7fcc456d",
+				"896cfe1e"
+			],
+			"mustSections": [],
+			"answerFacts": [
+				"Describes the 9takes Marketing Plan (activation and distribution) or its status",
+				"Mentions applying the distribution strategy to priority blogs",
+				"Reports the status of the influencer/podcaster outreach campaign",
+				"Mentions the Instagram personality series or daily Instagram posting",
+				"Says the activation leak is open: traffic is arriving but signups are near zero",
+				"Says Instagram posting/warmup is blocked (the @9takesdotcom account needs DJ to re-login)"
+			]
+		},
+		{
+			"key": "9t-influencers",
+			"project": "9takes",
+			"message": "Who are some influencers that I should reach out to?",
+			"must": ["7306f40d", "1d2d2315", "1809a045"],
+			"helpful": [
+				"bb276dc1",
+				"810f1d0d",
+				"99999c4a",
+				"63c2533e",
+				"b4d096e7",
+				"214d4b82",
+				"cc425fd2",
+				"976ce9c1",
+				"e2e0816e",
+				"c22f3570",
+				"00bc2c13",
+				"2044c65c",
+				"bcf86107",
+				"b0f579fb",
+				"4664efe7",
+				"d54d94bc",
+				"5e4148e9",
+				"18408591"
+			],
+			"mustSections": [],
+			"answerFacts": [
+				"Names Beatrice Chestnut",
+				"Names Ian Morgan Cron",
+				"Names Ashton Whitmoyer-Ober",
+				"Names Sarajane Case"
+			]
+		},
+		{
+			"key": "9t-email-strategy",
+			"project": "9takes",
+			"message": "What's my email strategy? Do I have a plan to email people?",
+			"must": ["89d3147d", "7e1405a7", "0a24bb30", "ae62cdcf", "77c5a36f", "1d2d2315"],
+			"helpful": [
+				"1809a045",
+				"7306f40d",
+				"d561215a",
+				"18408591",
+				"99999c4a",
+				"63c2533e",
+				"b4d096e7",
+				"cc425fd2",
+				"976ce9c1",
+				"e2e0816e",
+				"bb276dc1",
+				"810f1d0d"
+			],
+			"mustSections": [],
+			"answerFacts": [
+				"Mentions the waitlist email sequence",
+				"Describes the sequence stages (e.g. story, value, urgency, last chance)",
+				"Mentions the 12-person long-form outreach email campaign",
+				"Names at least one specific outreach recipient still to email (e.g. Ali Abdaal, Tim Ferriss, Lex Fridman, Theo Von, Shawn Ryan, Andrew Huberman)"
+			]
+		},
+		{
+			"key": "9t-control",
+			"project": "9takes",
+			"message": "thanks, that's really helpful",
+			"must": [],
+			"helpful": [],
+			"mustSections": [],
+			"control": true
+		},
+		{
+			"key": "school-plan",
+			"project": "school",
+			"message": "What's my plan for the school?",
+			"must": ["39304321", "424ce465", "5190e5d6", "ecdcd2e7", "56342082", "ea99dbe4"],
+			"helpful": [
+				"4e6fb809",
+				"8869db94",
+				"676533e6",
+				"86fded33",
+				"f638915a",
+				"2368bfdf",
+				"ad4492be"
+			],
+			"mustSections": [
+				{
+					"doc": "424ce465",
+					"heading": "Recommended execution order"
+				},
+				{
+					"doc": "424ce465",
+					"heading": "Executive read"
+				}
+			],
+			"answerFacts": [
+				"States the target opening is Fall 2027",
+				"Mentions demand validation (e.g. parent interviews)",
+				"Mentions the 59-student waitlist",
+				"Mentions the facility decision (owned 10 acres, existing school, or zoning)"
+			]
+		},
+		{
+			"key": "school-cost",
+			"project": "school",
+			"message": "How much is this going to cost?",
+			"must": ["424ce465", "6e1803de", "676533e6"],
+			"helpful": ["4e6fb809", "86fded33", "1d8b2195", "bc9577f4", "56342082"],
+			"mustSections": [
+				{
+					"doc": "424ce465",
+					"heading": "What appears settled"
+				},
+				{
+					"doc": "6e1803de",
+					"heading": "Funding & Operations"
+				}
+			],
+			"answerFacts": [
+				"States the 10 acres cost about $300,000",
+				"States the greenfield build is roughly $5 million",
+				"States an existing school property may cost about $2 million",
+				"States development costs about $150,000 per acre"
+			]
+		},
+		{
+			"key": "school-who",
+			"project": "school",
+			"message": "Who's running this project?",
+			"must": ["6e1803de", "424ce465"],
+			"helpful": ["4e6fb809", "39304321", "bc9577f4"],
+			"mustSections": [
+				{
+					"doc": "6e1803de",
+					"heading": "Team & Support"
+				}
+			],
+			"answerFacts": [
+				"Says the school has a founding board",
+				"Says the grandmother is on the founding board",
+				"Mentions a pastor (founder or board member)",
+				"Names Kenny Rodrigue"
+			]
+		},
+		{
+			"key": "school-control",
+			"project": "school",
+			"message": "thanks, that's really helpful",
+			"must": [],
+			"helpful": [],
+			"mustSections": [],
+			"control": true
+		}
+	]
+}
