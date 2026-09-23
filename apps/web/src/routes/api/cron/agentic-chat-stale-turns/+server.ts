@@ -1,4 +1,12 @@
 // apps/web/src/routes/api/cron/agentic-chat-stale-turns/+server.ts
+//
+// Per-minute sweeper for chat turns no worker ever picked up. A worker turn
+// still queued (its queue job unclaimed) ten minutes after admission is
+// finalized as a timeout through the atomic queued-cancel path, so the user
+// sees a clear "couldn't start" failure instead of "Thinking…" forever, and a
+// worker that comes back later can never execute it (and its writes) late.
+// The route path and Vercel schedule are kept from the retired legacy-SSE
+// reaper, which only touched an execution mode nothing writes any more.
 export const config = {
 	maxDuration: 30
 };
@@ -11,8 +19,8 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 import { isAuthorizedCronRequest } from '$lib/utils/security';
 
-const DEFAULT_STALE_AFTER_SECONDS = 150;
-const MIN_STALE_AFTER_SECONDS = 120;
+/** Product decision: a turn queued this long is timed out, not left waiting. */
+const QUEUED_TURN_TIMEOUT_SECONDS = 600;
 const DEFAULT_BATCH_SIZE = 100;
 const MAX_BATCH_SIZE = 500;
 
@@ -51,21 +59,27 @@ function asRecord(value: unknown): Record<string, unknown> {
 		: {};
 }
 
+function isCount(value: unknown): value is number {
+	return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
 function parseReaperResult(value: unknown): {
 	reapedCount: number;
+	failedCount: number;
 	hasMore: boolean;
 } {
 	const result = asRecord(value);
 	if (
-		!Number.isSafeInteger(result.reaped_count) ||
-		(result.reaped_count as number) < 0 ||
+		!isCount(result.reaped_count) ||
+		!isCount(result.failed_count) ||
 		typeof result.has_more !== 'boolean'
 	) {
 		throw new Error('invalid_reaper_result');
 	}
 
 	return {
-		reapedCount: result.reaped_count as number,
+		reapedCount: result.reaped_count,
+		failedCount: result.failed_count,
 		hasMore: result.has_more
 	};
 }
@@ -75,12 +89,6 @@ export const GET: RequestHandler = async ({ request }) => {
 		return ApiResponse.unauthorized();
 	}
 
-	const progressStaleAfterSeconds = parseBoundedInteger(
-		env.AGENT_CHAT_STALE_TURN_REAPER_AGE_SECONDS,
-		DEFAULT_STALE_AFTER_SECONDS,
-		MIN_STALE_AFTER_SECONDS,
-		3600
-	);
 	const batchSize = parseBoundedInteger(
 		env.AGENT_CHAT_STALE_TURN_REAPER_BATCH_SIZE,
 		DEFAULT_BATCH_SIZE,
@@ -91,24 +99,25 @@ export const GET: RequestHandler = async ({ request }) => {
 	const executedAt = new Date().toISOString();
 
 	try {
-		const { data, error } = await admin.rpc('reap_stale_legacy_agentic_chat_turns', {
-			p_progress_stale_after_seconds: progressStaleAfterSeconds,
+		const { data, error } = await admin.rpc('reap_stranded_queued_agentic_chat_turns', {
+			p_queued_before_seconds: QUEUED_TURN_TIMEOUT_SECONDS,
 			p_batch_size: batchSize
 		});
 		if (error) throw error;
 
-		const { reapedCount, hasMore } = parseReaperResult(data);
+		const { reapedCount, failedCount, hasMore } = parseReaperResult(data);
 		await writeCronReceipt(admin, {
 			job_name: 'agentic_chat_stale_turns',
-			status: hasMore ? 'warning' : 'success',
-			message: `Reaped ${reapedCount} stale legacy turn(s); has_more=${hasMore}.`,
+			status: hasMore || failedCount > 0 ? 'warning' : 'success',
+			message: `Timed out ${reapedCount} stranded queued turn(s); failed=${failedCount}; has_more=${hasMore}.`,
 			executed_at: executedAt
 		});
 
 		return ApiResponse.success({
 			reapedCount,
+			failedCount,
 			hasMore,
-			progressStaleAfterSeconds,
+			queuedBeforeSeconds: QUEUED_TURN_TIMEOUT_SECONDS,
 			batchSize
 		});
 	} catch {

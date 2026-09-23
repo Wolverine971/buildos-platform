@@ -11,7 +11,11 @@ import {
 } from '@buildos/shared-types';
 import type { AgenticChatWorkerApplicationObserver } from '$lib/services/agentic-chat-v2/worker-realtime-coordinator';
 import type { AgenticChatWorkerReconciledReceipt } from '$lib/services/agentic-chat-v2/worker-realtime-inbox';
-import { workerActivityForStatus } from './agent-chat-worker-status';
+import {
+	isWorkerQueueTimeout,
+	WORKER_QUEUE_TIMEOUT_FINISHED_REASON,
+	workerActivityForStatus
+} from './agent-chat-worker-status';
 import { readDurableChatWorkflowProgress } from './agent-chat-workflow';
 
 const WORKER_UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
@@ -62,6 +66,7 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 	readonly #handle: WorkerTurnHandle;
 	readonly #port: AgentChatWorkerUiAdapterPort;
 	readonly #onTerminal: (status: WorkerTerminalStatus) => void;
+	readonly #now: () => number;
 	#executionGeneration: number | null = null;
 	#terminal = false;
 	#terminalNotified = false;
@@ -71,10 +76,12 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 		handle: WorkerTurnHandle;
 		port: AgentChatWorkerUiAdapterPort;
 		onTerminal(status: WorkerTerminalStatus): void;
+		now?: () => number;
 	}) {
 		this.#handle = input.handle;
 		this.#port = input.port;
 		this.#onTerminal = input.onTerminal;
+		this.#now = input.now ?? Date.now;
 	}
 
 	applyReconciliation(receipt: AgenticChatWorkerReconciledReceipt): void {
@@ -123,7 +130,18 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 		this.#port.updateTurnState({
 			handle: this.#handle,
 			status: receipt.status,
-			currentActivity: projection.currentActivity ?? workerActivityForStatus(receipt.status)
+			// Nothing runs while queued, so any projected activity is a previous
+			// attempt's. The wait itself is the status: calm first, then named once
+			// it runs long (the watchdog re-reconciles a queued turn every ~5s). A
+			// queued snapshot's updated_at is when it entered the queue, so a reload
+			// shows the same text.
+			currentActivity:
+				receipt.status === 'queued'
+					? workerActivityForStatus('queued', {
+							queuedSince: receipt.updated_at,
+							now: this.#now()
+						})
+					: (projection.currentActivity ?? workerActivityForStatus(receipt.status))
 		});
 
 		if (isTerminalStatus(receipt.status)) {
@@ -250,13 +268,7 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 				phase: 'finalize',
 				event_type: 'done',
 				durable: true,
-				finished_reason:
-					status === 'cancelled'
-						? 'cancelled'
-						: status === 'failed'
-							? 'error'
-							: (finishedReason ?? 'completed'),
-				completion_status: status === 'failed' ? 'failed' : 'completed'
+				...doneOutcomeFields(status, finishedReason)
 			});
 			this.#appliedSemanticEventIds.add(eventId);
 		}
@@ -352,6 +364,7 @@ export function createAgentChatWorkerUiAdapter(input: {
 	handle: WorkerTurnHandle;
 	port: AgentChatWorkerUiAdapterPort;
 	onTerminal(status: WorkerTerminalStatus): void;
+	now?: () => number;
 }): AgentChatWorkerUiAdapter {
 	return new AgentChatWorkerUiAdapter(input);
 }
@@ -407,21 +420,40 @@ function toAgentSSEMessage(event: AgentStreamEventV1): AgentSSEMessage | null {
 			: null;
 	}
 	if (event.type === 'done') {
-		const status = readTerminalStatus(event);
 		return {
 			...event,
 			...common,
 			type: 'done',
-			finished_reason:
-				status === 'cancelled'
-					? 'cancelled'
-					: status === 'failed'
-						? 'error'
-						: (readNullableString(event, 'finished_reason') ?? 'completed'),
-			completion_status: status === 'failed' ? 'failed' : 'completed'
+			...doneOutcomeFields(
+				readTerminalStatus(event),
+				readNullableString(event, 'finished_reason')
+			)
 		} as AgentSSEMessage;
 	}
 	return { ...event, ...common } as AgentSSEMessage;
+}
+
+/**
+ * How a worker terminal reads to the chat UI. A queued-turn timeout is stored
+ * as `cancelled` (the atomic queued-cancel path), but the user never pressed
+ * Stop: it renders as a failure with its own copy, not as "Stopped".
+ */
+function doneOutcomeFields(
+	status: WorkerTerminalStatus,
+	finishedReason: string | null
+): { finished_reason: string; completion_status: 'completed' | 'failed' } {
+	if (isWorkerQueueTimeout(status, finishedReason)) {
+		return { finished_reason: WORKER_QUEUE_TIMEOUT_FINISHED_REASON, completion_status: 'failed' };
+	}
+	return {
+		finished_reason:
+			status === 'cancelled'
+				? 'cancelled'
+				: status === 'failed'
+					? 'error'
+					: (finishedReason ?? 'completed'),
+		completion_status: status === 'failed' ? 'failed' : 'completed'
+	};
 }
 
 function readTextDelta(value: Record<string, unknown>): string | null {

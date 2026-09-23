@@ -31,7 +31,7 @@ import { AgentRequestError, buildAgentRequestError } from './agent-chat-session'
 import type { PreparedPromptClient } from './agent-chat-session';
 import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
-import { workerActivityForStatus } from './agent-chat-worker-status';
+import { isWorkerQueueTimeout, workerActivityForStatus } from './agent-chat-worker-status';
 import { parseAdmissionResponse } from '$lib/services/agentic-chat-v2/worker-turn-adoption';
 
 export interface ClientStreamTimingState {
@@ -264,12 +264,21 @@ export class AgentChatStreamController {
 	): void {
 		if (!this.#isActiveWorkerHandle(handle)) return;
 		this.isStreaming = status === 'queued' || status === 'running';
-		this.currentActivity = this.isStreaming ? currentActivity : '';
+		const nextActivity = this.isStreaming ? currentActivity : '';
+		// A queued turn has no live phases of its own, so its wait message is also
+		// the thinking block's status line ("Thinking…" → "Taking longer than
+		// usual…"). Only a change is written. A running turn's block belongs to
+		// its live semantic events and keeps its text.
+		if (status === 'queued' && nextActivity && nextActivity !== this.currentActivity) {
+			this.#deps.thinking.updateState('thinking', nextActivity);
+		}
+		this.currentActivity = nextActivity;
 	}
 
 	finishWorkerTurn(
 		handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>,
-		status: Extract<ChatTurnStatusV1, 'completed' | 'failed' | 'cancelled'>
+		status: Extract<ChatTurnStatusV1, 'completed' | 'failed' | 'cancelled'>,
+		finishedReason: string | null = null
 	): void {
 		if (!this.#isActiveWorkerHandle(handle)) return;
 		this.finalizeClientStreamTiming(
@@ -283,6 +292,10 @@ export class AgentChatStreamController {
 		if (status === 'failed') {
 			this.error = 'BuildOS could not finish this response. Please try again.';
 			// Don't fire a queued follow-up into a turn that just failed.
+			this.returnQueuedMessageToComposer();
+		} else if (isWorkerQueueTimeout(status, finishedReason)) {
+			// The chat service never picked the turn up; a follow-up would queue
+			// behind the same outage, so hand it back to the composer.
 			this.returnQueuedMessageToComposer();
 		} else if (status !== 'cancelled') {
 			this.error = null;

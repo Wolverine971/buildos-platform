@@ -270,6 +270,14 @@ describe('resolveDoneFinalization', () => {
 		expect(resolveDoneFinalization('user_cancelled')).toEqual({ status: 'cancelled' });
 	});
 
+	it('maps a queued-turn timeout to a failure with its own copy, not a Stop', () => {
+		expect(resolveDoneFinalization('queue_timeout', 'failed')).toEqual({
+			status: 'error',
+			note: "Couldn't start this reply",
+			error: "BuildOS couldn't start this reply because the chat service was unavailable. Please send it again."
+		});
+	});
+
 	it('maps length truncation to an interrupted thinking block note', () => {
 		expect(resolveDoneFinalization('length')).toEqual({
 			status: 'interrupted',
@@ -1148,6 +1156,31 @@ describe('createSSEHandler — done + error', () => {
 			status: 'interrupted',
 			note: 'Response truncated'
 		});
+	});
+
+	it('shows a queued-turn timeout as a failure in the banner and the thinking block', () => {
+		const h = createHarness();
+		h.deps.thinking.ensure();
+		h.handler({
+			type: 'done',
+			finished_reason: 'queue_timeout',
+			completion_status: 'failed'
+		} as any);
+
+		expect(h.snapshot.error).toBe(
+			"BuildOS couldn't start this reply because the chat service was unavailable. Please send it again."
+		);
+		expect(h.calls.finalize[0]).toEqual({
+			status: 'error',
+			note: "Couldn't start this reply"
+		});
+		expect(h.snapshot.currentActivity).toBe('');
+	});
+
+	it('leaves the banner alone for an ordinary Stop', () => {
+		const h = createHarness();
+		h.handler({ type: 'done', finished_reason: 'cancelled' } as any);
+		expect(h.snapshot.error ?? null).toBeNull();
 	});
 
 	it('marks a degraded partial assistant response and thinking block as interrupted', () => {

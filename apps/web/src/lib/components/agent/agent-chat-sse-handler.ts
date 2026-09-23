@@ -46,6 +46,11 @@ import { buildSkillLoadActivityEvent } from './agent-chat-skill-activity';
 import { deriveContextOverheadTokens } from './agent-chat-formatters';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { appendUniqueThinkingActivity } from './agent-chat-thinking-state';
+import {
+	WORKER_QUEUE_TIMEOUT_FINISHED_REASON,
+	WORKER_QUEUE_TIMEOUT_MESSAGE,
+	WORKER_QUEUE_TIMEOUT_NOTE
+} from './agent-chat-worker-status';
 import { extractDocumentChangeReceipt, type DocumentChangeReceipt } from './document-change-cards';
 
 // ---------------------------------------------------------------------------
@@ -225,6 +230,8 @@ export function resolveDoneFinalization(
 ): {
 	status?: 'completed' | 'interrupted' | 'cancelled' | 'error';
 	note?: string;
+	/** Turn-level failure copy for the chat's error banner. */
+	error?: string;
 } {
 	const normalized =
 		typeof finishedReason === 'string' ? finishedReason.trim().toLowerCase() : '';
@@ -234,6 +241,13 @@ export function resolveDoneFinalization(
 		case 'aborted':
 		case 'user_cancelled':
 			return { status: 'cancelled' };
+		// No chat worker ever started the turn; it was timed out, not stopped.
+		case WORKER_QUEUE_TIMEOUT_FINISHED_REASON:
+			return {
+				status: 'error',
+				note: WORKER_QUEUE_TIMEOUT_NOTE,
+				error: WORKER_QUEUE_TIMEOUT_MESSAGE
+			};
 		case 'length':
 			return { status: 'interrupted', note: 'Response truncated' };
 		case 'error':
@@ -690,6 +704,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			event.answer_source
 		);
 		state.setCurrentActivity('');
+		if (finalization.error) state.setError(finalization.error);
 		const blockId = thinking.getCurrentBlockId();
 		thinking.update(blockId, (block) => ({
 			...block,

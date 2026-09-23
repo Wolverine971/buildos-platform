@@ -85,7 +85,7 @@ function receipt(
 	};
 }
 
-function harness() {
+function harness(options: { now?: () => number } = {}) {
 	const order: string[] = [];
 	const port: AgentChatWorkerUiAdapterPort = {
 		beginGeneration: vi.fn(() => order.push('begin')),
@@ -97,7 +97,7 @@ function harness() {
 		onError: vi.fn(() => order.push('error'))
 	};
 	const onTerminal = vi.fn(() => order.push('terminal'));
-	const adapter = new AgentChatWorkerUiAdapter({ handle, port, onTerminal });
+	const adapter = new AgentChatWorkerUiAdapter({ handle, port, onTerminal, now: options.now });
 	return { adapter, port, onTerminal, order };
 }
 
@@ -414,5 +414,188 @@ describe('AgentChatWorkerUiAdapter', () => {
 			'cannot publish a non-snapshot text event'
 		);
 		expect(h.port.appendAssistantText).not.toHaveBeenCalled();
+	});
+
+	describe('a turn no worker has picked up', () => {
+		const QUEUED_AT = '2026-09-23T12:00:00.000Z';
+		const queuedReceipt = (overrides: Partial<AgenticChatWorkerReconciledReceipt> = {}) =>
+			receipt({
+				requested_execution_generation: null,
+				execution_generation: 0,
+				status: 'queued',
+				text: '',
+				updated_at: QUEUED_AT,
+				...overrides
+			});
+
+		it('reads as Thinking… at first and names the wait once it runs past ~20s', () => {
+			let now = Date.parse(QUEUED_AT) + 5_000;
+			const h = harness({ now: () => now });
+
+			h.adapter.applyReconciliation(queuedReceipt());
+			now = Date.parse(QUEUED_AT) + 25_000;
+			h.adapter.applyReconciliation(queuedReceipt({ requested_execution_generation: 0 }));
+
+			expect(h.port.updateTurnState).toHaveBeenNthCalledWith(1, {
+				handle,
+				status: 'queued',
+				currentActivity: 'Thinking…'
+			});
+			expect(h.port.updateTurnState).toHaveBeenNthCalledWith(2, {
+				handle,
+				status: 'queued',
+				currentActivity: 'Taking longer than usual…'
+			});
+		});
+
+		it('keys the wait on the durable queue time, so a reload shows the same text', () => {
+			const h = harness({ now: () => Date.parse(QUEUED_AT) + 90_000 });
+
+			h.adapter.applyReconciliation(queuedReceipt());
+
+			expect(h.port.beginGeneration).toHaveBeenCalledOnce();
+			expect(h.port.updateTurnState).toHaveBeenCalledWith(
+				expect.objectContaining({ currentActivity: 'Taking longer than usual…' })
+			);
+		});
+
+		it('ignores a previous attempt’s projected activity while requeued', () => {
+			const h = harness({ now: () => Date.parse(QUEUED_AT) + 1_000 });
+
+			h.adapter.applyReconciliation(
+				queuedReceipt({
+					execution_generation: 1,
+					projection: {
+						version: 'agentic_chat_ui_projection_v1',
+						current_activity: 'Reading your project…',
+						semantic_events: []
+					} as unknown as JsonObject
+				})
+			);
+
+			expect(h.port.updateTurnState).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'queued', currentActivity: 'Thinking…' })
+			);
+		});
+
+		it('keeps a running turn’s own status text however long it has run', () => {
+			const h = harness({ now: () => Date.parse(QUEUED_AT) + 600_000 });
+
+			h.adapter.applyReconciliation(
+				receipt({
+					updated_at: QUEUED_AT,
+					projection: {
+						version: 'agentic_chat_ui_projection_v1',
+						current_activity: 'Drafting the plan…',
+						semantic_events: []
+					} as unknown as JsonObject
+				})
+			);
+			h.adapter.applyReconciliation(receipt({ updated_at: QUEUED_AT }));
+
+			expect(h.port.updateTurnState).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ status: 'running', currentActivity: 'Drafting the plan…' })
+			);
+			expect(h.port.updateTurnState).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ status: 'running', currentActivity: 'Thinking…' })
+			);
+		});
+
+		it('renders a sweeper timeout as a failure, not a Stop', () => {
+			const h = harness({ now: () => Date.parse(QUEUED_AT) + 601_000 });
+
+			h.adapter.applyReconciliation(
+				queuedReceipt({
+					status: 'cancelled',
+					snapshot_sequence: 1,
+					durable_through_sequence: 1,
+					projection_durable_sequence: 1,
+					response_watermark: 1,
+					reconcile_required: true,
+					projection: {
+						terminal: { status: 'cancelled', finishedReason: 'timeout' }
+					} as unknown as JsonObject,
+					terminal_event_id: createAgentStreamEventIdV1(TURN_ID, 0, 1),
+					terminalized_at: '2026-09-23T12:10:00.000Z',
+					finished_reason: 'timeout'
+				})
+			);
+
+			expect(h.port.applySemanticEvent).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					type: 'done',
+					event_id: createAgentStreamEventIdV1(TURN_ID, 0, 1),
+					finished_reason: 'queue_timeout',
+					completion_status: 'failed'
+				})
+			);
+			// The authoritative terminal is still the stored one.
+			expect(h.port.finishTurn).toHaveBeenCalledExactlyOnceWith({
+				handle,
+				status: 'cancelled',
+				finishedReason: 'timeout',
+				failureCode: null
+			});
+			expect(h.onTerminal).toHaveBeenCalledExactlyOnceWith('cancelled');
+		});
+
+		it('renders a live sweeper done event the same way', () => {
+			const h = harness();
+			h.adapter.applyReconciliation(queuedReceipt());
+
+			h.adapter.applyLiveEvent(
+				event(
+					1,
+					'done',
+					{
+						status: 'cancelled',
+						finished_reason: 'timeout',
+						cancel_reason: 'timeout',
+						cancel_source: 'sweeper'
+					},
+					0
+				)
+			);
+
+			expect(h.port.applySemanticEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'done',
+					finished_reason: 'queue_timeout',
+					completion_status: 'failed'
+				})
+			);
+			expect(h.port.finishTurn).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'cancelled', finishedReason: 'timeout' })
+			);
+		});
+
+		it('still renders a queued Stop as cancelled', () => {
+			const h = harness();
+			h.adapter.applyReconciliation(queuedReceipt());
+
+			h.adapter.applyLiveEvent(
+				event(
+					1,
+					'done',
+					{
+						status: 'cancelled',
+						finished_reason: 'user_cancelled',
+						cancel_reason: 'user_cancelled',
+						cancel_source: 'browser'
+					},
+					0
+				)
+			);
+
+			expect(h.port.applySemanticEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'done',
+					finished_reason: 'cancelled',
+					completion_status: 'completed'
+				})
+			);
+		});
 	});
 });

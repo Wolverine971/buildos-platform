@@ -2744,7 +2744,7 @@
 		if (currentThinkingBlockId === finalizedThinking.blockId) {
 			currentThinkingBlockId = null;
 		}
-		stream.finishWorkerTurn(input.handle, input.status);
+		stream.finishWorkerTurn(input.handle, input.status, input.finishedReason);
 	}
 
 	function normalizeMessageContent(value: unknown): string {

@@ -965,6 +965,18 @@ describe('AgentChatStreamController', () => {
 		expect(h.inputValue).toBe('queued follow-up\n\ndraft in progress');
 	});
 
+	it('hands a queued follow-up back to the composer when the turn times out in the queue', () => {
+		const h = createHarness({ inputValue: '' });
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'queued');
+		h.controller.queuedMessage = 'queued follow-up';
+
+		h.controller.finishWorkerTurn(handle, 'cancelled', 'timeout');
+
+		expect(h.controller.queuedMessage).toBeNull();
+		expect(h.inputValue).toBe('queued follow-up');
+	});
+
 	it('does not clobber a newer draft when restoring a failed send', async () => {
 		let resolveAdmission!: (response: Response) => void;
 		const h = createHarness({
@@ -1018,6 +1030,50 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.activeTurnHandle).toBeNull();
 		expect(h.controller.isStreaming).toBe(false);
 		expect(h.controller.currentActivity).toBe('');
+	});
+
+	it('shows a long queue wait in the thinking block once, and only while queued', () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'queued');
+		expect(h.controller.currentActivity).toBe('Thinking…');
+
+		// Unchanged wait text: no redundant block writes on every reconcile.
+		h.controller.updateWorkerTurnState(handle, 'queued', 'Thinking…');
+		expect(h.thinking.updateState).not.toHaveBeenCalled();
+
+		h.controller.updateWorkerTurnState(handle, 'queued', 'Taking longer than usual…');
+		h.controller.updateWorkerTurnState(handle, 'queued', 'Taking longer than usual…');
+		expect(h.thinking.updateState).toHaveBeenCalledExactlyOnceWith(
+			'thinking',
+			'Taking longer than usual…'
+		);
+		expect(h.controller.currentActivity).toBe('Taking longer than usual…');
+		expect(h.controller.isStreaming).toBe(true);
+
+		// Claimed: the running turn's live events own the block from here.
+		h.controller.updateWorkerTurnState(handle, 'running', 'Thinking…');
+		expect(h.thinking.updateState).toHaveBeenCalledOnce();
+		expect(h.controller.currentActivity).toBe('Thinking…');
+	});
+
+	it('keeps the timeout failure banner when the timed-out turn finishes as cancelled', () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'queued');
+		// The done event's handler sets the banner before the terminal lands.
+		h.controller.error =
+			"BuildOS couldn't start this reply because the chat service was unavailable. Please send it again.";
+
+		h.controller.updateWorkerTurnState(handle, 'cancelled', '');
+		h.controller.finishWorkerTurn(handle, 'cancelled');
+
+		expect(h.thinking.updateState).not.toHaveBeenCalled();
+		expect(h.controller.isStreaming).toBe(false);
+		expect(h.controller.currentActivity).toBe('');
+		expect(h.controller.error).toBe(
+			"BuildOS couldn't start this reply because the chat service was unavailable. Please send it again."
+		);
 	});
 
 	it('queues instead of dispatching a second turn while an adopted worker turn is active', async () => {

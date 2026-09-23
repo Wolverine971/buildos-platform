@@ -366,6 +366,37 @@ describe('AgenticChatWorkerRealtimeInbox', () => {
 		}
 	});
 
+	it('accepts a turn cancelled while still queued (generation 0) and nothing else at generation 0', () => {
+		const cancelled = receipt(0, 1, {
+			status: 'cancelled',
+			finished_reason: 'cancelled',
+			failure_code: 'timeout',
+			terminal_event_id: `${TURN_ID}:0:1`,
+			terminalized_at: '2026-08-03T12:10:00.000Z'
+		});
+		const sink = observer();
+		const inbox = new AgenticChatWorkerRealtimeInbox();
+		inbox.registerTurn({ handle, observer: sink.value });
+
+		expect(inbox.applyReconciliation(TURN_ID, cancelled)).toBe(true);
+		expect(sink.reconciled).toHaveLength(1);
+
+		for (const corrupt of [
+			receipt(0, 1, {
+				status: 'completed',
+				assistant_message: { id: 'x' },
+				terminal_event_id: `${TURN_ID}:0:1`,
+				terminalized_at: '2026-08-03T12:10:00.000Z'
+			}),
+			receipt(0, 1, { status: 'running' })
+		]) {
+			const next = observer();
+			const other = new AgenticChatWorkerRealtimeInbox();
+			other.registerTurn({ handle, observer: next.value });
+			expect(other.applyReconciliation(TURN_ID, corrupt)).toBe(false);
+		}
+	});
+
 	it('releases a failed request latch without leaving reconciliation mode', () => {
 		const sink = observer();
 		const inbox = new AgenticChatWorkerRealtimeInbox();

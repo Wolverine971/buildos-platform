@@ -22814,6 +22814,10 @@ export type Database = {
         Args: { p_batch_size?: number; p_progress_stale_after_seconds?: number }
         Returns: Json
       }
+      reap_stranded_queued_agentic_chat_turns: {
+        Args: { p_batch_size?: number; p_queued_before_seconds?: number }
+        Returns: Json
+      }
       reconcile_agent_run_cost: {
         Args: {
           p_actual_cost_usd: number

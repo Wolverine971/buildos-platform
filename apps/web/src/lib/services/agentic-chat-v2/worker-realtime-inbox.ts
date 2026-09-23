@@ -534,9 +534,13 @@ function parseReconciledReceipt(
 	) {
 		return null;
 	}
+	// Generation 0 means no worker ever started the turn: it is either still
+	// queued with nothing published, or it was cancelled while queued (by Stop or
+	// by the stranded-turn sweeper), whose terminal event is `<turn>:0:1`.
 	if (
 		generation === 0 &&
-		(value.status !== 'queued' || watermark !== 0 || value.durable_events.length !== 0)
+		!(value.status === 'queued' && watermark === 0 && value.durable_events.length === 0) &&
+		!(value.status === 'cancelled' && watermark >= 1)
 	) {
 		return null;
 	}
