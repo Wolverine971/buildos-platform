@@ -431,6 +431,111 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(fetchImpl).not.toHaveBeenCalled();
 	});
 
+	it('starts the admission wake listener only once the runtime can claim, and stops it first', async () => {
+		const hosted = composition();
+		let onWake: (() => unknown) | null = null;
+		const queueWake = {
+			start: vi.fn((handler: () => unknown) => {
+				onWake = handler;
+			}),
+			stop: vi.fn(async () => undefined),
+			getHealth: vi.fn(() => ({
+				status: 'subscribed' as const,
+				wakesReceived: 3,
+				wakesCoalesced: 1,
+				lastWakeAt: null,
+				consecutiveFailures: 0
+			}))
+		};
+		const bootstrap = createAgenticChatBootstrap({
+			client: client() as never,
+			environment: environment(),
+			createComposition: () => hosted,
+			queueWake
+		});
+		expect(queueWake.start).not.toHaveBeenCalled();
+
+		await bootstrap.start();
+		expect(queueWake.start).toHaveBeenCalledOnce();
+		expect(hosted.runtime.start.mock.invocationCallOrder[0]).toBeLessThan(
+			queueWake.start.mock.invocationCallOrder[0]!
+		);
+		await onWake!();
+		expect(hosted.runtime.wake).toHaveBeenCalledOnce();
+		expect(bootstrap.getHealth()).toMatchObject({
+			healthy: true,
+			queueWake: { status: 'subscribed', wakesReceived: 3 }
+		});
+
+		await bootstrap.stop();
+		expect(queueWake.stop).toHaveBeenCalledOnce();
+		expect(queueWake.stop.mock.invocationCallOrder[0]).toBeLessThan(
+			hosted.runtime.stop.mock.invocationCallOrder[0]!
+		);
+	});
+
+	it('never starts the wake listener when the runtime fails to start', async () => {
+		const hosted = composition();
+		hosted.runtime.start.mockRejectedValueOnce(new Error('queue unavailable'));
+		const queueWake = {
+			start: vi.fn(),
+			stop: vi.fn(async () => undefined),
+			getHealth: vi.fn(() => {
+				throw new Error('health unavailable');
+			})
+		};
+		const bootstrap = createAgenticChatBootstrap({
+			client: client() as never,
+			environment: environment(),
+			createComposition: () => hosted,
+			queueWake
+		});
+
+		await expect(bootstrap.start()).rejects.toThrow('queue unavailable');
+		expect(queueWake.start).not.toHaveBeenCalled();
+		// A broken wake health read is informational only.
+		expect(bootstrap.getHealth()).toMatchObject({ state: 'failed', queueWake: null });
+	});
+
+	it.each([
+		{ label: 'subscribes by default', value: undefined, subscribes: true },
+		{ label: 'stays on polling when switched off', value: 'off', subscribes: false }
+	])('default admission wake $label', async ({ value, subscribes }) => {
+		const hosted = composition();
+		const database = client();
+		const channel: { on: ReturnType<typeof vi.fn>; subscribe: ReturnType<typeof vi.fn> } = {
+			on: vi.fn(() => channel),
+			subscribe: vi.fn(() => channel)
+		};
+		database.channel.mockImplementation(() => channel);
+		database.removeChannel.mockImplementation(async () => 'ok');
+		const bootstrap = createAgenticChatBootstrap({
+			client: database as never,
+			environment: {
+				...environment(),
+				...(value === undefined ? {} : { AGENTIC_CHAT_QUEUE_WAKE: value })
+			},
+			createComposition: () => hosted
+		});
+
+		expect(database.channel).not.toHaveBeenCalled();
+		await bootstrap.start();
+		await vi.waitFor(() => {
+			if (subscribes) expect(database.channel).toHaveBeenCalledOnce();
+		});
+		if (subscribes) {
+			expect(database.channel).toHaveBeenCalledWith('agentic-chat-queue:wake', {
+				config: { private: true, broadcast: { self: false } }
+			});
+			expect(bootstrap.getHealth().queueWake).toMatchObject({ status: 'connecting' });
+		} else {
+			expect(database.channel).not.toHaveBeenCalled();
+			expect(bootstrap.getHealth().queueWake).toBeNull();
+		}
+		await bootstrap.stop();
+		if (subscribes) expect(database.removeChannel).toHaveBeenCalledWith(channel);
+	});
+
 	it('fails closed on startup error and never exposes capacity evidence', async () => {
 		const hosted = composition();
 		hosted.runtime.start.mockRejectedValueOnce(new Error('queue unavailable'));

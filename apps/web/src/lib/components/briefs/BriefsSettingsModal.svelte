@@ -512,8 +512,13 @@
 											<input
 												type="checkbox"
 												checked={dailyBriefSmsEnabled}
-												onchange={(e) =>
-													handleSmsToggle(e.currentTarget.checked)}
+												onchange={async (e) => {
+													const input = e.currentTarget;
+													await handleSmsToggle(input.checked);
+													// Keeping state false does not re-render;
+													// sync the checkbox itself.
+													input.checked = dailyBriefSmsEnabled;
+												}}
 												class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
 											/>
 										</div>

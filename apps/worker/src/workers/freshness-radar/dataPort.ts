@@ -27,6 +27,7 @@ type FreshnessQuery = PromiseLike<FreshnessDbResult> & {
 	in(column: string, values: readonly unknown[]): FreshnessQuery;
 	is(column: string, value: null): FreshnessQuery;
 	not(column: string, operator: string, value: unknown): FreshnessQuery;
+	or(filters: string): FreshnessQuery;
 	order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): FreshnessQuery;
 	limit(count: number): FreshnessQuery;
 	single(): PromiseLike<FreshnessDbResult>;
@@ -151,6 +152,7 @@ export type FreshnessInboxRow = {
 	source_ref_id: string;
 	source_status: string | null;
 	project_id: string | null;
+	user_id: string | null;
 	audience: string;
 	status: string;
 	title: string;
@@ -238,7 +240,8 @@ export interface FreshnessDataPort {
 	/** Auto-applied flags for the project applied after `since` (any user). */
 	countAutoApplied(projectId: string, since: string): Promise<number>;
 	/** pending/deferred project_members inbox items for the project. */
-	loadInboxItems(projectId: string): Promise<FreshnessInboxRow[]>;
+	/** Project-wide items plus the scanning user's own private (`audience: 'user'`) items. */
+	loadInboxItems(projectId: string, userId: string): Promise<FreshnessInboxRow[]>;
 	loadSuggestions(ids: readonly string[]): Promise<Map<string, FreshnessSuggestionRow>>;
 	/** Latest gauge per subject id from this user's previous track scores. */
 	loadPreviousGauges(
@@ -540,14 +543,17 @@ export class SupabaseFreshnessDataPort implements FreshnessDataPort {
 		return rows.length;
 	}
 
-	async loadInboxItems(projectId: string): Promise<FreshnessInboxRow[]> {
+	async loadInboxItems(projectId: string, userId: string): Promise<FreshnessInboxRow[]> {
 		return unwrap<FreshnessInboxRow[]>(
 			await this.db
 				.from('inbox_items')
 				.select(
-					'id, source_type, source_ref_id, source_status, project_id, audience, status, title, summary, risk_tier, snoozed_until, expires_at, created_at, updated_at, freshness_state, freshness_flag_id'
+					'id, source_type, source_ref_id, source_status, project_id, user_id, audience, status, title, summary, risk_tier, snoozed_until, expires_at, created_at, updated_at, freshness_state, freshness_flag_id'
 				)
 				.eq('project_id', projectId)
+				// This runs on the admin client: another member's private items must never reach
+				// the scanning user's prompt, flags, or decision notes.
+				.or(`audience.eq.project_members,and(audience.eq.user,user_id.eq.${userId})`)
 				.in('status', ['pending', 'deferred'])
 				.order('updated_at', { ascending: false })
 				.limit(50),

@@ -19,12 +19,15 @@ type UserFeatureRow = {
 	}>;
 };
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+export const load: PageServerLoad = async ({ locals }) => {
+	const { safeGetSession, supabase } = locals;
 	const { user } = await safeGetSession();
 
 	if (!user) {
 		throw redirect(303, '/auth/login');
 	}
+	// Checked here too: a __data.json request can skip the admin layout's load.
+	if (!locals.user?.is_admin) throw error(403, 'Admin access required');
 
 	const { data, error: usersError } = await supabase
 		.from('users')
@@ -42,11 +45,16 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 };
 
 export const actions: Actions = {
-	toggle: async ({ request, locals: { safeGetSession, supabase } }) => {
+	toggle: async ({ request, locals }) => {
+		const { safeGetSession, supabase } = locals;
 		const { user } = await safeGetSession();
 
 		if (!user) {
 			return fail(401, { error: 'Unauthorized' });
+		}
+		// Form actions never run the admin layout's load, so gate the write here.
+		if (!locals.user?.is_admin) {
+			return fail(403, { error: 'Admin access required' });
 		}
 
 		const formData = await request.formData();

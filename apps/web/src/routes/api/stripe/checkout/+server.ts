@@ -2,6 +2,7 @@
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { StripeService } from '$lib/services/stripe-service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { STRIPE_PRICE_ID } from '$env/static/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
@@ -57,8 +58,9 @@ export const POST: RequestHandler = async ({
 				? payload.source
 				: 'default';
 
-		// Create Stripe service instance
-		const stripeService = new StripeService(supabase);
+		// Linking the Stripe customer writes users.stripe_customer_id, which only the server
+		// may change (guard_user_privileged_columns). Every query is scoped to user.id.
+		const stripeService = new StripeService(createAdminSupabaseClient());
 
 		// Create checkout session
 		const checkoutUrl = await stripeService.createCheckoutSession({

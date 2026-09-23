@@ -187,12 +187,15 @@ function validateExplicitProjectCreateName(
 			project && typeof project === 'object' && !Array.isArray(project)
 				? (project as JsonObject).name
 				: null;
-		// The expected name is lifted from prose, so it misfires on possessives
-		// and descriptions ("called 'Dad's Garage'" reads as "Dad", "named after
-		// my dog" as "after my dog"). The failure it guards is the model cutting
-		// a long explicit name short ("Agentic Worker PC1" -> "Agentic Worker",
-		// 841fbe501), so only a strict shortened prefix fails; a different,
-		// longer, or re-cased name passes and a misfire costs nothing.
+		// The failure this guards is the model cutting a long explicit name
+		// short ("Agentic Worker PC1" -> "Agentic Worker", 841fbe501). A misfire
+		// is not free: it rejects a correct create_onto_project call, burns a
+		// repair round, and can fail the turn. So the expected name comes only
+		// from a span the user delimited with quotes (never from unquoted
+		// prose), and only a strict shortened prefix fails; a different, longer,
+		// or re-cased name passes. An apostrophe inside a single-quoted name
+		// ("'Dad's Garage'" reads as "Dad") under-captures, which is harmless
+		// because the full name the model proposes is longer.
 		if (
 			!isShortenedProjectName(
 				typeof proposedName === 'string' ? proposedName : '',
@@ -213,19 +216,27 @@ function explicitProjectCreateName(request: AgenticChatTurnProviderRequestV1): s
 		.reverse()
 		.find((message) => message.role === 'user');
 	if (!currentUserMessage || typeof currentUserMessage.content !== 'string') return null;
-	const text = currentUserMessage.content;
-	const quoted = text.match(
-		/\bcreate\s+(?:a\s+)?project\s+(?:called|named)\s+(["'])(.{1,300}?)\1/i
+	// Only a name the user explicitly delimited with ASCII or typographic quotes
+	// counts. An unquoted name has no reliable end ("called Kitchen Remodel for
+	// my mom. The goal..." over-captured "for my mom" and rejected the correct
+	// "Kitchen Remodel"), so it is not validated at all.
+	const quoted = currentUserMessage.content.match(
+		/\bcreate\s+(?:a\s+)?project\s+(?:called|named)\s+(?:"([^"]{1,300})"|'([^']{1,300})'|“([^”"]{1,300})[”"]|‘([^’']{1,300})[’'])/i
 	);
-	const unquoted = text.match(
-		/\bcreate\s+(?:a\s+)?project\s+(?:called|named)\s+(.{1,300}?)(?=\.\s+(?:the|its|with|goal|tasks?|i)\b)/i
+	const name = stripWrappingQuotes(
+		quoted?.[1] ?? quoted?.[2] ?? quoted?.[3] ?? quoted?.[4] ?? ''
 	);
-	const name = (quoted?.[2] ?? unquoted?.[1])?.trim();
 	return name ? name.slice(0, 300) : null;
 }
 
+const WRAPPING_QUOTE_CHARS = /^["'“”‘’\s]+|["'“”‘’\s]+$/g;
+
+function stripWrappingQuotes(value: string): string {
+	return value.replace(WRAPPING_QUOTE_CHARS, '');
+}
+
 function projectNameKey(value: string): string {
-	return value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+	return stripWrappingQuotes(value.normalize('NFC')).replace(/\s+/g, ' ').toLowerCase();
 }
 
 /** True only when `proposed` is `expected` with its end cut off. */

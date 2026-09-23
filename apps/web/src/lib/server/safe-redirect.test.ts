@@ -19,7 +19,9 @@ describe('getSafeLocalRedirect', () => {
 		for (const candidate of [
 			'https://attacker.example/phish',
 			'//attacker.example/phish',
-			'\\\\attacker.example\\phish'
+			'\\\\attacker.example\\phish',
+			'/.//attacker.example/phish',
+			'/./..//attacker.example'
 		]) {
 			expect(getSafeLocalRedirect(candidate, origin, fallback)).toBe(fallback);
 		}

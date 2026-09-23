@@ -27,7 +27,8 @@ import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import { logWorkerError } from '../../lib/errorLogger';
-import { PermanentQueueError } from '../../lib/queueErrors';
+import { PermanentQueueError, classifyQueueError } from '../../lib/queueErrors';
+import { queueConfig } from '../../config/queueConfig';
 import { captureWorkerEvent } from '../../lib/posthog';
 import {
 	type LoopContext,
@@ -892,6 +893,29 @@ async function processDebouncedProjectReviewSignalJob(
 		throw new Error('projectId and userId are required for debounced review signal jobs');
 	}
 
+	// A queue retry of the job that already claimed a signal (a crash or a thrown
+	// error mid-processing) resumes that signal; a pending-only lookup would find
+	// nothing and silently drop the burst. Both downstream enqueues dedup.
+	let resumeQuery = supabase
+		.from('project_review_signals')
+		.select('*')
+		.eq('project_id', projectId)
+		.eq('status', 'processing')
+		.eq('queue_job_id', job.id);
+	if (signalId) resumeQuery = resumeQuery.eq('id', signalId);
+	const { data: resumable, error: resumeError } = await resumeQuery.limit(1).maybeSingle();
+	if (resumeError) {
+		throw new Error(`Failed to load claimed project review signal: ${resumeError.message}`);
+	}
+	if (resumable?.id) {
+		await job.log(`Resuming debounced project review signal ${resumable.id} after a retry.`);
+		return runClaimedProjectReviewSignal(job, {
+			projectId,
+			userId,
+			signalId: (resumable as ProjectReviewSignalRow).id
+		});
+	}
+
 	let query = supabase
 		.from('project_review_signals')
 		.select('*')
@@ -947,6 +971,14 @@ async function processDebouncedProjectReviewSignalJob(
 		return { success: true, skipped: true };
 	}
 
+	return runClaimedProjectReviewSignal(job, { projectId, userId, signalId: pendingSignal.id });
+}
+
+async function runClaimedProjectReviewSignal(
+	job: ProcessingJob<ProjectLoopJobMetadata>,
+	claimedSignal: { projectId: string; userId: string; signalId: string }
+): Promise<{ success: boolean; runId?: string; auditId?: string; skipped?: boolean }> {
+	const { projectId, userId } = claimedSignal;
 	try {
 		const [loopResult, auditResult] = await Promise.all([
 			enqueueProjectLoop({
@@ -970,11 +1002,11 @@ async function processDebouncedProjectReviewSignalJob(
 				processed_audit_id: auditResult.auditId ?? null,
 				error_message: loopResult.reason ?? auditResult.reason ?? null
 			})
-			.eq('id', pendingSignal.id)
+			.eq('id', claimedSignal.signalId)
 			.eq('status', 'processing');
 
 		await job.log(
-			`Debounced project review signal ${pendingSignal.id} processed: loop=${loopResult.reason ?? loopResult.runId ?? 'queued'}, audit=${auditResult.reason ?? auditResult.auditId ?? 'queued'}.`
+			`Debounced project review signal ${claimedSignal.signalId} processed: loop=${loopResult.reason ?? loopResult.runId ?? 'queued'}, audit=${auditResult.reason ?? auditResult.auditId ?? 'queued'}.`
 		);
 		return {
 			success: true,
@@ -983,17 +1015,24 @@ async function processDebouncedProjectReviewSignalJob(
 			skipped: !loopResult.queued && !auditResult.queued
 		};
 	} catch (error) {
-		const message =
-			error instanceof Error ? error.message : 'Debounced project review signal failed';
-		await supabase
-			.from('project_review_signals')
-			.update({
-				status: 'failed',
-				error_message: message,
-				finished_at: new Date().toISOString()
-			})
-			.eq('id', pendingSignal.id)
-			.eq('status', 'processing');
+		// While the queue will retry, leave the signal claimed so the retry resumes
+		// it; only the final attempt records the failure.
+		const maxAttempts = job.maxAttempts ?? queueConfig.maxRetries;
+		const willRetry =
+			classifyQueueError(error).kind !== 'permanent' && job.attempts + 1 < maxAttempts;
+		if (!willRetry) {
+			const message =
+				error instanceof Error ? error.message : 'Debounced project review signal failed';
+			await supabase
+				.from('project_review_signals')
+				.update({
+					status: 'failed',
+					error_message: message,
+					finished_at: new Date().toISOString()
+				})
+				.eq('id', claimedSignal.signalId)
+				.eq('status', 'processing');
+		}
 		throw error;
 	}
 }

@@ -18,7 +18,14 @@
 	} from '$lib/icons/lucide';
 	import type { CreatedEntityRef } from './agent-chat.types';
 
-	let { entities }: { entities: CreatedEntityRef[] } = $props();
+	let {
+		entities,
+		animateEntrance = true
+	}: {
+		entities: CreatedEntityRef[];
+		/** Play the "just created" entrance. Off for chips restored with a session. */
+		animateEntrance?: boolean;
+	} = $props();
 	const projects = $derived(entities.filter((entity) => entity.kind === 'project'));
 	const detailEntities = $derived(entities.filter((entity) => entity.kind !== 'project'));
 
@@ -119,6 +126,7 @@
 						target="_blank"
 						rel="noopener noreferrer"
 						class="entity-card group inline-flex min-h-11 max-w-full sm:max-w-[15rem] items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-ink pressable hover:border-accent hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class:entity-just-created={animateEntrance}
 						title={`Open ${meta.label.toLowerCase()} in a new tab: ${entity.name}`}
 					>
 						<span class="text-accent" aria-hidden="true">
@@ -140,6 +148,7 @@
 				{:else}
 					<span
 						class="entity-card inline-flex max-w-[15rem] items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-ink"
+						class:entity-just-created={animateEntrance}
 						title={entity.name}
 					>
 						<span class="text-accent" aria-hidden="true">
@@ -161,14 +170,5 @@
 	</div>
 {/if}
 
-<style>
-	/* Reuse the global "just created" entrance so new chips rise in with an ink-bloom. */
-	.entity-card {
-		animation: entity-just-created 1.6s cubic-bezier(0.22, 1, 0.36, 1);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.entity-card {
-			animation: none;
-		}
-	}
-</style>
+<!-- New chips use the global `entity-just-created` entrance (app.css): a short
+     rise plus an accent ring on ::after, reduced-motion safe. -->

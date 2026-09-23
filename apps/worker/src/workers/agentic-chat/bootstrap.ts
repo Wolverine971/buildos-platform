@@ -44,6 +44,13 @@ import {
 	type AgenticChatExecutionObservationRpcClient,
 	SupabaseAgenticChatExecutionObservationAdapter
 } from './executionObservation';
+import {
+	AgenticChatQueueWakeListener,
+	type AgenticChatQueueWakeListenerHealthV1,
+	type AgenticChatQueueWakeListenerPort,
+	type AgenticChatQueueWakeRealtimeClient,
+	agenticChatQueueWakeEnabled
+} from './queueWakeListener';
 
 const OPENROUTER_HTTP_REFERER = 'https://build-os.com';
 const OPENROUTER_APP_NAME = 'BuildOS Agentic Chat Worker';
@@ -76,6 +83,8 @@ export type AgenticChatBootstrapHealth = {
 	 * Optional so a caller that cannot reach the bootstrap can still report health.
 	 */
 	calendarCredentials?: string;
+	/** Admission wake transport; informational, never a health failure. */
+	queueWake?: AgenticChatQueueWakeListenerHealthV1 | null;
 };
 
 /**
@@ -163,6 +172,11 @@ export type AgenticChatBootstrapOptions = {
 	createComposition?: (
 		input: AgenticChatBootstrapCompositionFactoryInput
 	) => AgenticChatBootstrapCompositionPort;
+	/**
+	 * Admission wake transport. Defaults to a private Realtime Broadcast listener
+	 * on `client`; null keeps the worker on durable polling alone.
+	 */
+	queueWake?: AgenticChatQueueWakeListenerPort | null;
 };
 
 export type AgenticChatBootstrapStartResult = 'started';
@@ -215,7 +229,21 @@ export function createAgenticChatBootstrap(
 		onUsageError: options.onUsageError,
 		onConsumptionBillingError: options.onConsumptionBillingError
 	});
-	return new AgenticChatBootstrap(composition, mutationCapabilities, calendarCredentials.status);
+	const environment = options.environment ?? process.env;
+	const queueWake =
+		options.queueWake !== undefined
+			? options.queueWake
+			: agenticChatQueueWakeEnabled(environment)
+				? new AgenticChatQueueWakeListener({
+						client: options.client as unknown as AgenticChatQueueWakeRealtimeClient
+					})
+				: null;
+	return new AgenticChatBootstrap(
+		composition,
+		mutationCapabilities,
+		calendarCredentials.status,
+		queueWake
+	);
 }
 
 export class AgenticChatBootstrap {
@@ -227,7 +255,8 @@ export class AgenticChatBootstrap {
 	constructor(
 		private readonly composition: AgenticChatBootstrapCompositionPort,
 		private readonly mutationCapabilities: AgenticChatMutationCapabilitiesSummaryV1 | null = null,
-		private readonly calendarCredentials: string = 'configured'
+		private readonly calendarCredentials: string = 'configured',
+		private readonly queueWake: AgenticChatQueueWakeListenerPort | null = null
 	) {
 		this.state = 'ready';
 	}
@@ -273,6 +302,7 @@ export class AgenticChatBootstrap {
 		const runtime = this.safeRuntimeHealth();
 		const mutationCapabilities = this.mutationCapabilities;
 		const calendarCredentials = this.calendarCredentials;
+		const queueWake = this.safeQueueWakeHealth();
 		if (this.state === 'running') {
 			return runtime?.healthy
 				? {
@@ -281,7 +311,8 @@ export class AgenticChatBootstrap {
 						state: this.state,
 						runtime,
 						mutationCapabilities,
-						calendarCredentials
+						calendarCredentials,
+						queueWake
 					}
 				: {
 						enabled: true,
@@ -290,7 +321,8 @@ export class AgenticChatBootstrap {
 						reason: runtime?.reason ?? 'runtime_health_unavailable',
 						runtime,
 						mutationCapabilities,
-						calendarCredentials
+						calendarCredentials,
+						queueWake
 					};
 		}
 		if (this.state === 'stopping' || this.state === 'stopped') {
@@ -301,7 +333,8 @@ export class AgenticChatBootstrap {
 				reason: this.state,
 				runtime,
 				mutationCapabilities,
-				calendarCredentials
+				calendarCredentials,
+				queueWake
 			};
 		}
 		return {
@@ -311,7 +344,8 @@ export class AgenticChatBootstrap {
 			reason: this.state === 'failed' ? (this.lastError ?? 'bootstrap_failed') : this.state,
 			runtime,
 			mutationCapabilities,
-			calendarCredentials
+			calendarCredentials,
+			queueWake
 		};
 	}
 
@@ -319,6 +353,9 @@ export class AgenticChatBootstrap {
 		try {
 			await this.composition.runtime.start();
 			this.state = 'running';
+			// Subscribe only once the queue can claim. The listener never throws
+			// and re-subscribes on its own; polling covers any gap.
+			this.startQueueWake();
 			return 'started';
 		} catch (error) {
 			this.lastError = canonicalError(error);
@@ -334,12 +371,42 @@ export class AgenticChatBootstrap {
 		}
 		this.state = 'stopping';
 		try {
+			await this.stopQueueWake();
 			await this.composition.runtime.stop();
 			this.state = 'stopped';
 		} catch (error) {
 			this.lastError = canonicalError(error);
 			this.state = 'failed';
 			throw error;
+		}
+	}
+
+	private startQueueWake(): void {
+		try {
+			this.queueWake?.start(() => this.wake());
+		} catch (error) {
+			console.warn(
+				JSON.stringify({
+					event: 'agentic_chat_queue_wake_start_failed',
+					error: canonicalError(error)
+				})
+			);
+		}
+	}
+
+	private async stopQueueWake(): Promise<void> {
+		try {
+			await this.queueWake?.stop();
+		} catch {
+			// The wake hint cannot block draining the durable queue.
+		}
+	}
+
+	private safeQueueWakeHealth(): AgenticChatQueueWakeListenerHealthV1 | null {
+		try {
+			return this.queueWake?.getHealth() ?? null;
+		} catch {
+			return null;
 		}
 	}
 

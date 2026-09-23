@@ -5,6 +5,7 @@
  */
 import { format, parseISO, isBefore, startOfDay, addDays } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { getDateOnlyCalendarDate } from './date-only-semantics';
 
 /**
  * Format a UTC date string for display (date only)
@@ -172,10 +173,16 @@ export function convertUTCToDateOnly(isoString: string | null | undefined): stri
 		const date = new Date(isoString);
 		if (isNaN(date.getTime())) return '';
 
-		// Use UTC date parts to avoid timezone conversion issues
-		const year = date.getUTCFullYear();
-		const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-		const day = String(date.getUTCDate()).padStart(2, '0');
+		// Legacy date-only rows are UTC-midnight sentinels; keep their calendar date.
+		const sentinelDate = getDateOnlyCalendarDate(isoString, 'start');
+		if (sentinelDate) return sentinelDate;
+
+		// Everything else (including convertDateOnlyToUTC output, which is local
+		// midnight) must be read back in local time, or the date slips a day for
+		// users east of UTC on every save.
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
 
 		return `${year}-${month}-${day}`;
 	} catch (error) {

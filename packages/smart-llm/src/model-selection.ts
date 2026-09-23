@@ -19,6 +19,12 @@ const REQUIREMENT_SELECTION_EXCLUDED_LIMITATIONS = new Set([
 	'route-only'
 ]);
 
+/**
+ * @deprecated Keyword-scans free text, which the repo forbids for routing
+ * decisions (AGENTS.md "Never classify language with regex"). It no longer
+ * influences model selection anywhere in smart-llm; kept only because
+ * apps/web still imports it. Profile is the caller's explicit choice.
+ */
 export function analyzeComplexity(text: string): 'simple' | 'moderate' | 'complex' {
 	const length = text.length;
 	const hasNestedStructure = /\[\{|\{\[|":\s*\{|":\s*\[/.test(text);
@@ -32,7 +38,9 @@ export function analyzeComplexity(text: string): 'simple' | 'moderate' | 'comple
 
 export function selectJSONModels(
 	profile: JSONProfile,
-	complexity: string,
+	// Accepted for call-site compatibility only. A caller-chosen profile is never
+	// silently upgraded from a keyword guess about the prompt.
+	_complexity?: string,
 	requirements?: any
 ): string[] {
 	// If custom requirements, calculate best models
@@ -47,16 +55,7 @@ export function selectJSONModels(
 		return [...JSON_PROFILE_MODELS.balanced];
 	}
 
-	// Get base models for profile
-	let models = [...profileModels];
-
-	// Adjust based on complexity
-	if (complexity === 'complex' && profile === 'fast') {
-		// Upgrade to balanced for complex tasks
-		models = [...JSON_PROFILE_MODELS.balanced];
-	}
-
-	return Array.from(new Set(models));
+	return Array.from(new Set(profileModels));
 }
 
 export function selectTextModels(

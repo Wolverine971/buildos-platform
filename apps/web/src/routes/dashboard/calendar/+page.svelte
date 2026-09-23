@@ -158,6 +158,9 @@
 
 	const detailCache = new Map<string, ItemDetail>();
 	const projectCache = new Map<string, ProjectInfo>();
+	// Latest-wins guards: only the newest range/detail request may write state.
+	let itemsRequestId = 0;
+	let detailRequestId = 0;
 
 	const toggleKey = () =>
 		`${includeEvents}-${includeTaskRange}-${includeTaskStart}-${includeTaskDue}`;
@@ -373,6 +376,8 @@
 		const bufferedEnd = addDays(range.end, BUFFER_DAYS);
 		const key = toggleKey();
 
+		const activeRequestId = ++itemsRequestId;
+
 		if (
 			!options?.force &&
 			cache &&
@@ -380,7 +385,10 @@
 			bufferedStart >= cache.start &&
 			bufferedEnd <= cache.end
 		) {
+			// Also supersedes any in-flight request for a range we navigated away from.
 			items = cache.items;
+			isLoading = false;
+			isRefreshing = false;
 			return;
 		}
 
@@ -420,6 +428,7 @@
 				}),
 				connectedEventsPromise
 			]);
+			if (activeRequestId !== itemsRequestId) return;
 
 			let providerItems: CalendarItem[] = [];
 			if (connectedEventsResult.error) {
@@ -451,12 +460,15 @@
 				items: fetched
 			};
 		} catch (err) {
+			if (activeRequestId !== itemsRequestId) return;
 			console.error('[DashboardCalendar] Failed to load items:', err);
 			error = err instanceof Error ? err.message : 'Failed to load calendar items';
 		} finally {
-			hasLoadedInitialData = true;
-			isLoading = false;
-			isRefreshing = false;
+			if (activeRequestId === itemsRequestId) {
+				hasLoadedInitialData = true;
+				isLoading = false;
+				isRefreshing = false;
+			}
 		}
 	}
 
@@ -586,8 +598,12 @@
 
 	async function loadItemDetail(item: CalendarItem) {
 		const cacheKey = `${item.item_type}:${item.task_id || item.event_id || item.calendar_item_id}`;
+		// A slower detail for a previously clicked item must not replace this one.
+		const requestId = ++detailRequestId;
+		const isCurrent = () => requestId === detailRequestId;
 		if (detailCache.has(cacheKey)) {
 			detail = detailCache.get(cacheKey) ?? null;
+			detailLoading = false;
 			return;
 		}
 
@@ -626,8 +642,8 @@
 					linkedEntities: data.data?.linkedEntities ?? data.linkedEntities ?? null,
 					project: projectInfo
 				};
-				detail = taskDetail;
 				detailCache.set(cacheKey, taskDetail);
+				if (isCurrent()) detail = taskDetail;
 				return;
 			}
 
@@ -645,14 +661,15 @@
 					data: data.data?.event ?? data.event,
 					project: projectInfo
 				};
-				detail = eventDetail;
 				detailCache.set(cacheKey, eventDetail);
+				if (isCurrent()) detail = eventDetail;
 			}
 		} catch (err) {
+			if (!isCurrent()) return;
 			console.error('[DashboardCalendar] Failed to load item detail:', err);
 			detailError = err instanceof Error ? err.message : 'Failed to load details';
 		} finally {
-			detailLoading = false;
+			if (isCurrent()) detailLoading = false;
 		}
 	}
 
@@ -672,6 +689,7 @@
 	}
 
 	function closeDetail() {
+		detailRequestId += 1;
 		showDetailDrawer = false;
 		selectedItem = null;
 		detail = null;
@@ -730,6 +748,8 @@
 		editTaskId = null;
 		editEventId = null;
 		editProjectId = null;
+		// The edit may have changed any cached detail (title, dates, links).
+		detailCache.clear();
 		void loadCalendarItems({ force: true });
 	}
 

@@ -2,8 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { listDomains } from '../domains/catalog';
 import { listCapabilities } from '../registry/capability-catalog';
-import { listResources } from '../resources/resource-registry';
-import { getSkillById } from '../skills/registry';
+import { getSkillById, listAllSkills } from '../skills/registry';
 import { getOutcomeCardById, listOutcomeCards } from './catalog';
 import { loadOutcomeCard } from './outcome-card-load';
 import { searchOutcomeCards } from './outcome-card-search';
@@ -12,7 +11,15 @@ describe('outcome card discovery', () => {
 	it('keeps catalog links internally resolvable', () => {
 		const domainIds = new Set(listDomains().map((domain) => domain.id));
 		const buildosCapabilityIds = new Set(listCapabilities().map((capability) => capability.id));
-		const resourceIds = new Set(listResources().map((resource) => resource.id));
+		// Resources an outcome card can point at: domain resources plus skill reference modules.
+		const resourceIds = new Set([
+			...listDomains().flatMap((domain) =>
+				(domain.resources ?? []).map((resource) => resource.id)
+			),
+			...listAllSkills().flatMap((skill) =>
+				(skill.referenceModules ?? []).map((resource) => resource.id)
+			)
+		]);
 
 		for (const capability of listOutcomeCards()) {
 			for (const domainId of capability.domainIds) {

@@ -478,21 +478,24 @@ export const GET: RequestHandler = async ({
 		url.searchParams.get('includeVoiceNotes') === '1' ||
 		url.searchParams.get('includeVoiceNotes') === 'true';
 
-	// Fetch messages for the session (limit to avoid loading too much data)
+	// Fetch the newest messages for the session (limit to avoid loading too much
+	// data). Read newest-first so a long session keeps its latest turns, then
+	// flip back to chronological order for the UI.
 	const MESSAGE_LIMIT = 400;
-	const { data: messages, error: messagesError } = await supabase
+	const { data: newestMessages, error: messagesError } = await supabase
 		.from('chat_messages')
 		.select(
 			'id, session_id, user_id, role, content, tool_calls, tool_call_id, created_at, metadata'
 		)
 		.eq('session_id', sessionId)
 		.in('role', ['user', 'assistant']) // Only return user-facing messages to avoid tool/system noise
-		.order('created_at', { ascending: true })
+		.order('created_at', { ascending: false })
 		.limit(MESSAGE_LIMIT);
 
 	if (messagesError) {
 		return ApiResponse.databaseError(messagesError);
 	}
+	const messages = newestMessages ? [...newestMessages].reverse() : newestMessages;
 
 	let messagesWithAttachments = messages || [];
 	if (messages && messages.length > 0) {
@@ -533,7 +536,7 @@ export const GET: RequestHandler = async ({
 		}
 	}
 
-	const { data: toolExecutions, error: toolExecutionsError } = await supabase
+	const { data: newestToolExecutions, error: toolExecutionsError } = await supabase
 		.from('chat_tool_executions')
 		.select(
 			`
@@ -563,12 +566,15 @@ export const GET: RequestHandler = async ({
 		`
 		)
 		.eq('session_id', sessionId)
-		.order('created_at', { ascending: true })
+		.order('created_at', { ascending: false })
 		.limit(1000);
 
 	if (toolExecutionsError) {
 		return ApiResponse.databaseError(toolExecutionsError);
 	}
+	const toolExecutions = newestToolExecutions
+		? [...newestToolExecutions].reverse()
+		: newestToolExecutions;
 
 	const { data: turnRuns, error: turnRunsError } = await supabase
 		.from('chat_turn_runs')
@@ -630,19 +636,20 @@ export const GET: RequestHandler = async ({
 		});
 	}
 
-	const { data: turnEvents, error: turnEventsError } = await supabase
+	const { data: newestTurnEvents, error: turnEventsError } = await supabase
 		.from('chat_turn_events')
 		.select(
 			'id, session_id, user_id, turn_run_id, stream_run_id, event_type, phase, payload, sequence_index, created_at'
 		)
 		.eq('session_id', sessionId)
 		.eq('user_id', user.id)
-		.order('created_at', { ascending: true })
+		.order('created_at', { ascending: false })
 		.limit(1000);
 
 	if (turnEventsError) {
 		return ApiResponse.databaseError(turnEventsError);
 	}
+	const turnEvents = newestTurnEvents ? [...newestTurnEvents].reverse() : newestTurnEvents;
 
 	let voiceNotes: any[] = [];
 	let voiceNoteGroups: any[] = [];

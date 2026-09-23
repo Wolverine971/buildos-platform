@@ -6,6 +6,7 @@
 
 import type { Json, ProjectLoopTriggerReason } from '@buildos/shared-types';
 import { projectLoopDedupKey, readProjectLoopQueueMetadata } from '@buildos/shared-agent-ops';
+import { syncInboxItemForProjectReview } from '@buildos/shared-agent-ops/inbox-index';
 import { addDays } from 'date-fns';
 import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { supabase } from '../../lib/supabase';
@@ -38,6 +39,22 @@ function isVersionTwoBrief(value: unknown): boolean {
 			!Array.isArray(value) &&
 			(value as Record<string, unknown>).version === 2
 	);
+}
+
+/**
+ * Suggestion ids a v2 manager brief asks the user to decide on, or null when
+ * the brief is not an open decision. These are project-wide candidates, not the
+ * run's own children, so the run is only done once they are decided.
+ */
+function managerBriefDecisionCandidateIds(brief: unknown): string[] | null {
+	if (!isVersionTwoBrief(brief)) return null;
+	const record = brief as Record<string, unknown>;
+	if (record.attention_level !== 'decision' && record.attention_level !== 'urgent') return null;
+	return Array.isArray(record.candidate_ids)
+		? record.candidate_ids.filter(
+				(id): id is string => typeof id === 'string' && id.trim().length > 0
+			)
+		: [];
 }
 
 /**
@@ -573,6 +590,10 @@ export async function enqueueEndOfDayProjectLoops(
  *    stuck forever. Here we fail any past the same stale thresholds enqueue uses.
  *  - `waiting_review` runs whose every child suggestion is already decided —
  *    a backstop to the web-side finalizer for runs decided before this shipped.
+ *    A v2 manager brief that asks for a decision also waits on its project-wide
+ *    candidate suggestions, which the Inbox approves through this run.
+ *  - `running`/`queued` project audits — loadActiveAudit treats them as active,
+ *    so one orphan blocks every future audit for the project.
  *
  * All updates are status-fenced so a run that changes state concurrently is left
  * to whoever won the race.
@@ -581,9 +602,10 @@ export async function reclaimStalledProjectLoopRuns(): Promise<{
 	failedRunning: number;
 	failedQueued: number;
 	finalizedReview: number;
+	failedAudits: number;
 }> {
 	if (!PROJECT_LOOPS_ENABLED) {
-		return { failedRunning: 0, failedQueued: 0, finalizedReview: 0 };
+		return { failedRunning: 0, failedQueued: 0, finalizedReview: 0, failedAudits: 0 };
 	}
 
 	const now = Date.now();
@@ -591,6 +613,31 @@ export async function reclaimStalledProjectLoopRuns(): Promise<{
 	const runningCutoff = new Date(now - STALE_RUNNING_RUN_MS).toISOString();
 	const queuedCutoff = new Date(now - STALE_QUEUED_RUN_MS).toISOString();
 	const reclaimPageSize = 200;
+	let failedAudits = 0;
+
+	const failAudits = async (
+		audits: Array<{ id: string }>,
+		reason: string,
+		statuses: Array<'queued' | 'running'>
+	): Promise<void> => {
+		for (const audit of audits) {
+			const { data: failedAudit, error: auditError } = await supabase
+				.from('project_audits')
+				.update({ status: 'failed', error_message: reason, finished_at: nowIso })
+				.eq('id', audit.id)
+				.in('status', statuses)
+				.select('id')
+				.maybeSingle();
+			if (auditError) {
+				console.error(
+					`[ProjectAudits] reclaim failed for audit ${audit.id}:`,
+					auditError.message
+				);
+			} else if (failedAudit?.id) {
+				failedAudits += 1;
+			}
+		}
+	};
 
 	const failStuck = async (
 		status: 'running' | 'queued',
@@ -616,18 +663,31 @@ export async function reclaimStalledProjectLoopRuns(): Promise<{
 
 			for (const row of rows ?? []) {
 				if (!row.id) continue;
+				const reason = `Reclaimed: stuck in '${status}' past the stale threshold`;
 				const { data: reclaimed } = await supabase
 					.from('project_loop_runs')
-					.update({
-						status: 'failed',
-						error_message: `Reclaimed: stuck in '${status}' past the stale threshold`,
-						finished_at: nowIso
-					})
+					.update({ status: 'failed', error_message: reason, finished_at: nowIso })
 					.eq('id', row.id)
 					.eq('status', status)
 					.select('id')
 					.maybeSingle();
-				if (reclaimed?.id) failed += 1;
+				if (!reclaimed?.id) continue;
+				failed += 1;
+				// A complete audit runs inside this loop run; with the run gone
+				// nothing will ever finish the audit.
+				const { data: linkedAudits, error: linkedError } = await supabase
+					.from('project_audits')
+					.select('id')
+					.eq('loop_run_id', row.id)
+					.in('status', ['queued', 'running']);
+				if (linkedError) {
+					console.error(
+						`[ProjectAudits] reclaim scan for run ${row.id} failed:`,
+						linkedError.message
+					);
+					continue;
+				}
+				await failAudits(linkedAudits ?? [], reason, ['queued', 'running']);
 			}
 
 			if (!rows || rows.length < reclaimPageSize) return failed;
@@ -643,13 +703,54 @@ export async function reclaimStalledProjectLoopRuns(): Promise<{
 	const failedRunning = await failStuck('running', 'started_at', runningCutoff);
 	const failedQueued = await failStuck('queued', 'created_at', queuedCutoff);
 
+	// Audits orphaned without a stuck loop run (the run already failed, or the
+	// audit was never linked). Audits share their run's started_at, so the run
+	// thresholds apply.
+	const failStuckAudits = async (
+		status: 'running' | 'queued',
+		cutoffColumn: 'started_at' | 'created_at',
+		cutoffIso: string
+	): Promise<void> => {
+		let afterAuditId: string | null = null;
+		while (true) {
+			let query = supabase
+				.from('project_audits')
+				.select('id')
+				.eq('status', status)
+				.lt(cutoffColumn, cutoffIso)
+				.order('id', { ascending: true })
+				.limit(reclaimPageSize);
+			if (afterAuditId) query = query.gt('id', afterAuditId);
+			const { data: rows, error } = await query;
+			if (error) {
+				console.error(`[ProjectAudits] reclaim scan (${status}) failed:`, error.message);
+				return;
+			}
+			await failAudits(
+				(rows ?? []).filter((row): row is { id: string } => Boolean(row.id)),
+				`Reclaimed: audit stuck in '${status}' past the stale threshold`,
+				[status]
+			);
+			if (!rows || rows.length < reclaimPageSize) return;
+			const nextCursor = rows.at(-1)?.id ?? null;
+			if (!nextCursor || nextCursor === afterAuditId) {
+				console.error(`[ProjectAudits] reclaim scan (${status}) cursor did not advance`);
+				return;
+			}
+			afterAuditId = nextCursor;
+		}
+	};
+
+	await failStuckAudits('running', 'started_at', runningCutoff);
+	await failStuckAudits('queued', 'created_at', queuedCutoff);
+
 	// Finalize waiting_review runs with no undecided child suggestions.
 	let finalizedReview = 0;
 	let afterReviewRunId: string | null = null;
 	while (true) {
 		let reviewQuery = supabase
 			.from('project_loop_runs')
-			.select('id')
+			.select('id, brief')
 			.eq('status', 'waiting_review')
 			.order('id', { ascending: true })
 			.limit(reclaimPageSize);
@@ -672,14 +773,38 @@ export async function reclaimStalledProjectLoopRuns(): Promise<{
 				.eq('status', 'pending')
 				.limit(1);
 			if (pendingError || pending?.length) continue;
+
+			const candidateIds = managerBriefDecisionCandidateIds(row.brief);
+			if (candidateIds) {
+				// A decision brief with no candidates is a discussion ask; it stays
+				// until the user answers it or a newer brief supersedes it.
+				if (!candidateIds.length) continue;
+				const { data: pendingCandidates, error: candidateError } = await supabase
+					.from('project_suggestions')
+					.select('id')
+					.in('id', candidateIds)
+					.eq('status', 'pending')
+					.limit(1);
+				if (candidateError || pendingCandidates?.length) continue;
+			}
+
 			const { data: finalized } = await supabase
 				.from('project_loop_runs')
-				.update({ status: 'completed' })
+				.update({ status: 'completed', finished_at: nowIso })
 				.eq('id', row.id)
 				.eq('status', 'waiting_review')
 				.select('id')
 				.maybeSingle();
-			if (finalized?.id) finalizedReview += 1;
+			if (!finalized?.id) continue;
+			finalizedReview += 1;
+			try {
+				await syncInboxItemForProjectReview({ supabase, runId: row.id });
+			} catch (syncError) {
+				console.warn(
+					`[ProjectLoops] Failed to sync inbox for finalized run ${row.id}:`,
+					syncError instanceof Error ? syncError.message : syncError
+				);
+			}
 		}
 
 		if (!reviewRuns || reviewRuns.length < reclaimPageSize) break;
@@ -691,7 +816,7 @@ export async function reclaimStalledProjectLoopRuns(): Promise<{
 		afterReviewRunId = nextCursor;
 	}
 
-	return { failedRunning, failedQueued, finalizedReview };
+	return { failedRunning, failedQueued, finalizedReview, failedAudits };
 }
 
 export async function resolveProjectLoopOwnerUserIds(

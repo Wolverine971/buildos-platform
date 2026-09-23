@@ -61,6 +61,34 @@ describe('createCrossSiteFormPostResponse', () => {
 		).toBeNull();
 	});
 
+	it('lets provider webhooks and one-click unsubscribe post forms without an Origin', () => {
+		for (const pathname of [
+			'/api/webhooks/twilio/status',
+			'/webhooks/calendar-events',
+			'/api/email-tracking/abc123/unsubscribe'
+		]) {
+			expect(
+				createCrossSiteFormPostResponse(
+					makeEvent(pathname, { contentType: 'application/x-www-form-urlencoded' })
+				)
+			).toBeNull();
+		}
+	});
+
+	it('still guards look-alike paths', () => {
+		for (const pathname of [
+			'/api/email-tracking/abc123/unsubscribe/extra',
+			'/api/webhooksx/twilio',
+			'/profile/webhooks/'
+		]) {
+			expect(
+				createCrossSiteFormPostResponse(
+					makeEvent(pathname, { contentType: 'application/x-www-form-urlencoded' })
+				)?.status
+			).toBe(403);
+		}
+	});
+
 	it('keeps native OAuth token and revocation form posts exempt', () => {
 		for (const pathname of ['/oauth/token', '/oauth/revoke']) {
 			expect(

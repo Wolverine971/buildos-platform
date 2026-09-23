@@ -60,6 +60,7 @@
 	import EntityCollaborationAction from './EntityCollaborationAction.svelte';
 	import { GOAL_STATES } from '$lib/types/onto';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
+	import { fetchLinkedEntities } from './linked-entities/linked-entities.service';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import GoalMilestonesSidebarSection from './GoalMilestonesSidebarSection.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
@@ -115,6 +116,7 @@
 	let showDeleteConfirm = $state(false);
 	let initialForm: ReturnType<typeof formSnapshot> | null = null;
 	let relatedEntitiesChanged = false;
+	let linkedEntitiesRequestId = 0;
 
 	// Form fields
 	let name = $state('');
@@ -211,18 +213,47 @@
 		return timestamptzToLocalDate(value);
 	}
 
-	async function loadGoal() {
+	// The milestones sidebar reads linkedEntities, so load them with the goal
+	// instead of waiting for the collapsed Linked Entities section to mount.
+	async function loadLinkedEntities() {
+		const requestId = ++linkedEntitiesRequestId;
 		try {
-			initialForm = null;
+			const result = await fetchLinkedEntities(goalId, 'goal', projectId);
+			if (requestId === linkedEntitiesRequestId && result?.linkedEntities) {
+				linkedEntities = result.linkedEntities;
+			}
+		} catch (err) {
+			if (requestId === linkedEntitiesRequestId) {
+				console.error('Error loading goal linked entities:', err);
+			}
+		}
+	}
+
+	function isFormDirty(): boolean {
+		return (
+			initialForm !== null &&
+			Object.keys(changedFormFields(initialForm, formSnapshot())).length > 0
+		);
+	}
+
+	/**
+	 * Reload the goal. `preserveEdits` is for refreshes triggered by nested
+	 * modals, milestones, or images: it keeps the user's unsaved form edits.
+	 */
+	async function loadGoal(options: { preserveEdits?: boolean } = {}) {
+		const keepForm = options.preserveEdits === true && isFormDirty();
+		try {
+			if (!keepForm) initialForm = null;
 			isLoading = true;
 			linkedEntities = undefined;
+			void loadLinkedEntities();
 			const response = await fetchEntityModalData('goal', goalId);
 			if (!response.ok) throw new Error('Failed to load goal');
 
 			const data = await response.json();
 			goal = data.data?.goal;
 
-			if (goal) {
+			if (goal && !keepForm) {
 				name = goal.name || '';
 				description = goal.description || goal.props?.description || '';
 				goalDetails = goal.goal || goal.props?.goal || '';
@@ -251,6 +282,7 @@
 	}
 
 	function handleLinkedEntitiesLoaded(value: LinkedEntitiesResult) {
+		linkedEntitiesRequestId += 1;
 		linkedEntities = value;
 	}
 
@@ -385,6 +417,19 @@
 		}
 	}
 
+	// Nested modals report changes without closing (DocumentModal autosave,
+	// image uploads), so only remember them and refresh once the nested modal closes.
+	let linkedEntityChanged = false;
+	function markLinkedEntityChanged() {
+		linkedEntityChanged = true;
+	}
+
+	function handleLinkedEntityModalClose() {
+		const wasChanged = linkedEntityChanged;
+		linkedEntityChanged = false;
+		closeLinkedEntityModals(wasChanged);
+	}
+
 	function closeLinkedEntityModals(wasChanged: boolean = true) {
 		showTaskModal = false;
 		showPlanModal = false;
@@ -395,12 +440,13 @@
 		// Smart refresh: only reload if changes were made
 		if (wasChanged) {
 			relatedEntitiesChanged = true;
-			loadGoal();
+			loadGoal({ preserveEdits: true });
 		}
 	}
 
 	function handleLinksChanged() {
 		relatedEntitiesChanged = true;
+		linkedEntitiesRequestId += 1;
 		// Invalidate cached linked entities so component will refetch
 		linkedEntities = undefined;
 	}
@@ -431,7 +477,7 @@
 
 			// Refresh linked entities to show updated milestone
 			relatedEntitiesChanged = true;
-			loadGoal();
+			loadGoal({ preserveEdits: true });
 		} catch (err) {
 			console.error('Error toggling milestone complete:', err);
 			void logOntologyClientError(err, {
@@ -448,21 +494,21 @@
 	function handleMilestoneCreated() {
 		relatedEntitiesChanged = true;
 		showMilestoneCreateModal = false;
-		loadGoal();
+		loadGoal({ preserveEdits: true });
 	}
 
 	function handleMilestoneUpdated() {
 		relatedEntitiesChanged = true;
 		showMilestoneEditModal = false;
 		editingMilestoneId = null;
-		loadGoal();
+		loadGoal({ preserveEdits: true });
 	}
 
 	function handleMilestoneDeleted() {
 		relatedEntitiesChanged = true;
 		showMilestoneEditModal = false;
 		editingMilestoneId = null;
-		loadGoal();
+		loadGoal({ preserveEdits: true });
 	}
 
 	// Chat about this goal handlers
@@ -963,7 +1009,7 @@
 													showTitle={false}
 													compact={true}
 													onChanged={() => {
-														void loadGoal();
+														void loadGoal({ preserveEdits: true });
 														onUpdated?.();
 													}}
 												/>
@@ -1087,9 +1133,9 @@
 	<TaskModal
 		taskId={selectedTaskIdForModal}
 		{projectId}
-		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onClose={handleLinkedEntityModalClose}
+		onUpdated={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 
@@ -1098,9 +1144,9 @@
 	<PlanModal
 		planId={selectedPlanIdForModal}
 		{projectId}
-		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onClose={handleLinkedEntityModalClose}
+		onUpdated={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 
@@ -1110,9 +1156,9 @@
 		{projectId}
 		documentId={selectedDocumentIdForModal}
 		bind:isOpen={showDocumentModal}
-		onClose={closeLinkedEntityModals}
-		onSaved={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onClose={handleLinkedEntityModalClose}
+		onSaved={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 

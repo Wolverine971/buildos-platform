@@ -14,6 +14,8 @@ import { ensureActorId } from '../ontology/ontology-projects.service';
 import {
 	isDateOnlyAgentCalendarInput,
 	normalizeAgentCalendarEventTiming,
+	parseAgentCalendarDateTime,
+	parseAgentCalendarRangeBound,
 	type NormalizedAgentCalendarEventTiming
 } from './calendar-event-timing';
 
@@ -323,18 +325,6 @@ function assertValidTimezone(value: string): string {
 	}
 }
 
-function parseDateTimeInput(value: string, fieldName: string): string {
-	const trimmed = value.trim();
-	if (!trimmed) {
-		throw new Error(`${fieldName} is required`);
-	}
-	const parsed = new Date(trimmed);
-	if (Number.isNaN(parsed.getTime())) {
-		throw new Error(`${fieldName} must be a valid date/time`);
-	}
-	return parsed.toISOString();
-}
-
 function eventTimeFromIso(iso: string, timezone?: string | null): calendar_v3.Schema$EventDateTime {
 	return {
 		dateTime: iso,
@@ -426,6 +416,7 @@ class AgentRunCalendarPort implements CalendarPort {
 			timeMax,
 			limit: fetchLimit
 		});
+		const fetchedOntoEventCount = ontoEvents.length;
 
 		if (textQuery) {
 			const normalizedQuery = textQuery.toLowerCase();
@@ -442,9 +433,14 @@ class AgentRunCalendarPort implements CalendarPort {
 			});
 		}
 
+		// Each source was capped at fetchLimit before the text filter. A source
+		// that filled its cap may hold more rows past this window.
+		const sourceTruncated =
+			googleEvents.length >= fetchLimit || fetchedOntoEventCount >= fetchLimit;
 		const merged = this.mergeEvents({ googleEvents, ontoEvents });
 		const totalAvailable = merged.length;
 		const pagedEvents = merged.slice(offset, offset + limit);
+		const hasMore = offset + limit < totalAvailable || sourceTruncated;
 		const warnings: string[] = [];
 
 		if (googleError) warnings.push(googleError);
@@ -464,8 +460,8 @@ class AgentRunCalendarPort implements CalendarPort {
 				limit,
 				returned: pagedEvents.length,
 				total_available: totalAvailable,
-				has_more: offset + limit < totalAvailable,
-				next_offset: offset + limit < totalAvailable ? offset + limit : null
+				has_more: hasMore,
+				next_offset: hasMore ? offset + limit : null
 			},
 			queried_range: {
 				time_min: timeMin,
@@ -713,7 +709,7 @@ class AgentRunCalendarPort implements CalendarPort {
 				patch.all_day = true;
 				patch.timezone = timezone;
 			} else if (typeof args?.start_at === 'string') {
-				patch.start_at = parseDateTimeInput(args.start_at, 'start_at');
+				patch.start_at = parseAgentCalendarDateTime(args.start_at, 'start_at', timezone);
 				patch.all_day = false;
 			}
 			if (hasEndAt && !allDayTiming) {
@@ -722,7 +718,7 @@ class AgentRunCalendarPort implements CalendarPort {
 				}
 				patch.end_at =
 					typeof args.end_at === 'string' && args.end_at.trim()
-						? parseDateTimeInput(args.end_at, 'end_at')
+						? parseAgentCalendarDateTime(args.end_at, 'end_at', timezone)
 						: null;
 			}
 			if (args?.timezone !== undefined) {
@@ -835,12 +831,12 @@ class AgentRunCalendarPort implements CalendarPort {
 		const startAt = googleAllDayTiming
 			? googleAllDayTiming.startAt
 			: typeof args?.start_at === 'string'
-				? parseDateTimeInput(args.start_at, 'start_at')
+				? parseAgentCalendarDateTime(args.start_at, 'start_at', timezone)
 				: undefined;
 		const endAt = googleAllDayTiming
 			? googleAllDayTiming.googleEndAt
 			: typeof args?.end_at === 'string'
-				? parseDateTimeInput(args.end_at, 'end_at')
+				? parseAgentCalendarDateTime(args.end_at, 'end_at', timezone)
 				: undefined;
 		if (startAt && endAt && Date.parse(endAt) <= Date.parse(startAt)) {
 			throw new Error('end_at must be after start_at');
@@ -1162,11 +1158,13 @@ class AgentRunCalendarPort implements CalendarPort {
 		const defaultsApplied = { timeMin: false, timeMax: false };
 		const now = Date.now();
 
+		// Bare dates are civil days in the user's timezone: time_min opens its day
+		// and time_max closes its day, so a same-day range covers that whole day.
 		const timeMin = rawTimeMin
-			? parseDateTimeInput(rawTimeMin, 'time_min')
+			? parseAgentCalendarRangeBound(rawTimeMin, 'time_min', 'start', timezone)
 			: new Date(now - DEFAULT_LIST_LOOKBACK_DAYS * DAY_IN_MS).toISOString();
 		const timeMax = rawTimeMax
-			? parseDateTimeInput(rawTimeMax, 'time_max')
+			? parseAgentCalendarRangeBound(rawTimeMax, 'time_max', 'end', timezone)
 			: new Date(now + DEFAULT_LIST_LOOKAHEAD_DAYS * DAY_IN_MS).toISOString();
 
 		defaultsApplied.timeMin = !rawTimeMin;

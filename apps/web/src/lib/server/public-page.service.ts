@@ -1,12 +1,41 @@
 // apps/web/src/lib/server/public-page.service.ts
 import { updateDocNodeMetadata } from '$lib/services/ontology/doc-structure.service';
 import {
+	getLatestPublicPageReviewForDocument,
 	PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE,
 	runPublicPageContentReview,
 	type PublicPageReviewAttempt
 } from '$lib/server/public-page-content-review.service';
+import {
+	buildPublicPagePublishedProps,
+	getPublicPageDocumentContent,
+	resolvePublicPagePublicationText
+} from '$lib/server/public-page-publication';
 
 type SupabaseLike = any;
+
+const PUBLIC_PAGES_TABLE = 'onto_public_pages';
+
+/**
+ * Members can read `onto_public_pages` but cannot write it directly: publish
+ * state and published content are server-owned. Write functions take both
+ * clients. `supabase` is the user-scoped client (reads, RPCs, doc-tree sync);
+ * `getAdminSupabase` returns the service-role client used only for the
+ * `onto_public_pages` / review-attempt writes. Callers must verify the actor's
+ * project write access with the user-scoped client before calling.
+ */
+export type PublicPageWriteClients = {
+	supabase: SupabaseLike;
+	getAdminSupabase: () => SupabaseLike;
+};
+
+function lazyAdminClient(clients: PublicPageWriteClients): () => SupabaseLike {
+	let adminSupabase: SupabaseLike | null = null;
+	return () => {
+		adminSupabase ??= clients.getAdminSupabase();
+		return adminSupabase;
+	};
+}
 
 export const PUBLIC_PAGE_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const PUBLIC_PAGE_SLUG_PREFIX_MAX_LENGTH = 24;
@@ -150,30 +179,6 @@ function normalizeSlugToken(
 	return '';
 }
 
-function stripMarkdown(value: string): string {
-	return value
-		.replace(/```[\s\S]*?```/g, ' ')
-		.replace(/`[^`]+`/g, ' ')
-		.replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
-		.replace(/\[[^\]]+\]\([^)]+\)/g, ' ')
-		.replace(/[#>*_~\-]/g, ' ')
-		.replace(/\s+/g, ' ')
-		.trim();
-}
-
-function deriveSummary(
-	content: string | null,
-	description: string | null,
-	explicit?: string | null
-): string | null {
-	if (explicit && explicit.trim()) return explicit.trim();
-	if (description && description.trim()) return description.trim();
-	if (!content || !content.trim()) return null;
-	const plain = stripMarkdown(content);
-	if (!plain) return null;
-	return plain.length > 220 ? `${plain.slice(0, 217).trim()}...` : plain;
-}
-
 export function normalizePublicPageSlug(input: string): string {
 	return input
 		.trim()
@@ -272,35 +277,18 @@ function toPublicPageState(row: Record<string, any>): PublicPageState {
 	};
 }
 
-function getDocumentContent(document: DocumentLike): string {
-	if (typeof document.content === 'string') return document.content;
-	const markdown = document.props?.body_markdown;
-	return typeof markdown === 'string' ? markdown : '';
-}
-
 function buildPublishedSnapshot(
 	document: DocumentLike,
-	existingProps: Record<string, unknown> | null,
-	input: ConfirmPublicPageInput
+	input: Pick<ConfirmPublicPageInput, 'title' | 'summary'>
 ) {
-	const content = getDocumentContent(document);
-	const title = toStringOrNull(input.title) ?? toStringOrNull(document.title) ?? 'Untitled';
-	const summary = deriveSummary(
-		content,
-		toStringOrNull(document.description),
-		input.summary ?? null
-	);
-	const publishedProps = {
-		...(existingProps ?? {}),
-		document_state: document.state_key ?? 'draft'
-	};
+	const { title, summary } = resolvePublicPagePublicationText(document, input);
 
 	return {
 		title,
 		summary,
-		content,
+		content: getPublicPageDocumentContent(document),
 		description: toStringOrNull(document.description),
-		publishedProps
+		publishedProps: buildPublicPagePublishedProps(document.props, document.state_key)
 	};
 }
 
@@ -464,13 +452,8 @@ export async function prepareDocumentPublicPagePreview(
 		excludePublicPageId: existingState?.id ?? null
 	});
 
-	const content = getDocumentContent(document);
-	const title = toStringOrNull(input.title) ?? toStringOrNull(document.title) ?? 'Untitled';
-	const summary = deriveSummary(
-		content,
-		toStringOrNull(document.description),
-		input.summary ?? null
-	);
+	const content = getPublicPageDocumentContent(document);
+	const { title, summary } = resolvePublicPagePublicationText(document, input);
 
 	return {
 		slug: suggestedSlug.slug,
@@ -492,11 +475,13 @@ export async function prepareDocumentPublicPagePreview(
 }
 
 export async function confirmDocumentPublicPage(
-	supabase: SupabaseLike,
+	clients: PublicPageWriteClients,
 	document: DocumentLike,
 	actorId: string,
 	input: ConfirmPublicPageInput
 ): Promise<PublicPageState> {
+	const { supabase } = clients;
+	const getAdminSupabase = lazyAdminClient(clients);
 	const existingState = await getDocumentPublicPageState(supabase, document.id);
 	const slugPrefix = await resolvePublicPageSlugPrefix(supabase, actorId, existingState);
 	const slugBase = resolveRequestedSlugBase(input, existingState, slugPrefix, document);
@@ -507,11 +492,7 @@ export async function confirmDocumentPublicPage(
 	});
 
 	const slug = composePublicPageSlug(slugPrefix, slugBase);
-	const snapshot = buildPublishedSnapshot(
-		document,
-		(document.props as Record<string, unknown> | null) ?? null,
-		input
-	);
+	const snapshot = buildPublishedSnapshot(document, input);
 	const nowIso = new Date().toISOString();
 	const visibility = input.visibility ?? existingState?.visibility ?? 'public';
 	const liveSyncEnabled = input.live_sync_enabled ?? existingState?.live_sync_enabled ?? true;
@@ -540,10 +521,11 @@ export async function confirmDocumentPublicPage(
 
 	let row: Record<string, any> | null = null;
 	if (existingState) {
-		const { data, error } = await (supabase as any)
-			.from('onto_public_pages')
+		const { data, error } = await (getAdminSupabase() as any)
+			.from(PUBLIC_PAGES_TABLE)
 			.update(baseUpdate)
 			.eq('id', existingState.id)
+			.eq('document_id', document.id)
 			.select('*')
 			.single();
 		if (error || !data) {
@@ -559,8 +541,8 @@ export async function confirmDocumentPublicPage(
 		}
 		row = data as Record<string, any>;
 	} else {
-		const { data, error } = await (supabase as any)
-			.from('onto_public_pages')
+		const { data, error } = await (getAdminSupabase() as any)
+			.from(PUBLIC_PAGES_TABLE)
 			.insert({
 				project_id: document.project_id,
 				document_id: document.id,
@@ -588,16 +570,17 @@ export async function confirmDocumentPublicPage(
 }
 
 export async function unpublishDocumentPublicPage(
-	supabase: SupabaseLike,
+	clients: PublicPageWriteClients,
 	document: DocumentLike,
 	actorId: string
 ): Promise<PublicPageState | null> {
+	const { supabase } = clients;
 	const existing = await getDocumentPublicPageState(supabase, document.id);
 	if (!existing) return null;
 
 	const nowIso = new Date().toISOString();
-	const { data, error } = await (supabase as any)
-		.from('onto_public_pages')
+	const { data, error } = await (clients.getAdminSupabase() as any)
+		.from(PUBLIC_PAGES_TABLE)
 		.update({
 			status: 'unpublished',
 			public_status: 'unpublished',
@@ -605,6 +588,7 @@ export async function unpublishDocumentPublicPage(
 			updated_by: actorId
 		})
 		.eq('id', existing.id)
+		.eq('document_id', document.id)
 		.select('*')
 		.single();
 
@@ -618,22 +602,23 @@ export async function unpublishDocumentPublicPage(
 }
 
 export async function setDocumentPublicPageLiveSync(
-	supabase: SupabaseLike,
+	clients: PublicPageWriteClients,
 	document: DocumentLike,
 	actorId: string,
 	liveSyncEnabled: boolean
 ): Promise<PublicPageState | null> {
-	const existing = await getDocumentPublicPageState(supabase, document.id);
+	const existing = await getDocumentPublicPageState(clients.supabase, document.id);
 	if (!existing) return null;
 
-	const { data, error } = await (supabase as any)
-		.from('onto_public_pages')
+	const { data, error } = await (clients.getAdminSupabase() as any)
+		.from(PUBLIC_PAGES_TABLE)
 		.update({
 			live_sync_enabled: liveSyncEnabled,
 			updated_by: actorId,
 			last_live_sync_error: liveSyncEnabled ? null : existing.last_live_sync_error
 		})
 		.eq('id', existing.id)
+		.eq('document_id', document.id)
 		.select('*')
 		.single();
 
@@ -645,11 +630,13 @@ export async function setDocumentPublicPageLiveSync(
 }
 
 export async function syncLivePublicPageForDocument(
-	supabase: SupabaseLike,
+	clients: PublicPageWriteClients,
 	document: DocumentLike,
 	actorId: string,
 	actorUserId?: string | null
 ): Promise<PublicPageLiveSyncResult> {
+	const { supabase } = clients;
+	const getAdminSupabase = lazyAdminClient(clients);
 	const existing = await getDocumentPublicPageState(supabase, document.id);
 	if (!existing || !existing.is_live_public || !existing.live_sync_enabled) {
 		return {
@@ -662,33 +649,52 @@ export async function syncLivePublicPageForDocument(
 		};
 	}
 
-	let review: PublicPageReviewAttempt | null = null;
-	try {
-		review = await runPublicPageContentReview({
-			supabase,
-			document,
-			actorId,
-			actorUserId,
-			source: 'live_sync',
-			publicPageId: existing.id
-		});
-	} catch (reviewError) {
-		const message = 'Failed to run public page content review';
-		await (supabase as any)
-			.from('onto_public_pages')
+	const recordSyncError = async (message: string) => {
+		const { data } = await (getAdminSupabase() as any)
+			.from(PUBLIC_PAGES_TABLE)
 			.update({
 				last_live_sync_error: message,
 				updated_by: actorId
 			})
-			.eq('id', existing.id);
+			.eq('id', existing.id)
+			.eq('document_id', document.id)
+			.select('*')
+			.maybeSingle();
+		return data
+			? toPublicPageState(data as Record<string, any>)
+			: ({ ...existing, last_live_sync_error: message } as PublicPageState);
+	};
+
+	// Build the snapshot first so the review sees exactly what will publish,
+	// including the page's stored title and summary.
+	const snapshot = buildPublishedSnapshot(document, {
+		title: existing.title,
+		summary: existing.summary
+	});
+
+	let review: PublicPageReviewAttempt | null = null;
+	try {
+		// Autosave syncs often; unchanged chunks the last review passed are reused.
+		const previousReview = await getLatestPublicPageReviewForDocument(supabase, document.id);
+		review = await runPublicPageContentReview({
+			supabase,
+			adminSupabase: getAdminSupabase(),
+			document,
+			publication: { title: snapshot.title, summary: snapshot.summary },
+			actorId,
+			actorUserId,
+			source: 'live_sync',
+			publicPageId: existing.id,
+			previousReview
+		});
+	} catch (reviewError) {
+		const message = 'Failed to run public page content review';
+		const page = await recordSyncError(message);
 		return {
 			isLivePublic: true,
 			synced: false,
 			blocked: false,
-			page: {
-				...existing,
-				last_live_sync_error: message
-			},
+			page,
 			error:
 				reviewError instanceof Error && reviewError.message
 					? `${message}: ${reviewError.message}`
@@ -700,71 +706,33 @@ export async function syncLivePublicPageForDocument(
 		// The review could not run (e.g. LLM outage). Fail closed: keep the last
 		// published snapshot and surface a retryable message, not a policy block.
 		const message = review.summary ?? PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE;
-		const { data: unavailableRow } = await (supabase as any)
-			.from('onto_public_pages')
-			.update({
-				last_live_sync_error: message,
-				updated_by: actorId
-			})
-			.eq('id', existing.id)
-			.select('*')
-			.maybeSingle();
+		const page = await recordSyncError(message);
 		return {
 			isLivePublic: true,
 			synced: false,
 			blocked: false,
-			page: unavailableRow
-				? toPublicPageState(unavailableRow as Record<string, any>)
-				: ({ ...existing, last_live_sync_error: message } as PublicPageState),
+			page,
 			error: message,
 			review
 		};
 	}
-	if (review.status === 'flagged') {
+	if (review.status !== 'passed') {
 		const message =
 			review.reasons[0] ?? 'Public page live update blocked by content policy review';
-		const { data: blockedRow } = await (supabase as any)
-			.from('onto_public_pages')
-			.update({
-				last_live_sync_error: message,
-				updated_by: actorId
-			})
-			.eq('id', existing.id)
-			.select('*')
-			.maybeSingle();
-		const blockedState = blockedRow
-			? toPublicPageState(blockedRow as Record<string, any>)
-			: ({
-					...existing,
-					last_live_sync_error: message
-				} as PublicPageState);
+		const page = await recordSyncError(message);
 		return {
 			isLivePublic: true,
 			synced: false,
 			blocked: true,
-			page: blockedState,
+			page,
 			error: message,
 			review
 		};
 	}
 
-	const snapshot = buildPublishedSnapshot(
-		document,
-		(document.props as Record<string, unknown> | null) ?? null,
-		{
-			slug: existing.slug,
-			slug_base: existing.slug_base,
-			title: existing.title,
-			summary: existing.summary,
-			visibility: existing.visibility,
-			noindex: existing.noindex,
-			live_sync_enabled: existing.live_sync_enabled
-		}
-	);
-
 	const nowIso = new Date().toISOString();
-	const { data, error } = await (supabase as any)
-		.from('onto_public_pages')
+	const { data, error } = await (getAdminSupabase() as any)
+		.from(PUBLIC_PAGES_TABLE)
 		.update({
 			title: snapshot.title,
 			summary: snapshot.summary,
@@ -776,18 +744,13 @@ export async function syncLivePublicPageForDocument(
 			updated_by: actorId
 		})
 		.eq('id', existing.id)
+		.eq('document_id', document.id)
 		.select('*')
 		.single();
 
 	if (error || !data) {
 		const message = error?.message ?? 'Failed to sync live public page';
-		await (supabase as any)
-			.from('onto_public_pages')
-			.update({
-				last_live_sync_error: message,
-				updated_by: actorId
-			})
-			.eq('id', existing.id);
+		await recordSyncError(message);
 		return {
 			isLivePublic: true,
 			synced: false,

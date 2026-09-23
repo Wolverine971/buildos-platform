@@ -50,6 +50,8 @@ const TERMINAL_STATUSES = new Set<AgentRunStatus>(['completed', 'partial', 'fail
 // System-driven states the sweep may recover. paused/needs_input/proposal_ready
 // are parked waiting for the user and are intentionally left alone.
 const RECOVERABLE_STATUSES = new Set<AgentRunStatus>(['queued', 'running']);
+// Parked runs are only actionable as children of a terminal parent (case 4).
+const PARKED_STATUSES: AgentRunStatus[] = ['paused', 'needs_input', 'proposal_ready'];
 
 const DEFAULT_WALL_CLOCK_MS = 600_000;
 const SWEEP_LIMIT = 50;
@@ -111,6 +113,8 @@ export interface StrandedSweepStore {
 		statuses: AgentRunStatus[];
 		updatedBefore: string;
 		limit: number;
+		/** Only runs with a parent_run_id (child runs). */
+		childrenOnly?: boolean;
 	}): Promise<StrandedRunRow[]>;
 	listActiveDedupKeys(userId: string, dedupKeys: string[]): Promise<string[]>;
 	loadParent(parentRunId: string): Promise<StrandedParentRow | null>;
@@ -147,14 +151,16 @@ export interface AgentRunStrandedSweepOptions {
 
 export function createStrandedSweepStore(): StrandedSweepStore {
 	return {
-		async listStrandedCandidates({ statuses, updatedBefore, limit }) {
-			const { data, error } = await supabase
+		async listStrandedCandidates({ statuses, updatedBefore, limit, childrenOnly }) {
+			let query = supabase
 				.from('agent_runs')
 				.select(
 					'id, user_id, status, run_template, depth, parent_run_id, started_at, updated_at, budgets, orchestration_state, trigger, context_type, project_id, scope_mode, effort, allowed_ops, review_required, commit_started_at'
 				)
 				.in('status', statuses)
-				.lt('updated_at', updatedBefore)
+				.lt('updated_at', updatedBefore);
+			if (childrenOnly) query = query.not('parent_run_id', 'is', null);
+			const { data, error } = await query
 				.order('updated_at', { ascending: true })
 				.limit(limit);
 			if (error) throw new Error(`Failed to list stranded candidates: ${error.message}`);
@@ -275,7 +281,12 @@ function isDeepResearchRoot(run: StrandedRunRow): boolean {
 }
 
 function continuationDedupKeys(runId: string): string[] {
-	return [`agent-run:${runId}`, `agent-run:${runId}:synthesis`, `agent-run-resume:${runId}`];
+	return [
+		`agent-run:${runId}`,
+		`agent-run:${runId}:synthesis`,
+		`agent-run-resume:${runId}`,
+		`agent-run-cancel:${runId}`
+	];
 }
 
 function buildOriginalMetadata(run: StrandedRunRow): Record<string, unknown> {
@@ -543,11 +554,25 @@ export async function runAgentRunStrandedSweep(
 	);
 	const updatedBefore = new Date(now.getTime() - graceMs).toISOString();
 
-	const candidates = await store.listStrandedCandidates({
-		statuses: NON_TERMINAL_STATUSES,
+	// Two pages so runs parked on the user (which the sweep leaves alone unless
+	// their parent is terminal) can never fill the page and starve real stranded
+	// queued/running runs.
+	const recoverableCandidates = await store.listStrandedCandidates({
+		statuses: [...RECOVERABLE_STATUSES],
 		updatedBefore,
 		limit
 	});
+	const parkedChildCandidates = await store.listStrandedCandidates({
+		statuses: PARKED_STATUSES,
+		updatedBefore,
+		limit,
+		childrenOnly: true
+	});
+	const candidates = [
+		...new Map(
+			[...recoverableCandidates, ...parkedChildCandidates].map((run) => [run.id, run])
+		).values()
+	];
 
 	for (const candidate of candidates) {
 		summary.scanned += 1;

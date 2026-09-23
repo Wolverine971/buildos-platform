@@ -23,10 +23,13 @@ type SynthesisResponse =
 			stack?: string;
 	  };
 
-function sendResponse(response: SynthesisResponse): void {
-	if (process.send) {
-		process.send(response);
+// Exit only once the IPC write has flushed: exiting right after process.send
+// truncates a large payload (the base64 MP3) and the parent sees a dead child.
+function sendResponseAndExit(response: SynthesisResponse, exitCode: number): void {
+	if (!process.send) {
+		process.exit(exitCode);
 	}
+	process.send(response, (error: Error | null) => process.exit(error ? 1 : exitCode));
 }
 
 function getErrorMessage(error: unknown): string {
@@ -41,25 +44,29 @@ async function handleMessage(message: unknown): Promise<void> {
 		}
 
 		const result = await synthesizeBriefAudio(request.text);
-		sendResponse({
-			ok: true,
-			result: {
-				mp3Base64: result.mp3.toString('base64'),
-				durationMs: result.durationMs,
-				generationMs: result.generationMs,
-				sampleRate: result.sampleRate,
-				model: result.model,
-				voice: result.voice
-			}
-		});
-		process.exit(0);
+		sendResponseAndExit(
+			{
+				ok: true,
+				result: {
+					mp3Base64: result.mp3.toString('base64'),
+					durationMs: result.durationMs,
+					generationMs: result.generationMs,
+					sampleRate: result.sampleRate,
+					model: result.model,
+					voice: result.voice
+				}
+			},
+			0
+		);
 	} catch (error) {
-		sendResponse({
-			ok: false,
-			error: getErrorMessage(error),
-			stack: error instanceof Error ? error.stack : undefined
-		});
-		process.exit(1);
+		sendResponseAndExit(
+			{
+				ok: false,
+				error: getErrorMessage(error),
+				stack: error instanceof Error ? error.stack : undefined
+			},
+			1
+		);
 	}
 }
 

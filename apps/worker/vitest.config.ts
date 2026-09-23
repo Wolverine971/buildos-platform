@@ -48,6 +48,21 @@ const workspacePackageAliases = [
 		)
 	},
 	{
+		find: /^@buildos\/shared-agent-ops\/ontology\/thinking-log$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-agent-ops/src/ontology/thinking-log.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/shared-agent-ops\/utils\/entity-reference-parser$/,
+		replacement: fileURLToPath(
+			new URL(
+				'../../packages/shared-agent-ops/src/utils/entity-reference-parser.ts',
+				import.meta.url
+			)
+		)
+	},
+	{
 		find: /^@buildos\/shared-agent-ops\/ontology\/task-move.service$/,
 		replacement: fileURLToPath(
 			new URL(

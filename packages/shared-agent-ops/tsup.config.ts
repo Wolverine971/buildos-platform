@@ -18,6 +18,7 @@ export default defineConfig({
 		'src/ontology/document-state.ts',
 		'src/ontology/start-here.ts',
 		'src/ontology/start-here.service.ts',
+		'src/ontology/thinking-log.ts',
 		'src/ontology/relationship-resolver.ts',
 		'src/ontology/auto-organizer.service.ts',
 		'src/ontology/doc-structure.service.ts',

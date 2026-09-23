@@ -7,7 +7,6 @@ import type { GeneralWorkerRuntimeLifecycleHealth } from './lib/generalWorkerRun
 import { createRequestCorrelationId, runWithRequestCorrelation } from './lib/queueCorrelation';
 import type { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
 import { jsonParseErrorHandler } from './middleware/jsonError';
-import { registerEmailTrackingRoute } from './routes/email-tracking';
 import { registerHealthRoute } from './routes/health';
 import { registerOntologyClassificationRoute } from './routes/ontology-classification';
 import { registerBriefQueueRoute } from './routes/queue/brief';
@@ -56,10 +55,8 @@ export function createGeneralWorkerApp({
 		return runWithRequestCorrelation(correlationId, next);
 	});
 
-	registerEmailTrackingRoute(app);
-
 	app.use((req, res, next) => {
-		if (req.path.startsWith('/api/email-tracking') || PUBLIC_WORKER_PATHS.has(req.path)) {
+		if (PUBLIC_WORKER_PATHS.has(req.path)) {
 			return next();
 		}
 

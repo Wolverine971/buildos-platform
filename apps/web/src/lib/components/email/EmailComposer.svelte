@@ -452,7 +452,13 @@
 		// Set schedule data if email is scheduled
 		if (email.scheduled_at) {
 			const scheduledDate = new Date(email.scheduled_at);
-			scheduleDate = scheduledDate.toISOString().split('T')[0] ?? '';
+			// Both halves in local time, matching how they are recombined on save
+			// (a UTC date with a local time moved evening sends to the next day).
+			scheduleDate = [
+				scheduledDate.getFullYear(),
+				String(scheduledDate.getMonth() + 1).padStart(2, '0'),
+				String(scheduledDate.getDate()).padStart(2, '0')
+			].join('-');
 			scheduleTime = scheduledDate.toTimeString().slice(0, 5);
 			isScheduled = true;
 		}

@@ -19,6 +19,9 @@ import { decideProjectSuggestion } from '$lib/server/project-suggestion-actions.
 import { captureServerEvent } from '$lib/server/posthog';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
+// Approval replays the suggestion's operations inline through the chat write path.
+export const config = { maxDuration: 60 };
+
 const projectSuggestionDecisionSchema = z
 	.object({
 		action: z.enum(['approve', 'dismiss']),

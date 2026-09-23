@@ -27,6 +27,45 @@
 		return 'text-warning bg-warning/10 border-warning/30';
 	}
 
+	type ReviewItem = PageData['reviews'][number];
+
+	function formatCount(value: number | null): string {
+		return value === null ? '?' : value.toLocaleString();
+	}
+
+	// Tells the admin what the AI review actually covered before they approve.
+	function llmReviewNote(review: ReviewItem): { text: string; tone: string } {
+		const llm = review.llm_review;
+		const redacted = llm.input_redacted
+			? ' Detector matches were redacted before the AI read it.'
+			: '';
+		if (llm.state === 'completed' && llm.truncated) {
+			return {
+				text: `AI review covered only the first ${formatCount(llm.reviewed_chars)} of ${formatCount(llm.total_chars)} characters. Read the rest before approving.${redacted}`,
+				tone: 'text-warning'
+			};
+		}
+		if (llm.state === 'completed') {
+			return {
+				text:
+					llm.total_chars === null
+						? 'AI review completed (older attempt; coverage not recorded).'
+						: `AI review completed on the full page.${redacted}`,
+				tone: 'text-muted-foreground'
+			};
+		}
+		if (llm.state === 'failed') {
+			return {
+				text: `AI review failed${llm.chunks_failed ? ` on ${llm.chunks_failed} part(s)` : ''}; this content was not fully AI-reviewed.`,
+				tone: 'text-destructive'
+			};
+		}
+		return {
+			text: `AI review did not run${llm.skipped_reason ? ` (${llm.skipped_reason})` : ''}; this content was not AI-reviewed.`,
+			tone: 'text-destructive'
+		};
+	}
+
 	function decisionTone(decision: string | null): string {
 		if (decision === 'approved') return 'text-success bg-success/10 border-success/30';
 		if (decision === 'rejected')
@@ -246,6 +285,7 @@
 				</p>
 			{:else}
 				{#each filteredReviews as review}
+					{@const llmNote = llmReviewNote(review)}
 					<div class="space-y-3 rounded-lg border border-border bg-background/40 p-3">
 						<!-- Result + When -->
 						<div class="flex items-start justify-between gap-2">
@@ -295,6 +335,7 @@
 								Text findings: {review.text_findings_count} | Image findings:
 								{review.image_findings_count}
 							</p>
+							<p class={`mt-1 text-xs ${llmNote.tone}`}>{llmNote.text}</p>
 						</div>
 
 						<!-- Admin Review -->
@@ -332,16 +373,23 @@
 										placeholder="Optional decision note"
 										class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									/>
+									{#if review.approval_blocker}
+										<p class="text-xs text-warning">
+											{review.approval_blocker}
+										</p>
+									{/if}
 									<div class="flex gap-2">
-										<Button
-											type="submit"
-											name="decision"
-											value="approved"
-											variant="success"
-											class="flex-1 min-h-11"
-										>
-											Mark OK
-										</Button>
+										{#if !review.approval_blocker}
+											<Button
+												type="submit"
+												name="decision"
+												value="approved"
+												variant="success"
+												class="flex-1 min-h-11"
+											>
+												Mark OK
+											</Button>
+										{/if}
 										<Button
 											type="submit"
 											name="decision"
@@ -381,6 +429,7 @@
 						</tr>
 					{:else}
 						{#each filteredReviews as review}
+							{@const llmNote = llmReviewNote(review)}
 							<tr class="hover:bg-muted/30">
 								<td class="px-4 py-3 align-top">
 									<span
@@ -426,6 +475,9 @@
 										Text findings: {review.text_findings_count} | Image findings:
 										{review.image_findings_count}
 									</p>
+									<p class={`mt-1 text-xs ${llmNote.tone}`}>
+										{llmNote.text}
+									</p>
 								</td>
 								<td class="px-4 py-3 align-top">
 									<span
@@ -469,17 +521,24 @@
 												placeholder="Optional decision note"
 												class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											/>
+											{#if review.approval_blocker}
+												<p class="text-xs text-warning">
+													{review.approval_blocker}
+												</p>
+											{/if}
 											<div class="flex gap-2">
-												<Button
-													type="submit"
-													name="decision"
-													value="approved"
-													size="sm"
-													variant="success"
-													class="text-xs"
-												>
-													Mark OK
-												</Button>
+												{#if !review.approval_blocker}
+													<Button
+														type="submit"
+														name="decision"
+														value="approved"
+														size="sm"
+														variant="success"
+														class="text-xs"
+													>
+														Mark OK
+													</Button>
+												{/if}
 												<Button
 													type="submit"
 													name="decision"

@@ -49,13 +49,14 @@ export class AgentChatShellRouter {
 	lastAutoInitProjectId = $state<string | null>(null);
 	private initialProjectFocusKey: string | null = null;
 
-	constructor(private readonly deps: AgentChatShellRouterDeps) {}
+	// Memoized views of the routing state. `$derived` fields recompute only when
+	// their inputs change, so header/composer reads during streaming don't rebuild
+	// focus objects (and hand out new identities) on every access.
+	readonly contextDescriptor = $derived(
+		this.selectedContextType ? CONTEXT_DESCRIPTORS[this.selectedContextType] : null
+	);
 
-	get contextDescriptor() {
-		return this.selectedContextType ? CONTEXT_DESCRIPTORS[this.selectedContextType] : null;
-	}
-
-	get displayContextLabel(): string {
+	readonly displayContextLabel: string = $derived.by(() => {
 		if (!this.selectedContextType) {
 			return 'Select a focus to begin';
 		}
@@ -63,16 +64,16 @@ export class AgentChatShellRouter {
 			return buildProjectFocusLabel(this.projectFocus);
 		}
 		return this.selectedContextLabel ?? this.contextDescriptor?.title ?? 'Selected focus';
-	}
+	});
 
-	get displayContextSubtitle(): string {
+	readonly displayContextSubtitle: string = $derived.by(() => {
 		if (!this.selectedContextType) {
 			return 'Choose what you want to work on before starting the conversation.';
 		}
 		return this.contextDescriptor?.subtitle ?? '';
-	}
+	});
 
-	get defaultProjectFocus(): ProjectFocus | null {
+	readonly defaultProjectFocus: ProjectFocus | null = $derived.by(() => {
 		if (isProjectContext(this.selectedContextType) && this.selectedEntityId) {
 			return buildProjectWideFocus(
 				this.selectedEntityId,
@@ -80,14 +81,16 @@ export class AgentChatShellRouter {
 			);
 		}
 		return null;
-	}
+	});
 
-	get resolvedProjectFocus(): ProjectFocus | null {
+	readonly resolvedProjectFocus: ProjectFocus | null = $derived.by(() => {
 		if (!isProjectContext(this.selectedContextType)) {
 			return null;
 		}
 		return this.projectFocus ?? this.defaultProjectFocus;
-	}
+	});
+
+	constructor(private readonly deps: AgentChatShellRouterDeps) {}
 
 	resetConversationState(options: { preserveContext?: boolean } = {}): void {
 		const { preserveContext = true } = options;

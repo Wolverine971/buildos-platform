@@ -18,9 +18,21 @@ export type LibriOcrRuntimeConfig = {
 	model: string;
 	maxOutputTokens: number;
 	reservedMicrousd: bigint;
+	/** Consumer timing for OCR steps; the maintenance defaults abort dense pages. */
+	consumer: {
+		workerTimeoutMs: number;
+		leaseDurationMs: number;
+		heartbeatIntervalMs: number;
+	};
 };
 
 const DEFAULT_CONCURRENCY = 2;
+// A dense page's vision call can run well past the 20s maintenance timeout, and
+// aborting it after the provider has billed wastes the spend. The lease must
+// outlive the timeout, with heartbeats well inside it.
+const DEFAULT_OCR_WORKER_TIMEOUT_MS = 110_000;
+const DEFAULT_OCR_LEASE_DURATION_MS = 120_000;
+const DEFAULT_OCR_HEARTBEAT_INTERVAL_MS = 20_000;
 const DEFAULT_DATABASE_PROBE_INTERVAL_MS = 15_000;
 const MIN_CANARY_WINDOW_MS = 60_000;
 const MAX_CANARY_WINDOW_MS = 30 * 60_000;
@@ -100,7 +112,30 @@ export function loadLibriOcrRuntimeConfig(environment: NodeJS.ProcessEnv): Libri
 			4_096,
 			'LIBRI_OCR_MAX_OUTPUT_TOKENS'
 		),
-		reservedMicrousd
+		reservedMicrousd,
+		consumer: {
+			workerTimeoutMs: parseInteger(
+				environment.LIBRI_OCR_WORKER_TIMEOUT_MS,
+				DEFAULT_OCR_WORKER_TIMEOUT_MS,
+				5_000,
+				15 * 60_000,
+				'LIBRI_OCR_WORKER_TIMEOUT_MS'
+			),
+			leaseDurationMs: parseInteger(
+				environment.LIBRI_OCR_LEASE_DURATION_MS,
+				DEFAULT_OCR_LEASE_DURATION_MS,
+				5_000,
+				15 * 60_000,
+				'LIBRI_OCR_LEASE_DURATION_MS'
+			),
+			heartbeatIntervalMs: parseInteger(
+				environment.LIBRI_OCR_HEARTBEAT_INTERVAL_MS,
+				DEFAULT_OCR_HEARTBEAT_INTERVAL_MS,
+				1_000,
+				5 * 60_000,
+				'LIBRI_OCR_HEARTBEAT_INTERVAL_MS'
+			)
+		}
 	};
 }
 

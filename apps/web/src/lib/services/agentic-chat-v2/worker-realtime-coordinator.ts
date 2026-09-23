@@ -27,9 +27,19 @@ export type AgenticChatWorkerRealtimeCoordinatorOptions = {
 	fetchImpl?: typeof fetch;
 	changedWatchdogMs?: number;
 	unchangedWatchdogMs?: number;
+	/**
+	 * While the private channel is subscribed and a contiguous live event landed
+	 * within this window, a due watchdog is deferred instead of reconciling. A
+	 * watchdog reconcile buffers live events until its receipt returns, which
+	 * froze streaming text every ~2s even though nothing was missing.
+	 */
+	liveHealthyWindowMs?: number;
+	/** Upper bound on consecutive deferrals: durable truth is re-read at least this often. */
+	maxLiveOnlyMs?: number;
 	retryMs?: number;
 	requestTimeoutMs?: number;
 	random?: () => number;
+	now?: () => number;
 	onError?: (error: unknown) => void;
 };
 
@@ -46,6 +56,14 @@ type CoordinatedTurn = {
 	terminal: boolean;
 	backingOff: boolean;
 	throttlingQueuedRequest: boolean;
+	lastLiveEventAt: number | null;
+	lastReconciledAt: number | null;
+	/**
+	 * The known generation whose generation_changed follow-up already skipped the
+	 * changed-state throttle. One skip per generation keeps a lagging receipt
+	 * from turning the exemption into a request loop.
+	 */
+	generationBypassFrom: number | null;
 };
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled']);
@@ -76,12 +94,16 @@ export class AgenticChatWorkerRealtimeCoordinator {
 	readonly #fetch: typeof fetch;
 	readonly #changedWatchdogMs: number;
 	readonly #unchangedWatchdogMs: number;
+	readonly #liveHealthyWindowMs: number;
+	readonly #maxLiveOnlyMs: number;
 	readonly #retryMs: number;
 	readonly #requestTimeoutMs: number;
 	readonly #random: () => number;
+	readonly #now: () => number;
 	readonly #onError?: (error: unknown) => void;
 	readonly #turns = new Map<string, CoordinatedTurn>();
 	#running = false;
+	#liveChannelSubscribed = false;
 
 	constructor(options: AgenticChatWorkerRealtimeCoordinatorOptions = {}) {
 		this.inbox =
@@ -95,12 +117,18 @@ export class AgenticChatWorkerRealtimeCoordinator {
 			options.unchangedWatchdogMs ?? 5_000,
 			'unchangedWatchdogMs'
 		);
+		this.#liveHealthyWindowMs = positiveSafeInteger(
+			options.liveHealthyWindowMs ?? 4_000,
+			'liveHealthyWindowMs'
+		);
+		this.#maxLiveOnlyMs = positiveSafeInteger(options.maxLiveOnlyMs ?? 30_000, 'maxLiveOnlyMs');
 		this.#retryMs = positiveSafeInteger(options.retryMs ?? 5_000, 'retryMs');
 		this.#requestTimeoutMs = positiveSafeInteger(
 			options.requestTimeoutMs ?? 15_000,
 			'requestTimeoutMs'
 		);
 		this.#random = options.random ?? Math.random;
+		this.#now = options.now ?? Date.now;
 		this.#onError = options.onError;
 	}
 
@@ -110,6 +138,14 @@ export class AgenticChatWorkerRealtimeCoordinator {
 
 	get trackedTurnCount(): number {
 		return this.#turns.size;
+	}
+
+	/**
+	 * Transport status from the owning channel. Only a subscribed channel lets a
+	 * healthy live stream defer the watchdog; everything else polls as before.
+	 */
+	setLiveChannelSubscribed(subscribed: boolean): void {
+		this.#liveChannelSubscribed = subscribed;
 	}
 
 	start(): void {
@@ -170,7 +206,10 @@ export class AgenticChatWorkerRealtimeCoordinator {
 			lastFingerprint: null,
 			terminal: false,
 			backingOff: false,
-			throttlingQueuedRequest: false
+			throttlingQueuedRequest: false,
+			lastLiveEventAt: null,
+			lastReconciledAt: null,
+			generationBypassFrom: null
 		};
 		this.#turns.set(input.handle.turnRunId, state);
 		try {
@@ -179,7 +218,11 @@ export class AgenticChatWorkerRealtimeCoordinator {
 				executionGeneration: input.executionGeneration,
 				lastAppliedSequence: input.lastAppliedSequence,
 				observer: {
-					applyLiveEvent: (event) => input.observer.applyLiveEvent(event),
+					applyLiveEvent: (event) => {
+						input.observer.applyLiveEvent(event);
+						// The inbox only applies contiguous current-generation events.
+						state.lastLiveEventAt = this.#now();
+					},
 					applyReconciliation: (receipt) => input.observer.applyReconciliation(receipt),
 					requestReconciliation: (request) => this.#queue(state, request)
 				}
@@ -221,7 +264,10 @@ export class AgenticChatWorkerRealtimeCoordinator {
 	#queue(state: CoordinatedTurn, request: AgenticChatWorkerReconciliationRequest): void {
 		if (this.#turns.get(state.handle.turnRunId) !== state || state.terminal) return;
 		state.queuedRequest = request;
-		if (state.backingOff || state.throttlingQueuedRequest) return;
+		if (state.backingOff) return;
+		if (state.throttlingQueuedRequest) {
+			if (state.inFlight || !this.#takeGenerationBypass(state, request)) return;
+		}
 		this.#clearTimer(state);
 		if (this.#running && !state.inFlight) void this.#drain(state);
 	}
@@ -261,7 +307,13 @@ export class AgenticChatWorkerRealtimeCoordinator {
 				// Triggers that arrive during a request stay behind the normal
 				// changed-state cadence. A signal/channel storm therefore cannot drain
 				// back-to-back and recreate the canary-10 ~3 requests/second runaway.
-				this.#schedule(state, this.#jitteredChangedDelay(), true);
+				// The one exception is a newer generation (a claim landing while the
+				// pre-claim receipt was in flight): at most once per generation.
+				if (this.#takeGenerationBypass(state, state.queuedRequest)) {
+					void this.#drain(state);
+				} else {
+					this.#schedule(state, this.#jitteredChangedDelay(), true);
+				}
 			}
 		}
 	}
@@ -289,6 +341,7 @@ export class AgenticChatWorkerRealtimeCoordinator {
 				nextDelay = this.#retryMs;
 			} else {
 				const reconciled = receipt as AgenticChatWorkerReconciledReceipt;
+				state.lastReconciledAt = this.#now();
 				const fingerprint = reconciliationFingerprint(reconciled);
 				const unchanged = state.lastFingerprint === fingerprint;
 				state.lastFingerprint = fingerprint;
@@ -397,8 +450,43 @@ export class AgenticChatWorkerRealtimeCoordinator {
 				void this.#drain(state);
 				return;
 			}
+			const deferMs = this.#liveStreamDeferral(state);
+			if (deferMs !== null) {
+				this.#schedule(state, deferMs);
+				return;
+			}
 			this.inbox.requestReconciliation(state.handle.turnRunId, 'watchdog');
 		}, delayMs);
+	}
+
+	/**
+	 * Returns how long a due watchdog may wait while the live stream is proving
+	 * itself, or null when durable truth must be read now. Gaps, hints, channel
+	 * changes, and tab return never pass through here: they reconcile at once.
+	 */
+	#liveStreamDeferral(state: CoordinatedTurn): number | null {
+		if (!this.#liveChannelSubscribed) return null;
+		if (state.lastLiveEventAt === null || state.lastReconciledAt === null) return null;
+		const now = this.#now();
+		const liveDeadline = state.lastLiveEventAt + this.#liveHealthyWindowMs;
+		const reconcileDeadline = state.lastReconciledAt + this.#maxLiveOnlyMs;
+		const deferMs = Math.min(liveDeadline, reconcileDeadline) - now;
+		return deferMs > 0 ? Math.ceil(deferMs) : null;
+	}
+
+	#takeGenerationBypass(
+		state: CoordinatedTurn,
+		request: AgenticChatWorkerReconciliationRequest
+	): boolean {
+		if (request.reason !== 'generation_changed') return false;
+		if (
+			state.generationBypassFrom !== null &&
+			state.generationBypassFrom >= request.executionGeneration
+		) {
+			return false;
+		}
+		state.generationBypassFrom = request.executionGeneration;
+		return true;
 	}
 
 	#clearTimer(state: CoordinatedTurn): void {

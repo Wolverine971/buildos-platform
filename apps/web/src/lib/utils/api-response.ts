@@ -23,7 +23,7 @@ export interface ApiSuccess<T = unknown> {
 // Cache configuration interface
 export interface CacheConfig {
 	maxAge?: number; // in seconds, default 300 (5 minutes)
-	public?: boolean; // public vs private cache, default true
+	public?: boolean; // public vs private cache, default false (opt in for shared data)
 	staleWhileRevalidate?: number; // SWR time in seconds
 	mustRevalidate?: boolean; // force revalidation
 }
@@ -87,7 +87,9 @@ function generateETag(data: any): string {
 function buildCacheControl(config: CacheConfig): string {
 	const parts: string[] = [];
 
-	if (config.public !== false) {
+	// Most JSON responses are per-user; a shared cache must never store them
+	// unless the caller explicitly marks the payload public.
+	if (config.public === true) {
 		parts.push('public');
 	} else {
 		parts.push('private');

@@ -10,7 +10,10 @@ vi.mock('$env/dynamic/private', () => ({
 	env: {}
 }));
 
-import { generateNextStepRecommendationFromPrompt } from './next-step-generation.service';
+import {
+	generateNextStepRecommendationFromPrompt,
+	generateProjectNextStep
+} from './next-step-generation.service';
 
 describe('next-step generation model fallback', () => {
 	afterEach(() => {
@@ -105,5 +108,122 @@ describe('next-step generation model fallback', () => {
 		expect(requestBodies[1]?.model).toBe(PROJECT_NEXT_STEP_MODELS[1]);
 		expect(requestBodies[1]?.models).not.toContain(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[1]?.models).not.toContain(PROJECT_NEXT_STEP_MODELS[1]);
+	});
+});
+
+describe('next-step project context', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	type Op = {
+		table: string;
+		filters: Array<[string, string, unknown]>;
+		orders: Array<[string, unknown]>;
+	};
+
+	function createSupabase(tables: Record<string, unknown[]>) {
+		const ops: Op[] = [];
+		const from = (table: string) => {
+			const op: Op = { table, filters: [], orders: [] };
+			ops.push(op);
+			const result = () => ({
+				data: table === 'onto_projects' ? tables[table]?.[0] : (tables[table] ?? []),
+				error: null
+			});
+			const builder: any = {
+				select: () => builder,
+				update: () => builder,
+				eq: (c: string, v: unknown) => (op.filters.push(['eq', c, v]), builder),
+				is: (c: string, v: unknown) => (op.filters.push(['is', c, v]), builder),
+				in: (c: string, v: unknown) => (op.filters.push(['in', c, v]), builder),
+				not: (c: string, o: string, v: unknown) => (
+					op.filters.push(['not', c, v]),
+					builder
+				),
+				order: (c: string, opts: unknown) => (op.orders.push([c, opts]), builder),
+				limit: () => builder,
+				single: () => Promise.resolve(result()),
+				then: (
+					resolve: (value: unknown) => unknown,
+					reject: (reason: unknown) => unknown
+				) => Promise.resolve(result()).then(resolve, reject)
+			};
+			return builder;
+		};
+		return { supabase: { from } as any, ops };
+	}
+
+	it('reads open, non-deleted tasks with priority 1 (Critical) first and judges goals by state_key', async () => {
+		const { supabase, ops } = createSupabase({
+			onto_projects: [
+				{ id: 'p1', name: 'Book', description: null, state_key: 'active', type_key: null }
+			],
+			onto_tasks: [
+				{
+					id: 'critical',
+					title: 'Critical fix',
+					state_key: 'todo',
+					priority: 1,
+					due_at: null,
+					props: null,
+					completed_at: null,
+					updated_at: '2026-09-01T00:00:00Z'
+				},
+				{
+					id: 'someday',
+					title: 'Someday polish',
+					state_key: 'todo',
+					priority: 5,
+					due_at: null,
+					props: null,
+					completed_at: null,
+					updated_at: '2026-09-01T00:00:00Z'
+				}
+			],
+			onto_goals: [
+				{
+					id: 'g-done',
+					name: 'Finished goal',
+					type_key: null,
+					state_key: 'achieved',
+					props: {}
+				},
+				{ id: 'g-live', name: 'Live goal', type_key: null, state_key: 'active', props: {} }
+			]
+		});
+		const getJSONResponse = vi.fn().mockResolvedValue({ short: 'Do it', long: 'Do it now.' });
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network disabled in tests')));
+
+		await generateProjectNextStep(supabase, 'p1', 'user-1', {
+			llmClient: { getJSONResponse } as any
+		});
+
+		const openTaskQuery = ops.find(
+			(op) => op.table === 'onto_tasks' && op.orders.some(([column]) => column === 'priority')
+		);
+		expect(openTaskQuery?.filters).toContainEqual(['is', 'deleted_at', null]);
+		expect(openTaskQuery?.filters).toContainEqual([
+			'in',
+			'state_key',
+			['todo', 'in_progress', 'blocked']
+		]);
+		expect(openTaskQuery?.orders[0]).toEqual([
+			'priority',
+			{ ascending: true, nullsFirst: false }
+		]);
+		for (const table of ['onto_goals', 'onto_plans', 'onto_milestones']) {
+			expect(ops.find((op) => op.table === table)?.filters).toContainEqual([
+				'is',
+				'deleted_at',
+				null
+			]);
+		}
+
+		const prompt = getJSONResponse.mock.calls[0]?.[0]?.userPrompt as string;
+		const highPriority = prompt.split('### 🔥 High Priority Tasks')[1]?.split('###')[0] ?? '';
+		expect(highPriority).toContain('task:critical');
+		expect(highPriority).not.toContain('task:someday');
+		expect(prompt).toContain('- Active: 1, Completed: 1');
 	});
 });

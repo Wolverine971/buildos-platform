@@ -123,6 +123,16 @@ function getInvoiceCustomerId(invoice: Stripe.Invoice): string | null {
 	return typeof customer === 'string' ? customer : customer.id;
 }
 
+/**
+ * Webhook writes must fail loudly: a swallowed error still lets the event be
+ * marked processed, so Stripe never retries and local billing state drifts.
+ */
+function throwOnWriteError(error: { message?: string } | null | undefined, context: string) {
+	if (error) {
+		throw new Error(`${context}: ${error.message ?? 'unknown database error'}`);
+	}
+}
+
 function getSubscriptionCustomerId(subscription: Stripe.Subscription): string | null {
 	const customer = subscription.customer;
 	if (!customer) return null;
@@ -725,42 +735,46 @@ export class StripeService {
 			return;
 		}
 
-		await this.supabase.from('customer_subscriptions').upsert(
-			{
-				user_id: userId,
-				stripe_customer_id: customerId,
-				stripe_subscription_id: subscription.id,
-				stripe_price_id: priceId,
-				plan_id: plan?.id,
-				status: subscription.status,
-				current_period_start: currentPeriodStart,
-				current_period_end: currentPeriodEnd,
-				cancel_at: subscription.cancel_at
-					? new Date(subscription.cancel_at * 1000).toISOString()
-					: null,
-				canceled_at: subscription.canceled_at
-					? new Date(subscription.canceled_at * 1000).toISOString()
-					: null,
-				trial_start: subscription.trial_start
-					? new Date(subscription.trial_start * 1000).toISOString()
-					: null,
-				trial_end: subscription.trial_end
-					? new Date(subscription.trial_end * 1000).toISOString()
-					: null
-			},
-			{
-				onConflict: 'stripe_subscription_id'
-			}
-		);
+		const { error: subscriptionUpsertError } = await this.supabase
+			.from('customer_subscriptions')
+			.upsert(
+				{
+					user_id: userId,
+					stripe_customer_id: customerId,
+					stripe_subscription_id: subscription.id,
+					stripe_price_id: priceId,
+					plan_id: plan?.id,
+					status: subscription.status,
+					current_period_start: currentPeriodStart,
+					current_period_end: currentPeriodEnd,
+					cancel_at: subscription.cancel_at
+						? new Date(subscription.cancel_at * 1000).toISOString()
+						: null,
+					canceled_at: subscription.canceled_at
+						? new Date(subscription.canceled_at * 1000).toISOString()
+						: null,
+					trial_start: subscription.trial_start
+						? new Date(subscription.trial_start * 1000).toISOString()
+						: null,
+					trial_end: subscription.trial_end
+						? new Date(subscription.trial_end * 1000).toISOString()
+						: null
+				},
+				{
+					onConflict: 'stripe_subscription_id'
+				}
+			);
+		throwOnWriteError(subscriptionUpsertError, 'Failed to upsert customer_subscriptions');
 
 		// Update user subscription status
-		await this.supabase
+		const { error: userUpdateError } = await this.supabase
 			.from('users')
 			.update({
 				subscription_status: subscription.status,
 				subscription_plan_id: plan?.id
 			})
 			.eq('id', userId);
+		throwOnWriteError(userUpdateError, 'Failed to update user subscription status');
 
 		// Keep billing_accounts synchronized for fast snapshot reads (layout load path).
 		const isPaidLikeStatus = ['active', 'trialing', 'past_due'].includes(subscription.status);
@@ -795,12 +809,10 @@ export class StripeService {
 					{ onConflict: 'user_id' }
 				);
 
-			if (billingAccountError) {
-				console.error(
-					`Failed to sync billing_accounts for ${userId} after subscription update:`,
-					billingAccountError
-				);
-			}
+			throwOnWriteError(
+				billingAccountError,
+				`Failed to sync billing_accounts for ${userId} after subscription update`
+			);
 		}
 
 		invalidateBillingContextCache(userId);
@@ -825,22 +837,24 @@ export class StripeService {
 		if (!userId) return;
 
 		// Update subscription record
-		await this.supabase
+		const { error: subscriptionCancelError } = await this.supabase
 			.from('customer_subscriptions')
 			.update({
 				status: 'canceled',
 				canceled_at: new Date().toISOString()
 			})
 			.eq('stripe_subscription_id', subscription.id);
+		throwOnWriteError(subscriptionCancelError, 'Failed to mark subscription canceled');
 
 		// Update user to free tier
-		await this.supabase
+		const { error: userDowngradeError } = await this.supabase
 			.from('users')
 			.update({
 				subscription_status: 'free',
 				subscription_plan_id: null
 			})
 			.eq('id', userId);
+		throwOnWriteError(userDowngradeError, 'Failed to downgrade user to free tier');
 
 		const nowIso = new Date().toISOString();
 		const { error: billingAccountResetError } = await this.supabase
@@ -860,12 +874,11 @@ export class StripeService {
 			);
 
 		if (billingAccountResetError) {
-			console.error(
-				`Failed to reset billing_accounts for ${userId} after subscription deletion:`,
-				billingAccountResetError
-			);
 			invalidateBillingContextCache(userId);
-			return;
+			throwOnWriteError(
+				billingAccountResetError,
+				`Failed to reset billing_accounts for ${userId} after subscription deletion`
+			);
 		}
 
 		const gateResult: any = await this.supabase.rpc('evaluate_user_consumption_gate', {
@@ -920,7 +933,7 @@ export class StripeService {
 		}
 
 		// Record invoice (idempotent)
-		await this.supabase.from('invoices').upsert(
+		const { error: invoiceUpsertError } = await this.supabase.from('invoices').upsert(
 			{
 				user_id: userId,
 				stripe_invoice_id: invoice.id,
@@ -935,6 +948,7 @@ export class StripeService {
 			},
 			{ onConflict: 'stripe_invoice_id' }
 		);
+		throwOnWriteError(invoiceUpsertError, 'Failed to record invoice');
 
 		// Sync subscription state from Stripe to capture the latest status changes
 		try {
@@ -946,23 +960,27 @@ export class StripeService {
 
 		if (!existingSubscription) return;
 
-		// If subscription was past_due, resolve any failed payments
-		if (existingSubscription.status === 'past_due' && invoice.id) {
+		// Always resolve a failed payment for this invoice. The stored status may
+		// already be 'active' (customer.subscription.updated can land first), and
+		// gating on past_due would leave dunning running against a paid invoice.
+		if (invoice.id) {
 			const { DunningService } = await import('./dunning-service');
 			const dunningService = new DunningService(this.supabase);
-
 			await dunningService.resolveFailedPayment(invoice.id, 'paid');
+		}
 
+		if (existingSubscription.status === 'past_due') {
 			// Update subscription status back to active
-			await this.supabase
+			const { error: reactivateError } = await this.supabase
 				.from('customer_subscriptions')
 				.update({
 					status: 'active'
 				})
 				.eq('id', existingSubscription.id);
+			throwOnWriteError(reactivateError, 'Failed to reactivate subscription');
 
 			// Update user status
-			await this.supabase
+			const { error: restoreAccessError } = await this.supabase
 				.from('users')
 				.update({
 					subscription_status: 'active',
@@ -970,9 +988,10 @@ export class StripeService {
 					access_restricted_at: null
 				})
 				.eq('id', existingSubscription.user_id);
-
-			invalidateBillingContextCache(existingSubscription.user_id);
+			throwOnWriteError(restoreAccessError, 'Failed to restore user access');
 		}
+
+		invalidateBillingContextCache(existingSubscription.user_id);
 	}
 
 	/**
@@ -1004,20 +1023,22 @@ export class StripeService {
 		});
 
 		// Update subscription status
-		await this.supabase
+		const { error: pastDueError } = await this.supabase
 			.from('customer_subscriptions')
 			.update({
 				status: 'past_due'
 			})
 			.eq('id', subscription.id);
+		throwOnWriteError(pastDueError, 'Failed to mark subscription past_due');
 
 		// Update user status
-		await this.supabase
+		const { error: userPastDueError } = await this.supabase
 			.from('users')
 			.update({
 				subscription_status: 'past_due'
 			})
 			.eq('id', subscription.user_id);
+		throwOnWriteError(userPastDueError, 'Failed to mark user past_due');
 
 		invalidateBillingContextCache(subscription.user_id);
 

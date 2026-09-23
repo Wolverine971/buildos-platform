@@ -1,13 +1,9 @@
 // apps/web/src/routes/api/project-briefs/+server.ts
 import type { RequestHandler } from './$types';
-import { ApiResponse, handleConditionalRequest } from '$lib/utils/api-response';
+import { ApiResponse } from '$lib/utils/api-response';
 import { mapOntologyProjectBriefRow } from '$lib/services/dailyBrief/ontology-mappers';
 
-export const GET: RequestHandler = async ({
-	url,
-	request,
-	locals: { supabase, safeGetSession }
-}) => {
+export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -19,10 +15,8 @@ export const GET: RequestHandler = async ({
 		''
 	).trim();
 	const briefIdParam = url.searchParams.get('brief_id')?.trim() || null;
-	const userId = url.searchParams.get('userId') || user.id;
-	if (!userId) {
-		return ApiResponse.badRequest('User ID is required');
-	}
+	// Always the session user: a caller-supplied userId must never widen the scope.
+	const userId = user.id;
 
 	try {
 		let resolvedBriefId: string | null = briefIdParam;
@@ -116,14 +110,8 @@ export const GET: RequestHandler = async ({
 			activeBriefId: resolvedBriefId
 		};
 
-		const conditionalResponse = handleConditionalRequest(request, responseData);
-		if (conditionalResponse) {
-			return conditionalResponse;
-		}
-
-		return ApiResponse.cached(responseData, undefined, 600, {
-			staleWhileRevalidate: 1800
-		});
+		// Per-user and polled while a brief is generating: never cacheable.
+		return ApiResponse.success(responseData);
 	} catch (error) {
 		console.error('Error fetching project briefs:', error);
 		return ApiResponse.databaseError(error);

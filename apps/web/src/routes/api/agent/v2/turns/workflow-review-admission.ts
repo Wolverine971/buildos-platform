@@ -1,10 +1,11 @@
 // apps/web/src/routes/api/agent/v2/turns/workflow-review-admission.ts
 //
 // Tasker 86 branch of worker turn admission, kept beside +server.ts so the route
-// stays under the route-size guard. It runs after lease verification and returns
-// null only for ordinary turns. Explicit read-only reviews must never silently
-// fall through to an ordinary turn that could execute mutations.
+// stays under the route-size guard. It runs after the transport decision and
+// returns null only for ordinary turns. Explicit read-only reviews must never
+// silently fall through to an ordinary turn that could execute mutations.
 import { json } from '@sveltejs/kit';
+import type { ChatSession } from '@buildos/shared-types';
 import {
 	admitAgenticChatWorkflowV4Turn,
 	AgenticChatWorkflowV4AdmissionError,
@@ -30,24 +31,39 @@ import {
 
 const logger = createLogger('API:AgentWorkflowReviewTurns');
 
+const WORKFLOW_REVIEW_ENVIRONMENT_KEYS = [
+	'AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED',
+	'AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED',
+	'AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED',
+	'AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED',
+	'AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED',
+	'AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED',
+	'AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED',
+	'AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED',
+	'AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS'
+] as const;
+
+export type WorkflowReviewEnvironment = Partial<
+	Record<(typeof WORKFLOW_REVIEW_ENVIRONMENT_KEYS)[number], string>
+>;
+
+/** Picks only the server switches the review branch reads from the private env. */
+export function pickWorkflowReviewEnvironment(
+	env: Record<string, string | undefined>
+): WorkflowReviewEnvironment {
+	return Object.fromEntries(WORKFLOW_REVIEW_ENVIRONMENT_KEYS.map((key) => [key, env[key]]));
+}
+
 export async function admitWorkflowReviewTurnIfEligible(input: {
-	environment: {
-		AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED?: string;
-		AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED?: string;
-		AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED?: string;
-		AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED?: string;
-		AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED?: string;
-		AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED?: string;
-		AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED?: string;
-		AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED?: string;
-		AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS?: string;
-	};
+	environment: WorkflowReviewEnvironment;
 	userId: string;
 	command: AgenticChatWorkflowV4CommandV1;
 	transportDecisionId: string;
 	client: AgenticChatWorkflowV4AdmissionRpcClient;
 	workbenchClient?: SpecialistWorkbenchClient;
 	createId?: () => string;
+	/** Set only for a session-less send: returns the session admission created. */
+	loadSession?: (sessionId: string) => Promise<ChatSession | null>;
 }): Promise<Response | null> {
 	const eligibility = evaluateAgenticChatWorkflowV4Admission({
 		policy: resolveAgenticChatWorkflowV4AdmissionPolicy(input.environment),
@@ -158,10 +174,19 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 		sessionCreated: result.outcome === 'newly_admitted' ? result.sessionCreated : null,
 		historyMessageCount: result.outcome === 'newly_admitted' ? result.historyMessageCount : null
 	});
-	return timed(outcomeResponse(result), preparationMs, admissionMs);
+	// Read after the durable admission and outside its timing; never fails it.
+	const session =
+		input.loadSession &&
+		(result.outcome === 'newly_admitted' || result.outcome === 'matching_duplicate')
+			? await input.loadSession(result.sessionId)
+			: null;
+	return timed(outcomeResponse(result, session), preparationMs, admissionMs);
 }
 
-function outcomeResponse(result: AgenticChatWorkflowV4AdmissionResultV1): Response {
+function outcomeResponse(
+	result: AgenticChatWorkflowV4AdmissionResultV1,
+	session: ChatSession | null
+): Response {
 	switch (result.outcome) {
 		case 'newly_admitted':
 		case 'matching_duplicate':
@@ -179,7 +204,8 @@ function outcomeResponse(result: AgenticChatWorkflowV4AdmissionResultV1): Respon
 							clientTurnId: result.clientTurnId
 						},
 						status: result.status,
-						reviewMode: 'project_review'
+						reviewMode: 'project_review',
+						...(session ? { session } : {})
 					},
 					timestamp: new Date().toISOString()
 				},

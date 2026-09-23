@@ -372,7 +372,11 @@
 							id="daily-brief-email"
 							class="sr-only peer"
 							checked={dailyBriefEmailEnabled}
-							onchange={(e) => handleDailyBriefEmailToggle(e.currentTarget.checked)}
+							onchange={async (e) => {
+								const input = e.currentTarget;
+								await handleDailyBriefEmailToggle(input.checked);
+								input.checked = dailyBriefEmailEnabled;
+							}}
 						/>
 						<div
 							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"
@@ -423,7 +427,13 @@
 							id="daily-brief-sms"
 							class="sr-only peer"
 							checked={dailyBriefSmsEnabled}
-							onchange={(e) => handleDailyBriefSmsToggle(e.currentTarget.checked)}
+							onchange={async (e) => {
+								const input = e.currentTarget;
+								await handleDailyBriefSmsToggle(input.checked);
+								// A revert to the value state already held does not
+								// re-render, so sync the DOM checkbox explicitly.
+								input.checked = dailyBriefSmsEnabled;
+							}}
 							disabled={smsPreferencesLoading}
 						/>
 						<div
@@ -519,7 +529,11 @@
 							id="push-notifications"
 							class="sr-only peer"
 							checked={pushEnabled}
-							onchange={(e) => handlePushToggle(e.currentTarget.checked)}
+							onchange={async (e) => {
+								const input = e.currentTarget;
+								await handlePushToggle(input.checked);
+								input.checked = pushEnabled;
+							}}
 							disabled={!pushSupported || isChannelSaving}
 						/>
 						<div

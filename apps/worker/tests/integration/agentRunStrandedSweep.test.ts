@@ -103,7 +103,7 @@ describePostgres('agent run stranded sweep (integration)', () => {
 		`ARRAY[${values.map((value) => `'${value}'`).join(',')}]`;
 
 	const store: StrandedSweepStore = {
-		async listStrandedCandidates({ statuses, updatedBefore, limit }) {
+		async listStrandedCandidates({ statuses, updatedBefore, limit, childrenOnly }) {
 			return psqlJson<StrandedRunRow[]>(`
 				SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json)::text
 				FROM (
@@ -114,6 +114,7 @@ describePostgres('agent run stranded sweep (integration)', () => {
 					FROM public.agent_runs
 					WHERE status::text = ANY(${sqlArray(statuses)})
 						AND updated_at < '${updatedBefore}'
+						${childrenOnly ? 'AND parent_run_id IS NOT NULL' : ''}
 					ORDER BY updated_at ASC
 					LIMIT ${limit}
 				) t

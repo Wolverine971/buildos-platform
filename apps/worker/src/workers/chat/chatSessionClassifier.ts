@@ -14,7 +14,7 @@ import {
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 import { processSessionActivityAndNextSteps } from './chatSessionActivityProcessor';
-import { processStartHereCaptureProposals } from './startHereCaptureProcessor';
+import { enqueueChatCheckpoint } from './checkpoint/checkpointJob';
 import { queueProjectContextSnapshot } from '../ontology/projectContextSnapshotWorker';
 import { processProfileSignals } from './profileSignalProcessor';
 import { processContactSignals } from './contactSignalProcessor';
@@ -148,7 +148,8 @@ Respond ONLY with valid JSON in this exact format:
  * Build the user prompt with conversation history
  */
 function getPromptMessages(messages: ChatMessage[]): ChatMessage[] {
-	return messages.filter((m) => m.role === 'user' || m.role === 'assistant').slice(0, 30); // Limit to first 30 messages to avoid token limits
+	// The most recent 30, so a re-classification sees what changed.
+	return messages.filter((m) => m.role === 'user' || m.role === 'assistant').slice(-30);
 }
 
 function buildUserPrompt(messages: ChatMessage[]): string {
@@ -256,17 +257,20 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			return { success: true, skipped: true, reason: 'session_not_found' };
 		}
 
-		// Fetch chat messages for this session
-		const { data: messages, error: messagesError } = await supabase
+		// Fetch the MOST RECENT 50 messages (capped for token usage), oldest first.
+		// Reading the oldest 50 instead would stamp message #50 as the latest, so a
+		// longer session would never look changed and never be re-classified.
+		const { data: recentMessages, error: messagesError } = await supabase
 			.from('chat_messages')
 			.select('id, role, content, created_at')
 			.eq('session_id', validatedData.sessionId)
-			.order('created_at', { ascending: true })
-			.limit(50); // Limit messages to avoid excessive token usage
+			.order('created_at', { ascending: false })
+			.limit(50);
 
 		if (messagesError) {
 			throw new Error(`Failed to fetch messages: ${messagesError.message}`);
 		}
+		const messages = recentMessages ? [...recentMessages].reverse() : recentMessages;
 
 		const hasPlaceholderTitle = isPlaceholderTitle(session.title);
 		const hasClassification =
@@ -501,19 +505,18 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 
 		if (activityResult.projectId) {
 			try {
-				const startHereCapture = await processStartHereCaptureProposals({
+				// Checkpoint capture (tasker/95) writes the thinking log and START HERE.
+				// It runs as its own queue job, deduped per session with the sweep, and
+				// captures only messages after the session's watermark.
+				const lastMessage = typedMessages[typedMessages.length - 1];
+				await enqueueChatCheckpoint({
 					sessionId: validatedData.sessionId,
 					userId: validatedData.userId,
-					projectId: activityResult.projectId,
-					sessionSummary: summary
+					trigger: 'close',
+					lastMessageId: lastMessage?.id ?? null
 				});
-				if (startHereCapture.proposed) {
-					console.log(
-						`📌 Start Here proposal ready (${startHereCapture.runId}) with ${startHereCapture.updateCount} update(s)`
-					);
-				}
 			} catch (startHereError) {
-				console.error(`⚠️ Start Here capture failed (non-fatal):`, startHereError);
+				console.error(`⚠️ Checkpoint capture enqueue failed (non-fatal):`, startHereError);
 				void logWorkerError(startHereError, {
 					userId: validatedData.userId,
 					tableName: 'chat_sessions',

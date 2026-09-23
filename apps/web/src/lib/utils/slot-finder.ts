@@ -3,6 +3,7 @@
 import type { TimeBlockWithProject } from '@buildos/shared-types';
 import type { CalendarEvent } from '$lib/services/calendar-service';
 import type { AvailableSlot, SlotFinderConfig, OccupiedTimeSlot } from '$lib/types/time-blocks';
+import { parseLocalDate } from './schedulingUtils';
 
 /**
  * Calculates available time slots based on calendar events, time blocks, and configuration
@@ -132,24 +133,35 @@ function getOccupiedSlotsForDay(
 
 		if (!eventStartStr || !eventEndStr) return;
 
+		// All-day events carry bare YYYY-MM-DD dates (end exclusive). `new Date()`
+		// would read them as UTC midnight, which is the previous evening west of UTC.
+		if (event.start.date && !event.start.dateTime) {
+			const firstDay = parseLocalDate(event.start.date);
+			const endExclusive = event.end.date ? parseLocalDate(event.end.date) : null;
+			const dayStart = new Date(dayDate);
+			dayStart.setHours(0, 0, 0, 0);
+			const coversDay =
+				dayStart >= firstDay &&
+				(endExclusive && endExclusive > firstDay
+					? dayStart < endExclusive
+					: isSameDay(firstDay, dayStart));
+			if (coversDay) {
+				// Mark the entire day as occupied (no buffer for all-day events)
+				const end = new Date(dayDate);
+				end.setHours(23, 59, 59, 999);
+				occupied.push({ start: dayStart, end, type: 'event', id: event.id });
+			}
+			return;
+		}
+
 		const eventStart = new Date(eventStartStr);
 		const eventEnd = new Date(eventEndStr);
 
 		if (isSameDay(eventStart, dayDate)) {
-			// Handle all-day events - they occupy the entire configured time range
-			if (event.start.date && !event.start.dateTime) {
-				// All-day event - mark entire day as occupied (no buffer for all-day events)
-				const start = new Date(dayDate);
-				start.setHours(0, 0, 0, 0);
-				const end = new Date(dayDate);
-				end.setHours(23, 59, 59, 999);
-				occupied.push({ start, end, type: 'event', id: event.id });
-			} else {
-				// Timed event - apply buffer
-				const start = new Date(eventStart.getTime() - bufferTime * 60 * 1000);
-				const end = new Date(eventEnd.getTime() + bufferTime * 60 * 1000);
-				occupied.push({ start, end, type: 'event', id: event.id });
-			}
+			// Timed event - apply buffer
+			const start = new Date(eventStart.getTime() - bufferTime * 60 * 1000);
+			const end = new Date(eventEnd.getTime() + bufferTime * 60 * 1000);
+			occupied.push({ start, end, type: 'event', id: event.id });
 		}
 	});
 

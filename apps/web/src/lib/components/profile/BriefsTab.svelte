@@ -499,7 +499,7 @@
 									<strong class="text-foreground">Note:</strong> To receive briefs
 									via email or SMS, visit the
 									<a
-										href="/settings?tab=notifications"
+										href="/profile?tab=notifications"
 										class="text-accent hover:underline">Notifications</a
 									> tab.
 								</p>

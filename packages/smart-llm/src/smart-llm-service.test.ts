@@ -1860,15 +1860,22 @@ describe('SmartLLMService text generation timeout classification', () => {
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
-		await expect(
-			llm.generateText({
+		let thrown: unknown;
+		try {
+			await llm.generateText({
 				prompt: 'Exercise text-path timeout classification.',
 				userId: 'text-timeout-test',
 				timeoutMs: 42
-			})
-		).rejects.toBeInstanceOf(Error);
+			});
+		} catch (error) {
+			thrown = error;
+		}
 
-		expect(fetchMock).toHaveBeenCalled();
+		// An accepted (billed) generation must not be dispatched again to the
+		// next model, and the typed error must reach the caller unwrapped.
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(thrown).toBeInstanceOf(LLMRequestTimeoutError);
+		expect(thrown).toMatchObject({ openrouter: { generationId: 'gen-text-timeout' } });
 		await vi.waitFor(() => {
 			expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
 				expect.objectContaining({ status: 'timeout' })
@@ -1877,5 +1884,273 @@ describe('SmartLLMService text generation timeout classification', () => {
 		expect(usageLogger.logUsageToDatabase).not.toHaveBeenCalledWith(
 			expect.objectContaining({ status: 'failure' })
 		);
+	});
+});
+
+describe('SmartLLMService text generation retry rule', () => {
+	it('does not fail over on a non-retryable 4xx rejection', async () => {
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ error: { message: 'bad request' } }), {
+					status: 400,
+					headers: { 'content-type': 'application/json' }
+				})
+		);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.generateText({ prompt: 'Reject me once.', userId: 'text-400-test' })
+		).rejects.toThrow('Failed to generate text');
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it('forwards the caller signal and does not retry a cancellation', async () => {
+		const controller = new AbortController();
+		const abortReason = new Error('Worker timeout after 600000ms for text job');
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			expect(init?.signal).toBeDefined();
+			controller.abort(abortReason);
+			throw abortReason;
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.generateText({
+				prompt: 'Stop when ownership is lost.',
+				userId: 'text-cancel-test',
+				signal: controller.signal
+			})
+		).rejects.toBeInstanceOf(LLMRequestCancelledError);
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it('does not dispatch at all when the caller signal is already aborted', async () => {
+		const controller = new AbortController();
+		controller.abort(new Error('already gone'));
+		const fetchMock = vi.fn();
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.generateText({
+				prompt: 'Never sent.',
+				userId: 'text-pre-aborted-test',
+				signal: controller.signal
+			})
+		).rejects.toBeInstanceOf(LLMRequestCancelledError);
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps an explicit zero temperature and never requests SSE on the text path', async () => {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			return buildJSONCompletion({ model: DEEPSEEK_V4_FLASH_MODEL, content: 'Hello.' });
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const text = await llm.generateText({
+			prompt: 'Say hello.',
+			userId: 'text-zero-temp-test',
+			temperature: 0,
+			streaming: true
+		});
+
+		expect(text).toBe('Hello.');
+		expect(requestBodies[0]?.temperature).toBe(0);
+		expect(requestBodies[0]?.stream).not.toBe(true);
+	});
+});
+
+describe('SmartLLMService billed intermediate attempts', () => {
+	it('logs a billed empty-content text attempt as its own usage row before failing over', async () => {
+		const usageLogger = { logUsageToDatabase: vi.fn(async () => undefined) };
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				buildJSONCompletion({
+					model: DEEPSEEK_V4_FLASH_MODEL,
+					content: null,
+					finishReason: 'length',
+					provider: 'DeepSeek',
+					cost: 0.0042
+				})
+			)
+			.mockResolvedValueOnce(
+				buildJSONCompletion({ model: GEMINI_37_FLASH_MODEL, content: 'Recovered.' })
+			);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.generateText({ prompt: 'Recover after empty output.', userId: 'text-billed' })
+		).resolves.toBe('Recovered.');
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledTimes(2);
+		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'invalid_response',
+				modelUsed: DEEPSEEK_V4_FLASH_MODEL,
+				promptTokens: 10,
+				completionTokens: 5,
+				totalCost: 0.0042,
+				openrouterRequestId: `completion-${DEEPSEEK_V4_FLASH_MODEL}`
+			})
+		);
+		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'success', modelUsed: GEMINI_37_FLASH_MODEL })
+		);
+	});
+
+	it('charges the billed usage of the final failed text attempt on the terminal row', async () => {
+		const usageLogger = { logUsageToDatabase: vi.fn(async () => undefined) };
+		const fetchMock = vi.fn(async () =>
+			buildJSONCompletion({
+				model: DEEPSEEK_V4_FLASH_MODEL,
+				content: null,
+				provider: 'DeepSeek',
+				cost: 0.001
+			})
+		);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.generateText({ prompt: 'Always empty.', userId: 'text-billed-terminal' })
+		).rejects.toThrow('Failed to generate text');
+
+		const rows = usageLogger.logUsageToDatabase.mock.calls.map(
+			(call) => (call as unknown as [Record<string, unknown>])[0]
+		);
+		// Every paid call is represented exactly once: intermediates plus the terminal row.
+		expect(rows).toHaveLength(fetchMock.mock.calls.length);
+		const terminal = rows.find((row) => row.status === 'failure');
+		expect(terminal).toMatchObject({ promptTokens: 10, completionTokens: 5, totalCost: 0.001 });
+		expect(rows.reduce((sum, row) => sum + Number(row.totalCost), 0)).toBeCloseTo(
+			0.001 * fetchMock.mock.calls.length
+		);
+	});
+
+	it('logs the malformed JSON response that a validation repair superseded', async () => {
+		const usageLogger = { logUsageToDatabase: vi.fn(async () => undefined) };
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				buildJSONCompletion({
+					model: GLM_52_MODEL,
+					content: 'not valid JSON',
+					provider: 'Novita',
+					cost: 0.002
+				})
+			)
+			.mockResolvedValueOnce(
+				buildJSONCompletion({ model: GEMINI_37_FLASH_MODEL, content: '{"ok":true}' })
+			);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Repair me.',
+				userId: 'json-billed-repair',
+				model: GLM_52_MODEL,
+				validation: { retryOnParseError: true, maxRetries: 1 }
+			})
+		).resolves.toEqual({ ok: true });
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledTimes(2);
+		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'invalid_response',
+				modelUsed: GLM_52_MODEL,
+				promptTokens: 10,
+				totalCost: 0.002
+			})
+		);
+		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'success', modelUsed: GEMINI_37_FLASH_MODEL })
+		);
+	});
+
+	it('honours an explicit maxRetries of zero (no validation-repair call)', async () => {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			return requestBodies.length === 1
+				? buildJSONCompletion({ model: GLM_52_MODEL, content: 'not valid JSON' })
+				: buildJSONCompletion({ model: DEEPSEEK_V4_FLASH_MODEL, content: '{"ok":true}' });
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await llm.getJSONResponse({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'No repair allowed.',
+			userId: 'json-zero-retries',
+			model: GLM_52_MODEL,
+			validation: { retryOnParseError: true, maxRetries: 0 }
+		});
+
+		// A repair call would go to the powerful-profile model; with zero repairs
+		// the malformed response fails over to the next profile model instead.
+		expect(requestBodies).toHaveLength(2);
+		expect(requestBodies[1]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+	});
+});
+
+describe('SmartLLMService transcription terminal error', () => {
+	it('keeps the provider HTTP status on the sanitized terminal error', async () => {
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ error: { message: 'slow down' } }), {
+					status: 429,
+					headers: { 'content-type': 'application/json' }
+				})
+		);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		let thrown: unknown;
+		try {
+			await llm.transcribeAudio({
+				audio: { kind: 'buffer', data: new Uint8Array([1, 2, 3]), format: 'wav' },
+				userId: 'transcribe-429',
+				models: ['openai/whisper-1'],
+				maxRetries: 0
+			});
+		} catch (error) {
+			thrown = error;
+		}
+
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error & { status?: number }).status).toBe(429);
+		expect(String((thrown as Error).message)).not.toContain('slow down');
 	});
 });

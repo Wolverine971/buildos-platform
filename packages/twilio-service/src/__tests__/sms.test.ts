@@ -1,7 +1,7 @@
 // packages/twilio-service/src/__tests__/sms.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SMSService } from '../services/sms.service';
-import { TwilioClient } from '../client';
+import { formatPhoneNumber } from '../client';
 
 // Don't mock TwilioClient - we need to test formatPhoneNumber
 // vi.mock('../client');
@@ -191,38 +191,22 @@ describe('SMS Service', () => {
 	});
 });
 
-describe('TwilioClient', () => {
-	it('should format phone numbers correctly', () => {
-		// Test the phone number formatting logic directly
-		// This mirrors the private formatPhoneNumber method in TwilioClient
-		const formatPhoneNumber = (phone: string): string => {
-			// Remove all non-numeric characters
-			const cleaned = phone.replace(/\D/g, '');
-
-			// Add US country code if not present
-			if (cleaned.length === 10) {
-				return `+1${cleaned}`;
-			} else if (cleaned.length === 11 && cleaned.startsWith('1')) {
-				return `+${cleaned}`;
-			} else if (cleaned.startsWith('+')) {
-				return phone;
-			}
-
-			return `+${cleaned}`;
-		};
-
-		// Test various phone number formats
+describe('formatPhoneNumber (used by TwilioClient for every recipient)', () => {
+	it('normalizes US numbers and keeps international country codes', () => {
 		const testCases = [
 			{ input: '5551234567', expected: '+15551234567' },
 			{ input: '15551234567', expected: '+15551234567' },
 			{ input: '+15551234567', expected: '+15551234567' },
 			{ input: '(555) 123-4567', expected: '+15551234567' },
-			{ input: '555-123-4567', expected: '+15551234567' }
+			{ input: '555-123-4567', expected: '+15551234567' },
+			// 10 national digits after an explicit country code must not become +1…
+			{ input: '+65 9123 4567', expected: '+6591234567' },
+			{ input: '+44 20 7946 0958', expected: '+442079460958' },
+			{ input: '  +91 98765 43210 ', expected: '+919876543210' }
 		];
 
 		testCases.forEach(({ input, expected }) => {
-			const formatted = formatPhoneNumber(input);
-			expect(formatted).toBe(expected);
+			expect(formatPhoneNumber(input)).toBe(expected);
 		});
 	});
 });

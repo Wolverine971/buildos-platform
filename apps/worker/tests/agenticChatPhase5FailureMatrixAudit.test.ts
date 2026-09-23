@@ -66,13 +66,13 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'capacity_general_saturated',
 		requirement: 'General queue saturation does not consume the chat slot.',
-		file: 'apps/worker/tests/agenticChatConsumerFactory.test.ts',
+		file: 'apps/worker/tests/agenticChatConsumer.test.ts',
 		anchor: 'keeps saturated general slots independent from bounded chat slots'
 	},
 	{
 		id: 'capacity_chat_saturated',
 		requirement: 'Chat saturation does not consume general queue capacity.',
-		file: 'apps/worker/tests/agenticChatConsumerFactory.test.ts',
+		file: 'apps/worker/tests/agenticChatConsumer.test.ts',
 		anchor: 'keeps saturated general slots independent from bounded chat slots'
 	},
 	{
@@ -247,15 +247,16 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'kill_epoch_forced_readmission',
 		requirement:
-			'A mid-turn kill-epoch bump re-admits the turn once on the worker, and a second demand fails instead of looping.',
-		file: 'apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts',
-		anchor: 're-admits the turn once on the worker after a mid-turn kill-epoch bump'
+			'A kill-epoch bump forces any still-leased (older) bundle to renegotiate; current clients send lease-less and are decided fresh on every admission.',
+		file: 'apps/web/src/routes/api/agent/v2/turns/server.test.ts',
+		anchor: 'forces re-admission when the worker kill epoch advances'
 	},
 	{
 		id: 'kill_epoch_readmission_bounded',
-		requirement: 'Repeated renegotiation demands surface an error rather than a retry loop.',
+		requirement:
+			'A lease-less send is one admission request with no renegotiation loop; a transport conflict or outage is refused before any write and rolled back client-side.',
 		file: 'apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts',
-		anchor: 'fails the turn instead of looping when a second renegotiation is demanded'
+		anchor: 'rolls the optimistic turn back when admission refuses before any write'
 	},
 	{
 		id: 'termination_before_provider',

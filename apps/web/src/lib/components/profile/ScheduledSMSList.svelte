@@ -61,10 +61,19 @@
 		{ id: 'cancelled', label: 'Cancelled' }
 	];
 
+	// Each tab covers the statuses the list renders the same way: a delivered
+	// message is a sent one, and a pending one is still scheduled.
+	const FILTER_STATUSES: Record<Exclude<SmsFilter, 'all'>, ScheduledSMS['status'][]> = {
+		scheduled: ['scheduled', 'pending'],
+		sent: ['sent', 'delivered'],
+		cancelled: ['cancelled']
+	};
+
 	// Derived
 	let filteredMessages = $derived.by(() => {
 		if (filterStatus === 'all') return scheduledMessages;
-		return scheduledMessages.filter((msg) => msg.status === filterStatus);
+		const statuses = FILTER_STATUSES[filterStatus];
+		return scheduledMessages.filter((msg) => statuses.includes(msg.status));
 	});
 
 	let upcomingCount = $derived(

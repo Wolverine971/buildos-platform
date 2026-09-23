@@ -166,6 +166,61 @@ describe('/api/webhooks/send-notification-email', () => {
 		);
 	});
 
+	function mockPreferenceLookup(preferenceResponse: { data: unknown; error: unknown }) {
+		const responsesByTable: Record<string, any[]> = {
+			emails: [
+				{ data: { id: 'email-1', status: 'scheduled', tracking_id: 't', sent_at: null } },
+				{ data: [], error: null }
+			],
+			user_notification_preferences: [preferenceResponse]
+		};
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn((table: string) => {
+				fromCalls.push(table);
+				const response = responsesByTable[table]?.shift();
+				if (!response) throw new Error(`Unexpected query on table: ${table}`);
+				const query: any = {
+					select: vi.fn(() => query),
+					update: vi.fn(() => query),
+					eq: vi.fn(() => query),
+					in: vi.fn(() => query),
+					order: vi.fn(() => query),
+					limit: vi.fn(() => query),
+					maybeSingle: vi.fn().mockResolvedValue(response),
+					then: (resolve: any, reject: any) =>
+						Promise.resolve(response).then(resolve, reject)
+				};
+				return query;
+			})
+		});
+	}
+
+	it('answers a preference-blocked email with a non-2xx cancel code, never a 200', async () => {
+		mockPreferenceLookup({
+			data: { email_enabled: true, should_email_daily_brief: false },
+			error: null
+		});
+
+		const response = await POST({ request: createWebhookRequest({}) } as any);
+		const payload = await response.json();
+
+		expect(response.status).toBe(409);
+		expect(payload.code).toBe('EMAIL_PREFERENCES_BLOCKED');
+		expect(sendEmailMock).not.toHaveBeenCalled();
+		expect(fromCalls).not.toContain('email_recipients');
+	});
+
+	it('answers a failed preference lookup with a retryable 503', async () => {
+		mockPreferenceLookup({ data: null, error: { message: 'connection reset' } });
+
+		const response = await POST({ request: createWebhookRequest({}) } as any);
+		const payload = await response.json();
+
+		expect(response.status).toBe(503);
+		expect(payload.code).toBe('EMAIL_PREFERENCES_UNAVAILABLE');
+		expect(sendEmailMock).not.toHaveBeenCalled();
+	});
+
 	it('does not call Gmail when the email claim fails', async () => {
 		const responsesByTable: Record<string, any[]> = {
 			emails: [

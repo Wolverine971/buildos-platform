@@ -99,6 +99,9 @@ export class AgenticChatWorkerRealtimeRuntime {
 			this.coordinator.inbox,
 			(status, error) => {
 				this.#status = status;
+				// A subscribed channel carrying contiguous events lets the coordinator
+				// defer its watchdog; any other status keeps durable polling as-is.
+				this.coordinator.setLiveChannelSubscribed(status === 'subscribed');
 				options.onStatus?.(status, error);
 			}
 		);

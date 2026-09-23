@@ -34,6 +34,9 @@
 	- dismissThreshold?: number - Pixels to drag before dismiss (default: 120)
 	- customClasses?: string - Additional CSS classes
 	- contentScrollable?: boolean - Let the shared content region scroll (default: true)
+	- keepMounted?: boolean - Once opened, keep the dialog + children mounted while closed
+	  (hidden + inert; no scroll lock, focus trap, or Escape) so reopening keeps child state
+	  (default: false)
 	- ariaLabel?: string - Accessibility label
 	- ariaDescribedBy?: string - Accessibility description
 
@@ -109,6 +112,12 @@
 		dismissThreshold?: number;
 		customClasses?: string;
 		contentScrollable?: boolean;
+		/**
+		 * Once opened, keep the dialog and its children mounted while `isOpen` is false:
+		 * hidden + inert, with no scroll lock, focus trap, Escape, or outside-click
+		 * handling. Reopening un-hides the same DOM, so child state survives.
+		 */
+		keepMounted?: boolean;
 		ariaLabel?: string;
 		ariaDescribedBy?: string;
 		onOpen?: () => void;
@@ -141,6 +150,7 @@
 		dismissThreshold = 120,
 		customClasses = '',
 		contentScrollable = true,
+		keepMounted = false,
 		ariaLabel = '',
 		ariaDescribedBy = '',
 		onOpen,
@@ -165,8 +175,24 @@
 		presentation === 'immersive' ? 'modal-container--immersive' : ''
 	);
 
+	// The full-screen chat-style sheet: opaque edge-to-edge on phones, a tall
+	// workspace on sm+. It skips the whole-layer root fade and runs its own
+	// ease-out entrance in CSS instead, so first open and a keepMounted reopen
+	// look identical (no opacity fade or backdrop blur on phones, where the
+	// sheet covers the page anyway).
+	const isImmersiveSheet = $derived(
+		presentation === 'immersive' && variant === 'bottom-sheet' && size === 'full'
+	);
+
 	// Variant-specific classes - Inkprint styling
 	const variantClasses = $derived.by(() => {
+		if (isImmersiveSheet) {
+			return {
+				container: 'items-end sm:items-center',
+				modal: 'rounded-t-lg sm:rounded-lg mb-0 sm:mb-4',
+				animation: 'animate-modal-immersive-sheet'
+			};
+		}
 		if (variant === 'bottom-sheet') {
 			return {
 				container: 'items-end sm:items-center',
@@ -210,6 +236,11 @@
 	// calcs and mobile margin-bottom below.
 	let keyboardCleanup: (() => void) | null = null;
 	let animationCompleteTimeoutId = $state<ReturnType<typeof setTimeout> | null>(null);
+
+	// keepMounted: true once the dialog has opened, so later closes park it
+	// (hidden + inert) instead of unmounting it.
+	let hasOpened = $state(false);
+	const parked = $derived(keepMounted && hasOpened && !isOpen);
 
 	// Touch gesture state
 	let isDragging = $state(false);
@@ -260,6 +291,10 @@
 		// Escape closes only the topmost modal. Without this, two stacked modals
 		// both close on a single Escape press.
 		if (!isTopmostModal()) return;
+		// Something inside the dialog already consumed this key (e.g. the chat
+		// composer stopping a streaming response, a menu or inline editor
+		// closing). One Escape peels one layer — don't also close the dialog.
+		if (event.defaultPrevented) return;
 		if (event.key === 'Escape' && closeOnEscape && !persistent) {
 			event.preventDefault();
 			attemptClose();
@@ -403,6 +438,19 @@
 		);
 	}
 
+	// A child can opt into initial focus with `data-autofocus` (e.g. a composer).
+	// Honored only for a fine primary pointer: on touch devices focusing a text
+	// field pops the software keyboard over the dialog the moment it opens.
+	function preferredAutofocusTarget(): HTMLElement | null {
+		if (!modalElement || typeof window.matchMedia !== 'function') return null;
+		if (!window.matchMedia('(pointer: fine)').matches) return null;
+		return (
+			Array.from(modalElement.querySelectorAll<HTMLElement>('[data-autofocus]')).find(
+				(element) => isFocusTargetVisible(element) && !element.matches(':disabled')
+			) ?? null
+		);
+	}
+
 	async function trapFocus() {
 		if (!modalElement) return;
 		const openingElement = modalElement;
@@ -411,8 +459,11 @@
 		if (!isOpen || modalElement !== openingElement) return;
 
 		const focusableElements = visibleFocusableElements();
+		const autofocusTarget = preferredAutofocusTarget();
 
-		if (focusableElements.length === 0) {
+		if (autofocusTarget) {
+			autofocusTarget.focus({ preventScroll: true });
+		} else if (focusableElements.length === 0) {
 			modalElement.focus();
 		} else {
 			focusableElements[0]?.focus();
@@ -461,6 +512,7 @@
 	// ==================== Lifecycle Management ====================
 
 	async function handleModalOpen() {
+		hasOpened = true;
 		if (unlockRafId !== null) {
 			cancelAnimationFrame(unlockRafId);
 			unlockRafId = null;
@@ -603,14 +655,25 @@
 			unlockBodyScroll();
 			scrollLockHeld = false;
 		}
-		restoreFocus();
+		// A parked (keepMounted) dialog already restored focus when it was
+		// hidden; unmounting it later must not yank focus back to the old opener.
+		if (!parked) restoreFocus();
 	});
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
-{#if isOpen}
-	<div use:portal class="modal-root" transition:fade={{ duration: 100 }} role="presentation">
+{#if isOpen || parked}
+	<!-- keepMounted: a parked dialog stays in the DOM (children keep their state)
+	     but is hidden + inert, so it takes no focus, clicks, or scroll lock. -->
+	<div
+		use:portal
+		class="modal-root {parked ? 'modal-root--parked' : ''}"
+		hidden={parked}
+		inert={parked}
+		transition:fade={{ duration: isImmersiveSheet ? 0 : 100 }}
+		role="presentation"
+	>
 		<!--
 			Unified overlay.
 
@@ -628,7 +691,9 @@
 			twice for consumers that count closes (analytics, state cleanup).
 		-->
 		<div
-			class="modal-overlay fixed inset-0 z-[9999] overflow-y-auto bg-black/50 dark:bg-black/70 backdrop-blur-sm"
+			class="modal-overlay fixed inset-0 z-[9999] overflow-y-auto bg-black/50 dark:bg-black/70 {isImmersiveSheet
+				? 'modal-overlay--immersive-sheet sm:backdrop-blur-sm'
+				: 'backdrop-blur-sm'}"
 			onclick={handleOutsideClick}
 			role="presentation"
 		>
@@ -784,10 +849,63 @@
 		}
 	}
 
+	/* Immersive full-screen sheet (presentation="immersive" + bottom-sheet + full).
+	   Phones: transform-only slide on a strong ease-out — the sheet is opaque and
+	   covers the page, so no opacity fade and no backdrop blur; only the dim eases
+	   in behind it. sm+: a subtle scale for the large workspace panel. The root
+	   skips its JS fade for this presentation, so these CSS animations also replay
+	   when a keepMounted (parked) sheet is un-hidden. */
+	@keyframes modal-immersive-sheet-up {
+		from {
+			transform: translateY(100%) translateZ(0);
+		}
+		to {
+			transform: translateY(0) translateZ(0);
+		}
+	}
+
+	@keyframes modal-immersive-scale {
+		from {
+			transform: scale(0.98) translateZ(0);
+			opacity: 0;
+		}
+		to {
+			transform: scale(1) translateZ(0);
+			opacity: 1;
+		}
+	}
+
+	@keyframes modal-backdrop-dim-in {
+		from {
+			background-color: transparent;
+			backdrop-filter: blur(0);
+		}
+	}
+
+	:global(.animate-modal-immersive-sheet) {
+		animation: modal-immersive-sheet-up 280ms cubic-bezier(0.23, 1, 0.32, 1);
+	}
+
+	.modal-overlay--immersive-sheet {
+		animation: modal-backdrop-dim-in 280ms cubic-bezier(0.23, 1, 0.32, 1);
+	}
+
+	@media (min-width: 640px) {
+		:global(.animate-modal-immersive-sheet) {
+			animation: modal-immersive-scale 200ms cubic-bezier(0.23, 1, 0.32, 1);
+		}
+
+		.modal-overlay--immersive-sheet {
+			animation-duration: 200ms;
+		}
+	}
+
 	/* Users with vestibular sensitivities: snap in without animating. */
 	@media (prefers-reduced-motion: reduce) {
 		:global(.animate-modal-slide-up),
-		:global(.animate-modal-scale) {
+		:global(.animate-modal-scale),
+		:global(.animate-modal-immersive-sheet),
+		.modal-overlay--immersive-sheet {
 			animation: none;
 		}
 
@@ -859,13 +977,18 @@
 		position: relative;
 	}
 
+	/* keepMounted dialog while closed: out of layout, focus order, and a11y tree. */
+	.modal-root--parked {
+		display: none !important;
+	}
+
 	.modal-content {
 		/* Contain scroll within modal content */
 		overscroll-behavior: contain;
 	}
 
-	/* Lock body scroll when modal is open */
-	:global(body:has(.modal-root)) {
+	/* Lock body scroll when modal is open (a parked keepMounted root doesn't count) */
+	:global(body:has(.modal-root:not(.modal-root--parked))) {
 		overflow: hidden;
 	}
 

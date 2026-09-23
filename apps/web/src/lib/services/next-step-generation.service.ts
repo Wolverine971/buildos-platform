@@ -55,6 +55,7 @@ interface GoalData {
 	id: string;
 	name: string;
 	type_key: string | null;
+	state_key: string | null;
 	props: Record<string, unknown> | null;
 }
 
@@ -68,6 +69,7 @@ interface MilestoneData {
 	id: string;
 	title: string;
 	due_at: string | null;
+	state_key: string | null;
 	props: Record<string, unknown> | null;
 }
 
@@ -149,6 +151,11 @@ Rules:
 
 const NEXT_STEP_MODEL_CANDIDATES = PROJECT_NEXT_STEP_MODELS;
 
+/** task_state enum values that still represent open work. */
+const OPEN_TASK_STATES = ['todo', 'in_progress', 'blocked'] as const;
+/** onto_tasks.priority: 1 = Critical, 2 = High (see ONTO_TASK_PRIORITY_LABELS). */
+const HIGH_PRIORITY_MAX = 2;
+
 function createNextStepLLMClient(): NextStepLLMClient {
 	return new OpenRouterV2Service({
 		httpReferer: 'https://build-os.com',
@@ -166,7 +173,8 @@ function createNextStepLLMClient(): NextStepLLMClient {
 export async function generateProjectNextStep(
 	supabase: SupabaseClient<Database>,
 	projectId: string,
-	userId: string
+	userId: string,
+	options: { llmClient?: NextStepLLMClient } = {}
 ): Promise<GenerationResult> {
 	try {
 		// 1. Fetch all project context
@@ -181,7 +189,8 @@ export async function generateProjectNextStep(
 		// 3. Call LLM for generation
 		const llmResponse = await generateNextStepRecommendationFromPrompt(userPrompt, {
 			userId,
-			projectId
+			projectId,
+			llmClient: options.llmClient
 		});
 		if (!llmResponse) {
 			return { success: false, error: 'Failed to generate recommendation' };
@@ -253,33 +262,42 @@ async function fetchProjectContext(
 		recentCompletedResult,
 		recentActivityResult
 	] = await Promise.all([
+		// Open work only. Priority 1 is Critical (ONTO_TASK_PRIORITY_LABELS), so the
+		// most important tasks sort first ascending; done work comes from the
+		// recent-completed query below.
 		supabase
 			.from('onto_tasks')
 			.select('id, title, state_key, priority, due_at, props, completed_at, updated_at')
 			.eq('project_id', projectId)
-			.order('priority', { ascending: false, nullsFirst: false })
+			.is('deleted_at', null)
+			.in('state_key', [...OPEN_TASK_STATES])
+			.order('priority', { ascending: true, nullsFirst: false })
 			.order('due_at', { ascending: true, nullsFirst: false })
 			.limit(20),
 		supabase
 			.from('onto_goals')
-			.select('id, name, type_key, props')
+			.select('id, name, type_key, state_key, props')
 			.eq('project_id', projectId)
+			.is('deleted_at', null)
 			.limit(10),
 		supabase
 			.from('onto_plans')
 			.select('id, name, state_key')
 			.eq('project_id', projectId)
+			.is('deleted_at', null)
 			.limit(10),
 		supabase
 			.from('onto_milestones')
-			.select('id, title, due_at, props')
+			.select('id, title, due_at, state_key, props')
 			.eq('project_id', projectId)
+			.is('deleted_at', null)
 			.order('due_at', { ascending: true })
 			.limit(10),
 		supabase
 			.from('onto_tasks')
 			.select('id, title, state_key, priority, due_at, props, completed_at, updated_at')
 			.eq('project_id', projectId)
+			.is('deleted_at', null)
 			.not('completed_at', 'is', null)
 			.order('completed_at', { ascending: false })
 			.limit(8),
@@ -406,7 +424,6 @@ function buildAnalysisPrompt(context: GenerationContext): string {
 	}
 
 	// Categorize tasks
-	const completedTasks = tasks.filter((t) => isCompletedState(t.state_key));
 	const activeTasks = tasks.filter((t) => isActiveState(t.state_key));
 	const pendingTasks = tasks.filter(
 		(t) => !isCompletedState(t.state_key) && !isActiveState(t.state_key)
@@ -425,14 +442,14 @@ function buildAnalysisPrompt(context: GenerationContext): string {
 		return daysUntilDue >= 0 && daysUntilDue <= 7;
 	});
 
-	// High priority tasks
+	// High priority tasks: 1 = Critical, 2 = High on the onto_tasks scale.
 	const highPriorityTasks = tasks.filter(
-		(t) => t.priority !== null && t.priority >= 3 && !isCompletedState(t.state_key)
+		(t) =>
+			t.priority !== null && t.priority <= HIGH_PRIORITY_MAX && !isCompletedState(t.state_key)
 	);
 
 	// Build tasks section
-	prompt += `\n## Tasks (${tasks.length} total)\n`;
-	prompt += `- Completed: ${completedTasks.length}\n`;
+	prompt += `\n## Open Tasks (${tasks.length} shown)\n`;
 	prompt += `- Active/In Progress: ${activeTasks.length}\n`;
 	prompt += `- Pending/Not Started: ${pendingTasks.length}\n`;
 
@@ -483,7 +500,6 @@ function buildAnalysisPrompt(context: GenerationContext): string {
 	// Goals section
 	if (goals.length > 0) {
 		prompt += `\n## Goals (${goals.length})\n`;
-		// Goals don't have state_key, check props for state or treat all as active
 		const activeGoals = goals.filter((g) => !isCompletedGoal(g));
 		const completedGoals = goals.filter((g) => isCompletedGoal(g));
 		prompt += `- Active: ${activeGoals.length}, Completed: ${completedGoals.length}\n`;
@@ -509,7 +525,7 @@ function buildAnalysisPrompt(context: GenerationContext): string {
 
 	// Summary section for LLM to consider
 	prompt += `\n## Analysis Summary\n`;
-	prompt += `- Total tasks: ${tasks.length}, Completed: ${completedTasks.length} (${Math.round((completedTasks.length / Math.max(tasks.length, 1)) * 100)}%)\n`;
+	prompt += `- Open tasks shown: ${tasks.length}\n`;
 	prompt += `- Overdue items: ${overdueTasks.length}\n`;
 	prompt += `- High priority pending: ${highPriorityTasks.length}\n`;
 	prompt += `- Active goals: ${goals.filter((g) => !isCompletedGoal(g)).length}\n`;
@@ -773,29 +789,16 @@ function isActiveState(state: string): boolean {
 	return activeStates.includes(state?.toLowerCase() || '');
 }
 
-/**
- * Check if a goal is completed by looking at props.state or props.status
- */
+/** goal_state enum: draft | active | achieved | abandoned. */
 function isCompletedGoal(goal: GoalData): boolean {
-	if (!goal.props) return false;
-	const state = (goal.props.state as string) || (goal.props.status as string) || '';
-	return isCompletedState(state);
+	return goal.state_key === 'achieved' || goal.state_key === 'abandoned';
 }
 
-/**
- * Get the display state for a goal from props
- */
 function getGoalState(goal: GoalData): string | null {
-	if (!goal.props) return null;
-	const state = (goal.props.state as string) || (goal.props.status as string);
-	return state ? formatState(state) : null;
+	return goal.state_key ? formatState(goal.state_key) : null;
 }
 
-/**
- * Check if a milestone is completed by looking at props.state or props.status
- */
+/** milestone_state enum: pending | in_progress | completed | missed. */
 function isCompletedMilestone(milestone: MilestoneData): boolean {
-	if (!milestone.props) return false;
-	const state = (milestone.props.state as string) || (milestone.props.status as string) || '';
-	return isCompletedState(state);
+	return milestone.state_key === 'completed' || milestone.state_key === 'missed';
 }

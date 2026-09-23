@@ -1,4 +1,6 @@
 // apps/worker/tests/briefAudioSynthesis.test.ts
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -119,5 +121,19 @@ describe('brief audio synthesis provider routing', () => {
 		await expect(synthesizeBriefAudioForWorker('brief text', 120_000)).rejects.toThrow(
 			'OpenRouter TTS failed first: Model does not exist; Kokoro fallback failed: Audio synthesis timed out after 120000ms'
 		);
+	});
+});
+
+// The child registers IPC handlers at import, so it cannot be loaded inside a
+// vitest worker; assert the flush-before-exit contract on its source instead.
+describe('brief audio synthesis child process', () => {
+	const source = readFileSync(
+		resolve(__dirname, '../src/workers/briefAudio/audioSynthesisChild.ts'),
+		'utf8'
+	);
+
+	it('exits only from the IPC send callback so a large MP3 payload is not truncated', () => {
+		expect(source).toContain('process.send(response, (error: Error | null) =>');
+		expect(source).not.toMatch(/sendResponse\([\s\S]*?\);\s*process\.exit\(/);
 	});
 });

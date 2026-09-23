@@ -83,11 +83,12 @@ describe('applyFinalizationGuard', () => {
 		expect(guard).toEqual({ text: "I'll create that milestone now.", applied: false });
 	});
 
-	it('keeps the production task-creation answer unchanged after successful writes', () => {
-		// Production misfire: "I completed the requested change." was appended
-		// under a correct report of the tasks the ledger shows were created.
+	it('keeps a task-creation report that closes with an offer after successful writes', () => {
+		// The removed wording check read the closing "Let me know…" as a lead-in
+		// and replaced this correct report of the two created tasks with "I
+		// completed 2 requested changes." The ledger shows nothing outstanding.
 		const text =
-			'Added these tasks:\n\n**Book the first 3 guests** — todo\n\n**Record the trailer** — todo\n\nWant me to set due dates or priorities on any of these?';
+			'Added these tasks:\n\n- **Book the first 3 guests** — todo.\n- **Record the trailer** — todo.\n\nLet me know if you want due dates or priorities on any of these.';
 		const guests = toolCall('create_onto_task', { title: 'Book the first 3 guests' }, 'c1');
 		const trailer = toolCall('create_onto_task', { title: 'Record the trailer' }, 'c2');
 		const guard = applyFinalizationGuard({
@@ -112,7 +113,7 @@ describe('applyFinalizationGuard', () => {
 		});
 
 		expect(guard).toEqual({ text, applied: false });
-		expect(guard.text).not.toContain('I completed the requested change.');
+		expect(guard.text).not.toContain('I completed');
 	});
 
 	it('does not rewrite a useful final answer', () => {
@@ -620,13 +621,16 @@ describe('applyFinalizationGuard', () => {
 			};
 		};
 
-		it('keeps the production read-only exact-match answer unchanged', () => {
+		it('keeps a read-only exact-match answer that closes with an offer', () => {
+			// The removed wording check read the closing "Let me know…" as a lead-in
+			// and replaced the whole answer with "I gathered context…".
+			const text = `${EXACT_MATCH_ANSWER}\n\nLet me know if you want me to change its state.`;
 			const guard = applyFinalizationGuard({
-				finalAssistantText: EXACT_MATCH_ANSWER,
-				assistantText: EXACT_MATCH_ANSWER,
+				finalAssistantText: text,
+				assistantText: text,
 				toolExecutions: [partnershipSearch()]
 			});
-			expect(guard).toEqual({ text: EXACT_MATCH_ANSWER, applied: false });
+			expect(guard).toEqual({ text, applied: false });
 		});
 
 		it('keeps the answer when the streamed text opens with a pre-tool lead-in', () => {

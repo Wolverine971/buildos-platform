@@ -72,7 +72,9 @@ export class AgenticChatEffectExecutionError extends Error {
 			'permanent' | 'cancelled' | 'uncertain_external_commit'
 		>,
 		readonly effectId: string,
-		message: string
+		message: string,
+		/** The adapter's structured failure code, when an adapter failure caused this. */
+		readonly failureCode: string | null = null
 	) {
 		super(message);
 		this.name = 'AgenticChatEffectExecutionError';
@@ -189,7 +191,8 @@ export class AgenticChatMutationExecutor {
 			throw new AgenticChatEffectExecutionError(
 				targetState === 'uncertain' ? 'uncertain_external_commit' : 'permanent',
 				stableIdentity.effectId,
-				outcome.message
+				outcome.message,
+				outcome.failureCode
 			);
 		}
 

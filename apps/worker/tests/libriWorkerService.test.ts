@@ -20,6 +20,7 @@ import {
 	LibriWorkerBootstrap,
 	type LibriWorkerBootstrapHealth
 } from '../src/workers/libri/bootstrap';
+import { LibriMaintenanceConsumer } from '../src/workers/libri/maintenanceConsumer';
 
 const TEST_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const WORKER_DIRECTORY = resolve(TEST_DIRECTORY, '..');
@@ -471,8 +472,31 @@ describe('dedicated Libri worker service', () => {
 			openRouterApiKey: 'openrouter-key',
 			model: 'openai/gpt-4.1-mini',
 			maxOutputTokens: 2_048,
-			reservedMicrousd: 50_000n
+			reservedMicrousd: 50_000n,
+			consumer: {
+				workerTimeoutMs: 110_000,
+				leaseDurationMs: 120_000,
+				heartbeatIntervalMs: 20_000
+			}
 		});
+		// The OCR timing must satisfy the consumer's own lease invariants.
+		expect(
+			() =>
+				new LibriMaintenanceConsumer({
+					lifecycle: {} as never,
+					processor: { execute: async () => undefined },
+					workerId: 'libri-worker:test',
+					claimQueueTypes: ['libri_ingest'],
+					config: {
+						concurrency: 1,
+						...loadLibriOcrRuntimeConfig(ocrEnvironment).consumer
+					}
+				})
+		).not.toThrow();
+		expect(
+			loadLibriOcrRuntimeConfig({ ...ocrEnvironment, LIBRI_OCR_WORKER_TIMEOUT_MS: '90000' })
+				.consumer.workerTimeoutMs
+		).toBe(90_000);
 		expect(() =>
 			loadLibriOcrRuntimeConfig({
 				...ocrEnvironment,

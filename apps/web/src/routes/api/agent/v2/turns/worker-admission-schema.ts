@@ -108,7 +108,12 @@ const temporaryAttachmentSchema = z
 	);
 export const workerAdmissionRequestSchema = z
 	.object({
-		leaseToken: canonicalText(8 * 1024),
+		// Sent only by older bundles that still negotiate /transport first. When
+		// absent, admission resolves the transport decision inline.
+		leaseToken: canonicalText(8 * 1024)
+			.nullable()
+			.optional()
+			.default(null),
 		clientTurnId: canonicalText(256),
 		streamRunId: canonicalText(256),
 		sessionId: nullableUuid.optional().default(null),

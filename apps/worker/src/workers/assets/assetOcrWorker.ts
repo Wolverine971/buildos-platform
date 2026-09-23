@@ -9,6 +9,7 @@ import {
 	shouldPreserveManualExtractedText
 } from '@buildos/shared-types';
 import { logWorkerError } from '../../lib/errorLogger';
+import { PermanentQueueError } from '../../lib/queueErrors';
 import { supabase } from '../../lib/supabase';
 import type { LegacyJob } from '../shared/jobAdapter';
 
@@ -64,7 +65,8 @@ function trimToLimit(text: string, maxLength: number): string {
 
 async function extractOcrFromImageUrl(imageUrl: string): Promise<OcrOutput> {
 	if (!OCR_API_KEY) {
-		throw new Error(
+		throw new PermanentQueueError(
+			'asset_ocr_missing_api_key',
 			'Missing PRIVATE_OPENROUTER_API_KEY (or an OpenAI key fallback) for asset OCR'
 		);
 	}
@@ -127,23 +129,39 @@ async function extractOcrFromImageUrl(imageUrl: string): Promise<OcrOutput> {
 		typeof output.extracted_text === 'string' ? output.extracted_text.trim() : '';
 	const summary = typeof output.summary === 'string' ? output.summary.trim() : '';
 
-	if (!extractedText) {
-		throw new Error('OCR model returned no extracted text');
-	}
-
+	// An image with no readable text is a valid result, not a failure: retrying
+	// would repeat the same paid vision call for the same empty answer.
 	return {
 		extracted_text: trimToLimit(extractedText, 100000),
-		summary: trimToLimit(summary || 'Image with extracted text', 1000),
+		summary: trimToLimit(
+			summary ||
+				(extractedText ? 'Image with extracted text' : 'Image with no readable text'),
+			1000
+		),
 		confidence: typeof output.confidence === 'number' ? output.confidence : undefined,
 		language: typeof output.language === 'string' ? output.language : undefined
 	};
 }
 
 async function markFailed(params: { assetId: string; message: string }): Promise<void> {
-	await supabase
+	const { error } = await supabase
 		.from('onto_assets')
 		.update(buildAssetOcrFailedUpdate(params.message))
 		.eq('id', params.assetId);
+	if (error) {
+		console.error(`[AssetOCR] Failed to mark asset ${params.assetId} failed: ${error.message}`);
+	}
+}
+
+async function updateAsset(
+	assetId: string,
+	payload: Database['public']['Tables']['onto_assets']['Update'],
+	action: string
+): Promise<void> {
+	const { error } = await supabase.from('onto_assets').update(payload).eq('id', assetId);
+	if (error) {
+		throw new Error(`Failed to ${action} for asset ${assetId}: ${error.message}`);
+	}
 }
 
 export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
@@ -161,8 +179,11 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 			.eq('id', assetId)
 			.maybeSingle();
 
-		if (fetchError || !fetched) {
-			throw new Error(fetchError?.message || 'Asset not found');
+		if (fetchError) {
+			throw new Error(fetchError.message);
+		}
+		if (!fetched) {
+			throw new PermanentQueueError('asset_not_found', 'Asset not found');
 		}
 
 		asset = fetched;
@@ -172,26 +193,29 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 		}
 
 		if (!String(asset.content_type || '').startsWith('image/')) {
-			await supabase
-				.from('onto_assets')
-				.update(buildAssetOcrSkippedUpdate('Non-image asset'))
-				.eq('id', assetId);
+			await updateAsset(
+				assetId,
+				buildAssetOcrSkippedUpdate('Non-image asset'),
+				'mark skipped'
+			);
 			return { success: true, assetId, skipped: true, reason: 'non_image' };
 		}
 
 		if (shouldPreserveManualExtractedText(asset, forceOverwrite)) {
-			await supabase
-				.from('onto_assets')
-				.update(buildAssetOcrManualPreservedUpdate())
-				.eq('id', assetId);
+			await updateAsset(
+				assetId,
+				buildAssetOcrManualPreservedUpdate(),
+				'preserve manual text'
+			);
 			return { success: true, assetId, skipped: true, reason: 'manual_preserved' };
 		}
 
 		const processingAt = new Date().toISOString();
-		await supabase
-			.from('onto_assets')
-			.update(buildAssetOcrProcessingUpdate(processingAt))
-			.eq('id', assetId);
+		await updateAsset(
+			assetId,
+			buildAssetOcrProcessingUpdate(processingAt),
+			'mark OCR processing'
+		);
 
 		stage = 'signed_url';
 		const { data: signedData, error: signedError } = await supabase.storage
@@ -207,7 +231,9 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 
 		stage = 'persist';
 		const now = new Date().toISOString();
-		await supabase
+		// Fenced on ocr_version: a manual text save during the OCR call bumps it,
+		// and the user's text must win over this machine result.
+		const { data: persisted, error: persistError } = await supabase
 			.from('onto_assets')
 			.update(
 				buildAssetOcrCompleteUpdate({
@@ -221,7 +247,16 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 					nowIso: now
 				})
 			)
-			.eq('id', assetId);
+			.eq('id', assetId)
+			.eq('ocr_version', asset.ocr_version)
+			.select('id')
+			.maybeSingle();
+		if (persistError) {
+			throw new Error(`Failed to persist OCR result: ${persistError.message}`);
+		}
+		if (!persisted) {
+			return { success: true, assetId, skipped: true, reason: 'superseded_by_manual_edit' };
+		}
 
 		return {
 			success: true,

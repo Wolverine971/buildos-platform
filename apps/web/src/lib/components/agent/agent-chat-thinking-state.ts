@@ -56,10 +56,20 @@ export function upsertWorkerThinkingBlock(
 				: priorGenerationIndex >= 0
 					? priorGenerationIndex
 					: messages.length;
+	// Keep the on-screen identity of whatever block this replaces, so keyed
+	// renderers update the block in place instead of remounting it (no twitch
+	// when the worker claims the turn or starts a new generation).
+	const inheritedRenderKey =
+		(provisionalIndex >= 0 ? messages[provisionalIndex]?.renderKey : undefined) ??
+		(priorGenerationIndex >= 0 ? messages[priorGenerationIndex]?.renderKey : undefined) ??
+		(provisionalIndex >= 0 ? messages[provisionalIndex]?.id : undefined) ??
+		(priorGenerationIndex >= 0 ? messages[priorGenerationIndex]?.id : undefined);
 	const blockToInsert =
 		existingCanonicalIndex >= 0
 			? (messages[existingCanonicalIndex] as ThinkingBlockMessage)
-			: workerBlock;
+			: inheritedRenderKey && !workerBlock.renderKey
+				? { ...workerBlock, renderKey: inheritedRenderKey }
+				: workerBlock;
 
 	const nextMessages: UIMessage[] = [];
 	for (let index = 0; index < messages.length; index += 1) {

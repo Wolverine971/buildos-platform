@@ -29,6 +29,8 @@
 		displayContextSubtitle: string;
 		isStreaming: boolean;
 		showBackButton: boolean;
+		/** Disable Back without hiding it (e.g. while a session is loading). */
+		backDisabled?: boolean;
 		onBack: () => void;
 		onClose?: () => void;
 		/** Park the chat into the notification stack (keeps the session + any in-flight turn alive). */
@@ -58,6 +60,7 @@
 		displayContextSubtitle,
 		isStreaming,
 		showBackButton,
+		backDisabled = false,
 		onBack,
 		onClose,
 		onMinimize,
@@ -197,18 +200,32 @@
 		}
 	});
 
-	// Horizontal collapse for the back button: when it's removed (e.g. once a chat
-	// is underway) it shrinks its width + the parent gap to nothing instead of
-	// snapping away, so the title slides left into the reclaimed space.
+	// Horizontal collapse for header controls: when the back button is removed
+	// (e.g. once a chat is underway) it shrinks its width + the parent gap to
+	// nothing instead of snapping away, so the title slides left into the
+	// reclaimed space. Run in reverse it's the minimize button's entrance, so it
+	// grows in rather than popping into the right-hand cluster.
 	function collapseX(node: HTMLElement, { duration = 220 } = {}) {
 		const width = node.offsetWidth;
-		const gap = 8; // parent uses gap-2 (0.5rem)
+		// Read the parent's real gap (gap-2 on the left group, gap-1.5 sm:gap-2
+		// on the right cluster) so the neighbors don't jump at either end.
+		const parentGap = node.parentElement
+			? Number.parseFloat(getComputedStyle(node.parentElement).columnGap)
+			: Number.NaN;
+		const gap = Number.isFinite(parentGap) ? parentGap : 8;
+		const marginSide = node.nextElementSibling ? 'margin-right' : 'margin-left';
+		const reduceMotion =
+			typeof window.matchMedia === 'function' &&
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		return {
-			duration,
+			duration: reduceMotion ? 0 : duration,
 			easing: cubicOut,
+			// overflow lives in the keyframes, so it clips only while animating
+			// and never clips the button's focus ring at rest.
 			css: (t: number) => `
+				overflow: hidden;
 				width: ${t * width}px;
-				margin-right: ${(t - 1) * gap}px;
+				${marginSide}: ${(t - 1) * gap}px;
 				opacity: ${t};
 				transform: scale(${0.9 + 0.1 * t});
 			`
@@ -339,7 +356,8 @@
 				type="button"
 				class="inline-flex h-11 w-11 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				onclick={onBack}
-				disabled={isStreaming}
+				disabled={isStreaming || backDisabled}
+				aria-disabled={isStreaming || backDisabled ? 'true' : undefined}
 				aria-label="Go back"
 			>
 				<ArrowLeft class="h-4 w-4" />
@@ -613,17 +631,21 @@
 			</div>
 		{/if}
 
-		<!-- INKPRINT minimize button — parks the chat into the notification stack -->
+		<!-- INKPRINT minimize button — parks the chat into the notification stack.
+		     Grows in (and collapses out) like the back button, so the cluster never
+		     jumps when the first message makes the chat minimizable. -->
 		{#if onMinimize}
-			<button
-				type="button"
-				onclick={onMinimize}
-				class="flex h-11 w-11 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				aria-label="Minimize chat"
-				title="Minimize — keeps working in the background"
-			>
-				<ChevronDown class="h-4 w-4" />
-			</button>
+			<div class="shrink-0" transition:collapseX>
+				<button
+					type="button"
+					onclick={onMinimize}
+					class="flex h-11 w-11 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					aria-label="Minimize chat"
+					title="Minimize — keeps working in the background"
+				>
+					<ChevronDown class="h-4 w-4" />
+				</button>
+			</div>
 		{/if}
 
 		<!-- INKPRINT close button -->

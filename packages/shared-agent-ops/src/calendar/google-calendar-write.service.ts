@@ -594,10 +594,16 @@ export class GoogleCalendarWriteService {
 		start: Date;
 		end: Date;
 		timeZone?: string;
+		/**
+		 * Calendar dates for an all-day event (`YYYY-MM-DD`, end exclusive). When
+		 * set, Google receives `{ date }` instead of a timed `{ dateTime }` span.
+		 */
+		allDayDates?: { start: string; end: string } | null;
 		colorId?: string;
 		recurrence?: string[];
 		ontoEventId?: string;
 	}): Promise<GoogleCalendarWriteResult> {
+		const allDay = params.allDayDates ?? null;
 		return this.createEvent({
 			userId: params.userId,
 			selector: params.selector,
@@ -605,8 +611,12 @@ export class GoogleCalendarWriteService {
 			requestBody: {
 				summary: params.summary,
 				description: params.description,
-				start: { dateTime: params.start.toISOString(), timeZone: params.timeZone },
-				end: { dateTime: params.end.toISOString(), timeZone: params.timeZone },
+				start: allDay
+					? { date: allDay.start }
+					: { dateTime: params.start.toISOString(), timeZone: params.timeZone },
+				end: allDay
+					? { date: allDay.end }
+					: { dateTime: params.end.toISOString(), timeZone: params.timeZone },
 				colorId: params.colorId,
 				recurrence: params.recurrence
 			}

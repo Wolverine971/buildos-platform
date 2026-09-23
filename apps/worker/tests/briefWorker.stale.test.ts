@@ -160,6 +160,7 @@ vi.mock('@buildos/shared-utils', () => ({
 }));
 
 import { processBriefJob } from '../src/workers/brief/briefWorker';
+import { PermanentQueueError } from '../src/lib/queueErrors';
 import type { BriefJobData } from '../src/workers/shared/queueUtils';
 import type { LegacyJob } from '../src/workers/shared/jobAdapter';
 
@@ -658,6 +659,73 @@ describe('processBriefJob stale daily brief guard', () => {
 		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalled();
 		expect(mocks.mockCreateServiceClient).not.toHaveBeenCalled();
 		errorLog.mockRestore();
+	});
+
+	it('keeps failure effects quiet while the queue still has retries left', async () => {
+		mocks.mockGenerateOntologyDailyBrief.mockRejectedValueOnce(
+			new Error('transient generation failure')
+		);
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+		job.attemptsMade = 1;
+		job.maxAttempts = 3;
+
+		await expect(processBriefJob(job)).rejects.toThrow('transient generation failure');
+
+		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalledWith(
+			'user-1',
+			'brief_failed',
+			expect.anything()
+		);
+		expect(mocks.mockRpc).not.toHaveBeenCalledWith(
+			'emit_notification_event',
+			expect.objectContaining({ p_event_type: 'brief.failed' })
+		);
+	});
+
+	it('announces the failure on the last attempt or a permanent error', async () => {
+		const lastAttempt = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+		lastAttempt.attemptsMade = 2;
+		lastAttempt.maxAttempts = 3;
+		mocks.mockGenerateOntologyDailyBrief.mockRejectedValueOnce(new Error('still failing'));
+
+		await expect(processBriefJob(lastAttempt)).rejects.toThrow('still failing');
+
+		expect(mocks.mockBroadcastUserEvent).toHaveBeenCalledWith(
+			'user-1',
+			'brief_failed',
+			expect.objectContaining({ error: 'still failing' })
+		);
+		expect(mocks.mockRpc).toHaveBeenCalledWith(
+			'emit_notification_event',
+			expect.objectContaining({ p_event_type: 'brief.failed' })
+		);
+
+		vi.clearAllMocks();
+		const firstAttempt = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+		firstAttempt.maxAttempts = 3;
+		mocks.mockGenerateOntologyDailyBrief.mockRejectedValueOnce(
+			new PermanentQueueError('bad_input', 'cannot succeed')
+		);
+
+		await expect(processBriefJob(firstAttempt)).rejects.toThrow('cannot succeed');
+
+		expect(mocks.mockBroadcastUserEvent).toHaveBeenCalledWith(
+			'user-1',
+			'brief_failed',
+			expect.objectContaining({ error: 'cannot succeed' })
+		);
 	});
 
 	it('stops before domain reads or provider work when queue ownership is already aborted', async () => {

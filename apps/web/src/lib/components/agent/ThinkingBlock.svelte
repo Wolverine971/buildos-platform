@@ -99,6 +99,23 @@
 		`${displayedActivityCount} ${displayedActivityCount === 1 ? 'action' : 'actions'}`
 	);
 
+	// Live status crossfade for the compact active header. The modal rewrites
+	// `block.content` as the turn moves ("Thinking…", "Writing the response…",
+	// tool phases); the outgoing line stays stacked under the incoming one just
+	// long enough to fade out, so the swap reads as one soft change. Plain
+	// closure state: it only records the value this derived already saw.
+	let statusHistory: { current: string; previous: string | null } = {
+		current: '',
+		previous: null
+	};
+	const liveStatus = $derived.by(() => {
+		const next = compactDetail;
+		if (next !== statusHistory.current) {
+			statusHistory = { current: next, previous: statusHistory.current || null };
+		}
+		return statusHistory;
+	});
+
 	// INKPRINT activity styles. Lucide icons (not emoji) so they theme with the
 	// Inkprint color tokens and render identically across platforms, matching
 	// the icon language of the sibling tabs/header surfaces.
@@ -205,7 +222,7 @@
 					{:else}
 						<span class="thinking-compact-icon" aria-hidden="true">
 							{#if showAnimatedHammer}
-								<span class="glowing-hammer">⚒</span>
+								<span class="thinking-hammer">⚒</span>
 							{:else if block.status === 'completed'}
 								<Check class="h-3.5 w-3.5 text-success" />
 							{:else if block.status === 'error'}
@@ -215,10 +232,8 @@
 							{/if}
 						</span>
 					{/if}
-					{#if showAnimatedHammer}
-						{#if hasDisplayedActivities}
-							<span class="glowing-hammer shrink-0" aria-hidden="true">⚒</span>
-						{/if}
+					{#if showAnimatedHammer && hasDisplayedActivities}
+						<span class="thinking-hammer shrink-0" aria-hidden="true">⚒</span>
 					{/if}
 
 					<span
@@ -239,6 +254,23 @@
 							<span></span>
 							<span></span>
 						</span>
+						{#if !hasDisplayedActivities}
+							<span class="thinking-status" data-testid="thinking-live-status">
+								{#key liveStatus.current}
+									<span class="thinking-status-text thinking-status-in"
+										>{liveStatus.current}</span
+									>
+								{/key}
+								{#if liveStatus.previous !== null}
+									{#key liveStatus.previous}
+										<span
+											class="thinking-status-text thinking-status-out"
+											aria-hidden="true">{liveStatus.previous}</span
+										>
+									{/key}
+								{/if}
+							</span>
+						{/if}
 					{:else if !hasDisplayedActivities}
 						<span class="thinking-compact-detail truncate">{compactDetail}</span>
 					{/if}
@@ -415,7 +447,6 @@
 		max-width: 100%;
 		border-radius: 0.5rem;
 		transition:
-			border-radius 260ms ease,
 			border-color 180ms ease,
 			box-shadow 220ms ease,
 			background 220ms ease;
@@ -457,8 +488,7 @@
 		text-align: left;
 		transition:
 			background 180ms ease,
-			border-color 180ms ease,
-			border-radius 220ms ease;
+			border-color 180ms ease;
 	}
 
 	.thinking-header:hover:not(:disabled) {
@@ -530,6 +560,52 @@
 		min-width: 0;
 		color: hsl(var(--muted-foreground));
 		font-size: 0.68rem;
+	}
+
+	/* Incoming and outgoing status lines share one grid cell (no layout shift);
+	   only opacity animates, so the crossfade stays on the compositor. */
+	.thinking-status {
+		display: inline-grid;
+		grid-template-columns: minmax(0, 1fr);
+		flex: 0 1 auto;
+		min-width: 0;
+	}
+
+	.thinking-status-text {
+		grid-area: 1 / 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.68rem;
+	}
+
+	.thinking-status-in {
+		animation: thinking-status-in 180ms ease-out both;
+	}
+
+	.thinking-status-out {
+		pointer-events: none;
+		animation: thinking-status-out 180ms ease-in both;
+	}
+
+	@keyframes thinking-status-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	@keyframes thinking-status-out {
+		from {
+			opacity: 1;
+		}
+		to {
+			opacity: 0;
+		}
 	}
 
 	.thinking-dots {
@@ -653,48 +729,28 @@
 		background: hsl(var(--accent));
 	}
 
-	/* Glowing hammer animation for active thinking state */
-	@keyframes pulse-glow {
+	/* Active-thinking hammer: one opacity + rotate pulse. Both properties are
+	   compositor-only; the old infinite shadow glow repainted the glyph every
+	   frame for the whole turn. */
+	@keyframes thinking-hammer-pulse {
 		0%,
 		100% {
-			text-shadow:
-				0 0 2px currentColor,
-				0 0 4px currentColor;
 			opacity: 1;
-		}
-		50% {
-			text-shadow:
-				0 0 6px currentColor,
-				0 0 12px currentColor,
-				0 0 18px currentColor;
-			opacity: 0.9;
-		}
-	}
-
-	@keyframes rotate-sway {
-		0%,
-		100% {
 			transform: rotate(-8deg);
 		}
 		50% {
+			opacity: 0.55;
 			transform: rotate(8deg);
 		}
 	}
 
-	.glowing-hammer {
-		animation:
-			pulse-glow 2s ease-in-out infinite,
-			rotate-sway 3s ease-in-out infinite;
+	.thinking-hammer {
+		animation: thinking-hammer-pulse 2.4s ease-in-out infinite;
 		display: inline-block;
-		text-shadow: 0 0 0 currentColor;
 		/* Use symbol fonts for bare/terminal-style emoji rendering */
 		font-family: 'Segoe UI Symbol', 'Noto Sans Symbols', 'Symbola', monospace, sans-serif;
 		font-size: 0.8rem;
 		line-height: 1;
-		color: hsl(var(--accent));
-	}
-
-	:global(.dark) .glowing-hammer {
 		color: hsl(var(--accent));
 	}
 
@@ -703,9 +759,14 @@
 			animation: none;
 		}
 
-		.glowing-hammer,
-		.thinking-dots span {
+		.thinking-hammer,
+		.thinking-dots span,
+		.thinking-status-in {
 			animation: none;
+		}
+
+		.thinking-status-out {
+			display: none;
 		}
 
 		.thinking-log-chevron {

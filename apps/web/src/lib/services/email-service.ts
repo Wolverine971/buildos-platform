@@ -780,13 +780,26 @@ ${unsubscribeUrl}${this.getPostalAddressText()}`;
 				return emailId;
 			}
 
-			const { data: emailInsert } = await this.supabase
-				.from('emails')
-				.insert(baseRecord)
-				.select('id')
-				.single();
-
-			const newEmailId = emailInsert?.id || null;
+			// The message is already sent, so a failed log row must not surface as a
+			// missing id (callers treat that as a failed send and re-send). Use a
+			// client id so one retry is idempotent even if the first insert landed.
+			const plannedEmailId = randomUUID();
+			let newEmailId: string | null = null;
+			for (let attempt = 0; attempt < 2 && !newEmailId; attempt++) {
+				const { data: emailInsert, error: insertError } = await this.supabase
+					.from('emails')
+					.insert({ ...baseRecord, id: plannedEmailId })
+					.select('id')
+					.single();
+				if (!insertError) {
+					newEmailId = emailInsert?.id || plannedEmailId;
+				} else if (insertError.code === '23505') {
+					// Duplicate key: the earlier attempt was committed.
+					newEmailId = plannedEmailId;
+				} else if (attempt === 1) {
+					throw insertError;
+				}
+			}
 
 			if (newEmailId) {
 				await this.persistRecipient(newEmailId, {

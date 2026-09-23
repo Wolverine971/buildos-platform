@@ -105,45 +105,4 @@ describe('Progressive Disclosure Flow', () => {
 			expect(result.error).toContain('Invalid JSON');
 		});
 	});
-
-	describe('Context Evolution', () => {
-		it('progresses from broad to specific tool calls', () => {
-			const calls: ChatToolCall[] = [
-				{
-					id: 'evolution-1',
-					type: 'function',
-					function: {
-						name: 'search_onto_projects',
-						arguments: JSON.stringify({ search_term: 'website' })
-					}
-				},
-				{
-					id: 'evolution-2',
-					type: 'function',
-					function: {
-						name: 'get_onto_project_details',
-						arguments: JSON.stringify({ project_id: 'proj-website' })
-					}
-				},
-				{
-					id: 'evolution-3',
-					type: 'function',
-					function: {
-						name: 'list_onto_tasks',
-						arguments: JSON.stringify({
-							project_id: 'proj-website',
-							state_key: 'in_progress'
-						})
-					}
-				}
-			];
-
-			expect(calls[0]!.function.name).toBe('search_onto_projects');
-			expect(calls[1]!.function.name).toBe('get_onto_project_details');
-			expect(calls[2]!.function.name).toBe('list_onto_tasks');
-			expect(calls[1]!.function.arguments.length).toBeGreaterThanOrEqual(
-				calls[0]!.function.arguments.length
-			);
-		});
-	});
 });

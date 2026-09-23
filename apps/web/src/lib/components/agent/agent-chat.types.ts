@@ -135,12 +135,27 @@ export interface UIMessage {
 		| 'agent_peer'
 		| 'created_entities'
 		/** Freshness radar card (Tasker 88); `data.card` is a FreshnessCardPayloadV1. */
-		| 'freshness_card';
+		| 'freshness_card'
+		/** Chat checkpoint receipt (tasker/95); `data.receipt` is a CaptureReceipt. Never sent to the model. */
+		| 'capture_receipt';
 	data?: any;
 	timestamp: Date;
 	tool_calls?: any;
 	tool_call_id?: string;
 	attachments?: ChatAttachmentRef[];
+	/**
+	 * Stable client render identity. Survives server id swaps (optimistic user
+	 * message → persisted row, placeholder thinking block → worker block,
+	 * worker assistant placeholder → persisted row) so keyed lists update in
+	 * place instead of remounting. Renderers key on `renderKey ?? id`.
+	 */
+	renderKey?: string;
+	/**
+	 * Optimistic send lifecycle for a user message created on this client.
+	 * 'sending' from the Send press until the worker accepts the turn; absent on
+	 * restored/persisted messages.
+	 */
+	delivery?: 'sending' | 'sent';
 }
 
 export type AgentChatImageAttachmentStatus =

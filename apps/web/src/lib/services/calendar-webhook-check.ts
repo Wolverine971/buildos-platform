@@ -200,30 +200,47 @@ export async function batchCheckAndRegisterWebhooks(
 	limit = 10
 ): Promise<{ total: number; registered: number; failures: number }> {
 	try {
-		// Find users with calendar tokens
-		const { data: usersWithTokens, error: tokenError } = await supabase
-			.from('user_calendar_tokens')
-			.select('user_id')
-			.not('access_token', 'is', null)
-			.not('refresh_token', 'is', null)
-			.limit(limit);
+		// Scan token holders in a stable order until we have `limit` users missing a
+		// webhook. An unordered `.limit()` re-checked the same healthy first rows on
+		// every run, so users further down were never repaired.
+		const boundedLimit = Math.max(1, limit);
+		const scanPageSize = 500;
+		let offset = 0;
+		let scanned = 0;
+		const usersNeedingWebhooks: string[] = [];
 
-		if (tokenError || !usersWithTokens || usersWithTokens.length === 0) {
-			return { total: 0, registered: 0, failures: 0 };
+		while (usersNeedingWebhooks.length < boundedLimit) {
+			const { data: usersWithTokens, error: tokenError } = await supabase
+				.from('user_calendar_tokens')
+				.select('user_id')
+				.not('access_token', 'is', null)
+				.not('refresh_token', 'is', null)
+				.order('user_id', { ascending: true })
+				.range(offset, offset + scanPageSize - 1);
+			if (tokenError) throw tokenError;
+
+			const userIds = (usersWithTokens ?? []).map((u) => u.user_id as string);
+			if (userIds.length === 0) break;
+
+			const { data: existingWebhooks, error: channelError } = await supabase
+				.from('calendar_webhook_channels')
+				.select('user_id')
+				.in('user_id', userIds);
+			if (channelError) throw channelError;
+
+			const usersWithWebhooks = new Set(existingWebhooks?.map((w) => w.user_id) || []);
+			for (const id of userIds) {
+				if (usersNeedingWebhooks.length >= boundedLimit) break;
+				if (!usersWithWebhooks.has(id)) usersNeedingWebhooks.push(id);
+			}
+
+			scanned += userIds.length;
+			offset += userIds.length;
+			if (userIds.length < scanPageSize) break;
 		}
 
-		// Get existing webhooks
-		const userIds = usersWithTokens.map((u) => u.user_id);
-		const { data: existingWebhooks } = await supabase
-			.from('calendar_webhook_channels')
-			.select('user_id')
-			.in('user_id', userIds);
-
-		const usersWithWebhooks = new Set(existingWebhooks?.map((w) => w.user_id) || []);
-		const usersNeedingWebhooks = userIds.filter((id) => !usersWithWebhooks.has(id));
-
 		if (usersNeedingWebhooks.length === 0) {
-			return { total: userIds.length, registered: 0, failures: 0 };
+			return { total: scanned, registered: 0, failures: 0 };
 		}
 
 		// Register webhooks for users who need them
@@ -249,9 +266,10 @@ export async function batchCheckAndRegisterWebhooks(
 			await new Promise((resolve) => setTimeout(resolve, 500));
 		}
 
-		return { total: userIds.length, registered, failures };
+		return { total: scanned, registered, failures };
 	} catch (error) {
 		console.error('Batch webhook check failed:', error);
-		return { total: 0, registered: 0, failures: 0 };
+		// Report the failure so the cron summary is not logged as a clean success.
+		return { total: 0, registered: 0, failures: 1 };
 	}
 }

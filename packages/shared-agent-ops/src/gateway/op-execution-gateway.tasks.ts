@@ -308,7 +308,8 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 			: (requireTrimmedString(args.type_key, 'type_key') ?? 'task.default');
 	const priority = normalizePriority(args.priority, 'priority');
 	// A bare YYYY-MM-DD is a civil day in the user's timezone: start_at opens it,
-	// due_at closes it. Only date-only input triggers the timezone lookup.
+	// due_at closes it. An offset-less datetime is wall-clock time there. Only
+	// those two shapes trigger the timezone lookup.
 	const civilTimezone = await resolveGatewayCivilTimezone(context, [args.start_at, args.due_at]);
 	const startAt = normalizeOptionalDate(args.start_at, 'start_at', {
 		boundary: 'start',

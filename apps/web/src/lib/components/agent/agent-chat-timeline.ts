@@ -169,6 +169,23 @@ function truncate(value: string, maxChars = MAX_PREVIEW_CHARS): string {
 	return `${value.slice(0, Math.max(0, maxChars - 3))}...`;
 }
 
+/**
+ * `text.replace(/\s+/g, ' ').trim()`, but only as far as a preview needs.
+ * Callers truncate the result to at most `minChars`, so once a collapsed
+ * prefix is longer than that, the rest of a long streaming reply is never
+ * scanned. The returned prefix agrees with the full collapse on every char a
+ * `truncate(…, ≤ minChars)` can keep.
+ */
+function collapseWhitespaceForPreview(text: string, minChars = MAX_PREVIEW_CHARS): string {
+	let window = Math.max(512, minChars * 2);
+	while (window < text.length) {
+		const collapsed = text.slice(0, window).replace(/\s+/g, ' ').trim();
+		if (collapsed.length > minChars) return collapsed;
+		window *= 2;
+	}
+	return text.replace(/\s+/g, ' ').trim();
+}
+
 function hasSensitiveKey(value: unknown): boolean {
 	if (!isRecord(value) && !Array.isArray(value)) return false;
 	const stack: unknown[] = [value];
@@ -465,7 +482,7 @@ function buildMessageTimelineItem(
 	const freshnessCard = buildFreshnessCardTimelineItem(sessionId, message);
 	if (freshnessCard) return freshnessCard;
 	const role = message.role === 'user' ? 'User message' : 'Assistant message';
-	const content = (message.content ?? '').replace(/\s+/g, ' ').trim();
+	const content = collapseWhitespaceForPreview(message.content ?? '');
 	return {
 		id: `message:${message.id}`,
 		sessionId,
@@ -585,9 +602,22 @@ function sourceSortPriority(source: AgentTimelineItem['source']): number {
 	}
 }
 
+// Parsed once per item object instead of twice per comparison (a sort makes
+// O(n log n) comparisons, and the live timeline re-sorts on every stream flush).
+const timelineItemTimeCache = new WeakMap<AgentTimelineItem, number>();
+
+function timelineItemTime(item: AgentTimelineItem): number {
+	let time = timelineItemTimeCache.get(item);
+	if (time === undefined) {
+		time = Date.parse(item.timestamp);
+		timelineItemTimeCache.set(item, time);
+	}
+	return time;
+}
+
 function compareTimelineItems(left: AgentTimelineItem, right: AgentTimelineItem): number {
-	const leftTime = new Date(left.timestamp).getTime();
-	const rightTime = new Date(right.timestamp).getTime();
+	const leftTime = timelineItemTime(left);
+	const rightTime = timelineItemTime(right);
 	if (leftTime !== rightTime) return leftTime - rightTime;
 	const leftSequence = left.sequenceIndex ?? Number.POSITIVE_INFINITY;
 	const rightSequence = right.sequenceIndex ?? Number.POSITIVE_INFINITY;
@@ -849,23 +879,95 @@ function timelineItemsForMessage(sessionId: string, message: UIMessage): AgentTi
 	return item ? [item] : [];
 }
 
+function sameJson(left: unknown, right: unknown): boolean {
+	if (left === right) return true;
+	if (!left || !right) return false;
+	try {
+		return JSON.stringify(left) === JSON.stringify(right);
+	} catch {
+		return false;
+	}
+}
+
+function sameTimelineItem(left: AgentTimelineItem, right: AgentTimelineItem): boolean {
+	if (left === right) return true;
+	return (
+		left.id === right.id &&
+		left.sessionId === right.sessionId &&
+		left.turnRunId === right.turnRunId &&
+		left.streamRunId === right.streamRunId &&
+		left.clientTurnId === right.clientTurnId &&
+		left.messageId === right.messageId &&
+		left.source === right.source &&
+		left.kind === right.kind &&
+		left.status === right.status &&
+		left.timestamp === right.timestamp &&
+		left.sequenceIndex === right.sequenceIndex &&
+		left.title === right.title &&
+		left.summary === right.summary &&
+		left.detailPreview === right.detailPreview &&
+		sameJson(left.tool, right.tool) &&
+		sameJson(left.projectRef, right.projectRef) &&
+		sameJson(left.entityRefs, right.entityRefs) &&
+		sameJson(left.redaction, right.redaction)
+	);
+}
+
+function sameTimelineItemList(left: AgentTimelineItem[], right: AgentTimelineItem[]): boolean {
+	if (left === right) return true;
+	if (left.length !== right.length) return false;
+	for (let index = 0; index < left.length; index += 1) {
+		if (!sameTimelineItem(left[index]!, right[index]!)) return false;
+	}
+	return true;
+}
+
+// Last live timeline, so a stream flush that changes nothing timeline-visible
+// (the streaming reply past its 700-char preview, a thinking block whose
+// activities are unchanged) hands back the previous array and downstream
+// `$derived`s stop there instead of re-merging and re-rendering the tabs.
+let lastLiveTimeline: {
+	sessionId: string;
+	parts: AgentTimelineItem[][];
+	partsByMessageId: Map<string, AgentTimelineItem[]>;
+	result: AgentTimelineItem[];
+} | null = null;
+
 export function timelineItemsFromMessages(
 	sessionId: string,
 	messages: UIMessage[]
 ): AgentTimelineItem[] {
-	const items: AgentTimelineItem[] = [];
+	const previous = lastLiveTimeline?.sessionId === sessionId ? lastLiveTimeline : null;
+	const parts: AgentTimelineItem[][] = [];
+	const partsByMessageId = new Map<string, AgentTimelineItem[]>();
 	for (const message of messages) {
-		if (message && typeof message === 'object') {
-			const cached = messageTimelineCache.get(message);
-			if (cached && cached.sessionId === sessionId) {
-				items.push(...cached.items);
-				continue;
-			}
-			const built = timelineItemsForMessage(sessionId, message);
-			messageTimelineCache.set(message, { sessionId, items: built });
-			items.push(...built);
-			continue;
+		if (!message || typeof message !== 'object') continue;
+		const cached = messageTimelineCache.get(message);
+		let items: AgentTimelineItem[];
+		if (cached && cached.sessionId === sessionId) {
+			items = cached.items;
+		} else {
+			items = timelineItemsForMessage(sessionId, message);
+			// A replaced message object often yields identical items; reuse the
+			// previous array so the unchanged-timeline check below can hold.
+			const prior = previous?.partsByMessageId.get(message.id);
+			if (prior && sameTimelineItemList(prior, items)) items = prior;
+			messageTimelineCache.set(message, { sessionId, items });
 		}
+		parts.push(items);
+		partsByMessageId.set(message.id, items);
 	}
-	return sortAndDedupeTimelineItems(items);
+
+	if (
+		previous &&
+		previous.parts.length === parts.length &&
+		previous.parts.every((items, index) => items === parts[index])
+	) {
+		lastLiveTimeline = { ...previous, parts, partsByMessageId };
+		return previous.result;
+	}
+
+	const result = sortAndDedupeTimelineItems(parts.flat());
+	lastLiveTimeline = { sessionId, parts, partsByMessageId, result };
+	return result;
 }

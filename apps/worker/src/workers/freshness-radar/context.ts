@@ -875,7 +875,7 @@ export async function buildFreshnessScanContext(params: {
 	});
 
 	// Inbox subjects (R3).
-	const inboxRows = messages.length ? await port.loadInboxItems(projectId) : [];
+	const inboxRows = messages.length ? await port.loadInboxItems(projectId, userId) : [];
 	const suggestionIds = inboxRows
 		.filter((row) => row.source_type === 'project_suggestion')
 		.map((row) => row.source_ref_id);
@@ -884,6 +884,7 @@ export async function buildFreshnessScanContext(params: {
 	for (const row of inboxRows) {
 		if (inboxSubjects.length >= policy.jev.maxInboxItems) break;
 		if (row.audience !== 'project_members' && row.audience !== 'user') continue;
+		if (row.audience === 'user' && row.user_id !== userId) continue;
 		if (row.snoozed_until && Date.parse(row.snoozed_until) > now.getTime()) continue;
 		if (firstMessageAt && isAfterIso(row.created_at, firstMessageAt)) continue;
 		const suggestion =

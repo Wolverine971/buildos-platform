@@ -80,7 +80,9 @@ export async function handleScheduleTask({
 						endOption: recurrenceEnds
 							? { type: 'date', value: recurrenceEnds }
 							: { type: 'never' },
-						startDate: value.start_time
+						startDate: value.start_time,
+						// BYDAY/BYMONTHDAY must follow the user's calendar day, not the server's UTC day.
+						timeZone: value.timeZone
 					})
 				: undefined;
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {

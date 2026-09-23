@@ -9,13 +9,18 @@
 // string to Postgres (midnight UTC), so "September 18" landed on September 17
 // 8:00 PM for a New York user on the worker path and 7:59 PM on the web path.
 //
-// Full datetimes are validated and passed through; only the date-only shape is
-// interpreted. With no resolvable timezone we fall back to UTC — never to the
-// midnight-UTC pass-through that produced the off-by-one day.
+// Full datetimes with an explicit offset are validated and passed through. An
+// offset-less wall-clock datetime (`2026-09-23T17:00:00`) is also civil: it is
+// 5 PM on the user's clock, so it is resolved in the user's timezone instead of
+// being handed to Postgres, which would read it as UTC. With no resolvable
+// timezone we fall back to UTC — never to the midnight-UTC pass-through that
+// produced the off-by-one day.
 
 export type CivilDateBoundary = 'start' | 'end';
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+/** Structured-format check: `YYYY-MM-DD[T ]HH:MM[:SS[.fff]]` with NO zone designator. */
+const LOCAL_DATETIME_PATTERN = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?$/;
 
 export const CIVIL_DATE_FALLBACK_TIMEZONE = 'UTC';
 
@@ -34,6 +39,19 @@ export function isDateOnlyValue(value: unknown): boolean {
 /** True when at least one candidate is a bare calendar date. */
 export function hasDateOnlyValue(values: readonly unknown[]): boolean {
 	return values.some((value) => isDateOnlyValue(value));
+}
+
+/** True when the trimmed value is a wall-clock datetime with no `Z`/offset. */
+export function isLocalDateTimeValue(value: unknown): boolean {
+	return typeof value === 'string' && LOCAL_DATETIME_PATTERN.test(value.trim());
+}
+
+/**
+ * True when at least one candidate needs the user's timezone to become an
+ * instant: a bare calendar date or an offset-less wall-clock datetime.
+ */
+export function hasCivilTimezoneSensitiveValue(values: readonly unknown[]): boolean {
+	return values.some((value) => isDateOnlyValue(value) || isLocalDateTimeValue(value));
 }
 
 export function isValidIanaTimezone(value: unknown): value is string {
@@ -112,16 +130,54 @@ export function civilDateBoundaryInstant(
 			? Date.UTC(year, month - 1, day, 23, 59, 59, 0)
 			: Date.UTC(year, month - 1, day, 0, 0, 0, 0);
 
+	return wallClockToInstant(wallClockUtc, timezone);
+}
+
+/**
+ * Convert a wall-clock reading (encoded as if it were UTC) to the instant it
+ * names in `timezone`. An unusable timezone falls back to UTC.
+ */
+function wallClockToInstant(wallClockUtc: number, timezone?: string | null): string {
 	if (!isValidIanaTimezone(timezone)) {
 		return new Date(wallClockUtc).toISOString();
 	}
 
 	const zone = (timezone as string).trim();
 	// Two passes settle the boundary when the first guess lands on the other
-	// side of a daylight-saving transition.
-	let candidate = wallClockUtc - timeZoneOffsetMs(new Date(wallClockUtc), zone);
-	candidate = wallClockUtc - timeZoneOffsetMs(new Date(candidate), zone);
-	return new Date(candidate).toISOString();
+	// side of a daylight-saving transition. Offsets are measured on whole
+	// seconds because Intl exposes no sub-second wall-clock parts.
+	const wholeSecondUtc = Math.floor(wallClockUtc / 1000) * 1000;
+	const subSecondMs = wallClockUtc - wholeSecondUtc;
+	let candidate = wholeSecondUtc - timeZoneOffsetMs(new Date(wholeSecondUtc), zone);
+	candidate = wholeSecondUtc - timeZoneOffsetMs(new Date(candidate), zone);
+	return new Date(candidate + subSecondMs).toISOString();
+}
+
+/**
+ * Resolve an offset-less wall-clock datetime in `timezone` to an ISO instant.
+ *
+ * `2026-09-23T17:00:00` + `America/New_York` -> `2026-09-23T21:00:00.000Z`
+ *
+ * Throws CivilDateError when the value is not a real local date/time.
+ */
+export function localDateTimeInstant(value: string, timezone?: string | null): string {
+	const trimmed = value.trim();
+	const match = LOCAL_DATETIME_PATTERN.exec(trimmed);
+	if (!match) {
+		throw new CivilDateError(`"${trimmed}" is not a local date/time (YYYY-MM-DDTHH:MM[:SS])`);
+	}
+	const { year, month, day } = parseCivilDateParts(match[1] as string);
+	const hour = Number(match[2]);
+	const minute = Number(match[3]);
+	const second = match[4] === undefined ? 0 : Number(match[4]);
+	const millisecond = match[5] === undefined ? 0 : Math.floor(Number(`0${match[5]}`) * 1000);
+	if (hour > 23 || minute > 59 || second > 59) {
+		throw new CivilDateError(`"${trimmed}" is not a real time of day`);
+	}
+	return wallClockToInstant(
+		Date.UTC(year, month - 1, day, hour, minute, second, millisecond),
+		timezone
+	);
 }
 
 /**
@@ -200,7 +256,10 @@ export interface NormalizeDateOnlyOptions {
 
 /**
  * Normalize one scheduling input. Date-only values become the requested civil
- * boundary in `timezone`; full datetimes are validated and passed through.
+ * boundary in `timezone`; offset-less wall-clock datetimes become the instant
+ * they name in `timezone` (always returned as a UTC ISO instant, since the raw
+ * string would be read as UTC downstream); datetimes with an explicit offset
+ * are validated and passed through.
  *
  * Throws CivilDateError when the value is not a usable date.
  */
@@ -212,6 +271,10 @@ export function normalizeDateOnlyInput(value: string, options: NormalizeDateOnly
 
 	if (DATE_ONLY_PATTERN.test(trimmed)) {
 		return civilDateBoundaryInstant(trimmed, options.boundary, options.timezone);
+	}
+
+	if (LOCAL_DATETIME_PATTERN.test(trimmed)) {
+		return localDateTimeInstant(trimmed, options.timezone);
 	}
 
 	const parsed = Date.parse(trimmed);

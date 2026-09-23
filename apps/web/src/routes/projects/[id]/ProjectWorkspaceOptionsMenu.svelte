@@ -340,6 +340,10 @@
 				await onProjectSaved();
 				showProjectEditModal = false;
 			}}
+			onDeleted={() => {
+				showProjectEditModal = false;
+				void goto('/projects');
+			}}
 		/>
 	{/await}
 {/if}

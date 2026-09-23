@@ -1271,7 +1271,7 @@ function buildOperatingStrategySection(
 			// function calling to the mounted `tools` array, so the call was never
 			// emittable — it just left the model without a route at the exact moment
 			// it decided the operation it wanted was missing. `skill_search` is the
-			// real hop: its result auto-mounts `skill_load` (skill-search.ts) and the
+			// real hop: its result auto-mounts `skill_load` and the
 			// orchestrator materializes direct tools from tool results.
 			toolsSummary.discoveryTools.length > 0
 				? `- Use direct tools first when they fit. When the operation you need is not on the surface, reach for ${formatInlineToolNames(toolsSummary.discoveryTools)} — the tools they return are mounted for you.`

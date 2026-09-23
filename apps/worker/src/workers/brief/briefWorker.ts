@@ -13,6 +13,8 @@ import {
 	validateBriefJobData
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
+import { queueConfig } from '../../config/queueConfig';
+import { classifyQueueError } from '../../lib/queueErrors';
 import { generateOntologyDailyBrief } from './ontologyBriefGenerator';
 import { generateCorrelationId } from '@buildos/shared-utils';
 import {
@@ -672,6 +674,16 @@ export async function processBriefJob(
 		}
 
 		if (job.signal?.aborted) {
+			throw error;
+		}
+
+		// The queue retries transient failures, so only the attempt that ends the
+		// job tells the user it failed. Mirrors the queue's own retry decision.
+		const maxAttempts = job.maxAttempts ?? queueConfig.maxRetries;
+		const isTerminalFailure =
+			classifyQueueError(error).kind === 'permanent' ||
+			(job.attemptsMade || 0) + 1 >= maxAttempts;
+		if (!isTerminalFailure) {
 			throw error;
 		}
 

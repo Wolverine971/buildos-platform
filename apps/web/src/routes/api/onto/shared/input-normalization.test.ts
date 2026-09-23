@@ -58,10 +58,20 @@ describe('normalizeDateTimeInput civil-day semantics', () => {
 });
 
 describe('needsCivilTimezone', () => {
-	it('is true only when a bare calendar date is present', () => {
+	it('is true only when a bare date or an offset-less wall-clock datetime is present', () => {
 		expect(needsCivilTimezone(undefined, '2026-09-15')).toBe(true);
+		expect(needsCivilTimezone('2026-09-23T17:00:00', null)).toBe(true);
 		expect(needsCivilTimezone('2026-09-15T00:00:00Z', null)).toBe(false);
+		expect(needsCivilTimezone('2026-09-15T09:30:00-04:00')).toBe(false);
 		expect(needsCivilTimezone(undefined, undefined)).toBe(false);
+	});
+});
+
+describe('normalizeDateTimeInput offset-less wall-clock datetimes', () => {
+	it('reads an offset-less datetime on the user clock, not as UTC', () => {
+		expect(
+			normalizeDateTimeInput('2026-09-23T17:00:00', 'start_at', 'start', 'America/New_York')
+		).toEqual({ ok: true, value: '2026-09-23T21:00:00.000Z' });
 	});
 });
 

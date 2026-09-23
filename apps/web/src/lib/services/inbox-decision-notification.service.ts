@@ -79,32 +79,6 @@ export function startInboxDecisionNotification(
 	});
 }
 
-export function startInboxBatchDecisionNotification(count: number): string {
-	const itemLabel = count === 1 ? 'review item' : 'review items';
-
-	return notificationStore.add({
-		type: 'generic',
-		status: 'processing',
-		isMinimized: true,
-		isPersistent: true,
-		autoCloseMs: null,
-		data: {
-			title: `Applying ${count} ${itemLabel}`,
-			message: 'Processing your decisions...',
-			metadata: {
-				source: 'ai_inbox',
-				action: 'batch_approve',
-				count
-			}
-		},
-		progress: {
-			type: 'indeterminate',
-			message: 'Processing your decisions...'
-		},
-		actions: {}
-	});
-}
-
 export function completeInboxDecisionNotification(
 	notificationId: string,
 	message: string,

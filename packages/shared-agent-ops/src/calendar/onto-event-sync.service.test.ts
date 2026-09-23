@@ -4,9 +4,10 @@
 // the legacy singleton-OAuth client (`legacyCalendar`) and the Google connection
 // gate (`hasStoredCalendarCredential`, which replaced safeGetCalendarStatus).
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { OntoEventSyncService } from './onto-event-sync.service';
+import { OntoEventSyncService, googleAllDayDates } from './onto-event-sync.service';
 import { OntoEventService } from './onto-event.service';
 import type { LegacyOntoEventCalendarClient } from './legacy-google-calendar.port';
+import { GoogleCalendarWriteService } from './google-calendar-write.service';
 
 // Activity logging is exercised by its own suite; here it would only need a
 // Supabase client the fan-out tests deliberately do not provide.
@@ -761,6 +762,143 @@ describe('OntoEventSyncService source-qualified routing', () => {
 			})
 		);
 		expect(legacyCalendar.updateCalendarEvent).not.toHaveBeenCalled();
+	});
+
+	it('sends an all-day event to Google as calendar dates, not a timed span', async () => {
+		const event = {
+			id: 'event-all-day',
+			project_id: 'project-1',
+			title: 'Offsite',
+			all_day: true,
+			// Stored as the start of Sept 23 and the start of Sept 25 in New York.
+			start_at: '2026-09-23T04:00:00+00:00',
+			end_at: '2026-09-25T04:00:00+00:00',
+			timezone: 'America/New_York',
+			recurrence: null,
+			props: {},
+			updated_at: '2026-09-20T12:00:00.000Z'
+		};
+		const query: any = {
+			update: vi.fn(() => query),
+			eq: vi.fn(() => query),
+			select: vi.fn(() => query),
+			single: vi.fn().mockResolvedValue({ data: event, error: null })
+		};
+		const writer = sourceWriter();
+		const service = new OntoEventSyncService({ from: vi.fn(() => query) } as any, {
+			calendarWriter: writer as any,
+			sourceRoutingEnabled: () => true
+		});
+		vi.spyOn(service as any, 'resolveProjectCalendar').mockResolvedValue({
+			id: 'project-calendar-1',
+			calendar_id: 'project@example.com',
+			calendar_source_id: 'source-1',
+			color_id: null,
+			sync_enabled: true
+		});
+		vi.spyOn(service as any, 'buildCalendarEventDescription').mockResolvedValue('notes');
+
+		await (service as any).syncEventToCalendar('user-1', event, {
+			scope: 'project',
+			calendarId: null,
+			calendarSourceId: null,
+			createProjectCalendarIfMissing: false
+		});
+
+		expect(writer.createStandaloneEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				allDayDates: { start: '2026-09-23', end: '2026-09-25' }
+			})
+		);
+	});
+
+	it('patches an all-day event with dates and clears the timed fields', async () => {
+		const writer = sourceWriter();
+		const service = new OntoEventSyncService({} as any, {
+			calendarWriter: writer as any,
+			sourceRoutingEnabled: () => true
+		});
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-3',
+			project_id: 'project-1',
+			title: 'Holiday',
+			all_day: true,
+			start_at: '2026-09-23T04:00:00+00:00',
+			end_at: null,
+			timezone: 'America/New_York',
+			updated_at: '2026-09-20T13:00:00.000Z',
+			created_at: '2026-09-20T12:00:00.000Z',
+			deleted_at: null,
+			props: {},
+			onto_event_sync: []
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue({
+			externalEventId: 'google-event-3',
+			calendarId: 'project@example.com',
+			calendarSourceId: 'source-1',
+			syncRowId: 'sync-3'
+		});
+		vi.spyOn(service as any, 'buildCalendarEventDescription').mockResolvedValue('notes');
+		vi.spyOn(service as any, 'markEventSynced').mockResolvedValue(undefined);
+
+		await service.processProjectEventSyncJob({
+			action: 'upsert',
+			eventId: 'event-3',
+			projectId: 'project-1',
+			targetUserId: 'user-1'
+		});
+
+		expect(writer.updateEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				requestBody: expect.objectContaining({
+					start: expect.objectContaining({ date: '2026-09-23', dateTime: null }),
+					end: expect.objectContaining({ date: '2026-09-24', dateTime: null })
+				})
+			})
+		);
+	});
+
+	it('builds a Google insert body with { date } for all-day events', async () => {
+		const createEvent = vi.fn().mockResolvedValue({});
+		await GoogleCalendarWriteService.prototype.createStandaloneEvent.call(
+			{ createEvent } as any,
+			{
+				userId: 'user-1',
+				summary: 'Offsite',
+				start: new Date('2026-09-23T04:00:00.000Z'),
+				end: new Date('2026-09-25T04:00:00.000Z'),
+				timeZone: 'America/New_York',
+				allDayDates: { start: '2026-09-23', end: '2026-09-25' }
+			}
+		);
+
+		expect(createEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				requestBody: expect.objectContaining({
+					start: { date: '2026-09-23' },
+					end: { date: '2026-09-25' }
+				})
+			})
+		);
+	});
+
+	it('derives exclusive all-day end dates from either stored end shape', () => {
+		const base = {
+			all_day: true,
+			start_at: '2026-09-23T04:00:00+00:00',
+			timezone: 'America/New_York'
+		};
+		// Exclusive midnight end (agent-run shape).
+		expect(googleAllDayDates({ ...base, end_at: '2026-09-25T04:00:00+00:00' })).toEqual({
+			start: '2026-09-23',
+			end: '2026-09-25'
+		});
+		// Inclusive end-of-last-day end.
+		expect(googleAllDayDates({ ...base, end_at: '2026-09-25T03:59:59+00:00' })).toEqual({
+			start: '2026-09-23',
+			end: '2026-09-25'
+		});
+		expect(googleAllDayDates({ ...base, all_day: false, end_at: null })).toBeNull();
 	});
 
 	it('deletes an existing event through its ontology source mapping', async () => {

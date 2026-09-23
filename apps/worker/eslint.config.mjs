@@ -37,7 +37,9 @@ export default [
 			ecmaVersion: 2022,
 			sourceType: 'module',
 			parserOptions: {
-				project: './tsconfig.json'
+				// tsconfig.json excludes co-located *.test.ts (kept out of dist);
+				// tsconfig.tests.json is the project that owns them.
+				project: ['./tsconfig.json', './tsconfig.tests.json']
 			},
 			globals: {
 				...globals.node,

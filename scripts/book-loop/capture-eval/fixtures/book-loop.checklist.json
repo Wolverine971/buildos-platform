@@ -1,0 +1,62 @@
+{
+	"thinking_log_ideas": [
+		{
+			"id": "leverage-stability-theme",
+			"idea": "The book is modern strategies and tactics for gaining leverage, and the real theme is finding stability in a world that is changing very fast (t04)."
+		},
+		{
+			"id": "stability-is-antifragility",
+			"idea": "Stability and anti-fragility are two ways to say the same thing: being anti-fragile makes you stronger with every challenge, and that gives you stability."
+		},
+		{
+			"id": "test-yourself",
+			"idea": "To be stable, people may need to test themselves and put themselves out there (the anti-fragile thing Taleb talks about)."
+		},
+		{
+			"id": "tell-a-friend",
+			"idea": "A week after finishing, a reader tells a friend \"I want to tell you about some things\"; the book arms them with original ideas and questions to ask."
+		},
+		{
+			"id": "build-alliances",
+			"idea": "People should build alliances, not because enemies are about, but because people are naturally paranoid and misconstrue things."
+		},
+		{
+			"id": "charitable-interpretation",
+			"idea": "Take the most charitable interpretation of other people's actions."
+		},
+		{
+			"id": "self-fulfilling-aggression",
+			"idea": "Reading others' actions as hostile makes people defensive and aggressive, which makes others aggressive: a self-fulfilling prophecy."
+		},
+		{
+			"id": "curiosity-softness",
+			"idea": "Approach life with curiosity and softness; everyone is doing their best, so be ready to listen."
+		},
+		{
+			"id": "help-others-survive",
+			"idea": "You need to help other people survive if you want to survive; we are all in this together."
+		},
+		{
+			"id": "bridges-not-defenses",
+			"idea": "Build bridges rather than defenses: connect with people rather than isolate and insulate yourself."
+		}
+	],
+	"start_here_facts": [
+		{
+			"id": "thesis",
+			"fact": "The thesis: anti-fragility is the method and stability is the felt result."
+		},
+		{
+			"id": "social-antifragility",
+			"fact": "The social direction of the theme: building bridges rather than defenses, connection and charitable interpretation over defensiveness."
+		},
+		{
+			"id": "exclusions-dropped",
+			"fact": "Exclusions were dropped from the book contract (recorded as a decision)."
+		},
+		{
+			"id": "nonfiction",
+			"fact": "The book is nonfiction, not a novel."
+		}
+	]
+}

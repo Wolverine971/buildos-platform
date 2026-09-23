@@ -12,7 +12,7 @@
 		Square,
 		X
 	} from 'lucide-svelte';
-	import { FolderTree, ListChecks } from '$lib/icons/lucide';
+	import { Clock, FolderTree, ListChecks } from '$lib/icons/lucide';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type { AgentChatImageAttachment } from './agent-chat.types';
@@ -32,7 +32,12 @@
 		onToggleReview?: () => void;
 		onToggleDocumentOrganization?: () => void;
 		isSendDisabled: boolean;
-		allowSendWhileStreaming?: boolean;
+		/** A follow-up typed mid-response; it sends when the response finishes. */
+		queuedMessage?: string | null;
+		/** Pull the queued follow-up back into the composer (cancels the queue). */
+		onEditQueued?: () => void;
+		/** Focus the textarea when the chat opens (desktop only; never pops a mobile keyboard). */
+		autofocus?: boolean;
 		displayContextLabel: string;
 		placeholderOverride?: string;
 		disabled?: boolean;
@@ -75,7 +80,9 @@
 		onToggleReview,
 		onToggleDocumentOrganization,
 		isSendDisabled,
-		allowSendWhileStreaming = false,
+		queuedMessage = null,
+		onEditQueued,
+		autofocus = false,
 		displayContextLabel,
 		placeholderOverride,
 		disabled = false,
@@ -156,19 +163,24 @@
 		isStreaming || isStartingStream || disabled || workflowSelected
 	);
 	const composerHint = $derived.by(() => {
-		if (isStartingStream) return 'Sending your message…';
 		if (disabled) {
-			// Prefer the parent-supplied reason (e.g. "Loading session" /
-			// "Preparing session") over a generic "Loading..." placeholder.
+			// Prefer the parent-supplied reason (e.g. "Loading session") over a
+			// generic "Loading..." placeholder.
 			return disabledReason ? `${disabledReason}...` : 'Preparing chat...';
 		}
-		if (isStreaming) return 'BuildOS is responding...';
+		if ((isStreaming || isStartingStream) && !queuedMessage) {
+			return 'Keep typing — your next message sends when this one finishes';
+		}
 		return undefined;
 	});
+	// Mid-response, Send queues the follow-up instead of being blocked.
+	const canQueueWhileBusy = $derived(
+		(isStreaming || isStartingStream) && inputValue.trim().length > 0
+	);
 
 	function handleSubmit(event: Event) {
 		event.preventDefault();
-		if (disabled || isSendDisabled || isStartingStream) return;
+		if (disabled || isSendDisabled) return;
 		onSend?.();
 	}
 
@@ -328,6 +340,26 @@
 		</div>
 	{/if}
 
+	{#if queuedMessage}
+		<div
+			class="mb-2 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs shadow-ink"
+			title="Sends when BuildOS finishes this response"
+		>
+			<Clock class="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
+			<span class="shrink-0 font-semibold text-foreground">Queued</span>
+			<span class="min-w-0 flex-1 truncate text-muted-foreground">{queuedMessage}</span>
+			{#if onEditQueued}
+				<button
+					type="button"
+					class="inline-flex min-h-11 shrink-0 items-center rounded-full px-2 font-semibold text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-6"
+					onclick={onEditQueued}
+				>
+					Edit
+				</button>
+			{/if}
+		</div>
+	{/if}
+
 	{#if imageAttachments.length > 0}
 		<div
 			class="mb-2 overflow-hidden rounded-lg border border-border bg-card/95 shadow-ink tx tx-grid tx-weak"
@@ -410,6 +442,7 @@
 		containerClass="rounded-lg border border-border bg-card shadow-ink tx tx-grid tx-weak focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/30 transition-all"
 		textareaClass="border-none bg-transparent px-3 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-4 sm:py-3"
 		{placeholder}
+		{autofocus}
 		autoResize
 		rows={initialRows}
 		{maxRows}
@@ -471,36 +504,23 @@
 				>
 					<Square class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
 				</button>
-				{#if allowSendWhileStreaming}
-					<!-- Send while streaming: accent for primary action -->
-					<button
-						type="submit"
-						class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:cursor-not-allowed disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-						aria-label="Send & stop"
-						title="Send & stop"
-						disabled={disabled || isSendDisabled}
-					>
-						<Send class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-					</button>
-				{/if}
-			{:else}
-				<!-- Send button: accent color for primary action, clear disabled state -->
+			{/if}
+			{#if !isStreaming || canQueueWhileBusy}
+				<!-- Send button: accent color for primary action, clear disabled state.
+				     Mid-response it queues the follow-up. -->
 				<button
 					type="submit"
 					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:cursor-not-allowed disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-					aria-label={sendLabel}
-					disabled={disabled || isSendDisabled || isStartingStream}
+					aria-label={canQueueWhileBusy ? 'Send when BuildOS finishes' : sendLabel}
+					title={canQueueWhileBusy ? 'Send when BuildOS finishes' : undefined}
+					disabled={disabled || isSendDisabled}
 				>
-					{#if isStartingStream}
-						<LoaderCircle
-							class="h-4 w-4 animate-spin motion-reduce:animate-none sm:h-3.5 sm:w-3.5"
-						/>
-					{:else}
-						<Send class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-					{/if}
+					<Send class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
 				</button>
 			{/if}
 		{/snippet}
 	</TextareaWithVoice>
-	<div class="sr-only" role="status">{isStartingStream ? 'Sending your message…' : ''}</div>
+	<div class="sr-only" role="status">
+		{queuedMessage ? 'Message queued. It sends when BuildOS finishes.' : ''}
+	</div>
 </form>

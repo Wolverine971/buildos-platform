@@ -13,6 +13,9 @@ import { syncInboxItemForSource } from '@buildos/shared-agent-ops/inbox-index';
 import type { ChangeSetDecision } from '@buildos/shared-types';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 
+// Approvals run commitChangeSet inline; the 10s default cuts batches off mid-apply.
+export const config = { maxDuration: 60 };
+
 type SourceDecisionAction = 'approve' | 'address' | 'reject';
 type DecisionAction = SourceDecisionAction | 'snooze';
 type DecisionPayload = Record<string, unknown>;
@@ -779,19 +782,29 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
 				continue;
 			}
 
-			const result = await decideLoadedInboxItem({
-				item,
-				action,
-				body: bodyRecord,
-				locals,
-				user,
-				admin,
-				fetchFn: fetch
-			});
-			if (result.ok) {
-				results.push({ item_id: itemId, ...result.payload });
-			} else {
-				errors.push({ item_id: itemId, message: result.message });
+			// Earlier items may already be applied, so one item throwing must not
+			// turn the whole batch into a 500 that hides those writes.
+			try {
+				const result = await decideLoadedInboxItem({
+					item,
+					action,
+					body: bodyRecord,
+					locals,
+					user,
+					admin,
+					fetchFn: fetch
+				});
+				if (result.ok) {
+					results.push({ item_id: itemId, ...result.payload });
+				} else {
+					errors.push({ item_id: itemId, message: result.message });
+				}
+			} catch (error) {
+				console.error('[Inbox Decide] Batch item failed:', itemId, error);
+				errors.push({
+					item_id: itemId,
+					message: error instanceof Error ? error.message : 'Failed to apply decision'
+				});
 			}
 		}
 

@@ -7,7 +7,7 @@
 -->
 
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import {
 		MessagesSquare,
@@ -37,12 +37,18 @@
 	}
 
 	interface Props {
+		/**
+		 * Whether the screen is actually on screen. Hosts that keep it mounted
+		 * while hidden pass false so the project list is fetched only once it
+		 * is shown (default true).
+		 */
+		active?: boolean;
 		onNavigationChange?: (view: 'primary' | 'project-selection') => void;
 		onSelect?: (selection: ContextSelection) => void;
 	}
 
 	// Props - Svelte 5 callback pattern
-	let { onNavigationChange, onSelect }: Props = $props();
+	let { active = true, onNavigationChange, onSelect }: Props = $props();
 
 	// State
 	let selectedView: 'primary' | 'project-selection' = $state('primary');
@@ -55,19 +61,25 @@
 	let lastProjectQuery = $state('');
 	let lastProjectLimit = $state(0);
 	let projectListRequestId = 0;
+	// Non-reactive bookkeeping for the re-activation refresh below.
+	let hasBeenActive = false;
+	let lastProjectsLoadedAt = 0;
 
 	// Hide paused, cancelled (treated as deleted), and archived projects. The API already
 	// filters `archived_at IS NULL`, but we keep `archived` here defensively.
 	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'cancelled', 'paused']);
 	const PROJECT_LIST_LIMIT = DEFAULT_PROJECT_SELECTOR_LIMIT;
 	const PROJECT_SEARCH_LIMIT = MAX_PROJECT_SELECTOR_LIMIT;
+	const PROJECT_REACTIVATION_REFRESH_MS = 15_000;
 	const normalizedProjectSearch = $derived(normalizeProjectSelectionSearch(projectSearchTerm));
 	const isProjectSearchActive = $derived(normalizedProjectSearch.length > 0);
 
 	async function loadProjects(
-		options: { force?: boolean; search?: string; limit?: number } = {}
+		options: { force?: boolean; silent?: boolean; search?: string; limit?: number } = {}
 	) {
-		const { force = false } = options;
+		// `silent`: background refresh — keep the current list on screen (no
+		// spinner) and keep it on failure instead of swapping in an error.
+		const { force = false, silent = false } = options;
 		const search = normalizeProjectSelectionSearch(options.search ?? projectSearchTerm);
 		const limit = options.limit ?? (search ? PROJECT_SEARCH_LIMIT : PROJECT_LIST_LIMIT);
 		if (
@@ -87,8 +99,10 @@
 		}
 		projectListController = new AbortController();
 
-		isLoadingProjects = true;
-		projectsError = null;
+		if (!silent) {
+			isLoadingProjects = true;
+			projectsError = null;
+		}
 
 		try {
 			const fetchedProjects = await fetchProjectSelectionSummaries({
@@ -102,14 +116,17 @@
 			}
 
 			projects = fetchedProjects;
+			projectsError = null;
 			hasLoadedProjects = true;
 			lastProjectQuery = search;
 			lastProjectLimit = limit;
+			lastProjectsLoadedAt = Date.now();
 		} catch (err) {
 			if ((err as Error)?.name === 'AbortError' || requestId !== projectListRequestId) {
 				return;
 			}
 			console.error('Failed to load ontology projects:', err);
+			if (silent) return;
 			projectsError = 'Failed to load ontology projects';
 			hasLoadedProjects = true;
 		} finally {
@@ -120,18 +137,39 @@
 		}
 	}
 
-	// Load projects on both the primary and project-selection views.
+	// Load projects on both the primary and project-selection views, but only
+	// while the screen is active (hosts keep it mounted behind `hidden`).
 	// Primary view needs the project count to (a) render the new-user empty
 	// state via `isNewUser` and (b) show the active-project count on the
 	// project-chat card. Cache short-circuit in loadProjects() keeps this
 	// from re-fetching unnecessarily when switching views.
 	$effect(() => {
-		if (!browser) return;
+		if (!browser || !active) return;
+		if (!normalizedProjectSearch) {
+			// The default list needs no debounce: load in the same tick so a warm
+			// cache resolves before first paint (no one-frame skeleton flash).
+			untrack(() => void loadProjects({ search: '' }));
+			return;
+		}
 		const timeoutId = setTimeout(
 			() => void loadProjects({ search: projectSearchTerm }),
-			normalizedProjectSearch ? PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS : 0
+			PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS
 		);
 		return () => clearTimeout(timeoutId);
+	});
+
+	// Coming back to an already-loaded screen: quietly refresh a stale list
+	// (e.g. a project was created in chat meanwhile). No skeleton/spinner, and
+	// fetchProjectSelectionSummaries' short-lived cache absorbs rapid toggles.
+	$effect(() => {
+		if (!browser || !active) return;
+		untrack(() => {
+			const isStale = Date.now() - lastProjectsLoadedAt > PROJECT_REACTIVATION_REFRESH_MS;
+			if (hasBeenActive && hasLoadedProjects && !isLoadingProjects && isStale) {
+				void loadProjects({ force: true, silent: true });
+			}
+			hasBeenActive = true;
+		});
 	});
 
 	// Notify parent of navigation changes for header back button
@@ -212,6 +250,10 @@
 	const isNewUser = $derived(
 		hasLoadedProjects && lastProjectQuery === '' && !hasProjects && !projectsError
 	);
+	// Until the first list arrives we can't tell a new user (single "first
+	// project" card) from a returning one (three cards), so hold a skeleton of
+	// the common layout instead of rendering one and flipping to the other.
+	const showPrimarySkeleton = $derived(!hasLoadedProjects);
 	const optionCardBaseClasses =
 		'group flex flex-col rounded-lg border border-border bg-card p-3 text-left shadow-ink pressable transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-4';
 	// Canonical texture mapping (see INKPRINT design system §3.4):
@@ -232,7 +274,19 @@
 	{#if selectedView === 'primary'}
 		<!-- Screen header band (matches other selection screens) -->
 		<div class="border-b border-border bg-card px-3 py-2.5 tx tx-strip tx-weak sm:p-4">
-			{#if isNewUser}
+			{#if showPrimarySkeleton}
+				<!-- Same line boxes as the real header so nothing shifts when it loads -->
+				<div class="animate-pulse motion-reduce:animate-none" aria-hidden="true">
+					<div class="flex h-6 items-center sm:h-7">
+						<div class="h-4 w-48 rounded bg-muted sm:h-5 sm:w-64"></div>
+					</div>
+					<!-- Subtitle wraps to two lines on phones -->
+					<div class="mt-0.5 flex h-8 flex-col justify-around sm:h-5">
+						<div class="h-3 w-full max-w-sm rounded bg-muted sm:w-80"></div>
+						<div class="h-3 w-40 rounded bg-muted sm:hidden"></div>
+					</div>
+				</div>
+			{:else if isNewUser}
 				<h2 class="text-base font-semibold text-foreground sm:text-lg">
 					Start with your first project
 				</h2>
@@ -251,7 +305,41 @@
 		</div>
 
 		<div class="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:p-5">
-			{#if isNewUser}
+			{#if showPrimarySkeleton}
+				<!-- Mirrors the returning-user layout: two chat cards + one setup card -->
+				<div
+					class="space-y-5 animate-pulse motion-reduce:animate-none sm:space-y-6"
+					role="status"
+					aria-label="Loading your projects"
+				>
+					{#each [2, 1] as cardCount, groupIndex (groupIndex)}
+						<section class="space-y-2.5" aria-hidden="true">
+							<div class="flex items-center gap-3">
+								<div class="h-3 w-24 rounded bg-muted"></div>
+								<span class="h-px flex-1 bg-border"></span>
+							</div>
+							<div
+								class={`grid gap-2 sm:gap-3 ${cardCount === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}
+							>
+								{#each Array.from({ length: cardCount }, (_, index) => index) as cardIndex (cardIndex)}
+									<div
+										class="flex items-start gap-3 rounded-lg border border-border bg-card p-3 shadow-ink sm:p-4"
+									>
+										<div
+											class="h-9 w-9 shrink-0 rounded-md border border-border bg-muted sm:h-10 sm:w-10"
+										></div>
+										<div class="min-w-0 flex-1 space-y-2 py-0.5">
+											<div class="h-2.5 w-20 rounded bg-muted"></div>
+											<div class="h-3.5 w-36 rounded bg-muted"></div>
+											<div class="h-3 w-full max-w-xs rounded bg-muted"></div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</section>
+					{/each}
+				</div>
+			{:else if isNewUser}
 				<!-- NEW USER: No projects yet — guide to first project creation -->
 				<div class="flex flex-col items-center gap-4 sm:gap-5">
 					<!-- Primary CTA: Create first project -->

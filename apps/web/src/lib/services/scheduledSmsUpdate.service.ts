@@ -436,17 +436,16 @@ export class ScheduledSmsUpdateService {
 	 */
 	static extractEventChangesFromBatch(
 		taskEventUpdates: any[],
-		deletions: string[],
-		calendarEvents: Map<string, any>
+		deletions: Array<{ calendar_event_id?: string | null }>
 	): EventChange[] {
 		const changes: EventChange[] = [];
 
-		// Handle deletions
+		// Scheduled SMS rows are keyed by the Google event id, never by the
+		// task_calendar_events row id, so records without one are skipped.
 		for (const deletion of deletions) {
-			const taskEvent = calendarEvents.get(deletion);
-			if (taskEvent?.calendar_event_id) {
+			if (deletion.calendar_event_id) {
 				changes.push({
-					calendarEventId: taskEvent.calendar_event_id,
+					calendarEventId: deletion.calendar_event_id,
 					type: 'deleted'
 				});
 			}
@@ -454,9 +453,10 @@ export class ScheduledSmsUpdateService {
 
 		// Handle updates/reschedules
 		for (const update of taskEventUpdates) {
+			if (!update.calendar_event_id) continue;
 			if (update.event_start) {
 				changes.push({
-					calendarEventId: update.calendar_event_id || update.id,
+					calendarEventId: update.calendar_event_id,
 					type: 'rescheduled',
 					newStart: update.event_start,
 					newEnd: update.event_end,
@@ -464,7 +464,7 @@ export class ScheduledSmsUpdateService {
 				});
 			} else if (update.event_title) {
 				changes.push({
-					calendarEventId: update.calendar_event_id || update.id,
+					calendarEventId: update.calendar_event_id,
 					type: 'updated',
 					newTitle: update.event_title
 				});

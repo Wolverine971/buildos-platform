@@ -923,7 +923,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		// validateToolCalls applies schema defaults before it runs
 		// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F29).
 		descriptionOverride:
-			'Create one standard project and its generated Context document. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support fiction-book types (project.creative.novel, book, fiction, or screenplay) or living-reference projects, custom Context documents, clarifications, embedded child records, or relationships. Synthetic QA data for standard project types is supported.',
+			'Create one standard project and its generated Context document. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support custom Context documents, clarifications, embedded child records, or relationships. Synthetic QA data is supported.',
 		requiredNames: ['project'],
 		reviewedArgumentNames: ['project', 'entities', 'relationships'],
 		propertyOverrides: {
@@ -932,12 +932,17 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 				additionalProperties: false,
 				description: 'Project fields.',
 				properties: {
-					name: { type: 'string', minLength: 1, description: 'Project name.' },
+					name: {
+						type: 'string',
+						minLength: 1,
+						description:
+							'Project name. When the user names the project, use their full name exactly; never shorten it.'
+					},
 					type_key: {
 						type: 'string',
 						pattern: '^project\\.[a-z_]+\\.[a-z_]+(?:\\.[a-z_]+)?$',
 						description:
-							'project.{realm}.{domain}[.{variant}]; realm is creative, technical, business, service, education, or personal, e.g. project.technical.software. This tool does not support fiction-book types (project.creative.novel, book, fiction, or screenplay) or living-reference projects; synthetic QA data for standard project types is supported.'
+							'project.{realm}.{domain}[.{variant}]; realm is creative, technical, business, service, education, or personal, e.g. project.technical.software or project.creative.book.nonfiction.'
 					},
 					description: { type: 'string', description: 'Optional project description.' },
 					state_key: {

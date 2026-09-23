@@ -17,7 +17,6 @@
 
 	Related Files:
 	- Parent: GoalEditModal.svelte
-	- List item: MilestoneListItem.svelte
 -->
 <script lang="ts">
 	import { slide } from 'svelte/transition';

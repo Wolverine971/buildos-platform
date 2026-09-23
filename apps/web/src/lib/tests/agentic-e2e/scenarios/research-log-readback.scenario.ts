@@ -20,7 +20,7 @@ import {
 	researchToolCalls
 } from '../harness/assertions';
 import { listDocuments, waitForTurnRun } from '../harness/telemetry';
-import { RESEARCH_LOG_TITLE } from '$lib/server/research-log.service';
+import { RESEARCH_LOG_TITLE } from '@buildos/agentic-chat-runtime/loop';
 
 function spec(): ProjectSpec {
 	return {

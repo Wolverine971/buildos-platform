@@ -17,11 +17,3 @@ export type LitePromptVariant = LitePromptVariantType;
  * record `LITE_PROMPT_VARIANT`.
  */
 export const FASTCHAT_PROMPT_VARIANT = 'fastchat_prompt_v1' as const;
-
-/**
- * Union used by observability and eval tooling to describe prompt-variant
- * labels that may appear on a prompt snapshot row. Live sessions always
- * record `LITE_PROMPT_VARIANT`; older snapshots may still carry
- * `FASTCHAT_PROMPT_VARIANT`.
- */
-export type FastChatPromptVariant = typeof FASTCHAT_PROMPT_VARIANT | LitePromptVariantType;

@@ -33,6 +33,15 @@ describe('CreatedEntityCards', () => {
 		expect(screen.queryByRole('link', { name: /Open a task/ })).toBeNull();
 		expect(screen.queryByText(/Saved in this conversation:/)).toBeNull();
 	});
+	it('plays the entrance only for freshly created chips', () => {
+		const entities = [{ kind: 'task', id: 't1', projectId: 'p1', name: 'Write brief' }];
+		const { unmount } = render(CreatedEntityCards, { entities });
+		expect(screen.getByRole('link')).toHaveClass('entity-just-created');
+		unmount();
+
+		render(CreatedEntityCards, { entities, animateEntrance: false });
+		expect(screen.getByRole('link')).not.toHaveClass('entity-just-created');
+	});
 	it('retains ordinary entity chips when no project was created', () => {
 		render(CreatedEntityCards, {
 			entities: [{ kind: 'task', id: 't1', projectId: 'p1', name: 'Write brief' }]

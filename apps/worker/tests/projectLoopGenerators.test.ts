@@ -539,7 +539,17 @@ describe('project loop generators', () => {
 		expect(brief.decision_item_ids).toEqual([]);
 	});
 
-	it('keeps decision options whose ids are snake_case keys', async () => {
+	it('keeps decision option and suggestion ids that are snake_case keys', async () => {
+		// Ids are machine keys, not prose. The prose filter used to null a
+		// snake_case recommended_suggestion_id, which then silently fell back to
+		// the heuristic pick ("suggestion-1") instead of the model's choice.
+		const candidates = makeReviewCandidates();
+		candidates.push({
+			...candidates[0]!,
+			id: 'merge_announcement_tasks',
+			title: 'Merge the announcement tasks',
+			verified_change_headline: 'Merge the announcement tasks'
+		});
 		const brief = await generateProjectManagerBrief({
 			llm: makeLlm({
 				brief: {
@@ -557,13 +567,13 @@ describe('project loop generators', () => {
 							}
 						],
 						recommended_option_id: 'merge_tasks',
-						recommended_suggestion_id: 'suggestion-1',
-						candidate_ids: ['suggestion-1']
+						recommended_suggestion_id: 'merge_announcement_tasks',
+						candidate_ids: ['suggestion-1', 'merge_announcement_tasks']
 					}
 				}
 			}),
 			ctx: makeContext(),
-			candidates: makeReviewCandidates(),
+			candidates,
 			userId: 'user-1',
 			onUsage
 		});
@@ -574,7 +584,7 @@ describe('project loop generators', () => {
 		]);
 		expect(brief.decision?.options[0]?.label).toBe('Keep both tasks');
 		expect(brief.decision?.recommended_option_id).toBe('merge_tasks');
-		expect(brief.decision?.recommended_suggestion_id).toBe('suggestion-1');
+		expect(brief.decision?.recommended_suggestion_id).toBe('merge_announcement_tasks');
 	});
 
 	it('turns task conflicts into reversible non-destructive task flags', async () => {
@@ -768,6 +778,78 @@ describe('project loop generators', () => {
 		expect(suggestions).toEqual([]);
 	});
 
+	it('drops a whole task conflict when the conflict filter removes any operation', async () => {
+		const base = makeContext();
+		const ctx: LoopContext = {
+			...base,
+			tasks: [
+				...base.tasks,
+				{
+					id: 'task-3',
+					title: 'Prepare launch metrics',
+					description: null,
+					state_key: 'todo',
+					updated_at: '2026-06-24T00:00:00.000Z'
+				}
+			]
+		};
+		const flag = (taskId: string, otherTaskId: string) => ({
+			tool: 'update_onto_task',
+			args: {
+				task_id: taskId,
+				props: {
+					loop_flagged_conflict: true,
+					loop_conflict_kind: 'duplicate',
+					loop_conflict_with_task_id: otherTaskId,
+					loop_conflict_reason: 'Both tasks cover the same announcement work.'
+				}
+			},
+			label: `Flag ${taskId}`
+		});
+		const evidenceRefs = [
+			{ entity_type: 'task', entity_id: 'task-1', reason: 'Same outcome' },
+			{ entity_type: 'task', entity_id: 'task-2', reason: 'Same outcome' }
+		];
+
+		const suggestions = await generateTaskConflicts({
+			llm: makeLlm({
+				suggestions: [
+					{
+						title: 'Announcement and metrics tasks overlap',
+						evidence_refs: evidenceRefs,
+						// Both ids are known, so sanitizing keeps both operations. The
+						// task-2/task-3 flag is neither a candidate pair nor backed by
+						// the evidence, so the conflict filter drops it; shipping the
+						// task-1 flag alone would apply less than the card describes.
+						operations: [flag('task-1', 'task-2'), flag('task-2', 'task-3')]
+					},
+					{
+						title: 'Duplicate launch announcement tasks',
+						evidence_refs: evidenceRefs,
+						operations: [flag('task-1', 'task-2')]
+					}
+				]
+			}),
+			ctx,
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions).toHaveLength(1);
+		expect(suggestions[0]).toMatchObject({
+			kind: 'task_conflict',
+			title: 'Duplicate launch announcement tasks',
+			operations: [
+				{
+					args: {
+						task_id: 'task-1',
+						props: { loop_conflict_with_task_id: 'task-2' }
+					}
+				}
+			]
+		});
+	});
+
 	it('drops a whole suggestion when any proposed operation fails sanitization', async () => {
 		const base = makeContext();
 		const ctx: LoopContext = {
@@ -799,8 +881,13 @@ describe('project loop generators', () => {
 			args: { document_id: documentId, new_parent_id: 'doc-1', new_position: position },
 			label: `Move ${documentId} under Launch plan`
 		});
-		// tests/setup.ts already silences console.warn; this spy reads its calls.
-		const warn = vi.spyOn(console, 'warn');
+		// tests/setup.ts installs one silent console.warn spy for the whole file,
+		// and vi.spyOn would hand back that shared spy (mockRestore on it would
+		// unsilence every later test). Swap in a local mock and put the previous
+		// console.warn back in finally, so only this test's calls are read.
+		const previousWarn = console.warn;
+		const warn = vi.fn();
+		console.warn = warn;
 
 		const suggestions = await generateDocOrganization({
 			llm: makeLlm({
@@ -828,6 +915,8 @@ describe('project loop generators', () => {
 			ctx,
 			userId: 'user-1',
 			onUsage
+		}).finally(() => {
+			console.warn = previousWarn;
 		});
 
 		expect(suggestions).toHaveLength(1);
@@ -839,6 +928,7 @@ describe('project loop generators', () => {
 				{ args: { document_id: 'doc-3', project_id: 'project-1' } }
 			]
 		});
+		expect(warn).toHaveBeenCalledTimes(1);
 		expect(warn).toHaveBeenCalledWith(
 			expect.stringContaining('1 of 3 proposed operations were invalid'),
 			{ projectId: 'project-1' }

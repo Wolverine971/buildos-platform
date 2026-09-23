@@ -31,6 +31,7 @@
 		"guardrails:http-modules": "node ./scripts/check-worker-http-module-size.cjs",
 		"backtest:freshness": "tsx scripts/freshness-radar-backtest.ts",
 		"backfill:start-here": "tsx src/scripts/backfillStartHereDocuments.ts",
+		"backfill:chat-checkpoints": "tsx scripts/chat-checkpoint-backfill.ts",
 		"backfill:embeddings": "tsx src/scripts/backfillOntoEmbeddings.ts",
 		"cycles:backfill-daily-brief": "tsx src/scripts/backfillDailyBriefCycles.ts",
 		"cycles:shadow-daily-brief": "tsx src/scripts/reportDailyBriefCycleShadow.ts",

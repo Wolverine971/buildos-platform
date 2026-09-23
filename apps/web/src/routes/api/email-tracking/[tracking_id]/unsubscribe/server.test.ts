@@ -174,16 +174,18 @@ describe('/api/email-tracking/[tracking_id]/unsubscribe', () => {
 		rpcMock.mockResolvedValue({ data: 'suppression-1', error: null });
 	});
 
-	it('suppresses lifecycle email and cancels the legacy welcome row from the visible link', async () => {
+	it('suppresses lifecycle email and cancels the legacy welcome row once the visible link is confirmed', async () => {
 		createAdminSupabaseClientMock.mockReturnValue(createSupabase(createTrackedEmail()));
 
-		const response = await GET({
+		const response = await POST({
 			params: { tracking_id: 'tracking-1' },
 			request: new Request('https://build-os.com/api/email-tracking/tracking-1/unsubscribe', {
+				method: 'POST',
 				headers: {
 					'user-agent': 'test-agent',
 					'x-forwarded-for': '203.0.113.10'
-				}
+				},
+				body: new URLSearchParams({ confirm: 'email_link' })
 			})
 		} as any);
 
@@ -213,6 +215,23 @@ describe('/api/email-tracking/[tracking_id]/unsubscribe', () => {
 		});
 	});
 
+	it('only asks for confirmation when the link is opened, so link scanners change nothing', async () => {
+		createAdminSupabaseClientMock.mockReturnValue(createSupabase(createDailyBriefEmail()));
+
+		const response = await GET({
+			params: { tracking_id: 'tracking-brief' },
+			request: new Request(
+				'https://build-os.com/api/email-tracking/tracking-brief/unsubscribe'
+			)
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(await response.text()).toContain('<form method="post">');
+		expect(rpcMock).not.toHaveBeenCalled();
+		expect(tableCalls.notificationPreferenceUpserts).toHaveLength(0);
+		expect(tableCalls.queueUpdates).toHaveLength(0);
+	});
+
 	it('records list_header source for one-click POST requests', async () => {
 		createAdminSupabaseClientMock.mockReturnValue(createSupabase(createTrackedEmail()));
 
@@ -232,13 +251,17 @@ describe('/api/email-tracking/[tracking_id]/unsubscribe', () => {
 		);
 	});
 
-	it('turns off daily briefs from a daily brief unsubscribe link', async () => {
+	it('turns off daily briefs once a daily brief unsubscribe link is confirmed', async () => {
 		createAdminSupabaseClientMock.mockReturnValue(createSupabase(createDailyBriefEmail()));
 
-		const response = await GET({
+		const response = await POST({
 			params: { tracking_id: 'tracking-brief' },
 			request: new Request(
-				'https://build-os.com/api/email-tracking/tracking-brief/unsubscribe'
+				'https://build-os.com/api/email-tracking/tracking-brief/unsubscribe',
+				{
+					method: 'POST',
+					body: new URLSearchParams({ confirm: 'email_link' })
+				}
 			)
 		} as any);
 

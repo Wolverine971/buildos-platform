@@ -303,10 +303,13 @@ async function searchTaskBucketsForQuery(input: {
 		.limit(input.limit);
 
 	if (states.length > 0) taskQuery = taskQuery.in('state_key', states);
+	// Soft-deleted rows are never search results. "Archived" means archived_at is
+	// set on a live row; every other bucket is live and unarchived.
+	taskQuery = taskQuery.is('deleted_at', null);
 	if (buckets.size === 1 && buckets.has('archived')) {
-		taskQuery = taskQuery.not('deleted_at', 'is', null);
-	} else {
-		taskQuery = taskQuery.is('deleted_at', null);
+		taskQuery = taskQuery.not('archived_at', 'is', null);
+	} else if (!buckets.has('archived')) {
+		taskQuery = taskQuery.is('archived_at', null);
 	}
 
 	const { data, error } = await taskQuery;

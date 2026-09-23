@@ -84,23 +84,17 @@ type ProfileDocStructure = {
 	root: ProfileDocTreeNode[];
 };
 
-const PROFILE_SIGNAL_TIMEOUT_MS = 2500;
-const PROFILE_SUMMARY_TIMEOUT_MS = 3500;
+// Total budgets for each LLM call. They are passed to SmartLLM as abort signals,
+// so hitting one cancels the paid request instead of abandoning it.
+const PROFILE_SIGNAL_TIMEOUT_MS = 20_000;
+const PROFILE_SUMMARY_TIMEOUT_MS = 20_000;
+// Fragments below this confidence are never merged or sent for review.
+const PROFILE_FRAGMENT_MIN_CONFIDENCE = 0.85;
 const PROFILE_SIGNAL_MAX_MESSAGES = 40;
 const PROFILE_SUMMARY_MAX_CHAPTERS = 12;
 const PROFILE_SUMMARY_CHAPTER_CONTENT_CHARS = 450;
 
 const SENSITIVE_CATEGORIES = new Set(['health', 'finances', 'relationships']);
-const NEEDS_REVIEW_PHRASES = [
-	'no longer',
-	'used to',
-	'changed',
-	'former',
-	'left',
-	'quit',
-	'stopped',
-	'now'
-];
 
 const CATEGORY_TO_TYPE_KEY: Record<string, string> = {
 	career: 'chapter.career',
@@ -156,6 +150,7 @@ Return strict JSON with this shape:
 
 Rules:
 - Only extract user-person facts/signals, not project implementation details.
+- Set "is_update": true when the signal changes or replaces something previously true about the user (a new role, a habit they stopped); otherwise false.
 - Use "sensitive" for health, finances, explicit family/relationship personal details.
 - If nothing relevant exists, return {"signals": []}.
 - Keep content concise and factual; avoid repetition.`;
@@ -252,9 +247,7 @@ function stableFingerprint(input: string): string {
 }
 
 function shouldMarkNeedsReview(signal: ProfileFragmentRow): boolean {
-	if (signal.sensitivity === 'sensitive') return true;
-	const text = signal.content.toLowerCase();
-	return NEEDS_REVIEW_PHRASES.some((phrase) => text.includes(phrase));
+	return signal.sensitivity === 'sensitive';
 }
 
 function buildSignalPrompt(params: {
@@ -303,18 +296,6 @@ function buildSummaryPrompt(chapters: ProfileDocumentRow[]): string {
 		.join('\n');
 
 	return `Generate profile summary from these chapters:\n\n${chapterText}`;
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-	let timer: NodeJS.Timeout | null = null;
-	try {
-		const timeoutPromise = new Promise<T>((_, reject) => {
-			timer = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
-		});
-		return await Promise.race([promise, timeoutPromise]);
-	} finally {
-		if (timer) clearTimeout(timer);
-	}
 }
 
 function normalizeExtractedSignals(raw: unknown): ExtractedSignal[] {
@@ -468,21 +449,21 @@ async function regenerateProfileSummary(params: {
 	}
 
 	try {
-		const summaryResponse = await withTimeout(
-			params.llmService.getJSONResponse<{ summary: string; safe_summary: string }>({
-				systemPrompt: PROFILE_SUMMARY_SYSTEM_PROMPT,
-				userPrompt: buildSummaryPrompt(chapterRows),
-				userId: params.userId,
-				profile: 'fast',
-				temperature: 0.2,
-				validation: {
-					retryOnParseError: true,
-					maxRetries: 1
-				}
-			}),
-			PROFILE_SUMMARY_TIMEOUT_MS,
-			'profile_summary_regeneration'
-		);
+		const summaryResponse = await params.llmService.getJSONResponse<{
+			summary: string;
+			safe_summary: string;
+		}>({
+			systemPrompt: PROFILE_SUMMARY_SYSTEM_PROMPT,
+			userPrompt: buildSummaryPrompt(chapterRows),
+			userId: params.userId,
+			profile: 'fast',
+			temperature: 0.2,
+			signal: AbortSignal.timeout(PROFILE_SUMMARY_TIMEOUT_MS),
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 1
+			}
+		});
 
 		const summary =
 			typeof summaryResponse.summary === 'string' ? summaryResponse.summary.trim() : null;
@@ -536,7 +517,7 @@ async function mergePendingFragments(params: {
 	const mergeRunId = crypto.randomUUID();
 
 	for (const fragment of pendingFragments) {
-		if (fragment.confidence < 0.85) {
+		if (fragment.confidence < PROFILE_FRAGMENT_MIN_CONFIDENCE) {
 			continue;
 		}
 
@@ -711,25 +692,22 @@ export async function processProfileSignals(params: {
 
 	let extractedSignals: ExtractedSignal[] = [];
 	try {
-		const extractionResponse = await withTimeout(
-			llmService.getJSONResponse<ExtractSignalResponse>({
-				systemPrompt: PROFILE_SIGNAL_SYSTEM_PROMPT,
-				userPrompt: buildSignalPrompt({
-					safeSummary: profile.safe_summary,
-					classification: params.classification,
-					messages: relevantMessages
-				}),
-				userId,
-				profile: 'fast',
-				temperature: 0.3,
-				validation: {
-					retryOnParseError: true,
-					maxRetries: 1
-				}
+		const extractionResponse = await llmService.getJSONResponse<ExtractSignalResponse>({
+			systemPrompt: PROFILE_SIGNAL_SYSTEM_PROMPT,
+			userPrompt: buildSignalPrompt({
+				safeSummary: profile.safe_summary,
+				classification: params.classification,
+				messages: relevantMessages
 			}),
-			PROFILE_SIGNAL_TIMEOUT_MS,
-			'profile_signal_extraction'
-		);
+			userId,
+			profile: 'fast',
+			temperature: 0.3,
+			signal: AbortSignal.timeout(PROFILE_SIGNAL_TIMEOUT_MS),
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 1
+			}
+		});
 		extractedSignals = normalizeExtractedSignals(extractionResponse);
 	} catch (error) {
 		console.warn(
@@ -788,7 +766,12 @@ export async function processProfileSignals(params: {
 						'chapter.general'
 				],
 			confidence: signal.confidence,
-			status: 'pending',
+			// The model flags facts that change something previously true about the
+			// user; those wait for the user instead of being merged into a chapter.
+			status:
+				signal.is_update && signal.confidence >= PROFILE_FRAGMENT_MIN_CONFIDENCE
+					? 'needs_review'
+					: 'pending',
 			created_at: nowIso
 		};
 	});
@@ -799,7 +782,7 @@ export async function processProfileSignals(params: {
 			onConflict: 'profile_id,idempotency_key',
 			ignoreDuplicates: true
 		})
-		.select('id');
+		.select('id, status');
 
 	if (insertError) {
 		throw new Error(`Failed to insert profile fragments: ${insertError.message}`);
@@ -807,7 +790,9 @@ export async function processProfileSignals(params: {
 
 	const insertedCount = Array.isArray(inserted) ? inserted.length : 0;
 	let mergedCount = 0;
-	let needsReviewCount = 0;
+	let needsReviewCount = Array.isArray(inserted)
+		? inserted.filter((row) => row.status === 'needs_review').length
+		: 0;
 
 	try {
 		const mergeResult = await mergePendingFragments({
@@ -816,7 +801,7 @@ export async function processProfileSignals(params: {
 			llmService
 		});
 		mergedCount = mergeResult.mergedCount;
-		needsReviewCount = mergeResult.needsReviewCount;
+		needsReviewCount += mergeResult.needsReviewCount;
 	} catch (mergeError) {
 		console.warn(
 			`⚠️ Profile merge processing failed: ${getErrorMessage(mergeError, 'Unknown error')}`

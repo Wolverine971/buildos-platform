@@ -65,6 +65,7 @@
 	import DocumentModal from './DocumentModal.svelte';
 	import { RISK_STATES } from '$lib/types/onto';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { changedFormFields } from '$lib/utils/form-patch';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
@@ -135,6 +136,7 @@
 	let isDeleting = $state(false);
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
+	let initialForm: ReturnType<typeof formSnapshot> | null = null;
 	let showLinkedEntities = $state(true);
 	let showImages = $state(false);
 	let showActivityLog = $state(false);
@@ -193,8 +195,35 @@
 		}
 	});
 
-	async function loadRisk() {
+	function formSnapshot() {
+		return {
+			title: title.trim(),
+			impact,
+			probability: probability ? parseFloat(probability) : null,
+			state_key: stateKey,
+			type_key: typeKey || 'risk.default',
+			content: content.trim() || null,
+			description: content.trim() || null,
+			mitigation_strategy: mitigationStrategy.trim() || null,
+			owner: owner.trim() || null
+		};
+	}
+
+	function isFormDirty(): boolean {
+		return (
+			initialForm !== null &&
+			Object.keys(changedFormFields(initialForm, formSnapshot())).length > 0
+		);
+	}
+
+	/**
+	 * Reload the risk. `preserveEdits` is for refreshes triggered by nested
+	 * modals, link changes, or images: it keeps the user's unsaved form edits.
+	 */
+	async function loadRisk(options: { preserveEdits?: boolean } = {}) {
+		const keepForm = options.preserveEdits === true && isFormDirty();
 		try {
+			if (!keepForm) initialForm = null;
 			isLoading = true;
 			const response = await fetch(`/api/onto/risks/${riskId}`);
 			if (!response.ok) throw new Error('Failed to load risk');
@@ -202,7 +231,7 @@
 			const data = await response.json();
 			risk = data.data?.risk;
 
-			if (risk) {
+			if (risk && !keepForm) {
 				title = risk.title || '';
 				impact = risk.impact || 'medium';
 				probability = risk.probability?.toString() || '0.5';
@@ -211,6 +240,7 @@
 				content = risk.content || risk.props?.description || '';
 				mitigationStrategy = risk.props?.mitigation_strategy || '';
 				owner = risk.props?.owner || '';
+				initialForm = formSnapshot();
 			}
 		} catch (err) {
 			console.error('Error loading risk:', err);
@@ -229,8 +259,17 @@
 	}
 
 	async function handleSave() {
+		if (isLoading || isSaving || !initialForm) return;
 		if (!title.trim()) {
 			error = 'Risk title is required';
+			return;
+		}
+
+		// Send only edited fields so a stale form cannot overwrite concurrent
+		// changes (chat, another tab) to fields the user never touched.
+		const requestBody = changedFormFields(initialForm, formSnapshot());
+		if (Object.keys(requestBody).length === 0) {
+			handleClose();
 			return;
 		}
 
@@ -238,18 +277,6 @@
 		error = '';
 
 		try {
-			const requestBody = {
-				title: title.trim(),
-				impact,
-				probability: probability ? parseFloat(probability) : null,
-				state_key: stateKey,
-				type_key: typeKey || 'risk.default',
-				content: content.trim() || null,
-				description: content.trim() || null,
-				mitigation_strategy: mitigationStrategy.trim() || null,
-				owner: owner.trim() || null
-			};
-
 			const response = await fetch(`/api/onto/risks/${riskId}`, {
 				method: 'PATCH',
 				headers: {
@@ -349,6 +376,13 @@
 		}
 	}
 
+	// Nested modals report changes without closing (DocumentModal autosave,
+	// image uploads), so only remember them and refresh once the nested modal closes.
+	let linkedEntityChanged = false;
+	function markLinkedEntityChanged() {
+		linkedEntityChanged = true;
+	}
+
 	function closeLinkedEntityModals() {
 		showTaskModal = false;
 		showPlanModal = false;
@@ -358,8 +392,11 @@
 		selectedPlanIdForModal = null;
 		selectedGoalIdForModal = null;
 		selectedDocumentIdForModal = null;
-		// Refresh risk data to get updated linked entities
-		loadRisk();
+		// Refresh linked entities only when a nested modal changed something,
+		// and never overwrite unsaved edits in this form.
+		if (!linkedEntityChanged) return;
+		linkedEntityChanged = false;
+		void loadRisk({ preserveEdits: true });
 	}
 
 	// Chat about this risk handlers
@@ -809,7 +846,8 @@
 													sourceKind="risk"
 													{projectId}
 													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={loadRisk}
+													onLinksChanged={() =>
+														loadRisk({ preserveEdits: true })}
 												/>
 											</div>
 										{/if}
@@ -842,7 +880,7 @@
 													showTitle={false}
 													compact={true}
 													onChanged={() => {
-														void loadRisk();
+														void loadRisk({ preserveEdits: true });
 														onUpdated?.();
 													}}
 												/>
@@ -966,8 +1004,8 @@
 		taskId={selectedTaskIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onUpdated={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 
@@ -976,8 +1014,8 @@
 		planId={selectedPlanIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onUpdated={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 
@@ -986,8 +1024,8 @@
 		goalId={selectedGoalIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onUpdated={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 
@@ -997,8 +1035,8 @@
 		documentId={selectedDocumentIdForModal}
 		bind:isOpen={showDocumentModal}
 		onClose={closeLinkedEntityModals}
-		onSaved={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onSaved={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 

@@ -21,7 +21,8 @@ const mocks = vi.hoisted(() => ({
 	prepareAgenticChatWorkerAdmission: vi.fn(),
 	admitAgenticChatWorkerTurn: vi.fn(),
 	loggerWarn: vi.fn(),
-	loggerInfo: vi.fn()
+	loggerInfo: vi.fn(),
+	wakeAgenticChatWorkerQueue: vi.fn(async () => 'sent' as const)
 }));
 
 vi.mock('$env/dynamic/private', () => ({ env: mocks.env }));
@@ -48,6 +49,9 @@ vi.mock('$lib/services/agentic-chat-v2/worker-turn-admission.server', async (imp
 		>();
 	return { ...original, admitAgenticChatWorkerTurn: mocks.admitAgenticChatWorkerTurn };
 });
+vi.mock('$lib/services/agentic-chat-v2/worker-queue-wake.server', () => ({
+	wakeAgenticChatWorkerQueue: mocks.wakeAgenticChatWorkerQueue
+}));
 vi.mock('$lib/utils/logger', () => ({
 	createLogger: () => ({ warn: mocks.loggerWarn, info: mocks.loggerInfo })
 }));
@@ -110,6 +114,80 @@ function postEvent(options: { userId?: string | null; body?: unknown } = {}) {
 			}))
 		}
 	};
+}
+
+function leaselessBody(overrides: Record<string, unknown> = {}) {
+	const body: Record<string, unknown> = { ...admissionBody(), ...overrides };
+	if (!('leaseToken' in overrides)) delete body.leaseToken;
+	return body;
+}
+
+function ownedTurnRow(overrides: Record<string, unknown> = {}) {
+	return {
+		id: TURN_ID,
+		user_id: USER_ID,
+		session_id: SESSION_ID,
+		stream_run_id: 'stream-run-1',
+		client_turn_id: 'client-turn-1',
+		context_type: 'global',
+		entity_id: null,
+		project_id: null,
+		execution_mode: 'worker_realtime',
+		transport_contract_version: 'agentic_chat_worker_v1',
+		transport_decision_id: DECISION_ID,
+		...overrides
+	};
+}
+
+function sessionRow(overrides: Record<string, unknown> = {}) {
+	return {
+		id: SESSION_ID,
+		user_id: USER_ID,
+		context_type: 'global',
+		entity_id: null,
+		title: null,
+		status: 'active',
+		...overrides
+	};
+}
+
+/** Service client double for the inline decision lookup and the session read. */
+function fakeAdminClient(
+	options: {
+		turnRows?: unknown[];
+		turnError?: { message: string } | null;
+		session?: unknown;
+		sessionError?: { message: string } | null;
+		sessionThrows?: boolean;
+		rpc?: ReturnType<typeof vi.fn>;
+	} = {}
+) {
+	const turnLookups: Array<Array<[string, string]>> = [];
+	const sessionLookups: Array<Array<[string, string]>> = [];
+	const from = vi.fn((_table: string) => {
+		const filters: Array<[string, string]> = [];
+		const query = {
+			select: vi.fn(() => query),
+			eq: vi.fn((column: string, value: string) => {
+				filters.push([column, value]);
+				return query;
+			}),
+			limit: vi.fn(async () => {
+				turnLookups.push(filters);
+				return { data: options.turnRows ?? [], error: options.turnError ?? null };
+			}),
+			maybeSingle: vi.fn(async () => {
+				sessionLookups.push(filters);
+				if (options.sessionThrows) throw new Error('private session read detail');
+				return {
+					data: options.sessionError ? null : (options.session ?? null),
+					error: options.sessionError ?? null
+				};
+			})
+		};
+		return query;
+	});
+	return { client: { from, rpc: options.rpc ?? vi.fn() }, from, turnLookups, sessionLookups };
 }
 
 function admitted(overrides: Record<string, unknown> = {}) {
@@ -414,6 +492,8 @@ describe('POST /api/agent/v2/turns', () => {
 
 		expect(response.status).toBe(202);
 		expect(payload.data.outcome).toBe('newly_admitted');
+		// A newly admitted turn wakes the worker instead of waiting for its poll.
+		expect(mocks.wakeAgenticChatWorkerQueue).toHaveBeenCalled();
 		expect(response.headers.get('server-timing')).toContain('desc="admission_race_retry"');
 		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(2);
 		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenLastCalledWith(
@@ -563,6 +643,235 @@ describe('POST /api/agent/v2/turns', () => {
 		expect(payload.code).toBe('WORKER_ADMISSION_UNAVAILABLE');
 		expect(JSON.stringify(payload)).not.toContain('private corrupt database receipt');
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
+	});
+});
+
+describe('POST /api/agent/v2/turns without a lease (inline transport decision)', () => {
+	const CANONICAL_UUID =
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+	beforeEach(() => {
+		resetAgenticChatTurnRateLimitForTests();
+		vi.clearAllMocks();
+		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET = SECRET;
+		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
+		mocks.env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED = undefined;
+		mocks.env.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED = undefined;
+		mocks.env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS = undefined;
+		mocks.prepareAgenticChatWorkerAdmission.mockResolvedValue({
+			args: { p_user_id: USER_ID },
+			capacity: { available: true, retryAfterSeconds: 2, reason: 'open' },
+			preparedPromptUsed: false,
+			preparedAdmissionLease: {
+				requested: false,
+				hit: false,
+				missReason: 'disabled',
+				inspectionMs: 0
+			}
+		});
+		mocks.admitAgenticChatWorkerTurn.mockResolvedValue(admitted());
+	});
+
+	function preparedDecisionId(): string {
+		return mocks.prepareAgenticChatWorkerAdmission.mock.calls[0]?.[0]?.lease?.decisionId;
+	}
+
+	it('admits a new turn under a server-minted decision bound to the authenticated owner', async () => {
+		const admin = fakeAdminClient();
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+
+		const response = await POST(postEvent({ body: leaselessBody() }) as never);
+		const payload = await response.json();
+
+		expect(response.status).toBe(202);
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
+		expect(payload.data.handle.turnRunId).toBe(TURN_ID);
+		// The owned-turn lookup is scoped to the session user, never the body.
+		expect(admin.from).toHaveBeenCalledWith('chat_turn_runs');
+		expect(admin.turnLookups).toEqual([
+			[
+				['user_id', USER_ID],
+				['client_turn_id', 'client-turn-1']
+			]
+		]);
+		expect(preparedDecisionId()).toMatch(CANONICAL_UUID);
+		expect(preparedDecisionId()).not.toBe(DECISION_ID);
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: USER_ID,
+				command: expect.objectContaining({
+					clientTurnId: 'client-turn-1',
+					streamRunId: 'stream-run-1',
+					sessionId: SESSION_ID,
+					context: { type: 'global', entityId: null, projectId: null }
+				}),
+				lease: {
+					decisionId: preparedDecisionId(),
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				}
+			})
+		);
+		// One service client serves both the decision and the admission.
+		expect(mocks.createAdminSupabaseClient).toHaveBeenCalledTimes(1);
+		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledTimes(1);
+	});
+
+	it('reuses the persisted decision when the same owned turn is retried', async () => {
+		const admin = fakeAdminClient({ turnRows: [ownedTurnRow()] });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		mocks.admitAgenticChatWorkerTurn.mockResolvedValueOnce(
+			admitted({
+				outcome: 'matching_duplicate',
+				status: 'running',
+				sessionCreated: undefined
+			})
+		);
+
+		const response = await POST(postEvent({ body: leaselessBody() }) as never);
+
+		expect(response.status).toBe(200);
+		expect((await response.json()).data.outcome).toBe('matching_duplicate');
+		expect(preparedDecisionId()).toBe(DECISION_ID);
+	});
+
+	it('treats a null lease as absent but still rejects an empty one', async () => {
+		const admin = fakeAdminClient();
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		const accepted = await POST(
+			postEvent({ body: leaselessBody({ leaseToken: null }) }) as never
+		);
+		expect(accepted.status).toBe(202);
+
+		vi.clearAllMocks();
+		const rejected = await POST(
+			postEvent({ body: leaselessBody({ leaseToken: '' }) }) as never
+		);
+		expect(rejected.status).toBe(422);
+		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
+	});
+
+	it('refuses a binding that conflicts with an existing owned turn before preparation', async () => {
+		for (const turnRows of [
+			[ownedTurnRow({ stream_run_id: 'other-stream' })],
+			[ownedTurnRow({ context_type: 'calendar' })],
+			[ownedTurnRow({ session_id: 'd2000000-0000-4000-8000-0000000000ff' })],
+			[ownedTurnRow(), ownedTurnRow({ id: 'd3000000-0000-4000-8000-0000000000ff' })],
+			[ownedTurnRow({ execution_mode: 'legacy_sse' })]
+		]) {
+			resetAgenticChatTurnRateLimitForTests();
+			mocks.createAdminSupabaseClient.mockReturnValue(fakeAdminClient({ turnRows }).client);
+			const response = await POST(postEvent({ body: leaselessBody() }) as never);
+			const payload = await response.json();
+			expect(response.status).toBe(409);
+			expect(payload.code).toBe('TRANSPORT_CONFLICT');
+			expect(response.headers.get('cache-control')).toBe('private, no-store');
+		}
+		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
+		expect(mocks.admitAgenticChatWorkerTurn).not.toHaveBeenCalled();
+	});
+
+	it('maps a decision lookup outage to a retryable worker outage', async () => {
+		mocks.createAdminSupabaseClient.mockReturnValue(
+			fakeAdminClient({ turnError: { message: 'private database detail' } }).client
+		);
+		const response = await POST(postEvent({ body: leaselessBody() }) as never);
+		const payload = await response.json();
+		expect(response.status).toBe(503);
+		expect(response.headers.get('retry-after')).toBe('2');
+		expect(payload.code).toBe('WORKER_UNAVAILABLE');
+		expect(JSON.stringify(payload)).not.toContain('private database detail');
+		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
+	});
+
+	it('keeps the leased path on the signed decision with no inline lookup', async () => {
+		const admin = fakeAdminClient({ turnRows: [ownedTurnRow({ stream_run_id: 'other' })] });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		const response = await POST(postEvent() as never);
+		expect(response.status).toBe(202);
+		expect(admin.from).not.toHaveBeenCalled();
+		expect(preparedDecisionId()).toBe(DECISION_ID);
+	});
+
+	it('returns the admitted session row only when the send had no session', async () => {
+		const session = sessionRow();
+		let admin = fakeAdminClient({ session });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		const created = await POST(
+			postEvent({ body: leaselessBody({ sessionId: null }) }) as never
+		);
+		const createdPayload = await created.json();
+		expect(created.status).toBe(202);
+		expect(createdPayload.data.session).toEqual(session);
+		expect(createdPayload.data.handle.sessionId).toBe(SESSION_ID);
+		expect(admin.from).toHaveBeenCalledWith('chat_sessions');
+		expect(admin.sessionLookups).toEqual([
+			[
+				['id', SESSION_ID],
+				['user_id', USER_ID]
+			]
+		]);
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledWith(
+			expect.objectContaining({ command: expect.objectContaining({ sessionId: null }) })
+		);
+		// The row is read after durable admission, never before it.
+		const sessionQuery = admin.from.mock.results.at(-1)?.value;
+		expect(sessionQuery.maybeSingle.mock.invocationCallOrder[0]).toBeGreaterThan(
+			mocks.admitAgenticChatWorkerTurn.mock.invocationCallOrder[0]!
+		);
+
+		// A lost-response retry of the same session-less send also gets the row.
+		resetAgenticChatTurnRateLimitForTests();
+		admin = fakeAdminClient({ session });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		mocks.admitAgenticChatWorkerTurn.mockResolvedValueOnce(
+			admitted({
+				outcome: 'matching_duplicate',
+				status: 'running',
+				sessionCreated: undefined
+			})
+		);
+		const duplicate = await POST(
+			postEvent({ body: leaselessBody({ sessionId: null }) }) as never
+		);
+		expect(duplicate.status).toBe(200);
+		expect((await duplicate.json()).data.session).toEqual(session);
+
+		// A send that already named its session gets the unchanged payload.
+		resetAgenticChatTurnRateLimitForTests();
+		admin = fakeAdminClient({ session });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		const existing = await POST(postEvent({ body: leaselessBody() }) as never);
+		const existingPayload = await existing.json();
+		expect(existing.status).toBe(202);
+		expect(existingPayload.data).not.toHaveProperty('session');
+		expect(Object.keys(existingPayload.data).sort()).toEqual(['handle', 'outcome', 'status']);
+		expect(admin.from).not.toHaveBeenCalledWith('chat_sessions');
+	});
+
+	it('never fails a durable admission because the session read failed', async () => {
+		for (const options of [
+			{ sessionThrows: true },
+			{ sessionError: { message: 'private session read detail' } },
+			{ session: null }
+		]) {
+			resetAgenticChatTurnRateLimitForTests();
+			mocks.loggerWarn.mockClear();
+			mocks.createAdminSupabaseClient.mockReturnValue(fakeAdminClient(options).client);
+			const response = await POST(
+				postEvent({ body: leaselessBody({ sessionId: null }) }) as never
+			);
+			const payload = await response.json();
+			expect(response.status).toBe(202);
+			expect(payload.data.outcome).toBe('newly_admitted');
+			expect(payload.data.handle.sessionId).toBe(SESSION_ID);
+			expect(payload.data).not.toHaveProperty('session');
+			expect(JSON.stringify(payload)).not.toContain('private session read detail');
+			expect(mocks.loggerWarn).toHaveBeenCalledWith(
+				expect.stringMatching(/^Admitted worker session read/),
+				expect.objectContaining({ userId: USER_ID, sessionId: SESSION_ID })
+			);
+		}
 	});
 });
 
@@ -733,6 +1042,59 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 				historyMessageCount: 3
 			})
 		);
+	});
+
+	it('returns the created session for a session-less review, read after its one RPC', async () => {
+		const session = sessionRow({
+			context_type: 'project',
+			entity_id: PROJECT_ID
+		});
+		const admin = fakeAdminClient({ session, rpc });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		respondWith(() => workflowReceipt({ session_created: true }));
+
+		const response = await POST(postEvent({ body: reviewBody({ sessionId: null }) }) as never);
+		const body = await response.json();
+
+		expect(response.status).toBe(202);
+		expect(body.data).toMatchObject({ reviewMode: 'project_review', session });
+		expect(rpc).toHaveBeenCalledWith(
+			'create_agentic_chat_workflow_turn_with_job_v1',
+			expect.objectContaining({ p_session_id: null, p_transport_decision_id: DECISION_ID })
+		);
+		expect(admin.from).toHaveBeenCalledTimes(1);
+		expect(admin.sessionLookups).toEqual([
+			[
+				['id', SESSION_ID],
+				['user_id', USER_ID]
+			]
+		]);
+		const sessionQuery = admin.from.mock.results[0]?.value;
+		expect(sessionQuery.maybeSingle.mock.invocationCallOrder[0]).toBeGreaterThan(
+			rpc.mock.invocationCallOrder[0]!
+		);
+		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
+	});
+
+	it('admits a lease-less review under an inline decision', async () => {
+		const admin = fakeAdminClient({ rpc });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		const body: Record<string, unknown> = { ...reviewBody() };
+		delete body.leaseToken;
+
+		const response = await POST(postEvent({ body }) as never);
+
+		expect(response.status).toBe(202);
+		expect(admin.turnLookups).toEqual([
+			[
+				['user_id', USER_ID],
+				['client_turn_id', 'client-turn-1']
+			]
+		]);
+		const decisionId = rpc.mock.calls[0]?.[1]?.p_transport_decision_id;
+		expect(decisionId).toMatch(/^[0-9a-f-]{36}$/);
+		expect(decisionId).not.toBe(DECISION_ID);
+		expect((await response.json()).data).not.toHaveProperty('session');
 	});
 
 	it('returns the same handle for a duplicate Send', async () => {

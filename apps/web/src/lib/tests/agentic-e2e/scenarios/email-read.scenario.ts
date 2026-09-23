@@ -2,7 +2,7 @@
 //
 // Tier 1 Gmail read tools, end-to-end over the real stream endpoint.
 //
-// Skipped by default (like calendar-move): it needs the test user to have a
+// Skipped by default: it needs the test user to have a
 // connected, read-enabled Gmail account (a one-time manual OAuth step). Once it
 // is connected, set AGENTIC_TEST_EMAIL_READY=true to run it. It asserts the agent lists
 // accounts, searches, opens a message, and performs ZERO Gmail writes (there is

@@ -1,4 +1,8 @@
 // apps/web/src/routes/api/agent/v2/turns/+server.ts
+// Admission can cross the app-wide 10s function default: a first send creates
+// its session inline and a prepared-prompt miss builds context and prompt here.
+export const config = { maxDuration: 60 };
+
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
@@ -10,15 +14,16 @@ import {
 	verifyAgenticChatTransportLease
 } from '$lib/services/agentic-chat-v2/transport-lease.server';
 import {
+	loadAdmittedWorkerSession,
+	resolveAgenticChatWorkerTransportDecision
+} from '$lib/services/agentic-chat-v2/worker-turn-inline-admission.server';
+import {
 	admitAgenticChatWorkerTurn,
 	getPreparedAdmissionFailureCode,
 	isPreparedAdmissionRaceError,
 	type AgenticChatWorkerAdmissionRpcClient
 } from '$lib/services/agentic-chat-v2/worker-turn-admission.server';
-import {
-	AgenticChatWorkerPreparationError,
-	prepareAgenticChatWorkerAdmission
-} from '$lib/services/agentic-chat-v2/worker-turn-preparation.server';
+import { prepareAgenticChatWorkerAdmission } from '$lib/services/agentic-chat-v2/worker-turn-preparation.server';
 import {
 	listOwnedActiveAgenticChatWorkerTurns,
 	type AgenticChatWorkerTurnGatewayClient
@@ -28,10 +33,19 @@ import { createLogger } from '$lib/utils/logger';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { consumeAgenticChatTurnRateLimit } from '$lib/server/agentic-chat-turn-rate-limit';
+import { wakeAgenticChatWorkerQueue } from '$lib/services/agentic-chat-v2/worker-queue-wake.server';
 
 const logger = createLogger('API:AgentWorkerTurnsV2');
 import { workerAdmissionRequestSchema } from './worker-admission-schema';
-import { admitWorkflowReviewTurnIfEligible } from './workflow-review-admission';
+import {
+	privateResponse,
+	withWorkerAdmissionTiming,
+	workerAdmissionErrorResponse
+} from './worker-admission-responses';
+import {
+	admitWorkflowReviewTurnIfEligible,
+	pickWorkflowReviewEnvironment
+} from './workflow-review-admission';
 import type { AgenticChatWorkflowV4AdmissionRpcClient } from '$lib/services/agentic-chat-v2/worker-turn-workflow-admission.server';
 
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
@@ -94,60 +108,68 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	if (!parsed.ok) return privateResponse(parsed.response);
 
 	let lease;
-	try {
-		lease = verifyAgenticChatTransportLease({
-			secret: env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET ?? '',
-			token: parsed.data.leaseToken,
-			expected: {
+	if (parsed.data.leaseToken !== null) {
+		try {
+			lease = verifyAgenticChatTransportLease({
+				secret: env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET ?? '',
+				token: parsed.data.leaseToken,
+				expected: {
+					userId: user.id,
+					clientTurnId: parsed.data.clientTurnId,
+					streamRunId: parsed.data.streamRunId,
+					context: parsed.data.context
+				},
+				currentKillEpoch: parseAgenticChatWorkerKillEpoch(
+					env.AGENTIC_CHAT_WORKER_KILL_EPOCH
+				)
+			});
+		} catch (error) {
+			// TRANSPORT_RENEGOTIATE now means exactly one thing: get a fresh worker
+			// lease and re-admit this turn on the worker. A kill-epoch bump is the
+			// deliberate way to force that for every in-flight lease.
+			logger.warn('Worker turn lease verification failed', {
+				error,
 				userId: user.id,
-				clientTurnId: parsed.data.clientTurnId,
-				streamRunId: parsed.data.streamRunId,
-				context: parsed.data.context
-			},
-			currentKillEpoch: parseAgenticChatWorkerKillEpoch(env.AGENTIC_CHAT_WORKER_KILL_EPOCH)
-		});
-	} catch (error) {
-		// TRANSPORT_RENEGOTIATE now means exactly one thing: get a fresh worker
-		// lease and re-admit this turn on the worker. A kill-epoch bump is the
-		// deliberate way to force that for every in-flight lease.
-		logger.warn('Worker turn lease verification failed', {
-			error,
-			userId: user.id,
-			clientTurnId: parsed.data.clientTurnId
-		});
-		return privateResponse(
-			ApiResponse.error(
-				'The worker transport lease must be renegotiated',
-				HttpStatus.CONFLICT,
-				'TRANSPORT_RENEGOTIATE'
-			)
-		);
+				clientTurnId: parsed.data.clientTurnId
+			});
+			return privateResponse(
+				ApiResponse.error(
+					'The worker transport lease must be renegotiated',
+					HttpStatus.CONFLICT,
+					'TRANSPORT_RENEGOTIATE'
+				)
+			);
+		}
 	}
 	const serviceClient = createAdminSupabaseClient();
+	// Lease-less (current) clients skip /transport: the same owned-turn lookup
+	// runs here, bound to this authenticated user and the exact clientTurnId,
+	// streamRunId, session, and context this request admits.
+	const decision = lease
+		? { ok: true as const, decisionId: lease.decisionId }
+		: await resolveAgenticChatWorkerTransportDecision({
+				client: serviceClient,
+				userId: user.id,
+				binding: parsed.data
+			});
+	if (!decision.ok) return privateResponse(decision.response);
+	// A session-less send gets its session inside the admission RPC; the row is
+	// returned so the client needs no separate session bootstrap round trip.
+	const loadCreatedSession = parsed.data.sessionId
+		? undefined
+		: (sessionId: string) =>
+				loadAdmittedWorkerSession({ client: serviceClient, userId: user.id, sessionId });
 	// Tasker 86: an eligible explicit project review is saved raw in one RPC;
 	// null keeps every other turn on the unchanged ordinary path below.
 	const workflowReview = await admitWorkflowReviewTurnIfEligible({
-		environment: {
-			AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED: env.AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED,
-			AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED: env.AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED,
-			AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED:
-				env.AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED,
-			AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED: env.AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED,
-			AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED: env.AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED,
-			AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED:
-				env.AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED,
-			AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED:
-				env.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED,
-			AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED:
-				env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED,
-			AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS: env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS
-		},
+		environment: pickWorkflowReviewEnvironment(env),
 		userId: user.id,
 		command: parsed.data,
-		transportDecisionId: lease.decisionId,
+		transportDecisionId: decision.decisionId,
 		client: serviceClient as unknown as AgenticChatWorkflowV4AdmissionRpcClient,
 		workbenchClient:
-			serviceClient as unknown as import('$lib/services/agentic-chat-v2/specialist-workbench.server').SpecialistWorkbenchClient
+			serviceClient as unknown as import('$lib/services/agentic-chat-v2/specialist-workbench.server').SpecialistWorkbenchClient,
+		loadSession: loadCreatedSession
 	});
 	if (workflowReview) return privateResponse(workflowReview);
 	try {
@@ -164,7 +186,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			preparedPromptKey: parsed.data.preparedPromptKey
 		};
 		const leaseAuthority = {
-			decisionId: lease.decisionId,
+			decisionId: decision.decisionId,
 			mode: 'worker_realtime' as const,
 			contractVersion: 'agentic_chat_worker_v1' as const
 		};
@@ -270,6 +292,11 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			);
 		}
 
+		// Wake the worker (bounded, never throws; its 1s poll is the fallback).
+		const [session] = await Promise.all([
+			loadCreatedSession ? loadCreatedSession(result.sessionId) : null,
+			result.outcome === 'newly_admitted' ? wakeAgenticChatWorkerQueue() : null
+		]);
 		const payload = {
 			outcome: result.outcome,
 			handle: {
@@ -280,7 +307,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				streamRunId: result.streamRunId,
 				clientTurnId: result.clientTurnId
 			},
-			status: result.status
+			status: result.status,
+			...(session ? { session } : {})
 		};
 		return timedResponse(
 			privateResponse(
@@ -300,75 +328,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			userId: user.id,
 			clientTurnId: parsed.data.clientTurnId
 		});
-		if (error instanceof AgenticChatWorkerPreparationError) {
-			if (error.code === 'capability_unavailable') {
-				return privateResponse(
-					ApiResponse.error(
-						'BuildOS cannot run this turn right now: a required capability is unavailable.',
-						HttpStatus.CONFLICT,
-						'WORKER_CAPABILITY_UNAVAILABLE'
-					)
-				);
-			}
-			if (error.code === 'invalid_command') {
-				return privateResponse(
-					ApiResponse.error(
-						'Worker turn command is invalid',
-						HttpStatus.UNPROCESSABLE_ENTITY,
-						'INVALID_WORKER_COMMAND'
-					)
-				);
-			}
-			if (error.code === 'access_denied') {
-				return privateResponse(ApiResponse.forbidden('Worker turn access denied'));
-			}
-			if (error.code === 'session_conflict') {
-				return privateResponse(
-					ApiResponse.error(
-						'Worker turn session conflicts with the request',
-						HttpStatus.CONFLICT,
-						'WORKER_SESSION_CONFLICT'
-					)
-				);
-			}
-		}
-		return privateResponse(
-			ApiResponse.error(
-				'Worker turn admission is temporarily unavailable',
-				HttpStatus.SERVICE_UNAVAILABLE,
-				'WORKER_ADMISSION_UNAVAILABLE'
-			)
-		);
+		return workerAdmissionErrorResponse(error);
 	}
 };
-
-function privateResponse(response: Response): Response {
-	response.headers.set('Cache-Control', 'private, no-store');
-	response.headers.set('Vary', 'Authorization');
-	return response;
-}
-
-function withWorkerAdmissionTiming(
-	response: Response,
-	timing: {
-		preparationMs: number;
-		admissionMs: number;
-		preparedAdmissionLease?: {
-			hit: boolean;
-			missReason: string | null;
-			inspectionMs: number;
-		};
-	}
-): Response {
-	const lease = timing.preparedAdmissionLease;
-	const leaseDescription = lease?.hit ? 'hit' : (lease?.missReason ?? 'unavailable');
-	response.headers.set(
-		'Server-Timing',
-		[
-			`prepared-admission;dur=${Math.max(0, lease?.inspectionMs ?? 0)};desc="${leaseDescription}"`,
-			`worker-preparation;dur=${Math.max(0, timing.preparationMs)}`,
-			`worker-admission;dur=${Math.max(0, timing.admissionMs)}`
-		].join(', ')
-	);
-	return response;
-}

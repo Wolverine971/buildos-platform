@@ -177,6 +177,66 @@ describe('SupabaseAgenticChatStalledCandidateSource', () => {
 	});
 });
 
+describe('SupabaseAgenticChatStalledCandidateSource defer', () => {
+	function writableClient(rows: unknown[]) {
+		const writes: Array<{ values: unknown; filters: Array<[string, string, unknown]> }> = [];
+		const client = {
+			from: () => ({
+				select: () => createQuery(rows, []),
+				update: (values: unknown) => {
+					const filters: Array<[string, string, unknown]> = [];
+					writes.push({ values, filters });
+					const query: any = {
+						eq: (column: string, value: unknown) => {
+							filters.push(['eq', column, value]);
+							return query;
+						},
+						is: (column: string, value: unknown) => {
+							filters.push(['is', column, value]);
+							return query;
+						},
+						then: (resolve: (value: unknown) => unknown) =>
+							Promise.resolve({ data: null, error: null }).then(resolve)
+					};
+					return query;
+				}
+			})
+		};
+		return { client, writes };
+	}
+
+	it('bumps updated_at under the heartbeat fence', async () => {
+		const { client, writes } = writableClient([]);
+		const source = new SupabaseAgenticChatStalledCandidateSource(client);
+
+		await source.defer({ queueJobId: QUEUE_JOB_ID, processingToken: PROCESSING_TOKEN });
+
+		expect(writes).toHaveLength(1);
+		expect(writes[0]!.values).toEqual({ updated_at: expect.any(String) });
+		expect(writes[0]!.filters).toEqual([
+			['eq', 'id', QUEUE_JOB_ID],
+			['eq', 'status', 'processing'],
+			['eq', 'processing_token', PROCESSING_TOKEN]
+		]);
+	});
+
+	it('defers an unparseable row so it stops occupying a batch slot', async () => {
+		const malformedId = '20000000-0000-4000-8000-00000000000a';
+		const { client, writes } = writableClient([
+			{ ...candidateRow(), id: malformedId, metadata: {} },
+			candidateRow()
+		]);
+		const source = new SupabaseAgenticChatStalledCandidateSource(client);
+
+		await expect(
+			source.list({ stalledBefore: '2026-08-03T12:03:00.000Z', limit: 32 })
+		).resolves.toEqual([candidate]);
+		expect(writes).toHaveLength(1);
+		expect(writes[0]!.filters).toContainEqual(['eq', 'id', malformedId]);
+		expect(writes[0]!.filters).toContainEqual(['eq', 'processing_token', PROCESSING_TOKEN]);
+	});
+});
+
 describe('AgenticChatStalledRecoverySweep', () => {
 	it('bridges a pre-domain queue claim and schedules only the safe pre-start retry', async () => {
 		const harness = createSweep({
@@ -435,6 +495,27 @@ describe('AgenticChatStalledRecoverySweep', () => {
 			lastCandidateCount: 1,
 			lastAttentionRequiredCount: 1
 		});
+	});
+
+	it('defers a candidate it could not settle so it cannot starve newer stalls', async () => {
+		const unsettled = createSweep({
+			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
+			recoveries: [recovery('effect_reconciliation_required')]
+		});
+		const defer = vi.fn(async () => undefined);
+		Object.assign(unsettled.candidates, { defer });
+
+		await unsettled.sweep.runOnce();
+		expect(defer).toHaveBeenCalledWith(candidate);
+
+		const settled = createSweep({
+			recoveries: [recovery('retry_scheduled', { failure_code: 'timeout_pre_start' })]
+		});
+		const settledDefer = vi.fn(async () => undefined);
+		Object.assign(settled.candidates, { defer: settledDefer });
+
+		await settled.sweep.runOnce();
+		expect(settledDefer).not.toHaveBeenCalled();
 	});
 
 	it('coalesces overlapping sweeps and drains an in-flight run on stop', async () => {

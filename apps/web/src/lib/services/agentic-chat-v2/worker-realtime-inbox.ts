@@ -51,6 +51,7 @@ export type AgenticChatWorkerTurnInboxSnapshot = {
 	bufferedEvents: number;
 	bufferedBytes: number;
 	bufferOverflowed: boolean;
+	highestObservedGeneration: number;
 };
 
 type WorkerTurnHandle = Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
@@ -70,6 +71,16 @@ type TrackedTurn = {
 	buffer: Map<string, BufferedEvent>;
 	bufferedBytes: number;
 	bufferOverflowed: boolean;
+	/**
+	 * Highest generation any authenticated event, hint, or receipt has shown.
+	 * A hint that lands while a reconciliation is already in flight is not
+	 * re-requested at that moment (one request per latch), so a receipt older
+	 * than this must immediately ask again instead of waiting for the watchdog.
+	 */
+	highestObservedGeneration: number;
+	/** Latest hinted durable sequence, scoped to the generation it describes. */
+	hintedGeneration: number;
+	hintedDurableSequence: number;
 };
 
 export type AgenticChatWorkerRealtimeInboxOptions = {
@@ -138,7 +149,10 @@ export class AgenticChatWorkerRealtimeInbox {
 			reconciliationRequested: false,
 			buffer: new Map(),
 			bufferedBytes: 0,
-			bufferOverflowed: false
+			bufferOverflowed: false,
+			highestObservedGeneration: executionGeneration,
+			hintedGeneration: executionGeneration,
+			hintedDurableSequence: lastAppliedSequence
 		};
 		this.#turns.set(input.handle.turnRunId, state);
 		this.#requestReconciliation(state, 'initial');
@@ -185,6 +199,7 @@ export class AgenticChatWorkerRealtimeInbox {
 			this.#requestReconciliation(state, 'protocol_error');
 			return;
 		}
+		observeGeneration(state, event.execution_generation);
 
 		if (state.buffering) {
 			if (event.execution_generation < state.executionGeneration) return;
@@ -231,6 +246,15 @@ export class AgenticChatWorkerRealtimeInbox {
 		const state = this.#turns.get(hint.turn_run_id);
 		if (!state || hint.session_id !== state.handle.sessionId) return;
 		if (hint.execution_generation < state.executionGeneration) return;
+		observeGeneration(state, hint.execution_generation);
+		if (
+			hint.execution_generation > state.hintedGeneration ||
+			(hint.execution_generation === state.hintedGeneration &&
+				hint.durable_through_sequence > state.hintedDurableSequence)
+		) {
+			state.hintedGeneration = hint.execution_generation;
+			state.hintedDurableSequence = hint.durable_through_sequence;
+		}
 		if (
 			hint.execution_generation > state.executionGeneration ||
 			hint.durable_through_sequence > state.lastAppliedSequence
@@ -276,10 +300,21 @@ export class AgenticChatWorkerRealtimeInbox {
 
 		state.executionGeneration = receipt.execution_generation;
 		state.lastAppliedSequence = receipt.response_watermark;
+		observeGeneration(state, receipt.execution_generation);
 		const overflowed = state.bufferOverflowed;
 		state.bufferOverflowed = false;
 		this.#drainBufferedEvents(state);
 		if (overflowed) this.#requestReconciliation(state, 'buffer_overflow');
+		// A claim hint or event that arrived while this receipt was in flight was
+		// latched behind that request. The receipt predates it, so ask again now.
+		if (state.highestObservedGeneration > state.executionGeneration) {
+			this.#requestReconciliation(state, 'generation_changed');
+		} else if (
+			state.hintedGeneration === state.executionGeneration &&
+			state.hintedDurableSequence > state.lastAppliedSequence
+		) {
+			this.#requestReconciliation(state, 'reconcile_hint');
+		}
 		if (!state.reconciliationRequested && state.buffer.size === 0) {
 			state.buffering = false;
 		}
@@ -297,7 +332,8 @@ export class AgenticChatWorkerRealtimeInbox {
 			reconciliationRequested: state.reconciliationRequested,
 			bufferedEvents: state.buffer.size,
 			bufferedBytes: state.bufferedBytes,
-			bufferOverflowed: state.bufferOverflowed
+			bufferOverflowed: state.bufferOverflowed,
+			highestObservedGeneration: state.highestObservedGeneration
 		};
 	}
 
@@ -410,6 +446,12 @@ export class AgenticChatWorkerRealtimeInbox {
 		} catch {
 			// Error reporting must never corrupt cursor state.
 		}
+	}
+}
+
+function observeGeneration(state: TrackedTurn, generation: number): void {
+	if (generation > state.highestObservedGeneration) {
+		state.highestObservedGeneration = generation;
 	}
 }
 

@@ -307,6 +307,30 @@ describe('AgenticChatMutationExecutor', () => {
 		expect(harness.mutatingTool.execute).toHaveBeenCalledTimes(2);
 	});
 
+	it('carries the adapter failure code so a contract mismatch can cap retries structurally', async () => {
+		const harness = createHarness();
+		harness.mutatingTool.execute.mockRejectedValueOnce(
+			new AgenticChatMutationAdapterError(
+				'known_failed',
+				'onto_task_update_contract_mismatch',
+				'The task update contract changed'
+			)
+		);
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: new AbortController().signal
+			})
+		).rejects.toMatchObject({
+			failureClass: 'permanent',
+			effectId: harness.stable.effectId,
+			failureCode: 'onto_task_update_contract_mismatch'
+		});
+	});
+
 	it('keeps an earlier ambiguous attempt uncertain when recovery fails closed', async () => {
 		const harness = createHarness();
 		harness.mutatingTool.execute

@@ -2,25 +2,12 @@
 import { describe, expect, it } from 'vitest';
 import {
 	buildMutationBatch,
-	describeMutationBatchCall,
-	mutationBatchFulfilment,
 	mutationBatchSha256,
-	mutationBatchesMatch,
-	parseApprovedMutationBatch,
 	serializeMutationBatchForReview
 } from './mutation-batch';
-import type { WriteLedgerEntry } from './write-ledger';
 
 function streamed(name: string, args: Record<string, unknown>, id = `${name}-1`) {
 	return { id, name, canonicalProviderArguments: JSON.stringify(args) };
-}
-
-function success(toolName: string): WriteLedgerEntry {
-	return { toolName, status: 'success' };
-}
-
-function failure(toolName: string): WriteLedgerEntry {
-	return { toolName, status: 'failure' };
 }
 
 describe('mutation batch digest', () => {
@@ -62,7 +49,7 @@ describe('mutation batch digest', () => {
 			streamed('update_onto_task', { task_id: 't1' }, 'call_9')
 		]);
 
-		expect(mutationBatchesMatch(first, retried)).toBe(true);
+		expect(mutationBatchSha256(first)).toBe(mutationBatchSha256(retried));
 	});
 
 	it('shows the reviewer the real arguments, not a description of them', () => {
@@ -80,76 +67,5 @@ describe('mutation batch digest', () => {
 		]);
 		expect(batch.calls[0]!.canonicalArguments).toBe('{"task_id":"t1","due_at":"2026-09-18"}');
 		expect(mutationBatchSha256(batch)).toBe(digest);
-	});
-});
-
-describe('mutation batch fulfilment', () => {
-	it('counts each approved call against one successful write', () => {
-		const batch = buildMutationBatch([
-			streamed('create_onto_task', { title: 'One' }, 'a'),
-			streamed('create_onto_task', { title: 'Two' }, 'b'),
-			streamed('link_onto_entities', { rel: 'depends_on' }, 'c')
-		]);
-
-		const fulfilment = mutationBatchFulfilment(batch, [
-			success('create_onto_task'),
-			success('create_onto_task'),
-			failure('link_onto_entities')
-		]);
-
-		expect(fulfilment.executed).toHaveLength(2);
-		expect(fulfilment.unfulfilled.map((call) => call.name)).toEqual(['link_onto_entities']);
-		expect(fulfilment.descriptions).toEqual(['link_onto_entities']);
-	});
-
-	it('needs two successes when the batch proposes the same call twice', () => {
-		const batch = buildMutationBatch([
-			streamed('create_onto_task', { title: 'One' }, 'a'),
-			streamed('create_onto_task', { title: 'Two' }, 'b')
-		]);
-
-		expect(
-			mutationBatchFulfilment(batch, [success('create_onto_task')].slice()).unfulfilled
-		).toHaveLength(1);
-	});
-
-	// The contract lane reported a correct "nothing to change" turn as an
-	// unfinished write because fulfilment was inferred from declared
-	// postconditions. With no approved batch there is nothing owed.
-	it('owes nothing when no batch was approved', () => {
-		expect(mutationBatchFulfilment(null, [success('update_onto_task')])).toEqual({
-			executed: [],
-			unfulfilled: [],
-			descriptions: []
-		});
-	});
-
-	it('names the entity in an unfulfilled call so the disclosure is specific', () => {
-		expect(
-			describeMutationBatchCall({
-				id: 'a',
-				name: 'create_onto_task',
-				canonicalArguments: JSON.stringify({ title: 'Pull the permit' })
-			})
-		).toBe('create_onto_task (Pull the permit)');
-	});
-});
-
-describe('approved batch round trip', () => {
-	it('rebuilds an approved batch from its durable record', () => {
-		const batch = buildMutationBatch([
-			streamed('update_onto_task', { task_id: 't1', due_at: '2026-09-18' })
-		]);
-		const restored = parseApprovedMutationBatch(JSON.parse(JSON.stringify(batch)));
-
-		expect(restored).not.toBeNull();
-		expect(mutationBatchSha256(restored!)).toBe(mutationBatchSha256(batch));
-	});
-
-	it('refuses a malformed or unversioned record instead of guessing', () => {
-		expect(parseApprovedMutationBatch(null)).toBeNull();
-		expect(parseApprovedMutationBatch({ version: 2, calls: [] })).toBeNull();
-		expect(parseApprovedMutationBatch({ version: 1, calls: [{ name: 'x' }] })).toBeNull();
-		expect(parseApprovedMutationBatch({ version: 1, calls: 'nope' })).toBeNull();
 	});
 });

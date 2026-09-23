@@ -853,7 +853,15 @@
 		}
 
 		if (!activeBatch) return;
-		if ((event.target as HTMLElement | null)?.closest('input, textarea')) return;
+		// Cmd+D (bookmark), Ctrl+T (new tab) etc. must not mark tasks done/moved.
+		if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+		const target = event.target as HTMLElement | null;
+		if (
+			target?.closest(
+				'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
+			)
+		)
+			return;
 
 		if (event.key.toLowerCase() === 'd' && expandedTaskId) {
 			void handleSetTaskState(expandedTaskId, 'done');

@@ -11,6 +11,11 @@ import { getAgenticChatLoopToolCatalog, type AgenticChatLoopToolCatalogV1 } from
 import { normalizeProjectCreateArgs, validateProjectCreateArgs } from './project-create-args';
 import { isValidUUID } from '@buildos/shared-agent-ops/utils/validation-utils';
 import {
+	hasCivilTimezoneSensitiveValue,
+	isValidIanaTimezone,
+	normalizeDateOnlyInput
+} from '@buildos/shared-agent-ops/dates/civil-date';
+import {
 	getDocumentUpdateContentCandidate,
 	hasMeaningfulUpdateValue,
 	isAppendOrMergeUpdateStrategy
@@ -102,6 +107,13 @@ type GatewayValidationContext = {
 	 * and names the field, so the bounded repair loop can ask for a real date.
 	 */
 	loadedTaskSchedules?: ReadonlyMap<string, LoadedTaskSchedule>;
+	/**
+	 * The acting user's IANA timezone. A date-only (or offset-less) proposal
+	 * means a civil day/time there, exactly as the executor stores it; without
+	 * it the no-op check cannot know which instant the write would produce and
+	 * never blocks such a proposal.
+	 */
+	timezone?: string | null;
 };
 
 /** Scheduling fields of one task exactly as a read in this turn returned them. */
@@ -276,7 +288,9 @@ function describeTaskScheduleNoOp(
 
 	const provided = TASK_SCHEDULE_FIELD_KEYS.filter((key) => hasMeaningfulUpdateValue(args[key]));
 	if (provided.length === 0) return null;
-	const unchanged = provided.filter((key) => sameScheduleInstant(args[key], loaded[key] ?? null));
+	const unchanged = provided.filter((key) =>
+		sameScheduleInstant(key, args[key], loaded[key] ?? null, validationContext.timezone)
+	);
 	if (unchanged.length !== provided.length) return null;
 
 	const ignoredKeys = new Set<string>([
@@ -301,12 +315,32 @@ function describeTaskScheduleNoOp(
 	);
 }
 
-function sameScheduleInstant(proposed: unknown, current: string | null | undefined): boolean {
+function sameScheduleInstant(
+	key: (typeof TASK_SCHEDULE_FIELD_KEYS)[number],
+	proposed: unknown,
+	current: string | null | undefined,
+	timezone?: string | null
+): boolean {
 	if (typeof proposed !== 'string' || typeof current !== 'string') return false;
-	const left = proposed.trim();
+	let left = proposed.trim();
 	const right = current.trim();
 	if (!left || !right) return false;
 	if (left === right) return true;
+	if (hasCivilTimezoneSensitiveValue([left])) {
+		// The executor stores a bare date as the start (start_at) or end (due_at)
+		// of that civil day in the user's timezone. Compare that instant, never
+		// UTC midnight; without a timezone the stored instant is unknown.
+		if (!isValidIanaTimezone(timezone)) return false;
+		try {
+			left = normalizeDateOnlyInput(left, {
+				boundary: key === 'due_at' ? 'end' : 'start',
+				timezone,
+				datetimeOutput: 'iso'
+			});
+		} catch {
+			return false;
+		}
+	}
 	const leftMs = Date.parse(left);
 	const rightMs = Date.parse(right);
 	return Number.isFinite(leftMs) && Number.isFinite(rightMs) && leftMs === rightMs;

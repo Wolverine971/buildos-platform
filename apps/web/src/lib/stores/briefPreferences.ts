@@ -1,5 +1,5 @@
 // apps/web/src/lib/stores/briefPreferences.ts
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 
 export interface BriefPreferences {
 	id?: string;
@@ -7,7 +7,8 @@ export interface BriefPreferences {
 	frequency: 'daily' | 'weekly';
 	day_of_week: number | null;
 	time_of_day: string;
-	// timezone removed - now stored in users table
+	// Stored on the users table; GET merges it in and POST requires it.
+	timezone?: string;
 	is_active: boolean;
 	created_at?: string;
 	updated_at?: string;
@@ -54,8 +55,33 @@ const DEFAULT_PREFERENCES: Omit<BriefPreferences, 'id' | 'user_id' | 'created_at
 		is_active: false
 	};
 
+function getBrowserTimezone(): string | undefined {
+	try {
+		return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 function createBriefPreferencesStore() {
 	const { subscribe, set, update } = writable<BriefPreferencesState>(initialState);
+
+	// POST /api/brief-preferences is a strict schema: callers hand us the whole
+	// loaded row (id, user_id, created_at...), so send only the writable fields.
+	function toSavePayload(preferences: Partial<BriefPreferences>) {
+		const current = get({ subscribe }).preferences;
+		return {
+			frequency: preferences.frequency ?? current?.frequency ?? DEFAULT_PREFERENCES.frequency,
+			day_of_week:
+				preferences.day_of_week !== undefined
+					? preferences.day_of_week
+					: (current?.day_of_week ?? DEFAULT_PREFERENCES.day_of_week),
+			time_of_day:
+				preferences.time_of_day ?? current?.time_of_day ?? DEFAULT_PREFERENCES.time_of_day,
+			is_active: preferences.is_active ?? current?.is_active ?? DEFAULT_PREFERENCES.is_active,
+			timezone: preferences.timezone || current?.timezone || getBrowserTimezone() || 'UTC'
+		};
+	}
 
 	// Calculate next scheduled brief
 	function calculateNextScheduledBrief(preferences: BriefPreferences): Date | null {
@@ -154,7 +180,7 @@ function createBriefPreferencesStore() {
 					headers: {
 						'Content-Type': 'application/json'
 					},
-					body: JSON.stringify(preferences)
+					body: JSON.stringify(toSavePayload(preferences))
 				});
 
 				const responsePayload = await response.json();

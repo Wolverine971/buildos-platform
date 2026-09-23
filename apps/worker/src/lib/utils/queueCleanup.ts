@@ -154,21 +154,26 @@ export async function cleanupStaleJobs(options: CleanupOptions = {}): Promise<Cl
 			if (!dryRun) {
 				// Cancel the stale jobs
 				const jobIds = staleJobs.map((job) => job.id);
-				const { error: cancelError } = await supabase
+				// Re-check the status in the write: a worker can claim one of these
+				// jobs between the scan and this update, and it must not be
+				// cancelled out from under the running processor.
+				const { data: cancelledJobs, error: cancelError } = await supabase
 					.from('queue_jobs')
 					.update({
 						status: 'cancelled',
 						error_message: `Cancelled by cleanup: job scheduled >${staleThresholdHours}h ago`,
 						updated_at: new Date().toISOString()
 					})
-					.in('id', jobIds);
+					.in('id', jobIds)
+					.in('status', ['pending', 'retrying'])
+					.select('id');
 
 				if (cancelError) {
 					result.errors.push(`Error cancelling stale jobs: ${cancelError.message}`);
 					console.error('❌ Error cancelling stale jobs:', cancelError);
 				} else {
-					result.staleCancelled = staleJobs.length;
-					console.log(`   ✅ Cancelled ${staleJobs.length} stale job(s)`);
+					result.staleCancelled = cancelledJobs?.length ?? 0;
+					console.log(`   ✅ Cancelled ${result.staleCancelled} stale job(s)`);
 				}
 			} else {
 				console.log(`   [DRY RUN] Would cancel ${staleJobs.length} stale job(s)`);

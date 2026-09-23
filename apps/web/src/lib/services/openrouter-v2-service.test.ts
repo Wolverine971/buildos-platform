@@ -1180,6 +1180,101 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		});
 	});
 
+	it('logs billed usage for an unparseable JSON attempt before retrying', async () => {
+		const insertMock = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
+		const usageEvents: Array<Record<string, unknown>> = [];
+		let calls = 0;
+		const fetchMock = vi.fn(async () => {
+			calls++;
+			return new Response(
+				JSON.stringify({
+					id: `chatcmpl-json-unusable-${calls}`,
+					model: AGENT_STATE_RECONCILIATION_MODEL,
+					choices: [
+						{
+							index: 0,
+							message: {
+								role: 'assistant',
+								content: calls === 1 ? '{"ok":' : '{"ok":true}'
+							},
+							finish_reason: 'stop'
+						}
+					],
+					usage: { prompt_tokens: 40, completion_tokens: 8, total_tokens: 48 }
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			);
+		});
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithUsageLogger(insertMock);
+		const result = await service.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.',
+			userId: '11111111-1111-4111-8111-111111111111',
+			operationType: 'agent_state_reconciliation',
+			model: AGENT_STATE_RECONCILIATION_MODEL,
+			models: [AGENT_STATE_RECONCILIATION_MODEL],
+			allowedModelIds: [AGENT_STATE_RECONCILIATION_MODEL],
+			includeDefaultModels: false,
+			validation: { retryOnParseError: true, maxRetries: 1 },
+			onUsage: (event) => {
+				usageEvents.push(event as unknown as Record<string, unknown>);
+			}
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		// Both attempts were billed, and the rows are written before the call returns.
+		expect(insertMock).toHaveBeenCalledTimes(2);
+		expect(insertMock.mock.calls[0]?.[0]).toMatchObject({
+			status: 'invalid_response',
+			prompt_tokens: 40,
+			completion_tokens: 8
+		});
+		expect(insertMock.mock.calls[1]?.[0]).toMatchObject({ status: 'success' });
+		expect(usageEvents).toHaveLength(2);
+	});
+
+	it('logs billed usage when every text attempt comes back empty', async () => {
+		const insertMock = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						id: 'chatcmpl-text-empty',
+						model: AGENT_STATE_RECONCILIATION_MODEL,
+						choices: [
+							{
+								index: 0,
+								message: { role: 'assistant', content: '' },
+								finish_reason: 'stop'
+							}
+						],
+						usage: { prompt_tokens: 30, completion_tokens: 0, total_tokens: 30 }
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				)
+		);
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithUsageLogger(insertMock);
+		await expect(
+			service.generateTextDetailed({
+				prompt: 'Say something.',
+				userId: '11111111-1111-4111-8111-111111111111',
+				model: AGENT_STATE_RECONCILIATION_MODEL,
+				models: [AGENT_STATE_RECONCILIATION_MODEL]
+			} as any)
+		).rejects.toThrow(/empty text content/);
+
+		expect(insertMock).toHaveBeenCalled();
+		for (const [row] of insertMock.mock.calls) {
+			expect(row).toMatchObject({ status: 'invalid_response', prompt_tokens: 30 });
+		}
+		expect(insertMock).toHaveBeenCalledTimes(fetchMock.mock.calls.length);
+	});
+
 	it('prices provider date-suffixed model ids with the configured base model', async () => {
 		const insertMock = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
 		const fetchMock = vi.fn(

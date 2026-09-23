@@ -673,6 +673,7 @@ Group related calendar events and identify project themes. Focus on:
 - Household tasks (take out trash, car maintenance, mop, errands)
 - Social events without work context (couples night, housewarming, visiting family)
 - One-off personal commitments (pick up, drop off, bring to school)
+- Time off and holidays (vacation, PTO, OOO, out of office, public holidays)
 
 Judge by what the event is, not by single words: "Server maintenance window", "Site visit with Henderson GC" and "School district RFP" are work.
 

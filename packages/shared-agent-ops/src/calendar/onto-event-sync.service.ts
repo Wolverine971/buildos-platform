@@ -32,6 +32,8 @@ import {
 	logUpdateAsync,
 	type ActivityLogActorContext
 } from '../ops/async-activity-logger';
+import type { calendar_v3 } from 'googleapis';
+import { instantToZonedIso } from '../dates/civil-date';
 import type { GoogleCalendarMutationSelector } from './google-calendar-write.service';
 import type { GoogleCalendarWriteService } from './google-calendar-write.service';
 import type { LegacyOntoEventCalendarClient } from './legacy-google-calendar.port';
@@ -51,6 +53,61 @@ type TaskEventKind = 'range' | 'start' | 'due';
 
 export type CalendarScope = 'project' | 'user' | 'calendar_id';
 export type ProjectEventSyncAction = 'upsert' | 'delete';
+
+type AllDayEventFields = Pick<OntoEventRow, 'all_day' | 'start_at' | 'end_at' | 'timezone'>;
+
+function nextCalendarDate(date: string): string {
+	const parsed = new Date(`${date}T00:00:00.000Z`);
+	parsed.setUTCDate(parsed.getUTCDate() + 1);
+	return parsed.toISOString().slice(0, 10);
+}
+
+/**
+ * Google all-day events carry calendar dates with an EXCLUSIVE end. Stored
+ * all-day rows hold instants in the event's timezone: start_at opens the first
+ * day, and end_at (when set) is either the start of the day after the last one
+ * or a time inside the last day. Returns null for timed events.
+ */
+export function googleAllDayDates(event: AllDayEventFields): { start: string; end: string } | null {
+	if (!event.all_day) return null;
+	const zonedStart = instantToZonedIso(event.start_at, event.timezone);
+	if (!zonedStart) return null;
+	const start = zonedStart.slice(0, 10);
+	const zonedEnd = event.end_at ? instantToZonedIso(event.end_at, event.timezone) : null;
+	let end = nextCalendarDate(start);
+	if (zonedEnd) {
+		const endDate = zonedEnd.slice(0, 10);
+		const endsAtMidnight = zonedEnd.slice(11, 19) === '00:00:00';
+		const exclusiveEnd = endsAtMidnight ? endDate : nextCalendarDate(endDate);
+		if (exclusiveEnd > start) end = exclusiveEnd;
+	}
+	return { start, end };
+}
+
+/**
+ * Start/end for a Google events.patch. The unused representation is nulled so
+ * a patch that flips an event between timed and all-day does not leave both.
+ */
+function googleEventPatchTimes(event: AllDayEventFields): {
+	start: calendar_v3.Schema$EventDateTime;
+	end: calendar_v3.Schema$EventDateTime;
+} {
+	const allDay = googleAllDayDates(event);
+	if (allDay) {
+		return {
+			start: { date: allDay.start, dateTime: null, timeZone: event.timezone ?? undefined },
+			end: { date: allDay.end, dateTime: null, timeZone: event.timezone ?? undefined }
+		};
+	}
+	return {
+		start: { dateTime: event.start_at, date: null, timeZone: event.timezone ?? undefined },
+		end: {
+			dateTime: event.end_at ?? event.start_at,
+			date: null,
+			timeZone: event.timezone ?? undefined
+		}
+	};
+}
 
 type ExternalEventMapping = {
 	externalEventId: string;
@@ -864,6 +921,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 						start: new Date(event.start_at),
 						end: new Date(event.end_at ?? event.start_at),
 						timeZone: event.timezone ?? undefined,
+						allDayDates: googleAllDayDates(event),
 						colorId: projectCalendar.color_id ?? undefined,
 						recurrence: providerRecurrenceRules(event.recurrence),
 						ontoEventId: event.id
@@ -992,6 +1050,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 					start: new Date(event.start_at),
 					end: new Date(event.end_at ?? event.start_at),
 					timeZone: event.timezone ?? undefined,
+					allDayDates: googleAllDayDates(event),
 					recurrence: providerRecurrenceRules(event.recurrence),
 					ontoEventId: event.id
 				});
@@ -1117,14 +1176,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 						summary: event.title,
 						description,
 						location: event.location ?? undefined,
-						start: {
-							dateTime: event.start_at,
-							timeZone: event.timezone ?? undefined
-						},
-						end: {
-							dateTime: event.end_at ?? event.start_at,
-							timeZone: event.timezone ?? undefined
-						},
+						...googleEventPatchTimes(event),
 						recurrence: providerRecurrenceRules(event.recurrence)
 					}
 				});
@@ -1782,14 +1834,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 						summary: event.title,
 						description,
 						location: event.location ?? undefined,
-						start: {
-							dateTime: event.start_at,
-							timeZone: event.timezone ?? undefined
-						},
-						end: {
-							dateTime: event.end_at ?? event.start_at,
-							timeZone: event.timezone ?? undefined
-						}
+						...googleEventPatchTimes(event)
 					}
 				});
 			} else {

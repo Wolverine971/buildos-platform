@@ -9,6 +9,9 @@ import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.s
 import { refreshLinkedAuditSuggestionCounts } from '$lib/server/project-suggestion-actions.service';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 
+// Approvals run commitChangeSet inline; the 10s default can cut an apply off mid-write.
+export const config = { maxDuration: 60 };
+
 type ChatSessionRow = {
 	id: string;
 	user_id: string;

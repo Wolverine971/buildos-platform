@@ -666,7 +666,9 @@
 					use:enhance={() => {
 						isSavingCalendar = true;
 						return async ({ update }) => {
-							await update();
+							// reset: false — the inputs use value=/checked= (not bind:), so a
+							// form reset would blank them and the next save would write empties.
+							await update({ reset: false });
 							isSavingCalendar = false;
 							// Refresh calendar data to show updated preferences
 							await refreshCalendarData();

@@ -269,6 +269,45 @@ describe('Agentic Chat worker transport client', () => {
 		expect(workerAdmissionRequestSchema.safeParse(submittedBody).success).toBe(true);
 	});
 
+	it('omits the lease when none is given so admission decides the transport inline', async () => {
+		for (const leaseToken of [undefined, null]) {
+			const fetchImpl = vi.fn<typeof fetch>(async () =>
+				Response.json(
+					{ success: true, data: { outcome: 'newly_admitted' } },
+					{ status: 202 }
+				)
+			);
+			await requestAgenticChatWorkerAdmission({
+				fetchImpl,
+				command: {
+					...(leaseToken === null ? { leaseToken } : {}),
+					clientTurnId: request.clientTurnId,
+					streamRunId: request.streamRunId,
+					sessionId: null,
+					context: request.context,
+					message: 'First message in a new chat',
+					attachments: [],
+					projectFocus: null,
+					lastTurnContext: null,
+					voiceNoteGroupId: null,
+					preparedPromptKey: null
+				}
+			});
+			const submittedBody = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+			expect(submittedBody).not.toHaveProperty('leaseToken');
+			expect(submittedBody).toMatchObject({
+				clientTurnId: request.clientTurnId,
+				streamRunId: request.streamRunId,
+				sessionId: null
+			});
+			const parsed = workerAdmissionRequestSchema.safeParse(submittedBody);
+			expect(parsed.success).toBe(true);
+			expect(parsed.data?.leaseToken).toBeNull();
+			expect(fetchImpl).toHaveBeenCalledTimes(1);
+			expect(fetchImpl.mock.calls[0]?.[0]).toBe('/api/agent/v2/turns');
+		}
+	});
+
 	it('returns non-success admission responses without parsing them as authority', async () => {
 		const response = Response.json({ code: 'WORKER_CAPACITY_EXCEEDED' }, { status: 503 });
 		const result = await requestAgenticChatWorkerAdmission({

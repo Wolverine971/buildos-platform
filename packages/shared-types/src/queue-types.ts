@@ -198,6 +198,20 @@ export interface ClassifyChatSessionJobMetadata {
 	userId: string;
 }
 
+/**
+ * Queue job 'capture_chat_checkpoint' (tasker/95): capture a project chat's new
+ * messages into the thinking log and START HERE. Enqueued by the worker sweep
+ * (threshold / idle) and by chat close, with dedup key 'chat-checkpoint:<sessionId>' so one
+ * capture per session is active at a time.
+ */
+export interface CaptureChatCheckpointJobMetadata {
+	sessionId: string;
+	userId: string;
+	trigger: 'threshold' | 'idle' | 'close' | 'backfill' | 'manual';
+	/** The session's newest message when enqueued; a failure is recorded against it. */
+	lastMessageId?: string;
+}
+
 export interface OntoBraindumpProcessingJobMetadata {
 	braindumpId: string;
 	userId: string;
@@ -345,6 +359,7 @@ export interface JobMetadataMap {
 	admin_question_tree: AdminQuestionTreeJobMetadata;
 	run_cycle: CycleQueueJobMetadata;
 	freshness_radar_scan: FreshnessScanJobMetadata;
+	capture_chat_checkpoint: CaptureChatCheckpointJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -634,11 +649,34 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isCycleQueueJobMetadata(metadata);
 		case 'freshness_radar_scan':
 			return isFreshnessScanJobMetadata(metadata);
+		case 'capture_chat_checkpoint':
+			return isCaptureChatCheckpointMetadata(metadata);
 		case 'other':
 			return true;
 		default:
 			return true;
 	}
+}
+
+const CAPTURE_CHAT_CHECKPOINT_TRIGGERS = new Set([
+	'threshold',
+	'idle',
+	'close',
+	'backfill',
+	'manual'
+]);
+
+function isCaptureChatCheckpointMetadata(obj: unknown): obj is CaptureChatCheckpointJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return (
+		typeof meta.sessionId === 'string' &&
+		meta.sessionId.length > 0 &&
+		typeof meta.userId === 'string' &&
+		meta.userId.length > 0 &&
+		typeof meta.trigger === 'string' &&
+		CAPTURE_CHAT_CHECKPOINT_TRIGGERS.has(meta.trigger)
+	);
 }
 
 function isFreshnessScanJobMetadata(obj: unknown): obj is FreshnessScanJobMetadata {

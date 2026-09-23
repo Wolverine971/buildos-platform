@@ -36,6 +36,7 @@ vi.mock('../src/lib/queue', () => ({
 import {
 	isOperativeScheduleLockClaimable,
 	isMissedRunSchedulable,
+	loadSchedulingUserProfiles,
 	STALE_OPERATIVE_LOCK_MS,
 	MISSED_BRIEF_LOOKBACK_MS
 } from '../src/scheduler';
@@ -106,6 +107,47 @@ describe('Scheduler Reliability', () => {
 
 			expect(isMissedRunSchedulable(runTime, now, 15 * 60 * 1000)).toBe(false);
 			expect(isMissedRunSchedulable(runTime, now, MISSED_BRIEF_LOOKBACK_MS)).toBe(true);
+		});
+	});
+
+	describe('loadSchedulingUserProfiles (fail closed on user lookup errors)', () => {
+		function usersQuery(result: { data: unknown; error: unknown }) {
+			const builder: any = {
+				select: vi.fn(() => builder),
+				in: vi.fn(async () => result)
+			};
+			return builder;
+		}
+
+		it('returns null rather than letting every user fall back to UTC', async () => {
+			schedulerMocks.supabaseFrom.mockReturnValueOnce(
+				usersQuery({ data: null, error: { message: 'statement timeout' } })
+			);
+
+			await expect(loadSchedulingUserProfiles(['user-1'])).resolves.toBeNull();
+		});
+
+		it('maps timezones and display names when the lookup succeeds', async () => {
+			schedulerMocks.supabaseFrom.mockReturnValueOnce(
+				usersQuery({
+					data: [
+						{
+							id: 'user-1',
+							timezone: 'America/New_York',
+							name: 'Ada',
+							email: 'a@x.test'
+						},
+						{ id: 'user-2', timezone: null, name: null, email: 'b@x.test' }
+					],
+					error: null
+				})
+			);
+
+			const profiles = await loadSchedulingUserProfiles(['user-1', 'user-2']);
+
+			expect(profiles?.timezoneByUserId.get('user-1')).toBe('America/New_York');
+			expect(profiles?.timezoneByUserId.has('user-2')).toBe(false);
+			expect(profiles?.nameByUserId.get('user-2')).toBe('b@x.test');
 		});
 	});
 });

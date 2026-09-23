@@ -19,6 +19,7 @@ import {
 import { isProjectSuggestionFresh } from '$lib/server/project-loop-snapshot.service';
 import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
 import { captureServerEvent } from '$lib/server/posthog';
+import { runAfterResponse } from '$lib/server/background';
 import { recordFreshnessBundleOutcome } from '$lib/server/freshness-radar.service';
 
 type AnySupabase = any;
@@ -55,14 +56,17 @@ function emitSuggestionDecisionEvent(
 	suggestion: Record<string, unknown>,
 	extra?: Record<string, unknown>
 ): void {
-	void captureServerEvent(userId, event, {
-		project_id: suggestion.project_id ?? null,
-		suggestion_id: suggestion.id ?? null,
-		run_id: suggestion.run_id ?? null,
-		kind: suggestion.kind ?? null,
-		risk_tier: suggestion.risk_tier ?? null,
-		...extra
-	});
+	runAfterResponse(
+		captureServerEvent(userId, event, {
+			project_id: suggestion.project_id ?? null,
+			suggestion_id: suggestion.id ?? null,
+			run_id: suggestion.run_id ?? null,
+			kind: suggestion.kind ?? null,
+			risk_tier: suggestion.risk_tier ?? null,
+			...extra
+		}),
+		`suggestion telemetry ${event}`
+	);
 }
 
 async function syncProjectSuggestionInboxItem(suggestion: Record<string, unknown>): Promise<void> {

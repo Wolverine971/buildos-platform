@@ -3,11 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	CivilDateError,
 	civilDateBoundaryInstant,
+	hasCivilTimezoneSensitiveValue,
 	hasDateOnlyValue,
 	instantToZonedIso,
 	isDateOnlyValue,
 	isIsoInstantString,
+	isLocalDateTimeValue,
 	isValidIanaTimezone,
+	localDateTimeInstant,
 	normalizeDateOnlyInput,
 	resolveUserCivilTimezone
 } from './civil-date';
@@ -94,6 +97,23 @@ describe('normalizeDateOnlyInput', () => {
 				datetimeOutput: 'iso'
 			})
 		).toBe('2026-09-18T14:30:00.000Z');
+	});
+
+	it('resolves an offset-less wall-clock datetime in the user timezone, not UTC', () => {
+		// Previously passed through raw; Postgres then stored 5 PM UTC (1 PM in New York).
+		expect(
+			normalizeDateOnlyInput('2026-09-23T17:00:00', {
+				boundary: 'end',
+				timezone: 'America/New_York'
+			})
+		).toBe('2026-09-23T21:00:00.000Z');
+		expect(
+			normalizeDateOnlyInput('2026-09-23T17:00', {
+				boundary: 'start',
+				timezone: 'America/New_York',
+				datetimeOutput: 'iso'
+			})
+		).toBe('2026-09-23T21:00:00.000Z');
 	});
 
 	it('rejects unparseable and empty values', () => {
@@ -235,5 +255,48 @@ describe('instantToZonedIso', () => {
 		expect(instantToZonedIso('2026-09-22', 'America/New_York')).toBeNull();
 		expect(instantToZonedIso('2026-09-22T10:00:00', 'America/New_York')).toBeNull();
 		expect(instantToZonedIso('not a date', 'America/New_York')).toBeNull();
+	});
+});
+
+describe('localDateTimeInstant', () => {
+	it('uses the DST-correct offset on each side of a transition', () => {
+		expect(localDateTimeInstant('2026-07-01T09:00:00', 'America/New_York')).toBe(
+			'2026-07-01T13:00:00.000Z'
+		);
+		expect(localDateTimeInstant('2026-12-01T09:00:00', 'America/New_York')).toBe(
+			'2026-12-01T14:00:00.000Z'
+		);
+	});
+
+	it('handles positive offsets, space separators, and fractional seconds', () => {
+		expect(localDateTimeInstant('2026-09-23 09:30:15.250', 'Asia/Kolkata')).toBe(
+			'2026-09-23T04:00:15.250Z'
+		);
+	});
+
+	it('falls back to UTC when no timezone resolves', () => {
+		expect(localDateTimeInstant('2026-09-23T17:00:00', null)).toBe('2026-09-23T17:00:00.000Z');
+		expect(localDateTimeInstant('2026-09-23T17:00:00', 'Not/AZone')).toBe(
+			'2026-09-23T17:00:00.000Z'
+		);
+	});
+
+	it('rejects impossible dates and times', () => {
+		expect(() => localDateTimeInstant('2026-02-30T10:00:00', 'UTC')).toThrow(CivilDateError);
+		expect(() => localDateTimeInstant('2026-09-23T24:30:00', 'UTC')).toThrow(CivilDateError);
+		expect(() => localDateTimeInstant('2026-09-23T17:00:00Z', 'UTC')).toThrow(CivilDateError);
+	});
+});
+
+describe('timezone-sensitive value detection', () => {
+	it('flags bare dates and offset-less datetimes, not instants', () => {
+		expect(isLocalDateTimeValue('2026-09-23T17:00:00')).toBe(true);
+		expect(isLocalDateTimeValue(' 2026-09-23 17:00 ')).toBe(true);
+		expect(isLocalDateTimeValue('2026-09-23T17:00:00Z')).toBe(false);
+		expect(isLocalDateTimeValue('2026-09-23T17:00:00-04:00')).toBe(false);
+		expect(isLocalDateTimeValue('2026-09-23')).toBe(false);
+		expect(hasCivilTimezoneSensitiveValue([null, '2026-09-23T17:00:00'])).toBe(true);
+		expect(hasCivilTimezoneSensitiveValue(['2026-09-23'])).toBe(true);
+		expect(hasCivilTimezoneSensitiveValue(['2026-09-23T17:00:00.000Z', undefined])).toBe(false);
 	});
 });

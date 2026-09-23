@@ -244,9 +244,13 @@ describe('GET /api/chat/sessions/[id]', () => {
 		];
 
 		const sessionQuery = createQuery({ data: session, error: null });
-		const messagesQuery = createQuery({ data: messages, error: null });
+		// The route reads newest-first and restores chronological order itself.
+		const messagesQuery = createQuery({ data: [...messages].reverse(), error: null });
 		const attachmentsQuery = createQuery({ data: [], error: null });
-		const toolExecutionsQuery = createQuery({ data: toolExecutions, error: null });
+		const toolExecutionsQuery = createQuery({
+			data: [...toolExecutions].reverse(),
+			error: null
+		});
 		const turnRunsQuery = createQuery({ data: turnRuns, error: null });
 		const tasksQuery = createQuery({
 			data: [
@@ -400,6 +404,59 @@ describe('GET /api/chat/sessions/[id]', () => {
 		expect(tasksQuery.in).toHaveBeenCalledWith('id', ['task-1']);
 		expect(documentsQuery.in).toHaveBeenCalledWith('id', ['doc-1']);
 		expect(projectsQuery.in).toHaveBeenCalledWith('id', ['project-1']);
+	});
+
+	it('loads the newest message window and returns it in chronological order', async () => {
+		const session = {
+			id: 'session-1',
+			user_id: 'user-1',
+			context_type: 'global',
+			entity_id: null,
+			agent_metadata: null
+		};
+		// The database answers newest-first; the UI needs oldest-first.
+		const newestFirst = [
+			{
+				id: 'message-3',
+				role: 'assistant',
+				content: 'c',
+				created_at: '2026-09-22T10:02:00Z'
+			},
+			{ id: 'message-2', role: 'user', content: 'b', created_at: '2026-09-22T10:01:00Z' },
+			{ id: 'message-1', role: 'assistant', content: 'a', created_at: '2026-09-22T10:00:00Z' }
+		];
+		const messagesQuery = createQuery({ data: newestFirst, error: null });
+		const toolExecutionsQuery = createQuery({ data: [], error: null });
+		const turnEventsQuery = createQuery({ data: [], error: null });
+		const supabase = {
+			from: vi.fn((table: string) => {
+				if (table === 'chat_sessions') return createQuery({ data: session, error: null });
+				if (table === 'chat_messages') return messagesQuery;
+				if (table === 'chat_tool_executions') return toolExecutionsQuery;
+				if (table === 'chat_turn_events') return turnEventsQuery;
+				return createQuery({ data: [], error: null });
+			})
+		};
+
+		const response = await GET({
+			params: { id: 'session-1' },
+			url: new URL('http://localhost/api/chat/sessions/session-1'),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(messagesQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
+		expect(toolExecutionsQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
+		expect(turnEventsQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
+		expect(payload.data.messages.map((message: { id: string }) => message.id)).toEqual([
+			'message-1',
+			'message-2',
+			'message-3'
+		]);
 	});
 
 	it('hydrates persisted image attachments when restoring a chat session', async () => {

@@ -4,7 +4,7 @@
 // (chat_turn_runs / chat_tool_executions), and ground-truth onto_* rows.
 // All reads use the service-role admin client (bypasses RLS).
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import { STATED_FUTURE_SOURCE } from '$lib/server/stated-future.service';
+import { STATED_FUTURE_SOURCE } from '@buildos/agentic-chat-runtime/loop';
 
 export interface TurnRunRow {
 	id: string;
@@ -755,7 +755,7 @@ export interface StatedFutureTaskRow {
 
 /**
  * Tasks written by the deterministic stated-future floor
- * (`$lib/server/stated-future.service`, D1 2026-07-26), identified by ground-truth
+ * (worker `statedFutureCapture.ts`, D1 2026-07-26), identified by ground-truth
  * provenance (`props.source === 'stated_future_capture'`) — never by title or
  * description text, which would be exactly the looksLike* escape hatch this
  * harness bans. The floor also stamps `props.source_stream_run_id` with the turn

@@ -4,6 +4,22 @@ import type { RequestEvent } from '@sveltejs/kit';
 
 const CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS = new Set(['/oauth/token', '/oauth/revoke']);
 
+// Machine callers that never carry a browser Origin and never authenticate with the session
+// cookie, so there is no cross-site request to forge: provider webhooks (Twilio posts
+// form-encoded status callbacks; each route verifies its own signature or secret) and RFC 8058
+// one-click unsubscribe, which mailbox providers POST without an Origin and which is
+// authorized by the tracking id in the path.
+const CROSS_ORIGIN_FORM_POST_ALLOWED_PREFIXES = ['/api/webhooks/', '/webhooks/'];
+const ONE_CLICK_UNSUBSCRIBE_PATH = /^\/api\/email-tracking\/[^/]+\/unsubscribe$/;
+
+function isCrossOriginFormPostAllowed(pathname: string): boolean {
+	return (
+		CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS.has(pathname) ||
+		CROSS_ORIGIN_FORM_POST_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+		ONE_CLICK_UNSUBSCRIBE_PATH.test(pathname)
+	);
+}
+
 function isFormContentType(contentType: string | null): boolean {
 	if (!contentType) return false;
 	const normalized = contentType.split(';', 1)[0]?.trim().toLowerCase();
@@ -15,8 +31,9 @@ function isFormContentType(contentType: string | null): boolean {
 }
 
 /**
- * Reapply SvelteKit's same-origin form guard for every route except the two
- * OAuth endpoints that intentionally accept native cross-origin clients.
+ * Reapply SvelteKit's same-origin form guard for every route except the OAuth
+ * endpoints that intentionally accept native cross-origin clients and the
+ * cookie-less machine endpoints above.
  *
  * SvelteKit treats a missing Origin as a failed same-origin check. Keep that
  * fail-closed behavior here: sandboxed/legacy clients must not bypass CSRF
@@ -32,7 +49,7 @@ export function createCrossSiteFormPostResponse(event: RequestEvent): Response |
 		return null;
 	}
 
-	if (CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS.has(event.url.pathname)) {
+	if (isCrossOriginFormPostAllowed(event.url.pathname)) {
 		return null;
 	}
 

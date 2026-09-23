@@ -112,6 +112,86 @@ describe('Saved Operative scheduler', () => {
 		);
 	});
 
+	it('disables the schedule instead of creating a paid run once the project is deleted', async () => {
+		const operative = {
+			...scheduledOperative(),
+			context_type: 'project',
+			project_id: '44444444-4444-4444-8444-444444444444'
+		};
+		const dueScan = query({ data: [operative], error: null });
+		const lockClaim = query({ data: operative, error: null });
+		const projectCheck = query({ data: null, error: null });
+		const disable = query({ data: null, error: null });
+		schedulerMocks.supabaseFrom
+			.mockReturnValueOnce(dueScan)
+			.mockReturnValueOnce(lockClaim)
+			.mockReturnValueOnce(projectCheck)
+			.mockReturnValueOnce(disable);
+
+		await checkAndScheduleAgentOperatives(new Date('2026-08-26T10:00:00.000Z'));
+
+		expect(schedulerMocks.supabaseFrom).toHaveBeenNthCalledWith(3, 'onto_projects');
+		expect(projectCheck.is).toHaveBeenCalledWith('deleted_at', null);
+		expect(disable.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				schedule_enabled: false,
+				next_run_at: null,
+				schedule_locked_at: null,
+				schedule_error: expect.stringContaining('deleted')
+			})
+		);
+		expect(schedulerMocks.supabaseFrom).not.toHaveBeenCalledWith('agent_runs');
+		expect(schedulerMocks.queueAdd).not.toHaveBeenCalled();
+	});
+
+	it('disables the schedule when the owner lost access to the project', async () => {
+		const operative = {
+			...scheduledOperative(),
+			context_type: 'project',
+			project_id: '44444444-4444-4444-8444-444444444444'
+		};
+		const disable = query({ data: null, error: null });
+		schedulerMocks.supabaseFrom
+			.mockReturnValueOnce(query({ data: [operative], error: null }))
+			.mockReturnValueOnce(query({ data: operative, error: null }))
+			.mockReturnValueOnce(query({ data: { id: operative.project_id }, error: null }))
+			.mockReturnValueOnce(query({ data: { id: 'actor-1' }, error: null }))
+			.mockReturnValueOnce(query({ data: null, error: null }))
+			.mockReturnValueOnce(disable);
+
+		await checkAndScheduleAgentOperatives(new Date('2026-08-26T10:00:00.000Z'));
+
+		expect(schedulerMocks.supabaseFrom).toHaveBeenNthCalledWith(5, 'onto_project_members');
+		expect(disable.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				schedule_enabled: false,
+				schedule_error: expect.stringContaining('no longer have access')
+			})
+		);
+		expect(schedulerMocks.queueAdd).not.toHaveBeenCalled();
+	});
+
+	it('rejects invalid run metadata before inserting an Agent Run row', async () => {
+		// A project-context Operative with no project cannot produce a valid run.
+		const operative = { ...scheduledOperative(), context_type: 'project', project_id: null };
+		const defer = query({ data: null, error: null });
+		schedulerMocks.supabaseFrom
+			.mockReturnValueOnce(query({ data: [operative], error: null }))
+			.mockReturnValueOnce(query({ data: operative, error: null }))
+			.mockReturnValueOnce(query({ count: 0, error: null }))
+			.mockReturnValueOnce(defer);
+
+		await checkAndScheduleAgentOperatives(new Date('2026-08-26T10:00:00.000Z'));
+
+		// due scan, lock, active-run count, defer — no agent_runs insert.
+		expect(schedulerMocks.supabaseFrom).toHaveBeenCalledTimes(4);
+		expect(schedulerMocks.supabaseFrom).toHaveBeenNthCalledWith(4, 'agent_operatives');
+		expect(defer.update).toHaveBeenCalledWith(
+			expect.objectContaining({ schedule_error: expect.stringContaining('project_id') })
+		);
+		expect(schedulerMocks.queueAdd).not.toHaveBeenCalled();
+	});
+
 	it('does not create a run when another scheduler replica wins the lock', async () => {
 		const dueScan = query({ data: [scheduledOperative()], error: null });
 		const lostLock = query({ data: null, error: null });

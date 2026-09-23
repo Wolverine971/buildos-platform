@@ -633,8 +633,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 				}
 			}
 		}
-		// Same derivation the legacy web SSE path persists
-		// (turn-persistence.ts -> searchTelemetryColumns): search tools count
+		// Shared runtime derivation (searchTelemetryColumns): search tools count
 		// their primary result array, everything else records no evidence.
 		const telemetry = searchTelemetryColumns({
 			toolName: input.toolName,

@@ -52,6 +52,11 @@
 			"import": "./dist/ontology/start-here.mjs",
 			"require": "./dist/ontology/start-here.js"
 		},
+		"./ontology/thinking-log": {
+			"types": "./dist/ontology/thinking-log.d.ts",
+			"import": "./dist/ontology/thinking-log.mjs",
+			"require": "./dist/ontology/thinking-log.js"
+		},
 		"./ontology/start-here.service": {
 			"types": "./dist/ontology/start-here.service.d.ts",
 			"import": "./dist/ontology/start-here.service.mjs",

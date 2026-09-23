@@ -3,6 +3,7 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 
 import { isActiveFacing } from '$lib/config/project-states';
 import type { ServerTiming } from '$lib/server/server-timing';
+import { resolveTimezone, startOfUserDay } from '$lib/server/today-feed.service';
 import {
 	attachAssigneesToTasks,
 	fetchTaskAssigneesMap,
@@ -36,16 +37,22 @@ type OverdueTaskWithAssignees = OverdueTaskRow & {
 export async function fetchHydratedOverdueTasks({
 	supabase,
 	userId,
+	timezone: providedTimezone,
 	timing
 }: {
 	supabase: TypedSupabaseClient;
 	userId: string;
+	/** Falls back to users.timezone, then UTC. */
+	timezone?: string | null;
 	timing?: ServerTiming;
 }): Promise<OverdueTask[]> {
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		timing ? timing.measure(name, fn) : fn();
 
-	const actorId = await ensureActorId(supabase, userId);
+	const [actorId, timezone] = await Promise.all([
+		ensureActorId(supabase, userId),
+		resolveTimezone(supabase, userId, providedTimezone)
+	]);
 	const projects = (await fetchProjectSummaries(supabase, actorId, timing)).filter((project) =>
 		isActiveFacing(project.state_key)
 	);
@@ -56,7 +63,9 @@ export async function fetchHydratedOverdueTasks({
 		return [];
 	}
 
-	const nowIso = new Date().toISOString();
+	// Same boundary as the Today "N overdue" chip: due before today's local start.
+	// Tasks due later today belong to Today, not to overdue triage.
+	const dayStartIso = startOfUserDay(timezone).toISOString();
 	const { data: rows, error } = await measure('db.overdue_tasks.list', () =>
 		supabase
 			.from('onto_tasks')
@@ -64,7 +73,7 @@ export async function fetchHydratedOverdueTasks({
 			.in('project_id', projectIds)
 			.is('deleted_at', null)
 			.in('state_key', [...ACTIVE_TASK_STATES])
-			.lt('due_at', nowIso)
+			.lt('due_at', dayStartIso)
 			.order('due_at', { ascending: true, nullsFirst: false })
 			.limit(HARD_FETCH_LIMIT)
 	);

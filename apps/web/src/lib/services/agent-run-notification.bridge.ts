@@ -189,9 +189,32 @@ async function cancelRun(runId: string): Promise<void> {
 	}
 }
 
+/**
+ * The realtime store evicts terminal runs after a minute, but their cards (and
+ * this retry button) stay up, so fall back to the detail endpoint.
+ */
+async function resolveRunForRetry(runId: string): Promise<AgentRunRow | null> {
+	const cached = get(agentRunsStore).get(runId);
+	if (cached) return cached;
+	try {
+		const response = await fetch(`/api/agent-runs/${encodeURIComponent(runId)}?events=0`, {
+			headers: { accept: 'application/json' }
+		});
+		if (!response.ok) return null;
+		const body = await response.json().catch(() => null);
+		return (body?.data?.run as AgentRunRow | undefined) ?? null;
+	} catch (error) {
+		console.warn('[AgentRunNotificationBridge] Could not load run for retry', error);
+		return null;
+	}
+}
+
 async function retryRun(runId: string): Promise<void> {
-	const run = get(agentRunsStore).get(runId);
-	if (!run) return;
+	const run = await resolveRunForRetry(runId);
+	if (!run) {
+		toastService.error('Could not re-run the agent');
+		return;
+	}
 	try {
 		const response = await fetch('/api/agent-runs', {
 			method: 'POST',

@@ -971,11 +971,6 @@ test('@wiring modal recovers an uncertain worker admission from server truth', a
 	}
 });
 
-// Continuity forwarding: `lastTurnContext` is only ever set from the worker's
-// `last_turn_context` event, which arrives over the Supabase Realtime WebSocket
-// and has no HTTP boundary to mock, so this needs a live worker turn.
-test.skip('@wiring modal forwards worker continuity context on the next turn', async () => {});
-
 test('@wiring modal uploads a temporary image and admits its canonical attachment ref', async ({
 	page
 }) => {

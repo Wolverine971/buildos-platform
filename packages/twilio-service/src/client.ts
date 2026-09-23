@@ -13,6 +13,46 @@ export interface TwilioConfig {
 	sendingEnabled?: boolean;
 }
 
+/** Twilio error codes BuildOS maps to user-facing messages. */
+const TWILIO_INVALID_TO_NUMBER = 21211;
+const TWILIO_RECIPIENT_UNSUBSCRIBED = 21610; // Recipient replied STOP
+const TWILIO_NOT_SMS_CAPABLE = 21614;
+const TWILIO_RESOURCE_NOT_FOUND = 20404; // Verify check: expired, used, or never sent
+
+type TwilioErrorFields = { code?: number; status?: number; moreInfo?: string };
+
+/** Replace the message but keep Twilio's code/status so callers can branch on them. */
+function withTwilioFields(message: string, original: TwilioErrorFields): Error {
+	const mapped = new Error(message) as Error & TwilioErrorFields & { cause?: unknown };
+	if (original.code !== undefined) mapped.code = original.code;
+	if (original.status !== undefined) mapped.status = original.status;
+	if (original.moreInfo !== undefined) mapped.moreInfo = original.moreInfo;
+	mapped.cause = original;
+	return mapped;
+}
+
+/**
+ * Normalize user-entered phone numbers to E.164. Input that already carries a
+ * leading '+' is international and keeps its own country code; bare 10-digit
+ * input is assumed to be US/Canada.
+ */
+export function formatPhoneNumber(phone: string): string {
+	const trimmed = phone.trim();
+	// Remove all non-numeric characters
+	const cleaned = trimmed.replace(/\D/g, '');
+
+	if (trimmed.startsWith('+')) {
+		return `+${cleaned}`;
+	}
+
+	// Add US country code if not present
+	if (cleaned.length === 10) {
+		return `+1${cleaned}`;
+	}
+
+	return `+${cleaned}`;
+}
+
 export class TwilioClient {
 	private client: Twilio;
 	private config: TwilioConfig;
@@ -66,12 +106,12 @@ export class TwilioClient {
 			return await this.client.messages.create(messageParams);
 		} catch (error: any) {
 			// Handle Twilio-specific errors
-			if (error.code === 21211) {
-				throw new Error(`Invalid phone number: ${params.to}`);
-			} else if (error.code === 21610) {
-				throw new Error('Message body exceeds maximum length');
-			} else if (error.code === 21614) {
-				throw new Error('Phone number is not SMS capable');
+			if (error?.code === TWILIO_INVALID_TO_NUMBER) {
+				throw withTwilioFields(`Invalid phone number: ${params.to}`, error);
+			} else if (error?.code === TWILIO_RECIPIENT_UNSUBSCRIBED) {
+				throw withTwilioFields('Recipient has opted out of SMS (replied STOP)', error);
+			} else if (error?.code === TWILIO_NOT_SMS_CAPABLE) {
+				throw withTwilioFields('Phone number is not SMS capable', error);
 			}
 			throw error;
 		}
@@ -108,8 +148,14 @@ export class TwilioClient {
 				});
 
 			return verificationCheck.status === 'approved';
-		} catch (error) {
-			return false;
+		} catch (error: any) {
+			// 20404: no pending verification (expired, already used, or never
+			// sent) — the code cannot be valid. Anything else (auth, outage, rate
+			// limit) is not the user's typo and must not read as "Invalid code".
+			if (error?.code === TWILIO_RESOURCE_NOT_FOUND) {
+				return false;
+			}
+			throw error;
 		}
 	}
 
@@ -129,18 +175,6 @@ export class TwilioClient {
 	}
 
 	private formatPhoneNumber(phone: string): string {
-		// Remove all non-numeric characters
-		const cleaned = phone.replace(/\D/g, '');
-
-		// Add US country code if not present
-		if (cleaned.length === 10) {
-			return `+1${cleaned}`;
-		} else if (cleaned.length === 11 && cleaned.startsWith('1')) {
-			return `+${cleaned}`;
-		} else if (cleaned.startsWith('+')) {
-			return phone;
-		}
-
-		return `+${cleaned}`;
+		return formatPhoneNumber(phone);
 	}
 }

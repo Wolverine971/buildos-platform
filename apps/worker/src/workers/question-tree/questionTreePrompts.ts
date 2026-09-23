@@ -6,7 +6,9 @@ import type {
 	QuestionTreeRun
 } from './questionTreeContracts';
 
-export const QUESTION_TREE_PROMPT_VERSION = 'question-tree-v2';
+// These prompts are version 'question-tree-v2'. Runs record it through the
+// question_tree_runs.prompt_version column default (migration 20260801040300);
+// bump that default when the prompt contract changes.
 
 const JSON_ONLY = `Return one valid JSON object and nothing else. Do not use markdown fences. Escape every string correctly and close every array and object. Keep every field concise so the entire object fits within the response budget. Do not include chain-of-thought, hidden reasoning, citations, URLs, or tool calls.`;
 

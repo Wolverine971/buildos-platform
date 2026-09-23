@@ -1,4 +1,5 @@
 // apps/worker/src/scheduler/agentOperatives.ts
+import { randomUUID } from 'node:crypto';
 import { addDays, addMinutes, isBefore, setHours, setMinutes, setSeconds } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
@@ -103,6 +104,87 @@ async function deferOperativeSchedule(
 		.eq('id', operativeId);
 }
 
+async function disableOperativeSchedule(operativeId: string, message: string) {
+	const { error } = await supabase
+		.from('agent_operatives')
+		.update({
+			schedule_enabled: false,
+			next_run_at: null,
+			schedule_locked_at: null,
+			schedule_error: message
+		})
+		.eq('id', operativeId);
+	if (error) {
+		console.error(`🧭 Failed to disable Operative ${operativeId}: ${error.message}`);
+	}
+}
+
+/**
+ * Scheduled runs spend money with nobody watching, so a project-bound Operative
+ * re-checks what web enforced at save time (assertAgentOperativeProjectAccess):
+ * the project still exists and the owner is still a member. `revoked` means the
+ * schedule can never succeed again; otherwise the check itself failed.
+ */
+async function checkOperativeProjectAccess(
+	operative: AgentOperativeRow
+): Promise<{ ok: true } | { ok: false; revoked: boolean; message: string }> {
+	if (!operative.project_id) return { ok: true };
+
+	const { data: project, error: projectError } = await supabase
+		.from('onto_projects')
+		.select('id')
+		.eq('id', operative.project_id)
+		.is('deleted_at', null)
+		.maybeSingle();
+	if (projectError) {
+		return {
+			ok: false,
+			revoked: false,
+			message: `Failed to check project: ${projectError.message}`
+		};
+	}
+	if (!project) {
+		return { ok: false, revoked: true, message: 'Schedule stopped: the project was deleted' };
+	}
+
+	const { data: actor, error: actorError } = await supabase
+		.from('onto_actors')
+		.select('id')
+		.eq('user_id', operative.user_id)
+		.maybeSingle();
+	if (actorError) {
+		return {
+			ok: false,
+			revoked: false,
+			message: `Failed to check project access: ${actorError.message}`
+		};
+	}
+	const { data: membership, error: membershipError } = actor?.id
+		? await supabase
+				.from('onto_project_members')
+				.select('project_id')
+				.eq('actor_id', actor.id)
+				.eq('project_id', operative.project_id)
+				.is('removed_at', null)
+				.maybeSingle()
+		: { data: null, error: null };
+	if (membershipError) {
+		return {
+			ok: false,
+			revoked: false,
+			message: `Failed to check project access: ${membershipError.message}`
+		};
+	}
+	if (!membership) {
+		return {
+			ok: false,
+			revoked: true,
+			message: 'Schedule stopped: you no longer have access to this project'
+		};
+	}
+	return { ok: true };
+}
+
 async function enqueueScheduledOperativeRun(
 	operative: AgentOperativeRow,
 	scheduledFor: Date,
@@ -115,7 +197,7 @@ async function enqueueScheduledOperativeRun(
 			? operative.budgets
 			: ({} as Json);
 	const metadata = {
-		run_id: '',
+		run_id: randomUUID(),
 		trigger: 'scheduled' as const,
 		context_type: operative.context_type,
 		project_id: operative.project_id,
@@ -124,10 +206,18 @@ async function enqueueScheduledOperativeRun(
 		review_required: operative.review_required,
 		budgets
 	};
+	// Validate before inserting: an invalid Operative would otherwise leave a
+	// failed Agent Run row behind on every retry.
+	try {
+		validateAgentRunMetadata(metadata);
+	} catch (error) {
+		return { error: error instanceof Error ? error.message : 'invalid run metadata' };
+	}
 
 	const { data: run, error: runError } = await supabase
 		.from('agent_runs')
 		.insert({
+			id: metadata.run_id,
 			user_id: operative.user_id,
 			trigger: 'scheduled',
 			operative_id: operative.id,
@@ -150,7 +240,6 @@ async function enqueueScheduledOperativeRun(
 
 	const jobMetadata = { ...metadata, run_id: run.id };
 	try {
-		validateAgentRunMetadata(jobMetadata);
 		await queue.add(
 			'agent_run',
 			operative.user_id,
@@ -170,7 +259,7 @@ async function enqueueScheduledOperativeRun(
 		return { error: message };
 	}
 
-	await supabase
+	const { error: scheduleError } = await supabase
 		.from('agent_operatives')
 		.update({
 			last_run_at: scheduledFor.toISOString(),
@@ -180,6 +269,13 @@ async function enqueueScheduledOperativeRun(
 			schedule_error: null
 		})
 		.eq('id', operative.id);
+	if (scheduleError) {
+		// The run is already queued, so reporting failure (which defers and
+		// retries this slot) would schedule it twice. Surface it loudly instead.
+		console.error(
+			`🧭 Queued Agent Run ${run.id} but failed to advance Operative ${operative.id}: ${scheduleError.message}`
+		);
+	}
 
 	return { runId: run.id };
 }
@@ -243,6 +339,17 @@ export async function checkAndScheduleAgentOperatives(now: Date = new Date()): P
 			console.warn(
 				`🧭 Reclaimed stale schedule lock for Operative ${candidate.id} (was locked at ${observedLockedAt})`
 			);
+		}
+
+		const access = await checkOperativeProjectAccess(locked as AgentOperativeRow);
+		if (!access.ok) {
+			if (access.revoked) {
+				await disableOperativeSchedule(candidate.id, access.message);
+				console.warn(`🧭 Disabled Operative ${candidate.id}: ${access.message}`);
+			} else {
+				await deferOperativeSchedule(candidate.id, access.message);
+			}
+			continue;
 		}
 
 		const { count: activeCount, error: activeError } = await supabase

@@ -85,7 +85,7 @@
 		return 'bg-muted text-muted-foreground border-border';
 	}
 
-	// Priority: lower number = higher priority (matches insight-panel-config.ts getPriorityGroup)
+	// Priority: lower number = higher priority
 	function priorityClasses(priority: number): string {
 		if (priority <= 2) return 'bg-destructive/10 text-destructive border-destructive/20';
 		if (priority === 3) return 'bg-warning/10 text-warning border-warning/20';
@@ -136,7 +136,6 @@
 		'published'
 	]);
 
-	// Matches IMPACT_ORDER from insight-panel-config.ts
 	const IMPACT_SORT_ORDER: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4 };
 
 	function sortEntitiesForSelection(

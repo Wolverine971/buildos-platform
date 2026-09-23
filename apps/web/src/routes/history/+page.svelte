@@ -30,7 +30,9 @@
 		MessagesSquare,
 		Sparkles
 	} from 'lucide-svelte';
-	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
+	// Lazy: the chat chunk stays out of this page's bundle. Navigation warms the
+	// shared loader on idle, so opening a session is still instant in practice.
+	import { loadAgentChatModal } from '$lib/components/agent/load-agent-chat-modal';
 	import HistoryListSkeleton from '$lib/components/history/HistoryListSkeleton.svelte';
 	import type {
 		AgentBrainDumpContext,
@@ -825,10 +827,12 @@
 
 <!-- Agent Chat Modal for chat sessions -->
 {#if isAgentModalOpen && selectedChatSessionId}
-	<AgentChatModal
-		isOpen={isAgentModalOpen}
-		onClose={closeAgentModal}
-		initialChatSessionId={selectedChatSessionId}
-		initialBrainDumpContext={selectedBrainDumpContext}
-	/>
+	{#await loadAgentChatModal() then { default: AgentChatModal }}
+		<AgentChatModal
+			isOpen={isAgentModalOpen}
+			onClose={closeAgentModal}
+			initialChatSessionId={selectedChatSessionId}
+			initialBrainDumpContext={selectedBrainDumpContext}
+		/>
+	{/await}
 {/if}

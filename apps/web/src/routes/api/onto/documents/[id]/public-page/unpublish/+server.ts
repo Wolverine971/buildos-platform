@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/onto/documents/[id]/public-page/unpublish/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { unpublishDocumentPublicPage } from '$lib/server/public-page.service';
 import { ensureDocumentAccessForPublicPage } from '../../../shared-public-page';
 
@@ -25,7 +26,8 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 	try {
 		const publicPage = await unpublishDocumentPublicPage(
-			locals.supabase,
+			// Write access is verified above; the page row itself is server-owned.
+			{ supabase: locals.supabase, getAdminSupabase: createAdminSupabaseClient },
 			access.document as any,
 			access.actorId
 		);

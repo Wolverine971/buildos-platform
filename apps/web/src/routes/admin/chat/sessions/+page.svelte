@@ -6,7 +6,6 @@
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
-	import ReplayScenarioPanel from '$lib/components/admin/chat/ReplayScenarioPanel.svelte';
 	import SessionDetailModal from '$lib/components/admin/chat/SessionDetailModal.svelte';
 	import SessionFilters from '$lib/components/admin/chat/SessionFilters.svelte';
 	import SessionList from '$lib/components/admin/chat/SessionList.svelte';
@@ -59,15 +58,6 @@
 	let selectedEvalScenarioByTurnId = $state<Record<string, string>>({});
 	let runningEvalByTurnId = $state<Record<string, boolean>>({});
 	let evalErrorByTurnId = $state<Record<string, string | null>>({});
-	let selectedReplayScenarioSlug = $state('');
-	let isRunningReplay = $state(false);
-	let replayError = $state<string | null>(null);
-	let lastReplayResult = $state<{
-		sessionId: string | null;
-		turnRunId: string;
-		status: string;
-		scenarioSlug: string;
-	} | null>(null);
 
 	let searchQuery = $state('');
 	let selectedStatus = $state('all');
@@ -159,10 +149,6 @@
 
 	const visibleTimelineGroups = $derived.by(() =>
 		sessionDetail ? buildVisibleTimelineGroups(visibleTimeline, sessionDetail.turn_runs) : []
-	);
-
-	const selectedReplayScenario = $derived.by(
-		() => evalScenarios.find((scenario) => scenario.slug === selectedReplayScenarioSlug) ?? null
 	);
 
 	async function loadSessions() {
@@ -271,9 +257,6 @@
 				}
 				selectedEvalScenarioByTurnId = nextSelections;
 			}
-			if (!selectedReplayScenarioSlug && (result.data.scenarios?.length ?? 0) > 0) {
-				selectedReplayScenarioSlug = result.data.scenarios[0].slug;
-			}
 		} catch (err) {
 			console.error('Failed loading eval scenarios', err);
 		} finally {
@@ -308,48 +291,6 @@
 			};
 		} finally {
 			runningEvalByTurnId = { ...runningEvalByTurnId, [turnRunId]: false };
-		}
-	}
-
-	async function runScenarioReplay() {
-		if (!selectedReplayScenarioSlug) return;
-		isRunningReplay = true;
-		replayError = null;
-		try {
-			const response = await fetch('/api/admin/chat/evals/replay', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					scenario_slug: selectedReplayScenarioSlug
-				})
-			});
-			const result = await response.json();
-			if (!response.ok || !result.success) {
-				throw new Error(result.message || 'Failed to replay prompt scenario');
-			}
-			const sessionId =
-				typeof result.data?.session_id === 'string' ? result.data.session_id : null;
-			const turnRunId =
-				typeof result.data?.turn_run?.id === 'string' ? result.data.turn_run.id : '';
-			const status =
-				typeof result.data?.eval_run?.status === 'string'
-					? result.data.eval_run.status
-					: 'unknown';
-			lastReplayResult = {
-				sessionId,
-				turnRunId,
-				status,
-				scenarioSlug: selectedReplayScenarioSlug
-			};
-			await loadSessions();
-			if (sessionId) {
-				selectSessionDetail(sessionId);
-			}
-		} catch (err) {
-			console.error('Failed replaying prompt scenario', err);
-			replayError = err instanceof Error ? err.message : 'Failed to replay prompt scenario';
-		} finally {
-			isRunningReplay = false;
 		}
 	}
 
@@ -517,26 +458,14 @@
 		{/snippet}
 	</AdminPageHeader>
 
-	<div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr),minmax(23rem,0.95fr)] gap-3">
-		<SessionFilters
-			bind:searchQuery
-			bind:selectedStatus
-			bind:selectedContextType
-			bind:selectedSortBy
-			bind:selectedSortOrder
-			onApply={handleSearchSubmit}
-		/>
-		<ReplayScenarioPanel
-			{evalScenarios}
-			{selectedReplayScenario}
-			bind:selectedReplayScenarioSlug
-			{isLoadingEvalScenarios}
-			{isRunningReplay}
-			{replayError}
-			{lastReplayResult}
-			onRun={runScenarioReplay}
-		/>
-	</div>
+	<SessionFilters
+		bind:searchQuery
+		bind:selectedStatus
+		bind:selectedContextType
+		bind:selectedSortBy
+		bind:selectedSortOrder
+		onApply={handleSearchSubmit}
+	/>
 	<div class="sessions-workspace min-w-0">
 		<SessionList
 			{sessions}

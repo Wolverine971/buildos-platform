@@ -5,6 +5,7 @@ import { GoogleOAuthService, isGoogleOAuthReconnectError } from './google-oauth-
 import { ScheduledSmsUpdateService } from './scheduledSmsUpdate.service';
 import { ErrorLoggerService } from './errorLogger.service';
 import * as crypto from 'crypto';
+import { fromZonedTime } from 'date-fns-tz';
 import { GoogleCalendarConnectionService } from '$lib/server/google-calendar-connection.service';
 import {
 	GoogleCalendarTargetService,
@@ -24,11 +25,41 @@ export interface WebhookChannel {
 }
 
 interface BatchUpdates {
+	/** Patches to existing task_calendar_events rows, keyed by row `id`. */
 	taskEventUpdates: any[];
+	/** Complete new task_calendar_events rows (recurring-instance exceptions). */
+	taskEventInserts: any[];
 	taskUpdates: any[];
-	deletions: string[];
+	/** Row id plus the Google event id, so SMS reminders can be matched. */
+	deletions: Array<{ id: string; calendar_event_id: string }>;
 	timeBlockUpdates: any[];
 	timeBlockDeletions: string[];
+}
+
+interface BatchProcessResult {
+	processedCount: number;
+	/** True when a read or write failed, so the sync cursor must not advance. */
+	incomplete: boolean;
+}
+
+/**
+ * All-day Google events carry a bare `date`; read it as midnight in the user's
+ * timezone rather than UTC midnight (which lands on the previous evening for
+ * users west of UTC).
+ */
+function parseGoogleEventTime(
+	value: calendar_v3.Schema$EventDateTime | undefined,
+	timeZone: string
+): Date | null {
+	if (value?.dateTime) return new Date(value.dateTime);
+	if (!value?.date) return null;
+	try {
+		const zoned = fromZonedTime(`${value.date}T00:00:00`, timeZone);
+		if (!Number.isNaN(zoned.getTime())) return zoned;
+	} catch {
+		// Invalid timezone: fall through to UTC.
+	}
+	return new Date(`${value.date}T00:00:00Z`);
 }
 
 interface RetryConfig {
@@ -42,6 +73,12 @@ type CalendarApi = Pick<calendar_v3.Calendar, 'events' | 'channels'>;
 
 type CalendarWebhookServiceOptions = {
 	legacyOAuthService?: Pick<GoogleOAuthService, 'getAuthenticatedClient'>;
+	/**
+	 * Client allowed to quarantine a revoked legacy grant (delete its tokens and
+	 * channel). Defaults to the service's own client: every caller constructs
+	 * this service with the service-role client.
+	 */
+	protectedCleanupSupabase?: SupabaseClient;
 	connectionService?: Pick<GoogleCalendarConnectionService, 'getAuthenticatedClient'>;
 	targetService?: Pick<GoogleCalendarTargetService, 'resolveExplicitSource'>;
 	createCalendarApi?: (auth: unknown) => CalendarApi;
@@ -72,7 +109,11 @@ export class CalendarWebhookService {
 	constructor(supabase: SupabaseClient, options: CalendarWebhookServiceOptions = {}) {
 		this.supabase = supabase;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
-		this.oAuthService = options.legacyOAuthService ?? new GoogleOAuthService(supabase);
+		this.oAuthService =
+			options.legacyOAuthService ??
+			new GoogleOAuthService(supabase, undefined, {
+				protectedCleanupSupabase: options.protectedCleanupSupabase ?? supabase
+			});
 		this.smsUpdateService = new ScheduledSmsUpdateService(supabase);
 		this.connectionService =
 			options.connectionService ?? new GoogleCalendarConnectionService(supabase as any);
@@ -397,7 +438,7 @@ export class CalendarWebhookService {
 			// Get user creation date to determine the earliest relevant event
 			const { data: userData } = await this.supabase
 				.from('users')
-				.select('created_at')
+				.select('created_at, timezone')
 				.eq('id', userId)
 				.single();
 
@@ -458,11 +499,12 @@ export class CalendarWebhookService {
 			console.log('[RESYNC] Processing events to find task-related changes...');
 
 			// Use batch processing for better performance
-			const processedCount = await this.processBatchEventChanges(
+			const { processedCount, incomplete } = await this.processBatchEventChanges(
 				userId,
 				allEvents,
 				calendarId,
-				calendarSourceId
+				calendarSourceId,
+				userData?.timezone
 			);
 			const skippedCount = allEvents.length - processedCount;
 
@@ -473,7 +515,11 @@ export class CalendarWebhookService {
 			});
 
 			// Update with the new sync token
-			if (newSyncToken) {
+			if (incomplete) {
+				console.error(
+					'[RESYNC] Some calendar changes failed to apply; not storing the new sync token so they are retried'
+				);
+			} else if (newSyncToken) {
 				console.log('[RESYNC] Updating database with new sync token...');
 				const { error: updateError } = await this.channelIdentityQuery(
 					this.supabase.from('calendar_webhook_channels').update({
@@ -735,7 +781,7 @@ export class CalendarWebhookService {
 			// Get user creation date to filter out old events
 			const { data: userData } = await this.supabase
 				.from('users')
-				.select('created_at')
+				.select('created_at, timezone')
 				.eq('id', userId)
 				.single();
 
@@ -861,15 +907,21 @@ export class CalendarWebhookService {
 			}
 
 			// Process batch of events
-			const processedCount = await this.processBatchEventChanges(
+			const { processedCount, incomplete } = await this.processBatchEventChanges(
 				userId,
 				relevantChanges,
 				calendarId,
-				calendarSourceId
+				calendarSourceId,
+				userData?.timezone
 			);
 
-			// Update sync token
-			if (newSyncToken && typeof newSyncToken === 'string') {
+			// Update sync token. A failed write keeps the old cursor so the same
+			// changes are fetched and applied again on the next notification.
+			if (incomplete) {
+				console.error(
+					'[SYNC] Some calendar changes failed to apply; keeping the previous sync token so they are retried'
+				);
+			} else if (newSyncToken && typeof newSyncToken === 'string') {
 				console.log('[SYNC] Updating sync token in database');
 				const { error: updateError } = await this.channelIdentityQuery(
 					this.supabase.from('calendar_webhook_channels').update({
@@ -1001,12 +1053,15 @@ export class CalendarWebhookService {
 		userId: string,
 		events: calendar_v3.Schema$Event[],
 		calendarId: string,
-		calendarSourceId?: string | null
-	): Promise<number> {
+		calendarSourceId?: string | null,
+		userTimezone?: string | null
+	): Promise<BatchProcessResult> {
+		const timeZone = userTimezone || 'UTC';
+		let incomplete = false;
 		try {
 			if (!events || events.length === 0) {
 				console.log('[BATCH_PROCESS] No events to process');
-				return 0;
+				return { processedCount: 0, incomplete: false };
 			}
 
 			// Extract all event IDs for batch query
@@ -1014,7 +1069,7 @@ export class CalendarWebhookService {
 
 			if (eventIds.length === 0) {
 				console.log('[BATCH_PROCESS] No valid event IDs found');
-				return 0;
+				return { processedCount: 0, incomplete: false };
 			}
 
 			console.log(
@@ -1033,7 +1088,7 @@ export class CalendarWebhookService {
 
 			if (error) {
 				console.error('[BATCH_PROCESS] Error fetching task events:', error);
-				return 0;
+				return { processedCount: 0, incomplete: true };
 			}
 
 			// Also batch query time blocks
@@ -1049,6 +1104,7 @@ export class CalendarWebhookService {
 			if (timeBlockError) {
 				console.error('[BATCH_PROCESS] Error fetching time blocks:', timeBlockError);
 				// Don't return - continue with task events if we have them
+				incomplete = true;
 			}
 
 			const taskEventRows = (taskEvents ?? []) as any[];
@@ -1061,7 +1117,7 @@ export class CalendarWebhookService {
 				console.log(
 					'[BATCH_PROCESS] No task-related events or timeblocks found in this batch'
 				);
-				return 0;
+				return { processedCount: 0, incomplete };
 			}
 
 			console.log(
@@ -1079,6 +1135,7 @@ export class CalendarWebhookService {
 			// Prepare batch updates
 			const batchUpdates: BatchUpdates = {
 				taskEventUpdates: [],
+				taskEventInserts: [],
 				taskUpdates: [],
 				deletions: [],
 				timeBlockUpdates: [],
@@ -1140,12 +1197,10 @@ export class CalendarWebhookService {
 
 					// Handle timeblock date/time changes
 					if (event.start && event.end) {
-						const newStart = event.start?.dateTime || event.start?.date;
-						const newEnd = event.end?.dateTime || event.end?.date;
+						const startDate = parseGoogleEventTime(event.start, timeZone);
+						const endDate = parseGoogleEventTime(event.end, timeZone);
 
-						if (newStart && newEnd) {
-							const startDate = new Date(newStart);
-							const endDate = new Date(newEnd);
+						if (startDate && endDate) {
 							const durationMinutes = Math.round(
 								(endDate.getTime() - startDate.getTime()) / 60000
 							);
@@ -1248,10 +1303,16 @@ export class CalendarWebhookService {
 						}
 
 						// Delete the master calendar event record
-						batchUpdates.deletions.push(taskEvent.id);
+						batchUpdates.deletions.push({
+							id: taskEvent.id,
+							calendar_event_id: event.id
+						});
 					} else {
 						// Regular deletion
-						batchUpdates.deletions.push(taskEvent.id);
+						batchUpdates.deletions.push({
+							id: taskEvent.id,
+							calendar_event_id: event.id
+						});
 						if (taskEvent.task_id) {
 							batchUpdates.taskUpdates.push({
 								id: taskEvent.task_id,
@@ -1300,12 +1361,11 @@ export class CalendarWebhookService {
 				}
 				// Handle date/time changes
 				else if (event.start && event.end) {
-					const newStart = event.start?.dateTime || event.start?.date;
-					const newEnd = event.end?.dateTime || event.end?.date;
+					const startDate = parseGoogleEventTime(event.start, timeZone);
+					const endDate = parseGoogleEventTime(event.end, timeZone);
 
-					if (newStart && newEnd) {
-						const startDate = new Date(newStart);
-						const endDate = new Date(newEnd);
+					if (startDate && endDate) {
+						const newStart = startDate.toISOString();
 						const durationMinutes = Math.round(
 							(endDate.getTime() - startDate.getTime()) / 60000
 						);
@@ -1344,8 +1404,8 @@ export class CalendarWebhookService {
 							});
 
 							// Create an exception event record
-							batchUpdates.taskEventUpdates.push({
-								id: crypto.randomBytes(16).toString('hex'),
+							batchUpdates.taskEventInserts.push({
+								id: crypto.randomUUID(),
 								task_id: taskEvent.task_id,
 								user_id: userId,
 								calendar_event_id: event.id,
@@ -1374,6 +1434,7 @@ export class CalendarWebhookService {
 							// Add task_calendar_event update
 							batchUpdates.taskEventUpdates.push({
 								id: taskEvent.id,
+								calendar_event_id: event.id,
 								event_start: startDate.toISOString(),
 								event_end: endDate.toISOString(),
 								event_title: event.summary || taskEvent.event_title,
@@ -1409,30 +1470,46 @@ export class CalendarWebhookService {
 				const { error: deleteError } = await this.supabase
 					.from('task_calendar_events')
 					.delete()
-					.in('id', batchUpdates.deletions);
+					.in(
+						'id',
+						batchUpdates.deletions.map((deletion) => deletion.id)
+					);
 
 				if (deleteError) {
+					incomplete = true;
 					console.error('[BATCH_PROCESS] Error deleting events:', deleteError);
 				} else {
 					processedCount += batchUpdates.deletions.length;
 				}
 			}
 
-			// Batch update task_calendar_events
+			// Update task_calendar_events row by row. An upsert of partial rows fails
+			// Postgres NOT NULL checks before conflict resolution runs.
 			if (batchUpdates.taskEventUpdates.length > 0) {
 				console.log(
 					`[BATCH_PROCESS] Updating ${batchUpdates.taskEventUpdates.length} task events`
 				);
-				const { error: updateError } = await this.supabase
-					.from('task_calendar_events')
-					.upsert(batchUpdates.taskEventUpdates, {
-						onConflict: 'id'
-					});
+				const updateErrors = await this.applyRowPatches(
+					'task_calendar_events',
+					batchUpdates.taskEventUpdates
+				);
+				if (updateErrors.length > 0) {
+					incomplete = true;
+					console.error('[BATCH_PROCESS] Error updating task events:', updateErrors);
+				}
+				processedCount += batchUpdates.taskEventUpdates.length - updateErrors.length;
+			}
 
-				if (updateError) {
-					console.error('[BATCH_PROCESS] Error updating task events:', updateError);
+			if (batchUpdates.taskEventInserts.length > 0) {
+				const { error: insertError } = await this.supabase
+					.from('task_calendar_events')
+					.insert(batchUpdates.taskEventInserts);
+
+				if (insertError) {
+					incomplete = true;
+					console.error('[BATCH_PROCESS] Error inserting exception events:', insertError);
 				} else {
-					processedCount += batchUpdates.taskEventUpdates.length;
+					processedCount += batchUpdates.taskEventInserts.length;
 				}
 			}
 
@@ -1499,6 +1576,7 @@ export class CalendarWebhookService {
 				}
 
 				if (taskUpdateError) {
+					incomplete = true;
 					console.error('[BATCH_PROCESS] Error updating tasks:', taskUpdateError);
 				}
 			}
@@ -1508,20 +1586,19 @@ export class CalendarWebhookService {
 				console.log(
 					`[BATCH_PROCESS] Updating ${batchUpdates.timeBlockUpdates.length} timeblocks`
 				);
-				const { error: timeBlockUpdateError } = await this.supabase
-					.from('time_blocks')
-					.upsert(batchUpdates.timeBlockUpdates, {
-						onConflict: 'id'
-					});
-
-				if (timeBlockUpdateError) {
+				const timeBlockUpdateErrors = await this.applyRowPatches(
+					'time_blocks',
+					batchUpdates.timeBlockUpdates
+				);
+				if (timeBlockUpdateErrors.length > 0) {
+					incomplete = true;
 					console.error(
 						'[BATCH_PROCESS] Error updating timeblocks:',
-						timeBlockUpdateError
+						timeBlockUpdateErrors
 					);
-				} else {
-					processedCount += batchUpdates.timeBlockUpdates.length;
 				}
+				processedCount +=
+					batchUpdates.timeBlockUpdates.length - timeBlockUpdateErrors.length;
 			}
 
 			// Batch delete timeblocks (soft delete)
@@ -1540,6 +1617,7 @@ export class CalendarWebhookService {
 					.in('id', batchUpdates.timeBlockDeletions);
 
 				if (timeBlockDeleteError) {
+					incomplete = true;
 					console.error(
 						'[BATCH_PROCESS] Error deleting timeblocks:',
 						timeBlockDeleteError
@@ -1559,9 +1637,8 @@ export class CalendarWebhookService {
 
 				// Extract event changes for SMS processing
 				const eventChanges = ScheduledSmsUpdateService.extractEventChangesFromBatch(
-					batchUpdates.taskEventUpdates,
-					batchUpdates.deletions,
-					taskEventMap
+					[...batchUpdates.taskEventUpdates, ...batchUpdates.taskEventInserts],
+					batchUpdates.deletions
 				);
 
 				if (eventChanges.length > 0) {
@@ -1598,7 +1675,7 @@ export class CalendarWebhookService {
 				);
 			}
 
-			return processedCount;
+			return { processedCount, incomplete };
 		} catch (error) {
 			console.error('[BATCH_PROCESS] Error in batch processing:', error);
 
@@ -1616,8 +1693,25 @@ export class CalendarWebhookService {
 				}
 			);
 
-			return 0;
+			return { processedCount: 0, incomplete: true };
 		}
+	}
+
+	/**
+	 * Apply `{ id, ...patch }` records as individual updates. Returns the errors
+	 * for rows that failed; an empty array means every row was written.
+	 */
+	private async applyRowPatches(
+		table: 'task_calendar_events' | 'time_blocks',
+		patches: Array<{ id: string } & Record<string, unknown>>
+	): Promise<unknown[]> {
+		const results = await Promise.all(
+			patches.map(async ({ id, ...patch }) => {
+				const { error } = await this.supabase.from(table).update(patch).eq('id', id);
+				return error ?? null;
+			})
+		);
+		return results.filter((error) => error !== null);
 	}
 
 	/**
@@ -2150,8 +2244,14 @@ export class CalendarWebhookService {
 						if (isGoogleOAuthReconnectError(syncError)) {
 							// GoogleOAuthService has quarantined the unusable legacy grant and removed
 							// its compatibility channel. Do not re-register it or duplicate the one
-							// actionable invalid-grant incident on every cron cycle.
+							// actionable invalid-grant incident on every cron cycle. If the row
+							// survives (e.g. a source connection), move it to the back of the
+							// updated_at queue so it cannot pin the head of every renewal batch.
 							summary.failed += 1;
+							await this.supabase
+								.from('calendar_webhook_channels')
+								.update({ updated_at: new Date().toISOString() })
+								.eq('id', channel.id);
 							continue;
 						}
 

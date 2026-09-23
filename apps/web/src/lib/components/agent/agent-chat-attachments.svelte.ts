@@ -629,6 +629,8 @@ export class AttachmentController {
 		file: File,
 		projectId: string | null
 	): Promise<void> {
+		// A project asset row this request created whose bytes never landed.
+		let unfinishedAssetId: string | null = null;
 		try {
 			if (!this.#hasAttachment(attachmentId)) return;
 			this.#updateAttachment(attachmentId, {
@@ -699,12 +701,18 @@ export class AttachmentController {
 			}
 
 			if (upload) {
+				// A deduped row is shared with earlier attachments, so it is never ours
+				// to clean up even when the server asks us to re-upload its bytes.
+				if (asset.project_id && asset.kind !== 'temporary_file' && !createData?.deduped) {
+					unfinishedAssetId = asset.id;
+				}
 				await this.#uploadToSignedStorageUrl({
 					bucket: asset.storage_bucket ?? 'onto-assets',
 					upload,
 					file,
 					contentType: file.type || 'application/octet-stream'
 				});
+				unfinishedAssetId = null;
 
 				if (!asset.project_id || asset.kind === 'temporary_file') {
 					this.#updateAttachment(attachmentId, {
@@ -784,6 +792,13 @@ export class AttachmentController {
 			});
 			this.#scheduleDraftOcrPoll(attachmentId, asset.id, asset.ocr_status ?? 'pending');
 		} catch (error) {
+			if (unfinishedAssetId) {
+				// Best effort: drop the empty row so it does not linger in the project.
+				// The server also repairs such rows on the next attach of the same image.
+				void this.#fetch(`/api/onto/assets/${unfinishedAssetId}`, {
+					method: 'DELETE'
+				}).catch(() => undefined);
+			}
 			const message =
 				error instanceof Error ? error.message : 'Failed to upload image attachment';
 			this.#updateAttachment(attachmentId, {

@@ -30,7 +30,8 @@ function normalizeSearchQuery(query: string): string {
 	return normalized;
 }
 
-function escapeLikePattern(value: string): string {
+/** Escape LIKE/ILIKE wildcards (`%`, `_`) and the escape char so a value matches literally. */
+export function escapeLikePattern(value: string): string {
 	return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
 }
 

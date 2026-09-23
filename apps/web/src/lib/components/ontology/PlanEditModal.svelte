@@ -54,6 +54,7 @@
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { normalizeMarkdownInput } from '$lib/utils/markdown-normalization';
+	import { changedFormFields } from '$lib/utils/form-patch';
 	import {
 		loadDocumentModal,
 		loadGoalEditModal,
@@ -114,6 +115,7 @@
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
 	let hasChanges = $state(false);
+	let initialForm: ReturnType<typeof formSnapshot> | null = null;
 
 	// Form fields
 	let name = $state('');
@@ -267,8 +269,33 @@
 		}
 	});
 
-	async function loadPlan() {
+	function formSnapshot() {
+		return {
+			name: name.trim(),
+			plan: normalizePlanDetails(planDetails).trim() || null,
+			description: description.trim() || null,
+			start_date: startDate || null,
+			end_date: endDate || null,
+			state_key: stateKey,
+			type_key: typeKey || 'plan.default'
+		};
+	}
+
+	function isFormDirty(): boolean {
+		return (
+			initialForm !== null &&
+			Object.keys(changedFormFields(initialForm, formSnapshot())).length > 0
+		);
+	}
+
+	/**
+	 * Reload the plan. `preserveEdits` is for refreshes triggered by nested
+	 * modals or images: it keeps the user's unsaved form edits.
+	 */
+	async function loadPlan(options: { preserveEdits?: boolean } = {}) {
+		const keepForm = options.preserveEdits === true && isFormDirty();
 		try {
+			if (!keepForm) initialForm = null;
 			isLoading = true;
 			linkedEntities = undefined;
 			const response = await fetch(`/api/onto/plans/${planId}/full?include_linked=false`);
@@ -277,7 +304,7 @@
 			const data = await response.json();
 			plan = (data.data?.plan ?? null) as LoadedPlan | null;
 
-			if (plan) {
+			if (plan && !keepForm) {
 				name = plan.name || '';
 				description = plan.description || plan.props?.description || '';
 				planDetails = normalizePlanDetails(plan.plan || plan.props?.plan || '');
@@ -285,6 +312,7 @@
 				endDate = plan.props?.end_date || '';
 				stateKey = plan.state_key || 'draft';
 				typeKey = plan.type_key || 'plan.default';
+				initialForm = formSnapshot();
 			}
 		} catch (err) {
 			console.error('Error loading plan:', err);
@@ -308,6 +336,7 @@
 	}
 
 	async function handleSave() {
+		if (isLoading || isSaving || !initialForm) return;
 		if (!name.trim()) {
 			error = 'Plan name is required';
 			return;
@@ -318,20 +347,19 @@
 			return;
 		}
 
+		// Send only edited fields so a stale form cannot overwrite concurrent
+		// changes (chat, another tab) to fields the user never touched.
+		const requestBody = changedFormFields(initialForm, formSnapshot());
+		if (Object.keys(requestBody).length === 0) {
+			if (hasChanges) onUpdated?.();
+			handleClose();
+			return;
+		}
+
 		isSaving = true;
 		error = '';
 
 		try {
-			const requestBody = {
-				name: name.trim(),
-				plan: normalizePlanDetails(planDetails).trim() || null,
-				description: description.trim() || null,
-				start_date: startDate || null,
-				end_date: endDate || null,
-				state_key: stateKey,
-				type_key: typeKey || 'plan.default'
-			};
-
 			const response = await fetch(`/api/onto/plans/${planId}`, {
 				method: 'PATCH',
 				headers: {
@@ -437,7 +465,7 @@
 		selectedDocumentIdForModal = null;
 		// Smart refresh: only reload if links were changed
 		if (hasChanges) {
-			loadPlan();
+			loadPlan({ preserveEdits: true });
 			hasChanges = false;
 		}
 	}
@@ -839,7 +867,7 @@
 													showTitle={false}
 													compact={true}
 													onChanged={() => {
-														void loadPlan();
+														void loadPlan({ preserveEdits: true });
 														onUpdated?.();
 													}}
 												/>

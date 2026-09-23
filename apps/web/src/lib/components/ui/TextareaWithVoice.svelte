@@ -54,6 +54,12 @@
 		transcribingLabel?: string;
 		preparingLabel?: string;
 		class?: string;
+		/**
+		 * Mark the textarea as the preferred initial focus of a host `Modal`
+		 * (renders `data-autofocus`, not the native attribute). Modal honors it
+		 * only on fine-pointer devices so phones don't pop the keyboard on open.
+		 */
+		autofocus?: boolean;
 		// Custom vocabulary terms for transcription (e.g., project name)
 		vocabularyTerms?: string;
 		// Bindable voice state props for parent components
@@ -117,6 +123,7 @@
 		transcribingLabel = 'Transcribing…',
 		preparingLabel = 'Preparing microphone…',
 		class: className = '',
+		autofocus = false,
 		// Custom vocabulary terms for transcription
 		vocabularyTerms = '',
 		// Bindable voice state props
@@ -993,6 +1000,23 @@
 		await stopRecordingInternal();
 	}
 
+	/** Focus the textarea (e.g. after the host swaps in the composer view). */
+	export function focus(options?: FocusOptions) {
+		textareaRef?.focus(options);
+	}
+
+	/**
+	 * Focus the textarea only on fine-pointer (mouse/trackpad) devices, so a
+	 * host can hand focus back to the composer without popping a phone's
+	 * software keyboard. Returns whether focus was attempted.
+	 */
+	export function focusIfFinePointer(): boolean {
+		if (!browser || typeof window.matchMedia !== 'function') return false;
+		if (!window.matchMedia('(pointer: fine)').matches) return false;
+		textareaRef?.focus({ preventScroll: true });
+		return Boolean(textareaRef);
+	}
+
 	export async function cleanup() {
 		await stopRecordingInternal();
 		cleanupVoice();
@@ -1049,6 +1073,7 @@
 			{error}
 			{errorMessage}
 			class={textareaClass}
+			data-autofocus={autofocus ? '' : undefined}
 			{...restProps}
 			onkeydown={(e) => {
 				handleTextareaKeyDown(e);

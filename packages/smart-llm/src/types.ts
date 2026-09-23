@@ -5,6 +5,11 @@ export type TextProfile = 'speed' | 'balanced' | 'quality' | 'creative' | 'maxim
 export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface ReasoningOptions {
+	/**
+	 * `false` turns reasoning off where the provider allows it (DeepSeek ignores
+	 * `effort: 'low'`). Dropped for models whose request policy requires reasoning.
+	 */
+	enabled?: boolean;
 	effort?: ReasoningEffort;
 	/** Keep reasoning details available to providers/models that support them. */
 	exclude?: boolean;

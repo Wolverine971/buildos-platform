@@ -8,6 +8,7 @@
 	import { formatSlotDuration, formatTimeRange } from '$lib/utils/slot-finder';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 	import { toastService } from '$lib/stores/toast.store';
+	import { parseLocalDate } from '$lib/utils/schedulingUtils';
 
 	let {
 		blocks = [],
@@ -410,10 +411,15 @@
 	// Keyboard shortcuts
 	onMount(() => {
 		function handleKeyDown(event: KeyboardEvent) {
-			// Only handle if not in an input
+			// Leave browser/OS shortcuts (Cmd+D bookmark, Cmd+T new tab, ...) alone.
+			if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+			// Only handle if not typing in a form field
+			const target = event.target;
 			if (
-				event.target instanceof HTMLInputElement ||
-				event.target instanceof HTMLTextAreaElement
+				target instanceof HTMLInputElement ||
+				target instanceof HTMLTextAreaElement ||
+				target instanceof HTMLSelectElement ||
+				(target instanceof HTMLElement && target.isContentEditable)
 			) {
 				return;
 			}
@@ -473,13 +479,21 @@
 		return cancelCalendarEventsRequest;
 	});
 
+	// All-day Google events carry a bare YYYY-MM-DD date. new Date() reads that as
+	// UTC midnight, which is the previous evening west of UTC, so parse it locally.
+	function calendarEventBoundary(boundary: CalendarEvent['start']): Date {
+		if (boundary?.dateTime) return new Date(boundary.dateTime);
+		if (boundary?.date) return parseLocalDate(boundary.date);
+		return new Date(NaN);
+	}
+
 	// Function to get calendar events for a specific day
 	function getCalendarEventsForDay(dayIndex: number): CalendarEvent[] {
 		const dayDate = days[dayIndex];
 		if (!dayDate) return [];
 
 		return calendarEvents.filter((event) => {
-			const eventStart = new Date(event.start.dateTime || event.start.date || '');
+			const eventStart = calendarEventBoundary(event.start);
 			return isSameDay(eventStart, dayDate);
 		});
 	}
@@ -489,8 +503,8 @@
 		const dayDate = days[dayIndex];
 		if (!dayDate) return null;
 
-		const eventStart = new Date(event.start.dateTime || event.start.date || '');
-		const eventEnd = new Date(event.end.dateTime || event.end.date || '');
+		const eventStart = calendarEventBoundary(event.start);
+		const eventEnd = calendarEventBoundary(event.end);
 
 		// Check if event is on this day
 		if (!isSameDay(eventStart, dayDate)) {
@@ -534,9 +548,10 @@
 		const startDate = new Date(firstDay);
 		startDate.setDate(startDate.getDate() - firstDayOfWeek);
 
-		// Generate 42 days (6 weeks) for complete calendar grid
+		// Generate 42 days (6 weeks) for complete calendar grid. Step by calendar
+		// day, not 24h: a DST change would otherwise shift or repeat a date.
 		return Array.from({ length: 42 }, (_, i) => {
-			return new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+			return new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i);
 		});
 	}
 
@@ -551,7 +566,7 @@
 		});
 
 		const calEvents = calendarEvents.filter((event) => {
-			const eventStart = new Date(event.start.dateTime || event.start.date || '');
+			const eventStart = calendarEventBoundary(event.start);
 			return isSameDay(eventStart, date);
 		});
 

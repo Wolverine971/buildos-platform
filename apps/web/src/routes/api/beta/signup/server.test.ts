@@ -174,4 +174,44 @@ describe('GET /api/beta/signup', () => {
 		expect(payload.success).toBe(true);
 		expect(payload.data.status).toBe('not_found');
 	});
+
+	it('tells an anonymous caller only that a signup exists, never its status or date', async () => {
+		const { supabase } = createBetaSignupSupabaseMock({
+			existingSignup: { signup_status: 'approved', created_at: '2026-09-01T00:00:00Z' }
+		});
+		createAdminSupabaseClientMock.mockReturnValue(supabase);
+
+		const response = await GET({
+			url: new URL('http://localhost/api/beta/signup?email=someone@example.com'),
+			locals: { supabase, safeGetSession: vi.fn().mockResolvedValue({ user: null }) }
+		} as any);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.data).toEqual({ status: 'signed_up', signedUp: true });
+	});
+
+	it('returns the review status and date to the signed-in owner of the email', async () => {
+		const { supabase } = createBetaSignupSupabaseMock({
+			existingSignup: { signup_status: 'approved', created_at: '2026-09-01T00:00:00Z' }
+		});
+		createAdminSupabaseClientMock.mockReturnValue(supabase);
+
+		const response = await GET({
+			url: new URL('http://localhost/api/beta/signup?email=Someone@Example.com'),
+			locals: {
+				supabase,
+				safeGetSession: vi
+					.fn()
+					.mockResolvedValue({ user: { id: 'user-1', email: 'someone@example.com' } })
+			}
+		} as any);
+		const payload = await response.json();
+
+		expect(payload.data).toEqual({
+			status: 'approved',
+			signedUp: true,
+			signedUpAt: '2026-09-01T00:00:00Z'
+		});
+	});
 });

@@ -65,19 +65,6 @@ function makeDraftAttachment(
 	} as AgentChatImageAttachment;
 }
 
-function leaseResponse(token = 'actl1.claims.signature'): Response {
-	return Response.json({
-		success: true,
-		data: {
-			mode: 'worker_realtime',
-			contractVersion: 'agentic_chat_worker_v1',
-			decisionId: 'd3000000-0000-4000-8000-000000000001',
-			token,
-			expiresAt: '2099-01-01T00:00:00.000Z'
-		}
-	});
-}
-
 function admittedResponse(
 	request: Record<string, unknown>,
 	overrides: { sessionId?: string; turnRunId?: string } = {}
@@ -92,7 +79,11 @@ function admittedResponse(
 					contractVersion: 'agentic_chat_worker_v1',
 					executionMode: 'worker_realtime',
 					turnRunId: overrides.turnRunId ?? WORKER_TURN_RUN_ID,
-					sessionId: overrides.sessionId ?? String(request.sessionId),
+					sessionId:
+						overrides.sessionId ??
+						(typeof request.sessionId === 'string'
+							? request.sessionId
+							: WORKER_SESSION_ID),
 					streamRunId: request.streamRunId,
 					clientTurnId: request.clientTurnId
 				},
@@ -107,7 +98,6 @@ function createHarness(
 	overrides: {
 		inputValue?: string;
 		currentSession?: ChatSession | null;
-		hydrateOnEnsure?: boolean;
 		fetchImpl?: typeof fetch;
 		admissionFetchImpl?: typeof fetch;
 		readyRefs?: ChatAttachmentRef[];
@@ -149,8 +139,9 @@ function createHarness(
 	const defaultFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = String(input);
 		if (url === TRANSPORT_URL) {
+			// Current clients never negotiate a separate lease.
 			transportCalls.push({ input, init });
-			return leaseResponse();
+			throw new Error('the lease endpoint must not be called');
 		}
 		if (url.includes('/cancel')) {
 			cancelFetchCalls.push({ input, init });
@@ -189,9 +180,10 @@ function createHarness(
 	}
 
 	const thinking = {
-		create: vi.fn(() => 'thinking-1'),
+		create: vi.fn((_options?: { renderKey?: string }) => 'thinking-1'),
 		updateState: vi.fn(),
-		finalize: vi.fn()
+		finalize: vi.fn(),
+		discard: vi.fn()
 	};
 	const assistant = {
 		flushText: vi.fn(),
@@ -203,13 +195,6 @@ function createHarness(
 		currentSession = session;
 	});
 	const reconcileTurnFromSession = vi.fn(async () => {});
-	const ensureSessionReady = vi.fn(async () => {
-		const ensured = makeSession({ id: 'd2000000-0000-4000-8000-000000000003' });
-		if (overrides.hydrateOnEnsure !== false) {
-			currentSession = ensured;
-		}
-		return ensured;
-	});
 	const scheduleMessageOcrPoll = vi.fn();
 	const clearDraft = vi.fn(() => {
 		readyRefs = [];
@@ -244,7 +229,6 @@ function createHarness(
 		getSelectedEntityId: () => selectedEntityId,
 		getResolvedProjectFocus: () => projectFocus,
 		getCurrentSession: () => currentSession,
-		ensureSessionReady,
 		getLastTurnContext: () => lastTurnContext,
 		getIsLoadingSession: () => false,
 		getActiveRestoredTurnRunId: () => null,
@@ -269,6 +253,10 @@ function createHarness(
 			removeById: (messageId) => {
 				const index = messages.findIndex((message) => message.id === messageId);
 				if (index >= 0) messages.splice(index, 1);
+			},
+			update: (messageId, patch) => {
+				const index = messages.findIndex((message) => message.id === messageId);
+				if (index >= 0) messages[index] = { ...messages[index]!, ...patch };
 			}
 		},
 		thinking,
@@ -304,7 +292,6 @@ function createHarness(
 		defaultFetch,
 		hydrateSessionFromEvent,
 		reconcileTurnFromSession,
-		ensureSessionReady,
 		scheduleMessageOcrPoll,
 		clearDraft,
 		restoreDraft,
@@ -351,53 +338,40 @@ function workerHandle(overrides: Partial<TurnHandleV1> = {}): TurnHandleV1 {
 }
 
 describe('AgentChatStreamController', () => {
-	it('pins the selected published version through a lease retry and reads the new selection on the next send', async () => {
+	it('pins the selected published version at send time and reads the new selection on the next send', async () => {
 		const selected = {
 			draftId: 'd8000000-0000-4000-8000-000000000001',
 			version: 1,
 			snapshotHash: 'a'.repeat(64)
 		};
 		const originalSelection = { ...selected };
-		let attempts = 0;
 		const h = createHarness({
 			inputValue: '/workflow Review the launch documents.',
 			admissionFetchImpl: async (_input, init) => {
-				attempts += 1;
-				if (attempts === 1) {
-					// Simulate a host selection changing while admission is in flight.
-					selected.version = 2;
-					selected.snapshotHash = 'b'.repeat(64);
-					return Response.json(
-						{ success: false, error: 'Refresh lease', code: 'TRANSPORT_RENEGOTIATE' },
-						{ status: 409 }
-					);
-				}
+				// Simulate a host selection changing while admission is in flight.
+				selected.version = 2;
+				selected.snapshotHash = 'b'.repeat(64);
 				return admittedResponse(JSON.parse(String(init?.body)));
 			}
 		});
 		h.deps.getPublishedSpecialist = () => selected;
 		await h.controller.sendMessage();
 		expect(h.controller.error).toBeNull();
-		expect(h.admissionCalls).toHaveLength(2);
-		for (const call of h.admissionCalls) {
-			expect(parseBody(call)).toMatchObject({
-				reviewIntent: 'document_organization',
-				publishedSpecialist: originalSelection,
-				message: 'Review the launch documents.',
-				preparedPromptKey: null
-			});
-		}
-		expect(parseBody(h.admissionCalls[0]!).clientTurnId).toBe(
-			parseBody(h.admissionCalls[1]!).clientTurnId
-		);
+		expect(h.admissionCalls).toHaveLength(1);
+		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
+			reviewIntent: 'document_organization',
+			publishedSpecialist: originalSelection,
+			message: 'Review the launch documents.',
+			preparedPromptKey: null
+		});
 		const firstHandle = h.controller.activeTurnHandle;
 		if (!firstHandle || firstHandle.executionMode !== 'worker_realtime')
 			throw new Error('Expected an admitted worker turn');
 		h.controller.finishWorkerTurn(firstHandle, 'completed');
 		await h.controller.sendMessage('/workflow Review the updated launch documents.');
-		expect(parseBody(h.admissionCalls[2]!).publishedSpecialist).toEqual(selected);
-		expect(parseBody(h.admissionCalls[2]!).clientTurnId).not.toBe(
-			parseBody(h.admissionCalls[1]!).clientTurnId
+		expect(parseBody(h.admissionCalls[1]!).publishedSpecialist).toEqual(selected);
+		expect(parseBody(h.admissionCalls[1]!).clientTurnId).not.toBe(
+			parseBody(h.admissionCalls[0]!).clientTurnId
 		);
 		const secondHandle = h.controller.activeTurnHandle;
 		if (!secondHandle || secondHandle.executionMode !== 'worker_realtime')
@@ -405,11 +379,12 @@ describe('AgentChatStreamController', () => {
 		h.controller.finishWorkerTurn(secondHandle, 'completed');
 		h.deps.getPublishedSpecialist = () => null;
 		await h.controller.sendMessage('/workflow Use the built-in review now.');
-		expect(parseBody(h.admissionCalls[3]!)).not.toHaveProperty('publishedSpecialist');
-		expect(parseBody(h.admissionCalls[3]!)).not.toHaveProperty('reviewIntent');
-		expect(parseBody(h.admissionCalls[3]!).message).toBe(
+		expect(parseBody(h.admissionCalls[2]!)).not.toHaveProperty('publishedSpecialist');
+		expect(parseBody(h.admissionCalls[2]!)).not.toHaveProperty('reviewIntent');
+		expect(parseBody(h.admissionCalls[2]!).message).toBe(
 			'/workflow Use the built-in review now.'
 		);
+		expect(h.transportCalls).toHaveLength(0);
 	});
 
 	it.each([null, 'project_review'] as const)(
@@ -472,7 +447,6 @@ describe('AgentChatStreamController', () => {
 			h.deps.onReviewAdmitted = vi.fn();
 			await h.controller.sendMessage();
 			expect(h.controller.error).toBeNull();
-			expect(h.ensureSessionReady).not.toHaveBeenCalled();
 			expect(h.prewarm.matchingFreshPreparedPrompt).not.toHaveBeenCalled();
 			expect(wait).not.toHaveBeenCalled();
 			expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
@@ -529,7 +503,6 @@ describe('AgentChatStreamController', () => {
 		expect(h.messages).toHaveLength(1);
 		expect(h.controller.error).toContain('Reopen it from chat history');
 		expect(h.admissionCalls).toHaveLength(1);
-		expect(h.ensureSessionReady).not.toHaveBeenCalled();
 	});
 
 	it.each(['project_review', 'document_organization'] as const)(
@@ -542,7 +515,7 @@ describe('AgentChatStreamController', () => {
 			h.deps.getReviewIntent = () => reviewIntent;
 			await h.controller.sendMessage();
 			expect(h.controller.error).toContain('text-only');
-			expect(h.transportCalls).toHaveLength(0);
+			expect(h.admissionCalls).toHaveLength(0);
 			expect(h.inputValue).toBe('hello');
 		}
 	);
@@ -565,7 +538,7 @@ describe('AgentChatStreamController', () => {
 			expect(h.controller.error).toBe(
 				'Document organization needs project-wide focus and a text-only message.'
 			);
-			expect(h.transportCalls).toHaveLength(0);
+			expect(h.admissionCalls).toHaveLength(0);
 			expect(h.inputValue).toBe('hello');
 		}
 	);
@@ -615,23 +588,22 @@ describe('AgentChatStreamController', () => {
 		expect(h.inputValue).toBe('');
 		expect(h.prewarm.clearPreparedPrompt).toHaveBeenCalledOnce();
 
-		expect(h.defaultFetch.mock.calls.map(([input]) => String(input))).toEqual([
-			TRANSPORT_URL,
-			TURNS_URL
-		]);
-		const negotiation = parseBody(h.transportCalls[0]!);
-		expect(negotiation).toMatchObject({
-			sessionId: 'd2000000-0000-4000-8000-000000000002',
-			supportedModes: ['worker_realtime'],
-			supportedContractVersions: ['agentic_chat_worker_v1']
-		});
+		// One request per turn: no separate lease negotiation.
+		expect(h.defaultFetch.mock.calls.map(([input]) => String(input))).toEqual([TURNS_URL]);
 		const admission = parseBody(h.admissionCalls[0]!);
 		expect(admission).toMatchObject({
 			message: 'Build the plan',
 			sessionId: 'd2000000-0000-4000-8000-000000000002',
 			context: { type: 'project', entityId: 'project-1', projectId: 'project-1' },
-			preparedPromptKey: 'prepared-key',
-			leaseToken: 'actl1.claims.signature'
+			preparedPromptKey: 'prepared-key'
+		});
+		expect(admission).not.toHaveProperty('leaseToken');
+		expect(h.messages[0]).toMatchObject({
+			delivery: 'sent',
+			renderKey: `turn:${admission.clientTurnId}:user`
+		});
+		expect(h.thinking.create).toHaveBeenCalledWith({
+			renderKey: `turn:${admission.clientTurnId}:thinking`
 		});
 		expect(h.adoptWorkerAdmissionResponse).toHaveBeenCalledOnce();
 		expect(h.controller.activeTurnHandle).toEqual({
@@ -644,47 +616,60 @@ describe('AgentChatStreamController', () => {
 		});
 	});
 
-	it('bootstraps a session before negotiating a lease on first send', async () => {
-		const h = createHarness({ currentSession: null, inputValue: 'First turn' });
-
-		await h.controller.sendMessage();
-
-		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
-		expect(h.messages).toHaveLength(1);
-		expect(h.messages[0]?.session_id).toBe('d2000000-0000-4000-8000-000000000003');
-		expect(parseBody(h.transportCalls[0]!)).toMatchObject({
-			sessionId: 'd2000000-0000-4000-8000-000000000003'
-		});
-		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
-			message: 'First turn',
-			sessionId: 'd2000000-0000-4000-8000-000000000003',
-			preparedPromptKey: 'prepared-key'
-		});
-		expect(h.controller.activeTurnHandle).toMatchObject({
-			executionMode: 'worker_realtime',
-			sessionId: 'd2000000-0000-4000-8000-000000000003'
-		});
-	});
-
-	it('bootstraps a session on first send when no prepared prompt is available', async () => {
+	it('lets admission create the session inline on a new chat first send', async () => {
+		const wait = vi.fn();
 		const h = createHarness({
 			currentSession: null,
 			inputValue: 'First turn',
-			preparedPrompt: null
+			waitForPreparedPrompt: wait
 		});
 
 		await h.controller.sendMessage();
 
-		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
-		expect(h.messages[0]?.session_id).toBe('d2000000-0000-4000-8000-000000000003');
+		expect(h.defaultFetch.mock.calls.map(([input]) => String(input))).toEqual([TURNS_URL]);
+		// Prepared prompts are session-bound, so a sessionless first turn never waits.
+		expect(wait).not.toHaveBeenCalled();
 		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
 			message: 'First turn',
-			sessionId: 'd2000000-0000-4000-8000-000000000003',
+			sessionId: null,
 			preparedPromptKey: null
 		});
+		expect(h.messages[0]?.session_id).toBe(WORKER_SESSION_ID);
+		expect(h.controller.activeTurnHandle).toMatchObject({
+			executionMode: 'worker_realtime',
+			sessionId: WORKER_SESSION_ID
+		});
+		expect(h.controller.activeStreamTiming?.inlineSession).toBe(true);
 	});
 
-	it('waits briefly for an in-flight prepared prompt before first send', async () => {
+	it('shows the bubble, clears the composer, and starts thinking before any network call', async () => {
+		let resolveAdmission!: (response: Response) => void;
+		const h = createHarness({
+			inputValue: 'Instant',
+			admissionFetchImpl: vi.fn(
+				() =>
+					new Promise<Response>((resolve) => {
+						resolveAdmission = resolve;
+					})
+			) as unknown as typeof fetch
+		});
+
+		const send = h.controller.sendMessage();
+
+		// Synchronous part of sendMessage has run; nothing has been awaited yet.
+		expect(h.messages).toHaveLength(1);
+		expect(h.messages[0]).toMatchObject({ content: 'Instant', delivery: 'sending' });
+		expect(h.inputValue).toBe('');
+		expect(h.thinking.create).toHaveBeenCalledOnce();
+		expect(h.controller.isStartingStream).toBe(true);
+
+		await vi.waitFor(() => expect(h.admissionCalls).toHaveLength(1));
+		resolveAdmission(admittedResponse(parseBody(h.admissionCalls[0]!)));
+		await send;
+		expect(h.messages[0]?.delivery).toBe('sent');
+	});
+
+	it('waits briefly for an in-flight prepared prompt when the session exists', async () => {
 		const prepared: PreparedPromptClient = {
 			id: 'prepared-late',
 			key: 'prepared-late-key',
@@ -693,8 +678,7 @@ describe('AgentChatStreamController', () => {
 		};
 		const waitForPreparedPrompt = vi.fn(async () => prepared);
 		const h = createHarness({
-			currentSession: null,
-			inputValue: 'First turn',
+			inputValue: 'Next turn',
 			preparedPrompt: null,
 			waitForPreparedPrompt
 		});
@@ -702,111 +686,38 @@ describe('AgentChatStreamController', () => {
 		await h.controller.sendMessage();
 
 		expect(waitForPreparedPrompt).toHaveBeenCalledWith('cache-key', { timeoutMs: 250 });
-		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
 		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
-			message: 'First turn',
-			sessionId: 'd2000000-0000-4000-8000-000000000003',
+			message: 'Next turn',
 			preparedPromptKey: 'prepared-late-key'
 		});
+		expect(h.controller.activeStreamTiming?.preparedPromptUsed).toBe(true);
 	});
 
-	it('surfaces an outage instead of downgrading when negotiation is unavailable', async () => {
-		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
-			if (String(input) === TRANSPORT_URL) {
-				return Response.json(
-					{ code: 'WORKER_UNAVAILABLE' },
-					{ status: 503, headers: { 'Retry-After': '2' } }
-				);
-			}
-			throw new Error(`unexpected request: ${String(input)}`);
-		});
-		const h = createHarness({
-			inputValue: 'Keep this draft',
-			currentSession: makeSession(),
-			fetchImpl
-		});
+	it.each(['WORKER_UNAVAILABLE', 'TRANSPORT_CONFLICT', 'AGENTIC_CHAT_RATE_LIMITED'])(
+		'rolls the optimistic turn back when admission refuses before any write (%s)',
+		async (code) => {
+			const h = createHarness({
+				inputValue: 'Keep this draft',
+				admissionFetchImpl: async () =>
+					Response.json(
+						{ success: false, error: 'Try again shortly.', code },
+						{ status: code === 'TRANSPORT_CONFLICT' ? 409 : 503 }
+					)
+			});
 
-		await h.controller.sendMessage();
+			await h.controller.sendMessage();
 
-		expect(fetchImpl).toHaveBeenCalledOnce();
-		expect(h.messages).toHaveLength(0);
-		expect(h.inputValue).toBe('Keep this draft');
-		expect(h.controller.error).toContain('temporarily unavailable');
-	});
-
-	// One engine: a stale lease (a kill-epoch bump, or plain expiry) is answered
-	// by negotiating a fresh worker lease and re-admitting the same turn once.
-	it('re-admits the turn once on the worker after a mid-turn kill-epoch bump', async () => {
-		const urls: string[] = [];
-		let admissionAttempts = 0;
-		const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
-			const url = String(input);
-			urls.push(url);
-			if (url === TRANSPORT_URL) return leaseResponse(`actl1.epoch-${urls.length}`);
-			admissionAttempts += 1;
-			if (admissionAttempts === 1) {
-				return Response.json(
-					{
-						success: false,
-						error: 'The worker transport lease must be renegotiated',
-						code: 'TRANSPORT_RENEGOTIATE'
-					},
-					{ status: 409 }
-				);
-			}
-			return admittedResponse(JSON.parse(String(init?.body ?? '{}')));
-		});
-		const h = createHarness({
-			inputValue: 'Survive the epoch bump',
-			currentSession: makeSession({ id: WORKER_SESSION_ID }),
-			fetchImpl
-		});
-
-		await h.controller.sendMessage();
-
-		expect(urls).toEqual([TRANSPORT_URL, TURNS_URL, TRANSPORT_URL, TURNS_URL]);
-		// The re-admission carries the freshly minted lease, not the stale one.
-		expect(JSON.parse(String(fetchImpl.mock.calls[3]?.[1]?.body)).leaseToken).toBe(
-			'actl1.epoch-3'
-		);
-		expect(h.controller.error).toBeNull();
-		expect(h.controller.activeTurnHandle?.executionMode).toBe('worker_realtime');
-		expect(h.messages).toHaveLength(1);
-	});
-
-	it('fails the turn instead of looping when a second renegotiation is demanded', async () => {
-		const urls: string[] = [];
-		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
-			const url = String(input);
-			urls.push(url);
-			if (url === TRANSPORT_URL) return leaseResponse();
-			return Response.json(
-				{
-					success: false,
-					error: 'The worker transport lease must be renegotiated',
-					code: 'TRANSPORT_RENEGOTIATE'
-				},
-				{ status: 409 }
+			expect(h.messages).toHaveLength(0);
+			expect(h.thinking.discard).toHaveBeenCalledOnce();
+			expect(h.inputValue).toBe('Keep this draft');
+			expect(h.controller.error).toBe(
+				code === 'TRANSPORT_CONFLICT'
+					? 'Try again shortly.'
+					: "Couldn't send that just now. Your message is back in the box — try again in a moment."
 			);
-		});
-		const h = createHarness({
-			inputValue: 'Do not loop',
-			currentSession: makeSession({ id: WORKER_SESSION_ID }),
-			fetchImpl
-		});
-
-		await h.controller.sendMessage();
-
-		expect(urls).toEqual([TRANSPORT_URL, TURNS_URL, TRANSPORT_URL, TURNS_URL]);
-		expect(h.controller.error).toBe('The worker transport lease must be renegotiated');
-		expect(h.controller.isStreaming).toBe(false);
-		expect(h.controller.activeTurnHandle).toBeNull();
-		// TRANSPORT_RENEGOTIATE proves the turn was never admitted, so the draft
-		// comes back rather than leaving a bubble for a turn that never ran.
-		expect(h.messages).toHaveLength(0);
-		expect(h.inputValue).toBe('Do not loop');
-		expect(h.discoverWorkerSession).not.toHaveBeenCalled();
-	});
+			expect(h.discoverWorkerSession).not.toHaveBeenCalled();
+		}
+	);
 
 	it('admits attachments and voice-note context through the worker transport', async () => {
 		const ref = makeAttachmentRef();
@@ -859,8 +770,10 @@ describe('AgentChatStreamController', () => {
 		expect(h.inputValue).toBe('');
 		expect(h.discoverWorkerSession).toHaveBeenCalledWith(WORKER_SESSION_ID);
 		expect(h.controller.error).toBe(
-			'Unable to start the worker response. BuildOS is checking its status.'
+			'Unable to start this response. BuildOS is checking its status.'
 		);
+		expect(h.messages[0]?.delivery).toBe('sent');
+		expect(h.thinking.finalize).toHaveBeenCalledWith('error');
 	});
 
 	it('rolls back a worker bubble only when the server proves admission did not occur', async () => {
@@ -884,49 +797,6 @@ describe('AgentChatStreamController', () => {
 		expect(h.messages).toHaveLength(0);
 		expect(h.inputValue).toBe('Retry me safely');
 		expect(h.discoverWorkerSession).not.toHaveBeenCalled();
-	});
-
-	it('never negotiates a sessionless turn when bootstrap fails with a prepared prompt', async () => {
-		const h = createHarness({ currentSession: null, inputValue: 'First turn' });
-		h.ensureSessionReady.mockRejectedValueOnce(new Error('session service down'));
-
-		await h.controller.sendMessage();
-
-		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
-		expect(h.defaultFetch).not.toHaveBeenCalled();
-		expect(h.messages).toHaveLength(0);
-		expect(h.inputValue).toBe('First turn');
-		expect(h.controller.error).toContain('temporarily unavailable');
-	});
-
-	it('returns worker-unavailable when session bootstrap fails before negotiation', async () => {
-		const h = createHarness({
-			currentSession: null,
-			preparedPrompt: null,
-			inputValue: 'First turn'
-		});
-		h.ensureSessionReady.mockRejectedValueOnce(new Error('private session failure'));
-
-		await h.controller.sendMessage();
-
-		expect(h.defaultFetch).not.toHaveBeenCalled();
-		expect(h.messages).toHaveLength(0);
-		expect(h.inputValue).toBe('First turn');
-		expect(h.controller.error).toContain('temporarily unavailable');
-		expect(h.controller.error).not.toContain('private session failure');
-	});
-
-	it('rejects a malformed session bootstrap before transport negotiation', async () => {
-		const h = createHarness({ currentSession: null });
-		h.ensureSessionReady.mockResolvedValueOnce(null as unknown as ChatSession);
-
-		await h.controller.sendMessage();
-
-		expect(h.defaultFetch).not.toHaveBeenCalled();
-		expect(h.reconcileTurnFromSession).not.toHaveBeenCalled();
-		expect(h.messages).toHaveLength(0);
-		expect(h.inputValue).toBe('hello');
-		expect(h.controller.error).toBe('Unable to prepare a chat session right now.');
 	});
 
 	it('rolls back the optimistic message and restores input/draft on admission HTTP errors', async () => {
@@ -954,7 +824,7 @@ describe('AgentChatStreamController', () => {
 		expect(h.inputValue).toBe('with attachment');
 		expect(h.restoreDraft).toHaveBeenCalledWith([draft]);
 		expect(h.controller.isStreaming).toBe(false);
-		expect(h.thinking.finalize).toHaveBeenCalledWith('error');
+		expect(h.thinking.discard).toHaveBeenCalledOnce();
 	});
 
 	it('surfaces the server error body when admission is rejected (402 freeze)', async () => {
@@ -982,27 +852,59 @@ describe('AgentChatStreamController', () => {
 		expect(h.inputValue).toBe('');
 	});
 
-	it('keeps send locked while admission is pending and rejects a duplicate submit', async () => {
+	it('queues a follow-up typed while admission is pending and sends it after the turn', async () => {
 		let resolveAdmission!: (response: Response) => void;
+		let admissions = 0;
 		const h = createHarness({
-			admissionFetchImpl: vi.fn(
-				() =>
-					new Promise<Response>((resolve) => {
-						resolveAdmission = resolve;
-					})
-			) as typeof fetch
+			admissionFetchImpl: vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+				admissions += 1;
+				if (admissions > 1)
+					return Promise.resolve(
+						admittedResponse(JSON.parse(String(init?.body)), {
+							turnRunId: 'd4000000-0000-4000-8000-000000000002'
+						})
+					);
+				return new Promise<Response>((resolve) => {
+					resolveAdmission = resolve;
+				});
+			}) as typeof fetch
 		});
 		const send = h.controller.sendMessage();
 		expect(h.controller.isStartingStream).toBe(true);
 		await vi.waitFor(() => expect(h.admissionCalls).toHaveLength(1));
-		expect(h.controller.isStartingStream).toBe(true);
 		h.inputValue = 'A second submit while waiting';
 		await h.controller.sendMessage();
 		expect(h.admissionCalls).toHaveLength(1);
+		expect(h.controller.queuedMessage).toBe('A second submit while waiting');
+		expect(h.inputValue).toBe('');
 		resolveAdmission(admittedResponse(parseBody(h.admissionCalls[0]!)));
 		await send;
 		expect(h.controller.isStartingStream).toBe(false);
-		expect(h.inputValue).toBe('A second submit while waiting');
+
+		// Still busy (the worker turn is running): flushing is a no-op.
+		await h.controller.flushQueuedMessage();
+		expect(h.admissionCalls).toHaveLength(1);
+
+		const activeHandle = h.controller.activeTurnHandle;
+		if (!activeHandle || activeHandle.executionMode !== 'worker_realtime')
+			throw new Error('Expected an admitted worker turn');
+		h.controller.finishWorkerTurn(activeHandle, 'completed');
+		await h.controller.flushQueuedMessage();
+		expect(h.controller.queuedMessage).toBeNull();
+		expect(h.admissionCalls).toHaveLength(2);
+		expect(parseBody(h.admissionCalls[1]!).message).toBe('A second submit while waiting');
+	});
+
+	it('hands a queued follow-up back to the composer when the turn fails', () => {
+		const h = createHarness({ inputValue: 'draft in progress' });
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+		h.controller.queuedMessage = 'queued follow-up';
+
+		h.controller.finishWorkerTurn(handle, 'failed');
+
+		expect(h.controller.queuedMessage).toBeNull();
+		expect(h.inputValue).toBe('queued follow-up\n\ndraft in progress');
 	});
 
 	it('does not clobber a newer draft when restoring a failed send', async () => {
@@ -1060,16 +962,31 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.currentActivity).toBe('');
 	});
 
-	it('does not dispatch a second turn while an adopted worker turn is active', async () => {
+	it('queues instead of dispatching a second turn while an adopted worker turn is active', async () => {
 		const h = createHarness({ inputValue: 'do not double-dispatch' });
 		h.controller.adoptWorkerTurn(workerHandle(), 'queued');
 
 		await h.controller.sendMessage();
 
-		expect(h.controller.error).toBe('BuildOS is still finishing the latest response.');
-		expect(h.inputValue).toBe('do not double-dispatch');
+		expect(h.controller.error).toBeNull();
+		expect(h.controller.queuedMessage).toBe('do not double-dispatch');
+		expect(h.inputValue).toBe('');
 		expect(h.messages).toHaveLength(0);
 		expect(h.defaultFetch).not.toHaveBeenCalled();
+	});
+
+	it('refuses to queue attachments while a turn is active', async () => {
+		const h = createHarness({
+			readyRefs: [makeAttachmentRef()],
+			draftAttachments: [makeDraftAttachment()]
+		});
+		h.controller.adoptWorkerTurn(workerHandle(), 'running');
+
+		await h.controller.sendMessage();
+
+		expect(h.controller.error).toBe('BuildOS is still finishing the latest response.');
+		expect(h.controller.queuedMessage).toBeNull();
+		expect(h.inputValue).toBe('hello');
 	});
 
 	it('supersedes an active turn before sending a second message', async () => {
@@ -1120,5 +1037,47 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.currentActivity).toBe('');
 		expect(h.controller.activeTurnHandle).toBeNull();
 		expect(h.controller.lastCancelResult).toBeNull();
+	});
+
+	it('reports the client turn timeline when the worker turn finishes', async () => {
+		const h = createHarness();
+		const captureTurnTiming = vi.fn();
+		h.deps.captureTurnTiming = captureTurnTiming;
+		// Re-create so the controller picks up the capture dep.
+		const controller = createAgentChatStreamController(h.deps);
+		h.deps.adoptWorkerAdmissionResponse = (value: unknown) => {
+			const data = (
+				value as {
+					data: {
+						handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
+						status: 'queued';
+					};
+				}
+			).data;
+			controller.adoptWorkerTurn(data.handle, data.status);
+			return {
+				handle: data.handle,
+				status: data.status,
+				executionGeneration: 0,
+				terminalEventId: null,
+				updatedAt: '2026-08-04T03:00:00.000Z'
+			};
+		};
+
+		await controller.sendMessage();
+		const handle = controller.activeTurnHandle;
+		if (!handle || handle.executionMode !== 'worker_realtime')
+			throw new Error('Expected an admitted worker turn');
+		controller.recordClientStreamEvent(controller.activeStreamRunId, 'text_delta');
+		controller.finishWorkerTurn(handle, 'completed');
+
+		expect(captureTurnTiming).toHaveBeenCalledOnce();
+		expect(captureTurnTiming.mock.calls[0]?.[0]).toMatchObject({
+			terminalState: 'completed',
+			inlineSession: false,
+			preparedPromptUsed: true,
+			timeToAdmittedMs: expect.any(Number),
+			timeToFirstTextMs: expect.any(Number)
+		});
 	});
 });

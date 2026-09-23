@@ -3,8 +3,9 @@
 	Document Focus Page - dedicated document workspace with project back navigation.
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -54,6 +55,36 @@
 	let risksOverride = $state<PageData['risks'] | null>(null);
 	let eventsOverride = $state<PageData['events'] | null>(null);
 	let linkedEntitiesOverride = $state<PageData['linkedEntities'] | null>(null);
+
+	// Overrides hold client refreshes of the current route's data. They must not
+	// outlive it: after client navigation to another document, a stale override
+	// showed document A on B's route and saved edits back to A.
+	let lastRouteDataKey = '';
+
+	function getRouteDataKey(routeData: PageData): string {
+		return `${routeData.project?.id ?? ''}:${routeData.document?.id ?? ''}`;
+	}
+
+	function resetRouteDataOverrides() {
+		projectOverride = null;
+		documentOverride = null;
+		plansOverride = null;
+		goalsOverride = null;
+		documentsOverride = null;
+		milestonesOverride = null;
+		tasksOverride = null;
+		risksOverride = null;
+		eventsOverride = null;
+		linkedEntitiesOverride = null;
+		hasPendingAgentDocumentUpdate = false;
+	}
+
+	$effect(() => {
+		const nextRouteDataKey = getRouteDataKey(data);
+		if (nextRouteDataKey === lastRouteDataKey) return;
+		lastRouteDataKey = nextRouteDataKey;
+		untrack(resetRouteDataOverrides);
+	});
 
 	const project = $derived(projectOverride ?? data.project);
 	const document = $derived(documentOverride ?? data.document);
@@ -207,7 +238,8 @@
 	}
 
 	async function handleSave() {
-		if (!document?.id) return;
+		// Cmd+S, the editor's Mod-s and form submit can all fire; save once.
+		if (isSaving || !document?.id) return;
 		if (!title.trim()) {
 			error = 'Document title is required';
 			return;
@@ -215,6 +247,7 @@
 
 		isSaving = true;
 		error = '';
+		const routeKey = getRouteDataKey(data);
 
 		try {
 			const body: Record<string, unknown> = {
@@ -241,13 +274,16 @@
 				throw new Error(payload?.error || 'Failed to update document');
 			}
 
+			toastService.success('Document updated');
+			// The user may have navigated to another document while this saved.
+			if (getRouteDataKey(data) !== routeKey) return;
+
 			const updatedDocument = payload?.data?.document;
 			if (updatedDocument) {
 				documentOverride = updatedDocument;
 				lastLoadedVersionKey = `${updatedDocument.id ?? ''}:${updatedDocument.updated_at ?? ''}`;
 				applyDocument(updatedDocument);
 			}
-			toastService.success('Document updated');
 			await refreshData({ silent: true });
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update document';
@@ -262,6 +298,7 @@
 		const projectId = project?.id;
 		const documentId = document?.id;
 		if (!projectId || !documentId) return;
+		const routeKey = getRouteDataKey(data);
 
 		isRefreshing = true;
 		try {
@@ -285,6 +322,7 @@
 				eventsResponse.ok ? eventsResponse.json() : Promise.resolve(null),
 				linkedResponse.ok ? linkedResponse.json() : Promise.resolve(null)
 			]);
+			if (getRouteDataKey(data) !== routeKey) return;
 
 			projectOverride = projectData.data?.project || project;
 			documentOverride = documentData.data?.document || document;
@@ -332,6 +370,18 @@
 
 		await refreshData({ silent: true });
 	}
+
+	beforeNavigate((navigation) => {
+		if (!hasUnsavedChanges) return;
+		// Closing the tab or leaving the app: cancel() shows the browser's own prompt.
+		if (navigation.type === 'leave') {
+			navigation.cancel();
+			return;
+		}
+		if (!window.confirm('This document has unsaved changes. Leave without saving?')) {
+			navigation.cancel();
+		}
+	});
 
 	async function handleArchive() {
 		if (!document?.id) return;
@@ -390,6 +440,8 @@
 <svelte:window
 	onkeydown={(event) => {
 		if (!browser) return;
+		// The markdown editor's own Mod-s binding already handled (and prevented) it.
+		if (event.defaultPrevented) return;
 		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
 			event.preventDefault();
 			void handleSave();

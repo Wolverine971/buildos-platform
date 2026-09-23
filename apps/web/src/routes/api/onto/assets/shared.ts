@@ -120,7 +120,29 @@ export async function ensureAssetAccess(
 		return { error: ApiResponse.forbidden('You do not have permission to access this asset') };
 	}
 
+	// Callers sign, OCR, and delete this location with the service-role client, and RLS alone
+	// does not stop a project writer from pointing a row at another project's object.
+	if (!isCanonicalAssetStorageLocation(asset)) {
+		return { error: ApiResponse.forbidden('Asset storage location is not valid') };
+	}
+
 	return { asset, actorId: actorResult.actorId };
+}
+
+/** Mirrors enforce_onto_asset_storage_location(): `projects/<project>/assets/<asset>/…`. */
+export function isCanonicalAssetStorageLocation(asset: {
+	id: string;
+	project_id: string;
+	storage_bucket: string | null;
+	storage_path: string | null;
+}): boolean {
+	const prefix = `projects/${asset.project_id}/assets/${asset.id}/`;
+	return (
+		asset.storage_bucket === 'onto-assets' &&
+		typeof asset.storage_path === 'string' &&
+		asset.storage_path.startsWith(prefix) &&
+		!asset.storage_path.includes('..')
+	);
 }
 
 export async function ensureEntityInProject(

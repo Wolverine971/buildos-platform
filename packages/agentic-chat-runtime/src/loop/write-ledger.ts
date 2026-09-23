@@ -16,7 +16,7 @@
 import type { ChatToolCall } from '@buildos/shared-types';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution } from './shared';
-import { isWriteLedgerToolExecution } from './tool-classification';
+import { didGatewayExecSucceed, isWriteLedgerToolExecution } from './tool-classification';
 
 export type WriteLedgerEntry = {
 	toolName: string;
@@ -341,6 +341,9 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	const result = extractResultObject(execution.result.result);
 	const entityKind = resolveEntityKind(toolName);
 	const action = resolveAction(toolName);
+	// A transport-level success can still carry a gateway `ok: false` payload
+	// (e.g. calendar reconnect_required). That write did not happen.
+	const succeeded = didGatewayExecSucceed(execution);
 
 	const entry: WriteLedgerEntry = {
 		toolName,
@@ -348,18 +351,14 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 			typeof (execution.toolCall as unknown as { op?: string }).op === 'string'
 				? ((execution.toolCall as unknown as { op?: string }).op ?? undefined)
 				: undefined,
-		status: execution.result.success ? 'success' : 'failure'
+		status: succeeded ? 'success' : 'failure'
 	};
 	if (action) entry.action = action;
 	if (entityKind) entry.entityKind = entityKind;
 	if (execution.toolCall.id) entry.effectId = execution.toolCall.id;
 	const changedFields = getWriteLedgerChangedFields(toolName, args);
 	if (changedFields.length > 0) entry.changedFields = changedFields;
-	const changedValues = extractChangedValues(
-		toolName,
-		args,
-		execution.result.success ? result : null
-	);
+	const changedValues = extractChangedValues(toolName, args, succeeded ? result : null);
 	if (Object.keys(changedValues).length > 0) entry.changedValues = changedValues;
 	const entityId = extractIdFromResult(entityKind, result) ?? extractIdFromArgs(entityKind, args);
 	if (entityId) entry.entityId = entityId;
@@ -370,7 +369,7 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	const stateKey = extractStateKey(result, args);
 	if (stateKey) entry.stateKey = stateKey;
 
-	if (execution.result.success) {
+	if (succeeded) {
 		const title =
 			extractTitleFromResult(result) ?? readString(args.title) ?? readString(args.name);
 		if (title) entry.title = title;
@@ -393,13 +392,23 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 			if (strategy) entry.strategy = strategy;
 		}
 	} else {
-		const errorText = readString(execution.result.error);
+		const errorText =
+			readString(execution.result.error) ?? readGatewayErrorMessage(execution.result.result);
 		if (errorText) {
 			entry.error = errorText.length > 180 ? `${errorText.slice(0, 177)}...` : errorText;
 		}
 	}
 
 	return entry;
+}
+
+/** `{ ok: false, error: { message } }` gateway payloads carry their own reason. */
+function readGatewayErrorMessage(payload: unknown): string | undefined {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return undefined;
+	const error = (payload as Record<string, unknown>).error;
+	if (typeof error === 'string') return readString(error);
+	if (!error || typeof error !== 'object' || Array.isArray(error)) return undefined;
+	return readString((error as Record<string, unknown>).message);
 }
 
 export function buildWriteLedger(toolExecutions: FastToolExecution[]): WriteLedgerEntry[] {

@@ -139,6 +139,48 @@ describe('TimePlayCalendar event loading', () => {
 		expect(toastError).not.toHaveBeenCalled();
 	});
 
+	it('places an all-day event on its own calendar day west of UTC', async () => {
+		const originalTimezone = process.env.TZ;
+		process.env.TZ = 'America/New_York';
+		try {
+			const day = new Date(2026, 6, 14);
+			render(TimePlayCalendarHarness, {
+				props: { days: [day], isCalendarConnected: true }
+			});
+			await waitFor(() => expect(requestsFor(day)).toHaveLength(2));
+			resolveRange(day, [
+				{
+					...calendarEvent(day, 'offsite', 'All-day offsite'),
+					start: { date: '2026-07-14' },
+					end: { date: '2026-07-15' }
+				}
+			]);
+			await waitFor(() =>
+				expect(
+					screen.getAllByRole('button', { name: /All-day offsite/ }).length
+				).toBeGreaterThan(0)
+			);
+		} finally {
+			process.env.TZ = originalTimezone;
+		}
+	});
+
+	it('ignores view shortcuts that carry a modifier key', async () => {
+		const day = new Date(2026, 6, 14);
+		render(TimePlayCalendarHarness, { props: { days: [day], isCalendarConnected: false } });
+		const weekToggle = screen.getAllByRole('button', { name: 'Week' })[0]!;
+		const monthToggle = screen.getAllByRole('button', { name: 'Month' })[0]!;
+
+		await fireEvent.keyDown(window, { key: 'w' });
+		expect(weekToggle).toHaveClass('active');
+
+		// Cmd+M (minimize) and Ctrl+M must not switch the view.
+		await fireEvent.keyDown(window, { key: 'm', metaKey: true });
+		await fireEvent.keyDown(window, { key: 'm', ctrlKey: true });
+		expect(weekToggle).toHaveClass('active');
+		expect(monthToggle).not.toHaveClass('active');
+	});
+
 	it('clears bound events on disconnect and ignores a late failed request', async () => {
 		const firstDay = new Date(2026, 6, 13);
 		const pendingDay = new Date(2026, 6, 14);

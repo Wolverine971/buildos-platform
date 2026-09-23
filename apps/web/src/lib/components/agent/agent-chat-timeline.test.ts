@@ -476,3 +476,66 @@ describe('agent-chat-timeline restored turn events', () => {
 		]);
 	});
 });
+
+describe('agent-chat-timeline live memo', () => {
+	function assistant(id: string, content: string, at = '2026-06-20T12:00:05.000Z') {
+		return {
+			id,
+			type: 'assistant' as const,
+			role: 'assistant' as const,
+			content,
+			timestamp: new Date(at),
+			created_at: at
+		};
+	}
+
+	function user(id: string, content: string, at: string) {
+		return {
+			id,
+			type: 'user' as const,
+			role: 'user' as const,
+			content,
+			timestamp: new Date(at),
+			created_at: at
+		};
+	}
+
+	it('returns the previous array when a stream flush changes nothing timeline-visible', () => {
+		const longPrefix = 'word '.repeat(400);
+		const question = user('u-1', 'What next?', '2026-06-20T12:00:00.000Z');
+		const first = timelineItemsFromMessages('memo-session', [
+			question,
+			assistant('a-1', `${longPrefix}tail one`)
+		]);
+		// New message object, more text — but past the preview window.
+		const second = timelineItemsFromMessages('memo-session', [
+			question,
+			assistant('a-1', `${longPrefix}tail one and a lot more streamed text`)
+		]);
+		expect(second).toBe(first);
+
+		const third = timelineItemsFromMessages('memo-session', [
+			question,
+			assistant('a-1', 'A short rewrite')
+		]);
+		expect(third).not.toBe(first);
+		expect(third.find((item) => item.messageId === 'a-1')?.summary).toBe('A short rewrite');
+	});
+
+	it('builds previews from a bounded whitespace collapse that matches the full collapse', () => {
+		const content = `  Lead   line\n\n${'alpha   beta\t'.repeat(300)}`;
+		const [item] = timelineItemsFromMessages('preview-session', [assistant('a-2', content)]);
+		const full = content.replace(/\s+/g, ' ').trim();
+		expect(item?.summary).toBe(`${full.slice(0, 177)}...`);
+		expect(item?.detailPreview).toBe(`${full.slice(0, 697)}...`);
+	});
+
+	it('orders items by parsed timestamp, then sequence', () => {
+		const items = timelineItemsFromMessages('order-session', [
+			assistant('late', 'Later reply', '2026-06-20T12:00:09.000Z'),
+			user('early', 'First question', '2026-06-20T12:00:01.000Z'),
+			assistant('mid', 'Middle reply', '2026-06-20T12:00:05.000Z')
+		]);
+		expect(items.map((item) => item.messageId)).toEqual(['early', 'mid', 'late']);
+	});
+});

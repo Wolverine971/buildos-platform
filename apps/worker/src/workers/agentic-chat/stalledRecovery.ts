@@ -34,9 +34,16 @@ export type AgenticChatStalledReadQuery = StalledQueryResult & {
 	limit(value: number): AgenticChatStalledReadQuery;
 };
 
+export type AgenticChatStalledDeferQuery = StalledQueryResult & {
+	eq(column: string, value: unknown): AgenticChatStalledDeferQuery;
+	is(column: string, value: null): AgenticChatStalledDeferQuery;
+};
+
 export type AgenticChatStalledReadClient = {
 	from(table: 'queue_jobs'): {
 		select(columns: string): AgenticChatStalledReadQuery;
+		/** Only for `defer`; a client without it simply never defers. */
+		update?(values: { updated_at: string }): AgenticChatStalledDeferQuery;
 	};
 };
 
@@ -49,6 +56,12 @@ export type AgenticChatStalledCandidateV1 = AgenticChatExecutionIdentityV1 & {
 
 export type AgenticChatStalledCandidateSourcePortV1 = {
 	list(input: { stalledBefore: string; limit: number }): Promise<AgenticChatStalledCandidateV1[]>;
+	/**
+	 * Moves a row the sweep could not settle behind newer stalls. Candidates are the
+	 * oldest `updated_at` first, so without this a batch of rows that never settle
+	 * would fill every sweep and starve newly stalled turns forever.
+	 */
+	defer?(target: { queueJobId: string; processingToken: string | null }): Promise<void>;
 };
 
 export class AgenticChatStalledCandidateSourceError extends Error {
@@ -58,7 +71,10 @@ export class AgenticChatStalledCandidateSourceError extends Error {
 	}
 }
 
-/** Strict read adapter; every actual state transition remains RPC-owned. */
+/**
+ * Strict read adapter; every actual state transition remains RPC-owned. Its one
+ * write, `defer`, only bumps `updated_at` under the queue heartbeat's fence.
+ */
 export class SupabaseAgenticChatStalledCandidateSource
 	implements AgenticChatStalledCandidateSourcePortV1
 {
@@ -104,9 +120,33 @@ export class SupabaseAgenticChatStalledCandidateSource
 				} catch {
 					// Invalid-row telemetry cannot hide other recoverable candidates.
 				}
+				// An unparseable row can never be recovered here; keep it from
+				// occupying a batch slot on every sweep. A duplicate row is the same
+				// queue job as a valid candidate, so it is left to that candidate.
+				const row = value as Record<string, unknown> | null;
+				if (row && typeof row.id === 'string' && !seen.has(row.id)) {
+					await this.defer({
+						queueJobId: row.id,
+						processingToken:
+							typeof row.processing_token === 'string' ? row.processing_token : null
+					}).catch(() => undefined);
+				}
 			}
 		}
 		return candidates;
+	}
+
+	async defer(target: { queueJobId: string; processingToken: string | null }): Promise<void> {
+		const table = this.client.from('queue_jobs');
+		if (!table.update) return;
+		const query = table
+			.update({ updated_at: new Date().toISOString() })
+			.eq('id', target.queueJobId)
+			.eq('status', 'processing');
+		const { error } = await (target.processingToken
+			? query.eq('processing_token', target.processingToken)
+			: query.is('processing_token', null));
+		if (error) throw sourceError(`defer failed: ${error.message}`);
 	}
 }
 
@@ -336,7 +376,15 @@ export class AgenticChatStalledRecoverySweep {
 		}
 		const results: AgenticChatStalledRecoveryResultV1[] = [];
 		for (const candidate of candidates) {
-			results.push(await this.recoverCandidate(candidate));
+			const result = await this.recoverCandidate(candidate);
+			results.push(result);
+			if (!SETTLED_OUTCOMES.has(result.outcome) && this.ports.candidates.defer) {
+				try {
+					await this.ports.candidates.defer(candidate);
+				} catch (error) {
+					this.reportError(error);
+				}
+			}
 		}
 		return {
 			startedAt: started.toISOString(),
@@ -801,6 +849,11 @@ function isOwnershipLoss(error: unknown): boolean {
 
 const MAX_CONVERGENCE_STEPS = 4;
 const MAX_CONSECUTIVE_SWEEP_FAILURES = 3;
+// The recovery RPCs moved these rows out of `processing`; nothing left to defer.
+const SETTLED_OUTCOMES = new Set<AgenticChatStalledRecoveryOutcomeV1>([
+	'requeued',
+	'terminal_reconciled'
+]);
 const ATTENTION_REQUIRED_OUTCOMES = new Set<AgenticChatStalledRecoveryOutcomeV1>([
 	'effect_reconciliation_required',
 	'manual_recovery_required',

@@ -6,16 +6,14 @@ const componentSource = (fileName: string) =>
 	readFileSync(new URL(`./${fileName}`, import.meta.url), 'utf8');
 
 describe('agent chat modal craft contracts', () => {
-	it('tracks message count without tracking scroll-position state in the auto-scroll effect', () => {
+	it('leaves conversation scroll policy to the message list, not a modal effect', () => {
 		const source = componentSource('AgentChatModal.svelte');
-		const effectStart = source.indexOf('// Auto-scroll only when new messages are added');
-		const effectEnd = source.indexOf('// Keyboard avoiding for mobile', effectStart);
-		const effectSource = source.slice(effectStart, effectEnd);
 
-		expect(effectStart).toBeGreaterThan(-1);
-		expect(effectSource).toContain('const count = messageCount;');
-		expect(effectSource).toContain('untrack(scrollToBottomIfNeeded);');
-		expect(effectSource).not.toContain('\n\t\t\tscrollToBottomIfNeeded();');
+		// A count-driven snap-to-bottom in the modal fought the pinned-turn
+		// layout (and yanked readers down when entity cards arrived).
+		expect(source).not.toContain('scrollToBottomIfNeeded');
+		expect(source).not.toContain('const messageCount');
+		expect(source).toContain('messageListRef?.scrollToLatest()');
 	});
 
 	it('keeps the pressable token as the sole transition owner on pressable controls', () => {
@@ -42,8 +40,9 @@ describe('agent chat modal craft contracts', () => {
 
 		expect(headerSource.match(/h-11 w-11/g)).toHaveLength(4);
 		expect(headerSource.match(/h-11 w-11 sm:h-7 sm:w-7/g)).toHaveLength(3);
-		expect(composerSource.match(/h-11 w-11/g)).toHaveLength(5);
-		expect(composerSource.match(/sm:h-8 sm:w-8/g)).toHaveLength(5);
+		// Attach, attach-existing, stop, and one send/queue button.
+		expect(composerSource.match(/h-11 w-11/g)).toHaveLength(4);
+		expect(composerSource.match(/sm:h-8 sm:w-8/g)).toHaveLength(4);
 	});
 
 	it('keeps the context-shift cue compositor-safe and brief', () => {

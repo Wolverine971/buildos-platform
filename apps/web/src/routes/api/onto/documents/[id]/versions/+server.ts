@@ -12,6 +12,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { validatePaginationCustom } from '$lib/utils/api-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { requireProjectEntityAccess } from '$lib/server/ontology-api-access';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
@@ -106,9 +107,9 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		}
 
 		// Parse query parameters
-		const limit = Math.min(
-			Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10), 1),
-			100
+		const { limit } = validatePaginationCustom(
+			{ limit: url.searchParams.get('limit') },
+			{ defaultLimit: 50, maxLimit: 100 }
 		);
 		const cursor = url.searchParams.get('cursor');
 		const userIdFilter = url.searchParams.get('user_id');

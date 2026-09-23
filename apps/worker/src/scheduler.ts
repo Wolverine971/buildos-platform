@@ -49,6 +49,7 @@ import { getDailyBriefEligibleUserIds } from './workers/brief/dailyBriefEligibil
 import { checkAndScheduleAgentOperatives } from './scheduler/agentOperatives';
 import { runAgenticChatSensitiveTranscriptCleanup } from './scheduler/agenticChatRetention';
 import { runPreparedPromptRetentionCleanup } from './scheduler/promptArtifactRetention';
+import { chatCaptureEnabled, sweepChatCheckpoints } from './workers/chat/checkpoint/checkpointJob';
 
 export {
 	calculateNextOperativeRunTime,
@@ -393,11 +394,11 @@ export function startScheduler() {
 	cron.schedule('*/30 * * * *', async () => {
 		if (!PROJECT_LOOPS_ENABLED) return;
 		try {
-			const { failedRunning, failedQueued, finalizedReview } =
+			const { failedRunning, failedQueued, finalizedReview, failedAudits } =
 				await reclaimStalledProjectLoopRuns();
-			if (failedRunning || failedQueued || finalizedReview) {
+			if (failedRunning || failedQueued || finalizedReview || failedAudits) {
 				console.log(
-					`🔁 Project loop reclaim: failed running=${failedRunning}, queued=${failedQueued}, finalized review=${finalizedReview}`
+					`🔁 Project loop reclaim: failed running=${failedRunning}, queued=${failedQueued}, finalized review=${finalizedReview}, failed audits=${failedAudits}`
 				);
 			}
 		} catch (error) {
@@ -433,6 +434,25 @@ export function startScheduler() {
 			await runScheduledAgentRunCostReconciliation();
 		});
 		console.log('💰 Agent Run cost reconciliation scheduled (every 5 minutes)');
+	}
+
+	// Chat checkpoint capture (tasker/95): enqueue captures for project chats that
+	// crossed a size/turn threshold or went idle. Nothing runs inside a chat turn.
+	// Set CHAT_CHECKPOINT_CAPTURE_ENABLED=false to disable.
+	if (chatCaptureEnabled()) {
+		cron.schedule('* * * * *', async () => {
+			try {
+				const { scanned, enqueued } = await sweepChatCheckpoints();
+				if (enqueued > 0) {
+					console.log(
+						`📝 Chat checkpoint sweep: enqueued ${enqueued}/${scanned} session(s)`
+					);
+				}
+			} catch (error) {
+				console.error('📝 Chat checkpoint sweep failed:', error);
+			}
+		});
+		console.log('📝 Chat checkpoint capture sweep scheduled (every minute)');
 	}
 
 	// Stranded-run liveness recovery. Every action is idempotent/bounded and
@@ -590,6 +610,38 @@ export async function runQueueRetentionCleanup() {
 /**
  * Check and schedule briefs
  */
+/**
+ * Batch-load the timezone and display name that scheduling keys off. Returns
+ * null when the lookup fails: falling back to UTC would queue every user at the
+ * wrong local time, and that job would then block the correct run as a duplicate.
+ */
+export async function loadSchedulingUserProfiles(userIds: string[]): Promise<{
+	timezoneByUserId: Map<string, string>;
+	nameByUserId: Map<string, string>;
+} | null> {
+	const { data: users, error } = await supabase
+		.from('users')
+		.select('id, timezone, name, email')
+		.in('id', userIds);
+	if (error) {
+		console.error('Failed to load user timezones for scheduling:', error);
+		return null;
+	}
+
+	const timezoneByUserId = new Map<string, string>();
+	const nameByUserId = new Map<string, string>();
+	(users ?? []).forEach((user) => {
+		if (user.id && user.timezone) {
+			timezoneByUserId.set(user.id, user.timezone);
+		}
+		if (user.id) {
+			// Use name if available, otherwise fall back to email
+			nameByUserId.set(user.id, user.name || user.email);
+		}
+	});
+	return { timezoneByUserId, nameByUserId };
+}
+
 async function checkAndScheduleBriefs() {
 	try {
 		const now = new Date();
@@ -638,24 +690,10 @@ async function checkAndScheduleBriefs() {
 
 		// PHASE 0: Batch fetch user timezones and names (centralized source of truth)
 		const userIds = eligiblePreferences.map((preference) => preference.user_id);
-		const { data: users } = await supabase
-			.from('users')
-			.select('id, timezone, name, email')
-			.in('id', userIds);
-
-		// Create timezone and name lookup maps
-		const userTimezoneMap = new Map<string, string>();
-		const userNameMap = new Map<string, string>();
-		(users ?? []).forEach((user) => {
-			if (user.id && user.timezone) {
-				userTimezoneMap.set(user.id, user.timezone);
-			}
-			if (user.id) {
-				// Use name if available, otherwise fall back to email
-				const displayName = user.name || user.email;
-				userNameMap.set(user.id, displayName);
-			}
-		});
+		const userProfiles = await loadSchedulingUserProfiles(userIds);
+		// Fail closed; the next scheduler tick retries.
+		if (!userProfiles) return;
+		const { timezoneByUserId: userTimezoneMap, nameByUserId: userNameMap } = userProfiles;
 
 		// PHASE 1: Batch fetch engagement data for all users (if enabled)
 		// OPTIMIZED: Uses single batch query instead of 2 queries per user
@@ -1166,24 +1204,11 @@ async function checkAndScheduleDailySMS() {
 
 		// Batch fetch user timezones and names (centralized source of truth)
 		const smsUserIds = smsPreferences.map((p) => p.user_id).filter(Boolean);
-		const { data: smsUsers } = await supabase
-			.from('users')
-			.select('id, timezone, name, email')
-			.in('id', smsUserIds);
-
-		// Create timezone and name lookup maps
-		const smsUserTimezoneMap = new Map<string, string>();
-		const smsUserNameMap = new Map<string, string>();
-		smsUsers?.forEach((user) => {
-			if (user.id && user.timezone) {
-				smsUserTimezoneMap.set(user.id, user.timezone);
-			}
-			if (user.id) {
-				// Use name if available, otherwise fall back to email
-				const displayName = user.name || user.email;
-				smsUserNameMap.set(user.id, displayName);
-			}
-		});
+		const smsUserProfiles = await loadSchedulingUserProfiles(smsUserIds);
+		// Fail closed; the next scheduler tick retries.
+		if (!smsUserProfiles) return;
+		const { timezoneByUserId: smsUserTimezoneMap, nameByUserId: smsUserNameMap } =
+			smsUserProfiles;
 
 		// Queue a job for each user to process their daily SMS
 		let queuedCount = 0;

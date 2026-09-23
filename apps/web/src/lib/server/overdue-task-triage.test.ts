@@ -24,9 +24,10 @@ function makeQuery(rows: unknown[]) {
 	const builder: Record<string, ReturnType<typeof vi.fn>> & {
 		then?: (resolve: (value: unknown) => void) => void;
 	} = {};
-	for (const method of ['select', 'in', 'is', 'lt', 'order', 'limit']) {
+	for (const method of ['select', 'in', 'is', 'lt', 'order', 'limit', 'eq']) {
 		builder[method] = vi.fn(() => builder);
 	}
+	builder.single = vi.fn(() => Promise.resolve({ data: { timezone: 'UTC' }, error: null }));
 	builder.then = (resolve) => resolve({ data: rows, error: null });
 	return builder;
 }
@@ -84,5 +85,26 @@ describe('fetchHydratedOverdueTasks', () => {
 
 		expect(query.in).toHaveBeenCalledWith('project_id', ['active-1', 'planning-1']);
 		expect(result.map((item) => item.id)).toEqual(['active-task']);
+	});
+
+	it("uses the start of the user's local day as the overdue boundary", async () => {
+		vi.useFakeTimers();
+		// 2026-09-22 15:00 in New York; local midnight is 04:00Z.
+		vi.setSystemTime(new Date('2026-09-22T19:00:00.000Z'));
+		try {
+			mocks.fetchProjectSummaries.mockResolvedValue([project('active-1', 'active')]);
+			const query = makeQuery([]);
+			const supabase = { from: vi.fn(() => query) };
+
+			await fetchHydratedOverdueTasks({
+				supabase: supabase as never,
+				userId: 'user-1',
+				timezone: 'America/New_York'
+			});
+
+			expect(query.lt).toHaveBeenCalledWith('due_at', '2026-09-22T04:00:00.000Z');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

@@ -483,7 +483,19 @@ function loadSet(
 type Policy = {
 	name: string;
 	/** v2 packing: per-doc caps, skip-don't-stop budget, more sections per doc. */
-	pack?: { sectionsPerDoc: number; sectionChars: number; recordChars: number; maxFull: number };
+	pack?: {
+		sectionsPerDoc: number;
+		sectionChars: number;
+		recordChars: number;
+		maxFull: number;
+		/** Skip items whose content today's prompt already carries (e.g. START HERE). */
+		dedupBaseline?: boolean;
+		nearbyMax?: number;
+		/** Summary line = kind, title, state/date, short description; no heading lists, no JSON. */
+		compactNearby?: boolean;
+		/** DJ's depth rule: when many documents load, fewer and shallower sections each. */
+		depth?: { manyDocs: number; sectionsWhenMany: number; maxLevelWhenMany: number };
+	};
 	full: (scored: { e: Entity; p: number }[]) => { e: Entity; p: number }[];
 	nearby: (scored: { e: Entity; p: number }[]) => { e: Entity; p: number }[];
 };
@@ -517,6 +529,71 @@ const POLICIES: Policy[] = [
 		nearby: (s) => s.filter((x) => x.p >= FLOOR).slice(0, 30)
 	},
 	{
+		name: 'v2 + dedup START HERE',
+		pack: {
+			sectionsPerDoc: 4,
+			sectionChars: 2_000,
+			recordChars: 1_200,
+			maxFull: 10,
+			dedupBaseline: true
+		},
+		full: (s) => s.filter((x) => x.p >= Math.max(FLOOR, 0.6 * top(s))).slice(0, 16),
+		nearby: (s) => s.filter((x) => x.p >= FLOOR).slice(0, 30)
+	},
+	{
+		name: 'v2 + dedup + depth rule (≥3 docs → 2 sections, H1/H2)',
+		pack: {
+			sectionsPerDoc: 4,
+			sectionChars: 2_000,
+			recordChars: 1_200,
+			maxFull: 10,
+			dedupBaseline: true,
+			depth: { manyDocs: 3, sectionsWhenMany: 2, maxLevelWhenMany: 2 }
+		},
+		full: (s) => s.filter((x) => x.p >= Math.max(FLOOR, 0.6 * top(s))).slice(0, 16),
+		nearby: (s) => s.filter((x) => x.p >= FLOOR).slice(0, 30)
+	},
+	{
+		name: 'v2 + dedup + depth + nearby 10',
+		pack: {
+			sectionsPerDoc: 4,
+			sectionChars: 2_000,
+			recordChars: 1_200,
+			maxFull: 10,
+			dedupBaseline: true,
+			nearbyMax: 10,
+			depth: { manyDocs: 3, sectionsWhenMany: 2, maxLevelWhenMany: 2 }
+		},
+		full: (s) => s.filter((x) => x.p >= Math.max(FLOOR, 0.6 * top(s))).slice(0, 16),
+		nearby: (s) => s.filter((x) => x.p >= FLOOR).slice(0, 30)
+	},
+	{
+		name: 'v2 + dedup + compact summaries',
+		pack: {
+			sectionsPerDoc: 4,
+			sectionChars: 2_000,
+			recordChars: 1_200,
+			maxFull: 10,
+			dedupBaseline: true,
+			compactNearby: true
+		},
+		full: (s) => s.filter((x) => x.p >= Math.max(FLOOR, 0.6 * top(s))).slice(0, 16),
+		nearby: (s) => s.filter((x) => x.p >= FLOOR).slice(0, 30)
+	},
+	{
+		name: 'v2 + dedup + compact + 2 sections/doc',
+		pack: {
+			sectionsPerDoc: 2,
+			sectionChars: 2_000,
+			recordChars: 1_200,
+			maxFull: 10,
+			dedupBaseline: true,
+			compactNearby: true
+		},
+		full: (s) => s.filter((x) => x.p >= Math.max(FLOOR, 0.6 * top(s))).slice(0, 16),
+		nearby: (s) => s.filter((x) => x.p >= FLOOR).slice(0, 30)
+	},
+	{
 		name: 'adaptive: top-5 full + 20 nearby',
 		full: (s) => s.filter((x) => x.p >= Math.max(FLOOR, 0.6 * top(s))).slice(0, 5),
 		nearby: (s) => {
@@ -536,7 +613,8 @@ const SECTIONS_PER_DOC_RELATIVE = 2;
 function contentFor(
 	e: Entity,
 	answers: Answers,
-	pack?: Policy['pack']
+	pack?: Policy['pack'],
+	shallow?: { sections: number; maxLevel: number }
 ): { text: string; sections: string[] } {
 	if (e.kind !== 'document')
 		return { text: pack ? e.fullText.slice(0, pack.recordChars) : e.fullText, sections: [] };
@@ -556,14 +634,37 @@ function contentFor(
 		sections: scored.map((x) => x.s.heading)
 	};
 }
-function applyPolicy(entities: Entity[], answers: Answers, policy: Policy) {
+function compactLine(e: Entity): string {
+	const pk = e.packet as Record<string, unknown>;
+	const meta = [pk.state, pk.due ?? pk.date].filter(Boolean).join(', ');
+	const desc = clipWords(pk.description, 100);
+	return `${e.kind}: ${e.title}${meta ? ` [${meta}]` : ''}${desc ? ` — ${desc}` : ''}`;
+}
+
+function applyPolicy(
+	entities: Entity[],
+	answers: Answers,
+	policy: Policy,
+	baselineContent: ReadonlySet<string> = new Set()
+) {
+	const skip = policy.pack?.dedupBaseline ? baselineContent : new Set<string>();
 	const scored = entities
 		.map((e) => ({ e, p: answers[`e_${e.ref}`] ?? 0 }))
+		.filter((x) => !skip.has(x.e.id))
 		.sort((a, b) => b.p - a.p);
+	const candidates = policy.full(scored);
+	const depth = policy.pack?.depth;
+	const docCount = candidates
+		.slice(0, policy.pack?.maxFull ?? MAX_LOADED)
+		.filter((x) => x.e.kind === 'document').length;
+	const shallow =
+		depth && docCount >= depth.manyDocs
+			? { sections: depth.sectionsWhenMany, maxLevel: depth.maxLevelWhenMany }
+			: undefined;
 	let chars = 0;
 	const full = [];
-	for (const x of policy.full(scored)) {
-		let { text, sections } = contentFor(x.e, answers, policy.pack);
+	for (const x of candidates) {
+		let { text, sections } = contentFor(x.e, answers, policy.pack, shallow);
 		if (policy.pack) {
 			// Skip what doesn't fit and keep packing smaller, lower-ranked items.
 			if (full.length >= policy.pack.maxFull) break;
@@ -580,8 +681,11 @@ function applyPolicy(entities: Entity[], answers: Answers, policy: Policy) {
 	const nearby = policy
 		.nearby(scored)
 		.filter((x) => !fullIds.has(x.e.id))
-		.slice(0, 20)
-		.map((x) => ({ ...x, line: JSON.stringify(x.e.packet) }));
+		.slice(0, policy.pack?.nearbyMax ?? 20)
+		.map((x) => ({
+			...x,
+			line: policy.pack?.compactNearby ? compactLine(x.e) : JSON.stringify(x.e.packet)
+		}));
 	const nearbyChars = nearby.reduce((n, x) => n + x.line.length, 0);
 	return { full, nearby, chars, nearbyChars };
 }
@@ -898,7 +1002,7 @@ async function main() {
 		const todayN = must.filter((i) => base.visible.has(i)).length;
 		for (const pol of POLICIES) {
 			const m = rs.map((r) => {
-				const out = applyPolicy(entities, r.answers, pol);
+				const out = applyPolicy(entities, r.answers, pol, base.contentPresent);
 				const fullIds = new Set(out.full.map((x) => x.e.id));
 				const visIds = new Set([...fullIds, ...out.nearby.map((x) => x.e.id)]);
 				const secHits = sc.mustSections.filter((ms) =>
@@ -957,8 +1061,35 @@ async function main() {
 			`| ${name} | ${f2(mean(t.content))} | ${f2(mean(t.visible))} | ${f2(mean(t.sections))} | ${Math.round(mean(t.chars)).toLocaleString()} | ${Math.round(mean(t.chars) / 4).toLocaleString()} | ${f2(mean(t.ctrl))} |`
 		);
 	report.push('');
+	// Where the characters go, per packed policy (rep 0).
+	report.push(
+		'### Block composition (rep 0, chars)',
+		'',
+		'| Scenario | Policy | docs in full | doc text | record text | summaries | already in prompt | total |',
+		'|---|---|---|---|---|---|---|---|'
+	);
+	for (const sc of scenarios.filter((x) => !x.control)) {
+		const r = runs.find(
+			(x) => x.scenario === sc.key && x.variant === pv && x.rep === 0 && x.ok
+		);
+		if (!r) continue;
+		const dump = dumps.get(spec.projects[sc.project])!;
+		const { entities, base } = perProject.get(dump.project.id)!;
+		for (const pol of POLICIES.filter((x) => x.pack)) {
+			const out = applyPolicy(entities, r.answers, pol, base.contentPresent);
+			const docs = out.full.filter((x) => x.e.kind === 'document');
+			const docText = docs.reduce((n, x) => n + x.text.length, 0);
+			const dup = out.full
+				.filter((x) => base.contentPresent.has(x.e.id))
+				.reduce((n, x) => n + x.text.length, 0);
+			report.push(
+				`| ${sc.key} | ${pol.name} | ${docs.length} | ${docText.toLocaleString()} | ${(out.chars - docText).toLocaleString()} | ${out.nearbyChars.toLocaleString()} | ${dup.toLocaleString()} | ${(out.chars + out.nearbyChars).toLocaleString()} |`
+			);
+		}
+	}
+	report.push('');
 	// Write the adaptive block per scenario for the qualitative audit.
-	const adaptive = POLICIES.find((x) => x.pack)!;
+	const adaptive = POLICIES.find((x) => x.name === 'v2 + dedup + compact summaries')!;
 	for (const sc of scenarios) {
 		const r = runs.find((x) => x.scenario === sc.key && x.variant === pv && x.ok);
 		if (!r) continue;
@@ -1086,7 +1217,41 @@ async function main() {
 			title: 'BuildOS Jev context eval judge'
 		});
 		mkdirSync(join(outDir, 'answers'), { recursive: true });
-		const adaptive = POLICIES.find((x) => x.pack)!;
+		// Answer arms: today's context alone, or plus a Jev block packed by a named policy.
+		const ARM_POLICIES: Record<string, string | null> = {
+			today: null,
+			jev: 'adaptive v2: packed top-10 + nearby',
+			safe: 'v2 + dedup + compact summaries',
+			'safe-2sec': 'v2 + dedup + compact + 2 sections/doc'
+		};
+		const arms = opt('--arms', 'today,jev,safe,safe-2sec')!.split(',');
+		const judgeFacts = async (sc: Scenario, text: string) => {
+			const facts = sc.answerFacts!;
+			// Jev judges each fact claim on the answer text: structured, no lexical matching.
+			const verdict = await judge.decide({
+				state: { question: sc.message, answer: text, claims: facts },
+				questions: Object.fromEntries(
+					facts.map((_, i) => [
+						`f${i}`,
+						{
+							type: 'noul' as const,
+							instructions: {
+								question: `Does \`answer\` state or clearly convey \`claims[${i}]\`?`,
+								rules: [
+									'Judge only what the answer text says. Paraphrase counts; a vague gesture does not.'
+								]
+							}
+						}
+					])
+				)
+			});
+			return {
+				facts: verdict.ok
+					? facts.map((_, i) => (verdict.answers as any)[`f${i}`].noul as number)
+					: [],
+				cost: verdict.receipt.costUsd ?? 0
+			};
+		};
 		const SYSTEM = [
 			"You are the BuildOS assistant, working inside the user's project.",
 			'Answer the user from the project context below. Be specific and concise.',
@@ -1095,7 +1260,7 @@ async function main() {
 		let spend = runs.reduce((n, r) => n + (r.receipt?.costUsd ?? 0), 0);
 		type Ans = {
 			scenario: string;
-			arm: 'today' | 'jev';
+			arm: string;
 			rep: number;
 			text: string;
 			inTok: number;
@@ -1108,7 +1273,7 @@ async function main() {
 		const answers: Ans[] = [];
 		for (const sc of scenarios.filter((x) => !x.control && x.answerFacts?.length)) {
 			const dump = dumps.get(spec.projects[sc.project])!;
-			const { entities } = perProject.get(dump.project.id)!;
+			const { entities, base: baseSets } = perProject.get(dump.project.id)!;
 			const base = baselineText(dump);
 			for (let rep = 0; rep < reps; rep++) {
 				const run = runs.find(
@@ -1116,25 +1281,38 @@ async function main() {
 						x.scenario === sc.key && x.variant === 'twostage' && x.rep === rep && x.ok
 				);
 				if (!run) continue;
-				const out = applyPolicy(entities, run.answers, adaptive);
-				const jevBlock = [
-					`## Working context for this message (selected for relevance)`,
-					...out.full.map(
-						(x) =>
-							`### ${x.e.kind}: ${x.e.title}${x.sections.length ? ` › ${x.sections.join(' | ')}` : ''}\n${x.text}`
-					),
-					out.nearby.length ? '### Also possibly relevant (summaries only)' : '',
-					...out.nearby.map((x) => `- ${x.line}`)
-				].join('\n\n');
-				for (const arm of ['today', 'jev'] as const) {
+				const blockFor = (policyName: string) => {
+					const pol = POLICIES.find((x) => x.name === policyName)!;
+					const out = applyPolicy(entities, run.answers, pol, baseSets.contentPresent);
+					return [
+						`## Working context for this message (selected for relevance)`,
+						...out.full.map(
+							(x) =>
+								`### ${x.e.kind}: ${x.e.title}${x.sections.length ? ` › ${x.sections.join(' | ')}` : ''}\n${x.text}`
+						),
+						out.nearby.length ? '### Also possibly relevant (summaries only)' : '',
+						...out.nearby.map((x) => `- ${x.line}`)
+					].join('\n\n');
+				};
+				for (const arm of arms) {
 					const cacheFile = join(outDir, 'answers', `${sc.key}.${arm}.${rep}.json`);
 					if (existsSync(cacheFile)) {
-						answers.push(JSON.parse(readFileSync(cacheFile, 'utf8')));
+						const cached: Ans = JSON.parse(readFileSync(cacheFile, 'utf8'));
+						// The fact list changed since this answer was graded: re-grade only.
+						if (cached.facts.length !== sc.answerFacts!.length) {
+							const g = await judgeFacts(sc, cached.text);
+							cached.facts = g.facts;
+							cached.judgeCost += g.cost;
+							spend += g.cost;
+							writeFileSync(cacheFile, JSON.stringify(cached, null, 1));
+						}
+						answers.push(cached);
 						continue;
 					}
 					if (spend >= capUsd)
 						throw new Error(`Spend cap $${capUsd} reached at $${spend.toFixed(4)}`);
-					const system = `${SYSTEM}\n\n${base}${arm === 'jev' ? `\n\n${jevBlock}` : ''}`;
+					const policyName = ARM_POLICIES[arm];
+					const system = `${SYSTEM}\n\n${base}${policyName ? `\n\n${blockFor(policyName)}` : ''}`;
 					const started = Date.now();
 					const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 						method: 'POST',
@@ -1162,26 +1340,8 @@ async function main() {
 					const text: string = body.choices?.[0]?.message?.content ?? '';
 					const costUsd = Number(body.usage?.cost ?? 0);
 					spend += costUsd;
-					// Jev judges each fact claim on the answer text: structured, no lexical matching.
-					const facts = sc.answerFacts!;
-					const verdict = await judge.decide({
-						state: { question: sc.message, answer: text, claims: facts },
-						questions: Object.fromEntries(
-							facts.map((f, i) => [
-								`f${i}`,
-								{
-									type: 'noul',
-									instructions: {
-										question: `Does \`answer\` state or clearly convey \`claims[${i}]\`?`,
-										rules: [
-											'Judge only what the answer text says. Paraphrase counts; a vague gesture does not.'
-										]
-									}
-								}
-							])
-						)
-					});
-					const judgeCost = verdict.receipt.costUsd ?? 0;
+					const graded = await judgeFacts(sc, text);
+					const judgeCost = graded.cost;
 					spend += judgeCost;
 					const a: Ans = {
 						scenario: sc.key,
@@ -1192,9 +1352,7 @@ async function main() {
 						outTok: body.usage?.completion_tokens ?? 0,
 						costUsd,
 						ms,
-						facts: verdict.ok
-							? facts.map((_, i) => (verdict.answers as any)[`f${i}`].noul)
-							: [],
+						facts: graded.facts,
 						judgeCost
 					};
 					writeFileSync(cacheFile, JSON.stringify(a, null, 1));
@@ -1218,7 +1376,7 @@ async function main() {
 			{ hit: number[]; inTok: number[]; ms: number[]; cost: number[] }
 		> = {};
 		for (const sc of scenarios.filter((x) => !x.control && x.answerFacts?.length)) {
-			for (const arm of ['today', 'jev'] as const) {
+			for (const arm of arms) {
 				const as = answers.filter(
 					(a) => a.scenario === sc.key && a.arm === arm && a.facts.length
 				);

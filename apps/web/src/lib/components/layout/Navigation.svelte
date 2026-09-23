@@ -53,6 +53,11 @@
 		setAiInboxRemainingCount
 	} from '$lib/stores/aiInboxCount.store';
 	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
+	import {
+		loadAgentChatModal,
+		preloadAgentChatModal,
+		warmAgentChatModal
+	} from '$lib/components/agent/load-agent-chat-modal';
 
 	type Props = {
 		user: any | null;
@@ -753,9 +758,14 @@
 		window.addEventListener('buildos:chat-session-dismissed', handleChatSessionDismissedEvent);
 		document.addEventListener('visibilitychange', handleVisibilityChange);
 		const cancelAiInboxModalPreload = scheduleAiInboxModalPreload();
+		// The chat is the primary launch surface: warm its chunk on idle so the
+		// first open doesn't wait on the network (intent handlers below cover
+		// clicks that beat the idle callback).
+		const cancelAgentChatModalPreload = user ? preloadAgentChatModal() : () => {};
 
 		return () => {
 			cancelAiInboxModalPreload();
+			cancelAgentChatModalPreload();
 			themeObserver.disconnect();
 			document.removeEventListener('keydown', handleKeydown);
 			document.removeEventListener('click', handleClickOutside);
@@ -955,6 +965,9 @@
 						variant="outline"
 						size="sm"
 						onclick={handleOpenChat}
+						onpointerenter={warmAgentChatModal}
+						onpointerdown={warmAgentChatModal}
+						onfocus={warmAgentChatModal}
 						class={`relative flex items-center gap-2 px-3 h-9 rounded-md font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border tx tx-grain tx-weak ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
 						aria-label={$workingAgentRunCount > 0 && !showChatModal
 							? `Open ${chatLabel}. ${$workingAgentRunCount} agent${$workingAgentRunCount === 1 ? '' : 's'} working in the background`
@@ -1609,7 +1622,7 @@
 <!-- Agent Chat Modal — stays mounted (hidden) while parked keep-alive so the
      live stream keeps rendering and reopen is a seamless unhide. -->
 {#if showChatModal || parkedChatSessionId !== null}
-	{#await import('$lib/components/agent/AgentChatModal.svelte') then { default: AgentChatModal }}
+	{#await loadAgentChatModal() then { default: AgentChatModal }}
 		<AgentChatModal
 			bind:this={agentChatModalRef}
 			isOpen={showChatModal || parkedChatSessionId !== null}

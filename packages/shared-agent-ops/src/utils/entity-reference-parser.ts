@@ -246,6 +246,44 @@ export function stripEntityReferences(markdown: string): string {
 	return markdown.replace(ENTITY_REF_REGEX, (_, __, ___, displayText) => displayText);
 }
 
+// Relative BuildOS links a model copies from chat replies:
+// [label](/projects/<project-id>) or [label](/projects/<project-id>/<kind>s/<id>).
+const PROJECT_PATH_LINK_REGEX =
+	/\[([^\]]+)\]\(\/projects\/([0-9a-f-]{36})(?:\/([a-z_]+?)s?\/([0-9a-f-]{36}))?\/?\)/gi;
+
+/**
+ * Keep only links to entities the caller knows. A model-generated reference to
+ * an unknown id (an invented slug, or an entity from another project) becomes
+ * its plain display text, so a link can never point at nothing. Covers
+ * `[[type:id|label]]` references and relative `/projects/...` markdown links.
+ */
+export function resolveEntityReferences(
+	markdown: string,
+	isKnown: (type: string, id: string) => boolean
+): { markdown: string; dropped: EntityReference[] } {
+	const dropped: EntityReference[] = [];
+	ENTITY_REF_REGEX.lastIndex = 0;
+	PROJECT_PATH_LINK_REGEX.lastIndex = 0;
+	const resolved = markdown
+		.replace(ENTITY_REF_REGEX, (reference, type: string, id: string, displayText: string) => {
+			const normalizedType = type.toLowerCase();
+			if (isKnown(normalizedType, id)) return reference;
+			dropped.push({ type: normalizedType as EntityReferenceType, id, displayText });
+			return displayText;
+		})
+		.replace(
+			PROJECT_PATH_LINK_REGEX,
+			(link, label: string, projectId: string, kind?: string, entityId?: string) => {
+				const type = kind ? kind.toLowerCase() : 'project';
+				const id = entityId ?? projectId;
+				if (isKnown('project', projectId) && isKnown(type, id)) return link;
+				dropped.push({ type: type as EntityReferenceType, id, displayText: label });
+				return label;
+			}
+		);
+	return { markdown: resolved, dropped };
+}
+
 // =============================================================================
 // Validation Functions
 // =============================================================================

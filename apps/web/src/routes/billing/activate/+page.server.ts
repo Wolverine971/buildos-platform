@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 
 	if (!user) {
 		const returnTo = encodeURIComponent('/billing/activate');
-		throw redirect(303, `/auth/login?redirectTo=${returnTo}`);
+		throw redirect(303, `/auth/login?redirect=${returnTo}`);
 	}
 
 	const stripeEnabled = StripeService.isEnabled();

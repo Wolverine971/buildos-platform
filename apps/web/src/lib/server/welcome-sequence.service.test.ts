@@ -1072,6 +1072,57 @@ describe('WelcomeSequenceService failure recovery', () => {
 		expect(state.welcomeRows['user-1']?.email_1_sent_at).toBe('2026-03-01T10:00:00.000Z');
 	});
 
+	it('advances without re-sending when the email was sent but its record id is missing', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-01T10:00:00.000Z'));
+		sendEmailMock.mockResolvedValue({ success: true, messageId: 'msg-1', emailId: null });
+
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'user@example.com',
+					name: 'Alex Builder',
+					created_at: '2026-03-01T10:00:00.000Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'UTC'
+				}
+			},
+			welcomeRows: {},
+			updates: [],
+			failRpc: false,
+			emailSequences: {
+				buildos_welcome: {
+					id: 'sequence-1',
+					key: 'buildos_welcome',
+					metadata: {}
+				}
+			},
+			emailSequenceEnrollCalls: [],
+			emailSequenceUpserts: []
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+
+		await service.startSequenceForUser({
+			userId: 'user-1',
+			signupMethod: 'email',
+			triggerSource: 'account_created'
+		});
+
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
+		const enrollment = state.emailSequenceEnrollments?.['sequence-1:user-1'];
+		expect(enrollment).toMatchObject({
+			status: 'active',
+			current_step_number: 1,
+			next_step_number: 2
+		});
+		expect(enrollment?.failure_count ?? 0).toBe(0);
+	});
+
 	it('cancels a suppressed user at sequence start without sending email_1', async () => {
 		const state: MockState = {
 			users: {

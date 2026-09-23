@@ -299,8 +299,28 @@
 		dragDrop?.handleTouchCancel();
 	}
 
+	const EDITABLE_SELECTOR =
+		'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+
+	function isEditableTarget(target: Element): boolean {
+		return (
+			(target instanceof HTMLElement && target.isContentEditable) ||
+			target.closest(EDITABLE_SELECTOR) !== null
+		);
+	}
+
+	// The listener is on document so Escape can cancel a drag from anywhere, but
+	// Cmd/Ctrl+X/V/Z only belong to the tree: outside it (or in a text field) they
+	// must keep their native cut/paste/undo meaning.
 	function handleKeyDown(e: KeyboardEvent) {
-		dragDrop?.handleKeyDown(e);
+		if (!dragDrop) return;
+		const cancelsDrag = e.key === 'Escape' && dragDrop.state.isDragging;
+		if (!cancelsDrag) {
+			const target = e.target;
+			if (!(target instanceof Element) || !treeContainerRef?.contains(target)) return;
+			if (isEditableTarget(target)) return;
+		}
+		dragDrop.handleKeyDown(e);
 	}
 
 	// Derived enriched tree

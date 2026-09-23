@@ -929,7 +929,8 @@
 				row.source === 'live_sync' || row.source === 'manual_retry'
 					? row.source
 					: 'publish_confirm',
-			status: row.status === 'flagged' || row.status === 'error' ? row.status : 'passed',
+			// An unknown status is never treated as a pass.
+			status: row.status === 'passed' || row.status === 'flagged' ? row.status : 'error',
 			policy_version:
 				typeof row.policy_version === 'string' && row.policy_version
 					? row.policy_version
@@ -4737,6 +4738,7 @@
 									title: (event.currentTarget as HTMLInputElement).value
 								})}
 							placeholder="Public page title"
+							maxlength={200}
 							disabled={publicPageActionLoading}
 						/>
 					</FormField>
@@ -4752,6 +4754,7 @@
 									})}
 								rows={2}
 								placeholder="Short summary for the public page"
+								maxlength={500}
 								disabled={publicPageActionLoading}
 								size="sm"
 							/>

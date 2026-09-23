@@ -4489,6 +4489,111 @@ export type Database = {
           },
         ]
       }
+      chat_capture_checkpoints: {
+        Row: {
+          applied_sections: string[]
+          created_at: string
+          details: Json
+          id: string
+          project_id: string | null
+          review_run_id: string | null
+          review_sections: string[]
+          session_id: string
+          start_here_after_updated_at: string | null
+          start_here_before: string | null
+          start_here_document_id: string | null
+          status: string
+          thinking_log_document_id: string | null
+          thinking_log_entry: string | null
+          through_message_at: string | null
+          through_message_id: string | null
+          trigger: string
+          undone_at: string | null
+          user_id: string
+          user_message_count: number
+        }
+        Insert: {
+          applied_sections?: string[]
+          created_at?: string
+          details?: Json
+          id?: string
+          project_id?: string | null
+          review_run_id?: string | null
+          review_sections?: string[]
+          session_id: string
+          start_here_after_updated_at?: string | null
+          start_here_before?: string | null
+          start_here_document_id?: string | null
+          status: string
+          thinking_log_document_id?: string | null
+          thinking_log_entry?: string | null
+          through_message_at?: string | null
+          through_message_id?: string | null
+          trigger: string
+          undone_at?: string | null
+          user_id: string
+          user_message_count?: number
+        }
+        Update: {
+          applied_sections?: string[]
+          created_at?: string
+          details?: Json
+          id?: string
+          project_id?: string | null
+          review_run_id?: string | null
+          review_sections?: string[]
+          session_id?: string
+          start_here_after_updated_at?: string | null
+          start_here_before?: string | null
+          start_here_document_id?: string | null
+          status?: string
+          thinking_log_document_id?: string | null
+          thinking_log_entry?: string | null
+          through_message_at?: string | null
+          through_message_id?: string | null
+          trigger?: string
+          undone_at?: string | null
+          user_id?: string
+          user_message_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_capture_checkpoints_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_capture_checkpoints_review_run_id_fkey"
+            columns: ["review_run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_capture_checkpoints_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_capture_checkpoints_start_here_document_id_fkey"
+            columns: ["start_here_document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_capture_checkpoints_thinking_log_document_id_fkey"
+            columns: ["thinking_log_document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_compressions: {
         Row: {
           compressed_message_count: number
@@ -5051,6 +5156,8 @@ export type Database = {
           archived_at: string | null
           auto_accept_operations: boolean | null
           auto_title: string | null
+          capture_watermark_at: string | null
+          capture_watermark_message_id: string | null
           chat_topics: string[] | null
           chat_type: string | null
           compressed_at: string | null
@@ -5076,6 +5183,8 @@ export type Database = {
           archived_at?: string | null
           auto_accept_operations?: boolean | null
           auto_title?: string | null
+          capture_watermark_at?: string | null
+          capture_watermark_message_id?: string | null
           chat_topics?: string[] | null
           chat_type?: string | null
           compressed_at?: string | null
@@ -5101,6 +5210,8 @@ export type Database = {
           archived_at?: string | null
           auto_accept_operations?: boolean | null
           auto_title?: string | null
+          capture_watermark_at?: string | null
+          capture_watermark_message_id?: string | null
           chat_topics?: string[] | null
           chat_type?: string | null
           compressed_at?: string | null
@@ -23975,6 +24086,7 @@ export type Database = {
         | "run_cycle"
         | "embed_onto_entity"
         | "freshness_radar_scan"
+        | "capture_chat_checkpoint"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -24242,6 +24354,7 @@ export const Constants = {
         "run_cycle",
         "embed_onto_entity",
         "freshness_radar_scan",
+        "capture_chat_checkpoint",
       ],
       recurrence_end_reason: [
         "indefinite",

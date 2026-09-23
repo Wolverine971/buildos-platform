@@ -183,7 +183,12 @@ async function loadUserFlags(
 			'freshness_radar.auto_apply',
 			'freshness_radar.inbox_cleanup'
 		]);
-	const rows = (!result.error && Array.isArray(result.data) ? result.data : []) as Array<{
+	// A failed read is not "flag off": that would close the signal for good.
+	// Throw so the queue retries the claimed signal instead.
+	if (result.error) {
+		throw new Error(`freshness feature flag read failed: ${result.error.message}`);
+	}
+	const rows = (Array.isArray(result.data) ? result.data : []) as Array<{
 		enabled: boolean;
 		feature_name: string;
 	}>;
@@ -747,7 +752,12 @@ export async function runFreshnessProjectScan(params: {
 			jev: jevRun.stats
 		};
 
-		if (mode !== 'live' || params.abortSignal?.aborted) {
+		// An aborted live scan never applied its decisions; completing it would
+		// advance the cursor past evidence nothing acted on.
+		if (mode === 'live' && params.abortSignal?.aborted) {
+			return await fail('aborted', { ...baseFinish, counts });
+		}
+		if (mode !== 'live') {
 			await finishScan(db, scan.id, {
 				status: 'completed',
 				counts: {

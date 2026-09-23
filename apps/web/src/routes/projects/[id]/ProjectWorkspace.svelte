@@ -61,7 +61,7 @@
 		type ProjectFullData
 	} from '$lib/components/project/project-page-data-controller';
 	import { parseStartHereStatusRegion } from '@buildos/shared-agent-ops/ontology/start-here';
-	import { parseDocStructure } from '$lib/services/ontology/doc-structure.service';
+	import { collectDocIds, parseDocStructure } from '$lib/services/ontology/doc-structure.service';
 	import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
 	import { toastService } from '$lib/stores/toast.store';
 	import { trackLoopEvent } from '$lib/services/loop-telemetry';
@@ -165,19 +165,24 @@
 	): {
 		structure: DocStructure;
 		documents: Record<string, OntoDocument>;
+		unlinked: OntoDocument[];
 		archived: OntoDocument[];
 	} {
 		const structure = parseDocStructure(sourceProject.doc_structure);
+		const structureDocIds = collectDocIds(structure.root);
 		const documentsById: Record<string, OntoDocument> = {};
+		const unlinked: OntoDocument[] = [];
 		const archived: OntoDocument[] = [];
 		for (const document of sourceDocuments as unknown as OntoDocument[]) {
 			if (document.deleted_at || document.state_key === 'archived') {
 				archived.push(document);
 			} else {
 				documentsById[document.id] = document;
+				// Same rule as the doc-tree API: active documents missing from the tree.
+				if (!structureDocIds.has(document.id)) unlinked.push(document);
 			}
 		}
-		return { structure, documents: documentsById, archived };
+		return { structure, documents: documentsById, unlinked, archived };
 	}
 
 	let activeTab = $state<WorkspaceTab>('overview');
@@ -336,7 +341,7 @@
 		docTreeStructure = seed.structure;
 		docTreeDocuments = seed.documents;
 		docTreeArchived = seed.archived;
-		docTreeUnlinked = [];
+		docTreeUnlinked = seed.unlinked;
 	}
 
 	function applyFullData(fullData: ProjectFullData) {
@@ -783,9 +788,11 @@
 		openEntity(kind, entityId);
 	}
 
+	// Refresh only. Editors also report mutations that keep them open (image
+	// uploads, nested entity edits); closing here dropped unsaved form edits.
+	// Save and delete paths call onClose themselves, which closes the editor.
 	function handleWorkspaceEntityMutated(operation?: 'update') {
 		const target = editingEntity;
-		closeEntityEditor();
 		if (target && operation) refreshEntity(target.kind, target.entityId, operation);
 		else void refreshProject();
 	}

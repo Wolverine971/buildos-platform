@@ -3,7 +3,7 @@ import { isValidUUID } from '@buildos/shared-types';
 import {
 	CivilDateError,
 	type CivilDateBoundary,
-	hasDateOnlyValue,
+	hasCivilTimezoneSensitiveValue,
 	normalizeDateOnlyInput,
 	resolveUserCivilTimezone
 } from '../dates/civil-date';
@@ -242,8 +242,9 @@ export function normalizeOptionalDate(
 	}
 
 	try {
-		// Date-only input means a civil day in the user's timezone, not the
-		// midnight-UTC instant Postgres would otherwise store.
+		// Date-only input means a civil day in the user's timezone, and an
+		// offset-less datetime means that wall-clock time there — not the UTC
+		// instant Postgres would otherwise store.
 		return normalizeDateOnlyInput(normalized, {
 			boundary: options.boundary ?? 'start',
 			timezone: options.timezone
@@ -275,13 +276,14 @@ export type CivilTimezoneContext = {
 
 /**
  * Resolve the acting user's civil timezone, but only when at least one supplied
- * value is date-only. Everything else already carries its own offset.
+ * value is date-only or an offset-less wall-clock datetime. Everything else
+ * already carries its own offset.
  */
 export async function resolveGatewayCivilTimezone(
 	context: CivilTimezoneContext,
 	dateCandidates: readonly unknown[]
 ): Promise<string | null> {
-	if (!hasDateOnlyValue(dateCandidates)) return null;
+	if (!hasCivilTimezoneSensitiveValue(dateCandidates)) return null;
 	if (typeof context.timezone === 'string' && context.timezone.trim()) {
 		return context.timezone.trim();
 	}

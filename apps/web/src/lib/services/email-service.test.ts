@@ -272,3 +272,78 @@ describe('EmailService lifecycle compliance', () => {
 		consoleInfo.mockRestore();
 	});
 });
+
+describe('EmailService sent-email record', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		for (const key of Object.keys(privateEnv)) {
+			delete privateEnv[key];
+		}
+		sendMailMock.mockResolvedValue({ messageId: 'message-1' });
+	});
+
+	function createFlakyEmailsSupabase(insertResults: Array<{ data: any; error: any }>) {
+		const insertedIds: string[] = [];
+		const from = vi.fn((table: string) => {
+			if (table !== 'emails') return new QueryMock(table);
+			let action: string | null = null;
+			const builder: any = {
+				insert: (row: { id: string }) => {
+					action = 'insert';
+					insertedIds.push(row.id);
+					return builder;
+				},
+				select: () => builder,
+				single: () => builder,
+				then: (
+					resolve: (value: unknown) => unknown,
+					reject: (reason: unknown) => unknown
+				) =>
+					Promise.resolve(
+						action === 'insert'
+							? (insertResults.shift() ?? { data: null, error: null })
+							: { data: null, error: null }
+					).then(resolve, reject)
+			};
+			return builder;
+		});
+		return { supabase: { from } as any, insertedIds };
+	}
+
+	it('retries a failed emails insert so a sent message still gets a record id', async () => {
+		const { supabase, insertedIds } = createFlakyEmailsSupabase([
+			{ data: null, error: { code: '57014', message: 'statement timeout' } },
+			{ data: { id: 'email-after-retry' }, error: null }
+		]);
+
+		const result = await new EmailService(supabase).sendEmail({
+			to: 'user@example.com',
+			subject: 'Operational notice',
+			body: 'A transactional update.',
+			metadata: { category: 'transactional' }
+		});
+
+		expect(sendMailMock).toHaveBeenCalledTimes(1);
+		expect(result.success).toBe(true);
+		expect(result.emailId).toBe('email-after-retry');
+		// Both attempts reuse one client id, so the retry cannot create a duplicate row.
+		expect(insertedIds).toHaveLength(2);
+		expect(insertedIds[0]).toBe(insertedIds[1]);
+	});
+
+	it('treats a duplicate-key retry as the committed first insert', async () => {
+		const { supabase, insertedIds } = createFlakyEmailsSupabase([
+			{ data: null, error: { code: '08006', message: 'connection lost' } },
+			{ data: null, error: { code: '23505', message: 'duplicate key' } }
+		]);
+
+		const result = await new EmailService(supabase).sendEmail({
+			to: 'user@example.com',
+			subject: 'Operational notice',
+			body: 'A transactional update.',
+			metadata: { category: 'transactional' }
+		});
+
+		expect(result.emailId).toBe(insertedIds[0]);
+	});
+});

@@ -152,9 +152,15 @@ function createTimeBlocksStore() {
 		return result.data?.allocation ?? null;
 	}
 
+	// Range navigation can fire several loads before the first returns; only the newest may
+	// write, or a slow earlier range overwrites the one on screen.
+	let latestBlocksRequest = 0;
+	let latestAllocationRequest = 0;
+
 	// Define refreshAllocation as a separate function so it can be called internally
 	async function refreshAllocation(startDate?: Date, endDate?: Date) {
 		if (!browser) return;
+		const requestId = ++latestAllocationRequest;
 
 		const rangeStart = startDate ?? currentState.selectedDateRange.start;
 		const rangeEnd = endDate ?? currentState.selectedDateRange.end;
@@ -166,6 +172,7 @@ function createTimeBlocksStore() {
 
 		try {
 			const allocation = await requestAllocation(rangeStart, rangeEnd);
+			if (requestId !== latestAllocationRequest) return;
 
 			update((state) => ({
 				...state,
@@ -175,6 +182,7 @@ function createTimeBlocksStore() {
 			}));
 		} catch (error) {
 			console.error('[TimeBlocksStore] refreshAllocation failed:', error);
+			if (requestId !== latestAllocationRequest) return;
 			update((state) => ({
 				...state,
 				isAllocationLoading: false
@@ -185,6 +193,8 @@ function createTimeBlocksStore() {
 	// Define loadBlocks as a separate function so it can be called internally
 	async function loadBlocks(startDate?: Date, endDate?: Date) {
 		if (!browser) return;
+		const requestId = ++latestBlocksRequest;
+		const allocationRequestId = ++latestAllocationRequest;
 
 		const rangeStart = startDate ?? currentState.selectedDateRange.start;
 		const rangeEnd = endDate ?? currentState.selectedDateRange.end;
@@ -204,17 +214,22 @@ function createTimeBlocksStore() {
 					return null;
 				})
 			]);
+			if (requestId !== latestBlocksRequest) return;
+			const allocationIsCurrent = allocationRequestId === latestAllocationRequest;
 
 			update((state) => ({
 				...state,
 				blocks,
-				allocation: allocation ?? state.allocation,
+				allocation: allocationIsCurrent
+					? (allocation ?? state.allocation)
+					: state.allocation,
 				selectedDateRange: { start: rangeStart, end: rangeEnd },
 				isLoading: false,
 				isAllocationLoading: false
 			}));
 		} catch (error) {
 			console.error('[TimeBlocksStore] loadBlocks failed:', error);
+			if (requestId !== latestBlocksRequest) return;
 			update((state) => ({
 				...state,
 				isLoading: false,
@@ -232,6 +247,7 @@ function createTimeBlocksStore() {
 
 		async loadBlocksOnly(startDate?: Date, endDate?: Date) {
 			if (!browser) return;
+			const requestId = ++latestBlocksRequest;
 
 			const rangeStart = startDate ?? currentState.selectedDateRange.start;
 			const rangeEnd = endDate ?? currentState.selectedDateRange.end;
@@ -244,6 +260,7 @@ function createTimeBlocksStore() {
 
 			try {
 				const blocks = await requestBlocks(rangeStart, rangeEnd);
+				if (requestId !== latestBlocksRequest) return;
 
 				update((state) => ({
 					...state,
@@ -252,6 +269,7 @@ function createTimeBlocksStore() {
 				}));
 			} catch (error) {
 				console.error('[TimeBlocksStore] loadBlocksOnly failed:', error);
+				if (requestId !== latestBlocksRequest) return;
 				update((state) => ({
 					...state,
 					isLoading: false,

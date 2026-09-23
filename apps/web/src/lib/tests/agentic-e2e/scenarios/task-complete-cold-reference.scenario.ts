@@ -26,7 +26,7 @@
 //      NOWHERE.)
 //   3. The stated-future PATH itself is verifiable (added 2026-07-29 for the
 //      Phase 0 baseline gate). If the model authored no surface, the
-//      deterministic D1 floor (`$lib/server/stated-future.service`) must have
+//      deterministic D1 floor (worker `statedFutureCapture.ts`) must have
 //      fired, and any capture row it wrote must carry correct ground-truth
 //      provenance: props.source = 'stated_future_capture',
 //      props.source_stream_run_id = this turn's stream run, verbatim title,
@@ -277,7 +277,7 @@ export const taskCompleteColdReferenceScenario: Scenario = {
 				// AGENTIC_CHAT_WORKER_PHASE_0_BASELINE_2026-07-29). The four-surface
 				// check above proves the future landed SOMEWHERE but cannot see WHICH
 				// mechanism carried it: a task written by the deterministic D1 floor
-				// (`stated-future.service`) satisfies the `task` surface exactly like a
+				// (`statedFutureCapture.ts`) satisfies the `task` surface exactly like a
 				// model-authored one. So a run where the floor wrote a broken record —
 				// linked to the wrong stream run, paraphrased instead of verbatim, or
 				// double-fired past its idempotency key — still went green. This block

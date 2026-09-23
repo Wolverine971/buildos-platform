@@ -44,6 +44,11 @@ import {
 } from '$lib/services/async-activity-logger';
 import { normalizeMilestoneStateInput } from '../../shared/milestone-state';
 import {
+	needsCivilTimezone,
+	normalizeDateTimeInput,
+	resolveUserCivilTimezone
+} from '../../shared/input-normalization';
+import {
 	AutoOrganizeError,
 	autoOrganizeConnections,
 	assertEntityRefsInProject,
@@ -159,17 +164,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		let normalizedDueAt: string | null | undefined = undefined;
 
-		// Validate due_at if provided
+		// Validate due_at if provided. A bare YYYY-MM-DD closes the civil day in
+		// this user's timezone; only date-only input pays for the timezone read.
 		if (hasDueAtInput) {
-			if (due_at === null || String(due_at).trim() === '') {
-				normalizedDueAt = null;
-			} else {
-				const dueDate = new Date(due_at);
-				if (isNaN(dueDate.getTime())) {
-					return ApiResponse.badRequest('Due date must be a valid ISO 8601 date');
-				}
-				normalizedDueAt = dueDate.toISOString();
+			const civilTimezone = needsCivilTimezone(due_at)
+				? await resolveUserCivilTimezone(supabase, session.user.id)
+				: null;
+			const normalized = normalizeDateTimeInput(due_at, 'due_at', 'end', civilTimezone);
+			if (!normalized.ok) {
+				return ApiResponse.badRequest('Due date must be a valid ISO 8601 date');
 			}
+			normalizedDueAt = normalized.value ?? null;
 		}
 
 		// Get user's actor ID

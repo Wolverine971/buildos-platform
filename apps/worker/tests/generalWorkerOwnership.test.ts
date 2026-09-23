@@ -23,15 +23,10 @@ describe('general worker process ownership', () => {
 		expect(appSource).not.toMatch(/process\.on|startWorker|startScheduler|\.listen\(/);
 	});
 
-	it('starts the queue before the scheduler and HTTP listener', () => {
+	// Start order (queue -> scheduler -> HTTP) is asserted behaviorally in
+	// generalWorkerBootstrap.test.ts.
+	it('keeps the process bootstrap small', () => {
 		expect(lineCount(bootstrapSource)).toBeLessThanOrEqual(300);
-		const workerStart = bootstrapSource.indexOf('await startWorker()');
-		const schedulerStart = bootstrapSource.indexOf('startScheduler()');
-		const httpStart = bootstrapSource.indexOf('app.listen(');
-
-		expect(workerStart).toBeGreaterThan(-1);
-		expect(schedulerStart).toBeGreaterThan(workerStart);
-		expect(httpStart).toBeGreaterThan(schedulerStart);
 	});
 });
 

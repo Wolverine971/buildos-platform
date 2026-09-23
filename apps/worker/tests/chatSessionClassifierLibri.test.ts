@@ -129,13 +129,22 @@ describe('processChatClassificationJob Libri extraction', () => {
 			}))
 		});
 
+		// Honors order direction and limit like PostgREST, so tests see the same
+		// message window the classifier would in production.
+		let messagesAscending = true;
 		const messageSelect = chain({
 			eq: vi.fn().mockReturnThis(),
-			order: vi.fn().mockReturnThis(),
-			limit: vi.fn().mockImplementation(async () => ({
-				data: messageData,
-				error: null
-			}))
+			order: vi.fn((_column: string, options?: { ascending?: boolean }) => {
+				messagesAscending = options?.ascending !== false;
+				return messageSelect;
+			}),
+			limit: vi.fn().mockImplementation(async (count: number) => {
+				const sorted = [...messageData].sort((a, b) =>
+					String(a.created_at).localeCompare(String(b.created_at))
+				);
+				if (!messagesAscending) sorted.reverse();
+				return { data: sorted.slice(0, count), error: null };
+			})
 		});
 
 		const sessionUpdate = vi.fn((payload: Record<string, unknown>) => {
@@ -425,5 +434,37 @@ describe('processChatClassificationJob Libri extraction', () => {
 			})
 		);
 		expect((result as any).reason).toBe('no_meaningful_user_messages');
+	});
+
+	it('re-classifies a session longer than the message window once new messages arrive', async () => {
+		const at = (index: number) => new Date(Date.UTC(2026, 3, 15, 12, index)).toISOString();
+		messageData = Array.from({ length: 60 }, (_, index) => ({
+			id: `msg-${index + 1}`,
+			role: index % 2 ? 'assistant' : 'user',
+			content: `Planning note ${index + 1} about the launch timeline.`,
+			created_at: at(index)
+		}));
+		Object.assign(sessionData, {
+			auto_title: 'Launch planning',
+			chat_topics: ['launch'],
+			summary: 'Launch planning.',
+			extracted_entities: { libri_candidates: [] },
+			message_count: 60,
+			last_message_at: at(59),
+			// Classified when the session had 50 messages; 10 more arrived since.
+			last_classified_at: at(49)
+		});
+
+		const result = await processChatClassificationJob({
+			id: 'job-1',
+			data: { sessionId: 'session-1', userId: 'user-1' }
+		} as any);
+
+		expect((result as any).reason).not.toBe('already_classified');
+		expect(mockGetJSONResponse).toHaveBeenCalledTimes(1);
+		expect(capturedSessionUpdate?.last_classified_at).toBe(at(59));
+		const prompt = mockGetJSONResponse.mock.calls[0][0].userPrompt as string;
+		expect(prompt).toContain('message_id=msg-60');
+		expect(prompt).not.toContain('message_id=msg-1\n');
 	});
 });

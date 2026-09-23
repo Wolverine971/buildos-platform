@@ -1,5 +1,76 @@
 // apps/worker/tests/projectLoopStallReclaim.test.ts
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+type Row = Record<string, any>;
+
+const mocks = vi.hoisted(() => ({
+	tables: {} as Record<string, Array<Record<string, any>>>,
+	syncInboxItemForProjectReview: vi.fn(async () => null)
+}));
+
+// Minimal in-memory PostgREST fake: enough of select/update/filters for the
+// reclaim pass, applied against mocks.tables.
+function fakeFrom(table: string) {
+	const filters: Array<(row: Row) => boolean> = [];
+	let patch: Row | null = null;
+	let orderColumn: string | null = null;
+	let limitCount: number | null = null;
+	const execute = () => {
+		let rows = (mocks.tables[table] ?? []).filter((row) => filters.every((f) => f(row)));
+		if (orderColumn) {
+			const column = orderColumn;
+			rows = [...rows].sort((a, b) => String(a[column]).localeCompare(String(b[column])));
+		}
+		if (limitCount !== null) rows = rows.slice(0, limitCount);
+		if (patch) for (const row of rows) Object.assign(row, patch);
+		return rows.map((row) => ({ ...row }));
+	};
+	const builder: any = {
+		select: () => builder,
+		update: (value: Row) => {
+			patch = value;
+			return builder;
+		},
+		eq: (column: string, value: unknown) => {
+			filters.push((row) => row[column] === value);
+			return builder;
+		},
+		in: (column: string, values: unknown[]) => {
+			filters.push((row) => values.includes(row[column]));
+			return builder;
+		},
+		lt: (column: string, value: string) => {
+			filters.push((row) => row[column] != null && row[column] < value);
+			return builder;
+		},
+		gt: (column: string, value: string) => {
+			filters.push((row) => row[column] != null && row[column] > value);
+			return builder;
+		},
+		order: (column: string) => {
+			orderColumn = column;
+			return builder;
+		},
+		limit: (count: number) => {
+			limitCount = count;
+			return builder;
+		},
+		maybeSingle: async () => ({ data: execute()[0] ?? null, error: null }),
+		then: (resolve: (value: unknown) => unknown, reject?: (error: unknown) => unknown) =>
+			Promise.resolve({ data: execute(), error: null }).then(resolve, reject)
+	};
+	return builder;
+}
+
+vi.mock('../src/lib/supabase', () => ({
+	supabase: { from: (table: string) => fakeFrom(table) }
+}));
+
+vi.mock('@buildos/shared-agent-ops/inbox-index', async (importOriginal) => ({
+	...(await importOriginal<Record<string, unknown>>()),
+	syncInboxItemForProjectReview: mocks.syncInboxItemForProjectReview
+}));
+
 import {
 	PROJECT_LOOPS_ENABLED,
 	PROJECT_LOOP_JSON_PROVIDER_ORDER,
@@ -8,6 +79,7 @@ import {
 import {
 	getProjectLoopEndOfDayWindow,
 	projectLoopDedupKey,
+	reclaimStalledProjectLoopRuns,
 	selectEndOfDayProjectLoopCandidates
 } from '../src/workers/project-loop/enqueue';
 
@@ -117,5 +189,116 @@ describe('project loop end-of-day selection', () => {
 		expect(selection.skippedInvalidOwner).toBe(1);
 		expect(selection.skippedTimezoneWindow).toBe(1);
 		expect(selection.skippedOutsideLocalDay).toBe(1);
+	});
+});
+
+describe('reclaimStalledProjectLoopRuns', () => {
+	const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+
+	it('keeps a v2 decision brief open while its project-wide candidates are still pending', async () => {
+		mocks.tables = {
+			project_loop_runs: [
+				{
+					id: 'run-brief-open',
+					status: 'waiting_review',
+					finished_at: '2026-09-01T00:00:00.000Z',
+					brief: {
+						version: 2,
+						attention_level: 'decision',
+						candidate_ids: ['sugg-from-older-run']
+					}
+				},
+				{
+					id: 'run-brief-decided',
+					status: 'waiting_review',
+					finished_at: '2026-09-01T00:00:00.000Z',
+					brief: {
+						version: 2,
+						attention_level: 'urgent',
+						candidate_ids: ['sugg-decided']
+					}
+				},
+				{ id: 'run-legacy', status: 'waiting_review', finished_at: null, brief: null }
+			],
+			project_suggestions: [
+				{ id: 'sugg-from-older-run', run_id: 'run-older', status: 'pending' },
+				{ id: 'sugg-decided', run_id: 'run-older', status: 'approved' }
+			],
+			project_audits: []
+		};
+
+		const result = await reclaimStalledProjectLoopRuns();
+
+		const runs = new Map(mocks.tables.project_loop_runs.map((run) => [run.id, run]));
+		expect(runs.get('run-brief-open')?.status).toBe('waiting_review');
+		expect(runs.get('run-brief-decided')?.status).toBe('completed');
+		expect(runs.get('run-brief-decided')?.finished_at).not.toBe('2026-09-01T00:00:00.000Z');
+		expect(runs.get('run-legacy')?.status).toBe('completed');
+		expect(result.finalizedReview).toBe(2);
+		expect(mocks.syncInboxItemForProjectReview).toHaveBeenCalledTimes(2);
+		expect(mocks.syncInboxItemForProjectReview).toHaveBeenCalledWith(
+			expect.objectContaining({ runId: 'run-brief-decided' })
+		);
+		expect(mocks.syncInboxItemForProjectReview).not.toHaveBeenCalledWith(
+			expect.objectContaining({ runId: 'run-brief-open' })
+		);
+	});
+
+	it('fails orphaned project audits so they stop blocking future audits', async () => {
+		mocks.tables = {
+			project_loop_runs: [
+				{ id: 'run-stuck', status: 'running', started_at: minutesAgo(120) },
+				{ id: 'run-live', status: 'running', started_at: minutesAgo(10) }
+			],
+			project_suggestions: [],
+			project_audits: [
+				{
+					id: 'audit-linked',
+					status: 'running',
+					loop_run_id: 'run-stuck',
+					started_at: minutesAgo(120),
+					created_at: minutesAgo(125)
+				},
+				{
+					id: 'audit-queued-orphan',
+					status: 'queued',
+					loop_run_id: null,
+					started_at: null,
+					created_at: minutesAgo(7 * 60)
+				},
+				{
+					id: 'audit-running-orphan',
+					status: 'running',
+					loop_run_id: 'run-already-failed',
+					started_at: minutesAgo(90),
+					created_at: minutesAgo(95)
+				},
+				{
+					id: 'audit-live',
+					status: 'running',
+					loop_run_id: 'run-live',
+					started_at: minutesAgo(10),
+					created_at: minutesAgo(12)
+				},
+				{
+					id: 'audit-recently-queued',
+					status: 'queued',
+					loop_run_id: null,
+					started_at: null,
+					created_at: minutesAgo(30)
+				}
+			]
+		};
+
+		const result = await reclaimStalledProjectLoopRuns();
+
+		const audits = new Map(mocks.tables.project_audits.map((audit) => [audit.id, audit]));
+		expect(audits.get('audit-linked')?.status).toBe('failed');
+		expect(audits.get('audit-queued-orphan')?.status).toBe('failed');
+		expect(audits.get('audit-running-orphan')?.status).toBe('failed');
+		expect(audits.get('audit-live')?.status).toBe('running');
+		expect(audits.get('audit-recently-queued')?.status).toBe('queued');
+		expect(result.failedRunning).toBe(1);
+		expect(result.failedAudits).toBe(3);
 	});
 });

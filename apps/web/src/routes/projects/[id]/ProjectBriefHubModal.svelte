@@ -7,6 +7,7 @@
 	editor without context.
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
@@ -104,9 +105,12 @@
 		onOpenStartHere(contextDocument.id);
 	}
 
+	// Track only open state and project. loadLatestBrief reads `loading` and
+	// `loadedProjectId`; tracking those re-ran this effect after every failed
+	// request, refetching in a loop.
 	$effect(() => {
-		if (!isOpen) return;
-		void loadLatestBrief();
+		if (!isOpen || !projectId) return;
+		untrack(() => void loadLatestBrief());
 	});
 </script>
 

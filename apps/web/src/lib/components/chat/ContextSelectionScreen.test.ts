@@ -62,17 +62,19 @@ describe('ContextSelectionScreen', () => {
 		vi.clearAllMocks();
 	});
 
-	it('lazy-loads projects only after entering project selection and uses server search', async () => {
+	it('holds a skeleton until the list loads, then uses server search in project selection', async () => {
 		render(ContextSelectionScreen);
 
-		expect(global.fetch).not.toHaveBeenCalled();
+		// No project-count guesswork before the list arrives: skeleton, not cards.
+		expect(screen.getByRole('status', { name: /loading your projects/i })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /project chat/i })).toBeNull();
+		expect(global.fetch).toHaveBeenCalledTimes(1);
 
-		await fireEvent.click(screen.getByRole('button', { name: /project chat/i }));
+		await fireEvent.click(await screen.findByRole('button', { name: /project chat/i }));
+		expect(screen.queryByRole('status', { name: /loading your projects/i })).toBeNull();
 
-		await waitFor(() => {
-			expect(global.fetch).toHaveBeenCalledTimes(1);
-		});
 		await screen.findByText('Apollo');
+		expect(global.fetch).toHaveBeenCalledTimes(1);
 		expect(screen.queryByText('Hermes')).not.toBeNull();
 		expect(screen.queryByText('Paused Project')).toBeNull();
 		expect(String((global.fetch as any).mock.calls[0][0])).toContain(
@@ -90,17 +92,48 @@ describe('ContextSelectionScreen', () => {
 		);
 	});
 
+	it('does not fetch while inactive and loads once it becomes active', async () => {
+		const view = render(ContextSelectionScreen, { props: { active: false } });
+
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(global.fetch).not.toHaveBeenCalled();
+
+		await view.rerender({ active: true });
+		await screen.findByRole('button', { name: /project chat/i });
+		expect(global.fetch).toHaveBeenCalledTimes(1);
+
+		// Hiding and re-showing within the freshness window reuses the list.
+		await view.rerender({ active: false });
+		await view.rerender({ active: true });
+		expect(global.fetch).toHaveBeenCalledTimes(1);
+		expect(screen.getByRole('button', { name: /project chat/i })).toBeInTheDocument();
+	});
+
+	it('goes straight from the skeleton to the first-project view for new users', async () => {
+		global.fetch = vi.fn(() =>
+			okJson({ success: true, data: { projects: [] } })
+		) as typeof fetch;
+
+		render(ContextSelectionScreen);
+
+		expect(screen.getByRole('status', { name: /loading your projects/i })).toBeInTheDocument();
+		expect(screen.queryByText(/what do you want to work on/i)).toBeNull();
+
+		await screen.findByText(/start with your first project/i);
+		expect(screen.queryByText(/what do you want to work on/i)).toBeNull();
+	});
+
 	it('reuses the cached default project list across remounts', async () => {
 		const first = render(ContextSelectionScreen);
 
-		await fireEvent.click(screen.getByRole('button', { name: /project chat/i }));
+		await fireEvent.click(await screen.findByRole('button', { name: /project chat/i }));
 		await screen.findByText('Apollo');
 		expect(global.fetch).toHaveBeenCalledTimes(1);
 
 		first.unmount();
 
 		render(ContextSelectionScreen);
-		await fireEvent.click(screen.getByRole('button', { name: /project chat/i }));
+		await fireEvent.click(await screen.findByRole('button', { name: /project chat/i }));
 		await screen.findByText('Apollo');
 
 		expect(global.fetch).toHaveBeenCalledTimes(1);

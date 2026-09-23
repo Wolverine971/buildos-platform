@@ -20,6 +20,22 @@ export interface FailedPayment {
 	resolved_at?: Date;
 }
 
+export function getDueDunningStage(
+	daysSinceFailure: number,
+	stages: readonly DunningStage[] = DUNNING_CONFIG
+): DunningStage | undefined {
+	let due: DunningStage | undefined;
+	for (const stage of stages) {
+		if (
+			stage.daysAfterFailure <= daysSinceFailure &&
+			(!due || stage.daysAfterFailure > due.daysAfterFailure)
+		) {
+			due = stage;
+		}
+	}
+	return due;
+}
+
 export class DunningService {
 	private supabase: SupabaseClient;
 	private emailService: EmailService;
@@ -74,10 +90,9 @@ export class DunningService {
 			(Date.now() - new Date(payment.failed_at).getTime()) / (1000 * 60 * 60 * 24)
 		);
 
-		// Find the appropriate dunning stage
-		const currentStage = DUNNING_CONFIG.find(
-			(stage) => stage.daysAfterFailure <= daysSinceFailure
-		);
+		// The latest stage that has come due. `find` from the start would always
+		// return the day-0 stage because every later threshold also satisfies <=.
+		const currentStage = getDueDunningStage(daysSinceFailure);
 
 		if (!currentStage) return;
 
@@ -108,14 +123,16 @@ export class DunningService {
 					break;
 			}
 
-			// Update dunning stage
-			await this.supabase
+			// Update dunning stage. If this write fails the stage is re-run (and its
+			// email re-sent) on the next pass, so surface it loudly.
+			const { error: stageError } = await this.supabase
 				.from('failed_payments')
 				.update({
 					dunning_stage: currentStage.name,
 					last_dunning_at: new Date().toISOString()
 				})
 				.eq('id', payment.id);
+			if (stageError) throw stageError;
 		} catch (error) {
 			console.error(`Error processing dunning stage ${currentStage.name}:`, error);
 		}
@@ -268,16 +285,17 @@ export class DunningService {
 
 		if (existing) {
 			// Update retry count
-			await this.supabase
+			const { error } = await this.supabase
 				.from('failed_payments')
 				.update({
 					retry_count: existing.retry_count + 1,
 					last_retry_at: new Date().toISOString()
 				})
 				.eq('id', existing.id);
+			if (error) throw new Error(`Failed to update failed payment: ${error.message}`);
 		} else {
 			// Create new failed payment record
-			await this.supabase.from('failed_payments').insert({
+			const { error } = await this.supabase.from('failed_payments').insert({
 				user_id: data.userId,
 				subscription_id: data.subscriptionId,
 				invoice_id: data.invoiceId,
@@ -285,6 +303,7 @@ export class DunningService {
 				failed_at: new Date().toISOString(),
 				retry_count: 1
 			});
+			if (error) throw new Error(`Failed to record failed payment: ${error.message}`);
 		}
 	}
 
@@ -299,22 +318,26 @@ export class DunningService {
 			.from('failed_payments')
 			.select('user_id')
 			.eq('invoice_id', invoiceId)
-			.single();
+			.is('resolved_at', null)
+			.maybeSingle();
 
 		if (!payment) return;
 
 		// Update failed payment record
-		await this.supabase
+		const { error: resolveError } = await this.supabase
 			.from('failed_payments')
 			.update({
 				resolved_at: new Date().toISOString(),
 				resolution_type: resolutionType
 			})
 			.eq('invoice_id', invoiceId);
+		if (resolveError) {
+			throw new Error(`Failed to resolve failed payment: ${resolveError.message}`);
+		}
 
 		// If paid, restore access
 		if (resolutionType === 'paid') {
-			await this.supabase
+			const { error: restoreError } = await this.supabase
 				.from('users')
 				.update({
 					subscription_status: 'active',
@@ -322,6 +345,9 @@ export class DunningService {
 					access_restricted_at: null
 				})
 				.eq('id', payment.user_id);
+			if (restoreError) {
+				throw new Error(`Failed to restore access: ${restoreError.message}`);
+			}
 
 			// Remove any payment warnings
 			await this.supabase

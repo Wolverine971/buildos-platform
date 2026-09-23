@@ -10,8 +10,35 @@
   semantic textures, high information density, tactile controls.
 -->
 
+<script module lang="ts">
+	// Capability flags are a UI hint (admission rechecks every submission) and
+	// only change with a deploy or cohort edit, so fetch them once per page load
+	// instead of on every open/unhide — the late answer used to push the review
+	// chips in above the composer after first paint. A failure is not cached.
+	type AgentChatCapabilities = { projectReview: boolean; documentOrganization: boolean };
+	let capabilitiesRequest: Promise<AgentChatCapabilities> | null = null;
+
+	function loadAgentChatCapabilities(): Promise<AgentChatCapabilities> {
+		capabilitiesRequest ??= fetch('/api/agent/v2/capabilities', { cache: 'no-store' })
+			.then(async (response) => {
+				const body = response.ok ? await response.json() : null;
+				if (body?.success !== true) throw new Error('Chat capabilities unavailable');
+				return {
+					projectReview: body.data?.projectReview === true,
+					documentOrganization: body.data?.documentOrganization === true
+				};
+			})
+			.catch((error: unknown) => {
+				capabilitiesRequest = null;
+				throw error;
+			});
+		return capabilitiesRequest;
+	}
+</script>
+
 <script lang="ts">
-	import { onDestroy, getContext, untrack } from 'svelte';
+	import { onDestroy, getAbortSignal, getContext, tick, untrack } from 'svelte';
+	import type { Attachment } from 'svelte/attachments';
 	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 	import type { Database, FreshnessCardPayloadV1 } from '@buildos/shared-types';
 	import { browser, dev } from '$app/environment';
@@ -54,6 +81,12 @@
 	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
 	import { mergeToolProgressStep, type ToolProgressStep } from './agent-chat-tool-progress';
+	import {
+		CAPTURE_RECEIPT_COLUMNS,
+		type CaptureReceiptRow,
+		buildCaptureReceiptUIMessage,
+		upsertCaptureReceipt
+	} from './capture-receipt';
 	import {
 		findThinkingBlockById,
 		type ActivityEntry,
@@ -116,7 +149,7 @@
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
 	import {
 		createAgentChatStreamController,
-		type SessionBootstrapTarget,
+		type ClientTurnTimingSummary,
 		type StreamTurnReconcileRequest
 	} from './agent-chat-stream-controller.svelte';
 	import {
@@ -128,6 +161,8 @@
 		parseAdmissionResponse
 	} from '$lib/services/agentic-chat-v2/worker-turn-adoption';
 	import { createAgentChatWorkerUiAdapter } from './agent-chat-worker-ui-adapter';
+	import { carryRenderKeys } from './agent-chat-render-keys';
+	import { captureEvent } from '$lib/services/posthog';
 	import { workerActivityForStatus } from './agent-chat-worker-status';
 	import {
 		appendUniqueThinkingActivity,
@@ -228,7 +263,10 @@
 	// one-shot title cue so landing on a freshly created project is not a silent
 	// label swap.
 	let contextShiftPulse = $state(0);
-	let wasOpen = $state(false);
+	// Plain (non-reactive) edge-detection flag: it is only read and written by
+	// the open/close effect below, and making it $state made that effect
+	// schedule itself a second time on every open and close.
+	let wasOpen = false;
 	// Prewarm state lives in the PrewarmController instance created below,
 	// once all dependent state and helpers are declared.
 
@@ -278,13 +316,23 @@
 	let messages = $state.raw<UIMessage[]>([]);
 	let persistedTimelineItems = $state.raw<AgentTimelineItem[]>([]);
 	let activeChatTab = $state<AgentChatPanelTab>('chat');
-	let brainDumpContext = $state<AgentBrainDumpContext | null>(null);
+	// Seeded from the launch prop, still assignable (session hydration, reset).
+	let brainDumpContext = $derived<AgentBrainDumpContext | null>(
+		initialBrainDumpContext?.id ? initialBrainDumpContext : null
+	);
 	let currentSession = $state<ChatSession | null>(null);
 	// Worker reconciliation can replay a fresh session object on every receipt.
 	// Effects that own session-scoped resources must depend on the stable scalar
 	// identity, not the object assignment, or the replay tears down and re-adopts
 	// the same worker observer between reconcile ticks.
 	const currentSessionId = $derived(currentSession?.id ?? null);
+	// Checkpoint capture receipts (tasker/95) live beside the conversation, not in
+	// it: they come from chat_capture_checkpoints, render as chips in the list,
+	// and never enter the timeline, exports or model history.
+	let captureReceipts = $state.raw<UIMessage[]>([]);
+	const displayMessages = $derived(
+		captureReceipts.reduce((list, receipt) => upsertCaptureReceipt(list, receipt), messages)
+	);
 	const liveTimelineItems = $derived.by(() =>
 		timelineItemsFromMessages(currentSession?.id ?? 'local-session', messages)
 	);
@@ -299,12 +347,6 @@
 		messages.length > 0 || agentTimelineItems.length > 0 || Boolean(currentSession?.id)
 	);
 
-	$effect(() => {
-		if (initialBrainDumpContext?.id) {
-			brainDumpContext = initialBrainDumpContext;
-		}
-	});
-
 	// ── Agent Work: in-chat run dock + completion-message reload (UI-P4) ──
 	const ACTIVE_AGENT_RUN_STATUSES = [
 		'queued',
@@ -314,7 +356,7 @@
 		'proposal_ready'
 	];
 	let sessionAgentRuns = $derived.by(() => {
-		const sid = currentSession?.id;
+		const sid = currentSessionId;
 		if (!sid) return [] as AgentRunRow[];
 		return Array.from($agentRunsStore.values())
 			.filter((r) => r.parent_session_id === sid)
@@ -436,6 +478,46 @@
 		if (sid) subscribeSessionMessages(sid);
 	});
 
+	// Capture receipts for the active session: earlier ones on open, new and
+	// undone ones live.
+	$effect(() => {
+		const sid = currentSessionId;
+		captureReceipts = [];
+		if (!browser || !supabaseClient || !sid) return;
+		const client = supabaseClient;
+		const apply = (row: unknown) => {
+			const record = row as Partial<CaptureReceiptRow> | null;
+			if (record?.session_id !== sid) return;
+			const receipt = buildCaptureReceiptUIMessage(record);
+			if (receipt) captureReceipts = upsertCaptureReceipt(captureReceipts, receipt);
+		};
+		const channel = client.channel(`chat-capture-receipts:${sid}`);
+		channel.on(
+			'postgres_changes',
+			{
+				event: '*',
+				schema: 'public',
+				table: 'chat_capture_checkpoints',
+				filter: `session_id=eq.${sid}`
+			},
+			(payload) => apply(payload.new)
+		);
+		void channel.subscribe();
+		void client
+			.from('chat_capture_checkpoints')
+			.select(CAPTURE_RECEIPT_COLUMNS)
+			.eq('session_id', sid)
+			.in('status', ['captured', 'undone'])
+			.order('created_at', { ascending: true })
+			.limit(50)
+			.then(({ data }) => {
+				for (const row of data ?? []) apply(row);
+			});
+		return () => {
+			void client.removeChannel(channel);
+		};
+	});
+
 	// Establish the standing per-user worker delivery path at chat-surface mount.
 	// The runtime is intentionally handle-free until server-authoritative worker
 	// admission lands; mounting it cannot change the worker Send path.
@@ -452,15 +534,12 @@
 	$effect(() => {
 		const sessionId = currentSessionId;
 		if (!browser || !isSurfaceActive || !sessionId || !workerAdoption) return;
-		const controller = new AbortController();
-		void workerAdoption
-			.discoverSession(sessionId, { signal: controller.signal })
-			.catch((error) => {
-				if (controller.signal.aborted) return;
-				if (dev) console.warn('[AgentChat] Worker turn discovery degraded', error);
-			});
+		const signal = getAbortSignal();
+		void workerAdoption.discoverSession(sessionId, { signal }).catch((error) => {
+			if (signal.aborted) return;
+			if (dev) console.warn('[AgentChat] Worker turn discovery degraded', error);
+		});
 		return () => {
-			controller.abort();
 			workerAdoption?.releaseSession(sessionId);
 		};
 	});
@@ -468,7 +547,7 @@
 	// Detect newly-terminal session runs and arm the fallback reload.
 	$effect(() => {
 		const runs = $agentRunsStore;
-		const sid = currentSession?.id;
+		const sid = currentSessionId;
 		if (!sid) return;
 		for (const r of runs.values()) {
 			if (r.parent_session_id !== sid) continue;
@@ -548,24 +627,21 @@
 
 	$effect(() => {
 		if (!browser || !(isOpen || embedded) || hidden) return;
-		const controller = new AbortController();
-		void fetch('/api/agent/v2/capabilities', { cache: 'no-store', signal: controller.signal })
-			.then(async (response) => {
-				const body = response.ok ? await response.json() : null;
-				if (!controller.signal.aborted) {
-					projectReviewAvailable =
-						body?.success === true && body.data?.projectReview === true;
-					documentOrganizationAvailable =
-						body?.success === true && body.data?.documentOrganization === true;
-				}
+		let active = true;
+		void loadAgentChatCapabilities()
+			.then((capabilities) => {
+				if (!active) return;
+				projectReviewAvailable = capabilities.projectReview;
+				documentOrganizationAvailable = capabilities.documentOrganization;
 			})
 			.catch(() => {
-				if (!controller.signal.aborted) {
-					projectReviewAvailable = false;
-					documentOrganizationAvailable = false;
-				}
+				if (!active) return;
+				projectReviewAvailable = false;
+				documentOrganizationAvailable = false;
 			});
-		return () => controller.abort();
+		return () => {
+			active = false;
+		};
 	});
 
 	$effect(() => {
@@ -581,8 +657,9 @@
 			reviewSelection = null;
 		}
 	});
-	let appliedInitialDraftKey = $state('');
-	let autoSentDraftKey = $state('');
+	// Plain flags: only the initial-draft effect reads/writes them.
+	let appliedInitialDraftKey = '';
+	let autoSentDraftKey = '';
 	const attachments = createAttachmentController({
 		getBrowser: () => browser,
 		getProjectId: () => attachmentProjectId,
@@ -614,8 +691,6 @@
 	const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
-	let composerContainer = $state<HTMLElement | undefined>(undefined);
-	let keyboardAvoidingCleanup = $state<(() => void) | null>(null);
 	let hasFinalizedSession = false;
 
 	// Ontology integration state
@@ -633,7 +708,7 @@
 	// Let embedding surfaces (e.g. BriefChatModal) mirror the active session id
 	// into their own header chrome.
 	$effect(() => {
-		onSessionChange?.(currentSession?.id ?? null);
+		onSessionChange?.(currentSessionId);
 	});
 
 	const displayContextUsage = $derived.by(() => {
@@ -661,8 +736,8 @@
 	});
 
 	const AGENT_STATE_MESSAGES: Record<AgentLoopState, string> = {
-		thinking: 'BuildOS is thinking...',
-		waiting_on_user: 'Waiting on your direction...'
+		thinking: 'Thinking…',
+		waiting_on_user: 'Waiting on your direction…'
 	};
 
 	const ACTIVE_TURN_PROBE_BASE_MS = 2000;
@@ -694,7 +769,6 @@
 		getSelectedEntityId: () => shellRouter.selectedEntityId,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		getCurrentSession: () => currentSession,
-		ensureSessionReady: (target) => ensureSessionReady(target),
 		getLastTurnContext: () => lastTurnContext,
 		getIsLoadingSession: () => isLoadingSession,
 		getActiveRestoredTurnRunId: () => activeRestoredTurnRunId,
@@ -714,12 +788,20 @@
 			},
 			removeById: (messageId) => {
 				messages = messages.filter((message) => message.id !== messageId);
+			},
+			update: (messageId, patch) => {
+				const index = messages.findIndex((message) => message.id === messageId);
+				if (index < 0) return;
+				const nextMessages = [...messages];
+				nextMessages[index] = { ...messages[index]!, ...patch };
+				messages = nextMessages;
 			}
 		},
 		thinking: {
-			create: () => createThinkingBlock(),
+			create: (options) => createThinkingBlock(options),
 			updateState: (state, details) => updateThinkingBlockState(state, details),
-			finalize: (status, note) => finalizeThinkingBlock(status, note)
+			finalize: (status, note) => finalizeThinkingBlock(status, note),
+			discard: () => discardThinkingBlock()
 		},
 		assistant: {
 			flushText: () => flushAssistantText(),
@@ -743,13 +825,17 @@
 			}
 			const { descriptor } = parseAdmissionResponse(value);
 			if (!currentSession) {
-				// A raw review creates its session in admission, without a prewarm round trip.
+				// A new chat's first turn (and every raw review) creates its session
+				// inside admission. The response carries the row; older servers
+				// don't, so fall back to one snapshot read.
 				const projectId = reviewProjectId;
-				const snapshot = await loadAgentChatSessionSnapshot(descriptor.handle.sessionId);
+				const session =
+					admittedSessionFromResponse(value, descriptor.handle.sessionId) ??
+					(await loadAgentChatSessionSnapshot(descriptor.handle.sessionId)).session;
 				if (currentSession || projectId !== reviewProjectId) {
-					throw new Error('Chat focus changed while the review was starting');
+					throw new Error('Chat focus changed while the turn was starting');
 				}
-				hydrateSessionFromEvent(snapshot.session);
+				hydrateSessionFromEvent(session);
 			}
 			return workerAdoption.adoptAdmissionResponse(value);
 		},
@@ -765,6 +851,7 @@
 			showExistingImagePicker = value;
 		},
 		haptic: (style) => haptic(style),
+		captureTurnTiming: (summary) => captureTurnTiming(summary),
 		logError: (message, err) => console.error(message, err),
 		logDebug: (message, data) => {
 			if (dev) {
@@ -775,30 +862,24 @@
 
 	// Session resumption state
 	let isLoadingSession = $state(false);
-	let isPreparingSession = $state(false);
 	let sessionLoadError = $state<string | null>(null);
 	let lastLoadedSessionId = $state<string | null>(null);
 	let sessionLoadRequestId = 0;
 	let sessionLoadController: AbortController | null = null;
 	let sessionRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
 	let activeRestoredTurnRunId = $state<string | null>(null);
-	let sessionBootstrapRequestId = 0;
-	let sessionBootstrapController: AbortController | null = null;
-	let sessionBootstrapPromise: Promise<ChatSession | null> | null = null;
-	const isSessionBusy = $derived(isLoadingSession || isPreparingSession);
 	const inboxHeaderActions = $derived.by<AgentChatHeaderAction[]>(() =>
 		inboxResolutionActions.map((action) => ({
 			...action,
-			disabled: action.disabled || isSessionBusy || stream.isStreaming,
+			disabled: action.disabled || isLoadingSession || stream.isStreaming,
 			onClick: () => handleInboxResolutionAction(action)
 		}))
 	);
 	const canAttachExistingProjectImages = $derived(
-		Boolean(attachmentProjectId) && !isSessionBusy && !stream.isStreaming
+		Boolean(attachmentProjectId) && !isLoadingSession && !stream.isStreaming
 	);
 	const sessionStatusLabel = $derived.by(() => {
 		if (isLoadingSession) return 'Loading session';
-		if (isPreparingSession) return 'Preparing session';
 		return null;
 	});
 
@@ -827,7 +908,7 @@
 	});
 
 	const shouldShowSessionLoadingState = $derived.by(() => {
-		if (!isSessionBusy || messages.length > 0) return false;
+		if (!isLoadingSession || messages.length > 0) return false;
 		if (
 			shellRouter.showContextSelection ||
 			shellRouter.showProjectActionSelector ||
@@ -839,7 +920,7 @@
 	});
 
 	const shouldShowSessionLoadErrorState = $derived.by(() => {
-		if (!sessionLoadError || isSessionBusy || messages.length > 0) return false;
+		if (!sessionLoadError || isLoadingSession || messages.length > 0) return false;
 		if (
 			shellRouter.showContextSelection ||
 			shellRouter.showProjectActionSelector ||
@@ -849,6 +930,14 @@
 		}
 		return true;
 	});
+
+	const isFocusPickerOpen = $derived(
+		shellRouter.showFocusSelector &&
+			isProjectContext(shellRouter.selectedContextType) &&
+			Boolean(shellRouter.selectedEntityId) &&
+			Boolean(resolvedProjectFocus)
+	);
+	const isChatPickerOpen = $derived(shellRouter.showProjectActionSelector || isFocusPickerOpen);
 
 	const shouldShowComposer = $derived(
 		!shellRouter.showContextSelection &&
@@ -879,7 +968,6 @@
 		getSelectedContextType: () => shellRouter.selectedContextType,
 		getSelectedEntityId: () => shellRouter.selectedEntityId,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
-		getIsPreparingSession: () => isPreparingSession,
 		getIsProjectReview: () => selectedReviewIntent !== null,
 		// A worker turn keeps its handle until terminal truth arrives. Include that
 		// authoritative ownership so adoption/reconciliation transitions can never
@@ -926,7 +1014,8 @@
 			_initialEntityId ?? ''
 		].join('|');
 		if (appliedInitialDraftKey === draftKey) return;
-		if (inputValue.trim() || messages.length > 0 || stream.isStreaming || isSessionBusy) return;
+		if (inputValue.trim() || messages.length > 0 || stream.isStreaming || isLoadingSession)
+			return;
 
 		inputValue = draft;
 		appliedInitialDraftKey = draftKey;
@@ -938,16 +1027,6 @@
 			void stream.handleSendMessage();
 		}
 	});
-
-	function cancelSessionBootstrap() {
-		sessionBootstrapRequestId += 1;
-		if (sessionBootstrapController) {
-			sessionBootstrapController.abort();
-			sessionBootstrapController = null;
-		}
-		sessionBootstrapPromise = null;
-		isPreparingSession = false;
-	}
 
 	function clearSessionRefreshTimeout() {
 		if (!sessionRefreshTimeout) return;
@@ -1007,67 +1086,6 @@
 		scheduleActiveTurnSessionRefresh(sessionId);
 	}
 
-	async function ensureSessionReady(target: SessionBootstrapTarget): Promise<ChatSession | null> {
-		if (currentSession?.id) {
-			return currentSession;
-		}
-
-		if (isProjectContext(target.contextType) && !target.entityId) {
-			throw new Error('Select a project before starting the conversation.');
-		}
-
-		if (sessionBootstrapPromise) {
-			return sessionBootstrapPromise;
-		}
-
-		sessionBootstrapRequestId += 1;
-		const requestId = sessionBootstrapRequestId;
-		const controller = new AbortController();
-		sessionBootstrapController = controller;
-		isPreparingSession = true;
-
-		let bootstrapPromise: Promise<ChatSession | null>;
-		bootstrapPromise = (async () => {
-			const warmed = await prewarmAgentContext(
-				{
-					session_id: currentSession?.id ?? undefined,
-					context_type: target.contextType,
-					entity_id: target.entityId,
-					projectFocus: target.projectFocus,
-					ensure_session: true
-				},
-				{ signal: controller.signal }
-			);
-
-			if (requestId !== sessionBootstrapRequestId || controller.signal.aborted) {
-				throw new DOMException('Session bootstrap aborted', 'AbortError');
-			}
-
-			if (!warmed?.session?.id) {
-				throw new Error('Unable to prepare a chat session right now.');
-			}
-
-			hydrateSessionFromEvent(warmed.session);
-			prewarm.adopt(warmed.prewarmedContext);
-			prewarm.adoptPrepared(warmed.preparedPrompt);
-
-			return warmed.session;
-		})().finally(() => {
-			if (requestId === sessionBootstrapRequestId) {
-				isPreparingSession = false;
-			}
-			if (sessionBootstrapController === controller) {
-				sessionBootstrapController = null;
-			}
-			if (sessionBootstrapPromise === bootstrapPromise) {
-				sessionBootstrapPromise = null;
-			}
-		});
-
-		sessionBootstrapPromise = bootstrapPromise;
-		return bootstrapPromise;
-	}
-
 	function handleBackNavigation() {
 		shellRouter.handleBackNavigation();
 	}
@@ -1091,11 +1109,12 @@
 
 	// Note: voice.isRecording is NOT included - clicking send while recording will
 	// stop the recording and auto-send after transcription completes.
-	// Streaming only blocks send on non-touch devices (touch uses Send & Stop).
+	// While a response is running, a plain text follow-up is queued (it sends on
+	// its own when the response finishes); images and voice wait for idle.
 	const hasSendableImageAttachments = $derived(attachments.hasSendableImageAttachments);
 	const hasBlockedImageAttachments = $derived(attachments.hasPendingOrFailedImageAttachments);
 	const reviewDisabled = $derived(
-		isSessionBusy ||
+		isLoadingSession ||
 			stream.isStartingStream ||
 			stream.isStreaming ||
 			activeRestoredTurnRunId !== null ||
@@ -1105,12 +1124,11 @@
 	);
 	const isSendDisabled = $derived(
 		!shellRouter.selectedContextType ||
-			isSessionBusy ||
-			activeRestoredTurnRunId !== null ||
-			stream.isStartingStream ||
+			isLoadingSession ||
 			hasBlockedImageAttachments ||
 			(!inputValue.trim() && !voice.isRecording && !hasSendableImageAttachments) || // Allow send if recording (will get transcribed text)
-			(stream.isStreaming && !isTouchDevice) ||
+			(stream.isTurnBusy &&
+				(hasSendableImageAttachments || voice.isRecording || voice.noteGroupId !== null)) ||
 			voice.isInitializing ||
 			voice.isStopping ||
 			voice.isTranscribing ||
@@ -1236,9 +1254,8 @@
 		if (tab === 'chat' && browser) {
 			requestAnimationFrame(() => {
 				if (activeChatTab !== 'chat' || !messagesContainer) return;
-				messagesContainer.scrollTop = userHasScrolled
-					? savedChatScrollTop
-					: messagesContainer.scrollHeight;
+				if (userHasScrolled) messagesContainer.scrollTop = savedChatScrollTop;
+				else messageListRef?.scrollToLatest();
 			});
 		}
 	}
@@ -1248,7 +1265,6 @@
 		reviewSelection = null;
 
 		voice.stop();
-		cancelSessionBootstrap();
 		turnReconciliationRequestId += 1;
 
 		if (currentSession?.id) workerAdoption?.releaseSession(currentSession.id);
@@ -1284,8 +1300,19 @@
 		clearSessionRefreshTimeout();
 	}
 
+	/**
+	 * After a picker hands off to the chat, put the cursor in the composer on
+	 * desktop (the clicked card just disappeared, so focus would otherwise be
+	 * lost). Touch devices keep focus off the textarea so no keyboard pops.
+	 */
+	async function focusComposerAfterPicker() {
+		await tick();
+		voice.ref?.focusIfFinePointer();
+	}
+
 	function handleContextSelect(selection: ContextSelectionDetail) {
 		shellRouter.handleContextSelect(selection);
+		void focusComposerAfterPicker();
 	}
 
 	function openFocusSelector() {
@@ -1294,6 +1321,7 @@
 
 	function handleFocusSelection(newFocus: ProjectFocus) {
 		shellRouter.handleFocusSelection(newFocus);
+		void focusComposerAfterPicker();
 	}
 
 	function handleFocusClear() {
@@ -1302,6 +1330,7 @@
 
 	function handleProjectActionSelect(action: ProjectAction) {
 		shellRouter.handleProjectActionSelect(action);
+		void focusComposerAfterPicker();
 	}
 
 	function initializeFromAutoInit(config: AutoInitProjectConfig) {
@@ -1470,7 +1499,9 @@
 			label: snapshot.selectedContextLabel,
 			projectFocus: snapshot.projectFocus
 		});
-		messages = snapshot.messages;
+		// Persisted rows replace live/optimistic ones under new ids; keep their
+		// on-screen identity so the thread updates in place instead of remounting.
+		messages = carryRenderKeys(messages, snapshot.messages);
 		persistedTimelineItems = snapshot.timelineItems;
 		if (initialBrainDumpContext?.id) {
 			brainDumpContext = initialBrainDumpContext;
@@ -1580,7 +1611,6 @@
 		const backgroundRefresh = options.backgroundRefresh === true;
 		sessionLoadRequestId += 1;
 		const requestId = sessionLoadRequestId;
-		cancelSessionBootstrap();
 		if (sessionLoadController) {
 			sessionLoadController.abort();
 		}
@@ -1637,21 +1667,6 @@
 		return scrollHeight - scrollPosition < threshold;
 	}
 
-	// Helper: Scroll to bottom without jarring shifts.
-	// Called from $effect after messageCount changes (not during streaming
-	// content updates), so layout thrashing isn't a concern here.
-	// Scrolling synchronously in the effect (which runs after DOM update
-	// but before paint) eliminates the one-frame jump that rAF would cause.
-	function scrollToBottomIfNeeded() {
-		if (!messagesContainer) return;
-
-		// Only auto-scroll if user hasn't manually scrolled up
-		// This allows users to freely read earlier messages during streaming
-		if (!userHasScrolled) {
-			messagesContainer.scrollTop = messagesContainer.scrollHeight;
-		}
-	}
-
 	// Track manual scrolling by user
 	function handleScroll() {
 		if (!messagesContainer) return;
@@ -1664,59 +1679,32 @@
 		}
 	}
 
-	// Track when new messages are added (not content changes during streaming)
-	// This prevents constant scroll interruptions during streaming
-	const messageCount = $derived(messages.length);
-
-	// Auto-scroll only when new messages are added, not during streaming content updates or
-	// scroll-position changes. Keep the container and manual-scroll flag out of the effect's
-	// dependency graph so entering the bottom threshold never causes a snap to absolute bottom.
-	$effect(() => {
-		const count = messageCount;
-		if (count > 0) {
-			untrack(scrollToBottomIfNeeded);
-		}
-	});
+	// Conversation scroll policy (pin the new turn to the top, reply fills
+	// downward, "jump to latest" when content is below the fold) lives in
+	// AgentMessageList. The modal only asks it to reveal the latest content when
+	// the mobile keyboard opens.
+	let messageListRef = $state<
+		{ scrollToLatest: (options?: { smooth?: boolean }) => void } | undefined
+	>(undefined);
 
 	// Keyboard avoiding for mobile - sets --keyboard-height CSS var so the modal
 	// container shrinks via calc(100dvh - var(--keyboard-height, 0px)), keeping the
-	// composer visible above the iOS keyboard.
+	// composer visible above the iOS keyboard. Attached to the composer footer.
 	// In embedded mode, isOpen may stay false — treat embedded as always "open".
-	$effect(() => {
-		const isActive = embedded || isOpen;
-		if (!browser || !isActive || !composerContainer) {
-			if (keyboardAvoidingCleanup) {
-				keyboardAvoidingCleanup();
-				keyboardAvoidingCleanup = null;
-			}
-			return;
-		}
-
-		keyboardAvoidingCleanup = initKeyboardAvoiding({
-			element: composerContainer,
+	const keyboardAvoid: Attachment<HTMLElement> = (element) => {
+		if (!browser || !(embedded || isOpen)) return;
+		return initKeyboardAvoiding({
+			element,
 			applyTransform: false,
 			setCSSProperty: true,
 			onKeyboardChange: (isVisible) => {
-				if (!isVisible || !messagesContainer || userHasScrolled) return;
-				const syncScrollToBottom = () => {
-					if (!messagesContainer || userHasScrolled) return;
-					messagesContainer.scrollTop = messagesContainer.scrollHeight;
-				};
-				if (typeof requestAnimationFrame === 'function') {
-					requestAnimationFrame(syncScrollToBottom);
-					return;
-				}
-				setTrackedTimeout(syncScrollToBottom, 0);
+				if (!isVisible || userHasScrolled) return;
+				requestAnimationFrame(() => {
+					if (!userHasScrolled) messageListRef?.scrollToLatest();
+				});
 			}
 		});
-
-		return () => {
-			if (keyboardAvoidingCleanup) {
-				keyboardAvoidingCleanup();
-				keyboardAvoidingCleanup = null;
-			}
-		};
-	});
+	};
 
 	// ========================================================================
 	// Tool Display Presenter (extracted — see agent-chat-tool-presenter.ts)
@@ -1772,21 +1760,30 @@
 	// Thinking Block Management Functions
 	// ========================================================================
 
-	function createThinkingBlock(): string {
+	function createThinkingBlock(options: { renderKey?: string } = {}): string {
 		const blockId = crypto.randomUUID();
 		const thinkingBlock: ThinkingBlockMessage = {
 			id: blockId,
+			...(options.renderKey ? { renderKey: options.renderKey } : {}),
 			type: 'thinking_block',
 			activities: [],
 			status: 'active',
 			agentState: 'thinking',
 			isCollapsed: false,
-			content: 'BuildOS thinking...',
+			content: 'Thinking…',
 			timestamp: new Date()
 		};
 		messages = [...messages, thinkingBlock];
 		currentThinkingBlockId = blockId;
 		return blockId;
+	}
+
+	/** Drop the current thinking block (its turn was proven never admitted). */
+	function discardThinkingBlock() {
+		const blockId = currentThinkingBlockId;
+		if (!blockId) return;
+		currentThinkingBlockId = null;
+		messages = messages.filter((message) => message.id !== blockId);
 	}
 
 	function ensureThinkingBlock(): string {
@@ -2104,7 +2101,6 @@
 	function releaseSessionResources(reason: 'close' | 'destroy'): DataMutationSummary {
 		finalizeSession(reason);
 		voice.stop();
-		cancelSessionBootstrap();
 		turnReconciliationRequestId += 1;
 		clearSessionRefreshTimeout();
 		activeRestoredTurnRunId = null;
@@ -2227,7 +2223,7 @@
 
 	// Reopening a hidden keep-alive instance: the chat is on screen again, so
 	// drop its parked stack card.
-	let wasHiddenWhileParked = $state(false);
+	let wasHiddenWhileParked = false;
 	$effect(() => {
 		if (!browser) return;
 		if (hidden) {
@@ -2256,7 +2252,7 @@
 	}
 
 	async function handleInboxResolutionAction(action: AgentChatResolutionAction) {
-		if (action.disabled || action.loading || stream.isStreaming || isSessionBusy) return;
+		if (action.disabled || action.loading || stream.isStreaming || isLoadingSession) return;
 		const summary = presenter.buildMutationSummary({
 			hasMessagesSent: stream.hasSentMessage,
 			sessionId: currentSession?.id ?? null
@@ -2282,7 +2278,7 @@
 	}
 
 	function handleSelectSuggestion(text: string) {
-		if (stream.isStreaming || isSessionBusy) return;
+		if (stream.isStreaming || isLoadingSession) return;
 		inputValue = text;
 	}
 
@@ -2295,30 +2291,13 @@
 		const followUp = sameAccount
 			? `Google OAuth completed for ${completion.connectedEmailAddress}. Re-check get_external_account_status for that exact address, then continue with the inbox or calendar options I requested.`
 			: `Google OAuth completed. I requested ${completion.requestedEmailAddress}, but the Google account actually connected was ${completion.connectedEmailAddress}. Re-check get_external_account_status for ${completion.connectedEmailAddress} and tell me about the mismatch before continuing.`;
-		const deadline = Date.now() + 30_000;
-		while (
-			(stream.isStreaming ||
-				stream.isStartingStream ||
-				isSessionBusy ||
-				activeRestoredTurnRunId !== null) &&
-			Date.now() < deadline
-		) {
-			await new Promise<void>((resolve) => setTimeout(resolve, 250));
-		}
-
-		if (
-			stream.isStreaming ||
-			stream.isStartingStream ||
-			isSessionBusy ||
-			activeRestoredTurnRunId !== null
-		) {
+		if (isLoadingSession) {
 			inputValue = followUp;
-			toastService.info(
-				'Gmail connected. Send the prepared follow-up when this response finishes.'
-			);
+			toastService.info('Gmail connected. Send the prepared follow-up when the chat loads.');
 			return;
 		}
 
+		// Mid-response this queues and goes out on its own when the response ends.
 		await stream.sendMessage(followUp, { suppressInputClear: true });
 	}
 
@@ -2333,9 +2312,9 @@
 		// Only desktop users can send with Enter; mobile users use the send button
 		if (event.key === 'Enter' && !event.shiftKey && !isTouchDevice) {
 			event.preventDefault();
-			// If streaming, sendMessage will stop current run first
-			// Use handleSendMessage to properly handle "send while recording" flow
-			if (!isSendDisabled || stream.isStreaming || voice.isRecording) {
+			// Mid-response this queues the follow-up; handleSendMessage also owns the
+			// "send while recording" flow.
+			if (!isSendDisabled || voice.isRecording) {
 				void stream.handleSendMessage();
 			}
 		}
@@ -2345,6 +2324,22 @@
 		if (!browser) return;
 		void stream.handlePendingSendAfterTranscription(hasSendableImageAttachments);
 	});
+
+	// A follow-up queued mid-response goes out the moment the conversation is idle.
+	$effect(() => {
+		if (!stream.queuedMessage || stream.isTurnBusy || isLoadingSession) return;
+		untrack(() => void stream.flushQueuedMessage());
+	});
+
+	/** The session row admission returns when it created the session inline. */
+	function admittedSessionFromResponse(value: unknown, sessionId: string): ChatSession | null {
+		const session = (value as { data?: { session?: unknown } } | null)?.data?.session;
+		if (!session || typeof session !== 'object') return null;
+		const id = (session as { id?: unknown }).id;
+		return typeof id === 'string' && id.toLowerCase() === sessionId.toLowerCase()
+			? (session as ChatSession)
+			: null;
+	}
 
 	function hydrateSessionFromEvent(sessionEvent: ChatSession) {
 		currentSession = sessionEvent;
@@ -2571,6 +2566,8 @@
 		const nextMessage: UIMessage = {
 			...(existing ?? {}),
 			id: messageId,
+			// Stable across the placeholder → persisted id swap (no remount).
+			renderKey: existing?.renderKey ?? `turn:${input.handle.turnRunId}:assistant`,
 			session_id: input.handle.sessionId,
 			role: 'assistant',
 			type: 'assistant',
@@ -2596,6 +2593,7 @@
 			currentAssistantMessageIndex = messages.length;
 			messages = [...messages, nextMessage];
 		}
+		if (input.text) noteWorkerTextStarted();
 		currentAssistantMessageId = messageId;
 		if (input.status !== 'queued' && input.status !== 'running') {
 			currentAssistantMessageId = null;
@@ -2621,6 +2619,7 @@
 			messages = nextMessages;
 			currentAssistantMessageId = existing.id;
 			currentAssistantMessageIndex = existingIndex;
+			if (input.text) noteWorkerTextStarted();
 			return;
 		}
 		replaceWorkerAssistantSnapshot({
@@ -2628,6 +2627,39 @@
 			text: input.text,
 			assistantMessage: null,
 			status: 'running'
+		});
+	}
+
+	/**
+	 * First reply text for the live turn: the thinking block switches from
+	 * "Thinking…" to "Writing the response…" and the client clock records time
+	 * to first text (send press → words on screen, the number users feel).
+	 */
+	function noteWorkerTextStarted() {
+		const timing = stream.activeStreamTiming;
+		if (timing && timing.firstTextAtMs === null) {
+			stream.recordClientStreamEvent(timing.runId, 'text_delta');
+		}
+		const blockId = currentThinkingBlockId;
+		if (!blockId) return;
+		updateThinkingBlock(blockId, (block) =>
+			block.status === 'active' && block.content !== WRITING_RESPONSE_STATUS
+				? { ...block, content: WRITING_RESPONSE_STATUS }
+				: block
+		);
+	}
+
+	const WRITING_RESPONSE_STATUS = 'Writing the response…';
+
+	function captureTurnTiming(summary: ClientTurnTimingSummary) {
+		void captureEvent('agentic_chat_turn_client_timing', {
+			time_to_admitted_ms: summary.timeToAdmittedMs,
+			time_to_first_text_ms: summary.timeToFirstTextMs,
+			total_turn_ms: summary.totalStreamMs,
+			inline_session: summary.inlineSession,
+			prepared_prompt_used: summary.preparedPromptUsed,
+			terminal_state: summary.terminalState,
+			context_type: shellRouter.selectedContextType
 		});
 	}
 
@@ -2852,7 +2884,8 @@
 
 {#snippet messageList(compact: boolean)}
 	<AgentMessageList
-		{messages}
+		bind:this={messageListRef}
+		messages={displayMessages}
 		{displayContextLabel}
 		selectedContextType={shellRouter.selectedContextType}
 		{resolvedProjectFocus}
@@ -2986,7 +3019,7 @@
 
 {#snippet chatComposerFooter()}
 	<div
-		bind:this={composerContainer}
+		{@attach keyboardAvoid}
 		class="flex-shrink-0 overflow-visible bg-background/60 {conversationOnly
 			? 'border-t border-border/60 px-2 py-2 sm:px-3'
 			: 'px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3'}"
@@ -3040,10 +3073,12 @@
 			onToggleReview={() => toggleWorkflowReview('project_review')}
 			onToggleDocumentOrganization={() => toggleWorkflowReview('document_organization')}
 			{isSendDisabled}
-			allowSendWhileStreaming={isTouchDevice}
+			queuedMessage={stream.queuedMessage}
+			onEditQueued={() => stream.returnQueuedMessageToComposer()}
+			autofocus={!isTouchDevice}
 			{displayContextLabel}
 			placeholderOverride={composerPlaceholder}
-			disabled={isSessionBusy}
+			disabled={isLoadingSession}
 			disabledReason={sessionStatusLabel}
 			vocabularyTerms={chatComposerVocabularyTerms}
 			imageAttachments={attachments.imageAttachments}
@@ -3076,7 +3111,7 @@
 		<div class="relative z-10 flex flex-1 flex-col overflow-hidden bg-card">
 			<div class="flex h-full min-h-0 flex-col">
 				{@render chatConversationPane(
-					isSessionBusy && messages.length === 0,
+					isLoadingSession && messages.length === 0,
 					!!sessionLoadError && messages.length === 0,
 					null
 				)}
@@ -3097,6 +3132,7 @@
 		showCloseButton={false}
 		ariaLabel="BuildOS chat assistant dialog"
 		customClasses="overscroll-none"
+		keepMounted
 	>
 		{#snippet header()}
 			<!-- INKPRINT header bar with Frame texture -->
@@ -3112,6 +3148,7 @@
 					{displayContextSubtitle}
 					isStreaming={stream.isStreaming}
 					showBackButton={shouldShowBackButton}
+					backDisabled={stream.isStartingStream}
 					onBack={handleBackNavigation}
 					onClose={handleClose}
 					onMinimize={currentSession?.id && messages.length > 0
@@ -3147,6 +3184,7 @@
 				>
 					<ContextSelectionScreen
 						bind:this={shellRouter.contextSelectionRef}
+						active={shellRouter.showContextSelection && isOpen && !hidden}
 						onSelect={handleContextSelect}
 						onNavigationChange={handleContextSelectionNavChange}
 					/>
@@ -3154,30 +3192,42 @@
 
 				<!-- Chat view - Same height constraint as selection -->
 				<div
-					class={`${shellRouter.showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}
+					class={`${shellRouter.showContextSelection ? 'hidden' : 'flex'} relative h-full min-h-0 flex-col`}
 				>
-					{#if shellRouter.showProjectActionSelector}
-						<ProjectActionSelector
-							projectId={shellRouter.selectedEntityId || ''}
-							projectName={shellRouter.projectFocus?.projectName ??
-								shellRouter.selectedContextLabel ??
-								'Project'}
-							onSelectAction={(action) => handleProjectActionSelect(action)}
-							onSelectFocus={handleFocusSelection}
-						/>
-					{:else if shellRouter.showFocusSelector && isProjectContext(shellRouter.selectedContextType) && shellRouter.selectedEntityId && resolvedProjectFocus}
-						<ProjectFocusSelector
-							projectId={shellRouter.selectedEntityId}
-							projectName={resolvedProjectFocus.projectName}
-							currentFocus={resolvedProjectFocus}
-							onSelect={handleFocusSelection}
-						/>
-					{:else}
+					<!-- The conversation stays mounted (and laid out) under the project
+					     action/focus pickers: unmounting it lost the reader's place and
+					     replayed the whole thread when the picker closed. -->
+					<div
+						class="flex min-h-0 flex-1 flex-col"
+						aria-hidden={isChatPickerOpen}
+						inert={isChatPickerOpen}
+					>
 						{@render chatConversationPane(
 							shouldShowSessionLoadingState,
 							shouldShowSessionLoadErrorState,
 							initialChatSessionId
 						)}
+					</div>
+					{#if shellRouter.showProjectActionSelector}
+						<div class="absolute inset-0 z-10 flex flex-col overflow-hidden bg-card">
+							<ProjectActionSelector
+								projectId={shellRouter.selectedEntityId || ''}
+								projectName={shellRouter.projectFocus?.projectName ??
+									shellRouter.selectedContextLabel ??
+									'Project'}
+								onSelectAction={(action) => handleProjectActionSelect(action)}
+								onSelectFocus={handleFocusSelection}
+							/>
+						</div>
+					{:else if isFocusPickerOpen && shellRouter.selectedEntityId && resolvedProjectFocus}
+						<div class="absolute inset-0 z-10 flex flex-col overflow-hidden bg-card">
+							<ProjectFocusSelector
+								projectId={shellRouter.selectedEntityId}
+								projectName={resolvedProjectFocus.projectName}
+								currentFocus={resolvedProjectFocus}
+								onSelect={handleFocusSelection}
+							/>
+						</div>
 					{/if}
 					{#if shouldShowComposer}
 						<!-- INKPRINT composer footer -->

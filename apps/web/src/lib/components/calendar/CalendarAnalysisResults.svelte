@@ -89,6 +89,8 @@
 	// Task management state
 	let tasksExpanded = $state(new Set<string>());
 	let enabledTasks = $state<Record<string, boolean>>({});
+	// Task title edits keyed `${suggestionId}-${index}`; sent as taskModifications.
+	let taskTitleEdits = $state<Record<string, string>>({});
 
 	function parseSuggestedTasks(value: unknown): SuggestionTaskView[] {
 		if (!Array.isArray(value)) return [];
@@ -299,8 +301,11 @@
 				const taskSelections: Record<string, boolean> = {};
 				let selectedTaskCount = 0;
 
+				// The server merges taskModifications[index] over its stored task.
+				const taskModifications: Record<number, { title: string }> = {};
+
 				const tasks = parseSuggestedTasks(s.suggested_tasks);
-				tasks.forEach((_, index) => {
+				tasks.forEach((task, index) => {
 					const taskKey = `${s.id}-${index}`;
 					const isSelected = enabledTasks[taskKey] ?? true;
 					taskSelections[taskKey] = isSelected;
@@ -308,23 +313,27 @@
 					if (isSelected) {
 						selectedTaskCount++;
 					}
+
+					const editedTitle = taskTitleEdits[taskKey]?.trim();
+					if (editedTitle && editedTitle !== task.title) {
+						taskModifications[index] = { title: editedTitle };
+					}
 				});
+
+				const hasTaskModifications = Object.keys(taskModifications).length > 0;
 
 				return {
 					suggestionId: s.id,
 					action: 'accept',
 					selectedTaskCount,
-					modifications: modifications
-						? {
-								name: modifications.name,
-								description: modifications.description,
-								includeTasks: true,
-								taskSelections
-							}
-						: {
-								includeTasks: true,
-								taskSelections
-							}
+					modifications: {
+						...(modifications
+							? { name: modifications.name, description: modifications.description }
+							: {}),
+						includeTasks: true,
+						taskSelections,
+						...(hasTaskModifications ? { taskModifications } : {})
+					}
 				};
 			});
 
@@ -403,6 +412,7 @@
 		autoSelectProcessed = false; // Reset auto-select flag
 		tasksExpanded = new Set();
 		enabledTasks = {};
+		taskTitleEdits = {};
 	}
 
 	function formatConfidence(score: number | null): string {
@@ -699,26 +709,14 @@
 																	>
 																		<input
 																			type="text"
-																			value={task.title}
+																			value={taskTitleEdits[
+																				`${suggestion.id}-${index}`
+																			] ?? task.title}
 																			oninput={(e) => {
-																				const arr =
-																					suggestion.suggested_tasks;
-																				if (
-																					Array.isArray(
-																						arr
-																					) &&
-																					arr[index]
-																				) {
-																					(
-																						arr[
-																							index
-																						] as Record<
-																							string,
-																							unknown
-																						>
-																					).title =
-																						e.currentTarget.value;
-																				}
+																				taskTitleEdits[
+																					`${suggestion.id}-${index}`
+																				] =
+																					e.currentTarget.value;
 																			}}
 																			class="font-medium text-foreground text-sm bg-transparent border-0 border-b border-transparent hover:border-border focus:border-accent outline-none p-0 pb-0.5 flex-1 min-w-0 transition-colors"
 																			placeholder="Task name"

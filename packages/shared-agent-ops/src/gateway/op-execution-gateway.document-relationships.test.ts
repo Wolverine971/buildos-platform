@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/gateway/op-execution-gateway.document-relationships.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -239,6 +240,45 @@ describe('document relationship gateway handlers', () => {
 			parent_created: false,
 			message: `Moved document ${DOCUMENT_ID} under parent ${PARENT_ID}.`
 		});
+	});
+
+	it('matches a parent title literally and skips soft-deleted parents', async () => {
+		let lookup = 0;
+		const builders: Array<Record<string, ReturnType<typeof vi.fn>>> = [];
+		const admin = {
+			from: vi.fn(() => {
+				const builder = {
+					select: vi.fn(() => builder),
+					eq: vi.fn(() => builder),
+					is: vi.fn(() => builder),
+					ilike: vi.fn(() => builder),
+					limit: vi.fn(() => builder),
+					maybeSingle: vi.fn(async () => {
+						lookup += 1;
+						return {
+							data: {
+								id: lookup === 1 ? DOCUMENT_ID : PARENT_ID,
+								project_id: PROJECT_ID
+							},
+							error: null
+						};
+					})
+				};
+				builders.push(builder);
+				return builder;
+			})
+		};
+
+		await EXTERNAL_OP_HANDLERS['onto.document.tree.move'](context(admin), {
+			project_id: PROJECT_ID,
+			document_id: DOCUMENT_ID,
+			new_parent_title: '100%_done',
+			new_position: 0
+		});
+
+		const titleLookup = builders.find((builder) => builder.ilike!.mock.calls.length > 0);
+		expect(titleLookup?.ilike).toHaveBeenCalledWith('title', '100\\%\\_done');
+		expect(titleLookup?.is).toHaveBeenCalledWith('deleted_at', null);
 	});
 
 	it('classifies an unlinked exact parent as a pre-commit validation failure', async () => {

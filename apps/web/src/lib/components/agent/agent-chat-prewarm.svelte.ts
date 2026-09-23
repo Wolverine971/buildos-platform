@@ -31,7 +31,8 @@ export interface PrewarmControllerDeps {
 	getSelectedContextType(): ChatContextType | null;
 	getSelectedEntityId(): string | undefined;
 	getResolvedProjectFocus(): ProjectFocus | null;
-	getIsPreparingSession(): boolean;
+	/** Optional legacy guard: true while a blocking session bootstrap is in flight. */
+	getIsPreparingSession?(): boolean;
 	/** True while the current turn is starting, streaming, or being restored. */
 	getIsTurnActive(): boolean;
 	/** Review context is prepared by the worker after durable admission. */
@@ -351,7 +352,7 @@ export class PrewarmController {
 		}
 		const contextType = this.#deps.getSelectedContextType();
 		if (!contextType) return;
-		if (this.#deps.getIsPreparingSession()) return;
+		if (this.#deps.getIsPreparingSession?.()) return;
 		if (this.#deps.getIsTurnActive() || this.#deps.getIsProjectReview?.()) return;
 
 		const focus = this.#deps.getResolvedProjectFocus();

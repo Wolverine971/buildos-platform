@@ -55,6 +55,8 @@ export interface ProcessingJob<T = unknown> {
 	userId: string;
 	data: T;
 	attempts: number;
+	/** Attempt budget the queue retries within; the last attempt is `attempts + 1 === maxAttempts`. */
+	maxAttempts?: number;
 
 	/**
 	 * Aborted when the job's worker timeout fires or the queue shuts down.
@@ -545,6 +547,7 @@ export class SupabaseQueue {
 				userId: job.user_id!,
 				data: job.metadata,
 				attempts: job.attempts || 0,
+				maxAttempts: job.max_attempts || queueConfig.maxRetries,
 				signal: abortController.signal,
 
 				updateProgress: async (progress: JobProgress) => {

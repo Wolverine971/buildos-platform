@@ -130,7 +130,6 @@ export default defineConfig({
 			'**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
 			// Exclude LLM tests - they cost money and should be run separately
 			'**/lib/tests/llm/**',
-			'**/lib/tests/llm-simple/**',
 			// Exclude only the agentic e2e suites that make real turns, real DB
 			// writes and real judge calls; those run separately via
 			// `pnpm test:agentic` against a dev server. The harness's own unit
@@ -139,7 +138,6 @@ export default defineConfig({
 			// broken oracle could only be discovered by paying for a live
 			// battery (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J7).
 			'**/lib/tests/agentic-e2e/__tests__/**',
-			'**/lib/tests/agentic-e2e/scenarios/**/*.scenario.test.ts',
 			'**/lib/tests/agentic-e2e/phase-a/phase-a-control.test.ts',
 			'**/lib/tests/agentic-e2e/phase-a/route-mode-eval.test.ts',
 			'**/lib/tests/agentic-e2e/open-brief/open-brief-control.test.ts',

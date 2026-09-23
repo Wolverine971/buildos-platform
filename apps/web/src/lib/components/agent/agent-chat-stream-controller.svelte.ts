@@ -16,7 +16,6 @@ import type {
 	AgenticChatWorkerTurnDescriptorV1,
 	TurnHandleV1
 } from '@buildos/shared-types';
-import { SvelteDate } from 'svelte/reactivity';
 import { isChatWorkflowCommand } from '@buildos/shared-types';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { AgentStreamEventGuard } from '$lib/services/agentic-chat-v2/stream-protocol';
@@ -27,7 +26,6 @@ import {
 } from '$lib/services/agentic-chat-v2/scope';
 import {
 	AgenticChatWorkerUnavailableResponseError,
-	requestAgenticChatTransportLease,
 	requestAgenticChatWorkerAdmission,
 	type AgenticChatWorkerCommand,
 	type PublishedSpecialistSelection
@@ -39,15 +37,14 @@ import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
 import { workerActivityForStatus } from './agent-chat-worker-status';
 import { parseAdmissionResponse } from '$lib/services/agentic-chat-v2/worker-turn-adoption';
 
-export interface SessionBootstrapTarget {
-	contextType: ChatContextType;
-	entityId?: string;
-	projectFocus?: ProjectFocus | null;
-}
-
 export interface ClientStreamTimingState {
 	runId: number;
 	sendStartedAtMs: number;
+	/** Send press → worker admission accepted (the turn is durably queued). */
+	admittedAtMs: number | null;
+	/** True when admission created the session inline (first turn of a new chat). */
+	inlineSession: boolean;
+	preparedPromptUsed: boolean;
 	firstEventAtMs: number | null;
 	firstTextAtMs: number | null;
 	lastTextAtMs: number | null;
@@ -104,7 +101,6 @@ export interface StreamControllerDeps {
 	getSelectedEntityId(): string | undefined;
 	getResolvedProjectFocus(): ProjectFocus | null;
 	getCurrentSession(): ChatSession | null;
-	ensureSessionReady(target: SessionBootstrapTarget): Promise<ChatSession | null>;
 	getLastTurnContext(): LastTurnContext | null;
 	getIsLoadingSession(): boolean;
 	getActiveRestoredTurnRunId(): string | null;
@@ -114,11 +110,15 @@ export interface StreamControllerDeps {
 	messages: {
 		append(message: UIMessage): void;
 		removeById(messageId: string): void;
+		/** Copy-on-replace patch of one message (never mutate in place). */
+		update?(messageId: string, patch: Partial<UIMessage>): void;
 	};
 	thinking: {
-		create(): string;
+		create(options?: { renderKey?: string }): string;
 		updateState(state: 'thinking' | 'waiting_on_user', details?: string): void;
 		finalize(status?: 'completed' | 'interrupted' | 'cancelled' | 'error', note?: string): void;
+		/** Remove the current thinking block entirely (turn proven never admitted). */
+		discard?(): void;
 	};
 	assistant: {
 		flushText(): void;
@@ -136,27 +136,25 @@ export interface StreamControllerDeps {
 	setUserHasScrolled(value: boolean): void;
 	setExistingImagePickerOpen(value: boolean): void;
 	haptic?(style: 'light' | 'medium' | 'heavy'): void;
+	/** Product telemetry sink for the finished send timeline (PostHog in the modal). */
+	captureTurnTiming?(summary: ClientTurnTimingSummary): void;
 	fetchImpl?: typeof fetch;
 	logError?(message: string, err: unknown): void;
 	logDebug?(message: string, data?: unknown): void;
 }
 
-function buildSessionBootstrapTarget(
-	contextType: ChatContextType,
-	entityId?: string,
-	projectFocusOverride?: ProjectFocus | null
-): SessionBootstrapTarget {
-	return {
-		contextType,
-		entityId: entityId ?? projectFocusOverride?.projectId ?? undefined,
-		projectFocus: projectFocusOverride ?? null
-	};
-}
+export type ClientTurnTimingSummary = ReturnType<typeof summarizeClientStreamTiming>;
 
-function buildClientStreamTimingState(runId: number): ClientStreamTimingState {
+function buildClientStreamTimingState(
+	runId: number,
+	options: { sendStartedAtMs?: number; inlineSession?: boolean } = {}
+): ClientStreamTimingState {
 	return {
 		runId,
-		sendStartedAtMs: Date.now(),
+		sendStartedAtMs: options.sendStartedAtMs ?? Date.now(),
+		admittedAtMs: null,
+		inlineSession: options.inlineSession ?? false,
+		preparedPromptUsed: false,
 		firstEventAtMs: null,
 		firstTextAtMs: null,
 		lastTextAtMs: null,
@@ -179,6 +177,13 @@ function buildClientStreamTimingState(runId: number): ClientStreamTimingState {
  * both are decided before any durable write.
  */
 const WORKER_KNOWN_NOT_ADMITTED_CODES = new Set([
+	// Decided before any durable write in the admission route: auth, rate
+	// limit, and the inline transport decision (conflict / outage).
+	'UNAUTHORIZED',
+	'SESSION_EXPIRED',
+	'AGENTIC_CHAT_RATE_LIMITED',
+	'TRANSPORT_CONFLICT',
+	'WORKER_UNAVAILABLE',
 	'TRANSPORT_RENEGOTIATE',
 	'WORKER_CAPABILITY_UNAVAILABLE',
 	'CLIENT_UPGRADE_REQUIRED',
@@ -199,6 +204,9 @@ function diffMs(start: number | null, end: number | null): number | null {
 function summarizeClientStreamTiming(timing: ClientStreamTimingState) {
 	return {
 		runId: timing.runId,
+		timeToAdmittedMs: diffMs(timing.sendStartedAtMs, timing.admittedAtMs),
+		inlineSession: timing.inlineSession,
+		preparedPromptUsed: timing.preparedPromptUsed,
 		timeToFirstStreamEventMs: diffMs(timing.sendStartedAtMs, timing.firstEventAtMs),
 		timeToFirstTextMs: diffMs(timing.sendStartedAtMs, timing.firstTextAtMs),
 		timeFromFirstEventToFirstTextMs: diffMs(timing.firstEventAtMs, timing.firstTextAtMs),
@@ -220,6 +228,12 @@ export class AgentChatStreamController {
 	currentActivity = $state('');
 	error = $state<string | null>(null);
 	hasSentMessage = $state(false);
+	/**
+	 * Text the user sent while a turn was still running. It goes out on its own
+	 * as soon as the active turn completes or is stopped; a failed turn hands it
+	 * back to the composer instead so the user decides.
+	 */
+	queuedMessage = $state<string | null>(null);
 
 	// Run-guard tokens and timing telemetry. Deliberately NOT $state: nothing
 	// reads them reactively (templates/effects), and they're written in the
@@ -283,9 +297,38 @@ export class AgentChatStreamController {
 		this.currentActivity = '';
 		if (status === 'failed') {
 			this.error = 'BuildOS could not finish this response. Please try again.';
+			// Don't fire a queued follow-up into a turn that just failed.
+			this.returnQueuedMessageToComposer();
 		} else if (status !== 'cancelled') {
 			this.error = null;
 		}
+	}
+
+	/** Busy = a send is in flight, a worker turn is running, or a detached turn is restoring. */
+	get isTurnBusy(): boolean {
+		return (
+			this.isStartingStream ||
+			this.isStreaming ||
+			this.activeTurnHandle !== null ||
+			this.#deps.getActiveRestoredTurnRunId() !== null
+		);
+	}
+
+	/** Send the queued follow-up once the conversation is idle. Safe to call repeatedly. */
+	async flushQueuedMessage(): Promise<void> {
+		const queued = this.queuedMessage;
+		if (!queued || this.isTurnBusy || this.#deps.getIsLoadingSession()) return;
+		this.queuedMessage = null;
+		await this.sendMessage(queued, { suppressInputClear: true });
+	}
+
+	/** Cancel the queued follow-up and put its text back in the composer. */
+	returnQueuedMessageToComposer(): void {
+		const queued = this.queuedMessage;
+		if (!queued) return;
+		this.queuedMessage = null;
+		const draft = this.#deps.getInputValue().trim();
+		this.#deps.setInputValue(draft ? `${queued}\n\n${draft}` : queued);
 	}
 
 	releaseWorkerTurn(handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>): void {
@@ -343,7 +386,13 @@ export class AgentChatStreamController {
 		};
 		this.lastCompletedStreamTiming = finalized;
 		this.activeStreamTiming = null;
-		this.#deps.logDebug?.('[AgentChat] Stream timing', summarizeClientStreamTiming(finalized));
+		const summary = summarizeClientStreamTiming(finalized);
+		this.#deps.logDebug?.('[AgentChat] Stream timing', summary);
+		try {
+			this.#deps.captureTurnTiming?.(summary);
+		} catch (err) {
+			this.#deps.logDebug?.('[AgentChat] Turn timing capture failed', err);
+		}
 	}
 
 	buildTurnReconcileRequest(
@@ -438,6 +487,7 @@ export class AgentChatStreamController {
 		options: { suppressInputClear?: boolean } = {}
 	): Promise<void> {
 		const { suppressInputClear = false } = options;
+		const sendStartedAtMs = Date.now();
 		const trimmed = (contentOverride ?? this.#deps.getInputValue()).trim();
 		const streamAttachmentRefs = this.#deps.attachments.buildReadyRefs(false);
 		const optimisticAttachmentRefs = this.#deps.attachments.buildReadyRefs(true);
@@ -466,8 +516,8 @@ export class AgentChatStreamController {
 				})
 				? selectedSpecialist.selectionDecisionId
 				: undefined;
-		// Take a value copy before any await: a picker change or a lease retry must
-		// never replace the immutable version chosen for this submission.
+		// Take a value copy before any await: a picker change must never replace
+		// the immutable version chosen for this submission.
 		const publishedSpecialist =
 			reviewIntent === 'document_organization' && selectedSpecialist
 				? {
@@ -499,15 +549,26 @@ export class AgentChatStreamController {
 			this.error = 'Wait for the existing session to finish loading.';
 			return;
 		}
-		if (this.#deps.getActiveRestoredTurnRunId()) {
-			this.error = 'BuildOS is still finishing the latest response.';
+		if (this.isTurnBusy) {
+			// A plain text follow-up waits its turn instead of being refused; it
+			// sends on its own the moment the active response finishes.
+			if (
+				!trimmed ||
+				reviewIntent ||
+				streamAttachmentRefs.length > 0 ||
+				activeVoiceNoteGroupId
+			) {
+				this.error = 'BuildOS is still finishing the latest response.';
+				return;
+			}
+			this.queuedMessage = this.queuedMessage
+				? `${this.queuedMessage}\n\n${trimmed}`
+				: trimmed;
+			if (!suppressInputClear) this.#deps.setInputValue('');
+			this.error = null;
+			this.#deps.haptic?.('light');
 			return;
 		}
-		if (this.activeTurnHandle?.executionMode === 'worker_realtime' && this.isStreaming) {
-			this.error = 'BuildOS is still finishing the latest response.';
-			return;
-		}
-		if (this.isStartingStream) return;
 		if (
 			reviewIntent &&
 			(selectedContextType !== 'project' ||
@@ -524,209 +585,143 @@ export class AgentChatStreamController {
 			return;
 		}
 
+		// Everything the user sees on Send happens here, synchronously, before any
+		// network work: the bubble lands, the composer clears, and the thinking
+		// block starts. Admission then runs behind it; a turn the server proves it
+		// never accepted is rolled back below (bubble removed, draft restored).
 		this.isStartingStream = true;
-		let userMessage: UIMessage | null = null;
-		let workerAdmissionAttempted = false;
-		let workerAdmissionSessionId: string | null = null;
-
-		try {
-			if (this.isStreaming) {
-				await this.stopGeneration('superseded');
+		const requestContextType = selectedContextType;
+		const requestEntityId = this.#deps.getSelectedEntityId();
+		const requestProjectFocus = this.#deps.getResolvedProjectFocus();
+		const sessionAtSend = this.#deps.getCurrentSession();
+		const clientTurnId = crypto.randomUUID();
+		const transportStreamRunId = crypto.randomUUID();
+		const sentAt = new Date(sendStartedAtMs);
+		const userMessage: UIMessage = {
+			id: crypto.randomUUID(),
+			renderKey: `turn:${clientTurnId}:user`,
+			delivery: 'sending',
+			session_id: sessionAtSend?.id,
+			user_id: undefined,
+			type: 'user',
+			role: 'user' as ChatRole,
+			content:
+				trimmed ||
+				(streamAttachmentRefs.length === 1
+					? 'Attached 1 image'
+					: `Attached ${streamAttachmentRefs.length} images`),
+			timestamp: sentAt,
+			created_at: sentAt.toISOString(),
+			attachments: optimisticAttachmentRefs.length > 0 ? optimisticAttachmentRefs : undefined,
+			metadata: {
+				...(activeVoiceNoteGroupId ? { voice_note_group_id: activeVoiceNoteGroupId } : {}),
+				...(optimisticAttachmentRefs.length > 0
+					? {
+							attachment_count: optimisticAttachmentRefs.length,
+							attachment_only: !trimmed,
+							attachments: optimisticAttachmentRefs
+						}
+					: {}),
+				client_turn_id: clientTurnId,
+				stream_run_id: transportStreamRunId
 			}
-
-			const requestContextType = selectedContextType;
-			const requestEntityId = this.#deps.getSelectedEntityId();
-			const requestProjectFocus = this.#deps.getResolvedProjectFocus();
-			const prewarm = this.#deps.getPrewarm();
-			const currentPrewarmKey = prewarm.resolveCurrentKey();
-			let matchingPreparedPrompt = reviewIntent
-				? null
-				: await this.#resolvePreparedPromptForSend(prewarm, currentPrewarmKey);
-			let sessionForTurn = this.#deps.getCurrentSession();
-			// Raw reviews create their session atomically during admission; context
-			// and prompt preparation belong to the durable worker after claim.
-			if (!sessionForTurn?.id && !reviewIntent) {
-				try {
-					sessionForTurn = await this.#deps.ensureSessionReady(
-						buildSessionBootstrapTarget(
-							requestContextType,
-							requestEntityId,
-							requestProjectFocus
-						)
-					);
-				} catch (sessionError) {
-					if ((sessionError as DOMException)?.name === 'AbortError') {
-						return;
-					}
-					this.#deps.logDebug?.(
-						'[agent-chat] session bootstrap failed before transport negotiation',
-						sessionError
-					);
-					throw new AgenticChatWorkerUnavailableResponseError();
-				}
-
-				matchingPreparedPrompt = await this.#resolvePreparedPromptForSend(
-					prewarm,
-					currentPrewarmKey
+		};
+		this.#deps.messages.append(userMessage);
+		for (const attachment of optimisticAttachmentRefs) {
+			if (attachment.asset_id) {
+				this.#deps.attachments.scheduleMessageOcrPoll(
+					userMessage.id,
+					attachment.asset_id,
+					attachment.ocr_status ?? 'pending'
 				);
 			}
+		}
+		this.hasSentMessage = true;
+		if (!suppressInputClear) {
+			this.#deps.setInputValue('');
+			this.#deps.attachments.clearDraft();
+			this.#deps.setExistingImagePickerOpen(false);
+		}
+		if (activeVoiceNoteGroupId) {
+			this.#deps.voice.noteGroupId = null;
+		}
+		this.error = null;
+		this.lastCancelResult = null;
+		this.isStreaming = false;
+		// Client-side turn telemetry runs on the worker lane too: the modal's
+		// realtime projection feeds recordClientStreamEvent/attachServerTiming
+		// against this run id, and finishWorkerTurn closes it out.
+		this.activeStreamRunId = this.activeStreamRunId + 1;
+		const runId = this.activeStreamRunId;
+		this.activeStreamTiming = buildClientStreamTimingState(runId, {
+			sendStartedAtMs,
+			inlineSession: !sessionAtSend?.id
+		});
+		this.#clearStreamEventOrderingState();
+		this.#deps.clearPendingToolState();
+		this.#deps.thinking.create({ renderKey: `turn:${clientTurnId}:thinking` });
+		this.currentActivity = 'Sending…';
+		this.#deps.thinking.updateState('thinking', 'Thinking…');
+		this.#deps.setUserHasScrolled(false);
 
-			if (!sessionForTurn?.id && !reviewIntent) {
-				this.error = 'Unable to prepare a chat session right now.';
-				return;
-			}
-
-			const now = new SvelteDate();
-			const clientTurnId = crypto.randomUUID();
-			const transportStreamRunId = crypto.randomUUID();
-			const normalizedContextType = normalizeFastContextType(requestContextType);
-			const transportContext = {
-				type: normalizedContextType,
-				entityId: resolveEffectiveEntityId({
-					contextType: normalizedContextType,
-					entityId: requestEntityId,
-					projectFocus: requestProjectFocus
-				}),
-				projectId: resolveEffectiveProjectId({
-					contextType: normalizedContextType,
-					entityId: requestEntityId,
-					projectFocus: requestProjectFocus
-				})
-			};
-			const negotiateWorkerLease = () =>
-				requestAgenticChatTransportLease({
-					fetchImpl: this.#fetch,
-					request: {
-						clientTurnId,
-						streamRunId: transportStreamRunId,
-						sessionId: sessionForTurn?.id ?? null,
-						context: transportContext,
-						supportedModes: ['worker_realtime'],
-						supportedContractVersions: ['agentic_chat_worker_v1'],
-						priorDecisionId: null
-					}
-				});
-			let transportLease = await negotiateWorkerLease();
-
-			userMessage = {
-				id: crypto.randomUUID(),
-				session_id: sessionForTurn?.id,
-				user_id: undefined,
-				type: 'user',
-				role: 'user' as ChatRole,
-				content:
-					trimmed ||
-					(streamAttachmentRefs.length === 1
-						? 'Attached 1 image'
-						: `Attached ${streamAttachmentRefs.length} images`),
-				timestamp: now,
-				created_at: now.toISOString(),
-				attachments:
-					optimisticAttachmentRefs.length > 0 ? optimisticAttachmentRefs : undefined,
-				metadata: {
-					...(activeVoiceNoteGroupId
-						? { voice_note_group_id: activeVoiceNoteGroupId }
-						: {}),
-					...(optimisticAttachmentRefs.length > 0
-						? {
-								attachment_count: optimisticAttachmentRefs.length,
-								attachment_only: !trimmed,
-								attachments: optimisticAttachmentRefs
-							}
-						: {}),
-					client_turn_id: clientTurnId,
-					stream_run_id: transportStreamRunId
-				}
-			};
-
-			this.#deps.messages.append(userMessage);
-			for (const attachment of optimisticAttachmentRefs) {
-				if (attachment.asset_id) {
-					this.#deps.attachments.scheduleMessageOcrPoll(
-						userMessage.id,
-						attachment.asset_id,
-						attachment.ocr_status ?? 'pending'
-					);
-				}
-			}
-			this.hasSentMessage = true;
-			if (!suppressInputClear) {
-				this.#deps.setInputValue('');
-				this.#deps.attachments.clearDraft();
-				this.#deps.setExistingImagePickerOpen(false);
-			}
-			if (activeVoiceNoteGroupId) {
-				this.#deps.voice.noteGroupId = null;
-			}
-			this.error = null;
-
-			this.lastCancelResult = null;
-			this.isStreaming = false;
-			// Client-side turn telemetry runs on the worker lane too: the modal's
-			// realtime projection feeds recordClientStreamEvent/attachServerTiming
-			// against this run id, and finishWorkerTurn closes it out.
-			this.activeStreamRunId = this.activeStreamRunId + 1;
-			this.activeStreamTiming = buildClientStreamTimingState(this.activeStreamRunId);
-			this.#clearStreamEventOrderingState();
-			this.#deps.clearPendingToolState();
-			this.#deps.thinking.create();
-			this.currentActivity = 'Submitting secure worker turn...';
-			this.#deps.thinking.updateState(
-				'thinking',
-				'BuildOS is starting the worker response...'
-			);
-			this.#deps.setUserHasScrolled(false);
-			prewarm.clearPreparedPrompt();
-			// Keep the send lock and visible acknowledgement through admission, not just
-			// lease negotiation. The finally block releases it after acceptance/failure.
-
-			// One engine: a stale lease (an AGENTIC_CHAT_WORKER_KILL_EPOCH bump,
-			// or plain expiry) is answered by negotiating a fresh worker lease and
-			// re-admitting the same turn exactly once. A second renegotiation
-			// inside one send is a hard, user-visible error rather than a loop,
-			// and there is no legacy POST to fall back to.
-			let readmissionsRemaining = 1;
-			for (;;) {
-				workerAdmissionAttempted = true;
-				workerAdmissionSessionId = sessionForTurn?.id ?? null;
-				const admission = await requestAgenticChatWorkerAdmission({
-					fetchImpl: this.#fetch,
-					command: {
-						leaseToken: transportLease.token,
-						clientTurnId,
-						streamRunId: transportStreamRunId,
-						sessionId: sessionForTurn?.id ?? null,
-						context: transportContext,
-						message: submittedMessage,
-						attachments: streamAttachmentRefs,
-						projectFocus: requestProjectFocus,
-						lastTurnContext: this.#deps.getLastTurnContext(),
-						voiceNoteGroupId: activeVoiceNoteGroupId,
-						preparedPromptKey: matchingPreparedPrompt?.key ?? null,
-						reviewIntent,
-						publishedSpecialist
-					}
-				});
-
-				if (admission.response.ok) {
-					const { descriptor } = parseAdmissionResponse(admission.payload);
-					if (
-						descriptor.handle.clientTurnId !== clientTurnId ||
-						descriptor.handle.streamRunId !== transportStreamRunId
-					) {
-						throw new Error(
-							'Worker admission did not return the negotiated turn handle'
+		let workerAdmissionAttempted = false;
+		let workerAdmissionSessionId: string | null = null;
+		try {
+			// Prepared prompts are session-bound. A new chat's first turn has no
+			// session yet — admission creates it inline in the same request — so
+			// there is nothing to wait for or reuse.
+			const prewarm = this.#deps.getPrewarm();
+			const matchingPreparedPrompt =
+				reviewIntent || !sessionAtSend?.id
+					? null
+					: await this.#resolvePreparedPromptForSend(
+							prewarm,
+							prewarm.resolveCurrentKey()
 						);
-					}
-					workerAdmissionSessionId = descriptor.handle.sessionId;
-					await this.#deps.adoptWorkerAdmissionResponse(admission.payload);
-					if (reviewIntent) this.#deps.onReviewAdmitted?.();
-					return;
-				}
+			prewarm.clearPreparedPrompt();
+			if (this.activeStreamTiming?.runId === runId) {
+				this.activeStreamTiming.preparedPromptUsed = matchingPreparedPrompt !== null;
+			}
 
+			const normalizedContextType = normalizeFastContextType(requestContextType);
+			workerAdmissionAttempted = true;
+			workerAdmissionSessionId = sessionAtSend?.id ?? null;
+			// One request per turn: the server resolves the transport decision
+			// inline, so there is no separate lease round trip.
+			const admission = await requestAgenticChatWorkerAdmission({
+				fetchImpl: this.#fetch,
+				command: {
+					clientTurnId,
+					streamRunId: transportStreamRunId,
+					sessionId: sessionAtSend?.id ?? null,
+					context: {
+						type: normalizedContextType,
+						entityId: resolveEffectiveEntityId({
+							contextType: normalizedContextType,
+							entityId: requestEntityId,
+							projectFocus: requestProjectFocus
+						}),
+						projectId: resolveEffectiveProjectId({
+							contextType: normalizedContextType,
+							entityId: requestEntityId,
+							projectFocus: requestProjectFocus
+						})
+					},
+					message: submittedMessage,
+					attachments: streamAttachmentRefs,
+					projectFocus: requestProjectFocus,
+					lastTurnContext: this.#deps.getLastTurnContext(),
+					voiceNoteGroupId: activeVoiceNoteGroupId,
+					preparedPromptKey: matchingPreparedPrompt?.key ?? null,
+					reviewIntent,
+					publishedSpecialist
+				}
+			});
+
+			if (!admission.response.ok) {
 				const admissionError = await buildAgentRequestError(
 					admission.response,
-					'Unable to start the worker response. BuildOS is checking its status.'
+					'Unable to start this response. BuildOS is checking its status.'
 				);
 				if (
 					admissionError.code &&
@@ -735,13 +730,26 @@ export class AgentChatStreamController {
 					workerAdmissionAttempted = false;
 					workerAdmissionSessionId = null;
 				}
-				if (admissionError.code !== 'TRANSPORT_RENEGOTIATE' || readmissionsRemaining < 1) {
-					throw admissionError;
-				}
-				readmissionsRemaining -= 1;
-				this.currentActivity = 'Reconnecting to the worker...';
-				transportLease = await negotiateWorkerLease();
+				throw admissionError;
 			}
+
+			const { descriptor } = parseAdmissionResponse(admission.payload);
+			if (
+				descriptor.handle.clientTurnId !== clientTurnId ||
+				descriptor.handle.streamRunId !== transportStreamRunId
+			) {
+				throw new Error('Worker admission did not return the negotiated turn handle');
+			}
+			workerAdmissionSessionId = descriptor.handle.sessionId;
+			if (this.activeStreamTiming?.runId === runId) {
+				this.activeStreamTiming.admittedAtMs = Date.now();
+			}
+			this.#deps.messages.update?.(userMessage.id, {
+				delivery: 'sent',
+				session_id: descriptor.handle.sessionId
+			});
+			await this.#deps.adoptWorkerAdmissionResponse(admission.payload);
+			if (reviewIntent) this.#deps.onReviewAdmitted?.();
 		} catch (err) {
 			if ((err as DOMException)?.name === 'AbortError') return;
 
@@ -759,37 +767,50 @@ export class AgentChatStreamController {
 			this.currentActivity = '';
 			this.activeTurnHandle = null;
 			this.#clearStreamEventOrderingState();
-			this.#deps.thinking.finalize('error');
 			this.#deps.assistant.flushText();
 			this.#deps.assistant.finalizeMessage();
+			this.finalizeClientStreamTiming(runId, 'error');
 
-			if (workerAdmissionAttempted && workerAdmissionSessionId) {
-				void this.#deps
-					.discoverWorkerSession?.(workerAdmissionSessionId)
-					.catch((discoveryError) => {
-						this.#deps.logDebug?.(
-							'[AgentChat] Worker admission recovery discovery failed',
-							discoveryError
-						);
-					});
-			}
-
-			const failedUserMessageId = userMessage?.id;
-			if (failedUserMessageId && !workerAdmissionAttempted) {
-				this.#deps.messages.removeById(failedUserMessageId);
-			}
-			// Restore the failed draft, but never clobber text the user typed
-			// while the request was in flight.
-			if (!workerAdmissionAttempted && !this.#deps.getInputValue().trim()) {
-				this.#deps.setInputValue(trimmed);
-			}
-			if (
-				!workerAdmissionAttempted &&
-				!suppressInputClear &&
-				sentImageAttachments.length > 0 &&
-				this.#deps.attachments.getDraftSnapshot().length === 0
-			) {
-				this.#deps.attachments.restoreDraft(sentImageAttachments);
+			if (workerAdmissionAttempted) {
+				// Possibly admitted: keep the bubble (a duplicate turn is worse than
+				// a lost one) and let discovery adopt the turn if it exists.
+				this.#deps.thinking.finalize('error');
+				this.#deps.messages.update?.(userMessage.id, { delivery: 'sent' });
+				if (workerAdmissionSessionId) {
+					void this.#deps
+						.discoverWorkerSession?.(workerAdmissionSessionId)
+						.catch((discoveryError) => {
+							this.#deps.logDebug?.(
+								'[AgentChat] Worker admission recovery discovery failed',
+								discoveryError
+							);
+						});
+				}
+			} else {
+				// Proven never admitted: undo the optimistic turn and hand the draft
+				// back, without clobbering anything typed since.
+				if (err instanceof AgentRequestError && (err.status === 429 || err.status >= 500)) {
+					this.error =
+						"Couldn't send that just now. Your message is back in the box — try again in a moment.";
+				}
+				if (this.#deps.thinking.discard) this.#deps.thinking.discard();
+				else this.#deps.thinking.finalize('error');
+				this.#deps.messages.removeById(userMessage.id);
+				if (!suppressInputClear && !this.#deps.getInputValue().trim()) {
+					this.#deps.setInputValue(trimmed);
+				}
+				if (
+					!suppressInputClear &&
+					sentImageAttachments.length > 0 &&
+					this.#deps.attachments.getDraftSnapshot().length === 0
+				) {
+					this.#deps.attachments.restoreDraft(sentImageAttachments);
+				}
+				if (suppressInputClear && contentOverride && !this.#deps.getInputValue().trim()) {
+					// A queued/programmatic follow-up that never landed goes back to
+					// the composer rather than vanishing.
+					this.#deps.setInputValue(trimmed);
+				}
 			}
 		} finally {
 			this.isStartingStream = false;
@@ -906,6 +927,7 @@ export class AgentChatStreamController {
 		this.activeStreamTiming = null;
 		this.lastCompletedStreamTiming = null;
 		this.lastCancelResult = null;
+		this.queuedMessage = null;
 	}
 
 	#isActiveWorkerHandle(

@@ -37,6 +37,7 @@ import { processProjectContextSnapshotJob } from './workers/ontology/projectCont
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
 import { processFreshnessRadarScanJob } from './workers/freshness-radar/signalJob';
+import { processCaptureChatCheckpointJob } from './workers/chat/checkpoint/checkpointJob';
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
 import { processQuestionTreeJob } from './workers/question-tree/questionTreeWorker';
 import type { QuestionTreeJobMetadata } from './workers/question-tree/questionTreeContracts';
@@ -473,6 +474,9 @@ export async function startWorker() {
 
 	// Register Jev freshness radar (Tasker 88) processor; FRESHNESS_RADAR_MODE gates it.
 	queue.process('freshness_radar_scan', processFreshnessRadarScanJob);
+
+	// Register chat checkpoint capture (tasker/95): thinking log + START HERE, off the turn path.
+	queue.process('capture_chat_checkpoint', processCaptureChatCheckpointJob);
 
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);

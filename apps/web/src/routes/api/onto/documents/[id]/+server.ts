@@ -49,8 +49,10 @@ import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver
 import { logOntologyApiError } from '../../shared/error-logging';
 import {
 	syncLivePublicPageForDocument,
-	type PublicPageLiveSyncResult
+	type PublicPageLiveSyncResult,
+	type PublicPageWriteClients
 } from '$lib/server/public-page.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
 	readProjectLoopReviewContext,
 	queueProjectLoopBurstAsync,
@@ -713,6 +715,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const userName = session.user.name;
 		const userEmail = session.user.email;
 
+		// PATCH verified project write access above. Public page rows are
+		// server-owned, so live sync writes them with a lazily created service role.
+		const publicPageClients: PublicPageWriteClients = {
+			supabase: locals.supabase,
+			getAdminSupabase: createAdminSupabaseClient
+		};
 		const syncDocumentPayload = {
 			id: String(updatedDocument.id),
 			project_id: String(updatedDocument.project_id),
@@ -807,7 +815,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				// request blocking sync below so the modal can show an accurate live status.
 				!syncPublicPageNow
 					? syncLivePublicPageForDocument(
-							locals.supabase,
+							publicPageClients,
 							syncDocumentPayload,
 							actorId,
 							userId
@@ -867,7 +875,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (syncPublicPageNow) {
 			try {
 				publicPageSync = await syncLivePublicPageForDocument(
-					locals.supabase,
+					publicPageClients,
 					syncDocumentPayload,
 					actorId,
 					userId

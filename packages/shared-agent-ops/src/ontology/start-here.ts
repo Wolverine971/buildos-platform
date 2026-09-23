@@ -890,6 +890,473 @@ export function reconcileStartHereAuthoredSections(params: {
 	};
 }
 
+// ---------------------------------------------------------------------------
+// Checkpoint capture over the document's REAL sections (tasker/95). About half
+// of START HERE docs carry custom `##` headings ("What this book is"), and a
+// capture that only knows the six standard names inserts a twin section. These
+// helpers address sections by their actual heading. They split a model's
+// full-section rewrite into what applies now (additions, and the Current state
+// snapshot) and what needs review (removed or reworded blocks), and they check
+// the structural invariants before anything is written.
+// ---------------------------------------------------------------------------
+
+export type StartHereDocumentSection = {
+	heading: string;
+	body: string;
+	standard: StartHereAuthoredSectionName | null;
+};
+
+export type StartHereSectionBody = { heading: string; markdown: string };
+
+type HeadingOccurrence = SectionOccurrence & { heading: string };
+
+function headingKey(heading: string): string {
+	return heading.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/** The standard section a heading names, matched case- and space-insensitively. */
+export function standardStartHereSectionName(heading: string): StartHereAuthoredSectionName | null {
+	const key = headingKey(heading);
+	return START_HERE_AUTHORED_SECTION_NAMES.find((name) => headingKey(name) === key) ?? null;
+}
+
+/** Every `## heading` outside managed fences, in document order. */
+function findAllHeadingOccurrences(body: string): HeadingOccurrence[] {
+	const managedRanges = findStartHereManagedRegionRanges(body);
+	const occurrences: HeadingOccurrence[] = [];
+	for (const match of body.matchAll(/^##[ \t]+(.+?)[ \t]*$/gm)) {
+		if (match.index === undefined || isInsideRanges(match.index, managedRanges)) continue;
+		const bounds = sectionBoundsAfterHeading(body, match.index + match[0].length);
+		occurrences.push({
+			heading: (match[1] ?? '').trim(),
+			headingStart: match.index,
+			...bounds
+		});
+	}
+	return occurrences;
+}
+
+/**
+ * The authored sections under their real headings, in document order. A heading
+ * that repeats (legacy damage) is reported once with every occurrence's body
+ * joined, so a rewrite sees all of it.
+ */
+export function readStartHereDocumentSections(content: string): StartHereDocumentSection[] {
+	const body = normalizeMarkdownLineEndings(content);
+	const byKey = new Map<string, StartHereDocumentSection>();
+	for (const occurrence of findAllHeadingOccurrences(body)) {
+		const text = body.slice(occurrence.start, occurrence.end).trim();
+		const existing = byKey.get(headingKey(occurrence.heading));
+		if (existing) {
+			existing.body = [existing.body, text].filter(Boolean).join('\n\n');
+			continue;
+		}
+		byKey.set(headingKey(occurrence.heading), {
+			heading: occurrence.heading,
+			body: text,
+			standard: standardStartHereSectionName(occurrence.heading)
+		});
+	}
+	return [...byKey.values()];
+}
+
+/**
+ * Section-body sanitizer. HTML comments could forge managed fences and `#`/`##`
+ * headings would split the section, so both are neutralized; `###` and deeper
+ * subheadings are ordinary section content and stay.
+ */
+export function sanitizeStartHereSectionMarkdown(value: string): string {
+	return normalizeMarkdownLineEndings(value)
+		.replace(/<!--[\s\S]*?-->/g, '')
+		.replace(/^[ \t]{0,3}#{1,2}[ \t]+(.*)$/gm, '**$1**')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+}
+
+/**
+ * Replace section bodies by heading (case-insensitive). A repeated heading
+ * collapses into its first occurrence. A heading the document lacks is added
+ * only when it is a standard section name: in canonical order, never inside a
+ * managed fence. Managed fences and untouched sections keep their bytes.
+ */
+export function applyStartHereSectionBodies(
+	content: string,
+	updates: StartHereSectionBody[]
+): string {
+	const lineEnding = preferredLineEnding(content);
+	let next = normalizeMarkdownLineEndings(content);
+	for (const update of updates) {
+		const markdown = sanitizeStartHereSectionMarkdown(update.markdown);
+		if (!markdown) continue;
+		const key = headingKey(update.heading);
+		const [first, ...duplicates] = findAllHeadingOccurrences(next).filter(
+			(occurrence) => headingKey(occurrence.heading) === key
+		);
+		if (!first) {
+			const standard = standardStartHereSectionName(update.heading);
+			if (standard) next = insertAuthoredSection(next, standard, markdown);
+			continue;
+		}
+		for (const duplicate of duplicates.reverse()) {
+			next = joinMarkdownBlocks(
+				next.slice(0, duplicate.headingStart),
+				next.slice(duplicate.end)
+			);
+		}
+		next = joinMarkdownBlocks(next.slice(0, first.start), markdown, next.slice(first.end));
+	}
+	const finalBody = applyLineEnding(next, lineEnding);
+	return finalBody === content ? content : finalBody;
+}
+
+/** A section body as top-level blocks: each bullet with its continuation lines, or a paragraph. */
+export function splitStartHereSectionBlocks(body: string): string[] {
+	return parseMarkdownBlocks(body).map((block) => block.lines.join('\n'));
+}
+
+/** Blocks back into a section body: bullets as a tight list, paragraphs a blank line apart. */
+export function joinStartHereSectionBlocks(blocks: string[]): string {
+	return renderMarkdownBlocks(blocks.flatMap((block) => parseMarkdownBlocks(block)));
+}
+
+/**
+ * Identity of a block for "was this line kept?": date stamps, bullet markers,
+ * quote/dash styles and whitespace do not count as a change.
+ */
+function blockIdentity(block: MarkdownBlock): string {
+	return block.lines
+		.join('\n')
+		.replace(DATE_STAMP_PATTERN, '')
+		.replace(/^(\s*)[-*+](\s+)/gm, '$1-$2')
+		.replace(/[‘’]/g, "'")
+		.replace(/[“”]/g, '"')
+		.replace(/\s*[–—]\s*|\s+-\s+/g, ' - ')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+/** Drop any stamp the model wrote and, when given, stamp the capture date. */
+function restampBlock(block: MarkdownBlock, date: string | null): MarkdownBlock {
+	const lines = block.lines.map((line) =>
+		line.replace(DATE_STAMP_PATTERN, '').replace(/[ \t]+$/, '')
+	);
+	if (date && block.bullet) {
+		const last = lines.length - 1;
+		lines[last] = `${lines[last]} _(${date})_`;
+	}
+	return { bullet: block.bullet, lines };
+}
+
+export type StartHereSectionChangeKind =
+	| 'added_section'
+	| 'additive'
+	| 'snapshot'
+	| 'mixed'
+	| 'replacement';
+
+export type StartHereSectionPlan = {
+	heading: string;
+	kind: StartHereSectionChangeKind;
+	/** Body to apply now; null when nothing in this section applies automatically. */
+	autoMarkdown: string | null;
+	/** Complete rewrite to review; null when the automatic part already covers it. */
+	reviewMarkdown: string | null;
+	addedBlocks: string[];
+	removedBlocks: string[];
+};
+
+export type StartHereCheckpointSkipReason =
+	| 'unknown_heading'
+	| 'duplicate'
+	| 'locked'
+	| 'empty'
+	| 'too_long'
+	| 'unchanged';
+
+export type StartHereCheckpointPlan = {
+	plans: StartHereSectionPlan[];
+	skipped: Array<{ heading: string; reason: StartHereCheckpointSkipReason }>;
+};
+
+const START_HERE_CUSTOM_SECTION_MAX_CHARS = 4000;
+
+/**
+ * Split full-section rewrites into automatic and reviewed parts.
+ *
+ * - A block the rewrite keeps (same text, ignoring stamps and punctuation
+ *   style) stays byte-for-byte as it is in the document.
+ * - A section with nothing removed or reworded applies automatically, and so
+ *   does a missing standard section and every snapshot section (Current state).
+ * - Otherwise the whole rewrite goes to review, while its brand-new bullets
+ *   (no matching bold title in the document) still apply now.
+ * - Decision bullets that are new or reworded carry the capture date; a date
+ *   the model wrote is always dropped.
+ */
+export function planStartHereCheckpointRewrites(params: {
+	content: string;
+	rewrites: StartHereSectionBody[];
+	today: string;
+	lockedHeadings?: Iterable<string>;
+	snapshotHeadings?: Iterable<string>;
+}): StartHereCheckpointPlan {
+	const sections = new Map(
+		readStartHereDocumentSections(params.content).map((section) => [
+			headingKey(section.heading),
+			section
+		])
+	);
+	const locked = new Set([...(params.lockedHeadings ?? [])].map(headingKey));
+	const snapshots = new Set([...(params.snapshotHeadings ?? ['Current state'])].map(headingKey));
+	const hasCustomHeadings = [...sections.values()].some((section) => !section.standard);
+	const seen = new Set<string>();
+	const result: StartHereCheckpointPlan = { plans: [], skipped: [] };
+	const skip = (heading: string, reason: StartHereCheckpointSkipReason) =>
+		result.skipped.push({ heading, reason });
+
+	for (const rewrite of params.rewrites) {
+		const key = headingKey(rewrite.heading);
+		const current = sections.get(key) ?? null;
+		const standard = standardStartHereSectionName(rewrite.heading);
+		const heading = current?.heading ?? standard ?? rewrite.heading.trim();
+		if (seen.has(key)) {
+			skip(heading, 'duplicate');
+			continue;
+		}
+		seen.add(key);
+		if (!current && !standard) {
+			skip(heading, 'unknown_heading');
+			continue;
+		}
+		if (locked.has(key)) {
+			skip(heading, 'locked');
+			continue;
+		}
+		const markdown = stripStartHereScaffolding(
+			sanitizeStartHereSectionMarkdown(rewrite.markdown)
+		);
+		if (!markdown) {
+			skip(heading, 'empty');
+			continue;
+		}
+
+		const currentText = stripStartHereScaffolding(current?.body ?? '');
+		const oldBlocks = parseMarkdownBlocks(currentText);
+		const newBlocks = parseMarkdownBlocks(markdown);
+		const oldIds = oldBlocks.map(blockIdentity);
+		const oldKeys = oldBlocks.map((block) =>
+			block.bullet ? bulletKey(block.lines.join(' ')) : null
+		);
+		const stampDate = headingKey(heading) === 'decisions' ? params.today : null;
+
+		const kept = new Set<number>();
+		const reworded = new Set<number>();
+		// Each new block, resolved: kept old text, a fresh block, or dropped.
+		const resolved: Array<{ block: MarkdownBlock; oldIndex: number | null; fresh: boolean }> =
+			[];
+		const keysOfKept = new Set<string>();
+		newBlocks.forEach((block) => {
+			const identity = blockIdentity(block);
+			const oldIndex = oldIds.findIndex((id, index) => id === identity && !kept.has(index));
+			if (oldIndex >= 0) {
+				kept.add(oldIndex);
+				const oldKey = oldKeys[oldIndex];
+				if (oldKey) keysOfKept.add(oldKey);
+				resolved.push({ block: oldBlocks[oldIndex]!, oldIndex, fresh: false });
+				return;
+			}
+			if (oldIds.includes(identity)) return; // a kept line written twice
+			resolved.push({ block, oldIndex: null, fresh: true });
+		});
+		const fresh = resolved.filter((entry) => entry.fresh);
+		const restated = new Set<(typeof resolved)[number]>();
+		for (const entry of fresh) {
+			const key = entry.block.bullet ? bulletKey(entry.block.lines.join(' ')) : null;
+			if (!key) continue;
+			if (keysOfKept.has(key)) {
+				restated.add(entry); // a kept decision/term said again in new words
+				continue;
+			}
+			const pairedOld = oldKeys.findIndex(
+				(oldKey, index) => oldKey === key && !kept.has(index)
+			);
+			if (pairedOld >= 0) reworded.add(pairedOld);
+		}
+		const reviewEntries = resolved
+			.filter((entry) => !restated.has(entry))
+			.map((entry) =>
+				entry.fresh ? { ...entry, block: restampBlock(entry.block, stampDate) } : entry
+			);
+		const reviewText = renderMarkdownBlocks(reviewEntries.map((entry) => entry.block));
+		const removedIndexes = oldBlocks
+			.map((_, index) => index)
+			.filter((index) => !kept.has(index));
+		const addedEntries = reviewEntries.filter((entry) => entry.fresh);
+
+		let kind: StartHereSectionChangeKind;
+		let autoText: string | null;
+		let reviewTextOrNull: string | null = null;
+		if (!current) {
+			// In a doc with its own headings, a new standard section may duplicate
+			// a custom one ("What this is" beside "What this book is"), so the
+			// structural change waits for review there.
+			kind = 'added_section';
+			autoText = hasCustomHeadings ? null : reviewText;
+			reviewTextOrNull = hasCustomHeadings ? reviewText : null;
+		} else if (snapshots.has(key)) {
+			kind = 'snapshot';
+			autoText = reviewText;
+		} else {
+			// Fresh bullets that pair with no old bullet are safe to add now; when
+			// lines were removed, fresh paragraphs may be rewrites of them and wait
+			// for review with the rest.
+			const hasRemovals = removedIndexes.length > 0;
+			const autoAdditions = addedEntries.filter((entry) => {
+				if (!hasRemovals) return true;
+				if (!entry.block.bullet) return false;
+				const key = bulletKey(entry.block.lines.join(' '));
+				return !key || !oldKeys.includes(key);
+			});
+			const anchored = anchorAdditions(reviewEntries, autoAdditions);
+			autoText =
+				anchored.length > 0
+					? renderMarkdownBlocks(insertAdditions(oldBlocks, anchored))
+					: null;
+			if (hasRemovals) {
+				kind = autoAdditions.length > 0 ? 'mixed' : 'replacement';
+				reviewTextOrNull = reviewText;
+			} else {
+				kind = 'additive';
+			}
+		}
+
+		if (
+			autoText !== null &&
+			comparableSectionText(autoText) === comparableSectionText(currentText)
+		) {
+			autoText = null;
+		}
+		if (
+			reviewTextOrNull !== null &&
+			comparableSectionText(reviewTextOrNull) ===
+				comparableSectionText(autoText ?? currentText)
+		) {
+			reviewTextOrNull = null;
+		}
+		if (autoText === null && reviewTextOrNull === null) {
+			skip(heading, 'unchanged');
+			continue;
+		}
+		const maxChars = Math.max(
+			standard ? START_HERE_SECTION_MAX_CHARS[standard] : START_HERE_CUSTOM_SECTION_MAX_CHARS,
+			currentText.length
+		);
+		if ((autoText?.length ?? 0) > maxChars) {
+			skip(heading, 'too_long');
+			continue;
+		}
+		if ((reviewTextOrNull?.length ?? 0) > maxChars) reviewTextOrNull = null;
+		if (autoText === null && reviewTextOrNull === null) {
+			skip(heading, 'too_long');
+			continue;
+		}
+
+		result.plans.push({
+			heading,
+			kind,
+			autoMarkdown: autoText,
+			reviewMarkdown: reviewTextOrNull,
+			addedBlocks: addedEntries.map((entry) => entry.block.lines.join('\n')),
+			removedBlocks: [...new Set([...removedIndexes, ...reworded])].map((index) =>
+				oldBlocks[index]!.lines.join('\n')
+			)
+		});
+	}
+	return result;
+}
+
+type AnchoredAddition = { block: MarkdownBlock; anchor: number | null };
+
+/** Each addition, anchored to the kept block that precedes it in the rewrite. */
+function anchorAdditions(
+	rewrite: Array<{ block: MarkdownBlock; oldIndex: number | null; fresh: boolean }>,
+	additions: Array<{ block: MarkdownBlock; oldIndex: number | null; fresh: boolean }>
+): AnchoredAddition[] {
+	const include = new Set(additions);
+	const anchored: AnchoredAddition[] = [];
+	let anchor: number | null = null;
+	for (const entry of rewrite) {
+		if (!entry.fresh) anchor = entry.oldIndex;
+		else if (include.has(entry)) anchored.push({ block: entry.block, anchor });
+	}
+	return anchored;
+}
+
+/** The existing blocks in their order, each addition after its anchor. Existing text never moves. */
+function insertAdditions(
+	oldBlocks: MarkdownBlock[],
+	additions: AnchoredAddition[]
+): MarkdownBlock[] {
+	const leading = additions.filter((addition) => addition.anchor === null).map((a) => a.block);
+	return [
+		...leading,
+		...oldBlocks.flatMap((block, index) => [
+			block,
+			...additions.filter((addition) => addition.anchor === index).map((a) => a.block)
+		])
+	];
+}
+
+export type StartHereInvariantViolation =
+	| 'managed_regions_changed'
+	| 'duplicate_heading'
+	| 'section_removed';
+
+function headingCounts(content: string): Map<string, number> {
+	const counts = new Map<string, number>();
+	for (const occurrence of findAllHeadingOccurrences(normalizeMarkdownLineEndings(content))) {
+		const key = headingKey(occurrence.heading);
+		counts.set(key, (counts.get(key) ?? 0) + 1);
+	}
+	return counts;
+}
+
+/**
+ * Structural invariants for a capture write. Managed fences must survive
+ * byte-for-byte, no heading may appear more often than it already did (and
+ * never twice when it was new), and no section may disappear.
+ */
+export function checkStartHereCaptureInvariants(
+	before: string,
+	after: string
+): StartHereInvariantViolation[] {
+	const violations: StartHereInvariantViolation[] = [];
+	const fences = (body: string) =>
+		findStartHereManagedRegionRanges(body).map((range) => body.slice(range.from, range.to));
+	const beforeFences = fences(before);
+	const afterFences = fences(after);
+	if (
+		beforeFences.length !== afterFences.length ||
+		beforeFences.some((fence, index) => fence !== afterFences[index])
+	) {
+		violations.push('managed_regions_changed');
+	}
+	const beforeCounts = headingCounts(before);
+	const afterCounts = headingCounts(after);
+	for (const [key, count] of afterCounts) {
+		if (count > 1 && count > (beforeCounts.get(key) ?? 0)) {
+			violations.push('duplicate_heading');
+			break;
+		}
+	}
+	for (const key of beforeCounts.keys()) {
+		if (!afterCounts.has(key)) {
+			violations.push('section_removed');
+			break;
+		}
+	}
+	return violations;
+}
+
 function insertStatusRegion(body: string, block: string): string {
 	const headingMatch = body.match(/^# .+$/m);
 	if (!headingMatch || headingMatch.index === undefined) {

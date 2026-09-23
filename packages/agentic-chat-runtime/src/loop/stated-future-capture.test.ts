@@ -38,4 +38,19 @@ describe('stated-future capture rendering', () => {
 		expect(description).toContain('…".');
 		expect(description).toContain('Full message: "message ');
 	});
+
+	it('collapses dictation whitespace, including line breaks', () => {
+		expect(buildStatedFutureTaskTitle('still  need to\nbook the room')).toBe(
+			'Still need to book the room'
+		);
+		expect(buildStatedFutureTaskTitle('   ')).toBeNull();
+	});
+
+	it('omits the full message line when it adds nothing over the clause', () => {
+		const description = buildStatedFutureTaskDescription({
+			clause: 'waiting to hear back',
+			userMessage: 'waiting to hear back'
+		});
+		expect(description).not.toContain('Full message:');
+	});
 });

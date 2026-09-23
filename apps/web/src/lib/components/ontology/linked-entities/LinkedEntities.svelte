@@ -437,11 +437,12 @@
 		if (!isCurrentSourceSession(session)) return;
 		const onLinksChangedForRequest = onLinksChanged;
 
-		// Optimistic update: find and remove the entity
-		const backup = { ...linkedEntities };
-
-		// Remove from all arrays
+		// Optimistic update: remove the entity, remembering where it was
+		const removedFrom: Array<[keyof LinkedEntitiesResult, number]> = [];
 		for (const key of Object.keys(linkedEntities) as (keyof LinkedEntitiesResult)[]) {
+			const index = linkedEntities[key].findIndex((e) => e.edge_id === entity.edge_id);
+			if (index === -1) continue;
+			removedFrom.push([key, index]);
 			linkedEntities[key] = linkedEntities[key].filter((e) => e.edge_id !== entity.edge_id);
 		}
 
@@ -462,8 +463,14 @@
 		} catch (err) {
 			if (!isCurrentSourceSession(session)) return;
 
-			// Revert on error
-			linkedEntities = backup;
+			// Revert only this link. Restoring a whole snapshot would resurrect other
+			// links removed successfully while this request was in flight.
+			for (const [key, index] of removedFrom) {
+				if (linkedEntities[key].some((e) => e.edge_id === entity.edge_id)) continue;
+				const restored = [...linkedEntities[key]];
+				restored.splice(Math.min(index, restored.length), 0, entity);
+				linkedEntities[key] = restored;
+			}
 			const message = err instanceof Error ? err.message : 'Failed to remove link';
 			toastService.error(message);
 		}

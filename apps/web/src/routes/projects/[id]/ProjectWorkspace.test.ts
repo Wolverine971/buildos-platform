@@ -908,6 +908,35 @@ describe('ProjectWorkspace edge states', () => {
 		expect(within(docs).queryByText('Quick access')).not.toBeInTheDocument();
 	});
 
+	it('lists documents missing from the tree as unlinked without refetching the tree', async () => {
+		const linked = projectDocument();
+		const loose = {
+			...projectDocument(),
+			id: '55555555-5555-4555-8555-555555555555',
+			title: 'Loose interview notes'
+		};
+		render(ProjectWorkspace, {
+			props: {
+				data: projectData({
+					documents: [linked, loose],
+					project: {
+						...projectData().project,
+						doc_structure: { version: 1, root: [{ id: linked.id, order: 0 }] }
+					}
+				}) as any
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('tab', { name: 'Docs 2' }));
+		const docs = await screen.findByRole('tabpanel', { name: 'Docs 2' });
+		expect(
+			await within(docs).findByRole('button', { name: /Unlinked documents \(1\)/ })
+		).toBeInTheDocument();
+		expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/doc-tree'))).toBe(
+			false
+		);
+	});
+
 	it('keeps Activity focused on recent chats, change history, and the project schedule', async () => {
 		render(ProjectWorkspace, {
 			props: {

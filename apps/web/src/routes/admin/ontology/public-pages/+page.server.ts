@@ -2,7 +2,12 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import { setPublicPageReviewAdminDecision } from '$lib/server/public-page-content-review.service';
+import {
+	didPublicPageReviewLlmComplete,
+	getPublicPageReviewApprovalBlocker,
+	PublicPageReviewDecisionError,
+	setPublicPageReviewAdminDecision
+} from '$lib/server/public-page-content-review.service';
 
 type PublicPageRow = {
 	id: string;
@@ -41,7 +46,44 @@ type ReviewRow = {
 	admin_decision_reason: string | null;
 	admin_decision_by: string | null;
 	admin_decision_at: string | null;
+	review_metadata: unknown;
 };
+
+type LlmReviewState = 'completed' | 'failed' | 'not_run';
+
+function toRecord(value: unknown): Record<string, unknown> {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
+}
+
+function toNumberOrNull(value: unknown): number | null {
+	return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * What the AI review actually covered for this attempt, so an admin knows
+ * what they are approving.
+ */
+function summarizeLlmReview(review: ReviewRow) {
+	const metadata = toRecord(review.review_metadata);
+	const coverage = toRecord(metadata.llm_review);
+	const completed = didPublicPageReviewLlmComplete({ review_metadata: metadata });
+	const state: LlmReviewState = completed
+		? 'completed'
+		: metadata.llm_review_failed === true
+			? 'failed'
+			: 'not_run';
+	return {
+		state,
+		skipped_reason: toStringOrNull(metadata.llm_review_skipped_reason),
+		reviewed_chars: toNumberOrNull(coverage.reviewed_chars),
+		total_chars: toNumberOrNull(coverage.total_chars),
+		chunks_failed: toNumberOrNull(coverage.chunks_failed),
+		truncated: coverage.truncated === true,
+		input_redacted: metadata.llm_input_redacted === true
+	};
+}
 
 function toStringArray(value: unknown): string[] {
 	if (!Array.isArray(value)) return [];
@@ -93,7 +135,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		(adminClient as any)
 			.from('onto_public_page_review_attempts')
 			.select(
-				'id, project_id, document_id, public_page_id, source, status, summary, reasons, text_findings, image_findings, policy_version, created_by, created_at, admin_decision, admin_decision_reason, admin_decision_by, admin_decision_at'
+				'id, project_id, document_id, public_page_id, source, status, summary, reasons, text_findings, image_findings, policy_version, created_by, created_at, admin_decision, admin_decision_reason, admin_decision_by, admin_decision_at, review_metadata'
 			)
 			.order('created_at', { ascending: false })
 			.limit(600)
@@ -192,6 +234,15 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 
 	const hydratedReviews = reviews.map((review) => ({
 		id: review.id,
+		llm_review: summarizeLlmReview(review),
+		approval_blocker:
+			review.status === 'flagged'
+				? getPublicPageReviewApprovalBlocker({
+						status: 'flagged',
+						policy_version: review.policy_version,
+						review_metadata: toRecord(review.review_metadata)
+					})
+				: null,
 		project_id: review.project_id,
 		project_name: projectNameById.get(review.project_id) ?? 'Unknown Project',
 		document_id: review.document_id,
@@ -288,7 +339,7 @@ export const actions: Actions = {
 		try {
 			const adminClient = createAdminSupabaseClient();
 			await setPublicPageReviewAdminDecision({
-				supabase: adminClient,
+				adminSupabase: adminClient,
 				reviewId,
 				actorId: String(actorId),
 				decision,
@@ -300,6 +351,9 @@ export const actions: Actions = {
 				decision
 			};
 		} catch (err) {
+			if (err instanceof PublicPageReviewDecisionError) {
+				return fail(409, { error: err.message });
+			}
 			console.error('[Admin][Public Pages] Failed to persist review decision:', err);
 			return fail(500, { error: 'Failed to save review decision' });
 		}

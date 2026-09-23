@@ -295,6 +295,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			);
 		}
 
+		let deletesAsPageOwner = false;
 		if (comment.created_by !== actorId) {
 			const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin');
 			if (adminError) {
@@ -326,12 +327,19 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 					'Only the comment author or document owner can delete this comment'
 				);
 			}
+			deletesAsPageOwner = !isAdmin;
 		}
 
-		const { error: updateError } = await supabase
+		// RLS only lets the author or an admin update a comment, so the page-owner
+		// moderation path writes through the admin client, pinned to the entity the
+		// ownership check was made against.
+		const writer = deletesAsPageOwner ? createAdminSupabaseClient() : supabase;
+		const { data: deletedRows, error: updateError } = await writer
 			.from('onto_comments')
 			.update({ deleted_at: new Date().toISOString() })
-			.eq('id', params.id);
+			.eq('id', params.id)
+			.eq('entity_id', comment.entity_id)
+			.select('id');
 
 		if (updateError) {
 			await logOntologyApiError({
@@ -347,6 +355,10 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 				tableName: 'onto_comments'
 			});
 			return ApiResponse.databaseError(updateError);
+		}
+
+		if (!deletedRows || deletedRows.length === 0) {
+			return ApiResponse.notFound('Comment');
 		}
 
 		return ApiResponse.success({ deleted: true });

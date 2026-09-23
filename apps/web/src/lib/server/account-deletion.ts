@@ -225,15 +225,40 @@ export async function cancelDeletionSubscriptions(
 	return { completed: failures.length === 0, subscriptionCount: subscriptionIds.length };
 }
 
+const STORAGE_LIST_PAGE_SIZE = 1000;
+
+/**
+ * PostgREST caps every response (1000 rows by default), so page through the
+ * RPC with a stable order. Advancing by the rows actually returned keeps this
+ * correct even if the server cap is lower than the requested page.
+ */
+export async function listAccountDeletionStorageObjects(
+	admin: { rpc: (...args: any[]) => any },
+	userId: string
+): Promise<StorageObjectRef[]> {
+	const rows: StorageObjectRef[] = [];
+	let from = 0;
+	while (true) {
+		const { data, error } = await admin
+			.rpc('list_account_deletion_storage_objects', { p_user_id: userId })
+			.order('bucket_id', { ascending: true })
+			.order('object_name', { ascending: true })
+			.range(from, from + STORAGE_LIST_PAGE_SIZE - 1);
+		if (error) throw error;
+		const page = (data ?? []) as StorageObjectRef[];
+		if (page.length === 0) break;
+		rows.push(...page);
+		from += page.length;
+	}
+	return rows;
+}
+
 async function removeAccountStorage(userId: string): Promise<number> {
 	const admin = createAdminSupabaseClient();
-	const { data, error } = await (admin as any).rpc('list_account_deletion_storage_objects', {
-		p_user_id: userId
-	});
-	if (error) throw error;
+	const objects = await listAccountDeletionStorageObjects(admin as any, userId);
 
 	const byBucket = new Map<string, Set<string>>();
-	for (const row of (data ?? []) as StorageObjectRef[]) {
+	for (const row of objects) {
 		if (!row.bucket_id || !row.object_name) continue;
 		const paths = byBucket.get(row.bucket_id) ?? new Set<string>();
 		paths.add(row.object_name);

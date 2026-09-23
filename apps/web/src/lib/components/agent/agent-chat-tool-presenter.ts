@@ -178,12 +178,18 @@ const TOOL_CATALOG: Record<string, ToolCatalogEntry> = {
 	update_calendar_event: { toast: true, trackMutation: true },
 	delete_calendar_event: { toast: true, trackMutation: true },
 	set_project_calendar: { toast: true, trackMutation: true },
+	move_document_in_tree: { toast: true, trackMutation: true },
 
 	// Tracked but no user-facing toast (quieter effects)
 	create_task_document: { toast: false, trackMutation: true },
 	move_onto_task: { toast: false, trackMutation: true },
 	link_onto_entities: { toast: false, trackMutation: true },
-	unlink_onto_edge: { toast: false, trackMutation: true }
+	unlink_onto_edge: { toast: false, trackMutation: true },
+	tag_onto_entity: { toast: false, trackMutation: true },
+
+	// Classified but untracked: the handoff only queues a background Agent Run,
+	// whose own writes surface through the run review/commit path.
+	delegate_task: { toast: false, trackMutation: false }
 };
 
 const DATA_MUTATION_TOOLS_SET: ReadonlySet<string> = new Set(
@@ -198,11 +204,15 @@ const MUTATION_TRACKED_TOOLS_SET: ReadonlySet<string> = new Set(
 		.map(([name]) => name)
 );
 
+/** Every tool with an explicit catalog decision (tracked, toasted, or deliberately neither). */
+export const CATALOGED_TOOL_NAMES: ReadonlySet<string> = new Set(Object.keys(TOOL_CATALOG));
+
 const DOCUMENT_MUTATION_TOOLS = new Set([
 	'create_onto_document',
 	'update_onto_document',
 	'delete_onto_document',
-	'create_task_document'
+	'create_task_document',
+	'move_document_in_tree'
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1919,7 +1929,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			);
 		const entityKind: DataMutation['entityKind'] = match
 			? (match[2] as DataMutation['entityKind'])
-			: toolName === 'create_task_document'
+			: toolName === 'create_task_document' || toolName === 'move_document_in_tree'
 				? 'document'
 				: /^(create|update|delete)_calendar_event$/.test(toolName)
 					? 'event'

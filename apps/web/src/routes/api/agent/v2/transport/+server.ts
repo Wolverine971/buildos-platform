@@ -1,5 +1,8 @@
 // apps/web/src/routes/api/agent/v2/transport/+server.ts
-import { randomUUID } from 'node:crypto';
+//
+// Legacy lease negotiation. Current chat clients no longer call this: worker
+// admission (/api/agent/v2/turns) resolves the same decision inline when no
+// leaseToken is sent. Kept so already-loaded older bundles keep working.
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
@@ -9,10 +12,9 @@ import {
 } from '@buildos/shared-types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
-	AgenticChatTransportDecisionError,
-	resolveExistingAgenticChatTransportDecision,
-	type AgenticChatTransportDecisionClient
-} from '$lib/services/agentic-chat-v2/transport-decision.server';
+	agenticChatTransportDecisionFailureResponse,
+	resolveAgenticChatWorkerTransportDecision
+} from '$lib/services/agentic-chat-v2/worker-turn-inline-admission.server';
 import {
 	issueAgenticChatTransportLease,
 	parseAgenticChatWorkerKillEpoch
@@ -111,15 +113,15 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	};
 
 	try {
-		const existing = await resolveExistingAgenticChatTransportDecision({
-			client: createAdminSupabaseClient() as unknown as AgenticChatTransportDecisionClient,
-			userId: user.id,
-			request: leaseRequest
-		});
-
 		// Existing turns retain their persisted immutable mode; every mode is the
 		// worker mode. New turns are server-enabled and wait in the durable queue
 		// as needed.
+		const decision = await resolveAgenticChatWorkerTransportDecision({
+			client: createAdminSupabaseClient(),
+			userId: user.id,
+			binding: leaseRequest
+		});
+		if (!decision.ok) return privateResponse(decision.response);
 		const lease = issueAgenticChatTransportLease({
 			secret: env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET ?? '',
 			userId: user.id,
@@ -127,9 +129,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			streamRunId: leaseRequest.streamRunId,
 			context: leaseRequest.context,
 			mode: WORKER_MODE,
-			// A prior id is only a lookup hint. It becomes authoritative only when an
-			// owned persisted turn proves it; otherwise the server mints a fresh id.
-			decisionId: existing?.decisionId ?? randomUUID(),
+			decisionId: decision.decisionId,
 			killEpoch: parseAgenticChatWorkerKillEpoch(env.AGENTIC_CHAT_WORKER_KILL_EPOCH)
 		});
 		return privateResponse(ApiResponse.success(lease));
@@ -139,38 +139,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			userId: user.id,
 			clientTurnId: parsed.data.clientTurnId
 		});
-		if (
-			error instanceof AgenticChatTransportDecisionError &&
-			(error.code === 'binding_mismatch' ||
-				error.code === 'ambiguous_turn' ||
-				// A stored contract that is not the worker contract names a deleted
-				// engine. It can never be served, so it is a conflict, not a
-				// retryable outage.
-				error.code === 'stored_contract_invalid')
-		) {
-			return privateResponse(
-				ApiResponse.error(
-					'Transport negotiation conflicts with an existing turn',
-					HttpStatus.CONFLICT,
-					'TRANSPORT_CONFLICT'
-				)
-			);
-		}
-		// Every turn is worker-owned, so an infrastructure failure here is a
-		// worker outage and never a change of transport semantics.
-		return workerUnavailableResponse();
+		return privateResponse(agenticChatTransportDecisionFailureResponse(error));
 	}
 };
-
-function workerUnavailableResponse(retryAfterSeconds = 2): Response {
-	const response = ApiResponse.error(
-		'Worker chat is temporarily unavailable. Please try again shortly.',
-		HttpStatus.SERVICE_UNAVAILABLE,
-		'WORKER_UNAVAILABLE'
-	);
-	response.headers.set('Retry-After', String(retryAfterSeconds));
-	return privateResponse(response);
-}
 
 function privateResponse(response: Response): Response {
 	response.headers.set('Cache-Control', 'private, no-store');

@@ -82,10 +82,10 @@ export class SMSAlertsService {
 					triggeredAlerts.push(alert);
 
 					// Send notification
-					await this.sendNotification(alert);
+					const notificationSent = await this.sendNotification(alert);
 
 					// Record alert in history
-					await this.recordAlert(alert);
+					await this.recordAlert(alert, notificationSent);
 
 					// Update last_triggered_at
 					await this.updateLastTriggered(threshold.id);
@@ -226,23 +226,25 @@ export class SMSAlertsService {
 	}
 
 	/**
-	 * Send notification via appropriate channels (can send to multiple channels)
+	 * Send notification via appropriate channels (can send to multiple channels).
+	 * Returns true only when at least one channel actually delivered.
 	 */
-	private async sendNotification(alert: Alert): Promise<void> {
+	private async sendNotification(alert: Alert): Promise<boolean> {
+		let delivered = false;
 		// Send to all configured channels
 		for (const channel of alert.notification_channels) {
 			try {
 				switch (channel) {
 					case 'slack':
-						await this.sendSlackNotification(alert);
+						delivered = (await this.sendSlackNotification(alert)) || delivered;
 						break;
 
 					case 'pagerduty':
-						await this.sendPagerDutyNotification(alert);
+						delivered = (await this.sendPagerDutyNotification(alert)) || delivered;
 						break;
 
 					case 'email':
-						await this.sendEmailNotification(alert);
+						delivered = (await this.sendEmailNotification(alert)) || delivered;
 						break;
 
 					default:
@@ -253,14 +255,16 @@ export class SMSAlertsService {
 				// Continue to next channel even if one fails
 			}
 		}
+		return delivered;
 	}
 
 	/**
-	 * Send Slack notification
+	 * Send Slack notification. Resolves true only when a message was delivered.
 	 *
 	 * NOTE: Currently commented out - configure SLACK_WEBHOOK_URL to enable
+	 * (and return true after a successful POST when re-enabling).
 	 */
-	private async sendSlackNotification(alert: Alert): Promise<void> {
+	private async sendSlackNotification(alert: Alert): Promise<boolean> {
 		const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
 		if (!webhookUrl) {
@@ -272,7 +276,7 @@ export class SMSAlertsService {
 				severity: alert.severity,
 				message: alert.message
 			});
-			return;
+			return false;
 		}
 
 		// COMMENTED OUT: Slack integration
@@ -334,14 +338,16 @@ export class SMSAlertsService {
     */
 
 		console.log('[SMSAlerts] Slack notification skipped (integration commented out)');
+		return false;
 	}
 
 	/**
-	 * Send PagerDuty notification
+	 * Send PagerDuty notification. Resolves true only when an event was delivered.
 	 *
 	 * NOTE: Currently commented out - configure PAGERDUTY_INTEGRATION_KEY to enable
+	 * (and return true after a successful POST when re-enabling).
 	 */
-	private async sendPagerDutyNotification(alert: Alert): Promise<void> {
+	private async sendPagerDutyNotification(alert: Alert): Promise<boolean> {
 		const integrationKey = process.env.PAGERDUTY_INTEGRATION_KEY;
 
 		if (!integrationKey) {
@@ -353,7 +359,7 @@ export class SMSAlertsService {
 				severity: alert.severity,
 				message: alert.message
 			});
-			return;
+			return false;
 		}
 
 		// COMMENTED OUT: PagerDuty integration
@@ -393,20 +399,22 @@ export class SMSAlertsService {
     */
 
 		console.log('[SMSAlerts] PagerDuty notification skipped (integration commented out)');
+		return false;
 	}
 
 	/**
 	 * Send email notification
 	 */
-	private async sendEmailNotification(alert: Alert): Promise<void> {
+	private async sendEmailNotification(alert: Alert): Promise<boolean> {
 		// TODO: Implement email notification via existing email service
 		console.log('[SMSAlerts] Email notification not yet implemented');
+		return false;
 	}
 
 	/**
 	 * Record alert in history
 	 */
-	private async recordAlert(alert: Alert): Promise<void> {
+	private async recordAlert(alert: Alert, notificationSent: boolean): Promise<void> {
 		try {
 			// Note: Using 'as any' because sms_alert_history may not be in generated types yet
 			// After migration, regenerate types with: pnpm supabase gen types
@@ -415,7 +423,9 @@ export class SMSAlertsService {
 				severity: alert.severity,
 				metric_value: alert.metric_value,
 				threshold_value: alert.threshold_value,
-				notification_sent: true,
+				// Only true when a channel actually delivered; the senders are
+				// still stubs, so an alert row must not claim someone was paged.
+				notification_sent: notificationSent,
 				triggered_at: new Date().toISOString(),
 				// Store message and notification_channels in metadata JSONB field
 				metadata: {

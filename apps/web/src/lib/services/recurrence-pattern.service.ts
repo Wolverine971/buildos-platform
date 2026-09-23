@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/recurrence-pattern.service.ts
 import { addDays, addWeeks, addMonths, addYears, setDate } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
 export interface RecurrencePattern {
 	type:
@@ -27,8 +28,41 @@ export interface RecurrenceConfig {
 	pattern: RecurrencePattern;
 	endOption: RecurrenceEndOption;
 	startDate: string;
+	/**
+	 * IANA timezone the start time is anchored in. BYDAY/BYMONTHDAY derived from
+	 * the start date use this zone's calendar day; without it they use UTC.
+	 */
+	timeZone?: string | null;
 	rrule?: string;
 	customRRule?: string;
+}
+
+const DAY_ABBREVIATIONS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+
+/** Weekday (0 = Sunday) and day of month of the start date in `timeZone`. */
+function startDateCalendarParts(
+	startDate: string,
+	timeZone?: string | null
+): { dayOfWeek: number; dayOfMonth: number } | null {
+	// A bare YYYY-MM-DD is already a calendar date; don't shift it through a zone.
+	if (/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+		const date = new Date(`${startDate}T00:00:00Z`);
+		if (Number.isNaN(date.getTime())) return null;
+		return { dayOfWeek: date.getUTCDay(), dayOfMonth: date.getUTCDate() };
+	}
+	const instant = new Date(startDate);
+	if (Number.isNaN(instant.getTime())) return null;
+	if (timeZone) {
+		try {
+			return {
+				dayOfWeek: Number(formatInTimeZone(instant, timeZone, 'i')) % 7,
+				dayOfMonth: Number(formatInTimeZone(instant, timeZone, 'd'))
+			};
+		} catch {
+			// Invalid timezone: fall back to UTC below.
+		}
+	}
+	return { dayOfWeek: instant.getUTCDay(), dayOfMonth: instant.getUTCDate() };
 }
 
 export interface ValidationResult {
@@ -54,6 +88,7 @@ export class RecurrencePatternBuilder {
 	 */
 	buildRRule(config: RecurrenceConfig): string {
 		const { pattern, endOption, startDate } = config;
+		const startParts = startDate ? startDateCalendarParts(startDate, config.timeZone) : null;
 
 		// Handle custom RRULE
 		if (pattern.type === 'custom' && config.customRRule) {
@@ -78,19 +113,15 @@ export class RecurrencePatternBuilder {
 					const dayAbbreviations = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 					const days = pattern.daysOfWeek.map((d) => dayAbbreviations[d]).join(',');
 					rrule += `;BYDAY=${days}`;
-				} else if (startDate) {
+				} else if (startParts) {
 					// Use the day of the start date
-					const dayIndex = new Date(startDate).getDay();
-					const dayAbbreviations = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-					rrule += `;BYDAY=${dayAbbreviations[dayIndex]}`;
+					rrule += `;BYDAY=${DAY_ABBREVIATIONS[startParts.dayOfWeek]}`;
 				}
 				break;
 			case 'biweekly':
 				rrule += 'FREQ=WEEKLY;INTERVAL=2';
-				if (startDate) {
-					const dayIndex = new Date(startDate).getDay();
-					const dayAbbreviations = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-					rrule += `;BYDAY=${dayAbbreviations[dayIndex]}`;
+				if (startParts) {
+					rrule += `;BYDAY=${DAY_ABBREVIATIONS[startParts.dayOfWeek]}`;
 				}
 				break;
 			case 'monthly':
@@ -109,17 +140,15 @@ export class RecurrencePatternBuilder {
 						const dayCode = dayAbbreviations[firstDay];
 						rrule += `;BYDAY=${pattern.weekOfMonth}${dayCode}`;
 					}
-				} else if (startDate) {
+				} else if (startParts) {
 					// Use the day of month from start date
-					const dayOfMonth = new Date(startDate).getDate();
-					rrule += `;BYMONTHDAY=${dayOfMonth}`;
+					rrule += `;BYMONTHDAY=${startParts.dayOfMonth}`;
 				}
 				break;
 			case 'quarterly':
 				rrule += 'FREQ=MONTHLY;INTERVAL=3';
-				if (startDate) {
-					const dayOfMonth = new Date(startDate).getDate();
-					rrule += `;BYMONTHDAY=${dayOfMonth}`;
+				if (startParts) {
+					rrule += `;BYMONTHDAY=${startParts.dayOfMonth}`;
 				}
 				break;
 			case 'yearly':

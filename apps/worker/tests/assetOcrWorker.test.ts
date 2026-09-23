@@ -33,17 +33,37 @@ const BASE_ASSET = {
 	deleted_at: null
 };
 
-function wireAssetTable(asset: typeof BASE_ASSET) {
+function wireAssetTable(
+	asset: typeof BASE_ASSET,
+	options: {
+		// Resolves each update by its payload; defaults to a successful write.
+		updateResult?: (payload: Record<string, unknown>) => { data: unknown; error: unknown };
+	} = {}
+) {
 	const updatePayloads: Array<Record<string, unknown>> = [];
+	const updateFilters: Array<Array<[string, unknown]>> = [];
 
 	const maybeSingle = vi.fn().mockResolvedValue({ data: asset, error: null });
 	const selectEq = vi.fn(() => ({ maybeSingle }));
 	const select = vi.fn(() => ({ eq: selectEq }));
 
-	const updateEq = vi.fn().mockResolvedValue({ data: null, error: null });
 	const update = vi.fn((payload: Record<string, unknown>) => {
 		updatePayloads.push(payload);
-		return { eq: updateEq };
+		const filters: Array<[string, unknown]> = [];
+		updateFilters.push(filters);
+		const result = () =>
+			options.updateResult?.(payload) ?? { data: { id: asset?.id }, error: null };
+		const builder: any = {
+			eq: vi.fn((column: string, value: unknown) => {
+				filters.push([column, value]);
+				return builder;
+			}),
+			select: vi.fn(() => builder),
+			maybeSingle: vi.fn(async () => result()),
+			then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+				Promise.resolve(result()).then(resolve, reject)
+		};
+		return builder;
 	});
 
 	mockSupabase.from.mockImplementation((table: string) => {
@@ -53,8 +73,22 @@ function wireAssetTable(asset: typeof BASE_ASSET) {
 		throw new Error(`Unexpected table in worker test: ${table}`);
 	});
 
-	return { updatePayloads };
+	return { updatePayloads, updateFilters };
 }
+
+function stubOcrResponse(output: Record<string, unknown>) {
+	const fetchMock = vi.fn().mockResolvedValue({
+		ok: true,
+		json: async () => ({ choices: [{ message: { content: JSON.stringify(output) } }] })
+	});
+	vi.stubGlobal('fetch', fetchMock);
+	return fetchMock;
+}
+
+const OCR_JOB = {
+	id: 'job-ocr',
+	data: { assetId: 'asset-1', projectId: 'project-1', userId: 'user-1' }
+} as any;
 
 function wireSignedUrlSuccess() {
 	const createSignedUrl = vi.fn().mockResolvedValue({
@@ -194,5 +228,74 @@ describe('asset OCR worker', () => {
 		expect(updatePayloads).toHaveLength(1);
 		expect(updatePayloads[0].ocr_status).toBe('complete');
 		expect(mockSupabase.storage.from).not.toHaveBeenCalled();
+	});
+
+	it('completes an image with no readable text instead of retrying the paid call', async () => {
+		const { updatePayloads } = wireAssetTable({ ...BASE_ASSET });
+		wireSignedUrlSuccess();
+		const fetchMock = stubOcrResponse({ extracted_text: '', summary: 'A photo of a sunset' });
+
+		const { processAssetOcrJob } = await importWorker();
+		const result = await processAssetOcrJob(OCR_JOB);
+
+		expect(result.ocrStatus).toBe('complete');
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(updatePayloads.at(-1)).toMatchObject({
+			ocr_status: 'complete',
+			extracted_text: '',
+			extraction_summary: 'A photo of a sunset'
+		});
+	});
+
+	it('fails the job when the completion write fails instead of reporting success', async () => {
+		const { updatePayloads } = wireAssetTable(
+			{ ...BASE_ASSET },
+			{
+				updateResult: (payload) =>
+					payload.ocr_status === 'complete'
+						? { data: null, error: { message: 'connection reset' } }
+						: { data: { id: 'asset-1' }, error: null }
+			}
+		);
+		wireSignedUrlSuccess();
+		stubOcrResponse({ extracted_text: 'Invoice 42', summary: 'An invoice' });
+
+		const { processAssetOcrJob } = await importWorker();
+
+		await expect(processAssetOcrJob(OCR_JOB)).rejects.toThrow('connection reset');
+		expect(updatePayloads.at(-1)?.ocr_status).toBe('failed');
+	});
+
+	it('does not overwrite text the user saved while OCR was running', async () => {
+		const { updatePayloads, updateFilters } = wireAssetTable(
+			{ ...BASE_ASSET, ocr_version: 4 },
+			{
+				// The manual save bumped ocr_version, so the fenced write matches no row.
+				updateResult: (payload) =>
+					payload.ocr_status === 'complete'
+						? { data: null, error: null }
+						: { data: { id: 'asset-1' }, error: null }
+			}
+		);
+		wireSignedUrlSuccess();
+		stubOcrResponse({ extracted_text: 'Machine text', summary: 'An image' });
+
+		const { processAssetOcrJob } = await importWorker();
+		const result = await processAssetOcrJob(OCR_JOB);
+
+		expect(result).toMatchObject({ skipped: true, reason: 'superseded_by_manual_edit' });
+		expect(updateFilters.at(-1)).toContainEqual(['ocr_version', 4]);
+		expect(updatePayloads.some((payload) => payload.ocr_status === 'failed')).toBe(false);
+	});
+
+	it('does not retry when the asset no longer exists', async () => {
+		wireAssetTable(null as any);
+
+		const { processAssetOcrJob } = await importWorker();
+		const { classifyQueueError } = await import('../src/lib/queueErrors');
+		const error = await processAssetOcrJob(OCR_JOB).catch((caught) => caught);
+
+		expect(error?.name).toBe('PermanentQueueError');
+		expect(classifyQueueError(error).kind).toBe('permanent');
 	});
 });

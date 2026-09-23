@@ -25,6 +25,11 @@ const supabase = createServiceClient();
 
 type DailyBriefEngagementStage = 'standard' | 'reengagement' | 'dormant';
 
+// Status contract with apps/web/src/routes/api/webhooks/send-notification-email:
+// 409 + this code = blocked by preferences (not sent, do not re-send);
+// 503 (EMAIL_PREFERENCES_UNAVAILABLE) and other non-2xx = transient, retry.
+export const EMAIL_PREFERENCES_BLOCKED_CODE = 'EMAIL_PREFERENCES_BLOCKED';
+
 const NOTIFICATION_EMAIL_SENDER_EMAIL = 'dj@build-os.com';
 const NOTIFICATION_EMAIL_SENDER_NAME = 'DJ from BuildOS';
 
@@ -786,13 +791,51 @@ export async function sendEmailNotification(
 			if (!webhookResponse.ok) {
 				const errorData = (await webhookResponse.json().catch(() => ({}))) as {
 					error?: string;
+					code?: string;
 				};
+				if (
+					webhookResponse.status === 409 &&
+					errorData.code === EMAIL_PREFERENCES_BLOCKED_CODE
+				) {
+					// Same contract as the preference gate above: nothing was sent and the
+					// send must not be recorded as sent. The worker's own preference gate
+					// settles the delivery as cancelled before any re-send.
+					emailLogger.info('Email notification cancelled by web preference gate', {
+						emailRecordId: emailRecord.id,
+						notificationDeliveryId: delivery.id
+					});
+					return {
+						success: false,
+						error: errorData.error || 'Cancelled: user preferences do not allow email'
+					};
+				}
+				// Anything else (503 preference-read outage, 500 claim failure, network)
+				// is transient: fail the attempt so the queue retries it.
 				throw new Error(errorData.error || `Webhook returned ${webhookResponse.status}`);
 			}
 
-			const webhookResult = (await webhookResponse.json()) as {
+			const webhookBody = (await webhookResponse.json().catch(() => ({}))) as {
+				data?: { success?: boolean; messageId?: string; error?: string };
+				success?: boolean;
 				messageId?: string;
+				error?: string;
 			};
+			const webhookResult = webhookBody.data ?? webhookBody;
+
+			// Web deploys before the 409/503 contract answered a cancel or a failed
+			// preference read with 200 { data: { success: false } }. Never count that
+			// as sent.
+			if (webhookResult.success === false) {
+				emailLogger.warn('Webhook accepted the request but did not send the email', {
+					emailRecordId: emailRecord.id,
+					notificationDeliveryId: delivery.id,
+					error: webhookResult.error
+				});
+				return {
+					success: false,
+					error: webhookResult.error || 'Webhook did not send the email'
+				};
+			}
 
 			emailLogger.info('Email sent successfully via webhook', {
 				emailRecordId: emailRecord.id,

@@ -125,6 +125,38 @@ describe('DocTreeView progressive disclosure', () => {
 		expect(screen.queryByText('Customer notes')).not.toBeInTheDocument();
 	});
 
+	it('scopes cut/paste shortcuts to the tree and leaves text fields alone', async () => {
+		render(DocTreeView, {
+			props: {
+				projectId: PROJECT_ID,
+				canEdit: true,
+				onOpenDocument: vi.fn(),
+				onCreateDocument: vi.fn(),
+				initialStructure: { version: 1, root: [{ id: 'brief', order: 0 }] },
+				initialDocuments: { brief: document('brief', 'Brief') },
+				initialArchived: [],
+				pollInterval: 0,
+				enableDragDrop: true
+			}
+		});
+		const nodeButton = (await screen.findByText('Brief')).closest('button')!;
+		const outsideInput = window.document.createElement('input');
+		window.document.body.appendChild(outsideInput);
+		try {
+			// Cut outside the tree keeps native behavior (not prevented).
+			expect(await fireEvent.keyDown(outsideInput, { key: 'x', ctrlKey: true })).toBe(true);
+
+			await fireEvent.focus(nodeButton);
+			expect(await fireEvent.keyDown(nodeButton, { key: 'x', ctrlKey: true })).toBe(false);
+
+			// With a node cut, paste/undo in an outside text field still belongs to it.
+			expect(await fireEvent.keyDown(outsideInput, { key: 'v', ctrlKey: true })).toBe(true);
+			expect(await fireEvent.keyDown(outsideInput, { key: 'Escape' })).toBe(true);
+		} finally {
+			outsideInput.remove();
+		}
+	});
+
 	it('keeps archived documents recoverable but collapsed by default', async () => {
 		const archived = document('archived-plan', 'Archived launch plan', 'archived');
 		renderTree({

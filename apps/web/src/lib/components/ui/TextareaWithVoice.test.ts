@@ -4,6 +4,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import TextareaWithVoice from './TextareaWithVoice.svelte';
 import TextareaWithVoiceHarness from './TextareaWithVoice.test-harness.svelte';
 
 type VoiceCallbacks = {
@@ -134,5 +135,53 @@ describe('TextareaWithVoice state ownership', () => {
 		voiceMock.callbacks?.onError('Microphone denied');
 		await tick();
 		expect(screen.getByTestId('voice-error')).toHaveTextContent('Microphone denied');
+	});
+});
+
+describe('TextareaWithVoice focus hooks', () => {
+	const originalMatchMedia = window.matchMedia;
+
+	function stubPointer(fine: boolean) {
+		window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+			matches: query === '(pointer: fine)' ? fine : false,
+			media: query,
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			dispatchEvent: vi.fn()
+		})) as typeof window.matchMedia;
+	}
+
+	afterEach(() => {
+		cleanup();
+		window.matchMedia = originalMatchMedia;
+		vi.clearAllMocks();
+	});
+
+	it('marks the textarea with data-autofocus (not the native attribute) when asked', () => {
+		render(TextareaWithVoice, { props: { autofocus: true, enableVoice: false } });
+		const textarea = screen.getByRole('textbox');
+		expect(textarea).toHaveAttribute('data-autofocus');
+		expect(textarea).not.toHaveAttribute('autofocus');
+	});
+
+	it('omits data-autofocus by default', () => {
+		render(TextareaWithVoice, { props: { enableVoice: false } });
+		expect(screen.getByRole('textbox')).not.toHaveAttribute('data-autofocus');
+	});
+
+	it('focusIfFinePointer focuses only on fine-pointer devices', () => {
+		stubPointer(false);
+		const coarse = render(TextareaWithVoice, { props: { enableVoice: false } });
+		expect(coarse.component.focusIfFinePointer()).toBe(false);
+		expect(screen.getByRole('textbox')).not.toHaveFocus();
+		coarse.unmount();
+
+		stubPointer(true);
+		const fine = render(TextareaWithVoice, { props: { enableVoice: false } });
+		expect(fine.component.focusIfFinePointer()).toBe(true);
+		expect(screen.getByRole('textbox')).toHaveFocus();
 	});
 });

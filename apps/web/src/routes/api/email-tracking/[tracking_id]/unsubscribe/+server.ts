@@ -43,6 +43,34 @@ function unsubscribeResponse(status = 200, dailyBriefDisabled = false): Response
 	);
 }
 
+function confirmUnsubscribeResponse(): Response {
+	return new Response(
+		`<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex" />
+		<title>BuildOS email preferences</title>
+	</head>
+	<body>
+		<form method="post">
+			<p>Unsubscribe from these BuildOS emails?</p>
+			<input type="hidden" name="confirm" value="email_link" />
+			<button type="submit">Unsubscribe</button>
+		</form>
+	</body>
+</html>`,
+		{
+			status: 200,
+			headers: {
+				'Content-Type': 'text/html; charset=utf-8',
+				'Cache-Control': 'no-store'
+			}
+		}
+	);
+}
+
 function isDailyBriefEmail(email: Record<string, any>): boolean {
 	const templateData =
 		email.template_data && typeof email.template_data === 'object'
@@ -172,7 +200,8 @@ async function disableDailyBriefsForUser({
 			} as any)
 			.eq('user_id', userId)
 			.eq('job_type', 'generate_daily_brief')
-			.in('status', ['pending', 'processing']);
+			// A processing job belongs to a worker; the disabled preference stops its email.
+			.in('status', ['pending', 'retrying']);
 
 		if (queueError) {
 			logger.error(
@@ -337,18 +366,19 @@ async function handleUnsubscribe({
 	}
 }
 
-export const GET: RequestHandler = async ({ params, request }) => {
-	return handleUnsubscribe({
-		trackingId: params.tracking_id,
-		request,
-		source: 'email_link'
-	});
+// Link scanners (Safe Links, Mimecast, Proofpoint) fetch every URL in an email, so opening the
+// visible link only asks; its button POSTs back here. Mailbox one-click unsubscribe (RFC 8058)
+// POSTs directly.
+export const GET: RequestHandler = async () => {
+	return confirmUnsubscribeResponse();
 };
 
 export const POST: RequestHandler = async ({ params, request }) => {
+	const form = await request.formData().catch(() => null);
+	const confirmedFromEmailLink = form?.get('confirm') === 'email_link';
 	return handleUnsubscribe({
 		trackingId: params.tracking_id,
 		request,
-		source: 'list_header'
+		source: confirmedFromEmailLink ? 'email_link' : 'list_header'
 	});
 };

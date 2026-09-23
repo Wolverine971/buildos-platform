@@ -276,6 +276,8 @@
 							You're In! 🎉
 						{:else if existingSignupStatus === 'waitlist'}
 							You're on the Waitlist
+						{:else}
+							You've Already Applied
 						{/if}
 					</h3>
 					<p class="text-muted-foreground text-sm">
@@ -285,6 +287,9 @@
 							Check your email for beta access instructions!
 						{:else if existingSignupStatus === 'waitlist'}
 							You're on the waitlist. I'll reach out when spots open up.
+						{:else}
+							This email is already on the beta list. Sign in with it to see where
+							your application stands.
 						{/if}
 					</p>
 				</div>

@@ -304,6 +304,33 @@ describe('POST /api/inbox/decide', () => {
 		});
 	});
 
+	it('reports a throwing batch item as a per-item failure instead of aborting the batch', async () => {
+		const inboxItem = pendingProjectSuggestionItem();
+		const { supabase } = createSupabaseMock(inboxItem);
+		const admin = createSupabaseMock(inboxItem);
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+		mocks.decideProjectSuggestion
+			.mockResolvedValueOnce({
+				ok: true,
+				suggestion: { id: 'suggestion-1', status: 'rejected' },
+				result: { ok: true }
+			})
+			.mockRejectedValueOnce(new Error('commit exploded'));
+
+		const response = await POST({
+			request: makeRequest({ item_ids: ['inbox-1', 'inbox-2'], action: 'reject' }),
+			locals: makeLocals(supabase),
+			fetch: vi.fn()
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.data.applied).toBe(1);
+		expect(json.data.failed).toBe(1);
+		expect(json.data.results[0]).toMatchObject({ item_id: 'inbox-1' });
+		expect(json.data.errors).toEqual([{ item_id: 'inbox-2', message: 'commit exploded' }]);
+	});
+
 	it('passes project suggestion dismissal feedback through to the decision service', async () => {
 		const inboxItem = pendingProjectSuggestionItem();
 		const { supabase } = createSupabaseMock(inboxItem);

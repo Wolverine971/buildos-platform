@@ -41,6 +41,11 @@ import {
 } from '$lib/services/async-activity-logger';
 import { MILESTONE_STATES } from '$lib/types/onto';
 import { normalizeMilestoneStateInput } from '../../shared/milestone-state';
+import {
+	needsCivilTimezone,
+	normalizeDateTimeInput,
+	resolveUserCivilTimezone
+} from '../../shared/input-normalization';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import {
 	AutoOrganizeError,
@@ -90,14 +95,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('Milestone title is required');
 		}
 
-		let dueDateIso: string | null = null;
-		if (due_at !== undefined && due_at !== null && String(due_at).trim() !== '') {
-			const dueDate = new Date(due_at);
-			if (isNaN(dueDate.getTime())) {
-				return ApiResponse.badRequest('Due date must be a valid ISO 8601 date');
-			}
-			dueDateIso = dueDate.toISOString();
+		// A bare YYYY-MM-DD closes the civil day in this user's timezone. Only
+		// date-only input pays for the users.timezone read.
+		const civilTimezone = needsCivilTimezone(due_at)
+			? await resolveUserCivilTimezone(supabase, user.id)
+			: null;
+		const normalizedDueAt = normalizeDateTimeInput(due_at, 'due_at', 'end', civilTimezone);
+		if (!normalizedDueAt.ok) {
+			return ApiResponse.badRequest('Due date must be a valid ISO 8601 date');
 		}
+		const dueDateIso: string | null = normalizedDueAt.value ?? null;
 
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeMilestoneStateInput(state_key);

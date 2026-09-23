@@ -26,7 +26,6 @@ describe('general worker HTTP composition', () => {
 		const smsRoutes = registeredRoutes(smsScheduledRoutes);
 
 		expect(appRoutes).toEqual([
-			'GET /api/email-tracking/:trackingId',
 			'GET /health',
 			'GET /jobs/:jobId',
 			'GET /queue/stale-stats',
@@ -39,12 +38,7 @@ describe('general worker HTTP composition', () => {
 			'POST /queue/cleanup',
 			'POST /queue/onboarding'
 		]);
-		expect(smsRoutes).toEqual([
-			'GET /user/:userId',
-			'PATCH /:id/update',
-			'POST /:id/cancel',
-			'POST /:id/regenerate'
-		]);
+		expect(smsRoutes).toEqual(['GET /user/:userId', 'POST /:id/cancel']);
 	});
 
 	it('keeps health public and propagates caller correlation IDs', async () => {

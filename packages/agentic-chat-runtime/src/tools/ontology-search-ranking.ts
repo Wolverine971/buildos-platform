@@ -330,10 +330,10 @@ function dateMs(value: string | null): number | null {
 }
 
 export function taskBucketFor(
-	task: Pick<TaskSearchRow, 'deleted_at' | 'state_key' | 'due_at' | 'start_at'>,
+	task: Pick<TaskSearchRow, 'archived_at' | 'state_key' | 'due_at' | 'start_at'>,
 	nowMs = Date.now()
 ): TaskBucketKey {
-	if (task.deleted_at) return 'archived';
+	if (task.archived_at) return 'archived';
 	const stateKey = task.state_key ?? 'todo';
 	if (stateKey === 'done') return 'done';
 

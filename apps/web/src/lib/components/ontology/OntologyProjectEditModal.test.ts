@@ -146,6 +146,52 @@ describe('OntologyProjectEditModal date saving', () => {
 		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
 	});
 
+	it('keeps unsaved edits when the project prop refreshes while open', async () => {
+		const initialProject = project();
+		const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url.startsWith('/api/onto/comments?')) {
+				return Promise.resolve(commentsResponse());
+			}
+			if (url === `/api/onto/projects/${initialProject.id}` && init?.method === 'PATCH') {
+				return Promise.resolve(
+					new Response(JSON.stringify({ data: { project: initialProject } }), {
+						status: 200,
+						headers: { 'content-type': 'application/json' }
+					})
+				);
+			}
+			return Promise.resolve(
+				new Response(JSON.stringify({ error: 'Unexpected request' }), { status: 500 })
+			);
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { rerender } = render(OntologyProjectEditModal, {
+			props: { isOpen: true, project: initialProject, onSaved: vi.fn(), onClose: vi.fn() }
+		});
+		await fireEvent.click(await screen.findByRole('button', { name: 'Open Project details' }));
+		const nameInput = await screen.findByLabelText(/Project Name/);
+		await fireEvent.input(nameInput, { target: { value: 'Renamed by me' } });
+
+		// A chat/workspace refresh changes another field while the editor is open.
+		await rerender({
+			isOpen: true,
+			project: project({ facet_stage: 'discovery' }),
+			onSaved: vi.fn(),
+			onClose: vi.fn()
+		});
+
+		expect(screen.getByLabelText(/Project Name/)).toHaveValue('Renamed by me');
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+		await waitFor(() =>
+			expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(true)
+		);
+		const patchCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+		// The refreshed facet is not reverted; only the user's edit is sent.
+		expect(JSON.parse(String(patchCall?.[1]?.body))).toEqual({ name: 'Renamed by me' });
+	});
+
 	it('sends the bare calendar date only when the visible date changes', async () => {
 		const initialProject = project();
 		const updatedProject = project({ start_at: '2026-01-22T00:00:00.000Z' });

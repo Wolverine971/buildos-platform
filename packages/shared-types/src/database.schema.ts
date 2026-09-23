@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-09-22T21:04:58.243Z
+// Generated on: 2026-09-23T00:51:00.756Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -714,6 +714,28 @@ export type DatabaseSchema = {
 		user_id: string;
 		webhook_token: string;
 	};
+	chat_capture_checkpoints: {
+		applied_sections: string[];
+		created_at: string;
+		details: Json;
+		id: string;
+		project_id: string | null;
+		review_run_id: string | null;
+		review_sections: string[];
+		session_id: string;
+		start_here_after_updated_at: string | null;
+		start_here_before: string | null;
+		start_here_document_id: string | null;
+		status: string;
+		thinking_log_document_id: string | null;
+		thinking_log_entry: string | null;
+		through_message_at: string | null;
+		through_message_id: string | null;
+		trigger: string;
+		undone_at: string | null;
+		user_id: string;
+		user_message_count: number;
+	};
 	chat_compressions: {
 		compressed_message_count: number;
 		compressed_tokens: number;
@@ -854,6 +876,8 @@ export type DatabaseSchema = {
 		archived_at: string | null;
 		auto_accept_operations: boolean | null;
 		auto_title: string | null;
+		capture_watermark_at: string | null;
+		capture_watermark_message_id: string | null;
 		chat_topics: string[] | null;
 		chat_type: string | null;
 		compressed_at: string | null;
@@ -4447,6 +4471,7 @@ export const tableNames = [
 	'calendar_oauth_states',
 	'calendar_project_suggestions',
 	'calendar_webhook_channels',
+	'chat_capture_checkpoints',
 	'chat_compressions',
 	'chat_context_cache',
 	'chat_message_attachments',

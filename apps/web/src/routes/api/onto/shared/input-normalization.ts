@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/onto/shared/input-normalization.ts
 import {
 	CivilDateError,
-	isDateOnlyValue,
+	hasCivilTimezoneSensitiveValue,
 	normalizeDateOnlyInput,
 	resolveUserCivilTimezone
 } from '@buildos/shared-agent-ops';
@@ -25,11 +25,13 @@ function clampPriority(value: number): number {
 }
 
 /**
- * True when this value needs a user timezone to be interpreted. Routes call it
- * before paying for the `users.timezone` read.
+ * True when a value needs a user timezone to be interpreted: a bare calendar
+ * date, or an offset-less wall-clock datetime (`2026-09-23T17:00:00`), which
+ * Postgres would otherwise read as UTC. Same rule as the agent gateway. Routes
+ * call it before paying for the `users.timezone` read.
  */
 export function needsCivilTimezone(...values: unknown[]): boolean {
-	return values.some((value) => isDateOnlyValue(value));
+	return hasCivilTimezoneSensitiveValue(values);
 }
 
 /** Re-exported so routes resolve the same timezone source as the gateway. */
@@ -164,7 +166,8 @@ export function normalizePriorityInput(
 
 /**
  * A bare `YYYY-MM-DD` is a civil day in the user's timezone: `start` opens it,
- * `end` closes it at 23:59:59 local. Passing no timezone falls back to UTC,
+ * `end` closes it at 23:59:59 local. An offset-less wall-clock datetime is that
+ * time on the user's clock. Passing no timezone falls back to UTC,
  * which is what this route did for every user before timezones were threaded in.
  */
 export function normalizeDateTimeInput(

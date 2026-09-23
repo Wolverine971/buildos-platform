@@ -175,7 +175,6 @@ omit model/provider/role, resolved scaffold configuration, or fingerprint. Set
 | `document-edit-context` | changes only the requested section, then retargets it from context              |
 | `project-organize`      | verifies a declared contract, canonical tree grouping, and source preservation† |
 | `task-create`           | requires high priority and the exact requested Friday due date                  |
-| `calendar-move`         | **disabled stub** until it owns external event seed/readback/delete             |
 
 ## Scenarios (Tier 1 breadth, 2026-07-25)
 

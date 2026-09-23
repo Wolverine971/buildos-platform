@@ -9,7 +9,6 @@ import {
 	REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
 	TURN_CONTRACT_TOOL_DEFINITION
 } from '@buildos/agentic-chat-runtime/catalog';
-import { getToolSchema } from '../registry/tool-schema';
 
 const FORBIDDEN_TOP_LEVEL_KEYS = ['oneOf', 'anyOf', 'allOf', 'not', 'enum'] as const;
 const CONTROL_TOOL_DEFINITIONS = [
@@ -102,9 +101,13 @@ describe('Chat tool schema compatibility', () => {
 
 		expect(tool?.function?.description).toContain('Find current public-web sources');
 		expect(tool?.function?.description).toContain('four ranked snippets by default');
-		expect(tool?.function?.description).toContain('Use web_visit on returned or user-supplied URLs');
+		expect(tool?.function?.description).toContain(
+			'Use web_visit on returned or user-supplied URLs'
+		);
 		expect(tool?.function?.description).toContain('Prefer primary sources');
-		expect(tool?.function?.description).toContain('untrusted evidence and synthesize/cite them');
+		expect(tool?.function?.description).toContain(
+			'untrusted evidence and synthesize/cite them'
+		);
 		expect(tool?.function?.description).not.toContain('using the Tavily API');
 		expect(tool?.function?.description).not.toMatch(/provider synthesis|model lane/i);
 		expect(parameters?.properties?.search_depth?.default).toBe('advanced');
@@ -118,14 +121,11 @@ describe('Chat tool schema compatibility', () => {
 		expect(parameters?.properties?.exclude_domains?.maxItems).toBe(20);
 	});
 
-	it('returns exact create_onto_project schema details through tool_schema', () => {
+	it('publishes the exact create_onto_project schema', () => {
 		const definition = CHAT_TOOL_DEFINITIONS.find(
 			(candidate) => candidate.function?.name === 'create_onto_project'
 		);
-		const schema = getToolSchema('onto.project.create', {
-			include_examples: true,
-			include_schema: true
-		}) as Record<string, any>;
+		const schema = definition?.function?.parameters as Record<string, any>;
 
 		expect(definition?.function?.description).toContain(
 			'Create a project and its optional initial structure'
@@ -133,33 +133,18 @@ describe('Chat tool schema compatibility', () => {
 		expect(definition?.function?.description).not.toMatch(
 			/web-owned|reviewed|shell-first|execution lane/i
 		);
-		expect(schema.type).toBe('tool_schema');
-		expect(schema.tool_name).toBe('create_onto_project');
-		expect(schema.usage).toBe('create_onto_project({ ... })');
-		expect(schema.required_args).toEqual(['project', 'entities', 'relationships']);
-		expect(schema.schema.required).toEqual(['project', 'entities', 'relationships']);
-		expect(schema.schema.properties.project.required).toEqual(['name', 'type_key']);
-		expect(schema.schema.properties.project.properties.type_key.pattern).toBe(
+		expect(schema.required).toEqual(['project', 'entities', 'relationships']);
+		expect(schema.properties.project.required).toEqual(['name', 'type_key']);
+		expect(schema.properties.project.properties.type_key.pattern).toBe(
 			'^project\\.[a-z_]+\\.[a-z_]+(?:\\.[a-z_]+)?$'
 		);
-		expect(schema.schema.properties.entities.items.required).toEqual(['temp_id', 'kind']);
-		expect(schema.schema.properties.entities.items.properties.kind.enum).toContain(
-			'requirement'
-		);
-		expect(schema.schema.properties.entities.items.properties.priority.type).toEqual([
+		expect(schema.properties.entities.items.required).toEqual(['temp_id', 'kind']);
+		expect(schema.properties.entities.items.properties.kind.enum).toContain('requirement');
+		expect(schema.properties.entities.items.properties.priority.type).toEqual([
 			'string',
 			'number'
 		]);
-		expect(schema.schema.properties.entities.description).toContain('goal/plan/metric name');
-		expect(schema.example_tool_call.name).toBe('create_onto_project');
-		expect(schema.example_tool_call.arguments).toEqual({
-			project: {
-				name: '<name>',
-				type_key: 'project.business.initiative'
-			},
-			entities: [],
-			relationships: []
-		});
+		expect(schema.properties.entities.description).toContain('goal/plan/metric name');
 	});
 
 	it('uses bounded integer schemas for count and pagination inputs', () => {
@@ -303,24 +288,15 @@ describe('Chat tool schema compatibility', () => {
 		}
 	});
 
-	it('serves one name per capability: the canonical name resolves, a legacy one does not', () => {
+	it('serves one name per capability: the canonical name is defined, a legacy one is not', () => {
 		// One tool name space (one-engine stage S9, 2026-09-04). `tool_schema` used
 		// to fold legacy names onto canonical ops through `GATEWAY_OP_ALIASES`; that
 		// table is deleted, so a legacy name is simply not a name. `search_buildos`
 		// survives only as an executor-side entry in the shared read dispatch — it
 		// has no tool definition, so it is never mounted and never callable.
-		const canonical = getToolSchema('search_all_projects', {
-			include_examples: true,
-			include_schema: true
-		}) as Record<string, any>;
+		const names = ALL_TOOL_DEFINITIONS.map((tool) => tool.function?.name);
 
-		expect(canonical.type).toBe('tool_schema');
-		expect(canonical.op).toBe('x.search.all_projects');
-		expect(canonical.tool_name).toBe('search_all_projects');
-		expect(canonical.example_tool_call.name).toBe('search_all_projects');
-
-		expect(
-			(getToolSchema('search_buildos', { include_schema: true }) as Record<string, any>).type
-		).toBe('not_found');
+		expect(names).toContain('search_all_projects');
+		expect(names).not.toContain('search_buildos');
 	});
 });

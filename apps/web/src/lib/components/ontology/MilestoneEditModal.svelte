@@ -63,7 +63,8 @@
 	import DocumentModal from './DocumentModal.svelte';
 	import RiskEditModal from './RiskEditModal.svelte';
 	import { MILESTONE_STATES, type Milestone } from '$lib/types/onto';
-	import { formatDateForInput, parseDateFromInput } from '$lib/utils/date-utils';
+	import { parseDateFromInput, timestamptzToLocalDate } from '$lib/utils/date-utils';
+	import { changedFormFields } from '$lib/utils/form-patch';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	type MilestoneModalProps = Milestone['props'] & {
@@ -129,6 +130,7 @@
 	let isDeleting = $state(false);
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
+	let initialForm: ReturnType<typeof formSnapshot> | null = null;
 
 	// Form fields
 	let title = $state('');
@@ -217,8 +219,41 @@
 		}
 	});
 
-	async function loadMilestone() {
+	// due_at is written as local midnight of the picked day (parseDateFromInput),
+	// so the calendar day must be read back in the local zone. Reading it with
+	// UTC getters moved the day back once per save east of UTC.
+	function formatDueDateForInput(value?: string | null): string {
+		if (!value) return '';
+		if (Number.isNaN(new Date(value).getTime())) return '';
+		return timestamptzToLocalDate(value);
+	}
+
+	function formSnapshot() {
+		return {
+			title: title.trim(),
+			due_at: dueAt.trim() || null,
+			state_key: stateKey,
+			type_key: typeKey || 'milestone.default',
+			milestone: milestoneDetails.trim() || null,
+			description: description.trim() || null
+		};
+	}
+
+	function isFormDirty(): boolean {
+		return (
+			initialForm !== null &&
+			Object.keys(changedFormFields(initialForm, formSnapshot())).length > 0
+		);
+	}
+
+	/**
+	 * Reload the milestone. `preserveEdits` is for refreshes triggered by nested
+	 * modals or image changes: it keeps the user's unsaved form edits.
+	 */
+	async function loadMilestone(options: { preserveEdits?: boolean } = {}) {
+		const keepForm = options.preserveEdits === true && isFormDirty();
 		try {
+			if (!keepForm) initialForm = null;
 			isLoading = true;
 			const response = await fetch(`/api/onto/milestones/${milestoneId}`);
 			if (!response.ok) throw new Error('Failed to load milestone');
@@ -226,14 +261,14 @@
 			const data = await response.json();
 			milestone = (data.data?.milestone ?? null) as LoadedMilestone | null;
 
-			if (milestone) {
+			if (milestone && !keepForm) {
 				title = milestone.title || '';
-				// Extract date portion for input
-				dueAt = formatDateForInput(milestone.due_at);
+				dueAt = formatDueDateForInput(milestone.due_at);
 				stateKey = milestone.state_key || 'pending';
 				typeKey = milestone.type_key || 'milestone.default';
 				description = milestone.description || milestone.props?.description || '';
 				milestoneDetails = milestone.milestone || milestone.props?.milestone || '';
+				initialForm = formSnapshot();
 			}
 		} catch (err) {
 			console.error('Error loading milestone:', err);
@@ -252,8 +287,16 @@
 	}
 
 	async function handleSave() {
+		if (isLoading || isSaving || !initialForm) return;
 		if (!title.trim()) {
 			error = 'Milestone title is required';
+			return;
+		}
+
+		// Send only edited fields: re-sending an untouched due_at rewrote it.
+		const changes: Record<string, unknown> = changedFormFields(initialForm, formSnapshot());
+		if (Object.keys(changes).length === 0) {
+			handleClose();
 			return;
 		}
 
@@ -261,24 +304,17 @@
 		error = '';
 
 		try {
-			let dueDateIso: string | null = null;
-			if (dueAt && dueAt.trim()) {
-				dueDateIso = parseDateFromInput(dueAt);
+			if (typeof changes.due_at === 'string') {
+				const dueDateIso = parseDateFromInput(changes.due_at);
 				if (!dueDateIso) {
 					error = 'Due date must be a valid date';
 					isSaving = false;
 					return;
 				}
+				changes.due_at = dueDateIso;
 			}
 
-			const requestBody = {
-				title: title.trim(),
-				due_at: dueDateIso,
-				state_key: stateKey,
-				type_key: typeKey || 'milestone.default',
-				milestone: milestoneDetails.trim() || null,
-				description: description.trim() || null
-			};
+			const requestBody = changes;
 
 			const response = await fetch(`/api/onto/milestones/${milestoneId}`, {
 				method: 'PATCH',
@@ -383,6 +419,13 @@
 		}
 	}
 
+	// Nested modals report changes without closing (DocumentModal autosave,
+	// image uploads), so only remember them and refresh once the nested modal closes.
+	let linkedEntityChanged = false;
+	function markLinkedEntityChanged() {
+		linkedEntityChanged = true;
+	}
+
 	function closeLinkedEntityModals() {
 		showTaskModal = false;
 		showPlanModal = false;
@@ -394,14 +437,18 @@
 		selectedGoalIdForModal = null;
 		selectedDocumentIdForModal = null;
 		selectedRiskIdForModal = null;
-		// Refresh milestone data to get updated linked entities
-		loadMilestone();
+		// Refresh linked entities only when a nested modal changed something,
+		// and never overwrite unsaved edits in this form.
+		if (!linkedEntityChanged) return;
+		linkedEntityChanged = false;
+		void loadMilestone({ preserveEdits: true });
 	}
 
 	function formatDueDate(dateStr?: string | null): string {
 		if (!dateStr) return 'No due date';
-		const date = new Date(dateStr);
-		if (Number.isNaN(date.getTime())) return 'No due date';
+		// dateStr is the YYYY-MM-DD input value; new Date() would read it as UTC.
+		const date = parseDateOnlyToLocal(dateStr);
+		if (!date) return 'No due date';
 		return date.toLocaleDateString(undefined, {
 			weekday: 'short',
 			month: 'short',
@@ -817,7 +864,8 @@
 													sourceKind="milestone"
 													{projectId}
 													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={loadMilestone}
+													onLinksChanged={() =>
+														loadMilestone({ preserveEdits: true })}
 												/>
 											</div>
 										{/if}
@@ -850,7 +898,7 @@
 													showTitle={false}
 													compact={true}
 													onChanged={() => {
-														void loadMilestone();
+														void loadMilestone({ preserveEdits: true });
 														onUpdated?.();
 													}}
 												/>
@@ -979,8 +1027,8 @@
 		taskId={selectedTaskIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onUpdated={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 
@@ -989,8 +1037,8 @@
 		planId={selectedPlanIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onUpdated={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 
@@ -999,8 +1047,8 @@
 		goalId={selectedGoalIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onUpdated={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 
@@ -1010,8 +1058,8 @@
 		documentId={selectedDocumentIdForModal}
 		bind:isOpen={showDocumentModal}
 		onClose={closeLinkedEntityModals}
-		onSaved={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onSaved={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 
@@ -1020,8 +1068,8 @@
 		riskId={selectedRiskIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onUpdated={markLinkedEntityChanged}
+		onDeleted={markLinkedEntityChanged}
 	/>
 {/if}
 

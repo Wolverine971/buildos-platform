@@ -456,8 +456,11 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 };
 
-// Function to check beta signup status
-export const GET: RequestHandler = async ({ url }) => {
+// Function to check beta signup status.
+// Anyone can ask about any email, so an anonymous or mismatched caller only
+// learns whether a signup exists. The review status and signup date are
+// returned only when the email belongs to the signed-in user.
+export const GET: RequestHandler = async ({ url, locals }) => {
 	const email = url.searchParams.get('email');
 
 	if (!email) {
@@ -480,14 +483,21 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		if (error) {
 			if (error.code === 'PGRST116') {
-				return ApiResponse.success({ status: 'not_found' });
+				return ApiResponse.success({ status: 'not_found', signedUp: false });
 			}
 			console.error('Error checking signup status:', error);
 			return ApiResponse.internalError(error, 'Failed to check status');
 		}
 
+		const session = await locals.safeGetSession?.();
+		const sessionEmail = session?.user?.email?.trim().toLowerCase();
+		if (!sessionEmail || sessionEmail !== emailValidation.email!.trim().toLowerCase()) {
+			return ApiResponse.success({ status: 'signed_up', signedUp: true });
+		}
+
 		return ApiResponse.success({
 			status: signup.signup_status,
+			signedUp: true,
 			signedUpAt: signup.created_at
 		});
 	} catch (error) {

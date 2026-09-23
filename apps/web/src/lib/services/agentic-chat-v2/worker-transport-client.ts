@@ -42,7 +42,8 @@ export type PublishedSpecialistSelection = PublishedSpecialistReference & {
 };
 
 export type AgenticChatWorkerCommand = {
-	leaseToken: string;
+	/** Legacy lease; omitted by current clients so admission decides inline. */
+	leaseToken?: string | null;
 	clientTurnId: string;
 	streamRunId: string;
 	sessionId: string | null;
@@ -60,6 +61,7 @@ export type AgenticChatWorkerCommand = {
 /**
  * One engine since one-engine stage S8: negotiation either yields a worker
  * lease or fails. There is no null "use the other transport" answer.
+ * The chat client no longer calls this; admission resolves the decision inline.
  */
 export async function requestAgenticChatTransportLease(input: {
 	request: AgentChatTransportLeaseRequestV1;
@@ -197,7 +199,7 @@ function timingDescription(parameters: string[]): string | null {
 
 function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 	return {
-		leaseToken: command.leaseToken,
+		...(command.leaseToken ? { leaseToken: command.leaseToken } : {}),
 		clientTurnId: command.clientTurnId,
 		streamRunId: command.streamRunId,
 		sessionId: command.sessionId,

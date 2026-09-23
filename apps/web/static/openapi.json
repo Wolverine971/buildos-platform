@@ -2968,40 +2968,6 @@
 				]
 			}
 		},
-		"/agent/google-calendar": {
-			"post": {
-				"summary": "POST /api/agent/google-calendar",
-				"parameters": [],
-				"responses": {
-					"200": {
-						"description": "Success",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object"
-								}
-							}
-						}
-					}
-				}
-			},
-			"get": {
-				"summary": "GET /api/agent/google-calendar",
-				"parameters": [],
-				"responses": {
-					"200": {
-						"description": "Success",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object"
-								}
-							}
-						}
-					}
-				}
-			}
-		},
 		"/analytics/briefs": {
 			"get": {
 				"summary": "GET /api/analytics/briefs",

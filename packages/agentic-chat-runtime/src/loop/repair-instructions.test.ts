@@ -240,6 +240,38 @@ describe('document link and placement claims', () => {
 			})
 		).toBe(`${text}\n\nCorrection: I did not create a document link.`);
 	});
+
+	const searchDocuments = () =>
+		execution(
+			'search_onto_documents',
+			{ query: 'pitch' },
+			{ documents: [{ id: 'doc_1', title: 'Pitch' }] }
+		);
+
+	it('corrects a placement claim on a requested move that made no write', () => {
+		// The turn was structurally asked to change something, yet only read.
+		const text = 'The Pitch document is now organized under Research.';
+		expect(
+			enforceMutationOutcomeIntegrity(text, {
+				contextType: 'project',
+				toolExecutions: [searchDocuments()],
+				explicitMutationRequested: true
+			})
+		).toBe(`${text}\n\nCorrection: I did not move or place the document in the tree.`);
+	});
+
+	it('corrects link and placement claims on a requested change that made no write', () => {
+		const text = 'Moved the Pitch doc under Research and linked the doc to the Launch goal.';
+		expect(
+			enforceMutationOutcomeIntegrity(text, {
+				contextType: 'project',
+				toolExecutions: [searchDocuments()],
+				explicitMutationRequested: true
+			})
+		).toBe(
+			`${text}\n\nCorrection: I did not create a document link. I did not move or place the document in the tree.`
+		);
+	});
 });
 
 describe('tool validation repair instructions', () => {

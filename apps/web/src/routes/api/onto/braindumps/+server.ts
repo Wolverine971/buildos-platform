@@ -16,7 +16,9 @@ import type { RequestHandler } from './$types';
 import type { Database } from '@buildos/shared-types';
 import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
+import { validatePaginationCustom } from '$lib/utils/api-helpers';
 import { queueBraindumpProcessing } from '$lib/server/braindump-processing.service';
+import { runAfterResponse } from '$lib/server/background';
 import { captureServerEvent } from '$lib/server/posthog';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
@@ -79,12 +81,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Queue async processing (fire-and-forget)
-		// This will generate title, topics, and summary in the background
-		queueBraindumpProcessing({ braindumpId: braindump.id, userId: user.id }).catch((err) => {
-			// Silently log - processing is optional enhancement
-			console.warn('Failed to queue captured context processing:', err);
-		});
+		// Queue async processing after the response (title, topics, summary).
+		// Processing is an optional enhancement, so a failure is only logged.
+		runAfterResponse(
+			queueBraindumpProcessing({ braindumpId: braindump.id, userId: user.id }),
+			'captured context processing queue'
+		);
 
 		await captureServerEvent(user.id, 'brain_dump_created', {
 			braindump_id: braindump.id,
@@ -117,8 +119,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 	try {
 		// Parse query parameters
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
-		const offset = parseInt(url.searchParams.get('offset') || '0');
+		const { limit, offset } = validatePaginationCustom(
+			{
+				limit: url.searchParams.get('limit'),
+				offset: url.searchParams.get('offset')
+			},
+			{ defaultLimit: 20, maxLimit: 100 }
+		);
 		const status = url.searchParams.get('status'); // pending, processing, processed, failed
 
 		// Build query.

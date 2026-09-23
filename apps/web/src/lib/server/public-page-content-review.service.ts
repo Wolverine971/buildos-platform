@@ -1,9 +1,21 @@
 // apps/web/src/lib/server/public-page-content-review.service.ts
+import { createHash } from 'node:crypto';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import {
+	getPublicPageCitations,
+	getPublicPageDocumentContent,
+	type PublicPagePublicationText
+} from '$lib/server/public-page-publication';
 
 type SupabaseLike = any;
 
-export const PUBLIC_PAGE_CONTENT_POLICY_VERSION = 'public_page_policy_v2';
+// v3: review covers the published title/summary/description/sources plus the
+// full body in chunks, and a pass or an admin approval only counts when the
+// LLM review completed. v2 rows (keyword-era flags, coerced passes) never reuse.
+export const PUBLIC_PAGE_CONTENT_POLICY_VERSION = 'public_page_policy_v3';
+
+const LLM_REVIEW_PROVIDER = 'rule_engine+smart_llm';
+const REVIEW_ATTEMPTS_TABLE = 'onto_public_page_review_attempts';
 
 export type PublicPageReviewSource = 'publish_confirm' | 'live_sync' | 'manual_retry';
 export type PublicPageReviewStatus = 'passed' | 'flagged' | 'error';
@@ -74,16 +86,32 @@ type AssetLike = {
 };
 
 type ReviewOptions = {
+	/** User-scoped client: inline asset reads and LLM usage logging. */
 	supabase: SupabaseLike;
+	/**
+	 * Service-role client that persists the review attempt. Members cannot
+	 * write review rows directly; callers must verify the actor's project
+	 * write access with the user-scoped client before passing this in.
+	 */
+	adminSupabase: SupabaseLike;
 	document: DocumentLike;
+	/** Title and summary the publish or live sync will write. Reviewed with the body. */
+	publication: PublicPagePublicationText;
 	actorId: string;
 	actorUserId?: string | null;
 	source: PublicPageReviewSource;
 	publicPageId?: string | null;
+	/**
+	 * The document's latest stored review. Chunks whose exact text that review
+	 * already passed are not sent to the LLM again, so a live-synced long page
+	 * only pays for the parts that changed.
+	 */
+	previousReview?: PublicPageReviewAttempt | null;
 };
 
 type SetAdminDecisionOptions = {
-	supabase: SupabaseLike;
+	/** Service-role client. Callers must verify the user is a BuildOS admin first. */
+	adminSupabase: SupabaseLike;
 	reviewId: string;
 	actorId: string;
 	decision: PublicPageAdminDecision;
@@ -105,7 +133,15 @@ type RegexRule = {
 	recommendation: string;
 	source: PublicPageReviewFindingSource | 'both';
 	patterns: RegExp[];
+	redaction: string;
 };
+
+export class PublicPageReviewDecisionError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'PublicPageReviewDecisionError';
+	}
+}
 
 const INLINE_ASSET_RENDER_REGEX =
 	/\/api\/onto\/assets\/([0-9a-fA-F-]{36})\/render(?:\?[^\s)\]]*)?/g;
@@ -116,6 +152,8 @@ const INLINE_ASSET_RENDER_REGEX =
  */
 export const PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE =
 	'Content review is temporarily unavailable. Please try again in a few minutes.';
+
+export const PUBLIC_PAGE_REVIEW_TOO_LONG_CODE = 'content_too_long_for_automatic_review';
 
 // Deterministic detectors match fixed formats (keys, tokens, SSNs; card numbers
 // are Luhn-checked below), never meaning. Judging harmful, sexual, illegal, or
@@ -128,7 +166,8 @@ const POLICY_RULES: RegexRule[] = [
 		message: 'Possible private key material detected.',
 		recommendation: 'Remove credentials or secrets before publishing.',
 		source: 'both',
-		patterns: [/-----BEGIN(?: [A-Z0-9]+)? PRIVATE KEY-----/i]
+		patterns: [/-----BEGIN(?: [A-Z0-9]+)? PRIVATE KEY-----/i],
+		redaction: '[redacted-private-key]'
 	},
 	{
 		code: 'secret_api_token',
@@ -145,7 +184,8 @@ const POLICY_RULES: RegexRule[] = [
 			/\b(?:gh[pousr]_[a-zA-Z0-9]{36,}|github_pat_[a-zA-Z0-9_]{50,})\b/i,
 			/\bxox[baprs]-[a-zA-Z0-9-]{16,}\b/i,
 			/\bAIza[0-9a-zA-Z_-]{35}\b/
-		]
+		],
+		redaction: '[redacted-credential]'
 	},
 	{
 		code: 'pii_ssn',
@@ -154,13 +194,29 @@ const POLICY_RULES: RegexRule[] = [
 		message: 'Possible Social Security Number detected.',
 		recommendation: 'Remove sensitive personal identifiers before publishing.',
 		source: 'both',
-		patterns: [/\b\d{3}-\d{2}-\d{4}\b/]
+		patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
+		redaction: '[redacted-ssn]'
 	}
 ];
 
-const MAX_CONTENT_CHARS_FOR_LLM = 12000;
-const MAX_IMAGES_FOR_LLM = 12;
-const MAX_IMAGE_TEXT_CHARS = 1500;
+// A PEM private key block: the header through its END line, or, when the END
+// line is missing, the header plus the base64 body lines that follow it. Used
+// only for redaction so key material never reaches the LLM.
+const PRIVATE_KEY_BLOCK_REGEX =
+	/-----BEGIN(?: [A-Z0-9]+)? PRIVATE KEY-----(?:[\s\S]{0,12000}?-----END(?: [A-Z0-9]+)? PRIVATE KEY-----|(?:[ \t]*\r?\n[ \t]*[A-Za-z0-9+/=]{40,})*)/gi;
+const CARD_CANDIDATE_REGEX = /(?:\b\d[ -]*?){13,19}\b/g;
+const EXCERPT_LONG_TOKEN_REGEX = /[A-Za-z0-9+/=_-]{32,}/g;
+
+/** Characters per LLM review call. */
+const LLM_REVIEW_CHUNK_CHARS = 12_000;
+/**
+ * Pages up to this many characters (page text plus image text) get a full
+ * automatic review, split across at most three LLM calls. Longer pages are
+ * flagged for an admin instead of passing on a partial read.
+ */
+const MAX_LLM_REVIEW_CHARS = 30_000;
+const LLM_CHUNK_MIN_FILL = 0.85;
+const LLM_CHUNK_CONTEXT_CHARS = 300;
 
 function toStringOrNull(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
@@ -176,14 +232,13 @@ function readMetadataString(
 	return toStringOrNull(metadata[key]);
 }
 
-function getDocumentContent(document: DocumentLike): string {
-	if (typeof document.content === 'string') return document.content;
-	const markdown = document.props?.body_markdown;
-	return typeof markdown === 'string' ? markdown : '';
-}
-
 function normalizeWhitespace(value: string): string {
 	return value.replace(/\s+/g, ' ').trim();
+}
+
+function globalRegex(pattern: RegExp): RegExp {
+	const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+	return new RegExp(pattern.source, flags);
 }
 
 function extractInlineAssetIds(markdown: string): string[] {
@@ -194,35 +249,6 @@ function extractInlineAssetIds(markdown: string): string[] {
 		if (id) ids.add(id);
 	}
 	return [...ids];
-}
-
-function redactCredentialMatches(value: string): string {
-	let redacted = value;
-	for (const rule of POLICY_RULES) {
-		if (rule.category !== 'credentials') continue;
-		for (const pattern of rule.patterns) {
-			const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
-			redacted = redacted.replace(new RegExp(pattern.source, flags), '[redacted-credential]');
-		}
-	}
-	return redacted;
-}
-
-function excerptAround(value: string, startIndex: number, matchLength: number): string {
-	const safeStart = Math.max(0, startIndex - 60);
-	const safeEnd = Math.min(value.length, startIndex + matchLength + 80);
-	return normalizeWhitespace(redactCredentialMatches(value.slice(safeStart, safeEnd))).slice(
-		0,
-		220
-	);
-}
-
-function toAssetLabel(asset: AssetLike): string | null {
-	return (
-		toStringOrNull(asset.original_filename) ??
-		toStringOrNull(asset.alt_text) ??
-		toStringOrNull(asset.caption)
-	);
 }
 
 function isLikelyCreditCard(value: string): boolean {
@@ -244,8 +270,99 @@ function isLikelyCreditCard(value: string): boolean {
 	return sum % 10 === 0;
 }
 
+type SensitiveRange = { start: number; end: number; placeholder: string };
+
+/**
+ * Every fixed-format detector match (private key blocks, API tokens, SSNs,
+ * Luhn-valid card numbers) in `text`, sorted and merged.
+ */
+function findSensitiveRanges(text: string): SensitiveRange[] {
+	const ranges: SensitiveRange[] = [];
+	const collect = (
+		expression: RegExp,
+		placeholder: string,
+		accept?: (match: string) => boolean
+	) => {
+		for (const match of text.matchAll(expression)) {
+			const matched = match[0] ?? '';
+			if (!matched || (accept && !accept(matched))) continue;
+			const start = match.index ?? 0;
+			ranges.push({ start, end: start + matched.length, placeholder });
+		}
+	};
+	collect(new RegExp(PRIVATE_KEY_BLOCK_REGEX), '[redacted-private-key]');
+	for (const rule of POLICY_RULES) {
+		for (const pattern of rule.patterns) collect(globalRegex(pattern), rule.redaction);
+	}
+	collect(new RegExp(CARD_CANDIDATE_REGEX), '[redacted-card-number]', isLikelyCreditCard);
+
+	ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+	const merged: SensitiveRange[] = [];
+	for (const range of ranges) {
+		const last = merged[merged.length - 1];
+		if (last && range.start < last.end) {
+			last.end = Math.max(last.end, range.end);
+			continue;
+		}
+		merged.push({ ...range });
+	}
+	return merged;
+}
+
+function applyRedactions(
+	text: string,
+	ranges: SensitiveRange[],
+	windowStart = 0,
+	windowEnd = text.length
+): string {
+	let output = '';
+	let cursor = windowStart;
+	for (const range of ranges) {
+		if (range.end <= windowStart || range.start >= windowEnd) continue;
+		const start = Math.max(range.start, windowStart);
+		output += text.slice(cursor, start) + range.placeholder;
+		cursor = Math.min(range.end, windowEnd);
+	}
+	return output + text.slice(cursor, windowEnd);
+}
+
+/**
+ * Replaces every fixed-format detector match with a placeholder. The LLM only
+ * ever sees redacted text, so a detected secret is never sent to the model.
+ */
+function redactFixedFormatMatches(value: string): string {
+	return applyRedactions(value, findSensitiveRanges(value));
+}
+
+function excerptAround(
+	value: string,
+	ranges: SensitiveRange[],
+	startIndex: number,
+	matchLength: number
+): string {
+	const safeStart = Math.max(0, startIndex - 60);
+	const safeEnd = Math.min(value.length, startIndex + matchLength + 80);
+	// Redact against matches found in the full text so a window edge can never
+	// expose part of a secret; also mask any long unbroken token that remains.
+	return normalizeWhitespace(
+		applyRedactions(value, ranges, safeStart, safeEnd).replace(
+			EXCERPT_LONG_TOKEN_REGEX,
+			'[redacted]'
+		)
+	).slice(0, 220);
+}
+
+function toAssetLabel(asset: AssetLike): string | null {
+	return (
+		toStringOrNull(asset.original_filename) ??
+		toStringOrNull(asset.alt_text) ??
+		toStringOrNull(asset.caption)
+	);
+}
+
 function scanRegexRules(
 	text: string,
+	ranges: SensitiveRange[],
 	source: PublicPageReviewFindingSource,
 	asset: AssetLike | null
 ): PublicPageReviewFinding[] {
@@ -253,9 +370,7 @@ function scanRegexRules(
 	for (const rule of POLICY_RULES) {
 		if (rule.source !== 'both' && rule.source !== source) continue;
 		for (const pattern of rule.patterns) {
-			const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
-			const expression = new RegExp(pattern.source, flags);
-			for (const match of text.matchAll(expression)) {
+			for (const match of text.matchAll(globalRegex(pattern))) {
 				const matchText = match[0] ?? '';
 				const index = match.index ?? 0;
 				findings.push({
@@ -265,7 +380,7 @@ function scanRegexRules(
 					source,
 					message: rule.message,
 					recommendation: rule.recommendation,
-					excerpt: excerptAround(text, index, matchText.length),
+					excerpt: excerptAround(text, ranges, index, matchText.length),
 					asset_id: asset?.id ?? null,
 					asset_label: asset ? toAssetLabel(asset) : null
 				});
@@ -277,12 +392,12 @@ function scanRegexRules(
 
 function scanCreditCards(
 	text: string,
+	ranges: SensitiveRange[],
 	source: PublicPageReviewFindingSource,
 	asset: AssetLike | null
 ): PublicPageReviewFinding[] {
 	const findings: PublicPageReviewFinding[] = [];
-	const pattern = /(?:\b\d[ -]*?){13,19}\b/g;
-	for (const match of text.matchAll(pattern)) {
+	for (const match of text.matchAll(new RegExp(CARD_CANDIDATE_REGEX))) {
 		const candidate = match[0] ?? '';
 		if (!isLikelyCreditCard(candidate)) continue;
 		const index = match.index ?? 0;
@@ -293,7 +408,7 @@ function scanCreditCards(
 			source,
 			message: 'Possible credit card number detected.',
 			recommendation: 'Remove payment card numbers before publishing.',
-			excerpt: excerptAround(text, index, candidate.length),
+			excerpt: excerptAround(text, ranges, index, candidate.length),
 			asset_id: asset?.id ?? null,
 			asset_label: asset ? toAssetLabel(asset) : null
 		});
@@ -307,7 +422,11 @@ function scanTextForFindings(
 	asset: AssetLike | null
 ): PublicPageReviewFinding[] {
 	if (!text.trim()) return [];
-	return [...scanRegexRules(text, source, asset), ...scanCreditCards(text, source, asset)];
+	const ranges = findSensitiveRanges(text);
+	return [
+		...scanRegexRules(text, ranges, source, asset),
+		...scanCreditCards(text, ranges, source, asset)
+	];
 }
 
 function normalizeImageTextForScan(asset: AssetLike): string {
@@ -322,6 +441,21 @@ function normalizeImageTextForScan(asset: AssetLike): string {
 			.filter((value): value is string => Boolean(value))
 			.join('\n')
 	);
+}
+
+function buildImageReviewSection(asset: AssetLike): string | null {
+	const fields: Array<[string, string | null]> = [
+		['filename', toStringOrNull(asset.original_filename)],
+		['alt text', toStringOrNull(asset.alt_text)],
+		['caption', toStringOrNull(asset.caption)],
+		['summary', toStringOrNull(asset.extraction_summary)],
+		['extracted text', toStringOrNull(asset.extracted_text)]
+	];
+	const lines = fields
+		.filter((entry): entry is [string, string] => Boolean(entry[1]))
+		.map(([label, value]) => `${label}: ${value}`);
+	if (lines.length === 0) return null;
+	return `[IMAGE id=${asset.id}]\n${lines.join('\n')}`;
 }
 
 function dedupeFindings(findings: PublicPageReviewFinding[]): PublicPageReviewFinding[] {
@@ -373,9 +507,126 @@ function toReviewSummary(status: PublicPageReviewStatus, reasons: string[]): str
 	return reasons.slice(0, 2).join(' ');
 }
 
-function clampForLlm(value: string, limit: number): string {
-	if (value.length <= limit) return value;
-	return `${value.slice(0, Math.max(0, limit - 3))}...`;
+/**
+ * Everything the public page shows as text: the published title and summary,
+ * the description (shown when there is no summary), the sources list, and the
+ * body. The deterministic scan, the LLM review, and the reuse fingerprint all
+ * use this, so what is reviewed is what gets published.
+ */
+export function buildPublicPageReviewText(
+	document: Pick<DocumentLike, 'description' | 'content' | 'props'>,
+	publication: PublicPagePublicationText
+): string {
+	const sections: string[] = [];
+	const addSection = (label: string, value: string | null | undefined) => {
+		if (typeof value === 'string' && value.trim()) sections.push(`[${label}]\n${value}`);
+	};
+	addSection('PAGE TITLE', publication.title);
+	addSection('PAGE SUMMARY', publication.summary);
+	addSection('PAGE DESCRIPTION', toStringOrNull(document.description));
+	const citations = getPublicPageCitations(document.props);
+	if (citations.length > 0) {
+		addSection(
+			'SOURCES',
+			citations
+				.map(
+					(citation, index) =>
+						`${index + 1}. ${[citation.label, citation.title, citation.url]
+							.filter((part): part is string => Boolean(part))
+							.join(' | ')}`
+				)
+				.join('\n')
+		);
+	}
+	addSection('PAGE CONTENT', getPublicPageDocumentContent(document));
+	return sections.join('\n\n');
+}
+
+/** Hash of the reviewed text, stored on the attempt so reuse is exact. */
+export function computePublicPageReviewFingerprint(
+	document: Pick<DocumentLike, 'description' | 'content' | 'props'>,
+	publication: PublicPagePublicationText
+): string {
+	return createHash('sha256')
+		.update(PUBLIC_PAGE_CONTENT_POLICY_VERSION)
+		.update('\n')
+		.update(buildPublicPageReviewText(document, publication))
+		.digest('hex');
+}
+
+function hashReviewChunk(chunkText: string): string {
+	return createHash('sha256')
+		.update(PUBLIC_PAGE_CONTENT_POLICY_VERSION)
+		.update('\n')
+		.update(chunkText)
+		.digest('hex');
+}
+
+/** Chunk hashes a prior current-policy review of this document already passed. */
+function readPassedChunkHashes(
+	previousReview: PublicPageReviewAttempt | null | undefined,
+	documentId: string
+): Set<string> {
+	if (
+		!previousReview ||
+		previousReview.document_id !== documentId ||
+		previousReview.policy_version !== PUBLIC_PAGE_CONTENT_POLICY_VERSION
+	) {
+		return new Set();
+	}
+	const coverage = previousReview.review_metadata?.llm_review;
+	const hashes =
+		coverage && typeof coverage === 'object' && !Array.isArray(coverage)
+			? (coverage as Record<string, unknown>).passed_chunk_hashes
+			: null;
+	return new Set(
+		Array.isArray(hashes)
+			? hashes.filter(
+					(hash): hash is string => typeof hash === 'string' && hash.length === 64
+				)
+			: []
+	);
+}
+
+function lastWhitespaceIndex(value: string): number {
+	for (let index = value.length - 1; index >= 0; index--) {
+		const code = value.charCodeAt(index);
+		if (code === 32 || code === 9 || code === 10 || code === 13) return index;
+	}
+	return -1;
+}
+
+/**
+ * Splits review text into chunks of at most `chunkChars`, preferring paragraph,
+ * line, then word breaks in the last 15% of each window.
+ */
+export function splitTextForLlmReview(
+	text: string,
+	chunkChars: number = LLM_REVIEW_CHUNK_CHARS
+): string[] {
+	const chunks: string[] = [];
+	let start = 0;
+	while (start < text.length) {
+		let end = Math.min(start + chunkChars, text.length);
+		if (end < text.length) {
+			const searchFrom = start + Math.floor(chunkChars * LLM_CHUNK_MIN_FILL);
+			const window = text.slice(searchFrom, end);
+			const paragraphBreak = window.lastIndexOf('\n\n');
+			const lineBreak = window.lastIndexOf('\n');
+			const wordBreak = lastWhitespaceIndex(window);
+			if (paragraphBreak >= 0) end = searchFrom + paragraphBreak + 2;
+			else if (lineBreak >= 0) end = searchFrom + lineBreak + 1;
+			else if (wordBreak >= 0) end = searchFrom + wordBreak + 1;
+			else {
+				// Hard cut: never split a surrogate pair.
+				const code = text.charCodeAt(end - 1);
+				if (code >= 0xd800 && code <= 0xdbff) end -= 1;
+			}
+		}
+		chunks.push(text.slice(start, end));
+		start = end;
+	}
+	return chunks;
 }
 
 function parseLlmFindings(value: unknown): PublicPageReviewFinding[] {
@@ -417,41 +668,7 @@ function parseLlmFindings(value: unknown): PublicPageReviewFinding[] {
 	return parsed;
 }
 
-async function runLlmReview(
-	supabase: SupabaseLike,
-	document: DocumentLike,
-	assets: AssetLike[],
-	initialFindings: PublicPageReviewFinding[],
-	actorUserId?: string | null
-): Promise<LlmReviewResult | null> {
-	try {
-		const service = new SmartLLMService({
-			supabase,
-			httpReferer: 'https://build-os.com',
-			appName: 'BuildOS Public Page Review'
-		});
-		const content = getDocumentContent(document);
-		const imageInputs = assets.slice(0, MAX_IMAGES_FOR_LLM).map((asset) => ({
-			id: asset.id,
-			filename: toStringOrNull(asset.original_filename),
-			content_type: toStringOrNull(asset.content_type),
-			ocr_status: toStringOrNull(asset.ocr_status),
-			alt_text: toStringOrNull(asset.alt_text),
-			caption: toStringOrNull(asset.caption),
-			extraction_summary: toStringOrNull(asset.extraction_summary),
-			extracted_text: clampForLlm(
-				toStringOrNull(asset.extracted_text) ?? '',
-				MAX_IMAGE_TEXT_CHARS
-			)
-		}));
-		const seedFindings = initialFindings.slice(0, 15).map((finding) => ({
-			category: finding.category,
-			source: finding.source,
-			message: finding.message,
-			excerpt: finding.excerpt
-		}));
-
-		const systemPrompt = `You are BuildOS public page policy reviewer.
+const LLM_REVIEW_SYSTEM_PROMPT = `You are BuildOS public page policy reviewer.
 
 Policy:
 1) Reject secrets or credentials (API keys, private keys, auth tokens).
@@ -460,6 +677,11 @@ Policy:
 4) Reject sexual content involving minors.
 5) Reject explicit illegal activity instructions.
 6) Reject explicit hate or harassment targeting protected groups.
+
+Input notes:
+- A long page is split into parts and you see one part at a time. Judge only "text". Use "preceding_context" (the end of the previous part) only to understand how this part begins.
+- Sections are labeled [PAGE TITLE], [PAGE SUMMARY], [PAGE DESCRIPTION], [SOURCES], [PAGE CONTENT], and [IMAGE id=...]. An image section describes an inline image through its filename, alt text, caption, and extracted text. For a problem inside an image section, set "source" to "image" and "asset_id" to that image's id.
+- Placeholders such as [redacted-credential], [redacted-private-key], [redacted-ssn], and [redacted-card-number] mark values a fixed-format detector already removed and flagged. Do not flag a placeholder itself; review everything around it.
 
 Return strict JSON with this shape:
 {
@@ -483,25 +705,36 @@ Return strict JSON with this shape:
 
 Be conservative about safety, but do not flag benign factual discussion unless it is instructional, targeted abuse, or clearly disallowed content.`;
 
+async function runLlmReviewChunk(
+	service: SmartLLMService,
+	args: {
+		document: DocumentLike;
+		pageTitle: string;
+		chunkText: string;
+		precedingContext: string | null;
+		partIndex: number;
+		partCount: number;
+		seedFindings: Array<Record<string, unknown>>;
+		actorUserId?: string | null;
+	}
+): Promise<LlmReviewResult | null> {
+	try {
 		const userPrompt = JSON.stringify(
 			{
-				document: {
-					id: document.id,
-					title: document.title,
-					description: document.description,
-					content: clampForLlm(content, MAX_CONTENT_CHARS_FOR_LLM)
-				},
-				images: imageInputs,
-				heuristic_findings: seedFindings
+				page: { id: args.document.id, title: args.pageTitle },
+				part: { index: args.partIndex, count: args.partCount },
+				...(args.precedingContext ? { preceding_context: args.precedingContext } : {}),
+				text: args.chunkText,
+				heuristic_findings: args.seedFindings
 			},
 			null,
 			2
 		);
 
 		const response = (await service.getJSONResponse({
-			systemPrompt,
+			systemPrompt: LLM_REVIEW_SYSTEM_PROMPT,
 			userPrompt,
-			userId: actorUserId ?? 'public-page-review',
+			userId: args.actorUserId ?? 'public-page-review',
 			profile: 'balanced',
 			temperature: 0,
 			validation: {
@@ -509,21 +742,19 @@ Be conservative about safety, but do not flag benign factual discussion unless i
 				maxRetries: 1
 			},
 			operationType: 'public_page_content_review',
-			projectId: document.project_id
+			projectId: args.document.project_id
 		})) as Record<string, unknown>;
 
 		// An empty or malformed verdict is a failed review, never an implicit pass.
 		const rawStatus = toStringOrNull(response?.status)?.toLowerCase();
 		if (rawStatus !== 'passed' && rawStatus !== 'flagged') {
 			console.error('[PublicPageReview] LLM review returned no usable status', {
-				documentId: document.id,
+				documentId: args.document.id,
+				part: args.partIndex,
 				status: rawStatus ?? null
 			});
 			return null;
 		}
-		const status: 'passed' | 'flagged' = rawStatus;
-		const summary = toStringOrNull(response?.summary);
-		const findings = parseLlmFindings(response?.findings);
 		const reasons = dedupeReasons(
 			Array.isArray(response?.reasons)
 				? response.reasons
@@ -533,14 +764,15 @@ Be conservative about safety, but do not flag benign factual discussion unless i
 		);
 
 		return {
-			status,
-			summary,
-			findings,
+			status: rawStatus,
+			summary: toStringOrNull(response?.summary),
+			findings: parseLlmFindings(response?.findings),
 			reasons
 		};
 	} catch (error) {
 		console.error('[PublicPageReview] LLM review failed', {
-			documentId: document.id,
+			documentId: args.document.id,
+			part: args.partIndex,
 			error: error instanceof Error ? error.message : String(error)
 		});
 		return null;
@@ -609,8 +841,9 @@ function toReviewAttempt(row: Record<string, unknown>): PublicPageReviewAttempt 
 			row.source === 'live_sync' || row.source === 'manual_retry'
 				? row.source
 				: 'publish_confirm',
-		status: row.status === 'flagged' || row.status === 'error' ? row.status : 'passed',
-		policy_version: toStringOrNull(row.policy_version) ?? PUBLIC_PAGE_CONTENT_POLICY_VERSION,
+		// An unknown status is never a pass.
+		status: row.status === 'passed' || row.status === 'flagged' ? row.status : 'error',
+		policy_version: toStringOrNull(row.policy_version) ?? 'unknown',
 		summary: toStringOrNull(row.summary),
 		reasons,
 		text_findings: normalizeFindingsJson(row.text_findings),
@@ -632,28 +865,76 @@ function getDocumentUpdatedAt(document: DocumentLike): string | null {
 	return toStringOrNull(document.updated_at);
 }
 
+/**
+ * True only when every LLM review call for the attempt returned a verdict.
+ * Rows where the LLM failed, or never ran, are not evidence of a review.
+ */
+export function didPublicPageReviewLlmComplete(
+	review: Pick<PublicPageReviewAttempt, 'review_metadata'>
+): boolean {
+	const metadata = review.review_metadata ?? {};
+	return (
+		readMetadataString(metadata, 'provider') === LLM_REVIEW_PROVIDER &&
+		metadata.llm_review_failed !== true &&
+		metadata.llm_review_completed !== false
+	);
+}
+
+/**
+ * Why an admin cannot approve this flagged review, or null when approval would
+ * let the page publish. Approval only counts on current-policy rows where the
+ * LLM review actually completed.
+ */
+export function getPublicPageReviewApprovalBlocker(
+	review: Pick<PublicPageReviewAttempt, 'status' | 'policy_version' | 'review_metadata'>
+): string | null {
+	if (review.status !== 'flagged') return 'Only flagged reviews need an admin decision.';
+	if (review.policy_version !== PUBLIC_PAGE_CONTENT_POLICY_VERSION) {
+		return 'This review used an older policy. The next publish attempt re-reviews the page.';
+	}
+	if (!didPublicPageReviewLlmComplete(review)) {
+		return 'The AI review did not finish for this attempt, so approving it would publish unreviewed content. The next publish attempt re-runs the review.';
+	}
+	return null;
+}
+
+export function isPublicPageReviewApprovedForPublish(
+	review: Pick<
+		PublicPageReviewAttempt,
+		'status' | 'policy_version' | 'review_metadata' | 'admin_decision'
+	>
+): boolean {
+	return (
+		review.status === 'flagged' &&
+		review.admin_decision === 'approved' &&
+		getPublicPageReviewApprovalBlocker(review) === null
+	);
+}
+
 export function isPublicPageReviewReusableForDocument(
 	review: PublicPageReviewAttempt,
-	document: DocumentLike
+	document: DocumentLike,
+	publication: PublicPagePublicationText
 ): boolean {
 	if (review.policy_version !== PUBLIC_PAGE_CONTENT_POLICY_VERSION) return false;
 	// A review that could not run is never a verdict; always review again.
 	if (review.status === 'error') return false;
-	// A pass only counts when the LLM review actually ran. Older rows passed on
-	// keyword rules alone when the LLM failed (fail-open); never reuse those.
-	if (
-		review.status === 'passed' &&
-		readMetadataString(review.review_metadata, 'provider') !== 'rule_engine+smart_llm'
-	) {
-		return false;
-	}
+	// Passes and admin approvals only count when the LLM review completed.
+	if (!didPublicPageReviewLlmComplete(review)) return false;
 	const reviewDocumentUpdatedAt = readMetadataString(
 		review.review_metadata,
 		'document_updated_at'
 	);
 	const documentUpdatedAt = getDocumentUpdatedAt(document);
 	if (!reviewDocumentUpdatedAt || !documentUpdatedAt) return false;
-	return reviewDocumentUpdatedAt === documentUpdatedAt;
+	if (reviewDocumentUpdatedAt !== documentUpdatedAt) return false;
+	// The exact text being published (including a new title or summary) must
+	// be the text that was reviewed.
+	const reviewFingerprint = readMetadataString(review.review_metadata, 'input_fingerprint');
+	return (
+		reviewFingerprint !== null &&
+		reviewFingerprint === computePublicPageReviewFingerprint(document, publication)
+	);
 }
 
 async function fetchInlineAssetsForDocument(
@@ -702,64 +983,177 @@ async function fetchInlineAssetsForDocument(
 export async function runPublicPageContentReview(
 	options: ReviewOptions
 ): Promise<PublicPageReviewAttempt> {
-	const { supabase, document, actorId, actorUserId, source, publicPageId = null } = options;
-	const content = getDocumentContent(document);
+	const {
+		supabase,
+		adminSupabase,
+		document,
+		publication,
+		actorId,
+		actorUserId,
+		source,
+		publicPageId = null,
+		previousReview = null
+	} = options;
+	const content = getPublicPageDocumentContent(document);
 	const assets = await fetchInlineAssetsForDocument(supabase, document, content);
+	const reviewText = buildPublicPageReviewText(document, publication);
 
-	const textFindings = scanTextForFindings(content, 'text', null);
+	const textFindings = scanTextForFindings(reviewText, 'text', null);
 	const imageFindings = assets.flatMap((asset) =>
 		scanTextForFindings(normalizeImageTextForScan(asset), 'image', asset)
 	);
+	// One finding per detector match; excerpts are redacted, so adjacent matches
+	// can look identical and must not be collapsed.
+	const baseFindings = [...textFindings, ...imageFindings];
 
-	const baseFindings = dedupeFindings([...textFindings, ...imageFindings]);
-	const hasDeterministicCredentialFinding = baseFindings.some(
-		(finding) => finding.category === 'credentials'
+	// The LLM always reviews the page, but only with fixed-format matches
+	// (credentials, SSNs, card numbers) redacted, so a detector hit never sends
+	// the secret itself and never skips the review of everything around it.
+	const imageSections = assets
+		.map((asset) => buildImageReviewSection(asset))
+		.filter((section): section is string => Boolean(section));
+	const unredactedLlmText = [reviewText, ...imageSections].join('\n\n');
+	const llmText = redactFixedFormatMatches(unredactedLlmText);
+	const chunks = splitTextForLlmReview(llmText.length > 0 ? llmText : ' ');
+	const reviewedChunks: string[] = [];
+	let reviewedChars = 0;
+	for (const chunk of chunks) {
+		if (reviewedChars + chunk.length > MAX_LLM_REVIEW_CHARS) break;
+		reviewedChunks.push(chunk);
+		reviewedChars += chunk.length;
+	}
+	const truncated = reviewedChunks.length < chunks.length;
+
+	const seedFindings = baseFindings.slice(0, 15).map((finding) => ({
+		category: finding.category,
+		source: finding.source,
+		message: finding.message,
+		excerpt: finding.excerpt
+	}));
+	const service = new SmartLLMService({
+		supabase,
+		httpReferer: 'https://build-os.com',
+		appName: 'BuildOS Public Page Review'
+	});
+	const chunkHashes = reviewedChunks.map((chunkText) => hashReviewChunk(chunkText));
+	const previouslyPassedHashes = readPassedChunkHashes(previousReview, document.id);
+	let reusedChunks = 0;
+	const chunkResults = await Promise.all(
+		reviewedChunks.map((chunkText, index): Promise<LlmReviewResult | null> => {
+			// The LLM already passed this exact text under the current policy.
+			const chunkHash = chunkHashes[index];
+			if (chunkHash && previouslyPassedHashes.has(chunkHash)) {
+				reusedChunks += 1;
+				return Promise.resolve({
+					status: 'passed',
+					summary: null,
+					findings: [],
+					reasons: []
+				});
+			}
+			return runLlmReviewChunk(service, {
+				document,
+				pageTitle: redactFixedFormatMatches(publication.title),
+				chunkText,
+				precedingContext:
+					index > 0
+						? (reviewedChunks[index - 1]?.slice(-LLM_CHUNK_CONTEXT_CHARS) ?? null)
+						: null,
+				partIndex: index + 1,
+				partCount: reviewedChunks.length,
+				seedFindings,
+				actorUserId
+			});
+		})
 	);
-	// A deterministic credential match already blocks publication. Do not copy
-	// the document or OCR text to an external model after that point.
-	const llmResult = hasDeterministicCredentialFinding
-		? null
-		: await runLlmReview(supabase, document, assets, baseFindings, actorUserId);
-	const mergedFindings = dedupeFindings([
-		...baseFindings,
-		...(llmResult?.status === 'flagged' ? llmResult.findings : [])
-	]);
 
-	const wasFlaggedByLlm = llmResult?.status === 'flagged';
-	const llmReviewFailed = !hasDeterministicCredentialFinding && llmResult === null;
+	const failedChunks = chunkResults.filter((result) => result === null).length;
+	const flaggedChunkResults = chunkResults.filter(
+		(result): result is LlmReviewResult => result?.status === 'flagged'
+	);
+	const llmReviewCompleted = failedChunks === 0;
+
+	// Content past the automatic review cap never passes silently: an admin
+	// has to read the rest before it can publish.
+	const coverageFindings: PublicPageReviewFinding[] = truncated
+		? [
+				{
+					code: PUBLIC_PAGE_REVIEW_TOO_LONG_CODE,
+					category: 'other',
+					severity: 'medium',
+					source: 'text',
+					message: `This page is longer than automatic review covers (the AI reviewed the first ${reviewedChars.toLocaleString('en-US')} of ${llmText.length.toLocaleString('en-US')} characters), so an admin must review the rest before it can publish.`,
+					recommendation:
+						'Split the page into shorter pages, or ask an admin to review and approve it.',
+					excerpt: null,
+					asset_id: null,
+					asset_label: null
+				}
+			]
+		: [];
+
+	const mergedFindings = [
+		...baseFindings,
+		...coverageFindings,
+		...dedupeFindings(flaggedChunkResults.flatMap((result) => result.findings))
+	];
 	const reviewReasons = dedupeReasons([
 		...buildReasons(mergedFindings),
-		...(llmResult?.status === 'flagged' ? llmResult.reasons : [])
+		...flaggedChunkResults.flatMap((result) => result.reasons)
 	]);
-	// Deterministic findings block on their own. Without them, only a completed
-	// LLM review can pass a page; an LLM failure fails closed as a retryable error.
+	// Any finding or flagged part blocks publication. Otherwise only a fully
+	// completed LLM review can pass a page; a failed part fails closed as a
+	// retryable error.
 	const status: PublicPageReviewStatus =
-		mergedFindings.length > 0 || wasFlaggedByLlm
+		mergedFindings.length > 0 || flaggedChunkResults.length > 0
 			? 'flagged'
-			: llmReviewFailed
-				? 'error'
-				: 'passed';
+			: llmReviewCompleted
+				? 'passed'
+				: 'error';
+	const flaggedLlmSummary = flaggedChunkResults.find((result) => result.summary)?.summary;
 	if (status === 'flagged' && reviewReasons.length === 0) {
 		reviewReasons.push(
-			llmResult?.summary ?? 'Content was flagged by public page policy checks.'
+			flaggedLlmSummary ?? 'Content was flagged by public page policy checks.'
 		);
 	}
-	const textOnlyFindings = mergedFindings.filter((finding) => finding.source === 'text');
-	const imageOnlyFindings = mergedFindings.filter((finding) => finding.source === 'image');
 	const summary =
 		status === 'error'
 			? PUBLIC_PAGE_REVIEW_UNAVAILABLE_MESSAGE
-			: (llmResult?.summary ?? toReviewSummary(status, reviewReasons));
+			: status === 'passed'
+				? (chunkResults.find((result) => result?.summary)?.summary ??
+					toReviewSummary(status, reviewReasons))
+				: baseFindings.length === 0 && coverageFindings.length === 0 && flaggedLlmSummary
+					? flaggedLlmSummary
+					: toReviewSummary(status, reviewReasons);
+	const textOnlyFindings = mergedFindings.filter((finding) => finding.source === 'text');
+	const imageOnlyFindings = mergedFindings.filter((finding) => finding.source === 'image');
 
 	const reviewMetadata = {
-		provider: llmResult ? 'rule_engine+smart_llm' : 'rule_engine',
-		llm_review_skipped_reason: hasDeterministicCredentialFinding
-			? 'deterministic_credential_finding'
-			: null,
-		llm_review_failed: llmReviewFailed,
+		provider: llmReviewCompleted ? LLM_REVIEW_PROVIDER : 'rule_engine',
+		llm_review_completed: llmReviewCompleted,
+		llm_review_failed: !llmReviewCompleted,
+		llm_review_skipped_reason: null,
+		llm_input_redacted: llmText !== unredactedLlmText,
+		llm_review: {
+			chunk_chars: LLM_REVIEW_CHUNK_CHARS,
+			max_reviewed_chars: MAX_LLM_REVIEW_CHARS,
+			chunk_count: chunks.length,
+			chunks_reviewed: reviewedChunks.length,
+			chunks_failed: failedChunks,
+			chunks_flagged: flaggedChunkResults.length,
+			chunks_reused: reusedChunks,
+			passed_chunk_hashes: chunkHashes.filter(
+				(_hash, index) => chunkResults[index]?.status === 'passed'
+			),
+			reviewed_chars: reviewedChars,
+			total_chars: llmText.length,
+			truncated
+		},
+		input_fingerprint: computePublicPageReviewFingerprint(document, publication),
 		document_updated_at: getDocumentUpdatedAt(document),
 		scanned: {
 			content_char_count: content.length,
+			review_text_char_count: reviewText.length,
 			image_count: assets.length
 		},
 		image_scan: {
@@ -769,8 +1163,8 @@ export async function runPublicPageContentReview(
 		}
 	};
 
-	const { data, error } = await (supabase as any)
-		.from('onto_public_page_review_attempts')
+	const { data, error } = await (adminSupabase as any)
+		.from(REVIEW_ATTEMPTS_TABLE)
 		.insert({
 			project_id: document.project_id,
 			document_id: document.id,
@@ -800,7 +1194,7 @@ export async function getLatestPublicPageReviewForDocument(
 	documentId: string
 ): Promise<PublicPageReviewAttempt | null> {
 	const { data, error } = await (supabase as any)
-		.from('onto_public_page_review_attempts')
+		.from(REVIEW_ATTEMPTS_TABLE)
 		.select('*')
 		.eq('document_id', documentId)
 		.order('created_at', { ascending: false })
@@ -814,9 +1208,31 @@ export async function getLatestPublicPageReviewForDocument(
 export async function setPublicPageReviewAdminDecision(
 	options: SetAdminDecisionOptions
 ): Promise<PublicPageReviewAttempt> {
-	const { supabase, reviewId, actorId, decision, reason } = options;
-	const { data, error } = await (supabase as any)
-		.from('onto_public_page_review_attempts')
+	const { adminSupabase, reviewId, actorId, decision, reason } = options;
+	const { data: existing, error: readError } = await (adminSupabase as any)
+		.from(REVIEW_ATTEMPTS_TABLE)
+		.select('*')
+		.eq('id', reviewId)
+		.maybeSingle();
+	if (readError) {
+		throw readError;
+	}
+	if (!existing) {
+		throw new PublicPageReviewDecisionError('Review attempt not found.');
+	}
+	const review = toReviewAttempt(existing as Record<string, unknown>);
+	if (review.status !== 'flagged') {
+		throw new PublicPageReviewDecisionError(
+			'Only flagged reviews can receive an admin decision.'
+		);
+	}
+	if (decision === 'approved') {
+		const blocker = getPublicPageReviewApprovalBlocker(review);
+		if (blocker) throw new PublicPageReviewDecisionError(blocker);
+	}
+
+	const { data, error } = await (adminSupabase as any)
+		.from(REVIEW_ATTEMPTS_TABLE)
 		.update({
 			admin_decision: decision,
 			admin_decision_reason: toStringOrNull(reason),
@@ -832,7 +1248,9 @@ export async function setPublicPageReviewAdminDecision(
 		throw error;
 	}
 	if (!data) {
-		throw new Error('Review attempt not found or not eligible for admin decision');
+		throw new PublicPageReviewDecisionError(
+			'Review attempt not found or not eligible for admin decision.'
+		);
 	}
 
 	return toReviewAttempt(data as Record<string, unknown>);

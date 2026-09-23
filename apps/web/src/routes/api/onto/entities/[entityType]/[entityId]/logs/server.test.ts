@@ -80,4 +80,41 @@ describe('GET /api/onto/entities/[entityType]/[entityId]/logs', () => {
 			p_required_access: 'read'
 		});
 	});
+
+	it('falls back to safe defaults for malformed or negative pagination params', async () => {
+		const logsQuery = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			order: vi.fn().mockReturnThis(),
+			range: vi.fn().mockResolvedValue({ data: [], error: null, count: 0 })
+		};
+		const eventQuery = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			single: vi.fn().mockResolvedValue({ data: { project_id: 'project-1' }, error: null })
+		};
+		const supabase = {
+			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+			from: vi.fn((table: string) => {
+				if (table === 'onto_events') return eventQuery;
+				if (table === 'onto_project_logs') return logsQuery;
+				return {};
+			})
+		};
+
+		const { GET } = await import('./+server');
+		const response = await GET({
+			params: { entityType: 'event', entityId: 'event-1' },
+			url: new URL(
+				'http://localhost/api/onto/entities/event/event-1/logs?limit=abc&offset=-5'
+			),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as unknown as RequestEvent);
+
+		expect(response.status).toBe(200);
+		expect(logsQuery.range).toHaveBeenCalledWith(0, 9);
+	});
 });

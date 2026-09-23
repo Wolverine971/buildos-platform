@@ -60,21 +60,22 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 		event_id?: string;
 		targetUserId?: string;
 		target_user_id?: string;
-		action?: 'upsert' | 'delete';
 	} | null;
 
 	const eventId = body?.eventId || body?.event_id;
 	const targetUserId = body?.targetUserId || body?.target_user_id;
-	const action = body?.action === 'delete' || body?.action === 'upsert' ? body.action : undefined;
 
 	if (!eventId || !targetUserId) {
 		return ApiResponse.badRequest('eventId and targetUserId are required');
 	}
 
+	// A client-sent `action` is ignored: a forged 'delete' would remove a live
+	// event from a member's Google Calendar. With no action the service derives
+	// it from the event row (deleted_at -> delete, otherwise upsert), which is the
+	// only state that ever enqueues a delete.
 	const service = new ProjectCalendarService(locals.supabase);
 	return service.retryProjectEventSyncTarget(projectId, access.userId, {
 		eventId,
-		targetUserId,
-		action
+		targetUserId
 	});
 };

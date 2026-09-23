@@ -83,6 +83,30 @@ describe('buildOpenRouterChatCompletionBody', () => {
 		expect(Object.keys(body)).not.toContain('prompt_cache_key');
 	});
 
+	it('passes reasoning off through to models without a reasoning policy', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: 'deepseek/deepseek-v4-flash',
+			messages: [{ role: 'user', content: 'Extract.' }],
+			reasoning: { enabled: false }
+		});
+		expect(body.reasoning).toEqual({ enabled: false });
+	});
+
+	it('drops reasoning off for models that require reasoning, and adds no default effort', () => {
+		const gemini = buildOpenRouterChatCompletionBody({
+			model: GEMINI_37_FLASH_MODEL,
+			messages: [{ role: 'user', content: 'Extract.' }],
+			reasoning: { enabled: false }
+		});
+		expect(gemini.reasoning).toEqual({ effort: 'medium' });
+		const glm = buildOpenRouterChatCompletionBody({
+			model: GLM_53_FLASH_MODEL,
+			messages: [{ role: 'user', content: 'Extract.' }],
+			reasoning: { enabled: false }
+		});
+		expect(glm.reasoning).toEqual({ enabled: false });
+	});
+
 	it('omits K3 temperature and forces visible maximum reasoning', () => {
 		const body = buildOpenRouterChatCompletionBody({
 			model: KIMI_K3_MODEL,

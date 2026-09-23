@@ -12,9 +12,11 @@
 import { createServiceClient } from '@buildos/supabase-client';
 import type { NotificationChannel } from '@buildos/shared-types';
 import type { Logger } from '@buildos/shared-utils';
-import { getErrorMessage } from '../../lib/utils/errors.js';
 
 const supabase = createServiceClient();
+
+// PostgREST `.single()` code for "no row": the user genuinely has no preferences.
+const NO_ROWS_ERROR_CODE = 'PGRST116';
 
 export interface PreferenceCheckResult {
 	allowed: boolean;
@@ -68,6 +70,11 @@ export async function checkUserPreferences(
 			.single();
 
 		if (prefError) {
+			// A transient read failure is not a user opt-out: callers cancel on
+			// allowed:false, so throw and let the queue retry instead.
+			if (prefError.code !== NO_ROWS_ERROR_CODE) {
+				throw new Error(`Failed to load notification preferences: ${prefError.message}`);
+			}
 			prefLogger.warn('No preferences found for user', {
 				userId,
 				eventType,
@@ -144,6 +151,9 @@ export async function checkUserPreferences(
 				.eq('user_id', userId)
 				.single();
 
+			if (smsError && smsError.code !== NO_ROWS_ERROR_CODE) {
+				throw new Error(`Failed to load SMS preferences: ${smsError.message}`);
+			}
 			if (smsError || !smsPrefs) {
 				prefLogger.warn('SMS preferences not found', {
 					userId,
@@ -210,10 +220,8 @@ export async function checkUserPreferences(
 			eventType,
 			channel
 		});
-		// Fail closed - if we can't check preferences, don't send
-		return {
-			allowed: false,
-			reason: `Error checking preferences: ${getErrorMessage(error)}`
-		};
+		// Still fail closed (nothing is sent), but as a retryable error rather than
+		// allowed:false, which callers turn into a permanent cancellation.
+		throw error;
 	}
 }

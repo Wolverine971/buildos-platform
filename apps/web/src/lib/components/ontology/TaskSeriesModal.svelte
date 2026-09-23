@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/ontology/TaskSeriesModal.svelte -->
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { fromZonedTime } from 'date-fns-tz';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -102,13 +103,21 @@
 			return;
 		}
 
+		// The picked wall-clock time belongs to the selected series timezone, not
+		// the browser's; new Date(startAt) ignored the timezone picker.
+		const startInstant = fromZonedTime(startAt, timezone);
+		if (Number.isNaN(startInstant.getTime())) {
+			error = 'Start date is invalid';
+			return;
+		}
+
 		error = '';
 		isSubmitting = true;
 
 		try {
 			const payload = {
 				timezone,
-				start_at: new Date(startAt).toISOString(),
+				start_at: startInstant.toISOString(),
 				rrule: buildRrule(),
 				max_instances: Math.max(1, Number(count) || 1),
 				regenerate_on_update: false

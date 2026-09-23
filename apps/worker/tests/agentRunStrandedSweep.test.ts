@@ -311,6 +311,55 @@ describe('runAgentRunStrandedSweep', () => {
 		expect(summary).toMatchObject({ scanned: 3, requeuedContinuations: 0, finalizedFailed: 0 });
 	});
 
+	it('does not let a backlog of user-parked runs starve a stranded queued run', async () => {
+		const parkedRoots = Array.from({ length: 60 }, (_, index) =>
+			candidate({
+				id: `30000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+				status: index % 2 ? 'paused' : 'needs_input',
+				updated_at: minutesAgo(500 - index)
+			})
+		);
+		const parkedChild = candidate({
+			id: CHILD_IDS[0],
+			status: 'needs_input',
+			parent_run_id: PARENT_ID,
+			updated_at: minutesAgo(400)
+		});
+		const stranded = candidate({
+			id: CHILD_IDS[1],
+			status: 'queued',
+			started_at: null,
+			updated_at: minutesAgo(15)
+		});
+		const rows = [...parkedRoots, parkedChild, stranded];
+		const { store, mocks } = makeStore({
+			// Behaves like the real query: status filter, oldest first, page limit.
+			listStrandedCandidates: vi.fn(async ({ statuses, limit, childrenOnly }) =>
+				rows
+					.filter((row) => statuses.includes(row.status))
+					.filter((row) => !childrenOnly || row.parent_run_id)
+					.sort((a, b) => a.updated_at.localeCompare(b.updated_at))
+					.slice(0, limit)
+			),
+			loadParent: vi.fn(async () => ({
+				status: 'completed' as const,
+				completed_at: minutesAgo(60)
+			}))
+		});
+
+		const summary = await run(store);
+
+		expect(mocks.enqueueContinuation).toHaveBeenCalledWith(
+			USER_ID,
+			expect.objectContaining({ run_id: CHILD_IDS[1] }),
+			`agent-run:${CHILD_IDS[1]}`
+		);
+		expect(summary.requeuedContinuations).toBe(1);
+		// The parked child of a terminal parent is still found and cancelled.
+		expect(summary.childrenCancelled).toBe(1);
+		expect(summary.scanned).toBe(2);
+	});
+
 	it('re-enqueues a jobless dispatching deep root within deadline (retryable stage)', async () => {
 		const root = deepRoot('dispatching', { started_at: minutesAgo(5) });
 		const { store, mocks } = makeStore({

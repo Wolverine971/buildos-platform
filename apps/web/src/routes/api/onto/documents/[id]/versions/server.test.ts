@@ -120,6 +120,17 @@ describe('GET /api/onto/documents/[id]/versions actor filter', () => {
 		});
 	});
 
+	it('falls back to the default page size when limit is not a number', async () => {
+		const { event, versionQuery } = createEvent('', null);
+		event.url = new URL('http://localhost/api/onto/documents/document-1/versions?limit=abc');
+
+		const response = await GET(event as never);
+
+		expect(response.status).toBe(200);
+		// Default 50 plus the one-row hasMore probe.
+		expect(versionQuery.limit).toHaveBeenCalledWith(51);
+	});
+
 	it('uses a read-only visible actor lookup instead of provisioning the filtered user', async () => {
 		const filteredUserId = '25181727-0000-4000-8000-000000000020';
 		const { event, actorQuery, rpc, versionQuery } = createEvent(filteredUserId, 'actor-2');

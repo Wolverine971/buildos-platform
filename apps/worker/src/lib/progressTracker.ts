@@ -6,14 +6,7 @@ import { JobProgress } from './supabaseQueue';
 import { queueConfig } from '../config/queueConfig';
 import { LLMRequestTimeoutError } from '@buildos/smart-llm';
 
-export interface ProgressUpdate {
-	jobId: string;
-	progress: JobProgress;
-	retryCount?: number;
-	timestamp?: Date;
-}
-
-export interface ProgressTrackingOptions {
+interface ProgressTrackingOptions {
 	maxRetries?: number;
 	retryDelayMs?: number;
 	enableAuditLog?: boolean;
@@ -22,7 +15,7 @@ export interface ProgressTrackingOptions {
 /**
  * Enhanced progress tracker with error handling, retries, and validation
  */
-export class ProgressTracker {
+class ProgressTracker {
 	private maxRetries: number;
 	private retryDelayMs: number;
 	private enableAuditLog: boolean;
@@ -305,34 +298,10 @@ export class ProgressTracker {
 			console.error('Failed to log progress update failure:', logError);
 		}
 	}
-
-	/**
-	 * Get current progress for a job
-	 */
-	async getJobProgress(jobId: string): Promise<JobProgress | null> {
-		try {
-			const { data: job, error } = await supabase
-				.from('queue_jobs')
-				.select('metadata')
-				.eq('id', jobId)
-				.single();
-
-			if (error || !job) {
-				console.error(`Failed to get progress for job ${jobId}:`, error);
-				return null;
-			}
-
-			const metadata = this.safeParseMetadata(job.metadata);
-			return (metadata.progress as JobProgress) || null;
-		} catch (error) {
-			console.error(`Error getting job progress for ${jobId}:`, error);
-			return null;
-		}
-	}
 }
 
 // Default global progress tracker instance using configuration
-export const progressTracker = new ProgressTracker({
+const progressTracker = new ProgressTracker({
 	maxRetries: queueConfig.progressUpdateRetries,
 	enableAuditLog: queueConfig.enableProgressTracking && process.env.NODE_ENV !== 'production'
 });

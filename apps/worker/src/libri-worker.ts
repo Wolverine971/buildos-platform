@@ -171,6 +171,7 @@ function createConsumer(
 		);
 		return new LibriMaintenanceConsumer({
 			...shared,
+			config: { ...shared.config, ...ocr.consumer },
 			processor,
 			claimQueueTypes: ['libri_ingest'],
 			processorManagesCompletion: true

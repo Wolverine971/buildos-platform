@@ -460,6 +460,52 @@ describe('AttachmentController — upload lifecycle', () => {
 		});
 	});
 
+	it.each([
+		{ deduped: false, expectCleanup: true },
+		{ deduped: true, expectCleanup: false }
+	])(
+		'cleans up only a row this request created when the upload fails (deduped=$deduped)',
+		async ({ deduped, expectCleanup }) => {
+			const h = createHarness();
+			h.uploadFileToSignedStorageUrl.mockRejectedValueOnce(new Error('network down'));
+			h.fetchImpl
+				.mockResolvedValueOnce(
+					jsonResponse({
+						data: {
+							asset: {
+								id: 'asset-empty',
+								project_id: 'project-1',
+								kind: 'image',
+								storage_bucket: 'onto-assets',
+								storage_path: 'projects/project-1/assets/asset-empty/original.png',
+								ocr_status: 'pending'
+							},
+							deduped,
+							upload: {
+								signed_url: 'https://upload.local',
+								path: 'projects/project-1/assets/asset-empty/original.png',
+								token: 'token'
+							}
+						}
+					})
+				)
+				.mockResolvedValue(jsonResponse({ data: { deleted: true } }));
+
+			h.controller.handleFiles([makeFile('flaky.png')]);
+
+			await vi.waitFor(() => {
+				expect(h.controller.imageAttachments[0]?.status).toBe('error');
+			});
+			const deleteCalls = h.fetchImpl.mock.calls.filter(
+				([, init]) => (init as RequestInit | undefined)?.method === 'DELETE'
+			);
+			expect(deleteCalls).toEqual(
+				expectCleanup ? [['/api/onto/assets/asset-empty', { method: 'DELETE' }]] : []
+			);
+			expect(h.toastError).toHaveBeenCalledWith('network down');
+		}
+	);
+
 	it('surfaces upload creation failures on the attachment and through toast', async () => {
 		const h = createHarness();
 		h.fetchImpl.mockResolvedValueOnce(jsonResponse({ error: 'Quota exceeded' }, false));

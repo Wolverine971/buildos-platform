@@ -36,17 +36,49 @@ describe('AgentComposer', () => {
 		).toBeInTheDocument();
 	});
 
-	it('acknowledges send immediately and prevents duplicate submission during admission', async () => {
+	it('queues a typed follow-up mid-response instead of blocking send', async () => {
 		const onSend = vi.fn();
+		const onStop = vi.fn();
 		const view = render(AgentComposer, {
-			props: createProps({ inputValue: 'My new project', isStartingStream: true, onSend })
+			props: createProps({ inputValue: 'And also this', isStreaming: true, onSend, onStop })
 		});
-		expect(screen.getByRole('status')).toHaveTextContent('Sending your message…');
-		for (const button of screen.getAllByRole('button', { name: 'Send message' })) {
-			expect(button).toBeDisabled();
+		// The actions row renders in both the compact and wide layouts.
+		expect(screen.getAllByRole('button', { name: 'Stop response' }).length).toBeGreaterThan(0);
+		for (const queue of screen.getAllByRole('button', { name: 'Send when BuildOS finishes' })) {
+			expect(queue).not.toBeDisabled();
 		}
 		await fireEvent.submit(view.container.querySelector('form')!);
-		expect(onSend).not.toHaveBeenCalled();
+		expect(onSend).toHaveBeenCalledOnce();
+	});
+
+	it('shows only Stop mid-response when there is nothing to queue', () => {
+		render(AgentComposer, {
+			props: createProps({ inputValue: '', isStreaming: true, onStop: vi.fn() })
+		});
+		expect(screen.getAllByRole('button', { name: 'Stop response' }).length).toBeGreaterThan(0);
+		expect(screen.queryAllByRole('button', { name: /Send/ })).toHaveLength(0);
+	});
+
+	it('shows the queued follow-up with an edit affordance', async () => {
+		const onEditQueued = vi.fn();
+		render(AgentComposer, {
+			props: createProps({
+				isStreaming: true,
+				queuedMessage: 'Then draft the email',
+				onEditQueued
+			})
+		});
+		expect(screen.getByText('Then draft the email')).toBeInTheDocument();
+		expect(screen.getByRole('status')).toHaveTextContent('Message queued');
+		await fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+		expect(onEditQueued).toHaveBeenCalledOnce();
+	});
+
+	it('never blocks the composer itself while a send is starting', () => {
+		render(AgentComposer, {
+			props: createProps({ inputValue: '', isStartingStream: true })
+		});
+		expect(screen.getByPlaceholderText('Ask about project apollo...')).not.toBeDisabled();
 	});
 
 	it('uses chat copy by default', () => {

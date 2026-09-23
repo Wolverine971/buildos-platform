@@ -4907,8 +4907,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			['create_onto_project', 'create_onto_goal', 'create_onto_task']
 		);
 		input.requestPayload.context = { type: 'project_create' };
+		// Quoted: the name check only reads a name the user delimited with quotes.
 		input.requestPayload.message =
-			'Create a project called Agentic Worker PC1. The goal is due September 15, with three starter tasks.';
+			'Create a project called "Agentic Worker PC1". The goal is due September 15, with three starter tasks.';
 		const invocation = await new AgenticChatTurnProviderAdapter(
 			{
 				client,

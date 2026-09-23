@@ -817,27 +817,3 @@ export async function sendSMSNotification(
 		};
 	}
 }
-
-/**
- * Clear template cache
- * Useful for testing or when templates are updated
- */
-export function clearTemplateCache(): void {
-	templateCache.clear();
-	// Note: This is a utility function without logger context
-	// Logger would be passed if called from main flow
-}
-
-/**
- * Get template cache statistics
- * Useful for monitoring and debugging
- */
-export function getTemplateCacheStats(): {
-	size: number;
-	templates: string[];
-} {
-	return {
-		size: templateCache.size,
-		templates: Array.from(templateCache.keys())
-	};
-}

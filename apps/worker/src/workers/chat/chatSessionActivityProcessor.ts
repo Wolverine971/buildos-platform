@@ -4,6 +4,10 @@
 import { supabase } from '../../lib/supabase';
 import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
+import {
+	parseEntityReferences,
+	resolveEntityReferences
+} from '@buildos/shared-agent-ops/utils/entity-reference-parser';
 import type {
 	Json,
 	NextStepGenerationContext,
@@ -528,10 +532,13 @@ async function generateNextSteps(
 			}
 		});
 
-		// Sanitize results
+		// Sanitize results. Links must point at real entities of this project: the
+		// model has invented slugs like [[document:story-blueprint-template|...]].
 		return {
 			nextStepShort: sanitizeNextStepShort(result.nextStepShort),
-			nextStepLong: sanitizeNextStepLong(result.nextStepLong)
+			nextStepLong: sanitizeNextStepLong(
+				await resolveProjectEntityLinks(projectId, result.nextStepLong)
+			)
 		};
 	} catch (error) {
 		console.error('LLM next step generation failed:', error);
@@ -963,6 +970,42 @@ function sanitizeNextStepShort(text: string): string {
 	}
 
 	return sanitized || 'Continue working on the project.';
+}
+
+const ENTITY_LINK_TABLES: Record<
+	string,
+	'onto_tasks' | 'onto_documents' | 'onto_goals' | 'onto_plans' | 'onto_milestones' | 'onto_risks'
+> = {
+	task: 'onto_tasks',
+	document: 'onto_documents',
+	goal: 'onto_goals',
+	plan: 'onto_plans',
+	milestone: 'onto_milestones',
+	risk: 'onto_risks'
+};
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Replace entity links whose id is not a live entity of this project with their label. */
+async function resolveProjectEntityLinks(projectId: string, text: unknown): Promise<string> {
+	if (typeof text !== 'string' || !text) return typeof text === 'string' ? text : '';
+	const idsByType = new Map<string, string[]>();
+	for (const ref of parseEntityReferences(text).entities) {
+		if (!ENTITY_LINK_TABLES[ref.type] || !UUID_PATTERN.test(ref.id)) continue;
+		idsByType.set(ref.type, [...(idsByType.get(ref.type) ?? []), ref.id]);
+	}
+	const known = new Set<string>([`project:${projectId}`]);
+	await Promise.all(
+		[...idsByType].map(async ([type, ids]) => {
+			const { data } = await supabase
+				.from(ENTITY_LINK_TABLES[type])
+				.select('id')
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.in('id', ids);
+			for (const row of (data ?? []) as Array<{ id: string }>) known.add(`${type}:${row.id}`);
+		})
+	);
+	return resolveEntityReferences(text, (type, id) => known.has(`${type}:${id}`)).markdown;
 }
 
 /**

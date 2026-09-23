@@ -65,13 +65,23 @@ export class SMSMetricsService {
 	private supabase = createServiceClient();
 
 	/**
+	 * PostgREST reports RPC failures in `{ error }` rather than throwing, so an
+	 * unchecked call logged "Recorded ..." for writes that never landed. Throw
+	 * into each caller's best-effort catch instead.
+	 */
+	private async recordSmsMetric(args: Record<string, unknown>): Promise<void> {
+		const { error } = await (this.supabase.rpc as any)('record_sms_metric', args);
+		if (error) throw error;
+	}
+
+	/**
 	 * Record SMS scheduled count for a user
 	 */
 	async recordScheduled(userId: string, count: number = 1): Promise<void> {
 		try {
 			const today = format(new Date(), 'yyyy-MM-dd');
 
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,
@@ -94,7 +104,7 @@ export class SMSMetricsService {
 		try {
 			const today = format(new Date(), 'yyyy-MM-dd');
 
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,
@@ -124,7 +134,7 @@ export class SMSMetricsService {
 			const today = format(new Date(), 'yyyy-MM-dd');
 
 			// Record delivered count
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,
@@ -137,7 +147,7 @@ export class SMSMetricsService {
 			});
 
 			// Record average delivery time (will be averaged in materialized view)
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,
@@ -159,7 +169,7 @@ export class SMSMetricsService {
 		try {
 			const today = format(new Date(), 'yyyy-MM-dd');
 
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,
@@ -184,7 +194,7 @@ export class SMSMetricsService {
 		try {
 			const today = format(new Date(), 'yyyy-MM-dd');
 
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,
@@ -218,7 +228,7 @@ export class SMSMetricsService {
 			const metricType =
 				generatedVia === 'llm' ? 'llm_success_count' : 'template_fallback_count';
 
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,
@@ -229,7 +239,7 @@ export class SMSMetricsService {
 
 			// Record LLM cost if available
 			if (generatedVia === 'llm' && costUsd !== undefined) {
-				await (this.supabase.rpc as any)('record_sms_metric', {
+				await this.recordSmsMetric({
 					p_metric_date: today,
 					p_metric_hour: null,
 					p_user_id: userId,
@@ -241,7 +251,7 @@ export class SMSMetricsService {
 
 			// Record generation time if available
 			if (generationTimeMs !== undefined) {
-				await (this.supabase.rpc as any)('record_sms_metric', {
+				await this.recordSmsMetric({
 					p_metric_date: today,
 					p_metric_hour: null,
 					p_user_id: userId,
@@ -264,7 +274,7 @@ export class SMSMetricsService {
 		try {
 			const today = format(new Date(), 'yyyy-MM-dd');
 
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,
@@ -286,7 +296,7 @@ export class SMSMetricsService {
 		try {
 			const today = format(new Date(), 'yyyy-MM-dd');
 
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,
@@ -308,7 +318,7 @@ export class SMSMetricsService {
 		try {
 			const today = format(new Date(), 'yyyy-MM-dd');
 
-			await (this.supabase.rpc as any)('record_sms_metric', {
+			await this.recordSmsMetric({
 				p_metric_date: today,
 				p_metric_hour: null,
 				p_user_id: userId,

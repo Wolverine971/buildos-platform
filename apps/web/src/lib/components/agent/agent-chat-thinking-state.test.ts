@@ -68,8 +68,29 @@ describe('agent chat thinking state', () => {
 
 		expect(result).toHaveLength(2);
 		expect(result[0]).toBe(userMessage);
-		expect(result[1]).toBe(canonical);
+		// Same block on screen: the worker block inherits the provisional identity.
+		expect(result[1]).toEqual({ ...canonical, renderKey: provisional.id });
 		expect(result.filter((message) => message.type === 'thinking_block')).toHaveLength(1);
+	});
+
+	it('keeps an explicit provisional render key through promotion', () => {
+		const provisional: ThinkingBlockMessage = {
+			id: 'provisional-thinking',
+			renderKey: 'turn:ctid-1:thinking',
+			type: 'thinking_block',
+			content: 'Thinking…',
+			timestamp: new Date('2026-08-07T00:00:01.000Z'),
+			activities: [],
+			status: 'active'
+		};
+
+		const [promoted] = upsertWorkerThinkingBlock(
+			[provisional],
+			provisional.id,
+			workerBlock('turn-1')
+		);
+
+		expect(promoted?.renderKey).toBe('turn:ctid-1:thinking');
 	});
 
 	it('replaces a prior worker generation while preserving unrelated thinking history', () => {
@@ -89,7 +110,7 @@ describe('agent chat thinking state', () => {
 			nextGeneration
 		);
 
-		expect(result).toEqual([completed, nextGeneration]);
+		expect(result).toEqual([completed, { ...nextGeneration, renderKey: priorGeneration.id }]);
 	});
 
 	it.each([

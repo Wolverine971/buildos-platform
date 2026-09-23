@@ -5,6 +5,10 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { queueVoiceNoteTranscription } from '$lib/server/voice-note-transcription.service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
+// Notes up to MAX_SYNC_TRANSCRIBE_SECONDS are transcribed inline via /api/transcribe
+// (itself maxDuration 120), so this route must outlive that call.
+export const config = { maxDuration: 120 };
+
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const MAX_SYNC_TRANSCRIBE_SECONDS = 180; // 3 minutes
 const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_OPENROUTER_MODEL?.trim() || 'openai/gpt-transcribe';

@@ -1,4 +1,7 @@
 // apps/web/src/lib/components/agent/agent-chat-shell-router.svelte.test.ts
+// @vitest-environment jsdom
+// (jsdom => client-compiled runes, so $derived memoization and effects behave as in the app)
+import { flushSync } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import {
@@ -130,5 +133,44 @@ describe('AgentChatShellRouter', () => {
 		expect(h.router.showProjectActionSelector).toBe(false);
 		expect(h.router.showFocusSelector).toBe(false);
 		expect(h.router.showContextSelection).toBe(false);
+	});
+
+	it('memoizes derived focus views for reactive readers until their inputs change', () => {
+		const h = createHarness();
+		h.router.setDirectContext({
+			contextType: 'project',
+			entityId: 'project-1',
+			label: 'Project One',
+			projectFocus: null
+		});
+
+		let reads: Array<ProjectFocus | null> = [];
+		const dispose = $effect.root(() => {
+			$effect(() => {
+				// Two reads in one reactive pass (header + composer do this).
+				reads = [h.router.resolvedProjectFocus, h.router.resolvedProjectFocus];
+			});
+		});
+
+		try {
+			flushSync();
+			const [first, second] = reads;
+			expect(first).toMatchObject({ focusType: 'project-wide', projectId: 'project-1' });
+			// Same identity: computed once, not rebuilt per access.
+			expect(second).toBe(first);
+
+			h.router.selectedEntityId = 'project-2';
+			flushSync();
+			expect(reads[0]).not.toBe(first);
+			expect(reads[0]?.projectId).toBe('project-2');
+			expect(reads[1]).toBe(reads[0]);
+
+			h.router.selectedContextType = null;
+			flushSync();
+			expect(reads[0]).toBeNull();
+			expect(h.router.displayContextLabel).toBe('Select a focus to begin');
+		} finally {
+			dispose();
+		}
 	});
 });

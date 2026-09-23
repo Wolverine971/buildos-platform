@@ -7,6 +7,11 @@
 
 This is the canonical documentation for the chat system currently running in the web app.
 
+> **Stale (2026-09-22):** turns now run on the worker (`POST /api/agent/v2/turns`, cancel via
+> `POST /api/agent/v2/turns/[id]/cancel`; see `apps/worker/src/workers/agentic-chat/README.md`).
+> The web SSE stream route, stream orchestrator, and turn-observability writer described below
+> are gone, and the caller-less `POST /api/agent/v2/stream/cancel` channel was deleted.
+
 For the canonical operating model and strategy, see [Agentic Chat Operating Model](../../../../../docs/specs/agentic-chat-operating-model.md).
 
 ## 1. What Is Live
@@ -16,7 +21,6 @@ Primary production path:
 - UI: `apps/web/src/lib/components/agent/AgentChatModal.svelte`
 - Prewarm API: `POST /api/agent/v2/prewarm`
 - Stream API: `POST /api/agent/v2/stream`
-- Cancel API: `POST /api/agent/v2/stream/cancel`
 
 The modal renders the shell and delegates stream transport to
 `agent-chat-stream-controller.svelte.ts`.
@@ -35,7 +39,6 @@ The modal renders the shell and delegates stream transport to
 | V2 stream attachments    | `apps/web/src/lib/services/agentic-chat-v2/stream-attachments.ts`            | Stream-time image attachment validation, temporary storage checks, live vision |
 | V2 turn continuity       | `apps/web/src/lib/services/agentic-chat-v2/last-turn-context.ts`             | Last-turn continuity snapshot and prior-turn prompt hint                       |
 | V2 prewarm API           | `apps/web/src/routes/api/agent/v2/prewarm/+server.ts`                        | Warms prompt context and optional prepared prompt rows                         |
-| V2 cancel channel        | `apps/web/src/routes/api/agent/v2/stream/cancel/+server.ts`                  | Records stop/supersede reason keyed by `stream_run_id`                         |
 | V2 context/scope         | `context-loader.ts`, `scope.ts`, `context-cache.ts`                          | Loads and normalizes global/project/entity/daily brief context                 |
 | V2 history               | `apps/web/src/lib/services/agentic-chat-v2/history-composer.ts`              | Last-N history + compression strategy                                          |
 | V2 streaming loop        | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts`     | LLM streaming + tool loop + limits                                             |
@@ -105,21 +108,6 @@ Behavior:
 - Reuses a fresh session cache when available.
 - When `ensure_session: true`, resolves or creates the matching `chat_session` up front and returns it to the modal.
 - Builds prepared prompt surfaces without turn-specific Active Domain Signals; the stream route overlays those signals after it knows the current user message.
-
-### 3.2 `POST /api/agent/v2/stream/cancel`
-
-Request body:
-
-- `stream_run_id` (required)
-- `reason` (`user_cancelled` or `superseded`)
-- `session_id` (optional)
-- `client_turn_id` (optional)
-
-Behavior:
-
-- Writes a transient cancel hint (`user + stream_run_id`).
-- Optionally persists hint in `chat_sessions.agent_metadata.fastchat_cancel_hints_v1`.
-- Stream route consumes this hint to persist accurate `interrupted_reason`.
 
 ## 4. End-to-End Runtime Flow (V2)
 

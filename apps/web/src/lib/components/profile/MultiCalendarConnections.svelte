@@ -56,15 +56,18 @@
 		return body?.data ?? body;
 	}
 
-	async function run(actionKey: string, action: () => Promise<void>) {
-		if (pendingAction) return;
+	/** Returns false when the action was skipped (another is pending) or failed. */
+	async function run(actionKey: string, action: () => Promise<void>): Promise<boolean> {
+		if (pendingAction) return false;
 		pendingAction = actionKey;
 		try {
 			await action();
+			return true;
 		} catch (error) {
 			onerror?.({
 				message: error instanceof Error ? error.message : 'Calendar request failed'
 			});
+			return false;
 		} finally {
 			pendingAction = null;
 		}
@@ -114,7 +117,7 @@
 		const input = event.currentTarget as HTMLInputElement;
 		const accountLabel = input.value.trim();
 		if (!accountLabel || accountLabel === currentLabel) return;
-		await run(`rename:${connectionId}`, async () => {
+		const saved = await run(`rename:${connectionId}`, async () => {
 			await requestJson(`/api/integrations/google-calendar/connections/${connectionId}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
@@ -122,12 +125,16 @@
 			});
 			await onchanged();
 		});
+		// Unchanged props do not re-render, so put the saved value back by hand.
+		if (!saved) input.value = currentLabel;
 	}
 
 	async function setDefaultSource(event: Event) {
-		const calendarSourceId = (event.currentTarget as HTMLSelectElement).value;
+		const select = event.currentTarget as HTMLSelectElement;
+		const previousSourceId = payload.defaultWriteCalendarSourceId ?? '';
+		const calendarSourceId = select.value;
 		if (!calendarSourceId || calendarSourceId === payload.defaultWriteCalendarSourceId) return;
-		await run('default', async () => {
+		const saved = await run('default', async () => {
 			await requestJson(
 				'/api/integrations/google-calendar/preferences/default-write-source',
 				{
@@ -138,6 +145,7 @@
 			);
 			await onchanged();
 		});
+		if (!saved) select.value = previousSourceId;
 	}
 
 	async function setSourcePreference(
@@ -145,8 +153,9 @@
 		preference: 'readEnabled' | 'availabilityEnabled' | 'analysisEnabled' | 'syncEnabled',
 		event: Event
 	) {
-		const enabled = (event.currentTarget as HTMLInputElement).checked;
-		await run(`source:${calendarSourceId}:${preference}`, async () => {
+		const input = event.currentTarget as HTMLInputElement;
+		const enabled = input.checked;
+		const saved = await run(`source:${calendarSourceId}:${preference}`, async () => {
 			await requestJson(`/api/integrations/google-calendar/sources/${calendarSourceId}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
@@ -154,6 +163,8 @@
 			});
 			await onchanged();
 		});
+		// On failure the prop is unchanged, so the toggle would stay flipped.
+		if (!saved) input.checked = !enabled;
 	}
 </script>
 

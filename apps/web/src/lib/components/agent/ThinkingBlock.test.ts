@@ -107,6 +107,38 @@ describe('ThinkingBlock', () => {
 		);
 	});
 
+	it('shows the live status beside the dots while compact and crossfades changes', async () => {
+		const block: ThinkingBlockMessage = {
+			...thinkingBlock(),
+			activities: [],
+			content: 'Thinking…'
+		};
+		const { rerender } = render(ThinkingBlock, {
+			props: { block, onToggleCollapse: vi.fn() }
+		});
+
+		const status = screen.getByTestId('thinking-live-status');
+		expect(status).toHaveTextContent('Thinking…');
+		expect(status.querySelector('.thinking-status-out')).toBeNull();
+
+		await rerender({ block: { ...block, content: 'Writing the response…' } });
+
+		const incoming = status.querySelector('.thinking-status-in');
+		const outgoing = status.querySelector('.thinking-status-out');
+		expect(incoming).toHaveTextContent('Writing the response…');
+		expect(outgoing).toHaveTextContent('Thinking…');
+		expect(outgoing).toHaveAttribute('aria-hidden', 'true');
+	});
+
+	it('pulses the hammer with compositor-only properties and no radius transition', () => {
+		const hammer = source.slice(source.indexOf('@keyframes thinking-hammer-pulse'));
+		expect(source).not.toContain('text-shadow');
+		expect(source).not.toMatch(/border-radius\s+\d+ms/);
+		expect(hammer.slice(0, hammer.indexOf('.thinking-hammer {'))).toMatch(
+			/opacity[\s\S]*transform/
+		);
+	});
+
 	it('does not animate layout ceilings or spacing', () => {
 		expect(source).not.toMatch(
 			/\b(?:grid-template-rows|max-height|max-width|padding|border-width)\s+\d+ms\b/
@@ -123,6 +155,8 @@ describe('ThinkingBlock', () => {
 
 		expect(reducedMotion).toContain('.activity-count-badge');
 		expect(reducedMotion).toContain('.thinking-log-chevron');
+		expect(reducedMotion).toContain('.thinking-status-in');
+		expect(reducedMotion).toContain('.thinking-hammer');
 		expect(reducedMotion).toContain('transition: none');
 	});
 });

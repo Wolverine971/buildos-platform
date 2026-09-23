@@ -521,7 +521,7 @@ export interface UpdateOntoProjectArgs {
 	state_key?: string;
 	/** @deprecated Use state_key instead. */
 	state?: string;
-	/** project.{realm}.{initiative}[.{variant}]; a retype can only clear fiction routing. */
+	/** project.{realm}.{initiative}[.{variant}]; use when the user corrects what the project is. */
 	type_key?: string;
 	start_at?: string | null;
 	end_at?: string | null;

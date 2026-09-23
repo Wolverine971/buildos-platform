@@ -99,7 +99,9 @@
 	let customStartDate = $state('');
 	let customEndDate = $state('');
 	let showFilters = $state(false);
-	let filteredBriefs = $state<DailyBrief[]>([]);
+	// Derived, not effect-synced: the old effect skipped filtering when history
+	// became empty, so the last deleted brief stayed on screen.
+	const filteredBriefs = $derived.by(filterBriefs);
 	let activeBriefFilterCount = $derived(
 		(searchQuery.trim() ? 1 : 0) + (selectedDateRange !== 'today' ? 1 : 0)
 	);
@@ -391,13 +393,6 @@
 		}
 	}
 
-	// Reactive statements for filtering
-	$effect(() => {
-		if (briefHistory.length > 0) {
-			filterBriefs();
-		}
-	});
-
 	// Initialize on mount
 	onMount(async () => {
 		await resolveSupabaseClient();
@@ -517,7 +512,7 @@
 		}
 	}
 
-	function filterBriefs() {
+	function filterBriefs(): DailyBrief[] {
 		let filtered = [...briefHistory];
 
 		// Filter by search query
@@ -551,18 +546,16 @@
 								brief.brief_date <= customEndDate
 						);
 					}
-					filteredBriefs = filtered;
-					return;
+					return filtered;
 				default:
-					filteredBriefs = filtered;
-					return;
+					return filtered;
 			}
 
 			const startDateString = startDate.toISOString().slice(0, 10);
 			filtered = filtered.filter((brief) => brief.brief_date >= startDateString);
 		}
 
-		filteredBriefs = filtered;
+		return filtered;
 	}
 
 	function clearSearchFilter() {
@@ -581,12 +574,12 @@
 	}
 
 	function navigateDate(direction: 'prev' | 'next') {
-		const date = new Date(currentDate);
-		if (direction === 'prev') {
-			date.setDate(date.getDate() - 1);
-		} else {
-			date.setDate(date.getDate() + 1);
-		}
+		// Step the civil date in UTC. Mixing a UTC parse with local setDate got
+		// stuck on (or skipped) the day of a DST change.
+		const [year, month, day] = currentDate.split('-').map(Number);
+		if (!year || !month || !day) return;
+		const step = direction === 'prev' ? -1 : 1;
+		const date = new Date(Date.UTC(year, month - 1, day + step));
 		const newDate = date.toISOString().slice(0, 10);
 
 		currentDate = newDate;

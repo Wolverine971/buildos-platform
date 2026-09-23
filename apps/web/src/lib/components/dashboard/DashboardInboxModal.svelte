@@ -29,6 +29,7 @@
 	import { setAiInboxRemainingCount } from '$lib/stores/aiInboxCount.store';
 	import { toastService } from '$lib/stores/toast.store';
 	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
+	import { parseLocalDate } from '$lib/utils/schedulingUtils';
 	import type {
 		ChatContextType,
 		ChangeSet,
@@ -428,7 +429,9 @@
 
 	function formatShortDate(value: string | undefined): string | null {
 		if (!value) return null;
-		const date = new Date(value);
+		// Calendar patterns carry bare YYYY-MM-DD dates; new Date() reads those as
+		// UTC midnight and showed them a day early west of UTC.
+		const date = parseLocalDate(value);
 		if (Number.isNaN(date.getTime())) return null;
 		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 	}

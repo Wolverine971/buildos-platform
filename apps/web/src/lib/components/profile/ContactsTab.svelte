@@ -100,14 +100,16 @@
 			methods.push({ method_type: 'email', value: formState.email.trim() });
 		}
 
+		// null (not undefined) so clearing a field on edit is sent and saved;
+		// JSON drops undefined keys and the PATCH treats them as unchanged.
 		return {
 			display_name: formState.display_name.trim(),
-			given_name: formState.given_name.trim() || undefined,
-			family_name: formState.family_name.trim() || undefined,
-			relationship_label: formState.relationship_label.trim() || undefined,
-			organization: formState.organization.trim() || undefined,
-			title: formState.title.trim() || undefined,
-			notes: formState.notes.trim() || undefined,
+			given_name: formState.given_name.trim() || null,
+			family_name: formState.family_name.trim() || null,
+			relationship_label: formState.relationship_label.trim() || null,
+			organization: formState.organization.trim() || null,
+			title: formState.title.trim() || null,
+			notes: formState.notes.trim() || null,
 			methods
 		};
 	}

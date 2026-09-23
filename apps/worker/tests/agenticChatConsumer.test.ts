@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '../src/lib/supabase';
+import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
 import {
 	DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
 	createAgenticChatConsumer
@@ -229,22 +230,6 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 		).toThrow('PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE must be exactly true or false');
 	});
 
-	it('ignores retired mutation and concurrency rollout variables during a safe deploy transition', () => {
-		const config = loadAgenticChatConfig(
-			configuredEnvironment({
-				AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: 'retired-invalid-value',
-				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: '',
-				AGENTIC_CHAT_CONCURRENT_READS_ENABLED: 'retired-invalid-value',
-				AGENTIC_CHAT_CONCURRENT_MUTATIONS_ENABLED: 'retired-invalid-value'
-			})
-		);
-
-		expect(config).not.toHaveProperty('mutationProviderCapabilities');
-		expect(config).not.toHaveProperty('mutationAdapterCapabilities');
-		expect(config).not.toHaveProperty('concurrentReadsEnabled');
-		expect(config).not.toHaveProperty('concurrentMutationsEnabled');
-	});
-
 	it('parses an independently bounded two-slot queue policy', () => {
 		const config = loadAgenticChatConfig({
 			...DEDICATED_PROVIDER_ENV,
@@ -271,6 +256,8 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			documentEvidenceHandoffEnabled: false,
 			jevSpecialistSelection: 'off',
 			liveVisionEnabled: false,
+			projectReviewV2Enabled: false,
+			projectReviewV3Enabled: false,
 			consumptionBillingEnabled: false,
 			consumer: {
 				concurrency: 2,
@@ -553,6 +540,87 @@ describe('Agentic Chat consumer lifecycle', () => {
 		await runtime.stop();
 	});
 
+	// Phase 5 failure-matrix evidence (capacity_general_saturated /
+	// capacity_chat_saturated): the chat pool and the general queue claim and
+	// run independently, so saturating one never consumes the other's slots.
+	it('keeps saturated general slots independent from bounded chat slots', async () => {
+		const generalJobs = Array.from({ length: 20 }, (_, index) =>
+			claimedJobOfType(index, 'send_notification')
+		);
+		const chatJobs = Array.from({ length: 2 }, (_, index) =>
+			claimedJobOfType(100 + index, 'agentic_chat_turn')
+		);
+		let generalClaimed = false;
+		let chatClaimed = false;
+		rpcMock.mockImplementation(async (name, args) => {
+			if (name === 'claim_pending_jobs') {
+				const jobTypes = (args as { p_job_types: string[] }).p_job_types;
+				if (jobTypes.length !== 1) throw new Error('A queue mixed job types');
+				if (jobTypes[0] === 'send_notification') {
+					if (generalClaimed) return { data: [], error: null } as never;
+					generalClaimed = true;
+					return { data: generalJobs, error: null } as never;
+				}
+				if (jobTypes[0] === 'agentic_chat_turn') {
+					if (chatClaimed) return { data: [], error: null } as never;
+					chatClaimed = true;
+					return { data: chatJobs, error: null } as never;
+				}
+				throw new Error(`Unexpected job type ${jobTypes[0]}`);
+			}
+			if (name === 'complete_queue_job') return { data: true, error: null } as never;
+			return { data: false, error: null } as never;
+		});
+
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const generalStarted: string[] = [];
+		const chatStarted: string[] = [];
+		const general = new SupabaseQueue({ batchSize: 20, pollInterval: 60_000 });
+		general.process('send_notification', async (job: ProcessingJob) => {
+			generalStarted.push(job.id);
+			await gate;
+		});
+		const chat = createAgenticChatConsumer(
+			testExecutor(
+				vi.fn(async (job: ProcessingJob) => {
+					chatStarted.push(job.id);
+					await gate;
+					return { outcome: 'completed' };
+				})
+			),
+			consumerOptions({ concurrency: 2, pollIntervalMs: 60_000 })
+		);
+
+		await Promise.all([general.start(), chat.queue.start()]);
+		await vi.waitFor(() => {
+			expect(generalStarted).toHaveLength(20);
+			expect(chatStarted).toHaveLength(2);
+		});
+		expect(general.getRegisteredJobTypes()).toEqual(['send_notification']);
+		expect(chat.queue.getRegisteredJobTypes()).toEqual(['agentic_chat_turn']);
+		expect(
+			rpcMock.mock.calls
+				.filter(([name]) => name === 'claim_pending_jobs')
+				.slice(0, 2)
+				.map(([, args]) => args)
+		).toEqual(
+			expect.arrayContaining([
+				{ p_job_types: ['send_notification'], p_batch_size: 20 },
+				{ p_job_types: ['agentic_chat_turn'], p_batch_size: 2 }
+			])
+		);
+
+		release();
+		await Promise.all([general.stop(), chat.queue.stop()]);
+		// The chat pool is processor-managed: only the general queue completes rows.
+		expect(
+			vi.mocked(supabase.rpc).mock.calls.filter(([name]) => name === 'complete_queue_job')
+		).toHaveLength(20);
+	});
+
 	it('refuses a mixed or general queue at construction', () => {
 		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
 		consumer.queue.process('send_notification', vi.fn());
@@ -613,6 +681,23 @@ function consumerOptions(config = {}) {
 
 function testExecutor(execute = vi.fn()) {
 	return { execute };
+}
+
+function claimedJobOfType(index: number, jobType: 'send_notification' | 'agentic_chat_turn') {
+	const suffix = index.toString(16).padStart(12, '0');
+	return {
+		...claimedChatJob(),
+		id: `d2000000-0000-4000-8000-${suffix}`,
+		dedup_key: `${jobType}:${suffix}`,
+		job_type: jobType,
+		metadata: {
+			contractVersion: 'agentic_chat_worker_v1',
+			turnRunId: `d3000000-0000-4000-8000-${suffix}`,
+			correlationId: `d4000000-0000-4000-8000-${suffix}`
+		},
+		processing_token: `d5000000-0000-4000-8000-${suffix}`,
+		queue_job_id: `${jobType}:${suffix}`
+	};
 }
 
 function claimedChatJob() {

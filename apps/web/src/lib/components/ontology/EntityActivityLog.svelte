@@ -15,6 +15,7 @@
 	<EntityActivityLog entityType="task" entityId={taskId} />
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { Plus, Pencil, Trash2, LoaderCircle, History, Clock, ChevronDown } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -72,29 +73,30 @@
 	let hasLoaded = $state(false);
 	let error = $state<string | null>(null);
 	let expandedLogId = $state<string | null>(null);
+	// Latest-wins: a response for a previous entity must not land on this one.
+	let loadRequestId = 0;
 
 	const INITIAL_LIMIT = 5; // Smaller limit for sidebar
 
 	// ============================================================
 	// EFFECTS
 	// ============================================================
-	$effect(() => {
-		if (!browser || !autoLoad || !entityType || !entityId || hasLoaded) return;
-		void loadLogs();
-	});
-
-	// Reset when entity changes
+	// One effect owns the entity lifecycle: reset, then load. A separate
+	// "load if not loaded" effect fetched the same logs a second time on mount.
 	$effect(() => {
 		if (!browser || !entityType || !entityId) return;
-		hasLoaded = false;
-		logs = [];
-		total = 0;
-		hasMore = false;
-		error = null;
-		expandedLogId = null;
-		if (autoLoad) {
-			void loadLogs();
-		}
+		const shouldLoad = autoLoad;
+		untrack(() => {
+			hasLoaded = false;
+			logs = [];
+			total = 0;
+			hasMore = false;
+			error = null;
+			expandedLogId = null;
+			if (shouldLoad) {
+				void loadLogs();
+			}
+		});
 	});
 
 	// ============================================================
@@ -102,6 +104,7 @@
 	// ============================================================
 	async function loadLogs(offset = 0, append = false) {
 		if (!entityType || !entityId) return;
+		const requestId = ++loadRequestId;
 
 		if (!append) {
 			isLoading = true;
@@ -115,6 +118,7 @@
 				`/api/onto/entities/${entityType}/${entityId}/logs?limit=${INITIAL_LIMIT}&offset=${offset}`
 			);
 			const payload = await response.json();
+			if (requestId !== loadRequestId) return;
 
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to fetch logs');
@@ -131,6 +135,7 @@
 			hasMore = data.hasMore;
 			hasLoaded = true;
 		} catch (err) {
+			if (requestId !== loadRequestId) return;
 			console.error('[EntityActivityLog] Failed to load:', err);
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/entities/${entityType}/${entityId}/logs`,
@@ -142,8 +147,10 @@
 			});
 			error = err instanceof Error ? err.message : 'Failed to load activity';
 		} finally {
-			isLoading = false;
-			isLoadingMore = false;
+			if (requestId === loadRequestId) {
+				isLoading = false;
+				isLoadingMore = false;
+			}
 		}
 	}
 

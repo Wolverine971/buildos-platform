@@ -20,6 +20,7 @@ export interface LegacyJob<T> {
 	};
 	timestamp: number;
 	attemptsMade: number;
+	maxAttempts?: number;
 	updateProgress: (progress: number | object) => Promise<void>;
 	log: (message: string) => Promise<void>;
 }
@@ -63,6 +64,7 @@ export class JobAdapter<T> {
 			opts: { priority },
 			timestamp: Date.now(),
 			attemptsMade: this.processingJob.attempts,
+			maxAttempts: this.processingJob.maxAttempts,
 			updateProgress: this.createProgressUpdater(),
 			log: this.processingJob.log
 		};
@@ -135,41 +137,4 @@ export class JobAdapter<T> {
 export function createLegacyJob<T>(processingJob: ProcessingJob<T>): LegacyJob<T> {
 	const adapter = new JobAdapter(processingJob);
 	return adapter.getLegacyJob();
-}
-
-/**
- * Type guard to check if an object is a valid ProcessingJob
- */
-export function isProcessingJob(obj: unknown): obj is ProcessingJob {
-	if (!obj || typeof obj !== 'object') return false;
-	const candidate = obj as Record<string, unknown>;
-	return (
-		typeof candidate.id === 'string' &&
-		typeof candidate.userId === 'string' &&
-		candidate.data !== undefined &&
-		typeof candidate.attempts === 'number' &&
-		candidate.signal instanceof AbortSignal &&
-		typeof candidate.updateProgress === 'function' &&
-		typeof candidate.log === 'function'
-	);
-}
-
-/**
- * Type guard to check if an object is a valid LegacyJob
- */
-export function isLegacyJob(obj: unknown): obj is LegacyJob<unknown> {
-	if (!obj || typeof obj !== 'object') return false;
-	const candidate = obj as Record<string, unknown>;
-	const data = candidate.data as Record<string, unknown> | undefined;
-	return (
-		typeof candidate.id === 'string' &&
-		!!data &&
-		typeof data.userId === 'string' &&
-		candidate.signal instanceof AbortSignal &&
-		typeof candidate.opts === 'object' &&
-		typeof candidate.timestamp === 'number' &&
-		typeof candidate.attemptsMade === 'number' &&
-		typeof candidate.updateProgress === 'function' &&
-		typeof candidate.log === 'function'
-	);
 }

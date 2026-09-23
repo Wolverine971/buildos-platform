@@ -194,7 +194,7 @@ export class Logger {
 		try {
 			// Log to notification_logs table for correlation tracking
 			// Note: Type assertion needed until database types are regenerated after migration
-			await this.supabase.from('notification_logs').insert({
+			const { error } = await this.supabase.from('notification_logs').insert({
 				level: entry.level,
 				message: entry.message,
 				namespace: entry.namespace,
@@ -210,6 +210,8 @@ export class Logger {
 				},
 				created_at: entry.timestamp.toISOString()
 			} as any);
+			// PostgREST reports insert failures in `{ error }`, not by throwing.
+			if (error) throw error;
 		} catch (error) {
 			// Don't fail the application if logging fails
 			console.error('[Logger] Database logging failed:', error);

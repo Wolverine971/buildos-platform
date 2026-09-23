@@ -103,7 +103,19 @@ function normalizeReasoningForModel(model: string, reasoning: unknown): unknown 
 		reasoning && typeof reasoning === 'object' && !Array.isArray(reasoning)
 			? (reasoning as Record<string, unknown>)
 			: {};
-	if (policy.defaultReasoningEffort && !normalizedReasoning.effort) {
+	if (
+		normalizedReasoning.enabled === false &&
+		(policy.requiredReasoningEffort || policy.minimumReasoningEffort)
+	) {
+		// This model cannot run without reasoning; asking it to would be contradictory.
+		const { enabled: _enabled, ...withoutEnabled } = normalizedReasoning;
+		normalizedReasoning = withoutEnabled;
+	}
+	if (
+		policy.defaultReasoningEffort &&
+		!normalizedReasoning.effort &&
+		normalizedReasoning.enabled !== false
+	) {
 		normalizedReasoning = {
 			...normalizedReasoning,
 			effort: policy.defaultReasoningEffort

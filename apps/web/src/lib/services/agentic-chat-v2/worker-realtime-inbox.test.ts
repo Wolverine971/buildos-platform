@@ -407,6 +407,78 @@ describe('AgenticChatWorkerRealtimeInbox', () => {
 		expect(sink.applied).toEqual([]);
 	});
 
+	it('re-requests a newer generation after a receipt that predates a latched claim hint', () => {
+		const sink = observer();
+		const inbox = new AgenticChatWorkerRealtimeInbox();
+		inbox.registerTurn({ handle, observer: sink.value });
+
+		// The claim hint lands while the initial request is still latched.
+		inbox.receiveReconcileHint({
+			contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+			turn_run_id: TURN_ID,
+			session_id: SESSION_ID,
+			execution_generation: 1,
+			durable_through_sequence: 0
+		});
+		expect(sink.reasons).toEqual(['initial']);
+		expect(inbox.getSnapshot(TURN_ID)?.highestObservedGeneration).toBe(1);
+
+		expect(
+			inbox.applyReconciliation(
+				TURN_ID,
+				receipt(0, 0, { requested_execution_generation: 0, status: 'queued' })
+			)
+		).toBe(true);
+		expect(sink.reasons).toEqual(['initial', 'generation_changed']);
+		expect(inbox.getSnapshot(TURN_ID)).toMatchObject({
+			executionGeneration: 0,
+			buffering: true,
+			reconciliationRequested: true
+		});
+
+		inbox.applyReconciliation(
+			TURN_ID,
+			receipt(1, 0, { requested_execution_generation: 0, generation_changed: true })
+		);
+		expect(sink.reasons).toEqual(['initial', 'generation_changed']);
+		expect(inbox.getSnapshot(TURN_ID)).toMatchObject({
+			executionGeneration: 1,
+			buffering: false,
+			reconciliationRequested: false
+		});
+	});
+
+	it('re-requests a latched same-generation hint the receipt did not cover', () => {
+		const sink = observer();
+		const inbox = new AgenticChatWorkerRealtimeInbox();
+		inbox.registerTurn({
+			handle,
+			observer: sink.value,
+			executionGeneration: 1,
+			lastAppliedSequence: 3
+		});
+		inbox.applyReconciliation(TURN_ID, receipt(1, 3));
+		inbox.requestReconciliation(TURN_ID, 'watchdog');
+		inbox.receiveReconcileHint({
+			contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+			turn_run_id: TURN_ID,
+			session_id: SESSION_ID,
+			execution_generation: 1,
+			durable_through_sequence: 5
+		});
+		expect(sink.reasons).toEqual(['initial', 'watchdog']);
+
+		inbox.applyReconciliation(TURN_ID, receipt(1, 4));
+		expect(sink.reasons).toEqual(['initial', 'watchdog', 'reconcile_hint']);
+
+		inbox.applyReconciliation(TURN_ID, receipt(1, 5));
+		expect(sink.reasons).toEqual(['initial', 'watchdog', 'reconcile_hint']);
+		expect(inbox.getSnapshot(TURN_ID)).toMatchObject({
+			lastAppliedSequence: 5,
+			buffering: false
+		});
+	});
+
 	it('ignores unregistered turns and unregisters idempotently', () => {
 		const sink = observer();
 		const inbox = new AgenticChatWorkerRealtimeInbox();

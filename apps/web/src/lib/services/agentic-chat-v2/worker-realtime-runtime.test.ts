@@ -167,6 +167,23 @@ describe('AgenticChatWorkerRealtimeRuntime', () => {
 		await h.runtime.stop();
 	});
 
+	it('tells the coordinator only while the private channel is actually subscribed', async () => {
+		const h = harness();
+		const setLive = vi.spyOn(h.runtime.coordinator, 'setLiveChannelSubscribed');
+		await h.runtime.start();
+		const channel = h.channels[0]!.channel;
+
+		channel.status('SUBSCRIBED');
+		expect(setLive).toHaveBeenLastCalledWith(true);
+		channel.status('CHANNEL_ERROR', new Error('socket dropped'));
+		expect(setLive).toHaveBeenLastCalledWith(false);
+		channel.status('SUBSCRIBED');
+		expect(setLive).toHaveBeenLastCalledWith(true);
+
+		await h.runtime.stop();
+		expect(setLive).toHaveBeenLastCalledWith(false);
+	});
+
 	it('keeps reconciliation paused until an authenticated user is established', async () => {
 		const h = harness(null);
 		await h.runtime.start();

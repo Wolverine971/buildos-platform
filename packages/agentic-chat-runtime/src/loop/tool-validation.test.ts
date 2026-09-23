@@ -185,6 +185,37 @@ describe('reschedule no-op preflight', () => {
 		).toEqual([]);
 	});
 
+	it('compares a date-only due_at against the end of that civil day in the user timezone', () => {
+		// The executor stores "2026-09-18" for a New York user as 2026-09-19T03:59:59Z.
+		const issues = validateToolCalls(
+			[call({ task_id: taskId, due_at: '2026-09-18' })],
+			[updateTaskTool],
+			{ ...loaded({ due_at: '2026-09-19T03:59:59.000Z' }), timezone: 'America/New_York' }
+		);
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]!.errors.join(' ')).toContain('would change nothing');
+	});
+
+	it('does not block a date-only due_at that lands at UTC midnight but moves in the user timezone', () => {
+		expect(
+			validateToolCalls([call({ task_id: taskId, due_at: '2026-09-18' })], [updateTaskTool], {
+				...loaded({ due_at: '2026-09-18T00:00:00.000Z' }),
+				timezone: 'America/New_York'
+			})
+		).toEqual([]);
+	});
+
+	it('never blocks a date-only proposal when the user timezone is unknown', () => {
+		expect(
+			validateToolCalls(
+				[call({ task_id: taskId, due_at: '2026-09-18' })],
+				[updateTaskTool],
+				loaded({ due_at: '2026-09-18T00:00:00.000Z' })
+			)
+		).toEqual([]);
+	});
+
 	it('does not flag a start_at when only due_at was loaded', () => {
 		expect(
 			validateToolCalls(

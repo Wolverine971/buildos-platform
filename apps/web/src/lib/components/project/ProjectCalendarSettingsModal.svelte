@@ -10,6 +10,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import ProjectCalendarPanel from '$lib/components/project/ProjectCalendarPanel.svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 	import type { CalendarItem } from '$lib/types/calendar-items';
 	import {
 		Calendar,
@@ -298,8 +299,21 @@
 		editingEventId = null;
 	}
 
-	function handleEditorUpdated() {
+	function handleEditorUpdated(
+		entityKind: 'task' | 'event',
+		entityId: string | null,
+		operation: 'update' | 'delete'
+	) {
 		calendarRefreshKey += 1;
+		if (!project?.id) return;
+		// The project surface behind this modal keeps its own lists; tell it too.
+		notifyDataMutation({
+			hasChanges: true,
+			totalMutations: 1,
+			affectedProjectIds: [project.id],
+			hasMessagesSent: false,
+			mutations: [{ entityKind, entityId, operation, projectIds: [project.id] }]
+		});
 	}
 
 	async function loadCalendarConnections() {
@@ -576,7 +590,8 @@
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		if (!project?.id) return;
+		// In-flight guard: a second Enter must not create the calendar twice.
+		if (!project?.id || saving) return;
 
 		saving = true;
 		errors = [];
@@ -1413,8 +1428,8 @@
 			taskId={editingTaskId}
 			projectId={project.id}
 			onClose={closeTaskEditor}
-			onUpdated={handleEditorUpdated}
-			onDeleted={handleEditorUpdated}
+			onUpdated={() => handleEditorUpdated('task', editingTaskId, 'update')}
+			onDeleted={() => handleEditorUpdated('task', editingTaskId, 'delete')}
 		/>
 	{/await}
 {/if}
@@ -1425,8 +1440,8 @@
 			eventId={editingEventId}
 			projectId={project.id}
 			onClose={closeEventEditor}
-			onUpdated={handleEditorUpdated}
-			onDeleted={handleEditorUpdated}
+			onUpdated={() => handleEditorUpdated('event', editingEventId, 'update')}
+			onDeleted={() => handleEditorUpdated('event', editingEventId, 'delete')}
 		/>
 	{/await}
 {/if}

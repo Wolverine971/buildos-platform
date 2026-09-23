@@ -18,6 +18,10 @@
 	import TodayAgendaRow from '$lib/components/today/TodayAgendaRow.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
 	import { loadTaskEditModal } from '$lib/components/project/project-entity-modal-loader';
+	import {
+		loadAgentChatModal,
+		warmAgentChatModal
+	} from '$lib/components/agent/load-agent-chat-modal';
 	import { prepareEntityModalData } from '$lib/components/project/entity-modal-data';
 	import {
 		AlertCircle,
@@ -498,8 +502,7 @@
 
 	async function ensureChatModal() {
 		if (!AgentChatModalComponent) {
-			AgentChatModalComponent = (await import('$lib/components/agent/AgentChatModal.svelte'))
-				.default;
+			AgentChatModalComponent = (await loadAgentChatModal()).default;
 		}
 	}
 
@@ -997,6 +1000,7 @@
 								bind:value={captureText}
 								bind:isRecording={captureVoiceRecording}
 								placeholder="What are you working on? Dump it all here…"
+								onfocus={warmAgentChatModal}
 								rows={3}
 								maxRows={10}
 								autoResize={true}
@@ -1037,6 +1041,7 @@
 								bind:isRecording={captureVoiceRecording}
 								aria-label="Quick update for your projects"
 								placeholder="What changed today?"
+								onfocus={warmAgentChatModal}
 								rows={1}
 								maxRows={6}
 								autoResize={true}

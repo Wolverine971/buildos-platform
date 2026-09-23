@@ -65,7 +65,9 @@ type ContactObservationRow = Pick<
 	| 'status'
 >;
 
-const CONTACT_SIGNAL_TIMEOUT_MS = 2500;
+// Total budget for the extraction call. It is passed to SmartLLM as an abort
+// signal, so hitting it cancels the paid request instead of abandoning it.
+const CONTACT_SIGNAL_TIMEOUT_MS = 20_000;
 const CONTACT_SIGNAL_MAX_MESSAGES = 40;
 
 const CONTACT_SIGNAL_SYSTEM_PROMPT = `You analyze chat messages and extract user-owned contact details mentioned in the conversation.
@@ -204,18 +206,6 @@ function buildSignalPrompt(params: {
 		'Conversation:',
 		conversation
 	].join('\n');
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-	let timer: NodeJS.Timeout | null = null;
-	try {
-		const timeoutPromise = new Promise<T>((_, reject) => {
-			timer = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
-		});
-		return await Promise.race([promise, timeoutPromise]);
-	} finally {
-		if (timer) clearTimeout(timer);
-	}
 }
 
 function normalizeExtractedContacts(raw: unknown): ExtractedContactSignal[] {
@@ -751,24 +741,21 @@ export async function processContactSignals(params: {
 
 	let extractedContacts: ExtractedContactSignal[] = [];
 	try {
-		const extractionResponse = await withTimeout(
-			llmService.getJSONResponse<ExtractedContactResponse>({
-				systemPrompt: CONTACT_SIGNAL_SYSTEM_PROMPT,
-				userPrompt: buildSignalPrompt({
-					messages: relevantMessages,
-					classification: params.classification
-				}),
-				userId,
-				profile: 'fast',
-				temperature: 0.2,
-				validation: {
-					retryOnParseError: true,
-					maxRetries: 1
-				}
+		const extractionResponse = await llmService.getJSONResponse<ExtractedContactResponse>({
+			systemPrompt: CONTACT_SIGNAL_SYSTEM_PROMPT,
+			userPrompt: buildSignalPrompt({
+				messages: relevantMessages,
+				classification: params.classification
 			}),
-			CONTACT_SIGNAL_TIMEOUT_MS,
-			'contact_signal_extraction'
-		);
+			userId,
+			profile: 'fast',
+			temperature: 0.2,
+			signal: AbortSignal.timeout(CONTACT_SIGNAL_TIMEOUT_MS),
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 1
+			}
+		});
 		extractedContacts = normalizeExtractedContacts(extractionResponse);
 	} catch (error) {
 		console.warn(

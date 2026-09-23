@@ -313,6 +313,13 @@ describe('ensureToolCompatibleModels', () => {
 		expect(models.every((model) => !model.includes('alpha'))).toBe(true);
 	});
 
+	it('never upgrades a caller-chosen JSON profile from a guess about the prompt', () => {
+		// Previously a keyword scan ("analyze", "if", nested braces) tagged prompts
+		// as complex and silently swapped the 'fast' lane for 'balanced'.
+		expect(selectJSONModels('fast', 'complex')).toEqual([...JSON_PROFILE_MODELS.fast]);
+		expect(selectJSONModels('fast', 'complex')).toEqual(selectJSONModels('fast', 'simple'));
+	});
+
 	it('uses the production fallback order for balanced default JSON routing', () => {
 		const models = selectJSONModels('balanced', 'moderate');
 

@@ -469,12 +469,14 @@ export class CalendarService {
 	private convertToRRule(
 		pattern: Database['public']['Enums']['recurrence_pattern'],
 		ends?: string,
-		startDate?: string
+		startDate?: string,
+		timeZone?: string
 	): string | null {
 		const config: RecurrenceConfig = {
 			pattern: { type: this.mapPatternType(pattern) },
 			endOption: ends ? { type: 'date', value: ends } : { type: 'never' },
-			startDate: startDate || new Date().toISOString()
+			startDate: startDate || new Date().toISOString(),
+			timeZone
 		};
 
 		return recurrencePatternBuilder.buildRRule(config);
@@ -653,7 +655,9 @@ export class CalendarService {
 					return current < busyEnd && slotEnd > busyStart;
 				});
 
-				const hour = current.getHours();
+				// preferred_hours are the user's wall-clock hours, not the server's (UTC).
+				const zonedHour = timeZone ? toZonedTime(current, timeZone).getHours() : NaN;
+				const hour = Number.isNaN(zonedHour) ? current.getHours() : zonedHour;
 				const inPreferredHours = !preferred_hours || preferred_hours.includes(hour);
 
 				if (isAvailable && inPreferredHours) {
@@ -795,7 +799,8 @@ export class CalendarService {
 				const rrule = this.convertToRRule(
 					recurrencePattern,
 					recurrenceEnds ?? undefined,
-					start_time
+					start_time,
+					timeZone
 				);
 				if (rrule) recurrence.push(rrule);
 			}

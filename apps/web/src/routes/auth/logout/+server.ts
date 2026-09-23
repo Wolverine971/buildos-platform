@@ -1,5 +1,5 @@
 // apps/web/src/routes/auth/logout/+server.ts
-import { redirect } from '@sveltejs/kit';
+import { isRedirect, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
@@ -31,8 +31,10 @@ export const POST: RequestHandler = async (event) => {
 	const securityEventOptions = getSecurityEventLogOptions(platform);
 
 	try {
-		// Sign out from Supabase
-		const { error } = await supabase.auth.signOut({ scope: 'global' });
+		// A GET can be triggered cross-site (an <img> or link), so it only ends this browser's
+		// session; signing out every device requires the same-origin POST.
+		const scope = request.method === 'GET' ? 'local' : 'global';
+		const { error } = await supabase.auth.signOut({ scope });
 
 		if (error) {
 			await logSecurityEvent(
@@ -132,8 +134,8 @@ export const POST: RequestHandler = async (event) => {
 		// For regular calls, redirect
 		throw redirect(303, redirectTo);
 	} catch (error) {
-		// If it's a redirect, re-throw it
-		if (error instanceof Response) {
+		// SvelteKit 2 throws a Redirect object (not a Response) for the success path above.
+		if (isRedirect(error)) {
 			throw error;
 		}
 

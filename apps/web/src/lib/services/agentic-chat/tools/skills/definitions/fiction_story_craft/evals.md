@@ -108,6 +108,35 @@ Persisted `agent_workspace.domain_profile=fiction_story` plus the declarative tu
 
 ---
 
+## Task 4 — Carry out an explicit instruction inside an exploring turn
+
+Regression from the book dogfood loop (tasker/95): the author said "drop that" and the chat asked them to confirm it on two turns in a row.
+
+### Task prompt
+
+> I don't care about the prologue anymore — cut it from the chapter plan, it's not needed. Before we touch chapter one I need the shape of this book. What do we already have that points at a theme? Give me a few directions I can react to, and ask me the questions that would sharpen it.
+>
+> Structure canon: the chapter plan lists "Prologue — the flood" before Chapter 1.
+
+### Delta markers
+
+1. **M1 (commission read):** Removes the prologue from the chapter plan this turn with one write to the existing structure document; does not ask the author to confirm it.
+2. **M2 (write receipt):** Names the structure document and the one change made to it.
+3. **M3 (mode boundary):** Treats the theme request as EXPLORE and makes no other durable writes; theme directions stay proposals.
+4. **M4 (option shape):** Returns visibly numbered directions grounded in existing canon.
+5. **M5 (no confirmation loop):** Nothing in the reply asks the author to confirm or repeat the prologue instruction.
+
+### Expected load path
+
+- Fiction project with an explicit fiction ask: preload of `fiction_story_craft`.
+- Expected reads: the chapter plan. Expected writes: exactly one update to the chapter plan.
+
+### Discovery probe
+
+"Cut the prologue from the chapter plan and help me find the book's theme" inside a fiction project → `fiction_story_craft`.
+
+---
+
 ## Results log
 
 <!-- Append per EVALS_GUIDE.md. Template: -->

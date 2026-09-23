@@ -7,6 +7,7 @@ import {
 	getPublicPageRedirectSlug
 } from '$lib/server/public-page.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { getPublicPageCitations } from '$lib/server/public-page-publication';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const slug = (params.slug ?? '').trim().toLowerCase();
@@ -50,13 +51,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			session?.user?.id && actor?.user_id && actor.user_id === session.user.id
 		);
 
-		const publishedProps =
-			page.published_props && typeof page.published_props === 'object'
-				? (page.published_props as Record<string, unknown>)
-				: {};
-		const citations = Array.isArray(publishedProps.citations)
-			? (publishedProps.citations as Array<Record<string, unknown>>)
-			: [];
+		// Only http(s) links render as hrefs; a stored `javascript:` URL would
+		// otherwise run on click in the BuildOS origin.
+		const citations = getPublicPageCitations(page.published_props);
 
 		const payload = {
 			page: {

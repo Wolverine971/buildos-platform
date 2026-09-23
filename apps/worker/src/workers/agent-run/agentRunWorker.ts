@@ -1814,12 +1814,19 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 					.maybeSingle()
 			: { data: null };
 
-		const consumeAllSignals = () =>
-			supabase
+		// Consume only the signals this drain read. A signal inserted after the
+		// SELECT (e.g. Stop pressed right after a steer) must survive to the next
+		// boundary instead of being marked consumed unseen.
+		const pendingSignalIds = (pendingSignals ?? []).map((signal) => signal.id);
+		const consumeReadSignals = async () => {
+			if (!pendingSignalIds.length) return;
+			await supabase
 				.from('agent_run_signals')
 				.update({ consumed_at: new Date().toISOString() })
 				.eq('run_id', runId)
+				.in('id', pendingSignalIds)
 				.is('consumed_at', null);
+		};
 
 		const cancellationSource = resolveAgentRunCancellationSource({
 			pendingSignalKinds: (pendingSignals ?? []).map((signal) => signal.kind),
@@ -1828,7 +1835,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			parentStatus: parentRunState?.status
 		});
 		if (cancellationSource) {
-			await consumeAllSignals();
+			await consumeReadSignals();
 			await emitEvent(runId, 'run.narration', {
 				note:
 					cancellationSource === 'parent'
@@ -1863,7 +1870,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		}
 
 		if (pendingSignals?.some((s) => s.kind === 'pause')) {
-			await consumeAllSignals();
+			await consumeReadSignals();
 			const paused = await fencedRunUpdate(
 				{
 					status: 'paused',
@@ -1891,7 +1898,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 
 		// Steers + any resume markers handled — mark them consumed.
 		if (pendingSignals?.length) {
-			await consumeAllSignals();
+			await consumeReadSignals();
 		}
 
 		return { kind: appliedSteer ? 'steered' : 'none' };

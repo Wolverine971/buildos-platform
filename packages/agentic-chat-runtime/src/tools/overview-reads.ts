@@ -131,6 +131,21 @@ async function loadOverviewProjectRows(
 	};
 }
 
+/**
+ * Task rows fetched per overview project. Overview counts only open tasks, so
+ * rows are ordered open-first; past the cap the payload says it was truncated
+ * instead of silently undercounting.
+ */
+const OVERVIEW_TASKS_PER_PROJECT = 250;
+const OVERVIEW_TASK_FETCH_CAP = 2000;
+
+function overviewTaskFetchLimit(projectCount: number): number {
+	return Math.min(
+		OVERVIEW_TASK_FETCH_CAP,
+		Math.max(1, projectCount) * OVERVIEW_TASKS_PER_PROJECT
+	);
+}
+
 /** The project schedule the summaries RPC does not return, keyed by project id. */
 export type OverviewProjectScheduleRow = {
 	id: string;
@@ -168,7 +183,10 @@ async function loadOverviewProjectData(
 	events: EventRow[];
 	projectLogs: ProjectLogRow[];
 	members: ProjectMemberRow[];
+	tasksTruncated: boolean;
+	taskFetchLimit: number;
 }> {
+	const taskFetchLimit = overviewTaskFetchLimit(projectIds.length);
 	if (projectIds.length === 0) {
 		return {
 			projectSchedules: [],
@@ -178,7 +196,9 @@ async function loadOverviewProjectData(
 			risks: [],
 			events: [],
 			projectLogs: [],
-			members: []
+			members: [],
+			tasksTruncated: false,
+			taskFetchLimit
 		};
 	}
 
@@ -201,26 +221,35 @@ async function loadOverviewProjectData(
 		// schedule is read here alongside its children. `projectIds` is already
 		// access-filtered by the caller, exactly like every query below it.
 		supabaseAny.from('onto_projects').select('id, start_at, end_at').in('id', projectIds),
+		// Archived rows are out of the working set, like deleted ones.
 		supabaseAny
 			.from('onto_tasks')
 			.select('id, project_id, title, state_key, priority, due_at, completed_at, updated_at')
 			.in('project_id', projectIds)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.order('completed_at', { ascending: true, nullsFirst: true })
+			.order('updated_at', { ascending: false })
+			// One extra row detects truncation without a separate count query.
+			.limit(taskFetchLimit + 1),
 		supabaseAny
 			.from('onto_milestones')
 			.select('id, project_id, title, state_key, due_at, completed_at, updated_at')
 			.in('project_id', projectIds)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.is('archived_at', null),
 		supabaseAny
 			.from('onto_plans')
 			.select('id, project_id, name, state_key, updated_at')
 			.in('project_id', projectIds)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.is('archived_at', null),
 		supabaseAny
 			.from('onto_risks')
 			.select('id, project_id, title, state_key, impact, updated_at')
 			.in('project_id', projectIds)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.is('archived_at', null),
 		supabaseAny
 			.from('onto_events')
 			.select('id, project_id, title, state_key, start_at, end_at, updated_at')
@@ -260,15 +289,32 @@ async function loadOverviewProjectData(
 		throw new Error(`Failed to load ${label} for overview: ${error.message}`);
 	}
 
+	const fetchedTasks: TaskRow[] = Array.isArray(tasksRes.data) ? tasksRes.data : [];
+	const tasksTruncated = fetchedTasks.length > taskFetchLimit;
 	return {
 		projectSchedules: Array.isArray(projectsRes.data) ? projectsRes.data : [],
-		tasks: Array.isArray(tasksRes.data) ? tasksRes.data : [],
+		tasks: tasksTruncated ? fetchedTasks.slice(0, taskFetchLimit) : fetchedTasks,
 		milestones: Array.isArray(milestonesRes.data) ? milestonesRes.data : [],
 		plans: Array.isArray(plansRes.data) ? plansRes.data : [],
 		risks: Array.isArray(risksRes.data) ? risksRes.data : [],
 		events: Array.isArray(eventsRes.data) ? eventsRes.data : [],
 		projectLogs: Array.isArray(logsRes.data) ? logsRes.data : [],
-		members: Array.isArray(membersRes.data) ? membersRes.data : []
+		members: Array.isArray(membersRes.data) ? membersRes.data : [],
+		tasksTruncated,
+		taskFetchLimit
+	};
+}
+
+/** Flag a payload whose task-derived counts come from a capped task read. */
+function withTaskTruncation(
+	payload: Record<string, any>,
+	related: { tasksTruncated: boolean; taskFetchLimit: number }
+): Record<string, any> {
+	if (!related.tasksTruncated) return payload;
+	return {
+		...payload,
+		tasks_truncated: true,
+		task_fetch_limit: related.taskFetchLimit
 	};
 }
 
@@ -356,7 +402,7 @@ export async function getWorkspaceOverview(
 
 	const projectIds = projects.map((project) => String(project.id));
 	const related = await loadOverviewProjectData(context, projectIds);
-	return buildWorkspaceOverviewPayload({
+	const payload = buildWorkspaceOverviewPayload({
 		projects: projects.map((project) =>
 			mergeProjectScheduleDates(project, related.projectSchedules)
 		),
@@ -371,6 +417,7 @@ export async function getWorkspaceOverview(
 		totalProjects,
 		projectLimit
 	});
+	return withTaskTruncation(payload, related);
 }
 
 export async function getProjectOverview(
@@ -410,17 +457,20 @@ export async function getProjectOverview(
 		}
 
 		const related = await loadOverviewProjectData(context, [String(project.id)]);
-		return buildProjectOverviewPayload({
-			project: mergeProjectScheduleDates(project, related.projectSchedules),
-			tasks: related.tasks,
-			milestones: related.milestones,
-			plans: related.plans,
-			risks: related.risks,
-			events: related.events,
-			projectLogs: related.projectLogs,
-			members: related.members,
-			currentActorId: await context.access.getActorId()
-		});
+		return withTaskTruncation(
+			buildProjectOverviewPayload({
+				project: mergeProjectScheduleDates(project, related.projectSchedules),
+				tasks: related.tasks,
+				milestones: related.milestones,
+				plans: related.plans,
+				risks: related.risks,
+				events: related.events,
+				projectLogs: related.projectLogs,
+				members: related.members,
+				currentActorId: await context.access.getActorId()
+			}),
+			related
+		);
 	}
 
 	const match = resolveProjectMatch(projects, query);
@@ -450,16 +500,19 @@ export async function getProjectOverview(
 	}
 
 	const related = await loadOverviewProjectData(context, [match.project.id]);
-	return buildProjectOverviewPayload({
-		project: mergeProjectScheduleDates(match.project, related.projectSchedules),
-		query,
-		tasks: related.tasks,
-		milestones: related.milestones,
-		plans: related.plans,
-		risks: related.risks,
-		events: related.events,
-		projectLogs: related.projectLogs,
-		members: related.members,
-		currentActorId: await context.access.getActorId()
-	});
+	return withTaskTruncation(
+		buildProjectOverviewPayload({
+			project: mergeProjectScheduleDates(match.project, related.projectSchedules),
+			query,
+			tasks: related.tasks,
+			milestones: related.milestones,
+			plans: related.plans,
+			risks: related.risks,
+			events: related.events,
+			projectLogs: related.projectLogs,
+			members: related.members,
+			currentActorId: await context.access.getActorId()
+		}),
+		related
+	);
 }

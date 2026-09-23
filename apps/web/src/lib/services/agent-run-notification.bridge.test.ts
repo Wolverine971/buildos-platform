@@ -82,4 +82,41 @@ describe('agent run review notifications', () => {
 		expect(get(notificationStore).expandedId).toBeNull();
 		expect(get(notificationStore).notifications.get(id)?.isMinimized).toBe(true);
 	});
+
+	it('re-runs a finished run after it has been evicted from the realtime store', async () => {
+		agentRunsStore.set(new Map([['run-1', run('running')]]));
+		const id = [...get(notificationStore).notifications.keys()][0]!;
+		agentRunsStore.set(new Map([['run-1', run('failed')]]));
+		// Terminal rows are pruned from the store after the retention window.
+		agentRunsStore.set(new Map());
+
+		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+			if (url === '/api/agent-runs/run-1?events=0') {
+				return new Response(
+					JSON.stringify({ success: true, data: { run: run('failed') } }),
+					{
+						status: 200,
+						headers: { 'content-type': 'application/json' }
+					}
+				);
+			}
+			if (url === '/api/agent-runs' && init?.method === 'POST') {
+				return new Response(JSON.stringify({ success: true, data: {} }), { status: 200 });
+			}
+			throw new Error(`unexpected fetch ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const notification = get(notificationStore).notifications.get(id) as any;
+		notification.actions.retry();
+		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		const postBody = JSON.parse(fetchMock.mock.calls[1]![1]!.body as string);
+		expect(postBody).toMatchObject({
+			label: 'Review project',
+			goal: 'Update project context',
+			project_id: 'project-1'
+		});
+		vi.unstubAllGlobals();
+	});
 });

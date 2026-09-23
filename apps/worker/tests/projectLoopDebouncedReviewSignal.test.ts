@@ -24,7 +24,9 @@ const mocks = vi.hoisted(() => {
 	const state = {
 		queries: [] as QueryRecord[],
 		pendingSignal: createSignal(),
-		claimedSignal: createSignal({ status: 'processing' }) as Record<string, unknown> | null
+		claimedSignal: createSignal({ status: 'processing' }) as Record<string, unknown> | null,
+		// A signal this job already claimed on an earlier attempt.
+		resumableSignal: null as Record<string, unknown> | null
 	};
 
 	const createQuery = (record: QueryRecord) => {
@@ -42,6 +44,10 @@ const mocks = vi.hoisted(() => {
 			limit: vi.fn(() => query),
 			maybeSingle: vi.fn(async () => {
 				if (record.action === 'select') {
+					const status = record.filters.find((filter) => filter.column === 'status');
+					if (status?.value === 'processing') {
+						return { data: state.resumableSignal, error: null };
+					}
 					return { data: state.pendingSignal, error: null };
 				}
 				if (record.payload?.status === 'processing') {
@@ -161,6 +167,7 @@ describe('processProjectLoopJob debounced review signals', () => {
 			status: 'processing',
 			due_at: '2026-07-07T14:00:00.000Z'
 		};
+		mocks.state.resumableSignal = null;
 		mocks.supabaseRpc.mockResolvedValue({ data: null, error: null });
 		mocks.enqueueProjectLoop.mockResolvedValue({ queued: true, runId: 'run-1' });
 		mocks.queueProjectAuditFromWorker.mockResolvedValue({
@@ -278,5 +285,65 @@ describe('processProjectLoopJob debounced review signals', () => {
 		expect(job.log).toHaveBeenCalledWith(
 			'Debounced project review signal signal-1 was already claimed or deferred; skipping.'
 		);
+	});
+
+	it('resumes a signal this job claimed before a crash instead of dropping the burst', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-07-07T14:01:00.000Z'));
+		mocks.state.resumableSignal = {
+			id: 'signal-1',
+			project_id: 'project-1',
+			user_id: 'user-1',
+			status: 'processing',
+			queue_job_id: 'queue-job-1',
+			due_at: '2026-07-07T14:00:00.000Z'
+		};
+		const job = { ...createDebouncedSignalJob(), attempts: 1, maxAttempts: 3 };
+
+		const result = await processProjectLoopJob(job);
+
+		expect(result).toMatchObject({ success: true, runId: 'run-1' });
+		expect(mocks.enqueueProjectLoop).toHaveBeenCalledTimes(1);
+		const resumeLookup = mocks.state.queries[0];
+		expect(resumeLookup?.filters).toEqual(
+			expect.arrayContaining([
+				{ column: 'status', value: 'processing' },
+				{ column: 'queue_job_id', value: 'queue-job-1' }
+			])
+		);
+		expect(
+			mocks.state.queries.some(
+				(query) => query.action === 'update' && query.payload?.status === 'processing'
+			)
+		).toBe(false);
+		expect(
+			mocks.state.queries.find(
+				(query) => query.action === 'update' && query.payload?.status === 'completed'
+			)?.filters
+		).toEqual([
+			{ column: 'id', value: 'signal-1' },
+			{ column: 'status', value: 'processing' }
+		]);
+	});
+
+	it('keeps the signal claimed for the retry and records failure only on the last attempt', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-07-07T14:01:00.000Z'));
+		mocks.enqueueProjectLoop.mockRejectedValue(new Error('db timeout'));
+		const failedUpdate = () =>
+			mocks.state.queries.find(
+				(query) => query.action === 'update' && query.payload?.status === 'failed'
+			);
+
+		await expect(
+			processProjectLoopJob({ ...createDebouncedSignalJob(), attempts: 0, maxAttempts: 3 })
+		).rejects.toThrow('db timeout');
+		expect(failedUpdate()).toBeUndefined();
+
+		mocks.state.queries.length = 0;
+		await expect(
+			processProjectLoopJob({ ...createDebouncedSignalJob(), attempts: 2, maxAttempts: 3 })
+		).rejects.toThrow('db timeout');
+		expect(failedUpdate()?.payload).toMatchObject({ error_message: 'db timeout' });
 	});
 });

@@ -140,6 +140,7 @@ vi.mock('web-push', () => ({
 }));
 
 import { processNotification } from '../src/workers/notification/notificationWorker';
+import { checkUserPreferences } from '../src/workers/notification/preferenceChecker.js';
 
 afterAll(() => {
 	if (mocks.originalSmsSendingEnabled === undefined) {
@@ -278,6 +279,18 @@ describe('notification retry semantics', () => {
 		expect(mocks.state.delivery.status).toBe('pending');
 		expect(mocks.state.delivery.attempts).toBe(1);
 		expect(mocks.state.delivery.last_error).toBe('adapter exploded');
+	});
+
+	it('a preference read failure leaves the delivery retryable instead of cancelling it', async () => {
+		vi.mocked(checkUserPreferences).mockRejectedValueOnce(
+			new Error('Failed to load notification preferences: statement timeout')
+		);
+
+		await expect(processNotification(makeJob())).rejects.toThrow('statement timeout');
+
+		expect(mocks.state.delivery.status).toBe('pending');
+		expect(mocks.state.delivery.attempts).toBe(1);
+		expect(mocks.sendEmailNotification).not.toHaveBeenCalled();
 	});
 
 	it('retries exhausted through repeated transient failures land on failed exactly at max_attempts', async () => {

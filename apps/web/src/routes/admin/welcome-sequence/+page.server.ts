@@ -6,7 +6,7 @@ export const config = {
 
 import { dev } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
-import { fail } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { EmailService } from '$lib/services/email-service';
@@ -818,7 +818,10 @@ async function getAdminActionUser(
 	return { ok: true, userId: user.id };
 }
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
+	// Checked here too: a __data.json request can skip the admin layout's load.
+	if (!locals.user?.is_admin) throw error(403, 'Admin access required');
+
 	const limit = normalizeLimit(url.searchParams.get('limit'));
 	const days = normalizeDays(url.searchParams.get('days'));
 	const baseUrl = getBaseUrl();

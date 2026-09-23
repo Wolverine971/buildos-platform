@@ -149,3 +149,38 @@ describe('CalendarService disconnect authority', () => {
 		expect(userDisconnectMock).not.toHaveBeenCalled();
 	});
 });
+
+describe('CalendarService.findAvailableSlots preferred hours', () => {
+	it("filters preferred hours in the user's timezone rather than the server's", async () => {
+		const originalTz = process.env.TZ;
+		process.env.TZ = 'UTC'; // Production servers run in UTC.
+		try {
+			const { google } = await import('googleapis');
+			vi.mocked(google.calendar).mockReturnValue({
+				freebusy: {
+					query: vi.fn().mockResolvedValue({
+						data: { calendars: { primary: { busy: [] } } }
+					})
+				}
+			} as any);
+			const service = new CalendarService(userSupabase as any);
+			(service as any).oAuthService = {
+				getAuthenticatedClient: vi.fn().mockResolvedValue({})
+			};
+
+			const result = await service.findAvailableSlots('user-1', {
+				// 9:00-11:00 in New York.
+				timeMin: '2026-09-22T13:00:00.000Z',
+				timeMax: '2026-09-22T15:00:00.000Z',
+				duration_minutes: 30,
+				preferred_hours: [9],
+				timeZone: 'America/New_York'
+			} as any);
+
+			expect(result.total_available).toBe(2);
+		} finally {
+			if (originalTz === undefined) delete process.env.TZ;
+			else process.env.TZ = originalTz;
+		}
+	});
+});

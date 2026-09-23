@@ -42,6 +42,13 @@ describe('agent run execution fencing', () => {
 		expect(source).toContain("error.code !== '23505'");
 	});
 
+	it('consumes only the control signals a drain actually read', () => {
+		// A Stop inserted after the drain's SELECT must not be marked consumed
+		// unseen by a blanket run-wide update.
+		expect(source).toContain(".in('id', pendingSignalIds)");
+		expect(source).not.toContain('consumeAllSignals');
+	});
+
 	it('the executor aborts on infrastructure cancellation at loop boundaries', () => {
 		expect(source).toContain('job.signal?.aborted');
 		expect(source).toContain('signal: job.signal');

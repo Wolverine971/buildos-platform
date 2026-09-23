@@ -59,6 +59,54 @@ async function findExistingAsset(params: {
 	return data ?? null;
 }
 
+/**
+ * The asset row is inserted before its bytes are uploaded, so a failed upload
+ * leaves a row with no object. Dedupe must not hand that row back as finished:
+ * when the object is missing, mint a fresh signed upload for the row's own path.
+ */
+async function reissueUploadForMissingObject(params: {
+	storageAdmin: ReturnType<typeof createAdminSupabaseClient>;
+	asset: ExistingAssetRow;
+	projectId: string;
+}): Promise<ChatImageAttachmentCreateResponse['upload']> {
+	const { asset, projectId } = params;
+	if (asset.ocr_status === 'complete') return null;
+
+	const bucket = asset.storage_bucket ?? CHAT_ATTACHMENT_STORAGE_BUCKET;
+	const storagePath = typeof asset.storage_path === 'string' ? asset.storage_path : '';
+	// Only ever sign an upload inside this asset's own folder.
+	const ownFolder = `projects/${projectId}/assets/${asset.id}/`;
+	if (
+		bucket !== CHAT_ATTACHMENT_STORAGE_BUCKET ||
+		!storagePath.startsWith(ownFolder) ||
+		storagePath.includes('..')
+	) {
+		return null;
+	}
+
+	const filename = storagePath.slice(ownFolder.length);
+	if (!filename || filename.includes('/')) return null;
+
+	const { data: listed, error: listError } = await params.storageAdmin.storage
+		.from(bucket)
+		.list(ownFolder.slice(0, -1), { limit: 1, search: filename });
+	if (listError) throw listError;
+	if ((listed ?? []).some((entry) => entry.name === filename)) return null;
+
+	const { data: uploadData, error: uploadError } = await params.storageAdmin.storage
+		.from(bucket)
+		.createSignedUploadUrl(storagePath);
+	if (uploadError || !uploadData?.signedUrl) {
+		throw uploadError || new Error('Failed to create upload URL');
+	}
+
+	return {
+		signed_url: uploadData.signedUrl,
+		path: uploadData.path,
+		token: uploadData.token ?? null
+	};
+}
+
 function sumBytes(rows: Array<{ file_size_bytes?: number | null }> | null | undefined): number {
 	return (rows ?? []).reduce((total, row) => {
 		const bytes = Number(row.file_size_bytes ?? 0);
@@ -237,22 +285,42 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 
 			if (existingAsset) {
+				let reissuedUpload: ChatImageAttachmentCreateResponse['upload'] = null;
+				try {
+					reissuedUpload = await reissueUploadForMissingObject({
+						storageAdmin: createAdminSupabaseClient(),
+						asset: existingAsset,
+						projectId
+					});
+				} catch (storageError) {
+					// Verification is a repair path; if storage is unreachable, keep the
+					// plain dedupe answer rather than failing the attach.
+					console.warn(
+						'[agent-chat-attachments] could not verify deduped asset object',
+						storageError
+					);
+				}
+
 				await recordMediaEvent({
 					supabase: locals.supabase as any,
 					userId: session.user.id,
 					projectId,
 					assetId: existingAsset.id,
-					eventType: 'upload_deduped',
+					eventType: reissuedUpload ? 'upload_requested' : 'upload_deduped',
 					contentType,
 					fileSizeBytes,
 					checksumSha256,
-					metadata: { file_name: fileName }
+					metadata: reissuedUpload
+						? { file_name: fileName, reissued_for_missing_object: true }
+						: { file_name: fileName }
 				});
 
+				// deduped stays true: the row is shared with earlier attachments, so a
+				// client must never clean it up even though it gets an upload to finish.
 				return ApiResponse.success({
 					asset: existingAsset,
 					deduped: true,
-					upload: null,
+					upload: reissuedUpload,
 					caps
 				} satisfies ChatImageAttachmentCreateResponse);
 			}

@@ -298,6 +298,68 @@ describe('LinkedEntities request ownership', () => {
 		expect(onLinksChanged).not.toHaveBeenCalled();
 	});
 
+	it('restores only the failed link when concurrent unlinks settle out of order', async () => {
+		render(LinkedEntities, {
+			props: {
+				sourceId: 'task-a',
+				sourceKind: 'task',
+				projectId: 'project-1',
+				initialLinkedEntities: {
+					...emptyLinkedEntities(),
+					tasks: [linkedTask('first', 'First link'), linkedTask('second', 'Second link')]
+				}
+			}
+		});
+
+		await fireEvent.click(await screen.findByRole('button', { name: /Tasks \(2\)/ }));
+		await fireEvent.click(
+			await screen.findByRole('button', { name: 'Remove link to First link' })
+		);
+		await fireEvent.click(
+			await screen.findByRole('button', { name: 'Remove link to Second link' })
+		);
+		await waitFor(() => expect(requests).toHaveLength(2));
+
+		// The second unlink succeeds, then the first one fails.
+		requireTestValue(requests[1]).response.resolve(jsonResponse({ data: {} }));
+		await tick();
+		requireTestValue(requests[0]).response.resolve(
+			jsonResponse({ error: 'Unlink failed' }, 500)
+		);
+		await waitFor(() => expect(toastError).toHaveBeenCalled());
+
+		expect(await screen.findByText('First link')).toBeInTheDocument();
+		expect(screen.queryByText('Second link')).not.toBeInTheDocument();
+	});
+
+	it('creates links once when Add Selected is double-clicked', async () => {
+		render(LinkedEntities, {
+			props: {
+				sourceId: 'task-a',
+				sourceKind: 'task',
+				projectId: 'project-1',
+				initialLinkedEntities: emptyLinkedEntities(),
+				allowedEntityTypes: ['document']
+			}
+		});
+
+		await fireEvent.click(await screen.findByRole('button', { name: 'Add document' }));
+		await waitFor(() => expect(requests).toHaveLength(1));
+		requireTestValue(requests[0]).response.resolve(
+			availableResponse([{ id: 'document-a', title: 'Document A', isLinked: false }])
+		);
+		await fireEvent.click(await screen.findByRole('button', { name: 'Document A' }));
+		const confirm = screen.getByRole('button', { name: 'Add Selected (1)' });
+		await fireEvent.click(confirm);
+		await fireEvent.click(confirm);
+
+		await waitFor(() =>
+			expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1)
+		);
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
+	});
+
 	it('does not reload, toast, or callback when a link mutation resolves for an old source', async () => {
 		const onLinksChanged = vi.fn();
 		const view = render(LinkedEntities, {

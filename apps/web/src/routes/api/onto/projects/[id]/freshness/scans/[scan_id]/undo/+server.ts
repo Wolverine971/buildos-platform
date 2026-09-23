@@ -17,6 +17,9 @@ import { undoFreshnessFlags } from '$lib/server/freshness-radar.service';
 import { replayLoopOperations } from '$lib/server/project-suggestion-actions.service';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
+// Undo replays operations inline through the chat write path, like suggestion approval.
+export const config = { maxDuration: 60 };
+
 const undoSchema = z
 	.object({
 		flag_ids: z.array(z.string().uuid()).min(1).max(20).optional()

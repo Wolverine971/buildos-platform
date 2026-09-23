@@ -6,6 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { validatePaginationCustom } from '$lib/utils/api-helpers';
 import { logOntologyApiError } from '../../../../shared/error-logging';
 import type { ProjectLogEntityType } from '@buildos/shared-types';
 import { randomUUID } from 'crypto';
@@ -47,8 +48,13 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		}
 
 		// Parse pagination params
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '10', 10), 50);
-		const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+		const { limit, offset } = validatePaginationCustom(
+			{
+				limit: url.searchParams.get('limit'),
+				offset: url.searchParams.get('offset')
+			},
+			{ defaultLimit: 10, maxLimit: 50 }
+		);
 
 		const supabase = locals.supabase;
 		try {

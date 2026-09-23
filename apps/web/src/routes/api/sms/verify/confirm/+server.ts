@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/sms/verify/confirm/+server.ts
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
-import { ApiResponse } from '$lib/utils/api-response';
+import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { TwilioClient } from '@buildos/twilio-service';
 import {
 	PRIVATE_TWILIO_ACCOUNT_SID,
@@ -44,14 +44,27 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.badRequest('Phone number and code are required');
 	}
 
+	// checkVerification answers false for a wrong or expired code and throws
+	// only when Twilio itself failed; never show the user Twilio's raw error.
+	let isValid: boolean;
 	try {
-		// Verify the code with Twilio
-		const isValid = await twilioClient.checkVerification(phoneNumber, code);
+		isValid = await twilioClient.checkVerification(phoneNumber, code);
+	} catch (error) {
+		console.error('Phone verification check failed:', error);
+		return ApiResponse.error(
+			'Phone verification is temporarily unavailable. Please try again in a moment.',
+			HttpStatus.SERVICE_UNAVAILABLE,
+			ErrorCode.SERVICE_UNAVAILABLE
+		);
+	}
 
-		if (!isValid) {
-			return ApiResponse.badRequest('Invalid verification code');
-		}
+	if (!isValid) {
+		return ApiResponse.badRequest(
+			'That code is invalid or has expired. Request a new code and try again.'
+		);
+	}
 
+	try {
 		// Update user preferences with verified phone
 		// Use locals.supabase (RLS-respecting client) since we're only modifying current user's data
 		const supabase = locals.supabase;
@@ -69,8 +82,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 
 		if (error) {
-			console.error('Failed to update user preferences:', error);
-			throw error;
+			return ApiResponse.databaseError(error);
 		}
 
 		// Send welcome SMS only when the global sending switch is explicitly enabled.
@@ -93,9 +105,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		return ApiResponse.success({ verified: true }, 'Phone number verified successfully');
-	} catch (error: any) {
-		console.error('Verification confirmation error:', error);
-
-		return ApiResponse.badRequest(error.message || 'Failed to verify phone number');
+	} catch (error) {
+		return ApiResponse.internalError(error, 'Failed to verify phone number');
 	}
 };

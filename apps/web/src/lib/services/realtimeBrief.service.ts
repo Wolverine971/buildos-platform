@@ -118,6 +118,19 @@ export class RealtimeBriefService {
 	private static async setupSubscription(): Promise<void> {
 		if (!this.state.supabaseClient || !this.state.userId) return;
 
+		// On reconnect, drop the errored channel first. supabase.channel() hands back
+		// an existing channel with the same topic, so without this the retry would
+		// re-subscribe the broken instance and stack duplicate handlers on it.
+		const staleChannel = this.state.channel;
+		if (staleChannel) {
+			this.state.channel = null;
+			try {
+				await this.state.supabaseClient.removeChannel(staleChannel);
+			} catch (error) {
+				console.error('Error removing stale brief channel before reconnect:', error);
+			}
+		}
+
 		try {
 			// Create channel for user-specific notifications
 			this.state.channel = this.state.supabaseClient.channel(

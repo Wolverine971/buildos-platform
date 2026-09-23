@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { ChatContextType } from '@buildos/shared-types';
 import {
+	GATEWAY_SURFACE_PROFILE_NAMES,
+	getGatewayDirectToolNamesForProfile,
+	TOOL_METADATA
+} from '@buildos/agentic-chat-runtime/catalog';
+import {
+	CATALOGED_TOOL_NAMES,
 	createToolPresenter,
 	formatCalendarDateLabel,
 	formatDateOnlyLabel,
@@ -443,6 +449,63 @@ describe('agent-chat-tool-presenter — mutation tracking', () => {
 		presenter.resetMutationTracking();
 		expect(summary.mutations).toHaveLength(3);
 		expect(presenter.buildMutationSummary({ hasMessagesSent: false }).mutations).toEqual([]);
+	});
+
+	it('has an explicit catalog decision for every write tool on the live chat surfaces', () => {
+		// Write tools are identified by the runtime's own metadata category, so a
+		// new write tool on any surface fails here until the presenter decides
+		// whether it refreshes the project page.
+		const liveWriteTools = [
+			...new Set(
+				GATEWAY_SURFACE_PROFILE_NAMES.flatMap((profile) =>
+					getGatewayDirectToolNamesForProfile(profile)
+				)
+			)
+		].filter((toolName) => TOOL_METADATA[toolName]?.category === 'write');
+
+		expect(liveWriteTools).toEqual(
+			expect.arrayContaining(['move_document_in_tree', 'tag_onto_entity'])
+		);
+		expect(liveWriteTools.filter((toolName) => !CATALOGED_TOOL_NAMES.has(toolName))).toEqual(
+			[]
+		);
+	});
+
+	it.each(['move_document_in_tree', 'tag_onto_entity'])(
+		'tracks %s so the project page refreshes after it',
+		(toolName) => {
+			const presenter = createToolPresenter(h.ctx);
+			presenter.recordDataMutation(
+				toolName,
+				{ document_id: 'document-1', entity_id: 'task-1', project_id: 'p-1' },
+				true
+			);
+			expect(presenter.buildMutationSummary({ hasMessagesSent: true })).toMatchObject({
+				hasChanges: true,
+				affectedProjectIds: ['p-1']
+			});
+		}
+	);
+
+	it('records a tree move as a document move for targeted refreshes', () => {
+		const onDocumentMutation = vi.fn();
+		const presenter = createToolPresenter({ ...h.ctx, onDocumentMutation });
+		presenter.recordDataMutation(
+			'move_document_in_tree',
+			{ document_id: 'document-1', project_id: 'p-1' },
+			true
+		);
+		expect(presenter.buildMutationSummary({ hasMessagesSent: true }).mutations).toEqual([
+			{
+				entityKind: 'document',
+				entityId: 'document-1',
+				operation: 'move',
+				projectIds: ['p-1']
+			}
+		]);
+		expect(onDocumentMutation).toHaveBeenCalledWith(
+			expect.objectContaining({ entityId: 'document-1', toolName: 'move_document_in_tree' })
+		);
 	});
 
 	it.each([

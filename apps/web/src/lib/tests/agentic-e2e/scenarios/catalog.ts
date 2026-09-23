@@ -6,7 +6,6 @@ import { documentCreateScenario } from './document-create.scenario';
 import { documentEditContextScenario } from './document-edit-context.scenario';
 import { projectOrganizeScenario } from './project-organize.scenario';
 import { taskCreateScenario } from './task-create.scenario';
-import { calendarMoveScenario } from './calendar-move.scenario';
 import { emailReadScenario } from './email-read.scenario';
 // Tier 1 breadth, added 2026-07-25 from DJ's failure-mode interview.
 import { taskCompleteColdReferenceScenario } from './task-complete-cold-reference.scenario';
@@ -45,7 +44,6 @@ export const scenarioCatalog: Scenario[] = [
 	documentEditContextScenario,
 	projectOrganizeScenario,
 	taskCreateScenario,
-	calendarMoveScenario,
 	emailReadScenario,
 	taskCompleteColdReferenceScenario,
 	entityResolutionMisspelledScenario,

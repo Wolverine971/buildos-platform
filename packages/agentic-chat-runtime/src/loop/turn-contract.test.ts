@@ -2510,3 +2510,37 @@ describe('turn contract symbolic references (label / parent_label)', () => {
 		expect(buildPendingTurnContractSystemMessage(null)).toBeNull();
 	});
 });
+
+describe('write ledger gateway outcome', () => {
+	it('records a transport success carrying a gateway ok:false payload as a failure', () => {
+		const reconnect = execution(
+			'create_calendar_event',
+			{ title: 'Standup', start_at: '2026-09-23T09:00:00-04:00' },
+			{
+				success: true,
+				result: {
+					op: 'cal.event.create',
+					ok: false,
+					error: {
+						code: 'reconnect_required',
+						message: 'Google Calendar needs to be reconnected'
+					}
+				}
+			}
+		);
+
+		expect(buildWriteLedger([reconnect])).toMatchObject([
+			{ status: 'failure', error: 'Google Calendar needs to be reconnected' }
+		]);
+	});
+
+	it('keeps a gateway ok:true write as a success', () => {
+		const created = execution(
+			'create_calendar_event',
+			{ title: 'Standup', start_at: '2026-09-23T09:00:00-04:00' },
+			{ success: true, result: { op: 'cal.event.create', ok: true, result: { id: 'e1' } } }
+		);
+
+		expect(buildWriteLedger([created])).toMatchObject([{ status: 'success' }]);
+	});
+});

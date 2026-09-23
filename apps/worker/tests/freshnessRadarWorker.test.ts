@@ -279,6 +279,10 @@ class MemoryDb {
 				filters.push((row) => values.includes(row[column]));
 				return chain;
 			},
+			or(expression: string) {
+				filters.push((row) => matchesPostgrestOr(row, expression));
+				return chain;
+			},
 			is(column: string, value: null) {
 				filters.push((row) => (row[column] ?? null) === value);
 				return chain;
@@ -340,6 +344,37 @@ class MemoryDb {
 // ---------------------------------------------------------------------------
 // Fixture
 // ---------------------------------------------------------------------------
+
+// Just enough PostgREST `or=(...)` grammar for the data port: `col.eq.value` terms and `and(...)`.
+function splitPostgrestTerms(expression: string): string[] {
+	const terms: string[] = [];
+	let depth = 0;
+	let current = '';
+	for (const char of expression) {
+		if (char === '(') depth += 1;
+		if (char === ')') depth -= 1;
+		if (char === ',' && depth === 0) {
+			terms.push(current);
+			current = '';
+		} else current += char;
+	}
+	return current ? [...terms, current] : terms;
+}
+
+function matchesPostgrestTerm(row: Row, term: string): boolean {
+	if (term.startsWith('and(') && term.endsWith(')')) {
+		return splitPostgrestTerms(term.slice(4, -1)).every((part) =>
+			matchesPostgrestTerm(row, part)
+		);
+	}
+	const [column, operator, ...value] = term.split('.');
+	if (operator !== 'eq') throw new Error(`MemoryDb.or does not support "${term}"`);
+	return row[column!] !== null && String(row[column!]) === value.join('.');
+}
+
+function matchesPostgrestOr(row: Row, expression: string): boolean {
+	return splitPostgrestTerms(expression).some((term) => matchesPostgrestTerm(row, term));
+}
 
 const USER = '11111111-1111-4111-8111-111111111111';
 const ACTOR = '22222222-2222-4222-8222-222222222222';
@@ -1124,6 +1159,60 @@ describe('freshness_radar_scan job', () => {
 		);
 	});
 
+	it('fails (not completes) a live scan aborted before its decisions were applied', async () => {
+		const db = new MemoryDb();
+		seedStore(db);
+		const controller = new AbortController();
+		const from = db.from;
+		// Abort after the ledger is written but before any live side effect runs.
+		db.from = (table: string) => {
+			const builder = from(table);
+			if (table !== 'freshness_track_scores') return builder;
+			const insert = builder.insert;
+			builder.insert = (...args: Parameters<typeof insert>) => {
+				controller.abort();
+				return insert(...args);
+			};
+			return builder;
+		};
+		const { deps, gatewayCalls } = makeDeps(db, scripted(fullAnswers).decider);
+		const result = await processFreshnessRadarScanJob(job({ signal: controller.signal }), deps);
+		expect(result.scans![0]).toMatchObject({ status: 'failed', reason: 'aborted' });
+		// The cursor stays put so the next signal re-reads this evidence.
+		expect(db.table('freshness_scans')[0]).toMatchObject({
+			status: 'failed',
+			error_message: 'aborted',
+			info_cursor_at: null
+		});
+		expect(gatewayCalls).toHaveLength(0);
+		expect(db.table('chat_messages').filter(isFreshnessCardRow)).toHaveLength(0);
+	});
+
+	it('retries instead of closing the signal when the feature flag read fails', async () => {
+		const db = new MemoryDb();
+		seedStore(db);
+		const from = db.from;
+		db.from = (table: string) => {
+			if (table !== 'feature_flags') return from(table);
+			const failing: any = {
+				select: () => failing,
+				eq: () => failing,
+				in: () => failing,
+				then: (resolve: (value: unknown) => unknown) =>
+					Promise.resolve({ data: null, error: { message: 'connection reset' } }).then(
+						resolve
+					)
+			};
+			return failing;
+		};
+		const { deps } = makeDeps(db, scripted(fullAnswers).decider);
+		await expect(processFreshnessRadarScanJob(job(), deps)).rejects.toThrow('connection reset');
+		expect(db.table('freshness_radar_signals')[0]).toMatchObject({
+			status: 'processing',
+			queue_job_id: JOB_ROW
+		});
+	});
+
 	it('a queue retry after a crash closes the interrupted scan and reconciles auto-applies', async () => {
 		const db = new MemoryDb();
 		seedStore(db);
@@ -1407,6 +1496,32 @@ describe('scan context', () => {
 		expect(ctx.newInformation).toEqual([{ said: '2026-09-18 (today)', text: DUMP }]);
 		expect(ctx.dateMentions.map((mention) => mention.date)).toEqual(['2026-10-03']);
 		expect(ctx.skipReason).toBeNull();
+	});
+
+	it("never reads another member's private inbox items", async () => {
+		const db = new MemoryDb();
+		seedStore(db);
+		const privateItem = (id: string, userId: string, title: string) => ({
+			...db.table('inbox_items')[0]!,
+			id,
+			source_type: 'agent_run',
+			source_ref_id: `run-${id}`,
+			audience: 'user',
+			user_id: userId,
+			title
+		});
+		db.seed('inbox_items', [
+			privateItem('inbox-own', USER, 'My own pending proposal'),
+			privateItem(
+				'inbox-other',
+				'99999999-9999-4999-8999-999999999999',
+				'Their private proposal'
+			)
+		]);
+		const ctx = await context(db);
+		const titles = ctx.inboxSubjects.map((subject) => subject.row.title);
+		expect(titles).toContain('My own pending proposal');
+		expect(titles).not.toContain('Their private proposal');
 	});
 
 	it('excludes changed, created and just-updated entities, Start Here and terminal states', async () => {

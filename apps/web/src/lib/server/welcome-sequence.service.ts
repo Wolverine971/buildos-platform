@@ -722,12 +722,22 @@ export class WelcomeSequenceService {
 			action.branchKey || 'unknown',
 			now
 		);
-		const updatedEnrollment = await this.emailSequenceRpcs.completeEmailSequenceSend({
-			enrollmentId: enrollment.id,
-			emailId: sendResult.emailId,
-			branchKey: action.branchKey ?? null,
-			metadata: sendResult.metadata
-		});
+		// The email is out the door. If its `emails` row could not be written there
+		// is no id to complete with, and throwing here would retry (re-send) the
+		// step, so advance the enrollment past it instead.
+		const updatedEnrollment = sendResult.emailId
+			? await this.emailSequenceRpcs.completeEmailSequenceSend({
+					enrollmentId: enrollment.id,
+					emailId: sendResult.emailId,
+					branchKey: action.branchKey ?? null,
+					metadata: sendResult.metadata
+				})
+			: await this.emailSequenceRpcs.skipEmailSequenceStep({
+					enrollmentId: enrollment.id,
+					branchKey: action.branchKey ?? null,
+					reason: 'sent_without_email_record',
+					metadata: { ...sendResult.metadata, delivered: true }
+				});
 		await this.markLegacyStepShadow({
 			enrollment,
 			step: action.step,

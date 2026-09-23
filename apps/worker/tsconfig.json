@@ -27,5 +27,7 @@
 		"emitDecoratorMetadata": true
 	},
 	"include": ["src/**/*", "+server.ts"],
-	"exclude": ["node_modules", "dist"]
+	// Co-located unit tests are typechecked by tsconfig.tests.json (typecheck:tests),
+	// which overrides this exclude; they must not compile into dist for Railway.
+	"exclude": ["node_modules", "dist", "src/**/*.test.ts"]
 }

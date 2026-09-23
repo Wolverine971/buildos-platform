@@ -1,4 +1,11 @@
 // packages/shared-agent-ops/src/calendar/calendar-event-timing.ts
+import {
+	civilDateBoundaryInstant,
+	isLocalDateTimeValue,
+	localDateTimeInstant,
+	type CivilDateBoundary
+} from '../dates/civil-date';
+
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function isDateOnlyAgentCalendarInput(value: string): boolean {
@@ -14,16 +21,49 @@ export interface NormalizedAgentCalendarEventTiming {
 	providerEndDate: string | null;
 }
 
-function parseDateTime(value: string, fieldName: string): string {
+/**
+ * Parse a timed calendar input to a UTC ISO instant. An offset-less wall-clock
+ * value ("2026-09-23T17:00:00") is resolved in `timezone` — `new Date()` would
+ * read it in the server's zone (UTC on Railway/Vercel) instead.
+ */
+export function parseAgentCalendarDateTime(
+	value: string,
+	fieldName: string,
+	timezone?: string | null
+): string {
 	const trimmed = value.trim();
 	if (!trimmed) {
 		throw new Error(`${fieldName} is required`);
+	}
+	if (isLocalDateTimeValue(trimmed)) {
+		try {
+			return localDateTimeInstant(trimmed, timezone);
+		} catch {
+			throw new Error(`${fieldName} must be a valid date/time`);
+		}
 	}
 	const parsed = new Date(trimmed);
 	if (Number.isNaN(parsed.getTime())) {
 		throw new Error(`${fieldName} must be a valid date/time`);
 	}
 	return parsed.toISOString();
+}
+
+/**
+ * Parse a list-range bound. A bare date covers the whole civil day in
+ * `timezone`: `start` opens it and `end` closes it, so `time_min` and
+ * `time_max` may name the same day.
+ */
+export function parseAgentCalendarRangeBound(
+	value: string,
+	fieldName: string,
+	boundary: CivilDateBoundary,
+	timezone?: string | null
+): string {
+	if (isDateOnlyAgentCalendarInput(value)) {
+		return civilDateBoundaryInstant(parseDateOnly(value, fieldName), boundary, timezone);
+	}
+	return parseAgentCalendarDateTime(value, fieldName, timezone);
 }
 
 function parseDateOnly(value: string, fieldName: string): string {
@@ -118,8 +158,8 @@ export function normalizeAgentCalendarEventTiming(
 		throw new Error('end_at cannot be date-only when start_at includes a time');
 	}
 
-	const startAt = parseDateTime(rawStartAt, 'start_at');
-	const endAt = rawEndAt ? parseDateTime(rawEndAt, 'end_at') : null;
+	const startAt = parseAgentCalendarDateTime(rawStartAt, 'start_at', timezone);
+	const endAt = rawEndAt ? parseAgentCalendarDateTime(rawEndAt, 'end_at', timezone) : null;
 	const googleEndAt = endAt ?? new Date(Date.parse(startAt) + defaultDurationMs).toISOString();
 	if (Date.parse(googleEndAt) <= Date.parse(startAt)) {
 		throw new Error('end_at must be after start_at');

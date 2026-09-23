@@ -1157,7 +1157,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		return this.normalizeOpenAiModelForLogging(model);
 	}
 
-	private logOpenRouterV2Usage(params: {
+	private async logOpenRouterV2Usage(params: {
 		lane: ModelLane;
 		options: JSONRequestWithFallbackModels | TextGenerationOptions;
 		response: OpenRouterChatResponse;
@@ -1167,7 +1167,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 		maxTokens?: number;
 		defaultOperationType: string;
 		metadata?: Record<string, unknown>;
-	}): void {
+		/** Set when the provider billed the attempt but its output was unusable. */
+		errorMessage?: string;
+	}): Promise<void> {
 		if (!params.response.usage || !this.hasUsageLoggingBackend()) return;
 
 		const actualModel = params.response.model || params.requestedModel;
@@ -1182,7 +1184,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const optionsRecord = params.options as JSONRequestWithFallbackModels &
 			TextGenerationOptions;
 
-		this.logUsageToDatabase({
+		// Awaited so the row lands before a serverless handler returns.
+		await this.logUsageToDatabase({
 			userId: optionsRecord.userId,
 			operationType: optionsRecord.operationType || params.defaultOperationType,
 			modelRequested: params.requestedModel,
@@ -1197,7 +1200,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 			responseTimeMs: Math.round(performance.now() - params.startTime),
 			requestStartedAt: params.requestStartedAt,
 			requestCompletedAt: new Date(),
-			status: 'success',
+			status: params.errorMessage ? 'invalid_response' : 'success',
+			errorMessage: params.errorMessage,
 			temperature: optionsRecord.temperature,
 			maxTokens: params.maxTokens,
 			profile: optionsRecord.profile,
@@ -1231,6 +1235,68 @@ export class OpenRouterV2Service extends SmartLLMService {
 				pricingModel: pricing?.modelId ?? null
 			}
 		}).catch((error) => console.error('Failed to log OpenRouter V2 usage:', error));
+	}
+
+	/**
+	 * An empty or unparseable completion is still billed by the provider, so its
+	 * usage must reach onUsage and the usage log before the attempt is retried.
+	 */
+	private async recordUnusableResponseUsage(params: {
+		lane: 'json' | 'text';
+		options: JSONRequestWithFallbackModels | TextRequestWithFallbackModels;
+		response: OpenRouterChatResponse;
+		requestedModel: string;
+		billingProvider: string;
+		requestStartedAt: Date;
+		startTime: number;
+		maxTokens?: number;
+		error: unknown;
+		metadata: Record<string, unknown>;
+	}): Promise<void> {
+		const usage = params.response.usage;
+		if (!usage) return;
+		const actualModel = params.response.model || params.requestedModel;
+		const usageCost = this.calculateUsageCost(actualModel, params.lane, usage, [
+			params.requestedModel
+		]);
+		const baseEvent = {
+			model: actualModel,
+			promptTokens: usage.prompt_tokens || 0,
+			completionTokens: usage.completion_tokens || 0,
+			totalTokens: usage.total_tokens || 0,
+			inputCost: usageCost.inputCost,
+			outputCost: usageCost.outputCost,
+			totalCost: usageCost.totalCost
+		};
+		try {
+			if (params.lane === 'json') {
+				const onUsage = (params.options as JSONRequestWithFallbackModels).onUsage;
+				await onUsage?.({
+					...baseEvent,
+					billingProvider: params.billingProvider,
+					provider: params.response.provider,
+					providerRequestId: params.response.id,
+					costSource: resolveJSONUsageCostSource(usageCost.costSource)
+				} as Parameters<NonNullable<typeof onUsage>>[0]);
+			} else {
+				await (params.options as TextRequestWithFallbackModels).onUsage?.(baseEvent);
+			}
+		} catch (usageError) {
+			console.error('OpenRouter V2 onUsage failed for an unusable response:', usageError);
+		}
+		await this.logOpenRouterV2Usage({
+			lane: params.lane,
+			options: params.options,
+			response: params.response,
+			requestedModel: params.requestedModel,
+			requestStartedAt: params.requestStartedAt,
+			startTime: params.startTime,
+			maxTokens: params.maxTokens,
+			defaultOperationType: 'other',
+			metadata: params.metadata,
+			errorMessage:
+				params.error instanceof Error ? params.error.message : String(params.error)
+		});
 	}
 
 	async getJSONResponse<T = any>(options: JSONRequestWithFallbackModels): Promise<T> {
@@ -1284,12 +1350,34 @@ export class OpenRouterV2Service extends SmartLLMService {
 					provider: this.resolveOpenRouterProviderConfig('json', model),
 					timeoutMs: this.resolveTimeout(options.timeoutMs)
 				});
-				const content = extractTextFromResponse(response);
-				if (!content || content.trim().length === 0) {
-					throw new Error('OpenRouter V2 returned empty JSON content');
+				let parsed: T;
+				try {
+					const content = extractTextFromResponse(response);
+					if (!content || content.trim().length === 0) {
+						throw new Error('OpenRouter V2 returned empty JSON content');
+					}
+					parsed = parseJSONContent<T>(content, options.validation);
+				} catch (validationError) {
+					await this.recordUnusableResponseUsage({
+						lane: 'json',
+						options,
+						response,
+						requestedModel: model,
+						billingProvider: 'openrouter',
+						requestStartedAt,
+						startTime,
+						maxTokens,
+						error: validationError,
+						metadata: {
+							models,
+							attempts: attempt + 1,
+							parseRetriesUsed,
+							providerRoute: 'openrouter',
+							providersAttempted: Array.from(providersAttempted)
+						}
+					});
+					throw validationError;
 				}
-
-				const parsed = parseJSONContent<T>(content, options.validation);
 				const actualModel = response.model || model;
 				const usageCost = this.calculateUsageCost(actualModel, 'json', response.usage, [
 					model
@@ -1309,7 +1397,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 						costSource: resolveJSONUsageCostSource(usageCost.costSource)
 					});
 				}
-				this.logOpenRouterV2Usage({
+				await this.logOpenRouterV2Usage({
 					lane: 'json',
 					options,
 					response,
@@ -1368,12 +1456,35 @@ export class OpenRouterV2Service extends SmartLLMService {
 						timeoutMs: this.resolveTimeout(options.timeoutMs),
 						prompt_cache_key: options.chatSessionId
 					});
-					const content = extractTextFromResponse(response);
-					if (!content || content.trim().length === 0) {
-						throw new Error(`${route.providerLabel} returned empty JSON content`);
+					let parsed: T;
+					try {
+						const content = extractTextFromResponse(response);
+						if (!content || content.trim().length === 0) {
+							throw new Error(`${route.providerLabel} returned empty JSON content`);
+						}
+						parsed = parseJSONContent<T>(content, options.validation);
+					} catch (validationError) {
+						await this.recordUnusableResponseUsage({
+							lane: 'json',
+							options,
+							response,
+							requestedModel: route.canonicalModel,
+							billingProvider: route.provider,
+							requestStartedAt,
+							startTime,
+							maxTokens,
+							error: validationError,
+							metadata: {
+								models: [route.canonicalModel],
+								providerRoute: 'direct',
+								fallbackFrom: 'openrouter',
+								fallbackProvider: route.provider,
+								providersAttempted: Array.from(providersAttempted),
+								parseRetriesUsed
+							}
+						});
+						throw validationError;
 					}
-
-					const parsed = parseJSONContent<T>(content, options.validation);
 					const actualModel = response.model || route.canonicalModel;
 					const usageCost = this.calculateUsageCost(actualModel, 'json', response.usage, [
 						route.canonicalModel
@@ -1393,7 +1504,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 							costSource: resolveJSONUsageCostSource(usageCost.costSource)
 						});
 					}
-					this.logOpenRouterV2Usage({
+					await this.logOpenRouterV2Usage({
 						lane: 'json',
 						options,
 						response,
@@ -1519,7 +1630,25 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 				const text = extractTextFromResponse(response);
 				if (!text || text.trim().length === 0) {
-					throw new Error('OpenRouter V2 returned empty text content');
+					const emptyError = new Error('OpenRouter V2 returned empty text content');
+					await this.recordUnusableResponseUsage({
+						lane: 'text',
+						options,
+						response,
+						requestedModel: model,
+						billingProvider: 'openrouter',
+						requestStartedAt,
+						startTime,
+						maxTokens: options.maxTokens ?? 4096,
+						error: emptyError,
+						metadata: {
+							models,
+							attempts: attempt + 1,
+							providerRoute: 'openrouter',
+							providersAttempted: Array.from(providersAttempted)
+						}
+					});
+					throw emptyError;
 				}
 
 				const actualModel = response.model || model;
@@ -1537,7 +1666,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 						totalCost: usageCost.totalCost
 					});
 				}
-				this.logOpenRouterV2Usage({
+				await this.logOpenRouterV2Usage({
 					lane: 'text',
 					options,
 					response,
@@ -1581,7 +1710,28 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 				const text = extractTextFromResponse(response);
 				if (!text || text.trim().length === 0) {
-					throw new Error(`${route.providerLabel} returned empty text content`);
+					const emptyError = new Error(
+						`${route.providerLabel} returned empty text content`
+					);
+					await this.recordUnusableResponseUsage({
+						lane: 'text',
+						options,
+						response,
+						requestedModel: route.canonicalModel,
+						billingProvider: route.provider,
+						requestStartedAt,
+						startTime,
+						maxTokens: options.maxTokens ?? 4096,
+						error: emptyError,
+						metadata: {
+							models: [route.canonicalModel],
+							providerRoute: 'direct',
+							fallbackFrom: 'openrouter',
+							fallbackProvider: route.provider,
+							providersAttempted: Array.from(providersAttempted)
+						}
+					});
+					throw emptyError;
 				}
 
 				const actualModel = response.model || route.canonicalModel;
@@ -1599,7 +1749,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 						totalCost: usageCost.totalCost
 					});
 				}
-				this.logOpenRouterV2Usage({
+				await this.logOpenRouterV2Usage({
 					lane: 'text',
 					options,
 					response,

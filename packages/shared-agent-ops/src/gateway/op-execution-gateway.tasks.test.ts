@@ -610,6 +610,21 @@ describe('createTask civil-date normalization', () => {
 		expect(admin.from).not.toHaveBeenCalledWith('users');
 	});
 
+	it('resolves an offset-less due_at as wall-clock time in the user timezone', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+
+		await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Ship it',
+			due_at: '2026-09-23T17:00:00'
+		});
+
+		// 5 PM in New York, not 5 PM UTC (which Postgres assumes for a naive string).
+		expect(capture.task?.due_at).toBe('2026-09-23T21:00:00.000Z');
+		expect(admin.from).toHaveBeenCalledWith('users');
+	});
+
 	it('rejects an unusable date', async () => {
 		const capture: { task?: any } = {};
 		const admin = adminFor({ timezone: 'America/New_York' }, capture);

@@ -2,10 +2,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CalendarWebhookService, type WebhookChannel } from './calendar-webhook-service';
 import { GoogleOAuthConnectionError } from './google-oauth-service';
+import { ScheduledSmsUpdateService } from './scheduledSmsUpdate.service';
 import type { CalendarTarget } from '$lib/server/google-calendar-target.service';
 
 type QueryResult = { data: any; error: any };
 
+// `results` is keyed by table, or by `table:action` to give writes their own result.
 function createDatabase(results: Record<string, QueryResult>) {
 	const operations: Array<{
 		table: string;
@@ -21,6 +23,8 @@ function createDatabase(results: Record<string, QueryResult>) {
 			filters: [] as Array<[string, unknown]>
 		};
 		operations.push(entry);
+		const result = () =>
+			results[`${table}:${entry.action}`] ?? results[table] ?? { data: null, error: null };
 		const builder: any = {
 			select: () => builder,
 			eq: (column: string, value: unknown) => {
@@ -60,13 +64,12 @@ function createDatabase(results: Record<string, QueryResult>) {
 				entry.action = 'delete';
 				return builder;
 			},
-			single: () => Promise.resolve(results[table] ?? { data: null, error: null }),
-			maybeSingle: () => Promise.resolve(results[table] ?? { data: null, error: null }),
+			single: () => Promise.resolve(result()),
+			maybeSingle: () => Promise.resolve(result()),
 			then: (
 				resolve: (value: QueryResult) => unknown,
 				reject: (reason: unknown) => unknown
-			) =>
-				Promise.resolve(results[table] ?? { data: null, error: null }).then(resolve, reject)
+			) => Promise.resolve(result()).then(resolve, reject)
 		};
 		return builder;
 	}
@@ -306,5 +309,210 @@ describe('CalendarWebhookService source routing', () => {
 				(operation) => operation.table === 'error_logs' || operation.action === 'insert'
 			)
 		).toEqual([]);
+		// The revoked channel moves to the back of the updated_at renewal queue.
+		const bump = operations.find(
+			(operation) =>
+				operation.table === 'calendar_webhook_channels' && operation.action === 'update'
+		);
+		expect(bump?.filters).toContainEqual(['id', 'webhook-b']);
+		expect(bump?.payload).toEqual({ updated_at: expect.any(String) });
+	});
+
+	describe('applying Google-side changes', () => {
+		const timeBlockRow = {
+			id: 'tb-1',
+			user_id: 'user-1',
+			calendar_event_id: 'event-b',
+			calendar_source_id: 'source-b',
+			sync_source: 'google',
+			start_time: '2026-09-22T14:00:00.000Z',
+			end_time: '2026-09-22T15:00:00.000Z',
+			updated_at: '2026-09-01T00:00:00.000Z'
+		};
+
+		function notify(service: CalendarWebhookService) {
+			return service.handleWebhookNotification('channel-b', 'resource-b', 'secret-b', {
+				'x-goog-resource-state': 'exists'
+			});
+		}
+
+		function storedSyncToken(operations: ReturnType<typeof createDatabase>['operations']) {
+			return operations.find(
+				(operation) =>
+					operation.table === 'calendar_webhook_channels' &&
+					operation.action === 'update' &&
+					(operation.payload as any)?.sync_token === 'sync-after-notification'
+			);
+		}
+
+		it('updates a moved time block by id instead of upserting a partial row', async () => {
+			const { service, operations, api } = setup({
+				calendar_webhook_channels: { data: channel(), error: null },
+				users: { data: { created_at: '2026-01-01T00:00:00.000Z' }, error: null },
+				task_calendar_events: { data: [], error: null },
+				time_blocks: { data: [timeBlockRow], error: null }
+			});
+			api.events.list.mockResolvedValue({
+				data: {
+					items: [
+						{
+							id: 'event-b',
+							status: 'confirmed',
+							start: { dateTime: '2026-09-22T16:00:00.000Z' },
+							end: { dateTime: '2026-09-22T17:30:00.000Z' }
+						}
+					],
+					nextSyncToken: 'sync-after-notification'
+				}
+			});
+
+			await expect(notify(service)).resolves.toEqual({ success: true, processed: 1 });
+
+			expect(operations.some((operation) => operation.action === 'upsert')).toBe(false);
+			const update = operations.find(
+				(operation) => operation.table === 'time_blocks' && operation.action === 'update'
+			);
+			expect(update?.filters).toContainEqual(['id', 'tb-1']);
+			expect(update?.payload).not.toHaveProperty('id');
+			expect(update?.payload).toEqual(
+				expect.objectContaining({
+					start_time: '2026-09-22T16:00:00.000Z',
+					end_time: '2026-09-22T17:30:00.000Z',
+					duration_minutes: 90
+				})
+			);
+			expect(storedSyncToken(operations)).toBeDefined();
+		});
+
+		it('keeps the previous sync token when a change fails to write', async () => {
+			const { service, operations, api } = setup({
+				calendar_webhook_channels: { data: channel(), error: null },
+				users: { data: { created_at: '2026-01-01T00:00:00.000Z' }, error: null },
+				task_calendar_events: { data: [], error: null },
+				time_blocks: { data: [timeBlockRow], error: null },
+				'time_blocks:update': { data: null, error: { message: 'write failed' } }
+			});
+			api.events.list.mockResolvedValue({
+				data: {
+					items: [
+						{
+							id: 'event-b',
+							status: 'confirmed',
+							start: { dateTime: '2026-09-22T16:00:00.000Z' },
+							end: { dateTime: '2026-09-22T17:00:00.000Z' }
+						}
+					],
+					nextSyncToken: 'sync-after-notification'
+				}
+			});
+
+			await notify(service);
+
+			expect(storedSyncToken(operations)).toBeUndefined();
+		});
+
+		it("reads all-day events as midnight in the user's timezone", async () => {
+			const { service, operations, api } = setup({
+				calendar_webhook_channels: { data: channel(), error: null },
+				users: {
+					data: {
+						created_at: '2026-01-01T00:00:00.000Z',
+						timezone: 'America/New_York'
+					},
+					error: null
+				},
+				task_calendar_events: { data: [], error: null },
+				time_blocks: { data: [timeBlockRow], error: null }
+			});
+			api.events.list.mockResolvedValue({
+				data: {
+					items: [
+						{
+							id: 'event-b',
+							status: 'confirmed',
+							start: { date: '2026-09-23' },
+							end: { date: '2026-09-24' }
+						}
+					],
+					nextSyncToken: 'sync-after-notification'
+				}
+			});
+
+			await notify(service);
+
+			const update = operations.find(
+				(operation) => operation.table === 'time_blocks' && operation.action === 'update'
+			);
+			expect(update?.payload).toEqual(
+				expect.objectContaining({
+					start_time: '2026-09-23T04:00:00.000Z',
+					end_time: '2026-09-24T04:00:00.000Z',
+					duration_minutes: 1440
+				})
+			);
+		});
+
+		it('cancels scheduled SMS for a deleted event by its Google event id', async () => {
+			const { service, operations, api } = setup({
+				calendar_webhook_channels: { data: channel(), error: null },
+				users: { data: { created_at: '2026-01-01T00:00:00.000Z' }, error: null },
+				task_calendar_events: {
+					data: [
+						{
+							id: 'row-uuid-1',
+							task_id: 'task-1',
+							user_id: 'user-1',
+							calendar_event_id: 'event-b',
+							sync_source: 'google',
+							is_master_event: false
+						}
+					],
+					error: null
+				},
+				time_blocks: { data: [], error: null },
+				scheduled_sms_messages: { data: [], error: null }
+			});
+			api.events.list.mockResolvedValue({
+				data: {
+					items: [{ id: 'event-b', status: 'cancelled' }],
+					nextSyncToken: 'sync-after-notification'
+				}
+			});
+
+			await notify(service);
+
+			const smsLookup = operations.find(
+				(operation) =>
+					operation.table === 'scheduled_sms_messages' && operation.action === 'select'
+			);
+			expect(smsLookup?.filters).toContainEqual(['calendar_event_id', ['event-b']]);
+		});
+	});
+
+	it('extracts SMS changes keyed by Google event id, never by row id', () => {
+		const changes = ScheduledSmsUpdateService.extractEventChangesFromBatch(
+			[
+				{
+					id: 'row-uuid-2',
+					calendar_event_id: 'google-2',
+					event_start: '2026-09-22T16:00:00.000Z',
+					event_end: '2026-09-22T17:00:00.000Z',
+					event_title: 'Moved'
+				},
+				{ id: 'row-uuid-3', recurrence_rule: 'RRULE:FREQ=DAILY' }
+			],
+			[{ calendar_event_id: 'google-1' }]
+		);
+
+		expect(changes).toEqual([
+			{ calendarEventId: 'google-1', type: 'deleted' },
+			{
+				calendarEventId: 'google-2',
+				type: 'rescheduled',
+				newStart: '2026-09-22T16:00:00.000Z',
+				newEnd: '2026-09-22T17:00:00.000Z',
+				newTitle: 'Moved'
+			}
+		]);
 	});
 });

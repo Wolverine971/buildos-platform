@@ -51,6 +51,8 @@
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
+	import { changedFormFields } from '$lib/utils/form-patch';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
@@ -116,6 +118,7 @@
 	let showDeleteConfirm = $state(false);
 	let hasCalendarLink = $state(false);
 	let deleteFromCalendar = $state(true);
+	let initialForm: ReturnType<typeof formSnapshot> | null = null;
 
 	// Form fields
 	let title = $state('');
@@ -226,8 +229,32 @@
 		}
 	}
 
-	async function loadEvent() {
+	function formSnapshot() {
+		return {
+			title: title.trim(),
+			description: description.trim() || null,
+			location: location.trim() || null,
+			start_at: startAt || null,
+			end_at: endAt || null,
+			all_day: allDay
+		};
+	}
+
+	function isFormDirty(): boolean {
+		return (
+			initialForm !== null &&
+			Object.keys(changedFormFields(initialForm, formSnapshot())).length > 0
+		);
+	}
+
+	/**
+	 * Reload the event. `preserveEdits` is for refreshes triggered by nested
+	 * modals, link changes, or images: it keeps the user's unsaved form edits.
+	 */
+	async function loadEvent(options: { preserveEdits?: boolean } = {}) {
 		if (!eventId) return;
+		const keepForm = options.preserveEdits === true && isFormDirty();
+		if (!keepForm) initialForm = null;
 		isLoading = true;
 		error = '';
 
@@ -244,12 +271,15 @@
 				throw new Error('Event not found');
 			}
 
-			title = event.title || '';
-			description = event.description || '';
-			location = event.location || '';
-			startAt = formatDateTimeForInput(event.start_at);
-			endAt = formatDateTimeForInput(event.end_at);
-			allDay = event.all_day || false;
+			if (!keepForm) {
+				title = event.title || '';
+				description = event.description || '';
+				location = event.location || '';
+				startAt = formatDateTimeForInput(event.start_at);
+				endAt = formatDateTimeForInput(event.end_at);
+				allDay = event.all_day || false;
+				initialForm = formSnapshot();
+			}
 			const syncRows = event.onto_event_sync || [];
 			const props = event.props || {};
 			hasCalendarLink =
@@ -278,24 +308,27 @@
 
 	async function handleSave(e: Event) {
 		e.preventDefault();
+		if (isLoading || isSaving || !initialForm) return;
 		if (!title.trim()) {
 			error = 'Event title is required';
 			return;
 		}
 
+		// Send only edited fields so a stale form cannot overwrite concurrent
+		// changes (chat, calendar sync) to fields the user never touched.
+		const changes: Record<string, unknown> = changedFormFields(initialForm, formSnapshot());
+		if (Object.keys(changes).length === 0) {
+			handleClose();
+			return;
+		}
+		if ('start_at' in changes) changes.start_at = parseDateTimeFromInput(startAt);
+		if ('end_at' in changes) changes.end_at = parseDateTimeFromInput(endAt);
+
 		isSaving = true;
 		error = '';
 
 		try {
-			const requestBody = {
-				title: title.trim(),
-				description: description.trim() || null,
-				location: location.trim() || null,
-				start_at: parseDateTimeFromInput(startAt),
-				end_at: parseDateTimeFromInput(endAt),
-				all_day: allDay,
-				sync_to_calendar: syncToCalendar
-			};
+			const requestBody = { ...changes, sync_to_calendar: syncToCalendar };
 
 			const response = await fetch(`/api/onto/events/${eventId}`, {
 				method: 'PATCH',
@@ -390,6 +423,29 @@
 		showDocumentModal = true;
 	}
 
+	// Nested modals report changes without closing (DocumentModal autosave, image
+	// uploads). Collect them, keyed per entity, and act once the nested modal closes.
+	type LinkedEntityMutation = {
+		entityKind: 'task' | 'goal' | 'plan' | 'document';
+		entityId: string | null;
+		operation: 'update' | 'delete';
+		projectIds: string[];
+	};
+	let linkedEntityMutations = new Map<string, LinkedEntityMutation>();
+
+	function handleLinkedEntityChanged(
+		entityKind: LinkedEntityMutation['entityKind'],
+		entityId: string | null,
+		operation: LinkedEntityMutation['operation']
+	) {
+		linkedEntityMutations.set(`${entityKind}:${entityId}`, {
+			entityKind,
+			entityId,
+			operation,
+			projectIds: [projectId]
+		});
+	}
+
 	function handleLinkedEntityModalClose() {
 		showTaskModal = false;
 		showGoalModal = false;
@@ -399,8 +455,19 @@
 		selectedGoalIdForModal = null;
 		selectedPlanIdForModal = null;
 		selectedDocumentIdForModal = null;
-		// Reload event in case links changed
-		loadEvent();
+		if (linkedEntityMutations.size === 0) return;
+		const mutations = [...linkedEntityMutations.values()];
+		linkedEntityMutations = new Map();
+		// Surfaces behind this modal keep their own lists; tell them about nested edits.
+		notifyDataMutation({
+			hasChanges: true,
+			totalMutations: mutations.length,
+			affectedProjectIds: [projectId],
+			hasMessagesSent: false,
+			mutations
+		});
+		// Reload only when a nested modal changed something, keeping unsaved edits.
+		void loadEvent({ preserveEdits: true });
 	}
 
 	function handleLinkedEntityClick(kind: EntityKind, id: string) {
@@ -814,7 +881,8 @@
 													sourceKind="event"
 													{projectId}
 													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={loadEvent}
+													onLinksChanged={() =>
+														loadEvent({ preserveEdits: true })}
 												/>
 											</div>
 										{/if}
@@ -847,7 +915,7 @@
 													showTitle={false}
 													compact={true}
 													onChanged={() => {
-														void loadEvent();
+														void loadEvent({ preserveEdits: true });
 														onUpdated?.();
 													}}
 												/>
@@ -993,9 +1061,9 @@
 	<TaskModal
 		taskId={selectedTaskIdForModal}
 		{projectId}
-		onClose={handleLinkedEntityModalClose}
-		onUpdated={handleLinkedEntityModalClose}
-		onDeleted={handleLinkedEntityModalClose}
+		onClose={() => handleLinkedEntityModalClose()}
+		onUpdated={() => handleLinkedEntityChanged('task', selectedTaskIdForModal, 'update')}
+		onDeleted={() => handleLinkedEntityChanged('task', selectedTaskIdForModal, 'delete')}
 	/>
 {/if}
 
@@ -1004,9 +1072,9 @@
 	<GoalModal
 		goalId={selectedGoalIdForModal}
 		{projectId}
-		onClose={handleLinkedEntityModalClose}
-		onUpdated={handleLinkedEntityModalClose}
-		onDeleted={handleLinkedEntityModalClose}
+		onClose={() => handleLinkedEntityModalClose()}
+		onUpdated={() => handleLinkedEntityChanged('goal', selectedGoalIdForModal, 'update')}
+		onDeleted={() => handleLinkedEntityChanged('goal', selectedGoalIdForModal, 'delete')}
 	/>
 {/if}
 
@@ -1015,9 +1083,9 @@
 	<PlanModal
 		planId={selectedPlanIdForModal}
 		{projectId}
-		onClose={handleLinkedEntityModalClose}
-		onUpdated={handleLinkedEntityModalClose}
-		onDeleted={handleLinkedEntityModalClose}
+		onClose={() => handleLinkedEntityModalClose()}
+		onUpdated={() => handleLinkedEntityChanged('plan', selectedPlanIdForModal, 'update')}
+		onDeleted={() => handleLinkedEntityChanged('plan', selectedPlanIdForModal, 'delete')}
 	/>
 {/if}
 
@@ -1027,8 +1095,9 @@
 		{projectId}
 		documentId={selectedDocumentIdForModal}
 		isOpen={showDocumentModal}
-		onClose={handleLinkedEntityModalClose}
-		onSaved={handleLinkedEntityModalClose}
-		onDeleted={handleLinkedEntityModalClose}
+		onClose={() => handleLinkedEntityModalClose()}
+		onSaved={() => handleLinkedEntityChanged('document', selectedDocumentIdForModal, 'update')}
+		onDeleted={() =>
+			handleLinkedEntityChanged('document', selectedDocumentIdForModal, 'delete')}
 	/>
 {/if}

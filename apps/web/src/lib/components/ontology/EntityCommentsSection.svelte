@@ -67,7 +67,8 @@
 	let lastKey = $state('');
 
 	const threads = $derived.by(() => buildThreads(comments));
-	const commentCount = $derived(comments.length);
+	// Deleted comments are loaded to keep reply threads intact; don't count them.
+	const commentCount = $derived(comments.filter((comment) => !comment.deleted_at).length);
 	const canWrite = $derived(Boolean(actorId));
 
 	// Notify parent when comment count changes

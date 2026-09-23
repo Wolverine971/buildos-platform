@@ -34,14 +34,6 @@ const DISCOVERY_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'libri_get_capability_schema'
 ]);
 
-const TRACE_DISCOVERY_TOOL_NAMES: ReadonlySet<string> = new Set([
-	'skill_search',
-	'domain_search',
-	'skill_load',
-	'tool_search',
-	'tool_schema'
-]);
-
 const WRITE_TOOL_PREFIXES = [
 	'create_',
 	'update_',
@@ -230,14 +222,6 @@ export function classifyToolExecution(execution: FastToolExecution): ToolExecuti
 	const canonicalOp = extractCanonicalOp(execution.toolCall);
 	if (isLikelyWriteToolName(toolName, canonicalOp)) return 'write';
 	if (isLikelyReadToolName(toolName, canonicalOp)) return 'read_discovery';
-	return 'other';
-}
-
-export function classifyToolTraceName(toolName: string): ToolExecutionClassification {
-	const normalized = toolName.trim();
-	if (!normalized) return 'other';
-	if (TRACE_DISCOVERY_TOOL_NAMES.has(normalized)) return 'read_discovery';
-	if (isLikelyWriteToolName(normalized)) return 'write';
 	return 'other';
 }
 

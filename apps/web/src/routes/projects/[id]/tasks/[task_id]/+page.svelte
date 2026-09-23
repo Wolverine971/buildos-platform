@@ -121,7 +121,9 @@
 	let workspaceLoadToken = 0;
 
 	// Auto-save state
-	let autoSaveTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
+	// Plain let: the autosave effect reads and rewrites this handle, so making it
+	// $state would make the effect invalidate itself on every run.
+	let autoSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 	let hasUnsavedChanges = $state(false);
 	let lastSavedContent = $state('');
 	const AUTO_SAVE_DELAY = 2000;

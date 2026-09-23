@@ -54,9 +54,24 @@ const initialState: UnifiedBriefGenerationState = {
 	lastUpdateTime: 0
 };
 
+function mergeStateUpdates(
+	base: Partial<UnifiedBriefGenerationState>,
+	next: Partial<UnifiedBriefGenerationState>
+): Partial<UnifiedBriefGenerationState> {
+	const merged = { ...base, ...next };
+	if (base.progress && next.progress) {
+		merged.progress = { ...base.progress, ...next.progress };
+	}
+	if (base.streamingData && next.streamingData) {
+		merged.streamingData = { ...base.streamingData, ...next.streamingData };
+	}
+	return merged;
+}
+
 class UnifiedBriefGenerationStore {
 	private store = writable<UnifiedBriefGenerationState>(initialState);
 	private updateDebounceTimers: Map<string, NodeJS.Timeout> = new Map();
+	private pendingUpdates: Map<string, Partial<UnifiedBriefGenerationState>> = new Map();
 	private progressAnimationFrame: number | null = null;
 	private targetProgress = 0;
 
@@ -84,21 +99,31 @@ class UnifiedBriefGenerationStore {
 	): void {
 		const debounceKey = `${source}-update`;
 
-		// Clear existing debounce timer for this source
-		if (this.updateDebounceTimers.has(debounceKey)) {
-			clearTimeout(this.updateDebounceTimers.get(debounceKey)!);
-		}
+		// Coalesce with anything still pending for this source. Replacing the
+		// pending update (and restarting its timer) dropped intermediate progress
+		// and, under a steady stream of events, never let the timer fire at all.
+		const pending = this.pendingUpdates.get(debounceKey);
+		const merged = pending ? mergeStateUpdates(pending, updates) : updates;
 
 		// Special handling for critical state changes (no debounce)
 		if (updates.isGenerating !== undefined || updates.error !== undefined) {
-			this.applyUpdate(updates, source);
+			const timer = this.updateDebounceTimers.get(debounceKey);
+			if (timer) clearTimeout(timer);
+			this.updateDebounceTimers.delete(debounceKey);
+			this.pendingUpdates.delete(debounceKey);
+			this.applyUpdate(merged, source);
 			return;
 		}
 
-		// Debounce other updates
+		this.pendingUpdates.set(debounceKey, merged);
+		// A flush is already scheduled; it will pick up the merged update.
+		if (this.updateDebounceTimers.has(debounceKey)) return;
+
 		const timer = setTimeout(() => {
-			this.applyUpdate(updates, source);
 			this.updateDebounceTimers.delete(debounceKey);
+			const batch = this.pendingUpdates.get(debounceKey);
+			this.pendingUpdates.delete(debounceKey);
+			if (batch) this.applyUpdate(batch, source);
 		}, debounceMs);
 
 		this.updateDebounceTimers.set(debounceKey, timer);
@@ -334,6 +359,7 @@ class UnifiedBriefGenerationStore {
 		// Clear all debounce timers
 		this.updateDebounceTimers.forEach((timer) => clearTimeout(timer));
 		this.updateDebounceTimers.clear();
+		this.pendingUpdates.clear();
 
 		// Cancel animation
 		if (this.progressAnimationFrame) {

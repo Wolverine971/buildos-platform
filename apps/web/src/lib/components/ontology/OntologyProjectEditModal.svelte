@@ -12,6 +12,7 @@
 	@see /apps/web/docs/technical/components/modals/README.md - Modal component patterns
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -254,24 +255,103 @@
 		return date.toLocaleDateString();
 	});
 
-	$effect(() => {
-		if (!project || !isOpen) return;
+	type ProjectFormValues = {
+		name: string;
+		description: string;
+		stateKey: string;
+		facetContext: string;
+		facetScale: string;
+		facetStage: string;
+		startDate: string;
+		endDate: string;
+		externalAgentAccess: 'standard' | 'restricted';
+		contextDocumentBody: string;
+		nextStepShort: string;
+		nextStepLong: string;
+	};
 
-		name = project.name ?? '';
-		description = project.description ?? '';
-		stateKey = project.state_key ?? 'planning';
-		facetContext = project.facet_context ?? '';
-		facetScale = project.facet_scale ?? '';
-		facetStage = project.facet_stage ?? '';
-		startDate = toDateInput(project.start_at);
-		endDate = toDateInput(project.end_at);
-		externalAgentAccess = project.external_agent_access ?? 'standard';
-		contextDocumentBody = initialContextBody;
-		nextStepShort = initialNextStepShort;
-		nextStepLong = initialNextStepLong;
-		descriptionEditMode = false;
-		contextEditMode = false;
-		error = null;
+	function readFormValues(): ProjectFormValues {
+		return {
+			name,
+			description,
+			stateKey,
+			facetContext,
+			facetScale,
+			facetStage,
+			startDate,
+			endDate,
+			externalAgentAccess,
+			contextDocumentBody,
+			nextStepShort,
+			nextStepLong
+		};
+	}
+
+	function writeFormValues(values: ProjectFormValues) {
+		name = values.name;
+		description = values.description;
+		stateKey = values.stateKey;
+		facetContext = values.facetContext;
+		facetScale = values.facetScale;
+		facetStage = values.facetStage;
+		startDate = values.startDate;
+		endDate = values.endDate;
+		externalAgentAccess = values.externalAgentAccess;
+		contextDocumentBody = values.contextDocumentBody;
+		nextStepShort = values.nextStepShort;
+		nextStepLong = values.nextStepLong;
+	}
+
+	// Values last seeded from props. Plain lets: bookkeeping, not UI state.
+	let seededValues: ProjectFormValues | null = null;
+	let seededProjectId: string | null = null;
+
+	// Seed the form once per open. Later prop refreshes (chat edits, workspace
+	// refetches) only update fields the user has not touched, so unsaved edits
+	// survive while untouched fields still track the latest project.
+	$effect(() => {
+		if (!project || !isOpen) {
+			seededValues = null;
+			seededProjectId = null;
+			return;
+		}
+
+		const next: ProjectFormValues = {
+			name: project.name ?? '',
+			description: project.description ?? '',
+			stateKey: project.state_key ?? 'planning',
+			facetContext: project.facet_context ?? '',
+			facetScale: project.facet_scale ?? '',
+			facetStage: project.facet_stage ?? '',
+			startDate: toDateInput(project.start_at),
+			endDate: toDateInput(project.end_at),
+			externalAgentAccess: project.external_agent_access ?? 'standard',
+			contextDocumentBody: initialContextBody,
+			nextStepShort: initialNextStepShort,
+			nextStepLong: initialNextStepLong
+		};
+		const projectId = project.id;
+
+		untrack(() => {
+			const previous = seededProjectId === projectId ? seededValues : null;
+			if (!previous) {
+				writeFormValues(next);
+				descriptionEditMode = false;
+				contextEditMode = false;
+				error = null;
+			} else {
+				const current = readFormValues();
+				const rebased = { ...current };
+				for (const key of Object.keys(next) as Array<keyof ProjectFormValues>) {
+					if (current[key] === previous[key]) {
+						(rebased as Record<string, string>)[key] = next[key];
+					}
+				}
+				writeFormValues(rebased);
+			}
+			seededValues = next;
+			seededProjectId = projectId;
+		});
 	});
 
 	// Project timeline instants are civil-day boundaries in the owner's timezone

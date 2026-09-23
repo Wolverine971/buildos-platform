@@ -57,6 +57,63 @@ function receipt(overrides: Record<string, unknown> = {}): Record<string, unknow
 	};
 }
 
+function liveEvent(sequence: number, generation = 1): AgentStreamEventV1 {
+	return {
+		contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+		event_id: `${TURN_ID}:${generation}:${sequence}`,
+		stream_run_id: STREAM_ID,
+		client_turn_id: CLIENT_ID,
+		session_id: SESSION_ID,
+		turn_run_id: TURN_ID,
+		execution_generation: generation,
+		sequence_index: sequence,
+		phase: 'llm',
+		event_type: 'text_delta',
+		durable: true,
+		type: 'text_delta',
+		content: `chunk-${sequence}`
+	} as AgentStreamEventV1;
+}
+
+/** A generation-1 running receipt adopted from a generation-0 request. */
+function claimedReceipt(watermark: number): Record<string, unknown> {
+	return receipt({
+		requested_execution_generation: 0,
+		execution_generation: 1,
+		generation_changed: true,
+		status: 'running',
+		snapshot_sequence: watermark,
+		durable_through_sequence: watermark,
+		projection_durable_sequence: watermark,
+		response_watermark: watermark
+	});
+}
+
+function claimHint(durableThroughSequence = 0): Record<string, unknown> {
+	return {
+		contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+		turn_run_id: TURN_ID,
+		session_id: SESSION_ID,
+		execution_generation: 1,
+		durable_through_sequence: durableThroughSequence
+	};
+}
+
+function deferredFetch() {
+	const pending: Array<(response: Response) => void> = [];
+	const fetchImpl = vi.fn<typeof fetch>(
+		() => new Promise<Response>((resolve) => pending.push((response) => resolve(response)))
+	);
+	return {
+		fetchImpl,
+		respond(data: unknown) {
+			const next = pending.shift();
+			if (!next) throw new Error('No pending reconciliation request');
+			next(apiResponse(data));
+		}
+	};
+}
+
 function apiResponse(data: unknown): Response {
 	return {
 		ok: true,
@@ -78,6 +135,11 @@ async function flushAsync(): Promise<void> {
 	await Promise.resolve();
 	await Promise.resolve();
 	await Promise.resolve();
+}
+
+/** Drains the multi-hop fetch -> receipt -> follow-up chain without moving timers. */
+async function settle(): Promise<void> {
+	for (let index = 0; index < 30; index += 1) await Promise.resolve();
 }
 
 afterEach(() => {
@@ -509,6 +571,227 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 		expect(fetchImpl).toHaveBeenCalledTimes(2);
 		coordinator.stop();
 		expect(signals[1]?.aborted).toBe(true);
+	});
+
+	it('defers the watchdog while a subscribed live stream stays contiguous', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = vi.fn<typeof fetch>(async () => apiResponse(claimedReceipt(1)));
+		const observer = applicationObserver();
+		const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: fetchImpl as typeof fetch,
+			changedWatchdogMs: 2_000,
+			unchangedWatchdogMs: 5_000,
+			liveHealthyWindowMs: 4_000,
+			random: () => 0.5
+		});
+		coordinator.setLiveChannelSubscribed(true);
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer });
+		await settle();
+		expect(fetchImpl).toHaveBeenCalledOnce();
+
+		// Ten seconds of healthy streaming: no watchdog reconcile, so live text
+		// is never parked behind a receipt.
+		for (let sequence = 2; sequence <= 21; sequence += 1) {
+			coordinator.inbox.receiveStreamEvent(liveEvent(sequence));
+			await vi.advanceTimersByTimeAsync(500);
+		}
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(observer.applyLiveEvent).toHaveBeenCalledTimes(20);
+		expect(coordinator.inbox.getSnapshot(TURN_ID)).toMatchObject({
+			buffering: false,
+			lastAppliedSequence: 21
+		});
+
+		// A silently stalled channel still reaches durable truth once the live
+		// window lapses.
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(1_000);
+		await settle();
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		expect(fetchImpl.mock.calls[1]?.[0]).toContain('reason=watchdog');
+		coordinator.stop();
+	});
+
+	it('still reconciles gaps immediately while the live stream is healthy', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = vi.fn<typeof fetch>(async () => apiResponse(claimedReceipt(1)));
+		const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: fetchImpl as typeof fetch,
+			random: () => 0.5
+		});
+		coordinator.setLiveChannelSubscribed(true);
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer: applicationObserver() });
+		await settle();
+
+		coordinator.inbox.receiveStreamEvent(liveEvent(2));
+		coordinator.inbox.receiveStreamEvent(liveEvent(4));
+		await settle();
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		expect(fetchImpl.mock.calls[1]?.[0]).toContain('after=2&reason=sequence_gap');
+		coordinator.stop();
+	});
+
+	it('keeps the watchdog cadence when the channel is not subscribed', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = vi.fn<typeof fetch>(async () => apiResponse(claimedReceipt(1)));
+		const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: fetchImpl as typeof fetch,
+			changedWatchdogMs: 2_000,
+			random: () => 0.5
+		});
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer: applicationObserver() });
+		await settle();
+
+		coordinator.inbox.receiveStreamEvent(liveEvent(2));
+		await vi.advanceTimersByTimeAsync(2_000);
+		await settle();
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		expect(fetchImpl.mock.calls[1]?.[0]).toContain('reason=watchdog');
+		coordinator.stop();
+	});
+
+	it('forces a durable read after maxLiveOnlyMs even while live events keep flowing', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+			const after = Number(
+				new URL(String(input), 'https://app.test').searchParams.get('after')
+			);
+			return apiResponse(
+				after === 0
+					? claimedReceipt(1)
+					: receipt({
+							requested_execution_generation: 1,
+							execution_generation: 1,
+							status: 'running',
+							snapshot_sequence: after,
+							durable_through_sequence: after,
+							projection_durable_sequence: after,
+							response_watermark: after
+						})
+			);
+		});
+		const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: fetchImpl as typeof fetch,
+			changedWatchdogMs: 2_000,
+			liveHealthyWindowMs: 4_000,
+			maxLiveOnlyMs: 10_000,
+			random: () => 0.5
+		});
+		coordinator.setLiveChannelSubscribed(true);
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer: applicationObserver() });
+		await settle();
+
+		for (let sequence = 2; sequence <= 20; sequence += 1) {
+			coordinator.inbox.receiveStreamEvent(liveEvent(sequence));
+			await vi.advanceTimersByTimeAsync(500);
+			await settle();
+		}
+		// 9.5s of streaming: still only the initial read.
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		coordinator.inbox.receiveStreamEvent(liveEvent(21));
+		await vi.advanceTimersByTimeAsync(500);
+		await settle();
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		expect(fetchImpl.mock.calls[1]?.[0]).toContain('reason=watchdog');
+		coordinator.stop();
+	});
+
+	it('re-requests at once when a claim hint lands during the pre-claim reconcile', async () => {
+		vi.useFakeTimers();
+		const deferred = deferredFetch();
+		const observer = applicationObserver();
+		const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: deferred.fetchImpl as typeof fetch,
+			random: () => 0.5
+		});
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer });
+		await settle();
+		expect(deferred.fetchImpl).toHaveBeenCalledOnce();
+
+		coordinator.inbox.receiveReconcileHint(claimHint());
+		deferred.respond(receipt());
+		await settle();
+
+		// No timer advanced: the stale queued receipt does not park "waiting".
+		expect(deferred.fetchImpl).toHaveBeenCalledTimes(2);
+		expect(deferred.fetchImpl.mock.calls[1]?.[0]).toBe(
+			`/api/agent/v2/turns/${TURN_ID}/reconcile?generation=0&after=0&reason=generation_changed`
+		);
+		deferred.respond(claimedReceipt(0));
+		await settle();
+		expect(observer.applyReconciliation).toHaveBeenLastCalledWith(
+			expect.objectContaining({ execution_generation: 1, status: 'running' })
+		);
+		expect(deferred.fetchImpl).toHaveBeenCalledTimes(2);
+		coordinator.stop();
+	});
+
+	it('does not throttle a generation-1 event that arrives during the generation-0 reconcile', async () => {
+		vi.useFakeTimers();
+		const deferred = deferredFetch();
+		const observer = applicationObserver();
+		const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: deferred.fetchImpl as typeof fetch,
+			random: () => 0.5
+		});
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer });
+		await settle();
+
+		coordinator.inbox.receiveStreamEvent(liveEvent(1));
+		deferred.respond(receipt());
+		await settle();
+		expect(deferred.fetchImpl).toHaveBeenCalledTimes(2);
+		expect(deferred.fetchImpl.mock.calls[1]?.[0]).toContain('reason=generation_changed');
+
+		deferred.respond(claimedReceipt(0));
+		await settle();
+		expect(observer.applyLiveEvent).toHaveBeenCalledWith(
+			expect.objectContaining({ execution_generation: 1, sequence_index: 1 })
+		);
+		expect(coordinator.inbox.getSnapshot(TURN_ID)).toMatchObject({
+			executionGeneration: 1,
+			lastAppliedSequence: 1,
+			buffering: false
+		});
+		coordinator.stop();
+	});
+
+	it('bounds the generation bypass to one immediate retry per known generation', async () => {
+		vi.useFakeTimers();
+		const deferred = deferredFetch();
+		const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: deferred.fetchImpl as typeof fetch,
+			changedWatchdogMs: 2_000,
+			random: () => 0.5
+		});
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer: applicationObserver() });
+		await settle();
+
+		coordinator.inbox.receiveReconcileHint(claimHint());
+		deferred.respond(receipt());
+		await settle();
+		expect(deferred.fetchImpl).toHaveBeenCalledTimes(2);
+
+		// A lagging read returns the pre-claim snapshot again. The follow-up falls
+		// back to the normal changed-state cadence instead of looping.
+		deferred.respond(receipt());
+		await settle();
+		expect(deferred.fetchImpl).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(1_999);
+		expect(deferred.fetchImpl).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(1);
+		await settle();
+		expect(deferred.fetchImpl).toHaveBeenCalledTimes(3);
+		expect(deferred.fetchImpl.mock.calls[2]?.[0]).toContain('reason=generation_changed');
+		coordinator.stop();
 	});
 
 	it('clears registered turns and leaves stale unregister callbacks harmless', () => {

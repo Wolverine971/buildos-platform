@@ -8,6 +8,7 @@ import { isValidUUID } from '@buildos/shared-types';
 import type { AgentCallScope, BuildosAgentAllowedOp, Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { logCreateAsync, logUpdateAsync } from '../ops/async-activity-logger';
+import { escapeLikePattern } from '../utils/search-filter';
 import { ensureActorId, type OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import {
 	defaultAllowedOpsForMode,
@@ -1446,6 +1447,7 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 			.select('id')
 			.eq('id', newParentId)
 			.eq('project_id', project.id)
+			.is('deleted_at', null)
 			.is('archived_at', null)
 			.maybeSingle();
 		if (parentError) {
@@ -1472,7 +1474,10 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 			.from('onto_documents')
 			.select('id')
 			.eq('project_id', project.id)
-			.ilike('title', rawParentTitle)
+			// Exact (case-insensitive) title match: a "%" or "_" in the title must
+			// not act as a wildcard and attach the document to some other parent.
+			.ilike('title', escapeLikePattern(rawParentTitle))
+			.is('deleted_at', null)
 			.is('archived_at', null)
 			.limit(1)
 			.maybeSingle();

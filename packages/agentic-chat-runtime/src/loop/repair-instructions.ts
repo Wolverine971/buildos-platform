@@ -315,10 +315,14 @@ function enforceMutationOutcomeIntegrityCore(
 		}
 	}
 
-	// Only a turn that changed something can overclaim a link or placement it
-	// did not make. On a read-only turn "X is linked to Y" describes existing
-	// state, and the lexical claim check below cannot tell the two apart.
-	if (mutationOutcomes.succeeded > 0) {
+	// Only a turn that changed something, or was structurally asked to change
+	// something (turn contract / gateway write intent, never prose), can
+	// overclaim a link or placement it did not make. A zero-write turn that
+	// was asked to move a document and replies "the doc is now organized under
+	// Research" must still be corrected. On a genuinely read-only turn "X is
+	// linked to Y" describes existing state, and the lexical claim check below
+	// cannot tell the two apart, so it stays off there.
+	if (mutationOutcomes.succeeded > 0 || params.explicitMutationRequested === true) {
 		const unsupportedClaims = collectUnsupportedDocumentClaims(
 			finalText,
 			params.toolExecutions
@@ -730,6 +734,11 @@ function hasSuccessfulDocumentPlacementWrite(toolExecutions: FastToolExecution[]
 		if (op === 'move_document_in_tree' || op === 'onto.document.tree.move') return true;
 		// A created document is placed in the tree — under its parent, or at the
 		// root when none was given — so the create itself is the placement.
+		// Known limitation: this does not compare the create's parent with the
+		// claim, so a create at the root satisfies any placement claim about that
+		// document ("nested it under Research" included). Telling "at the root"
+		// from "under X" would need more text patterns on model prose, which
+		// AGENTS.md rules out; the fix belongs in a structured claim channel.
 		return op === 'create_onto_document' || op === 'onto.document.create';
 	});
 }

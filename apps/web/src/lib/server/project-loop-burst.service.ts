@@ -5,6 +5,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { queueProjectLoop } from '$lib/server/project-loops.service';
 import { queueProjectAudit } from '$lib/server/project-audit-trigger.service';
 import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
+import { runAfterResponse } from '$lib/server/background';
 import {
 	buildProjectReviewSignalDueAt,
 	mergeProjectReviewSignalMetadata,
@@ -200,14 +201,17 @@ export function queueProjectLoopBurstAsync(params: {
 }): void {
 	if (!PROJECT_LOOPS_ENABLED || !params.projectId || !params.userId) return;
 
-	void queueProjectLoopBurst(params).catch((error) => {
-		logger.warn('Failed to queue project review burst', {
-			projectId: params.projectId,
-			userId: params.userId,
-			source: params.source,
-			error: error instanceof Error ? error.message : String(error)
-		});
-	});
+	runAfterResponse(
+		queueProjectLoopBurst(params).catch((error) => {
+			logger.warn('Failed to queue project review burst', {
+				projectId: params.projectId,
+				userId: params.userId,
+				source: params.source,
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}),
+		'project loop burst'
+	);
 }
 
 export function queueProjectLoopReviewSignalAsync(params: {
@@ -221,14 +225,17 @@ export function queueProjectLoopReviewSignalAsync(params: {
 }): void {
 	if (!PROJECT_LOOPS_ENABLED || !params.projectId || !params.userId) return;
 
-	void queueProjectLoopReviewSignal(params).catch((error) => {
-		logger.warn('Failed to queue debounced project review signal', {
-			projectId: params.projectId,
-			userId: params.userId,
-			source: params.source,
-			error: error instanceof Error ? error.message : String(error)
-		});
-	});
+	runAfterResponse(
+		queueProjectLoopReviewSignal(params).catch((error) => {
+			logger.warn('Failed to queue debounced project review signal', {
+				projectId: params.projectId,
+				userId: params.userId,
+				source: params.source,
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}),
+		'project loop review signal'
+	);
 }
 
 export async function queueProjectLoopReviewSignal(params: {

@@ -35,7 +35,7 @@ function isValidTimezone(timezone: string): boolean {
 	}
 }
 
-async function resolveTimezone(
+export async function resolveTimezone(
 	supabase: TypedSupabaseClient,
 	userId: string,
 	provided?: string | null
@@ -46,6 +46,15 @@ async function resolveTimezone(
 	const { data } = await supabase.from('users').select('timezone').eq('id', userId).single();
 	const timezone = data?.timezone;
 	return timezone && isValidTimezone(timezone) ? timezone : 'UTC';
+}
+
+/**
+ * Midnight today in the user's timezone. "Overdue" everywhere (the Today chip
+ * and the triage list) means due before this instant, so both agree.
+ */
+export function startOfUserDay(timezone: string, now: Date = new Date()): Date {
+	const date = formatInTimeZone(now, timezone, 'yyyy-MM-dd');
+	return fromZonedTime(`${date}T00:00:00`, timezone);
 }
 
 export function resolveTodayTaskBucket(
@@ -95,7 +104,7 @@ export async function getTodayFeed({
 	const timezone = await resolveTimezone(supabase, userId, providedTimezone);
 	const now = new Date();
 	const date = formatInTimeZone(now, timezone, 'yyyy-MM-dd');
-	const dayStart = fromZonedTime(`${date}T00:00:00`, timezone);
+	const dayStart = startOfUserDay(timezone, now);
 	const nextDate = formatInTimeZone(
 		new Date(dayStart.getTime() + 36 * 60 * 60 * 1000),
 		timezone,

@@ -16,7 +16,7 @@
 		kind: EntityKind;
 		availableEntities: AvailableEntity[];
 		onClose: () => void;
-		onConfirm: (selectedIds: string[]) => void;
+		onConfirm: (selectedIds: string[]) => void | Promise<void>;
 	}
 
 	let { kind, availableEntities, onClose, onConfirm }: Props = $props();
@@ -24,6 +24,7 @@
 	let searchQuery = $state('');
 	let selectedIds = $state<Set<string>>(new Set());
 	let isOpen = $state(true);
+	let isConfirming = $state(false);
 
 	// Get section config for display
 	const sectionConfig = $derived(ENTITY_SECTIONS.find((s) => s.kind === kind));
@@ -47,8 +48,15 @@
 		selectedIds = newSet;
 	}
 
-	function handleConfirm() {
-		onConfirm(Array.from(selectedIds));
+	// In-flight guard: a double-click must not create the same edges twice.
+	async function handleConfirm() {
+		if (isConfirming || selectedIds.size === 0) return;
+		isConfirming = true;
+		try {
+			await onConfirm(Array.from(selectedIds));
+		} finally {
+			isConfirming = false;
+		}
 	}
 
 	function handleClose() {
@@ -185,7 +193,8 @@
 				variant="primary"
 				size="sm"
 				onclick={handleConfirm}
-				disabled={selectedCount === 0}
+				disabled={selectedCount === 0 || isConfirming}
+				loading={isConfirming}
 				class="pressable"
 			>
 				Add Selected ({selectedCount})

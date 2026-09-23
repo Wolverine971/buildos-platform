@@ -142,6 +142,14 @@ describe('PATCH /api/onto/projects/[id] civil-day timeline input', () => {
 		expect(capturedUpdate?.end_at).toBe('2026-11-20T23:59:59.000Z');
 	});
 
+	it('reads an offset-less datetime on the user clock instead of as UTC', async () => {
+		// Nov 2 2026 is EST (-05:00).
+		const response = await patch({ start_at: '2026-11-02T09:00:00' });
+
+		expect(response.status).toBe(200);
+		expect(capturedUpdate?.start_at).toBe('2026-11-02T14:00:00.000Z');
+	});
+
 	it('passes a full ISO instant through unchanged', async () => {
 		const response = await patch({ start_at: '2026-11-02T15:45:00.000Z' });
 

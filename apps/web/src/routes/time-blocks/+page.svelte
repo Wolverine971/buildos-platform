@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/time-blocks/+page.svelte -->
 <script lang="ts">
 	import { onMount, type Component } from 'svelte';
+	import { endOfDay, startOfDay } from 'date-fns';
 	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
 	import TimeAllocationPanel from '$lib/components/time-blocks/TimeAllocationPanel.svelte';
 	import TimeRangeSelector from '$lib/components/time-blocks/TimeRangeSelector.svelte';
@@ -183,9 +184,25 @@
 		}
 
 		// Load initial data (blocks + allocation)
-		// This ensures the allocation panel has data on first load
-		timeBlocksStore.loadBlocks(calendarDateRange.start, calendarDateRange.end);
+		// This ensures the allocation panel has data on first load. The calendar
+		// loads the days it shows; the store's default (now → +7d) skipped the
+		// earlier part of the visible week.
+		if (displayMode === 'calendar') {
+			loadVisibleCalendarRange();
+		} else {
+			timeBlocksStore.loadBlocks(calendarDateRange.start, calendarDateRange.end);
+		}
 	});
+
+	// Whole calendar days: each visible day starts at 00:00, so using the last one
+	// as the end bound dropped every block on that day.
+	function loadVisibleCalendarRange() {
+		const start = calendarDays[0];
+		const end = calendarDays.at(-1);
+		if (start && end) {
+			timeBlocksStore.setDateRange(startOfDay(start), endOfDay(end));
+		}
+	}
 
 	// Blocks are now loaded automatically by the store when selectedDateRange changes
 	// No need for a separate effect since TimeRangeSelector controls the store directly
@@ -296,25 +313,13 @@
 	function handleCalendarNavigate(date: Date) {
 		calendarSelectedDate = date;
 		// Update the date range in the store to load blocks for new view
-		if (calendarDays.length > 0) {
-			const start = calendarDays[0];
-			const end = calendarDays.at(-1);
-			if (start && end) {
-				timeBlocksStore.setDateRange(start, end);
-			}
-		}
+		loadVisibleCalendarRange();
 	}
 
 	function handleViewModeChange(mode: 'day' | 'week' | 'month') {
 		calendarViewMode = mode;
 		// Update the date range in the store to load blocks for new view
-		if (calendarDays.length > 0) {
-			const start = calendarDays[0];
-			const end = calendarDays.at(-1);
-			if (start && end) {
-				timeBlocksStore.setDateRange(start, end);
-			}
-		}
+		loadVisibleCalendarRange();
 	}
 
 	$effect(() => {

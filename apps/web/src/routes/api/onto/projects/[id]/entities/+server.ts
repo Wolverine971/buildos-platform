@@ -92,7 +92,6 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			}
 		}
 
-		// Sorting matches insight panel defaults (see insight-panel-config.ts)
 		if (typeParam === 'task') {
 			// High priority first (lower number = higher priority), then recently updated
 			query = query

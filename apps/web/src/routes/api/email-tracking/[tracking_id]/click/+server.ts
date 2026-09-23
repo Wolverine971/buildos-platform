@@ -6,6 +6,7 @@ import { createLogger } from '@buildos/shared-utils';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { captureServerEvent } from '$lib/server/posthog';
+import { getSafeLocalRedirect } from '$lib/server/safe-redirect';
 
 function getTemplateData(value: unknown): Record<string, unknown> {
 	return value && typeof value === 'object' && !Array.isArray(value)
@@ -27,24 +28,13 @@ function getAllowedAppOrigin(): string {
 }
 
 function getSafeRedirectDestination(destination: string): string | null {
-	if (
-		destination.startsWith('/') &&
-		!destination.startsWith('//') &&
-		!destination.startsWith('/\\')
-	) {
-		return destination;
-	}
-
-	try {
-		const destinationUrl = new URL(destination);
-		if (destinationUrl.origin === getAllowedAppOrigin()) {
-			return destinationUrl.toString();
-		}
-	} catch {
-		return null;
-	}
-
-	return null;
+	// Parse like a browser would: a raw check on the string misses control characters that the
+	// browser strips from Location ("/<TAB>/evil.com" becomes "//evil.com").
+	const appOrigin = getAllowedAppOrigin();
+	const localPath = getSafeLocalRedirect(destination, appOrigin, '');
+	if (!localPath) return null;
+	// Absolute in-app links stay absolute so click analytics record what the email linked.
+	return /^https?:\/\//i.test(destination.trim()) ? `${appOrigin}${localPath}` : localPath;
 }
 
 export const GET: RequestHandler = async ({ params, url }) => {

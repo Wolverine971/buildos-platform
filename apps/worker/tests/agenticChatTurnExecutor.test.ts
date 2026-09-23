@@ -1278,7 +1278,7 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
-	it('starts provider work after durable lifecycle acceptance while the first delivery is gated', async () => {
+	it('consumes provider work after durable lifecycle acceptance while the first delivery is gated', async () => {
 		let releaseFirstDelivery!: () => void;
 		const firstDeliveryGate = new Promise<void>((resolve) => {
 			releaseFirstDelivery = resolve;
@@ -1319,6 +1319,178 @@ describe('AgenticChatTurnExecutor', () => {
 			outcome: 'completed',
 			terminalStatus: 'completed'
 		});
+		await harness.publisher.stop();
+	});
+
+	it('overlaps the provider request with the durable prelude but consumes no step before it is accepted', async () => {
+		const gates: Array<() => void> = [];
+		let gatedPersists = 0;
+		const harness = createHarness([], {
+			beforePersistSemantic: () =>
+				gatedPersists++ < 3
+					? new Promise<void>((resolve) => gates.push(resolve))
+					: Promise.resolve()
+		});
+		let providerStarted = false;
+		Object.assign(harness.provider, {
+			stream: vi.fn(() =>
+				(async function* () {
+					providerStarted = true;
+					yield { type: 'text_delta', text: 'Hello' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})()
+			)
+		});
+
+		const execution = harness.executor.execute(job());
+		// The model request is running while the acknowledgement is still persisting.
+		await vi.waitFor(() => {
+			expect(providerStarted).toBe(true);
+			expect(gates).toHaveLength(1);
+		});
+		for (const [index, stage] of ['turn_phase', 'session', 'context_usage'].entries()) {
+			await vi.waitFor(() => expect(gates).toHaveLength(1));
+			expect(harness.textFlushBatches).toHaveLength(0);
+			expect(harness.getSequence()).toBe(harness.semanticInputs.length);
+			gates.shift()!();
+			await vi.waitFor(() => expect(harness.semanticInputs[index]?.event_type).toBe(stage));
+		}
+
+		await expect(execution).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		// Same durable order and sequence numbers as a strictly serial prelude.
+		expect(harness.semanticInputs.slice(0, 3).map((input) => input.event_type)).toEqual([
+			'turn_phase',
+			'session',
+			'context_usage'
+		]);
+		expect(normalizedBroadcastEventTypes(harness.broadcastMessages).slice(0, 4)).toEqual([
+			'turn_phase',
+			'session',
+			'context_usage',
+			'assistant_text'
+		]);
+		const firstText = streamBroadcastMessages(harness.broadcastMessages).find(
+			(message) => (message.payload as Record<string, unknown>).type === 'text_delta'
+		);
+		expect((firstText?.payload as Record<string, unknown>).sequence_index).toBe(4);
+		await harness.publisher.stop();
+	});
+
+	it('fails a prelude persistence rejection as before and aborts the speculative provider request', async () => {
+		const harness = createHarness([], {
+			promptSnapshot: fixturePromptSnapshot,
+			beforePersistSemantic: async (input) => {
+				if (input.event_type !== 'session') return;
+				throw Object.assign(new Error('stale_generation'), { code: 'P0001' });
+			},
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'unknown' }),
+				recoveryReceipt('queue_reconciled', { status: 'failed', failure_code: 'unknown' })
+			]
+		});
+		let providerSignal = null as AbortSignal | null;
+		let providerStepsConsumed = 0;
+		const release = vi.fn();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async (input: { signal: AbortSignal }) => {
+				providerSignal = input.signal;
+				return {
+					promptSnapshot: fixturePromptSnapshot,
+					stream: () =>
+						(async function* () {
+							await new Promise<void>((resolve) => {
+								if (input.signal.aborted) resolve();
+								else input.signal.addEventListener('abort', () => resolve());
+							});
+							providerStepsConsumed += 1;
+							yield { type: 'text_delta', text: 'never applied' } as const;
+						})(),
+					release
+				};
+			})
+		});
+
+		const result = await harness.executor.execute(job());
+		expect(result).toMatchObject({ outcome: 'failed', terminalStatus: 'failed' });
+		// Recovery sees the persistence error at the prelude boundary, unchanged
+		// by the provider having started, with no provider output applied.
+		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+			failureClass: 'unknown',
+			errorMessage: expect.stringContaining('stale_generation')
+		});
+		expect(harness.textFlushBatches).toHaveLength(0);
+		expect(harness.promptSnapshots.persist).not.toHaveBeenCalled();
+		expect(release).toHaveBeenCalledOnce();
+		// The in-flight model request is cancelled instead of running to completion.
+		expect(providerSignal!.aborted).toBe(true);
+		await vi.waitFor(() => expect(providerStepsConsumed).toBe(1));
+		expect(harness.textFlushBatches).toHaveLength(0);
+		await harness.publisher.stop();
+	});
+
+	it('cancels during the prelude as before even though the provider request already started', async () => {
+		let releaseAck!: () => void;
+		const ackGate = new Promise<void>((resolve) => (releaseAck = resolve));
+		let ackEntered = false;
+		const harness = createHarness([], {
+			promptSnapshot: fixturePromptSnapshot,
+			beforePersistSemantic: async () => {
+				if (ackEntered) return;
+				ackEntered = true;
+				await ackGate;
+			},
+			recovery: [
+				recoveryReceipt('finalize_cancelled'),
+				recoveryReceipt('queue_reconciled', {
+					status: 'cancelled',
+					failure_code: 'cancelled'
+				})
+			]
+		});
+		let providerSignal = null as AbortSignal | null;
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async (input: { signal: AbortSignal }) => {
+				providerSignal = input.signal;
+				return {
+					promptSnapshot: fixturePromptSnapshot,
+					stream: () =>
+						(async function* () {
+							yield { type: 'text_delta', text: 'never applied' } as const;
+							yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+						})(),
+					release: vi.fn()
+				};
+			})
+		});
+
+		const execution = harness.executor.execute(job());
+		await vi.waitFor(() => expect(ackEntered).toBe(true));
+		harness.cancellationController.abort(
+			new AgenticChatCancellationError({
+				turn_run_id: TURN_RUN_ID,
+				execution_generation: EXECUTION_GENERATION,
+				signal_id: 'c0000000-0000-4000-8000-00000000000c',
+				cancel_reason: 'user_cancelled',
+				cancel_source: 'browser',
+				cancel_requested_at: '2026-08-03T12:00:00.000Z',
+				consumed_at: '2026-08-03T12:00:00.100Z'
+			})
+		);
+		releaseAck();
+
+		await expect(execution).resolves.toMatchObject({
+			outcome: 'cancelled',
+			terminalStatus: 'cancelled'
+		});
+		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+			failureClass: 'cancelled'
+		});
+		expect(harness.textFlushBatches).toHaveLength(0);
+		expect(harness.promptSnapshots.persist).not.toHaveBeenCalled();
+		expect(providerSignal!.aborted).toBe(true);
 		await harness.publisher.stop();
 	});
 
@@ -2135,12 +2307,14 @@ describe('AgenticChatTurnExecutor', () => {
 			terminalStatus: 'completed',
 			queueReconciled: true
 		});
+		// The provider request starts right after begin so it overlaps the
+		// durable prelude; its first step is consumed only after the prelude.
 		expect(harness.log.slice(0, 5)).toEqual([
 			'begin',
+			'provider',
 			'semantic:turn_phase:acknowledged',
 			'semantic:session:',
-			'semantic:context_usage:',
-			'provider'
+			'semantic:context_usage:'
 		]);
 		expect(harness.provider.stream).toHaveBeenCalledOnce();
 		expect(harness.readTool.execute).toHaveBeenCalledWith(
@@ -2243,7 +2417,7 @@ describe('AgenticChatTurnExecutor', () => {
 					type: 'turn_phase',
 					turn_phase: 'acknowledged',
 					workerProvenance: workerSourceProvenance,
-					message: 'Request received. Preparing the workspace context...'
+					message: 'Thinking…'
 				}
 			},
 			{
@@ -2255,7 +2429,7 @@ describe('AgenticChatTurnExecutor', () => {
 					type: 'turn_phase',
 					turn_phase: 'finalizing',
 					workerProvenance: workerSourceProvenance,
-					message: 'Finalizing the response...'
+					message: 'Wrapping up…'
 				}
 			}
 		]);
@@ -4991,10 +5165,10 @@ describe('AgenticChatTurnExecutor', () => {
 		expect(harness.log).toEqual([
 			'prepare',
 			'begin',
+			'provider',
 			'semantic:turn_phase:acknowledged',
 			'semantic:session:',
 			'semantic:context_usage:',
-			'provider',
 			'semantic:turn_phase:finalizing',
 			'release'
 		]);
@@ -5488,6 +5662,11 @@ describe('AgenticChatTurnExecutor', () => {
 				promptSnapshot: fixturePromptSnapshot,
 				stream: () =>
 					(async function* () {
+						// The provider request now overlaps the durable prelude; this
+						// fixture's deadline lands mid-stream, after the prelude.
+						while (harness.semanticInputs.length < 3) {
+							await new Promise((resolve) => setTimeout(resolve, 1));
+						}
 						timeout.abort(new Error('Provider execution deadline exceeded'));
 						yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
 					})(),

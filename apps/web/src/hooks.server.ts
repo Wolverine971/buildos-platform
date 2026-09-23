@@ -479,6 +479,15 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	// Admin pages are also served as `<route>/__data.json`, where SvelteKit runs only the loads
+	// the client marks invalidated, so the admin layout's check can be skipped and a page load
+	// that uses the service-role client answers anyone. Gate the whole tree here, where every
+	// page, data, and form-action request passes. (/api/admin handlers check for themselves.)
+	if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+		if (!event.locals.user) throw redirect(303, '/auth/login');
+		if (!event.locals.user.is_admin) throw redirect(303, '/dashboard');
+	}
+
 	// Keep the public homepage out of the authenticated app bundle and data path.
 	// Preserve auth/toast query parameters when old links still land on `/`.
 	// Completed users land on /today (the remembered-project surface, tasker/26);

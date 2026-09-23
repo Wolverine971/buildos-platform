@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/webhooks/send-notification-email/+server.ts
-import { ApiResponse } from '$lib/utils/api-response';
+import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { PRIVATE_BUILDOS_WEBHOOK_SECRET } from '$env/static/private';
@@ -14,29 +14,18 @@ export const config = {
 	maxDuration: 60
 };
 
+// Status contract with apps/worker/src/workers/notification/emailAdapter.ts:
+// 409 + EMAIL_PREFERENCES_BLOCKED = not sent, never retry the send;
+// 503 + EMAIL_PREFERENCES_UNAVAILABLE = not sent, retry later.
+const EMAIL_PREFERENCES_BLOCKED = 'EMAIL_PREFERENCES_BLOCKED';
+const EMAIL_PREFERENCES_UNAVAILABLE = 'EMAIL_PREFERENCES_UNAVAILABLE';
+
 /**
  * Webhook endpoint for worker to send notification emails
  *
  * Security: Validates PRIVATE_BUILDOS_WEBHOOK_SECRET (shared with worker)
  * Flow: Worker calls this webhook → Email sent immediately via Gmail
  */
-
-interface NotificationEmailRequest {
-	recipientEmail: string;
-	recipientName?: string;
-	recipientUserId: string;
-	subject: string;
-	htmlContent: string;
-	textContent: string;
-	trackingId?: string;
-	emailRecordId?: string;
-	deliveryId: string;
-	eventId: string;
-	eventType?: string;
-	briefId?: string | null;
-	briefDate?: string | null;
-	engagementStage?: string | null;
-}
 
 const notificationEmailRequestSchema = z.object({
 	recipientEmail: z.string().email(),
@@ -195,19 +184,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Parse request body
 		const parsed = await parseJsonRequest(request, notificationEmailRequestSchema);
 		if (!parsed.ok) return parsed.response;
-		const body = parsed.data as NotificationEmailRequest;
-
-		// Validate required fields
-		if (!body.recipientEmail || !body.recipientUserId || !body.subject) {
-			console.error('[NotificationEmailWebhook] Missing required fields', {
-				hasEmail: !!body.recipientEmail,
-				hasUserId: !!body.recipientUserId,
-				hasSubject: !!body.subject
-			});
-			return ApiResponse.badRequest(
-				'Missing required fields: recipientEmail, recipientUserId, subject'
-			);
-		}
+		const body = parsed.data;
 
 		console.log(
 			`[NotificationEmailWebhook] Sending notification email to ${body.recipientEmail} (delivery: ${body.deliveryId})`
@@ -257,22 +234,38 @@ export const POST: RequestHandler = async ({ request }) => {
 			emailAllowed = prefs?.email_enabled ?? false;
 		}
 
-		if (prefError || !prefs || !emailAllowed) {
+		// A failed preference read is transient: 503 so the worker retries rather
+		// than dropping (or wrongly sending) the email.
+		if (prefError) {
+			console.error(
+				`[NotificationEmailWebhook] Preference lookup failed (delivery: ${body.deliveryId})`,
+				{ userId: body.recipientUserId, prefError: prefError.message }
+			);
+			return ApiResponse.error(
+				'Email preferences temporarily unavailable',
+				HttpStatus.SERVICE_UNAVAILABLE,
+				EMAIL_PREFERENCES_UNAVAILABLE
+			);
+		}
+
+		// Blocked by preferences is final and nothing was sent: a non-2xx with a
+		// distinct code so the worker can never count it as sent.
+		if (!prefs || !emailAllowed) {
 			console.log(
 				`[NotificationEmailWebhook] ❌ Email cancelled - user preferences do not allow (delivery: ${body.deliveryId})`,
 				{
 					eventType: body.eventType,
 					userId: body.recipientUserId,
-					prefError: prefError?.message,
 					emailEnabled: prefs?.email_enabled,
 					shouldEmailDailyBrief: prefs?.should_email_daily_brief,
 					checkUsed: isDailyBriefEvent ? 'should_email_daily_brief' : 'email_enabled'
 				}
 			);
-			return ApiResponse.success({
-				success: false,
-				error: 'Cancelled: User preferences do not allow email notifications'
-			});
+			return ApiResponse.error(
+				'Cancelled: User preferences do not allow email notifications',
+				HttpStatus.CONFLICT,
+				EMAIL_PREFERENCES_BLOCKED
+			);
 		}
 
 		// Atomically claim the email row before the Gmail send so two concurrent

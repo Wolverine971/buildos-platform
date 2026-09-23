@@ -73,7 +73,6 @@ Primary coverage:
 
 - `apps/worker/tests/briefBackoffCalculator.test.ts`
 - `apps/worker/tests/scheduler.test.ts`
-- `apps/worker/tests/scheduler-parallel.test.ts`
 
 Useful focused command:
 

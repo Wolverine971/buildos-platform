@@ -129,3 +129,96 @@ describe('shared read dispatch timezone projection', () => {
 		expect(payload.project.end_at).toBe('2026-09-23T03:59:59+00:00');
 	});
 });
+
+/** Records filters per table and honours .limit(), unlike the minimal stand-in above. */
+function recordingContext(rows: TableRows) {
+	const calls: Record<string, Array<[string, ...unknown[]]>> = {};
+	const client = {
+		from: (table: string) => {
+			let limit: number | null = null;
+			const builder: Record<string, unknown> = {};
+			for (const method of ['select', 'in', 'is', 'gte', 'lte', 'order', 'eq']) {
+				builder[method] = (...args: unknown[]) => {
+					(calls[table] ??= []).push([method, ...args]);
+					return builder;
+				};
+			}
+			builder.limit = (value: number) => {
+				(calls[table] ??= []).push(['limit', value]);
+				limit = value;
+				return builder;
+			};
+			builder.then = (resolve: (value: { data: unknown[]; error: null }) => unknown) => {
+				const tableRows = rows[table] ?? [];
+				return resolve({
+					data: limit === null ? tableRows : tableRows.slice(0, limit),
+					error: null
+				});
+			};
+			return builder;
+		}
+	};
+	const context = {
+		client,
+		userId: 'user-1',
+		timezone: null,
+		access: {
+			getActorId: async () => 'actor-1',
+			resolveProjectSummaries: async () => [PROJECT_SUMMARY],
+			assertProjectAccess: async () => undefined,
+			assertEntityAccess: async () => undefined
+		}
+	} as unknown as AgenticChatSharedReadContextV1;
+	return { context, calls };
+}
+
+function openTask(index: number) {
+	return {
+		id: `task-${index}`,
+		project_id: 'proj-1',
+		title: `Task ${index}`,
+		state_key: 'todo',
+		priority: 1,
+		due_at: null,
+		completed_at: null,
+		updated_at: '2026-09-01T15:00:00.000Z'
+	};
+}
+
+describe('overview working-set filters', () => {
+	it('excludes archived tasks, milestones, plans, and risks from overview counts', async () => {
+		const { context, calls } = recordingContext(PROJECT_ROWS);
+
+		await getProjectOverview(context, { project_id: 'proj-1' });
+
+		for (const table of ['onto_tasks', 'onto_milestones', 'onto_plans', 'onto_risks']) {
+			expect(calls[table]).toContainEqual(['is', 'deleted_at', null]);
+			expect(calls[table]).toContainEqual(['is', 'archived_at', null]);
+		}
+	});
+
+	it('bounds the task read and flags a truncated overview', async () => {
+		const tasks = Array.from({ length: 300 }, (_, index) => openTask(index));
+		const { context, calls } = recordingContext({ ...PROJECT_ROWS, onto_tasks: tasks });
+
+		const payload = await getProjectOverview(context, { project_id: 'proj-1' });
+
+		expect(calls.onto_tasks).toContainEqual(['limit', 251]);
+		expect(calls.onto_tasks).toContainEqual([
+			'order',
+			'completed_at',
+			{ ascending: true, nullsFirst: true }
+		]);
+		expect(payload.tasks_truncated).toBe(true);
+		expect(payload.task_fetch_limit).toBe(250);
+		expect(payload.counts.active_tasks).toBe(250);
+	});
+
+	it('does not flag an overview whose tasks fit under the cap', async () => {
+		const { context } = recordingContext(PROJECT_ROWS);
+
+		const payload = await getWorkspaceOverview(context);
+
+		expect(payload.tasks_truncated).toBeUndefined();
+	});
+});

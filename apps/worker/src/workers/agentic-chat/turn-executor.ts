@@ -116,7 +116,17 @@ import type { AgenticChatRawWorkflowTurnPortV1 } from './workflow/raw-turn-prepa
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
-const DEFAULT_RUNNING_ACTIVITY = 'Processing...';
+/**
+ * User-visible status while the worker waits. Calm, plain, and true for the
+ * moment it is shown: the prepared context is already loaded when the turn is
+ * acknowledged, so the wait from there is the model thinking, not "preparing
+ * context". No infrastructure words (worker, queue, turn).
+ */
+const DEFAULT_RUNNING_ACTIVITY = 'Thinking…';
+const ACKNOWLEDGED_ACTIVITY = 'Thinking…';
+const FINALIZING_ACTIVITY = 'Wrapping up…';
+const READ_TOOL_ACTIVITY = 'Looking things up…';
+const MUTATING_TOOL_ACTIVITY = 'Making changes…';
 // The retained Phase 0 acceptance baseline reaches 245,137 ms, and independent
 // semantic review adds one bounded provider pass. Production organization
 // canaries have reached the former 270-second ceiling after completing every
@@ -456,6 +466,8 @@ export class AgenticChatTurnExecutor {
 			);
 		}
 		const providerBudget = new AbortController();
+		// Aborts only the provider request started ahead of the durable prelude.
+		const speculativeProviderAbort = new AbortController();
 		const combined = combineAbortSignals([
 			job.signal,
 			cancellationSignal,
@@ -546,10 +558,15 @@ export class AgenticChatTurnExecutor {
 					(deadlineSignal) => {
 						// `prepare` receives the conservative pre-start deadline; it is
 						// re-anchored when the budget timer arms after the start fence.
+						// The speculative abort only fires when the pre-provider
+						// persists fail after the provider request already started.
 						const prepareInput: AgenticChatProviderInputV1 = {
 							executionInput: executionInput!,
 							processingToken: envelope.processingToken,
-							signal: deadlineSignal,
+							signal: AbortSignal.any([
+								deadlineSignal,
+								speculativeProviderAbort.signal
+							]),
 							budget: { deadlineAtMs: providerBudgetDeadlineAtMs }
 						};
 						return this.ports.provider.prepare!(prepareInput);
@@ -609,14 +626,25 @@ export class AgenticChatTurnExecutor {
 				executionStartedAt: start.execution_started_at
 			});
 			throwIfAborted(combined.signal);
-			await this.publishExecutorLifecycle(
-				executionInput,
-				projection,
-				'acknowledged',
-				combined.signal
-			);
-			await this.publishExecutorSnapshots(executionInput, projection, combined.signal);
-			throwIfAborted(combined.signal);
+			// The durable acknowledgement and the two prepared snapshots are three
+			// sequential persists. Start them first, then start the provider so the
+			// model request overlaps them instead of waiting behind them.
+			// Ordering: no provider step is consumed until all three are durably
+			// accepted, so the publisher receives exactly the pre-overlap enqueue
+			// order and sequence numbers. Failure: a prelude rejection is rethrown
+			// from this same boundary, before any provider output is applied and
+			// without touching the turn signal, after aborting the speculative
+			// provider request, so recovery classifies it exactly as before.
+			const acceptedPrelude = (async () => {
+				await this.publishExecutorLifecycle(
+					executionInput!,
+					projection,
+					'acknowledged',
+					combined.signal
+				);
+				await this.publishExecutorSnapshots(executionInput!, projection, combined.signal);
+			})();
+			void acceptedPrelude.catch(() => undefined);
 
 			let finished = false;
 			const pendingToolResults: AgenticChatProviderToolSynthesisInputV1[] = [];
@@ -636,9 +664,21 @@ export class AgenticChatTurnExecutor {
 				signal: combined.signal,
 				budget: { deadlineAtMs: providerBudgetDeadlineAtMs }
 			};
-			let providerStream: AsyncIterable<AgenticChatProviderStepV1> = preparedProvider
-				? preparedProvider.stream()
-				: this.ports.provider.stream!(legacyStreamInput);
+			const prepared = preparedProvider;
+			const primedStream = primeProviderStream<AgenticChatProviderStepV1>(() =>
+				prepared ? prepared.stream() : this.ports.provider.stream!(legacyStreamInput)
+			);
+			try {
+				await acceptedPrelude;
+				throwIfAborted(combined.signal);
+			} catch (error) {
+				speculativeProviderAbort.abort(error);
+				primedStream.cancel();
+				throw error;
+			}
+			// `stream()` itself failing was raised here before the overlap existed.
+			if (!primedStream.created.ok) throw primedStream.created.error;
+			let providerStream: AsyncIterable<AgenticChatProviderStepV1> = primedStream.stream;
 			// The snapshot RPC takes the turn row's exclusive lock for its whole
 			// transaction. Dispatching it here lets it overlap the first model
 			// request instead of the first tool batch, whose ownership checks
@@ -1038,10 +1078,7 @@ export class AgenticChatTurnExecutor {
 		stage: AgenticChatExecutorLifecycleStageV1,
 		signal: AbortSignal
 	): Promise<void> {
-		const message =
-			stage === 'acknowledged'
-				? resolveAcknowledgementMessage(executionInput)
-				: 'Finalizing the response...';
+		const message = stage === 'acknowledged' ? ACKNOWLEDGED_ACTIVITY : FINALIZING_ACTIVITY;
 		await this.publishSemantic(
 			executionInput,
 			projection,
@@ -1107,7 +1144,6 @@ export class AgenticChatTurnExecutor {
 		eventPayload: JsonObject,
 		signal: AbortSignal
 	): Promise<void> {
-		const acknowledgementMessage = resolveAcknowledgementMessage(executionInput);
 		await this.publishSemantic(
 			executionInput,
 			projection,
@@ -1119,7 +1155,7 @@ export class AgenticChatTurnExecutor {
 				}),
 				phase: 'stream',
 				eventType: stage,
-				currentActivity: acknowledgementMessage,
+				currentActivity: ACKNOWLEDGED_ACTIVITY,
 				eventPayload
 			},
 			signal
@@ -1408,7 +1444,7 @@ export class AgenticChatTurnExecutor {
 				transitionId: step.callTransitionId,
 				phase: 'tool',
 				eventType: 'tool_call',
-				currentActivity: `Using ${step.toolName}...`,
+				currentActivity: MUTATING_TOOL_ACTIVITY,
 				eventPayload: {
 					type: 'tool_call',
 					tool_call: {
@@ -1804,7 +1840,8 @@ export class AgenticChatTurnExecutor {
 				transitionId: step.callTransitionId,
 				phase: 'tool',
 				eventType: 'tool_call',
-				currentActivity: `Using ${step.toolName}...`,
+				currentActivity:
+					step.type === 'mutating_tool' ? MUTATING_TOOL_ACTIVITY : READ_TOOL_ACTIVITY,
 				eventPayload: {
 					type: 'tool_call',
 					tool_call: {
@@ -1943,7 +1980,7 @@ export class AgenticChatTurnExecutor {
 				transitionId: step.callTransitionId,
 				phase: 'tool',
 				eventType: 'tool_call',
-				currentActivity: `Using ${step.toolName}...`,
+				currentActivity: READ_TOOL_ACTIVITY,
 				eventPayload: {
 					type: 'tool_call',
 					tool_call: {
@@ -3479,27 +3516,6 @@ export class AgenticChatTurnExecutor {
 	}
 }
 
-function resolveAcknowledgementMessage(executionInput: AgenticChatWorkerExecutionInputV1): string {
-	const context = executionInput.requestPayload.context;
-	const rawContextType =
-		context && typeof context === 'object' && !Array.isArray(context)
-			? (context as JsonObject).type
-			: null;
-	const contextType =
-		rawContextType === 'project_audit' || rawContextType === 'project_forecast'
-			? 'project'
-			: rawContextType === 'general'
-				? 'global'
-				: rawContextType;
-	const scope =
-		contextType === 'project'
-			? 'project'
-			: contextType === 'daily_brief'
-				? 'brief'
-				: 'workspace';
-	return `Request received. Preparing the ${scope} context...`;
-}
-
 function validateJobEnvelope(
 	job: ProcessingJob<AgenticChatTurnJobV1>
 ): AgenticChatExecutionIdentityV1 {
@@ -4226,6 +4242,70 @@ function canonicalText(value: unknown, maximum: number): value is string {
 function throwIfAborted(signal: AbortSignal): void {
 	if (!signal.aborted) return;
 	throw signal.reason instanceof Error ? signal.reason : new Error('Execution aborted');
+}
+
+type PrimedProviderStream<T> = {
+	created: { ok: true } | { ok: false; error: unknown };
+	stream: AsyncIterable<T>;
+	cancel(): void;
+};
+
+/**
+ * Create a provider stream and request its first step immediately, so the
+ * provider's network work overlaps whatever the caller still has to finish.
+ * Nothing the stream yields is observed until the caller iterates `stream`.
+ * A failure creating the stream is reported through `created`; a failure
+ * starting iteration surfaces on the first read, where the unprimed stream
+ * would have raised it.
+ */
+function primeProviderStream<T>(create: () => AsyncIterable<T>): PrimedProviderStream<T> {
+	let source: AsyncIterable<T>;
+	try {
+		source = create();
+	} catch (error) {
+		const empty: AsyncIterable<T> = {
+			[Symbol.asyncIterator]: () => ({
+				next: () => Promise.reject(error)
+			})
+		};
+		return { created: { ok: false, error }, stream: empty, cancel: () => undefined };
+	}
+	let iterator: AsyncIterator<T> | null = null;
+	let first: Promise<IteratorResult<T>>;
+	try {
+		iterator = source[Symbol.asyncIterator]();
+		first = iterator.next();
+	} catch (error) {
+		first = Promise.reject(error);
+	}
+	void first.catch(() => undefined);
+	let firstConsumed = false;
+	const primed = iterator;
+	return {
+		created: { ok: true },
+		stream: {
+			[Symbol.asyncIterator]: () => ({
+				next: () => {
+					if (!firstConsumed) {
+						firstConsumed = true;
+						return first;
+					}
+					return primed
+						? primed.next()
+						: Promise.resolve({ done: true, value: undefined } as IteratorResult<T>);
+				},
+				...(primed?.return
+					? { return: (value?: unknown) => primed.return!(value as never) }
+					: {})
+			})
+		},
+		cancel: () => {
+			if (!primed?.return) return;
+			void Promise.resolve()
+				.then(() => primed.return!())
+				.catch(() => undefined);
+		}
+	};
 }
 
 async function* iterateWithAbort<T>(
