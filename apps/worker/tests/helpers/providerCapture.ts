@@ -1,10 +1,10 @@
 // apps/worker/tests/helpers/providerCapture.ts
 //
-// Paid-harness diagnostics only. Wraps the provider client's `fetch` and tees every
-// OpenRouter SSE response, so a live run keeps what the workflow tables do not: the
-// visible text of rejected attempts, finish reasons, hidden-reasoning tokens, the
-// serving provider, and where each call's time went. Prompt dumps are disabled under
-// Vitest (promptDump.ts), so live harnesses capture here instead.
+// Paid-harness diagnostics only. Wraps the provider client's `fetch` and observes every
+// OpenRouter response as it passes through, so a live run keeps what the workflow tables
+// do not: the visible text of rejected attempts, finish reasons, hidden-reasoning tokens,
+// the serving provider and model, error bodies, and where each call's time went. Prompt
+// dumps are disabled under Vitest (promptDump.ts), so live harnesses capture here instead.
 
 export type CapturedProviderCallV1 = {
 	index: number;
@@ -116,10 +116,55 @@ export function createProviderCapture(base: typeof fetch = globalThis.fetch) {
 			call.endedAtMs = Date.now();
 			return response;
 		}
-		const [forClient, forCapture] = response.body.tee();
-		const work = readSse(forCapture, call).finally(() => pending.delete(work));
-		pending.add(work);
-		return new Response(forClient, {
+		const sse =
+			response.ok &&
+			(response.headers.get('content-type') ?? '')
+				.toLowerCase()
+				.includes('text/event-stream');
+		const observer = createObserver(call, sse);
+		const reader = response.body.getReader();
+		let finish!: () => void;
+		const done = new Promise<void>((resolve) => (finish = resolve));
+		pending.add(done);
+		void done.then(() => pending.delete(done));
+		const end = (error?: string) => {
+			if (call.endedAtMs !== null) return;
+			if (error) call.error ??= error;
+			observer.flush();
+			call.endedAtMs = Date.now();
+			finish();
+		};
+		// A pass-through, not a tee: when the client cancels its stream, the provider stream
+		// is cancelled too. A teed capture branch would keep an abandoned attempt generating
+		// (and billing) until the provider finished.
+		const passthrough = new ReadableStream<Uint8Array>({
+			async pull(controller) {
+				try {
+					const { done: finished, value } = await reader.read();
+					if (finished) {
+						end();
+						controller.close();
+						return;
+					}
+					observer.chunk(value);
+					controller.enqueue(value);
+				} catch (error) {
+					end(errorText(error));
+					controller.error(error);
+				}
+			},
+			async cancel(reason) {
+				// The client cancels after `[DONE]` without reading end-of-stream; a stream that
+				// already finished is a completion, not an abandoned attempt.
+				end(
+					call.finishReason !== null
+						? undefined
+						: `client_cancelled${reason === undefined ? '' : `: ${errorText(reason)}`}`
+				);
+				await reader.cancel(reason).catch(() => undefined);
+			}
+		});
+		return new Response(passthrough, {
 			status: response.status,
 			statusText: response.statusText,
 			headers: response.headers
@@ -129,64 +174,79 @@ export function createProviderCapture(base: typeof fetch = globalThis.fetch) {
 	return {
 		fetchImpl,
 		calls,
-		/** Resolves once every teed stream has ended or failed. */
-		settled: () => Promise.allSettled([...pending]).then(() => undefined),
+		/** Resolves once every stream has ended, failed or been cancelled, or after the bound. */
+		settled: (timeoutMs = 30_000) => {
+			let timer: NodeJS.Timeout | undefined;
+			return Promise.race([
+				Promise.allSettled([...pending]).then(() => undefined),
+				new Promise<void>((resolve) => {
+					timer = setTimeout(resolve, timeoutMs);
+				})
+			]).finally(() => clearTimeout(timer));
+		},
 		/** Calls started since `mark` (a previous `calls.length`). */
 		since: (mark: number) => calls.slice(mark)
 	};
 }
 
-async function readSse(stream: ReadableStream<Uint8Array>, call: CapturedProviderCallV1) {
+/** Parses SSE frames as they pass; a non-SSE or error body keeps its first 2 KB instead. */
+function createObserver(call: CapturedProviderCallV1, sse: boolean) {
 	const decoder = new TextDecoder();
 	let buffer = '';
-	try {
-		for await (const chunk of stream as unknown as AsyncIterable<Uint8Array>) {
-			buffer += decoder.decode(chunk, { stream: true });
+	let raw = '';
+	const line = (text: string) => {
+		if (!text.startsWith('data:')) return;
+		const data = text.slice(5).trim();
+		if (!data || data === '[DONE]') return;
+		const frame = safeJson(data) as Record<string, any> | null;
+		if (!frame) return;
+		call.firstDataAtMs ??= Date.now();
+		if (frame.error) call.error = JSON.stringify(frame.error).slice(0, 2_000);
+		call.provider ??= typeof frame.provider === 'string' ? frame.provider : null;
+		call.modelUsed ??= typeof frame.model === 'string' ? frame.model : null;
+		const choice = frame.choices?.[0];
+		const delta = choice?.delta ?? {};
+		if (typeof delta.content === 'string' && delta.content) {
+			call.firstOutputAtMs ??= Date.now();
+			call.text += delta.content;
+		}
+		if (Array.isArray(delta.tool_calls) && delta.tool_calls.length) {
+			call.firstOutputAtMs ??= Date.now();
+			call.toolCalls += JSON.stringify(delta.tool_calls);
+		}
+		if (choice?.finish_reason) call.finishReason = String(choice.finish_reason);
+		if (choice?.native_finish_reason)
+			call.nativeFinishReason = String(choice.native_finish_reason);
+		if (frame.usage) {
+			const u = frame.usage;
+			call.usage = {
+				promptTokens: numberOrNull(u.prompt_tokens),
+				completionTokens: numberOrNull(u.completion_tokens),
+				reasoningTokens: numberOrNull(u.completion_tokens_details?.reasoning_tokens),
+				cachedPromptTokens: numberOrNull(u.prompt_tokens_details?.cached_tokens),
+				costUsd: numberOrNull(u.cost)
+			};
+		}
+	};
+	return {
+		chunk(bytes: Uint8Array) {
+			const text = decoder.decode(bytes, { stream: true });
+			if (!sse) {
+				if (raw.length < 2_000) raw += text;
+				return;
+			}
+			buffer += text;
 			let newline: number;
 			while ((newline = buffer.indexOf('\n')) >= 0) {
-				const line = buffer.slice(0, newline).trim();
+				line(buffer.slice(0, newline).trim());
 				buffer = buffer.slice(newline + 1);
-				if (!line.startsWith('data:')) continue;
-				const data = line.slice(5).trim();
-				if (!data || data === '[DONE]') continue;
-				const frame = safeJson(data) as Record<string, any> | null;
-				if (!frame) continue;
-				call.firstDataAtMs ??= Date.now();
-				if (frame.error) call.error = JSON.stringify(frame.error).slice(0, 2_000);
-				call.provider ??= typeof frame.provider === 'string' ? frame.provider : null;
-				call.modelUsed ??= typeof frame.model === 'string' ? frame.model : null;
-				const choice = frame.choices?.[0];
-				const delta = choice?.delta ?? {};
-				if (typeof delta.content === 'string' && delta.content) {
-					call.firstOutputAtMs ??= Date.now();
-					call.text += delta.content;
-				}
-				if (Array.isArray(delta.tool_calls) && delta.tool_calls.length) {
-					call.firstOutputAtMs ??= Date.now();
-					call.toolCalls += JSON.stringify(delta.tool_calls);
-				}
-				if (choice?.finish_reason) call.finishReason = String(choice.finish_reason);
-				if (choice?.native_finish_reason)
-					call.nativeFinishReason = String(choice.native_finish_reason);
-				if (frame.usage) {
-					const u = frame.usage;
-					call.usage = {
-						promptTokens: numberOrNull(u.prompt_tokens),
-						completionTokens: numberOrNull(u.completion_tokens),
-						reasoningTokens: numberOrNull(
-							u.completion_tokens_details?.reasoning_tokens
-						),
-						cachedPromptTokens: numberOrNull(u.prompt_tokens_details?.cached_tokens),
-						costUsd: numberOrNull(u.cost)
-					};
-				}
 			}
+		},
+		flush() {
+			if (sse) line(buffer.trim());
+			else call.error ??= `http_${call.httpStatus}: ${raw.slice(0, 2_000)}`;
 		}
-	} catch (error) {
-		call.error ??= errorText(error);
-	} finally {
-		call.endedAtMs = Date.now();
-	}
+	};
 }
 
 /** Timing summary: where one provider call's wall clock went. */

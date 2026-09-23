@@ -848,6 +848,8 @@ function timelineItemsForMessage(sessionId: string, message: UIMessage): AgentTi
 		});
 		return items;
 	}
+	// Document change cards restate tool results the thinking-block rows already report.
+	if (message.type === 'document_changes') return [];
 	if (message.type === 'thinking_block' && Array.isArray((message as any).activities)) {
 		const items: AgentTimelineItem[] = [];
 		for (const activity of (message as any).activities) {

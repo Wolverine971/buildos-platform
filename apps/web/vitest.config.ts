@@ -73,6 +73,8 @@ const sharedAgentOpsTestAliases = [
 	'ontology/project-graph-loader',
 	'ontology/versioning.service',
 	'ontology/instantiation.service',
+	'ontology/document-patch',
+	'ontology/document-edits',
 	'ops/async-activity-logger',
 	'ops/entity-mention-notification.service',
 	'ops/entity-mention-ping.service',

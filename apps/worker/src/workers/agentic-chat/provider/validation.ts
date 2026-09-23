@@ -106,32 +106,9 @@ function validateExactDocumentLiterals(
 	if (!userText) return;
 	for (const call of calls) {
 		if (!['create_onto_document', 'update_onto_document'].includes(call.name)) continue;
-		const content = call.arguments.content;
-		if (typeof content !== 'string' || content.length === 0 || userText.includes(content)) {
-			continue;
-		}
 		const transformed = new Map<string, string>();
-		const fullyDecoded = HTML_ENTITY_LITERAL_PAIRS.reduce(
-			(value, [entity, literal]) => value.split(entity).join(literal),
-			content
-		);
-		if (fullyDecoded !== content && userText.includes(fullyDecoded)) {
-			for (const [entity, literal] of HTML_ENTITY_LITERAL_PAIRS) {
-				if (content.includes(entity)) transformed.set(entity, literal);
-			}
-		} else {
-			for (const [entity, literal] of HTML_ENTITY_LITERAL_PAIRS) {
-				let offset = content.indexOf(entity);
-				while (offset >= 0) {
-					const oneLiteral =
-						content.slice(0, offset) + literal + content.slice(offset + entity.length);
-					if (userText.includes(oneLiteral)) {
-						transformed.set(entity, literal);
-						break;
-					}
-					offset = content.indexOf(entity, offset + entity.length);
-				}
-			}
+		for (const content of authoredDocumentTexts(call.arguments)) {
+			collectHtmlEncodedLiterals(content, userText, transformed);
 		}
 		const errors = Array.from(
 			transformed,
@@ -139,6 +116,49 @@ function validateExactDocumentLiterals(
 				`Document content must preserve the user's exact literal text. Do not HTML-encode ${JSON.stringify(literal)} as ${JSON.stringify(entity)}; copy the original content byte-for-byte.`
 		);
 		addCallValidationErrors(issues, call, errors);
+	}
+}
+
+/** Body text the model authored: whole content, edit replacements, and section content. */
+function authoredDocumentTexts(args: Record<string, unknown>): string[] {
+	const texts: string[] = [];
+	if (typeof args.content === 'string') texts.push(args.content);
+	for (const edit of Array.isArray(args.edits) ? args.edits : []) {
+		if (typeof edit?.new_text === 'string') texts.push(edit.new_text);
+	}
+	for (const edit of Array.isArray(args.section_edits) ? args.section_edits : []) {
+		if (typeof edit?.content === 'string') texts.push(edit.content);
+	}
+	return texts;
+}
+
+function collectHtmlEncodedLiterals(
+	content: string,
+	userText: string,
+	transformed: Map<string, string>
+): void {
+	if (content.length === 0 || userText.includes(content)) return;
+	const fullyDecoded = HTML_ENTITY_LITERAL_PAIRS.reduce(
+		(value, [entity, literal]) => value.split(entity).join(literal),
+		content
+	);
+	if (fullyDecoded !== content && userText.includes(fullyDecoded)) {
+		for (const [entity, literal] of HTML_ENTITY_LITERAL_PAIRS) {
+			if (content.includes(entity)) transformed.set(entity, literal);
+		}
+	} else {
+		for (const [entity, literal] of HTML_ENTITY_LITERAL_PAIRS) {
+			let offset = content.indexOf(entity);
+			while (offset >= 0) {
+				const oneLiteral =
+					content.slice(0, offset) + literal + content.slice(offset + entity.length);
+				if (userText.includes(oneLiteral)) {
+					transformed.set(entity, literal);
+					break;
+				}
+				offset = content.indexOf(entity, offset + entity.length);
+			}
+		}
 	}
 }
 

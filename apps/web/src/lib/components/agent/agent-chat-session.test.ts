@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { VoiceNote } from '$lib/types/voice-notes';
+import { summarizeDocumentChange } from '@buildos/shared-agent-ops/ontology/document-edits';
 import {
 	buildAgentChatSessionSnapshot,
 	deriveSessionTitle,
@@ -313,6 +314,77 @@ describe('agent-chat-session helpers', () => {
 		expect((snapshot.messages[3] as any).data.entities).toEqual([
 			{ kind: 'task', id: 't1', name: 'First task', projectId: 'p1' },
 			{ kind: 'document', id: 'd1', name: 'Brand guide', projectId: 'p1' }
+		]);
+	});
+
+	it('buildAgentChatSessionSnapshot restores document change cards after the turn that edited', () => {
+		const change = summarizeDocumentChange({
+			project_id: 'p1',
+			document_id: 'd1',
+			title: 'Brand guide',
+			before: '# Brand guide\n\nOld voice.\n',
+			after: '# Brand guide\n\nNew voice.\n'
+		});
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'Tighten the voice section.',
+					created_at: '2026-03-28T10:00:00.000Z'
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Updated the voice section.',
+					created_at: '2026-03-28T10:01:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'e1',
+					message_id: 'assistant-1',
+					tool_name: 'update_onto_document',
+					sequence_index: 1,
+					arguments: { document_id: 'd1' },
+					// Stored as the tool's receipt JSON.
+					result: JSON.stringify({
+						document: { id: 'd1', project_id: 'p1' },
+						document_change_status: 'changed',
+						document_change: change
+					}),
+					success: true,
+					created_at: '2026-03-28T10:00:20.000Z'
+				},
+				{
+					id: 'e2',
+					message_id: 'assistant-1',
+					tool_name: 'update_onto_document',
+					sequence_index: 2,
+					arguments: { document_id: 'd1', title: 'Renamed' },
+					result: { document: { id: 'd1', project_id: 'p1' } },
+					success: true,
+					created_at: '2026-03-28T10:00:30.000Z'
+				}
+			] as any
+		});
+
+		expect(snapshot.messages.map((m) => m.type)).toEqual([
+			'user',
+			'thinking_block',
+			'assistant',
+			'document_changes'
+		]);
+		expect((snapshot.messages[3] as any).data.changes).toEqual([
+			expect.objectContaining({
+				documentId: 'd1',
+				projectId: 'p1',
+				title: 'Brand guide',
+				linesAdded: 1,
+				linesRemoved: 1,
+				revertPatches: [change!.revert_patch]
+			})
 		]);
 	});
 

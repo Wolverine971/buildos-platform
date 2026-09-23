@@ -195,3 +195,155 @@ describe('agent gateway document concurrency', () => {
 		expect(writeDocumentHeadAndVersionMock).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('agent gateway surgical document edits', () => {
+	const contract = {
+		...staleDocument,
+		content:
+			'Scope: 60k words.\n\n**Exclusions:** [To be defined — what NOT to cover?]\n\n## Next\n\nBody',
+		props: {}
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		writeDocumentHeadAndVersionMock.mockImplementation(async ({ update }) => ({
+			status: 'updated',
+			document: { ...contract, ...update },
+			versionWarning: null,
+			versionError: null
+		}));
+	});
+
+	it('deletes one line by exact text and returns a GitHub-style change receipt', async () => {
+		const result = await EXTERNAL_OP_HANDLERS['onto.document.update'](
+			buildContext(createAdmin([contract])),
+			{
+				document_id: contract.id,
+				edits: [
+					{
+						old_text: '**Exclusions:** [To be defined - what NOT to cover?]',
+						new_text: ''
+					}
+				]
+			}
+		);
+
+		expect(writeDocumentHeadAndVersionMock.mock.calls[0]?.[0]).toMatchObject({
+			expectedUpdatedAt: contract.updated_at,
+			update: {
+				content: 'Scope: 60k words.\n\n## Next\n\nBody',
+				props: expect.objectContaining({
+					body_markdown: 'Scope: 60k words.\n\n## Next\n\nBody'
+				})
+			}
+		});
+		expect(result).toMatchObject({
+			document_change_status: 'changed',
+			document_change: {
+				lines_added: 0,
+				lines_removed: 2,
+				edits_applied: [{ edit: 'edits[0]', match: 'normalized', lines: [3] }],
+				revert_patch: expect.objectContaining({ document_id: contract.id })
+			}
+		});
+	});
+
+	it('rejects unresolvable edits with actionable failures and writes nothing', async () => {
+		await expect(
+			EXTERNAL_OP_HANDLERS['onto.document.update'](buildContext(createAdmin([contract])), {
+				document_id: contract.id,
+				edits: [{ old_text: '**Exclusions:** none', new_text: '' }]
+			})
+		).rejects.toMatchObject({
+			code: 'VALIDATION_ERROR',
+			message: expect.stringContaining('Did you mean line 3?'),
+			details: { edit_failures: [expect.objectContaining({ code: 'ANCHOR_NOT_FOUND' })] }
+		});
+		expect(writeDocumentHeadAndVersionMock).not.toHaveBeenCalled();
+	});
+
+	it('refuses content and edits in the same call', async () => {
+		await expect(
+			EXTERNAL_OP_HANDLERS['onto.document.update'](buildContext(createAdmin([contract])), {
+				document_id: contract.id,
+				content: 'Whole body',
+				edits: [{ old_text: 'Body', new_text: 'Text' }]
+			})
+		).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+	});
+
+	it('refuses a replace that would drop most of a long document unless allowed', async () => {
+		const long = { ...contract, content: `# Outline\n\n${'Chapter card line.\n'.repeat(120)}` };
+		await expect(
+			EXTERNAL_OP_HANDLERS['onto.document.update'](buildContext(createAdmin([long])), {
+				document_id: long.id,
+				update_strategy: 'replace',
+				content: '# Outline\n\nPhase 1 only.'
+			})
+		).rejects.toMatchObject({
+			code: 'VALIDATION_ERROR',
+			message: expect.stringContaining('allow_large_deletion')
+		});
+		expect(writeDocumentHeadAndVersionMock).not.toHaveBeenCalled();
+
+		await EXTERNAL_OP_HANDLERS['onto.document.update'](buildContext(createAdmin([long])), {
+			document_id: long.id,
+			update_strategy: 'replace',
+			content: '# Outline\n\nPhase 1 only.',
+			allow_large_deletion: true
+		});
+		expect(writeDocumentHeadAndVersionMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('re-anchors edits on the fresh head after a concurrent human edit', async () => {
+		const fresh = {
+			...contract,
+			content: `Human intro.\n\n${contract.content}`,
+			updated_at: '2026-08-26T12:05:00.000Z'
+		};
+		writeDocumentHeadAndVersionMock.mockReset();
+		writeDocumentHeadAndVersionMock
+			.mockResolvedValueOnce({ status: 'conflict' })
+			.mockImplementationOnce(async ({ update }) => ({
+				status: 'updated',
+				document: { ...fresh, ...update },
+				versionWarning: null,
+				versionError: null
+			}));
+
+		const result = await EXTERNAL_OP_HANDLERS['onto.document.update'](
+			buildContext(createAdmin([contract, fresh])),
+			{ document_id: contract.id, edits: [{ old_text: 'Body', new_text: 'Final body' }] }
+		);
+
+		expect(writeDocumentHeadAndVersionMock.mock.calls[1]?.[0]).toMatchObject({
+			expectedUpdatedAt: fresh.updated_at,
+			update: { content: fresh.content.replace('Body', 'Final body') }
+		});
+		expect(result).toMatchObject({ document_change: { lines_added: 1, lines_removed: 1 } });
+	});
+
+	it('fails closed when the edited text changed underneath the agent', async () => {
+		const fresh = {
+			...contract,
+			content: 'Rewritten by a human.',
+			updated_at: '2026-08-26T12:05:00.000Z'
+		};
+		writeDocumentHeadAndVersionMock.mockReset();
+		writeDocumentHeadAndVersionMock.mockResolvedValueOnce({ status: 'conflict' });
+
+		await expect(
+			EXTERNAL_OP_HANDLERS['onto.document.update'](
+				buildContext(createAdmin([contract, fresh])),
+				{
+					document_id: contract.id,
+					edits: [{ old_text: 'Body', new_text: 'Final body' }]
+				}
+			)
+		).rejects.toMatchObject({
+			code: 'CONFLICT',
+			details: { edit_failures: [expect.objectContaining({ code: 'ANCHOR_NOT_FOUND' })] }
+		});
+		expect(writeDocumentHeadAndVersionMock).toHaveBeenCalledTimes(1);
+	});
+});

@@ -12,9 +12,14 @@
 
 	interface Props {
 		fields: DocumentFieldDiff[];
+		/**
+		 * Compact embedding (chat cards, toasts): drop the per-field card chrome and
+		 * header so the host supplies its own title and +/- stats.
+		 */
+		bare?: boolean;
 	}
 
-	let { fields }: Props = $props();
+	let { fields, bare = false }: Props = $props();
 
 	// Track which separators have been expanded
 	let expandedSeparators = $state<Set<string>>(new Set());
@@ -83,29 +88,48 @@
 {:else}
 	<div class="space-y-4">
 		{#each fields as field, fieldIndex (field.field)}
-			<div class="border border-border rounded-lg overflow-hidden shadow-ink">
+			<div class={bare ? '' : 'border border-border rounded-lg overflow-hidden shadow-ink'}>
 				<!-- Field header -->
-				<div
-					class="bg-muted px-3 py-1.5 border-b border-border flex items-center justify-between"
-				>
-					<span class="micro-label text-foreground">{field.label}</span>
-					<span class="text-2xs text-muted-foreground/60 tabular-nums">
-						{#if field.stats.modified > 0}
-							<span class="text-warning">~{field.stats.modified}</span>
-						{/if}
-						{#if field.stats.added > 0}
-							<span class="text-success">+{field.stats.added}</span>
-						{/if}
-						{#if field.stats.removed > 0}
-							<span class="text-destructive">-{field.stats.removed}</span>
-						{/if}
-					</span>
-				</div>
+				{#if !bare}
+					<div
+						class="bg-muted px-3 py-1.5 border-b border-border flex items-center justify-between"
+					>
+						<span class="micro-label text-foreground">{field.label}</span>
+						<span class="text-2xs text-muted-foreground/60 tabular-nums">
+							{#if field.stats.modified > 0}
+								<span class="text-warning">~{field.stats.modified}</span>
+							{/if}
+							{#if field.stats.added > 0}
+								<span class="text-success">+{field.stats.added}</span>
+							{/if}
+							{#if field.stats.removed > 0}
+								<span class="text-destructive">-{field.stats.removed}</span>
+							{/if}
+						</span>
+					</div>
+				{/if}
 
 				<!-- Diff lines -->
 				<div class="font-mono text-xs leading-5 overflow-x-auto">
 					{#each field.unifiedLines as line, lineIndex (lineIndex)}
-						{#if line.type === 'separator'}
+						{#if line.type === 'separator' && !line.hiddenLines?.length}
+							<!-- Gap whose lines are not available (bounded change hunks) -->
+							<div
+								class="flex items-center gap-2 border-y border-border/30 bg-muted/50 px-3 py-1 text-2xs text-muted-foreground"
+							>
+								<span aria-hidden="true">&middot;&middot;&middot;</span>
+								{#if line.hiddenLineCount}
+									<span>
+										{line.hiddenLineCount} unchanged line{line.hiddenLineCount ===
+										1
+											? ''
+											: 's'}
+									</span>
+								{:else}
+									<span class="sr-only">More of the document</span>
+								{/if}
+							</div>
+						{:else if line.type === 'separator'}
 							{@const separatorKey = `${fieldIndex}-${lineIndex}`}
 							{@const expanded = isSeparatorExpanded(fieldIndex, lineIndex)}
 							<!-- Collapsed context separator -->

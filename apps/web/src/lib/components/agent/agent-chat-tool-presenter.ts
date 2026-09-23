@@ -31,6 +31,7 @@ import {
 	formatSkillActivityContent
 } from './agent-chat-skill-activity';
 import { isProjectContext } from './agent-chat-session';
+import type { DocumentChangeReceipt } from './document-change-cards';
 
 export type OntologyEntityKind =
 	| 'project'
@@ -64,6 +65,8 @@ export interface ToolPresenterContext {
 	toast?: {
 		success: (msg: string) => void;
 		error: (msg: string) => void;
+		/** Rich "<title> updated · +X −Y" toast with an expandable diff. */
+		documentChange?: (change: DocumentChangeReceipt) => void;
 	};
 	onDocumentMutation?: (event: DocumentMutationEvent) => void;
 	isDev?: boolean;
@@ -135,6 +138,8 @@ export interface ToolPresenter {
 		args: string | Record<string, unknown>,
 		success: boolean
 	): void;
+	/** Toast for a document body edit that carries a change receipt. */
+	showDocumentChangeToast(change: DocumentChangeReceipt): void;
 
 	// Catalog (exposed for callers that still gate on the set directly)
 	readonly MUTATION_TRACKED_TOOLS: ReadonlySet<string>;
@@ -2038,6 +2043,17 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}
 	}
 
+	function showDocumentChangeToast(change: DocumentChangeReceipt): void {
+		const toast = ctx.toast;
+		if (!toast) return;
+		if (toast.documentChange) {
+			toast.documentChange(change);
+			return;
+		}
+		const title = change.title?.trim();
+		toast.success(title ? `Updated document: "${title}"` : 'Updated document');
+	}
+
 	return {
 		formatToolMessage,
 		describeToolDisplay,
@@ -2052,6 +2068,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		resetMutationTracking,
 		buildMutationSummary,
 		showToolResultToast,
+		showDocumentChangeToast,
 		MUTATION_TRACKED_TOOLS: MUTATION_TRACKED_TOOLS_SET,
 		DATA_MUTATION_TOOLS: DATA_MUTATION_TOOLS_SET
 	};

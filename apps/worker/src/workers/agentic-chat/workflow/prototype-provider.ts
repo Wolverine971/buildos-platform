@@ -539,6 +539,16 @@ function specialistFailureText(outcome: Extract<SpecialistOutcome, { kind: 'fail
 	}
 }
 
+/**
+ * Planner assignments are specific on large projects: in the Tasker 98 pilot (2026-09-23)
+ * V4.1 Flash wrote valid 1,400–2,700-character assignments naming the right documents, and a
+ * 1,000-character bound failed the planner in 11 of 12 reviews. Storage allows 16 KiB per
+ * assignment object (`agentic_chat_workflow_planner_result_valid_v1`); the byte bound keeps
+ * any encoding well inside it.
+ */
+const ASSIGNMENT_MAX_CHARS = 4_000;
+const ASSIGNMENT_MAX_BYTES = 12_000;
+
 export function parseWorkflowAssignments(text: string): Assignment | null {
 	try {
 		const data = JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
@@ -549,7 +559,8 @@ export function parseWorkflowAssignments(text: string): Assignment | null {
 				(key) =>
 					typeof data[key] === 'string' &&
 					data[key].trim().length >= 3 &&
-					data[key].length <= 1000
+					data[key].length <= ASSIGNMENT_MAX_CHARS &&
+					Buffer.byteLength(data[key], 'utf8') <= ASSIGNMENT_MAX_BYTES
 			)
 		)
 			return null;

@@ -115,6 +115,36 @@ const slowSpecialists =
 			: happyScript(call));
 
 describe('AgenticChatWorkflowRunner — slice A: persistent runner', () => {
+	it('accepts the specific planner assignments large projects produce', async () => {
+		// Tasker 98 pilot: valid 1,400–2,700-character assignments failed a 1,000 bound.
+		const analyst = `Start from the outreach research list. ${'Cross-check each named contact against its task. '.repeat(50)}`;
+		const plan = (text: string) => ({ kind: 'text' as const, text, completionTokens: 700 });
+		const h = harness({
+			script: (call) =>
+				call.role === 'planner'
+					? plan(JSON.stringify({ analyst, reviewer: 'Challenge the analyst.' }))
+					: happyScript(call)
+		});
+		await h.run();
+		expect(analyst.length).toBeGreaterThan(2_000);
+		expect(h.store.run.steps.planner).toMatchObject({ status: 'accepted' });
+		expect(h.provider.callsFor('project_analyst')[0]!.body.messages[0].content).toContain(
+			analyst.trim()
+		);
+
+		const tooLong = harness({
+			script: (call) =>
+				call.role === 'planner'
+					? plan(JSON.stringify({ analyst: 'x'.repeat(4_001), reviewer: 'Challenge.' }))
+					: happyScript(call)
+		});
+		await tooLong.run();
+		expect(tooLong.store.run.steps.planner).toMatchObject({
+			status: 'failed',
+			failureCode: 'workflow_planner_invalid'
+		});
+	});
+
 	it('keeps an invalid plan and a planner provider failure apart; both install the fixed plan', async () => {
 		const cases = [
 			[

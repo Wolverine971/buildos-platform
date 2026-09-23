@@ -44,7 +44,11 @@ export const CHAT_WORKFLOW_DISPATCH_POLICY = {
 	maxProviderCalls: 6
 } as const;
 
-/** Hard validator limits. Prompts ask for less so ordinary overshoot still fits. */
+/**
+ * Hard validator limits, byte-identical to the SQL report validator. Prompts ask for less so
+ * ordinary overshoot still fits, and a report that runs past a limit by up to
+ * REPORT_OVERRUN_FACTOR is fitted rather than rejected (see `fittedText`).
+ */
 export const CHAT_WORKFLOW_ROLE_REPORT_LIMITS = {
 	findings: 5,
 	risks: 4,
@@ -59,6 +63,14 @@ export const CHAT_WORKFLOW_ROLE_REPORT_LIMITS = {
 } as const;
 
 const COMPACT_COUNTS = { findings: 3, risks: 2, unknowns: 2 } as const;
+/**
+ * Tasker 98 pilot (2026-09-23): on large projects V4.1 Flash wrote 485–573-character
+ * recommendations against the 400 it was asked for and the 480 bound, and one finding cited
+ * seven records. Rejecting those reports threw good work away for a compact retry (+4 s) or
+ * left the review partial. Text up to this multiple of its bound is trimmed at a word; lists
+ * and references keep their first items. Anything longer is still malformed.
+ */
+const REPORT_OVERRUN_FACTOR = 2;
 const LABEL_CHARS = 80;
 const MAX_EVIDENCE_RECORDS = 2_000;
 
@@ -203,29 +215,30 @@ export function parseWorkflowRoleReport(
 	];
 	if (specialist && !outcomes.includes(String(data.outcome)))
 		return invalid('a valid explicit review outcome is required');
-	const summary = boundedText(data.summary, L.summaryChars);
+	const summary = fittedText(data.summary, L.summaryChars);
 	if (!summary) return invalid(`summary must be 1-${L.summaryChars} characters`);
-	const recommendation = boundedText(data.recommendation, L.recommendationChars);
+	const recommendation = fittedText(data.recommendation, L.recommendationChars);
 	if (!recommendation)
 		return invalid(`recommendation must be 1-${L.recommendationChars} characters`);
 	if (
 		!Array.isArray(data.findings) ||
 		(!specialist && !data.findings.length) ||
-		data.findings.length > L.findings
+		data.findings.length > L.findings * REPORT_OVERRUN_FACTOR
 	)
 		return invalid(`findings must list 1-${L.findings} items`);
 	const risksInput = data.risks ?? [];
-	if (!Array.isArray(risksInput) || risksInput.length > L.risks)
+	if (!Array.isArray(risksInput) || risksInput.length > L.risks * REPORT_OVERRUN_FACTOR)
 		return invalid(`risks must list at most ${L.risks} items`);
 	const unknownsInput = data.unknowns ?? [];
-	if (!Array.isArray(unknownsInput) || unknownsInput.length > L.unknowns)
+	if (!Array.isArray(unknownsInput) || unknownsInput.length > L.unknowns * REPORT_OVERRUN_FACTOR)
 		return invalid(`unknowns must list at most ${L.unknowns} items`);
 
 	let unsupportedReferences = 0;
 	let unsupportedFindings = 0;
 	const references = (value: unknown): ChatWorkflowEvidenceRef[] | null => {
 		if (value === undefined) return [];
-		if (!Array.isArray(value) || value.length > L.referencesPerItem) return null;
+		if (!Array.isArray(value) || value.length > L.referencesPerItem * REPORT_OVERRUN_FACTOR)
+			return null;
 		const accepted: ChatWorkflowEvidenceRef[] = [];
 		for (const item of value) {
 			if (typeof item !== 'string' || item.length > L.referenceChars) return null;
@@ -234,13 +247,13 @@ export function parseWorkflowRoleReport(
 			if (!label) unsupportedReferences++;
 			else if (!accepted.some((ref) => ref.id === id)) accepted.push({ id, label });
 		}
-		return accepted;
+		return accepted.slice(0, L.referencesPerItem);
 	};
 
 	const findings: ChatWorkflowRoleReportV1['findings'] = [];
 	for (const item of data.findings) {
 		if (!isRecord(item)) return invalid('each finding must be an object');
-		const claim = boundedText(item.claim, L.claimChars);
+		const claim = fittedText(item.claim, L.claimChars);
 		if (!claim) return invalid(`each finding claim must be 1-${L.claimChars} characters`);
 		if (item.basis !== 'recorded' && item.basis !== 'inferred')
 			return invalid('each finding basis must be "recorded" or "inferred"');
@@ -250,13 +263,14 @@ export function parseWorkflowRoleReport(
 		if (!refs.length) unsupportedFindings++;
 		else findings.push({ claim, basis: item.basis, evidence: refs });
 	}
+	findings.splice(L.findings);
 	if (!findings.length && (!specialist || data.outcome === 'findings'))
 		return invalid('no finding cited a supplied project record');
 
 	const risks: ChatWorkflowRoleReportV1['risks'] = [];
 	for (const item of risksInput) {
 		if (!isRecord(item)) return invalid('each risk must be an object');
-		const risk = boundedText(item.risk, L.riskChars);
+		const risk = fittedText(item.risk, L.riskChars);
 		if (!risk) return invalid(`each risk must be 1-${L.riskChars} characters`);
 		const refs = references(item.evidence);
 		if (!refs) return invalid(`each risk may cite at most ${L.referencesPerItem} record ids`);
@@ -266,10 +280,12 @@ export function parseWorkflowRoleReport(
 	}
 	const unknowns: string[] = [];
 	for (const item of unknownsInput) {
-		const unknown = boundedText(item, L.unknownChars);
+		const unknown = fittedText(item, L.unknownChars);
 		if (!unknown) return invalid(`each unknown must be 1-${L.unknownChars} characters`);
 		unknowns.push(unknown);
 	}
+	risks.splice(L.risks);
+	unknowns.splice(L.unknowns);
 
 	if (specialist && data.outcome !== 'findings' && (data.findings.length || risks.length))
 		return invalid('an abstention must have empty findings and risks');
@@ -507,10 +523,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function boundedText(value: unknown, maximum: number): string | null {
+/**
+ * Report text within its bound, or trimmed to it at a word with an ellipsis when it runs over
+ * by at most REPORT_OVERRUN_FACTOR. Counts code points, as SQL `char_length` does, and never
+ * splits a surrogate pair.
+ */
+function fittedText(value: unknown, maximum: number): string | null {
 	if (typeof value !== 'string') return null;
-	const text = value.trim();
-	return text.length > 0 && text.length <= maximum ? text : null;
+	const chars = [...value.trim()];
+	if (!chars.length || chars.length > maximum * REPORT_OVERRUN_FACTOR) return null;
+	if (chars.length <= maximum) return chars.join('');
+	const cut = chars.slice(0, maximum - 1).join('');
+	const space = cut.lastIndexOf(' ');
+	return `${(space >= maximum / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
 function plural(count: number, noun: string): string {

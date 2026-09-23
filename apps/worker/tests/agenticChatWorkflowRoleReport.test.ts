@@ -102,13 +102,13 @@ describe('workflow role report contract', () => {
 		['an array', [valid], 'the report was not a JSON object'],
 		['no findings', { ...valid, findings: [] }, 'findings must list 1-5 items'],
 		[
-			'too many findings',
-			{ ...valid, findings: Array(6).fill(valid.findings[0]) },
+			'more than twice the findings',
+			{ ...valid, findings: Array(11).fill(valid.findings[0]) },
 			'findings must list 1-5 items'
 		],
 		[
-			'an overlong claim',
-			{ ...valid, findings: [{ ...valid.findings[0], claim: 'x'.repeat(321) }] },
+			'a claim more than twice its bound',
+			{ ...valid, findings: [{ ...valid.findings[0], claim: 'x'.repeat(641) }] },
 			'each finding claim must be 1-320 characters'
 		],
 		[
@@ -117,8 +117,8 @@ describe('workflow role report contract', () => {
 			'each finding basis must be "recorded" or "inferred"'
 		],
 		[
-			'too many references',
-			{ ...valid, findings: [{ ...valid.findings[0], evidence: Array(5).fill('task-1') }] },
+			'more than twice the references',
+			{ ...valid, findings: [{ ...valid.findings[0], evidence: Array(9).fill('task-1') }] },
 			'each finding may cite at most 4 record ids'
 		],
 		[
@@ -127,8 +127,8 @@ describe('workflow role report contract', () => {
 			'no finding cited a supplied project record'
 		],
 		[
-			'too many risks',
-			{ ...valid, risks: Array(5).fill(valid.risks[0]) },
+			'more than twice the risks',
+			{ ...valid, risks: Array(9).fill(valid.risks[0]) },
 			'risks must list at most 4 items'
 		],
 		[
@@ -143,6 +143,36 @@ describe('workflow role report contract', () => {
 		]
 	])('rejects %s with a truthful reason', (_label, value, reason) => {
 		expect(parse(value)).toEqual({ ok: false, reason });
+	});
+
+	it('fits a report that runs modestly past its bounds instead of discarding it', () => {
+		// Shapes V4.1 Flash wrote in the Tasker 98 pilot: a 573-character recommendation, a
+		// finding citing more than four records, one list item too many.
+		const recommendation = `${'Send the staged outreach first. '.repeat(18)}Then review.`;
+		const result = parse({
+			...valid,
+			recommendation,
+			findings: [
+				{ ...valid.findings[0], claim: `${'word '.repeat(90)}end` },
+				...Array(5).fill({
+					...valid.findings[0],
+					evidence: ['task-1', 'ghost', 'task-2', 'task-1', 'task-2', 'task-1', 'task-2']
+				})
+			],
+			risks: Array(5).fill(valid.risks[0]),
+			unknowns: Array(5).fill('Budget ceiling')
+		});
+		if (!result.ok) throw new Error(result.reason);
+		const { report } = result;
+		expect(recommendation.length).toBeGreaterThan(480);
+		expect([...report.recommendation].length).toBeLessThanOrEqual(480);
+		expect(report.recommendation.endsWith('…')).toBe(true);
+		expect(report.recommendation.startsWith('Send the staged outreach first.')).toBe(true);
+		expect([...report.findings[0]!.claim].length).toBeLessThanOrEqual(320);
+		expect(report.findings).toHaveLength(5);
+		expect(report.findings[1]!.evidence.map((ref) => ref.id)).toEqual(['task-1', 'task-2']);
+		expect(report.risks).toHaveLength(4);
+		expect(report.unknowns).toHaveLength(4);
 	});
 
 	it('keeps every role inside the acting client cap and the dispatch contract', () => {

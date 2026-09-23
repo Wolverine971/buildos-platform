@@ -15,6 +15,7 @@ import {
 } from './tool-classification';
 import { extractGatewayRequiredFieldFailuresFromValidationIssues } from './round-analysis';
 import { getDocumentUpdateContentCandidate } from '@buildos/shared-agent-ops/ops/update-value-validation';
+import { hasDocumentEdits } from '@buildos/shared-agent-ops/ontology/document-edits';
 import {
 	classifyToolFailure,
 	isNotFoundFailure,
@@ -96,7 +97,7 @@ function didCreateDurableRecord(toolExecutions: FastToolExecution[]): boolean {
 		// untouched (Phase 0 gate, 2026-07-31).
 		if (name === 'update_onto_document') {
 			const { args } = parseToolArguments(execution.toolCall.function?.arguments);
-			return getDocumentUpdateContentCandidate(args) !== null;
+			return getDocumentUpdateContentCandidate(args) !== null || hasDocumentEdits(args);
 		}
 		return false;
 	});

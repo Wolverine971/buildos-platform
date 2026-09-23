@@ -152,9 +152,15 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// search_onto_assets/get_onto_asset reads) fit under the existing cap
 		// after trimming their descriptions: project 64 tools / 61,194 B. No
 		// headroom is left; the next project-surface addition must re-baseline.
+		// 2026-09-23 (tasker 98 surgical document edits): update_onto_document
+		// gained edits/section_edits/allow_large_deletion and get_document_outline
+		// gained find, so a one-line change no longer resends a whole document
+		// (p02 resent 11K chars and failed). Descriptions trimmed first; measured
+		// project 64 tools / 62,523 B. Only passes that select update_onto_document
+		// pay it. Re-baselined with a small margin.
 		expect(global.openingBytes).toBeLessThanOrEqual(51_200);
-		expect(project.openingBytes).toBeLessThanOrEqual(61_200);
-		expect(project.admittedBytes).toBeLessThanOrEqual(61_200);
+		expect(project.openingBytes).toBeLessThanOrEqual(62_600);
+		expect(project.admittedBytes).toBeLessThanOrEqual(62_600);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_220);
 	});
 

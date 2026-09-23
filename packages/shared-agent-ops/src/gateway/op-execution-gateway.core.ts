@@ -63,6 +63,16 @@ import {
 	START_HERE_DOCUMENT_TYPE_KEY
 } from '../ontology/start-here';
 import {
+	formatDocumentEditFailures,
+	hasDocumentEdits,
+	largeDeletionRefusal,
+	resolveDocumentEdits,
+	summarizeDocumentChange,
+	type AppliedDocumentEdit,
+	type DocumentSectionEditV1,
+	type DocumentTextEditV1
+} from '../ontology/document-edits';
+import {
 	ARCHIVABLE_ENTITY_KINDS,
 	CORE_ENTITY_CONFIG,
 	EXTERNAL_CUSTOM_OPS,
@@ -484,6 +494,26 @@ function normalizeDocumentUpdateStrategy(value: unknown): 'replace' | 'append' |
 	);
 }
 
+function documentBodyOf(document: { content?: unknown; props?: unknown }): string {
+	if (typeof document.content === 'string') return document.content;
+	const props = document.props as Record<string, unknown> | null | undefined;
+	return typeof props?.body_markdown === 'string' ? props.body_markdown : '';
+}
+
+/** Surgical edit arguments, or null when the call carries none. Shapes are schema-checked upstream. */
+function readDocumentEditArgs(args: Record<string, unknown>): {
+	edits: DocumentTextEditV1[];
+	section_edits: DocumentSectionEditV1[];
+} | null {
+	if (!hasDocumentEdits(args)) return null;
+	return {
+		edits: Array.isArray(args.edits) ? (args.edits as DocumentTextEditV1[]) : [],
+		section_edits: Array.isArray(args.section_edits)
+			? (args.section_edits as DocumentSectionEditV1[])
+			: []
+	};
+}
+
 async function resolveExternalDocumentContentWithStrategy(params: {
 	strategy: 'replace' | 'append' | 'merge_llm';
 	newContent: string;
@@ -816,19 +846,43 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		);
 	}
 
+	const documentEdits = readDocumentEditArgs(args);
+	if (documentEdits && documentContentCandidate !== undefined) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'Pass either content (whole-body replace or append) or edits/section_edits (change part of the document), not both.'
+		);
+	}
+	let appliedEdits: AppliedDocumentEdit[] | undefined;
+
+	if (documentEdits) {
+		const resolution = resolveDocumentEdits({
+			project_id: existingDocument.project_id,
+			document_id: documentId,
+			content: documentBodyOf(existingDocument),
+			...documentEdits
+		});
+		if (resolution.status === 'rejected') {
+			throw new ExternalToolGatewayError(
+				'VALIDATION_ERROR',
+				formatDocumentEditFailures(resolution.failures),
+				{ edit_failures: resolution.failures }
+			);
+		}
+		appliedEdits = resolution.applied;
+		assertContentWithinCap(resolution.next_content, 'content');
+		updateData.content = resolution.next_content;
+		mergedProps.body_markdown = resolution.next_content;
+		propsTouched = true;
+		changedFieldCount += 1;
+	}
+
 	if (documentContentCandidate !== undefined) {
 		const normalizedContent = normalizeMarkdownInput(documentContentCandidate) ?? '';
 		const resolvedContent = await resolveExternalDocumentContentWithStrategy({
 			strategy,
 			newContent: normalizedContent,
-			existingLoader: async () =>
-				typeof existingDocument.content === 'string'
-					? existingDocument.content
-					: typeof (existingDocument.props as Record<string, unknown> | null)
-								?.body_markdown === 'string'
-						? ((existingDocument.props as Record<string, unknown>)
-								.body_markdown as string)
-						: ''
+			existingLoader: async () => documentBodyOf(existingDocument)
 		});
 		const nextTypeKey =
 			typeof updateData.type_key === 'string'
@@ -843,6 +897,10 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 						resolvedContent
 					)
 				: resolvedContent;
+		if (strategy === 'replace' && args.allow_large_deletion !== true) {
+			const refusal = largeDeletionRefusal(documentBodyOf(existingDocument), nextContent);
+			if (refusal) throw new ExternalToolGatewayError('VALIDATION_ERROR', refusal);
+		}
 		assertContentWithinCap(nextContent, 'content');
 		updateData.content = nextContent;
 		mergedProps.body_markdown = nextContent;
@@ -881,11 +939,13 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		changeSource: 'api'
 	});
 
-	// A content-only append/merge expresses an intent that can be safely re-applied
-	// to a newer head. Replace, metadata, archive, and props mutations do not:
-	// retrying those automatically could overwrite a concurrent human edit.
+	// A content-only append/merge or exact-text edit expresses an intent that can
+	// be safely re-applied to a newer head (edits re-anchor on the fresh body and
+	// fail closed if their text moved). Replace, metadata, archive, and props
+	// mutations do not: retrying those could overwrite a concurrent human edit.
 	const canRetryContentIntent =
-		isAppendOrMergeUpdateStrategy(strategy) &&
+		(documentEdits !== null ||
+			(documentContentCandidate !== undefined && isAppendOrMergeUpdateStrategy(strategy))) &&
 		args.title === undefined &&
 		args.description === undefined &&
 		args.type_key === undefined &&
@@ -899,19 +959,38 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 			updated_at: new Date().toISOString()
 		};
 
+		if (documentEdits) {
+			const resolution = resolveDocumentEdits({
+				project_id: refreshedDocument.project_id,
+				document_id: documentId,
+				content: documentBodyOf(refreshedDocument),
+				...documentEdits
+			});
+			if (resolution.status === 'rejected') {
+				throw new ExternalToolGatewayError(
+					'CONFLICT',
+					`The document changed while the agent was editing it, and the edit no longer applies. Re-read and retry.\n${formatDocumentEditFailures(resolution.failures)}`,
+					{ edit_failures: resolution.failures }
+				);
+			}
+			appliedEdits = resolution.applied;
+			assertContentWithinCap(resolution.next_content, 'content');
+			retryUpdateData.content = resolution.next_content;
+			retryUpdateData.props = {
+				...((refreshedDocument.props as Record<string, unknown> | null) ?? {}),
+				body_markdown: resolution.next_content,
+				origin:
+					(refreshedDocument.props as Record<string, unknown> | null)?.origin ??
+					'external_agent'
+			};
+		}
+
 		if (documentContentCandidate !== undefined) {
 			const normalizedContent = normalizeMarkdownInput(documentContentCandidate) ?? '';
 			const resolvedContent = await resolveExternalDocumentContentWithStrategy({
 				strategy,
 				newContent: normalizedContent,
-				existingLoader: async () =>
-					typeof refreshedDocument.content === 'string'
-						? refreshedDocument.content
-						: typeof (refreshedDocument.props as Record<string, unknown> | null)
-									?.body_markdown === 'string'
-							? ((refreshedDocument.props as Record<string, unknown>)
-									.body_markdown as string)
-							: ''
+				existingLoader: async () => documentBodyOf(refreshedDocument)
 			});
 			const nextTypeKey =
 				typeof retryUpdateData.type_key === 'string'
@@ -1058,12 +1137,34 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		getExternalAgentActivityContext(context)
 	);
 
+	// GitHub-style receipt of the body change (+/- lines, hunks, Undo patch) for
+	// the chat toast/card and the acting model's confirmation.
+	const documentChange =
+		updateData.content !== undefined
+			? summarizeDocumentChange({
+					project_id: project.id,
+					document_id: String(data.id),
+					title: typeof data.title === 'string' ? data.title : null,
+					before: documentBodyOf(previousDocument),
+					after: documentBodyOf(data)
+				})
+			: null;
+
 	return {
 		document: serializeExternalEntity(
 			'document',
 			data as Record<string, unknown>,
 			project.name
 		),
+		...(documentChange
+			? {
+					document_change_status: 'changed',
+					document_change: {
+						...documentChange,
+						...(appliedEdits ? { edits_applied: appliedEdits } : {})
+					}
+				}
+			: {}),
 		version_warning: writeResult.versionWarning
 	};
 }

@@ -15,10 +15,18 @@
 // and per run (runs/) every provider call (timing, finish reason, hidden-reasoning tokens,
 // serving provider, visible text) joined to its dispatch, step and event rows.
 //
-// Env: CONTEXT_FINDER_PILOT_SCENARIOS (keys), CONTEXT_FINDER_PILOT_ARMS (baseline,auto,
-// curated), CONTEXT_FINDER_PILOT_REPS (default 1), CONTEXT_FINDER_PILOT_ROUTING
-// (`workflow`: the worker's workflow provider policy; `openrouter_default`: no provider
-// preferences, which is what the 2026-09-22 pilot ran), CONTEXT_FINDER_PILOT_BUDGET_USD.
+// Env:
+//   CONTEXT_FINDER_PILOT_SCENARIOS  scenario keys
+//   CONTEXT_FINDER_PILOT_ARMS       baseline,auto,curated
+//   CONTEXT_FINDER_PILOT_REPS       default 1
+//   CONTEXT_FINDER_PILOT_ROUTING    `workflow` (the worker's workflow provider policy) or
+//                                   `openrouter_default` (no preferences: the 2026-09-22 pilot)
+//   CONTEXT_FINDER_PILOT_HANDOFF    `off` (default, production: analyst and reviewer in
+//                                   parallel) or `on` (serial evidence handoff: the 09-22 pilot)
+//   CONTEXT_FINDER_PILOT_BUDGET_USD       stop before the next review past this measured spend
+//   CONTEXT_FINDER_PILOT_MAX_CREDITS_USD  stop before the next review once the OpenRouter
+//                                         account's usage has risen this much (every caller of
+//                                         the shared key counts, so it errs toward stopping)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -68,7 +76,10 @@ import {
 	AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS,
 	buildAgenticChatWorkflowRoutesV1
 } from '../src/workers/agentic-chat/workflow/workflow-dispatch';
-import { createWorkflowContextFinder } from '../src/workers/agentic-chat/workflow/context-finder-port';
+import {
+	createWorkflowContextFinder,
+	WORKFLOW_CONTEXT_FINDER_TIMEOUT_MS
+} from '../src/workers/agentic-chat/workflow/context-finder-port';
 import {
 	createProviderCapture,
 	providerCallTiming,
@@ -77,8 +88,10 @@ import {
 
 const ENABLED = process.env.CONTEXT_FINDER_PILOT === '1';
 const ROOT = resolve(process.cwd(), '../..');
-/** Abort the remaining runs past this spend (model dispatches + Jev). */
-const BUDGET_USD = Number(process.env.CONTEXT_FINDER_PILOT_BUDGET_USD ?? '0.75');
+/** Skip the remaining runs past this spend (model dispatches + Jev), checked before each review. */
+const BUDGET_USD = Number(process.env.CONTEXT_FINDER_PILOT_BUDGET_USD ?? '0.25');
+/** Independent stop on the account's measured usage delta (OpenRouter `/credits`). */
+const MAX_CREDITS_USD = Number(process.env.CONTEXT_FINDER_PILOT_MAX_CREDITS_USD ?? '0.30');
 const ALL_ARMS = ['baseline', 'auto', 'curated'] as const;
 type Arm = (typeof ALL_ARMS)[number];
 const ARMS: Arm[] = (process.env.CONTEXT_FINDER_PILOT_ARMS ?? ALL_ARMS.join(','))
@@ -92,6 +105,9 @@ const REPS = Math.max(1, Number(process.env.CONTEXT_FINDER_PILOT_REPS ?? '1'));
 const ROUTING = process.env.CONTEXT_FINDER_PILOT_ROUTING ?? 'workflow';
 if (ROUTING !== 'workflow' && ROUTING !== 'openrouter_default')
 	throw new Error('CONTEXT_FINDER_PILOT_ROUTING must be workflow or openrouter_default');
+const HANDOFF = process.env.CONTEXT_FINDER_PILOT_HANDOFF ?? 'off';
+if (HANDOFF !== 'on' && HANDOFF !== 'off')
+	throw new Error('CONTEXT_FINDER_PILOT_HANDOFF must be on or off');
 
 type Scenario = {
 	key: string;
@@ -131,6 +147,9 @@ type Result = {
 	arm: Arm;
 	rep: number;
 	routing: string;
+	handoff: string;
+	/** OpenRouter account usage delta across this review (all callers of the key). */
+	creditsUsd: number | null;
 	turnRunId: string;
 	status: string | undefined;
 	outcome: string | undefined;
@@ -179,6 +198,8 @@ type RunTimeline = {
 		role: string | null;
 		kind: string | null;
 		physicalAttempt: number | null;
+		/** The model the request led with; route health moves a turn to the fallback after a failure. */
+		requestModel: unknown;
 		startMs: number;
 		provider: string | null;
 		model: string | null;
@@ -206,6 +227,20 @@ type RunTimeline = {
 	let shim: ReturnType<typeof createPgSupabaseShim>;
 	const results: Result[] = [];
 	let spent = 0;
+	let creditsAtStart: number | null = null;
+
+	/** Account usage so far (USD), or null when the endpoint is unavailable. */
+	async function creditsUsage(): Promise<number | null> {
+		try {
+			const response = await fetch('https://openrouter.ai/api/v1/credits', {
+				headers: { Authorization: `Bearer ${apiKey}` }
+			});
+			const body = (await response.json()) as { data?: { total_usage?: number } };
+			return typeof body.data?.total_usage === 'number' ? body.data.total_usage : null;
+		} catch {
+			return null;
+		}
+	}
 
 	beforeAll(async () => {
 		const env = parse(readFileSync(resolve(ROOT, 'apps/worker/.env')));
@@ -215,6 +250,24 @@ type RunTimeline = {
 			auth: { persistSession: false, autoRefreshToken: false }
 		});
 		mkdirSync(outDir, { recursive: true, mode: 0o700 });
+		creditsAtStart = await creditsUsage();
+		// Free: the endpoint pool as OpenRouter saw it for this run (throughput, latency, price).
+		for (const model of ['deepseek/deepseek-v4.1-flash', 'deepseek/deepseek-v4-flash'])
+			try {
+				const endpoints = await fetch(
+					`https://openrouter.ai/api/v1/models/${model}/endpoints`,
+					{
+						headers: { Authorization: `Bearer ${apiKey}` }
+					}
+				);
+				writeFileSync(
+					resolve(outDir, `endpoints-${model.split('/')[1]}.json`),
+					await endpoints.text(),
+					{ mode: 0o600 }
+				);
+			} catch {
+				// Diagnostics only.
+			}
 		pg = await startDisposableWorkflowPostgres(ROOT, 'buildos-context-finder-pilot-pg-');
 		admin = new Client(pg.connection);
 		await admin.connect();
@@ -243,7 +296,10 @@ type RunTimeline = {
 			mode: 0o600
 		});
 		writeFileSync(resolve(outDir, 'report.md'), report(results), { mode: 0o600 });
-		console.info(`Context finder pilot: ${outDir} · spent ~$${spent.toFixed(4)}`);
+		const creditsAtEnd = await creditsUsage();
+		console.info(
+			`Context finder pilot: ${outDir} · measured spend ~$${spent.toFixed(4)} · account usage delta ${creditsAtStart === null || creditsAtEnd === null ? 'unknown' : `$${(creditsAtEnd - creditsAtStart).toFixed(4)}`}`
+		);
 		await service?.end();
 		await admin?.end();
 		pg?.stop();
@@ -261,7 +317,8 @@ type RunTimeline = {
 			});
 			const ranker = new JevClient({
 				apiKey: apiKey!,
-				timeoutMs: 3_000,
+				// The worker's preparation budget, not the 09-22 pilot's 3 s (which timed out).
+				timeoutMs: WORKFLOW_CONTEXT_FINDER_TIMEOUT_MS,
 				maxRequestBytes: 96_000,
 				retryOnce: false,
 				title: 'BuildOS Context Finder'
@@ -356,9 +413,14 @@ type RunTimeline = {
 					const must = scenario.must.map(resolveId).filter((id): id is string => !!id);
 					for (let rep = 1; rep <= REPS; rep += 1)
 						for (const arm of ARMS) {
-							if (spent > BUDGET_USD) {
+							const creditsBefore = await creditsUsage();
+							const accountDelta =
+								creditsAtStart === null || creditsBefore === null
+									? null
+									: creditsBefore - creditsAtStart;
+							if (spent > BUDGET_USD || (accountDelta ?? 0) > MAX_CREDITS_USD) {
 								console.warn(
-									`Budget $${BUDGET_USD} reached; skipping ${scenario.key}/${arm}/r${rep}`
+									`Budget reached (measured $${spent.toFixed(4)} / $${BUDGET_USD}, account $${accountDelta?.toFixed(4) ?? '?'} / $${MAX_CREDITS_USD}); skipping ${scenario.key}/${arm}/r${rep}`
 								);
 								continue;
 							}
@@ -439,7 +501,7 @@ type RunTimeline = {
 									message: scenario.message,
 									profile: 'document_organization',
 									documentReadTools: true,
-									documentEvidenceHandoff: true
+									documentEvidenceHandoff: HANDOFF === 'on'
 								},
 								published: {
 									snapshot: published.snapshot,
@@ -460,7 +522,7 @@ type RunTimeline = {
 								client: provider,
 								specialistWorkflowsEnabled: true,
 								documentReadToolsEnabled: true,
-								documentEvidenceHandoffEnabled: true,
+								documentEvidenceHandoffEnabled: HANDOFF === 'on',
 								publishedSpecialistsEnabled: true,
 								findContext,
 								context: baselineContext,
@@ -528,11 +590,17 @@ type RunTimeline = {
 							const jevUsd =
 								graded.cost + previewJevUsd + (finderJevUsd - finderBefore);
 							spent += modelUsd + jevUsd;
+							const creditsAfter = await creditsUsage();
 							const result: Result = {
 								scenario: scenario.key,
 								arm,
 								rep,
 								routing: ROUTING,
+								handoff: HANDOFF,
+								creditsUsd:
+									creditsBefore === null || creditsAfter === null
+										? null
+										: creditsAfter - creditsBefore,
 								turnRunId,
 								status: facts.turn?.status,
 								outcome: facts.run?.terminal_outcome,
@@ -595,8 +663,16 @@ type RunTimeline = {
 
 	/** Rows the disposable database would otherwise take with it. Heavy payloads dropped. */
 	async function exportRunRows(turnRunId: string) {
-		const q = async (sql: string) =>
-			(await admin.query(sql, [turnRunId])).rows.map((row) => row.j as Record<string, any>);
+		// One failed export query must not lose a paid run's other evidence.
+		const q = async (sql: string) => {
+			try {
+				return (await admin.query(sql, [turnRunId])).rows.map(
+					(row) => row.j as Record<string, any>
+				);
+			} catch (error) {
+				return [{ exportError: error instanceof Error ? error.message : String(error) }];
+			}
+		};
 		const [turn, run, steps, dispatches, events, reads] = await Promise.all([
 			q(`SELECT to_jsonb(t) AS j FROM public.chat_turn_runs t WHERE t.id = $1`),
 			q(`SELECT to_jsonb(r) - 'context_payload' - 'evidence_versions' - 'answer_text' - 'policy' AS j
@@ -697,6 +773,7 @@ function buildTimeline(
 				role: call.request.role,
 				kind: dispatch?.dispatch_kind ?? null,
 				physicalAttempt: dispatch?.physical_attempt ?? null,
+				requestModel: call.request.model,
 				startMs: call.startedAtMs - startedAtMs,
 				provider: call.provider,
 				model: call.modelUsed,
@@ -719,12 +796,12 @@ function report(results: Result[]): string {
 	const lines = [
 		'# Context finder pilot',
 		'',
-		'| Scenario | Arm | Rep | Routing | Facts | Must in full | Docs read | Model $ | Jev $ | Time | Prep | Steps |',
-		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
+		'| Scenario | Arm | Rep | Routing | Handoff | Facts | Must in full | Docs read | Model $ | Jev $ | Account $ | Time | Prep | Steps |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
 	];
 	for (const r of results)
 		lines.push(
-			`| ${r.scenario} | ${r.arm} | ${r.rep} | ${r.routing} | ${r.factsHit}/${r.facts.length || '?'} | ${r.evidence ? r.mustLoadedInFull : '-'} | ${r.documentReads.length} | ${r.modelUsd.toFixed(4)} | ${r.jevUsd.toFixed(4)} | ${Math.round(r.durationMs / 1000)}s | ${seconds(r.timeline.preparationMs)}s | ${r.timeline.steps.map((s) => `${s.step} ${s.status}${s.failureCode ? ` (${s.failureCode})` : ''}`).join('; ')} |`
+			`| ${r.scenario} | ${r.arm} | ${r.rep} | ${r.routing} | ${r.handoff} | ${r.factsHit}/${r.facts.length || '?'} | ${r.evidence ? r.mustLoadedInFull : '-'} | ${r.documentReads.length} | ${r.modelUsd.toFixed(4)} | ${r.jevUsd.toFixed(4)} | ${r.creditsUsd?.toFixed(4) ?? '?'} | ${Math.round(r.durationMs / 1000)}s | ${seconds(r.timeline.preparationMs)}s | ${r.timeline.steps.map((s) => `${s.step} ${s.status}${s.failureCode ? ` (${s.failureCode})` : ''}`).join('; ')} |`
 		);
 	lines.push(
 		'',
@@ -732,13 +809,15 @@ function report(results: Result[]): string {
 		'',
 		'Times in seconds from the run start. First output = first visible token (hidden reasoning precedes it).',
 		'',
-		'| Scenario | Arm | Rep | Step | Kind | Provider | Start | Headers | First output | Total | Prompt tok | Completion | Reasoning | Visible | tok/s | Max | Finish | Error |',
-		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
+		'Led = the model the request led with; ⚠ marks a request that led with the V4 Flash fallback.',
+		'',
+		'| Scenario | Arm | Rep | Step | Kind | Led | Served | Provider | Start | Headers | First output | Total | Prompt tok | Completion | Reasoning | Visible | tok/s | Max | Finish | Error |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
 	);
 	for (const r of results)
 		for (const c of r.timeline.calls)
 			lines.push(
-				`| ${r.scenario} | ${r.arm} | ${r.rep} | ${c.step ?? c.role ?? '?'} | ${c.kind ?? '-'} | ${c.provider ?? '-'} | ${seconds(c.startMs)} | ${seconds(c.timing.headersMs)} | ${seconds(c.timing.firstOutputMs)} | ${seconds(c.timing.totalMs)} | ${c.promptTokens ?? '-'} | ${c.timing.completionTokens ?? '-'} | ${c.timing.reasoningTokens ?? '-'} | ${c.timing.visibleTokens ?? '-'} | ${c.timing.tokensPerSecond ?? '-'} | ${c.maxTokens} | ${c.finishReason ?? '-'} | ${c.error ? c.error.slice(0, 80) : ''} |`
+				`| ${r.scenario} | ${r.arm} | ${r.rep} | ${c.step ?? c.role ?? '?'} | ${c.kind ?? '-'} | ${String(c.requestModel ?? '-')}${c.requestModel === 'deepseek/deepseek-v4-flash' ? ' ⚠' : ''} | ${c.model ?? '-'} | ${c.provider ?? '-'} | ${seconds(c.startMs)} | ${seconds(c.timing.headersMs)} | ${seconds(c.timing.firstOutputMs)} | ${seconds(c.timing.totalMs)} | ${c.promptTokens ?? '-'} | ${c.timing.completionTokens ?? '-'} | ${c.timing.reasoningTokens ?? '-'} | ${c.timing.visibleTokens ?? '-'} | ${c.timing.tokensPerSecond ?? '-'} | ${c.maxTokens} | ${c.finishReason ?? '-'} | ${c.error ? c.error.slice(0, 80) : ''} |`
 			);
 	lines.push('');
 	for (const r of results) {

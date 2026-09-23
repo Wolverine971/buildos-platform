@@ -338,12 +338,19 @@ describe('total assembled prompt size budget', () => {
 		// bound the unnarrowed catalog, which a Jev fallback or surface repair pays;
 		// Jev-selected opening passes carried ~40% of it on the live eval
 		// (docs/research/jev-tool-selection-2026-09-18). Caps at measured + ~5%.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(76_600);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(19_150);
+		// RE-BASELINED 2026-09-23 (tasker 98 surgical document edits):
+		// update_onto_document gained edits/section_edits/allow_large_deletion and
+		// get_document_outline gained find, so changing one line of a long document
+		// no longer means resending it (book-loop p02 resent 11K chars across 19
+		// passes and changed nothing). Descriptions were trimmed first. Measured
+		// payload 77,712 chars / 19,428 est tokens, tool schemas 16,554 est tokens
+		// per pass. Only unnarrowed passes pay all of it. Caps at measured + ~0.5%.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(78_100);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(19_530);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(57_450);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(49_000);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(58_590);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(49_920);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		// 2026-09-10: the batch lane removed the contract DSL from acting-model

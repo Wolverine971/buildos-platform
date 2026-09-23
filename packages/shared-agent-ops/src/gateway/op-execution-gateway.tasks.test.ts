@@ -11,7 +11,12 @@ vi.mock('./op-execution-gateway.activity', () => ({
 	syncUpdatedTaskSideEffects: syncUpdatedTaskSideEffectsMock
 }));
 
-import { createTask, detectNoEffectTaskUpdate, updateTask } from './op-execution-gateway.tasks';
+import {
+	createTask,
+	detectNoEffectTaskUpdate,
+	syncLegacyDescriptionMirror,
+	updateTask
+} from './op-execution-gateway.tasks';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const TASK_ID = '22222222-2222-4222-8222-222222222222';
@@ -669,5 +674,40 @@ describe('createTask civil-date normalization', () => {
 				calendar_sync: 'off'
 			})
 		).rejects.toThrow(/calendar_sync must be one of: auto, none/);
+	});
+});
+
+describe('syncLegacyDescriptionMirror', () => {
+	const existing = {
+		props: { description: 'One-page agreement incl. deliberate exclusions.', keep: 1 }
+	};
+
+	it('rewrites a stale props.description copy when the description changes', () => {
+		const updateData: Record<string, unknown> = { description: 'One-page agreement.' };
+		syncLegacyDescriptionMirror(existing, updateData, undefined);
+		expect(updateData.props).toEqual({ description: 'One-page agreement.', keep: 1 });
+	});
+
+	it('drops the copy when the description is cleared, so the UI cannot fall back to it', () => {
+		const updateData: Record<string, unknown> = { description: null };
+		syncLegacyDescriptionMirror(existing, updateData, undefined);
+		expect(updateData.props).toEqual({ keep: 1 });
+	});
+
+	it('leaves props alone without a description edit, a copy, or when the caller set it', () => {
+		const untouched: Record<string, unknown> = { title: 'x' };
+		syncLegacyDescriptionMirror(existing, untouched, undefined);
+		expect(untouched.props).toBeUndefined();
+
+		const noCopy: Record<string, unknown> = { description: 'y' };
+		syncLegacyDescriptionMirror({ props: {} }, noCopy, undefined);
+		expect(noCopy.props).toBeUndefined();
+
+		const explicit: Record<string, unknown> = {
+			description: 'y',
+			props: { description: 'caller copy' }
+		};
+		syncLegacyDescriptionMirror(existing, explicit, { description: 'caller copy' });
+		expect(explicit.props).toEqual({ description: 'caller copy' });
 	});
 });

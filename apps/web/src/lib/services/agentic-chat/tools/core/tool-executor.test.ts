@@ -317,6 +317,31 @@ describe('ChatToolExecutor - Update Behavior', () => {
 			expect(mockFetch).toHaveBeenCalledTimes(1);
 		});
 
+		it('applies exact-text edits against the existing body', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call-edits',
+				type: 'function',
+				function: {
+					name: 'update_onto_document',
+					arguments: JSON.stringify({
+						document_id: 'doc-123',
+						edits: [{ old_text: 'Existing document', new_text: 'Edited document' }]
+					})
+				}
+			} as ChatToolCall;
+
+			const result = await toolExecutor.execute(toolCall);
+
+			expect(result.success).toBe(true);
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining('/api/onto/documents/doc-123'),
+				expect.objectContaining({
+					method: 'PATCH',
+					body: expect.stringContaining('Edited document content')
+				})
+			);
+		});
+
 		it('should append content when strategy is append', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call-2',

@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { loginAndGetCookie } from './harness/auth';
 import { provisionTestUser } from './harness/test-user';
 import { createAgenticE2EWorkerClient } from './harness/worker-client';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const TABLES = [
 	'onto_documents',
@@ -54,7 +55,12 @@ function diffRows(before: Row[], after: Row[]) {
 
 describe.runIf(process.env.BOOK_LOOP === 'true')('book dogfood loop', () => {
 	it('runs one book turn', async () => {
-		if (process.env.AGENTIC_GATE_DATABASE_ISOLATED !== 'true')
+		// prod: DJ's real project on build-os.com, as DJ (2026-09-23). Guarded by an explicit
+		// project confirmation; never provisions (that would rewrite the user's timezone).
+		const prod = process.env.BOOK_LOOP_TARGET === 'prod';
+		if (prod && process.env.BOOK_LOOP_PROD_CONFIRM !== process.env.BOOK_LOOP_PROJECT_ID)
+			throw new Error('Prod turns require BOOK_LOOP_PROD_CONFIRM=<project id>');
+		if (!prod && process.env.AGENTIC_GATE_DATABASE_ISOLATED !== 'true')
 			throw new Error('Isolated database required');
 		const baseUrl = process.env.AGENTIC_E2E_BASE_URL!;
 		const email = process.env.AGENTIC_TEST_USER_EMAIL!;
@@ -65,7 +71,9 @@ describe.runIf(process.env.BOOK_LOOP === 'true')('book dogfood loop', () => {
 		expect(projectId && message && out).toBeTruthy();
 
 		const { userId, cookie } = await loginAndGetCookie({ baseUrl, email, password });
-		const db = await provisionTestUser({ userId, email });
+		const db = prod
+			? { admin: createAdminSupabaseClient(), userId }
+			: await provisionTestUser({ userId, email });
 		async function snapshot() {
 			const rows = {} as Record<(typeof TABLES)[number], Row[]>;
 			for (const table of TABLES) {

@@ -6,6 +6,7 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import CreatedEntityCards from './CreatedEntityCards.svelte';
+	import DocumentChangeCards from './DocumentChangeCards.svelte';
 	import FreshnessRadarCard from './FreshnessRadarCard.svelte';
 	import CaptureReceiptChip from './CaptureReceiptChip.svelte';
 	import ContextSelectionChips from './ContextSelectionChips.svelte';
@@ -43,6 +44,7 @@
 	import type { ChatContextType, FreshnessCardPayloadV1 } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { AgentClientActionCompletion } from './agent-chat-client-actions';
+	import type { DocumentChangeCard } from './document-change-cards';
 
 	interface Props {
 		messages: UIMessage[];
@@ -57,6 +59,12 @@
 		/** Freshness radar card "Draft in chat": pre-fill the composer with this text. */
 		onDraftInChat?: (text: string) => void;
 		onReviewDeeper?: (card: FreshnessCardPayloadV1) => void;
+		/** A document change card's Undo succeeded (refresh open views, persist "Undone"). */
+		onDocumentChangeUndone?: (
+			messageId: string,
+			card: DocumentChangeCard,
+			document: Record<string, unknown> | null
+		) => void;
 		reviewProjectId?: string | null;
 		reviewDisabled?: boolean;
 		selectedContextType?: ChatContextType | null;
@@ -79,6 +87,7 @@
 		onClientActionComplete,
 		onDraftInChat,
 		onReviewDeeper,
+		onDocumentChangeUndone,
 		reviewProjectId = null,
 		reviewDisabled = false,
 		selectedContextType = null,
@@ -1034,6 +1043,15 @@
 						<CreatedEntityCards
 							entities={message.data.entities}
 							animateEntrance={playsEntrance(message)}
+						/>
+					{/if}
+				{:else if message.type === 'document_changes'}
+					{#if message.data?.changes?.length}
+						<DocumentChangeCards
+							changes={message.data.changes}
+							animateEntrance={playsEntrance(message)}
+							onUndone={(card, document) =>
+								onDocumentChangeUndone?.(message.id, card, document)}
 						/>
 					{/if}
 				{:else if message.type === 'freshness_card'}

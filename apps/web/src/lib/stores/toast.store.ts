@@ -1,5 +1,6 @@
 // apps/web/src/lib/stores/toast.store.ts
 import { writable } from 'svelte/store';
+import type { DocumentChangeHunkV1 } from '@buildos/shared-agent-ops/ontology/document-edits';
 
 /**
  * Standardized toast durations (in milliseconds)
@@ -25,6 +26,20 @@ export interface ToastAction {
 	onClick: () => void;
 }
 
+/**
+ * Rich "document updated" payload (agent document edits): the toast shows
+ * "+X −Y lines" and expands in place to the diff.
+ */
+export interface ToastDocumentChange {
+	title: string;
+	linesAdded: number;
+	linesRemoved: number;
+	hunks: DocumentChangeHunkV1[];
+	hunksTruncated: boolean;
+	documentHref?: string | null;
+	historyHref?: string | null;
+}
+
 export interface Toast {
 	id: string;
 	message: string;
@@ -32,6 +47,7 @@ export interface Toast {
 	duration?: number; // in milliseconds, default TOAST_DURATION.STANDARD (5000)
 	dismissible?: boolean;
 	action?: ToastAction; // Optional action button
+	documentChange?: ToastDocumentChange;
 }
 
 // Internal toast state with timing info

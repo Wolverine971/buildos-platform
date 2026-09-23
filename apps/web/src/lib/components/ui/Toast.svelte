@@ -3,7 +3,16 @@
 	import { onDestroy } from 'svelte';
 	import type { Toast } from '$lib/stores/toast.store';
 	import { toastService } from '$lib/stores/toast.store';
-	import { X, Check, AlertTriangle, AlertCircle, Info } from 'lucide-svelte';
+	import {
+		X,
+		Check,
+		AlertTriangle,
+		AlertCircle,
+		Info,
+		FileText,
+		ChevronDown,
+		ExternalLink
+	} from 'lucide-svelte';
 
 	interface Props {
 		toast: Toast;
@@ -23,6 +32,13 @@
 	let toastElement = $state<HTMLDivElement>();
 
 	let isPaused = $state(false);
+
+	// Rich "document updated" toast: clicking it expands the diff in place. An open
+	// diff holds the auto-dismiss timer until it is collapsed or dismissed.
+	const documentChange = $derived(toast.documentChange ?? null);
+	let changeExpanded = $state(false);
+	const uid = $props.id();
+	const changeDiffId = `toast-change-${uid}`;
 
 	function handleDismiss() {
 		if (ondismiss) {
@@ -78,6 +94,7 @@
 	};
 
 	let config = $derived(typeConfig[toast.type]);
+	const ToastIcon = $derived(documentChange ? FileText : config.Icon);
 
 	// Errors and warnings should interrupt screen readers; success/info should not.
 	const isAssertive = $derived(toast.type === 'error' || toast.type === 'warning');
@@ -97,8 +114,14 @@
 	}
 
 	function resumeTimer() {
+		if (changeExpanded) return;
 		isPaused = false;
 		toastService.resume(toast.id);
+	}
+
+	function toggleDocumentChange() {
+		changeExpanded = !changeExpanded;
+		if (changeExpanded) pauseTimer();
 	}
 
 	function resetSwipe({ resume = true } = {}) {
@@ -205,11 +228,12 @@
 	bind:this={toastElement}
 	class="
 		toast-surface relative overflow-hidden
-		flex items-center gap-3 p-3
+		flex {documentChange ? 'items-start' : 'items-center'} gap-3 p-3
 		{toast.dismissible ? 'pr-14 md:pr-12' : ''}
 		rounded-lg border
 		shadow-ink-strong backdrop-blur-sm
-		w-full max-w-[calc(100vw-2rem)] md:max-w-md
+		w-full max-w-[calc(100vw-2rem)]
+		{changeExpanded ? 'md:w-[32rem] md:max-w-lg' : 'md:max-w-md'}
 		{config.containerClass}
 		{config.texture}
 		transition-[transform,opacity] duration-150 ease-out
@@ -241,15 +265,82 @@
 			{config.iconContainerClass}
 		"
 	>
-		<config.Icon class="w-4 h-4 {config.iconClass}" strokeWidth={2.5} />
+		<ToastIcon class="w-4 h-4 {config.iconClass}" strokeWidth={2.5} />
 	</div>
 
 	<!-- Content -->
 	<div class="flex-1 min-w-0">
-		<!-- Message -->
-		<p class="text-sm font-medium leading-snug {config.textClass}">
-			{toast.message}
-		</p>
+		{#if documentChange}
+			<!-- Document updated: title + GitHub-style line stats; click to see the diff -->
+			<button
+				type="button"
+				class="
+					-m-1 w-[calc(100%+0.5rem)] rounded-md p-1 text-left
+					hover:bg-muted/60
+					focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
+				"
+				aria-expanded={changeExpanded}
+				aria-controls={changeDiffId}
+				onclick={toggleDocumentChange}
+			>
+				<span class="flex min-w-0 items-baseline gap-1.5">
+					<span class="truncate text-sm font-semibold leading-snug {config.textClass}">
+						{documentChange.title}
+					</span>
+					<span class="shrink-0 text-sm text-muted-foreground">updated</span>
+				</span>
+				<span class="mt-0.5 flex items-center gap-2 text-xs">
+					<span class="font-mono font-semibold tabular-nums text-success"
+						>+{documentChange.linesAdded}</span
+					><span class="sr-only"> lines added,</span>
+					<span class="font-mono font-semibold tabular-nums text-destructive"
+						>&minus;{documentChange.linesRemoved}</span
+					><span class="sr-only"> lines removed.</span>
+					<span class="ml-auto inline-flex items-center gap-1 font-medium text-accent">
+						{changeExpanded ? 'Hide changes' : 'View changes'}
+						<ChevronDown
+							class="h-3.5 w-3.5 transition-transform motion-reduce:transition-none {changeExpanded
+								? 'rotate-180'
+								: ''}"
+							aria-hidden="true"
+						/>
+					</span>
+				</span>
+			</button>
+
+			{#if changeExpanded}
+				<div id={changeDiffId} class="mt-2 space-y-2">
+					<!-- Loaded on demand: toasts mount app-wide, the diff renderer (jsdiff) should not. -->
+					{#await import('./DocumentChangeDiff.svelte') then { default: DocumentChangeDiff }}
+						<DocumentChangeDiff
+							hunks={documentChange.hunks}
+							linesAdded={documentChange.linesAdded}
+							linesRemoved={documentChange.linesRemoved}
+							truncated={documentChange.hunksTruncated}
+							historyHref={documentChange.historyHref}
+							maxHeightClass="max-h-[50vh] md:max-h-80"
+						/>
+					{/await}
+					{#if documentChange.documentHref}
+						<a
+							href={documentChange.documentHref}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="inline-flex items-center gap-1 rounded-sm text-xs font-semibold text-accent underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							Open document
+							<ExternalLink class="h-3 w-3" aria-hidden="true" />
+							<span class="sr-only">(opens in a new tab)</span>
+						</a>
+					{/if}
+				</div>
+			{/if}
+		{:else}
+			<!-- Message -->
+			<p class="text-sm font-medium leading-snug {config.textClass}">
+				{toast.message}
+			</p>
+		{/if}
 
 		<!-- Action button if provided -->
 		{#if toast.action}
@@ -278,6 +369,7 @@
 			}}
 			class="
 				toast-dismiss absolute right-2 top-1/2 z-10 -translate-y-1/2
+				{documentChange ? 'toast-dismiss-top' : ''}
 				w-9 h-9 md:w-8 md:h-8
 				flex items-center justify-center
 				rounded-lg
@@ -338,6 +430,12 @@
 		top: 50%;
 		z-index: 3;
 		transform: translateY(-50%);
+	}
+
+	/* Rich toasts grow downward when expanded; keep the close control on the header row. */
+	.toast-dismiss-top {
+		top: 0.5rem;
+		transform: none;
 	}
 
 	.toast-progress-track {

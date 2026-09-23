@@ -2237,7 +2237,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					}
 					yield state.textDelta(
 						state.renderWriteReceiptFallback() ??
-							"I couldn't complete an internal check, so I haven't applied this change. Please retry.",
+							describeUnappliedWrites(batch.calls.map((call) => call.name)),
 						false
 					);
 					state.advance({ type: 'finish' });
@@ -2444,8 +2444,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						continue;
 					}
 					yield state.textDelta(
-						state.renderWriteReceiptFallback() ??
-							"I couldn't complete an internal check, so I haven't applied this change. Please retry.",
+						state.renderWriteReceiptFallback() ?? describeUnappliedWrites([]),
 						false
 					);
 					state.advance({ type: 'finish' });
@@ -2618,4 +2617,45 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			state.release();
 		}
 	}
+}
+
+const UNAPPLIED_WRITE_VERBS: Readonly<Record<string, string>> = {
+	create: 'create',
+	update: 'update',
+	delete: 'delete',
+	move: 'move',
+	link: 'link',
+	unlink: 'unlink'
+};
+
+/**
+ * Honest copy when review cannot finish: say what was held, that nothing
+ * changed, and how to proceed. Built from tool names (structured identifiers),
+ * never from user or model prose.
+ */
+export function describeUnappliedWrites(toolNames: readonly string[]): string {
+	const counts = new Map<string, { verb: string; noun: string; count: number }>();
+	for (const name of toolNames) {
+		const [verb, ...rest] = name.split('_');
+		const noun = rest.filter((part) => part !== 'onto').join(' ');
+		const knownVerb = verb ? UNAPPLIED_WRITE_VERBS[verb] : undefined;
+		if (!knownVerb || !noun) continue;
+		const key = `${knownVerb} ${noun}`;
+		const entry = counts.get(key) ?? { verb: knownVerb, noun, count: 0 };
+		entry.count += 1;
+		counts.set(key, entry);
+	}
+	const parts = [...counts.values()].map(
+		({ verb, noun, count }) =>
+			`${verb} ${count === 1 ? 'a' : count} ${noun}${count === 1 ? '' : 's'}`
+	);
+	const attempted =
+		parts.length === 0
+			? 'this change'
+			: `the plan to ${
+					parts.length === 1
+						? parts[0]
+						: `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+				}`;
+	return `I didn't apply this: my safety check couldn't confirm that ${attempted} matched exactly what you asked. Nothing was changed. Try again, or tell me the exact text to change.`;
 }

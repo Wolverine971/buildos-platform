@@ -1986,11 +1986,50 @@ function compactDocumentMutationReceipt(payload: unknown): unknown {
 	}
 	compactDocument.content_length = content.length;
 	compactDocument.content_preview = toTextPreview(content, 300) ?? undefined;
-	const compactHolder = { ...holder, document: compactDocument };
+	const compactHolder: Record<string, unknown> = { ...holder, document: compactDocument };
+	delete compactHolder.document_change_status;
+	const change = compactDocumentChange(holder.document_change);
+	if (change) compactHolder.document_change = change;
+	else delete compactHolder.document_change;
 	return applyToolPayloadSizeGuard(
 		envelope ? { ...record, result: compactHolder } : compactHolder,
 		TOOL_COMPACT_TARGET_CHARS
 	);
+}
+
+const DOCUMENT_CHANGE_MODEL_HUNK_LINES = 24;
+
+/**
+ * The model needs what changed (+/- counts and the changed lines) to confirm the
+ * edit, not the Undo patch or hashes the chat card uses.
+ */
+function compactDocumentChange(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const change = value as Record<string, any>;
+	let budget = DOCUMENT_CHANGE_MODEL_HUNK_LINES;
+	let skipped = false;
+	const changedLines: string[] = [];
+	for (const hunk of Array.isArray(change.hunks) ? change.hunks : []) {
+		for (const line of Array.isArray(hunk?.lines) ? hunk.lines : []) {
+			if (line?.kind !== 'add' && line?.kind !== 'remove') continue;
+			if (budget <= 0) {
+				skipped = true;
+				break;
+			}
+			const text = toTextPreview(line.text, 200) ?? '';
+			changedLines.push(`${line.kind === 'add' ? '+' : '-'} ${text}`);
+			budget -= 1;
+		}
+	}
+	return {
+		lines_added: change.lines_added,
+		lines_removed: change.lines_removed,
+		chars_before: change.chars_before,
+		chars_after: change.chars_after,
+		...(Array.isArray(change.edits_applied) ? { edits_applied: change.edits_applied } : {}),
+		changed_lines: changedLines,
+		...(skipped || change.hunks_truncated === true ? { changed_lines_truncated: true } : {})
+	};
 }
 
 function toTextPreview(value: unknown, maxLength: number): string | null {

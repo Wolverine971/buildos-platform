@@ -46,6 +46,7 @@ import { buildSkillLoadActivityEvent } from './agent-chat-skill-activity';
 import { deriveContextOverheadTokens } from './agent-chat-formatters';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { appendUniqueThinkingActivity } from './agent-chat-thinking-state';
+import { extractDocumentChangeReceipt, type DocumentChangeReceipt } from './document-change-cards';
 
 // ---------------------------------------------------------------------------
 // Pure helpers — testable standalone
@@ -414,6 +415,9 @@ export interface SSEHandlerDeps {
 	// Created-entity chips appended inline at the end of a turn that created entities.
 	addCreatedEntitiesMessage(entities: CreatedEntityRef[]): void;
 
+	/** Document change cards (diff + Undo) appended at the end of a turn that edited documents. */
+	addDocumentChangesMessage?(changes: DocumentChangeReceipt[]): void;
+
 	/** "Working from" chips: attach a turn's context selection to its user message. */
 	attachContextSelection?(selection: ContextSelectionEventV1): void;
 
@@ -423,10 +427,10 @@ export interface SSEHandlerDeps {
 export interface AgentSSEMessageHandler {
 	(event: AgentSSEMessage): void;
 	/**
-	 * Clears per-turn closure state (the created-entities buffer). Must be
-	 * called at turn start / teardown: a user cancel aborts the transport
-	 * before `done`/`error` arrive, and without this reset a cancelled
-	 * turn's created-entity chips would flush into the NEXT turn's card.
+	 * Clears per-turn closure state (the created-entities and document-change
+	 * buffers). Must be called at turn start / teardown: a user cancel aborts
+	 * the transport before `done`/`error` arrive, and without this reset a
+	 * cancelled turn's chips would flush into the NEXT turn's card.
 	 */
 	resetTurnState(): void;
 }
@@ -437,6 +441,8 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 
 	// Entities created during the current turn; flushed to a card message on `done`.
 	let createdEntitiesBuffer: CreatedEntityRef[] = [];
+	// Document body edits (change receipts) this turn; flushed as change cards on `done`.
+	let documentChangesBuffer: DocumentChangeReceipt[] = [];
 	const internalControlToolCallIds = new Set<string>();
 
 	function applyToolResultSideEffects(params: {
@@ -448,8 +454,16 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		showToast?: boolean;
 	}): void {
 		const { toolName, args, success, toolResult, turnId, showToast = false } = params;
+		const documentChange = success ? extractDocumentChangeReceipt(toolResult) : null;
 		if (showToast && toolName && args !== undefined) {
-			presenter.showToolResultToast(toolName, args, success);
+			if (documentChange) {
+				presenter.showDocumentChangeToast(documentChange);
+			} else {
+				presenter.showToolResultToast(toolName, args, success);
+			}
+		}
+		if (documentChange) {
+			documentChangesBuffer.push(documentChange);
 		}
 
 		presenter.recordDataMutation(toolName, args, success, toolResult, { turnId });
@@ -693,7 +707,13 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		if (shouldFlushCreatedEntities && createdEntitiesBuffer.length > 0) {
 			deps.addCreatedEntitiesMessage(createdEntitiesBuffer);
 		}
+		// Edits are already applied even when the turn errored or was cancelled, so
+		// their cards (and Undo) always surface.
+		if (documentChangesBuffer.length > 0) {
+			deps.addDocumentChangesMessage?.(documentChangesBuffer);
+		}
 		createdEntitiesBuffer = [];
+		documentChangesBuffer = [];
 	}
 
 	function handleError(event: Extract<AgentSSEMessage, { type: 'error' }>): void {
@@ -701,8 +721,13 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		state.setError(streamErrorMessage);
 		state.setCurrentActivity('');
 		// Drop any buffered create cards from this failed turn (the close-time refresh
-		// still surfaces whatever actually committed).
+		// still surfaces whatever actually committed). Document edits did commit and
+		// stay undoable, so their cards still flush.
 		createdEntitiesBuffer = [];
+		if (documentChangesBuffer.length > 0) {
+			deps.addDocumentChangesMessage?.(documentChangesBuffer);
+		}
+		documentChangesBuffer = [];
 		if (thinking.getCurrentBlockId()) {
 			thinking.addActivity(
 				streamErrorMessage,
@@ -884,6 +909,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 
 	handleSSEMessage.resetTurnState = () => {
 		createdEntitiesBuffer = [];
+		documentChangesBuffer = [];
 		internalControlToolCallIds.clear();
 	};
 

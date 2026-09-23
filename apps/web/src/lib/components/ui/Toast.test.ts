@@ -1,8 +1,9 @@
+// apps/web/src/lib/components/ui/Toast.test.ts
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Toast as ToastData } from '$lib/stores/toast.store';
+import { toastService, type Toast as ToastData } from '$lib/stores/toast.store';
 import Toast from './Toast.svelte';
 
 class TestPointerEvent extends MouseEvent {
@@ -105,5 +106,70 @@ describe('Toast mobile interactions', () => {
 		// An unmoved toast carries no inline transform at all (no idle layer promotion).
 		expect(surface.style.transform).toBe('');
 		expect(ondismiss).not.toHaveBeenCalled();
+	});
+});
+
+describe('Toast document change variant', () => {
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+	});
+
+	const documentChange = {
+		title: 'Launch plan',
+		linesAdded: 2,
+		linesRemoved: 1,
+		hunks: [
+			{
+				old_start: 1,
+				new_start: 1,
+				lines: [
+					{ kind: 'context' as const, text: '# Launch plan' },
+					{ kind: 'remove' as const, text: 'Old scope.' },
+					{ kind: 'add' as const, text: 'New scope.' },
+					{ kind: 'add' as const, text: 'More scope.' }
+				]
+			}
+		],
+		hunksTruncated: true,
+		documentHref: '/projects/p1?doc=d1',
+		historyHref: '/projects/p1?entity=document&entity_id=d1'
+	};
+
+	it('shows "<title> updated" with +X −Y and expands the diff in place on click', async () => {
+		const pause = vi.spyOn(toastService, 'pause');
+		const resume = vi.spyOn(toastService, 'resume');
+		render(Toast, {
+			props: {
+				toast: toast({
+					message: 'Launch plan updated',
+					duration: 5000,
+					documentChange
+				})
+			}
+		});
+
+		const summary = screen.getByRole('button', { name: /Launch plan/ });
+		expect(summary).toHaveTextContent('Launch plan');
+		expect(summary).toHaveTextContent('updated');
+		expect(summary).toHaveTextContent('+2');
+		expect(summary).toHaveTextContent('−1');
+		expect(summary).toHaveAttribute('aria-expanded', 'false');
+
+		await fireEvent.click(summary);
+
+		expect(summary).toHaveAttribute('aria-expanded', 'true');
+		const diff = document.getElementById(summary.getAttribute('aria-controls')!);
+		await waitFor(() => expect(diff).toHaveTextContent('More scope.'));
+		expect(diff).toHaveTextContent('… more changes');
+		expect(screen.getByRole('link', { name: /Open document/ })).toHaveAttribute(
+			'href',
+			'/projects/p1?doc=d1'
+		);
+		expect(pause).toHaveBeenCalledWith('toast-1');
+
+		// An open diff holds the auto-dismiss timer even when the pointer leaves.
+		await fireEvent.mouseLeave(screen.getByRole('status'));
+		expect(resume).not.toHaveBeenCalled();
 	});
 });

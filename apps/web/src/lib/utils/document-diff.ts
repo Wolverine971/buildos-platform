@@ -5,6 +5,7 @@
 // Keeps existing diff.ts stable for non-document consumers.
 
 import { diffLines, diffWords } from 'diff';
+import type { DocumentChangeHunkV1 } from '@buildos/shared-agent-ops/ontology/document-edits';
 
 // ============================================================
 // TYPES
@@ -153,6 +154,62 @@ export function createDocumentDiff(
 	}
 
 	return { fields, totalStats };
+}
+
+/**
+ * Adapt the bounded hunks of a DocumentChangeSummaryV1 (agent document edits)
+ * into the unified-line format UnifiedDiffView renders, without recomputing the
+ * diff. Hunks render in the given order; a separator marks the unchanged gap
+ * between two hunks (with its size when the line numbers allow it).
+ */
+export function createDocumentFieldDiffFromHunks(
+	field: string,
+	label: string,
+	hunks: DocumentChangeHunkV1[],
+	stats: { added: number; removed: number }
+): DocumentFieldDiff {
+	const unifiedLines: DocumentDiffLine[] = [];
+	let previousNewEnd: number | null = null;
+
+	for (const hunk of hunks) {
+		if (previousNewEnd !== null) {
+			const gap = hunk.new_start - previousNewEnd;
+			unifiedLines.push({
+				type: 'separator',
+				content: '',
+				// Across merged edits the numbering restarts; show a bare marker then.
+				...(gap > 0 ? { hiddenLineCount: gap } : {})
+			});
+		}
+
+		const rawLines: RawDiffLine[] = [];
+		let oldLine = hunk.old_start;
+		let newLine = hunk.new_start;
+		for (const line of hunk.lines) {
+			if (line.kind === 'add') {
+				rawLines.push({ type: 'added', content: line.text, newLineNumber: newLine++ });
+			} else if (line.kind === 'remove') {
+				rawLines.push({ type: 'removed', content: line.text, oldLineNumber: oldLine++ });
+			} else {
+				rawLines.push({
+					type: 'unchanged',
+					content: line.text,
+					oldLineNumber: oldLine++,
+					newLineNumber: newLine++
+				});
+			}
+		}
+		unifiedLines.push(...addWordLevelHighlighting(rawLines));
+		previousNewEnd = newLine;
+	}
+
+	return {
+		field,
+		label,
+		hasChanges: unifiedLines.length > 0,
+		unifiedLines,
+		stats: { added: stats.added, removed: stats.removed, modified: 0 }
+	};
 }
 
 // ============================================================

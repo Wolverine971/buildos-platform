@@ -948,13 +948,17 @@ Useful for showing where a document lives in the hierarchy.`,
 		type: 'function',
 		function: {
 			name: 'get_document_outline',
-			description: `Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use for a targeted section lookup in a long document. For a short document or a whole-document summary, use get_onto_document_details directly instead.`,
+			description: `Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use for a targeted section lookup in a long document. Pass find to also get exact matching lines, ready to copy as an edit's old_text. For a short document or a whole-document summary, use get_onto_document_details directly instead.`,
 			parameters: {
 				type: 'object',
 				properties: {
 					document_id: {
 						type: 'string',
 						description: 'Document ID to outline (required)'
+					},
+					find: {
+						type: 'string',
+						description: 'Optional text to find; matching lines come back verbatim.'
 					}
 				},
 				required: ['document_id']

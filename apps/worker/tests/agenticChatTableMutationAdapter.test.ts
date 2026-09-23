@@ -2894,3 +2894,61 @@ describe('table adapter boundary', () => {
 		}
 	});
 });
+
+// ---------------------------------------------------------------------------
+// update_onto_document surgical edits (tasker 98)
+// ---------------------------------------------------------------------------
+
+describe('table row update_onto_document edits', () => {
+	const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
+	const DOCUMENT_ID = '99999999-9999-4999-8999-999999999999';
+	const change = {
+		version: 1,
+		document_id: DOCUMENT_ID,
+		project_id: PROJECT_ID,
+		title: 'Book Contract',
+		lines_added: 0,
+		lines_removed: 2,
+		chars_before: 60,
+		chars_after: 16,
+		before_hash: 'a'.repeat(64),
+		after_hash: 'b'.repeat(64),
+		hunks: [
+			{ old_start: 1, new_start: 1, lines: [{ kind: 'remove', text: '**Exclusions:** TBD' }] }
+		],
+		hunks_truncated: false,
+		revert_patch: null,
+		edits_applied: [{ edit: 'edits[0]', match: 'exact', lines: [3] }]
+	};
+
+	it('forwards edits to the gateway and carries the change receipt to the chat', async () => {
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
+			ok: true,
+			data: {
+				document: {
+					id: DOCUMENT_ID,
+					project_id: PROJECT_ID,
+					title: 'Book Contract',
+					content: 'Scope.\n\n## Next'
+				},
+				document_change_status: 'changed',
+				document_change: change
+			}
+		}));
+		const edits = [{ old_text: '**Exclusions:** TBD', new_text: '' }];
+		const receipt = (await adapter({ runGateway }).execute(
+			mutationInput({
+				toolName: 'update_onto_document',
+				operationName: 'onto.document.update',
+				projectContext: PROJECT_ID,
+				args: { document_id: DOCUMENT_ID, edits }
+			})
+		)) as Record<string, unknown>;
+
+		expect(runGateway.mock.calls[0]?.[0]).toMatchObject({
+			args: expect.objectContaining({ document_id: DOCUMENT_ID, edits })
+		});
+		expect(receipt.document_change_status).toBe('changed');
+		expect(receipt.document_change).toEqual(change);
+	});
+});

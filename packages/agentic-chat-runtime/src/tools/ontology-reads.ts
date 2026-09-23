@@ -19,6 +19,7 @@ import {
 	extractOutline,
 	getSectionByAnchor
 } from '@buildos/shared-agent-ops/utils/document-outline';
+import { findInDocument } from '@buildos/shared-agent-ops/ontology/document-edits';
 import {
 	AGENTIC_CHAT_NO_READABLE_PROJECTS_SENTINEL,
 	readableProjectIdsFromSummaries,
@@ -202,6 +203,8 @@ export interface SharedGetOntoDocumentDetailsArgs {
 
 export interface SharedGetDocumentOutlineArgs {
 	document_id: string;
+	/** Optional literal text to find; matching lines come back verbatim for an edit's old_text. */
+	find?: string;
 }
 
 export interface SharedReadDocumentSectionArgs {
@@ -1424,18 +1427,25 @@ export async function getDocumentOutline(
 		});
 	}
 
-	const outline = extractOutline(typeof document.content === 'string' ? document.content : '');
+	const content = typeof document.content === 'string' ? document.content : '';
+	const outline = extractOutline(content);
 	const headingCount = countOutlineNodes(outline.nodes);
+	const find = typeof args.find === 'string' && args.find.trim() ? args.find : null;
+	const found = find ? findInDocument(content, find) : null;
+	const outlineMessage =
+		headingCount > 0
+			? `Outline loaded: ${headingCount} headings. Use read_document_section with an anchor to read a specific section.`
+			: 'This document has no markdown headings. Use get_onto_document_details to read the full body.';
 
 	return {
 		document_id: document.id,
 		project_id: document.project_id,
 		title: document.title ?? null,
 		outline: outline.nodes,
-		message:
-			headingCount > 0
-				? `Outline loaded: ${headingCount} headings. Use read_document_section with an anchor to read a specific section.`
-				: 'This document has no markdown headings. Use get_onto_document_details to read the full body.'
+		...(found ? { find: found } : {}),
+		message: found
+			? `${outlineMessage} Found ${found.total_matches} line${found.total_matches === 1 ? '' : 's'} matching "${find}"; each text is exact, so copy it into update_onto_document edits old_text.`
+			: outlineMessage
 	};
 }
 

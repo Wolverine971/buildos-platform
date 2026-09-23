@@ -1671,6 +1671,65 @@ describe('buildToolPayloadForModel', () => {
 			expect(JSON.stringify(payload)).not.toContain('body_markdown');
 		});
 
+		it('gives the model the changed lines of a surgical edit, not the Undo patch', () => {
+			const payload = buildToolPayloadForModel(
+				toolCall('update_onto_document'),
+				toolResult({
+					ok: true,
+					op: 'onto.document.update',
+					result: {
+						document: {
+							id: uuid(1),
+							project_id: uuid(50),
+							title: 'Book Contract',
+							content: 'Scope.\n\n## Next',
+							props: { body_markdown: 'Scope.\n\n## Next' }
+						},
+						document_change_status: 'changed',
+						document_change: {
+							version: 1,
+							document_id: uuid(1),
+							project_id: uuid(50),
+							title: 'Book Contract',
+							lines_added: 0,
+							lines_removed: 2,
+							chars_before: 60,
+							chars_after: 16,
+							before_hash: 'a'.repeat(64),
+							after_hash: 'b'.repeat(64),
+							hunks: [
+								{
+									old_start: 1,
+									new_start: 1,
+									lines: [
+										{ kind: 'context', text: 'Scope.' },
+										{ kind: 'remove', text: '**Exclusions:** TBD' },
+										{ kind: 'remove', text: '' }
+									]
+								}
+							],
+							hunks_truncated: false,
+							revert_patch: { schema_version: 1, operations: [], patch_hash: 'c' },
+							edits_applied: [{ edit: 'edits[0]', match: 'exact', lines: [3] }]
+						}
+					}
+				}),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload.result.document_change).toEqual({
+				lines_added: 0,
+				lines_removed: 2,
+				chars_before: 60,
+				chars_after: 16,
+				edits_applied: [{ edit: 'edits[0]', match: 'exact', lines: [3] }],
+				changed_lines: ['- **Exclusions:** TBD', '- ']
+			});
+			expect(JSON.stringify(payload)).not.toContain('revert_patch');
+			expect(payload.result).not.toHaveProperty('document_change_status');
+		});
+
 		it('does not re-shape a compacted payload when the security notice pushes it past the budget', () => {
 			// ~5,800 chars before the notice used to become a cut JSON string.
 			const buildRaw = (descriptionChars: number) => ({

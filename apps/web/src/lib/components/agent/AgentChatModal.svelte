@@ -149,6 +149,12 @@
 		type PendingToolStatus,
 		type SSEHandlerDeps
 	} from './agent-chat-sse-handler';
+	import {
+		buildDocumentChangeCards,
+		showDocumentChangeToast,
+		type DocumentChangeCard,
+		type DocumentChangeReceipt
+	} from './document-change-cards';
 	import { createVoiceAdapter } from './agent-chat-voice.svelte';
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
 	import {
@@ -1722,7 +1728,10 @@
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		toast: {
 			success: (msg) => toastService.success(msg),
-			error: (msg) => toastService.error(msg)
+			error: (msg) => toastService.error(msg),
+			documentChange: (change) => {
+				showDocumentChangeToast(change);
+			}
 		},
 		onDocumentMutation: (event) => onDocumentMutation?.(event),
 		isDev: dev
@@ -2425,6 +2434,7 @@
 		processedToolCallIds,
 		processedToolResultIds,
 		addCreatedEntitiesMessage,
+		addDocumentChangesMessage,
 		attachContextSelection,
 		isDev: dev
 	};
@@ -2522,6 +2532,66 @@
 			timestamp: new Date()
 		};
 		messages = [...messages, createdMessage];
+	}
+
+	function addDocumentChangesMessage(receipts: DocumentChangeReceipt[]) {
+		// Same replay guard as created-entity chips: a card already shown is never repeated.
+		const shownIds = new Set<string>();
+		for (const message of messages) {
+			if (message.type !== 'document_changes') continue;
+			for (const card of (message.data?.changes ?? []) as DocumentChangeCard[]) {
+				if (card?.id) shownIds.add(card.id);
+			}
+		}
+		const fresh = buildDocumentChangeCards(receipts).filter((card) => !shownIds.has(card.id));
+		if (fresh.length === 0) return;
+		messages = [
+			...messages,
+			{
+				id: crypto.randomUUID(),
+				type: 'document_changes',
+				content: '',
+				data: { changes: fresh },
+				timestamp: new Date()
+			}
+		];
+	}
+
+	/**
+	 * Undo from a change card succeeded: keep "Undone" on the card across re-renders
+	 * and report the write like any chat mutation, so an open document view reloads
+	 * now and the close-time broadcast refreshes the project surfaces.
+	 */
+	function handleDocumentChangeUndone(
+		messageId: string,
+		card: DocumentChangeCard,
+		document: Record<string, unknown> | null
+	) {
+		messages = messages.map((message) =>
+			message.id === messageId && message.type === 'document_changes'
+				? {
+						...message,
+						data: {
+							...message.data,
+							changes: ((message.data?.changes ?? []) as DocumentChangeCard[]).map(
+								(entry) =>
+									entry.id === card.id ? { ...entry, undone: true } : entry
+							)
+						}
+					}
+				: message
+		);
+		presenter.recordDataMutation(
+			'update_onto_document',
+			{ document_id: card.documentId, project_id: card.projectId },
+			true,
+			{
+				result: {
+					document: document ?? { id: card.documentId, project_id: card.projectId }
+				}
+			},
+			{ turnId: null }
+		);
 	}
 
 	function beginWorkerGeneration(input: {
@@ -2921,6 +2991,7 @@
 		onSelectSuggestion={handleSelectSuggestion}
 		onClientActionComplete={handleClientActionComplete}
 		onDraftInChat={handleFreshnessDraftInChat}
+		onDocumentChangeUndone={handleDocumentChangeUndone}
 		onReviewDeeper={projectReviewAvailable ? handleReviewDeeper : undefined}
 		{reviewProjectId}
 		{reviewDisabled}

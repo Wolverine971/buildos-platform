@@ -2664,7 +2664,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 						}),
 						expect.objectContaining({
 							type: 'text_delta',
-							text: expect.stringContaining('internal check')
+							text: expect.stringContaining('Nothing was changed')
 						})
 					])
 				);

@@ -672,6 +672,9 @@ importers:
       date-fns-tz:
         specifier: 3.2.0
         version: 3.2.0(date-fns@4.1.0)
+      diff:
+        specifier: ^8.0.3
+        version: 8.0.3
       google-auth-library:
         specifier: ^10.6.2
         version: 10.6.2
@@ -8277,7 +8280,7 @@ snapshots:
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
       '@jridgewell/trace-mapping': 0.3.31
 
   '@jridgewell/remapping@2.3.5':
@@ -9583,7 +9586,7 @@ snapshots:
       obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 4.1.11(@types/node@20.19.17)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(happy-dom@20.0.8)(jsdom@26.1.0)(vite@8.3.0(@types/node@20.19.17)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3))
+      vitest: 4.1.11(@types/node@20.19.41)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(happy-dom@20.0.8)(jsdom@26.1.0)(vite@7.3.5(@types/node@20.19.41)(jiti@1.21.7)(lightningcss@1.33.0)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3))
 
   '@vitest/expect@4.1.11':
     dependencies:
@@ -9651,9 +9654,9 @@ snapshots:
       flatted: 3.4.2
       pathe: 2.0.3
       sirv: 3.0.2
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vitest: 4.1.11(@types/node@20.19.17)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(happy-dom@20.0.8)(jsdom@26.1.0)(vite@8.3.0(@types/node@20.19.17)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3))
+      vitest: 4.1.11(@types/node@20.19.41)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(happy-dom@20.0.8)(jsdom@26.1.0)(vite@7.3.5(@types/node@20.19.41)(jiti@1.21.7)(lightningcss@1.33.0)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3))
 
   '@vitest/utils@4.1.11':
     dependencies:
@@ -9770,9 +9773,9 @@ snapshots:
     dependencies:
       acorn: 8.16.0
 
-  acorn-import-phases@1.0.4(acorn@8.16.0):
+  acorn-import-phases@1.0.4(acorn@8.18.0):
     dependencies:
-      acorn: 8.16.0
+      acorn: 8.18.0
 
   acorn-jsx@5.3.2(acorn@8.16.0):
     dependencies:
@@ -10619,7 +10622,7 @@ snapshots:
 
   esrap@2.2.4:
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
       '@typescript-eslint/types': 8.44.1
 
   esrecurse@4.3.0:
@@ -10733,6 +10736,10 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.4):
     optionalDependencies:
       picomatch: 4.0.4
+
+  fdir@6.5.0(picomatch@4.0.7):
+    optionalDependencies:
+      picomatch: 4.0.7
 
   fecha@4.2.3: {}
 
@@ -12871,15 +12878,15 @@ snapshots:
   svelte@5.55.7:
     dependencies:
       '@jridgewell/remapping': 2.3.5
-      '@jridgewell/sourcemap-codec': 1.5.5
-      '@sveltejs/acorn-typescript': 1.0.13(acorn@8.16.0)
+      '@jridgewell/sourcemap-codec': 1.6.0
+      '@sveltejs/acorn-typescript': 1.0.13(acorn@8.18.0)
       '@types/estree': 1.0.9
       '@types/trusted-types': 2.0.7
-      acorn: 8.16.0
+      acorn: 8.18.0
       aria-query: 5.3.1
       axobject-query: 4.1.0
       clsx: 2.1.1
-      devalue: 5.8.2
+      devalue: 5.9.4
       esm-env: 1.2.2
       esrap: 2.2.4
       is-reference: 3.0.3
@@ -12967,7 +12974,7 @@ snapshots:
   terser@5.47.1:
     dependencies:
       '@jridgewell/source-map': 0.3.11
-      acorn: 8.16.0
+      acorn: 8.18.0
       commander: 2.20.3
       source-map-support: 0.5.21
 
@@ -12992,8 +12999,8 @@ snapshots:
 
   tinyglobby@0.2.17:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
 
   tinyrainbow@3.1.1: {}
 
@@ -13272,11 +13279,11 @@ snapshots:
   vite@7.3.5(@types/node@20.19.17)(jiti@1.21.7)(lightningcss@1.33.0)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3):
     dependencies:
       esbuild: 0.27.2
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
       postcss: 8.5.23
       rollup: 4.60.1
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.17
     optionalDependencies:
       '@types/node': 20.19.17
       fsevents: 2.3.3
@@ -13289,11 +13296,11 @@ snapshots:
   vite@7.3.5(@types/node@20.19.27)(jiti@1.21.7)(lightningcss@1.33.0)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3):
     dependencies:
       esbuild: 0.27.2
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
       postcss: 8.5.23
       rollup: 4.60.1
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.17
     optionalDependencies:
       '@types/node': 20.19.27
       fsevents: 2.3.3
@@ -13306,11 +13313,11 @@ snapshots:
   vite@7.3.5(@types/node@20.19.41)(jiti@1.21.7)(lightningcss@1.33.0)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3):
     dependencies:
       esbuild: 0.27.2
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
       postcss: 8.5.23
       rollup: 4.60.1
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.17
     optionalDependencies:
       '@types/node': 20.19.41
       fsevents: 2.3.3
@@ -13514,8 +13521,8 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@webassemblyjs/wasm-edit': 1.14.1
       '@webassemblyjs/wasm-parser': 1.14.1
-      acorn: 8.16.0
-      acorn-import-phases: 1.0.4(acorn@8.16.0)
+      acorn: 8.18.0
+      acorn-import-phases: 1.0.4(acorn@8.18.0)
       browserslist: 4.28.2
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.21.3

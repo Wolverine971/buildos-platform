@@ -15,12 +15,15 @@ import {
 	sanitizeToolResultForActivityMetadata,
 	upsertTurnPhaseActivity,
 	type ActivityUpdateResult,
+	type AgentSSEMessageHandler,
 	type PendingToolStatus,
 	type SSEHandlerDeps,
 	type ThinkingBlockDeps,
 	type ModalStateDeps
 } from './agent-chat-sse-handler';
 import { createToolPresenter, type ToolPresenter } from './agent-chat-tool-presenter';
+import { summarizeDocumentChange } from '@buildos/shared-agent-ops/ontology/document-edits';
+import type { DocumentChangeReceipt } from './document-change-cards';
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -352,7 +355,7 @@ describe('turn phase activity', () => {
 // ---------------------------------------------------------------------------
 
 interface HandlerHarness {
-	handler: (event: AgentSSEMessage) => void;
+	handler: AgentSSEMessageHandler;
 	deps: SSEHandlerDeps;
 	calls: {
 		addActivity: Array<{
@@ -382,6 +385,7 @@ interface HandlerHarness {
 			answerSource?: string;
 		}>;
 		addCreatedEntitiesMessage: CreatedEntityRef[][];
+		addDocumentChangesMessage: DocumentChangeReceipt[][];
 		updateBlocks: ThinkingBlockMessage[];
 	};
 	snapshot: {
@@ -439,6 +443,7 @@ function createHarness(
 		finalizeAssistantMessage: 0,
 		markAssistantCompletion: [],
 		addCreatedEntitiesMessage: [],
+		addDocumentChangesMessage: [],
 		updateBlocks: []
 	};
 
@@ -578,6 +583,9 @@ function createHarness(
 		processedToolResultIds,
 		addCreatedEntitiesMessage: (entities) => {
 			calls.addCreatedEntitiesMessage.push(entities);
+		},
+		addDocumentChangesMessage: (changes) => {
+			calls.addDocumentChangesMessage.push([...changes]);
 		},
 		isDev: false
 	};
@@ -1234,6 +1242,106 @@ describe('createSSEHandler — done + error', () => {
 		h.handler({ type: 'error', error: 'Stream died' });
 		expect(h.snapshot.error).toBe('Stream died');
 		expect(h.calls.finalize).toEqual([]);
+	});
+});
+
+describe('createSSEHandler — document change receipts', () => {
+	const change = summarizeDocumentChange({
+		project_id: 'project-1',
+		document_id: 'document-1',
+		title: 'Launch plan',
+		before: '# Launch plan\n\nOld scope.\n',
+		after: '# Launch plan\n\nNew scope.\nMore scope.\n'
+	})!;
+
+	function documentUpdateResult(callId: string, documentChange?: unknown) {
+		return {
+			type: 'tool_result' as const,
+			turn_run_id: 'turn-run-1',
+			result: {
+				tool_call_id: callId,
+				success: true,
+				tool_name: 'update_onto_document',
+				result: {
+					document: { id: 'document-1', project_id: 'project-1', title: 'Launch plan' },
+					message: 'Updated document',
+					...(documentChange
+						? { document_change_status: 'changed', document_change: documentChange }
+						: {})
+				}
+			}
+		};
+	}
+
+	it('shows the rich change toast instead of the plain one and flushes a card on done', () => {
+		const h = createHarness();
+		const plainToast = vi.spyOn(h.presenter, 'showToolResultToast');
+		const changeToast = vi.spyOn(h.presenter, 'showDocumentChangeToast');
+		const mutationSpy = vi.spyOn(h.presenter, 'recordDataMutation');
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'update_onto_document',
+			args: { document_id: 'document-1' }
+		});
+
+		h.handler(documentUpdateResult('call-edit', change));
+
+		expect(changeToast).toHaveBeenCalledWith(change);
+		expect(plainToast).not.toHaveBeenCalled();
+		expect(mutationSpy).toHaveBeenCalledTimes(1);
+		expect(h.calls.addDocumentChangesMessage).toEqual([]);
+
+		h.handler({ type: 'done' });
+
+		expect(h.calls.addDocumentChangesMessage).toEqual([[change]]);
+	});
+
+	it('keeps the plain toast and adds no card when the body did not change', () => {
+		const h = createHarness();
+		const plainToast = vi.spyOn(h.presenter, 'showToolResultToast');
+		const changeToast = vi.spyOn(h.presenter, 'showDocumentChangeToast');
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'update_onto_document',
+			args: { document_id: 'document-1', title: 'Renamed' }
+		});
+
+		h.handler(documentUpdateResult('call-rename'));
+		h.handler({ type: 'done' });
+
+		expect(plainToast).toHaveBeenCalledTimes(1);
+		expect(changeToast).not.toHaveBeenCalled();
+		expect(h.calls.addDocumentChangesMessage).toEqual([]);
+	});
+
+	it('still surfaces applied edits when the turn ends in an error', () => {
+		const h = createHarness();
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'update_onto_document',
+			args: { document_id: 'document-1' }
+		});
+
+		h.handler(documentUpdateResult('call-edit', change));
+		h.handler({ type: 'error', error: 'Stream died' });
+		h.handler({ type: 'done' });
+
+		expect(h.calls.addDocumentChangesMessage).toEqual([[change]]);
+	});
+
+	it('drops a cancelled turn’s buffered edits on resetTurnState', () => {
+		const h = createHarness();
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'update_onto_document',
+			args: { document_id: 'document-1' }
+		});
+
+		h.handler(documentUpdateResult('call-edit', change));
+		h.handler.resetTurnState();
+		h.handler({ type: 'done' });
+
+		expect(h.calls.addDocumentChangesMessage).toEqual([]);
 	});
 });
 

@@ -255,6 +255,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			requiredUuidArguments: ['document_id'],
 			argumentNormalizers: ['reject_merge_llm_update_strategy', 'drop_empty_props'],
 			receiptPostProcessors: ['strip_external_agent_origin'],
+			// +/- line stats, diff hunks, and the Undo patch for the chat toast and card.
+			passthroughReceiptFields: ['document_change_status', 'document_change'],
 			receipt: {
 				kind: 'entity',
 				rootKey: 'document',
@@ -273,7 +275,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		// Opening-pass override: the contract tool is not mounted on that pass
 		// and the worker chooses the route (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02).
 		descriptionOverride:
-			'Update one existing document by its exact document_id from a read or the focused context: title, type, state, description, or content (replace or append). Call it directly when the target id is the focused entity, was given by the user, or is the only document a read returned this turn; the worker routes a target it did not resolve this turn to review.',
+			'Update one existing document by its exact document_id from a read or the focused context: title, type, state, description, or body. Change part of the body with edits or section_edits; content only rewrites the whole body (replace) or adds at the end (append). Call it directly when the target id is the focused entity, was given by the user, or is the only document a read returned this turn; the worker routes a target it did not resolve this turn to review.',
 		requiredNames: ['document_id'],
 		// merge_instructions is dropped: the worker never runs a model-authored
 		// merge, so it had no consumer here (F30).
@@ -283,6 +285,9 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'type_key',
 			'state_key',
 			'content',
+			'edits',
+			'section_edits',
+			'allow_large_deletion',
 			'description',
 			'update_strategy',
 			'props'

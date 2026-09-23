@@ -42,6 +42,12 @@ import {
 import { formatElapsedDuration } from './agent-chat-formatters';
 import { timelineItemsFromMessages } from './agent-chat-timeline';
 import { buildFreshnessCardUIMessage, isFreshnessCardMetadata } from './freshness-radar-card';
+import {
+	buildDocumentChangeCards,
+	extractDocumentChangeReceipt,
+	type DocumentChangeCard,
+	type DocumentChangeReceipt
+} from './document-change-cards';
 
 export type PreparedPromptClient = {
 	id: string;
@@ -774,6 +780,7 @@ function mapLoadedMessagesToUI(
 	const uiMessages: UIMessage[] = [];
 	// Ids already turned into chips, so an entity never gets a duplicate chip.
 	const seenCreatedIds = new Set<string>();
+	const seenDocumentChangeIds = new Set<string>();
 	const assistantWorkflowTurns = new Set(
 		messages.flatMap((msg) => {
 			const turnId = workflowMessageTurnId(msg.metadata);
@@ -792,6 +799,7 @@ function mapLoadedMessagesToUI(
 			continue;
 		}
 		let createdForTurn: CreatedEntityRef[] = [];
+		let documentChangesForTurn: DocumentChangeCard[] = [];
 		if (msg.role === 'assistant') {
 			const metadata = msg.metadata as Record<string, any> | undefined;
 			const workflow = readAgentChatWorkflowProgress(metadata?.chat_workflow_v1);
@@ -822,6 +830,10 @@ function mapLoadedMessagesToUI(
 			}
 
 			createdForTurn = deriveCreatedEntitiesFromSources(directSources, seenCreatedIds);
+			documentChangesForTurn = deriveDocumentChangeCardsFromSources(
+				directSources,
+				seenDocumentChangeIds
+			);
 		}
 
 		uiMessages.push(mapLoadedMessageToUI(msg));
@@ -836,6 +848,12 @@ function mapLoadedMessagesToUI(
 		// Inline chips for whatever this turn created, placed right after its reply.
 		if (createdForTurn.length > 0) {
 			uiMessages.push(buildCreatedEntitiesMessage(createdForTurn, msg.id, msg.created_at));
+		}
+		// Same for the documents it edited: change cards with diff + Undo.
+		if (documentChangesForTurn.length > 0) {
+			uiMessages.push(
+				buildDocumentChangesMessage(documentChangesForTurn, msg.id, msg.created_at)
+			);
 		}
 	}
 
@@ -853,6 +871,13 @@ function mapLoadedMessagesToUI(
 	const unlinkedCreated = deriveCreatedEntitiesFromSources(unlinkedSources, seenCreatedIds);
 	if (unlinkedCreated.length > 0) {
 		uiMessages.push(buildCreatedEntitiesMessage(unlinkedCreated, 'unlinked'));
+	}
+	const unlinkedDocumentChanges = deriveDocumentChangeCardsFromSources(
+		unlinkedSources,
+		seenDocumentChangeIds
+	);
+	if (unlinkedDocumentChanges.length > 0) {
+		uiMessages.push(buildDocumentChangesMessage(unlinkedDocumentChanges, 'unlinked'));
 	}
 
 	return uiMessages;
@@ -909,6 +934,41 @@ function buildCreatedEntitiesMessage(
 		type: 'created_entities',
 		content: '',
 		data: { entities },
+		timestamp: timestamp ? new Date(timestamp) : new Date(),
+		created_at: timestamp ?? undefined
+	};
+}
+
+/**
+ * Rebuild a turn's document change cards from its stored tool results (source order
+ * = edit order). Restored cards do not know whether Undo already ran; the Undo
+ * endpoint is idempotent against the pre-edit hash and reports it as undone.
+ */
+function deriveDocumentChangeCardsFromSources(
+	sources: RestoredToolActivitySource[],
+	seen: Set<string>
+): DocumentChangeCard[] {
+	const receipts: DocumentChangeReceipt[] = [];
+	for (const source of [...sources].sort(sortRestoredToolSources)) {
+		if (!source.success) continue;
+		const receipt = extractDocumentChangeReceipt(parseRecord(source.result));
+		if (receipt) receipts.push(receipt);
+	}
+	const cards = buildDocumentChangeCards(receipts).filter((card) => !seen.has(card.id));
+	for (const card of cards) seen.add(card.id);
+	return cards;
+}
+
+function buildDocumentChangesMessage(
+	changes: DocumentChangeCard[],
+	idSuffix: string,
+	timestamp?: string | null
+): UIMessage {
+	return {
+		id: `document-changes-${idSuffix}`,
+		type: 'document_changes',
+		content: '',
+		data: { changes },
 		timestamp: timestamp ? new Date(timestamp) : new Date(),
 		created_at: timestamp ?? undefined
 	};

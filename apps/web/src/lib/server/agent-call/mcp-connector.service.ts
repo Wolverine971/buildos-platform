@@ -568,7 +568,22 @@ function resolveGatewayToolName(op: string): string | undefined {
 	return getToolRegistry().ops[op]?.tool_name;
 }
 
-function wrapMcpToolResult(result: Record<string, unknown>) {
+/**
+ * A document update's change receipt carries an inverse patch for the BuildOS
+ * chat's Undo button. External agents cannot use it and it can be tens of KB,
+ * so they get the +/- stats and hunks only.
+ */
+function withoutDocumentRevertPatch(result: Record<string, unknown>): Record<string, unknown> {
+	const payload = result.result;
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return result;
+	const change = (payload as Record<string, unknown>).document_change;
+	if (!change || typeof change !== 'object' || !('revert_patch' in change)) return result;
+	const { revert_patch: _revertPatch, ...externalChange } = change as Record<string, unknown>;
+	return { ...result, result: { ...payload, document_change: externalChange } };
+}
+
+function wrapMcpToolResult(rawResult: Record<string, unknown>) {
+	const result = withoutDocumentRevertPatch(rawResult);
 	const isError = result.ok === false || Boolean(result.error);
 	return {
 		content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],

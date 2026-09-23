@@ -125,6 +125,7 @@ const NON_EFFECT_ARGUMENTS = new Set([
 	'confirmation_token',
 	'update_strategy',
 	'merge_instructions',
+	'allow_large_deletion',
 	'confirm',
 	'idempotency_key'
 ]);
@@ -138,6 +139,8 @@ function normalizeFieldName(value: string): string {
 	// comes back in the receipt.
 	if (normalized === 'new_parent_title' || normalized === 'parent_title') return 'parent_id';
 	if (normalized === 'new_position') return 'position';
+	// Surgical body edits change the same effect field as a whole-body write.
+	if (normalized === 'edits' || normalized === 'section_edits') return 'content';
 	return normalized;
 }
 

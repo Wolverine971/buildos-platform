@@ -62,6 +62,13 @@ import {
 	isAppendOrMergeUpdateStrategy
 } from '$lib/services/agentic-chat/shared/update-value-validation';
 import { TASK_STATES } from '$lib/types/onto';
+import {
+	formatDocumentEditFailures,
+	hasDocumentEdits,
+	resolveDocumentEdits,
+	type DocumentSectionEditV1,
+	type DocumentTextEditV1
+} from '@buildos/shared-agent-ops/ontology/document-edits';
 
 const logger = createLogger('OntologyWriteExecutor');
 
@@ -1734,6 +1741,33 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			!getDocumentUpdateContentCandidate(normalizedArgs as unknown as Record<string, unknown>)
 		) {
 			throw new Error(`update_onto_document ${strategy} requires non-empty content.`);
+		}
+		const editArgs = normalizedArgs as unknown as Record<string, unknown>;
+		if (hasDocumentEdits(editArgs)) {
+			if (documentContent !== undefined) {
+				throw new Error(
+					'Pass either content (whole-body replace or append) or edits/section_edits, not both.'
+				);
+			}
+			const existing = await getDocumentDetails(normalizedArgs.document_id);
+			const resolution = resolveDocumentEdits({
+				project_id: String(existing?.document?.project_id ?? ''),
+				document_id: normalizedArgs.document_id,
+				content:
+					(existing?.document?.content as string) ||
+					(existing?.document?.props?.body_markdown as string) ||
+					'',
+				edits: Array.isArray(editArgs.edits)
+					? (editArgs.edits as DocumentTextEditV1[])
+					: [],
+				section_edits: Array.isArray(editArgs.section_edits)
+					? (editArgs.section_edits as DocumentSectionEditV1[])
+					: []
+			});
+			if (resolution.status === 'rejected') {
+				throw new Error(formatDocumentEditFailures(resolution.failures));
+			}
+			updateData.content = resolution.next_content;
 		}
 		if (documentContent !== undefined) {
 			// Resolve content with strategy, then send as content (API handles backwards compat)

@@ -6,11 +6,20 @@
 # Capture runs like prod (scripts/book-loop/checkpoint.sh): a new chat first captures earlier
 # chats as idle (time passed between sittings); every turn is followed by the threshold check.
 # BOOK_LOOP_NO_CAPTURE=1 skips both.
+# BOOK_LOOP_TARGET=prod drives DJ's real project on build-os.com (prod capture sweep does the notes).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 name="$1"; message="$2"; session="${3:-}"
 out="$root/output/book-loop/$name.json"
-set -a; source "$root/.env.agentic-gate.local"; set +a
+if [[ "${BOOK_LOOP_TARGET:-}" == "prod" ]]; then
+  # DJ's real account on build-os.com; credentials live in a comment at the end of the root .env.
+  read -r BOOK_LOOP_EMAIL BOOK_LOOP_PASSWORD < <(grep -A1 '^# dj buildos pass' "$root/.env" | tail -1 | sed 's/^#[[:space:]]*//')
+  export AGENTIC_TEST_USER_EMAIL="$BOOK_LOOP_EMAIL" AGENTIC_TEST_USER_PASSWORD="$BOOK_LOOP_PASSWORD"
+  export AGENTIC_E2E_BASE_URL="https://build-os.com" BOOK_LOOP_NO_CAPTURE=1
+  export BOOK_LOOP_PROD_CONFIRM="${BOOK_LOOP_PROJECT_ID:-445dd429-db93-4878-90a9-b3ab1627a9f2}"
+else
+  set -a; source "$root/.env.agentic-gate.local"; set +a
+fi
 export BOOK_LOOP=true BOOK_LOOP_MESSAGE="$message" BOOK_LOOP_SESSION_ID="$session" BOOK_LOOP_OUT="$out"
 export BOOK_LOOP_PROJECT_ID="${BOOK_LOOP_PROJECT_ID:-445dd429-db93-4878-90a9-b3ab1627a9f2}"
 export AGENTIC_E2E_BASE_URL="${AGENTIC_E2E_BASE_URL:-http://127.0.0.1:5188}"

@@ -618,6 +618,7 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		changedFieldCount += 1;
 		changedFields.push('props');
 	}
+	syncLegacyDescriptionMirror(existingTask, updateData, propsPatch);
 	if (reconcileLegacyTaskEstimate(existingTask, updateData)) {
 		changedFieldCount += 1;
 		changedFields.push('description');
@@ -853,4 +854,30 @@ export function detectNoEffectTaskUpdate(
 		comparedFields: [...changedFields],
 		taskTitle: typeof existingTask.title === 'string' ? existingTask.title : undefined
 	};
+}
+
+/**
+ * Older tasks carry a props.description copy. The UI falls back to it when the
+ * column is empty and agents read both, so a description edit must not leave
+ * the old text behind in the copy (tasker 98: a reviewer demanded both be
+ * edited). An explicit props.description from the caller wins.
+ */
+export function syncLegacyDescriptionMirror(
+	existingTask: { props?: unknown },
+	updateData: Record<string, unknown>,
+	propsPatch: Record<string, unknown> | null | undefined
+): void {
+	if (!Object.prototype.hasOwnProperty.call(updateData, 'description')) return;
+	const existingProps = (existingTask.props as Record<string, unknown> | null) ?? {};
+	if (typeof existingProps.description !== 'string') return;
+	if (propsPatch && Object.prototype.hasOwnProperty.call(propsPatch, 'description')) return;
+	const nextProps = {
+		...((updateData.props as Record<string, unknown> | undefined) ?? existingProps)
+	};
+	if (typeof updateData.description === 'string' && updateData.description) {
+		nextProps.description = updateData.description;
+	} else {
+		delete nextProps.description;
+	}
+	updateData.props = nextProps;
 }

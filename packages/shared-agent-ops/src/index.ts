@@ -79,3 +79,4 @@ export * from './ontology/edge-relationship-resolver';
 export * from './ontology/versioning.service';
 export * from './ontology/document-write.service';
 export * from './ontology/document-patch';
+export * from './ontology/document-edits';

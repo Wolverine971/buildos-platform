@@ -379,7 +379,12 @@ export function createSupabaseCheckpointPorts(options?: {
 						userId: session.userId,
 						scope: documentScope(session.projectId),
 						op: 'onto.document.update',
-						args: { document_id: document.id, content, update_strategy: 'replace' },
+						args: {
+							document_id: document.id,
+							content,
+							update_strategy: 'replace',
+							allow_large_deletion: true
+						},
 						chatSessionId: session.id
 					})
 				: await runGatewayWriteOp({
@@ -413,7 +418,12 @@ export function createSupabaseCheckpointPorts(options?: {
 				userId: session.userId,
 				scope: documentScope(session.projectId),
 				op: 'onto.document.update',
-				args: { document_id: document.id, content, update_strategy: 'replace' },
+				args: {
+					document_id: document.id,
+					content,
+					update_strategy: 'replace',
+					allow_large_deletion: true
+				},
 				chatSessionId: session.id
 			});
 			if (!result.ok)
@@ -433,7 +443,12 @@ export function createSupabaseCheckpointPorts(options?: {
 					allowed_ops: ['onto.document.update']
 				},
 				op: 'onto.document.update',
-				args: { document_id: document.id, content, update_strategy: 'replace' },
+				args: {
+					document_id: document.id,
+					content,
+					update_strategy: 'replace',
+					allow_large_deletion: true
+				},
 				rationale
 			});
 			if (!staged.ok) throw new Error(staged.error.message);

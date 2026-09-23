@@ -474,7 +474,72 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			content: {
 				type: 'string',
-				description: 'Optional replacement or appended markdown body.'
+				description:
+					'Whole-body markdown for update_strategy replace (rewrites the entire document) or append. To change part of an existing document, use edits or section_edits instead.'
+			},
+			edits: {
+				type: 'array',
+				description:
+					'Preferred for changing part of a document: exact find-and-replace pairs applied together (all or nothing). Copy old_text exactly from the document; it must match exactly one place unless replace_all is true. An empty new_text deletes the text (a whole deleted line also loses its blank line). Do not combine with content.',
+				items: {
+					type: 'object',
+					additionalProperties: false,
+					properties: {
+						old_text: {
+							type: 'string',
+							description: 'Existing text to change, copied exactly.'
+						},
+						new_text: {
+							type: 'string',
+							description: 'Replacement text. Empty string deletes old_text.'
+						},
+						replace_all: {
+							type: 'boolean',
+							description:
+								'Change every occurrence of old_text instead of exactly one.'
+						}
+					},
+					required: ['old_text', 'new_text']
+				}
+			},
+			section_edits: {
+				type: 'array',
+				description:
+					'Edit whole sections by heading. section is a heading anchor from get_document_outline (or the exact heading text). replace and append act on the section’s own text before its subsections; delete and move take the section with its subsections. Do not combine with content.',
+				items: {
+					type: 'object',
+					additionalProperties: false,
+					properties: {
+						action: {
+							type: 'string',
+							enum: ['replace', 'delete', 'append', 'prepend', 'move'],
+							description: 'What to do with the section.'
+						},
+						section: {
+							type: 'string',
+							description: 'Heading anchor (preferred) or exact heading text.'
+						},
+						content: {
+							type: 'string',
+							description:
+								'Markdown for replace, append, or prepend (without the heading).'
+						},
+						after_section: {
+							type: 'string',
+							description: 'move only: place the section after this section.'
+						},
+						before_section: {
+							type: 'string',
+							description: 'move only: place the section before this section.'
+						}
+					},
+					required: ['action', 'section']
+				}
+			},
+			allow_large_deletion: {
+				type: 'boolean',
+				description:
+					'Set true only when the user asked to cut the document down: a whole-body replace that removes more than 30% of a long document is otherwise refused.'
 			},
 			description: {
 				type: ['string', 'null'],
